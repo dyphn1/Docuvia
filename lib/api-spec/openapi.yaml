@@ -1,22 +1,35 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Knowledge Graph Engine API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: projects
+    description: Project (repo) management
+  - name: l1-tags
+    description: Global L1 tag pool management
+  - name: l2-nodes
+    description: L2 Package/Module/PCD nodes
+  - name: l3-nodes
+    description: L3 change/decision nodes
+  - name: commits
+    description: VCS commit management
+  - name: review-tasks
+    description: Human review and correction tasks
+  - name: dashboard
+    description: Dashboard and analytics
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +37,832 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard:
+    get:
+      operationId: getDashboard
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List all projects
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get project by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /projects/{id}/graph:
+    get:
+      operationId: getProjectGraph
+      tags: [projects]
+      summary: Get full L1/L2/L3 graph for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project graph data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectGraph"
+
+  /projects/{id}/commits:
+    get:
+      operationId: listCommits
+      tags: [commits]
+      summary: List commits for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of commits
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Commit"
+    post:
+      operationId: createCommit
+      tags: [commits]
+      summary: Add a commit to a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommitInput"
+      responses:
+        "201":
+          description: Created commit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Commit"
+
+  /projects/{id}/l2-nodes:
+    get:
+      operationId: listProjectL2Nodes
+      tags: [l2-nodes]
+      summary: List L2 nodes for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of L2 nodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/L2Node"
+
+  /l1-tags:
+    get:
+      operationId: listL1Tags
+      tags: [l1-tags]
+      summary: List all global L1 tags
+      responses:
+        "200":
+          description: List of L1 tags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/L1Tag"
+    post:
+      operationId: createL1Tag
+      tags: [l1-tags]
+      summary: Create a new L1 tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/L1TagInput"
+      responses:
+        "201":
+          description: Created L1 tag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/L1Tag"
+
+  /l1-tags/{id}:
+    patch:
+      operationId: updateL1Tag
+      tags: [l1-tags]
+      summary: Update an L1 tag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/L1TagUpdate"
+      responses:
+        "200":
+          description: Updated L1 tag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/L1Tag"
+    delete:
+      operationId: deleteL1Tag
+      tags: [l1-tags]
+      summary: Delete an L1 tag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /l2-nodes:
+    post:
+      operationId: createL2Node
+      tags: [l2-nodes]
+      summary: Create a new L2 node
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/L2NodeInput"
+      responses:
+        "201":
+          description: Created L2 node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/L2Node"
+
+  /l2-nodes/{id}:
+    patch:
+      operationId: updateL2Node
+      tags: [l2-nodes]
+      summary: Update an L2 node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/L2NodeUpdate"
+      responses:
+        "200":
+          description: Updated L2 node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/L2Node"
+    delete:
+      operationId: deleteL2Node
+      tags: [l2-nodes]
+      summary: Delete an L2 node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /l2-nodes/{id}/l3-nodes:
+    get:
+      operationId: listL3Nodes
+      tags: [l3-nodes]
+      summary: List L3 nodes under an L2 node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of L3 nodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/L3Node"
+    post:
+      operationId: createL3Node
+      tags: [l3-nodes]
+      summary: Create a new L3 node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/L3NodeInput"
+      responses:
+        "201":
+          description: Created L3 node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/L3Node"
+
+  /l3-nodes/{id}:
+    patch:
+      operationId: updateL3Node
+      tags: [l3-nodes]
+      summary: Update an L3 node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/L3NodeUpdate"
+      responses:
+        "200":
+          description: Updated L3 node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/L3Node"
+    delete:
+      operationId: deleteL3Node
+      tags: [l3-nodes]
+      summary: Delete an L3 node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /review-tasks:
+    get:
+      operationId: listReviewTasks
+      tags: [review-tasks]
+      summary: List review tasks (pending human review)
+      responses:
+        "200":
+          description: List of review tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ReviewTask"
+
+  /review-tasks/stats:
+    get:
+      operationId: getReviewStats
+      tags: [review-tasks]
+      summary: Get review task statistics
+      responses:
+        "200":
+          description: Review task stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewStats"
+
+  /review-tasks/{id}:
+    patch:
+      operationId: resolveReviewTask
+      tags: [review-tasks]
+      summary: Resolve a review task (approve or reject)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewResolution"
+      responses:
+        "200":
+          description: Resolved task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewTask"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    DashboardStats:
+      type: object
+      required: [totalProjects, totalL1Tags, totalL2Nodes, totalL3Nodes, pendingReviews, recentActivity]
+      properties:
+        totalProjects:
+          type: integer
+        totalL1Tags:
+          type: integer
+        totalL2Nodes:
+          type: integer
+        totalL3Nodes:
+          type: integer
+        pendingReviews:
+          type: integer
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityItem"
+
+    ActivityItem:
+      type: object
+      required: [id, type, description, createdAt]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [commit, l2_created, l3_created, review_resolved, tag_added]
+        description:
+          type: string
+        projectName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    Project:
+      type: object
+      required: [id, name, repoUrl, status, l2Count, l3Count, commitCount, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        repoUrl:
+          type: string
+        description:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, indexing, paused, error]
+        l2Count:
+          type: integer
+        l3Count:
+          type: integer
+        commitCount:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ProjectInput:
+      type: object
+      required: [name, repoUrl]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        repoUrl:
+          type: string
+          minLength: 1
+        description:
+          type: string
+
+    ProjectUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        repoUrl:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [active, indexing, paused, error]
+
+    ProjectGraph:
+      type: object
+      required: [projectId, l1Tags, l2Nodes, l3Nodes]
+      properties:
+        projectId:
+          type: integer
+        l1Tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/L1Tag"
+        l2Nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/L2Node"
+        l3Nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/L3Node"
+
+    L1Tag:
+      type: object
+      required: [id, name, category, usageCount, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: ["string", "null"]
+        isAnchored:
+          type: boolean
+        usageCount:
+          type: integer
+        createdAt:
+          type: string
+
+    L1TagInput:
+      type: object
+      required: [name, category]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          minLength: 1
+        description:
+          type: string
+        isAnchored:
+          type: boolean
+
+    L1TagUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        category:
+          type: string
+        description:
+          type: string
+        isAnchored:
+          type: boolean
+
+    L2Node:
+      type: object
+      required: [id, projectId, name, type, l3Count, l1TagIds, aiGenerated, createdAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        type:
+          type: string
+          enum: [package, module, pcd]
+        description:
+          type: ["string", "null"]
+        l3Count:
+          type: integer
+        l1TagIds:
+          type: array
+          items:
+            type: integer
+        aiGenerated:
+          type: boolean
+        needsReview:
+          type: boolean
+        createdAt:
+          type: string
+
+    L2NodeInput:
+      type: object
+      required: [projectId, name, type]
+      properties:
+        projectId:
+          type: integer
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum: [package, module, pcd]
+        description:
+          type: string
+        l1TagIds:
+          type: array
+          items:
+            type: integer
+        aiGenerated:
+          type: boolean
+
+    L2NodeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        type:
+          type: string
+          enum: [package, module, pcd]
+        description:
+          type: string
+        l1TagIds:
+          type: array
+          items:
+            type: integer
+        needsReview:
+          type: boolean
+
+    L3Node:
+      type: object
+      required: [id, l2NodeId, title, nodeType, aiGenerated, createdAt]
+      properties:
+        id:
+          type: integer
+        l2NodeId:
+          type: integer
+        title:
+          type: string
+        content:
+          type: ["string", "null"]
+        nodeType:
+          type: string
+          enum: [change, rule, decision, context]
+        commitHash:
+          type: ["string", "null"]
+        aiGenerated:
+          type: boolean
+        confidence:
+          type: ["number", "null"]
+        noiseScore:
+          type: ["number", "null"]
+        createdAt:
+          type: string
+
+    L3NodeInput:
+      type: object
+      required: [title, nodeType]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        content:
+          type: string
+        nodeType:
+          type: string
+          enum: [change, rule, decision, context]
+        commitHash:
+          type: string
+        aiGenerated:
+          type: boolean
+        confidence:
+          type: number
+
+    L3NodeUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        content:
+          type: string
+        nodeType:
+          type: string
+          enum: [change, rule, decision, context]
+        noiseScore:
+          type: number
+
+    Commit:
+      type: object
+      required: [id, projectId, hash, message, author, valid, createdAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        hash:
+          type: string
+        message:
+          type: string
+        author:
+          type: string
+        valid:
+          type: boolean
+        l2NodeId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    CommitInput:
+      type: object
+      required: [hash, message, author]
+      properties:
+        hash:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+        author:
+          type: string
+          minLength: 1
+        valid:
+          type: boolean
+        l2NodeId:
+          type: integer
+
+    ReviewTask:
+      type: object
+      required: [id, entityType, entityId, taskType, status, createdAt]
+      properties:
+        id:
+          type: integer
+        entityType:
+          type: string
+          enum: [l1_tag, l2_node, l3_node]
+        entityId:
+          type: integer
+        taskType:
+          type: string
+          enum: [anchor, correct, validate, merge]
+        status:
+          type: string
+          enum: [pending, approved, rejected, deferred]
+        description:
+          type: ["string", "null"]
+        projectName:
+          type: ["string", "null"]
+        entityName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        resolvedAt:
+          type: ["string", "null"]
+
+    ReviewResolution:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [approved, rejected, deferred]
+        correctedValue:
+          type: string
+
+    ReviewStats:
+      type: object
+      required: [pending, approved, rejected, deferred, totalToday]
+      properties:
+        pending:
+          type: integer
+        approved:
+          type: integer
+        rejected:
+          type: integer
+        deferred:
+          type: integer
+        totalToday:
+          type: integer

@@ -307,9 +307,11 @@ export const GenerateKnowledgeBody = zod.object({
 export const GenerateKnowledgeResponse = zod.object({
   l1TagsCreated: zod.number(),
   l2NodesCreated: zod.number(),
+  l2NodesUpdated: zod.number().optional(),
   l3NodesCreated: zod.number(),
   reviewTasksCreated: zod.number(),
   commitsProcessed: zod.number(),
+  documentsUsed: zod.number().optional(),
 });
 
 /**

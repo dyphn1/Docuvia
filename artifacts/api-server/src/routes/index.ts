@@ -6,6 +6,12 @@ import l1TagsRouter from "./l1_tags";
 import l2NodesRouter from "./l2_nodes";
 import l3NodesRouter from "./l3_nodes";
 import reviewTasksRouter from "./review_tasks";
+import ingestRouter from "./ingest";
+import generateRouter from "./generate";
+import searchRouter from "./search";
+import mcpRouter from "./mcp";
+import llmConfigRouter from "./llm_config";
+import exportRouter from "./export";
 
 const router: IRouter = Router();
 
@@ -16,5 +22,11 @@ router.use(l1TagsRouter);
 router.use(l2NodesRouter);
 router.use(l3NodesRouter);
 router.use(reviewTasksRouter);
+router.use(ingestRouter);
+router.use(generateRouter);
+router.use(searchRouter);
+router.use(mcpRouter);
+router.use(llmConfigRouter);
+router.use(exportRouter);
 
 export default router;

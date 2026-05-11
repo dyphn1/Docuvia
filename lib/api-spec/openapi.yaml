@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Api
-  version: 0.1.0
-  description: Knowledge Graph Engine API
+  version: 0.2.0
+  description: Docuvia — Universal VCS Knowledge Graph Engine API
 servers:
   - url: /api
     description: Base API path
@@ -23,6 +23,18 @@ tags:
     description: Human review and correction tasks
   - name: dashboard
     description: Dashboard and analytics
+  - name: ingest
+    description: Data ingestion (Git, documents)
+  - name: generate
+    description: AI knowledge generation pipeline
+  - name: search
+    description: Knowledge search and query
+  - name: mcp
+    description: MCP tool endpoints for agent use
+  - name: documents
+    description: Document management
+  - name: llm-config
+    description: LLM configuration per project
 
 paths:
   /healthz:
@@ -224,6 +236,163 @@ paths:
                 items:
                   $ref: "#/components/schemas/L2Node"
 
+  /projects/{id}/ingest/git:
+    post:
+      operationId: ingestGit
+      tags: [ingest]
+      summary: Ingest commits from a Git repository (GitHub API)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GitIngestInput"
+      responses:
+        "200":
+          description: Ingest result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GitIngestResult"
+
+  /projects/{id}/ingest/document:
+    post:
+      operationId: ingestDocument
+      tags: [ingest]
+      summary: Ingest a document (MD, TXT) into the project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentIngestInput"
+      responses:
+        "201":
+          description: Stored document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+
+  /projects/{id}/documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      summary: List documents for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+
+  /projects/{id}/generate:
+    post:
+      operationId: generateKnowledge
+      tags: [generate]
+      summary: Run the AI knowledge construction pipeline (L1 → L2 → L3)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateInput"
+      responses:
+        "200":
+          description: Generation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateResult"
+
+  /projects/{id}/export:
+    get:
+      operationId: exportProject
+      tags: [projects]
+      summary: Export project knowledge base as JSON
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Exported knowledge base
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectExport"
+
+  /projects/{id}/llm-config:
+    get:
+      operationId: getLlmConfig
+      tags: [llm-config]
+      summary: Get LLM configuration for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: LLM config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmConfig"
+    patch:
+      operationId: updateLlmConfig
+      tags: [llm-config]
+      summary: Update LLM configuration for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmConfigInput"
+      responses:
+        "200":
+          description: Updated LLM config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmConfig"
+
   /l1-tags:
     get:
       operationId: listL1Tags
@@ -350,6 +519,50 @@ paths:
       responses:
         "204":
           description: Deleted
+
+  /l2-nodes/{id}/links:
+    get:
+      operationId: listNodeLinks
+      tags: [l2-nodes]
+      summary: Get dependency links for an L2 node
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of node links
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NodeLink"
+    post:
+      operationId: createNodeLink
+      tags: [l2-nodes]
+      summary: Create a dependency link between L2 nodes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeLinkInput"
+      responses:
+        "201":
+          description: Created link
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NodeLink"
 
   /l2-nodes/{id}/l3-nodes:
     get:
@@ -486,6 +699,131 @@ paths:
               schema:
                 $ref: "#/components/schemas/ReviewTask"
 
+  /search:
+    post:
+      operationId: searchKnowledge
+      tags: [search]
+      summary: Full-text search across L1/L2/L3 nodes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchInput"
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResponse"
+
+  /mcp/list_projects:
+    get:
+      operationId: mcpListProjects
+      tags: [mcp]
+      summary: "MCP: List all projects"
+      responses:
+        "200":
+          description: MCP project list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpProjectList"
+
+  /mcp/search_knowledge:
+    get:
+      operationId: mcpSearchKnowledge
+      tags: [mcp]
+      summary: "MCP: Semantic search across knowledge graph"
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: project_id
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: MCP search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpSearchResult"
+
+  /mcp/get_dependencies:
+    get:
+      operationId: mcpGetDependencies
+      tags: [mcp]
+      summary: "MCP: Get module dependency graph"
+      parameters:
+        - name: module
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: project_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dependency list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpDependencyResult"
+
+  /mcp/impact_analysis:
+    get:
+      operationId: mcpImpactAnalysis
+      tags: [mcp]
+      summary: "MCP: Impact analysis — what breaks if module changes"
+      parameters:
+        - name: module
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: project_id
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Impact analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpImpactResult"
+
+  /mcp/get_decision_record:
+    get:
+      operationId: mcpGetDecisionRecord
+      tags: [mcp]
+      summary: "MCP: Fetch L3 decision record by commit hash"
+      parameters:
+        - name: commit_hash
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Decision record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpDecisionRecord"
+
 components:
   schemas:
     HealthStatus:
@@ -602,6 +940,31 @@ components:
           items:
             $ref: "#/components/schemas/L3Node"
 
+    ProjectExport:
+      type: object
+      required: [project, l1Tags, l2Nodes, l3Nodes, commits, exportedAt]
+      properties:
+        project:
+          $ref: "#/components/schemas/Project"
+        l1Tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/L1Tag"
+        l2Nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/L2Node"
+        l3Nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/L3Node"
+        commits:
+          type: array
+          items:
+            $ref: "#/components/schemas/Commit"
+        exportedAt:
+          type: string
+
     L1Tag:
       type: object
       required: [id, name, category, usageCount, createdAt]
@@ -716,6 +1079,34 @@ components:
         needsReview:
           type: boolean
 
+    NodeLink:
+      type: object
+      required: [id, sourceNodeId, targetNodeId, linkType, createdAt]
+      properties:
+        id:
+          type: integer
+        sourceNodeId:
+          type: integer
+        targetNodeId:
+          type: integer
+        linkType:
+          type: string
+        sourceNodeName:
+          type: ["string", "null"]
+        targetNodeName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    NodeLinkInput:
+      type: object
+      required: [targetNodeId]
+      properties:
+        targetNodeId:
+          type: integer
+        linkType:
+          type: string
+
     L3Node:
       type: object
       required: [id, l2NodeId, title, nodeType, aiGenerated, createdAt]
@@ -791,6 +1182,8 @@ components:
           type: string
         valid:
           type: boolean
+        filterScore:
+          type: ["number", "null"]
         l2NodeId:
           type: ["integer", "null"]
         createdAt:
@@ -837,6 +1230,10 @@ components:
           type: ["string", "null"]
         entityName:
           type: ["string", "null"]
+        nodeContent:
+          type: ["string", "null"]
+        correctedValue:
+          type: ["string", "null"]
         createdAt:
           type: string
         resolvedAt:
@@ -866,3 +1263,231 @@ components:
           type: integer
         totalToday:
           type: integer
+
+    Document:
+      type: object
+      required: [id, projectId, filename, docType, createdAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        filename:
+          type: string
+        docType:
+          type: string
+          enum: [markdown, txt, pdf, docx, pptx, build_artifact]
+        content:
+          type: string
+        createdAt:
+          type: string
+
+    DocumentIngestInput:
+      type: object
+      required: [filename, content]
+      properties:
+        filename:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+        docType:
+          type: string
+          enum: [markdown, txt, pdf, docx, pptx, build_artifact]
+
+    GitIngestInput:
+      type: object
+      properties:
+        repoUrl:
+          type: string
+        branch:
+          type: string
+        limit:
+          type: integer
+          default: 100
+        githubToken:
+          type: string
+
+    GitIngestResult:
+      type: object
+      required: [commitsIngested, commitsSkipped, totalFetched]
+      properties:
+        commitsIngested:
+          type: integer
+        commitsSkipped:
+          type: integer
+        totalFetched:
+          type: integer
+
+    GenerateInput:
+      type: object
+      properties:
+        model:
+          type: string
+        maxCommits:
+          type: integer
+          default: 50
+
+    GenerateResult:
+      type: object
+      required: [l1TagsCreated, l2NodesCreated, l3NodesCreated, reviewTasksCreated, commitsProcessed]
+      properties:
+        l1TagsCreated:
+          type: integer
+        l2NodesCreated:
+          type: integer
+        l3NodesCreated:
+          type: integer
+        reviewTasksCreated:
+          type: integer
+        commitsProcessed:
+          type: integer
+
+    LlmConfig:
+      type: object
+      required: [id, provider, model, createdAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: ["integer", "null"]
+        provider:
+          type: string
+        model:
+          type: string
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+
+    LlmConfigInput:
+      type: object
+      properties:
+        model:
+          type: string
+        provider:
+          type: string
+
+    SearchInput:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+        projectId:
+          type: integer
+        limit:
+          type: integer
+          default: 20
+
+    SearchResponse:
+      type: object
+      required: [results, total]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResultItem"
+        total:
+          type: integer
+
+    SearchResultItem:
+      type: object
+      required: [nodeLayer, id, title, createdAt]
+      properties:
+        nodeLayer:
+          type: string
+          enum: [l1, l2, l3]
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: ["string", "null"]
+        projectId:
+          type: ["integer", "null"]
+        projectName:
+          type: ["string", "null"]
+        score:
+          type: number
+        createdAt:
+          type: string
+
+    McpProjectList:
+      type: object
+      required: [projects]
+      properties:
+        projects:
+          type: array
+          items:
+            type: object
+            required: [id, name, repoUrl, l2Count, l3Count]
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              repoUrl:
+                type: string
+              l2Count:
+                type: integer
+              l3Count:
+                type: integer
+
+    McpSearchResult:
+      type: object
+      required: [query, results]
+      properties:
+        query:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/SearchResultItem"
+
+    McpDependencyResult:
+      type: object
+      required: [module, dependencies, dependents]
+      properties:
+        module:
+          type: string
+        nodeId:
+          type: ["integer", "null"]
+        dependencies:
+          type: array
+          items:
+            type: string
+        dependents:
+          type: array
+          items:
+            type: string
+
+    McpImpactResult:
+      type: object
+      required: [module, impactedModules, l3DecisionCount]
+      properties:
+        module:
+          type: string
+        nodeId:
+          type: ["integer", "null"]
+        impactedModules:
+          type: array
+          items:
+            type: string
+        l3DecisionCount:
+          type: integer
+
+    McpDecisionRecord:
+      type: object
+      required: [commitHash, decisions]
+      properties:
+        commitHash:
+          type: string
+        commitMessage:
+          type: ["string", "null"]
+        decisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/L3Node"

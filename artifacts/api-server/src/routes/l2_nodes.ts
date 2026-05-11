@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { l2NodesTable, l3NodesTable, l2NodeL1TagsTable, l1TagsTable, activityLogTable, reviewTasksTable } from "@workspace/db";
+import { l2NodesTable, l3NodesTable, l2NodeL1TagsTable, l1TagsTable, activityLogTable, nodeLinksTable } from "@workspace/db";
 import { eq, count, sql } from "drizzle-orm";
 import {
   CreateL2NodeBody,
@@ -8,6 +8,12 @@ import {
   UpdateL2NodeBody,
   DeleteL2NodeParams,
 } from "@workspace/api-zod";
+import { z } from "zod";
+
+const NodeLinkInputSchema = z.object({
+  targetNodeId: z.number(),
+  linkType: z.string().optional().default("depends_on"),
+});
 
 const router = Router();
 
@@ -64,6 +70,42 @@ router.delete("/l2-nodes/:id", async (req, res) => {
   const { id } = DeleteL2NodeParams.parse({ id: Number(req.params.id) });
   await db.delete(l2NodesTable).where(eq(l2NodesTable.id, id));
   res.status(204).send();
+});
+
+router.get("/l2-nodes/:id/links", async (req, res) => {
+  const id = Number(req.params.id);
+  const outLinks = await db.select().from(nodeLinksTable).where(eq(nodeLinksTable.sourceNodeId, id));
+  const inLinks = await db.select().from(nodeLinksTable).where(eq(nodeLinksTable.targetNodeId, id));
+  const all = [...outLinks, ...inLinks];
+  const result = await Promise.all(all.map(async (link) => {
+    const [src] = await db.select({ name: l2NodesTable.name }).from(l2NodesTable).where(eq(l2NodesTable.id, link.sourceNodeId));
+    const [tgt] = await db.select({ name: l2NodesTable.name }).from(l2NodesTable).where(eq(l2NodesTable.id, link.targetNodeId));
+    return {
+      ...link,
+      sourceNodeName: src?.name ?? null,
+      targetNodeName: tgt?.name ?? null,
+      createdAt: link.createdAt.toISOString(),
+    };
+  }));
+  res.json(result);
+});
+
+router.post("/l2-nodes/:id/links", async (req, res) => {
+  const sourceNodeId = Number(req.params.id);
+  const body = NodeLinkInputSchema.parse(req.body);
+  const [link] = await db.insert(nodeLinksTable).values({
+    sourceNodeId,
+    targetNodeId: body.targetNodeId,
+    linkType: body.linkType ?? "depends_on",
+  }).returning();
+  const [src] = await db.select({ name: l2NodesTable.name }).from(l2NodesTable).where(eq(l2NodesTable.id, sourceNodeId));
+  const [tgt] = await db.select({ name: l2NodesTable.name }).from(l2NodesTable).where(eq(l2NodesTable.id, body.targetNodeId));
+  res.status(201).json({
+    ...link,
+    sourceNodeName: src?.name ?? null,
+    targetNodeName: tgt?.name ?? null,
+    createdAt: link.createdAt.toISOString(),
+  });
 });
 
 export default router;

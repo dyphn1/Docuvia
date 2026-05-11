@@ -10,6 +10,9 @@ import ProjectDetail from "@/pages/projects/[id]";
 import L1Tags from "@/pages/l1-tags";
 import Review from "@/pages/review";
 import Query from "@/pages/query";
+import Pipeline from "@/pages/pipeline";
+import Documents from "@/pages/documents";
+import McpPage from "@/pages/mcp";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -31,6 +34,9 @@ function Router() {
         <Route path="/l1-tags" component={L1Tags} />
         <Route path="/review" component={Review} />
         <Route path="/query" component={Query} />
+        <Route path="/pipeline" component={Pipeline} />
+        <Route path="/documents" component={Documents} />
+        <Route path="/mcp" component={McpPage} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

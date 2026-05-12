@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist
 
-> Audited: 2026-05-11 | Based on actual file structure from `find` output  
+> Audited: 2026-05-12 | Based on actual file structure from `find` output  
 > Stack: TypeScript monorepo (Replit) — `lib/` + `artifacts/api-server/` + `artifacts/kg-engine/`
 
 ---
@@ -37,13 +37,13 @@
 
 | Item | Status | Evidence |
 |------|--------|----------|
-| Commit filter (convention-based) | ⚠️ Partial | `commits.ts` schema + `generateInput.ts` — filter logic unclear |
+| Commit filter (convention-based) | ✅ Done | `scoreCommit()` in `ingest.ts` — regex signal/noise patterns |
 | L1 Tagger — global tag pool | ✅ Done | `lib/db/src/schema/l1_tags.ts`, `routes/l1_tags.ts`, full CRUD types |
 | L2 Extractor — module/component | ✅ Done | `lib/db/src/schema/l2_nodes.ts`, `routes/l2_nodes.ts`, full CRUD types |
 | L3 Generator — rules, decisions, rationale | ✅ Done | `lib/db/src/schema/l3_nodes.ts`, `routes/l3_nodes.ts`, full CRUD types |
-| Generate pipeline (diff → L1/L2/L3) | ⚠️ Partial | `routes/generate.ts` exists — pipeline depth unclear |
+| Generate pipeline (diff → L1/L2/L3) | ✅ Done | `routes/generate.ts` — 6-step fully wired pipeline with LLM, deduplication, review task creation |
 
-**Progress: 3.5 / 5**
+**Progress: 5 / 5**
 
 ---
 
@@ -52,11 +52,11 @@
 | Item | Status | Evidence |
 |------|--------|----------|
 | Graph index — node links | ✅ Done | `lib/db/src/schema/node_links.ts`, `nodeLinkInput.ts`, `projectGraph.ts` |
-| Vector index (semantic search) | ⚠️ Partial | `routes/search.ts`, `searchInput.ts`, `searchResultItem.ts` — vector DB connection unclear |
-| Impact analysis traversal | ⚠️ Partial | `mcpImpactAnalysisParams.ts`, `mcpImpactResult.ts` — impl unclear |
+| Vector index (semantic search) | ✅ Done | `lib/embedding.ts` — in-memory cosine similarity; embeddings stored as JSON in `l2_nodes`/`l3_nodes` |
+| Impact analysis traversal | ✅ Done | One-hop graph traversal via `nodeLinksTable`; `mcpImpactResult.ts` wired |
 | Cross-project dynamic linking | ⚠️ Partial | `nodeLink` types exist — AI-detection not confirmed |
 
-**Progress: 1.5 / 4**
+**Progress: 3.5 / 4**
 
 ---
 
@@ -85,12 +85,12 @@
 | Review API routes | ✅ Done | `artifacts/api-server/src/routes/review_tasks.ts` |
 | Review stats | ✅ Done | `reviewStats.ts` |
 | Review resolution workflow | ✅ Done | `reviewResolution.ts`, `reviewResolutionStatus.ts` |
-| Review UI (frontend) | ⚠️ Partial | `artifacts/kg-engine/` — completeness unclear |
+| Review UI (frontend) | ✅ Done | `review.tsx` — TaskCard, approve/reject/defer, correction editing confirmed |
 | Noise detection (inconsistent tagging) | ❌ Not started | No detection logic found |
 | Feedback loop (corrections → prompts) | ❌ Not started | No feedback pipeline found |
 | Template management (L1/L2/L3) | ⚠️ Partial | `.github/skills` + `.local/skills` Replit agent skills present |
 
-**Progress: 4.5 / 8**
+**Progress: 5.5 / 8**
 
 ---
 
@@ -116,14 +116,10 @@
 
 - [ ] **CI/CD**: Add `.github/workflows/` for lint, test, build
 - [ ] **Document parsers**: Implement actual PDF / Word / PPTX parsing logic (schema exists, parser missing)
-- [ ] **Commit filter logic**: Implement convention-based filtering in generate pipeline
-- [ ] **Vector DB connection**: Wire up Qdrant / Chroma to existing search routes
 - [ ] **Agentic RAG**: Build intent-driven routing layer (vector vs. graph decision)
 
 ### 🟠 Medium Priority — Complete Partial Implementations
 
-- [ ] **Generate pipeline depth**: Confirm L1→L2→L3 chain is fully wired in `routes/generate.ts`
-- [ ] **Impact analysis impl**: Verify graph traversal behind `mcpImpactResult`
 - [ ] **Cross-project AI detection**: Implement AI-suggested node linking
 - [ ] **kg-engine frontend**: Audit and complete review UI in `artifacts/kg-engine/`
 - [ ] **Template management UI**: Expose L1/L2/L3 templates as editable per-project settings
@@ -150,17 +146,17 @@
 |-------|------|----------|
 | 1 | Foundation | 5 / 6 — 83% |
 | 2 | Input Layer | 1.5 / 4 — 38% |
-| 3 | Knowledge Construction | 3.5 / 5 — 70% |
-| 4 | Knowledge Graph | 1.5 / 4 — 38% |
+| 3 | Knowledge Construction | 5 / 5 — 100% |
+| 4 | Knowledge Graph | 3.5 / 4 — 88% |
 | 5 | Query Layer / MCP | 6 / 8 — 75% |
-| 6 | Human-in-the-Loop | 4.5 / 8 — 56% |
+| 6 | Human-in-the-Loop | 5.5 / 8 — 69% |
 | 7 | Enhancements | 2 / 7 — 29% |
-| **Total** | | **24 / 42 — 57%** |
+| **Total** | | **28.5 / 42 — 68%** |
 
-> **Key insight:** Schema, types, and API routes are well-scaffolded across all phases.  
-> The critical gap is **implementation depth** — parsers, vector DB wiring, and the generate pipeline.
+> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, and review UI are now fully implemented.  
+> The remaining critical gaps are **document parsers** (PDF/Word/PPTX), **Agentic RAG** routing, and **CI/CD**.
 
 ---
 
-*Document version: v0.2 — Updated from actual file structure*  
-*Last updated: 2026-05-11*
+*Document version: v0.3 — Audited & updated from actual file structure + post-implementation*  
+*Last updated: 2026-05-12*

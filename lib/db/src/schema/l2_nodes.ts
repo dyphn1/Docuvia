@@ -13,6 +13,7 @@ export const l2NodesTable = pgTable("l2_nodes", {
   description: text("description"),
   aiGenerated: boolean("ai_generated").notNull().default(true),
   needsReview: boolean("needs_review").notNull().default(false),
+  embedding: text("embedding"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

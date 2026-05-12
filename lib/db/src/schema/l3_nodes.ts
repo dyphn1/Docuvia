@@ -15,6 +15,7 @@ export const l3NodesTable = pgTable("l3_nodes", {
   aiGenerated: boolean("ai_generated").notNull().default(true),
   confidence: real("confidence"),
   noiseScore: real("noise_score"),
+  embedding: text("embedding"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

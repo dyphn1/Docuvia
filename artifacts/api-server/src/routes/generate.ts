@@ -12,7 +12,8 @@ import {
   llmConfigsTable,
   documentsTable,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, isNull } from "drizzle-orm";
+import { generateEmbedding } from "../lib/embedding.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod";
 
@@ -268,6 +269,15 @@ router.post("/projects/:id/generate", async (req, res) => {
         l2NodesCreated++;
       }
 
+      // Generate and store embedding for the L2 node
+      const l2EmbText = `${l2data.name} ${l2data.description ?? ""}`.trim();
+      const l2Embedding = await generateEmbedding(l2EmbText);
+      if (l2Embedding) {
+        await db.update(l2NodesTable)
+          .set({ embedding: JSON.stringify(l2Embedding) })
+          .where(eq(l2NodesTable.id, l2node.id));
+      }
+
       // Wire L1 tags
       for (const tagName of (l2data.l1TagNames ?? [])) {
         const tagId = tagMap.get(tagName.toLowerCase()) ?? allL1Tags.find(t => t.name.toLowerCase() === tagName.toLowerCase())?.id;
@@ -293,6 +303,15 @@ router.post("/projects/:id/generate", async (req, res) => {
           confidence,
         }).returning();
         l3NodesCreated++;
+
+        // Generate and store embedding for the L3 node
+        const l3EmbText = `${l3data.title} ${l3data.content ?? ""}`.trim();
+        const l3Embedding = await generateEmbedding(l3EmbText);
+        if (l3Embedding) {
+          await db.update(l3NodesTable)
+            .set({ embedding: JSON.stringify(l3Embedding) })
+            .where(eq(l3NodesTable.id, l3node.id));
+        }
 
         // Queue review task for L3 nodes with confidence below threshold
         if (confidence < 0.8) {
@@ -361,6 +380,32 @@ router.post("/projects/:id/generate", async (req, res) => {
     await db.update(projectsTable).set({ status: "error", updatedAt: new Date() }).where(eq(projectsTable.id, projectId));
     throw err;
   }
+});
+
+router.post("/admin/reindex-embeddings", async (req, res) => {
+  const l2Nodes = await db.select().from(l2NodesTable).where(isNull(l2NodesTable.embedding));
+  let l2Done = 0;
+  for (const node of l2Nodes) {
+    const text = `${node.name} ${node.description ?? ""}`.trim();
+    const emb = await generateEmbedding(text);
+    if (emb) {
+      await db.update(l2NodesTable).set({ embedding: JSON.stringify(emb) }).where(eq(l2NodesTable.id, node.id));
+      l2Done++;
+    }
+  }
+
+  const l3Nodes = await db.select().from(l3NodesTable).where(isNull(l3NodesTable.embedding));
+  let l3Done = 0;
+  for (const node of l3Nodes) {
+    const text = `${node.title} ${node.content ?? ""}`.trim();
+    const emb = await generateEmbedding(text);
+    if (emb) {
+      await db.update(l3NodesTable).set({ embedding: JSON.stringify(emb) }).where(eq(l3NodesTable.id, node.id));
+      l3Done++;
+    }
+  }
+
+  res.json({ l2Reindexed: l2Done, l3Reindexed: l3Done });
 });
 
 export default router;

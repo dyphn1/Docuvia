@@ -6,6 +6,12 @@
       "sourceType": "github",
       "skillPath": "SKILL.md",
       "computedHash": "09ad32ec9fdf52328952f0202c23266642986ea037dfc8627b1398b9bce1b0c4"
+    },
+    "repo-docs": {
+      "source": "dyphn1/repo-docs",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "c58dd96e3e3c71a84f3e3a73eef2353f1df5c5ac2b203d0840415aa948adce1f"
     }
   }
 }

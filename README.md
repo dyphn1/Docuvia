@@ -2,6 +2,25 @@
 
 > Transform years of version control history into a queryable, AI-powered knowledge base.
 
+> **AI agents:** Read [`AGENT.md`](AGENT.md) for architecture, exact commands, conventions, and constraints before making changes.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Key Features](#key-features)
+- [Supported Input Sources](#supported-input-sources)
+- [Typical Use Cases](#typical-use-cases)
+- [Architecture Summary](#architecture-summary)
+- [System Requirements](#system-requirements)
+- [Quick Start](#quick-start)
+- [LLM Configuration](#llm-configuration)
+- [Project vs. Tool Settings](#project-vs-tool-settings)
+- [Status](#status)
+- [Contributing](#contributing)
+- [License](#license)
+
 ---
 
 ## Overview
@@ -105,6 +124,33 @@ Query Layer
 
 ---
 
+## System Requirements
+
+- Node.js 24+
+- pnpm (enforced — npm/yarn blocked by `preinstall`)
+- PostgreSQL (production DB)
+
+---
+
+## Quick Start
+
+```bash
+pnpm install
+
+# Set required environment variables:
+#   DATABASE_URL
+#   AI_INTEGRATIONS_OPENAI_BASE_URL
+#   AI_INTEGRATIONS_OPENAI_API_KEY
+#   PORT
+
+pnpm --filter @workspace/api-server run dev   # API server (port 8080 in dev)
+pnpm --filter @workspace/kg-engine run dev    # Frontend (port 18774)
+```
+
+See [AGENT.md](AGENT.md) for the full command reference and codegen / DB migration steps.
+
+---
+
 ## LLM Configuration
 
 | Mode | Provider | Setup |
@@ -131,4 +177,28 @@ Recommended upgrade for deep analysis: any 70B+ cloud model
 
 ## Status
 
-> Early architecture phase. Contributions and feedback welcome.
+7 implementation phases are in progress. See [docs/roadmap-checklist.md](docs/roadmap-checklist.md) for the full per-item audit.
+
+| Phase | Description | Progress |
+|---|---|---|
+| **Phase 1** | Foundation — LLM abstraction, DB schema, logging | 5 / 6 |
+| **Phase 2** | Input Layer — Git ingestion, document ingestion | 1.5 / 4 |
+| **Phase 3** | AI Pipeline — L1 Tagger → L2 Extractor → L3 Generator | 3.5 / 5 |
+| **Phase 4** | Knowledge Graph — node links, full-text search | 1.5 / 4 |
+| **Phase 5** | Query + MCP — 5 MCP tool endpoints, semantic search UI | 6 / 8 |
+| **Phase 6** | Human-in-the-Loop — review queue, correction writeback | 4.5 / 8 |
+| **Phase 7** | Enhancements — JSON export, dashboard, incremental ingestion | 2 / 7 |
+
+Notable gaps: document parsers (PDF/Word/PPTX), vector DB wiring, CI/CD pipeline, commit filter logic. See [docs/roadmap-checklist.md](docs/roadmap-checklist.md) for the prioritized task list.
+
+---
+
+## Contributing
+
+Contributions and feedback welcome. Please open an issue or pull request.
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).

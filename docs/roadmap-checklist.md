@@ -25,7 +25,7 @@
 | Item                                     | Status         | Evidence                                                                                                                                    |
 | ---------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Git ingestion (commit + diff)            | ✅ Done        | `gitIngestInput.ts`, `gitIngestResult.ts`, `routes/ingest.ts`                                                                               |
-| Document ingestion (PDF/Word/PPTX/MD)    | ✅ Done        | `document-parser.ts` (pdf-parse/mammoth/officeparser), `upload.ts` (multer), `POST /projects/:id/ingest/document/upload` multipart endpoint |
+| Document ingestion (PDF/Word/PPTX/MD)    | ✅ Done        | `document-parser.ts` (lazy require for pdf-parse/mammoth/officeparser), `upload.ts` (multer), `POST /projects/:id/ingest/document/upload` multipart endpoint |
 | SVN integration                          | ❌ Not started | No SVN types or routes found                                                                                                                |
 | Build artifact parser (map files, FV/FD) | ❌ Not started | No related files found                                                                                                                      |
 
@@ -54,9 +54,9 @@
 | Graph index — node links       | ✅ Done    | `lib/db/src/schema/node_links.ts`, `nodeLinkInput.ts`, `projectGraph.ts`                             |
 | Vector index (semantic search) | ✅ Done    | `lib/embedding.ts` — in-memory cosine similarity; embeddings stored as JSON in `l2_nodes`/`l3_nodes` |
 | Impact analysis traversal      | ✅ Done    | One-hop graph traversal via `nodeLinksTable`; `mcpImpactResult.ts` wired                             |
-| Cross-project dynamic linking  | ⚠️ Partial | `nodeLink` types exist — AI-detection not confirmed                                                  |
+| Cross-project dynamic linking  | ✅ Done    | `detectCrossProjectLinks()` in `generate.ts` — cosine similarity ≥ 0.85 triggers review task with "merge" type suggesting cross-project link |
 
-**Progress: 3.5 / 4**
+**Progress: 4 / 4**
 
 ---
 
@@ -71,9 +71,9 @@
 | `get_decision_record` endpoint      | ✅ Done        | `mcpGetDecisionRecordParams.ts`, `mcpDecisionRecord.ts`       |
 | `list_projects` endpoint            | ✅ Done        | `mcpProjectList.ts`, `mcpProjectListProjectsItem.ts`          |
 | Agentic RAG (intent-driven routing) | ✅ Done        | `intent-router.ts` + `POST /mcp/query` — LLM-classified 4-way routing (vector/graph/direct/hybrid), OpenAPI spec updated, `useMcpQuery` hook generated |
-| Natural language CLI / Web UI       | ⚠️ Partial     | `artifacts/kg-engine/` frontend exists — completeness unclear |
+| Natural language CLI / Web UI       | ✅ Done        | `artifacts/kg-engine/src/pages/query.tsx` — semantic search UI with project filter, layer-colored result cards, score display |
 
-**Progress: 7 / 8**
+**Progress: 8 / 8**
 
 ---
 
@@ -86,11 +86,11 @@
 | Review stats                           | ✅ Done        | `reviewStats.ts`                                                            |
 | Review resolution workflow             | ✅ Done        | `reviewResolution.ts`, `reviewResolutionStatus.ts`                          |
 | Review UI (frontend)                   | ✅ Done        | `review.tsx` — TaskCard, approve/reject/defer, correction editing confirmed |
-| Noise detection (inconsistent tagging) | ❌ Not started | No detection logic found                                                    |
-| Feedback loop (corrections → prompts)  | ❌ Not started | No feedback pipeline found                                                  |
-| Template management (L1/L2/L3)         | ⚠️ Partial     | `.github/skills` + `.local/skills` Replit agent skills present              |
+| Noise detection (inconsistent tagging) | ✅ Done        | `runNoiseDetection()` in `generate.ts` — flags low-usage tags (≤1 use) and near-duplicate tag names, creates `anchor`/`merge` review tasks automatically |
+| Feedback loop (corrections → prompts)  | ✅ Done        | `lib/db/src/schema/correction_examples.ts` + writeback in `review_tasks.ts` stores corrections; `getRecentCorrections()` in `generate.ts` injects last 5 corrections as few-shot examples |
+| Template management (L1/L2/L3)         | ✅ Done        | `lib/db/src/schema/prompt_templates.ts` + `routes/templates.ts` (GET/PUT/DELETE per project per type) + `/templates` frontend page — editable per-project prompts with default fallback |
 
-**Progress: 5.5 / 8**
+**Progress: 8 / 8**
 
 ---
 
@@ -120,14 +120,14 @@
 
 ### 🟠 Medium Priority — Complete Partial Implementations
 
-- [ ] **Cross-project AI detection**: Implement AI-suggested node linking
-- [ ] **kg-engine frontend**: Audit and complete review UI in `artifacts/kg-engine/`
-- [ ] **Template management UI**: Expose L1/L2/L3 templates as editable per-project settings
+- [x] **Cross-project AI detection**: ✅ Implemented — `detectCrossProjectLinks()` in `generate.ts` uses cosine similarity (≥0.85 threshold) to find similar L2 nodes in other projects after each generation run; creates `merge`-type review task with similarity score
+- [x] **kg-engine frontend — L2 Directory**: ✅ Implemented — `projects/[id].tsx` L2 Directory tab: expandable node cards with L3 children, type filter, search, confidence scores, review badges
+- [x] **Template management UI**: ✅ Implemented — `lib/db/src/schema/prompt_templates.ts` + `routes/templates.ts` + `/templates` page — per-project editable L1/L2/L3 system prompts with reset-to-default
 
 ### 🟡 Lower Priority — Human-in-the-Loop Depth
 
-- [ ] **Noise detection**: Flag inconsistent L1 tagging patterns
-- [ ] **Feedback loop**: Route human corrections back to prompt improvement pipeline
+- [x] **Noise detection**: ✅ Implemented — `runNoiseDetection()` in `generate.ts` — runs automatically post-generation; flags low-usage tags (≤1 use) + near-duplicate tag names; creates `anchor`/`merge` review tasks
+- [x] **Feedback loop**: ✅ Implemented — `lib/db/src/schema/correction_examples.ts` + updated `review_tasks.ts` (stores original→corrected pairs on approval); `generate.ts` fetches last 5 corrections per project and injects as few-shot examples into L2 extraction prompt
 
 ### ⚪ Future — Phase 7
 
@@ -142,21 +142,21 @@
 
 ## Summary
 
-| Phase     | Name                   | Progress          |
-| --------- | ---------------------- | ----------------- |
-| 1         | Foundation             | 6 / 6 — 100%      |
-| 2         | Input Layer            | 2 / 4 — 50%       |
-| 3         | Knowledge Construction | 5 / 5 — 100%      |
-| 4         | Knowledge Graph        | 3.5 / 4 — 88%     |
-| 5         | Query Layer / MCP      | 7 / 8 — 88%       |
-| 6         | Human-in-the-Loop      | 5.5 / 8 — 69%     |
-| 7         | Enhancements           | 2 / 7 — 29%       |
-| **Total** |                        | **31 / 42 — 74%** |
+| Phase     | Name                   | Progress           |
+| --------- | ---------------------- | ------------------ |
+| 1         | Foundation             | 6 / 6 — 100%       |
+| 2         | Input Layer            | 2 / 4 — 50%        |
+| 3         | Knowledge Construction | 5 / 5 — 100%       |
+| 4         | Knowledge Graph        | 4 / 4 — 100%       |
+| 5         | Query Layer / MCP      | 8 / 8 — 100%       |
+| 6         | Human-in-the-Loop      | 8 / 8 — 100%       |
+| 7         | Enhancements           | 2 / 7 — 29%        |
+| **Total** |                        | **35 / 42 — 83%** |
 
-> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers (PDF/DOCX/PPTX/MD), CI/CD (GitHub Actions), and **Agentic RAG** intent-routing layer are now fully implemented.  
-> The remaining medium-priority gaps are cross-project AI detection, kg-engine frontend audit, and template management UI.
+> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, and feedback loop are now fully implemented.  
+> The remaining gaps are all Phase 7 ecosystem integrations (SVN, VS Code, Slack, GitHub PR, incremental update).
 
 ---
 
-_Document version: v0.3 — Audited & updated from actual file structure + post-implementation_  
-*Last updated: 2026-05-12 (v0.6 — Agentic RAG intent-routing layer implemented)*
+_Document version: v0.7 — Audited & updated from actual file structure + post-implementation_  
+*Last updated: 2026-05-12 (v0.7 — L2 Directory, Template Management, Cross-project AI Detection, Noise Detection, Feedback Loop implemented)*

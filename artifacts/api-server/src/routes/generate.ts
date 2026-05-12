@@ -11,11 +11,14 @@ import {
   activityLogTable,
   llmConfigsTable,
   documentsTable,
+  promptTemplatesTable,
+  correctionExamplesTable,
 } from "@workspace/db";
-import { eq, and, sql, isNull } from "drizzle-orm";
-import { generateEmbedding } from "../lib/embedding.js";
+import { eq, and, sql, isNull, ne, isNotNull } from "drizzle-orm";
+import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod";
+import { DEFAULT_PROMPTS } from "./templates.js";
 
 const router = Router();
 
@@ -33,10 +36,59 @@ async function getModel(projectId: number, override?: string): Promise<string> {
   return cfg?.model ?? "gpt-5.2";
 }
 
+async function getSystemPrompt(
+  projectId: number,
+  templateType: "l1_tagger" | "l2_extractor" | "l3_generator"
+): Promise<string> {
+  const [template] = await db
+    .select()
+    .from(promptTemplatesTable)
+    .where(
+      and(
+        eq(promptTemplatesTable.projectId, projectId),
+        eq(promptTemplatesTable.templateType, templateType),
+        eq(promptTemplatesTable.isActive, true)
+      )
+    );
+  return template?.systemPrompt ?? DEFAULT_PROMPTS[templateType] ?? "";
+}
+
+async function getRecentCorrections(
+  projectId: number,
+  entityType: "l2_node" | "l3_node"
+): Promise<Array<{ original: string; corrected: string }>> {
+  const examples = await db
+    .select()
+    .from(correctionExamplesTable)
+    .where(
+      and(
+        eq(correctionExamplesTable.projectId, projectId),
+        eq(correctionExamplesTable.entityType, entityType)
+      )
+    )
+    .orderBy(sql`${correctionExamplesTable.createdAt} desc`)
+    .limit(5);
+  return examples.map((e) => ({ original: e.originalContent, corrected: e.correctedContent }));
+}
+
+function buildFewShotSection(
+  corrections: Array<{ original: string; corrected: string }>
+): string {
+  if (corrections.length === 0) return "";
+  const examples = corrections
+    .map(
+      (c, i) =>
+        `Example ${i + 1}:\n  Original: "${c.original}"\n  Corrected: "${c.corrected}"`
+    )
+    .join("\n");
+  return `\n\nPrevious human corrections (use these as quality guidance):\n${examples}`;
+}
+
 async function generateL1Tags(
   commits: Array<{ message: string; hash: string }>,
   existingTags: string[],
-  model: string
+  model: string,
+  systemPromptOverride: string
 ): Promise<Array<{ name: string; category: string; description: string }>> {
   const commitList = commits.map((c) => `- ${c.message}`).join("\n");
   const existing = existingTags.length
@@ -49,11 +101,7 @@ async function generateL1Tags(
     messages: [
       {
         role: "system",
-        content: `You are an expert software architect. Analyze VCS commit messages and extract L1 classification tags.
-L1 tags are high-level domain classifications (e.g., "Authentication", "Database", "Networking", "Build System", "Security", "Performance", "UI", "API", "Testing", "Documentation").
-Return ONLY a JSON array of tag objects. Each object must have: name (string), category (string), description (string).
-Categories: Core, Infrastructure, Quality, Feature, Security, Performance.
-Generate 3-8 tags that best represent the commit themes. Prefer reusing existing tags when they match.${existing}`,
+        content: `${systemPromptOverride}${existing}`,
       },
       {
         role: "user",
@@ -91,13 +139,16 @@ async function generateL2Nodes(
   commits: Array<{ message: string; hash: string }>,
   l1Tags: Array<{ id: number; name: string }>,
   documentContext: string,
-  model: string
+  model: string,
+  systemPromptOverride: string,
+  corrections: Array<{ original: string; corrected: string }>
 ): Promise<L2NodeAI[]> {
   const commitList = commits.map((c) => `[${c.hash.slice(0, 8)}] ${c.message}`).join("\n");
   const tagNames = l1Tags.map((t) => t.name).join(", ");
   const docSection = documentContext
     ? `\n\nProject documentation context (use this to enrich descriptions and detect architectural decisions):\n${documentContext}`
     : "";
+  const fewShotSection = buildFewShotSection(corrections);
 
   const response = await openai.chat.completions.create({
     model,
@@ -105,33 +156,7 @@ async function generateL2Nodes(
     messages: [
       {
         role: "system",
-        content: `You are an expert software architect analyzing VCS commit history.
-Extract L2 nodes (packages/modules/components) and their associated L3 knowledge nodes.
-
-L2 nodes = software components, modules, packages, or PCDs (Platform Configuration Databases for UEFI/firmware).
-L3 nodes = implementation rules, technical decisions, change rationale, context.
-
-Available L1 tags to map L2 nodes to: ${tagNames}${docSection}
-
-Return ONLY a valid JSON array. Each L2 node:
-{
-  "name": "component-name",
-  "type": "module" | "package" | "pcd",
-  "description": "what this component does",
-  "l1TagNames": ["matching tag names from the available list"],
-  "l3Nodes": [
-    {
-      "title": "concise title",
-      "nodeType": "change" | "rule" | "decision" | "context",
-      "content": "detailed explanation",
-      "commitHash": "8-char hash from [xxxxxxxx] prefix or empty string",
-      "confidence": 0.0 to 1.0
-    }
-  ]
-}
-
-confidence: 1.0 = certain/explicit in commits, 0.7 = inferred with high confidence, 0.4 = speculative.
-Generate 2-6 L2 nodes with 1-3 L3 nodes each.`,
+        content: `${systemPromptOverride}\n\nAvailable L1 tags to map L2 nodes to: ${tagNames}${docSection}${fewShotSection}`,
       },
       {
         role: "user",
@@ -147,6 +172,121 @@ Generate 2-6 L2 nodes with 1-3 L3 nodes each.`,
   } catch {
     return [];
   }
+}
+
+async function detectCrossProjectLinks(
+  newNodeId: number,
+  newNodeEmbedding: number[],
+  projectId: number
+): Promise<void> {
+  const SIMILARITY_THRESHOLD = 0.85;
+
+  const otherNodes = await db
+    .select()
+    .from(l2NodesTable)
+    .where(and(ne(l2NodesTable.projectId, projectId), isNotNull(l2NodesTable.embedding)));
+
+  for (const other of otherNodes) {
+    const otherEmb = parseEmbedding(other.embedding);
+    if (!otherEmb) continue;
+
+    const sim = cosineSimilarity(newNodeEmbedding, otherEmb);
+    if (sim >= SIMILARITY_THRESHOLD) {
+      const alreadyExists = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(reviewTasksTable)
+        .where(
+          and(
+            eq(reviewTasksTable.entityType, "l2_node"),
+            eq(reviewTasksTable.entityId, newNodeId),
+            eq(reviewTasksTable.taskType, "merge"),
+            eq(reviewTasksTable.status, "pending")
+          )
+        );
+
+      const count = Number(alreadyExists[0]?.count ?? 0);
+      if (count === 0) {
+        await db.insert(reviewTasksTable).values({
+          entityType: "l2_node",
+          entityId: newNodeId,
+          taskType: "merge",
+          status: "pending",
+          description: `Cross-project similarity detected (${Math.round(sim * 100)}%): This module resembles "${other.name}" (node #${other.id}) from another project. Consider creating a dependency link.`,
+        });
+      }
+    }
+  }
+}
+
+async function runNoiseDetection(projectId: number): Promise<number> {
+  let noiseTasksCreated = 0;
+
+  const allTags = await db.select().from(l1TagsTable);
+
+  for (const tag of allTags) {
+    if (tag.isAnchored) continue;
+
+    if (tag.usageCount <= 1) {
+      const alreadyFlagged = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(reviewTasksTable)
+        .where(
+          and(
+            eq(reviewTasksTable.entityType, "l1_tag"),
+            eq(reviewTasksTable.entityId, tag.id),
+            eq(reviewTasksTable.taskType, "anchor"),
+            eq(reviewTasksTable.status, "pending")
+          )
+        );
+      if (Number(alreadyFlagged[0]?.count ?? 0) === 0) {
+        await db.insert(reviewTasksTable).values({
+          entityType: "l1_tag",
+          entityId: tag.id,
+          taskType: "anchor",
+          status: "pending",
+          description: `Noise detection: Tag "${tag.name}" has very low usage (${tag.usageCount} times). Consider merging with an existing tag or removing it.`,
+        });
+        noiseTasksCreated++;
+      }
+    }
+  }
+
+  for (let i = 0; i < allTags.length; i++) {
+    for (let j = i + 1; j < allTags.length; j++) {
+      const a = allTags[i];
+      const b = allTags[j];
+      if (!a || !b) continue;
+      const aName = a.name.toLowerCase().replace(/[-_\s]/g, "");
+      const bName = b.name.toLowerCase().replace(/[-_\s]/g, "");
+      if (aName === bName || aName.startsWith(bName) || bName.startsWith(aName)) {
+        const aId = Math.min(a.id, b.id);
+        const bId = Math.max(a.id, b.id);
+        const alreadyFlagged = await db
+          .select({ count: sql<number>`count(*)` })
+          .from(reviewTasksTable)
+          .where(
+            and(
+              eq(reviewTasksTable.entityType, "l1_tag"),
+              eq(reviewTasksTable.entityId, aId),
+              eq(reviewTasksTable.taskType, "merge"),
+              eq(reviewTasksTable.status, "pending")
+            )
+          );
+        if (Number(alreadyFlagged[0]?.count ?? 0) === 0) {
+          await db.insert(reviewTasksTable).values({
+            entityType: "l1_tag",
+            entityId: aId,
+            taskType: "merge",
+            status: "pending",
+            description: `Noise detection: Tag "${a.name}" appears to be a near-duplicate of "${b.name}". Consider merging these tags.`,
+          });
+          noiseTasksCreated++;
+        }
+      }
+    }
+  }
+
+  return noiseTasksCreated;
 }
 
 router.post("/projects/:id/generate", async (req, res) => {
@@ -183,6 +323,8 @@ router.post("/projects/:id/generate", async (req, res) => {
         l3NodesCreated: 0,
         reviewTasksCreated: 0,
         commitsProcessed: 0,
+        crossProjectLinksDetected: 0,
+        noiseTasksCreated: 0,
       });
     }
 
@@ -204,10 +346,11 @@ router.post("/projects/:id/generate", async (req, res) => {
           .join("\n\n---\n\n")
       : "";
 
-    // Step 3: L1 Tagger
+    // Step 3: L1 Tagger — using project template if available
+    const l1SystemPrompt = await getSystemPrompt(projectId, "l1_tagger");
     const existingL1 = await db.select().from(l1TagsTable);
     const existingTagNames = existingL1.map((t) => t.name);
-    const aiL1Tags = await generateL1Tags(commitData, existingTagNames, model);
+    const aiL1Tags = await generateL1Tags(commitData, existingTagNames, model, l1SystemPrompt);
 
     let l1TagsCreated = 0;
     const tagMap = new Map<string, number>();
@@ -248,14 +391,24 @@ router.post("/projects/:id/generate", async (req, res) => {
       });
     }
 
-    // Step 4: L2 Extractor + L3 Generator (combined AI call)
+    // Step 4: L2 Extractor + L3 Generator — using templates + feedback loop corrections
+    const l2SystemPrompt = await getSystemPrompt(projectId, "l2_extractor");
+    const corrections = await getRecentCorrections(projectId, "l2_node");
     const allL1Tags = await db.select().from(l1TagsTable);
-    const l2Input = await generateL2Nodes(commitData, allL1Tags, documentContext, model);
+    const l2Input = await generateL2Nodes(
+      commitData,
+      allL1Tags,
+      documentContext,
+      model,
+      l2SystemPrompt,
+      corrections
+    );
 
     let l2NodesCreated = 0;
     let l2NodesUpdated = 0;
     let l3NodesCreated = 0;
     let reviewTasksCreated = 0;
+    let crossProjectLinksDetected = 0;
 
     // Build a hash → commit id map for commit→L2 backfill
     const commitHashMap = new Map<string, number>();
@@ -318,6 +471,10 @@ router.post("/projects/:id/generate", async (req, res) => {
           .update(l2NodesTable)
           .set({ embedding: JSON.stringify(l2Embedding) })
           .where(eq(l2NodesTable.id, l2node.id));
+
+        // Cross-project AI detection: run for all processed L2 nodes
+        await detectCrossProjectLinks(l2node.id, l2Embedding, projectId);
+        crossProjectLinksDetected++;
       }
 
       // Wire L1 tags
@@ -396,14 +553,11 @@ router.post("/projects/:id/generate", async (req, res) => {
       }
     }
 
-    // Create single L2 review tasks for newly created nodes (fix the scoping issue above)
-    // Re-run to ensure all new L2 nodes get review tasks
-    const newL2Count = l2NodesCreated;
+    // Create single L2 review tasks for newly created nodes
     const postL2 = await db
       .select()
       .from(l2NodesTable)
       .where(and(eq(l2NodesTable.projectId, projectId), eq(l2NodesTable.needsReview, true)));
-    // Count pending review tasks for l2_nodes to avoid double-creating
     const pendingL2Reviews = await db
       .select()
       .from(reviewTasksTable)
@@ -433,6 +587,17 @@ router.post("/projects/:id/generate", async (req, res) => {
       });
     }
 
+    // Step 7: Noise detection — run after all nodes are created
+    const noiseTasksCreated = await runNoiseDetection(projectId);
+    if (noiseTasksCreated > 0) {
+      reviewTasksCreated += noiseTasksCreated;
+      await db.insert(activityLogTable).values({
+        type: "review_resolved",
+        description: `Noise detection flagged ${noiseTasksCreated} L1 tag issue(s) for review`,
+        projectId,
+      });
+    }
+
     await db
       .update(projectsTable)
       .set({ status: "active", updatedAt: new Date() })
@@ -446,6 +611,8 @@ router.post("/projects/:id/generate", async (req, res) => {
       reviewTasksCreated,
       commitsProcessed: validCommits.length,
       documentsUsed: documents.length,
+      crossProjectLinksDetected,
+      noiseTasksCreated,
     });
   } catch (err) {
     await db

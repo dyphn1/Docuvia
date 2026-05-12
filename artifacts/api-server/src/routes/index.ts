@@ -12,6 +12,7 @@ import searchRouter from "./search";
 import mcpRouter from "./mcp";
 import llmConfigRouter from "./llm_config";
 import exportRouter from "./export";
+import templatesRouter from "./templates";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(searchRouter);
 router.use(mcpRouter);
 router.use(llmConfigRouter);
 router.use(exportRouter);
+router.use(templatesRouter);
 
 export default router;

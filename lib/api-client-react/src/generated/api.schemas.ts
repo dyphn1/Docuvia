@@ -453,6 +453,31 @@ export interface GenerateResult {
   documentsUsed?: number;
 }
 
+export type PromptTemplateTemplateType =
+  (typeof PromptTemplateTemplateType)[keyof typeof PromptTemplateTemplateType];
+
+export const PromptTemplateTemplateType = {
+  l1_tagger: "l1_tagger",
+  l2_extractor: "l2_extractor",
+  l3_generator: "l3_generator",
+} as const;
+
+export interface PromptTemplate {
+  /** @nullable */
+  id?: number | null;
+  templateType: PromptTemplateTemplateType;
+  systemPrompt: string;
+  isCustom: boolean;
+  isActive: boolean;
+  /** @nullable */
+  updatedAt?: string | null;
+}
+
+export interface PromptTemplateInput {
+  /** @minLength 10 */
+  systemPrompt: string;
+}
+
 export interface LlmConfig {
   id: number;
   /** @nullable */

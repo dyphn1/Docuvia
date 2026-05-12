@@ -13,6 +13,7 @@ import Query from "@/pages/query";
 import Pipeline from "@/pages/pipeline";
 import Documents from "@/pages/documents";
 import McpPage from "@/pages/mcp";
+import Templates from "@/pages/templates";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -37,6 +38,7 @@ function Router() {
         <Route path="/pipeline" component={Pipeline} />
         <Route path="/documents" component={Documents} />
         <Route path="/mcp" component={McpPage} />
+        <Route path="/templates" component={Templates} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

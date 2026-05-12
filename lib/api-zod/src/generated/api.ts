@@ -401,6 +401,54 @@ export const ExportProjectResponse = zod.object({
 });
 
 /**
+ * @summary List prompt templates for a project (with defaults)
+ */
+export const ListProjectTemplatesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListProjectTemplatesResponseItem = zod.object({
+  id: zod.number().nullish(),
+  templateType: zod.enum(["l1_tagger", "l2_extractor", "l3_generator"]),
+  systemPrompt: zod.string(),
+  isCustom: zod.boolean(),
+  isActive: zod.boolean(),
+  updatedAt: zod.string().nullish(),
+});
+export const ListProjectTemplatesResponse = zod.array(ListProjectTemplatesResponseItem);
+
+/**
+ * @summary Create or update a prompt template for a project
+ */
+export const UpsertProjectTemplateParams = zod.object({
+  id: zod.coerce.number(),
+  type: zod.enum(["l1_tagger", "l2_extractor", "l3_generator"]),
+});
+
+export const upsertProjectTemplateBodySystemPromptMin = 10;
+
+export const UpsertProjectTemplateBody = zod.object({
+  systemPrompt: zod.string().min(upsertProjectTemplateBodySystemPromptMin),
+});
+
+export const UpsertProjectTemplateResponse = zod.object({
+  id: zod.number().nullish(),
+  templateType: zod.enum(["l1_tagger", "l2_extractor", "l3_generator"]),
+  systemPrompt: zod.string(),
+  isCustom: zod.boolean(),
+  isActive: zod.boolean(),
+  updatedAt: zod.string().nullish(),
+});
+
+/**
+ * @summary Reset a prompt template to global default
+ */
+export const DeleteProjectTemplateParams = zod.object({
+  id: zod.coerce.number(),
+  type: zod.enum(["l1_tagger", "l2_extractor", "l3_generator"]),
+});
+
+/**
  * @summary Get LLM configuration for a project
  */
 export const GetLlmConfigParams = zod.object({

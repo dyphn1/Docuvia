@@ -8,7 +8,7 @@ import {
   GitBranch,
   Cpu,
   FileText,
-  Settings,
+  SlidersHorizontal,
   ChevronRight,
 } from "lucide-react";
 
@@ -44,7 +44,10 @@ export function Layout({ children }: LayoutProps) {
     },
     {
       label: "System",
-      items: [{ href: "/mcp", label: "MCP Endpoints", icon: Cpu }],
+      items: [
+        { href: "/mcp", label: "MCP Endpoints", icon: Cpu },
+        { href: "/templates", label: "Prompt Templates", icon: SlidersHorizontal },
+      ],
     },
   ];
 

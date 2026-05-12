@@ -388,6 +388,83 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProjectExport"
 
+  /projects/{id}/templates:
+    get:
+      operationId: listProjectTemplates
+      tags: [llm-config]
+      summary: List prompt templates for a project (with defaults)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PromptTemplate"
+
+  /projects/{id}/templates/{type}:
+    put:
+      operationId: upsertProjectTemplate
+      tags: [llm-config]
+      summary: Create or update a prompt template for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [l1_tagger, l2_extractor, l3_generator]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptTemplateInput"
+      responses:
+        "200":
+          description: Upserted template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptTemplate"
+        "201":
+          description: Created template
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptTemplate"
+    delete:
+      operationId: deleteProjectTemplate
+      tags: [llm-config]
+      summary: Reset a prompt template to global default
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [l1_tagger, l2_extractor, l3_generator]
+      responses:
+        "204":
+          description: Deleted (reset to default)
+
   /projects/{id}/llm-config:
     get:
       operationId: getLlmConfig
@@ -1440,6 +1517,32 @@ components:
           type: integer
         documentsUsed:
           type: integer
+
+    PromptTemplate:
+      type: object
+      required: [templateType, systemPrompt, isCustom, isActive]
+      properties:
+        id:
+          type: ["integer", "null"]
+        templateType:
+          type: string
+          enum: [l1_tagger, l2_extractor, l3_generator]
+        systemPrompt:
+          type: string
+        isCustom:
+          type: boolean
+        isActive:
+          type: boolean
+        updatedAt:
+          type: ["string", "null"]
+
+    PromptTemplateInput:
+      type: object
+      required: [systemPrompt]
+      properties:
+        systemPrompt:
+          type: string
+          minLength: 10
 
     LlmConfig:
       type: object

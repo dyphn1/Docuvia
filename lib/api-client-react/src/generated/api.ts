@@ -58,6 +58,8 @@ import type {
   ProjectGraph,
   ProjectInput,
   ProjectUpdate,
+  PromptTemplate,
+  PromptTemplateInput,
   ReviewResolution,
   ReviewStats,
   ReviewTask,
@@ -1293,6 +1295,272 @@ export function useExportProject<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List prompt templates for a project (with defaults)
+ */
+export const getListProjectTemplatesUrl = (id: number) => {
+  return `/api/projects/${id}/templates`;
+};
+
+export const listProjectTemplates = async (
+  id: number,
+  options?: RequestInit
+): Promise<PromptTemplate[]> => {
+  return customFetch<PromptTemplate[]>(getListProjectTemplatesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProjectTemplatesQueryKey = (id: number) => {
+  return [`/api/projects/${id}/templates`] as const;
+};
+
+export const getListProjectTemplatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProjectTemplates>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listProjectTemplates>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListProjectTemplatesQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listProjectTemplates>>> = ({ signal }) =>
+    listProjectTemplates(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProjectTemplates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProjectTemplatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProjectTemplates>>
+>;
+export type ListProjectTemplatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List prompt templates for a project (with defaults)
+ */
+
+export function useListProjectTemplates<
+  TData = Awaited<ReturnType<typeof listProjectTemplates>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listProjectTemplates>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProjectTemplatesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create or update a prompt template for a project
+ */
+export const getUpsertProjectTemplateUrl = (
+  id: number,
+  type: "l1_tagger" | "l2_extractor" | "l3_generator"
+) => {
+  return `/api/projects/${id}/templates/${type}`;
+};
+
+export const upsertProjectTemplate = async (
+  id: number,
+  type: "l1_tagger" | "l2_extractor" | "l3_generator",
+  promptTemplateInput: PromptTemplateInput,
+  options?: RequestInit
+): Promise<PromptTemplate> => {
+  return customFetch<PromptTemplate>(getUpsertProjectTemplateUrl(id, type), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(promptTemplateInput),
+  });
+};
+
+export const getUpsertProjectTemplateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertProjectTemplate>>,
+    TError,
+    {
+      id: number;
+      type: "l1_tagger" | "l2_extractor" | "l3_generator";
+      data: BodyType<PromptTemplateInput>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertProjectTemplate>>,
+  TError,
+  {
+    id: number;
+    type: "l1_tagger" | "l2_extractor" | "l3_generator";
+    data: BodyType<PromptTemplateInput>;
+  },
+  TContext
+> => {
+  const mutationKey = ["upsertProjectTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertProjectTemplate>>,
+    {
+      id: number;
+      type: "l1_tagger" | "l2_extractor" | "l3_generator";
+      data: BodyType<PromptTemplateInput>;
+    }
+  > = (props) => {
+    const { id, type, data } = props ?? {};
+
+    return upsertProjectTemplate(id, type, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertProjectTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertProjectTemplate>>
+>;
+export type UpsertProjectTemplateMutationBody = BodyType<PromptTemplateInput>;
+export type UpsertProjectTemplateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create or update a prompt template for a project
+ */
+export const useUpsertProjectTemplate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertProjectTemplate>>,
+    TError,
+    {
+      id: number;
+      type: "l1_tagger" | "l2_extractor" | "l3_generator";
+      data: BodyType<PromptTemplateInput>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertProjectTemplate>>,
+  TError,
+  {
+    id: number;
+    type: "l1_tagger" | "l2_extractor" | "l3_generator";
+    data: BodyType<PromptTemplateInput>;
+  },
+  TContext
+> => {
+  return useMutation(getUpsertProjectTemplateMutationOptions(options));
+};
+
+/**
+ * @summary Reset a prompt template to global default
+ */
+export const getDeleteProjectTemplateUrl = (
+  id: number,
+  type: "l1_tagger" | "l2_extractor" | "l3_generator"
+) => {
+  return `/api/projects/${id}/templates/${type}`;
+};
+
+export const deleteProjectTemplate = async (
+  id: number,
+  type: "l1_tagger" | "l2_extractor" | "l3_generator",
+  options?: RequestInit
+): Promise<void> => {
+  return customFetch<void>(getDeleteProjectTemplateUrl(id, type), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteProjectTemplateMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProjectTemplate>>,
+    TError,
+    { id: number; type: "l1_tagger" | "l2_extractor" | "l3_generator" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteProjectTemplate>>,
+  TError,
+  { id: number; type: "l1_tagger" | "l2_extractor" | "l3_generator" },
+  TContext
+> => {
+  const mutationKey = ["deleteProjectTemplate"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteProjectTemplate>>,
+    { id: number; type: "l1_tagger" | "l2_extractor" | "l3_generator" }
+  > = (props) => {
+    const { id, type } = props ?? {};
+
+    return deleteProjectTemplate(id, type, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteProjectTemplateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteProjectTemplate>>
+>;
+
+export type DeleteProjectTemplateMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Reset a prompt template to global default
+ */
+export const useDeleteProjectTemplate = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProjectTemplate>>,
+    TError,
+    { id: number; type: "l1_tagger" | "l2_extractor" | "l3_generator" },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteProjectTemplate>>,
+  TError,
+  { id: number; type: "l1_tagger" | "l2_extractor" | "l3_generator" },
+  TContext
+> => {
+  return useMutation(getDeleteProjectTemplateMutationOptions(options));
+};
 
 /**
  * @summary Get LLM configuration for a project

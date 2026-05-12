@@ -7,6 +7,7 @@ import {
   l2NodesTable,
   l3NodesTable,
   activityLogTable,
+  correctionExamplesTable,
 } from "@workspace/db";
 import { eq, sql, count, and, gte } from "drizzle-orm";
 import { ResolveReviewTaskParams, ResolveReviewTaskBody } from "@workspace/api-zod";
@@ -119,9 +120,22 @@ router.patch("/review-tasks/:id", async (req, res) => {
     .returning();
   if (!task) return res.status(404).json({ error: "Not found" });
 
-  // Writeback correction to the actual node
+  // Writeback correction to the actual node + store in feedback loop
   if (body.correctedValue && task.status === "approved") {
     if (task.entityType === "l2_node") {
+      const [node] = await db
+        .select()
+        .from(l2NodesTable)
+        .where(eq(l2NodesTable.id, task.entityId));
+      if (node && node.description) {
+        await db.insert(correctionExamplesTable).values({
+          projectId: node.projectId,
+          entityType: "l2_node",
+          entityId: task.entityId,
+          originalContent: node.description,
+          correctedContent: body.correctedValue,
+        });
+      }
       await db
         .update(l2NodesTable)
         .set({
@@ -131,6 +145,25 @@ router.patch("/review-tasks/:id", async (req, res) => {
         })
         .where(eq(l2NodesTable.id, task.entityId));
     } else if (task.entityType === "l3_node") {
+      const [node] = await db
+        .select()
+        .from(l3NodesTable)
+        .where(eq(l3NodesTable.id, task.entityId));
+      if (node) {
+        const [l2] = await db
+          .select()
+          .from(l2NodesTable)
+          .where(eq(l2NodesTable.id, node.l2NodeId));
+        if (node.content) {
+          await db.insert(correctionExamplesTable).values({
+            projectId: l2?.projectId ?? null,
+            entityType: "l3_node",
+            entityId: task.entityId,
+            originalContent: node.content,
+            correctedContent: body.correctedValue,
+          });
+        }
+      }
       await db
         .update(l3NodesTable)
         .set({

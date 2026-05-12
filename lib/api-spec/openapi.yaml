@@ -1337,11 +1337,15 @@ components:
           type: integer
         l2NodesCreated:
           type: integer
+        l2NodesUpdated:
+          type: integer
         l3NodesCreated:
           type: integer
         reviewTasksCreated:
           type: integer
         commitsProcessed:
+          type: integer
+        documentsUsed:
           type: integer
 
     LlmConfig:

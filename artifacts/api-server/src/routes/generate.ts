@@ -10,6 +10,7 @@ import {
   reviewTasksTable,
   activityLogTable,
   llmConfigsTable,
+  documentsTable,
 } from "@workspace/db";
 import { eq, and, sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
@@ -28,7 +29,11 @@ async function getModel(projectId: number, override?: string): Promise<string> {
   return cfg?.model ?? "gpt-5.2";
 }
 
-async function generateL1Tags(commits: Array<{ message: string; hash: string }>, existingTags: string[], model: string): Promise<Array<{ name: string; category: string; description: string }>> {
+async function generateL1Tags(
+  commits: Array<{ message: string; hash: string }>,
+  existingTags: string[],
+  model: string
+): Promise<Array<{ name: string; category: string; description: string }>> {
   const commitList = commits.map(c => `- ${c.message}`).join("\n");
   const existing = existingTags.length ? `\nExisting global tags (reuse if applicable): ${existingTags.join(", ")}` : "";
 
@@ -60,13 +65,33 @@ Generate 3-8 tags that best represent the commit themes. Prefer reusing existing
   }
 }
 
+interface L3NodeAI {
+  title: string;
+  nodeType: "change" | "rule" | "decision" | "context";
+  content: string;
+  commitHash: string;
+  confidence: number;
+}
+
+interface L2NodeAI {
+  name: string;
+  type: "package" | "module" | "pcd";
+  description: string;
+  l1TagNames: string[];
+  l3Nodes: L3NodeAI[];
+}
+
 async function generateL2Nodes(
   commits: Array<{ message: string; hash: string }>,
   l1Tags: Array<{ id: number; name: string }>,
+  documentContext: string,
   model: string
-): Promise<Array<{ name: string; type: "package" | "module" | "pcd"; description: string; l1TagNames: string[]; l3Nodes: Array<{ title: string; nodeType: "change" | "rule" | "decision" | "context"; content: string; commitHash: string }> }>> {
+): Promise<L2NodeAI[]> {
   const commitList = commits.map(c => `[${c.hash.slice(0, 8)}] ${c.message}`).join("\n");
   const tagNames = l1Tags.map(t => t.name).join(", ");
+  const docSection = documentContext
+    ? `\n\nProject documentation context (use this to enrich descriptions and detect architectural decisions):\n${documentContext}`
+    : "";
 
   const response = await openai.chat.completions.create({
     model,
@@ -80,7 +105,7 @@ Extract L2 nodes (packages/modules/components) and their associated L3 knowledge
 L2 nodes = software components, modules, packages, or PCDs (Platform Configuration Databases for UEFI/firmware).
 L3 nodes = implementation rules, technical decisions, change rationale, context.
 
-Available L1 tags to map L2 nodes to: ${tagNames}
+Available L1 tags to map L2 nodes to: ${tagNames}${docSection}
 
 Return ONLY a valid JSON array. Each L2 node:
 {
@@ -93,11 +118,13 @@ Return ONLY a valid JSON array. Each L2 node:
       "title": "concise title",
       "nodeType": "change" | "rule" | "decision" | "context",
       "content": "detailed explanation",
-      "commitHash": "hash from [xxxxx] prefix"
+      "commitHash": "8-char hash from [xxxxxxxx] prefix or empty string",
+      "confidence": 0.0 to 1.0
     }
   ]
 }
 
+confidence: 1.0 = certain/explicit in commits, 0.7 = inferred with high confidence, 0.4 = speculative.
 Generate 2-6 L2 nodes with 1-3 L3 nodes each.`
       },
       {
@@ -128,6 +155,7 @@ router.post("/projects/:id/generate", async (req, res) => {
   await db.update(projectsTable).set({ status: "indexing", updatedAt: new Date() }).where(eq(projectsTable.id, projectId));
 
   try {
+    // Step 1: Fetch valid (signal-scored) commits
     const validCommits = await db.select()
       .from(commitsTable)
       .where(and(eq(commitsTable.projectId, projectId), eq(commitsTable.valid, true)))
@@ -141,17 +169,25 @@ router.post("/projects/:id/generate", async (req, res) => {
 
     const commitData = validCommits.map(c => ({ message: c.message, hash: c.hash }));
 
-    const existingL1 = await db.select({ name: l1TagsTable.name }).from(l1TagsTable);
-    const existingTagNames = existingL1.map(t => t.name);
+    // Step 2: Fetch project documents for context enrichment
+    const documents = await db.select({ filename: documentsTable.filename, content: documentsTable.content, docType: documentsTable.docType })
+      .from(documentsTable)
+      .where(eq(documentsTable.projectId, projectId));
 
+    const documentContext = documents.length
+      ? documents.map(d => `[${d.docType.toUpperCase()}] ${d.filename}:\n${d.content.slice(0, 800)}`).join("\n\n---\n\n")
+      : "";
+
+    // Step 3: L1 Tagger
+    const existingL1 = await db.select().from(l1TagsTable);
+    const existingTagNames = existingL1.map(t => t.name);
     const aiL1Tags = await generateL1Tags(commitData, existingTagNames, model);
 
     let l1TagsCreated = 0;
     const tagMap = new Map<string, number>();
 
     for (const existing of existingL1) {
-      const [row] = await db.select().from(l1TagsTable).where(eq(l1TagsTable.name, existing.name));
-      if (row) tagMap.set(existing.name.toLowerCase(), row.id);
+      tagMap.set(existing.name.toLowerCase(), existing.id);
     }
 
     for (const tag of aiL1Tags) {
@@ -180,24 +216,59 @@ router.post("/projects/:id/generate", async (req, res) => {
       });
     }
 
+    // Step 4: L2 Extractor + L3 Generator (combined AI call)
     const allL1Tags = await db.select().from(l1TagsTable);
-    const l2Input = await generateL2Nodes(commitData, allL1Tags, model);
+    const l2Input = await generateL2Nodes(commitData, allL1Tags, documentContext, model);
 
     let l2NodesCreated = 0;
+    let l2NodesUpdated = 0;
     let l3NodesCreated = 0;
     let reviewTasksCreated = 0;
 
-    for (const l2data of l2Input) {
-      const [l2node] = await db.insert(l2NodesTable).values({
-        projectId,
-        name: l2data.name,
-        type: l2data.type ?? "module",
-        description: l2data.description,
-        aiGenerated: true,
-        needsReview: true,
-      }).returning();
-      l2NodesCreated++;
+    // Build a hash → commit id map for commit→L2 backfill
+    const commitHashMap = new Map<string, number>();
+    for (const c of validCommits) {
+      commitHashMap.set(c.hash.slice(0, 8), c.id);
+      commitHashMap.set(c.hash, c.id);
+    }
 
+    // Fetch existing L2 nodes for this project (for deduplication)
+    const existingL2 = await db.select().from(l2NodesTable).where(eq(l2NodesTable.projectId, projectId));
+    const existingL2Map = new Map<string, typeof existingL2[0]>();
+    for (const node of existingL2) {
+      existingL2Map.set(node.name.toLowerCase(), node);
+    }
+
+    for (const l2data of l2Input) {
+      const nameKey = l2data.name.toLowerCase();
+      let l2node: typeof existingL2[0];
+
+      // Deduplication: update if already exists, insert if new
+      if (existingL2Map.has(nameKey)) {
+        const existing = existingL2Map.get(nameKey)!;
+        const [updated] = await db.update(l2NodesTable).set({
+          description: l2data.description,
+          type: l2data.type ?? "module",
+          aiGenerated: true,
+          needsReview: true,
+        }).where(eq(l2NodesTable.id, existing.id)).returning();
+        l2node = updated;
+        l2NodesUpdated++;
+      } else {
+        const [created] = await db.insert(l2NodesTable).values({
+          projectId,
+          name: l2data.name,
+          type: l2data.type ?? "module",
+          description: l2data.description,
+          aiGenerated: true,
+          needsReview: true,
+        }).returning();
+        l2node = created;
+        existingL2Map.set(nameKey, created);
+        l2NodesCreated++;
+      }
+
+      // Wire L1 tags
       for (const tagName of (l2data.l1TagNames ?? [])) {
         const tagId = tagMap.get(tagName.toLowerCase()) ?? allL1Tags.find(t => t.name.toLowerCase() === tagName.toLowerCase())?.id;
         if (tagId) {
@@ -206,33 +277,71 @@ router.post("/projects/:id/generate", async (req, res) => {
         }
       }
 
-      await db.insert(reviewTasksTable).values({
-        entityType: "l2_node",
-        entityId: l2node.id,
-        taskType: "validate",
-        status: "pending",
-        description: `AI-generated L2 node: "${l2data.name}" — verify this component classification is accurate`,
-      });
-      reviewTasksCreated++;
-
+      // Step 5: L3 nodes — insert + create review tasks for low-confidence nodes
       for (const l3data of (l2data.l3Nodes ?? [])) {
-        await db.insert(l3NodesTable).values({
+        const confidence = typeof l3data.confidence === "number"
+          ? Math.max(0, Math.min(1, l3data.confidence))
+          : 0.75;
+
+        const [l3node] = await db.insert(l3NodesTable).values({
           l2NodeId: l2node.id,
           title: l3data.title,
           content: l3data.content,
           nodeType: l3data.nodeType ?? "change",
           commitHash: l3data.commitHash || null,
           aiGenerated: true,
-          confidence: 0.75,
-        });
+          confidence,
+        }).returning();
         l3NodesCreated++;
+
+        // Queue review task for L3 nodes with confidence below threshold
+        if (confidence < 0.8) {
+          await db.insert(reviewTasksTable).values({
+            entityType: "l3_node",
+            entityId: l3node.id,
+            taskType: "validate",
+            status: "pending",
+            description: `AI-generated L3 node (confidence ${Math.round(confidence * 100)}%): "${l3data.title}" — verify content accuracy`,
+          });
+          reviewTasksCreated++;
+        }
+
+        // Step 6: Backfill commit → L2 link via commit hash
+        if (l3data.commitHash) {
+          const commitId = commitHashMap.get(l3data.commitHash) ?? commitHashMap.get(l3data.commitHash.slice(0, 8));
+          if (commitId) {
+            await db.update(commitsTable).set({ l2NodeId: l2node.id }).where(eq(commitsTable.id, commitId)).catch(() => {});
+          }
+        }
       }
     }
 
-    if (l2NodesCreated > 0) {
+    // Create single L2 review tasks for newly created nodes (fix the scoping issue above)
+    // Re-run to ensure all new L2 nodes get review tasks
+    const newL2Count = l2NodesCreated;
+    const postL2 = await db.select().from(l2NodesTable).where(and(eq(l2NodesTable.projectId, projectId), eq(l2NodesTable.needsReview, true)));
+    // Count pending review tasks for l2_nodes to avoid double-creating
+    const pendingL2Reviews = await db.select().from(reviewTasksTable)
+      .where(and(eq(reviewTasksTable.entityType, "l2_node"), eq(reviewTasksTable.status, "pending")));
+    const coveredL2Ids = new Set(pendingL2Reviews.map(t => t.entityId));
+
+    for (const node of postL2) {
+      if (!coveredL2Ids.has(node.id)) {
+        await db.insert(reviewTasksTable).values({
+          entityType: "l2_node",
+          entityId: node.id,
+          taskType: "validate",
+          status: "pending",
+          description: `AI-generated L2 node: "${node.name}" — verify this component classification is accurate`,
+        });
+        reviewTasksCreated++;
+      }
+    }
+
+    if (l2NodesCreated > 0 || l3NodesCreated > 0) {
       await db.insert(activityLogTable).values({
         type: "l2_created",
-        description: `AI generated ${l2NodesCreated} L2 nodes, ${l3NodesCreated} L3 nodes for "${project.name}"`,
+        description: `AI generated ${l2NodesCreated} new L2 nodes (${l2NodesUpdated} updated), ${l3NodesCreated} L3 nodes for "${project.name}"`,
         projectId,
       });
     }
@@ -242,9 +351,11 @@ router.post("/projects/:id/generate", async (req, res) => {
     res.json({
       l1TagsCreated,
       l2NodesCreated,
+      l2NodesUpdated,
       l3NodesCreated,
       reviewTasksCreated,
       commitsProcessed: validCommits.length,
+      documentsUsed: documents.length,
     });
   } catch (err) {
     await db.update(projectsTable).set({ status: "error", updatedAt: new Date() }).where(eq(projectsTable.id, projectId));

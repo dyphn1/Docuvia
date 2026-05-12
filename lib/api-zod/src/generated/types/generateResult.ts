@@ -9,7 +9,9 @@
 export interface GenerateResult {
   l1TagsCreated: number;
   l2NodesCreated: number;
+  l2NodesUpdated?: number;
   l3NodesCreated: number;
   reviewTasksCreated: number;
   commitsProcessed: number;
+  documentsUsed?: number;
 }

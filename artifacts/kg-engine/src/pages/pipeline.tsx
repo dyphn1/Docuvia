@@ -19,9 +19,11 @@ interface IngestResult {
 interface GenerateResult {
   l1TagsCreated: number;
   l2NodesCreated: number;
+  l2NodesUpdated: number;
   l3NodesCreated: number;
   reviewTasksCreated: number;
   commitsProcessed: number;
+  documentsUsed: number;
 }
 
 export default function Pipeline() {
@@ -282,7 +284,12 @@ export default function Pipeline() {
                     <div className="text-[10px] text-muted-foreground">L1 Tags</div>
                   </div>
                   <div className="text-center p-1.5 bg-background rounded border border-border/50">
-                    <div className="text-base font-bold font-mono">{generateResult.l2NodesCreated}</div>
+                    <div className="text-base font-bold font-mono">
+                      {generateResult.l2NodesCreated}
+                      {(generateResult.l2NodesUpdated ?? 0) > 0 && (
+                        <span className="text-[9px] text-amber-500 ml-1">+{generateResult.l2NodesUpdated} upd</span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">L2 Nodes</div>
                   </div>
                   <div className="text-center p-1.5 bg-background rounded border border-border/50">
@@ -294,8 +301,13 @@ export default function Pipeline() {
                     <div className="text-[10px] text-muted-foreground">Review Tasks</div>
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground text-center">
-                  {generateResult.commitsProcessed} commits processed → go to Review Queue
+                <div className="text-xs text-muted-foreground text-center space-y-0.5">
+                  <div>{generateResult.commitsProcessed} commits processed → go to Review Queue</div>
+                  {(generateResult.documentsUsed ?? 0) > 0 && (
+                    <div className="text-emerald-600 dark:text-emerald-400">
+                      {generateResult.documentsUsed} docs used as context
+                    </div>
+                  )}
                 </div>
               </div>
             )}

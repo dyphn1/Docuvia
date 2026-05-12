@@ -79,7 +79,8 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
     "Accept": "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
   };
-  if (body.githubToken) headers["Authorization"] = `Bearer ${body.githubToken}`;
+  const token = body.githubToken ?? process.env.GITHUB_TOKEN;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   let allCommits: Array<{ sha: string; commit: { message: string; author: { name: string; date: string } } }> = [];
   for (let page = 1; page <= pages && allCommits.length < limit; page++) {

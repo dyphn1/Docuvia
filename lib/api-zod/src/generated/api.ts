@@ -37,6 +37,8 @@ export const GetDashboardResponse = zod.object({
 /**
  * @summary List all projects
  */
+export const listProjectsResponseVcsTypeDefault = `git`;
+
 export const ListProjectsResponseItem = zod.object({
   id: zod.number(),
   name: zod.string(),
@@ -48,6 +50,8 @@ export const ListProjectsResponseItem = zod.object({
   commitCount: zod.number(),
   createdAt: zod.string(),
   updatedAt: zod.string().optional(),
+  vcsType: zod.enum(["git", "svn"]).default(listProjectsResponseVcsTypeDefault),
+  svnUrl: zod.string().nullish(),
 });
 export const ListProjectsResponse = zod.array(ListProjectsResponseItem);
 
@@ -68,6 +72,8 @@ export const GetProjectParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const getProjectResponseVcsTypeDefault = `git`;
+
 export const GetProjectResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
@@ -79,6 +85,8 @@ export const GetProjectResponse = zod.object({
   commitCount: zod.number(),
   createdAt: zod.string(),
   updatedAt: zod.string().optional(),
+  vcsType: zod.enum(["git", "svn"]).default(getProjectResponseVcsTypeDefault),
+  svnUrl: zod.string().nullish(),
 });
 
 /**
@@ -95,6 +103,8 @@ export const UpdateProjectBody = zod.object({
   status: zod.enum(["active", "indexing", "paused", "error"]).optional(),
 });
 
+export const updateProjectResponseVcsTypeDefault = `git`;
+
 export const UpdateProjectResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
@@ -106,6 +116,8 @@ export const UpdateProjectResponse = zod.object({
   commitCount: zod.number(),
   createdAt: zod.string(),
   updatedAt: zod.string().optional(),
+  vcsType: zod.enum(["git", "svn"]).default(updateProjectResponseVcsTypeDefault),
+  svnUrl: zod.string().nullish(),
 });
 
 /**
@@ -244,6 +256,33 @@ export const IngestGitResponse = zod.object({
 });
 
 /**
+ * @summary Ingest SVN commits into the knowledge graph
+ */
+export const IngestSvnParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const IngestSvnBody = zod.object({
+  svnUrl: zod.string().describe("SVN repository URL (e.g. svn+ssh:\/\/... or https:\/\/...)"),
+  username: zod.string().optional().describe("SVN username (optional)"),
+  password: zod.string().optional().describe("SVN password (optional)"),
+  startRevision: zod
+    .number()
+    .optional()
+    .describe("Starting revision number (optional, defaults to 1)"),
+  endRevision: zod
+    .number()
+    .optional()
+    .describe("Ending revision number (optional, defaults to HEAD)"),
+});
+
+export const IngestSvnResponse = zod.object({
+  ingested: zod.number(),
+  skipped: zod.number(),
+  errors: zod.array(zod.string()),
+});
+
+/**
  * @summary Ingest a document (MD, TXT) into the project
  */
 export const IngestDocumentParams = zod.object({
@@ -332,6 +371,8 @@ export const ExportProjectParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const exportProjectResponseProjectVcsTypeDefault = `git`;
+
 export const ExportProjectResponse = zod.object({
   project: zod.object({
     id: zod.number(),
@@ -344,6 +385,8 @@ export const ExportProjectResponse = zod.object({
     commitCount: zod.number(),
     createdAt: zod.string(),
     updatedAt: zod.string().optional(),
+    vcsType: zod.enum(["git", "svn"]).default(exportProjectResponseProjectVcsTypeDefault),
+    svnUrl: zod.string().nullish(),
   }),
   l1Tags: zod.array(
     zod.object({

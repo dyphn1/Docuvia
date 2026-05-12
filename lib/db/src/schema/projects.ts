@@ -9,12 +9,16 @@ export const projectStatusEnum = pgEnum("project_status", [
   "error",
 ]);
 
+export const vcsTypeEnum = pgEnum("vcs_type", ["git", "svn"]);
+
 export const projectsTable = pgTable("projects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   repoUrl: text("repo_url").notNull(),
   description: text("description"),
   status: projectStatusEnum("status").notNull().default("active"),
+  vcsType: vcsTypeEnum("vcs_type").notNull().default("git"),
+  svnUrl: text("svn_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

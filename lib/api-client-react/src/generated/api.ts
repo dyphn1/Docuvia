@@ -65,6 +65,8 @@ import type {
   ReviewTask,
   SearchInput,
   SearchResponse,
+  SvnIngestInput,
+  SvnIngestResult,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -912,6 +914,86 @@ export const useIngestGit = <TError = ErrorType<unknown>, TContext = unknown>(op
   TContext
 > => {
   return useMutation(getIngestGitMutationOptions(options));
+};
+
+/**
+ * @summary Ingest SVN commits into the knowledge graph
+ */
+export const getIngestSvnUrl = (id: number) => {
+  return `/api/projects/${id}/ingest/svn`;
+};
+
+export const ingestSvn = async (
+  id: number,
+  svnIngestInput: SvnIngestInput,
+  options?: RequestInit
+): Promise<SvnIngestResult> => {
+  return customFetch<SvnIngestResult>(getIngestSvnUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(svnIngestInput),
+  });
+};
+
+export const getIngestSvnMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestSvn>>,
+    TError,
+    { id: number; data: BodyType<SvnIngestInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof ingestSvn>>,
+  TError,
+  { id: number; data: BodyType<SvnIngestInput> },
+  TContext
+> => {
+  const mutationKey = ["ingestSvn"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof ingestSvn>>,
+    { id: number; data: BodyType<SvnIngestInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return ingestSvn(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type IngestSvnMutationResult = NonNullable<Awaited<ReturnType<typeof ingestSvn>>>;
+export type IngestSvnMutationBody = BodyType<SvnIngestInput>;
+export type IngestSvnMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Ingest SVN commits into the knowledge graph
+ */
+export const useIngestSvn = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof ingestSvn>>,
+    TError,
+    { id: number; data: BodyType<SvnIngestInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof ingestSvn>>,
+  TError,
+  { id: number; data: BodyType<SvnIngestInput> },
+  TContext
+> => {
+  return useMutation(getIngestSvnMutationOptions(options));
 };
 
 /**

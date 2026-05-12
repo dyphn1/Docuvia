@@ -2,6 +2,7 @@
 
 > Audited: 2026-05-12 | Based on actual file structure from `find` output  
 > Stack: TypeScript monorepo (Replit) — `lib/` + `artifacts/api-server/` + `artifacts/kg-engine/`
+> Last updated: 2026-05-12 (v0.8 — SVN Integration implemented)
 
 ---
 
@@ -26,10 +27,10 @@
 | ---------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | Git ingestion (commit + diff)            | ✅ Done        | `gitIngestInput.ts`, `gitIngestResult.ts`, `routes/ingest.ts`                                                                               |
 | Document ingestion (PDF/Word/PPTX/MD)    | ✅ Done        | `document-parser.ts` (lazy require for pdf-parse/mammoth/officeparser), `upload.ts` (multer), `POST /projects/:id/ingest/document/upload` multipart endpoint |
-| SVN integration                          | ❌ Not started | No SVN types or routes found                                                                                                                |
+| SVN integration                          | ✅ Done        | `lib/svn-client.ts` (execFile-based CLI wrapper), `routes/ingest.ts` `POST /projects/:id/ingest/svn`, `SvnIngestInput`/`SvnIngestResult` OpenAPI schemas, `vcsType`+`svnUrl` on projects, `revision`+`vcsType` on commits |
 | Build artifact parser (map files, FV/FD) | ❌ Not started | No related files found                                                                                                                      |
 
-**Progress: 2 / 4**
+**Progress: 3 / 4**
 
 ---
 
@@ -129,10 +130,13 @@
 - [x] **Noise detection**: ✅ Implemented — `runNoiseDetection()` in `generate.ts` — runs automatically post-generation; flags low-usage tags (≤1 use) + near-duplicate tag names; creates `anchor`/`merge` review tasks
 - [x] **Feedback loop**: ✅ Implemented — `lib/db/src/schema/correction_examples.ts` + updated `review_tasks.ts` (stores original→corrected pairs on approval); `generate.ts` fetches last 5 corrections per project and injects as few-shot examples into L2 extraction prompt
 
+### 🟠 Medium Priority — Phase 2 Gaps
+
+- [x] **SVN integration**: ✅ Implemented — `artifacts/api-server/src/lib/svn-client.ts` (typed `execFile` wrapper for `svn log --xml` + `svn diff`), `POST /projects/:id/ingest/svn` route with deduplication, `SvnIngestInput`/`SvnIngestResult` OpenAPI schemas + Orval codegen, `vcsType`/`svnUrl` on projects table, `revision`/`vcsType` on commits table
+
 ### ⚪ Future — Phase 7
 
 - [ ] Incremental update (watch new commits, delta indexing)
-- [ ] SVN integration
 - [ ] Build artifact parser (map files, FV/FD, compile logs)
 - [ ] VS Code extension
 - [ ] Slack / Teams bot
@@ -145,18 +149,18 @@
 | Phase     | Name                   | Progress           |
 | --------- | ---------------------- | ------------------ |
 | 1         | Foundation             | 6 / 6 — 100%       |
-| 2         | Input Layer            | 2 / 4 — 50%        |
+| 2         | Input Layer            | 3 / 4 — 75%        |
 | 3         | Knowledge Construction | 5 / 5 — 100%       |
 | 4         | Knowledge Graph        | 4 / 4 — 100%       |
 | 5         | Query Layer / MCP      | 8 / 8 — 100%       |
 | 6         | Human-in-the-Loop      | 8 / 8 — 100%       |
 | 7         | Enhancements           | 2 / 7 — 29%        |
-| **Total** |                        | **35 / 42 — 83%** |
+| **Total** |                        | **36 / 42 — 86%** |
 
-> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, and feedback loop are now fully implemented.  
-> The remaining gaps are all Phase 7 ecosystem integrations (SVN, VS Code, Slack, GitHub PR, incremental update).
+> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, feedback loop, and SVN integration are now fully implemented.  
+> The remaining Phase 2 gap is Build artifact parser. Remaining Phase 7 gaps are ecosystem integrations (VS Code, Slack, GitHub PR, incremental update).
 
 ---
 
-_Document version: v0.7 — Audited & updated from actual file structure + post-implementation_  
-*Last updated: 2026-05-12 (v0.7 — L2 Directory, Template Management, Cross-project AI Detection, Noise Detection, Feedback Loop implemented)*
+_Document version: v0.8 — Audited & updated from actual file structure + post-implementation_  
+*Last updated: 2026-05-12 (v0.8 — SVN Integration implemented: svn-client.ts, ingest/svn route, OpenAPI schemas, DB schema columns)*

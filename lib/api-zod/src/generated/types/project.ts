@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { ProjectStatus } from "./projectStatus";
+import type { ProjectVcsType } from "./projectVcsType";
 
 export interface Project {
   id: number;
@@ -19,4 +20,7 @@ export interface Project {
   commitCount: number;
   createdAt: string;
   updatedAt?: string;
+  vcsType?: ProjectVcsType;
+  /** @nullable */
+  svnUrl?: string | null;
 }

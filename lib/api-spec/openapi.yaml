@@ -261,6 +261,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/GitIngestResult"
 
+  /projects/{id}/ingest/svn:
+    post:
+      operationId: ingestSvn
+      tags: [ingest]
+      summary: Ingest SVN commits into the knowledge graph
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SvnIngestInput"
+      responses:
+        "200":
+          description: Ingest result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SvnIngestResult"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /projects/{id}/ingest/document:
     post:
       operationId: ingestDocument
@@ -1039,6 +1070,12 @@ components:
           type: string
         updatedAt:
           type: string
+        vcsType:
+          type: string
+          enum: [git, svn]
+          default: git
+        svnUrl:
+          type: ["string", "null"]
 
     ProjectInput:
       type: object
@@ -1488,6 +1525,43 @@ components:
           type: integer
         totalFetched:
           type: integer
+
+    SvnIngestInput:
+      type: object
+      required:
+        - svnUrl
+      properties:
+        svnUrl:
+          type: string
+          description: SVN repository URL (e.g. svn+ssh://... or https://...)
+        username:
+          type: string
+          description: SVN username (optional)
+        password:
+          type: string
+          description: SVN password (optional)
+        startRevision:
+          type: integer
+          description: Starting revision number (optional, defaults to 1)
+        endRevision:
+          type: integer
+          description: Ending revision number (optional, defaults to HEAD)
+
+    SvnIngestResult:
+      type: object
+      required:
+        - ingested
+        - skipped
+        - errors
+      properties:
+        ingested:
+          type: integer
+        skipped:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: string
 
     GenerateInput:
       type: object

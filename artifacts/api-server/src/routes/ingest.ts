@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { commitsTable, documentsTable, projectsTable, activityLogTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { getSvnLog, getSvnDiff } from "../lib/svn-client.js";
+import { IngestSvnBody } from "@workspace/api-zod";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
 import { detectDocType, extractText } from "../lib/document-parser.js";
@@ -154,6 +156,90 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
     commitsSkipped: skipped,
     totalFetched: allCommits.length,
   });
+});
+
+router.post("/projects/:id/ingest/svn", async (req, res) => {
+  const projectId = Number(req.params.id);
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  if (!project) return res.status(404).json({ error: "Project not found" });
+
+  let body: ReturnType<typeof IngestSvnBody.parse>;
+  try {
+    body = IngestSvnBody.parse(req.body);
+  } catch (err) {
+    return res.status(400).json({ error: "Invalid request body", details: err });
+  }
+
+  const svnUrl = body.svnUrl;
+  const startRevision = body.startRevision ?? 1;
+  const endRevision = body.endRevision ?? "HEAD";
+
+  let revisions;
+  try {
+    revisions = await getSvnLog(svnUrl, startRevision, endRevision, body.username, body.password);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return res.status(502).json({ error: `Failed to fetch SVN log: ${msg}` });
+  }
+
+  let ingested = 0;
+  let skipped = 0;
+  const errors: string[] = [];
+
+  for (const rev of revisions) {
+    const [existing] = await db
+      .select({ id: commitsTable.id })
+      .from(commitsTable)
+      .where(
+        and(
+          eq(commitsTable.projectId, projectId),
+          eq(commitsTable.vcsType, "svn"),
+          eq(commitsTable.revision, rev.revision)
+        )
+      );
+
+    if (existing) {
+      skipped++;
+      continue;
+    }
+
+    let diff = "";
+    try {
+      diff = await getSvnDiff(svnUrl, rev.revision, body.username, body.password);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`r${rev.revision}: ${msg}`);
+    }
+
+    const score = scoreCommit(rev.message);
+    const firstLine = rev.message.split("\n")[0].trim();
+    const fullMessage = diff ? `${firstLine}\n\n${diff}` : firstLine;
+
+    await db.insert(commitsTable).values({
+      projectId,
+      hash: `svn:R${rev.revision}`,
+      message: fullMessage.slice(0, 4000),
+      author: rev.author,
+      valid: score >= 0.4,
+      revision: rev.revision,
+      vcsType: "svn",
+    });
+    ingested++;
+  }
+
+  if (ingested > 0) {
+    await db.insert(activityLogTable).values({
+      type: "commit",
+      description: `Ingested ${ingested} SVN revisions from ${svnUrl}`,
+      projectId,
+    });
+    await db
+      .update(projectsTable)
+      .set({ updatedAt: new Date() })
+      .where(eq(projectsTable.id, projectId));
+  }
+
+  return res.json({ ingested, skipped, errors });
 });
 
 router.post(

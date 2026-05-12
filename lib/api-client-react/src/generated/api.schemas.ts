@@ -46,6 +46,13 @@ export const ProjectStatus = {
   error: "error",
 } as const;
 
+export type ProjectVcsType = (typeof ProjectVcsType)[keyof typeof ProjectVcsType];
+
+export const ProjectVcsType = {
+  git: "git",
+  svn: "svn",
+} as const;
+
 export interface Project {
   id: number;
   name: string;
@@ -58,6 +65,9 @@ export interface Project {
   commitCount: number;
   createdAt: string;
   updatedAt?: string;
+  vcsType?: ProjectVcsType;
+  /** @nullable */
+  svnUrl?: string | null;
 }
 
 export interface ProjectInput {
@@ -436,6 +446,25 @@ export interface GitIngestResult {
   commitsIngested: number;
   commitsSkipped: number;
   totalFetched: number;
+}
+
+export interface SvnIngestInput {
+  /** SVN repository URL (e.g. svn+ssh://... or https://...) */
+  svnUrl: string;
+  /** SVN username (optional) */
+  username?: string;
+  /** SVN password (optional) */
+  password?: string;
+  /** Starting revision number (optional, defaults to 1) */
+  startRevision?: number;
+  /** Ending revision number (optional, defaults to HEAD) */
+  endRevision?: number;
+}
+
+export interface SvnIngestResult {
+  ingested: number;
+  skipped: number;
+  errors: string[];
 }
 
 export interface GenerateInput {

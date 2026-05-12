@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "create-agent-launcher": {
+      "source": "dyphn1/create-agent-launcher",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "09ad32ec9fdf52328952f0202c23266642986ea037dfc8627b1398b9bce1b0c4"
+    }
+  }
+}

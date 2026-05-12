@@ -25,11 +25,11 @@
 | Item | Status | Evidence |
 |------|--------|----------|
 | Git ingestion (commit + diff) | ✅ Done | `gitIngestInput.ts`, `gitIngestResult.ts`, `routes/ingest.ts` |
-| Document ingestion (PDF/Word/PPTX/MD) | ⚠️ Schema only | `documentIngestInput.ts`, `documentDocType.ts` — parser impl unclear |
+| Document ingestion (PDF/Word/PPTX/MD) | ✅ Done | `document-parser.ts` (pdf-parse/mammoth/officeparser), `upload.ts` (multer), `POST /projects/:id/ingest/document/upload` multipart endpoint |
 | SVN integration | ❌ Not started | No SVN types or routes found |
 | Build artifact parser (map files, FV/FD) | ❌ Not started | No related files found |
 
-**Progress: 1.5 / 4**
+**Progress: 2 / 4**
 
 ---
 
@@ -115,7 +115,7 @@
 ### 🔴 High Priority — Core Gaps
 
 - [ ] **CI/CD**: Add `.github/workflows/` for lint, test, build
-- [ ] **Document parsers**: Implement actual PDF / Word / PPTX parsing logic (schema exists, parser missing)
+- [x] **Document parsers**: ✅ Implemented — `document-parser.ts` + `upload.ts` + `POST /projects/:id/ingest/document/upload`
 - [ ] **Agentic RAG**: Build intent-driven routing layer (vector vs. graph decision)
 
 ### 🟠 Medium Priority — Complete Partial Implementations
@@ -145,18 +145,18 @@
 | Phase | Name | Progress |
 |-------|------|----------|
 | 1 | Foundation | 5 / 6 — 83% |
-| 2 | Input Layer | 1.5 / 4 — 38% |
+| 2 | Input Layer | 2 / 4 — 50% |
 | 3 | Knowledge Construction | 5 / 5 — 100% |
 | 4 | Knowledge Graph | 3.5 / 4 — 88% |
 | 5 | Query Layer / MCP | 6 / 8 — 75% |
 | 6 | Human-in-the-Loop | 5.5 / 8 — 69% |
 | 7 | Enhancements | 2 / 7 — 29% |
-| **Total** | | **28.5 / 42 — 68%** |
+| **Total** | | **29 / 42 — 69%** |
 
-> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, and review UI are now fully implemented.  
-> The remaining critical gaps are **document parsers** (PDF/Word/PPTX), **Agentic RAG** routing, and **CI/CD**.
+> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, and document parsers (PDF/DOCX/PPTX/MD) are now fully implemented.  
+> The remaining critical gaps are **Agentic RAG** routing and **CI/CD**.
 
 ---
 
 *Document version: v0.3 — Audited & updated from actual file structure + post-implementation*  
-*Last updated: 2026-05-12*
+*Last updated: 2026-05-12 (v0.4 — Document Parsers implemented)*

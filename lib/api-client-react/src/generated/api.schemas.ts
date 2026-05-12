@@ -369,6 +369,32 @@ export interface ReviewStats {
   totalToday: number;
 }
 
+export interface ErrorResponse {
+  error: string;
+}
+
+/**
+ * Document type (auto-detected from extension if omitted)
+ */
+export type DocumentUploadInputDocType =
+  (typeof DocumentUploadInputDocType)[keyof typeof DocumentUploadInputDocType];
+
+export const DocumentUploadInputDocType = {
+  pdf: "pdf",
+  docx: "docx",
+  pptx: "pptx",
+  md: "md",
+} as const;
+
+export interface DocumentUploadInput {
+  /** The document file to upload (max 10MB) */
+  file: Blob;
+  /** Document type (auto-detected from extension if omitted) */
+  docType?: DocumentUploadInputDocType;
+  /** Optional commit SHA to associate with this document */
+  commitSha?: string;
+}
+
 export type DocumentDocType =
   (typeof DocumentDocType)[keyof typeof DocumentDocType];
 

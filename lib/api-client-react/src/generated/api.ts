@@ -22,6 +22,8 @@ import type {
   DashboardStats,
   Document,
   DocumentIngestInput,
+  DocumentUploadInput,
+  ErrorResponse,
   GenerateInput,
   GenerateResult,
   GitIngestInput,
@@ -1159,6 +1161,101 @@ export const useIngestDocument = <
   TContext
 > => {
   return useMutation(getIngestDocumentMutationOptions(options));
+};
+
+/**
+ * @summary Upload and parse a document file (PDF, DOCX, PPTX, MD)
+ */
+export const getUploadDocumentUrl = (id: number) => {
+  return `/api/projects/${id}/ingest/document/upload`;
+};
+
+export const uploadDocument = async (
+  id: number,
+  documentUploadInput: DocumentUploadInput,
+  options?: RequestInit,
+): Promise<Document> => {
+  const formData = new FormData();
+  formData.append(`file`, documentUploadInput.file);
+  if (documentUploadInput.docType !== undefined) {
+    formData.append(`docType`, documentUploadInput.docType);
+  }
+  if (documentUploadInput.commitSha !== undefined) {
+    formData.append(`commitSha`, documentUploadInput.commitSha);
+  }
+
+  return customFetch<Document>(getUploadDocumentUrl(id), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getUploadDocumentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadDocument>>,
+    TError,
+    { id: number; data: BodyType<DocumentUploadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadDocument>>,
+  TError,
+  { id: number; data: BodyType<DocumentUploadInput> },
+  TContext
+> => {
+  const mutationKey = ["uploadDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadDocument>>,
+    { id: number; data: BodyType<DocumentUploadInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return uploadDocument(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadDocument>>
+>;
+export type UploadDocumentMutationBody = BodyType<DocumentUploadInput>;
+export type UploadDocumentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Upload and parse a document file (PDF, DOCX, PPTX, MD)
+ */
+export const useUploadDocument = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadDocument>>,
+    TError,
+    { id: number; data: BodyType<DocumentUploadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadDocument>>,
+  TError,
+  { id: number; data: BodyType<DocumentUploadInput> },
+  TContext
+> => {
+  return useMutation(getUploadDocumentMutationOptions(options));
 };
 
 /**

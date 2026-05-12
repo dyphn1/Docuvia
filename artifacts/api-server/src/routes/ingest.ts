@@ -3,6 +3,9 @@ import { db } from "@workspace/db";
 import { commitsTable, documentsTable, projectsTable, activityLogTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import { documentUpload } from "../middlewares/upload.js";
+import { detectDocType, extractText } from "../lib/document-parser.js";
+import multer from "multer";
 
 const router = Router();
 
@@ -128,6 +131,43 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
   res.json({ commitsIngested: ingested, commitsSkipped: skipped, totalFetched: allCommits.length });
 });
 
+router.post("/projects/:id/ingest/document/upload",
+  documentUpload.single("file"),
+  async (req, res, next) => {
+    const projectId = Number(req.params.id);
+    const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded. Use multipart/form-data with field name 'file'." });
+    }
+
+    const { originalname, buffer } = req.file;
+    const docType = detectDocType(originalname);
+
+    let content: string;
+    try {
+      content = await extractText(buffer, docType);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return res.status(422).json({ error: `Failed to parse document: ${msg}` });
+    }
+
+    if (!content || content.length === 0) {
+      return res.status(422).json({ error: "Extracted content is empty. The document may be encrypted or contain only images." });
+    }
+
+    const [doc] = await db.insert(documentsTable).values({
+      projectId,
+      filename: originalname,
+      docType,
+      content,
+    }).returning();
+
+    return res.status(201).json({ ...doc, createdAt: doc.createdAt.toISOString() });
+  }
+);
+
 router.post("/projects/:id/ingest/document", async (req, res) => {
   const projectId = Number(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
@@ -159,6 +199,20 @@ router.get("/projects/:id/documents", async (req, res) => {
   const docs = await db.select().from(documentsTable).where(eq(documentsTable.projectId, projectId))
     .orderBy(sql`${documentsTable.createdAt} desc`);
   res.json(docs.map(d => ({ ...d, createdAt: d.createdAt.toISOString() })));
+});
+
+// Handle multer errors (file too large, unsupported type)
+router.use((err: unknown, _req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(413).json({ error: "File too large. Maximum size is 10 MB." });
+    }
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  }
+  if (err instanceof Error && err.message.startsWith("Unsupported file type")) {
+    return res.status(400).json({ error: err.message });
+  }
+  return next(err);
 });
 
 export default router;

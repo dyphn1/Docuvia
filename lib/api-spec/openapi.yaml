@@ -286,6 +286,43 @@ paths:
               schema:
                 $ref: "#/components/schemas/Document"
 
+  /projects/{id}/ingest/document/upload:
+    post:
+      operationId: uploadDocument
+      tags: [ingest]
+      summary: Upload and parse a document file (PDF, DOCX, PPTX, MD)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DocumentUploadInput"
+      responses:
+        "200":
+          description: Uploaded and parsed document record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "400":
+          description: Unsupported file type
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "413":
+          description: File too large (exceeds 10MB limit)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /projects/{id}/documents:
     get:
       operationId: listDocuments
@@ -1263,6 +1300,29 @@ components:
           type: integer
         totalToday:
           type: integer
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    DocumentUploadInput:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: The document file to upload (max 10MB)
+        docType:
+          type: string
+          enum: [pdf, docx, pptx, md]
+          description: Document type (auto-detected from extension if omitted)
+        commitSha:
+          type: string
+          description: Optional commit SHA to associate with this document
 
     Document:
       type: object

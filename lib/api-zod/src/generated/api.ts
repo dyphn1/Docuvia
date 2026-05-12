@@ -267,6 +267,41 @@ export const IngestDocumentBody = zod.object({
 });
 
 /**
+ * @summary Upload and parse a document file (PDF, DOCX, PPTX, MD)
+ */
+export const UploadDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UploadDocumentBody = zod.object({
+  file: zod.instanceof(File).describe("The document file to upload (max 10MB)"),
+  docType: zod
+    .enum(["pdf", "docx", "pptx", "md"])
+    .optional()
+    .describe("Document type (auto-detected from extension if omitted)"),
+  commitSha: zod
+    .string()
+    .optional()
+    .describe("Optional commit SHA to associate with this document"),
+});
+
+export const UploadDocumentResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  filename: zod.string(),
+  docType: zod.enum([
+    "markdown",
+    "txt",
+    "pdf",
+    "docx",
+    "pptx",
+    "build_artifact",
+  ]),
+  content: zod.string().optional(),
+  createdAt: zod.string(),
+});
+
+/**
  * @summary List documents for a project
  */
 export const ListDocumentsParams = zod.object({

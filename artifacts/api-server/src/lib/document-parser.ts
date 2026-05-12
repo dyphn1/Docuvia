@@ -1,3 +1,5 @@
+import { extractBuildArtifactText } from "./build-artifact-parser.js";
+
 export type SupportedDocType = "markdown" | "txt" | "pdf" | "docx" | "pptx" | "build_artifact";
 
 /**
@@ -14,6 +16,7 @@ export function detectDocType(filename: string): SupportedDocType {
     map: "build_artifact",
     fv: "build_artifact",
     fd: "build_artifact",
+    log: "build_artifact",
   };
   return map[ext] ?? "txt";
 }
@@ -57,9 +60,10 @@ async function parsePptx(buffer: Buffer): Promise<string> {
  * Extract plain text from a file buffer.
  * @param buffer  Raw file bytes
  * @param docType Detected document type
+ * @param filename Original filename (used for build artifact parsing)
  * @returns Extracted plain text string
  */
-export async function extractText(buffer: Buffer, docType: SupportedDocType): Promise<string> {
+export async function extractText(buffer: Buffer, docType: SupportedDocType, filename?: string): Promise<string> {
   switch (docType) {
     case "pdf":
       return parsePdf(buffer);
@@ -67,9 +71,10 @@ export async function extractText(buffer: Buffer, docType: SupportedDocType): Pr
       return parseDocx(buffer);
     case "pptx":
       return parsePptx(buffer);
+    case "build_artifact":
+      return extractBuildArtifactText(buffer.toString("utf-8"), filename ?? "artifact");
     case "markdown":
     case "txt":
-    case "build_artifact":
     default:
       return buffer.toString("utf-8").trim();
   }

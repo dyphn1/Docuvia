@@ -10,7 +10,7 @@ const ALLOWED_MIMETYPES = new Set([
   "application/octet-stream",
 ]);
 
-const ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "pptx", "txt", "md", "map", "fv", "fd"]);
+const ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "pptx", "txt", "md", "map", "fv", "fd", "log"]);
 
 export const documentUpload = multer({
   storage: multer.memoryStorage(),

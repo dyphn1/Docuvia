@@ -261,7 +261,7 @@ router.post(
 
     let content: string;
     try {
-      content = await extractText(buffer, docType);
+      content = await extractText(buffer, docType, originalname);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       return res.status(422).json({ error: `Failed to parse document: ${msg}` });

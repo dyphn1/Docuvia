@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type L2NodeUpdateType =
-  (typeof L2NodeUpdateType)[keyof typeof L2NodeUpdateType];
+export type L2NodeUpdateType = (typeof L2NodeUpdateType)[keyof typeof L2NodeUpdateType];
 
 export const L2NodeUpdateType = {
   package: "package",

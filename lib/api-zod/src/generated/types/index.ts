@@ -8,6 +8,10 @@
 
 export * from "./activityItem";
 export * from "./activityItemType";
+export * from "./agenticEntities";
+export * from "./agenticSearchResult";
+export * from "./agenticSearchResultNodeLayer";
+export * from "./agenticSearchResultSource";
 export * from "./commit";
 export * from "./commitInput";
 export * from "./dashboardStats";
@@ -48,6 +52,9 @@ export * from "./mcpImpactAnalysisParams";
 export * from "./mcpImpactResult";
 export * from "./mcpProjectList";
 export * from "./mcpProjectListProjectsItem";
+export * from "./mcpQueryInput";
+export * from "./mcpQueryResult";
+export * from "./mcpQueryResultMetadata";
 export * from "./mcpSearchKnowledgeParams";
 export * from "./mcpSearchResult";
 export * from "./nodeLink";
@@ -66,6 +73,7 @@ export * from "./reviewTask";
 export * from "./reviewTaskEntityType";
 export * from "./reviewTaskStatus";
 export * from "./reviewTaskTaskType";
+export * from "./routingStrategy";
 export * from "./searchInput";
 export * from "./searchResponse";
 export * from "./searchResultItem";

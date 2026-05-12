@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ReviewTaskStatus =
-  (typeof ReviewTaskStatus)[keyof typeof ReviewTaskStatus];
+export type ReviewTaskStatus = (typeof ReviewTaskStatus)[keyof typeof ReviewTaskStatus];
 
 export const ReviewTaskStatus = {
   pending: "pending",

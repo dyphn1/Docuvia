@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ReviewTaskTaskType =
-  (typeof ReviewTaskTaskType)[keyof typeof ReviewTaskTaskType];
+export type ReviewTaskTaskType = (typeof ReviewTaskTaskType)[keyof typeof ReviewTaskTaskType];
 
 export const ReviewTaskTaskType = {
   anchor: "anchor",

@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ReviewTaskEntityType =
-  (typeof ReviewTaskEntityType)[keyof typeof ReviewTaskEntityType];
+export type ReviewTaskEntityType = (typeof ReviewTaskEntityType)[keyof typeof ReviewTaskEntityType];
 
 export const ReviewTaskEntityType = {
   l1_tag: "l1_tag",

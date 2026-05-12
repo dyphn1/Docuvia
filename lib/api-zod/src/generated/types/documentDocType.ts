@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type DocumentDocType =
-  (typeof DocumentDocType)[keyof typeof DocumentDocType];
+export type DocumentDocType = (typeof DocumentDocType)[keyof typeof DocumentDocType];
 
 export const DocumentDocType = {
   markdown: "markdown",

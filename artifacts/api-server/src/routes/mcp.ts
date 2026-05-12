@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { db } from "@workspace/db";
 import {
   projectsTable,
@@ -9,6 +10,8 @@ import {
 } from "@workspace/db";
 import { eq, or, like, sql, count, isNotNull } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
+import { routeQuery } from "../lib/intent-router.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -297,6 +300,33 @@ router.get("/mcp/get_decision_record", async (req, res) => {
       createdAt: n.createdAt.toISOString(),
     })),
   });
+});
+
+// ---------------------------------------------------------------------------
+// POST /mcp/query — Agentic RAG intent-routing entry point
+// ---------------------------------------------------------------------------
+
+const mcpQueryBodySchema = z.object({
+  q: z.string().min(1, "q is required").max(2000, "q must be 2000 characters or fewer"),
+  project_id: z.number().int().positive().optional(),
+  limit: z.number().int().min(1).max(50).default(10),
+});
+
+router.post("/mcp/query", async (req, res) => {
+  const parsed = mcpQueryBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request body" });
+  }
+
+  const { q, project_id, limit } = parsed.data;
+
+  try {
+    const result = await routeQuery(q, project_id, limit);
+    return res.json({ query: q, ...result });
+  } catch (err) {
+    logger.error({ err }, "[POST /mcp/query] Unhandled error");
+    return res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 export default router;

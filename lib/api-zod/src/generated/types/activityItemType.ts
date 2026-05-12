@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ActivityItemType =
-  (typeof ActivityItemType)[keyof typeof ActivityItemType];
+export type ActivityItemType = (typeof ActivityItemType)[keyof typeof ActivityItemType];
 
 export const ActivityItemType = {
   commit: "commit",

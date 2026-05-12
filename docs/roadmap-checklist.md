@@ -70,10 +70,10 @@
 | `impact_analysis` endpoint          | ✅ Done        | `mcpImpactAnalysisParams.ts`, `mcpImpactResult.ts`            |
 | `get_decision_record` endpoint      | ✅ Done        | `mcpGetDecisionRecordParams.ts`, `mcpDecisionRecord.ts`       |
 | `list_projects` endpoint            | ✅ Done        | `mcpProjectList.ts`, `mcpProjectListProjectsItem.ts`          |
-| Agentic RAG (intent-driven routing) | ❌ Not started | No agent orchestration layer found                            |
+| Agentic RAG (intent-driven routing) | ✅ Done        | `intent-router.ts` + `POST /mcp/query` — LLM-classified 4-way routing (vector/graph/direct/hybrid), OpenAPI spec updated, `useMcpQuery` hook generated |
 | Natural language CLI / Web UI       | ⚠️ Partial     | `artifacts/kg-engine/` frontend exists — completeness unclear |
 
-**Progress: 6 / 8**
+**Progress: 7 / 8**
 
 ---
 
@@ -116,7 +116,7 @@
 
 - [x] **CI/CD**: ✅ Implemented — `.github/workflows/ci.yml` with lint + typecheck-and-build jobs, `.prettierrc`, `.prettierignore`
 - [x] **Document parsers**: ✅ Implemented — `document-parser.ts` + `upload.ts` + `POST /projects/:id/ingest/document/upload`
-- [ ] **Agentic RAG**: Build intent-driven routing layer (vector vs. graph decision)
+- [x] **Agentic RAG**: ✅ Implemented — `intent-router.ts` (LLM intent classification, 4-way routing), `POST /mcp/query` endpoint, OpenAPI spec + Orval codegen (`useMcpQuery` hook)
 
 ### 🟠 Medium Priority — Complete Partial Implementations
 
@@ -148,15 +148,15 @@
 | 2         | Input Layer            | 2 / 4 — 50%       |
 | 3         | Knowledge Construction | 5 / 5 — 100%      |
 | 4         | Knowledge Graph        | 3.5 / 4 — 88%     |
-| 5         | Query Layer / MCP      | 6 / 8 — 75%       |
+| 5         | Query Layer / MCP      | 7 / 8 — 88%       |
 | 6         | Human-in-the-Loop      | 5.5 / 8 — 69%     |
 | 7         | Enhancements           | 2 / 7 — 29%       |
-| **Total** |                        | **30 / 42 — 71%** |
+| **Total** |                        | **31 / 42 — 74%** |
 
-> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers (PDF/DOCX/PPTX/MD), and CI/CD (GitHub Actions) are now fully implemented.  
-> The remaining critical gap is **Agentic RAG** intent-routing layer.
+> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers (PDF/DOCX/PPTX/MD), CI/CD (GitHub Actions), and **Agentic RAG** intent-routing layer are now fully implemented.  
+> The remaining medium-priority gaps are cross-project AI detection, kg-engine frontend audit, and template management UI.
 
 ---
 
 _Document version: v0.3 — Audited & updated from actual file structure + post-implementation_  
-*Last updated: 2026-05-12 (v0.5 — CI/CD GitHub Actions implemented)*
+*Last updated: 2026-05-12 (v0.6 — Agentic RAG intent-routing layer implemented)*

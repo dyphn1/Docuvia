@@ -26,17 +26,11 @@ export const GetDashboardResponse = zod.object({
   recentActivity: zod.array(
     zod.object({
       id: zod.number(),
-      type: zod.enum([
-        "commit",
-        "l2_created",
-        "l3_created",
-        "review_resolved",
-        "tag_added",
-      ]),
+      type: zod.enum(["commit", "l2_created", "l3_created", "review_resolved", "tag_added"]),
       description: zod.string(),
       projectName: zod.string().nullish(),
       createdAt: zod.string(),
-    }),
+    })
   ),
 });
 
@@ -139,7 +133,7 @@ export const GetProjectGraphResponse = zod.object({
       isAnchored: zod.boolean().optional(),
       usageCount: zod.number(),
       createdAt: zod.string(),
-    }),
+    })
   ),
   l2Nodes: zod.array(
     zod.object({
@@ -153,7 +147,7 @@ export const GetProjectGraphResponse = zod.object({
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
       createdAt: zod.string(),
-    }),
+    })
   ),
   l3Nodes: zod.array(
     zod.object({
@@ -167,7 +161,7 @@ export const GetProjectGraphResponse = zod.object({
       confidence: zod.number().nullish(),
       noiseScore: zod.number().nullish(),
       createdAt: zod.string(),
-    }),
+    })
   ),
 });
 
@@ -225,9 +219,7 @@ export const ListProjectL2NodesResponseItem = zod.object({
   needsReview: zod.boolean().optional(),
   createdAt: zod.string(),
 });
-export const ListProjectL2NodesResponse = zod.array(
-  ListProjectL2NodesResponseItem,
-);
+export const ListProjectL2NodesResponse = zod.array(ListProjectL2NodesResponseItem);
 
 /**
  * @summary Ingest commits from a Git repository (GitHub API)
@@ -261,9 +253,7 @@ export const IngestDocumentParams = zod.object({
 export const IngestDocumentBody = zod.object({
   filename: zod.string().min(1),
   content: zod.string().min(1),
-  docType: zod
-    .enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"])
-    .optional(),
+  docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]).optional(),
 });
 
 /**
@@ -289,14 +279,7 @@ export const UploadDocumentResponse = zod.object({
   id: zod.number(),
   projectId: zod.number(),
   filename: zod.string(),
-  docType: zod.enum([
-    "markdown",
-    "txt",
-    "pdf",
-    "docx",
-    "pptx",
-    "build_artifact",
-  ]),
+  docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
   createdAt: zod.string(),
 });
@@ -312,14 +295,7 @@ export const ListDocumentsResponseItem = zod.object({
   id: zod.number(),
   projectId: zod.number(),
   filename: zod.string(),
-  docType: zod.enum([
-    "markdown",
-    "txt",
-    "pdf",
-    "docx",
-    "pptx",
-    "build_artifact",
-  ]),
+  docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
   createdAt: zod.string(),
 });
@@ -378,7 +354,7 @@ export const ExportProjectResponse = zod.object({
       isAnchored: zod.boolean().optional(),
       usageCount: zod.number(),
       createdAt: zod.string(),
-    }),
+    })
   ),
   l2Nodes: zod.array(
     zod.object({
@@ -392,7 +368,7 @@ export const ExportProjectResponse = zod.object({
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
       createdAt: zod.string(),
-    }),
+    })
   ),
   l3Nodes: zod.array(
     zod.object({
@@ -406,7 +382,7 @@ export const ExportProjectResponse = zod.object({
       confidence: zod.number().nullish(),
       noiseScore: zod.number().nullish(),
       createdAt: zod.string(),
-    }),
+    })
   ),
   commits: zod.array(
     zod.object({
@@ -419,7 +395,7 @@ export const ExportProjectResponse = zod.object({
       filterScore: zod.number().nullish(),
       l2NodeId: zod.number().nullish(),
       createdAt: zod.string(),
-    }),
+    })
   ),
   exportedAt: zod.string(),
 });
@@ -746,7 +722,7 @@ export const SearchKnowledgeResponse = zod.object({
       projectName: zod.string().nullish(),
       score: zod.number().optional(),
       createdAt: zod.string(),
-    }),
+    })
   ),
   total: zod.number(),
 });
@@ -762,7 +738,7 @@ export const McpListProjectsResponse = zod.object({
       repoUrl: zod.string(),
       l2Count: zod.number(),
       l3Count: zod.number(),
-    }),
+    })
   ),
 });
 
@@ -789,7 +765,7 @@ export const McpSearchKnowledgeResponse = zod.object({
       projectName: zod.string().nullish(),
       score: zod.number().optional(),
       createdAt: zod.string(),
-    }),
+    })
   ),
 });
 
@@ -845,6 +821,48 @@ export const McpGetDecisionRecordResponse = zod.object({
       confidence: zod.number().nullish(),
       noiseScore: zod.number().nullish(),
       createdAt: zod.string(),
-    }),
+    })
   ),
+});
+
+/**
+ * @summary MCP: Agentic RAG query with intent routing
+ */
+export const mcpQueryBodyQMax = 2000;
+
+export const mcpQueryBodyLimitDefault = 10;
+export const mcpQueryBodyLimitMax = 50;
+
+export const McpQueryBody = zod.object({
+  q: zod.string().min(1).max(mcpQueryBodyQMax),
+  project_id: zod.number().optional(),
+  limit: zod.number().min(1).max(mcpQueryBodyLimitMax).default(mcpQueryBodyLimitDefault),
+});
+
+export const McpQueryResponse = zod.object({
+  query: zod.string(),
+  routingStrategy: zod.enum(["vector_search", "graph_traversal", "direct_lookup", "hybrid"]),
+  entities: zod.object({
+    moduleName: zod.string().nullish(),
+    commitHash: zod.string().nullish(),
+    searchQuery: zod.string().nullish(),
+  }),
+  results: zod.array(
+    zod.object({
+      source: zod.enum(["vector", "graph", "direct"]),
+      nodeLayer: zod.enum(["l1", "l2", "l3", "commit"]),
+      id: zod.union([zod.number(), zod.string()]),
+      title: zod.string(),
+      content: zod.string().nullish(),
+      projectId: zod.number().nullish(),
+      projectName: zod.string().nullish(),
+      score: zod.number(),
+      createdAt: zod.string(),
+    })
+  ),
+  metadata: zod.object({
+    classificationConfidence: zod.number(),
+    reasoning: zod.string(),
+    durationMs: zod.number(),
+  }),
 });

@@ -861,6 +861,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/McpDecisionRecord"
 
+  /mcp/query:
+    post:
+      operationId: mcpQuery
+      tags: [mcp]
+      summary: "MCP: Agentic RAG query with intent routing"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/McpQueryInput"
+      responses:
+        "200":
+          description: Agentic query result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/McpQueryResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1557,3 +1588,85 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/L3Node"
+
+    RoutingStrategy:
+      type: string
+      enum: [vector_search, graph_traversal, direct_lookup, hybrid]
+
+    AgenticEntities:
+      type: object
+      properties:
+        moduleName:
+          type: ["string", "null"]
+        commitHash:
+          type: ["string", "null"]
+        searchQuery:
+          type: ["string", "null"]
+
+    AgenticSearchResult:
+      type: object
+      required: [source, nodeLayer, id, title, score, createdAt]
+      properties:
+        source:
+          type: string
+          enum: [vector, graph, direct]
+        nodeLayer:
+          type: string
+          enum: [l1, l2, l3, commit]
+        id:
+          oneOf:
+            - type: integer
+            - type: string
+        title:
+          type: string
+        content:
+          type: ["string", "null"]
+        projectId:
+          type: ["integer", "null"]
+        projectName:
+          type: ["string", "null"]
+        score:
+          type: number
+        createdAt:
+          type: string
+
+    McpQueryInput:
+      type: object
+      required: [q]
+      properties:
+        q:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        project_id:
+          type: integer
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 50
+          default: 10
+
+    McpQueryResult:
+      type: object
+      required: [query, routingStrategy, entities, results, metadata]
+      properties:
+        query:
+          type: string
+        routingStrategy:
+          $ref: "#/components/schemas/RoutingStrategy"
+        entities:
+          $ref: "#/components/schemas/AgenticEntities"
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgenticSearchResult"
+        metadata:
+          type: object
+          required: [classificationConfidence, reasoning, durationMs]
+          properties:
+            classificationConfidence:
+              type: number
+            reasoning:
+              type: string
+            durationMs:
+              type: number

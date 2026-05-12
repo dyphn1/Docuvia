@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type L3NodeNodeType =
-  (typeof L3NodeNodeType)[keyof typeof L3NodeNodeType];
+export type L3NodeNodeType = (typeof L3NodeNodeType)[keyof typeof L3NodeNodeType];
 
 export const L3NodeNodeType = {
   change: "change",

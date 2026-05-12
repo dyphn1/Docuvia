@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type ProjectUpdateStatus =
-  (typeof ProjectUpdateStatus)[keyof typeof ProjectUpdateStatus];
+export type ProjectUpdateStatus = (typeof ProjectUpdateStatus)[keyof typeof ProjectUpdateStatus];
 
 export const ProjectUpdateStatus = {
   active: "active",

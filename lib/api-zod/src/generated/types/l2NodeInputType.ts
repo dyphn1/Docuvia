@@ -6,8 +6,7 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type L2NodeInputType =
-  (typeof L2NodeInputType)[keyof typeof L2NodeInputType];
+export type L2NodeInputType = (typeof L2NodeInputType)[keyof typeof L2NodeInputType];
 
 export const L2NodeInputType = {
   package: "package",

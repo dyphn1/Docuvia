@@ -9,8 +9,7 @@ export interface HealthStatus {
   status: string;
 }
 
-export type ActivityItemType =
-  (typeof ActivityItemType)[keyof typeof ActivityItemType];
+export type ActivityItemType = (typeof ActivityItemType)[keyof typeof ActivityItemType];
 
 export const ActivityItemType = {
   commit: "commit",
@@ -69,8 +68,7 @@ export interface ProjectInput {
   description?: string;
 }
 
-export type ProjectUpdateStatus =
-  (typeof ProjectUpdateStatus)[keyof typeof ProjectUpdateStatus];
+export type ProjectUpdateStatus = (typeof ProjectUpdateStatus)[keyof typeof ProjectUpdateStatus];
 
 export const ProjectUpdateStatus = {
   active: "active",
@@ -120,8 +118,7 @@ export interface L2Node {
   createdAt: string;
 }
 
-export type L3NodeNodeType =
-  (typeof L3NodeNodeType)[keyof typeof L3NodeNodeType];
+export type L3NodeNodeType = (typeof L3NodeNodeType)[keyof typeof L3NodeNodeType];
 
 export const L3NodeNodeType = {
   change: "change",
@@ -194,8 +191,7 @@ export interface L1TagUpdate {
   isAnchored?: boolean;
 }
 
-export type L2NodeInputType =
-  (typeof L2NodeInputType)[keyof typeof L2NodeInputType];
+export type L2NodeInputType = (typeof L2NodeInputType)[keyof typeof L2NodeInputType];
 
 export const L2NodeInputType = {
   package: "package",
@@ -213,8 +209,7 @@ export interface L2NodeInput {
   aiGenerated?: boolean;
 }
 
-export type L2NodeUpdateType =
-  (typeof L2NodeUpdateType)[keyof typeof L2NodeUpdateType];
+export type L2NodeUpdateType = (typeof L2NodeUpdateType)[keyof typeof L2NodeUpdateType];
 
 export const L2NodeUpdateType = {
   package: "package",
@@ -248,8 +243,7 @@ export interface NodeLinkInput {
   linkType?: string;
 }
 
-export type L3NodeInputNodeType =
-  (typeof L3NodeInputNodeType)[keyof typeof L3NodeInputNodeType];
+export type L3NodeInputNodeType = (typeof L3NodeInputNodeType)[keyof typeof L3NodeInputNodeType];
 
 export const L3NodeInputNodeType = {
   change: "change",
@@ -268,8 +262,7 @@ export interface L3NodeInput {
   confidence?: number;
 }
 
-export type L3NodeUpdateNodeType =
-  (typeof L3NodeUpdateNodeType)[keyof typeof L3NodeUpdateNodeType];
+export type L3NodeUpdateNodeType = (typeof L3NodeUpdateNodeType)[keyof typeof L3NodeUpdateNodeType];
 
 export const L3NodeUpdateNodeType = {
   change: "change",
@@ -297,8 +290,7 @@ export interface CommitInput {
   l2NodeId?: number;
 }
 
-export type ReviewTaskEntityType =
-  (typeof ReviewTaskEntityType)[keyof typeof ReviewTaskEntityType];
+export type ReviewTaskEntityType = (typeof ReviewTaskEntityType)[keyof typeof ReviewTaskEntityType];
 
 export const ReviewTaskEntityType = {
   l1_tag: "l1_tag",
@@ -306,8 +298,7 @@ export const ReviewTaskEntityType = {
   l3_node: "l3_node",
 } as const;
 
-export type ReviewTaskTaskType =
-  (typeof ReviewTaskTaskType)[keyof typeof ReviewTaskTaskType];
+export type ReviewTaskTaskType = (typeof ReviewTaskTaskType)[keyof typeof ReviewTaskTaskType];
 
 export const ReviewTaskTaskType = {
   anchor: "anchor",
@@ -316,8 +307,7 @@ export const ReviewTaskTaskType = {
   merge: "merge",
 } as const;
 
-export type ReviewTaskStatus =
-  (typeof ReviewTaskStatus)[keyof typeof ReviewTaskStatus];
+export type ReviewTaskStatus = (typeof ReviewTaskStatus)[keyof typeof ReviewTaskStatus];
 
 export const ReviewTaskStatus = {
   pending: "pending",
@@ -395,8 +385,7 @@ export interface DocumentUploadInput {
   commitSha?: string;
 }
 
-export type DocumentDocType =
-  (typeof DocumentDocType)[keyof typeof DocumentDocType];
+export type DocumentDocType = (typeof DocumentDocType)[keyof typeof DocumentDocType];
 
 export const DocumentDocType = {
   markdown: "markdown",
@@ -552,6 +541,86 @@ export interface McpDecisionRecord {
   /** @nullable */
   commitMessage?: string | null;
   decisions: L3Node[];
+}
+
+export type RoutingStrategy = (typeof RoutingStrategy)[keyof typeof RoutingStrategy];
+
+export const RoutingStrategy = {
+  vector_search: "vector_search",
+  graph_traversal: "graph_traversal",
+  direct_lookup: "direct_lookup",
+  hybrid: "hybrid",
+} as const;
+
+export interface AgenticEntities {
+  /** @nullable */
+  moduleName?: string | null;
+  /** @nullable */
+  commitHash?: string | null;
+  /** @nullable */
+  searchQuery?: string | null;
+}
+
+export type AgenticSearchResultSource =
+  (typeof AgenticSearchResultSource)[keyof typeof AgenticSearchResultSource];
+
+export const AgenticSearchResultSource = {
+  vector: "vector",
+  graph: "graph",
+  direct: "direct",
+} as const;
+
+export type AgenticSearchResultNodeLayer =
+  (typeof AgenticSearchResultNodeLayer)[keyof typeof AgenticSearchResultNodeLayer];
+
+export const AgenticSearchResultNodeLayer = {
+  l1: "l1",
+  l2: "l2",
+  l3: "l3",
+  commit: "commit",
+} as const;
+
+export interface AgenticSearchResult {
+  source: AgenticSearchResultSource;
+  nodeLayer: AgenticSearchResultNodeLayer;
+  id: number | string;
+  title: string;
+  /** @nullable */
+  content?: string | null;
+  /** @nullable */
+  projectId?: number | null;
+  /** @nullable */
+  projectName?: string | null;
+  score: number;
+  createdAt: string;
+}
+
+export interface McpQueryInput {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  q: string;
+  project_id?: number;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  limit?: number;
+}
+
+export type McpQueryResultMetadata = {
+  classificationConfidence: number;
+  reasoning: string;
+  durationMs: number;
+};
+
+export interface McpQueryResult {
+  query: string;
+  routingStrategy: RoutingStrategy;
+  entities: AgenticEntities;
+  results: AgenticSearchResult[];
+  metadata: McpQueryResultMetadata;
 }
 
 export type McpSearchKnowledgeParams = {

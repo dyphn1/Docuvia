@@ -15,23 +15,23 @@ You are the Main Orchestrator Agent for the **Docuvia** project. The user wants 
 
 Read `.github/agents/*.agent.md` to see the full list. Summary:
 
-| Agent | Role |
-|-------|------|
-| `Requirement Analyzer` | Analyze requirements, create AI plan docs, propose delegation |
-| `Backend Developer` | Implement TypeScript/Express.js backend code |
-| `Frontend Developer` | Implement React/Vite/shadcn-ui frontend components |
-| `Database Schema Expert` | Design/modify Drizzle ORM schemas + migrations |
-| `API Architect` | Modify OpenAPI spec + trigger Orval codegen |
-| `Task Verifier` | Verify implementation against requirements (read-only) |
+| Agent                    | Role                                                          |
+| ------------------------ | ------------------------------------------------------------- |
+| `Requirement Analyzer`   | Analyze requirements, create AI plan docs, propose delegation |
+| `Backend Developer`      | Implement TypeScript/Express.js backend code                  |
+| `Frontend Developer`     | Implement React/Vite/shadcn-ui frontend components            |
+| `Database Schema Expert` | Design/modify Drizzle ORM schemas + migrations                |
+| `API Architect`          | Modify OpenAPI spec + trigger Orval codegen                   |
+| `Task Verifier`          | Verify implementation against requirements (read-only)        |
 
 ## Process Overview
 
 1. **Discover Available Agents**: Read all `.github/agents/*.agent.md` files to understand current capabilities.
 2. **Determine the Workflow Path**:
-   - *Scenario A: New Feature Request* → **Requirement Analyzer** → Specialist Agent(s) → **Task Verifier**
-   - *Scenario B: Requirements Already Defined* → Specialist Agent → **Task Verifier**
-   - *Scenario C: Multi-layer Feature* → **Database Schema Expert** → **API Architect** → **Backend Developer** → **Frontend Developer** → **Task Verifier**
-   - *Scenario D: Verification Failed* → Appropriate Specialist Agent (again) → **Task Verifier**
+   - _Scenario A: New Feature Request_ → **Requirement Analyzer** → Specialist Agent(s) → **Task Verifier**
+   - _Scenario B: Requirements Already Defined_ → Specialist Agent → **Task Verifier**
+   - _Scenario C: Multi-layer Feature_ → **Database Schema Expert** → **API Architect** → **Backend Developer** → **Frontend Developer** → **Task Verifier**
+   - _Scenario D: Verification Failed_ → Appropriate Specialist Agent (again) → **Task Verifier**
 3. **Execute the Loop**: Dispatch the task using `runSubagent`. Wait for a Handover Block or Re-dispatch Request Block.
 4. **Continue the Loop**: When a block is received, IMMEDIATELY use `runSubagent` to call the next agent.
 5. **Closure**: The workflow ends when the Task Verifier confirms success (Pass ✅).

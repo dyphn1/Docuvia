@@ -1,13 +1,20 @@
 import { useState } from "react";
-import { 
-  useListL1Tags, 
+import {
+  useListL1Tags,
   getListL1TagsQueryKey,
   useCreateL1Tag,
   useUpdateL1Tag,
-  useDeleteL1Tag
+  useDeleteL1Tag,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,11 +33,11 @@ export default function L1Tags() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
+
   const [newTag, setNewTag] = useState({ name: "", category: "domain", description: "" });
 
   const { data: tags, isLoading } = useListL1Tags({
-    query: { queryKey: getListL1TagsQueryKey() }
+    query: { queryKey: getListL1TagsQueryKey() },
   });
 
   const createTag = useCreateL1Tag();
@@ -39,34 +46,44 @@ export default function L1Tags() {
 
   const handleCreate = () => {
     if (!newTag.name || !newTag.category) return;
-    createTag.mutate({ data: { ...newTag, isAnchored: true } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListL1TagsQueryKey() });
-        setIsDialogOpen(false);
-        setNewTag({ name: "", category: "domain", description: "" });
+    createTag.mutate(
+      { data: { ...newTag, isAnchored: true } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListL1TagsQueryKey() });
+          setIsDialogOpen(false);
+          setNewTag({ name: "", category: "domain", description: "" });
+        },
       }
-    });
+    );
   };
 
   const handleToggleAnchor = (id: number, isAnchored: boolean) => {
-    updateTag.mutate({ id, data: { isAnchored: !isAnchored } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListL1TagsQueryKey() });
+    updateTag.mutate(
+      { id, data: { isAnchored: !isAnchored } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListL1TagsQueryKey() });
+        },
       }
-    });
+    );
   };
 
   const handleDelete = (id: number) => {
-    deleteTag.mutate({ id }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListL1TagsQueryKey() });
+    deleteTag.mutate(
+      { id },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListL1TagsQueryKey() });
+        },
       }
-    });
+    );
   };
 
-  const filteredTags = tags?.filter(t => 
-    t.name.toLowerCase().includes(search.toLowerCase()) || 
-    t.category.toLowerCase().includes(search.toLowerCase())
+  const filteredTags = tags?.filter(
+    (t) =>
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      t.category.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -89,26 +106,26 @@ export default function L1Tags() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Tag Name</label>
-                <Input 
-                  value={newTag.name} 
-                  onChange={e => setNewTag({ ...newTag, name: e.target.value })} 
-                  placeholder="e.g. Authentication" 
+                <Input
+                  value={newTag.name}
+                  onChange={(e) => setNewTag({ ...newTag, name: e.target.value })}
+                  placeholder="e.g. Authentication"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Category</label>
-                <Input 
-                  value={newTag.category} 
-                  onChange={e => setNewTag({ ...newTag, category: e.target.value })} 
-                  placeholder="e.g. domain, infrastructure" 
+                <Input
+                  value={newTag.category}
+                  onChange={(e) => setNewTag({ ...newTag, category: e.target.value })}
+                  placeholder="e.g. domain, infrastructure"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Description</label>
-                <Input 
-                  value={newTag.description} 
-                  onChange={e => setNewTag({ ...newTag, description: e.target.value })} 
-                  placeholder="Optional description" 
+                <Input
+                  value={newTag.description}
+                  onChange={(e) => setNewTag({ ...newTag, description: e.target.value })}
+                  placeholder="Optional description"
                 />
               </div>
               <Button className="w-full mt-4" onClick={handleCreate} disabled={createTag.isPending}>
@@ -122,11 +139,11 @@ export default function L1Tags() {
       <div className="flex items-center gap-4 mb-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search tags..." 
+          <Input
+            placeholder="Search tags..."
             className="pl-9 bg-card/50"
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
       </div>
@@ -168,7 +185,10 @@ export default function L1Tags() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="text-[10px] uppercase font-mono bg-background border-border/50">
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] uppercase font-mono bg-background border-border/50"
+                      >
                         {tag.category}
                       </Badge>
                     </TableCell>
@@ -176,20 +196,23 @@ export default function L1Tags() {
                       {tag.description || "—"}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Switch 
-                        checked={tag.isAnchored} 
+                      <Switch
+                        checked={tag.isAnchored}
                         onCheckedChange={() => handleToggleAnchor(tag.id, tag.isAnchored || false)}
                         className="data-[state=checked]:bg-primary"
                       />
                     </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
-                      {tag.usageCount}
-                    </TableCell>
+                    <TableCell className="text-right font-mono text-sm">{tag.usageCount}</TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
                       {format(new Date(tag.createdAt), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDelete(tag.id)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDelete(tag.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>

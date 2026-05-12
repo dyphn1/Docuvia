@@ -8,13 +8,13 @@ import { join } from "path";
 
 if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
   throw new Error(
-    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?",
+    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?"
   );
 }
 
 if (!process.env.AI_INTEGRATIONS_OPENAI_API_KEY) {
   throw new Error(
-    "AI_INTEGRATIONS_OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?",
+    "AI_INTEGRATIONS_OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?"
   );
 }
 
@@ -70,12 +70,17 @@ export async function convertToWav(audioBuffer: Buffer): Promise<Buffer> {
 
     await new Promise<void>((resolve, reject) => {
       const ffmpeg = spawn("ffmpeg", [
-        "-i", inputPath,
+        "-i",
+        inputPath,
         "-vn",
-        "-f", "wav",
-        "-ar", "16000",
-        "-ac", "1",
-        "-acodec", "pcm_s16le",
+        "-f",
+        "wav",
+        "-ar",
+        "16000",
+        "-ac",
+        "1",
+        "-acodec",
+        "pcm_s16le",
         "-y",
         outputPath,
       ]);
@@ -120,12 +125,12 @@ export async function voiceChat(
     model: "gpt-audio",
     modalities: ["text", "audio"],
     audio: { voice, format: outputFormat },
-    messages: [{
-      role: "user",
-      content: [
-        { type: "input_audio", input_audio: { data: audioBase64, format: inputFormat } },
-      ],
-    }],
+    messages: [
+      {
+        role: "user",
+        content: [{ type: "input_audio", input_audio: { data: audioBase64, format: inputFormat } }],
+      },
+    ],
   });
   const message = response.choices[0]?.message as any;
   const transcript = message?.audio?.transcript || message?.content || "";
@@ -147,12 +152,12 @@ export async function voiceChatStream(
     model: "gpt-audio",
     modalities: ["text", "audio"],
     audio: { voice, format: "pcm16" },
-    messages: [{
-      role: "user",
-      content: [
-        { type: "input_audio", input_audio: { data: audioBase64, format: inputFormat } },
-      ],
-    }],
+    messages: [
+      {
+        role: "user",
+        content: [{ type: "input_audio", input_audio: { data: audioBase64, format: inputFormat } }],
+      },
+    ],
     stream: true,
   });
 

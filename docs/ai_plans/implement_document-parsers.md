@@ -22,6 +22,7 @@ Enable real binary document ingestion for the Docuvia platform by:
 ### Existing Implementation (`artifacts/api-server/src/routes/ingest.ts`)
 
 The current `POST /projects/:id/ingest/document` route:
+
 - Accepts a JSON body: `{ filename: string, content: string, docType?: enum }`
 - Stores `content` verbatim into `documentsTable.content` (text column)
 - **Problem**: Binary files (PDF/DOCX/PPTX) cannot be meaningfully sent as raw JSON strings. Clients have no way to upload actual binary files.
@@ -30,14 +31,23 @@ The current `POST /projects/:id/ingest/document` route:
 ### DB Schema (`lib/db/src/schema/documents.ts`)
 
 ```ts
-export const documentTypeEnum = pgEnum("document_type", ["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]);
+export const documentTypeEnum = pgEnum("document_type", [
+  "markdown",
+  "txt",
+  "pdf",
+  "docx",
+  "pptx",
+  "build_artifact",
+]);
 
 export const documentsTable = pgTable("documents", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projectsTable.id, { onDelete: "cascade" }),
   filename: text("filename").notNull(),
   docType: documentTypeEnum("doc_type").notNull().default("markdown"),
-  content: text("content").notNull(),   // stores extracted plain text
+  content: text("content").notNull(), // stores extracted plain text
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 ```
@@ -55,6 +65,7 @@ The existing `DocumentIngestInput` schema requires `content: string`. A new mult
 ### Design Decision: Add New Multipart Endpoint (Non-Breaking)
 
 Add a dedicated `POST /projects/:id/ingest/document/upload` endpoint that:
+
 - Accepts `multipart/form-data` with a single `file` field (binary upload)
 - Detects document type from file extension
 - Extracts plain text via a format-specific parser library
@@ -65,12 +76,12 @@ The existing JSON endpoint remains **unchanged** — no breaking changes.
 
 ### Parser Library Selection
 
-| Format | Library | Rationale |
-|--------|---------|-----------|
-| PDF | `pdf-parse` (npm) | Well-maintained, pure JS, no native deps |
-| DOCX | `mammoth` (npm) | Extracts clean text from Word documents |
-| PPTX | `officeparser` (npm) | Handles PPTX text extraction without native binaries |
-| MD / TXT | Built-in string passthrough | No parsing needed |
+| Format   | Library                     | Rationale                                            |
+| -------- | --------------------------- | ---------------------------------------------------- |
+| PDF      | `pdf-parse` (npm)           | Well-maintained, pure JS, no native deps             |
+| DOCX     | `mammoth` (npm)             | Extracts clean text from Word documents              |
+| PPTX     | `officeparser` (npm)        | Handles PPTX text extraction without native binaries |
+| MD / TXT | Built-in string passthrough | No parsing needed                                    |
 
 All three libraries are pure-JS / pure-Node — no native binaries required, compatible with the ESM monorepo.
 
@@ -85,6 +96,7 @@ Use `multer` with `memoryStorage()` so the uploaded file buffer is available at 
 ### Step 1: Install Dependencies
 
 In `artifacts/api-server/package.json`, add to `dependencies`:
+
 ```json
 "multer": "^1.4.5-lts.2",
 "pdf-parse": "^1.1.1",
@@ -93,6 +105,7 @@ In `artifacts/api-server/package.json`, add to `dependencies`:
 ```
 
 Add to `devDependencies`:
+
 ```json
 "@types/multer": "^1.4.12",
 "@types/pdf-parse": "^1.1.4"
@@ -149,7 +162,7 @@ export async function extractText(buffer: Buffer, docType: SupportedDocType): Pr
       return result.value.trim();
     }
     case "pptx": {
-      const text = await parseOffice(buffer) as string;
+      const text = (await parseOffice(buffer)) as string;
       return text.trim();
     }
     case "markdown":
@@ -211,7 +224,9 @@ router.post(
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded. Use multipart/form-data with field name 'file'." });
+      return res
+        .status(400)
+        .json({ error: "No file uploaded. Use multipart/form-data with field name 'file'." });
     }
 
     const { originalname, buffer } = req.file;
@@ -226,15 +241,20 @@ router.post(
     }
 
     if (!content || content.length === 0) {
-      return res.status(422).json({ error: "Extracted content is empty. The document may be encrypted or contain only images." });
+      return res.status(422).json({
+        error: "Extracted content is empty. The document may be encrypted or contain only images.",
+      });
     }
 
-    const [doc] = await db.insert(documentsTable).values({
-      projectId,
-      filename: originalname,
-      docType,
-      content,
-    }).returning();
+    const [doc] = await db
+      .insert(documentsTable)
+      .values({
+        projectId,
+        filename: originalname,
+        docType,
+        content,
+      })
+      .returning();
 
     await db.insert(activityLogTable).values({
       type: "document",
@@ -256,48 +276,48 @@ The upload route `/projects/:id/ingest/document/upload` **must be registered BEF
 In `lib/api-spec/openapi.yaml`, add the new endpoint immediately after the existing `/projects/{id}/ingest/document` block (around line 284):
 
 ```yaml
-  /projects/{id}/ingest/document/upload:
-    post:
-      operationId: uploadDocument
-      tags: [ingest]
-      summary: Upload and ingest a binary document (PDF, DOCX, PPTX) — text is extracted server-side
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
+/projects/{id}/ingest/document/upload:
+  post:
+    operationId: uploadDocument
+    tags: [ingest]
+    summary: Upload and ingest a binary document (PDF, DOCX, PPTX) — text is extracted server-side
+    parameters:
+      - name: id
+        in: path
         required: true
+        schema:
+          type: integer
+    requestBody:
+      required: true
+      content:
+        multipart/form-data:
+          schema:
+            type: object
+            required: [file]
+            properties:
+              file:
+                type: string
+                format: binary
+                description: Document file (PDF, DOCX, PPTX, TXT, MD) — max 10 MB
+    responses:
+      "201":
+        description: Document stored with extracted text content
         content:
-          multipart/form-data:
+          application/json:
             schema:
-              type: object
-              required: [file]
-              properties:
-                file:
-                  type: string
-                  format: binary
-                  description: Document file (PDF, DOCX, PPTX, TXT, MD) — max 10 MB
-      responses:
-        "201":
-          description: Document stored with extracted text content
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Document"
-        "400":
-          description: No file uploaded or invalid request
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "422":
-          description: File could not be parsed (encrypted, image-only, corrupt)
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+              $ref: "#/components/schemas/Document"
+      "400":
+        description: No file uploaded or invalid request
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
+      "422":
+        description: File could not be parsed (encrypted, image-only, corrupt)
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ErrorResponse"
 ```
 
 ### Step 7: Run Orval Code Generation
@@ -320,15 +340,15 @@ pnpm --filter @workspace/api-server run build
 
 ### Affected Files
 
-| File | Change Type |
-|------|-------------|
-| `artifacts/api-server/package.json` | Add `multer`, `pdf-parse`, `mammoth`, `officeparser` deps |
-| `artifacts/api-server/src/lib/document-parser.ts` | **CREATE** — text extraction utility |
-| `artifacts/api-server/src/middlewares/upload.ts` | **CREATE** — multer middleware |
-| `artifacts/api-server/src/routes/ingest.ts` | **MODIFY** — add upload route, import new modules |
-| `lib/api-spec/openapi.yaml` | **MODIFY** — add multipart endpoint |
-| `lib/api-zod/src/generated/` | Auto-generated via Orval after spec update |
-| `lib/api-client-react/src/generated/` | Auto-generated via Orval after spec update |
+| File                                              | Change Type                                               |
+| ------------------------------------------------- | --------------------------------------------------------- |
+| `artifacts/api-server/package.json`               | Add `multer`, `pdf-parse`, `mammoth`, `officeparser` deps |
+| `artifacts/api-server/src/lib/document-parser.ts` | **CREATE** — text extraction utility                      |
+| `artifacts/api-server/src/middlewares/upload.ts`  | **CREATE** — multer middleware                            |
+| `artifacts/api-server/src/routes/ingest.ts`       | **MODIFY** — add upload route, import new modules         |
+| `lib/api-spec/openapi.yaml`                       | **MODIFY** — add multipart endpoint                       |
+| `lib/api-zod/src/generated/`                      | Auto-generated via Orval after spec update                |
+| `lib/api-client-react/src/generated/`             | Auto-generated via Orval after spec update                |
 
 ### Affected pnpm Workspace Packages
 
@@ -347,14 +367,14 @@ pnpm --filter @workspace/api-server run build
 
 ## 6. Error Handling Strategy
 
-| Scenario | HTTP Status | Response |
-|----------|-------------|----------|
-| No file in request | 400 | `{ error: "No file uploaded..." }` |
-| Unsupported file type | 400 | multer fileFilter error |
-| File too large (>10 MB) | 413 | multer limit error (propagated by Express) |
-| Parser throws (corrupt/encrypted) | 422 | `{ error: "Failed to parse document: ..." }` |
-| Empty extraction result | 422 | `{ error: "Extracted content is empty..." }` |
-| Project not found | 404 | `{ error: "Project not found" }` |
+| Scenario                          | HTTP Status | Response                                     |
+| --------------------------------- | ----------- | -------------------------------------------- |
+| No file in request                | 400         | `{ error: "No file uploaded..." }`           |
+| Unsupported file type             | 400         | multer fileFilter error                      |
+| File too large (>10 MB)           | 413         | multer limit error (propagated by Express)   |
+| Parser throws (corrupt/encrypted) | 422         | `{ error: "Failed to parse document: ..." }` |
+| Empty extraction result           | 422         | `{ error: "Extracted content is empty..." }` |
+| Project not found                 | 404         | `{ error: "Project not found" }`             |
 
 ---
 

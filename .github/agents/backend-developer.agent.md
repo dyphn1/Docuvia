@@ -49,6 +49,7 @@ pnpm run build
 ## Output Format
 
 When finished, output:
+
 ```
 ### 🤝 Handover Block
 - **Status**: Implementation complete

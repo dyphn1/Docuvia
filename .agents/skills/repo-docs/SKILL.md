@@ -44,6 +44,7 @@ python /path/to/skill/scripts/recon.py <repo_root>
 ```
 
 The script outputs a JSON summary covering:
+
 - Directory tree (depth-limited, ignoring noise)
 - Detected project type(s) and language(s)
 - Build / test / lint commands extracted from config files
@@ -66,12 +67,12 @@ conventions before generating output.
 
 Check which files already exist:
 
-| Situation | Action |
-|---|---|
-| Neither exists | Generate both from scratch |
-| README exists, AGENT missing | Generate AGENT.md; offer to refresh README |
-| AGENT exists, README missing | Generate README.md; offer to refresh AGENT |
-| Both exist | Update both, preserving user-written sections |
+| Situation                    | Action                                        |
+| ---------------------------- | --------------------------------------------- |
+| Neither exists               | Generate both from scratch                    |
+| README exists, AGENT missing | Generate AGENT.md; offer to refresh README    |
+| AGENT exists, README missing | Generate README.md; offer to refresh AGENT    |
+| Both exist                   | Update both, preserving user-written sections |
 
 **Always ask before overwriting** custom sections (badges, screenshots, license
 blocks). When updating, use a merge strategy: keep human-written prose, refresh
@@ -90,25 +91,25 @@ Use the template in `references/readme-template.md` as your structural guide.
 
 #### Required sections
 
-| Section | Description |
-|---|---|
-| **Title & Summary** | Project name + one-line description |
-| **Badges / Quick Start** | Language, license, CI; setup + build in 3–5 steps |
-| **Table of Contents** | Auto-generated |
-| **Overview & Goals** | 2–4 sentences on purpose and context |
-| **Architecture & Components** | High-level module list |
-| **Project Structure** | Abbreviated tree with one-line dir descriptions |
-| **System Requirements** | OS, runtime versions (Node, Python, .NET, etc.) |
-| **Installation / Setup** | Exact commands to prepare the environment |
-| **Build** | Per-language build commands |
-| **Usage** | Primary usage commands or code snippet |
-| **Test** | How to run tests (full suite + single file) |
-| **Debugging** | Reference `.vscode/launch.json` or equivalent if present |
-| **Packaging & Release** | How to produce artifacts (VSIX, wheel, binary, etc.) |
-| **Contributing** | Brief note or link to CONTRIBUTING.md |
-| **Troubleshooting / FAQ** | Common pitfalls found in the codebase |
-| **License** | SPDX ID from LICENSE file or package.json |
-| **For AI Agents** | One-line notice pointing agents to `AGENT.md` (see below) |
+| Section                       | Description                                               |
+| ----------------------------- | --------------------------------------------------------- |
+| **Title & Summary**           | Project name + one-line description                       |
+| **Badges / Quick Start**      | Language, license, CI; setup + build in 3–5 steps         |
+| **Table of Contents**         | Auto-generated                                            |
+| **Overview & Goals**          | 2–4 sentences on purpose and context                      |
+| **Architecture & Components** | High-level module list                                    |
+| **Project Structure**         | Abbreviated tree with one-line dir descriptions           |
+| **System Requirements**       | OS, runtime versions (Node, Python, .NET, etc.)           |
+| **Installation / Setup**      | Exact commands to prepare the environment                 |
+| **Build**                     | Per-language build commands                               |
+| **Usage**                     | Primary usage commands or code snippet                    |
+| **Test**                      | How to run tests (full suite + single file)               |
+| **Debugging**                 | Reference `.vscode/launch.json` or equivalent if present  |
+| **Packaging & Release**       | How to produce artifacts (VSIX, wheel, binary, etc.)      |
+| **Contributing**              | Brief note or link to CONTRIBUTING.md                     |
+| **Troubleshooting / FAQ**     | Common pitfalls found in the codebase                     |
+| **License**                   | SPDX ID from LICENSE file or package.json                 |
+| **For AI Agents**             | One-line notice pointing agents to `AGENT.md` (see below) |
 
 Skip sections gracefully when the required info is genuinely unavailable; use
 `{{TODO: ...}}` with a verification hint rather than omitting silently.
@@ -156,6 +157,7 @@ Use the template in `references/agent-template.md` as your structural guide.
 
 Before generating AGENT.md from scratch, scan the existing README.md for any
 content that belongs in AGENT.md instead:
+
 - Sections titled "For AI", "Agent notes", "CLAUDE notes", "Copilot context", etc.
 - Detailed command tables intended for automation
 - Architecture diagrams described in text form
@@ -165,6 +167,7 @@ Move that content into AGENT.md verbatim (preserving intent), then replace it
 in README.md with the standard AI agent notice (see Step 3).
 
 Must include:
+
 - **Project overview** — one tight paragraph (what it is, main tech stack)
 - **Commands** — exact, copy-pasteable commands for:
   - `install` / `setup`
@@ -227,29 +230,29 @@ After writing the files, output:
 
 ## Config file → field mapping
 
-| Config file | Fields extracted |
-|---|---|
-| `package.json` | name, description, version, scripts, engines, license, dependencies |
-| `pyproject.toml` / `setup.py` | name, version, python_requires, scripts/entry_points |
-| `Cargo.toml` | name, version, description, edition |
-| `go.mod` | module name, go version |
-| `*.sln` / `*.csproj` | .NET project name, target framework, entry points |
-| `Makefile` | targets used as commands |
-| `.nvmrc` / `.node-version` | Node version requirement |
-| `.python-version` | Python version requirement |
-| `Dockerfile` | base image, exposed ports, run commands |
-| `.github/workflows/*.yml` | CI commands, test commands |
-| `jest.config.*` | test command, coverage config |
-| `vitest.config.*` | test command |
-| `ruff.toml` / `.ruff.toml` | lint command |
-| `.eslintrc*` / `eslint.config.*` | lint command |
-| `prettier.config.*` | format command |
-| `turbo.json` | monorepo pipeline commands |
-| `nx.json` | monorepo project structure |
-| `pnpm-workspace.yaml` | monorepo packages |
-| `compile.sh` / `setup.sh` / `build.sh` | custom build/setup commands |
-| `.vscode/launch.json` | debug configurations |
-| `CLAUDE.md` / `CONTRIBUTING.md` | tone, conventions, project context |
+| Config file                            | Fields extracted                                                    |
+| -------------------------------------- | ------------------------------------------------------------------- |
+| `package.json`                         | name, description, version, scripts, engines, license, dependencies |
+| `pyproject.toml` / `setup.py`          | name, version, python_requires, scripts/entry_points                |
+| `Cargo.toml`                           | name, version, description, edition                                 |
+| `go.mod`                               | module name, go version                                             |
+| `*.sln` / `*.csproj`                   | .NET project name, target framework, entry points                   |
+| `Makefile`                             | targets used as commands                                            |
+| `.nvmrc` / `.node-version`             | Node version requirement                                            |
+| `.python-version`                      | Python version requirement                                          |
+| `Dockerfile`                           | base image, exposed ports, run commands                             |
+| `.github/workflows/*.yml`              | CI commands, test commands                                          |
+| `jest.config.*`                        | test command, coverage config                                       |
+| `vitest.config.*`                      | test command                                                        |
+| `ruff.toml` / `.ruff.toml`             | lint command                                                        |
+| `.eslintrc*` / `eslint.config.*`       | lint command                                                        |
+| `prettier.config.*`                    | format command                                                      |
+| `turbo.json`                           | monorepo pipeline commands                                          |
+| `nx.json`                              | monorepo project structure                                          |
+| `pnpm-workspace.yaml`                  | monorepo packages                                                   |
+| `compile.sh` / `setup.sh` / `build.sh` | custom build/setup commands                                         |
+| `.vscode/launch.json`                  | debug configurations                                                |
+| `CLAUDE.md` / `CONTRIBUTING.md`        | tone, conventions, project context                                  |
 
 ---
 

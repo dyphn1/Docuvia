@@ -2,7 +2,13 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Search, BrainCircuit, Network, Tag, GitMerge, Loader2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
@@ -80,7 +86,8 @@ export default function Query() {
         </div>
         <h1 className="text-3xl font-bold tracking-tight">Semantic Knowledge Query</h1>
         <p className="text-muted-foreground max-w-2xl mx-auto text-sm">
-          Search across all L1 tags, L2 modules, and L3 decision records. Results traverse the full knowledge hierarchy.
+          Search across all L1 tags, L2 modules, and L3 decision records. Results traverse the full
+          knowledge hierarchy.
         </p>
       </div>
 
@@ -92,8 +99,10 @@ export default function Query() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All projects</SelectItem>
-              {projects?.map(p => (
-                <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+              {projects?.map((p) => (
+                <SelectItem key={p.id} value={String(p.id)}>
+                  {p.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -141,13 +150,20 @@ export default function Query() {
           {results.length === 0 ? (
             <div className="max-w-3xl mx-auto w-full text-center py-12 text-muted-foreground">
               <Search className="h-12 w-12 mx-auto mb-3 opacity-20" />
-              <p>No results found for "<span className="font-medium">{query}</span>"</p>
-              <p className="text-xs mt-1">Try a different search term or run the AI pipeline to generate more knowledge nodes.</p>
+              <p>
+                No results found for "<span className="font-medium">{query}</span>"
+              </p>
+              <p className="text-xs mt-1">
+                Try a different search term or run the AI pipeline to generate more knowledge nodes.
+              </p>
             </div>
           ) : (
             <div className="max-w-3xl mx-auto w-full space-y-3 pb-8">
               {results.map((item, i) => (
-                <Card key={i} className="border-border/60 bg-card/50 hover:border-primary/40 transition-colors">
+                <Card
+                  key={i}
+                  className="border-border/60 bg-card/50 hover:border-primary/40 transition-colors"
+                >
                   <CardHeader className="py-3 px-4 border-b border-border/40 bg-muted/20 flex flex-row items-center justify-between space-y-0">
                     <div className="flex items-center gap-2">
                       <Badge
@@ -158,7 +174,9 @@ export default function Query() {
                         {item.nodeLayer.toUpperCase()}
                       </Badge>
                       {item.projectName && (
-                        <span className="text-xs text-muted-foreground font-mono">{item.projectName}</span>
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {item.projectName}
+                        </span>
                       )}
                     </div>
                     <div className="text-[10px] text-muted-foreground font-mono">
@@ -189,7 +207,10 @@ export default function Query() {
               <div>impact_analysis(module)</div>
               <div>get_decision_record(commit_hash)</div>
             </div>
-            <p className="text-xs">MCP tool endpoints available at <code className="bg-muted px-1 rounded">/api/mcp/*</code></p>
+            <p className="text-xs">
+              MCP tool endpoints available at{" "}
+              <code className="bg-muted px-1 rounded">/api/mcp/*</code>
+            </p>
           </div>
         </div>
       )}

@@ -5,12 +5,13 @@ Write in prose — avoid excessive bullets.
 
 ---
 
-```markdown
+````markdown
 # {project_name}
 
 > {one_line_description}
 
 <!-- Optional: badges for language, license, CI status -->
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Overview
@@ -29,6 +30,7 @@ it solves. Write this as a human would, not a spec sheet.}
 {package_manager} install
 # or: pip install -e .
 ```
+````
 
 ## Usage
 
@@ -72,7 +74,8 @@ it solves. Write this as a human would, not a spec sheet.}
 ## License
 
 {License name} — see [LICENSE](LICENSE) for details.
-```
+
+````
 
 ---
 
@@ -83,3 +86,4 @@ it solves. Write this as a human would, not a spec sheet.}
 - Don't add sections you can't populate — an empty section is worse than no section
 - Keep the Overview honest — don't oversell
 - Version numbers must match what's in the config files exactly
+````

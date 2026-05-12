@@ -1,6 +1,6 @@
 ---
 name: rewrite-commits
-description: 'Rewrite commit messages in a given revision range to follow Conventional Commits (Angular style), then apply them to a new branch. Use when you need to clean up commit history for a range of commits.'
+description: "Rewrite commit messages in a given revision range to follow Conventional Commits (Angular style), then apply them to a new branch. Use when you need to clean up commit history for a range of commits."
 ---
 
 # Rewrite Commits to Conventional Commits
@@ -13,11 +13,11 @@ Analyze each commit in a **given revision range**, rewrite the commit message us
 
 Before starting, collect the following from the user:
 
-| Parameter | Description | Example |
-|---|---|---|
+| Parameter       | Description                                             | Example                                    |
+| --------------- | ------------------------------------------------------- | ------------------------------------------ |
 | `FROM_REVISION` | The **exclusive** base revision (not included in range) | `663386282993531e936b09f2a7e6a7b60a2f3290` |
-| `TO_REVISION` | The **inclusive** tip revision (last commit to rewrite) | `5f07e2d2bb5805910669668a55b6fc5326cf39eb` |
-| `BRANCH_NAME` | Name for the new branch to create | `rewrite-commits-branch` |
+| `TO_REVISION`   | The **inclusive** tip revision (last commit to rewrite) | `5f07e2d2bb5805910669668a55b6fc5326cf39eb` |
+| `BRANCH_NAME`   | Name for the new branch to create                       | `rewrite-commits-branch`                   |
 
 ---
 
@@ -36,11 +36,13 @@ Before starting, collect the following from the user:
 ### Step 1: Verify Repository and Collect Commit List
 
 1. Confirm we are in the correct Git repository:
+
    ```bash
    git --no-pager log --oneline -1
    ```
 
 2. Get all commits in the range (oldest → newest):
+
    ```bash
    git --no-pager log --oneline <FROM_REVISION>..<TO_REVISION>
    ```
@@ -52,11 +54,13 @@ Before starting, collect the following from the user:
 ### Step 2: Create the New Branch
 
 1. Switch to a safe base branch first if needed:
+
    ```bash
    git checkout main
    ```
 
 2. Delete the target branch if it already exists:
+
    ```bash
    git branch -D <BRANCH_NAME>
    ```
@@ -85,6 +89,7 @@ git --no-pager show <COMMIT_HASH>
 ```
 
 Focus on:
+
 - Which files were **added** (`A`), **modified** (`M`), **deleted** (`D`), or **renamed** (`R`)
 - The **content** of changes (new functions, new docs sections, config changes, etc.)
 - The **scope**: which module, folder, or feature area was affected
@@ -93,11 +98,11 @@ Focus on:
 
 Using the diff analysis, determine:
 
--   **`<type>`**: one of `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
--   **`<scope>`**: the most specific affected module/folder (e.g., `rag`, `skills`, `llm`, `tasks`)
--   **`<subject>`**: imperative, present tense summary of the primary change (≤50 chars, no period)
--   **`<body>`**: bullet-style explanation of key changes — what was added/removed/changed and why. Wrap at ~72 chars per line.
--   **`<footer>`**: only if there is a `BREAKING CHANGE` or issue reference
+- **`<type>`**: one of `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+- **`<scope>`**: the most specific affected module/folder (e.g., `rag`, `skills`, `llm`, `tasks`)
+- **`<subject>`**: imperative, present tense summary of the primary change (≤50 chars, no period)
+- **`<body>`**: bullet-style explanation of key changes — what was added/removed/changed and why. Wrap at ~72 chars per line.
+- **`<footer>`**: only if there is a `BREAKING CHANGE` or issue reference
 
 #### 3c. Apply the Commit
 
@@ -131,15 +136,15 @@ Display the final log so the user can confirm all messages are correct.
 
 ### Type Selection Rules
 
-| Situation | Type |
-|---|---|
-| New file, new feature, new script | `feat` |
-| Bug fix, null check, error handling | `fix` |
-| Documentation, study notes, reference files | `docs` |
-| Config, log files, non-functional changes | `chore` |
-| Code restructure without behavior change | `refactor` |
-| Tests added or updated | `test` |
-| Formatting only | `style` |
+| Situation                                   | Type       |
+| ------------------------------------------- | ---------- |
+| New file, new feature, new script           | `feat`     |
+| Bug fix, null check, error handling         | `fix`      |
+| Documentation, study notes, reference files | `docs`     |
+| Config, log files, non-functional changes   | `chore`    |
+| Code restructure without behavior change    | `refactor` |
+| Tests added or updated                      | `test`     |
+| Formatting only                             | `style`    |
 
 ### Scope Selection Rules
 
@@ -181,6 +186,7 @@ Display the final log so the user can confirm all messages are correct.
 **Diff summary**: Added `scripts/gen_deep_tasks.py`, added `tasks/ai-learning-autodoc-prompt.md`, expanded 12 `tasks/deep-*.md` files.
 
 **Generated message**:
+
 ```
 feat(tasks): add gen_deep_tasks script and autodoc cron prompt
 
@@ -199,6 +205,7 @@ sections covering additional sub-topics and research questions.
 **Diff summary**: Deleted `.github/prompts/git-commit.prompt.md`, created `.github/skills/git-commit/SKILL.md`.
 
 **Generated message**:
+
 ```
 feat(skills): migrate git-commit from prompt to structured SKILL.md
 
@@ -215,6 +222,7 @@ fine-tuning deep learning study track.
 **Diff summary**: Expanded `docs/topic-llm-foundations.md` with Transformer deep dive (314 lines added), new `tasks/deep-topic-agent-frameworks.md`.
 
 **Generated message**:
+
 ```
 docs(llm): expand topic-llm-foundations with Transformer deep dive
 

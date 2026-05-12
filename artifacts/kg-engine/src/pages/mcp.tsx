@@ -57,9 +57,7 @@ const endpoints: Endpoint[] = [
     method: "GET",
     path: "/api/mcp/get_decision_record",
     description: "Fetch L3 decision records linked to a commit hash",
-    params: [
-      { name: "commit_hash", placeholder: "e.g. a1b2c3d", required: true },
-    ],
+    params: [{ name: "commit_hash", placeholder: "e.g. a1b2c3d", required: true }],
   },
 ];
 
@@ -103,13 +101,20 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       <CardHeader className="py-3 px-4 border-b border-border/40">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-[10px] font-mono bg-primary/10 border-primary/20 text-primary">
+            <Badge
+              variant="outline"
+              className="text-[10px] font-mono bg-primary/10 border-primary/20 text-primary"
+            >
               {endpoint.method}
             </Badge>
             <code className="text-xs font-mono text-foreground">{endpoint.path}</code>
           </div>
           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleCopy}>
-            {copied ? <CheckCircle2 className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+            {copied ? (
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+            ) : (
+              <Copy className="h-3 w-3" />
+            )}
           </Button>
         </div>
         <CardDescription className="text-xs mt-1">{endpoint.description}</CardDescription>
@@ -117,7 +122,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
       <CardContent className="p-4 space-y-3">
         {endpoint.params.length > 0 && (
           <div className="grid grid-cols-2 gap-2">
-            {endpoint.params.map(p => (
+            {endpoint.params.map((p) => (
               <div key={p.name} className="space-y-1">
                 <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                   {p.name} {p.required && <span className="text-destructive">*</span>}
@@ -125,7 +130,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
                 <Input
                   placeholder={p.placeholder}
                   value={params[p.name] ?? ""}
-                  onChange={e => setParams(prev => ({ ...prev, [p.name]: e.target.value }))}
+                  onChange={(e) => setParams((prev) => ({ ...prev, [p.name]: e.target.value }))}
                   className="h-7 text-xs font-mono"
                 />
               </div>
@@ -134,13 +139,22 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
         )}
 
         <Button size="sm" className="w-full" onClick={handleRun} disabled={loading}>
-          {loading ? "Calling..." : <><Play className="h-3 w-3 mr-2" />Run</>}
+          {loading ? (
+            "Calling..."
+          ) : (
+            <>
+              <Play className="h-3 w-3 mr-2" />
+              Run
+            </>
+          )}
         </Button>
 
         {result !== null && (
           <div className="mt-2">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-muted-foreground uppercase font-medium">Response</span>
+              <span className="text-[10px] text-muted-foreground uppercase font-medium">
+                Response
+              </span>
             </div>
             <pre className="text-[10px] font-mono bg-muted/40 border border-border/50 rounded p-3 overflow-auto max-h-48 text-foreground whitespace-pre-wrap">
               {JSON.stringify(result, null, 2)}
@@ -163,8 +177,7 @@ export default function McpPage() {
           </p>
         </div>
         <Badge variant="outline" className="flex items-center gap-1.5 text-xs">
-          <Cpu className="h-3 w-3" />
-          5 tools available
+          <Cpu className="h-3 w-3" />5 tools available
         </Badge>
       </div>
 
@@ -179,8 +192,10 @@ export default function McpPage() {
                 <code className="bg-muted px-1 rounded font-mono text-foreground">/api/mcp/</code>
               </p>
               <p className="text-xs text-muted-foreground">
-                All endpoints return JSON. Use <code className="bg-muted px-1 rounded font-mono text-foreground">GET</code> with query parameters.
-                Integrate with Claude, GPT-4, or any agent framework by registering these as tool definitions.
+                All endpoints return JSON. Use{" "}
+                <code className="bg-muted px-1 rounded font-mono text-foreground">GET</code> with
+                query parameters. Integrate with Claude, GPT-4, or any agent framework by
+                registering these as tool definitions.
               </p>
             </div>
           </div>
@@ -188,7 +203,7 @@ export default function McpPage() {
       </Card>
 
       <div className="space-y-4">
-        {endpoints.map(ep => (
+        {endpoints.map((ep) => (
           <EndpointCard key={ep.name} endpoint={ep} />
         ))}
       </div>

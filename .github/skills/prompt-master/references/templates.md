@@ -4,26 +4,26 @@ Full template library for Prompt Master. Read the relevant template when the use
 
 ## Table of Contents
 
-| Template | Best For |
-|----------|----------|
-| [A — RTF](#template-a--rtf) | Simple one-shot tasks |
-| [B — CO-STAR](#template-b--co-star) | Professional documents, business writing |
-| [C — RISEN](#template-c--risen) | Complex multi-step projects |
-| [D — CRISPE](#template-d--crispe) | Creative work, brand voice |
-| [E — Chain of Thought](#template-e--chain-of-thought) | Logic, math, analysis, debugging |
-| [F — Few-Shot](#template-f--few-shot) | Consistent structured output, pattern replication |
-| [G — File-Scope](#template-g--file-scope) | Cursor, Windsurf, Copilot — code editing AI |
-| [H — ReAct + Stop Conditions](#template-h--react--stop-conditions) | Claude Code, Devin — autonomous agents |
-| [I — Visual Descriptor](#template-i--visual-descriptor) | Midjourney, DALL-E, Stable Diffusion, Sora |
-| [J — Reference Image Editing](#template-j--reference-image-editing) | Editing an existing image with a reference |
-| [K — ComfyUI](#template-k--comfyui) | ComfyUI node-based image workflows |
-| [L — Prompt Decompiler](#template-l--prompt-decompiler) | Breaking down, adapting, or splitting existing prompts |
+| Template                                                            | Best For                                               |
+| ------------------------------------------------------------------- | ------------------------------------------------------ |
+| [A — RTF](#template-a--rtf)                                         | Simple one-shot tasks                                  |
+| [B — CO-STAR](#template-b--co-star)                                 | Professional documents, business writing               |
+| [C — RISEN](#template-c--risen)                                     | Complex multi-step projects                            |
+| [D — CRISPE](#template-d--crispe)                                   | Creative work, brand voice                             |
+| [E — Chain of Thought](#template-e--chain-of-thought)               | Logic, math, analysis, debugging                       |
+| [F — Few-Shot](#template-f--few-shot)                               | Consistent structured output, pattern replication      |
+| [G — File-Scope](#template-g--file-scope)                           | Cursor, Windsurf, Copilot — code editing AI            |
+| [H — ReAct + Stop Conditions](#template-h--react--stop-conditions)  | Claude Code, Devin — autonomous agents                 |
+| [I — Visual Descriptor](#template-i--visual-descriptor)             | Midjourney, DALL-E, Stable Diffusion, Sora             |
+| [J — Reference Image Editing](#template-j--reference-image-editing) | Editing an existing image with a reference             |
+| [K — ComfyUI](#template-k--comfyui)                                 | ComfyUI node-based image workflows                     |
+| [L — Prompt Decompiler](#template-l--prompt-decompiler)             | Breaking down, adapting, or splitting existing prompts |
 
 ---
 
 ## Template A — RTF
 
-*Role, Task, Format. Use for fast one-shot tasks where the request is clear and simple.*
+_Role, Task, Format. Use for fast one-shot tasks where the request is clear and simple._
 
 ```
 Role: [One sentence defining who the AI is]
@@ -32,6 +32,7 @@ Format: [Exact output format and length]
 ```
 
 **Example:**
+
 ```
 Role: You are a senior technical writer.
 Task: Write a one-paragraph description of what a REST API is.
@@ -42,7 +43,7 @@ Format: Plain prose, 3 sentences maximum, no jargon, suitable for a non-technica
 
 ## Template B — CO-STAR
 
-*Context, Objective, Style, Tone, Audience, Response. Use for professional documents, business writing, reports, and marketing content where full context control matters.*
+_Context, Objective, Style, Tone, Audience, Response. Use for professional documents, business writing, reports, and marketing content where full context control matters._
 
 ```
 Context: [Background the AI needs to understand the situation]
@@ -54,6 +55,7 @@ Response: [Format, length, and structure of the output]
 ```
 
 **Example:**
+
 ```
 Context: I am a founder pitching a B2B SaaS tool that automates expense reporting for mid-size companies.
 Objective: Write a cold email that gets a reply from a CFO.
@@ -67,7 +69,7 @@ Response: 5 sentences max. Subject line included. No bullet points.
 
 ## Template C — RISEN
 
-*Role, Instructions, Steps, End Goal, Narrowing. Use for complex projects, multi-step tasks, and any output that requires a clear sequence of actions.*
+_Role, Instructions, Steps, End Goal, Narrowing. Use for complex projects, multi-step tasks, and any output that requires a clear sequence of actions._
 
 ```
 Role: [Expert identity the AI should adopt]
@@ -81,6 +83,7 @@ Narrowing: [Constraints, scope limits, what to exclude]
 ```
 
 **Example:**
+
 ```
 Role: You are a product manager with 10 years of experience in mobile apps.
 Instructions: Write a product requirements document for a habit tracking feature.
@@ -97,7 +100,7 @@ Narrowing: No technical implementation details. No wireframes. Under 600 words t
 
 ## Template D — CRISPE
 
-*Capacity, Role, Insight, Statement, Personality, Experiment. Use for creative work, brand voice writing, and any task where personality, tone, and iteration matter.*
+_Capacity, Role, Insight, Statement, Personality, Experiment. Use for creative work, brand voice writing, and any task where personality, tone, and iteration matter._
 
 ```
 Capacity: [What capability or expertise the AI should have]
@@ -109,6 +112,7 @@ Experiment: [Request variants or alternatives to explore]
 ```
 
 **Example:**
+
 ```
 Capacity: Expert copywriter specializing in SaaS product launches.
 Role: Brand voice for a productivity tool aimed at developers.
@@ -122,7 +126,7 @@ Experiment: Give 3 variants ranging from minimal to bold.
 
 ## Template E — Chain of Thought
 
-*Use for logic-heavy tasks, math, debugging, and multi-factor analysis where the AI needs to reason carefully before committing to an answer.*
+_Use for logic-heavy tasks, math, debugging, and multi-factor analysis where the AI needs to reason carefully before committing to an answer._
 
 **Important:** Only use CoT for standard reasoning models (Claude, GPT-4o, Gemini). Do NOT add CoT instructions to o1, o3, or Claude extended thinking — they reason internally and CoT instructions degrade their output.
 
@@ -141,12 +145,14 @@ Give your final answer in <answer> tags only.
 ```
 
 **When to use:**
+
 - Debugging where the cause is not obvious
 - Comparing two technical approaches
 - Any math or calculation
 - Analysis where a wrong first impression is likely
 
 **When NOT to use:**
+
 - o1 / o3 / reasoning models (they think internally — adding CoT hurts)
 - Simple tasks where the answer is clear (unnecessary overhead)
 - Creative tasks (CoT can kill natural voice)
@@ -155,7 +161,7 @@ Give your final answer in <answer> tags only.
 
 ## Template F — Few-Shot
 
-*Use when the output format is easier to show than describe. Examples outperform written instructions for format-sensitive tasks every time.*
+_Use when the output format is easier to show than describe. Examples outperform written instructions for format-sensitive tasks every time._
 
 ```
 [Task instruction]
@@ -177,6 +183,7 @@ Now apply this exact pattern to: [actual input]
 ```
 
 **Rules:**
+
 - 2 to 5 examples is the sweet spot. More rarely helps and wastes tokens.
 - Examples must include edge cases, not just easy cases.
 - Use XML tags to wrap examples — Claude parses XML reliably.
@@ -186,7 +193,7 @@ Now apply this exact pattern to: [actual input]
 
 ## Template G — File-Scope
 
-*Use for Cursor, Windsurf, GitHub Copilot, and any AI that edits code inside a codebase. The most common failure mode here is editing the wrong file or breaking existing logic — this template prevents both.*
+_Use for Cursor, Windsurf, GitHub Copilot, and any AI that edits code inside a codebase. The most common failure mode here is editing the wrong file or breaking existing logic — this template prevents both._
 
 ```
 File: [exact/path/to/file.ext]
@@ -215,7 +222,7 @@ Done When:
 
 ## Template H — ReAct + Stop Conditions
 
-*Use for Claude Code, Devin, AutoGPT, and any AI that takes autonomous actions. Runaway loops and scope explosion are the biggest credit killers in agentic workflows — stop conditions are not optional.*
+_Use for Claude Code, Devin, AutoGPT, and any AI that takes autonomous actions. Runaway loops and scope explosion are the biggest credit killers in agentic workflows — stop conditions are not optional._
 
 ```
 Objective:
@@ -255,7 +262,7 @@ At the end, output a full summary of every file changed.
 
 ## Template I — Visual Descriptor
 
-*Use for Midjourney, DALL-E 3, Stable Diffusion, Sora, Runway, and any image or video generation tool.*
+_Use for Midjourney, DALL-E 3, Stable Diffusion, Sora, Runway, and any image or video generation tool._
 
 ```
 Subject: [Main subject — specific, not vague]
@@ -272,6 +279,7 @@ Style Reference: [artist / film / aesthetic reference if applicable]
 ```
 
 **Tool-specific syntax:**
+
 - **Midjourney**: Comma-separated descriptors, not prose. Add `--ar`, `--style`, `--v 6` at the end.
 - **Stable Diffusion**: Use `(word:1.3)` weight syntax. CFG scale 7 to 12. Negative prompt is mandatory.
 - **DALL-E 3**: Prose works well. Add "do not include any text in the image" unless text is needed.
@@ -281,12 +289,13 @@ Style Reference: [artist / film / aesthetic reference if applicable]
 
 ## Template J — Reference Image Editing
 
-*Use when the user has an existing image they want to modify. Completely different from generation — never describe the whole scene from scratch, only describe the change.*
+_Use when the user has an existing image they want to modify. Completely different from generation — never describe the whole scene from scratch, only describe the change._
 
 **Before writing the prompt, always tell the user:**
 "Attach your reference image to [tool name] before sending this prompt."
 
 **Detect the tool's editing capability:**
+
 - Midjourney: use `--cref [image URL]` for character reference or `--sref` for style reference
 - DALL-E 3: use the Edit endpoint, not the Generate endpoint. User must be in ChatGPT with image editing enabled
 - Stable Diffusion: use img2img mode, not txt2img. Set denoising strength 0.3-0.6 to preserve the original
@@ -301,6 +310,7 @@ Negative prompt: [what to avoid introducing]
 ```
 
 **Example:**
+
 ```
 Reference image: [attached portrait photo]
 What to keep exactly the same: face, hair, clothing, background, lighting
@@ -314,12 +324,13 @@ Negative prompt: no new elements, no style changes, no background changes
 
 ## Template K — ComfyUI
 
-*Use for ComfyUI node-based workflows. Always output Positive and Negative prompts as separate blocks. Ask for the checkpoint model before writing — syntax and token limits differ per model.*
+_Use for ComfyUI node-based workflows. Always output Positive and Negative prompts as separate blocks. Ask for the checkpoint model before writing — syntax and token limits differ per model._
 
 **Ask first if not stated:**
 "Which checkpoint model are you using? (SD 1.5, SDXL, Flux, or other)"
 
 **Model-specific notes:**
+
 - SD 1.5: shorter prompts work better, under 75 tokens per block, use (word:weight) syntax
 - SDXL: handles longer prompts, supports more natural language alongside weighted syntax
 - Flux: natural language works well, less reliance on weighted syntax, very responsive to style descriptions
@@ -342,9 +353,10 @@ RESOLUTION: [width x height — must be divisible by 64]
 
 ## Template L — Prompt Decompiler
 
-*Use when the user pastes an existing prompt and wants to break it down, adapt it for a different tool, simplify it, or understand its structure. This is analysis and adaptation, not building from scratch.*
+_Use when the user pastes an existing prompt and wants to break it down, adapt it for a different tool, simplify it, or understand its structure. This is analysis and adaptation, not building from scratch._
 
 **Detect which Decompiler task is needed:**
+
 - **Break down** — explain what each part of the prompt does
 - **Adapt** — rewrite for a different tool while preserving intent
 - **Simplify** — remove redundancy and tighten without losing meaning
@@ -354,6 +366,7 @@ RESOLUTION: [width x height — must be divisible by 64]
 "What tool is the original prompt from, and what tool are you adapting it for?"
 
 **Break down output format:**
+
 ```
 Original prompt: [paste]
 
@@ -368,6 +381,7 @@ Recommended fix: [rewritten version with gaps filled]
 ```
 
 **Adapt output format:**
+
 ```
 Original ([source tool]): [original prompt]
 
@@ -380,6 +394,7 @@ Key changes made:
 ```
 
 **Split output format:**
+
 ```
 Original prompt: [paste]
 

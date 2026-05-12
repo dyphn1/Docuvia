@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+**/dist/
+**/build/
+
+# Orval-generated code (auto-generated, do not lint)
+lib/api-zod/src/generated/
+lib/api-client-react/src/generated/
+
+# Lock files
+pnpm-lock.yaml
+
+# Attached assets
+attached_assets/

@@ -61,23 +61,23 @@
 
 :root {
   /* Set dark mode as default */
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
+  --button-outline: rgba(255, 255, 255, 0.1);
+  --badge-outline: rgba(255, 255, 255, 0.05);
 
   --opaque-button-border-intensity: 9;
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
+  --elevate-1: rgba(255, 255, 255, 0.04);
+  --elevate-2: rgba(255, 255, 255, 0.09);
 
   /* Deep space / dark gray background */
   --background: 224 71% 4%;
   --foreground: 213 31% 91%;
-  
+
   --border: 216 34% 17%;
-  
+
   --card: 222 47% 7%;
   --card-foreground: 213 31% 91%;
   --card-border: 216 34% 17%;
-  
+
   --sidebar: 222 47% 6%;
   --sidebar-foreground: 213 31% 91%;
   --sidebar-border: 216 34% 17%;
@@ -92,41 +92,41 @@
   --popover-border: 216 34% 17%;
 
   /* High-contrast Teal/Indigo accent */
-  --primary: 199 89% 48%; 
+  --primary: 199 89% 48%;
   --primary-foreground: 222 47% 11%;
-  
+
   --secondary: 217 33% 17%;
   --secondary-foreground: 210 40% 98%;
-  
+
   --muted: 217 33% 17%;
   --muted-foreground: 215 20.2% 65.1%;
-  
+
   --accent: 216 34% 17%;
   --accent-foreground: 210 40% 98%;
-  
+
   --destructive: 359 51% 48%;
   --destructive-foreground: 210 40% 98%;
 
   --input: 216 34% 17%;
   --ring: 199 89% 48%;
-  
+
   --chart-1: 199 89% 48%;
   --chart-2: 230 70% 60%;
   --chart-3: 160 60% 45%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
 
-  --app-font-sans: 'Inter', sans-serif;
-  --app-font-mono: 'JetBrains Mono', 'Menlo', monospace;
+  --app-font-sans: "Inter", sans-serif;
+  --app-font-mono: "JetBrains Mono", "Menlo", monospace;
   --radius: 0.25rem; /* tight corners for devtool feel */
 
-  --shadow-2xs: 0px 2px 0px 0px rgba(0,0,0,0.1);
-  --shadow-xs: 0px 2px 0px 0px rgba(0,0,0,0.2);
-  --shadow-sm: 0px 2px 4px rgba(0,0,0,0.3);
-  --shadow: 0px 4px 8px rgba(0,0,0,0.4);
-  --shadow-md: 0px 8px 16px rgba(0,0,0,0.5);
-  --shadow-lg: 0px 16px 24px rgba(0,0,0,0.6);
-  
+  --shadow-2xs: 0px 2px 0px 0px rgba(0, 0, 0, 0.1);
+  --shadow-xs: 0px 2px 0px 0px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0px 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow: 0px 4px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0px 8px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0px 16px 24px rgba(0, 0, 0, 0.6);
+
   --sidebar-primary-border: hsl(var(--sidebar-primary));
   --sidebar-accent-border: hsl(var(--sidebar-accent));
   --primary-border: hsl(var(--primary));

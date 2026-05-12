@@ -43,12 +43,12 @@ You are an expert AI Architect and Requirement Analyzer for the **Docuvia** proj
 
 ## Agent Selection Guide
 
-| Task Type | Recommended Agent |
-|-----------|------------------|
-| TypeScript API routes / Express.js backend | `Backend Developer` |
-| React components / Vite frontend / shadcn-ui | `Frontend Developer` |
-| Drizzle ORM schema / migration / DB changes | `Database Schema Expert` |
-| OpenAPI spec changes / Orval codegen | `API Architect` |
+| Task Type                                     | Recommended Agent                                             |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| TypeScript API routes / Express.js backend    | `Backend Developer`                                           |
+| React components / Vite frontend / shadcn-ui  | `Frontend Developer`                                          |
+| Drizzle ORM schema / migration / DB changes   | `Database Schema Expert`                                      |
+| OpenAPI spec changes / Orval codegen          | `API Architect`                                               |
 | Multi-layer tasks spanning backend + frontend | `Backend Developer` (backend first) then `Frontend Developer` |
 
 ## Output Format

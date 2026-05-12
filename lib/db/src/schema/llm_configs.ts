@@ -13,6 +13,10 @@ export const llmConfigsTable = pgTable("llm_configs", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const insertLlmConfigSchema = createInsertSchema(llmConfigsTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertLlmConfigSchema = createInsertSchema(llmConfigsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export type InsertLlmConfig = z.infer<typeof insertLlmConfigSchema>;
 export type LlmConfig = typeof llmConfigsTable.$inferSelect;

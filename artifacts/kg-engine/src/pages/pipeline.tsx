@@ -5,10 +5,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { GitBranch, Zap, CheckCircle2, AlertCircle, Loader2, Upload, Database, Cpu } from "lucide-react";
+import {
+  GitBranch,
+  Zap,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Upload,
+  Database,
+  Cpu,
+} from "lucide-react";
 
 interface IngestResult {
   commitsIngested: number;
@@ -45,7 +60,7 @@ export default function Pipeline() {
   const [ingestError, setIngestError] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
-  const selectedProj = projects?.find(p => String(p.id) === selectedProject);
+  const selectedProj = projects?.find((p) => String(p.id) === selectedProject);
 
   const handleIngest = async () => {
     if (!selectedProject) return;
@@ -124,7 +139,7 @@ export default function Pipeline() {
               <SelectValue placeholder="Choose a project..." />
             </SelectTrigger>
             <SelectContent>
-              {projects?.map(p => (
+              {projects?.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>
                   {p.name} — {p.repoUrl}
                 </SelectItem>
@@ -139,7 +154,16 @@ export default function Pipeline() {
               <span>·</span>
               <span>{selectedProj.l3Count} L3 nodes</span>
               <span>·</span>
-              <Badge variant={selectedProj.status === 'active' ? 'default' : selectedProj.status === 'indexing' ? 'secondary' : 'destructive'} className="text-[10px] uppercase h-4">
+              <Badge
+                variant={
+                  selectedProj.status === "active"
+                    ? "default"
+                    : selectedProj.status === "indexing"
+                      ? "secondary"
+                      : "destructive"
+                }
+                className="text-[10px] uppercase h-4"
+              >
                 {selectedProj.status}
               </Badge>
             </div>
@@ -164,18 +188,27 @@ export default function Pipeline() {
               <Input
                 placeholder={selectedProj?.repoUrl ?? "https://github.com/owner/repo"}
                 value={repoUrl}
-                onChange={e => setRepoUrl(e.target.value)}
+                onChange={(e) => setRepoUrl(e.target.value)}
                 className="font-mono text-xs h-8"
               />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Branch</Label>
-                <Input value={branch} onChange={e => setBranch(e.target.value)} className="text-xs h-8" />
+                <Input
+                  value={branch}
+                  onChange={(e) => setBranch(e.target.value)}
+                  className="text-xs h-8"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Commit Limit</Label>
-                <Input value={limit} onChange={e => setLimit(e.target.value)} type="number" className="text-xs h-8" />
+                <Input
+                  value={limit}
+                  onChange={(e) => setLimit(e.target.value)}
+                  type="number"
+                  className="text-xs h-8"
+                />
               </div>
             </div>
             <div className="space-y-1">
@@ -184,7 +217,7 @@ export default function Pipeline() {
                 type="password"
                 placeholder="ghp_..."
                 value={githubToken}
-                onChange={e => setGithubToken(e.target.value)}
+                onChange={(e) => setGithubToken(e.target.value)}
                 className="font-mono text-xs h-8"
               />
             </div>
@@ -194,7 +227,17 @@ export default function Pipeline() {
               onClick={handleIngest}
               disabled={!selectedProject || ingestLoading}
             >
-              {ingestLoading ? <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Fetching commits...</> : <><Upload className="h-3 w-3 mr-2" />Ingest from GitHub</>}
+              {ingestLoading ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                  Fetching commits...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-3 w-3 mr-2" />
+                  Ingest from GitHub
+                </>
+              )}
             </Button>
 
             {ingestResult && (
@@ -204,15 +247,21 @@ export default function Pipeline() {
                 </div>
                 <div className="grid grid-cols-3 gap-2 mt-2">
                   <div className="text-center">
-                    <div className="text-lg font-bold font-mono text-foreground">{ingestResult.commitsIngested}</div>
+                    <div className="text-lg font-bold font-mono text-foreground">
+                      {ingestResult.commitsIngested}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">Ingested</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold font-mono text-foreground">{ingestResult.commitsSkipped}</div>
+                    <div className="text-lg font-bold font-mono text-foreground">
+                      {ingestResult.commitsSkipped}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">Skipped</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold font-mono text-foreground">{ingestResult.totalFetched}</div>
+                    <div className="text-lg font-bold font-mono text-foreground">
+                      {ingestResult.totalFetched}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">Total</div>
                   </div>
                 </div>
@@ -220,7 +269,8 @@ export default function Pipeline() {
             )}
             {ingestError && (
               <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-xs text-destructive flex items-start gap-2">
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />{ingestError}
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                {ingestError}
               </div>
             )}
           </CardContent>
@@ -238,11 +288,24 @@ export default function Pipeline() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="p-2.5 bg-muted/40 rounded-md text-xs text-muted-foreground space-y-1 font-mono border border-border/50">
-              <div className="flex items-center gap-1.5"><span className="text-primary">1.</span> Filter commits by signal score (≥0.4)</div>
-              <div className="flex items-center gap-1.5"><span className="text-primary">2.</span> L1 Tagger — generate global classification tags</div>
-              <div className="flex items-center gap-1.5"><span className="text-primary">3.</span> L2 Extractor — extract modules &amp; packages</div>
-              <div className="flex items-center gap-1.5"><span className="text-primary">4.</span> L3 Generator — rules, decisions &amp; rationale</div>
-              <div className="flex items-center gap-1.5"><span className="text-primary">5.</span> Queue review tasks for human validation</div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-primary">1.</span> Filter commits by signal score (≥0.4)
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-primary">2.</span> L1 Tagger — generate global classification
+                tags
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-primary">3.</span> L2 Extractor — extract modules &amp;
+                packages
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-primary">4.</span> L3 Generator — rules, decisions &amp;
+                rationale
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-primary">5.</span> Queue review tasks for human validation
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
@@ -261,7 +324,12 @@ export default function Pipeline() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Max Commits</Label>
-                <Input value={maxCommits} onChange={e => setMaxCommits(e.target.value)} type="number" className="text-xs h-8" />
+                <Input
+                  value={maxCommits}
+                  onChange={(e) => setMaxCommits(e.target.value)}
+                  type="number"
+                  className="text-xs h-8"
+                />
               </div>
             </div>
             <Button
@@ -270,7 +338,17 @@ export default function Pipeline() {
               onClick={handleGenerate}
               disabled={!selectedProject || generateLoading}
             >
-              {generateLoading ? <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Running pipeline...</> : <><Zap className="h-3 w-3 mr-2" />Run AI Pipeline</>}
+              {generateLoading ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                  Running pipeline...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-3 w-3 mr-2" />
+                  Run AI Pipeline
+                </>
+              )}
             </Button>
 
             {generateResult && (
@@ -280,29 +358,39 @@ export default function Pipeline() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-1">
                   <div className="text-center p-1.5 bg-background rounded border border-border/50">
-                    <div className="text-base font-bold font-mono">{generateResult.l1TagsCreated}</div>
+                    <div className="text-base font-bold font-mono">
+                      {generateResult.l1TagsCreated}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">L1 Tags</div>
                   </div>
                   <div className="text-center p-1.5 bg-background rounded border border-border/50">
                     <div className="text-base font-bold font-mono">
                       {generateResult.l2NodesCreated}
                       {(generateResult.l2NodesUpdated ?? 0) > 0 && (
-                        <span className="text-[9px] text-amber-500 ml-1">+{generateResult.l2NodesUpdated} upd</span>
+                        <span className="text-[9px] text-amber-500 ml-1">
+                          +{generateResult.l2NodesUpdated} upd
+                        </span>
                       )}
                     </div>
                     <div className="text-[10px] text-muted-foreground">L2 Nodes</div>
                   </div>
                   <div className="text-center p-1.5 bg-background rounded border border-border/50">
-                    <div className="text-base font-bold font-mono">{generateResult.l3NodesCreated}</div>
+                    <div className="text-base font-bold font-mono">
+                      {generateResult.l3NodesCreated}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">L3 Nodes</div>
                   </div>
                   <div className="text-center p-1.5 bg-background rounded border border-border/50">
-                    <div className="text-base font-bold font-mono">{generateResult.reviewTasksCreated}</div>
+                    <div className="text-base font-bold font-mono">
+                      {generateResult.reviewTasksCreated}
+                    </div>
                     <div className="text-[10px] text-muted-foreground">Review Tasks</div>
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground text-center space-y-0.5">
-                  <div>{generateResult.commitsProcessed} commits processed → go to Review Queue</div>
+                  <div>
+                    {generateResult.commitsProcessed} commits processed → go to Review Queue
+                  </div>
                   {(generateResult.documentsUsed ?? 0) > 0 && (
                     <div className="text-emerald-600 dark:text-emerald-400">
                       {generateResult.documentsUsed} docs used as context
@@ -313,7 +401,8 @@ export default function Pipeline() {
             )}
             {generateError && (
               <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md text-xs text-destructive flex items-start gap-2">
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />{generateError}
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                {generateError}
               </div>
             )}
           </CardContent>

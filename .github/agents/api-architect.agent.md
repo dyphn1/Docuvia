@@ -56,6 +56,7 @@ pnpm run typecheck
 ## Output Format
 
 When finished, output:
+
 ```
 ### 🤝 Handover Block
 - **Status**: API spec updated and codegen complete

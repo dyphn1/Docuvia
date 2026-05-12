@@ -1,6 +1,12 @@
 import { pgTable, text, serial, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
 
-export const activityTypeEnum = pgEnum("activity_type", ["commit", "l2_created", "l3_created", "review_resolved", "tag_added"]);
+export const activityTypeEnum = pgEnum("activity_type", [
+  "commit",
+  "l2_created",
+  "l3_created",
+  "review_resolved",
+  "tag_added",
+]);
 
 export const activityLogTable = pgTable("activity_log", {
   id: serial("id").primaryKey(),

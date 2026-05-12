@@ -33,8 +33,15 @@ router.post("/search", async (req, res) => {
 
   // L1 tags always use SQL LIKE (no embedding column)
   const pattern = `%${query}%`;
-  const l1Rows = await db.select().from(l1TagsTable)
-    .where(or(like(l1TagsTable.name, pattern), like(sql`COALESCE(${l1TagsTable.description}, '')`, pattern)))
+  const l1Rows = await db
+    .select()
+    .from(l1TagsTable)
+    .where(
+      or(
+        like(l1TagsTable.name, pattern),
+        like(sql`COALESCE(${l1TagsTable.description}, '')`, pattern)
+      )
+    )
     .limit(limit);
 
   for (const tag of l1Rows) {
@@ -55,7 +62,9 @@ router.post("/search", async (req, res) => {
 
   if (queryEmbedding) {
     // --- Semantic search: L2 nodes ---
-    let l2SemanticQuery = db.select().from(l2NodesTable)
+    let l2SemanticQuery = db
+      .select()
+      .from(l2NodesTable)
       .where(isNotNull(l2NodesTable.embedding))
       .$dynamic();
     if (projectId) l2SemanticQuery = l2SemanticQuery.where(eq(l2NodesTable.projectId, projectId));
@@ -72,7 +81,10 @@ router.post("/search", async (req, res) => {
 
     for (const { node, score } of l2Scored) {
       if (!projectCache.has(node.projectId)) {
-        const [proj] = await db.select({ name: projectsTable.name }).from(projectsTable).where(eq(projectsTable.id, node.projectId));
+        const [proj] = await db
+          .select({ name: projectsTable.name })
+          .from(projectsTable)
+          .where(eq(projectsTable.id, node.projectId));
         projectCache.set(node.projectId, proj?.name ?? "Unknown");
       }
       results.push({
@@ -104,7 +116,10 @@ router.post("/search", async (req, res) => {
       const projId = l2?.projectId ?? null;
       if (projectId && projId !== projectId) continue;
       if (projId && !projectCache.has(projId)) {
-        const [proj] = await db.select({ name: projectsTable.name }).from(projectsTable).where(eq(projectsTable.id, projId));
+        const [proj] = await db
+          .select({ name: projectsTable.name })
+          .from(projectsTable)
+          .where(eq(projectsTable.id, projId));
         projectCache.set(projId, proj?.name ?? "Unknown");
       }
       results.push({
@@ -120,15 +135,25 @@ router.post("/search", async (req, res) => {
     }
   } else {
     // --- Fallback: SQL LIKE search for L2 and L3 ---
-    let l2Query = db.select().from(l2NodesTable)
-      .where(or(like(l2NodesTable.name, pattern), like(sql`COALESCE(${l2NodesTable.description}, '')`, pattern)))
+    let l2Query = db
+      .select()
+      .from(l2NodesTable)
+      .where(
+        or(
+          like(l2NodesTable.name, pattern),
+          like(sql`COALESCE(${l2NodesTable.description}, '')`, pattern)
+        )
+      )
       .$dynamic();
     if (projectId) l2Query = l2Query.where(eq(l2NodesTable.projectId, projectId));
     const l2Rows = await l2Query.limit(limit);
 
     for (const node of l2Rows) {
       if (!projectCache.has(node.projectId)) {
-        const [proj] = await db.select({ name: projectsTable.name }).from(projectsTable).where(eq(projectsTable.id, node.projectId));
+        const [proj] = await db
+          .select({ name: projectsTable.name })
+          .from(projectsTable)
+          .where(eq(projectsTable.id, node.projectId));
         projectCache.set(node.projectId, proj?.name ?? "Unknown");
       }
       results.push({
@@ -143,8 +168,15 @@ router.post("/search", async (req, res) => {
       });
     }
 
-    const l3Rows = await db.select().from(l3NodesTable)
-      .where(or(like(l3NodesTable.title, pattern), like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)))
+    const l3Rows = await db
+      .select()
+      .from(l3NodesTable)
+      .where(
+        or(
+          like(l3NodesTable.title, pattern),
+          like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
+        )
+      )
       .limit(limit);
 
     for (const node of l3Rows) {
@@ -152,7 +184,10 @@ router.post("/search", async (req, res) => {
       const projId = l2?.projectId ?? null;
       if (projectId && projId !== projectId) continue;
       if (projId && !projectCache.has(projId)) {
-        const [proj] = await db.select({ name: projectsTable.name }).from(projectsTable).where(eq(projectsTable.id, projId));
+        const [proj] = await db
+          .select({ name: projectsTable.name })
+          .from(projectsTable)
+          .where(eq(projectsTable.id, projId));
         projectCache.set(projId, proj?.name ?? "Unknown");
       }
       results.push({

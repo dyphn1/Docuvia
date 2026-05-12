@@ -14,27 +14,32 @@ Docuvia is a universal VCS knowledge graph engine. It ingests Git commit history
 ## Commands
 
 ### Install
+
 ```bash
 pnpm install
 ```
 
 ### Dev
+
 ```bash
 pnpm --filter @workspace/api-server run dev   # API server on port 8080
 pnpm --filter @workspace/kg-engine run dev    # Frontend on port 18774
 ```
 
 ### Build (typecheck + compile all packages)
+
 ```bash
 pnpm run build
 ```
 
 ### Typecheck only
+
 ```bash
 pnpm run typecheck
 ```
 
 ### Codegen — regenerate React Query hooks and Zod validators from OpenAPI spec
+
 ```bash
 pnpm --filter @workspace/api-spec run codegen
 ```
@@ -42,6 +47,7 @@ pnpm --filter @workspace/api-spec run codegen
 Run this after **every** change to `lib/api-spec/openapi.yaml`.
 
 ### DB push — apply schema to dev DB
+
 ```bash
 pnpm --filter @workspace/db run push
 # Force (destructive) push:
@@ -49,23 +55,25 @@ pnpm --filter @workspace/db run push-force
 ```
 
 ### Format
+
 ```bash
 pnpm prettier --write .
 ```
 
 ### Test
+
 {{TODO: No test runner found in any package.json. Verify whether tests exist or are planned.}}
 
 ---
 
 ## Required Environment Variables
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `AI_INTEGRATIONS_OPENAI_BASE_URL` | OpenAI-compatible base URL (auto-provisioned on Replit) |
-| `AI_INTEGRATIONS_OPENAI_API_KEY` | API key (auto-provisioned on Replit) |
-| `PORT` | Port for the API server. The server throws on startup if this is missing. |
+| Variable                          | Description                                                               |
+| --------------------------------- | ------------------------------------------------------------------------- |
+| `DATABASE_URL`                    | PostgreSQL connection string                                              |
+| `AI_INTEGRATIONS_OPENAI_BASE_URL` | OpenAI-compatible base URL (auto-provisioned on Replit)                   |
+| `AI_INTEGRATIONS_OPENAI_API_KEY`  | API key (auto-provisioned on Replit)                                      |
+| `PORT`                            | Port for the API server. The server throws on startup if this is missing. |
 
 ---
 
@@ -158,6 +166,7 @@ docs/
 ### Commit Signal Scoring
 
 Commits are scored 0.0–1.0 at ingestion time:
+
 - Noise patterns (merge / chore / ci / wip) → score ≤ 0.1
 - Signal patterns (feat / fix / decision) → boosted score
 - Valid (high-signal) threshold: ≥ 0.4
@@ -166,12 +175,12 @@ Commits are scored 0.0–1.0 at ingestion time:
 
 All available at `POST /api/mcp/<tool>`:
 
-| Tool | Route |
-|---|---|
-| `list_projects` | `/api/mcp/list_projects` |
-| `search_knowledge` | `/api/mcp/search_knowledge` |
-| `get_dependencies` | `/api/mcp/get_dependencies` |
-| `impact_analysis` | `/api/mcp/impact_analysis` |
+| Tool                  | Route                          |
+| --------------------- | ------------------------------ |
+| `list_projects`       | `/api/mcp/list_projects`       |
+| `search_knowledge`    | `/api/mcp/search_knowledge`    |
+| `get_dependencies`    | `/api/mcp/get_dependencies`    |
+| `impact_analysis`     | `/api/mcp/impact_analysis`     |
 | `get_decision_record` | `/api/mcp/get_decision_record` |
 
 ### AI Generation Pipeline
@@ -194,14 +203,17 @@ All available at `POST /api/mcp/<tool>`:
 ## Important Constraints
 
 ### Do not edit — generated files
+
 - `lib/api-client-react/src/generated/` — regenerated every time you run codegen
 - `lib/api-zod/src/generated/` — regenerated every time you run codegen
 - `pnpm-lock.yaml` — managed exclusively by pnpm
 
 ### Supply-chain protection
+
 `pnpm-workspace.yaml` enforces `minimumReleaseAge: 1440` (1 day) for all packages. Do not disable this. Use `minimumReleaseAgeExclude` sparingly (only for packages from trusted organizations with an established security posture) and remove the exclusion once the 1-day window has passed.
 
 ### integrations-openai-ai-server
+
 The tsconfig for this package has `"types": []` to avoid TS2688 node type conflicts. Do not add `@types/node` to this package.
 
 ---

@@ -4,7 +4,7 @@ import {
   getListReviewTasksQueryKey,
   useGetReviewStats,
   getGetReviewStatsQueryKey,
-  useResolveReviewTask
+  useResolveReviewTask,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
@@ -14,8 +14,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  CheckCircle2, XCircle, Clock, AlertTriangle, GitMerge,
-  Check, X, Edit3, ChevronDown, ChevronUp, Tag, Network, Layers
+  CheckCircle2,
+  XCircle,
+  Clock,
+  AlertTriangle,
+  GitMerge,
+  Check,
+  X,
+  Edit3,
+  ChevronDown,
+  ChevronUp,
+  Tag,
+  Network,
+  Layers,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -51,7 +62,11 @@ interface TaskCardProps {
     createdAt: string;
     resolvedAt?: string | null;
   };
-  onResolve: (id: number, status: "approved" | "rejected" | "deferred", correctedValue?: string) => void;
+  onResolve: (
+    id: number,
+    status: "approved" | "rejected" | "deferred",
+    correctedValue?: string
+  ) => void;
 }
 
 function TaskCard({ task, onResolve }: TaskCardProps) {
@@ -72,23 +87,37 @@ function TaskCard({ task, onResolve }: TaskCardProps) {
       <CardHeader className="py-2.5 px-4 bg-muted/20 border-b border-border/50 flex flex-row items-center justify-between space-y-0">
         <div className="flex items-center gap-2">
           <Icon className="h-3.5 w-3.5 text-primary" />
-          <Badge variant="outline" className="font-mono uppercase text-[10px] bg-background px-1.5 py-0">
+          <Badge
+            variant="outline"
+            className="font-mono uppercase text-[10px] bg-background px-1.5 py-0"
+          >
             {task.entityType.replace("_", " ")}
           </Badge>
           {task.nodeType && (
-            <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${nodeTypeBadgeColors[task.nodeType] ?? ""}`}>
+            <Badge
+              variant="outline"
+              className={`text-[10px] px-1.5 py-0 ${nodeTypeBadgeColors[task.nodeType] ?? ""}`}
+            >
               {task.nodeType}
             </Badge>
           )}
-          <span className="text-xs text-muted-foreground font-mono">{task.taskType.toUpperCase()}</span>
+          <span className="text-xs text-muted-foreground font-mono">
+            {task.taskType.toUpperCase()}
+          </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-mono">{format(new Date(task.createdAt), "MMM d HH:mm")}</span>
+          <span className="text-xs text-muted-foreground font-mono">
+            {format(new Date(task.createdAt), "MMM d HH:mm")}
+          </span>
           <button
-            onClick={() => setExpanded(e => !e)}
+            onClick={() => setExpanded((e) => !e)}
             className="text-muted-foreground hover:text-foreground transition-colors"
           >
-            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {expanded ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
           </button>
         </div>
       </CardHeader>
@@ -116,7 +145,7 @@ function TaskCard({ task, onResolve }: TaskCardProps) {
                   </Label>
                   {task.status === "pending" && (
                     <button
-                      onClick={() => setEditMode(e => !e)}
+                      onClick={() => setEditMode((e) => !e)}
                       className="text-[10px] text-primary hover:text-primary/80 flex items-center gap-1 font-medium"
                     >
                       <Edit3 className="h-2.5 w-2.5" />
@@ -127,7 +156,7 @@ function TaskCard({ task, onResolve }: TaskCardProps) {
                 {editMode ? (
                   <Textarea
                     value={correction}
-                    onChange={e => setCorrection(e.target.value)}
+                    onChange={(e) => setCorrection(e.target.value)}
                     className="text-xs font-mono min-h-24 resize-none bg-background border-primary/30 focus:border-primary"
                     placeholder="Enter corrected content..."
                   />
@@ -155,24 +184,42 @@ function TaskCard({ task, onResolve }: TaskCardProps) {
       {task.status === "pending" && (
         <CardFooter className="p-3 bg-muted/10 border-t border-border flex justify-between items-center">
           <button
-            onClick={() => setExpanded(e => !e)}
+            onClick={() => setExpanded((e) => !e)}
             className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
           >
             {expanded ? "Hide" : "Show"} content
           </button>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => onResolve(task.id, "deferred")} className="h-7 text-xs border-border">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onResolve(task.id, "deferred")}
+              className="h-7 text-xs border-border"
+            >
               <Clock className="h-3 w-3 mr-1" /> Defer
             </Button>
-            <Button variant="destructive" size="sm" onClick={() => onResolve(task.id, "rejected")} className="h-7 text-xs bg-destructive/90">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => onResolve(task.id, "rejected")}
+              className="h-7 text-xs bg-destructive/90"
+            >
               <X className="h-3 w-3 mr-1" /> Reject
             </Button>
             {editMode ? (
-              <Button size="sm" onClick={handleApproveWithCorrection} className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Button
+                size="sm"
+                onClick={handleApproveWithCorrection}
+                className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
                 <Check className="h-3 w-3 mr-1" /> Save & Approve
               </Button>
             ) : (
-              <Button size="sm" onClick={() => onResolve(task.id, "approved")} className="h-7 text-xs">
+              <Button
+                size="sm"
+                onClick={() => onResolve(task.id, "approved")}
+                className="h-7 text-xs"
+              >
                 <Check className="h-3 w-3 mr-1" /> Approve
               </Button>
             )}
@@ -188,30 +235,37 @@ export default function Review() {
   const [filter, setFilter] = useState<string>("pending");
 
   const { data: stats } = useGetReviewStats({
-    query: { queryKey: getGetReviewStatsQueryKey(), refetchInterval: 10000 }
+    query: { queryKey: getGetReviewStatsQueryKey(), refetchInterval: 10000 },
   });
 
   const { data: tasks, isLoading } = useListReviewTasks({
-    query: { queryKey: getListReviewTasksQueryKey(), refetchInterval: 10000 }
+    query: { queryKey: getListReviewTasksQueryKey(), refetchInterval: 10000 },
   });
 
   const resolveTask = useResolveReviewTask();
 
-  const handleResolve = (id: number, status: "approved" | "rejected" | "deferred", correctedValue?: string) => {
-    resolveTask.mutate({ id, data: { status, correctedValue } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getListReviewTasksQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetReviewStatsQueryKey() });
+  const handleResolve = (
+    id: number,
+    status: "approved" | "rejected" | "deferred",
+    correctedValue?: string
+  ) => {
+    resolveTask.mutate(
+      { id, data: { status, correctedValue } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListReviewTasksQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getGetReviewStatsQueryKey() });
+        },
       }
-    });
+    );
   };
 
-  const filteredTasks = tasks?.filter(t => t.status === filter) ?? [];
+  const filteredTasks = tasks?.filter((t) => t.status === filter) ?? [];
   const tabCounts = {
-    pending: tasks?.filter(t => t.status === "pending").length ?? 0,
-    approved: tasks?.filter(t => t.status === "approved").length ?? 0,
-    rejected: tasks?.filter(t => t.status === "rejected").length ?? 0,
-    deferred: tasks?.filter(t => t.status === "deferred").length ?? 0,
+    pending: tasks?.filter((t) => t.status === "pending").length ?? 0,
+    approved: tasks?.filter((t) => t.status === "approved").length ?? 0,
+    rejected: tasks?.filter((t) => t.status === "rejected").length ?? 0,
+    deferred: tasks?.filter((t) => t.status === "deferred").length ?? 0,
   };
 
   return (
@@ -221,12 +275,13 @@ export default function Review() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Review Queue</h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Human validation of AI-extracted knowledge — expand cards to view &amp; correct content
+              Human validation of AI-extracted knowledge — expand cards to view &amp; correct
+              content
             </p>
           </div>
 
           <div className="flex bg-background border border-border rounded-lg p-1 gap-0.5">
-            {(["pending", "approved", "rejected", "deferred"] as const).map(status => (
+            {(["pending", "approved", "rejected", "deferred"] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
@@ -237,7 +292,9 @@ export default function Review() {
                 }`}
               >
                 {status}
-                <span className={`text-[10px] font-mono px-1 rounded ${filter === status ? "bg-primary-foreground/20" : "bg-muted"}`}>
+                <span
+                  className={`text-[10px] font-mono px-1 rounded ${filter === status ? "bg-primary-foreground/20" : "bg-muted"}`}
+                >
                   {tabCounts[status]}
                 </span>
               </button>
@@ -248,7 +305,7 @@ export default function Review() {
         <div className="flex-1 overflow-y-auto pr-4 -mr-4">
           {isLoading ? (
             <div className="space-y-4">
-              {[1, 2, 3].map(i => (
+              {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-32 w-full rounded-lg" />
               ))}
             </div>
@@ -257,12 +314,14 @@ export default function Review() {
               <CheckCircle2 className="h-12 w-12 text-muted-foreground mb-4 opacity-30" />
               <h3 className="text-base font-medium text-foreground">No {filter} tasks</h3>
               <p className="text-xs text-muted-foreground max-w-sm mt-2">
-                {filter === "pending" ? "Run the AI pipeline in Ingest & Generate to create review tasks." : `No tasks have been ${filter} yet.`}
+                {filter === "pending"
+                  ? "Run the AI pipeline in Ingest & Generate to create review tasks."
+                  : `No tasks have been ${filter} yet.`}
               </p>
             </div>
           ) : (
             <div className="space-y-3 pb-8">
-              {filteredTasks.map(task => (
+              {filteredTasks.map((task) => (
                 <TaskCard key={task.id} task={task as any} onResolve={handleResolve} />
               ))}
             </div>
@@ -271,37 +330,51 @@ export default function Review() {
       </div>
 
       <div className="w-72 border-l border-border bg-card/30 p-5 flex flex-col shrink-0">
-        <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-5">Review Stats</h3>
+        <h3 className="font-semibold text-xs uppercase tracking-wider text-muted-foreground mb-5">
+          Review Stats
+        </h3>
 
         {stats ? (
           <div className="space-y-5">
             <div className="p-4 bg-primary/10 rounded-xl border border-primary/20">
               <div className="text-4xl font-bold font-mono text-primary mb-1">{stats.pending}</div>
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-primary/80">Pending Tasks</div>
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-primary/80">
+                Pending Tasks
+              </div>
             </div>
 
             <div className="space-y-2.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Approved</span>
+                <span className="flex items-center gap-2 text-muted-foreground text-xs">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Approved
+                </span>
                 <span className="font-mono font-medium text-sm">{stats.approved}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-muted-foreground text-xs"><XCircle className="h-3.5 w-3.5 text-destructive" /> Rejected</span>
+                <span className="flex items-center gap-2 text-muted-foreground text-xs">
+                  <XCircle className="h-3.5 w-3.5 text-destructive" /> Rejected
+                </span>
                 <span className="font-mono font-medium text-sm">{stats.rejected}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-muted-foreground text-xs"><Clock className="h-3.5 w-3.5 text-amber-500" /> Deferred</span>
+                <span className="flex items-center gap-2 text-muted-foreground text-xs">
+                  <Clock className="h-3.5 w-3.5 text-amber-500" /> Deferred
+                </span>
                 <span className="font-mono font-medium text-sm">{stats.deferred}</span>
               </div>
             </div>
 
             <div className="pt-4 border-t border-border">
               <div className="text-2xl font-bold font-mono">{stats.totalToday}</div>
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">Reviewed Today</div>
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mt-0.5">
+                Reviewed Today
+              </div>
             </div>
 
             <div className="pt-4 border-t border-border space-y-2">
-              <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">How to Review</div>
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                How to Review
+              </div>
               <div className="space-y-1.5 text-xs text-muted-foreground">
                 <div className="flex items-start gap-1.5">
                   <span className="text-primary font-mono shrink-0">1.</span>

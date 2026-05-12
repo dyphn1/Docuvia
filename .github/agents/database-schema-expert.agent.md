@@ -46,6 +46,7 @@ pnpm --filter @workspace/db run push-force
 ## Output Format
 
 When finished, output:
+
 ```
 ### 🤝 Handover Block
 - **Status**: Schema changes complete

@@ -44,9 +44,7 @@ export function Layout({ children }: LayoutProps) {
     },
     {
       label: "System",
-      items: [
-        { href: "/mcp", label: "MCP Endpoints", icon: Cpu },
-      ],
+      items: [{ href: "/mcp", label: "MCP Endpoints", icon: Cpu }],
     },
   ];
 
@@ -60,7 +58,9 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <div>
               <span className="font-bold tracking-tight text-foreground">Docuvia</span>
-              <div className="text-[10px] text-muted-foreground leading-none">Knowledge Graph Engine</div>
+              <div className="text-[10px] text-muted-foreground leading-none">
+                Knowledge Graph Engine
+              </div>
             </div>
           </div>
         </div>
@@ -75,7 +75,8 @@ export function Layout({ children }: LayoutProps) {
               </div>
               <div className="space-y-0.5">
                 {section.items.map((item) => {
-                  const active = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+                  const active =
+                    location === item.href || (item.href !== "/" && location.startsWith(item.href));
                   return (
                     <Link
                       key={item.href}
@@ -86,7 +87,9 @@ export function Layout({ children }: LayoutProps) {
                           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                       }`}
                     >
-                      <item.icon className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`} />
+                      <item.icon
+                        className={`h-3.5 w-3.5 ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}
+                      />
                       <span>{item.label}</span>
                       {active && <ChevronRight className="h-3 w-3 ml-auto text-primary/60" />}
                     </Link>
@@ -106,9 +109,7 @@ export function Layout({ children }: LayoutProps) {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
-          {children}
-        </div>
+        <div className="flex-1 overflow-y-auto">{children}</div>
       </main>
     </div>
   );

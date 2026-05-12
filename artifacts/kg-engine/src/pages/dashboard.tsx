@@ -6,7 +6,7 @@ import { format } from "date-fns";
 
 export default function Dashboard() {
   const { data: stats, isLoading } = useGetDashboard({
-    query: { queryKey: getGetDashboardQueryKey() }
+    query: { queryKey: getGetDashboardQueryKey() },
   });
 
   if (isLoading) {
@@ -14,7 +14,7 @@ export default function Dashboard() {
       <div className="p-6 space-y-6">
         <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map(i => (
+          {[1, 2, 3, 4, 5].map((i) => (
             <Card key={i}>
               <CardHeader className="pb-2">
                 <Skeleton className="h-4 w-24" />
@@ -36,7 +36,12 @@ export default function Dashboard() {
     { title: "L1 Tags", value: stats.totalL1Tags, icon: Tag },
     { title: "L2 Nodes", value: stats.totalL2Nodes, icon: GitMerge },
     { title: "L3 Nodes", value: stats.totalL3Nodes, icon: Network },
-    { title: "Pending Reviews", value: stats.pendingReviews, icon: Activity, className: "text-primary" },
+    {
+      title: "Pending Reviews",
+      value: stats.pendingReviews,
+      icon: Activity,
+      className: "text-primary",
+    },
   ];
 
   return (
@@ -77,7 +82,9 @@ export default function Dashboard() {
                 <div className="flex-1 space-y-1">
                   <p className="text-foreground">{activity.description}</p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-mono">{format(new Date(activity.createdAt), "HH:mm:ss")}</span>
+                    <span className="font-mono">
+                      {format(new Date(activity.createdAt), "HH:mm:ss")}
+                    </span>
                     {activity.projectName && (
                       <>
                         <span>•</span>

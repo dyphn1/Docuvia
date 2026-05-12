@@ -51,6 +51,7 @@ pnpm --filter @workspace/kg-engine run dev
 ## Output Format
 
 When finished, output:
+
 ```
 ### 🤝 Handover Block
 - **Status**: Implementation complete

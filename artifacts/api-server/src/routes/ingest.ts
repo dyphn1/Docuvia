@@ -19,7 +19,10 @@ const GitIngestSchema = z.object({
 const DocumentIngestSchema = z.object({
   filename: z.string().min(1),
   content: z.string().min(1),
-  docType: z.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]).optional().default("markdown"),
+  docType: z
+    .enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"])
+    .optional()
+    .default("markdown"),
 });
 
 function scoreCommit(message: string): number {
@@ -69,7 +72,10 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
 
   const githubMatch = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
   if (!githubMatch) {
-    return res.status(400).json({ error: "Only GitHub URLs are supported for Git ingestion. Format: https://github.com/owner/repo" });
+    return res.status(400).json({
+      error:
+        "Only GitHub URLs are supported for Git ingestion. Format: https://github.com/owner/repo",
+    });
   }
 
   const [, owner, repo] = githubMatch;
@@ -79,35 +85,47 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
   const pages = Math.ceil(limit / perPage);
 
   const headers: Record<string, string> = {
-    "Accept": "application/vnd.github+json",
+    Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
   };
   const token = body.githubToken ?? process.env.GITHUB_TOKEN;
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  let allCommits: Array<{ sha: string; commit: { message: string; author: { name: string; date: string } } }> = [];
+  let allCommits: Array<{
+    sha: string;
+    commit: { message: string; author: { name: string; date: string } };
+  }> = [];
   for (let page = 1; page <= pages && allCommits.length < limit; page++) {
     const url = `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}&page=${page}`;
     const ghRes = await fetch(url, { headers });
     if (!ghRes.ok) {
       const err = await ghRes.json().catch(() => ({}));
-      return res.status(400).json({ error: `GitHub API error: ${(err as any).message ?? ghRes.statusText}` });
+      return res
+        .status(400)
+        .json({ error: `GitHub API error: ${(err as any).message ?? ghRes.statusText}` });
     }
-    const data = await ghRes.json() as typeof allCommits;
+    const data = (await ghRes.json()) as typeof allCommits;
     if (!data.length) break;
     allCommits.push(...data);
   }
   allCommits = allCommits.slice(0, limit);
 
   const existingHashes = new Set(
-    (await db.select({ hash: commitsTable.hash }).from(commitsTable).where(eq(commitsTable.projectId, projectId)))
-      .map(r => r.hash)
+    (
+      await db
+        .select({ hash: commitsTable.hash })
+        .from(commitsTable)
+        .where(eq(commitsTable.projectId, projectId))
+    ).map((r) => r.hash)
   );
 
   let ingested = 0;
   let skipped = 0;
   for (const c of allCommits) {
-    if (existingHashes.has(c.sha)) { skipped++; continue; }
+    if (existingHashes.has(c.sha)) {
+      skipped++;
+      continue;
+    }
     const score = scoreCommit(c.commit.message);
     await db.insert(commitsTable).values({
       projectId,
@@ -125,13 +143,21 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
       description: `Ingested ${ingested} commits from ${owner}/${repo}`,
       projectId,
     });
-    await db.update(projectsTable).set({ updatedAt: new Date() }).where(eq(projectsTable.id, projectId));
+    await db
+      .update(projectsTable)
+      .set({ updatedAt: new Date() })
+      .where(eq(projectsTable.id, projectId));
   }
 
-  res.json({ commitsIngested: ingested, commitsSkipped: skipped, totalFetched: allCommits.length });
+  return res.json({
+    commitsIngested: ingested,
+    commitsSkipped: skipped,
+    totalFetched: allCommits.length,
+  });
 });
 
-router.post("/projects/:id/ingest/document/upload",
+router.post(
+  "/projects/:id/ingest/document/upload",
   documentUpload.single("file"),
   async (req, res, next) => {
     const projectId = Number(req.params.id);
@@ -139,7 +165,9 @@ router.post("/projects/:id/ingest/document/upload",
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded. Use multipart/form-data with field name 'file'." });
+      return res
+        .status(400)
+        .json({ error: "No file uploaded. Use multipart/form-data with field name 'file'." });
     }
 
     const { originalname, buffer } = req.file;
@@ -154,15 +182,20 @@ router.post("/projects/:id/ingest/document/upload",
     }
 
     if (!content || content.length === 0) {
-      return res.status(422).json({ error: "Extracted content is empty. The document may be encrypted or contain only images." });
+      return res.status(422).json({
+        error: "Extracted content is empty. The document may be encrypted or contain only images.",
+      });
     }
 
-    const [doc] = await db.insert(documentsTable).values({
-      projectId,
-      filename: originalname,
-      docType,
-      content,
-    }).returning();
+    const [doc] = await db
+      .insert(documentsTable)
+      .values({
+        projectId,
+        filename: originalname,
+        docType,
+        content,
+      })
+      .returning();
 
     return res.status(201).json({ ...doc, createdAt: doc.createdAt.toISOString() });
   }
@@ -184,35 +217,48 @@ router.post("/projects/:id/ingest/document", async (req, res) => {
   else if (["map", "fv", "fd"].includes(ext)) docType = "build_artifact";
   if (body.docType) docType = body.docType;
 
-  const [doc] = await db.insert(documentsTable).values({
-    projectId,
-    filename: body.filename,
-    docType,
-    content: body.content,
-  }).returning();
+  const [doc] = await db
+    .insert(documentsTable)
+    .values({
+      projectId,
+      filename: body.filename,
+      docType,
+      content: body.content,
+    })
+    .returning();
 
-  res.status(201).json({ ...doc, createdAt: doc.createdAt.toISOString() });
+  return res.status(201).json({ ...doc, createdAt: doc.createdAt.toISOString() });
 });
 
 router.get("/projects/:id/documents", async (req, res) => {
   const projectId = Number(req.params.id);
-  const docs = await db.select().from(documentsTable).where(eq(documentsTable.projectId, projectId))
+  const docs = await db
+    .select()
+    .from(documentsTable)
+    .where(eq(documentsTable.projectId, projectId))
     .orderBy(sql`${documentsTable.createdAt} desc`);
-  res.json(docs.map(d => ({ ...d, createdAt: d.createdAt.toISOString() })));
+  res.json(docs.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })));
 });
 
 // Handle multer errors (file too large, unsupported type)
-router.use((err: unknown, _req: import("express").Request, res: import("express").Response, next: import("express").NextFunction) => {
-  if (err instanceof multer.MulterError) {
-    if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(413).json({ error: "File too large. Maximum size is 10 MB." });
+router.use(
+  (
+    err: unknown,
+    _req: import("express").Request,
+    res: import("express").Response,
+    next: import("express").NextFunction
+  ) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ error: "File too large. Maximum size is 10 MB." });
+      }
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
     }
-    return res.status(400).json({ error: `Upload error: ${err.message}` });
+    if (err instanceof Error && err.message.startsWith("Unsupported file type")) {
+      return res.status(400).json({ error: err.message });
+    }
+    return next(err);
   }
-  if (err instanceof Error && err.message.startsWith("Unsupported file type")) {
-    return res.status(400).json({ error: err.message });
-  }
-  return next(err);
-});
+);
 
 export default router;

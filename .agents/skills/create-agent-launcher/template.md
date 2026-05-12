@@ -43,14 +43,17 @@ You are an expert AI Architect and Requirement Analyzer for the **{{PROJECT_NAME
 4. **Output Handover Block**: Produce a structured Handover Block for the main Copilot.
 
 ## Output Format
-
 ```
+
 ### 🤝 Handover Block
+
 - **Implementation Document**: `<absolute path to {{AI_PLAN_PATH}}/implement_*.md>`
 - **Recommended Agent**: `<Agent Name>`
 - **Context Summary**: <one paragraph summarizing what the agent needs to know>
 - **Action for Main Copilot**: Please directly invoke the recommended agent above with the implementation document path and context summary.
+
 ```
+
 ```
 
 ---
@@ -187,15 +190,18 @@ You are an expert Quality Assurance and Task Verifier for the **{{PROJECT_NAME}}
 4. **Handle Discrepancies**: Pass ✅ if all requirements are met. Fail ❌ and output a Re-dispatch Request Block if not.
 
 ## Output Format
-
 ```
+
 ### 🔁 Re-dispatch Request Block
+
 - **Verification Status**: Fail
 - **Errors / Missing Items**: <concise list>
 - **Recommended Agent**: <Agent Name>
 - **Fix Instructions**: <specific description of what needs to be fixed>
 - **Action for Main Copilot**: Please directly invoke the recommended agent above with the fix instructions.
+
 ```
+
 ```
 
 ---
@@ -220,9 +226,9 @@ You are the Main Orchestrator Agent for the **{{PROJECT_NAME}}** project. The us
 
 1. **Discover Available Agents**: Read all `{{AGENTS_DIR}}/*.agent.md` files to understand available capabilities.
 2. **Determine the Workflow Path**:
-   - *Scenario A: New Feature Request* → **Requirement Analyzer** → **Backend Developer** → **Task Verifier**
-   - *Scenario B: Requirements Already Defined* → **Backend Developer** → **Task Verifier**
-   - *Scenario C: Verification Failed* → **Backend Developer** (again) → **Task Verifier**
+   - _Scenario A: New Feature Request_ → **Requirement Analyzer** → **Backend Developer** → **Task Verifier**
+   - _Scenario B: Requirements Already Defined_ → **Backend Developer** → **Task Verifier**
+   - _Scenario C: Verification Failed_ → **Backend Developer** (again) → **Task Verifier**
 3. **Execute the Loop**: Dispatch the task using `runSubagent`. Wait for a Handover Block or Re-dispatch Request Block.
 4. **Continue the Loop**: When a block is received, IMMEDIATELY use `runSubagent` to call the next agent.
 5. **Closure**: The workflow ends when the Task Verifier confirms success (Pass ✅).
@@ -251,16 +257,16 @@ You are the Main Orchestrator Agent for the **{{PROJECT_NAME}}** project. The us
 
 ## Placeholder Reference
 
-| Placeholder | Description | Example Values |
-|------------|-------------|----------------|
-| `{{PROJECT_NAME}}` | Human-readable project name | `Super H2O IDE`, `Gemini CLI`, `Super H2O VSCode Extension` |
-| `{{KEY_SOURCE_PATHS}}` | Key source dirs (comma-separated, with descriptions) | `H2O.IDE/H2O.IDE/` (main IDE), `H2O.Common/` (shared utils), `H2O.Git2Sharp/` (VCS) |
-| `{{AI_PLAN_PATH}}` | Path to the AI plans folder | `docs/ai_plans/` at main repo root |
-| `{{FULL_BUILD_COMMAND}}` | Full project/workspace build | `./compile.sh`, `pnpm run build`, `dotnet build H2O.IDE.sln` |
-| `{{LOCAL_BUILD_COMMAND}}` | Single project/package build | `dotnet build H2O.Git2Sharp.csproj`, `pnpm --filter gemini-cli build` |
-| `{{CS_BUILD_COMMAND}}` | C# solution-wide build (polyglot only) | `dotnet build H2O.IDE.sln` |
-| `{{TS_LOCAL_BUILD}}` | TypeScript single-package build (polyglot only) | `pnpm --filter h2o-cve-mcp-server build` |
-| `{{TS_FULL_BUILD}}` | TypeScript workspace build (polyglot only) | `pnpm run build` |
-| `{{PRIMARY_LANGUAGE}}` | Main language(s) | `C#`, `TypeScript`, `C# and TypeScript` |
-| `{{MONOREPO_NOTES}}` | Monorepo structure description | `Super monorepo — all source code in level-1 git submodules; never commit source to main repo` |
-| `{{AGENTS_DIR}}` | Path to agents directory | `.github/agents` |
+| Placeholder               | Description                                          | Example Values                                                                                 |
+| ------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `{{PROJECT_NAME}}`        | Human-readable project name                          | `Super H2O IDE`, `Gemini CLI`, `Super H2O VSCode Extension`                                    |
+| `{{KEY_SOURCE_PATHS}}`    | Key source dirs (comma-separated, with descriptions) | `H2O.IDE/H2O.IDE/` (main IDE), `H2O.Common/` (shared utils), `H2O.Git2Sharp/` (VCS)            |
+| `{{AI_PLAN_PATH}}`        | Path to the AI plans folder                          | `docs/ai_plans/` at main repo root                                                             |
+| `{{FULL_BUILD_COMMAND}}`  | Full project/workspace build                         | `./compile.sh`, `pnpm run build`, `dotnet build H2O.IDE.sln`                                   |
+| `{{LOCAL_BUILD_COMMAND}}` | Single project/package build                         | `dotnet build H2O.Git2Sharp.csproj`, `pnpm --filter gemini-cli build`                          |
+| `{{CS_BUILD_COMMAND}}`    | C# solution-wide build (polyglot only)               | `dotnet build H2O.IDE.sln`                                                                     |
+| `{{TS_LOCAL_BUILD}}`      | TypeScript single-package build (polyglot only)      | `pnpm --filter h2o-cve-mcp-server build`                                                       |
+| `{{TS_FULL_BUILD}}`       | TypeScript workspace build (polyglot only)           | `pnpm run build`                                                                               |
+| `{{PRIMARY_LANGUAGE}}`    | Main language(s)                                     | `C#`, `TypeScript`, `C# and TypeScript`                                                        |
+| `{{MONOREPO_NOTES}}`      | Monorepo structure description                       | `Super monorepo — all source code in level-1 git submodules; never commit source to main repo` |
+| `{{AGENTS_DIR}}`          | Path to agents directory                             | `.github/agents`                                                                               |

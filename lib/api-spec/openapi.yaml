@@ -872,7 +872,8 @@ components:
 
     DashboardStats:
       type: object
-      required: [totalProjects, totalL1Tags, totalL2Nodes, totalL3Nodes, pendingReviews, recentActivity]
+      required:
+        [totalProjects, totalL1Tags, totalL2Nodes, totalL3Nodes, pendingReviews, recentActivity]
       properties:
         totalProjects:
           type: integer
@@ -1391,7 +1392,8 @@ components:
 
     GenerateResult:
       type: object
-      required: [l1TagsCreated, l2NodesCreated, l3NodesCreated, reviewTasksCreated, commitsProcessed]
+      required:
+        [l1TagsCreated, l2NodesCreated, l3NodesCreated, reviewTasksCreated, commitsProcessed]
       properties:
         l1TagsCreated:
           type: integer

@@ -12,7 +12,11 @@ export const l1TagsTable = pgTable("l1_tags", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertL1TagSchema = createInsertSchema(l1TagsTable).omit({ id: true, createdAt: true, usageCount: true });
+export const insertL1TagSchema = createInsertSchema(l1TagsTable).omit({
+  id: true,
+  createdAt: true,
+  usageCount: true,
+});
 export const updateL1TagSchema = insertL1TagSchema.partial();
 export type InsertL1Tag = z.infer<typeof insertL1TagSchema>;
 export type L1Tag = typeof l1TagsTable.$inferSelect;

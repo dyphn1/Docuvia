@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { FileText, Upload, Loader2, CheckCircle2, AlertCircle, File, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -91,7 +97,7 @@ export default function Documents() {
     if (!file) return;
     setFilename(file.name);
     const reader = new FileReader();
-    reader.onload = (ev) => setContent(ev.target?.result as string ?? "");
+    reader.onload = (ev) => setContent((ev.target?.result as string) ?? "");
     reader.readAsText(file);
   };
 
@@ -100,7 +106,8 @@ export default function Documents() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Document Ingestion</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Phase 2 — Parse and store Markdown, TXT, and build artifact documents for knowledge extraction
+          Phase 2 — Parse and store Markdown, TXT, and build artifact documents for knowledge
+          extraction
         </p>
       </div>
 
@@ -120,8 +127,10 @@ export default function Documents() {
                   <SelectValue placeholder="Select project..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects?.map(p => (
-                    <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                  {projects?.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -130,11 +139,19 @@ export default function Documents() {
             <div className="space-y-1">
               <Label className="text-xs">Upload File (MD, TXT)</Label>
               <div className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/40 transition-colors">
-                <input type="file" accept=".md,.txt,.markdown,.log,.map" onChange={handleFileUpload} className="hidden" id="file-upload" />
+                <input
+                  type="file"
+                  accept=".md,.txt,.markdown,.log,.map"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  id="file-upload"
+                />
                 <label htmlFor="file-upload" className="cursor-pointer">
                   <File className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
                   <p className="text-xs text-muted-foreground">Click to upload or drag & drop</p>
-                  <p className="text-[10px] text-muted-foreground/70 mt-1">.md, .txt, .log, .map files</p>
+                  <p className="text-[10px] text-muted-foreground/70 mt-1">
+                    .md, .txt, .log, .map files
+                  </p>
                 </label>
               </div>
             </div>
@@ -150,7 +167,7 @@ export default function Documents() {
               <Input
                 placeholder="README.md"
                 value={filename}
-                onChange={e => setFilename(e.target.value)}
+                onChange={(e) => setFilename(e.target.value)}
                 className="text-xs font-mono h-8"
               />
             </div>
@@ -160,13 +177,28 @@ export default function Documents() {
               <Textarea
                 placeholder="Paste document content here..."
                 value={content}
-                onChange={e => setContent(e.target.value)}
+                onChange={(e) => setContent(e.target.value)}
                 className="text-xs font-mono min-h-32 resize-none"
               />
             </div>
 
-            <Button className="w-full" size="sm" onClick={handleIngest} disabled={!selectedProject || !filename || !content || loading}>
-              {loading ? <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Ingesting...</> : <><Upload className="h-3 w-3 mr-2" />Ingest Document</>}
+            <Button
+              className="w-full"
+              size="sm"
+              onClick={handleIngest}
+              disabled={!selectedProject || !filename || !content || loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                  Ingesting...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-3 w-3 mr-2" />
+                  Ingest Document
+                </>
+              )}
             </Button>
 
             {success && (
@@ -176,7 +208,8 @@ export default function Documents() {
             )}
             {error && (
               <div className="p-2.5 bg-destructive/10 border border-destructive/20 rounded-md text-xs text-destructive flex items-start gap-2">
-                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />{error}
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                {error}
               </div>
             )}
           </CardContent>
@@ -188,7 +221,9 @@ export default function Documents() {
               <FileText className="h-4 w-4 text-primary" />
               Project Documents
               {documents.length > 0 && (
-                <Badge variant="secondary" className="ml-auto text-xs">{documents.length}</Badge>
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  {documents.length}
+                </Badge>
               )}
             </CardTitle>
           </CardHeader>
@@ -208,14 +243,22 @@ export default function Documents() {
               </div>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {documents.map(doc => (
-                  <div key={doc.id} className="p-3 border border-border/50 rounded-md bg-background hover:border-primary/30 transition-colors">
+                {documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="p-3 border border-border/50 rounded-md bg-background hover:border-primary/30 transition-colors"
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <File className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="text-xs font-mono font-medium truncate">{doc.filename}</span>
+                        <span className="text-xs font-mono font-medium truncate">
+                          {doc.filename}
+                        </span>
                       </div>
-                      <Badge variant="outline" className={`text-[10px] shrink-0 ${docTypeColors[doc.docType] ?? ""}`}>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] shrink-0 ${docTypeColors[doc.docType] ?? ""}`}
+                      >
                         {doc.docType}
                       </Badge>
                     </div>

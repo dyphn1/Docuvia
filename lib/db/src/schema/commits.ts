@@ -6,7 +6,9 @@ import { l2NodesTable } from "./l2_nodes";
 
 export const commitsTable = pgTable("commits", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
+  projectId: integer("project_id")
+    .notNull()
+    .references(() => projectsTable.id, { onDelete: "cascade" }),
   hash: text("hash").notNull(),
   message: text("message").notNull(),
   author: text("author").notNull(),
@@ -15,6 +17,9 @@ export const commitsTable = pgTable("commits", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertCommitSchema = createInsertSchema(commitsTable).omit({ id: true, createdAt: true });
+export const insertCommitSchema = createInsertSchema(commitsTable).omit({
+  id: true,
+  createdAt: true,
+});
 export type InsertCommit = z.infer<typeof insertCommitSchema>;
 export type Commit = typeof commitsTable.$inferSelect;

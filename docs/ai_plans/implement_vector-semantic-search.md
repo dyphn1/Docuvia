@@ -13,13 +13,13 @@
 
 The following items were **mis-categorized** in `docs/roadmap-checklist.md` and have been corrected based on actual file inspection:
 
-| Item | Old Status | Actual Status | Evidence |
-|------|-----------|---------------|----------|
-| Generate pipeline (L1→L2→L3) | ⚠️ Partial | ✅ Done | `routes/generate.ts` fully implements 6-step pipeline with LLM, deduplication, review task creation, commit backfill |
-| Commit filter logic | ⚠️ Partial | ✅ Done | `routes/ingest.ts` `scoreCommit()` with regex-based signal/noise detection |
-| Vector index (semantic search) | ⚠️ Partial | ❌ NOT STARTED | `routes/search.ts` uses SQL `LIKE` only; MCP `search_knowledge` also uses SQL `LIKE` — zero vector DB code exists |
-| Review UI (frontend) | ⚠️ Partial | ✅ Done | `artifacts/kg-engine/src/pages/review.tsx` is comprehensive with TaskCard, approve/reject/defer, correction editing |
-| Impact analysis impl | ⚠️ Partial | ✅ Basic Done | `routes/mcp.ts` has real one-hop graph traversal via `nodeLinksTable` |
+| Item                           | Old Status | Actual Status  | Evidence                                                                                                             |
+| ------------------------------ | ---------- | -------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Generate pipeline (L1→L2→L3)   | ⚠️ Partial | ✅ Done        | `routes/generate.ts` fully implements 6-step pipeline with LLM, deduplication, review task creation, commit backfill |
+| Commit filter logic            | ⚠️ Partial | ✅ Done        | `routes/ingest.ts` `scoreCommit()` with regex-based signal/noise detection                                           |
+| Vector index (semantic search) | ⚠️ Partial | ❌ NOT STARTED | `routes/search.ts` uses SQL `LIKE` only; MCP `search_knowledge` also uses SQL `LIKE` — zero vector DB code exists    |
+| Review UI (frontend)           | ⚠️ Partial | ✅ Done        | `artifacts/kg-engine/src/pages/review.tsx` is comprehensive with TaskCard, approve/reject/defer, correction editing  |
+| Impact analysis impl           | ⚠️ Partial | ✅ Basic Done  | `routes/mcp.ts` has real one-hop graph traversal via `nodeLinksTable`                                                |
 
 ### 1.2 Verified Critical Gap
 
@@ -40,6 +40,7 @@ const l2Rows = await db.select().from(l2NodesTable)
 ```
 
 **Impact:**
+
 - A query like `"authentication module"` will NOT find an L2 node named `"JWT handler"` — even if semantically identical
 - MCP tool `search_knowledge` — the primary AI-agent interface — is effectively broken for natural language
 - Blocks: Phase 4.1 Vector Index, Phase 5.1 Agentic RAG
@@ -109,9 +110,9 @@ POST /api/projects/:id/generate  (existing pipeline)
 
 ## 5. Affected Packages
 
-| Package | Change Type |
-|---------|-------------|
-| `lib/db` | Schema migration — add `vector` columns, enable `pgvector` |
+| Package                | Change Type                                                               |
+| ---------------------- | ------------------------------------------------------------------------- |
+| `lib/db`               | Schema migration — add `vector` columns, enable `pgvector`                |
 | `artifacts/api-server` | New embedding service, update search/mcp routes, update generate pipeline |
 
 No changes to `lib/api-spec`, `lib/api-zod`, `lib/api-client-react`, or `artifacts/kg-engine` (frontend) are required — the API response shape is preserved.
@@ -144,6 +145,7 @@ export const vector = customType<{ data: number[]; driverData: string }>({
 ```
 
 Add to `l2NodesTable`:
+
 ```typescript
 embedding: vector("embedding", { dimensions: 1536 }),
 ```
@@ -151,6 +153,7 @@ embedding: vector("embedding", { dimensions: 1536 }),
 **File: `lib/db/src/schema/l3_nodes.ts`**
 
 Add to `l3NodesTable`:
+
 ```typescript
 embedding: vector("embedding", { dimensions: 1536 }),
 ```
@@ -160,9 +163,11 @@ embedding: vector("embedding", { dimensions: 1536 }),
 **Migration approach**: Use `pnpm --filter @workspace/db push` (existing `drizzle-kit push` workflow).
 
 **Important**: Before pushing, the `pgvector` extension must be enabled:
+
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
+
 This should be done via a Drizzle migration SQL file, or documented as a prerequisite.
 
 ### Step 2: Create Embedding Service (`artifacts/api-server/src/lib/embedding.ts`)
@@ -198,24 +203,28 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
 After the L2 node is upserted and L3 nodes are inserted, add embedding generation:
 
 After the L2 insert/update block:
+
 ```typescript
 // Generate and store embedding for the L2 node
 const l2Text = `${l2data.name} ${l2data.description ?? ""}`.trim();
 const l2Embedding = await generateEmbedding(l2Text);
 if (l2Embedding) {
-  await db.update(l2NodesTable)
+  await db
+    .update(l2NodesTable)
     .set({ embedding: l2Embedding })
     .where(eq(l2NodesTable.id, l2node.id));
 }
 ```
 
 After each L3 insert:
+
 ```typescript
 // Generate and store embedding for the L3 node
 const l3Text = `${l3data.title} ${l3data.content ?? ""}`.trim();
 const l3Embedding = await generateEmbedding(l3Text);
 if (l3Embedding) {
-  await db.update(l3NodesTable)
+  await db
+    .update(l3NodesTable)
     .set({ embedding: l3Embedding })
     .where(eq(l3NodesTable.id, l3node.id));
 }
@@ -224,6 +233,7 @@ if (l3Embedding) {
 ### Step 4: Update Search Route (`artifacts/api-server/src/routes/search.ts`)
 
 Replace the SQL LIKE approach with a hybrid strategy:
+
 - If embedding generation succeeds: use `<=>` cosine distance operator (pgvector)
 - If it fails: fall back to SQL LIKE
 
@@ -273,6 +283,7 @@ router.post("/search", async (req, res) => {
 ### Step 5: Update MCP `search_knowledge` (`artifacts/api-server/src/routes/mcp.ts`)
 
 Same hybrid approach in the `GET /mcp/search_knowledge` handler:
+
 - Generate query embedding
 - Use pgvector `<=>` cosine distance if available
 - Fall back to SQL LIKE if embedding fails
@@ -283,9 +294,7 @@ Add `POST /api/admin/reindex-embeddings` to backfill embeddings for all existing
 
 ```typescript
 router.post("/admin/reindex-embeddings", async (req, res) => {
-  const l2Nodes = await db.select()
-    .from(l2NodesTable)
-    .where(isNull(l2NodesTable.embedding));
+  const l2Nodes = await db.select().from(l2NodesTable).where(isNull(l2NodesTable.embedding));
 
   let l2Done = 0;
   for (const node of l2Nodes) {
@@ -297,9 +306,7 @@ router.post("/admin/reindex-embeddings", async (req, res) => {
     }
   }
 
-  const l3Nodes = await db.select()
-    .from(l3NodesTable)
-    .where(isNull(l3NodesTable.embedding));
+  const l3Nodes = await db.select().from(l3NodesTable).where(isNull(l3NodesTable.embedding));
 
   let l3Done = 0;
   for (const node of l3Nodes) {
@@ -320,19 +327,21 @@ router.post("/admin/reindex-embeddings", async (req, res) => {
 ## 7. File List for the Implementing Agent
 
 ### Files to Create (New)
-| File | Purpose |
-|------|---------|
+
+| File                                        | Purpose                                   |
+| ------------------------------------------- | ----------------------------------------- |
 | `artifacts/api-server/src/lib/embedding.ts` | Embedding generation service using OpenAI |
 
 ### Files to Modify
-| File | Change |
-|------|--------|
-| `lib/db/src/schema/l2_nodes.ts` | Add `vector` custom type + `embedding` column |
-| `lib/db/src/schema/l3_nodes.ts` | Add `embedding` column |
-| `artifacts/api-server/src/routes/generate.ts` | Add embedding generation after L2/L3 inserts |
-| `artifacts/api-server/src/routes/search.ts` | Replace SQL LIKE with semantic vector search + fallback |
-| `artifacts/api-server/src/routes/mcp.ts` | Replace SQL LIKE in `search_knowledge` with semantic search |
-| `artifacts/api-server/src/routes/generate.ts` | Add `POST /admin/reindex-embeddings` endpoint |
+
+| File                                          | Change                                                      |
+| --------------------------------------------- | ----------------------------------------------------------- |
+| `lib/db/src/schema/l2_nodes.ts`               | Add `vector` custom type + `embedding` column               |
+| `lib/db/src/schema/l3_nodes.ts`               | Add `embedding` column                                      |
+| `artifacts/api-server/src/routes/generate.ts` | Add embedding generation after L2/L3 inserts                |
+| `artifacts/api-server/src/routes/search.ts`   | Replace SQL LIKE with semantic vector search + fallback     |
+| `artifacts/api-server/src/routes/mcp.ts`      | Replace SQL LIKE in `search_knowledge` with semantic search |
+| `artifacts/api-server/src/routes/generate.ts` | Add `POST /admin/reindex-embeddings` endpoint               |
 
 ---
 
@@ -362,14 +371,14 @@ No new npm packages are required.
 
 After this feature is implemented, the following checklist items will change:
 
-| Item | Before | After |
-|------|--------|-------|
-| Vector index (semantic search) | ❌ Not started | ✅ Done |
-| `search_knowledge` endpoint quality | ⚠️ SQL LIKE | ✅ Semantic |
-| Phase 4 progress | 1.5 / 4 | 2.5 / 4 |
-| Agentic RAG (unblocked) | ❌ Blocked | 🔓 Unblocked |
+| Item                                | Before         | After        |
+| ----------------------------------- | -------------- | ------------ |
+| Vector index (semantic search)      | ❌ Not started | ✅ Done      |
+| `search_knowledge` endpoint quality | ⚠️ SQL LIKE    | ✅ Semantic  |
+| Phase 4 progress                    | 1.5 / 4        | 2.5 / 4      |
+| Agentic RAG (unblocked)             | ❌ Blocked     | 🔓 Unblocked |
 
 ---
 
-*Plan version: v1.0 — 2026-05-12*  
-*Next recommended agent: Backend Developer*
+_Plan version: v1.0 — 2026-05-12_  
+_Next recommended agent: Backend Developer_

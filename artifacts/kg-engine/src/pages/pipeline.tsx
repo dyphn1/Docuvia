@@ -59,6 +59,8 @@ export default function Pipeline() {
   const [generateResult, setGenerateResult] = useState<GenerateResult | null>(null);
   const [ingestError, setIngestError] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
+  const [ingestMode, setIngestMode] = useState<"full" | "incremental">("full");
+  const [generateMode, setGenerateMode] = useState<"full" | "incremental">("full");
 
   const selectedProj = projects?.find((p) => String(p.id) === selectedProject);
 
@@ -76,6 +78,7 @@ export default function Pipeline() {
           branch,
           limit: Number(limit),
           githubToken: githubToken || undefined,
+          mode: ingestMode,
         }),
       });
       if (!res.ok) {
@@ -101,7 +104,7 @@ export default function Pipeline() {
       const res = await fetch(`/api/projects/${selectedProject}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, maxCommits: Number(maxCommits) }),
+        body: JSON.stringify({ model, maxCommits: Number(maxCommits), mode: generateMode }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -221,6 +224,18 @@ export default function Pipeline() {
                 className="font-mono text-xs h-8"
               />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Sync Mode</Label>
+              <Select value={ingestMode} onValueChange={(v) => setIngestMode(v as "full" | "incremental")}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full Sync</SelectItem>
+                  <SelectItem value="incremental">Incremental Sync</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               className="w-full"
               size="sm"
@@ -331,6 +346,18 @@ export default function Pipeline() {
                   className="text-xs h-8"
                 />
               </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Generation Mode</Label>
+              <Select value={generateMode} onValueChange={(v) => setGenerateMode(v as "full" | "incremental")}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full Sync</SelectItem>
+                  <SelectItem value="incremental">Incremental Sync</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <Button
               className="w-full"

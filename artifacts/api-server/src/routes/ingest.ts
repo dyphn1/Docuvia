@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { commitsTable, documentsTable, projectsTable, activityLogTable } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, isNull } from "drizzle-orm";
 import { getSvnLog, getSvnDiff } from "../lib/svn-client.js";
 import { IngestSvnBody } from "@workspace/api-zod";
 import { z } from "zod";
@@ -16,6 +16,11 @@ const GitIngestSchema = z.object({
   branch: z.string().optional().default("main"),
   limit: z.number().optional().default(100),
   githubToken: z.string().optional(),
+  mode: z.enum(["full", "incremental"]).optional().default("full"),
+});
+
+const SvnModeSchema = z.object({
+  mode: z.enum(["full", "incremental"]).optional().default("full"),
 });
 
 const DocumentIngestSchema = z.object({
@@ -70,6 +75,7 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   const body = GitIngestSchema.parse(req.body);
+  const mode = body.mode ?? "full";
   const repoUrl = body.repoUrl ?? project.repoUrl;
 
   const githubMatch = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
@@ -98,7 +104,11 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
     commit: { message: string; author: { name: string; date: string } };
   }> = [];
   for (let page = 1; page <= pages && allCommits.length < limit; page++) {
-    const url = `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}&page=${page}`;
+    const sinceParam =
+      mode === "incremental" && project.lastGitIngestedAt
+        ? `&since=${project.lastGitIngestedAt.toISOString()}`
+        : "";
+    const url = `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}&page=${page}${sinceParam}`;
     const ghRes = await fetch(url, { headers });
     if (!ghRes.ok) {
       const err = await ghRes.json().catch(() => ({}));
@@ -123,6 +133,7 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
 
   let ingested = 0;
   let skipped = 0;
+  let newestCommitDate: Date | null = null;
   for (const c of allCommits) {
     if (existingHashes.has(c.sha)) {
       skipped++;
@@ -136,6 +147,10 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
       author: c.commit.author?.name ?? "Unknown",
       valid: score >= 0.4,
     });
+    const commitDate = new Date(c.commit.author?.date ?? "");
+    if (!isNaN(commitDate.getTime()) && (!newestCommitDate || commitDate > newestCommitDate)) {
+      newestCommitDate = commitDate;
+    }
     ingested++;
   }
 
@@ -148,6 +163,14 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
     await db
       .update(projectsTable)
       .set({ updatedAt: new Date() })
+      .where(eq(projectsTable.id, projectId));
+  }
+
+  if (mode === "incremental") {
+    const newCursor = newestCommitDate ?? new Date();
+    await db
+      .update(projectsTable)
+      .set({ lastGitIngestedAt: newCursor })
       .where(eq(projectsTable.id, projectId));
   }
 
@@ -170,9 +193,14 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
     return res.status(400).json({ error: "Invalid request body", details: err });
   }
 
+  const { mode: svnMode } = SvnModeSchema.parse(req.body);
   const svnUrl = body.svnUrl;
-  const startRevision = body.startRevision ?? 1;
+  let startRevision = body.startRevision ?? 1;
   const endRevision = body.endRevision ?? "HEAD";
+
+  if (svnMode === "incremental" && project.lastSvnRevision != null) {
+    startRevision = project.lastSvnRevision + 1;
+  }
 
   let revisions;
   try {
@@ -185,6 +213,7 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
   let ingested = 0;
   let skipped = 0;
   const errors: string[] = [];
+  let maxRevisionIngested = project.lastSvnRevision ?? 0;
 
   for (const rev of revisions) {
     const [existing] = await db
@@ -224,6 +253,7 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
       revision: rev.revision,
       vcsType: "svn",
     });
+    if (rev.revision > maxRevisionIngested) maxRevisionIngested = rev.revision;
     ingested++;
   }
 
@@ -239,7 +269,33 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
       .where(eq(projectsTable.id, projectId));
   }
 
+  if (svnMode === "incremental" && maxRevisionIngested > (project.lastSvnRevision ?? 0)) {
+    await db
+      .update(projectsTable)
+      .set({ lastSvnRevision: maxRevisionIngested })
+      .where(eq(projectsTable.id, projectId));
+  }
+
   return res.json({ ingested, skipped, errors });
+});
+
+router.get("/projects/:id/ingest/status", async (req, res) => {
+  const projectId = Number(req.params.id);
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  if (!project) return res.status(404).json({ error: "Project not found" });
+
+  const [{ pendingCount }] = await db
+    .select({ pendingCount: sql<number>`count(*)::int` })
+    .from(commitsTable)
+    .where(and(eq(commitsTable.projectId, projectId), isNull(commitsTable.processedAt)));
+
+  return res.json({
+    projectId: project.id,
+    vcsType: project.vcsType,
+    lastGitIngestedAt: project.lastGitIngestedAt?.toISOString() ?? null,
+    lastSvnRevision: project.lastSvnRevision ?? null,
+    pendingCommits: Number(pendingCount),
+  });
 });
 
 router.post(

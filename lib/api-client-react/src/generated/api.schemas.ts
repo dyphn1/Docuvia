@@ -435,11 +435,19 @@ export interface DocumentIngestInput {
   docType?: DocumentIngestInputDocType;
 }
 
+export type GitIngestInputMode = (typeof GitIngestInputMode)[keyof typeof GitIngestInputMode];
+
+export const GitIngestInputMode = {
+  full: "full",
+  incremental: "incremental",
+} as const;
+
 export interface GitIngestInput {
   repoUrl?: string;
   branch?: string;
   limit?: number;
   githubToken?: string;
+  mode?: GitIngestInputMode;
 }
 
 export interface GitIngestResult {
@@ -447,6 +455,13 @@ export interface GitIngestResult {
   commitsSkipped: number;
   totalFetched: number;
 }
+
+export type SvnIngestInputMode = (typeof SvnIngestInputMode)[keyof typeof SvnIngestInputMode];
+
+export const SvnIngestInputMode = {
+  full: "full",
+  incremental: "incremental",
+} as const;
 
 export interface SvnIngestInput {
   /** SVN repository URL (e.g. svn+ssh://... or https://...) */
@@ -459,6 +474,7 @@ export interface SvnIngestInput {
   startRevision?: number;
   /** Ending revision number (optional, defaults to HEAD) */
   endRevision?: number;
+  mode?: SvnIngestInputMode;
 }
 
 export interface SvnIngestResult {
@@ -467,9 +483,17 @@ export interface SvnIngestResult {
   errors: string[];
 }
 
+export type GenerateInputMode = (typeof GenerateInputMode)[keyof typeof GenerateInputMode];
+
+export const GenerateInputMode = {
+  full: "full",
+  incremental: "incremental",
+} as const;
+
 export interface GenerateInput {
   model?: string;
   maxCommits?: number;
+  mode?: GenerateInputMode;
 }
 
 export interface GenerateResult {
@@ -480,6 +504,31 @@ export interface GenerateResult {
   reviewTasksCreated: number;
   commitsProcessed: number;
   documentsUsed?: number;
+}
+
+export type IngestStatusResponseVcsType =
+  (typeof IngestStatusResponseVcsType)[keyof typeof IngestStatusResponseVcsType];
+
+export const IngestStatusResponseVcsType = {
+  git: "git",
+  svn: "svn",
+} as const;
+
+export interface IngestStatusResponse {
+  projectId: string;
+  vcsType: IngestStatusResponseVcsType;
+  /**
+   * ISO-8601 timestamp of last Git ingest, or null
+   * @nullable
+   */
+  lastGitIngestedAt?: string | null;
+  /**
+   * Last ingested SVN revision number, or null
+   * @nullable
+   */
+  lastSvnRevision?: number | null;
+  /** Number of commits not yet processed */
+  pendingCommits: number;
 }
 
 export type PromptTemplateTemplateType =

@@ -5,8 +5,10 @@
  * Docuvia — Universal VCS Knowledge Graph Engine API
  * OpenAPI spec version: 0.2.0
  */
+import type { GenerateInputMode } from "./generateInputMode";
 
 export interface GenerateInput {
   model?: string;
   maxCommits?: number;
+  mode?: GenerateInputMode;
 }

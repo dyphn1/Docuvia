@@ -19,6 +19,8 @@ export const projectsTable = pgTable("projects", {
   status: projectStatusEnum("status").notNull().default("active"),
   vcsType: vcsTypeEnum("vcs_type").notNull().default("git"),
   svnUrl: text("svn_url"),
+  lastGitIngestedAt: timestamp("last_git_ingested_at"),
+  lastSvnRevision: integer("last_svn_revision"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

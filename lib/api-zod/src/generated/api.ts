@@ -241,12 +241,14 @@ export const IngestGitParams = zod.object({
 });
 
 export const ingestGitBodyLimitDefault = 100;
+export const ingestGitBodyModeDefault = `full`;
 
 export const IngestGitBody = zod.object({
   repoUrl: zod.string().optional(),
   branch: zod.string().optional(),
   limit: zod.number().default(ingestGitBodyLimitDefault),
   githubToken: zod.string().optional(),
+  mode: zod.enum(["full", "incremental"]).default(ingestGitBodyModeDefault),
 });
 
 export const IngestGitResponse = zod.object({
@@ -256,11 +258,31 @@ export const IngestGitResponse = zod.object({
 });
 
 /**
+ * @summary Get ingest status and cursor info for a project
+ */
+export const GetProjectIngestStatusParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetProjectIngestStatusResponse = zod.object({
+  projectId: zod.string(),
+  vcsType: zod.enum(["git", "svn"]),
+  lastGitIngestedAt: zod
+    .string()
+    .nullish()
+    .describe("ISO-8601 timestamp of last Git ingest, or null"),
+  lastSvnRevision: zod.number().nullish().describe("Last ingested SVN revision number, or null"),
+  pendingCommits: zod.number().describe("Number of commits not yet processed"),
+});
+
+/**
  * @summary Ingest SVN commits into the knowledge graph
  */
 export const IngestSvnParams = zod.object({
   id: zod.coerce.number(),
 });
+
+export const ingestSvnBodyModeDefault = `full`;
 
 export const IngestSvnBody = zod.object({
   svnUrl: zod.string().describe("SVN repository URL (e.g. svn+ssh:\/\/... or https:\/\/...)"),
@@ -274,6 +296,7 @@ export const IngestSvnBody = zod.object({
     .number()
     .optional()
     .describe("Ending revision number (optional, defaults to HEAD)"),
+  mode: zod.enum(["full", "incremental"]).default(ingestSvnBodyModeDefault),
 });
 
 export const IngestSvnResponse = zod.object({
@@ -348,10 +371,12 @@ export const GenerateKnowledgeParams = zod.object({
 });
 
 export const generateKnowledgeBodyMaxCommitsDefault = 50;
+export const generateKnowledgeBodyModeDefault = `full`;
 
 export const GenerateKnowledgeBody = zod.object({
   model: zod.string().optional(),
   maxCommits: zod.number().default(generateKnowledgeBodyMaxCommitsDefault),
+  mode: zod.enum(["full", "incremental"]).default(generateKnowledgeBodyModeDefault),
 });
 
 export const GenerateKnowledgeResponse = zod.object({

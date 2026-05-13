@@ -11,6 +11,7 @@ import {
   useListL3Nodes,
   getListL3NodesQueryKey,
 } from "@workspace/api-client-react";
+import { IngestStatusCard } from "@/components/IngestStatusCard";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -300,6 +301,9 @@ export default function ProjectDetail() {
               <span>Created {format(new Date(project.createdAt), "MMM d, yyyy")}</span>
             </div>
             {project.description && <p className="mt-4 text-sm max-w-3xl">{project.description}</p>}
+            <div className="mt-4 max-w-xl">
+              <IngestStatusCard projectId={id} repoUrl={project.repoUrl} />
+            </div>
           </div>
 
           <div className="flex gap-4">

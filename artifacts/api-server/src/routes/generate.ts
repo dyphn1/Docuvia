@@ -14,7 +14,7 @@ import {
   promptTemplatesTable,
   correctionExamplesTable,
 } from "@workspace/db";
-import { eq, and, sql, isNull, ne, isNotNull } from "drizzle-orm";
+import { eq, and, sql, isNull, ne, isNotNull, inArray } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { z } from "zod";
@@ -25,6 +25,7 @@ const router = Router();
 const GenerateInputSchema = z.object({
   model: z.string().optional(),
   maxCommits: z.number().optional().default(50),
+  mode: z.enum(["full", "incremental"]).optional().default("full"),
 });
 
 async function getModel(projectId: number, override?: string): Promise<string> {
@@ -297,6 +298,7 @@ router.post("/projects/:id/generate", async (req, res) => {
   const body = GenerateInputSchema.parse(req.body ?? {});
   const model = await getModel(projectId, body.model);
   const maxCommits = body.maxCommits ?? 50;
+  const mode = body.mode ?? "full";
 
   await db
     .update(projectsTable)
@@ -308,7 +310,11 @@ router.post("/projects/:id/generate", async (req, res) => {
     const validCommits = await db
       .select()
       .from(commitsTable)
-      .where(and(eq(commitsTable.projectId, projectId), eq(commitsTable.valid, true)))
+      .where(
+        mode === "incremental"
+          ? and(eq(commitsTable.projectId, projectId), eq(commitsTable.valid, true), isNull(commitsTable.processedAt))
+          : and(eq(commitsTable.projectId, projectId), eq(commitsTable.valid, true))
+      )
       .orderBy(sql`${commitsTable.createdAt} desc`)
       .limit(maxCommits);
 
@@ -596,6 +602,15 @@ router.post("/projects/:id/generate", async (req, res) => {
         description: `Noise detection flagged ${noiseTasksCreated} L1 tag issue(s) for review`,
         projectId,
       });
+    }
+
+    // Mark commits as processed in incremental mode
+    if (mode === "incremental" && validCommits.length > 0) {
+      const commitIds = validCommits.map((c) => c.id);
+      await db
+        .update(commitsTable)
+        .set({ processedAt: new Date() })
+        .where(inArray(commitsTable.id, commitIds));
     }
 
     await db

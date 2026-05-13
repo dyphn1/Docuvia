@@ -5,6 +5,7 @@
  * Docuvia — Universal VCS Knowledge Graph Engine API
  * OpenAPI spec version: 0.2.0
  */
+import type { SvnIngestInputMode } from "./svnIngestInputMode";
 
 export interface SvnIngestInput {
   /** SVN repository URL (e.g. svn+ssh://... or https://...) */
@@ -17,4 +18,5 @@ export interface SvnIngestInput {
   startRevision?: number;
   /** Ending revision number (optional, defaults to HEAD) */
   endRevision?: number;
+  mode?: SvnIngestInputMode;
 }

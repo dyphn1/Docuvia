@@ -16,6 +16,7 @@ export const commitsTable = pgTable("commits", {
   l2NodeId: integer("l2_node_id").references(() => l2NodesTable.id, { onDelete: "set null" }),
   revision: integer("revision"),
   vcsType: text("vcs_type").default("git"),
+  processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

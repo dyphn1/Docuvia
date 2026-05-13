@@ -29,6 +29,7 @@ import type {
   GitIngestInput,
   GitIngestResult,
   HealthStatus,
+  IngestStatusResponse,
   L1Tag,
   L1TagInput,
   L1TagUpdate,
@@ -915,6 +916,77 @@ export const useIngestGit = <TError = ErrorType<unknown>, TContext = unknown>(op
 > => {
   return useMutation(getIngestGitMutationOptions(options));
 };
+
+/**
+ * @summary Get ingest status and cursor info for a project
+ */
+export const getGetProjectIngestStatusUrl = (id: number) => {
+  return `/api/projects/${id}/ingest/status`;
+};
+
+export const getProjectIngestStatus = async (
+  id: number,
+  options?: RequestInit
+): Promise<IngestStatusResponse> => {
+  return customFetch<IngestStatusResponse>(getGetProjectIngestStatusUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProjectIngestStatusQueryKey = (id: number) => {
+  return [`/api/projects/${id}/ingest/status`] as const;
+};
+
+export const getGetProjectIngestStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjectIngestStatus>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getProjectIngestStatus>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetProjectIngestStatusQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjectIngestStatus>>> = ({ signal }) =>
+    getProjectIngestStatus(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjectIngestStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectIngestStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectIngestStatus>>
+>;
+export type GetProjectIngestStatusQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get ingest status and cursor info for a project
+ */
+
+export function useGetProjectIngestStatus<
+  TData = Awaited<ReturnType<typeof getProjectIngestStatus>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getProjectIngestStatus>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectIngestStatusQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Ingest SVN commits into the knowledge graph

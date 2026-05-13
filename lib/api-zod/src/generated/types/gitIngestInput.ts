@@ -5,10 +5,12 @@
  * Docuvia — Universal VCS Knowledge Graph Engine API
  * OpenAPI spec version: 0.2.0
  */
+import type { GitIngestInputMode } from "./gitIngestInputMode";
 
 export interface GitIngestInput {
   repoUrl?: string;
   branch?: string;
   limit?: number;
   githubToken?: string;
+  mode?: GitIngestInputMode;
 }

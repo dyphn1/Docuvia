@@ -101,13 +101,13 @@
 | ------------------------------- | -------------- | --------------------------------------------------------------- |
 | Export (Markdown / JSON)        | ✅ Done        | `artifacts/api-server/src/routes/export.ts`, `projectExport.ts` |
 | Dashboard & stats               | ✅ Done        | `routes/dashboard.ts`, `dashboardStats.ts`, `activityItem.ts`   |
-| Incremental update (delta-only) | ❌ Not started | No event listener or delta tracking found                       |
+| Incremental update (delta-only) | ✅ Done        | `lastGitIngestedAt`/`lastSvnRevision` cursors on projects; `processedAt` on commits; `mode: full\|incremental` on ingest/generate routes; `GET /projects/:id/ingest/status`; `IngestStatusCard` frontend component |
 | Cross-team subscription         | ❌ Not started | —                                                               |
 | VS Code extension               | ❌ Not started | —                                                               |
 | Slack / Teams bot               | ❌ Not started | —                                                               |
 | GitHub PR integration           | ❌ Not started | —                                                               |
 
-**Progress: 2 / 7**
+**Progress: 3 / 7**
 
 ---
 
@@ -138,9 +138,12 @@
 
 - [x] **Build artifact parser**: ✅ Implemented — `artifacts/api-server/src/lib/build-artifact-parser.ts` with `parseMapFile` (GCC/MSVC linker maps), `parseFvFile` (UEFI firmware volumes), `parseFdFile` (flash descriptors), `parseCompileLog` (GCC/MSVC diagnostics); `extractBuildArtifactText()` entry point returns structured Markdown; `document-parser.ts` routes `build_artifact` to new parser with optional `filename` param; `upload.ts` adds `.log` to ALLOWED_EXTENSIONS; `ingest.ts` passes `originalname` to `extractText()`
 
+### ✅ Completed — Phase 7
+
+- [x] **Incremental update**: ✅ Implemented — `lastGitIngestedAt`/`lastSvnRevision` cursor columns on `projects`; `processedAt` on `commits`; `mode: "full" | "incremental"` added to git ingest, SVN ingest, and generate routes; `GET /projects/:id/ingest/status` endpoint; `IngestStatusCard` component; pipeline page mode toggle
+
 ### ⚪ Future — Phase 7
 
-- [ ] Incremental update (watch new commits, delta indexing)
 - [ ] VS Code extension
 - [ ] Slack / Teams bot
 - [ ] GitHub PR integration
@@ -157,13 +160,13 @@
 | 4         | Knowledge Graph        | 4 / 4 — 100%       |
 | 5         | Query Layer / MCP      | 8 / 8 — 100%       |
 | 6         | Human-in-the-Loop      | 8 / 8 — 100%       |
-| 7         | Enhancements           | 2 / 7 — 29%        |
-| **Total** |                        | **37 / 42 — 88%** |
+| 7         | Enhancements           | 3 / 7 — 43%        |
+| **Total** |                        | **38 / 42 — 90%** |
 
-> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, feedback loop, SVN integration, and Build Artifact Parser are now fully implemented. Phase 2 (Input Layer) is now 100% complete.  
-> Remaining Phase 7 gaps are ecosystem integrations (VS Code, Slack, GitHub PR, incremental update).
+> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, feedback loop, SVN integration, Build Artifact Parser, and Incremental Update are now fully implemented. Phases 1–6 are 100% complete.  
+> Remaining Phase 7 gaps are ecosystem integrations (VS Code, Slack, GitHub PR).
 
 ---
 
-_Document version: v0.9 — Audited & updated from actual file structure + post-implementation_  
-*Last updated: 2026-05-12 (v0.9 — Build Artifact Parser implemented: build-artifact-parser.ts, parseMapFile/parseFvFile/parseFdFile/parseCompileLog, document-parser.ts routing, upload.ts .log support)*
+_Document version: v1.0 — Audited & updated from actual file structure + post-implementation_  
+*Last updated: 2026-05-13 (v1.0 — Incremental Update implemented: lastGitIngestedAt/lastSvnRevision cursors, processedAt on commits, mode field on ingest/generate routes, GET /ingest/status endpoint, IngestStatusCard UI, pipeline mode toggle)*

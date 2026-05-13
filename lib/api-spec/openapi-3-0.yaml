@@ -1,0 +1,50 @@
+openapi: 3.0.3
+info:
+  title: Api
+  version: 0.2.0
+  description: Docuvia — Universal VCS Knowledge Graph Engine API (Compat test)
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: projects
+    description: Project (repo) management
+  - name: l1-tags
+    description: Global L1 tag pool management
+  - name: l2-nodes
+    description: L2 Package/Module/PCD nodes
+  - name: l3-nodes
+    description: L3 change/decision nodes
+  - name: commits
+    description: VCS commit management
+  - name: review-tasks
+    description: Human review and correction tasks
+  - name: dashboard
+    description: Dashboard and analytics
+  - name: ingest
+    description: Data ingestion (Git, documents)
+  - name: generate
+    description: AI knowledge generation pipeline
+  - name: search
+    description: Knowledge search and query
+  - name: mcp
+    description: MCP tool endpoints for agent use
+  - name: documents
+    description: Document management
+  - name: llm-config
+    description: LLM configuration per project
+  - name: subscriptions
+    description: Cross-team project subscriptions
+  - name: notifications
+    description: In-app notifications
+  - name: github-prs
+    description: GitHub Pull Request integration
+  - name: extensions
+    description: VS Code extension endpoints
+
+# Note: this file is a compatibility copy (3.0.3) of openapi.yaml for testing
+paths: {}
+
+components: {}

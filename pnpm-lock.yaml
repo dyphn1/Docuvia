@@ -160,6 +160,9 @@ importers:
       '@rollup/rollup-win32-x64-msvc':
         specifier: ^4.60.3
         version: 4.60.3
+      js-yaml:
+        specifier: ^4.1.1
+        version: 4.1.1
       prettier:
         specifier: ^3.8.1
         version: 3.8.1

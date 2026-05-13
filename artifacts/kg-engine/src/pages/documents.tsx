@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { FileText, Upload, Loader2, CheckCircle2, AlertCircle, File, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { normalizeProjects } from "@/lib/projects";
 
 interface Document {
   id: number;
@@ -37,7 +38,10 @@ const docTypeColors: Record<string, string> = {
 
 export default function Documents() {
   const queryClient = useQueryClient();
-  const { data: projects } = useListProjects({ query: { queryKey: getListProjectsQueryKey() } });
+  const { data: projectsData } = useListProjects({
+    query: { queryKey: getListProjectsQueryKey() },
+  });
+  const projects = normalizeProjects(projectsData);
 
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [filename, setFilename] = useState("");
@@ -127,7 +131,7 @@ export default function Documents() {
                   <SelectValue placeholder="Select project..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects?.map((p) => (
+                  {projects.map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
                       {p.name}
                     </SelectItem>

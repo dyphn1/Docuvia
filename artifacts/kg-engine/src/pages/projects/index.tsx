@@ -27,6 +27,7 @@ import {
 import { Link } from "wouter";
 import { FolderGit2, Plus, Loader2, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { normalizeProjects } from "@/lib/projects";
 
 const statusColors: Record<string, string> = {
   active: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
@@ -43,9 +44,10 @@ export default function Projects() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: projects, isLoading } = useListProjects({
+  const { data: projectsData, isLoading } = useListProjects({
     query: { queryKey: getListProjectsQueryKey() },
   });
+  const projects = normalizeProjects(projectsData);
 
   const createProject = useCreateProject();
 
@@ -92,7 +94,7 @@ export default function Projects() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {projects?.map((project) => (
+            {projects.map((project) => (
               <TableRow
                 key={project.id}
                 className="border-border/50 hover:bg-accent/40 group cursor-pointer"
@@ -144,7 +146,7 @@ export default function Projects() {
                 </TableCell>
               </TableRow>
             )}
-            {!isLoading && (!projects || projects.length === 0) && (
+            {!isLoading && projects.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">

@@ -12,6 +12,7 @@ import {
 import { Search, BrainCircuit, Network, Tag, GitMerge, Loader2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
+import { normalizeProjects } from "@/lib/projects";
 
 interface SearchResultItem {
   nodeLayer: "l1" | "l2" | "l3";
@@ -49,7 +50,10 @@ export default function Query() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: projects } = useListProjects({ query: { queryKey: getListProjectsQueryKey() } });
+  const { data: projectsData } = useListProjects({
+    query: { queryKey: getListProjectsQueryKey() },
+  });
+  const projects = normalizeProjects(projectsData);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +103,7 @@ export default function Query() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All projects</SelectItem>
-              {projects?.map((p) => (
+              {projects.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>
                   {p.name}
                 </SelectItem>

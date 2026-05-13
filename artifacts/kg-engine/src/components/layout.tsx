@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useCurrentProject } from "@/hooks/use-current-project";
+import { normalizeProjects } from "@/lib/projects";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -31,7 +32,10 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
-  const { data: projects } = useListProjects({ query: { queryKey: getListProjectsQueryKey() } });
+  const { data: projectsData } = useListProjects({
+    query: { queryKey: getListProjectsQueryKey() },
+  });
+  const projects = normalizeProjects(projectsData);
   const { projectId, setProjectId } = useCurrentProject();
 
   const navSections = [
@@ -139,7 +143,7 @@ export function Layout({ children }: LayoutProps) {
               <SelectValue placeholder="Select project…" />
             </SelectTrigger>
             <SelectContent>
-              {(projects ?? []).map((p) => (
+              {projects.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)} className="text-xs">
                   {p.name}
                 </SelectItem>

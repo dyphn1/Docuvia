@@ -13,6 +13,8 @@ import {
   documentsTable,
   promptTemplatesTable,
   correctionExamplesTable,
+  subscriptionsTable,
+  notificationsTable,
 } from "@workspace/db";
 import { eq, and, sql, isNull, ne, isNotNull, inArray } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
@@ -214,6 +216,27 @@ async function detectCrossProjectLinks(
           status: "pending",
           description: `Cross-project similarity detected (${Math.round(sim * 100)}%): This module resembles "${other.name}" (node #${other.id}) from another project. Consider creating a dependency link.`,
         });
+
+        const crossLinkPayload = {
+          sourceProjectId: projectId,
+          targetProjectId: other.projectId,
+          similarity: Math.round(sim * 100) / 100,
+        };
+        const affectedProjectIds = [projectId, other.projectId];
+        for (const affectedId of affectedProjectIds) {
+          const subscribers = await db
+            .select()
+            .from(subscriptionsTable)
+            .where(eq(subscriptionsTable.publisherProjectId, affectedId));
+          for (const sub of subscribers) {
+            await db.insert(notificationsTable).values({
+              projectId: sub.subscriberProjectId,
+              type: "cross_link_detected",
+              payload: crossLinkPayload,
+              read: false,
+            });
+          }
+        }
       }
     }
   }
@@ -591,6 +614,21 @@ router.post("/projects/:id/generate", async (req, res) => {
         description: `AI generated ${l2NodesCreated} new L2 nodes (${l2NodesUpdated} updated), ${l3NodesCreated} L3 nodes for "${project.name}"`,
         projectId,
       });
+    }
+
+    if (l3NodesCreated > 0) {
+      const subscribers = await db
+        .select()
+        .from(subscriptionsTable)
+        .where(eq(subscriptionsTable.publisherProjectId, projectId));
+      for (const sub of subscribers) {
+        await db.insert(notificationsTable).values({
+          projectId: sub.subscriberProjectId,
+          type: "new_l3_node",
+          payload: { l3Count: l3NodesCreated, projectId },
+          read: false,
+        });
+      }
     }
 
     // Step 7: Noise detection — run after all nodes are created

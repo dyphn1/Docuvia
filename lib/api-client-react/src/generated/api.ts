@@ -39,8 +39,11 @@ import type {
   L3Node,
   L3NodeInput,
   L3NodeUpdate,
+  ListProjectNotificationsParams,
   LlmConfig,
   LlmConfigInput,
+  MarkAllReadInput,
+  MarkAllReadResponse,
   McpDecisionRecord,
   McpDependencyResult,
   McpGetDecisionRecordParams,
@@ -54,6 +57,8 @@ import type {
   McpSearchResult,
   NodeLink,
   NodeLinkInput,
+  Notification,
+  NotificationListResponse,
   Project,
   ProjectExport,
   ProjectGraph,
@@ -66,6 +71,9 @@ import type {
   ReviewTask,
   SearchInput,
   SearchResponse,
+  Subscription,
+  SubscriptionInput,
+  SubscriptionListResponse,
   SvnIngestInput,
   SvnIngestResult,
 } from "./api.schemas";
@@ -3585,4 +3593,501 @@ export const useMcpQuery = <TError = ErrorType<ErrorResponse>, TContext = unknow
   TContext
 > => {
   return useMutation(getMcpQueryMutationOptions(options));
+};
+
+/**
+ * @summary Create a cross-team subscription
+ */
+export const getCreateSubscriptionUrl = () => {
+  return `/api/subscriptions`;
+};
+
+export const createSubscription = async (
+  subscriptionInput: SubscriptionInput,
+  options?: RequestInit
+): Promise<Subscription> => {
+  return customFetch<Subscription>(getCreateSubscriptionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(subscriptionInput),
+  });
+};
+
+export const getCreateSubscriptionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSubscription>>,
+    TError,
+    { data: BodyType<SubscriptionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSubscription>>,
+  TError,
+  { data: BodyType<SubscriptionInput> },
+  TContext
+> => {
+  const mutationKey = ["createSubscription"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSubscription>>,
+    { data: BodyType<SubscriptionInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createSubscription(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSubscriptionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSubscription>>
+>;
+export type CreateSubscriptionMutationBody = BodyType<SubscriptionInput>;
+export type CreateSubscriptionMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a cross-team subscription
+ */
+export const useCreateSubscription = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSubscription>>,
+    TError,
+    { data: BodyType<SubscriptionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSubscription>>,
+  TError,
+  { data: BodyType<SubscriptionInput> },
+  TContext
+> => {
+  return useMutation(getCreateSubscriptionMutationOptions(options));
+};
+
+/**
+ * @summary Remove a subscription
+ */
+export const getDeleteSubscriptionUrl = (subscriptionId: number) => {
+  return `/api/subscriptions/${subscriptionId}`;
+};
+
+export const deleteSubscription = async (
+  subscriptionId: number,
+  options?: RequestInit
+): Promise<void> => {
+  return customFetch<void>(getDeleteSubscriptionUrl(subscriptionId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSubscriptionMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSubscription>>,
+    TError,
+    { subscriptionId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSubscription>>,
+  TError,
+  { subscriptionId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteSubscription"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSubscription>>,
+    { subscriptionId: number }
+  > = (props) => {
+    const { subscriptionId } = props ?? {};
+
+    return deleteSubscription(subscriptionId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSubscriptionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSubscription>>
+>;
+
+export type DeleteSubscriptionMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Remove a subscription
+ */
+export const useDeleteSubscription = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSubscription>>,
+    TError,
+    { subscriptionId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSubscription>>,
+  TError,
+  { subscriptionId: number },
+  TContext
+> => {
+  return useMutation(getDeleteSubscriptionMutationOptions(options));
+};
+
+/**
+ * @summary List subscriptions for a project (as subscriber and publisher)
+ */
+export const getListProjectSubscriptionsUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/subscriptions`;
+};
+
+export const listProjectSubscriptions = async (
+  projectId: number,
+  options?: RequestInit
+): Promise<SubscriptionListResponse> => {
+  return customFetch<SubscriptionListResponse>(getListProjectSubscriptionsUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProjectSubscriptionsQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/subscriptions`] as const;
+};
+
+export const getListProjectSubscriptionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProjectSubscriptions>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listProjectSubscriptions>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListProjectSubscriptionsQueryKey(projectId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listProjectSubscriptions>>> = ({
+    signal,
+  }) => listProjectSubscriptions(projectId, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!projectId, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProjectSubscriptions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProjectSubscriptionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProjectSubscriptions>>
+>;
+export type ListProjectSubscriptionsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List subscriptions for a project (as subscriber and publisher)
+ */
+
+export function useListProjectSubscriptions<
+  TData = Awaited<ReturnType<typeof listProjectSubscriptions>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listProjectSubscriptions>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProjectSubscriptionsQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List notifications for a project
+ */
+export const getListProjectNotificationsUrl = (
+  projectId: number,
+  params?: ListProjectNotificationsParams
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/projects/${projectId}/notifications?${stringifiedParams}`
+    : `/api/projects/${projectId}/notifications`;
+};
+
+export const listProjectNotifications = async (
+  projectId: number,
+  params?: ListProjectNotificationsParams,
+  options?: RequestInit
+): Promise<NotificationListResponse> => {
+  return customFetch<NotificationListResponse>(getListProjectNotificationsUrl(projectId, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProjectNotificationsQueryKey = (
+  projectId: number,
+  params?: ListProjectNotificationsParams
+) => {
+  return [`/api/projects/${projectId}/notifications`, ...(params ? [params] : [])] as const;
+};
+
+export const getListProjectNotificationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProjectNotifications>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: number,
+  params?: ListProjectNotificationsParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listProjectNotifications>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListProjectNotificationsQueryKey(projectId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listProjectNotifications>>> = ({
+    signal,
+  }) => listProjectNotifications(projectId, params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!projectId, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProjectNotifications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProjectNotificationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProjectNotifications>>
+>;
+export type ListProjectNotificationsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List notifications for a project
+ */
+
+export function useListProjectNotifications<
+  TData = Awaited<ReturnType<typeof listProjectNotifications>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  projectId: number,
+  params?: ListProjectNotificationsParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listProjectNotifications>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProjectNotificationsQueryOptions(projectId, params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const getMarkNotificationReadUrl = (notificationId: number) => {
+  return `/api/notifications/${notificationId}/read`;
+};
+
+export const markNotificationRead = async (
+  notificationId: number,
+  options?: RequestInit
+): Promise<Notification> => {
+  return customFetch<Notification>(getMarkNotificationReadUrl(notificationId), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getMarkNotificationReadMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    TError,
+    { notificationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markNotificationRead>>,
+  TError,
+  { notificationId: number },
+  TContext
+> => {
+  const mutationKey = ["markNotificationRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    { notificationId: number }
+  > = (props) => {
+    const { notificationId } = props ?? {};
+
+    return markNotificationRead(notificationId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkNotificationReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markNotificationRead>>
+>;
+
+export type MarkNotificationReadMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const useMarkNotificationRead = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    TError,
+    { notificationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markNotificationRead>>,
+  TError,
+  { notificationId: number },
+  TContext
+> => {
+  return useMutation(getMarkNotificationReadMutationOptions(options));
+};
+
+/**
+ * @summary Mark all notifications as read for a project
+ */
+export const getMarkAllNotificationsReadUrl = () => {
+  return `/api/notifications/mark-all-read`;
+};
+
+export const markAllNotificationsRead = async (
+  markAllReadInput: MarkAllReadInput,
+  options?: RequestInit
+): Promise<MarkAllReadResponse> => {
+  return customFetch<MarkAllReadResponse>(getMarkAllNotificationsReadUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(markAllReadInput),
+  });
+};
+
+export const getMarkAllNotificationsReadMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    TError,
+    { data: BodyType<MarkAllReadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>,
+  TError,
+  { data: BodyType<MarkAllReadInput> },
+  TContext
+> => {
+  const mutationKey = ["markAllNotificationsRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    { data: BodyType<MarkAllReadInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return markAllNotificationsRead(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkAllNotificationsReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>
+>;
+export type MarkAllNotificationsReadMutationBody = BodyType<MarkAllReadInput>;
+export type MarkAllNotificationsReadMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Mark all notifications as read for a project
+ */
+export const useMarkAllNotificationsRead = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    TError,
+    { data: BodyType<MarkAllReadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>,
+  TError,
+  { data: BodyType<MarkAllReadInput> },
+  TContext
+> => {
+  return useMutation(getMarkAllNotificationsReadMutationOptions(options));
 };

@@ -982,3 +982,88 @@ export const McpQueryResponse = zod.object({
     durationMs: zod.number(),
   }),
 });
+
+/**
+ * @summary Create a cross-team subscription
+ */
+export const CreateSubscriptionBody = zod.object({
+  subscriberProjectId: zod.number(),
+  publisherProjectId: zod.number(),
+});
+
+/**
+ * @summary Remove a subscription
+ */
+export const DeleteSubscriptionParams = zod.object({
+  subscriptionId: zod.coerce.number(),
+});
+
+/**
+ * @summary List subscriptions for a project (as subscriber and publisher)
+ */
+export const ListProjectSubscriptionsParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ListProjectSubscriptionsResponse = zod.object({
+  subscriptions: zod.array(
+    zod.object({
+      id: zod.number(),
+      subscriberProjectId: zod.number(),
+      publisherProjectId: zod.number(),
+      createdAt: zod.string(),
+    })
+  ),
+});
+
+/**
+ * @summary List notifications for a project
+ */
+export const ListProjectNotificationsParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ListProjectNotificationsQueryParams = zod.object({
+  unreadOnly: zod.coerce.boolean().optional(),
+});
+
+export const ListProjectNotificationsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      projectId: zod.number(),
+      type: zod.enum(["new_commit", "new_l3_node", "cross_link_detected"]),
+      payload: zod.record(zod.string(), zod.unknown()),
+      read: zod.boolean(),
+      createdAt: zod.string(),
+    })
+  ),
+  total: zod.number(),
+});
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  notificationId: zod.coerce.number(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  type: zod.enum(["new_commit", "new_l3_node", "cross_link_detected"]),
+  payload: zod.record(zod.string(), zod.unknown()),
+  read: zod.boolean(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Mark all notifications as read for a project
+ */
+export const MarkAllNotificationsReadBody = zod.object({
+  projectId: zod.number(),
+});
+
+export const MarkAllNotificationsReadResponse = zod.object({
+  updated: zod.number(),
+});

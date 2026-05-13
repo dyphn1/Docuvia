@@ -102,12 +102,12 @@
 | Export (Markdown / JSON)        | ✅ Done        | `artifacts/api-server/src/routes/export.ts`, `projectExport.ts` |
 | Dashboard & stats               | ✅ Done        | `routes/dashboard.ts`, `dashboardStats.ts`, `activityItem.ts`   |
 | Incremental update (delta-only) | ✅ Done        | `lastGitIngestedAt`/`lastSvnRevision` cursors on projects; `processedAt` on commits; `mode: full\|incremental` on ingest/generate routes; `GET /projects/:id/ingest/status`; `IngestStatusCard` frontend component |
-| Cross-team subscription         | ❌ Not started | —                                                               |
+| Cross-team subscription         | ✅ Done        | `lib/db/src/schema/subscriptions.ts` + `notifications.ts`; `routes/subscriptions.ts` + `routes/notifications.ts`; notification hooks in ingest + generate pipelines; `NotificationBell` component + `/subscriptions` page |
 | VS Code extension               | ❌ Not started | —                                                               |
 | Slack / Teams bot               | ❌ Not started | —                                                               |
 | GitHub PR integration           | ❌ Not started | —                                                               |
 
-**Progress: 3 / 7**
+**Progress: 4 / 7**
 
 ---
 
@@ -141,6 +141,7 @@
 ### ✅ Completed — Phase 7
 
 - [x] **Incremental update**: ✅ Implemented — `lastGitIngestedAt`/`lastSvnRevision` cursor columns on `projects`; `processedAt` on `commits`; `mode: "full" | "incremental"` added to git ingest, SVN ingest, and generate routes; `GET /projects/:id/ingest/status` endpoint; `IngestStatusCard` component; pipeline page mode toggle
+- [x] **Cross-team subscription**: ✅ Implemented — `lib/db/src/schema/subscriptions.ts` (project-to-project watch, unique pair constraint) + `lib/db/src/schema/notifications.ts` (type/payload/read, jsonb); `routes/subscriptions.ts` (POST/DELETE/GET) + `routes/notifications.ts` (GET/PATCH/POST mark-all-read); `new_commit` notifications hooked into git + SVN ingest; `new_l3_node` + `cross_link_detected` notifications hooked into generate pipeline; `NotificationBell` component (polling, badge, popover, mark-read); `/subscriptions` management page; OpenAPI spec + Orval codegen updated
 
 ### ⚪ Future — Phase 7
 
@@ -160,13 +161,13 @@
 | 4         | Knowledge Graph        | 4 / 4 — 100%       |
 | 5         | Query Layer / MCP      | 8 / 8 — 100%       |
 | 6         | Human-in-the-Loop      | 8 / 8 — 100%       |
-| 7         | Enhancements           | 3 / 7 — 43%        |
-| **Total** |                        | **38 / 42 — 90%** |
+| 7         | Enhancements           | 4 / 7 — 57%        |
+| **Total** |                        | **39 / 42 — 93%** |
 
-> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, feedback loop, SVN integration, Build Artifact Parser, and Incremental Update are now fully implemented. Phases 1–6 are 100% complete.  
+> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, feedback loop, SVN integration, Build Artifact Parser, Incremental Update, and Cross-Team Subscription & In-App Notifications are now fully implemented. Phases 1–6 are 100% complete.  
 > Remaining Phase 7 gaps are ecosystem integrations (VS Code, Slack, GitHub PR).
 
 ---
 
-_Document version: v1.0 — Audited & updated from actual file structure + post-implementation_  
-*Last updated: 2026-05-13 (v1.0 — Incremental Update implemented: lastGitIngestedAt/lastSvnRevision cursors, processedAt on commits, mode field on ingest/generate routes, GET /ingest/status endpoint, IngestStatusCard UI, pipeline mode toggle)*
+_Document version: v1.1 — Audited & updated from actual file structure + post-implementation_  
+*Last updated: 2026-05-13 (v1.1 — Cross-Team Subscription & In-App Notifications implemented: subscriptionsTable + notificationsTable schemas, 6 API endpoints, notification hooks in ingest/generate pipelines, NotificationBell component, /subscriptions management page)*

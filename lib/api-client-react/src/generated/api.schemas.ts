@@ -726,6 +726,54 @@ export interface McpQueryResult {
   metadata: McpQueryResultMetadata;
 }
 
+export interface Subscription {
+  id: number;
+  subscriberProjectId: number;
+  publisherProjectId: number;
+  createdAt: string;
+}
+
+export interface SubscriptionInput {
+  subscriberProjectId: number;
+  publisherProjectId: number;
+}
+
+export interface SubscriptionListResponse {
+  subscriptions: Subscription[];
+}
+
+export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType];
+
+export const NotificationType = {
+  new_commit: "new_commit",
+  new_l3_node: "new_l3_node",
+  cross_link_detected: "cross_link_detected",
+} as const;
+
+export type NotificationPayload = { [key: string]: unknown };
+
+export interface Notification {
+  id: number;
+  projectId: number;
+  type: NotificationType;
+  payload: NotificationPayload;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface NotificationListResponse {
+  items: Notification[];
+  total: number;
+}
+
+export interface MarkAllReadInput {
+  projectId: number;
+}
+
+export interface MarkAllReadResponse {
+  updated: number;
+}
+
 export type McpSearchKnowledgeParams = {
   query: string;
   project_id?: number;
@@ -744,4 +792,8 @@ export type McpImpactAnalysisParams = {
 
 export type McpGetDecisionRecordParams = {
   commit_hash: string;
+};
+
+export type ListProjectNotificationsParams = {
+  unreadOnly?: boolean;
 };

@@ -13,6 +13,8 @@ import mcpRouter from "./mcp";
 import llmConfigRouter from "./llm_config";
 import exportRouter from "./export";
 import templatesRouter from "./templates";
+import subscriptionsRouter from "./subscriptions";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -30,5 +32,7 @@ router.use(mcpRouter);
 router.use(llmConfigRouter);
 router.use(exportRouter);
 router.use(templatesRouter);
+router.use(subscriptionsRouter);
+router.use(notificationsRouter);
 
 export default router;

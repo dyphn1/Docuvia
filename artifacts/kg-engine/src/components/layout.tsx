@@ -10,7 +10,18 @@ import {
   FileText,
   SlidersHorizontal,
   ChevronRight,
+  Users,
 } from "lucide-react";
+import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { NotificationBell } from "@/components/NotificationBell";
+import { useCurrentProject } from "@/hooks/use-current-project";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,6 +29,8 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
+  const { data: projects } = useListProjects({ query: { queryKey: getListProjectsQueryKey() } });
+  const { projectId, setProjectId } = useCurrentProject();
 
   const navSections = [
     {
@@ -47,6 +60,7 @@ export function Layout({ children }: LayoutProps) {
       items: [
         { href: "/mcp", label: "MCP Endpoints", icon: Cpu },
         { href: "/templates", label: "Prompt Templates", icon: SlidersHorizontal },
+        { href: "/subscriptions", label: "Subscriptions", icon: Users },
       ],
     },
   ];
@@ -112,6 +126,24 @@ export function Layout({ children }: LayoutProps) {
       </aside>
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header className="h-12 border-b border-border flex items-center px-4 gap-3 flex-shrink-0 bg-card/50 justify-end">
+          <Select
+            value={projectId ? String(projectId) : ""}
+            onValueChange={(v) => setProjectId(v ? parseInt(v, 10) : null)}
+          >
+            <SelectTrigger className="h-7 w-44 text-xs">
+              <SelectValue placeholder="Select project…" />
+            </SelectTrigger>
+            <SelectContent>
+              {(projects ?? []).map((p) => (
+                <SelectItem key={p.id} value={String(p.id)} className="text-xs">
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <NotificationBell projectId={projectId ?? 0} />
+        </header>
         <div className="flex-1 overflow-y-auto">{children}</div>
       </main>
     </div>

@@ -35,6 +35,10 @@ tags:
     description: Document management
   - name: llm-config
     description: LLM configuration per project
+  - name: subscriptions
+    description: Cross-team project subscriptions
+  - name: notifications
+    description: In-app notifications
 
 paths:
   /healthz:
@@ -1019,6 +1023,157 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /subscriptions:
+    post:
+      operationId: createSubscription
+      tags: [subscriptions]
+      summary: Create a cross-team subscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionInput"
+      responses:
+        "201":
+          description: Created subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Subscription"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /subscriptions/{subscriptionId}:
+    delete:
+      operationId: deleteSubscription
+      tags: [subscriptions]
+      summary: Remove a subscription
+      parameters:
+        - name: subscriptionId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /projects/{projectId}/subscriptions:
+    get:
+      operationId: listProjectSubscriptions
+      tags: [subscriptions]
+      summary: List subscriptions for a project (as subscriber and publisher)
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of subscriptions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionListResponse"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /projects/{projectId}/notifications:
+    get:
+      operationId: listProjectNotifications
+      tags: [notifications]
+      summary: List notifications for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: unreadOnly
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationListResponse"
+        "404":
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /notifications/{notificationId}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a single notification as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /notifications/mark-all-read:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read for a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkAllReadInput"
+      responses:
+        "200":
+          description: Number of notifications marked as read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarkAllReadResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1897,3 +2052,78 @@ components:
               type: string
             durationMs:
               type: number
+
+    Subscription:
+      type: object
+      required: [id, subscriberProjectId, publisherProjectId, createdAt]
+      properties:
+        id:
+          type: integer
+        subscriberProjectId:
+          type: integer
+        publisherProjectId:
+          type: integer
+        createdAt:
+          type: string
+
+    SubscriptionInput:
+      type: object
+      required: [subscriberProjectId, publisherProjectId]
+      properties:
+        subscriberProjectId:
+          type: integer
+        publisherProjectId:
+          type: integer
+
+    SubscriptionListResponse:
+      type: object
+      required: [subscriptions]
+      properties:
+        subscriptions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Subscription"
+
+    Notification:
+      type: object
+      required: [id, projectId, type, payload, read, createdAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        type:
+          type: string
+          enum: [new_commit, new_l3_node, cross_link_detected]
+        payload:
+          type: object
+          additionalProperties: true
+        read:
+          type: boolean
+        createdAt:
+          type: string
+
+    NotificationListResponse:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        total:
+          type: integer
+
+    MarkAllReadInput:
+      type: object
+      required: [projectId]
+      properties:
+        projectId:
+          type: integer
+
+    MarkAllReadResponse:
+      type: object
+      required: [updated]
+      properties:
+        updated:
+          type: integer

@@ -1,6 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { commitsTable, documentsTable, projectsTable, activityLogTable } from "@workspace/db";
+import {
+  commitsTable,
+  documentsTable,
+  projectsTable,
+  activityLogTable,
+  subscriptionsTable,
+  notificationsTable,
+} from "@workspace/db";
 import { and, eq, sql, isNull } from "drizzle-orm";
 import { getSvnLog, getSvnDiff } from "../lib/svn-client.js";
 import { IngestSvnBody } from "@workspace/api-zod";
@@ -164,6 +171,19 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
       .update(projectsTable)
       .set({ updatedAt: new Date() })
       .where(eq(projectsTable.id, projectId));
+
+    const subscribers = await db
+      .select()
+      .from(subscriptionsTable)
+      .where(eq(subscriptionsTable.publisherProjectId, projectId));
+    for (const sub of subscribers) {
+      await db.insert(notificationsTable).values({
+        projectId: sub.subscriberProjectId,
+        type: "new_commit",
+        payload: { commitCount: ingested, projectId, projectName: project.name },
+        read: false,
+      });
+    }
   }
 
   if (mode === "incremental") {
@@ -267,6 +287,19 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
       .update(projectsTable)
       .set({ updatedAt: new Date() })
       .where(eq(projectsTable.id, projectId));
+
+    const subscribers = await db
+      .select()
+      .from(subscriptionsTable)
+      .where(eq(subscriptionsTable.publisherProjectId, projectId));
+    for (const sub of subscribers) {
+      await db.insert(notificationsTable).values({
+        projectId: sub.subscriberProjectId,
+        type: "new_commit",
+        payload: { commitCount: ingested, projectId, projectName: project.name },
+        read: false,
+      });
+    }
   }
 
   if (svnMode === "incremental" && maxRevisionIngested > (project.lastSvnRevision ?? 0)) {

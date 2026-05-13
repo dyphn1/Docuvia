@@ -16,6 +16,7 @@ import McpPage from "@/pages/mcp";
 import Templates from "@/pages/templates";
 import Subscriptions from "@/pages/subscriptions";
 import PullRequests from "@/pages/pull-requests";
+import Integrations from "@/pages/integrations";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -43,6 +44,7 @@ function Router() {
         <Route path="/templates" component={Templates} />
         <Route path="/subscriptions" component={Subscriptions} />
         <Route path="/pull-requests" component={PullRequests} />
+        <Route path="/integrations" component={Integrations} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

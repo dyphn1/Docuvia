@@ -1277,3 +1277,81 @@ export const VscodeFileContextResponse = zod.object({
     })
   ),
 });
+
+/**
+ * @summary List Slack/Teams integrations for a project
+ */
+export const ListProjectIntegrationsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListProjectIntegrationsResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  integrationType: zod.enum(["slack", "teams"]),
+  webhookUrl: zod.string(),
+  enabled: zod.boolean(),
+  notificationTypes: zod.array(zod.string()).nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListProjectIntegrationsResponse = zod.array(ListProjectIntegrationsResponseItem);
+
+/**
+ * @summary Add a Slack or Teams webhook integration
+ */
+export const CreateProjectIntegrationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const createProjectIntegrationBodyEnabledDefault = true;
+
+export const CreateProjectIntegrationBody = zod.object({
+  integrationType: zod.enum(["slack", "teams"]),
+  webhookUrl: zod.string(),
+  enabled: zod.boolean().default(createProjectIntegrationBodyEnabledDefault),
+  notificationTypes: zod.array(zod.string()).nullish(),
+});
+
+/**
+ * @summary Update a webhook integration
+ */
+export const UpdateProjectIntegrationParams = zod.object({
+  integrationId: zod.coerce.number(),
+});
+
+export const UpdateProjectIntegrationBody = zod.object({
+  webhookUrl: zod.string().optional(),
+  enabled: zod.boolean().optional(),
+  notificationTypes: zod.array(zod.string()).nullish(),
+});
+
+export const UpdateProjectIntegrationResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  integrationType: zod.enum(["slack", "teams"]),
+  webhookUrl: zod.string(),
+  enabled: zod.boolean(),
+  notificationTypes: zod.array(zod.string()).nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove a webhook integration
+ */
+export const DeleteProjectIntegrationParams = zod.object({
+  integrationId: zod.coerce.number(),
+});
+
+/**
+ * @summary Send a test notification to the configured webhook
+ */
+export const TestProjectIntegrationParams = zod.object({
+  integrationId: zod.coerce.number(),
+});
+
+export const TestProjectIntegrationResponse = zod.object({
+  success: zod.boolean(),
+  error: zod.string().optional(),
+});

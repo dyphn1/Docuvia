@@ -43,6 +43,8 @@ tags:
     description: GitHub Pull Request integration
   - name: extensions
     description: VS Code extension endpoints
+  - name: integrations
+    description: Per-project Slack / Teams webhook integrations
 
 paths:
   /healthz:
@@ -1356,6 +1358,117 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /projects/{id}/integrations:
+    get:
+      operationId: listProjectIntegrations
+      tags: [integrations]
+      summary: List Slack/Teams integrations for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of integrations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProjectIntegration"
+    post:
+      operationId: createProjectIntegration
+      tags: [integrations]
+      summary: Add a Slack or Teams webhook integration
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectIntegrationInput"
+      responses:
+        "201":
+          description: Created integration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectIntegration"
+
+  /integrations/{integrationId}:
+    patch:
+      operationId: updateProjectIntegration
+      tags: [integrations]
+      summary: Update a webhook integration
+      parameters:
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectIntegrationUpdate"
+      responses:
+        "200":
+          description: Updated integration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectIntegration"
+        "404":
+          description: Not found
+    delete:
+      operationId: deleteProjectIntegration
+      tags: [integrations]
+      summary: Remove a webhook integration
+      parameters:
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /integrations/{integrationId}/test:
+    post:
+      operationId: testProjectIntegration
+      tags: [integrations]
+      summary: Send a test notification to the configured webhook
+      parameters:
+        - name: integrationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Test sent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success:
+                    type: boolean
+                  error:
+                    type: string
+        "404":
+          description: Not found
+
 components:
   schemas:
     HealthStatus:
@@ -2461,3 +2574,61 @@ components:
                 type: string
               score:
                 type: number
+
+    ProjectIntegration:
+      type: object
+      required: [id, projectId, integrationType, webhookUrl, enabled, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        integrationType:
+          type: string
+          enum: [slack, teams]
+        webhookUrl:
+          type: string
+        enabled:
+          type: boolean
+        notificationTypes:
+          type: array
+          nullable: true
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ProjectIntegrationInput:
+      type: object
+      required: [integrationType, webhookUrl]
+      properties:
+        integrationType:
+          type: string
+          enum: [slack, teams]
+        webhookUrl:
+          type: string
+        enabled:
+          type: boolean
+          default: true
+        notificationTypes:
+          type: array
+          nullable: true
+          items:
+            type: string
+
+    ProjectIntegrationUpdate:
+      type: object
+      properties:
+        webhookUrl:
+          type: string
+        enabled:
+          type: boolean
+        notificationTypes:
+          type: array
+          nullable: true
+          items:
+            type: string

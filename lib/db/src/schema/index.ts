@@ -13,3 +13,4 @@ export * from "./correction_examples";
 export * from "./subscriptions";
 export * from "./notifications";
 export * from "./pull_requests";
+export * from "./project_integrations";

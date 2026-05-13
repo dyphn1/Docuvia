@@ -19,6 +19,7 @@ import {
 import { eq, and, sql, isNull, ne, isNotNull, inArray } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { notifyExternalIntegrations } from "../lib/slack-teams-client.js";
 import { z } from "zod";
 import { DEFAULT_PROMPTS } from "./templates.js";
 
@@ -237,6 +238,16 @@ async function detectCrossProjectLinks(
             });
           }
         }
+        const [projectRow] = await db
+          .select()
+          .from(projectsTable)
+          .where(eq(projectsTable.id, projectId));
+        void notifyExternalIntegrations(
+          projectId,
+          projectRow?.name ?? `Project #${projectId}`,
+          "cross_link_detected",
+          crossLinkPayload
+        );
       }
     }
   }
@@ -629,6 +640,12 @@ router.post("/projects/:id/generate", async (req, res) => {
           read: false,
         });
       }
+      void notifyExternalIntegrations(
+        projectId,
+        project.name,
+        "new_l3_node",
+        { l3Count: l3NodesCreated, projectId }
+      );
     }
 
     // Step 7: Noise detection — run after all nodes are created

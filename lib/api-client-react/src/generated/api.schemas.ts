@@ -877,6 +877,49 @@ export interface FileContextResponse {
   sources: FileContextResponseSourcesItem[];
 }
 
+export type ProjectIntegrationIntegrationType =
+  (typeof ProjectIntegrationIntegrationType)[keyof typeof ProjectIntegrationIntegrationType];
+
+export const ProjectIntegrationIntegrationType = {
+  slack: "slack",
+  teams: "teams",
+} as const;
+
+export interface ProjectIntegration {
+  id: number;
+  projectId: number;
+  integrationType: ProjectIntegrationIntegrationType;
+  webhookUrl: string;
+  enabled: boolean;
+  /** @nullable */
+  notificationTypes?: string[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ProjectIntegrationInputIntegrationType =
+  (typeof ProjectIntegrationInputIntegrationType)[keyof typeof ProjectIntegrationInputIntegrationType];
+
+export const ProjectIntegrationInputIntegrationType = {
+  slack: "slack",
+  teams: "teams",
+} as const;
+
+export interface ProjectIntegrationInput {
+  integrationType: ProjectIntegrationInputIntegrationType;
+  webhookUrl: string;
+  enabled?: boolean;
+  /** @nullable */
+  notificationTypes?: string[] | null;
+}
+
+export interface ProjectIntegrationUpdate {
+  webhookUrl?: string;
+  enabled?: boolean;
+  /** @nullable */
+  notificationTypes?: string[] | null;
+}
+
 export type McpSearchKnowledgeParams = {
   query: string;
   project_id?: number;
@@ -909,4 +952,9 @@ export type GithubWebhookBody = { [key: string]: unknown };
 export type VscodeFileContextParams = {
   path: string;
   projectId?: number;
+};
+
+export type TestProjectIntegration200 = {
+  success: boolean;
+  error?: string;
 };

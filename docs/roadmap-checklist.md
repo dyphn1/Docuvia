@@ -104,10 +104,10 @@
 | Incremental update (delta-only) | ✅ Done        | `lastGitIngestedAt`/`lastSvnRevision` cursors on projects; `processedAt` on commits; `mode: full\|incremental` on ingest/generate routes; `GET /projects/:id/ingest/status`; `IngestStatusCard` frontend component |
 | Cross-team subscription         | ✅ Done        | `lib/db/src/schema/subscriptions.ts` + `notifications.ts`; `routes/subscriptions.ts` + `routes/notifications.ts`; notification hooks in ingest + generate pipelines; `NotificationBell` component + `/subscriptions` page |
 | VS Code extension               | ✅ Done        | PR: https://github.com/dyphn1/Docuvia/pull/new/fix/api-zod-codegen-and-ts-errors — files: artifacts/api-server/src/routes/extensions_vscode.ts, artifacts/api-server/src/lib/extensions-service.ts, lib/api-spec/orval.config.ts, lib/api-spec/orval.config.cjs, lib/api-zod/src/generated/api.ts, lib/api-zod/src/generated/types.ts, artifacts/api-server/test/extensions_vscode.test.ts |
-| Slack / Teams bot               | ❌ Not started | —                                                               |
+| Slack / Teams bot               | ✅ Done        | `lib/db/src/schema/project_integrations.ts`, `artifacts/api-server/src/lib/slack-teams-client.ts`, `routes/integrations.ts`; fire-and-forget hooks in `generate.ts` + `ingest.ts`; `projectIntegrationsTable` (Drizzle + migration); OpenAPI 5 paths + 3 schemas + Orval codegen; `pages/integrations.tsx` (project selector, CRUD, test button, enabled toggle) + nav item |
 | GitHub PR integration           | ✅ Done        | `lib/db/src/schema/pull_requests.ts`, `artifacts/api-server/src/lib/github-client.ts`, `routes/github_webhooks.ts`, `routes/pull_requests.ts`, `artifacts/kg-engine/src/pages/pull-requests.tsx` |
 
-**Progress: 5 / 7**
+**Progress: 7 / 7**
 
 ---
 
@@ -143,10 +143,9 @@
 - [x] **Incremental update**: ✅ Implemented — `lastGitIngestedAt`/`lastSvnRevision` cursor columns on `projects`; `processedAt` on `commits`; `mode: "full" | "incremental"` added to git ingest, SVN ingest, and generate routes; `GET /projects/:id/ingest/status` endpoint; `IngestStatusCard` component; pipeline page mode toggle
 - [x] **Cross-team subscription**: ✅ Implemented — `lib/db/src/schema/subscriptions.ts` (project-to-project watch, unique pair constraint) + `lib/db/src/schema/notifications.ts` (type/payload/read, jsonb); `routes/subscriptions.ts` (POST/DELETE/GET) + `routes/notifications.ts` (GET/PATCH/POST mark-all-read); `new_commit` notifications hooked into git + SVN ingest; `new_l3_node` + `cross_link_detected` notifications hooked into generate pipeline; `NotificationBell` component (polling, badge, popover, mark-read); `/subscriptions` management page; OpenAPI spec + Orval codegen updated
 
-### ⚪ Future — Phase 7
+### ✅ Completed — Phase 7 (continued)
 
-- [ ] VS Code extension
-- [ ] Slack / Teams bot
+- [x] **Slack / Teams bot**: ✅ Implemented — `lib/db/src/schema/project_integrations.ts` + `slack-teams-client.ts` (native fetch, `notifyExternalIntegrations()`); 5 REST endpoints under `/projects/:id/integrations` + `/integrations/:id`; fire-and-forget hooks in `generate.ts` (new_l3_node, cross_link_detected) + `ingest.ts` (new_commit × 2); migration `002_add_project_integrations.sql`; React `/integrations` settings page with project selector, form, test, delete, enabled toggle; nav item added
 - [x] **GitHub PR integration**: ✅ Implemented — `lib/db/src/schema/pull_requests.ts` (PR schema with state/analysis enums), `github-client.ts` (fetchPrCommits, fetchPrDiff, postPrComment, parseGithubRepo), `routes/github_webhooks.ts` (HMAC-SHA256 validation, opened/synchronize/closed+merged handlers), `routes/pull_requests.ts` (GET list, GET detail with L2/L3 impact, POST analyze), OpenAPI 4 new endpoints + 3 schemas + Orval codegen, `pages/pull-requests.tsx` (project selector, webhook setup card, PR list with PrCard/PrDetailPanel)
 
 ---
@@ -161,13 +160,12 @@
 | 4         | Knowledge Graph        | 4 / 4 — 100%       |
 | 5         | Query Layer / MCP      | 8 / 8 — 100%       |
 | 6         | Human-in-the-Loop      | 8 / 8 — 100%       |
-| 7         | Enhancements           | 5 / 7 — 71%        |
-| **Total** |                        | **40 / 42 — 95%** |
+| 7         | Enhancements           | 7 / 7 — 100%       |
+| **Total** |                        | **42 / 42 — 100%** |
 
-> **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, feedback loop, SVN integration, Build Artifact Parser, Incremental Update, and Cross-Team Subscription & In-App Notifications are now fully implemented. Phases 1–6 are 100% complete.  
-> Remaining Phase 7 gaps are ecosystem integrations (VS Code extension, Slack/Teams bot).
+> **Key insight:** All 42 items across all 7 phases are now fully implemented. Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, feedback loop, SVN integration, Build Artifact Parser, Incremental Update, Cross-Team Subscription & In-App Notifications, VS Code extension, Slack/Teams bot integration, and GitHub PR integration are complete. **Phases 1–7 are 100% complete.**
 
 ---
 
-_Document version: v1.1 — Audited & updated from actual file structure + post-implementation_  
-*Last updated: 2026-05-13 (v1.1 — Cross-Team Subscription & In-App Notifications implemented: subscriptionsTable + notificationsTable schemas, 6 API endpoints, notification hooks in ingest/generate pipelines, NotificationBell component, /subscriptions management page)*
+_Document version: v1.2 — All phases complete_  
+*Last updated: 2026-05-13 (v1.2 — Slack/Teams bot integration implemented: projectIntegrationsTable schema + migration, slack-teams-client.ts with native fetch, 5 REST endpoints, fire-and-forget hooks in generate/ingest pipelines, OpenAPI spec + Orval codegen, /integrations React settings page with project selector/CRUD/test/toggle, nav item)*

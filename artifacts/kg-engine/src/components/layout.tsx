@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Users,
   GitPullRequest,
+  Webhook,
 } from "lucide-react";
 import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
 import {
@@ -63,6 +64,7 @@ export function Layout({ children }: LayoutProps) {
         { href: "/templates", label: "Prompt Templates", icon: SlidersHorizontal },
         { href: "/subscriptions", label: "Subscriptions", icon: Users },
         { href: "/pull-requests", label: "Pull Requests", icon: GitPullRequest },
+        { href: "/integrations", label: "Integrations", icon: Webhook },
       ],
     },
   ];

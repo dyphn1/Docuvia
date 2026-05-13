@@ -66,6 +66,9 @@ import type {
   ProjectExport,
   ProjectGraph,
   ProjectInput,
+  ProjectIntegration,
+  ProjectIntegrationInput,
+  ProjectIntegrationUpdate,
   ProjectUpdate,
   PromptTemplate,
   PromptTemplateInput,
@@ -81,6 +84,7 @@ import type {
   SubscriptionListResponse,
   SvnIngestInput,
   SvnIngestResult,
+  TestProjectIntegration200,
   VscodeCreateDecisionInput,
   VscodeFileContextParams,
   VscodeQueryInput,
@@ -4649,3 +4653,406 @@ export function useVscodeFileContext<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List Slack/Teams integrations for a project
+ */
+export const getListProjectIntegrationsUrl = (id: number) => {
+  return `/api/projects/${id}/integrations`;
+};
+
+export const listProjectIntegrations = async (
+  id: number,
+  options?: RequestInit
+): Promise<ProjectIntegration[]> => {
+  return customFetch<ProjectIntegration[]>(getListProjectIntegrationsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListProjectIntegrationsQueryKey = (id: number) => {
+  return [`/api/projects/${id}/integrations`] as const;
+};
+
+export const getListProjectIntegrationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listProjectIntegrations>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listProjectIntegrations>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListProjectIntegrationsQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listProjectIntegrations>>> = ({
+    signal,
+  }) => listProjectIntegrations(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listProjectIntegrations>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListProjectIntegrationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listProjectIntegrations>>
+>;
+export type ListProjectIntegrationsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List Slack/Teams integrations for a project
+ */
+
+export function useListProjectIntegrations<
+  TData = Awaited<ReturnType<typeof listProjectIntegrations>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listProjectIntegrations>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListProjectIntegrationsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a Slack or Teams webhook integration
+ */
+export const getCreateProjectIntegrationUrl = (id: number) => {
+  return `/api/projects/${id}/integrations`;
+};
+
+export const createProjectIntegration = async (
+  id: number,
+  projectIntegrationInput: ProjectIntegrationInput,
+  options?: RequestInit
+): Promise<ProjectIntegration> => {
+  return customFetch<ProjectIntegration>(getCreateProjectIntegrationUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(projectIntegrationInput),
+  });
+};
+
+export const getCreateProjectIntegrationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProjectIntegration>>,
+    TError,
+    { id: number; data: BodyType<ProjectIntegrationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createProjectIntegration>>,
+  TError,
+  { id: number; data: BodyType<ProjectIntegrationInput> },
+  TContext
+> => {
+  const mutationKey = ["createProjectIntegration"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createProjectIntegration>>,
+    { id: number; data: BodyType<ProjectIntegrationInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createProjectIntegration(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateProjectIntegrationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createProjectIntegration>>
+>;
+export type CreateProjectIntegrationMutationBody = BodyType<ProjectIntegrationInput>;
+export type CreateProjectIntegrationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a Slack or Teams webhook integration
+ */
+export const useCreateProjectIntegration = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createProjectIntegration>>,
+    TError,
+    { id: number; data: BodyType<ProjectIntegrationInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createProjectIntegration>>,
+  TError,
+  { id: number; data: BodyType<ProjectIntegrationInput> },
+  TContext
+> => {
+  return useMutation(getCreateProjectIntegrationMutationOptions(options));
+};
+
+/**
+ * @summary Update a webhook integration
+ */
+export const getUpdateProjectIntegrationUrl = (integrationId: number) => {
+  return `/api/integrations/${integrationId}`;
+};
+
+export const updateProjectIntegration = async (
+  integrationId: number,
+  projectIntegrationUpdate: ProjectIntegrationUpdate,
+  options?: RequestInit
+): Promise<ProjectIntegration> => {
+  return customFetch<ProjectIntegration>(getUpdateProjectIntegrationUrl(integrationId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(projectIntegrationUpdate),
+  });
+};
+
+export const getUpdateProjectIntegrationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectIntegration>>,
+    TError,
+    { integrationId: number; data: BodyType<ProjectIntegrationUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateProjectIntegration>>,
+  TError,
+  { integrationId: number; data: BodyType<ProjectIntegrationUpdate> },
+  TContext
+> => {
+  const mutationKey = ["updateProjectIntegration"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateProjectIntegration>>,
+    { integrationId: number; data: BodyType<ProjectIntegrationUpdate> }
+  > = (props) => {
+    const { integrationId, data } = props ?? {};
+
+    return updateProjectIntegration(integrationId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateProjectIntegrationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProjectIntegration>>
+>;
+export type UpdateProjectIntegrationMutationBody = BodyType<ProjectIntegrationUpdate>;
+export type UpdateProjectIntegrationMutationError = ErrorType<void>;
+
+/**
+ * @summary Update a webhook integration
+ */
+export const useUpdateProjectIntegration = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectIntegration>>,
+    TError,
+    { integrationId: number; data: BodyType<ProjectIntegrationUpdate> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateProjectIntegration>>,
+  TError,
+  { integrationId: number; data: BodyType<ProjectIntegrationUpdate> },
+  TContext
+> => {
+  return useMutation(getUpdateProjectIntegrationMutationOptions(options));
+};
+
+/**
+ * @summary Remove a webhook integration
+ */
+export const getDeleteProjectIntegrationUrl = (integrationId: number) => {
+  return `/api/integrations/${integrationId}`;
+};
+
+export const deleteProjectIntegration = async (
+  integrationId: number,
+  options?: RequestInit
+): Promise<void> => {
+  return customFetch<void>(getDeleteProjectIntegrationUrl(integrationId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteProjectIntegrationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProjectIntegration>>,
+    TError,
+    { integrationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteProjectIntegration>>,
+  TError,
+  { integrationId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteProjectIntegration"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteProjectIntegration>>,
+    { integrationId: number }
+  > = (props) => {
+    const { integrationId } = props ?? {};
+
+    return deleteProjectIntegration(integrationId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteProjectIntegrationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteProjectIntegration>>
+>;
+
+export type DeleteProjectIntegrationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove a webhook integration
+ */
+export const useDeleteProjectIntegration = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteProjectIntegration>>,
+    TError,
+    { integrationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteProjectIntegration>>,
+  TError,
+  { integrationId: number },
+  TContext
+> => {
+  return useMutation(getDeleteProjectIntegrationMutationOptions(options));
+};
+
+/**
+ * @summary Send a test notification to the configured webhook
+ */
+export const getTestProjectIntegrationUrl = (integrationId: number) => {
+  return `/api/integrations/${integrationId}/test`;
+};
+
+export const testProjectIntegration = async (
+  integrationId: number,
+  options?: RequestInit
+): Promise<TestProjectIntegration200> => {
+  return customFetch<TestProjectIntegration200>(getTestProjectIntegrationUrl(integrationId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getTestProjectIntegrationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testProjectIntegration>>,
+    TError,
+    { integrationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof testProjectIntegration>>,
+  TError,
+  { integrationId: number },
+  TContext
+> => {
+  const mutationKey = ["testProjectIntegration"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof testProjectIntegration>>,
+    { integrationId: number }
+  > = (props) => {
+    const { integrationId } = props ?? {};
+
+    return testProjectIntegration(integrationId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TestProjectIntegrationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof testProjectIntegration>>
+>;
+
+export type TestProjectIntegrationMutationError = ErrorType<void>;
+
+/**
+ * @summary Send a test notification to the configured webhook
+ */
+export const useTestProjectIntegration = <TError = ErrorType<void>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof testProjectIntegration>>,
+    TError,
+    { integrationId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof testProjectIntegration>>,
+  TError,
+  { integrationId: number },
+  TContext
+> => {
+  return useMutation(getTestProjectIntegrationMutationOptions(options));
+};

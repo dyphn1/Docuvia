@@ -11,6 +11,7 @@ import {
 import { and, eq, sql, isNull } from "drizzle-orm";
 import { getSvnLog, getSvnDiff } from "../lib/svn-client.js";
 import { IngestSvnBody } from "@workspace/api-zod";
+import { notifyExternalIntegrations } from "../lib/slack-teams-client.js";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
 import { detectDocType, extractText } from "../lib/document-parser.js";
@@ -184,6 +185,10 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
         read: false,
       });
     }
+    void notifyExternalIntegrations(projectId, project.name, "new_commit", {
+      commitCount: ingested,
+      projectId,
+    });
   }
 
   if (mode === "incremental") {
@@ -300,6 +305,10 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
         read: false,
       });
     }
+    void notifyExternalIntegrations(projectId, project.name, "new_commit", {
+      commitCount: ingested,
+      projectId,
+    });
   }
 
   if (svnMode === "incremental" && maxRevisionIngested > (project.lastSvnRevision ?? 0)) {

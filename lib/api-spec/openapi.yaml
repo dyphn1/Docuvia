@@ -39,6 +39,8 @@ tags:
     description: Cross-team project subscriptions
   - name: notifications
     description: In-app notifications
+  - name: github-prs
+    description: GitHub Pull Request integration
 
 paths:
   /healthz:
@@ -1174,6 +1176,105 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /projects/{id}/pull-requests:
+    get:
+      operationId: listPullRequests
+      tags: [github-prs]
+      summary: List pull requests for a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of pull requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PullRequest"
+
+  /projects/{id}/pull-requests/{prNumber}:
+    get:
+      operationId: getPullRequestDetail
+      tags: [github-prs]
+      summary: Get PR details with knowledge graph impact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: prNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: PR with impact analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PullRequestDetail"
+        "404":
+          description: Not found
+
+  /projects/{id}/pull-requests/{prNumber}/analyze:
+    post:
+      operationId: analyzePullRequest
+      tags: [github-prs]
+      summary: Manually trigger PR knowledge impact analysis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: prNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "202":
+          description: Analysis triggered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrAnalyzeResult"
+        "404":
+          description: PR not found
+
+  /webhooks/github/{projectId}:
+    post:
+      operationId: githubWebhook
+      tags: [github-prs]
+      summary: GitHub webhook receiver for PR events
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: GitHub webhook payload (varies by event type)
+      responses:
+        "202":
+          description: Webhook accepted
+        "400":
+          description: Invalid signature or bad payload
+        "404":
+          description: Project not found
+
 components:
   schemas:
     HealthStatus:
@@ -2127,3 +2228,76 @@ components:
       properties:
         updated:
           type: integer
+
+    PullRequest:
+      type: object
+      required: [id, projectId, githubPrNumber, title, headSha, baseSha, author, state, url, analysisStatus, createdAt, updatedAt]
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        githubPrNumber:
+          type: integer
+        title:
+          type: string
+        body:
+          type: string
+          nullable: true
+        headSha:
+          type: string
+        baseSha:
+          type: string
+        author:
+          type: string
+        state:
+          type: string
+          enum: [open, closed, merged]
+        url:
+          type: string
+        analysisStatus:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        aiSummary:
+          type: string
+          nullable: true
+        mergedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PullRequestDetail:
+      type: object
+      required: [pr, commitsCount, l2Nodes, l3Nodes]
+      properties:
+        pr:
+          $ref: "#/components/schemas/PullRequest"
+        commitsCount:
+          type: integer
+        l2Nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/L2Node"
+        l3Nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/L3Node"
+        aiSummary:
+          type: string
+          nullable: true
+
+    PrAnalyzeResult:
+      type: object
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [triggered, already_completed]
+        message:
+          type: string

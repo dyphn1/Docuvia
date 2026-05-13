@@ -105,9 +105,9 @@
 | Cross-team subscription         | ✅ Done        | `lib/db/src/schema/subscriptions.ts` + `notifications.ts`; `routes/subscriptions.ts` + `routes/notifications.ts`; notification hooks in ingest + generate pipelines; `NotificationBell` component + `/subscriptions` page |
 | VS Code extension               | ❌ Not started | —                                                               |
 | Slack / Teams bot               | ❌ Not started | —                                                               |
-| GitHub PR integration           | ❌ Not started | —                                                               |
+| GitHub PR integration           | ✅ Done        | `lib/db/src/schema/pull_requests.ts`, `artifacts/api-server/src/lib/github-client.ts`, `routes/github_webhooks.ts`, `routes/pull_requests.ts`, `artifacts/kg-engine/src/pages/pull-requests.tsx` |
 
-**Progress: 4 / 7**
+**Progress: 5 / 7**
 
 ---
 
@@ -147,7 +147,7 @@
 
 - [ ] VS Code extension
 - [ ] Slack / Teams bot
-- [ ] GitHub PR integration
+- [x] **GitHub PR integration**: ✅ Implemented — `lib/db/src/schema/pull_requests.ts` (PR schema with state/analysis enums), `github-client.ts` (fetchPrCommits, fetchPrDiff, postPrComment, parseGithubRepo), `routes/github_webhooks.ts` (HMAC-SHA256 validation, opened/synchronize/closed+merged handlers), `routes/pull_requests.ts` (GET list, GET detail with L2/L3 impact, POST analyze), OpenAPI 4 new endpoints + 3 schemas + Orval codegen, `pages/pull-requests.tsx` (project selector, webhook setup card, PR list with PrCard/PrDetailPanel)
 
 ---
 
@@ -161,11 +161,11 @@
 | 4         | Knowledge Graph        | 4 / 4 — 100%       |
 | 5         | Query Layer / MCP      | 8 / 8 — 100%       |
 | 6         | Human-in-the-Loop      | 8 / 8 — 100%       |
-| 7         | Enhancements           | 4 / 7 — 57%        |
-| **Total** |                        | **39 / 42 — 93%** |
+| 7         | Enhancements           | 5 / 7 — 71%        |
+| **Total** |                        | **40 / 42 — 95%** |
 
 > **Key insight:** Core pipeline (L1→L2→L3), semantic search, impact analysis, review UI, document parsers, CI/CD, Agentic RAG, cross-project AI detection, L2 Directory UI, prompt template management, noise detection, feedback loop, SVN integration, Build Artifact Parser, Incremental Update, and Cross-Team Subscription & In-App Notifications are now fully implemented. Phases 1–6 are 100% complete.  
-> Remaining Phase 7 gaps are ecosystem integrations (VS Code, Slack, GitHub PR).
+> Remaining Phase 7 gaps are ecosystem integrations (VS Code extension, Slack/Teams bot).
 
 ---
 

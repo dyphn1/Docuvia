@@ -774,6 +774,63 @@ export interface MarkAllReadResponse {
   updated: number;
 }
 
+export type PullRequestState = (typeof PullRequestState)[keyof typeof PullRequestState];
+
+export const PullRequestState = {
+  open: "open",
+  closed: "closed",
+  merged: "merged",
+} as const;
+
+export type PullRequestAnalysisStatus =
+  (typeof PullRequestAnalysisStatus)[keyof typeof PullRequestAnalysisStatus];
+
+export const PullRequestAnalysisStatus = {
+  pending: "pending",
+  in_progress: "in_progress",
+  completed: "completed",
+  failed: "failed",
+} as const;
+
+export interface PullRequest {
+  id: number;
+  projectId: number;
+  githubPrNumber: number;
+  title: string;
+  body?: string | null;
+  headSha: string;
+  baseSha: string;
+  author: string;
+  state: PullRequestState;
+  url: string;
+  analysisStatus: PullRequestAnalysisStatus;
+  aiSummary?: string | null;
+  mergedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PullRequestDetail {
+  pr: PullRequest;
+  commitsCount: number;
+  l2Nodes: L2Node[];
+  l3Nodes: L3Node[];
+  aiSummary?: string | null;
+}
+
+export type PrAnalyzeResultStatus =
+  (typeof PrAnalyzeResultStatus)[keyof typeof PrAnalyzeResultStatus];
+
+export const PrAnalyzeResultStatus = {
+  triggered: "triggered",
+  already_completed: "already_completed",
+} as const;
+
+export interface PrAnalyzeResult {
+  status: PrAnalyzeResultStatus;
+  message: string;
+}
+
 export type McpSearchKnowledgeParams = {
   query: string;
   project_id?: number;
@@ -797,3 +854,8 @@ export type McpGetDecisionRecordParams = {
 export type ListProjectNotificationsParams = {
   unreadOnly?: boolean;
 };
+
+/**
+ * GitHub webhook payload (varies by event type)
+ */
+export type GithubWebhookBody = { [key: string]: unknown };

@@ -1067,3 +1067,107 @@ export const MarkAllNotificationsReadBody = zod.object({
 export const MarkAllNotificationsReadResponse = zod.object({
   updated: zod.number(),
 });
+
+/**
+ * @summary List pull requests for a project
+ */
+export const ListPullRequestsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListPullRequestsResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  githubPrNumber: zod.number(),
+  title: zod.string(),
+  body: zod.string().nullish(),
+  headSha: zod.string(),
+  baseSha: zod.string(),
+  author: zod.string(),
+  state: zod.enum(["open", "closed", "merged"]),
+  url: zod.string(),
+  analysisStatus: zod.enum(["pending", "in_progress", "completed", "failed"]),
+  aiSummary: zod.string().nullish(),
+  mergedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListPullRequestsResponse = zod.array(ListPullRequestsResponseItem);
+
+/**
+ * @summary Get PR details with knowledge graph impact
+ */
+export const GetPullRequestDetailParams = zod.object({
+  id: zod.coerce.number(),
+  prNumber: zod.coerce.number(),
+});
+
+export const GetPullRequestDetailResponse = zod.object({
+  pr: zod.object({
+    id: zod.number(),
+    projectId: zod.number(),
+    githubPrNumber: zod.number(),
+    title: zod.string(),
+    body: zod.string().nullish(),
+    headSha: zod.string(),
+    baseSha: zod.string(),
+    author: zod.string(),
+    state: zod.enum(["open", "closed", "merged"]),
+    url: zod.string(),
+    analysisStatus: zod.enum(["pending", "in_progress", "completed", "failed"]),
+    aiSummary: zod.string().nullish(),
+    mergedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  commitsCount: zod.number(),
+  l2Nodes: zod.array(
+    zod.object({
+      id: zod.number(),
+      projectId: zod.number(),
+      name: zod.string(),
+      type: zod.enum(["package", "module", "pcd"]),
+      description: zod.string().nullish(),
+      l3Count: zod.number(),
+      l1TagIds: zod.array(zod.number()),
+      aiGenerated: zod.boolean(),
+      needsReview: zod.boolean().optional(),
+      createdAt: zod.string(),
+    })
+  ),
+  l3Nodes: zod.array(
+    zod.object({
+      id: zod.number(),
+      l2NodeId: zod.number(),
+      title: zod.string(),
+      content: zod.string().nullish(),
+      nodeType: zod.enum(["change", "rule", "decision", "context"]),
+      commitHash: zod.string().nullish(),
+      aiGenerated: zod.boolean(),
+      confidence: zod.number().nullish(),
+      noiseScore: zod.number().nullish(),
+      createdAt: zod.string(),
+    })
+  ),
+  aiSummary: zod.string().nullish(),
+});
+
+/**
+ * @summary Manually trigger PR knowledge impact analysis
+ */
+export const AnalyzePullRequestParams = zod.object({
+  id: zod.coerce.number(),
+  prNumber: zod.coerce.number(),
+});
+
+/**
+ * @summary GitHub webhook receiver for PR events
+ */
+export const GithubWebhookParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const GithubWebhookBody = zod
+  .object({})
+  .passthrough()
+  .describe("GitHub webhook payload (varies by event type)");

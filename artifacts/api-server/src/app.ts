@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
+import githubWebhooksRouter from "./routes/github_webhooks";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -26,6 +27,10 @@ app.use(
   })
 );
 app.use(cors());
+
+// Mount webhook route with raw body BEFORE express.json() so HMAC validation works
+app.use("/api/webhooks/github", express.raw({ type: "application/json" }), githubWebhooksRouter);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

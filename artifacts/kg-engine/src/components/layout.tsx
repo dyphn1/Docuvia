@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   ChevronRight,
   Users,
+  GitPullRequest,
 } from "lucide-react";
 import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
 import {
@@ -61,6 +62,7 @@ export function Layout({ children }: LayoutProps) {
         { href: "/mcp", label: "MCP Endpoints", icon: Cpu },
         { href: "/templates", label: "Prompt Templates", icon: SlidersHorizontal },
         { href: "/subscriptions", label: "Subscriptions", icon: Users },
+        { href: "/pull-requests", label: "Pull Requests", icon: GitPullRequest },
       ],
     },
   ];

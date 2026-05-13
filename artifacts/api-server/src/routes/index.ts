@@ -15,6 +15,7 @@ import exportRouter from "./export";
 import templatesRouter from "./templates";
 import subscriptionsRouter from "./subscriptions";
 import notificationsRouter from "./notifications";
+import pullRequestsRouter from "./pull_requests";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(exportRouter);
 router.use(templatesRouter);
 router.use(subscriptionsRouter);
 router.use(notificationsRouter);
+router.use(pullRequestsRouter);
 
 export default router;

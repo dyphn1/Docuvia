@@ -28,6 +28,7 @@ import type {
   GenerateResult,
   GitIngestInput,
   GitIngestResult,
+  GithubWebhookBody,
   HealthStatus,
   IngestStatusResponse,
   L1Tag,
@@ -59,6 +60,7 @@ import type {
   NodeLinkInput,
   Notification,
   NotificationListResponse,
+  PrAnalyzeResult,
   Project,
   ProjectExport,
   ProjectGraph,
@@ -66,6 +68,8 @@ import type {
   ProjectUpdate,
   PromptTemplate,
   PromptTemplateInput,
+  PullRequest,
+  PullRequestDetail,
   ReviewResolution,
   ReviewStats,
   ReviewTask,
@@ -4090,4 +4094,307 @@ export const useMarkAllNotificationsRead = <
   TContext
 > => {
   return useMutation(getMarkAllNotificationsReadMutationOptions(options));
+};
+
+/**
+ * @summary List pull requests for a project
+ */
+export const getListPullRequestsUrl = (id: number) => {
+  return `/api/projects/${id}/pull-requests`;
+};
+
+export const listPullRequests = async (
+  id: number,
+  options?: RequestInit
+): Promise<PullRequest[]> => {
+  return customFetch<PullRequest[]>(getListPullRequestsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPullRequestsQueryKey = (id: number) => {
+  return [`/api/projects/${id}/pull-requests`] as const;
+};
+
+export const getListPullRequestsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPullRequests>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listPullRequests>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPullRequestsQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPullRequests>>> = ({ signal }) =>
+    listPullRequests(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPullRequests>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPullRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listPullRequests>>>;
+export type ListPullRequestsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List pull requests for a project
+ */
+
+export function useListPullRequests<
+  TData = Awaited<ReturnType<typeof listPullRequests>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof listPullRequests>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPullRequestsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get PR details with knowledge graph impact
+ */
+export const getGetPullRequestDetailUrl = (id: number, prNumber: number) => {
+  return `/api/projects/${id}/pull-requests/${prNumber}`;
+};
+
+export const getPullRequestDetail = async (
+  id: number,
+  prNumber: number,
+  options?: RequestInit
+): Promise<PullRequestDetail> => {
+  return customFetch<PullRequestDetail>(getGetPullRequestDetailUrl(id, prNumber), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPullRequestDetailQueryKey = (id: number, prNumber: number) => {
+  return [`/api/projects/${id}/pull-requests/${prNumber}`] as const;
+};
+
+export const getGetPullRequestDetailQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPullRequestDetail>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  prNumber: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getPullRequestDetail>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPullRequestDetailQueryKey(id, prNumber);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPullRequestDetail>>> = ({ signal }) =>
+    getPullRequestDetail(id, prNumber, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!(id && prNumber), ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPullRequestDetail>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPullRequestDetailQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPullRequestDetail>>
+>;
+export type GetPullRequestDetailQueryError = ErrorType<void>;
+
+/**
+ * @summary Get PR details with knowledge graph impact
+ */
+
+export function useGetPullRequestDetail<
+  TData = Awaited<ReturnType<typeof getPullRequestDetail>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  prNumber: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getPullRequestDetail>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPullRequestDetailQueryOptions(id, prNumber, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Manually trigger PR knowledge impact analysis
+ */
+export const getAnalyzePullRequestUrl = (id: number, prNumber: number) => {
+  return `/api/projects/${id}/pull-requests/${prNumber}/analyze`;
+};
+
+export const analyzePullRequest = async (
+  id: number,
+  prNumber: number,
+  options?: RequestInit
+): Promise<PrAnalyzeResult> => {
+  return customFetch<PrAnalyzeResult>(getAnalyzePullRequestUrl(id, prNumber), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAnalyzePullRequestMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzePullRequest>>,
+    TError,
+    { id: number; prNumber: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyzePullRequest>>,
+  TError,
+  { id: number; prNumber: number },
+  TContext
+> => {
+  const mutationKey = ["analyzePullRequest"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyzePullRequest>>,
+    { id: number; prNumber: number }
+  > = (props) => {
+    const { id, prNumber } = props ?? {};
+
+    return analyzePullRequest(id, prNumber, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalyzePullRequestMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyzePullRequest>>
+>;
+
+export type AnalyzePullRequestMutationError = ErrorType<void>;
+
+/**
+ * @summary Manually trigger PR knowledge impact analysis
+ */
+export const useAnalyzePullRequest = <TError = ErrorType<void>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyzePullRequest>>,
+    TError,
+    { id: number; prNumber: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof analyzePullRequest>>,
+  TError,
+  { id: number; prNumber: number },
+  TContext
+> => {
+  return useMutation(getAnalyzePullRequestMutationOptions(options));
+};
+
+/**
+ * @summary GitHub webhook receiver for PR events
+ */
+export const getGithubWebhookUrl = (projectId: number) => {
+  return `/api/webhooks/github/${projectId}`;
+};
+
+export const githubWebhook = async (
+  projectId: number,
+  githubWebhookBody: GithubWebhookBody,
+  options?: RequestInit
+): Promise<void> => {
+  return customFetch<void>(getGithubWebhookUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(githubWebhookBody),
+  });
+};
+
+export const getGithubWebhookMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof githubWebhook>>,
+    TError,
+    { projectId: number; data: BodyType<GithubWebhookBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof githubWebhook>>,
+  TError,
+  { projectId: number; data: BodyType<GithubWebhookBody> },
+  TContext
+> => {
+  const mutationKey = ["githubWebhook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof githubWebhook>>,
+    { projectId: number; data: BodyType<GithubWebhookBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return githubWebhook(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GithubWebhookMutationResult = NonNullable<Awaited<ReturnType<typeof githubWebhook>>>;
+export type GithubWebhookMutationBody = BodyType<GithubWebhookBody>;
+export type GithubWebhookMutationError = ErrorType<void>;
+
+/**
+ * @summary GitHub webhook receiver for PR events
+ */
+export const useGithubWebhook = <TError = ErrorType<void>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof githubWebhook>>,
+    TError,
+    { projectId: number; data: BodyType<GithubWebhookBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof githubWebhook>>,
+  TError,
+  { projectId: number; data: BodyType<GithubWebhookBody> },
+  TContext
+> => {
+  return useMutation(getGithubWebhookMutationOptions(options));
 };

@@ -41,6 +41,8 @@ tags:
     description: In-app notifications
   - name: github-prs
     description: GitHub Pull Request integration
+  - name: extensions
+    description: VS Code extension endpoints
 
 paths:
   /healthz:
@@ -1275,6 +1277,85 @@ paths:
         "404":
           description: Project not found
 
+  /extensions/vscode/query:
+    post:
+      operationId: vscodeQuery
+      tags: [extensions]
+      summary: VSCode extension: RAG query
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VscodeQueryInput"
+      responses:
+        "200":
+          description: Query results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VscodeQueryResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /extensions/vscode/create-decision:
+    post:
+      operationId: vscodeCreateDecision
+      tags: [extensions]
+      summary: VSCode extension: Create L3 decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VscodeCreateDecisionInput"
+      responses:
+        "201":
+          description: Created L3 node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/L3Node"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /extensions/vscode/file-context:
+    get:
+      operationId: vscodeFileContext
+      tags: [extensions]
+      summary: VSCode extension: Get file-related context (L2/L3 nodes)
+      parameters:
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: projectId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: File context
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileContextResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -2301,3 +2382,82 @@ components:
           enum: [triggered, already_completed]
         message:
           type: string
+
+    VscodeQueryInput:
+      type: object
+      required: [q]
+      properties:
+        q:
+          type: string
+          minLength: 1
+        projectId:
+          type: integer
+        limit:
+          type: integer
+          default: 10
+
+    VscodeQueryResult:
+      type: object
+      required: [query, results]
+      properties:
+        query:
+          type: string
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgenticSearchResult"
+        metadata:
+          type: object
+          properties:
+            classificationConfidence:
+              type: number
+            durationMs:
+              type: number
+
+    VscodeCreateDecisionInput:
+      type: object
+      required: [projectId, l3Node]
+      properties:
+        projectId:
+          type: integer
+        l2NodeId:
+          type: integer
+        filePath:
+          type: string
+        agreeToLinkSource:
+          type: boolean
+          description: If true, create a source-ref entry for the L3 node
+        l3Node:
+          $ref: "#/components/schemas/L3NodeInput"
+
+    FileContextResponse:
+      type: object
+      required: [path, l2Nodes, l3Nodes, sources]
+      properties:
+        path:
+          type: string
+        projectId:
+          type: integer
+        l2Nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/L2Node"
+        l3Nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/L3Node"
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              sourceType:
+                type: string
+              sourceId:
+                oneOf:
+                  - type: integer
+                  - type: string
+              excerpt:
+                type: string
+              score:
+                type: number

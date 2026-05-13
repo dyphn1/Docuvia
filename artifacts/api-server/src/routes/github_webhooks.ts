@@ -377,6 +377,7 @@ router.post("/:projectId", async (req, res) => {
         .catch(() => {});
     }
   });
+  return;
 });
 
 export default router;

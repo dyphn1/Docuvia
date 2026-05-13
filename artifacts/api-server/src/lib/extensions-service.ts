@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { l3NodesTable, l2NodesTable, documentsTable, activityLogTable, projectsTable } from "@workspace/db";
-import { eq, like, isNotNull, or, sql } from "drizzle-orm";
+import { eq, like, isNotNull, or, and, sql } from "drizzle-orm";
 import { generateEmbedding, parseEmbedding } from "./embedding.js";
 import { routeQuery } from "./intent-router.js";
 import { logger } from "./logger.js";
@@ -83,7 +83,7 @@ export async function getFileContext(pathStr: string, projectId?: number) {
   const l2Nodes = await l2Query.limit(20);
 
   // L3 nodes by title/content
-  let l3Query = db.select().from(l3NodesTable).where(
+  let l3Query: any = db.select().from(l3NodesTable).where(
     or(like(l3NodesTable.title, pattern), like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern))
   ).$dynamic();
   if (projectId) {

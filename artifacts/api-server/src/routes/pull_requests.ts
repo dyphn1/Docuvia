@@ -236,6 +236,7 @@ router.post("/projects/:id/pull-requests/:prNumber/analyze", async (req, res) =>
         .catch(() => {});
     }
   });
+  return;
 });
 
 function serializePr(pr: typeof pullRequestsTable.$inferSelect) {

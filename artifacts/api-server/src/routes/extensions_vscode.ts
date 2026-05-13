@@ -50,6 +50,7 @@ router.get("/extensions/vscode/file-context", async (req, res) => {
     return res.status(404).json({ error: "Not found" });
   }
   res.json(ctx);
+  return;
 });
 
 export default router;

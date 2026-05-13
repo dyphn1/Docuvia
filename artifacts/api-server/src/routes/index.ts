@@ -16,6 +16,7 @@ import templatesRouter from "./templates";
 import subscriptionsRouter from "./subscriptions";
 import notificationsRouter from "./notifications";
 import pullRequestsRouter from "./pull_requests";
+import extensionsVscodeRouter from "./extensions_vscode";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(templatesRouter);
 router.use(subscriptionsRouter);
 router.use(notificationsRouter);
 router.use(pullRequestsRouter);
+router.use(extensionsVscodeRouter);
 
 export default router;

@@ -24,6 +24,7 @@ import {
   Database,
   Cpu,
 } from "lucide-react";
+import { normalizeProjects } from "@/lib/projects";
 
 interface IngestResult {
   commitsIngested: number;
@@ -43,7 +44,10 @@ interface GenerateResult {
 
 export default function Pipeline() {
   const queryClient = useQueryClient();
-  const { data: projects } = useListProjects({ query: { queryKey: getListProjectsQueryKey() } });
+  const { data: projectsData } = useListProjects({
+    query: { queryKey: getListProjectsQueryKey() },
+  });
+  const projects = normalizeProjects(projectsData);
 
   const [selectedProject, setSelectedProject] = useState<string>("");
   const [repoUrl, setRepoUrl] = useState("");
@@ -62,7 +66,7 @@ export default function Pipeline() {
   const [ingestMode, setIngestMode] = useState<"full" | "incremental">("full");
   const [generateMode, setGenerateMode] = useState<"full" | "incremental">("full");
 
-  const selectedProj = projects?.find((p) => String(p.id) === selectedProject);
+  const selectedProj = projects.find((p) => String(p.id) === selectedProject);
 
   const handleIngest = async () => {
     if (!selectedProject) return;
@@ -142,7 +146,7 @@ export default function Pipeline() {
               <SelectValue placeholder="Choose a project..." />
             </SelectTrigger>
             <SelectContent>
-              {projects?.map((p) => (
+              {projects.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>
                   {p.name} — {p.repoUrl}
                 </SelectItem>
@@ -226,7 +230,10 @@ export default function Pipeline() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Sync Mode</Label>
-              <Select value={ingestMode} onValueChange={(v) => setIngestMode(v as "full" | "incremental")}>
+              <Select
+                value={ingestMode}
+                onValueChange={(v) => setIngestMode(v as "full" | "incremental")}
+              >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -349,7 +356,10 @@ export default function Pipeline() {
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Generation Mode</Label>
-              <Select value={generateMode} onValueChange={(v) => setGenerateMode(v as "full" | "incremental")}>
+              <Select
+                value={generateMode}
+                onValueChange={(v) => setGenerateMode(v as "full" | "incremental")}
+              >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>

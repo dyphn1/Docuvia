@@ -24,11 +24,15 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { normalizeProjects } from "@/lib/projects";
 
 export default function Subscriptions() {
   const queryClient = useQueryClient();
 
-  const { data: projects } = useListProjects({ query: { queryKey: getListProjectsQueryKey() } });
+  const { data: projectsData } = useListProjects({
+    query: { queryKey: getListProjectsQueryKey() },
+  });
+  const projects = normalizeProjects(projectsData);
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [publisherInput, setPublisherInput] = useState("");
@@ -64,7 +68,7 @@ export default function Subscriptions() {
     },
   });
 
-  const projectMap = new Map((projects ?? []).map((p) => [p.id, p.name]));
+  const projectMap = new Map(projects.map((p) => [p.id, p.name]));
 
   const subscribedTo =
     subData?.subscriptions.filter((s) => s.subscriberProjectId === projectId) ?? [];
@@ -100,7 +104,7 @@ export default function Subscriptions() {
               <SelectValue placeholder="Select a project…" />
             </SelectTrigger>
             <SelectContent>
-              {(projects ?? []).map((p) => (
+              {projects.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>
                   {p.name}
                 </SelectItem>
@@ -188,7 +192,8 @@ export default function Subscriptions() {
                       >
                         <div>
                           <p className="text-sm font-medium">
-                            {projectMap.get(sub.publisherProjectId) ?? `Project #${sub.publisherProjectId}`}
+                            {projectMap.get(sub.publisherProjectId) ??
+                              `Project #${sub.publisherProjectId}`}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
                             Since {format(new Date(sub.createdAt), "MMM d, yyyy")}
@@ -235,7 +240,8 @@ export default function Subscriptions() {
                       >
                         <div>
                           <p className="text-sm font-medium">
-                            {projectMap.get(sub.subscriberProjectId) ?? `Project #${sub.subscriberProjectId}`}
+                            {projectMap.get(sub.subscriberProjectId) ??
+                              `Project #${sub.subscriberProjectId}`}
                           </p>
                           <p className="text-[10px] text-muted-foreground">
                             Since {format(new Date(sub.createdAt), "MMM d, yyyy")}

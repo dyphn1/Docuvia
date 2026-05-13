@@ -5,6 +5,7 @@ import {
   useCreateL1Tag,
   useUpdateL1Tag,
   useDeleteL1Tag,
+  type L1Tag,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -36,7 +37,7 @@ export default function L1Tags() {
 
   const [newTag, setNewTag] = useState({ name: "", category: "domain", description: "" });
 
-  const { data: tags, isLoading } = useListL1Tags({
+  const { data: tagsData, isLoading } = useListL1Tags({
     query: { queryKey: getListL1TagsQueryKey() },
   });
 
@@ -80,7 +81,9 @@ export default function L1Tags() {
     );
   };
 
-  const filteredTags = tags?.filter(
+  const tags = Array.isArray(tagsData) ? (tagsData as L1Tag[]) : [];
+
+  const filteredTags = tags.filter(
     (t) =>
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.category.toLowerCase().includes(search.toLowerCase())
@@ -169,14 +172,14 @@ export default function L1Tags() {
                     Loading tags...
                   </TableCell>
                 </TableRow>
-              ) : filteredTags?.length === 0 ? (
+              ) : filteredTags.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                     No tags found.
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredTags?.map((tag) => (
+                filteredTags.map((tag) => (
                   <TableRow key={tag.id} className="border-border/50 hover:bg-accent/50 group">
                     <TableCell>
                       <div className="flex items-center gap-2 font-mono text-primary font-medium">

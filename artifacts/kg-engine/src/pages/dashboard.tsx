@@ -1,11 +1,25 @@
-import { useGetDashboard, getGetDashboardQueryKey } from "@workspace/api-client-react";
+import {
+  useGetDashboard,
+  getGetDashboardQueryKey,
+  type DashboardStats,
+} from "@workspace/api-client-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Activity, Database, GitMerge, Network, Tag } from "lucide-react";
+import { Activity, AlertCircle, Database, GitMerge, Network, Tag } from "lucide-react";
 import { format } from "date-fns";
 
+const emptyStats: DashboardStats = {
+  totalProjects: 0,
+  totalL1Tags: 0,
+  totalL2Nodes: 0,
+  totalL3Nodes: 0,
+  pendingReviews: 0,
+  recentActivity: [],
+};
+
 export default function Dashboard() {
-  const { data: stats, isLoading } = useGetDashboard({
+  const { data: statsData, isError, isLoading } = useGetDashboard({
     query: { queryKey: getGetDashboardQueryKey() },
   });
 
@@ -29,7 +43,9 @@ export default function Dashboard() {
     );
   }
 
-  if (!stats) return null;
+  const stats = statsData ?? emptyStats;
+  const formatStat = (value?: number | null) => (value ?? 0).toLocaleString();
+  const recentActivity = stats.recentActivity ?? [];
 
   const statCards = [
     { title: "Projects", value: stats.totalProjects, icon: Database },
@@ -51,6 +67,17 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-1 text-sm">System-wide metrics and activity</p>
       </div>
 
+      {(isError || !statsData) && (
+        <Alert variant="destructive" className="max-w-3xl">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Dashboard data unavailable</AlertTitle>
+          <AlertDescription>
+            The overview is shown with empty values because the API server did not return
+            dashboard stats.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {statCards.map((stat, i) => (
           <Card key={i} className="border-border/50 bg-card/50 backdrop-blur-sm">
@@ -61,7 +88,7 @@ export default function Dashboard() {
               <stat.icon className={`h-4 w-4 text-muted-foreground ${stat.className || ""}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold font-mono">{stat.value.toLocaleString()}</div>
+              <div className="text-2xl font-bold font-mono">{formatStat(stat.value)}</div>
             </CardContent>
           </Card>
         ))}
@@ -76,7 +103,7 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {stats.recentActivity.map((activity) => (
+            {recentActivity.map((activity) => (
               <div key={activity.id} className="flex items-start gap-4 text-sm">
                 <div className="w-2 h-2 mt-1.5 rounded-full bg-primary/50" />
                 <div className="flex-1 space-y-1">
@@ -87,7 +114,7 @@ export default function Dashboard() {
                     </span>
                     {activity.projectName && (
                       <>
-                        <span>•</span>
+                        <span>/</span>
                         <span>{activity.projectName}</span>
                       </>
                     )}
@@ -95,7 +122,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
-            {stats.recentActivity.length === 0 && (
+            {recentActivity.length === 0 && (
               <div className="text-sm text-muted-foreground py-4 text-center">
                 No recent activity
               </div>

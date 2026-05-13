@@ -136,6 +136,7 @@ Query Layer
 - Node.js 24+
 - pnpm (enforced — npm/yarn blocked by `preinstall`)
 - PostgreSQL (production DB)
+- Supported development/build hosts: Windows, Linux, and macOS
 
 ---
 
@@ -153,6 +154,8 @@ pnpm install
 pnpm --filter @workspace/api-server run dev   # API server (port 8080 in dev)
 pnpm --filter @workspace/kg-engine run dev    # Frontend (port 18774)
 ```
+
+The frontend defaults to `BASE_PATH=/` and `PORT=18774` for local builds; override those environment variables only when a deployment target needs different values.
 
 See [AGENT.md](AGENT.md) for the full command reference and codegen / DB migration steps.
 

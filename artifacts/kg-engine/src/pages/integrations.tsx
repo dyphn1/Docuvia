@@ -40,6 +40,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { normalizeProjects } from "@/lib/projects";
 
 function integrationBadge(type: string) {
   if (type === "slack") {
@@ -69,8 +70,7 @@ function IntegrationCard({ integration, onDeleted, onUpdated }: IntegrationCardP
   const { mutate: updateIntegration, isPending: updatingEnabled } = useUpdateProjectIntegration({
     mutation: {
       onSuccess: () => onUpdated(),
-      onError: () =>
-        toast({ title: "Failed to update integration", variant: "destructive" }),
+      onError: () => toast({ title: "Failed to update integration", variant: "destructive" }),
     },
   });
 
@@ -80,8 +80,7 @@ function IntegrationCard({ integration, onDeleted, onUpdated }: IntegrationCardP
         toast({ title: "Integration deleted" });
         onDeleted();
       },
-      onError: () =>
-        toast({ title: "Failed to delete integration", variant: "destructive" }),
+      onError: () => toast({ title: "Failed to delete integration", variant: "destructive" }),
     },
   });
 
@@ -180,7 +179,9 @@ function IntegrationCard({ integration, onDeleted, onUpdated }: IntegrationCardP
             <AlertDialogHeader>
               <AlertDialogTitle>Delete integration?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently remove the {integration.integrationType === "slack" ? "Slack" : "Teams"} webhook. Notifications will no longer be sent to this endpoint.
+                This will permanently remove the{" "}
+                {integration.integrationType === "slack" ? "Slack" : "Teams"} webhook. Notifications
+                will no longer be sent to this endpoint.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -203,7 +204,10 @@ export default function Integrations() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: projects } = useListProjects({ query: { queryKey: getListProjectsQueryKey() } });
+  const { data: projectsData } = useListProjects({
+    query: { queryKey: getListProjectsQueryKey() },
+  });
+  const projects = normalizeProjects(projectsData);
 
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [newType, setNewType] = useState<"slack" | "teams">("slack");
@@ -264,7 +268,8 @@ export default function Integrations() {
     createIntegration({
       id: projectId,
       data: {
-        integrationType: newType as typeof ProjectIntegrationInputIntegrationType[keyof typeof ProjectIntegrationInputIntegrationType],
+        integrationType:
+          newType as (typeof ProjectIntegrationInputIntegrationType)[keyof typeof ProjectIntegrationInputIntegrationType],
         webhookUrl: newWebhookUrl,
         enabled: newEnabled,
       },
@@ -311,7 +316,7 @@ export default function Integrations() {
               <SelectValue placeholder="Select a project…" />
             </SelectTrigger>
             <SelectContent>
-              {(projects ?? []).map((p) => (
+              {projects.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>
                   {p.name}
                 </SelectItem>
@@ -383,9 +388,7 @@ export default function Integrations() {
                     onKeyDown={(e) => e.key === "Enter" && handleAdd()}
                     className="text-xs h-8"
                   />
-                  {urlError && (
-                    <p className="text-xs text-destructive mt-0.5">{urlError}</p>
-                  )}
+                  {urlError && <p className="text-xs text-destructive mt-0.5">{urlError}</p>}
                 </div>
 
                 <Button

@@ -30,11 +30,16 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { normalizeProjects } from "@/lib/projects";
 
 function prStateBadge(state: string) {
   switch (state) {
     case "open":
-      return <Badge variant="outline" className="text-blue-600 border-blue-300">open</Badge>;
+      return (
+        <Badge variant="outline" className="text-blue-600 border-blue-300">
+          open
+        </Badge>
+      );
     case "merged":
       return <Badge className="bg-purple-600 hover:bg-purple-700">merged</Badge>;
     case "closed":
@@ -47,9 +52,17 @@ function prStateBadge(state: string) {
 function analysisStatusBadge(status: string) {
   switch (status) {
     case "completed":
-      return <Badge variant="outline" className="text-green-600 border-green-300">analyzed</Badge>;
+      return (
+        <Badge variant="outline" className="text-green-600 border-green-300">
+          analyzed
+        </Badge>
+      );
     case "in_progress":
-      return <Badge variant="outline" className="text-yellow-600 border-yellow-300">analyzing…</Badge>;
+      return (
+        <Badge variant="outline" className="text-yellow-600 border-yellow-300">
+          analyzing…
+        </Badge>
+      );
     case "failed":
       return <Badge variant="destructive">failed</Badge>;
     default:
@@ -93,11 +106,17 @@ function PrDetailPanel({ projectId, prNumber, open, onClose }: PrDetailPanelProp
         {data && (
           <div className="mt-6 space-y-6">
             <div className="flex gap-3 text-sm text-muted-foreground">
-              <span><strong>{data.commitsCount}</strong> commits</span>
+              <span>
+                <strong>{data.commitsCount}</strong> commits
+              </span>
               <span>•</span>
-              <span><strong>{data.l2Nodes.length}</strong> modules</span>
+              <span>
+                <strong>{data.l2Nodes.length}</strong> modules
+              </span>
               <span>•</span>
-              <span><strong>{data.l3Nodes.length}</strong> decisions</span>
+              <span>
+                <strong>{data.l3Nodes.length}</strong> decisions
+              </span>
             </div>
 
             {data.aiSummary && (
@@ -115,7 +134,9 @@ function PrDetailPanel({ projectId, prNumber, open, onClose }: PrDetailPanelProp
                 <div className="space-y-2">
                   {data.l2Nodes.map((node) => (
                     <div key={node.id} className="flex items-start gap-2 text-sm">
-                      <Badge variant="outline" className="text-xs shrink-0">{node.type}</Badge>
+                      <Badge variant="outline" className="text-xs shrink-0">
+                        {node.type}
+                      </Badge>
                       <div>
                         <div className="font-medium">{node.name}</div>
                         {node.description && (
@@ -136,7 +157,9 @@ function PrDetailPanel({ projectId, prNumber, open, onClose }: PrDetailPanelProp
                   {data.l3Nodes.map((node) => (
                     <div key={node.id} className="text-sm">
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">{node.nodeType}</Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {node.nodeType}
+                        </Badge>
                         <span className="font-medium">{node.title}</span>
                       </div>
                       {node.content && (
@@ -182,9 +205,7 @@ function PrCard({ pr, onViewImpact, onAnalyze, analyzing }: PrCardProps) {
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
           by {pr.author}
-          {pr.mergedAt && (
-            <> · merged {new Date(pr.mergedAt).toLocaleDateString()}</>
-          )}
+          {pr.mergedAt && <> · merged {new Date(pr.mergedAt).toLocaleDateString()}</>}
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
@@ -195,7 +216,11 @@ function PrCard({ pr, onViewImpact, onAnalyze, analyzing }: PrCardProps) {
         )}
         {(pr.analysisStatus === "pending" || pr.analysisStatus === "failed") && (
           <Button size="sm" variant="outline" onClick={onAnalyze} disabled={analyzing}>
-            {analyzing ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Play className="h-3 w-3 mr-1" />}
+            {analyzing ? (
+              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+            ) : (
+              <Play className="h-3 w-3 mr-1" />
+            )}
             Analyze
           </Button>
         )}
@@ -215,12 +240,19 @@ export default function PullRequests() {
   const [detailPr, setDetailPr] = useState<{ projectId: number; prNumber: number } | null>(null);
   const [analyzingPrs, setAnalyzingPrs] = useState<Set<number>>(new Set());
 
-  const { data: projects } = useListProjects({ query: { queryKey: getListProjectsQueryKey() } });
+  const { data: projectsData } = useListProjects({
+    query: { queryKey: getListProjectsQueryKey() },
+  });
+  const projects = normalizeProjects(projectsData);
 
   const projectId = parseInt(selectedProjectId, 10);
   const isValidProject = !!selectedProjectId && !isNaN(projectId);
 
-  const { data: prs, isLoading, refetch } = useListPullRequests(projectId, {
+  const {
+    data: prs,
+    isLoading,
+    refetch,
+  } = useListPullRequests(projectId, {
     query: {
       queryKey: getListPullRequestsQueryKey(projectId),
       enabled: isValidProject,
@@ -231,7 +263,7 @@ export default function PullRequests() {
   const { mutate: analyzePr } = useAnalyzePullRequest({
     mutation: {
       onSuccess: (_data, variables) => {
-        const prNum = (variables.prNumber as number);
+        const prNum = variables.prNumber as number;
         setAnalyzingPrs((prev) => {
           const next = new Set(prev);
           next.delete(prNum);
@@ -240,7 +272,7 @@ export default function PullRequests() {
         queryClient.invalidateQueries({ queryKey: getListPullRequestsQueryKey(projectId) });
       },
       onError: (_err, variables) => {
-        const prNum = (variables.prNumber as number);
+        const prNum = variables.prNumber as number;
         setAnalyzingPrs((prev) => {
           const next = new Set(prev);
           next.delete(prNum);
@@ -275,7 +307,7 @@ export default function PullRequests() {
             <SelectValue placeholder="Select a project…" />
           </SelectTrigger>
           <SelectContent>
-            {(projects ?? []).map((p) => (
+            {projects.map((p) => (
               <SelectItem key={p.id} value={String(p.id)}>
                 {p.name}
               </SelectItem>
@@ -306,15 +338,22 @@ export default function PullRequests() {
           </div>
           <div>
             <span className="text-muted-foreground">Content type:</span>
-            <code className="ml-2 text-xs bg-muted px-2 py-1 rounded font-mono">application/json</code>
+            <code className="ml-2 text-xs bg-muted px-2 py-1 rounded font-mono">
+              application/json
+            </code>
           </div>
           <div>
             <span className="text-muted-foreground">Secret:</span>
-            <span className="ml-2 text-xs text-muted-foreground">Set <code className="bg-muted px-1 rounded">GITHUB_WEBHOOK_SECRET</code> env var on the server</span>
+            <span className="ml-2 text-xs text-muted-foreground">
+              Set <code className="bg-muted px-1 rounded">GITHUB_WEBHOOK_SECRET</code> env var on
+              the server
+            </span>
           </div>
           <div>
             <span className="text-muted-foreground">Events:</span>
-            <Badge variant="outline" className="ml-2 text-xs">pull_request</Badge>
+            <Badge variant="outline" className="ml-2 text-xs">
+              pull_request
+            </Badge>
           </div>
         </CardContent>
       </Card>
@@ -347,9 +386,7 @@ export default function PullRequests() {
                   <PrCard
                     key={pr.id}
                     pr={pr}
-                    onViewImpact={() =>
-                      setDetailPr({ projectId, prNumber: pr.githubPrNumber })
-                    }
+                    onViewImpact={() => setDetailPr({ projectId, prNumber: pr.githubPrNumber })}
                     onAnalyze={() => handleAnalyze(pr.githubPrNumber)}
                     analyzing={analyzingPrs.has(pr.githubPrNumber)}
                   />

@@ -5,6 +5,7 @@ import {
   useGetReviewStats,
   getGetReviewStatsQueryKey,
   useResolveReviewTask,
+  type ReviewTask,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
@@ -238,7 +239,7 @@ export default function Review() {
     query: { queryKey: getGetReviewStatsQueryKey(), refetchInterval: 10000 },
   });
 
-  const { data: tasks, isLoading } = useListReviewTasks({
+  const { data: tasksData, isLoading } = useListReviewTasks({
     query: { queryKey: getListReviewTasksQueryKey(), refetchInterval: 10000 },
   });
 
@@ -260,12 +261,14 @@ export default function Review() {
     );
   };
 
-  const filteredTasks = tasks?.filter((t) => t.status === filter) ?? [];
+  const tasks = Array.isArray(tasksData) ? (tasksData as ReviewTask[]) : [];
+
+  const filteredTasks = tasks.filter((t) => t.status === filter);
   const tabCounts = {
-    pending: tasks?.filter((t) => t.status === "pending").length ?? 0,
-    approved: tasks?.filter((t) => t.status === "approved").length ?? 0,
-    rejected: tasks?.filter((t) => t.status === "rejected").length ?? 0,
-    deferred: tasks?.filter((t) => t.status === "deferred").length ?? 0,
+    pending: tasks.filter((t) => t.status === "pending").length,
+    approved: tasks.filter((t) => t.status === "approved").length,
+    rejected: tasks.filter((t) => t.status === "rejected").length,
+    deferred: tasks.filter((t) => t.status === "deferred").length,
   };
 
   return (

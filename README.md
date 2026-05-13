@@ -160,13 +160,13 @@ See [AGENT.md](AGENT.md) for the full command reference and codegen / DB migrati
 
 ## LLM Configuration
 
-| Mode  | Provider                             | Setup                     |
-| ----- | ------------------------------------ | ------------------------- |
-| Cloud | OpenAI / Anthropic / Google / others | Paste API Key in settings |
-| Local | Ollama                               | Set Ollama endpoint URL   |
+| Mode  | Provider                     | Setup                                          |
+| ----- | ---------------------------- | ---------------------------------------------- |
+| Cloud | OpenAI-compatible API        | Set `AI_INTEGRATIONS_OPENAI_BASE_URL` + `API_KEY` |
 
-Default model: `gemma3:12b` via Ollama
-Recommended upgrade for deep analysis: any 70B+ cloud model
+The codebase uses an OpenAI-compatible API client (`lib/integrations-openai-ai-server/`). Multi-provider support (Anthropic, Gemini, Ollama) is available when running on Replit via platform-provisioned AI integrations — not via in-repo adapters. Per-project model switching is supported via the `llm_configs` table (`routes/llm_config.ts`).
+
+> **Note**: The `gemma3:12b` / Ollama default documented in earlier versions is aspirational. The current implementation defaults to an OpenAI-compatible endpoint.
 
 ---
 
@@ -184,19 +184,19 @@ Recommended upgrade for deep analysis: any 70B+ cloud model
 
 ## Status
 
-7 implementation phases are in progress. See [docs/roadmap-checklist.md](docs/roadmap-checklist.md) for the full per-item audit.
+All 7 implementation phases are complete (42 / 42 items). See [docs/roadmap-checklist.md](docs/roadmap-checklist.md) for the full per-item audit and [known limitations](docs/roadmap-checklist.md#known-limitations--functional-gaps).
 
-| Phase       | Description                                                  | Progress |
-| ----------- | ------------------------------------------------------------ | -------- |
-| **Phase 1** | Foundation — LLM abstraction, DB schema, logging             | 5 / 6    |
-| **Phase 2** | Input Layer — Git ingestion, document ingestion              | 1.5 / 4  |
-| **Phase 3** | AI Pipeline — L1 Tagger → L2 Extractor → L3 Generator        | 3.5 / 5  |
-| **Phase 4** | Knowledge Graph — node links, full-text search               | 1.5 / 4  |
-| **Phase 5** | Query + MCP — 5 MCP tool endpoints, semantic search UI       | 6 / 8    |
-| **Phase 6** | Human-in-the-Loop — review queue, correction writeback       | 4.5 / 8  |
-| **Phase 7** | Enhancements — JSON export, dashboard, incremental ingestion | 2 / 7    |
+| Phase       | Description                                                  | Progress     |
+| ----------- | ------------------------------------------------------------ | ------------ |
+| **Phase 1** | Foundation — LLM abstraction, DB schema, logging             | 6 / 6 — 100% |
+| **Phase 2** | Input Layer — Git / SVN ingestion, document & build parsers  | 4 / 4 — 100% |
+| **Phase 3** | AI Pipeline — L1 Tagger → L2 Extractor → L3 Generator        | 5 / 5 — 100% |
+| **Phase 4** | Knowledge Graph — vector index, graph traversal              | 4 / 4 — 100% |
+| **Phase 5** | Query + MCP — 6 MCP endpoints, agentic RAG, semantic search  | 8 / 8 — 100% |
+| **Phase 6** | Human-in-the-Loop — review queue, feedback loop, templates   | 8 / 8 — 100% |
+| **Phase 7** | Enhancements — export, incremental update, external integrations | 7 / 7 — 100% |
 
-Notable gaps: document parsers (PDF/Word/PPTX), vector DB wiring, CI/CD pipeline, commit filter logic. See [docs/roadmap-checklist.md](docs/roadmap-checklist.md) for the prioritized task list.
+Known functional gaps (not blockers): multi-hop impact traversal, human-confirmed cross-project link activation, VS Code client package, Ollama/local-inference adapter. See [roadmap-checklist.md](docs/roadmap-checklist.md#known-limitations--functional-gaps).
 
 ---
 

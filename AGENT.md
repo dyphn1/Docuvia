@@ -62,7 +62,12 @@ pnpm prettier --write .
 
 ### Test
 
-{{TODO: No test runner found in any package.json. Verify whether tests exist or are planned.}}
+```bash
+# One test file exists (Vitest + supertest):
+pnpm --filter @workspace/api-server exec vitest run
+```
+
+> **Note**: Only `artifacts/api-server/test/extensions_vscode.test.ts` exists. No test runner is configured at the workspace root. No tests exist for routes, schemas, or pipeline logic outside this file.
 
 ---
 
@@ -102,6 +107,12 @@ lib/
       documents.ts            ← ingested spec/doc content
       node_links.ts           ← L2 module dependency edges
       llm_configs.ts          ← per-project LLM model overrides
+      correction_examples.ts  ← feedback loop — human-corrected samples
+      notifications.ts        ← in-app notifications (jsonb payload)
+      project_integrations.ts ← Slack/Teams webhook configs
+      prompt_templates.ts     ← per-project L1/L2/L3 prompt overrides
+      pull_requests.ts        ← GitHub PR records with analysis state
+      subscriptions.ts        ← cross-team project-to-project subscriptions
   integrations-openai-ai-server/
     src/                      ← OpenAI client and batch utilities
 
@@ -109,32 +120,54 @@ artifacts/
   api-server/src/
     app.ts                    ← Express app setup (CORS, JSON, pino-http, /api router)
     index.ts                  ← Server entry point (validates PORT env var)
-    lib/logger.ts             ← Pino logger instance
+    lib/
+      logger.ts               ← Pino logger instance
+      build-artifact-parser.ts ← parseMapFile/parseFvFile/parseFdFile/parseCompileLog
+      document-parser.ts      ← extractText() for PDF/Word/PPTX/MD (lazy require)
+      embedding.ts            ← generateEmbedding(), cosineSimilarity(), parseEmbedding()
+      extensions-service.ts   ← VS Code extension service layer
+      github-client.ts        ← fetchPrCommits/fetchPrDiff/postPrComment/parseGithubRepo
+      intent-router.ts        ← routeQuery() — LLM-based 4-way agentic RAG routing
+      slack-teams-client.ts   ← notifyExternalIntegrations() fire-and-forget
+      svn-client.ts           ← getSvnLog(), getSvnDiff() via execFile
     routes/
       dashboard.ts            ← Dashboard stats and activity feed
-      projects.ts             ← Project CRUD
+      export.ts               ← Project knowledge graph JSON export
+      extensions_vscode.ts    ← 3 VS Code extension API endpoints
+      generate.ts             ← L1→L2→L3 AI generation pipeline + noise detection
+      github_webhooks.ts      ← HMAC-SHA256 validated GitHub PR webhook handler
+      health.ts               ← Health check
+      ingest.ts               ← Git / SVN / document upload ingestion + status endpoint
+      integrations.ts         ← Slack/Teams webhook config CRUD
       l1_tags.ts              ← L1 tag CRUD
       l2_nodes.ts             ← L2 node CRUD
       l3_nodes.ts             ← L3 node CRUD
-      review_tasks.ts         ← Review queue + correction writeback
-      ingest.ts               ← GitHub commit ingestion + document ingestion
-      generate.ts             ← L1→L2→L3 AI generation pipeline
-      search.ts               ← Full-text search across L1/L2/L3
-      mcp.ts                  ← 5 MCP tool endpoints for AI agents
       llm_config.ts           ← Per-project LLM model config
-      export.ts               ← Project knowledge graph JSON export
-      health.ts               ← Health check
+      mcp.ts                  ← 6 MCP tool endpoints + POST /mcp/query (agentic RAG)
+      notifications.ts        ← In-app notification list + mark-read
+      projects.ts             ← Project CRUD + graph endpoint
+      pull_requests.ts        ← GitHub PR list, detail with impact, POST analyze
+      review_tasks.ts         ← Review queue + stats + correction writeback
+      search.ts               ← POST /search — vector + SQL fallback across L1/L2/L3
+      subscriptions.ts        ← Cross-team subscription CRUD
+      templates.ts            ← Per-project prompt template GET/PUT/DELETE
+    test/
+      extensions_vscode.test.ts ← Only test file (Vitest + supertest)
 
   kg-engine/src/
     pages/
       dashboard.tsx           ← Activity feed and stats
       documents.tsx           ← Document ingestion management
+      integrations.tsx        ← Slack/Teams webhook config UI
       l1-tags.tsx             ← L1 tag management
-      pipeline.tsx            ← Ingest + AI generation UI (Phases 2 & 3)
-      query.tsx               ← Semantic search UI
-      review.tsx              ← Human review queue
       mcp.tsx                 ← Interactive MCP endpoint explorer
-      projects/               ← Project list and detail pages
+      pipeline.tsx            ← Ingest + AI generation UI with mode toggle
+      pull-requests.tsx       ← GitHub PR list with PrDetailPanel impact sheet
+      query.tsx               ← Semantic search UI with layer-colored result cards
+      review.tsx              ← Human review queue (TaskCard, approve/reject/defer)
+      subscriptions.tsx       ← Cross-team subscription management
+      templates.tsx           ← Per-project prompt template editor
+      projects/               ← Project list + detail with L2 Directory tab
 
 .github/
   agents/                     ← Subagent definitions
@@ -173,15 +206,16 @@ Commits are scored 0.0–1.0 at ingestion time:
 
 ### MCP Tool Endpoints
 
-All available at `POST /api/mcp/<tool>`:
+All GET endpoints available at `/api/mcp/<tool>`. Agentic RAG at `POST /api/mcp/query`.
 
 | Tool                  | Route                          |
 | --------------------- | ------------------------------ |
-| `list_projects`       | `/api/mcp/list_projects`       |
-| `search_knowledge`    | `/api/mcp/search_knowledge`    |
-| `get_dependencies`    | `/api/mcp/get_dependencies`    |
-| `impact_analysis`     | `/api/mcp/impact_analysis`     |
-| `get_decision_record` | `/api/mcp/get_decision_record` |
+| `list_projects`       | `GET /api/mcp/list_projects`   |
+| `search_knowledge`    | `GET /api/mcp/search_knowledge`|
+| `get_dependencies`    | `GET /api/mcp/get_dependencies`|
+| `impact_analysis`     | `GET /api/mcp/impact_analysis` |
+| `get_decision_record` | `GET /api/mcp/get_decision_record` |
+| Agentic RAG query     | `POST /api/mcp/query`          |
 
 ### AI Generation Pipeline
 

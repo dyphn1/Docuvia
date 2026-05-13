@@ -103,7 +103,7 @@
 | Dashboard & stats               | ✅ Done        | `routes/dashboard.ts`, `dashboardStats.ts`, `activityItem.ts`   |
 | Incremental update (delta-only) | ✅ Done        | `lastGitIngestedAt`/`lastSvnRevision` cursors on projects; `processedAt` on commits; `mode: full\|incremental` on ingest/generate routes; `GET /projects/:id/ingest/status`; `IngestStatusCard` frontend component |
 | Cross-team subscription         | ✅ Done        | `lib/db/src/schema/subscriptions.ts` + `notifications.ts`; `routes/subscriptions.ts` + `routes/notifications.ts`; notification hooks in ingest + generate pipelines; `NotificationBell` component + `/subscriptions` page |
-| VS Code extension               | ❌ Not started | —                                                               |
+| VS Code extension               | ✅ Done        | PR: https://github.com/dyphn1/Docuvia/pull/new/fix/api-zod-codegen-and-ts-errors — files: artifacts/api-server/src/routes/extensions_vscode.ts, artifacts/api-server/src/lib/extensions-service.ts, lib/api-spec/orval.config.ts, lib/api-spec/orval.config.cjs, lib/api-zod/src/generated/api.ts, lib/api-zod/src/generated/types.ts, artifacts/api-server/test/extensions_vscode.test.ts |
 | Slack / Teams bot               | ❌ Not started | —                                                               |
 | GitHub PR integration           | ✅ Done        | `lib/db/src/schema/pull_requests.ts`, `artifacts/api-server/src/lib/github-client.ts`, `routes/github_webhooks.ts`, `routes/pull_requests.ts`, `artifacts/kg-engine/src/pages/pull-requests.tsx` |
 

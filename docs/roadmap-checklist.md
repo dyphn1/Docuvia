@@ -103,7 +103,7 @@
 | Dashboard & stats               | ✅ Done        | `routes/dashboard.ts`, `dashboardStats.ts`, `activityItem.ts`   |
 | Incremental update (delta-only) | ✅ Done        | `lastGitIngestedAt`/`lastSvnRevision` cursors on projects; `processedAt` on commits; `mode: full\|incremental` on ingest/generate routes; `GET /projects/:id/ingest/status`; `IngestStatusCard` frontend component |
 | Cross-team subscription         | ✅ Done        | `lib/db/src/schema/subscriptions.ts` + `notifications.ts`; `routes/subscriptions.ts` + `routes/notifications.ts`; notification hooks in ingest + generate pipelines; `NotificationBell` component + `/subscriptions` page |
-| VS Code extension               | ❌ Not started | —                                                               |
+| VS Code extension               | in progress    | files: `artifacts/api-server/src/routes/extensions_vscode.ts`, `artifacts/api-server/src/lib/extensions-service.ts`, `lib/api-spec/openapi.yaml`, `lib/api-spec/orval.config.ts`, `docs/db_migrations/001_add_l3_node_source_refs.sql`, `artifacts/api-server/test/extensions_vscode.test.ts` — branch: `feature/vscode-extension` (PR not created) |
 | Slack / Teams bot               | ❌ Not started | —                                                               |
 | GitHub PR integration           | ✅ Done        | `lib/db/src/schema/pull_requests.ts`, `artifacts/api-server/src/lib/github-client.ts`, `routes/github_webhooks.ts`, `routes/pull_requests.ts`, `artifacts/kg-engine/src/pages/pull-requests.tsx` |
 

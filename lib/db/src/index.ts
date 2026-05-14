@@ -1,6 +1,16 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "./schema";
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const rootEnvPath = path.resolve(__dirname, "../../../.env");
+if (fs.existsSync(rootEnvPath)) {
+  process.loadEnvFile(rootEnvPath);
+}
 
 const { Pool } = pg;
 

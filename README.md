@@ -64,10 +64,10 @@ Designed for teams working with large, long-lived, or specialized codebases (suc
 
 ### Flexible LLM Support
 
-- **Cloud providers**: OpenAI, Anthropic, Google, and others via API Key
-- **Local inference**: Ollama (no API key required)
-- Default model: **Gemma 3 12B** (balanced capability and weight for documentation tasks)
+- **OpenAI-compatible API** — any endpoint that speaks the OpenAI protocol
+- Default model: **gpt-5.2** (active implementation default; override per project via `llm_configs`)
 - Upgradeable per project: lightweight model for L1/L2 tagging, powerful model for L3 deep analysis
+- Multi-provider support (Anthropic, Gemini, Ollama) available on Replit via platform-provisioned AI integrations
 
 ### Project Structure
 

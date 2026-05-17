@@ -5,13 +5,13 @@
       "source": "dyphn1/create-agent-launcher",
       "sourceType": "github",
       "skillPath": "SKILL.md",
-      "computedHash": "09ad32ec9fdf52328952f0202c23266642986ea037dfc8627b1398b9bce1b0c4"
+      "computedHash": "f2cdff9975786e9ef75850b8f69204bb9338edd8d144954fcf0e4486d51157b4"
     },
     "repo-docs": {
       "source": "dyphn1/repo-docs",
       "sourceType": "github",
       "skillPath": "SKILL.md",
-      "computedHash": "c58dd96e3e3c71a84f3e3a73eef2353f1df5c5ac2b203d0840415aa948adce1f"
+      "computedHash": "421c4f5c96ad4f3c153911b5eb4f325ef37a1bcf3f7e3856ad55298ece18f365"
     }
   }
 }

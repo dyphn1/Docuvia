@@ -27,7 +27,6 @@ Special Constraints:Source code MUST live in submodules — never commit source 
 ```
 
 **Key signals discovered from README.md:**
-
 - "In the super project, only solution file (.sln), cmake list and other collective control files are placed, and **no source code is allowed**."
 - "All reference projects in the super project must be located under the git submodule."
 - List of submodule directories: `H2O.IDE/`, `H2O.Common/`, `H2O.Git2Sharp/`, `H2O.EDK2/`, `H2O.PFCM/`, etc.
@@ -37,7 +36,6 @@ Special Constraints:Source code MUST live in submodules — never commit source 
 ## Output: Generated Agent Files
 
 **`requirement-analyzer.agent.md` — Approach section:**
-
 ```markdown
 ## Approach
 
@@ -57,7 +55,6 @@ Special Constraints:Source code MUST live in submodules — never commit source 
 ```
 
 **`backend-developer.agent.md` — full file:**
-
 ```markdown
 ---
 name: "Backend Developer"
@@ -97,7 +94,6 @@ provided requirement list or AI implementation document.
 ```
 
 **`agent-launcher/SKILL.md` — Project-Specific Notes section:**
-
 ```markdown
 ## Project-Specific Notes
 
@@ -114,10 +110,10 @@ provided requirement list or AI implementation document.
 
 ## Key Specificity Points
 
-| Element                 | Expected in Generated Agent                                                             |
-| ----------------------- | --------------------------------------------------------------------------------------- |
-| Source paths            | `H2O.IDE/H2O.IDE/`, `H2O.Common/`, `H2O.Git2Sharp/` (with role annotations)             |
-| AI plan location        | `docs/ai_plans/` **at the main repo root** — explicitly, not inside submodules          |
-| Architecture constraint | "Never add source files to the main repo"                                               |
-| Build scope decision    | Assess scope first; prefer `dotnet build <X.csproj>` before escalating to solution-wide |
-| Project identity        | "the **Super H2O IDE** solution"                                                        |
+| Element | Expected in Generated Agent |
+|---------|-----------------------------|
+| Source paths | `H2O.IDE/H2O.IDE/`, `H2O.Common/`, `H2O.Git2Sharp/` (with role annotations) |
+| AI plan location | `docs/ai_plans/` **at the main repo root** — explicitly, not inside submodules |
+| Architecture constraint | "Never add source files to the main repo" |
+| Build scope decision | Assess scope first; prefer `dotnet build <X.csproj>` before escalating to solution-wide |
+| Project identity | "the **Super H2O IDE** solution" |

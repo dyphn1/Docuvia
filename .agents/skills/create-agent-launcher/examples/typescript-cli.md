@@ -27,7 +27,6 @@ Special Constraints:Run 'npm run lint' after build. Integration tests in integra
 ```
 
 **Key signals discovered from README.md and package.json:**
-
 - `"workspaces": ["packages/*"]` → npm workspaces monorepo
 - `"build": "scripts/build.sh"` → custom build script (not bare `tsc`)
 - `"lint": "eslint ."` → ESLint configured
@@ -39,7 +38,6 @@ Special Constraints:Run 'npm run lint' after build. Integration tests in integra
 ## Output: Generated Agent Files
 
 **`requirement-analyzer.agent.md` — Approach section:**
-
 ```markdown
 ## Approach
 
@@ -59,7 +57,6 @@ Special Constraints:Run 'npm run lint' after build. Integration tests in integra
 ```
 
 **`backend-developer.agent.md` — full file:**
-
 ```markdown
 ---
 name: "Backend Developer"
@@ -101,7 +98,6 @@ provided requirement list or AI implementation document.
 ```
 
 **`agent-launcher/SKILL.md` — Project-Specific Notes section:**
-
 ```markdown
 ## Project-Specific Notes
 
@@ -119,10 +115,10 @@ provided requirement list or AI implementation document.
 
 ## Key Specificity Points
 
-| Element              | Expected in Generated Agent                                                                   |
-| -------------------- | --------------------------------------------------------------------------------------------- |
-| Source paths         | `packages/core/src/` (agent logic), `packages/cli/src/` (CLI commands), with role annotations |
+| Element | Expected in Generated Agent |
+|---------|-----------------------------|
+| Source paths | `packages/core/src/` (agent logic), `packages/cli/src/` (CLI commands), with role annotations |
 | Build scope decision | Assess scope first; prefer `npm run build -w packages/<name>` before escalating to full build |
-| Lint requirement     | Explicit: always run `npm run lint` after any build                                           |
-| Package identity     | `@google/gemini-cli-core` and `@google/gemini-cli` (not just "the workspace")                 |
-| AI plan example      | `docs/ai_plans/implement_gemini_cli_auth.md` (real naming pattern)                            |
+| Lint requirement | Explicit: always run `npm run lint` after any build |
+| Package identity | `@google/gemini-cli-core` and `@google/gemini-cli` (not just "the workspace") |
+| AI plan example | `docs/ai_plans/implement_gemini_cli_auth.md` (real naming pattern) |

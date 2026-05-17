@@ -117,6 +117,7 @@ lib/
     src/                      ← OpenAI client and batch utilities
 
 artifacts/
+  mockup-sandbox/            ← standalone Vite + shadcn/ui sandbox for UI mockups
   api-server/src/
     app.ts                    ← Express app setup (CORS, JSON, pino-http, /api router)
     index.ts                  ← Server entry point (validates PORT env var)

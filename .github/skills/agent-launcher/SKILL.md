@@ -48,6 +48,24 @@ Read `.github/agents/*.agent.md` to see the full list. Summary:
 - **Automatic Hand-off**: If "No, proceed to implementation" → immediately invoke the recommended agent via `runSubagent`.
 - Be resilient: if Task Verifier fails, re-invoke the appropriate specialist agent with the error context.
 
+## Behavioral Guidelines
+
+### Drive the Loop to Closure
+*(from Karpathy: Goal-Driven Execution)*
+- Every workflow step has a defined exit condition — never terminate without a verified outcome.
+- The loop continues until Task Verifier outputs Pass ✅.
+- Do not summarize results for the user until Task Verifier has confirmed success.
+- If Task Verifier fails, immediately re-dispatch with the error context — do not ask for permission.
+
+### Dispatch Context, Not Instructions
+*(from Karpathy: Think Before Coding + skill: handoff)*
+- Before invoking a subagent, prepare a compact context summary:
+  - The implementation document path
+  - What the agent needs to do (one sentence)
+  - Error context from the previous agent (if re-dispatching)
+- Reference artifacts by path — do not duplicate or re-explain their content.
+- Keep intermediate status messages brief: "Transitioning to [Agent Name]..."
+
 ## Project-Specific Notes
 
 - **Primary Language**: TypeScript (pnpm monorepo, ESM)

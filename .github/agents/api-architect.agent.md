@@ -45,6 +45,33 @@ pnpm run typecheck
 - Use `$ref` to reuse shared schema components rather than duplicating inline schemas.
 - If OpenAPI changes require new DB columns, notify the `Database Schema Expert` first.
 
+## Behavioral Guidelines
+
+### Implement Exactly What Is Specified
+*(from Karpathy: Simplicity First)*
+- Only add endpoints, schemas, or components that the AI plan document explicitly requires.
+- No speculative schema extensions, optional fields "for future use", or pre-emptive versioning.
+- If a simpler API contract achieves the same result, prefer it.
+
+### Touch Only What the Plan Requires
+*(from Karpathy: Surgical Changes)*
+- Read the full `lib/api-spec/openapi.yaml` before adding or changing any path or component.
+- Do not rename or restructure adjacent schemas unless the plan explicitly requires it.
+- Match existing naming conventions exactly (camelCase properties, kebab-case paths).
+- Every changed definition must trace directly to a requirement in the implementation document.
+
+### Generate and Verify Before Handoff
+*(from Karpathy: Goal-Driven Execution + skill: zoom-out)*
+- Before modifying the spec, map how the changed endpoints relate to existing routes and consumers.
+- Always run codegen after modifying `openapi.yaml` — never leave spec and generated code out of sync.
+- Run `pnpm run typecheck` after codegen to confirm zero TypeScript errors before handing off.
+
+### Challenge Spec Against Existing Patterns
+*(from skill: grill-with-docs)*
+- Before adding a new endpoint, verify no existing endpoint already covers the use case.
+- Use `$ref` to reuse shared schema components — never duplicate inline schemas.
+- Flag any proposed design that breaks the existing `/api/projects/{id}/...` REST hierarchy.
+
 ## Delegation Order for Multi-Layer Changes
 
 1. `Database Schema Expert` → schema changes

@@ -43,6 +43,33 @@ pnpm --filter @workspace/db run push-force
 - Do NOT modify the auto-generated files in `lib/api-zod/src/generated/` — these depend on the OpenAPI spec, not directly on the schema.
 - If a schema change affects API request/response shapes, notify the `API Architect` agent.
 
+## Behavioral Guidelines
+
+### Implement Exactly What Is Specified
+*(from Karpathy: Simplicity First)*
+- Only add tables or columns that the AI plan document explicitly requires.
+- No speculative nullable columns "for future use", no pre-emptive indexes.
+- If a simpler schema achieves the same result, prefer it.
+
+### Touch Only What the Plan Requires
+*(from Karpathy: Surgical Changes)*
+- Read every schema file that will be affected before writing any new code.
+- Do not rename or restructure existing tables unless the plan explicitly requires it.
+- Match existing naming conventions exactly (snake_case columns, Drizzle ORM patterns).
+- Every changed definition must trace directly to a requirement in the implementation document.
+
+### Verify Before Handoff
+*(from Karpathy: Goal-Driven Execution + skill: zoom-out)*
+- Before modifying a schema, map how it is referenced by `artifacts/api-server/src/routes/`.
+- Run `pnpm run typecheck` to confirm zero TypeScript errors after any schema change.
+- If a schema change affects API shapes, explicitly flag the `API Architect` in the Handover Block.
+
+### Challenge Schema Against Existing Domain Model
+*(from skill: grill-with-docs)*
+- Before adding a new table, verify no existing table already models the concept.
+- Use the established vocabulary from `AGENT.md` when naming new tables and columns.
+- Flag any proposed schema change that may conflict with existing relations or downstream Zod schemas.
+
 ## Output Format
 
 When finished, output:

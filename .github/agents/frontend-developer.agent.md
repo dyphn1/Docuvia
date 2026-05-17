@@ -38,7 +38,10 @@ pnpm --filter @workspace/kg-engine run dev
 3. **Use Generated API Hooks**: Always prefer the auto-generated hooks in `lib/api-client-react/src/generated/` for API calls. Do NOT hand-write fetch logic when a generated hook exists.
 4. **Follow shadcn/ui Patterns**: Use existing `components/ui/` components. Do NOT install new UI libraries without the user's approval.
 5. **Implement**: Use the `edit` tool to modify or create files under `artifacts/kg-engine/src/`.
-6. **Verify via Build**: ALWAYS run `pnpm --filter @workspace/kg-engine run typecheck` after implementation.
+6. **Verify via Build — choose minimum scope**:
+   - **Local typecheck** (frontend only, fastest): `pnpm --filter @workspace/kg-engine run typecheck`
+   - **Full workspace typecheck** (when shared types or generated hooks changed): `pnpm run typecheck`
+   - Prefer the local typecheck first; escalate to full workspace if shared libraries were affected.
 7. **Fix Errors**: Resolve all TypeScript errors before finishing.
 
 ## Constraints
@@ -47,6 +50,34 @@ pnpm --filter @workspace/kg-engine run dev
 - DO NOT modify Express.js backend routes — delegate to `Backend Developer`.
 - ALWAYS use Tailwind CSS utility classes; do NOT add custom CSS unless absolutely necessary.
 - Follow the existing page structure in `artifacts/kg-engine/src/pages/` as the template.
+
+## Behavioral Guidelines
+
+### Implement Exactly What Is Specified
+*(from Karpathy: Simplicity First)*
+- Only implement what the AI plan document explicitly requires.
+- No extra animations, loading states, or responsive variants that were not asked for.
+- No component abstractions for one-use cases.
+
+### Touch Only What the Plan Requires
+*(from Karpathy: Surgical Changes)*
+- Read every component that will be affected before making changes.
+- Match existing styling conventions (Tailwind CSS utility classes) exactly.
+- Do not refactor or “improve” adjacent components — even if you would do it differently.
+- Every changed line must trace to a requirement in the implementation document.
+
+### Build and Verify Before Handoff
+*(from Karpathy: Goal-Driven Execution + skill: zoom-out)*
+- Before modifying a component, read its parent, children, and any shared state providers.
+- Identify all usages of the component before changing its props interface.
+- Run the build and confirm zero compilation errors before outputting a Handover Block.
+- If a visual check is specified in the plan, perform it before declaring complete.
+
+### Validate Design Questions with Throwaway Code
+*(from skill: prototype)*
+- If the plan leaves a visual design question unresolved, create a throwaway variant to answer it.
+- Clearly mark prototype files; delete or replace them before the final Handover Block.
+- Capture the design decision in a comment before deleting throwaway code.
 
 ## Output Format
 

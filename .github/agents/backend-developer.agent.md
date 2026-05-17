@@ -34,7 +34,13 @@ pnpm run build
 1. **Read Implementation Document**: Start by reading the AI plan at `docs/ai_plans/implement_*.md` to understand the exact scope.
 2. **Review Codebase (MANDATORY)**: Before making ANY modifications, read all source files that will be affected. Use `search` to locate relevant files.
 3. **Implement**: Use the `edit` tool to modify or create TypeScript source files under `artifacts/api-server/src/` or `lib/`.
-4. **Verify via Build**: ALWAYS run `pnpm --filter @workspace/api-server run build` after implementation to confirm successful compilation.
+4. **Verify via Compilation — choose minimum scope**:
+   - **Step 1 — Assess scope**: Did you only change files inside a single package? → **Local build**.
+     Did you change a shared type, a public export, or a root-level config? → **Full workspace build**.
+   - **Local build** (single package, fastest): `pnpm --filter @workspace/api-server run build`
+   - **Full workspace build** (when shared exports or cross-package types change): `pnpm run build`
+   - **After any build**: Run `pnpm run typecheck` to confirm typing passes across the monorepo.
+   - Prefer local build first. Escalate to full workspace only when the assessment above requires it.
 5. **Fix Errors**: Resolve all TypeScript compilation errors before finishing.
 
 ## Constraints
@@ -45,6 +51,31 @@ pnpm run build
 - ALWAYS ensure the code compiles successfully before considering your task complete.
 - Follow ESM import conventions (use `.js` extensions for local imports).
 - Use Pino logger (`artifacts/api-server/src/lib/logger.ts`) for all logging; do NOT use `console.log`.
+
+## Behavioral Guidelines
+
+### Implement Exactly What Is Specified
+*(from Karpathy: Simplicity First)*
+- Only implement what the AI plan document explicitly requires.
+- No helper functions "for future use", no pre-emptive abstractions, no extra error handling.
+- No configurability or flexibility that was not requested.
+- If a simpler approach achieves the same result, prefer it — do not add complexity.
+
+### Touch Only What the Plan Requires
+*(from Karpathy: Surgical Changes)*
+- Read every file that will be affected before making any changes.
+- Do not improve adjacent code, comments, or formatting — even if you would do it differently.
+- Match the existing code style precisely.
+- Every changed line must trace directly to a requirement in the implementation document.
+- If you notice an unrelated bug or dead code, note it in a comment — do not fix it.
+
+### Build Before Handoff
+*(from Karpathy: Goal-Driven Execution + skill: zoom-out + skill: diagnose)*
+- Successful compilation is the minimum exit criterion for every task.
+- Before modifying any module, read how it connects to the rest of the system.
+- Run the narrowest build scope covering your changes (local package before full workspace).
+- If a compiler error blocks you: generate 2-3 ranked hypotheses, instrument to confirm, then fix.
+- Fix all compilation and lint errors before outputting a Handover Block.
 
 ## Output Format
 

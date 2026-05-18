@@ -1,0 +1,77 @@
+{
+  "name": "frontend_developer",
+  "description": "Use when: implementing React/Vite UI components or pages for the kg-engine frontend based on an AI plan.",
+  "canonical_spec": ".github/agents/frontend-developer.agent.md",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a file from the project workspace.",
+        "parameters": {
+          "type": "object",
+          "properties": { "path": { "type": "string" } },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "write_file",
+        "description": "Write or edit a TypeScript/TSX source file.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "content": { "type": "string" }
+          },
+          "required": ["path", "content"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_codebase",
+        "description": "Search for patterns across the codebase.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "path": { "type": "string" }
+          },
+          "required": ["query"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "run_command",
+        "description": "Execute a shell command for build verification.",
+        "parameters": {
+          "type": "object",
+          "properties": { "command": { "type": "string" } },
+          "required": ["command"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "ask_user",
+        "description": "Ask the user a clarifying question.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "question": { "type": "string" },
+            "options": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["question"]
+        }
+      }
+    }
+  ],
+  "platform_notes": "Load canonical_spec file first. Build verification: pnpm --filter @workspace/kg-engine run typecheck. Do NOT edit files in lib/api-client-react/src/generated/."
+}

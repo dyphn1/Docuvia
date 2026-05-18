@@ -1,0 +1,14 @@
+# Gemini Tool Configuration for Docuvia
+
+tools:
+  - name: read_file
+    type: builtin
+  - name: edit_file
+    type: builtin
+  - name: search_codebase
+    type: builtin
+  - name: run_shell_command
+    type: builtin
+
+# Agent definitions are in .gemini/agents/
+# Canonical agent specs are in .github/agents/

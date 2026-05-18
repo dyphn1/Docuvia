@@ -1,0 +1,67 @@
+{
+  "name": "requirement_analyzer",
+  "description": "Use when: analyzing user requirements, creating AI implementation documents at docs/ai_plans/, and proposing the best execution agent.",
+  "canonical_spec": ".github/agents/requirement-analyzer.agent.md",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read_file",
+        "description": "Read a file from the project workspace.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string", "description": "File path to read." }
+          },
+          "required": ["path"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_codebase",
+        "description": "Search for patterns across the codebase.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": { "type": "string" },
+            "path": { "type": "string", "description": "Optional path to scope search." }
+          },
+          "required": ["query"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "write_file",
+        "description": "Write content to a file (used to save implementation plans).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": { "type": "string" },
+            "content": { "type": "string" }
+          },
+          "required": ["path", "content"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "ask_user",
+        "description": "Pause the agent loop and ask the user a clarifying question.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "question": { "type": "string" },
+            "options": { "type": "array", "items": { "type": "string" } }
+          },
+          "required": ["question"]
+        }
+      }
+    }
+  ],
+  "platform_notes": "Load canonical_spec file first. Do NOT implement features. Save plan at docs/ai_plans/implement_<feature-name>.md. Output a Handover Block instead of invoking agents directly."
+}

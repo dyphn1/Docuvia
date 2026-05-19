@@ -1,214 +1,120 @@
-# Docuvia — Universal VCS Knowledge Graph Engine
+# Docuvia
 
-> Transform years of version control history into a queryable, AI-powered knowledge base.
+> Universal VCS Knowledge Graph Engine: Transform years of version control history into a queryable, AI-powered knowledge base.
 
-> **AI agents:** Read [`AGENT.md`](AGENT.md) for architecture, exact commands, conventions, and constraints before making changes.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Key Features](#key-features)
-- [Supported Input Sources](#supported-input-sources)
-- [Typical Use Cases](#typical-use-cases)
-- [Architecture Summary](#architecture-summary)
-- [System Requirements](#system-requirements)
-- [Quick Start](#quick-start)
-- [LLM Configuration](#llm-configuration)
-- [Project vs. Tool Settings](#project-vs-tool-settings)
-- [Status](#status)
-- [Contributing](#contributing)
-- [License](#license)
-
----
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ## Overview
 
-Docuvia is a universal knowledge graph engine that extracts institutional knowledge from Git/SVN repositories, specification documents, and local files — then makes it queryable by AI agents via MCP.
+Docuvia is a universal knowledge graph engine that extracts institutional knowledge from Git/SVN repositories, specification documents, and local files. Unlike tools that only analyze static source code, Docuvia mines commit history, diffs, and build artifacts alongside spec documents to surface the *why* behind every decision — not just the *what*. 
 
-Unlike tools that only analyze static source code, Docuvia mines **commit history, diffs, and build artifacts** alongside spec documents (PDF, Word, PPTX) to surface the _why_ behind every decision — not just the _what_.
-
-Designed for teams working with large, long-lived, or specialized codebases (such as BIOS/firmware, embedded systems, or proprietary frameworks) where critical knowledge is scattered across 18 years of commits and internal documentation.
-
----
-
-## Key Features
-
-### Knowledge Construction
-
-- Extracts structured knowledge from Git/SVN commit history (message + diff)
-- Ingests specification documents: PDF, Word, PPTX, Markdown
-- Supports local files and folders as supplementary input sources
-- Filters commits by convention rules to surface high-quality "solution" entries
-- Three-tier knowledge hierarchy: **L1** (universal taxonomy) → **L2** (package/module/component) → **L3** (implementation rules, decisions, rationale)
-
-### Knowledge Graph
-
-- Global L1 tag pool shared across projects — new projects inherit and extend
-- Cross-project dynamic linking and referencing (like Obsidian, but AI-assisted)
-- Dual indexing: **vector search** for semantic queries, **graph traversal** for dependency and impact analysis
-- AI-detected cross-project common nodes, human-confirmed
-
-### Human-in-the-Loop
-
-- AI generates, humans anchor and correct
-- Iterative labeling workflow: AI proposes → human reviews → corrections feed back into next cycle
-- Noise surfaces naturally via inconsistent repeated tagging, flagged for human review
-
-### Agentic Query Layer
-
-- All knowledge exposed as **MCP tools** for AI agents
-- **Agentic RAG**: agent autonomously decides query strategy (vector vs. graph), depth, and whether to re-query
-- Supports natural language queries: "What does this PCD do?", "What breaks if I replace this module?"
-
-### Flexible LLM Support
-
-- **OpenAI-compatible API** — any endpoint that speaks the OpenAI protocol
-- Default model: **gpt-5.2** (active implementation default; override per project via `llm_configs`)
-- Upgradeable per project: lightweight model for L1/L2 tagging, powerful model for L3 deep analysis
-- Multi-provider support (Anthropic, Gemini, Ollama) available on Replit via platform-provisioned AI integrations
-
-### Project Structure
-
-- Each project has its own L1/L2/L3 knowledge space
-- Remote repo URL as canonical identity — multiple local clones resolve to the same node
-- Loose files and folders exist as independent entities, linked manually or by AI suggestion
-- Projects can export, reference, and dynamically link to other projects
-
-### Built-in AI Agent Toolkit
-
-- Default skills, agents, and instruction sets included out of the box
-- Default document templates for L1 taxonomy, L2 module docs, L3 decision records
-- All defaults inheritable and overridable at the project level
-
----
-
-## Supported Input Sources
-
-| Source                  | Type          | Notes                                 |
-| ----------------------- | ------------- | ------------------------------------- |
-| Git repository (remote) | Primary node  | Local clones resolve to remote URL    |
-| SVN repository          | Primary node  | Commit + diff history extracted       |
-| Local folder            | Supplementary | Independent entity, linkable          |
-| Local file              | Supplementary | PDF, Word, PPTX, Markdown, TXT        |
-| Build artifacts         | Supplementary | Map files, FV/FD layout, compile logs |
+It is designed for teams working with large, long-lived, or specialized codebases (e.g., BIOS/firmware, embedded systems) where critical knowledge is scattered, allowing AI agents to query this knowledge via MCP.
 
 ---
 
 ## Typical Use Cases
 
-- **Firmware / BIOS teams**: Index EDK2 PCD definitions, module dependencies, and build-time-resolved structures that static analysis cannot capture
-- **Long-lived codebases**: Recover institutional knowledge buried in 10–20 years of commit history
-- **Spec-driven projects**: Link specification documents to the actual code changes they motivated
-- **Onboarding**: New engineers query the knowledge base instead of reading thousands of commits
-- **Impact analysis**: Before replacing a module, ask the agent what else will be affected
+- **Firmware / BIOS teams**: Index EDK2 PCD definitions, module dependencies, and build-time-resolved structures that static analysis cannot capture.
+- **Long-lived codebases**: Recover institutional knowledge buried in 10–20 years of commit history.
+- **Spec-driven projects**: Link specification documents to the actual code changes they motivated.
+- **Onboarding**: New engineers query the knowledge base instead of reading thousands of commits.
+- **Impact analysis**: Before replacing a module, ask the agent what else will be affected.
 
 ---
 
-## Architecture Summary
+## Getting Started
 
-```
-Input Layer
-├── Git / SVN Repos  (remote URL as canonical ID)
-├── Local Files / Folders  (independent, linkable)
-└── Build Artifacts  (post-compile knowledge)
-        ↓
-Knowledge Construction Layer
-├── Commit Filter  (convention-based, ~60% signal rate)
-├── L1 Tagger      (global pool, AI-assisted + human anchor)
-├── L2 Extractor   (package / module / component)
-└── L3 Generator   (diff + context → rules, rationale, decisions)
-        ↓
-Knowledge Graph
-├── Vector Index   (semantic search)
-└── Graph Index    (dependency / impact traversal)
-        ↓
-Query Layer
-├── Agentic RAG    (self-correcting, intent-driven routing)
-└── MCP Tools      (agent-callable endpoints)
-```
+### Prerequisites
+- **Node.js**: Version 24+
+- **pnpm**: Required (npm/yarn will be blocked by the preinstall script).
+- **PostgreSQL**: Required for production and local environments.
+- **AI API**: An OpenAI-compatible API endpoint and API Key.
 
----
-
-## System Requirements
-
-- Node.js 24+
-- pnpm (enforced — npm/yarn blocked by `preinstall`)
-- PostgreSQL (production DB)
-- Supported development/build hosts: Windows, Linux, and macOS
-
----
-
-## Quick Start
-
+### Installation / Deployment
+Currently, Docuvia is run directly from the source repository.
 ```bash
+# Clone the repository and install dependencies
 pnpm install
-
-# Set required environment variables:
-#   DATABASE_URL
-#   AI_INTEGRATIONS_OPENAI_BASE_URL
-#   AI_INTEGRATIONS_OPENAI_API_KEY
-#   PORT
-
-pnpm --filter @workspace/api-server run dev   # API server (port 8080 in dev)
-pnpm --filter @workspace/kg-engine run dev    # Frontend (port 18774)
 ```
 
-The frontend defaults to `BASE_PATH=/` and `PORT=18774` for local builds; override those environment variables only when a deployment target needs different values.
+### Initial Configuration
+Set up the following required environment variables:
+- `DATABASE_URL`: Connection string for PostgreSQL.
+- `AI_INTEGRATIONS_OPENAI_BASE_URL`: Base URL for the OpenAI-compatible API.
+- `AI_INTEGRATIONS_OPENAI_API_KEY`: API Key for the LLM endpoint.
+- `PORT`: API server port (default 8080).
 
-See [AGENT.md](AGENT.md) for the full command reference and codegen / DB migration steps.
-
----
-
-## LLM Configuration
-
-| Mode  | Provider                     | Setup                                          |
-| ----- | ---------------------------- | ---------------------------------------------- |
-| Cloud | OpenAI-compatible API        | Set `AI_INTEGRATIONS_OPENAI_BASE_URL` + `API_KEY` |
-
-The codebase uses an OpenAI-compatible API client (`lib/integrations-openai-ai-server/`). Multi-provider support (Anthropic, Gemini, Ollama) is available when running on Replit via platform-provisioned AI integrations — not via in-repo adapters. Per-project model switching is supported via the `llm_configs` table (`routes/llm_config.ts`).
-
-> **Note**: The `gemma3:12b` / Ollama default documented in earlier versions is aspirational. The current implementation defaults to an OpenAI-compatible endpoint.
+Start the system:
+```bash
+pnpm --filter @workspace/api-server run dev   # Starts API Server
+pnpm --filter @workspace/kg-engine run dev    # Starts Frontend UI
+```
+The frontend defaults to `BASE_PATH=/` and `PORT=18774`.
 
 ---
 
-## Project vs. Tool Settings
+## Core Workflow & Features
 
-| Setting                 | Scope     | Overridable            |
-| ----------------------- | --------- | ---------------------- |
-| Default skills & agents | Tool-wide | Yes, per project       |
-| Document templates      | Tool-wide | Yes, per project       |
-| L1 global tag pool      | Tool-wide | Extend per project     |
-| LLM provider & model    | Tool-wide | Yes, per project       |
-| Cross-project links     | Project   | Manual or AI-suggested |
+### 1. Ingestion
+Connect Docuvia to your Git/SVN repository or upload specification documents (PDF, Word, PPTX, Markdown). Docuvia automatically filters out low-value commits to maintain a high signal-to-noise ratio.
 
----
+### 2. Knowledge Construction (Human-in-the-Loop)
+Trigger the AI analysis pipeline. The AI will extract structured knowledge across three tiers (L1, L2, L3). Use the **Review Queue** UI to anchor, correct, and approve the AI's proposed tags and decision records.
 
-## Status
-
-All 7 implementation phases are complete (42 / 42 items). See [docs/roadmap-checklist.md](docs/roadmap-checklist.md) for the full per-item audit and [known limitations](docs/roadmap-checklist.md#known-limitations--functional-gaps).
-
-| Phase       | Description                                                  | Progress     |
-| ----------- | ------------------------------------------------------------ | ------------ |
-| **Phase 1** | Foundation — LLM abstraction, DB schema, logging             | 6 / 6 — 100% |
-| **Phase 2** | Input Layer — Git / SVN ingestion, document & build parsers  | 4 / 4 — 100% |
-| **Phase 3** | AI Pipeline — L1 Tagger → L2 Extractor → L3 Generator        | 5 / 5 — 100% |
-| **Phase 4** | Knowledge Graph — vector index, graph traversal              | 4 / 4 — 100% |
-| **Phase 5** | Query + MCP — 6 MCP endpoints, agentic RAG, semantic search  | 8 / 8 — 100% |
-| **Phase 6** | Human-in-the-Loop — review queue, feedback loop, templates   | 8 / 8 — 100% |
-| **Phase 7** | Enhancements — export, incremental update, external integrations | 7 / 7 — 100% |
-
-Known functional gaps (not blockers): multi-hop impact traversal, human-confirmed cross-project link activation, VS Code client package, Ollama/local-inference adapter. See [roadmap-checklist.md](docs/roadmap-checklist.md#known-limitations--functional-gaps).
+### 3. Querying & Agentic RAG
+Once indexed, you can query the knowledge graph via the UI or connect your own AI agents via the built-in **MCP Endpoints**. The Agentic RAG system autonomously decides whether to use vector search (for semantic queries) or graph traversal (for dependency and impact analysis).
 
 ---
 
-## Contributing
+## Concepts & Glossary
 
-Contributions and feedback welcome. Please open an issue or pull request.
+*(Sourced from `docs/gitbook/04-core-concepts.md`)*
+
+| Term | Definition |
+|---|---|
+| `L1 Pool` | Global tags acting as high-level categorizations across your organization. |
+| `L2 Nodes` | Architectural components, packages, and modules specific to a project. |
+| `L3 Nodes` | Micro-level design decisions, reasoning, and implementation details. |
+| `Vector Index` | Used for semantic search when querying abstract concepts. |
+| `Graph Index` | Used for dependency analysis, tracking relationships, and assessing impact. |
+| `Agentic RAG` | The AI autonomously selects between vector, graph, direct, and hybrid routing. |
+| `MCP` | Model Context Protocol — allows external AI agents to interact with Docuvia. |
 
 ---
 
-## License
+## Security & Privacy
 
-MIT — see [LICENSE](LICENSE).
+- **Data Locality**: The core engine and database run on your infrastructure. 
+- **LLM Privacy**: Data is only sent to the LLM endpoint you configure in `AI_INTEGRATIONS_OPENAI_BASE_URL`. Ensure you use a provider with a zero-data-retention policy for enterprise data.
+- **Credentials**: Database connection strings and API keys are managed via local environment variables.
+
+---
+
+## FAQ & Limitations
+
+*(Sourced from `docs/gitbook/08-known-limitations.md` and `09-faq.md`)*
+
+- **Q: The Dashboard displays "Dashboard data unavailable" and numbers are 0.**
+  - **A:** Ensure that both the API Server and Database are running correctly. Check the API Server logs for connection errors.
+- **Q: The Review Queue is empty after running Generate.**
+  - **A:** The LLM might be returning unparseable JSON. Check the API logs for parse errors or LLM timeout exceptions.
+- **Q: Cannot connect to local Ollama model.**
+  - **A:** Native Ollama integration is not officially supported yet. You must use an OpenAI-compatible proxy (like LiteLLM) to route requests.
+
+**Known Limitations:**
+- **Multi-hop Impact Traversal**: Currently only one-hop traversal is supported.
+- **Cross-project node_links**: Approved cross-project links do not automatically create relationship records in the DB yet.
+- **Test Suite**: Currently limited to VS Code extensions tests.
+
+---
+
+## Support & Community
+
+See the full [GitBook Documentation](docs/gitbook/) for Quick Start guides, API references, and architectural roadmaps.
+
+---
+
+## For Developers
+
+Want to build Docuvia from source, contribute to the engine, or understand the codebase architecture? 
+Please see the AI instructions and developer guide in [`AGENTS.md`](AGENTS.md).

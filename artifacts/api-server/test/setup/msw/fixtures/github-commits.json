@@ -1,0 +1,14 @@
+[
+  {
+    "sha": "abc123",
+    "commit": {
+      "message": "feat: add project ingestion",
+      "author": {
+        "name": "Docuvia Bot",
+        "date": "2026-05-21T00:00:00.000Z"
+      }
+    },
+    "html_url": "https://github.com/example/docuvia/commit/abc123",
+    "files": []
+  }
+]

@@ -1,7 +1,15 @@
 # Docuvia — GitHub Copilot Instructions
 
-> **Project context, architecture, commands, and conventions**: See [AGENT.md](../AGENT.md).
+> **Project context, architecture, commands, and conventions**: See [AGENTS.md](../AGENTS.md).
 > All agent definitions (canonical source of truth): See [.github/agents/](agents/).
+
+## Testing Navigation
+
+- Unit tests are colocated with source files as `*.unit.test.ts`.
+- Package integration tests live under `artifacts/<package>/test/integration/`.
+- API integration tests should use `supertest`, factories from `artifacts/api-server/test/support/factories.ts`, and `withRollback(...)` from `artifacts/api-server/test/support/db.ts`.
+- Mock external HTTP calls through MSW handlers in `artifacts/api-server/test/setup/msw/handlers.ts`; put large static payloads in `artifacts/api-server/test/setup/msw/fixtures/`.
+- Run `pnpm test` for the normal suite and `pnpm run test:coverage` when checking coverage boundaries.
 
 ---
 
@@ -26,11 +34,11 @@ Act as the Master Orchestrator for this workspace. When initiating a complex mul
 
 ## Copilot-Specific: Available Agents
 
-| Agent | File | When to Use |
-|-------|------|-------------|
-| Requirement Analyzer | [`agents/requirement-analyzer.agent.md`](agents/requirement-analyzer.agent.md) | New feature planning, ambiguity resolution |
-| Backend Developer | [`agents/backend-developer.agent.md`](agents/backend-developer.agent.md) | Express.js / Node.js implementation |
-| Frontend Developer | [`agents/frontend-developer.agent.md`](agents/frontend-developer.agent.md) | React + Vite UI changes |
-| Database Schema Expert | [`agents/database-schema-expert.agent.md`](agents/database-schema-expert.agent.md) | Drizzle ORM schema / migrations |
-| API Architect | [`agents/api-architect.agent.md`](agents/api-architect.agent.md) | OpenAPI spec + Orval codegen |
-| Task Verifier | [`agents/task-verifier.agent.md`](agents/task-verifier.agent.md) | Post-implementation verification |
+| Agent                  | File                                                                               | When to Use                                |
+| ---------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------ |
+| Requirement Analyzer   | [`agents/requirement-analyzer.agent.md`](agents/requirement-analyzer.agent.md)     | New feature planning, ambiguity resolution |
+| Backend Developer      | [`agents/backend-developer.agent.md`](agents/backend-developer.agent.md)           | Express.js / Node.js implementation        |
+| Frontend Developer     | [`agents/frontend-developer.agent.md`](agents/frontend-developer.agent.md)         | React + Vite UI changes                    |
+| Database Schema Expert | [`agents/database-schema-expert.agent.md`](agents/database-schema-expert.agent.md) | Drizzle ORM schema / migrations            |
+| API Architect          | [`agents/api-architect.agent.md`](agents/api-architect.agent.md)                   | OpenAPI spec + Orval codegen               |
+| Task Verifier          | [`agents/task-verifier.agent.md`](agents/task-verifier.agent.md)                   | Post-implementation verification           |

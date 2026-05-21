@@ -11,20 +11,21 @@
 
 ### Workspace Layout
 
-| Directory | Purpose |
-|---|---|
-| `kg-engine/` | Frontend React UI (Dashboard, Pipeline, Query, Review) |
-| `api-server/` | Express API, MCP endpoints, Agentic RAG routing, Ingestion logic |
-| `api-spec/` | `openapi.yaml` — Single source of truth for all API contracts |
-| `db/` | Drizzle ORM schema and migrations (`projects.ts`, `commits.ts`, etc.) |
-| `integrations-openai-ai-server/` | OpenAI-compatible client wrapper |
-| `docs/` | Roadmap, gitbook content, phase checklists |
+| Directory                        | Purpose                                                               |
+| -------------------------------- | --------------------------------------------------------------------- |
+| `kg-engine/`                     | Frontend React UI (Dashboard, Pipeline, Query, Review)                |
+| `api-server/`                    | Express API, MCP endpoints, Agentic RAG routing, Ingestion logic      |
+| `api-spec/`                      | `openapi.yaml` — Single source of truth for all API contracts         |
+| `db/`                            | Drizzle ORM schema and migrations (`projects.ts`, `commits.ts`, etc.) |
+| `integrations-openai-ai-server/` | OpenAI-compatible client wrapper                                      |
+| `docs/`                          | Roadmap, gitbook content, phase checklists                            |
 
 ## Development Commands
 
 All commands are executed from the repository root unless otherwise noted.
 
 ### Setup & Database
+
 ```bash
 pnpm install
 # DB push — apply schema to dev DB
@@ -34,30 +35,44 @@ pnpm --filter @workspace/db run push-force
 ```
 
 ### Local Development
+
 ```bash
 pnpm --filter @workspace/api-server run dev   # API server on port 8080
 pnpm --filter @workspace/kg-engine run dev    # Frontend on port 18774
 ```
 
 ### Build & Typecheck
+
 ```bash
 pnpm run build          # typecheck + compile all packages
 pnpm run typecheck      # Typecheck only
 ```
 
 ### Codegen
+
 ```bash
 # Regenerate React Query hooks and Zod validators from OpenAPI spec
 pnpm --filter @workspace/api-spec run codegen
 ```
-*Run this after **every** change to `lib/api-spec/openapi.yaml`.*
+
+_Run this after **every** change to `lib/api-spec/openapi.yaml`._
 
 ### Testing & Linting
+
 ```bash
 pnpm prettier --write .
 pnpm test
+pnpm run test:coverage
 ```
-*(Tests live in root `test/`; run the package test script so Vitest uses the API server workspace dependencies.)*
+
+_(Unit tests are colocated with source as `*.unit.test.ts`; package integration tests live in `artifacts/<package>/test/integration/`. API integration tests use a real PostgreSQL database wrapped in rollback transactions plus MSW for external HTTP APIs.)_
+
+### Test Infrastructure
+
+- Shared Vitest setup is configured in `vitest.config.ts` and implemented under `artifacts/api-server/test/setup/`.
+- Use factories from `artifacts/api-server/test/support/factories.ts` to create DB state. Factories should accept overrides and remain friendly to randomized/fuzz inputs.
+- Wrap DB-backed integration tests with `withRollback(...)` from `artifacts/api-server/test/support/db.ts` so writes are rolled back after each test.
+- Add large external API responses as JSON fixtures under `artifacts/api-server/test/setup/msw/fixtures/`, then expose them through MSW handlers.
 
 ## 🤖 Agentic Workflow & Subagents
 
@@ -90,5 +105,5 @@ This project is scaffolded with the `create-agent-launcher` workflow. When imple
 ## System Boundaries & Gotchas
 
 - **PORT Environment Variable**: The API server throws an error on startup if `PORT` is missing.
-- **Test Suite**: Tests live in root `test/` and currently combine feature contract checks with a VS Code extension endpoint test. Do not assume core logic is broadly covered by tests.
+- **Test Suite**: Vitest discovers colocated unit tests and per-package integration tests. Coverage reports are generated in `coverage/`; add module-specific thresholds as pure logic coverage is introduced.
 - **Ollama**: While earlier docs mentioned Gemma3/Ollama, the current implementation defaults strictly to an OpenAI-compatible endpoint. Do not attempt to use native Ollama adapters.

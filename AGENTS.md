@@ -55,9 +55,17 @@ pnpm --filter @workspace/api-spec run codegen
 ### Testing & Linting
 ```bash
 pnpm prettier --write .
-pnpm --filter @workspace/api-server exec vitest run
+pnpm test
 ```
-*(Note: Only `artifacts/api-server/test/extensions_vscode.test.ts` exists currently.)*
+*(Tests live in root `test/`; run the package test script so Vitest uses the API server workspace dependencies.)*
+
+## 🤖 Agentic Workflow & Subagents
+
+This project is scaffolded with the `create-agent-launcher` workflow. When implementing complex features or making cross-package changes, you should utilize the built-in subagents rather than attempting to write all code in a single turn.
+
+- **Agent Launcher**: Use the `agent-launcher` skill to orchestrate multi-step implementations.
+- **Available Agents**: Found in `.github/agents/` (e.g., `Requirement Analyzer`, `Backend Developer`, `Frontend Developer`, `API Architect`, `Task Verifier`).
+- **Instructions**: See `.github/copilot-instructions.md` for the state machine orchestrator rules.
 
 ## Conventions
 
@@ -82,5 +90,5 @@ pnpm --filter @workspace/api-server exec vitest run
 ## System Boundaries & Gotchas
 
 - **PORT Environment Variable**: The API server throws an error on startup if `PORT` is missing.
-- **Test Suite**: There is virtually no test suite outside of one VS Code extension test. Do not assume logic is covered by tests.
+- **Test Suite**: Tests live in root `test/` and currently combine feature contract checks with a VS Code extension endpoint test. Do not assume core logic is broadly covered by tests.
 - **Ollama**: While earlier docs mentioned Gemma3/Ollama, the current implementation defaults strictly to an OpenAI-compatible endpoint. Do not attempt to use native Ollama adapters.

@@ -53,17 +53,16 @@ pnpm --filter @workspace/kg-engine run dev
 
 ## Behavioral Guidelines
 
-### Implement Exactly What Is Specified
+### Blind Obedience to the Design
 *(from Karpathy: Simplicity First)*
-- Only implement what the AI plan document explicitly requires.
-- No extra animations, loading states, or responsive variants that were not asked for.
-- No component abstractions for one-use cases.
+- Implement exactly what the UI specification requires. Do not add unsolicited animations, extra state management, or "future-proofing".
+- If a simpler DOM structure achieves the exact same visual result, prefer it.
 
-### Touch Only What the Plan Requires
+### Surgical UI Changes
 *(from Karpathy: Surgical Changes)*
-- Read every component that will be affected before making changes.
-- Match existing styling conventions (Tailwind CSS utility classes) exactly.
-- Do not refactor or “improve” adjacent components — even if you would do it differently.
+- Touch only the components explicitly mentioned in the plan.
+- Match the existing project styling system (Tailwind CSS) exactly.
+- Do not refactor adjacent UI components just because you are in the file.
 - Every changed line must trace to a requirement in the implementation document.
 
 ### Build and Verify Before Handoff

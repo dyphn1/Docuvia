@@ -9,4 +9,4 @@ Please be aware of the following current limitations in the system.
 | Ollama / Local Inference | 🟡 Low | Only the OpenAI-compatible API is implemented; no dedicated Ollama adapter yet. |
 | VS Code Extension | 🟡 Low | Server API exists, but the `.vsix` client package is missing. |
 | Multi-Provider Adapters | 🟡 Low | Anthropic and Gemini adapters are strictly limited to the Replit platform environment. |
-| Test Suite | 🟡 Low | Only `extensions_vscode.test.ts` exists; other endpoints lack automated tests. |
+| Test Suite | 🟡 Low | Tests live in root `test/`, but coverage is still narrow: mostly feature contract checks plus VS Code extension endpoints. |

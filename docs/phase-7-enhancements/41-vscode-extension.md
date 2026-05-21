@@ -9,14 +9,14 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
 - `POST /extensions/vscode/create-decision` — create an L3 decision record from the editor
 - `GET /extensions/vscode/file-context` — retrieve knowledge nodes relevant to a file path
 
-`artifacts/api-server/src/lib/extensions-service.ts` — service layer with `vscodeQuery()`, `createL3Decision()`, `getFileContext()`. Single test file at `artifacts/api-server/test/extensions_vscode.test.ts` (Vitest + supertest).
+`artifacts/api-server/src/lib/extensions-service.ts` — service layer with `vscodeQuery()`, `createL3Decision()`, `getFileContext()`. Test file at `test/extensions_vscode.test.ts` (Vitest + supertest).
 
 > ⚠️ **Scope Note**: The "VS Code Extension" feature in this repo is **server-side API endpoints only**. No VS Code extension package (no `package.json` with `engines.vscode`, no `.vsix`, no `extension.ts` entry point) exists in this codebase. A future task is to build the VS Code client that calls these endpoints.
 
 ### Key Files
 - `artifacts/api-server/src/routes/extensions_vscode.ts` — route handlers
 - `artifacts/api-server/src/lib/extensions-service.ts` — service layer
-- `artifacts/api-server/test/extensions_vscode.test.ts` — only test file in the project
+- `test/extensions_vscode.test.ts` — VS Code extension endpoint test
 - `lib/api-zod/src/generated/types/vscodeQueryInput.ts` — generated request type
 - `lib/api-zod/src/generated/types/vscodeQueryResult.ts` — generated response type
 
@@ -40,7 +40,7 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
 ### Test Coverage
 
 - [ ] **Confirm `test/extensions_vscode.test.ts` covers all 3 endpoints** with at least happy-path assertions using supertest.
-- [ ] **Run `pnpm --filter @workspace/api-server exec vitest run`** (or equivalent) to verify the test suite passes.
+- [ ] **Run `pnpm test`** (or equivalent) to verify the test suite passes.
 
 ### Known Gap
 
@@ -64,7 +64,7 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
 
 - [ ] **Trigger `Task Verifier`** to run:
   ```bash
-  pnpm --filter @workspace/api-server exec vitest run
+  pnpm test
   ```
   - **Validation Goal**: All tests pass. If no test runner is configured, raise a gap report.
 
@@ -90,7 +90,7 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
 - [ ] **Verify 'lib/api-spec/orval.config.cjs'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
 - [ ] **Verify 'lib/api-zod/src/generated/api.ts'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
 - [ ] **Verify 'lib/api-zod/src/generated/types.ts'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
-- [ ] **Verify 'artifacts/api-server/test/extensions_vscode.test.ts'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
+- [ ] **Verify 'test/extensions_vscode.test.ts'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
 
 ### API Contract & Routing
 
@@ -116,7 +116,7 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
   - **lib/api-spec/orval.config.cjs**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **lib/api-zod/src/generated/api.ts**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **lib/api-zod/src/generated/types.ts**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
-  - **artifacts/api-server/test/extensions_vscode.test.ts**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
+  - **test/extensions_vscode.test.ts**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
 

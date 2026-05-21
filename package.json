@@ -9,13 +9,17 @@
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
     "lint": "prettier --check .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "pnpm --filter @workspace/api-server run test"
   },
   "private": true,
   "devDependencies": {
+    "@types/supertest": "^7.2.0",
     "js-yaml": "^4.1.1",
+    "msw": "^2.14.6",
     "playwright": "^1.60.0",
     "prettier": "^3.8.1",
+    "supertest": "^6.3.3",
     "typescript": "~5.9.2"
   }
 }

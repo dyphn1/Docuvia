@@ -1,0 +1,177 @@
+{
+  "name": "@workspace/vscode-client",
+  "displayName": "Docuvia",
+  "description": "Docuvia knowledge graph integration for VS Code.",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "publisher": "docuvia",
+  "categories": ["Other"],
+  "activationEvents": [
+    "workspaceContains:.docuvia"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "docuvia",
+          "title": "Docuvia",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "docuvia": [
+        {
+          "id": "docuvia.knowledgeGraph",
+          "name": "Knowledge Graph"
+        },
+        {
+          "id": "docuvia.taskQueue",
+          "name": "Task Queue"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "docuvia.initProject",
+        "title": "Docuvia: Init Project"
+      },
+      {
+        "command": "docuvia.addDecision",
+        "title": "Docuvia: Add Decision"
+      },
+      {
+        "command": "docuvia.refreshKnowledgeGraph",
+        "title": "Docuvia: Refresh Knowledge Graph",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "docuvia.openDashboard",
+        "title": "Docuvia: Open Dashboard",
+        "icon": "$(home)"
+      },
+      {
+        "command": "docuvia.runExtraction",
+        "title": "Docuvia: Run L3 Extraction on Active File",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "docuvia.clearCompletedTasks",
+        "title": "Docuvia: Clear Completed Tasks",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "docuvia.acceptL1Tags",
+        "title": "Docuvia: Accept L1 Tags (internal)",
+        "enablement": "never"
+      },
+      {
+        "command": "docuvia.showDecisionsForLens",
+        "title": "Docuvia: Show Decisions for Lens (internal)",
+        "enablement": "never"
+      },
+      {
+        "command": "docuvia.addDecisionFromSelection",
+        "title": "Docuvia: Add Decision from Selection"
+      },
+      {
+        "command": "docuvia.setServerToken",
+        "title": "Docuvia: Set Server Token"
+      },
+      {
+        "command": "docuvia.clearServerToken",
+        "title": "Docuvia: Clear Server Token"
+      },
+      {
+        "command": "docuvia.openSearch",
+        "title": "Docuvia: Open Cross-Project Search",
+        "icon": "$(search)"
+      }
+    ],
+    "chatParticipants": [
+      {
+        "id": "docuvia.assistant",
+        "name": "docuvia",
+        "fullName": "Docuvia Knowledge Graph",
+        "description": "Explore your project's architecture, query local decisions, and extract L3 knowledge.",
+        "isSticky": false,
+        "commands": [
+          {
+            "name": "explore",
+            "description": "Detect project type and suggest L1 tags for .docuvia/l1_tags.yaml"
+          },
+          {
+            "name": "query",
+            "description": "Search local knowledge graph for matching modules and decisions"
+          },
+          {
+            "name": "extract",
+            "description": "Queue L3 decision extraction for the active or specified file"
+          },
+          {
+            "name": "help",
+            "description": "Show available commands and usage"
+          }
+        ]
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "docuvia.refreshKnowledgeGraph",
+          "when": "view == docuvia.knowledgeGraph",
+          "group": "navigation"
+        },
+        {
+          "command": "docuvia.openDashboard",
+          "when": "view == docuvia.knowledgeGraph",
+          "group": "navigation"
+        },
+        {
+          "command": "docuvia.openSearch",
+          "when": "view == docuvia.knowledgeGraph",
+          "group": "navigation"
+        },
+        {
+          "command": "docuvia.clearCompletedTasks",
+          "when": "view == docuvia.taskQueue",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "docuvia.runExtraction",
+          "when": "editorIsOpen",
+          "group": "docuvia"
+        },
+        {
+          "command": "docuvia.addDecisionFromSelection",
+          "when": "editorHasSelection && resourceLangId =~ /typescript|javascript|typescriptreact|javascriptreact|python/",
+          "group": "docuvia"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc --noEmit && tsc -p tsconfig.json --outDir out",
+    "compile": "tsc -p tsconfig.json --outDir out",
+    "typecheck": "tsc --noEmit",
+    "watch": "tsc -p tsconfig.json --outDir out --watch"
+  },
+  "dependencies": {
+    "gray-matter": "^4.0.3",
+    "uuid": "^11.1.0",
+    "yaml": "^2.7.1",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/uuid": "^10.0.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.9.3"
+  }
+}

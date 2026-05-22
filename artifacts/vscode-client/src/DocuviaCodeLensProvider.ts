@@ -1,0 +1,121 @@
+import * as path from 'path';
+import * as vscode from 'vscode';
+import { KnowledgeStore } from './KnowledgeStore.js';
+import { L2Module } from './types.js';
+
+export interface CodeLensDecisionData {
+  moduleId: string;
+  moduleName: string;
+  decisionIds: string[];
+}
+
+const DECLARATION_PATTERNS: Record<string, RegExp[]> = {
+  typescript: [
+    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
+    /^\s*(?:export\s+)?(?:abstract\s+)?class\s+\w+/,
+  ],
+  javascript: [
+    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
+    /^\s*(?:export\s+)?class\s+\w+/,
+  ],
+  typescriptreact: [
+    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
+    /^\s*(?:export\s+)?(?:abstract\s+)?class\s+\w+/,
+  ],
+  javascriptreact: [
+    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
+    /^\s*(?:export\s+)?class\s+\w+/,
+  ],
+  python: [
+    /^\s*(?:async\s+)?def\s+\w+/,
+    /^\s*class\s+\w+/,
+  ],
+};
+
+function normalizeSourcePath(sourcePath: string): string {
+  let normalized = sourcePath.replace(/^\.\//, '');
+  if (!path.extname(normalized) && !normalized.endsWith('/')) {
+    normalized += '/';
+  }
+  return normalized;
+}
+
+function findMatchingModules(
+  documentFsPath: string,
+  workspaceRoot: string,
+  modules: L2Module[]
+): L2Module[] {
+  const relPath = path.relative(workspaceRoot, documentFsPath).split(path.sep).join('/');
+  return modules.filter(module =>
+    module.source_paths.some(sp => {
+      const normalized = normalizeSourcePath(sp);
+      return relPath === normalized || relPath.startsWith(normalized);
+    })
+  );
+}
+
+function findDeclarationLines(document: vscode.TextDocument): number[] {
+  const patterns = DECLARATION_PATTERNS[document.languageId] ?? [];
+  if (patterns.length === 0) return [];
+
+  const lines: number[] = [];
+  for (let i = 0; i < document.lineCount; i++) {
+    const text = document.lineAt(i).text;
+    if (patterns.some(p => p.test(text))) {
+      lines.push(i);
+    }
+  }
+  return lines;
+}
+
+export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
+  private readonly _store: KnowledgeStore;
+  private readonly _onDidChangeCodeLenses = new vscode.EventEmitter<void>();
+  readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
+
+  constructor(store: KnowledgeStore, context: vscode.ExtensionContext) {
+    this._store = store;
+    store.onDidLoad(() => this._onDidChangeCodeLenses.fire(), null, context.subscriptions);
+  }
+
+  provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
+    const snapshot = this._store.snapshot;
+    if (!snapshot) return [];
+
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+    if (!workspaceRoot) return [];
+
+    const matchedModules = findMatchingModules(document.uri.fsPath, workspaceRoot, snapshot.modules);
+    if (matchedModules.length === 0) return [];
+
+    const moduleData: CodeLensDecisionData[] = matchedModules
+      .map(module => {
+        const decisionIds = snapshot.routerIndex
+          .filter(r => r.l2_module_id === module.id)
+          .map(r => r.id);
+        return { moduleId: module.id, moduleName: module.name, decisionIds };
+      })
+      .filter(d => d.decisionIds.length > 0);
+
+    if (moduleData.length === 0) return [];
+
+    const declarationLines = findDeclarationLines(document);
+    if (declarationLines.length === 0) return [];
+
+    const bestModule = [...moduleData].sort((a, b) => b.decisionIds.length - a.decisionIds.length)[0];
+    const count = bestModule.decisionIds.length;
+
+    return declarationLines.map(lineIndex => {
+      const range = new vscode.Range(lineIndex, 0, lineIndex, 0);
+      return new vscode.CodeLens(range, {
+        title: `🧠 Docuvia: ${count} ${count === 1 ? 'Decision' : 'Decisions'}`,
+        command: 'docuvia.showDecisionsForLens',
+        arguments: [bestModule],
+      });
+    });
+  }
+
+  resolveCodeLens(lens: vscode.CodeLens): vscode.CodeLens {
+    return lens;
+  }
+}

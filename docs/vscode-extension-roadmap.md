@@ -59,12 +59,19 @@ Based on architectural discussions, the VS Code Extension will adopt a **Git-bac
 ### Phase 5: Breadth Search Integration (Central Server)
 * **Goal**: Connect the local extension to the central Docuvia server for cross-project queries.
 * **Tasks**:
-  * [ ] Update Chat participant to route "breadth" queries (e.g., "How do other projects do auth?") to the central `/query` API.
-  * [ ] Display remote search results seamlessly within the Chat or a dedicated Webview search panel.
-  * [ ] Implement secure credential management.
+  * [x] Update Chat participant to route "breadth" queries (e.g., "How do other projects do auth?") to the central `/query` API.
+  * [x] Display remote search results seamlessly within the Chat or a dedicated Webview search panel.
+  * [x] Implement secure credential management.
     * *Decision*: Use a private key (or OS Keychain) to encrypt API tokens stored in `~/.docuvia/config.yaml`.
   * [ ] Implement deferred Authorization (AuthZ) handling for the central server.
     * *Decision*: Default to global access for simple/internal deployments. Provide hooks for enterprise deployments to integrate with their own Identity Providers (OAuth / Active Directory) for project-level Role-Based Access Control (RBAC).
+
+### Phase 6: Human-in-the-Loop & Quality Assurance
+* **Goal**: Ensure the extracted knowledge is accurate and verifiable.
+* **Tasks**:
+  * [ ] AST-based Chunking: Implement `tree-sitter` for precise, syntax-aware chunking when extracting decisions from code (currently using a lightweight line-based fallback).
+  * [ ] Git State Verification: Integrate `vscode.git` API to warn users if they are querying or modifying decisions when there are uncommitted changes or detached HEAD states.
+  * [ ] Review Queue UI: Build a dedicated view for approving/rejecting AI-extracted decisions.
 
 ---
 

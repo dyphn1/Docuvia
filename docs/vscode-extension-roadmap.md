@@ -38,6 +38,8 @@ Based on architectural discussions, the VS Code Extension will adopt a **Git-bac
 * **Tasks**:
   * [ ] Register `@docuvia` Chat Participant.
   * [ ] Implement "L1 Exploration Mode" using local/fast LLMs to analyze `README.md` and suggest initial architecture.
+    * *Decision*: Use a **Multi-Template-Driven** approach for L1 initialization. Extension detects project type (e.g., hybrid, frontend, backend) and offers multiple predefined templates (Standard Ontology).
+    * *Decision*: Fallback to Interactive Chat if the project type is unrecognized. The resulting custom L1 tags from the chat session can be synchronized back to the Central Server to expand the global ontology.
   * [ ] Implement the Task Queue manager to chunk heavy L2/L3 extraction requests.
 
 ### Phase 4: Editor Integration (Deep Context)

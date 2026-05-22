@@ -61,6 +61,10 @@ Based on architectural discussions, the VS Code Extension will adopt a **Git-bac
 * **Tasks**:
   * [ ] Update Chat participant to route "breadth" queries (e.g., "How do other projects do auth?") to the central `/query` API.
   * [ ] Display remote search results seamlessly within the Chat or a dedicated Webview search panel.
+  * [ ] Implement secure credential management.
+    * *Decision*: Use a private key (or OS Keychain) to encrypt API tokens stored in `~/.docuvia/config.yaml`.
+  * [ ] Implement deferred Authorization (AuthZ) handling for the central server.
+    * *Decision*: Default to global access for simple/internal deployments. Provide hooks for enterprise deployments to integrate with their own Identity Providers (OAuth / Active Directory) for project-level Role-Based Access Control (RBAC).
 
 ---
 

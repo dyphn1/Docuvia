@@ -19,6 +19,9 @@ Based on architectural discussions, the VS Code Extension will adopt a **Git-bac
 * **Tasks**:
   * [ ] Initialize VS Code Extension project structure (`artifacts/vscode-client`).
   * [ ] Define the `.docuvia` local file schema (e.g., `l1_tags.yaml`, `l2_modules.yaml`, `l3_decisions/`).
+    * *Decision*: Use UUIDs/CUIDs for strict entity linking, paired with human-readable fields (`slug` or `name`) for Git diff readability.
+    * *Decision*: Structure L3 decisions as Markdown files with YAML frontmatter.
+    * *Decision*: Implement an L3 Router/Index (`l3_index.yaml`) to map UUIDs to their corresponding markdown files, preventing costly full-directory scans.
   * [ ] Implement local file system watchers and parsers to load `.docuvia` data into VS Code memory.
   * [ ] Create the `~/.docuvia/config.yaml` schema for global settings (API keys, Central Server URL).
 

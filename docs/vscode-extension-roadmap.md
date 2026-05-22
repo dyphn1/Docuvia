@@ -32,6 +32,11 @@ Based on architectural discussions, the VS Code Extension will adopt a **Git-bac
   * [ ] Implement `Knowledge Graph` TreeView (L1 -> L2 -> L3 hierarchy) reading from local `.docuvia`.
   * [ ] Implement `Task Queue` TreeView for tracking background extraction tasks.
   * [ ] Create the Webview-based Dashboard skeleton (to replace the web app).
+    * *Decision*: The Dashboard serves as a **"Project Knowledge Hub"**.
+    * *Decision*: **Layout**: Split layout.
+      * **Left Pane (Actionable & High-Value Knowledge)**: Quick Start guides, most frequently accessed decisions, highly-tagged modules, and an overview of "What is this repo?".
+      * **Right Pane (Stats & Background Tasks, smaller UI)**: Knowledge coverage statistics, background extraction queues, recent architectural changes.
+      * **Bottom**: A unified search/Agent bar for natural language queries (both deep local context and broad central search).
 
 ### Phase 3: Interactive Exploration & Hybrid Execution (Chat)
 * **Goal**: Implement the `@docuvia` chat participant and local/remote execution routing.

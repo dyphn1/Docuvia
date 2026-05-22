@@ -50,8 +50,10 @@ Based on architectural discussions, the VS Code Extension will adopt a **Git-bac
 ### Phase 4: Editor Integration (Deep Context)
 * **Goal**: Bring knowledge directly into the code editing experience.
 * **Tasks**:
-  * [ ] Implement Hover Provider: Show L3 decisions when hovering over relevant functions/modules.
   * [ ] Implement CodeLens: Provide "View Context" or "Add Decision" buttons above key architectural boundaries.
+    * *Decision*: Use **CodeLens as the primary knowledge signal** (e.g., `🧠 Docuvia: 2 Decisions`) to avoid cluttering native Hover tooltips.
+    * *Decision*: Clicking the CodeLens shows the 1-2 most highly relevant decisions directly in a Peek View or Quick Pick. If there are more decisions or complex context, route the user to the Chat View for interactive analysis, modification, or explanation.
+  * [ ] Implement Hover Provider: Show L3 decisions when hovering over relevant functions/modules (restrict to explicit requests or Docuvia files to avoid noise).
   * [ ] Implement context-menu action to quickly generate an L3 decision draft from selected code and save to `.docuvia/`.
 
 ### Phase 5: Breadth Search Integration (Central Server)

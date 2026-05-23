@@ -31,6 +31,8 @@ export class KnowledgeStore {
   private _globalConfig: GlobalConfig | null = null;
   private _watcher: vscode.FileSystemWatcher | null = null;
   private _outputChannel: vscode.OutputChannel;
+  private _loading: boolean = false;
+  private _pendingReload: boolean = false;
 
   private readonly _onDidLoad = new vscode.EventEmitter<void>();
   readonly onDidLoad: vscode.Event<void> = this._onDidLoad.event;
@@ -63,9 +65,27 @@ export class KnowledgeStore {
    * Returns false if no workspace or no .docuvia folder is present.
    */
   async load(): Promise<boolean> {
+    if (this._loading) {
+      this._pendingReload = true;
+      return false;
+    }
+    this._loading = true;
+    try {
+      return await this._loadInternal();
+    } finally {
+      this._loading = false;
+      if (this._pendingReload) {
+        this._pendingReload = false;
+        void this.load();
+      }
+    }
+  }
+
+  private async _loadInternal(): Promise<boolean> {
     const workspaceRoot = this.getWorkspaceRoot();
     if (!workspaceRoot) {
       this._outputChannel.appendLine('[Docuvia] No workspace folder found. Knowledge graph not loaded.');
+      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', false);
       return false;
     }
 
@@ -74,6 +94,7 @@ export class KnowledgeStore {
       await vscode.workspace.fs.stat(docuviaDir);
     } catch {
       this._outputChannel.appendLine(`[Docuvia] No .docuvia/ folder found in ${workspaceRoot}`);
+      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', false);
       return false;
     }
 
@@ -117,10 +138,15 @@ export class KnowledgeStore {
       this._outputChannel.appendLine(
         `[Docuvia] Knowledge graph loaded: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions.`
       );
+      
+      // Notify VS Code that the project is initialized so viewsWelcome can be hidden
+      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', true);
+      
       this._onDidLoad.fire();
       return true;
     } catch (err) {
       this._outputChannel.appendLine(`[Docuvia] Error loading knowledge graph: ${String(err)}`);
+      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', false);
       return false;
     }
   }
@@ -151,6 +177,16 @@ export class KnowledgeStore {
     this._watcher.onDidDelete(reload, null, context.subscriptions);
 
     context.subscriptions.push(this._watcher);
+
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeWorkspaceFolders(() => {
+        this.dispose();
+        KnowledgeStore._instance = new KnowledgeStore(this._outputChannel);
+        void KnowledgeStore._instance.load();
+        KnowledgeStore._instance.startWatcher(context);
+      })
+    );
+
     this._outputChannel.appendLine('[Docuvia] FileSystemWatcher started for .docuvia/**');
   }
 

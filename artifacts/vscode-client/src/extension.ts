@@ -88,7 +88,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         { language: 'markdown', pattern: '**/.docuvia/l3_decisions/*.md' },
       ],
       hoverProvider
-    )
+    ),
+    vscode.languages.registerHoverProvider({ language: 'typescript' }, hoverProvider),
+    vscode.languages.registerHoverProvider({ language: 'javascript' }, hoverProvider),
+    vscode.languages.registerHoverProvider({ language: 'typescriptreact' }, hoverProvider),
+    vscode.languages.registerHoverProvider({ language: 'javascriptreact' }, hoverProvider),
+    vscode.languages.registerHoverProvider({ language: 'python' }, hoverProvider)
   );
 
   // ─── Chat Participant ─────────────────────────────────────────────────────
@@ -125,7 +130,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand('docuvia.openDashboard', () => {
-      DashboardPanel.createOrShow(context, store);
+      DashboardPanel.createOrShow(context, store, tqProvider);
     })
   );
 
@@ -141,13 +146,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const filePath = editor.document.uri.fsPath;
       const content = editor.document.getText();
       const tokenSource = new vscode.CancellationTokenSource();
-      context.subscriptions.push(tokenSource);
       const taskId = await taskRunner.queueExtraction({
         label: `L3 extract: ${path.basename(filePath)}`,
         content,
         sourceFilePath: filePath,
         token: tokenSource.token,
-      });
+      }).finally(() => tokenSource.dispose());
       void vscode.window.showInformationMessage(
         `Docuvia: Extraction task ${taskId} queued. Check Task Queue panel.`
       );
@@ -262,6 +266,16 @@ async function initProject(_context: vscode.ExtensionContext): Promise<void> {
     return;
   }
 
+  const projectName = await vscode.window.showInputBox({
+    prompt: 'Enter the name of your project',
+    placeHolder: path.basename(workspaceRoot),
+    value: path.basename(workspaceRoot)
+  });
+
+  if (projectName === undefined) {
+    return; // User cancelled
+  }
+
   const docuviaUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia'));
   const decisionsUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l3_decisions'));
 
@@ -269,10 +283,10 @@ async function initProject(_context: vscode.ExtensionContext): Promise<void> {
   await vscode.workspace.fs.createDirectory(docuviaUri);
   await vscode.workspace.fs.createDirectory(decisionsUri);
 
-  // Write skeleton YAML files (only if they don't already exist)
+  // Write skeleton YAML files
   await writeIfAbsent(
     vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l1_tags.yaml')),
-    `# L1 Tags — top-level knowledge categories\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   description: <optional>\n`
+    `# L1 Tags — top-level knowledge categories\n# project_name: ${projectName}\nproject_name: "${projectName}"\ntags:\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   description: <optional>\n`
   );
 
   await writeIfAbsent(
@@ -285,8 +299,12 @@ async function initProject(_context: vscode.ExtensionContext): Promise<void> {
     `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`
   );
 
+  // Trigger reload to update state and hide welcome view
+  const store = KnowledgeStore.getInstance(outputChannel);
+  await store.load();
+
   void vscode.window.showInformationMessage(
-    'Docuvia: .docuvia/ folder initialized. Populate the YAML files to build your knowledge graph.'
+    `Docuvia: Project "${projectName}" initialized. Populate the YAML files to build your knowledge graph.`
   );
 }
 

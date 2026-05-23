@@ -29,7 +29,7 @@ export type L2Module = z.infer<typeof L2ModuleSchema>;
 
 export const L3RouterEntrySchema = z.object({
   id: z.string().min(1),
-  l2_module_id: z.string().min(1),
+  l2_module_id: z.string(),
   slug: z.string().min(1),
   title: z.string().min(1),
   file_path: z.string().min(1),
@@ -41,7 +41,7 @@ export type L3RouterEntry = z.infer<typeof L3RouterEntrySchema>;
 
 export const L3DecisionFrontmatterSchema = z.object({
   id: z.string().min(1),
-  l2_module_id: z.string().min(1),
+  l2_module_id: z.string(),
   title: z.string().min(1),
   date: z.string().optional(),
   status: z.enum(['proposed', 'accepted', 'deprecated']).default('proposed'),
@@ -59,7 +59,9 @@ export interface L3Decision extends L3DecisionFrontmatter {
 // ─── Global Config (~/.docuvia/config.yaml) ───────────────────────────────────
 
 export const GlobalConfigSchema = z.object({
-  server_url: z.string().url().optional(),
+  server_url: z.string().url().refine(url => url.startsWith('https://'), {
+    message: 'server_url must use HTTPS',
+  }).optional(),
   chunking_strategy: z.enum(['line', 'ast']).default('line'),
   telemetry: z
     .object({

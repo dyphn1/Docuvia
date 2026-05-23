@@ -100,6 +100,9 @@ export class TaskQueueTreeProvider implements vscode.TreeDataProvider<TQNode> {
 
   getChildren(node?: TQNode): TQNode[] {
     if (!node) {
+      if (this._tasks.length === 0) {
+        return [{ kind: 'task', id: 'empty_placeholder', label: 'No extraction tasks yet' }];
+      }
       // Return all 4 status groups
       return GROUP_CONFIGS.map(
         (cfg): TQNode => ({
@@ -147,5 +150,13 @@ export class TaskQueueTreeProvider implements vscode.TreeDataProvider<TQNode> {
   clearCompleted(): void {
     this._tasks = this._tasks.filter(t => t.status !== 'done');
     this._onDidChangeTreeData.fire();
+  }
+
+  getPendingCount(): number {
+    return this._tasks.filter(t => t.status === 'pending').length;
+  }
+
+  getInProgressCount(): number {
+    return this._tasks.filter(t => t.status === 'in_progress').length;
   }
 }

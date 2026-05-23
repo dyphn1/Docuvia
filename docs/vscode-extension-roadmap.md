@@ -17,44 +17,50 @@ Based on architectural discussions, the VS Code Extension will adopt a **Git-bac
 ### Phase 1: Local Knowledge Schema & Foundations
 * **Goal**: Define how knowledge is stored locally and create the basic extension skeleton.
 * **Tasks**:
-  * [ ] Initialize VS Code Extension project structure (`artifacts/vscode-client`).
-  * [ ] Define the `.docuvia` local file schema (e.g., `l1_tags.yaml`, `l2_modules.yaml`, `l3_decisions/`).
+  * [x] Initialize VS Code Extension project structure (`artifacts/vscode-client`).
+  * [x] Define the `.docuvia` local file schema (e.g., `l1_tags.yaml`, `l2_modules.yaml`, `l3_decisions/`).
     * *Decision*: Use UUIDs/CUIDs for strict entity linking, paired with human-readable fields (`slug` or `name`) for Git diff readability.
     * *Decision*: Structure L3 decisions as Markdown files with YAML frontmatter.
     * *Decision*: Implement an L3 Router/Index (`l3_index.yaml`) to map UUIDs to their corresponding markdown files, preventing costly full-directory scans.
-  * [ ] Implement local file system watchers and parsers to load `.docuvia` data into VS Code memory.
-  * [ ] Create the `~/.docuvia/config.yaml` schema for global settings (API keys, Central Server URL).
+  * [x] Implement local file system watchers and parsers to load `.docuvia` data into VS Code memory.
+  * [x] Create the `~/.docuvia/config.yaml` schema for global settings (API keys, Central Server URL).
 
 ### Phase 2: UI/UX Shell & TreeViews
 * **Goal**: Build the native VS Code interfaces to display local knowledge.
 * **Tasks**:
-  * [ ] Register Docuvia Activity Bar Icon.
-  * [ ] Implement `Knowledge Graph` TreeView (L1 -> L2 -> L3 hierarchy) reading from local `.docuvia`.
-  * [ ] Implement `Task Queue` TreeView for tracking background extraction tasks.
-  * [ ] Create the Webview-based Dashboard skeleton (to replace the web app).
+  * [x] Register Docuvia Activity Bar Icon.
+  * [x] Implement `Knowledge Graph` TreeView (L1 -> L2 -> L3 hierarchy) reading from local `.docuvia`.
+  * [x] Add `viewsWelcome` contribution to guide users to initialize the project when `.docuvia` is missing.
+  * [x] Prompt for project name during `Docuvia: Init Project` and auto-refresh the TreeView state.
+  * [x] Implement `Task Queue` TreeView for tracking background extraction tasks.
+  * [x] Create the Webview-based Dashboard skeleton (to replace the web app).
     * *Decision*: The Dashboard serves as a **"Project Knowledge Hub"**.
     * *Decision*: **Layout**: Split layout.
       * **Left Pane (Actionable & High-Value Knowledge)**: Quick Start guides, most frequently accessed decisions, highly-tagged modules, and an overview of "What is this repo?".
       * **Right Pane (Stats & Background Tasks, smaller UI)**: Knowledge coverage statistics, background extraction queues, recent architectural changes.
       * **Bottom**: A unified search/Agent bar for natural language queries (both deep local context and broad central search).
+    * [x] Improve Dashboard bottom-bar contrast to prevent blending with the VS Code status bar.
+    * [x] Wire Dashboard bottom-bar search button to open `@docuvia` Chat participant.
 
 ### Phase 3: Interactive Exploration & Hybrid Execution (Chat)
 * **Goal**: Implement the `@docuvia` chat participant and local/remote execution routing.
 * **Tasks**:
-  * [ ] Register `@docuvia` Chat Participant.
-  * [ ] Implement "L1 Exploration Mode" using local/fast LLMs to analyze `README.md` and suggest initial architecture.
+  * [x] Register `@docuvia` Chat Participant.
+  * [x] Implement "L1 Exploration Mode" using local/fast LLMs to analyze `README.md` and suggest initial architecture.
     * *Decision*: Use a **Multi-Template-Driven** approach for L1 initialization. Extension detects project type (e.g., hybrid, frontend, backend) and offers multiple predefined templates (Standard Ontology).
     * *Decision*: Fallback to Interactive Chat if the project type is unrecognized. The resulting custom L1 tags from the chat session can be synchronized back to the Central Server to expand the global ontology.
-  * [ ] Implement the Task Queue manager to chunk heavy L2/L3 extraction requests.
+    * [x] Enhance `/explore` to detect mixed/large project types (e.g., frontend + backend + library) and smartly combine their standard L1 tags using the LLM.
+    * [x] Wire `/explore <type>` argument from `request.prompt` to apply matching L1 template without re-running workspace detection.
+  * [x] Implement the Task Queue manager to chunk heavy L2/L3 extraction requests.
 
 ### Phase 4: Editor Integration (Deep Context)
 * **Goal**: Bring knowledge directly into the code editing experience.
 * **Tasks**:
-  * [ ] Implement CodeLens: Provide "View Context" or "Add Decision" buttons above key architectural boundaries.
+  * [x] Implement CodeLens: Provide "View Context" or "Add Decision" buttons above key architectural boundaries.
     * *Decision*: Use **CodeLens as the primary knowledge signal** (e.g., `🧠 Docuvia: 2 Decisions`) to avoid cluttering native Hover tooltips.
     * *Decision*: Clicking the CodeLens shows the 1-2 most highly relevant decisions directly in a Peek View or Quick Pick. If there are more decisions or complex context, route the user to the Chat View for interactive analysis, modification, or explanation.
-  * [ ] Implement Hover Provider: Show L3 decisions when hovering over relevant functions/modules (restrict to explicit requests or Docuvia files to avoid noise).
-  * [ ] Implement context-menu action to quickly generate an L3 decision draft from selected code and save to `.docuvia/`.
+  * [x] Implement Hover Provider: Show L3 decisions when hovering over relevant functions/modules (restrict to explicit requests or Docuvia files to avoid noise).
+  * [x] Implement context-menu action to quickly generate an L3 decision draft from selected code and save to `.docuvia/`.
 
 ### Phase 5: Breadth Search Integration (Central Server)
 * **Goal**: Connect the local extension to the central Docuvia server for cross-project queries.
@@ -63,7 +69,7 @@ Based on architectural discussions, the VS Code Extension will adopt a **Git-bac
   * [x] Display remote search results seamlessly within the Chat or a dedicated Webview search panel.
   * [x] Implement secure credential management.
     * *Decision*: Use a private key (or OS Keychain) to encrypt API tokens stored in `~/.docuvia/config.yaml`.
-  * [ ] Implement deferred Authorization (AuthZ) handling for the central server.
+  * [x] Implement deferred Authorization (AuthZ) handling for the central server.
     * *Decision*: Default to global access for simple/internal deployments. Provide hooks for enterprise deployments to integrate with their own Identity Providers (OAuth / Active Directory) for project-level Role-Based Access Control (RBAC).
 
 ### Phase 6: Human-in-the-Loop & Quality Assurance

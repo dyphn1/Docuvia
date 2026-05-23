@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto';
 import * as vscode from 'vscode';
 import { KnowledgeGraphSnapshot } from './KnowledgeStore.js';
 import { KnowledgeStore } from './KnowledgeStore.js';
+import { TaskQueueTreeProvider } from './TaskQueueTreeProvider.js';
 
 // ─── Message types ───────────────────────────────────────────────────────────
 
@@ -15,7 +16,11 @@ interface OpenDecisionMessage {
   filePath: string;
 }
 
-type WebviewMessage = UpdateMessage | OpenDecisionMessage;
+interface OpenChatMessage {
+  type: 'openChat';
+}
+
+type WebviewMessage = UpdateMessage | OpenDecisionMessage | OpenChatMessage;
 
 export interface DashboardPayload {
   tagCount: number;
@@ -26,11 +31,16 @@ export interface DashboardPayload {
   pendingTaskCount: number;
   inProgressTaskCount: number;
   loadedAt: string | null;
+  workspaceName: string;
 }
 
 // ─── Pure helper ─────────────────────────────────────────────────────────────
 
-function buildDashboardPayload(snapshot: KnowledgeGraphSnapshot | null): DashboardPayload {
+function buildDashboardPayload(
+  snapshot: KnowledgeGraphSnapshot | null,
+  tqProvider?: TaskQueueTreeProvider
+): DashboardPayload {
+  const workspaceName = vscode.workspace.workspaceFolders?.[0]?.name ?? 'Workspace';
   if (!snapshot) {
     return {
       tagCount: 0,
@@ -41,6 +51,7 @@ function buildDashboardPayload(snapshot: KnowledgeGraphSnapshot | null): Dashboa
       pendingTaskCount: 0,
       inProgressTaskCount: 0,
       loadedAt: null,
+      workspaceName,
     };
   }
 
@@ -66,9 +77,10 @@ function buildDashboardPayload(snapshot: KnowledgeGraphSnapshot | null): Dashboa
     decisionCount: snapshot.decisions.size,
     recentDecisions,
     topModules,
-    pendingTaskCount: 0,
-    inProgressTaskCount: 0,
+    pendingTaskCount: tqProvider?.getPendingCount() ?? 0,
+    inProgressTaskCount: tqProvider?.getInProgressCount() ?? 0,
     loadedAt: snapshot.loadedAt.toISOString(),
+    workspaceName,
   };
 }
 
@@ -78,7 +90,7 @@ export class DashboardPanel {
   static readonly viewType = 'docuvia.dashboard';
   private static _current: DashboardPanel | undefined;
 
-  static createOrShow(context: vscode.ExtensionContext, store: KnowledgeStore): void {
+  static createOrShow(context: vscode.ExtensionContext, store: KnowledgeStore, tqProvider?: TaskQueueTreeProvider): void {
     const column =
       vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
 
@@ -99,19 +111,20 @@ export class DashboardPanel {
       }
     );
 
-    DashboardPanel._current = new DashboardPanel(panel, context, store);
+    DashboardPanel._current = new DashboardPanel(panel, context, store, tqProvider);
   }
 
   private constructor(
     private readonly _panel: vscode.WebviewPanel,
     private readonly _context: vscode.ExtensionContext,
-    store: KnowledgeStore
+    store: KnowledgeStore,
+    private readonly _tqProvider?: TaskQueueTreeProvider
   ) {
     this._panel.webview.html = this._buildHtml();
 
     this._pushData(store.snapshot);
 
-    store.onDidLoad(() => this._pushData(store.snapshot), null, this._context.subscriptions);
+    const onDidLoadDisposable = store.onDidLoad(() => this._pushData(store.snapshot));
 
     this._panel.webview.onDidReceiveMessage(
       (msg: WebviewMessage) => this._handleMessage(msg),
@@ -121,6 +134,7 @@ export class DashboardPanel {
 
     this._panel.onDidDispose(
       () => {
+        onDidLoadDisposable.dispose();
         DashboardPanel._current = undefined;
       },
       null,
@@ -131,15 +145,22 @@ export class DashboardPanel {
   private _pushData(snapshot: KnowledgeGraphSnapshot | null): void {
     void this._panel.webview.postMessage({
       type: 'update',
-      data: buildDashboardPayload(snapshot),
+      data: buildDashboardPayload(snapshot, this._tqProvider),
     });
   }
 
   private _handleMessage(msg: WebviewMessage): void {
     if (msg.type === 'openDecision' && typeof msg.filePath === 'string' && msg.filePath.length > 0) {
+      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
+      if (!msg.filePath.startsWith(workspaceRoot)) {
+        return; // Reject paths outside workspace
+      }
       void vscode.workspace
         .openTextDocument(vscode.Uri.file(msg.filePath))
         .then(doc => vscode.window.showTextDocument(doc));
+    }
+    if (msg.type === 'openChat') {
+      void vscode.commands.executeCommand('workbench.action.chat.open', { query: '@docuvia' });
     }
   }
 
@@ -221,7 +242,7 @@ export class DashboardPanel {
     }
     .bottom-bar {
       padding: 8px 12px;
-      background: var(--vscode-statusBar-background);
+      background: var(--vscode-editorWidget-background);
       border-top: 1px solid var(--vscode-panel-border);
       display: flex;
       align-items: center;
@@ -236,6 +257,11 @@ export class DashboardPanel {
       border: 1px solid var(--vscode-input-border);
       border-radius: 3px;
       font-size: 0.9em;
+      cursor: pointer;
+      text-align: left;
+    }
+    .search-placeholder:hover {
+      border-color: var(--vscode-focusBorder);
     }
     .empty { color: var(--vscode-descriptionForeground); font-style: italic; font-size: 0.85em; }
   </style>
@@ -306,7 +332,7 @@ export class DashboardPanel {
     </div>
   </div>
   <div class="bottom-bar">
-    <div class="search-placeholder">Ask Docuvia… (Phase 3 chat — coming soon)</div>
+    <button id="open-chat-btn" class="search-placeholder" title="Open Docuvia Chat">Ask Docuvia…</button>
     <span>🔍</span>
   </div>
 
@@ -320,6 +346,10 @@ export class DashboardPanel {
       }
     });
 
+    document.getElementById('open-chat-btn').addEventListener('click', function() {
+      vscode.postMessage({ type: 'openChat' });
+    });
+
     function renderDashboard(data) {
       document.getElementById('stat-tags').textContent = String(data.tagCount);
       document.getElementById('stat-modules').textContent = String(data.moduleCount);
@@ -328,6 +358,9 @@ export class DashboardPanel {
       document.getElementById('stat-in-progress').textContent = String(data.inProgressTaskCount);
       document.getElementById('stat-loaded-at').textContent =
         data.loadedAt ? new Date(data.loadedAt).toLocaleString() : '—';
+      if (data.workspaceName) {
+        document.getElementById('workspace-name').textContent = data.workspaceName;
+      }
 
       const decisionsList = document.getElementById('recent-decisions');
       if (data.recentDecisions.length === 0) {

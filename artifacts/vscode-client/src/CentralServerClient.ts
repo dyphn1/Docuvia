@@ -72,4 +72,10 @@ export class CentralServerClient {
 
     return response.json() as Promise<CentralSearchResult[]>;
   }
+
+  // TODO (Phase 6): OAuth2/PKCE flow — integrate with enterprise IdP for RBAC
+  async checkAuthorizationScope(_scope: string): Promise<boolean> {
+    // Default: allow all for simple/internal deployments
+    return true;
+  }
 }

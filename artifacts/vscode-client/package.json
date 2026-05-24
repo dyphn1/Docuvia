@@ -97,6 +97,11 @@
       {
         "command": "docuvia.searchFromSelection",
         "title": "Docuvia: Search from Selection"
+      },
+      {
+        "command": "docuvia.openDecision",
+        "title": "Docuvia: Open Decision (internal)",
+        "enablement": "never"
       }
     ],
     "viewsWelcome": [
@@ -221,6 +226,21 @@
           "type": "number",
           "default": 1000,
           "description": "Show a warning before extracting files larger than this many lines."
+        },
+        "docuvia.extraction.maxFileSizeKBWarning": {
+          "type": "number",
+          "default": 50,
+          "description": "Show a warning before extracting files larger than this size in kilobytes (KB)."
+        },
+        "docuvia.knowledgeGraph.incrementalUpdateThreshold": {
+          "type": "number",
+          "default": 50,
+          "description": "Maximum number of changed files before falling back to a full knowledge graph reload."
+        },
+        "docuvia.knowledgeGraph.incrementalUpdateRatioThreshold": {
+          "type": "number",
+          "default": 0.5,
+          "description": "Maximum ratio of changed files to total files before falling back to a full knowledge graph reload."
         }
       }
     }

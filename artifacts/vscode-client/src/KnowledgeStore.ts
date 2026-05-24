@@ -207,14 +207,27 @@ export class KnowledgeStore {
 
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
-      const reload = () => {
-        this._outputChannel.appendLine(`[Docuvia] Change detected in ${folder.name}/.docuvia/, reloading...`);
-        void this.load();
+      let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+      const pendingChanges = new Set<string>();
+
+      const scheduleReload = (uri: vscode.Uri) => {
+        // Ignore temp / non-knowledge files
+        const ext = uri.fsPath.split('.').pop()?.toLowerCase();
+        if (ext !== 'yaml' && ext !== 'md') return;
+
+        pendingChanges.add(uri.fsPath);
+        if (debounceTimer !== undefined) clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          debounceTimer = undefined;
+          const changed = [...pendingChanges];
+          pendingChanges.clear();
+          this._handleBatchedChanges(folder.uri.fsPath, changed);
+        }, 300);
       };
 
-      watcher.onDidCreate(reload, null, context.subscriptions);
-      watcher.onDidChange(reload, null, context.subscriptions);
-      watcher.onDidDelete(reload, null, context.subscriptions);
+      watcher.onDidCreate(scheduleReload, null, context.subscriptions);
+      watcher.onDidChange(scheduleReload, null, context.subscriptions);
+      watcher.onDidDelete(scheduleReload, null, context.subscriptions);
 
       context.subscriptions.push(watcher);
       this._watchers.set(folder.uri.fsPath, watcher);
@@ -236,6 +249,37 @@ export class KnowledgeStore {
   }
 
   private static _workspaceListenerRegistered = false;
+
+  /**
+   * Decides between incremental (per-workspace) reload and full reload based on
+   * the count and ratio thresholds from VS Code configuration.
+   */
+  private _handleBatchedChanges(workspaceRoot: string, changedPaths: string[]): void {
+    const config = vscode.workspace.getConfiguration('docuvia');
+    const countThreshold = config.get<number>('knowledgeGraph.incrementalUpdateThreshold', 50);
+    const ratioThreshold = config.get<number>('knowledgeGraph.incrementalUpdateRatioThreshold', 0.5);
+
+    const snap = this._snapshots.get(workspaceRoot);
+    const totalFiles = snap
+      ? snap.tags.length + snap.modules.length + snap.routerIndex.length + snap.decisions.size
+      : 0;
+    const ratio = totalFiles > 0 ? changedPaths.length / totalFiles : 1;
+
+    if (changedPaths.length <= countThreshold && ratio <= ratioThreshold) {
+      this._outputChannel.appendLine(
+        `[Docuvia] Incremental reload for ${path.basename(workspaceRoot)} (${changedPaths.length} file(s) changed)`
+      );
+      void this._loadWorkspace(workspaceRoot).then(() => {
+        void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', this._snapshots.size > 0);
+        this._onDidLoad.fire();
+      });
+    } else {
+      this._outputChannel.appendLine(
+        `[Docuvia] Full reload triggered for ${path.basename(workspaceRoot)} (${changedPaths.length} file(s) changed, ratio ${ratio.toFixed(2)})`
+      );
+      void this.load();
+    }
+  }
 
   dispose(): void {
     for (const watcher of this._watchers.values()) {

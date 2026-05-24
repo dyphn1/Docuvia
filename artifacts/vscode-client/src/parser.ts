@@ -14,8 +14,14 @@ import {
 } from './types.js';
 
 export function parseTags(content: string, filePath: string): L1Tag[] {
-  const raw = parseYaml(content) as unknown[];
-  return (raw ?? []).map((item, i) => {
+  const raw = parseYaml(content) as unknown;
+  // Handle object format: { project_name: "...", tags: [...] }
+  const list: unknown[] = Array.isArray(raw)
+    ? raw
+    : Array.isArray((raw as any)?.tags)
+      ? (raw as any).tags
+      : [];
+  return list.map((item, i) => {
     const result = L1TagSchema.safeParse(item);
     if (!result.success) {
       console.error(`[Docuvia] Invalid L1 tag at index ${i} in ${filePath}:`, result.error.flatten());

@@ -79,12 +79,13 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
   }
 
   provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
-    const snapshot = this._store.snapshot;
+    const folder = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (!folder) return [];
+
+    const snapshot = this._store.getSnapshotFor(document.uri);
     if (!snapshot) return [];
 
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-    if (!workspaceRoot) return [];
-
+    const workspaceRoot = folder.uri.fsPath;
     const matchedModules = findMatchingModules(document.uri.fsPath, workspaceRoot, snapshot.modules);
     if (matchedModules.length === 0) return [];
 

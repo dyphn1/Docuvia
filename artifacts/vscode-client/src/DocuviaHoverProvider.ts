@@ -26,12 +26,15 @@ export class DocuviaHoverProvider implements vscode.HoverProvider {
     const decision = snapshot.decisions.get(id);
     if (decision) {
       const md = new vscode.MarkdownString();
-      md.isTrusted = false;
+      md.isTrusted = { enabledCommands: ['docuvia.openDecision'] };
       md.appendMarkdown(`**L3 Decision** — ${decision.title}\n\n`);
       md.appendMarkdown(`**Status**: \`${decision.status}\`\n\n`);
       if (decision.body) {
         const preview = decision.body.slice(0, 200) + (decision.body.length > 200 ? '…' : '');
         md.appendMarkdown(`---\n\n${preview}`);
+      }
+      if (decision.filePath) {
+        md.appendMarkdown(`\n\n[Open Decision](command:docuvia.openDecision?${encodeURIComponent(JSON.stringify([decision.filePath]))})`);
       }
       return new vscode.Hover(md, wordRange);
     }

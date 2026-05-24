@@ -46,6 +46,8 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
   - Automatically created if there are L3 decisions where `l2_module_id: unassigned` or the ID is missing/invalid.
   - Expands to show the unassigned L3 Entry Nodes.
 
+> ⚠️ **CONFLICT — Not Implemented**: The `unassigned-group` node is fully specified above but is **absent from `KnowledgeGraphTreeProvider.ts`**. The current `getChildren` implementation for `project` nodes only iterates L1 tags; it never checks for decisions with `l2_module_id === 'unassigned'` or an unmapped ID, and never appends an `unassigned-group` item. This node type will remain invisible to users until Round 2 adds the required logic to `KnowledgeGraphTreeProvider`.
+
 ### 6. Placeholder Nodes
 - **Role**: Informational nodes displayed when data is missing.
 - **Context Value**: None

@@ -4,7 +4,7 @@ import { KnowledgeStore } from './KnowledgeStore.js';
 
 // ─── Node types ───────────────────────────────────────────────────────────────
 
-export type KGNodeKind = 'project' | 'l1tag' | 'l2module' | 'l3entry' | 'placeholder';
+export type KGNodeKind = 'project' | 'l1tag' | 'l2module' | 'l3entry' | 'placeholder' | 'unassigned-group';
 
 export interface KGNode {
   kind: KGNodeKind;
@@ -36,6 +36,12 @@ export class KnowledgeGraphTreeProvider implements vscode.TreeDataProvider<KGNod
 
   getTreeItem(node: KGNode): vscode.TreeItem {
     switch (node.kind) {
+      case 'unassigned-group': {
+        const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.Collapsed);
+        item.iconPath = new vscode.ThemeIcon('question');
+        item.contextValue = 'unassigned-group';
+        return item;
+      }
       case 'placeholder': {
         const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
         item.iconPath = new vscode.ThemeIcon('info');
@@ -135,7 +141,7 @@ export class KnowledgeGraphTreeProvider implements vscode.TreeDataProvider<KGNod
           },
         ];
       }
-      return snap.tags.map(
+      const tagChildren: KGNode[] = snap.tags.map(
         (tag): KGNode => ({
           kind: 'l1tag',
           id: tag.id,
@@ -143,6 +149,20 @@ export class KnowledgeGraphTreeProvider implements vscode.TreeDataProvider<KGNod
           workspaceRoot: node.workspaceRoot,
         })
       );
+      // Append unassigned-group node if there are any unassigned decisions
+      const validModuleIds = new Set(snap.modules.map(m => m.id));
+      const hasUnassigned = [...snap.decisions.values()].some(
+        d => d.l2_module_id === 'unassigned' || !validModuleIds.has(d.l2_module_id)
+      );
+      if (hasUnassigned) {
+        tagChildren.push({
+          kind: 'unassigned-group',
+          id: '__unassigned__',
+          label: 'Unassigned Decisions',
+          workspaceRoot: node.workspaceRoot,
+        });
+      }
+      return tagChildren;
     }
 
     if (node.kind === 'l1tag') {
@@ -156,6 +176,22 @@ export class KnowledgeGraphTreeProvider implements vscode.TreeDataProvider<KGNod
           workspaceRoot: node.workspaceRoot,
         })
       );
+    }
+
+    if (node.kind === 'unassigned-group') {
+      const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
+      if (!snap) return [];
+      const validModuleIds = new Set(snap.modules.map(m => m.id));
+      const unassigned = [...snap.decisions.values()].filter(
+        d => d.l2_module_id === 'unassigned' || !validModuleIds.has(d.l2_module_id)
+      );
+      return unassigned.map((d): KGNode => ({
+        kind: 'l3entry',
+        id: d.id,
+        label: d.title,
+        filePath: d.filePath,
+        workspaceRoot: node.workspaceRoot,
+      }));
     }
 
     if (node.kind === 'l2module') {

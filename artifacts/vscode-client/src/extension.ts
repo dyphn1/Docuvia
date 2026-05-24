@@ -164,11 +164,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         if (proceed !== 'Yes') return;
       }
 
-      // Check file size limit
+      // Check line count limit
       const lineCount = editor.document.lineCount;
       if (lineCount > maxLines) {
         const proceed = await vscode.window.showWarningMessage(
           `Docuvia: This file is very large (${lineCount} lines). Analyzing the entire file might be slow and consume many tokens. We recommend selecting a specific block and using right-click "Docuvia: Add Decision from Selection". Proceed anyway?`,
+          'Proceed', 'Cancel'
+        );
+        if (proceed !== 'Proceed') return;
+      }
+
+      // Check KB size limit
+      const maxKB = config.get<number>('extraction.maxFileSizeKBWarning', 50);
+      const fileSizeKB = Buffer.byteLength(editor.document.getText(), 'utf-8') / 1024;
+      if (fileSizeKB > maxKB) {
+        const proceed = await vscode.window.showWarningMessage(
+          `Docuvia: This file is large (${fileSizeKB.toFixed(1)} KB). Extraction might be slow. Proceed anyway?`,
           'Proceed', 'Cancel'
         );
         if (proceed !== 'Proceed') return;
@@ -218,6 +229,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('docuvia.openDecision', async (filePath: string) => {
+      if (!filePath) return;
+      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+      await vscode.window.showTextDocument(doc);
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand(
       'docuvia.acceptL1Tags',
       async (yamlContent: string) => {
@@ -244,6 +263,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         prompt: 'Enter your Docuvia server API token',
         password: true,
         placeHolder: 'docuvia_token_...',
+        validateInput: (v) => v.trim().length === 0 ? 'Token cannot be empty' : null,
       });
       if (token && token.trim().length > 0) {
         await credentialManager.setToken(token.trim());
@@ -346,6 +366,18 @@ async function initProject(_context: vscode.ExtensionContext, store: KnowledgeSt
 
   if (!targetRoot) return;
 
+  // If the project is already initialized, prompt for force-overwrite
+  const isAlreadyInitialized = store.snapshots.has(targetRoot);
+  if (isAlreadyInitialized) {
+    const name = path.basename(targetRoot);
+    const choice = await vscode.window.showWarningMessage(
+      `Docuvia: "${name}" is already initialized. Overwrite existing config files? This action cannot be undone.`,
+      'Overwrite',
+      'Cancel'
+    );
+    if (choice !== 'Overwrite') return;
+  }
+
   const projectName = await vscode.window.showInputBox({
     prompt: 'Enter the name of your project',
     placeHolder: path.basename(targetRoot),
@@ -363,18 +395,22 @@ async function initProject(_context: vscode.ExtensionContext, store: KnowledgeSt
   await vscode.workspace.fs.createDirectory(docuviaUri);
   await vscode.workspace.fs.createDirectory(decisionsUri);
 
-  // Write skeleton YAML files
-  await writeIfAbsent(
+  // Write skeleton YAML files (overwrite when re-initializing, skip when new)
+  const writeFile = isAlreadyInitialized
+    ? (uri: vscode.Uri, content: string) => vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf-8'))
+    : writeIfAbsent;
+
+  await writeFile(
     vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l1_tags.yaml')),
     `# L1 Tags — top-level knowledge categories\n# project_name: ${projectName}\nproject_name: "${projectName}"\ntags:\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   description: <optional>\n`
   );
 
-  await writeIfAbsent(
+  await writeFile(
     vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l2_modules.yaml')),
     `# L2 Modules — functional subsystems, linked to an L1 tag\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   l1_tag_id: <L1 tag id>\n#   source_paths: []\n`
   );
 
-  await writeIfAbsent(
+  await writeFile(
     vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l3_router.yaml')),
     `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`
   );
@@ -436,7 +472,10 @@ async function addDecision(
 
   const { v4: uuidv4 } = await import('uuid');
 
-  const title = await vscode.window.showInputBox({ prompt: 'Decision title' });
+  const title = await vscode.window.showInputBox({
+    prompt: 'Decision title',
+    validateInput: (v) => v.trim().length === 0 ? 'Title cannot be empty' : null,
+  });
   if (!title) return;
 
   const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');

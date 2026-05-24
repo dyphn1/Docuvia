@@ -28,7 +28,7 @@ export class SearchResultsPanel {
       'Docuvia: Search Results',
       column,
       {
-        enableScripts: false,
+        enableScripts: true,
         localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'out')],
         retainContextWhenHidden: true,
       }
@@ -48,6 +48,12 @@ export class SearchResultsPanel {
 
     this._panel.webview.html = this._buildHtml();
 
+    this._panel.webview.onDidReceiveMessage(
+      (message: { type: string; title?: string }) => this._handleMessage(message),
+      null,
+      this._context.subscriptions
+    );
+
     this._panel.onDidDispose(
       () => {
         SearchResultsPanel._current = undefined;
@@ -63,6 +69,14 @@ export class SearchResultsPanel {
     this._panel.webview.html = this._buildHtml();
   }
 
+  private _handleMessage(message: { type: string; title?: string }): void {
+    if (message.type === 'openResult' && message.title) {
+      void vscode.commands.executeCommand('workbench.action.chat.open', {
+        query: `@docuvia /query ${message.title}`,
+      });
+    }
+  }
+
   private _buildHtml(): string {
     const nonce = randomBytes(16).toString('hex');
     const cspSource = this._panel.webview.cspSource;
@@ -74,10 +88,29 @@ export class SearchResultsPanel {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 
-    const resultsHtml =
-      this._results.length === 0
-        ? '<p class="empty">No cross-project results found.</p>'
-        : this._results
+    const highlightKeywords = (text: string, query: string): string => {
+      const escaped = escapeHtml(text);
+      if (!query.trim()) return escaped;
+      const terms = query.trim().split(/\s+/).map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      const pattern = new RegExp(`(${terms.join('|')})`, 'gi');
+      return escaped.replace(pattern, '<mark>$1</mark>');
+    };
+
+    // Group results by projectName
+    const groups = new Map<string, CentralSearchResult[]>();
+    for (const r of this._results) {
+      const arr = groups.get(r.projectName) ?? [];
+      arr.push(r);
+      groups.set(r.projectName, arr);
+    }
+
+    let resultsHtml: string;
+    if (this._results.length === 0) {
+      resultsHtml = '<p class="empty">No cross-project results found.</p>';
+    } else {
+      resultsHtml = [...groups.entries()]
+        .map(([projectName, items]) => {
+          const cards = items
             .map((r) => {
               const tags =
                 r.l1Tags.length > 0
@@ -85,13 +118,22 @@ export class SearchResultsPanel {
                       .map((t) => `<span class="tag">${escapeHtml(t)}</span>`)
                       .join(' ')
                   : '';
-              return `<div class="result-card">
-  <div class="result-title">${escapeHtml(r.title)}</div>
-  <div class="result-meta">${escapeHtml(r.projectName)}${tags ? ' &middot; ' + tags : ''}</div>
-  <div class="result-snippet">${escapeHtml(r.snippet)}</div>
+              const safeTitle = escapeHtml(r.title);
+              return `<div class="result-card" role="button" tabindex="0"
+  onclick="openResult(${JSON.stringify(r.title)})">
+  <div class="result-title">${safeTitle}</div>
+  <div class="result-meta">${tags || '&nbsp;'}</div>
+  <div class="result-snippet">${highlightKeywords(r.snippet, this._query)}</div>
 </div>`;
             })
             .join('\n');
+          return `<section class="project-group">
+  <h2 class="project-name">${escapeHtml(projectName)}</h2>
+  ${cards}
+</section>`;
+        })
+        .join('\n');
+    }
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -122,26 +164,32 @@ export class SearchResultsPanel {
       font-size: 0.9em;
       margin-bottom: 16px;
     }
+    .project-group { margin-bottom: 20px; }
+    .project-name {
+      font-size: 0.95em;
+      font-weight: 600;
+      color: var(--vscode-textLink-foreground);
+      border-bottom: 1px solid var(--vscode-panel-border);
+      padding-bottom: 4px;
+      margin-bottom: 8px;
+    }
     .result-card {
       border: 1px solid var(--vscode-panel-border);
       border-radius: 4px;
       padding: 10px 12px;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       background: var(--vscode-editorWidget-background);
+      cursor: pointer;
     }
-    .result-title {
-      font-weight: bold;
-      margin-bottom: 4px;
-    }
+    .result-card:hover { background: var(--vscode-list-hoverBackground); }
+    .result-title { font-weight: bold; margin-bottom: 4px; }
     .result-meta {
       font-size: 0.8em;
       color: var(--vscode-descriptionForeground);
       margin-bottom: 6px;
+      min-height: 1em;
     }
-    .result-snippet {
-      font-size: 0.85em;
-      line-height: 1.4;
-    }
+    .result-snippet { font-size: 0.85em; line-height: 1.4; }
     .tag {
       display: inline-block;
       padding: 1px 5px;
@@ -151,16 +199,29 @@ export class SearchResultsPanel {
       font-size: 0.75em;
       margin-left: 2px;
     }
-    .empty {
-      color: var(--vscode-descriptionForeground);
-      font-style: italic;
+    mark {
+      background: var(--vscode-editor-findMatchHighlightBackground, #ffff0033);
+      color: inherit;
+      border-radius: 2px;
     }
+    .empty { color: var(--vscode-descriptionForeground); font-style: italic; }
   </style>
 </head>
 <body>
   <header>Docuvia: Search Results</header>
   <div class="query-label">Results for: <em>${escapeHtml(this._query)}</em></div>
   ${resultsHtml}
+  <script nonce="${nonce}">
+    const vscode = acquireVsCodeApi();
+    function openResult(title) {
+      vscode.postMessage({ type: 'openResult', title });
+    }
+    document.querySelectorAll('.result-card').forEach(function(card) {
+      card.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') { card.click(); }
+      });
+    });
+  </script>
 </body>
 </html>`;
   }

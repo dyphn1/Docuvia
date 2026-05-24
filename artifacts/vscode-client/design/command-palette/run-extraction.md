@@ -18,7 +18,8 @@
 
 3. **Size Protection**:
    - Reads the `docuvia.extraction.maxLinesWarning` configuration (default 1000).
-   - If the file's line count exceeds this value, prompt the user with a warning: "This file is very large... We recommend selecting a specific block... Proceed anyway?". Can be aborted.
+   - Reads the `docuvia.extraction.maxFileSizeKBWarning` configuration (default 50).
+   - If the file's line count exceeds the max lines **OR** the file's byte size exceeds the max KB, prompt the user with a warning: "This file is very large... We recommend selecting a specific block using 'Add Decision from Selection'... Proceed anyway?". Can be aborted.
 
 4. **Task Dispatching**:
    - Creates a `CancellationTokenSource` linked to the task.

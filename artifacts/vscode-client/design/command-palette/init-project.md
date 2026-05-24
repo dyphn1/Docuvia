@@ -21,12 +21,14 @@
    - Prefills the input box with the directory's basename.
 
 3. **Scaffolding (`.docuvia/`)**:
+   - **Polyfill Strategy**: The command checks if target files already exist to prevent accidental deletion.
    - Create the `.docuvia` directory in the resolved workspace root.
    - Create the `.docuvia/l3_decisions` directory.
-   - Generate default skeleton files:
+   - Generate default skeleton files **only if they do not already exist**:
      - `l1_tags.yaml` (includes the `project_name` key).
      - `l2_modules.yaml`.
      - `l3_router.yaml`.
+   - **Force Overwrite**: If the target workspace is already fully initialized but the user invokes this command directly from the palette targeting that workspace, display a warning prompt: `".docuvia already exists. Do you want to overwrite existing files? This action cannot be undone."` before proceeding with destructive generation.
 
 4. **Post-Initialization**:
    - Request the `KnowledgeStore` to reload (reading the newly created files).

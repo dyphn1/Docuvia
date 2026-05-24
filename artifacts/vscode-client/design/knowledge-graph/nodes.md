@@ -38,7 +38,15 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
   - Terminal node (cannot be expanded).
   - Clicking the node executes `vscode.open` to open the underlying Markdown file in the editor.
 
-### 5. Placeholder Nodes
+### 5. Unassigned Decisions Node (Virtual Level 1)
+- **Role**: A virtual container node directly under the Project node to group L3 entries that haven't been assigned to an L2 module.
+- **Context Value**: `unassigned-group`
+- **Icon**: `$(question)`
+- **Behavior**: 
+  - Automatically created if there are L3 decisions where `l2_module_id: unassigned` or the ID is missing/invalid.
+  - Expands to show the unassigned L3 Entry Nodes.
+
+### 6. Placeholder Nodes
 - **Role**: Informational nodes displayed when data is missing.
 - **Context Value**: None
 - **Icon**: `$(info)`
@@ -48,5 +56,9 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
 
 ## Data Management & Sync
 - **Store**: Handled by the singleton `KnowledgeStore`.
-- **Reactivity**: Uses `vscode.FileSystemWatcher` to monitor changes in `.docuvia/**` across all workspaces. Any file change fires an `onDidChangeTreeData` event to refresh the UI immediately without requiring a manual refresh.
+- **Reactivity**: Uses `vscode.FileSystemWatcher` to monitor changes in `.docuvia/**` across all workspaces. 
+- **Lazy Evaluation & Rendering**:
+  - By default, nodes below Project are collapsed. 
+  - `getChildren` dynamically evaluates snapshots.
+  - When `onDidChangeTreeData` is fired, the store attempts to pass specific affected Project nodes for localized UI repaints, rather than rebuilding the entire multi-root tree.
 - **Snapshot**: Multi-workspace aware, maintaining a Map of snapshots keyed by workspace root path.

@@ -19,3 +19,18 @@ Defined in `package.json` -> `contributes.configuration`.
 - **Type**: `number`
 - **Default**: `1000`
 - **Description**: Show a warning before extracting files larger than this many lines. Encourages the user to use "Add Decision from Selection" for large files instead of sending the entire file to the LLM.
+
+### `docuvia.extraction.maxFileSizeKBWarning`
+- **Type**: `number`
+- **Default**: `50`
+- **Description**: Show a warning before extracting files larger than this size in KB. Acts as a second layer of token-consumption protection alongside line count limits.
+
+### `docuvia.knowledgeGraph.incrementalUpdateThreshold`
+- **Type**: `number`
+- **Default**: `50`
+- **Description**: Maximum number of files modified in a batch before forcing a full Knowledge Graph reload instead of an incremental update.
+
+### `docuvia.knowledgeGraph.incrementalUpdateRatioThreshold`
+- **Type**: `number`
+- **Default**: `0.5`
+- **Description**: Maximum ratio (0.0 to 1.0) of modified files relative to total `.docuvia` files before forcing a full Knowledge Graph reload.

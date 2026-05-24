@@ -23,6 +23,11 @@ AI Agents and developers should consult these files to understand the architectu
 ### 4. Copilot Chat Integration (`design/chat-participant/`)
 - [Slash Commands](chat-participant/slash-commands.md) - Registration and routing logic for `@docuvia` chat commands (`/explore`, `/query`, `/extract`, `/help`).
 
+### 5. UI/UX Guidelines (`design/ui-ux/`)
+- [Notifications & Prompts](ui-ux/notifications-and-prompts.md) - Standards for toasts, quick picks, and destructive actions.
+- [Webview Panels](ui-ux/webview-panels.md) - Design goals and theming for custom views (Search Results, Dashboard).
+- [Editor Integration](ui-ux/editor-integration.md) - Guidelines for CodeLens and Hover providers to ensure unobtrusive assistance.
+
 ---
 
 **Note to AI Agents:** When asked to implement or modify a feature in `vscode-client`, always read the corresponding design document here first to ensure you adhere to the established architecture and UX patterns.

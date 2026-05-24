@@ -33,6 +33,7 @@
 
 5. **File Generation**:
    - Generate YAML frontmatter containing `id`, `l2_module_id`, `title`, `date`, and `status`.
+   - If the user selected `(unassigned)` during module assignment, explicitly set `l2_module_id: unassigned` in the frontmatter.
    - Generate the markdown body sections (`## Context`, `## Decision`, `## Consequences`).
    - If `prefillBody` was provided, inject it into the `## Context` section.
    - Write the file to `.docuvia/l3_decisions/{slug}.md`.

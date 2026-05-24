@@ -22,6 +22,7 @@
 2. **If `chat`**:
    - Programmatically executes `workbench.action.chat.open` with the query prefilled as `@docuvia /query <user_query>`.
    - Delegates the display and interaction to the Copilot Chat UI.
+   - *Technical Note*: Due to limitations in the current VS Code Chat API, this command can only prefill the chat input box. **The user must manually press Enter** to submit the query.
 3. **If `webview`**:
    - Makes an API call to the Central Server via `centralClient.query(query)`.
    - On success, opens or updates the `SearchResultsPanel` (Webview).

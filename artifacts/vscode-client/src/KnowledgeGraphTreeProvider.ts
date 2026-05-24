@@ -4,14 +4,18 @@ import { KnowledgeStore } from './KnowledgeStore.js';
 
 // ─── Node types ───────────────────────────────────────────────────────────────
 
-export type KGNodeKind = 'l1tag' | 'l2module' | 'l3entry' | 'placeholder';
+export type KGNodeKind = 'project' | 'l1tag' | 'l2module' | 'l3entry' | 'placeholder';
 
 export interface KGNode {
   kind: KGNodeKind;
   id: string;
   label: string;
+  /** Present on project, l1tag, l2module, l3entry nodes */
+  workspaceRoot?: string;
   /** Only present on l3entry nodes */
   filePath?: string;
+  /** Only present on project nodes */
+  initialized?: boolean;
 }
 
 // ─── Provider ────────────────────────────────────────────────────────────────
@@ -37,8 +41,22 @@ export class KnowledgeGraphTreeProvider implements vscode.TreeDataProvider<KGNod
         item.iconPath = new vscode.ThemeIcon('info');
         return item;
       }
+      case 'project': {
+        const state = node.initialized
+          ? vscode.TreeItemCollapsibleState.Expanded
+          : vscode.TreeItemCollapsibleState.None;
+        const item = new vscode.TreeItem(node.label, state);
+        item.iconPath = new vscode.ThemeIcon('root-folder');
+        item.contextValue = node.initialized ? 'project-initialized' : 'project-uninitialized';
+        if (!node.initialized) {
+          item.tooltip = 'Click "Init" to initialize .docuvia/ for this workspace.';
+        }
+        return item;
+      }
       case 'l1tag': {
-        const modules = this.store.getModulesByTagId(node.id);
+        // Need snapshot for this workspace to know if there are modules
+        const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
+        const modules = snap ? snap.modules.filter(m => m.l1_tag_id === node.id) : [];
         const state =
           modules.length > 0
             ? vscode.TreeItemCollapsibleState.Collapsed
@@ -49,7 +67,8 @@ export class KnowledgeGraphTreeProvider implements vscode.TreeDataProvider<KGNod
         return item;
       }
       case 'l2module': {
-        const entries = this.store.getRouterEntriesByModuleId(node.id);
+        const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
+        const entries = snap ? snap.routerIndex.filter(r => r.l2_module_id === node.id) : [];
         const state =
           entries.length > 0
             ? vscode.TreeItemCollapsibleState.Collapsed
@@ -77,49 +96,81 @@ export class KnowledgeGraphTreeProvider implements vscode.TreeDataProvider<KGNod
   }
 
   getChildren(node?: KGNode): KGNode[] {
-    const snapshot = this.store.snapshot;
-
+    const folders = vscode.workspace.workspaceFolders || [];
+    
     if (!node) {
-      // Root level — return L1 tags
-      if (!snapshot || snapshot.tags.length === 0) {
+      // Root level — return project nodes (one per workspace folder)
+      if (folders.length === 0) {
         return [
           {
             kind: 'placeholder',
             id: '__placeholder__',
-            label: 'No .docuvia/ folder found — run Init Project',
+            label: 'No workspace folder open',
           },
         ];
       }
-      return snapshot.tags.map(
+      return folders.map((folder): KGNode => {
+        const isInit = this.store.snapshots.has(folder.uri.fsPath);
+        return {
+          kind: 'project',
+          id: folder.uri.fsPath,
+          label: folder.name,
+          workspaceRoot: folder.uri.fsPath,
+          initialized: isInit
+        };
+      });
+    }
+
+    if (node.kind === 'project') {
+      if (!node.initialized || !node.workspaceRoot) {
+        return [];
+      }
+      const snap = this.store.snapshots.get(node.workspaceRoot);
+      if (!snap || snap.tags.length === 0) {
+        return [
+          {
+            kind: 'placeholder',
+            id: `__placeholder__${node.id}`,
+            label: 'No L1 tags found in l1_tags.yaml',
+          },
+        ];
+      }
+      return snap.tags.map(
         (tag): KGNode => ({
           kind: 'l1tag',
           id: tag.id,
           label: tag.name,
+          workspaceRoot: node.workspaceRoot,
         })
       );
     }
 
     if (node.kind === 'l1tag') {
-      return this.store.getModulesByTagId(node.id).map(
+      const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
+      const modules = snap ? snap.modules.filter(m => m.l1_tag_id === node.id) : [];
+      return modules.map(
         (mod): KGNode => ({
           kind: 'l2module',
           id: mod.id,
           label: mod.name,
+          workspaceRoot: node.workspaceRoot,
         })
       );
     }
 
     if (node.kind === 'l2module') {
-      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      return this.store.getRouterEntriesByModuleId(node.id).map((entry): KGNode => {
-        const filePath = workspaceRoot
-          ? path.join(workspaceRoot, '.docuvia', entry.file_path)
+      const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
+      const entries = snap ? snap.routerIndex.filter(r => r.l2_module_id === node.id) : [];
+      return entries.map((entry): KGNode => {
+        const filePath = node.workspaceRoot
+          ? path.join(node.workspaceRoot, '.docuvia', entry.file_path)
           : undefined;
         return {
           kind: 'l3entry',
           id: entry.id,
           label: entry.title,
           filePath,
+          workspaceRoot: node.workspaceRoot,
         };
       });
     }

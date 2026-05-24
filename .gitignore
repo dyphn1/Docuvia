@@ -45,6 +45,12 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
+# Testing
+.vscode-test/
+test-results/
+playwright-report/
+blob-report/
+
 # Replit
 .cache/
 .local/

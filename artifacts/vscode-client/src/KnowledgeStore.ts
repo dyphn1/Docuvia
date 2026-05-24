@@ -11,6 +11,8 @@ const L3_DECISIONS_DIR = 'l3_decisions';
 
 /** In-memory snapshot of the project's knowledge graph. */
 export interface KnowledgeGraphSnapshot {
+  workspaceRoot: string;
+  projectName: string;
   tags: L1Tag[];
   modules: L2Module[];
   routerIndex: L3RouterEntry[];
@@ -27,9 +29,9 @@ export interface KnowledgeGraphSnapshot {
 export class KnowledgeStore {
   private static _instance: KnowledgeStore | null = null;
 
-  private _snapshot: KnowledgeGraphSnapshot | null = null;
+  private _snapshots: Map<string, KnowledgeGraphSnapshot> = new Map();
   private _globalConfig: GlobalConfig | null = null;
-  private _watcher: vscode.FileSystemWatcher | null = null;
+  private _watchers: Map<string, vscode.FileSystemWatcher> = new Map();
   private _outputChannel: vscode.OutputChannel;
   private _loading: boolean = false;
   private _pendingReload: boolean = false;
@@ -48,8 +50,42 @@ export class KnowledgeStore {
     return KnowledgeStore._instance;
   }
 
+  get snapshots(): Map<string, KnowledgeGraphSnapshot> {
+    return this._snapshots;
+  }
+
+  /** Gets aggregated snapshot or the first one, for backwards compatibility where possible, but better to use snapshots map directly */
   get snapshot(): KnowledgeGraphSnapshot | null {
-    return this._snapshot;
+    if (this._snapshots.size === 0) return null;
+    // Aggregate for legacy single-snapshot callers
+    const agg: KnowledgeGraphSnapshot = {
+      workspaceRoot: '',
+      projectName: 'Aggregated',
+      tags: [],
+      modules: [],
+      routerIndex: [],
+      decisions: new Map(),
+      loadedAt: new Date()
+    };
+    for (const snap of this._snapshots.values()) {
+      agg.tags.push(...snap.tags);
+      agg.modules.push(...snap.modules);
+      agg.routerIndex.push(...snap.routerIndex);
+      for (const [k, v] of snap.decisions.entries()) {
+        agg.decisions.set(k, v);
+      }
+    }
+    return agg;
+  }
+
+  getSnapshotFor(uri: vscode.Uri | string): KnowledgeGraphSnapshot | undefined {
+    const fsPath = typeof uri === 'string' ? uri : uri.fsPath;
+    const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(fsPath));
+    if (folder) {
+      return this._snapshots.get(folder.uri.fsPath);
+    }
+    // Fallback if not inside a folder
+    return undefined;
   }
 
   get globalConfig(): GlobalConfig | null {
@@ -61,8 +97,7 @@ export class KnowledgeStore {
   }
 
   /**
-   * Loads the knowledge graph from the .docuvia/ directory in the workspace root.
-   * Returns false if no workspace or no .docuvia folder is present.
+   * Loads the knowledge graph from the .docuvia/ directory in all workspace roots.
    */
   async load(): Promise<boolean> {
     if (this._loading) {
@@ -71,7 +106,17 @@ export class KnowledgeStore {
     }
     this._loading = true;
     try {
-      return await this._loadInternal();
+      this._snapshots.clear();
+      let anyLoaded = false;
+      const folders = vscode.workspace.workspaceFolders || [];
+      for (const folder of folders) {
+        const loaded = await this._loadWorkspace(folder.uri.fsPath);
+        if (loaded) anyLoaded = true;
+      }
+      
+      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', anyLoaded);
+      this._onDidLoad.fire();
+      return anyLoaded;
     } finally {
       this._loading = false;
       if (this._pendingReload) {
@@ -81,26 +126,23 @@ export class KnowledgeStore {
     }
   }
 
-  private async _loadInternal(): Promise<boolean> {
-    const workspaceRoot = this.getWorkspaceRoot();
-    if (!workspaceRoot) {
-      this._outputChannel.appendLine('[Docuvia] No workspace folder found. Knowledge graph not loaded.');
-      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', false);
-      return false;
-    }
-
+  private async _loadWorkspace(workspaceRoot: string): Promise<boolean> {
     const docuviaDir = vscode.Uri.file(path.join(workspaceRoot, DOCUVIA_DIR));
     try {
       await vscode.workspace.fs.stat(docuviaDir);
     } catch {
-      this._outputChannel.appendLine(`[Docuvia] No .docuvia/ folder found in ${workspaceRoot}`);
-      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', false);
       return false;
     }
 
-    this._outputChannel.appendLine('[Docuvia] Loading knowledge graph...');
+    this._outputChannel.appendLine(`[Docuvia] Loading knowledge graph for ${workspaceRoot}...`);
     try {
       const tagsContent = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, L1_TAGS_FILE));
+      let projectName = path.basename(workspaceRoot);
+      const projMatch = tagsContent.match(/^project_name:\s*"?([^"\n]+)"?/m);
+      if (projMatch) {
+        projectName = projMatch[1];
+      }
+
       const tags = this.tryParse(() =>
         parseTags(tagsContent, 'l1_tags.yaml'), 'l1_tags.yaml'
       );
@@ -134,65 +176,72 @@ export class KnowledgeStore {
         // L3 dir might not exist
       }
 
-      this._snapshot = { tags, modules, routerIndex, decisions, loadedAt: new Date() };
+      this._snapshots.set(workspaceRoot, { workspaceRoot, projectName, tags, modules, routerIndex, decisions, loadedAt: new Date() });
       this._outputChannel.appendLine(
-        `[Docuvia] Knowledge graph loaded: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions.`
+        `[Docuvia] Knowledge graph loaded for ${projectName}: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions.`
       );
       
-      // Notify VS Code that the project is initialized so viewsWelcome can be hidden
-      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', true);
-      
-      this._onDidLoad.fire();
       return true;
     } catch (err) {
-      this._outputChannel.appendLine(`[Docuvia] Error loading knowledge graph: ${String(err)}`);
-      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', false);
+      this._outputChannel.appendLine(`[Docuvia] Error loading knowledge graph for ${workspaceRoot}: ${String(err)}`);
       return false;
     }
   }
 
   /**
-   * Starts a VS Code FileSystemWatcher on the .docuvia/ folder.
-   * Any create/change/delete event triggers a full reload.
+   * Starts VS Code FileSystemWatchers on the .docuvia/ folder for all workspace folders.
    */
   startWatcher(context: vscode.ExtensionContext): void {
-    if (this._watcher) {
-      this._watcher.dispose();
+    // Cleanup old watchers
+    for (const watcher of this._watchers.values()) {
+      watcher.dispose();
+    }
+    this._watchers.clear();
+
+    const folders = vscode.workspace.workspaceFolders || [];
+    for (const folder of folders) {
+      const pattern = new vscode.RelativePattern(
+        folder,
+        '.docuvia/**'
+      );
+
+      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+
+      const reload = () => {
+        this._outputChannel.appendLine(`[Docuvia] Change detected in ${folder.name}/.docuvia/, reloading...`);
+        void this.load();
+      };
+
+      watcher.onDidCreate(reload, null, context.subscriptions);
+      watcher.onDidChange(reload, null, context.subscriptions);
+      watcher.onDidDelete(reload, null, context.subscriptions);
+
+      context.subscriptions.push(watcher);
+      this._watchers.set(folder.uri.fsPath, watcher);
     }
 
-    const pattern = new vscode.RelativePattern(
-      this.getWorkspaceRoot() ?? '',
-      '.docuvia/**'
-    );
+    // Only register the workspace folder change listener once
+    if (!KnowledgeStore._workspaceListenerRegistered) {
+      context.subscriptions.push(
+        vscode.workspace.onDidChangeWorkspaceFolders(() => {
+          this._outputChannel.appendLine('[Docuvia] Workspace folders changed, reloading store...');
+          void this.load();
+          this.startWatcher(context);
+        })
+      );
+      KnowledgeStore._workspaceListenerRegistered = true;
+    }
 
-    this._watcher = vscode.workspace.createFileSystemWatcher(pattern);
-
-    const reload = () => {
-      this._outputChannel.appendLine('[Docuvia] Change detected in .docuvia/, reloading...');
-      void this.load();
-    };
-
-    this._watcher.onDidCreate(reload, null, context.subscriptions);
-    this._watcher.onDidChange(reload, null, context.subscriptions);
-    this._watcher.onDidDelete(reload, null, context.subscriptions);
-
-    context.subscriptions.push(this._watcher);
-
-    context.subscriptions.push(
-      vscode.workspace.onDidChangeWorkspaceFolders(() => {
-        this.dispose();
-        KnowledgeStore._instance = new KnowledgeStore(this._outputChannel);
-        void KnowledgeStore._instance.load();
-        KnowledgeStore._instance.startWatcher(context);
-      })
-    );
-
-    this._outputChannel.appendLine('[Docuvia] FileSystemWatcher started for .docuvia/**');
+    this._outputChannel.appendLine('[Docuvia] FileSystemWatchers started for .docuvia/** across workspaces.');
   }
 
+  private static _workspaceListenerRegistered = false;
+
   dispose(): void {
-    this._watcher?.dispose();
-    this._watcher = null;
+    for (const watcher of this._watchers.values()) {
+      watcher.dispose();
+    }
+    this._watchers.clear();
     this._onDidLoad.dispose();
     KnowledgeStore._instance = null;
   }
@@ -200,15 +249,15 @@ export class KnowledgeStore {
   // ─── Lookup helpers ────────────────────────────────────────────────────────
 
   getDecisionById(id: string): L3Decision | undefined {
-    return this._snapshot?.decisions.get(id);
+    return this.snapshot?.decisions.get(id);
   }
 
   getModulesByTagId(tagId: string): L2Module[] {
-    return this._snapshot?.modules.filter(m => m.l1_tag_id === tagId) ?? [];
+    return this.snapshot?.modules.filter(m => m.l1_tag_id === tagId) ?? [];
   }
 
   getRouterEntriesByModuleId(moduleId: string): L3RouterEntry[] {
-    return this._snapshot?.routerIndex.filter(r => r.l2_module_id === moduleId) ?? [];
+    return this.snapshot?.routerIndex.filter(r => r.l2_module_id === moduleId) ?? [];
   }
 
   // ─── Private helpers ───────────────────────────────────────────────────────

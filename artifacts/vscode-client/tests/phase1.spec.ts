@@ -1,58 +1,93 @@
-import { _electron as electron, test, expect } from '@playwright/test';
+import { test, expect, ElectronApplication, Page } from '@playwright/test';
+import * as fs from 'fs';
 import * as path from 'path';
+import {
+  launchVSCode,
+  makeTempDataDir,
+  openDocuviaSidebar,
+  cleanupDocuviaDir,
+  DOCUVIA_DIR,
+} from './helpers/launch';
 
 test.describe('Phase 1: Local Knowledge Schema & Foundations', () => {
-  let electronApp;
-  let window;
+  let electronApp: ElectronApplication;
+  let window: Page;
+  let userDataDir: string;
 
   test.beforeAll(async () => {
-    const extensionPath = path.join(__dirname, '..');
-    
-    // Playwright downloads its own Node.js/Electron environment for testing VS Code extensions if configured right, 
-    // but for true e2e with VS Code, we can launch the VS Code binary.
-    // However, it's more stable to use the official @vscode/test-electron or playwright-vscode approach.
-    // For now, let's use the local VS Code binary path.
-    const vscodeExecutablePath = 'D:\\VSCode\\Code.exe';
+    userDataDir = makeTempDataDir();
+    cleanupDocuviaDir();
 
-    electronApp = await electron.launch({
-      executablePath: vscodeExecutablePath,
-      args: [
-        '--disable-extensions',
-        `--extensionDevelopmentPath=${extensionPath}`,
-        // Open a specific test workspace folder so we have a clean slate
-        path.join(extensionPath, 'tests', 'fixtures', 'empty-workspace'),
-        '--new-window',
-        '--no-sandbox'
-      ]
-    });
+    ({ electronApp, window } = await launchVSCode({
+      userDataDir,
+    }));
 
-    window = await electronApp.firstWindow();
-    await window.waitForSelector('.monaco-workbench');
+    await openDocuviaSidebar(window);
   });
 
   test.afterAll(async () => {
+    cleanupDocuviaDir();
     if (electronApp) {
       await electronApp.close();
     }
+    if (userDataDir) {
+      fs.rmSync(userDataDir, { recursive: true, force: true });
+    }
   });
 
-  test('應該能執行 Docuvia: Init Project 並初始化 .docuvia 資料夾', async () => {
-    // 1. 開啟 Command Palette
+  test('Welcome View is visible when .docuvia folder does not exist', async () => {
+    const welcomeView = window.locator('.view-welcome-content', { hasText: 'Welcome to Docuvia!' });
+    await expect(welcomeView).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('Docuvia: Init Project creates .docuvia directory with skeleton YAML files', async () => {
+    expect(fs.existsSync(DOCUVIA_DIR)).toBe(false);
+
     await window.keyboard.press('Control+Shift+P');
-    
-    // 2. 輸入並執行指令
+    await window.waitForSelector('.quick-input-widget', { timeout: 10_000 });
     await window.keyboard.type('Docuvia: Init Project');
     await window.keyboard.press('Enter');
 
-    // 3. 處理可能跳出的 prompt (例如詢問專案名稱)
-    // 假設擴充功能會要求輸入專案名稱
-    await window.waitForSelector('.quick-input-widget');
+    await window.waitForTimeout(400);
+    await window.waitForSelector('.quick-input-widget input', { timeout: 6_000 });
+    await window.keyboard.press('Control+A');
     await window.keyboard.type('Test Project');
     await window.keyboard.press('Enter');
 
-    // 4. 驗證 UI 狀態改變: 
-    // "Welcome to Docuvia" 應該消失，TreeView 應該出現
-    const welcomeView = window.locator('text="Welcome to Docuvia!"');
-    await expect(welcomeView).not.toBeVisible({ timeout: 10000 });
+    await expect.poll(() => fs.existsSync(DOCUVIA_DIR), { timeout: 12_000 }).toBe(true);
+    await expect.poll(
+      () => fs.existsSync(path.join(DOCUVIA_DIR, 'l1_tags.yaml')),
+      { timeout: 12_000 }
+    ).toBe(true);
+    await expect.poll(
+      () => fs.existsSync(path.join(DOCUVIA_DIR, 'l2_modules.yaml')),
+      { timeout: 12_000 }
+    ).toBe(true);
+    await expect.poll(
+      () => fs.existsSync(path.join(DOCUVIA_DIR, 'l3_router.yaml')),
+      { timeout: 12_000 }
+    ).toBe(true);
+    await expect.poll(
+      () => fs.existsSync(path.join(DOCUVIA_DIR, 'l3_decisions')),
+      { timeout: 12_000 }
+    ).toBe(true);
+    await expect.poll(
+      () => fs.statSync(path.join(DOCUVIA_DIR, 'l3_decisions')).isDirectory(),
+      { timeout: 12_000 }
+    ).toBe(true);
+    await expect.poll(
+      () => fs.readFileSync(path.join(DOCUVIA_DIR, 'l1_tags.yaml'), 'utf-8').includes('Test Project'),
+      { timeout: 12_000 }
+    ).toBe(true);
+  });
+
+  test('Welcome View disappears after .docuvia folder is created', async () => {
+    const welcomeView = window.locator('.view-welcome-content', { hasText: 'Welcome to Docuvia!' });
+    await expect(welcomeView).not.toBeVisible({ timeout: 12_000 });
+  });
+
+  test('Knowledge Graph TreeView is visible after initialization', async () => {
+    const treeViewPane = window.locator('.pane-body[aria-label*="Knowledge Graph"]');
+    await expect(treeViewPane).toBeVisible({ timeout: 10_000 });
   });
 });

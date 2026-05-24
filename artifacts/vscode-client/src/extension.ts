@@ -13,6 +13,7 @@ import { parseGlobalConfig } from './parser.js';
 import { SearchResultsPanel } from './SearchResultsPanel.js';
 import { TaskQueueTreeProvider } from './TaskQueueTreeProvider.js';
 import { TaskRunner } from './TaskRunner.js';
+import { minimatch } from 'minimatch';
 
 let outputChannel: vscode.OutputChannel;
 
@@ -104,8 +105,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ─── Commands ─────────────────────────────────────────────────────────────
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('docuvia.initProject', async () => {
-      await initProject(context);
+    vscode.commands.registerCommand('docuvia.initProject', async (node?: any) => {
+      await initProject(context, store, node);
     })
   );
 
@@ -144,6 +145,35 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         return;
       }
       const filePath = editor.document.uri.fsPath;
+      const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+      const relativePath = workspaceFolder 
+        ? path.relative(workspaceFolder.uri.fsPath, filePath).replace(/\\/g, '/')
+        : path.basename(filePath);
+
+      const config = vscode.workspace.getConfiguration('docuvia');
+      const includePatterns = config.get<string[]>('extraction.includePatterns', []);
+      const maxLines = config.get<number>('extraction.maxLinesWarning', 1000);
+
+      // Check against include patterns (like .gitignore check)
+      const isIncluded = includePatterns.some(pattern => minimatch(relativePath, pattern));
+      if (!isIncluded) {
+        const proceed = await vscode.window.showWarningMessage(
+          `Docuvia: This file type (${path.basename(filePath)}) is not in your include list. Analyze it anyway?`,
+          'Yes', 'No'
+        );
+        if (proceed !== 'Yes') return;
+      }
+
+      // Check file size limit
+      const lineCount = editor.document.lineCount;
+      if (lineCount > maxLines) {
+        const proceed = await vscode.window.showWarningMessage(
+          `Docuvia: This file is very large (${lineCount} lines). Analyzing the entire file might be slow and consume many tokens. We recommend selecting a specific block and using right-click "Docuvia: Add Decision from Selection". Proceed anyway?`,
+          'Proceed', 'Cancel'
+        );
+        if (proceed !== 'Proceed') return;
+      }
+
       const content = editor.document.getText();
       const tokenSource = new vscode.CancellationTokenSource();
       const taskId = await taskRunner.queueExtraction({
@@ -236,21 +266,45 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         placeHolder: 'e.g. how do other projects handle auth',
       });
       if (!query || query.trim().length === 0) return;
-      const q = query.trim();
-      try {
-        const results = await centralClient.query(q, 20);
-        SearchResultsPanel.createOrShow(context, q, results);
-      } catch (err) {
-        if (err instanceof CentralServerAuthError) {
-          void vscode.window.showErrorMessage(
-            "Docuvia: Authentication required. Run 'Docuvia: Set Server Token'."
-          );
-        } else {
-          void vscode.window.showErrorMessage(`Docuvia: Search failed — ${String(err)}`);
-        }
-      }
+      await executeSearch(context, centralClient, query.trim());
     })
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('docuvia.searchFromSelection', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.selection.isEmpty) {
+        void vscode.window.showWarningMessage('Docuvia: Select code or text to search.');
+        return;
+      }
+      const selectedText = editor.document.getText(editor.selection);
+      await executeSearch(context, centralClient, selectedText.trim());
+    })
+  );
+}
+
+async function executeSearch(context: vscode.ExtensionContext, centralClient: CentralServerClient, query: string) {
+  try {
+    const config = vscode.workspace.getConfiguration('docuvia');
+    const viewPref = config.get<string>('search.defaultView', 'chat');
+
+    if (viewPref === 'chat') {
+      await vscode.commands.executeCommand('workbench.action.chat.open', {
+        query: `@docuvia /query ${query}`
+      });
+    } else {
+      const results = await centralClient.query(query, 20);
+      SearchResultsPanel.createOrShow(context, query, results);
+    }
+  } catch (err) {
+    if (err instanceof CentralServerAuthError) {
+      void vscode.window.showErrorMessage(
+        "Docuvia: Authentication required. Run 'Docuvia: Set Server Token'."
+      );
+    } else {
+      void vscode.window.showErrorMessage(`Docuvia: Search failed — ${String(err)}`);
+    }
+  }
 }
 
 export function deactivate(): void {
@@ -259,25 +313,51 @@ export function deactivate(): void {
 
 // ─── Init Project ─────────────────────────────────────────────────────────────
 
-async function initProject(_context: vscode.ExtensionContext): Promise<void> {
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspaceRoot) {
+async function initProject(_context: vscode.ExtensionContext, store: KnowledgeStore, node?: any): Promise<void> {
+  const folders = vscode.workspace.workspaceFolders || [];
+  if (folders.length === 0) {
     void vscode.window.showErrorMessage('Docuvia: No workspace folder is open.');
     return;
   }
 
+  let targetRoot: string | undefined;
+
+  // If triggered from the TreeView inline action
+  if (node && node.workspaceRoot) {
+    targetRoot = node.workspaceRoot;
+  } else if (folders.length === 1) {
+    targetRoot = folders[0].uri.fsPath;
+  } else {
+    // Multi-root, ask the user to pick one that is not yet initialized
+    const uninitialized = folders.filter(f => !store.snapshots.has(f.uri.fsPath));
+    if (uninitialized.length === 0) {
+      void vscode.window.showInformationMessage('Docuvia: All workspace folders are already initialized.');
+      return;
+    }
+    
+    const picks = uninitialized.map(f => ({ label: f.name, description: f.uri.fsPath, fsPath: f.uri.fsPath }));
+    const picked = await vscode.window.showQuickPick(picks, {
+      placeHolder: 'Select a workspace folder to initialize Docuvia in',
+    });
+    
+    if (!picked) return;
+    targetRoot = picked.fsPath;
+  }
+
+  if (!targetRoot) return;
+
   const projectName = await vscode.window.showInputBox({
     prompt: 'Enter the name of your project',
-    placeHolder: path.basename(workspaceRoot),
-    value: path.basename(workspaceRoot)
+    placeHolder: path.basename(targetRoot),
+    value: path.basename(targetRoot)
   });
 
   if (projectName === undefined) {
     return; // User cancelled
   }
 
-  const docuviaUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia'));
-  const decisionsUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l3_decisions'));
+  const docuviaUri = vscode.Uri.file(path.join(targetRoot, '.docuvia'));
+  const decisionsUri = vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l3_decisions'));
 
   // Create folder structure
   await vscode.workspace.fs.createDirectory(docuviaUri);
@@ -285,22 +365,21 @@ async function initProject(_context: vscode.ExtensionContext): Promise<void> {
 
   // Write skeleton YAML files
   await writeIfAbsent(
-    vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l1_tags.yaml')),
+    vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l1_tags.yaml')),
     `# L1 Tags — top-level knowledge categories\n# project_name: ${projectName}\nproject_name: "${projectName}"\ntags:\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   description: <optional>\n`
   );
 
   await writeIfAbsent(
-    vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l2_modules.yaml')),
+    vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l2_modules.yaml')),
     `# L2 Modules — functional subsystems, linked to an L1 tag\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   l1_tag_id: <L1 tag id>\n#   source_paths: []\n`
   );
 
   await writeIfAbsent(
-    vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l3_router.yaml')),
+    vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l3_router.yaml')),
     `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`
   );
 
   // Trigger reload to update state and hide welcome view
-  const store = KnowledgeStore.getInstance(outputChannel);
   await store.load();
 
   void vscode.window.showInformationMessage(
@@ -315,11 +394,45 @@ async function addDecision(
   store: KnowledgeStore,
   prefillBody?: string
 ): Promise<void> {
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspaceRoot) {
+  const folders = vscode.workspace.workspaceFolders || [];
+  if (folders.length === 0) {
     void vscode.window.showErrorMessage('Docuvia: No workspace folder is open.');
     return;
   }
+
+  let targetRoot: string | undefined;
+
+  // Prefer the workspace of the active editor
+  const editor = vscode.window.activeTextEditor;
+  if (editor) {
+    const folder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
+    if (folder && store.snapshots.has(folder.uri.fsPath)) {
+      targetRoot = folder.uri.fsPath;
+    }
+  }
+
+  // If we couldn't resolve from editor, and there's only 1 initialized folder, use it
+  if (!targetRoot) {
+    const initialized = folders.filter(f => store.snapshots.has(f.uri.fsPath));
+    if (initialized.length === 1) {
+      targetRoot = initialized[0].uri.fsPath;
+    } else if (initialized.length > 1) {
+      const picks = initialized.map(f => ({ label: f.name, description: f.uri.fsPath, fsPath: f.uri.fsPath }));
+      const picked = await vscode.window.showQuickPick(picks, {
+        placeHolder: 'Select a project to add the decision to',
+      });
+      if (picked) {
+        targetRoot = picked.fsPath;
+      }
+    } else {
+      void vscode.window.showErrorMessage('Docuvia: No initialized project found. Please run Init Project first.');
+      return;
+    }
+  }
+
+  if (!targetRoot) return;
+  const snapshot = store.snapshots.get(targetRoot);
+  if (!snapshot) return;
 
   const { v4: uuidv4 } = await import('uuid');
 
@@ -330,16 +443,11 @@ async function addDecision(
   const id = uuidv4();
   const date = new Date().toISOString().slice(0, 10);
 
-  const modules = store.snapshot?.modules ?? [];
-  if (modules.length === 0) {
-    void vscode.window.showWarningMessage(
-      'Docuvia: No L2 modules found. Add modules to l2_modules.yaml first.'
-    );
-    return;
-  }
+  const modules = snapshot.modules ?? [];
+  const moduleItems: (vscode.QuickPickItem & { id: string })[] = modules.map(m => ({ label: m.name, description: m.slug, id: m.id }));
+  moduleItems.push({ label: '$(add) Create new module later...', id: 'unassigned', description: 'Assign to a module later' });
 
-  const moduleItems = modules.map(m => ({ label: m.name, description: m.slug, id: m.id }));
-  const picked = await vscode.window.showQuickPick(moduleItems, { placeHolder: 'Select L2 module' });
+  const picked = await vscode.window.showQuickPick(moduleItems, { placeHolder: 'Select L2 module (or leave unassigned)' });
   if (!picked) return;
 
   const frontmatter = [
@@ -358,7 +466,7 @@ async function addDecision(
 
   const template = `${frontmatter}\n\n${bodySection}`;
 
-  const filePath = path.join(workspaceRoot, '.docuvia', 'l3_decisions', `${slug}.md`);
+  const filePath = path.join(targetRoot, '.docuvia', 'l3_decisions', `${slug}.md`);
   const fileUri = vscode.Uri.file(filePath);
   await vscode.workspace.fs.writeFile(fileUri, Buffer.from(template, 'utf-8'));
 

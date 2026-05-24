@@ -12,6 +12,7 @@
     "Other"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "workspaceContains:.docuvia"
   ],
   "main": "./out/extension.js",
@@ -92,6 +93,10 @@
         "command": "docuvia.openSearch",
         "title": "Docuvia: Open Cross-Project Search",
         "icon": "$(search)"
+      },
+      {
+        "command": "docuvia.searchFromSelection",
+        "title": "Docuvia: Search from Selection"
       }
     ],
     "viewsWelcome": [
@@ -151,6 +156,13 @@
           "group": "navigation"
         }
       ],
+      "view/item/context": [
+        {
+          "command": "docuvia.initProject",
+          "when": "view == docuvia.knowledgeGraph && viewItem == project-uninitialized",
+          "group": "inline"
+        }
+      ],
       "editor/context": [
         {
           "command": "docuvia.runExtraction",
@@ -161,8 +173,56 @@
           "command": "docuvia.addDecisionFromSelection",
           "when": "editorHasSelection && resourceLangId =~ /typescript|javascript|typescriptreact|javascriptreact|python/",
           "group": "docuvia"
+        },
+        {
+          "command": "docuvia.searchFromSelection",
+          "when": "editorHasSelection",
+          "group": "docuvia"
         }
       ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "Docuvia Configuration",
+      "properties": {
+        "docuvia.search.defaultView": {
+          "type": "string",
+          "default": "chat",
+          "enum": [
+            "chat",
+            "webview"
+          ],
+          "enumItemLabels": [
+            "Copilot Chat",
+            "Dedicated Webview Tab"
+          ],
+          "description": "Where to display cross-project search results by default."
+        },
+        "docuvia.extraction.includePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "**/*.ts",
+            "**/*.js",
+            "**/*.tsx",
+            "**/*.jsx",
+            "**/*.py",
+            "**/*.rs",
+            "**/*.go",
+            "**/*.java",
+            "**/package.json",
+            "**/pyproject.toml"
+          ],
+          "description": "Glob patterns for files that should be analyzed automatically."
+        },
+        "docuvia.extraction.maxLinesWarning": {
+          "type": "number",
+          "default": 1000,
+          "description": "Show a warning before extracting files larger than this many lines."
+        }
+      }
     }
   },
   "scripts": {
@@ -173,12 +233,14 @@
   },
   "dependencies": {
     "gray-matter": "^4.0.3",
+    "minimatch": "^10.2.5",
     "uuid": "^11.1.0",
     "yaml": "^2.7.1",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
+    "@types/minimatch": "^6.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "catalog:",
     "@types/uuid": "^10.0.0",

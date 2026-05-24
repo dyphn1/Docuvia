@@ -18,6 +18,7 @@
 | `api-spec/`                      | `openapi.yaml` — Single source of truth for all API contracts         |
 | `db/`                            | Drizzle ORM schema and migrations (`projects.ts`, `commits.ts`, etc.) |
 | `integrations-openai-ai-server/` | OpenAI-compatible client wrapper                                      |
+| `vscode-client/`                 | VS Code Extension for editor integration (see `artifacts/vscode-client/design/ROUTER.md` for architecture details) |
 | `docs/`                          | Roadmap, gitbook content, phase checklists                            |
 
 ## Development Commands

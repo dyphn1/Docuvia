@@ -17,8 +17,8 @@
     "sourceMap": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "types": ["node", "vscode"]
+    "types": ["mocha", "node", "vscode"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "out", "**/*.test.ts"]
+  "exclude": ["node_modules", "out", ]
 }

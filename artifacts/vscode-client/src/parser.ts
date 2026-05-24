@@ -11,7 +11,7 @@ import {
   L3DecisionFrontmatterSchema,
   L3RouterEntry,
   L3RouterEntrySchema,
-} from './types';
+} from './types.js';
 
 export function parseTags(content: string, filePath: string): L1Tag[] {
   const raw = parseYaml(content) as unknown[];

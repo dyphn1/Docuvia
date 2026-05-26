@@ -76,6 +76,7 @@ pnpm run build
 - If a compiler error blocks you: generate 2-3 ranked hypotheses, instrument to confirm, and fix it silently.
 - Do not ask the user for help unless you are fundamentally blocked after 3 attempts.
 - Fix all compilation and lint errors before outputting a Handover Block.
+- You MUST NOT output a Handover Block if the implementation is incomplete or the build is failing.
 
 ## Output Format
 
@@ -83,10 +84,7 @@ When finished, output:
 
 ```
 ### 🤝 Handover Block
-- **Status**: Implementation complete
-- **Files Modified**: <list of files changed>
+- **Changes Made**: `<List all modified, created, or deleted files, including specific functions or line ranges edited. Provide exact paths so the Verifier can read them directly without searching.>`
 - **Build Result**: <pnpm build output summary>
-- **Recommended Agent**: `Task Verifier`
-- **Context Summary**: <brief summary of what was implemented>
-- **Action for Main Copilot**: Please invoke Task Verifier to confirm all requirements are met.
+- **Action for Orchestrator**: I have completed the implementation. Please invoke the Task Verifier.
 ```

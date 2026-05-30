@@ -40,6 +40,11 @@
     },
     "commands": [
       {
+        "command": "docuvia.startExplore",
+        "title": "Docuvia: Analyze Project Architecture",
+        "icon": "$(sparkle)"
+      },
+      {
         "command": "docuvia.initProject",
         "title": "Docuvia: Init Project"
       },
@@ -107,7 +112,7 @@
     "viewsWelcome": [
       {
         "view": "docuvia.knowledgeGraph",
-        "contents": "Welcome to Docuvia!\n\nNo knowledge graph found for this workspace.\n\n[Initialize Project](command:docuvia.initProject)",
+        "contents": "Welcome to Docuvia!\n\nTo get started, let AI analyze your project architecture and build your local knowledge graph.\n\n[$(sparkle) Analyze Project Architecture](command:docuvia.startExplore)",
         "when": "!docuvia:isInitialized"
       }
     ],

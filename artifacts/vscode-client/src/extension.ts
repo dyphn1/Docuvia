@@ -105,6 +105,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ─── Commands ─────────────────────────────────────────────────────────────
 
   context.subscriptions.push(
+    vscode.commands.registerCommand('docuvia.startExplore', async () => {
+      // Open the Copilot Chat view with the explore command pre-filled and executed
+      await vscode.commands.executeCommand('workbench.action.chat.open', { query: '@docuvia /explore' });
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand('docuvia.initProject', async (node?: any) => {
       await initProject(context, store, node);
     })
@@ -239,15 +246,37 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'docuvia.acceptL1Tags',
-      async (yamlContent: string) => {
-        const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+      // BUG A-3 fix: accept explicit workspaceRoot from ChatParticipant; fall back to [0] only when absent
+      async (yamlContent: string, explicitRoot?: string) => {
+        const workspaceRoot = explicitRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
         if (!workspaceRoot) return;
-        const uri = vscode.Uri.file(
-          path.join(workspaceRoot, '.docuvia', 'l1_tags.yaml')
+
+        const docuviaUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia'));
+        const decisionsUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l3_decisions'));
+
+        // BUG A-1 fix: create .docuvia/ directory before writing
+        await vscode.workspace.fs.createDirectory(docuviaUri);
+        await vscode.workspace.fs.createDirectory(decisionsUri);
+
+        // Write l1_tags.yaml
+        await vscode.workspace.fs.writeFile(
+          vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l1_tags.yaml')),
+          Buffer.from(yamlContent, 'utf-8')
         );
-        await vscode.workspace.fs.writeFile(uri, Buffer.from(yamlContent, 'utf-8'));
+
+        // BUG A-2 fix: ensure l2_modules.yaml and l3_router.yaml skeleton exist
+        await writeIfAbsent(
+          vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l2_modules.yaml')),
+          `# L2 Modules — functional subsystems, linked to an L1 tag\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   l1_tag_id: <L1 tag id>\n#   source_paths: []\n`
+        );
+        await writeIfAbsent(
+          vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l3_router.yaml')),
+          `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`
+        );
+
+        await store.load();
         void vscode.window.showInformationMessage(
-          'Docuvia: l1_tags.yaml updated from @docuvia chat.'
+          'Docuvia: l1_tags.yaml written and knowledge graph initialized.'
         );
       }
     )
@@ -297,8 +326,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         void vscode.window.showWarningMessage('Docuvia: Select code or text to search.');
         return;
       }
-      const selectedText = editor.document.getText(editor.selection);
-      await executeSearch(context, centralClient, selectedText.trim());
+      // BUG N-2 fix: cap query length to 2000 chars to prevent sending entire files to server
+      const MAX_QUERY_LENGTH = 2000;
+      const rawText = editor.document.getText(editor.selection).trim();
+      const selectedText = rawText.length > MAX_QUERY_LENGTH
+        ? rawText.slice(0, MAX_QUERY_LENGTH)
+        : rawText;
+      if (rawText.length > MAX_QUERY_LENGTH) {
+        void vscode.window.showWarningMessage(
+          `Docuvia: Selection was too long (${rawText.length} chars) and was truncated to ${MAX_QUERY_LENGTH} chars for search.`
+        );
+      }
+      await executeSearch(context, centralClient, selectedText);
     })
   );
 }
@@ -378,14 +417,16 @@ async function initProject(_context: vscode.ExtensionContext, store: KnowledgeSt
     if (choice !== 'Overwrite') return;
   }
 
+  // BUG G-1 fix: validate that project name is not empty
   const projectName = await vscode.window.showInputBox({
     prompt: 'Enter the name of your project',
     placeHolder: path.basename(targetRoot),
-    value: path.basename(targetRoot)
+    value: path.basename(targetRoot),
+    validateInput: (v) => v.trim().length === 0 ? 'Project name cannot be empty' : null,
   });
 
-  if (projectName === undefined) {
-    return; // User cancelled
+  if (projectName === undefined || projectName.trim().length === 0) {
+    return; // User cancelled or submitted empty
   }
 
   const docuviaUri = vscode.Uri.file(path.join(targetRoot, '.docuvia'));
@@ -484,7 +525,8 @@ async function addDecision(
 
   const modules = snapshot.modules ?? [];
   const moduleItems: (vscode.QuickPickItem & { id: string })[] = modules.map(m => ({ label: m.name, description: m.slug, id: m.id }));
-  moduleItems.push({ label: '$(add) Create new module later...', id: 'unassigned', description: 'Assign to a module later' });
+  // BUG C-2 fix: use empty string "" sentinel instead of "unassigned"
+  moduleItems.push({ label: '$(add) Create new module later...', id: '', description: 'Assign to a module later' });
 
   const picked = await vscode.window.showQuickPick(moduleItems, { placeHolder: 'Select L2 module (or leave unassigned)' });
   if (!picked) return;
@@ -505,9 +547,39 @@ async function addDecision(
 
   const template = `${frontmatter}\n\n${bodySection}`;
 
-  const filePath = path.join(targetRoot, '.docuvia', 'l3_decisions', `${slug}.md`);
+  // BUG C-3 fix: guard against slug collision by appending a numeric suffix
+  let finalSlug = slug;
+  let attempt = 0;
+  while (true) {
+    const candidatePath = path.join(targetRoot, '.docuvia', 'l3_decisions', `${finalSlug}.md`);
+    try {
+      await vscode.workspace.fs.stat(vscode.Uri.file(candidatePath));
+      // File exists — try next suffix
+      attempt++;
+      finalSlug = `${slug}-${attempt}`;
+    } catch {
+      // File does not exist — safe to write
+      break;
+    }
+  }
+
+  const filePath = path.join(targetRoot, '.docuvia', 'l3_decisions', `${finalSlug}.md`);
   const fileUri = vscode.Uri.file(filePath);
   await vscode.workspace.fs.writeFile(fileUri, Buffer.from(template, 'utf-8'));
+
+  // BUG C-1 fix: update l3_router.yaml immediately after writing the markdown file
+  const routerUri = vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l3_router.yaml'));
+  let existingRouter: unknown[] = [];
+  try {
+    const { parse: parseYaml, stringify: stringifyYaml } = await import('yaml');
+    const routerBytes = await vscode.workspace.fs.readFile(routerUri);
+    const parsed = parseYaml(Buffer.from(routerBytes).toString('utf-8'));
+    if (Array.isArray(parsed)) existingRouter = parsed;
+    existingRouter.push({ id, l2_module_id: picked.id, slug: finalSlug, title, file_path: `l3_decisions/${finalSlug}.md` });
+    await vscode.workspace.fs.writeFile(routerUri, Buffer.from(stringifyYaml(existingRouter), 'utf-8'));
+  } catch {
+    // router file absent or unreadable — store.load() will still pick up the decision via full directory scan
+  }
 
   // Ensure knowledge store is immediately synced after writing
   await store.load();

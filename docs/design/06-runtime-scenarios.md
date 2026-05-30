@@ -1,0 +1,192 @@
+# 6. Runtime View
+
+## 6.1 Scenario: Git Repository Ingestion
+
+A developer registers a Git repository and triggers ingestion from the kg-engine UI.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant FE as kg-engine (React)
+    participant API as api-server (Express)
+    participant GIT as Git CLI
+    participant DB as PostgreSQL
+
+    User->>FE: Click "Ingest" on project page
+    FE->>API: POST /projects/:id/ingest/git { mode: "incremental" }
+    API->>DB: SELECT lastGitIngestedAt FROM projects WHERE id = :id
+    API->>GIT: execFile("git", ["log", "--after=<cursor>", "--format=..."])
+    GIT-->>API: Raw commit list (stdout)
+    API->>API: scoreCommit() — filter low-signal commits
+    API->>DB: INSERT INTO commits (hash, message, diff, authoredAt, projectId)
+    API-->>FE: 200 { ingested: N, skipped: M, mode: "incremental" }
+    FE-->>User: Show IngestResult toast
+```
+
+---
+
+## 6.2 Scenario: Knowledge Generation Pipeline (Commit → L1/L2/L3)
+
+The generate pipeline transforms raw commits into structured knowledge graph nodes.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant FE as kg-engine (React)
+    participant API as api-server
+    participant LLM as LLM API
+    participant DB as PostgreSQL
+
+    User->>FE: Click "Generate" on pipeline page
+    FE->>API: POST /projects/:id/generate
+    API->>DB: SELECT * FROM commits WHERE processedAt IS NULL AND projectId = :id
+
+    Note over API,LLM: Step 1 — L1 Tagging
+    API->>LLM: Classify commit message → L1 tags (with prompt_template override)
+    LLM-->>API: ["Security", "Build System", ...]
+
+    Note over API,LLM: Step 2 — L2 Extraction
+    API->>LLM: Extract module/package from diff + path
+    LLM-->>API: L2 node candidates (name, type, embedding request)
+    API->>LLM: POST /v1/embeddings for each L2 node
+    LLM-->>API: Embedding vectors
+
+    Note over API,LLM: Step 3 — L3 Generation
+    API->>DB: SELECT * FROM correction_examples WHERE projectId = :id (few-shot)
+    API->>LLM: Generate decision record for each L2 node (with few-shot examples)
+    LLM-->>API: L3 nodes (title, content, type)
+    API->>LLM: POST /v1/embeddings for each L3 node
+    LLM-->>API: Embedding vectors
+
+    Note over API,DB: Step 4 — Cross-project & Noise Detection
+    API->>DB: Cosine similarity check across other projects' L2 embeddings
+    API->>DB: Detect near-duplicate L1 tags
+    API->>DB: INSERT INTO review_tasks (anchor/merge/reject types)
+    API->>DB: UPDATE commits SET processedAt = NOW()
+
+    API-->>FE: 200 { l1Created: N, l2Created: M, l3Created: K, reviewTasksCreated: J }
+    FE-->>User: Show pipeline result
+```
+
+---
+
+## 6.3 Scenario: Agentic RAG Query (MCP)
+
+An AI IDE sends a natural language query via MCP. The intent router classifies it and routes to the best retrieval strategy.
+
+```mermaid
+sequenceDiagram
+    participant CLIENT as MCP Client (Cursor/Copilot)
+    participant API as api-server
+    participant LLM as LLM API
+    participant DB as PostgreSQL
+
+    CLIENT->>API: POST /mcp/query { query: "How does auth work?" }
+    API->>LLM: Classify intent: vector | graph | direct | hybrid
+    LLM-->>API: "vector"
+
+    alt vector
+        API->>LLM: POST /v1/embeddings { input: query }
+        LLM-->>API: Query embedding vector
+        API->>DB: SELECT l3_nodes, cosine_similarity(embedding, queryVec) ORDER BY sim DESC LIMIT 10
+        DB-->>API: Top-K L3 nodes
+    else graph
+        API->>DB: MATCH l2_nodes WHERE name LIKE query → traverse node_links
+        DB-->>API: Graph neighbourhood
+    else direct
+        API->>DB: Full-text search on l3_nodes.content
+        DB-->>API: Direct match results
+    else hybrid
+        API->>API: Run vector + graph; merge and re-rank results
+    end
+
+    API-->>CLIENT: 200 { results: [...ranked nodes], strategy: "vector" }
+```
+
+---
+
+## 6.4 Scenario: Review Task Resolution
+
+A reviewer approves an AI-generated L3 decision, creating a correction example for future pipeline runs.
+
+```mermaid
+sequenceDiagram
+    actor Reviewer
+    participant FE as Review UI (kg-engine)
+    participant API as api-server
+    participant DB as PostgreSQL
+
+    Reviewer->>FE: Open Review Queue
+    FE->>API: GET /review_tasks?projectId=:id&status=pending
+    API-->>FE: List of pending review_tasks
+
+    Reviewer->>FE: Click "Anchor" on an L3 node review task
+    FE->>API: POST /review_tasks/:id/resolve { action: "anchor" }
+    API->>DB: UPDATE review_tasks SET status = "resolved", resolution = "anchor"
+    API->>DB: INSERT INTO correction_examples (originalOutput, correctedOutput, projectId)
+    API-->>FE: 200 { resolved: true }
+    FE-->>Reviewer: Task removed from queue
+```
+
+---
+
+## 6.5 Scenario: VS Code Knowledge Extraction
+
+A developer triggers extraction from VS Code, which sends a task to the api-server's generate pipeline and stores the result in KnowledgeStore.
+
+See [artifacts/vscode-client/design/command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) for the detailed command flow.
+
+```mermaid
+sequenceDiagram
+    actor Dev
+    participant VSC as VS Code Extension
+    participant KS as KnowledgeStore
+    participant TR as TaskRunner
+    participant API as api-server
+
+    Dev->>VSC: Run Command: docuvia.runExtraction
+    VSC->>TR: TaskRunner.runExtraction(workspaceUri)
+    TR->>API: POST /extensions/vscode/extract { projectId, workspacePath }
+    API->>API: Trigger generate pipeline (async)
+    API-->>TR: 202 { taskId }
+    TR->>TR: Poll GET /extensions/vscode/tasks/:taskId until complete
+    TR->>KS: KnowledgeStore.updateFromResult(result)
+    KS->>KS: Write l2_modules.yaml + l3_decisions/*.yaml to .docuvia/
+    KS-->>VSC: Emit onDidChange event
+    VSC->>VSC: KnowledgeGraphTreeProvider.refresh()
+    VSC-->>Dev: TreeView updated with new nodes
+```
+
+---
+
+## 6.6 Scenario: GitHub PR Analysis
+
+A developer opens a PR. Docuvia receives the webhook, looks up affected L2/L3 nodes, and comments on the PR with relevant knowledge graph context.
+
+```mermaid
+sequenceDiagram
+    participant GH as GitHub
+    participant API as api-server
+    participant LLM as LLM API
+    participant DB as PostgreSQL
+
+    GH->>API: POST /github/webhooks { event: "pull_request", action: "opened" }
+    API->>API: Verify HMAC-SHA256 signature (GITHUB_WEBHOOK_SECRET)
+    API->>API: github-client.fetchPrCommits(pr.number)
+    API->>API: github-client.fetchPrDiff(pr.number)
+    API->>DB: Lookup l2_nodes matching changed file paths
+    API->>DB: SELECT l3_nodes WHERE l2NodeId IN (matched nodes)
+    API->>LLM: Summarize relevant L3 decisions for PR context
+    LLM-->>API: PR comment text
+    API->>GH: github-client.postPrComment(pr.number, commentText)
+    GH-->>API: 201 Created
+    API->>DB: INSERT INTO pull_requests (prNumber, projectId, analysisResult)
+```
+
+---
+
+## References
+
+- [artifacts/vscode-client/design/command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) — Full VS Code extraction flow
+- [artifacts/vscode-client/design/chat-participant/slash-commands.md](../../artifacts/vscode-client/design/chat-participant/slash-commands.md) — Chat participant command flows
+- [08-crosscutting-concepts.md](08-crosscutting-concepts.md#81-domain-model) — Domain model for L1/L2/L3 entities

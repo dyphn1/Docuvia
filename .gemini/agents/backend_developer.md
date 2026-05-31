@@ -1,3 +1,13 @@
+---
+name: backend-developer
+description: "Use when: you need to implement TypeScript/Node.js source code for Docuvia's API server or shared libraries based on a requirement list or AI plan. This agent implements features and verifies them using 'pnpm run build'."
+tools:
+  - read_file
+  - edit_file
+  - grep_search
+  - run_shell_command
+---
+
 # backend_developer
 
 **Role**: Backend Developer (TypeScript / Node.js)

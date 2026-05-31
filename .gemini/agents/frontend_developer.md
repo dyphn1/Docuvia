@@ -1,3 +1,13 @@
+---
+name: frontend-developer
+description: "Use when: you need to implement React/Vite UI components, pages, or hooks for the kg-engine frontend based on a requirement list or AI plan."
+tools:
+  - read_file
+  - edit_file
+  - grep_search
+  - run_shell_command
+---
+
 # frontend_developer
 
 **Role**: Frontend Developer (React + Vite)

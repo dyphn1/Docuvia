@@ -36,9 +36,13 @@ Act as the Master Orchestrator for this workspace. When initiating a complex mul
 
 | Agent                  | File                                                                               | When to Use                                |
 | ---------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------ |
-| Requirement Analyzer   | [`agents/requirement-analyzer.agent.md`](agents/requirement-analyzer.agent.md)     | New feature planning, ambiguity resolution |
-| Backend Developer      | [`agents/backend-developer.agent.md`](agents/backend-developer.agent.md)           | Express.js / Node.js implementation        |
-| Frontend Developer     | [`agents/frontend-developer.agent.md`](agents/frontend-developer.agent.md)         | React + Vite UI changes                    |
-| Database Schema Expert | [`agents/database-schema-expert.agent.md`](agents/database-schema-expert.agent.md) | Drizzle ORM schema / migrations            |
-| API Architect          | [`agents/api-architect.agent.md`](agents/api-architect.agent.md)                   | OpenAPI spec + Orval codegen               |
-| Task Verifier          | [`agents/task-verifier.agent.md`](agents/task-verifier.agent.md)                   | Post-implementation verification           |
+| Requirement Analyzer   | [`agents/requirement-analyzer.agent.md`](agents/requirement-analyzer.agent.md)       | New feature planning, ambiguity resolution        |
+| Backend Developer      | [`agents/backend-developer.agent.md`](agents/backend-developer.agent.md)             | Express.js / Node.js implementation               |
+| Frontend Developer     | [`agents/frontend-developer.agent.md`](agents/frontend-developer.agent.md)           | React + Vite UI changes                           |
+| Database Schema Expert | [`agents/database-schema-expert.agent.md`](agents/database-schema-expert.agent.md)   | Drizzle ORM schema / migrations                   |
+| API Architect          | [`agents/api-architect.agent.md`](agents/api-architect.agent.md)                     | OpenAPI spec + Orval codegen                      |
+| Task Verifier          | [`agents/task-verifier.agent.md`](agents/task-verifier.agent.md)                     | Post-implementation verification                  |
+| Document Writer (MD)   | [`agents/document-writer-md.agent.md`](agents/document-writer-md.agent.md)           | Markdown documentation only, no source code       |
+| Memory Keeper          | [`agents/memory-keeper.agent.md`](agents/memory-keeper.agent.md)                     | Consolidate task learnings into project memory    |
+| Shell Script Expert    | [`agents/shell-script-expert.agent.md`](agents/shell-script-expert.agent.md)         | Bash, batch, and CI pipeline scripts              |
+| Tool Maker             | [`agents/tool-maker.agent.md`](agents/tool-maker.agent.md)                           | Utility scripts for AI automation reliability     |

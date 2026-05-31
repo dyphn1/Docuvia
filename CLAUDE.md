@@ -37,12 +37,16 @@ Each agent below is a thin adapter that loads the canonical spec from `.github/a
 | database-schema-expert | [`.claude/agents/database-schema-expert.md`](.claude/agents/database-schema-expert.md) | [`.github/agents/database-schema-expert.agent.md`](.github/agents/database-schema-expert.agent.md) |
 | api-architect | [`.claude/agents/api-architect.md`](.claude/agents/api-architect.md) | [`.github/agents/api-architect.agent.md`](.github/agents/api-architect.agent.md) |
 | task-verifier | [`.claude/agents/task-verifier.md`](.claude/agents/task-verifier.md) | [`.github/agents/task-verifier.agent.md`](.github/agents/task-verifier.agent.md) |
+| document-writer-md | [`.claude/agents/document-writer-md.md`](.claude/agents/document-writer-md.md) | [`.github/agents/document-writer-md.agent.md`](.github/agents/document-writer-md.agent.md) |
+| memory-keeper | [`.claude/agents/memory-keeper.md`](.claude/agents/memory-keeper.md) | [`.github/agents/memory-keeper.agent.md`](.github/agents/memory-keeper.agent.md) |
+| shell-script-expert | [`.claude/agents/shell-script-expert.md`](.claude/agents/shell-script-expert.md) | [`.github/agents/shell-script-expert.agent.md`](.github/agents/shell-script-expert.agent.md) |
+| tool-maker | [`.claude/agents/tool-maker.md`](.claude/agents/tool-maker.md) | [`.github/agents/tool-maker.agent.md`](.github/agents/tool-maker.agent.md) |
 
 ---
 
 ## Claude-Specific Notes
 
-- Tool names use Claude Code syntax: `Read`, `Edit`, `Glob`, `Grep`, `Bash`, `AskUserQuestion`
-- Always include `AskUserQuestion` when specifying a restricted tool list to prevent deadlock
+- Tool names use Claude Code syntax: `Read`, `Edit`, `Glob`, `Grep`, `Bash`
+- Note: `AskUserQuestion` is **not available** to subagents (Claude Code platform restriction)
 - Subagents cannot spawn further subagents — output a Handover Block instead
 - Save AI implementation plans at `docs/ai_plans/implement_<feature-name>.md`

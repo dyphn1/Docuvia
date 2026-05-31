@@ -1,3 +1,12 @@
+---
+name: requirement-analyzer
+description: "Use when: analyzing user requirements, creating AI implementation documents, and proposing the best agent for execution."
+tools:
+  - read_file
+  - edit_file
+  - grep_search
+---
+
 # requirement_analyzer
 
 **Role**: Requirement Analyzer

@@ -15,11 +15,12 @@
 | -------------------------------- | --------------------------------------------------------------------- |
 | `kg-engine/`                     | Frontend React UI (Dashboard, Pipeline, Query, Review)                |
 | `api-server/`                    | Express API, MCP endpoints, Agentic RAG routing, Ingestion logic      |
+| `vscode-client/`                 | VS Code Extension — tree view, Copilot Chat participant, CodeLens/Hover (see `artifacts/vscode-client/design/ROUTER.md`) |
+| `mockup-sandbox/`                | UI prototyping and visual component sandbox (not production)          |
 | `api-spec/`                      | `openapi.yaml` — Single source of truth for all API contracts         |
 | `db/`                            | Drizzle ORM schema and migrations (`projects.ts`, `commits.ts`, etc.) |
 | `integrations-openai-ai-server/` | OpenAI-compatible client wrapper                                      |
-| `vscode-client/`                 | VS Code Extension for editor integration (see `artifacts/vscode-client/design/ROUTER.md` for architecture details) |
-| `docs/`                          | Roadmap, gitbook content, phase checklists                            |
+| `docs/`                          | Roadmap, gitbook content, phase checklists, AI plans, design docs     |
 
 ## Development Commands
 
@@ -80,8 +81,20 @@ _(Unit tests are colocated with source as `*.unit.test.ts`; package integration 
 This project is scaffolded with the `create-agent-launcher` workflow. When implementing complex features or making cross-package changes, you should utilize the built-in subagents rather than attempting to write all code in a single turn.
 
 - **Agent Launcher**: Use the `agent-launcher` skill to orchestrate multi-step implementations.
-- **Available Agents**: Found in `.github/agents/` (e.g., `Requirement Analyzer`, `Backend Developer`, `Frontend Developer`, `API Architect`, `Task Verifier`).
-- **Instructions**: See `.github/copilot-instructions.md` for the state machine orchestrator rules.
+- **Available Agents**: All 10 agents are defined in `.github/agents/`. Instructions for the state machine orchestrator loop are in `.github/copilot-instructions.md`.
+
+| Agent                  | When to Use                                                                 |
+| ---------------------- | --------------------------------------------------------------------------- |
+| Requirement Analyzer   | New feature planning, ambiguity resolution                                  |
+| Backend Developer      | Express.js / Node.js implementation                                         |
+| Frontend Developer     | React + Vite UI changes                                                     |
+| Database Schema Expert | Drizzle ORM schema / migrations                                             |
+| API Architect          | OpenAPI spec + Orval codegen                                                |
+| Task Verifier          | Post-implementation verification                                            |
+| Document Writer (MD)   | Markdown documentation only, no source code                                 |
+| Memory Keeper          | Consolidate task learnings into project memory after successful verification |
+| Shell Script Expert    | Bash, batch, and CI pipeline scripts                                        |
+| Tool Maker             | Utility scripts for AI automation reliability                               |
 
 ## Conventions
 
@@ -97,6 +110,26 @@ This project is scaffolded with the `create-agent-launcher` workflow. When imple
 - **Agentic RAG**: `intent-router.ts` handles the 4-way LLM-based routing (vector, graph, direct, hybrid) to answer queries.
 - **Human-in-the-loop**: `review_tasks.ts` stores the review queue where humans anchor/approve AI-generated knowledge.
 
+### DB Schema Tables (`lib/db/src/schema/`)
+
+`projects`, `commits`, `documents`, `activity_log`, `l1_tags`, `l2_nodes`, `l3_nodes`, `node_links`, `review_tasks`, `correction_examples`, `pull_requests`, `project_integrations`, `notifications`, `subscriptions`, `llm_configs`, `prompt_templates`
+
+### API Server Routes (`artifacts/api-server/src/routes/`)
+
+`projects`, `commits`, `l1_tags`, `l2_nodes`, `l3_nodes`, `review_tasks`, `dashboard`, `ingest`, `generate`, `export`, `search`, `mcp`, `extensions_vscode`, `integrations`, `templates`, `github_webhooks`, `pull_requests`, `notifications`, `subscriptions`, `llm_config`, `health`
+
+### API Server Lib (`artifacts/api-server/src/lib/`)
+
+- `intent-router.ts` — 4-way Agentic RAG routing (vector / graph / direct / hybrid)
+- `document-parser.ts` — PDF, Word, PPTX, Markdown ingestion
+- `build-artifact-parser.ts` — Build artifact analysis
+- `embedding.ts` — Vector embedding generation
+- `github-client.ts` — GitHub API integration
+- `svn-client.ts` — SVN repository client
+- `slack-teams-client.ts` — Slack / Teams notification integration
+- `extensions-service.ts` — VS Code extension bridge
+- `logger.ts` — Structured logging
+
 ## Do Not Edit
 
 - `lib/api-client-react/src/generated/` — Auto-generated React Query hooks.
@@ -108,3 +141,4 @@ This project is scaffolded with the `create-agent-launcher` workflow. When imple
 - **PORT Environment Variable**: The API server throws an error on startup if `PORT` is missing.
 - **Test Suite**: Vitest discovers colocated unit tests and per-package integration tests. Coverage reports are generated in `coverage/`; add module-specific thresholds as pure logic coverage is introduced.
 - **Ollama**: While earlier docs mentioned Gemma3/Ollama, the current implementation defaults strictly to an OpenAI-compatible endpoint. Do not attempt to use native Ollama adapters.
+- **Supply-Chain Defense**: `minimumReleaseAge: 1440` in `pnpm-workspace.yaml` requires all npm packages to be at least 1 day old before installation. Do NOT disable this setting. Use `minimumReleaseAgeExclude` sparingly for trusted organizations only.

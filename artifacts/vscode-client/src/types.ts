@@ -71,3 +71,50 @@ export const GlobalConfigSchema = z.object({
 });
 
 export type GlobalConfig = z.infer<typeof GlobalConfigSchema>;
+
+// ─── API Snapshot (from server's ProjectGraph endpoint) ───────────────────────
+
+export interface ApiL1Tag {
+  id: number;
+  name: string;
+  category: string;
+  description?: string | null;
+}
+
+export interface ApiL2Node {
+  id: number;
+  projectId: number;
+  name: string;
+  type: string;
+  description?: string | null;
+  l1TagIds: number[];
+}
+
+export interface ApiL3Node {
+  id: number;
+  l2NodeId: number;
+  title: string;
+  content?: string | null;
+  nodeType: string;
+}
+
+export interface KnowledgeSnapshot {
+  projectId: number;
+  l1Tags: ApiL1Tag[];
+  l2Nodes: ApiL2Node[];
+  l3Nodes: ApiL3Node[];
+}
+
+// ─── Manifest (.docuvia/manifest.yaml) ────────────────────────────────────────
+
+export const ManifestModuleSchema = z.object({
+  name: z.string().min(1),
+  path_patterns: z.array(z.string()).default([]),
+});
+export type ManifestModule = z.infer<typeof ManifestModuleSchema>;
+
+export const ManifestSchema = z.object({
+  project_id: z.number().optional(),
+  modules: z.array(ManifestModuleSchema).default([]),
+});
+export type Manifest = z.infer<typeof ManifestSchema>;

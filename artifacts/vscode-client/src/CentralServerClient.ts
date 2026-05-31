@@ -1,5 +1,6 @@
 import { CredentialManager } from './CredentialManager.js';
 import { KnowledgeStore } from './KnowledgeStore.js';
+import { KnowledgeSnapshot } from './types.js';
 
 /** Request body for POST /query */
 export interface CentralQueryRequest {
@@ -77,5 +78,63 @@ export class CentralServerClient {
   async checkAuthorizationScope(_scope: string): Promise<boolean> {
     // Default: allow all for simple/internal deployments
     return true;
+  }
+
+  /**
+   * Triggers the sync pipeline for a project branch push.
+   * Calls POST /sync with the project ID, branch name, and commit hashes.
+   */
+  async sync(projectId: number, branch: string, commits: string[]): Promise<void> {
+    const serverUrl = this._store.globalConfig?.server_url;
+    if (!serverUrl) return;
+
+    const token = await this._creds.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['x-docuvia-token'] = token;
+    }
+
+    const response = await fetch(`${serverUrl}/sync`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ projectId, pushedBranch: branch, pushedCommits: commits }),
+    });
+
+    if (response.status === 401) {
+      throw new CentralServerAuthError();
+    }
+    if (!response.ok) {
+      throw new Error(`Sync failed: ${response.status}`);
+    }
+  }
+
+  /**
+   * Pulls the full knowledge snapshot for a project from the server.
+   * Calls GET /projects/{id}/graph which returns L1 tags, L2 nodes, and L3 nodes.
+   */
+  async pullSnapshot(projectId: number): Promise<KnowledgeSnapshot> {
+    const serverUrl = this._store.globalConfig?.server_url;
+    if (!serverUrl) {
+      throw new Error('Server URL not configured');
+    }
+
+    const token = await this._creds.getToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['x-docuvia-token'] = token;
+    }
+
+    const response = await fetch(`${serverUrl}/projects/${projectId}/graph`, { headers });
+
+    if (response.status === 401) {
+      throw new CentralServerAuthError();
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to pull snapshot: ${response.status}`);
+    }
+
+    return response.json() as Promise<KnowledgeSnapshot>;
   }
 }

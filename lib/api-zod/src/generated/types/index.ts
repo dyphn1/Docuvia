@@ -8,6 +8,7 @@
 
 export * from "./activityItem";
 export * from "./activityItemType";
+export * from "./affiliateDocumentInput";
 export * from "./agenticEntities";
 export * from "./agenticSearchResult";
 export * from "./agenticSearchResultNodeLayer";
@@ -19,6 +20,7 @@ export * from "./document";
 export * from "./documentDocType";
 export * from "./documentIngestInput";
 export * from "./documentIngestInputDocType";
+export * from "./documentStatus";
 export * from "./documentUploadInput";
 export * from "./documentUploadInputDocType";
 export * from "./errorResponse";
@@ -113,6 +115,8 @@ export * from "./subscriptionListResponse";
 export * from "./svnIngestInput";
 export * from "./svnIngestInputMode";
 export * from "./svnIngestResult";
+export * from "./syncInput";
+export * from "./syncResponse";
 export * from "./testProjectIntegration200";
 export * from "./vscodeCreateDecisionInput";
 export * from "./vscodeFileContextParams";

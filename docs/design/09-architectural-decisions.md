@@ -15,6 +15,11 @@ Additional implementation planning documents are stored in [`docs/ai_plans/`](..
 | [ADR-005](#adr-005-mvc-pattern-for-ui-layers) | MVC Pattern for UI Layers | Accepted |
 | [ADR-006](#adr-006-human-in-the-loop-via-review-queue) | Human-in-the-Loop via Review Queue | Accepted |
 | [ADR-007](#adr-007-incremental-ingestion-via-cursor-columns) | Incremental Ingestion via Cursor Columns | Accepted |
+| [ADR-008](#adr-008-orphan-branch-as-knowledge-store) | Orphan Git Branch as Knowledge Store | Accepted |
+| [ADR-009](#adr-009-l3-semantic-deduplication-via-occurrence-count) | L3 Semantic Deduplication via Occurrence Count | Accepted |
+| [ADR-010](#adr-010-l2-bootstrap-ai-discovery-to-path-rules) | L2 Bootstrap: AI Discovery to Path Rules | Accepted |
+| [ADR-011](#adr-011-two-phase-knowledge-validity) | Two-Phase Knowledge Validity | Accepted |
+| [ADR-012](#adr-012-document-misc-pool) | Document Misc Pool for Unaffiliated Documents | Accepted |
 
 ---
 
@@ -167,3 +172,136 @@ The following topics require future architectural decisions. See [`docs/ai_plans
 | Multi-tenant SaaS architecture | Single-tenant in v1 | See [docs/saas-commercialization-roadmap.md](../saas-commercialization-roadmap.md) |
 | Local LLM adapter (Ollama native) | OpenAI-compatible only | See ADR-004 consequences |
 | VS Code extension distribution (`.vsix`) | No CI packaging step | See [11-risks-and-debt.md D-02](11-risks-and-debt.md) |
+
+---
+
+### ADR-008: Orphan Git Branch as Knowledge Store
+
+**Status:** Accepted
+
+**Context:**  
+The original design stored knowledge in PostgreSQL exclusively, with `.docuvia/` YAML files as a local working copy managed by the VS Code extension. This created two problems: (1) `.docuvia/` files were too large to commit into the working tree for large projects, as every branch checkout would carry the entire knowledge snapshot; (2) there was no mechanism to sync knowledge between developers without a live server connection.
+
+**Decision:**  
+Knowledge is stored in three layers with distinct responsibilities:
+- **PostgreSQL** — full company-wide knowledge index, query engine, and review queue backend.
+- **`docuvia-knowledge` orphan git branch** — the canonical, human-readable YAML/Markdown knowledge files, versioned independently of source code. Managed by the Docuvia server. Developers fetch this branch to get the latest knowledge snapshot.
+- **`.docuvia/` (working tree)** — a lightweight manifest (`manifest.yaml`, `config.yaml`, `.snapshot-ref`) that points to the orphan branch HEAD. Committed to the source repo. Does NOT contain full knowledge content.
+
+The git hook (`post-push`) triggers `docuvia sync`, which uploads local changes to the server. The server writes back to the orphan branch.
+
+**Consequences:**
+- ✅ Working tree is clean — no knowledge bloat regardless of project size
+- ✅ Knowledge versioning is native git — `git log docuvia-knowledge` shows knowledge evolution
+- ✅ Branch-agnostic — checking out any feature branch does not change the knowledge view
+- ✅ Offline capability via `git fetch origin docuvia-knowledge` before going offline
+- ⚠️ `docuvia sync` CLI is a new component that does not yet exist
+- ⚠️ VS Code `KnowledgeStore` must be rewritten — current implementation reads `.docuvia/` files directly from the working tree filesystem; it must instead read from the orphan branch ref (via server API or `git show`)
+
+---
+
+### ADR-009: L3 Semantic Deduplication via Occurrence Count
+
+**Status:** Accepted
+
+**Context:**  
+The generate pipeline inserts a new L3 node for every commit processed, with no deduplication. A large project with many commits touching the same design concern (e.g., “JWT is used for authentication”) would produce dozens of near-identical L3 nodes, violating the principle that knowledge should be condensed, not accumulated redundantly.
+
+**Decision:**  
+Before inserting a new L3 node, the pipeline computes cosine similarity between the candidate's embedding and all existing L3 nodes under the same L2 parent. If similarity ≥ 0.85 (configurable in `.docuvia/config.yaml` as `similarity_threshold`):
+1. The new node is NOT inserted.
+2. The matching existing node's `occurrenceCount` is incremented.
+3. The source commit hash is appended to the existing node's `sourceCommits` JSONB array.
+
+When `occurrenceCount` reaches a threshold (default: 30, configurable as `condensation_threshold`), an AI condensation run re-synthesizes the node's `content` field using all `sourceCommits` as input. Whether condensation triggers a review task is configurable (`condensation_review_required`, default: false).
+
+A DB index on `l3_nodes(l2NodeId)` with pre-loaded embeddings makes the per-node scan efficient at L2-scoped scale.
+
+**Consequences:**
+- ✅ Knowledge converges — frequently-recurring design decisions become richer over time
+- ✅ `occurrenceCount` is itself a quality signal: high count = core architectural decision
+- ✅ Full evidence trail preserved via `sourceCommits[]`
+- ✅ Reverse index (`commit_hash → l3_node_ids`) enables “what knowledge did this commit contribute to?”
+- ⚠️ Similarity scan adds latency per L3 candidate — acceptable at L2-scoped scale but must be monitored
+- ⚠️ `l3_nodes` schema requires new columns: `occurrenceCount integer`, `sourceCommits jsonb`, `validityStatus text`
+
+---
+
+### ADR-010: L2 Bootstrap — AI Discovery to Path Rules
+
+**Status:** Accepted
+
+**Context:**  
+For a new project with no prior knowledge, there is no module map. The early design required a human to pre-define L2 modules before any generate run, which is impossible when “we don’t even know what the project does yet” (the core Docuvia use case: legacy projects with no documentation).
+
+**Decision:**  
+The first generate run uses a progressive batch mode: commits are processed in groups of 20. Each batch's LLM prompt includes the L2 module list produced by previous batches, enabling the AI to self-correct module names and boundaries across batches (automatic, no human review needed for cross-batch merges). After all batches complete, the system presents the discovered L2 module map to the project manager for confirmation.
+
+Upon human confirmation:
+- L2 module boundaries are written as glob path patterns to `.docuvia/config.yaml` under `modules:`.
+- All future commits are assigned to L2 modules deterministically by path matching — LLM is no longer used for L2 assignment.
+- Historical `commit_l2_links` rows are flagged with `reindexRequired: true` and retroactively corrected on the next generate run.
+
+**Consequences:**
+- ✅ Zero-configuration cold start — Docuvia can onboard any unknown legacy project
+- ✅ L2 boundaries become stable and deterministic after bootstrap
+- ✅ Path patterns are human-readable and editable without re-running AI
+- ⚠️ Bootstrap batch mode is a distinct pipeline mode from normal incremental generate — must be implemented separately
+- ⚠️ `l2_nodes` schema requires new columns: `pathPatterns jsonb`, `reindexRequired boolean`
+- ⚠️ `commit_l2_links` junction table must be created; `commits.l2NodeId` column is deprecated
+
+---
+
+### ADR-011: Two-Phase Knowledge Validity
+
+**Status:** Accepted
+
+**Context:**  
+AI-generated knowledge nodes can originate from commits on any branch — including feature branches that are later abandoned. Treating all generated knowledge as equally valid regardless of its source branch’s fate would pollute the knowledge graph with decisions from discarded design attempts.
+
+**Decision:**  
+L3 knowledge validity is determined by two independent gates:
+
+**Phase 1 — Local Review (Quality Gate):**  
+The developer or reviewer inspects the AI-generated content in VS Code or the Web UI. They confirm whether the AI's interpretation is accurate. This gate ensures content quality and is the current `review_tasks` mechanism. Passing Phase 1 sets status to `pending`.
+
+**Phase 2 — Merge Gate (Validity Gate):**  
+When the `docuvia sync` hook fires on `git push`, the server checks whether the source commits have been merged into the main/default branch. Commits confirmed merged set their associated L3 nodes to `valid`. Commits on branches that are later deleted without merging cause their L3 nodes to be set to `orphaned` (archived by default, not shown in standard queries).
+
+Both phases are required for `valid` status. A human-reviewed L3 node from an abandoned branch remains `pending` until/unless the branch is merged, then transitions to `valid`.
+
+**Validity status enum:** `pending | valid | orphaned`
+
+**MCP query behavior:** Default filter is `status = valid` only. Query parameter `include_pending=true` enables pending knowledge (e.g., for querying a specific feature branch's design decisions).
+
+**Consequences:**
+- ✅ Abandoned design attempts do not contaminate the canonical knowledge graph
+- ✅ In-progress work is visible to collaborators (with clear status labels)
+- ✅ The review queue (Phase 1) retains its existing role; Phase 2 is additive
+- ⚠️ Server must track branch merge status — requires either GitHub webhook integration or periodic polling
+- ⚠️ `l3_nodes` and `commits` tables require `validityStatus` column
+- ⚠️ `commits` table requires `branchName text` column
+
+---
+
+### ADR-012: Document Misc Pool for Unaffiliated Documents
+
+**Status:** Accepted
+
+**Context:**  
+Documents (PDF, Word, Markdown specs) uploaded to Docuvia often cannot be immediately attributed to a specific project. Forcing project assignment at upload time makes Docuvia unusable for organizations that upload company-wide specs or standards that span multiple projects.
+
+**Decision:**  
+`documents.projectId` is made nullable. Documents uploaded without a project ID enter the **misc pool** (`projectId = null`, `status = 'unaffiliated'`). The pipeline extracts text content and computes a `contentHash` (SHA-256) at upload time, but does NOT run L1/L2/L3 generation and does NOT create review tasks.
+
+When a project manager manually associates a misc pool document with a project (via Web UI), the system:
+1. Sets `documents.projectId` to the target project.
+2. Uses `contentHash` to check if this document has already been processed for this project — avoids duplicate generate runs.
+3. Promotes the document into the project's generate pipeline on next run.
+
+**Consequences:**
+- ✅ Zero-friction document ingestion — upload first, classify later
+- ✅ Company-wide specs can be associated with multiple projects over time
+- ✅ No wasted LLM calls on documents not yet ready for knowledge extraction
+- ⚠️ `documents` schema change: `projectId` must change from `NOT NULL` to nullable; add `contentHash text`, `affiliatedAt timestamp` columns
+- ⚠️ Web UI needs a “Misc Pool” view and a “Associate with Project” action

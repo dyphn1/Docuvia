@@ -14,13 +14,14 @@ export const documentTypeEnum = pgEnum("document_type", [
 
 export const documentsTable = pgTable("documents", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id")
-    .notNull()
-    .references(() => projectsTable.id, { onDelete: "cascade" }),
+  projectId: integer("project_id").references(() => projectsTable.id, { onDelete: "cascade" }),
   filename: text("filename").notNull(),
   docType: documentTypeEnum("doc_type").notNull().default("markdown"),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  contentHash: text("content_hash"),
+  affiliatedAt: timestamp("affiliated_at"),
+  status: text("status").notNull().default("unaffiliated"),
 });
 
 export const insertDocumentSchema = createInsertSchema(documentsTable).omit({

@@ -45,6 +45,8 @@ tags:
     description: VS Code extension endpoints
   - name: integrations
     description: Per-project Slack / Teams webhook integrations
+  - name: sync
+    description: Sync pipeline — branch push synchronization
 
 paths:
   /healthz:
@@ -1469,6 +1471,77 @@ paths:
         "404":
           description: Not found
 
+  /sync:
+    post:
+      operationId: syncPipeline
+      tags: [sync]
+      summary: Trigger the sync pipeline for a project branch push
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncInput"
+      responses:
+        "200":
+          description: Sync scheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SyncResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/misc:
+    get:
+      operationId: listMiscDocuments
+      tags: [documents]
+      summary: List all unaffiliated documents (projectId is null / status is unaffiliated)
+      responses:
+        "200":
+          description: List of unaffiliated documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+
+  /documents/{id}/affiliate:
+    post:
+      operationId: affiliateDocument
+      tags: [documents]
+      summary: Associate an unaffiliated document with a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AffiliateDocumentInput"
+      responses:
+        "200":
+          description: Updated document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1941,12 +2014,12 @@ components:
 
     Document:
       type: object
-      required: [id, projectId, filename, docType, createdAt]
+      required: [id, filename, docType, createdAt]
       properties:
         id:
           type: integer
         projectId:
-          type: integer
+          type: ["integer", "null"]
         filename:
           type: string
         docType:
@@ -1954,6 +2027,16 @@ components:
           enum: [markdown, txt, pdf, docx, pptx, build_artifact]
         content:
           type: string
+        contentHash:
+          type: ["string", "null"]
+          description: SHA-256 hash of raw content
+        affiliatedAt:
+          type: ["string", "null"]
+          description: ISO-8601 timestamp when document was associated with a project
+        status:
+          type: string
+          enum: [unaffiliated, affiliated]
+          default: unaffiliated
         createdAt:
           type: string
 
@@ -2632,3 +2715,35 @@ components:
           nullable: true
           items:
             type: string
+
+    SyncInput:
+      type: object
+      required: [projectId, pushedBranch, pushedCommits]
+      properties:
+        projectId:
+          type: integer
+        pushedBranch:
+          type: string
+          minLength: 1
+        pushedCommits:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        configYaml:
+          type: string
+          description: Contents of .docuvia/config.yaml
+
+    SyncResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    AffiliateDocumentInput:
+      type: object
+      required: [projectId]
+      properties:
+        projectId:
+          type: integer

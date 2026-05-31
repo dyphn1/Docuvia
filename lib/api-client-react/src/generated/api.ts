@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AffiliateDocumentInput,
   Commit,
   CommitInput,
   DashboardStats,
@@ -84,6 +85,8 @@ import type {
   SubscriptionListResponse,
   SvnIngestInput,
   SvnIngestResult,
+  SyncInput,
+  SyncResponse,
   TestProjectIntegration200,
   VscodeCreateDecisionInput,
   VscodeFileContextParams,
@@ -5055,4 +5058,230 @@ export const useTestProjectIntegration = <TError = ErrorType<void>, TContext = u
   TContext
 > => {
   return useMutation(getTestProjectIntegrationMutationOptions(options));
+};
+
+/**
+ * @summary Trigger the sync pipeline for a project branch push
+ */
+export const getSyncPipelineUrl = () => {
+  return `/api/sync`;
+};
+
+export const syncPipeline = async (
+  syncInput: SyncInput,
+  options?: RequestInit
+): Promise<SyncResponse> => {
+  return customFetch<SyncResponse>(getSyncPipelineUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(syncInput),
+  });
+};
+
+export const getSyncPipelineMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncPipeline>>,
+    TError,
+    { data: BodyType<SyncInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncPipeline>>,
+  TError,
+  { data: BodyType<SyncInput> },
+  TContext
+> => {
+  const mutationKey = ["syncPipeline"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncPipeline>>,
+    { data: BodyType<SyncInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return syncPipeline(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncPipelineMutationResult = NonNullable<Awaited<ReturnType<typeof syncPipeline>>>;
+export type SyncPipelineMutationBody = BodyType<SyncInput>;
+export type SyncPipelineMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Trigger the sync pipeline for a project branch push
+ */
+export const useSyncPipeline = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncPipeline>>,
+    TError,
+    { data: BodyType<SyncInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncPipeline>>,
+  TError,
+  { data: BodyType<SyncInput> },
+  TContext
+> => {
+  return useMutation(getSyncPipelineMutationOptions(options));
+};
+
+/**
+ * @summary List all unaffiliated documents (projectId is null / status is unaffiliated)
+ */
+export const getListMiscDocumentsUrl = () => {
+  return `/api/documents/misc`;
+};
+
+export const listMiscDocuments = async (options?: RequestInit): Promise<Document[]> => {
+  return customFetch<Document[]>(getListMiscDocumentsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMiscDocumentsQueryKey = () => {
+  return [`/api/documents/misc`] as const;
+};
+
+export const getListMiscDocumentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMiscDocuments>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listMiscDocuments>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMiscDocumentsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMiscDocuments>>> = ({ signal }) =>
+    listMiscDocuments({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMiscDocuments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMiscDocumentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMiscDocuments>>
+>;
+export type ListMiscDocumentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all unaffiliated documents (projectId is null / status is unaffiliated)
+ */
+
+export function useListMiscDocuments<
+  TData = Awaited<ReturnType<typeof listMiscDocuments>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listMiscDocuments>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMiscDocumentsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Associate an unaffiliated document with a project
+ */
+export const getAffiliateDocumentUrl = (id: number) => {
+  return `/api/documents/${id}/affiliate`;
+};
+
+export const affiliateDocument = async (
+  id: number,
+  affiliateDocumentInput: AffiliateDocumentInput,
+  options?: RequestInit
+): Promise<Document> => {
+  return customFetch<Document>(getAffiliateDocumentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(affiliateDocumentInput),
+  });
+};
+
+export const getAffiliateDocumentMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof affiliateDocument>>,
+    TError,
+    { id: number; data: BodyType<AffiliateDocumentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof affiliateDocument>>,
+  TError,
+  { id: number; data: BodyType<AffiliateDocumentInput> },
+  TContext
+> => {
+  const mutationKey = ["affiliateDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof affiliateDocument>>,
+    { id: number; data: BodyType<AffiliateDocumentInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return affiliateDocument(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AffiliateDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof affiliateDocument>>
+>;
+export type AffiliateDocumentMutationBody = BodyType<AffiliateDocumentInput>;
+export type AffiliateDocumentMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Associate an unaffiliated document with a project
+ */
+export const useAffiliateDocument = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof affiliateDocument>>,
+    TError,
+    { id: number; data: BodyType<AffiliateDocumentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof affiliateDocument>>,
+  TError,
+  { id: number; data: BodyType<AffiliateDocumentInput> },
+  TContext
+> => {
+  return useMutation(getAffiliateDocumentMutationOptions(options));
 };

@@ -337,12 +337,20 @@ export const UploadDocumentBody = zod.object({
     .describe("Optional commit SHA to associate with this document"),
 });
 
+export const uploadDocumentResponseStatusDefault = `unaffiliated`;
+
 export const UploadDocumentResponse = zod.object({
   id: zod.number(),
-  projectId: zod.number(),
+  projectId: zod.number().nullish(),
   filename: zod.string(),
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
+  contentHash: zod.string().nullish().describe("SHA-256 hash of raw content"),
+  affiliatedAt: zod
+    .string()
+    .nullish()
+    .describe("ISO-8601 timestamp when document was associated with a project"),
+  status: zod.enum(["unaffiliated", "affiliated"]).default(uploadDocumentResponseStatusDefault),
   createdAt: zod.string(),
 });
 
@@ -353,12 +361,20 @@ export const ListDocumentsParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const listDocumentsResponseStatusDefault = `unaffiliated`;
+
 export const ListDocumentsResponseItem = zod.object({
   id: zod.number(),
-  projectId: zod.number(),
+  projectId: zod.number().nullish(),
   filename: zod.string(),
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
+  contentHash: zod.string().nullish().describe("SHA-256 hash of raw content"),
+  affiliatedAt: zod
+    .string()
+    .nullish()
+    .describe("ISO-8601 timestamp when document was associated with a project"),
+  status: zod.enum(["unaffiliated", "affiliated"]).default(listDocumentsResponseStatusDefault),
   createdAt: zod.string(),
 });
 export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem);
@@ -1354,4 +1370,68 @@ export const TestProjectIntegrationParams = zod.object({
 export const TestProjectIntegrationResponse = zod.object({
   success: zod.boolean(),
   error: zod.string().optional(),
+});
+
+/**
+ * @summary Trigger the sync pipeline for a project branch push
+ */
+
+export const SyncPipelineBody = zod.object({
+  projectId: zod.number(),
+  pushedBranch: zod.string().min(1),
+  pushedCommits: zod.array(zod.string()).min(1),
+  configYaml: zod.string().optional().describe("Contents of .docuvia\/config.yaml"),
+});
+
+export const SyncPipelineResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * @summary List all unaffiliated documents (projectId is null / status is unaffiliated)
+ */
+export const listMiscDocumentsResponseStatusDefault = `unaffiliated`;
+
+export const ListMiscDocumentsResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number().nullish(),
+  filename: zod.string(),
+  docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
+  content: zod.string().optional(),
+  contentHash: zod.string().nullish().describe("SHA-256 hash of raw content"),
+  affiliatedAt: zod
+    .string()
+    .nullish()
+    .describe("ISO-8601 timestamp when document was associated with a project"),
+  status: zod.enum(["unaffiliated", "affiliated"]).default(listMiscDocumentsResponseStatusDefault),
+  createdAt: zod.string(),
+});
+export const ListMiscDocumentsResponse = zod.array(ListMiscDocumentsResponseItem);
+
+/**
+ * @summary Associate an unaffiliated document with a project
+ */
+export const AffiliateDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AffiliateDocumentBody = zod.object({
+  projectId: zod.number(),
+});
+
+export const affiliateDocumentResponseStatusDefault = `unaffiliated`;
+
+export const AffiliateDocumentResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number().nullish(),
+  filename: zod.string(),
+  docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
+  content: zod.string().optional(),
+  contentHash: zod.string().nullish().describe("SHA-256 hash of raw content"),
+  affiliatedAt: zod
+    .string()
+    .nullish()
+    .describe("ISO-8601 timestamp when document was associated with a project"),
+  status: zod.enum(["unaffiliated", "affiliated"]).default(affiliateDocumentResponseStatusDefault),
+  createdAt: zod.string(),
 });

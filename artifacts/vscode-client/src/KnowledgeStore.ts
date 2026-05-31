@@ -1,13 +1,21 @@
+import { exec as _exec } from 'child_process';
 import * as path from 'path';
+import { promisify } from 'util';
 import * as vscode from 'vscode';
-import { parseDecision, parseModules, parseRouter, parseTags } from './parser.js';
-import { GlobalConfig, L1Tag, L2Module, L3Decision, L3RouterEntry } from './types.js';
+import { parseDecision, parseManifest, parseSingleModule, parseTags } from './parser.js';
+import { GlobalConfig, KnowledgeSnapshot, L1Tag, L2Module, L3Decision, L3RouterEntry, ManifestModule } from './types.js';
+
+const exec = promisify(_exec);
 
 const DOCUVIA_DIR = '.docuvia';
-const L1_TAGS_FILE = 'l1_tags.yaml';
-const L2_MODULES_FILE = 'l2_modules.yaml';
-const L3_ROUTER_FILE = 'l3_router.yaml';
-const L3_DECISIONS_DIR = 'l3_decisions';
+const MANIFEST_FILE = 'manifest.yaml';
+const GIT_KNOWLEDGE_BRANCH = 'docuvia-knowledge';
+
+/** Structural interface used to avoid a circular import with CentralServerClient. */
+interface IDocuviaClient {
+  isServerConfigured(): boolean;
+  pullSnapshot(projectId: number): Promise<KnowledgeSnapshot>;
+}
 
 /** In-memory snapshot of the project's knowledge graph. */
 export interface KnowledgeGraphSnapshot {
@@ -19,6 +27,8 @@ export interface KnowledgeGraphSnapshot {
   /** L3 decisions keyed by their ID for O(1) lookup. */
   decisions: Map<string, L3Decision>;
   loadedAt: Date;
+  /** Module names + path patterns from manifest.yaml — used for offline CodeLens matching. */
+  manifestModules: ManifestModule[];
 }
 
 /**
@@ -35,6 +45,7 @@ export class KnowledgeStore {
   private _outputChannel: vscode.OutputChannel;
   private _loading: boolean = false;
   private _pendingReload: boolean = false;
+  private _client: IDocuviaClient | null = null;
 
   private readonly _onDidLoad = new vscode.EventEmitter<void>();
   readonly onDidLoad: vscode.Event<void> = this._onDidLoad.event;
@@ -65,12 +76,14 @@ export class KnowledgeStore {
       modules: [],
       routerIndex: [],
       decisions: new Map(),
-      loadedAt: new Date()
+      loadedAt: new Date(),
+      manifestModules: [],
     };
     for (const snap of this._snapshots.values()) {
       agg.tags.push(...snap.tags);
       agg.modules.push(...snap.modules);
       agg.routerIndex.push(...snap.routerIndex);
+      agg.manifestModules.push(...snap.manifestModules);
       for (const [k, v] of snap.decisions.entries()) {
         agg.decisions.set(k, v);
       }
@@ -94,6 +107,10 @@ export class KnowledgeStore {
 
   setGlobalConfig(config: GlobalConfig): void {
     this._globalConfig = config;
+  }
+
+  setCentralClient(client: IDocuviaClient): void {
+    this._client = client;
   }
 
   /**
@@ -136,56 +153,185 @@ export class KnowledgeStore {
 
     this._outputChannel.appendLine(`[Docuvia] Loading knowledge graph for ${workspaceRoot}...`);
     try {
-      const tagsContent = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, L1_TAGS_FILE));
+      // Always read manifest for offline CodeLens and projectId discovery
+      const manifestContent = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, MANIFEST_FILE));
+      const manifest = parseManifest(manifestContent, `${DOCUVIA_DIR}/${MANIFEST_FILE}`);
+
+      let tags: L1Tag[] = [];
+      let modules: L2Module[] = [];
+      let routerIndex: L3RouterEntry[] = [];
+      let decisions = new Map<string, L3Decision>();
       let projectName = path.basename(workspaceRoot);
-      const projMatch = tagsContent.match(/^project_name:\s*"?([^"\n]+)"?/m);
-      if (projMatch) {
-        projectName = projMatch[1];
-      }
 
-      const tags = this.tryParse(() =>
-        parseTags(tagsContent, 'l1_tags.yaml'), 'l1_tags.yaml'
-      );
-
-      const modulesContent = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, L2_MODULES_FILE));
-      const modules = this.tryParse(() =>
-        parseModules(modulesContent, 'l2_modules.yaml'), 'l2_modules.yaml'
-      );
-
-      const routerContent = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, L3_ROUTER_FILE));
-      const routerIndex = this.tryParse(() =>
-        parseRouter(routerContent, 'l3_router.yaml'), 'l3_router.yaml'
-      );
-
-      const decisions = new Map<string, L3Decision>();
-      const decisionsDir = vscode.Uri.joinPath(docuviaDir, L3_DECISIONS_DIR);
-      
-      try {
-        const entries = await vscode.workspace.fs.readDirectory(decisionsDir);
-        for (const [name, type] of entries) {
-          if (type === vscode.FileType.File && name.endsWith('.md')) {
-            const fileUri = vscode.Uri.joinPath(decisionsDir, name);
-            const content = await this.readUriSafe(fileUri);
-            const decision = parseDecision(content, fileUri.fsPath);
-            if (decision) {
-              decisions.set(decision.id, decision);
-            }
-          }
+      // Primary: server API
+      if (this._client && this._client.isServerConfigured() && manifest.project_id !== undefined) {
+        try {
+          const apiSnapshot = await this._client.pullSnapshot(manifest.project_id);
+          ({ tags, modules, routerIndex, decisions, projectName } = this._mapApiSnapshot(apiSnapshot, workspaceRoot));
+          this._outputChannel.appendLine(`[Docuvia] Loaded from server API (project ${manifest.project_id}).`);
+        } catch (err) {
+          this._outputChannel.appendLine(`[Docuvia] Server unreachable, trying git fallback: ${String(err)}`);
         }
-      } catch {
-        // L3 dir might not exist
       }
 
-      this._snapshots.set(workspaceRoot, { workspaceRoot, projectName, tags, modules, routerIndex, decisions, loadedAt: new Date() });
+      // Offline fallback: git show docuvia-knowledge:{projectId}/...
+      if (tags.length === 0 && modules.length === 0 && manifest.project_id !== undefined) {
+        try {
+          const gitData = await this._loadFromGit(workspaceRoot, manifest.project_id);
+          tags = gitData.tags;
+          modules = gitData.modules;
+          routerIndex = gitData.routerIndex;
+          decisions = gitData.decisions;
+          projectName = gitData.projectName;
+          this._outputChannel.appendLine(`[Docuvia] Loaded from git fallback (branch ${GIT_KNOWLEDGE_BRANCH}).`);
+        } catch (err) {
+          this._outputChannel.appendLine(`[Docuvia] Git fallback failed: ${String(err)}`);
+        }
+      }
+
+      this._snapshots.set(workspaceRoot, {
+        workspaceRoot,
+        projectName,
+        tags,
+        modules,
+        routerIndex,
+        decisions,
+        loadedAt: new Date(),
+        manifestModules: manifest.modules,
+      });
+
       this._outputChannel.appendLine(
-        `[Docuvia] Knowledge graph loaded for ${projectName}: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions.`
+        `[Docuvia] Knowledge graph loaded for ${projectName}: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions, ${manifest.modules.length} manifest modules.`
       );
-      
+
       return true;
     } catch (err) {
       this._outputChannel.appendLine(`[Docuvia] Error loading knowledge graph for ${workspaceRoot}: ${String(err)}`);
       return false;
     }
+  }
+
+  /**
+   * Maps a server API KnowledgeSnapshot (integer IDs) to the extension's
+   * KnowledgeGraphSnapshot format (string IDs, local types).
+   */
+  private _mapApiSnapshot(
+    snapshot: KnowledgeSnapshot,
+    workspaceRoot: string
+  ): { projectName: string; tags: L1Tag[]; modules: L2Module[]; routerIndex: L3RouterEntry[]; decisions: Map<string, L3Decision> } {
+    const slugify = (name: string) =>
+      name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    const tags: L1Tag[] = snapshot.l1Tags.map(t => ({
+      id: String(t.id),
+      slug: slugify(t.name),
+      name: t.name,
+      description: t.description ?? undefined,
+    }));
+
+    const modules: L2Module[] = snapshot.l2Nodes.map(n => ({
+      id: String(n.id),
+      slug: slugify(n.name),
+      name: n.name,
+      description: n.description ?? undefined,
+      l1_tag_id: n.l1TagIds[0] !== undefined ? String(n.l1TagIds[0]) : '',
+      source_paths: [],
+    }));
+
+    const routerIndex: L3RouterEntry[] = snapshot.l3Nodes.map(n => ({
+      id: String(n.id),
+      l2_module_id: String(n.l2NodeId),
+      slug: slugify(n.title),
+      title: n.title,
+      file_path: '',
+    }));
+
+    const decisions = new Map<string, L3Decision>();
+    for (const n of snapshot.l3Nodes) {
+      const id = String(n.id);
+      decisions.set(id, {
+        id,
+        l2_module_id: String(n.l2NodeId),
+        title: n.title,
+        status: 'accepted',
+        body: n.content ?? '',
+        filePath: '',
+      });
+    }
+
+    return {
+      projectName: path.basename(workspaceRoot),
+      tags,
+      modules,
+      routerIndex,
+      decisions,
+    };
+  }
+
+  /**
+   * Reads knowledge from the local docuvia-knowledge orphan branch via git CLI.
+   * Falls back when the server is unreachable.
+   */
+  private async _loadFromGit(
+    workspaceRoot: string,
+    projectId: number
+  ): Promise<{ projectName: string; tags: L1Tag[]; modules: L2Module[]; routerIndex: L3RouterEntry[]; decisions: Map<string, L3Decision> }> {
+    const run = (cmd: string) => exec(cmd, { cwd: workspaceRoot });
+
+    // Read l1_tags.yaml
+    const tagsYaml = await run(
+      `git show "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l1_tags.yaml"`
+    ).then(r => r.stdout).catch(() => '');
+    const tags = tagsYaml ? parseTags(tagsYaml, 'l1_tags.yaml') : [];
+    const projectName =
+      tagsYaml.match(/^project_name:\s*"?([^"\n]+)"?/m)?.[1] ?? path.basename(workspaceRoot);
+
+    // List and read l2_modules/{name}.yaml files
+    const modulesListRaw = await run(
+      `git ls-tree --name-only "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l2_modules"`
+    ).then(r => r.stdout).catch(() => '');
+    const moduleFiles = modulesListRaw.split('\n').filter(f => f.trim().endsWith('.yaml'));
+
+    const modules: L2Module[] = [];
+    for (const file of moduleFiles) {
+      const yaml = await run(
+        `git show "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l2_modules/${file}"`
+      ).then(r => r.stdout).catch(() => '');
+      if (yaml) {
+        const mod = parseSingleModule(yaml, file);
+        if (mod) modules.push(mod);
+      }
+    }
+
+    // List and read l3_decisions recursively
+    const decisionsListRaw = await run(
+      `git ls-tree -r --name-only "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l3_decisions"`
+    ).then(r => r.stdout).catch(() => '');
+    const decisionFiles = decisionsListRaw.split('\n').filter(f => f.trim().endsWith('.md'));
+
+    const decisions = new Map<string, L3Decision>();
+    const routerIndex: L3RouterEntry[] = [];
+
+    for (const file of decisionFiles) {
+      const md = await run(
+        `git show "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l3_decisions/${file}"`
+      ).then(r => r.stdout).catch(() => '');
+      if (md) {
+        const decision = parseDecision(md, file);
+        if (decision) {
+          decisions.set(decision.id, decision);
+          routerIndex.push({
+            id: decision.id,
+            l2_module_id: decision.l2_module_id,
+            slug: file.replace(/\.md$/, ''),
+            title: decision.title,
+            file_path: file,
+          });
+        }
+      }
+    }
+
+    return { projectName, tags, modules, routerIndex, decisions };
   }
 
   /**

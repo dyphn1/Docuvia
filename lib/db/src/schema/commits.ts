@@ -13,11 +13,14 @@ export const commitsTable = pgTable("commits", {
   message: text("message").notNull(),
   author: text("author").notNull(),
   valid: boolean("valid").notNull().default(true),
+  // @deprecated — replaced by commit_l2_links junction table (v2). Set to nullable; remove in v3.
   l2NodeId: integer("l2_node_id").references(() => l2NodesTable.id, { onDelete: "set null" }),
   revision: integer("revision"),
   vcsType: text("vcs_type").default("git"),
   processedAt: timestamp("processed_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  branchName: text("branch_name"),
+  validityStatus: text("validity_status").notNull().default("pending"),
 });
 
 export const insertCommitSchema = createInsertSchema(commitsTable).omit({

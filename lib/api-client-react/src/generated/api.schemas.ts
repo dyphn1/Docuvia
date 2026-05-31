@@ -406,12 +406,31 @@ export const DocumentDocType = {
   build_artifact: "build_artifact",
 } as const;
 
+export type DocumentStatus = (typeof DocumentStatus)[keyof typeof DocumentStatus];
+
+export const DocumentStatus = {
+  unaffiliated: "unaffiliated",
+  affiliated: "affiliated",
+} as const;
+
 export interface Document {
   id: number;
-  projectId: number;
+  /** @nullable */
+  projectId?: number | null;
   filename: string;
   docType: DocumentDocType;
   content?: string;
+  /**
+   * SHA-256 hash of raw content
+   * @nullable
+   */
+  contentHash?: string | null;
+  /**
+   * ISO-8601 timestamp when document was associated with a project
+   * @nullable
+   */
+  affiliatedAt?: string | null;
+  status?: DocumentStatus;
   createdAt: string;
 }
 
@@ -918,6 +937,24 @@ export interface ProjectIntegrationUpdate {
   enabled?: boolean;
   /** @nullable */
   notificationTypes?: string[] | null;
+}
+
+export interface SyncInput {
+  projectId: number;
+  /** @minLength 1 */
+  pushedBranch: string;
+  /** @minItems 1 */
+  pushedCommits: string[];
+  /** Contents of .docuvia/config.yaml */
+  configYaml?: string;
+}
+
+export interface SyncResponse {
+  message: string;
+}
+
+export interface AffiliateDocumentInput {
+  projectId: number;
 }
 
 export type McpSearchKnowledgeParams = {

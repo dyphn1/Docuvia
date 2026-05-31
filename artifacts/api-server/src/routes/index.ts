@@ -18,6 +18,8 @@ import notificationsRouter from "./notifications";
 import pullRequestsRouter from "./pull_requests";
 import extensionsVscodeRouter from "./extensions_vscode";
 import integrationsRouter from "./integrations";
+import syncRouter from "./sync";
+import documentsRouter from "./documents";
 
 const router: IRouter = Router();
 
@@ -40,5 +42,7 @@ router.use(notificationsRouter);
 router.use(pullRequestsRouter);
 router.use(extensionsVscodeRouter);
 router.use(integrationsRouter);
+router.use(syncRouter);
+router.use(documentsRouter);
 
 export default router;

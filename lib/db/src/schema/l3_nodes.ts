@@ -6,6 +6,7 @@ import {
   boolean,
   timestamp,
   real,
+  jsonb,
   pgEnum,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -22,12 +23,17 @@ export const l3NodesTable = pgTable("l3_nodes", {
   title: text("title").notNull(),
   content: text("content"),
   nodeType: l3NodeTypeEnum("node_type").notNull().default("change"),
+  // @deprecated — superseded by sourceCommits[0] (v2). Keep for backward compat.
   commitHash: text("commit_hash"),
   aiGenerated: boolean("ai_generated").notNull().default(true),
   confidence: real("confidence"),
   noiseScore: real("noise_score"),
   embedding: text("embedding"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  occurrenceCount: integer("occurrence_count").notNull().default(1),
+  sourceCommits: jsonb("source_commits"),
+  validityStatus: text("validity_status").notNull().default("pending"),
+  source: text("source").notNull().default("commit"),
 });
 
 export const insertL3NodeSchema = createInsertSchema(l3NodesTable).omit({

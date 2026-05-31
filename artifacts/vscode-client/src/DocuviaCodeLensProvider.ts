@@ -1,7 +1,8 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { minimatch } from 'minimatch';
 import { KnowledgeStore } from './KnowledgeStore.js';
-import { L2Module } from './types.js';
+import { L2Module, ManifestModule } from './types.js';
 
 export interface CodeLensDecisionData {
   moduleId: string;
@@ -54,6 +55,17 @@ function findMatchingModules(
   );
 }
 
+function findMatchingManifestModules(
+  documentFsPath: string,
+  workspaceRoot: string,
+  manifestModules: ManifestModule[]
+): ManifestModule[] {
+  const relPath = path.relative(workspaceRoot, documentFsPath).split(path.sep).join('/');
+  return manifestModules.filter(m =>
+    m.path_patterns.some(pattern => minimatch(relPath, pattern, { matchBase: true }))
+  );
+}
+
 function findDeclarationLines(document: vscode.TextDocument): number[] {
   const patterns = DECLARATION_PATTERNS[document.languageId] ?? [];
   if (patterns.length === 0) return [];
@@ -86,32 +98,50 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
     if (!snapshot) return [];
 
     const workspaceRoot = folder.uri.fsPath;
-    const matchedModules = findMatchingModules(document.uri.fsPath, workspaceRoot, snapshot.modules);
-    if (matchedModules.length === 0) return [];
-
-    const moduleData: CodeLensDecisionData[] = matchedModules
-      .map(module => {
-        const decisionIds = snapshot.routerIndex
-          .filter(r => r.l2_module_id === module.id)
-          .map(r => r.id);
-        return { moduleId: module.id, moduleName: module.name, decisionIds };
-      })
-      .filter(d => d.decisionIds.length > 0);
-
-    if (moduleData.length === 0) return [];
-
     const declarationLines = findDeclarationLines(document);
     if (declarationLines.length === 0) return [];
 
-    const bestModule = [...moduleData].sort((a, b) => b.decisionIds.length - a.decisionIds.length)[0];
-    const count = bestModule.decisionIds.length;
+    // Online mode: full CodeLens with L3 decisions
+    const matchedModules = findMatchingModules(document.uri.fsPath, workspaceRoot, snapshot.modules);
+    if (matchedModules.length > 0) {
+      const moduleData: CodeLensDecisionData[] = matchedModules
+        .map(module => {
+          const decisionIds = snapshot.routerIndex
+            .filter(r => r.l2_module_id === module.id)
+            .map(r => r.id);
+          return { moduleId: module.id, moduleName: module.name, decisionIds };
+        })
+        .filter(d => d.decisionIds.length > 0);
 
+      if (moduleData.length > 0) {
+        const bestModule = [...moduleData].sort((a, b) => b.decisionIds.length - a.decisionIds.length)[0];
+        const count = bestModule.decisionIds.length;
+        return declarationLines.map(lineIndex => {
+          const range = new vscode.Range(lineIndex, 0, lineIndex, 0);
+          return new vscode.CodeLens(range, {
+            title: `🧠 Docuvia: ${count} ${count === 1 ? 'Decision' : 'Decisions'}`,
+            command: 'docuvia.showDecisionsForLens',
+            arguments: [bestModule],
+          });
+        });
+      }
+    }
+
+    // Offline fallback: use manifest path patterns when server modules have no source_paths
+    const matchedManifest = findMatchingManifestModules(
+      document.uri.fsPath,
+      workspaceRoot,
+      snapshot.manifestModules
+    );
+    if (matchedManifest.length === 0) return [];
+
+    const offlineModule = matchedManifest[0];
     return declarationLines.map(lineIndex => {
       const range = new vscode.Range(lineIndex, 0, lineIndex, 0);
       return new vscode.CodeLens(range, {
-        title: `🧠 Docuvia: ${count} ${count === 1 ? 'Decision' : 'Decisions'}`,
-        command: 'docuvia.showDecisionsForLens',
-        arguments: [bestModule],
+        title: `🧠 Docuvia: ${offlineModule.name} — connect to server for decisions`,
+        command: '',
+        arguments: [],
       });
     });
   }

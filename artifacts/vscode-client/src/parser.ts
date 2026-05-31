@@ -11,6 +11,8 @@ import {
   L3DecisionFrontmatterSchema,
   L3RouterEntry,
   L3RouterEntrySchema,
+  Manifest,
+  ManifestSchema,
 } from './types.js';
 
 export function parseTags(content: string, filePath: string): L1Tag[] {
@@ -82,5 +84,35 @@ export function parseGlobalConfig(content: string, filePath: string): GlobalConf
     return result.data;
   } catch {
     return GlobalConfigSchema.parse({});
+  }
+}
+
+export function parseManifest(content: string, filePath: string): Manifest {
+  try {
+    const raw = parseYaml(content) as unknown;
+    const result = ManifestSchema.safeParse(raw);
+    if (!result.success) {
+      console.error(`[Docuvia] Invalid manifest at ${filePath}:`, result.error.flatten());
+      return ManifestSchema.parse({});
+    }
+    return result.data;
+  } catch {
+    return ManifestSchema.parse({});
+  }
+}
+
+export function parseSingleModule(content: string, filePath: string): L2Module | null {
+  try {
+    const raw = parseYaml(content) as unknown;
+    // Support both single-object and single-element-array formats
+    const item = Array.isArray(raw) ? raw[0] : raw;
+    const result = L2ModuleSchema.safeParse(item);
+    if (!result.success) {
+      console.error(`[Docuvia] Invalid L2 module in ${filePath}:`, result.error.flatten());
+      return null;
+    }
+    return result.data;
+  } catch {
+    return null;
   }
 }

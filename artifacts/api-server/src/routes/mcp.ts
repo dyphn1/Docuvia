@@ -8,7 +8,7 @@ import {
   nodeLinksTable,
   commitsTable,
 } from "@workspace/db";
-import { eq, or, like, sql, count, isNotNull } from "drizzle-orm";
+import { eq, or, and, like, sql, count, isNotNull } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
 import { routeQuery } from "../lib/intent-router.js";
 import { logger } from "../lib/logger.js";
@@ -48,8 +48,13 @@ router.get("/mcp/search_knowledge", async (req, res) => {
   const query = String(req.query.query ?? "");
   const projectId = req.query.project_id ? Number(req.query.project_id) : undefined;
   const limit = Math.min(Number(req.query.limit ?? 10), 50);
+  const includePending = req.query.include_pending === "true";
 
   if (!query) return res.status(400).json({ error: "query parameter required" });
+
+  const l3ValidityCondition = includePending
+    ? or(eq(l3NodesTable.validityStatus, "valid"), eq(l3NodesTable.validityStatus, "pending"))
+    : eq(l3NodesTable.validityStatus, "valid");
 
   const results: Array<{
     nodeLayer: "l1" | "l2" | "l3";
@@ -101,7 +106,10 @@ router.get("/mcp/search_knowledge", async (req, res) => {
     }
 
     // --- Semantic search: L3 nodes ---
-    const l3WithEmb = await db.select().from(l3NodesTable).where(isNotNull(l3NodesTable.embedding));
+    const l3WithEmb = await db
+      .select()
+      .from(l3NodesTable)
+      .where(and(isNotNull(l3NodesTable.embedding), l3ValidityCondition!));
 
     const l3Scored = l3WithEmb
       .map((node) => {
@@ -162,9 +170,12 @@ router.get("/mcp/search_knowledge", async (req, res) => {
       .select()
       .from(l3NodesTable)
       .where(
-        or(
-          like(l3NodesTable.title, pattern),
-          like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
+        and(
+          l3ValidityCondition!,
+          or(
+            like(l3NodesTable.title, pattern),
+            like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
+          )
         )
       )
       .limit(limit);
@@ -319,9 +330,10 @@ router.post("/mcp/query", async (req, res) => {
   }
 
   const { q, project_id, limit } = parsed.data;
+  const includePending = req.query.include_pending === "true";
 
   try {
-    const result = await routeQuery(q, project_id, limit);
+    const result = await routeQuery(q, project_id, limit, includePending);
     return res.json({ query: q, ...result });
   } catch (err) {
     logger.error({ err }, "[POST /mcp/query] Unhandled error");

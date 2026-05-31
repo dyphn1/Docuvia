@@ -6,12 +6,25 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { DocumentDocType } from "./documentDocType";
+import type { DocumentStatus } from "./documentStatus";
 
 export interface Document {
   id: number;
-  projectId: number;
+  /** @nullable */
+  projectId?: number | null;
   filename: string;
   docType: DocumentDocType;
   content?: string;
+  /**
+   * SHA-256 hash of raw content
+   * @nullable
+   */
+  contentHash?: string | null;
+  /**
+   * ISO-8601 timestamp when document was associated with a project
+   * @nullable
+   */
+  affiliatedAt?: string | null;
+  status?: DocumentStatus;
   createdAt: string;
 }

@@ -18,8 +18,10 @@ erDiagram
     l1_tags {
         int id PK
         string name
+        string category
         string description
-        int projectId FK
+        boolean isAnchored
+        int usageCount
     }
     l2_nodes {
         int id PK
@@ -63,7 +65,6 @@ erDiagram
         int projectId FK
     }
 
-    projects ||--o{ l1_tags : "has"
     projects ||--o{ l2_nodes : "has"
     l2_nodes ||--o{ l3_nodes : "has"
     l2_nodes ||--o{ node_links : "source/target"
@@ -79,6 +80,8 @@ erDiagram
 **L3 Nodes** — Implementation Decision, Rule, or Rationale records scoped to an L2 Node. The primary output of the generate pipeline. Store embedding vectors. Linked to source commits. Stored in `l3_nodes`.
 
 **Node Links** — Directed relationships between L2 or L3 nodes (intra-project or cross-project). Created by human approval of cross-project similarity detection results. Stored in `node_links`.
+
+> **Note (ADR correction):** L1 Tags are global — they have no `projectId` and are shared across all projects. The relationship `projects ||--o{ l1_tags` shown in earlier versions of this diagram was incorrect. The actual `l1_tags` table has no foreign key to `projects`. All projects share a single global L1 tag pool.
 
 ### Supporting Entities
 

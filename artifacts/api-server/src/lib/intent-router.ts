@@ -7,7 +7,7 @@ import {
   nodeLinksTable,
   commitsTable,
 } from "@workspace/db";
-import { eq, like, isNotNull, or, sql } from "drizzle-orm";
+import { eq, like, isNotNull, or, and, sql } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "./embedding.js";
 import { logger } from "./logger.js";
 
@@ -164,10 +164,15 @@ export async function classifyIntent(query: string): Promise<IntentClassificatio
 export async function vectorSearchHandler(
   query: string,
   projectId?: number,
-  limit = 10
+  limit = 10,
+  includePending = false
 ): Promise<AgenticSearchResult[]> {
   const results: AgenticSearchResult[] = [];
   const queryEmbedding = await generateEmbedding(query);
+
+  const l3ValidityCondition = includePending
+    ? or(eq(l3NodesTable.validityStatus, "valid"), eq(l3NodesTable.validityStatus, "pending"))
+    : eq(l3NodesTable.validityStatus, "valid");
 
   if (queryEmbedding) {
     // Semantic search: L2 nodes
@@ -210,7 +215,7 @@ export async function vectorSearchHandler(
     const l3Rows = await db
       .select()
       .from(l3NodesTable)
-      .where(isNotNull(l3NodesTable.embedding));
+      .where(and(isNotNull(l3NodesTable.embedding), l3ValidityCondition!));
 
     const l3Scored = l3Rows
       .map((node) => {
@@ -273,9 +278,12 @@ export async function vectorSearchHandler(
       .select()
       .from(l3NodesTable)
       .where(
-        or(
-          like(l3NodesTable.title, pattern),
-          like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
+        and(
+          l3ValidityCondition!,
+          or(
+            like(l3NodesTable.title, pattern),
+            like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
+          )
         )
       )
       .limit(limit);
@@ -401,9 +409,14 @@ export async function graphTraversalHandler(
 // ---------------------------------------------------------------------------
 
 export async function directLookupHandler(
-  commitHash: string
+  commitHash: string,
+  includePending = false
 ): Promise<AgenticSearchResult[]> {
   const results: AgenticSearchResult[] = [];
+
+  const l3ValidityCondition = includePending
+    ? or(eq(l3NodesTable.validityStatus, "valid"), eq(l3NodesTable.validityStatus, "pending"))
+    : eq(l3NodesTable.validityStatus, "valid");
 
   const [commit] = await db
     .select()
@@ -431,7 +444,12 @@ export async function directLookupHandler(
   const l3Nodes = await db
     .select()
     .from(l3NodesTable)
-    .where(like(l3NodesTable.commitHash, `${commitHash}%`));
+    .where(
+      and(
+        like(l3NodesTable.commitHash, `${commitHash}%`),
+        l3ValidityCondition!
+      )
+    );
 
   for (const node of l3Nodes) {
     results.push({
@@ -458,12 +476,13 @@ async function hybridSearch(
   query: string,
   classification: IntentClassification,
   projectId?: number,
-  limit = 10
+  limit = 10,
+  includePending = false
 ): Promise<AgenticSearchResult[]> {
   const searchQuery = classification.entities.searchQuery ?? query;
 
   // Step 1: vector search
-  const vectorResults = await vectorSearchHandler(searchQuery, projectId, limit);
+  const vectorResults = await vectorSearchHandler(searchQuery, projectId, limit, includePending);
 
   // Step 2: extract unique L2 node names from top-3 vector results
   const topL2Names = vectorResults
@@ -501,7 +520,8 @@ async function hybridSearch(
 export async function routeQuery(
   query: string,
   projectId?: number,
-  limit = 10
+  limit = 10,
+  includePending = false
 ): Promise<RouteQueryResult> {
   const start = Date.now();
 
@@ -526,17 +546,17 @@ export async function routeQuery(
     }
     case "direct_lookup": {
       const commitHash = classification.entities.commitHash ?? query;
-      results = await directLookupHandler(commitHash);
+      results = await directLookupHandler(commitHash, includePending);
       break;
     }
     case "hybrid": {
-      results = await hybridSearch(query, classification, projectId, limit);
+      results = await hybridSearch(query, classification, projectId, limit, includePending);
       break;
     }
     case "vector_search":
     default: {
       const searchQuery = classification.entities.searchQuery ?? query;
-      results = await vectorSearchHandler(searchQuery, projectId, limit);
+      results = await vectorSearchHandler(searchQuery, projectId, limit, includePending);
       break;
     }
   }

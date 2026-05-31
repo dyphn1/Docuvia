@@ -42,6 +42,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ─── Credential Manager & Central Server Client ───────────────────────────
   const credentialManager = new CredentialManager(context.secrets);
   const centralClient = new CentralServerClient(store, credentialManager);
+  store.setCentralClient(centralClient);
 
   // Load knowledge graph and start watcher
   await store.load();

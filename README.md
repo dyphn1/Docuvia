@@ -64,6 +64,9 @@ Trigger the AI analysis pipeline. The AI will extract structured knowledge acros
 ### 3. Querying & Agentic RAG
 Once indexed, you can query the knowledge graph via the UI or connect your own AI agents via the built-in **MCP Endpoints**. The Agentic RAG system autonomously decides whether to use vector search (for semantic queries) or graph traversal (for dependency and impact analysis).
 
+### 4. VS Code Extension
+Install the **Docuvia VS Code Extension** (`@workspace/vscode-client`) for direct editor integration. Browse the knowledge graph in the sidebar tree view, capture decisions from code selections via `docuvia.addDecision`, run targeted extractions with `docuvia.runExtraction`, and query the graph through the `@docuvia` GitHub Copilot Chat participant (`/explore`, `/query`, `/extract`, `/help`).
+
 ---
 
 ## Concepts & Glossary

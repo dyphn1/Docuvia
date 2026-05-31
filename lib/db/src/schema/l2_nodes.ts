@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, jsonb, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
@@ -17,6 +17,9 @@ export const l2NodesTable = pgTable("l2_nodes", {
   needsReview: boolean("needs_review").notNull().default(false),
   embedding: text("embedding"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  pathPatterns: jsonb("path_patterns"),
+  reindexRequired: boolean("reindex_required").notNull().default(false),
+  isBootstrapConfirmed: boolean("is_bootstrap_confirmed").notNull().default(false),
 });
 
 export const l2NodeL1TagsTable = pgTable("l2_node_l1_tags", {

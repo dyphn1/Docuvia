@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 // ─── Domain types ─────────────────────────────────────────────────────────────
 
 export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'failed';
-export type TaskType = 'l1_extraction' | 'l2_extraction' | 'l3_extraction' | 'generic';
+export type TaskType = 'l1_extraction' | 'l2_extraction' | 'l3_extraction' | 'l3_auto_categorization' | 'generic';
 
 export interface ExtractionTask {
   id: string;

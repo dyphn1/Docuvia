@@ -107,6 +107,11 @@
         "command": "docuvia.openDecision",
         "title": "Docuvia: Open Decision (internal)",
         "enablement": "never"
+      },
+      {
+        "command": "docuvia.autoCategorizeDecisions",
+        "title": "Docuvia: Auto-Categorize Decisions",
+        "icon": "$(wand)"
       }
     ],
     "viewsWelcome": [
@@ -170,6 +175,11 @@
         {
           "command": "docuvia.initProject",
           "when": "view == docuvia.knowledgeGraph && viewItem == project-uninitialized",
+          "group": "inline"
+        },
+        {
+          "command": "docuvia.autoCategorizeDecisions",
+          "when": "view == docuvia.knowledgeGraph && viewItem == unassigned-group",
           "group": "inline"
         }
       ],

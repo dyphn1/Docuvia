@@ -2,7 +2,7 @@ import { exec as _exec } from 'child_process';
 import * as path from 'path';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
-import { parseDecision, parseManifest, parseSingleModule, parseTags } from './parser.js';
+import { parseDecision, parseManifest, parseSingleModule, parseTags, parseModules, parseRouter } from './parser.js';
 import { GlobalConfig, KnowledgeSnapshot, L1Tag, L2Module, L3Decision, L3RouterEntry, ManifestModule } from './types.js';
 
 const exec = promisify(_exec);
@@ -171,6 +171,43 @@ export class KnowledgeStore {
           this._outputChannel.appendLine(`[Docuvia] Loaded from server API (project ${manifest.project_id}).`);
         } catch (err) {
           this._outputChannel.appendLine(`[Docuvia] Server unreachable, trying git fallback: ${String(err)}`);
+        }
+      }
+
+      // Local fallback: read from .docuvia directory directly
+      if (tags.length === 0 && modules.length === 0) {
+        try {
+          const tagsYaml = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, 'l1_tags.yaml'));
+          if (tagsYaml) {
+            tags = parseTags(tagsYaml, 'l1_tags.yaml');
+            const match = tagsYaml.match(/^project_name:\s*"([^"\n]+)"/m);
+            if (match) projectName = match[1];
+          }
+
+          const modulesYaml = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, 'l2_modules.yaml'));
+          if (modulesYaml) modules = parseModules(modulesYaml, 'l2_modules.yaml');
+
+          const routerYaml = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, 'l3_router.yaml'));
+          if (routerYaml) routerIndex = parseRouter(routerYaml, 'l3_router.yaml');
+
+          // Read l3_decisions
+          const decisionsDir = vscode.Uri.joinPath(docuviaDir, 'l3_decisions');
+          try {
+            const entries = await vscode.workspace.fs.readDirectory(decisionsDir);
+            for (const [name, type] of entries) {
+              if (type === vscode.FileType.File && name.endsWith('.md')) {
+                const md = await this.readUriSafe(vscode.Uri.joinPath(decisionsDir, name));
+                if (md) {
+                  const decision = parseDecision(md, name);
+                  if (decision) decisions.set(decision.id, decision);
+                }
+              }
+            }
+          } catch {
+            // decisions dir might not exist
+          }
+        } catch (err) {
+          this._outputChannel.appendLine(`[Docuvia] Local fallback failed: ${String(err)}`);
         }
       }
 

@@ -102,13 +102,18 @@ This project is scaffolded with the `create-agent-launcher` workflow. When imple
 - **Node Version**: Strictly Node.js 24+.
 - **API First**: Do not manually write API types or fetch hooks. Always edit `openapi.yaml` and run the codegen script. Orval will generate Zod schemas and React Query hooks.
 
-## Product Domain Knowledge
+## Product Domain Knowledge & Core Architecture
 
-- **L1 Tags**: Global classification pool across all projects. (DB: `l1_tags.ts`)
-- **L2 Nodes**: Package / Module / Component, scoped per project. (DB: `l2_nodes.ts`)
-- **L3 Nodes**: Implementation rules, decisions, rationale, scoped per L2 node. (DB: `l3_nodes.ts`)
-- **Agentic RAG**: `intent-router.ts` handles the 4-way LLM-based routing (vector, graph, direct, hybrid) to answer queries.
-- **Human-in-the-loop**: `review_tasks.ts` stores the review queue where humans anchor/approve AI-generated knowledge.
+Docuvia is designed around an **Agentic OS Architecture**, prioritizing token efficiency, graceful degradation, and asynchronous metabolism.
+
+- **Knowledge Hierarchy**:
+  - `L1 Tags`: Global categorizations across all projects (e.g., Core Logic, API).
+  - `L2 Nodes`: Architecture modules/components, automatically clustered via Top-Down Archaeology.
+  - `L3 Nodes`: Granular implementation rules anchored to specific Git commit hashes (Incremental Deltas).
+- **Git-Isomorphic Graph**: Knowledge is stored and synchronized via the `docuvia-knowledge` orphan branch, allowing the system to project temporal deltas without constantly re-scanning full histories.
+- **Local-First, Server-Augmented**: The VS Code client operates independently for topology scanning and keyword retrieval, unlocking deep Graph traversal and Swarm Evolution only when connected to the API Server.
+- **Agentic RAG**: `intent-router.ts` handles 4-way LLM-based routing (vector, graph, direct, hybrid) with temporal decay applied to inactive knowledge nodes.
+- **Swarm Intelligence (Human-in-the-loop)**: `correction_examplesTable` captures developer overrides. The Server asynchronously distills these into global guardrails and updates the `prompt_templatesTable`.
 
 ### DB Schema Tables (`lib/db/src/schema/`)
 

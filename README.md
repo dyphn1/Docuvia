@@ -55,14 +55,14 @@ The frontend defaults to `BASE_PATH=/` and `PORT=18774`.
 
 ## Core Workflow & Features
 
-### 1. Ingestion
-Connect Docuvia to your Git/SVN repository or upload specification documents (PDF, Word, PPTX, Markdown). Docuvia automatically filters out low-value commits to maintain a high signal-to-noise ratio.
+### 1. Ingestion & Zero-to-One Discovery
+Docuvia operates on a **Local-First, Server-Augmented** architecture. Connect to your Git/SVN repository or upload specification documents. For uninitialized projects, the local client performs deterministic topology sniffing and delegates naming to the LLM, seamlessly syncing via an orphan branch (`docuvia-knowledge`) to establish team consensus instantly without burning millions of tokens.
 
-### 2. Knowledge Construction (Human-in-the-Loop)
-Trigger the AI analysis pipeline. The AI will extract structured knowledge across three tiers (L1, L2, L3). Use the **Review Queue** UI to anchor, correct, and approve the AI's proposed tags and decision records.
+### 2. Knowledge Construction & Swarm Intelligence
+Trigger the AI analysis pipeline. The AI will extract structured knowledge across three tiers (L1, L2, L3) via incremental deltas isomorphic to your Git tree. Use the **Review Queue** UI to anchor, correct, and approve AI proposals. Every human override triggers a background distillation job, converting local corrections into global guardrails via **Swarm Intelligence**.
 
-### 3. Querying & Agentic RAG
-Once indexed, you can query the knowledge graph via the UI or connect your own AI agents via the built-in **MCP Endpoints**. The Agentic RAG system autonomously decides whether to use vector search (for semantic queries) or graph traversal (for dependency and impact analysis).
+### 3. Agentic RAG & O(1) Arbitration
+Query the knowledge graph via the UI or connect external AI agents via the built-in **MCP Endpoints**. The Agentic RAG system uses O(1) arbitration to route requests across 4 dimensions: **Vector** (semantic), **Graph** (dependency analysis), **Direct** (exact file targets), and **Hybrid** routing. To prevent stale context, knowledge nodes automatically undergo temporal decay based on their `last_verified_at` timestamp.
 
 ### 4. VS Code Extension
 Install the **Docuvia VS Code Extension** (`@workspace/vscode-client`) for direct editor integration. Browse the knowledge graph in the sidebar tree view, capture decisions from code selections via `docuvia.addDecision`, run targeted extractions with `docuvia.runExtraction`, and query the graph through the `@docuvia` GitHub Copilot Chat participant (`/explore`, `/query`, `/extract`, `/help`).

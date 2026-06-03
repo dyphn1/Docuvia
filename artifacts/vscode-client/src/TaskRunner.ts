@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { ExtractionTask, TaskQueueTreeProvider, TaskType } from './TaskQueueTreeProvider.js';
 import { KnowledgeStore } from './KnowledgeStore.js';
+import { KGNode } from './KnowledgeGraphTreeProvider.js';
 
 // ─── Public interface ─────────────────────────────────────────────────────────
 
@@ -55,13 +56,196 @@ export class TaskRunner {
     return taskId;
   }
 
+  async queueAutoCategorization(workspaceRoot: string, unassignedNodes: KGNode[]): Promise<string> {
+    const { v4: uuidv4 } = await import('uuid');
+    const taskId = uuidv4();
+
+    const task: ExtractionTask = {
+      id: taskId,
+      label: `Auto-categorize ${unassignedNodes.length} decisions`,
+      type: 'l3_auto_categorization',
+      status: 'pending',
+      createdAt: new Date(),
+    };
+
+    this.tqProvider.addTask(task);
+
+    void this.runAutoCategorizationAsync(taskId, workspaceRoot, unassignedNodes);
+
+    return taskId;
+  }
+
+  private async runAutoCategorizationAsync(taskId: string, workspaceRoot: string, unassignedNodes: KGNode[]): Promise<void> {
+    this.tqProvider.updateTaskStatus(taskId, 'in_progress', 'Selecting LM...');
+
+    let models = await vscode.lm.selectChatModels({ vendor: LM_VENDOR, family: LM_FAMILY });
+    if (models.length === 0) {
+      models = await vscode.lm.selectChatModels({ vendor: LM_VENDOR });
+    }
+    if (models.length === 0) {
+      models = await vscode.lm.selectChatModels();
+    }
+    if (models.length === 0) {
+      this.tqProvider.updateTaskStatus(taskId, 'failed', 'No LM model available');
+      return;
+    }
+
+    const model = models[0];
+
+    const snap = this.store.snapshots.get(workspaceRoot);
+    if (!snap) {
+      this.tqProvider.updateTaskStatus(taskId, 'failed', 'Knowledge graph not loaded');
+      return;
+    }
+
+    const l1TagsYaml = stringifyYaml(snap.tags);
+    const l2ModulesYaml = stringifyYaml(snap.modules);
+    
+    // Prepare unassigned items payload
+    const unassignedItems = unassignedNodes.map(node => {
+      const decision = snap.decisions.get(node.id);
+      return {
+        l3_id: node.id,
+        title: node.label,
+        content: decision?.body ?? '',
+        file_path: decision?.filePath ?? '',
+      };
+    });
+
+    const prompt = `You are a code architecture assistant. Your task is to categorize unassigned L3 decisions into existing L2 modules, or propose new L2 modules under existing L1 tags.
+
+Current L1 tags:
+${l1TagsYaml}
+
+Current L2 modules:
+${l2ModulesYaml}
+
+Unassigned Decisions:
+${stringifyYaml(unassignedItems)}
+
+Output ONLY a JSON array mapping 'l3_id' to EITHER 'target_l2_id' OR a proposed 'new_l2_name' and 'l1_id'.
+Example:
+[
+  { "l3_id": "123", "target_l2_id": "existing-l2-id" },
+  { "l3_id": "456", "new_l2_name": "My New Module", "l1_id": "existing-l1-id" }
+]
+
+Do not output any markdown formatting or explanation. Only the raw JSON array.
+If you are not confident about an item, exclude it from the array.`;
+
+    this.tqProvider.updateTaskStatus(taskId, 'in_progress', 'Categorizing...');
+    
+    try {
+      const messages = [
+        vscode.LanguageModelChatMessage.User(prompt)
+      ];
+      
+      const response = await model.sendRequest(messages, {}, new vscode.CancellationTokenSource().token);
+      let result = '';
+      for await (const part of response.text) {
+        result += part;
+      }
+      
+      const cleaned = result.replace(/^```json\n?/i, '').replace(/\n?```$/, '').trim();
+      if (!cleaned || cleaned === '[]') {
+        this.tqProvider.updateTaskStatus(taskId, 'done', 'No confident mappings found');
+        return;
+      }
+      
+      const mapping = JSON.parse(cleaned);
+      if (!Array.isArray(mapping)) {
+        throw new Error('LM output is not a JSON array');
+      }
+      
+      await this.applyAutoCategorization(workspaceRoot, mapping, snap);
+      
+      this.tqProvider.updateTaskStatus(taskId, 'done', `Categorized ${mapping.length} decision(s)`);
+    } catch (err) {
+      this.outputChannel.appendLine(`[Docuvia/TaskRunner] Error categorizing: ${String(err)}`);
+      this.tqProvider.updateTaskStatus(taskId, 'failed', `Error: ${String(err)}`);
+    }
+  }
+
+  private async applyAutoCategorization(workspaceRoot: string, mapping: any[], snap: any): Promise<void> {
+    const routerUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l3_router.yaml'));
+    const modulesUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l2_modules.yaml'));
+    
+    let existingRouter: any[] = [];
+    let existingModules: any[] = [];
+    
+    try {
+      const routerBytes = await vscode.workspace.fs.readFile(routerUri);
+      existingRouter = parseYaml(Buffer.from(routerBytes).toString('utf-8')) || [];
+    } catch {}
+    
+    try {
+      const modulesBytes = await vscode.workspace.fs.readFile(modulesUri);
+      existingModules = parseYaml(Buffer.from(modulesBytes).toString('utf-8')) || [];
+    } catch {}
+
+    const { v4: uuidv4 } = await import('uuid');
+    
+    let modulesChanged = false;
+    let routerChanged = false;
+
+    // First process newly proposed L2 modules to create their IDs
+    for (const item of mapping) {
+      if (item.new_l2_name && item.l1_id && !item.target_l2_id) {
+        // check if it already exists in the newly added ones
+        let existingNew = existingModules.find(m => m.name === item.new_l2_name && m.l1_tag_id === item.l1_id);
+        if (!existingNew) {
+          existingNew = {
+            id: uuidv4(),
+            slug: item.new_l2_name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+            l1_tag_id: item.l1_id,
+            name: item.new_l2_name,
+            description: `Auto-generated module for ${item.new_l2_name}`,
+            source_paths: []
+          };
+          existingModules.push(existingNew);
+          modulesChanged = true;
+        }
+        item.target_l2_id = existingNew.id;
+      }
+    }
+
+    // Now update router entries
+    for (const item of mapping) {
+      if (item.target_l2_id && item.l3_id) {
+        // Find the decision in router
+        const routerEntry = existingRouter.find(r => r.id === item.l3_id);
+        if (routerEntry) {
+          routerEntry.l2_module_id = item.target_l2_id;
+          routerChanged = true;
+        }
+      }
+    }
+
+    if (modulesChanged) {
+      await vscode.workspace.fs.writeFile(modulesUri, Buffer.from(stringifyYaml(existingModules), 'utf-8'));
+    }
+    if (routerChanged) {
+      await vscode.workspace.fs.writeFile(routerUri, Buffer.from(stringifyYaml(existingRouter), 'utf-8'));
+    }
+    
+    if (modulesChanged || routerChanged) {
+      await this.store.load();
+    }
+  }
+
   private async runExtractionAsync(
     taskId: string,
     params: ExtractionParams
   ): Promise<void> {
     this.tqProvider.updateTaskStatus(taskId, 'in_progress', 'Selecting LM...');
 
-    const models = await vscode.lm.selectChatModels({ vendor: LM_VENDOR, family: LM_FAMILY });
+    let models = await vscode.lm.selectChatModels({ vendor: LM_VENDOR, family: LM_FAMILY });
+    if (models.length === 0) {
+      models = await vscode.lm.selectChatModels({ vendor: LM_VENDOR });
+    }
+    if (models.length === 0) {
+      models = await vscode.lm.selectChatModels();
+    }
     if (models.length === 0) {
       this.tqProvider.updateTaskStatus(taskId, 'failed', 'No LM model available');
       this.outputChannel.appendLine(

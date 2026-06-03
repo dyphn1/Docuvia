@@ -7,7 +7,7 @@ import { CredentialManager } from './CredentialManager.js';
 import { DashboardPanel } from './DashboardPanel.js';
 import { CodeLensDecisionData, DocuviaCodeLensProvider } from './DocuviaCodeLensProvider.js';
 import { DocuviaHoverProvider } from './DocuviaHoverProvider.js';
-import { KnowledgeGraphTreeProvider } from './KnowledgeGraphTreeProvider.js';
+import { KGNode, KnowledgeGraphTreeProvider } from './KnowledgeGraphTreeProvider.js';
 import { KnowledgeStore } from './KnowledgeStore.js';
 import { parseGlobalConfig } from './parser.js';
 import { SearchResultsPanel } from './SearchResultsPanel.js';
@@ -51,9 +51,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // ─── Tree Providers ───────────────────────────────────────────────────────
 
   const kgProvider = new KnowledgeGraphTreeProvider(store);
-  context.subscriptions.push(
-    vscode.window.registerTreeDataProvider('docuvia.knowledgeGraph', kgProvider)
-  );
+  const kgTreeView = vscode.window.createTreeView('docuvia.knowledgeGraph', {
+    treeDataProvider: kgProvider,
+    dragAndDropController: kgProvider,
+    showCollapseAll: true,
+  });
+  context.subscriptions.push(kgTreeView);
 
   const tqProvider = new TaskQueueTreeProvider();
   context.subscriptions.push(
@@ -115,6 +118,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand('docuvia.initProject', async (node?: any) => {
       await initProject(context, store, node);
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('docuvia.autoCategorizeDecisions', async (node?: KGNode) => {
+      if (node && node.workspaceRoot) {
+        const unassignedNodes = kgProvider.getChildren(node);
+        if (unassignedNodes.length > 0) {
+          await taskRunner.queueAutoCategorization(node.workspaceRoot, unassignedNodes);
+          vscode.commands.executeCommand('docuvia.taskQueue.focus');
+        } else {
+          vscode.window.showInformationMessage('No unassigned decisions to categorize.');
+        }
+      }
     })
   );
 

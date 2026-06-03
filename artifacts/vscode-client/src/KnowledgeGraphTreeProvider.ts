@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { KnowledgeStore } from './KnowledgeStore.js';
 
 // ─── Node types ───────────────────────────────────────────────────────────────
@@ -20,14 +21,63 @@ export interface KGNode {
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
-export class KnowledgeGraphTreeProvider implements vscode.TreeDataProvider<KGNode> {
+export class KnowledgeGraphTreeProvider implements vscode.TreeDataProvider<KGNode>, vscode.TreeDragAndDropController<KGNode> {
   private readonly _onDidChangeTreeData = new vscode.EventEmitter<
     KGNode | undefined | null | void
   >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
+  public readonly dropMimeTypes = ['application/vnd.code.tree.docuvia.knowledgeGraph'];
+  public readonly dragMimeTypes = ['application/vnd.code.tree.docuvia.knowledgeGraph'];
+
   constructor(private readonly store: KnowledgeStore) {
     store.onDidLoad(() => this.refresh());
+  }
+
+  public async handleDrag(source: readonly KGNode[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
+    const l3Nodes = source.filter(n => n.kind === 'l3entry');
+    if (l3Nodes.length > 0) {
+      dataTransfer.set('application/vnd.code.tree.docuvia.knowledgeGraph', new vscode.DataTransferItem(l3Nodes));
+    }
+  }
+
+  public async handleDrop(target: KGNode | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken): Promise<void> {
+    if (!target || target.kind !== 'l2module' || !target.workspaceRoot) {
+      return;
+    }
+    const transferItem = dataTransfer.get('application/vnd.code.tree.docuvia.knowledgeGraph');
+    if (!transferItem) {
+      return;
+    }
+    const nodes: KGNode[] = transferItem.value;
+    const l3Nodes = nodes.filter(n => n.kind === 'l3entry' && n.workspaceRoot === target.workspaceRoot);
+
+    if (l3Nodes.length > 0) {
+      const snap = this.store.snapshots.get(target.workspaceRoot);
+      if (!snap) return;
+
+      const routerPath = path.join(target.workspaceRoot, '.docuvia', 'l3_router.yaml');
+      try {
+        const routerBytes = await vscode.workspace.fs.readFile(vscode.Uri.file(routerPath));
+        const existingRouter = parseYaml(Buffer.from(routerBytes).toString('utf-8')) || [];
+        
+        let changed = false;
+        for (const node of l3Nodes) {
+          const entry = existingRouter.find((r: any) => r.id === node.id);
+          if (entry) {
+            entry.l2_module_id = target.id;
+            changed = true;
+          }
+        }
+        
+        if (changed) {
+          await vscode.workspace.fs.writeFile(vscode.Uri.file(routerPath), Buffer.from(stringifyYaml(existingRouter), 'utf-8'));
+          await this.store.load();
+        }
+      } catch (e) {
+        console.error('Failed to update l3_router.yaml after drag and drop', e);
+      }
+    }
   }
 
   refresh(): void {

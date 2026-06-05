@@ -113,7 +113,7 @@ Install the **Docuvia VS Code Extension** (`@workspace/vscode-client`) for direc
 
 ## Support & Community
 
-See the full [GitBook Documentation](docs/gitbook/) for Quick Start guides, API references, and architectural roadmaps.
+See the full [Architectural Design Documents](docs/design/00-architecture-index.md) for deeper insights into the Local-First structure, Git-Isomorphic principles, and Swarm Intelligence mechanisms. For project tracking, see the [Master Roadmap](docs/roadmap/master-roadmap.md).
 
 ---
 

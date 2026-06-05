@@ -20,7 +20,7 @@
 | `api-spec/`                      | `openapi.yaml` — Single source of truth for all API contracts         |
 | `db/`                            | Drizzle ORM schema and migrations (`projects.ts`, `commits.ts`, etc.) |
 | `integrations-openai-ai-server/` | OpenAI-compatible client wrapper                                      |
-| `docs/`                          | Roadmap, gitbook content, phase checklists, AI plans, design docs     |
+| `docs/`                          | Centralized documentation including `design/` (Arc42 + ADRs) and `roadmap/` |
 
 ## Development Commands
 

@@ -100,7 +100,7 @@ All generate pipeline outputs must produce nodes in this hierarchy. Cross-projec
 Docuvia needs LLM capabilities (text generation, embedding) but must remain provider-agnostic. Native SDKs (Anthropic, Google, Ollama) each have different APIs and add per-provider maintenance burden. The OpenAI API format has become the de facto standard supported by most providers and local runners.
 
 **Decision:**  
-All LLM calls go through `lib/integrations-openai-ai-server/`, which wraps an OpenAI-compatible `/v1/chat/completions` and `/v1/embeddings` endpoint. No native Ollama, Anthropic, or Gemini adapters are implemented. In development on Replit, the platform provisions an OpenAI-compatible endpoint automatically.
+All LLM calls go through `lib/integrations-openai-ai-server/`, which wraps an OpenAI-compatible `/v1/chat/completions` and `/v1/embeddings` endpoint. No native Ollama, Anthropic, or Gemini adapters are implemented.
 
 **Consequences:**
 

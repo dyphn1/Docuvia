@@ -1,6 +1,6 @@
 # Docuvia — Claude Code Instructions
 
-> **Project context, architecture, commands, and conventions**: See [AGENT.md](AGENT.md).
+> **Project context, architecture, commands, and conventions**: See [AGENTS.md](AGENTS.md).
 > All agent definitions (canonical source of truth): See [.github/agents/](.github/agents/).
 > Platform adapters for Claude: See [.claude/agents/](.claude/agents/).
 

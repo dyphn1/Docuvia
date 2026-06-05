@@ -89,8 +89,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   };
 
   const handleCopy = () => {
-    const origin = window.location.origin;
-    const base = origin.includes("replit") ? origin : origin;
+    const base = window.location.origin;
     navigator.clipboard.writeText(`${base}${buildUrl()}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

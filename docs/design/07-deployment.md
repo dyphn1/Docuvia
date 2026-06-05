@@ -114,7 +114,7 @@ Runtime environment:
 | **Docker image**                | Not provided in v1                                               | Raw Node.js process deployment; Dockerfile can be added for containerization                                                       |
 | **Static frontend serving**     | Not wired for production                                         | Vite `dist/` output exists; serving from `api-server` via `express.static()` not yet configured — see [D-03](11-risks-and-debt.md) |
 | **VS Code extension packaging** | No `.vsix` build script in CI                                    | `vsce package` must be run manually; see [D-02](11-risks-and-debt.md)                                                              |
-| **Replit-hosted development**   | Multi-provider LLM provisioned by Replit platform                | Self-hosting requires `OPENAI_API_KEY` pointing to a compatible endpoint (OpenRouter, Azure, etc.)                                 |
+| **Cloud/Self-hosted deployment**   | Standard deployment using OpenAI-compatible endpoints | Requires `OPENAI_API_KEY` pointing to a compatible endpoint (OpenRouter, Azure, OpenAI, etc.)                                 |
 | **Database migrations**         | Schema push via Drizzle (`pnpm --filter @workspace/db run push`) | Production migrations should use `drizzle-kit migrate` with explicit migration files under `docs/db_migrations/`                   |
 | **Secrets management**          | Env vars via `.env` file in development                          | Production: use secret manager (Vault, AWS Secrets Manager, etc.)                                                                  |
 
@@ -124,4 +124,4 @@ Runtime environment:
 
 - [AGENTS.md](../../AGENTS.md) — Full list of development commands
 - [11-risks-and-debt.md](11-risks-and-debt.md) — Known deployment gaps (D-02, D-03)
-- [docs/vscode-extension-roadmap.md](../vscode-extension-roadmap.md) — VS Code extension packaging roadmap
+- [docs/roadmap/master-roadmap.md](../roadmap/master-roadmap.md) — SSOT Roadmap

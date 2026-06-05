@@ -27,18 +27,18 @@ graph TD
 
 ## 3.2 External Interfaces Table
 
-| Partner | Direction | Protocol | Auth / Security | Key Endpoints / Commands |
-|---|---|---|---|---|
-| **Developer Browser** | Inbound | HTTP (Vite dev server, port 18774) | None (local dev) | All kg-engine React pages |
-| **AI IDE / MCP Client** | Inbound | HTTP REST (port 8080) | Bearer token (configurable) | `POST /mcp/query`, `POST /mcp/tools/*` |
-| **VS Code Extension** | Inbound | HTTP REST (port 8080) | API key (stored in VS Code SecretStorage) | `POST /extensions/vscode/extract`, `GET /extensions/vscode/status` |
-| **Copilot Chat `@docuvia`** | Inbound | VS Code Extension API | VS Code session | Slash commands: `/explore`, `/query`, `/extract`, `/help` |
-| **GitHub Webhooks** | Inbound | HTTPS POST | HMAC-SHA256 (`GITHUB_WEBHOOK_SECRET`) | `POST /github/webhooks` |
-| **PostgreSQL** | Outbound | TCP (Drizzle ORM) | `DATABASE_URL` connection string | All schema tables in `lib/db/src/schema/` |
-| **OpenAI-compatible LLM** | Outbound | HTTPS REST | API key (`OPENAI_API_KEY` or equivalent) | `/v1/chat/completions` |
-| **Slack / Teams** | Outbound | HTTPS POST (webhook) | Webhook URL (stored in `project_integrations`) | Notification events (fire-and-forget) |
-| **Git CLI** | Outbound | `child_process.execFile` | Local filesystem permissions | `git log`, `git diff`, `git show` |
-| **SVN CLI** | Outbound | `child_process.execFile` | Local SVN credentials | `svn log --xml`, `svn diff` |
+| Partner                     | Direction | Protocol                           | Auth / Security                                | Key Endpoints / Commands                                           |
+| --------------------------- | --------- | ---------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
+| **Developer Browser**       | Inbound   | HTTP (Vite dev server, port 18774) | None (local dev)                               | All kg-engine React pages                                          |
+| **AI IDE / MCP Client**     | Inbound   | HTTP REST (port 8080)              | Bearer token (configurable)                    | `POST /mcp/query`, `POST /mcp/tools/*`                             |
+| **VS Code Extension**       | Inbound   | HTTP REST (port 8080)              | API key (stored in VS Code SecretStorage)      | `POST /extensions/vscode/extract`, `GET /extensions/vscode/status` |
+| **Copilot Chat `@docuvia`** | Inbound   | VS Code Extension API              | VS Code session                                | Slash commands: `/explore`, `/query`, `/extract`, `/help`          |
+| **GitHub Webhooks**         | Inbound   | HTTPS POST                         | HMAC-SHA256 (`GITHUB_WEBHOOK_SECRET`)          | `POST /github/webhooks`                                            |
+| **PostgreSQL**              | Outbound  | TCP (Drizzle ORM)                  | `DATABASE_URL` connection string               | All schema tables in `lib/db/src/schema/`                          |
+| **OpenAI-compatible LLM**   | Outbound  | HTTPS REST                         | API key (`OPENAI_API_KEY` or equivalent)       | `/v1/chat/completions`                                             |
+| **Slack / Teams**           | Outbound  | HTTPS POST (webhook)               | Webhook URL (stored in `project_integrations`) | Notification events (fire-and-forget)                              |
+| **Git CLI**                 | Outbound  | `child_process.execFile`           | Local filesystem permissions                   | `git log`, `git diff`, `git show`                                  |
+| **SVN CLI**                 | Outbound  | `child_process.execFile`           | Local SVN credentials                          | `svn log --xml`, `svn diff`                                        |
 
 ---
 

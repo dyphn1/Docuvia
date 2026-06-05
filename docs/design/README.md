@@ -12,21 +12,21 @@ This is the authoritative design record for engineers joining the project, AI ag
 
 ## Documentation Index
 
-| # | Document | Description |
-|---|----------|-------------|
-| — | [README.md](README.md) (this file) | Master index |
-| 1 | [01-introduction-and-goals.md](01-introduction-and-goals.md) | Vision, quality goals, stakeholders |
-| 2 | [02-constraints.md](02-constraints.md) | Technical, org, regulatory constraints |
-| 3 | [03-context-and-scope.md](03-context-and-scope.md) | System boundary, external interfaces |
-| 4 | [04-solution-strategy.md](04-solution-strategy.md) | Key technology choices and rationale |
-| 5 | [05-building-blocks.md](05-building-blocks.md) | Monorepo packages, module responsibilities |
-| 6 | [06-runtime-scenarios.md](06-runtime-scenarios.md) | Key runtime flows (ingest, generate, query) |
-| 7 | [07-deployment.md](07-deployment.md) | Deployment topology, environments |
-| 8 | [08-crosscutting-concepts.md](08-crosscutting-concepts.md) | Domain model, architecture patterns, Coding Rules |
-| 9 | [09-architectural-decisions.md](09-architectural-decisions.md) | ADR index + key decisions |
-| 10 | [10-quality-requirements.md](10-quality-requirements.md) | Quality goals, NFRs, performance targets |
-| 11 | [11-risks-and-debt.md](11-risks-and-debt.md) | Known gaps and technical debt |
-| 12 | [12-glossary.md](12-glossary.md) | Full product terminology |
+| #   | Document                                                       | Description                                       |
+| --- | -------------------------------------------------------------- | ------------------------------------------------- |
+| —   | [README.md](README.md) (this file)                             | Master index                                      |
+| 1   | [01-introduction-and-goals.md](01-introduction-and-goals.md)   | Vision, quality goals, stakeholders               |
+| 2   | [02-constraints.md](02-constraints.md)                         | Technical, org, regulatory constraints            |
+| 3   | [03-context-and-scope.md](03-context-and-scope.md)             | System boundary, external interfaces              |
+| 4   | [04-solution-strategy.md](04-solution-strategy.md)             | Key technology choices and rationale              |
+| 5   | [05-building-blocks.md](05-building-blocks.md)                 | Monorepo packages, module responsibilities        |
+| 6   | [06-runtime-scenarios.md](06-runtime-scenarios.md)             | Key runtime flows (ingest, generate, query)       |
+| 7   | [07-deployment.md](07-deployment.md)                           | Deployment topology, environments                 |
+| 8   | [08-crosscutting-concepts.md](08-crosscutting-concepts.md)     | Domain model, architecture patterns, Coding Rules |
+| 9   | [09-architectural-decisions.md](09-architectural-decisions.md) | ADR index + key decisions                         |
+| 10  | [10-quality-requirements.md](10-quality-requirements.md)       | Quality goals, NFRs, performance targets          |
+| 11  | [11-risks-and-debt.md](11-risks-and-debt.md)                   | Known gaps and technical debt                     |
+| 12  | [12-glossary.md](12-glossary.md)                               | Full product terminology                          |
 
 ---
 
@@ -44,9 +44,9 @@ The VS Code extension has its own detailed design documentation under [`artifact
 
 ## Related Documents
 
-| Document | Purpose |
-|----------|---------|
-| [docs/roadmap-checklist.md](../roadmap-checklist.md) | Phase-by-phase completion checklist (all 42 items) |
-| [docs/implementation-roadmap.md](../implementation-roadmap.md) | Implementation roadmap with phase descriptions |
-| [docs/vscode-extension-roadmap.md](../vscode-extension-roadmap.md) | VS Code extension roadmap |
-| [AGENTS.md](../../AGENTS.md) | AI developer guide — commands, conventions, agent definitions |
+| Document                                                           | Purpose                                                       |
+| ------------------------------------------------------------------ | ------------------------------------------------------------- |
+| [docs/roadmap-checklist.md](../roadmap-checklist.md)               | Phase-by-phase completion checklist (all 42 items)            |
+| [docs/implementation-roadmap.md](../implementation-roadmap.md)     | Implementation roadmap with phase descriptions                |
+| [docs/vscode-extension-roadmap.md](../vscode-extension-roadmap.md) | VS Code extension roadmap                                     |
+| [AGENTS.md](../../AGENTS.md)                                       | AI developer guide — commands, conventions, agent definitions |

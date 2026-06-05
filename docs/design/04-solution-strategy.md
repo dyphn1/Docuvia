@@ -2,19 +2,19 @@
 
 ## 4.1 Technology Choices
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| **Language** | TypeScript (strict mode) | Full-stack type safety; enables Orval codegen from OpenAPI spec; prevents entire classes of runtime errors |
-| **Backend Framework** | Express 5 (ESM) | Minimal, well-understood; async-native in v5 (async error propagation); large ecosystem |
-| **ORM** | Drizzle ORM | Type-safe SQL queries as TypeScript; schema-as-code; migration support; no magic |
-| **Database** | PostgreSQL | JSONB column type for embedding storage; proven ACID guarantees; rich indexing; no external vector DB required in v1 |
-| **Frontend** | React 18 + Vite + shadcn/ui + Tailwind CSS | Fast HMR; composable design system; tree-shakeable components |
-| **API Contract** | OpenAPI 3.x + Orval codegen | Single source of truth eliminates type drift between frontend and backend; generates both Zod validators and React Query hooks |
-| **Vector Search** | In-memory cosine similarity | No external vector DB dependency in v1; embeddings stored as JSONB in PostgreSQL; sufficient for ≤100K nodes |
-| **LLM Integration** | OpenAI-compatible interface (`lib/integrations-openai-ai-server`) | Provider-agnostic; compatible with OpenRouter, Azure OpenAI, and any `/v1/chat/completions`-compatible endpoint |
-| **IDE Integration** | VS Code Extension API | Primary developer audience uses VS Code; enables Copilot Chat participant, CodeLens, TreeView |
-| **MCP Layer** | Custom Express routes at `/mcp/*` | Compatibility with AI agent toolchains (Cursor, GitHub Copilot, Claude, etc.) that implement Model Context Protocol |
-| **Package Manager** | pnpm workspaces | Efficient monorepo dependency management; hoisting control; `preinstall` hook blocks accidental npm/yarn use |
+| Decision              | Choice                                                            | Rationale                                                                                                                      |
+| --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Language**          | TypeScript (strict mode)                                          | Full-stack type safety; enables Orval codegen from OpenAPI spec; prevents entire classes of runtime errors                     |
+| **Backend Framework** | Express 5 (ESM)                                                   | Minimal, well-understood; async-native in v5 (async error propagation); large ecosystem                                        |
+| **ORM**               | Drizzle ORM                                                       | Type-safe SQL queries as TypeScript; schema-as-code; migration support; no magic                                               |
+| **Database**          | PostgreSQL                                                        | JSONB column type for embedding storage; proven ACID guarantees; rich indexing; no external vector DB required in v1           |
+| **Frontend**          | React 18 + Vite + shadcn/ui + Tailwind CSS                        | Fast HMR; composable design system; tree-shakeable components                                                                  |
+| **API Contract**      | OpenAPI 3.x + Orval codegen                                       | Single source of truth eliminates type drift between frontend and backend; generates both Zod validators and React Query hooks |
+| **Vector Search**     | In-memory cosine similarity                                       | No external vector DB dependency in v1; embeddings stored as JSONB in PostgreSQL; sufficient for ≤100K nodes                   |
+| **LLM Integration**   | OpenAI-compatible interface (`lib/integrations-openai-ai-server`) | Provider-agnostic; compatible with OpenRouter, Azure OpenAI, and any `/v1/chat/completions`-compatible endpoint                |
+| **IDE Integration**   | VS Code Extension API                                             | Primary developer audience uses VS Code; enables Copilot Chat participant, CodeLens, TreeView                                  |
+| **MCP Layer**         | Custom Express routes at `/mcp/*`                                 | Compatibility with AI agent toolchains (Cursor, GitHub Copilot, Claude, etc.) that implement Model Context Protocol            |
+| **Package Manager**   | pnpm workspaces                                                   | Efficient monorepo dependency management; hoisting control; `preinstall` hook blocks accidental npm/yarn use                   |
 
 ---
 

@@ -1,12 +1,28 @@
 # Command: Docuvia Add Decision
 
 ## Command Details
+
 - **Command IDs**:
   - `docuvia.addDecision` (Command Palette)
   - `docuvia.addDecisionFromSelection` (Editor Right-Click Context Menu)
 - **Title**: `Docuvia: Add Decision` / `Docuvia: Add Decision from Selection`
+- **Registration**: Implemented in [`extension.ts`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/extension.ts).
 
 ## Functional Flow
+
+```mermaid
+flowchart TD
+    Start[Trigger Add Decision] --> Selection{From selection?}
+    Selection -- Yes --> Capture[Capture selection and wrap in code block]
+    Selection -- No --> Workspace[Resolve Workspace Folder]
+    Capture --> Workspace
+    Workspace --> Metadata[Prompt for Title, generate UUID & slug]
+    Metadata --> L2[QuickPick of L2 Modules]
+    L2 --> Scaffold[Generate L3 Markdown with frontmatter]
+    Scaffold --> Write[Write to .docuvia/l3_decisions/{slug}.md]
+    Write --> Reload[Reload KnowledgeStore]
+    Reload --> Open[Open Markdown file in Editor]
+```
 
 1. **Selection Handling (Optional)**:
    - If triggered via `addDecisionFromSelection`, capture the active text editor's selection and language ID.
@@ -39,5 +55,5 @@
    - Write the file to `.docuvia/l3_decisions/{slug}.md`.
 
 6. **Post-Action**:
-   - Force a `KnowledgeStore` reload to ensure the UI is immediately aware of the new file.
+   - Force a [`KnowledgeStore`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/KnowledgeStore.ts) reload to ensure the UI is immediately aware of the new file.
    - Open the newly created markdown file in the editor so the user can finish filling it out.

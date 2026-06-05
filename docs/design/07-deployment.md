@@ -36,14 +36,14 @@ All three processes (`api-server`, `kg-engine` dev server, PostgreSQL) can run o
 
 ## 7.2 Environment Variables
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `PORT` | **Yes** | — | API server port. Server throws on startup if missing. |
-| `DATABASE_URL` | **Yes** | — | PostgreSQL connection string (e.g., `postgresql://user:pass@host:5432/db`) |
-| `OPENAI_API_KEY` | **Yes** | — | LLM API key. Can be any OpenAI-compatible provider key. Variable name is conventional; configure via LLM config if provider differs. |
-| `GITHUB_WEBHOOK_SECRET` | Conditional | — | Required when GitHub PR integration is active. Used for HMAC-SHA256 webhook validation. |
-| `NODE_ENV` | No | `development` | Set to `production` for production deployments. |
-| Slack / Teams URLs | Conditional | — | Integration webhook URLs are stored per-project in the `project_integrations` database table, not as env vars. |
+| Variable                | Required    | Default       | Description                                                                                                                          |
+| ----------------------- | ----------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `PORT`                  | **Yes**     | —             | API server port. Server throws on startup if missing.                                                                                |
+| `DATABASE_URL`          | **Yes**     | —             | PostgreSQL connection string (e.g., `postgresql://user:pass@host:5432/db`)                                                           |
+| `OPENAI_API_KEY`        | **Yes**     | —             | LLM API key. Can be any OpenAI-compatible provider key. Variable name is conventional; configure via LLM config if provider differs. |
+| `GITHUB_WEBHOOK_SECRET` | Conditional | —             | Required when GitHub PR integration is active. Used for HMAC-SHA256 webhook validation.                                              |
+| `NODE_ENV`              | No          | `development` | Set to `production` for production deployments.                                                                                      |
+| Slack / Teams URLs      | Conditional | —             | Integration webhook URLs are stored per-project in the `project_integrations` database table, not as env vars.                       |
 
 ---
 
@@ -92,14 +92,15 @@ pnpm prettier --write .
 
 Docuvia uses **GitHub Actions** for continuous integration.
 
-| Job | Steps | Trigger |
-|---|---|---|
-| `lint` | `pnpm prettier --check .` | Push to any branch, PR |
+| Job                   | Steps                                       | Trigger                |
+| --------------------- | ------------------------------------------- | ---------------------- |
+| `lint`                | `pnpm prettier --check .`                   | Push to any branch, PR |
 | `typecheck-and-build` | `pnpm run build` (which includes typecheck) | Push to any branch, PR |
 
 Jobs run in **parallel**. The workflow file is located at `.github/workflows/ci.yml`.
 
 Runtime environment:
+
 - OS: `ubuntu-latest`
 - Node.js: `22.x` (CI) — production targets Node.js 24
 - pnpm: `9.x`
@@ -108,14 +109,14 @@ Runtime environment:
 
 ## 7.5 Deployment Considerations
 
-| Concern | Current State | Notes |
-|---|---|---|
-| **Docker image** | Not provided in v1 | Raw Node.js process deployment; Dockerfile can be added for containerization |
-| **Static frontend serving** | Not wired for production | Vite `dist/` output exists; serving from `api-server` via `express.static()` not yet configured — see [D-03](11-risks-and-debt.md) |
-| **VS Code extension packaging** | No `.vsix` build script in CI | `vsce package` must be run manually; see [D-02](11-risks-and-debt.md) |
-| **Replit-hosted development** | Multi-provider LLM provisioned by Replit platform | Self-hosting requires `OPENAI_API_KEY` pointing to a compatible endpoint (OpenRouter, Azure, etc.) |
-| **Database migrations** | Schema push via Drizzle (`pnpm --filter @workspace/db run push`) | Production migrations should use `drizzle-kit migrate` with explicit migration files under `docs/db_migrations/` |
-| **Secrets management** | Env vars via `.env` file in development | Production: use secret manager (Vault, AWS Secrets Manager, etc.) |
+| Concern                         | Current State                                                    | Notes                                                                                                                              |
+| ------------------------------- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Docker image**                | Not provided in v1                                               | Raw Node.js process deployment; Dockerfile can be added for containerization                                                       |
+| **Static frontend serving**     | Not wired for production                                         | Vite `dist/` output exists; serving from `api-server` via `express.static()` not yet configured — see [D-03](11-risks-and-debt.md) |
+| **VS Code extension packaging** | No `.vsix` build script in CI                                    | `vsce package` must be run manually; see [D-02](11-risks-and-debt.md)                                                              |
+| **Replit-hosted development**   | Multi-provider LLM provisioned by Replit platform                | Self-hosting requires `OPENAI_API_KEY` pointing to a compatible endpoint (OpenRouter, Azure, etc.)                                 |
+| **Database migrations**         | Schema push via Drizzle (`pnpm --filter @workspace/db run push`) | Production migrations should use `drizzle-kit migrate` with explicit migration files under `docs/db_migrations/`                   |
+| **Secrets management**          | Env vars via `.env` file in development                          | Production: use secret manager (Vault, AWS Secrets Manager, etc.)                                                                  |
 
 ---
 

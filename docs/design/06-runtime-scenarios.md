@@ -4,6 +4,8 @@
 
 A developer registers a Git repository and triggers ingestion from the kg-engine UI.
 
+- **Implementation Route**: [`artifacts/api-server/src/routes/ingest.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/ingest.ts) (specifically `POST /projects/:id/ingest/git`)
+
 ```mermaid
 sequenceDiagram
     actor User
@@ -17,7 +19,7 @@ sequenceDiagram
     API->>DB: SELECT lastGitIngestedAt FROM projects WHERE id = :id
     API->>GIT: execFile("git", ["log", "--after=<cursor>", "--format=..."])
     GIT-->>API: Raw commit list (stdout)
-    API->>API: scoreCommit() — filter low-signal commits
+    API->>API: scoreCommit() ??filter low-signal commits
     API->>DB: INSERT INTO commits (hash, message, diff, authoredAt, projectId)
     API-->>FE: 200 { ingested: N, skipped: M, mode: "incremental" }
     FE-->>User: Show IngestResult toast
@@ -25,9 +27,11 @@ sequenceDiagram
 
 ---
 
-## 6.2 Scenario: Knowledge Generation Pipeline (Commit → L1/L2/L3)
+## 6.2 Scenario: Knowledge Generation Pipeline (Commit – L1/L2/L3)
 
 The generate pipeline transforms raw commits into structured knowledge graph nodes.
+
+- **Implementation Route**: [`artifacts/api-server/src/routes/generate.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/generate.ts) (specifically `POST /projects/:id/generate`)
 
 ```mermaid
 sequenceDiagram
@@ -41,24 +45,24 @@ sequenceDiagram
     FE->>API: POST /projects/:id/generate
     API->>DB: SELECT * FROM commits WHERE processedAt IS NULL AND projectId = :id
 
-    Note over API,LLM: Step 1 — L1 Tagging
-    API->>LLM: Classify commit message → L1 tags (with prompt_template override)
+    Note over API,LLM: Step 1 ??L1 Tagging
+    API->>LLM: Classify commit message ??L1 tags (with prompt_template override)
     LLM-->>API: ["Security", "Build System", ...]
 
-    Note over API,LLM: Step 2 — L2 Extraction
+    Note over API,LLM: Step 2 ??L2 Extraction
     API->>LLM: Extract module/package from diff + path
     LLM-->>API: L2 node candidates (name, type, embedding request)
     API->>LLM: POST /v1/embeddings for each L2 node
     LLM-->>API: Embedding vectors
 
-    Note over API,LLM: Step 3 — L3 Generation
+    Note over API,LLM: Step 3 ??L3 Generation
     API->>DB: SELECT * FROM correction_examples WHERE projectId = :id (few-shot)
     API->>LLM: Generate decision record for each L2 node (with few-shot examples)
     LLM-->>API: L3 nodes (title, content, type)
     API->>LLM: POST /v1/embeddings for each L3 node
     LLM-->>API: Embedding vectors
 
-    Note over API,DB: Step 4 — Cross-project & Noise Detection
+    Note over API,DB: Step 4 ??Cross-project & Noise Detection
     API->>DB: Cosine similarity check across other projects' L2 embeddings
     API->>DB: Detect near-duplicate L1 tags
     API->>DB: INSERT INTO review_tasks (anchor/merge/reject types)
@@ -73,6 +77,9 @@ sequenceDiagram
 ## 6.3 Scenario: Agentic RAG Query (MCP)
 
 An AI IDE sends a natural language query via MCP. The intent router classifies it and routes to the best retrieval strategy.
+
+- **Implementation Route**: [`artifacts/api-server/src/routes/mcp.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/mcp.ts)
+- **Orchestration Logic**: [`artifacts/api-server/src/lib/intent-router.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/lib/intent-router.ts) (`routeQuery()`)
 
 ```mermaid
 sequenceDiagram
@@ -91,7 +98,7 @@ sequenceDiagram
         API->>DB: SELECT l3_nodes, cosine_similarity(embedding, queryVec) ORDER BY sim DESC LIMIT 10
         DB-->>API: Top-K L3 nodes
     else graph
-        API->>DB: MATCH l2_nodes WHERE name LIKE query → traverse node_links
+        API->>DB: MATCH l2_nodes WHERE name LIKE query ??traverse node_links
         DB-->>API: Graph neighbourhood
     else direct
         API->>DB: Full-text search on l3_nodes.content
@@ -108,6 +115,8 @@ sequenceDiagram
 ## 6.4 Scenario: Review Task Resolution
 
 A reviewer approves an AI-generated L3 decision, creating a correction example for future pipeline runs.
+
+- **Implementation Route**: [`artifacts/api-server/src/routes/review_tasks.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/review_tasks.ts) (specifically `POST /review_tasks/:id/resolve`)
 
 ```mermaid
 sequenceDiagram
@@ -136,6 +145,9 @@ A developer triggers extraction from VS Code, which sends a task to the api-serv
 
 See [artifacts/vscode-client/design/command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) for the detailed command flow.
 
+- **VS Code Task Runner**: [`artifacts/vscode-client/src/TaskRunner.ts`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/TaskRunner.ts) (`runExtraction()`)
+- **Implementation Route**: [`artifacts/api-server/src/routes/extensions_vscode.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/extensions_vscode.ts) (`POST /extensions/vscode/extract`)
+
 ```mermaid
 sequenceDiagram
     actor Dev
@@ -163,6 +175,9 @@ sequenceDiagram
 
 A developer opens a PR. Docuvia receives the webhook, looks up affected L2/L3 nodes, and comments on the PR with relevant knowledge graph context.
 
+- **Implementation Route**: [`artifacts/api-server/src/routes/github_webhooks.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/github_webhooks.ts)
+- **GitHub Client Wrapper**: [`artifacts/api-server/src/lib/github-client.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/lib/github-client.ts)
+
 ```mermaid
 sequenceDiagram
     participant GH as GitHub
@@ -187,6 +202,6 @@ sequenceDiagram
 
 ## References
 
-- [artifacts/vscode-client/design/command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) — Full VS Code extraction flow
-- [artifacts/vscode-client/design/chat-participant/slash-commands.md](../../artifacts/vscode-client/design/chat-participant/slash-commands.md) — Chat participant command flows
-- [08-crosscutting-concepts.md](08-crosscutting-concepts.md#81-domain-model) — Domain model for L1/L2/L3 entities
+- [artifacts/vscode-client/design/command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) – Full VS Code extraction flow
+- [artifacts/vscode-client/design/chat-participant/slash-commands.md](../../artifacts/vscode-client/design/chat-participant/slash-commands.md) – Chat participant command flows
+- [08-crosscutting-concepts.md](08-crosscutting-concepts.md#81-domain-model) – Domain model for L1/L2/L3 entities

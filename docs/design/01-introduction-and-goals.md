@@ -20,28 +20,28 @@ The core insight: commit messages, PR descriptions, and code diffs encode archit
 
 ## 1.3 Quality Goals
 
-| Quality Goal | Motivation | Priority |
-|---|---|---|
-| **Accuracy of L3 Decision Records** | Developers must trust AI-generated decisions; inaccurate records erode confidence faster than no records | 🔴 Critical |
-| **MCP Query Latency** | AI IDEs call `/mcp/query` synchronously during autocomplete; p95 must be under 2s excluding LLM calls | 🔴 Critical |
-| **Observability** | Structured logs and an activity feed are required for operators to diagnose pipeline failures and LLM drift | 🟠 High |
-| **Extensibility — VCS Providers** | New VCS adapters (GitLab, Bitbucket, Perforce) must be addable without modifying core services | 🟠 High |
-| **Extensibility — LLM Providers** | The LLM integration must be swappable; OpenAI-compatible interface is an abstraction boundary | 🟠 High |
-| **Maintainability via API-First** | All API types are generated from `openapi.yaml`; zero drift between spec and implementation is mandatory | 🟠 High |
-| **Testability** | All routes and services must be unit-testable in isolation; DB integration tests must be rollback-safe | 🟡 Medium |
+| Quality Goal                        | Motivation                                                                                                  | Priority    |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
+| **Accuracy of L3 Decision Records** | Developers must trust AI-generated decisions; inaccurate records erode confidence faster than no records    | 🔴 Critical |
+| **MCP Query Latency**               | AI IDEs call `/mcp/query` synchronously during autocomplete; p95 must be under 2s excluding LLM calls       | 🔴 Critical |
+| **Observability**                   | Structured logs and an activity feed are required for operators to diagnose pipeline failures and LLM drift | 🟠 High     |
+| **Extensibility — VCS Providers**   | New VCS adapters (GitLab, Bitbucket, Perforce) must be addable without modifying core services              | 🟠 High     |
+| **Extensibility — LLM Providers**   | The LLM integration must be swappable; OpenAI-compatible interface is an abstraction boundary               | 🟠 High     |
+| **Maintainability via API-First**   | All API types are generated from `openapi.yaml`; zero drift between spec and implementation is mandatory    | 🟠 High     |
+| **Testability**                     | All routes and services must be unit-testable in isolation; DB integration tests must be rollback-safe      | 🟡 Medium   |
 
 ---
 
 ## 1.4 Stakeholders
 
-| Role | Concern | Key Touch Points |
-|---|---|---|
-| **Developer / Team Lead** | Understand codebase decisions and module ownership at file/module level | VS Code extension (TreeView, CodeLens, Hover), `/mcp/query` |
-| **AI Agent / IDE** | MCP-compatible tool calls for context augmentation during code generation | `/mcp/*` endpoints, Copilot Chat `@docuvia` participant |
-| **Code Reviewer** | Understand the historical rationale for architectural choices in a PR | GitHub PR analysis webhook, review dashboard |
-| **Project Manager** | Dashboard statistics, review task queue health, pipeline status | kg-engine dashboard (port 18774) |
-| **SaaS Operator** | Deployment, multi-tenant configuration, LLM key management, subscription billing | `subscriptions` / `notifications` tables, environment variables |
-| **New Team Member** | Onboarding — understanding the codebase without reading all commits | Knowledge graph query UI, `@docuvia /explore` chat |
+| Role                      | Concern                                                                          | Key Touch Points                                                |
+| ------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| **Developer / Team Lead** | Understand codebase decisions and module ownership at file/module level          | VS Code extension (TreeView, CodeLens, Hover), `/mcp/query`     |
+| **AI Agent / IDE**        | MCP-compatible tool calls for context augmentation during code generation        | `/mcp/*` endpoints, Copilot Chat `@docuvia` participant         |
+| **Code Reviewer**         | Understand the historical rationale for architectural choices in a PR            | GitHub PR analysis webhook, review dashboard                    |
+| **Project Manager**       | Dashboard statistics, review task queue health, pipeline status                  | kg-engine dashboard (port 18774)                                |
+| **SaaS Operator**         | Deployment, multi-tenant configuration, LLM key management, subscription billing | `subscriptions` / `notifications` tables, environment variables |
+| **New Team Member**       | Onboarding — understanding the codebase without reading all commits              | Knowledge graph query UI, `@docuvia /explore` chat              |
 
 ---
 

@@ -14,7 +14,7 @@ This is the authoritative design record for engineers joining the project, AI ag
 
 | #   | Document                                                       | Description                                       |
 | --- | -------------------------------------------------------------- | ------------------------------------------------- |
-| —   | [README.md](README.md) (this file)                             | Master index                                      |
+| —   | [00-architecture-index.md](00-architecture-index.md)           | Master index (this file)                          |
 | 1   | [01-introduction-and-goals.md](01-introduction-and-goals.md)   | Vision, quality goals, stakeholders               |
 | 2   | [02-constraints.md](02-constraints.md)                         | Technical, org, regulatory constraints            |
 | 3   | [03-context-and-scope.md](03-context-and-scope.md)             | System boundary, external interfaces              |
@@ -30,11 +30,29 @@ This is the authoritative design record for engineers joining the project, AI ag
 
 ---
 
+## High-Level Mechanisms (ADRs)
+
+The detailed Agentic OS mechanisms are codified as Architecture Decision Records (ADRs) under `adrs/`:
+
+| ADR | Mechanism |
+| :-- | :-- |
+| `ADR-001` | [VS Code Client Onboarding](adrs/ADR-001-vscode-client-onboarding.md) |
+| `ADR-002` | [Local-First Architecture](adrs/ADR-002-local-first-architecture.md) |
+| `ADR-003` | [Server-Side Zero-to-One](adrs/ADR-003-server-side-zero-to-one.md) |
+| `ADR-004` | [Git-Isomorphic Graph](adrs/ADR-004-git-isomorphic-graph.md) |
+| `ADR-005` | [Knowledge Abstraction Strategy](adrs/ADR-005-knowledge-abstraction-strategy.md) |
+| `ADR-006` | [Self-Evolution Architecture](adrs/ADR-006-self-evolution-architecture.md) |
+| `ADR-007` | [Agentic RAG Routing](adrs/ADR-007-agentic-rag-routing.md) |
+| `ADR-008` | [Asynchronous Metabolism](adrs/ADR-008-asynchronous-metabolism.md) |
+| `ADR-009` | [Token Management](adrs/ADR-009-token-management.md) |
+
+---
+
 ## VS Code Extension Design (Supplementary)
 
 The VS Code extension has its own detailed design documentation under [`artifacts/vscode-client/design/`](../../artifacts/vscode-client/design/):
 
-- [ROUTER.md](../../artifacts/vscode-client/design/ROUTER.md) — Extension routing architecture (authoritative)
+- [00-router-overview.md](../../artifacts/vscode-client/design/00-router-overview.md) — Extension routing architecture (authoritative)
 - [chat-participant/slash-commands.md](../../artifacts/vscode-client/design/chat-participant/slash-commands.md)
 - [command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md)
 - [knowledge-graph/store.md](../../artifacts/vscode-client/design/knowledge-graph/store.md)
@@ -46,7 +64,5 @@ The VS Code extension has its own detailed design documentation under [`artifact
 
 | Document                                                           | Purpose                                                       |
 | ------------------------------------------------------------------ | ------------------------------------------------------------- |
-| [docs/roadmap-checklist.md](../roadmap-checklist.md)               | Phase-by-phase completion checklist (all 42 items)            |
-| [docs/implementation-roadmap.md](../implementation-roadmap.md)     | Implementation roadmap with phase descriptions                |
-| [docs/vscode-extension-roadmap.md](../vscode-extension-roadmap.md) | VS Code extension roadmap                                     |
+| [docs/roadmap/master-roadmap.md](../roadmap/master-roadmap.md)     | Single Source of Truth (SSOT) tracking all development phases |
 | [AGENTS.md](../../AGENTS.md)                                       | AI developer guide — commands, conventions, agent definitions |

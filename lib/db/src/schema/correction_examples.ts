@@ -11,6 +11,7 @@ export const correctionExamplesTable = pgTable("correction_examples", {
   originalContent: text("original_content").notNull(),
   correctedContent: text("corrected_content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  processedAt: timestamp("processed_at"),
 });
 
 export const insertCorrectionExampleSchema = createInsertSchema(correctionExamplesTable).omit({

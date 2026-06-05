@@ -291,7 +291,10 @@ If you are not confident about an item, exclude it from the array.`;
     }
 
     try {
-      await this.writeExtractionResults(params.sourceFilePath, allDecisions);
+      const workspaceRoot = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(params.sourceFilePath))?.uri.fsPath;
+      if (workspaceRoot) {
+        await this.writeExtractionResults(workspaceRoot, params.sourceFilePath, allDecisions);
+      }
       // Immediately reload the knowledge store after writing
       await this.store.load();
       this.tqProvider.updateTaskStatus(
@@ -337,12 +340,12 @@ If you are not confident about an item, exclude it from the array.`;
   }
 
   private async writeExtractionResults(
+    workspaceRoot: string,
     sourceFile: string,
     decisions: string[]
   ): Promise<void> {
     if (decisions.length === 0) return;
 
-    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspaceRoot) return;
 
     const { v4: uuidv4 } = await import('uuid');

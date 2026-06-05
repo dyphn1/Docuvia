@@ -1,0 +1,114 @@
+import { Router, Request, Response } from "express";
+import { logger } from "../lib/logger";
+import { db } from "@workspace/db";
+import { correctionExamplesTable, promptTemplatesTable } from "@workspace/db";
+import { isNull, inArray } from "drizzle-orm";
+import { openai } from "@workspace/integrations-openai-ai-server";
+
+// Using a simple in-memory Mutex for this instance
+let isMetabolismRunning = false;
+
+const metabolismRouter = Router();
+
+// Internal function to run the maintenance tasks
+async function runMetabolism() {
+  logger.info("Metabolism tick started. Running background tasks...");
+  
+  // Distillation Job
+  const pendingCorrections = await db
+    .select()
+    .from(correctionExamplesTable)
+    .where(isNull(correctionExamplesTable.processedAt))
+    .limit(10);
+
+  if (pendingCorrections.length > 0) {
+    logger.info({ count: pendingCorrections.length }, "Found pending corrections for distillation.");
+
+    const promptsToInsert: any[] = [];
+    const processedIds: number[] = [];
+
+    for (const correction of pendingCorrections) {
+      try {
+        const response = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert software architect. Analyze the human correction (original vs corrected content) and extract a concise, single-sentence architectural guardrail/rule that explains the change.",
+            },
+            {
+              role: "user",
+              content: `Original Content:\n${correction.originalContent}\n\nCorrected Content:\n${correction.correctedContent}`,
+            },
+          ],
+          max_tokens: 100,
+        });
+
+        const guardrail = response.choices[0]?.message?.content?.trim();
+        
+        if (guardrail) {
+          promptsToInsert.push({
+            projectId: correction.projectId,
+            templateType: "l3_generator" as const,
+            systemPrompt: guardrail,
+            isActive: true,
+          });
+        }
+        processedIds.push(correction.id);
+      } catch (err) {
+        logger.error({ err, correctionId: correction.id }, "Failed to distill correction");
+      }
+    }
+
+    if (promptsToInsert.length > 0) {
+      await db.insert(promptTemplatesTable).values(promptsToInsert);
+    }
+
+    if (processedIds.length > 0) {
+      await db
+        .update(correctionExamplesTable)
+        .set({ processedAt: new Date() })
+        .where(inArray(correctionExamplesTable.id, processedIds));
+    }
+  }
+
+  logger.info("Metabolism tick completed.");
+}
+
+metabolismRouter.get("/metabolism-tick", async (req: Request, res: Response): Promise<void> => {
+  if (isMetabolismRunning) {
+    res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
+    return;
+  }
+
+  isMetabolismRunning = true;
+  try {
+    await runMetabolism();
+    res.status(200).json({ message: "Metabolism tick completed", status: "success" });
+  } catch (err) {
+    logger.error({ err }, "Metabolism tick failed");
+    res.status(500).json({ error: "Metabolism tick failed" });
+  } finally {
+    isMetabolismRunning = false;
+  }
+});
+
+metabolismRouter.get("/admin/metabolism-tick", async (req: Request, res: Response): Promise<void> => {
+  if (isMetabolismRunning) {
+    res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
+    return;
+  }
+
+  isMetabolismRunning = true;
+  try {
+    await runMetabolism();
+    res.status(200).json({ message: "Metabolism tick completed manually", status: "success" });
+  } catch (err) {
+    logger.error({ err }, "Admin metabolism tick failed");
+    res.status(500).json({ error: "Metabolism tick failed" });
+  } finally {
+    isMetabolismRunning = false;
+  }
+});
+
+export { metabolismRouter };

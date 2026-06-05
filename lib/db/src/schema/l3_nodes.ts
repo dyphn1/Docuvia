@@ -30,6 +30,7 @@ export const l3NodesTable = pgTable("l3_nodes", {
   noiseScore: real("noise_score"),
   embedding: text("embedding"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastVerifiedAt: timestamp("last_verified_at").defaultNow(),
   occurrenceCount: integer("occurrence_count").notNull().default(1),
   sourceCommits: jsonb("source_commits"),
   validityStatus: text("validity_status").notNull().default("pending"),

@@ -17,6 +17,7 @@ export const l2NodesTable = pgTable("l2_nodes", {
   needsReview: boolean("needs_review").notNull().default(false),
   embedding: text("embedding"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  lastVerifiedAt: timestamp("last_verified_at").defaultNow(),
   pathPatterns: jsonb("path_patterns"),
   reindexRequired: boolean("reindex_required").notNull().default(false),
   isBootstrapConfirmed: boolean("is_bootstrap_confirmed").notNull().default(false),

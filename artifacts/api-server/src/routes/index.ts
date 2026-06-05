@@ -20,6 +20,7 @@ import extensionsVscodeRouter from "./extensions_vscode";
 import integrationsRouter from "./integrations";
 import syncRouter from "./sync";
 import documentsRouter from "./documents";
+import { metabolismRouter } from "./metabolism";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(extensionsVscodeRouter);
 router.use(integrationsRouter);
 router.use(syncRouter);
 router.use(documentsRouter);
+router.use(metabolismRouter);
 
 export default router;

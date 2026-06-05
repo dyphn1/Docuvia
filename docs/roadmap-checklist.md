@@ -185,5 +185,22 @@
 
 ---
 
+## Architecture & Design Spec Mapping
+
+1. **Local-First Architecture & Multi-Root Support**
+   - *Reference:* `docs/design/local-first-architecture.md`, `artifacts/vscode-client/design/knowledge-graph/nodes.md`
+   - *Tracking:* VS Code Tree View Nodes, Workspace Isolation, Parser Stability.
+2. **Asynchronous Metabolism & Background Jobs**
+   - *Reference:* `docs/design/asynchronous-metabolism.md`
+   - *Tracking:* `metabolism-tick` cron triggers, Local SQLite queue, Background generation limits.
+3. **Agentic RAG Routing & Swarm Intelligence**
+   - *Reference:* `docs/design/agentic-rag-routing.md`
+   - *Tracking:* Temporal Decay math (`last_verified_at`), O(1) Cache prior to LLM calls.
+4. **Self-Evolution & Distillation**
+   - *Reference:* `docs/design/self-evolution-architecture.md`
+   - *Tracking:* Swarm distillation jobs, processing `correction_examples`, auto-updating `prompt_templates`.
+
+---
+
 _Document version: v1.3 — All phases complete + Known Limitations section added_
 *Last updated: 2026-05-13 (v1.3 — Code audit completed: 8 stale/incorrect phase docs corrected, known limitations documented)*

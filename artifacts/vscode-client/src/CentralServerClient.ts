@@ -137,4 +137,63 @@ export class CentralServerClient {
 
     return response.json() as Promise<KnowledgeSnapshot>;
   }
+
+  private _heartbeatTimeout?: NodeJS.Timeout;
+
+  startHeartbeat(): void {
+    if (this._heartbeatTimeout) {
+      clearTimeout(this._heartbeatTimeout);
+    }
+    this._scheduleNextHeartbeat();
+  }
+
+  private _scheduleNextHeartbeat(): void {
+    const baseDelay = 5 * 60 * 1000; // 5 minutes
+    const jitter = (Math.random() - 0.5) * 2 * 60 * 1000; // ± 1 minute
+    const delay = baseDelay + jitter;
+
+    this._heartbeatTimeout = setTimeout(async () => {
+      await this._tickMetabolism();
+      this._scheduleNextHeartbeat();
+    }, delay);
+  }
+
+  private async _tickMetabolism(): Promise<void> {
+    const serverUrl = this._store.globalConfig?.server_url;
+    if (!serverUrl) return;
+
+    try {
+      const token = await this._creds.getToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['x-docuvia-token'] = token;
+      }
+      await fetch(`${serverUrl}/api/metabolism-tick`, { headers });
+    } catch (error) {
+      // Ignore network errors for heartbeat
+    }
+  }
+
+  async sendFeedback(id: number, nodeLayer: 'l2' | 'l3'): Promise<void> {
+    const serverUrl = this._store.globalConfig?.server_url;
+    if (!serverUrl) return;
+
+    const token = await this._creds.getToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['x-docuvia-token'] = token;
+    }
+
+    try {
+      await fetch(`${serverUrl}/api/search/feedback`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ id, nodeLayer }),
+      });
+    } catch (error) {
+      // Feedback failure shouldn't crash the UI
+    }
+  }
 }

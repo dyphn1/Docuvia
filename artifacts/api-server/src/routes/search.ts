@@ -13,6 +13,11 @@ const SearchSchema = z.object({
   limit: z.number().optional().default(20),
 });
 
+const FeedbackSchema = z.object({
+  nodeLayer: z.enum(["l2", "l3"]),
+  id: z.number().int().positive(),
+});
+
 type SearchResult = {
   nodeLayer: "l1" | "l2" | "l3";
   id: number;
@@ -207,6 +212,28 @@ router.post("/search", async (req, res) => {
   const limited = results.slice(0, limit);
 
   res.json({ results: limited, total: results.length });
+});
+
+router.post("/search/feedback", async (req, res) => {
+  const body = FeedbackSchema.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "Invalid feedback payload", details: body.error.errors });
+    return;
+  }
+
+  const { nodeLayer, id } = body.data;
+
+  try {
+    if (nodeLayer === "l2") {
+      await db.update(l2NodesTable).set({ lastVerifiedAt: new Date() }).where(eq(l2NodesTable.id, id));
+    } else if (nodeLayer === "l3") {
+      await db.update(l3NodesTable).set({ lastVerifiedAt: new Date() }).where(eq(l3NodesTable.id, id));
+    }
+
+    res.json({ message: "Feedback received", status: "success" });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to process feedback" });
+  }
 });
 
 export default router;

@@ -8,15 +8,12 @@ Docuvia's [`intent-router.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/sr
 
 ```mermaid
 flowchart TD
-    Query[User Query] --> C1{Contains #attach?}
-    C1 -- Yes --> Direct[Direct RAG: Lookup target_refs]
-    C1 -- No --> C2{Hits L1/L2 Map Keys?}
+    Query[User Query] --> C1{Contains #attach or specific file extensions (.ts, src/)?}
+    C1 -- Yes --> Direct[Direct RAG: Lookup target_refs or keyword]
+    C1 -- No --> C2{Hits L1/L2 Names in Database?}
 
     C2 -- Yes --> Graph[Graph RAG: Traverse node_links]
-    C2 -- No --> C3{Fuzzy Match?}
-
-    C3 -- Yes --> Vector[Vector RAG: Cosine Similarity]
-    C3 -- No --> Hybrid[Hybrid LLM Arbitration]
+    C2 -- No --> Hybrid[Hybrid / Vector LLM Arbitration]
 ```
 
 ## 1. External Document Anchoring (The Floating Knowledge Catcher)
@@ -33,6 +30,6 @@ flowchart TD
 
 ## 3. Temporal Decay & Garbage Collection
 
-- Knowledge nodes contain `created_at` and `last_verified_at` (Note: `last_verified_at` is planned but currently absent from the Drizzle schemas of [`l2_nodes.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l2_nodes.ts) and [`l3_nodes.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l3_nodes.ts)).
-- **Implementation**: The router applies a temporal decay function to vector/graph scores. Knowledge untouched naturally sinks to the bottom.
-- When old knowledge correctly answers a query, its `last_verified_at` is updated, "refreshing" its lifespan.
+- Knowledge nodes contain `created_at` and `lastVerifiedAt` (in the Drizzle schemas of [`l2_nodes.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l2_nodes.ts) and [`l3_nodes.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l3_nodes.ts)).
+- **Implementation**: The router applies an Exponential Temporal Decay function to search scores (`Math.exp(-LAMBDA * daysSinceVerified)` in `intent-router.ts`). Knowledge untouched naturally sinks to the bottom.
+- When old knowledge correctly answers a query, its `lastVerifiedAt` is updated via the `/api/search/feedback` endpoint, "refreshing" its lifespan.

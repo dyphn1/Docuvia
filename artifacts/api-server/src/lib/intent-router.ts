@@ -2,6 +2,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { db } from "@workspace/db";
 import {
   projectsTable,
+  l1TagsTable,
   l2NodesTable,
   l3NodesTable,
   nodeLinksTable,
@@ -184,10 +185,18 @@ export async function vectorSearchHandler(
     if (projectId) l2Query = l2Query.where(eq(l2NodesTable.projectId, projectId));
     const l2Rows = await l2Query;
 
+    const MS_PER_DAY = 1000 * 60 * 60 * 24;
+    const HALF_LIFE_DAYS = 30;
+    const LAMBDA = Math.LN2 / HALF_LIFE_DAYS;
+
     const l2Scored = l2Rows
       .map((node) => {
         const emb = parseEmbedding(node.embedding);
-        const score = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
+        const rawScore = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
+        const referenceDate = node.lastVerifiedAt ?? node.createdAt;
+        const daysSinceVerified = (Date.now() - referenceDate.getTime()) / MS_PER_DAY;
+        const decayFactor = Math.exp(-LAMBDA * Math.max(0, daysSinceVerified));
+        const score = rawScore * decayFactor;
         return { node, score };
       })
       .sort((a, b) => b.score - a.score)
@@ -220,7 +229,11 @@ export async function vectorSearchHandler(
     const l3Scored = l3Rows
       .map((node) => {
         const emb = parseEmbedding(node.embedding);
-        const score = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
+        const rawScore = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
+        const referenceDate = node.lastVerifiedAt ?? node.createdAt;
+        const daysSinceVerified = (Date.now() - referenceDate.getTime()) / MS_PER_DAY;
+        const decayFactor = Math.exp(-LAMBDA * Math.max(0, daysSinceVerified));
+        const score = rawScore * decayFactor;
         return { node, score };
       })
       .sort((a, b) => b.score - a.score)
@@ -525,7 +538,47 @@ export async function routeQuery(
 ): Promise<RouteQueryResult> {
   const start = Date.now();
 
-  const classification = await classifyIntent(query);
+  let classification: IntentClassification | null = null;
+
+  // Fast Arbitration pipeline: Direct Filter
+  if (query.includes("#attach") || /src\/|\.ts|\.md/i.test(query)) {
+    classification = {
+      strategy: "direct_lookup",
+      entities: { searchQuery: query },
+      confidence: 1.0,
+      reasoning: "O(1) fast-path matched #attach or file extension",
+    };
+  }
+
+  // Fast Arbitration pipeline: Graph Filter
+  if (!classification) {
+    const tags = await db.select({ name: l1TagsTable.name }).from(l1TagsTable);
+    
+    let l2Query = db.select({ name: l2NodesTable.name }).from(l2NodesTable).$dynamic();
+    if (projectId) {
+      l2Query = l2Query.where(eq(l2NodesTable.projectId, projectId));
+    }
+    const l2Rows = await l2Query;
+
+    const allArchitecturalTerms = [...tags.map(t => t.name), ...l2Rows.map(n => n.name)];
+    
+    for (const term of allArchitecturalTerms) {
+      if (term && query.toLowerCase().includes(term.toLowerCase())) {
+        classification = {
+          strategy: "graph_traversal",
+          entities: { moduleName: term },
+          confidence: 1.0,
+          reasoning: "O(1) fast-path matched architectural term",
+        };
+        break;
+      }
+    }
+  }
+
+  // Fallback to LLM classification
+  if (!classification) {
+    classification = await classifyIntent(query);
+  }
 
   logger.info(
     {

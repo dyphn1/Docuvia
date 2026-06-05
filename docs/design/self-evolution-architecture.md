@@ -29,15 +29,13 @@ flowchart TD
 ## 2. Server-Side Distillation
 
 - The server detects patterns (e.g., multiple developers replacing `console.log` with `pino`) across the `correction_examplesTable`.
-- The LLM compresses these raw corrections into high-level Architectural Guardrails.
-- **Gap Note**: The background distillation job is _not implemented_. Corrections reside in `correction_examplesTable` but are not compiled automatically by any background processes into `prompt_templatesTable` rules.
+- **Implementation Route**: The background distillation job is implemented in `artifacts/api-server/src/routes/metabolism.ts`. It selects rows from `correction_examplesTable` where `processedAt IS NULL`, uses the LLM to compress these raw corrections into high-level Architectural Guardrails, inserts them into `prompt_templatesTable`, and updates the `processedAt` timestamp.
 
-## 3. Experience Rollout (O(1) Map Keys)
+## 3. Experience Rollout (O(1) Fast-Path Filters)
 
-- Guardrails are transformed into `Map Keys` (e.g., `keyword: console.log -> constraint: use pino`) and pushed to the orphan branch (`docuvia-knowledge`).
-- When a new developer queries the AI, the local cache hits the Map Key in $O(1)$ time, pre-injecting the guardrail without requiring LLM arbitration.
+- Guardrails and common query structures are identified by the router without LLM latency.
+- When a new developer queries the AI, the local router in `intent-router.ts` runs O(1) checks for `#attach` or specific domain keywords mapped from L1/L2 database names to pre-inject the guardrail natively.
 - **Implementation client sync**: Exposes synchronisation through [`CentralServerClient.ts`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/CentralServerClient.ts#L79) (`sync()` and `pullSnapshot()`).
-- **Gap Note**: O(1) Map Keys injection on query and the specific `docuvia-knowledge` orphan git branch storage engine details are _not implemented_.
 
 ## 4. Tool Maker Integration
 

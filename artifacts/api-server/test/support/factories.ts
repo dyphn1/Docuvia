@@ -27,6 +27,16 @@ export const ProjectFactory = {
       .insert(projectsTable)
       .values(ProjectFactory.build(overrides))
       .returning();
+
+    await client.insert(l2NodesTable).values({
+      projectId: project.id,
+      name: "System: Uncategorized",
+      type: "sys-uncategorized",
+      isSystem: true,
+      description: "Default bucket for unassigned L3 decisions",
+      aiGenerated: false,
+    });
+
     return project;
   },
 };

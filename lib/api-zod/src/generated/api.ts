@@ -152,12 +152,13 @@ export const GetProjectGraphResponse = zod.object({
       id: zod.number(),
       projectId: zod.number(),
       name: zod.string(),
-      type: zod.enum(["package", "module", "pcd"]),
+      type: zod.enum(["package", "module", "pcd", "sys-uncategorized"]),
       description: zod.string().nullish(),
       l3Count: zod.number(),
       l1TagIds: zod.array(zod.number()),
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
+      isSystem: zod.boolean().optional(),
       createdAt: zod.string(),
     })
   ),
@@ -223,12 +224,13 @@ export const ListProjectL2NodesResponseItem = zod.object({
   id: zod.number(),
   projectId: zod.number(),
   name: zod.string(),
-  type: zod.enum(["package", "module", "pcd"]),
+  type: zod.enum(["package", "module", "pcd", "sys-uncategorized"]),
   description: zod.string().nullish(),
   l3Count: zod.number(),
   l1TagIds: zod.array(zod.number()),
   aiGenerated: zod.boolean(),
   needsReview: zod.boolean().optional(),
+  isSystem: zod.boolean().optional(),
   createdAt: zod.string(),
 });
 export const ListProjectL2NodesResponse = zod.array(ListProjectL2NodesResponseItem);
@@ -327,6 +329,7 @@ export const UploadDocumentParams = zod.object({
 
 export const UploadDocumentBody = zod.object({
   file: zod.instanceof(File),
+  l2NodeId: zod.number().describe("Required L2 Module ID"),
   docType: zod
     .enum(["pdf", "docx", "pptx", "md"])
     .optional()
@@ -342,6 +345,7 @@ export const uploadDocumentResponseStatusDefault = `unaffiliated`;
 export const UploadDocumentResponse = zod.object({
   id: zod.number(),
   projectId: zod.number().nullish(),
+  l2NodeId: zod.number(),
   filename: zod.string(),
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
@@ -366,6 +370,7 @@ export const listDocumentsResponseStatusDefault = `unaffiliated`;
 export const ListDocumentsResponseItem = zod.object({
   id: zod.number(),
   projectId: zod.number().nullish(),
+  l2NodeId: zod.number(),
   filename: zod.string(),
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
@@ -445,12 +450,13 @@ export const ExportProjectResponse = zod.object({
       id: zod.number(),
       projectId: zod.number(),
       name: zod.string(),
-      type: zod.enum(["package", "module", "pcd"]),
+      type: zod.enum(["package", "module", "pcd", "sys-uncategorized"]),
       description: zod.string().nullish(),
       l3Count: zod.number(),
       l1TagIds: zod.array(zod.number()),
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
+      isSystem: zod.boolean().optional(),
       createdAt: zod.string(),
     })
   ),
@@ -632,7 +638,7 @@ export const DeleteL1TagParams = zod.object({
 export const CreateL2NodeBody = zod.object({
   projectId: zod.number(),
   name: zod.string().min(1),
-  type: zod.enum(["package", "module", "pcd"]),
+  type: zod.enum(["package", "module", "pcd", "sys-uncategorized"]),
   description: zod.string().optional(),
   l1TagIds: zod.array(zod.number()).optional(),
   aiGenerated: zod.boolean().optional(),
@@ -647,7 +653,7 @@ export const UpdateL2NodeParams = zod.object({
 
 export const UpdateL2NodeBody = zod.object({
   name: zod.string().min(1).optional(),
-  type: zod.enum(["package", "module", "pcd"]).optional(),
+  type: zod.enum(["package", "module", "pcd", "sys-uncategorized"]).optional(),
   description: zod.string().optional(),
   l1TagIds: zod.array(zod.number()).optional(),
   needsReview: zod.boolean().optional(),
@@ -657,12 +663,13 @@ export const UpdateL2NodeResponse = zod.object({
   id: zod.number(),
   projectId: zod.number(),
   name: zod.string(),
-  type: zod.enum(["package", "module", "pcd"]),
+  type: zod.enum(["package", "module", "pcd", "sys-uncategorized"]),
   description: zod.string().nullish(),
   l3Count: zod.number(),
   l1TagIds: zod.array(zod.number()),
   aiGenerated: zod.boolean(),
   needsReview: zod.boolean().optional(),
+  isSystem: zod.boolean().optional(),
   createdAt: zod.string(),
 });
 
@@ -732,6 +739,7 @@ export const CreateL3NodeParams = zod.object({
 });
 
 export const CreateL3NodeBody = zod.object({
+  l2NodeId: zod.number(),
   title: zod.string().min(1),
   content: zod.string().optional(),
   nodeType: zod.enum(["change", "rule", "decision", "context"]),
@@ -1015,6 +1023,31 @@ export const DeleteSubscriptionParams = zod.object({
 });
 
 /**
+ * @summary Dual-Track extraction and categorization scoring (Sieve Model)
+ */
+export const ExtractAndSieveParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ExtractAndSieveBody = zod.object({
+  sourceText: zod.string(),
+  sourceFile: zod.string().optional(),
+  commitHash: zod.string().optional(),
+});
+
+export const ExtractAndSieveResponse = zod.object({
+  decisions: zod.array(
+    zod.object({
+      l2NodeId: zod.number(),
+      title: zod.string(),
+      nodeType: zod.string(),
+      confidence: zod.number(),
+      noiseScore: zod.number(),
+    })
+  ),
+});
+
+/**
  * @summary List subscriptions for a project (as subscriber and publisher)
  */
 export const ListProjectSubscriptionsParams = zod.object({
@@ -1142,12 +1175,13 @@ export const GetPullRequestDetailResponse = zod.object({
       id: zod.number(),
       projectId: zod.number(),
       name: zod.string(),
-      type: zod.enum(["package", "module", "pcd"]),
+      type: zod.enum(["package", "module", "pcd", "sys-uncategorized"]),
       description: zod.string().nullish(),
       l3Count: zod.number(),
       l1TagIds: zod.array(zod.number()),
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
+      isSystem: zod.boolean().optional(),
       createdAt: zod.string(),
     })
   ),
@@ -1236,6 +1270,7 @@ export const VscodeCreateDecisionBody = zod.object({
     .optional()
     .describe("If true, create a source-ref entry for the L3 node"),
   l3Node: zod.object({
+    l2NodeId: zod.number(),
     title: zod.string().min(1),
     content: zod.string().optional(),
     nodeType: zod.enum(["change", "rule", "decision", "context"]),
@@ -1261,12 +1296,13 @@ export const VscodeFileContextResponse = zod.object({
       id: zod.number(),
       projectId: zod.number(),
       name: zod.string(),
-      type: zod.enum(["package", "module", "pcd"]),
+      type: zod.enum(["package", "module", "pcd", "sys-uncategorized"]),
       description: zod.string().nullish(),
       l3Count: zod.number(),
       l1TagIds: zod.array(zod.number()),
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
+      isSystem: zod.boolean().optional(),
       createdAt: zod.string(),
     })
   ),
@@ -1395,6 +1431,7 @@ export const listMiscDocumentsResponseStatusDefault = `unaffiliated`;
 export const ListMiscDocumentsResponseItem = zod.object({
   id: zod.number(),
   projectId: zod.number().nullish(),
+  l2NodeId: zod.number(),
   filename: zod.string(),
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
@@ -1424,6 +1461,7 @@ export const affiliateDocumentResponseStatusDefault = `unaffiliated`;
 export const AffiliateDocumentResponse = zod.object({
   id: zod.number(),
   projectId: zod.number().nullish(),
+  l2NodeId: zod.number(),
   filename: zod.string(),
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),

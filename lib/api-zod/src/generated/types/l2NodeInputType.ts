@@ -12,4 +12,5 @@ export const L2NodeInputType = {
   package: "package",
   module: "module",
   pcd: "pcd",
+  "sys-uncategorized": "sys-uncategorized",
 } as const;

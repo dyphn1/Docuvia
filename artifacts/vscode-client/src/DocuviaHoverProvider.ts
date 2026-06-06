@@ -1,13 +1,14 @@
 import * as vscode from 'vscode';
 import { KnowledgeStore } from './KnowledgeStore.js';
-
-const UUID_REGEX = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+import { KnowledgeIndexer } from './indexer/KnowledgeIndexer.js';
 
 export class DocuviaHoverProvider implements vscode.HoverProvider {
   private readonly _store: KnowledgeStore;
+  private readonly _indexer: KnowledgeIndexer;
 
-  constructor(store: KnowledgeStore) {
+  constructor(store: KnowledgeStore, indexer: KnowledgeIndexer) {
     this._store = store;
+    this._indexer = indexer;
   }
 
   provideHover(
@@ -17,13 +18,10 @@ export class DocuviaHoverProvider implements vscode.HoverProvider {
     const snapshot = this._store.getSnapshotFor(document.uri);
     if (!snapshot) return undefined;
 
-    const wordRange = document.getWordRangeAtPosition(position, UUID_REGEX);
-    if (!wordRange) return undefined;
+    const matchedId = this._indexer.getMatchAt(document.uri, position.line);
+    if (!matchedId) return undefined;
 
-    const id = document.getText(wordRange);
-
-    // Priority 1: L3 Decision
-    const decision = snapshot.decisions.get(id);
+    const decision = snapshot.decisions.get(matchedId);
     if (decision) {
       const md = new vscode.MarkdownString();
       md.isTrusted = { enabledCommands: ['docuvia.openDecision'] };
@@ -36,34 +34,7 @@ export class DocuviaHoverProvider implements vscode.HoverProvider {
       if (decision.filePath) {
         md.appendMarkdown(`\n\n[Open Decision](command:docuvia.openDecision?${encodeURIComponent(JSON.stringify([decision.filePath]))})`);
       }
-      return new vscode.Hover(md, wordRange);
-    }
-
-    // Priority 2: L2 Module
-    const module = snapshot.modules.find(m => m.id === id);
-    if (module) {
-      const md = new vscode.MarkdownString();
-      md.isTrusted = false;
-      md.appendMarkdown(`**L2 Module** — ${module.name}\n\n`);
-      if (module.description) {
-        md.appendMarkdown(`${module.description}\n\n`);
-      }
-      if (module.source_paths.length > 0) {
-        md.appendMarkdown(`**Source paths**: \`${module.source_paths.join('`, `')}\``);
-      }
-      return new vscode.Hover(md, wordRange);
-    }
-
-    // Priority 3: L1 Tag
-    const tag = snapshot.tags.find(t => t.id === id);
-    if (tag) {
-      const md = new vscode.MarkdownString();
-      md.isTrusted = false;
-      md.appendMarkdown(`**L1 Tag** — ${tag.name}\n\n`);
-      if (tag.description) {
-        md.appendMarkdown(tag.description);
-      }
-      return new vscode.Hover(md, wordRange);
+      return new vscode.Hover(md, document.lineAt(position.line).range);
     }
 
     return undefined;

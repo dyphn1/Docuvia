@@ -74,6 +74,17 @@ router.post("/projects", async (req, res) => {
       status: "active",
     })
     .returning();
+
+  // Create default sys-uncategorized node
+  await db.insert(l2NodesTable).values({
+    projectId: project.id,
+    name: "System: Uncategorized",
+    type: "sys-uncategorized",
+    isSystem: true,
+    description: "Default bucket for unassigned L3 decisions",
+    aiGenerated: false,
+  });
+
   await db.insert(activityLogTable).values({
     type: "l2_created",
     description: `Project "${project.name}" added`,
@@ -81,7 +92,7 @@ router.post("/projects", async (req, res) => {
   });
   res.status(201).json({
     ...project,
-    l2Count: 0,
+    l2Count: 1,
     l3Count: 0,
     commitCount: 0,
     createdAt: project.createdAt.toISOString(),

@@ -30,7 +30,6 @@ Based on the ChatGPT 5.4 architecture review and rigorous self-reflection, we ha
     *   **Backend Developer**: Implement Track A & Track B extraction logic and the multi-stage sieve scoring system in `@workspace/api-server`.
 
 ### 階段三：深化程式碼上下文喚醒機制 (Deepen Editor Context Awakening)
-*   **觸發機制**：Embedded Small Agent + AST (符號指紋與輕量語意)。
-*   **AST 錨點自癒機制 (Self-Healing Anchors)**：Hover Provider 保持 O(1) 查表。透過監聽 VS Code `Rename Symbol` 事件與背景非同步重新掛接任務來維護錨點，防止重構導致斷鏈。
-*   **Actionable Step for Subagents**:
-    *   **VS Code Developer**: Integrate AST-based extraction on the client-side for symbol mapping. Attach `workspace.onDidRenameFiles` and language server rename providers to auto-heal existing L3 anchors.
+*   **快取區間樹與語言無關錨點 (Interval Tree Caching)**：放棄低效的字串比對，建立背景 AST 區間樹快取。Hover 觸發時只做 `(Line, Col)` 的 O(log N) 座標查詢，依賴標準 LSP `SymbolKind` 確保跨語言支援。
+*   **禁止 Hover 內推論 (No-LLM-in-Hover Rule)**：Hover 必須是絕對純粹的記憶體讀取（無延遲）。Small Agent 的語意泛化推論全部移至背景 Indexer，提前計算「模糊錨點」供 Hover 讀取，避免榨乾本機 CPU 或觸發 Rate Limit。
+*   **基於狀態同步的自癒 (State-Sync Self-Healing)**：不依賴不可靠的 VS Code Rename UI 事件。自癒任務綁定 File System Watcher 或 Git Sync，當發現 Hash 改變時，利用差異分析 (Diff Analysis) 找回因重構或外部 `git pull` 而斷鏈的 AST 錨點。

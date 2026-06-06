@@ -12,6 +12,7 @@ export interface Document {
   id: number;
   /** @nullable */
   projectId?: number | null;
+  l2NodeId: number;
   filename: string;
   docType: DocumentDocType;
   content?: string;

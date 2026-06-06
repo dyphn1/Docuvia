@@ -7,6 +7,7 @@ import { CredentialManager } from './CredentialManager.js';
 import { DashboardPanel } from './DashboardPanel.js';
 import { CodeLensDecisionData, DocuviaCodeLensProvider } from './DocuviaCodeLensProvider.js';
 import { DocuviaHoverProvider } from './DocuviaHoverProvider.js';
+import { KnowledgeIndexer } from './indexer/KnowledgeIndexer.js';
 import { KGNode, KnowledgeGraphTreeProvider } from './KnowledgeGraphTreeProvider.js';
 import { KnowledgeStore } from './KnowledgeStore.js';
 import { parseGlobalConfig } from './parser.js';
@@ -84,9 +85,14 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     )
   );
 
+  // ─── Knowledge Indexer ──────────────────────────────────────────────────────
+
+  const indexer = new KnowledgeIndexer(store);
+  context.subscriptions.push(indexer);
+
   // ─── Hover Provider ───────────────────────────────────────────────────────────
 
-  const hoverProvider = new DocuviaHoverProvider(store);
+  const hoverProvider = new DocuviaHoverProvider(store, indexer);
   context.subscriptions.push(
     vscode.languages.registerHoverProvider(
       [
@@ -562,7 +568,8 @@ async function addDecision(
   const modules = snapshot.modules ?? [];
   const moduleItems: (vscode.QuickPickItem & { id: string })[] = modules.map(m => ({ label: m.name, description: m.slug, id: m.id }));
   // BUG C-2 fix: use empty string "" sentinel instead of "unassigned"
-  moduleItems.push({ label: '$(add) Create new module later...', id: '', description: 'Assign to a module later' });
+  // Phase 2: use sys-uncategorized
+  moduleItems.push({ label: '$(add) Create new module later...', id: 'sys-uncategorized', description: 'Assign to a module later' });
 
   const picked = await vscode.window.showQuickPick(moduleItems, { placeHolder: 'Select L2 module (or leave unassigned)' });
   if (!picked) return;

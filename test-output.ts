@@ -404,11 +404,8 @@ async function runSieveModel(
 
   let commitLinkedNodeIds: number[] = [];
   if (commitHash) {
-    const [commitRecord] = await db.select().from(commitsTable).where(eq(commitsTable.hash, commitHash));
-    if (commitRecord) {
-      const links = await db.select().from(commitL2LinksTable).where(eq(commitL2LinksTable.commitId, commitRecord.id));
-      commitLinkedNodeIds = links.map((l: any) => l.l2NodeId);
-    }
+    const links = await db.select().from(commitL2LinksTable).where(eq(commitL2LinksTable.commitHash, commitHash));
+    commitLinkedNodeIds = links.map((l: any) => l.l2NodeId);
   }
 
   for (const node of l2Nodes) {
@@ -513,7 +510,7 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
     };
   }));
 
-  return res.json({ decisions });
+  res.json({ decisions });
 });
 router.post("/projects/:id/generate", async (req, res) => {
   const projectId = Number(req.params.id);

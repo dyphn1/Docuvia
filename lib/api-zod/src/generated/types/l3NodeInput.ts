@@ -8,6 +8,7 @@
 import type { L3NodeInputNodeType } from "./l3NodeInputNodeType";
 
 export interface L3NodeInput {
+  l2NodeId: number;
   /** @minLength 1 */
   title: string;
   content?: string;

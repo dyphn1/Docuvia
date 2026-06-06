@@ -1077,6 +1077,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /projects/{projectId}/extract/sieve:
+    post:
+      operationId: extractAndSieve
+      tags: [generate]
+      summary: Dual-Track extraction and categorization scoring (Sieve Model)
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SieveExtractionInput"
+      responses:
+        "200":
+          description: Sieve scoring and suggested L2 mappings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SieveExtractionResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /projects/{projectId}/subscriptions:
     get:
       operationId: listProjectSubscriptions
@@ -1749,7 +1780,7 @@ components:
           type: string
         type:
           type: string
-          enum: [package, module, pcd]
+          enum: [package, module, pcd, sys-uncategorized]
         description:
           type: ["string", "null"]
         l3Count:
@@ -1761,6 +1792,8 @@ components:
         aiGenerated:
           type: boolean
         needsReview:
+          type: boolean
+        isSystem:
           type: boolean
         createdAt:
           type: string
@@ -1776,7 +1809,7 @@ components:
           minLength: 1
         type:
           type: string
-          enum: [package, module, pcd]
+          enum: [package, module, pcd, sys-uncategorized]
         description:
           type: string
         l1TagIds:
@@ -1794,7 +1827,7 @@ components:
           minLength: 1
         type:
           type: string
-          enum: [package, module, pcd]
+          enum: [package, module, pcd, sys-uncategorized]
         description:
           type: string
         l1TagIds:
@@ -1860,8 +1893,10 @@ components:
 
     L3NodeInput:
       type: object
-      required: [title, nodeType]
+      required: [l2NodeId, title, nodeType]
       properties:
+        l2NodeId:
+          type: integer
         title:
           type: string
           minLength: 1
@@ -1998,12 +2033,15 @@ components:
 
     DocumentUploadInput:
       type: object
-      required: [file]
+      required: [file, l2NodeId]
       properties:
         file:
           type: string
           format: binary
           description: The document file to upload (max 10MB)
+        l2NodeId:
+          type: integer
+          description: Required L2 Module ID
         docType:
           type: string
           enum: [pdf, docx, pptx, md]
@@ -2014,12 +2052,14 @@ components:
 
     Document:
       type: object
-      required: [id, filename, docType, createdAt]
+      required: [id, l2NodeId, filename, docType, createdAt]
       properties:
         id:
           type: integer
         projectId:
           type: ["integer", "null"]
+        l2NodeId:
+          type: integer
         filename:
           type: string
         docType:
@@ -2625,6 +2665,38 @@ components:
           description: If true, create a source-ref entry for the L3 node
         l3Node:
           $ref: "#/components/schemas/L3NodeInput"
+
+    SieveExtractionInput:
+      type: object
+      required: [sourceText]
+      properties:
+        sourceText:
+          type: string
+        sourceFile:
+          type: string
+        commitHash:
+          type: string
+
+    SieveExtractionResult:
+      type: object
+      required: [decisions]
+      properties:
+        decisions:
+          type: array
+          items:
+            type: object
+            required: [l2NodeId, title, nodeType, confidence, noiseScore]
+            properties:
+              l2NodeId:
+                type: integer
+              title:
+                type: string
+              nodeType:
+                type: string
+              confidence:
+                type: number
+              noiseScore:
+                type: number
 
     FileContextResponse:
       type: object

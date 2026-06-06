@@ -18,5 +18,6 @@ export interface L2Node {
   l1TagIds: number[];
   aiGenerated: boolean;
   needsReview?: boolean;
+  isSystem?: boolean;
   createdAt: string;
 }

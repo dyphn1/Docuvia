@@ -80,6 +80,8 @@ import type {
   ReviewTask,
   SearchInput,
   SearchResponse,
+  SieveExtractionInput,
+  SieveExtractionResult,
   Subscription,
   SubscriptionInput,
   SubscriptionListResponse,
@@ -1186,6 +1188,7 @@ export const uploadDocument = async (
 ): Promise<Document> => {
   const formData = new FormData();
   formData.append(`file`, documentUploadInput.file);
+  formData.append(`l2NodeId`, documentUploadInput.l2NodeId.toString());
   if (documentUploadInput.docType !== undefined) {
     formData.append(`docType`, documentUploadInput.docType);
   }
@@ -3775,6 +3778,91 @@ export const useDeleteSubscription = <
   TContext
 > => {
   return useMutation(getDeleteSubscriptionMutationOptions(options));
+};
+
+/**
+ * @summary Dual-Track extraction and categorization scoring (Sieve Model)
+ */
+export const getExtractAndSieveUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/extract/sieve`;
+};
+
+export const extractAndSieve = async (
+  projectId: number,
+  sieveExtractionInput: SieveExtractionInput,
+  options?: RequestInit
+): Promise<SieveExtractionResult> => {
+  return customFetch<SieveExtractionResult>(getExtractAndSieveUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sieveExtractionInput),
+  });
+};
+
+export const getExtractAndSieveMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractAndSieve>>,
+    TError,
+    { projectId: number; data: BodyType<SieveExtractionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof extractAndSieve>>,
+  TError,
+  { projectId: number; data: BodyType<SieveExtractionInput> },
+  TContext
+> => {
+  const mutationKey = ["extractAndSieve"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof extractAndSieve>>,
+    { projectId: number; data: BodyType<SieveExtractionInput> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return extractAndSieve(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ExtractAndSieveMutationResult = NonNullable<
+  Awaited<ReturnType<typeof extractAndSieve>>
+>;
+export type ExtractAndSieveMutationBody = BodyType<SieveExtractionInput>;
+export type ExtractAndSieveMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Dual-Track extraction and categorization scoring (Sieve Model)
+ */
+export const useExtractAndSieve = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof extractAndSieve>>,
+    TError,
+    { projectId: number; data: BodyType<SieveExtractionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof extractAndSieve>>,
+  TError,
+  { projectId: number; data: BodyType<SieveExtractionInput> },
+  TContext
+> => {
+  return useMutation(getExtractAndSieveMutationOptions(options));
 };
 
 /**

@@ -10,6 +10,8 @@ import type { DocumentUploadInputDocType } from "./documentUploadInputDocType";
 export interface DocumentUploadInput {
   /** The document file to upload (max 10MB) */
   file: Blob;
+  /** Required L2 Module ID */
+  l2NodeId: number;
   /** Document type (auto-detected from extension if omitted) */
   docType?: DocumentUploadInputDocType;
   /** Optional commit SHA to associate with this document */

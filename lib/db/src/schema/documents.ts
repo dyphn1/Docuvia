@@ -2,6 +2,7 @@ import { pgTable, text, serial, integer, timestamp, pgEnum } from "drizzle-orm/p
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
+import { l2NodesTable } from "./l2_nodes";
 
 export const documentTypeEnum = pgEnum("document_type", [
   "markdown",
@@ -15,6 +16,7 @@ export const documentTypeEnum = pgEnum("document_type", [
 export const documentsTable = pgTable("documents", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").references(() => projectsTable.id, { onDelete: "cascade" }),
+  l2NodeId: integer("l2_node_id").references(() => l2NodesTable.id, { onDelete: "cascade" }),
   filename: text("filename").notNull(),
   docType: documentTypeEnum("doc_type").notNull().default("markdown"),
   content: text("content").notNull(),

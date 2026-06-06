@@ -112,6 +112,7 @@ export const L2NodeType = {
   package: "package",
   module: "module",
   pcd: "pcd",
+  "sys-uncategorized": "sys-uncategorized",
 } as const;
 
 export interface L2Node {
@@ -125,6 +126,7 @@ export interface L2Node {
   l1TagIds: number[];
   aiGenerated: boolean;
   needsReview?: boolean;
+  isSystem?: boolean;
   createdAt: string;
 }
 
@@ -207,6 +209,7 @@ export const L2NodeInputType = {
   package: "package",
   module: "module",
   pcd: "pcd",
+  "sys-uncategorized": "sys-uncategorized",
 } as const;
 
 export interface L2NodeInput {
@@ -225,6 +228,7 @@ export const L2NodeUpdateType = {
   package: "package",
   module: "module",
   pcd: "pcd",
+  "sys-uncategorized": "sys-uncategorized",
 } as const;
 
 export interface L2NodeUpdate {
@@ -263,6 +267,7 @@ export const L3NodeInputNodeType = {
 } as const;
 
 export interface L3NodeInput {
+  l2NodeId: number;
   /** @minLength 1 */
   title: string;
   content?: string;
@@ -389,6 +394,8 @@ export const DocumentUploadInputDocType = {
 export interface DocumentUploadInput {
   /** The document file to upload (max 10MB) */
   file: Blob;
+  /** Required L2 Module ID */
+  l2NodeId: number;
   /** Document type (auto-detected from extension if omitted) */
   docType?: DocumentUploadInputDocType;
   /** Optional commit SHA to associate with this document */
@@ -417,6 +424,7 @@ export interface Document {
   id: number;
   /** @nullable */
   projectId?: number | null;
+  l2NodeId: number;
   filename: string;
   docType: DocumentDocType;
   content?: string;
@@ -879,6 +887,24 @@ export interface VscodeCreateDecisionInput {
   /** If true, create a source-ref entry for the L3 node */
   agreeToLinkSource?: boolean;
   l3Node: L3NodeInput;
+}
+
+export interface SieveExtractionInput {
+  sourceText: string;
+  sourceFile?: string;
+  commitHash?: string;
+}
+
+export type SieveExtractionResultDecisionsItem = {
+  l2NodeId: number;
+  title: string;
+  nodeType: string;
+  confidence: number;
+  noiseScore: number;
+};
+
+export interface SieveExtractionResult {
+  decisions: SieveExtractionResultDecisionsItem[];
 }
 
 export type FileContextResponseSourcesItem = {

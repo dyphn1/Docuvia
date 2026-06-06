@@ -364,7 +364,7 @@ If you are not confident about an item, exclude it from the array.`;
       const mdContent = [
         '---',
         `id: "${id}"`,
-        `l2_module_id: ""`,
+        `l2_module_id: "sys-uncategorized"`,
         `title: "Extracted from ${safeTitle} (${i + 1})"`,
         `date: "${date}"`,
         `status: "proposed"`,
@@ -383,7 +383,7 @@ If you are not confident about an item, exclude it from the array.`;
         path.join(workspaceRoot, '.docuvia', 'l3_decisions', `${slug}.md`)
       );
       await vscode.workspace.fs.writeFile(uri, Buffer.from(mdContent, 'utf-8'));
-      newRouterEntries.push({ id, l2_module_id: '', slug, title: `Extracted from ${safeTitle} (${i + 1})`, file_path: `l3_decisions/${slug}.md` });
+      newRouterEntries.push({ id, l2_module_id: 'sys-uncategorized', slug, title: `Extracted from ${safeTitle} (${i + 1})`, file_path: `l3_decisions/${slug}.md` });
     }
 
     // Update l3_router.yaml with the new entries

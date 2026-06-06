@@ -3,7 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
 
-export const l2NodeTypeEnum = pgEnum("l2_node_type", ["package", "module", "pcd"]);
+export const l2NodeTypeEnum = pgEnum("l2_node_type", ["package", "module", "pcd", "sys-uncategorized"]);
 
 export const l2NodesTable = pgTable("l2_nodes", {
   id: serial("id").primaryKey(),
@@ -12,6 +12,7 @@ export const l2NodesTable = pgTable("l2_nodes", {
     .references(() => projectsTable.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   type: l2NodeTypeEnum("type").notNull().default("module"),
+  isSystem: boolean("is_system").notNull().default(false),
   description: text("description"),
   aiGenerated: boolean("ai_generated").notNull().default(true),
   needsReview: boolean("needs_review").notNull().default(false),

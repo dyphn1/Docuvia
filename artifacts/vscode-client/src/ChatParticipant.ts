@@ -128,18 +128,20 @@ export function registerDocuviaChatParticipant(
 
   participant.followupProvider = {
     provideFollowups: async (_result, _context, _token) => {
-      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-      if (!workspaceRoot) {
+      const folders = vscode.workspace.workspaceFolders || [];
+      if (folders.length === 0) {
         return [];
       }
-      try {
-        await vscode.workspace.fs.stat(
-          vscode.Uri.file(path.join(workspaceRoot, '.docuvia'))
-        );
-        return [];
-      } catch {
-        return [{ prompt: '/explore', label: 'Explore this project and suggest L1 tags' }];
+      for (const folder of folders) {
+        try {
+          await vscode.workspace.fs.stat(
+            vscode.Uri.file(path.join(folder.uri.fsPath, '.docuvia'))
+          );
+        } catch {
+          return [{ prompt: '/explore', label: 'Explore this project and suggest L1 tags' }];
+        }
       }
+      return [];
     },
   };
 
@@ -155,9 +157,24 @@ async function handleExplore(
   userPrompt?: string
 ): Promise<void> {
   // Resolve workspace root up-front so all button paths can reference it (BUG A-3 fix)
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  let workspaceRoot = vscode.window.activeTextEditor
+    ? vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)?.uri.fsPath
+    : undefined;
+
   if (!workspaceRoot) {
-    stream.markdown('No workspace folder is open.');
+    const folders = vscode.workspace.workspaceFolders || [];
+    if (folders.length === 1) {
+      workspaceRoot = folders[0].uri.fsPath;
+    } else if (folders.length > 1) {
+      const picked = await vscode.window.showWorkspaceFolderPick({ placeHolder: 'Select a workspace to explore' });
+      if (picked) {
+        workspaceRoot = picked.uri.fsPath;
+      }
+    }
+  }
+
+  if (!workspaceRoot) {
+    stream.markdown('No workspace folder is open or selected.');
     return;
   }
 
@@ -276,22 +293,30 @@ async function handleQuery(
   }
 
   // ── Local depth search ─────────────────────────────────────────────────────
-  const snapshot = store.snapshot;
-  if (!snapshot) {
+  if (store.snapshots.size === 0) {
     stream.markdown('No `.docuvia/` folder loaded. Run **Docuvia: Init Project** first.');
     return;
   }
 
-  const matchingModules = snapshot.modules.filter(
-    (m) =>
-      m.name.toLowerCase().includes(query) ||
-      m.slug.includes(query) ||
-      (m.description ?? '').toLowerCase().includes(query)
-  );
+  const matchingModules: import('./types.js').L2Module[] = [];
+  const matchingDecisions: import('./types.js').L3Decision[] = [];
 
-  const matchingDecisions = [...snapshot.decisions.values()].filter(
-    (d) => d.title.toLowerCase().includes(query) || d.body.toLowerCase().includes(query)
-  );
+  for (const snapshot of store.snapshots.values()) {
+    matchingModules.push(
+      ...snapshot.modules.filter(
+        (m) =>
+          m.name.toLowerCase().includes(query) ||
+          m.slug.includes(query) ||
+          (m.description ?? '').toLowerCase().includes(query)
+      )
+    );
+
+    matchingDecisions.push(
+      ...[...snapshot.decisions.values()].filter(
+        (d) => d.title.toLowerCase().includes(query) || d.body.toLowerCase().includes(query)
+      )
+    );
+  }
 
   if (matchingModules.length === 0 && matchingDecisions.length === 0) {
     stream.markdown(`No local results found for **"${query}"**.`);
@@ -376,8 +401,13 @@ async function handleExtract(
 
   if (!targetPath) {
     const workspaceFolders = vscode.workspace.workspaceFolders;
-    if (workspaceFolders && workspaceFolders.length > 0) {
+    if (workspaceFolders && workspaceFolders.length === 1) {
       targetPath = workspaceFolders[0].uri.fsPath;
+    } else if (workspaceFolders && workspaceFolders.length > 1) {
+      stream.markdown(
+        'Multiple workspace folders open. Please provide a path or open a file: `/extract [file-or-folder-path]`'
+      );
+      return;
     } else {
       stream.markdown(
         'Usage: `/extract [file-or-folder-path]` — queue L3 decision extraction for a file or folder. Open a file first or provide a path.'
@@ -394,7 +424,7 @@ async function handleExtract(
     return;
   }
 
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  const workspaceRoot = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(targetPath))?.uri.fsPath;
   const config = vscode.workspace.getConfiguration('docuvia');
   const includePatterns = config.get<string[]>('extraction.includePatterns', []);
 

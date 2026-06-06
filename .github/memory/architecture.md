@@ -1,6 +1,9 @@
 # Architecture & Design Memory
 
 ## VS Code Client Architecture
+- **Eradicate Single-Root Bias**: Never use `workspaceFolders[0]`. Always pass an explicit `workspaceUri` down the call chain, and map UI instances and state to specific workspace roots. 
+- **Multi-Root State Management**: Avoid global singletons. Use `store.getSnapshotFor(uri)` instead of a global `store.snapshot`. Convert UI singletons (like `DashboardPanel`) to Maps keyed by `workspaceRoot`.
+- **Multi-Root UI Strategy**: For resolving multi-root contexts, use a **Tree-Node Expansion strategy** (aligning with VS Code's native workspace layout) instead of "global active view" or dropdowns. For Chat commands (`/query`, `/extract`), resolve context from the active text editor, or prompt the user via `QuickPick` if ambiguous.
 - **Virtual Tree Nodes**: For hierarchical data in `TreeDataProvider` (e.g., Knowledge Graph nodes), do not drop orphaned items. Create synthetic virtual nodes (e.g., `unassigned-group`) to aggregate entities that lack a defined parent (like L3 decisions without an L2 module). This ensures full visibility without corrupting the underlying data schema.
 
 ## Knowledge Graph & Agentic RAG

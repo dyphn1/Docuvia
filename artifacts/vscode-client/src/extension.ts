@@ -156,8 +156,22 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand('docuvia.openDashboard', () => {
-      DashboardPanel.createOrShow(context, store, tqProvider);
+    vscode.commands.registerCommand('docuvia.openDashboard', async (node?: { workspaceRoot?: string }) => {
+      let targetRoot = node?.workspaceRoot;
+      if (!targetRoot) {
+        const folders = vscode.workspace.workspaceFolders || [];
+        if (folders.length === 0) {
+          void vscode.window.showWarningMessage('Docuvia: No workspace folder open.');
+          return;
+        } else if (folders.length === 1) {
+          targetRoot = folders[0].uri.fsPath;
+        } else {
+          const picked = await vscode.window.showWorkspaceFolderPick({ placeHolder: 'Select a workspace for the dashboard' });
+          if (!picked) return;
+          targetRoot = picked.uri.fsPath;
+        }
+      }
+      DashboardPanel.createOrShow(context, store, targetRoot, tqProvider);
     })
   );
 
@@ -265,10 +279,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'docuvia.acceptL1Tags',
-      // BUG A-3 fix: accept explicit workspaceRoot from ChatParticipant; fall back to [0] only when absent
-      async (yamlContent: string, explicitRoot?: string) => {
-        const workspaceRoot = explicitRoot ?? vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-        if (!workspaceRoot) return;
+      // BUG A-3 fix: accept explicit workspaceRoot from ChatParticipant
+      async (yamlContent: string, explicitRoot: string) => {
+        const workspaceRoot = explicitRoot;
+        if (!workspaceRoot) {
+          vscode.window.showErrorMessage('Docuvia: Missing workspace root for acceptL1Tags command.');
+          return;
+        }
 
         const docuviaUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia'));
         const decisionsUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l3_decisions'));
@@ -613,17 +630,21 @@ async function showDecisionsForLens(
   store: KnowledgeStore,
   data: CodeLensDecisionData
 ): Promise<void> {
-  const snapshot = store.snapshot;
-  if (!snapshot) return;
-
   const MAX_INLINE = 2;
   const allIds = data.decisionIds;
   const topIds = allIds.slice(0, MAX_INLINE);
 
+  const decisions = new Map<string, import('./types.js').L3Decision>();
+  for (const snap of store.snapshots.values()) {
+    for (const [k, v] of snap.decisions.entries()) {
+      decisions.set(k, v);
+    }
+  }
+
   type QuickPickItem = vscode.QuickPickItem & { decisionId?: string; viewAll?: boolean };
 
   const items: QuickPickItem[] = topIds.map(id => {
-    const decision = snapshot.decisions.get(id);
+    const decision = decisions.get(id);
     return {
       label: decision?.title ?? id,
       description: decision?.status,
@@ -653,7 +674,7 @@ async function showDecisionsForLens(
 
   const decisionId = (picked as QuickPickItem).decisionId;
   if (decisionId) {
-    const decision = snapshot.decisions.get(decisionId);
+    const decision = decisions.get(decisionId);
     if (decision?.filePath) {
       const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(decision.filePath));
       await vscode.window.showTextDocument(doc);

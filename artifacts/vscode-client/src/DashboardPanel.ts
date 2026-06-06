@@ -38,9 +38,10 @@ export interface DashboardPayload {
 
 function buildDashboardPayload(
   snapshot: KnowledgeGraphSnapshot | null,
+  workspaceRoot: string,
   tqProvider?: TaskQueueTreeProvider
 ): DashboardPayload {
-  const workspaceName = vscode.workspace.workspaceFolders?.[0]?.name ?? 'Workspace';
+  const workspaceName = snapshot?.projectName || vscode.workspace.workspaceFolders?.find(f => f.uri.fsPath === workspaceRoot)?.name || 'Workspace';
   if (!snapshot) {
     return {
       tagCount: 0,
@@ -88,21 +89,22 @@ function buildDashboardPayload(
 
 export class DashboardPanel {
   static readonly viewType = 'docuvia.dashboard';
-  private static _current: DashboardPanel | undefined;
+  private static _panels = new Map<string, DashboardPanel>();
 
-  static createOrShow(context: vscode.ExtensionContext, store: KnowledgeStore, tqProvider?: TaskQueueTreeProvider): void {
+  static createOrShow(context: vscode.ExtensionContext, store: KnowledgeStore, targetRoot: string, tqProvider?: TaskQueueTreeProvider): void {
     const column =
       vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
 
-    if (DashboardPanel._current) {
-      DashboardPanel._current._panel.reveal(column);
-      DashboardPanel._current._pushData(store.snapshot);
+    const currentPanel = DashboardPanel._panels.get(targetRoot);
+    if (currentPanel) {
+      currentPanel._panel.reveal(column);
+      currentPanel._pushData(store.getSnapshotFor(targetRoot));
       return;
     }
 
     const panel = vscode.window.createWebviewPanel(
       DashboardPanel.viewType,
-      'Docuvia Dashboard',
+      `Docuvia Dashboard (${vscode.workspace.workspaceFolders?.find(f => f.uri.fsPath === targetRoot)?.name || 'Workspace'})`,
       column,
       {
         enableScripts: true,
@@ -111,20 +113,22 @@ export class DashboardPanel {
       }
     );
 
-    DashboardPanel._current = new DashboardPanel(panel, context, store, tqProvider);
+    const newDashboard = new DashboardPanel(panel, context, store, targetRoot, tqProvider);
+    DashboardPanel._panels.set(targetRoot, newDashboard);
   }
 
   private constructor(
     private readonly _panel: vscode.WebviewPanel,
     private readonly _context: vscode.ExtensionContext,
     store: KnowledgeStore,
+    private readonly _targetRoot: string,
     private readonly _tqProvider?: TaskQueueTreeProvider
   ) {
     this._panel.webview.html = this._buildHtml();
 
-    this._pushData(store.snapshot);
+    this._pushData(store.getSnapshotFor(this._targetRoot));
 
-    const onDidLoadDisposable = store.onDidLoad(() => this._pushData(store.snapshot));
+    const onDidLoadDisposable = store.onDidLoad(() => this._pushData(store.getSnapshotFor(this._targetRoot)));
 
     this._panel.webview.onDidReceiveMessage(
       (msg: WebviewMessage) => this._handleMessage(msg),
@@ -135,23 +139,23 @@ export class DashboardPanel {
     this._panel.onDidDispose(
       () => {
         onDidLoadDisposable.dispose();
-        DashboardPanel._current = undefined;
+        DashboardPanel._panels.delete(this._targetRoot);
       },
       null,
       this._context.subscriptions
     );
   }
 
-  private _pushData(snapshot: KnowledgeGraphSnapshot | null): void {
+  private _pushData(snapshot: KnowledgeGraphSnapshot | undefined): void {
     void this._panel.webview.postMessage({
       type: 'update',
-      data: buildDashboardPayload(snapshot, this._tqProvider),
+      data: buildDashboardPayload(snapshot || null, this._targetRoot, this._tqProvider),
     });
   }
 
   private _handleMessage(msg: WebviewMessage): void {
     if (msg.type === 'openDecision' && typeof msg.filePath === 'string' && msg.filePath.length > 0) {
-      const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
+      const workspaceRoot = this._targetRoot;
       if (!msg.filePath.startsWith(workspaceRoot)) {
         return; // Reject paths outside workspace
       }

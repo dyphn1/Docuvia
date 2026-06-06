@@ -14,7 +14,7 @@ export class DocuviaHoverProvider implements vscode.HoverProvider {
     document: vscode.TextDocument,
     position: vscode.Position
   ): vscode.Hover | undefined {
-    const snapshot = this._store.snapshot;
+    const snapshot = this._store.getSnapshotFor(document.uri);
     if (!snapshot) return undefined;
 
     const wordRange = document.getWordRangeAtPosition(position, UUID_REGEX);

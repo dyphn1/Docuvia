@@ -65,32 +65,6 @@ export class KnowledgeStore {
     return this._snapshots;
   }
 
-  /** Gets aggregated snapshot or the first one, for backwards compatibility where possible, but better to use snapshots map directly */
-  get snapshot(): KnowledgeGraphSnapshot | null {
-    if (this._snapshots.size === 0) return null;
-    // Aggregate for legacy single-snapshot callers
-    const agg: KnowledgeGraphSnapshot = {
-      workspaceRoot: '',
-      projectName: 'Aggregated',
-      tags: [],
-      modules: [],
-      routerIndex: [],
-      decisions: new Map(),
-      loadedAt: new Date(),
-      manifestModules: [],
-    };
-    for (const snap of this._snapshots.values()) {
-      agg.tags.push(...snap.tags);
-      agg.modules.push(...snap.modules);
-      agg.routerIndex.push(...snap.routerIndex);
-      agg.manifestModules.push(...snap.manifestModules);
-      for (const [k, v] of snap.decisions.entries()) {
-        agg.decisions.set(k, v);
-      }
-    }
-    return agg;
-  }
-
   getSnapshotFor(uri: vscode.Uri | string): KnowledgeGraphSnapshot | undefined {
     const fsPath = typeof uri === 'string' ? uri : uri.fsPath;
     const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(fsPath));
@@ -475,18 +449,6 @@ export class KnowledgeStore {
 
   // ─── Lookup helpers ────────────────────────────────────────────────────────
 
-  getDecisionById(id: string): L3Decision | undefined {
-    return this.snapshot?.decisions.get(id);
-  }
-
-  getModulesByTagId(tagId: string): L2Module[] {
-    return this.snapshot?.modules.filter(m => m.l1_tag_id === tagId) ?? [];
-  }
-
-  getRouterEntriesByModuleId(moduleId: string): L3RouterEntry[] {
-    return this.snapshot?.routerIndex.filter(r => r.l2_module_id === moduleId) ?? [];
-  }
-
   // ─── Private helpers ───────────────────────────────────────────────────────
 
   private async readUriSafe(uri: vscode.Uri): Promise<string> {
@@ -496,10 +458,6 @@ export class KnowledgeStore {
     } catch {
       return '';
     }
-  }
-
-  private getWorkspaceRoot(): string | null {
-    return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? null;
   }
 
   private tryParse<T>(fn: () => T, label: string): T extends any[] ? T : never {

@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type SearchResultItemNodeLayer =
-  (typeof SearchResultItemNodeLayer)[keyof typeof SearchResultItemNodeLayer];
+export type SearchFeedbackInputNodeLayer =
+  (typeof SearchFeedbackInputNodeLayer)[keyof typeof SearchFeedbackInputNodeLayer];
 
-export const SearchResultItemNodeLayer = {
+export const SearchFeedbackInputNodeLayer = {
   l1: "l1",
   l2: "l2",
   l3: "l3",

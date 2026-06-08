@@ -78,6 +78,7 @@ import type {
   ReviewResolution,
   ReviewStats,
   ReviewTask,
+  SearchFeedbackInput,
   SearchInput,
   SearchResponse,
   SieveExtractionInput,
@@ -85,6 +86,7 @@ import type {
   Subscription,
   SubscriptionInput,
   SubscriptionListResponse,
+  SuccessResponse,
   SvnIngestInput,
   SvnIngestResult,
   SyncInput,
@@ -3141,6 +3143,87 @@ export const useSearchKnowledge = <TError = ErrorType<unknown>, TContext = unkno
   TContext
 > => {
   return useMutation(getSearchKnowledgeMutationOptions(options));
+};
+
+/**
+ * @summary Submit user interaction feedback for search results
+ */
+export const getSubmitSearchFeedbackUrl = () => {
+  return `/api/search/feedback`;
+};
+
+export const submitSearchFeedback = async (
+  searchFeedbackInput: SearchFeedbackInput,
+  options?: RequestInit
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getSubmitSearchFeedbackUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(searchFeedbackInput),
+  });
+};
+
+export const getSubmitSearchFeedbackMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitSearchFeedback>>,
+    TError,
+    { data: BodyType<SearchFeedbackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitSearchFeedback>>,
+  TError,
+  { data: BodyType<SearchFeedbackInput> },
+  TContext
+> => {
+  const mutationKey = ["submitSearchFeedback"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitSearchFeedback>>,
+    { data: BodyType<SearchFeedbackInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return submitSearchFeedback(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SubmitSearchFeedbackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitSearchFeedback>>
+>;
+export type SubmitSearchFeedbackMutationBody = BodyType<SearchFeedbackInput>;
+export type SubmitSearchFeedbackMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Submit user interaction feedback for search results
+ */
+export const useSubmitSearchFeedback = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitSearchFeedback>>,
+    TError,
+    { data: BodyType<SearchFeedbackInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof submitSearchFeedback>>,
+  TError,
+  { data: BodyType<SearchFeedbackInput> },
+  TContext
+> => {
+  return useMutation(getSubmitSearchFeedbackMutationOptions(options));
 };
 
 /**

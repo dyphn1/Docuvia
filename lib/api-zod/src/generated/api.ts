@@ -860,8 +860,9 @@ export const SearchKnowledgeBody = zod.object({
 export const SearchKnowledgeResponse = zod.object({
   results: zod.array(
     zod.object({
-      nodeLayer: zod.enum(["l1", "l2", "l3"]),
-      id: zod.number(),
+      source: zod.enum(["vector", "graph", "direct"]),
+      nodeLayer: zod.enum(["l1", "l2", "l3", "commit"]),
+      id: zod.union([zod.number(), zod.string()]),
       title: zod.string(),
       content: zod.string().nullish(),
       projectId: zod.number().nullish(),
@@ -871,6 +872,19 @@ export const SearchKnowledgeResponse = zod.object({
     })
   ),
   total: zod.number(),
+});
+
+/**
+ * @summary Submit user interaction feedback for search results
+ */
+export const SubmitSearchFeedbackBody = zod.object({
+  nodeId: zod.number(),
+  nodeLayer: zod.enum(["l1", "l2", "l3", "commit"]),
+  interactionType: zod.enum(["view", "click", "copy", "citation"]),
+});
+
+export const SubmitSearchFeedbackResponse = zod.object({
+  success: zod.boolean(),
 });
 
 /**
@@ -903,8 +917,9 @@ export const McpSearchKnowledgeResponse = zod.object({
   query: zod.string(),
   results: zod.array(
     zod.object({
-      nodeLayer: zod.enum(["l1", "l2", "l3"]),
-      id: zod.number(),
+      source: zod.enum(["vector", "graph", "direct"]),
+      nodeLayer: zod.enum(["l1", "l2", "l3", "commit"]),
+      id: zod.union([zod.number(), zod.string()]),
       title: zod.string(),
       content: zod.string().nullish(),
       projectId: zod.number().nullish(),

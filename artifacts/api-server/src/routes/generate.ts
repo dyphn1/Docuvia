@@ -17,7 +17,7 @@ import {
   notificationsTable,
   commitL2LinksTable,
 } from "@workspace/db";
-import { eq, and, sql, isNull, ne, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, sql, isNull, ne, isNotNull, inArray, or, lt } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { notifyExternalIntegrations } from "../lib/slack-teams-client.js";
@@ -533,10 +533,28 @@ router.post("/projects/:id/generate", async (req, res) => {
   const condensationThreshold = llmCfg?.condensationThreshold ?? 30;
   const condensationReviewRequired = llmCfg?.condensationReviewRequired ?? false;
 
-  await db
+  const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+
+  const updatedProjects = await db
     .update(projectsTable)
     .set({ status: "indexing", updatedAt: new Date() })
-    .where(eq(projectsTable.id, projectId));
+    .where(
+      and(
+        eq(projectsTable.id, projectId),
+        or(
+          inArray(projectsTable.status, ["active", "error"]),
+          and(
+            eq(projectsTable.status, "indexing"),
+            lt(projectsTable.updatedAt, thirtyMinsAgo)
+          )
+        )
+      )
+    )
+    .returning();
+
+  if (updatedProjects.length === 0) {
+    return res.status(409).json({ error: "Project is already indexing or not in active state." });
+  }
 
   try {
     // Step 1: Fetch valid (signal-scored) commits

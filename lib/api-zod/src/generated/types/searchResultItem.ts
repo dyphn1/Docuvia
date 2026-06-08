@@ -6,10 +6,12 @@
  * OpenAPI spec version: 0.2.0
  */
 import type { SearchResultItemNodeLayer } from "./searchResultItemNodeLayer";
+import type { SearchResultItemSource } from "./searchResultItemSource";
 
 export interface SearchResultItem {
+  source: SearchResultItemSource;
   nodeLayer: SearchResultItemNodeLayer;
-  id: number;
+  id: number | string;
   title: string;
   /** @nullable */
   content?: string | null;

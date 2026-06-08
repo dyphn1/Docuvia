@@ -894,6 +894,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/SearchResponse"
 
+  /search/feedback:
+    post:
+      operationId: submitSearchFeedback
+      tags: [search]
+      summary: Submit user interaction feedback for search results
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchFeedbackInput"
+      responses:
+        "200":
+          description: Feedback recorded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
   /mcp/list_projects:
     get:
       operationId: mcpListProjects
@@ -2299,15 +2318,38 @@ components:
         total:
           type: integer
 
-    SearchResultItem:
+    SearchFeedbackInput:
       type: object
-      required: [nodeLayer, id, title, createdAt]
+      required: [nodeId, nodeLayer, interactionType]
       properties:
+        nodeId:
+          type: integer
         nodeLayer:
           type: string
-          enum: [l1, l2, l3]
+          enum: [l1, l2, l3, commit]
+        interactionType:
+          type: string
+          enum: [view, click, copy, citation]
+
+    SuccessResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
+    SearchResultItem:
+      type: object
+      required: [source, nodeLayer, id, title, createdAt]
+      properties:
+        source:
+          type: string
+          enum: [vector, graph, direct]
+        nodeLayer:
+          type: string
+          enum: [l1, l2, l3, commit]
         id:
-          type: integer
+          type: ["integer", "string"]
         title:
           type: string
         content:

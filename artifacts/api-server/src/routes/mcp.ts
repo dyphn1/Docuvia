@@ -9,7 +9,6 @@ import {
   commitsTable,
 } from "@workspace/db";
 import { eq, or, and, like, sql, count, isNotNull } from "drizzle-orm";
-import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
 import { routeQuery } from "../lib/intent-router.js";
 import { logger } from "../lib/logger.js";
 
@@ -52,150 +51,13 @@ router.get("/mcp/search_knowledge", async (req, res) => {
 
   if (!query) return res.status(400).json({ error: "query parameter required" });
 
-  const l3ValidityCondition = includePending
-    ? or(eq(l3NodesTable.validityStatus, "valid"), eq(l3NodesTable.validityStatus, "pending"))
-    : eq(l3NodesTable.validityStatus, "valid");
-
-  const results: Array<{
-    nodeLayer: "l1" | "l2" | "l3";
-    id: number;
-    title: string;
-    content: string | null;
-    projectId: number | null;
-    projectName: string | null;
-    score: number;
-    createdAt: string;
-  }> = [];
-
-  const queryEmbedding = await generateEmbedding(query);
-
-  if (queryEmbedding) {
-    // --- Semantic search: L2 nodes ---
-    let l2SemanticQuery = db
-      .select()
-      .from(l2NodesTable)
-      .where(isNotNull(l2NodesTable.embedding))
-      .$dynamic();
-    if (projectId) l2SemanticQuery = l2SemanticQuery.where(eq(l2NodesTable.projectId, projectId));
-    const l2WithEmb = await l2SemanticQuery;
-
-    const l2Scored = l2WithEmb
-      .map((node) => {
-        const emb = parseEmbedding(node.embedding);
-        const score = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
-        return { node, score };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
-
-    for (const { node, score } of l2Scored) {
-      const [proj] = await db
-        .select({ name: projectsTable.name })
-        .from(projectsTable)
-        .where(eq(projectsTable.id, node.projectId));
-      results.push({
-        nodeLayer: "l2",
-        id: node.id,
-        title: node.name,
-        content: node.description ?? null,
-        projectId: node.projectId,
-        projectName: proj?.name ?? null,
-        score,
-        createdAt: node.createdAt.toISOString(),
-      });
-    }
-
-    // --- Semantic search: L3 nodes ---
-    const l3WithEmb = await db
-      .select()
-      .from(l3NodesTable)
-      .where(and(isNotNull(l3NodesTable.embedding), l3ValidityCondition!));
-
-    const l3Scored = l3WithEmb
-      .map((node) => {
-        const emb = parseEmbedding(node.embedding);
-        const score = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
-        return { node, score };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
-
-    for (const { node, score } of l3Scored) {
-      results.push({
-        nodeLayer: "l3",
-        id: node.id,
-        title: node.title,
-        content: node.content ?? null,
-        projectId: null,
-        projectName: null,
-        score,
-        createdAt: node.createdAt.toISOString(),
-      });
-    }
-  } else {
-    // --- Fallback: SQL LIKE search ---
-    const pattern = `%${query}%`;
-
-    let l2FallbackQuery = db
-      .select()
-      .from(l2NodesTable)
-      .where(
-        or(
-          like(l2NodesTable.name, pattern),
-          like(sql`COALESCE(${l2NodesTable.description}, '')`, pattern)
-        )
-      )
-      .$dynamic();
-    if (projectId) l2FallbackQuery = l2FallbackQuery.where(eq(l2NodesTable.projectId, projectId));
-    const l2Rows = await l2FallbackQuery.limit(limit);
-
-    for (const node of l2Rows) {
-      const [proj] = await db
-        .select({ name: projectsTable.name })
-        .from(projectsTable)
-        .where(eq(projectsTable.id, node.projectId));
-      results.push({
-        nodeLayer: "l2",
-        id: node.id,
-        title: node.name,
-        content: node.description ?? null,
-        projectId: node.projectId,
-        projectName: proj?.name ?? null,
-        score: 0.9,
-        createdAt: node.createdAt.toISOString(),
-      });
-    }
-
-    const l3Rows = await db
-      .select()
-      .from(l3NodesTable)
-      .where(
-        and(
-          l3ValidityCondition!,
-          or(
-            like(l3NodesTable.title, pattern),
-            like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
-          )
-        )
-      )
-      .limit(limit);
-
-    for (const node of l3Rows) {
-      results.push({
-        nodeLayer: "l3",
-        id: node.id,
-        title: node.title,
-        content: node.content ?? null,
-        projectId: null,
-        projectName: null,
-        score: 0.8,
-        createdAt: node.createdAt.toISOString(),
-      });
-    }
+  try {
+    const result = await routeQuery(query, projectId, limit, includePending);
+    return res.json({ query, results: result.results.slice(0, limit) });
+  } catch (err) {
+    logger.error({ err }, "[GET /mcp/search_knowledge] Unhandled error");
+    return res.status(500).json({ error: "Internal server error" });
   }
-
-  results.sort((a, b) => b.score - a.score);
-  return res.json({ query, results: results.slice(0, limit) });
 });
 
 router.get("/mcp/get_dependencies", async (req, res) => {

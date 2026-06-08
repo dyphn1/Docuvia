@@ -612,6 +612,15 @@ export interface SearchInput {
   limit?: number;
 }
 
+export type SearchResultItemSource =
+  (typeof SearchResultItemSource)[keyof typeof SearchResultItemSource];
+
+export const SearchResultItemSource = {
+  vector: "vector",
+  graph: "graph",
+  direct: "direct",
+} as const;
+
 export type SearchResultItemNodeLayer =
   (typeof SearchResultItemNodeLayer)[keyof typeof SearchResultItemNodeLayer];
 
@@ -619,11 +628,13 @@ export const SearchResultItemNodeLayer = {
   l1: "l1",
   l2: "l2",
   l3: "l3",
+  commit: "commit",
 } as const;
 
 export interface SearchResultItem {
+  source: SearchResultItemSource;
   nodeLayer: SearchResultItemNodeLayer;
-  id: number;
+  id: number | string;
   title: string;
   /** @nullable */
   content?: string | null;
@@ -638,6 +649,36 @@ export interface SearchResultItem {
 export interface SearchResponse {
   results: SearchResultItem[];
   total: number;
+}
+
+export type SearchFeedbackInputNodeLayer =
+  (typeof SearchFeedbackInputNodeLayer)[keyof typeof SearchFeedbackInputNodeLayer];
+
+export const SearchFeedbackInputNodeLayer = {
+  l1: "l1",
+  l2: "l2",
+  l3: "l3",
+  commit: "commit",
+} as const;
+
+export type SearchFeedbackInputInteractionType =
+  (typeof SearchFeedbackInputInteractionType)[keyof typeof SearchFeedbackInputInteractionType];
+
+export const SearchFeedbackInputInteractionType = {
+  view: "view",
+  click: "click",
+  copy: "copy",
+  citation: "citation",
+} as const;
+
+export interface SearchFeedbackInput {
+  nodeId: number;
+  nodeLayer: SearchFeedbackInputNodeLayer;
+  interactionType: SearchFeedbackInputInteractionType;
+}
+
+export interface SuccessResponse {
+  success: boolean;
 }
 
 export type McpProjectListProjectsItem = {

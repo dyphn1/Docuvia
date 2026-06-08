@@ -94,6 +94,29 @@ metabolismRouter.get("/metabolism-tick", async (req: Request, res: Response): Pr
 });
 
 metabolismRouter.get("/admin/metabolism-tick", async (req: Request, res: Response): Promise<void> => {
+  let adminSecret = process.env.ADMIN_SECRET_TOKEN;
+  
+  if (!adminSecret) {
+    if (process.env.NODE_ENV === "development") {
+      adminSecret = "dev-secret-token";
+    } else {
+      logger.error("ADMIN_SECRET_TOKEN is missing. Server misconfigured. Failing closed.");
+      res.status(500).json({ error: "Server misconfiguration" });
+      return;
+    }
+  }
+
+  let token = req.query.admin_token as string | undefined;
+
+  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+    token = req.headers.authorization.substring(7);
+  }
+
+  if (!token || token !== adminSecret) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
   if (isMetabolismRunning) {
     res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
     return;

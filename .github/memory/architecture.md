@@ -17,9 +17,17 @@
 - **O(1) Fast Arbitration Funnel**: To minimize "LLM arbitration tax" (latency/cost), implement deterministic fast-path filters *before* invoking an LLM for query intent routing. Use regex for explicit directives (e.g., `#attach`, specific file extensions) to force direct lookups, and exact-match checks against known ontology terms (L1/L2 nodes) to force graph traversal. Only fall back to LLM classification when fast-paths fail.
 
 ## Server-Side Metabolism & Background Jobs
-- **Thundering Herd Prevention**: When multiple clients poll an endpoint to trigger background tasks (metabolism ticks), use a Mutex (in-memory or DB advisory lock). If a job is active, return `202 Accepted` or `409 Conflict` immediately to avoid overlapping micro-batch executions.
+- **Thundering Herd Prevention**: When multiple clients poll an endpoint to trigger background tasks (metabolism ticks), use a Mutex (in-memory or DB advisory lock). For database-backed state, use atomic updates (e.g., `UPDATE ... WHERE status='active'`) instead of application-level read-then-write checks to prevent race conditions. If a job is active, return `202 Accepted` or `409 Conflict` immediately to avoid overlapping micro-batch executions.
 - **Client Heartbeat Jitter**: For background polling mechanisms (like `setInterval` in the VS Code client), always add randomized jitter (e.g., base interval ± random offset) to evenly distribute server load across active clients.
 - **Swarm Intelligence Distillation**: Process human-in-the-loop corrections asynchronously during background "metabolism" ticks. Fetch unhandled `correction_examples`, use an LLM to distill the delta (original vs. corrected) into a concise architectural guardrail, insert it into `prompt_templates`, and mark the correction as processed (`processedAt`). This ensures continuous, non-blocking self-evolution.
+
+## Unified Query Routing & Search
+- **Centralized Intent Routing**: Avoid disjointed search endpoints. Unite all search interfaces (Vector, Direct, Hybrid, Graph) behind a single `intent-router` to maintain consistent parameter handling and response schemas.
+- **Search Logic Precision**: Ensure Hybrid search implements strict intersection logic (e.g., combining semantic proximity with keyword matches) rather than loose unions. Verify that Direct search correctly implements full-text indexing logic.
+- **Test-Driven Core Math**: Core routing decisions, hybrid intersection algorithms, and scoring math must be isolated from API handlers and maintain high unit test coverage (using Vitest), independent of DB-backed integration tests.
+
+## Security & API Design
+- **Zero-Trust Administrative Routes**: Never leave admin or internal infrastructure routes unauthenticated. Always enforce appropriate authentication or network boundaries, even for internal testing or background triggers.
 
 ## Ingestion Pipeline Protocolization
 - **Unified Pipeline Abstraction**: Consolidate disparate ingestion flows (Git, SVN, Documents) into a standardized pipeline sequence (`processIngestion`): Hash deduplication -> Score -> DB Insert -> Activity Log -> Notification. This prevents logic drift between API entry points.

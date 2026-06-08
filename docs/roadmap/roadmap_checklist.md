@@ -21,27 +21,27 @@
 - [ ] 1.1.1  ✅  Drizzle ORM schema for all 16 tables (projects, commits, documents, activity_log, l1_tags, l2_nodes, l3_nodes, node_links, review_tasks, correction_examples, pull_requests, project_integrations, notifications, subscriptions, llm_configs, prompt_templates)
 - [ ] 1.1.2  ✅  DB push / push-force scripts
 - [ ] 1.1.3  ✅  withRollback() integration test support
-- [ ] 1.1.4  ✅  Test factories for DB state creation (factories.ts)
+- [ ] 1.1.4  ⚠️  Test factories for DB state creation (factories.ts)
 
 ### 1.2 Multi-Format Ingestion (Git, SVN, PDF, Build logs, Documents)
-- [ ] 1.2.1  ✅  Git ingestion via child_process.execFile (git log, git diff)
-- [ ] 1.2.2  ✅  SVN ingestion via svn log --xml, svn diff
-- [ ] 1.2.3  ✅  Document upload and parsing (PDF, Word/PPTX, Markdown, text)
-- [ ] 1.2.4  ✅  Build artifact parser
-- [ ] 1.2.5  ✅  scoreCommit() signal/noise filter
-- [ ] 1.2.6  ✅  Incremental ingestion via cursor columns (lastGitIngestedAt, lastSvnRevision, processedAt)
+- [ ] 1.2.1  ⚠️  Git ingestion via child_process.execFile (git log, git diff)
+- [ ] 1.2.2  ⚠️  SVN ingestion via svn log --xml, svn diff
+- [ ] 1.2.3  ⚠️  Document upload and parsing (PDF, Word/PPTX, Markdown, text)
+- [ ] 1.2.4  ⚠️  Build artifact parser
+- [ ] 1.2.5  ⚠️  scoreCommit() signal/noise filter
+- [ ] 1.2.6  ⚠️  Incremental ingestion via cursor columns (lastGitIngestedAt, lastSvnRevision, processedAt)
 
 ### 1.3 RAG Orchestrator (Intent Router)
-- [ ] 1.3.1  ✅  4-way LLM-based intent classification (vector | graph | direct | hybrid)
-- [ ] 1.3.2  ✅  Vector search: cosine similarity over JSONB embeddings
-- [ ] 1.3.3  ✅  Graph search: node_links traversal
-- [ ] 1.3.4  ✅  Direct search: full-text search on l3_nodes.content
-- [ ] 1.3.5  ✅  Hybrid search: vector + graph merge and re-rank
-- [ ] 1.3.6  ✅  Temporal decay scoring (lastVerifiedAt)
+- [ ] 1.3.1  ⚠️  4-way LLM-based intent classification (vector | graph | direct | hybrid)
+- [ ] 1.3.2  ⚠️  Vector search: cosine similarity over JSONB embeddings
+- [ ] 1.3.3  ⚠️  Graph search: node_links traversal
+- [ ] 1.3.4  ⚠️  Direct search: full-text search on l3_nodes.content
+- [ ] 1.3.5  ⚠️  Hybrid search: vector + graph merge and re-rank
+- [ ] 1.3.6  ⚠️  Temporal decay scoring (lastVerifiedAt)
 
 ### 1.4 Server-Side Metabolism & Mutex
-- [ ] 1.4.1  ✅  Asynchronous metabolism mechanism (ADR-008)
-- [ ] 1.4.2  ✅  Mutex / serialization for concurrent generate requests
+- [ ] 1.4.1  ⚠️  Asynchronous metabolism mechanism (ADR-008)
+- [ ] 1.4.2  ❌  Mutex / serialization for concurrent generate requests
 
 ---
 
@@ -295,25 +295,25 @@
 
 | Item ID | Last Verified | Report File | Status |
 |---------|--------------|-------------|--------|
-| 1.1.1 | 2026-06-06 | 0001_1.1.1.md | ✅ PASS |
-| 1.1.2 | 2026-06-06 | 0002_1.1.2.md | ✅ PASS |
-| 1.1.3 | 2026-06-06 | 0003_1.1.3.md | ✅ PASS |
-| 1.1.4 | 2026-06-06 | 0004_1.1.4.md | ⚠️ WARN |
-| 1.2.1 | 2026-06-07 | 0005_1.2.1.md | ⚠️ WARN |
-| 1.2.2 | 2026-06-07 | 0006_1.2.2.md | ⚠️ WARN |
-| 1.2.3 | 2026-06-07 | 0007_1.2.3.md | ⚠️ WARN |
-| 1.2.4 | 2026-06-07 | 0008_1.2.4.md | ⚠️ WARN |
-| 1.2.5 | 2026-06-07 | 0009_1.2.5.md | ⚠️ WARN |
-| || 1.2.6 | 2026-06-07 | 0010_1.2.6.md | ⚠️ WARN |
-| 1.3.1 | — | — | 🔵 Pending |
-| 1.3.2 | — | — | 🔵 Pending |
-| 1.3.3 | — | — | 🔵 Pending |
-| 1.3.4 | — | — | 🔵 Pending |
-| 1.3.5 | — | — | 🔵 Pending |
-| 1.3.6 | — | — | 🔵 Pending |
-| 1.4.1 | — | — | 🔵 Pending |
-| 1.4.2 | — | — | 🔵 Pending |
-| 2.1.1 | — | — | 🔵 Pending |
+| 1.1.1 | 2026-06-08 | 0001_1.1.1.md | ✅ PASS |
+| 1.1.2 | 2026-06-08 | 0002_1.1.2.md | ✅ PASS |
+| 1.1.3 | 2026-06-08 | 0003_1.1.3.md | ✅ PASS |
+| 1.1.4 | 2026-06-08 | 0004_1.1.4.md | ⚠️ WARN |
+| 1.2.1 | 2026-06-08 | 0005_1.2.1.md | ⚠️ WARN |
+| 1.2.2 | 2026-06-08 | 0006_1.2.2.md | ⚠️ WARN |
+| 1.2.3 | 2026-06-08 | 0007_1.2.3.md | ⚠️ WARN |
+| 1.2.4 | 2026-06-08 | 0008_1.2.4.md | ⚠️ WARN |
+| 1.2.5 | 2026-06-08 | 0009_1.2.5.md | ⚠️ WARN |
+| 1.2.6 | 2026-06-08 | 0010_1.2.6.md | ⚠️ WARN |
+| 1.3.1 | 2026-06-08 | 0023_1.3.1.md | ⚠️ WARN |
+| 1.3.2 | 2026-06-08 | 0014_1.3.2.md | ⚠️ WARN |
+| 1.3.3 | 2026-06-08 | 0015_1.3.3.md | ⚠️ WARN |
+| 1.3.4 | 2026-06-08 | 0016_1.3.4.md | ⚠️ WARN |
+| 1.3.5 | 2026-06-08 | 0017_1.3.5.md | ⚠️ WARN |
+| 1.3.6 | 2026-06-08 | 0019_1.3.6.md | ⚠️ WARN |
+| 1.4.1 | 2026-06-08 | 0020_1.4.1.md | ⚠️ WARN |
+| 1.4.2 | 2026-06-08 | 0021_1.4.2.md | ❌ FAIL |
+| 2.1.1 | 2026-06-08 | 0022_2.1.1.md | ✅ PASS |
 | 2.1.2 | — | — | 🔵 Pending |
 | 2.2.1 | — | — | 🔵 Pending |
 | 2.2.2 | — | — | 🔵 Pending |
@@ -454,14 +454,14 @@
 
 | Category | Total | Done | WIP | Todo | Pending Verification |
 |----------|-------|------|-----|------|---------------------|
-| Milestone 1: KG Foundation & API | 18 | 18 | 0 | 0 | 18 |
-| Milestone 2: VS Code Client | 10 | 8 | 2 | 0 | 10 |
-| Milestone 3: Swarm & Git Sync | 10 | 4 | 0 | 6 | 10 |
-| Milestone 4: KG Features (ADRs) | 24 | 0 | 18 | 6 | 24 |
-| Milestone 5: Review System | 7 | 4 | 2 | 1 | 7 |
-| Milestone 6: API & Protocol | 15 | 13 | 1 | 1 | 15 |
-| Milestone 7: Frontend | 11 | 11 | 0 | 0 | 11 |
-| Milestone 8: VS Code UI | 18 | 17 | 1 | 0 | 18 |
-| Milestone 9: Cross-Cutting | 20 | 12 | 6 | 2 | 20 |
-| Milestone 10: Deployment | 12 | 2 | 3 | 5 | 12 |
-| **TOTAL** | **145** | **89** | **33** | **21** | **145** |
+| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 3 | 14 | 1 | 0 |
+| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 3 | 0 | 0 |
+| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 5 | 0 | 6 | 0 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 0 | 22 | 3 | 0 |
+| Milestone 5: Human-in-the-Loop & Review System | 10 | 7 | 2 | 1 | 0 |
+| Milestone 6: API & Protocol Layer | 16 | 15 | 1 | 0 | 0 |
+| Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
+| Milestone 8: VS Code Extension UI | 18 | 17 | 1 | 0 | 0 |
+| Milestone 9: Cross-Cutting Concerns | 21 | 12 | 9 | 0 | 0 |
+| Milestone 10: Deployment & Operations | 11 | 3 | 4 | 4 | 0 |
+| **TOTAL** | **152** | **81** | **56** | **15** | **0** |

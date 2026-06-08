@@ -434,6 +434,11 @@ export interface Document {
    */
   contentHash?: string | null;
   /**
+   * Optional commit SHA to associate with this document
+   * @nullable
+   */
+  commitSha?: string | null;
+  /**
    * ISO-8601 timestamp when document was associated with a project
    * @nullable
    */
@@ -460,6 +465,8 @@ export interface DocumentIngestInput {
   /** @minLength 1 */
   content: string;
   docType?: DocumentIngestInputDocType;
+  /** Optional commit SHA to associate with this document */
+  commitSha?: string;
 }
 
 export type GitIngestInputMode = (typeof GitIngestInputMode)[keyof typeof GitIngestInputMode];
@@ -500,7 +507,7 @@ export interface SvnIngestInput {
   /** Starting revision number (optional, defaults to 1) */
   startRevision?: number;
   /** Ending revision number (optional, defaults to HEAD) */
-  endRevision?: number;
+  endRevision?: number | "HEAD";
   mode?: SvnIngestInputMode;
 }
 

@@ -22,6 +22,7 @@ export const documentsTable = pgTable("documents", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   contentHash: text("content_hash"),
+  commitSha: text("commit_sha"),
   affiliatedAt: timestamp("affiliated_at"),
   status: text("status").notNull().default("unaffiliated"),
 });

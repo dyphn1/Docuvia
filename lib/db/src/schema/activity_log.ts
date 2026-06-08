@@ -6,6 +6,7 @@ export const activityTypeEnum = pgEnum("activity_type", [
   "l3_created",
   "review_resolved",
   "tag_added",
+  "document",
 ]);
 
 export const activityLogTable = pgTable("activity_log", {

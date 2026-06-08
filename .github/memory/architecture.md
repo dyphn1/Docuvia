@@ -20,3 +20,8 @@
 - **Thundering Herd Prevention**: When multiple clients poll an endpoint to trigger background tasks (metabolism ticks), use a Mutex (in-memory or DB advisory lock). If a job is active, return `202 Accepted` or `409 Conflict` immediately to avoid overlapping micro-batch executions.
 - **Client Heartbeat Jitter**: For background polling mechanisms (like `setInterval` in the VS Code client), always add randomized jitter (e.g., base interval ± random offset) to evenly distribute server load across active clients.
 - **Swarm Intelligence Distillation**: Process human-in-the-loop corrections asynchronously during background "metabolism" ticks. Fetch unhandled `correction_examples`, use an LLM to distill the delta (original vs. corrected) into a concise architectural guardrail, insert it into `prompt_templates`, and mark the correction as processed (`processedAt`). This ensures continuous, non-blocking self-evolution.
+
+## Ingestion Pipeline Protocolization
+- **Unified Pipeline Abstraction**: Consolidate disparate ingestion flows (Git, SVN, Documents) into a standardized pipeline sequence (`processIngestion`): Hash deduplication -> Score -> DB Insert -> Activity Log -> Notification. This prevents logic drift between API entry points.
+- **Local Process Execution**: For source control interactions, prefer hardened local client wrappers (`child_process.execFile` with temporary directories) over remote API dependencies for operations like cloning and extracting diffs, ensuring robust handling of arbitrary or private repos.
+- **Pure Utility Extraction**: Pure business logic (e.g., `scoreCommit`) must be decoupled from route handlers and placed in testable, standalone utility modules.

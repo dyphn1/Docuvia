@@ -295,7 +295,7 @@ export const IngestSvnBody = zod.object({
     .optional()
     .describe("Starting revision number (optional, defaults to 1)"),
   endRevision: zod
-    .number()
+    .union([zod.number(), zod.enum(["HEAD"])])
     .optional()
     .describe("Ending revision number (optional, defaults to HEAD)"),
   mode: zod.enum(["full", "incremental"]).default(ingestSvnBodyModeDefault),
@@ -318,6 +318,10 @@ export const IngestDocumentBody = zod.object({
   filename: zod.string().min(1),
   content: zod.string().min(1),
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]).optional(),
+  commitSha: zod
+    .string()
+    .optional()
+    .describe("Optional commit SHA to associate with this document"),
 });
 
 /**
@@ -350,6 +354,7 @@ export const UploadDocumentResponse = zod.object({
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
   contentHash: zod.string().nullish().describe("SHA-256 hash of raw content"),
+  commitSha: zod.string().nullish().describe("Optional commit SHA to associate with this document"),
   affiliatedAt: zod
     .string()
     .nullish()
@@ -375,6 +380,7 @@ export const ListDocumentsResponseItem = zod.object({
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
   contentHash: zod.string().nullish().describe("SHA-256 hash of raw content"),
+  commitSha: zod.string().nullish().describe("Optional commit SHA to associate with this document"),
   affiliatedAt: zod
     .string()
     .nullish()
@@ -1436,6 +1442,7 @@ export const ListMiscDocumentsResponseItem = zod.object({
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
   contentHash: zod.string().nullish().describe("SHA-256 hash of raw content"),
+  commitSha: zod.string().nullish().describe("Optional commit SHA to associate with this document"),
   affiliatedAt: zod
     .string()
     .nullish()
@@ -1466,6 +1473,7 @@ export const AffiliateDocumentResponse = zod.object({
   docType: zod.enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]),
   content: zod.string().optional(),
   contentHash: zod.string().nullish().describe("SHA-256 hash of raw content"),
+  commitSha: zod.string().nullish().describe("Optional commit SHA to associate with this document"),
   affiliatedAt: zod
     .string()
     .nullish()

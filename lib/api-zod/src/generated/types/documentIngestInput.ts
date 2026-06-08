@@ -13,4 +13,6 @@ export interface DocumentIngestInput {
   /** @minLength 1 */
   content: string;
   docType?: DocumentIngestInputDocType;
+  /** Optional commit SHA to associate with this document */
+  commitSha?: string;
 }

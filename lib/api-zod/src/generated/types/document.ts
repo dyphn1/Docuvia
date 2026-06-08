@@ -22,6 +22,11 @@ export interface Document {
    */
   contentHash?: string | null;
   /**
+   * Optional commit SHA to associate with this document
+   * @nullable
+   */
+  commitSha?: string | null;
+  /**
    * ISO-8601 timestamp when document was associated with a project
    * @nullable
    */

@@ -4,18 +4,17 @@ import {
   commitsTable,
   documentsTable,
   projectsTable,
-  activityLogTable,
-  subscriptionsTable,
-  notificationsTable,
 } from "@workspace/db";
 import { and, eq, sql, isNull } from "drizzle-orm";
 import { getSvnLog, getSvnDiff } from "../lib/svn-client.js";
-import { IngestSvnBody } from "@workspace/api-zod";
-import { notifyExternalIntegrations } from "../lib/slack-teams-client.js";
+import { IngestSvnBody, IngestDocumentBody } from "@workspace/api-zod";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
 import { detectDocType, extractText } from "../lib/document-parser.js";
 import multer from "multer";
+import { LocalGitClient, GitCommitData } from "../lib/git-client.js";
+import { processIngestion, GitCommitItem, SvnCommitItem, DocumentItem } from "../lib/ingestion-pipeline.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -31,52 +30,6 @@ const SvnModeSchema = z.object({
   mode: z.enum(["full", "incremental"]).optional().default("full"),
 });
 
-const DocumentIngestSchema = z.object({
-  filename: z.string().min(1),
-  content: z.string().min(1),
-  docType: z
-    .enum(["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"])
-    .optional()
-    .default("markdown"),
-});
-
-function scoreCommit(message: string): number {
-  const msg = message.toLowerCase();
-  const noisePatterns = [
-    /^merge (pull request|branch)/i,
-    /^bump version/i,
-    /^chore:/i,
-    /^auto-generated/i,
-    /^ci:/i,
-    /^wip:/i,
-    /^revert /i,
-    /^initial commit/i,
-    /^update changelog/i,
-    /^\[skip ci\]/i,
-  ];
-  for (const p of noisePatterns) {
-    if (p.test(msg)) return 0.1;
-  }
-  const signalPatterns = [
-    /\bfix(ed|es|ing)?\b/i,
-    /\bfeat(ure)?\b/i,
-    /\badd(ed|s|ing)?\b/i,
-    /\brefactor/i,
-    /\bimplements?\b/i,
-    /\bresolves?\b/i,
-    /\bbreaking change\b/i,
-    /\bdecision\b/i,
-    /\barchitecture\b/i,
-    /\bperformance\b/i,
-  ];
-  let score = 0.3;
-  for (const p of signalPatterns) {
-    if (p.test(msg)) score += 0.15;
-  }
-  if (message.length > 50) score += 0.1;
-  return Math.min(score, 1.0);
-}
-
 router.post("/projects/:id/ingest/git", async (req, res) => {
   const projectId = Number(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
@@ -85,125 +38,62 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
   const body = GitIngestSchema.parse(req.body);
   const mode = body.mode ?? "full";
   const repoUrl = body.repoUrl ?? project.repoUrl;
-
-  const githubMatch = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
-  if (!githubMatch) {
-    return res.status(400).json({
-      error:
-        "Only GitHub URLs are supported for Git ingestion. Format: https://github.com/owner/repo",
-    });
-  }
-
-  const [, owner, repo] = githubMatch;
   const branch = body.branch ?? "main";
   const limit = Math.min(body.limit ?? 100, 500);
-  const perPage = Math.min(limit, 100);
-  const pages = Math.ceil(limit / perPage);
 
-  const headers: Record<string, string> = {
-    Accept: "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-  };
-  const token = body.githubToken ?? process.env.GITHUB_TOKEN;
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
-  let allCommits: Array<{
-    sha: string;
-    commit: { message: string; author: { name: string; date: string } };
-  }> = [];
-  for (let page = 1; page <= pages && allCommits.length < limit; page++) {
-    const sinceParam =
-      mode === "incremental" && project.lastGitIngestedAt
-        ? `&since=${project.lastGitIngestedAt.toISOString()}`
-        : "";
-    const url = `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=${perPage}&page=${page}${sinceParam}`;
-    const ghRes = await fetch(url, { headers });
-    if (!ghRes.ok) {
-      const err = await ghRes.json().catch(() => ({}));
-      return res
-        .status(400)
-        .json({ error: `GitHub API error: ${(err as any).message ?? ghRes.statusText}` });
-    }
-    const data = (await ghRes.json()) as typeof allCommits;
-    if (!data.length) break;
-    allCommits.push(...data);
-  }
-  allCommits = allCommits.slice(0, limit);
-
-  const existingHashes = new Set(
-    (
-      await db
-        .select({ hash: commitsTable.hash })
-        .from(commitsTable)
-        .where(eq(commitsTable.projectId, projectId))
-    ).map((r) => r.hash)
-  );
-
-  let ingested = 0;
-  let skipped = 0;
-  let newestCommitDate: Date | null = null;
-  for (const c of allCommits) {
-    if (existingHashes.has(c.sha)) {
-      skipped++;
-      continue;
-    }
-    const score = scoreCommit(c.commit.message);
-    await db.insert(commitsTable).values({
-      projectId,
-      hash: c.sha,
-      message: c.commit.message.split("\n")[0].trim(),
-      author: c.commit.author?.name ?? "Unknown",
-      valid: score >= 0.4,
-    });
-    const commitDate = new Date(c.commit.author?.date ?? "");
-    if (!isNaN(commitDate.getTime()) && (!newestCommitDate || commitDate > newestCommitDate)) {
-      newestCommitDate = commitDate;
-    }
-    ingested++;
+  if (!repoUrl) {
+    return res.status(400).json({ error: "repoUrl is required" });
   }
 
-  if (ingested > 0) {
-    await db.insert(activityLogTable).values({
-      type: "commit",
-      description: `Ingested ${ingested} commits from ${owner}/${repo}`,
-      projectId,
-    });
-    await db
-      .update(projectsTable)
-      .set({ updatedAt: new Date() })
-      .where(eq(projectsTable.id, projectId));
+  const client = new LocalGitClient(repoUrl);
+  try {
+    await client.clone(branch);
+    
+    const since = mode === "incremental" && project.lastGitIngestedAt ? project.lastGitIngestedAt : undefined;
+    const commits = await client.getCommits(limit, since);
+    
+    const gitItems: GitCommitItem[] = [];
+    let newestCommitDate: Date | null = null;
 
-    const subscribers = await db
-      .select()
-      .from(subscriptionsTable)
-      .where(eq(subscriptionsTable.publisherProjectId, projectId));
-    for (const sub of subscribers) {
-      await db.insert(notificationsTable).values({
-        projectId: sub.subscriberProjectId,
-        type: "new_commit",
-        payload: { commitCount: ingested, projectId, projectName: project.name },
-        read: false,
+    for (const c of commits) {
+      const diff = await client.getDiff(c.sha);
+      gitItems.push({
+        ...c,
+        diff,
       });
+
+      const commitDate = new Date(c.date ?? "");
+      if (!isNaN(commitDate.getTime()) && (!newestCommitDate || commitDate > newestCommitDate)) {
+        newestCommitDate = commitDate;
+      }
     }
-    void notifyExternalIntegrations(projectId, project.name, "new_commit", {
-      commitCount: ingested,
+
+    const { ingested, skipped, errors } = await processIngestion({
+      type: "git",
       projectId,
+      projectName: project.name,
+      items: gitItems,
     });
-  }
 
-  if (mode === "incremental") {
-    const newCursor = newestCommitDate ?? new Date();
-    await db
-      .update(projectsTable)
-      .set({ lastGitIngestedAt: newCursor })
-      .where(eq(projectsTable.id, projectId));
-  }
+    if (mode === "incremental" && newestCommitDate) {
+      await db
+        .update(projectsTable)
+        .set({ lastGitIngestedAt: newestCommitDate })
+        .where(eq(projectsTable.id, projectId));
+    }
 
-  return res.json({
-    commitsIngested: ingested,
-    commitsSkipped: skipped,
-    totalFetched: allCommits.length,
-  });
+    return res.json({
+      commitsIngested: ingested,
+      commitsSkipped: skipped,
+      totalFetched: gitItems.length,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (err: any) {
+    logger.error({ err }, "Git ingestion failed");
+    return res.status(500).json({ error: `Git ingestion failed: ${err.message}` });
+  } finally {
+    await client.cleanup();
+  }
 });
 
 router.post("/projects/:id/ingest/svn", async (req, res) => {
@@ -220,6 +110,12 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
 
   const { mode: svnMode } = SvnModeSchema.parse(req.body);
   const svnUrl = body.svnUrl;
+  
+  // Strict URL Validation for SVN
+  if (!/^https?:\/\/|^svn:\/\//.test(svnUrl)) {
+    return res.status(400).json({ error: "Invalid SVN URL format" });
+  }
+
   let startRevision = body.startRevision ?? 1;
   const endRevision = body.endRevision ?? "HEAD";
 
@@ -235,81 +131,35 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
     return res.status(502).json({ error: `Failed to fetch SVN log: ${msg}` });
   }
 
-  let ingested = 0;
-  let skipped = 0;
-  const errors: string[] = [];
   let maxRevisionIngested = project.lastSvnRevision ?? 0;
+  const svnItems: SvnCommitItem[] = [];
+  const svnErrors: string[] = [];
 
   for (const rev of revisions) {
-    const [existing] = await db
-      .select({ id: commitsTable.id })
-      .from(commitsTable)
-      .where(
-        and(
-          eq(commitsTable.projectId, projectId),
-          eq(commitsTable.vcsType, "svn"),
-          eq(commitsTable.revision, rev.revision)
-        )
-      );
-
-    if (existing) {
-      skipped++;
-      continue;
-    }
-
     let diff = "";
     try {
       diff = await getSvnDiff(svnUrl, rev.revision, body.username, body.password);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      errors.push(`r${rev.revision}: ${msg}`);
+      svnErrors.push(`r${rev.revision}: ${msg}`);
     }
 
-    const score = scoreCommit(rev.message);
-    const firstLine = rev.message.split("\n")[0].trim();
-    const fullMessage = diff ? `${firstLine}\n\n${diff}` : firstLine;
-
-    await db.insert(commitsTable).values({
-      projectId,
-      hash: `svn:R${rev.revision}`,
-      message: fullMessage.slice(0, 4000),
-      author: rev.author,
-      valid: score >= 0.4,
+    svnItems.push({
       revision: rev.revision,
-      vcsType: "svn",
+      message: rev.message,
+      author: rev.author,
+      diff,
     });
+
     if (rev.revision > maxRevisionIngested) maxRevisionIngested = rev.revision;
-    ingested++;
   }
 
-  if (ingested > 0) {
-    await db.insert(activityLogTable).values({
-      type: "commit",
-      description: `Ingested ${ingested} SVN revisions from ${svnUrl}`,
-      projectId,
-    });
-    await db
-      .update(projectsTable)
-      .set({ updatedAt: new Date() })
-      .where(eq(projectsTable.id, projectId));
-
-    const subscribers = await db
-      .select()
-      .from(subscriptionsTable)
-      .where(eq(subscriptionsTable.publisherProjectId, projectId));
-    for (const sub of subscribers) {
-      await db.insert(notificationsTable).values({
-        projectId: sub.subscriberProjectId,
-        type: "new_commit",
-        payload: { commitCount: ingested, projectId, projectName: project.name },
-        read: false,
-      });
-    }
-    void notifyExternalIntegrations(projectId, project.name, "new_commit", {
-      commitCount: ingested,
-      projectId,
-    });
-  }
+  const { ingested, skipped, errors: ingestErrors } = await processIngestion({
+    type: "svn",
+    projectId,
+    projectName: project.name,
+    items: svnItems,
+  });
 
   if (svnMode === "incremental" && maxRevisionIngested > (project.lastSvnRevision ?? 0)) {
     await db
@@ -318,7 +168,7 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
       .where(eq(projectsTable.id, projectId));
   }
 
-  return res.json({ ingested, skipped, errors });
+  return res.json({ ingested, skipped, errors: [...svnErrors, ...ingestErrors] });
 });
 
 router.get("/projects/:id/ingest/status", async (req, res) => {
@@ -355,7 +205,11 @@ router.post(
     }
 
     const { originalname, buffer } = req.file;
-    const docType = detectDocType(originalname);
+    let docType = detectDocType(originalname);
+    
+    // Fix extension matching logic to map .log to build_artifact
+    const ext = originalname.split(".").pop()?.toLowerCase() ?? "";
+    if (ext === "log") docType = "build_artifact";
 
     let content: string;
     try {
@@ -371,17 +225,36 @@ router.post(
       });
     }
 
-    const [doc] = await db
-      .insert(documentsTable)
-      .values({
-        projectId,
-        filename: originalname,
-        docType,
-        content,
-      })
-      .returning();
+    const docItem: DocumentItem = {
+      filename: originalname,
+      docType,
+      content,
+      commitSha: req.body.commitSha as string | undefined, // ensure commitSha is parsed
+    };
 
-    return res.status(201).json({ ...doc, createdAt: doc.createdAt.toISOString() });
+    const { ingested, skipped, errors } = await processIngestion({
+      type: "document",
+      projectId,
+      projectName: project.name,
+      items: [docItem],
+    });
+
+    if (errors.length > 0) {
+       return res.status(500).json({ error: `Ingestion failed: ${errors.join(", ")}` });
+    }
+
+    if (skipped > 0) {
+       return res.status(409).json({ error: "Document already exists" });
+    }
+
+    const docs = await db.select().from(documentsTable).where(
+        and(
+            eq(documentsTable.projectId, projectId),
+            eq(documentsTable.filename, originalname)
+        )
+    ).orderBy(sql`${documentsTable.createdAt} desc`).limit(1);
+
+    return res.status(201).json({ ...docs[0], createdAt: docs[0].createdAt.toISOString() });
   }
 );
 
@@ -390,7 +263,12 @@ router.post("/projects/:id/ingest/document", async (req, res) => {
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
 
-  const body = DocumentIngestSchema.parse(req.body);
+  let body;
+  try {
+     body = IngestDocumentBody.parse(req.body);
+  } catch (err) {
+     return res.status(400).json({ error: "Invalid request body", details: err });
+  }
 
   const ext = body.filename.split(".").pop()?.toLowerCase() ?? "md";
   let docType: "markdown" | "txt" | "pdf" | "docx" | "pptx" | "build_artifact" = "markdown";
@@ -398,20 +276,39 @@ router.post("/projects/:id/ingest/document", async (req, res) => {
   else if (ext === "pdf") docType = "pdf";
   else if (ext === "docx") docType = "docx";
   else if (ext === "pptx") docType = "pptx";
-  else if (["map", "fv", "fd"].includes(ext)) docType = "build_artifact";
-  if (body.docType) docType = body.docType;
+  else if (["map", "fv", "fd", "log"].includes(ext)) docType = "build_artifact"; // log handled
+  if (body.docType) docType = body.docType as any;
 
-  const [doc] = await db
-    .insert(documentsTable)
-    .values({
-      projectId,
+  const docItem: DocumentItem = {
       filename: body.filename,
       docType,
       content: body.content,
-    })
-    .returning();
+      commitSha: body.commitSha ?? undefined,
+  };
 
-  return res.status(201).json({ ...doc, createdAt: doc.createdAt.toISOString() });
+  const { ingested, skipped, errors } = await processIngestion({
+      type: "document",
+      projectId,
+      projectName: project.name,
+      items: [docItem],
+  });
+
+  if (errors.length > 0) {
+      return res.status(500).json({ error: `Ingestion failed: ${errors.join(", ")}` });
+  }
+
+  if (skipped > 0) {
+      return res.status(409).json({ error: "Document already exists" });
+  }
+
+  const docs = await db.select().from(documentsTable).where(
+      and(
+          eq(documentsTable.projectId, projectId),
+          eq(documentsTable.filename, body.filename)
+      )
+  ).orderBy(sql`${documentsTable.createdAt} desc`).limit(1);
+
+  return res.status(201).json({ ...docs[0], createdAt: docs[0].createdAt.toISOString() });
 });
 
 router.get("/projects/:id/documents", async (req, res) => {
@@ -424,7 +321,6 @@ router.get("/projects/:id/documents", async (req, res) => {
   res.json(docs.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })));
 });
 
-// Handle multer errors (file too large, unsupported type)
 router.use(
   (
     err: unknown,

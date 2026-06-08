@@ -17,6 +17,6 @@ export interface SvnIngestInput {
   /** Starting revision number (optional, defaults to 1) */
   startRevision?: number;
   /** Ending revision number (optional, defaults to HEAD) */
-  endRevision?: number;
+  endRevision?: number | "HEAD";
   mode?: SvnIngestInputMode;
 }

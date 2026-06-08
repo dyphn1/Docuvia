@@ -2070,6 +2070,9 @@ components:
         contentHash:
           type: ["string", "null"]
           description: SHA-256 hash of raw content
+        commitSha:
+          type: ["string", "null"]
+          description: Optional commit SHA to associate with this document
         affiliatedAt:
           type: ["string", "null"]
           description: ISO-8601 timestamp when document was associated with a project
@@ -2093,6 +2096,9 @@ components:
         docType:
           type: string
           enum: [markdown, txt, pdf, docx, pptx, build_artifact]
+        commitSha:
+          type: string
+          description: Optional commit SHA to associate with this document
 
     GitIngestInput:
       type: object
@@ -2140,7 +2146,10 @@ components:
           type: integer
           description: Starting revision number (optional, defaults to 1)
         endRevision:
-          type: integer
+          oneOf:
+            - type: integer
+            - type: string
+              enum: ["HEAD"]
           description: Ending revision number (optional, defaults to HEAD)
         mode:
           type: string

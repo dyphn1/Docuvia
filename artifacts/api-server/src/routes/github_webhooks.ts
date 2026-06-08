@@ -15,6 +15,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { fetchPrCommits, parseGithubRepo } from "../lib/github-client.js";
 import { postPrComment } from "../lib/github-client.js";
 import { logger } from "../lib/logger.js";
+import { scoreCommit } from "../lib/commit-scorer.js";
 
 const router = Router();
 
@@ -27,42 +28,6 @@ function validateGitHubSignature(rawBody: Buffer, signature: string, secret: str
   const sigBuf = Buffer.from(signature.padEnd(expected.length, "\0"));
   const expBuf = Buffer.from(expected.padEnd(sigBuf.length, "\0"));
   return crypto.timingSafeEqual(expBuf, sigBuf);
-}
-
-function scoreCommit(message: string): number {
-  const noisePatterns = [
-    /^merge (pull request|branch)/i,
-    /^bump version/i,
-    /^chore:/i,
-    /^auto-generated/i,
-    /^ci:/i,
-    /^wip:/i,
-    /^revert /i,
-    /^initial commit/i,
-    /^update changelog/i,
-    /^\[skip ci\]/i,
-  ];
-  for (const p of noisePatterns) {
-    if (p.test(message)) return 0.1;
-  }
-  const signalPatterns = [
-    /\bfix(ed|es|ing)?\b/i,
-    /\bfeat(ure)?\b/i,
-    /\badd(ed|s|ing)?\b/i,
-    /\brefactor/i,
-    /\bimplements?\b/i,
-    /\bresolves?\b/i,
-    /\bbreaking change\b/i,
-    /\bdecision\b/i,
-    /\barchitecture\b/i,
-    /\bperformance\b/i,
-  ];
-  let score = 0.3;
-  for (const p of signalPatterns) {
-    if (p.test(message)) score += 0.15;
-  }
-  if (message.length > 50) score += 0.1;
-  return Math.min(score, 1.0);
 }
 
 async function ingestPrCommits(

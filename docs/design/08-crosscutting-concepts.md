@@ -387,6 +387,18 @@ const result = await db
 
 ---
 
+## 8.4 Security Concepts
+
+### Zero-Trust Input Sanitization
+All inputs passed to the Agentic RAG core must be sanitized.
+- **LIKE Wildcard Escaping**: To prevent Broad-Match Denial of Service (DoS) attacks and ensure precise querying, user and LLM-generated search queries are filtered through `escapeLike()` before being inserted into PostgreSQL `LIKE` or `ILIKE` statements. This mitigates `%` and `_` wildcard injection.
+
+### Route Authentication
+Internal maintenance routes are strictly authenticated.
+- **Fail-Closed Metabolism Auth**: The `/admin/metabolism-tick` route acts as a background worker orchestrator. It demands an `Authorization: Bearer` or `admin_token` that matches the server's `ADMIN_SECRET_TOKEN` environment variable. If the environment variable is not defined, the server **fails closed** (returns 500) rather than falling back to an insecure default, guaranteeing safety in production.
+
+---
+
 ## References
 
 - [02-constraints.md](02-constraints.md#23-conventions-coding-rules) — Constraint context for coding rules

@@ -29,7 +29,7 @@ sequenceDiagram
 
 ## 6.2 Scenario: Knowledge Generation Pipeline (Commit – L1/L2/L3)
 
-The generate pipeline transforms raw commits into structured knowledge graph nodes.
+The generate pipeline transforms raw commits into structured knowledge graph nodes. It is protected by an atomic optimistic concurrency lock to prevent parallel execution conflicts.
 
 - **Implementation Route**: [`artifacts/api-server/src/routes/generate.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/generate.ts) (specifically `POST /projects/:id/generate`)
 
@@ -43,6 +43,7 @@ sequenceDiagram
 
     User->>FE: Click "Generate" on pipeline page
     FE->>API: POST /projects/:id/generate
+    API->>DB: UPDATE projects SET status = 'indexing' WHERE id = :id AND status IN ('active', 'error') (Atomic Lock)
     API->>DB: SELECT * FROM commits WHERE processedAt IS NULL AND projectId = :id
 
     Note over API,LLM: Step 1 ??L1 Tagging

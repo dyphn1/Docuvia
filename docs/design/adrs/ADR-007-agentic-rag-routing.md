@@ -23,13 +23,13 @@ flowchart TD
 
 ## 2. The 4-Way Strategies
 
-- **Direct RAG**: $O(1)$ lookup via `target_refs` (e.g., in [`artifacts/vscode-client/src/DocuviaCodeLensProvider.ts`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/DocuviaCodeLensProvider.ts)).
-- **Graph RAG**: Traverses [`node_linksTable` in node_links.ts](file:///d:/GitHub/Docuvia/lib/db/src/schema/node_links.ts) to find structural dependencies (Neighbor Infection).
-- **Vector RAG**: Standard embedding similarity via PGVector ([`embedding.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/lib/embedding.ts)).
-- **Hybrid RAG**: Intersection of graph constraints and vector similarities (implemented as `hybridSearch()` in [`intent-router.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/lib/intent-router.ts)).
+- **Direct RAG**: $O(1)$ lookup via commit hashes or full-text search against `l3_nodes.content` if no hash is provided.
+- **Graph RAG**: Traverses `node_linksTable` to find structural dependencies (Neighbor Infection).
+- **Vector RAG**: Standard embedding similarity via PGVector (`embedding.ts`).
+- **Hybrid RAG**: Intersection of graph constraints and vector similarities with cross-validation boosting (nodes found in both sets receive a compounding score boost). Implemented as `hybridSearch()` in `intent-router.ts`.
 
 ## 3. Temporal Decay & Garbage Collection
 
-- Knowledge nodes contain `created_at` and `lastVerifiedAt` (in the Drizzle schemas of [`l2_nodes.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l2_nodes.ts) and [`l3_nodes.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l3_nodes.ts)).
+- Knowledge nodes contain `created_at` and `lastVerifiedAt`.
 - **Implementation**: The router applies an Exponential Temporal Decay function to search scores (`Math.exp(-LAMBDA * daysSinceVerified)` in `intent-router.ts`). Knowledge untouched naturally sinks to the bottom.
-- When old knowledge correctly answers a query, its `lastVerifiedAt` is updated via the `/api/search/feedback` endpoint, "refreshing" its lifespan.
+- When old knowledge correctly answers a query, its `lastVerifiedAt` is updated via the `POST /search/feedback` endpoint (passing the `nodeLayer`), "refreshing" its lifespan.

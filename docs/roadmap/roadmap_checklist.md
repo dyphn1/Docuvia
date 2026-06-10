@@ -49,11 +49,11 @@
 
 ### 2.1 Standalone Engine (Graceful Degradation)
 - [ ] 2.1.1  ✅  Local-first operation without CentralServerClient
-- [ ] 2.1.2  ✅  Graceful degradation fallback logic (CentralServerClient.ts)
+- [x] 2.1.2  ✅  Graceful degradation fallback logic (CentralServerClient.ts)
 
 ### 2.2 Zero-to-One Onboarding (@docuvia /init)
-- [ ] 2.2.1  ⚠️  Project initialization command (docuvia.initProject)
-- [ ] 2.2.2  ⚠️  Package.json ecosystem marker parsing (WIP — needs completion)
+- [x] 2.2.1  ⚠️  Project initialization command (docuvia.initProject)
+- [x] 2.2.2  ⚠️  Package.json ecosystem marker parsing (WIP — needs completion)
 - [ ] 2.2.3  ⚠️  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
 
 ### 2.3 Multi-root Workspace Support
@@ -98,15 +98,15 @@
 ## Milestone 4: Knowledge Graph Features (ADRs 009–012)
 
 ### 4.1 L3 Semantic Deduplication (ADR-009)
-- [ ] 4.1.1  ⚠️  Cosine similarity ≥ 0.85 dedup check before L3 insert
-- [ ] 4.1.2  ⚠️  occurrenceCount increment on match
-- [ ] 4.1.3  ⚠️  sourceCommits JSONB array append
-- [ ] 4.1.4  ⚠️  AI condensation run at occurrence threshold (default: 30)
-- [ ] 4.1.5  ⚠️  l3_nodes schema: occurrenceCount, sourceCommits, validityStatus columns
+- [x] 4.1.1  ✅  Cosine similarity ≥ 0.85 dedup check before L3 insert
+- [x] 4.1.2  ✅  occurrenceCount increment on match
+- [x] 4.1.3  ⚠️  sourceCommits JSONB array append
+- [x] 4.1.4  ⚠️  AI condensation run at occurrence threshold (default: 30)
+- [x] 4.1.5  ✅  l3_nodes schema: occurrenceCount, sourceCommits, validityStatus columns
 
 ### 4.2 L2 Bootstrap — AI Discovery to Path Rules (ADR-010)
-- [ ] 4.2.1  ⚠️  Progressive batch mode (commits in groups of 20)
-- [ ] 4.2.2  ⚠️  AI self-correction across batches
+- [x] 4.2.1  ⚠️  Progressive batch mode (commits in groups of 20)
+- [x] 4.2.2  ⚠️  AI self-correction across batches
 - [ ] 4.2.3  ⚠️  L2 module map confirmation UI
 - [ ] 4.2.4  ⚠️  Path pattern storage in .docuvia/config.yaml
 - [ ] 4.2.5  ⚠️  Deterministic commit-to-module assignment via glob matching
@@ -293,160 +293,159 @@
 
 ## Verification Tracking
 
-| Item ID | Last Verified | Report File | Status |
-|---------|--------------|-------------|--------|
-| 1.1.1 | 2026-06-08 | 0001_1.1.1.md | ✅ PASS |
-| 1.1.2 | 2026-06-08 | 0002_1.1.2.md | ✅ PASS |
-| 1.1.3 | 2026-06-08 | 0003_1.1.3.md | ✅ PASS |
-| 1.1.4 | 2026-06-08 | 0004_1.1.4.md | ⚠️ WARN |
-| 1.2.1 | 2026-06-08 | 0005_1.2.1.md | ⚠️ WARN |
-| 1.2.2 | 2026-06-08 | 0006_1.2.2.md | ⚠️ WARN |
-| 1.2.3 | 2026-06-08 | 0007_1.2.3.md | ⚠️ WARN |
-| 1.2.4 | 2026-06-08 | 0008_1.2.4.md | ⚠️ WARN |
-| 1.2.5 | 2026-06-08 | 0009_1.2.5.md | ⚠️ WARN |
-| 1.2.6 | 2026-06-08 | 0010_1.2.6.md | ⚠️ WARN |
-| 1.3.1 | 2026-06-08 | 0023_1.3.1.md | ⚠️ WARN |
-| 1.3.2 | 2026-06-08 | 0014_1.3.2.md | ⚠️ WARN |
-| 1.3.3 | 2026-06-08 | 0015_1.3.3.md | ⚠️ WARN |
-| 1.3.4 | 2026-06-08 | 0016_1.3.4.md | ⚠️ WARN |
-| 1.3.5 | 2026-06-08 | 0017_1.3.5.md | ⚠️ WARN |
-| 1.3.6 | 2026-06-08 | 0019_1.3.6.md | ⚠️ WARN |
-| 1.4.1 | 2026-06-08 | 0020_1.4.1.md | ⚠️ WARN |
-| 1.4.2 | 2026-06-08 | 0021_1.4.2.md | ❌ FAIL |
-| 2.1.1 | 2026-06-08 | 0022_2.1.1.md | ✅ PASS |
-| 2.1.2 | — | — | 🔵 Pending |
-| 2.2.1 | — | — | 🔵 Pending |
-| 2.2.2 | — | — | 🔵 Pending |
-| 2.2.3 | — | — | 🔵 Pending |
-| 2.3.1 | — | — | 🔵 Pending |
-| 2.3.2 | — | — | 🔵 Pending |
-| 2.4.1 | — | — | 🔵 Pending |
-| 2.4.2 | — | — | 🔵 Pending |
-| 2.5.1 | — | — | 🔵 Pending |
-| 2.5.2 | — | — | 🔵 Pending |
-| 3.1.1 | — | — | 🔵 Pending |
-| 3.1.2 | — | — | 🔵 Pending |
-| 3.2.1 | — | — | 🔵 Pending |
-| 3.2.2 | — | — | 🔵 Pending |
-| 3.3.1 | — | — | 🔵 Pending |
-| 3.4.1 | — | — | 🔵 Pending |
-| 3.4.2 | — | — | 🔵 Pending |
-| 3.4.3 | — | — | 🔵 Pending |
-| 3.4.4 | — | — | 🔵 Pending |
-| 3.5.1 | — | — | 🔵 Pending |
-| 3.5.2 | — | — | 🔵 Pending |
-| 4.1.1 | — | — | 🔵 Pending |
-| 4.1.2 | — | — | 🔵 Pending |
-| 4.1.3 | — | — | 🔵 Pending |
-| 4.1.4 | — | — | 🔵 Pending |
-| 4.1.5 | — | — | 🔵 Pending |
-| 4.2.1 | — | — | 🔵 Pending |
-| 4.2.2 | — | — | 🔵 Pending |
-| 4.2.3 | — | — | 🔵 Pending |
-| 4.2.4 | — | — | 🔵 Pending |
-| 4.2.5 | — | — | 🔵 Pending |
-| 4.2.6 | — | — | 🔵 Pending |
-| 4.3.1 | — | — | 🔵 Pending |
-| 4.3.2 | — | — | 🔵 Pending |
-| 4.3.3 | — | — | 🔵 Pending |
-| 4.3.4 | — | — | 🔵 Pending |
-| 4.3.5 | — | — | 🔵 Pending |
-| 4.3.6 | — | — | 🔵 Pending |
-| 4.3.7 | — | — | 🔵 Pending |
-| 4.3.8 | — | — | 🔵 Pending |
-| 4.4.1 | — | — | 🔵 Pending |
-| 4.4.2 | — | — | 🔵 Pending |
-| 4.4.3 | — | — | 🔵 Pending |
-| 4.4.4 | — | — | 🔵 Pending |
-| 4.4.5 | — | — | 🔵 Pending |
-| 4.4.6 | — | — | 🔵 Pending |
-| 5.1.1 | — | — | 🔵 Pending |
-| 5.1.2 | — | — | 🔵 Pending |
-| 5.1.3 | — | — | 🔵 Pending |
-| 5.1.4 | — | — | 🔵 Pending |
-| 5.2.1 | — | — | 🔵 Pending |
-| 5.2.2 | — | — | 🔵 Pending |
-| 5.2.3 | — | — | 🔵 Pending |
-| 5.3.1 | — | — | 🔵 Pending |
-| 5.3.2 | — | — | 🔵 Pending |
-| 5.3.3 | — | — | 🔵 Pending |
-| 6.1.1 | — | — | 🔵 Pending |
-| 6.1.2 | — | — | 🔵 Pending |
-| 6.1.3 | — | — | 🔵 Pending |
-| 6.1.4 | — | — | 🔵 Pending |
-| 6.2.1 | — | — | 🔵 Pending |
-| 6.2.2 | — | — | 🔵 Pending |
-| 6.2.3 | — | — | 🔵 Pending |
-| 6.3.1 | — | — | 🔵 Pending |
-| 6.3.2 | — | — | 🔵 Pending |
-| 6.3.3 | — | — | 🔵 Pending |
-| 6.3.4 | — | — | 🔵 Pending |
-| 6.4.1 | — | — | 🔵 Pending |
-| 6.4.2 | — | — | 🔵 Pending |
-| 6.4.3 | — | — | 🔵 Pending |
-| 6.5.1 | — | — | 🔵 Pending |
-| 6.5.2 | — | — | 🔵 Pending |
-| 7.1.1 | — | — | 🔵 Pending |
-| 7.1.2 | — | — | 🔵 Pending |
-| 7.1.3 | — | — | 🔵 Pending |
-| 7.2.1 | — | — | 🔵 Pending |
-| 7.2.2 | — | — | 🔵 Pending |
-| 7.2.3 | — | — | 🔵 Pending |
-| 7.3.1 | — | — | 🔵 Pending |
-| 7.3.2 | — | — | 🔵 Pending |
-| 7.4.1 | — | — | 🔵 Pending |
-| 7.4.2 | — | — | 🔵 Pending |
-| 7.4.3 | — | — | 🔵 Pending |
-| 8.1.1 | — | — | 🔵 Pending |
-| 8.1.2 | — | — | 🔵 Pending |
-| 8.1.3 | — | — | 🔵 Pending |
-| 8.2.1 | — | — | 🔵 Pending |
-| 8.2.2 | — | — | 🔵 Pending |
-| 8.2.3 | — | — | 🔵 Pending |
-| 8.3.1 | — | — | 🔵 Pending |
-| 8.3.2 | — | — | 🔵 Pending |
-| 8.3.3 | — | — | 🔵 Pending |
-| 8.3.4 | — | — | 🔵 Pending |
-| 8.4.1 | — | — | 🔵 Pending |
-| 8.4.2 | — | — | 🔵 Pending |
-| 8.4.3 | — | — | 🔵 Pending |
-| 8.4.4 | — | — | 🔵 Pending |
-| 8.4.5 | — | — | 🔵 Pending |
-| 8.4.6 | — | — | 🔵 Pending |
-| 8.5.1 | — | — | 🔵 Pending |
-| 8.5.2 | — | — | 🔵 Pending |
-| 9.1.1 | — | — | 🔵 Pending |
-| 9.1.2 | — | — | 🔵 Pending |
-| 9.1.3 | — | — | 🔵 Pending |
-| 9.1.4 | — | — | 🔵 Pending |
-| 9.1.5 | — | — | 🔵 Pending |
-| 9.1.6 | — | — | 🔵 Pending |
-| 9.2.1 | — | — | 🔵 Pending |
-| 9.2.2 | — | — | 🔵 Pending |
-| 9.2.3 | — | — | 🔵 Pending |
-| 9.2.4 | — | — | 🔵 Pending |
-| 9.3.1 | — | — | 🔵 Pending |
-| 9.3.2 | — | — | 🔵 Pending |
-| 9.3.3 | — | — | 🔵 Pending |
-| 9.3.4 | — | — | 🔵 Pending |
-| 9.3.5 | — | — | 🔵 Pending |
-| 9.4.1 | — | — | 🔵 Pending |
-| 9.4.2 | — | — | 🔵 Pending |
-| 9.4.3 | — | — | 🔵 Pending |
-| 9.4.4 | — | — | 🔵 Pending |
-| 9.4.5 | — | — | 🔵 Pending |
-| 9.4.6 | — | — | 🔵 Pending |
-| 10.1.1 | — | — | 🔵 Pending |
-| 10.1.2 | — | — | 🔵 Pending |
-| 10.1.3 | — | — | 🔵 Pending |
-| 10.1.4 | — | — | 🔵 Pending |
-| 10.2.1 | — | — | 🔵 Pending |
-| 10.2.2 | — | — | 🔵 Pending |
-| 10.2.3 | — | — | 🔵 Pending |
-| 10.2.4 | — | — | 🔵 Pending |
-| 10.2.5 | — | — | 🔵 Pending |
-| 10.3.1 | — | — | 🔵 Pending |
-| 10.3.2 | — | — | 🔵 Pending |
+||| Item ID | Last Verified | Report File | Status |
+   |---------|--------------|-------------|--------|
+   || 3.2.1 | 2026-06-10 | 0039_3.2.1.md | ✅ PASS |
+|| 1.1.2 | 2026-06-08 | 0002_1.1.2.md | ✅ PASS |
+|| 1.1.3 | 2026-06-08 | 0003_1.1.3.md | ✅ PASS |
+|| 1.1.4 | 2026-06-08 | 0004_1.1.4.md | ⚠️ WARN |
+|| 1.2.1 | 2026-06-08 | 0005_1.2.1.md | ⚠️ WARN |
+|| 1.2.2 | 2026-06-08 | 0006_1.2.2.md | ⚠️ WARN |
+|| 1.2.3 | 2026-06-08 | 0007_1.2.3.md | ⚠️ WARN |
+|| 1.2.4 | 2026-06-08 | 0008_1.2.4.md | ⚠️ WARN |
+|| 1.2.5 | 2026-06-08 | 0009_1.2.5.md | ⚠️ WARN |
+|| 1.2.6 | 2026-06-08 | 0010_1.2.6.md | ⚠️ WARN |
+|| 1.3.1 | 2026-06-08 | 0023_1.3.1.md | ⚠️ WARN |
+|| 1.3.2 | 2026-06-08 | 0014_1.3.2.md | ⚠️ WARN |
+|| 1.3.3 | 2026-06-08 | 0015_1.3.3.md | ⚠️ WARN |
+|| 1.3.4 | 2026-06-08 | 0016_1.3.4.md | ⚠️ WARN |
+|| 1.3.5 | 2026-06-08 | 0017_1.3.5.md | ⚠️ WARN |
+|| 1.3.6 | 2026-06-08 | 0019_1.3.6.md | ⚠️ WARN |
+|| 1.4.1 | 2026-06-08 | 0020_1.4.1.md | ⚠️ WARN |
+|| 1.4.2 | 2026-06-08 | 0021_1.4.2.md | ❌ FAIL |
+|| 2.1.1 | 2026-06-08 | 0022_2.1.1.md | ✅ PASS |
+|| 2.1.2 | 2026-06-10 | 0024_2.1.2.md | ✅ PASS |
+|| 2.2.1 | 2026-06-10 | 0046_2.2.1.md | ⚠️ WARN |
+|| 2.2.2 | 2026-06-10 | 0047_2.2.2.md | ⚠️ WARN |
+|| 2.2.3 | 2026-06-10 | 0048_2.2.3.md | ⚠️ WARN |
+|| 2.3.1 | 2026-06-10 | 0036_2.3.1.md | ✅ PASS |
+|| 2.3.2 | 2026-06-10 | 0029_2.3.2.md | ✅ PASS |
+|| 2.4.1 | 2026-06-10 | 0031_2.4.1.md | ✅ PASS |
+|| 2.4.2 | 2026-06-10 | 0032_2.4.2.md | ✅ PASS |
+|| 2.5.1 | 2026-06-10 | 0033_2.5.1.md | ✅ PASS |
+|| 2.5.2 | 2026-06-10 | 0034_2.5.2.md | ✅ PASS |
+|| 3.1.1 | 2026-06-10 | 0037_3.1.1.md | ✅ PASS |
+|| 3.1.2 | 2026-06-10 | 0038_3.1.2.md | ✅ PASS |
+|| 3.2.2 | 2026-06-10 | 0050_3.2.2.md | ⚠️ WARN |
+|| 3.3.1 | 2026-06-09 | 0041_3.3.1.md | ⚠️ WARN |
+|| 3.4.1 | 2026-06-09 | 0042_3.4.1.md | ⚠️ WARN |
+|| 3.4.2 | 2026-06-09 | 0043_3.4.2.md | ⚠️ WARN |
+|| 3.4.3 | 2026-06-09 | 0044_3.4.3.md | ⚠️ WARN |
+|| 3.4.4 | 2026-06-10 | 0053_3.4.4.md | ❌ FAIL |
+|| 3.5.1 | 2026-06-10 | 0049_3.5.1.md | ❌ FAIL |
+|| 3.5.2 | 2026-06-10 | 0051_3.5.2.md | ❌ FAIL |
+|| 4.1.1 | 2026-06-10 | 0052_4.1.1.md | ✅ PASS |
+|| 4.1.2 | 2026-06-10 | 0054_4.1.2.md | ✅ PASS |
+|| 4.1.3 | 2026-06-10 | 0055_4.1.3.md | ⚠️ WARN |
+|| 4.1.4 | 2026-06-10 | 0056_4.1.4.md | ⚠️ WARN |
+|| 4.1.5 | 2026-06-10 | 0057_4.1.5.md | ✅ PASS |
+|| 4.2.1 | 2026-06-10 | 0058_4.2.1.md | ⚠️ WARN |
+|| 4.2.2 | 2026-06-10 | 0059_4.2.2.md | ⚠️ WARN |
+|| 4.2.3 | — | — | 🔵 Pending |
+|| 4.2.4 | — | — | 🔵 Pending |
+|| 4.2.5 | — | — | 🔵 Pending |
+|| 4.2.6 | — | — | 🔵 Pending |
+|| 4.3.1 | — | — | 🔵 Pending |
+|| 4.3.2 | — | — | 🔵 Pending |
+|| 4.3.3 | — | — | 🔵 Pending |
+|| 4.3.4 | — | — | 🔵 Pending |
+|| 4.3.5 | — | — | 🔵 Pending |
+|| 4.3.6 | — | — | 🔵 Pending |
+|| 4.3.7 | — | — | 🔵 Pending |
+|| 4.3.8 | — | — | 🔵 Pending |
+|| 4.4.1 | — | — | 🔵 Pending |
+|| 4.4.2 | — | — | 🔵 Pending |
+|| 4.4.3 | — | — | 🔵 Pending |
+|| 4.4.4 | — | — | 🔵 Pending |
+|| 4.4.5 | — | — | 🔵 Pending |
+|| 4.4.6 | — | — | 🔵 Pending |
+|| 5.1.1 | — | — | 🔵 Pending |
+|| 5.1.2 | — | — | 🔵 Pending |
+|| 5.1.3 | — | — | 🔵 Pending |
+|| 5.1.4 | — | — | 🔵 Pending |
+|| 5.2.1 | — | — | 🔵 Pending |
+|| 5.2.2 | — | — | 🔵 Pending |
+|| 5.2.3 | — | — | 🔵 Pending |
+|| 5.3.1 | — | — | 🔵 Pending |
+|| 5.3.2 | — | — | 🔵 Pending |
+|| 5.3.3 | — | — | 🔵 Pending |
+|| 6.1.1 | — | — | 🔵 Pending |
+|| 6.1.2 | — | — | 🔵 Pending |
+|| 6.1.3 | — | — | 🔵 Pending |
+|| 6.1.4 | — | — | 🔵 Pending |
+|| 6.2.1 | — | — | 🔵 Pending |
+|| 6.2.2 | — | — | 🔵 Pending |
+|| 6.2.3 | — | — | 🔵 Pending |
+|| 6.3.1 | — | — | 🔵 Pending |
+|| 6.3.2 | — | — | 🔵 Pending |
+|| 6.3.3 | — | — | 🔵 Pending |
+|| 6.3.4 | — | — | 🔵 Pending |
+|| 6.4.1 | — | — | 🔵 Pending |
+|| 6.4.2 | — | — | 🔵 Pending |
+|| 6.4.3 | — | — | 🔵 Pending |
+|| 6.5.1 | — | — | 🔵 Pending |
+|| 6.5.2 | — | — | 🔵 Pending |
+|| 7.1.1 | — | — | 🔵 Pending |
+|| 7.1.2 | — | — | 🔵 Pending |
+|| 7.1.3 | — | — | 🔵 Pending |
+|| 7.2.1 | — | — | 🔵 Pending |
+|| 7.2.2 | — | — | 🔵 Pending |
+|| 7.2.3 | — | — | 🔵 Pending |
+|| 7.3.1 | — | — | 🔵 Pending |
+|| 7.3.2 | — | — | 🔵 Pending |
+|| 7.4.1 | — | — | 🔵 Pending |
+|| 7.4.2 | — | — | 🔵 Pending |
+|| 7.4.3 | — | — | 🔵 Pending |
+|| 8.1.1 | — | — | 🔵 Pending |
+|| 8.1.2 | — | — | 🔵 Pending |
+|| 8.1.3 | — | — | 🔵 Pending |
+|| 8.2.1 | — | — | 🔵 Pending |
+|| 8.2.2 | — | — | 🔵 Pending |
+|| 8.2.3 | — | — | 🔵 Pending |
+|| 8.3.1 | — | — | 🔵 Pending |
+|| 8.3.2 | — | — | 🔵 Pending |
+|| 8.3.3 | — | — | 🔵 Pending |
+|| 8.3.4 | — | — | 🔵 Pending |
+|| 8.4.1 | — | — | 🔵 Pending |
+|| 8.4.2 | — | — | 🔵 Pending |
+|| 8.4.3 | — | — | 🔵 Pending |
+|| 8.4.4 | — | — | 🔵 Pending |
+|| 8.4.5 | — | — | 🔵 Pending |
+|| 8.4.6 | — | — | 🔵 Pending |
+|| 8.5.1 | — | — | 🔵 Pending |
+|| 8.5.2 | — | — | 🔵 Pending |
+|| 9.1.1 | — | — | 🔵 Pending |
+|| 9.1.2 | — | — | 🔵 Pending |
+|| 9.1.3 | — | — | 🔵 Pending |
+|| 9.1.4 | — | — | 🔵 Pending |
+|| 9.1.5 | — | — | 🔵 Pending |
+|| 9.1.6 | — | — | 🔵 Pending |
+|| 9.2.1 | — | — | 🔵 Pending |
+|| 9.2.2 | — | — | 🔵 Pending |
+|| 9.2.3 | — | — | 🔵 Pending |
+|| 9.2.4 | — | — | 🔵 Pending |
+|| 9.3.1 | — | — | 🔵 Pending |
+|| 9.3.2 | — | — | 🔵 Pending |
+|| 9.3.3 | — | — | 🔵 Pending |
+|| 9.3.4 | — | — | 🔵 Pending |
+|| 9.3.5 | — | — | 🔵 Pending |
+|| 9.4.1 | — | — | 🔵 Pending |
+|| 9.4.2 | — | — | 🔵 Pending |
+|| 9.4.3 | — | — | 🔵 Pending |
+|| 9.4.4 | — | — | 🔵 Pending |
+|| 9.4.5 | — | — | 🔵 Pending |
+|| 9.4.6 | — | — | 🔵 Pending |
+|| 10.1.1 | — | — | 🔵 Pending |
+|| 10.1.2 | — | — | 🔵 Pending |
+|| 10.1.3 | — | — | 🔵 Pending |
+|| 10.1.4 | — | — | 🔵 Pending |
+|| 10.2.1 | — | — | 🔵 Pending |
+|| 10.2.2 | — | — | 🔵 Pending |
+|| 10.2.3 | — | — | 🔵 Pending |
+|| 10.2.4 | — | — | 🔵 Pending |
+|| 10.2.5 | — | — | 🔵 Pending |
+|| 10.3.1 | — | — | 🔵 Pending |
+|| 10.3.2 | — | — | 🔵 Pending |
 
 ---
 

@@ -2,9 +2,23 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as sinon from 'sinon';
+import { KnowledgeStore } from '../KnowledgeStore.js';
 
 suite('Phase 1: Local Knowledge Schema & Foundations', () => {
-    
+    let sandbox: sinon.SinonSandbox;
+
+    setup(() => {
+        sandbox = sinon.createSandbox();
+        sandbox.stub(vscode.window, 'showInputBox').resolves('test-project');
+        sandbox.stub(vscode.window, 'showWarningMessage').resolves('Overwrite' as any);
+        sandbox.stub(vscode.window, 'showQuickPick').callsFake(async (items: any) => items[0]);
+    });
+
+    teardown(() => {
+        sandbox.restore();
+    });
+
     test('Extension should be present', () => {
         assert.ok(vscode.extensions.getExtension('docuvia.vscode-client'));
     });
@@ -21,26 +35,26 @@ suite('Phase 1: Local Knowledge Schema & Foundations', () => {
             fs.rmSync(docuviaPath, { recursive: true, force: true });
         }
 
-        // 2. Mock the QuickPick input for the project name (since we can't type via Playwright easily in standard tests)
-        // Note: In real E2E, the extension should ideally accept arguments if called programmatically, 
-        // or we mock the UI. Since we are testing if the command *works* and *creates files*,
-        // we execute the command. If the command blocks waiting for UI input, we might need to 
-        // temporarily stub the UI input during tests or provide a programmatic bypass.
-        
-        // For Phase 1 testing, let's trigger the command. 
-        // If it hangs waiting for input, it means the command palette flow requires user interaction.
-        // Let's see if the extension exposes a way to pass the name directly, otherwise we'll see a timeout.
         try {
-             // In VS Code, executing a command programmatically that requires UI input might stall tests
-             // Let's execute it.
-             await vscode.commands.executeCommand('docuvia.initProject');
-             
-             // Wait a bit for file system operations
-             await new Promise(resolve => setTimeout(resolve, 2000));
+            // Create a promise to wait for indexing to finish
+            const indexingPromise = new Promise<void>((resolve) => {
+                const disposable = KnowledgeStore.onDidFinishIndexing.event(() => {
+                    disposable.dispose();
+                    resolve();
+                });
+            });
 
-             // 3. Verify the .docuvia folder and config files were created
-             assert.ok(fs.existsSync(docuviaPath), '.docuvia directory was not created');
-             assert.ok(fs.existsSync(path.join(docuviaPath, 'l1_tags.yaml')), 'l1_tags.yaml was not created');
+            // Execute the command
+            await vscode.commands.executeCommand('docuvia.initProject');
+             
+            // Wait for indexing to finish
+            await indexingPromise;
+
+            // 3. Verify the .docuvia folder and config files were created
+            assert.ok(fs.existsSync(docuviaPath), '.docuvia directory was not created');
+            assert.ok(fs.existsSync(path.join(docuviaPath, 'l1_tags.yaml')), 'l1_tags.yaml was not created');
+            assert.ok(fs.existsSync(path.join(docuviaPath, 'l2_modules.yaml')), 'l2_modules.yaml was not created');
+            assert.ok(fs.existsSync(path.join(docuviaPath, 'l3_router.yaml')), 'l3_router.yaml was not created');
              
         } catch (error) {
             assert.fail(`Command execution failed: ${error}`);

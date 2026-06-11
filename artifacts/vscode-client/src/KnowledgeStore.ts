@@ -38,6 +38,7 @@ export interface KnowledgeGraphSnapshot {
  */
 export class KnowledgeStore {
   private static _instance: KnowledgeStore | null = null;
+  public static readonly onDidFinishIndexing = new vscode.EventEmitter<void>();
 
   private _snapshots: Map<string, KnowledgeGraphSnapshot> = new Map();
   private _globalConfig: GlobalConfig | null = null;
@@ -107,6 +108,7 @@ export class KnowledgeStore {
       
       void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', anyLoaded);
       this._onDidLoad.fire();
+      KnowledgeStore.onDidFinishIndexing.fire();
       return anyLoaded;
     } finally {
       this._loading = false;

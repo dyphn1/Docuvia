@@ -43,6 +43,18 @@ export class CentralServerClient {
    * Throws CentralServerAuthError on 401.
    */
   async query(q: string, limit = 10): Promise<CentralSearchResult[]> {
+    if (process.env.DOCUVIA_MOCK_SERVER === '1') {
+      return [
+        {
+          title: 'Mocked Result',
+          projectName: 'mock-project',
+          l1Tags: ['mock-tag'],
+          snippet: 'This is a mocked snippet for E2E testing.',
+          score: 1.0,
+        }
+      ];
+    }
+
     const serverUrl = this._store.globalConfig?.server_url;
     if (!serverUrl) {
       return [];
@@ -85,6 +97,10 @@ export class CentralServerClient {
    * Calls POST /sync with the project ID, branch name, and commit hashes.
    */
   async sync(projectId: number, branch: string, commits: string[]): Promise<void> {
+    if (process.env.DOCUVIA_MOCK_SERVER === '1') {
+      return;
+    }
+
     const serverUrl = this._store.globalConfig?.server_url;
     if (!serverUrl) return;
 
@@ -115,6 +131,21 @@ export class CentralServerClient {
    * Calls GET /projects/{id}/graph which returns L1 tags, L2 nodes, and L3 nodes.
    */
   async pullSnapshot(projectId: number): Promise<KnowledgeSnapshot> {
+    if (process.env.DOCUVIA_MOCK_SERVER === '1') {
+      return {
+        projectId,
+        l1Tags: [
+          { id: 1, name: 'Mock L1 Tag', category: 'General', description: 'Mock tag' }
+        ],
+        l2Nodes: [
+          { id: 1, projectId, name: 'Mock L2 Module', type: 'module', description: 'Mock module', l1TagIds: [1] }
+        ],
+        l3Nodes: [
+          { id: 1, l2NodeId: 1, title: 'Mock L3 Decision', content: 'Mock content', nodeType: 'decision' }
+        ]
+      };
+    }
+
     const serverUrl = this._store.globalConfig?.server_url;
     if (!serverUrl) {
       throw new Error('Server URL not configured');

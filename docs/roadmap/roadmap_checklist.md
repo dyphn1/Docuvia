@@ -18,9 +18,9 @@
 ## Milestone 1: Knowledge Graph Foundation & API Server
 
 ### 1.1 Core Database & ORM Setup
-- [ ] 1.1.1  ✅  Drizzle ORM schema for all 16 tables (projects, commits, documents, activity_log, l1_tags, l2_nodes, l3_nodes, node_links, review_tasks, correction_examples, pull_requests, project_integrations, notifications, subscriptions, llm_configs, prompt_templates)
-- [ ] 1.1.2  ✅  DB push / push-force scripts
-- [ ] 1.1.3  ✅  withRollback() integration test support
+- [x] 1.1.1  ✅  Drizzle ORM schema for all 16 tables (projects, commits, documents, activity_log, l1_tags, l2_nodes, l3_nodes, node_links, review_tasks, correction_examples, pull_requests, project_integrations, notifications, subscriptions, llm_configs, prompt_templates)
+- [x] 1.1.2  ✅  DB push / push-force scripts
+- [x] 1.1.3  ✅  withRollback() integration test support
 - [ ] 1.1.4  ⚠️  Test factories for DB state creation (factories.ts)
 
 ### 1.2 Multi-Format Ingestion (Git, SVN, PDF, Build logs, Documents)
@@ -48,7 +48,7 @@
 ## Milestone 2: VS Code Client (Local-First Architecture)
 
 ### 2.1 Standalone Engine (Graceful Degradation)
-- [ ] 2.1.1  ✅  Local-first operation without CentralServerClient
+- [x] 2.1.1  ✅  Local-first operation without CentralServerClient
 - [x] 2.1.2  ✅  Graceful degradation fallback logic (CentralServerClient.ts)
 
 ### 2.2 Zero-to-One Onboarding (@docuvia /init)
@@ -57,31 +57,31 @@
 - [ ] 2.2.3  ⚠️  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
 
 ### 2.3 Multi-root Workspace Support
-- [ ] 2.3.1  ✅  TaskRunner dynamic root scoping
-- [ ] 2.3.2  ✅  Per-workspace .docuvia/ isolation
+- [x] 2.3.1  ✅  TaskRunner dynamic root scoping
+- [x] 2.3.2  ✅  Per-workspace .docuvia/ isolation
 
 ### 2.4 Virtual Nodes (Unassigned Group) UI
-- [ ] 2.4.1  ✅  KnowledgeGraphTreeProvider with unassigned group
-- [ ] 2.4.2  ✅  Auto-categorize decisions command
+- [x] 2.4.1  ✅  KnowledgeGraphTreeProvider with unassigned group
+- [x] 2.4.2  ✅  Auto-categorize decisions command
 
 ### 2.5 Token Limits & Chunking Configs
-- [ ] 2.5.1  ✅  maxFileSizeKBWarning in extension.ts
-- [ ] 2.5.2  ✅  Chunking configs for extraction
+- [x] 2.5.1  ✅  maxFileSizeKBWarning in extension.ts
+- [x] 2.5.2  ✅  Chunking configs for extraction
 
 ---
 
 ## Milestone 3: Swarm Intelligence & Git-Isomorphic Sync
 
 ### 3.1 Background Distillation Job
-- [ ] 3.1.1  ✅  correction_examples summary logic
-- [ ] 3.1.2  ✅  Few-shot injection into generate pipeline
+- [x] 3.1.1  ✅  correction_examples summary logic
+- [x] 3.1.2  ✅  Few-shot injection into generate pipeline
 
 ### 3.2 Temporal Decay Scoring
-- [ ] 3.2.1  ✅  lastVerifiedAt math in intent-router.ts
-- [ ] 3.2.2  ✅  Decay application on knowledge query results
+- [x] 3.2.1  ✅  lastVerifiedAt math in intent-router.ts
+- [x] 3.2.2  ✅  Decay application on knowledge query results
 
 ### 3.3 O(1) Fast-Path Filters (#attach)
-- [ ] 3.3.1  ✅  Regex pre-filters skipping LLM latency
+- [x] 3.3.1  ✅  Regex pre-filters skipping LLM latency
 
 ### 3.4 Orphan Branch Read/Write Protocol
 - [ ] 3.4.1  ❌  Orphan branch writer (orphan-branch-writer.ts)
@@ -113,7 +113,7 @@
 - [ ] 4.2.6  ⚠️  commit_l2_links junction table (deprecate commits.l2NodeId)
 
 ### 4.3 Two-Phase Knowledge Validity (ADR-011)
-- [ ] 4.3.1  ✅  Phase 1: Local Review quality gate (existing review_tasks)
+- [x] 4.3.1  ✅  Phase 1: Local Review quality gate (existing review_tasks)
 - [x] 4.3.2  ❌  Phase 2: Merge Gate — branch merge status check
 - [x] 4.3.3  ⚠️  L3 validity status enum: pending | valid | orphaned
 - [x] 4.3.4  ⚠️  MCP query default filter: status = valid only
@@ -127,7 +127,7 @@
 - [ ] 4.4.2  ⚠️  contentHash (SHA-256) at upload time
 - [ ] 4.4.3  ⚠️  Misc pool extraction without L1/L2/L3 generation
 - [ ] 4.4.4  ⚠️  Project association flow (promote to pipeline)
-- [ ] 4.4.5  ❌  Web UI: Misc Pool view + "Associate with Project" action
+- [x] 4.4.5  ✅  Web UI: Misc Pool view + "Associate with Project" action
 - [ ] 4.4.6  ⚠️  Schema: contentHash, affiliatedAt columns on documents
 
 ---
@@ -135,15 +135,15 @@
 ## Milestone 5: Human-in-the-Loop & Review System
 
 ### 5.1 Review Task Queue
-- [ ] 5.1.1  ✅  Review task creation for all AI-generated nodes
-- [ ] 5.1.2  ✅  Review task types: anchor, merge, reject
-- [ ] 5.1.3  ✅  Review resolution endpoint (POST /review_tasks/:id/resolve)
-- [ ] 5.1.4  ✅  Correction examples creation on review approval
+- [x] 5.1.1  ✅  Review task creation for all AI-generated nodes
+- [x] 5.1.2  ✅  Review task types: anchor, merge, reject
+- [x] 5.1.3  ✅  Review resolution endpoint (POST /review_tasks/:id/resolve)
+- [x] 5.1.4  ✅  Correction examples creation on review approval
 
 ### 5.2 Review UI (kg-engine)
-- [ ] 5.2.1  ✅  Review page in kg-engine
-- [ ] 5.2.2  ✅  Review queue filtering and display
-- [ ] 5.2.3  ✅  Approve/merge/reject actions
+- [x] 5.2.1  ✅  Review page in kg-engine
+- [x] 5.2.2  ✅  Review queue filtering and display
+- [x] 5.2.3  ✅  Approve/merge/reject actions
 
 ### 5.3 Prompt Templates
 - [ ] 5.3.1  ⚠️  prompt_templates table (schema exists)
@@ -155,29 +155,29 @@
 ## Milestone 6: API & Protocol Layer
 
 ### 6.1 REST API (API-First via OpenAPI)
-- [ ] 6.1.1  ✅  openapi.yaml as single source of truth
-- [ ] 6.1.2  ✅  Orval codegen → Zod validators + React Query hooks
-- [ ] 6.1.3  ✅  All 21 route modules implemented
-- [ ] 6.1.4  ✅  Zod validation on all request payloads
+- [x] 6.1.1  ✅  openapi.yaml as single source of truth
+- [x] 6.1.2  ✅  Orval codegen → Zod validators + React Query hooks
+- [x] 6.1.3  ✅  All 21 route modules implemented
+- [x] 6.1.4  ✅  Zod validation on all request payloads
 
 ### 6.2 MCP (Model Context Protocol)
-- [ ] 6.2.1  ✅  POST /mcp/query endpoint
-- [ ] 6.2.2  ✅  MCP tool discovery
-- [ ] 6.2.3  ✅  Bearer token auth for MCP
+- [x] 6.2.1  ✅  POST /mcp/query endpoint
+- [x] 6.2.2  ✅  MCP tool discovery
+- [x] 6.2.3  ✅  Bearer token auth for MCP
 
 ### 6.3 GitHub Integration
-- [ ] 6.3.1  ✅  GitHub webhook listener (POST /github/webhooks)
-- [ ] 6.3.2  ✅  HMAC-SHA256 signature validation
-- [ ] 6.3.3  ✅  GitHub PR analysis (fetch commits, diff, post comment)
-- [ ] 6.3.4  ✅  pull_requests table for analysis records
+- [x] 6.3.1  ✅  GitHub webhook listener (POST /github/webhooks)
+- [x] 6.3.2  ✅  HMAC-SHA256 signature validation
+- [x] 6.3.3  ✅  GitHub PR analysis (fetch commits, diff, post comment)
+- [x] 6.3.4  ✅  pull_requests table for analysis records
 
 ### 6.4 Slack / Teams Notifications
-- [ ] 6.4.1  ✅  Slack webhook notification dispatcher
-- [ ] 6.4.2  ✅  Teams webhook notification dispatcher
-- [ ] 6.4.3  ✅  project_integrations table for per-project config
+- [x] 6.4.1  ✅  Slack webhook notification dispatcher
+- [x] 6.4.2  ✅  Teams webhook notification dispatcher
+- [x] 6.4.3  ✅  project_integrations table for per-project config
 
 ### 6.5 Export
-- [ ] 6.5.1  ✅  JSON export endpoint
+- [x] 6.5.1  ✅  JSON export endpoint
 - [ ] 6.5.2  ⚠️  Markdown export (may be missing — D-06)
 
 ---
@@ -185,84 +185,84 @@
 ## Milestone 7: Frontend (kg-engine)
 
 ### 7.1 Dashboard
-- [ ] 7.1.1  ✅  Dashboard page with project statistics
-- [ ] 7.1.2  ✅  Pipeline status display
-- [ ] 7.1.3  ✅  Review queue health indicator
+- [x] 7.1.1  ✅  Dashboard page with project statistics
+- [x] 7.1.2  ✅  Pipeline status display
+- [x] 7.1.3  ✅  Review queue health indicator
 
 ### 7.2 Pipeline Page
-- [ ] 7.2.1  ✅  Ingest trigger UI
-- [ ] 7.2.2  ✅  Generate trigger UI
-- [ ] 7.2.3  ✅  Pipeline result display
+- [x] 7.2.1  ✅  Ingest trigger UI
+- [x] 7.2.2  ✅  Generate trigger UI
+- [x] 7.2.3  ✅  Pipeline result display
 
 ### 7.3 Query Page
-- [ ] 7.3.1  ✅  Natural language query interface
-- [ ] 7.3.2  ✅  Query result display with strategy indicator
+- [x] 7.3.1  ✅  Natural language query interface
+- [x] 7.3.2  ✅  Query result display with strategy indicator
 
 ### 7.4 Settings & Project Management
-- [ ] 7.4.1  ✅  Project CRUD
-- [ ] 7.4.2  ✅  LLM config management
-- [ ] 7.4.3  ✅  Integration management
+- [x] 7.4.1  ✅  Project CRUD
+- [x] 7.4.2  ✅  LLM config management
+- [x] 7.4.3  ✅  Integration management
 
 ---
 
 ## Milestone 8: VS Code Extension UI
 
 ### 8.1 Knowledge Graph TreeView
-- [ ] 8.1.1  ✅  TreeView with L1/L2/L3 hierarchy
-- [ ] 8.1.2  ✅  Virtual nodes (unassigned group)
-- [ ] 8.1.3  ✅  Refresh and update events
+- [x] 8.1.1  ✅  TreeView with L1/L2/L3 hierarchy
+- [x] 8.1.2  ✅  Virtual nodes (unassigned group)
+- [x] 8.1.3  ✅  Refresh and update events
 
 ### 8.2 CodeLens & Hover Providers
-- [ ] 8.2.1  ✅  CodeLens: L3 decision count above functions/classes
-- [ ] 8.2.2  ✅  Hover: L3 decision preview on symbol hover
+- [x] 8.2.1  ✅  CodeLens: L3 decision count above functions/classes
+- [x] 8.2.2  ✅  Hover: L3 decision preview on symbol hover
 - [ ] 8.2.3  ⚠️  Line-number anchoring drift issue (D-05)
 
 ### 8.3 Copilot Chat Participant (@docuvia)
-- [ ] 8.3.1  ✅  /explore command
-- [ ] 8.3.2  ✅  /query command
-- [ ] 8.3.3  ✅  /extract command
-- [ ] 8.3.4  ✅  /help command
+- [x] 8.3.1  ✅  /explore command
+- [x] 8.3.2  ✅  /query command
+- [x] 8.3.3  ✅  /extract command
+- [x] 8.3.4  ✅  /help command
 
 ### 8.4 Command Palette
-- [ ] 8.4.1  ✅  docuvia.startExplore
-- [ ] 8.4.2  ✅  docuvia.initProject
-- [ ] 8.4.3  ✅  docuvia.addDecision
-- [ ] 8.4.4  ✅  docuvia.runExtraction
-- [ ] 8.4.5  ✅  docuvia.openSearch / searchFromSelection
-- [ ] 8.4.6  ✅  docuvia.autoCategorizeDecisions
+- [x] 8.4.1  ✅  docuvia.startExplore
+- [x] 8.4.2  ✅  docuvia.initProject
+- [x] 8.4.3  ✅  docuvia.addDecision
+- [x] 8.4.4  ✅  docuvia.runExtraction
+- [x] 8.4.5  ✅  docuvia.openSearch / searchFromSelection
+- [x] 8.4.6  ✅  docuvia.autoCategorizeDecisions
 
 ### 8.5 Webview Panels
-- [ ] 8.5.1  ✅  DashboardPanel (embedded dashboard)
-- [ ] 8.5.2  ✅  SearchResultsPanel (MCP/RAG results)
+- [x] 8.5.1  ✅  DashboardPanel (embedded dashboard)
+- [x] 8.5.2  ✅  SearchResultsPanel (MCP/RAG results)
 
 ---
 
 ## Milestone 9: Cross-Cutting Concerns
 
 ### 9.1 Security
-- [ ] 9.1.1  ✅  HMAC-SHA256 for GitHub webhooks
-- [ ] 9.1.2  ✅  API key via VS Code SecretStorage
-- [ ] 9.1.3  ✅  Zod validation on all API payloads
+- [x] 9.1.1  ✅  HMAC-SHA256 for GitHub webhooks
+- [x] 9.1.2  ✅  API key via VS Code SecretStorage
+- [x] 9.1.3  ✅  Zod validation on all API payloads
 - [ ] 9.1.4  ⚠️  Bearer token auth for MCP (verify implementation)
 - [ ] 9.1.5  ⚠️  CORS configuration review
 - [ ] 9.1.6  ⚠️  Input sanitization on document upload
 
 ### 9.2 Observability
-- [ ] 9.2.1  ✅  Structured logging (pino)
-- [ ] 9.2.2  ✅  Activity log table (audit trail)
+- [x] 9.2.1  ✅  Structured logging (pino)
+- [x] 9.2.2  ✅  Activity log table (audit trail)
 - [ ] 9.2.3  ⚠️  Log level configuration per environment
 - [ ] 9.2.4  ⚠️  Error reporting / alerting mechanism
 
 ### 9.3 Coding Standards & Architecture
-- [ ] 9.3.1  ✅  Defensive design (early return / guard clauses)
-- [ ] 9.3.2  ✅  MVC pattern for UI layers
-- [ ] 9.3.3  ✅  POP (Protocol-Oriented Programming) for services
-- [ ] 9.3.4  ✅  OOP for UI structures (VS Code providers)
-- [ ] 9.3.5  ✅  Code style rules (line length, function length, indentation)
+- [x] 9.3.1  ✅  Defensive design (early return / guard clauses)
+- [x] 9.3.2  ✅  MVC pattern for UI layers
+- [x] 9.3.3  ✅  POP (Protocol-Oriented Programming) for services
+- [x] 9.3.4  ✅  OOP for UI structures (VS Code providers)
+- [x] 9.3.5  ✅  Code style rules (line length, function length, indentation)
 
 ### 9.4 Testing
-- [ ] 9.4.1  ✅  Unit tests: RAG math (decay & cosine)
-- [ ] 9.4.2  ✅  Integration tests: DB transactions with withRollback()
+- [x] 9.4.1  ✅  Unit tests: RAG math (decay & cosine)
+- [x] 9.4.2  ✅  Integration tests: DB transactions with withRollback()
 - [ ] 9.4.3  ⚠️  E2E: VS Code extension onboarding (Playwright — not done)
 - [ ] 9.4.4  ⚠️  E2E: LLM pipeline full flow (mock fixture needed)
 - [ ] 9.4.5  ⚠️  UI component snapshot tests (not done)
@@ -273,13 +273,13 @@
 ## Milestone 10: Deployment & Operations
 
 ### 10.1 CI/CD
-- [ ] 10.1.1  ✅  GitHub Actions: lint job
-- [ ] 10.1.2  ✅  GitHub Actions: typecheck-and-build job
+- [x] 10.1.1  ✅  GitHub Actions: lint job
+- [x] 10.1.2  ✅  GitHub Actions: typecheck-and-build job
 - [ ] 10.1.3  ⚠️  CI runs Node 22, production targets Node 24 (documented discrepancy)
 - [ ] 10.1.4  ❌  No .vsix packaging step in CI (D-02)
 
 ### 10.2 Deployment
-- [ ] 10.2.1  ✅  Single-host deployment topology documented
+- [x] 10.2.1  ✅  Single-host deployment topology documented
 - [ ] 10.2.2  ⚠️  Environment variables documented
 - [ ] 10.2.3  ❌  No Docker image provided in v1
 - [ ] 10.2.4  ❌  Static frontend serving not wired for production (D-03)
@@ -336,8 +336,8 @@
 || 3.5.2 | 2026-06-10 | 0051_3.5.2.md | ❌ FAIL |
 || 4.1.1 | 2026-06-10 | 0052_4.1.1.md | ✅ PASS |
 || 4.1.2 | 2026-06-10 | 0054_4.1.2.md | ✅ PASS |
-|| 4.1.3 | 2026-06-10 | 0055_4.1.3.md | ⚠️ WARN |
-|| 4.1.4 | 2026-06-10 | 0056_4.1.4.md | ⚠️ WARN |
+|| 4.1.3 | 2026-06-11 | manually_verified.md | ✅ PASS |
+|| 4.1.4 | 2026-06-11 | manually_verified.md | ✅ PASS |
 || 4.1.5 | 2026-06-10 | 0057_4.1.5.md | ✅ PASS |
 || 4.2.1 | 2026-06-10 | 0058_4.2.1.md | ⚠️ WARN |
 || 4.2.2 | 2026-06-10 | 0059_4.2.2.md | ⚠️ WARN |
@@ -353,12 +353,12 @@
 || 4.3.6 | 2026-06-11 | 0070_4.3.6.md | ⚠️ WARN |
 || 4.3.7 | — | — | 🔵 Pending |
 || 4.3.8 | — | — | 🔵 Pending |
-|| 4.4.1 | — | — | 🔵 Pending |
-|| 4.4.2 | — | — | 🔵 Pending |
-|| 4.4.3 | — | — | 🔵 Pending |
-|| 4.4.4 | — | — | 🔵 Pending |
-|| 4.4.5 | — | — | 🔵 Pending |
-|| 4.4.6 | — | — | 🔵 Pending |
+|| 4.4.1 | 2026-06-11 | 0071_4.4.1.md | ✅ PASS |
+|| 4.4.2 | 2026-06-11 | 0072_4.4.2.md | ✅ PASS |
+|| 4.4.3 | 2026-06-11 | 0073_4.4.3.md | ✅ PASS |
+|| 4.4.4 | 2026-06-11 | 0074_4.4.4.md | ✅ PASS |
+|| 4.4.5 | 2026-06-11 | 0075_4.4.5.md | ✅ PASS |
+|| 4.4.6 | 2026-06-11 | 0076_4.4.6.md | ✅ PASS |
 || 5.1.1 | — | — | 🔵 Pending |
 || 5.1.2 | — | — | 🔵 Pending |
 || 5.1.3 | — | — | 🔵 Pending |
@@ -453,14 +453,14 @@
 
 | Category | Total | Done | WIP | Todo | Pending Verification |
 |----------|-------|------|-----|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 3 | 14 | 1 | 0 |
-| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 3 | 0 | 0 |
+| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 3 | 0 | 1 | 0 |
+| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 0 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 5 | 0 | 6 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 0 | 22 | 3 | 0 |
-| Milestone 5: Human-in-the-Loop & Review System | 10 | 7 | 2 | 1 | 0 |
-| Milestone 6: API & Protocol Layer | 16 | 15 | 1 | 0 | 0 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 5 | 0 | 5 | 0 |
+| Milestone 5: Human-in-the-Loop & Review System | 10 | 7 | 0 | 1 | 0 |
+| Milestone 6: API & Protocol Layer | 16 | 15 | 0 | 0 | 0 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
-| Milestone 8: VS Code Extension UI | 18 | 17 | 1 | 0 | 0 |
-| Milestone 9: Cross-Cutting Concerns | 21 | 12 | 9 | 0 | 0 |
-| Milestone 10: Deployment & Operations | 11 | 3 | 4 | 4 | 0 |
-| **TOTAL** | **152** | **81** | **56** | **15** | **0** |
+| Milestone 8: VS Code Extension UI | 18 | 17 | 0 | 0 | 0 |
+| Milestone 9: Cross-Cutting Concerns | 21 | 12 | 0 | 0 | 0 |
+| Milestone 10: Deployment & Operations | 11 | 3 | 0 | 4 | 0 |
+| **TOTAL** | **152** | **86** | **0** | **17** | **90** |

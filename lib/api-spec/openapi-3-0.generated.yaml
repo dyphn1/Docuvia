@@ -248,6 +248,55 @@ paths:
                 items:
                   $ref: "#/components/schemas/L2Node"
 
+  /projects/{id}/l2-nodes/confirm-bootstrap:
+    post:
+      operationId: confirmBootstrap
+      tags: [l2-nodes]
+      summary: Confirms the AI-discovered L2 modules, saves glob path patterns, and switches the project out of bootstrap mode.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approvedModules, rejectedModuleIds]
+              properties:
+                approvedModules:
+                  type: array
+                  items:
+                    type: object
+                    required: [id, pathPatterns]
+                    properties:
+                      id:
+                        type: integer
+                      pathPatterns:
+                        type: array
+                        items:
+                          type: string
+                rejectedModuleIds:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        "200":
+          description: Bootstrap confirmed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success, message]
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
   /projects/{id}/ingest/git:
     post:
       operationId: ingestGit
@@ -1814,6 +1863,12 @@ components:
           type: boolean
         isSystem:
           type: boolean
+        isBootstrapConfirmed:
+          type: boolean
+        pathPatterns:
+          type: array
+          items:
+            type: string
         createdAt:
           type: string
 

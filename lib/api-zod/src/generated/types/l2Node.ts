@@ -19,5 +19,7 @@ export interface L2Node {
   aiGenerated: boolean;
   needsReview?: boolean;
   isSystem?: boolean;
+  isBootstrapConfirmed?: boolean;
+  pathPatterns?: string[];
   createdAt: string;
 }

@@ -159,6 +159,8 @@ export const GetProjectGraphResponse = zod.object({
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
       isSystem: zod.boolean().optional(),
+      isBootstrapConfirmed: zod.boolean().optional(),
+      pathPatterns: zod.array(zod.string()).optional(),
       createdAt: zod.string(),
     })
   ),
@@ -231,9 +233,33 @@ export const ListProjectL2NodesResponseItem = zod.object({
   aiGenerated: zod.boolean(),
   needsReview: zod.boolean().optional(),
   isSystem: zod.boolean().optional(),
+  isBootstrapConfirmed: zod.boolean().optional(),
+  pathPatterns: zod.array(zod.string()).optional(),
   createdAt: zod.string(),
 });
 export const ListProjectL2NodesResponse = zod.array(ListProjectL2NodesResponseItem);
+
+/**
+ * @summary Confirms the AI-discovered L2 modules, saves glob path patterns, and switches the project out of bootstrap mode.
+ */
+export const ConfirmBootstrapParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ConfirmBootstrapBody = zod.object({
+  approvedModules: zod.array(
+    zod.object({
+      id: zod.number(),
+      pathPatterns: zod.array(zod.string()),
+    })
+  ),
+  rejectedModuleIds: zod.array(zod.number()),
+});
+
+export const ConfirmBootstrapResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
 
 /**
  * @summary Ingest commits from a Git repository (GitHub API)
@@ -463,6 +489,8 @@ export const ExportProjectResponse = zod.object({
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
       isSystem: zod.boolean().optional(),
+      isBootstrapConfirmed: zod.boolean().optional(),
+      pathPatterns: zod.array(zod.string()).optional(),
       createdAt: zod.string(),
     })
   ),
@@ -676,6 +704,8 @@ export const UpdateL2NodeResponse = zod.object({
   aiGenerated: zod.boolean(),
   needsReview: zod.boolean().optional(),
   isSystem: zod.boolean().optional(),
+  isBootstrapConfirmed: zod.boolean().optional(),
+  pathPatterns: zod.array(zod.string()).optional(),
   createdAt: zod.string(),
 });
 
@@ -1203,6 +1233,8 @@ export const GetPullRequestDetailResponse = zod.object({
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
       isSystem: zod.boolean().optional(),
+      isBootstrapConfirmed: zod.boolean().optional(),
+      pathPatterns: zod.array(zod.string()).optional(),
       createdAt: zod.string(),
     })
   ),
@@ -1324,6 +1356,8 @@ export const VscodeFileContextResponse = zod.object({
       aiGenerated: zod.boolean(),
       needsReview: zod.boolean().optional(),
       isSystem: zod.boolean().optional(),
+      isBootstrapConfirmed: zod.boolean().optional(),
+      pathPatterns: zod.array(zod.string()).optional(),
       createdAt: zod.string(),
     })
   ),

@@ -109,3 +109,26 @@ export function parseGithubRepo(repoUrl: string): { owner: string; repo: string 
   if (!owner || !repo) return null;
   return { owner, repo };
 }
+
+/**
+ * Check if a commit is an ancestor of the default branch
+ */
+export async function checkCommitInDefaultBranch(
+  owner: string,
+  repo: string,
+  commitSha: string,
+  token?: string,
+  defaultBranch: string = "main"
+): Promise<boolean> {
+  const headers = buildHeaders(token);
+  const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/compare/${defaultBranch}...${commitSha}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) {
+    logger.warn({ owner, repo, commitSha, status: res.status }, "Failed to fetch commit comparison");
+    return false;
+  }
+  const data = await res.json() as { status: string };
+  // If the base (main) is ahead of the head (commitSha), status is "behind".
+  // If they are the same, status is "identical".
+  return data.status === "identical" || data.status === "behind";
+}

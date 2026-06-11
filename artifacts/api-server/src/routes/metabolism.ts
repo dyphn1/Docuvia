@@ -1,9 +1,10 @@
 import { Router, Request, Response } from "express";
 import { logger } from "../lib/logger";
 import { db } from "@workspace/db";
-import { correctionExamplesTable, promptTemplatesTable } from "@workspace/db";
-import { isNull, inArray } from "drizzle-orm";
+import { correctionExamplesTable, promptTemplatesTable, l3NodesTable, l2NodesTable, projectsTable } from "@workspace/db";
+import { isNull, inArray, and, eq, lt } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { checkCommitInDefaultBranch, parseGithubRepo } from "../lib/github-client";
 
 // Using a simple in-memory Mutex for this instance
 let isMetabolismRunning = false;
@@ -14,6 +15,77 @@ const metabolismRouter = Router();
 async function runMetabolism() {
   logger.info("Metabolism tick started. Running background tasks...");
   
+  // Phase 2 Merge Gate Fallback
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const pendingL3Nodes = await db
+    .select({
+      id: l3NodesTable.id,
+      sourceCommits: l3NodesTable.sourceCommits,
+      projectId: projectsTable.id,
+      repoUrl: projectsTable.repoUrl,
+    })
+    .from(l3NodesTable)
+    .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
+    .innerJoin(projectsTable, eq(l2NodesTable.projectId, projectsTable.id))
+    .where(
+      and(
+        eq(l3NodesTable.validityStatus, "pending"),
+        lt(l3NodesTable.createdAt, twentyFourHoursAgo)
+      )
+    );
+
+  if (pendingL3Nodes.length > 0) {
+    logger.info({ count: pendingL3Nodes.length }, "Found pending L3 nodes for merge gate fallback.");
+
+    const nodesByProject = new Map<number, typeof pendingL3Nodes>();
+    for (const node of pendingL3Nodes) {
+      const nodes = nodesByProject.get(node.projectId) || [];
+      nodes.push(node);
+      nodesByProject.set(node.projectId, nodes);
+    }
+
+    const validL3Ids: number[] = [];
+
+    for (const [projectId, nodes] of nodesByProject.entries()) {
+      const repoUrl = nodes[0].repoUrl;
+      const repo = parseGithubRepo(repoUrl);
+      if (!repo) continue;
+
+      const token = process.env.GITHUB_TOKEN;
+
+      for (const node of nodes) {
+        let isMerged = false;
+        const commits = Array.isArray(node.sourceCommits) ? (node.sourceCommits as string[]) : [];
+        if (commits.length === 0) continue;
+
+        for (const commit of commits) {
+          try {
+            const merged = await checkCommitInDefaultBranch(repo.owner, repo.repo, commit, token);
+            if (merged) {
+              isMerged = true;
+              break;
+            }
+          } catch (err) {
+            logger.error({ err, commit }, "Failed to check commit in default branch");
+          }
+        }
+
+        if (isMerged) {
+          validL3Ids.push(node.id);
+        }
+      }
+    }
+
+    if (validL3Ids.length > 0) {
+      await db
+        .update(l3NodesTable)
+        .set({ validityStatus: "valid" })
+        .where(inArray(l3NodesTable.id, validL3Ids));
+      logger.info({ count: validL3Ids.length }, "Promoted pending L3 nodes to valid status.");
+    }
+  }
+
   // Distillation Job
   const pendingCorrections = await db
     .select()

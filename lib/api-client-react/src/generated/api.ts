@@ -20,6 +20,8 @@ import type {
   AffiliateDocumentInput,
   Commit,
   CommitInput,
+  ConfirmBootstrap200,
+  ConfirmBootstrapBody,
   DashboardStats,
   Document,
   DocumentIngestInput,
@@ -864,6 +866,88 @@ export function useListProjectL2Nodes<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Confirms the AI-discovered L2 modules, saves glob path patterns, and switches the project out of bootstrap mode.
+ */
+export const getConfirmBootstrapUrl = (id: number) => {
+  return `/api/projects/${id}/l2-nodes/confirm-bootstrap`;
+};
+
+export const confirmBootstrap = async (
+  id: number,
+  confirmBootstrapBody: ConfirmBootstrapBody,
+  options?: RequestInit
+): Promise<ConfirmBootstrap200> => {
+  return customFetch<ConfirmBootstrap200>(getConfirmBootstrapUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(confirmBootstrapBody),
+  });
+};
+
+export const getConfirmBootstrapMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmBootstrap>>,
+    TError,
+    { id: number; data: BodyType<ConfirmBootstrapBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmBootstrap>>,
+  TError,
+  { id: number; data: BodyType<ConfirmBootstrapBody> },
+  TContext
+> => {
+  const mutationKey = ["confirmBootstrap"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmBootstrap>>,
+    { id: number; data: BodyType<ConfirmBootstrapBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return confirmBootstrap(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmBootstrapMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmBootstrap>>
+>;
+export type ConfirmBootstrapMutationBody = BodyType<ConfirmBootstrapBody>;
+export type ConfirmBootstrapMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Confirms the AI-discovered L2 modules, saves glob path patterns, and switches the project out of bootstrap mode.
+ */
+export const useConfirmBootstrap = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmBootstrap>>,
+    TError,
+    { id: number; data: BodyType<ConfirmBootstrapBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmBootstrap>>,
+  TError,
+  { id: number; data: BodyType<ConfirmBootstrapBody> },
+  TContext
+> => {
+  return useMutation(getConfirmBootstrapMutationOptions(options));
+};
 
 /**
  * @summary Ingest commits from a Git repository (GitHub API)

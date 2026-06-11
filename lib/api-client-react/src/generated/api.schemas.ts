@@ -127,6 +127,8 @@ export interface L2Node {
   aiGenerated: boolean;
   needsReview?: boolean;
   isSystem?: boolean;
+  isBootstrapConfirmed?: boolean;
+  pathPatterns?: string[];
   createdAt: string;
 }
 
@@ -1030,6 +1032,21 @@ export interface SyncResponse {
 export interface AffiliateDocumentInput {
   projectId: number;
 }
+
+export type ConfirmBootstrapBodyApprovedModulesItem = {
+  id: number;
+  pathPatterns: string[];
+};
+
+export type ConfirmBootstrapBody = {
+  approvedModules: ConfirmBootstrapBodyApprovedModulesItem[];
+  rejectedModuleIds: number[];
+};
+
+export type ConfirmBootstrap200 = {
+  success: boolean;
+  message: string;
+};
 
 export type McpSearchKnowledgeParams = {
   query: string;

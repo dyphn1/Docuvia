@@ -7,13 +7,19 @@ import {
   l1TagsTable,
   activityLogTable,
   nodeLinksTable,
+  commitL2LinksTable,
+  projectsTable,
 } from "@workspace/db";
-import { eq, count, sql } from "drizzle-orm";
+import { eq, count, sql, and, inArray } from "drizzle-orm";
+import fs from "fs/promises";
+import path from "path";
+import yaml from "js-yaml";
 import {
   CreateL2NodeBody,
   UpdateL2NodeParams,
   UpdateL2NodeBody,
   DeleteL2NodeParams,
+  ConfirmBootstrapBody,
 } from "@workspace/api-zod";
 import { z } from "zod";
 
@@ -23,6 +29,131 @@ const NodeLinkInputSchema = z.object({
 });
 
 const router = Router();
+
+router.post("/projects/:id/l2-nodes/confirm-bootstrap", async (req, res) => {
+  try {
+    const projectId = Number(req.params.id);
+    const body = ConfirmBootstrapBody.parse(req.body);
+
+    const [project] = await db
+      .select({ repoUrl: projectsTable.repoUrl })
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId));
+
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+
+    // 1. Update approved modules
+    for (const module of body.approvedModules) {
+      await db
+        .update(l2NodesTable)
+        .set({
+          isBootstrapConfirmed: true,
+          pathPatterns: module.pathPatterns,
+        })
+        .where(and(eq(l2NodesTable.id, module.id), eq(l2NodesTable.projectId, projectId)));
+    }
+
+    // 2. Handle rejected modules
+    if (body.rejectedModuleIds.length > 0) {
+      // Find or create sys-uncategorized node
+      let [sysNode] = await db
+        .select()
+        .from(l2NodesTable)
+        .where(
+          and(
+            eq(l2NodesTable.projectId, projectId),
+            eq(l2NodesTable.type, "sys-uncategorized")
+          )
+        );
+
+      if (!sysNode) {
+        [sysNode] = await db
+          .insert(l2NodesTable)
+          .values({
+            projectId,
+            name: "Uncategorized",
+            type: "sys-uncategorized",
+            isSystem: true,
+            aiGenerated: false,
+            description: "System node for uncategorized commits",
+            isBootstrapConfirmed: true,
+          })
+          .returning();
+      }
+
+      // Reassign commits
+      await db
+        .update(commitL2LinksTable)
+        .set({ l2NodeId: sysNode.id })
+        .where(inArray(commitL2LinksTable.l2NodeId, body.rejectedModuleIds));
+
+      // Delete rejected L2 nodes
+      await db
+        .delete(l2NodesTable)
+        .where(inArray(l2NodesTable.id, body.rejectedModuleIds));
+    }
+
+    // 3. Implement Glob Specificity Algorithm and save config.yaml
+    const approvedNodes = await db
+      .select({ id: l2NodesTable.id, name: l2NodesTable.name, pathPatterns: l2NodesTable.pathPatterns })
+      .from(l2NodesTable)
+      .where(
+        and(
+          eq(l2NodesTable.projectId, projectId),
+          eq(l2NodesTable.isBootstrapConfirmed, true)
+        )
+      );
+
+    if (approvedNodes.length > 0) {
+      // Calculate depth
+      const getStaticDepth = (pattern: string): number => {
+        let depth = 0;
+        for (const part of pattern.split("/")) {
+          if (/[*?{}[\]]/.test(part)) break;
+          if (part) depth++;
+        }
+        return depth;
+      };
+
+      const getMaxDepth = (patterns: string[]): number => {
+        if (!patterns || patterns.length === 0) return 0;
+        return Math.max(...patterns.map(getStaticDepth));
+      };
+
+      const modulesToSave = approvedNodes.map((node) => ({
+        id: node.id,
+        name: node.name,
+        pathPatterns: (node.pathPatterns as string[]) || [],
+        _maxDepth: getMaxDepth((node.pathPatterns as string[]) || []),
+      }));
+
+      // Sort descending by depth
+      modulesToSave.sort((a, b) => b._maxDepth - a._maxDepth);
+
+      const yamlData = {
+        modules: modulesToSave.map(({ id, name, pathPatterns }) => ({
+          id,
+          name,
+          pathPatterns,
+        })),
+      };
+
+      const configDir = path.join(project.repoUrl, ".docuvia");
+      await fs.mkdir(configDir, { recursive: true });
+      await fs.writeFile(
+        path.join(configDir, "config.yaml"),
+        yaml.dump(yamlData, { indent: 2 })
+      );
+    }
+
+    return res.json({ success: true, message: "Bootstrap confirmed successfully" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.post("/l2-nodes", async (req, res) => {
   const body = CreateL2NodeBody.parse(req.body);

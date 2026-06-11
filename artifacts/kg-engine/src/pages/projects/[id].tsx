@@ -32,7 +32,9 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import type { L2Node, L3Node } from "@workspace/api-client-react";
+import { L2BootstrapReview } from "@/components/L2BootstrapReview";
 
 const L3_TYPE_ICON: Record<string, React.ReactNode> = {
   change: <GitCommit className="h-3 w-3" />,
@@ -258,6 +260,11 @@ export default function ProjectDetail() {
     query: { enabled: !!id, queryKey: getListCommitsQueryKey(id) },
   });
 
+  const { data: l2Nodes } = useListProjectL2Nodes(id, {
+    query: { enabled: !!id, queryKey: getListProjectL2NodesQueryKey(id) },
+  });
+  const unconfirmedCount = l2Nodes?.filter(n => n.aiGenerated && !n.isBootstrapConfirmed)?.length || 0;
+
   if (isLoadingProject) {
     return (
       <div className="p-6 space-y-6">
@@ -344,6 +351,18 @@ export default function ProjectDetail() {
             >
               <GitMerge className="h-4 w-4 mr-2" /> L2 Directory
             </TabsTrigger>
+            {unconfirmedCount > 0 && (
+              <TabsTrigger
+                value="bootstrap"
+                className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-600 relative"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" /> 
+                Bootstrap Review
+                <Badge className="ml-2 bg-orange-500 hover:bg-orange-600 text-[10px] h-4 min-w-4 p-0 px-1 flex items-center justify-center">
+                  {unconfirmedCount}
+                </Badge>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <div className="flex-1 mt-4 overflow-hidden">
@@ -522,6 +541,13 @@ export default function ProjectDetail() {
                 </CardContent>
               </Card>
             </TabsContent>
+            {unconfirmedCount > 0 && (
+              <TabsContent value="bootstrap" className="h-full m-0 p-0">
+                <div className="bg-card border border-border h-full flex flex-col rounded-lg">
+                  <L2BootstrapReview projectId={id} />
+                </div>
+              </TabsContent>
+            )}
           </div>
         </Tabs>
       </div>

@@ -10,7 +10,7 @@ import {
   notificationsTable,
   subscriptionsTable,
 } from "@workspace/db";
-import { eq, and, inArray, gte } from "drizzle-orm";
+import { eq, and, inArray, gte, sql } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { fetchPrCommits, parseGithubRepo } from "../lib/github-client.js";
 import { postPrComment } from "../lib/github-client.js";
@@ -266,6 +266,28 @@ router.post("/:projectId", async (req, res) => {
               eq(pullRequestsTable.githubPrNumber, prNumber)
             )
           );
+
+        // Fetch PR commits and update associated L3 nodes to 'valid'
+        try {
+          const prCommits = await fetchPrCommits(owner, repo, prNumber, token);
+          const prCommitHashes = prCommits.map((c) => c.sha);
+
+          if (prCommitHashes.length > 0) {
+            const conditions = prCommitHashes.map(
+              (h) => sql`${l3NodesTable.sourceCommits} @> ${JSON.stringify([h])}::jsonb`
+            );
+            const orCondition = sql`${sql.join(conditions, sql` OR `)}`;
+
+            const result = await db
+              .update(l3NodesTable)
+              .set({ validityStatus: "valid" })
+              .where(and(orCondition, eq(l3NodesTable.validityStatus, "pending")));
+              
+            logger.info({ projectId, prNumber }, "Updated L3 nodes validity status on PR merge");
+          }
+        } catch (err) {
+          logger.warn({ err, projectId, prNumber }, "Failed to update L3 nodes validity status on PR merge");
+        }
 
         // Get the PR record to know its creation time
         const [prRecord] = await db

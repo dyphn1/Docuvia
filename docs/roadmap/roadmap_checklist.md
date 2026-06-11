@@ -107,20 +107,20 @@
 ### 4.2 L2 Bootstrap — AI Discovery to Path Rules (ADR-010)
 - [x] 4.2.1  ⚠️  Progressive batch mode (commits in groups of 20)
 - [x] 4.2.2  ⚠️  AI self-correction across batches
-- [ ] 4.2.3  ❌  L2 module map confirmation UI
-- [ ] 4.2.4  ❌  Path pattern storage in .docuvia/config.yaml
-- [ ] 4.2.5  ❌  Deterministic commit-to-module assignment via glob matching
+- [x] 4.2.3  ✅  L2 module map confirmation UI
+- [x] 4.2.4  ✅  Path pattern storage in .docuvia/config.yaml
+- [x] 4.2.5  ✅  Deterministic commit-to-module assignment via glob matching
 - [ ] 4.2.6  ⚠️  commit_l2_links junction table (deprecate commits.l2NodeId)
 
 ### 4.3 Two-Phase Knowledge Validity (ADR-011)
 - [x] 4.3.1  ✅  Phase 1: Local Review quality gate (existing review_tasks)
-- [x] 4.3.2  ❌  Phase 2: Merge Gate — branch merge status check
+- [x] 4.3.2  ✅  Phase 2: Merge Gate — branch merge status check
 - [x] 4.3.3  ⚠️  L3 validity status enum: pending | valid | orphaned
 - [x] 4.3.4  ⚠️  MCP query default filter: status = valid only
 - [ ] 4.3.5  ⚠️  include_pending=true query parameter
 - [ ] 4.3.6  ⚠️  Schema: validityStatus column on l3_nodes and commits
 - [ ] 4.3.7  ⚠️  Schema: branchName column on commits
-- [ ] 4.3.8  ❌  Branch merge status tracking (GitHub webhook or polling)
+- [x] 4.3.8  ✅  Branch merge status tracking (GitHub webhook or polling)
 
 ### 4.4 Document Misc Pool (ADR-012)
 - [ ] 4.4.1  ⚠️  Nullable documents.projectId
@@ -341,18 +341,18 @@
 || 4.1.5 | 2026-06-10 | 0057_4.1.5.md | ✅ PASS |
 || 4.2.1 | 2026-06-10 | 0058_4.2.1.md | ⚠️ WARN |
 || 4.2.2 | 2026-06-10 | 0059_4.2.2.md | ⚠️ WARN |
-|| 4.2.3 | 2026-06-11 | 0060_4.2.3.md | ❌ FAIL |
-|| 4.2.4 | 2026-06-11 | 0062_4.2.4.md | ❌ FAIL |
-|| 4.2.5 | 2026-06-11 | 0063_4.2.5.md | ❌ FAIL |
+|| 4.2.3 | 2026-06-12 | 0081_4.2.3.md | ✅ PASS |
+|| 4.2.4 | 2026-06-12 | 0082_4.2.4.md | ✅ PASS |
+|| 4.2.5 | 2026-06-12 | 0083_4.2.5.md | ✅ PASS |
 ||| 4.2.6 | 2026-06-11 | 0064_4.2.6.md | ⚠️ WARN |
 ||| 4.3.1 | 2026-06-11 | 0065_4.3.1.md | ✅ PASS |
-||| 4.3.2 | 2026-06-11 | 0066_4.3.2.md | ❌ FAIL |
+||| 4.3.2 | 2026-06-12 | 0084_4.3.2.md | ✅ PASS |
 ||| 4.3.3 | 2026-06-11 | 0067_4.3.3.md | ⚠️ WARN |
 || 4.3.4 | 2026-06-11 | 0068_4.3.4.md | ⚠️ WARN |
 || 4.3.5 | 2026-06-11 | 0069_4.3.5.md | ⚠️ WARN |
 || 4.3.6 | 2026-06-11 | 0070_4.3.6.md | ⚠️ WARN |
 || 4.3.7 | — | — | 🔵 Pending |
-|| 4.3.8 | — | — | 🔵 Pending |
+|| 4.3.8 | 2026-06-12 | 0085_4.3.8.md | ✅ PASS |
 || 4.4.1 | 2026-06-11 | 0071_4.4.1.md | ✅ PASS |
 || 4.4.2 | 2026-06-11 | 0072_4.4.2.md | ✅ PASS |
 || 4.4.3 | 2026-06-11 | 0073_4.4.3.md | ✅ PASS |
@@ -456,11 +456,11 @@
 | Milestone 1: Knowledge Graph Foundation & API Server | 18 | 4 | 0 | 0 | 0 |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 0 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 8 | 0 | 3 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 5 | 0 | 5 | 0 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 10 | 0 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 7 | 0 | 1 | 0 |
 | Milestone 6: API & Protocol Layer | 16 | 15 | 0 | 0 | 0 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 8: VS Code Extension UI | 18 | 17 | 0 | 0 | 0 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 12 | 0 | 0 | 0 |
 | Milestone 10: Deployment & Operations | 11 | 3 | 0 | 4 | 0 |
-| **TOTAL** | **152** | **90** | **0** | **13** | **90** |
+| **TOTAL** | **152** | **95** | **0** | **8** | **89** |

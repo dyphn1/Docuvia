@@ -21,6 +21,7 @@ import { eq, and, sql, isNull, ne, isNotNull, inArray, or, lt } from "drizzle-or
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { notifyExternalIntegrations } from "../lib/slack-teams-client.js";
+import { LocalGitClient } from "../lib/git-client.js";
 import { logger } from "../lib/logger.js";
 import { z } from "zod";
 import { DEFAULT_PROMPTS } from "./templates.js";
@@ -727,8 +728,97 @@ router.post("/projects/:id/generate", async (req, res) => {
     if (allBootstrapConfirmed) {
       logger.info(
         { projectId },
-        "[generate] All L2 nodes bootstrap-confirmed — path-rule mode; L2 assignment deferred to sync pipeline"
+        "[generate] All L2 nodes bootstrap-confirmed — path-rule mode; assigning L2 based on pathPatterns"
       );
+
+      const gitClient = new LocalGitClient(project.repoUrl);
+      await gitClient.clone();
+
+      try {
+        const getStaticDepth = (pattern: string): number => {
+          let depth = 0;
+          for (const part of pattern.split("/")) {
+            if (/[*?{}[\]]/.test(part)) break;
+            if (part) depth++;
+          }
+          return depth;
+        };
+
+        const getMaxDepth = (patterns: string[]): number => {
+          if (!patterns || patterns.length === 0) return 0;
+          return Math.max(...patterns.map(getStaticDepth));
+        };
+
+        const sortedL2 = [...existingL2].sort(
+          (a, b) => getMaxDepth((b.pathPatterns as string[]) || []) - getMaxDepth((a.pathPatterns as string[]) || [])
+        );
+
+        const globToRegExp = (glob: string): RegExp => {
+          const escaped = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+          const regexStr = escaped.replace(/\\\*\\\*/g, ".*").replace(/\\\*/g, "[^/]*").replace(/\\\?/g, ".");
+          return new RegExp(`^${regexStr}$`);
+        };
+
+        let sysNode = sortedL2.find((n) => n.type === "sys-uncategorized");
+        if (!sysNode) {
+          [sysNode] = await db
+            .insert(l2NodesTable)
+            .values({
+              projectId,
+              name: "Uncategorized",
+              type: "sys-uncategorized",
+              isSystem: true,
+              aiGenerated: false,
+              description: "System node for uncategorized commits",
+              isBootstrapConfirmed: true,
+            })
+            .returning();
+          existingL2.push(sysNode);
+        }
+
+        for (const commit of validCommits) {
+          const files = await gitClient.getModifiedFiles(commit.hash);
+          let assignedL2NodeId: number | null = null;
+          let diffPathsForLink: string[] = [];
+
+          for (const file of files) {
+            let matched = false;
+            for (const node of sortedL2) {
+              const patterns = (node.pathPatterns as string[]) || [];
+              for (const pattern of patterns) {
+                if (globToRegExp(pattern).test(file)) {
+                  assignedL2NodeId = node.id;
+                  diffPathsForLink.push(file);
+                  matched = true;
+                  break;
+                }
+              }
+              if (matched) break;
+            }
+            if (matched) break;
+          }
+
+          const targetNodeId = assignedL2NodeId ?? sysNode.id;
+          
+          await db
+            .update(commitsTable)
+            .set({ l2NodeId: targetNodeId })
+            .where(eq(commitsTable.id, commit.id))
+            .catch(() => {});
+          
+          await db
+            .insert(commitL2LinksTable)
+            .values({
+              commitId: commit.id,
+              l2NodeId: targetNodeId,
+              diffPaths: diffPathsForLink.length > 0 ? diffPathsForLink : null,
+            })
+            .onConflictDoNothing()
+            .catch(() => {});
+        }
+      } finally {
+        await gitClient.cleanup();
+      }
     } else {
       // Bootstrap mode: batch 20 commits per LLM call, pass previous L2 list for self-correction
       const BATCH_SIZE = 20;

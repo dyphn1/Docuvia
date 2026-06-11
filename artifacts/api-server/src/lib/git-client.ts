@@ -14,6 +14,7 @@ export interface GitCommitData {
   author: string;
   date: string;
   diff?: string;
+  branchName?: string;
 }
 
 export class LocalGitClient {
@@ -24,10 +25,10 @@ export class LocalGitClient {
   async clone(branch = "main"): Promise<void> {
     this.repoDir = path.join(os.tmpdir(), `docuvia-git-${crypto.randomUUID()}`);
     logger.info({ repoDir: this.repoDir, repoUrl: this.repoUrl }, "Cloning repository");
-    await execFileAsync("git", ["clone", "--depth=500", "--branch", branch, "--single-branch", this.repoUrl, this.repoDir]);
+    await execFileAsync("git", ["clone", "--depth=500", "--branch", branch, this.repoUrl, this.repoDir]);
   }
 
-  async getCommits(limit = 100, since?: Date): Promise<GitCommitData[]> {
+  async getCommits(limit = 100, since?: Date, revisionRange?: string): Promise<GitCommitData[]> {
     if (!this.repoDir) throw new Error("Repository not cloned yet");
 
     const args = [
@@ -35,6 +36,10 @@ export class LocalGitClient {
       `--max-count=${limit}`,
       "--format=COMMIT_SEP%n%H%n%s%n%an%n%aI%n%b",
     ];
+
+    if (revisionRange) {
+      args.push(revisionRange);
+    }
 
     if (since) {
       args.push(`--since=${since.toISOString()}`);
@@ -62,6 +67,39 @@ export class LocalGitClient {
     }
 
     return commits;
+  }
+
+  async getProjectedCommits(limit = 100, baseRef = "origin/main"): Promise<GitCommitData[]> {
+    if (!this.repoDir) throw new Error("Repository not cloned yet");
+
+    let revisionRange: string | undefined;
+    try {
+      const { stdout } = await execFileAsync("git", ["merge-base", "HEAD", baseRef], { cwd: this.repoDir });
+      const mergeBase = stdout.trim();
+      if (mergeBase) {
+        revisionRange = `${mergeBase}..HEAD`;
+      }
+    } catch (e) {
+      logger.warn(
+        { baseRef, err: e },
+        "Failed to find git merge-base; falling back to full repository analysis"
+      );
+    }
+
+    return this.getCommits(limit, undefined, revisionRange);
+  }
+
+  async getCurrentBranchName(): Promise<string | undefined> {
+    if (!this.repoDir) throw new Error("Repository not cloned yet");
+
+    try {
+      const { stdout } = await execFileAsync("git", ["rev-parse", "--abbrev-ref", "HEAD"], { cwd: this.repoDir });
+      const branchName = stdout.trim();
+      return branchName && branchName !== "HEAD" ? branchName : undefined;
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to read current git branch name");
+      return undefined;
+    }
   }
 
   async getDiff(sha: string): Promise<string> {

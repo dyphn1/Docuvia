@@ -1,11 +1,11 @@
-import { exec as _exec } from 'child_process';
+import { execFile as _execFile, spawn } from 'child_process';
 import * as path from 'path';
 import { promisify } from 'util';
 import * as vscode from 'vscode';
 import { parseDecision, parseManifest, parseSingleModule, parseTags, parseModules, parseRouter } from './parser.js';
 import { GlobalConfig, KnowledgeSnapshot, L1Tag, L2Module, L3Decision, L3RouterEntry, ManifestModule } from './types.js';
 
-const exec = promisify(_exec);
+const execFile = promisify(_execFile);
 
 const DOCUVIA_DIR = '.docuvia';
 const MANIFEST_FILE = 'manifest.yaml';
@@ -287,62 +287,139 @@ export class KnowledgeStore {
     workspaceRoot: string,
     projectId: number
   ): Promise<{ projectName: string; tags: L1Tag[]; modules: L2Module[]; routerIndex: L3RouterEntry[]; decisions: Map<string, L3Decision> }> {
-    const run = (cmd: string) => exec(cmd, { cwd: workspaceRoot });
+    const treePath = `${GIT_KNOWLEDGE_BRANCH}:${projectId}`;
+    const filesRaw = await this.runGit(['ls-tree', '-r', '--name-only', treePath], workspaceRoot).catch(() => '');
+    const files = filesRaw
+      .split('\n')
+      .map(f => f.trim())
+      .filter(Boolean);
+    const blobContents = await this.readGitBlobs(workspaceRoot, projectId, files);
 
-    // Read l1_tags.yaml
-    const tagsYaml = await run(
-      `git show "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l1_tags.yaml"`
-    ).then(r => r.stdout).catch(() => '');
+    const tagsYaml = blobContents.get('l1_tags.yaml') ?? '';
     const tags = tagsYaml ? parseTags(tagsYaml, 'l1_tags.yaml') : [];
     const projectName =
       tagsYaml.match(/^project_name:\s*"?([^"\n]+)"?/m)?.[1] ?? path.basename(workspaceRoot);
 
-    // List and read l2_modules/{name}.yaml files
-    const modulesListRaw = await run(
-      `git ls-tree --name-only "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l2_modules"`
-    ).then(r => r.stdout).catch(() => '');
-    const moduleFiles = modulesListRaw.split('\n').filter(f => f.trim().endsWith('.yaml'));
-
     const modules: L2Module[] = [];
+    const moduleFiles = files.filter(f => f.startsWith('l2_modules/') && f.endsWith('.yaml'));
     for (const file of moduleFiles) {
-      const yaml = await run(
-        `git show "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l2_modules/${file}"`
-      ).then(r => r.stdout).catch(() => '');
+      const yaml = blobContents.get(file) ?? '';
       if (yaml) {
-        const mod = parseSingleModule(yaml, file);
+        const mod = parseSingleModule(yaml, path.basename(file));
         if (mod) modules.push(mod);
       }
     }
 
-    // List and read l3_decisions recursively
-    const decisionsListRaw = await run(
-      `git ls-tree -r --name-only "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l3_decisions"`
-    ).then(r => r.stdout).catch(() => '');
-    const decisionFiles = decisionsListRaw.split('\n').filter(f => f.trim().endsWith('.md'));
-
     const decisions = new Map<string, L3Decision>();
     const routerIndex: L3RouterEntry[] = [];
 
+    const decisionFiles = files.filter(f => f.startsWith('l3_decisions/') && f.endsWith('.md'));
     for (const file of decisionFiles) {
-      const md = await run(
-        `git show "${GIT_KNOWLEDGE_BRANCH}:${projectId}/l3_decisions/${file}"`
-      ).then(r => r.stdout).catch(() => '');
+      const md = blobContents.get(file) ?? '';
       if (md) {
-        const decision = parseDecision(md, file);
+        const relativeFile = file.replace(/^l3_decisions\//, '');
+        const decision = parseDecision(md, relativeFile);
         if (decision) {
           decisions.set(decision.id, decision);
           routerIndex.push({
             id: decision.id,
             l2_module_id: decision.l2_module_id,
-            slug: file.replace(/\.md$/, ''),
+            slug: relativeFile.replace(/\.md$/, ''),
             title: decision.title,
-            file_path: file,
+            file_path: relativeFile,
           });
         }
       }
     }
 
     return { projectName, tags, modules, routerIndex, decisions };
+  }
+
+  private async runGit(args: string[], workspaceRoot: string): Promise<string> {
+    const { stdout } = await execFile('git', args, {
+      cwd: workspaceRoot,
+      maxBuffer: 100 * 1024 * 1024,
+    });
+    return stdout;
+  }
+
+  private readGitBlobs(
+    workspaceRoot: string,
+    projectId: number,
+    files: string[]
+  ): Promise<Map<string, string>> {
+    const contents = new Map<string, string>();
+    const requested = files.filter(file =>
+      file === 'l1_tags.yaml' ||
+      (file.startsWith('l2_modules/') && file.endsWith('.yaml')) ||
+      (file.startsWith('l3_decisions/') && file.endsWith('.md'))
+    );
+
+    if (requested.length === 0) {
+      return Promise.resolve(contents);
+    }
+
+    return new Promise((resolve, reject) => {
+      const child = spawn('git', ['cat-file', '--batch'], {
+        cwd: workspaceRoot,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+
+      const stderrChunks: Buffer[] = [];
+      const stdoutChunks: Buffer[] = [];
+
+      child.stderr.on('data', chunk => {
+        stderrChunks.push(Buffer.from(chunk));
+      });
+
+      child.stdout.on('data', chunk => {
+        stdoutChunks.push(Buffer.from(chunk));
+      });
+
+      child.on('error', reject);
+      child.on('close', code => {
+        if (code !== 0) {
+          const stderr = Buffer.concat(stderrChunks).toString('utf8');
+          reject(new Error(`git cat-file --batch failed with code ${code}: ${stderr}`));
+          return;
+        }
+
+        try {
+          const output = Buffer.concat(stdoutChunks);
+          let offset = 0;
+          for (const file of requested) {
+            const newline = output.indexOf(0x0a, offset);
+            if (newline === -1) break;
+
+            const header = output.subarray(offset, newline).toString('utf8');
+            offset = newline + 1;
+
+            if (header.endsWith(' missing')) {
+              continue;
+            }
+
+            const [, type, sizeRaw] = header.match(/^[0-9a-f]+ (\w+) (\d+)$/) ?? [];
+            const size = Number(sizeRaw);
+            if (type !== 'blob' || !Number.isFinite(size)) {
+              throw new Error(`Unexpected git cat-file header: ${header}`);
+            }
+
+            const blob = output.subarray(offset, offset + size);
+            contents.set(file, blob.toString('utf8'));
+            offset += size + 1;
+          }
+
+          resolve(contents);
+        } catch (err) {
+          reject(err);
+        }
+      });
+
+      for (const file of requested) {
+        child.stdin.write(`${GIT_KNOWLEDGE_BRANCH}:${projectId}/${file}\n`);
+      }
+      child.stdin.end();
+    });
   }
 
   /**

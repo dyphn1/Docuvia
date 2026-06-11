@@ -41,7 +41,7 @@
 
 ### 1.4 Server-Side Metabolism & Mutex
 - [ ] 1.4.1  ⚠️  Asynchronous metabolism mechanism (ADR-008)
-- [ ] 1.4.2  ❌  Mutex / serialization for concurrent generate requests
+- [x] 1.4.2  ✅  Mutex / serialization for concurrent generate requests
 
 ---
 
@@ -87,11 +87,11 @@
 - [ ] 3.4.1  ❌  Orphan branch writer (orphan-branch-writer.ts)
 - [ ] 3.4.2  ❌  Bidirectional sync between Client and Server
 - [ ] 3.4.3  ❌  docuvia sync CLI (not yet implemented)
-- [ ] 3.4.4  ❌  VS Code KnowledgeStore rewrite to read from orphan branch ref
+- [x] 3.4.4  ✅  VS Code KnowledgeStore rewrite to read from orphan branch ref
 
 ### 3.5 Diff Projection & Ancestor Anchoring
-- [ ] 3.5.1  ❌  git merge-base lookup for un-indexed commits
-- [ ] 3.5.2  ❌  Temporal delta projection
+- [x] 3.5.1  ✅  git merge-base lookup for un-indexed commits
+- [x] 3.5.2  ✅  Temporal delta projection
 
 ---
 
@@ -312,7 +312,7 @@
 || 1.3.5 | 2026-06-08 | 0017_1.3.5.md | ⚠️ WARN |
 || 1.3.6 | 2026-06-08 | 0019_1.3.6.md | ⚠️ WARN |
 || 1.4.1 | 2026-06-08 | 0020_1.4.1.md | ⚠️ WARN |
-|| 1.4.2 | 2026-06-08 | 0021_1.4.2.md | ❌ FAIL |
+|| 1.4.2 | 2026-06-12 | 0077_1.4.2.md | ✅ PASS |
 || 2.1.1 | 2026-06-08 | 0022_2.1.1.md | ✅ PASS |
 || 2.1.2 | 2026-06-10 | 0024_2.1.2.md | ✅ PASS |
 || 2.2.1 | 2026-06-10 | 0046_2.2.1.md | ⚠️ WARN |
@@ -331,9 +331,9 @@
 || 3.4.1 | 2026-06-09 | 0042_3.4.1.md | ⚠️ WARN |
 || 3.4.2 | 2026-06-09 | 0043_3.4.2.md | ⚠️ WARN |
 || 3.4.3 | 2026-06-09 | 0044_3.4.3.md | ⚠️ WARN |
-|| 3.4.4 | 2026-06-10 | 0053_3.4.4.md | ❌ FAIL |
-|| 3.5.1 | 2026-06-10 | 0049_3.5.1.md | ❌ FAIL |
-|| 3.5.2 | 2026-06-10 | 0051_3.5.2.md | ❌ FAIL |
+|| 3.4.4 | 2026-06-12 | 0078_3.4.4.md | ✅ PASS |
+|| 3.5.1 | 2026-06-12 | 0079_3.5.1.md | ✅ PASS |
+|| 3.5.2 | 2026-06-12 | 0080_3.5.2.md | ✅ PASS |
 || 4.1.1 | 2026-06-10 | 0052_4.1.1.md | ✅ PASS |
 || 4.1.2 | 2026-06-10 | 0054_4.1.2.md | ✅ PASS |
 || 4.1.3 | 2026-06-11 | manually_verified.md | ✅ PASS |
@@ -453,9 +453,9 @@
 
 | Category | Total | Done | WIP | Todo | Pending Verification |
 |----------|-------|------|-----|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 3 | 0 | 1 | 0 |
+| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 4 | 0 | 0 | 0 |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 0 | 0 | 0 |
-| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 5 | 0 | 6 | 0 |
+| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 8 | 0 | 3 | 0 |
 | Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 5 | 0 | 5 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 7 | 0 | 1 | 0 |
 | Milestone 6: API & Protocol Layer | 16 | 15 | 0 | 0 | 0 |
@@ -463,4 +463,4 @@
 | Milestone 8: VS Code Extension UI | 18 | 17 | 0 | 0 | 0 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 12 | 0 | 0 | 0 |
 | Milestone 10: Deployment & Operations | 11 | 3 | 0 | 4 | 0 |
-| **TOTAL** | **152** | **86** | **0** | **17** | **90** |
+| **TOTAL** | **152** | **90** | **0** | **13** | **90** |

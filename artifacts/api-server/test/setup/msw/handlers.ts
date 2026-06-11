@@ -1,7 +1,9 @@
 import { HttpResponse, http } from "msw";
 import githubCommits from "./fixtures/github-commits.json";
+import { openaiHandlers } from "./handlers/openai";
 
 export const handlers = [
+  ...openaiHandlers,
   http.get("https://api.github.com/repos/:owner/:repo/commits", () => {
     return HttpResponse.json(githubCommits);
   }),
@@ -18,13 +20,6 @@ export const handlers = [
   }),
   http.post("https://api.github.com/repos/:owner/:repo/issues/:issueNumber/comments", () => {
     return HttpResponse.json({ id: 1, body: "Mock comment" }, { status: 201 });
-  }),
-  http.post("http://127.0.0.1:65535/v1/chat/completions", () => {
-    return HttpResponse.json({
-      id: "chatcmpl-test",
-      object: "chat.completion",
-      choices: [{ index: 0, message: { role: "assistant", content: "{}" }, finish_reason: "stop" }],
-    });
   }),
   http.post("http://127.0.0.1:65535/v1/embeddings", async () => {
     return HttpResponse.json({

@@ -431,8 +431,8 @@
 || 9.3.5 | — | — | 🔵 Pending |
 || 9.4.1 | — | — | 🔵 Pending |
 || 9.4.2 | — | — | 🔵 Pending |
-|| 9.4.3 | — | — | 🔵 Pending |
-|| 9.4.4 | — | — | 🔵 Pending |
+|| 9.4.3 | 2026-06-12 | 0086_9.4.3.md | ✅ PASS |
+|| 9.4.4 | 2026-06-12 | 0087_9.4.4.md | ✅ PASS |
 || 9.4.5 | — | — | 🔵 Pending |
 || 9.4.6 | — | — | 🔵 Pending |
 || 10.1.1 | — | — | 🔵 Pending |
@@ -463,4 +463,4 @@
 | Milestone 8: VS Code Extension UI | 18 | 17 | 0 | 0 | 0 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 12 | 0 | 0 | 0 |
 | Milestone 10: Deployment & Operations | 11 | 3 | 0 | 4 | 0 |
-| **TOTAL** | **152** | **95** | **0** | **8** | **89** |
+| **TOTAL** | **152** | **95** | **0** | **8** | **87** |

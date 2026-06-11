@@ -106,7 +106,7 @@ export const CommitFactory = {
     const id = nextSequence();
     return {
       projectId,
-      sha: `sha${id}1234567890abcdef1234567890abcdef1234`,
+      hash: `sha${id}1234567890abcdef1234567890abcdef1234`,
       message: `Generated commit ${id}`,
       author: `author${id}@example.com`,
       date: new Date(),

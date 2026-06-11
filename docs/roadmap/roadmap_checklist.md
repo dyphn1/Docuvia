@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-> Last Updated: 2026-06-07
+> Last Updated: 2026-06-11
 
 ## Legend
 
@@ -107,16 +107,16 @@
 ### 4.2 L2 Bootstrap — AI Discovery to Path Rules (ADR-010)
 - [x] 4.2.1  ⚠️  Progressive batch mode (commits in groups of 20)
 - [x] 4.2.2  ⚠️  AI self-correction across batches
-- [ ] 4.2.3  ⚠️  L2 module map confirmation UI
-- [ ] 4.2.4  ⚠️  Path pattern storage in .docuvia/config.yaml
-- [ ] 4.2.5  ⚠️  Deterministic commit-to-module assignment via glob matching
+- [ ] 4.2.3  ❌  L2 module map confirmation UI
+- [ ] 4.2.4  ❌  Path pattern storage in .docuvia/config.yaml
+- [ ] 4.2.5  ❌  Deterministic commit-to-module assignment via glob matching
 - [ ] 4.2.6  ⚠️  commit_l2_links junction table (deprecate commits.l2NodeId)
 
 ### 4.3 Two-Phase Knowledge Validity (ADR-011)
-- [ ] 4.3.1  ⚠️  Phase 1: Local Review quality gate (existing review_tasks)
-- [ ] 4.3.2  ❌  Phase 2: Merge Gate — branch merge status check
-- [ ] 4.3.3  ⚠️  L3 validity status enum: pending | valid | orphaned
-- [ ] 4.3.4  ⚠️  MCP query default filter: status = valid only
+- [ ] 4.3.1  ✅  Phase 1: Local Review quality gate (existing review_tasks)
+- [x] 4.3.2  ❌  Phase 2: Merge Gate — branch merge status check
+- [x] 4.3.3  ⚠️  L3 validity status enum: pending | valid | orphaned
+- [x] 4.3.4  ⚠️  MCP query default filter: status = valid only
 - [ ] 4.3.5  ⚠️  include_pending=true query parameter
 - [ ] 4.3.6  ⚠️  Schema: validityStatus column on l3_nodes and commits
 - [ ] 4.3.7  ⚠️  Schema: branchName column on commits
@@ -341,16 +341,16 @@
 || 4.1.5 | 2026-06-10 | 0057_4.1.5.md | ✅ PASS |
 || 4.2.1 | 2026-06-10 | 0058_4.2.1.md | ⚠️ WARN |
 || 4.2.2 | 2026-06-10 | 0059_4.2.2.md | ⚠️ WARN |
-|| 4.2.3 | — | — | 🔵 Pending |
-|| 4.2.4 | — | — | 🔵 Pending |
-|| 4.2.5 | — | — | 🔵 Pending |
-|| 4.2.6 | — | — | 🔵 Pending |
-|| 4.3.1 | — | — | 🔵 Pending |
-|| 4.3.2 | — | — | 🔵 Pending |
-|| 4.3.3 | — | — | 🔵 Pending |
-|| 4.3.4 | — | — | 🔵 Pending |
-|| 4.3.5 | — | — | 🔵 Pending |
-|| 4.3.6 | — | — | 🔵 Pending |
+|| 4.2.3 | 2026-06-11 | 0060_4.2.3.md | ❌ FAIL |
+|| 4.2.4 | 2026-06-11 | 0062_4.2.4.md | ❌ FAIL |
+|| 4.2.5 | 2026-06-11 | 0063_4.2.5.md | ❌ FAIL |
+||| 4.2.6 | 2026-06-11 | 0064_4.2.6.md | ⚠️ WARN |
+||| 4.3.1 | 2026-06-11 | 0065_4.3.1.md | ✅ PASS |
+||| 4.3.2 | 2026-06-11 | 0066_4.3.2.md | ❌ FAIL |
+||| 4.3.3 | 2026-06-11 | 0067_4.3.3.md | ⚠️ WARN |
+|| 4.3.4 | 2026-06-11 | 0068_4.3.4.md | ⚠️ WARN |
+|| 4.3.5 | 2026-06-11 | 0069_4.3.5.md | ⚠️ WARN |
+|| 4.3.6 | 2026-06-11 | 0070_4.3.6.md | ⚠️ WARN |
 || 4.3.7 | — | — | 🔵 Pending |
 || 4.3.8 | — | — | 🔵 Pending |
 || 4.4.1 | — | — | 🔵 Pending |

@@ -435,256 +435,36 @@ async function initProject(_context: vscode.ExtensionContext, store: KnowledgeSt
       void vscode.window.showInformationMessage('Docuvia: All workspace folders are already initialized.');
       return;
     }
-    
-    const picks = uninitialized.map(f => ({ label: f.name, description: f.uri.fsPath, fsPath: f.uri.fsPath }));
-    const picked = await vscode.window.showQuickPick(picks, {
-      placeHolder: 'Select a workspace folder to initialize Docuvia in',
-    });
-    
-    if (!picked) return;
-    targetRoot = picked.fsPath;
+    const picks = uninitialized.map(f => ({ label: f.name, description: f.uri.fsPath, root: f.uri.fsPath }));
+    const selected = await vscode.window.showQuickPick(picks, { placeHolder: 'Select workspace folder to initialize' });
+    if (!selected) return;
+    targetRoot = selected.root;
   }
 
-  if (!targetRoot) return;
-
-  // If the project is already initialized, prompt for force-overwrite
-  const isAlreadyInitialized = store.snapshots.has(targetRoot);
-  if (isAlreadyInitialized) {
-    const name = path.basename(targetRoot);
-    const choice = await vscode.window.showWarningMessage(
-      `Docuvia: "${name}" is already initialized. Overwrite existing config files? This action cannot be undone.`,
-      'Overwrite',
-      'Cancel'
-    );
-    if (choice !== 'Overwrite') return;
-  }
-
-  // BUG G-1 fix: validate that project name is not empty
-  const projectName = await vscode.window.showInputBox({
-    prompt: 'Enter the name of your project',
-    placeHolder: path.basename(targetRoot),
-    value: path.basename(targetRoot),
-    validateInput: (v) => v.trim().length === 0 ? 'Project name cannot be empty' : null,
-  });
-
-  if (projectName === undefined || projectName.trim().length === 0) {
-    return; // User cancelled or submitted empty
-  }
-
-  const docuviaUri = vscode.Uri.file(path.join(targetRoot, '.docuvia'));
-  const decisionsUri = vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l3_decisions'));
-
-  // Create folder structure
-  await vscode.workspace.fs.createDirectory(docuviaUri);
-  await vscode.workspace.fs.createDirectory(decisionsUri);
-
-  // Write skeleton YAML files (overwrite when re-initializing, skip when new)
-  const writeFile = isAlreadyInitialized
-    ? (uri: vscode.Uri, content: string) => vscode.workspace.fs.writeFile(uri, Buffer.from(content, 'utf-8'))
-    : writeIfAbsent;
-
-  await writeFile(
-    vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l1_tags.yaml')),
-    `# L1 Tags — top-level knowledge categories\n# project_name: ${projectName}\nproject_name: "${projectName}"\ntags:\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   description: <optional>\n`
-  );
-
-  await writeFile(
-    vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l2_modules.yaml')),
-    `# L2 Modules — functional subsystems, linked to an L1 tag\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   l1_tag_id: <L1 tag id>\n#   source_paths: []\n`
-  );
-
-  await writeFile(
-    vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l3_router.yaml')),
-    `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`
-  );
-
-  // Trigger reload to update state and hide welcome view
-  await store.load();
-
-  void vscode.window.showInformationMessage(
-    `Docuvia: Project "${projectName}" initialized. Populate the YAML files to build your knowledge graph.`
-  );
-}
-
-// ─── Add Decision ─────────────────────────────────────────────────────────────
-
-async function addDecision(
-  _context: vscode.ExtensionContext,
-  store: KnowledgeStore,
-  prefillBody?: string
-): Promise<void> {
-  const folders = vscode.workspace.workspaceFolders || [];
-  if (folders.length === 0) {
-    void vscode.window.showErrorMessage('Docuvia: No workspace folder is open.');
-    return;
-  }
-
-  let targetRoot: string | undefined;
-
-  // Prefer the workspace of the active editor
-  const editor = vscode.window.activeTextEditor;
-  if (editor) {
-    const folder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
-    if (folder && store.snapshots.has(folder.uri.fsPath)) {
-      targetRoot = folder.uri.fsPath;
-    }
-  }
-
-  // If we couldn't resolve from editor, and there's only 1 initialized folder, use it
-  if (!targetRoot) {
-    const initialized = folders.filter(f => store.snapshots.has(f.uri.fsPath));
-    if (initialized.length === 1) {
-      targetRoot = initialized[0].uri.fsPath;
-    } else if (initialized.length > 1) {
-      const picks = initialized.map(f => ({ label: f.name, description: f.uri.fsPath, fsPath: f.uri.fsPath }));
-      const picked = await vscode.window.showQuickPick(picks, {
-        placeHolder: 'Select a project to add the decision to',
-      });
-      if (picked) {
-        targetRoot = picked.fsPath;
-      }
-    } else {
-      void vscode.window.showErrorMessage('Docuvia: No initialized project found. Please run Init Project first.');
-      return;
-    }
-  }
-
-  if (!targetRoot) return;
-  const snapshot = store.snapshots.get(targetRoot);
-  if (!snapshot) return;
-
-  const { v4: uuidv4 } = await import('uuid');
-
-  const title = await vscode.window.showInputBox({
-    prompt: 'Decision title',
-    validateInput: (v) => v.trim().length === 0 ? 'Title cannot be empty' : null,
-  });
-  if (!title) return;
-
-  const slug = title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-  const id = uuidv4();
-  const date = new Date().toISOString().slice(0, 10);
-
-  const modules = snapshot.modules ?? [];
-  const moduleItems: (vscode.QuickPickItem & { id: string })[] = modules.map(m => ({ label: m.name, description: m.slug, id: m.id }));
-  // BUG C-2 fix: use empty string "" sentinel instead of "unassigned"
-  // Phase 2: use sys-uncategorized
-  moduleItems.push({ label: '$(add) Create new module later...', id: 'sys-uncategorized', description: 'Assign to a module later' });
-
-  const picked = await vscode.window.showQuickPick(moduleItems, { placeHolder: 'Select L2 module (or leave unassigned)' });
-  if (!picked) return;
-
-  const frontmatter = [
-    '---',
-    `id: "${id}"`,
-    `l2_module_id: "${picked.id}"`,
-    `title: "${title}"`,
-    `date: "${date}"`,
-    `status: "proposed"`,
-    '---',
-  ].join('\n');
-
-  const bodySection = prefillBody
-    ? `## Context\n\n${prefillBody}\n\n## Decision\n\n<!-- What was decided? -->\n\n## Consequences\n\n<!-- What are the trade-offs? -->\n`
-    : `## Context\n\n<!-- Why is this decision needed? -->\n\n## Decision\n\n<!-- What was decided? -->\n\n## Consequences\n\n<!-- What are the trade-offs? -->\n`;
-
-  const template = `${frontmatter}\n\n${bodySection}`;
-
-  // BUG C-3 fix: guard against slug collision by appending a numeric suffix
-  let finalSlug = slug;
-  let attempt = 0;
-  while (true) {
-    const candidatePath = path.join(targetRoot, '.docuvia', 'l3_decisions', `${finalSlug}.md`);
+  if (targetRoot) {
+    const docuviaDir = path.join(targetRoot, '.docuvia');
     try {
-      await vscode.workspace.fs.stat(vscode.Uri.file(candidatePath));
-      // File exists — try next suffix
-      attempt++;
-      finalSlug = `${slug}-${attempt}`;
-    } catch {
-      // File does not exist — safe to write
-      break;
-    }
-  }
+      try {
+        await fs.promises.stat(docuviaDir);
+        const overwrite = await vscode.window.showWarningMessage(
+          "A .docuvia directory already exists in this workspace. Overwrite configuration?",
+          "Yes", "No"
+        );
+        if (overwrite !== "Yes") return;
+      } catch {
+        await fs.promises.mkdir(docuviaDir, { recursive: true });
+      }
 
-  const filePath = path.join(targetRoot, '.docuvia', 'l3_decisions', `${finalSlug}.md`);
-  const fileUri = vscode.Uri.file(filePath);
-  await vscode.workspace.fs.writeFile(fileUri, Buffer.from(template, 'utf-8'));
+      await fs.promises.writeFile(path.join(docuviaDir, "manifest.yaml"), `name: ${path.basename(targetRoot)}\nversion: 1.0.0\n`);
+      await fs.promises.writeFile(path.join(docuviaDir, "config.yaml"), `similarity_threshold: 0.85\nchunk_size: 1000\n`);
+      await fs.promises.writeFile(path.join(docuviaDir, ".snapshot-ref"), "docuvia-knowledge\n");
 
-  // BUG C-1 fix: update l3_router.yaml immediately after writing the markdown file
-  const routerUri = vscode.Uri.file(path.join(targetRoot, '.docuvia', 'l3_router.yaml'));
-  let existingRouter: unknown[] = [];
-  try {
-    const { parse: parseYaml, stringify: stringifyYaml } = await import('yaml');
-    const routerBytes = await vscode.workspace.fs.readFile(routerUri);
-    const parsed = parseYaml(Buffer.from(routerBytes).toString('utf-8'));
-    if (Array.isArray(parsed)) existingRouter = parsed;
-    existingRouter.push({ id, l2_module_id: picked.id, slug: finalSlug, title, file_path: `l3_decisions/${finalSlug}.md` });
-    await vscode.workspace.fs.writeFile(routerUri, Buffer.from(stringifyYaml(existingRouter), 'utf-8'));
-  } catch {
-    // router file absent or unreadable — store.load() will still pick up the decision via full directory scan
-  }
-
-  // Ensure knowledge store is immediately synced after writing
-  await store.load();
-
-  const doc = await vscode.workspace.openTextDocument(fileUri);
-  await vscode.window.showTextDocument(doc);
-}
-
-// ─── Show Decisions For Lens ─────────────────────────────────────────────────
-
-async function showDecisionsForLens(
-  store: KnowledgeStore,
-  data: CodeLensDecisionData
-): Promise<void> {
-  const MAX_INLINE = 2;
-  const allIds = data.decisionIds;
-  const topIds = allIds.slice(0, MAX_INLINE);
-
-  const decisions = new Map<string, import('./types.js').L3Decision>();
-  for (const snap of store.snapshots.values()) {
-    for (const [k, v] of snap.decisions.entries()) {
-      decisions.set(k, v);
-    }
-  }
-
-  type QuickPickItem = vscode.QuickPickItem & { decisionId?: string; viewAll?: boolean };
-
-  const items: QuickPickItem[] = topIds.map(id => {
-    const decision = decisions.get(id);
-    return {
-      label: decision?.title ?? id,
-      description: decision?.status,
-      decisionId: id,
-    };
-  });
-
-  if (allIds.length > MAX_INLINE) {
-    items.push({
-      label: '$(comment-discussion) View all in Chat',
-      description: `${allIds.length} decisions — open @docuvia /query`,
-      viewAll: true,
-    });
-  }
-
-  const picked = await vscode.window.showQuickPick(items, {
-    placeHolder: `Decisions for module: ${data.moduleName}`,
-  });
-  if (!picked) return;
-
-  if ((picked as QuickPickItem).viewAll) {
-    await vscode.commands.executeCommand('workbench.action.chat.open', {
-      query: `@docuvia /query ${data.moduleName}`,
-    });
-    return;
-  }
-
-  const decisionId = (picked as QuickPickItem).decisionId;
-  if (decisionId) {
-    const decision = decisions.get(decisionId);
-    if (decision?.filePath) {
-      const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(decision.filePath));
-      await vscode.window.showTextDocument(doc);
+      // Register with store
+      await store.initializeSnapshot(targetRoot);
+      vscode.commands.executeCommand('docuvia.refreshKnowledgeGraph');
+      void vscode.window.showInformationMessage(`Docuvia: Initialized project at ${path.basename(targetRoot)}.`);
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Docuvia: Failed to initialize project - ${err.message}`);
     }
   }
 }

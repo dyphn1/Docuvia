@@ -125,10 +125,10 @@
 ### 4.4 Document Misc Pool (ADR-012)
 - [x] 4.4.1  ✅️  Nullable documents.projectId
 - [x] 4.4.2  ✅️  contentHash (SHA-256) at upload time
-- [ ] 4.4.3  ⚠️  Misc pool extraction without L1/L2/L3 generation
-- [ ] 4.4.4  ⚠️  Project association flow (promote to pipeline)
+- [x] 4.4.3  ✅️  Misc pool extraction without L1/L2/L3 generation
+- [x] 4.4.4  ✅️  Project association flow (promote to pipeline)
 - [x] 4.4.5  ✅  Web UI: Misc Pool view + "Associate with Project" action
-- [ ] 4.4.6  ⚠️  Schema: contentHash, affiliatedAt columns on documents
+- [x] 4.4.6  ✅️  Schema: contentHash, affiliatedAt columns on documents
 
 ---
 
@@ -146,8 +146,8 @@
 - [x] 5.2.3  ✅  Approve/merge/reject actions
 
 ### 5.3 Prompt Templates
-- [ ] 5.3.1  ⚠️  prompt_templates table (schema exists)
-- [ ] 5.3.2  ⚠️  Per-project overridable LLM prompts (L1, L2, L3)
+- [x] 5.3.1  ✅️  prompt_templates table (schema exists)
+- [x] 5.3.2  ✅️  Per-project overridable LLM prompts (L1, L2, L3)
 - [x] 5.3.3  ✅  Default fallback templates not seeded in migrations (D-07)
 
 ---
@@ -354,10 +354,10 @@
 | 4.3.8 | 2026-06-12 | 0085_4.3.8.md | ✅ PASS |
 | 4.4.1 | 2026-06-11 | 0071_4.4.1.md | ✅ PASS |
 | 4.4.2 | 2026-06-13 | 0180_4.4.2.md | ✅ PASS |
-| 4.4.3 | 2026-06-13 | 0073_4.4.3.md | ⚠️ WARN |
-| 4.4.4 | 2026-06-13 | 0074_4.4.4.md | ⚠️ WARN |
+| 4.4.3 | 2026-06-13 | 0073_4.4.3.md | ✅ PASS |
+| 4.4.4 | 2026-06-13 | 0074_4.4.4.md | ✅ PASS |
 | 4.4.5 | 2026-06-11 | 0075_4.4.5.md | ✅ PASS |
-| 4.4.6 | 2026-06-13 | 0076_4.4.6.md | ⚠️ WARN |
+| 4.4.6 | 2026-06-13 | 0076_4.4.6.md | ✅ PASS |
 | 5.1.1 | 2026-06-12 | 0095_5.1.1.md | ✅ PASS |
 | 5.1.2 | 2026-06-12 | 0096_5.1.2.md | ✅ PASS |
 | 5.1.3 | 2026-06-12 | 0111_5.1.3.md | ✅ PASS |
@@ -454,11 +454,11 @@
 | Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 9 | 2 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 11 | 0 | 0 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 17 | 8 | 0 | 0 |
-| Milestone 5: Human-in-the-Loop & Review System | 10 | 7 | 3 | 0 | 2 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 20 | 5 | 0 | 0 |
+| Milestone 5: Human-in-the-Loop & Review System | 10 | 9 | 1 | 0 | 2 |
 | Milestone 6: API & Protocol Layer | 16 | 15 | 1 | 0 | 1 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 8: VS Code Extension UI | 18 | 17 | 1 | 0 | 1 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 13 | 8 | 0 | 6 |
 | Milestone 10: Deployment & Operations | 11 | 8 | 3 | 0 | 2 |
-| **TOTAL** | **152** | **126** | **26** | **0** | **12** |
+| **TOTAL** | **152** | **131** | **21** | **0** | **12** |

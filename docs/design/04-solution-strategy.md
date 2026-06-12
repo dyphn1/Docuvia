@@ -36,7 +36,7 @@ flowchart TD
     end
 
     subgraph Layer 3: Knowledge Graph
-        DB[(PostgreSQL + Drizzle)<br/>Node Links & Traversal]
+        DB[(PostgreSQL DB<br/>Node Links & Traversal)]
         VEC[In-Memory Vector Index<br/>Cross-Project Detection]
     end
 

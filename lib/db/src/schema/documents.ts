@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, pgEnum , index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
@@ -21,11 +21,14 @@ export const documentsTable = pgTable("documents", {
   docType: documentTypeEnum("doc_type").notNull().default("markdown"),
   content: text("content").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-  contentHash: text("content_hash"),
-  commitSha: text("commit_sha"),
+    contentHash: text("content_hash"),
   affiliatedAt: timestamp("affiliated_at"),
+  validityStatus: text("validity_status").notNull().default("active"),
+  uploadedBy: integer("uploaded_by"),
   status: text("status").notNull().default("unaffiliated"),
-});
+}, (table) => ({
+  contentHashIdx: index("doc_content_hash_idx").on(table.contentHash),
+}));
 
 export const insertDocumentSchema = createInsertSchema(documentsTable).omit({
   id: true,

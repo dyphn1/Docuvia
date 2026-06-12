@@ -80,4 +80,46 @@ router.post("/documents/:id/affiliate", async (req, res) => {
   });
 });
 
+
+// POST /documents (Upload to Misc Pool)
+router.post("/documents", upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "file required" });
+  
+  // Fake userId extracted from bearer token (implementation pending auth middleware)
+  const uploadedBy = req.user?.id || 1; 
+
+  // Max's Rule: Enforce a strict file count quota for the anonymous pool
+  const [quotaCheck] = await db
+    .select({ count: count() })
+    .from(documentsTable)
+    .where(isNull(documentsTable.projectId));
+    
+  if (quotaCheck.count >= 1000) {
+    return res.status(429).json({ error: "Misc Pool quota exceeded. Please associate existing documents to a project." });
+  }
+
+  try {
+    const filePath = req.file.path;
+    const contentHash = await computeHashFromStream(filePath);
+    const rawContent = await fs.promises.readFile(filePath, "utf-8");
+    const docType = detectDocType(req.file.originalname);
+
+    const [inserted] = await db.insert(documentsTable).values({
+      filename: req.file.originalname,
+      content: rawContent,
+      docType,
+      contentHash,
+      // Max's Rule: Explicit status flag so background workers ignore it
+      validityStatus: 'pending_affiliation',
+      uploadedBy, 
+    }).returning();
+
+    await fs.promises.unlink(filePath).catch(() => {});
+    return res.json(inserted);
+  } catch (err) {
+    logger.error({ err }, "[POST /documents] Unhandled error");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

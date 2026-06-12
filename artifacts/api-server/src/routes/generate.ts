@@ -26,6 +26,47 @@ import { logger } from "../lib/logger.js";
 import { z } from "zod";
 import { DEFAULT_PROMPTS } from "./templates.js";
 
+
+async function getPromptTemplate(projectId: number, templateType: string): Promise<string> {
+  const [template] = await db
+    .select()
+    .from(promptTemplatesTable)
+    .where(
+      and(
+        eq(promptTemplatesTable.projectId, projectId),
+        eq(promptTemplatesTable.templateType, templateType as any),
+        eq(promptTemplatesTable.isActive, true)
+      )
+    )
+    .orderBy(desc(promptTemplatesTable.createdAt))
+    .limit(1);
+
+  if (template) {
+    // Max's Rule: Wrap the user's prompt in an un-overrideable system constraint block
+    return `${template.systemPrompt}\n\n<SYSTEM_CONSTRAINT>\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json\n</SYSTEM_CONSTRAINT>`;
+  }
+
+  // Fallback to global defaults if no project-specific template exists
+  const [globalTemplate] = await db
+    .select()
+    .from(promptTemplatesTable)
+    .where(
+      and(
+        isNull(promptTemplatesTable.projectId),
+        eq(promptTemplatesTable.templateType, templateType as any),
+        eq(promptTemplatesTable.isActive, true)
+      )
+    )
+    .orderBy(desc(promptTemplatesTable.createdAt))
+    .limit(1);
+
+  if (globalTemplate) {
+    return `${globalTemplate.systemPrompt}\n\n<SYSTEM_CONSTRAINT>\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json\n</SYSTEM_CONSTRAINT>`;
+  }
+
+  return "You are an AI assistant. OUTPUT MUST BE VALID JSON ONLY.";
+}
+
 const router = Router();
 
 const GenerateInputSchema = z.object({

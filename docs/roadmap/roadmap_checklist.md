@@ -34,10 +34,10 @@
 ### 1.3 RAG Orchestrator (Intent Router)
 - [x] 1.3.1  ✅  4-way LLM-based intent classification (w/ Regex pre-filter)
 - [x] 1.3.2  ✅️  Vector search: cosine similarity over JSONB embeddings
-- [ ] 1.3.3  ⚠️  Graph search: node_links traversal
-- [ ] 1.3.4  ⚠️  Direct search: full-text search on l3_nodes.content
-- [ ] 1.3.5  ⚠️  Hybrid search: vector + graph merge and re-rank
-- [ ] 1.3.6  ⚠️  Temporal decay scoring (lastVerifiedAt)
+- [x] 1.3.3  ✅️  Graph search: node_links traversal
+- [x] 1.3.4  ✅️  Direct search: full-text search on l3_nodes.content
+- [x] 1.3.5  ✅️  Hybrid search: vector + graph merge and re-rank
+- [x] 1.3.6  ✅️  Temporal decay scoring (lastVerifiedAt)
 
 ### 1.4 Server-Side Metabolism & Mutex
 - [x] 1.4.1  ✅  Asynchronous metabolism mechanism (ADR-008)
@@ -54,7 +54,7 @@
 ### 2.2 Zero-to-One Onboarding (@docuvia /init)
 - [x] 2.2.1  ⚠️  Project initialization command (docuvia.initProject)
 - [x] 2.2.2  ⚠️  Package.json ecosystem marker parsing (WIP — needs completion)
-- [ ] 2.2.3  ⚠️  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
+- [x] 2.2.3  ✅️  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
 
 ### 2.3 Multi-root Workspace Support
 - [x] 2.3.1  ✅  TaskRunner dynamic root scoping
@@ -306,17 +306,17 @@
 | 1.2.6 | 2026-06-12 | 0099_1.2.6.md | ✅ PASS |
 | 1.3.1 | 2026-06-12 | 0100_1.3.1.md | ✅ PASS |
 | 1.3.2 | 2026-06-12 | 0014_1.3.2.md | ✅ PASS |
-| 1.3.3 | 2026-06-12 | 0015_1.3.3.md | ⚠️ WARN |
-| 1.3.4 | 2026-06-12 | 0016_1.3.4.md | ⚠️ WARN |
-| 1.3.5 | 2026-06-12 | 0017_1.3.5.md | ⚠️ WARN |
-| 1.3.6 | 2026-06-12 | 0019_1.3.6.md | ⚠️ WARN |
+| 1.3.3 | 2026-06-12 | 0015_1.3.3.md | ✅ PASS |
+| 1.3.4 | 2026-06-12 | 0016_1.3.4.md | ✅ PASS |
+| 1.3.5 | 2026-06-12 | 0017_1.3.5.md | ✅ PASS |
+| 1.3.6 | 2026-06-12 | 0019_1.3.6.md | ✅ PASS |
 | 1.4.1 | 2026-06-12 | 0101_1.4.1.md | ✅ PASS |
 | 1.4.2 | 2026-06-12 | 0077_1.4.2.md | ✅ PASS |
 | 2.1.1 | 2026-06-08 | 0022_2.1.1.md | ✅ PASS |
 | 2.1.2 | 2026-06-10 | 0024_2.1.2.md | ✅ PASS |
 | 2.2.1 | 2026-06-10 | 0046_2.2.1.md | ⚠️ WARN |
 | 2.2.2 | 2026-06-10 | 0047_2.2.2.md | ⚠️ WARN |
-| 2.2.3 | 2026-06-12 | 0048_2.2.3.md | ⚠️ WARN |
+| 2.2.3 | 2026-06-12 | 0048_2.2.3.md | ✅ PASS |
 | 2.3.1 | 2026-06-10 | 0036_2.3.1.md | ✅ PASS |
 | 2.3.2 | 2026-06-10 | 0029_2.3.2.md | ✅ PASS |
 | 2.4.1 | 2026-06-10 | 0031_2.4.1.md | ✅ PASS |
@@ -451,8 +451,8 @@
 
 | Category | Total | Done | WIP | Todo | Pending Verification |
 |----------|-------|------|-----|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 14 | 4 | 0 | 0 |
-| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 3 | 0 | 0 |
+| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
+| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 9 | 2 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 9 | 0 | 2 | 0 |
 | Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 13 | 12 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 7 | 3 | 0 | 2 |
@@ -461,4 +461,4 @@
 | Milestone 8: VS Code Extension UI | 18 | 17 | 1 | 0 | 1 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 13 | 8 | 0 | 6 |
 | Milestone 10: Deployment & Operations | 11 | 8 | 3 | 0 | 2 |
-| **TOTAL** | **152** | **115** | **35** | **2** | **12** |
+| **TOTAL** | **152** | **120** | **30** | **2** | **12** |

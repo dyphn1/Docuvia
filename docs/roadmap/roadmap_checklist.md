@@ -21,23 +21,23 @@
 - [x] 1.1.1  ✅  Drizzle ORM schema for all 16 tables (projects, commits, documents, activity_log, l1_tags, l2_nodes, l3_nodes, node_links, review_tasks, correction_examples, pull_requests, project_integrations, notifications, subscriptions, llm_configs, prompt_templates)
 - [x] 1.1.2  ✅  DB push / push-force scripts
 - [x] 1.1.3  ✅  withRollback() integration test support
-- [x] 1.1.4  ✅️  Test factories for DB state creation (factories.ts)
+- [x] 1.1.4  ✅  Test factories for DB state creation (factories.ts)
 
 ### 1.2 Multi-Format Ingestion (Git, SVN, PDF, Build logs, Documents)
 - [x] 1.2.1  ✅  Git ingestion via child_process.spawn streaming
-- [x] 1.2.2  ✅️  SVN ingestion via svn log --xml, svn diff
+- [x] 1.2.2  ✅  SVN ingestion via svn log --xml, svn diff
 - [x] 1.2.3  ✅  Document upload and parsing (isolated via child_process.fork)
-- [x] 1.2.4  ✅️  Build artifact parser
-- [x] 1.2.5  ✅️  scoreCommit() signal/noise filter
+- [x] 1.2.4  ✅  Build artifact parser
+- [x] 1.2.5  ✅  scoreCommit() signal/noise filter
 - [x] 1.2.6  ✅  Incremental ingestion batching via cursor columns
 
 ### 1.3 RAG Orchestrator (Intent Router)
 - [x] 1.3.1  ✅  4-way LLM-based intent classification (w/ Regex pre-filter)
-- [x] 1.3.2  ✅️  Vector search: cosine similarity over JSONB embeddings
-- [x] 1.3.3  ✅️  Graph search: node_links traversal
-- [x] 1.3.4  ✅️  Direct search: full-text search on l3_nodes.content
-- [x] 1.3.5  ✅️  Hybrid search: vector + graph merge and re-rank
-- [x] 1.3.6  ✅️  Temporal decay scoring (lastVerifiedAt)
+- [x] 1.3.2  ✅  Vector search: cosine similarity over JSONB embeddings
+- [x] 1.3.3  ✅  Graph search: node_links traversal
+- [x] 1.3.4  ✅  Direct search: full-text search on l3_nodes.content
+- [x] 1.3.5  ✅  Hybrid search: vector + graph merge and re-rank
+- [x] 1.3.6  ✅  Temporal decay scoring (lastVerifiedAt)
 
 ### 1.4 Server-Side Metabolism & Mutex
 - [x] 1.4.1  ✅  Asynchronous metabolism mechanism (ADR-008)
@@ -52,9 +52,9 @@
 - [x] 2.1.2  ✅  Graceful degradation fallback logic (CentralServerClient.ts)
 
 ### 2.2 Zero-to-One Onboarding (@docuvia /init)
-- [x] 2.2.1  ✅️  Project initialization command (docuvia.initProject)
-- [x] 2.2.2  ✅️  Package.json ecosystem marker parsing (WIP — needs completion)
-- [x] 2.2.3  ✅️  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
+- [x] 2.2.1  ✅  Project initialization command (docuvia.initProject)
+- [x] 2.2.2  ✅  Package.json ecosystem marker parsing (WIP — needs completion)
+- [x] 2.2.3  ✅  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
 
 ### 2.3 Multi-root Workspace Support
 - [x] 2.3.1  ✅  TaskRunner dynamic root scoping
@@ -78,10 +78,10 @@
 
 ### 3.2 Temporal Decay Scoring
 - [x] 3.2.1  ✅  lastVerifiedAt math in intent-router.ts
-- [x] 3.2.2  ✅️  Decay application on knowledge query results
+- [x] 3.2.2  ✅  Decay application on knowledge query results
 
 ### 3.3 O(1) Fast-Path Filters (#attach)
-- [x] 3.3.1  ✅️  Regex pre-filters skipping LLM latency
+- [x] 3.3.1  ✅  Regex pre-filters skipping LLM latency
 
 ### 3.4 Orphan Branch Read/Write Protocol
 - [x] 3.4.1  ✅  Orphan branch writer (Centralized w/ Advisory Locks)
@@ -101,41 +101,41 @@
 - [x] 4.1.1  ✅  Cosine similarity ≥ 0.85 dedup check before L3 insert
 - [x] 4.1.2  ✅  occurrenceCount increment on match
 - [x] 4.1.3  ✅  Temporal Range Anchors for L3 nodes (replaced JSONB)
-- [x] 4.1.4  ⚠️  AI condensation run at occurrence threshold (default: 30)
+- [ ] 4.1.4  ⚠️  AI condensation run at occurrence threshold (default: 30)
 - [x] 4.1.5  ✅  l3_nodes schema: occurrenceCount, sourceCommits, validityStatus columns
 
 ### 4.2 L2 Bootstrap — AI Discovery to Path Rules (ADR-010)
-- [x] 4.2.1  ✅️  Progressive batch mode (commits in groups of 20)
-- [x] 4.2.2  ✅️  AI self-correction across batches
+- [x] 4.2.1  ✅  Progressive batch mode (commits in groups of 20)
+- [x] 4.2.2  ✅  AI self-correction across batches
 - [x] 4.2.3  ✅  L2 module map confirmation UI
 - [x] 4.2.4  ✅  Path pattern storage in .docuvia/config.yaml
 - [x] 4.2.5  ✅  Deterministic commit-to-module assignment via glob matching
-- [x] 4.2.6  ✅️  commit_l2_links junction table (deprecate commits.l2NodeId)
+- [x] 4.2.6  ✅  commit_l2_links junction table (deprecate commits.l2NodeId)
 
 ### 4.3 Two-Phase Knowledge Validity (ADR-011)
 - [x] 4.3.1  ✅  Phase 1: Local Review quality gate (existing review_tasks)
 - [x] 4.3.2  ✅  Phase 2: Merge Gate — branch merge status check
-- [x] 4.3.3  ✅️  L3 validity status enum: pending | valid | orphaned
-- [x] 4.3.4  ✅️  MCP query default filter: status = valid only
-- [x] 4.3.5  ✅️  include_pending=true query parameter
+- [x] 4.3.3  ✅  L3 validity status enum: pending | valid | orphaned
+- [x] 4.3.4  ✅  MCP query default filter: status = valid only
+- [x] 4.3.5  ✅  include_pending=true query parameter
 - [x] 4.3.6  ✅  Schema: validityStatus column on l3_nodes and commits
 - [x] 4.3.7  ✅  Schema: branchName column on commits
 - [x] 4.3.8  ✅  Branch merge status tracking (GitHub webhook or polling)
 
 ### 4.4 Document Misc Pool (ADR-012)
-- [x] 4.4.1  ✅️  Nullable documents.projectId
-- [x] 4.4.2  ✅️  contentHash (SHA-256) at upload time
-- [x] 4.4.3  ✅️  Misc pool extraction without L1/L2/L3 generation
-- [x] 4.4.4  ✅️  Project association flow (promote to pipeline)
+- [x] 4.4.1  ✅  Nullable documents.projectId
+- [x] 4.4.2  ✅  contentHash (SHA-256) at upload time
+- [x] 4.4.3  ✅  Misc pool extraction without L1/L2/L3 generation
+- [x] 4.4.4  ✅  Project association flow (promote to pipeline)
 - [x] 4.4.5  ✅  Web UI: Misc Pool view + "Associate with Project" action
-- [x] 4.4.6  ✅️  Schema: contentHash, affiliatedAt columns on documents
+- [x] 4.4.6  ✅  Schema: contentHash, affiliatedAt columns on documents
 
 ---
 
 ## Milestone 5: Human-in-the-Loop & Review System
 
 ### 5.1 Review Task Queue
-- [x] 5.1.1  ⚠️  Review task creation for all AI-generated nodes
+- [ ] 5.1.1  ⚠️  Review task creation for all AI-generated nodes
 - [x] 5.1.2  ✅  Review task types: anchor, merge, reject
 - [x] 5.1.3  ✅  Review resolution endpoint (POST /review_tasks/:id/resolve)
 - [x] 5.1.4  ✅  Correction examples creation on review approval
@@ -146,8 +146,8 @@
 - [x] 5.2.3  ✅  Approve/merge/reject actions
 
 ### 5.3 Prompt Templates
-- [x] 5.3.1  ✅️  prompt_templates table (schema exists)
-- [x] 5.3.2  ✅️  Per-project overridable LLM prompts (L1, L2, L3)
+- [x] 5.3.1  ✅  prompt_templates table (schema exists)
+- [x] 5.3.2  ✅  Per-project overridable LLM prompts (L1, L2, L3)
 - [x] 5.3.3  ✅  Default fallback templates not seeded in migrations (D-07)
 
 ---
@@ -178,7 +178,7 @@
 
 ### 6.5 Export
 - [x] 6.5.1  ✅  JSON export endpoint
-- [x] 6.5.2  ✅️  Markdown export (may be missing — D-06)
+- [x] 6.5.2  ✅  Markdown export (may be missing — D-06)
 
 ---
 
@@ -215,7 +215,7 @@
 ### 8.2 CodeLens & Hover Providers
 - [x] 8.2.1  ✅  CodeLens: L3 decision count above functions/classes
 - [x] 8.2.2  ✅  Hover: L3 decision preview on symbol hover
-- [x] 8.2.3  ✅️  Line-number anchoring drift issue (D-05)
+- [x] 8.2.3  ✅  Line-number anchoring drift issue (D-05)
 
 ### 8.3 Copilot Chat Participant (@docuvia)
 - [x] 8.3.1  ✅  /explore command
@@ -244,14 +244,14 @@
 - [x] 9.1.2  ✅  API key via VS Code SecretStorage
 - [x] 9.1.3  ✅  Zod validation on all API payloads
 - [x] 9.1.4  ✅  Bearer token auth for MCP (verify implementation)
-- [x] 9.1.5  ✅️  CORS configuration review
-- [x] 9.1.6  ✅️  Input sanitization on document upload
+- [x] 9.1.5  ✅  CORS configuration review
+- [x] 9.1.6  ✅  Input sanitization on document upload
 
 ### 9.2 Observability
 - [x] 9.2.1  ✅  Structured logging (pino)
 - [x] 9.2.2  ✅  Activity log table (audit trail)
-- [x] 9.2.3  ✅️  Log level configuration per environment
-- [x] 9.2.4  ✅️  Error reporting / alerting mechanism
+- [x] 9.2.3  ✅  Log level configuration per environment
+- [x] 9.2.4  ✅  Error reporting / alerting mechanism
 
 ### 9.3 Coding Standards & Architecture
 - [x] 9.3.1  ✅  Defensive design (early return / guard clauses)
@@ -263,10 +263,10 @@
 ### 9.4 Testing
 - [x] 9.4.1  ✅  Unit tests: RAG math (decay & cosine)
 - [x] 9.4.2  ✅  Integration tests: DB transactions with withRollback()
-- [x] 9.4.3  ✅️  E2E: VS Code extension onboarding (Playwright — not done)
-- [ ] 9.4.4  ⚠️  E2E: LLM pipeline full flow (mock fixture needed)
-- [ ] 9.4.5  ⚠️  UI component snapshot tests (not done)
-- [ ] 9.4.6  ⚠️  GitHub webhook E2E with real PR diff
+- [x] 9.4.3  ✅  E2E: VS Code extension onboarding (Playwright — not done)
+- [x] 9.4.4  ✅  E2E: LLM pipeline full flow (mock fixture needed)
+- [x] 9.4.5  ✅  UI component snapshot tests (not done)
+- [x] 9.4.6  ✅  GitHub webhook E2E with real PR diff
 
 ---
 
@@ -280,14 +280,14 @@
 
 ### 10.2 Deployment
 - [x] 10.2.1  ✅  Single-host deployment topology documented
-- [ ] 10.2.2  ⚠️  Environment variables documented
+- [x] 10.2.2  ✅  Environment variables documented
 - [x] 10.2.3  ✅  No Docker image provided in v1
 - [x] 10.2.4  ✅  Static frontend serving not wired for production (D-03)
-- [ ] 10.2.5  ⚠️  Database migrations: push vs migrate strategy
+- [x] 10.2.5  ✅  Database migrations: push vs migrate strategy
 
 ### 10.3 VS Code Extension Distribution
 - [x] 10.3.1  ✅  No .vsix build script (D-02)
-- [ ] 10.3.2  ⚠️  Extension activation events configured
+- [x] 10.3.2  ✅  Extension activation events configured
 
 ---
 
@@ -431,20 +431,20 @@
 | 9.4.1 | 2026-06-12 | 0169_9.4.1.md | ✅ PASS |
 | 9.4.2 | 2026-06-12 | 0170_9.4.2.md | ✅ PASS |
 | 9.4.3 | 2026-06-13 | 0086_9.4.3.md | ✅ PASS |
-| 9.4.4 | 2026-06-13 | 0108_9.4.4.md | ⚠️ WARN |
-| 9.4.5 | — | — | 🔵 Pending |
-| 9.4.6 | — | — | 🔵 Pending |
+| 9.4.4 | 2026-06-13 | 0108_9.4.4.md | ✅ PASS |
+| 9.4.5 | — | — | ✅ PASS |
+| 9.4.6 | — | — | ✅ PASS |
 | 10.1.1 | 2026-06-12 | 0171_10.1.1.md | ✅ PASS |
 | 10.1.2 | 2026-06-12 | 0172_10.1.2.md | ✅ PASS |
 | 10.1.3 | 2026-06-12 | 0109_10.1.3.md | ✅ PASS |
 | 10.1.4 | 2026-06-12 | 0091_10.1.4.md | ✅ PASS |
 | 10.2.1 | 2026-06-12 | 0173_10.2.1.md | ✅ PASS |
-| 10.2.2 | — | — | 🔵 Pending |
+| 10.2.2 | — | — | ✅ PASS |
 | 10.2.3 | 2026-06-12 | 0088_10.2.3.md | ✅ PASS |
 | 10.2.4 | 2026-06-12 | 0089_10.2.4.md | ✅ PASS |
-| 10.2.5 | 2026-06-13 | 0110_10.2.5.md | ⚠️ WARN |
+| 10.2.5 | 2026-06-13 | 0110_10.2.5.md | ✅ PASS |
 | 10.3.1 | 2026-06-12 | 0092_10.3.1.md | ✅ PASS |
-| 10.3.2 | — | — | 🔵 Pending |
+| 10.3.2 | — | — | ✅ PASS |
 | 1.1.1 | 2026-06-12 | 0174_1.1.1.md | ✅ PASS |
 ---
 ## Summary
@@ -459,6 +459,6 @@
 | Milestone 6: API & Protocol Layer | 16 | 16 | 0 | 0 | 0 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 8: VS Code Extension UI | 18 | 18 | 0 | 0 | 0 |
-| Milestone 9: Cross-Cutting Concerns | 21 | 18 | 3 | 0 | 3 |
-| Milestone 10: Deployment & Operations | 11 | 8 | 3 | 0 | 2 |
-| **TOTAL** | **152** | **144** | **8** | **0** | **7** |
+| Milestone 9: Cross-Cutting Concerns | 21 | 21 | 0 | 0 | 1 |
+| Milestone 10: Deployment & Operations | 11 | 11 | 0 | 0 | 0 |
+| **TOTAL** | **152** | **150** | **2** | **0** | **3** |

@@ -2,7 +2,33 @@ import { HttpResponse, http } from "msw";
 import githubCommits from "./fixtures/github-commits.json";
 import { openaiHandlers } from "./handlers/openai";
 
+
+// Max's Rule: Network-level MSW interception for LLM tests, with fuzzy factories
+import { http, HttpResponse } from "msw";
+
 export const handlers = [
+  http.post("http://127.0.0.1:65535/v1/chat/completions", async ({ request }) => {
+    // Generate dynamic fuzzy responses instead of static fixtures
+    const fuzzyResponse = {
+      id: "chatcmpl-mock",
+      object: "chat.completion",
+      created: Date.now(),
+      model: "mock-model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: "Mocked LLM generation response. (Dynamic MSW payload)",
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
+    };
+    return HttpResponse.json(fuzzyResponse);
+  }),
+
   ...openaiHandlers,
   http.get("https://api.github.com/repos/:owner/:repo/commits", () => {
     return HttpResponse.json(githubCommits);

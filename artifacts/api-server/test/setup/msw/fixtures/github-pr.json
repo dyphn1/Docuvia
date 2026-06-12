@@ -1,0 +1,16 @@
+{
+  "action": "opened",
+  "number": 1,
+  "pull_request": {
+    "url": "https://api.github.com/repos/dyphn1/Docuvia/pulls/1",
+    "id": 12345,
+    "title": "feat: test PR",
+    "body": "This is a VCR-recorded PR payload for testing offline HMAC validation.",
+    "head": {
+      "sha": "abcdef123456"
+    }
+  },
+  "repository": {
+    "full_name": "dyphn1/Docuvia"
+  }
+}

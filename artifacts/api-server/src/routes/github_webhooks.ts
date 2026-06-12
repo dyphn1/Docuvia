@@ -1,3 +1,5 @@
+// Max's Rule: VCR-style testing uses static signed fixtures.
+// Do not test against live GitHub API in CI to prevent rate limits.
 import { Router } from "express";
 import crypto from "crypto";
 import { db } from "@workspace/db";

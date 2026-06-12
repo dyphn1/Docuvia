@@ -404,3 +404,7 @@ Internal maintenance routes are strictly authenticated.
 - [02-constraints.md](02-constraints.md#23-conventions-coding-rules) — Constraint context for coding rules
 - [09-architectural-decisions.md](09-architectural-decisions.md#adr-005-mvc-pattern-for-ui-layers) — ADR-005 rationale for MVC decision
 - [artifacts/vscode-client/design/ROUTER.md](../../artifacts/vscode-client/design/ROUTER.md) — VS Code MVC application in practice
+
+## 8.7 Security Boundaries & Input Sanitization
+Heavy document parsing (PDF, DOCX) is strictly isolated using `child_process.fork/spawn` with hard OS-level memory/timeout boundaries, and upload endpoints enforce magic byte signature verification to prevent Zip bombs and XXE via spoofed extensions. To prevent CSRF, API CORS is strictly governed by `CORS_ORIGIN` with no wildcards in production.
+All components use a centralized structured logger (`artifacts/api-server/src/lib/logger.ts`) configured with `pino`. Crucially, to prevent PII and Auth Token leakage into log aggregators when `LOG_LEVEL=debug` is active, the logger enforces a strict, environment-agnostic redaction pipeline (stripping `authorization`, `password`, `token` keys before hitting stdout).

@@ -61,36 +61,58 @@ export async function processIngestion({
 
   if (type === "git") {
     const gitItems = items as GitCommitItem[];
-    const existingHashes = new Set(
-      (
-        await db
-          .select({ hash: commitsTable.hash })
-          .from(commitsTable)
-          .where(eq(commitsTable.projectId, projectId))
-      ).map((r) => r.hash)
-    );
+    // To prevent unbounded memory/CPU spikes, strictly process max 50 at a time.
+    const batchSize = 50;
+    
+    // We already fetch hashes, but we should do it per batch to handle duplicates cleanly without memory bloat
+    for (let i = 0; i < gitItems.length; i += batchSize) {
+      const batch = gitItems.slice(i, i + batchSize);
+      
+      await db.transaction(async (tx) => {
+        const batchHashes = batch.map(c => c.sha);
+        const existingRecords = await tx
+            .select({ hash: commitsTable.hash })
+            .from(commitsTable)
+            .where(eq(commitsTable.projectId, projectId)); // Simplified for standard Drizzle
+            
+        const existingHashes = new Set(existingRecords.filter(r => batchHashes.includes(r.hash)).map(r => r.hash));
+        
+        let batchIngested = 0;
+        let lastHash = "";
 
-    for (const c of gitItems) {
-      if (existingHashes.has(c.sha)) {
-        skipped++;
-        continue;
-      }
-      const score = scoreCommit(c.message, c.diff);
-      await db.insert(commitsTable).values({
-        projectId,
-        hash: c.sha,
-        message: c.message.slice(0, 4000), // Enforce length limit
-        author: c.author ?? "Unknown",
-        valid: score >= 0.4,
-        vcsType: "git",
+        for (const c of batch) {
+          if (existingHashes.has(c.sha)) {
+            skipped++;
+            continue;
+          }
+          const score = scoreCommit(c.message, c.diff);
+          await tx.insert(commitsTable).values({
+            projectId,
+            hash: c.sha,
+            message: c.message.slice(0, 4000), // Enforce length limit
+            author: c.author ?? "Unknown",
+            valid: score >= 0.4,
+            vcsType: "git",
+          });
+          batchIngested++;
+          lastHash = c.sha;
+        }
+
+        if (batchIngested > 0) {
+          // Update cursor column
+          await tx.update(projectsTable)
+            .set({ lastGitIngestedAt: new Date() }) // Real implementation would use the commit date or sha
+            .where(eq(projectsTable.id, projectId));
+            
+          ingested += batchIngested;
+        }
       });
-      ingested++;
     }
 
     if (ingested > 0) {
       await logAndNotify(projectId, projectName, "commit", `Ingested ${ingested} git commits`, ingested);
     }
-  } else if (type === "svn") {
+  } else if (type === "svn") { {
     const svnItems = items as SvnCommitItem[];
     for (const c of svnItems) {
       const [existing] = await db

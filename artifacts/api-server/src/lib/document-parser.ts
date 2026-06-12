@@ -1,4 +1,13 @@
 import { extractBuildArtifactText } from "./build-artifact-parser.js";
+import { fork } from "node:child_process";
+import path from "node:path";
+import os from "node:os";
+import fs from "node:fs";
+import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export type SupportedDocType = "markdown" | "txt" | "pdf" | "docx" | "pptx" | "build_artifact";
 
@@ -21,38 +30,50 @@ export function detectDocType(filename: string): SupportedDocType {
   return map[ext] ?? "txt";
 }
 
-async function parsePdf(buffer: Buffer): Promise<string> {
-  // Lazy import to avoid DOMMatrix issue at startup
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
-  const result = await pdfParse(buffer);
-  return result.text.trim();
-}
-
-async function parseDocx(buffer: Buffer): Promise<string> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mammoth = require("mammoth") as {
-    extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }>;
-  };
-  const result = await mammoth.extractRawText({ buffer });
-  return result.value.trim();
-}
-
-async function parsePptx(buffer: Buffer): Promise<string> {
+async function parseInWorker(buffer: Buffer, docType: SupportedDocType): Promise<string> {
   return new Promise((resolve, reject) => {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { OfficeParser } = require("officeparser") as {
-      OfficeParser: {
-        parseOffice: (
-          file: Buffer,
-          callback: (err: Error | null, data: string) => void
-        ) => void;
-      };
-    };
-    OfficeParser.parseOffice(buffer, (err, data) => {
-      if (err) reject(err);
-      else resolve(data ?? "");
+    // Write buffer to temp file to pass to worker
+    const tmpFilePath = path.join(os.tmpdir(), `parse_${crypto.randomBytes(8).toString('hex')}`);
+    fs.writeFileSync(tmpFilePath, buffer);
+
+    const workerPath = path.join(__dirname, "parser-worker.js");
+    const worker = fork(workerPath, [], {
+      execArgv: ['--max-old-space-size=512'],
+      detached: false, // Ensure worker dies if parent dies
     });
+
+    // Enforce 60-second timeout
+    const timeoutId = setTimeout(() => {
+      worker.kill('SIGKILL');
+      if (fs.existsSync(tmpFilePath)) fs.unlinkSync(tmpFilePath);
+      reject(new Error(`Parser timeout exceeded for ${docType}`));
+    }, 60000);
+
+    worker.on('message', (message: { success: boolean; text?: string; error?: string }) => {
+      clearTimeout(timeoutId);
+      worker.kill();
+      if (message.success) {
+        resolve(message.text ?? "");
+      } else {
+        reject(new Error(message.error ?? "Unknown parsing error"));
+      }
+    });
+
+    worker.on('error', (err) => {
+      clearTimeout(timeoutId);
+      if (fs.existsSync(tmpFilePath)) fs.unlinkSync(tmpFilePath);
+      reject(err);
+    });
+
+    worker.on('exit', (code, signal) => {
+      clearTimeout(timeoutId);
+      if (fs.existsSync(tmpFilePath)) fs.unlinkSync(tmpFilePath);
+      if (code !== 0) {
+        reject(new Error(`Worker exited abnormally with code ${code} and signal ${signal}`));
+      }
+    });
+
+    worker.send({ docType, filePath: tmpFilePath });
   });
 }
 
@@ -66,11 +87,9 @@ async function parsePptx(buffer: Buffer): Promise<string> {
 export async function extractText(buffer: Buffer, docType: SupportedDocType, filename?: string): Promise<string> {
   switch (docType) {
     case "pdf":
-      return parsePdf(buffer);
     case "docx":
-      return parseDocx(buffer);
     case "pptx":
-      return parsePptx(buffer);
+      return parseInWorker(buffer, docType);
     case "build_artifact":
       return extractBuildArtifactText(buffer.toString("utf-8"), filename ?? "artifact");
     case "markdown":

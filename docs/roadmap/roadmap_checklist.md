@@ -450,14 +450,14 @@
 
 | Category | Total | Done | WIP | Todo | Pending Verification |
 |----------|-------|------|-----|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server | 19 | 4 | 14 | 0 | 0 |
-| Milestone 2: VS Code Client (Local-First Architecture) | 12 | 8 | 3 | 0 | 0 |
-| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 12 | 8 | 0 | 3 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 26 | 12 | 13 | 0 | 0 |
-| Milestone 5: Human-in-the-Loop & Review System | 11 | 7 | 2 | 1 | 8 |
-| Milestone 6: API & Protocol Layer | 17 | 15 | 1 | 0 | 16 |
-| Milestone 7: Frontend (kg-engine) | 12 | 11 | 0 | 0 | 11 |
-| Milestone 8: VS Code Extension UI | 19 | 17 | 1 | 0 | 18 |
-| Milestone 9: Cross-Cutting Concerns | 22 | 12 | 9 | 0 | 19 |
-| Milestone 10: Deployment & Operations | 12 | 7 | 4 | 0 | 6 |
-| **TOTAL** | **162** | **101** | **47** | **4** | **78** |
+| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 4 | 14 | 0 | 0 |
+| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 3 | 0 | 0 |
+| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 8 | 0 | 3 | 0 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 12 | 13 | 0 | 0 |
+| Milestone 5: Human-in-the-Loop & Review System | 10 | 6 | 3 | 1 | 7 |
+| Milestone 6: API & Protocol Layer | 16 | 15 | 1 | 0 | 16 |
+| Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 11 |
+| Milestone 8: VS Code Extension UI | 18 | 17 | 1 | 0 | 18 |
+| Milestone 9: Cross-Cutting Concerns | 21 | 12 | 9 | 0 | 18 |
+| Milestone 10: Deployment & Operations | 11 | 7 | 4 | 0 | 5 |
+| **TOTAL** | **152** | **100** | **48** | **4** | **75** |

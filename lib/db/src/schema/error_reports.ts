@@ -1,0 +1,15 @@
+import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { jobQueueTable } from "./job_queue.js";
+import { projectsTable } from "./projects.js";
+
+// Max's Rule: Dead Letter Queue (DLQ) to prevent infinite crash loops
+export const errorReportsTable = pgTable("error_reports", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").references(() => projectsTable.id, { onDelete: "cascade" }),
+  jobId: integer("job_id").references(() => jobQueueTable.id, { onDelete: "set null" }),
+  taskType: text("task_type").notNull(),
+  errorMessage: text("error_message").notNull(),
+  errorStack: text("error_stack"),
+  payloadSnapshot: jsonb("payload_snapshot"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

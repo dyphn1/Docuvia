@@ -16,3 +16,4 @@ export * from "./notifications";
 export * from "./pull_requests";
 export * from "./project_integrations";
 export * from "./job_queue";
+export * from "./error_reports";

@@ -20,6 +20,7 @@ Additional implementation planning documents are stored in [`docs/ai_plans/`](..
 | [ADR-010](#adr-010-l2-bootstrap-ai-discovery-to-path-rules)        | L2 Bootstrap: AI Discovery to Path Rules                     | Accepted      |
 | [ADR-011](#adr-011-two-phase-knowledge-validity)                   | Two-Phase Knowledge Validity                                 | Accepted      |
 | [ADR-012](#adr-012-document-misc-pool)                             | Document Misc Pool for Unaffiliated Documents                | Accepted      |
+| [ADR-013](adrs/ADR-013-adversarial-implementation-protocol.md) | Adversarial Implementation Protocol | Active | Enforces a 3-role (PM, QA, SRE/Challenger) debate before any code implementation. |
 
 ---
 

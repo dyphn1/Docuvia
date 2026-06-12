@@ -32,7 +32,8 @@ export const l3NodesTable = pgTable("l3_nodes", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   lastVerifiedAt: timestamp("last_verified_at").defaultNow(),
   occurrenceCount: integer("occurrence_count").notNull().default(1),
-  sourceCommits: jsonb("source_commits"),
+  introducedInCommit: text("introduced_in_commit"),
+  verifiedUntilCommit: text("verified_until_commit"),
   validityStatus: text("validity_status").notNull().default("pending"),
   source: text("source").notNull().default("commit"),
 });

@@ -1,3 +1,5 @@
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
 import { pgTable, text, serial, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
 
 export const activityTypeEnum = pgEnum("activity_type", [
@@ -16,3 +18,6 @@ export const activityLogTable = pgTable("activity_log", {
   projectId: integer("project_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const insertActivityLogSchema = createInsertSchema(activityLogTable).omit({ id: true, createdAt: true });
+export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;

@@ -27,3 +27,22 @@ export const insertPromptTemplateSchema = createInsertSchema(promptTemplatesTabl
 export const updatePromptTemplateSchema = insertPromptTemplateSchema.partial();
 export type InsertPromptTemplate = z.infer<typeof insertPromptTemplateSchema>;
 export type PromptTemplate = typeof promptTemplatesTable.$inferSelect;
+
+
+export const DEFAULT_PROMPT_TEMPLATES = [
+  {
+    templateType: "l1_tagger",
+    systemPrompt: "You are an expert system tagger. Categorize the given code into high-level architecture tags.",
+    isActive: true,
+  },
+  {
+    templateType: "l2_extractor",
+    systemPrompt: "You are an expert code analyst. Extract L2 module boundaries from the following commits.",
+    isActive: true,
+  },
+  {
+    templateType: "l3_generator",
+    systemPrompt: "You are a senior architect. Generate L3 knowledge graph nodes documenting the decisions made in the following code.",
+    isActive: true,
+  }
+];

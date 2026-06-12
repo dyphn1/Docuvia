@@ -128,7 +128,7 @@ Incoming `/mcp/query` requests are classified by an LLM into one of four strateg
 ```
 Query → intent-router.ts (LLM classify) → vector | graph | direct | hybrid
                                                ↓         ↓        ↓        ↓
-                                         cosine sim  node_links  FTS   vector+graph merge
+                                         SQL cosine dist  node_links  FTS   vector+graph merge
 ```
 
 ### Human-in-the-Loop Feedback Loop

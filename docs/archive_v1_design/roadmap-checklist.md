@@ -27,7 +27,7 @@
 | ---------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | [Git ingestion (commit + diff)](phase-2-input-layer/07-git-ingestion.md) | ✅ Done        | `gitIngestInput.ts`, `gitIngestResult.ts`, `routes/ingest.ts`                                                                               |
 | [Document ingestion (PDF/Word/PPTX/MD)](phase-2-input-layer/09-document-parser.md) | ✅ Done        | `document-parser.ts` (lazy require for pdf-parse/mammoth/officeparser), `upload.ts` (multer), `POST /projects/:id/ingest/document/upload` multipart endpoint |
-| [SVN integration](phase-2-input-layer/08-svn-ingestion.md) | ✅ Done        | `lib/svn-client.ts` (execFile-based CLI wrapper), `routes/ingest.ts` `POST /projects/:id/ingest/svn`, `SvnIngestInput`/`SvnIngestResult` OpenAPI schemas, `vcsType`+`svnUrl` on projects, `revision`+`vcsType` on commits |
+| [SVN integration](phase-2-input-layer/08-svn-ingestion.md) | ✅ Done        | `lib/svn-client.ts` (spawn-based streaming CLI wrapper), `routes/ingest.ts` `POST /projects/:id/ingest/svn`, `SvnIngestInput`/`SvnIngestResult` OpenAPI schemas, `vcsType`+`svnUrl` on projects, `revision`+`vcsType` on commits |
 | [Build artifact parser (map files, FV/FD)](phase-2-input-layer/10-build-artifact-parser.md) | ✅ Done        | `lib/build-artifact-parser.ts` — `parseMapFile` (GCC/MSVC), `parseFvFile` (UEFI FV), `parseFdFile` (flash regions), `parseCompileLog` (GCC/MSVC diagnostics), structured Markdown output; `document-parser.ts` routes `build_artifact` to new parser; `upload.ts` allows `.log` |
 
 **Progress: 4 / 4**
@@ -132,7 +132,7 @@
 
 ### 🟠 Medium Priority — Phase 2 Gaps
 
-- [x] **SVN integration**: ✅ Implemented — `artifacts/api-server/src/lib/svn-client.ts` (typed `execFile` wrapper for `svn log --xml` + `svn diff`), `POST /projects/:id/ingest/svn` route with deduplication, `SvnIngestInput`/`SvnIngestResult` OpenAPI schemas + Orval codegen, `vcsType`/`svnUrl` on projects table, `revision`/`vcsType` on commits table
+- [x] **SVN integration**: ✅ Implemented — `artifacts/api-server/src/lib/svn-client.ts` (typed `spawn` streaming wrapper for `svn log --xml` + `svn diff`), `POST /projects/:id/ingest/svn` route with deduplication, `SvnIngestInput`/`SvnIngestResult` OpenAPI schemas + Orval codegen, `vcsType`/`svnUrl` on projects table, `revision`/`vcsType` on commits table
 
 ### 🟠 Medium Priority — Phase 2 Gaps
 

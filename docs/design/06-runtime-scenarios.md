@@ -17,7 +17,7 @@ sequenceDiagram
     User->>FE: Click "Ingest" on project page
     FE->>API: POST /projects/:id/ingest/git { mode: "incremental" }
     API->>DB: SELECT lastGitIngestedAt FROM projects WHERE id = :id
-    API->>GIT: execFile("git", ["log", "--after=<cursor>", "--format=..."])
+    API->>GIT: spawn("git" (streamed), ["log", "--after=<cursor>", "--format=..."])
     GIT-->>API: Raw commit list (stdout)
     API->>API: scoreCommit() ??filter low-signal commits
     API->>DB: INSERT INTO commits (hash, message, diff, authoredAt, projectId)

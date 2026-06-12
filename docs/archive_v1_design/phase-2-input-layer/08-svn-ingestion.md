@@ -30,7 +30,7 @@ Fetch commit history and diffs from SVN repositories and normalize to the same c
 
 ### Functional & Logic Requirements
 
-- [ ] **Verify '(execFile-based CLI wrapper)'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
+- [ ] **Verify '(spawn-based streaming CLI wrapper)'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
 - [ ] **Verify '/ OpenAPI schemas'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
 - [ ] **Verify 'on projects'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
 - [ ] **Verify 'on commits'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
@@ -70,7 +70,7 @@ Fetch commit history and diffs from SVN repositories and normalize to the same c
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
-  - **(execFile-based CLI wrapper)**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
+  - **(spawn-based streaming CLI wrapper)**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **/ OpenAPI schemas**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **on projects**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **on commits**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.

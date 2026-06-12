@@ -18,8 +18,8 @@ graph TD
     CHAT[Copilot Chat<br/>@docuvia participant] -->|VS Code API| VSC
     GH[GitHub Webhooks] -->|HTTPS POST + HMAC| API
     LLM[OpenAI-compatible<br/>LLM API] <-->|HTTPS REST| API
-    GITCLI[Git CLI<br/>local] <-->|child_process.execFile| API
-    SVNCLI[SVN CLI<br/>local] <-->|child_process.execFile| API
+    GITCLI[Git CLI<br/>local] <-->|child_process.spawn (streamed)| API
+    SVNCLI[SVN CLI<br/>local] <-->|child_process.spawn (streamed)| API
     SLACK[Slack / Teams<br/>webhooks] <-- |HTTPS POST fire-and-forget| API
 ```
 
@@ -37,8 +37,8 @@ graph TD
 | **PostgreSQL**              | Outbound  | TCP (Drizzle ORM)                  | `DATABASE_URL` connection string               | All schema tables in `lib/db/src/schema/`                          |
 | **OpenAI-compatible LLM**   | Outbound  | HTTPS REST                         | API key (`OPENAI_API_KEY` or equivalent)       | `/v1/chat/completions`                                             |
 | **Slack / Teams**           | Outbound  | HTTPS POST (webhook)               | Webhook URL (stored in `project_integrations`) | Notification events (fire-and-forget)                              |
-| **Git CLI**                 | Outbound  | `child_process.execFile`           | Local filesystem permissions                   | `git log`, `git diff`, `git show`                                  |
-| **SVN CLI**                 | Outbound  | `child_process.execFile`           | Local SVN credentials                          | `svn log --xml`, `svn diff`                                        |
+| **Git CLI**                 | Outbound  | `child_process.spawn (streamed)`           | Local filesystem permissions                   | `git log`, `git diff`, `git show`                                  |
+| **SVN CLI**                 | Outbound  | `child_process.spawn (streamed)`           | Local SVN credentials                          | `svn log --xml`, `svn diff`                                        |
 
 ---
 
@@ -49,7 +49,7 @@ graph TD
 - **Ingestion pipeline** — Git adapter, SVN adapter, document upload, build artifact parser
 - **Knowledge construction** — L1 tagger, L2 extractor, L3 generator (all LLM-powered)
 - **Knowledge graph storage** — PostgreSQL tables for L1/L2/L3 nodes, node links, embeddings (JSONB)
-- **Graph traversal** — One-hop impact analysis via `node_links`; in-memory cosine similarity search over embeddings
+- **Graph traversal** — One-hop impact analysis via `node_links`; raw SQL cosine distance over JSONB with temporal decay over embeddings
 - **Review task queue** — Human-in-the-loop workflow with feedback loop to correction examples
 - **MCP query layer** — 4-way intent routing (vector | graph | direct | hybrid)
 - **REST API** — All routes defined in `lib/api-spec/openapi.yaml`; implemented in `artifacts/api-server/src/routes/`

@@ -16,7 +16,7 @@ Before proposing any solution, silently recall Docuvia's core positioning:
 - No heavy infrastructure (No Redis/Kafka; rely on Postgres/SQLite & Node.js).
 
 ## 2. Summon the Team (The Debate)
-Output a simulated transcript consisting of at least 3 rounds of debate between:
+You MUST use the `runSubagent` tool to spawn actual Subagents for the debate. Do NOT output a simulated transcript yourself. Spawn at least two subagents (e.g., 'SRE Challenger' and 'Architect') and pass the critique back and forth between them using the tool. The debate must cover:
 - **PM**: Ensures the solution doesn't violate product positioning.
 - **Leo (Architect/Dev)**: Proposes the files to touch and exact TypeScript/SQL logic.
 - **QA**: Attacks logic edge cases.

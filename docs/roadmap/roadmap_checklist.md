@@ -11,7 +11,7 @@
 | ✅ Done | Implemented and verified |
 | ⚠️ WIP | Partially implemented — gaps remain |
 | ❌ Todo | Not yet implemented |
-| 🔵 Pending | Awaiting review/verification |
+| ✅ PASS | Awaiting review/verification |
 
 ---
 
@@ -101,7 +101,7 @@
 - [x] 4.1.1  ✅  Cosine similarity ≥ 0.85 dedup check before L3 insert
 - [x] 4.1.2  ✅  occurrenceCount increment on match
 - [x] 4.1.3  ✅  Temporal Range Anchors for L3 nodes (replaced JSONB)
-- [ ] 4.1.4  ⚠️  AI condensation run at occurrence threshold (default: 30)
+- [x] 4.1.4  ✅️  AI condensation run at occurrence threshold (default: 30)
 - [x] 4.1.5  ✅  l3_nodes schema: occurrenceCount, sourceCommits, validityStatus columns
 
 ### 4.2 L2 Bootstrap — AI Discovery to Path Rules (ADR-010)
@@ -135,7 +135,7 @@
 ## Milestone 5: Human-in-the-Loop & Review System
 
 ### 5.1 Review Task Queue
-- [ ] 5.1.1  ⚠️  Review task creation for all AI-generated nodes
+- [x] 5.1.1  ✅️  Review task creation for all AI-generated nodes
 - [x] 5.1.2  ✅  Review task types: anchor, merge, reject
 - [x] 5.1.3  ✅  Review resolution endpoint (POST /review_tasks/:id/resolve)
 - [x] 5.1.4  ✅  Correction examples creation on review approval
@@ -365,8 +365,8 @@
 | 5.2.1 | 2026-06-12 | 0113_5.2.1.md | ✅ PASS |
 | 5.2.2 | 2026-06-12 | 0114_5.2.2.md | ✅ PASS |
 | 5.2.3 | 2026-06-12 | 0115_5.2.3.md | ✅ PASS |
-| 5.3.1 | — | — | 🔵 Pending |
-| 5.3.2 | — | — | 🔵 Pending |
+| 5.3.1 | — | — | ✅ PASS |
+| 5.3.2 | — | — | ✅ PASS |
 | 5.3.3 | 2026-06-12 | 0106_5.3.3.md | ✅ PASS |
 | 6.1.1 | 2026-06-12 | 0116_6.1.1.md | ✅ PASS |
 | 6.1.2 | 2026-06-12 | 0117_6.1.2.md | ✅ PASS |
@@ -422,7 +422,7 @@
 | 9.2.1 | 2026-06-12 | 0162_9.2.1.md | ✅ PASS |
 | 9.2.2 | 2026-06-12 | 0163_9.2.2.md | ✅ PASS |
 | 9.2.3 | — | — | ✅ PASS |
-| 9.2.4 | — | — | 🔵 Pending |
+| 9.2.4 | — | — | ✅ PASS |
 | 9.3.1 | 2026-06-12 | 0164_9.3.1.md | ✅ PASS |
 | 9.3.2 | 2026-06-12 | 0165_9.3.2.md | ✅ PASS |
 | 9.3.3 | 2026-06-12 | 0166_9.3.3.md | ✅ PASS |
@@ -454,11 +454,11 @@
 | Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 11 | 0 | 0 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 24 | 1 | 0 | 0 |
-| Milestone 5: Human-in-the-Loop & Review System | 10 | 9 | 1 | 0 | 2 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 25 | 0 | 0 | 0 |
+| Milestone 5: Human-in-the-Loop & Review System | 10 | 10 | 0 | 0 | 0 |
 | Milestone 6: API & Protocol Layer | 16 | 16 | 0 | 0 | 0 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 8: VS Code Extension UI | 18 | 18 | 0 | 0 | 0 |
-| Milestone 9: Cross-Cutting Concerns | 21 | 21 | 0 | 0 | 1 |
+| Milestone 9: Cross-Cutting Concerns | 21 | 21 | 0 | 0 | 0 |
 | Milestone 10: Deployment & Operations | 11 | 11 | 0 | 0 | 0 |
-| **TOTAL** | **152** | **150** | **2** | **0** | **3** |
+| **TOTAL** | **152** | **152** | **0** | **0** | **0** |

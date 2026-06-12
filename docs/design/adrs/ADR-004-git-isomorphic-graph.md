@@ -21,7 +21,8 @@ flowchart LR
     C4 -.-> |git merge-base| C2
     C2 -.-> |Inherit Baseline| C4
     C4 --> |Extract Delta| NewL3[New L3: hotfix_rule]
-    NewL3 --> |Push Orphan Branch| Server Graph
+    NewL3 --> |API Request| Server Graph
+    Server Graph --> |Central Lock + Commit| Orphan Branch
 ```
 
 ## 1. The Baseline Inheritance (Nearest Ancestor)
@@ -32,9 +33,9 @@ flowchart LR
 ## 2. Local-Side Incremental Analysis (Knowledge Patch)
 
 - The developer only extracts new L3 decisions for the files modified in the delta between the ancestor and `HEAD`.
-- These new L3s are explicitly anchored to the new Commit Hash (via `sourceCommits` array in Drizzle schema [`l3NodesTable` in l3_nodes.ts](file:///d:/GitHub/Docuvia/lib/db/src/schema/l3_nodes.ts#L61)).
+- These new L3s are explicitly anchored to the Git history via Temporal Range Anchors (`introduced_in_commit` and `verified_until_commit` columns in Drizzle schema `l3NodesTable`). This eliminates JSONB array bloat.
 
 ## 3. Server-Side Incremental Merge
 
-- When patches are pushed, the API Server (running in `incremental` mode in [`generate.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/generate.ts)) simply attaches the new nodes and edges to the existing DAG.
+- When patches are submitted via API, the API Server (running under distributed advisory locks to prevent split-brain) performs a standard Git 3-way merge on the orphan branch. If conflicts occur, it returns `409 Conflict`. in [`generate.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/generate.ts)) simply attaches the new nodes and edges to the existing DAG.
 - **Zero-Waste Validation**: Re-evaluating the entire codebase is avoided. Every token spent produces an immutable brick anchored to a specific point in space-time in [`commitsTable` in commits.ts](file:///d:/GitHub/Docuvia/lib/db/src/schema/commits.ts).

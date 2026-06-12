@@ -12,7 +12,7 @@
 | **Codegen trigger**            | Must run after every change to `openapi.yaml`                               | `pnpm --filter @workspace/api-spec run codegen`                                       |
 | **LLM Integration**            | OpenAI-compatible endpoint only                                             | `lib/integrations-openai-ai-server/`; no native Ollama adapter in v1                  |
 | **PORT environment variable**  | API server throws an explicit error on startup if `PORT` is missing         | `artifacts/api-server/src/index.ts` startup check                                     |
-| **Node.js version in CI**      | Node.js 22 in GitHub Actions (24 in production)                             | `.github/workflows/ci.yml`                                                            |
+| **Node.js version in CI**      | Node.js 24 in GitHub Actions (Aligned with production)                             | `.github/workflows/ci.yml`                                                            |
 
 ---
 

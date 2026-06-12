@@ -40,6 +40,7 @@ export interface DocumentItem {
   content: string;
   docType: "markdown" | "txt" | "pdf" | "docx" | "pptx" | "build_artifact";
   commitSha?: string;
+  contentHash?: string;
 }
 
 export interface ProcessIngestionParams {
@@ -152,7 +153,7 @@ export async function processIngestion({
   } else if (type === "document") {
     const docItems = items as DocumentItem[];
     for (const doc of docItems) {
-      const hash = crypto.createHash("sha256").update(doc.content).digest("hex");
+      const hash = doc.contentHash ?? crypto.createHash("sha256").update(doc.content).digest("hex");
       
       const [existing] = await db
         .select({ id: documentsTable.id })

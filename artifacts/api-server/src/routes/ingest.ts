@@ -349,7 +349,9 @@ router.post("/projects/:id/ingest/build-artifact", upload.single("file"), async 
 
   try {
     // Basic ANSI strip implementation
-    const rawContent = req.file.buffer.toString("utf-8");
+    const filePath = req.file.path;
+    const contentHash = await computeHashFromStream(filePath);
+    const rawContent = await fs.promises.readFile(filePath, "utf-8");
     const strippedContent = rawContent.replace(/\x1b\[[0-9;]*[mG]/g, "");
 
     const result = await processIngestion({
@@ -361,10 +363,12 @@ router.post("/projects/:id/ingest/build-artifact", upload.single("file"), async 
           filename: req.file.originalname,
           content: strippedContent,
           docType: "build_artifact",
+          contentHash,
         },
       ],
     });
 
+    await fs.promises.unlink(filePath).catch(() => {});
     return res.json(result);
   } catch (err) {
     logger.error({ err, projectId }, "[POST /projects/:id/ingest/build-artifact] Unhandled error");

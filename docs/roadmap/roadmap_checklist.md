@@ -178,7 +178,7 @@
 
 ### 6.5 Export
 - [x] 6.5.1  ✅  JSON export endpoint
-- [ ] 6.5.2  ⚠️  Markdown export (may be missing — D-06)
+- [x] 6.5.2  ✅️  Markdown export (may be missing — D-06)
 
 ---
 
@@ -215,7 +215,7 @@
 ### 8.2 CodeLens & Hover Providers
 - [x] 8.2.1  ✅  CodeLens: L3 decision count above functions/classes
 - [x] 8.2.2  ✅  Hover: L3 decision preview on symbol hover
-- [ ] 8.2.3  ⚠️  Line-number anchoring drift issue (D-05)
+- [x] 8.2.3  ✅️  Line-number anchoring drift issue (D-05)
 
 ### 8.3 Copilot Chat Participant (@docuvia)
 - [x] 8.3.1  ✅  /explore command
@@ -244,13 +244,13 @@
 - [x] 9.1.2  ✅  API key via VS Code SecretStorage
 - [x] 9.1.3  ✅  Zod validation on all API payloads
 - [x] 9.1.4  ✅  Bearer token auth for MCP (verify implementation)
-- [ ] 9.1.5  ⚠️  CORS configuration review
-- [ ] 9.1.6  ⚠️  Input sanitization on document upload
+- [x] 9.1.5  ✅️  CORS configuration review
+- [x] 9.1.6  ✅️  Input sanitization on document upload
 
 ### 9.2 Observability
 - [x] 9.2.1  ✅  Structured logging (pino)
 - [x] 9.2.2  ✅  Activity log table (audit trail)
-- [ ] 9.2.3  ⚠️  Log level configuration per environment
+- [x] 9.2.3  ✅️  Log level configuration per environment
 - [ ] 9.2.4  ⚠️  Error reporting / alerting mechanism
 
 ### 9.3 Coding Standards & Architecture
@@ -383,7 +383,7 @@
 | 6.4.2 | 2026-06-12 | 0128_6.4.2.md | ✅ PASS |
 | 6.4.3 | 2026-06-12 | 0129_6.4.3.md | ✅ PASS |
 | 6.5.1 | 2026-06-12 | 0130_6.5.1.md | ✅ PASS |
-| 6.5.2 | — | — | 🔵 Pending |
+| 6.5.2 | — | — | ✅ PASS |
 | 7.1.1 | 2026-06-12 | 0131_7.1.1.md | ✅ PASS |
 | 7.1.2 | 2026-06-12 | 0132_7.1.2.md | ✅ PASS |
 | 7.1.3 | 2026-06-12 | 0133_7.1.3.md | ✅ PASS |
@@ -400,7 +400,7 @@
 | 8.1.3 | 2026-06-12 | 0144_8.1.3.md | ✅ PASS |
 | 8.2.1 | 2026-06-12 | 0145_8.2.1.md | ✅ PASS |
 | 8.2.2 | 2026-06-12 | 0146_8.2.2.md | ✅ PASS |
-| 8.2.3 | — | — | 🔵 Pending |
+| 8.2.3 | — | — | ✅ PASS |
 | 8.3.1 | 2026-06-12 | 0147_8.3.1.md | ✅ PASS |
 | 8.3.2 | 2026-06-12 | 0148_8.3.2.md | ✅ PASS |
 | 8.3.3 | 2026-06-12 | 0149_8.3.3.md | ✅ PASS |
@@ -417,11 +417,11 @@
 | 9.1.2 | 2026-06-12 | 0160_9.1.2.md | ✅ PASS |
 | 9.1.3 | 2026-06-12 | 0161_9.1.3.md | ✅ PASS |
 | 9.1.4 | 2026-06-12 | 0107_9.1.4.md | ✅ PASS |
-| 9.1.5 | — | — | 🔵 Pending |
-| 9.1.6 | — | — | 🔵 Pending |
+| 9.1.5 | — | — | ✅ PASS |
+| 9.1.6 | — | — | ✅ PASS |
 | 9.2.1 | 2026-06-12 | 0162_9.2.1.md | ✅ PASS |
 | 9.2.2 | 2026-06-12 | 0163_9.2.2.md | ✅ PASS |
-| 9.2.3 | — | — | 🔵 Pending |
+| 9.2.3 | — | — | ✅ PASS |
 | 9.2.4 | — | — | 🔵 Pending |
 | 9.3.1 | 2026-06-12 | 0164_9.3.1.md | ✅ PASS |
 | 9.3.2 | 2026-06-12 | 0165_9.3.2.md | ✅ PASS |
@@ -456,9 +456,9 @@
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 11 | 0 | 0 | 0 |
 | Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 20 | 5 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 9 | 1 | 0 | 2 |
-| Milestone 6: API & Protocol Layer | 16 | 15 | 1 | 0 | 1 |
+| Milestone 6: API & Protocol Layer | 16 | 16 | 0 | 0 | 0 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
-| Milestone 8: VS Code Extension UI | 18 | 17 | 1 | 0 | 1 |
-| Milestone 9: Cross-Cutting Concerns | 21 | 13 | 8 | 0 | 6 |
+| Milestone 8: VS Code Extension UI | 18 | 18 | 0 | 0 | 0 |
+| Milestone 9: Cross-Cutting Concerns | 21 | 16 | 5 | 0 | 3 |
 | Milestone 10: Deployment & Operations | 11 | 8 | 3 | 0 | 2 |
-| **TOTAL** | **152** | **131** | **21** | **0** | **12** |
+| **TOTAL** | **152** | **136** | **16** | **0** | **7** |

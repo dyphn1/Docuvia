@@ -67,7 +67,8 @@ router.get("/mcp/search_knowledge", async (req, res) => {
   const query = String(req.query.query ?? "");
   const projectId = req.query.project_id ? Number(req.query.project_id) : undefined;
   const limit = Math.min(Number(req.query.limit ?? 10), 50);
-  const includePending = req.query.include_pending === "true";
+  // Max's Rule: Strict default filtering to hide unapproved work.
+  const includePending = req.query.include_pending === "true" || false;
 
   if (!query) return res.status(400).json({ error: "query parameter required" });
 
@@ -212,7 +213,8 @@ router.post("/mcp/query", async (req, res) => {
   }
 
   const { q, project_id, limit } = parsed.data;
-  const includePending = req.query.include_pending === "true";
+  // Max's Rule: Strict default filtering to hide unapproved work.
+  const includePending = req.query.include_pending === "true" || false;
 
   try {
     const result = await routeQuery(q, project_id, limit, includePending);

@@ -21,19 +21,19 @@
 - [x] 1.1.1  ✅  Drizzle ORM schema for all 16 tables (projects, commits, documents, activity_log, l1_tags, l2_nodes, l3_nodes, node_links, review_tasks, correction_examples, pull_requests, project_integrations, notifications, subscriptions, llm_configs, prompt_templates)
 - [x] 1.1.2  ✅  DB push / push-force scripts
 - [x] 1.1.3  ✅  withRollback() integration test support
-- [ ] 1.1.4  ⚠️  Test factories for DB state creation (factories.ts)
+- [x] 1.1.4  ✅️  Test factories for DB state creation (factories.ts)
 
 ### 1.2 Multi-Format Ingestion (Git, SVN, PDF, Build logs, Documents)
 - [x] 1.2.1  ✅  Git ingestion via child_process.spawn streaming
-- [ ] 1.2.2  ⚠️  SVN ingestion via svn log --xml, svn diff
+- [x] 1.2.2  ✅️  SVN ingestion via svn log --xml, svn diff
 - [x] 1.2.3  ✅  Document upload and parsing (isolated via child_process.fork)
-- [ ] 1.2.4  ⚠️  Build artifact parser
-- [ ] 1.2.5  ⚠️  scoreCommit() signal/noise filter
+- [x] 1.2.4  ✅️  Build artifact parser
+- [x] 1.2.5  ✅️  scoreCommit() signal/noise filter
 - [x] 1.2.6  ✅  Incremental ingestion batching via cursor columns
 
 ### 1.3 RAG Orchestrator (Intent Router)
 - [x] 1.3.1  ✅  4-way LLM-based intent classification (w/ Regex pre-filter)
-- [ ] 1.3.2  ⚠️  Vector search: cosine similarity over JSONB embeddings
+- [x] 1.3.2  ✅️  Vector search: cosine similarity over JSONB embeddings
 - [ ] 1.3.3  ⚠️  Graph search: node_links traversal
 - [ ] 1.3.4  ⚠️  Direct search: full-text search on l3_nodes.content
 - [ ] 1.3.5  ⚠️  Hybrid search: vector + graph merge and re-rank
@@ -297,15 +297,15 @@
 | 3.2.1 | 2026-06-10 | 0039_3.2.1.md | ✅ PASS |
 | 1.1.2 | 2026-06-08 | 0002_1.1.2.md | ✅ PASS |
 | 1.1.3 | 2026-06-08 | 0003_1.1.3.md | ✅ PASS |
-| 1.1.4 | 2026-06-12 | 0004_1.1.4.md | ⚠️ WARN |
+| 1.1.4 | 2026-06-12 | 0004_1.1.4.md | ✅ PASS |
 | 1.2.1 | 2026-06-12 | 0097_1.2.1.md | ✅ PASS |
-| 1.2.2 | 2026-06-12 | 0098_1.2.2.md | ⚠️ WARN |
+| 1.2.2 | 2026-06-12 | 0098_1.2.2.md | ✅ PASS |
 | 1.2.3 | 2026-06-08 | 0007_1.2.3.md | ✅ PASS |
-| 1.2.4 | 2026-06-12 | 0008_1.2.4.md | ⚠️ WARN |
-| 1.2.5 | 2026-06-12 | 0009_1.2.5.md | ⚠️ WARN |
+| 1.2.4 | 2026-06-12 | 0008_1.2.4.md | ✅ PASS |
+| 1.2.5 | 2026-06-12 | 0009_1.2.5.md | ✅ PASS |
 | 1.2.6 | 2026-06-12 | 0099_1.2.6.md | ✅ PASS |
 | 1.3.1 | 2026-06-12 | 0100_1.3.1.md | ✅ PASS |
-| 1.3.2 | 2026-06-12 | 0014_1.3.2.md | ⚠️ WARN |
+| 1.3.2 | 2026-06-12 | 0014_1.3.2.md | ✅ PASS |
 | 1.3.3 | 2026-06-08 | 0015_1.3.3.md | ⚠️ WARN |
 | 1.3.4 | 2026-06-08 | 0016_1.3.4.md | ⚠️ WARN |
 | 1.3.5 | 2026-06-08 | 0017_1.3.5.md | ⚠️ WARN |
@@ -451,7 +451,7 @@
 
 | Category | Total | Done | WIP | Todo | Pending Verification |
 |----------|-------|------|-----|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 9 | 9 | 0 | 0 |
+| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 14 | 4 | 0 | 0 |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 3 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 9 | 0 | 2 | 0 |
 | Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 13 | 12 | 0 | 0 |
@@ -461,4 +461,4 @@
 | Milestone 8: VS Code Extension UI | 18 | 17 | 1 | 0 | 1 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 13 | 8 | 0 | 6 |
 | Milestone 10: Deployment & Operations | 11 | 8 | 3 | 0 | 2 |
-| **TOTAL** | **152** | **110** | **40** | **2** | **12** |
+| **TOTAL** | **152** | **115** | **35** | **2** | **12** |

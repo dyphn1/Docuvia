@@ -96,7 +96,7 @@ sequenceDiagram
     alt vector
         API->>LLM: POST /v1/embeddings { input: query }
         LLM-->>API: Query embedding vector
-        API->>DB: SELECT l3_nodes, cosine_similarity(embedding, queryVec) ORDER BY sim DESC LIMIT 10
+        API->>DB: SELECT l3_nodes, cosine_similarity(embedding, queryVec) ORDER BY sim DESC LIMIT 50 -> Apply Post-Fetch Temporal Decay Math in Application Memory -> LIMIT 10
         DB-->>API: Top-K L3 nodes
     else graph
         API->>DB: MATCH l2_nodes WHERE name LIKE query ??traverse node_links

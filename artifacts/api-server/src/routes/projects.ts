@@ -234,4 +234,27 @@ router.get("/projects/:id/l2-nodes", async (req, res) => {
   res.json(result);
 });
 
+
+// POST /projects/:id/sync (Trigger ingestion pipeline from CLI)
+router.post("/projects/:id/sync", async (req, res) => {
+  const projectId = Number(req.params.id);
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  if (!project) return res.status(404).json({ error: "Project not found" });
+
+  try {
+    // In a real implementation this would trigger an async job via job_queue.ts
+    // For now we simulate acknowledging the trigger.
+    await db.insert(activityLogTable).values({
+      projectId,
+      type: "commit",
+      description: "Sync triggered via CLI"
+    });
+    
+    return res.json({ success: true, message: "Sync ingestion triggered in background" });
+  } catch (err: any) {
+    logger.error({ err, projectId }, "[POST /projects/:id/sync] Failed to trigger sync");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

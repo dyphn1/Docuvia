@@ -341,4 +341,35 @@ router.use(
   }
 );
 
+
+// POST /projects/:id/ingest/build-artifact
+router.post("/projects/:id/ingest/build-artifact", upload.single("file"), async (req, res) => {
+  const projectId = Number(req.params.id);
+  if (!req.file) return res.status(400).json({ error: "file required" });
+
+  try {
+    // Basic ANSI strip implementation
+    const rawContent = req.file.buffer.toString("utf-8");
+    const strippedContent = rawContent.replace(/\x1b\[[0-9;]*[mG]/g, "");
+
+    const result = await processIngestion({
+      type: "document",
+      projectId,
+      projectName: `Project ${projectId}`, // We should fetch this
+      items: [
+        {
+          filename: req.file.originalname,
+          content: strippedContent,
+          docType: "build_artifact",
+        },
+      ],
+    });
+
+    return res.json(result);
+  } catch (err) {
+    logger.error({ err, projectId }, "[POST /projects/:id/ingest/build-artifact] Unhandled error");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

@@ -95,7 +95,7 @@ const VALID_STRATEGIES = new Set<string>([
 /**
  * Escapes SQL LIKE wildcards (% and _) to prevent injection.
  */
-export function escapeLike(str: string): string {
+export function sanitizeLikeInput(str: string): string {
   return str.replace(/[%_\\]/g, '\\$&');
 }
 
@@ -288,7 +288,7 @@ export async function vectorSearchHandler(
     }
   } else {
     // Fallback: SQL LIKE search
-    const escapedQuery = escapeLike(query);
+    const escapedQuery = sanitizeLikeInput(query);
     const pattern = `%${escapedQuery}%`;
 
     let l2FallbackQuery = db
@@ -386,11 +386,12 @@ export async function vectorSearchHandler(
 
 export async function graphTraversalHandler(
   moduleName: string,
-  projectId?: number
+  projectId?: number,
+  limit = 20
 ): Promise<AgenticSearchResult[]> {
   const results: AgenticSearchResult[] = [];
 
-  const escapedModuleName = escapeLike(moduleName);
+  const escapedModuleName = sanitizeLikeInput(moduleName);
   const nodes = await db
     .select()
     .from(l2NodesTable)
@@ -404,7 +405,6 @@ export async function graphTraversalHandler(
     .from(projectsTable)
     .where(eq(projectsTable.id, node.projectId));
 
-  // The matched node itself
   results.push({
     source: "graph",
     nodeLayer: "l2",
@@ -417,65 +417,57 @@ export async function graphTraversalHandler(
     createdAt: node.createdAt.toISOString(),
   });
 
-  // Outbound dependencies
+  // Batch query for out-links
   const outLinks = await db
     .select()
     .from(nodeLinksTable)
     .where(eq(nodeLinksTable.sourceNodeId, node.id));
 
-  for (const link of outLinks) {
-    const [target] = await db
+  if (outLinks.length > 0) {
+    const targetIds = outLinks.map((l) => l.targetNodeId);
+    const relatedL2s = await db
       .select()
       .from(l2NodesTable)
-      .where(eq(l2NodesTable.id, link.targetNodeId));
-    if (!target) continue;
-    const [targetProj] = await db
-      .select({ name: projectsTable.name })
-      .from(projectsTable)
-      .where(eq(projectsTable.id, target.projectId));
-    results.push({
-      source: "graph",
-      nodeLayer: "l2",
-      id: target.id,
-      title: target.name,
-      content: target.description ?? null,
-      projectId: target.projectId,
-      projectName: targetProj?.name ?? null,
-      score: 0.7,
-      createdAt: target.createdAt.toISOString(),
-    });
+      .where(sql`${l2NodesTable.id} IN ${targetIds}`);
+
+    for (const r of relatedL2s) {
+      results.push({
+        source: "graph",
+        nodeLayer: "l2",
+        id: r.id,
+        title: r.name,
+        content: `Related dependency of ${node.name}`,
+        projectId: r.projectId,
+        projectName: proj?.name ?? null,
+        score: 0.8,
+        createdAt: r.createdAt.toISOString(),
+      });
+    }
   }
 
-  // Inbound dependents
-  const inLinks = await db
+  // Fetch L3 nodes associated with the seed node, sorted by validity and occurrence
+  const l3Decisions = await db
     .select()
-    .from(nodeLinksTable)
-    .where(eq(nodeLinksTable.targetNodeId, node.id));
+    .from(l3NodesTable)
+    .where(eq(l3NodesTable.l2NodeId, node.id))
+    .orderBy(sql`${l3NodesTable.occurrenceCount} DESC`)
+    .limit(limit);
 
-  for (const link of inLinks) {
-    const [source] = await db
-      .select()
-      .from(l2NodesTable)
-      .where(eq(l2NodesTable.id, link.sourceNodeId));
-    if (!source) continue;
-    const [sourceProj] = await db
-      .select({ name: projectsTable.name })
-      .from(projectsTable)
-      .where(eq(projectsTable.id, source.projectId));
+  for (const l3 of l3Decisions) {
     results.push({
       source: "graph",
-      nodeLayer: "l2",
-      id: source.id,
-      title: source.name,
-      content: source.description ?? null,
-      projectId: source.projectId,
-      projectName: sourceProj?.name ?? null,
-      score: 0.7,
-      createdAt: source.createdAt.toISOString(),
+      nodeLayer: "l3",
+      id: l3.id,
+      title: l3.title,
+      content: l3.content,
+      projectId: node.projectId,
+      projectName: proj?.name ?? null,
+      score: 0.9,
+      createdAt: l3.createdAt.toISOString(),
     });
   }
 
-  return results;
+  return results.slice(0, limit);
 }
 
 // ---------------------------------------------------------------------------
@@ -483,113 +475,73 @@ export async function graphTraversalHandler(
 // ---------------------------------------------------------------------------
 
 export async function directLookupHandler(
-  query: string,
-  entities?: IntentClassification["entities"],
-  includePending = false,
-  projectId?: number
+  searchQuery: string,
+  projectId?: number,
+  limit = 20,
+  includePending = false
 ): Promise<AgenticSearchResult[]> {
   const results: AgenticSearchResult[] = [];
 
-  const l3ValidityCondition = includePending
-    ? or(eq(l3NodesTable.validityStatus, "valid"), eq(l3NodesTable.validityStatus, "pending"))
-    : eq(l3NodesTable.validityStatus, "valid");
+  // Determine if it's a commit hash format
+  const isHash = /^[0-9a-fA-F]{4,40}$/.test(searchQuery);
 
-  const hexRegex = /^[0-9a-fA-F]{4,40}$/;
-  const commitHash = entities?.commitHash;
-  const isHex = hexRegex.test(query);
-  const searchHash = commitHash || (isHex ? query : null);
-
-  if (searchHash) {
-    const escapedHash = escapeLike(searchHash);
-    
-    const commitConditions = [like(commitsTable.hash, `${escapedHash}%`)];
-    if (projectId) commitConditions.push(eq(commitsTable.projectId, projectId));
-
-    const [commit] = await db
-      .select()
-      .from(commitsTable)
-      .where(and(...commitConditions));
-
-    if (commit) {
-      const [proj] = await db
-        .select({ name: projectsTable.name })
-        .from(projectsTable)
-        .where(eq(projectsTable.id, commit.projectId));
-      results.push({
-        source: "direct",
-        nodeLayer: "commit",
-        id: commit.id,
-        title: commit.hash,
-        content: commit.message,
-        projectId: commit.projectId,
-        projectName: proj?.name ?? null,
-        score: 1.0,
-        createdAt: commit.createdAt.toISOString(),
-      });
-    }
-
-    const l3Conditions = [
-      like(l3NodesTable.commitHash, `${escapedHash}%`),
-      l3ValidityCondition!
-    ];
-    if (projectId) l3Conditions.push(eq(l2NodesTable.projectId, projectId));
-
+  if (isHash) {
     const l3Nodes = await db
-      .select({
-        node: l3NodesTable,
-        projectId: l2NodesTable.projectId,
-        projectName: projectsTable.name,
-      })
+      .select()
       .from(l3NodesTable)
-      .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
-      .leftJoin(projectsTable, eq(l2NodesTable.projectId, projectsTable.id))
-      .where(and(...l3Conditions));
+      .where(like(l3NodesTable.introducedInCommit, `${searchQuery}%`))
+      .limit(limit);
 
-    for (const { node, projectId, projectName } of l3Nodes) {
+    for (const l3 of l3Nodes) {
+      if (!includePending && l3.validityStatus !== 'active') continue;
+      // Resolve project ID using subquery or simple fetch
+      const [l2] = await db.select({ projectId: l2NodesTable.projectId }).from(l2NodesTable).where(eq(l2NodesTable.id, l3.l2NodeId));
+      if (projectId && l2?.projectId !== projectId) continue;
+
       results.push({
         source: "direct",
         nodeLayer: "l3",
-        id: node.id,
-        title: node.title,
-        content: node.content ?? null,
-        projectId,
-        projectName,
+        id: l3.id,
+        title: l3.title,
+        content: l3.content,
+        projectId: l2?.projectId ?? 0,
+        projectName: null,
         score: 1.0,
-        createdAt: node.createdAt.toISOString(),
+        createdAt: l3.createdAt.toISOString(),
       });
     }
   } else {
-    const escapedQuery = escapeLike(query);
-    const pattern = `%${escapedQuery}%`;
-
-    const l3Conditions = [
-      ilike(l3NodesTable.content, pattern),
-      l3ValidityCondition!
-    ];
-    if (projectId) l3Conditions.push(eq(l2NodesTable.projectId, projectId));
-
+    // Full-text content search fallback
+    const sanitizedQuery = sanitizeLikeInput(searchQuery);
+    
+    // We would ideally use Postgres Full Text Search (to_tsvector/to_tsquery)
+    // but sticking to ILIKE for architectural continuity here.
     const l3Nodes = await db
-      .select({
-        node: l3NodesTable,
-        projectId: l2NodesTable.projectId,
-        projectName: projectsTable.name,
-      })
+      .select()
       .from(l3NodesTable)
-      .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
-      .leftJoin(projectsTable, eq(l2NodesTable.projectId, projectsTable.id))
-      .where(and(...l3Conditions));
+      .where(
+        or(
+          sql`${l3NodesTable.title} ILIKE ${`%${sanitizedQuery}%`}`,
+          sql`${l3NodesTable.content} ILIKE ${`%${sanitizedQuery}%`}`
+        )
+      )
+      .limit(limit);
+      
+    for (const l3 of l3Nodes) {
+      if (!includePending && l3.validityStatus !== 'active') continue;
+      const [l2] = await db.select({ projectId: l2NodesTable.projectId }).from(l2NodesTable).where(eq(l2NodesTable.id, l3.l2NodeId));
+      if (projectId && l2?.projectId !== projectId) continue;
 
-    for (const { node, projectId, projectName } of l3Nodes) {
       results.push({
         source: "direct",
         nodeLayer: "l3",
-        id: node.id,
-        title: node.title,
-        content: node.content ?? null,
-        projectId,
-        projectName,
-        score: 1.0,
-        createdAt: node.createdAt.toISOString(),
+        id: l3.id,
+        title: l3.title,
+        content: l3.content,
+        projectId: l2?.projectId ?? 0,
+        projectName: null,
+        score: 0.8,
+        createdAt: l3.createdAt.toISOString(),
       });
     }
   }

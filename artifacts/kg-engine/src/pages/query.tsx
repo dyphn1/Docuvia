@@ -62,7 +62,7 @@ export default function Query() {
     setError(null);
     setResults(null);
     try {
-      const res = await fetch("/api/search", {
+      const res = await fetch("/api/mcp/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

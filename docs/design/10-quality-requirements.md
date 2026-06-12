@@ -97,3 +97,6 @@ See [docs/ui-testing-strategy.md](../ui-testing-strategy.md) for the kg-engine U
 - [docs/testcase-roadmap.md](../testcase-roadmap.md) — Test coverage roadmap
 - [docs/ui-testing-strategy.md](../ui-testing-strategy.md) — Frontend testing strategy
 - [artifacts/vscode-client/design/ui-ux/user-journeys.md](../../artifacts/vscode-client/design/ui-ux/user-journeys.md) — VS Code extension user journeys and known bugs
+
+## Operations & Resilience
+To prevent infinite crash loops, errors in the background queue are subjected to a Dead Letter Queue (DLQ) pattern. Any job failing 3 times is isolated into the `error_reports` table.

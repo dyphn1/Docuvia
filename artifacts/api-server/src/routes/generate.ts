@@ -139,37 +139,52 @@ async function condenseL3Node(
   node: { id: number; title: string; content: string | null; sourceCommits: unknown },
   model: string
 ): Promise<string | null> {
-  const commits = Array.isArray(node.sourceCommits) ? (node.sourceCommits as string[]) : [];
+const commits = Array.isArray(node.sourceCommits) ? (node.sourceCommits as string[]) : [];
   if (!commits.length) return null;
 
-  const commitData = await db
-    .select({ hash: commitsTable.hash, message: commitsTable.message })
-    .from(commitsTable)
-    .where(inArray(commitsTable.hash, commits.slice(0, 50)));
+  // Max's Rule: Progressive batch mode to prevent Context Limit OOM and 429 Rate Limits
+  const batchSize = 20;
+  let synthesizedContent = "";
 
-  if (!commitData.length) return null;
+  for (let i = 0; i < commits.length; i += batchSize) {
+    const commitBatchHashes = commits.slice(i, i + batchSize);
+    
+    const commitData = await db
+      .select({ hash: commitsTable.hash, message: commitsTable.message })
+      .from(commitsTable)
+      .where(inArray(commitsTable.hash, commitBatchHashes));
 
-  const commitSummary = commitData
-    .map((c) => `[${c.hash.slice(0, 8)}] ${c.message}`)
-    .join("\n");
+    if (!commitData.length) continue;
 
-  try {
-    const response = await openai.chat.completions.create({
-      model,
-      max_completion_tokens: 1024,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a technical writer. Given a knowledge node's title, existing content, and related commits, synthesize an updated comprehensive content string. Return only the new content text.",
-        },
-        {
-          role: "user",
-          content: `Node title: "${node.title}"\nExisting content: "${node.content ?? ""}"\nRelated commits:\n${commitSummary}\n\nSynthesize updated content:`,
-        },
-      ],
-    });
-    return response.choices[0]?.message?.content ?? null;
+    const commitSummary = commitData
+      .map((c) => `[${c.hash.slice(0, 8)}] ${c.message}`)
+      .join("\n");
+
+    try {
+      const response = await openai.chat.completions.create({
+        model,
+        max_completion_tokens: 1024,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a technical writer. Given a knowledge node's title, existing content, and related commits, synthesize an updated comprehensive content string. Return only the new content text.",
+          },
+          {
+            role: "user",
+            content: `Node title: "${node.title}"\nExisting content: "${synthesizedContent || node.content || ""}"\nRelated commits:\n${commitSummary}\n\nSynthesize updated content:`,
+          },
+        ],
+      });
+      synthesizedContent = response.choices[0]?.message?.content ?? synthesizedContent;
+      // Sleep to prevent rate limit
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (e) {
+      logger.warn({ err: e }, "Failed to generate chunk");
+    }
+  }
+
+  return synthesizedContent || null;
   } catch {
     return null;
   }

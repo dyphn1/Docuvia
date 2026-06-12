@@ -20,7 +20,7 @@ graph TD
     LLM[OpenAI-compatible<br/>LLM API] <-->|HTTPS REST| API
     GITCLI[Git CLI<br/>local] <-->|spawn stream| API
     SVNCLI[SVN CLI<br/>local] <-->|spawn stream| API
-    SLACK[Slack / Teams<br/>webhooks] <-- |HTTPS POST fire-and-forget| API
+    API -->|HTTPS POST fire-and-forget| SLACK[Slack / Teams<br/>webhooks]
 ```
 
 ---

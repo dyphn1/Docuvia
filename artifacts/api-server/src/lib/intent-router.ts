@@ -662,6 +662,25 @@ export async function routeQuery(
   includePending = false
 ): Promise<RouteQueryResult> {
   const start = Date.now();
+  const trimmed = query.trim();
+
+  // O(1) Fast-path: Regex pre-filter to bypass LLM latency
+  // Matches PascalCase, camelCase, snake_case or explicitly wrapped in quotes/backticks
+  const exactMatchRegex = /^([A-Z][a-zA-Z0-9]+|[a-z]+[A-Z][a-zA-Z0-9]+|[a-z]+_[a-z0-9_]+|`[^`]+`|"[^"]+")$/;
+  
+  if (exactMatchRegex.test(trimmed)) {
+    const rawSearch = trimmed.replace(/[`"]/g, "");
+    const results = await directSearch(rawSearch, projectId, limit, includePending);
+    
+    // If we find exact matches, return instantly without calling the LLM
+    if (results.length > 0) {
+      return {
+        strategy: "direct",
+        results,
+        latencyMs: Date.now() - start
+      };
+    }
+  }
 
   let classification: IntentClassification | null = null;
 

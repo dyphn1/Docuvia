@@ -58,7 +58,7 @@ async function ingestPrCommits(
       hash: c.sha,
       message: c.commit.message.split("\n")[0].trim(),
       author: c.commit.author?.name ?? "Unknown",
-      valid: score >= 0.4,
+      valid,
     });
     ingested++;
   }

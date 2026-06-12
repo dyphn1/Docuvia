@@ -85,13 +85,13 @@ export async function processIngestion({
             skipped++;
             continue;
           }
-          const score = scoreCommit(c.message, c.diff);
+          const { valid } = scoreCommit(c.message, c.diff);
           await tx.insert(commitsTable).values({
             projectId,
             hash: c.sha,
             message: c.message.slice(0, 4000), // Enforce length limit
             author: c.author ?? "Unknown",
-            valid: score >= 0.4,
+            valid,
             vcsType: "git",
           });
           batchIngested++;
@@ -131,7 +131,7 @@ export async function processIngestion({
         continue;
       }
 
-      const score = scoreCommit(c.message, c.diff);
+      const { valid } = scoreCommit(c.message, c.diff);
       const fullMessage = c.diff ? `${c.message}\n\n${c.diff}` : c.message;
 
       await db.insert(commitsTable).values({
@@ -139,7 +139,7 @@ export async function processIngestion({
         hash: `svn:R${c.revision}`,
         message: fullMessage.slice(0, 4000),
         author: c.author,
-        valid: score >= 0.4,
+        valid,
         revision: c.revision,
         vcsType: "svn",
       });

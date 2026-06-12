@@ -52,8 +52,8 @@
 - [x] 2.1.2  ✅  Graceful degradation fallback logic (CentralServerClient.ts)
 
 ### 2.2 Zero-to-One Onboarding (@docuvia /init)
-- [x] 2.2.1  ⚠️  Project initialization command (docuvia.initProject)
-- [x] 2.2.2  ⚠️  Package.json ecosystem marker parsing (WIP — needs completion)
+- [ ] 2.2.1  ⚠️  Project initialization command (docuvia.initProject)
+- [ ] 2.2.2  ⚠️  Package.json ecosystem marker parsing (WIP — needs completion)
 - [x] 2.2.3  ✅️  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
 
 ### 2.3 Multi-root Workspace Support
@@ -78,10 +78,10 @@
 
 ### 3.2 Temporal Decay Scoring
 - [x] 3.2.1  ✅  lastVerifiedAt math in intent-router.ts
-- [x] 3.2.2  ✅  Decay application on knowledge query results
+- [ ] 3.2.2  ✅  Decay application on knowledge query results
 
 ### 3.3 O(1) Fast-Path Filters (#attach)
-- [x] 3.3.1  ✅  Regex pre-filters skipping LLM latency
+- [ ] 3.3.1  ✅  Regex pre-filters skipping LLM latency
 
 ### 3.4 Orphan Branch Read/Write Protocol
 - [x] 3.4.1  ✅  Orphan branch writer (Centralized w/ Advisory Locks)
@@ -105,8 +105,8 @@
 - [x] 4.1.5  ✅  l3_nodes schema: occurrenceCount, sourceCommits, validityStatus columns
 
 ### 4.2 L2 Bootstrap — AI Discovery to Path Rules (ADR-010)
-- [x] 4.2.1  ⚠️  Progressive batch mode (commits in groups of 20)
-- [x] 4.2.2  ⚠️  AI self-correction across batches
+- [ ] 4.2.1  ⚠️  Progressive batch mode (commits in groups of 20)
+- [ ] 4.2.2  ⚠️  AI self-correction across batches
 - [x] 4.2.3  ✅  L2 module map confirmation UI
 - [x] 4.2.4  ✅  Path pattern storage in .docuvia/config.yaml
 - [x] 4.2.5  ✅  Deterministic commit-to-module assignment via glob matching
@@ -115,8 +115,8 @@
 ### 4.3 Two-Phase Knowledge Validity (ADR-011)
 - [x] 4.3.1  ✅  Phase 1: Local Review quality gate (existing review_tasks)
 - [x] 4.3.2  ✅  Phase 2: Merge Gate — branch merge status check
-- [x] 4.3.3  ⚠️  L3 validity status enum: pending | valid | orphaned
-- [x] 4.3.4  ⚠️  MCP query default filter: status = valid only
+- [ ] 4.3.3  ⚠️  L3 validity status enum: pending | valid | orphaned
+- [ ] 4.3.4  ⚠️  MCP query default filter: status = valid only
 - [x] 4.3.5  ✅️  include_pending=true query parameter
 - [x] 4.3.6  ✅  Schema: validityStatus column on l3_nodes and commits
 - [x] 4.3.7  ✅  Schema: branchName column on commits

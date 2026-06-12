@@ -136,7 +136,7 @@
 
 ### 5.1 Review Task Queue
 - [x] 5.1.1  ⚠️  Review task creation for all AI-generated nodes
-- [x] 5.1.2  ⚠️  Review task types: anchor, merge, reject
+- [x] 5.1.2  ✅  Review task types: anchor, merge, reject
 - [x] 5.1.3  ✅  Review resolution endpoint (POST /review_tasks/:id/resolve)
 - [x] 5.1.4  ✅  Correction examples creation on review approval
 
@@ -359,7 +359,7 @@
 | 4.4.5 | 2026-06-11 | 0075_4.4.5.md | ✅ PASS |
 | 4.4.6 | 2026-06-11 | 0076_4.4.6.md | ✅ PASS |
 | 5.1.1 | 2026-06-12 | 0095_5.1.1.md | ✅ PASS |
-| 5.1.2 | 2026-06-12 | 0097_5.1.2.md | ⚠️ WARN |
+| 5.1.2 | 2026-06-12 | 0096_5.1.2.md | ✅ PASS |
 | 5.1.3 | — | — | 🔵 Pending |
 | 5.1.4 | — | — | 🔵 Pending |
 | 5.2.1 | — | — | 🔵 Pending |
@@ -454,10 +454,10 @@
 | Milestone 2: VS Code Client (Local-First Architecture) | 12 | 8 | 3 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 12 | 8 | 0 | 3 | 0 |
 | Milestone 4: Knowledge Graph Features (ADRs 009–012) | 26 | 12 | 13 | 0 | 0 |
-| Milestone 5: Human-in-the-Loop & Review System | 11 | 7 | 2 | 1 | 9 |
+| Milestone 5: Human-in-the-Loop & Review System | 11 | 7 | 2 | 1 | 8 |
 | Milestone 6: API & Protocol Layer | 17 | 15 | 1 | 0 | 16 |
 | Milestone 7: Frontend (kg-engine) | 12 | 11 | 0 | 0 | 11 |
 | Milestone 8: VS Code Extension UI | 19 | 17 | 1 | 0 | 18 |
 | Milestone 9: Cross-Cutting Concerns | 22 | 12 | 9 | 0 | 19 |
 | Milestone 10: Deployment & Operations | 12 | 7 | 4 | 0 | 6 |
-| **TOTAL** | **162** | **101** | **47** | **4** | **79** |
+| **TOTAL** | **162** | **101** | **47** | **4** | **78** |

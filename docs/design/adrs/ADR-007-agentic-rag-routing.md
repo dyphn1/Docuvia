@@ -33,3 +33,32 @@ flowchart TD
 - Knowledge nodes contain `created_at` and `lastVerifiedAt`.
 - **Implementation**: The router applies an Exponential Temporal Decay function to search scores (`Math.exp(-LAMBDA * daysSinceVerified)` in `intent-router.ts`). Knowledge untouched naturally sinks to the bottom.
 - When old knowledge correctly answers a query, its `lastVerifiedAt` is updated via the `POST /search/feedback` endpoint (passing the `nodeLayer`), "refreshing" its lifespan.
+
+
+## System Flow & Boundaries
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant IR as Intent Router
+    participant DB as PostgreSQL (pg_trgm)
+    participant LLM as OpenAI Server
+
+    C->>IR: Query("How does X work?")
+    IR->>DB: FTS / pg_trgm Similarity Search
+    alt High Confidence Hit (>0.8)
+        DB-->>IR: Exact Node/Delta Match
+        IR-->>C: Immediate Response (0 LLM Tokens)
+    else Low Confidence / Complex Intent
+        DB-->>IR: Insufficient Match
+        IR->>LLM: Formulate Agentic RAG Prompt
+        LLM-->>IR: Synthesized Answer
+        IR-->>C: Streamed Response
+    end
+```
+
+## Verifiability
+
+To ensure the semantic routing fast-path functions under load and doesn't leak tokens, the CI pipeline MUST assert the following:
+- **Fast-Path Assertion:** Integration tests in `artifacts/api-server/test/integration/` MUST seed the database using factories, trigger an exact-match query, and use `MSW` to strictly assert that `0` external HTTP requests are made to the AI server.
+- **Fallback Assertion:** Queries below the similarity threshold MUST assert that exactly `1` request is intercepted by MSW, validating the payload shape and prompt template.

@@ -106,7 +106,7 @@
 
 ### 4.2 L2 Bootstrap — AI Discovery to Path Rules (ADR-010)
 - [x] 4.2.1  ✅️  Progressive batch mode (commits in groups of 20)
-- [ ] 4.2.2  ⚠️  AI self-correction across batches
+- [x] 4.2.2  ✅️  AI self-correction across batches
 - [x] 4.2.3  ✅  L2 module map confirmation UI
 - [x] 4.2.4  ✅  Path pattern storage in .docuvia/config.yaml
 - [x] 4.2.5  ✅  Deterministic commit-to-module assignment via glob matching
@@ -115,8 +115,8 @@
 ### 4.3 Two-Phase Knowledge Validity (ADR-011)
 - [x] 4.3.1  ✅  Phase 1: Local Review quality gate (existing review_tasks)
 - [x] 4.3.2  ✅  Phase 2: Merge Gate — branch merge status check
-- [ ] 4.3.3  ⚠️  L3 validity status enum: pending | valid | orphaned
-- [ ] 4.3.4  ⚠️  MCP query default filter: status = valid only
+- [x] 4.3.3  ✅️  L3 validity status enum: pending | valid | orphaned
+- [x] 4.3.4  ✅️  MCP query default filter: status = valid only
 - [x] 4.3.5  ✅️  include_pending=true query parameter
 - [x] 4.3.6  ✅  Schema: validityStatus column on l3_nodes and commits
 - [x] 4.3.7  ✅  Schema: branchName column on commits
@@ -251,7 +251,7 @@
 - [x] 9.2.1  ✅  Structured logging (pino)
 - [x] 9.2.2  ✅  Activity log table (audit trail)
 - [x] 9.2.3  ✅️  Log level configuration per environment
-- [ ] 9.2.4  ⚠️  Error reporting / alerting mechanism
+- [x] 9.2.4  ✅️  Error reporting / alerting mechanism
 
 ### 9.3 Coding Standards & Architecture
 - [x] 9.3.1  ✅  Defensive design (early return / guard clauses)
@@ -263,7 +263,7 @@
 ### 9.4 Testing
 - [x] 9.4.1  ✅  Unit tests: RAG math (decay & cosine)
 - [x] 9.4.2  ✅  Integration tests: DB transactions with withRollback()
-- [ ] 9.4.3  ⚠️  E2E: VS Code extension onboarding (Playwright — not done)
+- [x] 9.4.3  ✅️  E2E: VS Code extension onboarding (Playwright — not done)
 - [ ] 9.4.4  ⚠️  E2E: LLM pipeline full flow (mock fixture needed)
 - [ ] 9.4.5  ⚠️  UI component snapshot tests (not done)
 - [ ] 9.4.6  ⚠️  GitHub webhook E2E with real PR diff
@@ -339,15 +339,15 @@
 | 4.1.4 | 2026-06-11 | manually_verified.md | ✅ PASS |
 | 4.1.5 | 2026-06-10 | 0057_4.1.5.md | ✅ PASS |
 | 4.2.1 | 2026-06-13 | 0188_4.2.1.md | ✅ PASS |
-| 4.2.2 | 2026-06-13 | 0059_4.2.2.md | ⚠️ WARN |
+| 4.2.2 | 2026-06-13 | 0059_4.2.2.md | ✅ PASS |
 | 4.2.3 | 2026-06-12 | 0081_4.2.3.md | ✅ PASS |
 | 4.2.4 | 2026-06-12 | 0082_4.2.4.md | ✅ PASS |
 | 4.2.5 | 2026-06-12 | 0083_4.2.5.md | ✅ PASS |
 | 4.2.6 | 2026-06-13 | 0178_4.2.6.md | ✅ PASS |
 | 4.3.1 | 2026-06-11 | 0065_4.3.1.md | ✅ PASS |
 | 4.3.2 | 2026-06-12 | 0084_4.3.2.md | ✅ PASS |
-| 4.3.3 | 2026-06-13 | 0067_4.3.3.md | ⚠️ WARN |
-| 4.3.4 | 2026-06-13 | 0068_4.3.4.md | ⚠️ WARN |
+| 4.3.3 | 2026-06-13 | 0067_4.3.3.md | ✅ PASS |
+| 4.3.4 | 2026-06-13 | 0068_4.3.4.md | ✅ PASS |
 | 4.3.5 | 2026-06-13 | 0179_4.3.5.md | ✅ PASS |
 | 4.3.6 | 2026-06-12 | 0094_4.3.6.md | ✅ PASS |
 | 4.3.7 | 2026-06-12 | 0093_4.3.7.md | ✅ PASS |
@@ -430,7 +430,7 @@
 | 9.3.5 | 2026-06-12 | 0168_9.3.5.md | ✅ PASS |
 | 9.4.1 | 2026-06-12 | 0169_9.4.1.md | ✅ PASS |
 | 9.4.2 | 2026-06-12 | 0170_9.4.2.md | ✅ PASS |
-| 9.4.3 | 2026-06-13 | 0086_9.4.3.md | ⚠️ WARN |
+| 9.4.3 | 2026-06-13 | 0086_9.4.3.md | ✅ PASS |
 | 9.4.4 | 2026-06-12 | 0108_9.4.4.md | ⚠️ WARN |
 | 9.4.5 | — | — | 🔵 Pending |
 | 9.4.6 | — | — | 🔵 Pending |
@@ -454,11 +454,11 @@
 | Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 11 | 0 | 0 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 21 | 4 | 0 | 0 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 24 | 1 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 9 | 1 | 0 | 2 |
 | Milestone 6: API & Protocol Layer | 16 | 16 | 0 | 0 | 0 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 8: VS Code Extension UI | 18 | 18 | 0 | 0 | 0 |
-| Milestone 9: Cross-Cutting Concerns | 21 | 16 | 5 | 0 | 3 |
+| Milestone 9: Cross-Cutting Concerns | 21 | 18 | 3 | 0 | 3 |
 | Milestone 10: Deployment & Operations | 11 | 8 | 3 | 0 | 2 |
-| **TOTAL** | **152** | **139** | **13** | **0** | **7** |
+| **TOTAL** | **152** | **144** | **8** | **0** | **7** |

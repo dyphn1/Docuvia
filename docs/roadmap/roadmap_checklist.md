@@ -52,8 +52,8 @@
 - [x] 2.1.2  ✅  Graceful degradation fallback logic (CentralServerClient.ts)
 
 ### 2.2 Zero-to-One Onboarding (@docuvia /init)
-- [ ] 2.2.1  ⚠️  Project initialization command (docuvia.initProject)
-- [ ] 2.2.2  ⚠️  Package.json ecosystem marker parsing (WIP — needs completion)
+- [x] 2.2.1  ✅️  Project initialization command (docuvia.initProject)
+- [x] 2.2.2  ✅️  Package.json ecosystem marker parsing (WIP — needs completion)
 - [x] 2.2.3  ✅️  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
 
 ### 2.3 Multi-root Workspace Support
@@ -78,10 +78,10 @@
 
 ### 3.2 Temporal Decay Scoring
 - [x] 3.2.1  ✅  lastVerifiedAt math in intent-router.ts
-- [ ] 3.2.2  ⚠️  Decay application on knowledge query results
+- [x] 3.2.2  ✅️  Decay application on knowledge query results
 
 ### 3.3 O(1) Fast-Path Filters (#attach)
-- [ ] 3.3.1  ⚠️  Regex pre-filters skipping LLM latency
+- [x] 3.3.1  ✅️  Regex pre-filters skipping LLM latency
 
 ### 3.4 Orphan Branch Read/Write Protocol
 - [x] 3.4.1  ✅  Orphan branch writer (Centralized w/ Advisory Locks)
@@ -105,7 +105,7 @@
 - [x] 4.1.5  ✅  l3_nodes schema: occurrenceCount, sourceCommits, validityStatus columns
 
 ### 4.2 L2 Bootstrap — AI Discovery to Path Rules (ADR-010)
-- [ ] 4.2.1  ⚠️  Progressive batch mode (commits in groups of 20)
+- [x] 4.2.1  ✅️  Progressive batch mode (commits in groups of 20)
 - [ ] 4.2.2  ⚠️  AI self-correction across batches
 - [x] 4.2.3  ✅  L2 module map confirmation UI
 - [x] 4.2.4  ✅  Path pattern storage in .docuvia/config.yaml
@@ -314,8 +314,8 @@
 | 1.4.2 | 2026-06-12 | 0077_1.4.2.md | ✅ PASS |
 | 2.1.1 | 2026-06-08 | 0022_2.1.1.md | ✅ PASS |
 | 2.1.2 | 2026-06-10 | 0024_2.1.2.md | ✅ PASS |
-| 2.2.1 | 2026-06-13 | 0046_2.2.1.md | ⚠️ WARN |
-| 2.2.2 | 2026-06-13 | 0047_2.2.2.md | ⚠️ WARN |
+| 2.2.1 | 2026-06-13 | 0046_2.2.1.md | ✅ PASS |
+| 2.2.2 | 2026-06-13 | 0047_2.2.2.md | ✅ PASS |
 | 2.2.3 | 2026-06-12 | 0048_2.2.3.md | ✅ PASS |
 | 2.3.1 | 2026-06-10 | 0036_2.3.1.md | ✅ PASS |
 | 2.3.2 | 2026-06-10 | 0029_2.3.2.md | ✅ PASS |
@@ -325,8 +325,8 @@
 | 2.5.2 | 2026-06-10 | 0034_2.5.2.md | ✅ PASS |
 | 3.1.1 | 2026-06-10 | 0037_3.1.1.md | ✅ PASS |
 | 3.1.2 | 2026-06-10 | 0038_3.1.2.md | ✅ PASS |
-| 3.2.2 | 2026-06-13 | 0050_3.2.2.md | ⚠️ WARN |
-| 3.3.1 | 2026-06-13 | 0041_3.3.1.md | ⚠️ WARN |
+| 3.2.2 | 2026-06-13 | 0050_3.2.2.md | ✅ PASS |
+| 3.3.1 | 2026-06-13 | 0041_3.3.1.md | ✅ PASS |
 | 3.4.1 | 2026-06-12 | 0102_3.4.1.md | ✅ PASS |
 | 3.4.2 | 2026-06-13 | 0176_3.4.2.md | ✅ PASS |
 | 3.4.3 | 2026-06-13 | 0177_3.4.3.md | ✅ PASS |
@@ -338,16 +338,16 @@
 | 4.1.3 | 2026-06-12 | 0175_4.1.3.md | ✅ PASS |
 | 4.1.4 | 2026-06-11 | manually_verified.md | ✅ PASS |
 | 4.1.5 | 2026-06-10 | 0057_4.1.5.md | ✅ PASS |
-| 4.2.1 | 2026-06-10 | 0058_4.2.1.md | ⚠️ WARN |
-| 4.2.2 | 2026-06-10 | 0059_4.2.2.md | ⚠️ WARN |
+| 4.2.1 | 2026-06-13 | 0188_4.2.1.md | ✅ PASS |
+| 4.2.2 | 2026-06-13 | 0059_4.2.2.md | ⚠️ WARN |
 | 4.2.3 | 2026-06-12 | 0081_4.2.3.md | ✅ PASS |
 | 4.2.4 | 2026-06-12 | 0082_4.2.4.md | ✅ PASS |
 | 4.2.5 | 2026-06-12 | 0083_4.2.5.md | ✅ PASS |
 | 4.2.6 | 2026-06-13 | 0178_4.2.6.md | ✅ PASS |
 | 4.3.1 | 2026-06-11 | 0065_4.3.1.md | ✅ PASS |
 | 4.3.2 | 2026-06-12 | 0084_4.3.2.md | ✅ PASS |
-| 4.3.3 | 2026-06-11 | 0067_4.3.3.md | ⚠️ WARN |
-| 4.3.4 | 2026-06-11 | 0068_4.3.4.md | ⚠️ WARN |
+| 4.3.3 | 2026-06-13 | 0067_4.3.3.md | ⚠️ WARN |
+| 4.3.4 | 2026-06-13 | 0068_4.3.4.md | ⚠️ WARN |
 | 4.3.5 | 2026-06-13 | 0179_4.3.5.md | ✅ PASS |
 | 4.3.6 | 2026-06-12 | 0094_4.3.6.md | ✅ PASS |
 | 4.3.7 | 2026-06-12 | 0093_4.3.7.md | ✅ PASS |
@@ -430,7 +430,7 @@
 | 9.3.5 | 2026-06-12 | 0168_9.3.5.md | ✅ PASS |
 | 9.4.1 | 2026-06-12 | 0169_9.4.1.md | ✅ PASS |
 | 9.4.2 | 2026-06-12 | 0170_9.4.2.md | ✅ PASS |
-| 9.4.3 | 2026-06-12 | 0086_9.4.3.md | ✅ PASS |
+| 9.4.3 | 2026-06-13 | 0086_9.4.3.md | ⚠️ WARN |
 | 9.4.4 | 2026-06-12 | 0108_9.4.4.md | ⚠️ WARN |
 | 9.4.5 | — | — | 🔵 Pending |
 | 9.4.6 | — | — | 🔵 Pending |
@@ -452,13 +452,13 @@
 | Category | Total | Done | WIP | Todo | Pending Verification |
 |----------|-------|------|-----|------|---------------------|
 | Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
-| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 9 | 2 | 0 | 0 |
+| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 11 | 0 | 0 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 20 | 5 | 0 | 0 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 21 | 4 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 9 | 1 | 0 | 2 |
 | Milestone 6: API & Protocol Layer | 16 | 16 | 0 | 0 | 0 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 8: VS Code Extension UI | 18 | 18 | 0 | 0 | 0 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 16 | 5 | 0 | 3 |
 | Milestone 10: Deployment & Operations | 11 | 8 | 3 | 0 | 2 |
-| **TOTAL** | **152** | **136** | **16** | **0** | **7** |
+| **TOTAL** | **152** | **139** | **13** | **0** | **7** |

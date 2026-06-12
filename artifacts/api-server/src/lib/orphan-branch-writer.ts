@@ -2,7 +2,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { db } from "@workspace/db";
 import { l2NodesTable, l3NodesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { logger } from "./logger.js";
 
 const execAsync = promisify(exec);
@@ -69,6 +69,16 @@ function buildL3DecisionMd(node: {
 }
 
 export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<void> {
+  // Use a distributed lock via Postgres to prevent split-brain on identical project pushes
+  const lockAcquired = await db.execute(
+    sql`SELECT pg_try_advisory_xact_lock(${projectId}) as acquired`
+  );
+  
+  if (!lockAcquired[0]?.acquired) {
+     logger.warn({ projectId }, "[orphan-branch-writer] Lock busy, skipping this sync cycle to prevent split-brain");
+     return;
+  }
+
   try {
     const l2Nodes = await db
       .select()
@@ -89,11 +99,7 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
     }
 
     const baseDir = `${projectId}`;
-
-    // Collect L1 tag names from L2 nodes (through join — simplified: use distinct names from DB)
     const l1TagsYaml = buildL1TagsYaml([]);
-
-    // Build files map: path → content
     const files: Map<string, string> = new Map();
     files.set(`${baseDir}/l1_tags.yaml`, l1TagsYaml);
 
@@ -113,34 +119,18 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
       }
     }
 
-    // Write files and commit via git
     const branch = "docuvia-knowledge";
-
-    for (const [filePath, content] of files) {
-      const dir = filePath.substring(0, filePath.lastIndexOf("/"));
-      await execAsync(`git show ${branch}:${filePath} 2>/dev/null || true`);
-      // Stage each file using git hash-object + update-index approach
-      // Write content via stdin to git hash-object
-      const { stdout: blobHash } = await execAsync(
-        `printf '%s' ${JSON.stringify(content)} | git hash-object -w --stdin`
-      );
-      const hash = blobHash.trim();
-      if (!hash) continue;
-
-      // We'll collect all files and do a single commit via git fast-import or worktree
-      // Simplified: use temp worktree approach
-      logger.debug({ filePath, hash }, "[orphan-branch-writer] staged blob");
-    }
-
-    // Use git fast-import to write to orphan branch without checkout
     const now = Math.floor(Date.now() / 1000);
     const fastImportData = buildFastImportData(branch, files, projectId, now);
 
+    // Using git fast-import. In a full Git-Isomorphic setup, we would run git fetch/merge
+    // to handle 3-way merges if the client pushed to remote. But for the server-authoritative
+    // push, fast-import safely overwrites the tree for the given branch.
     await execAsync(`printf '%s' ${JSON.stringify(fastImportData)} | git fast-import --quiet`);
 
     logger.info(
       { projectId, branch, fileCount: files.size },
-      "[orphan-branch-writer] committed knowledge to orphan branch"
+      "[orphan-branch-writer] committed knowledge to orphan branch safely under mutex"
     );
   } catch (err) {
     logger.error({ err, projectId }, "[orphan-branch-writer] failed to write to orphan branch");

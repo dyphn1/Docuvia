@@ -78,10 +78,10 @@
 
 ### 3.2 Temporal Decay Scoring
 - [x] 3.2.1  ✅  lastVerifiedAt math in intent-router.ts
-- [ ] 3.2.2  ✅  Decay application on knowledge query results
+- [ ] 3.2.2  ⚠️  Decay application on knowledge query results
 
 ### 3.3 O(1) Fast-Path Filters (#attach)
-- [ ] 3.3.1  ✅  Regex pre-filters skipping LLM latency
+- [ ] 3.3.1  ⚠️  Regex pre-filters skipping LLM latency
 
 ### 3.4 Orphan Branch Read/Write Protocol
 - [x] 3.4.1  ✅  Orphan branch writer (Centralized w/ Advisory Locks)

@@ -85,9 +85,56 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
   private readonly _onDidChangeCodeLenses = new vscode.EventEmitter<void>();
   readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
+  // Max's Rule: Cache semantic anchors mapped to document symbols
+  private documentAnchors = new Map<string, number[]>();
+
   constructor(store: KnowledgeStore, context: vscode.ExtensionContext) {
     this._store = store;
-    store.onDidLoad(() => this._onDidChangeCodeLenses.fire(), null, context.subscriptions);
+    store.onDidLoad(() => {
+      this.documentAnchors.clear();
+      this._onDidChangeCodeLenses.fire();
+    }, null, context.subscriptions);
+
+    // Only update anchors async on save to prevent Editor Host freezing
+    vscode.workspace.onDidSaveTextDocument(async (doc) => {
+      if (this._store.getSnapshotFor(doc.uri)) {
+        await this.updateSymbolAnchors(doc);
+      }
+    }, null, context.subscriptions);
+  }
+
+  private async updateSymbolAnchors(document: vscode.TextDocument) {
+    try {
+      // Defer to LSP for actual semantic parsing
+      const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+        'vscode.executeDocumentSymbolProvider',
+        document.uri
+      );
+
+      if (!symbols) return;
+
+      const lines: number[] = [];
+      const extractLines = (syms: vscode.DocumentSymbol[]) => {
+        for (const sym of syms) {
+          if (
+            sym.kind === vscode.SymbolKind.Function ||
+            sym.kind === vscode.SymbolKind.Class ||
+            sym.kind === vscode.SymbolKind.Method
+          ) {
+            lines.push(sym.range.start.line);
+          }
+          if (sym.children) {
+            extractLines(sym.children);
+          }
+        }
+      };
+
+      extractLines(symbols);
+      this.documentAnchors.set(document.uri.toString(), lines);
+      this._onDidChangeCodeLenses.fire();
+    } catch (e) {
+      console.warn("Failed to execute document symbol provider", e);
+    }
   }
 
   provideCodeLenses(document: vscode.TextDocument): vscode.CodeLens[] {
@@ -98,7 +145,15 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
     if (!snapshot) return [];
 
     const workspaceRoot = folder.uri.fsPath;
-    const declarationLines = findDeclarationLines(document);
+    
+    // Use LSP cached lines if available, fallback to fast regex ONLY on initial load
+    let declarationLines = this.documentAnchors.get(document.uri.toString());
+    if (!declarationLines) {
+      declarationLines = findDeclarationLines(document);
+      // Trigger async anchor update for next time
+      setTimeout(() => this.updateSymbolAnchors(document), 0);
+    }
+
     if (declarationLines.length === 0) return [];
 
     // Online mode: full CodeLens with L3 decisions

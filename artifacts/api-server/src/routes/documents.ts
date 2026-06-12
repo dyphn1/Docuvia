@@ -100,6 +100,23 @@ router.post("/documents", upload.single("file"), async (req, res) => {
 
   try {
     const filePath = req.file.path;
+    
+    // Max's Rule: Validate Magic Bytes to prevent Zip bombs and XXE via spoofed extensions
+    const fileBuffer = await fs.promises.readFile(filePath);
+    const hexHeader = fileBuffer.toString('hex', 0, 4).toUpperCase();
+    
+    // PDF magic bytes: 25504446
+    // DOCX/PPTX (ZIP) magic bytes: 504B0304
+    const docType = detectDocType(req.file.originalname);
+    if (docType === "pdf" && !hexHeader.startsWith("25504446")) {
+      await fs.promises.unlink(filePath).catch(() => {});
+      return res.status(400).json({ error: "Invalid file signature. Not a true PDF." });
+    }
+    if ((docType === "docx" || docType === "pptx") && !hexHeader.startsWith("504B0304")) {
+      await fs.promises.unlink(filePath).catch(() => {});
+      return res.status(400).json({ error: "Invalid file signature. Not a valid Office document." });
+    }
+
     const contentHash = await computeHashFromStream(filePath);
     const rawContent = await fs.promises.readFile(filePath, "utf-8");
     const docType = detectDocType(req.file.originalname);

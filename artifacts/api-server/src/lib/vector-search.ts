@@ -39,11 +39,11 @@ export async function performVectorSearch(
       content: l3NodesTable.content,
       nodeType: l3NodesTable.nodeType,
       rawScore: sql<number>`1 - (embedding::vector <=> ${vectorStr}::vector)`,
-      decayedScore: sql<number>`(1 - (embedding::vector <=> ${vectorStr}::vector)) * EXP(-0.05 * EXTRACT(EPOCH FROM (NOW() - last_verified_at))/86400)`
+      decayedScore: sql<number>`(1 - (embedding::vector <=> ${vectorStr}::vector)) * EXP(-0.05 * EXTRACT(EPOCH FROM (NOW() - COALESCE(last_verified_at, created_at)))/86400)`
     })
     .from(l3NodesTable)
     .where(whereClause)
-    .orderBy(sql`(1 - (embedding::vector <=> ${vectorStr}::vector)) * EXP(-0.05 * EXTRACT(EPOCH FROM (NOW() - last_verified_at))/86400) DESC`)
+    .orderBy(sql`(1 - (embedding::vector <=> ${vectorStr}::vector)) * EXP(-0.05 * EXTRACT(EPOCH FROM (NOW() - COALESCE(last_verified_at, created_at)))/86400) DESC`)
     .limit(limit);
 
   const results = await query;

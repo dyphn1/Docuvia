@@ -12,12 +12,12 @@ if (fs.existsSync(rootEnvPath)) {
   process.loadEnvFile(rootEnvPath);
 }
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL must be set.");
-}
-
 async function runMigrations() {
-  const migrationClient = postgres(process.env.DATABASE_URL, { max: 1 });
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL must be set.");
+  }
+  const migrationClient = postgres(databaseUrl, { max: 1 });
   const db = drizzle(migrationClient);
 
   console.log("Running migrations...");

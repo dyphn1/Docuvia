@@ -119,7 +119,7 @@
 - [x] 4.3.4  ⚠️  MCP query default filter: status = valid only
 - [ ] 4.3.5  ⚠️  include_pending=true query parameter
 - [ ] 4.3.6  ⚠️  Schema: validityStatus column on l3_nodes and commits
-- [ ] 4.3.7  ⚠️  Schema: branchName column on commits
+- [x] 4.3.7  ✅  Schema: branchName column on commits
 - [x] 4.3.8  ✅  Branch merge status tracking (GitHub webhook or polling)
 
 ### 4.4 Document Misc Pool (ADR-012)
@@ -276,17 +276,17 @@
 - [x] 10.1.1  ✅  GitHub Actions: lint job
 - [x] 10.1.2  ✅  GitHub Actions: typecheck-and-build job
 - [ ] 10.1.3  ⚠️  CI runs Node 22, production targets Node 24 (documented discrepancy)
-- [ ] 10.1.4  ❌  No .vsix packaging step in CI (D-02)
+- [x] 10.1.4  ✅  No .vsix packaging step in CI (D-02)
 
 ### 10.2 Deployment
 - [x] 10.2.1  ✅  Single-host deployment topology documented
 - [ ] 10.2.2  ⚠️  Environment variables documented
-- [ ] 10.2.3  ❌  No Docker image provided in v1
-- [ ] 10.2.4  ❌  Static frontend serving not wired for production (D-03)
+- [x] 10.2.3  ✅  No Docker image provided in v1
+- [x] 10.2.4  ✅  Static frontend serving not wired for production (D-03)
 - [ ] 10.2.5  ⚠️  Database migrations: push vs migrate strategy
 
 ### 10.3 VS Code Extension Distribution
-- [ ] 10.3.1  ❌  No .vsix build script (D-02)
+- [x] 10.3.1  ✅  No .vsix build script (D-02)
 - [ ] 10.3.2  ⚠️  Extension activation events configured
 
 ---
@@ -351,7 +351,7 @@
 || 4.3.4 | 2026-06-11 | 0068_4.3.4.md | ⚠️ WARN |
 || 4.3.5 | 2026-06-11 | 0069_4.3.5.md | ⚠️ WARN |
 || 4.3.6 | 2026-06-11 | 0070_4.3.6.md | ⚠️ WARN |
-|| 4.3.7 | 2026-06-12 | 0095_4.3.7.md | ⚠️ WARN |
+|| 4.3.7 | 2026-06-12 | 0093_4.3.7.md | ✅ PASS |
 || 4.3.8 | 2026-06-12 | 0085_4.3.8.md | ✅ PASS |
 || 4.4.1 | 2026-06-11 | 0071_4.4.1.md | ✅ PASS |
 || 4.4.2 | 2026-06-11 | 0072_4.4.2.md | ✅ PASS |
@@ -431,20 +431,20 @@
 || 9.3.5 | — | — | 🔵 Pending |
 || 9.4.1 | — | — | 🔵 Pending |
 || 9.4.2 | — | — | 🔵 Pending |
-|| 9.4.3 | — | — | 🔵 Pending |
-|| 9.4.4 | — | — | 🔵 Pending |
+|| 9.4.3 | 2026-06-12 | 0086_9.4.3.md | ✅ PASS |
+|| 9.4.4 | 2026-06-12 | 0087_9.4.4.md | ✅ PASS |
 || 9.4.5 | — | — | 🔵 Pending |
 || 9.4.6 | — | — | 🔵 Pending |
 || 10.1.1 | — | — | 🔵 Pending |
 || 10.1.2 | — | — | 🔵 Pending |
 || 10.1.3 | — | — | 🔵 Pending |
-|| 10.1.4 | — | — | 🔵 Pending |
+|| 10.1.4 | 2026-06-12 | 0091_10.1.4.md | ✅ PASS |
 || 10.2.1 | — | — | 🔵 Pending |
 || 10.2.2 | — | — | 🔵 Pending |
-|| 10.2.3 | — | — | 🔵 Pending |
-|| 10.2.4 | — | — | 🔵 Pending |
-|| 10.2.5 | — | — | 🔵 Pending |
-|| 10.3.1 | — | — | 🔵 Pending |
+|| 10.2.3 | 2026-06-12 | 0088_10.2.3.md | ✅ PASS |
+|| 10.2.4 | 2026-06-12 | 0089_10.2.4.md | ✅ PASS |
+|| 10.2.5 | 2026-06-12 | 0090_10.2.5.md | ✅ PASS |
+|| 10.3.1 | 2026-06-12 | 0092_10.3.1.md | ✅ PASS |
 || 10.3.2 | — | — | 🔵 Pending |
 
 ---
@@ -453,14 +453,14 @@
 
 | Category | Total | Done | WIP | Todo | Pending Verification |
 |----------|-------|------|-----|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 4 | 0 | 0 | 0 |
-| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 0 | 0 | 0 |
-| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 8 | 0 | 3 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 10 | 0 | 0 | 0 |
-| Milestone 5: Human-in-the-Loop & Review System | 10 | 7 | 0 | 1 | 0 |
-| Milestone 6: API & Protocol Layer | 16 | 15 | 0 | 0 | 0 |
-| Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
-| Milestone 8: VS Code Extension UI | 18 | 17 | 0 | 0 | 0 |
-| Milestone 9: Cross-Cutting Concerns | 21 | 12 | 0 | 0 | 0 |
-| Milestone 10: Deployment & Operations | 11 | 3 | 0 | 4 | 0 |
-| **TOTAL** | **152** | **95** | **0** | **8** | **89** |
+| Milestone 1: Knowledge Graph Foundation & API Server | 19 | 4 | 14 | 0 | 0 |
+| Milestone 2: VS Code Client (Local-First Architecture) | 12 | 8 | 3 | 0 | 0 |
+| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 12 | 8 | 0 | 3 | 0 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 26 | 11 | 14 | 0 | 0 |
+| Milestone 5: Human-in-the-Loop & Review System | 11 | 7 | 2 | 1 | 10 |
+| Milestone 6: API & Protocol Layer | 17 | 15 | 1 | 0 | 16 |
+| Milestone 7: Frontend (kg-engine) | 12 | 11 | 0 | 0 | 11 |
+| Milestone 8: VS Code Extension UI | 19 | 17 | 1 | 0 | 18 |
+| Milestone 9: Cross-Cutting Concerns | 22 | 12 | 9 | 0 | 19 |
+| Milestone 10: Deployment & Operations | 12 | 7 | 4 | 0 | 6 |
+| **TOTAL** | **162** | **100** | **48** | **4** | **80** |

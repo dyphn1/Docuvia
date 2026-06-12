@@ -40,7 +40,7 @@
 - [ ] 1.3.6  ⚠️  Temporal decay scoring (lastVerifiedAt)
 
 ### 1.4 Server-Side Metabolism & Mutex
-- [ ] 1.4.1  ⚠️  Asynchronous metabolism mechanism (ADR-008)
+- [x] 1.4.1  ✅  Asynchronous metabolism mechanism (ADR-008)
 - [x] 1.4.2  ✅  Mutex / serialization for concurrent generate requests
 
 ---
@@ -100,7 +100,7 @@
 ### 4.1 L3 Semantic Deduplication (ADR-009)
 - [x] 4.1.1  ✅  Cosine similarity ≥ 0.85 dedup check before L3 insert
 - [x] 4.1.2  ✅  occurrenceCount increment on match
-- [ ] 4.1.3  ⚠️  sourceCommits JSONB array append
+- [x] 4.1.3  ✅  Temporal Range Anchors for L3 nodes (replaced JSONB)
 - [x] 4.1.4  ⚠️  AI condensation run at occurrence threshold (default: 30)
 - [x] 4.1.5  ✅  l3_nodes schema: occurrenceCount, sourceCommits, validityStatus columns
 
@@ -148,7 +148,7 @@
 ### 5.3 Prompt Templates
 - [ ] 5.3.1  ⚠️  prompt_templates table (schema exists)
 - [ ] 5.3.2  ⚠️  Per-project overridable LLM prompts (L1, L2, L3)
-- [ ] 5.3.3  ❌  Default fallback templates not seeded in migrations (D-07)
+- [x] 5.3.3  ✅  Default fallback templates not seeded in migrations (D-07)
 
 ---
 
@@ -243,7 +243,7 @@
 - [x] 9.1.1  ✅  HMAC-SHA256 for GitHub webhooks
 - [x] 9.1.2  ✅  API key via VS Code SecretStorage
 - [x] 9.1.3  ✅  Zod validation on all API payloads
-- [ ] 9.1.4  ⚠️  Bearer token auth for MCP (verify implementation)
+- [x] 9.1.4  ✅  Bearer token auth for MCP (verify implementation)
 - [ ] 9.1.5  ⚠️  CORS configuration review
 - [ ] 9.1.6  ⚠️  Input sanitization on document upload
 
@@ -275,7 +275,7 @@
 ### 10.1 CI/CD
 - [x] 10.1.1  ✅  GitHub Actions: lint job
 - [x] 10.1.2  ✅  GitHub Actions: typecheck-and-build job
-- [ ] 10.1.3  ⚠️  CI runs Node 22, production targets Node 24 (documented discrepancy)
+- [x] 10.1.3  ✅  CI runs Node 22, production targets Node 24 (documented discrepancy)
 - [x] 10.1.4  ✅  No .vsix packaging step in CI (D-02)
 
 ### 10.2 Deployment
@@ -310,7 +310,7 @@
 | 1.3.4 | 2026-06-08 | 0016_1.3.4.md | ⚠️ WARN |
 | 1.3.5 | 2026-06-08 | 0017_1.3.5.md | ⚠️ WARN |
 | 1.3.6 | 2026-06-08 | 0019_1.3.6.md | ⚠️ WARN |
-| 1.4.1 | 2026-06-12 | 0101_1.4.1.md | ⚠️ WARN |
+| 1.4.1 | 2026-06-12 | 0101_1.4.1.md | ✅ PASS |
 | 1.4.2 | 2026-06-12 | 0077_1.4.2.md | ✅ PASS |
 | 2.1.1 | 2026-06-08 | 0022_2.1.1.md | ✅ PASS |
 | 2.1.2 | 2026-06-10 | 0024_2.1.2.md | ✅ PASS |
@@ -335,7 +335,7 @@
 | 3.5.2 | 2026-06-12 | 0080_3.5.2.md | ✅ PASS |
 | 4.1.1 | 2026-06-10 | 0052_4.1.1.md | ✅ PASS |
 | 4.1.2 | 2026-06-10 | 0054_4.1.2.md | ✅ PASS |
-| 4.1.3 | 2026-06-12 | 0175_4.1.3.md | ⚠️ WARN |
+| 4.1.3 | 2026-06-12 | 0175_4.1.3.md | ✅ PASS |
 | 4.1.4 | 2026-06-11 | manually_verified.md | ✅ PASS |
 | 4.1.5 | 2026-06-10 | 0057_4.1.5.md | ✅ PASS |
 | 4.2.1 | 2026-06-10 | 0058_4.2.1.md | ⚠️ WARN |
@@ -367,7 +367,7 @@
 | 5.2.3 | 2026-06-12 | 0115_5.2.3.md | ✅ PASS |
 | 5.3.1 | — | — | 🔵 Pending |
 | 5.3.2 | — | — | 🔵 Pending |
-| 5.3.3 | 2026-06-12 | 0106_5.3.3.md | ❌ FAIL |
+| 5.3.3 | 2026-06-12 | 0106_5.3.3.md | ✅ PASS |
 | 6.1.1 | 2026-06-12 | 0116_6.1.1.md | ✅ PASS |
 | 6.1.2 | 2026-06-12 | 0117_6.1.2.md | ✅ PASS |
 | 6.1.3 | 2026-06-12 | 0118_6.1.3.md | ✅ PASS |
@@ -416,7 +416,7 @@
 | 9.1.1 | 2026-06-12 | 0159_9.1.1.md | ✅ PASS |
 | 9.1.2 | 2026-06-12 | 0160_9.1.2.md | ✅ PASS |
 | 9.1.3 | 2026-06-12 | 0161_9.1.3.md | ✅ PASS |
-| 9.1.4 | 2026-06-12 | 0107_9.1.4.md | ⚠️ WARN |
+| 9.1.4 | 2026-06-12 | 0107_9.1.4.md | ✅ PASS |
 | 9.1.5 | — | — | 🔵 Pending |
 | 9.1.6 | — | — | 🔵 Pending |
 | 9.2.1 | 2026-06-12 | 0162_9.2.1.md | ✅ PASS |
@@ -436,7 +436,7 @@
 | 9.4.6 | — | — | 🔵 Pending |
 | 10.1.1 | 2026-06-12 | 0171_10.1.1.md | ✅ PASS |
 | 10.1.2 | 2026-06-12 | 0172_10.1.2.md | ✅ PASS |
-| 10.1.3 | 2026-06-12 | 0109_10.1.3.md | ⚠️ WARN |
+| 10.1.3 | 2026-06-12 | 0109_10.1.3.md | ✅ PASS |
 | 10.1.4 | 2026-06-12 | 0091_10.1.4.md | ✅ PASS |
 | 10.2.1 | 2026-06-12 | 0173_10.2.1.md | ✅ PASS |
 | 10.2.2 | — | — | 🔵 Pending |
@@ -451,14 +451,14 @@
 
 | Category | Total | Done | WIP | Todo | Pending Verification |
 |----------|-------|------|-----|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 4 | 14 | 0 | 0 |
+| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 5 | 13 | 0 | 0 |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 8 | 3 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 8 | 0 | 3 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 12 | 13 | 0 | 0 |
-| Milestone 5: Human-in-the-Loop & Review System | 10 | 6 | 3 | 1 | 2 |
+| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 13 | 12 | 0 | 0 |
+| Milestone 5: Human-in-the-Loop & Review System | 10 | 7 | 3 | 0 | 2 |
 | Milestone 6: API & Protocol Layer | 16 | 15 | 1 | 0 | 1 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 8: VS Code Extension UI | 18 | 17 | 1 | 0 | 1 |
-| Milestone 9: Cross-Cutting Concerns | 21 | 12 | 9 | 0 | 6 |
-| Milestone 10: Deployment & Operations | 11 | 7 | 4 | 0 | 2 |
-| **TOTAL** | **152** | **100** | **48** | **4** | **12** |
+| Milestone 9: Cross-Cutting Concerns | 21 | 13 | 8 | 0 | 6 |
+| Milestone 10: Deployment & Operations | 11 | 8 | 3 | 0 | 2 |
+| **TOTAL** | **152** | **105** | **44** | **3** | **12** |

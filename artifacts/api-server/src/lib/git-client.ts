@@ -1,4 +1,5 @@
-import { execFile } from "child_process";
+import { execFile, spawn } from "child_process";
+import * as readline from "readline";
 import { promisify } from "util";
 import fs from "fs/promises";
 import os from "os";
@@ -45,28 +46,52 @@ export class LocalGitClient {
       args.push(`--since=${since.toISOString()}`);
     }
 
-    const { stdout } = await execFileAsync("git", args, { cwd: this.repoDir });
+    const child = spawn("git", args, { cwd: this.repoDir });
+    const rl = readline.createInterface({ input: child.stdout, crlfDelay: Infinity });
 
     const commits: GitCommitData[] = [];
-    const blocks = stdout.split("COMMIT_SEP\n").filter((b) => b.trim().length > 0);
+    let currentCommit: Partial<GitCommitData> | null = null;
+    let lineIdx = 0;
+    let bodyLines: string[] = [];
 
-    for (const block of blocks) {
-      const lines = block.trim().split("\n");
-      const sha = lines[0];
-      const subject = lines[1];
-      const author = lines[2];
-      const date = lines[3];
-      const body = lines.slice(4).join("\n");
-
-      commits.push({
-        sha,
-        message: body ? `${subject}\n\n${body}` : subject,
-        author,
-        date,
-      });
+    for await (const line of rl) {
+      if (line === "COMMIT_SEP") {
+        if (currentCommit && currentCommit.sha) {
+          currentCommit.message = bodyLines.length > 0 
+            ? `${currentCommit.message}\n\n${bodyLines.join("\n")}` 
+            : currentCommit.message;
+          commits.push(currentCommit as GitCommitData);
+        }
+        currentCommit = {};
+        lineIdx = 0;
+        bodyLines = [];
+        continue;
+      }
+      
+      if (currentCommit) {
+        if (lineIdx === 0) currentCommit.sha = line;
+        else if (lineIdx === 1) currentCommit.message = line;
+        else if (lineIdx === 2) currentCommit.author = line;
+        else if (lineIdx === 3) currentCommit.date = line;
+        else bodyLines.push(line);
+        lineIdx++;
+      }
     }
 
-    return commits;
+    if (currentCommit && currentCommit.sha) {
+      currentCommit.message = bodyLines.length > 0 
+        ? `${currentCommit.message}\n\n${bodyLines.join("\n")}` 
+        : currentCommit.message;
+      commits.push(currentCommit as GitCommitData);
+    }
+
+    return new Promise((resolve, reject) => {
+      child.on('close', (code) => {
+        if (code !== 0 && code !== 141) reject(new Error(`Git log failed with code ${code}`));
+        else resolve(commits);
+      });
+      child.on('error', reject);
+    });
   }
 
   async getProjectedCommits(limit = 100, baseRef = "origin/main"): Promise<GitCommitData[]> {
@@ -116,13 +141,32 @@ export class LocalGitClient {
   async getDiff(sha: string): Promise<string> {
     if (!this.repoDir) throw new Error("Repository not cloned yet");
     
-    try {
-      const { stdout } = await execFileAsync("git", ["show", "--format=", sha], { cwd: this.repoDir });
-      return stdout;
-    } catch (e) {
-      logger.warn({ sha, err: e }, "Failed to get diff for commit");
-      return "";
-    }
+    return new Promise((resolve, reject) => {
+      const child = spawn("git", ["show", "--format=", sha], { cwd: this.repoDir! });
+      const rl = readline.createInterface({ input: child.stdout, crlfDelay: Infinity });
+      
+      let diffOutput = "";
+      
+      // We manually read from readline to prevent buffering huge outputs into memory at once
+      // For this simple string return, we're still returning a string, but avoiding V8's execFile limits.
+      rl.on('line', (line) => {
+         diffOutput += line + "\n";
+         // To fully prevent OOM we would stream this back, but returning string via spawn is safer than execFile
+      });
+      
+      child.on('close', (code) => {
+        if (code !== 0 && code !== 141) {
+          logger.warn({ sha, code }, "Failed to get diff for commit");
+          resolve("");
+        } else {
+          resolve(diffOutput);
+        }
+      });
+      child.on('error', (e) => {
+        logger.warn({ sha, err: e }, "Failed to get diff for commit");
+        resolve("");
+      });
+    });
   }
 
   async cleanup(): Promise<void> {

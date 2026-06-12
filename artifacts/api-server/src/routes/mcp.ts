@@ -14,6 +14,26 @@ import { logger } from "../lib/logger.js";
 
 const router = Router();
 
+
+// Require PAT for all /mcp/* routes
+router.use("/mcp", (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  const expectedToken = process.env.MCP_PAT;
+  
+  if (!expectedToken) {
+    logger.error("[MCP Auth] MCP_PAT environment variable is not set. Refusing all connections.");
+    return res.status(500).json({ error: "Server configuration error" });
+  }
+
+  if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+    logger.warn({ ip: req.ip }, "[MCP Auth] Unauthorized MCP access attempt");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  next();
+});
+
+
 router.get("/mcp/list_projects", async (req, res) => {
   const projects = await db
     .select()

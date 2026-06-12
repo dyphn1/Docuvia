@@ -4,23 +4,53 @@
 
 ```mermaid
 graph TD
+    %% Diagram 1: Core System & User Interfaces
     subgraph Docuvia System
-        API[api-server<br/>Express 5 · Port 8080]
-        FE[kg-engine<br/>React + Vite · Port 18774]
+        API[api-server<br/>Express 5]
+        FE[kg-engine<br/>React + Vite]
         DB[(PostgreSQL)]
         API <-->|Drizzle ORM| DB
         FE <-->|REST / React Query| API
     end
 
-    DEV[Developer / Team Lead] -->|Browser| FE
-    AIDE[AI IDE / MCP Client<br/>Cursor · Copilot] -->|HTTP POST /mcp/*| API
-    VSC[VS Code Extension] -->|REST to api-server| API
-    CHAT[Copilot Chat<br/>@docuvia participant] -->|VS Code API| VSC
-    GH[GitHub Webhooks] -->|HTTPS POST + HMAC| API
-    LLM[OpenAI-compatible<br/>LLM API] <-->|HTTPS REST| API
-    GITCLI[Git CLI<br/>local] <-->|spawn stream| API
-    SVNCLI[SVN CLI<br/>local] <-->|spawn stream| API
-    API -->|HTTPS POST fire-and-forget| SLACK[Slack / Teams<br/>webhooks]
+    subgraph Client Interfaces
+        DEV[Developer / Team Lead]
+        AIDE[AI IDE / MCP Client<br/>Cursor / Copilot]
+        VSC[VS Code Extension]
+        CHAT[Copilot Chat<br/>@docuvia participant]
+    end
+
+    DEV -->|Browser| FE
+    AIDE -->|HTTP POST /mcp/*| API
+    VSC -->|REST| API
+    CHAT -->|VS Code API| VSC
+```
+
+### External Integrations & Data Ingestion
+
+```mermaid
+graph TD
+    %% Diagram 2: Integrations & Sources
+    subgraph Docuvia Core
+        API[api-server<br/>Express 5]
+    end
+
+    subgraph Data Sources
+        GITCLI[Git CLI<br/>local]
+        SVNCLI[SVN CLI<br/>local]
+        GH[GitHub Webhooks]
+    end
+
+    subgraph External Services
+        LLM[OpenAI-compatible<br/>LLM API]
+        SLACK[Slack / Teams<br/>webhooks]
+    end
+
+    GITCLI <-->|spawn stream| API
+    SVNCLI <-->|spawn stream| API
+    GH -->|HTTPS POST + HMAC| API
+    LLM <-->|HTTPS REST| API
+    API -->|HTTPS POST fire-and-forget| SLACK
 ```
 
 ---

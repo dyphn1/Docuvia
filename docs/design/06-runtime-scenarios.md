@@ -206,3 +206,40 @@ sequenceDiagram
 - [artifacts/vscode-client/design/command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) – Full VS Code extraction flow
 - [artifacts/vscode-client/design/chat-participant/slash-commands.md](../../artifacts/vscode-client/design/chat-participant/slash-commands.md) – Chat participant command flows
 - [08-crosscutting-concepts.md](08-crosscutting-concepts.md#81-domain-model) – Domain model for L1/L2/L3 entities
+
+
+## Runtime Architecture Flow
+
+```mermaid
+flowchart TD
+    subgraph Client Layer
+        VSC[VS Code Extension\nLocal First / SQLite]
+        Web[kg-engine\nReact + Vite Dashboard]
+    end
+
+    subgraph API Server Layer
+        API[Express API Server\nNode.js 24]
+        Router[Intent Router\nAgentic RAG]
+        Parser[Document/Artifact Parsers]
+    end
+
+    subgraph Data & AI Layer
+        DB[(PostgreSQL\nDrizzle ORM + pg_trgm)]
+        LLM[OpenAI-Compatible\nAI Server]
+        Git[(Git Orphan Branch\ndocuvia-knowledge)]
+    end
+
+    %% VS Code flows
+    VSC <-->|REST / Sync| API
+    VSC <-->|MCP Protocol| API
+
+    %% Web UI flows
+    Web <-->|REST / Orval Hooks| API
+
+    %% API internal flows
+    API --> Router
+    API --> Parser
+    Router <-->|SQL / Vector Search| DB
+    Router <-->|Prompt Synthesis| LLM
+    API <-->|Async Worker Sync| Git
+```

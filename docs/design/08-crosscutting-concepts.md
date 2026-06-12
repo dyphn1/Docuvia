@@ -408,3 +408,11 @@ Internal maintenance routes are strictly authenticated.
 ## 8.7 Security Boundaries & Input Sanitization
 Heavy document parsing (PDF, DOCX) is strictly isolated using `child_process.fork/spawn` with hard OS-level memory/timeout boundaries, and upload endpoints enforce magic byte signature verification to prevent Zip bombs and XXE via spoofed extensions. To prevent CSRF, API CORS is strictly governed by `CORS_ORIGIN` with no wildcards in production.
 All components use a centralized structured logger (`artifacts/api-server/src/lib/logger.ts`) configured with `pino`. Crucially, to prevent PII and Auth Token leakage into log aggregators when `LOG_LEVEL=debug` is active, the logger enforces a strict, environment-agnostic redaction pipeline (stripping `authorization`, `password`, `token` keys before hitting stdout).
+
+
+## Verifiability
+
+Security and error-handling concepts MUST be proven in the CI pipeline. The following integration hooks are mandatory to validate cross-cutting boundaries:
+
+- **PII Redaction Proof (Logging):** The test suite MUST instantiate the Pino logger, simulate an error containing mock PII (e.g., email addresses, bearer tokens, or auth headers), and capture the output stream. The assertion MUST explicitly verify that the sensitive strings are replaced with `[REDACTED]` in the final log output, ensuring no secrets are leaked to observability platforms.
+- **Payload Boundary Defense (Zod):** Integration tests using `supertest` MUST intentionally fire malformed, oversized, and structurally invalid JSON payloads at the Express API endpoints. The tests MUST assert that the server cleanly rejects the requests with a `400 Bad Request` status and returns standard Zod error formatting, without leaking internal stack traces or crashing the worker process.

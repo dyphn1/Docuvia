@@ -100,7 +100,7 @@
 ### 4.1 L3 Semantic Deduplication (ADR-009)
 - [x] 4.1.1  ✅  Cosine similarity ≥ 0.85 dedup check before L3 insert
 - [x] 4.1.2  ✅  occurrenceCount increment on match
-- [x] 4.1.3  ⚠️  sourceCommits JSONB array append
+- [ ] 4.1.3  ⚠️  sourceCommits JSONB array append
 - [x] 4.1.4  ⚠️  AI condensation run at occurrence threshold (default: 30)
 - [x] 4.1.5  ✅  l3_nodes schema: occurrenceCount, sourceCommits, validityStatus columns
 
@@ -335,7 +335,7 @@
 | 3.5.2 | 2026-06-12 | 0080_3.5.2.md | ✅ PASS |
 | 4.1.1 | 2026-06-10 | 0052_4.1.1.md | ✅ PASS |
 | 4.1.2 | 2026-06-10 | 0054_4.1.2.md | ✅ PASS |
-| 4.1.3 | 2026-06-11 | manually_verified.md | ✅ PASS |
+| 4.1.3 | 2026-06-12 | 0175_4.1.3.md | ⚠️ WARN |
 | 4.1.4 | 2026-06-11 | manually_verified.md | ✅ PASS |
 | 4.1.5 | 2026-06-10 | 0057_4.1.5.md | ✅ PASS |
 | 4.2.1 | 2026-06-10 | 0058_4.2.1.md | ⚠️ WARN |

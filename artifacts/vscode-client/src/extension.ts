@@ -414,6 +414,33 @@ export function deactivate(): void {
 
 // ─── Init Project ─────────────────────────────────────────────────────────────
 
+async function fileExists(filePath: string): Promise<boolean> {
+  try {
+    const fs = require('fs/promises');
+    await fs.stat(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function detectEcosystem(targetRoot: string): Promise<string[]> {
+  const tags: string[] = [];
+  const fs = require('fs/promises');
+  const path = require('path');
+  
+  // O(1) file-existence checks
+  if (await fileExists(path.join(targetRoot, "package.json"))) tags.push("typescript/javascript");
+  if (await fileExists(path.join(targetRoot, "pyproject.toml")) || await fileExists(path.join(targetRoot, "requirements.txt"))) tags.push("python");
+  if (await fileExists(path.join(targetRoot, "go.mod"))) tags.push("golang");
+  if (await fileExists(path.join(targetRoot, "Cargo.toml"))) tags.push("rust");
+  if (await fileExists(path.join(targetRoot, "pom.xml"))) tags.push("java");
+  if (await fileExists(path.join(targetRoot, "build.gradle"))) tags.push("java");
+  
+  if (tags.length === 0) tags.push("unknown");
+  return tags;
+}
+
 async function initProject(_context: vscode.ExtensionContext, store: KnowledgeStore, node?: any): Promise<void> {
   const folders = vscode.workspace.workspaceFolders || [];
   if (folders.length === 0) {
@@ -423,13 +450,11 @@ async function initProject(_context: vscode.ExtensionContext, store: KnowledgeSt
 
   let targetRoot: string | undefined;
 
-  // If triggered from the TreeView inline action
   if (node && node.workspaceRoot) {
     targetRoot = node.workspaceRoot;
   } else if (folders.length === 1) {
     targetRoot = folders[0].uri.fsPath;
   } else {
-    // Multi-root, ask the user to pick one that is not yet initialized
     const uninitialized = folders.filter(f => !store.snapshots.has(f.uri.fsPath));
     if (uninitialized.length === 0) {
       void vscode.window.showInformationMessage('Docuvia: All workspace folders are already initialized.');
@@ -442,24 +467,45 @@ async function initProject(_context: vscode.ExtensionContext, store: KnowledgeSt
   }
 
   if (targetRoot) {
+    // Security: Validate targetRoot against path traversal
+    const relativeToWorkspace = path.relative(folders.map(f => f.uri.fsPath).join(','), targetRoot);
+    if (relativeToWorkspace.startsWith('..')) {
+      void vscode.window.showErrorMessage('Docuvia: Invalid project root (path traversal attempt).');
+      return;
+    }
+
     const docuviaDir = path.join(targetRoot, '.docuvia');
     try {
+      const fs = require('fs/promises');
       try {
-        await fs.promises.stat(docuviaDir);
+        await fs.stat(docuviaDir);
         const overwrite = await vscode.window.showWarningMessage(
           "A .docuvia directory already exists in this workspace. Overwrite configuration?",
           "Yes", "No"
         );
         if (overwrite !== "Yes") return;
       } catch {
-        await fs.promises.mkdir(docuviaDir, { recursive: true });
+        await fs.mkdir(docuviaDir, { recursive: true });
       }
 
-      await fs.promises.writeFile(path.join(docuviaDir, "manifest.yaml"), `name: ${path.basename(targetRoot)}\nversion: 1.0.0\n`);
-      await fs.promises.writeFile(path.join(docuviaDir, "config.yaml"), `similarity_threshold: 0.85\nchunk_size: 1000\n`);
-      await fs.promises.writeFile(path.join(docuviaDir, ".snapshot-ref"), "docuvia-knowledge\n");
+      // Max's Rule: Use static object serialization instead of dynamic string concatenation
+      const yaml = require('js-yaml');
+      const manifestObj = {
+        name: path.basename(targetRoot),
+        version: "1.0.0",
+        ecosystems: await detectEcosystem(targetRoot)
+      };
+      await fs.writeFile(path.join(docuviaDir, "manifest.yaml"), yaml.dump(manifestObj, { noRefs: true }));
 
-      // Register with store
+      const configObj = {
+        similarity_threshold: 0.85,
+        chunk_size: 1000
+      };
+      await fs.writeFile(path.join(docuviaDir, "config.yaml"), yaml.dump(configObj, { noRefs: true }));
+
+      // Snapshot ref doesn't need yaml dump
+      await fs.writeFile(path.join(docuviaDir, ".snapshot-ref"), "docuvia-knowledge\n");
+
       await store.initializeSnapshot(targetRoot);
       vscode.commands.executeCommand('docuvia.refreshKnowledgeGraph');
       void vscode.window.showInformationMessage(`Docuvia: Initialized project at ${path.basename(targetRoot)}.`);

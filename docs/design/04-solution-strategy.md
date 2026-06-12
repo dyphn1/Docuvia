@@ -24,53 +24,56 @@ Docuvia is decomposed into **five conceptual layers**, each corresponding to one
 
 ```mermaid
 flowchart TD
-    subgraph Layer 5: Presentation
-        FE[kg-engine<br/>React + Vite]
-        VSC[VS Code Extension<br/>Copilot Chat & MCP]
-    end
-
-    subgraph Layer 4: Query
-        REST[REST API<br/>openapi.yaml]
-        RAG[Agentic RAG<br/>intent-router]
-        MCP[MCP Tools<br/>/mcp/*]
-    end
-
-    subgraph Layer 3: Knowledge Graph
-        DB[(PostgreSQL DB<br/>Node Links & Traversal)]
-        VEC[In-Memory Vector Index<br/>Cross-Project Detection]
-    end
-
-    subgraph Layer 2: Knowledge Construction
-        LLM_PIPE[L1 Tagger &rarr; L2 Extractor &rarr; L3 Generator]
-        REVIEW[Review Task Creation &<br/>Few-Shot Feedback Loop]
-    end
-
-    subgraph Layer 1: Input
-        GIT[Git / SVN Adapters<br/>streamed child_process]
-        DOC[Document Upload &<br/>Build Artifact Parser]
-        GH[GitHub Webhook Listener<br/>scoreCommit filter]
-    end
-
-    %% Flow connections
-    Layer5 --> Layer4
-    Layer4 --> Layer3
-    Layer3 --> Layer2
-    Layer2 --> Layer1
-    
-    style Layer5 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
-    style Layer4 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
-    style Layer3 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
-    style Layer2 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
-    style Layer1 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    Layer5[5. Presentation Layer] --> Layer4[4. Query Layer]
+    Layer4 --> Layer3[3. Knowledge Graph]
+    Layer3 --> Layer2[2. Knowledge Construction Layer]
+    Layer2 --> Layer1[1. Input Layer]
 ```
 
 ### Layer Breakdown
 
 1. **Input Layer**: Handles raw data ingestion. Stream-based Git/SVN adapters, document parsing via isolated processes, and webhook listeners with signal/noise filtering (`scoreCommit`).
+   ```mermaid
+   flowchart LR
+       subgraph 1. Input Layer
+           GIT[Git / SVN Adapters<br/>streamed child_process]
+           DOC[Document Upload &<br/>Build Artifact Parser]
+           GH[GitHub Webhook Listener<br/>scoreCommit filter]
+       end
+   ```
 2. **Knowledge Construction Layer**: The LLM-powered engine. Translates raw inputs into structured abstractions (L1/L2/L3) and automatically queues them for human review to create a self-improving feedback loop.
+   ```mermaid
+   flowchart LR
+       subgraph 2. Knowledge Construction Layer
+           LLM_PIPE[L1 Tagger &rarr; L2 Extractor &rarr; L3 Generator]
+           REVIEW[Review Task Creation &<br/>Few-Shot Feedback Loop]
+       end
+   ```
 3. **Knowledge Graph**: The storage boundary. PostgreSQL acts as the single source of truth, handling graph edge traversal and temporal vector similarity matching.
+   ```mermaid
+   flowchart LR
+       subgraph 3. Knowledge Graph
+           DB[(PostgreSQL DB<br/>Node Links & Traversal)]
+           VEC[In-Memory Vector Index<br/>Cross-Project Detection]
+       end
+   ```
 4. **Query Layer**: The API boundary. Exposes strictly typed REST endpoints (driven by Orval/Zod) and the 4-way Agentic RAG router via MCP.
+   ```mermaid
+   flowchart LR
+       subgraph 4. Query Layer
+           REST[REST API<br/>openapi.yaml]
+           RAG[Agentic RAG<br/>intent-router]
+           MCP[MCP Tools<br/>/mcp/*]
+       end
+   ```
 5. **Presentation Layer**: The user interfaces. The Vite-powered dashboard for administration, and the editor-native VS Code extension delivering Knowledge Graph context directly to the developer's workspace.
+   ```mermaid
+   flowchart LR
+       subgraph 5. Presentation Layer
+           FE[kg-engine<br/>React + Vite]
+           VSC[VS Code Extension<br/>Copilot Chat & MCP]
+       end
+   ```
 
 See [05-building-blocks.md](05-building-blocks.md) for the package-level view.
 

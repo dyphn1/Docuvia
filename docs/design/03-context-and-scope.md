@@ -18,8 +18,8 @@ graph TD
     CHAT[Copilot Chat<br/>@docuvia participant] -->|VS Code API| VSC
     GH[GitHub Webhooks] -->|HTTPS POST + HMAC| API
     LLM[OpenAI-compatible<br/>LLM API] <-->|HTTPS REST| API
-    GITCLI[Git CLI<br/>local] <-->|child_process.spawn (streamed)| API
-    SVNCLI[SVN CLI<br/>local] <-->|child_process.spawn (streamed)| API
+    GITCLI[Git CLI<br/>local] <-->|spawn stream| API
+    SVNCLI[SVN CLI<br/>local] <-->|spawn stream| API
     SLACK[Slack / Teams<br/>webhooks] <-- |HTTPS POST fire-and-forget| API
 ```
 

@@ -22,31 +22,55 @@
 
 Docuvia is decomposed into **five conceptual layers**, each corresponding to one or more packages in the monorepo:
 
+```mermaid
+flowchart TD
+    subgraph Layer 5: Presentation
+        FE[kg-engine<br/>React + Vite]
+        VSC[VS Code Extension<br/>Copilot Chat & MCP]
+    end
+
+    subgraph Layer 4: Query
+        REST[REST API<br/>openapi.yaml]
+        RAG[Agentic RAG<br/>intent-router]
+        MCP[MCP Tools<br/>/mcp/*]
+    end
+
+    subgraph Layer 3: Knowledge Graph
+        DB[(PostgreSQL + Drizzle)<br/>Node Links & Traversal]
+        VEC[In-Memory Vector Index<br/>Cross-Project Detection]
+    end
+
+    subgraph Layer 2: Knowledge Construction
+        LLM_PIPE[L1 Tagger &rarr; L2 Extractor &rarr; L3 Generator]
+        REVIEW[Review Task Creation &<br/>Few-Shot Feedback Loop]
+    end
+
+    subgraph Layer 1: Input
+        GIT[Git / SVN Adapters<br/>streamed child_process]
+        DOC[Document Upload &<br/>Build Artifact Parser]
+        GH[GitHub Webhook Listener<br/>scoreCommit filter]
+    end
+
+    %% Flow connections
+    Layer5 --> Layer4
+    Layer4 --> Layer3
+    Layer3 --> Layer2
+    Layer2 --> Layer1
+    
+    style Layer5 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    style Layer4 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    style Layer3 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    style Layer2 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
+    style Layer1 fill:transparent,stroke:#333,stroke-width:2px,stroke-dasharray: 5 5
 ```
-┌─────────────────────────────────────────────────────────┐
-│  5. Presentation Layer                                    │
-│     kg-engine (React + Vite)   │  VS Code Extension      │
-│     Copilot Chat participant   │  MCP client responses    │
-├─────────────────────────────────────────────────────────┤
-│  4. Query Layer                                           │
-│     REST API (openapi.yaml)    │  MCP tools (/mcp/*)      │
-│     Agentic RAG (intent-router)│  Impact analysis          │
-├─────────────────────────────────────────────────────────┤
-│  3. Knowledge Graph                                       │
-│     PostgreSQL (Drizzle ORM)   │  In-memory vector index  │
-│     Node links + traversal     │  Cross-project detection  │
-├─────────────────────────────────────────────────────────┤
-│  2. Knowledge Construction Layer                          │
-│     L1 tagger → L2 extractor → L3 generator (LLM)        │
-│     Noise detection            │  Review task creation     │
-│     Correction examples (few-shot feedback loop)          │
-├─────────────────────────────────────────────────────────┤
-│  1. Input Layer                                           │
-│     Git adapter (git CLI)      │  SVN adapter (svn CLI)   │
-│     Document upload            │  Build artifact parser    │
-│     GitHub webhook listener    │  scoreCommit() filter     │
-└─────────────────────────────────────────────────────────┘
-```
+
+### Layer Breakdown
+
+1. **Input Layer**: Handles raw data ingestion. Stream-based Git/SVN adapters, document parsing via isolated processes, and webhook listeners with signal/noise filtering (`scoreCommit`).
+2. **Knowledge Construction Layer**: The LLM-powered engine. Translates raw inputs into structured abstractions (L1/L2/L3) and automatically queues them for human review to create a self-improving feedback loop.
+3. **Knowledge Graph**: The storage boundary. PostgreSQL acts as the single source of truth, handling graph edge traversal and temporal vector similarity matching.
+4. **Query Layer**: The API boundary. Exposes strictly typed REST endpoints (driven by Orval/Zod) and the 4-way Agentic RAG router via MCP.
+5. **Presentation Layer**: The user interfaces. The Vite-powered dashboard for administration, and the editor-native VS Code extension delivering Knowledge Graph context directly to the developer's workspace.
 
 See [05-building-blocks.md](05-building-blocks.md) for the package-level view.
 

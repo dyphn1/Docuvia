@@ -19,7 +19,7 @@
 
 ### 1.1 Core Database & ORM Setup
 - [x] 1.1.1  ✅  Drizzle ORM schema for all 16 tables (projects, commits, documents, activity_log, l1_tags, l2_nodes, l3_nodes, node_links, review_tasks, correction_examples, pull_requests, project_integrations, notifications, subscriptions, llm_configs, prompt_templates)
-- [x] 1.1.2  ✅  DB push / push-force scripts
+- [x] 1.1.2  ⚠️  DB push / push-force scripts
 - [x] 1.1.3  ✅  withRollback() integration test support
 - [x] 1.1.4  ✅  Test factories for DB state creation (factories.ts)
 
@@ -146,7 +146,7 @@
 - [x] 5.2.3  ✅  Approve/merge/reject actions
 
 ### 5.3 Prompt Templates
-- [x] 5.3.1  ✅  prompt_templates table (schema exists)
+- [x] 5.3.1  ⚠️  prompt_templates table (schema exists)
 - [x] 5.3.2  ✅  Per-project overridable LLM prompts (L1, L2, L3)
 - [x] 5.3.3  ✅  Default fallback templates not seeded in migrations (D-07)
 
@@ -178,7 +178,7 @@
 
 ### 6.5 Export
 - [x] 6.5.1  ✅  JSON export endpoint
-- [x] 6.5.2  ✅  Markdown export (may be missing — D-06)
+- [x] 6.5.2  ⚠️  Markdown export (may be missing — D-06)
 
 ---
 
@@ -295,11 +295,11 @@
 | Item ID | Last Verified | Report File | Status |
 |---------|---------------|-------------|--------|
 | 3.2.1 | 2026-06-10 | 0039_3.2.1.md | ✅ PASS |
-| 1.1.2 | 2026-06-08 | 0002_1.1.2.md | ✅ PASS |
-| 1.1.3 | 2026-06-08 | 0003_1.1.3.md | ✅ PASS |
+| 1.1.2 | 2026-06-13 | 0194_1.1.2.md | ⚠️ WARN |
+| 1.1.3 | 2026-06-13 | 0196_1.1.3.md | ✅ PASS |
 | 1.1.4 | 2026-06-12 | 0004_1.1.4.md | ✅ PASS |
 | 1.2.1 | 2026-06-12 | 0097_1.2.1.md | ✅ PASS |
-| 1.2.2 | 2026-06-12 | 0098_1.2.2.md | ✅ PASS |
+| 1.2.2 | 2026-06-13 | 0199_1.2.2.md | ❌ FAIL |
 | 1.2.3 | 2026-06-08 | 0007_1.2.3.md | ✅ PASS |
 | 1.2.4 | 2026-06-12 | 0008_1.2.4.md | ✅ PASS |
 | 1.2.5 | 2026-06-12 | 0009_1.2.5.md | ✅ PASS |
@@ -365,8 +365,8 @@
 | 5.2.1 | 2026-06-12 | 0113_5.2.1.md | ✅ PASS |
 | 5.2.2 | 2026-06-12 | 0114_5.2.2.md | ✅ PASS |
 | 5.2.3 | 2026-06-12 | 0115_5.2.3.md | ✅ PASS |
-| 5.3.1 | — | — | ✅ PASS |
-| 5.3.2 | — | — | ✅ PASS |
+| 5.3.1 | 2026-06-13 | 0197_5.3.1.md | ⚠️ WARN |
+| 5.3.2 | 2026-06-13 | 0198_5.3.2.md | ✅ PASS |
 | 5.3.3 | 2026-06-12 | 0106_5.3.3.md | ✅ PASS |
 | 6.1.1 | 2026-06-12 | 0116_6.1.1.md | ✅ PASS |
 | 6.1.2 | 2026-06-12 | 0117_6.1.2.md | ✅ PASS |

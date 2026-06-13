@@ -17,7 +17,7 @@ import {
   notificationsTable,
   commitL2LinksTable,
 } from "@workspace/db";
-import { eq, and, sql, isNull, ne, isNotNull, inArray, or, lt } from "drizzle-orm";
+import { desc, eq, and, sql, isNull, ne, isNotNull, inArray, or, lt } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { notifyExternalIntegrations } from "../lib/slack-teams-client.js";
@@ -42,8 +42,7 @@ async function getPromptTemplate(projectId: number, templateType: string): Promi
     .limit(1);
 
   if (template) {
-    // Max's Rule: Wrap the user's prompt in an un-overrideable system constraint block
-    return `${template.systemPrompt}\n\n<SYSTEM_CONSTRAINT>\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json\n</SYSTEM_CONSTRAINT>`;
+    return `${template.systemPrompt}\n\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json`;
   }
 
   // Fallback to global defaults if no project-specific template exists
@@ -61,10 +60,12 @@ async function getPromptTemplate(projectId: number, templateType: string): Promi
     .limit(1);
 
   if (globalTemplate) {
-    return `${globalTemplate.systemPrompt}\n\n<SYSTEM_CONSTRAINT>\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json\n</SYSTEM_CONSTRAINT>`;
+    return `${globalTemplate.systemPrompt}\n\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json`;
   }
 
-  return "You are an AI assistant. OUTPUT MUST BE VALID JSON ONLY.";
+  // Fallback to hardcoded defaults
+  const hardcodedDefault = DEFAULT_PROMPTS[templateType as keyof typeof DEFAULT_PROMPTS] || "You are an AI assistant.";
+  return `${hardcodedDefault}\n\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json`;
 }
 
 const router = Router();
@@ -82,23 +83,6 @@ async function getModel(projectId: number, override?: string): Promise<string> {
     .from(llmConfigsTable)
     .where(eq(llmConfigsTable.projectId, projectId));
   return cfg?.model ?? "gpt-5.2";
-}
-
-async function getSystemPrompt(
-  projectId: number,
-  templateType: "l1_tagger" | "l2_extractor" | "l3_generator"
-): Promise<string> {
-  const [template] = await db
-    .select()
-    .from(promptTemplatesTable)
-    .where(
-      and(
-        eq(promptTemplatesTable.projectId, projectId),
-        eq(promptTemplatesTable.templateType, templateType),
-        eq(promptTemplatesTable.isActive, true)
-      )
-    );
-  return template?.systemPrompt ?? DEFAULT_PROMPTS[templateType] ?? "";
 }
 
 async function getRecentCorrections(
@@ -139,53 +123,56 @@ async function condenseL3Node(
   node: { id: number; title: string; content: string | null; sourceCommits: unknown },
   model: string
 ): Promise<string | null> {
-const commits = Array.isArray(node.sourceCommits) ? (node.sourceCommits as string[]) : [];
+  const commits = Array.isArray(node.sourceCommits) ? (node.sourceCommits as string[]) : [];
   if (!commits.length) return null;
 
-  // Max's Rule: Progressive batch mode to prevent Context Limit OOM and 429 Rate Limits
-  const batchSize = 20;
-  let synthesizedContent = "";
+  try {
+    // Max's Rule: Progressive batch mode to prevent Context Limit OOM and 429 Rate Limits
+    const batchSize = 20;
+    let synthesizedContent = "";
 
-  for (let i = 0; i < commits.length; i += batchSize) {
-    const commitBatchHashes = commits.slice(i, i + batchSize);
-    
-    const commitData = await db
-      .select({ hash: commitsTable.hash, message: commitsTable.message })
-      .from(commitsTable)
-      .where(inArray(commitsTable.hash, commitBatchHashes));
+    for (let i = 0; i < commits.length; i += batchSize) {
+      const commitBatchHashes = commits.slice(i, i + batchSize);
+      
+      const commitData = await db
+        .select({ hash: commitsTable.hash, message: commitsTable.message })
+        .from(commitsTable)
+        .where(inArray(commitsTable.hash, commitBatchHashes));
 
-    if (!commitData.length) continue;
+      if (!commitData.length) continue;
 
-    const commitSummary = commitData
-      .map((c) => `[${c.hash.slice(0, 8)}] ${c.message}`)
-      .join("\n");
+      const commitSummary = commitData
+        .map((c) => `[${c.hash.slice(0, 8)}] ${c.message}`)
+        .join("\n");
 
-    try {
-      const response = await openai.chat.completions.create({
-        model,
-        max_completion_tokens: 1024,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a technical writer. Given a knowledge node's title, existing content, and related commits, synthesize an updated comprehensive content string. Return only the new content text.",
-          },
-          {
-            role: "user",
-            content: `Node title: "${node.title}"\nExisting content: "${synthesizedContent || node.content || ""}"\nRelated commits:\n${commitSummary}\n\nSynthesize updated content:`,
-          },
-        ],
-      });
-      synthesizedContent = response.choices[0]?.message?.content ?? synthesizedContent;
-      // Sleep to prevent rate limit
-      await new Promise(resolve => setTimeout(resolve, 500));
-    } catch (e) {
-      logger.warn({ err: e }, "Failed to generate chunk");
+      try {
+        const response = await openai.chat.completions.create({
+          model,
+          max_completion_tokens: 1024,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a technical writer. Given a knowledge node's title, existing content, and related commits, synthesize an updated comprehensive content string. Return only the new content text.",
+            },
+            {
+              role: "user",
+              content: `Node title: "${node.title}"\nExisting content: "${synthesizedContent || node.content || ""}"\nRelated commits:\n${commitSummary}\n\nSynthesize updated content:`,
+            },
+          ],
+        });
+        synthesizedContent = response.choices[0]?.message?.content ?? synthesizedContent;
+        // Sleep to prevent rate limit
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (e) {
+        logger.warn({ err: e }, "Failed to generate chunk");
+        throw e;
+      }
     }
-  }
 
-  return synthesizedContent || null;
-  } catch {
+    return synthesizedContent || null;
+  } catch (err) {
+    logger.error({ err }, "Failed to condense L3 node");
     return null;
   }
 }
@@ -207,11 +194,11 @@ async function generateL1Tags(
     messages: [
       {
         role: "system",
-        content: `${systemPromptOverride}${existing}`,
+        content: systemPromptOverride,
       },
       {
         role: "user",
-        content: `Commits:\n${commitList}\n\nGenerate L1 tags as JSON array:`,
+        content: `Commits:\n${commitList}${existing}\n\nGenerate L1 tags as JSON array:`,
       },
     ],
   });
@@ -267,11 +254,11 @@ async function generateL2Nodes(
     messages: [
       {
         role: "system",
-        content: `${systemPromptOverride}\n\nAvailable L1 tags to map L2 nodes to: ${tagNames}${docSection}${fewShotSection}${previousBatchSection}`,
+        content: systemPromptOverride,
       },
       {
         role: "user",
-        content: `Commits to analyze:\n${commitList}\n\nGenerate L2/L3 knowledge nodes as JSON array:`,
+        content: `Available L1 tags to map L2 nodes to: ${tagNames}${docSection}${fewShotSection}${previousBatchSection}\n\nCommits to analyze:\n${commitList}\n\nGenerate L2/L3 knowledge nodes as JSON array:`,
       },
     ],
   });
@@ -461,11 +448,8 @@ async function runSieveModel(
 
   let commitLinkedNodeIds: number[] = [];
   if (commitHash) {
-    const [commitRecord] = await db.select().from(commitsTable).where(eq(commitsTable.hash, commitHash));
-    if (commitRecord) {
-      const links = await db.select().from(commitL2LinksTable).where(eq(commitL2LinksTable.commitId, commitRecord.id));
-      commitLinkedNodeIds = links.map((l: any) => l.l2NodeId);
-    }
+    const links = await db.select().from(commitL2LinksTable).where(eq(commitL2LinksTable.commitHash, commitHash));
+    commitLinkedNodeIds = links.map((l: any) => l.l2NodeId);
   }
 
   for (const node of l2Nodes) {
@@ -525,7 +509,7 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
   const sysUncategorizedId = sysUncatNode?.id ?? 0;
 
   const model = await getModel(projectId);
-  const systemPrompt = await getSystemPrompt(projectId, "l3_generator");
+  const systemPrompt = await getPromptTemplate(projectId, "l3_generator");
 
   let extracted: any[] = [];
   try {
@@ -661,7 +645,7 @@ router.post("/projects/:id/generate", async (req, res) => {
       : "";
 
     // Step 3: L1 Tagger — using project template if available
-    const l1SystemPrompt = await getSystemPrompt(projectId, "l1_tagger");
+    const l1SystemPrompt = await getPromptTemplate(projectId, "l1_tagger");
     const existingL1 = await db.select().from(l1TagsTable);
     const existingTagNames = existingL1.map((t) => t.name);
     const aiL1Tags = await generateL1Tags(commitData, existingTagNames, model, l1SystemPrompt);
@@ -749,7 +733,7 @@ router.post("/projects/:id/generate", async (req, res) => {
     }
 
     // Step 4: L2 Extractor + L3 Generator — using templates + feedback loop corrections
-    const l2SystemPrompt = await getSystemPrompt(projectId, "l2_extractor");
+    const l2SystemPrompt = await getPromptTemplate(projectId, "l2_extractor");
     const corrections = await getRecentCorrections(projectId, "l2_node");
     const allL1Tags = await db.select().from(l1TagsTable);
 
@@ -865,9 +849,8 @@ router.post("/projects/:id/generate", async (req, res) => {
           await db
             .insert(commitL2LinksTable)
             .values({
-              commitId: commit.id,
+              commitHash: commit.hash,
               l2NodeId: targetNodeId,
-              diffPaths: diffPathsForLink.length > 0 ? diffPathsForLink : null,
             })
             .onConflictDoNothing()
             .catch(() => {});
@@ -1000,23 +983,17 @@ router.post("/projects/:id/generate", async (req, res) => {
         }
 
         if (maxL3Sim >= similarityThreshold && bestL3Match) {
-          // Dedup: increment occurrence count and append source commit
-          const currentSources = Array.isArray(bestL3Match.sourceCommits)
-            ? (bestL3Match.sourceCommits as string[])
-            : [];
-          const updatedSources = l3data.commitHash
-            ? [...currentSources, l3data.commitHash]
-            : currentSources;
+          // Dedup: increment occurrence count
           const newOccurrenceCount = bestL3Match.occurrenceCount + 1;
 
           await db
             .update(l3NodesTable)
-            .set({ occurrenceCount: newOccurrenceCount, sourceCommits: updatedSources })
+            .set({ occurrenceCount: newOccurrenceCount })
             .where(eq(l3NodesTable.id, bestL3Match.id));
 
           // Condensation check
           if (newOccurrenceCount >= condensationThreshold) {
-            const condensed = await condenseL3Node(bestL3Match, model);
+            const condensed = await condenseL3Node(bestL3Match as any, model);
             if (condensed) {
               await db
                 .update(l3NodesTable)
@@ -1047,7 +1024,6 @@ router.post("/projects/:id/generate", async (req, res) => {
               aiGenerated: true,
               confidence,
               occurrenceCount: 1,
-              sourceCommits: l3data.commitHash ? [l3data.commitHash] : [],
               validityStatus: "pending",
             })
             .returning();
@@ -1089,7 +1065,7 @@ router.post("/projects/:id/generate", async (req, res) => {
             // Also insert into commit_l2_links junction table (v2)
             await db
               .insert(commitL2LinksTable)
-              .values({ commitId, l2NodeId: l2node.id })
+              .values({ commitHash: l3data.commitHash, l2NodeId: l2node.id })
               .catch(() => {});
           }
         }

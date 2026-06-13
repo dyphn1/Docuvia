@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { db } from "@workspace/db";
 import {
   projectsTable,
@@ -12,7 +12,26 @@ import { eq, sql, count } from "drizzle-orm";
 
 const router = Router();
 
-router.get("/projects/:id/export", async (req, res) => {
+const checkProjectOwnership = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const projectId = Number(req.params.id);
+  // Fake userId extracted from bearer token (implementation pending auth middleware)
+  const userId = (req as any).user?.id || 1;
+  
+  // IDOR Prevention: verify if userId has access to projectId
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  if (!project) {
+    res.status(404).json({ error: "Project not found" });
+    return;
+  }
+  if (project.ownerId !== userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  
+  next();
+};
+
+router.get("/projects/:id/export", checkProjectOwnership, async (req, res) => {
   const projectId = Number(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
@@ -102,7 +121,7 @@ router.get("/projects/:id/export", async (req, res) => {
 
 
 // GET /projects/:id/export/md (Markdown Export with Stream/Chunking)
-router.get("/projects/:id/export/md", async (req, res) => {
+router.get("/projects/:id/export/md", checkProjectOwnership, async (req, res) => {
   const projectId = Number(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
@@ -156,6 +175,7 @@ router.get("/projects/:id/export/md", async (req, res) => {
   }
 
   res.end();
+  return;
 });
 
 export default router;

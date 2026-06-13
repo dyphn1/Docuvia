@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { logger } from "../lib/logger.js";
 import { db } from "@workspace/db";
 import {
   projectsTable,

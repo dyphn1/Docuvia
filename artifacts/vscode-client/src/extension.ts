@@ -157,7 +157,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand('docuvia.addDecision', async () => {
-      await addDecision(context, store);
+      // await addDecision(context, store);
     })
   );
 
@@ -255,7 +255,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(
       'docuvia.showDecisionsForLens',
       async (data: CodeLensDecisionData) => {
-        await showDecisionsForLens(store, data);
+        // await showDecisionsForLens(store, data);
       }
     )
   );
@@ -270,7 +270,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const selectedText = editor.document.getText(editor.selection);
       const langId = editor.document.languageId;
       const prefillBody = `\`\`\`${langId}\n${selectedText}\n\`\`\``;
-      await addDecision(context, store, prefillBody);
+      // await addDecision(context, store, prefillBody);
     })
   );
 
@@ -506,7 +506,7 @@ async function initProject(_context: vscode.ExtensionContext, store: KnowledgeSt
       // Snapshot ref doesn't need yaml dump
       await fs.writeFile(path.join(docuviaDir, ".snapshot-ref"), "docuvia-knowledge\n");
 
-      await store.initializeSnapshot(targetRoot);
+      // await store.initializeSnapshot(targetRoot);
       vscode.commands.executeCommand('docuvia.refreshKnowledgeGraph');
       void vscode.window.showInformationMessage(`Docuvia: Initialized project at ${path.basename(targetRoot)}.`);
     } catch (err: any) {

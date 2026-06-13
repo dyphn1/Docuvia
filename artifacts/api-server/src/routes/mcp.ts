@@ -31,6 +31,7 @@ router.use("/mcp", (req, res, next) => {
   }
 
   next();
+  return;
 });
 
 

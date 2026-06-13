@@ -113,7 +113,7 @@ export async function processIngestion({
     if (ingested > 0) {
       await logAndNotify(projectId, projectName, "commit", `Ingested ${ingested} git commits`, ingested);
     }
-  } else if (type === "svn") { {
+  } else if (type === "svn") {
     const svnItems = items as SvnCommitItem[];
     for (const c of svnItems) {
       const [existing] = await db
@@ -177,7 +177,6 @@ export async function processIngestion({
           docType: doc.docType as any,
           content: doc.content,
           contentHash: hash,
-          commitSha: doc.commitSha,
         });
         ingested++;
       } catch (e: any) {

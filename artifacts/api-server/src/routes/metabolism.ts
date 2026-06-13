@@ -21,7 +21,7 @@ async function runMetabolism() {
   const pendingL3Nodes = await db
     .select({
       id: l3NodesTable.id,
-      sourceCommits: l3NodesTable.sourceCommits,
+      commitHash: l3NodesTable.commitHash,
       projectId: projectsTable.id,
       repoUrl: projectsTable.repoUrl,
     })
@@ -56,7 +56,7 @@ async function runMetabolism() {
 
       for (const node of nodes) {
         let isMerged = false;
-        const commits = Array.isArray(node.sourceCommits) ? (node.sourceCommits as string[]) : [];
+        const commits = node.commitHash ? [node.commitHash] : [];
         if (commits.length === 0) continue;
 
         for (const commit of commits) {

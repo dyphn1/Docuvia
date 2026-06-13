@@ -99,6 +99,10 @@ export function sanitizeLikeInput(str: string): string {
   return str.replace(/[%_\\]/g, '\\$&');
 }
 
+export function escapeLike(str: string): string {
+  return str.replace(/[\\%_]/g, "\\$&");
+}
+
 /**
  * Sanitize user query before sending to LLM to prevent prompt injection.
  * Strips characters that could escape JSON or inject instructions.
@@ -623,14 +627,19 @@ export async function routeQuery(
   if (isSingleWord) {
     const rawSearch = trimmed.replace(/[`"]/g, "");
     // Fall back to directSearch which now utilizes standard DB ILIKE (surrogate for pg_trgm)
-    const results = await directSearch(rawSearch, projectId, limit, includePending);
+    const results = await directLookupHandler(rawSearch, projectId, limit, includePending);
     
     // If we find exact matches, return instantly without calling the LLM
     if (results.length > 0) {
       return {
-        strategy: "direct",
+        routingStrategy: "direct_lookup",
+        entities: { searchQuery: rawSearch },
         results,
-        latencyMs: Date.now() - start
+        metadata: {
+          classificationConfidence: 1.0,
+          reasoning: "Exact match short-circuit",
+          durationMs: Date.now() - start
+        }
       };
     }
   }
@@ -695,7 +704,8 @@ export async function routeQuery(
       break;
     }
     case "direct_lookup": {
-      results = await directLookupHandler(query, classification.entities, includePending, projectId);
+      const searchQuery = classification.entities.searchQuery ?? query;
+      results = await directLookupHandler(searchQuery, projectId, limit, includePending);
       break;
     }
     case "hybrid": {

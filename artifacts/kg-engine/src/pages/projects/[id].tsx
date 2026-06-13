@@ -10,9 +10,12 @@ import {
   getListProjectL2NodesQueryKey,
   useListL3Nodes,
   getListL3NodesQueryKey,
+  useExportProjectMarkdown,
+  getExportProjectMarkdownQueryKey,
 } from "@workspace/api-client-react";
 import { IngestStatusCard } from "@/components/IngestStatusCard";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -256,6 +259,23 @@ export default function ProjectDetail() {
     query: { enabled: !!id, queryKey: getGetProjectGraphQueryKey(id) },
   });
 
+  const { refetch: exportMarkdown, isFetching: isExporting } = useExportProjectMarkdown(id, {
+    query: { enabled: false, queryKey: getExportProjectMarkdownQueryKey(id) },
+  });
+
+  const handleExport = async () => {
+    const { data } = await exportMarkdown();
+    if (data) {
+      const url = window.URL.createObjectURL(new Blob([data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${project?.name || "project"}_export.md`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    }
+  };
+
   const { data: commits, isLoading: isLoadingCommits } = useListCommits(id, {
     query: { enabled: !!id, queryKey: getListCommitsQueryKey(id) },
   });
@@ -314,6 +334,11 @@ export default function ProjectDetail() {
           </div>
 
           <div className="flex gap-4">
+            <div className="flex flex-col gap-2 justify-center">
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting}>
+                {isExporting ? "Exporting..." : "Export Markdown"}
+              </Button>
+            </div>
             <div className="text-center px-4 py-2 rounded-md bg-background border border-border">
               <div className="text-2xl font-bold font-mono text-primary">{project.l2Count}</div>
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">

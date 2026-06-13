@@ -9,7 +9,6 @@
   },
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.cjs",
-    "migrate": "drizzle-kit migrate --config ./drizzle.config.cjs",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.cjs",
     "migrate": "tsx src/migrate.ts"
   },

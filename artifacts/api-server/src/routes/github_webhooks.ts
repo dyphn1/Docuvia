@@ -60,7 +60,7 @@ async function ingestPrCommits(
       hash: c.sha,
       message: c.commit.message.split("\n")[0].trim(),
       author: c.commit.author?.name ?? "Unknown",
-      valid,
+      valid: true,
     });
     ingested++;
   }
@@ -275,15 +275,15 @@ router.post("/:projectId", async (req, res) => {
           const prCommitHashes = prCommits.map((c) => c.sha);
 
           if (prCommitHashes.length > 0) {
-            const conditions = prCommitHashes.map(
-              (h) => sql`${l3NodesTable.sourceCommits} @> ${JSON.stringify([h])}::jsonb`
-            );
-            const orCondition = sql`${sql.join(conditions, sql` OR `)}`;
-
             const result = await db
               .update(l3NodesTable)
               .set({ validityStatus: "valid" })
-              .where(and(orCondition, eq(l3NodesTable.validityStatus, "pending")));
+              .where(
+                and(
+                  inArray(l3NodesTable.commitHash, prCommitHashes),
+                  eq(l3NodesTable.validityStatus, "pending")
+                )
+              );
               
             logger.info({ projectId, prNumber }, "Updated L3 nodes validity status on PR merge");
           }

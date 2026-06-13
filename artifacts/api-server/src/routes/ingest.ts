@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
+import fs from "fs";
+import { computeHashFromStream } from "../lib/utils/hash.js";
 import {
   commitsTable,
   documentsTable,
@@ -123,43 +125,58 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
     startRevision = project.lastSvnRevision + 1;
   }
 
-  let revisions;
+  let maxRevisionIngested = project.lastSvnRevision ?? 0;
+  let totalIngested = 0;
+  let totalSkipped = 0;
+  const svnErrors: string[] = [];
+  const ingestErrors: string[] = [];
+
   try {
-    revisions = await getSvnLog(svnUrl, startRevision, endRevision, body.username, body.password);
+    const logGenerator = getSvnLog(svnUrl, startRevision, endRevision, body.username, body.password);
+    let batch: SvnCommitItem[] = [];
+
+    const flushBatch = async () => {
+      if (batch.length === 0) return;
+      const { ingested, skipped, errors } = await processIngestion({
+        type: "svn",
+        projectId,
+        projectName: project.name,
+        items: batch,
+      });
+      totalIngested += ingested;
+      totalSkipped += skipped;
+      ingestErrors.push(...errors);
+      batch = [];
+    };
+
+    for await (const rev of logGenerator) {
+      let diff = "";
+      try {
+        diff = await getSvnDiff(svnUrl, rev.revision, body.username, body.password);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        svnErrors.push(`r${rev.revision}: ${msg}`);
+      }
+
+      batch.push({
+        revision: rev.revision,
+        message: rev.message,
+        author: rev.author,
+        diff,
+      });
+
+      if (rev.revision > maxRevisionIngested) maxRevisionIngested = rev.revision;
+
+      if (batch.length >= 50) {
+        await flushBatch();
+      }
+    }
+    
+    await flushBatch();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     return res.status(502).json({ error: `Failed to fetch SVN log: ${msg}` });
   }
-
-  let maxRevisionIngested = project.lastSvnRevision ?? 0;
-  const svnItems: SvnCommitItem[] = [];
-  const svnErrors: string[] = [];
-
-  for (const rev of revisions) {
-    let diff = "";
-    try {
-      diff = await getSvnDiff(svnUrl, rev.revision, body.username, body.password);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      svnErrors.push(`r${rev.revision}: ${msg}`);
-    }
-
-    svnItems.push({
-      revision: rev.revision,
-      message: rev.message,
-      author: rev.author,
-      diff,
-    });
-
-    if (rev.revision > maxRevisionIngested) maxRevisionIngested = rev.revision;
-  }
-
-  const { ingested, skipped, errors: ingestErrors } = await processIngestion({
-    type: "svn",
-    projectId,
-    projectName: project.name,
-    items: svnItems,
-  });
 
   if (svnMode === "incremental" && maxRevisionIngested > (project.lastSvnRevision ?? 0)) {
     await db
@@ -168,7 +185,7 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
       .where(eq(projectsTable.id, projectId));
   }
 
-  return res.json({ ingested, skipped, errors: [...svnErrors, ...ingestErrors] });
+  return res.json({ ingested: totalIngested, skipped: totalSkipped, errors: [...svnErrors, ...ingestErrors] });
 });
 
 router.get("/projects/:id/ingest/status", async (req, res) => {
@@ -343,7 +360,7 @@ router.use(
 
 
 // POST /projects/:id/ingest/build-artifact
-router.post("/projects/:id/ingest/build-artifact", upload.single("file"), async (req, res) => {
+router.post("/projects/:id/ingest/build-artifact", documentUpload.single("file"), async (req, res) => {
   const projectId = Number(req.params.id);
   if (!req.file) return res.status(400).json({ error: "file required" });
 

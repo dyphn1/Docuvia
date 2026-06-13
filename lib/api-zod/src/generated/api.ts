@@ -525,6 +525,13 @@ export const ExportProjectResponse = zod.object({
 });
 
 /**
+ * @summary Export project knowledge base as Markdown
+ */
+export const ExportProjectMarkdownParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List prompt templates for a project (with defaults)
  */
 export const ListProjectTemplatesParams = zod.object({

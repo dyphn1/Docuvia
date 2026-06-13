@@ -72,9 +72,10 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
   // Use a distributed lock via Postgres to prevent split-brain on identical project pushes
   const lockAcquired = await db.execute(
     sql`SELECT pg_try_advisory_xact_lock(${projectId}) as acquired`
-  );
+  ) as any;
   
-  if (!lockAcquired[0]?.acquired) {
+  const acquired = lockAcquired.rows ? lockAcquired.rows[0]?.acquired : lockAcquired[0]?.acquired;
+  if (!acquired) {
      logger.warn({ projectId }, "[orphan-branch-writer] Lock busy, skipping this sync cycle to prevent split-brain");
      return;
   }

@@ -22,31 +22,39 @@ async function runMigrations() {
   const migrationClient = postgres(databaseUrl, { max: 1 });
   const db = drizzle(migrationClient);
 
-  console.log("Running migrations...");
-  const migrationsFolder = path.resolve(__dirname, "../drizzle");
-  
-  await migrate(db, { migrationsFolder });
-  
-  console.log("Migrations completed!");
+  const LOCK_ID = 7274813; // PostgreSQL Advisory Lock for migrations
+  await migrationClient`SELECT pg_advisory_lock(${LOCK_ID})`;
+  console.log("Acquired migration advisory lock.");
 
-  console.log("Seeding default prompt templates...");
-  // Using onConflictDoNothing assumes there is a unique constraint. Since there isn't one on templateType + projectId IS NULL out of the box,
-  // we can do a simple check.
-  const existing = await db.select().from(promptTemplatesTable).limit(1);
-  if (existing.length === 0) {
-    await db.insert(promptTemplatesTable).values(
-      DEFAULT_PROMPT_TEMPLATES.map(t => ({
-        templateType: t.templateType as any,
-        systemPrompt: t.systemPrompt,
-        isActive: t.isActive
-      }))
-    );
-    console.log("Default templates seeded!");
-  } else {
-    console.log("Templates already exist, skipping seed.");
+  try {
+    console.log("Running migrations...");
+    const migrationsFolder = path.resolve(__dirname, "../drizzle");
+    
+    await migrate(db, { migrationsFolder });
+    
+    console.log("Migrations completed!");
+
+    console.log("Seeding default prompt templates...");
+    // Using onConflictDoNothing assumes there is a unique constraint. Since there isn't one on templateType + projectId IS NULL out of the box,
+    // we can do a simple check.
+    const existing = await db.select().from(promptTemplatesTable).limit(1);
+    if (existing.length === 0) {
+      await db.insert(promptTemplatesTable).values(
+        DEFAULT_PROMPT_TEMPLATES.map(t => ({
+          templateType: t.templateType as any,
+          systemPrompt: t.systemPrompt,
+          isActive: t.isActive
+        }))
+      );
+      console.log("Default templates seeded!");
+    } else {
+      console.log("Templates already exist, skipping seed.");
+    }
+  } finally {
+    await migrationClient`SELECT pg_advisory_unlock(${LOCK_ID})`;
+    console.log("Released migration advisory lock.");
+    await migrationClient.end();
   }
-
-  await migrationClient.end();
 }
 
 runMigrations().catch((err) => {

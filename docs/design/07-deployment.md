@@ -115,7 +115,7 @@ Runtime environment:
 | **Static frontend serving**     | Not wired for production                                         | Vite `dist/` output exists; serving from `api-server` via `express.static()` not yet configured — see [D-03](11-risks-and-debt.md) |
 | **VS Code extension packaging** | No `.vsix` build script in CI                                    | `vsce package` must be run manually; see [D-02](11-risks-and-debt.md)                                                              |
 | **Cloud/Self-hosted deployment**   | Standard deployment using OpenAI-compatible endpoints | Requires `OPENAI_API_KEY` pointing to a compatible endpoint (OpenRouter, Azure, OpenAI, etc.)                                 |
-| **Database migrations**         | Strictly `drizzle-kit migrate` for Production. (Dev may use `push`) | Production migrations should use `drizzle-kit migrate` with explicit migration files under `docs/db_migrations/`                   |
+| **Database migrations**         | Run via compiled JS (`node dist/migrate.js`) in production. (Dev may use `push`) | Currently manages 18 tables (increased from 16). Production migrations run from explicit migration files. |
 | **Secrets management**          | Env vars via `.env` file in development                          | Production: use secret manager (Vault, AWS Secrets Manager, etc.)                                                                  |
 
 ---

@@ -28,9 +28,10 @@ router.post("/sync/push", async (req, res) => {
   // 1. Acquire Central Mutex Lock for this Project
   const lockAcquired = await db.execute(
     sql`SELECT pg_try_advisory_xact_lock(${projectId}) as acquired`
-  );
+  ) as any;
   
-  if (!lockAcquired[0]?.acquired) {
+  const acquired = lockAcquired.rows ? lockAcquired.rows[0]?.acquired : lockAcquired[0]?.acquired;
+  if (!acquired) {
      return res.status(409).json({ error: "Sync conflict: Resource is currently locked by another client. Try again later." });
   }
 

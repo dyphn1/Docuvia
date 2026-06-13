@@ -1,8 +1,14 @@
 import { Router } from "express";
+import fs from "fs";
+import { count } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { documentsTable, projectsTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
 import { z } from "zod";
+import { documentUpload } from "../middlewares/upload.js";
+import { detectDocType } from "../lib/document-parser.js";
+import { computeHashFromStream } from "../lib/utils/hash.js";
+import { logger } from "../lib/logger.js";
 
 const router = Router();
 
@@ -82,11 +88,11 @@ router.post("/documents/:id/affiliate", async (req, res) => {
 
 
 // POST /documents (Upload to Misc Pool)
-router.post("/documents", upload.single("file"), async (req, res) => {
+router.post("/documents", documentUpload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "file required" });
   
   // Fake userId extracted from bearer token (implementation pending auth middleware)
-  const uploadedBy = req.user?.id || 1; 
+  const uploadedBy = (req as any).user?.id || 1; 
 
   // Max's Rule: Enforce a strict file count quota for the anonymous pool
   const [quotaCheck] = await db
@@ -119,7 +125,6 @@ router.post("/documents", upload.single("file"), async (req, res) => {
 
     const contentHash = await computeHashFromStream(filePath);
     const rawContent = await fs.promises.readFile(filePath, "utf-8");
-    const docType = detectDocType(req.file.originalname);
 
     const [inserted] = await db.insert(documentsTable).values({
       filename: req.file.originalname,

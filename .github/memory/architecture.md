@@ -17,6 +17,7 @@
 - **O(1) Fast Arbitration Funnel**: To minimize "LLM arbitration tax" (latency/cost), implement deterministic fast-path filters *before* invoking an LLM for query intent routing. Use regex for explicit directives (e.g., `#attach`, specific file extensions) to force direct lookups, and exact-match checks against known ontology terms (L1/L2 nodes) to force graph traversal. Only fall back to LLM classification when fast-paths fail.
 
 ## Server-Side Metabolism & Background Jobs
+- **Migration Split-Brain Prevention**: For distributed/multi-instance environments applying DB migrations on startup, use PostgreSQL Advisory Locks (`pg_advisory_lock`) to prevent race conditions and "split-brain" migration errors. Relying solely on standard transactions is insufficient for orchestrating concurrent schema modifications.
 - **Thundering Herd Prevention**: When multiple clients poll an endpoint to trigger background tasks (metabolism ticks), use a Mutex (in-memory or DB advisory lock). For database-backed state, use atomic updates (e.g., `UPDATE ... WHERE status='active'`) instead of application-level read-then-write checks to prevent race conditions. If a job is active, return `202 Accepted` or `409 Conflict` immediately to avoid overlapping micro-batch executions.
 - **Client Heartbeat Jitter**: For background polling mechanisms (like `setInterval` in the VS Code client), always add randomized jitter (e.g., base interval ± random offset) to evenly distribute server load across active clients.
 - **Swarm Intelligence Distillation**: Process human-in-the-loop corrections asynchronously during background "metabolism" ticks. Fetch unhandled `correction_examples`, use an LLM to distill the delta (original vs. corrected) into a concise architectural guardrail, insert it into `prompt_templates`, and mark the correction as processed (`processedAt`). This ensures continuous, non-blocking self-evolution.
@@ -27,9 +28,14 @@
 - **Test-Driven Core Math**: Core routing decisions, hybrid intersection algorithms, and scoring math must be isolated from API handlers and maintain high unit test coverage (using Vitest), independent of DB-backed integration tests.
 
 ## Security & API Design
+- **Prompt Injection Defense**: Do not rely on arbitrary XML tags within user prompts as a security boundary against injection attacks. Enforce explicit system-level segregation by passing constraints securely via the `role: "system"` payload attribute, separating instructions strictly from the `role: "user"` data inputs.
 - **Zero-Trust Administrative Routes**: Never leave admin or internal infrastructure routes unauthenticated. Always enforce appropriate authentication or network boundaries, even for internal testing or background triggers.
 
 ## Ingestion Pipeline Protocolization
+- **Streaming Parsers over Buffers**: Avoid using `execFileAsync` combined with RegExp or string manipulation for parsing large external outputs (e.g., SVN logs or external diffs) to prevent memory ballooning and Out-Of-Memory (OOM) crashes. Use `spawn` combined with streaming parsers (like the `sax` library for XML) and integrate AbortControllers to securely handle large repository histories streamingly.
 - **Unified Pipeline Abstraction**: Consolidate disparate ingestion flows (Git, SVN, Documents) into a standardized pipeline sequence (`processIngestion`): Hash deduplication -> Score -> DB Insert -> Activity Log -> Notification. This prevents logic drift between API entry points.
 - **Local Process Execution**: For source control interactions, prefer hardened local client wrappers (`child_process.execFile` with temporary directories) over remote API dependencies for operations like cloning and extracting diffs, ensuring robust handling of arbitrary or private repos.
 - **Pure Utility Extraction**: Pure business logic (e.g., `scoreCommit`) must be decoupled from route handlers and placed in testable, standalone utility modules.
+
+## Performance & Resource Management
+- **Chunked Streams for Large Exports**: When exporting large datasets or compiling massive documents (e.g., Markdown exports), avoid buffering the entire payload in memory before sending. Use chunked response streams (`res.write`) to transmit data progressively, preventing OOM. Ensure every chunk extraction is explicitly scoped with Auth/RBAC ownership checks (e.g., `WHERE ownerId = ?`) to maintain data security throughout the stream.

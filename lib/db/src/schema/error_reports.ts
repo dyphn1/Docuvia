@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
-import { jobQueueTable } from "./job_queue.js";
-import { projectsTable } from "./projects.js";
+import { jobQueueTable } from "./job_queue";
+import { projectsTable } from "./projects";
 
 // Max's Rule: Dead Letter Queue (DLQ) to prevent infinite crash loops
 export const errorReportsTable = pgTable("error_reports", {

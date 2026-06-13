@@ -1,8 +1,6 @@
-import pino from "pino";
+import { pino } from "pino";
 
 const isProduction = process.env.NODE_ENV === "production";
-
-import { pino } from "pino";
 
 // Max's Rule: Strict, environment-agnostic redaction pipeline to prevent PII and Auth Token leakage
 export const logger = pino({

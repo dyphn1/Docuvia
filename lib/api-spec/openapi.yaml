@@ -499,6 +499,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProjectExport"
 
+  /projects/{id}/export/md:
+    get:
+      operationId: exportProjectMarkdown
+      tags: [projects]
+      summary: Export project knowledge base as Markdown
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Exported knowledge base as markdown
+          content:
+            text/markdown:
+              schema:
+                type: string
+                format: binary
+
   /projects/{id}/templates:
     get:
       operationId: listProjectTemplates

@@ -1564,6 +1564,74 @@ export function useExportProject<
 }
 
 /**
+ * @summary Export project knowledge base as Markdown
+ */
+export const getExportProjectMarkdownUrl = (id: number) => {
+  return `/api/projects/${id}/export/md`;
+};
+
+export const exportProjectMarkdown = async (id: number, options?: RequestInit): Promise<Blob> => {
+  return customFetch<Blob>(getExportProjectMarkdownUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getExportProjectMarkdownQueryKey = (id: number) => {
+  return [`/api/projects/${id}/export/md`] as const;
+};
+
+export const getExportProjectMarkdownQueryOptions = <
+  TData = Awaited<ReturnType<typeof exportProjectMarkdown>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof exportProjectMarkdown>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getExportProjectMarkdownQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof exportProjectMarkdown>>> = ({ signal }) =>
+    exportProjectMarkdown(id, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof exportProjectMarkdown>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ExportProjectMarkdownQueryResult = NonNullable<
+  Awaited<ReturnType<typeof exportProjectMarkdown>>
+>;
+export type ExportProjectMarkdownQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Export project knowledge base as Markdown
+ */
+
+export function useExportProjectMarkdown<
+  TData = Awaited<ReturnType<typeof exportProjectMarkdown>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof exportProjectMarkdown>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getExportProjectMarkdownQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary List prompt templates for a project (with defaults)
  */
 export const getListProjectTemplatesUrl = (id: number) => {

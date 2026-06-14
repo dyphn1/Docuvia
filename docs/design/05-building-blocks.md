@@ -88,7 +88,7 @@ All schema files reside in [`lib/db/src/schema/`](file:///d:/GitHub/Docuvia/lib/
 | [`commits.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/commits.ts)                           | Ingested commits (with `processedAt` cursor)                          |
 | [`documents.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/documents.ts)                       | Uploaded documents                                                    |
 | [`l1_tags.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l1_tags.ts)                           | Global classification tags                                            |
-| [`l2_nodes.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l2_nodes.ts)                         | Module/package/component nodes (with embedding JSONB)                 |
+| [`l2_nodes.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l2_nodes.ts)                         | Module/package/component nodes (also defines `l2_node_l1_tags` junction table)|
 | [`l3_nodes.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/l3_nodes.ts)                         | Implementation decision/rule/rationale records (with embedding JSONB) |
 | [`node_links.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/node_links.ts)                     | Directed relationships between L2/L3 nodes                            |
 | [`review_tasks.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/review_tasks.ts)                 | Human-in-the-loop review queue                                        |
@@ -100,6 +100,9 @@ All schema files reside in [`lib/db/src/schema/`](file:///d:/GitHub/Docuvia/lib/
 | [`project_integrations.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/project_integrations.ts) | Slack/Teams/GitHub integration config per project                     |
 | [`llm_configs.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/llm_configs.ts)                   | LLM endpoint configuration per project or globally                    |
 | [`activity_log.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/activity_log.ts)                 | Audit trail for all significant system events                         |
+| [`job_queue.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/job_queue.ts)                       | Async job queue for metabolism mechanism                              |
+| [`error_reports.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/error_reports.ts)               | Dead Letter Queue for failed jobs                                     |
+| [`commit_l2_links.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/commit_l2_links.ts)           | Junction table linking commits to L2 nodes                            |
 
 ---
 

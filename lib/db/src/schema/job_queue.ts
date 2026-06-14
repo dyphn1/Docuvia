@@ -1,4 +1,5 @@
 import { pgTable, text, serial, timestamp, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 
 export const jobStatusEnum = pgEnum("job_status", ["pending", "processing", "failed", "completed"]);
 
@@ -12,5 +13,10 @@ export const jobQueueTable = pgTable("job_queue", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const insertJobQueueSchema = createInsertSchema(jobQueueTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
 export type JobQueue = typeof jobQueueTable.$inferSelect;
 export type InsertJobQueue = typeof jobQueueTable.$inferInsert;

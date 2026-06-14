@@ -18,7 +18,7 @@
 ## Milestone 1: Knowledge Graph Foundation & API Server
 
 ### 1.1 Core Database & ORM Setup
-- [x] 1.1.1  ✅  Drizzle ORM schema for all 16 tables (projects, commits, documents, activity_log, l1_tags, l2_nodes, l3_nodes, node_links, review_tasks, correction_examples, pull_requests, project_integrations, notifications, subscriptions, llm_configs, prompt_templates)
+- [x] 1.1.1  ✅  Drizzle ORM schema for all 19 tables (projects, commits, documents, activity_log, l1_tags, l2_nodes, l3_nodes, node_links, review_tasks, correction_examples, pull_requests, project_integrations, notifications, subscriptions, llm_configs, prompt_templates, job_queue, error_reports, commit_l2_links)
 - [x] 1.1.2  ⚠️  DB push / push-force scripts
 - [x] 1.1.3  ✅  withRollback() integration test support
 - [x] 1.1.4  ✅  Test factories for DB state creation (factories.ts)
@@ -26,7 +26,7 @@
 ### 1.2 Multi-Format Ingestion (Git, SVN, PDF, Build logs, Documents)
 - [x] 1.2.1  ✅  Git ingestion via child_process.spawn streaming
 - [x] 1.2.2  ✅  SVN ingestion via svn log --xml, svn diff
-- [x] 1.2.3  ⚠️  Document upload and parsing (isolated via child_process.fork)
+- [x] 1.2.3  ✅  Document upload and parsing (isolated via child_process.fork)
 - [x] 1.2.4  ✅  Build artifact parser
 - [x] 1.2.5  ✅  scoreCommit() signal/noise filter
 - [x] 1.2.6  ✅  Incremental ingestion batching via cursor columns
@@ -146,7 +146,7 @@
 - [x] 5.2.3  ✅  Approve/merge/reject actions
 
 ### 5.3 Prompt Templates
-- [x] 5.3.1  ⚠️  prompt_templates table (schema exists)
+- [x] 5.3.1  ✅  prompt_templates table (schema exists)
 - [x] 5.3.2  ✅  Per-project overridable LLM prompts (L1, L2, L3)
 - [x] 5.3.3  ✅  Default fallback templates not seeded in migrations (D-07)
 

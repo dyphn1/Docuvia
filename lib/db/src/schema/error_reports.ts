@@ -1,4 +1,5 @@
 import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
 import { jobQueueTable } from "./job_queue";
 import { projectsTable } from "./projects";
 
@@ -12,4 +13,9 @@ export const errorReportsTable = pgTable("error_reports", {
   errorStack: text("error_stack"),
   payloadSnapshot: jsonb("payload_snapshot"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertErrorReportSchema = createInsertSchema(errorReportsTable).omit({
+  id: true,
+  createdAt: true,
 });

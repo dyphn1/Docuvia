@@ -448,8 +448,11 @@ async function runSieveModel(
 
   let commitLinkedNodeIds: number[] = [];
   if (commitHash) {
-    const links = await db.select().from(commitL2LinksTable).where(eq(commitL2LinksTable.commitHash, commitHash));
-    commitLinkedNodeIds = links.map((l: any) => l.l2NodeId);
+    const [commitRecord] = await db.select({ id: commitsTable.id }).from(commitsTable).where(eq(commitsTable.hash, commitHash));
+    if (commitRecord) {
+      const links = await db.select().from(commitL2LinksTable).where(eq(commitL2LinksTable.commitId, commitRecord.id));
+      commitLinkedNodeIds = links.map((l: any) => l.l2NodeId);
+    }
   }
 
   for (const node of l2Nodes) {
@@ -849,7 +852,7 @@ router.post("/projects/:id/generate", async (req, res) => {
           await db
             .insert(commitL2LinksTable)
             .values({
-              commitHash: commit.hash,
+              commitId: commit.id,
               l2NodeId: targetNodeId,
             })
             .onConflictDoNothing()
@@ -1065,7 +1068,7 @@ router.post("/projects/:id/generate", async (req, res) => {
             // Also insert into commit_l2_links junction table (v2)
             await db
               .insert(commitL2LinksTable)
-              .values({ commitHash: l3data.commitHash, l2NodeId: l2node.id })
+              .values({ commitId: commitId, l2NodeId: l2node.id })
               .catch(() => {});
           }
         }

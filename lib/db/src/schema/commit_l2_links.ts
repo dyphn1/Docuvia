@@ -6,9 +6,9 @@ import { z } from "zod/v4";
 
 export const commitL2LinksTable = pgTable("commit_l2_links", {
   id: serial("id").primaryKey(),
-  commitHash: text("commit_hash")
+  commitId: integer("commit_id")
     .notNull()
-    .references(() => commitsTable.hash, { onDelete: "cascade" }),
+    .references(() => commitsTable.id, { onDelete: "cascade" }),
   l2NodeId: integer("l2_node_id")
     .notNull()
     .references(() => l2NodesTable.id, { onDelete: "cascade" }),

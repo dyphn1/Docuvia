@@ -26,7 +26,7 @@
 ### 1.2 Multi-Format Ingestion (Git, SVN, PDF, Build logs, Documents)
 - [x] 1.2.1  ✅  Git ingestion via child_process.spawn streaming
 - [x] 1.2.2  ✅  SVN ingestion via svn log --xml, svn diff
-- [x] 1.2.3  ✅  Document upload and parsing (isolated via child_process.fork)
+- [x] 1.2.3  ⚠️  Document upload and parsing (isolated via child_process.fork)
 - [x] 1.2.4  ✅  Build artifact parser
 - [x] 1.2.5  ✅  scoreCommit() signal/noise filter
 - [x] 1.2.6  ✅  Incremental ingestion batching via cursor columns

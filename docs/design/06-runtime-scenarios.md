@@ -4,7 +4,7 @@
 
 A developer registers a Git repository and triggers ingestion from the kg-engine UI.
 
-- **Implementation Route**: [`artifacts/api-server/src/routes/ingest.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/ingest.ts) (specifically `POST /projects/:id/ingest/git`)
+- **Implementation Route**: [`artifacts/api-server/src/routes/ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts) (specifically `POST /projects/:id/ingest/git`)
 
 ```mermaid
 sequenceDiagram
@@ -31,7 +31,7 @@ sequenceDiagram
 
 The generate pipeline transforms raw commits into structured knowledge graph nodes. It is protected by an atomic optimistic concurrency lock to prevent parallel execution conflicts.
 
-- **Implementation Route**: [`artifacts/api-server/src/routes/generate.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/generate.ts) (specifically `POST /projects/:id/generate`)
+- **Implementation Route**: [`artifacts/api-server/src/routes/generate.ts`](../../artifacts/api-server/src/routes/generate.ts) (specifically `POST /projects/:id/generate`)
 
 ```mermaid
 sequenceDiagram
@@ -79,8 +79,8 @@ sequenceDiagram
 
 An AI IDE sends a natural language query via MCP. The intent router classifies it and routes to the best retrieval strategy.
 
-- **Implementation Route**: [`artifacts/api-server/src/routes/mcp.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/mcp.ts)
-- **Orchestration Logic**: [`artifacts/api-server/src/lib/intent-router.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/lib/intent-router.ts) (`routeQuery()`)
+- **Implementation Route**: [`artifacts/api-server/src/routes/mcp.ts`](../../artifacts/api-server/src/routes/mcp.ts)
+- **Orchestration Logic**: [`artifacts/api-server/src/lib/intent-router.ts`](../../artifacts/api-server/src/lib/intent-router.ts) (`routeQuery()`)
 
 ```mermaid
 sequenceDiagram
@@ -117,7 +117,7 @@ sequenceDiagram
 
 A reviewer approves an AI-generated L3 decision, creating a correction example for future pipeline runs.
 
-- **Implementation Route**: [`artifacts/api-server/src/routes/review_tasks.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/review_tasks.ts) (specifically `POST /review_tasks/:id/resolve`)
+- **Implementation Route**: [`artifacts/api-server/src/routes/review_tasks.ts`](../../artifacts/api-server/src/routes/review_tasks.ts) (specifically `POST /review_tasks/:id/resolve`)
 
 ```mermaid
 sequenceDiagram
@@ -146,8 +146,8 @@ A developer triggers extraction from VS Code, which sends a task to the api-serv
 
 See [artifacts/vscode-client/design/command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) for the detailed command flow.
 
-- **VS Code Task Runner**: [`artifacts/vscode-client/src/TaskRunner.ts`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/TaskRunner.ts) (`runExtraction()`)
-- **Implementation Route**: [`artifacts/api-server/src/routes/extensions_vscode.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/extensions_vscode.ts) (`POST /extensions/vscode/extract`)
+- **VS Code Task Runner**: [`artifacts/vscode-client/src/TaskRunner.ts`](../../artifacts/vscode-client/src/TaskRunner.ts) (`runExtraction()`)
+- **Implementation Route**: [`artifacts/api-server/src/routes/extensions_vscode.ts`](../../artifacts/api-server/src/routes/extensions_vscode.ts) (`POST /extensions/vscode/extract`)
 
 ```mermaid
 sequenceDiagram
@@ -176,8 +176,8 @@ sequenceDiagram
 
 A developer opens a PR. Docuvia receives the webhook, looks up affected L2/L3 nodes, and comments on the PR with relevant knowledge graph context.
 
-- **Implementation Route**: [`artifacts/api-server/src/routes/github_webhooks.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/github_webhooks.ts)
-- **GitHub Client Wrapper**: [`artifacts/api-server/src/lib/github-client.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/lib/github-client.ts)
+- **Implementation Route**: [`artifacts/api-server/src/routes/github_webhooks.ts`](../../artifacts/api-server/src/routes/github_webhooks.ts)
+- **GitHub Client Wrapper**: [`artifacts/api-server/src/lib/github-client.ts`](../../artifacts/api-server/src/lib/github-client.ts)
 
 ```mermaid
 sequenceDiagram

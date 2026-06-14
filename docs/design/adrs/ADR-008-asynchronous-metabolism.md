@@ -24,9 +24,9 @@ flowchart TD
 
 ### 1. The PostgreSQL State Machine
 
-Heavy operations do not execute during the HTTP request cycle. Instead, actions (like capturing a human correction) are written to the database (e.g., [`correction_examplesTable` in correction_examples.ts](file:///d:/GitHub/Docuvia/lib/db/src/schema/correction_examples.ts)) with a status flag like `status: 'pending'` or `processedAt: null`. The API immediately returns `200 OK`.
+Heavy operations do not execute during the HTTP request cycle. Instead, actions (like capturing a human correction) are written to the database (e.g., [`correction_examplesTable` in correction_examples.ts](../../../lib/db/src/schema/correction_examples.ts)) with a status flag like `status: 'pending'` or `processedAt: null`. The API immediately returns `200 OK`.
 
-- **Review Task routes**: [`review_tasks.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/review_tasks.ts)
+- **Review Task routes**: [`review_tasks.ts`](../../../artifacts/api-server/src/routes/review_tasks.ts)
 
 ### 2. Client-Driven Heartbeat (The Drip Feed)
 

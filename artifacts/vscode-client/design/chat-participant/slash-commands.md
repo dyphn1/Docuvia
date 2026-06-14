@@ -5,7 +5,7 @@
 - **ID**: `docuvia.assistant`
 - **Name**: `docuvia`
 - **Full Name**: `Docuvia Knowledge Graph`
-- **Source Code**: [`ChatParticipant.ts`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/ChatParticipant.ts)
+- **Source Code**: [`ChatParticipant.ts`](../../../../artifacts/vscode-client/src/ChatParticipant.ts)
 
 ## Handlers & Slash Commands
 
@@ -64,7 +64,7 @@ flowchart TD
 
   The resulting YAML from either the static templates or dynamic AI analysis is parsed by `formatYamlAsTable()` and presented to the user as a clean Markdown table in the chat (showing Name and Description).
 
-  After streaming the table, Docuvia renders a `stream.button` with the label **"Accept & Write to .docuvia/l1_tags.yaml"**. Clicking it invokes the internal command `docuvia.acceptL1Tags(yamlContent)` (registered in [`extension.ts`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/extension.ts)), which writes the raw YAML directly to `workspaceFolders[0]/.docuvia/l1_tags.yaml`.
+  After streaming the table, Docuvia renders a `stream.button` with the label **"Accept & Write to .docuvia/l1_tags.yaml"**. Clicking it invokes the internal command `docuvia.acceptL1Tags(yamlContent)` (registered in [`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts)), which writes the raw YAML directly to `workspaceFolders[0]/.docuvia/l1_tags.yaml`.
 
   > ⚠️ **Single-workspace limitation**: `docuvia.acceptL1Tags` is hardcoded to write to `vscode.workspace.workspaceFolders?.[0]`, i.e. the **first** workspace folder. In a multi-root workspace with the second folder active, the tags will be written to the wrong project. The command is registered with `enablement: never` to prevent it from being invoked directly from the Command Palette.
 
@@ -80,7 +80,7 @@ flowchart TD
   1. **Target Resolution**: Uses the provided path, or the active editor's file. If neither is provided, defaults to the root of the first open workspace folder.
   2. **Directory Scanning**: If the target is a directory, recursively scans for files. It automatically ignores `.git`, `node_modules`, and `.docuvia`.
   3. **Pattern Filtering**: Applies `minimatch` against `docuvia.extraction.includePatterns` (configured in settings) to ensure only valid source code files are processed.
-  4. **Task Queuing**: Reads the content of all matched files and queues individual L3 extraction tasks via [`TaskRunner.ts`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/TaskRunner.ts).
+  4. **Task Queuing**: Reads the content of all matched files and queues individual L3 extraction tasks via [`TaskRunner.ts`](../../../../artifacts/vscode-client/src/TaskRunner.ts).
 
 ### `/help`
 

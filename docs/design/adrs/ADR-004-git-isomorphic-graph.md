@@ -37,8 +37,8 @@ flowchart LR
 
 ## 3. Server-Side Incremental Merge
 
-- When patches are submitted via API, the API Server (running under distributed advisory locks to prevent split-brain) performs a standard Git 3-way merge on the orphan branch. If conflicts occur, it returns `409 Conflict`. in [`generate.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/generate.ts)) simply attaches the new nodes and edges to the existing DAG.
-- **Zero-Waste Validation**: Re-evaluating the entire codebase is avoided. Every token spent produces an immutable brick anchored to a specific point in space-time in [`commitsTable` in commits.ts](file:///d:/GitHub/Docuvia/lib/db/src/schema/commits.ts).
+- When patches are submitted via API, the API Server (running under distributed advisory locks to prevent split-brain) performs a standard Git 3-way merge on the orphan branch. If conflicts occur, it returns `409 Conflict`. in [`generate.ts`](../../../artifacts/api-server/src/routes/generate.ts)) simply attaches the new nodes and edges to the existing DAG.
+- **Zero-Waste Validation**: Re-evaluating the entire codebase is avoided. Every token spent produces an immutable brick anchored to a specific point in space-time in [`commitsTable` in commits.ts](../../../lib/db/src/schema/commits.ts).
 
 
 ## System Flow & Boundaries

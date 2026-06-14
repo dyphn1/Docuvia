@@ -2,7 +2,7 @@
 
 ## Singleton Architecture
 
-[`KnowledgeStore`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/KnowledgeStore.ts) acts as the single source of truth for all Docuvia Knowledge Graph data loaded into the current VS Code instance.
+[`KnowledgeStore`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts) acts as the single source of truth for all Docuvia Knowledge Graph data loaded into the current VS Code instance.
 
 ## Multi-Root Workspace Support
 
@@ -32,4 +32,4 @@ The store maintains a `Map<string, KnowledgeGraphSnapshot>`, mapping `workspaceR
 - **`load()`**: Called once immediately after activation, and thereafter by `startWatcher` callbacks and by `initProject`/`runExtraction` after they write files.
 - **`dispose()`**: Called by `extension.deactivate()` via `KnowledgeStore.getInstance(outputChannel).dispose()`. Disposes all active `FileSystemWatcher` instances, calls `_onDidLoad.dispose()`, and resets the static `_instance` to `null` so the singleton can be recreated in tests.
 
-> ⚠️ **CONFLICT – `parseTags` Silent Failure on `project_name` + `tags:` Format**: [`parser.ts::parseTags`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/parser.ts) calls `parseYaml(content) as unknown[]` and immediately calls `.map()` on the result. When `l1_tags.yaml` uses the skeleton's object format (`{ project_name: "...", tags: [{...}] }`), the parsed value is a plain object – not an array – and calling `.map()` throws `TypeError: raw.map is not a function`. The `tryParse` wrapper in `KnowledgeStore` catches this silently and returns `[]`. **Any user who follows the generated skeleton and populates the `tags:` array will see zero L1 tags in the tree view.** A fix is scheduled for Round 2 (`parseTags` should check if the result has a `tags` property and use it as the list).
+> ⚠️ **CONFLICT – `parseTags` Silent Failure on `project_name` + `tags:` Format**: [`parser.ts::parseTags`](../../../../artifacts/vscode-client/src/parser.ts) calls `parseYaml(content) as unknown[]` and immediately calls `.map()` on the result. When `l1_tags.yaml` uses the skeleton's object format (`{ project_name: "...", tags: [{...}] }`), the parsed value is a plain object – not an array – and calling `.map()` throws `TypeError: raw.map is not a function`. The `tryParse` wrapper in `KnowledgeStore` catches this silently and returns `[]`. **Any user who follows the generated skeleton and populates the `tags:` array will see zero L1 tags in the tree view.** A fix is scheduled for Round 2 (`parseTags` should check if the result has a `tags` property and use it as the list).

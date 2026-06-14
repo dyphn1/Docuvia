@@ -2,7 +2,7 @@
 
 ## Core Architecture
 
-Docuvia's [`intent-router.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/lib/intent-router.ts) dynamically selects the optimal retrieval strategy. Routing arbitration prioritizes $O(1)$ local caches over expensive LLM inference.
+Docuvia's [`intent-router.ts`](../../../artifacts/api-server/src/lib/intent-router.ts) dynamically selects the optimal retrieval strategy. Routing arbitration prioritizes $O(1)$ local caches over expensive LLM inference.
 
 ## The Routing Funnel (O(1) Arbitration)
 
@@ -18,8 +18,8 @@ flowchart TD
 
 ## 1. External Document Anchoring (The Floating Knowledge Catcher)
 
-- **Implementation Schema**: [`documentsTable` in documents.ts](file:///d:/GitHub/Docuvia/lib/db/src/schema/documents.ts) with `status: "unaffiliated"`.
-- When a 50-page PDF is uploaded, it is initially `unaffiliated`. The LLM scans it to find semantic anchors in existing L2 nodes or recent commits. Once approved via [`review_tasks.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/review_tasks.ts) (Drizzle schema: [`review_tasks.ts`](file:///d:/GitHub/Docuvia/lib/db/src/schema/review_tasks.ts)), it is firmly anchored in the space-time of the Git graph, preventing anachronistic hallucinations.
+- **Implementation Schema**: [`documentsTable` in documents.ts](../../../lib/db/src/schema/documents.ts) with `status: "unaffiliated"`.
+- When a 50-page PDF is uploaded, it is initially `unaffiliated`. The LLM scans it to find semantic anchors in existing L2 nodes or recent commits. Once approved via [`review_tasks.ts`](../../../artifacts/api-server/src/routes/review_tasks.ts) (Drizzle schema: [`review_tasks.ts`](../../../lib/db/src/schema/review_tasks.ts)), it is firmly anchored in the space-time of the Git graph, preventing anachronistic hallucinations.
 
 ## 2. The 4-Way Strategies
 

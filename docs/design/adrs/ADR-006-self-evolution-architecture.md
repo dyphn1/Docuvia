@@ -24,7 +24,7 @@ flowchart TD
 
 ## 1. Capturing the Lesson (Human Overrides)
 
-- **Implementation Route**: User edits trigger [`review_tasks.ts`](file:///d:/GitHub/Docuvia/artifacts/api-server/src/routes/review_tasks.ts) (specifically resolution paths), logging the original and corrected content into the [`correction_examplesTable` in correction_examples.ts](file:///d:/GitHub/Docuvia/lib/db/src/schema/correction_examples.ts).
+- **Implementation Route**: User edits trigger [`review_tasks.ts`](../../../artifacts/api-server/src/routes/review_tasks.ts) (specifically resolution paths), logging the original and corrected content into the [`correction_examplesTable` in correction_examples.ts](../../../lib/db/src/schema/correction_examples.ts).
 
 ## 2. Server-Side Distillation
 
@@ -35,7 +35,7 @@ flowchart TD
 
 - Guardrails and common query structures are identified by the router without LLM latency.
 - When a new developer queries the AI, the local router in `intent-router.ts` runs O(1) checks for `#attach` or specific domain keywords mapped from L1/L2 database names to pre-inject the guardrail natively.
-- **Implementation client sync**: Exposes synchronisation through [`CentralServerClient.ts`](file:///d:/GitHub/Docuvia/artifacts/vscode-client/src/CentralServerClient.ts#L79) (`sync()` and `pullSnapshot()`).
+- **Implementation client sync**: Exposes synchronisation through [`CentralServerClient.ts`](../../../artifacts/vscode-client/src/CentralServerClient.ts#L79) (`sync()` and `pullSnapshot()`).
 
 ## 4. Tool Maker Integration
 

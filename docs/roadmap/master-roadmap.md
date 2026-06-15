@@ -3,7 +3,7 @@
 > **Single Source of Truth (SSOT) for Project Progress**
 > This document tracks the implementation status of features. It DOES NOT explain architectural decisions. 
 > For the "Why" and "How", follow the `[Design Spec]` anchor links to the respective `docs/design/*.md` files.
-> Last Updated: 2026-06-06
+> Last Updated: 2026-06-15
 
 ## Milestone 1: Knowledge Graph Foundation & API Server
 
@@ -21,7 +21,7 @@
 | Task | Status | Design Spec Anchor | Verification / Evidence |
 | :--- | :---: | :--- | :--- |
 | **2.1 Standalone Engine (Graceful Degradation)** | ✅ Done | `[local-first-architecture.md](../design/adrs/ADR-002-local-first-architecture.md)` | `CentralServerClient.ts` Fallback Logic |
-| **2.2 Zero-to-One Onboarding (`@docuvia /init`)** | ⚠️ WIP | `[vscode-client-onboarding.md](../design/adrs/ADR-001-vscode-client-onboarding.md)` | Needs parsing of `package.json` ecosystem markers. |
+| **2.2 Zero-to-One Onboarding (`@docuvia /init`)** | ✅ Done | `[vscode-client-onboarding.md](../design/adrs/ADR-001-vscode-client-onboarding.md)` | Needs parsing of `package.json` ecosystem markers. |
 | **2.3 Multi-root Workspace Support** | ✅ Done | `[local-first-architecture.md](../design/adrs/ADR-002-local-first-architecture.md)` | `TaskRunner.ts` dynamic root scoping |
 | **2.4 Virtual Nodes (Unassigned Group) UI** | ✅ Done | `[knowledge-abstraction-strategy.md](../design/adrs/ADR-005-knowledge-abstraction-strategy.md)`| `KnowledgeGraphTreeProvider.ts` |
 | **2.5 Token Limits & Chunking Configs** | ✅ Done | `[token_management.md](../ai_plans/token_management.md)` | Enforce `maxFileSizeKBWarning` in `extension.ts` |
@@ -35,8 +35,8 @@
 | **3.1 Background Distillation Job** | ✅ Done | `[self-evolution-architecture.md](../design/adrs/ADR-006-self-evolution-architecture.md)`| `correction_examplesTable` summary logic |
 | **3.2 Temporal Decay Scoring** | ✅ Done | `[agentic-rag-routing.md](../design/adrs/ADR-007-agentic-rag-routing.md)` | `lastVerifiedAt` math in `intent-router.ts` |
 | **3.3 O(1) Fast-Path Filters (`#attach`)** | ✅ Done | `[agentic-rag-routing.md](../design/adrs/ADR-007-agentic-rag-routing.md)` | Regex pre-filters skipping LLM latency |
-| **3.4 Orphan Branch Read/Write Protocol** | ❌ Todo | `[server-side-zero-to-one.md](../design/adrs/ADR-003-server-side-zero-to-one.md)` | `orphan-branch-writer.ts` bidirectional sync with Client |
-| **3.5 Diff Projection & Ancestor Anchoring** | ❌ Todo | `[git-isomorphic-graph.md](../design/adrs/ADR-004-git-isomorphic-graph.md)` | `git merge-base` lookup for un-indexed commits |
+| **3.4 Orphan Branch Read/Write Protocol** | ✅ Done | `[server-side-zero-to-one.md](../design/adrs/ADR-003-server-side-zero-to-one.md)` | `orphan-branch-writer.ts` bidirectional sync with Client |
+| **3.5 Diff Projection & Ancestor Anchoring** | ✅ Done | `[git-isomorphic-graph.md](../design/adrs/ADR-004-git-isomorphic-graph.md)` | `git merge-base` lookup for un-indexed commits |
 
 ---
 
@@ -46,4 +46,4 @@
 | :--- | :---: | :---: | :--- |
 | Unit: RAG Math (Decay & Cosine) | ✅ Pass | 80% | `vitest` in `api-server/test/unit` |
 | Integration: DB Transactions | ✅ Pass | 100% | `withRollback()` factories |
-| E2E: VS Code Extension Onboarding | ❌ Todo | N/A | Needs Playwright spec for `/init` command |
+| E2E: VS Code Extension Onboarding | ✅ Pass | N/A | Needs Playwright spec for `/init` command |

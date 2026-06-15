@@ -124,7 +124,7 @@
     "viewsWelcome": [
       {
         "view": "docuvia.knowledgeGraph",
-        "contents": "Welcome to Docuvia!\n\nTo get started, let AI analyze your project architecture and build your local knowledge graph.\n\n[$(sparkle) Analyze Project Architecture](command:docuvia.startExplore)",
+        "contents": "Welcome to Docuvia!\n\nTo get started, you can initialize a local graph or connect to a remote server.\n\n[$(plus) Initialize Workspace](command:docuvia.initProject)\n[$(search) Explore Graph via Chat](command:docuvia.startExplore)",
         "when": "!docuvia:isInitialized"
       }
     ],

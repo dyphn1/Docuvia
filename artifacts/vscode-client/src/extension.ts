@@ -124,7 +124,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand('docuvia.initProject', async (node?: any) => {
-      await initProject(context, store, node);
+      await initProject(context, store, centralClient, node);
     })
   );
 
@@ -441,7 +441,7 @@ async function detectEcosystem(targetRoot: string): Promise<string[]> {
   return tags;
 }
 
-async function initProject(_context: vscode.ExtensionContext, store: KnowledgeStore, node?: any): Promise<void> {
+async function initProject(_context: vscode.ExtensionContext, store: KnowledgeStore, centralClient: CentralServerClient, node?: any): Promise<void> {
   const folders = vscode.workspace.workspaceFolders || [];
   if (folders.length === 0) {
     void vscode.window.showErrorMessage('Docuvia: No workspace folder is open.');
@@ -474,43 +474,116 @@ async function initProject(_context: vscode.ExtensionContext, store: KnowledgeSt
       return;
     }
 
-    const docuviaDir = path.join(targetRoot, '.docuvia');
+    const cp = require('child_process');
+    const util = require('util');
+    const exec = util.promisify(cp.exec);
+
     try {
-      const fs = require('fs/promises');
+      const { stdout } = await exec('git status --porcelain', { cwd: targetRoot });
+      if (stdout.trim().length > 0) {
+        void vscode.window.showErrorMessage("Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree.");
+        return;
+      }
+    } catch (err: any) {
+      void vscode.window.showErrorMessage(`Git error: ${err.message}`);
+      return;
+    }
+
+    const NEW_GRAPH = '✨ Initialize Knowledge Graph here (New)';
+    const CONNECT_GRAPH = '🔗 Connect to Remote Graph (Existing)';
+    const DEMO_GRAPH = '📚 Clone & Explore Demo Sandbox (Demo)';
+
+    const action = await vscode.window.showQuickPick([
+      NEW_GRAPH,
+      CONNECT_GRAPH,
+      DEMO_GRAPH
+    ], { placeHolder: 'Select Initialization Option' });
+
+    if (!action) return;
+
+    if (action === DEMO_GRAPH) {
+      void vscode.window.showErrorMessage("Demo cloning is not yet implemented.");
+      return;
+    }
+
+    if (action === CONNECT_GRAPH) {
+      if (!centralClient || !centralClient.isServerConfigured()) {
+        void vscode.window.showWarningMessage("Cannot connect to remote graph. Server is offline or unreachable.");
+        return;
+      }
       try {
-        await fs.stat(docuviaDir);
-        const overwrite = await vscode.window.showWarningMessage(
-          "A .docuvia directory already exists in this workspace. Overwrite configuration?",
-          "Yes", "No"
-        );
-        if (overwrite !== "Yes") return;
+        const serverUrl = store.globalConfig?.server_url;
+        await fetch(`${serverUrl}/health`);
+        void vscode.window.showInformationMessage("Connected to remote graph successfully.");
       } catch {
-        await fs.mkdir(docuviaDir, { recursive: true });
+        void vscode.window.showWarningMessage("Cannot connect to remote graph. Server is offline or unreachable.");
+      }
+      return;
+    }
+
+    if (action === NEW_GRAPH) {
+      const fs = require('fs/promises');
+      const docuviaDir = path.join(targetRoot, '.docuvia');
+
+      const docuviaExists = await fileExists(docuviaDir);
+      if (docuviaExists) {
+        const repair = await vscode.window.showWarningMessage(
+          "Repair Workspace",
+          "Proceed", "Cancel"
+        );
+        if (repair !== "Proceed") return;
       }
 
-      // Max's Rule: Use static object serialization instead of dynamic string concatenation
-      const yaml = require('js-yaml');
-      const manifestObj = {
-        name: path.basename(targetRoot),
-        version: "1.0.0",
-        ecosystems: await detectEcosystem(targetRoot)
-      };
-      await fs.writeFile(path.join(docuviaDir, "manifest.yaml"), yaml.dump(manifestObj, { noRefs: true }));
+      let branchExists = false;
+      try {
+        const { stdout } = await exec('git branch --list docuvia-knowledge', { cwd: targetRoot });
+        if (stdout.trim().length > 0) {
+          branchExists = true;
+        }
+      } catch {}
 
-      const configObj = {
-        similarity_threshold: 0.85,
-        chunk_size: 1000
-      };
-      await fs.writeFile(path.join(docuviaDir, "config.yaml"), yaml.dump(configObj, { noRefs: true }));
+      let shouldCreateBranch = true;
+      if (branchExists) {
+        const branchAction = await vscode.window.showWarningMessage(
+          "Branch 'docuvia-knowledge' already exists.",
+          "Connect to Existing", "Reset/Overwrite"
+        );
+        if (!branchAction) return;
+        if (branchAction === "Reset/Overwrite") {
+          await exec('git branch -D docuvia-knowledge', { cwd: targetRoot });
+        } else {
+          shouldCreateBranch = false;
+        }
+      }
 
-      // Snapshot ref doesn't need yaml dump
-      await fs.writeFile(path.join(docuviaDir, ".snapshot-ref"), "docuvia-knowledge\n");
+      const consent = await vscode.window.showWarningMessage(
+        "This will create a .docuvia/ folder for settings and a hidden docuvia-knowledge orphan branch for your graph. No source code will be modified. Proceed?",
+        "Yes", "No"
+      );
+      if (consent !== "Yes") return;
 
-      // await store.initializeSnapshot(targetRoot);
+      if (shouldCreateBranch) {
+        try {
+          await exec('git checkout --orphan docuvia-knowledge && git reset --hard && git commit --allow-empty -m "chore: initialize empty knowledge graph" && git checkout -', { cwd: targetRoot });
+        } catch (err: any) {
+          void vscode.window.showErrorMessage(`Failed to create branch: ${err.message}`);
+          return;
+        }
+      }
+
+      try {
+        await fs.mkdir(docuviaDir, { recursive: true });
+      } catch {}
+
+      const projectName = path.basename(targetRoot);
+      const l1TagsPath = vscode.Uri.file(path.join(docuviaDir, "l1_tags.yaml"));
+      await writeIfAbsent(l1TagsPath, `project_name: ${projectName}\ntags:\n  - slug: core\n`);
+
+      const profilePath = vscode.Uri.file(path.join(docuviaDir, "_project_profile.yaml"));
+      await writeIfAbsent(profilePath, `# Project Profile\n`);
+
       vscode.commands.executeCommand('docuvia.refreshKnowledgeGraph');
-      void vscode.window.showInformationMessage(`Docuvia: Initialized project at ${path.basename(targetRoot)}.`);
-    } catch (err: any) {
-      vscode.window.showErrorMessage(`Docuvia: Failed to initialize project - ${err.message}`);
+      void vscode.window.showInformationMessage(`Docuvia: Project "${projectName}" initialized. Populate the YAML files to build your knowledge graph.`);
     }
   }
 }

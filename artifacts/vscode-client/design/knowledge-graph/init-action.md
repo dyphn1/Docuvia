@@ -19,7 +19,8 @@ An inline action displayed on uninitialized Project nodes within the Knowledge G
 3. User clicks the `Init` button.
 4. VS Code passes the `KGNode` context to the `docuvia.initProject` command handler.
 5. The `initProject` function reads `node.workspaceRoot` and bypasses the workspace selection prompt, executing initialization directly on that target folder.
+6. The onboarding flow presents a three-way choice: `[✨ Initialize Knowledge Graph here (New), 🔗 Connect to Remote Graph (Existing), 📚 Clone & Explore Demo Sandbox (Demo)]`.
 
-## Fallback
+## Cancel State & Fallback
 
-If the view is empty because no workspaces are loaded, a `viewsWelcome` block is shown with an "Initialize Project" button, which calls the same `docuvia.initProject` command but without a specific node context (falling back to prompting if there are multiple workspaces).
+If the view is empty because no workspaces are loaded, or if the user cancels the onboarding prompt (Cancel Dead End), a `viewsWelcome` block is shown with an "Initialize Workspace" button. This displays a persistent state (e.g., "Docuvia: Not Initialized") containing the "Initialize Workspace" button, which calls the same `docuvia.initProject` command without a specific node context. This prevents the tree view from becoming a permanent empty void if the user aborts.

@@ -18,11 +18,15 @@ import {
 export function parseTags(content: string, filePath: string): L1Tag[] {
   const raw = parseYaml(content) as unknown;
   // Handle object format: { project_name: "...", tags: [...] }
-  const list: unknown[] = Array.isArray(raw)
-    ? raw
-    : Array.isArray((raw as any)?.tags)
-      ? (raw as any).tags
-      : [];
+  let list: unknown[] = [];
+  if (Array.isArray(raw)) {
+    list = raw;
+  } else if (raw && typeof raw === 'object') {
+    const obj = raw as any;
+    if (Array.isArray(obj.tags)) {
+      list = obj.tags;
+    }
+  }
   return list.map((item, i) => {
     const result = L1TagSchema.safeParse(item);
     if (!result.success) {

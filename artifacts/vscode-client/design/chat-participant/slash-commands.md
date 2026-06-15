@@ -13,6 +13,15 @@
 flowchart TD
     Query[User enters chat command] --> Path{Which command?}
 
+    Path -->|/init| Init[Zero to One Onboarding Flow]
+    Init --> CheckGit[Pre-Flight: git status]
+    CheckGit -- Dirty --> ErrorGit[Chat Error: Stash & Retry]
+    CheckGit -- Clean --> CheckNet[Check Network Status]
+    CheckNet -- Offline --> ErrorNet[Chat Warning: Connect Failed / Offline Heuristics]
+    CheckNet -- Online --> PromptInit[Show Chat Card: New / Connect / Demo]
+    PromptInit --> Consent[Request Explicit Scaffolding Consent]
+    Consent --> ScaffoldInit[Generate l1_tags.yaml, _project_profile.yaml]
+
     Path -->|/explore| Explore[Detect workspace files package.json/README.md]
     Explore --> Match{Template matches?}
     Match -- Yes --> Refine[Refine tags with LLM and output table]
@@ -67,6 +76,14 @@ flowchart TD
   After streaming the table, Docuvia renders a `stream.button` with the label **"Accept & Write to .docuvia/l1_tags.yaml"**. Clicking it invokes the internal command `docuvia.acceptL1Tags(yamlContent)` (registered in [`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts)), which writes the raw YAML directly to `workspaceFolders[0]/.docuvia/l1_tags.yaml`.
 
   > ⚠️ **Single-workspace limitation**: `docuvia.acceptL1Tags` is hardcoded to write to `vscode.workspace.workspaceFolders?.[0]`, i.e. the **first** workspace folder. In a multi-root workspace with the second folder active, the tags will be written to the wrong project. The command is registered with `enablement: never` to prevent it from being invoked directly from the Command Palette.
+
+### `/init`
+
+- **Description**: Zero to One onboarding flow via Chat.
+- **Interactive Flow**: 
+  - Presents a chat card UI with three options: `New`, `Connect`, and `Demo`.
+  - **Error Handling**: If `git status` shows a dirty working tree, or if the necessary configuration files are missing/corrupted, errors are communicated via chat messages containing actionable "Stash & Retry" or "Repair" buttons. Network unavailability prompts offline fallback messages.
+  - **Scaffolding Consent**: Emphasizes the need for explicit confirmation before transparent generation of `l1_tags.yaml` and `_project_profile.yaml` can occur.
 
 ### `/query`
 

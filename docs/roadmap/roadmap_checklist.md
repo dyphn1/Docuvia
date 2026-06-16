@@ -24,24 +24,24 @@
 - [x] 1.1.4  ✅  Test factories for DB state creation (factories.ts)
 
 ### 1.2 Multi-Format Ingestion (Git, SVN, PDF, Build logs, Documents)
-- [x] 1.2.1  ✅  Git ingestion via child_process.spawn streaming
-- [x] 1.2.2  ✅  SVN ingestion via svn log --xml, svn diff
-- [x] 1.2.3  ✅  Document upload and parsing (isolated via child_process.fork)
-- [x] 1.2.4  ✅  Build artifact parser
-- [x] 1.2.5  ✅  scoreCommit() signal/noise filter
-- [x] 1.2.6  ✅  Incremental ingestion batching via cursor columns
+- [x] 1.2.1  ⚠️  Git ingestion via child_process.spawn streaming
+- [x] 1.2.2  ⚠️  SVN ingestion via svn log --xml, svn diff
+- [x] 1.2.3  ⚠️  Document upload and parsing (isolated via child_process.fork)
+- [x] 1.2.4  ⚠️  Build artifact parser
+- [x] 1.2.5  ⚠️  scoreCommit() signal/noise filter
+- [x] 1.2.6  ⚠️  Incremental ingestion batching via cursor columns
 
 ### 1.3 RAG Orchestrator (Intent Router)
-- [x] 1.3.1  ✅  4-way LLM-based intent classification (w/ Regex pre-filter)
-- [x] 1.3.2  ✅  Vector search: cosine similarity over JSONB embeddings
-- [x] 1.3.3  ✅  Graph search: node_links traversal
-- [x] 1.3.4  ✅  Direct search: full-text search on l3_nodes.content
-- [x] 1.3.5  ✅  Hybrid search: vector + graph merge and re-rank
+- [x] 1.3.1  ⚠️  4-way LLM-based intent classification (w/ Regex pre-filter)
+- [x] 1.3.2  ⚠️ WARN  Vector search: cosine similarity over JSONB embeddings
+- [x] 1.3.3  ⚠️ WARN  Graph search: node_links traversal
+- [x] 1.3.4  ⚠️ WARN  Direct search: full-text search on l3_nodes.content
+- [x] 1.3.5  ⚠️ WARN  Hybrid search: vector + graph merge and re-rank
 - [x] 1.3.6  ✅  Temporal decay scoring (lastVerifiedAt)
 
 ### 1.4 Server-Side Metabolism & Mutex
-- [x] 1.4.1  ✅  Asynchronous metabolism mechanism (ADR-008)
-- [x] 1.4.2  ✅  Mutex / serialization for concurrent generate requests
+- [x] 1.4.1  ⚠️ WARN  Asynchronous metabolism mechanism (ADR-008)
+- [x] 1.4.2  ✅ PASS  Mutex / serialization for concurrent generate requests
 
 ---
 
@@ -52,8 +52,8 @@
 - [x] 2.1.2  ✅  Graceful degradation fallback logic (CentralServerClient.ts)
 
 ### 2.2 Zero-to-One Onboarding (@docuvia /init)
-- [x] 2.2.1  ✅  Project initialization command (docuvia.initProject)
-- [x] 2.2.2  ✅  Package.json ecosystem marker parsing (WIP — needs completion)
+- [x] 2.2.1  ❌ FAIL  Project initialization command (docuvia.initProject)
+- [x] 2.2.2  ⚠️  Package.json ecosystem marker parsing (WIP — needs completion)
 - [x] 2.2.3  ✅  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
 
 ### 2.3 Multi-root Workspace Support
@@ -290,17 +290,34 @@
 - [x] 10.3.2  ✅  Extension activation events configured
 
 ---
-
 ## Verification Tracking
+||||
 | Item ID | Last Verified | Report File | Status |
 |---------|---------------|-------------|--------|
----
-## Summary
-
-| Category | Total | Done | WIP | Todo | Pending Verification |
-|----------|-------|------|-----|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
-| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
+| 1.1.1 | 2026-06-15 | 0207_1.1.1.md | ✅ PASS |
+| 1.1.2 | 2026-06-15 | 0001_1.1.2.md | ✅ PASS |
+| 1.1.3 | 2026-06-15 | 0208_1.1.3.md | ✅ PASS |
+| 1.1.4 | 2026-06-16 | 0209_1.1.4.md | ⚠️ WARN |
+| 1.2.1 | 2026-06-16 | 0210_1.2.1.md | ⚠️ WARN |
+| 1.2.2 | 2026-06-16 | 0211_1.2.2.md | ⚠️ WARN |
+| 1.2.3 | 2026-06-16 | 0212_1.2.3.md | ⚠️ WARN |
+| 1.2.4 | 2026-06-16 | 0213_1.2.4.md | ⚠️ WARN |
+| 1.2.5 | 2026-06-16 | 0214_1.2.5.md | ⚠️ WARN |
+|| 1.2.6 | 2026-06-16 | 0215_1.2.6.md | ⚠️ WARN |
+|| 1.3.1 | 2026-06-16 | 0216_1.3.1.md | ⚠️ WARN |
+|| 1.3.3 | 2026-06-16 | 0218_1.3.3.md | ⚠️ WARN |
+|| 1.3.2 | 2026-06-16 | 0217_1.3.2.md | ⚠️ WARN |
+|| 1.3.4 | 2026-06-16 | 0220_1.3.4.md | ⚠️ WARN |
+|| 1.3.5 | 2026-06-16 | 0228_1.3.5.md | ⚠️ WARN |
+||| 1.4.1 | 2026-06-16 | 0219_1.4.1.md | ⚠️ WARN |
+|| 2.1.1 | 2026-06-16 | 0221_2.1.1.md | ✅ PASS |
+||| 1.3.6 | 2026-06-16 | 0223_1.3.6.md | ✅ PASS |
+||| 2.2.1 | 2026-06-16 | 0227_2.2.1.md | ❌ FAIL |
+|| 2.2.2 | 2026-06-16 | 0229_2.2.2.md | ⚠️ WARN |
+||||||----------|-------|------|-----|------|---------------------|
+|||||||||||
+|||| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
+|||| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 11 | 0 | 0 | 0 |
 | Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 25 | 0 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 10 | 0 | 0 | 0 |

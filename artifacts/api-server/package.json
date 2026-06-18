@@ -25,7 +25,9 @@
     "pdf-parse": "^2.4.5",
     "pino": "^9",
     "pino-http": "^10",
+    "piscina": "^5.2.0",
     "sax": "^1.6.0",
+    "web-tree-sitter": "^0.26.9",
     "zod": "catalog:"
   },
   "devDependencies": {

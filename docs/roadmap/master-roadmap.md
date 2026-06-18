@@ -47,3 +47,17 @@
 | Unit: RAG Math (Decay & Cosine) | ✅ Pass | 80% | `vitest` in `api-server/test/unit` |
 | Integration: DB Transactions | ✅ Pass | 100% | `withRollback()` factories |
 | E2E: VS Code Extension Onboarding | ✅ Pass | N/A | Needs Playwright spec for `/init` command |
+
+---
+
+## Milestone 4: Local-First Feature Parity & AST (2026-H2)
+
+| Task | Status | Design Spec Anchor | Verification / Evidence |
+| :--- | :---: | :--- | :--- |
+| **4.1 AST Microkernel & Plugin Ecosystem** | 🔲 Todo | `[ADR-009-ast-microkernel-architecture.md](../design/adrs/ADR-009-ast-microkernel-architecture.md)` | Needs `@workspace/plugin-ast-typescript` |
+| **4.2 Zero-Server Deep Traversal & SQLite Cache** | 🔲 Todo | `[ADR-009-ast-microkernel-architecture.md](../design/adrs/ADR-009-ast-microkernel-architecture.md)` | Needs pure local MCP graph querying |
+| **4.3 Local Context Compression & Proxy Layer** | 🔲 Todo | `[competitive_analysis_local_features_2026.md](reports/competitive_analysis_local_features_2026.md)` | Token reduction pipeline for local agents |
+| **4.4 Static Offline Visualization Exports** | 🔲 Todo | `[competitive_analysis_local_features_2026.md](reports/competitive_analysis_local_features_2026.md)` | Portable `graph.html` / Mermaid call-flow exports |
+| **4.5 Local Self-Learning & Shared Agent Memory** | 🔲 Todo | `[competitive_analysis_local_features_2026.md](reports/competitive_analysis_local_features_2026.md)` | Cross-agent (Cursor/Claude/Codex) state sync |
+| **4.6 Sub-second Incremental Watch & Git Hooks** | 🔲 Todo | `[ADR-009-ast-microkernel-architecture.md](../design/adrs/ADR-009-ast-microkernel-architecture.md)` | Local fast-path AST hash updates |
+| **4.7 Jupyter & Multi-Modal Engineering Parsers** | 🔲 Todo | `[competitive_analysis_local_features_2026.md](reports/competitive_analysis_local_features_2026.md)` | Support `.ipynb` and image analysis |

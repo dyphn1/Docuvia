@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-> Last Updated: 2026-06-11
+> Last Updated: 2026-06-18
 
 ## Legend
 
@@ -54,7 +54,7 @@
 ### 2.2 Zero-to-One Onboarding (@docuvia /init)
 - [x] 2.2.1  ❌ FAIL  Project initialization command (docuvia.initProject)
 - [x] 2.2.2  ⚠️  Package.json ecosystem marker parsing (WIP — needs completion)
-- [x] 2.2.3  ✅  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
+- [x] 2.2.3  ⚠️ WARN  .docuvia/ directory creation with manifest.yaml, config.yaml, .snapshot-ref
 
 ### 2.3 Multi-root Workspace Support
 - [x] 2.3.1  ✅  TaskRunner dynamic root scoping
@@ -73,15 +73,15 @@
 ## Milestone 3: Swarm Intelligence & Git-Isomorphic Sync
 
 ### 3.1 Background Distillation Job
-- [x] 3.1.1  ✅  correction_examples summary logic
-- [x] 3.1.2  ✅  Few-shot injection into generate pipeline
+- [x] 3.1.1  ⚠️ WARN  correction_examples summary logic
+- [x] 3.1.2  ⚠️ WARN  Few-shot injection into generate pipeline
 
 ### 3.2 Temporal Decay Scoring
 - [x] 3.2.1  ✅  lastVerifiedAt math in intent-router.ts
-- [x] 3.2.2  ✅  Decay application on knowledge query results
+- [x] 3.2.2  ⚠️ WARN  Decay application on knowledge query results
 
 ### 3.3 O(1) Fast-Path Filters (#attach)
-- [x] 3.3.1  ✅  Regex pre-filters skipping LLM latency
+- [x] 3.3.1  ⚠️ WARN  Regex pre-filters skipping LLM latency
 
 ### 3.4 Orphan Branch Read/Write Protocol
 - [x] 3.4.1  ✅  Orphan branch writer (Centralized w/ Advisory Locks)
@@ -289,41 +289,51 @@
 - [x] 10.3.1  ✅  No .vsix build script (D-02)
 - [x] 10.3.2  ✅  Extension activation events configured
 
----
 ## Verification Tracking
-||||
+
 | Item ID | Last Verified | Report File | Status |
 |---------|---------------|-------------|--------|
-| 1.1.1 | 2026-06-15 | 0207_1.1.1.md | ✅ PASS |
-| 1.1.2 | 2026-06-15 | 0001_1.1.2.md | ✅ PASS |
-| 1.1.3 | 2026-06-15 | 0208_1.1.3.md | ✅ PASS |
-| 1.1.4 | 2026-06-16 | 0209_1.1.4.md | ⚠️ WARN |
-| 1.2.1 | 2026-06-16 | 0210_1.2.1.md | ⚠️ WARN |
-| 1.2.2 | 2026-06-16 | 0211_1.2.2.md | ⚠️ WARN |
-| 1.2.3 | 2026-06-16 | 0212_1.2.3.md | ⚠️ WARN |
-| 1.2.4 | 2026-06-16 | 0213_1.2.4.md | ⚠️ WARN |
-| 1.2.5 | 2026-06-16 | 0214_1.2.5.md | ⚠️ WARN |
-|| 1.2.6 | 2026-06-16 | 0215_1.2.6.md | ⚠️ WARN |
-|| 1.3.1 | 2026-06-16 | 0216_1.3.1.md | ⚠️ WARN |
-|| 1.3.3 | 2026-06-16 | 0218_1.3.3.md | ⚠️ WARN |
-|| 1.3.2 | 2026-06-16 | 0217_1.3.2.md | ⚠️ WARN |
-|| 1.3.4 | 2026-06-16 | 0220_1.3.4.md | ⚠️ WARN |
-|| 1.3.5 | 2026-06-16 | 0228_1.3.5.md | ⚠️ WARN |
-||| 1.4.1 | 2026-06-16 | 0219_1.4.1.md | ⚠️ WARN |
-|| 2.1.1 | 2026-06-16 | 0221_2.1.1.md | ✅ PASS |
-||| 1.3.6 | 2026-06-16 | 0223_1.3.6.md | ✅ PASS |
-||| 2.2.1 | 2026-06-16 | 0227_2.2.1.md | ❌ FAIL |
-|| 2.2.2 | 2026-06-16 | 0229_2.2.2.md | ⚠️ WARN |
-||||||----------|-------|------|-----|------|---------------------|
-|||||||||||
-|||| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
-|||| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
-| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 11 | 11 | 0 | 0 | 0 |
-| Milestone 4: Knowledge Graph Features (ADRs 009–012) | 25 | 25 | 0 | 0 | 0 |
+| 1.1.1 | 2026-06-15 | 0207_1.1.1.md | PASS |
+| 1.1.2 | 2026-06-15 | 0001_1.1.2.md | PASS |
+| 1.1.3 | 2026-06-15 | 0208_1.1.3.md | PASS |
+| 1.1.4 | 2026-06-16 | 0209_1.1.4.md | WARN |
+| 1.2.1 | 2026-06-16 | 0210_1.2.1.md | WARN |
+| 1.2.2 | 2026-06-16 | 0211_1.2.2.md | WARN |
+| 1.2.3 | 2026-06-16 | 0212_1.2.3.md | WARN |
+| 1.2.4 | 2026-06-16 | 0213_1.2.4.md | WARN |
+| 1.2.5 | 2026-06-16 | 0214_1.2.5.md | WARN |
+| 1.2.6 | 2026-06-16 | 0215_1.2.6.md | WARN |
+| 1.3.1 | 2026-06-16 | 0216_1.3.1.md | WARN |
+| 1.3.2 | 2026-06-16 | 0217_1.3.2.md | WARN |
+| 1.3.3 | 2026-06-16 | 0218_1.3.3.md | WARN |
+| 1.3.4 | 2026-06-16 | 0220_1.3.4.md | WARN |
+| 1.3.5 | 2026-06-16 | 0228_1.3.5.md | WARN |
+| 1.3.6 | 2026-06-16 | 0223_1.3.6.md | PASS |
+| 1.4.1 | 2026-06-16 | 0219_1.4.1.md | WARN |
+| 1.4.2 | 2026-06-16 | 0224_1.4.2.md | PASS |
+| 2.1.1 | 2026-06-16 | 0221_2.1.1.md | PASS |
+| 2.1.2 | 2026-06-16 | 0226_2.1.2.md | PASS |
+| 2.2.1 | 2026-06-16 | 0227_2.2.1.md | FAIL |
+| 2.2.2 | 2026-06-16 | 0229_2.2.2.md | WARN |
+| 2.2.3 | 2026-06-16 | 0230_2.2.3.md | WARN |
+| 3.1.1 | 2026-06-16 | 0231_3.1.1.md | WARN |
+| 3.1.2 | 2026-06-16 | 0232_3.1.2.md | WARN |
+| 3.2.1 | 2026-06-16 | 0233_3.2.1.md | PASS |
+| 3.2.2 | 2026-06-17 | 0234_3.2.2.md | WARN |
+| 3.3.1 | 2026-06-17 | 0235_3.3.1.md | WARN |
+| 3.4.1 | 2026-06-18 | 0237_3.4.1.md | WARN |
+| 3.4.2 | 2026-06-18 | 0238_3.4.2.md | WARN |
+| 3.4.3 | 2026-06-18 | 0239_3.4.3.md | WARN |
+| 3.4.4 | 2026-06-18 | 0240_3.4.4.md | WARN |
+|----------|-------|------|-----|------|---------------------|
+| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
+| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
+| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 12 | 12 | 0 | 0 | 0 |
+| Milestone 4: Knowledge Graph Features (ADRs 009-012) | 25 | 25 | 0 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 10 | 0 | 0 | 0 |
 | Milestone 6: API & Protocol Layer | 16 | 16 | 0 | 0 | 0 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 8: VS Code Extension UI | 18 | 18 | 0 | 0 | 0 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 21 | 0 | 0 | 0 |
 | Milestone 10: Deployment & Operations | 11 | 11 | 0 | 0 | 0 |
-| **TOTAL** | **152** | **152** | **0** | **0** | **0** |
+| **TOTAL** | **153** | **153** | **0** | **0** | **0** |

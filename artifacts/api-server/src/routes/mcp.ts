@@ -11,6 +11,7 @@ import {
 import { eq, or, and, like, sql, count, isNotNull } from "drizzle-orm";
 import { routeQuery } from "../lib/intent-router.js";
 import { logger } from "../lib/logger.js";
+import { getAllMemories, getCompressedPayload } from "../memory/shared-memory.js";
 
 const router = Router();
 
@@ -62,6 +63,31 @@ router.get("/mcp/list_projects", async (req, res) => {
     })
   );
   res.json({ projects: result });
+});
+
+router.get("/mcp/read_shared_memory", async (req, res) => {
+  try {
+    const memories = getAllMemories();
+    return res.json({ memories });
+  } catch (err) {
+    logger.error({ err }, "[GET /mcp/read_shared_memory] Error reading shared memory");
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/mcp/retrieve_original", async (req, res) => {
+  const id = String(req.query.id ?? "");
+  if (!id) return res.status(400).json({ error: "id parameter required" });
+  
+  try {
+    const payload = getCompressedPayload(id);
+    if (!payload) return res.status(404).json({ error: "payload not found" });
+
+    return res.json({ id, original_text: payload.original_text });
+  } catch (err) {
+    logger.error({ err }, "[GET /mcp/retrieve_original] Error retrieving original payload");
+    return res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 router.get("/mcp/search_knowledge", async (req, res) => {

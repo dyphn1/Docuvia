@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { minimatch } from 'minimatch';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { ExtractionTask, TaskQueueTreeProvider, TaskType } from './TaskQueueTreeProvider.js';
 import { KnowledgeStore } from './KnowledgeStore.js';
@@ -348,6 +349,21 @@ If you are not confident about an item, exclude it from the array.`;
 
     if (!workspaceRoot) return;
 
+    let matchedL2Id = 'sys-uncategorized';
+    const snapshot = this.store.snapshots.get(workspaceRoot);
+    if (snapshot) {
+      const relPath = vscode.workspace.asRelativePath(sourceFile, false);
+      for (const mod of snapshot.modules) {
+        if (mod.source_paths && mod.source_paths.length > 0) {
+          const isMatch = mod.source_paths.some(pattern => minimatch(relPath, pattern, { dot: true, matchBase: true }));
+          if (isMatch) {
+            matchedL2Id = mod.id;
+            break;
+          }
+        }
+      }
+    }
+
     const { v4: uuidv4 } = await import('uuid');
     const date = new Date().toISOString().slice(0, 10);
     const sourceSlug = path
@@ -364,7 +380,7 @@ If you are not confident about an item, exclude it from the array.`;
       const mdContent = [
         '---',
         `id: "${id}"`,
-        `l2_module_id: "sys-uncategorized"`,
+        `l2_module_id: "${matchedL2Id}"`,
         `title: "Extracted from ${safeTitle} (${i + 1})"`,
         `date: "${date}"`,
         `status: "proposed"`,
@@ -383,23 +399,26 @@ If you are not confident about an item, exclude it from the array.`;
         path.join(workspaceRoot, '.docuvia', 'l3_decisions', `${slug}.md`)
       );
       await vscode.workspace.fs.writeFile(uri, Buffer.from(mdContent, 'utf-8'));
-      newRouterEntries.push({ id, l2_module_id: 'sys-uncategorized', slug, title: `Extracted from ${safeTitle} (${i + 1})`, file_path: `l3_decisions/${slug}.md` });
+      newRouterEntries.push({ id, l2_module_id: matchedL2Id, slug, title: `Extracted from ${safeTitle} (${i + 1})`, file_path: `l3_decisions/${slug}.md` });
     }
 
     // Update l3_router.yaml with the new entries
     const routerUri = vscode.Uri.file(path.join(workspaceRoot, '.docuvia', 'l3_router.yaml'));
-    let existingEntries: unknown[] = [];
+    let existingText = '';
     try {
       const routerBytes = await vscode.workspace.fs.readFile(routerUri);
-      const parsed = parseYaml(Buffer.from(routerBytes).toString('utf-8'));
-      if (Array.isArray(parsed)) {
-        existingEntries = parsed;
-      }
+      existingText = Buffer.from(routerBytes).toString('utf-8');
     } catch {
       // file absent — start fresh
     }
-    const merged = [...existingEntries, ...newRouterEntries];
-    await vscode.workspace.fs.writeFile(routerUri, Buffer.from(stringifyYaml(merged), 'utf-8'));
+    
+    let updatedText = existingText;
+    if (updatedText.length > 0 && !updatedText.endsWith('\n')) {
+      updatedText += '\n';
+    }
+    updatedText += stringifyYaml(newRouterEntries);
+
+    await vscode.workspace.fs.writeFile(routerUri, Buffer.from(updatedText, 'utf-8'));
   }
 
   private chunkContent(content: string): string[] {

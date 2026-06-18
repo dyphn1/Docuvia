@@ -80,10 +80,16 @@ flowchart TD
 ### `/init`
 
 - **Description**: Zero to One onboarding flow via Chat.
-- **Interactive Flow**: 
-  - Presents a chat card UI with three options: `New`, `Connect`, and `Demo`.
-  - **Error Handling**: If `git status` shows a dirty working tree, or if the necessary configuration files are missing/corrupted, errors are communicated via chat messages containing actionable "Stash & Retry" or "Repair" buttons. Network unavailability prompts offline fallback messages.
-  - **Scaffolding Consent**: Emphasizes the need for explicit confirmation before transparent generation of `l1_tags.yaml` and `_project_profile.yaml` can occur.
+- **Interactive Flow**:
+  - **Chat Cards & Options**: The command initiates by presenting the user with three explicit choices rendered as trusted command links within a chat message: `[✨ Initialize Knowledge Graph here (New)](command:docuvia.initNew)`, `[🔗 Connect to Remote Graph (Existing)](command:docuvia.initConnect)`, and `[📚 Clone & Explore Demo Sandbox (Demo)](command:docuvia.initDemo)`.
+  - **Natural Language Parsing**: The chat participant actively parses free-text replies (e.g., "I want a new project", "connect to existing", or simply "yes" to confirmation prompts) and maps them to the corresponding onboarding actions to ensure a fluid conversational UX.
+- **Error Handling**:
+  - **Dirty Git Tree**: If the workspace has uncommitted changes, scaffolding is blocked. The participant replies with a clear error: *"Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree."* It includes an actionable button: `[Stash & Retry](command:docuvia.stashAndRetry)`.
+  - **Missing/Corrupt Configurations**: If existing `.docuvia/` files are corrupted, it prompts with a `[Repair Workspace](command:docuvia.repair)` button.
+  - **Network Failures**: If "Connect" is chosen but the API is unreachable, the system fails fast, displaying an offline warning and offering a fallback to initialize locally.
+- **Scaffolding Consent**:
+  - **Transparent Generation**: Before creating the `.docuvia` directory or any orphan branches, the participant generates proposed contents for `l1_tags.yaml` and `_project_profile.yaml` based on workspace analysis.
+  - **Preview & Explicit Confirmation**: These files are previewed directly in the chat as markdown code blocks. The user must explicitly consent by clicking an `[Approve & Generate](command:docuvia.approveScaffold)` button or by typing a clear affirmative (e.g., "Looks good, approve").
 
 ### `/query`
 

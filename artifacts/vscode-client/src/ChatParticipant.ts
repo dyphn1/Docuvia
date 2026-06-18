@@ -181,7 +181,7 @@ async function handleExplore(
   // If user specified a type directly, use the matching template without workspace detection
   if (userPrompt) {
     const promptLower = userPrompt.trim().toLowerCase();
-    const TYPE_TOKENS = ['backend', 'frontend', 'library', 'data-science', 'cli', 'fullstack', 'monorepo'] as const;
+    const TYPE_TOKENS = L1_TEMPLATES.map(t => t.projectType);
     const matchedToken = TYPE_TOKENS.find(t => promptLower.includes(t));
     if (matchedToken) {
       const template = L1_TEMPLATES.find(t => t.projectType === matchedToken || t.keywords.includes(matchedToken));

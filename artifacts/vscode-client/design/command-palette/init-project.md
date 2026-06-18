@@ -10,39 +10,44 @@
 
 ```mermaid
 flowchart TD
-    Start[Trigger docuvia.initProject] --> PreFlight[Pre-Flight Checks (Git Clean?)]
-    PreFlight -- Dirty --> Block[Block: Show "Commit/Stash Changes" Error]
+    Start[Trigger docuvia.initProject] --> PreFlight[Pre-Flight Checks: git status]
+    PreFlight -- Modified Tracked Files --> Block[Block: Show "Commit/Stash Changes" Error]
     PreFlight -- Clean --> Resolve[Resolve Workspace Root]
     Resolve --> Choose{Multiple roots?}
     Choose -- Yes --> QuickPick[Show QuickPick of uninitialized roots]
     Choose -- No --> Single[Use single root]
-    QuickPick --> ShowOptions[Show Three-Way Options]
-    Single --> ShowOptions
-    ShowOptions -->|New| ConnectCheck[Ping Network]
-    ShowOptions -->|Connect| ConnectCheck
-    ShowOptions -->|Demo| CloneDemo[Clone & Explore Demo]
-    ConnectCheck -- Online --> AIConfig[AI-Driven Configuration]
-    ConnectCheck -- Offline/Air-Gapped --> Fallback{Choice was Connect?}
-    Fallback -- Yes --> BlockConnect[Block: Fail Fast Warning]
-    Fallback -- No --> OfflineConfig[Offline Local-First Heuristic Fallback]
+    QuickPick --> Ping[Ping API /health limit: 2000ms]
+    Single --> Ping
+    Ping -- Success --> OnlineOpts[Show Options: New, Connect, Demo]
+    Ping -- Timeout/Fail --> OfflineOpts[Show Options: New, Demo. Connect disabled]
+    OnlineOpts -->|Connect| ConnectAPI[Connect to Remote Graph]
+    OfflineOpts -->|New| OfflineConfig[Offline Local-First Heuristic Fallback]
+    OnlineOpts -->|New| AIConfig[AI-Driven Configuration]
+    OnlineOpts -->|Demo| CloneDemo[Clone & Explore Demo]
+    OfflineOpts -->|Demo| CloneDemo
     AIConfig --> StateCheck[Check Artifact State]
     OfflineConfig --> StateCheck
     StateCheck --> CheckExist{Folder .docuvia exists?}
-    CheckExist -- Corrupted --> Repair[Prompt: Repair Workspace]
-    CheckExist -- Yes --> Overwrite{docuvia-knowledge branch exists?}
-    Overwrite -- Yes --> ConnectPrompt[Prompt: Connect to Existing or Reset/Overwrite]
-    Overwrite -- No --> Scaffold[Write skeleton files: l1_tags.yaml, _project_profile.yaml]
-    CheckExist -- No --> Scaffold
+    CheckExist -- Yes --> ValidateFiles{All required files exist?}
+    ValidateFiles -- No --> Repair[Prompt: Repair Workspace]
+    ValidateFiles -- Yes --> Overwrite{docuvia-knowledge branch exists?}
+    CheckExist -- No --> BranchCheck{docuvia-knowledge branch exists?}
+    BranchCheck -- Yes --> ConnectPrompt[Prompt: Connect to Existing or Reset/Overwrite]
+    BranchCheck -- No --> Scaffold[Write skeleton files]
+    Overwrite -- Yes --> ConnectPrompt
+    Overwrite -- No --> Scaffold
     ConnectPrompt -- Overwrite --> Scaffold
     ConnectPrompt -- Connect --> Reload
-    Repair --> Scaffold
+    Repair --> ScaffoldMissing[Scaffold ONLY missing files]
+    ScaffoldMissing --> Reload
     Scaffold --> Reload[Reload KnowledgeStore]
+    ConnectAPI --> Reload
     Reload --> Notify[Show Success Toast]
 ```
 
 1. **Pre-Flight Checks (The Dirty Git Tree Disaster)**:
    - Before any scaffolding begins, the extension MUST run `git status --porcelain`.
-   - If the working tree is dirty, the initiation is **blocked** with a clear error: `"Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree."`
+   - If there are modified **tracked** files, the initiation is **blocked** with a clear error: `"Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree."` Untracked files may be ignored unless they conflict.
 
 2. **Workspace Resolution**:
    - Check if an explicit node was passed (e.g., from an inline tree action). If so, use `node.workspaceRoot`.
@@ -55,12 +60,14 @@ flowchart TD
 
 3. **Three-Way Choice & Offline Fallback (The "Connect" Black Hole)**:
    - Present three options: `[✨ Initialize Knowledge Graph here (New), 🔗 Connect to Remote Graph (Existing), 📚 Clone & Explore Demo Sandbox (Demo)]`.
-   - The "Connect" (remote API) option actively pings for network connectivity. If the user is air-gapped or the API is unreachable, the "Connect" option fails fast with a descriptive warning, preventing the UI from hanging infinitely.
+   - The "Connect" (remote API) option actively pings for network connectivity via a lightweight `/health` endpoint using an `AbortController` with a strict `2000ms` timeout.
+   - If the ping times out or the user is air-gapped, the "Connect" option is **disabled/grayed out** with an `(Offline)` suffix, preventing the UI from hanging infinitely.
    - If the AI server is offline, the "New" path falls back to local-first heuristics for configuration.
 
 4. **State Corruption & Collisions**:
-   - If the `docuvia-knowledge` branch already exists locally: Prompt the user to either "Connect to Existing" or "Reset/Overwrite".
-   - If the `.docuvia/` folder exists but is corrupted, empty, or missing `_project_profile.yaml`: Prompt the user with a "Repair Workspace" option to rebuild missing configuration files safely.
+   - If the `docuvia-knowledge` branch already exists locally (checked via `git rev-parse --verify docuvia-knowledge`): Prompt the user to either "Connect to Existing" or "Reset/Overwrite".
+   - If the `.docuvia/` folder exists, we perform a **granular file check** for required configurations (`_project_profile.yaml` and `l1_tags.yaml`).
+   - If the folder is empty or missing one of the required files, prompt the user with a "Repair Workspace" option to rebuild **only the missing configuration files** safely, without destroying existing valid files.
 
 5. **Scaffolding (`.docuvia/`)**:
    - **Explicit Consent**: Transparent artifact creation is mandated. The user must provide explicit consent before `.docuvia/` or the `docuvia-knowledge` branch is created.

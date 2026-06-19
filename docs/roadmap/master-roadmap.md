@@ -61,3 +61,13 @@
 | **4.5 Local Self-Learning & Shared Agent Memory** | 🔲 Todo | `[competitive_analysis_local_features_2026.md](reports/competitive_analysis_local_features_2026.md)` | Cross-agent (Cursor/Claude/Codex) state sync |
 | **4.6 Sub-second Incremental Watch & Git Hooks** | 🔲 Todo | `[ADR-009-ast-microkernel-architecture.md](../design/adrs/ADR-009-ast-microkernel-architecture.md)` | Local fast-path AST hash updates |
 | **4.7 Jupyter & Multi-Modal Engineering Parsers** | 🔲 Todo | `[competitive_analysis_local_features_2026.md](reports/competitive_analysis_local_features_2026.md)` | Support `.ipynb` and image analysis |
+
+### 4.5 Future Language Provider Roadmap
+
+Based on the tree-sitter configurations discovered in reference projects (`graphify`, `code-review-graph`, `GitNexus`), the following language grammars represent future targets for the Docuvia AST Microkernel:
+
+- **Core & Web**: JavaScript, TypeScript, Python, Ruby, PHP, Go, Rust, Java, C, C++, C#
+- **Mobile & Modern App**: Swift, Kotlin, Dart, Scala, Groovy, Objective-C
+- **Infrastructure & Scripts**: Terraform/HCL, Bash, SQL, Protobuf
+- **Domain-Specific & Niche**: Verilog/SystemVerilog, BYOND DreamMaker, Julia
+

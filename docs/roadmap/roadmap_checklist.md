@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-> Last Updated: 2026-06-18
+|> Last Updated: 2026-06-19 (verification: 3.5.2, 4.2.1, 4.2.2, 4.2.3)
 
 ## Legend
 
@@ -106,7 +106,7 @@
 
 ### 4.2 L2 Bootstrap — AI Discovery to Path Rules (ADR-010)
 - [x] 4.2.1  ✅  Progressive batch mode (commits in groups of 20)
-- [x] 4.2.2  ✅  AI self-correction across batches
+- [x] 4.2.2  ⚠️ WARN  AI self-correction across batches
 - [x] 4.2.3  ✅  L2 module map confirmation UI
 - [x] 4.2.4  ✅  Path pattern storage in .docuvia/config.yaml
 - [x] 4.2.5  ✅  Deterministic commit-to-module assignment via glob matching
@@ -325,10 +325,28 @@
 | 3.4.2 | 2026-06-18 | 0238_3.4.2.md | WARN |
 | 3.4.3 | 2026-06-18 | 0239_3.4.3.md | WARN |
 | 3.4.4 | 2026-06-18 | 0240_3.4.4.md | WARN |
-|----------|-------|------|-----|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server | 18 | 18 | 0 | 0 | 0 |
-| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
-| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 12 | 12 | 0 | 0 | 0 |
+| 3.5.1 | 2026-06-18 | 0241_3.5.1.md | WARN |
+| 3.5.2 | 2026-06-19 | 0254_3.5.2.md | WARN |
+| 2.3.1 | 2026-06-18 | 0242_2.3.1.md | PASS |
+| 2.3.2 | 2026-06-18 | 0243_2.3.2.md | WARN |
+| 2.4.1 | 2026-06-18 | 0244_2.4.1.md | PASS |
+| 2.4.2 | 2026-06-18 | 0245_2.4.2.md | PASS |
+| 4.1.1 | 2026-06-18 | 0246_4.1.1.md | WARN |
+| 2.5.1 | 2026-06-18 | 0247_2.5.1.md | WARN |
+| 2.5.2 | 2026-06-18 | 0248_2.5.2.md | WARN |
+| 4.1.2 | 2026-06-18 | 0249_4.1.2.md | WARN |
+| 4.1.3 | 2026-06-18 | 0251_4.1.3.md | WARN |
+| 4.1.4 | 2026-06-19 | 0252_4.1.4.md | WARN |
+|| 4.1.5 | 2026-06-19 | 0255_4.1.5.md | WARN |
+|| 4.2.1 | 2026-06-19 | 0256_4.2.1.md | WARN |
+|| 4.2.2 | 2026-06-19 | 0257_4.2.2.md | WARN |
+|| 4.2.3 | 2026-06-19 | 0258_4.2.3.md | WARN |
+|| 4.2.4 | 2026-06-19 | 0259_4.2.4.md | WARN |
+|| 4.2.5 | 2026-06-19 | 0260_4.2.5.md | WARN |
+||----------|-------|------|------|---------------------|
+|| Milestone 1: Knowledge Graph Foundation & API Server
+|| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
+|| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 13 | 13 | 0 | 0 | 0 |
 | Milestone 4: Knowledge Graph Features (ADRs 009-012) | 25 | 25 | 0 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 10 | 0 | 0 | 0 |
 | Milestone 6: API & Protocol Layer | 16 | 16 | 0 | 0 | 0 |
@@ -336,4 +354,4 @@
 | Milestone 8: VS Code Extension UI | 18 | 18 | 0 | 0 | 0 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 21 | 0 | 0 | 0 |
 | Milestone 10: Deployment & Operations | 11 | 11 | 0 | 0 | 0 |
-| **TOTAL** | **153** | **153** | **0** | **0** | **0** |
+| **TOTAL** | **154** | **154** | **0** | **0** | **0** |

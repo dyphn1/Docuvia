@@ -54,6 +54,24 @@ export function getCompressedPayload(id: string) {
     return stmt.get(id) as { original_text: string } | undefined;
 }
 
+export function purgeExpiredPayloads() {
+    const stmt = db.prepare("DELETE FROM compressed_payloads WHERE timestamp <= datetime('now', '-1 day')");
+    return stmt.run();
+}
+
+export function startTTLJob() {
+    setInterval(() => {
+        try {
+            const info = purgeExpiredPayloads();
+            if (info.changes > 0) {
+                logger.info(`[SharedMemory] Purged ${info.changes} expired compressed payloads.`);
+            }
+        } catch (err) {
+            logger.error(`[SharedMemory] Error purging expired payloads: ${err}`);
+        }
+    }, 60 * 60 * 1000); // every hour
+}
+
 // Background job to mine failed API proxy responses
 export function startMemoryMiner() {
     // Dummy headroom learn-style logic

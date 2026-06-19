@@ -1,30 +1,10 @@
 import express, { Router, Request, Response } from 'express';
-import { saveCompressedPayload } from '../memory/shared-memory.js';
-import crypto from 'crypto';
+import { compressPrompt } from './compressor.js';
 
 export const llmProxyRouter = Router();
 
 // Apply JSON body parsing for the proxy
 llmProxyRouter.use(express.json({ limit: '50mb' }));
-
-// Dummy compression logic
-function compressPrompt(text: string): { compressedText: string, hasChanges: boolean } {
-    let hasChanges = false;
-    // Replace large text (e.g., code blocks) with skeletons
-    const codeBlockRegex = /```[\s\S]*?```/g;
-    
-    const compressedText = text.replace(codeBlockRegex, (match) => {
-        if (match.length > 500) {
-            hasChanges = true;
-            const id = crypto.randomUUID();
-            saveCompressedPayload(id, match);
-            return `\`\`\`\n// [COMPRESSED_SKELETON_ID: ${id}]\n// Use docuvia_retrieve_original MCP tool to read the full code if needed.\nfunction skeleton() { /* ... */ }\n\`\`\``;
-        }
-        return match;
-    });
-
-    return { compressedText, hasChanges };
-}
 
 llmProxyRouter.post('/chat/completions', (req: Request, res: Response) => {
     // OpenAI format
@@ -57,7 +37,7 @@ llmProxyRouter.post('/chat/completions', (req: Request, res: Response) => {
              const systemInstruction = "System: Some large code blocks have been compressed. Use the `docuvia_retrieve_original` MCP tool with the provided COMPRESSED_SKELETON_ID if you need to read the full code.";
              const firstMsg = body.messages[0];
              if (firstMsg && firstMsg.role === 'system') {
-                 firstMsg.content += '\\n' + systemInstruction;
+                 firstMsg.content += '\n' + systemInstruction;
              } else {
                  body.messages.unshift({ role: 'system', content: systemInstruction });
              }
@@ -116,7 +96,7 @@ llmProxyRouter.post('/messages', (req: Request, res: Response) => {
     if (modified) {
          const systemInstruction = "System: Some large code blocks have been compressed. Use the `docuvia_retrieve_original` MCP tool with the provided COMPRESSED_SKELETON_ID if you need to read the full code.";
          if (body.system) {
-             body.system += '\\n' + systemInstruction;
+             body.system += '\n' + systemInstruction;
          } else {
              body.system = systemInstruction;
          }

@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-|> Last Updated: 2026-06-20 (verification: 5.2.1)
+|> Last Updated: 2026-06-20 (verification: 5.2.2)
 
 ## Legend
 
@@ -142,7 +142,7 @@
 
 ### 5.2 Review UI (kg-engine)
 - [x] 5.2.1  ✅  Review page in kg-engine
-- [x] 5.2.2  ✅  Review queue filtering and display
+- [x] 5.2.2  ✅ PASS  Review queue filtering and display
 - [x] 5.2.3  ✅  Approve/merge/reject actions
 
 ### 5.3 Prompt Templates
@@ -363,6 +363,7 @@
 || 5.1.3 | 2026-06-20 | 0278_5.1.3.md | WARN |
 | 5.1.4 | 2026-06-20 | 0279_5.1.4.md | WARN |
 | 5.2.1 | 2026-06-20 | 0280_5.2.1.md | WARN |
+| 5.2.2 | 2026-06-20 | 0281_5.2.2.md | WARN |
 |----------|-------|------|------|---------------------|
 | Milestone 1: Knowledge Graph Foundation & API Server |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |

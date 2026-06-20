@@ -49,6 +49,20 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       functions: ['function_declaration', 'method_declaration'],
       calls: ['call_expression'],
     },
+    java: {
+      extensions: ['.java'],
+      wasm_file: 'tree-sitter-java.wasm',
+      imports: ['import_declaration'],
+      classes: [
+        'class_declaration',
+        'interface_declaration',
+        'enum_declaration',
+        'annotation_type_declaration',
+        'record_declaration',
+      ],
+      functions: ['method_declaration', 'constructor_declaration', 'compact_constructor_declaration'],
+      calls: ['method_invocation', 'explicit_constructor_invocation'],
+    },
   },
 };
 

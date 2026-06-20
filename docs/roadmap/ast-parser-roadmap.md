@@ -21,7 +21,7 @@
 - [x] **3. Go (`tree-sitter-go`)**
   - 常見的微服務後端語言。
   - 需要處理 Go 特有的 Package 匯入與 Struct 方法綁定。
-- [ ] **4. Java (`tree-sitter-java`)**
+- [x] **4. Java (`tree-sitter-java`)**
   - 企業級後端最常見的語言。
   - 具備強烈的物件導向結構，需確保類別與介面（Interfaces）被正確擷取。
 - [ ] **5. C/C++ (`tree-sitter-c`, `tree-sitter-cpp`)**

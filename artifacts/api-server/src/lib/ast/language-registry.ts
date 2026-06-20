@@ -25,6 +25,14 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       functions: ['function_declaration', 'method_definition'],
       calls: ['call_expression'],
     },
+    python: {
+      extensions: ['.py'],
+      wasm_file: 'tree-sitter-python.wasm',
+      imports: ['import_statement', 'import_from_statement'],
+      classes: ['class_definition'],
+      functions: ['function_definition'],
+      calls: ['call'],
+    },
   },
 };
 

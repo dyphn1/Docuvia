@@ -12,7 +12,7 @@
 
 ### 語言實作 Task List (按優先順序)
 
-- [ ] **1. Python (`tree-sitter-python`)**
+- [x] **1. Python (`tree-sitter-python`)**
   - AI 領域與後端開發最常使用的語言，具備高度優先權。
   - 需處理 Python 特有的 `from module import function` 語法以準確解析 `imports`。
 - [ ] **2. Rust (`tree-sitter-rust`)**

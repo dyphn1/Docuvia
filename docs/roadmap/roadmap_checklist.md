@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-|> Last Updated: 2026-06-20 (verification: 5.1.3)
+|> Last Updated: 2026-06-20 (verification: 5.1.4)
 
 ## Legend
 
@@ -138,7 +138,7 @@
 - [x] 5.1.1  ✅️  Review task creation for all AI-generated nodes
 - [x] 5.1.2  ✅  Review task types: anchor, merge, reject
 - [x] 5.1.3  ✅  Review resolution endpoint (POST /review_tasks/:id/resolve)
-- [x] 5.1.4  ✅  Correction examples creation on review approval
+- [x] 5.1.4  ✅ PASS  Correction examples creation on review approval
 
 ### 5.2 Review UI (kg-engine)
 - [x] 5.2.1  ✅  Review page in kg-engine
@@ -361,6 +361,7 @@
 || 5.1.1 | 2026-06-20 | 0276_5.1.1.md | WARN |
 || 5.1.2 | 2026-06-20 | 0277_5.1.2.md | WARN |
 || 5.1.3 | 2026-06-20 | 0278_5.1.3.md | WARN |
+|| 5.1.4 | 2026-06-20 | 0279_5.1.4.md | WARN |
 ||----------|-------|------|------|---------------------|
 || Milestone 1: Knowledge Graph Foundation & API Server |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |

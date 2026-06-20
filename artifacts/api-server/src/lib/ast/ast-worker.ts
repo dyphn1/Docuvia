@@ -44,12 +44,33 @@ async function loadLanguage(ext: string): Promise<{ lang: Language | null, provi
 
   try {
     // Attempt to load the grammar from the current working directory's wasm folder or fallback to root
-    const wasmPath = path.resolve(process.cwd(), wasmFileName);
+    let wasmPath = path.resolve(process.cwd(), wasmFileName);
+
+    // Check if it exists, otherwise fallback to tree-sitter-wasms or tree-sitter-typescript
+    try {
+      await fs.access(wasmPath);
+    } catch {
+      try {
+        const wasmsPkgPath = require.resolve('tree-sitter-wasms/package.json');
+        wasmPath = path.join(path.dirname(wasmsPkgPath), 'out', wasmFileName);
+      } catch (err) {
+        // Fallback to individual language packages if tree-sitter-wasms is missing or fails
+        try {
+          const pkgName = wasmFileName.replace('.wasm', ''); // e.g. tree-sitter-typescript.wasm -> tree-sitter-typescript
+          const langPkgPath = require.resolve(`${pkgName}/package.json`);
+          wasmPath = path.join(path.dirname(langPkgPath), wasmFileName);
+        } catch (innerErr) {
+          // Ignore and let Language.load fail
+        }
+      }
+    }
+
     const lang = await Language.load(wasmPath);
     languageCache.set(wasmFileName, lang);
     return { lang, provider };
   } catch (error) {
     // Gracefully fail if wasm is not present yet
+    console.warn(`Failed to load grammar WASM ${wasmFileName}:`, error);
     return { lang: null, provider };
   }
 }

@@ -29,6 +29,7 @@
     "piscina": "^5.2.0",
     "sax": "^1.6.0",
     "smol-toml": "^1.6.1",
+    "tree-sitter-typescript": "^0.23.2",
     "web-tree-sitter": "^0.26.9",
     "zod": "catalog:"
   },

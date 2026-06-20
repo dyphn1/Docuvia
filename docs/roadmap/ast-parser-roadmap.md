@@ -24,7 +24,7 @@
 - [x] **4. Java (`tree-sitter-java`)**
   - 企業級後端最常見的語言。
   - 具備強烈的物件導向結構，需確保類別與介面（Interfaces）被正確擷取。
-- [ ] **5. C/C++ (`tree-sitter-c`, `tree-sitter-cpp`)**
+- [x] **5. C/C++ (`tree-sitter-c`, `tree-sitter-cpp`)**
   - 處理底層系統與函式庫。
   - 注意標頭檔 (`.h`, `.hpp`) 與實作檔 (`.c`, `.cpp`) 的解析區分。
 - [ ] **6. Ruby (`tree-sitter-ruby`)**

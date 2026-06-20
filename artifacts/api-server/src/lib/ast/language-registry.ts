@@ -63,6 +63,28 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       functions: ['method_declaration', 'constructor_declaration', 'compact_constructor_declaration'],
       calls: ['method_invocation', 'explicit_constructor_invocation'],
     },
+    c: {
+      extensions: ['.c', '.h'],
+      wasm_file: 'tree-sitter-c.wasm',
+      imports: ['preproc_include'],
+      classes: ['struct_specifier', 'enum_specifier', 'union_specifier', 'type_definition'],
+      functions: ['function_definition'],
+      calls: ['call_expression'],
+    },
+    cpp: {
+      extensions: ['.cpp', '.cxx', '.cc', '.hpp', '.hxx', '.hh'],
+      wasm_file: 'tree-sitter-cpp.wasm',
+      imports: ['preproc_include', 'using_declaration'],
+      classes: [
+        'class_specifier',
+        'struct_specifier',
+        'enum_specifier',
+        'union_specifier',
+        'type_definition',
+      ],
+      functions: ['function_definition'],
+      calls: ['call_expression'],
+    },
   },
 };
 

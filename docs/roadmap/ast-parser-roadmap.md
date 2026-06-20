@@ -15,10 +15,10 @@
 - [x] **1. Python (`tree-sitter-python`)**
   - AI 領域與後端開發最常使用的語言，具備高度優先權。
   - 需處理 Python 特有的 `from module import function` 語法以準確解析 `imports`。
-- [ ] **2. Rust (`tree-sitter-rust`)**
+- [x] **2. Rust (`tree-sitter-rust`)**
   - 系統級程式語言，本專案的相關專案（如 tolaria, headroom）皆使用 Rust。
   - 需要映射 `struct_item`, `impl_item`, `function_item` 等特有節點。
-- [ ] **3. Go (`tree-sitter-go`)**
+- [x] **3. Go (`tree-sitter-go`)**
   - 常見的微服務後端語言。
   - 需要處理 Go 特有的 Package 匯入與 Struct 方法綁定。
 - [ ] **4. Java (`tree-sitter-java`)**

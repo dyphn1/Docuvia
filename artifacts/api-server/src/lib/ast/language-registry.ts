@@ -33,6 +33,22 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       functions: ['function_definition'],
       calls: ['call'],
     },
+    rust: {
+      extensions: ['.rs'],
+      wasm_file: 'tree-sitter-rust.wasm',
+      imports: ['use_declaration'],
+      classes: ['struct_item', 'enum_item', 'union_item', 'trait_item'],
+      functions: ['function_item'],
+      calls: ['call_expression'],
+    },
+    go: {
+      extensions: ['.go'],
+      wasm_file: 'tree-sitter-go.wasm',
+      imports: ['import_declaration'],
+      classes: ['type_declaration'],
+      functions: ['function_declaration', 'method_declaration'],
+      calls: ['call_expression'],
+    },
   },
 };
 

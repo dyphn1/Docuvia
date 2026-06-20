@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-|> Last Updated: 2026-06-20 (verification: 4.4.5)
+|> Last Updated: 2026-06-20 (verification: 5.1.2)
 
 ## Legend
 
@@ -337,12 +337,12 @@
 | 4.1.2 | 2026-06-18 | 0249_4.1.2.md | WARN |
 | 4.1.3 | 2026-06-18 | 0251_4.1.3.md | WARN |
 | 4.1.4 | 2026-06-19 | 0252_4.1.4.md | WARN |
-|| 4.1.5 | 2026-06-19 | 0255_4.1.5.md | WARN |
-|| 4.2.1 | 2026-06-19 | 0256_4.2.1.md | WARN |
-|| 4.2.2 | 2026-06-19 | 0257_4.2.2.md | WARN |
-|| 4.2.3 | 2026-06-19 | 0258_4.2.3.md | WARN |
-|| 4.2.4 | 2026-06-19 | 0259_4.2.4.md | WARN |
-|| 4.2.5 | 2026-06-19 | 0260_4.2.5.md | WARN |
+| 4.1.5 | 2026-06-19 | 0255_4.1.5.md | WARN |
+| 4.2.1 | 2026-06-19 | 0256_4.2.1.md | WARN |
+| 4.2.2 | 2026-06-19 | 0257_4.2.2.md | WARN |
+| 4.2.3 | 2026-06-19 | 0258_4.2.3.md | WARN |
+| 4.2.4 | 2026-06-19 | 0259_4.2.4.md | WARN |
+| 4.2.5 | 2026-06-19 | 0260_4.2.5.md | WARN |
 | 4.2.6 | 2026-06-19 | 0261_4.2.6.md | PASS |
 | 4.3.1 | 2026-06-19 | 0262_4.3.1.md | PASS |
 | 4.3.2 | 2026-06-19 | 0263_4.3.2.md | WARN |
@@ -357,10 +357,13 @@
 | 4.4.3 | 2026-06-20 | 0272_4.4.3.md | PASS |
 | 4.4.4 | 2026-06-20 | 0273_4.4.4.md | WARN |
 | 4.4.5 | 2026-06-20 | 0274_4.4.5.md | WARN |
-|----------|-------|------|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server |
-|| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
-|| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 13 | 13 | 0 | 0 | 0 |
+|| 4.4.6 | 2026-06-20 | 0275_4.4.6.md | PASS |
+|| 5.1.1 | 2026-06-20 | 0276_5.1.1.md | WARN |
+|| 5.1.2 | 2026-06-20 | 0277_5.1.2.md | WARN |
+||----------|-------|------|------|---------------------|
+|| Milestone 1: Knowledge Graph Foundation & API Server |
+| Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
+| Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 13 | 13 | 0 | 0 | 0 |
 | Milestone 4: Knowledge Graph Features (ADRs 009-012) | 25 | 25 | 0 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 10 | 0 | 0 | 0 |
 | Milestone 6: API & Protocol Layer | 16 | 16 | 0 | 0 | 0 |

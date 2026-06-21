@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-> Last Updated: 2026-06-21 (verification: 8.3.1)
+> Last Updated: 2026-06-21 (verification: 8.3.2)
 
 ## Legend
 
@@ -389,16 +389,17 @@
 | 8.2.1 | 2026-06-21 | 0304_8.2.1.md | WARN |
 | 8.2.2 | 2026-06-21 | 0306_8.2.2.md | WARN |
 | 8.2.3 | 2026-06-21 | 0307_8.2.3.md | WARN |
-| 8.3.1 | 2026-06-21 | 0308_8.3.1.md | PASS |
-|----------|-------|------|------|---------------------|
-| Milestone 1: Knowledge Graph Foundation & API Server |
+|| 8.3.1 | 2026-06-21 | 0308_8.3.1.md | PASS |
+|| 8.3.2 | 2026-06-21 | 0309_8.3.2.md | PASS |
+||----------|-------|------|------|---------------------|
+| Milestone 1: Knowledge Graph Foundation & API Server | 6 | 6 | 0 | 0 | 0 |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 13 | 13 | 0 | 0 | 0 |
 | Milestone 4: Knowledge Graph Features (ADRs 009-012) | 25 | 25 | 0 | 0 | 0 |
 | Milestone 5: Human-in-the-Loop & Review System | 10 | 10 | 0 | 0 | 0 |
 | Milestone 6: API & Protocol Layer | 16 | 16 | 0 | 0 | 0 |
 | Milestone 7: Frontend (kg-engine) | 11 | 11 | 0 | 0 | 0 |
-| Milestone 8: VS Code Extension UI | 18 | 18 | 0 | 0 | 0 |
+| Milestone 8: VS Code Extension UI | 19 | 19 | 0 | 0 | 0 |
 | Milestone 9: Cross-Cutting Concerns | 21 | 21 | 0 | 0 | 0 |
 | Milestone 10: Deployment & Operations | 11 | 11 | 0 | 0 | 0 |
-| **TOTAL** | **154** | **154** | **0** | **0** | **0** |
+| **TOTAL** | **155** | **155** | **0** | **0** | **0** |

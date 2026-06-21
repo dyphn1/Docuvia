@@ -85,6 +85,14 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       functions: ['function_definition'],
       calls: ['call_expression'],
     },
+    ruby: {
+      extensions: ['.rb', '.rake', '.gemspec'],
+      wasm_file: 'tree-sitter-ruby.wasm',
+      imports: ['call'], // Ruby has no import statements; require/load are method calls
+      classes: ['class', 'module', 'singleton_class'],
+      functions: ['method', 'singleton_method'],
+      calls: ['call', 'command_call'],
+    },
   },
 };
 

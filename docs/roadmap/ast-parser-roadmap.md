@@ -27,7 +27,7 @@
 - [x] **5. C/C++ (`tree-sitter-c`, `tree-sitter-cpp`)**
   - 處理底層系統與函式庫。
   - 注意標頭檔 (`.h`, `.hpp`) 與實作檔 (`.c`, `.cpp`) 的解析區分。
-- [ ] **6. Ruby (`tree-sitter-ruby`)**
+- [x] **6. Ruby (`tree-sitter-ruby`)**
   - 用於支援傳統 Web 框架（如 Rails）。
 - [ ] **7. PHP (`tree-sitter-php`)**
   - 涵蓋大量舊有與部分現代 Web 應用系統。

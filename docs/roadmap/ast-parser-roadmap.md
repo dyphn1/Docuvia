@@ -29,7 +29,7 @@
   - 注意標頭檔 (`.h`, `.hpp`) 與實作檔 (`.c`, `.cpp`) 的解析區分。
 - [x] **6. Ruby (`tree-sitter-ruby`)**
   - 用於支援傳統 Web 框架（如 Rails）。
-- [ ] **7. PHP (`tree-sitter-php`)**
+- [x] **7. PHP (`tree-sitter-php`)**
   - 涵蓋大量舊有與部分現代 Web 應用系統。
 - [ ] **8. C# (`tree-sitter-c-sharp`)**
   - 支援 .NET 生態系。

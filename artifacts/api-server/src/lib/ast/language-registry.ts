@@ -93,6 +93,29 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       functions: ['method', 'singleton_method'],
       calls: ['call', 'command_call'],
     },
+    php: {
+      extensions: ['.php', '.phtml', '.php3', '.php4', '.php5', '.phps'],
+      wasm_file: 'tree-sitter-php.wasm',
+      imports: [
+        'namespace_use_declaration',
+        'include_expression',
+        'include_once_expression',
+        'require_expression',
+        'require_once_expression',
+      ],
+      classes: [
+        'class_declaration',
+        'interface_declaration',
+        'trait_declaration',
+        'enum_declaration',
+      ],
+      functions: ['function_definition', 'method_declaration'],
+      calls: [
+        'function_call_expression',
+        'member_call_expression',
+        'scoped_call_expression',
+      ],
+    },
   },
 };
 

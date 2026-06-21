@@ -173,6 +173,9 @@ importers:
       tree-sitter-typescript:
         specifier: ^0.23.2
         version: 0.23.2
+      tree-sitter-wasms:
+        specifier: ^0.1.13
+        version: 0.1.13
       web-tree-sitter:
         specifier: ^0.26.9
         version: 0.26.9
@@ -6252,6 +6255,9 @@ packages:
       tree-sitter:
         optional: true
 
+  tree-sitter-wasms@0.1.13:
+    resolution: {integrity: sha512-wT+cR6DwaIz80/vho3AvSF0N4txuNx/5bcRKoXouOfClpxh/qqrF4URNLQXbbt8MaAxeksZcZd1j8gcGjc+QxQ==}
+
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
@@ -12003,6 +12009,8 @@ snapshots:
       node-addon-api: 8.8.0
       node-gyp-build: 4.8.4
       tree-sitter-javascript: 0.23.1
+
+  tree-sitter-wasms@0.1.13: {}
 
   tsconfck@3.1.6(typescript@5.9.3):
     optionalDependencies:

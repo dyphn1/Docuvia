@@ -16,6 +16,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       classes: ['class_declaration'],
       functions: ['function_declaration', 'method_definition'],
       calls: ['call_expression'],
+      queries: {
+        classes: `(class_declaration name: (identifier) @class)`,
+        functions: `(function_declaration name: (identifier) @function) (method_definition name: (property_identifier) @function)`,
+        imports: `(import_statement) @import`,
+        calls: `(call_expression function: [(identifier) (member_expression)] @call)`,
+      },
     },
     javascript: {
       extensions: ['.js', '.jsx'],
@@ -24,6 +30,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       classes: ['class_declaration'],
       functions: ['function_declaration', 'method_definition'],
       calls: ['call_expression'],
+      queries: {
+        classes: `(class_declaration name: (identifier) @class)`,
+        functions: `(function_declaration name: (identifier) @function) (method_definition name: (property_identifier) @function)`,
+        imports: `(import_statement) @import`,
+        calls: `(call_expression function: [(identifier) (member_expression)] @call)`,
+      },
     },
     python: {
       extensions: ['.py'],
@@ -32,6 +44,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       classes: ['class_definition'],
       functions: ['function_definition'],
       calls: ['call'],
+      queries: {
+        classes: `(class_definition name: (identifier) @class)`,
+        functions: `(function_definition name: (identifier) @function)`,
+        imports: `(import_statement) @import (import_from_statement) @import`,
+        calls: `(call function: [(identifier) (attribute)] @call)`,
+      },
     },
     rust: {
       extensions: ['.rs'],
@@ -40,6 +58,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       classes: ['struct_item', 'enum_item', 'union_item', 'trait_item'],
       functions: ['function_item'],
       calls: ['call_expression'],
+      queries: {
+        classes: `(struct_item name: (type_identifier) @class) (enum_item name: (type_identifier) @class) (union_item name: (type_identifier) @class) (trait_item name: (type_identifier) @class)`,
+        functions: `(function_item name: (identifier) @function)`,
+        imports: `(use_declaration) @import`,
+        calls: `(call_expression function: [(identifier) (field_expression)] @call)`,
+      },
     },
     go: {
       extensions: ['.go'],
@@ -48,6 +72,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       classes: ['type_declaration'],
       functions: ['function_declaration', 'method_declaration'],
       calls: ['call_expression'],
+      queries: {
+        classes: `(type_declaration name: (type_identifier) @class)`,
+        functions: `(function_declaration name: (identifier) @function) (method_declaration name: (field_identifier) @function)`,
+        imports: `(import_declaration) @import`,
+        calls: `(call_expression function: [(identifier) (selector_expression)] @call)`,
+      },
     },
     java: {
       extensions: ['.java'],
@@ -62,6 +92,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       ],
       functions: ['method_declaration', 'constructor_declaration', 'compact_constructor_declaration'],
       calls: ['method_invocation', 'explicit_constructor_invocation'],
+      queries: {
+        classes: `(class_declaration name: (identifier) @class) (interface_declaration name: (identifier) @class) (enum_declaration name: (identifier) @class) (annotation_type_declaration name: (identifier) @class) (record_declaration name: (identifier) @class)`,
+        functions: `(method_declaration name: (identifier) @function) (constructor_declaration name: (identifier) @function) (compact_constructor_declaration name: (identifier) @function)`,
+        imports: `(import_declaration) @import`,
+        calls: `(method_invocation name: (identifier) @call) (explicit_constructor_invocation) @call`,
+      },
     },
     c: {
       extensions: ['.c', '.h'],
@@ -70,6 +106,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       classes: ['struct_specifier', 'enum_specifier', 'union_specifier', 'type_definition'],
       functions: ['function_definition'],
       calls: ['call_expression'],
+      queries: {
+        classes: `(struct_specifier name: (type_identifier) @class) (enum_specifier name: (type_identifier) @class) (union_specifier name: (type_identifier) @class) (type_definition name: (type_identifier) @class)`,
+        functions: `(function_definition declarator: (function_declarator declarator: (identifier) @function))`,
+        imports: `(preproc_include) @import`,
+        calls: `(call_expression function: (identifier) @call)`,
+      },
     },
     cpp: {
       extensions: ['.cpp', '.cxx', '.cc', '.hpp', '.hxx', '.hh'],
@@ -84,6 +126,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       ],
       functions: ['function_definition'],
       calls: ['call_expression'],
+      queries: {
+        classes: `(class_specifier name: (type_identifier) @class) (struct_specifier name: (type_identifier) @class) (enum_specifier name: (type_identifier) @class) (union_specifier name: (type_identifier) @class) (type_definition name: (type_identifier) @class)`,
+        functions: `(function_definition declarator: (function_declarator declarator: (identifier) @function))`,
+        imports: `(preproc_include) @import (using_declaration) @import`,
+        calls: `(call_expression function: [(identifier) (field_expression)] @call)`,
+      },
     },
     ruby: {
       extensions: ['.rb', '.rake', '.gemspec'],
@@ -92,6 +140,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       classes: ['class', 'module', 'singleton_class'],
       functions: ['method', 'singleton_method'],
       calls: ['call', 'command_call'],
+      queries: {
+        classes: `(class name: [(constant) (scope)] @class) (module name: (constant) @class) (singleton_class) @class`,
+        functions: `(method name: (identifier) @function) (singleton_method name: (identifier) @function)`,
+        imports: `(call method: (identifier) @_method @_method.match?(/^(require|require_relative|load)$/) @import)`,
+        calls: `(call method: (identifier) @call) (command_call method: (identifier) @call)`,
+      },
     },
     php: {
       extensions: ['.php', '.phtml', '.php3', '.php4', '.php5', '.phps'],
@@ -115,6 +169,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
         'member_call_expression',
         'scoped_call_expression',
       ],
+      queries: {
+        classes: `(class_declaration name: (name) @class) (interface_declaration name: (name) @class) (trait_declaration name: (name) @class) (enum_declaration name: (name) @class)`,
+        functions: `(function_definition name: (name) @function) (method_declaration name: (name) @function)`,
+        imports: `(namespace_use_declaration) @import (include_expression) @import (include_once_expression) @import (require_expression) @import (require_once_expression) @import`,
+        calls: `(function_call_expression function: (name) @call) (member_call_expression name: (name) @call) (scoped_call_expression name: (name) @call)`,
+      },
     },
     csharp: {
       extensions: ['.cs'],
@@ -139,6 +199,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
         'invocation_expression',
         'object_creation_expression',
       ],
+      queries: {
+        classes: `(class_declaration name: (identifier) @class) (struct_declaration name: (identifier) @class) (interface_declaration name: (identifier) @class) (enum_declaration name: (identifier) @class) (record_declaration name: (identifier) @class)`,
+        functions: `(method_declaration name: (identifier) @function) (constructor_declaration name: (identifier) @function) (destructor_declaration) @function (conversion_operator_declaration) @function (operator_declaration) @function (local_function_statement) @function`,
+        imports: `(using_directive) @import`,
+        calls: `(invocation_expression) @call (object_creation_expression) @call`,
+      },
     },
   },
 };

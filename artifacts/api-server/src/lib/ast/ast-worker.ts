@@ -6,7 +6,7 @@ import { Parser, Language } from 'web-tree-sitter';
 
 import { createRequire } from 'node:module';
 import { LanguageRegistry } from './language-registry.js';
-import { LanguageProvider } from './language-provider.js';
+import { LanguageProvider, DefaultProvider } from './language-provider.js';
 
 const require = createRequire(import.meta.url);
 let parserInitialized = false;
@@ -101,6 +101,11 @@ export default async function parseAst(filePath: string): Promise<ParseResult> {
   const tree = parser.parse(fileContent);
   if (!tree) {
     return { status: 'error', reason: 'Failed to parse file with tree-sitter' };
+  }
+
+  // Initialize Query-based extraction if queries are configured
+  if (provider instanceof DefaultProvider) {
+    provider.initQueries(lang);
   }
 
   const scopeMap = new Map<string, string>();

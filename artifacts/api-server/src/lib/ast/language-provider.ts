@@ -1,4 +1,5 @@
-import type { Node } from 'web-tree-sitter';
+import type { Language, Node, QueryCapture } from 'web-tree-sitter';
+import { Query } from 'web-tree-sitter';
 
 export interface LanguageProvider {
   wasm_file: string;
@@ -8,6 +9,13 @@ export interface LanguageProvider {
   extractCalls: (rootNode: Node) => Node[];
 }
 
+export interface LanguageQueryConfig {
+  classes: string;
+  functions: string;
+  imports: string;
+  calls: string;
+}
+
 export interface LanguageConfig {
   extensions: string[];
   wasm_file: string;
@@ -15,18 +23,54 @@ export interface LanguageConfig {
   classes: string[];
   functions: string[];
   calls: string[];
+  queries?: LanguageQueryConfig;
 }
+
+type CompiledQueries = {
+  classes?: Query;
+  functions?: Query;
+  imports?: Query;
+  calls?: Query;
+};
 
 export class DefaultProvider implements LanguageProvider {
   wasm_file: string;
   private config: LanguageConfig;
+  private compiledQueries: CompiledQueries | null = null;
 
   constructor(config: LanguageConfig) {
     this.config = config;
     this.wasm_file = config.wasm_file;
   }
 
+  initQueries(language: Language): void {
+    if (this.compiledQueries || !this.config.queries) return;
+    const q = this.config.queries;
+    this.compiledQueries = {
+      classes: q.classes ? new Query(language, q.classes) : undefined,
+      functions: q.functions ? new Query(language, q.functions) : undefined,
+      imports: q.imports ? new Query(language, q.imports) : undefined,
+      calls: q.calls ? new Query(language, q.calls) : undefined,
+    };
+  }
+
+  private captureNodes(rootNode: Node, captureNames: string[], query?: Query): Node[] {
+    if (!query) return [];
+    const captures: QueryCapture[] = query.captures(rootNode);
+    const nodes: Node[] = [];
+    for (const c of captures) {
+      if (captureNames.length === 0 || captureNames.includes(c.name)) {
+        nodes.push(c.node);
+      }
+    }
+    return nodes;
+  }
+
   extractClasses(rootNode: Node): Node[] {
+    if (this.compiledQueries?.classes) {
+      return this.captureNodes(rootNode, ['class'], this.compiledQueries.classes);
+    }
+    // Fallback to descendantsOfType
     const nodes: Node[] = [];
     for (const classType of this.config.classes) {
       nodes.push(...rootNode.descendantsOfType(classType));
@@ -35,6 +79,10 @@ export class DefaultProvider implements LanguageProvider {
   }
 
   extractFunctions(rootNode: Node): Node[] {
+    if (this.compiledQueries?.functions) {
+      return this.captureNodes(rootNode, ['function'], this.compiledQueries.functions);
+    }
+    // Fallback to descendantsOfType
     const nodes: Node[] = [];
     for (const funcType of this.config.functions) {
       nodes.push(...rootNode.descendantsOfType(funcType));
@@ -43,6 +91,10 @@ export class DefaultProvider implements LanguageProvider {
   }
 
   extractImports(rootNode: Node): Node[] {
+    if (this.compiledQueries?.imports) {
+      return this.captureNodes(rootNode, ['import'], this.compiledQueries.imports);
+    }
+    // Fallback to descendantsOfType
     const nodes: Node[] = [];
     for (const importType of this.config.imports) {
       nodes.push(...rootNode.descendantsOfType(importType));
@@ -51,6 +103,10 @@ export class DefaultProvider implements LanguageProvider {
   }
 
   extractCalls(rootNode: Node): Node[] {
+    if (this.compiledQueries?.calls) {
+      return this.captureNodes(rootNode, ['call'], this.compiledQueries.calls);
+    }
+    // Fallback to descendantsOfType
     const nodes: Node[] = [];
     for (const callType of this.config.calls) {
       nodes.push(...rootNode.descendantsOfType(callType));

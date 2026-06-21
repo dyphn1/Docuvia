@@ -146,6 +146,9 @@ importers:
       tree-sitter-c:
         specifier: ^0.24.1
         version: 0.24.1
+      tree-sitter-c-sharp:
+        specifier: ^0.23.5
+        version: 0.23.5
       tree-sitter-cpp:
         specifier: ^0.23.4
         version: 0.23.4
@@ -6153,6 +6156,14 @@ packages:
   tr46@0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
 
+  tree-sitter-c-sharp@0.23.5:
+    resolution: {integrity: sha512-xJGOeXPMmld0nES5+080N/06yY6LQi+KWGWV4LfZaZe6srJPtUtfhIbRSN7EZN6IaauzW28v6W4QHFwmeUW6HQ==}
+    peerDependencies:
+      tree-sitter: ^0.25.0
+    peerDependenciesMeta:
+      tree-sitter:
+        optional: true
+
   tree-sitter-c@0.23.6:
     resolution: {integrity: sha512-0dxXKznVyUA0s6PjNolJNs2yF87O5aL538A/eR6njA5oqX3C3vH4vnx3QdOKwuUdpKEcFdHuiDpRKLLCA/tjvQ==}
     peerDependencies:
@@ -11930,6 +11941,11 @@ snapshots:
       tldts: 7.0.30
 
   tr46@0.0.3: {}
+
+  tree-sitter-c-sharp@0.23.5:
+    dependencies:
+      node-addon-api: 8.8.0
+      node-gyp-build: 4.8.4
 
   tree-sitter-c@0.23.6:
     dependencies:

@@ -116,6 +116,30 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
         'scoped_call_expression',
       ],
     },
+    csharp: {
+      extensions: ['.cs'],
+      wasm_file: 'tree-sitter-c_sharp.wasm',
+      imports: ['using_directive'],
+      classes: [
+        'class_declaration',
+        'struct_declaration',
+        'interface_declaration',
+        'enum_declaration',
+        'record_declaration',
+      ],
+      functions: [
+        'method_declaration',
+        'constructor_declaration',
+        'destructor_declaration',
+        'conversion_operator_declaration',
+        'operator_declaration',
+        'local_function_statement',
+      ],
+      calls: [
+        'invocation_expression',
+        'object_creation_expression',
+      ],
+    },
   },
 };
 

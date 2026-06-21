@@ -31,7 +31,7 @@
   - 用於支援傳統 Web 框架（如 Rails）。
 - [x] **7. PHP (`tree-sitter-php`)**
   - 涵蓋大量舊有與部分現代 Web 應用系統。
-- [ ] **8. C# (`tree-sitter-c-sharp`)**
+- [x] **8. C# (`tree-sitter-c-sharp`)**
   - 支援 .NET 生態系。
 
 ### 實作要點：

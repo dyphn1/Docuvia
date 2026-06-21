@@ -133,6 +133,7 @@ namespace Docuvia.Examples
 `;
 
   const tree = parser.parse(sampleCsharp);
+  if (!tree) throw new Error('C#: parse returned null');
   const rootNode = tree.rootNode;
 
   // Load registry and get the C# provider

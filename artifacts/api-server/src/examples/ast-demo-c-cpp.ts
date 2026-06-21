@@ -116,6 +116,7 @@ async function demo() {
   const cParser = new Parser();
   cParser.setLanguage(cLang);
   const cTree = cParser.parse(cSource);
+  if (!cTree) throw new Error('C: parse returned null');
   const cRoot = cTree.rootNode;
 
   const cImports = cProvider.extractImports(cRoot);
@@ -146,6 +147,7 @@ async function demo() {
   const cppParser = new Parser();
   cppParser.setLanguage(cppLang);
   const cppTree = cppParser.parse(cppSource);
+  if (!cppTree) throw new Error('C++: parse returned null');
   const cppRoot = cppTree.rootNode;
 
   const cppImports = cppProvider.extractImports(cppRoot);

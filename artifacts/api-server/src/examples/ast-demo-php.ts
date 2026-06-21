@@ -112,6 +112,7 @@ $service->getUserById(1);
 `;
 
   const tree = parser.parse(samplePhp);
+  if (!tree) throw new Error('PHP: parse returned null');
   const rootNode = tree.rootNode;
 
   // Load registry and get the PHP provider

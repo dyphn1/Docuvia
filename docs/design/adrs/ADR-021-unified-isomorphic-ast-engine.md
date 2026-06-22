@@ -6,6 +6,7 @@
 ## Context
 
 In our pursuit of an Agentic OS Architecture with robust Git-Isomorphic graph capabilities, Docuvia requires reliable AST parsing to extract knowledge nodes. Historically, we approached this by maintaining two separate AST paradigms:
+
 1. **Backend Bulk Parsing (ADR-009)**: Utilizing Node.js C++ bindings with `.jsonl` spools for high-throughput bulk ingestion.
 2. **VS Code Local Parsing (ADR-020)**: Utilizing WASM bindings with IPC DTOs to meet local-first, zero-compilation extension requirements.
 
@@ -23,7 +24,7 @@ We will unify the parsing engine into a single shared monorepo package, `@worksp
      1. **Extension Mapping**: Standard extension allowlist (`.ts`, `.py`, etc.).
      2. **Header/Shebang Sniffing**: For extension-less files (common in Unix environments), read the first 256 bytes (magic bytes/shebang) to determine the language (e.g., `#!/usr/bin/env bash` routes to the Bash AST parser).
      3. **MIME Type Fallbacks**: Use MIME typing to confirm plaintext vs binary when extensions or headers are ambiguous.
-     Unsupported or explicitly binary files without a valid parser identity are rejected immediately.
+        Unsupported or explicitly binary files without a valid parser identity are rejected immediately.
    - **Phase B: Binary Detection via Git Blob**: When a Git repository is present, use Git object metadata to determine if a blob is binary (e.g. `git diff` flags). If marked binary, skip parsing.
    - **Phase C: Lossless Encoding Guardrails**: If Git is absent, probe the file encoding. Only apply UTF-8 and LF normalization if the conversion is guaranteed lossless, or rely on the AST DTO structure for hashing instead of raw string manipulation.
    - **Phase D: LLM-Assisted Extension Discovery**: If a file passes Phase B and C (it is plain text and lossless) but its extension is not in the predefined AST Target Allowlist, do not silently drop it. Instead, dispatch a sample of the file to a background LLM worker to profile its language or framework. The LLM will record its signature and generate a "Grammar Request" to expand the allowlist, allowing the Agentic OS to adapt to newly invented file types over time.
@@ -34,12 +35,14 @@ We will unify the parsing engine into a single shared monorepo package, `@worksp
 ## Consequences
 
 ### Positive
+
 - **Guaranteed Consistency**: By using exactly the same WASM binary and hashing contract, the backend and VS Code client will always generate identical hashes for identical code.
 - **Data Integrity**: The strict parsing funnel prevents accidental corruption of binary and non-UTF8 assets during analysis.
 - **Reduced Maintenance Surface**: We no longer need to maintain complex native C++ build chains, simplifying CI/CD pipelines and cross-platform compatibility.
 - **Clear Architectural Boundaries**: `@workspace/ast-core` focuses strictly on parsing and hashing, cleanly delegating transport/storage to the Sinks.
 
 ### Negative
+
 - **Minor Performance Overhead**: WASM parsing may have a slight performance penalty compared to native C++ bindings during bulk backend ingestion. However, this trade-off is strictly justified by the elimination of silent graph corruption.
 - **Migration Effort**: Refactoring the existing backend ingestion pipeline to use WASM and the new `DiskJsonlSink` adapter will require a dedicated engineering effort.
 - **Complexity in Git Integration**: Phase B requires tighter coupling with Git metadata during the analysis phase.

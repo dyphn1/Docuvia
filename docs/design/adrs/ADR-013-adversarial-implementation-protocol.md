@@ -1,10 +1,12 @@
 # ADR 013: Adversarial Implementation Protocol (Team Falsification)
 
 ## Status
+
 Accepted
 
 ## Context
-Standard AI-assisted or single-developer workflows often suffer from "happy-path" bias (or LLM sycophancy), leading to implementations that pass unit tests but fail under production constraints (e.g., OOM on large repos, split-brain race conditions, N+1 query performance degradation). We need a structured workflow that guarantees rigorous defense-in-depth *before* code is written, without derailing the overarching product vision.
+
+Standard AI-assisted or single-developer workflows often suffer from "happy-path" bias (or LLM sycophancy), leading to implementations that pass unit tests but fail under production constraints (e.g., OOM on large repos, split-brain race conditions, N+1 query performance degradation). We need a structured workflow that guarantees rigorous defense-in-depth _before_ code is written, without derailing the overarching product vision.
 
 ## Decision
 
@@ -14,7 +16,7 @@ We adopt the **Adversarial Implementation Protocol** for all future feature deve
 
 1. **Role Invocation & Falsification (The Debate)**
    Before any code is written, a simulated debate must occur involving:
-   - **Product Manager (PM)**: Defends the **Product Positioning** (Local-First UX, Git-Isomorphic, Agentic RAG, High Token Efficiency). *Crucial constraint: All architectural changes must first align with the product's core identity. We do not accept robust solutions if they violate Local-First or introduce heavy external dependencies like Redis.*
+   - **Product Manager (PM)**: Defends the **Product Positioning** (Local-First UX, Git-Isomorphic, Agentic RAG, High Token Efficiency). _Crucial constraint: All architectural changes must first align with the product's core identity. We do not accept robust solutions if they violate Local-First or introduce heavy external dependencies like Redis._
    - **Lead Developer (Leo)**: Proposes the initial implementation strategy and target files.
    - **QA**: Identifies edge cases, non-deterministic behaviors, and testing gaps.
    - **Challenger (Max - SRE/Security)**: Aggressively attacks the Developer's proposal, looking for OOM vectors, ReDoS, split-brain data corruption, security injections, and horizontal scaling bottlenecks.
@@ -37,4 +39,5 @@ We adopt the **Adversarial Implementation Protocol** for all future feature deve
 - **Cons**: Increases the upfront token cost and planning time before the first line of code is written.
 
 ## Product Positioning Guardrail
+
 The ultimate veto power rests with the Product Positioning. If the Challenger proposes a highly secure, distributed locking mechanism that requires Kubernetes and Zookeeper, the PM will veto it because Docuvia must remain a lightweight, self-hosted, Local-First engine backed by SQLite/PostgreSQL.

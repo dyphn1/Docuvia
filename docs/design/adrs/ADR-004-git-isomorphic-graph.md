@@ -40,7 +40,6 @@ flowchart LR
 - When patches are submitted via API, the API Server (running under distributed advisory locks to prevent split-brain) performs a standard Git 3-way merge on the orphan branch. If conflicts occur, it returns `409 Conflict`. in [`generate.ts`](../../../artifacts/api-server/src/routes/generate.ts)) simply attaches the new nodes and edges to the existing DAG.
 - **Zero-Waste Validation**: Re-evaluating the entire codebase is avoided. Every token spent produces an immutable brick anchored to a specific point in space-time in [`commitsTable` in commits.ts](../../../lib/db/src/schema/commits.ts).
 
-
 ## System Flow & Boundaries
 
 ```mermaid
@@ -66,5 +65,6 @@ sequenceDiagram
 ## Verifiability
 
 The local-first syncing mechanism and graph extraction MUST be testable without a live API server:
+
 - **Extension Offline Resilience:** `@vscode/test-electron` test suites MUST launch the extension with the API server mocked as unreachable (503). The test MUST assert that local knowledge graph modifications successfully persist to the local SQLite cache without throwing unhandled exceptions to the user.
 - **Outbox Sync Guarantee:** API server integration tests MUST use `withRollback(...)` to insert a pending Git synchronization event into the Outbox table. A worker tick MUST assert the `git` command execution (via mocked `child_process` or equivalent) and the subsequent deletion/status-update of the Outbox row.

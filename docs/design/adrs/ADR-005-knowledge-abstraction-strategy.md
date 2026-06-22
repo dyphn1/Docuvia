@@ -56,14 +56,14 @@ sequenceDiagram
 
     User->>RAG: Submits Query
     RAG->>L1: Check `l1_tags` (Scope)
-    
+
     alt Out of Scope
         L1-->>RAG: Reject (O(1))
         RAG-->>User: Fast Fail Response
     else In Scope
         RAG->>L2: Match `l2_nodes` (Architecture)
         RAG->>L3: Query `l3_nodes` (Implementation Deltas)
-        
+
         alt Cache Hit
             L3-->>RAG: Return cached decision (O(log N))
             RAG-->>User: Instant Response (No LLM Cost)
@@ -80,9 +80,9 @@ sequenceDiagram
 
 This topology maps directly to our PostgreSQL database schema (managed via Drizzle ORM):
 
-*   **L1 (Global Filter):** Mapped to the `l1_tags` table. Provides **O(1)** domain boundary checks to instantly reject out-of-scope queries.
-*   **L2 (Module Filter):** Mapped to the `l2_nodes` table. Clusters architecture into traversable sub-graphs for localized context.
-*   **L3 (Decision Cache):** Mapped to the `l3_nodes` table. Contains immutable, commit-anchored implementation rules. Database indexing allows **O(log N)** retrieval for exact or near-exact semantic matches.
+- **L1 (Global Filter):** Mapped to the `l1_tags` table. Provides **O(1)** domain boundary checks to instantly reject out-of-scope queries.
+- **L2 (Module Filter):** Mapped to the `l2_nodes` table. Clusters architecture into traversable sub-graphs for localized context.
+- **L3 (Decision Cache):** Mapped to the `l3_nodes` table. Contains immutable, commit-anchored implementation rules. Database indexing allows **O(log N)** retrieval for exact or near-exact semantic matches.
 
 ## Verifiability
 
@@ -90,4 +90,4 @@ To ensure the caching topology behaves as designed and does not silently degrade
 
 1.  **Integration Testing:** All routing paths must be covered by package integration tests located in `artifacts/api-server/test/integration/`.
 2.  **Test Isolation:** Tests must use the `withRollback(...)` utility from `artifacts/api-server/test/support/db.ts` to seed mock `l1_tags`, `l2_nodes`, and `l3_nodes` records before execution.
-3.  **LLM Bypass Assertions:** Tests must assert that a query with a valid L3 cache match *never* triggers an external HTTP call to the LLM. This is verified by ensuring the MSW interceptors (`artifacts/api-server/test/setup/msw/handlers.ts`) do not register a call to the OpenAI-compatible endpoint during an L3 cache hit.
+3.  **LLM Bypass Assertions:** Tests must assert that a query with a valid L3 cache match _never_ triggers an external HTTP call to the LLM. This is verified by ensuring the MSW interceptors (`artifacts/api-server/test/setup/msw/handlers.ts`) do not register a call to the OpenAI-compatible endpoint during an L3 cache hit.

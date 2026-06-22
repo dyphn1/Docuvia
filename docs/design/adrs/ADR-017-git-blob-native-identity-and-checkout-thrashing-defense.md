@@ -1,9 +1,11 @@
 # ADR-017: Git Blob-Native Identity & Checkout Thrashing Defense
 
 ## Context
+
 When dynamically analyzing code, AST tree-diffing algorithms are computationally expensive. Additionally, when a user switches branches (e.g., `git checkout`), thousands of files may change instantly, causing a File-Watcher to trigger massive, unnecessary graph rebuilds and generate useless database tombstones (thrashing).
 
 ## Decision
+
 Docuvia will implement an "Environment-Aware Ingestion Pipeline" that heavily leverages native Git objects when a VCS is present.
 
 - **Git Blob-Native Identity**: For projects with Git, the graph will use the `git_blob_hash` as the anchor for file-level nodes, and a custom `content_hash` (SHA-256 of the source string) for function/class-level AST nodes. Renames and moves are handled as zero-cost `UPDATE` statements by querying `git diff --name-status` and matching hashes, rather than fully parsing files again.
@@ -11,6 +13,7 @@ Docuvia will implement an "Environment-Aware Ingestion Pipeline" that heavily le
 - **Environment-Aware Fallback**: If no Git repository is detected, the pipeline degrades gracefully to rely solely on local file hashing and basic AST parsing.
 
 ## Consequences
+
 - **Positive**: Practically zero computational cost for file rename/move tracking.
 - **Positive**: Eliminates CPU spikes and database thrashing during branch switches.
 - **Positive**: Adapts to both Git-versioned repositories and unversioned folders.

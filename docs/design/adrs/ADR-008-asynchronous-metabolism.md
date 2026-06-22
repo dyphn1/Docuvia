@@ -49,7 +49,6 @@ Heavy generation pipelines (like Knowledge Graph node generation in `POST /proje
 - Failed pipelines will transition the project to `error` status.
 - **Error Recovery Strategy**: A new pipeline can successfully reclaim the project if it is in an `active` or `error` state, or if a crashed process left it in a stale `indexing` state for over 30 minutes.
 
-
 ## System Flow & Boundaries
 
 ```mermaid
@@ -67,5 +66,6 @@ stateDiagram-v2
 ## Verifiability
 
 Asynchronous workers are prone to poison pills. The CI pipeline MUST enforce resilience via the following hooks:
+
 - **DLQ Routing Proof:** Vitest DB tests using `withRollback(...)` MUST inject a mocked deterministic-failing task. The test MUST tick the worker 3 times and explicitly assert the task transitions to the `DEAD_LETTER_QUEUE` status without crashing the runner.
 - **Mutex Lock Proof:** Concurrent test runners MUST attempt to claim the same pending task simultaneously. DB assertions MUST prove exactly `1` worker transitions the task to `ACTIVE` while the others receive a `0 rows affected` response from PostgreSQL.

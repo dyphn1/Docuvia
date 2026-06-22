@@ -1,12 +1,15 @@
 # ADR 020: Local-First AST Parser Architecture for VS Code Client
 
 ## Status
+
 Accepted (Revised for Hybrid I/O & Content-Addressed Caching)
 
 ## Context
-Docuvia relies heavily on AST parsing (via `web-tree-sitter`) to generate accurate structural metadata for our Knowledge Graph. Currently, the AST logic resides in the backend (`api-server`) using Node.js `worker_threads` (Piscina) and native `node:fs`. 
+
+Docuvia relies heavily on AST parsing (via `web-tree-sitter`) to generate accurate structural metadata for our Knowledge Graph. Currently, the AST logic resides in the backend (`api-server`) using Node.js `worker_threads` (Piscina) and native `node:fs`.
 
 To support a **Local-First** topology scan within the VS Code Extension (`vscode-client`), we must port the AST parsing locally. However, we cannot simply reuse the server-side implementation because:
+
 1. VS Code Extension Hosts are strictly single-threaded; synchronous heavy CPU parsing will freeze the UI.
 2. Extensions must support Web (`vscode.dev`) and Remote environments where Node.js built-ins (`worker_threads`, `fs`) are unavailable or unreliable.
 3. Tree-sitter WASM modules require explicit C++ heap memory management (`delete()`), which, if leaked, will cause the Extension Host to OOM.
@@ -15,15 +18,16 @@ To support a **Local-First** topology scan within the VS Code Extension (`vscode
 6. **Redundant Parsing:** Parsing the exact same file content multiple times across sessions or branch switches wastes CPU cycles.
 
 ## Decision
+
 We will implement a resilient, **Hybrid I/O**, Local-First AST parser inside `vscode-client` based on the following architectural rules:
 
 1. **Pre-Worker Content-Addressed Caching (O(1) Bypass)**:
    Before the Main Thread ever spawns or messages a Worker, it must verify if the file has already been parsed. Aligning with ADR-017, we implement a two-tier hashing strategy:
-   - **Tier A (Git Environments):** Use `git ls-files -s <file>` to retrieve the Git Blob Hash. 
+   - **Tier A (Git Environments):** Use `git ls-files -s <file>` to retrieve the Git Blob Hash.
    - **Tier B (Non-Git Environments):** Calculate a fast local hash (e.g., `SHA-256` or `xxhash`) of the file content.
-   If the AST payload for this Hash already exists in the local Knowledge Graph / Cache, **bypass the Worker entirely** and load the cached result.
+     If the AST payload for this Hash already exists in the local Knowledge Graph / Cache, **bypass the Worker entirely** and load the cached result.
 
-2. **Web Workers over Node.js Workers**: 
+2. **Web Workers over Node.js Workers**:
    We will use standard browser Web Workers (`new Worker()`) for background processing. This ensures out-of-the-box compatibility with VS Code Web and Remote extensions.
 
 3. **Hybrid I/O Boundary (IPC Optimization)**:
@@ -44,6 +48,7 @@ We will implement a resilient, **Hybrid I/O**, Local-First AST parser inside `vs
    The `web-tree-sitter.wasm` and language grammars will be excluded from the `esbuild` bundle. A post-build script will copy these assets into a flat `dist/wasm/` directory. At runtime, the Main Thread will resolve the absolute URI via `vscode.Uri.joinPath` and pass it to the Worker for initialization.
 
 ## Consequences
-- **Positive**: We achieve robust, non-blocking AST parsing without freezing the UI. 
+
+- **Positive**: We achieve robust, non-blocking AST parsing without freezing the UI.
 - **Positive**: The $O(1)$ Hash bypass and Hybrid I/O optimizations save massive amounts of memory and CPU time, bringing enterprise-grade parsing performance to the VS Code client.
 - **Negative**: Adds branching logic to the Worker execution (handling both direct `fs` reads and IPC payloads), and requires careful bundler configuration so that `node:fs` isn't polyfilled/broken for the Worker script.

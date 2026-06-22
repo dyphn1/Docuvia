@@ -41,13 +41,12 @@ flowchart TD
 - **Full RAG**: Unlocks [`intent-router.ts`](../../../artifacts/api-server/src/lib/intent-router.ts) for Vector and Graph Traversal.
 - **Asynchronous Evolution**: Background jobs process corrections to protect all team members.
 
-
 ## Offline Writes & The Sync Outbox (CQRS)
 
 To strictly adhere to both **Local-First** principles and the **Centralized Server Write Lock** (mandated to prevent split-brain), Docuvia employs the **Outbox Pattern**:
 
 1. **Offline Writes**: When a developer creates a new L3 decision offline, the VS Code client writes it immediately to its local database (SQLite) and queues the event in a local `SyncOutbox`. The VS Code UI reflects the change instantly (Local-First).
-2. **Online Sync**: Upon network restoration, the client does *not* execute a raw `git push`. Instead, it dispatches the outbox payloads via REST API (`POST /sync/push`) to the API Server.
+2. **Online Sync**: Upon network restoration, the client does _not_ execute a raw `git push`. Instead, it dispatches the outbox payloads via REST API (`POST /sync/push`) to the API Server.
 3. **Server Gatekeeper**: The API server acquires the Mutex lock, validates the semantic integrity of the graph (preventing dangling nodes), commits the changes to the centralized `docuvia-knowledge` Git branch, and pushes to the Git remote.
 4. **Local Rehydration**: The client subsequently performs a `git fetch` and `git merge` from the remote branch to finalize the state and flush its local outbox.
 

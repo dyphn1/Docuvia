@@ -4,6 +4,7 @@
 
 Achieve a "Zero to One" onboarding experience within 1 minute without forcing users to learn YAML. Prevent Token explosions and AI hallucinations using a "Pre-scanning, Intelligent Proposal, and Human Consent" flow.
 Incorporate Tolaria-inspired "First Launch" principles:
+
 - **User Autonomy (Clear Choices):** Provide explicit options rather than forcefully initializing a workspace.
 - **Transparent Artifact Creation:** Explicitly state what files and branches will be created.
 - **Graceful Degradation (Offline/No-AI):** Ensure users without LLM configuration can still initialize and utilize local-first capabilities.
@@ -22,10 +23,10 @@ sequenceDiagram
     User->>VSC: Selects 'New'
     VSC-->>User: "Will create .docuvia/ and docuvia-knowledge branch. Proceed?"
     User->>VSC: Confirms
-    
+
     VSC->>FS: 1. Deterministic Recon (Read .gitignore, package.json)
     VSC->>FS: 2. Dynamic Abstraction (Depth-2 sampling)
-    
+
     alt AI Configured
         VSC->>LLM: Send topology snapshot
         LLM-->>VSC: Return proposed technical L1 tags
@@ -51,7 +52,7 @@ sequenceDiagram
 ### 2. Transparent Artifact Creation
 
 - Before writing any files for a "New" initialization, show a confirmation prompt/chat card:
-  *"This will create a `.docuvia/` folder for settings and a hidden `docuvia-knowledge` orphan branch for your graph. No source code will be modified. Proceed?"*
+  _"This will create a `.docuvia/` folder for settings and a hidden `docuvia-knowledge` orphan branch for your graph. No source code will be modified. Proceed?"_
 
 ### 3. Deterministic Recon (Local)
 
@@ -72,4 +73,5 @@ sequenceDiagram
 - Alongside `l1_tags.yaml`, generates a hidden `_project_profile.yaml` capturing the topology snapshot (e.g., CI/CD boundaries, primary depth). This acts as an $O(1)$ cache for future L2/L3 abstraction tasks, eliminating the need to rescan the workspace.
 
 ## Anchoring & Semantic Drift Prevention
+
 The VS Code client utilizes standard `vscode.CodeLensProvider` and `vscode.HoverProvider`. To prevent line-number drift and Editor Host freezing, semantic re-anchoring of knowledge nodes relies exclusively on asynchronous `vscode.executeDocumentSymbolProvider` calls triggered strictly upon document save, never on keystrokes.

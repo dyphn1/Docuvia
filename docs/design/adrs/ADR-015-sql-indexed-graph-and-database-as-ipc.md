@@ -1,16 +1,19 @@
 # ADR-015: SQL-Indexed Graph and Database-as-IPC
 
 ## Context
+
 Transmitting the entire knowledge graph (e.g., hundreds of thousands of nodes and edges) via gRPC or JSON between background parsing daemons and the Docuvia core would incur massive serialization overhead and payload size bombs. While gRPC streaming solves part of the transmission issue, the instantaneous I/O and deserialization still risk blocking the main thread.
 
 ## Decision
-We will adopt a "Shared Database Pattern" (Database as IPC - Inter-Process Communication), abandoning the transmission of graph nodes over the network. 
+
+We will adopt a "Shared Database Pattern" (Database as IPC - Inter-Process Communication), abandoning the transmission of graph nodes over the network.
 
 - **Daemon Responsibility**: The AST parser daemon directly executes `INSERT` and `UPDATE` statements into a local SQL database (e.g., SQLite or local PostgreSQL/Drizzle schema).
 - **Core Responsibility**: The Docuvia Core will only pass extremely small "Control Signals" (e.g., "file: src/auth.ts changed").
 - **Data Querying**: When an Agent needs to understand the blast radius, the Core directly issues SQL `SELECT` queries or recursive CTEs (`WITH RECURSIVE`) to the database.
 
 ## Consequences
+
 - **Positive**: Extreme transmission efficiency. The inter-process communication is reduced to minimal control commands.
 - **Positive**: Native SQL graph traversal, leveraging C-based database engines for recursive queries instead of running recursive algorithms in the V8 engine.
 - **Positive**: Seamless persistence. The database is built as the AST is scanned, enabling instant reads upon editor restart without needing to rebuild the graph.

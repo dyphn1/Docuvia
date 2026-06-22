@@ -4,23 +4,30 @@
 
 This document records the key architectural decisions made during the development of Docuvia v1.0. Each record follows the format: **Context → Decision → Consequences**.
 
-Additional implementation planning documents are stored in [`docs/ai_plans/`](../ai_plans/) and represent decisions made for specific feature increments.
-
-| ADR                                                                | Title                                                        | Status        |
-| ------------------------------------------------------------------ | ------------------------------------------------------------ | ------------- |
-| [ADR-001](#adr-001-openapi-as-single-source-of-truth)              | OpenAPI as Single Source of Truth                            | Accepted      |
-| [ADR-002](#adr-002-postgresql-with-jsonb-for-embeddings)           | PostgreSQL with JSONB for Embeddings (No External Vector DB) | Accepted (v1) |
-| [ADR-003](#adr-003-three-tier-knowledge-graph-l1l2l3)              | Three-Tier Knowledge Graph (L1/L2/L3)                        | Accepted      |
-| [ADR-004](#adr-004-openai-compatible-llm-interface-only)           | OpenAI-Compatible LLM Interface Only                         | Accepted (v1) |
-| [ADR-005](#adr-005-mvc-pattern-for-ui-layers)                      | MVC Pattern for UI Layers                                    | Accepted      |
-| [ADR-006](#adr-006-human-in-the-loop-via-review-queue)             | Human-in-the-Loop via Review Queue                           | Accepted      |
-| [ADR-007](#adr-007-incremental-ingestion-via-cursor-columns)       | Incremental Ingestion via Cursor Columns                     | Accepted      |
-| [ADR-008](#adr-008-orphan-branch-as-knowledge-store)               | Orphan Git Branch as Knowledge Store                         | Accepted      |
-| [ADR-009](#adr-009-l3-semantic-deduplication-via-occurrence-count) | L3 Semantic Deduplication via Occurrence Count               | Accepted      |
-| [ADR-010](#adr-010-l2-bootstrap-ai-discovery-to-path-rules)        | L2 Bootstrap: AI Discovery to Path Rules                     | Accepted      |
-| [ADR-011](#adr-011-two-phase-knowledge-validity)                   | Two-Phase Knowledge Validity                                 | Accepted      |
-| [ADR-012](#adr-012-document-misc-pool)                             | Document Misc Pool for Unaffiliated Documents                | Accepted      |
-| [ADR-013](adrs/ADR-013-adversarial-implementation-protocol.md) | Adversarial Implementation Protocol | Active | Enforces a 3-role (PM, QA, SRE/Challenger) debate before any code implementation. |
+| ADR                                                                                | Title                                                        | Status        |
+| ---------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------- |
+| [ADR-001](#adr-001-openapi-as-single-source-of-truth)                              | OpenAPI as Single Source of Truth                            | Accepted      |
+| [ADR-002](#adr-002-postgresql-with-jsonb-for-embeddings)                           | PostgreSQL with JSONB for Embeddings (No External Vector DB) | Accepted (v1) |
+| [ADR-003](#adr-003-three-tier-knowledge-graph-l1l2l3)                              | Three-Tier Knowledge Graph (L1/L2/L3)                        | Accepted      |
+| [ADR-004](#adr-004-openai-compatible-llm-interface-only)                           | OpenAI-Compatible LLM Interface Only                         | Accepted (v1) |
+| [ADR-005](#adr-005-mvc-pattern-for-ui-layers)                                      | MVC Pattern for UI Layers                                    | Accepted      |
+| [ADR-006](#adr-006-human-in-the-loop-via-review-queue)                             | Human-in-the-Loop via Review Queue                           | Accepted      |
+| [ADR-007](#adr-007-incremental-ingestion-via-cursor-columns)                       | Incremental Ingestion via Cursor Columns                     | Accepted      |
+| [ADR-008](#adr-008-orphan-branch-as-knowledge-store)                               | Orphan Git Branch as Knowledge Store                         | Accepted      |
+| [ADR-009](#adr-009-l3-semantic-deduplication-via-occurrence-count)                 | L3 Semantic Deduplication via Occurrence Count               | Accepted      |
+| [ADR-010](#adr-010-l2-bootstrap-ai-discovery-to-path-rules)                        | L2 Bootstrap: AI Discovery to Path Rules                     | Accepted      |
+| [ADR-011](#adr-011-two-phase-knowledge-validity)                                   | Two-Phase Knowledge Validity                                 | Accepted      |
+| [ADR-012](#adr-012-document-misc-pool)                                             | Document Misc Pool for Unaffiliated Documents                | Accepted      |
+| [ADR-013](adrs/ADR-013-adversarial-implementation-protocol.md)                     | Adversarial Implementation Protocol                          | Active        |
+| [ADR-014](adrs/ADR-014-microkernel-ast-architecture.md)                            | Microkernel AST Architecture                                 | Accepted      |
+| [ADR-015](adrs/ADR-015-sql-indexed-graph-and-database-as-ipc.md)                   | SQL-Indexed Graph and Database-as-IPC                        | Accepted      |
+| [ADR-016](adrs/ADR-016-progressive-enrichment-and-ast-lsp-dual-engine.md)          | Progressive Enrichment & AST/LSP Dual Engine                 | Accepted      |
+| [ADR-017](adrs/ADR-017-git-blob-native-identity-and-checkout-thrashing-defense.md) | Git Blob-Native Identity & Checkout Thrashing Defense        | Accepted      |
+| [ADR-018](adrs/ADR-018-tiered-storage-and-orphan-branch-graph-maintenance.md)      | Tiered Storage & Orphan Branch Graph Maintenance             | Accepted      |
+| [ADR-019](adrs/ADR-019-temporal-and-conceptual-bidirectional-linking.md)           | Temporal & Conceptual Bidirectional Linking                  | Accepted      |
+| [ADR-020](adrs/ADR-020-local-first-ast-parser.md)                                  | Local-First AST Parser Architecture for VS Code Client       | Accepted      |
+| [ADR-021](adrs/ADR-021-unified-isomorphic-ast-engine.md)                           | Unified Isomorphic AST Engine                                | Accepted      |
+| [ADR-022](adrs/ADR-022-ast-microkernel-architecture.md)                            | AST Microkernel Architecture & Ingestion Pipeline            | Accepted      |
 
 ---
 
@@ -172,15 +179,15 @@ The `projects` table has `lastGitIngestedAt` (timestamp) and `lastSvnRevision` (
 
 ## 9.3 Deferred Decisions
 
-The following topics require future architectural decisions. See [`docs/ai_plans/`](../ai_plans/) for implementation plans:
+The following topics require future architectural decisions. See the master roadmap for implementation plans:
 
-| Topic                                    | Current State               | Reference                                                                          |
-| ---------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------- |
-| Multi-hop graph traversal (BFS/DFS)      | 1-hop only via `node_links` | See [11-risks-and-debt.md R-02](11-risks-and-debt.md)                              |
-| External vector DB migration             | In-memory cosine similarity | See ADR-002 consequences                                                           |
-| Multi-tenant SaaS architecture           | Single-tenant in v1         | See [docs/saas-commercialization-roadmap.md](../saas-commercialization-roadmap.md) |
-| Local LLM adapter (Ollama native)        | OpenAI-compatible only      | See ADR-004 consequences                                                           |
-| VS Code extension distribution (`.vsix`) | No CI packaging step        | See [11-risks-and-debt.md D-02](11-risks-and-debt.md)                              |
+| Topic                                    | Current State               | Reference                                                                                                              |
+| ---------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Multi-hop graph traversal (BFS/DFS)      | 1-hop only via `node_links` | See [11-risks-and-debt.md R-02](11-risks-and-debt.md)                                                                  |
+| External vector DB migration             | In-memory cosine similarity | See ADR-002 consequences                                                                                               |
+| Multi-tenant SaaS architecture           | Single-tenant in v1         | See [do../archive_v1_design/saas-commercialization-roadmap.md](../archive_v1_design/saas-commercialization-roadmap.md) |
+| Local LLM adapter (Ollama native)        | OpenAI-compatible only      | See ADR-004 consequences                                                                                               |
+| VS Code extension distribution (`.vsix`) | No CI packaging step        | See [11-risks-and-debt.md D-02](11-risks-and-debt.md)                                                                  |
 
 ---
 

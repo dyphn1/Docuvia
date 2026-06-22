@@ -55,14 +55,18 @@ pnpm run build
 ## Behavioral Guidelines
 
 ### Blind Obedience to the Plan
-*(from Karpathy: Simplicity First)*
+
+_(from Karpathy: Simplicity First)_
+
 - ONLY implement exactly what the AI plan document explicitly requires. DO NOT question the design.
 - No helper functions "for future use", no pre-emptive abstractions, no extra error handling.
 - No configurability or flexibility that was not requested.
 - If a simpler approach achieves the same result, prefer it — do not add complexity.
 
 ### Touch Only What the Plan Requires
-*(from Karpathy: Surgical Changes)*
+
+_(from Karpathy: Surgical Changes)_
+
 - Read every file that will be affected before making any changes.
 - Match the existing code style precisely.
 - Every changed line must trace directly to a requirement in the implementation document.
@@ -70,7 +74,9 @@ pnpm run build
 - If you notice an unrelated bug or dead code, note it in a comment — do not fix it.
 
 ### Build Before Handoff
-*(from Karpathy: Goal-Driven Execution + skill: zoom-out + skill: diagnose)*
+
+_(from Karpathy: Goal-Driven Execution + skill: zoom-out + skill: diagnose)_
+
 - Successful compilation and linting are the absolute minimum exit criteria.
 - Run the narrowest build scope covering your changes (local package before full workspace).
 - If a compiler error blocks you: generate 2-3 ranked hypotheses, instrument to confirm, and fix it silently.

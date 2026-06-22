@@ -1,17 +1,21 @@
 # Graph Index — Node Links
 
 ## Overview
+
 Model dependencies between knowledge nodes as a graph for traversal and impact analysis.
 
 ## Implementation
+
 `lib/db/src/schema/node_links.ts`. Types: `nodeLink.ts`, `nodeLinkInput.ts`, `projectGraph.ts`.
 
 ### Key Files
+
 - `lib/db/src/schema/node_links.ts`
 - `lib/api-zod/src/generated/types/nodeLink.ts`
 - `lib/api-zod/src/generated/types/projectGraph.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -48,20 +52,17 @@ Model dependencies between knowledge nodes as a graph for traversal and impact a
   - `projectGraph.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Database Schema Validation
 
 - [ ] **Trigger `Database Schema Expert`**:
   - Inspect the Drizzle schema definitions for correct column types, indexes, and relations.
   - **Validation Goal**: Ensure that `drizzle-kit generate` produces valid SQL without errors and that the data model perfectly aligns with application requirements.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
-
 
 ### Project Build & Type Verification
 

@@ -44,9 +44,15 @@ router.post("/search/feedback", async (req, res) => {
     // For now, simply update the lastVerifiedAt for l2 or l3, or any node
     // A robust implementation would log this interaction based on interactionType
     if (nodeLayer === "l2") {
-      await db.update(l2NodesTable).set({ lastVerifiedAt: new Date() }).where(eq(l2NodesTable.id, nodeId));
+      await db
+        .update(l2NodesTable)
+        .set({ lastVerifiedAt: new Date() })
+        .where(eq(l2NodesTable.id, nodeId));
     } else if (nodeLayer === "l3") {
-      await db.update(l3NodesTable).set({ lastVerifiedAt: new Date() }).where(eq(l3NodesTable.id, nodeId));
+      await db
+        .update(l3NodesTable)
+        .set({ lastVerifiedAt: new Date() })
+        .where(eq(l3NodesTable.id, nodeId));
     }
 
     res.json({ success: true });

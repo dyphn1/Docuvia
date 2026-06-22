@@ -6,9 +6,9 @@
  * strings and extracts imports, classes, functions, and calls.
  */
 
-import path from 'node:path';
-import { Parser, Language } from 'web-tree-sitter';
-import { LanguageRegistry } from '@workspace/ast-core';
+import path from "node:path";
+import { Parser, Language } from "web-tree-sitter";
+import { LanguageRegistry } from "@workspace/ast-core";
 
 // ── Sample C source ──────────────────────────────────────────────────────────
 const cSource = `
@@ -85,38 +85,33 @@ int main() {
 `;
 
 async function demo() {
-  const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..');
-  const wasmBasePath = path.join(
-    repoRoot,
-    'artifacts',
-    'api-server',
-    'node_modules',
-  );
+  const repoRoot = path.resolve(import.meta.dirname, "..", "..", "..");
+  const wasmBasePath = path.join(repoRoot, "artifacts", "api-server", "node_modules");
 
   const registry = await LanguageRegistry.load();
 
   // ── Parser.init with wasm location (same pattern as ast-worker.ts) ────────
-  const { createRequire } = await import('node:module');
+  const { createRequire } = await import("node:module");
   const require = createRequire(import.meta.url);
-  const tsSitterDir = path.dirname(require.resolve('web-tree-sitter'));
-  const treeSitterWasm = path.join(tsSitterDir, 'web-tree-sitter.wasm');
+  const tsSitterDir = path.dirname(require.resolve("web-tree-sitter"));
+  const treeSitterWasm = path.join(tsSitterDir, "web-tree-sitter.wasm");
   await Parser.init({ locateFile: () => treeSitterWasm });
 
   // ── Parse C ──────────────────────────────────────────────────────────────
-  console.log('=== C Parsing ===');
+  console.log("=== C Parsing ===");
 
-  const cProvider = registry.getProviderForExtension('.c');
+  const cProvider = registry.getProviderForExtension(".c");
   if (!cProvider) {
-    console.error('ERROR: No provider registered for .c');
+    console.error("ERROR: No provider registered for .c");
     process.exit(1);
   }
 
-  const cWasmPath = path.join(wasmBasePath, 'tree-sitter-c', 'tree-sitter-c.wasm');
+  const cWasmPath = path.join(wasmBasePath, "tree-sitter-c", "tree-sitter-c.wasm");
   const cLang = await Language.load(cWasmPath);
   const cParser = new Parser();
   cParser.setLanguage(cLang);
   const cTree = cParser.parse(cSource);
-  if (!cTree) throw new Error('C: parse returned null');
+  if (!cTree) throw new Error("C: parse returned null");
   const cRoot = cTree.rootNode;
 
   const cImports = cProvider.extractImports(cRoot);
@@ -129,25 +124,25 @@ async function demo() {
   console.log(`  functions: ${cFunctions.length}  (expected 2 — add, main)`);
   console.log(`  calls: ${cCalls.length}  (expected 2 — add, printf)`);
 
-  if (cImports.length < 3) throw new Error('C: expected at least 3 #include imports');
-  if (cClasses.length < 4) throw new Error('C: expected at least 4 class-like nodes');
-  if (cFunctions.length < 2) throw new Error('C: expected at least 2 functions');
+  if (cImports.length < 3) throw new Error("C: expected at least 3 #include imports");
+  if (cClasses.length < 4) throw new Error("C: expected at least 4 class-like nodes");
+  if (cFunctions.length < 2) throw new Error("C: expected at least 2 functions");
 
   // ── Parse C++ ────────────────────────────────────────────────────────────
-  console.log('\n=== C++ Parsing ===');
+  console.log("\n=== C++ Parsing ===");
 
-  const cppProvider = registry.getProviderForExtension('.cpp');
+  const cppProvider = registry.getProviderForExtension(".cpp");
   if (!cppProvider) {
-    console.error('ERROR: No provider registered for .cpp');
+    console.error("ERROR: No provider registered for .cpp");
     process.exit(1);
   }
 
-  const cppWasmPath = path.join(wasmBasePath, 'tree-sitter-cpp', 'tree-sitter-cpp.wasm');
+  const cppWasmPath = path.join(wasmBasePath, "tree-sitter-cpp", "tree-sitter-cpp.wasm");
   const cppLang = await Language.load(cppWasmPath);
   const cppParser = new Parser();
   cppParser.setLanguage(cppLang);
   const cppTree = cppParser.parse(cppSource);
-  if (!cppTree) throw new Error('C++: parse returned null');
+  if (!cppTree) throw new Error("C++: parse returned null");
   const cppRoot = cppTree.rootNode;
 
   const cppImports = cppProvider.extractImports(cppRoot);
@@ -157,17 +152,19 @@ async function demo() {
 
   console.log(`  imports (preproc_include + using): ${cppImports.length}  (expected 5)`);
   console.log(`  classes (class/struct/enum/union/typedef): ${cppClasses.length}  (expected 4)`);
-  console.log(`  functions: ${cppFunctions.length}  (expected 4 — Circle::Circle, Circle::area, maximum, main)`);
+  console.log(
+    `  functions: ${cppFunctions.length}  (expected 4 — Circle::Circle, Circle::area, maximum, main)`
+  );
   console.log(`  calls: ${cppCalls.length}`);
 
-  if (cppImports.length < 4) throw new Error('C++: expected at least 4 import nodes');
-  if (cppClasses.length < 3) throw new Error('C++: expected at least 3 class-like nodes');
-  if (cppFunctions.length < 3) throw new Error('C++: expected at least 3 functions');
+  if (cppImports.length < 4) throw new Error("C++: expected at least 4 import nodes");
+  if (cppClasses.length < 3) throw new Error("C++: expected at least 3 class-like nodes");
+  if (cppFunctions.length < 3) throw new Error("C++: expected at least 3 functions");
 
-  console.log('\n✅ C/C++ AST parsing demo complete — all assertions passed.');
+  console.log("\n✅ C/C++ AST parsing demo complete — all assertions passed.");
 }
 
 demo().catch((err) => {
-  console.error('Demo failed:', err);
+  console.error("Demo failed:", err);
   process.exit(1);
 });

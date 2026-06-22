@@ -1,17 +1,21 @@
 # CI/CD Pipeline
 
 ## Overview
+
 Automate lint, test, and build checks on every push and pull request via GitHub Actions.
 
 ## Implementation
+
 `.github/workflows/ci.yml` — parallel `lint` job (pnpm prettier --check) and `typecheck-and-build` job (typecheck all + build all), pnpm 9, Node 22, `concurrency.cancel-in-progress: true` to abort stale runs.
 
 ### Key Files
+
 - `.github/workflows/ci.yml`
 - `.prettierrc`
 - `.prettierignore`
 
 ## Status
+
 **✅ Done**
 
 > ⚠️ **Doc was stale** — previously recorded as "Not started" but the CI/CD pipeline is fully implemented.
@@ -55,6 +59,7 @@ Automate lint, test, and build checks on every push and pull request via GitHub 
   ```bash
   pnpm prettier --check .
   ```
+
   - **Validation Goal**: Exit code 0 — no unformatted files. Any failure means the CI `lint` job would also fail.
 
 ### Build Integrity Verification
@@ -63,6 +68,7 @@ Automate lint, test, and build checks on every push and pull request via GitHub 
   ```bash
   pnpm run typecheck && pnpm run build
   ```
+
   - **Validation Goal**: Both commands exit with code 0, proving the CI `typecheck-and-build` job would pass on the current HEAD.
 
 ### Frontend Validation
@@ -70,7 +76,6 @@ Automate lint, test, and build checks on every push and pull request via GitHub 
 - [ ] **Trigger `Frontend Developer`**:
   - Inspect the `.tsx` files for correct component hierarchy, prop types, and state management.
   - **Validation Goal**: Guarantee that there are no unused variables, exhaustive dependencies are met in `useEffect`, and the UI aligns with the wireframe/design spec.
-
 
 ### Project Build & Type Verification
 

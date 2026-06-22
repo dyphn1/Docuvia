@@ -22,10 +22,7 @@ import { scoreCommit } from "../lib/commit-scorer.js";
 const router = Router();
 
 function validateGitHubSignature(rawBody: Buffer, signature: string, secret: string): boolean {
-  const expected = `sha256=${crypto
-    .createHmac("sha256", secret)
-    .update(rawBody)
-    .digest("hex")}`;
+  const expected = `sha256=${crypto.createHmac("sha256", secret).update(rawBody).digest("hex")}`;
   // Pad to same length to avoid timing attacks if lengths differ
   const sigBuf = Buffer.from(signature.padEnd(expected.length, "\0"));
   const expBuf = Buffer.from(expected.padEnd(sigBuf.length, "\0"));
@@ -74,26 +71,24 @@ async function generatePrAiSummary(
 ): Promise<string> {
   // Gather L3 nodes created for commits linked to this project after PR creation
   const l3Nodes = await db
-    .select({ title: l3NodesTable.title, nodeType: l3NodesTable.nodeType, content: l3NodesTable.content })
+    .select({
+      title: l3NodesTable.title,
+      nodeType: l3NodesTable.nodeType,
+      content: l3NodesTable.content,
+    })
     .from(l3NodesTable)
     .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
-    .where(
-      and(
-        eq(l2NodesTable.projectId, projectId),
-        gte(l3NodesTable.createdAt, prCreatedAt)
-      )
-    )
+    .where(and(eq(l2NodesTable.projectId, projectId), gte(l3NodesTable.createdAt, prCreatedAt)))
     .limit(50);
 
   const l2Nodes = await db
-    .select({ name: l2NodesTable.name, type: l2NodesTable.type, description: l2NodesTable.description })
+    .select({
+      name: l2NodesTable.name,
+      type: l2NodesTable.type,
+      description: l2NodesTable.description,
+    })
     .from(l2NodesTable)
-    .where(
-      and(
-        eq(l2NodesTable.projectId, projectId),
-        gte(l2NodesTable.createdAt, prCreatedAt)
-      )
-    )
+    .where(and(eq(l2NodesTable.projectId, projectId), gte(l2NodesTable.createdAt, prCreatedAt)))
     .limit(30);
 
   if (!l3Nodes.length && !l2Nodes.length) {
@@ -164,10 +159,7 @@ router.post("/:projectId", async (req, res) => {
     return res.status(400).json({ error: "Missing pull_request payload" });
   }
 
-  const [project] = await db
-    .select()
-    .from(projectsTable)
-    .where(eq(projectsTable.id, projectId));
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) {
     return res.status(404).json({ error: "Project not found" });
   }
@@ -284,11 +276,14 @@ router.post("/:projectId", async (req, res) => {
                   eq(l3NodesTable.validityStatus, "pending")
                 )
               );
-              
+
             logger.info({ projectId, prNumber }, "Updated L3 nodes validity status on PR merge");
           }
         } catch (err) {
-          logger.warn({ err, projectId, prNumber }, "Failed to update L3 nodes validity status on PR merge");
+          logger.warn(
+            { err, projectId, prNumber },
+            "Failed to update L3 nodes validity status on PR merge"
+          );
         }
 
         // Get the PR record to know its creation time

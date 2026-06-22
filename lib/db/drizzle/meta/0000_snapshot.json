@@ -146,9 +146,7 @@
         "l1_tags_name_unique": {
           "name": "l1_tags_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},
@@ -228,12 +226,8 @@
           "name": "commit_l2_links_commit_id_commits_id_fk",
           "tableFrom": "commit_l2_links",
           "tableTo": "commits",
-          "columnsFrom": [
-            "commit_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["commit_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -241,12 +235,8 @@
           "name": "commit_l2_links_l2_node_id_l2_nodes_id_fk",
           "tableFrom": "commit_l2_links",
           "tableTo": "l2_nodes",
-          "columnsFrom": [
-            "l2_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["l2_node_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -256,10 +246,7 @@
         "commit_l2_links_commit_l2_unique": {
           "name": "commit_l2_links_commit_l2_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "commit_id",
-            "l2_node_id"
-          ]
+          "columns": ["commit_id", "l2_node_id"]
         }
       },
       "policies": {},
@@ -295,12 +282,8 @@
           "name": "l2_node_l1_tags_l2_node_id_l2_nodes_id_fk",
           "tableFrom": "l2_node_l1_tags",
           "tableTo": "l2_nodes",
-          "columnsFrom": [
-            "l2_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["l2_node_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -415,12 +398,8 @@
           "name": "l2_nodes_project_id_projects_id_fk",
           "tableFrom": "l2_nodes",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -546,12 +525,8 @@
           "name": "l3_nodes_l2_node_id_l2_nodes_id_fk",
           "tableFrom": "l3_nodes",
           "tableTo": "l2_nodes",
-          "columnsFrom": [
-            "l2_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["l2_node_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -655,12 +630,8 @@
           "name": "commits_project_id_projects_id_fk",
           "tableFrom": "commits",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -668,12 +639,8 @@
           "name": "commits_l2_node_id_l2_nodes_id_fk",
           "tableFrom": "commits",
           "tableTo": "l2_nodes",
-          "columnsFrom": [
-            "l2_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["l2_node_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -882,12 +849,8 @@
           "name": "documents_project_id_projects_id_fk",
           "tableFrom": "documents",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -895,12 +858,8 @@
           "name": "documents_l2_node_id_l2_nodes_id_fk",
           "tableFrom": "documents",
           "tableTo": "l2_nodes",
-          "columnsFrom": [
-            "l2_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["l2_node_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -954,12 +913,8 @@
           "name": "node_links_source_node_id_l2_nodes_id_fk",
           "tableFrom": "node_links",
           "tableTo": "l2_nodes",
-          "columnsFrom": [
-            "source_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_node_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -967,12 +922,8 @@
           "name": "node_links_target_node_id_l2_nodes_id_fk",
           "tableFrom": "node_links",
           "tableTo": "l2_nodes",
-          "columnsFrom": [
-            "target_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["target_node_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1083,12 +1034,8 @@
           "name": "llm_configs_project_id_projects_id_fk",
           "tableFrom": "llm_configs",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1156,12 +1103,8 @@
           "name": "prompt_templates_project_id_projects_id_fk",
           "tableFrom": "prompt_templates",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1232,12 +1175,8 @@
           "name": "correction_examples_project_id_projects_id_fk",
           "tableFrom": "correction_examples",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1284,12 +1223,8 @@
           "name": "subscriptions_subscriber_project_id_projects_id_fk",
           "tableFrom": "subscriptions",
           "tableTo": "projects",
-          "columnsFrom": [
-            "subscriber_project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["subscriber_project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1297,12 +1232,8 @@
           "name": "subscriptions_publisher_project_id_projects_id_fk",
           "tableFrom": "subscriptions",
           "tableTo": "projects",
-          "columnsFrom": [
-            "publisher_project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["publisher_project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1312,10 +1243,7 @@
         "subscriptions_subscriber_project_id_publisher_project_id_unique": {
           "name": "subscriptions_subscriber_project_id_publisher_project_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "subscriber_project_id",
-            "publisher_project_id"
-          ]
+          "columns": ["subscriber_project_id", "publisher_project_id"]
         }
       },
       "policies": {},
@@ -1371,12 +1299,8 @@
           "name": "notifications_project_id_projects_id_fk",
           "tableFrom": "notifications",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1494,12 +1418,8 @@
           "name": "pull_requests_project_id_projects_id_fk",
           "tableFrom": "pull_requests",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1574,12 +1494,8 @@
           "name": "project_integrations_project_id_projects_id_fk",
           "tableFrom": "project_integrations",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1595,129 +1511,67 @@
     "public.project_status": {
       "name": "project_status",
       "schema": "public",
-      "values": [
-        "active",
-        "indexing",
-        "paused",
-        "error"
-      ]
+      "values": ["active", "indexing", "paused", "error"]
     },
     "public.vcs_type": {
       "name": "vcs_type",
       "schema": "public",
-      "values": [
-        "git",
-        "svn"
-      ]
+      "values": ["git", "svn"]
     },
     "public.l2_node_type": {
       "name": "l2_node_type",
       "schema": "public",
-      "values": [
-        "package",
-        "module",
-        "pcd",
-        "sys-uncategorized"
-      ]
+      "values": ["package", "module", "pcd", "sys-uncategorized"]
     },
     "public.l3_node_type": {
       "name": "l3_node_type",
       "schema": "public",
-      "values": [
-        "change",
-        "rule",
-        "decision",
-        "context"
-      ]
+      "values": ["change", "rule", "decision", "context"]
     },
     "public.review_entity_type": {
       "name": "review_entity_type",
       "schema": "public",
-      "values": [
-        "l1_tag",
-        "l2_node",
-        "l3_node"
-      ]
+      "values": ["l1_tag", "l2_node", "l3_node"]
     },
     "public.review_status": {
       "name": "review_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "approved",
-        "rejected",
-        "deferred"
-      ]
+      "values": ["pending", "approved", "rejected", "deferred"]
     },
     "public.review_task_type": {
       "name": "review_task_type",
       "schema": "public",
-      "values": [
-        "anchor",
-        "correct",
-        "validate",
-        "merge"
-      ]
+      "values": ["anchor", "correct", "validate", "merge"]
     },
     "public.activity_type": {
       "name": "activity_type",
       "schema": "public",
-      "values": [
-        "commit",
-        "l2_created",
-        "l3_created",
-        "review_resolved",
-        "tag_added",
-        "document"
-      ]
+      "values": ["commit", "l2_created", "l3_created", "review_resolved", "tag_added", "document"]
     },
     "public.document_type": {
       "name": "document_type",
       "schema": "public",
-      "values": [
-        "markdown",
-        "txt",
-        "pdf",
-        "docx",
-        "pptx",
-        "build_artifact"
-      ]
+      "values": ["markdown", "txt", "pdf", "docx", "pptx", "build_artifact"]
     },
     "public.prompt_template_type": {
       "name": "prompt_template_type",
       "schema": "public",
-      "values": [
-        "l1_tagger",
-        "l2_extractor",
-        "l3_generator"
-      ]
+      "values": ["l1_tagger", "l2_extractor", "l3_generator"]
     },
     "public.pr_analysis_status": {
       "name": "pr_analysis_status",
       "schema": "public",
-      "values": [
-        "pending",
-        "in_progress",
-        "completed",
-        "failed"
-      ]
+      "values": ["pending", "in_progress", "completed", "failed"]
     },
     "public.pr_state": {
       "name": "pr_state",
       "schema": "public",
-      "values": [
-        "open",
-        "closed",
-        "merged"
-      ]
+      "values": ["open", "closed", "merged"]
     },
     "public.integration_type": {
       "name": "integration_type",
       "schema": "public",
-      "values": [
-        "slack",
-        "teams"
-      ]
+      "values": ["slack", "teams"]
     }
   },
   "schemas": {},

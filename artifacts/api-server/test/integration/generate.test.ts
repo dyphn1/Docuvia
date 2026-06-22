@@ -41,13 +41,16 @@ describe("POST /api/projects/:id/generate", () => {
       expect(updatedProject.status).toBe("active");
 
       const l1Tags = await db.select().from(l1TagsTable);
-      expect(l1Tags.some(t => t.name === "tag1")).toBe(true);
+      expect(l1Tags.some((t) => t.name === "tag1")).toBe(true);
 
-      const l2Nodes = await db.select().from(l2NodesTable).where(eq(l2NodesTable.projectId, project.id));
-      expect(l2Nodes.some(n => n.name === "module1")).toBe(true);
+      const l2Nodes = await db
+        .select()
+        .from(l2NodesTable)
+        .where(eq(l2NodesTable.projectId, project.id));
+      expect(l2Nodes.some((n) => n.name === "module1")).toBe(true);
 
       const l3Nodes = await db.select().from(l3NodesTable);
-      expect(l3Nodes.some(n => n.title === "rule1")).toBe(true);
+      expect(l3Nodes.some((n) => n.title === "rule1")).toBe(true);
     });
   });
 });

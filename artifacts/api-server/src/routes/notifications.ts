@@ -18,10 +18,7 @@ router.get("/projects/:projectId/notifications", async (req, res) => {
     const query = ListProjectNotificationsQueryParams.parse(req.query);
 
     const whereClause = query.unreadOnly
-      ? and(
-          eq(notificationsTable.projectId, params.projectId),
-          eq(notificationsTable.read, false)
-        )
+      ? and(eq(notificationsTable.projectId, params.projectId), eq(notificationsTable.read, false))
       : eq(notificationsTable.projectId, params.projectId);
 
     const items = await db
@@ -75,10 +72,7 @@ router.post("/notifications/mark-all-read", async (req, res) => {
       .update(notificationsTable)
       .set({ read: true })
       .where(
-        and(
-          eq(notificationsTable.projectId, body.projectId),
-          eq(notificationsTable.read, false)
-        )
+        and(eq(notificationsTable.projectId, body.projectId), eq(notificationsTable.read, false))
       )
       .returning();
 

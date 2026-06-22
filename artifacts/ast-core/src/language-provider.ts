@@ -1,5 +1,5 @@
-import type { Language, Node, QueryCapture } from 'web-tree-sitter';
-import { Query } from 'web-tree-sitter';
+import type { Language, Node, QueryCapture } from "web-tree-sitter";
+import { Query } from "web-tree-sitter";
 
 export interface LanguageProvider {
   wasm_file: string;
@@ -78,7 +78,7 @@ export class DefaultProvider implements LanguageProvider {
 
   extractClasses(rootNode: Node): Node[] {
     if (this.compiledQueries?.classes) {
-      return this.captureNodes(rootNode, ['class'], this.compiledQueries.classes);
+      return this.captureNodes(rootNode, ["class"], this.compiledQueries.classes);
     }
     // Fallback to descendantsOfType
     const nodes: Node[] = [];
@@ -90,7 +90,7 @@ export class DefaultProvider implements LanguageProvider {
 
   extractFunctions(rootNode: Node): Node[] {
     if (this.compiledQueries?.functions) {
-      return this.captureNodes(rootNode, ['function'], this.compiledQueries.functions);
+      return this.captureNodes(rootNode, ["function"], this.compiledQueries.functions);
     }
     // Fallback to descendantsOfType
     const nodes: Node[] = [];
@@ -102,7 +102,7 @@ export class DefaultProvider implements LanguageProvider {
 
   extractImports(rootNode: Node): Node[] {
     if (this.compiledQueries?.imports) {
-      return this.captureNodes(rootNode, ['import'], this.compiledQueries.imports);
+      return this.captureNodes(rootNode, ["import"], this.compiledQueries.imports);
     }
     // Fallback to descendantsOfType
     const nodes: Node[] = [];
@@ -114,7 +114,7 @@ export class DefaultProvider implements LanguageProvider {
 
   extractCalls(rootNode: Node): Node[] {
     if (this.compiledQueries?.calls) {
-      return this.captureNodes(rootNode, ['call'], this.compiledQueries.calls);
+      return this.captureNodes(rootNode, ["call"], this.compiledQueries.calls);
     }
     // Fallback to descendantsOfType
     const nodes: Node[] = [];

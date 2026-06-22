@@ -1,17 +1,21 @@
 # Document Parser
 
 ## Overview
+
 Parse uploaded documents (PDF, Word, PPTX, Markdown, TXT) into structured text for knowledge construction.
 
 ## Implementation
+
 `artifacts/api-server/src/lib/document-parser.ts`. Upload middleware: `middlewares/upload.ts`. Types: `documentIngestInput.ts`, `documentUploadInput.ts`, `documentDocType.ts`.
 
 ### Key Files
+
 - `artifacts/api-server/src/lib/document-parser.ts`
 - `artifacts/api-server/src/middlewares/upload.ts`
 - `lib/api-zod/src/generated/types/documentIngestInput.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -54,7 +58,6 @@ Parse uploaded documents (PDF, Word, PPTX, Markdown, TXT) into structured text f
   - `POST /projects/:id/ingest/document/upload`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -63,20 +66,17 @@ Parse uploaded documents (PDF, Word, PPTX, Markdown, TXT) into structured text f
   - **multipart endpoint**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
 
-
 ### Frontend Validation
 
 - [ ] **Trigger `Frontend Developer`**:
   - Inspect the `.tsx` files for correct component hierarchy, prop types, and state management.
   - **Validation Goal**: Guarantee that there are no unused variables, exhaustive dependencies are met in `useEffect`, and the UI aligns with the wireframe/design spec.
-
 
 ### Project Build & Type Verification
 

@@ -1,14 +1,31 @@
-
 import { db } from "@workspace/db";
-import { 
-  projectsTable, l2NodesTable, l3NodesTable, commitsTable, documentsTable, 
-  l1TagsTable, reviewTasksTable, correctionExamplesTable, pullRequestsTable, 
-  llmConfigsTable, promptTemplatesTable, activityLogTable 
+import {
+  projectsTable,
+  l2NodesTable,
+  l3NodesTable,
+  commitsTable,
+  documentsTable,
+  l1TagsTable,
+  reviewTasksTable,
+  correctionExamplesTable,
+  pullRequestsTable,
+  llmConfigsTable,
+  promptTemplatesTable,
+  activityLogTable,
 } from "@workspace/db";
-import { 
-  InsertProject, InsertL2Node, InsertL3Node, InsertCommit, InsertDocument, 
-  InsertL1Tag, InsertReviewTask, InsertCorrectionExample, InsertPullRequest, 
-  InsertLlmConfig, InsertPromptTemplate, InsertActivityLog 
+import {
+  InsertProject,
+  InsertL2Node,
+  InsertL3Node,
+  InsertCommit,
+  InsertDocument,
+  InsertL1Tag,
+  InsertReviewTask,
+  InsertCorrectionExample,
+  InsertPullRequest,
+  InsertLlmConfig,
+  InsertPromptTemplate,
+  InsertActivityLog,
 } from "@workspace/db";
 import { faker } from "@faker-js/faker";
 

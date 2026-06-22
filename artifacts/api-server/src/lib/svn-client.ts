@@ -41,11 +41,9 @@ export async function* getSvnLog(
   const revRange = `${startRevision}:${endRevision}`;
 
   const abortController = new AbortController();
-  const svnProcess = spawn(
-    "svn",
-    ["log", "--xml", "-r", revRange, svnUrl, ...authArgs],
-    { signal: abortController.signal }
-  );
+  const svnProcess = spawn("svn", ["log", "--xml", "-r", revRange, svnUrl, ...authArgs], {
+    signal: abortController.signal,
+  });
 
   let resolveNext: (() => void) | null = null;
   let rejectNext: ((err: Error) => void) | null = null;

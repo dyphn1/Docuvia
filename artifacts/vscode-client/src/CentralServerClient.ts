@@ -1,6 +1,6 @@
-import { CredentialManager } from './CredentialManager.js';
-import { KnowledgeStore } from './KnowledgeStore.js';
-import { KnowledgeSnapshot } from './types.js';
+import { CredentialManager } from "./CredentialManager.js";
+import { KnowledgeStore } from "./KnowledgeStore.js";
+import { KnowledgeSnapshot } from "./types.js";
 
 /** Request body for POST /query */
 export interface CentralQueryRequest {
@@ -21,9 +21,9 @@ export interface CentralSearchResult {
 export class CentralServerAuthError extends Error {
   readonly statusCode = 401;
 
-  constructor(message = 'Unauthorized') {
+  constructor(message = "Unauthorized") {
     super(message);
-    this.name = 'CentralServerAuthError';
+    this.name = "CentralServerAuthError";
   }
 }
 
@@ -43,15 +43,15 @@ export class CentralServerClient {
    * Throws CentralServerAuthError on 401.
    */
   async query(q: string, limit = 10): Promise<CentralSearchResult[]> {
-    if (process.env.DOCUVIA_MOCK_SERVER === '1') {
+    if (process.env.DOCUVIA_MOCK_SERVER === "1") {
       return [
         {
-          title: 'Mocked Result',
-          projectName: 'mock-project',
-          l1Tags: ['mock-tag'],
-          snippet: 'This is a mocked snippet for E2E testing.',
+          title: "Mocked Result",
+          projectName: "mock-project",
+          l1Tags: ["mock-tag"],
+          snippet: "This is a mocked snippet for E2E testing.",
           score: 1.0,
-        }
+        },
       ];
     }
 
@@ -62,21 +62,21 @@ export class CentralServerClient {
 
     const token = await this._creds.getToken();
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
     if (token) {
-      headers['x-docuvia-token'] = token;
+      headers["x-docuvia-token"] = token;
     }
 
     const body: CentralQueryRequest = { q, limit };
     const response = await fetch(`${serverUrl}/query`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify(body),
     });
 
     if (response.status === 401) {
-      throw new CentralServerAuthError('Unauthorized');
+      throw new CentralServerAuthError("Unauthorized");
     }
 
     if (!response.ok) {
@@ -97,7 +97,7 @@ export class CentralServerClient {
    * Calls POST /sync with the project ID, branch name, and commit hashes.
    */
   async sync(projectId: number, branch: string, commits: string[]): Promise<void> {
-    if (process.env.DOCUVIA_MOCK_SERVER === '1') {
+    if (process.env.DOCUVIA_MOCK_SERVER === "1") {
       return;
     }
 
@@ -106,14 +106,14 @@ export class CentralServerClient {
 
     const token = await this._creds.getToken();
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
     if (token) {
-      headers['x-docuvia-token'] = token;
+      headers["x-docuvia-token"] = token;
     }
 
     const response = await fetch(`${serverUrl}/sync`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify({ projectId, pushedBranch: branch, pushedCommits: commits }),
     });
@@ -131,30 +131,41 @@ export class CentralServerClient {
    * Calls GET /projects/{id}/graph which returns L1 tags, L2 nodes, and L3 nodes.
    */
   async pullSnapshot(projectId: number): Promise<KnowledgeSnapshot> {
-    if (process.env.DOCUVIA_MOCK_SERVER === '1') {
+    if (process.env.DOCUVIA_MOCK_SERVER === "1") {
       return {
         projectId,
-        l1Tags: [
-          { id: 1, name: 'Mock L1 Tag', category: 'General', description: 'Mock tag' }
-        ],
+        l1Tags: [{ id: 1, name: "Mock L1 Tag", category: "General", description: "Mock tag" }],
         l2Nodes: [
-          { id: 1, projectId, name: 'Mock L2 Module', type: 'module', description: 'Mock module', l1TagIds: [1] }
+          {
+            id: 1,
+            projectId,
+            name: "Mock L2 Module",
+            type: "module",
+            description: "Mock module",
+            l1TagIds: [1],
+          },
         ],
         l3Nodes: [
-          { id: 1, l2NodeId: 1, title: 'Mock L3 Decision', content: 'Mock content', nodeType: 'decision' }
-        ]
+          {
+            id: 1,
+            l2NodeId: 1,
+            title: "Mock L3 Decision",
+            content: "Mock content",
+            nodeType: "decision",
+          },
+        ],
       };
     }
 
     const serverUrl = this._store.globalConfig?.server_url;
     if (!serverUrl) {
-      throw new Error('Server URL not configured');
+      throw new Error("Server URL not configured");
     }
 
     const token = await this._creds.getToken();
     const headers: Record<string, string> = {};
     if (token) {
-      headers['x-docuvia-token'] = token;
+      headers["x-docuvia-token"] = token;
     }
 
     const response = await fetch(`${serverUrl}/projects/${projectId}/graph`, { headers });
@@ -197,7 +208,7 @@ export class CentralServerClient {
       const token = await this._creds.getToken();
       const headers: Record<string, string> = {};
       if (token) {
-        headers['x-docuvia-token'] = token;
+        headers["x-docuvia-token"] = token;
       }
       await fetch(`${serverUrl}/api/metabolism-tick`, { headers });
     } catch (error) {
@@ -205,21 +216,21 @@ export class CentralServerClient {
     }
   }
 
-  async sendFeedback(id: number, nodeLayer: 'l2' | 'l3'): Promise<void> {
+  async sendFeedback(id: number, nodeLayer: "l2" | "l3"): Promise<void> {
     const serverUrl = this._store.globalConfig?.server_url;
     if (!serverUrl) return;
 
     const token = await this._creds.getToken();
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     };
     if (token) {
-      headers['x-docuvia-token'] = token;
+      headers["x-docuvia-token"] = token;
     }
 
     try {
       await fetch(`${serverUrl}/api/search/feedback`, {
-        method: 'POST',
+        method: "POST",
         headers,
         body: JSON.stringify({ id, nodeLayer }),
       });

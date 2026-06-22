@@ -13,7 +13,7 @@ export const SCORER_CONSTANTS = {
 
 export function scoreCommit(message?: string, diff?: string): { score: number; valid: boolean } {
   if (!message) return { score: SCORER_CONSTANTS.BOT_PENALTY_SCORE, valid: false };
-  
+
   // No need to lower-case manually if we use /i regex flags
   const noisePatterns = [
     /^merge (pull request|branch)/i,
@@ -27,13 +27,13 @@ export function scoreCommit(message?: string, diff?: string): { score: number; v
     /^update changelog/i,
     /^\[skip ci\]/i,
     /dependabot\[bot\]/i,
-    /chore\(release\):/i
+    /chore\(release\):/i,
   ];
-  
+
   for (const p of noisePatterns) {
     if (p.test(message)) return { score: SCORER_CONSTANTS.BOT_PENALTY_SCORE, valid: false };
   }
-  
+
   const signalPatterns = [
     /\bfix(ed|es|ing)?\b/i,
     /\bfeat(ure)?\b/i,
@@ -46,12 +46,12 @@ export function scoreCommit(message?: string, diff?: string): { score: number; v
     /\barchitecture\b/i,
     /\bperformance\b/i,
   ];
-  
+
   let score = SCORER_CONSTANTS.BASE_SCORE;
   for (const p of signalPatterns) {
     if (p.test(message)) score += SCORER_CONSTANTS.SIGNAL_BONUS;
   }
-  
+
   if (message.length > SCORER_CONSTANTS.DETAIL_BONUS_LENGTH) {
     score += SCORER_CONSTANTS.DETAIL_BONUS_AMOUNT;
   }
@@ -63,17 +63,17 @@ export function scoreCommit(message?: string, diff?: string): { score: number; v
     // simple heuristic instead of splitting full diff array to save memory
     let lines = 1;
     for (let i = 0; i < diff.length; i++) {
-        if (diff[i] === "\n") lines++;
+      if (diff[i] === "\n") lines++;
     }
-    
+
     if (lines > SCORER_CONSTANTS.DIFF_LENGTH_THRESHOLD) {
       score += SCORER_CONSTANTS.DIFF_LENGTH_BONUS;
     }
   }
 
   const finalScore = Math.min(score, SCORER_CONSTANTS.MAX_SCORE);
-  return { 
-    score: finalScore, 
-    valid: finalScore >= SCORER_CONSTANTS.VALID_THRESHOLD 
+  return {
+    score: finalScore,
+    valid: finalScore >= SCORER_CONSTANTS.VALID_THRESHOLD,
   };
 }

@@ -1,5 +1,5 @@
-import { parse } from 'smol-toml';
-import { LanguageProvider, LanguageConfig, DefaultProvider } from './language-provider.js';
+import { parse } from "smol-toml";
+import { LanguageProvider, LanguageConfig, DefaultProvider } from "./language-provider.js";
 
 export interface LanguageRegistryData {
   languages: Record<string, LanguageConfig>;
@@ -8,12 +8,12 @@ export interface LanguageRegistryData {
 const DEFAULT_REGISTRY: LanguageRegistryData = {
   languages: {
     typescript: {
-      extensions: ['.ts', '.tsx'],
-      wasm_file: 'tree-sitter-typescript.wasm',
-      imports: ['import_statement'],
-      classes: ['class_declaration'],
-      functions: ['function_declaration', 'method_definition'],
-      calls: ['call_expression'],
+      extensions: [".ts", ".tsx"],
+      wasm_file: "tree-sitter-typescript.wasm",
+      imports: ["import_statement"],
+      classes: ["class_declaration"],
+      functions: ["function_declaration", "method_definition"],
+      calls: ["call_expression"],
       queries: {
         classes: `(class_declaration name: (identifier) @class)`,
         functions: `(function_declaration name: (identifier) @function) (method_definition name: (property_identifier) @function)`,
@@ -22,12 +22,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     javascript: {
-      extensions: ['.js', '.jsx'],
-      wasm_file: 'tree-sitter-javascript.wasm',
-      imports: ['import_statement'],
-      classes: ['class_declaration'],
-      functions: ['function_declaration', 'method_definition'],
-      calls: ['call_expression'],
+      extensions: [".js", ".jsx"],
+      wasm_file: "tree-sitter-javascript.wasm",
+      imports: ["import_statement"],
+      classes: ["class_declaration"],
+      functions: ["function_declaration", "method_definition"],
+      calls: ["call_expression"],
       queries: {
         classes: `(class_declaration name: (identifier) @class)`,
         functions: `(function_declaration name: (identifier) @function) (method_definition name: (property_identifier) @function)`,
@@ -36,12 +36,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     python: {
-      extensions: ['.py'],
-      wasm_file: 'tree-sitter-python.wasm',
-      imports: ['import_statement', 'import_from_statement'],
-      classes: ['class_definition'],
-      functions: ['function_definition'],
-      calls: ['call'],
+      extensions: [".py"],
+      wasm_file: "tree-sitter-python.wasm",
+      imports: ["import_statement", "import_from_statement"],
+      classes: ["class_definition"],
+      functions: ["function_definition"],
+      calls: ["call"],
       queries: {
         classes: `(class_definition name: (identifier) @class)`,
         functions: `(function_definition name: (identifier) @function)`,
@@ -50,12 +50,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     rust: {
-      extensions: ['.rs'],
-      wasm_file: 'tree-sitter-rust.wasm',
-      imports: ['use_declaration'],
-      classes: ['struct_item', 'enum_item', 'union_item', 'trait_item'],
-      functions: ['function_item'],
-      calls: ['call_expression'],
+      extensions: [".rs"],
+      wasm_file: "tree-sitter-rust.wasm",
+      imports: ["use_declaration"],
+      classes: ["struct_item", "enum_item", "union_item", "trait_item"],
+      functions: ["function_item"],
+      calls: ["call_expression"],
       queries: {
         classes: `(struct_item name: (type_identifier) @class) (enum_item name: (type_identifier) @class) (union_item name: (type_identifier) @class) (trait_item name: (type_identifier) @class)`,
         functions: `(function_item name: (identifier) @function)`,
@@ -64,12 +64,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     go: {
-      extensions: ['.go'],
-      wasm_file: 'tree-sitter-go.wasm',
-      imports: ['import_declaration'],
-      classes: ['type_declaration'],
-      functions: ['function_declaration', 'method_declaration'],
-      calls: ['call_expression'],
+      extensions: [".go"],
+      wasm_file: "tree-sitter-go.wasm",
+      imports: ["import_declaration"],
+      classes: ["type_declaration"],
+      functions: ["function_declaration", "method_declaration"],
+      calls: ["call_expression"],
       queries: {
         classes: `(type_declaration name: (type_identifier) @class)`,
         functions: `(function_declaration name: (identifier) @function) (method_declaration name: (field_identifier) @function)`,
@@ -78,18 +78,22 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     java: {
-      extensions: ['.java'],
-      wasm_file: 'tree-sitter-java.wasm',
-      imports: ['import_declaration'],
+      extensions: [".java"],
+      wasm_file: "tree-sitter-java.wasm",
+      imports: ["import_declaration"],
       classes: [
-        'class_declaration',
-        'interface_declaration',
-        'enum_declaration',
-        'annotation_type_declaration',
-        'record_declaration',
+        "class_declaration",
+        "interface_declaration",
+        "enum_declaration",
+        "annotation_type_declaration",
+        "record_declaration",
       ],
-      functions: ['method_declaration', 'constructor_declaration', 'compact_constructor_declaration'],
-      calls: ['method_invocation', 'explicit_constructor_invocation'],
+      functions: [
+        "method_declaration",
+        "constructor_declaration",
+        "compact_constructor_declaration",
+      ],
+      calls: ["method_invocation", "explicit_constructor_invocation"],
       queries: {
         classes: `(class_declaration name: (identifier) @class) (interface_declaration name: (identifier) @class) (enum_declaration name: (identifier) @class) (annotation_type_declaration name: (identifier) @class) (record_declaration name: (identifier) @class)`,
         functions: `(method_declaration name: (identifier) @function) (constructor_declaration name: (identifier) @function) (compact_constructor_declaration name: (identifier) @function)`,
@@ -98,12 +102,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     c: {
-      extensions: ['.c', '.h'],
-      wasm_file: 'tree-sitter-c.wasm',
-      imports: ['preproc_include'],
-      classes: ['struct_specifier', 'enum_specifier', 'union_specifier', 'type_definition'],
-      functions: ['function_definition'],
-      calls: ['call_expression'],
+      extensions: [".c", ".h"],
+      wasm_file: "tree-sitter-c.wasm",
+      imports: ["preproc_include"],
+      classes: ["struct_specifier", "enum_specifier", "union_specifier", "type_definition"],
+      functions: ["function_definition"],
+      calls: ["call_expression"],
       queries: {
         classes: `(struct_specifier name: (type_identifier) @class) (enum_specifier name: (type_identifier) @class) (union_specifier name: (type_identifier) @class) (type_definition name: (type_identifier) @class)`,
         functions: `(function_definition declarator: (function_declarator declarator: (identifier) @function))`,
@@ -112,18 +116,18 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     cpp: {
-      extensions: ['.cpp', '.cxx', '.cc', '.hpp', '.hxx', '.hh'],
-      wasm_file: 'tree-sitter-cpp.wasm',
-      imports: ['preproc_include', 'using_declaration'],
+      extensions: [".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".hh"],
+      wasm_file: "tree-sitter-cpp.wasm",
+      imports: ["preproc_include", "using_declaration"],
       classes: [
-        'class_specifier',
-        'struct_specifier',
-        'enum_specifier',
-        'union_specifier',
-        'type_definition',
+        "class_specifier",
+        "struct_specifier",
+        "enum_specifier",
+        "union_specifier",
+        "type_definition",
       ],
-      functions: ['function_definition'],
-      calls: ['call_expression'],
+      functions: ["function_definition"],
+      calls: ["call_expression"],
       queries: {
         classes: `(class_specifier name: (type_identifier) @class) (struct_specifier name: (type_identifier) @class) (enum_specifier name: (type_identifier) @class) (union_specifier name: (type_identifier) @class) (type_definition name: (type_identifier) @class)`,
         functions: `(function_definition declarator: (function_declarator declarator: (identifier) @function))`,
@@ -132,12 +136,12 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     ruby: {
-      extensions: ['.rb', '.rake', '.gemspec'],
-      wasm_file: 'tree-sitter-ruby.wasm',
-      imports: ['call'], // Ruby has no import statements; require/load are method calls
-      classes: ['class', 'module', 'singleton_class'],
-      functions: ['method', 'singleton_method'],
-      calls: ['call', 'command_call'],
+      extensions: [".rb", ".rake", ".gemspec"],
+      wasm_file: "tree-sitter-ruby.wasm",
+      imports: ["call"], // Ruby has no import statements; require/load are method calls
+      classes: ["class", "module", "singleton_class"],
+      functions: ["method", "singleton_method"],
+      calls: ["call", "command_call"],
       queries: {
         classes: `(class name: [(constant) (scope)] @class) (module name: (constant) @class) (singleton_class) @class`,
         functions: `(method name: (identifier) @function) (singleton_method name: (identifier) @function)`,
@@ -146,27 +150,23 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     php: {
-      extensions: ['.php', '.phtml', '.php3', '.php4', '.php5', '.phps'],
-      wasm_file: 'tree-sitter-php.wasm',
+      extensions: [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"],
+      wasm_file: "tree-sitter-php.wasm",
       imports: [
-        'namespace_use_declaration',
-        'include_expression',
-        'include_once_expression',
-        'require_expression',
-        'require_once_expression',
+        "namespace_use_declaration",
+        "include_expression",
+        "include_once_expression",
+        "require_expression",
+        "require_once_expression",
       ],
       classes: [
-        'class_declaration',
-        'interface_declaration',
-        'trait_declaration',
-        'enum_declaration',
+        "class_declaration",
+        "interface_declaration",
+        "trait_declaration",
+        "enum_declaration",
       ],
-      functions: ['function_definition', 'method_declaration'],
-      calls: [
-        'function_call_expression',
-        'member_call_expression',
-        'scoped_call_expression',
-      ],
+      functions: ["function_definition", "method_declaration"],
+      calls: ["function_call_expression", "member_call_expression", "scoped_call_expression"],
       queries: {
         classes: `(class_declaration name: (name) @class) (interface_declaration name: (name) @class) (trait_declaration name: (name) @class) (enum_declaration name: (name) @class)`,
         functions: `(function_definition name: (name) @function) (method_declaration name: (name) @function)`,
@@ -175,28 +175,25 @@ const DEFAULT_REGISTRY: LanguageRegistryData = {
       },
     },
     csharp: {
-      extensions: ['.cs'],
-      wasm_file: 'tree-sitter-c_sharp.wasm',
-      imports: ['using_directive'],
+      extensions: [".cs"],
+      wasm_file: "tree-sitter-c_sharp.wasm",
+      imports: ["using_directive"],
       classes: [
-        'class_declaration',
-        'struct_declaration',
-        'interface_declaration',
-        'enum_declaration',
-        'record_declaration',
+        "class_declaration",
+        "struct_declaration",
+        "interface_declaration",
+        "enum_declaration",
+        "record_declaration",
       ],
       functions: [
-        'method_declaration',
-        'constructor_declaration',
-        'destructor_declaration',
-        'conversion_operator_declaration',
-        'operator_declaration',
-        'local_function_statement',
+        "method_declaration",
+        "constructor_declaration",
+        "destructor_declaration",
+        "conversion_operator_declaration",
+        "operator_declaration",
+        "local_function_statement",
       ],
-      calls: [
-        'invocation_expression',
-        'object_creation_expression',
-      ],
+      calls: ["invocation_expression", "object_creation_expression"],
       queries: {
         classes: `(class_declaration name: (identifier) @class) (struct_declaration name: (identifier) @class) (interface_declaration name: (identifier) @class) (enum_declaration name: (identifier) @class) (record_declaration name: (identifier) @class)`,
         functions: `(method_declaration name: (identifier) @function) (constructor_declaration name: (identifier) @function) (destructor_declaration) @function (conversion_operator_declaration) @function (operator_declaration) @function (local_function_statement) @function`,
@@ -233,16 +230,16 @@ export class LanguageRegistry {
     }
     try {
       const parsed = parse(tomlContent) as unknown as LanguageRegistryData;
-      if (parsed && typeof parsed === 'object' && parsed.languages) {
+      if (parsed && typeof parsed === "object" && parsed.languages) {
         const mergedLanguages = { ...DEFAULT_REGISTRY.languages, ...parsed.languages };
         return new LanguageRegistry({ languages: mergedLanguages });
       }
     } catch (err: any) {
-      console.warn('Failed to parse languages.toml:', err.message);
+      console.warn("Failed to parse languages.toml:", err.message);
     }
     return new LanguageRegistry(DEFAULT_REGISTRY);
   }
-  
+
   // Keep an empty or stubbed out method so api-server won't break heavily if it calls load()
   public static async load(projectRoot?: string): Promise<LanguageRegistry> {
     return new LanguageRegistry(DEFAULT_REGISTRY);

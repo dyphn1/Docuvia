@@ -1,17 +1,21 @@
 # Cross-Team Subscription
 
 ## Overview
+
 Allow teams to subscribe to knowledge updates from other projects and receive notifications on changes.
 
 ## Implementation
+
 `lib/db/src/schema/subscriptions.ts`, `artifacts/api-server/src/routes/subscriptions.ts`. Types: `subscription.ts`, `subscriptionInput.ts`, `subscriptionListResponse.ts`.
 
 ### Key Files
+
 - `lib/db/src/schema/subscriptions.ts`
 - `artifacts/api-server/src/routes/subscriptions.ts`
 - `lib/api-zod/src/generated/types/subscription.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -65,7 +69,6 @@ Allow teams to subscribe to knowledge updates from other projects and receive no
   - `/subscriptions`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -75,13 +78,11 @@ Allow teams to subscribe to knowledge updates from other projects and receive no
   - **page**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### Database Schema Validation
 
 - [ ] **Trigger `Database Schema Expert`**:
   - Inspect the Drizzle schema definitions for correct column types, indexes, and relations.
   - **Validation Goal**: Ensure that `drizzle-kit generate` produces valid SQL without errors and that the data model perfectly aligns with application requirements.
-
 
 ### API Endpoint Validation
 
@@ -89,13 +90,11 @@ Allow teams to subscribe to knowledge updates from other projects and receive no
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
 
-
 ### Frontend Validation
 
 - [ ] **Trigger `Frontend Developer`**:
   - Inspect the `.tsx` files for correct component hierarchy, prop types, and state management.
   - **Validation Goal**: Guarantee that there are no unused variables, exhaustive dependencies are met in `useEffect`, and the UI aligns with the wireframe/design spec.
-
 
 ### Project Build & Type Verification
 

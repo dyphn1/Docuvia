@@ -1,16 +1,20 @@
 # Export (Markdown / JSON)
 
 ## Overview
+
 Export the full knowledge base of a project as Markdown or JSON for external use.
 
 ## Implementation
+
 `artifacts/api-server/src/routes/export.ts`, `projectExport.ts`.
 
 ### Key Files
+
 - `artifacts/api-server/src/routes/export.ts`
 - `lib/api-zod/src/generated/types/projectExport.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -41,13 +45,11 @@ Export the full knowledge base of a project as Markdown or JSON for external use
   - `projectExport.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
-
 
 ### Project Build & Type Verification
 

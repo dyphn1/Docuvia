@@ -1,8 +1,8 @@
-import * as vscode from 'vscode';
-import * as path from 'path';
-import { IntervalTree } from './IntervalTree.js';
-import { KnowledgeStore } from '../KnowledgeStore.js';
-import { L3Decision } from '../types.js';
+import * as vscode from "vscode";
+import * as path from "path";
+import { IntervalTree } from "./IntervalTree.js";
+import { KnowledgeStore } from "../KnowledgeStore.js";
+import { L3Decision } from "../types.js";
 
 export class KnowledgeIndexer {
   private _trees = new Map<string, IntervalTree<string>>();
@@ -14,16 +14,14 @@ export class KnowledgeIndexer {
     this._store = store;
 
     this._disposables.push(
-      vscode.workspace.onDidChangeTextDocument(e => this.onDidChangeTextDocument(e))
+      vscode.workspace.onDidChangeTextDocument((e) => this.onDidChangeTextDocument(e))
     );
 
     this._disposables.push(
-      vscode.workspace.onDidSaveTextDocument(e => this.onDidSaveTextDocument(e))
+      vscode.workspace.onDidSaveTextDocument((e) => this.onDidSaveTextDocument(e))
     );
 
-    this._disposables.push(
-      this._store.onDidLoad(() => this.indexSnapshot())
-    );
+    this._disposables.push(this._store.onDidLoad(() => this.indexSnapshot()));
   }
 
   public indexSnapshot() {
@@ -77,10 +75,11 @@ export class KnowledgeIndexer {
 
     let symbols: vscode.DocumentSymbol[] | vscode.SymbolInformation[] = [];
     try {
-      symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[] | vscode.SymbolInformation[]>(
-        'vscode.executeDocumentSymbolProvider',
-        uri
-      ) || [];
+      symbols =
+        (await vscode.commands.executeCommand<vscode.DocumentSymbol[] | vscode.SymbolInformation[]>(
+          "vscode.executeDocumentSymbolProvider",
+          uri
+        )) || [];
     } catch (e) {
       console.warn(`[Docuvia] Failed to executeDocumentSymbolProvider for ${uri.toString()}`);
     }
@@ -91,7 +90,7 @@ export class KnowledgeIndexer {
       const bestMatch = this.findBestSymbolMatch(decision, symbols);
       if (bestMatch) {
         let range: vscode.Range;
-        if ('range' in bestMatch) {
+        if ("range" in bestMatch) {
           range = bestMatch.range;
         } else {
           range = bestMatch.location.range;
@@ -111,7 +110,10 @@ export class KnowledgeIndexer {
   ): vscode.DocumentSymbol | vscode.SymbolInformation | undefined {
     if (!symbols || symbols.length === 0) return undefined;
 
-    const queryWords = decision.title.toLowerCase().split(/\W+/).filter(w => w.length > 2);
+    const queryWords = decision.title
+      .toLowerCase()
+      .split(/\W+/)
+      .filter((w) => w.length > 2);
     if (queryWords.length === 0) return undefined;
 
     let bestSymbol: vscode.DocumentSymbol | vscode.SymbolInformation | undefined;
@@ -131,7 +133,7 @@ export class KnowledgeIndexer {
           bestSymbol = sym;
         }
 
-        if ('children' in sym && Array.isArray(sym.children)) {
+        if ("children" in sym && Array.isArray(sym.children)) {
           traverse(sym.children);
         }
       }
@@ -155,7 +157,7 @@ export class KnowledgeIndexer {
 
     const sortedChanges = [...e.contentChanges].sort((a, b) => b.rangeOffset - a.rangeOffset);
     for (const change of sortedChanges) {
-      const linesAdded = change.text.split('\n').length - 1;
+      const linesAdded = change.text.split("\n").length - 1;
       const linesRemoved = change.range.end.line - change.range.start.line;
       const delta = linesAdded - linesRemoved;
 
@@ -172,6 +174,6 @@ export class KnowledgeIndexer {
   }
 
   public dispose() {
-    this._disposables.forEach(d => d.dispose());
+    this._disposables.forEach((d) => d.dispose());
   }
 }

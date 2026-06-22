@@ -15,12 +15,11 @@ import { getAllMemories, getCompressedPayload } from "../memory/shared-memory.js
 
 const router = Router();
 
-
 // Require PAT for all /mcp/* routes
 router.use("/mcp", (req, res, next) => {
   const authHeader = req.headers.authorization;
   const expectedToken = process.env.MCP_PAT;
-  
+
   if (!expectedToken) {
     logger.error("[MCP Auth] MCP_PAT environment variable is not set. Refusing all connections.");
     return res.status(500).json({ error: "Server configuration error" });
@@ -34,7 +33,6 @@ router.use("/mcp", (req, res, next) => {
   next();
   return;
 });
-
 
 router.get("/mcp/list_projects", async (req, res) => {
   const projects = await db
@@ -78,7 +76,7 @@ router.get("/mcp/read_shared_memory", async (req, res) => {
 router.get("/mcp/retrieve_original", async (req, res) => {
   const id = String(req.query.id ?? "");
   if (!id) return res.status(400).json({ error: "id parameter required" });
-  
+
   try {
     const payload = getCompressedPayload(id);
     if (!payload) return res.status(404).json({ error: "payload not found" });
@@ -236,7 +234,9 @@ const mcpQueryBodySchema = z.object({
 router.post("/mcp/query", async (req, res) => {
   const parsed = mcpQueryBodySchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid request body" });
+    return res
+      .status(400)
+      .json({ error: parsed.error.issues[0]?.message ?? "Invalid request body" });
   }
 
   const { q, project_id, limit } = parsed.data;

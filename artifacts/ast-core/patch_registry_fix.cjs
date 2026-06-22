@@ -1,5 +1,5 @@
-const fs = require('fs');
-let content = fs.readFileSync('src/language-registry.ts', 'utf8');
+const fs = require("fs");
+let content = fs.readFileSync("src/language-registry.ts", "utf8");
 
 const missingMethods = `
   public getProviderForExtension(ext: string): LanguageProvider | undefined {
@@ -13,4 +13,4 @@ const missingMethods = `
 `;
 
 content = content.replace(/}\s*$/, missingMethods);
-fs.writeFileSync('src/language-registry.ts', content);
+fs.writeFileSync("src/language-registry.ts", content);

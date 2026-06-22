@@ -123,10 +123,7 @@ router.patch("/review-tasks/:id", async (req, res) => {
   // Writeback correction to the actual node + store in feedback loop
   if (body.correctedValue && task.status === "approved") {
     if (task.entityType === "l2_node") {
-      const [node] = await db
-        .select()
-        .from(l2NodesTable)
-        .where(eq(l2NodesTable.id, task.entityId));
+      const [node] = await db.select().from(l2NodesTable).where(eq(l2NodesTable.id, task.entityId));
       if (node && node.description) {
         await db.insert(correctionExamplesTable).values({
           projectId: node.projectId,
@@ -145,15 +142,9 @@ router.patch("/review-tasks/:id", async (req, res) => {
         })
         .where(eq(l2NodesTable.id, task.entityId));
     } else if (task.entityType === "l3_node") {
-      const [node] = await db
-        .select()
-        .from(l3NodesTable)
-        .where(eq(l3NodesTable.id, task.entityId));
+      const [node] = await db.select().from(l3NodesTable).where(eq(l3NodesTable.id, task.entityId));
       if (node) {
-        const [l2] = await db
-          .select()
-          .from(l2NodesTable)
-          .where(eq(l2NodesTable.id, node.l2NodeId));
+        const [l2] = await db.select().from(l2NodesTable).where(eq(l2NodesTable.id, node.l2NodeId));
         if (node.content) {
           await db.insert(correctionExamplesTable).values({
             projectId: l2?.projectId ?? null,

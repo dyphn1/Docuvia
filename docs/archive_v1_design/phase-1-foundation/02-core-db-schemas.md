@@ -1,12 +1,15 @@
 # Core DB Schemas
 
 ## Overview
+
 Define all database tables used across the system using Drizzle ORM.
 
 ## Implementation
+
 `lib/db/src/schema/` — projects, commits, documents, l1_tags, l2_nodes, l3_nodes, llm_configs, node_links, review_tasks, activity_log, correction_examples, notifications, project_integrations, prompt_templates, pull_requests, subscriptions.
 
 ### Key Files
+
 - `lib/db/src/schema/projects.ts`
 - `lib/db/src/schema/commits.ts`
 - `lib/db/src/schema/l1_tags.ts`
@@ -15,6 +18,7 @@ Define all database tables used across the system using Drizzle ORM.
 - `lib/db/src/schema/review_tasks.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -51,7 +55,6 @@ Define all database tables used across the system using Drizzle ORM.
   - `lib/db/src/schema/`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -62,13 +65,11 @@ Define all database tables used across the system using Drizzle ORM.
   - **activity_log**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### Database Schema Validation
 
 - [ ] **Trigger `Database Schema Expert`**:
   - Inspect the Drizzle schema definitions for correct column types, indexes, and relations.
   - **Validation Goal**: Ensure that `drizzle-kit generate` produces valid SQL without errors and that the data model perfectly aligns with application requirements.
-
 
 ### Project Build & Type Verification
 

@@ -1,14 +1,17 @@
 # Incremental Update (Cursor-Based)
 
 ## Overview
+
 Avoid full re-indexing on every run by tracking ingestion cursors per project and processing only new/unprocessed commits since the last run.
 
 ## Implementation
+
 Cursor columns on the `projects` table: `lastGitIngestedAt` (timestamp) and `lastSvnRevision` (integer). `processedAt` column on the `commits` table. `mode: 'full' | 'incremental'` parameter on `POST /projects/:id/ingest/git`, `POST /projects/:id/ingest/svn`, and `POST /projects/:id/generate`. `GET /projects/:id/ingest/status` endpoint. `IngestStatusCard` component in the pipeline UI.
 
 > ⚠️ **Doc was wrong** — the title said "Webhook-Based" and listed `github_webhooks.ts` as the key file. `github_webhooks.ts` handles **GitHub PR events** (not incremental ingestion). The actual incremental update mechanism is cursor-based, not webhook-triggered.
 
 ### Key Files
+
 - `lib/db/src/schema/projects.ts` — `lastGitIngestedAt`, `lastSvnRevision` cursor columns
 - `lib/db/src/schema/commits.ts` — `processedAt` column
 - `artifacts/api-server/src/routes/ingest.ts` — `mode` param handling, `GET /status`
@@ -16,6 +19,7 @@ Cursor columns on the `projects` table: `lastGitIngestedAt` (timestamp) and `las
 - `artifacts/kg-engine/src/pages/pipeline.tsx` — `IngestStatusCard` + mode toggle
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -93,15 +97,13 @@ Cursor columns on the `projects` table: `lastGitIngestedAt` (timestamp) and `las
   - `processedAt`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
   - **/ cursors on projects**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **on commits**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
-  - **`mode: full\**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
+  - \*\*`mode: full\*\*: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
-
 
 ### Project Build & Type Verification
 

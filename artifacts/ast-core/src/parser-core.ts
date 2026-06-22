@@ -1,8 +1,8 @@
-import { Parser, Language, Tree } from 'web-tree-sitter';
-import { LanguageRegistry } from './language-registry.js';
-import { LanguageProvider, DefaultProvider } from './language-provider.js';
+import { Parser, Language, Tree } from "web-tree-sitter";
+import { LanguageRegistry } from "./language-registry.js";
+import { LanguageProvider, DefaultProvider } from "./language-provider.js";
 
-import { AstEvent } from './sink.js';
+import { AstEvent } from "./sink.js";
 
 export type WasmLoader = (wasmFileName: string) => Promise<Uint8Array | ArrayBuffer | string>;
 
@@ -32,20 +32,21 @@ export async function* generateAst(
   }
 
   // Handle both Uint8Array/ArrayBuffer and string paths
-  const lang = typeof wasmBytesOrPath === 'string' 
-    ? await Language.load(wasmBytesOrPath) 
-    : await Language.load(new Uint8Array(wasmBytesOrPath as any));
+  const lang =
+    typeof wasmBytesOrPath === "string"
+      ? await Language.load(wasmBytesOrPath)
+      : await Language.load(new Uint8Array(wasmBytesOrPath as any));
 
   const parser = new Parser();
   parser.setLanguage(lang);
 
   const tree = parser.parse(
-    typeof fileContent === 'string' ? fileContent : new TextDecoder('utf-8').decode(fileContent)
+    typeof fileContent === "string" ? fileContent : new TextDecoder("utf-8").decode(fileContent)
   );
 
   if (!tree) {
     parser.delete();
-    throw new Error('Failed to parse file with tree-sitter');
+    throw new Error("Failed to parse file with tree-sitter");
   }
 
   try {
@@ -55,14 +56,14 @@ export async function* generateAst(
     }
 
     const scopeMap = new Map<string, string>();
-    
+
     const importStatements = provider.extractImports(tree.rootNode);
     for (const stmt of importStatements) {
-      const sourceNode = stmt.descendantsOfType('string').pop();
+      const sourceNode = stmt.descendantsOfType("string").pop();
       if (!sourceNode) continue;
-      const sourceText = sourceNode.text.replace(/['"]/g, '');
+      const sourceText = sourceNode.text.replace(/['"]/g, "");
 
-      const identifiers = stmt.descendantsOfType('identifier');
+      const identifiers = stmt.descendantsOfType("identifier");
       for (const idNode of identifiers) {
         scopeMap.set(idNode.text, `${sourceText}::${idNode.text}`);
       }
@@ -72,31 +73,32 @@ export async function* generateAst(
     const functionDecls = provider.extractFunctions(tree.rootNode);
     const callExprs = provider.extractCalls(tree.rootNode);
 
-    yield { type: 'file', path: filePath };
+    yield { type: "file", path: filePath };
 
     for (const cls of classDecls) {
-      const nameNode = cls.childForFieldName('name') || cls.descendantsOfType('identifier')[0];
+      const nameNode = cls.childForFieldName("name") || cls.descendantsOfType("identifier")[0];
       if (nameNode) {
-        yield { type: 'class', name: nameNode.text };
+        yield { type: "class", name: nameNode.text };
       }
     }
 
     for (const fn of functionDecls) {
-      const nameNode = fn.childForFieldName('name') || fn.descendantsOfType('identifier')[0];
+      const nameNode = fn.childForFieldName("name") || fn.descendantsOfType("identifier")[0];
       if (nameNode) {
-        yield { type: 'function', name: nameNode.text };
+        yield { type: "function", name: nameNode.text };
       }
     }
 
     // For extracting the file name cleanly:
-    const baseName = filePath.split(/[/\\]/).pop() || '';
-    
+    const baseName = filePath.split(/[/\\]/).pop() || "";
+
     for (const call of callExprs) {
-      const functionNameNode = call.childForFieldName('function') || call.descendantsOfType('identifier')[0];
+      const functionNameNode =
+        call.childForFieldName("function") || call.descendantsOfType("identifier")[0];
       if (functionNameNode) {
         const fnName = functionNameNode.text;
         const fqn = scopeMap.has(fnName) ? scopeMap.get(fnName) : `${baseName}::${fnName}`;
-        yield { type: 'call', name: fqn };
+        yield { type: "call", name: fqn };
       }
     }
   } finally {

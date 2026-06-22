@@ -207,7 +207,6 @@ sequenceDiagram
 - [artifacts/vscode-client/design/chat-participant/slash-commands.md](../../artifacts/vscode-client/design/chat-participant/slash-commands.md) – Chat participant command flows
 - [08-crosscutting-concepts.md](08-crosscutting-concepts.md#81-domain-model) – Domain model for L1/L2/L3 entities
 
-
 ## Runtime Architecture Flow
 
 ```mermaid

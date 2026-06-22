@@ -35,6 +35,7 @@
   - 支援 .NET 生態系。
 
 ### 實作要點：
+
 1. **安裝依賴**：為目標語言安裝獨立的 Tree-sitter 模組（例如：`pnpm --filter @workspace/api-server add tree-sitter-python`）。
 2. **更新註冊表**：在 `language-registry.ts` 中註冊新語言的副檔名與對應的 WASM 檔名。
 3. **標籤映射 (Tag Mapping)**：查閱各語言的 Tree-sitter 文法定義，設定該語言在 AST 中的節點名稱。
@@ -46,6 +47,7 @@
 **目標**：汰換目前暴力的子節點遍歷 (`descendantsOfType`)，改為使用 Tree-sitter 原生的 Query API，以處理複雜的語法邊界。
 
 ### 實作要點：
+
 - [ ] **導入 Tree-sitter Query**：在 `LanguageProvider` 中加入編譯 `.scm` 語法查詢的邏輯（例如 `(class_declaration name: (identifier) @class.name)`）。
 - [ ] **強化 Scope Map 與 Imports 解析**：
   - 處理具名引入 (`import { A as B }`)。
@@ -59,6 +61,7 @@
 **目標**：將 `ast-worker.ts` 產生的 `.jsonl` 骨架檔案，正式轉換為 Docuvia 的 Graph 結構並寫入資料庫。
 
 ### 實作要點：
+
 - [ ] **解析器與 Ingestion Pipeline 對接**：在 `ingestion-pipeline.ts` 中讀取 `.jsonl`，將資料轉換為 Drizzle ORM 的 Entity 格式。
 - [ ] **階層對應 (Topology)**：
   - File 映射到 `l2_nodes` 或對應的實體。
@@ -72,5 +75,6 @@
 **目標**：確保在掃描數萬個檔案的大型 Repo 時，系統具備容錯能力且不會卡死。
 
 ### 實作要點：
+
 - [ ] **Poison Pill 隔離**：完善 `quarantine-db.ts`（SQLite），當某個檔案解析超過 500ms（或設定的 Timeout），立刻終止 Worker，並將該檔案標記為隔離，防止重啟後再次引發 OOM 或無限迴圈。
 - [ ] **批次寫入最佳化**：對於上萬行的 `.jsonl` 檔案，實作串流讀取與資料庫的 Chunk 批次 Insert，避免拖垮 PostgreSQL 效能。

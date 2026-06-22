@@ -1,18 +1,22 @@
 # Review UI (Frontend)
 
 ## Overview
+
 A frontend interface for reviewers to view, approve, reject, and correct AI-generated L1/L2/L3 nodes.
 
 ## Implementation
+
 `artifacts/kg-engine/src/pages/review.tsx` — full review queue UI with `TaskCard` component, approve/reject/defer action buttons, inline correction textarea (shown when editing), `useResolveReviewTask` mutation hook, and `useGetReviewStats` for a badge showing pending count.
 
 > ⚠️ **Doc was stale** — previously recorded as "Partial — frontend not implemented" but `review.tsx` is fully implemented.
 
 ### Key Files
+
 - `artifacts/kg-engine/src/pages/review.tsx` — review queue page
 - `artifacts/api-server/src/routes/review_tasks.ts` — `GET /review-tasks`, `PATCH /review-tasks/:id/resolve`, `GET /review-tasks/stats`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -57,6 +61,7 @@ A frontend interface for reviewers to view, approve, reject, and correct AI-gene
   ```bash
   pnpm --filter @workspace/kg-engine run build
   ```
+
   - **Validation Goal**: Exit code 0, no TypeScript or Vite build errors.
 
 ## Verification Checklist
@@ -91,7 +96,6 @@ A frontend interface for reviewers to view, approve, reject, and correct AI-gene
   - `review.tsx`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -100,13 +104,11 @@ A frontend interface for reviewers to view, approve, reject, and correct AI-gene
   - **correction editing confirmed**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### Frontend Validation
 
 - [ ] **Trigger `Frontend Developer`**:
   - Inspect the `.tsx` files for correct component hierarchy, prop types, and state management.
   - **Validation Goal**: Guarantee that there are no unused variables, exhaustive dependencies are met in `useEffect`, and the UI aligns with the wireframe/design spec.
-
 
 ### Project Build & Type Verification
 

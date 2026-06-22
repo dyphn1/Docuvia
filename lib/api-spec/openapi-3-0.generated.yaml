@@ -2674,7 +2674,21 @@ components:
 
     PullRequest:
       type: object
-      required: [id, projectId, githubPrNumber, title, headSha, baseSha, author, state, url, analysisStatus, createdAt, updatedAt]
+      required:
+        [
+          id,
+          projectId,
+          githubPrNumber,
+          title,
+          headSha,
+          baseSha,
+          author,
+          state,
+          url,
+          analysisStatus,
+          createdAt,
+          updatedAt,
+        ]
       properties:
         id:
           type: integer

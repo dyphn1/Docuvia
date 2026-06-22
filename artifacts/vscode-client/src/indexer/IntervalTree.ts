@@ -26,7 +26,12 @@ export class IntervalTree<T> {
     this.root = this._insert(this.root, start, end, data);
   }
 
-  private _insert(node: IntervalNode<T> | null, start: number, end: number, data: T): IntervalNode<T> {
+  private _insert(
+    node: IntervalNode<T> | null,
+    start: number,
+    end: number,
+    data: T
+  ): IntervalNode<T> {
     if (node === null) {
       return new IntervalNode(start, end, data);
     }
@@ -64,7 +69,11 @@ export class IntervalTree<T> {
     this.root = this._shiftRanges(this.root, fromPoint, delta);
   }
 
-  private _shiftRanges(node: IntervalNode<T> | null, fromPoint: number, delta: number): IntervalNode<T> | null {
+  private _shiftRanges(
+    node: IntervalNode<T> | null,
+    fromPoint: number,
+    delta: number
+  ): IntervalNode<T> | null {
     if (node === null) return null;
 
     if (node.start >= fromPoint) {

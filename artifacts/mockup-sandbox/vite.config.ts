@@ -16,11 +16,7 @@ const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: basePath,
-  plugins: [
-    mockupPreviewPlugin(),
-    react(),
-    tailwindcss(),
-  ] as any,
+  plugins: [mockupPreviewPlugin(), react(), tailwindcss()] as any,
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "src"),

@@ -2,11 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import fs from "fs";
 import { computeHashFromStream } from "../lib/utils/hash.js";
-import {
-  commitsTable,
-  documentsTable,
-  projectsTable,
-} from "@workspace/db";
+import { commitsTable, documentsTable, projectsTable } from "@workspace/db";
 import { and, eq, sql, isNull } from "drizzle-orm";
 import { getSvnLog, getSvnDiff } from "../lib/svn-client.js";
 import { IngestSvnBody, IngestDocumentBody } from "@workspace/api-zod";
@@ -15,7 +11,12 @@ import { documentUpload } from "../middlewares/upload.js";
 import { detectDocType, extractText } from "../lib/document-parser.js";
 import multer from "multer";
 import { LocalGitClient, GitCommitData } from "../lib/git-client.js";
-import { processIngestion, GitCommitItem, SvnCommitItem, DocumentItem } from "../lib/ingestion-pipeline.js";
+import {
+  processIngestion,
+  GitCommitItem,
+  SvnCommitItem,
+  DocumentItem,
+} from "../lib/ingestion-pipeline.js";
 import { logger } from "../lib/logger.js";
 
 const router = Router();
@@ -50,10 +51,11 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
   const client = new LocalGitClient(repoUrl);
   try {
     await client.clone(branch);
-    
-    const since = mode === "incremental" && project.lastGitIngestedAt ? project.lastGitIngestedAt : undefined;
+
+    const since =
+      mode === "incremental" && project.lastGitIngestedAt ? project.lastGitIngestedAt : undefined;
     const commits = await client.getCommits(limit, since);
-    
+
     const gitItems: GitCommitItem[] = [];
     let newestCommitDate: Date | null = null;
 
@@ -112,7 +114,7 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
 
   const { mode: svnMode } = SvnModeSchema.parse(req.body);
   const svnUrl = body.svnUrl;
-  
+
   // Strict URL Validation for SVN
   if (!/^https?:\/\/|^svn:\/\//.test(svnUrl)) {
     return res.status(400).json({ error: "Invalid SVN URL format" });
@@ -132,7 +134,13 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
   const ingestErrors: string[] = [];
 
   try {
-    const logGenerator = getSvnLog(svnUrl, startRevision, endRevision, body.username, body.password);
+    const logGenerator = getSvnLog(
+      svnUrl,
+      startRevision,
+      endRevision,
+      body.username,
+      body.password
+    );
     let batch: SvnCommitItem[] = [];
 
     const flushBatch = async () => {
@@ -171,7 +179,7 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
         await flushBatch();
       }
     }
-    
+
     await flushBatch();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -185,7 +193,11 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
       .where(eq(projectsTable.id, projectId));
   }
 
-  return res.json({ ingested: totalIngested, skipped: totalSkipped, errors: [...svnErrors, ...ingestErrors] });
+  return res.json({
+    ingested: totalIngested,
+    skipped: totalSkipped,
+    errors: [...svnErrors, ...ingestErrors],
+  });
 });
 
 router.get("/projects/:id/ingest/status", async (req, res) => {
@@ -223,7 +235,7 @@ router.post(
 
     const { originalname, buffer } = req.file;
     let docType = detectDocType(originalname);
-    
+
     // Fix extension matching logic to map .log to build_artifact
     const ext = originalname.split(".").pop()?.toLowerCase() ?? "";
     if (ext === "log") docType = "build_artifact";
@@ -257,19 +269,21 @@ router.post(
     });
 
     if (errors.length > 0) {
-       return res.status(500).json({ error: `Ingestion failed: ${errors.join(", ")}` });
+      return res.status(500).json({ error: `Ingestion failed: ${errors.join(", ")}` });
     }
 
     if (skipped > 0) {
-       return res.status(409).json({ error: "Document already exists" });
+      return res.status(409).json({ error: "Document already exists" });
     }
 
-    const docs = await db.select().from(documentsTable).where(
-        and(
-            eq(documentsTable.projectId, projectId),
-            eq(documentsTable.filename, originalname)
-        )
-    ).orderBy(sql`${documentsTable.createdAt} desc`).limit(1);
+    const docs = await db
+      .select()
+      .from(documentsTable)
+      .where(
+        and(eq(documentsTable.projectId, projectId), eq(documentsTable.filename, originalname))
+      )
+      .orderBy(sql`${documentsTable.createdAt} desc`)
+      .limit(1);
 
     return res.status(201).json({ ...docs[0], createdAt: docs[0].createdAt.toISOString() });
   }
@@ -282,9 +296,9 @@ router.post("/projects/:id/ingest/document", async (req, res) => {
 
   let body;
   try {
-     body = IngestDocumentBody.parse(req.body);
+    body = IngestDocumentBody.parse(req.body);
   } catch (err) {
-     return res.status(400).json({ error: "Invalid request body", details: err });
+    return res.status(400).json({ error: "Invalid request body", details: err });
   }
 
   const ext = body.filename.split(".").pop()?.toLowerCase() ?? "md";
@@ -297,33 +311,33 @@ router.post("/projects/:id/ingest/document", async (req, res) => {
   if (body.docType) docType = body.docType as any;
 
   const docItem: DocumentItem = {
-      filename: body.filename,
-      docType,
-      content: body.content,
-      commitSha: body.commitSha ?? undefined,
+    filename: body.filename,
+    docType,
+    content: body.content,
+    commitSha: body.commitSha ?? undefined,
   };
 
   const { ingested, skipped, errors } = await processIngestion({
-      type: "document",
-      projectId,
-      projectName: project.name,
-      items: [docItem],
+    type: "document",
+    projectId,
+    projectName: project.name,
+    items: [docItem],
   });
 
   if (errors.length > 0) {
-      return res.status(500).json({ error: `Ingestion failed: ${errors.join(", ")}` });
+    return res.status(500).json({ error: `Ingestion failed: ${errors.join(", ")}` });
   }
 
   if (skipped > 0) {
-      return res.status(409).json({ error: "Document already exists" });
+    return res.status(409).json({ error: "Document already exists" });
   }
 
-  const docs = await db.select().from(documentsTable).where(
-      and(
-          eq(documentsTable.projectId, projectId),
-          eq(documentsTable.filename, body.filename)
-      )
-  ).orderBy(sql`${documentsTable.createdAt} desc`).limit(1);
+  const docs = await db
+    .select()
+    .from(documentsTable)
+    .where(and(eq(documentsTable.projectId, projectId), eq(documentsTable.filename, body.filename)))
+    .orderBy(sql`${documentsTable.createdAt} desc`)
+    .limit(1);
 
   return res.status(201).json({ ...docs[0], createdAt: docs[0].createdAt.toISOString() });
 });
@@ -358,39 +372,45 @@ router.use(
   }
 );
 
-
 // POST /projects/:id/ingest/build-artifact
-router.post("/projects/:id/ingest/build-artifact", documentUpload.single("file"), async (req, res) => {
-  const projectId = Number(req.params.id);
-  if (!req.file) return res.status(400).json({ error: "file required" });
+router.post(
+  "/projects/:id/ingest/build-artifact",
+  documentUpload.single("file"),
+  async (req, res) => {
+    const projectId = Number(req.params.id);
+    if (!req.file) return res.status(400).json({ error: "file required" });
 
-  try {
-    // Basic ANSI strip implementation
-    const filePath = req.file.path;
-    const contentHash = await computeHashFromStream(filePath);
-    const rawContent = await fs.promises.readFile(filePath, "utf-8");
-    const strippedContent = rawContent.replace(/\x1b\[[0-9;]*[mG]/g, "");
+    try {
+      // Basic ANSI strip implementation
+      const filePath = req.file.path;
+      const contentHash = await computeHashFromStream(filePath);
+      const rawContent = await fs.promises.readFile(filePath, "utf-8");
+      const strippedContent = rawContent.replace(/\x1b\[[0-9;]*[mG]/g, "");
 
-    const result = await processIngestion({
-      type: "document",
-      projectId,
-      projectName: `Project ${projectId}`, // We should fetch this
-      items: [
-        {
-          filename: req.file.originalname,
-          content: strippedContent,
-          docType: "build_artifact",
-          contentHash,
-        },
-      ],
-    });
+      const result = await processIngestion({
+        type: "document",
+        projectId,
+        projectName: `Project ${projectId}`, // We should fetch this
+        items: [
+          {
+            filename: req.file.originalname,
+            content: strippedContent,
+            docType: "build_artifact",
+            contentHash,
+          },
+        ],
+      });
 
-    await fs.promises.unlink(filePath).catch(() => {});
-    return res.json(result);
-  } catch (err) {
-    logger.error({ err, projectId }, "[POST /projects/:id/ingest/build-artifact] Unhandled error");
-    return res.status(500).json({ error: "Internal server error" });
+      await fs.promises.unlink(filePath).catch(() => {});
+      return res.json(result);
+    } catch (err) {
+      logger.error(
+        { err, projectId },
+        "[POST /projects/:id/ingest/build-artifact] Unhandled error"
+      );
+      return res.status(500).json({ error: "Internal server error" });
+    }
   }
-});
+);
 
 export default router;

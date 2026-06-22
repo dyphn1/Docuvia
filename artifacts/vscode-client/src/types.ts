@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 // ─── L1 Tag ───────────────────────────────────────────────────────────────────
 
@@ -44,7 +44,7 @@ export const L3DecisionFrontmatterSchema = z.object({
   l2_module_id: z.string(),
   title: z.string().min(1),
   date: z.string().optional(),
-  status: z.enum(['proposed', 'accepted', 'deprecated']).default('proposed'),
+  status: z.enum(["proposed", "accepted", "deprecated"]).default("proposed"),
 });
 
 export type L3DecisionFrontmatter = z.infer<typeof L3DecisionFrontmatterSchema>;
@@ -59,10 +59,14 @@ export interface L3Decision extends L3DecisionFrontmatter {
 // ─── Global Config (~/.docuvia/config.yaml) ───────────────────────────────────
 
 export const GlobalConfigSchema = z.object({
-  server_url: z.string().url().refine(url => url.startsWith('https://'), {
-    message: 'server_url must use HTTPS',
-  }).optional(),
-  chunking_strategy: z.enum(['line', 'ast']).default('line'),
+  server_url: z
+    .string()
+    .url()
+    .refine((url) => url.startsWith("https://"), {
+      message: "server_url must use HTTPS",
+    })
+    .optional(),
+  chunking_strategy: z.enum(["line", "ast"]).default("line"),
   telemetry: z
     .object({
       enabled: z.boolean().default(true),

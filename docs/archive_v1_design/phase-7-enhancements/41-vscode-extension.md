@@ -1,10 +1,13 @@
 # VS Code Extension API
 
 ## Overview
+
 Allow developers to query the Docuvia knowledge graph from VS Code while writing code. Implemented as **server-side API endpoints** that a VS Code extension client can call — the packaged `.vsix` extension itself is not yet built.
 
 ## Implementation
+
 `artifacts/api-server/src/routes/extensions_vscode.ts` — 3 endpoints:
+
 - `POST /extensions/vscode/query` — natural language query using the agentic RAG intent router
 - `POST /extensions/vscode/create-decision` — create an L3 decision record from the editor
 - `GET /extensions/vscode/file-context` — retrieve knowledge nodes relevant to a file path
@@ -14,6 +17,7 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
 > ⚠️ **Scope Note**: The "VS Code Extension" feature in this repo is **server-side API endpoints only**. No VS Code extension package (no `package.json` with `engines.vscode`, no `.vsix`, no `extension.ts` entry point) exists in this codebase. A future task is to build the VS Code client that calls these endpoints.
 
 ### Key Files
+
 - `artifacts/api-server/src/routes/extensions_vscode.ts` — route handlers
 - `artifacts/api-server/src/lib/extensions-service.ts` — service layer
 - `test/extensions_vscode.test.ts` — VS Code extension endpoint test
@@ -21,6 +25,7 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
 - `lib/api-zod/src/generated/types/vscodeQueryResult.ts` — generated response type
 
 ## Status
+
 **✅ Done (server-side API)** — VS Code client package not yet built.
 
 ## Verification Checklist
@@ -66,6 +71,7 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
   ```bash
   pnpm test
   ```
+
   - **Validation Goal**: All tests pass. If no test runner is configured, raise a gap report.
 
 ### OpenAPI Contract Check
@@ -79,7 +85,6 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
   - **Validation Goal**: Zero TypeScript errors, successful build.
 
 ## Verification Checklist
-
 
 ### Functional & Logic Requirements
 
@@ -105,7 +110,6 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
 
 ## 🤖 Agent Sub-Tasks
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -119,13 +123,11 @@ Allow developers to query the Docuvia knowledge graph from VS Code while writing
   - **test/extensions_vscode.test.ts**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
-
 
 ### Project Build & Type Verification
 

@@ -1,17 +1,21 @@
 # Commit Filter
 
 ## Overview
+
 Filter raw commits by quality signal using convention-based rules, targeting ~60% signal rate.
 
 ## Implementation
+
 `generateInput.ts` includes `generateInputMode.ts` which controls filter strategy. `gitIngestInputMode.ts` drives incremental vs full.
 
 ### Key Files
+
 - `lib/api-zod/src/generated/types/generateInput.ts`
 - `lib/api-zod/src/generated/types/generateInputMode.ts`
 - `lib/api-zod/src/generated/types/gitIngestInputMode.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -42,13 +46,11 @@ Filter raw commits by quality signal using convention-based rules, targeting ~60
   - `ingest.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
   - **regex signal/noise patterns**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
-
 
 ### Project Build & Type Verification
 

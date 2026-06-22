@@ -128,6 +128,7 @@ Docuvia utilizes Web Workers to unify the Node.js and VS Code environments under
 ### 4-Phase Parsing Funnel
 
 Raw input streams are aggressively filtered before reaching the AST engine and Pluggable Sinks to minimize parsing overhead:
+
 1. **Target Allowlist**: Fast-fail path matching (e.g., ignoring `node_modules` or `dist`).
 2. **Git Blob Binary Detection**: Heuristic filtering of binary file types early in the stream.
 3. **Lossless Encoding Guardrails**: Ensuring accurate UTF-8 parsing boundaries.
@@ -439,11 +440,15 @@ const result = await db
 ## 8.4 Security Concepts
 
 ### Zero-Trust Input Sanitization
+
 All inputs passed to the Agentic RAG core must be sanitized.
+
 - **LIKE Wildcard Escaping**: To prevent Broad-Match Denial of Service (DoS) attacks and ensure precise querying, user and LLM-generated search queries are filtered through `escapeLike()` before being inserted into PostgreSQL `LIKE` or `ILIKE` statements. This mitigates `%` and `_` wildcard injection.
 
 ### Route Authentication
+
 Internal maintenance routes are strictly authenticated.
+
 - **Fail-Closed Metabolism Auth**: The `/admin/metabolism-tick` route acts as a background worker orchestrator. It demands an `Authorization: Bearer` or `admin_token` that matches the server's `ADMIN_SECRET_TOKEN` environment variable. If the environment variable is not defined, the server **fails closed** (returns 500) rather than falling back to an insecure default, guaranteeing safety in production.
 
 ---
@@ -452,12 +457,12 @@ Internal maintenance routes are strictly authenticated.
 
 - [02-constraints.md](02-constraints.md#23-conventions-coding-rules) — Constraint context for coding rules
 - [09-architectural-decisions.md](09-architectural-decisions.md#adr-005-mvc-pattern-for-ui-layers) — ADR-005 rationale for MVC decision
-- [artifacts/vscode-client/design/ROUTER.md](../../artifacts/vscode-client/design/ROUTER.md) — VS Code MVC application in practice
+- [artifacts/vscode-client/design/00-router-overview.md](../../artifacts/vscode-client/design/00-router-overview.md) — VS Code MVC application in practice
 
 ## 8.7 Security Boundaries & Input Sanitization
+
 Heavy document parsing (PDF, DOCX) is strictly isolated using `child_process.fork/spawn` with hard OS-level memory/timeout boundaries, and upload endpoints enforce magic byte signature verification to prevent Zip bombs and XXE via spoofed extensions. To prevent CSRF, API CORS is strictly governed by `CORS_ORIGIN` with no wildcards in production.
 All components use a centralized structured logger (`artifacts/api-server/src/lib/logger.ts`) configured with `pino`. Crucially, to prevent PII and Auth Token leakage into log aggregators when `LOG_LEVEL=debug` is active, the logger enforces a strict, environment-agnostic redaction pipeline (stripping `authorization`, `password`, `token` keys before hitting stdout).
-
 
 ## Verifiability
 

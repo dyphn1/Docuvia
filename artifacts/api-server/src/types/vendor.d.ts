@@ -13,7 +13,10 @@ declare module "mammoth" {
 
 declare module "officeparser" {
   export class OfficeParser {
-    static parseOffice(file: Buffer | string, callback: (err: Error | null, data: string) => void): void;
+    static parseOffice(
+      file: Buffer | string,
+      callback: (err: Error | null, data: string) => void
+    ): void;
     parseOffice(file: Buffer | string, callback: (err: Error | null, data: string) => void): void;
   }
 }

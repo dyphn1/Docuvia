@@ -1,9 +1,23 @@
-import { pgTable, text, serial, integer, boolean, timestamp, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  integer,
+  boolean,
+  timestamp,
+  jsonb,
+  pgEnum,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
 
-export const l2NodeTypeEnum = pgEnum("l2_node_type", ["package", "module", "pcd", "sys-uncategorized"]);
+export const l2NodeTypeEnum = pgEnum("l2_node_type", [
+  "package",
+  "module",
+  "pcd",
+  "sys-uncategorized",
+]);
 
 export const l2NodesTable = pgTable("l2_nodes", {
   id: serial("id").primaryKey(),

@@ -1,21 +1,26 @@
 # Noise Detection — Inconsistent Tagging
 
 ## Overview
+
 Automatically detect when the same concept is tagged inconsistently across commits or projects and flag it for human review.
 
 ## Implementation
+
 `runNoiseDetection(projectId)` in `artifacts/api-server/src/routes/generate.ts` — called automatically at the end of each generation pipeline run. Two detection strategies:
+
 1. **Low-usage tags**: flags `l1_tags` with `usageCount ≤ 1` as `anchor`-type review tasks.
 2. **Near-duplicate names**: iterates all tag pairs, normalizes names (strip punctuation, lowercase), and creates `merge`-type review tasks for pairs with distance ≤ 2 (or similar string-distance threshold).
 
 > ⚠️ **Doc was stale** — previously recorded as "Unclear" but `runNoiseDetection()` is fully implemented in `generate.ts`.
 
 ### Key Files
+
 - `artifacts/api-server/src/routes/generate.ts` — `runNoiseDetection()` function
 - `lib/db/src/schema/l1_tags.ts` — `usageCount` column used for low-usage detection
 - `lib/db/src/schema/review_tasks.ts` — `anchor` and `merge` task types created
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -93,14 +98,12 @@ Automatically detect when the same concept is tagged inconsistently across commi
   - `merge`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
   - **flags low-usage tags (≤1 use) and near-duplicate tag names**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **creates / review tasks automatically**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
-
 
 ### Project Build & Type Verification
 

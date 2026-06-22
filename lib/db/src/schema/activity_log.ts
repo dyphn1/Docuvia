@@ -19,5 +19,8 @@ export const activityLogTable = pgTable("activity_log", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
-export const insertActivityLogSchema = createInsertSchema(activityLogTable).omit({ id: true, createdAt: true });
+export const insertActivityLogSchema = createInsertSchema(activityLogTable).omit({
+  id: true,
+  createdAt: true,
+});
 export type InsertActivityLog = z.infer<typeof insertActivityLogSchema>;

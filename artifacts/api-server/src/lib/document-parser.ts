@@ -33,23 +33,23 @@ export function detectDocType(filename: string): SupportedDocType {
 async function parseInWorker(buffer: Buffer, docType: SupportedDocType): Promise<string> {
   return new Promise((resolve, reject) => {
     // Write buffer to temp file to pass to worker
-    const tmpFilePath = path.join(os.tmpdir(), `parse_${crypto.randomBytes(8).toString('hex')}`);
+    const tmpFilePath = path.join(os.tmpdir(), `parse_${crypto.randomBytes(8).toString("hex")}`);
     fs.writeFileSync(tmpFilePath, buffer);
 
     const workerPath = path.join(__dirname, "parser-worker.js");
     const worker = fork(workerPath, [], {
-      execArgv: ['--max-old-space-size=512'],
+      execArgv: ["--max-old-space-size=512"],
       detached: false, // Ensure worker dies if parent dies
     });
 
     // Enforce 60-second timeout
     const timeoutId = setTimeout(() => {
-      worker.kill('SIGKILL');
+      worker.kill("SIGKILL");
       if (fs.existsSync(tmpFilePath)) fs.unlinkSync(tmpFilePath);
       reject(new Error(`Parser timeout exceeded for ${docType}`));
     }, 60000);
 
-    worker.on('message', (message: { success: boolean; text?: string; error?: string }) => {
+    worker.on("message", (message: { success: boolean; text?: string; error?: string }) => {
       clearTimeout(timeoutId);
       worker.kill();
       if (message.success) {
@@ -59,13 +59,13 @@ async function parseInWorker(buffer: Buffer, docType: SupportedDocType): Promise
       }
     });
 
-    worker.on('error', (err) => {
+    worker.on("error", (err) => {
       clearTimeout(timeoutId);
       if (fs.existsSync(tmpFilePath)) fs.unlinkSync(tmpFilePath);
       reject(err);
     });
 
-    worker.on('exit', (code, signal) => {
+    worker.on("exit", (code, signal) => {
       clearTimeout(timeoutId);
       if (fs.existsSync(tmpFilePath)) fs.unlinkSync(tmpFilePath);
       if (code !== 0) {
@@ -84,7 +84,11 @@ async function parseInWorker(buffer: Buffer, docType: SupportedDocType): Promise
  * @param filename Original filename (used for build artifact parsing)
  * @returns Extracted plain text string
  */
-export async function extractText(buffer: Buffer, docType: SupportedDocType, filename?: string): Promise<string> {
+export async function extractText(
+  buffer: Buffer,
+  docType: SupportedDocType,
+  filename?: string
+): Promise<string> {
   switch (docType) {
     case "pdf":
     case "docx":

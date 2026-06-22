@@ -1,15 +1,19 @@
 # MCP Route Scaffolding
 
 ## Overview
+
 Register all MCP tool endpoints under a unified route, making the knowledge base accessible to AI agents via the Model Context Protocol.
 
 ## Implementation
+
 `artifacts/api-server/src/routes/mcp.ts` — registers all MCP tool handlers.
 
 ### Key Files
+
 - `artifacts/api-server/src/routes/mcp.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -38,13 +42,11 @@ Register all MCP tool endpoints under a unified route, making the knowledge base
   - `artifacts/api-server/src/routes/mcp.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
-
 
 ### Project Build & Type Verification
 

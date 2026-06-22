@@ -1,6 +1,6 @@
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-const SECRET_KEY = 'docuvia.serverToken';
+const SECRET_KEY = "docuvia.serverToken";
 
 export class CredentialManager {
   constructor(private readonly _secrets: vscode.SecretStorage) {}

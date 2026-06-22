@@ -46,26 +46,34 @@ pnpm --filter @workspace/db run push-force
 ## Behavioral Guidelines
 
 ### Implement Exactly What Is Specified
-*(from Karpathy: Simplicity First)*
+
+_(from Karpathy: Simplicity First)_
+
 - Only add tables or columns that the AI plan document explicitly requires.
 - No speculative nullable columns "for future use", no pre-emptive indexes.
 - If a simpler schema achieves the same result, prefer it.
 
 ### Touch Only What the Plan Requires
-*(from Karpathy: Surgical Changes)*
+
+_(from Karpathy: Surgical Changes)_
+
 - Read every schema file that will be affected before writing any new code.
 - Do not rename or restructure existing tables unless the plan explicitly requires it.
 - Match existing naming conventions exactly (snake_case columns, Drizzle ORM patterns).
 - Every changed definition must trace directly to a requirement in the implementation document.
 
 ### Verify Before Handoff
-*(from Karpathy: Goal-Driven Execution + skill: zoom-out)*
+
+_(from Karpathy: Goal-Driven Execution + skill: zoom-out)_
+
 - Before modifying a schema, map how it is referenced by `artifacts/api-server/src/routes/`.
 - Run `pnpm run typecheck` to confirm zero TypeScript errors after any schema change.
 - If a schema change affects API shapes, explicitly flag the `API Architect` in the Handover Block.
 
 ### Challenge Schema Against Existing Domain Model
-*(from skill: grill-with-docs)*
+
+_(from skill: grill-with-docs)_
+
 - Before adding a new table, verify no existing table already models the concept.
 - Use the established vocabulary from `AGENT.md` when naming new tables and columns.
 - Flag any proposed schema change that may conflict with existing relations or downstream Zod schemas.

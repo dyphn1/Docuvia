@@ -29,18 +29,18 @@ Act as the Master Orchestrator for this workspace. When initiating a complex mul
 
 Each agent below is a thin adapter that loads the canonical spec from `.github/agents/`.
 
-| Agent | Adapter file | Canonical Source |
-|-------|-------------|-----------------|
-| requirement-analyzer | [`.claude/agents/requirement-analyzer.md`](.claude/agents/requirement-analyzer.md) | [`.github/agents/requirement-analyzer.agent.md`](.github/agents/requirement-analyzer.agent.md) |
-| backend-developer | [`.claude/agents/backend-developer.md`](.claude/agents/backend-developer.md) | [`.github/agents/backend-developer.agent.md`](.github/agents/backend-developer.agent.md) |
-| frontend-developer | [`.claude/agents/frontend-developer.md`](.claude/agents/frontend-developer.md) | [`.github/agents/frontend-developer.agent.md`](.github/agents/frontend-developer.agent.md) |
+| Agent                  | Adapter file                                                                           | Canonical Source                                                                                   |
+| ---------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| requirement-analyzer   | [`.claude/agents/requirement-analyzer.md`](.claude/agents/requirement-analyzer.md)     | [`.github/agents/requirement-analyzer.agent.md`](.github/agents/requirement-analyzer.agent.md)     |
+| backend-developer      | [`.claude/agents/backend-developer.md`](.claude/agents/backend-developer.md)           | [`.github/agents/backend-developer.agent.md`](.github/agents/backend-developer.agent.md)           |
+| frontend-developer     | [`.claude/agents/frontend-developer.md`](.claude/agents/frontend-developer.md)         | [`.github/agents/frontend-developer.agent.md`](.github/agents/frontend-developer.agent.md)         |
 | database-schema-expert | [`.claude/agents/database-schema-expert.md`](.claude/agents/database-schema-expert.md) | [`.github/agents/database-schema-expert.agent.md`](.github/agents/database-schema-expert.agent.md) |
-| api-architect | [`.claude/agents/api-architect.md`](.claude/agents/api-architect.md) | [`.github/agents/api-architect.agent.md`](.github/agents/api-architect.agent.md) |
-| task-verifier | [`.claude/agents/task-verifier.md`](.claude/agents/task-verifier.md) | [`.github/agents/task-verifier.agent.md`](.github/agents/task-verifier.agent.md) |
-| document-writer-md | [`.claude/agents/document-writer-md.md`](.claude/agents/document-writer-md.md) | [`.github/agents/document-writer-md.agent.md`](.github/agents/document-writer-md.agent.md) |
-| memory-keeper | [`.claude/agents/memory-keeper.md`](.claude/agents/memory-keeper.md) | [`.github/agents/memory-keeper.agent.md`](.github/agents/memory-keeper.agent.md) |
-| shell-script-expert | [`.claude/agents/shell-script-expert.md`](.claude/agents/shell-script-expert.md) | [`.github/agents/shell-script-expert.agent.md`](.github/agents/shell-script-expert.agent.md) |
-| tool-maker | [`.claude/agents/tool-maker.md`](.claude/agents/tool-maker.md) | [`.github/agents/tool-maker.agent.md`](.github/agents/tool-maker.agent.md) |
+| api-architect          | [`.claude/agents/api-architect.md`](.claude/agents/api-architect.md)                   | [`.github/agents/api-architect.agent.md`](.github/agents/api-architect.agent.md)                   |
+| task-verifier          | [`.claude/agents/task-verifier.md`](.claude/agents/task-verifier.md)                   | [`.github/agents/task-verifier.agent.md`](.github/agents/task-verifier.agent.md)                   |
+| document-writer-md     | [`.claude/agents/document-writer-md.md`](.claude/agents/document-writer-md.md)         | [`.github/agents/document-writer-md.agent.md`](.github/agents/document-writer-md.agent.md)         |
+| memory-keeper          | [`.claude/agents/memory-keeper.md`](.claude/agents/memory-keeper.md)                   | [`.github/agents/memory-keeper.agent.md`](.github/agents/memory-keeper.agent.md)                   |
+| shell-script-expert    | [`.claude/agents/shell-script-expert.md`](.claude/agents/shell-script-expert.md)       | [`.github/agents/shell-script-expert.agent.md`](.github/agents/shell-script-expert.agent.md)       |
+| tool-maker             | [`.claude/agents/tool-maker.md`](.claude/agents/tool-maker.md)                         | [`.github/agents/tool-maker.agent.md`](.github/agents/tool-maker.agent.md)                         |
 
 ---
 
@@ -52,6 +52,7 @@ Each agent below is a thin adapter that loads the canonical spec from `.github/a
 - Save AI implementation plans at `docs/ai_plans/implement_<feature-name>.md`
 
 <!-- gitnexus:start -->
+
 # GitNexus — Code Intelligence
 
 This project is indexed by GitNexus as **Docuvia** (6032 symbols, 9774 relationships, 170 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
@@ -75,12 +76,12 @@ This project is indexed by GitNexus as **Docuvia** (6032 symbols, 9774 relations
 
 ## Resources
 
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/Docuvia/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/Docuvia/clusters` | All functional areas |
-| `gitnexus://repo/Docuvia/processes` | All execution flows |
-| `gitnexus://repo/Docuvia/process/{name}` | Step-by-step execution trace |
+| Resource                                 | Use for                                  |
+| ---------------------------------------- | ---------------------------------------- |
+| `gitnexus://repo/Docuvia/context`        | Codebase overview, check index freshness |
+| `gitnexus://repo/Docuvia/clusters`       | All functional areas                     |
+| `gitnexus://repo/Docuvia/processes`      | All execution flows                      |
+| `gitnexus://repo/Docuvia/process/{name}` | Step-by-step execution trace             |
 
 ## Cross-Repo Groups
 
@@ -88,13 +89,13 @@ This repository is listed under GitNexus **group(s): my_workspace** (see `~/.git
 
 ## CLI
 
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Task                                         | Read this skill file                                        |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md`       |
+| Blast radius / "What breaks if I change X?"  | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?"             | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md`       |
+| Rename / extract / split / refactor          | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`     |
+| Tools, resources, schema reference           | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`           |
+| Index, status, clean, wiki CLI commands      | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`             |
 
 <!-- gitnexus:end -->

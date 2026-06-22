@@ -212,8 +212,7 @@ export default function Documents() {
               <CardContent className="space-y-3">
                 <div className="space-y-1">
                   <Label className="text-xs">
-                    Project{" "}
-                    <span className="text-muted-foreground font-normal">(optional)</span>
+                    Project <span className="text-muted-foreground font-normal">(optional)</span>
                   </Label>
                   <Select value={selectedProject} onValueChange={handleProjectChange}>
                     <SelectTrigger>
@@ -247,7 +246,9 @@ export default function Documents() {
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <File className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                      <p className="text-xs text-muted-foreground">Click to upload or drag & drop</p>
+                      <p className="text-xs text-muted-foreground">
+                        Click to upload or drag & drop
+                      </p>
                       <p className="text-[10px] text-muted-foreground/70 mt-1">
                         .md, .txt, .log, .map files
                       </p>

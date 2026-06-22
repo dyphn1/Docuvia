@@ -1,12 +1,15 @@
-import { Parser, Language } from 'web-tree-sitter';
-import { createRequire } from 'node:module';
-import { LanguageRegistry } from '@workspace/ast-core';
-import { LanguageProvider } from '@workspace/ast-core';
+import { Parser, Language } from "web-tree-sitter";
+import { createRequire } from "node:module";
+import { LanguageRegistry } from "@workspace/ast-core";
+import { LanguageProvider } from "@workspace/ast-core";
 
 const require = createRequire(import.meta.url);
 
 async function initParser() {
-  const wasmPath = path.join(path.dirname(require.resolve('web-tree-sitter')), 'web-tree-sitter.wasm');
+  const wasmPath = path.join(
+    path.dirname(require.resolve("web-tree-sitter")),
+    "web-tree-sitter.wasm"
+  );
   await Parser.init({ locateFile: () => wasmPath });
 }
 
@@ -22,7 +25,7 @@ async function loadLanguage(ext: string, registry: LanguageRegistry) {
     await fs.access(wasmPath);
   } catch {
     try {
-      const pkgName = wasmFileName.replace('.wasm', '');
+      const pkgName = wasmFileName.replace(".wasm", "");
       const langPkgPath = require.resolve(`${pkgName}/package.json`);
       wasmPath = path.join(path.dirname(langPkgPath), wasmFileName);
     } catch {
@@ -33,19 +36,19 @@ async function loadLanguage(ext: string, registry: LanguageRegistry) {
   return { lang, provider };
 }
 
-const fs = await import('node:fs/promises');
-const path = await import('node:path');
+const fs = await import("node:fs/promises");
+const path = await import("node:path");
 
 async function main() {
   await initParser();
   const registry = await LanguageRegistry.load();
-  
-  const ext = '.rs';
+
+  const ext = ".rs";
   const { lang, provider } = await loadLanguage(ext, registry);
-  
+
   const parser = new Parser();
   parser.setLanguage(lang!);
-  
+
   // Sample Rust code
   const rustCode = `
     use std::collections::HashMap;
@@ -77,22 +80,34 @@ async function main() {
         map.insert("key", "value");
     }
   `;
-  
+
   const tree = parser.parse(rustCode);
   if (!tree) {
-    console.error('Failed to parse Rust code');
+    console.error("Failed to parse Rust code");
     return;
   }
-  
+
   const importNodes = provider.extractImports(tree.rootNode);
   const classNodes = provider.extractClasses(tree.rootNode);
   const functionNodes = provider.extractFunctions(tree.rootNode);
   const callNodes = provider.extractCalls(tree.rootNode);
-  
-  console.log('Imports:', importNodes.map((n: any) => n.text));
-  console.log('Classes:', classNodes.map((n: any) => n.text));
-  console.log('Functions:', functionNodes.map((n: any) => n.text));
-  console.log('Calls:', callNodes.map((n: any) => n.text));
+
+  console.log(
+    "Imports:",
+    importNodes.map((n: any) => n.text)
+  );
+  console.log(
+    "Classes:",
+    classNodes.map((n: any) => n.text)
+  );
+  console.log(
+    "Functions:",
+    functionNodes.map((n: any) => n.text)
+  );
+  console.log(
+    "Calls:",
+    callNodes.map((n: any) => n.text)
+  );
 }
 
 main().catch(console.error);

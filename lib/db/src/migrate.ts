@@ -9,19 +9,22 @@ import { promptTemplatesTable } from "./schema/prompt_templates";
 export const DEFAULT_PROMPT_TEMPLATES = [
   {
     templateType: "l1_tagger",
-    systemPrompt: "You are an expert system tagger. Categorize the given code into high-level architecture tags.",
+    systemPrompt:
+      "You are an expert system tagger. Categorize the given code into high-level architecture tags.",
     isActive: true,
   },
   {
     templateType: "l2_extractor",
-    systemPrompt: "You are an expert code analyst. Extract L2 module boundaries from the following commits.",
+    systemPrompt:
+      "You are an expert code analyst. Extract L2 module boundaries from the following commits.",
     isActive: true,
   },
   {
     templateType: "l3_generator",
-    systemPrompt: "You are a senior architect. Generate L3 knowledge graph nodes documenting the decisions made in the following code.",
+    systemPrompt:
+      "You are a senior architect. Generate L3 knowledge graph nodes documenting the decisions made in the following code.",
     isActive: true,
-  }
+  },
 ] as const;
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,9 +49,9 @@ async function runMigrations() {
   try {
     console.log("Running migrations...");
     const migrationsFolder = path.resolve(__dirname, "../drizzle");
-    
+
     await migrate(db, { migrationsFolder });
-    
+
     console.log("Migrations completed!");
 
     console.log("Seeding default prompt templates...");
@@ -57,10 +60,10 @@ async function runMigrations() {
     const existing = await db.select().from(promptTemplatesTable).limit(1);
     if (existing.length === 0) {
       await db.insert(promptTemplatesTable).values(
-        DEFAULT_PROMPT_TEMPLATES.map(t => ({
+        DEFAULT_PROMPT_TEMPLATES.map((t) => ({
           templateType: t.templateType as any,
           systemPrompt: t.systemPrompt,
-          isActive: t.isActive
+          isActive: t.isActive,
         }))
       );
       console.log("Default templates seeded!");

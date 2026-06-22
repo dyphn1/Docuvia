@@ -1,5 +1,5 @@
 // Standalone worker for isolated parsing to prevent OOM on main thread
-const fs = require('fs');
+const fs = require("fs");
 
 async function parsePdf(buffer) {
   const pdfParse = require("pdf-parse");
@@ -23,12 +23,12 @@ async function parsePptx(buffer) {
   });
 }
 
-process.on('message', async (message) => {
+process.on("message", async (message) => {
   try {
     const { docType, filePath } = message;
     const buffer = fs.readFileSync(filePath);
     let text = "";
-    
+
     switch (docType) {
       case "pdf":
         text = await parsePdf(buffer);
@@ -42,14 +42,14 @@ process.on('message', async (message) => {
       default:
         text = buffer.toString("utf-8").trim();
     }
-    
+
     // Clean up temp file
     fs.unlinkSync(filePath);
-    
+
     process.send({ success: true, text });
   } catch (error) {
     if (message.filePath && fs.existsSync(message.filePath)) {
-        fs.unlinkSync(message.filePath);
+      fs.unlinkSync(message.filePath);
     }
     process.send({ success: false, error: error.message });
   }

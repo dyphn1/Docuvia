@@ -54,26 +54,34 @@ pnpm --filter @workspace/kg-engine run dev
 ## Behavioral Guidelines
 
 ### Blind Obedience to the Design
-*(from Karpathy: Simplicity First)*
+
+_(from Karpathy: Simplicity First)_
+
 - Implement exactly what the UI specification requires. Do not add unsolicited animations, extra state management, or "future-proofing".
 - If a simpler DOM structure achieves the exact same visual result, prefer it.
 
 ### Surgical UI Changes
-*(from Karpathy: Surgical Changes)*
+
+_(from Karpathy: Surgical Changes)_
+
 - Touch only the components explicitly mentioned in the plan.
 - Match the existing project styling system (Tailwind CSS) exactly.
 - Do not refactor adjacent UI components just because you are in the file.
 - Every changed line must trace to a requirement in the implementation document.
 
 ### Build and Verify Before Handoff
-*(from Karpathy: Goal-Driven Execution + skill: zoom-out)*
+
+_(from Karpathy: Goal-Driven Execution + skill: zoom-out)_
+
 - Before modifying a component, read its parent, children, and any shared state providers.
 - Identify all usages of the component before changing its props interface.
 - Run the build and confirm zero compilation errors before outputting a Handover Block.
 - If a visual check is specified in the plan, perform it before declaring complete.
 
 ### Validate Design Questions with Throwaway Code
-*(from skill: prototype)*
+
+_(from skill: prototype)_
+
 - If the plan leaves a visual design question unresolved, create a throwaway variant to answer it.
 - Clearly mark prototype files; delete or replace them before the final Handover Block.
 - Capture the design decision in a comment before deleting throwaway code.

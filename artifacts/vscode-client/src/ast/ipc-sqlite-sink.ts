@@ -1,4 +1,4 @@
-import { AstSink, AstEvent } from '@workspace/ast-core';
+import { AstSink, AstEvent } from "@workspace/ast-core";
 
 export class IpcSqliteSink implements AstSink {
   private buffer: AstEvent[] = [];
@@ -16,11 +16,11 @@ export class IpcSqliteSink implements AstSink {
       this.flushBatch();
     }
     // We send a flush message so the host knows we are done.
-    (globalThis as any).postMessage({ type: 'flush' });
+    (globalThis as any).postMessage({ type: "flush" });
   }
 
   private flushBatch() {
-    (globalThis as any).postMessage({ type: 'ast-events', events: [...this.buffer] });
+    (globalThis as any).postMessage({ type: "ast-events", events: [...this.buffer] });
     this.buffer = [];
   }
 }

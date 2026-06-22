@@ -1,7 +1,13 @@
 import { Router, Request, Response } from "express";
 import { logger } from "../lib/logger";
 import { db } from "@workspace/db";
-import { correctionExamplesTable, promptTemplatesTable, l3NodesTable, l2NodesTable, projectsTable } from "@workspace/db";
+import {
+  correctionExamplesTable,
+  promptTemplatesTable,
+  l3NodesTable,
+  l2NodesTable,
+  projectsTable,
+} from "@workspace/db";
 import { isNull, inArray, and, eq, lt } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { checkCommitInDefaultBranch, parseGithubRepo } from "../lib/github-client";
@@ -14,7 +20,7 @@ const metabolismRouter = Router();
 // Internal function to run the maintenance tasks
 async function runMetabolism() {
   logger.info("Metabolism tick started. Running background tasks...");
-  
+
   // Phase 2 Merge Gate Fallback
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -36,7 +42,10 @@ async function runMetabolism() {
     );
 
   if (pendingL3Nodes.length > 0) {
-    logger.info({ count: pendingL3Nodes.length }, "Found pending L3 nodes for merge gate fallback.");
+    logger.info(
+      { count: pendingL3Nodes.length },
+      "Found pending L3 nodes for merge gate fallback."
+    );
 
     const nodesByProject = new Map<number, typeof pendingL3Nodes>();
     for (const node of pendingL3Nodes) {
@@ -94,7 +103,10 @@ async function runMetabolism() {
     .limit(10);
 
   if (pendingCorrections.length > 0) {
-    logger.info({ count: pendingCorrections.length }, "Found pending corrections for distillation.");
+    logger.info(
+      { count: pendingCorrections.length },
+      "Found pending corrections for distillation."
+    );
 
     const promptsToInsert: any[] = [];
     const processedIds: number[] = [];
@@ -106,7 +118,8 @@ async function runMetabolism() {
           messages: [
             {
               role: "system",
-              content: "You are an expert software architect. Analyze the human correction (original vs corrected content) and extract a concise, single-sentence architectural guardrail/rule that explains the change.",
+              content:
+                "You are an expert software architect. Analyze the human correction (original vs corrected content) and extract a concise, single-sentence architectural guardrail/rule that explains the change.",
             },
             {
               role: "user",
@@ -117,7 +130,7 @@ async function runMetabolism() {
         });
 
         const guardrail = response.choices[0]?.message?.content?.trim();
-        
+
         if (guardrail) {
           promptsToInsert.push({
             projectId: correction.projectId,
@@ -165,45 +178,48 @@ metabolismRouter.get("/metabolism-tick", async (req: Request, res: Response): Pr
   }
 });
 
-metabolismRouter.get("/admin/metabolism-tick", async (req: Request, res: Response): Promise<void> => {
-  let adminSecret = process.env.ADMIN_SECRET_TOKEN;
-  
-  if (!adminSecret) {
-    if (process.env.NODE_ENV === "development") {
-      adminSecret = "dev-secret-token";
-    } else {
-      logger.error("ADMIN_SECRET_TOKEN is missing. Server misconfigured. Failing closed.");
-      res.status(500).json({ error: "Server misconfiguration" });
+metabolismRouter.get(
+  "/admin/metabolism-tick",
+  async (req: Request, res: Response): Promise<void> => {
+    let adminSecret = process.env.ADMIN_SECRET_TOKEN;
+
+    if (!adminSecret) {
+      if (process.env.NODE_ENV === "development") {
+        adminSecret = "dev-secret-token";
+      } else {
+        logger.error("ADMIN_SECRET_TOKEN is missing. Server misconfigured. Failing closed.");
+        res.status(500).json({ error: "Server misconfiguration" });
+        return;
+      }
+    }
+
+    let token = req.query.admin_token as string | undefined;
+
+    if (!token && req.headers.authorization?.startsWith("Bearer ")) {
+      token = req.headers.authorization.substring(7);
+    }
+
+    if (!token || token !== adminSecret) {
+      res.status(401).json({ error: "Unauthorized" });
       return;
     }
-  }
 
-  let token = req.query.admin_token as string | undefined;
+    if (isMetabolismRunning) {
+      res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
+      return;
+    }
 
-  if (!token && req.headers.authorization?.startsWith("Bearer ")) {
-    token = req.headers.authorization.substring(7);
+    isMetabolismRunning = true;
+    try {
+      await runMetabolism();
+      res.status(200).json({ message: "Metabolism tick completed manually", status: "success" });
+    } catch (err) {
+      logger.error({ err }, "Admin metabolism tick failed");
+      res.status(500).json({ error: "Metabolism tick failed" });
+    } finally {
+      isMetabolismRunning = false;
+    }
   }
-
-  if (!token || token !== adminSecret) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  if (isMetabolismRunning) {
-    res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
-    return;
-  }
-
-  isMetabolismRunning = true;
-  try {
-    await runMetabolism();
-    res.status(200).json({ message: "Metabolism tick completed manually", status: "success" });
-  } catch (err) {
-    logger.error({ err }, "Admin metabolism tick failed");
-    res.status(500).json({ error: "Metabolism tick failed" });
-  } finally {
-    isMetabolismRunning = false;
-  }
-});
+);
 
 export { metabolismRouter };

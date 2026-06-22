@@ -1,17 +1,21 @@
 # GitHub PR Integration
 
 ## Overview
+
 Analyze pull requests against the knowledge graph to surface related decisions, impacted modules, and review recommendations.
 
 ## Implementation
+
 `artifacts/api-server/src/routes/pull_requests.ts`. Types: `pullRequest.ts`, `pullRequestDetail.ts`, `pullRequestState.ts`, `prAnalyzeResult.ts`, `pullRequestAnalysisStatus.ts`.
 
 ### Key Files
+
 - `artifacts/api-server/src/routes/pull_requests.ts`
 - `lib/db/src/schema/pull_requests.ts`
 - `lib/api-zod/src/generated/types/prAnalyzeResult.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -56,13 +60,11 @@ Analyze pull requests against the knowledge graph to surface related decisions, 
   - `artifacts/kg-engine/src/pages/pull-requests.tsx`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Database Schema Validation
 
 - [ ] **Trigger `Database Schema Expert`**:
   - Inspect the Drizzle schema definitions for correct column types, indexes, and relations.
   - **Validation Goal**: Ensure that `drizzle-kit generate` produces valid SQL without errors and that the data model perfectly aligns with application requirements.
-
 
 ### API Endpoint Validation
 
@@ -70,13 +72,11 @@ Analyze pull requests against the knowledge graph to surface related decisions, 
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
 
-
 ### Frontend Validation
 
 - [ ] **Trigger `Frontend Developer`**:
   - Inspect the `.tsx` files for correct component hierarchy, prop types, and state management.
   - **Validation Goal**: Guarantee that there are no unused variables, exhaustive dependencies are met in `useEffect`, and the UI aligns with the wireframe/design spec.
-
 
 ### Project Build & Type Verification
 

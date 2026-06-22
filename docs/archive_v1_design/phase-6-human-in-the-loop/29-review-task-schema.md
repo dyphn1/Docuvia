@@ -1,17 +1,21 @@
 # Review Task Schema & API
 
 ## Overview
+
 Store and manage review tasks that queue AI-generated nodes for human confirmation or correction.
 
 ## Implementation
+
 `lib/db/src/schema/review_tasks.ts`, `artifacts/api-server/src/routes/review_tasks.ts`. Types: `reviewTask.ts`, `reviewTaskStatus.ts`, `reviewTaskTaskType.ts`, `reviewTaskEntityType.ts`.
 
 ### Key Files
+
 - `lib/db/src/schema/review_tasks.ts`
 - `artifacts/api-server/src/routes/review_tasks.ts`
 - `lib/api-zod/src/generated/types/reviewTask.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -35,7 +39,6 @@ Store and manage review tasks that queue AI-generated nodes for human confirmati
 - [ ] **Trigger `Explore` or `Task Verifier`** to analyze the following paths:
   - `reviewStats.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
-
 
 ### Project Build & Type Verification
 

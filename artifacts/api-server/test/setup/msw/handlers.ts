@@ -2,7 +2,6 @@ import { HttpResponse, http } from "msw";
 import githubCommits from "./fixtures/github-commits.json";
 import { openaiHandlers } from "./handlers/openai";
 
-
 // Max's Rule: Network-level MSW interception for LLM tests, with fuzzy factories
 import { http, HttpResponse } from "msw";
 

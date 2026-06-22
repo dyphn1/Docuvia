@@ -1,12 +1,12 @@
-import fs from 'node:fs/promises';
-import os from 'node:os';
-import path from 'node:path';
-import crypto from 'node:crypto';
-import { Parser, Language } from 'web-tree-sitter';
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import crypto from "node:crypto";
+import { Parser, Language } from "web-tree-sitter";
 
-import { createRequire } from 'node:module';
-import { LanguageRegistry } from '@workspace/ast-core';
-import { LanguageProvider, DefaultProvider } from '@workspace/ast-core';
+import { createRequire } from "node:module";
+import { LanguageRegistry } from "@workspace/ast-core";
+import { LanguageProvider, DefaultProvider } from "@workspace/ast-core";
 
 const require = createRequire(import.meta.url);
 let parserInitialized = false;
@@ -16,7 +16,10 @@ const languageCache = new Map<string, Language>();
 
 async function initParser() {
   if (!parserInitialized) {
-    const wasmPath = path.join(path.dirname(require.resolve('web-tree-sitter')), 'web-tree-sitter.wasm');
+    const wasmPath = path.join(
+      path.dirname(require.resolve("web-tree-sitter")),
+      "web-tree-sitter.wasm"
+    );
     await Parser.init({ locateFile: () => wasmPath });
     parserInitialized = true;
   }
@@ -26,9 +29,11 @@ async function initParser() {
   }
 }
 
-async function loadLanguage(ext: string): Promise<{ lang: Language | null, provider: LanguageProvider | undefined }> {
+async function loadLanguage(
+  ext: string
+): Promise<{ lang: Language | null; provider: LanguageProvider | undefined }> {
   if (!registry) {
-    throw new Error('Language registry not initialized');
+    throw new Error("Language registry not initialized");
   }
 
   const provider = registry.getProviderForExtension(ext);
@@ -51,12 +56,12 @@ async function loadLanguage(ext: string): Promise<{ lang: Language | null, provi
       await fs.access(wasmPath);
     } catch {
       try {
-        const wasmsPkgPath = require.resolve('tree-sitter-wasms/package.json');
-        wasmPath = path.join(path.dirname(wasmsPkgPath), 'out', wasmFileName);
+        const wasmsPkgPath = require.resolve("tree-sitter-wasms/package.json");
+        wasmPath = path.join(path.dirname(wasmsPkgPath), "out", wasmFileName);
       } catch (err) {
         // Fallback to individual language packages if tree-sitter-wasms is missing or fails
         try {
-          const pkgName = wasmFileName.replace('.wasm', ''); // e.g. tree-sitter-typescript.wasm -> tree-sitter-typescript
+          const pkgName = wasmFileName.replace(".wasm", ""); // e.g. tree-sitter-typescript.wasm -> tree-sitter-typescript
           const langPkgPath = require.resolve(`${pkgName}/package.json`);
           wasmPath = path.join(path.dirname(langPkgPath), wasmFileName);
         } catch (innerErr) {
@@ -76,7 +81,7 @@ async function loadLanguage(ext: string): Promise<{ lang: Language | null, provi
 }
 
 export interface ParseResult {
-  status: 'done' | 'error';
+  status: "done" | "error";
   file?: string;
   reason?: string;
 }
@@ -85,7 +90,7 @@ export interface ParseResult {
 export default async function parseAst(filePath: string): Promise<ParseResult> {
   await initParser();
 
-  const fileContent = await fs.readFile(filePath, 'utf-8');
+  const fileContent = await fs.readFile(filePath, "utf-8");
   const ext = path.extname(filePath);
   const { lang, provider } = await loadLanguage(ext);
 
@@ -95,12 +100,12 @@ export default async function parseAst(filePath: string): Promise<ParseResult> {
   } else {
     // If we can't load the language, we can't parse it with tree-sitter.
     // Return early or fallback. We'll return early for this implementation.
-    return { status: 'error', reason: `Language grammar not found for extension ${ext}` };
+    return { status: "error", reason: `Language grammar not found for extension ${ext}` };
   }
 
   const tree = parser.parse(fileContent);
   if (!tree) {
-    return { status: 'error', reason: 'Failed to parse file with tree-sitter' };
+    return { status: "error", reason: "Failed to parse file with tree-sitter" };
   }
 
   // Initialize Query-based extraction if queries are configured
@@ -109,15 +114,15 @@ export default async function parseAst(filePath: string): Promise<ParseResult> {
   }
 
   const scopeMap = new Map<string, string>();
-  
-  const importStatements = provider.extractImports(tree.rootNode);
-  
-  for (const stmt of importStatements) {
-    const sourceNode = stmt.descendantsOfType('string').pop();
-    if (!sourceNode) continue;
-    const sourceText = sourceNode.text.replace(/['"]/g, '');
 
-    const identifiers = stmt.descendantsOfType('identifier');
+  const importStatements = provider.extractImports(tree.rootNode);
+
+  for (const stmt of importStatements) {
+    const sourceNode = stmt.descendantsOfType("string").pop();
+    if (!sourceNode) continue;
+    const sourceText = sourceNode.text.replace(/['"]/g, "");
+
+    const identifiers = stmt.descendantsOfType("identifier");
     for (const idNode of identifiers) {
       scopeMap.set(idNode.text, `${sourceText}::${idNode.text}`);
     }
@@ -128,36 +133,37 @@ export default async function parseAst(filePath: string): Promise<ParseResult> {
   const callExprs = provider.extractCalls(tree.rootNode);
 
   const skeleton = [];
-  skeleton.push(JSON.stringify({ type: 'file', path: filePath }));
+  skeleton.push(JSON.stringify({ type: "file", path: filePath }));
 
   for (const cls of classDecls) {
-    const nameNode = cls.childForFieldName('name') || cls.descendantsOfType('identifier')[0];
+    const nameNode = cls.childForFieldName("name") || cls.descendantsOfType("identifier")[0];
     if (nameNode) {
-      skeleton.push(JSON.stringify({ type: 'class', name: nameNode.text }));
+      skeleton.push(JSON.stringify({ type: "class", name: nameNode.text }));
     }
   }
 
   for (const fn of functionDecls) {
-    const nameNode = fn.childForFieldName('name') || fn.descendantsOfType('identifier')[0];
+    const nameNode = fn.childForFieldName("name") || fn.descendantsOfType("identifier")[0];
     if (nameNode) {
-      skeleton.push(JSON.stringify({ type: 'function', name: nameNode.text }));
+      skeleton.push(JSON.stringify({ type: "function", name: nameNode.text }));
     }
   }
 
   const baseName = path.basename(filePath);
   for (const call of callExprs) {
-    const functionNameNode = call.childForFieldName('function') || call.descendantsOfType('identifier')[0];
+    const functionNameNode =
+      call.childForFieldName("function") || call.descendantsOfType("identifier")[0];
     if (functionNameNode) {
       const fnName = functionNameNode.text;
       const fqn = scopeMap.has(fnName) ? scopeMap.get(fnName) : `${baseName}::${fnName}`;
-      skeleton.push(JSON.stringify({ type: 'call', name: fqn }));
+      skeleton.push(JSON.stringify({ type: "call", name: fqn }));
     }
   }
 
-  const tempFileName = `ast-skeleton-${crypto.randomBytes(8).toString('hex')}.jsonl`;
+  const tempFileName = `ast-skeleton-${crypto.randomBytes(8).toString("hex")}.jsonl`;
   const tempFilePath = path.join(os.tmpdir(), tempFileName);
 
-  await fs.writeFile(tempFilePath, skeleton.join('\n') + '\n', 'utf-8');
+  await fs.writeFile(tempFilePath, skeleton.join("\n") + "\n", "utf-8");
 
-  return { status: 'done', file: tempFilePath };
+  return { status: "done", file: tempFilePath };
 }

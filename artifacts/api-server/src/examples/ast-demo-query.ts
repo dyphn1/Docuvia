@@ -1,16 +1,16 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import fs from 'node:fs/promises';
-import parseAst from '../lib/ast/ast-worker.js';
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import fs from "node:fs/promises";
+import parseAst from "../lib/ast/ast-worker.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function run() {
-  console.log('=== AST Query API Demo ===\n');
+  console.log("=== AST Query API Demo ===\n");
 
   // Test Python parsing with Query API
-  const pyFile = path.join(__dirname, 'dummy-query.py');
+  const pyFile = path.join(__dirname, "dummy-query.py");
   await fs.writeFile(
     pyFile,
     `
@@ -34,20 +34,20 @@ def another_function(x, y):
 my_test_function()
 another_function(1, 2)
 `,
-    'utf-8'
+    "utf-8"
   );
 
-  console.log('--- Python (Query API) ---');
+  console.log("--- Python (Query API) ---");
   const pyResult = await parseAst(pyFile);
-  if (pyResult.status === 'done' && pyResult.file) {
-    const output = await fs.readFile(pyResult.file, 'utf-8');
+  if (pyResult.status === "done" && pyResult.file) {
+    const output = await fs.readFile(pyResult.file, "utf-8");
     console.log(output);
   } else {
-    console.error('Python parsing failed:', pyResult.reason);
+    console.error("Python parsing failed:", pyResult.reason);
   }
 
   // Test Rust parsing with Query API
-  const rsFile = path.join(__dirname, 'dummy-query.rs');
+  const rsFile = path.join(__dirname, "dummy-query.rs");
   await fs.writeFile(
     rsFile,
     `
@@ -80,20 +80,20 @@ fn main() {
     another_function(42);
 }
 `,
-    'utf-8'
+    "utf-8"
   );
 
-  console.log('--- Rust (Query API) ---');
+  console.log("--- Rust (Query API) ---");
   const rsResult = await parseAst(rsFile);
-  if (rsResult.status === 'done' && rsResult.file) {
-    const output = await fs.readFile(rsResult.file, 'utf-8');
+  if (rsResult.status === "done" && rsResult.file) {
+    const output = await fs.readFile(rsResult.file, "utf-8");
     console.log(output);
   } else {
-    console.error('Rust parsing failed:', rsResult.reason);
+    console.error("Rust parsing failed:", rsResult.reason);
   }
 
   // Test Go parsing with Query API
-  const goFile = path.join(__dirname, 'dummy-query.go');
+  const goFile = path.join(__dirname, "dummy-query.go");
   await fs.writeFile(
     goFile,
     `
@@ -124,16 +124,16 @@ func main() {
     server.Start()
 }
 `,
-    'utf-8'
+    "utf-8"
   );
 
-  console.log('--- Go (Query API) ---');
+  console.log("--- Go (Query API) ---");
   const goResult = await parseAst(goFile);
-  if (goResult.status === 'done' && goResult.file) {
-    const output = await fs.readFile(goResult.file, 'utf-8');
+  if (goResult.status === "done" && goResult.file) {
+    const output = await fs.readFile(goResult.file, "utf-8");
     console.log(output);
   } else {
-    console.error('Go parsing failed:', goResult.reason);
+    console.error("Go parsing failed:", goResult.reason);
   }
 
   // Cleanup
@@ -141,7 +141,7 @@ func main() {
   await fs.rm(rsFile);
   await fs.rm(goFile);
 
-  console.log('=== Query API Demo Complete ===');
+  console.log("=== Query API Demo Complete ===");
 }
 
 run().catch(console.error);

@@ -1,15 +1,19 @@
 # Feedback Loop — Corrections to Prompts
 
 ## Overview
+
 Capture human corrections to AI-generated nodes as examples that feed back into prompt improvement.
 
 ## Implementation
+
 `lib/db/src/schema/correction_examples.ts` stores correction examples.
 
 ### Key Files
+
 - `lib/db/src/schema/correction_examples.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -24,8 +28,8 @@ Capture human corrections to AI-generated nodes as examples that feed back into 
 
 ### Functional & Logic Requirements
 
-- [ ] **Verify 'writeback in  stores corrections'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
-- [ ] **Verify 'in  injects last 5 corrections as few-shot examples'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
+- [ ] **Verify 'writeback in stores corrections'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
+- [ ] **Verify 'in injects last 5 corrections as few-shot examples'**: Check that the business rules, data transformations, and edge cases for this entity are fully handled. Ensure the functionality behaves exactly as specified in the requirements.
 
 ### Database Integrity
 
@@ -53,14 +57,12 @@ Capture human corrections to AI-generated nodes as examples that feed back into 
   - `generate.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
-  - **writeback in  stores corrections**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
-  - **in  injects last 5 corrections as few-shot examples**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
+  - **writeback in stores corrections**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
+  - **in injects last 5 corrections as few-shot examples**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
-
 
 ### Database Schema Validation
 
@@ -68,13 +70,11 @@ Capture human corrections to AI-generated nodes as examples that feed back into 
   - Inspect the Drizzle schema definitions for correct column types, indexes, and relations.
   - **Validation Goal**: Ensure that `drizzle-kit generate` produces valid SQL without errors and that the data model perfectly aligns with application requirements.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
-
 
 ### Project Build & Type Verification
 

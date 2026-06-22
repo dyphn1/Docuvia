@@ -19,7 +19,11 @@ const emptyStats: DashboardStats = {
 };
 
 export default function Dashboard() {
-  const { data: statsData, isError, isLoading } = useGetDashboard({
+  const {
+    data: statsData,
+    isError,
+    isLoading,
+  } = useGetDashboard({
     query: { queryKey: getGetDashboardQueryKey() },
   });
 
@@ -72,8 +76,8 @@ export default function Dashboard() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Dashboard data unavailable</AlertTitle>
           <AlertDescription>
-            The overview is shown with empty values because the API server did not return
-            dashboard stats.
+            The overview is shown with empty values because the API server did not return dashboard
+            stats.
           </AlertDescription>
         </Alert>
       )}

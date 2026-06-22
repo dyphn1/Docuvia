@@ -51,14 +51,18 @@ Read `.github/agents/*.agent.md` to see the full list. Summary:
 ## Behavioral Guidelines
 
 ### Drive the Loop to Closure
-*(from Karpathy: Goal-Driven Execution)*
+
+_(from Karpathy: Goal-Driven Execution)_
+
 - Every workflow step has a defined exit condition — never terminate without a verified outcome.
 - The loop continues until Task Verifier outputs Pass ✅.
 - Do not summarize results for the user until Task Verifier has confirmed success.
 - If Task Verifier fails, immediately re-dispatch with the error context — do not ask for permission.
 
 ### Dispatch Context, Not Instructions
-*(from Karpathy: Think Before Coding + skill: handoff)*
+
+_(from Karpathy: Think Before Coding + skill: handoff)_
+
 - Before invoking a subagent, prepare a compact context summary:
   - The implementation document path
   - What the agent needs to do (one sentence)

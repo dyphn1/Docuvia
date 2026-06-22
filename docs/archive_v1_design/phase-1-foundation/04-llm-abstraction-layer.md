@@ -1,20 +1,24 @@
 # LLM Abstraction Layer
 
 ## Overview
+
 Provide a unified interface to multiple LLM providers so the rest of the system is provider-agnostic.
 
 ## Implementation
+
 `lib/integrations-openai-ai-server/src/` — exports an OpenAI-compatible client (`client.ts`, `index.ts`) used by the generate pipeline. Image and batch helpers included.
 
 > ⚠️ **Scope Note**: The doc previously claimed "Replit skills add Anthropic, Gemini, and OpenRouter adapters." Those adapters exist as **Replit platform AI integrations** (environment-provisioned), **not** as portable code in this repository. The only provider with in-repo code is OpenAI-compatible API. Multi-provider runtime switching is not implemented within this codebase.
 
 ### Key Files
+
 - `lib/integrations-openai-ai-server/src/client.ts` — OpenAI client instance
 - `lib/integrations-openai-ai-server/src/index.ts` — exports
 - `artifacts/api-server/src/routes/llm_config.ts` — per-project model config CRUD
 - `artifacts/api-server/src/lib/embedding.ts` — `generateEmbedding()` using `text-embedding-3-small`
 
 ## Status
+
 **✅ Done (OpenAI only)** — Multi-provider adapters are Replit-platform-provisioned, not portable code.
 
 ## Verification Checklist
@@ -82,7 +86,6 @@ Provide a unified interface to multiple LLM providers so the rest of the system 
   - `lib/integrations-openai-ai-server/`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -92,13 +95,11 @@ Provide a unified interface to multiple LLM providers so the rest of the system 
   - **OpenRouter**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
-
 
 ### Project Build & Type Verification
 

@@ -74,7 +74,13 @@ function L3NodeRow({ node }: { node: L3Node }) {
               <span className="text-[10px] text-muted-foreground">
                 Confidence:{" "}
                 <span
-                  className={node.confidence >= 0.8 ? "text-green-400" : node.confidence >= 0.5 ? "text-yellow-400" : "text-red-400"}
+                  className={
+                    node.confidence >= 0.8
+                      ? "text-green-400"
+                      : node.confidence >= 0.5
+                        ? "text-yellow-400"
+                        : "text-red-400"
+                  }
                 >
                   {Math.round(node.confidence * 100)}%
                 </span>
@@ -127,7 +133,10 @@ function L2NodeCard({ node, projectId }: { node: L2Node; projectId: number }) {
               {node.type}
             </Badge>
             {node.needsReview && (
-              <Badge variant="outline" className="text-[9px] uppercase border-yellow-500/40 text-yellow-400 gap-1">
+              <Badge
+                variant="outline"
+                className="text-[9px] uppercase border-yellow-500/40 text-yellow-400 gap-1"
+              >
                 <AlertCircle className="h-2.5 w-2.5" />
                 Review
               </Badge>
@@ -196,7 +205,9 @@ function L2Directory({ projectId }: { projectId: number }) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3 py-16">
         <GitMerge className="h-12 w-12 opacity-20" />
-        <p className="text-sm">No L2 nodes found. Run the AI generation pipeline to extract components.</p>
+        <p className="text-sm">
+          No L2 nodes found. Run the AI generation pipeline to extract components.
+        </p>
       </div>
     );
   }
@@ -235,11 +246,11 @@ function L2Directory({ projectId }: { projectId: number }) {
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-2">
           {filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">No results match your filter.</p>
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No results match your filter.
+            </p>
           ) : (
-            filtered.map((node) => (
-              <L2NodeCard key={node.id} node={node} projectId={projectId} />
-            ))
+            filtered.map((node) => <L2NodeCard key={node.id} node={node} projectId={projectId} />)
           )}
         </div>
       </ScrollArea>
@@ -283,7 +294,8 @@ export default function ProjectDetail() {
   const { data: l2Nodes } = useListProjectL2Nodes(id, {
     query: { enabled: !!id, queryKey: getListProjectL2NodesQueryKey(id) },
   });
-  const unconfirmedCount = l2Nodes?.filter(n => n.aiGenerated && !n.isBootstrapConfirmed)?.length || 0;
+  const unconfirmedCount =
+    l2Nodes?.filter((n) => n.aiGenerated && !n.isBootstrapConfirmed)?.length || 0;
 
   if (isLoadingProject) {
     return (
@@ -381,7 +393,7 @@ export default function ProjectDetail() {
                 value="bootstrap"
                 className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-600 relative"
               >
-                <CheckCircle2 className="h-4 w-4 mr-2" /> 
+                <CheckCircle2 className="h-4 w-4 mr-2" />
                 Bootstrap Review
                 <Badge className="ml-2 bg-orange-500 hover:bg-orange-600 text-[10px] h-4 min-w-4 p-0 px-1 flex items-center justify-center">
                   {unconfirmedCount}

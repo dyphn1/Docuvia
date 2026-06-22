@@ -1,17 +1,21 @@
 # Agentic RAG — Intent-Driven Routing
 
 ## Overview
+
 An agent layer that autonomously decides whether to query the vector index or traverse the graph based on query intent.
 
 ## Implementation
+
 `artifacts/api-server/src/lib/intent-router.ts`, `routingStrategy.ts`, `agenticSearchResult.ts`, `agenticEntities.ts`. MCP query types: `mcpQueryInput.ts`, `mcpQueryResult.ts`.
 
 ### Key Files
+
 - `artifacts/api-server/src/lib/intent-router.ts`
 - `lib/api-zod/src/generated/types/routingStrategy.ts`
 - `lib/api-zod/src/generated/types/mcpQueryInput.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -50,7 +54,6 @@ An agent layer that autonomously decides whether to query the vector index or tr
   - `useMcpQuery`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -59,13 +62,11 @@ An agent layer that autonomously decides whether to query the vector index or tr
   - **hook generated**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
-
 
 ### Project Build & Type Verification
 

@@ -67,8 +67,8 @@ graph TD
 | **PostgreSQL**              | Outbound  | TCP (Drizzle ORM)                  | `DATABASE_URL` connection string               | All schema tables in `lib/db/src/schema/`                          |
 | **OpenAI-compatible LLM**   | Outbound  | HTTPS REST                         | API key (`OPENAI_API_KEY` or equivalent)       | `/v1/chat/completions`                                             |
 | **Slack / Teams**           | Outbound  | HTTPS POST (webhook)               | Webhook URL (stored in `project_integrations`) | Notification events (fire-and-forget)                              |
-| **Git CLI**                 | Outbound  | `child_process.spawn (streamed)`           | Local filesystem permissions                   | `git log`, `git diff`, `git show`                                  |
-| **SVN CLI**                 | Outbound  | `child_process.spawn (streamed)`           | Local SVN credentials                          | `svn log --xml`, `svn diff`                                        |
+| **Git CLI**                 | Outbound  | `child_process.spawn (streamed)`   | Local filesystem permissions                   | `git log`, `git diff`, `git show`                                  |
+| **SVN CLI**                 | Outbound  | `child_process.spawn (streamed)`   | Local SVN credentials                          | `svn log --xml`, `svn diff`                                        |
 
 ---
 

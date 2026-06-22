@@ -1,9 +1,9 @@
-import { randomBytes } from 'crypto';
-import * as vscode from 'vscode';
-import { CentralSearchResult } from './CentralServerClient.js';
+import { randomBytes } from "crypto";
+import * as vscode from "vscode";
+import { CentralSearchResult } from "./CentralServerClient.js";
 
 export class SearchResultsPanel {
-  static readonly viewType = 'docuvia.searchResults';
+  static readonly viewType = "docuvia.searchResults";
   private static _current: SearchResultsPanel | undefined;
 
   private _query: string;
@@ -14,8 +14,7 @@ export class SearchResultsPanel {
     query: string,
     results: CentralSearchResult[]
   ): void {
-    const column =
-      vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
+    const column = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
 
     if (SearchResultsPanel._current) {
       SearchResultsPanel._current._panel.reveal(column);
@@ -25,11 +24,11 @@ export class SearchResultsPanel {
 
     const panel = vscode.window.createWebviewPanel(
       SearchResultsPanel.viewType,
-      'Docuvia: Search Results',
+      "Docuvia: Search Results",
       column,
       {
         enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'out')],
+        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "out")],
         retainContextWhenHidden: true,
       }
     );
@@ -70,30 +69,33 @@ export class SearchResultsPanel {
   }
 
   private _handleMessage(message: { type: string; title?: string }): void {
-    if (message.type === 'openResult' && message.title) {
-      void vscode.commands.executeCommand('workbench.action.chat.open', {
+    if (message.type === "openResult" && message.title) {
+      void vscode.commands.executeCommand("workbench.action.chat.open", {
         query: `@docuvia /query ${message.title}`,
       });
     }
   }
 
   private _buildHtml(): string {
-    const nonce = randomBytes(16).toString('hex');
+    const nonce = randomBytes(16).toString("hex");
     const cspSource = this._panel.webview.cspSource;
 
     const escapeHtml = (str: string): string =>
       str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 
     const highlightKeywords = (text: string, query: string): string => {
       const escaped = escapeHtml(text);
       if (!query.trim()) return escaped;
-      const terms = query.trim().split(/\s+/).map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-      const pattern = new RegExp(`(${terms.join('|')})`, 'gi');
-      return escaped.replace(pattern, '<mark>$1</mark>');
+      const terms = query
+        .trim()
+        .split(/\s+/)
+        .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      const pattern = new RegExp(`(${terms.join("|")})`, "gi");
+      return escaped.replace(pattern, "<mark>$1</mark>");
     };
 
     // Group results by projectName
@@ -114,25 +116,23 @@ export class SearchResultsPanel {
             .map((r) => {
               const tags =
                 r.l1Tags.length > 0
-                  ? r.l1Tags
-                      .map((t) => `<span class="tag">${escapeHtml(t)}</span>`)
-                      .join(' ')
-                  : '';
+                  ? r.l1Tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join(" ")
+                  : "";
               const safeTitle = escapeHtml(r.title);
               return `<div class="result-card" role="button" tabindex="0"
   onclick="openResult(${JSON.stringify(r.title)})">
   <div class="result-title">${safeTitle}</div>
-  <div class="result-meta">${tags || '&nbsp;'}</div>
+  <div class="result-meta">${tags || "&nbsp;"}</div>
   <div class="result-snippet">${highlightKeywords(r.snippet, this._query)}</div>
 </div>`;
             })
-            .join('\n');
+            .join("\n");
           return `<section class="project-group">
   <h2 class="project-name">${escapeHtml(projectName)}</h2>
   ${cards}
 </section>`;
         })
-        .join('\n');
+        .join("\n");
     }
 
     return `<!DOCTYPE html>

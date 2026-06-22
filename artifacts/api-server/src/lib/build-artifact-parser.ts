@@ -88,7 +88,10 @@ export function parseMapFile(content: string, filename: string): ParsedBuildArti
   const top20 = sections.slice(0, 20);
 
   const totalSize = sections.reduce((acc, s) => acc + (s.size ?? 0), 0);
-  const largest = top20.slice(0, 2).map((s) => `${s.name} (${Math.round((s.size ?? 0) / 1024)} KB)`).join(", ");
+  const largest = top20
+    .slice(0, 2)
+    .map((s) => `${s.name} (${Math.round((s.size ?? 0) / 1024)} KB)`)
+    .join(", ");
   const summary = `Linker map with ${sections.length} sections. Largest: ${largest || "N/A"}. Total image size: ${Math.round(totalSize / 1024)} KB.`;
 
   return {
@@ -97,7 +100,10 @@ export function parseMapFile(content: string, filename: string): ParsedBuildArti
     sections: top20,
     modules: modules.slice(0, 20),
     diagnostics: [],
-    metadata: { totalSections: String(sections.length), totalSizeKB: String(Math.round(totalSize / 1024)) },
+    metadata: {
+      totalSections: String(sections.length),
+      totalSizeKB: String(Math.round(totalSize / 1024)),
+    },
     summary,
   };
 }

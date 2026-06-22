@@ -18,7 +18,7 @@ import { CheckCircle2, XCircle, FileCode, Check } from "lucide-react";
 
 export function L2BootstrapReview({ projectId }: { projectId: number }) {
   const queryClient = useQueryClient();
-  
+
   const { data: l2Nodes, isLoading: isL2Loading } = useListProjectL2Nodes(projectId, {
     query: { enabled: !!projectId, queryKey: getListProjectL2NodesQueryKey(projectId) },
   });
@@ -44,14 +44,14 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
 
   const groupedNodes = useMemo(() => {
     if (!l2Nodes || !l1Tags) return {};
-    
+
     const tagMap = new Map(l1Tags.map((t) => [t.id, t.name]));
-    
+
     const grouped: Record<string, typeof l2Nodes> = {};
     for (const node of l2Nodes) {
       const tagId = node.l1TagIds?.[0]; // Assuming primarily single L1 tag for simplicity
-      const tagName = tagId ? tagMap.get(tagId) ?? "Uncategorized" : "Uncategorized";
-      
+      const tagName = tagId ? (tagMap.get(tagId) ?? "Uncategorized") : "Uncategorized";
+
       if (!grouped[tagName]) {
         grouped[tagName] = [];
       }
@@ -70,7 +70,7 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
   }
 
   const unconfirmedNodes = l2Nodes?.filter((n) => n.aiGenerated && !n.isBootstrapConfirmed) || [];
-  
+
   if (unconfirmedNodes.length === 0) {
     return (
       <div className="p-6 text-center text-muted-foreground">
@@ -96,8 +96,11 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
       const decision = decisions[node.id];
       if (decision === "approve") {
         const customPath = pathEdits[node.id];
-        const patterns = customPath 
-          ? customPath.split(",").map(s => s.trim()).filter(Boolean)
+        const patterns = customPath
+          ? customPath
+              .split(",")
+              .map((s) => s.trim())
+              .filter(Boolean)
           : node.pathPatterns || [];
         approvedModules.push({ id: node.id, pathPatterns: patterns });
       } else if (decision === "reject") {
@@ -149,10 +152,10 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
                 <div className="flex items-center gap-2 pb-2 border-b">
                   <Badge variant="secondary">{tagName}</Badge>
                   <span className="text-xs text-muted-foreground">
-                    {nodes.length} module{nodes.length !== 1 ? 's' : ''}
+                    {nodes.length} module{nodes.length !== 1 ? "s" : ""}
                   </span>
                 </div>
-                
+
                 <div className="grid gap-3">
                   {nodes.map((node) => {
                     const isNew = node.aiGenerated && !node.isBootstrapConfirmed;
@@ -163,7 +166,9 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
                             <div className="flex items-center gap-2">
                               <FileCode className="h-4 w-4 text-muted-foreground" />
                               <span className="font-medium text-sm">{node.name}</span>
-                              <Badge variant="outline" className="text-[10px]">Existing</Badge>
+                              <Badge variant="outline" className="text-[10px]">
+                                Existing
+                              </Badge>
                             </div>
                             <div className="text-xs text-muted-foreground truncate max-w-sm">
                               {node.pathPatterns?.join(", ") || "No paths"}
@@ -175,15 +180,18 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
 
                     const decision = decisions[node.id];
                     const editedPath = pathEdits[node.id];
-                    const displayPath = editedPath !== undefined ? editedPath : (node.pathPatterns?.join(", ") || "");
+                    const displayPath =
+                      editedPath !== undefined ? editedPath : node.pathPatterns?.join(", ") || "";
 
                     return (
-                      <Card 
-                        key={node.id} 
+                      <Card
+                        key={node.id}
                         className={`transition-colors border-l-4 ${
-                          decision === "approve" ? "border-l-green-500 bg-green-500/5" :
-                          decision === "reject" ? "border-l-red-500 bg-red-500/5" :
-                          "border-l-blue-500"
+                          decision === "approve"
+                            ? "border-l-green-500 bg-green-500/5"
+                            : decision === "reject"
+                              ? "border-l-red-500 bg-red-500/5"
+                              : "border-l-blue-500"
                         }`}
                       >
                         <CardContent className="p-4 flex flex-col gap-3">
@@ -194,36 +202,66 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
                                 <Badge className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 text-[10px] border-blue-500/20">
                                   New
                                 </Badge>
-                                {decision === 'approve' && <Badge variant="outline" className="text-green-500 border-green-500/30 text-[10px]"><Check className="h-3 w-3 mr-1" /> Approved</Badge>}
-                                {decision === 'reject' && <Badge variant="outline" className="text-red-500 border-red-500/30 text-[10px]"><XCircle className="h-3 w-3 mr-1" /> Rejected</Badge>}
+                                {decision === "approve" && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-green-500 border-green-500/30 text-[10px]"
+                                  >
+                                    <Check className="h-3 w-3 mr-1" /> Approved
+                                  </Badge>
+                                )}
+                                {decision === "reject" && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-red-500 border-red-500/30 text-[10px]"
+                                  >
+                                    <XCircle className="h-3 w-3 mr-1" /> Rejected
+                                  </Badge>
+                                )}
                               </div>
-                              <p className="text-xs text-muted-foreground">{node.description || "No description provided."}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {node.description || "No description provided."}
+                              </p>
                             </div>
                             <div className="flex gap-1 shrink-0">
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant={decision === "approve" ? "default" : "outline"}
-                                className={decision === "approve" ? "bg-green-600 hover:bg-green-700" : "hover:text-green-600 hover:border-green-600"}
-                                onClick={() => setDecisions(d => ({ ...d, [node.id]: "approve" }))}
+                                className={
+                                  decision === "approve"
+                                    ? "bg-green-600 hover:bg-green-700"
+                                    : "hover:text-green-600 hover:border-green-600"
+                                }
+                                onClick={() =>
+                                  setDecisions((d) => ({ ...d, [node.id]: "approve" }))
+                                }
                               >
                                 Approve
                               </Button>
-                              <Button 
-                                size="sm" 
+                              <Button
+                                size="sm"
                                 variant={decision === "reject" ? "destructive" : "outline"}
-                                className={decision === "reject" ? "" : "hover:text-red-600 hover:border-red-600"}
-                                onClick={() => setDecisions(d => ({ ...d, [node.id]: "reject" }))}
+                                className={
+                                  decision === "reject"
+                                    ? ""
+                                    : "hover:text-red-600 hover:border-red-600"
+                                }
+                                onClick={() => setDecisions((d) => ({ ...d, [node.id]: "reject" }))}
                               >
                                 Reject
                               </Button>
                             </div>
                           </div>
-                          
+
                           <div className="flex flex-col gap-1.5 mt-2">
-                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Path Patterns (Glob)</span>
-                            <Input 
+                            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                              Path Patterns (Glob)
+                            </span>
+                            <Input
                               value={displayPath}
-                              onChange={(e) => setPathEdits(prev => ({ ...prev, [node.id]: e.target.value }))}
+                              onChange={(e) =>
+                                setPathEdits((prev) => ({ ...prev, [node.id]: e.target.value }))
+                              }
                               placeholder="e.g. src/components/**/*.tsx"
                               className="h-8 text-xs font-mono"
                             />

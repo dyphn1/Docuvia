@@ -1,16 +1,20 @@
 # MCP: list_projects
 
 ## Overview
+
 Return all registered projects available in the knowledge base.
 
 ## Implementation
+
 `mcpProjectList.ts`, `mcpProjectListProjectsItem.ts`.
 
 ### Key Files
+
 - `lib/api-zod/src/generated/types/mcpProjectList.ts`
 - `lib/api-zod/src/generated/types/mcpProjectListProjectsItem.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -36,7 +40,6 @@ Return all registered projects available in the knowledge base.
   - `mcpProjectList.ts`
   - `mcpProjectListProjectsItem.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
-
 
 ### Project Build & Type Verification
 

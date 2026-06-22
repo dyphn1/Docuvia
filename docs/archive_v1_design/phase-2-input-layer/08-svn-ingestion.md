@@ -1,16 +1,20 @@
 # SVN Ingestion
 
 ## Overview
+
 Fetch commit history and diffs from SVN repositories and normalize to the same commit format as Git.
 
 ## Implementation
+
 `artifacts/api-server/src/lib/svn-client.ts`. Types: `svnIngestInput.ts`, `svnIngestResult.ts`, `svnIngestInputMode.ts`.
 
 ### Key Files
+
 - `artifacts/api-server/src/lib/svn-client.ts`
 - `lib/api-zod/src/generated/types/svnIngestInput.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -66,7 +70,6 @@ Fetch commit history and diffs from SVN repositories and normalize to the same c
   - `vcsType`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -76,20 +79,17 @@ Fetch commit history and diffs from SVN repositories and normalize to the same c
   - **on commits**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### Database Schema Validation
 
 - [ ] **Trigger `Database Schema Expert`**:
   - Inspect the Drizzle schema definitions for correct column types, indexes, and relations.
   - **Validation Goal**: Ensure that `drizzle-kit generate` produces valid SQL without errors and that the data model perfectly aligns with application requirements.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
-
 
 ### Project Build & Type Verification
 

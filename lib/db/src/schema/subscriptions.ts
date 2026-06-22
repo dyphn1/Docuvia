@@ -15,7 +15,7 @@ export const subscriptionsTable = pgTable(
       .references(() => projectsTable.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (t) => [unique().on(t.subscriberProjectId, t.publisherProjectId)],
+  (t) => [unique().on(t.subscriberProjectId, t.publisherProjectId)]
 );
 
 export const insertSubscriptionSchema = createInsertSchema(subscriptionsTable).omit({

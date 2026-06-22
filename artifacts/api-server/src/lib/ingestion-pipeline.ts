@@ -64,20 +64,22 @@ export async function processIngestion({
     const gitItems = items as GitCommitItem[];
     // To prevent unbounded memory/CPU spikes, strictly process max 50 at a time.
     const batchSize = 50;
-    
+
     // We already fetch hashes, but we should do it per batch to handle duplicates cleanly without memory bloat
     for (let i = 0; i < gitItems.length; i += batchSize) {
       const batch = gitItems.slice(i, i + batchSize);
-      
+
       await db.transaction(async (tx) => {
-        const batchHashes = batch.map(c => c.sha);
+        const batchHashes = batch.map((c) => c.sha);
         const existingRecords = await tx
-            .select({ hash: commitsTable.hash })
-            .from(commitsTable)
-            .where(eq(commitsTable.projectId, projectId)); // Simplified for standard Drizzle
-            
-        const existingHashes = new Set(existingRecords.filter(r => batchHashes.includes(r.hash)).map(r => r.hash));
-        
+          .select({ hash: commitsTable.hash })
+          .from(commitsTable)
+          .where(eq(commitsTable.projectId, projectId)); // Simplified for standard Drizzle
+
+        const existingHashes = new Set(
+          existingRecords.filter((r) => batchHashes.includes(r.hash)).map((r) => r.hash)
+        );
+
         let batchIngested = 0;
         let lastHash = "";
 
@@ -101,17 +103,24 @@ export async function processIngestion({
 
         if (batchIngested > 0) {
           // Update cursor column
-          await tx.update(projectsTable)
+          await tx
+            .update(projectsTable)
             .set({ lastGitIngestedAt: new Date() }) // Real implementation would use the commit date or sha
             .where(eq(projectsTable.id, projectId));
-            
+
           ingested += batchIngested;
         }
       });
     }
 
     if (ingested > 0) {
-      await logAndNotify(projectId, projectName, "commit", `Ingested ${ingested} git commits`, ingested);
+      await logAndNotify(
+        projectId,
+        projectName,
+        "commit",
+        `Ingested ${ingested} git commits`,
+        ingested
+      );
     }
   } else if (type === "svn") {
     const svnItems = items as SvnCommitItem[];
@@ -148,22 +157,23 @@ export async function processIngestion({
     }
 
     if (ingested > 0) {
-      await logAndNotify(projectId, projectName, "commit", `Ingested ${ingested} SVN revisions`, ingested);
+      await logAndNotify(
+        projectId,
+        projectName,
+        "commit",
+        `Ingested ${ingested} SVN revisions`,
+        ingested
+      );
     }
   } else if (type === "document") {
     const docItems = items as DocumentItem[];
     for (const doc of docItems) {
       const hash = doc.contentHash ?? crypto.createHash("sha256").update(doc.content).digest("hex");
-      
+
       const [existing] = await db
         .select({ id: documentsTable.id })
         .from(documentsTable)
-        .where(
-          and(
-            eq(documentsTable.projectId, projectId),
-            eq(documentsTable.contentHash, hash)
-          )
-        );
+        .where(and(eq(documentsTable.projectId, projectId), eq(documentsTable.contentHash, hash)));
 
       if (existing) {
         skipped++;
@@ -185,7 +195,13 @@ export async function processIngestion({
     }
 
     if (ingested > 0) {
-      await logAndNotify(projectId, projectName, "document", `Ingested ${ingested} documents`, ingested);
+      await logAndNotify(
+        projectId,
+        projectName,
+        "document",
+        `Ingested ${ingested} documents`,
+        ingested
+      );
     }
   }
 
@@ -214,24 +230,24 @@ async function logAndNotify(
     .select()
     .from(subscriptionsTable)
     .where(eq(subscriptionsTable.publisherProjectId, projectId));
-    
+
   for (const sub of subscribers) {
     await db.insert(notificationsTable).values({
       projectId: sub.subscriberProjectId,
       type: activityType === "commit" ? "new_commit" : "new_document",
-      payload: { 
-        [activityType === "commit" ? "commitCount" : "documentCount"]: count, 
-        projectId, 
-        projectName 
+      payload: {
+        [activityType === "commit" ? "commitCount" : "documentCount"]: count,
+        projectId,
+        projectName,
       },
       read: false,
     });
   }
-  
+
   void notifyExternalIntegrations(
-    projectId, 
-    projectName, 
-    activityType === "commit" ? "new_commit" : "new_document", 
+    projectId,
+    projectName,
+    activityType === "commit" ? "new_commit" : "new_document",
     {
       [activityType === "commit" ? "commitCount" : "documentCount"]: count,
       projectId,

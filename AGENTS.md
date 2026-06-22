@@ -11,16 +11,16 @@
 
 ### Workspace Layout
 
-| Directory                        | Purpose                                                               |
-| -------------------------------- | --------------------------------------------------------------------- |
-| `kg-engine/`                     | Frontend React UI (Dashboard, Pipeline, Query, Review)                |
-| `api-server/`                    | Express API, MCP endpoints, Agentic RAG routing, Ingestion logic      |
+| Directory                        | Purpose                                                                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `kg-engine/`                     | Frontend React UI (Dashboard, Pipeline, Query, Review)                                                                   |
+| `api-server/`                    | Express API, MCP endpoints, Agentic RAG routing, Ingestion logic                                                         |
 | `vscode-client/`                 | VS Code Extension — tree view, Copilot Chat participant, CodeLens/Hover (see `artifacts/vscode-client/design/ROUTER.md`) |
-| `mockup-sandbox/`                | UI prototyping and visual component sandbox (not production)          |
-| `api-spec/`                      | `openapi.yaml` — Single source of truth for all API contracts         |
-| `db/`                            | Drizzle ORM schema and migrations (`projects.ts`, `commits.ts`, etc.) |
-| `integrations-openai-ai-server/` | OpenAI-compatible client wrapper                                      |
-| `docs/`                          | Centralized documentation including `design/` (Arc42 + ADRs) and `roadmap/` |
+| `mockup-sandbox/`                | UI prototyping and visual component sandbox (not production)                                                             |
+| `api-spec/`                      | `openapi.yaml` — Single source of truth for all API contracts                                                            |
+| `db/`                            | Drizzle ORM schema and migrations (`projects.ts`, `commits.ts`, etc.)                                                    |
+| `integrations-openai-ai-server/` | OpenAI-compatible client wrapper                                                                                         |
+| `docs/`                          | Centralized documentation including `design/` (Arc42 + ADRs) and `roadmap/`                                              |
 
 ## Development Commands
 
@@ -83,18 +83,18 @@ This project is scaffolded with the `create-agent-launcher` workflow. When imple
 - **Agent Launcher**: Use the `agent-launcher` skill to orchestrate multi-step implementations.
 - **Available Agents**: All 10 agents are defined in `.github/agents/`. Instructions for the state machine orchestrator loop are in `.github/copilot-instructions.md`.
 
-| Agent                  | When to Use                                                                 |
-| ---------------------- | --------------------------------------------------------------------------- |
-| Requirement Analyzer   | New feature planning, ambiguity resolution                                  |
-| Backend Developer      | Express.js / Node.js implementation                                         |
-| Frontend Developer     | React + Vite UI changes                                                     |
-| Database Schema Expert | Drizzle ORM schema / migrations                                             |
-| API Architect          | OpenAPI spec + Orval codegen                                                |
-| Task Verifier          | Post-implementation verification                                            |
-| Document Writer (MD)   | Markdown documentation only, no source code                                 |
+| Agent                  | When to Use                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| Requirement Analyzer   | New feature planning, ambiguity resolution                                   |
+| Backend Developer      | Express.js / Node.js implementation                                          |
+| Frontend Developer     | React + Vite UI changes                                                      |
+| Database Schema Expert | Drizzle ORM schema / migrations                                              |
+| API Architect          | OpenAPI spec + Orval codegen                                                 |
+| Task Verifier          | Post-implementation verification                                             |
+| Document Writer (MD)   | Markdown documentation only, no source code                                  |
 | Memory Keeper          | Consolidate task learnings into project memory after successful verification |
-| Shell Script Expert    | Bash, batch, and CI pipeline scripts                                        |
-| Tool Maker             | Utility scripts for AI automation reliability                               |
+| Shell Script Expert    | Bash, batch, and CI pipeline scripts                                         |
+| Tool Maker             | Utility scripts for AI automation reliability                                |
 
 ## Conventions
 
@@ -149,6 +149,7 @@ Docuvia is designed around an **Agentic OS Architecture**, prioritizing token ef
 - **Supply-Chain Defense**: `minimumReleaseAge: 1440` in `pnpm-workspace.yaml` requires all npm packages to be at least 1 day old before installation. Do NOT disable this setting. Use `minimumReleaseAgeExclude` sparingly for trusted organizations only.
 
 <!-- gitnexus:start -->
+
 # GitNexus — Code Intelligence
 
 This project is indexed by GitNexus as **Docuvia** (6032 symbols, 9774 relationships, 170 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
@@ -172,12 +173,12 @@ This project is indexed by GitNexus as **Docuvia** (6032 symbols, 9774 relations
 
 ## Resources
 
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/Docuvia/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/Docuvia/clusters` | All functional areas |
-| `gitnexus://repo/Docuvia/processes` | All execution flows |
-| `gitnexus://repo/Docuvia/process/{name}` | Step-by-step execution trace |
+| Resource                                 | Use for                                  |
+| ---------------------------------------- | ---------------------------------------- |
+| `gitnexus://repo/Docuvia/context`        | Codebase overview, check index freshness |
+| `gitnexus://repo/Docuvia/clusters`       | All functional areas                     |
+| `gitnexus://repo/Docuvia/processes`      | All execution flows                      |
+| `gitnexus://repo/Docuvia/process/{name}` | Step-by-step execution trace             |
 
 ## Cross-Repo Groups
 
@@ -185,13 +186,13 @@ This repository is listed under GitNexus **group(s): my_workspace** (see `~/.git
 
 ## CLI
 
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+| Task                                         | Read this skill file                                        |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md`       |
+| Blast radius / "What breaks if I change X?"  | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?"             | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md`       |
+| Rename / extract / split / refactor          | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`     |
+| Tools, resources, schema reference           | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`           |
+| Index, status, clean, wiki CLI commands      | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`             |
 
 <!-- gitnexus:end -->

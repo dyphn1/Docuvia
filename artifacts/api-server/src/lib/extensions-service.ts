@@ -1,5 +1,11 @@
 import { db } from "@workspace/db";
-import { l3NodesTable, l2NodesTable, documentsTable, activityLogTable, projectsTable } from "@workspace/db";
+import {
+  l3NodesTable,
+  l2NodesTable,
+  documentsTable,
+  activityLogTable,
+  projectsTable,
+} from "@workspace/db";
 import { eq, like, isNotNull, or, and, sql } from "drizzle-orm";
 import { generateEmbedding, parseEmbedding } from "./embedding.js";
 import { routeQuery } from "./intent-router.js";
@@ -52,7 +58,10 @@ export async function createL3Decision(payload: VscodeCreateDecisionPayload) {
         sql`INSERT INTO l3_node_source_refs (l3_node_id, source_type, source_path, created_at) VALUES (${node.id}, 'file', ${payload.filePath}, now())`
       );
     } catch (err) {
-      logger.warn({ err }, "l3_node_source_refs table missing or insert failed; skipping source ref");
+      logger.warn(
+        { err },
+        "l3_node_source_refs table missing or insert failed; skipping source ref"
+      );
     }
   }
 
@@ -76,37 +85,73 @@ export async function getFileContext(pathStr: string, projectId?: number) {
   const pattern = `%${basename}%`;
 
   // L2 nodes by name or description
-  let l2Query = db.select().from(l2NodesTable).where(
-    or(like(l2NodesTable.name, pattern), like(sql`COALESCE(${l2NodesTable.description}, '')`, pattern))
-  ).$dynamic();
+  let l2Query = db
+    .select()
+    .from(l2NodesTable)
+    .where(
+      or(
+        like(l2NodesTable.name, pattern),
+        like(sql`COALESCE(${l2NodesTable.description}, '')`, pattern)
+      )
+    )
+    .$dynamic();
   if (projectId) l2Query = l2Query.where(eq(l2NodesTable.projectId, projectId));
   const l2Nodes = await l2Query.limit(20);
 
   // L3 nodes by title/content
-  let l3Query: any = db.select().from(l3NodesTable).where(
-    or(like(l3NodesTable.title, pattern), like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern))
-  ).$dynamic();
+  let l3Query: any = db
+    .select()
+    .from(l3NodesTable)
+    .where(
+      or(
+        like(l3NodesTable.title, pattern),
+        like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
+      )
+    )
+    .$dynamic();
   if (projectId) {
     // Try to restrict by l2 node project via join
     l3Query = db
       .select()
       .from(l3NodesTable)
       .leftJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
-      .where(and(eq(l2NodesTable.projectId, projectId), or(like(l3NodesTable.title, pattern), like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern))));
+      .where(
+        and(
+          eq(l2NodesTable.projectId, projectId),
+          or(
+            like(l3NodesTable.title, pattern),
+            like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
+          )
+        )
+      );
   }
   const l3Nodes = await l3Query.limit(40);
 
   // Documents that match filename
-  let docQuery = db.select().from(documentsTable).where(like(documentsTable.filename, `%${basename}%`)).$dynamic();
+  let docQuery = db
+    .select()
+    .from(documentsTable)
+    .where(like(documentsTable.filename, `%${basename}%`))
+    .$dynamic();
   if (projectId) docQuery = docQuery.where(eq(documentsTable.projectId, projectId));
   const docs = await docQuery.limit(20);
 
   const sources: Array<Record<string, unknown>> = [];
   for (const d of docs) {
-    sources.push({ sourceType: "document", sourceId: d.id, excerpt: d.content?.slice(0, 300) ?? "", score: 1.0 });
+    sources.push({
+      sourceType: "document",
+      sourceId: d.id,
+      excerpt: d.content?.slice(0, 300) ?? "",
+      score: 1.0,
+    });
   }
   for (const n of l3Nodes as any[]) {
-    sources.push({ sourceType: "l3", sourceId: n.id, excerpt: (n.content ?? "").slice(0, 300), score: 0.9 });
+    sources.push({
+      sourceType: "l3",
+      sourceId: n.id,
+      excerpt: (n.content ?? "").slice(0, 300),
+      score: 0.9,
+    });
   }
 
   return {

@@ -30,15 +30,24 @@ function buildSlackPayload(
 
   const fields: SlackBlock[] = [];
   if (typeof payload.l3Count === "number") {
-    fields.push({ type: "section", text: { type: "mrkdwn", text: `*L3 Nodes:* ${payload.l3Count}` } });
+    fields.push({
+      type: "section",
+      text: { type: "mrkdwn", text: `*L3 Nodes:* ${payload.l3Count}` },
+    });
   }
   if (typeof payload.commitCount === "number") {
-    fields.push({ type: "section", text: { type: "mrkdwn", text: `*Commits:* ${payload.commitCount}` } });
+    fields.push({
+      type: "section",
+      text: { type: "mrkdwn", text: `*Commits:* ${payload.commitCount}` },
+    });
   }
   if (typeof payload.similarity === "number") {
     fields.push({
       type: "section",
-      text: { type: "mrkdwn", text: `*Similarity:* ${Math.round((payload.similarity as number) * 100)}%` },
+      text: {
+        type: "mrkdwn",
+        text: `*Similarity:* ${Math.round((payload.similarity as number) * 100)}%`,
+      },
     });
   }
 
@@ -89,10 +98,15 @@ function buildTeamsPayload(
   };
 
   const facts: Array<{ name: string; value: string }> = [];
-  if (typeof payload.l3Count === "number") facts.push({ name: "L3 Nodes", value: String(payload.l3Count) });
-  if (typeof payload.commitCount === "number") facts.push({ name: "Commits", value: String(payload.commitCount) });
+  if (typeof payload.l3Count === "number")
+    facts.push({ name: "L3 Nodes", value: String(payload.l3Count) });
+  if (typeof payload.commitCount === "number")
+    facts.push({ name: "Commits", value: String(payload.commitCount) });
   if (typeof payload.similarity === "number")
-    facts.push({ name: "Similarity", value: `${Math.round((payload.similarity as number) * 100)}%` });
+    facts.push({
+      name: "Similarity",
+      value: `${Math.round((payload.similarity as number) * 100)}%`,
+    });
 
   return {
     "@type": "MessageCard",
@@ -144,7 +158,12 @@ export async function notifyExternalIntegrations(
     const integrations = await db
       .select()
       .from(projectIntegrationsTable)
-      .where(and(eq(projectIntegrationsTable.projectId, projectId), eq(projectIntegrationsTable.enabled, true)));
+      .where(
+        and(
+          eq(projectIntegrationsTable.projectId, projectId),
+          eq(projectIntegrationsTable.enabled, true)
+        )
+      );
 
     for (const integration of integrations) {
       const allowedTypes = integration.notificationTypes as string[] | null;

@@ -12,11 +12,15 @@ import { eq, sql, count } from "drizzle-orm";
 
 const router = Router();
 
-const checkProjectOwnership = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const checkProjectOwnership = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   const projectId = Number(req.params.id);
   // Fake userId extracted from bearer token (implementation pending auth middleware)
   const userId = (req as any).user?.id || 1;
-  
+
   // IDOR Prevention: verify if userId has access to projectId
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) {
@@ -27,7 +31,7 @@ const checkProjectOwnership = async (req: Request, res: Response, next: NextFunc
     res.status(403).json({ error: "Forbidden" });
     return;
   }
-  
+
   next();
 };
 
@@ -119,7 +123,6 @@ router.get("/projects/:id/export", checkProjectOwnership, async (req, res) => {
   });
 });
 
-
 // GET /projects/:id/export/md (Markdown Export with Stream/Chunking)
 router.get("/projects/:id/export/md", checkProjectOwnership, async (req, res) => {
   const projectId = Number(req.params.id);
@@ -127,7 +130,10 @@ router.get("/projects/:id/export/md", checkProjectOwnership, async (req, res) =>
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   res.setHeader("Content-Type", "text/markdown; charset=utf-8");
-  res.setHeader("Content-Disposition", `attachment; filename="${project.name.replace(/[^a-zA-Z0-9]/g, "_")}_export.md"`);
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${project.name.replace(/[^a-zA-Z0-9]/g, "_")}_export.md"`
+  );
 
   // Max's Rule: Stream out lines instead of buffering a giant string
   res.write(`# Project: ${project.name}\n\n`);
@@ -139,7 +145,7 @@ router.get("/projects/:id/export/md", checkProjectOwnership, async (req, res) =>
   // Chunked batching to prevent OOM
   let offset = 0;
   const batchSize = 100;
-  
+
   while (true) {
     const l2Nodes = await db
       .select()
@@ -157,10 +163,7 @@ router.get("/projects/:id/export/md", checkProjectOwnership, async (req, res) =>
       if (l2.description) res.write(`${l2.description}\n\n`);
 
       // Fetch L3 nodes for this specific L2 (chunking inherently by L2 boundary)
-      const l3Nodes = await db
-        .select()
-        .from(l3NodesTable)
-        .where(eq(l3NodesTable.l2NodeId, l2.id));
+      const l3Nodes = await db.select().from(l3NodesTable).where(eq(l3NodesTable.l2NodeId, l2.id));
 
       for (const l3 of l3Nodes) {
         res.write(`#### [L3] ${l3.title}\n`);
@@ -170,7 +173,7 @@ router.get("/projects/:id/export/md", checkProjectOwnership, async (req, res) =>
         if (l3.content) res.write(`${l3.content}\n\n`);
       }
     }
-    
+
     offset += batchSize;
   }
 

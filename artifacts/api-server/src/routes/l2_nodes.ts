@@ -62,10 +62,7 @@ router.post("/projects/:id/l2-nodes/confirm-bootstrap", async (req, res) => {
         .select()
         .from(l2NodesTable)
         .where(
-          and(
-            eq(l2NodesTable.projectId, projectId),
-            eq(l2NodesTable.type, "sys-uncategorized")
-          )
+          and(eq(l2NodesTable.projectId, projectId), eq(l2NodesTable.type, "sys-uncategorized"))
         );
 
       if (!sysNode) {
@@ -90,20 +87,19 @@ router.post("/projects/:id/l2-nodes/confirm-bootstrap", async (req, res) => {
         .where(inArray(commitL2LinksTable.l2NodeId, body.rejectedModuleIds));
 
       // Delete rejected L2 nodes
-      await db
-        .delete(l2NodesTable)
-        .where(inArray(l2NodesTable.id, body.rejectedModuleIds));
+      await db.delete(l2NodesTable).where(inArray(l2NodesTable.id, body.rejectedModuleIds));
     }
 
     // 3. Implement Glob Specificity Algorithm and save config.yaml
     const approvedNodes = await db
-      .select({ id: l2NodesTable.id, name: l2NodesTable.name, pathPatterns: l2NodesTable.pathPatterns })
+      .select({
+        id: l2NodesTable.id,
+        name: l2NodesTable.name,
+        pathPatterns: l2NodesTable.pathPatterns,
+      })
       .from(l2NodesTable)
       .where(
-        and(
-          eq(l2NodesTable.projectId, projectId),
-          eq(l2NodesTable.isBootstrapConfirmed, true)
-        )
+        and(eq(l2NodesTable.projectId, projectId), eq(l2NodesTable.isBootstrapConfirmed, true))
       );
 
     if (approvedNodes.length > 0) {
@@ -142,10 +138,7 @@ router.post("/projects/:id/l2-nodes/confirm-bootstrap", async (req, res) => {
 
       const configDir = path.join(project.repoUrl, ".docuvia");
       await fs.mkdir(configDir, { recursive: true });
-      await fs.writeFile(
-        path.join(configDir, "config.yaml"),
-        yaml.dump(yamlData, { indent: 2 })
-      );
+      await fs.writeFile(path.join(configDir, "config.yaml"), yaml.dump(yamlData, { indent: 2 }));
     }
 
     return res.json({ success: true, message: "Bootstrap confirmed successfully" });

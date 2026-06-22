@@ -1,16 +1,20 @@
 # MCP: impact_analysis
 
 ## Overview
+
 Return all nodes downstream of a given module that would be affected by changes.
 
 ## Implementation
+
 `mcpImpactAnalysisParams.ts`, `mcpImpactResult.ts`.
 
 ### Key Files
+
 - `lib/api-zod/src/generated/types/mcpImpactAnalysisParams.ts`
 - `lib/api-zod/src/generated/types/mcpImpactResult.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -36,7 +40,6 @@ Return all nodes downstream of a given module that would be affected by changes.
   - `mcpImpactAnalysisParams.ts`
   - `mcpImpactResult.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
-
 
 ### Project Build & Type Verification
 

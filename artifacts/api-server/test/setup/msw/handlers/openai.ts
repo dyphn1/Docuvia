@@ -8,9 +8,7 @@ async function openaiChatHandler({ request }: any) {
   let content = "[]";
 
   if (lastUserMessage.includes("Generate L1 tags")) {
-    const jsonStr = JSON.stringify([
-      { name: "tag1", category: "feature", description: "desc" }
-    ]);
+    const jsonStr = JSON.stringify([{ name: "tag1", category: "feature", description: "desc" }]);
     // Fuzzing: wrap in markdown and add prefix/suffix
     content = `Here are the L1 tags you requested:\n\n\`\`\`json\n${jsonStr}\n\`\`\`\n\nHope this helps!`;
   } else if (lastUserMessage.includes("Generate L2/L3 knowledge nodes")) {
@@ -26,10 +24,10 @@ async function openaiChatHandler({ request }: any) {
             nodeType: "rule",
             content: "l3 content",
             commitHash: "12345678",
-            confidence: 0.9
-          }
-        ]
-      }
+            confidence: 0.9,
+          },
+        ],
+      },
     ]);
     content = `\`\`\`json\n${jsonStr}\n\`\`\``;
   } else if (lastUserMessage.includes("Synthesize updated content")) {

@@ -1,8 +1,8 @@
-import * as path from 'path';
-import * as vscode from 'vscode';
-import { minimatch } from 'minimatch';
-import { KnowledgeStore } from './KnowledgeStore.js';
-import { L2Module, ManifestModule } from './types.js';
+import * as path from "path";
+import * as vscode from "vscode";
+import { minimatch } from "minimatch";
+import { KnowledgeStore } from "./KnowledgeStore.js";
+import { L2Module, ManifestModule } from "./types.js";
 
 export interface CodeLensDecisionData {
   moduleId: string;
@@ -15,10 +15,7 @@ const DECLARATION_PATTERNS: Record<string, RegExp[]> = {
     /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
     /^\s*(?:export\s+)?(?:abstract\s+)?class\s+\w+/,
   ],
-  javascript: [
-    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
-    /^\s*(?:export\s+)?class\s+\w+/,
-  ],
+  javascript: [/^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/, /^\s*(?:export\s+)?class\s+\w+/],
   typescriptreact: [
     /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
     /^\s*(?:export\s+)?(?:abstract\s+)?class\s+\w+/,
@@ -27,16 +24,13 @@ const DECLARATION_PATTERNS: Record<string, RegExp[]> = {
     /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
     /^\s*(?:export\s+)?class\s+\w+/,
   ],
-  python: [
-    /^\s*(?:async\s+)?def\s+\w+/,
-    /^\s*class\s+\w+/,
-  ],
+  python: [/^\s*(?:async\s+)?def\s+\w+/, /^\s*class\s+\w+/],
 };
 
 function normalizeSourcePath(sourcePath: string): string {
-  let normalized = sourcePath.replace(/^\.\//, '');
-  if (!path.extname(normalized) && !normalized.endsWith('/')) {
-    normalized += '/';
+  let normalized = sourcePath.replace(/^\.\//, "");
+  if (!path.extname(normalized) && !normalized.endsWith("/")) {
+    normalized += "/";
   }
   return normalized;
 }
@@ -46,9 +40,9 @@ function findMatchingModules(
   workspaceRoot: string,
   modules: L2Module[]
 ): L2Module[] {
-  const relPath = path.relative(workspaceRoot, documentFsPath).split(path.sep).join('/');
-  return modules.filter(module =>
-    module.source_paths.some(sp => {
+  const relPath = path.relative(workspaceRoot, documentFsPath).split(path.sep).join("/");
+  return modules.filter((module) =>
+    module.source_paths.some((sp) => {
       const normalized = normalizeSourcePath(sp);
       return relPath === normalized || relPath.startsWith(normalized);
     })
@@ -60,9 +54,9 @@ function findMatchingManifestModules(
   workspaceRoot: string,
   manifestModules: ManifestModule[]
 ): ManifestModule[] {
-  const relPath = path.relative(workspaceRoot, documentFsPath).split(path.sep).join('/');
-  return manifestModules.filter(m =>
-    m.path_patterns.some(pattern => minimatch(relPath, pattern, { matchBase: true }))
+  const relPath = path.relative(workspaceRoot, documentFsPath).split(path.sep).join("/");
+  return manifestModules.filter((m) =>
+    m.path_patterns.some((pattern) => minimatch(relPath, pattern, { matchBase: true }))
   );
 }
 
@@ -73,7 +67,7 @@ function findDeclarationLines(document: vscode.TextDocument): number[] {
   const lines: number[] = [];
   for (let i = 0; i < document.lineCount; i++) {
     const text = document.lineAt(i).text;
-    if (patterns.some(p => p.test(text))) {
+    if (patterns.some((p) => p.test(text))) {
       lines.push(i);
     }
   }
@@ -90,24 +84,32 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
 
   constructor(store: KnowledgeStore, context: vscode.ExtensionContext) {
     this._store = store;
-    store.onDidLoad(() => {
-      this.documentAnchors.clear();
-      this._onDidChangeCodeLenses.fire();
-    }, null, context.subscriptions);
+    store.onDidLoad(
+      () => {
+        this.documentAnchors.clear();
+        this._onDidChangeCodeLenses.fire();
+      },
+      null,
+      context.subscriptions
+    );
 
     // Only update anchors async on save to prevent Editor Host freezing
-    vscode.workspace.onDidSaveTextDocument(async (doc) => {
-      if (this._store.getSnapshotFor(doc.uri)) {
-        await this.updateSymbolAnchors(doc);
-      }
-    }, null, context.subscriptions);
+    vscode.workspace.onDidSaveTextDocument(
+      async (doc) => {
+        if (this._store.getSnapshotFor(doc.uri)) {
+          await this.updateSymbolAnchors(doc);
+        }
+      },
+      null,
+      context.subscriptions
+    );
   }
 
   private async updateSymbolAnchors(document: vscode.TextDocument) {
     try {
       // Defer to LSP for actual semantic parsing
       const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-        'vscode.executeDocumentSymbolProvider',
+        "vscode.executeDocumentSymbolProvider",
         document.uri
       );
 
@@ -145,7 +147,7 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
     if (!snapshot) return [];
 
     const workspaceRoot = folder.uri.fsPath;
-    
+
     // Use LSP cached lines if available, fallback to fast regex ONLY on initial load
     let declarationLines = this.documentAnchors.get(document.uri.toString());
     if (!declarationLines) {
@@ -157,25 +159,31 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
     if (declarationLines.length === 0) return [];
 
     // Online mode: full CodeLens with L3 decisions
-    const matchedModules = findMatchingModules(document.uri.fsPath, workspaceRoot, snapshot.modules);
+    const matchedModules = findMatchingModules(
+      document.uri.fsPath,
+      workspaceRoot,
+      snapshot.modules
+    );
     if (matchedModules.length > 0) {
       const moduleData: CodeLensDecisionData[] = matchedModules
-        .map(module => {
+        .map((module) => {
           const decisionIds = snapshot.routerIndex
-            .filter(r => r.l2_module_id === module.id)
-            .map(r => r.id);
+            .filter((r) => r.l2_module_id === module.id)
+            .map((r) => r.id);
           return { moduleId: module.id, moduleName: module.name, decisionIds };
         })
-        .filter(d => d.decisionIds.length > 0);
+        .filter((d) => d.decisionIds.length > 0);
 
       if (moduleData.length > 0) {
-        const bestModule = [...moduleData].sort((a, b) => b.decisionIds.length - a.decisionIds.length)[0];
+        const bestModule = [...moduleData].sort(
+          (a, b) => b.decisionIds.length - a.decisionIds.length
+        )[0];
         const count = bestModule.decisionIds.length;
-        return declarationLines.map(lineIndex => {
+        return declarationLines.map((lineIndex) => {
           const range = new vscode.Range(lineIndex, 0, lineIndex, 0);
           return new vscode.CodeLens(range, {
-            title: `🧠 Docuvia: ${count} ${count === 1 ? 'Decision' : 'Decisions'}`,
-            command: 'docuvia.showDecisionsForLens',
+            title: `🧠 Docuvia: ${count} ${count === 1 ? "Decision" : "Decisions"}`,
+            command: "docuvia.showDecisionsForLens",
             arguments: [bestModule],
           });
         });
@@ -191,11 +199,11 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
     if (matchedManifest.length === 0) return [];
 
     const offlineModule = matchedManifest[0];
-    return declarationLines.map(lineIndex => {
+    return declarationLines.map((lineIndex) => {
       const range = new vscode.Range(lineIndex, 0, lineIndex, 0);
       return new vscode.CodeLens(range, {
         title: `🧠 Docuvia: ${offlineModule.name} — connect to server for decisions`,
-        command: '',
+        command: "",
         arguments: [],
       });
     });

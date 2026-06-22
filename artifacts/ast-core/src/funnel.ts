@@ -1,4 +1,4 @@
-import { LanguageRegistry } from './language-registry.js';
+import { LanguageRegistry } from "./language-registry.js";
 
 export interface FunnelResult {
   accepted: boolean;
@@ -13,7 +13,7 @@ export class ParsingFunnel {
     let buffer: Uint8Array;
     let contentString: string | undefined;
 
-    if (typeof fileContent === 'string') {
+    if (typeof fileContent === "string") {
       buffer = new TextEncoder().encode(fileContent);
       contentString = fileContent;
     } else {
@@ -24,7 +24,7 @@ export class ParsingFunnel {
     const checkLength = Math.min(buffer.length, 8000);
     for (let i = 0; i < checkLength; i++) {
       if (buffer[i] === 0) {
-        return { accepted: false, reason: 'Binary file detected (NUL byte found)' };
+        return { accepted: false, reason: "Binary file detected (NUL byte found)" };
       }
     }
 
@@ -32,32 +32,32 @@ export class ParsingFunnel {
     if (contentString === undefined) {
       try {
         // Use fatal: true to strictly enforce valid UTF-8
-        contentString = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+        contentString = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
       } catch (err) {
-        return { accepted: false, reason: 'Lossless Encoding Guardrail failed (Invalid UTF-8)' };
+        return { accepted: false, reason: "Lossless Encoding Guardrail failed (Invalid UTF-8)" };
       }
     }
 
     // Step A & B: Extension Allowlist & Shebang Detection
     let mappedExtension = ext;
 
-    if (!mappedExtension || mappedExtension === '') {
+    if (!mappedExtension || mappedExtension === "") {
       // Try shebang detection
       const firstLineMatch = contentString ? contentString.match(/^(?:#!\s*)(.*)/) : null;
       if (firstLineMatch) {
         const shebang = firstLineMatch[1];
-        if (shebang.includes('node') || shebang.includes('js')) {
-          mappedExtension = '.js';
-        } else if (shebang.includes('python')) {
-          mappedExtension = '.py';
-        } else if (shebang.includes('bash') || shebang.includes('sh')) {
-          mappedExtension = '.sh';
+        if (shebang.includes("node") || shebang.includes("js")) {
+          mappedExtension = ".js";
+        } else if (shebang.includes("python")) {
+          mappedExtension = ".py";
+        } else if (shebang.includes("bash") || shebang.includes("sh")) {
+          mappedExtension = ".sh";
         }
       }
     }
 
-    if (!mappedExtension || mappedExtension === '') {
-      return { accepted: false, reason: 'No file extension and no shebang detected' };
+    if (!mappedExtension || mappedExtension === "") {
+      return { accepted: false, reason: "No file extension and no shebang detected" };
     }
 
     const provider = this.registry.getProviderForExtension(mappedExtension);

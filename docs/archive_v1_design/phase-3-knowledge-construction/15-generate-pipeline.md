@@ -1,17 +1,21 @@
 # Generate Pipeline (diff → L1/L2/L3)
 
 ## Overview
+
 Orchestrate the full knowledge construction pipeline: filter commits → tag L1 → extract L2 → generate L3.
 
 ## Implementation
+
 `artifacts/api-server/src/routes/generate.ts`. Input/output: `generateInput.ts`, `generateResult.ts`.
 
 ### Key Files
+
 - `artifacts/api-server/src/routes/generate.ts`
 - `lib/api-zod/src/generated/types/generateInput.ts`
 - `lib/api-zod/src/generated/types/generateResult.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -46,7 +50,6 @@ Orchestrate the full knowledge construction pipeline: filter commits → tag L1 
   - `routes/generate.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -55,13 +58,11 @@ Orchestrate the full knowledge construction pipeline: filter commits → tag L1 
   - **review task creation**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### API Endpoint Validation
 
 - [ ] **Trigger `API Architect` & `Backend Developer`**:
   - Review the route handlers and OpenAPI specifications.
   - **Validation Goal**: Ensure all edge cases (e.g., 404 Not Found, 400 Bad Request) are handled properly and that the generated client hooks match the backend signatures.
-
 
 ### Project Build & Type Verification
 

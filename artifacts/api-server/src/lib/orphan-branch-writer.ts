@@ -34,14 +34,16 @@ function buildL2ModuleYaml(node: {
     patterns.length > 0
       ? `path_patterns:\n${patterns.map((p) => `  - "${p}"`).join("\n")}\n`
       : "path_patterns: []\n";
-  return [
-    `id: ${node.id}`,
-    `name: "${node.name}"`,
-    `type: ${node.type}`,
-    `description: "${(node.description ?? "").replace(/"/g, '\\"')}"`,
-    `bootstrap_confirmed: ${node.isBootstrapConfirmed}`,
-    patternsYaml.trimEnd(),
-  ].join("\n") + "\n";
+  return (
+    [
+      `id: ${node.id}`,
+      `name: "${node.name}"`,
+      `type: ${node.type}`,
+      `description: "${(node.description ?? "").replace(/"/g, '\\"')}"`,
+      `bootstrap_confirmed: ${node.isBootstrapConfirmed}`,
+      patternsYaml.trimEnd(),
+    ].join("\n") + "\n"
+  );
 }
 
 function buildL3DecisionMd(node: {
@@ -70,14 +72,17 @@ function buildL3DecisionMd(node: {
 
 export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<void> {
   // Use a distributed lock via Postgres to prevent split-brain on identical project pushes
-  const lockAcquired = await db.execute(
+  const lockAcquired = (await db.execute(
     sql`SELECT pg_try_advisory_xact_lock(${projectId}) as acquired`
-  ) as any;
-  
+  )) as any;
+
   const acquired = lockAcquired.rows ? lockAcquired.rows[0]?.acquired : lockAcquired[0]?.acquired;
   if (!acquired) {
-     logger.warn({ projectId }, "[orphan-branch-writer] Lock busy, skipping this sync cycle to prevent split-brain");
-     return;
+    logger.warn(
+      { projectId },
+      "[orphan-branch-writer] Lock busy, skipping this sync cycle to prevent split-brain"
+    );
+    return;
   }
 
   try {
@@ -87,7 +92,10 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
       .where(eq(l2NodesTable.projectId, projectId));
 
     if (l2Nodes.length === 0) {
-      logger.info({ projectId }, "[orphan-branch-writer] No L2 nodes, skipping orphan branch write");
+      logger.info(
+        { projectId },
+        "[orphan-branch-writer] No L2 nodes, skipping orphan branch write"
+      );
       return;
     }
 
@@ -108,10 +116,7 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
       const l2Slug = slugify(l2.name);
       files.set(`${baseDir}/l2_modules/${l2Slug}.yaml`, buildL2ModuleYaml(l2));
 
-      const l3Nodes = await db
-        .select()
-        .from(l3NodesTable)
-        .where(eq(l3NodesTable.l2NodeId, l2.id));
+      const l3Nodes = await db.select().from(l3NodesTable).where(eq(l3NodesTable.l2NodeId, l2.id));
 
       for (const l3 of l3Nodes) {
         const l3Slug = slugify(l3.title);

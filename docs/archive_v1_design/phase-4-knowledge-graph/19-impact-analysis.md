@@ -1,20 +1,24 @@
 # Impact Analysis Traversal
 
 ## Overview
+
 Given a module or node, traverse the graph to identify all downstream nodes that would be affected by a change.
 
 ## Implementation
+
 `GET /mcp/impact_analysis?nodeId=<id>` in `artifacts/api-server/src/routes/mcp.ts` — performs a **one-hop** graph traversal via `nodeLinksTable`, returning all directly linked nodes (both upstream and downstream). Response serialized as `mcpImpactResult`.
 
 > ⚠️ **Known Limitation**: Only **one-hop traversal** is implemented. Multi-hop BFS/DFS (e.g., "what transitively depends on this module?") is not yet implemented. `docs/implementation-roadmap.md` Phase 4.2 specifies "impact traversal" without depth limit, which implies multi-hop support is the intended target.
 
 ### Key Files
+
 - `artifacts/api-server/src/routes/mcp.ts` — `GET /mcp/impact_analysis` handler
 - `lib/db/src/schema/node_links.ts` — `nodeLinksTable` edge table (directed: `sourceNodeId` → `targetNodeId`)
 - `lib/api-zod/src/generated/types/mcpImpactAnalysisParams.ts` — query params type
 - `lib/api-zod/src/generated/types/mcpImpactResult.ts` — response type
 
 ## Status
+
 **✅ Done (one-hop only)** — Multi-hop traversal is a known gap.
 
 ## Verification Checklist
@@ -87,20 +91,17 @@ Given a module or node, traverse the graph to identify all downstream nodes that
   - `mcpImpactResult.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
   - **One-hop graph traversal via**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### Database Schema Validation
 
 - [ ] **Trigger `Database Schema Expert`**:
   - Inspect the Drizzle schema definitions for correct column types, indexes, and relations.
   - **Validation Goal**: Ensure that `drizzle-kit generate` produces valid SQL without errors and that the data model perfectly aligns with application requirements.
-
 
 ### Project Build & Type Verification
 

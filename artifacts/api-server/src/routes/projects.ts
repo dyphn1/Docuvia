@@ -235,7 +235,6 @@ router.get("/projects/:id/l2-nodes", async (req, res) => {
   res.json(result);
 });
 
-
 // POST /projects/:id/sync (Trigger ingestion pipeline from CLI)
 router.post("/projects/:id/sync", async (req, res) => {
   const projectId = Number(req.params.id);
@@ -248,9 +247,9 @@ router.post("/projects/:id/sync", async (req, res) => {
     await db.insert(activityLogTable).values({
       projectId,
       type: "commit",
-      description: "Sync triggered via CLI"
+      description: "Sync triggered via CLI",
     });
-    
+
     return res.json({ success: true, message: "Sync ingestion triggered in background" });
   } catch (err: any) {
     logger.error({ err, projectId }, "[POST /projects/:id/sync] Failed to trigger sync");

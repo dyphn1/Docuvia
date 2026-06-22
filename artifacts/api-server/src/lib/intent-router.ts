@@ -16,11 +16,7 @@ import { logger } from "./logger.js";
 // Types
 // ---------------------------------------------------------------------------
 
-export type RoutingStrategy =
-  | "vector_search"
-  | "graph_traversal"
-  | "direct_lookup"
-  | "hybrid";
+export type RoutingStrategy = "vector_search" | "graph_traversal" | "direct_lookup" | "hybrid";
 
 export interface IntentClassification {
   strategy: RoutingStrategy;
@@ -96,7 +92,7 @@ const VALID_STRATEGIES = new Set<string>([
  * Escapes SQL LIKE wildcards (% and _) to prevent injection.
  */
 export function sanitizeLikeInput(str: string): string {
-  return str.replace(/[%_\\]/g, '\\$&');
+  return str.replace(/[%_\\]/g, "\\$&");
 }
 
 export function escapeLike(str: string): string {
@@ -156,21 +152,15 @@ export async function classifyIntent(query: string): Promise<IntentClassificatio
 
     const entities = (parsed.entities ?? {}) as Record<string, unknown>;
     const confidence =
-      typeof parsed.confidence === "number"
-        ? Math.max(0, Math.min(1, parsed.confidence))
-        : 0.5;
-    const reasoning =
-      typeof parsed.reasoning === "string" ? parsed.reasoning : "";
+      typeof parsed.confidence === "number" ? Math.max(0, Math.min(1, parsed.confidence)) : 0.5;
+    const reasoning = typeof parsed.reasoning === "string" ? parsed.reasoning : "";
 
     return {
       strategy: strategy as RoutingStrategy,
       entities: {
-        moduleName:
-          typeof entities.moduleName === "string" ? entities.moduleName : null,
-        commitHash:
-          typeof entities.commitHash === "string" ? entities.commitHash : null,
-        searchQuery:
-          typeof entities.searchQuery === "string" ? entities.searchQuery : sanitized,
+        moduleName: typeof entities.moduleName === "string" ? entities.moduleName : null,
+        commitHash: typeof entities.commitHash === "string" ? entities.commitHash : null,
+        searchQuery: typeof entities.searchQuery === "string" ? entities.searchQuery : sanitized,
       },
       confidence,
       reasoning,
@@ -200,12 +190,11 @@ export async function vectorSearchHandler(
 
   if (queryEmbedding) {
     // Semantic search: L2 nodes
-    let l2Query = db
-      .select()
-      .from(l2NodesTable)
-      .$dynamic();
+    let l2Query = db.select().from(l2NodesTable).$dynamic();
     if (projectId) {
-      l2Query = l2Query.where(and(isNotNull(l2NodesTable.embedding), eq(l2NodesTable.projectId, projectId)));
+      l2Query = l2Query.where(
+        and(isNotNull(l2NodesTable.embedding), eq(l2NodesTable.projectId, projectId))
+      );
     } else {
       l2Query = l2Query.where(isNotNull(l2NodesTable.embedding));
     }
@@ -255,12 +244,14 @@ export async function vectorSearchHandler(
 
     if (projectId) {
       l3Query = l3Query.where(
-        and(isNotNull(l3NodesTable.embedding), l3ValidityCondition!, eq(l2NodesTable.projectId, projectId))
+        and(
+          isNotNull(l3NodesTable.embedding),
+          l3ValidityCondition!,
+          eq(l2NodesTable.projectId, projectId)
+        )
       );
     } else {
-      l3Query = l3Query.where(
-        and(isNotNull(l3NodesTable.embedding), l3ValidityCondition!)
-      );
+      l3Query = l3Query.where(and(isNotNull(l3NodesTable.embedding), l3ValidityCondition!));
     }
 
     const l3Rows = await l3Query;
@@ -295,11 +286,8 @@ export async function vectorSearchHandler(
     const escapedQuery = sanitizeLikeInput(query);
     const pattern = `%${escapedQuery}%`;
 
-    let l2FallbackQuery = db
-      .select()
-      .from(l2NodesTable)
-      .$dynamic();
-      
+    let l2FallbackQuery = db.select().from(l2NodesTable).$dynamic();
+
     if (projectId) {
       l2FallbackQuery = l2FallbackQuery.where(
         and(
@@ -354,7 +342,7 @@ export async function vectorSearchHandler(
       or(
         like(l3NodesTable.title, pattern),
         like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
-      )
+      ),
     ];
 
     if (projectId) {
@@ -497,9 +485,12 @@ export async function directLookupHandler(
       .limit(limit);
 
     for (const l3 of l3Nodes) {
-      if (!includePending && l3.validityStatus !== 'active') continue;
+      if (!includePending && l3.validityStatus !== "active") continue;
       // Resolve project ID using subquery or simple fetch
-      const [l2] = await db.select({ projectId: l2NodesTable.projectId }).from(l2NodesTable).where(eq(l2NodesTable.id, l3.l2NodeId));
+      const [l2] = await db
+        .select({ projectId: l2NodesTable.projectId })
+        .from(l2NodesTable)
+        .where(eq(l2NodesTable.id, l3.l2NodeId));
       if (projectId && l2?.projectId !== projectId) continue;
 
       results.push({
@@ -517,7 +508,7 @@ export async function directLookupHandler(
   } else {
     // Full-text content search fallback
     const sanitizedQuery = sanitizeLikeInput(searchQuery);
-    
+
     // We would ideally use Postgres Full Text Search (to_tsvector/to_tsquery)
     // but sticking to ILIKE for architectural continuity here.
     const l3Nodes = await db
@@ -530,10 +521,13 @@ export async function directLookupHandler(
         )
       )
       .limit(limit);
-      
+
     for (const l3 of l3Nodes) {
-      if (!includePending && l3.validityStatus !== 'active') continue;
-      const [l2] = await db.select({ projectId: l2NodesTable.projectId }).from(l2NodesTable).where(eq(l2NodesTable.id, l3.l2NodeId));
+      if (!includePending && l3.validityStatus !== "active") continue;
+      const [l2] = await db
+        .select({ projectId: l2NodesTable.projectId })
+        .from(l2NodesTable)
+        .where(eq(l2NodesTable.id, l3.l2NodeId));
       if (projectId && l2?.projectId !== projectId) continue;
 
       results.push({
@@ -623,12 +617,12 @@ export async function routeQuery(
   // Max's Rule: Use exact matching instead of ReDoS-vulnerable regex.
   // We avoid native Regex. Check if it's a single word (e.g. symbol) without spaces.
   const isSingleWord = !/\s/.test(trimmed) && trimmed.length > 3;
-  
+
   if (isSingleWord) {
     const rawSearch = trimmed.replace(/[`"]/g, "");
     // Fall back to directSearch which now utilizes standard DB ILIKE (surrogate for pg_trgm)
     const results = await directLookupHandler(rawSearch, projectId, limit, includePending);
-    
+
     // If we find exact matches, return instantly without calling the LLM
     if (results.length > 0) {
       return {
@@ -638,8 +632,8 @@ export async function routeQuery(
         metadata: {
           classificationConfidence: 1.0,
           reasoning: "Exact match short-circuit",
-          durationMs: Date.now() - start
-        }
+          durationMs: Date.now() - start,
+        },
       };
     }
   }
@@ -659,15 +653,15 @@ export async function routeQuery(
   // Fast Arbitration pipeline: Graph Filter
   if (!classification) {
     const tags = await db.select({ name: l1TagsTable.name }).from(l1TagsTable);
-    
+
     let l2Query = db.select({ name: l2NodesTable.name }).from(l2NodesTable).$dynamic();
     if (projectId) {
       l2Query = l2Query.where(eq(l2NodesTable.projectId, projectId));
     }
     const l2Rows = await l2Query;
 
-    const allArchitecturalTerms = [...tags.map(t => t.name), ...l2Rows.map(n => n.name)];
-    
+    const allArchitecturalTerms = [...tags.map((t) => t.name), ...l2Rows.map((n) => n.name)];
+
     for (const term of allArchitecturalTerms) {
       if (term && query.toLowerCase().includes(term.toLowerCase())) {
         classification = {

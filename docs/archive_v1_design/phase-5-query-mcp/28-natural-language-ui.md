@@ -1,19 +1,23 @@
 # Natural Language Query Interface (Frontend)
 
 ## Overview
+
 A frontend UI allowing users to query the knowledge graph in natural language and browse results.
 
 ## Implementation
+
 `artifacts/kg-engine/src/pages/query.tsx` — full semantic search UI with project selector, layer-colored result cards (violet for L1, blue for L2, emerald for L3), similarity score display per result, loading and error states. Calls `POST /api/search`.
 
 > ⚠️ **Doc was stale** — previously recorded as "Partial — frontend not implemented" but `query.tsx` is fully implemented.
 
 ### Key Files
+
 - `artifacts/kg-engine/src/pages/query.tsx` — search page component
 - `artifacts/api-server/src/routes/search.ts` — backend `POST /search` (vector + SQL fallback)
 - `lib/api-zod/src/generated/` — generated React Query hooks
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -56,6 +60,7 @@ A frontend UI allowing users to query the knowledge graph in natural language an
   ```bash
   pnpm --filter @workspace/kg-engine run build
   ```
+
   - **Validation Goal**: Exit code 0, no TypeScript or Vite build errors.
 
 ## Verification Checklist
@@ -90,7 +95,6 @@ A frontend UI allowing users to query the knowledge graph in natural language an
   - `artifacts/kg-engine/src/pages/query.tsx`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
@@ -99,13 +103,11 @@ A frontend UI allowing users to query the knowledge graph in natural language an
   - **score display**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
 
-
 ### Frontend Validation
 
 - [ ] **Trigger `Frontend Developer`**:
   - Inspect the `.tsx` files for correct component hierarchy, prop types, and state management.
   - **Validation Goal**: Guarantee that there are no unused variables, exhaustive dependencies are met in `useEffect`, and the UI aligns with the wireframe/design spec.
-
 
 ### Project Build & Type Verification
 

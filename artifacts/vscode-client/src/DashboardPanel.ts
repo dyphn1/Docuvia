@@ -1,23 +1,23 @@
-import { randomBytes } from 'crypto';
-import * as vscode from 'vscode';
-import { KnowledgeGraphSnapshot } from './KnowledgeStore.js';
-import { KnowledgeStore } from './KnowledgeStore.js';
-import { TaskQueueTreeProvider } from './TaskQueueTreeProvider.js';
+import { randomBytes } from "crypto";
+import * as vscode from "vscode";
+import { KnowledgeGraphSnapshot } from "./KnowledgeStore.js";
+import { KnowledgeStore } from "./KnowledgeStore.js";
+import { TaskQueueTreeProvider } from "./TaskQueueTreeProvider.js";
 
 // ─── Message types ───────────────────────────────────────────────────────────
 
 interface UpdateMessage {
-  type: 'update';
+  type: "update";
   data: DashboardPayload;
 }
 
 interface OpenDecisionMessage {
-  type: 'openDecision';
+  type: "openDecision";
   filePath: string;
 }
 
 interface OpenChatMessage {
-  type: 'openChat';
+  type: "openChat";
 }
 
 type WebviewMessage = UpdateMessage | OpenDecisionMessage | OpenChatMessage;
@@ -41,7 +41,10 @@ function buildDashboardPayload(
   workspaceRoot: string,
   tqProvider?: TaskQueueTreeProvider
 ): DashboardPayload {
-  const workspaceName = snapshot?.projectName || vscode.workspace.workspaceFolders?.find(f => f.uri.fsPath === workspaceRoot)?.name || 'Workspace';
+  const workspaceName =
+    snapshot?.projectName ||
+    vscode.workspace.workspaceFolders?.find((f) => f.uri.fsPath === workspaceRoot)?.name ||
+    "Workspace";
   if (!snapshot) {
     return {
       tagCount: 0,
@@ -57,9 +60,9 @@ function buildDashboardPayload(
   }
 
   const recentDecisions = [...snapshot.decisions.values()]
-    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
     .slice(0, 5)
-    .map(d => ({ title: d.title, status: d.status, filePath: d.filePath }));
+    .map((d) => ({ title: d.title, status: d.status, filePath: d.filePath }));
 
   // Count decisions per module via router index
   const countByModule = new Map<string, number>();
@@ -68,7 +71,7 @@ function buildDashboardPayload(
   }
 
   const topModules = snapshot.modules
-    .map(m => ({ name: m.name, decisionCount: countByModule.get(m.id) ?? 0 }))
+    .map((m) => ({ name: m.name, decisionCount: countByModule.get(m.id) ?? 0 }))
     .sort((a, b) => b.decisionCount - a.decisionCount)
     .slice(0, 5);
 
@@ -88,12 +91,16 @@ function buildDashboardPayload(
 // ─── Panel ───────────────────────────────────────────────────────────────────
 
 export class DashboardPanel {
-  static readonly viewType = 'docuvia.dashboard';
+  static readonly viewType = "docuvia.dashboard";
   private static _panels = new Map<string, DashboardPanel>();
 
-  static createOrShow(context: vscode.ExtensionContext, store: KnowledgeStore, targetRoot: string, tqProvider?: TaskQueueTreeProvider): void {
-    const column =
-      vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
+  static createOrShow(
+    context: vscode.ExtensionContext,
+    store: KnowledgeStore,
+    targetRoot: string,
+    tqProvider?: TaskQueueTreeProvider
+  ): void {
+    const column = vscode.window.activeTextEditor?.viewColumn ?? vscode.ViewColumn.One;
 
     const currentPanel = DashboardPanel._panels.get(targetRoot);
     if (currentPanel) {
@@ -104,11 +111,11 @@ export class DashboardPanel {
 
     const panel = vscode.window.createWebviewPanel(
       DashboardPanel.viewType,
-      `Docuvia Dashboard (${vscode.workspace.workspaceFolders?.find(f => f.uri.fsPath === targetRoot)?.name || 'Workspace'})`,
+      `Docuvia Dashboard (${vscode.workspace.workspaceFolders?.find((f) => f.uri.fsPath === targetRoot)?.name || "Workspace"})`,
       column,
       {
         enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, 'out')],
+        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "out")],
         retainContextWhenHidden: true,
       }
     );
@@ -128,7 +135,9 @@ export class DashboardPanel {
 
     this._pushData(store.getSnapshotFor(this._targetRoot));
 
-    const onDidLoadDisposable = store.onDidLoad(() => this._pushData(store.getSnapshotFor(this._targetRoot)));
+    const onDidLoadDisposable = store.onDidLoad(() =>
+      this._pushData(store.getSnapshotFor(this._targetRoot))
+    );
 
     this._panel.webview.onDidReceiveMessage(
       (msg: WebviewMessage) => this._handleMessage(msg),
@@ -148,28 +157,32 @@ export class DashboardPanel {
 
   private _pushData(snapshot: KnowledgeGraphSnapshot | undefined): void {
     void this._panel.webview.postMessage({
-      type: 'update',
+      type: "update",
       data: buildDashboardPayload(snapshot || null, this._targetRoot, this._tqProvider),
     });
   }
 
   private _handleMessage(msg: WebviewMessage): void {
-    if (msg.type === 'openDecision' && typeof msg.filePath === 'string' && msg.filePath.length > 0) {
+    if (
+      msg.type === "openDecision" &&
+      typeof msg.filePath === "string" &&
+      msg.filePath.length > 0
+    ) {
       const workspaceRoot = this._targetRoot;
       if (!msg.filePath.startsWith(workspaceRoot)) {
         return; // Reject paths outside workspace
       }
       void vscode.workspace
         .openTextDocument(vscode.Uri.file(msg.filePath))
-        .then(doc => vscode.window.showTextDocument(doc));
+        .then((doc) => vscode.window.showTextDocument(doc));
     }
-    if (msg.type === 'openChat') {
-      void vscode.commands.executeCommand('workbench.action.chat.open', { query: '@docuvia' });
+    if (msg.type === "openChat") {
+      void vscode.commands.executeCommand("workbench.action.chat.open", { query: "@docuvia" });
     }
   }
 
   private _buildHtml(): string {
-    const nonce = randomBytes(16).toString('hex');
+    const nonce = randomBytes(16).toString("hex");
     const cspSource = this._panel.webview.cspSource;
 
     return `<!DOCTYPE html>

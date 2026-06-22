@@ -1,15 +1,30 @@
-import { execFile as _execFile, spawn } from 'child_process';
-import * as path from 'path';
-import { promisify } from 'util';
-import * as vscode from 'vscode';
-import { parseDecision, parseManifest, parseSingleModule, parseTags, parseModules, parseRouter } from './parser.js';
-import { GlobalConfig, KnowledgeSnapshot, L1Tag, L2Module, L3Decision, L3RouterEntry, ManifestModule } from './types.js';
+import { execFile as _execFile, spawn } from "child_process";
+import * as path from "path";
+import { promisify } from "util";
+import * as vscode from "vscode";
+import {
+  parseDecision,
+  parseManifest,
+  parseSingleModule,
+  parseTags,
+  parseModules,
+  parseRouter,
+} from "./parser.js";
+import {
+  GlobalConfig,
+  KnowledgeSnapshot,
+  L1Tag,
+  L2Module,
+  L3Decision,
+  L3RouterEntry,
+  ManifestModule,
+} from "./types.js";
 
 const execFile = promisify(_execFile);
 
-const DOCUVIA_DIR = '.docuvia';
-const MANIFEST_FILE = 'manifest.yaml';
-const GIT_KNOWLEDGE_BRANCH = 'docuvia-knowledge';
+const DOCUVIA_DIR = ".docuvia";
+const MANIFEST_FILE = "manifest.yaml";
+const GIT_KNOWLEDGE_BRANCH = "docuvia-knowledge";
 
 /** Structural interface used to avoid a circular import with CentralServerClient. */
 interface IDocuviaClient {
@@ -67,7 +82,7 @@ export class KnowledgeStore {
   }
 
   getSnapshotFor(uri: vscode.Uri | string): KnowledgeGraphSnapshot | undefined {
-    const fsPath = typeof uri === 'string' ? uri : uri.fsPath;
+    const fsPath = typeof uri === "string" ? uri : uri.fsPath;
     const folder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(fsPath));
     if (folder) {
       return this._snapshots.get(folder.uri.fsPath);
@@ -105,8 +120,8 @@ export class KnowledgeStore {
         const loaded = await this._loadWorkspace(folder.uri.fsPath);
         if (loaded) anyLoaded = true;
       }
-      
-      void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', anyLoaded);
+
+      void vscode.commands.executeCommand("setContext", "docuvia:isInitialized", anyLoaded);
       this._onDidLoad.fire();
       KnowledgeStore.onDidFinishIndexing.fire();
       return anyLoaded;
@@ -130,7 +145,9 @@ export class KnowledgeStore {
     this._outputChannel.appendLine(`[Docuvia] Loading knowledge graph for ${workspaceRoot}...`);
     try {
       // Always read manifest for offline CodeLens and projectId discovery
-      const manifestContent = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, MANIFEST_FILE));
+      const manifestContent = await this.readUriSafe(
+        vscode.Uri.joinPath(docuviaDir, MANIFEST_FILE)
+      );
       const manifest = parseManifest(manifestContent, `${DOCUVIA_DIR}/${MANIFEST_FILE}`);
 
       let tags: L1Tag[] = [];
@@ -143,35 +160,46 @@ export class KnowledgeStore {
       if (this._client && this._client.isServerConfigured() && manifest.project_id !== undefined) {
         try {
           const apiSnapshot = await this._client.pullSnapshot(manifest.project_id);
-          ({ tags, modules, routerIndex, decisions, projectName } = this._mapApiSnapshot(apiSnapshot, workspaceRoot));
-          this._outputChannel.appendLine(`[Docuvia] Loaded from server API (project ${manifest.project_id}).`);
+          ({ tags, modules, routerIndex, decisions, projectName } = this._mapApiSnapshot(
+            apiSnapshot,
+            workspaceRoot
+          ));
+          this._outputChannel.appendLine(
+            `[Docuvia] Loaded from server API (project ${manifest.project_id}).`
+          );
         } catch (err) {
-          this._outputChannel.appendLine(`[Docuvia] Server unreachable, trying git fallback: ${String(err)}`);
+          this._outputChannel.appendLine(
+            `[Docuvia] Server unreachable, trying git fallback: ${String(err)}`
+          );
         }
       }
 
       // Local fallback: read from .docuvia directory directly
       if (tags.length === 0 && modules.length === 0) {
         try {
-          const tagsYaml = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, 'l1_tags.yaml'));
+          const tagsYaml = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, "l1_tags.yaml"));
           if (tagsYaml) {
-            tags = parseTags(tagsYaml, 'l1_tags.yaml');
+            tags = parseTags(tagsYaml, "l1_tags.yaml");
             const match = tagsYaml.match(/^project_name:\s*"([^"\n]+)"/m);
             if (match) projectName = match[1];
           }
 
-          const modulesYaml = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, 'l2_modules.yaml'));
-          if (modulesYaml) modules = parseModules(modulesYaml, 'l2_modules.yaml');
+          const modulesYaml = await this.readUriSafe(
+            vscode.Uri.joinPath(docuviaDir, "l2_modules.yaml")
+          );
+          if (modulesYaml) modules = parseModules(modulesYaml, "l2_modules.yaml");
 
-          const routerYaml = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, 'l3_router.yaml'));
-          if (routerYaml) routerIndex = parseRouter(routerYaml, 'l3_router.yaml');
+          const routerYaml = await this.readUriSafe(
+            vscode.Uri.joinPath(docuviaDir, "l3_router.yaml")
+          );
+          if (routerYaml) routerIndex = parseRouter(routerYaml, "l3_router.yaml");
 
           // Read l3_decisions
-          const decisionsDir = vscode.Uri.joinPath(docuviaDir, 'l3_decisions');
+          const decisionsDir = vscode.Uri.joinPath(docuviaDir, "l3_decisions");
           try {
             const entries = await vscode.workspace.fs.readDirectory(decisionsDir);
             for (const [name, type] of entries) {
-              if (type === vscode.FileType.File && name.endsWith('.md')) {
+              if (type === vscode.FileType.File && name.endsWith(".md")) {
                 const md = await this.readUriSafe(vscode.Uri.joinPath(decisionsDir, name));
                 if (md) {
                   const decision = parseDecision(md, name);
@@ -196,7 +224,9 @@ export class KnowledgeStore {
           routerIndex = gitData.routerIndex;
           decisions = gitData.decisions;
           projectName = gitData.projectName;
-          this._outputChannel.appendLine(`[Docuvia] Loaded from git fallback (branch ${GIT_KNOWLEDGE_BRANCH}).`);
+          this._outputChannel.appendLine(
+            `[Docuvia] Loaded from git fallback (branch ${GIT_KNOWLEDGE_BRANCH}).`
+          );
         } catch (err) {
           this._outputChannel.appendLine(`[Docuvia] Git fallback failed: ${String(err)}`);
         }
@@ -219,7 +249,9 @@ export class KnowledgeStore {
 
       return true;
     } catch (err) {
-      this._outputChannel.appendLine(`[Docuvia] Error loading knowledge graph for ${workspaceRoot}: ${String(err)}`);
+      this._outputChannel.appendLine(
+        `[Docuvia] Error loading knowledge graph for ${workspaceRoot}: ${String(err)}`
+      );
       return false;
     }
   }
@@ -231,32 +263,41 @@ export class KnowledgeStore {
   private _mapApiSnapshot(
     snapshot: KnowledgeSnapshot,
     workspaceRoot: string
-  ): { projectName: string; tags: L1Tag[]; modules: L2Module[]; routerIndex: L3RouterEntry[]; decisions: Map<string, L3Decision> } {
+  ): {
+    projectName: string;
+    tags: L1Tag[];
+    modules: L2Module[];
+    routerIndex: L3RouterEntry[];
+    decisions: Map<string, L3Decision>;
+  } {
     const slugify = (name: string) =>
-      name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      name
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
 
-    const tags: L1Tag[] = snapshot.l1Tags.map(t => ({
+    const tags: L1Tag[] = snapshot.l1Tags.map((t) => ({
       id: String(t.id),
       slug: slugify(t.name),
       name: t.name,
       description: t.description ?? undefined,
     }));
 
-    const modules: L2Module[] = snapshot.l2Nodes.map(n => ({
+    const modules: L2Module[] = snapshot.l2Nodes.map((n) => ({
       id: String(n.id),
       slug: slugify(n.name),
       name: n.name,
       description: n.description ?? undefined,
-      l1_tag_id: n.l1TagIds[0] !== undefined ? String(n.l1TagIds[0]) : '',
+      l1_tag_id: n.l1TagIds[0] !== undefined ? String(n.l1TagIds[0]) : "",
       source_paths: [],
     }));
 
-    const routerIndex: L3RouterEntry[] = snapshot.l3Nodes.map(n => ({
+    const routerIndex: L3RouterEntry[] = snapshot.l3Nodes.map((n) => ({
       id: String(n.id),
       l2_module_id: String(n.l2NodeId),
       slug: slugify(n.title),
       title: n.title,
-      file_path: '',
+      file_path: "",
     }));
 
     const decisions = new Map<string, L3Decision>();
@@ -266,9 +307,9 @@ export class KnowledgeStore {
         id,
         l2_module_id: String(n.l2NodeId),
         title: n.title,
-        status: 'accepted',
-        body: n.content ?? '',
-        filePath: '',
+        status: "accepted",
+        body: n.content ?? "",
+        filePath: "",
       });
     }
 
@@ -288,24 +329,33 @@ export class KnowledgeStore {
   private async _loadFromGit(
     workspaceRoot: string,
     projectId: number
-  ): Promise<{ projectName: string; tags: L1Tag[]; modules: L2Module[]; routerIndex: L3RouterEntry[]; decisions: Map<string, L3Decision> }> {
+  ): Promise<{
+    projectName: string;
+    tags: L1Tag[];
+    modules: L2Module[];
+    routerIndex: L3RouterEntry[];
+    decisions: Map<string, L3Decision>;
+  }> {
     const treePath = `${GIT_KNOWLEDGE_BRANCH}:${projectId}`;
-    const filesRaw = await this.runGit(['ls-tree', '-r', '--name-only', treePath], workspaceRoot).catch(() => '');
+    const filesRaw = await this.runGit(
+      ["ls-tree", "-r", "--name-only", treePath],
+      workspaceRoot
+    ).catch(() => "");
     const files = filesRaw
-      .split('\n')
-      .map(f => f.trim())
+      .split("\n")
+      .map((f) => f.trim())
       .filter(Boolean);
     const blobContents = await this.readGitBlobs(workspaceRoot, projectId, files);
 
-    const tagsYaml = blobContents.get('l1_tags.yaml') ?? '';
-    const tags = tagsYaml ? parseTags(tagsYaml, 'l1_tags.yaml') : [];
+    const tagsYaml = blobContents.get("l1_tags.yaml") ?? "";
+    const tags = tagsYaml ? parseTags(tagsYaml, "l1_tags.yaml") : [];
     const projectName =
       tagsYaml.match(/^project_name:\s*"?([^"\n]+)"?/m)?.[1] ?? path.basename(workspaceRoot);
 
     const modules: L2Module[] = [];
-    const moduleFiles = files.filter(f => f.startsWith('l2_modules/') && f.endsWith('.yaml'));
+    const moduleFiles = files.filter((f) => f.startsWith("l2_modules/") && f.endsWith(".yaml"));
     for (const file of moduleFiles) {
-      const yaml = blobContents.get(file) ?? '';
+      const yaml = blobContents.get(file) ?? "";
       if (yaml) {
         const mod = parseSingleModule(yaml, path.basename(file));
         if (mod) modules.push(mod);
@@ -315,18 +365,18 @@ export class KnowledgeStore {
     const decisions = new Map<string, L3Decision>();
     const routerIndex: L3RouterEntry[] = [];
 
-    const decisionFiles = files.filter(f => f.startsWith('l3_decisions/') && f.endsWith('.md'));
+    const decisionFiles = files.filter((f) => f.startsWith("l3_decisions/") && f.endsWith(".md"));
     for (const file of decisionFiles) {
-      const md = blobContents.get(file) ?? '';
+      const md = blobContents.get(file) ?? "";
       if (md) {
-        const relativeFile = file.replace(/^l3_decisions\//, '');
+        const relativeFile = file.replace(/^l3_decisions\//, "");
         const decision = parseDecision(md, relativeFile);
         if (decision) {
           decisions.set(decision.id, decision);
           routerIndex.push({
             id: decision.id,
             l2_module_id: decision.l2_module_id,
-            slug: relativeFile.replace(/\.md$/, ''),
+            slug: relativeFile.replace(/\.md$/, ""),
             title: decision.title,
             file_path: relativeFile,
           });
@@ -338,7 +388,7 @@ export class KnowledgeStore {
   }
 
   private async runGit(args: string[], workspaceRoot: string): Promise<string> {
-    const { stdout } = await execFile('git', args, {
+    const { stdout } = await execFile("git", args, {
       cwd: workspaceRoot,
       maxBuffer: 100 * 1024 * 1024,
     });
@@ -351,10 +401,11 @@ export class KnowledgeStore {
     files: string[]
   ): Promise<Map<string, string>> {
     const contents = new Map<string, string>();
-    const requested = files.filter(file =>
-      file === 'l1_tags.yaml' ||
-      (file.startsWith('l2_modules/') && file.endsWith('.yaml')) ||
-      (file.startsWith('l3_decisions/') && file.endsWith('.md'))
+    const requested = files.filter(
+      (file) =>
+        file === "l1_tags.yaml" ||
+        (file.startsWith("l2_modules/") && file.endsWith(".yaml")) ||
+        (file.startsWith("l3_decisions/") && file.endsWith(".md"))
     );
 
     if (requested.length === 0) {
@@ -362,26 +413,26 @@ export class KnowledgeStore {
     }
 
     return new Promise((resolve, reject) => {
-      const child = spawn('git', ['cat-file', '--batch'], {
+      const child = spawn("git", ["cat-file", "--batch"], {
         cwd: workspaceRoot,
-        stdio: ['pipe', 'pipe', 'pipe'],
+        stdio: ["pipe", "pipe", "pipe"],
       });
 
       const stderrChunks: Buffer[] = [];
       const stdoutChunks: Buffer[] = [];
 
-      child.stderr.on('data', chunk => {
+      child.stderr.on("data", (chunk) => {
         stderrChunks.push(Buffer.from(chunk));
       });
 
-      child.stdout.on('data', chunk => {
+      child.stdout.on("data", (chunk) => {
         stdoutChunks.push(Buffer.from(chunk));
       });
 
-      child.on('error', reject);
-      child.on('close', code => {
+      child.on("error", reject);
+      child.on("close", (code) => {
         if (code !== 0) {
-          const stderr = Buffer.concat(stderrChunks).toString('utf8');
+          const stderr = Buffer.concat(stderrChunks).toString("utf8");
           reject(new Error(`git cat-file --batch failed with code ${code}: ${stderr}`));
           return;
         }
@@ -393,21 +444,21 @@ export class KnowledgeStore {
             const newline = output.indexOf(0x0a, offset);
             if (newline === -1) break;
 
-            const header = output.subarray(offset, newline).toString('utf8');
+            const header = output.subarray(offset, newline).toString("utf8");
             offset = newline + 1;
 
-            if (header.endsWith(' missing')) {
+            if (header.endsWith(" missing")) {
               continue;
             }
 
             const [, type, sizeRaw] = header.match(/^[0-9a-f]+ (\w+) (\d+)$/) ?? [];
             const size = Number(sizeRaw);
-            if (type !== 'blob' || !Number.isFinite(size)) {
+            if (type !== "blob" || !Number.isFinite(size)) {
               throw new Error(`Unexpected git cat-file header: ${header}`);
             }
 
             const blob = output.subarray(offset, offset + size);
-            contents.set(file, blob.toString('utf8'));
+            contents.set(file, blob.toString("utf8"));
             offset += size + 1;
           }
 
@@ -436,10 +487,7 @@ export class KnowledgeStore {
 
     const folders = vscode.workspace.workspaceFolders || [];
     for (const folder of folders) {
-      const pattern = new vscode.RelativePattern(
-        folder,
-        '.docuvia/**'
-      );
+      const pattern = new vscode.RelativePattern(folder, ".docuvia/**");
 
       const watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
@@ -448,8 +496,8 @@ export class KnowledgeStore {
 
       const scheduleReload = (uri: vscode.Uri) => {
         // Ignore temp / non-knowledge files
-        const ext = uri.fsPath.split('.').pop()?.toLowerCase();
-        if (ext !== 'yaml' && ext !== 'md') return;
+        const ext = uri.fsPath.split(".").pop()?.toLowerCase();
+        if (ext !== "yaml" && ext !== "md") return;
 
         pendingChanges.add(uri.fsPath);
         if (debounceTimer !== undefined) clearTimeout(debounceTimer);
@@ -473,7 +521,7 @@ export class KnowledgeStore {
     if (!KnowledgeStore._workspaceListenerRegistered) {
       context.subscriptions.push(
         vscode.workspace.onDidChangeWorkspaceFolders(() => {
-          this._outputChannel.appendLine('[Docuvia] Workspace folders changed, reloading store...');
+          this._outputChannel.appendLine("[Docuvia] Workspace folders changed, reloading store...");
           void this.load();
           this.startWatcher(context);
         })
@@ -481,7 +529,9 @@ export class KnowledgeStore {
       KnowledgeStore._workspaceListenerRegistered = true;
     }
 
-    this._outputChannel.appendLine('[Docuvia] FileSystemWatchers started for .docuvia/** across workspaces.');
+    this._outputChannel.appendLine(
+      "[Docuvia] FileSystemWatchers started for .docuvia/** across workspaces."
+    );
   }
 
   private static _workspaceListenerRegistered = false;
@@ -491,9 +541,12 @@ export class KnowledgeStore {
    * the count and ratio thresholds from VS Code configuration.
    */
   private _handleBatchedChanges(workspaceRoot: string, changedPaths: string[]): void {
-    const config = vscode.workspace.getConfiguration('docuvia');
-    const countThreshold = config.get<number>('knowledgeGraph.incrementalUpdateThreshold', 50);
-    const ratioThreshold = config.get<number>('knowledgeGraph.incrementalUpdateRatioThreshold', 0.5);
+    const config = vscode.workspace.getConfiguration("docuvia");
+    const countThreshold = config.get<number>("knowledgeGraph.incrementalUpdateThreshold", 50);
+    const ratioThreshold = config.get<number>(
+      "knowledgeGraph.incrementalUpdateRatioThreshold",
+      0.5
+    );
 
     const snap = this._snapshots.get(workspaceRoot);
     const totalFiles = snap
@@ -506,7 +559,11 @@ export class KnowledgeStore {
         `[Docuvia] Incremental reload for ${path.basename(workspaceRoot)} (${changedPaths.length} file(s) changed)`
       );
       void this._loadWorkspace(workspaceRoot).then(() => {
-        void vscode.commands.executeCommand('setContext', 'docuvia:isInitialized', this._snapshots.size > 0);
+        void vscode.commands.executeCommand(
+          "setContext",
+          "docuvia:isInitialized",
+          this._snapshots.size > 0
+        );
         this._onDidLoad.fire();
       });
     } else {
@@ -533,9 +590,9 @@ export class KnowledgeStore {
   private async readUriSafe(uri: vscode.Uri): Promise<string> {
     try {
       const bytes = await vscode.workspace.fs.readFile(uri);
-      return Buffer.from(bytes).toString('utf-8');
+      return Buffer.from(bytes).toString("utf-8");
     } catch {
-      return '';
+      return "";
     }
   }
 

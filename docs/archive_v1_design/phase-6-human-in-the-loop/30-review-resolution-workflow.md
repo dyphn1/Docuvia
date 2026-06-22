@@ -1,17 +1,21 @@
 # Review Resolution Workflow
 
 ## Overview
+
 Allow reviewers to approve, reject, or correct AI-generated nodes, updating their status and triggering downstream effects.
 
 ## Implementation
+
 `reviewResolution.ts`, `reviewResolutionStatus.ts`, `reviewStats.ts`.
 
 ### Key Files
+
 - `lib/api-zod/src/generated/types/reviewResolution.ts`
 - `lib/api-zod/src/generated/types/reviewResolutionStatus.ts`
 - `lib/api-zod/src/generated/types/reviewStats.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -37,7 +41,6 @@ Allow reviewers to approve, reject, or correct AI-generated nodes, updating thei
   - `reviewResolution.ts`
   - `reviewResolutionStatus.ts`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
-
 
 ### Project Build & Type Verification
 

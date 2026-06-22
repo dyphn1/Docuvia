@@ -6,7 +6,7 @@
 
 ## Overview
 
-Docuvia is a universal knowledge graph engine that extracts institutional knowledge from Git/SVN repositories, specification documents, and local files. Unlike tools that only analyze static source code, Docuvia mines commit history, diffs, and build artifacts alongside spec documents to surface the *why* behind every decision — not just the *what*. 
+Docuvia is a universal knowledge graph engine that extracts institutional knowledge from Git/SVN repositories, specification documents, and local files. Unlike tools that only analyze static source code, Docuvia mines commit history, diffs, and build artifacts alongside spec documents to surface the _why_ behind every decision — not just the _what_.
 
 It is designed for teams working with large, long-lived, or specialized codebases (e.g., BIOS/firmware, embedded systems) where critical knowledge is scattered, allowing AI agents to query this knowledge via MCP.
 
@@ -25,30 +25,37 @@ It is designed for teams working with large, long-lived, or specialized codebase
 ## Getting Started
 
 ### Prerequisites
+
 - **Node.js**: Version 24+
 - **pnpm**: Required (npm/yarn will be blocked by the preinstall script).
 - **PostgreSQL**: Required for production and local environments.
 - **AI API**: An OpenAI-compatible API endpoint and API Key.
 
 ### Installation / Deployment
+
 Currently, Docuvia is run directly from the source repository.
+
 ```bash
 # Clone the repository and install dependencies
 pnpm install
 ```
 
 ### Initial Configuration
+
 Set up the following required environment variables:
+
 - `DATABASE_URL`: Connection string for PostgreSQL.
 - `AI_INTEGRATIONS_OPENAI_BASE_URL`: Base URL for the OpenAI-compatible API.
 - `AI_INTEGRATIONS_OPENAI_API_KEY`: API Key for the LLM endpoint.
 - `PORT`: API server port (default 8080).
 
 Start the system:
+
 ```bash
 pnpm --filter @workspace/api-server run dev   # Starts API Server
 pnpm --filter @workspace/kg-engine run dev    # Starts Frontend UI
 ```
+
 The frontend defaults to `BASE_PATH=/` and `PORT=18774`.
 
 ---
@@ -56,38 +63,42 @@ The frontend defaults to `BASE_PATH=/` and `PORT=18774`.
 ## Core Workflow & Features
 
 ### 1. Ingestion & Zero-to-One Discovery
+
 Docuvia operates on a **Local-First, Server-Augmented** architecture. Connect to your Git/SVN repository or upload specification documents. For uninitialized projects, the local client performs deterministic topology sniffing and delegates naming to the LLM, seamlessly syncing via an orphan branch (`docuvia-knowledge`) to establish team consensus instantly without burning millions of tokens.
 
 ### 2. Knowledge Construction & Swarm Intelligence
+
 Trigger the AI analysis pipeline. The AI will extract structured knowledge across three tiers (L1, L2, L3) via incremental deltas isomorphic to your Git tree. Use the **Review Queue** UI to anchor, correct, and approve AI proposals. Every human override triggers a background distillation job, converting local corrections into global guardrails via **Swarm Intelligence**.
 
 ### 3. Agentic RAG & O(1) Arbitration
+
 Query the knowledge graph via the UI or connect external AI agents via the built-in **MCP Endpoints**. The Agentic RAG system uses O(1) arbitration to route requests across 4 dimensions: **Vector** (semantic), **Graph** (dependency analysis), **Direct** (exact file targets), and **Hybrid** routing. To prevent stale context, knowledge nodes automatically undergo temporal decay based on their `last_verified_at` timestamp.
 
 ### 4. VS Code Extension
+
 Install the **Docuvia VS Code Extension** (`@workspace/vscode-client`) for direct editor integration. Browse the knowledge graph in the sidebar tree view, capture decisions from code selections via `docuvia.addDecision`, run targeted extractions with `docuvia.runExtraction`, and query the graph through the `@docuvia` GitHub Copilot Chat participant (`/explore`, `/query`, `/extract`, `/help`).
 
 ---
 
 ## Concepts & Glossary
 
-*(Sourced from `docs/gitbook/04-core-concepts.md`)*
+_(Sourced from `docs/gitbook/04-core-concepts.md`)_
 
-| Term | Definition |
-|---|---|
-| `L1 Pool` | Global tags acting as high-level categorizations across your organization. |
-| `L2 Nodes` | Architectural components, packages, and modules specific to a project. |
-| `L3 Nodes` | Micro-level design decisions, reasoning, and implementation details. |
-| `Vector Index` | Used for semantic search when querying abstract concepts. |
-| `Graph Index` | Used for dependency analysis, tracking relationships, and assessing impact. |
-| `Agentic RAG` | The AI autonomously selects between vector, graph, direct, and hybrid routing. |
-| `MCP` | Model Context Protocol — allows external AI agents to interact with Docuvia. |
+| Term           | Definition                                                                     |
+| -------------- | ------------------------------------------------------------------------------ |
+| `L1 Pool`      | Global tags acting as high-level categorizations across your organization.     |
+| `L2 Nodes`     | Architectural components, packages, and modules specific to a project.         |
+| `L3 Nodes`     | Micro-level design decisions, reasoning, and implementation details.           |
+| `Vector Index` | Used for semantic search when querying abstract concepts.                      |
+| `Graph Index`  | Used for dependency analysis, tracking relationships, and assessing impact.    |
+| `Agentic RAG`  | The AI autonomously selects between vector, graph, direct, and hybrid routing. |
+| `MCP`          | Model Context Protocol — allows external AI agents to interact with Docuvia.   |
 
 ---
 
 ## Security & Privacy
 
-- **Data Locality**: The core engine and database run on your infrastructure. 
+- **Data Locality**: The core engine and database run on your infrastructure.
 - **LLM Privacy**: Data is only sent to the LLM endpoint you configure in `AI_INTEGRATIONS_OPENAI_BASE_URL`. Ensure you use a provider with a zero-data-retention policy for enterprise data.
 - **Credentials**: Database connection strings and API keys are managed via local environment variables.
 
@@ -95,7 +106,7 @@ Install the **Docuvia VS Code Extension** (`@workspace/vscode-client`) for direc
 
 ## FAQ & Limitations
 
-*(Sourced from `docs/gitbook/08-known-limitations.md` and `09-faq.md`)*
+_(Sourced from `docs/gitbook/08-known-limitations.md` and `09-faq.md`)_
 
 - **Q: The Dashboard displays "Dashboard data unavailable" and numbers are 0.**
   - **A:** Ensure that both the API Server and Database are running correctly. Check the API Server logs for connection errors.
@@ -105,6 +116,7 @@ Install the **Docuvia VS Code Extension** (`@workspace/vscode-client`) for direc
   - **A:** Native Ollama integration is not officially supported yet. You must use an OpenAI-compatible proxy (like LiteLLM) to route requests.
 
 **Known Limitations:**
+
 - **Multi-hop Impact Traversal**: Currently only one-hop traversal is supported.
 - **Cross-project node_links**: Approved cross-project links do not automatically create relationship records in the DB yet.
 - **Test Suite**: Tests live in root `test/`; coverage is still narrow and mostly contract checks plus VS Code extension endpoints.
@@ -119,7 +131,7 @@ See the full [Architectural Design Documents](docs/design/00-architecture-index.
 
 ## For Developers
 
-Want to build Docuvia from source, contribute to the engine, or understand the codebase architecture? 
-Please see the AI instructions and developer guide in [`AGENTS.md`](AGENTS.md). 
+Want to build Docuvia from source, contribute to the engine, or understand the codebase architecture?
+Please see the AI instructions and developer guide in [`AGENTS.md`](AGENTS.md).
 
 This project also features a full **AI Agent Scaffold** generated by `create-agent-launcher`. AI coding assistants can use the built-in [Agent Launcher workflow](.github/skills/agent-launcher/SKILL.md) to autonomously design, implement, and verify features across the monorepo.

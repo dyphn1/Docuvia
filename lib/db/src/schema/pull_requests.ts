@@ -5,7 +5,10 @@ import { projectsTable } from "./projects";
 
 export const prStateEnum = pgEnum("pr_state", ["open", "closed", "merged"]);
 export const prAnalysisStatusEnum = pgEnum("pr_analysis_status", [
-  "pending", "in_progress", "completed", "failed"
+  "pending",
+  "in_progress",
+  "completed",
+  "failed",
 ]);
 
 export const pullRequestsTable = pgTable("pull_requests", {

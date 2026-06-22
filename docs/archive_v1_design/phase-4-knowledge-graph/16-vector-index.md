@@ -1,15 +1,19 @@
 # Vector Index (Embedding)
 
 ## Overview
+
 Embed knowledge nodes into a vector space for semantic similarity search.
 
 ## Implementation
+
 `artifacts/api-server/src/lib/embedding.ts` handles embedding generation and vector DB interaction.
 
 ### Key Files
+
 - `artifacts/api-server/src/lib/embedding.ts`
 
 ## Status
+
 **✅ Done**
 
 ## Verification Checklist
@@ -43,14 +47,12 @@ Embed knowledge nodes into a vector space for semantic similarity search.
   - `l3_nodes`
   - **Validation Goal**: Read the file contents to verify that exported functions, interfaces, schemas, and variables precisely match the defined architecture and do not contain stubbed/mocked implementations.
 
-
 ### Logic Deep-Dive
 
 - [ ] **Trigger `Requirement Analyzer` & `Task Verifier`** to perform semantic checks on the logic:
   - **in-memory cosine similarity**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **embeddings stored as JSON in /**: Trace the implementation from data ingestion/input down to the database or output response. Confirm that all required properties, valid types, and state transitions are explicitly coded.
   - **Validation Goal**: Output a strict pass/fail criteria matching the exact specification details instead of a generic 'looks good' response.
-
 
 ### Project Build & Type Verification
 

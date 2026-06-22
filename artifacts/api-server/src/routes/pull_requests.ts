@@ -61,12 +61,7 @@ router.get("/projects/:id/pull-requests/:prNumber", async (req, res) => {
   const commits = await db
     .select({ hash: commitsTable.hash })
     .from(commitsTable)
-    .where(
-      and(
-        eq(commitsTable.projectId, projectId),
-        gte(commitsTable.createdAt, pr.createdAt)
-      )
-    );
+    .where(and(eq(commitsTable.projectId, projectId), gte(commitsTable.createdAt, pr.createdAt)));
 
   const commitHashes = commits.map((c) => c.hash);
 
@@ -85,9 +80,7 @@ router.get("/projects/:id/pull-requests/:prNumber", async (req, res) => {
     .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
     .where(eq(l2NodesTable.projectId, projectId));
 
-  const prL3Nodes = l3Nodes.filter(
-    (n) => n.commitHash && commitHashes.includes(n.commitHash)
-  );
+  const prL3Nodes = l3Nodes.filter((n) => n.commitHash && commitHashes.includes(n.commitHash));
 
   const l2NodeIds = [...new Set(prL3Nodes.map((n) => n.l2NodeId))];
   const l2Nodes =
@@ -174,21 +167,19 @@ router.post("/projects/:id/pull-requests/:prNumber/analyze", async (req, res) =>
         .from(l3NodesTable)
         .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
         .where(
-          and(
-            eq(l2NodesTable.projectId, projectId),
-            gte(l3NodesTable.createdAt, pr.createdAt)
-          )
+          and(eq(l2NodesTable.projectId, projectId), gte(l3NodesTable.createdAt, pr.createdAt))
         )
         .limit(50);
 
       const l2Nodes = await db
-        .select({ name: l2NodesTable.name, type: l2NodesTable.type, description: l2NodesTable.description })
+        .select({
+          name: l2NodesTable.name,
+          type: l2NodesTable.type,
+          description: l2NodesTable.description,
+        })
         .from(l2NodesTable)
         .where(
-          and(
-            eq(l2NodesTable.projectId, projectId),
-            gte(l2NodesTable.createdAt, pr.createdAt)
-          )
+          and(eq(l2NodesTable.projectId, projectId), gte(l2NodesTable.createdAt, pr.createdAt))
         )
         .limit(30);
 

@@ -26,7 +26,6 @@ import { logger } from "../lib/logger.js";
 import { z } from "zod";
 import { DEFAULT_PROMPTS } from "./templates.js";
 
-
 async function getPromptTemplate(projectId: number, templateType: string): Promise<string> {
   const [template] = await db
     .select()
@@ -64,7 +63,8 @@ async function getPromptTemplate(projectId: number, templateType: string): Promi
   }
 
   // Fallback to hardcoded defaults
-  const hardcodedDefault = DEFAULT_PROMPTS[templateType as keyof typeof DEFAULT_PROMPTS] || "You are an AI assistant.";
+  const hardcodedDefault =
+    DEFAULT_PROMPTS[templateType as keyof typeof DEFAULT_PROMPTS] || "You are an AI assistant.";
   return `${hardcodedDefault}\n\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json`;
 }
 
@@ -103,15 +103,10 @@ async function getRecentCorrections(
   return examples.map((e) => ({ original: e.originalContent, corrected: e.correctedContent }));
 }
 
-function buildFewShotSection(
-  corrections: Array<{ original: string; corrected: string }>
-): string {
+function buildFewShotSection(corrections: Array<{ original: string; corrected: string }>): string {
   if (corrections.length === 0) return "";
   const examples = corrections
-    .map(
-      (c, i) =>
-        `Example ${i + 1}:\n  Original: "${c.original}"\n  Corrected: "${c.corrected}"`
-    )
+    .map((c, i) => `Example ${i + 1}:\n  Original: "${c.original}"\n  Corrected: "${c.corrected}"`)
     .join("\n");
   return `\n\nPrevious human corrections (use these as quality guidance):\n${examples}`;
 }
@@ -133,7 +128,7 @@ async function condenseL3Node(
 
     for (let i = 0; i < commits.length; i += batchSize) {
       const commitBatchHashes = commits.slice(i, i + batchSize);
-      
+
       const commitData = await db
         .select({ hash: commitsTable.hash, message: commitsTable.message })
         .from(commitsTable)
@@ -163,7 +158,7 @@ async function condenseL3Node(
         });
         synthesizedContent = response.choices[0]?.message?.content ?? synthesizedContent;
         // Sleep to prevent rate limit
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (e) {
         logger.warn({ err: e }, "Failed to generate chunk");
         throw e;
@@ -428,7 +423,7 @@ async function runSieveModel(
   sourceFile: string | undefined,
   commitHash: string | undefined,
   textToEmbed: string,
-  l2Nodes: typeof l2NodesTable.$inferSelect[],
+  l2Nodes: (typeof l2NodesTable.$inferSelect)[],
   sysUncategorizedId: number
 ): Promise<{ bestNodeId: number; confidence: number }> {
   const W1 = 0.3; // GitHistory
@@ -448,9 +443,15 @@ async function runSieveModel(
 
   let commitLinkedNodeIds: number[] = [];
   if (commitHash) {
-    const [commitRecord] = await db.select({ id: commitsTable.id }).from(commitsTable).where(eq(commitsTable.hash, commitHash));
+    const [commitRecord] = await db
+      .select({ id: commitsTable.id })
+      .from(commitsTable)
+      .where(eq(commitsTable.hash, commitHash));
     if (commitRecord) {
-      const links = await db.select().from(commitL2LinksTable).where(eq(commitL2LinksTable.commitId, commitRecord.id));
+      const links = await db
+        .select()
+        .from(commitL2LinksTable)
+        .where(eq(commitL2LinksTable.commitId, commitRecord.id));
       commitLinkedNodeIds = links.map((l: any) => l.l2NodeId);
     }
   }
@@ -481,7 +482,7 @@ async function runSieveModel(
       }
     }
 
-    const totalScore = (scoreW1 * W1) + (scoreW2 * W2) + (scoreW3 * W3) + (scoreW4 * W4);
+    const totalScore = scoreW1 * W1 + scoreW2 * W2 + scoreW3 * W3 + scoreW4 * W4;
     if (totalScore > bestScore && totalScore > 0.4) {
       bestScore = totalScore;
       bestNodeId = node.id;
@@ -490,7 +491,7 @@ async function runSieveModel(
 
   return {
     bestNodeId,
-    confidence: bestScore > 0 ? bestScore : 0.1
+    confidence: bestScore > 0 ? bestScore : 0.1,
   };
 }
 
@@ -501,14 +502,14 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
 
   const bodyParsed = SieveExtractionInputSchema.safeParse(req.body ?? {});
   if (!bodyParsed.success) return res.status(400).json({ error: "Invalid input" });
-  
+
   const { sourceText, sourceFile, commitHash } = bodyParsed.data;
 
   // Track A (Snippet/Strict) vs Track B (Bulk/Lenient)
   const isTrackA = !!sourceFile && !sourceFile.includes(",");
 
   const l2Nodes = await db.select().from(l2NodesTable).where(eq(l2NodesTable.projectId, projectId));
-  const sysUncatNode = l2Nodes.find(n => n.type === "sys-uncategorized");
+  const sysUncatNode = l2Nodes.find((n) => n.type === "sys-uncategorized");
   const sysUncategorizedId = sysUncatNode?.id ?? 0;
 
   const model = await getModel(projectId);
@@ -521,8 +522,11 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
       max_completion_tokens: 2048,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: `Extract architecture decisions from this text as a JSON array of objects with 'title' and 'nodeType' (change|rule|decision|context):\n\n${sourceText}` }
-      ]
+        {
+          role: "user",
+          content: `Extract architecture decisions from this text as a JSON array of objects with 'title' and 'nodeType' (change|rule|decision|context):\n\n${sourceText}`,
+        },
+      ],
     });
     const content = response.choices[0]?.message?.content ?? "[]";
     const jsonMatch = content.match(/\[[\s\S]*\]/);
@@ -532,30 +536,44 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
     return res.status(500).json({ error: "Failed to extract decisions" });
   }
 
-  const decisions = await Promise.all(extracted.map(async (dec) => {
-    const textToEmbed = `${dec.title}\n${dec.nodeType}`;
-    let l2NodeId = sysUncategorizedId;
-    let confidence = 0.1;
+  const decisions = await Promise.all(
+    extracted.map(async (dec) => {
+      const textToEmbed = `${dec.title}\n${dec.nodeType}`;
+      let l2NodeId = sysUncategorizedId;
+      let confidence = 0.1;
 
-    if (isTrackA) {
-      const { bestNodeId, confidence: conf } = await runSieveModel(sourceFile, commitHash, textToEmbed, l2Nodes, sysUncategorizedId);
-      l2NodeId = bestNodeId;
-      confidence = conf;
-    } else {
-      // Track B: fallback to sys-uncategorized initially, then use Sieve to suggest
-      const { bestNodeId, confidence: conf } = await runSieveModel(undefined, commitHash, textToEmbed, l2Nodes, sysUncategorizedId);
-      l2NodeId = bestNodeId; // Return suggestion
-      confidence = conf * 0.8; // Lower confidence for bulk
-    }
+      if (isTrackA) {
+        const { bestNodeId, confidence: conf } = await runSieveModel(
+          sourceFile,
+          commitHash,
+          textToEmbed,
+          l2Nodes,
+          sysUncategorizedId
+        );
+        l2NodeId = bestNodeId;
+        confidence = conf;
+      } else {
+        // Track B: fallback to sys-uncategorized initially, then use Sieve to suggest
+        const { bestNodeId, confidence: conf } = await runSieveModel(
+          undefined,
+          commitHash,
+          textToEmbed,
+          l2Nodes,
+          sysUncategorizedId
+        );
+        l2NodeId = bestNodeId; // Return suggestion
+        confidence = conf * 0.8; // Lower confidence for bulk
+      }
 
-    return {
-      l2NodeId,
-      title: dec.title || "Unknown Decision",
-      nodeType: dec.nodeType || "context",
-      confidence,
-      noiseScore: 0.1
-    };
-  }));
+      return {
+        l2NodeId,
+        title: dec.title || "Unknown Decision",
+        nodeType: dec.nodeType || "context",
+        confidence,
+        noiseScore: 0.1,
+      };
+    })
+  );
 
   return res.json({ decisions });
 });
@@ -587,10 +605,7 @@ router.post("/projects/:id/generate", async (req, res) => {
         eq(projectsTable.id, projectId),
         or(
           inArray(projectsTable.status, ["active", "error"]),
-          and(
-            eq(projectsTable.status, "indexing"),
-            lt(projectsTable.updatedAt, thirtyMinsAgo)
-          )
+          and(eq(projectsTable.status, "indexing"), lt(projectsTable.updatedAt, thirtyMinsAgo))
         )
       )
     )
@@ -607,7 +622,11 @@ router.post("/projects/:id/generate", async (req, res) => {
       .from(commitsTable)
       .where(
         mode === "incremental"
-          ? and(eq(commitsTable.projectId, projectId), eq(commitsTable.valid, true), isNull(commitsTable.processedAt))
+          ? and(
+              eq(commitsTable.projectId, projectId),
+              eq(commitsTable.valid, true),
+              isNull(commitsTable.processedAt)
+            )
           : and(eq(commitsTable.projectId, projectId), eq(commitsTable.valid, true))
       )
       .orderBy(sql`${commitsTable.createdAt} desc`)
@@ -666,9 +685,7 @@ router.post("/projects/:id/generate", async (req, res) => {
       await Promise.all(
         existingL1.map(async (tag) => ({
           id: tag.id,
-          embedding: await generateEmbedding(
-            `${tag.name} ${tag.description ?? ""}`.trim()
-          ),
+          embedding: await generateEmbedding(`${tag.name} ${tag.description ?? ""}`.trim()),
         }))
       );
 
@@ -677,9 +694,7 @@ router.post("/projects/:id/generate", async (req, res) => {
       if (tagMap.has(key)) continue;
 
       // Semantic dedup: check if candidate is similar to an existing tag
-      const candidateEmb = await generateEmbedding(
-        `${tag.name} ${tag.description ?? ""}`.trim()
-      );
+      const candidateEmb = await generateEmbedding(`${tag.name} ${tag.description ?? ""}`.trim());
       if (candidateEmb) {
         let maxSim = 0;
         let bestMatchId: number | undefined;
@@ -793,12 +808,17 @@ router.post("/projects/:id/generate", async (req, res) => {
         };
 
         const sortedL2 = [...existingL2].sort(
-          (a, b) => getMaxDepth((b.pathPatterns as string[]) || []) - getMaxDepth((a.pathPatterns as string[]) || [])
+          (a, b) =>
+            getMaxDepth((b.pathPatterns as string[]) || []) -
+            getMaxDepth((a.pathPatterns as string[]) || [])
         );
 
         const globToRegExp = (glob: string): RegExp => {
           const escaped = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-          const regexStr = escaped.replace(/\\\*\\\*/g, ".*").replace(/\\\*/g, "[^/]*").replace(/\\\?/g, ".");
+          const regexStr = escaped
+            .replace(/\\\*\\\*/g, ".*")
+            .replace(/\\\*/g, "[^/]*")
+            .replace(/\\\?/g, ".");
           return new RegExp(`^${regexStr}$`);
         };
 
@@ -842,13 +862,13 @@ router.post("/projects/:id/generate", async (req, res) => {
           }
 
           const targetNodeId = assignedL2NodeId ?? sysNode.id;
-          
+
           await db
             .update(commitsTable)
             .set({ l2NodeId: targetNodeId })
             .where(eq(commitsTable.id, commit.id))
             .catch(() => {});
-          
+
           await db
             .insert(commitL2LinksTable)
             .values({
@@ -1122,12 +1142,10 @@ router.post("/projects/:id/generate", async (req, res) => {
           read: false,
         });
       }
-      void notifyExternalIntegrations(
+      void notifyExternalIntegrations(projectId, project.name, "new_l3_node", {
+        l3Count: l3NodesCreated,
         projectId,
-        project.name,
-        "new_l3_node",
-        { l3Count: l3NodesCreated, projectId }
-      );
+      });
     }
 
     // Step 7: Noise detection — run after all nodes are created

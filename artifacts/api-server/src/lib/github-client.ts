@@ -41,7 +41,10 @@ export async function fetchPrCommits(
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       const message = (err as { message?: string }).message ?? res.statusText;
-      logger.warn({ owner, repo, prNumber, page, status: res.status }, `GitHub API error: ${message}`);
+      logger.warn(
+        { owner, repo, prNumber, page, status: res.status },
+        `GitHub API error: ${message}`
+      );
       break;
     }
     const data = (await res.json()) as GithubCommit[];
@@ -95,7 +98,10 @@ export async function postPrComment(
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     const message = (err as { message?: string }).message ?? res.statusText;
-    logger.warn({ owner, repo, prNumber, status: res.status }, `Failed to post PR comment: ${message}`);
+    logger.warn(
+      { owner, repo, prNumber, status: res.status },
+      `Failed to post PR comment: ${message}`
+    );
   }
 }
 
@@ -124,10 +130,13 @@ export async function checkCommitInDefaultBranch(
   const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/compare/${defaultBranch}...${commitSha}`;
   const res = await fetch(url, { headers });
   if (!res.ok) {
-    logger.warn({ owner, repo, commitSha, status: res.status }, "Failed to fetch commit comparison");
+    logger.warn(
+      { owner, repo, commitSha, status: res.status },
+      "Failed to fetch commit comparison"
+    );
     return false;
   }
-  const data = await res.json() as { status: string };
+  const data = (await res.json()) as { status: string };
   // If the base (main) is ahead of the head (commitSha), status is "behind".
   // If they are the same, status is "identical".
   return data.status === "identical" || data.status === "behind";

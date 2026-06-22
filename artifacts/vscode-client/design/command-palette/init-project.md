@@ -4,7 +4,7 @@
 
 - **Command ID**: `docuvia.initProject`
 - **Title**: `Docuvia: Init Project`
-- **Activation Context**: Available globally via Command Palette, or triggered via inline tree view actions/welcome views (registered in [`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts)).
+- **Activation Context**: Available globally via Command Palette, or triggered via inline tree view actions/welcome views (registered in [`extension.ts`](../../src/extension.ts)).
 
 ## Functional Flow
 
@@ -80,8 +80,8 @@ flowchart TD
 
    > ⚠️ **CONFLICT – Force-Overwrite Prompt Not Implemented**: The current `initProject` implementation uses `writeIfAbsent()` for all skeleton files, which silently skips files that already exist. There is no force-overwrite dialog. Additionally, in multi-root scenarios, the folder picker explicitly filters out already-initialized folders, so a fully initialized project can never be selected from the palette at all – there is no code path that would trigger the overwrite prompt. Data is never accidentally destroyed (files are skipped, not overwritten), but a user who wants to intentionally re-initialize a project cannot do so. The overwrite dialog is scheduled for Round 2.
 
-4. **Post-Initialization**:
-   - Request the [`KnowledgeStore`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts) to reload (reading the newly created files).
+6. **Post-Initialization**:
+   - Request the [`KnowledgeStore`](../../src/KnowledgeStore.ts) to reload (reading the newly created files).
    - This reload triggers the `FileSystemWatcher`, which in turn fires the UI update event.
    - Display a success message: `Docuvia: Project "<name>" initialized. Populate the YAML files to build your knowledge graph.`
 
@@ -103,4 +103,4 @@ flowchart TD
 >   #   slug: ...
 > ```
 >
-> However, [`parser.ts::parseTags`](../../../../artifacts/vscode-client/src/parser.ts) calls `parseYaml(content) as unknown[]` and immediately invokes `.map()` on the result. When the file has a top-level object (not an array), `parseYaml` returns a plain object, and `.map()` throws `TypeError: raw.map is not a function`. The `tryParse` wrapper in `KnowledgeStore` catches this silently and returns an empty array. **Any user who populates the `tags:` list in the skeleton file will see zero L1 tags in the Knowledge Graph tree view.** A fix is scheduled for Round 2 (`parseTags` must check if the parsed result is an object with a `tags` property and use that array instead of treating the whole document as a flat list).
+> However, [`parser.ts::parseTags`](../../src/parser.ts) calls `parseYaml(content) as unknown[]` and immediately invokes `.map()` on the result. When the file has a top-level object (not an array), `parseYaml` returns a plain object, and `.map()` throws `TypeError: raw.map is not a function`. The `tryParse` wrapper in `KnowledgeStore` catches this silently and returns an empty array. **Any user who populates the `tags:` list in the skeleton file will see zero L1 tags in the Knowledge Graph tree view.** A fix is scheduled for Round 2 (`parseTags` must check if the parsed result is an object with a `tags` property and use that array instead of treating the whole document as a flat list).

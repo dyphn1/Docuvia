@@ -6,7 +6,7 @@
   - `docuvia.addDecision` (Command Palette)
   - `docuvia.addDecisionFromSelection` (Editor Right-Click Context Menu)
 - **Title**: `Docuvia: Add Decision` / `Docuvia: Add Decision from Selection`
-- **Registration**: Implemented in [`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts).
+- **Registration**: Implemented in [`extension.ts`](../../src/extension.ts).
 
 ## Functional Flow
 
@@ -55,5 +55,5 @@ flowchart TD
    - Write the file to `.docuvia/l3_decisions/{slug}.md`.
 
 6. **Post-Action**:
-   - Force a [`KnowledgeStore`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts) reload to ensure the UI is immediately aware of the new file.
+   - Force a [`KnowledgeStore`](../../src/KnowledgeStore.ts) reload to ensure the UI is immediately aware of the new file.
    - Open the newly created markdown file in the editor so the user can finish filling it out.

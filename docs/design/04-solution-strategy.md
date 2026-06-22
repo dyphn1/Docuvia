@@ -12,7 +12,7 @@
 | **Database**          | PostgreSQL                                                        | JSONB column type for embedding storage; proven ACID guarantees; rich indexing; no external vector DB required in v1           |
 | **Frontend**          | React 18 + Vite + shadcn/ui + Tailwind CSS                        | Fast HMR; composable design system; tree-shakeable components                                                                  |
 | **API Contract**      | OpenAPI 3.x + Orval codegen                                       | Single source of truth eliminates type drift between frontend and backend; generates both Zod validators and React Query hooks |
-| **Vector Search**     | Raw SQL cosine distance with Temporal Decay filter                                       | No external vector DB dependency in v1; embeddings stored as JSONB in PostgreSQL; sufficient for ≤100K nodes                   |
+| **Vector Search**     | Raw SQL cosine distance with Temporal Decay filter                | No external vector DB dependency in v1; embeddings stored as JSONB in PostgreSQL; sufficient for ≤100K nodes                   |
 | **LLM Integration**   | OpenAI-compatible interface (`lib/integrations-openai-ai-server`) | Provider-agnostic; compatible with OpenRouter, Azure OpenAI, and any `/v1/chat/completions`-compatible endpoint                |
 | **IDE Integration**   | VS Code Extension API                                             | Primary developer audience uses VS Code; enables Copilot Chat participant, CodeLens, TreeView                                  |
 | **MCP Layer**         | Custom Express routes at `/mcp/*`                                 | Compatibility with AI agent toolchains (Cursor, GitHub Copilot, Claude, etc.) that implement Model Context Protocol            |
@@ -42,18 +42,18 @@ flowchart TD
            GIT[Git / SVN Adapters<br/>streamed child_process]
            DOC[Document Upload &<br/>Build Artifact Parser]
            GH[GitHub Webhook Listener<br/>scoreCommit filter]
-           
+
            subgraph 4-Phase Parsing Funnel
                direction TB
                P1[Target Allowlist] --> P2[Git Blob Binary Detection]
                P2 --> P3[Lossless Encoding Guardrails]
                P3 --> P4[LLM-Assisted Extension Discovery]
            end
-           
+
            GIT --> P1
            DOC --> P1
            GH --> P1
-           
+
            P4 --> AST[Isomorphic AST Engine]
            AST --> SINK[Pluggable Sinks]
        end
@@ -133,4 +133,4 @@ This loop is the primary mechanism for improving knowledge graph quality without
 - [05-building-blocks.md](05-building-blocks.md) — Package-level structure
 - [08-crosscutting-concepts.md](08-crosscutting-concepts.md) — Domain model and architecture patterns
 - [09-architectural-decisions.md](09-architectural-decisions.md) — ADRs for each technology choice
-- [docs/implementation-roadmap.md](../implementation-roadmap.md) — Phased implementation history
+- [do../roadmap/master-roadmap.md](../roadmap/master-roadmap.md) — Phased implementation history

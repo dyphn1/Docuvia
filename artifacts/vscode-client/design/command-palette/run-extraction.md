@@ -4,7 +4,7 @@
 
 - **Command ID**: `docuvia.runExtraction`
 - **Title**: `Docuvia: Run L3 Extraction on Active File`
-- **Activation Context**: Command Palette, Editor Context Menu (`editorIsOpen`) (registered in [`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts)).
+- **Activation Context**: Command Palette, Editor Context Menu (`editorIsOpen`) (registered in [`extension.ts`](../../src/extension.ts)).
 
 ## Functional Flow
 
@@ -46,11 +46,11 @@ sequenceDiagram
    - Reads the `docuvia.extraction.maxFileSizeKBWarning` configuration (default 50).
    - If the file's line count exceeds the max lines **OR** the file's byte size exceeds the max KB, prompt the user with a warning: "This file is very large... We recommend selecting a specific block using 'Add Decision from Selection'... Proceed anyway?". Can be aborted.
 
-   > ⚠️ **CONFLICT**: The current implementation ([`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts) -> `runExtraction()`) only checks the **line count** against `maxLinesWarning`. The KB size check against `maxFileSizeKBWarning` is **not implemented**. Additionally, `docuvia.extraction.maxFileSizeKBWarning` is absent from [`package.json`](../../../../artifacts/vscode-client/package.json)'s `contributes.configuration`. Both gaps are scheduled for Round 2.
+   > ⚠️ **CONFLICT**: The current implementation ([`extension.ts`](../../src/extension.ts) -> `runExtraction()`) only checks the **line count** against `maxLinesWarning`. The KB size check against `maxFileSizeKBWarning` is **not implemented**. Additionally, `docuvia.extraction.maxFileSizeKBWarning` is absent from [`package.json`](../../package.json)'s `contributes.configuration`. Both gaps are scheduled for Round 2.
 
 4. **Task Dispatching**:
    - Creates a `CancellationTokenSource` linked to the task.
-   - Enqueues the task via [`TaskRunner.ts`](../../../../artifacts/vscode-client/src/TaskRunner.ts) -> `queueExtraction` passing the file content, source path, and token.
+   - Enqueues the task via [`TaskRunner.ts`](../../src/TaskRunner.ts) -> `queueExtraction` passing the file content, source path, and token.
    - Shows a toast notification: "Extraction task queued. Check Task Queue panel."
 
 ---
@@ -86,6 +86,6 @@ After all chunks are processed, `TaskRunner.writeExtractionResults()`:
 1. Generates a UUID and a slug (`<source-basename>-extracted-<N>`) for each extracted decision YAML block.
 2. Writes a new Markdown file to `.docuvia/l3_decisions/<slug>.md` with YAML frontmatter (`id`, `l2_module_id: ""`, `title`, `date`, `status: "proposed"`) and the raw YAML block as the body.
 3. Appends the new entries to `.docuvia/l3_router.yaml` (reads existing entries first, merges, and overwrites).
-4. Calls `store.load()` (in [`KnowledgeStore.ts`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts)) to immediately reflect the new decisions in the Knowledge Graph tree view.
+4. Calls `store.load()` (in [`KnowledgeStore.ts`](../../src/KnowledgeStore.ts)) to immediately reflect the new decisions in the Knowledge Graph tree view.
 
 > **Note**: All writes go to `workspaceFolders[0]` – multi-root workspace support for extraction output is not yet implemented.

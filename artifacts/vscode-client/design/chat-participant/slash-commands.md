@@ -5,7 +5,7 @@
 - **ID**: `docuvia.assistant`
 - **Name**: `docuvia`
 - **Full Name**: `Docuvia Knowledge Graph`
-- **Source Code**: [`ChatParticipant.ts`](../../../../artifacts/vscode-client/src/ChatParticipant.ts)
+- **Source Code**: [`ChatParticipant.ts`](../../src/ChatParticipant.ts)
 
 ## Handlers & Slash Commands
 
@@ -73,7 +73,7 @@ flowchart TD
 
   The resulting YAML from either the static templates or dynamic AI analysis is parsed by `formatYamlAsTable()` and presented to the user as a clean Markdown table in the chat (showing Name and Description).
 
-  After streaming the table, Docuvia renders a `stream.button` with the label **"Accept & Write to .docuvia/l1_tags.yaml"**. Clicking it invokes the internal command `docuvia.acceptL1Tags(yamlContent)` (registered in [`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts)), which writes the raw YAML directly to `workspaceFolders[0]/.docuvia/l1_tags.yaml`.
+  After streaming the table, Docuvia renders a `stream.button` with the label **"Accept & Write to .docuvia/l1_tags.yaml"**. Clicking it invokes the internal command `docuvia.acceptL1Tags(yamlContent)` (registered in [`extension.ts`](../../src/extension.ts)), which writes the raw YAML directly to `workspaceFolders[0]/.docuvia/l1_tags.yaml`.
 
   > ⚠️ **Single-workspace limitation**: `docuvia.acceptL1Tags` is hardcoded to write to `vscode.workspace.workspaceFolders?.[0]`, i.e. the **first** workspace folder. In a multi-root workspace with the second folder active, the tags will be written to the wrong project. The command is registered with `enablement: never` to prevent it from being invoked directly from the Command Palette.
 
@@ -84,7 +84,7 @@ flowchart TD
   - **Chat Cards & Options**: The command initiates by presenting the user with three explicit choices rendered as trusted command links within a chat message: `[✨ Initialize Knowledge Graph here (New)](command:docuvia.initNew)`, `[🔗 Connect to Remote Graph (Existing)](command:docuvia.initConnect)`, and `[📚 Clone & Explore Demo Sandbox (Demo)](command:docuvia.initDemo)`.
   - **Natural Language Parsing**: The chat participant actively parses free-text replies (e.g., "I want a new project", "connect to existing", or simply "yes" to confirmation prompts) and maps them to the corresponding onboarding actions to ensure a fluid conversational UX.
 - **Error Handling**:
-  - **Dirty Git Tree**: If the workspace has uncommitted changes, scaffolding is blocked. The participant replies with a clear error: *"Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree."* It includes an actionable button: `[Stash & Retry](command:docuvia.stashAndRetry)`.
+  - **Dirty Git Tree**: If the workspace has uncommitted changes, scaffolding is blocked. The participant replies with a clear error: _"Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree."_ It includes an actionable button: `[Stash & Retry](command:docuvia.stashAndRetry)`.
   - **Missing/Corrupt Configurations**: If existing `.docuvia/` files are corrupted, it prompts with a `[Repair Workspace](command:docuvia.repair)` button.
   - **Network Failures**: If "Connect" is chosen but the API is unreachable, the system fails fast, displaying an offline warning and offering a fallback to initialize locally.
 - **Scaffolding Consent**:
@@ -103,7 +103,7 @@ flowchart TD
   1. **Target Resolution**: Uses the provided path, or the active editor's file. If neither is provided, defaults to the root of the first open workspace folder.
   2. **Directory Scanning**: If the target is a directory, recursively scans for files. It automatically ignores `.git`, `node_modules`, and `.docuvia`.
   3. **Pattern Filtering**: Applies `minimatch` against `docuvia.extraction.includePatterns` (configured in settings) to ensure only valid source code files are processed.
-  4. **Task Queuing**: Reads the content of all matched files and queues individual L3 extraction tasks via [`TaskRunner.ts`](../../../../artifacts/vscode-client/src/TaskRunner.ts).
+  4. **Task Queuing**: Reads the content of all matched files and queues individual L3 extraction tasks via [`TaskRunner.ts`](../../src/TaskRunner.ts).
 
 ### `/help`
 

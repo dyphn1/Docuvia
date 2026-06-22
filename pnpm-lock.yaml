@@ -95,6 +95,9 @@ importers:
       '@workspace/api-zod':
         specifier: workspace:*
         version: link:../../lib/api-zod
+      '@workspace/ast-core':
+        specifier: workspace:*
+        version: link:../ast-core
       '@workspace/db':
         specifier: workspace:*
         version: link:../../lib/db
@@ -234,6 +237,22 @@ importers:
       vitest:
         specifier: ^1.0.0
         version: 1.6.1(@types/node@25.3.5)(lightningcss@1.31.1)
+
+  artifacts/ast-core:
+    dependencies:
+      smol-toml:
+        specifier: ^1.6.1
+        version: 1.6.1
+      web-tree-sitter:
+        specifier: ^0.26.9
+        version: 0.26.9
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.0
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
 
   artifacts/kg-engine:
     devDependencies:
@@ -603,6 +622,9 @@ importers:
 
   artifacts/vscode-client:
     dependencies:
+      '@workspace/ast-core':
+        specifier: workspace:^
+        version: link:../ast-core
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -664,6 +686,9 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+      web-tree-sitter:
+        specifier: ^0.26.9
+        version: 0.26.9
 
   lib/api-client-react:
     dependencies:
@@ -3348,6 +3373,9 @@ packages:
 
   '@types/multer@2.1.0':
     resolution: {integrity: sha512-zYZb0+nJhOHtPpGDb3vqPjwpdeGlGC157VpkqNQL+UU2qwoacoQ7MpsAmUptI/0Oa127X32JzWDqQVEXp2RcIA==}
+
+  '@types/node@22.20.0':
+    resolution: {integrity: sha512-QWlFW2wf3nTjC13/DqRnBpR4ZO36VJH/JVBkA/vcnmbTBNQIlnObqyqZE1tUR7+Ni23Lda8R1BxMfbXRpCUx5g==}
 
   '@types/node@25.3.5':
     resolution: {integrity: sha512-oX8xrhvpiyRCQkG1MFchB09f+cXftgIXb3a7UUa4Y3wpmZPw5tyZGTLWhlESOLq1Rq6oDlc8npVU2/9xiCuXMA==}
@@ -6403,6 +6431,9 @@ packages:
   underscore@1.13.8:
     resolution: {integrity: sha512-DXtD3ZtEQzc7M8m4cXotyHR+FAS18C64asBYY5vqZexfYryNNnDc02W4hKg3rdQuqOYas1jkseX0+nZXjTXnvQ==}
 
+  undici-types@6.21.0:
+    resolution: {integrity: sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==}
+
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
 
@@ -8911,11 +8942,11 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 25.3.5
+      '@types/node': 22.20.0
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 25.3.5
+      '@types/node': 22.20.0
 
   '@types/cookie-parser@1.4.10(@types/express@5.0.6)':
     dependencies:
@@ -8955,7 +8986,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.1.1':
     dependencies:
-      '@types/node': 25.3.5
+      '@types/node': 22.20.0
       '@types/qs': 6.15.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
@@ -8988,6 +9019,10 @@ snapshots:
     dependencies:
       '@types/express': 5.0.6
 
+  '@types/node@22.20.0':
+    dependencies:
+      undici-types: 6.21.0
+
   '@types/node@25.3.5':
     dependencies:
       undici-types: 7.18.2
@@ -9000,7 +9035,7 @@ snapshots:
 
   '@types/pg@8.18.0':
     dependencies:
-      '@types/node': 25.3.5
+      '@types/node': 22.20.0
       pg-protocol: 1.13.0
       pg-types: 2.2.0
 
@@ -9024,16 +9059,16 @@ snapshots:
 
   '@types/send@1.2.1':
     dependencies:
-      '@types/node': 25.3.5
+      '@types/node': 22.20.0
 
   '@types/serve-static@2.2.0':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 25.3.5
+      '@types/node': 22.20.0
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 25.3.5
+      '@types/node': 22.20.0
 
   '@types/sinon@21.0.1':
     dependencies:
@@ -9047,7 +9082,7 @@ snapshots:
     dependencies:
       '@types/cookiejar': 2.1.5
       '@types/methods': 1.1.4
-      '@types/node': 25.3.5
+      '@types/node': 22.20.0
       form-data: 4.0.5
 
   '@types/supertest@7.2.0':
@@ -12187,6 +12222,8 @@ snapshots:
   uint8array-extras@1.5.0: {}
 
   underscore@1.13.8: {}
+
+  undici-types@6.21.0: {}
 
   undici-types@7.18.2: {}
 

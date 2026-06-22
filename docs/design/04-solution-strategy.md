@@ -5,6 +5,8 @@
 | Decision              | Choice                                                            | Rationale                                                                                                                      |
 | --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | **Language**          | TypeScript (strict mode)                                          | Full-stack type safety; enables Orval codegen from OpenAPI spec; prevents entire classes of runtime errors                     |
+| **AST Engine**        | `@workspace/ast-core` (tree-sitter.wasm)                          | Universal isomorphic execution across VS Code and Node.js backend.                                                             |
+| **Concurrency Model** | Web Workers                                                       | Prevents main-thread blocking during intensive AST traversal; unified API across VS Code web and Node.js environments.         |
 | **Backend Framework** | Express 5 (ESM)                                                   | Minimal, well-understood; async-native in v5 (async error propagation); large ecosystem                                        |
 | **ORM**               | Drizzle ORM                                                       | Type-safe SQL queries as TypeScript; schema-as-code; migration support; no magic                                               |
 | **Database**          | PostgreSQL                                                        | JSONB column type for embedding storage; proven ACID guarantees; rich indexing; no external vector DB required in v1           |
@@ -32,13 +34,28 @@ flowchart TD
 
 ### Layer Breakdown
 
-1. **Input Layer**: Handles raw data ingestion. Stream-based Git/SVN adapters, document parsing via isolated processes, and webhook listeners with signal/noise filtering (`scoreCommit`).
+1. **Input Layer**: Handles raw data ingestion through a **4-Phase Parsing Funnel**. Raw inputs flow through Target Allowlist &rarr; Git Blob Binary Detection &rarr; Lossless Encoding Guardrails &rarr; LLM-Assisted Extension Discovery before reaching the AST Engine and Pluggable Sinks.
    ```mermaid
    flowchart LR
        subgraph 1. Input Layer
+           direction TB
            GIT[Git / SVN Adapters<br/>streamed child_process]
            DOC[Document Upload &<br/>Build Artifact Parser]
            GH[GitHub Webhook Listener<br/>scoreCommit filter]
+           
+           subgraph 4-Phase Parsing Funnel
+               direction TB
+               P1[Target Allowlist] --> P2[Git Blob Binary Detection]
+               P2 --> P3[Lossless Encoding Guardrails]
+               P3 --> P4[LLM-Assisted Extension Discovery]
+           end
+           
+           GIT --> P1
+           DOC --> P1
+           GH --> P1
+           
+           P4 --> AST[Isomorphic AST Engine]
+           AST --> SINK[Pluggable Sinks]
        end
    ```
 2. **Knowledge Construction Layer**: The LLM-powered engine. Translates raw inputs into structured abstractions (L1/L2/L3) and automatically queues them for human review to create a self-improving feedback loop.

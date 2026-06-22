@@ -41,7 +41,8 @@
     "tree-sitter-typescript": "^0.23.2",
     "tree-sitter-wasms": "^0.1.13",
     "web-tree-sitter": "^0.26.9",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@workspace/ast-core": "workspace:*"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

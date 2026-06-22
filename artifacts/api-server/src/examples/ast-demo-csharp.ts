@@ -8,7 +8,7 @@
 import { Parser, Language } from 'web-tree-sitter';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { LanguageRegistry } from '../lib/ast/language-registry.js';
+import { LanguageRegistry } from '@workspace/ast-core';
 
 const require = createRequire(import.meta.url);
 

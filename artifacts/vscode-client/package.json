@@ -271,12 +271,14 @@
     "build": "tsc --noEmit && tsc -p tsconfig.json --outDir out",
     "compile": "tsc -p ./",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
-    "esbuild": "pnpm run esbuild-base --minify",
+    "esbuild": "pnpm run esbuild-base --minify && pnpm run esbuild-worker",
     "package": "pnpm run esbuild && vsce package --no-dependencies",
     "typecheck": "tsc --noEmit",
-    "watch": "tsc -p tsconfig.json --outDir out --watch"
+    "watch": "tsc -p tsconfig.json --outDir out --watch",
+    "esbuild-worker": "node esbuild.worker.mjs"
   },
   "dependencies": {
+    "@workspace/ast-core": "workspace:^",
     "gray-matter": "^4.0.3",
     "minimatch": "^10.2.5",
     "uuid": "^11.1.0",
@@ -298,6 +300,7 @@
     "mocha": "^11.7.6",
     "playwright": "^1.60.0",
     "sinon": "^22.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "web-tree-sitter": "^0.26.9"
   }
 }

@@ -14,8 +14,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Parser, Language } from 'web-tree-sitter';
-import { LanguageRegistry } from '../lib/ast/language-registry.js';
-import { DefaultProvider } from '../lib/ast/language-provider.js';
+import { LanguageRegistry } from '@workspace/ast-core';
+import { DefaultProvider } from '@workspace/ast-core';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

@@ -17,6 +17,9 @@ graph TD
 
     API -->|Uses| ZOD
     KGE -->|Uses| CLI
+
+    VSC -->|Uses| AST["@workspace/ast-core (Isomorphic AST)"]
+    API -->|Uses| AST
 ```
 
 | Package                                    | Location                                                                                             | Depends On                                                                        | Key Exports / Role                                                                                                                  |
@@ -28,6 +31,7 @@ graph TD
 | `@workspace/api-zod`                       | [`lib/api-zod/`](../../lib/api-zod/)                                             | `@workspace/api-spec` (build-time)                                                | Orval-generated Zod validators for all API request/response shapes                                                                  |
 | `@workspace/api-client-react`              | [`lib/api-client-react/`](../../lib/api-client-react/)                           | `@workspace/api-spec` (build-time)                                                | Orval-generated React Query hooks for all API endpoints                                                                             |
 | `@workspace/integrations-openai-ai-server` | [`lib/integrations-openai-ai-server/`](../../lib/integrations-openai-ai-server/) | (none)                                                                            | OpenAI-compatible LLM client; `LLMClient` interface and implementation                                                              |
+| `@workspace/ast-core`                      | [`artifacts/ast-core/`](../../artifacts/ast-core/)                               | (none - standalone WebAssembly)                                                   | Web Worker pool, Tree-sitter WASM parsers, isomorphic AST interfaces.                                                               |
 | `@workspace/vscode-client`                 | [`artifacts/vscode-client/`](../../artifacts/vscode-client/)                     | (standalone – REST to api-server)                                                 | VS Code Extension: TreeView, Commands, CodeLens, Hover, Chat participant, Webviews                                                  |
 
 ### Dependency Constraints
@@ -36,6 +40,7 @@ graph TD
 - `@workspace/api-server` may import from all `lib/*` packages
 - `@workspace/kg-engine` may import from `@workspace/api-client-react` only (not from `@workspace/db` or server internals)
 - `@workspace/vscode-client` is standalone; it communicates with `@workspace/api-server` exclusively via REST HTTP
+- `@workspace/vscode-client` and `@workspace/api-server` may safely import `@workspace/ast-core`
 
 ---
 
@@ -126,6 +131,18 @@ Key source files in [`artifacts/vscode-client/src/`](../../artifacts/vscode-clie
 | [`DocuviaHoverProvider.ts`](../../artifacts/vscode-client/src/DocuviaHoverProvider.ts)             | Hover provider: shows L3 decision preview on symbol hover              |
 | [`CentralServerClient.ts`](../../artifacts/vscode-client/src/CentralServerClient.ts)               | HTTP client wrapper for all api-server calls from the extension        |
 | [`CredentialManager.ts`](../../artifacts/vscode-client/src/CredentialManager.ts)                   | Manages API key via VS Code SecretStorage                              |
+
+---
+
+## 5.6 Level 2 – ast-core Package
+
+[`artifacts/ast-core/src/`](../../artifacts/ast-core/src/)
+
+| Directory / File | Responsibility |
+| --- | --- |
+| `worker/` | Web Worker pool management, message passing, and WASM instantiation |
+| `parsers/` | Language-specific parser registries and bindings to `tree-sitter.wasm` |
+| `interfaces/` | Isomorphic AST interfaces shared across Node.js and VS Code environments |
 
 ---
 

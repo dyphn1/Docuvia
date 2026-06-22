@@ -7,6 +7,7 @@ export interface LanguageProvider {
   extractFunctions: (rootNode: Node) => Node[];
   extractImports: (rootNode: Node) => Node[];
   extractCalls: (rootNode: Node) => Node[];
+  deleteQueries?: () => void;
 }
 
 export interface LanguageQueryConfig {
@@ -52,6 +53,15 @@ export class DefaultProvider implements LanguageProvider {
       imports: q.imports ? new Query(language, q.imports) : undefined,
       calls: q.calls ? new Query(language, q.calls) : undefined,
     };
+  }
+
+  deleteQueries(): void {
+    if (!this.compiledQueries) return;
+    this.compiledQueries.classes?.delete();
+    this.compiledQueries.functions?.delete();
+    this.compiledQueries.imports?.delete();
+    this.compiledQueries.calls?.delete();
+    this.compiledQueries = null;
   }
 
   private captureNodes(rootNode: Node, captureNames: string[], query?: Query): Node[] {

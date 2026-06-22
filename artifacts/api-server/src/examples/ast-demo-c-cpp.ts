@@ -8,7 +8,7 @@
 
 import path from 'node:path';
 import { Parser, Language } from 'web-tree-sitter';
-import { LanguageRegistry } from '../lib/ast/language-registry.js';
+import { LanguageRegistry } from '@workspace/ast-core';
 
 // ── Sample C source ──────────────────────────────────────────────────────────
 const cSource = `

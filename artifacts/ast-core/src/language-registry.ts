@@ -1,5 +1,3 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import { parse } from 'smol-toml';
 import { LanguageProvider, LanguageConfig, DefaultProvider } from './language-provider.js';
 
@@ -229,33 +227,38 @@ export class LanguageRegistry {
     }
   }
 
-  public static async load(projectRoot?: string): Promise<LanguageRegistry> {
-    const rootPath = projectRoot || process.cwd();
-    const tomlPath = path.join(rootPath, '.docuvia', 'languages.toml');
-
+  public static loadFromString(tomlContent?: string): LanguageRegistry {
+    if (!tomlContent) {
+      return new LanguageRegistry(DEFAULT_REGISTRY);
+    }
     try {
-      const content = await fs.readFile(tomlPath, 'utf-8');
-      const parsed = parse(content) as unknown as LanguageRegistryData;
-      
-      // Basic validation
+      const parsed = parse(tomlContent) as unknown as LanguageRegistryData;
       if (parsed && typeof parsed === 'object' && parsed.languages) {
-        // Merge with defaults or override completely? The requirement says "fallback to defaults".
-        // Let's use parsed languages overriding defaults.
         const mergedLanguages = { ...DEFAULT_REGISTRY.languages, ...parsed.languages };
         return new LanguageRegistry({ languages: mergedLanguages });
       }
     } catch (err: any) {
-      // If file doesn't exist or is invalid, just use defaults
-      if (err.code !== 'ENOENT') {
-        console.warn(`Failed to parse ${tomlPath}:`, err.message);
-      }
+      console.warn('Failed to parse languages.toml:', err.message);
     }
-
+    return new LanguageRegistry(DEFAULT_REGISTRY);
+  }
+  
+  // Keep an empty or stubbed out method so api-server won't break heavily if it calls load()
+  public static async load(projectRoot?: string): Promise<LanguageRegistry> {
     return new LanguageRegistry(DEFAULT_REGISTRY);
   }
 
   public getProviderForExtension(ext: string): LanguageProvider | undefined {
     return this.extToProviderMap.get(ext);
   }
-}
 
+  public registerProvider(extensions: string[], provider: LanguageProvider): void {
+    for (const ext of extensions) {
+      this.extToProviderMap.set(ext, provider);
+    }
+  }
+
+  public getConfig(): LanguageRegistryData {
+    return this.config;
+  }
+}

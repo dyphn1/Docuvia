@@ -1,7 +1,7 @@
 import { Parser, Language } from 'web-tree-sitter';
 import { createRequire } from 'node:module';
-import { LanguageRegistry } from '../lib/ast/language-registry.js';
-import { LanguageProvider } from '../lib/ast/language-provider.js';
+import { LanguageRegistry } from '@workspace/ast-core';
+import { LanguageProvider } from '@workspace/ast-core';
 
 const require = createRequire(import.meta.url);
 
@@ -89,10 +89,10 @@ async function main() {
   const functionNodes = provider.extractFunctions(tree.rootNode);
   const callNodes = provider.extractCalls(tree.rootNode);
   
-  console.log('Imports:', importNodes.map(n => n.text));
-  console.log('Classes:', classNodes.map(n => n.text));
-  console.log('Functions:', functionNodes.map(n => n.text));
-  console.log('Calls:', callNodes.map(n => n.text));
+  console.log('Imports:', importNodes.map((n: any) => n.text));
+  console.log('Classes:', classNodes.map((n: any) => n.text));
+  console.log('Functions:', functionNodes.map((n: any) => n.text));
+  console.log('Calls:', callNodes.map((n: any) => n.text));
 }
 
 main().catch(console.error);

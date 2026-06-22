@@ -5,8 +5,8 @@ import crypto from 'node:crypto';
 import { Parser, Language } from 'web-tree-sitter';
 
 import { createRequire } from 'node:module';
-import { LanguageRegistry } from './language-registry.js';
-import { LanguageProvider, DefaultProvider } from './language-provider.js';
+import { LanguageRegistry } from '@workspace/ast-core';
+import { LanguageProvider, DefaultProvider } from '@workspace/ast-core';
 
 const require = createRequire(import.meta.url);
 let parserInitialized = false;

@@ -121,6 +121,18 @@ VcsIngestAdapter interface
     └── SvnIngestAdapter (svn log --xml, svn diff)
 ```
 
+### Unified Isomorphic AST Engine & WASM Memory Guardrails
+
+Docuvia utilizes Web Workers to unify the Node.js and VS Code environments under a single AST engine (`@workspace/ast-core`). This prevents main-thread blocking during intensive syntax tree traversals. **Crucially**, to prevent OOM crashes in the WASM linear memory, every instantiated WASM object (e.g., trees, cursors) must be manually deleted using a `try...finally { node.delete(); tree.delete(); }` block.
+
+### 4-Phase Parsing Funnel
+
+Raw input streams are aggressively filtered before reaching the AST engine and Pluggable Sinks to minimize parsing overhead:
+1. **Target Allowlist**: Fast-fail path matching (e.g., ignoring `node_modules` or `dist`).
+2. **Git Blob Binary Detection**: Heuristic filtering of binary file types early in the stream.
+3. **Lossless Encoding Guardrails**: Ensuring accurate UTF-8 parsing boundaries.
+4. **LLM-Assisted Extension Discovery**: Utilizing LLMs to map unknown extensions or domains to proper Tree-sitter language grammars.
+
 ### Agentic RAG Intent Routing
 
 Incoming `/mcp/query` requests are classified by an LLM into one of four strategies, then routed to the appropriate search mechanism:
@@ -255,7 +267,44 @@ View (re-renders via updated state / props)
 
 ---
 
-### 8.3.3 POP Design (Protocol-Oriented Programming)
+### 8.3.3 Performance & Memory Guardrails
+
+**Rule: Strict WASM object cleanup.**
+
+Whenever interacting with `@workspace/ast-core` or directly with `tree-sitter.wasm`, all objects must be manually freed. Relying on garbage collection will lead to WebAssembly out-of-memory errors.
+
+**Before (❌ FORBIDDEN):**
+
+```typescript
+function processFile(source: string) {
+  const tree = parser.parse(source);
+  const cursor = tree.walk();
+  // process cursor...
+  // return without cleanup
+}
+```
+
+**After (✅ CORRECT — try...finally cleanup):**
+
+```typescript
+function processFile(source: string) {
+  const tree = parser.parse(source);
+  try {
+    const cursor = tree.walk();
+    try {
+      // process cursor...
+    } finally {
+      cursor.delete();
+    }
+  } finally {
+    tree.delete();
+  }
+}
+```
+
+---
+
+### 8.3.4 POP Design (Protocol-Oriented Programming)
 
 All services and data-access layers must be defined behind a TypeScript interface (protocol) before implementation.
 

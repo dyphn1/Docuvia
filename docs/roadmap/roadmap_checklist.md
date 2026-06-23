@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-> Last Updated: 2026-06-23 (verification: 8.4.6)
+> Last Updated: 2026-06-25 (verification: 9.1.5)
 
 ## Legend
 
@@ -244,7 +244,7 @@
 - [x] 9.1.2  ✅  API key via VS Code SecretStorage
 - [x] 9.1.3  ✅  Zod validation on all API payloads
 - [x] 9.1.4  ✅  Bearer token auth for MCP (verify implementation)
-- [x] 9.1.5  ✅  CORS configuration review
+- [x] 9.1.5  ⚠️ WARN  CORS configuration review
 - [x] 9.1.6  ✅  Input sanitization on document upload
 
 ### 9.2 Observability
@@ -416,6 +416,9 @@
 | 8.4.5 | 2026-06-23 | 0330_8.4.5.md | WARN |
 | 9.1.2 | 2026-06-23 | 0331_9.1.2.md | PASS |
 | 8.4.6 | 2026-06-23 | 0332_8.4.6.md | WARN |
+| 9.1.3 | 2026-06-24 | 0333_9.1.3.md | WARN |
+| 9.1.4 | 2026-06-23 | 0334_9.1.4.md | WARN |
+| 9.1.5 | 2026-06-25 | 0335_9.1.5.md | WARN |
 |----------|-------|------|------|--------------------- |
 | Milestone 1: Knowledge Graph Foundation & API Server |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |

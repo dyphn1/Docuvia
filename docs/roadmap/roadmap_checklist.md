@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-> Last Updated: 2026-06-25 (verification: 9.3.1)
+> Last Updated: 2026-06-25 (verification: 9.3.2)
 
 ## Legend
 
@@ -254,8 +254,8 @@
 - [x] 9.2.4  ✅  Error reporting / alerting mechanism
 
 ### 9.3 Coding Standards & Architecture
-- [x] 9.3.1  ✅  Defensive design (early return / guard clauses)
-- [x] 9.3.2  ✅  MVC pattern for UI layers
+- [x] 9.3.1  ✅ PASS  Defensive design (early return / guard clauses)
+- [x] 9.3.2  ✅ PASS  MVC pattern for UI layers
 - [x] 9.3.3  ✅  POP (Protocol-Oriented Programming) for services
 - [x] 9.3.4  ✅  OOP for UI structures (VS Code providers)
 - [x] 9.3.5  ✅  Code style rules (line length, function length, indentation)
@@ -422,6 +422,7 @@
 | 9.1.6 | 2026-06-25 | 0336_9.1.6.md | WARN |
 | 9.2.1 | 2026-06-25 | 0337_9.2.1.md | WARN |
 | 9.3.1 | 2026-06-25 | 0339_9.3.1.md | WARN |
+| 9.3.2 | 2026-06-25 | 0340_9.3.2.md | WARN |
 |----------|-------|------|------|--------------------- |
 | Milestone 1: Knowledge Graph Foundation & API Server |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |

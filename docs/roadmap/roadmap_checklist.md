@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-> Last Updated: 2026-06-23 (verification: 9.1.2)
+> Last Updated: 2026-06-23 (verification: 8.4.6)
 
 ## Legend
 
@@ -415,7 +415,8 @@
 | 9.1.1 | 2026-06-23 | 0328_9.1.1.md | WARN |
 | 8.4.5 | 2026-06-23 | 0330_8.4.5.md | WARN |
 | 9.1.2 | 2026-06-23 | 0331_9.1.2.md | PASS |
-|----------|-------|------|------|---------------------|
+| 8.4.6 | 2026-06-23 | 0332_8.4.6.md | WARN |
+|----------|-------|------|------|--------------------- |
 | Milestone 1: Knowledge Graph Foundation & API Server |
 | Milestone 2: VS Code Client (Local-First Architecture) | 11 | 11 | 0 | 0 | 0 |
 | Milestone 3: Swarm Intelligence & Git-Isomorphic Sync | 13 | 13 | 0 | 0 | 0 |

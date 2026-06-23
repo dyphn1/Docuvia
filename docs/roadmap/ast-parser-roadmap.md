@@ -40,6 +40,8 @@
 2. **更新註冊表**：在 `language-registry.ts` 中註冊新語言的副檔名與對應的 WASM 檔名。
 3. **標籤映射 (Tag Mapping)**：查閱各語言的 Tree-sitter 文法定義，設定該語言在 AST 中的節點名稱。
 
+**Phase 1 完成狀態**：✅ 2026-06-24 — 所有 8 個語言（Python, Rust, Go, Java, C/C++, Ruby, PHP, C#）皆已註冊於 `artifacts/ast-core/src/language-registry.ts` 並通過编译驗證。
+
 ---
 
 ## Phase 2: 強化節點萃取與精確查詢 (Query API & Accuracy)
@@ -48,11 +50,13 @@
 
 ### 實作要點：
 
-- [ ] **導入 Tree-sitter Query**：在 `LanguageProvider` 中加入編譯 `.scm` 語法查詢的邏輯（例如 `(class_declaration name: (identifier) @class.name)`）。
-- [ ] **強化 Scope Map 與 Imports 解析**：
+- [x] **導入 Tree-sitter Query**：在 `LanguageProvider` 中加入編譯 `.scm` 語法查詢的邏輯（例如 `(class_declaration name: (identifier) @class.name)`）。
+- [x] **強化 Scope Map 與 Imports 解析**：
   - 處理具名引入 (`import { A as B }`)。
   - 處理萬用字元引入 (`import * as X`)。
-- [ ] **Method vs Function 區別**：在提取 `call_expression` 時，區分是一般函數呼叫 `func()` 還是物件導向的方法呼叫 `obj.method()`，以利未來計算更準確的 FQN (Fully Qualified Name)。
+- [x] **Method vs Function 區別**：在提取 `call_expression` 時，區分是一般函數呼叫 `func()` 還是物件導向的方法呼叫 `obj.method()`，以利未來計算更準確的 FQN (Fully Qualified Name)。
+
+**Phase 2 完成狀態**：✅ 2026-06-24 — `language-provider.ts` 已實作 `initQueries()` 編譯 `.scm` 查詢，`ast-worker.ts` 已實作 `buildScopeMap()` 與 `classifyCall()`。
 
 ---
 
@@ -76,5 +80,9 @@
 
 ### 實作要點：
 
-- [ ] **Poison Pill 隔離**：完善 `quarantine-db.ts`（SQLite），當某個檔案解析超過 500ms（或設定的 Timeout），立刻終止 Worker，並將該檔案標記為隔離，防止重啟後再次引發 OOM 或無限迴圈。
+- [x] **Poison Pill 隔離**：完善 `quarantine-db.ts`（SQLite），當某個檔案解析超過 500ms（或設定的 Timeout），立刻終止 Worker，並將該檔案標記為隔離，防止重啟後再次引發 OOM 或無限迴圈。
 - [ ] **批次寫入最佳化**：對於上萬行的 `.jsonl` 檔案，實作串流讀取與資料庫的 Chunk 批次 Insert，避免拖垮 PostgreSQL 效能。
+
+**Phase 4 部分完成**：✅ Poison Pill 隔離已實作於 `ast-worker-pool.ts`（500ms timeout + AbortController + quarantine）。⏳ 批次寫入最佳化待實作。
+
+---

@@ -2,7 +2,7 @@
 
 > Auto-generated from `docs/design/` (arc42 sections 01–12 + ADRs 001–012) and `docs/roadmap/master-roadmap.md`.
 > This is the tracking checklist for the periodic design verification cron job.
-> Last Updated: 2026-06-26 (verification: 10.2.3)
+> Last Updated: 2026-06-26 (verification: 10.1.2)
 
 ## Legend
 
@@ -429,6 +429,7 @@
 | 9.3.3 | 2026-06-25 | 0341_9.3.3.md | WARN |
 | 9.3.4 | 2026-06-25 | 0342_9.3.4.md | PASS |
 | 10.1.1 | 2026-06-25 | 0344_10.1.1.md | WARN |
+| 10.1.2 | 2026-06-26 | 0355_10.1.2.md | PASS |
 | 10.2.1 | 2026-06-24 | 0349_10.2.1.md | WARN |
 | 10.3.1 | 2026-06-26 | 0350_10.3.1.md | WARN |
 | 9.4.1 | 2026-06-26 | 0351_9.4.1.md | WARN |

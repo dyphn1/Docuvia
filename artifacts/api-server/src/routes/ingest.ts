@@ -17,6 +17,7 @@ import {
   SvnCommitItem,
   DocumentItem,
 } from "../lib/ingestion-pipeline.js";
+import { ingestAstJsonl, ingestAstBatch } from "../lib/ast-ingestion-pipeline.js";
 import { logger } from "../lib/logger.js";
 
 const router = Router();
@@ -350,6 +351,41 @@ router.get("/projects/:id/documents", async (req, res) => {
     .where(eq(documentsTable.projectId, projectId))
     .orderBy(sql`${documentsTable.createdAt} desc`);
   res.json(docs.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })));
+});
+
+// POST /projects/:id/ingest/ast
+// Ingests AST skeleton (.jsonl) files produced by ast-worker into the knowledge graph.
+// Accepts either a single file path or an array of file paths.
+const AstIngestSchema = z.object({
+  jsonlPaths: z.union([z.string(), z.array(z.string())]).optional(),
+  jsonlPath: z.string().optional(),
+});
+
+router.post("/projects/:id/ingest/ast", async (req, res) => {
+  const projectId = Number(req.params.id);
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  if (!project) return res.status(404).json({ error: "Project not found" });
+
+  try {
+    const body = AstIngestSchema.parse(req.body);
+    const paths = body.jsonlPaths ?? body.jsonlPath;
+    if (!paths) {
+      return res.status(400).json({ error: "jsonlPath or jsonlPaths is required" });
+    }
+
+    const pathArray = Array.isArray(paths) ? paths : [paths];
+    const result = await ingestAstBatch(pathArray, projectId);
+
+    return res.json({
+      l2Created: result.l2Created,
+      l3Created: result.l3Created,
+      linksCreated: result.linksCreated,
+      errors: result.errors.length > 0 ? result.errors : undefined,
+    });
+  } catch (err: any) {
+    logger.error({ err, projectId }, "AST ingestion endpoint failed");
+    return res.status(500).json({ error: `AST ingestion failed: ${err.message}` });
+  }
 });
 
 router.use(

@@ -66,7 +66,7 @@
 
 ### 實作要點：
 
-- [ ] **解析器與 Ingestion Pipeline 對接**：在 `ingestion-pipeline.ts` 中讀取 `.jsonl`，將資料轉換為 Drizzle ORM 的 Entity 格式。
+- [x] **解析器與 Ingestion Pipeline 對接**：`ast-ingestion-pipeline.ts` 已實作，讀取 `.jsonl` skeleton 並寫入 `l2_nodes`、`l3_nodes`、`node_links` 資料表。API endpoint `POST /projects/:id/ingest/ast` 已註冊。
 - [ ] **階層對應 (Topology)**：
   - File 映射到 `l2_nodes` 或對應的實體。
   - Class / Function 映射為 `l3_nodes` (或細部的 Symbol Nodes)。

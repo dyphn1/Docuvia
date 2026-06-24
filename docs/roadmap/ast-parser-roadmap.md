@@ -1,88 +1,115 @@
-# 🗺️ Docuvia AST 解析器 Roadmap & 實作要點
+# 🗺️ Docuvia AST Parser Roadmap & Implementation Guide
 
-本文件定義了 Docuvia AST (Abstract Syntax Tree) 知識圖譜建置系統的後續 Roadmap 與實作要點。可作為交接文件交由其他 Agent (如 Hermes) 排程執行。
-
-目前已完成 **AST Microkernel 基礎架構**（支援 WASM 動態載入、動態註冊表、並透過 `.jsonl` File-Based IPC 避免 OOM），且已成功完成 TypeScript 的概念驗證。接下來的工作著重於擴展語言廣度、提升語意精確度以及後端的資料庫整合。
+This document defines the architecture decisions (V3), the upcoming roadmap, and implementation details for the Docuvia AST (Abstract Syntax Tree) Knowledge Graph Ingestion System. It serves as a handoff document for other Agents (e.g., Hermes) to schedule and execute.
 
 ---
 
-## Phase 1: 擴充多語言支援 (Multi-language Support)
+## 🏗️ Core Architecture Decisions (V3 Final)
+After multiple rounds of debate among Architects, SRE/Security, QA, and PMs, we established the following 5 pillars for the AST implementation:
 
-**目標**：將解析能力從目前的 TypeScript/JavaScript 擴充至其他主流語言，按照下列優先順序實作。
+1. **Isomorphic WASM Parsing & Zero-LLM Token Cost**
+   - Exclusively use `web-tree-sitter` inside isolated Node.js `worker_threads` to guarantee zero-compilation portability across the VS Code extension and Node.js API server.
+   - **Local-First**: Extract "Skeletons" (symbols, imports, signatures) entirely locally without calling an LLM, allowing deep structural queries and blast radius calculations at zero API cost. To avoid V8 boundary overhead, workers return only lightweight Skeletons, never raw ASTs.
 
-### 語言實作 Task List (按優先順序)
+2. **Sub-second Incremental Updates & Graceful Degradation**
+   - **Git Repositories**: Use `git diff-tree` for O(1) change detection, dispatching only modified files to AST workers and leaving the rest of the graph untouched.
+   - **Non-Git Folders**: Gracefully degrade to `fast-glob` + `xxhash`, parsing only files whose content fingerprints have changed.
+
+3. **Single-Threaded Write Queue & Strict ACK Protocol (Database Safety)**
+   - **File-Based IPC avoids OOM**: Workers write extracted Skeletons directly to temporary `.jsonl` files and return only the file path via IPC. This prevents massive JSON serialization from crashing the Node.js main thread's heap.
+   - **Backpressure**: The main thread maintains a bounded job limit (e.g., max 100), streams the `.jsonl` files, and uses SQLite/PostgreSQL bulk inserts, eliminating `SQLITE_BUSY` deadlocks.
+
+4. **Config-Driven Dynamic Grammars (Microkernel Ecosystem)**
+   - Manage grammars dynamically via `languages.toml`. We bundle only core `.wasm` files (TS, Python, Rust, Go) and download/cache secondary grammars on-demand, preventing extension bloat.
+
+5. **Strict Separation of AST vs. LSP**
+   - AST workers are "dumb, fast, and stateless"—they extract syntax and topology but do not attempt complex cross-file type inference.
+   - Full Language Server Protocols (LSP like `tsserver` or `pylance`) act as a **progressive enrichment layer**, awakened in the background only when an AI Agent requests precise type disambiguation or needs to sync unsaved buffers.
+
+---
+
+## 🛠️ Open Implementation Challenges & Resolution Status
+
+- ✅ **1. Node Identity & UUID Stability**
+   - Use "Fully Qualified Name (FQN)" combined with Git rename tracking (`git diff-tree -M`) as the primary ID. For non-versioned folders, we fallback to AST structural hashes.
+- ✅ **2. Cross-Language / Polyglot Edges**
+   - Parse API Contract files (e.g., `openapi.yaml`) as "Bridge Nodes", combined with framework-native AST tracking (e.g., tRPC, Server Actions) to trace exact RPC boundaries instead of blind regex.
+- ✅ **3. Parsing Granularity vs. Database Bloat (Scope-Resolved Ingestion)**
+   - Workers resolve call strings against file `import` statements into FQNs (e.g., `moduleA::init`) during ingestion, creating explicit Def-Use chains to reduce collision rates.
+- ✅ **4. Fault Tolerance & Timeouts**
+   - **Explicit Allowlist**: Process only extensions listed in `languages.toml`.
+   - **Size Limits**: Skip files >1MB or minified files (e.g., `.min.js`).
+   - **Poison Pill Isolation**: Any file that crashes or exceeds 500ms is added to a permanent blacklist to prevent retry loops.
+   - **Auto-Respawn**: Main thread monitors and automatically restarts crashed workers.
+
+---
+
+## Phase 1: Multi-language Support Expansion
+
+**Goal**: Expand parsing capabilities from TypeScript/JavaScript to other mainstream languages in the following priority order.
+
+### Language Implementation Task List
 
 - [x] **1. Python (`tree-sitter-python`)**
-  - AI 領域與後端開發最常使用的語言，具備高度優先權。
-  - 需處理 Python 特有的 `from module import function` 語法以準確解析 `imports`。
+  - High priority for AI and backend development. Needs to handle `from module import function` syntax.
 - [x] **2. Rust (`tree-sitter-rust`)**
-  - 系統級程式語言，本專案的相關專案（如 tolaria, headroom）皆使用 Rust。
-  - 需要映射 `struct_item`, `impl_item`, `function_item` 等特有節點。
+  - Systems programming. Crucial since related projects (tolaria, headroom) use Rust. Requires mapping `struct_item`, `impl_item`, `function_item`.
 - [x] **3. Go (`tree-sitter-go`)**
-  - 常見的微服務後端語言。
-  - 需要處理 Go 特有的 Package 匯入與 Struct 方法綁定。
+  - Common microservice language. Requires mapping Go packages and Struct method receivers.
 - [x] **4. Java (`tree-sitter-java`)**
-  - 企業級後端最常見的語言。
-  - 具備強烈的物件導向結構，需確保類別與介面（Interfaces）被正確擷取。
+  - Enterprise backend standard. Needs careful extraction of Classes and Interfaces.
 - [x] **5. C/C++ (`tree-sitter-c`, `tree-sitter-cpp`)**
-  - 處理底層系統與函式庫。
-  - 注意標頭檔 (`.h`, `.hpp`) 與實作檔 (`.c`, `.cpp`) 的解析區分。
+  - System and library layer. Distinct parsing rules for headers (`.h`) vs implementations (`.c`).
 - [x] **6. Ruby (`tree-sitter-ruby`)**
-  - 用於支援傳統 Web 框架（如 Rails）。
+  - Supports traditional Web frameworks (e.g., Rails).
 - [x] **7. PHP (`tree-sitter-php`)**
-  - 涵蓋大量舊有與部分現代 Web 應用系統。
+  - Covers legacy and modern Web applications.
 - [x] **8. C# (`tree-sitter-c-sharp`)**
-  - 支援 .NET 生態系。
+  - Supports the .NET ecosystem.
 
-### 實作要點：
-
-1. **安裝依賴**：為目標語言安裝獨立的 Tree-sitter 模組（例如：`pnpm --filter @workspace/api-server add tree-sitter-python`）。
-2. **更新註冊表**：在 `language-registry.ts` 中註冊新語言的副檔名與對應的 WASM 檔名。
-3. **標籤映射 (Tag Mapping)**：查閱各語言的 Tree-sitter 文法定義，設定該語言在 AST 中的節點名稱。
-
-**Phase 1 完成狀態**：✅ 2026-06-24 — 所有 8 個語言（Python, Rust, Go, Java, C/C++, Ruby, PHP, C#）皆已註冊於 `artifacts/ast-core/src/language-registry.ts` 並通過编译驗證。
+**Phase 1 Status**: ✅ 2026-06-24 — All 8 languages (Python, Rust, Go, Java, C/C++, Ruby, PHP, C#) are registered in `artifacts/ast-core/src/language-registry.ts` and validated via compilation.
 
 ---
 
-## Phase 2: 強化節點萃取與精確查詢 (Query API & Accuracy)
+## Phase 2: Query API & Extraction Accuracy
 
-**目標**：汰換目前暴力的子節點遍歷 (`descendantsOfType`)，改為使用 Tree-sitter 原生的 Query API，以處理複雜的語法邊界。
+**Goal**: Replace brute-force child-node traversal (`descendantsOfType`) with native Tree-sitter Query APIs to handle complex syntax boundaries.
 
-### 實作要點：
+### Implementation Checklist:
 
-- [x] **導入 Tree-sitter Query**：在 `LanguageProvider` 中加入編譯 `.scm` 語法查詢的邏輯（例如 `(class_declaration name: (identifier) @class.name)`）。
-- [x] **強化 Scope Map 與 Imports 解析**：
-  - 處理具名引入 (`import { A as B }`)。
-  - 處理萬用字元引入 (`import * as X`)。
-- [x] **Method vs Function 區別**：在提取 `call_expression` 時，區分是一般函數呼叫 `func()` 還是物件導向的方法呼叫 `obj.method()`，以利未來計算更準確的 FQN (Fully Qualified Name)。
+- [x] **Tree-sitter Query Integration**: Add logic in `LanguageProvider` to compile `.scm` syntax queries (e.g., `(class_declaration name: (identifier) @class.name)`).
+- [x] **Scope Map & Imports Parsing**:
+  - Handle named imports (`import { A as B }`).
+  - Handle wildcard imports (`import * as X`).
+- [x] **Method vs Function Classification**: When extracting `call_expression`, distinguish between standard function calls `func()` and object method calls `obj.method()` to calculate accurate FQNs.
 
-**Phase 2 完成狀態**：✅ 2026-06-24 — `language-provider.ts` 已實作 `initQueries()` 編譯 `.scm` 查詢，`ast-worker.ts` 已實作 `buildScopeMap()` 與 `classifyCall()`。
-
----
-
-## Phase 3: 知識圖譜寫入與資料庫整合 (Knowledge Graph Ingestion)
-
-**目標**：將 `ast-worker.ts` 產生的 `.jsonl` 骨架檔案，正式轉換為 Docuvia 的 Graph 結構並寫入資料庫。
-
-### 實作要點：
-
-- [x] **解析器與 Ingestion Pipeline 對接**：`ast-ingestion-pipeline.ts` 已實作，讀取 `.jsonl` skeleton 並寫入 `l2_nodes`、`l3_nodes`、`node_links` 資料表。API endpoint `POST /projects/:id/ingest/ast` 已註冊。
-- [ ] **階層對應 (Topology)**：
-  - File 映射到 `l2_nodes` 或對應的實體。
-  - Class / Function 映射為 `l3_nodes` (或細部的 Symbol Nodes)。
-- [ ] **關聯建立 (Edges)**：將萃取出的 `call` 與 `import` 轉化為 `node_links` 資料表中的 `CALLS` 或 `DEPENDS_ON` 邊 (Edges)。
+**Phase 2 Status**: ✅ 2026-06-24 — `initQueries()` implemented in `language-provider.ts`; `buildScopeMap()` and `classifyCall()` implemented in `ast-worker.ts`.
 
 ---
 
-## Phase 4: 容錯機制與效能極限測試 (Resilience & Scalability)
+## Phase 3: Knowledge Graph Ingestion & Database Integration
 
-**目標**：確保在掃描數萬個檔案的大型 Repo 時，系統具備容錯能力且不會卡死。
+**Goal**: Convert `.jsonl` skeleton files generated by `ast-worker.ts` into the official Docuvia Graph structure and persist them to the database.
 
-### 實作要點：
+### Implementation Checklist:
 
-- [x] **Poison Pill 隔離**：完善 `quarantine-db.ts`（SQLite），當某個檔案解析超過 500ms（或設定的 Timeout），立刻終止 Worker，並將該檔案標記為隔離，防止重啟後再次引發 OOM 或無限迴圈。
-- [ ] **批次寫入最佳化**：對於上萬行的 `.jsonl` 檔案，實作串流讀取與資料庫的 Chunk 批次 Insert，避免拖垮 PostgreSQL 效能。
+- [x] **Pipeline Integration**: `ast-ingestion-pipeline.ts` implemented to read `.jsonl` and write to `l2_nodes`, `l3_nodes`, and `node_links` tables. Endpoint `POST /projects/:id/ingest/ast` registered.
+- [ ] **Topology Mapping**:
+  - Map Files to `l2_nodes` (or equivalent entities).
+  - Map Classes/Functions to `l3_nodes` (or specific Symbol Nodes).
+- [ ] **Edge Creation**: Transform extracted `calls` and `imports` into `CALLS` or `DEPENDS_ON` records in the `node_links` table.
 
-**Phase 4 部分完成**：✅ Poison Pill 隔離已實作於 `ast-worker-pool.ts`（500ms timeout + AbortController + quarantine）。⏳ 批次寫入最佳化待實作。
+---
+
+## Phase 4: Resilience & Scalability Limits
+
+**Goal**: Ensure the system handles tens of thousands of files across large repositories without hanging or crashing.
+
+### Implementation Checklist:
+
+- [x] **Poison Pill Quarantine**: Implemented `quarantine-db.ts` (SQLite). If a file takes >500ms to parse, terminate the worker and quarantine the file to prevent OOM loops.
+- [ ] **Batch Write Optimization**: For `.jsonl` files with tens of thousands of lines, implement streaming reads and chunked batch `INSERT`s to prevent PostgreSQL performance degradation.
+
+**Phase 4 Status**: ✅ Poison Pill implemented in `ast-worker-pool.ts` (500ms timeout + AbortController + quarantine). ⏳ Batch Write Optimization pending.
 
 ---

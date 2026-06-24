@@ -70,11 +70,7 @@ async function getPromptTemplate(projectId: number, templateType: string): Promi
 
 const router = Router();
 
-const GenerateInputSchema = z.object({
-  model: z.string().optional(),
-  maxCommits: z.number().optional().default(50),
-  mode: z.enum(["full", "incremental"]).optional().default("full"),
-});
+import { GenerateKnowledgeBody, ExtractAndSieveBody } from "@workspace/api-zod";
 
 async function getModel(projectId: number, override?: string): Promise<string> {
   if (override) return override;
@@ -582,7 +578,7 @@ router.post("/projects/:id/generate", async (req, res) => {
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
 
-  const body = GenerateInputSchema.parse(req.body ?? {});
+  const body = GenerateKnowledgeBody.parse(req.body ?? {});
   const model = await getModel(projectId, body.model);
   const maxCommits = body.maxCommits ?? 50;
   const mode = body.mode ?? "full";

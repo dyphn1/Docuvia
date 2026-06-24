@@ -485,7 +485,7 @@ export async function directLookupHandler(
       .limit(limit);
 
     for (const l3 of l3Nodes) {
-      if (!includePending && l3.validityStatus !== "active") continue;
+      if (!includePending && l3.validityStatus !== "valid") continue;
       // Resolve project ID using subquery or simple fetch
       const [l2] = await db
         .select({ projectId: l2NodesTable.projectId })
@@ -523,7 +523,7 @@ export async function directLookupHandler(
       .limit(limit);
 
     for (const l3 of l3Nodes) {
-      if (!includePending && l3.validityStatus !== "active") continue;
+      if (!includePending && l3.validityStatus !== "valid") continue;
       const [l2] = await db
         .select({ projectId: l2NodesTable.projectId })
         .from(l2NodesTable)

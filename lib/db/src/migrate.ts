@@ -5,6 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { promptTemplatesTable } from "./schema/prompt_templates";
+import { isNull } from "drizzle-orm";
 
 export const DEFAULT_PROMPT_TEMPLATES = [
   {
@@ -55,9 +56,12 @@ async function runMigrations() {
     console.log("Migrations completed!");
 
     console.log("Seeding default prompt templates...");
-    // Using onConflictDoNothing assumes there is a unique constraint. Since there isn't one on templateType + projectId IS NULL out of the box,
-    // we can do a simple check.
-    const existing = await db.select().from(promptTemplatesTable).limit(1);
+    // Only seed if global templates (projectId IS NULL) do not exist.
+    const existing = await db
+      .select()
+      .from(promptTemplatesTable)
+      .where(isNull(promptTemplatesTable.projectId))
+      .limit(1);
     if (existing.length === 0) {
       await db.insert(promptTemplatesTable).values(
         DEFAULT_PROMPT_TEMPLATES.map((t) => ({

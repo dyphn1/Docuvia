@@ -25,7 +25,6 @@ import type {
   DashboardStats,
   Document,
   DocumentIngestInput,
-  DocumentUploadInput,
   ErrorResponse,
   FileContextResponse,
   GenerateInput,
@@ -58,6 +57,10 @@ import type {
   McpProjectList,
   McpQueryInput,
   McpQueryResult,
+  McpReadSharedMemory200,
+  McpReadSharedMemoryParams,
+  McpRetrieveOriginal200,
+  McpRetrieveOriginalParams,
   McpSearchKnowledgeParams,
   McpSearchResult,
   NodeLink,
@@ -91,9 +94,13 @@ import type {
   SuccessResponse,
   SvnIngestInput,
   SvnIngestResult,
-  SyncInput,
+  SyncPush200,
+  SyncPushInput,
   SyncResponse,
   TestProjectIntegration200,
+  TriggerAdminMetabolismTick200,
+  TriggerMetabolismTick200,
+  UploadDocumentBody,
   VscodeCreateDecisionInput,
   VscodeFileContextParams,
   VscodeQueryInput,
@@ -1261,28 +1268,20 @@ export const useIngestDocument = <TError = ErrorType<unknown>, TContext = unknow
 };
 
 /**
- * @summary Upload and parse a document file (PDF, DOCX, PPTX, MD)
+ * @summary Upload a new document to the misc pool
  */
-export const getUploadDocumentUrl = (id: number) => {
-  return `/api/projects/${id}/ingest/document/upload`;
+export const getUploadDocumentUrl = () => {
+  return `/api/documents`;
 };
 
 export const uploadDocument = async (
-  id: number,
-  documentUploadInput: DocumentUploadInput,
+  uploadDocumentBody: UploadDocumentBody,
   options?: RequestInit
 ): Promise<Document> => {
   const formData = new FormData();
-  formData.append(`file`, documentUploadInput.file);
-  formData.append(`l2NodeId`, documentUploadInput.l2NodeId.toString());
-  if (documentUploadInput.docType !== undefined) {
-    formData.append(`docType`, documentUploadInput.docType);
-  }
-  if (documentUploadInput.commitSha !== undefined) {
-    formData.append(`commitSha`, documentUploadInput.commitSha);
-  }
+  formData.append(`file`, uploadDocumentBody.file);
 
-  return customFetch<Document>(getUploadDocumentUrl(id), {
+  return customFetch<Document>(getUploadDocumentUrl(), {
     ...options,
     method: "POST",
     body: formData,
@@ -1290,20 +1289,20 @@ export const uploadDocument = async (
 };
 
 export const getUploadDocumentMutationOptions = <
-  TError = ErrorType<ErrorResponse>,
+  TError = ErrorType<void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof uploadDocument>>,
     TError,
-    { id: number; data: BodyType<DocumentUploadInput> },
+    { data: BodyType<UploadDocumentBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof uploadDocument>>,
   TError,
-  { id: number; data: BodyType<DocumentUploadInput> },
+  { data: BodyType<UploadDocumentBody> },
   TContext
 > => {
   const mutationKey = ["uploadDocument"];
@@ -1315,35 +1314,35 @@ export const getUploadDocumentMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof uploadDocument>>,
-    { id: number; data: BodyType<DocumentUploadInput> }
+    { data: BodyType<UploadDocumentBody> }
   > = (props) => {
-    const { id, data } = props ?? {};
+    const { data } = props ?? {};
 
-    return uploadDocument(id, data, requestOptions);
+    return uploadDocument(data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
 };
 
 export type UploadDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof uploadDocument>>>;
-export type UploadDocumentMutationBody = BodyType<DocumentUploadInput>;
-export type UploadDocumentMutationError = ErrorType<ErrorResponse>;
+export type UploadDocumentMutationBody = BodyType<UploadDocumentBody>;
+export type UploadDocumentMutationError = ErrorType<void>;
 
 /**
- * @summary Upload and parse a document file (PDF, DOCX, PPTX, MD)
+ * @summary Upload a new document to the misc pool
  */
-export const useUploadDocument = <TError = ErrorType<ErrorResponse>, TContext = unknown>(options?: {
+export const useUploadDocument = <TError = ErrorType<void>, TContext = unknown>(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof uploadDocument>>,
     TError,
-    { id: number; data: BodyType<DocumentUploadInput> },
+    { data: BodyType<UploadDocumentBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof uploadDocument>>,
   TError,
-  { id: number; data: BodyType<DocumentUploadInput> },
+  { data: BodyType<UploadDocumentBody> },
   TContext
 > => {
   return useMutation(getUploadDocumentMutationOptions(options));
@@ -3771,6 +3770,172 @@ export function useMcpGetDecisionRecord<
 }
 
 /**
+ * @summary MCP: Read AI shared memory context
+ */
+export const getMcpReadSharedMemoryUrl = (params: McpReadSharedMemoryParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/mcp/read_shared_memory?${stringifiedParams}`
+    : `/api/mcp/read_shared_memory`;
+};
+
+export const mcpReadSharedMemory = async (
+  params: McpReadSharedMemoryParams,
+  options?: RequestInit
+): Promise<McpReadSharedMemory200> => {
+  return customFetch<McpReadSharedMemory200>(getMcpReadSharedMemoryUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getMcpReadSharedMemoryQueryKey = (params?: McpReadSharedMemoryParams) => {
+  return [`/api/mcp/read_shared_memory`, ...(params ? [params] : [])] as const;
+};
+
+export const getMcpReadSharedMemoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof mcpReadSharedMemory>>,
+  TError = ErrorType<unknown>,
+>(
+  params: McpReadSharedMemoryParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof mcpReadSharedMemory>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getMcpReadSharedMemoryQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof mcpReadSharedMemory>>> = ({ signal }) =>
+    mcpReadSharedMemory(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof mcpReadSharedMemory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type McpReadSharedMemoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof mcpReadSharedMemory>>
+>;
+export type McpReadSharedMemoryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary MCP: Read AI shared memory context
+ */
+
+export function useMcpReadSharedMemory<
+  TData = Awaited<ReturnType<typeof mcpReadSharedMemory>>,
+  TError = ErrorType<unknown>,
+>(
+  params: McpReadSharedMemoryParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof mcpReadSharedMemory>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getMcpReadSharedMemoryQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary MCP: Retrieve original artifact source code
+ */
+export const getMcpRetrieveOriginalUrl = (params: McpRetrieveOriginalParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/mcp/retrieve_original?${stringifiedParams}`
+    : `/api/mcp/retrieve_original`;
+};
+
+export const mcpRetrieveOriginal = async (
+  params: McpRetrieveOriginalParams,
+  options?: RequestInit
+): Promise<McpRetrieveOriginal200> => {
+  return customFetch<McpRetrieveOriginal200>(getMcpRetrieveOriginalUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getMcpRetrieveOriginalQueryKey = (params?: McpRetrieveOriginalParams) => {
+  return [`/api/mcp/retrieve_original`, ...(params ? [params] : [])] as const;
+};
+
+export const getMcpRetrieveOriginalQueryOptions = <
+  TData = Awaited<ReturnType<typeof mcpRetrieveOriginal>>,
+  TError = ErrorType<unknown>,
+>(
+  params: McpRetrieveOriginalParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof mcpRetrieveOriginal>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getMcpRetrieveOriginalQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof mcpRetrieveOriginal>>> = ({ signal }) =>
+    mcpRetrieveOriginal(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof mcpRetrieveOriginal>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type McpRetrieveOriginalQueryResult = NonNullable<
+  Awaited<ReturnType<typeof mcpRetrieveOriginal>>
+>;
+export type McpRetrieveOriginalQueryError = ErrorType<unknown>;
+
+/**
+ * @summary MCP: Retrieve original artifact source code
+ */
+
+export function useMcpRetrieveOriginal<
+  TData = Awaited<ReturnType<typeof mcpRetrieveOriginal>>,
+  TError = ErrorType<unknown>,
+>(
+  params: McpRetrieveOriginalParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof mcpRetrieveOriginal>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getMcpRetrieveOriginalQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary MCP: Agentic RAG query with intent routing
  */
 export const getMcpQueryUrl = () => {
@@ -3847,6 +4012,164 @@ export const useMcpQuery = <TError = ErrorType<ErrorResponse>, TContext = unknow
   TContext
 > => {
   return useMutation(getMcpQueryMutationOptions(options));
+};
+
+/**
+ * @summary Trigger an asynchronous metabolism tick for garbage collection
+ */
+export const getTriggerMetabolismTickUrl = () => {
+  return `/api/metabolism-tick`;
+};
+
+export const triggerMetabolismTick = async (
+  options?: RequestInit
+): Promise<TriggerMetabolismTick200> => {
+  return customFetch<TriggerMetabolismTick200>(getTriggerMetabolismTickUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getTriggerMetabolismTickMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof triggerMetabolismTick>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof triggerMetabolismTick>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["triggerMetabolismTick"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof triggerMetabolismTick>>,
+    void
+  > = () => {
+    return triggerMetabolismTick(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TriggerMetabolismTickMutationResult = NonNullable<
+  Awaited<ReturnType<typeof triggerMetabolismTick>>
+>;
+
+export type TriggerMetabolismTickMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Trigger an asynchronous metabolism tick for garbage collection
+ */
+export const useTriggerMetabolismTick = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof triggerMetabolismTick>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof triggerMetabolismTick>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getTriggerMetabolismTickMutationOptions(options));
+};
+
+/**
+ * @summary Admin endpoint to trigger a metabolism tick
+ */
+export const getTriggerAdminMetabolismTickUrl = () => {
+  return `/api/admin/metabolism-tick`;
+};
+
+export const triggerAdminMetabolismTick = async (
+  options?: RequestInit
+): Promise<TriggerAdminMetabolismTick200> => {
+  return customFetch<TriggerAdminMetabolismTick200>(getTriggerAdminMetabolismTickUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getTriggerAdminMetabolismTickMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof triggerAdminMetabolismTick>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof triggerAdminMetabolismTick>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["triggerAdminMetabolismTick"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof triggerAdminMetabolismTick>>,
+    void
+  > = () => {
+    return triggerAdminMetabolismTick(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type TriggerAdminMetabolismTickMutationResult = NonNullable<
+  Awaited<ReturnType<typeof triggerAdminMetabolismTick>>
+>;
+
+export type TriggerAdminMetabolismTickMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Admin endpoint to trigger a metabolism tick
+ */
+export const useTriggerAdminMetabolismTick = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof triggerAdminMetabolismTick>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof triggerAdminMetabolismTick>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getTriggerAdminMetabolismTickMutationOptions(options));
 };
 
 /**
@@ -4013,6 +4336,82 @@ export const useDeleteSubscription = <
   TContext
 > => {
   return useMutation(getDeleteSubscriptionMutationOptions(options));
+};
+
+/**
+ * @summary Push client CQRS events to server
+ */
+export const getSyncPushUrl = () => {
+  return `/api/sync/push`;
+};
+
+export const syncPush = async (
+  syncPushInput: SyncPushInput,
+  options?: RequestInit
+): Promise<SyncPush200> => {
+  return customFetch<SyncPush200>(getSyncPushUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(syncPushInput),
+  });
+};
+
+export const getSyncPushMutationOptions = <TError = ErrorType<void>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncPush>>,
+    TError,
+    { data: BodyType<SyncPushInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof syncPush>>,
+  TError,
+  { data: BodyType<SyncPushInput> },
+  TContext
+> => {
+  const mutationKey = ["syncPush"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof syncPush>>,
+    { data: BodyType<SyncPushInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return syncPush(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SyncPushMutationResult = NonNullable<Awaited<ReturnType<typeof syncPush>>>;
+export type SyncPushMutationBody = BodyType<SyncPushInput>;
+export type SyncPushMutationError = ErrorType<void>;
+
+/**
+ * @summary Push client CQRS events to server
+ */
+export const useSyncPush = <TError = ErrorType<void>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof syncPush>>,
+    TError,
+    { data: BodyType<SyncPushInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof syncPush>>,
+  TError,
+  { data: BodyType<SyncPushInput> },
+  TContext
+> => {
+  return useMutation(getSyncPushMutationOptions(options));
 };
 
 /**
@@ -5391,14 +5790,14 @@ export const getSyncPipelineUrl = () => {
 };
 
 export const syncPipeline = async (
-  syncInput: SyncInput,
+  syncPushInput: SyncPushInput,
   options?: RequestInit
 ): Promise<SyncResponse> => {
   return customFetch<SyncResponse>(getSyncPipelineUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(syncInput),
+    body: JSON.stringify(syncPushInput),
   });
 };
 
@@ -5409,14 +5808,14 @@ export const getSyncPipelineMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof syncPipeline>>,
     TError,
-    { data: BodyType<SyncInput> },
+    { data: BodyType<SyncPushInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof syncPipeline>>,
   TError,
-  { data: BodyType<SyncInput> },
+  { data: BodyType<SyncPushInput> },
   TContext
 > => {
   const mutationKey = ["syncPipeline"];
@@ -5428,7 +5827,7 @@ export const getSyncPipelineMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof syncPipeline>>,
-    { data: BodyType<SyncInput> }
+    { data: BodyType<SyncPushInput> }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -5439,7 +5838,7 @@ export const getSyncPipelineMutationOptions = <
 };
 
 export type SyncPipelineMutationResult = NonNullable<Awaited<ReturnType<typeof syncPipeline>>>;
-export type SyncPipelineMutationBody = BodyType<SyncInput>;
+export type SyncPipelineMutationBody = BodyType<SyncPushInput>;
 export type SyncPipelineMutationError = ErrorType<ErrorResponse>;
 
 /**
@@ -5449,14 +5848,14 @@ export const useSyncPipeline = <TError = ErrorType<ErrorResponse>, TContext = un
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof syncPipeline>>,
     TError,
-    { data: BodyType<SyncInput> },
+    { data: BodyType<SyncPushInput> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof syncPipeline>>,
   TError,
-  { data: BodyType<SyncInput> },
+  { data: BodyType<SyncPushInput> },
   TContext
 > => {
   return useMutation(getSyncPipelineMutationOptions(options));

@@ -1015,14 +1015,16 @@ export interface ProjectIntegrationUpdate {
   notificationTypes?: string[] | null;
 }
 
-export interface SyncInput {
+export type SyncPushInputEventsItemPayload = { [key: string]: unknown };
+
+export type SyncPushInputEventsItem = {
+  type: string;
+  payload: SyncPushInputEventsItemPayload;
+};
+
+export interface SyncPushInput {
   projectId: number;
-  /** @minLength 1 */
-  pushedBranch: string;
-  /** @minItems 1 */
-  pushedCommits: string[];
-  /** Contents of .docuvia/config.yaml */
-  configYaml?: string;
+  events: SyncPushInputEventsItem[];
 }
 
 export interface SyncResponse {
@@ -1068,6 +1070,34 @@ export type McpGetDecisionRecordParams = {
   commit_hash: string;
 };
 
+export type McpReadSharedMemoryParams = {
+  scope: string;
+};
+
+export type McpReadSharedMemory200 = {
+  content?: string;
+};
+
+export type McpRetrieveOriginalParams = {
+  hash: string;
+};
+
+export type McpRetrieveOriginal200 = {
+  content?: string;
+};
+
+export type TriggerMetabolismTick200 = {
+  processed?: number;
+};
+
+export type TriggerAdminMetabolismTick200 = {
+  processed?: number;
+};
+
+export type SyncPush200 = {
+  status?: string;
+};
+
 export type ListProjectNotificationsParams = {
   unreadOnly?: boolean;
 };
@@ -1085,4 +1115,8 @@ export type VscodeFileContextParams = {
 export type TestProjectIntegration200 = {
   success: boolean;
   error?: string;
+};
+
+export type UploadDocumentBody = {
+  file: Blob;
 };

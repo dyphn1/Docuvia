@@ -12,6 +12,7 @@ import { eq, or, and, like, sql, count, isNotNull } from "drizzle-orm";
 import { routeQuery } from "../lib/intent-router.js";
 import { logger } from "../lib/logger.js";
 import { getAllMemories, getCompressedPayload } from "../memory/shared-memory.js";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -25,7 +26,18 @@ router.use("/mcp", (req, res, next) => {
     return res.status(500).json({ error: "Server configuration error" });
   }
 
-  if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    logger.warn({ ip: req.ip }, "[MCP Auth] Missing or malformed Authorization header");
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const providedToken = authHeader.substring(7);
+  
+  // To avoid crypto.timingSafeEqual crashing on length mismatch, we must verify lengths first
+  if (
+    providedToken.length !== expectedToken.length ||
+    !crypto.timingSafeEqual(Buffer.from(providedToken), Buffer.from(expectedToken))
+  ) {
     logger.warn({ ip: req.ip }, "[MCP Auth] Unauthorized MCP access attempt");
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -225,14 +237,14 @@ router.get("/mcp/get_decision_record", async (req, res) => {
 // POST /mcp/query — Agentic RAG intent-routing entry point
 // ---------------------------------------------------------------------------
 
-const mcpQueryBodySchema = z.object({
+const McpQueryBody = z.object({
   q: z.string().min(1, "q is required").max(2000, "q must be 2000 characters or fewer"),
   project_id: z.number().int().positive().optional(),
   limit: z.number().int().min(1).max(50).default(10),
 });
 
 router.post("/mcp/query", async (req, res) => {
-  const parsed = mcpQueryBodySchema.safeParse(req.body);
+  const parsed = McpQueryBody.safeParse(req.body);
   if (!parsed.success) {
     return res
       .status(400)

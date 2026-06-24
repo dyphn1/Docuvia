@@ -164,7 +164,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.addDecision", async () => {
-      // await addDecision(context, store);
+      await addDecision(context, store);
     })
   );
 
@@ -270,7 +270,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand(
       "docuvia.showDecisionsForLens",
       async (data: CodeLensDecisionData) => {
-        // await showDecisionsForLens(store, data);
+        await showDecisionsForLens(store, data);
       }
     )
   );
@@ -285,7 +285,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const selectedText = editor.document.getText(editor.selection);
       const langId = editor.document.languageId;
       const prefillBody = `\`\`\`${langId}\n${selectedText}\n\`\`\``;
-      // await addDecision(context, store, prefillBody);
+      await addDecision(context, store, prefillBody);
     })
   );
 
@@ -625,11 +625,18 @@ async function initProject(
 
       try {
         await fs.mkdir(docuviaDir, { recursive: true });
+        await fs.mkdir(path.join(docuviaDir, "l3_decisions"), { recursive: true });
       } catch {}
 
       const projectName = path.basename(targetRoot);
       const l1TagsPath = vscode.Uri.file(path.join(docuviaDir, "l1_tags.yaml"));
       await writeIfAbsent(l1TagsPath, `project_name: ${projectName}\ntags:\n  - slug: core\n`);
+
+      const l2ModulesPath = vscode.Uri.file(path.join(docuviaDir, "l2_modules.yaml"));
+      await writeIfAbsent(l2ModulesPath, `# L2 Modules — functional subsystems, linked to an L1 tag\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   l1_tag_id: <L1 tag id>\n#   source_paths: []\n`);
+
+      const l3RouterPath = vscode.Uri.file(path.join(docuviaDir, "l3_router.yaml"));
+      await writeIfAbsent(l3RouterPath, `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`);
 
       const profilePath = vscode.Uri.file(path.join(docuviaDir, "_project_profile.yaml"));
       await writeIfAbsent(profilePath, `# Project Profile\n`);
@@ -650,5 +657,76 @@ async function writeIfAbsent(uri: vscode.Uri, content: string): Promise<void> {
     // File already exists — skip
   } catch {
     await vscode.workspace.fs.writeFile(uri, Buffer.from(content, "utf-8"));
+  }
+}
+
+async function addDecision(
+  context: vscode.ExtensionContext,
+  store: KnowledgeStore,
+  prefillBody: string = ""
+) {
+  const folders = vscode.workspace.workspaceFolders || [];
+  if (folders.length === 0) return;
+  const workspaceRoot = folders[0].uri.fsPath;
+  const docuviaDir = path.join(workspaceRoot, ".docuvia");
+
+  try {
+    const fs = require("fs/promises");
+    await fs.stat(docuviaDir);
+  } catch {
+    void vscode.window.showWarningMessage("Docuvia: Initialize project first.");
+    return;
+  }
+
+  const title = await vscode.window.showInputBox({ prompt: "Decision Title" });
+  if (!title) return;
+
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (!slug) return;
+
+  const id = Date.now();
+  const filename = `${id}-${slug}.md`;
+  const filePath = path.join(docuviaDir, "l3_decisions", filename);
+
+  const content = `---\nid: ${id}\ntitle: "${title.replace(/"/g, '\\"')}"\ntype: decision\nstatus: valid\noccurrence_count: 1\n---\n\n${prefillBody}`;
+  
+  const fs = require("fs/promises");
+  await fs.writeFile(filePath, content, "utf-8");
+
+  const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+  await vscode.window.showTextDocument(doc);
+}
+
+async function showDecisionsForLens(store: KnowledgeStore, data: CodeLensDecisionData) {
+  const folders = vscode.workspace.workspaceFolders || [];
+  const editor = vscode.window.activeTextEditor;
+  const uri = editor ? editor.document.uri : (folders.length > 0 ? folders[0].uri : undefined);
+  if (!uri) return;
+
+  const snapshot = store.getSnapshotFor(uri);
+  const decisions = data.decisionIds
+    .map((id) => snapshot?.decisions.get(id))
+    .filter((d) => d !== undefined) as any[];
+
+  if (decisions.length === 0) {
+    void vscode.window.showInformationMessage("Docuvia: No decisions found for this module.");
+    return;
+  }
+
+  const items = decisions.map((d) => ({
+    label: d.title,
+    description: `Type: ${d.type} | Status: ${d.status}`,
+    decision: d,
+  }));
+
+  const selected = await vscode.window.showQuickPick(items, {
+    placeHolder: "Select a decision to open",
+  });
+
+  if (selected && selected.decision.filePath) {
+    vscode.commands.executeCommand("docuvia.openDecision", selected.decision.filePath);
   }
 }

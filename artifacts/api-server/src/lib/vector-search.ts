@@ -27,7 +27,7 @@ export async function performVectorSearch(
     );
   }
   if (!includePending) {
-    conditions.push(eq(l3NodesTable.validityStatus, "active"));
+    conditions.push(eq(l3NodesTable.validityStatus, "valid"));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

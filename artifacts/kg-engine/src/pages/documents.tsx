@@ -117,7 +117,7 @@ export default function Documents() {
     try {
       const url = selectedProject
         ? `/api/projects/${selectedProject}/ingest/document`
-        : `/api/documents/ingest`;
+        : `/api/documents`;
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

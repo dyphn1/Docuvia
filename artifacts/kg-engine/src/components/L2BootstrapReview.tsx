@@ -98,7 +98,7 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
         const customPath = pathEdits[node.id];
         const patterns = customPath
           ? customPath
-              .split(",")
+              .split("\n")
               .map((s) => s.trim())
               .filter(Boolean)
           : node.pathPatterns || [];
@@ -181,7 +181,7 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
                     const decision = decisions[node.id];
                     const editedPath = pathEdits[node.id];
                     const displayPath =
-                      editedPath !== undefined ? editedPath : node.pathPatterns?.join(", ") || "";
+                      editedPath !== undefined ? editedPath : node.pathPatterns?.join("\n") || "";
 
                     return (
                       <Card
@@ -257,13 +257,13 @@ export function L2BootstrapReview({ projectId }: { projectId: number }) {
                             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
                               Path Patterns (Glob)
                             </span>
-                            <Input
+                            <textarea
                               value={displayPath}
                               onChange={(e) =>
                                 setPathEdits((prev) => ({ ...prev, [node.id]: e.target.value }))
                               }
-                              placeholder="e.g. src/components/**/*.tsx"
-                              className="h-8 text-xs font-mono"
+                              placeholder="e.g. src/components/**/*.tsx\nsrc/lib/**/*.ts"
+                              className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                             />
                           </div>
                         </CardContent>

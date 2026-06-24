@@ -12,9 +12,7 @@ import { logger } from "../lib/logger.js";
 
 const router = Router();
 
-const AffiliateBodySchema = z.object({
-  projectId: z.number().int().positive(),
-});
+import { AffiliateDocumentBody } from "@workspace/api-zod";
 
 /**
  * GET /documents/misc
@@ -47,7 +45,7 @@ router.post("/documents/:id/affiliate", async (req, res) => {
     return res.status(400).json({ error: "Invalid document id" });
   }
 
-  const parsed = AffiliateBodySchema.safeParse(req.body);
+  const parsed = AffiliateDocumentBody.safeParse(req.body);
   if (!parsed.success) {
     return res
       .status(400)

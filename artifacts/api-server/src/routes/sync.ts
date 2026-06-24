@@ -8,21 +8,11 @@ import { writeKnowledgeToOrphanBranch } from "../lib/orphan-branch-writer.js";
 
 const router = Router();
 
-const SyncOutboxSchema = z.object({
-  projectId: z.number().int().positive(),
-  events: z
-    .array(
-      z.object({
-        type: z.enum(["CREATE_L3", "UPDATE_L3", "DELETE_L3", "CREATE_L2", "UPDATE_L2"]),
-        payload: z.any(),
-      })
-    )
-    .max(100), // Chunking enforced
-});
+import { SyncPushBody } from "@workspace/api-zod";
 
 // POST /sync/push (CQRS Outbox receiver)
 router.post("/sync/push", async (req, res) => {
-  const parsed = SyncOutboxSchema.safeParse(req.body);
+  const parsed = SyncPushBody.safeParse(req.body);
   if (!parsed.success) {
     return res
       .status(400)
@@ -51,18 +41,19 @@ router.post("/sync/push", async (req, res) => {
       for (const ev of events) {
         if (ev.type === "CREATE_L3") {
           // Validate L2 node exists to prevent dangling references
+          const payloadL2Id = Number(ev.payload.l2NodeId);
           const [l2] = await tx
             .select({ id: l2NodesTable.id })
             .from(l2NodesTable)
-            .where(eq(l2NodesTable.id, ev.payload.l2NodeId));
-          if (!l2) throw new Error(`L2 Node ${ev.payload.l2NodeId} does not exist`);
+            .where(eq(l2NodesTable.id, payloadL2Id));
+          if (!l2) throw new Error(`L2 Node ${payloadL2Id} does not exist`);
 
-          await tx.insert(l3NodesTable).values(ev.payload);
+          await tx.insert(l3NodesTable).values(ev.payload as any);
         } else if (ev.type === "UPDATE_L3") {
           await tx
             .update(l3NodesTable)
-            .set(ev.payload.data)
-            .where(eq(l3NodesTable.id, ev.payload.id));
+            .set(ev.payload.data as any)
+            .where(eq(l3NodesTable.id, Number(ev.payload.id)));
         }
         // ... (other handlers omitted for brevity)
       }

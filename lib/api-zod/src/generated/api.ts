@@ -351,26 +351,13 @@ export const IngestDocumentBody = zod.object({
 });
 
 /**
- * @summary Upload and parse a document file (PDF, DOCX, PPTX, MD)
+ * @summary Upload a new document to the misc pool
  */
-export const UploadDocumentParams = zod.object({
-  id: zod.coerce.number(),
-});
-
 export const UploadDocumentBody = zod.object({
   file: zod.instanceof(File),
-  l2NodeId: zod.number().describe("Required L2 Module ID"),
-  docType: zod
-    .enum(["pdf", "docx", "pptx", "md"])
-    .optional()
-    .describe("Document type (auto-detected from extension if omitted)"),
-  commitSha: zod
-    .string()
-    .optional()
-    .describe("Optional commit SHA to associate with this document"),
 });
 
-export const uploadDocumentResponseStatusDefault = `unaffiliated`;
+export const uploadDocumentResponseStatusDefaultOne = `unaffiliated`;
 
 export const UploadDocumentResponse = zod.object({
   id: zod.number(),
@@ -385,7 +372,7 @@ export const UploadDocumentResponse = zod.object({
     .string()
     .nullish()
     .describe("ISO-8601 timestamp when document was associated with a project"),
-  status: zod.enum(["unaffiliated", "affiliated"]).default(uploadDocumentResponseStatusDefault),
+  status: zod.enum(["unaffiliated", "affiliated"]).default(uploadDocumentResponseStatusDefaultOne),
   createdAt: zod.string(),
 });
 
@@ -1024,6 +1011,28 @@ export const McpGetDecisionRecordResponse = zod.object({
 });
 
 /**
+ * @summary MCP: Read AI shared memory context
+ */
+export const McpReadSharedMemoryQueryParams = zod.object({
+  scope: zod.coerce.string(),
+});
+
+export const McpReadSharedMemoryResponse = zod.object({
+  content: zod.string().optional(),
+});
+
+/**
+ * @summary MCP: Retrieve original artifact source code
+ */
+export const McpRetrieveOriginalQueryParams = zod.object({
+  hash: zod.coerce.string(),
+});
+
+export const McpRetrieveOriginalResponse = zod.object({
+  content: zod.string().optional(),
+});
+
+/**
  * @summary MCP: Agentic RAG query with intent routing
  */
 export const mcpQueryBodyQMax = 2000;
@@ -1066,6 +1075,20 @@ export const McpQueryResponse = zod.object({
 });
 
 /**
+ * @summary Trigger an asynchronous metabolism tick for garbage collection
+ */
+export const TriggerMetabolismTickResponse = zod.object({
+  processed: zod.number().optional(),
+});
+
+/**
+ * @summary Admin endpoint to trigger a metabolism tick
+ */
+export const TriggerAdminMetabolismTickResponse = zod.object({
+  processed: zod.number().optional(),
+});
+
+/**
  * @summary Create a cross-team subscription
  */
 export const CreateSubscriptionBody = zod.object({
@@ -1078,6 +1101,23 @@ export const CreateSubscriptionBody = zod.object({
  */
 export const DeleteSubscriptionParams = zod.object({
   subscriptionId: zod.coerce.number(),
+});
+
+/**
+ * @summary Push client CQRS events to server
+ */
+export const SyncPushBody = zod.object({
+  projectId: zod.number(),
+  events: zod.array(
+    zod.object({
+      type: zod.string(),
+      payload: zod.record(zod.string(), zod.unknown()),
+    })
+  ),
+});
+
+export const SyncPushResponse = zod.object({
+  status: zod.string().optional(),
 });
 
 /**
@@ -1473,12 +1513,14 @@ export const TestProjectIntegrationResponse = zod.object({
 /**
  * @summary Trigger the sync pipeline for a project branch push
  */
-
 export const SyncPipelineBody = zod.object({
   projectId: zod.number(),
-  pushedBranch: zod.string().min(1),
-  pushedCommits: zod.array(zod.string()).min(1),
-  configYaml: zod.string().optional().describe("Contents of .docuvia\/config.yaml"),
+  events: zod.array(
+    zod.object({
+      type: zod.string(),
+      payload: zod.record(zod.string(), zod.unknown()),
+    })
+  ),
 });
 
 export const SyncPipelineResponse = zod.object({

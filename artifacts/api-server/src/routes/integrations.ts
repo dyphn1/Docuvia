@@ -8,18 +8,7 @@ import { sendTestNotification } from "../lib/slack-teams-client.js";
 
 const router = Router();
 
-const IntegrationInputSchema = z.object({
-  integrationType: z.enum(["slack", "teams"]),
-  webhookUrl: z.string().url(),
-  enabled: z.boolean().optional().default(true),
-  notificationTypes: z.array(z.string()).nullable().optional().default(null),
-});
-
-const IntegrationUpdateSchema = z.object({
-  webhookUrl: z.string().url().optional(),
-  enabled: z.boolean().optional(),
-  notificationTypes: z.array(z.string()).nullable().optional(),
-});
+import { CreateProjectIntegrationBody, UpdateProjectIntegrationBody } from "@workspace/api-zod";
 
 function serializeIntegration(row: typeof projectIntegrationsTable.$inferSelect) {
   return {
@@ -54,7 +43,7 @@ router.post("/projects/:id/integrations", async (req, res) => {
     const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
     if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const body = IntegrationInputSchema.parse(req.body);
+    const body = CreateProjectIntegrationBody.parse(req.body);
 
     const [created] = await db
       .insert(projectIntegrationsTable)
@@ -73,7 +62,7 @@ router.patch("/integrations/:integrationId", async (req, res) => {
     const integrationId = parseInt(req.params.integrationId, 10);
     if (isNaN(integrationId)) return res.status(400).json({ error: "Invalid integration id" });
 
-    const body = IntegrationUpdateSchema.parse(req.body);
+    const body = UpdateProjectIntegrationBody.parse(req.body);
 
     const [updated] = await db
       .update(projectIntegrationsTable)

@@ -1088,6 +1088,50 @@ paths:
               schema:
                 $ref: "#/components/schemas/McpDecisionRecord"
 
+  /mcp/read_shared_memory:
+    get:
+      operationId: mcpReadSharedMemory
+      tags: [mcp]
+      summary: "MCP: Read AI shared memory context"
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Shared memory content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: string
+
+  /mcp/retrieve_original:
+    get:
+      operationId: mcpRetrieveOriginal
+      tags: [mcp]
+      summary: "MCP: Retrieve original artifact source code"
+      parameters:
+        - name: hash
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Original content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: string
+
   /mcp/query:
     post:
       operationId: mcpQuery
@@ -1118,6 +1162,38 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /metabolism-tick:
+    post:
+      operationId: triggerMetabolismTick
+      tags: [dashboard]
+      summary: Trigger an asynchronous metabolism tick for garbage collection
+      responses:
+        "200":
+          description: Tick successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  processed:
+                    type: integer
+
+  /admin/metabolism-tick:
+    post:
+      operationId: triggerAdminMetabolismTick
+      tags: [dashboard]
+      summary: Admin endpoint to trigger a metabolism tick
+      responses:
+        "200":
+          description: Tick successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  processed:
+                    type: integer
 
   /subscriptions:
     post:
@@ -1164,6 +1240,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /sync/push:
+    post:
+      operationId: syncPush
+      tags: [sync]
+      summary: Push client CQRS events to server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SyncPushInput"
+      responses:
+        "200":
+          description: Synced successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
 
   /projects/{projectId}/extract/sieve:
     post:
@@ -1600,7 +1704,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SyncInput"
+              $ref: "#/components/schemas/SyncPushInput"
       responses:
         "200":
           description: Sync scheduled
@@ -1614,6 +1718,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /documents:
+    post:
+      operationId: uploadDocument
+      tags: [documents]
+      summary: Upload a new document to the misc pool
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Uploaded document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
 
   /documents/misc:
     get:
@@ -2928,23 +3060,23 @@ components:
           items:
             type: string
 
-    SyncInput:
+    SyncPushInput:
       type: object
-      required: [projectId, pushedBranch, pushedCommits]
+      required: [projectId, events]
       properties:
         projectId:
           type: integer
-        pushedBranch:
-          type: string
-          minLength: 1
-        pushedCommits:
+        events:
           type: array
           items:
-            type: string
-          minItems: 1
-        configYaml:
-          type: string
-          description: Contents of .docuvia/config.yaml
+            type: object
+            required: [type, payload]
+            properties:
+              type:
+                type: string
+              payload:
+                type: object
+                additionalProperties: true
 
     SyncResponse:
       type: object

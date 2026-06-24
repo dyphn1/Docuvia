@@ -23,6 +23,7 @@ export const l3NodesTable = pgTable("l3_nodes", {
   title: text("title").notNull(),
   content: text("content"),
   nodeType: l3NodeTypeEnum("node_type").notNull().default("change"),
+  sourceCommits: jsonb("source_commits").$type<string[]>().notNull().default([]),
   // @deprecated — superseded by sourceCommits[0] (v2). Keep for backward compat.
   commitHash: text("commit_hash"),
   aiGenerated: boolean("ai_generated").notNull().default(true),

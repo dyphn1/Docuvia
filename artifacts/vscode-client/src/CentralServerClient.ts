@@ -94,7 +94,7 @@ export class CentralServerClient {
 
   /**
    * Triggers the sync pipeline for a project branch push.
-   * Calls POST /sync with the project ID, branch name, and commit hashes.
+   * Calls POST /sync/push with the project ID and CQRS outbox events.
    */
   async sync(projectId: number, branch: string, commits: string[]): Promise<void> {
     if (process.env.DOCUVIA_MOCK_SERVER === "1") {
@@ -112,10 +112,16 @@ export class CentralServerClient {
       headers["x-docuvia-token"] = token;
     }
 
-    const response = await fetch(`${serverUrl}/sync`, {
+    // Map pushes to standard outbox events
+    const events = commits.map(commit => ({
+      type: "UPDATE_L3",
+      payload: { commitHash: commit, branchName: branch }
+    }));
+
+    const response = await fetch(`${serverUrl}/sync/push`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ projectId, pushedBranch: branch, pushedCommits: commits }),
+      body: JSON.stringify({ projectId, events }),
     });
 
     if (response.status === 401) {

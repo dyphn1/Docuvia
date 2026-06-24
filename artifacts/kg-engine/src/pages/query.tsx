@@ -64,10 +64,13 @@ export default function Query() {
     try {
       const res = await fetch("/api/mcp/query", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${import.meta.env.VITE_MCP_PAT}`
+        },
         body: JSON.stringify({
-          query: query.trim(),
-          projectId: projectFilter !== "all" ? Number(projectFilter) : undefined,
+          q: query.trim(),
+          project_id: projectFilter !== "all" ? Number(projectFilter) : undefined,
           limit: 20,
         }),
       });

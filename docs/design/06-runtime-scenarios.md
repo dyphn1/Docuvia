@@ -127,14 +127,15 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     Reviewer->>FE: Open Review Queue
-    FE->>API: GET /review_tasks?projectId=:id&status=pending
+    FE->>API: GET /api/review-tasks?projectId=:id&status=pending
     API-->>FE: List of pending review_tasks
 
-    Reviewer->>FE: Click "Anchor" on an L3 node review task
-    FE->>API: POST /review_tasks/:id/resolve { action: "anchor" }
-    API->>DB: UPDATE review_tasks SET status = "resolved", resolution = "anchor"
-    API->>DB: INSERT INTO correction_examples (originalOutput, correctedOutput, projectId)
-    API-->>FE: 200 { resolved: true }
+    Reviewer->>FE: Edit & Correct task, then Click "Approve"
+    FE->>API: PATCH /api/review-tasks/:id { status: "approved", correctedValue: "..." }
+    API->>DB: UPDATE review_tasks SET status = "approved"
+    API->>DB: UPDATE l3_nodes SET content = correctedValue
+    API->>DB: INSERT INTO correction_examples (originalContent, correctedContent, projectId)
+    API-->>FE: 200 { id, status: "approved" }
     FE-->>Reviewer: Task removed from queue
 ```
 

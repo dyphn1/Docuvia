@@ -21,8 +21,16 @@ import integrationsRouter from "./integrations";
 import syncRouter from "./sync";
 import documentsRouter from "./documents";
 import { metabolismRouter } from "./metabolism";
+import { standardLimiter, mcpLimiter } from "../lib/rate-limit";
 
 const router: IRouter = Router();
+
+// Apply standard rate limiter to all routes by default
+router.use(standardLimiter);
+
+// Specific limiters can be applied by the individual routers or overriding below
+router.use("/mcp", mcpLimiter);
+router.use("/search", mcpLimiter);
 
 router.use(healthRouter);
 router.use(dashboardRouter);

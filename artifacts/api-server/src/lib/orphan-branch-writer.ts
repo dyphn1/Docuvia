@@ -121,7 +121,7 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
       for (const l3 of l3Nodes) {
         const l3Slug = slugify(l3.title);
         const filename = `${l3.id}-${l3Slug}.md`;
-        files.set(`${baseDir}/l3_decisions/${l2Slug}/${filename}`, buildL3DecisionMd(l3));
+        files.set(`${baseDir}/l3_decisions/${filename}`, buildL3DecisionMd(l3));
       }
     }
 

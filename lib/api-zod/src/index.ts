@@ -4,3 +4,4 @@ export type * from "./generated/types";
 export { ListProjectNotificationsParams } from "./generated/api";
 export { GithubWebhookBody } from "./generated/api";
 export { ConfirmBootstrapBody } from "./generated/api";
+export { UploadDocumentBody } from "./generated/api";

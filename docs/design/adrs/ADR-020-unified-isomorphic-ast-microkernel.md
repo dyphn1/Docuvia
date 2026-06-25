@@ -3,7 +3,6 @@
 ## Status
 
 Accepted (2026-06-25)
-*Note: This document consolidates, supersedes, and replaces ADRs 014, 020, 021, and 022 after a 10-round adversarial architectural review.*
 
 ## Context
 

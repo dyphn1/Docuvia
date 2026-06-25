@@ -1,4 +1,4 @@
-# ADR-017: Git Blob-Native Identity & Checkout Thrashing Defense
+# ADR-016: Git Blob-Native Identity & Checkout Thrashing Defense
 
 ## Context
 

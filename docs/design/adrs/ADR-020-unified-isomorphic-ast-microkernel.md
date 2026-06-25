@@ -1,4 +1,4 @@
-# ADR-024: Unified Isomorphic AST Microkernel
+# ADR-020: Unified Isomorphic AST Microkernel
 
 ## Status
 
@@ -26,7 +26,7 @@ The core engine (`@workspace/ast-core`) will act as a lightweight Microkernel. I
 WASM heap memory must be manually freed (`tree.delete()`). To prevent memory leaks from crashing the VS Code Extension Host or the main API Server, all AST parsing **must** execute inside isolated `worker_threads` (or Web Workers). If a worker OOMs or hangs on a malicious file, the Microkernel simply terminates the worker, flags the file as failed, and spawns a new worker.
 
 ### 4. Zero-LLM Database-as-IPC Pipeline
-To completely bypass IPC (Inter-Process Communication) serialization overhead between the Worker and the Main Thread, we inherit the decision from **ADR-015 (Database-as-IPC)**. The isolated AST Worker handles parsing, traversing, and extracting structural metadata, and then **directly writes `GraphNode` and `GraphEdge` rows into the local SQLite database**. The main thread only sends small control signals (e.g., "parse src/auth.ts") and queries the SQLite database natively. This constitutes a purely local, Zero-LLM pipeline that costs $0.00 to execute while keeping IPC payloads negligible.
+To completely bypass IPC (Inter-Process Communication) serialization overhead between the Worker and the Main Thread, we inherit the decision from **ADR-014 (Database-as-IPC)**. The isolated AST Worker handles parsing, traversing, and extracting structural metadata, and then **directly writes `GraphNode` and `GraphEdge` rows into the local SQLite database**. The main thread only sends small control signals (e.g., "parse src/auth.ts") and queries the SQLite database natively. This constitutes a purely local, Zero-LLM pipeline that costs $0.00 to execute while keeping IPC payloads negligible.
 
 ## Consequences
 

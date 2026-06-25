@@ -1,4 +1,4 @@
-# ADR-016: Progressive Enrichment & AST/LSP Dual Engine
+# ADR-015: Progressive Enrichment & AST/LSP Dual Engine
 
 ## Context
 

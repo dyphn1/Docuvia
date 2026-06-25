@@ -1,4 +1,4 @@
-# ADR-018: Tiered Storage & Orphan Branch Graph Maintenance
+# ADR-017: Tiered Storage & Orphan Branch Graph Maintenance
 
 ## Context
 

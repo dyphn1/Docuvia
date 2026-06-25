@@ -1,4 +1,4 @@
-# ADR-023: PostgreSQL pgvector Migration for Similarity Search
+# ADR-019: PostgreSQL pgvector Migration for Similarity Search
 
 ## Status
 

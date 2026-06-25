@@ -50,11 +50,11 @@ The detailed Agentic OS mechanisms are codified as Architecture Decision Records
 | `ADR-011` | [Two-Phase Knowledge Validity](adrs/ADR-011-two-phase-knowledge-validity.md)                                                     |
 | `ADR-012` | [Document Misc Pool](adrs/ADR-012-document-misc-pool.md)                                                                         |
 | `ADR-013` | [Adversarial Implementation Protocol](adrs/ADR-013-adversarial-implementation-protocol.md)                                       |
-| `ADR-015` | [SQL-Indexed Graph and Database-as-IPC](adrs/ADR-015-sql-indexed-graph-and-database-as-ipc.md)                                   |
-| `ADR-016` | [Progressive Enrichment & AST/LSP Dual Engine](adrs/ADR-016-progressive-enrichment-and-ast-lsp-dual-engine.md)                   |
-| `ADR-017` | [Git Blob-Native Identity & Checkout Thrashing Defense](adrs/ADR-017-git-blob-native-identity-and-checkout-thrashing-defense.md) |
-| `ADR-018` | [Tiered Storage & Orphan Branch Graph Maintenance](adrs/ADR-018-tiered-storage-and-orphan-branch-graph-maintenance.md)           |
-| `ADR-019` | [Temporal & Conceptual Bidirectional Linking](adrs/ADR-019-temporal-and-conceptual-bidirectional-linking.md)                     |
+| `ADR-014` | [SQL-Indexed Graph and Database-as-IPC](adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)                                   |
+| `ADR-015` | [Progressive Enrichment & AST/LSP Dual Engine](adrs/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)                   |
+| `ADR-016` | [Git Blob-Native Identity & Checkout Thrashing Defense](adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md) |
+| `ADR-017` | [Tiered Storage & Orphan Branch Graph Maintenance](adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)           |
+| `ADR-018` | [Temporal & Conceptual Bidirectional Linking](adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md)                     |
 
 ---
 
@@ -90,5 +90,5 @@ The VS Code extension has its own detailed design documentation under [`artifact
 | -------------------------------------------------------------- | ------------------------------------------------------------- |
 | [docs/roadmap/master-roadmap.md](../roadmap/master-roadmap.md) | Single Source of Truth (SSOT) tracking all development phases |
 | [AGENTS.md](../../AGENTS.md)                                   | AI developer guide — commands, conventions, agent definitions |
-| `ADR-023` | [PostgreSQL pgvector Migration](adrs/ADR-023-pgvector-migration.md)                                                                |
-| `ADR-024` | [Unified Isomorphic AST Microkernel](adrs/ADR-024-unified-isomorphic-ast-microkernel.md)                                           |
+| `ADR-019` | [PostgreSQL pgvector Migration](adrs/ADR-019-pgvector-migration.md)                                                                |
+| `ADR-020` | [Unified Isomorphic AST Microkernel](adrs/ADR-020-unified-isomorphic-ast-microkernel.md)                                           |

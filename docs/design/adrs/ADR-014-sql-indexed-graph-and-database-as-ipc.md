@@ -1,4 +1,4 @@
-# ADR-015: SQL-Indexed Graph and Database-as-IPC
+# ADR-014: SQL-Indexed Graph and Database-as-IPC
 
 ## Context
 

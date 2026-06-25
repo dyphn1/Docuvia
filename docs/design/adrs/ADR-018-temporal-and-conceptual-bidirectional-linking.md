@@ -1,4 +1,4 @@
-# ADR-019: Temporal & Conceptual Bidirectional Linking
+# ADR-018: Temporal & Conceptual Bidirectional Linking
 
 ## Context
 

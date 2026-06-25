@@ -12,7 +12,7 @@
 | **Database**          | PostgreSQL                                                        | `pgvector` extension for `vector(1536)` embedding storage; proven ACID guarantees; IVFFlat/HNSW rich indexing |
 | **Frontend**          | React 18 + Vite + shadcn/ui + Tailwind CSS                        | Fast HMR; composable design system; tree-shakeable components                                                                  |
 | **API Contract**      | OpenAPI 3.x + Orval codegen                                       | Single source of truth eliminates type drift between frontend and backend; generates both Zod validators and React Query hooks |
-| **Vector Search**     | PostgreSQL `pgvector` with Temporal Decay filter                  | Offloads vector math (cosine distance) to DB to prevent API Server OOM; enables hybrid SQL indexing (See ADR-023)              |
+| **Vector Search**     | PostgreSQL `pgvector` with Temporal Decay filter                  | Offloads vector math (cosine distance) to DB to prevent API Server OOM; enables hybrid SQL indexing (See ADR-019)              |
 | **LLM Integration**   | OpenAI-compatible interface (`lib/integrations-openai-ai-server`) | Provider-agnostic; compatible with OpenRouter, Azure OpenAI, and any `/v1/chat/completions`-compatible endpoint                |
 | **IDE Integration**   | VS Code Extension API                                             | Primary developer audience uses VS Code; enables Copilot Chat participant, CodeLens, TreeView                                  |
 | **MCP Layer**         | Custom Express routes at `/mcp/*`                                 | Compatibility with AI agent toolchains (Cursor, GitHub Copilot, Claude, etc.) that implement Model Context Protocol            |

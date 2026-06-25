@@ -7,7 +7,7 @@ This document records the key architectural decisions made during the developmen
 | ADR                                                                                | Title                                                        | Status        |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------- |
 | [ADR-001](#adr-001-openapi-as-single-source-of-truth)                              | OpenAPI as Single Source of Truth                            | Accepted      |
-| [ADR-002](#adr-002-postgresql-with-jsonb-for-embeddings)                           | PostgreSQL (Superseded by ADR-023: pgvector)                 | Superseded    |
+| [ADR-002](#adr-002-postgresql-with-jsonb-for-embeddings)                           | PostgreSQL (Superseded by ADR-019: pgvector)                 | Superseded    |
 | [ADR-003](#adr-003-three-tier-knowledge-graph-l1l2l3)                              | Three-Tier Knowledge Graph (L1/L2/L3)                        | Accepted      |
 | [ADR-004](#adr-004-openai-compatible-llm-interface-only)                           | OpenAI-Compatible LLM Interface Only                         | Accepted (v1) |
 | [ADR-005](#adr-005-mvc-pattern-for-ui-layers)                                      | MVC Pattern for UI Layers                                    | Accepted      |
@@ -19,13 +19,13 @@ This document records the key architectural decisions made during the developmen
 | [ADR-011](#adr-011-two-phase-knowledge-validity)                                   | Two-Phase Knowledge Validity                                 | Accepted      |
 | [ADR-012](#adr-012-document-misc-pool)                                             | Document Misc Pool for Unaffiliated Documents                | Accepted      |
 | [ADR-013](adrs/ADR-013-adversarial-implementation-protocol.md)                     | Adversarial Implementation Protocol                          | Active        |
-| [ADR-015](adrs/ADR-015-sql-indexed-graph-and-database-as-ipc.md)                   | SQL-Indexed Graph and Database-as-IPC                        | Accepted      |
-| [ADR-016](adrs/ADR-016-progressive-enrichment-and-ast-lsp-dual-engine.md)          | Progressive Enrichment & AST/LSP Dual Engine                 | Accepted      |
-| [ADR-017](adrs/ADR-017-git-blob-native-identity-and-checkout-thrashing-defense.md) | Git Blob-Native Identity & Checkout Thrashing Defense        | Accepted      |
-| [ADR-018](adrs/ADR-018-tiered-storage-and-orphan-branch-graph-maintenance.md)      | Tiered Storage & Orphan Branch Graph Maintenance             | Accepted      |
-| [ADR-019](adrs/ADR-019-temporal-and-conceptual-bidirectional-linking.md)           | Temporal & Conceptual Bidirectional Linking                  | Accepted      |
-| [ADR-023](adrs/ADR-023-pgvector-migration.md)                                      | PostgreSQL pgvector Migration                                | Accepted      |
-| [ADR-024](adrs/ADR-024-unified-isomorphic-ast-microkernel.md)                      | Unified Isomorphic AST Microkernel                           | Accepted      |
+| [ADR-014](adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)                   | SQL-Indexed Graph and Database-as-IPC                        | Accepted      |
+| [ADR-015](adrs/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)          | Progressive Enrichment & AST/LSP Dual Engine                 | Accepted      |
+| [ADR-016](adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md) | Git Blob-Native Identity & Checkout Thrashing Defense        | Accepted      |
+| [ADR-017](adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)      | Tiered Storage & Orphan Branch Graph Maintenance             | Accepted      |
+| [ADR-018](adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md)           | Temporal & Conceptual Bidirectional Linking                  | Accepted      |
+| [ADR-019](adrs/ADR-019-pgvector-migration.md)                                      | PostgreSQL pgvector Migration                                | Accepted      |
+| [ADR-020](adrs/ADR-020-unified-isomorphic-ast-microkernel.md)                      | Unified Isomorphic AST Microkernel                           | Accepted      |
 
 ---
 

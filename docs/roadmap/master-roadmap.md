@@ -29,10 +29,10 @@
 - **Prompt Engineering:** Project-level LLM Prompt Template Management.
 
 ## Phase 5: The AST Microkernel (Deep Local Analysis)
-- AST Microkernel & Plugin Ecosystem (`@workspace/plugin-ast-typescript`, see ADR-024).
-- Zero-Server Deep Traversal & Pure Local SQLite Cache (see ADR-024).
+- AST Microkernel & Plugin Ecosystem (`@workspace/plugin-ast-typescript`, see ADR-020).
+- Zero-Server Deep Traversal & Pure Local SQLite Cache (see ADR-020).
 - Local Context Compression & Proxy Layer (Token reduction pipeline).
-- Sub-second Incremental Watch & Local Git Hooks (see ADR-024).
+- Sub-second Incremental Watch & Local Git Hooks (see ADR-020).
 - Jupyter & Multi-Modal Engineering Parsers.
 
 ## Phase 6: Architecture Hardening & Stabilization (The Tech Debt Phase)

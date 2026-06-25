@@ -29,16 +29,16 @@ flowchart TD
 ## 2. Server-Side Distillation
 
 - The server detects patterns (e.g., multiple developers replacing `console.log` with `pino`) across the `correction_examplesTable`.
-- **Implementation Route**: The background distillation job is implemented in `artifacts/api-server/src/routes/metabolism.ts`. It selects rows from `correction_examplesTable` where `processedAt IS NULL`, uses the LLM to compress these raw corrections into high-level Architectural Guardrails, inserts them into `prompt_templatesTable`, and updates the `processedAt` timestamp.
+- **Implementation Route**: The background distillation job (see [Asynchronous Metabolism](ADR-008-asynchronous-metabolism.md)) is implemented in `artifacts/api-server/src/routes/metabolism.ts`. It selects rows from `correction_examplesTable` where `processedAt IS NULL`, uses the LLM to compress these raw corrections into high-level Architectural Guardrails, inserts them into `prompt_templatesTable`, and updates the `processedAt` timestamp.
 
 ## 3. Experience Rollout (O(1) Fast-Path Filters)
 
-- Guardrails and common query structures are identified by the router without LLM latency.
-- When a new developer queries the AI, the local router in `intent-router.ts` runs O(1) checks for `#attach` or specific domain keywords mapped from L1/L2 database names to pre-inject the guardrail natively.
-- **Implementation client sync**: Exposes synchronisation through [`CentralServerClient.ts`](../../../artifacts/vscode-client/src/CentralServerClient.ts#L79) (`sync()` and `pullSnapshot()`).
+- Guardrails and common query structures are identified by the router without LLM latency, utilizing direct database queries per [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md).
+- When a new developer queries the AI, the router in `intent-router.ts` (handling both [Local-First](ADR-002-local-first-architecture.md) and Server-Augmented queries via [Agentic RAG Routing](ADR-007-agentic-rag-routing.md)) runs O(1) checks for `#attach` or specific domain keywords mapped from [L1/L2 database names](ADR-005-knowledge-abstraction-strategy.md) to pre-inject the guardrail natively.
+- **Implementation client sync**: Exposes synchronisation through [`CentralServerClient.ts`](../../../artifacts/vscode-client/src/CentralServerClient.ts#L79) (`sync()` and `pullSnapshot()`), fetching from the [Orphan Branch](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) to maintain the [Git-Isomorphic Graph](ADR-004-git-isomorphic-graph.md).
 
 ## 4. Tool Maker Integration
 
-Highly deterministic new rules can trigger the Tool Maker agent to generate local Python/Node.js scanning scripts (`sniff_xyz.py`) permanently.
+Highly deterministic new rules can trigger the Tool Maker agent to generate custom Tree-sitter queries for the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) permanently, replacing the outdated approach of generating external Python/Node.js scripts.
 
 - **Gap Note**: The automated Tool Maker trigger mechanism is _not implemented_.

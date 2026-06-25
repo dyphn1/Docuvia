@@ -22,17 +22,17 @@ flowchart TD
     PromptInit --> Consent[Request Explicit Scaffolding Consent]
     Consent --> ScaffoldInit[Generate l1_tags.yaml, _project_profile.yaml]
 
-    Path -->|/explore| Explore[Detect workspace files package.json/README.md]
+    Path -->|/explore| Explore[Query Local SQLite for Project Topology]
     Explore --> Match{Template matches?}
     Match -- Yes --> Refine[Refine tags with LLM and output table]
     Match -- No --> Dynamic[Generate tags dynamically from dependencies]
-    Refine --> Accept[Show button to accept & write to l1_tags.yaml]
+    Refine --> Accept[Show button to accept & Sync Database-as-IPC]
     Dynamic --> Accept
 
-    Path -->|/query| Search[Query local knowledge graph / Central RAG]
+    Path -->|/query| Search[Query local Database-as-IPC / Agentic RAG]
     Search --> OutputChat[Format and display results in Chat]
 
-    Path -->|/extract| Extract[Scan files in target path matching patterns]
+    Path -->|/extract| Extract[Pass chunk to AST Microkernel]
     Extract --> Queue[Queue tasks in TaskRunner]
 
     Path -->|/help| Help[Display Help Markdown]
@@ -40,7 +40,7 @@ flowchart TD
 
 ### `/explore`
 
-- **Description**: Detect project type and suggest L1 tags for `.docuvia/l1_tags.yaml`
+- **Description**: Detect project type and suggest L1 tags for [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) via [Three-tier knowledge graph](../../adrs/ADR-005-knowledge-abstraction-strategy.md)
 - **Flow**:
 
   #### 1. Keyword type override (fast path)
@@ -93,12 +93,12 @@ flowchart TD
 
 ### `/query`
 
-- **Description**: Search local knowledge graph for matching modules and decisions
+- **Description**: Search local knowledge graph via [Agentic RAG Routing](../../adrs/ADR-007-agentic-rag-routing.md). Legacy remote Central Server API logic is deprecated per [Local-First Architecture](../../adrs/ADR-002-local-first-architecture.md).
 - **Flow**: Acts as the primary target for local search, or acts as the fallback display for cross-project search if `search.defaultView` is set to `chat`.
 
 ### `/extract`
 
-- **Description**: Queue L3 decision extraction for the active file, specified file, or folder
+- **Description**: Queue L3 decision extraction on target files via the [AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md) to respect [Token Management](../../adrs/ADR-009-token-management.md) boundaries.
 - **Flow**:
   1. **Target Resolution**: Uses the provided path, or the active editor's file. If neither is provided, defaults to the root of the first open workspace folder.
   2. **Directory Scanning**: If the target is a directory, recursively scans for files. It automatically ignores `.git`, `node_modules`, and `.docuvia`.

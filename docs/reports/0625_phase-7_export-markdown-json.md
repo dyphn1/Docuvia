@@ -1,6 +1,6 @@
 # Verification Report: 6.5.2 — Markdown Export
 - **Date**: 2026-06-25
-- **Phase & Item**: Phase 6.5.2
+- **Phase & Item**: Phase 7 - Export Markdown Json
 - **Target File**: Unknown (Derived from audit)
 - **Status Update Required**: ❌ ERROR / ⚠️ WARN
 

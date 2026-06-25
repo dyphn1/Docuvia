@@ -1,6 +1,6 @@
 # Verification Report: Item 9.1.2 — API Key via VS Code SecretStorage
 - **Date**: 2026-06-25
-- **Phase & Item**: Phase 9.1.2
+- **Phase & Item**: Phase 8 - Vscode Secret Storage
 - **Target File**: Unknown (Derived from audit)
 - **Status Update Required**: ❌ ERROR / ⚠️ WARN
 

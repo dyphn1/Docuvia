@@ -1,6 +1,6 @@
 # Verification Report: Item 6.1.1 — openapi.yaml as single source of truth
 - **Date**: 2026-06-25
-- **Phase & Item**: Phase 6.1.1
+- **Phase & Item**: Phase 5 - Openapi Spec
 - **Target File**: Unknown (Derived from audit)
 - **Status Update Required**: ❌ ERROR / ⚠️ WARN
 

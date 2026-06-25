@@ -1,6 +1,6 @@
 # Verification Report: Item 1.2.5 — scoreCommit() Signal/Noise Filter
 - **Date**: 2026-06-25
-- **Phase & Item**: Phase 1.2.5
+- **Phase & Item**: Phase 3 - Commit Filter
 - **Target File**: Unknown (Derived from audit)
 - **Status Update Required**: ❌ ERROR / ⚠️ WARN
 

@@ -1,6 +1,6 @@
 # Verification Report: Item 3.2.2 — Decay Application on Knowledge Query Results
 - **Date**: 2026-06-25
-- **Phase & Item**: Phase 3.2.2
+- **Phase & Item**: Phase 5 - Temporal Decay Scoring
 - **Target File**: Unknown (Derived from audit)
 - **Status Update Required**: ❌ ERROR / ⚠️ WARN
 

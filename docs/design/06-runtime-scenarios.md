@@ -145,7 +145,7 @@ sequenceDiagram
 
 A developer triggers extraction from VS Code, which sends a task to the api-server's generate pipeline and stores the result in KnowledgeStore.
 
-See [artifacts/vscode-client/design/command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) for the detailed command flow.
+See [docs/design/vscode-client/command-palette/run-extraction.md](vscode-client/command-palette/run-extraction.md) for the detailed command flow.
 
 - **VS Code Task Runner**: [`artifacts/vscode-client/src/TaskRunner.ts`](../../artifacts/vscode-client/src/TaskRunner.ts) (`runExtraction()`)
 - **Implementation Route**: [`artifacts/api-server/src/routes/extensions_vscode.ts`](../../artifacts/api-server/src/routes/extensions_vscode.ts) (`POST /extensions/vscode/extract`)
@@ -204,8 +204,8 @@ sequenceDiagram
 
 ## References
 
-- [artifacts/vscode-client/design/command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) – Full VS Code extraction flow
-- [artifacts/vscode-client/design/chat-participant/slash-commands.md](../../artifacts/vscode-client/design/chat-participant/slash-commands.md) – Chat participant command flows
+- [docs/design/vscode-client/command-palette/run-extraction.md](vscode-client/command-palette/run-extraction.md) – Full VS Code extraction flow
+- [docs/design/vscode-client/chat-participant/slash-commands.md](vscode-client/chat-participant/slash-commands.md) – Chat participant command flows
 - [08-crosscutting-concepts.md](08-crosscutting-concepts.md#81-domain-model) – Domain model for L1/L2/L3 entities
 
 ## Runtime Architecture Flow

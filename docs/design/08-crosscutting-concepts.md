@@ -457,7 +457,7 @@ Internal maintenance routes are strictly authenticated.
 
 - [02-constraints.md](02-constraints.md#23-conventions-coding-rules) — Constraint context for coding rules
 - [09-architectural-decisions.md](09-architectural-decisions.md#adr-005-mvc-pattern-for-ui-layers) — ADR-005 rationale for MVC decision
-- [artifacts/vscode-client/design/00-router-overview.md](../../artifacts/vscode-client/design/00-router-overview.md) — VS Code MVC application in practice
+- [docs/design/vscode-client/00-router-overview.md](vscode-client/00-router-overview.md) — VS Code MVC application in practice
 
 ## 8.7 Security Boundaries & Input Sanitization
 

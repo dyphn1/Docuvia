@@ -94,7 +94,7 @@ The following quality areas have known gaps in automated test coverage:
 - [08-crosscutting-concepts.md](08-crosscutting-concepts.md#83-coding-rules) — Coding rules that enforce maintainability
 - [11-risks-and-debt.md](11-risks-and-debt.md) — Quality risks and known gaps
 
-- [artifacts/vscode-client/design/ui-ux/user-journeys.md](../../artifacts/vscode-client/design/ui-ux/user-journeys.md) — VS Code extension user journeys and known bugs
+- [docs/design/vscode-client/ui-ux/user-journeys.md](vscode-client/ui-ux/user-journeys.md) — VS Code extension user journeys and known bugs
 
 ## Operations & Resilience
 

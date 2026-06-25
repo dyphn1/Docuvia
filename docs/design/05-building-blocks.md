@@ -113,7 +113,7 @@ All schema files reside in [`lib/db/src/schema/`](../../lib/db/src/schema/):
 
 ## 5.5 Level 2 – VS Code Extension
 
-See [artifacts/vscode-client/design/00-router-overview.md](../../artifacts/vscode-client/design/00-router-overview.md) for the authoritative routing architecture.
+See [docs/design/vscode-client/00-router-overview.md](vscode-client/00-router-overview.md) for the authoritative routing architecture.
 
 Key source files in [`artifacts/vscode-client/src/`](../../artifacts/vscode-client/src/):
 
@@ -148,7 +148,7 @@ Key source files in [`artifacts/vscode-client/src/`](../../artifacts/vscode-clie
 
 ## References
 
-- [artifacts/vscode-client/design/00-router-overview.md](../../artifacts/vscode-client/design/00-router-overview.md) – VS Code extension full routing architecture
-- [artifacts/vscode-client/design/knowledge-graph/store.md](../../artifacts/vscode-client/design/knowledge-graph/store.md) – KnowledgeStore design
+- [docs/design/vscode-client/00-router-overview.md](vscode-client/00-router-overview.md) – VS Code extension full routing architecture
+- [docs/design/vscode-client/knowledge-graph/store.md](vscode-client/knowledge-graph/store.md) – KnowledgeStore design
 - [do../roadmap/master-roadmap.md](../roadmap/master-roadmap.md) – Phase-by-phase implementation of these packages
-- [VS Code Extension Design](../../artifacts/vscode-client/design/00-router-overview.md) – VS Code extension architecture
+- [VS Code Extension Design](vscode-client/00-router-overview.md) – VS Code extension architecture

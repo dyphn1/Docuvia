@@ -60,27 +60,27 @@ The detailed Agentic OS mechanisms are codified as Architecture Decision Records
 
 ## VS Code Extension Design (Supplementary)
 
-The VS Code extension has its own detailed design documentation under [`artifacts/vscode-client/design/`](../../artifacts/vscode-client/design/). See the authoritative [00-router-overview.md](../../artifacts/vscode-client/design/00-router-overview.md) for full context.
+The VS Code extension has its own detailed design documentation under [`docs/design/vscode-client/`](vscode-client/). See the authoritative [00-router-overview.md](vscode-client/00-router-overview.md) for full context.
 
 - **Routing & Core:**
-  - [00-router-overview.md](../../artifacts/vscode-client/design/00-router-overview.md) — Extension routing architecture (authoritative)
-  - [knowledge-graph/store.md](../../artifacts/vscode-client/design/knowledge-graph/store.md) — Core Concepts: KnowledgeStore
+  - [00-router-overview.md](vscode-client/00-router-overview.md) — Extension routing architecture (authoritative)
+  - [knowledge-graph/store.md](vscode-client/knowledge-graph/store.md) — Core Concepts: KnowledgeStore
 - **Command Palette Flows:**
-  - [command-palette/init-project.md](../../artifacts/vscode-client/design/command-palette/init-project.md) — Init Project workflow
-  - [command-palette/add-decision.md](../../artifacts/vscode-client/design/command-palette/add-decision.md) — Add Decision workflow
-  - [command-palette/run-extraction.md](../../artifacts/vscode-client/design/command-palette/run-extraction.md) — Run Extraction workflow
-  - [command-palette/search.md](../../artifacts/vscode-client/design/command-palette/search.md) — Cross-Project Search workflow
+  - [command-palette/init-project.md](vscode-client/command-palette/init-project.md) — Init Project workflow
+  - [command-palette/add-decision.md](vscode-client/command-palette/add-decision.md) — Add Decision workflow
+  - [command-palette/run-extraction.md](vscode-client/command-palette/run-extraction.md) — Run Extraction workflow
+  - [command-palette/search.md](vscode-client/command-palette/search.md) — Cross-Project Search workflow
 - **Chat Participant:**
-  - [chat-participant/slash-commands.md](../../artifacts/vscode-client/design/chat-participant/slash-commands.md) — Chat Participant: @docuvia
+  - [chat-participant/slash-commands.md](vscode-client/chat-participant/slash-commands.md) — Chat Participant: @docuvia
 - **Knowledge Graph View:**
-  - [knowledge-graph/init-action.md](../../artifacts/vscode-client/design/knowledge-graph/init-action.md) — Initialization & Onboarding
-  - [knowledge-graph/nodes.md](../../artifacts/vscode-client/design/knowledge-graph/nodes.md) — Tree Nodes & Structure
+  - [knowledge-graph/init-action.md](vscode-client/knowledge-graph/init-action.md) — Initialization & Onboarding
+  - [knowledge-graph/nodes.md](vscode-client/knowledge-graph/nodes.md) — Tree Nodes & Structure
 - **UI/UX & Config:**
-  - [configuration/settings.md](../../artifacts/vscode-client/design/configuration/settings.md) — Docuvia Configuration Settings
-  - [ui-ux/user-journeys.md](../../artifacts/vscode-client/design/ui-ux/user-journeys.md) — User Journeys & Scenarios
-  - [ui-ux/editor-integration.md](../../artifacts/vscode-client/design/ui-ux/editor-integration.md) — Editor Integration (CodeLens/Hover)
-  - [ui-ux/notifications-and-prompts.md](../../artifacts/vscode-client/design/ui-ux/notifications-and-prompts.md) — Notifications & Prompts
-  - [ui-ux/webview-panels.md](../../artifacts/vscode-client/design/ui-ux/webview-panels.md) — Webview Panels
+  - [configuration/settings.md](vscode-client/configuration/settings.md) — Docuvia Configuration Settings
+  - [ui-ux/user-journeys.md](vscode-client/ui-ux/user-journeys.md) — User Journeys & Scenarios
+  - [ui-ux/editor-integration.md](vscode-client/ui-ux/editor-integration.md) — Editor Integration (CodeLens/Hover)
+  - [ui-ux/notifications-and-prompts.md](vscode-client/ui-ux/notifications-and-prompts.md) — Notifications & Prompts
+  - [ui-ux/webview-panels.md](vscode-client/ui-ux/webview-panels.md) — Webview Panels
 
 ---
 

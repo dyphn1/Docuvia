@@ -11,8 +11,8 @@
 | R-05 | `scoreCommit()` duplicated across `ingest.ts` and `github_webhooks.ts`                     | 🟢 Minor    | Logic drift between ingest and webhook filter over time                      | Extract to a shared utility module in `api-server/src/lib/`                                                                             |
 | R-06 | Markdown export format unverified (`export.ts` returns JSON only)                          | 🟢 Minor    | Roadmap specifies JSON + Markdown export; Markdown serializer may be missing | Audit `export.ts`; add Markdown serializer if absent                                                                                    |
 | R-07 | [VS Code extension](adrs/ADR-001-vscode-client-onboarding.md) has no `.vsix` build script in CI                                        | 🟡 Low      | Cannot distribute the extension via VS Code Marketplace or sideloading       | Add `vsce package` step to CI; output `.vsix` as a build artifact                                                                       |
-| R-08 | Multi-root workspace bugs in [VS Code extension](adrs/ADR-001-vscode-client-onboarding.md) (`acceptL1Tags`)                            | 🔴 Critical | Data corruption in multi-root VS Code workspaces                             | See [user-journeys.md Bugs A-1, A-2, A-3](../../artifacts/vscode-client/design/ui-ux/user-journeys.md) — active open bugs               |
-| R-09 | `TaskRunner` always writes `l2_module_id: ""` — orphaned decisions                         | 🔴 Critical | All decisions extracted via VS Code extension are unlinked from L2 modules   | See [user-journeys.md Bug B-1](../../artifacts/vscode-client/design/ui-ux/user-journeys.md) — active open bug                           |
+| R-08 | Multi-root workspace bugs in [VS Code extension](adrs/ADR-001-vscode-client-onboarding.md) (`acceptL1Tags`)                            | 🔴 Critical | Data corruption in multi-root VS Code workspaces                             | See [user-journeys.md Bugs A-1, A-2, A-3](vscode-client/ui-ux/user-journeys.md) — active open bugs               |
+| R-09 | `TaskRunner` always writes `l2_module_id: ""` — orphaned decisions                         | 🔴 Critical | All decisions extracted via VS Code extension are unlinked from L2 modules   | See [user-journeys.md Bug B-1](vscode-client/ui-ux/user-journeys.md) — active open bug                           |
 
 ---
 
@@ -33,6 +33,6 @@
 ## 11.3 References
 
 - Full Known Limitations: [Roadmap Checklist](../roadmap/roadmap_checklist.md)
-- VS Code extension active bugs: [artifacts/vscode-client/design/ui-ux/user-journeys.md](../../artifacts/vscode-client/design/ui-ux/user-journeys.md)
+- VS Code extension active bugs: [docs/design/vscode-client/ui-ux/user-journeys.md](vscode-client/ui-ux/user-journeys.md)
 - ADR-019 (pgvector migration): [adrs/ADR-019-pgvector-migration.md](adrs/ADR-019-pgvector-migration.md)
 - ADR-004 (LLM adapter): [09-architectural-decisions.md](09-architectural-decisions.md#adr-004-openai-compatible-llm-interface-only)

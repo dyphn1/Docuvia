@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist (Comprehensive Audit)
 
-|> Audited: 2026-06-26 (verification: 6.2.4 — Mutex/Concurrency fake in-memory mutex + unauthenticated tick) | Source-code verified via Agentic Exploration & Adversarial Audit
+|> Audited: 2026-07-27 (verification: 1.2.5 — SVN integration architecture drift: diffs blob-concatenated into message field) | Source-code verified via Agentic Exploration & Adversarial Audit
 > **Legend:**
 > ✅ **Done** = Implemented and Verified Functional
 > ⚠️ **WARN** = Temporarily mocked, uses a fallback, or has architectural drift
@@ -27,7 +27,7 @@
 | :--- | :--- | :--- |
 | Git ingestion (commit + diff) | ✅ Done | [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts) |
 | [Document ingestion](../design/adrs/ADR-012-document-misc-pool.md) | ✅ Done | [`document-parser.ts`](../../artifacts/api-server/src/lib/document-parser.ts) |
-| SVN integration | ⚠️ WARN | [`svn-client.ts`](../../artifacts/api-server/src/lib/svn-client.ts) (Architecture drift: diffs stored improperly) |
+| SVN integration | ⚠️ WARN | [`svn-client.ts`](../../artifacts/api-server/src/lib/svn-client.ts) (Architecture drift: diffs stored improperly; see [report 0378](reports/0378_1.2.5.md)) |
 || Build artifact parser | ❌ ERROR | [`upload.ts`](../../artifacts/api-server/src/middlewares/upload.ts) (memoryStorage mismatch corrupts artifact buffers; see [report 0375](reports/0375_1.2.4.md)) |
 
 ## [Phase 3 | Knowledge Construction Layer](master-roadmap.md#phase-1-api-server--foundation-the-metabolism-engine)

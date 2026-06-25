@@ -20,6 +20,10 @@ Establish the core infrastructure, database models (L1/L2/L3), multi-format inge
 - **No In-Memory State:** Avoid storing graph states in Node.js heap. Use [Database-as-IPC](../design/adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md).
 - **Graceful Degradation:** The pipeline must save partial results if the LLM endpoint times out.
 - **Vector Math:** Vector search must rely on [pgvector](../design/adrs/ADR-019-pgvector-migration.md), not in-memory cosine similarity (which causes OOMs at scale).
+- **Foreign Key Indexes:** Drizzle `ON DELETE CASCADE` must be explicitly paired with `.index()` definitions to prevent full table scans when deleting projects.
+- **Strict Redaction:** Pino logging must use case-insensitive, wildcard-aware redaction paths to prevent LLM API keys and Authorization headers from leaking.
+- **Metabolism Batching:** Metabolism queries must enforce `.limit()` and pagination. Unbounded queries will crash Node.js via OOM.
+- **Ingestion Security:** All git clone targets must be shielded against Command Argument Injection (using `--` boundary) and SSRF (blocking internal IP ranges).
 
 ### 📁 Involved Files
 - `lib/db/src/schema/*.ts` (projects, commits, l1_tags, l2_nodes, l3_nodes)

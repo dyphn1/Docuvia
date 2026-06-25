@@ -28,17 +28,17 @@ flowchart LR
 ## 1. The Baseline Inheritance (Nearest Ancestor)
 
 - **Implementation**: When checking out an unknown branch, the system executes `git merge-base HEAD origin/main`.
-- The client queries the server for the knowledge snapshot of this ancestor commit, instantly inheriting historical guardrails without rescanning.
+- The client queries its [Local-First SQLite cache](ADR-002-local-first-architecture.md) (falling back to the server if missing) for the knowledge snapshot of this ancestor commit, instantly inheriting historical guardrails without rescanning.
 
 ## 2. Local-Side Incremental Analysis (Knowledge Patch)
 
-- The developer only extracts new L3 decisions for the files modified in the delta between the ancestor and `HEAD`.
-- These new L3s are explicitly anchored to the Git history via Temporal Range Anchors (`introduced_in_commit` and `verified_until_commit` columns in Drizzle schema `l3NodesTable`). This eliminates JSONB array bloat.
+- The client uses the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) to extract new [L3 decisions](ADR-005-knowledge-abstraction-strategy.md) for the files modified in the delta between the ancestor and `HEAD` (via [Progressive Enrichment](ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)).
+- These new L3s are explicitly anchored to the Git history via [Temporal Range Anchors](ADR-018-temporal-and-conceptual-bidirectional-linking.md) (`introduced_in_commit` and `verified_until_commit` columns in Drizzle schema `l3NodesTable`). This eliminates JSONB array bloat.
 
 ## 3. Server-Side Incremental Merge
 
-- When patches are submitted via API, the API Server (running under distributed advisory locks to prevent split-brain) performs a standard Git 3-way merge on the orphan branch. If conflicts occur, it returns `409 Conflict`. in [`generate.ts`](../../../artifacts/api-server/src/routes/generate.ts)) simply attaches the new nodes and edges to the existing DAG.
-- **Zero-Waste Validation**: Re-evaluating the entire codebase is avoided. Every token spent produces an immutable brick anchored to a specific point in space-time in [`commitsTable` in commits.ts](../../../lib/db/src/schema/commits.ts).
+- When patches are submitted via API, the API Server synchronously writes the delta to the Outbox table using [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md). A background worker ([Asynchronous Metabolism](ADR-008-asynchronous-metabolism.md)) subsequently applies these patches to the [Orphan Branch](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md). (The legacy synchronous `409 Conflict` logic in [`generate.ts`](../../../artifacts/api-server/src/routes/generate.ts) is superseded by this async outbox pattern).
+- **Zero-Waste Validation**: Re-evaluating the entire codebase is avoided. Every token spent produces an immutable brick anchored to a specific point in space-time via [Git Blob Native Identity](ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md) in [`commitsTable` in commits.ts](../../../lib/db/src/schema/commits.ts).
 
 ## System Flow & Boundaries
 
@@ -64,7 +64,7 @@ sequenceDiagram
 
 ## Verifiability
 
-The local-first syncing mechanism and graph extraction MUST be testable without a live API server:
+The [local-first syncing mechanism](ADR-002-local-first-architecture.md) and graph extraction MUST be testable without a live API server:
 
 - **Extension Offline Resilience:** `@vscode/test-electron` test suites MUST launch the extension with the API server mocked as unreachable (503). The test MUST assert that local knowledge graph modifications successfully persist to the local SQLite cache without throwing unhandled exceptions to the user.
-- **Outbox Sync Guarantee:** API server integration tests MUST use `withRollback(...)` to insert a pending Git synchronization event into the Outbox table. A worker tick MUST assert the `git` command execution (via mocked `child_process` or equivalent) and the subsequent deletion/status-update of the Outbox row.
+- **Outbox Sync Guarantee:** API server integration tests MUST use `withRollback(...)` to insert a pending Git synchronization event into the Outbox table to verify [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md). A worker tick MUST assert the `git` command execution (via mocked `child_process` or equivalent) and the subsequent deletion/status-update of the Outbox row.

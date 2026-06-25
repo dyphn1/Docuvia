@@ -24,11 +24,11 @@ graph TD
     GH[GitHub] -->|HTTPS POST webhook| APID
 ```
 
-All three processes (`api-server`, `kg-engine` dev server, PostgreSQL) can run on the same machine. The VS Code extension is installed locally in the developer's IDE and connects to `api-server` over HTTP (configurable URL in VS Code settings).
+All three processes (`api-server`, `kg-engine` dev server, PostgreSQL) can run on the same machine. The [VS Code extension is installed locally](adrs/ADR-002-local-first-architecture.md) in the developer's IDE and connects to `api-server` over HTTP (configurable URL in VS Code settings).
 
 ### Production Considerations
 
-- `api-server` and PostgreSQL should be separated onto distinct hosts (or containers) in production.
+- `api-server` and PostgreSQL should be [separated onto distinct hosts](adrs/ADR-003-server-side-zero-to-one.md) (or containers) in production.
 - `kg-engine` static assets are served separately (Vite build produces `dist/`); static serving from `api-server` is not yet wired — see [11-risks-and-debt.md](11-risks-and-debt.md#d-03).
 - No Docker image is provided in v1; raw Node.js process deployment is expected.
 

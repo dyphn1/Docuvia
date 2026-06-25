@@ -29,7 +29,7 @@ sequenceDiagram
 
 ## 6.2 Scenario: Knowledge Generation Pipeline (Commit – L1/L2/L3)
 
-The generate pipeline transforms raw commits into structured knowledge graph nodes. It is protected by an atomic optimistic concurrency lock to prevent parallel execution conflicts.
+The generate pipeline transforms raw commits into [structured knowledge graph nodes](adrs/ADR-005-knowledge-abstraction-strategy.md). It is protected by an atomic optimistic concurrency lock to prevent parallel execution conflicts.
 
 - **Implementation Route**: [`artifacts/api-server/src/routes/generate.ts`](../../artifacts/api-server/src/routes/generate.ts) (specifically `POST /projects/:id/generate`)
 
@@ -75,9 +75,9 @@ sequenceDiagram
 
 ---
 
-## 6.3 Scenario: Agentic RAG Query (MCP)
+## 6.3 Scenario: [Agentic RAG](adrs/ADR-007-agentic-rag-routing.md) Query (MCP)
 
-An AI IDE sends a natural language query via MCP. The intent router classifies it and routes to the best retrieval strategy.
+An AI IDE sends a natural language query via MCP. The [intent router](adrs/ADR-007-agentic-rag-routing.md) classifies it and routes to the best retrieval strategy.
 
 - **Implementation Route**: [`artifacts/api-server/src/routes/mcp.ts`](../../artifacts/api-server/src/routes/mcp.ts)
 - **Orchestration Logic**: [`artifacts/api-server/src/lib/intent-router.ts`](../../artifacts/api-server/src/lib/intent-router.ts) (`routeQuery()`)
@@ -115,7 +115,7 @@ sequenceDiagram
 
 ## 6.4 Scenario: Review Task Resolution
 
-A reviewer approves an AI-generated L3 decision, creating a correction example for future pipeline runs.
+A reviewer approves an AI-generated L3 decision, creating a [correction example](adrs/ADR-006-self-evolution-architecture.md) for future pipeline runs.
 
 - **Implementation Route**: [`artifacts/api-server/src/routes/review_tasks.ts`](../../artifacts/api-server/src/routes/review_tasks.ts) (specifically `POST /review_tasks/:id/resolve`)
 

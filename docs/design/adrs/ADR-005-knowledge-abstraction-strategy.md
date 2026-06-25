@@ -30,9 +30,10 @@ flowchart TD
 - Extract `## Headers` from `CHANGELOG.md` or GitHub Releases. These are pure business L2 boundaries created by humans ($O(1)$ cost).
 - Extract CI/CD pipelines to define deployment boundaries.
 
-## 2. Degradation Fallback: VCS-Only Snapshot
+## 2. Degradation Fallback: VCS-Driven Fast Prefilter & AST Enrichment
 
-- If no releases exist, execute a lightweight `git log -n 100` and a Depth-2 directory scan, enriched locally by the [WASM Microkernel AST](ADR-020-unified-isomorphic-ast-microkernel.md) running via our [Local-First Architecture](ADR-002-local-first-architecture.md).
+- If no explicit release notes exist, the system leverages local VCS speed by executing a lightweight `git log -n 100` alongside a Depth-2 directory scan. This acts as a rapid **pre-filter** to categorize blast radius and functional clusters based on commit co-occurrence.
+- Once the blast radius is rapidly defined by Git, the [WASM Microkernel AST](ADR-020-unified-isomorphic-ast-microkernel.md) steps in under our [Local-First Architecture](ADR-002-local-first-architecture.md) to extract the deep structural context of those specific files.
 - Parse the source paths of unclassified L3 decisions (e.g., `Extracted from src/core/auth.ts`) to perform physical path aggregation leveraging [Git Blob Native Identity](ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md).
 
 ## 3. High-Density Payload Assembly (Local Map)

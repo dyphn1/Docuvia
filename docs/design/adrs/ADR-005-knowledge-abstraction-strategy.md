@@ -2,7 +2,7 @@
 
 ## Core Pain Points & Objectives
 
-Specific implementation rules (L3) are highly fragmented. We need Non-intrusive Architecture Recovery to deduce L2 modules automatically without disrupting developer flow or blowing out token limits.
+Specific implementation rules (L3) are highly fragmented. We need Non-intrusive Architecture Recovery to deduce L2 modules automatically without disrupting developer flow or blowing out token limits (see [ADR-009](ADR-009-token-management.md) and [ADR-010](ADR-010-context-compression-and-proxy.md)).
 
 ## Top-Down Archaeology Strategy
 
@@ -32,13 +32,13 @@ flowchart TD
 
 ## 2. Degradation Fallback: VCS-Only Snapshot
 
-- If no releases exist, execute a lightweight `git log -n 100` and a Depth-2 directory scan.
-- Parse the source paths of unclassified L3 decisions (e.g., `Extracted from src/core/auth.ts`) to perform physical path aggregation.
+- If no releases exist, execute a lightweight `git log -n 100` and a Depth-2 directory scan, enriched locally by the [WASM Microkernel AST](ADR-020-unified-isomorphic-ast-microkernel.md) running via our [Local-First Architecture](ADR-002-local-first-architecture.md).
+- Parse the source paths of unclassified L3 decisions (e.g., `Extracted from src/core/auth.ts`) to perform physical path aggregation leveraging [Git Blob Native Identity](ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md).
 
 ## 3. High-Density Payload Assembly (Local Map)
 
 - **DO NOT** transmit full Git logs or L3 content.
-- Only bundle extracted boundaries and L3 titles. Payload must remain under 1000 Tokens. The LLM names the clusters, and the user approves via UI drag-and-drop.
+- Only bundle extracted boundaries and L3 titles. Payload must remain under 1000 Tokens ([ADR-009](ADR-009-token-management.md)). The LLM names the clusters, and the user approves via UI drag-and-drop in the [VS Code Client](ADR-001-vscode-client-onboarding.md) (closing the [Human-in-the-Loop](ADR-006-self-evolution-architecture.md) cycle).
 
 ## Caching Topology & Query Flow
 
@@ -78,11 +78,11 @@ sequenceDiagram
 
 ### Schema Mapping & Performance
 
-This topology maps directly to our PostgreSQL database schema (managed via Drizzle ORM):
+This topology maps directly to our PostgreSQL database schema (managed via Drizzle ORM), operating through [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md) and augmented by [pgvector](ADR-019-pgvector-migration.md):
 
 - **L1 (Global Filter):** Mapped to the `l1_tags` table. Provides **O(1)** domain boundary checks to instantly reject out-of-scope queries.
 - **L2 (Module Filter):** Mapped to the `l2_nodes` table. Clusters architecture into traversable sub-graphs for localized context.
-- **L3 (Decision Cache):** Mapped to the `l3_nodes` table. Contains immutable, commit-anchored implementation rules. Database indexing allows **O(log N)** retrieval for exact or near-exact semantic matches.
+- **L3 (Decision Cache):** Mapped to the `l3_nodes` table. Contains immutable, commit-anchored implementation rules ([ADR-016](ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md)) synchronized globally via [Orphan Branch Maintenance](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md). Database indexing allows **O(log N)** retrieval for exact or near-exact semantic matches.
 
 ## Verifiability
 

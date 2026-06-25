@@ -10,7 +10,7 @@ Docuvia uses Webviews for complex data visualization that cannot be represented 
   - Must strictly use VS Code's native Webview CSS variables (`var(--vscode-editor-foreground)`, `var(--vscode-button-background)`, etc.) to ensure the panel matches the user's active theme (Light/Dark/High Contrast).
   - Avoid hardcoding colors.
 - **Interaction**:
-  - Results should clearly group by Project, L1 Tags, and L2 Modules.
+  - Results should clearly group by [Project, L1 Tags, and L2 Modules](../../adrs/ADR-005-knowledge-abstraction-strategy.md).
   - Snippets should highlight the matching keywords.
   - Clicking a result should ideally navigate to the file or open a detailed view.
 
@@ -24,7 +24,7 @@ Docuvia uses Webviews for complex data visualization that cannot be represented 
 
 ## Dashboard Panel (`DashboardPanel`)
 
-- **UX Goal**: Give an overview of Knowledge Graph health, extraction queues, and unassigned decisions.
+- **UX Goal**: Give an overview of [Knowledge Graph health](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md), [extraction queues](../../adrs/ADR-008-asynchronous-metabolism.md) (driven by the [AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md)), and unassigned decisions.
 - **Theming**: Must seamlessly integrate with the VS Code theme ecosystem, utilizing standard padding and typography variables.
 - **Responsiveness**: The layout should adapt gracefully to panel resizing or splitting editors.
 
@@ -36,13 +36,13 @@ The Dashboard Panel uses a typed message protocol for bidirectional communicatio
 
 | Message type | Payload            | When sent                                          |
 | ------------ | ------------------ | -------------------------------------------------- |
-| `update`     | `DashboardPayload` | On panel open and on every `store.onDidLoad` event |
+| `update`     | `DashboardPayload` | On panel open and on every database update event via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) |
 
 **Webview → Extension (receive)**
 
 | Message type   | Payload                | Effect                                                  |
 | -------------- | ---------------------- | ------------------------------------------------------- |
-| `openDecision` | `{ filePath: string }` | Opens the specified `.md` file in the editor            |
+| `openDecision` | `{ nodeId: string }` | Opens the specified L3 Decision from the [local SQLite database](../../adrs/ADR-002-local-first-architecture.md) in a virtual editor |
 | `openChat`     | _(none)_               | Opens GitHub Copilot Chat pre-populated with `@docuvia` |
 
 ### `DashboardPayload` Shape
@@ -52,7 +52,7 @@ interface DashboardPayload {
   tagCount: number;
   moduleCount: number;
   decisionCount: number;
-  recentDecisions: Array<{ title: string; status: string; filePath: string }>;
+  recentDecisions: Array<{ title: string; status: string; nodeId: string }>;
   topModules: Array<{ name: string; decisionCount: number }>;
   pendingTaskCount: number; // from TaskQueueTreeProvider.getPendingCount()
   inProgressTaskCount: number; // from TaskQueueTreeProvider.getInProgressCount()
@@ -61,16 +61,16 @@ interface DashboardPayload {
 }
 ```
 
-### Path Security Validation
+### Path Security Validation (Deprecated by Database-as-IPC)
 
-Before opening a file via an `openDecision` message, the extension host validates that `msg.filePath` starts with the first workspace root path (`workspaceFolders[0].uri.fsPath`). Paths that fall outside the workspace are silently rejected. This prevents a malicious webview payload from opening arbitrary files on disk.
+Previously, before opening a file via an `openDecision` message, the extension host validated that `msg.filePath` started with the workspace root. With the migration to [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) and [Local-First SQLite](../../adrs/ADR-002-local-first-architecture.md), decisions are no longer stored as `.md` files in the workspace. `openDecision` now takes a `nodeId` instead of a `filePath` to query the SQLite DB directly, rendering file path traversal vulnerabilities moot.
 
 ### Real-Time Update Wiring
 
-`DashboardPanel` subscribes to `store.onDidLoad` in its constructor:
+`DashboardPanel` subscribes to database changes via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) instead of an in-memory `store`:
 
 ```typescript
-const onDidLoadDisposable = store.onDidLoad(() => this._pushData(store.snapshot));
+const onDidLoadDisposable = dbIPC.onDatabaseUpdate(() => this._pushData(dbIPC.snapshot));
 ```
 
 The subscription is disposed when the panel is closed (`onDidDispose`), preventing memory leaks.

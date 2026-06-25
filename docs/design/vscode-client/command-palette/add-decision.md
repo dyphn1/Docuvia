@@ -6,7 +6,7 @@
   - `docuvia.addDecision` (Command Palette)
   - `docuvia.addDecisionFromSelection` (Editor Right-Click Context Menu)
 - **Title**: `Docuvia: Add Decision` / `Docuvia: Add Decision from Selection`
-- **Registration**: Implemented in [`extension.ts`](../../src/extension.ts).
+- **Registration**: Implemented in [`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts).
 
 ## Functional Flow
 
@@ -18,10 +18,10 @@ flowchart TD
     Capture --> Workspace
     Workspace --> Metadata[Prompt for Title, generate UUID & slug]
     Metadata --> L2[QuickPick of L2 Modules]
-    L2 --> Scaffold[Generate L3 Markdown with frontmatter]
-    Scaffold --> Write[Write to .docuvia/l3_decisions/{slug}.md]
-    Write --> Reload[Reload KnowledgeStore]
-    Reload --> Open[Open Markdown file in Editor]
+    L2 --> Scaffold[Generate L3 Record Payload]
+    Scaffold --> Write[Write to local SQLite & queue in SyncOutbox]
+    Write --> Reload[Trigger UI update via Database-as-IPC]
+    Reload --> Open[Open Virtual Document in Editor]
 ```
 
 1. **Selection Handling (Optional)**:
@@ -43,17 +43,17 @@ flowchart TD
    - Capture current date.
 
 4. **Module Assignment (L2)**:
-   - Load the `snapshot.modules` for the target workspace.
+   - Load the available L2 modules from the local SQLite database (`l2_nodes` table) ([ADR-005](../../adrs/ADR-005-knowledge-abstraction-strategy.md)) via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md).
    - Present a `QuickPick` of available L2 Modules.
    - Always append an option: `$(add) Create new module later... (unassigned)`. This prevents blocking users who haven't set up L2 modules yet.
 
-5. **File Generation**:
-   - Generate YAML frontmatter containing `id`, `l2_module_id`, `title`, `date`, and `status`.
-   - If the user selected `(unassigned)` during module assignment, explicitly set `l2_module_id: unassigned` in the frontmatter.
+5. **Record Generation & Storage**:
+   - Generate the L3 decision record payload containing `id`, `l2_module_id`, `title`, `date`, and `status`.
+   - If the user selected `(unassigned)` during module assignment, explicitly set `l2_module_id` to an unassigned state.
    - Generate the markdown body sections (`## Context`, `## Decision`, `## Consequences`).
    - If `prefillBody` was provided, inject it into the `## Context` section.
-   - Write the file to `.docuvia/l3_decisions/{slug}.md`.
+   - Write the record immediately to the local SQLite database (`l3_nodes` table) and queue the event in the `SyncOutbox` ([ADR-002](../../adrs/ADR-002-local-first-architecture.md)). This eventually syncs to the centralized `docuvia-knowledge` orphan branch ([ADR-017](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)).
 
 6. **Post-Action**:
-   - Force a [`KnowledgeStore`](../../src/KnowledgeStore.ts) reload to ensure the UI is immediately aware of the new file.
-   - Open the newly created markdown file in the editor so the user can finish filling it out.
+   - Trigger a UI update by querying the SQLite database via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md), deprecating the old YAML-based [`KnowledgeStore`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts) file reload.
+   - Open the newly created decision as a Virtual Document in the editor so the user can finish filling it out (edits sync back to SQLite).

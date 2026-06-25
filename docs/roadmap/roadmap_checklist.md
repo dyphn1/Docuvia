@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist (Comprehensive Audit)
 
-|> Audited: 2026-07-27 (verification: 1.2.5 — SVN integration architecture drift: diffs blob-concatenated into message field) | Source-code verified via Agentic Exploration & Adversarial Audit
+|> Audited: 2026-07-28 (feat: Batch Write Optimization — chunked batch INSERTs for AST ingestion pipeline) | Source-code verified via Agentic Exploration & Adversarial Audit
 > **Legend:**
 > ✅ **Done** = Implemented and Verified Functional
 > ⚠️ **WARN** = Temporarily mocked, uses a fallback, or has architectural drift
@@ -101,7 +101,7 @@
 | Multi-root Workspace Support | ✅ Done | `TaskRunner.ts` |
 | [Token Limits & Chunking Configs](../design/adrs/ADR-009-token-management.md) | ✅ Done | `extension.ts` |
 || `docuvia sync` Bidirectional CLI | ⚠️ WARN | [`sync.ts`](../../artifacts/api-server/src/routes/sync.ts) (CLI calls wrong endpoint; githook incompatible; see [report 0373](reports/0373_3.4.3.md)) |
-| AST Microkernel Architecture | ⚠️ WARN | [`@workspace/ast-core`](../../artifacts/ast-core/) (Core parser + Topology Mapping implemented; missing: incremental fast-path, cross-language edges, bulk-insert; see [report 0374](reports/0374_4.1.md)) |
+|| AST Microkernel Architecture | ⚠️ WARN | [`@workspace/ast-core`](../../artifacts/ast-core/) (Core parser + Topology Mapping + Edge Creation + Batch Write Optimization implemented; missing: incremental fast-path, cross-language edges; see [report 0374](reports/0374_4.1.md)) |
 | Zero-Server Deep Traversal | 🔲 TODO | Requires pure local SQLite queries |
 | Local Context Compression | 🔲 TODO | Token reduction pipeline |
 | Sub-second Incremental Watch | 🔲 TODO | Fast-path AST updates |

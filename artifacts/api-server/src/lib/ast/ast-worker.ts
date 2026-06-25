@@ -518,6 +518,21 @@ export default async function parseAst(filePath: string): Promise<ParseResult> {
   const skeleton: string[] = [];
   skeleton.push(JSON.stringify({ type: "file", path: filePath }));
 
+  // ── Emit import events for edge creation ──────────────────────────
+  // Each import is emitted as a separate event with the resolved source path.
+  // The pipeline uses these to create DEPENDS_ON links between L2 nodes.
+  for (const [localName, resolvedSource] of scopeMap.entries()) {
+    // Skip self-references and unresolved sources
+    if (!resolvedSource || resolvedSource === filePath) continue;
+    skeleton.push(
+      JSON.stringify({
+        type: "import",
+        source: resolvedSource,
+        localName,
+      })
+    );
+  }
+
   for (const cls of classDecls) {
     const nameNode = cls.childForFieldName("name") || cls.descendantsOfType("identifier")[0];
     if (nameNode) {

@@ -12,7 +12,7 @@ import { eq, and, sql, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
 
 /**
- * AST Ingestion Pipeline — Topology Mapping
+ * AST Ingestion Pipeline — Topology Mapping + Edge Creation + Batch Write Optimization
  *
  * Reads .jsonl skeleton files produced by ast-worker and writes the
  * extracted symbols into the Docuvia knowledge graph (l2_nodes, l3_nodes, node_links).
@@ -21,7 +21,19 @@ import { logger } from "./logger.js";
  *   file event   → l2_nodes (type: package | module | pcd, with pathPatterns)
  *   class event  → l3_nodes (nodeType: rule, FQN: dir::Class, under parent L2)
  *   function event → l3_nodes (nodeType: change, FQN: dir::fn, under parent L2)
- *   call / method_call → node_links (depends_on edge from caller → callee)
+ *
+ * Edge Creation (Phase 8 — Item 2):
+ *   import event → node_links (depends_on edge: importer → imported module)
+ *   call / method_call → node_links (calls edge: caller's module → callee's module)
+ *   Cross-file resolution via FQN lookup in l3_nodes + l2_nodes path patterns
+ *   Batch-inserted with deduplication for efficiency
+ *
+ * Batch Write Optimization (Phase 8 — Item 3):
+ *   Phase 1 — Stream & Collect: Read all events into typed arrays.
+ *   Phase 2 — Batch L2 Insert: Deduplicate, batch-insert new L2 nodes with .returning().
+ *   Phase 3 — Batch L3 Insert: Batch-insert all symbols with resolved l2NodeId.
+ *   Phase 4 — Batch Link Insert: Resolve all links via pre-built maps, batch-insert.
+ *   Chunked inserts (BATCH_INSERT_CHUNK = 500) to avoid parameter limit issues.
  *
  * FQN Convention:
  *   L3 nodes use directory-based namespace: `src/utils/helper.ts::MyClass`
@@ -30,15 +42,24 @@ import { logger } from "./logger.js";
  * L2 Type Classification:
  *   - package: directory containing an index file (index.ts, __init__.py, mod.rs, etc.)
  *   - module: standalone source file
- *   - pcd: pattern-matched cluster (multiple files sharing a glob pattern)
+ *   - pcd: (reserved for future pattern-based clustering)
+ *
+ * Link Types:
+ *   - depends_on: module A imports/references module B
+ *   - calls: module A's code calls a function defined in module B
  */
 
+// ── Constants ─────────────────────────────────────────────────────
+const BATCH_INSERT_CHUNK = 500; // Max rows per INSERT chunk (PostgreSQL parameter safety)
+
 interface AstEvent {
-  type: "file" | "class" | "function" | "call" | "method_call";
+  type: "file" | "class" | "function" | "call" | "method_call" | "import";
   path?: string;
   name?: string;
   method?: string;
   object?: string;
+  source?: string;
+  localName?: string;
   [key: string]: unknown;
 }
 
@@ -49,7 +70,38 @@ export interface IngestionResult {
   errors: string[];
 }
 
-// ── Index files that indicate a directory is a "package" ──────────────
+// ── Collected event structures for batch processing ──────────────
+interface FileEvent {
+  filePath: string;
+  baseName: string;
+  dirPath: string;
+  l2Type: "package" | "module" | "pcd";
+  pathPatterns: string[];
+}
+
+interface SymbolEvent {
+  name: string;
+  fqn: string;
+  filePath: string;
+  l2NodeId: number; // resolved after L2 batch insert
+  nodeType: "rule" | "change";
+}
+
+interface ImportEvent {
+  source: string;
+  localName: string;
+  importerFilePath: string;
+}
+
+interface CallEvent {
+  name: string;
+  method?: string;
+  object?: string;
+  callerFilePath: string;
+  isMethodCall: boolean;
+}
+
+// ── Index files that indicate a directory is a "package" ──────────
 const PACKAGE_INDEX_FILES = new Set([
   "index.ts",
   "index.js",
@@ -67,8 +119,6 @@ const PACKAGE_INDEX_FILES = new Set([
 /**
  * Derive a Fully Qualified Name for an L3 symbol.
  * Format: `dir1/dir2/file.ext::symbolName`
- * The file part uses forward slashes (normalized) and includes the extension
- * to disambiguate files with the same name in different directories.
  */
 function buildFqn(filePath: string, symbolName: string): string {
   const normalized = filePath.split(path.sep).join("/");
@@ -86,9 +136,6 @@ function getDirectoryPath(filePath: string): string {
 
 /**
  * Classify an L2 node type based on the file path.
- * - package: the file is an index file (marks its directory as a package)
- * - module: a regular source file
- * - pcd: (reserved for future pattern-based clustering)
  */
 function classifyL2Type(filePath: string): "package" | "module" | "pcd" {
   const baseName = filePath.split(path.sep).pop() || filePath;
@@ -100,13 +147,10 @@ function classifyL2Type(filePath: string): "package" | "module" | "pcd" {
 
 /**
  * Build a path pattern for an L2 node.
- * For a package (index file), the pattern matches all files in that directory.
- * For a module, the pattern is the file itself.
  */
 function buildPathPattern(filePath: string, l2Type: string): string[] {
   const normalized = filePath.split(path.sep).join("/");
   if (l2Type === "package") {
-    // Index file → pattern covers the directory
     const dirPath = getDirectoryPath(normalized);
     return [`${dirPath}/*`];
   }
@@ -114,8 +158,97 @@ function buildPathPattern(filePath: string, l2Type: string): string[] {
 }
 
 /**
+ * Chunk an array into smaller arrays of size `chunkSize`.
+ */
+function chunkArray<T>(arr: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += chunkSize) {
+    chunks.push(arr.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
+/**
+ * Batch-insert L2 nodes in chunks, returning all inserted nodes.
+ * Uses .onConflictDoNothing() to skip duplicates.
+ */
+async function batchInsertL2Nodes(
+  nodes: Array<{
+    projectId: number;
+    name: string;
+    type: "package" | "module" | "pcd";
+    aiGenerated: boolean;
+    needsReview: boolean;
+    description: string;
+    pathPatterns: string[];
+  }>
+): Promise<void> {
+  const chunks = chunkArray(nodes, BATCH_INSERT_CHUNK);
+  for (const chunk of chunks) {
+    await db
+      .insert(l2NodesTable)
+      .values(chunk)
+      .onConflictDoNothing();
+  }
+}
+
+/**
+ * Batch-insert L3 nodes in chunks, returning inserted IDs via .returning().
+ */
+async function batchInsertL3Nodes(
+  nodes: Array<{
+    l2NodeId: number;
+    title: string;
+    nodeType: "rule" | "change";
+    aiGenerated: boolean;
+    source: string;
+    content: string;
+  }>
+): Promise<Array<{ id: number; l2NodeId: number; title: string }>> {
+  const allInserted: Array<{ id: number; l2NodeId: number; title: string }> = [];
+  const chunks = chunkArray(nodes, BATCH_INSERT_CHUNK);
+  for (const chunk of chunks) {
+    const inserted = await db
+      .insert(l3NodesTable)
+      .values(chunk)
+      .onConflictDoNothing()
+      .returning({ id: l3NodesTable.id, l2NodeId: l3NodesTable.l2NodeId, title: l3NodesTable.title });
+    allInserted.push(...inserted);
+  }
+  return allInserted;
+}
+
+/**
+ * Batch-insert node links in chunks with deduplication.
+ */
+async function batchInsertLinks(
+  links: Array<{
+    sourceNodeId: number;
+    targetNodeId: number;
+    linkType: "depends_on" | "calls";
+  }>
+): Promise<number> {
+  if (links.length === 0) return 0;
+  const chunks = chunkArray(links, BATCH_INSERT_CHUNK);
+  let inserted = 0;
+  for (const chunk of chunks) {
+    await db
+      .insert(nodeLinksTable)
+      .values(chunk)
+      .onConflictDoNothing();
+    inserted += chunk.length;
+  }
+  return inserted;
+}
+
+/**
  * Ingest a single .jsonl skeleton file into the database.
- * Each file represents one source file's AST extraction.
+ *
+ * Uses batch write optimization:
+ * 1. Stream-read all events into memory (typed arrays)
+ * 2. Batch-insert L2 nodes (deduped by path)
+ * 3. Batch-insert L3 nodes (all symbols with resolved L2 parent)
+ * 4. Batch-insert links (resolved via pre-built maps)
  *
  * @param jsonlPath - Path to the .jsonl file produced by ast-worker
  * @param projectId - The project ID to associate nodes with
@@ -131,34 +264,20 @@ export async function ingestAstJsonl(
     errors: [],
   };
 
-  const fileStream = fs.createReadStream(jsonlPath, { encoding: "utf-8" });
-  const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
+  // ══════════════════════════════════════════════════════════════════
+  // Phase 1: Stream & Collect all events
+  // ══════════════════════════════════════════════════════════════════
+  const fileEvents: FileEvent[] = [];
+  const classEvents: SymbolEvent[] = [];
+  const functionEvents: SymbolEvent[] = [];
+  const importEvents: ImportEvent[] = [];
+  const callEvents: CallEvent[] = [];
 
-  let currentL2Id: number | null = null;
+  // Track file path for events that don't have their own path field
   let currentFilePath: string | null = null;
 
-  // FQN → L3 ID mapping for link resolution within this file
-  const fqnToL3Id = new Map<string, number>();
-
-  // Simple name → L3 ID (fallback for unqualified calls)
-  const nameToL3Id = new Map<string, number>();
-
-  // Track all L3 nodes created in this file for link resolution
-  const allL3Nodes: { id: number; name: string; fqn: string; l2NodeId: number }[] = [];
-
-  // Collect all L2 and L3 inserts for batch processing
-  const pendingL2Inserts: Array<{
-    projectId: number;
-    name: string;
-    type: "package" | "module" | "pcd";
-    aiGenerated: boolean;
-    needsReview: boolean;
-    description: string;
-    pathPatterns: string[];
-  }> = [];
-
-  // Track which file paths we've already processed in this run
-  const processedFilePaths = new Set<string>();
+  const fileStream = fs.createReadStream(jsonlPath, { encoding: "utf-8" });
+  const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
 
   for await (const line of rl) {
     if (!line.trim()) continue;
@@ -172,7 +291,6 @@ export async function ingestAstJsonl(
     }
 
     try {
-      // ── File → L2 Node ──────────────────────────────────────────
       if (event.type === "file") {
         const filePath = event.path as string;
         if (!filePath) {
@@ -180,183 +298,408 @@ export async function ingestAstJsonl(
           continue;
         }
         currentFilePath = filePath;
-
-        // Skip if we've already processed this file in this batch
-        if (processedFilePaths.has(filePath)) continue;
-        processedFilePaths.add(filePath);
-
         const baseName = filePath.split(/[/\\]/).pop() || filePath;
         const dirPath = getDirectoryPath(filePath);
         const l2Type = classifyL2Type(filePath);
         const pathPatterns = buildPathPattern(filePath, l2Type);
+        fileEvents.push({ filePath, baseName, dirPath, l2Type, pathPatterns });
+      }
 
-        // Check if an L2 node already exists for this file (by path pattern match)
-        const existingNodes = await db
-          .select()
-          .from(l2NodesTable)
-          .where(
-            and(
-              eq(l2NodesTable.projectId, projectId),
-              eq(l2NodesTable.name, baseName)
-            )
-          );
-
-        // Find the best match: prefer one with matching path pattern
-        let matchedL2 = existingNodes.find((n) => {
-          if (!n.pathPatterns) return false;
-          const patterns = Array.isArray(n.pathPatterns) ? n.pathPatterns as string[] : [];
-          return patterns.some((p) => p === pathPatterns[0] || p === filePath);
-        });
-
-        // If no pattern match, use the first one with the same base name
-        if (!matchedL2 && existingNodes.length > 0) {
-          matchedL2 = existingNodes[0];
-        }
-
-        if (matchedL2) {
-          currentL2Id = matchedL2.id;
-        } else {
-          const [newNode] = await db
-            .insert(l2NodesTable)
-            .values({
-              projectId,
-              name: baseName,
-              type: l2Type,
-              aiGenerated: true,
-              needsReview: true,
-              description: `AST parsed from ${filePath}`,
-              pathPatterns,
-            })
-            .returning();
-
-          currentL2Id = newNode.id;
-          result.l2Created++;
+      if (event.type === "import") {
+        const importSource = event.source as string;
+        if (importSource && currentFilePath) {
+          importEvents.push({
+            source: importSource,
+            localName: (event.localName as string) || "",
+            importerFilePath: currentFilePath,
+          });
         }
       }
 
-      // ── Class → L3 Node ─────────────────────────────────────────
-      if (event.type === "class" && currentL2Id !== null) {
-        const className = event.name as string;
-        if (!className) continue;
-
-        const filePath = currentFilePath || "unknown";
-        const fqn = buildFqn(filePath, className);
-
-        const [newL3] = await db
-          .insert(l3NodesTable)
-          .values({
-            l2NodeId: currentL2Id,
-            title: className,
+      if (event.type === "class") {
+        const name = event.name as string;
+        if (name && currentFilePath) {
+          classEvents.push({
+            name,
+            fqn: buildFqn(currentFilePath, name),
+            filePath: currentFilePath,
+            l2NodeId: 0, // resolved after L2 batch insert
             nodeType: "rule",
-            aiGenerated: true,
-            source: "ast",
-            content: `Class definition: ${fqn}`,
-          })
-          .returning();
-
-        fqnToL3Id.set(fqn, newL3.id);
-        nameToL3Id.set(className, newL3.id);
-        allL3Nodes.push({ id: newL3.id, name: className, fqn, l2NodeId: currentL2Id });
-        result.l3Created++;
+          });
+        }
       }
 
-      // ── Function → L3 Node ──────────────────────────────────────
-      if (event.type === "function" && currentL2Id !== null) {
-        const fnName = event.name as string;
-        if (!fnName) continue;
-
-        const filePath = currentFilePath || "unknown";
-        const fqn = buildFqn(filePath, fnName);
-
-        const [newL3] = await db
-          .insert(l3NodesTable)
-          .values({
-            l2NodeId: currentL2Id,
-            title: fnName,
+      if (event.type === "function") {
+        const name = event.name as string;
+        if (name && currentFilePath) {
+          functionEvents.push({
+            name,
+            fqn: buildFqn(currentFilePath, name),
+            filePath: currentFilePath,
+            l2NodeId: 0, // resolved after L2 batch insert
             nodeType: "change",
-            aiGenerated: true,
-            source: "ast",
-            content: `Function definition: ${fqn}`,
-          })
-          .returning();
-
-        fqnToL3Id.set(fqn, newL3.id);
-        nameToL3Id.set(fnName, newL3.id);
-        allL3Nodes.push({ id: newL3.id, name: fnName, fqn, l2NodeId: currentL2Id });
-        result.l3Created++;
+          });
+        }
       }
 
-      // ── Call / Method Call → Node Link ──────────────────────────
       if (event.type === "call" || event.type === "method_call") {
-        if (allL3Nodes.length === 0) continue;
-
         const callName = (event.name || event.method || "") as string;
-        if (!callName) continue;
-
-        // The last function/class defined in this file is the caller
-        const caller = allL3Nodes[allL3Nodes.length - 1];
-
-        // Try to resolve the callee by FQN first, then by simple name
-        let targetL3Id = fqnToL3Id.get(callName) || nameToL3Id.get(callName);
-
-        // If not found locally, try to resolve via scope map format (module::symbol)
-        if (!targetL3Id) {
-          const parts = callName.split("::");
-          if (parts.length >= 2) {
-            // Try the full call name as FQN
-            targetL3Id = fqnToL3Id.get(callName);
-            // Try just the symbol name (last part)
-            if (!targetL3Id) {
-              const simpleName = parts[parts.length - 1];
-              targetL3Id = nameToL3Id.get(simpleName);
-            }
-          }
-        }
-
-        // If still not found, try cross-file resolution via DB
-        if (!targetL3Id) {
-          const simpleName = callName.split("::").pop()?.split(".").pop() || callName;
-          const [targetL3] = await db
-            .select()
-            .from(l3NodesTable)
-            .where(eq(l3NodesTable.title, simpleName))
-            .limit(1);
-
-          if (targetL3) {
-            targetL3Id = targetL3.id;
-          }
-        }
-
-        if (targetL3Id && targetL3Id !== caller.id) {
-          try {
-            // node_links references l2_nodes, so we create an L2-level dependency
-            // from caller's module to the callee's module
-            const [targetL3Node] = await db
-              .select()
-              .from(l3NodesTable)
-              .where(eq(l3NodesTable.id, targetL3Id))
-              .limit(1);
-
-            if (targetL3Node && targetL3Node.l2NodeId !== caller.l2NodeId) {
-              await db
-                .insert(nodeLinksTable)
-                .values({
-                  sourceNodeId: caller.l2NodeId,
-                  targetNodeId: targetL3Node.l2NodeId,
-                  linkType: "depends_on",
-                })
-                .onConflictDoNothing();
-              result.linksCreated++;
-            }
-          } catch (linkErr: any) {
-            if (!linkErr.message?.includes("duplicate")) {
-              result.errors.push(`Link error: ${linkErr.message}`);
-            }
-          }
+        if (callName && currentFilePath) {
+          callEvents.push({
+            name: callName,
+            method: event.method as string | undefined,
+            object: event.object as string | undefined,
+            callerFilePath: currentFilePath,
+            isMethodCall: event.type === "method_call",
+          });
         }
       }
     } catch (err: any) {
-      result.errors.push(`Event processing error (${event.type}): ${err.message}`);
+      result.errors.push(`Event collection error (${event.type}): ${err.message}`);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // Phase 2: Batch L2 Node Insertion
+  // Deduplicate by filePath, then batch-insert new nodes.
+  // ══════════════════════════════════════════════════════════════════
+
+  // Deduplicate file events by filePath (keep first occurrence)
+  const seenFilePaths = new Set<string>();
+  const uniqueFileEvents: FileEvent[] = [];
+  for (const fe of fileEvents) {
+    if (!seenFilePaths.has(fe.filePath)) {
+      seenFilePaths.add(fe.filePath);
+      uniqueFileEvents.push(fe);
+    }
+  }
+
+  // Check which L2 nodes already exist for this project
+  const existingL2Nodes = await db
+    .select()
+    .from(l2NodesTable)
+    .where(eq(l2NodesTable.projectId, projectId));
+
+  // Build lookup: pathPattern → existing L2 node
+  const pathToL2Id = new Map<string, number>();
+  const nameToL2Ids = new Map<string, number[]>(); // baseName → [id, ...]
+
+  for (const node of existingL2Nodes) {
+    nameToL2Ids.set(node.name, [...(nameToL2Ids.get(node.name) || []), node.id]);
+    if (node.pathPatterns) {
+      const patterns = Array.isArray(node.pathPatterns) ? node.pathPatterns as string[] : [];
+      for (const p of patterns) {
+        pathToL2Id.set(p, node.id);
+      }
+    }
+  }
+
+  // Determine which file events need new L2 nodes
+  const toInsert: FileEvent[] = [];
+  const filePathToL2Id = new Map<string, number>(); // filePath → L2 ID (new or existing)
+
+  for (const fe of uniqueFileEvents) {
+    // Check if an L2 node already matches this file's path pattern
+    const existingId = pathToL2Id.get(fe.pathPatterns[0]) || pathToL2Id.get(fe.filePath);
+    if (existingId) {
+      filePathToL2Id.set(fe.filePath, existingId);
+    } else {
+      // Check by name + path pattern match
+      const candidates = nameToL2Ids.get(fe.baseName);
+      let matched = false;
+      if (candidates) {
+        for (const candId of candidates) {
+          const candNode = existingL2Nodes.find((n) => n.id === candId);
+          if (candNode?.pathPatterns) {
+            const patterns = Array.isArray(candNode.pathPatterns) ? candNode.pathPatterns as string[] : [];
+            if (patterns.some((p) => p === fe.pathPatterns[0] || p === fe.filePath)) {
+              filePathToL2Id.set(fe.filePath, candId);
+              matched = true;
+              break;
+            }
+          }
+        }
+        if (!matched && candidates.length > 0) {
+          // Fallback: use first candidate with same name
+          filePathToL2Id.set(fe.filePath, candidates[0]);
+          matched = true;
+        }
+      }
+      if (!matched) {
+        toInsert.push(fe);
+      }
+    }
+  }
+
+  // Batch-insert new L2 nodes
+  if (toInsert.length > 0) {
+    const insertValues = toInsert.map((fe) => ({
+      projectId,
+      name: fe.baseName,
+      type: fe.l2Type,
+      aiGenerated: true,
+      needsReview: true,
+      description: `AST parsed from ${fe.filePath}`,
+      pathPatterns: fe.pathPatterns,
+    }));
+
+    // Insert in chunks with .returning() to get IDs
+    const chunks = chunkArray(insertValues, BATCH_INSERT_CHUNK);
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex];
+      const inserted = await db
+        .insert(l2NodesTable)
+        .values(chunk)
+        .onConflictDoNothing()
+        .returning({ id: l2NodesTable.id, name: l2NodesTable.name });
+
+      // Map inserted nodes back to file paths by name + chunk position
+      for (const insertedNode of inserted) {
+        // Find the matching event by name (within this chunk's corresponding toInsert slice)
+        const startIdx = chunkIndex * BATCH_INSERT_CHUNK;
+        const chunkEvents = toInsert.slice(startIdx, startIdx + BATCH_INSERT_CHUNK);
+        const matchingEvent = chunkEvents.find(
+          (fe) => fe.baseName === insertedNode.name && !filePathToL2Id.has(fe.filePath)
+        );
+        if (matchingEvent) {
+          filePathToL2Id.set(matchingEvent.filePath, insertedNode.id);
+          pathToL2Id.set(matchingEvent.pathPatterns[0], insertedNode.id);
+        }
+      }
+    }
+
+    // For any that conflicted (not returned), look them up by path pattern
+    const unresolvedFiles = toInsert.filter((fe) => !filePathToL2Id.has(fe.filePath));
+    if (unresolvedFiles.length > 0) {
+      // Re-query to get the IDs of nodes that already existed
+      const allPatterns = unresolvedFiles.flatMap((fe) => fe.pathPatterns);
+      // Use a single query with OR conditions for all unresolved patterns
+      const conditions = allPatterns.map((p) =>
+        sql`${l2NodesTable.pathPatterns}::text LIKE ${`%${p}%`}`
+      );
+      const combinedCondition = conditions.length === 1 ? conditions[0] : sql.join(conditions, sql` OR `);
+      const reloaded = await db
+        .select()
+        .from(l2NodesTable)
+        .where(
+          and(
+            eq(l2NodesTable.projectId, projectId),
+            combinedCondition
+          )
+        );
+
+      for (const fe of unresolvedFiles) {
+        const match = reloaded.find((n) => {
+          if (!n.pathPatterns) return false;
+          const patterns = Array.isArray(n.pathPatterns) ? n.pathPatterns as string[] : [];
+          return patterns.some((p) => p === fe.pathPatterns[0] || p === fe.filePath);
+        });
+        if (match) {
+          filePathToL2Id.set(fe.filePath, match.id);
+        }
+      }
+    }
+
+    result.l2Created = toInsert.length;
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // Phase 3: Batch L3 Node Insertion
+  // Resolve l2NodeId for all symbols, then batch-insert.
+  // ══════════════════════════════════════════════════════════════════
+
+  const allSymbolEvents = [...classEvents, ...functionEvents];
+
+  // Resolve l2NodeId for each symbol event
+  for (const sym of allSymbolEvents) {
+    const l2Id = filePathToL2Id.get(sym.filePath);
+    if (l2Id) {
+      sym.l2NodeId = l2Id;
+    }
+  }
+
+  // Filter out symbols without a valid l2NodeId
+  const validSymbols = allSymbolEvents.filter((s) => s.l2NodeId > 0);
+
+  // Batch-insert L3 nodes
+  let l3InsertedIds: Array<{ id: number; l2NodeId: number; title: string }> = [];
+  if (validSymbols.length > 0) {
+    const insertValues = validSymbols.map((sym) => ({
+      l2NodeId: sym.l2NodeId,
+      title: sym.name,
+      nodeType: sym.nodeType,
+      aiGenerated: true,
+      source: "ast",
+      content: `${sym.nodeType === "rule" ? "Class" : "Function"} definition: ${sym.fqn}`,
+    }));
+
+    l3InsertedIds = [];
+    const chunks = chunkArray(insertValues, BATCH_INSERT_CHUNK);
+    for (const chunk of chunks) {
+      const inserted = await db
+        .insert(l3NodesTable)
+        .values(chunk)
+        .onConflictDoNothing()
+        .returning({ id: l3NodesTable.id, l2NodeId: l3NodesTable.l2NodeId, title: l3NodesTable.title });
+      l3InsertedIds.push(...inserted);
+    }
+
+    result.l3Created = validSymbols.length;
+  }
+
+  // Build FQN → L3 ID and name → L3 ID maps for link resolution
+  const fqnToL3Id = new Map<string, number>();
+  const nameToL3Id = new Map<string, number>();
+  const l3IdToL2Id = new Map<number, number>();
+
+  // First, add newly inserted L3 nodes
+  for (const inserted of l3InsertedIds) {
+    nameToL3Id.set(inserted.title, inserted.id);
+    l3IdToL2Id.set(inserted.id, inserted.l2NodeId);
+  }
+
+  // Also load existing L3 nodes for this project (for cross-file link resolution)
+  const existingL3Nodes = await db
+    .select({
+      id: l3NodesTable.id,
+      title: l3NodesTable.title,
+      l2NodeId: l3NodesTable.l2NodeId,
+    })
+    .from(l3NodesTable)
+    .innerJoin(
+      l2NodesTable,
+      eq(l3NodesTable.l2NodeId, l2NodesTable.id)
+    )
+    .where(eq(l2NodesTable.projectId, projectId));
+
+  for (const node of existingL3Nodes) {
+    if (!nameToL3Id.has(node.title)) {
+      nameToL3Id.set(node.title, node.id);
+    }
+    l3IdToL2Id.set(node.id, node.l2NodeId);
+  }
+
+  // Build FQN map from valid symbols (for within-file resolution)
+  for (const sym of validSymbols) {
+    fqnToL3Id.set(sym.fqn, 0); // placeholder, will be resolved from existingL3Nodes or l3InsertedIds
+  }
+  // Map FQNs to actual IDs from inserted nodes
+  for (let i = 0; i < validSymbols.length && i < l3InsertedIds.length; i++) {
+    fqnToL3Id.set(validSymbols[i].fqn, l3InsertedIds[i]?.id || 0);
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // Phase 4: Batch Link Insertion
+  // Resolve all imports and calls using pre-built maps.
+  // ══════════════════════════════════════════════════════════════════
+
+  const pendingLinks: Array<{
+    sourceNodeId: number;
+    targetNodeId: number;
+    linkType: "depends_on" | "calls";
+  }> = [];
+  const seenLinks = new Set<string>(); // "source:target:type" for dedup
+
+  function queueLink(
+    sourceNodeId: number,
+    targetNodeId: number,
+    linkType: "depends_on" | "calls"
+  ): void {
+    if (sourceNodeId === targetNodeId) return;
+    const key = `${sourceNodeId}:${targetNodeId}:${linkType}`;
+    if (seenLinks.has(key)) return;
+    seenLinks.add(key);
+    pendingLinks.push({ sourceNodeId, targetNodeId, linkType });
+  }
+
+  // ── Resolve imports ────────────────────────────────────────────
+  for (const imp of importEvents) {
+    const sourceL2Id = filePathToL2Id.get(imp.importerFilePath);
+    if (!sourceL2Id) continue;
+
+    // Resolve import target to L2 ID
+    let targetL2Id: number | null = null;
+    const currentDir = getDirectoryPath(imp.importerFilePath);
+
+    if (imp.source.startsWith("./") || imp.source.startsWith("../")) {
+      // Relative import — resolve to file path
+      const resolvedPath = path.resolve(currentDir, imp.source);
+      // Try to find matching L2 by path pattern
+      for (const [pattern, id] of pathToL2Id) {
+        if (pattern.includes(resolvedPath) || resolvedPath.includes(pattern.replace("/*", ""))) {
+          targetL2Id = id;
+          break;
+        }
+      }
+      // Try with extensions
+      if (!targetL2Id) {
+        const extensions = [".ts", ".tsx", ".js", ".jsx", ".py", ".rs", ".go", ".java", ".rb", ".php", ".cs"];
+        for (const ext of extensions) {
+          const candidate = resolvedPath + ext;
+          for (const [pattern, id] of pathToL2Id) {
+            if (pattern.includes(candidate) || candidate.includes(pattern.replace("/*", ""))) {
+              targetL2Id = id;
+              break;
+            }
+          }
+          if (targetL2Id) break;
+        }
+      }
+    } else {
+      // Package import — try to find by path pattern match
+      for (const [pattern, id] of pathToL2Id) {
+        if (pattern.includes(imp.source)) {
+          targetL2Id = id;
+          break;
+        }
+      }
+    }
+
+    if (targetL2Id && targetL2Id !== sourceL2Id) {
+      queueLink(sourceL2Id, targetL2Id, "depends_on");
+    }
+  }
+
+  // ── Resolve calls ──────────────────────────────────────────────
+  for (const call of callEvents) {
+    const callerL2Id = filePathToL2Id.get(call.callerFilePath);
+    if (!callerL2Id) continue;
+
+    // Try to resolve callee by FQN first, then by simple name
+    let targetL3Id = fqnToL3Id.get(call.name) || nameToL3Id.get(call.name);
+
+    // If not found locally, try scope map format (module::symbol)
+    if (!targetL3Id) {
+      const parts = call.name.split("::");
+      if (parts.length >= 2) {
+        targetL3Id = fqnToL3Id.get(call.name);
+        if (!targetL3Id) {
+          const simpleName = parts[parts.length - 1];
+          targetL3Id = nameToL3Id.get(simpleName);
+        }
+      }
+    }
+
+    // Cross-file resolution: look up by title in DB
+    if (!targetL3Id) {
+      const simpleName = call.name.split("::").pop()?.split(".").pop() || call.name;
+      targetL3Id = nameToL3Id.get(simpleName);
+    }
+
+    if (targetL3Id) {
+      const targetL2Id = l3IdToL2Id.get(targetL3Id);
+      if (targetL2Id && targetL2Id !== callerL2Id) {
+        queueLink(callerL2Id, targetL2Id, "calls");
+      }
+    }
+  }
+
+  // Batch-insert all links
+  if (pendingLinks.length > 0) {
+    try {
+      result.linksCreated = await batchInsertLinks(pendingLinks);
+    } catch (batchErr: any) {
+      result.errors.push(`Batch link insert error: ${batchErr.message}`);
     }
   }
 
@@ -371,7 +714,7 @@ export async function ingestAstJsonl(
 
   logger.info(
     { projectId, jsonlPath, result },
-    "AST ingestion completed"
+    "AST ingestion completed (batch optimized)"
   );
 
   return result;
@@ -392,15 +735,15 @@ export async function ingestAstBatch(
     errors: [],
   };
 
-  for (const path of jsonlPaths) {
+  for (const jsonlPath of jsonlPaths) {
     try {
-      const result = await ingestAstJsonl(path, projectId);
+      const result = await ingestAstJsonl(jsonlPath, projectId);
       aggregated.l2Created += result.l2Created;
       aggregated.l3Created += result.l3Created;
       aggregated.linksCreated += result.linksCreated;
       aggregated.errors.push(...result.errors);
     } catch (err: any) {
-      aggregated.errors.push(`Failed to ingest ${path}: ${err.message}`);
+      aggregated.errors.push(`Failed to ingest ${jsonlPath}: ${err.message}`);
     }
   }
 

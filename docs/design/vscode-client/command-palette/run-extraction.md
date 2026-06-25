@@ -3,8 +3,8 @@
 ## Command Details
 
 - **Command ID**: `docuvia.runExtraction`
-- **Title**: `Docuvia: Run L3 Extraction on Active File`
-- **Activation Context**: Command Palette, Editor Context Menu (`editorIsOpen`) (registered in [`extension.ts`](../../src/extension.ts)).
+- **Title**: `Docuvia: Run L3 Extraction on Active File` (see [ADR-005: Three-tier knowledge graph](../../adrs/ADR-005-knowledge-abstraction-strategy.md))
+- **Activation Context**: Command Palette, Editor Context Menu (`editorIsOpen`) (registered in [`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts)).
 
 ## Functional Flow
 
@@ -14,21 +14,22 @@ sequenceDiagram
     participant VSC as VS Code Extension
     participant TR as TaskRunner
     participant LM as VS Code Language Model (LM) API
-    participant FS as File System (.docuvia/)
+    participant DB as SQLite DB (Database-as-IPC)
+    participant OB as Orphan Branch
     participant KS as KnowledgeStore
 
     Dev->>VSC: Run docuvia.runExtraction
     VSC->>VSC: Validate context & file size
     VSC->>TR: TaskRunner.queueExtraction(file)
-    TR->>TR: Chunk content (line/AST strategy)
+    TR->>TR: Chunk content (AST Microkernel)
     loop For each chunk
         TR->>LM: sendRequest(prompt, chunk)
         LM-->>TR: YAML string of decisions
     end
     TR->>TR: Parse YAML, generate UUIDs and slugs
-    TR->>FS: Write decisions to .docuvia/l3_decisions/<slug>.md
-    TR->>FS: Append entries to .docuvia/l3_router.yaml
-    TR->>KS: KnowledgeStore.load()
+    TR->>DB: Insert decisions into l3_nodes SQLite table
+    TR->>OB: Sync to docuvia-knowledge orphan branch
+    DB-->>KS: KnowledgeStore auto-updates via IPC
     KS-->>VSC: Tree Provider refresh
 ```
 
@@ -46,11 +47,11 @@ sequenceDiagram
    - Reads the `docuvia.extraction.maxFileSizeKBWarning` configuration (default 50).
    - If the file's line count exceeds the max lines **OR** the file's byte size exceeds the max KB, prompt the user with a warning: "This file is very large... We recommend selecting a specific block using 'Add Decision from Selection'... Proceed anyway?". Can be aborted.
 
-   > ⚠️ **CONFLICT**: The current implementation ([`extension.ts`](../../src/extension.ts) -> `runExtraction()`) only checks the **line count** against `maxLinesWarning`. The KB size check against `maxFileSizeKBWarning` is **not implemented**. Additionally, `docuvia.extraction.maxFileSizeKBWarning` is absent from [`package.json`](../../package.json)'s `contributes.configuration`. Both gaps are scheduled for Round 2.
+   > ⚠️ **CONFLICT**: The current implementation ([`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts) -> `runExtraction()`) only checks the **line count** against `maxLinesWarning`. The KB size check against `maxFileSizeKBWarning` is **not implemented**. Additionally, `docuvia.extraction.maxFileSizeKBWarning` is absent from [`package.json`](../../../../artifacts/vscode-client/package.json)'s `contributes.configuration`. Both gaps are scheduled for Round 2.
 
 4. **Task Dispatching**:
    - Creates a `CancellationTokenSource` linked to the task.
-   - Enqueues the task via [`TaskRunner.ts`](../../src/TaskRunner.ts) -> `queueExtraction` passing the file content, source path, and token.
+   - Enqueues the task via [`TaskRunner.ts`](../../../../artifacts/vscode-client/src/TaskRunner.ts) -> `queueExtraction` (see [ADR-008: Asynchronous Metabolism](../../adrs/ADR-008-asynchronous-metabolism.md)) passing the file content, source path, and token.
    - Shows a toast notification: "Extraction task queued. Check Task Queue panel."
 
 ---
@@ -65,10 +66,10 @@ After the task is enqueued, `TaskRunner.runExtractionAsync` processes the file a
 
 ### 2. Content Chunking
 
-The file content is split into chunks by `TaskRunner.chunkContent()`. The strategy is determined by `globalConfig.chunking_strategy`:
+The file content is split into chunks by `TaskRunner.chunkContent()`. The strategy is now governed by the [Isomorphic AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md) to respect [Token Management](../../adrs/ADR-009-token-management.md) limits:
 
-- **`'line'`** (default): Accumulates lines until the chunk would exceed **4,000 characters** (`CHUNK_SIZE = 4000`), then starts a new chunk.
-- **`'ast'`**: Falls back to line chunking with a log message – AST-based chunking is marked as a `TODO` (not yet implemented).
+- **`'line'`**: Legacy fallback. Accumulates lines until the chunk would exceed **4,000 characters** (`CHUNK_SIZE = 4000`), then starts a new chunk.
+- **`'ast'`** (default): Leverages the AST Microkernel to chunk by logical semantic blocks (functions, classes, etc.) for optimal [Context Compression](../../adrs/ADR-010-context-compression-and-proxy.md).
 
 ### 3. YAML Extraction Prompt (per chunk)
 
@@ -79,13 +80,13 @@ For each chunk, `TaskRunner.processChunk()` sends two messages to the LM:
 
 The raw LM response is stripped of any surrounding YAML fences (` ```yaml ` / ` ``` `) before use. If the cleaned result is `[]` or empty, the chunk produces no decisions.
 
-### 4. Output Parsing & File Writes
+### 4. Output Parsing & Database Writes
 
-After all chunks are processed, `TaskRunner.writeExtractionResults()`:
+Following [ADR-014 (Database-as-IPC)](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) and [ADR-002 (Local-First Architecture)](../../adrs/ADR-002-local-first-architecture.md), file-based writes to `.docuvia/` are obsolete. After all chunks are processed, `TaskRunner.writeExtractionResults()`:
 
-1. Generates a UUID and a slug (`<source-basename>-extracted-<N>`) for each extracted decision YAML block.
-2. Writes a new Markdown file to `.docuvia/l3_decisions/<slug>.md` with YAML frontmatter (`id`, `l2_module_id: ""`, `title`, `date`, `status: "proposed"`) and the raw YAML block as the body.
-3. Appends the new entries to `.docuvia/l3_router.yaml` (reads existing entries first, merges, and overwrites).
-4. Calls `store.load()` (in [`KnowledgeStore.ts`](../../src/KnowledgeStore.ts)) to immediately reflect the new decisions in the Knowledge Graph tree view.
+1. Generates a UUID and a slug (`<source-basename>-extracted-<N>`) for each extracted decision block.
+2. Executes an `INSERT` statement into the local SQLite database's `l3_nodes` table, capturing `id`, `l2_module_id: null`, `title`, `date`, and `status: "proposed"`.
+3. Defers to the background worker to sync changes to the [Git-Isomorphic Graph](../../adrs/ADR-004-git-isomorphic-graph.md) via the [Orphan Branch Maintenance](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) routine.
+4. The `KnowledgeStore` (in [`KnowledgeStore.ts`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts)) natively reflects changes via SQLite database queries, triggering a Tree Provider refresh.
 
-> **Note**: All writes go to `workspaceFolders[0]` – multi-root workspace support for extraction output is not yet implemented.
+> **Note**: Database writes use the shared workspace SQLite file, seamlessly supporting multi-root workspaces without the limitations of `workspaceFolders[0]` file I/O.

@@ -2,7 +2,9 @@
 
 ## Singleton Architecture
 
-[`KnowledgeStore`](../../src/KnowledgeStore.ts) acts as the single source of truth for all Docuvia Knowledge Graph data loaded into the current VS Code instance.
+[`KnowledgeStore`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts) acts as the single source of truth for all Docuvia Knowledge Graph data loaded into the current VS Code instance.
+
+> **Note on Architecture Evolution:** This file describes the initial in-memory singleton design. Under the new Local-First Architecture ([ADR-002](../../adrs/ADR-002-local-first-architecture.md)), the system is moving towards an [AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md) utilizing a local SQLite database for persistence and inter-process communication ([ADR-014 Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)).
 
 ## Multi-Root Workspace Support
 
@@ -10,9 +12,9 @@ The store maintains a `Map<string, KnowledgeGraphSnapshot>`, mapping `workspaceR
 
 ## Key Methods
 
-- `load()`: Iterates over `vscode.workspace.workspaceFolders`. For each folder, checks if `.docuvia` exists. If so, parses `l1_tags.yaml`, `l2_modules.yaml`, `l3_router.yaml`, and the markdown files in `l3_decisions/`.
+- `load()`: Iterates over `vscode.workspace.workspaceFolders`. For each folder, checks if `.docuvia` exists. If so, parses `l1_tags.yaml`, `l2_modules.yaml`, `l3_router.yaml`, and the markdown files in `l3_decisions/`. *(**Evolution Note:** The legacy `.docuvia` YAML storage is superseded by the [Git-Isomorphic Graph](../../adrs/ADR-004-git-isomorphic-graph.md) utilizing the `docuvia-knowledge` [Orphan Branch](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md), though the three-tier knowledge abstraction remains valid per [ADR-005](../../adrs/ADR-005-knowledge-abstraction-strategy.md)).*
 - `startWatcher(context)`: Creates a separate `vscode.FileSystemWatcher` for `.docuvia/**` in _every_ workspace folder. Also binds `vscode.workspace.onDidChangeWorkspaceFolders` to dynamically handle folders being added/removed.
-  - **Debounce & Batching**: Events are debounced (e.g., 300ms) to collect a batch of changes, ignoring non-yaml/md temporary files.
+  - **Debounce & Batching**: Events are debounced (e.g., 300ms) to collect a batch of changes, ignoring non-yaml/md temporary files. *(**Evolution Note:** Advanced background sync and debouncing are now orchestrated via Asynchronous Metabolism per [ADR-008](../../adrs/ADR-008-asynchronous-metabolism.md)).*
   - **Incremental Update vs Full Reload**:
     - Based on configuration `docuvia.knowledgeGraph.incrementalUpdateThreshold` (default 50) and `docuvia.knowledgeGraph.incrementalUpdateRatioThreshold` (default 0.5).
     - If the number of changed files in a batch is within thresholds, the store performs an **Incremental Update** (only parsing changed files and updating specific snapshot entries).

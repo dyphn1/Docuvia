@@ -119,13 +119,13 @@ When an AI Agent (e.g., `Task Verifier`, `QA`, or `Explore` subagent) executes a
 ### 2. Reporting Format
 If a discrepancy is found (e.g., a feature marked as `✅ Done` is actually missing, using a fallback, or violates its ADR constraint), the Agent MUST:
 1. **Inject a TODO in the source code**: Immediately add `// TODO: [CRITICAL BUG FIX] - <Description>` in the exact `.ts` or `.tsx` file that is failing.
-2. **Generate a Report**: Create a detailed Markdown report in the `docs/reports/` directory using the naming convention `MMDD_Phase.Item.Number.md` (e.g., `0625_1.2.4.md`).
+2. **Generate a Report**: Create a detailed Markdown report in the `docs/reports/` directory using the naming convention `MMDD_phase-X_feature-name.md` (e.g., `0625_phase-2_git-ingestion.md`).
 3. **Report Template**:
    ```markdown
    # Verification Report: [Feature Name]
    - **Date**: YYYY-MM-DD
-   - **Phase & Item**: [e.g., Phase 1.2.4]
-   - **Target File**: [e.g., upload.ts]
+   - **Phase & Item**: [e.g., Phase 2 - Git Ingestion]
+   - **Target File**: [e.g., ingest.ts]
    - **Status Update Required**: [✅ PASS | ⚠️ WARN | ❌ ERROR]
    
    ### Description of Failure

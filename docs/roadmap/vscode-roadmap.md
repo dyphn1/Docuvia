@@ -18,8 +18,6 @@ Establish the foundational command infrastructure in VS Code, allowing users to 
 ### ⚠️ Precautions
 - **No Direct YAML Writes:** Data must be written to SQLite, avoiding the deprecated `.docuvia` YAML configs ([ADR-002](../design/adrs/ADR-002-local-first-architecture.md)).
 - **Non-blocking UI:** Commands like extraction must not freeze the editor. Heavy lifting is dispatched to the background via [Asynchronous Metabolism](../design/adrs/ADR-008-asynchronous-metabolism.md).
-- **Offline Durability:** `SyncOutbox` must be durably stored in SQLite. One-shot HTTP fetches without a local queue lead to critical data loss.
-- **IPC Reactivity:** The UI must listen to DB changes, not `vscode.FileSystemWatcher` on legacy YAML files.
 
 ### 📁 Involved Files
 - `artifacts/vscode-client/src/extension.ts`

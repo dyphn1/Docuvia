@@ -20,10 +20,6 @@ Establish the core infrastructure, database models (L1/L2/L3), multi-format inge
 - **No In-Memory State:** Avoid storing graph states in Node.js heap. Use [Database-as-IPC](../design/adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md).
 - **Graceful Degradation:** The pipeline must save partial results if the LLM endpoint times out.
 - **Vector Math:** Vector search must rely on [pgvector](../design/adrs/ADR-019-pgvector-migration.md), not in-memory cosine similarity (which causes OOMs at scale).
-- **Foreign Key Indexes:** Drizzle `ON DELETE CASCADE` must be explicitly paired with `.index()` definitions to prevent full table scans when deleting projects.
-- **Strict Redaction:** Pino logging must use case-insensitive, wildcard-aware redaction paths to prevent LLM API keys and Authorization headers from leaking.
-- **Metabolism Batching:** Metabolism queries must enforce `.limit()` and pagination. Unbounded queries will crash Node.js via OOM.
-- **Ingestion Security:** All git clone targets must be shielded against Command Argument Injection (using `--` boundary) and SSRF (blocking internal IP ranges).
 
 ### 📁 Involved Files
 - `lib/db/src/schema/*.ts` (projects, commits, l1_tags, l2_nodes, l3_nodes)
@@ -127,7 +123,6 @@ Align the Knowledge Graph directly with the underlying Git commit history (using
 ### ⚠️ Precautions
 - **Split-Brain Defense:** Synchronization must use distributed locks.
 - **Git Blob Identity:** Files and commits must be anchored by their `git_blob_hash` to prevent checkout thrashing (see [ADR-016](../design/adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md)).
-- **Transaction Safety:** LLM Generation pipelines MUST be wrapped in strict `db.transaction()` blocks to rollback partial states if external APIs fail.
 
 ### 📁 Involved Files
 - `artifacts/api-server/src/lib/orphan-branch-writer.ts`
@@ -180,9 +175,6 @@ Inject human oversight mechanisms (Review Queue), enable system portability (Exp
 ### ⚠️ Precautions
 - **Security:** HMAC-SHA256 signature validation is mandatory for GitHub Webhooks.
 - **IDOR Prevention:** Export endpoints must rigidly verify `userId` against `projectId` ownership to prevent unauthorized data dumps.
-- **Strict Authorization:** Review Task resolution endpoints must verify the active `req.user.id` against the project's ownership.
-- **SSRF Prevention:** Webhook targets (Slack/Teams) must be validated via allowlist or network blocklists to prevent internal network scanning.
-- **Command Injection:** Never use `exec` with stringified user inputs. Use `spawn` and `stdin` pipes.
 
 ### 📁 Involved Files
 - `artifacts/api-server/src/routes/review_tasks.ts`
@@ -225,8 +217,6 @@ Deliver zero-LLM-cost structural code analysis directly in the VS Code client by
 ### ⚠️ Precautions
 - **Memory Leaks:** WASM memory must be manually freed (`tree.delete()`). Failure to do so will crash the Extension Host.
 - **Database-as-IPC:** Workers must write parsed graphs directly to SQLite; they must NOT serialize large JSON arrays back to the main thread (see [ADR-014](../design/adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) and [ADR-020](../design/adrs/ADR-020-unified-isomorphic-ast-microkernel.md)).
-- **Event Loop Blocking:** Intent Router fast-path filters must not load full DB tables into memory. Use DB-level `ILIKE` or `pg_trgm`.
-- **MCP Security:** Authenticate MCP tokens via `crypto.timingSafeEqual` strictly using `Buffer.byteLength()`. Protect DB against DoS by enforcing `z.string().max()` limits.
 
 ### 📁 Involved Files
 - `@workspace/ast-core` (Microkernel engine)

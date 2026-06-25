@@ -32,7 +32,8 @@ flowchart LR
 
 ## 2. Local-Side Incremental Analysis (Knowledge Patch)
 
-- The client uses the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) to extract new [L3 decisions](ADR-005-knowledge-abstraction-strategy.md) for the files modified in the delta between the ancestor and `HEAD` (via [Progressive Enrichment](ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)).
+- **Source Code Extraction:** For programming language files modified in the delta, the client uses the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) to locally extract new [L3 decisions](ADR-005-knowledge-abstraction-strategy.md) (via [Progressive Enrichment](ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)).
+- **Unstructured Document Extraction:** For non-code files (e.g., Markdown, PDF, PPTX, Build Logs), the AST cannot parse them. These are delegated to dedicated Server-Side LLM services (referencing [Document Misc Pool](ADR-012-document-misc-pool.md)), as edge clients lack the capability to accurately process complex or multi-modal documents independently.
 - These new L3s are explicitly anchored to the Git history via [Temporal Range Anchors](ADR-018-temporal-and-conceptual-bidirectional-linking.md) (`introduced_in_commit` and `verified_until_commit` columns in Drizzle schema `l3NodesTable`). This eliminates JSONB array bloat.
 
 ## 3. Server-Side Incremental Merge

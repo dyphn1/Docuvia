@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import readline from "node:readline";
+import path from "node:path";
 import { db } from "@workspace/db";
 import {
   l2NodesTable,
@@ -7,20 +8,29 @@ import {
   nodeLinksTable,
   activityLogTable,
 } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
 
 /**
- * AST Ingestion Pipeline
+ * AST Ingestion Pipeline — Topology Mapping
  *
  * Reads .jsonl skeleton files produced by ast-worker and writes the
  * extracted symbols into the Docuvia knowledge graph (l2_nodes, l3_nodes, node_links).
  *
- * Mapping:
- *   file event   → l2_nodes (type: module)
- *   class event  → l3_nodes (nodeType: rule, under parent file L2)
- *   function event → l3_nodes (nodeType: change, under parent file L2)
+ * Topology Mapping (Phase 8 — Item 1):
+ *   file event   → l2_nodes (type: package | module | pcd, with pathPatterns)
+ *   class event  → l3_nodes (nodeType: rule, FQN: dir::Class, under parent L2)
+ *   function event → l3_nodes (nodeType: change, FQN: dir::fn, under parent L2)
  *   call / method_call → node_links (depends_on edge from caller → callee)
+ *
+ * FQN Convention:
+ *   L3 nodes use directory-based namespace: `src/utils/helper.ts::MyClass`
+ *   This ensures uniqueness across files with same base name in different dirs.
+ *
+ * L2 Type Classification:
+ *   - package: directory containing an index file (index.ts, __init__.py, mod.rs, etc.)
+ *   - module: standalone source file
+ *   - pcd: pattern-matched cluster (multiple files sharing a glob pattern)
  */
 
 interface AstEvent {
@@ -37,6 +47,70 @@ export interface IngestionResult {
   l3Created: number;
   linksCreated: number;
   errors: string[];
+}
+
+// ── Index files that indicate a directory is a "package" ──────────────
+const PACKAGE_INDEX_FILES = new Set([
+  "index.ts",
+  "index.js",
+  "index.tsx",
+  "index.jsx",
+  "__init__.py",
+  "mod.rs",
+  "lib.rs",
+  "main.go",
+  "package.java",
+  "index.php",
+  "index.rb",
+]);
+
+/**
+ * Derive a Fully Qualified Name for an L3 symbol.
+ * Format: `dir1/dir2/file.ext::symbolName`
+ * The file part uses forward slashes (normalized) and includes the extension
+ * to disambiguate files with the same name in different directories.
+ */
+function buildFqn(filePath: string, symbolName: string): string {
+  const normalized = filePath.split(path.sep).join("/");
+  return `${normalized}::${symbolName}`;
+}
+
+/**
+ * Derive the directory path from a file path (normalized to forward slashes).
+ */
+function getDirectoryPath(filePath: string): string {
+  const normalized = filePath.split(path.sep).join("/");
+  const lastSlash = normalized.lastIndexOf("/");
+  return lastSlash > 0 ? normalized.substring(0, lastSlash) : ".";
+}
+
+/**
+ * Classify an L2 node type based on the file path.
+ * - package: the file is an index file (marks its directory as a package)
+ * - module: a regular source file
+ * - pcd: (reserved for future pattern-based clustering)
+ */
+function classifyL2Type(filePath: string): "package" | "module" | "pcd" {
+  const baseName = filePath.split(path.sep).pop() || filePath;
+  if (PACKAGE_INDEX_FILES.has(baseName)) {
+    return "package";
+  }
+  return "module";
+}
+
+/**
+ * Build a path pattern for an L2 node.
+ * For a package (index file), the pattern matches all files in that directory.
+ * For a module, the pattern is the file itself.
+ */
+function buildPathPattern(filePath: string, l2Type: string): string[] {
+  const normalized = filePath.split(path.sep).join("/");
+  if (l2Type === "package") {
+    // Index file → pattern covers the directory
+    const dirPath = getDirectoryPath(normalized);
+    return [`${dirPath}/*`];
+  }
+  return [normalized];
 }
 
 /**
@@ -61,11 +135,30 @@ export async function ingestAstJsonl(
   const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
 
   let currentL2Id: number | null = null;
+  let currentFilePath: string | null = null;
+
+  // FQN → L3 ID mapping for link resolution within this file
+  const fqnToL3Id = new Map<string, number>();
+
+  // Simple name → L3 ID (fallback for unqualified calls)
   const nameToL3Id = new Map<string, number>();
-  const baseNameToL2Id = new Map<string, number>();
 
   // Track all L3 nodes created in this file for link resolution
-  const allL3Nodes: { id: number; name: string; l2NodeId: number }[] = [];
+  const allL3Nodes: { id: number; name: string; fqn: string; l2NodeId: number }[] = [];
+
+  // Collect all L2 and L3 inserts for batch processing
+  const pendingL2Inserts: Array<{
+    projectId: number;
+    name: string;
+    type: "package" | "module" | "pcd";
+    aiGenerated: boolean;
+    needsReview: boolean;
+    description: string;
+    pathPatterns: string[];
+  }> = [];
+
+  // Track which file paths we've already processed in this run
+  const processedFilePaths = new Set<string>();
 
   for await (const line of rl) {
     if (!line.trim()) continue;
@@ -82,10 +175,23 @@ export async function ingestAstJsonl(
       // ── File → L2 Node ──────────────────────────────────────────
       if (event.type === "file") {
         const filePath = event.path as string;
-        const baseName = filePath.split(/[/\\]/).pop() || filePath;
+        if (!filePath) {
+          result.errors.push("File event missing path");
+          continue;
+        }
+        currentFilePath = filePath;
 
-        // Check if an L2 node already exists for this file
-        const [existing] = await db
+        // Skip if we've already processed this file in this batch
+        if (processedFilePaths.has(filePath)) continue;
+        processedFilePaths.add(filePath);
+
+        const baseName = filePath.split(/[/\\]/).pop() || filePath;
+        const dirPath = getDirectoryPath(filePath);
+        const l2Type = classifyL2Type(filePath);
+        const pathPatterns = buildPathPattern(filePath, l2Type);
+
+        // Check if an L2 node already exists for this file (by path pattern match)
+        const existingNodes = await db
           .select()
           .from(l2NodesTable)
           .where(
@@ -95,24 +201,35 @@ export async function ingestAstJsonl(
             )
           );
 
-        if (existing) {
-          currentL2Id = existing.id;
-          baseNameToL2Id.set(baseName, existing.id);
+        // Find the best match: prefer one with matching path pattern
+        let matchedL2 = existingNodes.find((n) => {
+          if (!n.pathPatterns) return false;
+          const patterns = Array.isArray(n.pathPatterns) ? n.pathPatterns as string[] : [];
+          return patterns.some((p) => p === pathPatterns[0] || p === filePath);
+        });
+
+        // If no pattern match, use the first one with the same base name
+        if (!matchedL2 && existingNodes.length > 0) {
+          matchedL2 = existingNodes[0];
+        }
+
+        if (matchedL2) {
+          currentL2Id = matchedL2.id;
         } else {
           const [newNode] = await db
             .insert(l2NodesTable)
             .values({
               projectId,
               name: baseName,
-              type: "module",
+              type: l2Type,
               aiGenerated: true,
               needsReview: true,
               description: `AST parsed from ${filePath}`,
+              pathPatterns,
             })
             .returning();
 
           currentL2Id = newNode.id;
-          baseNameToL2Id.set(baseName, newNode.id);
           result.l2Created++;
         }
       }
@@ -122,6 +239,9 @@ export async function ingestAstJsonl(
         const className = event.name as string;
         if (!className) continue;
 
+        const filePath = currentFilePath || "unknown";
+        const fqn = buildFqn(filePath, className);
+
         const [newL3] = await db
           .insert(l3NodesTable)
           .values({
@@ -130,12 +250,13 @@ export async function ingestAstJsonl(
             nodeType: "rule",
             aiGenerated: true,
             source: "ast",
-            content: `Class definition: ${className}`,
+            content: `Class definition: ${fqn}`,
           })
           .returning();
 
+        fqnToL3Id.set(fqn, newL3.id);
         nameToL3Id.set(className, newL3.id);
-        allL3Nodes.push({ id: newL3.id, name: className, l2NodeId: currentL2Id });
+        allL3Nodes.push({ id: newL3.id, name: className, fqn, l2NodeId: currentL2Id });
         result.l3Created++;
       }
 
@@ -143,6 +264,9 @@ export async function ingestAstJsonl(
       if (event.type === "function" && currentL2Id !== null) {
         const fnName = event.name as string;
         if (!fnName) continue;
+
+        const filePath = currentFilePath || "unknown";
+        const fqn = buildFqn(filePath, fnName);
 
         const [newL3] = await db
           .insert(l3NodesTable)
@@ -152,12 +276,13 @@ export async function ingestAstJsonl(
             nodeType: "change",
             aiGenerated: true,
             source: "ast",
-            content: `Function definition: ${fnName}`,
+            content: `Function definition: ${fqn}`,
           })
           .returning();
 
+        fqnToL3Id.set(fqn, newL3.id);
         nameToL3Id.set(fnName, newL3.id);
-        allL3Nodes.push({ id: newL3.id, name: fnName, l2NodeId: currentL2Id });
+        allL3Nodes.push({ id: newL3.id, name: fnName, fqn, l2NodeId: currentL2Id });
         result.l3Created++;
       }
 
@@ -171,64 +296,58 @@ export async function ingestAstJsonl(
         // The last function/class defined in this file is the caller
         const caller = allL3Nodes[allL3Nodes.length - 1];
 
-        // Try to resolve the callee: first by full name, then by method name
-        let targetL3Id = nameToL3Id.get(callName);
+        // Try to resolve the callee by FQN first, then by simple name
+        let targetL3Id = fqnToL3Id.get(callName) || nameToL3Id.get(callName);
 
-        // If not found locally, try to find an L2 node with the same name
-        // (e.g., a call to a class constructor or module-level function)
+        // If not found locally, try to resolve via scope map format (module::symbol)
         if (!targetL3Id) {
           const parts = callName.split("::");
-          const simpleName = parts[parts.length - 1];
-          targetL3Id = nameToL3Id.get(simpleName);
+          if (parts.length >= 2) {
+            // Try the full call name as FQN
+            targetL3Id = fqnToL3Id.get(callName);
+            // Try just the symbol name (last part)
+            if (!targetL3Id) {
+              const simpleName = parts[parts.length - 1];
+              targetL3Id = nameToL3Id.get(simpleName);
+            }
+          }
         }
 
-        // If still not found, try to match against an L2 node (cross-file reference)
+        // If still not found, try cross-file resolution via DB
         if (!targetL3Id) {
-          const [targetL2] = await db
+          const simpleName = callName.split("::").pop()?.split(".").pop() || callName;
+          const [targetL3] = await db
             .select()
-            .from(l2NodesTable)
-            .where(
-              and(
-                eq(l2NodesTable.projectId, projectId),
-                eq(l2NodesTable.name, callName.split("::").pop() || callName)
-              )
-            );
-          if (targetL2) {
-            // Create a link from caller L3 → target L2 (cross-file dependency)
-            try {
-              await db
-                .insert(nodeLinksTable)
-                .values({
-                  sourceNodeId: caller.l2NodeId,
-                  targetNodeId: targetL2.id,
-                  linkType: "depends_on",
-                })
-                .onConflictDoNothing();
-              result.linksCreated++;
-            } catch (linkErr: any) {
-              // Ignore duplicate link errors
-              if (!linkErr.message?.includes("duplicate")) {
-                result.errors.push(`Link error: ${linkErr.message}`);
-              }
-            }
-            continue;
+            .from(l3NodesTable)
+            .where(eq(l3NodesTable.title, simpleName))
+            .limit(1);
+
+          if (targetL3) {
+            targetL3Id = targetL3.id;
           }
         }
 
         if (targetL3Id && targetL3Id !== caller.id) {
           try {
-            await db
-              .insert(nodeLinksTable)
-              .values({
-                sourceNodeId: caller.l2NodeId,
-                targetNodeId: caller.l2NodeId,
-                linkType: "depends_on",
-              })
-              .onConflictDoNothing();
-            // Note: node_links references l2_nodes, so for L3-to-L3 calls
-            // we create an L2-level dependency (caller's module → callee's module)
-            // For now we log the call event as a self-referencing dependency at L2
-            result.linksCreated++;
+            // node_links references l2_nodes, so we create an L2-level dependency
+            // from caller's module to the callee's module
+            const [targetL3Node] = await db
+              .select()
+              .from(l3NodesTable)
+              .where(eq(l3NodesTable.id, targetL3Id))
+              .limit(1);
+
+            if (targetL3Node && targetL3Node.l2NodeId !== caller.l2NodeId) {
+              await db
+                .insert(nodeLinksTable)
+                .values({
+                  sourceNodeId: caller.l2NodeId,
+                  targetNodeId: targetL3Node.l2NodeId,
+                  linkType: "depends_on",
+                })
+                .onConflictDoNothing();
+              result.linksCreated++;
+            }
           } catch (linkErr: any) {
             if (!linkErr.message?.includes("duplicate")) {
               result.errors.push(`Link error: ${linkErr.message}`);

@@ -2,11 +2,11 @@
 
 ## Core Dilemma
 
-The API Server must handle heavy tasks (Vector Embeddings, LLM Experience Distillation, Temporal Decay) asynchronously without blocking the Node.js Event Loop. However, to keep the self-hosting architecture lightweight, we strictly avoid introducing heavy infrastructure like Redis, BullMQ, or Celery.
+The API Server must handle heavy tasks ([Vector Embeddings](ADR-019-pgvector-migration.md), LLM Experience Distillation, [Temporal Decay](ADR-007-agentic-rag-routing.md), and [AST Parsing via Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md)) asynchronously without blocking the Node.js Event Loop. However, to keep the [local-first architecture](ADR-002-local-first-architecture.md) lightweight, we strictly avoid introducing heavy infrastructure like Redis, BullMQ, or Celery.
 
 ## Solution: DB-Backed Queue & Micro-Batching
 
-We invert the triggering mechanism, utilizing PostgreSQL as the state machine and the VS Code Client as the heartbeat.
+We invert the triggering mechanism, utilizing PostgreSQL as the state machine ([Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md)) and the VS Code Client as the heartbeat.
 
 ```mermaid
 flowchart TD
@@ -24,13 +24,13 @@ flowchart TD
 
 ### 1. The PostgreSQL State Machine
 
-Heavy operations do not execute during the HTTP request cycle. Instead, actions (like capturing a human correction) are written to the database (e.g., [`correction_examplesTable` in correction_examples.ts](../../../lib/db/src/schema/correction_examples.ts)) with a status flag like `status: 'pending'` or `processedAt: null`. The API immediately returns `200 OK`.
+Heavy operations do not execute during the HTTP request cycle. Instead, actions (like capturing a [human correction](ADR-006-self-evolution-architecture.md)) are written to the database (e.g., [`correction_examplesTable` in correction_examples.ts](../../../lib/db/src/schema/correction_examples.ts)) with a status flag like `status: 'pending'` or `processedAt: null`. The API immediately returns `200 OK`.
 
 - **Review Task routes**: [`review_tasks.ts`](../../../artifacts/api-server/src/routes/review_tasks.ts)
 
 ### 2. Client-Driven Heartbeat (The Drip Feed)
 
-- The VS Code Extension periodically pings the server (e.g., to fetch the orphan branch or check for notifications).
+- The [VS Code Extension](ADR-001-vscode-client-onboarding.md) periodically pings the server (e.g., to fetch the [orphan branch](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) or check for notifications).
 - These routine pings trigger a **Micro-batch** execution on the Server. The server selects a small chunk (e.g., 5 pending tasks) to process in the background.
 - This approach fragments the computational load, preventing the server from being overwhelmed by a massive backlog, and turns the users' continuous activity into the engine that powers the server's evolution.
 - **Implementation Note**: The active client heartbeat-driven `metabolism-tick` worker is implemented in `metabolism.ts` and triggered periodically by the VS Code extension's `CentralServerClient`. It is protected by a distributed Postgres job queue using `FOR UPDATE SKIP LOCKED` combined with a `locked_at` timestamp. This prevents split-brain race conditions when multiple API servers poll for tasks, and allows for automatic background zombie-reaper recovery.
@@ -43,7 +43,7 @@ For fully idle periods (e.g., nighttime), a dedicated `/admin/metabolism-tick` r
 
 ## Concurrency Protection (Atomic Mutexes)
 
-Heavy generation pipelines (like Knowledge Graph node generation in `POST /projects/:id/generate`) rely on database-level atomic conditional updates instead of just in-memory checks.
+Heavy generation pipelines (like [Knowledge Graph node generation](ADR-005-knowledge-abstraction-strategy.md) in `POST /projects/:id/generate`) rely on database-level atomic conditional updates instead of just in-memory checks.
 
 - We use optimistic locking via conditional `UPDATE` statements (`WHERE status = 'active'`).
 - Failed pipelines will transition the project to `error` status.

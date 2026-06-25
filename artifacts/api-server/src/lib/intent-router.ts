@@ -122,6 +122,10 @@ export function calculateTemporalDecay(referenceDate: Date, now: number = Date.n
   return Math.exp(-LAMBDA * Math.max(0, daysSinceVerified));
 }
 
+function applyTemporalDecay(baseScore: number, referenceDate: Date): number {
+  return baseScore * calculateTemporalDecay(referenceDate);
+}
+
 export async function classifyIntent(query: string): Promise<IntentClassification> {
   const sanitized = sanitizeQuery(query);
   const fallback: IntentClassification = {
@@ -322,7 +326,7 @@ export async function vectorSearchHandler(
         content: node.description ?? null,
         projectId: node.projectId,
         projectName: proj?.name ?? null,
-        score: 0.9,
+        score: applyTemporalDecay(0.9, node.lastVerifiedAt ?? node.createdAt),
         createdAt: node.createdAt.toISOString(),
       });
     }
@@ -363,12 +367,13 @@ export async function vectorSearchHandler(
         content: node.content ?? null,
         projectId,
         projectName,
-        score: 0.8,
+        score: applyTemporalDecay(0.8, node.lastVerifiedAt ?? node.createdAt),
         createdAt: node.createdAt.toISOString(),
       });
     }
   }
 
+  results.sort((a, b) => b.score - a.score);
   results.sort((a, b) => b.score - a.score);
   return results.slice(0, limit);
 }
@@ -406,7 +411,7 @@ export async function graphTraversalHandler(
     content: node.description ?? null,
     projectId: node.projectId,
     projectName: proj?.name ?? null,
-    score: 1.0,
+    score: applyTemporalDecay(1.0, node.lastVerifiedAt ?? node.createdAt),
     createdAt: node.createdAt.toISOString(),
   });
 
@@ -432,7 +437,7 @@ export async function graphTraversalHandler(
         content: `Related dependency of ${node.name}`,
         projectId: r.projectId,
         projectName: proj?.name ?? null,
-        score: 0.8,
+        score: applyTemporalDecay(0.8, r.lastVerifiedAt ?? r.createdAt),
         createdAt: r.createdAt.toISOString(),
       });
     }
@@ -455,11 +460,12 @@ export async function graphTraversalHandler(
       content: l3.content,
       projectId: node.projectId,
       projectName: proj?.name ?? null,
-      score: 0.9,
+      score: applyTemporalDecay(0.9, node.lastVerifiedAt ?? node.createdAt),
       createdAt: l3.createdAt.toISOString(),
     });
   }
 
+  results.sort((a, b) => b.score - a.score);
   return results.slice(0, limit);
 }
 
@@ -502,7 +508,7 @@ export async function directLookupHandler(
         content: l3.content,
         projectId: l2?.projectId ?? 0,
         projectName: null,
-        score: 1.0,
+        score: applyTemporalDecay(1.0, l3.lastVerifiedAt ?? l3.createdAt),
         createdAt: l3.createdAt.toISOString(),
       });
     }
@@ -539,12 +545,13 @@ export async function directLookupHandler(
         content: l3.content,
         projectId: l2?.projectId ?? 0,
         projectName: null,
-        score: 0.8,
+        score: applyTemporalDecay(0.8, l3.lastVerifiedAt ?? l3.createdAt),
         createdAt: l3.createdAt.toISOString(),
       });
     }
   }
 
+  results.sort((a, b) => b.score - a.score);
   return results;
 }
 
@@ -589,7 +596,7 @@ async function hybridSearch(
     if (mergedMap.has(key)) {
       const existing = mergedMap.get(key)!;
       // Provide a scoring boost to elements present in both sets
-      existing.score += r.score + 0.5;
+      existing.score += r.score * 0.25;
     } else {
       mergedMap.set(key, { ...r });
     }

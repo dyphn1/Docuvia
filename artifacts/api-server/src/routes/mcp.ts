@@ -9,7 +9,7 @@ import {
   commitsTable,
 } from "@workspace/db";
 import { eq, or, and, like, sql, count, isNotNull } from "drizzle-orm";
-import { routeQuery } from "../lib/intent-router.js";
+import { routeQuery, sanitizeLikeInput } from "../lib/intent-router.js";
 import { logger } from "../lib/logger.js";
 import { getAllMemories, getCompressedPayload } from "../memory/shared-memory.js";
 import crypto from "crypto";
@@ -87,8 +87,14 @@ router.get("/mcp/read_shared_memory", async (req, res) => {
 });
 
 router.get("/mcp/retrieve_original", async (req, res) => {
-  const id = String(req.query.id ?? "");
-  if (!id) return res.status(400).json({ error: "id parameter required" });
+  const parsed = RetrieveOriginalQuery.safeParse(req.query);
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
+  }
+
+  const { id } = parsed.data;
 
   try {
     const payload = getCompressedPayload(id);
@@ -102,13 +108,15 @@ router.get("/mcp/retrieve_original", async (req, res) => {
 });
 
 router.get("/mcp/search_knowledge", async (req, res) => {
-  const query = String(req.query.query ?? "");
-  const projectId = req.query.project_id ? Number(req.query.project_id) : undefined;
-  const limit = Math.min(Number(req.query.limit ?? 10), 50);
-  // Max's Rule: Strict default filtering to hide unapproved work.
-  const includePending = req.query.include_pending === "true" || false;
+  const parsed = SearchKnowledgeQuery.safeParse(req.query);
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
+  }
 
-  if (!query) return res.status(400).json({ error: "query parameter required" });
+  const { query, project_id: projectId, limit, include_pending } = parsed.data;
+  const includePending = include_pending === "true";
 
   try {
     const result = await routeQuery(query, projectId, limit, includePending);
@@ -120,15 +128,19 @@ router.get("/mcp/search_knowledge", async (req, res) => {
 });
 
 router.get("/mcp/get_dependencies", async (req, res) => {
-  const moduleName = String(req.query.module ?? "");
-  const projectId = req.query.project_id ? Number(req.query.project_id) : undefined;
+  const parsed = ModuleQuery.safeParse(req.query);
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
+  }
 
-  if (!moduleName) return res.status(400).json({ error: "module parameter required" });
-
+  const { module: moduleName, project_id: projectId } = parsed.data;
+  const escapedModuleName = sanitizeLikeInput(moduleName);
   const nodes = await db
     .select()
     .from(l2NodesTable)
-    .where(like(l2NodesTable.name, `%${moduleName}%`));
+    .where(like(l2NodesTable.name, `%${escapedModuleName}%`));
   const node = projectId ? nodes.find((n) => n.projectId === projectId) : nodes[0];
 
   if (!node) {
@@ -168,15 +180,19 @@ router.get("/mcp/get_dependencies", async (req, res) => {
 });
 
 router.get("/mcp/impact_analysis", async (req, res) => {
-  const moduleName = String(req.query.module ?? "");
-  const projectId = req.query.project_id ? Number(req.query.project_id) : undefined;
+  const parsed = ModuleQuery.safeParse(req.query);
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
+  }
 
-  if (!moduleName) return res.status(400).json({ error: "module parameter required" });
-
+  const { module: moduleName, project_id: projectId } = parsed.data;
+  const escapedModuleName = sanitizeLikeInput(moduleName);
   const nodes = await db
     .select()
     .from(l2NodesTable)
-    .where(like(l2NodesTable.name, `%${moduleName}%`));
+    .where(like(l2NodesTable.name, `%${escapedModuleName}%`));
   const node = projectId ? nodes.find((n) => n.projectId === projectId) : nodes[0];
 
   if (!node) {
@@ -211,18 +227,25 @@ router.get("/mcp/impact_analysis", async (req, res) => {
 });
 
 router.get("/mcp/get_decision_record", async (req, res) => {
-  const commitHash = String(req.query.commit_hash ?? "");
-  if (!commitHash) return res.status(400).json({ error: "commit_hash parameter required" });
+  const parsed = DecisionRecordQuery.safeParse(req.query);
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
+  }
+
+  const { commit_hash: commitHash } = parsed.data;
+  const escapedCommitHash = sanitizeLikeInput(commitHash);
 
   const [commit] = await db
     .select()
     .from(commitsTable)
-    .where(like(commitsTable.hash, `${commitHash}%`));
+    .where(like(commitsTable.hash, `${escapedCommitHash}%`));
 
   const l3Nodes = await db
     .select()
     .from(l3NodesTable)
-    .where(like(l3NodesTable.commitHash, `${commitHash}%`));
+    .where(like(l3NodesTable.commitHash, `${escapedCommitHash}%`));
 
   return res.json({
     commitHash,
@@ -242,6 +265,7 @@ const McpQueryBody = z.object({
   q: z.string().min(1, "q is required").max(2000, "q must be 2000 characters or fewer"),
   project_id: z.number().int().positive().optional(),
   limit: z.number().int().min(1).max(50).default(10),
+  include_pending: z.boolean().optional().default(false),
 });
 
 router.post("/mcp/query", async (req, res) => {
@@ -252,9 +276,7 @@ router.post("/mcp/query", async (req, res) => {
       .json({ error: parsed.error.issues[0]?.message ?? "Invalid request body" });
   }
 
-  const { q, project_id, limit } = parsed.data;
-  // Max's Rule: Strict default filtering to hide unapproved work.
-  const includePending = req.query.include_pending === "true" || false;
+  const { q, project_id, limit, include_pending: includePending } = parsed.data;
 
   try {
     const result = await routeQuery(q, project_id, limit, includePending);

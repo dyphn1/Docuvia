@@ -1,11 +1,11 @@
-import { exec } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { db } from "@workspace/db";
 import { l2NodesTable, l3NodesTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "./logger.js";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 function slugify(text: string): string {
   return text
@@ -101,7 +101,7 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
 
     // Verify git is available
     try {
-      await execAsync("git --version");
+      await execFileAsync("git", ["--version"]);
     } catch {
       logger.warn({ projectId }, "[orphan-branch-writer] git CLI not available, skipping");
       return;
@@ -132,8 +132,7 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
     // Using git fast-import. In a full Git-Isomorphic setup, we would run git fetch/merge
     // to handle 3-way merges if the client pushed to remote. But for the server-authoritative
     // push, fast-import safely overwrites the tree for the given branch.
-    // TODO: [CRITICAL BUG FIX] - Command Injection (RCE) Vulnerability. `JSON.stringify` does not escape bash substitution characters like `$(...)` or backticks. An attacker can craft malicious L3 node titles/content that will be executed by `execAsync` on the host server. Replace with `child_process.spawn` and pipe to `stdin` programmatically.
-    await execAsync(`printf '%s' ${JSON.stringify(fastImportData)} | git fast-import --quiet`);
+        await runGitFastImport(fastImportData);
 
     logger.info(
       { projectId, branch, fileCount: files.size },
@@ -169,4 +168,21 @@ function buildFastImportData(
 
   lines.push("");
   return lines.join("\n");
+}
+
+function runGitFastImport(fastImportData: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("git", ["fast-import", "--quiet"], {
+      stdio: ["pipe", "ignore", "pipe"],
+    });
+    const stderrChunks: Buffer[] = [];
+    child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code === 0) return resolve();
+      const stderr = Buffer.concat(stderrChunks).toString("utf8").trim();
+      reject(new Error(`git fast-import exited with code ${code}${stderr ? ': ' + stderr : ''}`));
+    });
+    child.stdin.end(fastImportData, "utf8");
+  });
 }

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Request } from "express";
 import { db } from "@workspace/db";
 import {
   reviewTasksTable,
@@ -13,6 +14,46 @@ import { eq, sql, count, and, gte } from "drizzle-orm";
 import { ResolveReviewTaskParams, ResolveReviewTaskBody } from "@workspace/api-zod";
 
 const router = Router();
+
+function getRequestUserId(req: Request): number | null {
+  const requestUserId = (req as any).user?.id;
+  if (Number.isInteger(requestUserId) && requestUserId > 0) {
+    return requestUserId;
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith("Bearer ")) {
+    return null;
+  }
+
+  const tokenUserId = Number(authHeader.substring(7).trim());
+  return Number.isInteger(tokenUserId) && tokenUserId > 0 ? tokenUserId : null;
+}
+
+async function resolveReviewTaskOwnerId(
+  task: typeof reviewTasksTable.$inferSelect
+): Promise<number | null> {
+  if (task.entityType === "l1_tag") {
+    return 1;
+  }
+
+  if (task.entityType === "l2_node") {
+    const [row] = await db
+      .select({ ownerId: projectsTable.ownerId })
+      .from(l2NodesTable)
+      .innerJoin(projectsTable, eq(projectsTable.id, l2NodesTable.projectId))
+      .where(eq(l2NodesTable.id, task.entityId));
+    return row?.ownerId ?? null;
+  }
+
+  const [row] = await db
+    .select({ ownerId: projectsTable.ownerId })
+    .from(l3NodesTable)
+    .innerJoin(l2NodesTable, eq(l2NodesTable.id, l3NodesTable.l2NodeId))
+    .innerJoin(projectsTable, eq(projectsTable.id, l2NodesTable.projectId))
+    .where(eq(l3NodesTable.id, task.entityId));
+  return row?.ownerId ?? null;
+}
 
 async function enrichTask(task: typeof reviewTasksTable.$inferSelect) {
   let entityName: string | null = null;
@@ -107,9 +148,25 @@ router.get("/review-tasks/stats", async (req, res) => {
 });
 
 router.patch("/review-tasks/:id", async (req, res) => {
-  // TODO: [CRITICAL BUG FIX] - IDOR vulnerability. The endpoint blindly updates `reviewTasksTable` by `id` without verifying if the user has access to the project owning this task.
   const { id } = ResolveReviewTaskParams.parse({ id: Number(req.params.id) });
   const body = ResolveReviewTaskBody.parse(req.body);
+
+  const userId = getRequestUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const [existingTask] = await db
+    .select()
+    .from(reviewTasksTable)
+    .where(eq(reviewTasksTable.id, id));
+  if (!existingTask) return res.status(404).json({ error: "Not found" });
+
+  const ownerId = await resolveReviewTaskOwnerId(existingTask);
+  if (!ownerId || ownerId !== userId) {
+    return res.status(403).json({ error: "Forbidden" });
+  }
+
   const [task] = await db
     .update(reviewTasksTable)
     .set({

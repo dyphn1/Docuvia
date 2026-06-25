@@ -130,14 +130,20 @@ router.post("/:projectId", async (req, res) => {
   const eventType = req.headers["x-github-event"] as string | undefined;
 
   const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
-  if (webhookSecret && signature) {
-    if (!validateGitHubSignature(rawBody, signature, webhookSecret)) {
-      logger.warn({ projectId }, "GitHub webhook: invalid HMAC signature");
-      return res.status(400).json({ error: "Invalid signature" });
-    }
-  } else if (webhookSecret && !signature) {
+
+  if (!webhookSecret || webhookSecret.length < 16) {
+    logger.error("GITHUB_WEBHOOK_SECRET is not properly configured (missing or too short). Failing closed.");
+    return res.status(500).json({ error: "Server misconfiguration" });
+  }
+
+  if (!signature) {
     logger.warn({ projectId }, "GitHub webhook: missing X-Hub-Signature-256 header");
-    return res.status(400).json({ error: "Missing signature header" });
+    return res.status(401).json({ error: "Missing signature header" });
+  }
+
+  if (!validateGitHubSignature(rawBody, signature, webhookSecret)) {
+    logger.warn({ projectId }, "GitHub webhook: invalid HMAC signature");
+    return res.status(401).json({ error: "Invalid signature" });
   }
 
   let payload: Record<string, unknown>;

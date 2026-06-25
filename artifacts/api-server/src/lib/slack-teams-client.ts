@@ -2,6 +2,7 @@ import { logger } from "./logger.js";
 import type { ProjectIntegration } from "@workspace/db";
 import { db, projectIntegrationsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { assertPublicHostname, UnsafeUrlError } from "./ssrf-guard.js";
 
 interface SlackBlock {
   type: string;
@@ -65,8 +66,8 @@ async function postSlackMessage(
 ): Promise<boolean> {
   const body = buildSlackPayload(eventType, payload, projectName);
   try {
-    // TODO: [CRITICAL BUG FIX] - SSRF Vulnerability. The `webhookUrl` is user-supplied via integration config. An attacker can supply an internal IP (e.g., 169.254.169.254 or localhost) to map internal networks. Use an SSRF-prevention library or strict URL scheme/domain validation before calling fetch.
-    const res = await fetch(webhookUrl, {
+        const safeWebhookUrl = await validateIntegrationWebhookUrl("slack", webhookUrl);
+    const res = await fetch(safeWebhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -133,8 +134,8 @@ async function postTeamsMessage(
 ): Promise<boolean> {
   const body = buildTeamsPayload(eventType, payload, projectName);
   try {
-    // TODO: [CRITICAL BUG FIX] - SSRF Vulnerability. The `webhookUrl` is user-supplied via integration config. An attacker can supply an internal IP (e.g., 169.254.169.254 or localhost) to map internal networks. Use an SSRF-prevention library or strict URL scheme/domain validation before calling fetch.
-    const res = await fetch(webhookUrl, {
+        const safeWebhookUrl = await validateIntegrationWebhookUrl("slack", webhookUrl);
+    const res = await fetch(safeWebhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),

@@ -1,32 +1,14 @@
-# Verification Report: Item 9.2.1 — Structured Logging (pino)
+# Verification Report: Logging (Security Redaction)
 - **Date**: 2026-06-25
 - **Phase & Item**: Phase 1 - Logging
-- **Target File**: Unknown (Derived from audit)
-- **Status Update Required**: ❌ ERROR / ⚠️ WARN
+- **Target File**: artifacts/api-server/src/lib/logger.ts
+- **Status Update Required**: ❌ ERROR
 
 ### Description of Failure
-3. **🟡 MEDIUM — `console.error` bypasses redaction in `l2_nodes.ts:146`** — The bootstrap confirmation error handler uses `console.error(error)` directly. If the error object contains sensitive data (e.g., database connection strings with passwords), it will be logged in plaintext without redaction. This is the only instance of `console.error` in the API server source (excluding examples and scripts).
-
-
-8. **🟡 MEDIUM — Dead code: `isProduction` variable** (`logger.ts:3`):
-   ```typescript
-   const isProduction = process.env.NODE_ENV === "production";
-   ```
-   This variable is never used. The transport config inline-checks `process.env.NODE_ENV !== "production"`. This is dead code that should be removed or used.
-
-
-9. **🟡 MEDIUM — `l2_nodes.ts` doesn't import logger** — The file has no `import { logger }` statement and uses `console.error` instead. This is inconsistent with every other route file.
-
-
-11. **🔴 No logger tests exist** — Zero test files reference `logger`, `pino`, or `redact`. The design doc's verifiability requirement explicitly states:
-    > "The test suite MUST instantiate the Pino logger, simulate an error containing mock PII (e.g., email addresses, bearer tokens, or auth headers), and capture the output stream. The assertion MUST explicitly verify that the sensitive strings are replaced with `[REDACTED]` in the final log output."
-
-    This test does not exist. The `console....
-
-
-12. **🔴 No pino-http integration tests** — No tests verify that HTTP requests produce structured log output with the expected serializers.
-
----
+The redaction implementation is naive, fragile, and will actively leak credentials into centralized logging.
+*   **Case-Sensitivity Failure:** Pino's `redact` is strictly case-sensitive. The paths list `["req.headers.authorization", "password", "token", "authorization", "apiKey"]`. It completely misses `Authorization` (uppercase), `OPENAI_API_KEY`, and `GITHUB_TOKEN`.
+*   **Nested Object Leakage:** The redaction lacks wildcard targeting (e.g., `*.headers.authorization` or `*.*.authorization`). When external integrations fail, standard practice is to log the error: `logger.error({ err })`. If `err` is an Axios, Fetch, or OpenAI SDK error, the raw `err.config.headers.Authorization` or `err.request` objects will be dumped into the logs in plaintext because they bypass the strict root-level paths.
+*   **Missing API Keys:** `OPENAI_API_KEY` is not targeted at all. If environment variables or raw configs are accidentally logged during startup or failure states, the OpenAI key will be fully exposed.
 
 ### Recommended Fix
-Review the warnings and implement fixes in the corresponding source files.
+Rewrite the redaction paths in `logger.ts` to include wildcard paths (e.g., `*.*.authorization`, `req.headers.Authorization`) and specific environment variable keys (`OPENAI_API_KEY`, `GITHUB_TOKEN`).

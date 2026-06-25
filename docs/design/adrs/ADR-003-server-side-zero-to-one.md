@@ -20,7 +20,7 @@ sequenceDiagram
         Local-->>Local: Inherit Team Knowledge (0 Token, O(1))
     else New Project (0-to-1)
         API-->>Local: 404 Not Found
-        Local->>Local: Trigger Local-First Onboarding
+        Local->>Local: Trigger [Local-First Onboarding](ADR-001-vscode-client-onboarding.md)
         Local->>API: POST Initial L1/L2 Drafts
         API->>API: Compare with Cross-Project Enterprise Memory
         API-->>Local: Return Bootstrap Blueprint
@@ -29,14 +29,14 @@ sequenceDiagram
 
 ### 1. Cross-Project Catalyst (The Bootstrap Blueprint)
 
-When a new project is initialized, the Server LLM uses its global context across multiple tenants to suggest standard L1/L2 structures (e.g., standardizing `UI Components` for all React repos) before local extraction begins.
+When a new project is initialized, the Server LLM uses its global context across multiple tenants to suggest standard [L1/L2 structures](ADR-005-knowledge-abstraction-strategy.md) (e.g., standardizing `UI Components` for all React repos) before local extraction (powered by the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) via our [Local-First Architecture](ADR-002-local-first-architecture.md)) begins.
 
-### 2. The Orphan Branch Protocol
+### 2. The [Orphan Branch Protocol](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)
 
 - **Implementation**: `orphan-branch-writer.ts`.
-- Massive knowledge indexes (L3 markdown files, semantic keys) are pushed to the `docuvia-knowledge` orphan branch.
-- The API Server reads this branch to run asynchronous global clustering without polluting the main source code's commit history.
+- Massive knowledge indexes ([L3 markdown files](ADR-005-knowledge-abstraction-strategy.md), semantic keys) are pushed to the `docuvia-knowledge` [orphan branch](ADR-004-git-isomorphic-graph.md).
+- The API Server reads this branch to run [asynchronous global clustering](ADR-008-asynchronous-metabolism.md) without polluting the main source code's commit history.
 
 ### 3. Conflict Resolution (The Orchestrator)
 
-When Developers A and B push overlapping L2 definitions, the Server LLM performs a horizontal comparison and resolves the collision automatically, merging them into a unified L2 node during the background synchronization phase.
+When Developers A and B push overlapping L2 definitions, the Server LLM performs a horizontal comparison and resolves the collision automatically, merging them into a unified L2 node via [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md) during the [background synchronization phase](ADR-008-asynchronous-metabolism.md).

@@ -39,6 +39,8 @@ flowchart TD
 
 ## 4. Tool Maker Integration
 
-Highly deterministic new rules can trigger the Tool Maker agent to generate custom Tree-sitter queries for the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) permanently, replacing the outdated approach of generating external Python/Node.js scripts.
+When the system encounters edge cases or domain-specific semantic patterns that the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) cannot resolve naturally, the fallback is to use the LLM (via [Progressive Enrichment](ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)). However, because LLM execution burns API tokens, this represents a recurring cost.
+
+To reduce token burn, highly deterministic new rules discovered by the LLM can trigger the Tool Maker agent. The Tool Maker will generate dedicated, lightweight parsing scripts (e.g., Python/Node.js `sniff_xyz.py` utilities or regex-based heuristic scanners) to permanently handle that specific pattern locally, offloading the work from the LLM back to local compute.
 
 - **Gap Note**: The automated Tool Maker trigger mechanism is _not implemented_.

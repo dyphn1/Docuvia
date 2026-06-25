@@ -6,7 +6,7 @@ Accepted (2026-06-19)
 
 ## Context
 
-As Docuvia enables deep structural code analysis via the AST Microkernel (ADR-009), the next bottleneck is LLM context window limits and API costs during code review and reasoning. We need a mechanism to intercept large code blocks destined for the LLM, compress them using the pre-calculated AST Skeletons, and seamlessly retrieve the original source code only when the LLM explicitly requests it.
+As Docuvia enables deep structural code analysis via the [AST Microkernel (ADR-020)](ADR-020-unified-isomorphic-ast-microkernel.md), the next bottleneck is [LLM context window limits and API costs (ADR-009)](ADR-009-token-management.md) during code review and reasoning. We need a mechanism to intercept large code blocks destined for the LLM, compress them using the pre-calculated AST Skeletons, and seamlessly retrieve the original source code only when the LLM explicitly requests it.
 
 ## Decision
 
@@ -24,16 +24,16 @@ To prevent Node.js Event Loop blocking and ReDoS (Regex Denial of Service), the 
 
 Compressing raw snippets without context leads to broken ASTs. The proxy implements a dual-path routing strategy:
 
-- **Scheme A (Context Available -> Perfect Skeleton)**: If the prompt includes a valid file path, the proxy performs an O(1) query against the local Docuvia AST Database. It replaces the code block with the pre-calculated, scope-resolved Skeleton and stores the original text in a local SQLite cache.
-- **Scheme B (Context Missing -> Dumb Text Crusher)**: If the prompt lacks a file path or is an unindexed delta, we DO NOT skip compression (which would destroy Token limits). Instead, we route it to a stateless **Dumb Text Crusher**. This is a fast, indentation/regex-based folder that aggressively replaces `{ ... }` blocks with `...` without attempting semantic AST resolution. It still generates a compressed payload and an MCP ID.
+- **Scheme A (Context Available -> Perfect Skeleton)**: If the prompt includes a valid file path, the proxy performs an O(1) query against the local Docuvia AST Database. It replaces the code block with the pre-calculated, scope-resolved Skeleton and stores the original text in a local SQLite cache (see [Database-as-IPC (ADR-014)](ADR-014-sql-indexed-graph-and-database-as-ipc.md)).
+- **Scheme B (Context Missing -> Dumb Text Crusher)**: If the prompt lacks a file path or is an unindexed delta (see [Git Blob Identity (ADR-016)](ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md) and [Orphan Branch Maintenance (ADR-017)](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)), we DO NOT skip compression (which would destroy Token limits). Instead, we route it to a stateless **Dumb Text Crusher**. This is a fast, indentation/regex-based folder that aggressively replaces `{ ... }` blocks with `...` without attempting semantic AST resolution. It still generates a compressed payload and an MCP ID.
 
 ### 3. Decoupled Tool Execution & TTL Eviction
 
 To avoid the immense engineering complexity of "Proxy Streaming Hell" (handling async tool call loops and SSE mid-stream), the proxy **does not** register or intercept MCP tool calls.
 
 - The proxy replaces the code with an ID and injects a System Prompt: _"Some code blocks have been compressed. Use the `docuvia_retrieve_original` MCP tool with the ID to read the full code."_
-- The `docuvia_retrieve_original` tool is registered entirely independently by the Docuvia MCP Server directly to the client (Cursor/Copilot).
-- **TTL Eviction (Security & Disk Guardrail)**: To prevent infinite disk bloat and address data retention risks, the `compressed_payloads` SQLite table enforces a strict 24-hour TTL (Time-To-Live). A background job purges expired payloads automatically.
+- The `docuvia_retrieve_original` tool is registered entirely independently by the Docuvia MCP Server directly to the [client (Cursor/Copilot) (ADR-001)](ADR-001-vscode-client-onboarding.md) running in our [Local-First Architecture (ADR-002)](ADR-002-local-first-architecture.md).
+- **TTL Eviction (Security & Disk Guardrail)**: To prevent infinite disk bloat and address data retention risks, the `compressed_payloads` SQLite table (see [Database-as-IPC (ADR-014)](ADR-014-sql-indexed-graph-and-database-as-ipc.md)) enforces a strict 24-hour TTL (Time-To-Live). A [background job (ADR-008)](ADR-008-asynchronous-metabolism.md) purges expired payloads automatically.
 
 ## Consequences
 

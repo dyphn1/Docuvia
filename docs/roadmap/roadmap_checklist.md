@@ -83,7 +83,7 @@
 
 | Item | Status | Evidence / Verification Target |
 | :--- | :--- | :--- |
-| Export (Markdown / JSON) | ❌ ERROR | [`export.ts`](../../artifacts/api-server/src/routes/export.ts) (IDOR vulnerability) |
+| Export (Markdown / JSON) | ❌ ERROR | [`export.ts`](../../artifacts/api-server/src/routes/export.ts) (IDOR vulnerability — userId fallback bypasses ownership check; see [report 0376](reports/0376_6.2.3.md)) |
 | Dashboard & stats | ✅ Done | [`dashboard.ts`](../../artifacts/api-server/src/routes/dashboard.ts) |
 | Incremental update (delta-only) | ✅ Done | [`projects.ts`](../../lib/db/src/schema/projects.ts) |
 | Cross-team subscription | ✅ Done | [`subscriptions.ts`](../../lib/db/src/schema/subscriptions.ts) |

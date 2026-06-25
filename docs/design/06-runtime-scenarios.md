@@ -105,7 +105,7 @@ sequenceDiagram
         API->>DB: Full-text search on l3_nodes.content
         DB-->>API: Direct match results
     else hybrid
-        API->>API: Run vector + graph; merge and re-rank results
+        API->>API: Run vector and graph then merge and re-rank results
     end
 
     API-->>CLIENT: 200 { results: [...ranked nodes], strategy: "vector" }

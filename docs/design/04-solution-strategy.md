@@ -12,7 +12,7 @@
 | **Database**          | PostgreSQL                                                        | `pgvector` extension for `vector(1536)` embedding storage; proven ACID guarantees; IVFFlat/HNSW rich indexing |
 | **Frontend**          | React 18 + Vite + shadcn/ui + Tailwind CSS                        | Fast HMR; composable design system; tree-shakeable components                                                                  |
 | **API Contract**      | OpenAPI 3.x + Orval codegen                                       | Single source of truth eliminates type drift between frontend and backend; generates both Zod validators and React Query hooks |
-| **Vector Search**     | PostgreSQL `pgvector` with Temporal Decay filter                  | Offloads vector math (cosine distance) to DB to prevent API Server OOM; enables hybrid SQL indexing (See ADR-019)              |
+| **Vector Search**     | PostgreSQL `pgvector` with [Temporal Decay filter](adrs/ADR-007-agentic-rag-routing.md)                  | Offloads vector math (cosine distance) to DB to prevent API Server OOM; enables hybrid SQL indexing (See ADR-019)              |
 | **LLM Integration**   | OpenAI-compatible interface (`lib/integrations-openai-ai-server`) | Provider-agnostic; compatible with OpenRouter, Azure OpenAI, and any `/v1/chat/completions`-compatible endpoint                |
 | **IDE Integration**   | VS Code Extension API                                             | Primary developer audience uses VS Code; enables Copilot Chat participant, CodeLens, TreeView                                  |
 | **MCP Layer**         | Custom Express routes at `/mcp/*`                                 | Compatibility with AI agent toolchains (Cursor, GitHub Copilot, Claude, etc.) that implement Model Context Protocol            |
@@ -58,7 +58,7 @@ flowchart TD
            AST --> SINK[Pluggable Sinks]
        end
    ```
-2. **Knowledge Construction Layer**: The LLM-powered engine. Translates raw inputs into structured abstractions (L1/L2/L3) and automatically queues them for human review to create a self-improving feedback loop.
+2. **Knowledge Construction Layer**: The LLM-powered engine. Translates raw inputs into [structured abstractions (L1/L2/L3)](adrs/ADR-005-knowledge-abstraction-strategy.md) and automatically queues them for human review to create a [self-improving feedback loop](adrs/ADR-006-self-evolution-architecture.md).
    ```mermaid
    flowchart LR
        subgraph 2. Knowledge Construction Layer
@@ -74,7 +74,7 @@ flowchart TD
            VEC[In-Memory Vector Index<br/>Cross-Project Detection]
        end
    ```
-4. **Query Layer**: The API boundary. Exposes strictly typed REST endpoints (driven by Orval/Zod) and the 4-way Agentic RAG router via MCP.
+4. **Query Layer**: The API boundary. Exposes strictly typed REST endpoints (driven by Orval/Zod) and the [4-way Agentic RAG router](adrs/ADR-007-agentic-rag-routing.md) via MCP.
    ```mermaid
    flowchart LR
        subgraph 4. Query Layer
@@ -115,7 +115,7 @@ lib/api-spec/openapi.yaml
 
 ---
 
-## 4.4 Human-in-the-Loop Strategy
+## 4.4 [Human-in-the-Loop Strategy](adrs/ADR-006-self-evolution-architecture.md)
 
 The generate pipeline is LLM-powered and therefore fallible. Docuvia enforces a human review gate before any AI-generated node is anchored to the knowledge graph:
 

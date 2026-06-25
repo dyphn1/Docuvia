@@ -4,7 +4,7 @@
 
 - **Command ID**: `docuvia.initProject`
 - **Title**: `Docuvia: Init Project`
-- **Activation Context**: Available globally via Command Palette, or triggered via inline tree view actions/welcome views (registered in [`extension.ts`](../../src/extension.ts)).
+- **Activation Context**: Available globally via Command Palette, or triggered via inline tree view actions/welcome views (registered in [`extension.ts`](../../../../artifacts/vscode-client/src/extension.ts)).
 
 ## Functional Flow
 
@@ -20,27 +20,27 @@ flowchart TD
     Single --> Ping
     Ping -- Success --> OnlineOpts[Show Options: New, Connect, Demo]
     Ping -- Timeout/Fail --> OfflineOpts[Show Options: New, Demo. Connect disabled]
-    OnlineOpts -->|Connect| ConnectAPI[Connect to Remote Graph]
-    OfflineOpts -->|New| OfflineConfig[Offline Local-First Heuristic Fallback]
+    OnlineOpts -->|Connect| ConnectAPI[Connect to Remote Graph via Server-Side Zero-to-One]
+    OfflineOpts -->|New| OfflineConfig[Offline Local-First Architecture Heuristic Fallback]
     OnlineOpts -->|New| AIConfig[AI-Driven Configuration]
     OnlineOpts -->|Demo| CloneDemo[Clone & Explore Demo]
     OfflineOpts -->|Demo| CloneDemo
     AIConfig --> StateCheck[Check Artifact State]
     OfflineConfig --> StateCheck
-    StateCheck --> CheckExist{Folder .docuvia exists?}
+    StateCheck --> CheckExist{SQLite DB exists?}
     CheckExist -- Yes --> ValidateFiles{All required files exist?}
     ValidateFiles -- No --> Repair[Prompt: Repair Workspace]
     ValidateFiles -- Yes --> Overwrite{docuvia-knowledge branch exists?}
     CheckExist -- No --> BranchCheck{docuvia-knowledge branch exists?}
     BranchCheck -- Yes --> ConnectPrompt[Prompt: Connect to Existing or Reset/Overwrite]
-    BranchCheck -- No --> Scaffold[Write skeleton files]
+    BranchCheck -- No --> Scaffold[Initialize SQLite DB & Start AST Worker]
     Overwrite -- Yes --> ConnectPrompt
     Overwrite -- No --> Scaffold
     ConnectPrompt -- Overwrite --> Scaffold
     ConnectPrompt -- Connect --> Reload
-    Repair --> ScaffoldMissing[Scaffold ONLY missing files]
+    Repair --> ScaffoldMissing[Re-sync from Orphan Branch]
     ScaffoldMissing --> Reload
-    Scaffold --> Reload[Reload KnowledgeStore]
+    Scaffold --> Reload[Refresh UI via SQLite IPC]
     ConnectAPI --> Reload
     Reload --> Notify[Show Success Toast]
 ```
@@ -66,16 +66,15 @@ flowchart TD
 
 4. **State Corruption & Collisions**:
    - If the `docuvia-knowledge` branch already exists locally (checked via `git rev-parse --verify docuvia-knowledge`): Prompt the user to either "Connect to Existing" or "Reset/Overwrite".
-   - If the `.docuvia/` folder exists, we perform a **granular file check** for required configurations (`_project_profile.yaml` and `l1_tags.yaml`).
-   - If the folder is empty or missing one of the required files, prompt the user with a "Repair Workspace" option to rebuild **only the missing configuration files** safely, without destroying existing valid files.
+   - If the local SQLite DB exists, we perform a **granular schema check** to ensure all required tables are present.
+   - If the DB is missing core tables, prompt the user with a "Repair Workspace" option to run migrations safely, without destroying existing data.
 
-5. **Scaffolding (`.docuvia/`)**:
-   - **Explicit Consent**: Transparent artifact creation is mandated. The user must provide explicit consent before `.docuvia/` or the `docuvia-knowledge` branch is created.
-   - **Polyfill Strategy**: The command checks if target files already exist to prevent accidental deletion.
-   - Create the `.docuvia` directory in the resolved workspace root.
-   - Generate default skeleton files **only if they do not already exist**:
-     - `l1_tags.yaml` (includes the `project_name` key).
-     - `_project_profile.yaml`.
+5. **Scaffolding (SQLite & Local-First)**:
+   - **Explicit Consent**: Transparent artifact creation is mandated. The user must provide explicit consent before the local SQLite database or the `docuvia-knowledge` [Orphan Branch](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) is created.
+   - **Polyfill Strategy**: The command checks if the local SQLite DB already exists to prevent accidental deletion.
+   - Initialize the [Local-First SQLite DB](../../adrs/ADR-002-local-first-architecture.md) in the resolved workspace root.
+   - Scaffold the internal tables (projects, l1_tags, l2_nodes) using [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md).
+   - Boot the [AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md) worker to prepare for [Progressive Enrichment](../../adrs/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md).
    - **Force Overwrite**: If the target workspace is already fully initialized but the user invokes this command directly from the palette targeting that workspace, display a warning prompt: `".docuvia already exists. Do you want to overwrite existing files? This action cannot be undone."` before proceeding with destructive generation.
 
    > ⚠️ **CONFLICT – Force-Overwrite Prompt Not Implemented**: The current `initProject` implementation uses `writeIfAbsent()` for all skeleton files, which silently skips files that already exist. There is no force-overwrite dialog. Additionally, in multi-root scenarios, the folder picker explicitly filters out already-initialized folders, so a fully initialized project can never be selected from the palette at all – there is no code path that would trigger the overwrite prompt. Data is never accidentally destroyed (files are skipped, not overwritten), but a user who wants to intentionally re-initialize a project cannot do so. The overwrite dialog is scheduled for Round 2.

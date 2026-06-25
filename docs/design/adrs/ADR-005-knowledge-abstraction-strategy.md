@@ -8,12 +8,12 @@ Specific implementation rules (L3) are highly fragmented. We need Non-intrusive 
 
 ```mermaid
 flowchart TD
-    subgraph Rich-Semantic Recovery
+    subgraph RichRecovery [Rich-Semantic Recovery]
         R1[Read CHANGELOG.md] --> L2[L2 Candidates]
         R2[Sniff azure-pipelines / Makefile] --> L2
     end
 
-    subgraph VCS-Only Fallback (Degradation)
+    subgraph VCSFallback [VCS-Only Fallback - Degradation]
         F1[git log -n 100 --name-only] --> Hotspots[Hotspot Dirs]
         F2[Depth-2 Topology Scan] --> Hotspots
         F3[L3 Self-Anchoring Paths] --> Hotspots

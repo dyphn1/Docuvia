@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist (Comprehensive Audit)
 
-> Audited: 2026-06-25 | Source-code verified via Agentic Exploration & Adversarial Audit
+> Audited: 2026-06-26 | Source-code verified via Agentic Exploration & Adversarial Audit
 > **Legend:**
 > ✅ **Done** = Implemented and Verified Functional
 > ⚠️ **WARN** = Temporarily mocked, uses a fallback, or has architectural drift
@@ -100,7 +100,7 @@
 | [Workspace Onboarding (`/init`)](../design/adrs/ADR-001-vscode-client-onboarding.md) | ✅ Done | `extension.ts` |
 | Multi-root Workspace Support | ✅ Done | `TaskRunner.ts` |
 | [Token Limits & Chunking Configs](../design/adrs/ADR-009-token-management.md) | ✅ Done | `extension.ts` |
-| `docuvia sync` Bidirectional CLI | 🔲 TODO | [`sync.ts`](../../artifacts/api-server/src/routes/sync.ts) |
+|| `docuvia sync` Bidirectional CLI | ⚠️ WARN | [`sync.ts`](../../artifacts/api-server/src/routes/sync.ts) (CLI calls wrong endpoint; githook incompatible; see [report 0373](reports/0373_3.4.3.md)) |
 | AST Microkernel Architecture | 🔲 TODO | Pending `@workspace/plugin-ast-typescript` (See ADR-024) |
 | Zero-Server Deep Traversal | 🔲 TODO | Requires pure local SQLite queries |
 | Local Context Compression | 🔲 TODO | Token reduction pipeline |

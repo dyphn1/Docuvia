@@ -26,15 +26,15 @@
 
 ### 1.2 Multi-Format Ingestion (Git, SVN, PDF, Build logs, Documents)
 - [x] 1.2.1  ⚠️  Git ingestion via child_process.spawn streaming
-- [x] 1.2.2  ⚠️  SVN ingestion via svn log --xml, svn diff
+- [x] 1.2.2  ⚠️  SVN ingestion via svn log --xml, svn diff (Architecture drift: diffs stored improperly)
 - [x] 1.2.3  ⚠️  Document upload and parsing (isolated via child_process.fork)
-- [x] 1.2.4  ⚠️  Build artifact parser
-- [x] 1.2.5  ⚠️  scoreCommit() signal/noise filter
+- [x] 1.2.4  ❌  Build artifact parser (memoryStorage mismatch corrupts artifact buffers)
+- [x] 1.2.5  ⚠️  scoreCommit() signal/noise filter (Filter is explicitly bypassed in github_webhooks.ts)
 - [x] 1.2.6  ⚠️  Incremental ingestion batching via cursor columns
 
 ### 1.3 RAG Orchestrator (Intent Router)
 - [x] 1.3.1  ✅  4-way LLM-based intent classification (w/ Regex pre-filter)
-- [x] 1.3.2  ✅  Vector search: cosine similarity over JSONB embeddings
+- [x] 1.3.2  ⚠️  Vector search: cosine similarity over JSONB embeddings (Uses in-memory fallback. OOM risk. pgvector missing)
 - [x] 1.3.3  ✅  Graph search: node_links traversal
 - [x] 1.3.4  ✅  Direct search: full-text search on l3_nodes.content
 - [x] 1.3.5  ✅  Hybrid search: vector + graph merge and re-rank
@@ -42,7 +42,7 @@
 
 ### 1.4 Server-Side Metabolism & Mutex
 - [x] 1.4.1  ✅  Asynchronous metabolism mechanism (ADR-008)
-- [x] 1.4.2  ✅ PASS  Mutex / serialization for concurrent generate requests
+- [x] 1.4.2  ⚠️  Mutex / serialization for concurrent generate requests (Fake in-memory mutex used. Needs FOR UPDATE SKIP LOCKED)
 - [x] 1.4.3  ✅  Admin and Cron-based metabolism triggers (/metabolism-tick)
 
 ---
@@ -181,7 +181,7 @@
 
 ### 6.5 Export
 - [x] 6.5.1  ✅  JSON export endpoint
-- [x] 6.5.2  ✅  Markdown export (may be missing — D-06)
+- [x] 6.5.2  ❌  Markdown export (Critical IDOR vulnerability: hardcoded userId = 1)
 
 ---
 

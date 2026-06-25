@@ -60,7 +60,7 @@ The detailed Agentic OS mechanisms are codified as Architecture Decision Records
 
 ## VS Code Extension Design (Supplementary)
 
-The VS Code extension has its own detailed design documentation under [`docs/design/vscode-client/`](vscode-client/). See the authoritative [00-router-overview.md](vscode-client/00-router-overview.md) for full context.
+The VS Code extension has its own detailed design documentation under [`docs/design/vscode-client/`](vscode-client/). See the authoritative [VS Code Roadmap](vscode-client/vscode-roadmap.md) for the implementation standards and [00-router-overview.md](vscode-client/00-router-overview.md) for the component structure.
 
 - **Routing & Core:**
   - [00-router-overview.md](vscode-client/00-router-overview.md) — Extension routing architecture (authoritative)

@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-Standard AI-assisted or single-developer workflows often suffer from "happy-path" bias (or LLM sycophancy), leading to implementations that pass unit tests but fail under production constraints (e.g., OOM on large repos, split-brain race conditions, N+1 query performance degradation). We need a structured workflow that guarantees rigorous defense-in-depth _before_ code is written, without derailing the overarching product vision.
+Standard AI-assisted or single-developer workflows often suffer from "happy-path" bias (or LLM sycophancy), leading to implementations that pass unit tests but fail under production constraints (e.g., OOM on large repos parsing via the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md), split-brain race conditions managing the [Orphan Branch](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md), N+1 query performance degradation in the [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md) pipeline). We need a structured workflow that guarantees rigorous defense-in-depth _before_ code is written, without derailing the overarching product vision.
 
 ## Decision
 
@@ -16,10 +16,10 @@ We adopt the **Adversarial Implementation Protocol** for all future feature deve
 
 1. **Role Invocation & Falsification (The Debate)**
    Before any code is written, a simulated debate must occur involving:
-   - **Product Manager (PM)**: Defends the **Product Positioning** (Local-First UX, Git-Isomorphic, Agentic RAG, High Token Efficiency). _Crucial constraint: All architectural changes must first align with the product's core identity. We do not accept robust solutions if they violate Local-First or introduce heavy external dependencies like Redis._
+   - **Product Manager (PM)**: Defends the **Product Positioning** ([Local-First UX](ADR-002-local-first-architecture.md), [Git-Isomorphic](ADR-004-git-isomorphic-graph.md), [Agentic RAG](ADR-007-agentic-rag-routing.md), [High Token Efficiency](ADR-009-token-management.md)). _Crucial constraint: All architectural changes must first align with the product's core identity. We do not accept robust solutions if they violate Local-First or introduce heavy external dependencies like Redis (see [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md))._
    - **Lead Developer (Leo)**: Proposes the initial implementation strategy and target files.
    - **QA**: Identifies edge cases, non-deterministic behaviors, and testing gaps.
-   - **Challenger (Max - SRE/Security)**: Aggressively attacks the Developer's proposal, looking for OOM vectors, ReDoS, split-brain data corruption, security injections, and horizontal scaling bottlenecks.
+   - **Challenger (Max - SRE/Security)**: Aggressively attacks the Developer's proposal, looking for OOM vectors (referencing [AST Microkernel limits](ADR-020-unified-isomorphic-ast-microkernel.md)), ReDoS, split-brain data corruption (referencing [Orphan Branch Maintenance](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)), security injections, and horizontal scaling bottlenecks.
 
 2. **Multi-Round Refinement (Minimum 3 Rounds)**
    The team must debate for at least 3 rounds until the Developer's proposal is hardened against the Challenger's edge cases while satisfying the PM's product constraints.
@@ -40,4 +40,4 @@ We adopt the **Adversarial Implementation Protocol** for all future feature deve
 
 ## Product Positioning Guardrail
 
-The ultimate veto power rests with the Product Positioning. If the Challenger proposes a highly secure, distributed locking mechanism that requires Kubernetes and Zookeeper, the PM will veto it because Docuvia must remain a lightweight, self-hosted, Local-First engine backed by SQLite/PostgreSQL.
+The ultimate veto power rests with the Product Positioning. If the Challenger proposes a highly secure, distributed locking mechanism that requires Kubernetes and Zookeeper, the PM will veto it because Docuvia must remain a lightweight, self-hosted, [Local-First](ADR-002-local-first-architecture.md) engine backed by PostgreSQL (acting as our [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md) and [pgvector store](ADR-019-pgvector-migration.md)).

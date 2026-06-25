@@ -92,7 +92,7 @@
 | GitHub PR integration | ⚠️ WARN | [`github_webhooks.ts`](../../artifacts/api-server/src/routes/github_webhooks.ts) (score filter bypassed) |
 | [Orphan Branch R/W Protocol](../design/adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) | ✅ Done | [`orphan-branch-writer.ts`](../../artifacts/api-server/src/lib/orphan-branch-writer.ts) |
 
-## [Phase 8 | VS Code Client & Local First (2026-H2)](../design/vscode-client/vscode-roadmap.md#phase-1-core-scaffolding--command-palette)
+## [Phase 8 | VS Code Client & Local First (2026-H2)](vscode-roadmap.md#phase-1-core-scaffolding--command-palette)
 
 | Item | Status | Evidence / Verification Target |
 | :--- | :--- | :--- |

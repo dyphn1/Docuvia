@@ -12,12 +12,12 @@ Establish the foundational command infrastructure in VS Code, allowing users to 
 
 ### 🛠️ Implementation Method
 - **Command Registration:** Register globally available commands in `extension.ts` (e.g., `docuvia.initProject`, `docuvia.addDecision`).
-- **Initialization:** The `/init` flow creates the SQLite DB ([Database-as-IPC](../../design/adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)) and spins up the AST Worker ([WASM Microkernel](../../design/adrs/ADR-020-unified-isomorphic-ast-microkernel.md)).
+- **Initialization:** The `/init` flow creates the SQLite DB ([Database-as-IPC](../design/adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)) and spins up the AST Worker ([WASM Microkernel](../design/adrs/ADR-020-unified-isomorphic-ast-microkernel.md)).
 - **Outbox Queue:** `docuvia.addDecision` writes payloads directly to the local DB and the `SyncOutbox`.
 
 ### ⚠️ Precautions
-- **No Direct YAML Writes:** Data must be written to SQLite, avoiding the deprecated `.docuvia` YAML configs ([ADR-002](../../design/adrs/ADR-002-local-first-architecture.md)).
-- **Non-blocking UI:** Commands like extraction must not freeze the editor. Heavy lifting is dispatched to the background via [Asynchronous Metabolism](../../design/adrs/ADR-008-asynchronous-metabolism.md).
+- **No Direct YAML Writes:** Data must be written to SQLite, avoiding the deprecated `.docuvia` YAML configs ([ADR-002](../design/adrs/ADR-002-local-first-architecture.md)).
+- **Non-blocking UI:** Commands like extraction must not freeze the editor. Heavy lifting is dispatched to the background via [Asynchronous Metabolism](../design/adrs/ADR-008-asynchronous-metabolism.md).
 
 ### 📁 Involved Files
 - `artifacts/vscode-client/src/extension.ts`
@@ -47,7 +47,7 @@ Provide a hierarchical, multi-root visualization of the `L1 -> L2 -> L3` knowled
 
 ### ⚠️ Precautions
 - **Avoid Thrashing:** Ensure UI repaints only occur for the specific workspace folder whose DB updated, preventing full tree rebuilds on a single file save.
-- **Legacy Abstraction:** Follow the strict three-tier [Knowledge Abstraction Strategy](../../design/adrs/ADR-005-knowledge-abstraction-strategy.md).
+- **Legacy Abstraction:** Follow the strict three-tier [Knowledge Abstraction Strategy](../design/adrs/ADR-005-knowledge-abstraction-strategy.md).
 
 ### 📁 Involved Files
 - `artifacts/vscode-client/src/KnowledgeStore.ts`
@@ -75,7 +75,7 @@ Inject contextual knowledge directly into the code editing experience unobtrusiv
 
 ### 🛠️ Implementation Method
 - **Virtual Documents:** Clickable CodeLens actions fetch the decision markdown from SQLite and open it via a virtual text document provider, not a physical `.md` file.
-- **Progressive Enrichment:** Use the AST Microkernel to identify symbols for Hover popups instead of brittle UUID regex matching ([ADR-015](../../design/adrs/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)).
+- **Progressive Enrichment:** Use the AST Microkernel to identify symbols for Hover popups instead of brittle UUID regex matching ([ADR-015](../design/adrs/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)).
 
 ### ⚠️ Precautions
 - **Trusted Markdown:** Ensure Hover `MarkdownString` properties have `isTrusted: { enabledCommands: [...] }` set, otherwise command links will be silently stripped by VS Code.
@@ -93,12 +93,12 @@ Inject contextual knowledge directly into the code editing experience unobtrusiv
 Provide conversational interaction via Copilot Chat and rich cross-project search results visualization.
 
 ### 🛠️ Implementation Method
-- **Chat Participant (`@docuvia`):** Register slash commands (`/explore`, `/query`, `/extract`). Connect `/query` to the local [Agentic RAG Router](../../design/adrs/ADR-007-agentic-rag-routing.md).
+- **Chat Participant (`@docuvia`):** Register slash commands (`/explore`, `/query`, `/extract`). Connect `/query` to the local [Agentic RAG Router](../design/adrs/ADR-007-agentic-rag-routing.md).
 - **Webviews:** Build `SearchResultsPanel` and `DashboardPanel` using VS Code's Webview API. Map click events (`openDecision`) to the local SQLite `nodeId`.
 
 ### ⚠️ Precautions
 - **Content Security Policy (CSP):** Webviews must implement strict nonce-based CSPs to execute scripts safely.
-- **Path Traversal Security:** Since files are no longer read from disk (replaced by [Database-as-IPC](../../design/adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)), raw `filePath` payloads are deprecated in favor of `nodeId` lookups.
+- **Path Traversal Security:** Since files are no longer read from disk (replaced by [Database-as-IPC](../design/adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)), raw `filePath` payloads are deprecated in favor of `nodeId` lookups.
 
 ### 📁 Involved Files
 - `artifacts/vscode-client/src/ChatParticipant.ts`

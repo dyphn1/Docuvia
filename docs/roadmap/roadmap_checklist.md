@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist (Comprehensive Audit)
 
-|> Audited: 2026-07-26 (verification: 1.2.4 — Build artifact parser memoryStorage mismatch) | Source-code verified via Agentic Exploration & Adversarial Audit
+|> Audited: 2026-06-26 (verification: 6.2.4 — Mutex/Concurrency fake in-memory mutex + unauthenticated tick) | Source-code verified via Agentic Exploration & Adversarial Audit
 > **Legend:**
 > ✅ **Done** = Implemented and Verified Functional
 > ⚠️ **WARN** = Temporarily mocked, uses a fallback, or has architectural drift
@@ -19,7 +19,7 @@
 | [LLM abstraction layer](../design/adrs/ADR-004-openai-compatible-llm-interface-only.md) | ⚠️ WARN | [`integrations-openai-ai-server`](../../lib/integrations-openai-ai-server/) (Only OpenAI supported) |
 | Per-project model switching | ✅ Done | [`llm_configs.ts`](../../lib/db/src/schema/llm_configs.ts) |
 | CI/CD pipeline | ✅ Done | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) |
-| Mutex / Concurrency Control | ⚠️ WARN | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) (Fake in-memory mutex used. Needs `FOR UPDATE SKIP LOCKED`) |
+| Mutex / Concurrency Control | ❌ ERROR | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) (Fake in-memory mutex; unauthenticated tick endpoint; see [report 0377](reports/0377_6.2.4.md)) |
 
 ## [Phase 2 | Input Layer](master-roadmap.md#phase-1-api-server--foundation-the-metabolism-engine)
 

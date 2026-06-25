@@ -127,6 +127,7 @@ Align the Knowledge Graph directly with the underlying Git commit history (using
 ### ⚠️ Precautions
 - **Split-Brain Defense:** Synchronization must use distributed locks.
 - **Git Blob Identity:** Files and commits must be anchored by their `git_blob_hash` to prevent checkout thrashing (see [ADR-016](../design/adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md)).
+- **Transaction Safety:** LLM Generation pipelines MUST be wrapped in strict `db.transaction()` blocks to rollback partial states if external APIs fail.
 
 ### 📁 Involved Files
 - `artifacts/api-server/src/lib/orphan-branch-writer.ts`
@@ -179,6 +180,9 @@ Inject human oversight mechanisms (Review Queue), enable system portability (Exp
 ### ⚠️ Precautions
 - **Security:** HMAC-SHA256 signature validation is mandatory for GitHub Webhooks.
 - **IDOR Prevention:** Export endpoints must rigidly verify `userId` against `projectId` ownership to prevent unauthorized data dumps.
+- **Strict Authorization:** Review Task resolution endpoints must verify the active `req.user.id` against the project's ownership.
+- **SSRF Prevention:** Webhook targets (Slack/Teams) must be validated via allowlist or network blocklists to prevent internal network scanning.
+- **Command Injection:** Never use `exec` with stringified user inputs. Use `spawn` and `stdin` pipes.
 
 ### 📁 Involved Files
 - `artifacts/api-server/src/routes/review_tasks.ts`
@@ -221,6 +225,8 @@ Deliver zero-LLM-cost structural code analysis directly in the VS Code client by
 ### ⚠️ Precautions
 - **Memory Leaks:** WASM memory must be manually freed (`tree.delete()`). Failure to do so will crash the Extension Host.
 - **Database-as-IPC:** Workers must write parsed graphs directly to SQLite; they must NOT serialize large JSON arrays back to the main thread (see [ADR-014](../design/adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) and [ADR-020](../design/adrs/ADR-020-unified-isomorphic-ast-microkernel.md)).
+- **Event Loop Blocking:** Intent Router fast-path filters must not load full DB tables into memory. Use DB-level `ILIKE` or `pg_trgm`.
+- **MCP Security:** Authenticate MCP tokens via `crypto.timingSafeEqual` strictly using `Buffer.byteLength()`. Protect DB against DoS by enforcing `z.string().max()` limits.
 
 ### 📁 Involved Files
 - `@workspace/ast-core` (Microkernel engine)

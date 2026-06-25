@@ -6,6 +6,8 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
 
 ## Node Hierarchy
 
+> **Note**: The L1/L2/L3 abstraction tiers described below are defined in [ADR-005: Three-tier knowledge graph](../../adrs/ADR-005-knowledge-abstraction-strategy.md).
+
 ### 1. Project Nodes (Level 0)
 
 - **Role**: Represents a single VS Code Workspace Folder.
@@ -20,7 +22,7 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
 ### 2. L1 Tag Nodes (Level 1)
 
 - **Role**: Represents top-level architectural categories (e.g., "Authentication", "UI Core").
-- **Data Source**: `.docuvia/l1_tags.yaml`
+- **Data Source**: Local-First SQLite ([ADR-002](../../adrs/ADR-002-local-first-architecture.md)) via Database-as-IPC ([ADR-014](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)) (formerly `.docuvia/l1_tags.yaml`)
 - **Context Value**: `l1tag`
 - **Icon**: `$(tag)`
 - **Behavior**: Expands to show L2 Modules if modules reference this Tag ID.
@@ -28,7 +30,7 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
 ### 3. L2 Module Nodes (Level 2)
 
 - **Role**: Represents functional subsystems or specific components (e.g., "OAuth Provider", "Dashboard React Component").
-- **Data Source**: `.docuvia/l2_modules.yaml`
+- **Data Source**: Local-First SQLite via Database-as-IPC (formerly `.docuvia/l2_modules.yaml`)
 - **Context Value**: `l2module`
 - **Icon**: `$(package)`
 - **Behavior**: Expands to show L3 Entries if decisions reference this Module ID.
@@ -36,7 +38,7 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
 ### 4. L3 Entry Nodes (Level 3)
 
 - **Role**: Represents individual design decisions or architecture rules.
-- **Data Source**: `.docuvia/l3_router.yaml` (index) and `.docuvia/l3_decisions/*.md`
+- **Data Source**: SQLite queried via Database-as-IPC, with raw content managed via Git Blob Identity ([ADR-016](../../adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md)) on the `docuvia-knowledge` orphan branch ([ADR-017](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md))
 - **Context Value**: `l3entry`
 - **Icon**: `$(note)`
 - **Behavior**:
@@ -52,7 +54,7 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
   - Automatically created if there are L3 decisions where `l2_module_id: unassigned` or the ID is missing/invalid.
   - Expands to show the unassigned L3 Entry Nodes.
 
-> ⚠️ **CONFLICT – Not Implemented**: The `unassigned-group` node is fully specified above but is **absent from [`KnowledgeGraphTreeProvider.ts`](../../src/KnowledgeGraphTreeProvider.ts)**. The current `getChildren` implementation for `project` nodes only iterates L1 tags; it never checks for decisions with `l2_module_id === 'unassigned'` or an unmapped ID, and never appends an `unassigned-group` item. This node type will remain invisible to users until Round 2 adds the required logic to `KnowledgeGraphTreeProvider`.
+> ⚠️ **CONFLICT – Not Implemented**: The `unassigned-group` node is fully specified above but is **absent from [`KnowledgeGraphTreeProvider.ts`](../../../../artifacts/vscode-client/src/KnowledgeGraphTreeProvider.ts)**. The current `getChildren` implementation for `project` nodes only iterates L1 tags; it never checks for decisions with `l2_module_id === 'unassigned'` or an unmapped ID, and never appends an `unassigned-group` item. This node type will remain invisible to users until Round 2 adds the required logic to `KnowledgeGraphTreeProvider`.
 
 ### 6. Placeholder Nodes
 
@@ -65,8 +67,8 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
 
 ## Data Management & Sync
 
-- **Store**: Handled by the singleton [`KnowledgeStore`](../../src/KnowledgeStore.ts).
-- **Reactivity**: Uses `vscode.FileSystemWatcher` to monitor changes in `.docuvia/**` across all workspaces.
+- **Store**: Handled by the singleton [`KnowledgeStore`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts).
+- **Reactivity**: Triggered via Database-as-IPC ([ADR-014](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)) and AST Microkernel events ([ADR-020](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md)), replacing legacy `vscode.FileSystemWatcher` on `.docuvia/**`.
 - **Lazy Evaluation & Rendering**:
   - By default, nodes below Project are collapsed.
   - `getChildren` dynamically evaluates snapshots.

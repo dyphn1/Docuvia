@@ -7,7 +7,7 @@ This document records the key architectural decisions made during the developmen
 | ADR                                                                                | Title                                                        | Status        |
 | ---------------------------------------------------------------------------------- | ------------------------------------------------------------ | ------------- |
 | [ADR-001](#adr-001-openapi-as-single-source-of-truth)                              | OpenAPI as Single Source of Truth                            | Accepted      |
-| [ADR-002](#adr-002-postgresql-with-jsonb-for-embeddings)                           | PostgreSQL (Superseded by ADR-019: pgvector)                 | Superseded    |
+| [ADR-002](#adr-002-postgresql-with-jsonb-for-embeddings)                           | PostgreSQL (Superseded by [ADR-019: pgvector](adrs/ADR-019-pgvector-migration.md))                 | Superseded    |
 | [ADR-003](#adr-003-three-tier-knowledge-graph-l1l2l3)                              | Three-Tier Knowledge Graph (L1/L2/L3)                        | Accepted      |
 | [ADR-004](#adr-004-openai-compatible-llm-interface-only)                           | OpenAI-Compatible LLM Interface Only                         | Accepted (v1) |
 | [ADR-005](#adr-005-mvc-pattern-for-ui-layers)                                      | MVC Pattern for UI Layers                                    | Accepted      |
@@ -57,7 +57,7 @@ All API types are generated from `lib/api-spec/openapi.yaml` via Orval. The gene
 **Status:** Accepted (v1) — migration to dedicated vector DB planned for v2
 
 **Context:**  
-Agentic RAG requires semantic search over L2 and L3 node embeddings. External vector databases (Qdrant, Chroma, Pinecone) add infrastructure complexity and an additional deployment dependency. For v1, the node count is expected to stay under ~100K.
+[Agentic RAG](adrs/ADR-007-agentic-rag-routing.md) requires semantic search over L2 and L3 node embeddings. External vector databases (Qdrant, Chroma, Pinecone) add infrastructure complexity and an additional deployment dependency. For v1, the node count is expected to stay under ~100K.
 
 **Decision:**  
 Embeddings are stored as JSONB columns in `l2_nodes.embedding` and `l3_nodes.embedding`. Cosine similarity is computed in-memory by loading relevant embeddings from PostgreSQL, ranking, and returning top-K results. No external vector DB is required.
@@ -177,7 +177,7 @@ The `projects` table has `lastGitIngestedAt` (timestamp) and `lastSvnRevision` (
 
 ## 9.3 Deferred Decisions
 
-The following topics require future architectural decisions. See the master roadmap for implementation plans:
+The following topics require future architectural decisions. See the [master roadmap](../roadmap/master-roadmap.md) for implementation plans:
 
 | Topic                                    | Current State               | Reference                                                                                                              |
 | ---------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |

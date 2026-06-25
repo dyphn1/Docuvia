@@ -2,7 +2,7 @@
 
 ## 8.1 Domain Model
 
-### Three-Tier Knowledge Graph
+### [Three-Tier Knowledge Graph](adrs/ADR-005-knowledge-abstraction-strategy.md)
 
 The core data model is a three-tier hierarchy that maps VCS history to structured architectural knowledge.
 
@@ -75,9 +75,9 @@ erDiagram
 
 **L1 Tags** — Global classification labels applied across all projects. Represent top-level architectural or functional areas (e.g., `Security`, `Networking`, `Build System`). AI-suggested L1 candidates always enter the review queue before being anchored. Stored in `l1_tags`.
 
-**L2 Nodes** — Package, Module, or Component entities scoped to a single project. Extracted from commit diff paths and structure. Linked to L1 Tags. Store an embedding vector (`pgvector`) enabling semantic search. Stored in `l2_nodes`.
+**L2 Nodes** — Package, Module, or Component entities scoped to a single project. Extracted from commit diff paths and structure. Linked to L1 Tags. Store an embedding vector ([`pgvector`](adrs/ADR-019-pgvector-migration.md)) enabling semantic search. Stored in `l2_nodes`.
 
-**L3 Nodes** — Implementation Decision, Rule, or Rationale records scoped to an L2 Node. The primary output of the generate pipeline. Store embedding vectors (`pgvector`). Linked to source commits. Stored in `l3_nodes`.
+**L3 Nodes** — Implementation Decision, Rule, or Rationale records scoped to an L2 Node. The primary output of the generate pipeline. Store embedding vectors ([`pgvector`](adrs/ADR-019-pgvector-migration.md)). Linked to source commits. Stored in `l3_nodes`.
 
 **Node Links** — Directed relationships between L2 or L3 nodes (intra-project or cross-project). Created by human approval of cross-project similarity detection results. Stored in `node_links`.
 
@@ -121,7 +121,7 @@ VcsIngestAdapter interface
     └── SvnIngestAdapter (svn log --xml, svn diff)
 ```
 
-### Unified Isomorphic AST Engine & WASM Memory Guardrails
+### [Unified Isomorphic AST Engine & WASM Memory Guardrails](adrs/ADR-020-unified-isomorphic-ast-microkernel.md)
 
 Docuvia utilizes Web Workers to unify the Node.js and VS Code environments under a single AST engine (`@workspace/ast-core`). This prevents main-thread blocking during intensive syntax tree traversals. **Crucially**, to prevent OOM crashes in the WASM linear memory, every instantiated WASM object (e.g., trees, cursors) must be manually deleted using a `try...finally { node.delete(); tree.delete(); }` block.
 
@@ -130,11 +130,11 @@ Docuvia utilizes Web Workers to unify the Node.js and VS Code environments under
 Raw input streams are aggressively filtered before reaching the AST engine and Pluggable Sinks to minimize parsing overhead:
 
 1. **Target Allowlist**: Fast-fail path matching (e.g., ignoring `node_modules` or `dist`).
-2. **Git Blob Binary Detection**: Heuristic filtering of binary file types early in the stream.
+2. **[Git Blob Binary Detection](adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md)**: Heuristic filtering of binary file types early in the stream.
 3. **Lossless Encoding Guardrails**: Ensuring accurate UTF-8 parsing boundaries.
 4. **LLM-Assisted Extension Discovery**: Utilizing LLMs to map unknown extensions or domains to proper Tree-sitter language grammars.
 
-### Agentic RAG Intent Routing
+### [Agentic RAG Intent Routing](adrs/ADR-007-agentic-rag-routing.md)
 
 Incoming `/mcp/query` requests are classified by an LLM into one of four strategies, then routed to the appropriate search mechanism:
 
@@ -144,7 +144,7 @@ Query → intent-router.ts (LLM classify) → vector | graph | direct | hybrid
                                          SQL cosine dist  node_links  FTS   vector+graph merge
 ```
 
-### Human-in-the-Loop Feedback Loop
+### [Human-in-the-Loop Feedback Loop](adrs/ADR-006-self-evolution-architecture.md)
 
 ```
 generate pipeline

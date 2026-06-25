@@ -183,7 +183,7 @@ The following topics require future architectural decisions. See the [master roa
 | ---------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Multi-hop graph traversal (BFS/DFS)      | 1-hop only via `node_links` | See [11-risks-and-debt.md R-02](11-risks-and-debt.md)                                                                  |
 | External vector DB migration             | In-memory cosine similarity | See ADR-002 consequences                                                                                               |
-| Multi-tenant SaaS architecture           | Single-tenant in v1         | See [do../archive_v1_design/saas-commercialization-roadmap.md](../archive_v1_design/saas-commercialization-roadmap.md) |
+| Multi-tenant SaaS architecture           | Single-tenant in v1         | *(Deprecated v1 plan)* |
 | Local LLM adapter (Ollama native)        | OpenAI-compatible only      | See ADR-004 consequences                                                                                               |
 | VS Code extension distribution (`.vsix`) | No CI packaging step        | See [11-risks-and-debt.md D-02](11-risks-and-debt.md)                                                                  |
 

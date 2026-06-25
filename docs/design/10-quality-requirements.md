@@ -85,8 +85,7 @@ The following quality areas have known gaps in automated test coverage:
 | UI component snapshot tests                          | 🟢 Low    | No snapshot tests for kg-engine React components                     |
 | GitHub webhook E2E (with real PR diff)               | 🟡 Medium | Only unit-level HMAC validation tested                               |
 
-See [do../archive_v1_design/testcase-roadmap.md](../archive_v1_design/testcase-roadmap.md) for the full test coverage roadmap.  
-See [do../archive_v1_design/ui-testing-strategy.md](../archive_v1_design/ui-testing-strategy.md) for the kg-engine UI testing strategy.
+*(Legacy testcase roadmaps deprecated. Refer to `AGENTS.md` for current testing strategy.)*
 
 ---
 
@@ -94,8 +93,7 @@ See [do../archive_v1_design/ui-testing-strategy.md](../archive_v1_design/ui-test
 
 - [08-crosscutting-concepts.md](08-crosscutting-concepts.md#83-coding-rules) — Coding rules that enforce maintainability
 - [11-risks-and-debt.md](11-risks-and-debt.md) — Quality risks and known gaps
-- [do../archive_v1_design/testcase-roadmap.md](../archive_v1_design/testcase-roadmap.md) — Test coverage roadmap
-- [do../archive_v1_design/ui-testing-strategy.md](../archive_v1_design/ui-testing-strategy.md) — Frontend testing strategy
+
 - [artifacts/vscode-client/design/ui-ux/user-journeys.md](../../artifacts/vscode-client/design/ui-ux/user-journeys.md) — VS Code extension user journeys and known bugs
 
 ## Operations & Resilience

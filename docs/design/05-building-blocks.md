@@ -151,4 +151,4 @@ Key source files in [`artifacts/vscode-client/src/`](../../artifacts/vscode-clie
 - [artifacts/vscode-client/design/00-router-overview.md](../../artifacts/vscode-client/design/00-router-overview.md) – VS Code extension full routing architecture
 - [artifacts/vscode-client/design/knowledge-graph/store.md](../../artifacts/vscode-client/design/knowledge-graph/store.md) – KnowledgeStore design
 - [do../roadmap/master-roadmap.md](../roadmap/master-roadmap.md) – Phase-by-phase implementation of these packages
-- [do../archive_v1_design/vscode-extension-roadmap.md](../archive_v1_design/vscode-extension-roadmap.md) – VS Code extension roadmap
+- [VS Code Extension Design](../../artifacts/vscode-client/design/00-router-overview.md) – VS Code extension architecture

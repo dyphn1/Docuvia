@@ -105,3 +105,33 @@
 | Zero-Server Deep Traversal | 🔲 TODO | Requires pure local SQLite queries |
 | Local Context Compression | 🔲 TODO | Token reduction pipeline |
 | Sub-second Incremental Watch | 🔲 TODO | Fast-path AST updates |
+
+---
+
+## 🤖 Verification Reporting Protocol (驗證回報區)
+
+When an AI Agent (e.g., `Task Verifier`, `QA`, or `Explore` subagent) executes a validation task on the codebase based on this checklist, the Agent **MUST** document its findings using the following protocol. This ensures a closed loop between code reality, documentation, and the issue tracker.
+
+### 1. Mandatory Pre-Conditions
+- Before starting, the Agent must read [`AGENTS.md`](../../AGENTS.md) to understand the project conventions.
+- The Agent must cross-reference the feature's `Evidence / Verification Target` against its governing `ADR`.
+
+### 2. Reporting Format
+If a discrepancy is found (e.g., a feature marked as `✅ Done` is actually missing, using a fallback, or violates its ADR constraint), the Agent MUST:
+1. **Inject a TODO in the source code**: Immediately add `// TODO: [CRITICAL BUG FIX] - <Description>` in the exact `.ts` or `.tsx` file that is failing.
+2. **Generate a Report**: Create a detailed Markdown report in the `docs/roadmap/reports/` directory using the naming convention `MMDD_Phase.Item.Number.md` (e.g., `0625_1.2.4.md`).
+3. **Report Template**:
+   ```markdown
+   # Verification Report: [Feature Name]
+   - **Date**: YYYY-MM-DD
+   - **Phase & Item**: [e.g., Phase 1.2.4]
+   - **Target File**: [e.g., upload.ts]
+   - **Status Update Required**: [✅ PASS | ⚠️ WARN | ❌ ERROR]
+   
+   ### Description of Failure
+   [Explain exactly what logic is missing or why it violates the ADR]
+   
+   ### Recommended Fix
+   [Actionable steps for the Developer Agent to implement the fix]
+   ```
+4. **Update Action Plan**: Append a summary of the failure to the `master-roadmap.md` under the relevant Phase's **Precautions (注意事項)** section to prevent future regressions.

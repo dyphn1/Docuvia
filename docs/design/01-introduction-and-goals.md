@@ -47,5 +47,5 @@ The core insight: commit messages, PR descriptions, and code diffs encode archit
 
 ## References
 
-- [do../roadmap/roadmap_checklist.md](../roadmap/roadmap_checklist.md) — Full completion checklist (42/42 items)
+- [Roadmap Checklist](../roadmap/roadmap_checklist.md) — Full completion checklist (42/42 items)
 - [AGENTS.md](../../AGENTS.md) — AI developer guide and architectural conventions

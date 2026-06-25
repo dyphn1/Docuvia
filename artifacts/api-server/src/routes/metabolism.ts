@@ -12,6 +12,7 @@ import { isNull, inArray, and, eq, lt } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { checkCommitInDefaultBranch, parseGithubRepo } from "../lib/github-client";
 
+// TODO: [CRITICAL BUG FIX] - Mutex is fake. Replace this single-instance in-memory Mutex with Postgres `FOR UPDATE SKIP LOCKED`.
 // Using a simple in-memory Mutex for this instance
 let isMetabolismRunning = false;
 

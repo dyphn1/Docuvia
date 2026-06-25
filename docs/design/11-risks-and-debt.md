@@ -32,7 +32,7 @@
 
 ## 11.3 References
 
-- Full Known Limitations: [do../roadmap/roadmap_checklist.md](../roadmap/roadmap_checklist.md)
+- Full Known Limitations: [Roadmap Checklist](../roadmap/roadmap_checklist.md)
 - VS Code extension active bugs: [artifacts/vscode-client/design/ui-ux/user-journeys.md](../../artifacts/vscode-client/design/ui-ux/user-journeys.md)
 - ADR-002 (vector search scalability): [09-architectural-decisions.md](09-architectural-decisions.md#adr-002-postgresql-with-jsonb-for-embeddings)
 - ADR-004 (LLM adapter): [09-architectural-decisions.md](09-architectural-decisions.md#adr-004-openai-compatible-llm-interface-only)

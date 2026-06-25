@@ -19,6 +19,7 @@ const checkProjectOwnership = async (
 ): Promise<void> => {
   const projectId = Number(req.params.id);
   // Fake userId extracted from bearer token (implementation pending auth middleware)
+  // TODO: [CRITICAL BUG FIX] - Fix IDOR vulnerability. 'userId = 1' fallback exposes all data. Hardcoded auth bypass must be replaced with strict token verification.
   const userId = (req as any).user?.id || 1;
 
   // IDOR Prevention: verify if userId has access to projectId

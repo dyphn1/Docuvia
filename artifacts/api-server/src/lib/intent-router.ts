@@ -202,6 +202,7 @@ export async function vectorSearchHandler(
 
     const l2Scored = l2Rows
       .map((node) => {
+        // TODO: [CRITICAL BUG FIX] - pgvector migration missing. In-memory cosine similarity will OOM on large graphs. Upgrade to `vector(1536)` with IVFFlat/HNSW index.
         const emb = parseEmbedding(node.embedding);
         const rawScore = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
         const referenceDate = node.lastVerifiedAt ?? node.createdAt;

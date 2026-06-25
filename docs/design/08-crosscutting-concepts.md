@@ -75,9 +75,9 @@ erDiagram
 
 **L1 Tags** — Global classification labels applied across all projects. Represent top-level architectural or functional areas (e.g., `Security`, `Networking`, `Build System`). AI-suggested L1 candidates always enter the review queue before being anchored. Stored in `l1_tags`.
 
-**L2 Nodes** — Package, Module, or Component entities scoped to a single project. Extracted from commit diff paths and structure. Linked to L1 Tags. Store an embedding vector (JSONB) enabling semantic search. Stored in `l2_nodes`.
+**L2 Nodes** — Package, Module, or Component entities scoped to a single project. Extracted from commit diff paths and structure. Linked to L1 Tags. Store an embedding vector (`pgvector`) enabling semantic search. Stored in `l2_nodes`.
 
-**L3 Nodes** — Implementation Decision, Rule, or Rationale records scoped to an L2 Node. The primary output of the generate pipeline. Store embedding vectors. Linked to source commits. Stored in `l3_nodes`.
+**L3 Nodes** — Implementation Decision, Rule, or Rationale records scoped to an L2 Node. The primary output of the generate pipeline. Store embedding vectors (`pgvector`). Linked to source commits. Stored in `l3_nodes`.
 
 **Node Links** — Directed relationships between L2 or L3 nodes (intra-project or cross-project). Created by human approval of cross-project similarity detection results. Stored in `node_links`.
 

@@ -1,28 +1,29 @@
-# Core Concepts: KnowledgeStore
+# Core Concepts: KnowledgeStore (Local-First SQLite DB)
 
-## Singleton Architecture
+## Database-as-IPC Architecture
 
-[`KnowledgeStore`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts) acts as the single source of truth for all Docuvia Knowledge Graph data loaded into the current VS Code instance.
-
-> **Note on Architecture Evolution:** This file describes the initial in-memory singleton design. Under the new Local-First Architecture ([ADR-002](../../adrs/ADR-002-local-first-architecture.md)), the system is moving towards an [AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md) utilizing a local SQLite database for persistence and inter-process communication ([ADR-014 Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)).
+In Docuvia v1.0, [`KnowledgeStore.ts`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts) is no longer a naive in-memory singleton parsing YAML files. It acts as the robust client-side coordinator that interacts with the [Local-First Architecture](../../adrs/ADR-002-local-first-architecture.md) via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md).
 
 ## Multi-Root Workspace Support
 
-The store maintains a `Map<string, KnowledgeGraphSnapshot>`, mapping `workspaceRoot` paths to their individual parsed snapshots.
+The store dynamically maps `workspaceRoot` paths to their respective Project IDs within the local SQLite database.
 
-## Key Methods
+## Key Methods & Operations
 
-- `load()`: Iterates over `vscode.workspace.workspaceFolders`. For each folder, checks if `.docuvia` exists. If so, parses `l1_tags.yaml`, `l2_modules.yaml`, `l3_router.yaml`, and the markdown files in `l3_decisions/`. *(**Evolution Note:** The legacy `.docuvia` YAML storage is superseded by the [Git-Isomorphic Graph](../../adrs/ADR-004-git-isomorphic-graph.md) utilizing the `docuvia-knowledge` [Orphan Branch](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md), though the three-tier knowledge abstraction remains valid per [ADR-005](../../adrs/ADR-005-knowledge-abstraction-strategy.md)).*
-- `startWatcher(context)`: Creates a separate `vscode.FileSystemWatcher` for `.docuvia/**` in _every_ workspace folder. Also binds `vscode.workspace.onDidChangeWorkspaceFolders` to dynamically handle folders being added/removed.
-  - **Debounce & Batching**: Events are debounced (e.g., 300ms) to collect a batch of changes, ignoring non-yaml/md temporary files. *(**Evolution Note:** Advanced background sync and debouncing are now orchestrated via Asynchronous Metabolism per [ADR-008](../../adrs/ADR-008-asynchronous-metabolism.md)).*
-  - **Incremental Update vs Full Reload**:
-    - Based on configuration `docuvia.knowledgeGraph.incrementalUpdateThreshold` (default 50) and `docuvia.knowledgeGraph.incrementalUpdateRatioThreshold` (default 0.5).
-    - If the number of changed files in a batch is within thresholds, the store performs an **Incremental Update** (only parsing changed files and updating specific snapshot entries).
-    - If changes exceed thresholds (e.g., git checkout/merge), it falls back to a **Full Reload** for efficiency.
-- `getSnapshotFor(uri)`: Resolves a given file URI or path back to its parent workspace folder, then returns the specific snapshot for that project.
-- `onDidLoad` (event): A `vscode.Event<void>` emitted by the internal `_onDidLoad` EventEmitter after every successful `load()` call. Subscribers (`KnowledgeGraphTreeProvider`, `DashboardPanel`) use this event to refresh their UI without polling. Subscribe via `store.onDidLoad(() => { /* refresh */ })`.
+- `load()`: Iterates over `vscode.workspace.workspaceFolders`. For each folder, it queries the local SQLite database to retrieve the structured [L1/L2/L3 abstraction tiers](../../adrs/ADR-005-knowledge-abstraction-strategy.md). It does **not** read `.docuvia` YAML files, which are deprecated.
+- `startWatcher(context)`: Subscribes to changes directly from the [AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md).
+  - **Reactivity**: Instead of using `vscode.FileSystemWatcher` (which is blind to semantic intent), the VS Code Client receives lightweight IPC control signals from the AST Worker indicating that the SQLite graph has been updated.
+  - **Background Debouncing**: All debounce logic is handled natively by the [Asynchronous Metabolism](../../adrs/ADR-008-asynchronous-metabolism.md) worker.
+  - **Git Checkout Defense**: Branch switches do not trigger massive reloads. The store leverages [Git Blob Native Identity](../../adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md) to instantly query flipped `is_active` flags in SQLite, executing a fast incremental diff rather than a full UI rebuild.
+- `getSnapshotFor(uri)`: Resolves a given file URI to its local SQLite sub-graph, returning the contextual snapshot for CodeLens/Hover enrichment (via [Progressive Enrichment](../../adrs/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)).
+- `onDidLoad` (event): A `vscode.Event<void>` emitted to subscribers (`KnowledgeGraphTreeProvider`, `DashboardPanel`) allowing the UI to repaint when the local SQLite cache updates.
 
-> ⚠️ **CONFLICT – Debounce and Incremental Update Not Implemented**: The current `KnowledgeStore.startWatcher()` implementation calls `void this.load()` **immediately** on every `onDidCreate`, `onDidChange`, and `onDidDelete` event – there is no 300ms debounce, no batch collection, and no incremental update path. The `docuvia.knowledgeGraph.incrementalUpdateThreshold` and `docuvia.knowledgeGraph.incrementalUpdateRatioThreshold` settings have no effect at runtime (and are also absent from `package.json`). Full debounce + incremental update is scheduled for Round 2.
+## Offline Writes (CQRS Outbox)
+
+When the user triggers a command (e.g., adding a decision):
+1. `KnowledgeStore` writes the change directly into the local SQLite database so the UI updates instantly.
+2. The change is inserted into a `SyncOutbox` table.
+3. Once the network is restored, the changes are dispatched to the API Server where they are pushed to the [Orphan Branch](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) to maintain the [Git-Isomorphic Graph](../../adrs/ADR-004-git-isomorphic-graph.md).
 
 ---
 
@@ -30,8 +31,6 @@ The store maintains a `Map<string, KnowledgeGraphSnapshot>`, mapping `workspaceR
 
 `KnowledgeStore` participates in VS Code's extension lifecycle:
 
-- **Activation**: `KnowledgeStore.getInstance(outputChannel)` returns (or creates) the singleton. The singleton is created once per extension host process.
-- **`load()`**: Called once immediately after activation, and thereafter by `startWatcher` callbacks and by `initProject`/`runExtraction` after they write files.
-- **`dispose()`**: Called by `extension.deactivate()` via `KnowledgeStore.getInstance(outputChannel).dispose()`. Disposes all active `FileSystemWatcher` instances, calls `_onDidLoad.dispose()`, and resets the static `_instance` to `null` so the singleton can be recreated in tests.
-
-> ⚠️ **CONFLICT – `parseTags` Silent Failure on `project_name` + `tags:` Format**: [`parser.ts::parseTags`](../../src/parser.ts) calls `parseYaml(content) as unknown[]` and immediately calls `.map()` on the result. When `l1_tags.yaml` uses the skeleton's object format (`{ project_name: "...", tags: [{...}] }`), the parsed value is a plain object – not an array – and calling `.map()` throws `TypeError: raw.map is not a function`. The `tryParse` wrapper in `KnowledgeStore` catches this silently and returns `[]`. **Any user who follows the generated skeleton and populates the `tags:` array will see zero L1 tags in the tree view.** A fix is scheduled for Round 2 (`parseTags` should check if the result has a `tags` property and use it as the list).
+- **Activation**: Initializes the SQLite connection pool and spawns the AST Microkernel worker thread.
+- **`load()`**: Dispatches the initial graph read.
+- **`dispose()`**: Called by `extension.deactivate()`. Safely closes the SQLite connection, terminates the AST Microkernel worker thread, and clears all `onDidLoad` subscriptions to prevent memory leaks in the Extension Host.

@@ -1,6 +1,6 @@
 # Docuvia Configuration Settings
 
-Defined in `package.json` -> `contributes.configuration`.
+Defined in [`package.json`](../../../../artifacts/vscode-client/package.json) -> `contributes.configuration`.
 
 ## Settings List
 
@@ -9,25 +9,25 @@ Defined in `package.json` -> `contributes.configuration`.
 - **Type**: `string`
 - **Default**: `"chat"`
 - **Enum**: `["chat", "webview"]`
-- **Description**: Where to display cross-project search results by default. If set to `chat`, it pre-fills the GitHub Copilot Chat with `@docuvia /query <text>`. If set to `webview`, it opens a dedicated VS Code webview panel.
+- **Description**: Where to display cross-project search results by default (governed by [Local-First Architecture](../../adrs/ADR-002-local-first-architecture.md) and [Agentic RAG Routing](../../adrs/ADR-007-agentic-rag-routing.md)). If set to `chat`, it pre-fills the GitHub Copilot Chat with `@docuvia /query <text>`. If set to `webview`, it opens a dedicated VS Code webview panel.
 
 ### `docuvia.extraction.includePatterns`
 
 - **Type**: `array` of `string`
 - **Default**: `["**/*.ts", "**/*.js", "**/*.tsx", "**/*.jsx", "**/*.py", "**/*.rs", "**/*.go", "**/*.java", "**/package.json", "**/pyproject.toml"]`
-- **Description**: Glob patterns for files that should be analyzed automatically when triggering "Run Extraction". Evaluated using `minimatch`. Files not matching this list will trigger a confirmation prompt before extraction to save tokens.
+- **Description**: Glob patterns for files that should be analyzed automatically when triggering "Run Extraction" via the [AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md). Evaluated using `minimatch`. Files not matching this list will trigger a confirmation prompt before extraction to respect [Token Management](../../adrs/ADR-009-token-management.md) boundaries.
 
 ### `docuvia.extraction.maxLinesWarning`
 
 - **Type**: `number`
 - **Default**: `1000`
-- **Description**: Show a warning before extracting files larger than this many lines. Encourages the user to use "Add Decision from Selection" for large files instead of sending the entire file to the LLM.
+- **Description**: Show a warning before extracting files larger than this many lines. Encourages the user to use "Add Decision from Selection" for large files instead of sending the entire file to the LLM, triggering [Context Compression](../../adrs/ADR-010-context-compression-and-proxy.md).
 
 ### `docuvia.extraction.maxFileSizeKBWarning`
 
 - **Type**: `number`
 - **Default**: `50`
-- **Description**: Show a warning before extracting files larger than this size in KB. Acts as a second layer of token-consumption protection alongside line count limits.
+- **Description**: Show a warning before extracting files larger than this size in KB. Acts as a second layer of token-consumption protection ([Token Management](../../adrs/ADR-009-token-management.md)) alongside line count limits.
 
 ### `docuvia.knowledgeGraph.incrementalUpdateThreshold`
 

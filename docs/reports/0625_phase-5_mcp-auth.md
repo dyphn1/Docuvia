@@ -10,7 +10,7 @@
    ```typescript
    const expected = Buffer.from(`Bearer ${expectedToken}`);
    const actual = Buffer.from(authHeader ?? "");
-   if (expected.length !== actual.length || !crypto.timin...
+   if (expected.length !== actual.length 
 
 
 2. **🟡 No `securitySchemes` in OpenAPI spec:** The OpenAPI spec at `lib/api-spec/openapi.yaml` has no `components.securitySchemes` section and no `security` requirements on any path. This means:
@@ -29,14 +29,6 @@
 
 
 5. **🟡 No rate limiting on auth failures:** As noted in the 6.2.1 and 6.2.2 reports, there is no rate limiting on MCP endpoints. An attacker can make unlimited token guess attempts.
-
-## Round 3 — Integration & Completeness Review
-
-**Auth coverage matrix:**
-
-| Endpoint                       | Auth Middleware | OpenAPI security | Test covers auth  |
-| ------------------------------ | --------------- | ---------------- | ----------------- |
-| `GET /mcp/list_projects`       | ✅ L19-36       | ❌ Not ...
 
 ### Recommended Fix
 Review the warnings and implement fixes in the corresponding source files.

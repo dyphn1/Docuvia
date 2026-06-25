@@ -38,28 +38,5 @@ In `directLookupHandler()`, lin...
 
 ---
 
-## Round 3 — Integration & Completeness Review
-
-### Integration Coverage
-
-
-3. **❌ No fast-path verification tests:** The ADR-007 "Verifiability" section explicitly requires:
-   - **Fast-Path Assertion:** Integration tests that seed the DB, trigger an exact-match query, and assert 0 external HTTP requests via MSW.
-   - **Fallback Assertion:** Queries below the similarity threshold must assert exactly 1 MSW-intercepted request.
-
-   Neither assertion exists in the test suite. The only test file is `intent-router.unit.test.ts` which tests utility functions, not the routing...
-
-
-2. **⚠️ Performance concern with Layer 3:** The L1/L2 term matching loads all tags and nodes on every non-single-word query. For a knowledge graph with thousands of L2 nodes, this could add significant latency — partially defeating the purpose of the O(1) fast-path. A more efficient approach would be to use a database-side `ILIKE` query or maintain an in-memory trie/cache.
-
-
-3. **⚠️ Missing `pg_trgm` usage:** The code comment on line 522 says "We would ideally use Postgres Full Text Search (to_tsvector/to_tsquery) but sticking to ILIKE for architectural continuity here." The ADR-007 mentions `pg_trgm` in the sequence diagram. The current implementation doesn't leverage PostgreSQL's trigram indexing, which would be more efficient for fuzzy matching.
-
----
-
-## Findings Summary
-
-| #   | Severity        | Finding                                                           ...
-
 ### Recommended Fix
 Review the warnings and implement fixes in the corresponding source files.

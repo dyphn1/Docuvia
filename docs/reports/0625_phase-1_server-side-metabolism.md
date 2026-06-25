@@ -26,26 +26,5 @@
 
 ---
 
-## Round 3 — Integration & Completeness Review
-
-### Integration Findings
-
-
-4. **⚠️ No tests for metabolism**: Zero test files cover the metabolism feature. The ADR explicitly requires:
-   - **DLQ Routing Proof**: "Vitest DB tests using `withRollback(...)` MUST inject a mocked deterministic-failing task. The test MUST tick the worker 3 times and explicitly assert the task transitions to the `DEAD_LETTER_QUEUE` status."
-   - **Mutex Lock Proof**: "Concurrent test runners MUST attempt to claim the same pending task simultaneously. DB assertions MUST prove exactly 1 worker...
-
-
-5. **⚠️ No OpenAPI spec coverage**: The metabolism endpoints (`/api/metabolism-tick`, `/api/admin/metabolism-tick`) are not defined in the OpenAPI spec. Per project conventions, all API routes should be in `openapi.yaml` and codegen'd via Orval.
-
-
-6. **⚠️ `job_queue` table not in generate pipeline**: The generate route (`generate.ts`) manages project status directly on `projectsTable.status` rather than using the `job_queue` table. This means the job queue is completely disconnected from the actual async work.
-
-### Completeness Summary
-
-| Feature                                              | Implemented | Tested | In OpenAPI |
-| ---------------------------------------------------- | ----------- | ------ | ---------- |
-| Client heartbeat ...
-
 ### Recommended Fix
 Review the warnings and implement fixes in the corresponding source files.

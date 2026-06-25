@@ -5,7 +5,7 @@
 - **Status Update Required**: ❌ ERROR / ⚠️ WARN
 
 ### Description of Failure
-1. **🔴 Hardcoded fallback userId.** `export.ts:18`: `const userId = (req as any).user?.id || 1;` — When no authenticated user is present (no auth middleware sets `req.user`), the middleware defaults to `userId = 1`. This means unauthenticated requests will be treated as user ID 1, potentially granting access to projects owned by user 1. This is a security vulnerability if auth middleware is not yet deployed. The comment on line 17 acknowledges this: "Fake userId extracted from bearer token (impl...
+1. **🔴 Hardcoded fallback userId.** `export.ts:18`: `const userId = (req as any).user?.id 
 
 
 2. **🟡 No Zod validation on path parameter.** The endpoint uses raw `Number(req.params.id)` without a Zod validator. While `NaN` produces a 404 (no project found with NaN ID), this bypasses the project's standard validation pattern. The OpenAPI spec defines the `id` parameter as `type: integer`, but no generated Zod validator is applied in the route handler.

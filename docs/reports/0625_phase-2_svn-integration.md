@@ -60,25 +60,5 @@
 
 ---
 
-## Round 3 — Integration & Completeness Review
-
-### Integration Correctness
-
-
-1. **❌ No tests for SVN ingestion.** The search for `*.test.ts` files containing "svn" returned zero results. No unit tests for `getSvnLog`, `getSvnDiff`, or the SVN ingest route exist. The Git ingestion also lacks integration tests.
-
-
-2. **❌ No mock SVN CLI fixture.** For integration testing, there are no MSW fixtures or mock SVN binary fixtures that would allow testing the SVN ingest path without requiring a real SVN installation.
-
-
-3. **⚠️ `svn+ssh://` URLs blocked.** As noted in Round 1, the URL validation regex prevents `svn+ssh://` URLs, which are common in enterprise environments. This is a functional gap.
-
----
-
-## Findings Summary
-
-| #   | Severity   | Category      | Finding                                                                                                               |
-| --- | ---------- | ------------- | -------------------------------------------------------------------------------------------------...
-
 ### Recommended Fix
 Review the warnings and implement fixes in the corresponding source files.

@@ -13,11 +13,5 @@
 
 3. **🔴 No rate limiting on MCP endpoint:** The POST `/mcp/query` endpoint has no rate limiting. Since it calls the LLM (gpt-4o-mini) on every request (unless fast-path applies), an attacker with a valid token could exhaust LLM API credits. The GET-based MCP endpoints (list_projects, search_knowledge, etc.) also lack rate limiting.
 
-## Round 3 — Integration & Completeness Review
-
-**Endpoint contract verification:**
-
-| Aspect            | Expected (OpenAPI)    | Actual (Implementation)         | S...
-
 ### Recommended Fix
 Review the warnings and implement fixes in the corresponding source files.

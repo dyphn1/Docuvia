@@ -16,14 +16,5 @@
 
 4. **🔴 No rate limiting on any MCP endpoint.** Same issue as identified in 6.2.1 report — no rate limiting on MCP routes, which could lead to LLM API credit exhaustion.
 
-## Round 3 — Integration & Completeness Review
-
-**Endpoint inventory cross-reference:**
-
-| Endpoint              | Route File | OpenAPI Spec | kg-engine UI | Test |
-| --------------------- | ---------- | ------------ | ------------ | ---- |
-| `list_projects`       | ✅ L39     | ✅ L985      | ✅           | ✅   |
-| `read_shared_me...
-
 ### Recommended Fix
 Review the warnings and implement fixes in the corresponding source files.

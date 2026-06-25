@@ -1,6 +1,6 @@
 # ADR-021: Unified Isomorphic AST Engine
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-022](ADR-022-ast-microkernel-architecture.md)
 **Date:** 2026-06-22
 
 ## Context

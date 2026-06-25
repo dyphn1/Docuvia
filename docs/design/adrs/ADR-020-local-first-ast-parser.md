@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (Revised for Hybrid I/O & Content-Addressed Caching)
+**Superseded by:** [ADR-022: AST Microkernel Architecture](ADR-022-ast-microkernel-architecture.md)
 
 ## Context
 

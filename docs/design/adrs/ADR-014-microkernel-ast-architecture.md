@@ -1,5 +1,9 @@
 # ADR-014: Microkernel AST Architecture & Plugin Ecosystem
 
+## Status
+
+**Superseded by:** [ADR-022: AST Microkernel Architecture](ADR-022-ast-microkernel-architecture.md)
+
 ## Context
 
 To allow AI to accurately understand project structures, static scanning using an Abstract Syntax Tree (AST) parser (e.g., Tree-sitter) is required. However, supporting a multitude of languages (e.g., 30+ languages) in a monolithic architecture would lead to a massive binary/dependency size, performance drag, and difficult maintenance. Every time a language releases a new syntax feature, the core project would require updates.

@@ -25,13 +25,14 @@ The core engine (`@workspace/ast-core`) will act as a lightweight Microkernel. I
 ### 3. Strict Worker Thread Isolation
 WASM heap memory must be manually freed (`tree.delete()`). To prevent memory leaks from crashing the VS Code Extension Host or the main API Server, all AST parsing **must** execute inside isolated `worker_threads` (or Web Workers). If a worker OOMs or hangs on a malicious file, the Microkernel simply terminates the worker, flags the file as failed, and spawns a new worker.
 
-### 4. Zero-LLM Local Graph Pipeline
-Raw AST strings must never be passed across the IPC (Inter-Process Communication) boundary due to extreme serialization overhead. The isolated Worker handles parsing, traversing, and extracting the structural metadata, returning only a highly compressed JSON array of `GraphNode[]` to the main thread. This constitutes a purely local, Zero-LLM pipeline that costs $0.00 to execute.
+### 4. Zero-LLM Database-as-IPC Pipeline
+To completely bypass IPC (Inter-Process Communication) serialization overhead between the Worker and the Main Thread, we inherit the decision from **ADR-015 (Database-as-IPC)**. The isolated AST Worker handles parsing, traversing, and extracting structural metadata, and then **directly writes `GraphNode` and `GraphEdge` rows into the local SQLite database**. The main thread only sends small control signals (e.g., "parse src/auth.ts") and queries the SQLite database natively. This constitutes a purely local, Zero-LLM pipeline that costs $0.00 to execute while keeping IPC payloads negligible.
 
 ## Consequences
 
 - **Positive:** Guaranteed 100% hash parity between local IDE graphs and server-side databases (Git-Isomorphic sync is safe).
 - **Positive:** VS Code Extension bundle size remains under 5MB.
 - **Positive:** Complete immunity to IDE freezing or crashes caused by AST parsing.
+- **Positive:** IPC serialization bottlenecks are eliminated via direct SQLite writes by the worker (Database-as-IPC).
 - **Negative:** WASM is ~20-30% slower than native C++ bindings for massive bulk ingestion on the server.
-- **Negative:** Increased architectural complexity in managing a dynamic Web Worker pool and IPC message passing.
+- **Negative:** Increased architectural complexity in managing a dynamic Web Worker pool and ensuring safe concurrent SQLite writes from workers.

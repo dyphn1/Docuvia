@@ -22,7 +22,7 @@ pie title Prompt Context Injection Limit (e.g. 8K Tokens)
 ## 2. Evolution Phase: Local Solidification (1900 -> 300 Tokens)
 
 - **Unknown to Known**: The system initially uses 1900 Tokens to ask the LLM to find hotspots in 100 git commit paths (resolved via [Git Blob Native Identity](ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md) and persisted to the [Orphan Branch](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)).
-- **Solidification**: The system evolves by offloading deterministic structural extraction to the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) locally.
+- **Solidification**: The system evolves by offloading deterministic structural extraction to the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) locally. When AST parsing is insufficient, the system generates dedicated scripts (e.g., a local Trie algorithm for path compression) via the [Tool Maker](ADR-006-self-evolution-architecture.md#4-tool-maker-integration) to permanently solidify the rule.
 - **Efficiency Breakthrough**: On the next run, the Local side performs [Context Compression](ADR-010-context-compression-and-proxy.md) on the paths, shrinking the payload to under 300 Tokens, freeing up LLM compute for higher-level semantic tasks.
 
 ## 3. Batching & Chunking

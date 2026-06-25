@@ -21,7 +21,7 @@ sequenceDiagram
     User->>VSC: @docuvia /init
     VSC-->>User: Show Options: [New, Existing, Demo]
     User->>VSC: Selects 'New'
-    VSC-->>User: "Will create .docuvia/ and docuvia-knowledge branch. Proceed?"
+    VSC-->>User: "Will create .docuvia/ and [docuvia-knowledge branch](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md). Proceed?"
     User->>VSC: Confirms
 
     VSC->>FS: 1. Deterministic Recon (Read .gitignore, package.json)
@@ -37,7 +37,7 @@ sequenceDiagram
 
     VSC-->>User: Present QuickPick/Chat UI with proposals
     User->>VSC: Confirms or Modifies Tags
-    VSC->>FS: Write to .docuvia/l1_tags.yaml
+    VSC->>LocalDB: Write to Local SQLite Cache (SyncOutbox)
     VSC->>FS: Generate _project_profile.yaml
 ```
 
@@ -74,4 +74,8 @@ sequenceDiagram
 
 ## Anchoring & Semantic Drift Prevention
 
-The VS Code client utilizes standard `vscode.CodeLensProvider` and `vscode.HoverProvider`. To prevent line-number drift and Editor Host freezing, semantic re-anchoring of knowledge nodes relies exclusively on asynchronous `vscode.executeDocumentSymbolProvider` calls triggered strictly upon document save, never on keystrokes.
+To prevent line-number drift and Editor Host freezing when providing `vscode.CodeLensProvider` and `vscode.HoverProvider` capabilities, Docuvia employs a progressive enrichment fallback chain defined in [ADR-015](ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md):
+
+1. **AST Primary:** Anchoring is primarily handled by the local WASM AST Microkernel ([ADR-020](ADR-020-unified-isomorphic-ast-microkernel.md)) running in a Web Worker, which is fast and handles raw source perfectly without compilation.
+2. **LSP Fallback:** If the AST cannot resolve complex dependencies or is dealing with unsaved "dirty" editor buffers, the system falls back to `vscode.executeDocumentSymbolProvider` (LSP).
+3. **LLM Last Resort:** Only if both deterministic parsers fail does the system delegate to an LLM to heuristically anchor the logic.

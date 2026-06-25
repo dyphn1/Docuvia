@@ -65,6 +65,7 @@ async function postSlackMessage(
 ): Promise<boolean> {
   const body = buildSlackPayload(eventType, payload, projectName);
   try {
+    // TODO: [CRITICAL BUG FIX] - SSRF Vulnerability. The `webhookUrl` is user-supplied via integration config. An attacker can supply an internal IP (e.g., 169.254.169.254 or localhost) to map internal networks. Use an SSRF-prevention library or strict URL scheme/domain validation before calling fetch.
     const res = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -132,6 +133,7 @@ async function postTeamsMessage(
 ): Promise<boolean> {
   const body = buildTeamsPayload(eventType, payload, projectName);
   try {
+    // TODO: [CRITICAL BUG FIX] - SSRF Vulnerability. The `webhookUrl` is user-supplied via integration config. An attacker can supply an internal IP (e.g., 169.254.169.254 or localhost) to map internal networks. Use an SSRF-prevention library or strict URL scheme/domain validation before calling fetch.
     const res = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

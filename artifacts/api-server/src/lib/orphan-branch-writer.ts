@@ -132,6 +132,7 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
     // Using git fast-import. In a full Git-Isomorphic setup, we would run git fetch/merge
     // to handle 3-way merges if the client pushed to remote. But for the server-authoritative
     // push, fast-import safely overwrites the tree for the given branch.
+    // TODO: [CRITICAL BUG FIX] - Command Injection (RCE) Vulnerability. `JSON.stringify` does not escape bash substitution characters like `$(...)` or backticks. An attacker can craft malicious L3 node titles/content that will be executed by `execAsync` on the host server. Replace with `child_process.spawn` and pipe to `stdin` programmatically.
     await execAsync(`printf '%s' ${JSON.stringify(fastImportData)} | git fast-import --quiet`);
 
     logger.info(

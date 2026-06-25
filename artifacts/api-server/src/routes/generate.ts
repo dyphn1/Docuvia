@@ -611,6 +611,7 @@ router.post("/projects/:id/generate", async (req, res) => {
     return res.status(409).json({ error: "Project is already indexing or not in active state." });
   }
 
+  // TODO: [CRITICAL BUG FIX] - Missing transaction wrapper. The entire generation pipeline executing discrete `db.insert()` and `db.update()` statements MUST be wrapped in a `db.transaction()` block to prevent DB corruption if an LLM call fails.
   try {
     // Step 1: Fetch valid (signal-scored) commits
     const validCommits = await db

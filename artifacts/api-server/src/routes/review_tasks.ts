@@ -107,6 +107,7 @@ router.get("/review-tasks/stats", async (req, res) => {
 });
 
 router.patch("/review-tasks/:id", async (req, res) => {
+  // TODO: [CRITICAL BUG FIX] - IDOR vulnerability. The endpoint blindly updates `reviewTasksTable` by `id` without verifying if the user has access to the project owning this task.
   const { id } = ResolveReviewTaskParams.parse({ id: Number(req.params.id) });
   const body = ResolveReviewTaskBody.parse(req.body);
   const [task] = await db

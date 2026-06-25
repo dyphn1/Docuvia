@@ -26,6 +26,7 @@ export class LocalGitClient {
   async clone(branch = "main"): Promise<void> {
     this.repoDir = path.join(os.tmpdir(), `docuvia-git-${crypto.randomUUID()}`);
     logger.info({ repoDir: this.repoDir, repoUrl: this.repoUrl }, "Cloning repository");
+    // TODO: [CRITICAL BUG FIX] - Command Argument Injection risk. Use `--` before positional arguments to prevent malicious branches/repoUrls from executing git commands (e.g., `--upload-pack`).
     await execFileAsync("git", [
       "clone",
       "--depth=500",

@@ -19,7 +19,7 @@ sequenceDiagram
     API->>DB: SELECT lastGitIngestedAt FROM projects WHERE id = :id
     API->>GIT: spawn("git" (streamed), ["log", "--after=<cursor>", "--format=..."])
     GIT-->>API: Raw commit list (stdout)
-    API->>API: scoreCommit() ??filter low-signal commits
+    API->>API: scoreCommit() (filter low-signal commits)
     API->>DB: INSERT INTO commits (hash, message, diff, authoredAt, projectId)
     API-->>FE: 200 { ingested: N, skipped: M, mode: "incremental" }
     FE-->>User: Show IngestResult toast
@@ -46,24 +46,24 @@ sequenceDiagram
     API->>DB: UPDATE projects SET status = 'indexing' WHERE id = :id AND status IN ('active', 'error') (Atomic Lock)
     API->>DB: SELECT * FROM commits WHERE processedAt IS NULL AND projectId = :id
 
-    Note over API,LLM: Step 1 ??L1 Tagging
-    API->>LLM: Classify commit message ??L1 tags (with prompt_template override)
+    Note over API,LLM: Step 1 - L1 Tagging
+    API->>LLM: Classify commit message for L1 tags
     LLM-->>API: ["Security", "Build System", ...]
 
-    Note over API,LLM: Step 2 ??L2 Extraction
+    Note over API,LLM: Step 2 - L2 Extraction
     API->>LLM: Extract module/package from diff + path
     LLM-->>API: L2 node candidates (name, type, embedding request)
     API->>LLM: POST /v1/embeddings for each L2 node
     LLM-->>API: Embedding vectors
 
-    Note over API,LLM: Step 3 ??L3 Generation
+    Note over API,LLM: Step 3 - L3 Generation
     API->>DB: SELECT * FROM correction_examples WHERE projectId = :id (few-shot)
     API->>LLM: Generate decision record for each L2 node (with few-shot examples)
     LLM-->>API: L3 nodes (title, content, type)
     API->>LLM: POST /v1/embeddings for each L3 node
     LLM-->>API: Embedding vectors
 
-    Note over API,DB: Step 4 ??Cross-project & Noise Detection
+    Note over API,DB: Step 4 - Cross-project & Noise Detection
     API->>DB: Cosine similarity check across other projects' L2 embeddings
     API->>DB: Detect near-duplicate L1 tags
     API->>DB: INSERT INTO review_tasks (anchor/merge/reject types)
@@ -96,10 +96,10 @@ sequenceDiagram
     alt vector
         API->>LLM: POST /v1/embeddings { input: query }
         LLM-->>API: Query embedding vector
-        API->>DB: SELECT l3_nodes, cosine_similarity(embedding, queryVec) ORDER BY sim DESC LIMIT 50 -> Apply Post-Fetch Temporal Decay Math in Application Memory -> LIMIT 10
+        API->>DB: Query L3 nodes & apply Temporal Decay
         DB-->>API: Top-K L3 nodes
     else graph
-        API->>DB: MATCH l2_nodes WHERE name LIKE query ??traverse node_links
+        API->>DB: Traverse node_links
         DB-->>API: Graph neighbourhood
     else direct
         API->>DB: Full-text search on l3_nodes.content

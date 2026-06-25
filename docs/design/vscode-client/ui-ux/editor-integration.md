@@ -14,7 +14,7 @@ When the user clicks a Docuvia CodeLens, the `docuvia.showDecisionsForLens` comm
 
 The command presents a `vscode.window.showQuickPick` with the following items:
 
-1. **Up to 2 decision items**: Each shows the decision's `title` as the label and `status` as the description. Selecting one opens the corresponding `.md` file in the editor via `vscode.workspace.openTextDocument` + `showTextDocument`.
+1. **Up to 2 decision items**: Each shows the decision's `title` as the label and `status` as the description. Selecting one fetches the content via [Database-as-IPC](../../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) and displays it in a virtual text document or webview panel, replacing the legacy `.md` file approach governed by our [Local-First Architecture](../../../adrs/ADR-002-local-first-architecture.md).
 2. **"View all in Chat" option** (only when more than 2 decisions exist): Selecting this opens GitHub Copilot Chat pre-populated with `@docuvia /query <moduleName>`, delegating the full search to the chat participant.
 
 The QuickPick placeholder reads: `"Decisions for module: <moduleName>"`.
@@ -30,24 +30,21 @@ The QuickPick placeholder reads: `"Decisions for module: <moduleName>"`.
 
 ### Hover Trigger Mechanism
 
-The hover provider uses a **UUID regex** (`/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i`) rather than word boundaries or symbol names. It activates whenever the cursor lands on a token matching this pattern in a registered file.
+The hover provider is migrating from a legacy **UUID regex** approach to using the [WASM / Microkernel AST](../../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md). It now activates whenever the cursor lands on a semantically recognized token to fetch its corresponding graph entity.
 
 ### Registered File Scopes
 
-The provider is registered for **two distinct scope groups**:
+The provider is registered for **source files** (e.g., `typescript`, `javascript`, `typescriptreact`, `javascriptreact`, `python`).
 
-1. **Source files**: `typescript`, `javascript`, `typescriptreact`, `javascriptreact`, `python`
-2. **Docuvia data files**: `yaml` (pattern: `**/.docuvia/*.yaml`) and `markdown` (pattern: `**/.docuvia/l3_decisions/*.md`)
-
-This allows users to hover over UUIDs directly inside `.docuvia/l2_modules.yaml` or an L3 decision file to inspect what the referenced entity is.
+*Note: The legacy behavior of registering `yaml` and `markdown` under `.docuvia/` is obsolete. Under the [Local-First Architecture](../../../adrs/ADR-002-local-first-architecture.md) and [Orphan Branch / Maintenance](../../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) patterns, data is stored locally in SQLite and synchronized via the `docuvia-knowledge` orphan branch, not as local workspace YAML/MD files.*
 
 ### Three-Priority Lookup
 
-When a UUID is found, the provider checks the knowledge store in this priority order:
+When a mapped entity is found, the provider queries the SQLite database via [Database-as-IPC](../../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) following the [Three-tier knowledge graph](../../../adrs/ADR-005-knowledge-abstraction-strategy.md) abstraction in this priority order:
 
-1. **L3 Decision** (`snapshot.decisions.get(id)`) — shows title, status badge, and a 200-character body preview.
-2. **L2 Module** (`snapshot.modules.find(m => m.id === id)`) — shows module name, description, and source paths.
-3. **L1 Tag** (`snapshot.tags.find(t => t.id === id)`) — shows tag name and description.
+1. **L3 Decision** — shows title, status badge, and a 200-character body preview.
+2. **L2 Module** — shows module name, description, and source paths.
+3. **L1 Tag** — shows tag name and description.
 
 If none match, the hover returns `undefined` (no tooltip shown).
 

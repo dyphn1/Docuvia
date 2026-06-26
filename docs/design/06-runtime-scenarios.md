@@ -204,22 +204,25 @@ sequenceDiagram
 
 ## 6.7 Scenario: AI Agent Collaboration Workflows
 
-To explicitly address the "Cognitive Gap" and "Knowledge Deficit", Docuvia formalizes three distinct workflow models for AI Agent interaction.
+To explicitly address the "Cognitive Gap" and "Knowledge Deficit", Docuvia formalizes three distinct workflow models for AI Agent interaction. It achieves this by broadcasting a unified cognitive baseline across all major AI tools via the `docuvia init-agent` command.
 
 ### 6.7.1 Context-Aware Fast Path (Local)
-Used when an AI Agent (e.g. Cursor, Copilot) is working on a specific file and needs immediate, zero-token architectural context.
+Used when an AI Agent (e.g. Cursor, Claude Code, Copilot, Windsurf) is exploring the codebase. The `init-agent` command automatically provisions dynamic hooks (`.claude/hooks`, `.cursor/hooks`) and static rule files (`copilot-instructions.md`, `.windsurfrules`, etc.) to intercept the agent's actions.
 
 ```mermaid
 sequenceDiagram
     participant Agent as AI Coding Agent
-    participant VSC as Docuvia VS Code Ext
+    participant Hook as Docuvia Agent Hook
+    participant CLI as Docuvia Local CLI
     participant LocalDB as Local SQLite (HEAD Index)
     
-    Agent->>VSC: Query context for `src/auth.ts`
-    VSC->>LocalDB: AST Topology + File Path Match
-    LocalDB-->>VSC: Return exact L2 Module & L3 Rules
-    VSC-->>Agent: High-density context prompt
-    Note over Agent,VSC: Fast, offline, 0 LLM Tokens used
+    Agent->>Hook: Intends to Grep/Glob/Read codebase
+    Hook->>CLI: Intercept with `docuvia query local --context <query>`
+    CLI->>LocalDB: AST Topology + File Path Match
+    LocalDB-->>CLI: Return exact L2 Module & L3 Rules
+    CLI-->>Hook: High-density context prompt
+    Hook-->>Agent: Inject `=== Docuvia Context ===` into tool output
+    Note over Agent,LocalDB: Fast, offline, 0 LLM Tokens used, aligns Cognitive Baseline
 ```
 
 ### 6.7.2 Global Semantic Search (Server)

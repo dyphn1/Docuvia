@@ -293,8 +293,8 @@ sequenceDiagram
 | **Zero-Server Deep Traversal** — Pure local SQLite graph queries                        | 🔲 TODO | Phase 5 |
 | **Local Context Compression** — Token reduction pipeline before LLM                     | 🔲 TODO | Phase 5 |
 | **Sub-second Incremental Watch** — Fast-path AST updates on file save                   | 🔲 TODO | Phase 5 |
-| **Git Hook Integration (`post-commit`)** — Non-intrusive local AST extraction           | 🔲 TODO | Phase 5 |
-| **Agent AI Hook (`hooks.json`)** — Auto-inject AST context into Agent queries           | 🔲 TODO | Phase 5 |
+| **Git Hook Integration (`post-commit`)** — Non-intrusive local AST extraction           | ✅ Done | Phase 5 |
+| **Agent AI Hook (`init-agent`)** — Broad platform support (Claude/Cursor/Copilot)       | ✅ Done | Phase 5 |
 
 ---
 

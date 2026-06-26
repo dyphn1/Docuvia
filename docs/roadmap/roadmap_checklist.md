@@ -19,18 +19,18 @@
 | [LLM abstraction layer](../design/adrs/ADR-004-openai-compatible-llm-interface-only.md) | ⚠️ WARN | [`integrations-openai-ai-server`](../../lib/integrations-openai-ai-server/) (Only OpenAI supported) |
 | Per-project model switching | ✅ Done | [`llm_configs.ts`](../../lib/db/src/schema/llm_configs.ts) |
 | CI/CD pipeline | ✅ Done | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) |
-| Mutex / Concurrency Control | ❌ ERROR | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) (Fake in-memory mutex; unauthenticated tick endpoint; see [report 0377](reports/0377_6.2.4.md)) |
+| Mutex / Concurrency Control | ❌ ERROR | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) (Fake in-memory mutex; unauthenticated tick endpoint; see [report 0626_phase-1_mutex-concurrency](../../reports/0626_phase-1_mutex-concurrency.md)) |
 
-## [Phase 2 | Input Layer](master-roadmap.md#phase-1-api-server--foundation-the-metabolism-engine)
+## [Phase 2 | Input Layer](master-roadmap.md#phase-2-local-first-vs-code-client)
 
 | Item | Status | Evidence / Verification Target |
 | :--- | :--- | :--- |
 | Git ingestion (commit + diff) | ✅ Done | [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts) |
 | [Document ingestion](../design/adrs/ADR-012-document-misc-pool.md) | ✅ Done | [`document-parser.ts`](../../artifacts/api-server/src/lib/document-parser.ts) |
-| SVN integration | ⚠️ WARN | [`svn-client.ts`](../../artifacts/api-server/src/lib/svn-client.ts) (Architecture drift: diffs stored improperly; see [report 0378](reports/0378_1.2.5.md)) |
-|| Build artifact parser | ❌ ERROR | [`upload.ts`](../../artifacts/api-server/src/middlewares/upload.ts) (memoryStorage mismatch corrupts artifact buffers; see [report 0375](reports/0375_1.2.4.md)) |
+| SVN integration | ⚠️ WARN | [`svn-client.ts`](../../artifacts/api-server/src/lib/svn-client.ts) (Architecture drift: diffs stored improperly; see [report 0626_phase-2_svn-integration](../../reports/0626_phase-2_svn-integration.md)) |
+|| Build artifact parser | ❌ ERROR | [`upload.ts`](../../artifacts/api-server/src/middlewares/upload.ts) (memoryStorage mismatch corrupts artifact buffers; see [report 0626_phase-2_build-artifact-parser](../../reports/0626_phase-2_build-artifact-parser.md)) |
 
-## [Phase 3 | Knowledge Construction Layer](master-roadmap.md#phase-1-api-server--foundation-the-metabolism-engine)
+## [Phase 3 | Knowledge Construction Layer](master-roadmap.md#phase-3-swarm-intelligence--git-isomorphic-sync)
 
 | Item | Status | Evidence / Verification Target |
 | :--- | :--- | :--- |
@@ -42,7 +42,7 @@
 | [Server-Side Metabolism](../design/adrs/ADR-008-asynchronous-metabolism.md) | ✅ Done | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) |
 | Fast-Path Filters | ✅ Done | [`intent-router.ts`](../../artifacts/api-server/src/lib/intent-router.ts) |
 
-## [Phase 4 | Knowledge Graph Layer](master-roadmap.md#phase-5-the-ast-microkernel-deep-local-analysis)
+## [Phase 4 | Knowledge Graph Layer](master-roadmap.md#phase-4-human-in-the-loop--operations-server-side-extensions)
 
 | Item | Status | Evidence / Verification Target |
 | :--- | :--- | :--- |
@@ -52,7 +52,7 @@
 | Impact analysis | ⚠️ WARN | [`mcp.ts`](../../artifacts/api-server/src/routes/mcp.ts) |
 | [Cross-project linking](../design/adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md) | ⚠️ WARN | DB Wiring Missing |
 
-## [Phase 5 | Query Layer / MCP](master-roadmap.md#phase-1-api-server--foundation-the-metabolism-engine)
+## [Phase 5 | Query Layer / MCP](master-roadmap.md#phase-5-the-ast-microkernel-deep-local-analysis)
 
 | Item | Status | Evidence / Verification Target |
 | :--- | :--- | :--- |
@@ -66,7 +66,7 @@
 | [Temporal Decay Scoring](../design/adrs/ADR-007-agentic-rag-routing.md) | ✅ Done | [`intent-router.ts`](../../artifacts/api-server/src/lib/intent-router.ts) |
 | Natural language UI | ✅ Done | `kg-engine/src/pages/query.tsx` |
 
-## [Phase 6 | Human-in-the-Loop](master-roadmap.md#phase-4-human-in-the-loop--operations-server-side-extensions)
+## [Phase 6 | Human-in-the-Loop](master-roadmap.md#phase-3-swarm-intelligence--git-isomorphic-sync)
 
 | Item | Status | Evidence / Verification Target |
 | :--- | :--- | :--- |
@@ -83,7 +83,7 @@
 
 | Item | Status | Evidence / Verification Target |
 | :--- | :--- | :--- |
-| Export (Markdown / JSON) | ❌ ERROR | [`export.ts`](../../artifacts/api-server/src/routes/export.ts) (IDOR vulnerability — userId fallback bypasses ownership check; see [report 0376](reports/0376_6.2.3.md)) |
+| Export (Markdown / JSON) | ❌ ERROR | [`export.ts`](../../artifacts/api-server/src/routes/export.ts) (IDOR vulnerability — userId fallback bypasses ownership check; see [report 0626_phase-7_export-idor](../../reports/0626_phase-7_export-idor.md)) |
 | Dashboard & stats | ✅ Done | [`dashboard.ts`](../../artifacts/api-server/src/routes/dashboard.ts) |
 | Incremental update (delta-only) | ✅ Done | [`projects.ts`](../../lib/db/src/schema/projects.ts) |
 | Cross-team subscription | ✅ Done | [`subscriptions.ts`](../../lib/db/src/schema/subscriptions.ts) |
@@ -100,8 +100,8 @@
 | [Workspace Onboarding (`/init`)](../design/adrs/ADR-001-vscode-client-onboarding.md) | ✅ Done | `extension.ts` |
 | Multi-root Workspace Support | ✅ Done | `TaskRunner.ts` |
 | [Token Limits & Chunking Configs](../design/adrs/ADR-009-token-management.md) | ✅ Done | `extension.ts` |
-|| `docuvia sync` Bidirectional CLI | ⚠️ WARN | [`sync.ts`](../../artifacts/api-server/src/routes/sync.ts) (CLI calls wrong endpoint; githook incompatible; see [report 0373](reports/0373_3.4.3.md)) |
-|| AST Microkernel Architecture | ⚠️ WARN | [`@workspace/ast-core`](../../artifacts/ast-core/) (Core parser + Topology Mapping + Edge Creation + Batch Write Optimization implemented; missing: incremental fast-path, cross-language edges; see [report 0374](reports/0374_4.1.md)) |
+|| `docuvia sync` Bidirectional CLI | ⚠️ WARN | [`sync.ts`](../../artifacts/api-server/src/routes/sync.ts) (CLI calls wrong endpoint; githook incompatible; see [report 0626_phase-8_docuvia-sync-cli](../../reports/0626_phase-8_docuvia-sync-cli.md)) |
+|| AST Microkernel Architecture | ⚠️ WARN | [`@workspace/ast-core`](../../artifacts/ast-core/) (Core parser + Topology Mapping + Edge Creation + Batch Write Optimization implemented; missing: incremental fast-path, cross-language edges; see [report 0626_phase-5_ast-microkernel](../../reports/0626_phase-5_ast-microkernel.md)) |
 | Zero-Server Deep Traversal | 🔲 TODO | Requires pure local SQLite queries |
 | Local Context Compression | 🔲 TODO | Token reduction pipeline |
 | Sub-second Incremental Watch | 🔲 TODO | Fast-path AST updates |

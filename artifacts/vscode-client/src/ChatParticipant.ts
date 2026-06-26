@@ -254,7 +254,7 @@ async function handleExplore(
         stream.markdown(`**Template:** ${template.label}\n\nSuggested L1 Tags:\n\n${table}`);
         stream.button({
           command: "docuvia.acceptL1Tags",
-          title: "Accept & Write to .docuvia/l1_tags.yaml",
+          title: "Accept & Write to local.db",
           arguments: [yaml, workspaceRoot],
         });
         return;
@@ -296,7 +296,7 @@ async function handleExplore(
     stream.markdown(`**Detected:** ${label}\n\nSuggested L1 Tags:\n\n${table}`);
     stream.button({
       command: "docuvia.acceptL1Tags",
-      title: "Accept & Write to .docuvia/l1_tags.yaml",
+      title: "Accept & Write to local.db",
       arguments: [refinedYaml, workspaceRoot],
     });
   } else {
@@ -312,7 +312,7 @@ async function handleExplore(
       );
       stream.button({
         command: "docuvia.acceptL1Tags",
-        title: "Accept & Write to .docuvia/l1_tags.yaml",
+        title: "Accept & Write to local.db",
         arguments: [dynamicYaml, workspaceRoot],
       });
     } else {
@@ -559,7 +559,7 @@ function handleHelp(stream: vscode.ChatResponseStream): void {
     `## @docuvia — Help\n\n` +
       `| Command | Description |\n` +
       `|---------|-------------|\n` +
-      `| \`/explore\` | Detect project type and suggest L1 tags for \`.docuvia/l1_tags.yaml\` |\n` +
+      `| \`/explore\` | Detect project type and suggest L1 tags for local.db |\n` +
       `| \`/query <term>\` | Search your local knowledge graph for matching modules and decisions |\n` +
       `| \`/extract [path]\` | Queue L3 decision extraction for the active file, specified file, or folder |\n` +
       `| \`/help\` | Show this help message |\n`

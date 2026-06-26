@@ -1,15 +1,6 @@
-import { execFile as _execFile, spawn } from "child_process";
 import * as path from "path";
-import { promisify } from "util";
 import * as vscode from "vscode";
-import {
-  parseDecision,
-  parseManifest,
-  parseSingleModule,
-  parseTags,
-  parseModules,
-  parseRouter,
-} from "./parser.js";
+import Database from "better-sqlite3";
 import {
   GlobalConfig,
   KnowledgeSnapshot,
@@ -17,13 +8,9 @@ import {
   L2Module,
   L3Decision,
   L3RouterEntry,
-  ManifestModule,
 } from "./types.js";
 
-const execFile = promisify(_execFile);
-
 const DOCUVIA_DIR = ".docuvia";
-const MANIFEST_FILE = "manifest.yaml";
 const GIT_KNOWLEDGE_BRANCH = "docuvia-knowledge";
 
 /** Structural interface used to avoid a circular import with CentralServerClient. */
@@ -42,8 +29,6 @@ export interface KnowledgeGraphSnapshot {
   /** L3 decisions keyed by their ID for O(1) lookup. */
   decisions: Map<string, L3Decision>;
   loadedAt: Date;
-  /** Module names + path patterns from manifest.yaml — used for offline CodeLens matching. */
-  manifestModules: ManifestModule[];
 }
 
 /**
@@ -144,91 +129,61 @@ export class KnowledgeStore {
 
     this._outputChannel.appendLine(`[Docuvia] Loading knowledge graph for ${workspaceRoot}...`);
     try {
-      // Always read manifest for offline CodeLens and projectId discovery
-      const manifestContent = await this.readUriSafe(
-        vscode.Uri.joinPath(docuviaDir, MANIFEST_FILE)
-      );
-      const manifest = parseManifest(manifestContent, `${DOCUVIA_DIR}/${MANIFEST_FILE}`);
-
       let tags: L1Tag[] = [];
       let modules: L2Module[] = [];
       let routerIndex: L3RouterEntry[] = [];
       let decisions = new Map<string, L3Decision>();
       let projectName = path.basename(workspaceRoot);
 
-      // Primary: server API
-      if (this._client && this._client.isServerConfigured() && manifest.project_id !== undefined) {
-        try {
-          const apiSnapshot = await this._client.pullSnapshot(manifest.project_id);
-          ({ tags, modules, routerIndex, decisions, projectName } = this._mapApiSnapshot(
-            apiSnapshot,
-            workspaceRoot
-          ));
-          this._outputChannel.appendLine(
-            `[Docuvia] Loaded from server API (project ${manifest.project_id}).`
-          );
-        } catch (err) {
-          this._outputChannel.appendLine(
-            `[Docuvia] Server unreachable, trying git fallback: ${String(err)}`
-          );
-        }
-      }
-
-      // Local fallback: read from .docuvia directory directly
+      // Local fallback: read from SQLite local.db
       if (tags.length === 0 && modules.length === 0) {
         try {
-          const tagsYaml = await this.readUriSafe(vscode.Uri.joinPath(docuviaDir, "l1_tags.yaml"));
-          if (tagsYaml) {
-            tags = parseTags(tagsYaml, "l1_tags.yaml");
-            const match = tagsYaml.match(/^project_name:\s*"([^"\n]+)"/m);
-            if (match) projectName = match[1];
-          }
-
-          const modulesYaml = await this.readUriSafe(
-            vscode.Uri.joinPath(docuviaDir, "l2_modules.yaml")
-          );
-          if (modulesYaml) modules = parseModules(modulesYaml, "l2_modules.yaml");
-
-          const routerYaml = await this.readUriSafe(
-            vscode.Uri.joinPath(docuviaDir, "l3_router.yaml")
-          );
-          if (routerYaml) routerIndex = parseRouter(routerYaml, "l3_router.yaml");
-
-          // Read l3_decisions
-          const decisionsDir = vscode.Uri.joinPath(docuviaDir, "l3_decisions");
-          try {
-            const entries = await vscode.workspace.fs.readDirectory(decisionsDir);
-            for (const [name, type] of entries) {
-              if (type === vscode.FileType.File && name.endsWith(".md")) {
-                const md = await this.readUriSafe(vscode.Uri.joinPath(decisionsDir, name));
-                if (md) {
-                  const decision = parseDecision(md, name);
-                  if (decision) decisions.set(decision.id, decision);
-                }
-              }
+          const dbPath = path.join(docuviaDir.fsPath, "local.db");
+          const fs = require('fs');
+          if (fs.existsSync(dbPath)) {
+            const db = new Database(dbPath, { readonly: true });
+            
+            const l1Rows = db.prepare("SELECT * FROM l1_tags").all() as any[];
+            tags = l1Rows.map(row => ({ id: row.id, name: row.name, slug: row.slug, description: row.description }));
+            
+            const l2Rows = db.prepare("SELECT * FROM l2_nodes").all() as any[];
+            modules = l2Rows.map(row => ({ 
+              id: row.id, 
+              name: row.name, 
+              slug: row.slug, 
+              l1_tag_id: row.l1_tag_id, 
+              source_paths: row.source_paths ? JSON.parse(row.source_paths) : [],
+              description: row.description 
+            }));
+            
+            const l3Rows = db.prepare("SELECT * FROM l3_nodes").all() as any[];
+            routerIndex = l3Rows.map(row => ({ 
+              id: row.id, 
+              l2_module_id: row.l2_node_id, 
+              title: row.title, 
+              slug: row.slug || "", 
+              file_path: "" 
+            }));
+            
+            for (const row of l3Rows) {
+               decisions.set(row.id, {
+                 id: row.id,
+                 l2_module_id: row.l2_node_id,
+                 title: row.title,
+                 status: row.status,
+                 date: row.created_at,
+                 body: row.content || "",
+                 filePath: ""
+               });
             }
-          } catch {
-            // decisions dir might not exist
+            db.close();
+            
+            if (tags.length > 0 && projectName === path.basename(workspaceRoot)) {
+              projectName = tags[0].name; // Use first tag as project name if not set
+            }
           }
         } catch (err) {
           this._outputChannel.appendLine(`[Docuvia] Local fallback failed: ${String(err)}`);
-        }
-      }
-
-      // Offline fallback: git show docuvia-knowledge:{projectId}/...
-      if (tags.length === 0 && modules.length === 0 && manifest.project_id !== undefined) {
-        try {
-          const gitData = await this._loadFromGit(workspaceRoot, manifest.project_id);
-          tags = gitData.tags;
-          modules = gitData.modules;
-          routerIndex = gitData.routerIndex;
-          decisions = gitData.decisions;
-          projectName = gitData.projectName;
-          this._outputChannel.appendLine(
-            `[Docuvia] Loaded from git fallback (branch ${GIT_KNOWLEDGE_BRANCH}).`
-          );
-        } catch (err) {
-          this._outputChannel.appendLine(`[Docuvia] Git fallback failed: ${String(err)}`);
         }
       }
 
@@ -239,12 +194,11 @@ export class KnowledgeStore {
         modules,
         routerIndex,
         decisions,
-        loadedAt: new Date(),
-        manifestModules: manifest.modules,
+        loadedAt: new Date()
       });
 
       this._outputChannel.appendLine(
-        `[Docuvia] Knowledge graph loaded for ${projectName}: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions, ${manifest.modules.length} manifest modules.`
+        `[Docuvia] Knowledge graph loaded for ${projectName}: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions.`
       );
 
       return true;
@@ -326,154 +280,6 @@ export class KnowledgeStore {
    * Reads knowledge from the local docuvia-knowledge orphan branch via git CLI.
    * Falls back when the server is unreachable.
    */
-  private async _loadFromGit(
-    workspaceRoot: string,
-    projectId: number
-  ): Promise<{
-    projectName: string;
-    tags: L1Tag[];
-    modules: L2Module[];
-    routerIndex: L3RouterEntry[];
-    decisions: Map<string, L3Decision>;
-  }> {
-    const treePath = `${GIT_KNOWLEDGE_BRANCH}:${projectId}`;
-    const filesRaw = await this.runGit(
-      ["ls-tree", "-r", "--name-only", treePath],
-      workspaceRoot
-    ).catch(() => "");
-    const files = filesRaw
-      .split("\n")
-      .map((f) => f.trim())
-      .filter(Boolean);
-    const blobContents = await this.readGitBlobs(workspaceRoot, projectId, files);
-
-    const tagsYaml = blobContents.get("l1_tags.yaml") ?? "";
-    const tags = tagsYaml ? parseTags(tagsYaml, "l1_tags.yaml") : [];
-    const projectName =
-      tagsYaml.match(/^project_name:\s*"?([^"\n]+)"?/m)?.[1] ?? path.basename(workspaceRoot);
-
-    const modules: L2Module[] = [];
-    const moduleFiles = files.filter((f) => f.startsWith("l2_modules/") && f.endsWith(".yaml"));
-    for (const file of moduleFiles) {
-      const yaml = blobContents.get(file) ?? "";
-      if (yaml) {
-        const mod = parseSingleModule(yaml, path.basename(file));
-        if (mod) modules.push(mod);
-      }
-    }
-
-    const decisions = new Map<string, L3Decision>();
-    const routerIndex: L3RouterEntry[] = [];
-
-    const decisionFiles = files.filter((f) => f.startsWith("l3_decisions/") && f.endsWith(".md"));
-    for (const file of decisionFiles) {
-      const md = blobContents.get(file) ?? "";
-      if (md) {
-        const relativeFile = file.replace(/^l3_decisions\//, "");
-        const decision = parseDecision(md, relativeFile);
-        if (decision) {
-          decisions.set(decision.id, decision);
-          routerIndex.push({
-            id: decision.id,
-            l2_module_id: decision.l2_module_id,
-            slug: relativeFile.replace(/\.md$/, ""),
-            title: decision.title,
-            file_path: relativeFile,
-          });
-        }
-      }
-    }
-
-    return { projectName, tags, modules, routerIndex, decisions };
-  }
-
-  private async runGit(args: string[], workspaceRoot: string): Promise<string> {
-    const { stdout } = await execFile("git", args, {
-      cwd: workspaceRoot,
-      maxBuffer: 100 * 1024 * 1024,
-    });
-    return stdout;
-  }
-
-  private readGitBlobs(
-    workspaceRoot: string,
-    projectId: number,
-    files: string[]
-  ): Promise<Map<string, string>> {
-    const contents = new Map<string, string>();
-    const requested = files.filter(
-      (file) =>
-        file === "l1_tags.yaml" ||
-        (file.startsWith("l2_modules/") && file.endsWith(".yaml")) ||
-        (file.startsWith("l3_decisions/") && file.endsWith(".md"))
-    );
-
-    if (requested.length === 0) {
-      return Promise.resolve(contents);
-    }
-
-    return new Promise((resolve, reject) => {
-      const child = spawn("git", ["cat-file", "--batch"], {
-        cwd: workspaceRoot,
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-
-      const stderrChunks: Buffer[] = [];
-      const stdoutChunks: Buffer[] = [];
-
-      child.stderr.on("data", (chunk) => {
-        stderrChunks.push(Buffer.from(chunk));
-      });
-
-      child.stdout.on("data", (chunk) => {
-        stdoutChunks.push(Buffer.from(chunk));
-      });
-
-      child.on("error", reject);
-      child.on("close", (code) => {
-        if (code !== 0) {
-          const stderr = Buffer.concat(stderrChunks).toString("utf8");
-          reject(new Error(`git cat-file --batch failed with code ${code}: ${stderr}`));
-          return;
-        }
-
-        try {
-          const output = Buffer.concat(stdoutChunks);
-          let offset = 0;
-          for (const file of requested) {
-            const newline = output.indexOf(0x0a, offset);
-            if (newline === -1) break;
-
-            const header = output.subarray(offset, newline).toString("utf8");
-            offset = newline + 1;
-
-            if (header.endsWith(" missing")) {
-              continue;
-            }
-
-            const [, type, sizeRaw] = header.match(/^[0-9a-f]+ (\w+) (\d+)$/) ?? [];
-            const size = Number(sizeRaw);
-            if (type !== "blob" || !Number.isFinite(size)) {
-              throw new Error(`Unexpected git cat-file header: ${header}`);
-            }
-
-            const blob = output.subarray(offset, offset + size);
-            contents.set(file, blob.toString("utf8"));
-            offset += size + 1;
-          }
-
-          resolve(contents);
-        } catch (err) {
-          reject(err);
-        }
-      });
-
-      for (const file of requested) {
-        child.stdin.write(`${GIT_KNOWLEDGE_BRANCH}:${projectId}/${file}\n`);
-      }
-      child.stdin.end();
-    });
-  }
 
   /**
    * Starts VS Code FileSystemWatchers on the .docuvia/ folder for all workspace folders.

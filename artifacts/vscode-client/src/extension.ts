@@ -15,6 +15,9 @@ import { SearchResultsPanel } from "./SearchResultsPanel.js";
 import { TaskQueueTreeProvider } from "./TaskQueueTreeProvider.js";
 import { TaskRunner } from "./TaskRunner.js";
 import { minimatch } from "minimatch";
+import Database from "better-sqlite3";
+import { parse as parseYaml } from "yaml";
+import { randomUUID } from "crypto";
 
 let outputChannel: vscode.OutputChannel;
 
@@ -317,25 +320,54 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         await vscode.workspace.fs.createDirectory(docuviaUri);
         await vscode.workspace.fs.createDirectory(decisionsUri);
 
-        // Write l1_tags.yaml
-        await vscode.workspace.fs.writeFile(
-          vscode.Uri.file(path.join(workspaceRoot, ".docuvia", "l1_tags.yaml")),
-          Buffer.from(yamlContent, "utf-8")
-        );
-
-        // BUG A-2 fix: ensure l2_modules.yaml and l3_router.yaml skeleton exist
-        await writeIfAbsent(
-          vscode.Uri.file(path.join(workspaceRoot, ".docuvia", "l2_modules.yaml")),
-          `# L2 Modules — functional subsystems, linked to an L1 tag\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   l1_tag_id: <L1 tag id>\n#   source_paths: []\n`
-        );
-        await writeIfAbsent(
-          vscode.Uri.file(path.join(workspaceRoot, ".docuvia", "l3_router.yaml")),
-          `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`
-        );
+        try {
+          const tags = parseYaml(yamlContent);
+          if (Array.isArray(tags)) {
+            const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
+            const db = new Database(dbPath);
+            db.exec(`
+              CREATE TABLE IF NOT EXISTS l1_tags (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                description TEXT
+              );
+              CREATE TABLE IF NOT EXISTS l2_nodes (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                source_paths TEXT,
+                l1_tag_id TEXT,
+                description TEXT
+              );
+              CREATE TABLE IF NOT EXISTS l3_nodes (
+                id TEXT PRIMARY KEY,
+                l2_node_id TEXT,
+                title TEXT NOT NULL,
+                slug TEXT NOT NULL,
+                status TEXT,
+                created_at TEXT,
+                content TEXT
+              );
+            `);
+            
+            const insert = db.prepare("INSERT OR REPLACE INTO l1_tags (id, name, slug, description) VALUES (?, ?, ?, ?)");
+            for (const tag of tags) {
+              const name = tag.name || "Unnamed";
+              const slug = tag.slug || name.toLowerCase().replace(/\\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+              const id = tag.id || randomUUID();
+              const description = tag.description || "";
+              insert.run(id, name, slug, description);
+            }
+            db.close();
+          }
+        } catch (err) {
+          vscode.window.showErrorMessage(`Failed to insert L1 tags into local.db: ${err}`);
+        }
 
         await store.load();
         void vscode.window.showInformationMessage(
-          "Docuvia: l1_tags.yaml written and knowledge graph initialized."
+          "Docuvia: L1 tags imported into local.db and knowledge graph initialized."
         );
       }
     )
@@ -629,23 +661,31 @@ async function initProject(
       } catch {}
 
       const projectName = path.basename(targetRoot);
-      const l1TagsPath = vscode.Uri.file(path.join(docuviaDir, "l1_tags.yaml"));
-      await writeIfAbsent(l1TagsPath, `project_name: ${projectName}\ntags:\n  - slug: core\n`);
-
-      const l2ModulesPath = vscode.Uri.file(path.join(docuviaDir, "l2_modules.yaml"));
-      await writeIfAbsent(
-        l2ModulesPath,
-        `# L2 Modules — functional subsystems, linked to an L1 tag\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   l1_tag_id: <L1 tag id>\n#   source_paths: []\n`
-      );
-
-      const l3RouterPath = vscode.Uri.file(path.join(docuviaDir, "l3_router.yaml"));
-      await writeIfAbsent(
-        l3RouterPath,
-        `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`
-      );
-
-      const profilePath = vscode.Uri.file(path.join(docuviaDir, "_project_profile.yaml"));
-      await writeIfAbsent(profilePath, `# Project Profile\n`);
+      const dbPath = path.join(docuviaDir, "local.db");
+      const db = new Database(dbPath);
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS l1_tags (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          slug TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS l2_nodes (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          slug TEXT NOT NULL,
+          source_paths TEXT,
+          l1_tag_id TEXT
+        );
+        CREATE TABLE IF NOT EXISTS l3_nodes (
+          id TEXT PRIMARY KEY,
+          l2_node_id TEXT,
+          title TEXT,
+          content TEXT,
+          status TEXT,
+          created_at TEXT
+        );
+      `);
+      db.close();
 
       // Install non-intrusive git post-commit hook
       try {

@@ -2,7 +2,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { minimatch } from "minimatch";
 import { KnowledgeStore } from "./KnowledgeStore.js";
-import { L2Module, ManifestModule } from "./types.js";
+import { L2Module } from "./types.js";
 
 export interface CodeLensDecisionData {
   moduleId: string;
@@ -46,17 +46,6 @@ function findMatchingModules(
       const normalized = normalizeSourcePath(sp);
       return relPath === normalized || relPath.startsWith(normalized);
     })
-  );
-}
-
-function findMatchingManifestModules(
-  documentFsPath: string,
-  workspaceRoot: string,
-  manifestModules: ManifestModule[]
-): ManifestModule[] {
-  const relPath = path.relative(workspaceRoot, documentFsPath).split(path.sep).join("/");
-  return manifestModules.filter((m) =>
-    m.path_patterns.some((pattern) => minimatch(relPath, pattern, { matchBase: true }))
   );
 }
 
@@ -190,15 +179,10 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
       }
     }
 
-    // Offline fallback: use manifest path patterns when server modules have no source_paths
-    const matchedManifest = findMatchingManifestModules(
-      document.uri.fsPath,
-      workspaceRoot,
-      snapshot.manifestModules
-    );
-    if (matchedManifest.length === 0) return [];
+    // Offline fallback: we matched modules but they have no decisions locally
+    if (matchedModules.length === 0) return [];
 
-    const offlineModule = matchedManifest[0];
+    const offlineModule = matchedModules[0];
     return declarationLines.map((lineIndex) => {
       const range = new vscode.Range(lineIndex, 0, lineIndex, 0);
       return new vscode.CodeLens(range, {

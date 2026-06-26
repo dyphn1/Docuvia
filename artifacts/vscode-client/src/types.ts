@@ -108,17 +108,3 @@ export interface KnowledgeSnapshot {
   l2Nodes: ApiL2Node[];
   l3Nodes: ApiL3Node[];
 }
-
-// ─── Manifest (.docuvia/manifest.yaml) ────────────────────────────────────────
-
-export const ManifestModuleSchema = z.object({
-  name: z.string().min(1),
-  path_patterns: z.array(z.string()).default([]),
-});
-export type ManifestModule = z.infer<typeof ManifestModuleSchema>;
-
-export const ManifestSchema = z.object({
-  project_id: z.number().optional(),
-  modules: z.array(ManifestModuleSchema).default([]),
-});
-export type Manifest = z.infer<typeof ManifestSchema>;

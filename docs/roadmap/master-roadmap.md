@@ -290,8 +290,8 @@ sequenceDiagram
 | **Batch Write Optimization** — Streaming chunked batch INSERTs for large `.jsonl` files | 🔲 TODO | Phase 4 |
 | **Incremental Fast-Path** — `git diff-tree -M` for O(1) delta detection                 | 🔲 TODO | Phase 4 |
 | **Cross-Language Edges** — API contracts, framework-specific AST tracking               | 🔲 TODO | Phase 4 |
-| **Zero-Server Deep Traversal** — Pure local SQLite graph queries                        | 🔲 TODO | Phase 5 |
-| **Local Context Compression** — Token reduction pipeline before LLM                     | 🔲 TODO | Phase 5 |
+| **Zero-Server Deep Traversal** — Pure local SQLite graph queries                        | ✅ Done | Phase 5 |
+| **Local Context Compression** — Token reduction pipeline before LLM                     | ✅ Done | Phase 5 |
 | **Sub-second Incremental Watch** — Fast-path AST updates on file save                   | 🔲 TODO | Phase 5 |
 | **Git Hook Integration (`post-commit`)** — Non-intrusive local AST extraction           | ✅ Done | Phase 5 |
 | **Agent AI Hook (`init-agent`)** — Broad platform support (Claude/Cursor/Copilot)       | ✅ Done | Phase 5 |

@@ -51,7 +51,7 @@
 | Semantic search                                                                                  | ✅ Done | [`search.ts`](../../artifacts/api-server/src/routes/search.ts)                                           |
 | Graph index                                                                                      | ✅ Done | [`node_links.ts`](../../lib/db/src/schema/node_links.ts)                                                 |
 | Impact analysis                                                                                  | ✅ Done | [`mcp.ts`](../../artifacts/api-server/src/routes/mcp.ts)                                                 |
-| [Cross-project linking](../design/adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md) | ⚠️ WARN | DB Wiring Missing                                                                                        |
+| [Cross-project linking](../design/adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md) | ⚠️ WARN | [`generate.ts`](../../artifacts/api-server/src/routes/generate.ts) (detectCrossProjectLinks creates review tasks only, no graph edges; see [report 0627_phase-4_cross-project-linking](../../reports/0627_phase-4_cross-project-linking.md)) |
 
 ## [Phase 5 | Query Layer / MCP](master-roadmap.md#phase-5-the-ast-microkernel-deep-local-analysis)
 

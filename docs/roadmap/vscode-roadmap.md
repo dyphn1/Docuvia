@@ -92,7 +92,7 @@ Inject contextual knowledge directly into the code editing experience unobtrusiv
 ### ⚠️ Precautions
 
 - **Trusted Markdown:** Ensure Hover `MarkdownString` properties have `isTrusted: { enabledCommands: [...] }` set, otherwise command links will be silently stripped by VS Code.
-- **Performance:** Hover providers must respond in less than 50ms to prevent editor stutter.
+- **Performance (Main Thread Protection):** CodeLens and Hover providers must be debounced and restricted to the visible viewport. A synchronous SQLite query scanning a 10,000-line file will freeze the extension host. Must respond in less than 50ms.
 
 ### 📁 Involved Files
 

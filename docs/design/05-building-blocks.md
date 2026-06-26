@@ -33,6 +33,7 @@ graph TD
 | `@workspace/integrations-openai-ai-server` | [`lib/integrations-openai-ai-server/`](../../lib/integrations-openai-ai-server/) | (none)                                                                            | OpenAI-compatible LLM client; `LLMClient` interface and implementation                                                       |
 | `@workspace/ast-core`                      | [`artifacts/ast-core/`](../../artifacts/ast-core/)                               | (none - standalone WebAssembly)                                                   | Web Worker pool, Tree-sitter WASM parsers, isomorphic AST interfaces.                                                        |
 | `@workspace/vscode-client`                 | [`artifacts/vscode-client/`](../../artifacts/vscode-client/)                     | (standalone – REST to api-server)                                                 | VS Code Extension: TreeView, Commands, CodeLens, Hover, Chat participant, Webviews                                           |
+| `@workspace/cli`                           | [`artifacts/cli/`](../../artifacts/cli/)                                         | `@workspace/ast-core`, `@workspace/db`                                            | Standalone CLI (`docuvia sync`, `docuvia init-agent`, `docuvia query local`)                                                 |
 
 ### Dependency Constraints
 

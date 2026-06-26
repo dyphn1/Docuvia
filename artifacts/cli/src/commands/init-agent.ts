@@ -85,6 +85,73 @@ async function writeOrAppend(filePath: string, content: string, marker: string) 
   }
 }
 
+
+
+async function registerMcpServer(cwd: string) {
+  console.log("\nConfiguring MCP Servers...");
+  
+  const mcpConfig = {
+    command: "npx",
+    args: ["--no-install", "docuvia", "mcp"]
+  };
+
+  // Cursor Configuration
+  const cursorMcpPath = path.join(cwd, ".cursor", "mcp.json");
+  try {
+    let cursorMcp: any = { mcpServers: {} };
+    try {
+      const existing = await fs.readFile(cursorMcpPath, "utf8");
+      cursorMcp = JSON.parse(existing);
+    } catch {
+      await fs.mkdir(path.dirname(cursorMcpPath), { recursive: true });
+    }
+    cursorMcp.mcpServers = cursorMcp.mcpServers || {};
+    cursorMcp.mcpServers["docuvia-local"] = mcpConfig;
+    await fs.writeFile(cursorMcpPath, JSON.stringify(cursorMcp, null, 2));
+    console.log(`✅ Registered MCP server in: ${cursorMcpPath}`);
+  } catch (e: any) {
+    console.warn(`⚠️ Could not configure Cursor MCP: ${e.message}`);
+  }
+
+  // Claude Desktop Configuration (Global)
+  let claudeConfigDir = "";
+  if (process.platform === "win32") {
+    claudeConfigDir = path.join(process.env.APPDATA || "", "Claude");
+  } else if (process.platform === "darwin") {
+    claudeConfigDir = path.join(process.env.HOME || "", "Library", "Application Support", "Claude");
+  } else {
+    claudeConfigDir = path.join(process.env.HOME || "", ".config", "Claude");
+  }
+
+  if (claudeConfigDir) {
+    const claudeMcpPath = path.join(claudeConfigDir, "claude_desktop_config.json");
+    try {
+      let claudeMcp: any = { mcpServers: {} };
+      try {
+        const existing = await fs.readFile(claudeMcpPath, "utf8");
+        claudeMcp = JSON.parse(existing);
+      } catch {
+        await fs.mkdir(path.dirname(claudeMcpPath), { recursive: true });
+      }
+      claudeMcp.mcpServers = claudeMcp.mcpServers || {};
+      
+      // For global Claude config, we must provide the absolute path to the project to run npx properly
+      claudeMcp.mcpServers["docuvia-local"] = {
+        command: "npx",
+        args: ["-y", "docuvia", "mcp"],
+        env: {
+          DOCUVIA_WORKSPACE_ROOT: cwd
+        }
+      };
+      
+      await fs.writeFile(claudeMcpPath, JSON.stringify(claudeMcp, null, 2));
+      console.log(`✅ Registered MCP server in: ${claudeMcpPath}`);
+    } catch (e: any) {
+      console.warn(`⚠️ Could not configure Claude Desktop MCP: ${e.message}`);
+    }
+  }
+}
+
 export async function initAgent(cwd: string = process.cwd()) {
   console.log("Initializing AI Agent integrations for Docuvia...\n");
 
@@ -120,6 +187,8 @@ export async function initAgent(cwd: string = process.cwd()) {
     
     // Standard LLM Crawler text
     await writeOrAppend(path.join(cwd, "llms.txt"), AGENT_INSTRUCTIONS, "docuvia:start");
+
+    await registerMcpServer(cwd);
 
     console.log("\n🚀 Docuvia Agent Integrations successfully installed!");
     console.log("Supported platforms: Claude Code, Cursor, GitHub Copilot, Windsurf, Zed, Continue, OpenCode, Gemini CLI.");

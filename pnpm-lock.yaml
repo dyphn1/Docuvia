@@ -263,6 +263,19 @@ importers:
         specifier: ^5.5.4
         version: 5.9.3
 
+  artifacts/cli:
+    dependencies:
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.3.5
+      tsx:
+        specifier: 'catalog:'
+        version: 4.22.4
+
   artifacts/kg-engine:
     devDependencies:
       '@hookform/resolvers':
@@ -759,19 +772,6 @@ importers:
       p-retry:
         specifier: ^7.1.1
         version: 7.1.1
-
-  scripts:
-    dependencies:
-      dotenv:
-        specifier: ^17.4.2
-        version: 17.4.2
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 25.3.5
-      tsx:
-        specifier: 'catalog:'
-        version: 4.22.4
 
 packages:
 

@@ -2,6 +2,7 @@
 import * as dotenv from "dotenv";
 import { createInterface } from "readline";
 import { initAgent } from "./commands/init-agent.js";
+import { queryCommand } from "./commands/query.js";
 
 dotenv.config();
 
@@ -62,10 +63,38 @@ async function main() {
     process.exit(0);
   }
 
+  if (command === "query") {
+    const args = process.argv.slice(3);
+    let target = "";
+    const options: { local?: boolean; format?: "human" | "prompt" } = {};
+
+    for (const arg of args) {
+      if (arg === "--local") {
+        options.local = true;
+      } else if (arg.startsWith("--format=")) {
+        const format = arg.substring("--format=".length);
+        if (format === "human" || format === "prompt") {
+          options.format = format as "human" | "prompt";
+        }
+      } else if (!arg.startsWith("-") && !target) {
+        target = arg;
+      }
+    }
+
+    if (!target) {
+      console.error("Usage: docuvia query <target> [--local] [--format=prompt|human]");
+      process.exit(1);
+    }
+
+    await queryCommand(target, options);
+    process.exit(0);
+  }
+
   console.error(`Unknown command: ${command}`);
   console.error("Usage:");
   console.error("  docuvia init-agent                           # Install hooks for Claude Code and Cursor");
   console.error("  docuvia sync <project_id> [commit_sha]       # Sync local changes to server");
+  console.error("  docuvia query <target> [--local]             # Query the knowledge graph");
   process.exit(1);
 }
 

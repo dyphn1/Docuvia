@@ -28,7 +28,7 @@ const target = input.args ? input.args.query || input.args.pattern : null;
 if (target) {
   try {
     // Call the local Docuvia CLI to retrieve exact L2/L3 structural context
-    const context = execSync(\`npx --no-install docuvia query local --context "\${target}"\`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
+    const context = execSync(\`npx --no-install docuvia query "\${target}" --local --format=prompt\`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });
     if (context && context.trim().length > 0) {
       console.log("=== Docuvia Context injected ===");
       console.log(context);
@@ -63,7 +63,7 @@ const AGENT_INSTRUCTIONS = `
 This project uses Docuvia to manage architectural context and prevent blast-radius regressions.
 Before you explore the codebase (using Grep/Glob/Read) or make structural changes, you MUST query the local knowledge graph:
 
-Run: \`npx --no-install docuvia query local --context "<concept_or_file>"\`
+Run: \`npx --no-install docuvia query "<concept_or_file>" --local --format=prompt\`
 
 Use the results from this command to understand architectural boundaries, historical decisions, and potential blast radius before modifying code.
 <!-- docuvia:end -->

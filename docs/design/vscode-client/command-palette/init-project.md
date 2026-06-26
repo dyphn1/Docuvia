@@ -53,10 +53,10 @@ flowchart TD
    - Check if an explicit node was passed (e.g., from an inline tree action). If so, use `node.workspaceRoot`.
    - If no node was passed, check how many workspace folders are currently open.
    - If exactly 1, use it.
-   - If multiple:
-     - Filter out folders that are already initialized (have a `.docuvia` directory loaded in the store).
+   - If multiple (Multi-Root / Monorepo Support):
+     - Filter out folders that are already initialized (have a local SQLite DB loaded in the store).
      - If all are initialized, show an information message and exit.
-     - Display a `QuickPick` menu allowing the user to select one of the remaining uninitialized workspace folders.
+     - Display a `QuickPick` menu allowing the user to select **one or multiple** of the remaining uninitialized workspace roots (enabling batch initialization for monorepos).
 
 3. **Three-Way Choice & Offline Fallback (The "Connect" Black Hole)**:
    - Present three options: `[✨ Initialize Knowledge Graph here (New), 🔗 Connect to Remote Graph (Existing), 📚 Clone & Explore Demo Sandbox (Demo)]`.

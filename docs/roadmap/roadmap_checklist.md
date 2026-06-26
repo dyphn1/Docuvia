@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist (Comprehensive Audit)
 
-|> Audited: 2026-06-26 (verification: 1.2.5 — SVN integration re-verification; auth fixed, diff drift persists; report 0378 lost) | Source-code verified via Agentic Exploration & Adversarial Audit
+|> Audited: 2026-06-27 (verification: 4.4 — cross-project-linking re-verification; generate.ts changed but detectCrossProjectLinks() findings unchanged) | Source-code verified via Agentic Exploration & Adversarial Audit
 
 > **Legend:**
 > ✅ **Done** = Implemented and Verified Functional
@@ -51,7 +51,7 @@
 | Semantic search                                                                                  | ✅ Done | [`search.ts`](../../artifacts/api-server/src/routes/search.ts)                                           |
 | Graph index                                                                                      | ✅ Done | [`node_links.ts`](../../lib/db/src/schema/node_links.ts)                                                 |
 | Impact analysis                                                                                  | ✅ Done | [`mcp.ts`](../../artifacts/api-server/src/routes/mcp.ts)                                                 |
-| [Cross-project linking](../design/adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md) | ⚠️ WARN | [`generate.ts`](../../artifacts/api-server/src/routes/generate.ts) (detectCrossProjectLinks creates review tasks only, no graph edges; see [report 0627_phase-4_cross-project-linking](../../reports/0627_phase-4_cross-project-linking.md)) |
+|| [Cross-project linking](../design/adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md) | ⚠️ WARN | [`generate.ts`](../../artifacts/api-server/src/routes/generate.ts) (detectCrossProjectLinks creates review tasks only, no graph edges; see [report 0635_phase-4_cross-project-linking](../../reports/0635_phase-4_cross-project-linking.md)) |
 
 ## [Phase 5 | Query Layer / MCP](master-roadmap.md#phase-5-the-ast-microkernel-deep-local-analysis)
 

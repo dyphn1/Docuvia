@@ -21,6 +21,9 @@ import {
   CreateCommitBody,
   ListProjectL2NodesParams,
 } from "@workspace/api-zod";
+import { LocalGitClient } from "../lib/git-client.js";
+import { processIngestion } from "../lib/ingestion-pipeline.js";
+import { requireApiKey } from "../middlewares/auth.js";
 
 const router = Router();
 
@@ -236,24 +239,66 @@ router.get("/projects/:id/l2-nodes", async (req, res) => {
 });
 
 // POST /projects/:id/sync (Trigger ingestion pipeline from CLI)
-router.post("/projects/:id/sync", async (req, res) => {
+router.post("/projects/:id/sync", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
 
+  if (project.vcsType !== "git") {
+    return res.status(400).json({ error: "Sync is only supported for git projects" });
+  }
+
+  let client = new LocalGitClient(project.repoUrl);
   try {
-    // In a real implementation this would trigger an async job via job_queue.ts
-    // For now we simulate acknowledging the trigger.
+    await client.clone();
+    const since = project.lastGitIngestedAt ?? undefined;
+    const commits = await client.getCommits(500, since);
+
+    if (commits.length === 0) {
+      await db.insert(activityLogTable).values({
+        projectId,
+        type: "commit",
+        description: "Sync triggered — no new commits found",
+      });
+      return res.json({ success: true, ingested: 0, message: "No new commits to ingest" });
+    }
+
+    const items = commits.map((c) => ({
+      sha: c.sha,
+      message: c.message,
+      author: c.author,
+      date: c.date,
+    }));
+
+    const { ingested, skipped, errors } = await processIngestion({
+      type: "git",
+      projectId,
+      projectName: project.name,
+      items,
+    });
+
+    await db
+      .update(projectsTable)
+      .set({ lastGitIngestedAt: new Date() })
+      .where(eq(projectsTable.id, projectId));
+
     await db.insert(activityLogTable).values({
       projectId,
       type: "commit",
-      description: "Sync triggered via CLI",
+      description: `Sync: ingested ${ingested} commits, skipped ${skipped}`,
     });
 
-    return res.json({ success: true, message: "Sync ingestion triggered in background" });
+    const message =
+      errors.length > 0
+        ? `Sync completed with ${errors.length} errors`
+        : `Sync completed: ${ingested} commits ingested`;
+
+    return res.json({ success: true, ingested, skipped, errors, message });
   } catch (err: any) {
     logger.error({ err, projectId }, "[POST /projects/:id/sync] Failed to trigger sync");
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: `Sync failed: ${err.message}` });
+  } finally {
+    await client.cleanup();
   }
 });
 

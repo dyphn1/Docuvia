@@ -1,66 +1,82 @@
-import { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
 import path from "path";
 import fs from "fs";
 import { logger } from "../lib/logger.js";
 
-const DB_PATH = path.join(process.cwd(), "data", "shared_agent_memory.db");
+const require = createRequire(import.meta.url);
+type SqliteRunResult = { changes: number };
+type SqliteDb = {
+  exec(sql: string): void;
+  prepare(sql: string): {
+    run(...args: unknown[]): unknown;
+    get(...args: unknown[]): unknown;
+    all(...args: unknown[]): unknown[];
+  };
+};
 
-// Ensure directory exists
-const dir = path.dirname(DB_PATH);
-if (!fs.existsSync(dir)) {
-  fs.mkdirSync(dir, { recursive: true });
+let _db: SqliteDb | null = null;
+
+function getDb(): SqliteDb {
+  if (!_db) {
+    const { DatabaseSync } = require("node:sqlite") as {
+      DatabaseSync: new (dbPath: string) => SqliteDb;
+    };
+    const DB_PATH = path.join(process.cwd(), "data", "shared_agent_memory.db");
+    const dir = path.dirname(DB_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    _db = new DatabaseSync(DB_PATH);
+    _db.exec(`
+      CREATE TABLE IF NOT EXISTS shared_agent_memory (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          agent_type TEXT NOT NULL,
+          key TEXT NOT NULL,
+          content TEXT NOT NULL,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS compressed_payloads (
+          id TEXT PRIMARY KEY,
+          original_text TEXT NOT NULL,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  }
+  return _db;
 }
 
-export const db = new DatabaseSync(DB_PATH);
-
-// Initialize schema
-db.exec(`
-    CREATE TABLE IF NOT EXISTS shared_agent_memory (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        agent_type TEXT NOT NULL,
-        key TEXT NOT NULL,
-        content TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS compressed_payloads (
-        id TEXT PRIMARY KEY,
-        original_text TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-`);
-
 export function insertMemory(agentType: string, key: string, content: string) {
-  const stmt = db.prepare(
+  const stmt = getDb().prepare(
     "INSERT INTO shared_agent_memory (agent_type, key, content) VALUES (?, ?, ?)"
   );
   return stmt.run(agentType, key, content);
 }
 
 export function getMemory(key: string) {
-  const stmt = db.prepare("SELECT * FROM shared_agent_memory WHERE key = ?");
+  const stmt = getDb().prepare("SELECT * FROM shared_agent_memory WHERE key = ?");
   return stmt.get(key) as any;
 }
 
 export function getAllMemories() {
-  const stmt = db.prepare("SELECT * FROM shared_agent_memory ORDER BY timestamp DESC");
+  const stmt = getDb().prepare("SELECT * FROM shared_agent_memory ORDER BY timestamp DESC");
   return stmt.all() as any[];
 }
 
 export function saveCompressedPayload(id: string, originalText: string) {
-  const stmt = db.prepare("INSERT INTO compressed_payloads (id, original_text) VALUES (?, ?)");
+  const stmt = getDb().prepare("INSERT INTO compressed_payloads (id, original_text) VALUES (?, ?)");
   return stmt.run(id, originalText);
 }
 
 export function getCompressedPayload(id: string) {
-  const stmt = db.prepare("SELECT original_text FROM compressed_payloads WHERE id = ?");
+  const stmt = getDb().prepare("SELECT original_text FROM compressed_payloads WHERE id = ?");
   return stmt.get(id) as { original_text: string } | undefined;
 }
 
 export function purgeExpiredPayloads() {
-  const stmt = db.prepare(
+  const stmt = getDb().prepare(
     "DELETE FROM compressed_payloads WHERE timestamp <= datetime('now', '-1 day')"
   );
-  return stmt.run();
+  return stmt.run() as SqliteRunResult;
 }
 
 export function startTTLJob() {

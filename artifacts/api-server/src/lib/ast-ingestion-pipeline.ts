@@ -1,12 +1,14 @@
 import fs from "node:fs";
 import readline from "node:readline";
 import path from "node:path";
+import crypto from "node:crypto";
 import { db } from "@workspace/db";
 import {
   l2NodesTable,
   l3NodesTable,
   nodeLinksTable,
   activityLogTable,
+  projectFilesTable,
 } from "@workspace/db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 import { logger } from "./logger.js";
@@ -67,6 +69,7 @@ export interface IngestionResult {
   l2Created: number;
   l3Created: number;
   linksCreated: number;
+  filesSkipped: number;
   errors: string[];
 }
 
@@ -169,6 +172,92 @@ function chunkArray<T>(arr: T[], chunkSize: number): T[][] {
 }
 
 /**
+ * Compute SHA-256 hash of a file's content for change detection.
+ */
+async function computeFileHash(filePath: string): Promise<string | null> {
+  try {
+    const content = await fs.promises.readFile(filePath, "utf-8");
+    return crypto.createHash("sha256").update(content).digest("hex");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check which files have changed since last AST scan.
+ * Returns a Set of filePaths that need re-parsing (new or modified).
+ */
+async function detectChangedFiles(projectId: number, jsonlPaths: string[]): Promise<Set<string>> {
+  const changed = new Set<string>();
+
+  // Load existing file hashes for this project
+  const existingFiles = await db
+    .select()
+    .from(projectFilesTable)
+    .where(
+      and(
+        eq(projectFilesTable.projectId, projectId),
+        inArray(projectFilesTable.filePath, jsonlPaths)
+      )
+    );
+
+  const hashByPath = new Map<string, string>();
+  for (const f of existingFiles) {
+    hashByPath.set(f.filePath, f.contentHash);
+  }
+
+  // Check each file's current hash against stored hash
+  const hashChecks = await Promise.all(
+    jsonlPaths.map(async (jsonlPath) => {
+      // For .jsonl files, hash the JSONL itself as the source of truth
+      const hash = await computeFileHash(jsonlPath);
+      return { jsonlPath, hash };
+    })
+  );
+
+  for (const { jsonlPath, hash } of hashChecks) {
+    if (!hash) {
+      // File may have been deleted or unreadable — skip
+      continue;
+    }
+    const storedHash = hashByPath.get(jsonlPath);
+    if (storedHash !== hash) {
+      changed.add(jsonlPath);
+    }
+  }
+
+  return changed;
+}
+
+/**
+ * Update stored file hashes after successful ingestion.
+ */
+async function updateFileHashes(projectId: number, jsonlPaths: string[]): Promise<void> {
+  const chunks = chunkArray(jsonlPaths, BATCH_INSERT_CHUNK);
+  for (const chunk of chunks) {
+    const hashChecks = await Promise.all(
+      chunk.map(async (filePath) => {
+        const hash = await computeFileHash(filePath);
+        return { projectId, filePath, hash };
+      })
+    );
+
+    const values = hashChecks
+      .filter((v) => v.hash !== null)
+      .map((v) => ({
+        projectId: v.projectId,
+        filePath: v.filePath,
+        contentHash: v.hash!,
+        lastParsedAt: new Date(),
+      }));
+
+    if (values.length > 0) {
+      await db.insert(projectFilesTable).values(values).onConflictDoNothing();
+    }
+  }
+}
+
+/**
  * Batch-insert L2 nodes in chunks, returning all inserted nodes.
  * Uses .onConflictDoNothing() to skip duplicates.
  */
@@ -185,10 +274,7 @@ async function batchInsertL2Nodes(
 ): Promise<void> {
   const chunks = chunkArray(nodes, BATCH_INSERT_CHUNK);
   for (const chunk of chunks) {
-    await db
-      .insert(l2NodesTable)
-      .values(chunk)
-      .onConflictDoNothing();
+    await db.insert(l2NodesTable).values(chunk).onConflictDoNothing();
   }
 }
 
@@ -208,11 +294,11 @@ async function batchInsertL3Nodes(
   const allInserted: Array<{ id: number; l2NodeId: number; title: string }> = [];
   const chunks = chunkArray(nodes, BATCH_INSERT_CHUNK);
   for (const chunk of chunks) {
-    const inserted = await db
-      .insert(l3NodesTable)
-      .values(chunk)
-      .onConflictDoNothing()
-      .returning({ id: l3NodesTable.id, l2NodeId: l3NodesTable.l2NodeId, title: l3NodesTable.title });
+    const inserted = await db.insert(l3NodesTable).values(chunk).onConflictDoNothing().returning({
+      id: l3NodesTable.id,
+      l2NodeId: l3NodesTable.l2NodeId,
+      title: l3NodesTable.title,
+    });
     allInserted.push(...inserted);
   }
   return allInserted;
@@ -232,10 +318,7 @@ async function batchInsertLinks(
   const chunks = chunkArray(links, BATCH_INSERT_CHUNK);
   let inserted = 0;
   for (const chunk of chunks) {
-    await db
-      .insert(nodeLinksTable)
-      .values(chunk)
-      .onConflictDoNothing();
+    await db.insert(nodeLinksTable).values(chunk).onConflictDoNothing();
     inserted += chunk.length;
   }
   return inserted;
@@ -261,6 +344,7 @@ export async function ingestAstJsonl(
     l2Created: 0,
     l3Created: 0,
     linksCreated: 0,
+    filesSkipped: 0,
     errors: [],
   };
 
@@ -387,7 +471,7 @@ export async function ingestAstJsonl(
   for (const node of existingL2Nodes) {
     nameToL2Ids.set(node.name, [...(nameToL2Ids.get(node.name) || []), node.id]);
     if (node.pathPatterns) {
-      const patterns = Array.isArray(node.pathPatterns) ? node.pathPatterns as string[] : [];
+      const patterns = Array.isArray(node.pathPatterns) ? (node.pathPatterns as string[]) : [];
       for (const p of patterns) {
         pathToL2Id.set(p, node.id);
       }
@@ -411,7 +495,9 @@ export async function ingestAstJsonl(
         for (const candId of candidates) {
           const candNode = existingL2Nodes.find((n) => n.id === candId);
           if (candNode?.pathPatterns) {
-            const patterns = Array.isArray(candNode.pathPatterns) ? candNode.pathPatterns as string[] : [];
+            const patterns = Array.isArray(candNode.pathPatterns)
+              ? (candNode.pathPatterns as string[])
+              : [];
             if (patterns.some((p) => p === fe.pathPatterns[0] || p === fe.filePath)) {
               filePathToL2Id.set(fe.filePath, candId);
               matched = true;
@@ -474,24 +560,20 @@ export async function ingestAstJsonl(
       // Re-query to get the IDs of nodes that already existed
       const allPatterns = unresolvedFiles.flatMap((fe) => fe.pathPatterns);
       // Use a single query with OR conditions for all unresolved patterns
-      const conditions = allPatterns.map((p) =>
-        sql`${l2NodesTable.pathPatterns}::text LIKE ${`%${p}%`}`
+      const conditions = allPatterns.map(
+        (p) => sql`${l2NodesTable.pathPatterns}::text LIKE ${`%${p}%`}`
       );
-      const combinedCondition = conditions.length === 1 ? conditions[0] : sql.join(conditions, sql` OR `);
+      const combinedCondition =
+        conditions.length === 1 ? conditions[0] : sql.join(conditions, sql` OR `);
       const reloaded = await db
         .select()
         .from(l2NodesTable)
-        .where(
-          and(
-            eq(l2NodesTable.projectId, projectId),
-            combinedCondition
-          )
-        );
+        .where(and(eq(l2NodesTable.projectId, projectId), combinedCondition));
 
       for (const fe of unresolvedFiles) {
         const match = reloaded.find((n) => {
           if (!n.pathPatterns) return false;
-          const patterns = Array.isArray(n.pathPatterns) ? n.pathPatterns as string[] : [];
+          const patterns = Array.isArray(n.pathPatterns) ? (n.pathPatterns as string[]) : [];
           return patterns.some((p) => p === fe.pathPatterns[0] || p === fe.filePath);
         });
         if (match) {
@@ -536,11 +618,11 @@ export async function ingestAstJsonl(
     l3InsertedIds = [];
     const chunks = chunkArray(insertValues, BATCH_INSERT_CHUNK);
     for (const chunk of chunks) {
-      const inserted = await db
-        .insert(l3NodesTable)
-        .values(chunk)
-        .onConflictDoNothing()
-        .returning({ id: l3NodesTable.id, l2NodeId: l3NodesTable.l2NodeId, title: l3NodesTable.title });
+      const inserted = await db.insert(l3NodesTable).values(chunk).onConflictDoNothing().returning({
+        id: l3NodesTable.id,
+        l2NodeId: l3NodesTable.l2NodeId,
+        title: l3NodesTable.title,
+      });
       l3InsertedIds.push(...inserted);
     }
 
@@ -566,10 +648,7 @@ export async function ingestAstJsonl(
       l2NodeId: l3NodesTable.l2NodeId,
     })
     .from(l3NodesTable)
-    .innerJoin(
-      l2NodesTable,
-      eq(l3NodesTable.l2NodeId, l2NodesTable.id)
-    )
+    .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
     .where(eq(l2NodesTable.projectId, projectId));
 
   for (const node of existingL3Nodes) {
@@ -633,7 +712,19 @@ export async function ingestAstJsonl(
       }
       // Try with extensions
       if (!targetL2Id) {
-        const extensions = [".ts", ".tsx", ".js", ".jsx", ".py", ".rs", ".go", ".java", ".rb", ".php", ".cs"];
+        const extensions = [
+          ".ts",
+          ".tsx",
+          ".js",
+          ".jsx",
+          ".py",
+          ".rs",
+          ".go",
+          ".java",
+          ".rb",
+          ".php",
+          ".cs",
+        ];
         for (const ext of extensions) {
           const candidate = resolvedPath + ext;
           for (const [pattern, id] of pathToL2Id) {
@@ -712,10 +803,7 @@ export async function ingestAstJsonl(
     });
   }
 
-  logger.info(
-    { projectId, jsonlPath, result },
-    "AST ingestion completed (batch optimized)"
-  );
+  logger.info({ projectId, jsonlPath, result }, "AST ingestion completed (batch optimized)");
 
   return result;
 }
@@ -723,19 +811,43 @@ export async function ingestAstJsonl(
 /**
  * Ingest multiple .jsonl files (batch processing for a project).
  * Processes files sequentially to maintain consistent L2/L3 name resolution.
+ *
+ * Supports incremental mode: when `incremental` is true, computes file hashes
+ * and skips files that haven't changed since last scan (Sub-second Incremental Watch).
  */
 export async function ingestAstBatch(
   jsonlPaths: string[],
-  projectId: number
+  projectId: number,
+  options: { incremental?: boolean } = {}
 ): Promise<IngestionResult> {
   const aggregated: IngestionResult = {
     l2Created: 0,
     l3Created: 0,
     linksCreated: 0,
+    filesSkipped: 0,
     errors: [],
   };
 
-  for (const jsonlPath of jsonlPaths) {
+  // ── Incremental mode: detect changed files ──────────────────────
+  let pathsToIngest = jsonlPaths;
+  if (options.incremental) {
+    const changedFiles = await detectChangedFiles(projectId, jsonlPaths);
+    pathsToIngest = jsonlPaths.filter((p) => changedFiles.has(p));
+    aggregated.filesSkipped = jsonlPaths.length - pathsToIngest.length;
+
+    logger.info(
+      {
+        projectId,
+        total: jsonlPaths.length,
+        changed: pathsToIngest.length,
+        skipped: aggregated.filesSkipped,
+      },
+      "AST incremental scan: change detection complete"
+    );
+  }
+
+  // ── Ingest only changed files ───────────────────────────────────
+  for (const jsonlPath of pathsToIngest) {
     try {
       const result = await ingestAstJsonl(jsonlPath, projectId);
       aggregated.l2Created += result.l2Created;
@@ -744,6 +856,15 @@ export async function ingestAstBatch(
       aggregated.errors.push(...result.errors);
     } catch (err: any) {
       aggregated.errors.push(`Failed to ingest ${jsonlPath}: ${err.message}`);
+    }
+  }
+
+  // ── Update file hashes for next incremental scan ────────────────
+  if (options.incremental && pathsToIngest.length > 0) {
+    try {
+      await updateFileHashes(projectId, pathsToIngest);
+    } catch (err: any) {
+      aggregated.errors.push(`Failed to update file hashes: ${err.message}`);
     }
   }
 

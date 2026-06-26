@@ -89,10 +89,14 @@ export async function processIngestion({
             continue;
           }
           const { valid } = scoreCommit(c.message, c.diff);
+          if (!valid) {
+            skipped++;
+            continue;
+          }
           await tx.insert(commitsTable).values({
             projectId,
             hash: c.sha,
-            message: c.message.slice(0, 4000), // Enforce length limit
+            message: c.message.slice(0, 4000),
             author: c.author ?? "Unknown",
             valid,
             vcsType: "git",
@@ -142,6 +146,10 @@ export async function processIngestion({
       }
 
       const { valid } = scoreCommit(c.message, c.diff);
+      if (!valid) {
+        skipped++;
+        continue;
+      }
       const fullMessage = c.diff ? `${c.message}\n\n${c.diff}` : c.message;
 
       await db.insert(commitsTable).values({

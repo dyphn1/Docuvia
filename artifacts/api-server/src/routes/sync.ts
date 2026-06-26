@@ -28,11 +28,9 @@ router.post("/sync/push", async (req, res) => {
 
   const acquired = lockAcquired.rows ? lockAcquired.rows[0]?.acquired : lockAcquired[0]?.acquired;
   if (!acquired) {
-    return res
-      .status(409)
-      .json({
-        error: "Sync conflict: Resource is currently locked by another client. Try again later.",
-      });
+    return res.status(409).json({
+      error: "Sync conflict: Resource is currently locked by another client. Try again later.",
+    });
   }
 
   try {

@@ -26,7 +26,7 @@ export class LocalGitClient {
   async clone(branch = "main"): Promise<void> {
     this.repoDir = path.join(os.tmpdir(), `docuvia-git-${crypto.randomUUID()}`);
     logger.info({ repoDir: this.repoDir, repoUrl: this.repoUrl }, "Cloning repository");
-        await execFileAsync("git", [
+    await execFileAsync("git", [
       "clone",
       "--depth=500",
       "--branch",

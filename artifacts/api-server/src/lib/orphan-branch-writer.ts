@@ -1,7 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { db } from "@workspace/db";
-import { l2NodesTable, l3NodesTable } from "@workspace/db";
+import { l1TagsTable, l2NodesTable, l3NodesTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "./logger.js";
 
@@ -108,7 +108,8 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
     }
 
     const baseDir = `${projectId}`;
-    const l1TagsYaml = buildL1TagsYaml([]);
+    const l1TagRows = await db.select({ name: l1TagsTable.name }).from(l1TagsTable);
+    const l1TagsYaml = buildL1TagsYaml(l1TagRows.map((t) => t.name));
     const files: Map<string, string> = new Map();
     files.set(`${baseDir}/l1_tags.yaml`, l1TagsYaml);
 
@@ -132,7 +133,7 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
     // Using git fast-import. In a full Git-Isomorphic setup, we would run git fetch/merge
     // to handle 3-way merges if the client pushed to remote. But for the server-authoritative
     // push, fast-import safely overwrites the tree for the given branch.
-        await runGitFastImport(fastImportData);
+    await runGitFastImport(fastImportData);
 
     logger.info(
       { projectId, branch, fileCount: files.size },
@@ -181,7 +182,7 @@ function runGitFastImport(fastImportData: string): Promise<void> {
     child.on("close", (code) => {
       if (code === 0) return resolve();
       const stderr = Buffer.concat(stderrChunks).toString("utf8").trim();
-      reject(new Error(`git fast-import exited with code ${code}${stderr ? ': ' + stderr : ''}`));
+      reject(new Error(`git fast-import exited with code ${code}${stderr ? ": " + stderr : ""}`));
     });
     child.stdin.end(fastImportData, "utf8");
   });

@@ -7,6 +7,7 @@ import { llmProxyRouter } from "./proxy/llm-proxy.js";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -27,7 +28,15 @@ app.use(
     },
   })
 );
-app.use(cors());
+const corsOrigin = process.env.CORS_ORIGIN;
+if (corsOrigin) {
+  const origins = corsOrigin.split(",").map((o) => o.trim());
+  app.use(cors({ origin: origins }));
+} else if (process.env.NODE_ENV === "production") {
+  app.use(cors({ origin: false }));
+} else {
+  app.use(cors());
+}
 
 // Mount webhook route with raw body BEFORE express.json() so HMAC validation works
 app.use("/api/webhooks/github", express.raw({ type: "application/json" }), githubWebhooksRouter);

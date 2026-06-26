@@ -288,11 +288,15 @@ function buildScopeMap(importStatements: any[]): Map<string, string> {
       const methodNode = stmt.childForFieldName("method");
       if (methodNode) {
         const methodName = methodNode.text;
-        if (methodName === "require" || methodName === "require_relative" || methodName === "load") {
+        if (
+          methodName === "require" ||
+          methodName === "require_relative" ||
+          methodName === "load"
+        ) {
           const args = stmt.childForFieldName("arguments");
           if (args) {
-            const strNode = args.descendantsOfType("string_content")[0]
-              || args.descendantsOfType("string")[0];
+            const strNode =
+              args.descendantsOfType("string_content")[0] || args.descendantsOfType("string")[0];
             if (strNode) {
               const libName = strNode.text.replace(/['"]/g, "");
               const shortName = libName.replace(/\.rb$/, "");
@@ -306,8 +310,8 @@ function buildScopeMap(importStatements: any[]): Map<string, string> {
 
     // ── PHP ──────────────────────────────────────────────────────────
     if (stmtType === "namespace_use_declaration") {
-      const nameNode = stmt.descendantsOfType("qualified_name")[0]
-        || stmt.descendantsOfType("name")[0];
+      const nameNode =
+        stmt.descendantsOfType("qualified_name")[0] || stmt.descendantsOfType("name")[0];
       if (nameNode) {
         const fullName = nameNode.text;
         const parts = fullName.split("\\");
@@ -322,8 +326,8 @@ function buildScopeMap(importStatements: any[]): Map<string, string> {
       stmtType === "require_expression" ||
       stmtType === "require_once_expression"
     ) {
-      const strNode = stmt.descendantsOfType("string")[0]
-        || stmt.descendantsOfType("string_content")[0];
+      const strNode =
+        stmt.descendantsOfType("string")[0] || stmt.descendantsOfType("string_content")[0];
       if (strNode) {
         const includePath = strNode.text.replace(/['"]/g, "");
         scopeMap.set(includePath, includePath);
@@ -333,8 +337,8 @@ function buildScopeMap(importStatements: any[]): Map<string, string> {
 
     // ── C# ───────────────────────────────────────────────────────────
     if (stmtType === "using_directive") {
-      const nameNode = stmt.descendantsOfType("qualified_name")[0]
-        || stmt.descendantsOfType("identifier")[0];
+      const nameNode =
+        stmt.descendantsOfType("qualified_name")[0] || stmt.descendantsOfType("identifier")[0];
       if (nameNode) {
         const fullName = nameNode.text;
         const parts = fullName.split(".");
@@ -375,7 +379,8 @@ function classifyCall(callNode: any): {
     if (fnNode.type === "member_expression") {
       const propNode = fnNode.childForFieldName("property");
       const objNode = fnNode.childForFieldName("object");
-      if (propNode) return { isMethodCall: true, methodName: propNode.text, objectName: objNode?.text };
+      if (propNode)
+        return { isMethodCall: true, methodName: propNode.text, objectName: objNode?.text };
     }
     return { isMethodCall: false, methodName: fnNode.text };
   }
@@ -387,7 +392,8 @@ function classifyCall(callNode: any): {
     if (fnNode.type === "attribute") {
       const attrNode = fnNode.childForFieldName("attribute");
       const objNode = fnNode.childForFieldName("object");
-      if (attrNode) return { isMethodCall: true, methodName: attrNode.text, objectName: objNode?.text };
+      if (attrNode)
+        return { isMethodCall: true, methodName: attrNode.text, objectName: objNode?.text };
     }
     return { isMethodCall: false, methodName: fnNode.text };
   }
@@ -399,7 +405,8 @@ function classifyCall(callNode: any): {
     if (fnNode.type === "field_expression") {
       const fieldNode = fnNode.childForFieldName("field");
       const objNode = fnNode.childForFieldName("value");
-      if (fieldNode) return { isMethodCall: true, methodName: fieldNode.text, objectName: objNode?.text };
+      if (fieldNode)
+        return { isMethodCall: true, methodName: fieldNode.text, objectName: objNode?.text };
     }
     return { isMethodCall: false, methodName: fnNode.text };
   }
@@ -411,7 +418,8 @@ function classifyCall(callNode: any): {
     if (fnNode.type === "selector_expression") {
       const fieldNode = fnNode.childForFieldName("field");
       const objNode = fnNode.childForFieldName("value");
-      if (fieldNode) return { isMethodCall: true, methodName: fieldNode.text, objectName: objNode?.text };
+      if (fieldNode)
+        return { isMethodCall: true, methodName: fieldNode.text, objectName: objNode?.text };
     }
     return { isMethodCall: false, methodName: fnNode.text };
   }
@@ -420,7 +428,8 @@ function classifyCall(callNode: any): {
   if (callType === "method_invocation") {
     const nameNode = callNode.childForFieldName("name");
     const objNode = callNode.childForFieldName("object");
-    if (nameNode) return { isMethodCall: true, methodName: nameNode.text, objectName: objNode?.text };
+    if (nameNode)
+      return { isMethodCall: true, methodName: nameNode.text, objectName: objNode?.text };
   }
 
   // C / C++
@@ -430,7 +439,8 @@ function classifyCall(callNode: any): {
     if (fnNode.type === "field_expression") {
       const fieldNode = fnNode.childForFieldName("field");
       const objNode = fnNode.childForFieldName("value");
-      if (fieldNode) return { isMethodCall: true, methodName: fieldNode.text, objectName: objNode?.text };
+      if (fieldNode)
+        return { isMethodCall: true, methodName: fieldNode.text, objectName: objNode?.text };
     }
     return { isMethodCall: false, methodName: fnNode.text };
   }
@@ -440,7 +450,8 @@ function classifyCall(callNode: any): {
     const methodNode = callNode.childForFieldName("method");
     if (methodNode) {
       const objNode = callNode.childForFieldName("receiver");
-      if (objNode) return { isMethodCall: true, methodName: methodNode.text, objectName: objNode.text };
+      if (objNode)
+        return { isMethodCall: true, methodName: methodNode.text, objectName: objNode.text };
       return { isMethodCall: false, methodName: methodNode.text };
     }
   }
@@ -467,7 +478,8 @@ function classifyCall(callNode: any): {
     if (exprNode?.type === "member_access_expression") {
       const nameNode = exprNode.childForFieldName("name");
       const objNode = exprNode.childForFieldName("expression");
-      if (nameNode) return { isMethodCall: true, methodName: nameNode.text, objectName: objNode?.text };
+      if (nameNode)
+        return { isMethodCall: true, methodName: nameNode.text, objectName: objNode?.text };
     }
     if (exprNode) return { isMethodCall: false, methodName: exprNode.text };
   }
@@ -477,7 +489,8 @@ function classifyCall(callNode: any): {
   }
 
   // Fallback
-  const fnNode = callNode.childForFieldName("function") || callNode.descendantsOfType("identifier")[0];
+  const fnNode =
+    callNode.childForFieldName("function") || callNode.descendantsOfType("identifier")[0];
   return { isMethodCall: false, methodName: fnNode?.text || "" };
 }
 

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { logger } from "../lib/logger";
-import { db } from "@workspace/db";
+import { db, pool } from "@workspace/db";
 import {
   correctionExamplesTable,
   promptTemplatesTable,
@@ -11,10 +11,9 @@ import {
 import { isNull, inArray, and, eq, lt } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { checkCommitInDefaultBranch, parseGithubRepo } from "../lib/github-client";
+import { requireApiKey } from "../middlewares/auth";
 
-// TODO: [CRITICAL BUG FIX] - Mutex is fake. Replace this single-instance in-memory Mutex with Postgres `FOR UPDATE SKIP LOCKED`.
-// Using a simple in-memory Mutex for this instance
-let isMetabolismRunning = false;
+const METABOLISM_LOCK_ID = 123456789;
 
 const metabolismRouter = Router();
 
@@ -109,7 +108,7 @@ async function runMetabolism() {
       "Found pending corrections for distillation."
     );
 
-    const promptsToInsert: any[] = [];
+    const promptsToInsert: Array<typeof promptTemplatesTable.$inferInsert> = [];
     const processedIds: number[] = [];
 
     for (const correction of pendingCorrections) {
@@ -161,23 +160,43 @@ async function runMetabolism() {
   logger.info("Metabolism tick completed.");
 }
 
-metabolismRouter.get("/metabolism-tick", async (req: Request, res: Response): Promise<void> => {
-  if (isMetabolismRunning) {
-    res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
-    return;
-  }
-
-  isMetabolismRunning = true;
+async function withMetabolismLock<T>(fn: () => Promise<T>): Promise<T | null> {
+  const client = await pool.connect();
+  let locked = false;
   try {
-    await runMetabolism();
-    res.status(200).json({ message: "Metabolism tick completed", status: "success" });
-  } catch (err) {
-    logger.error({ err }, "Metabolism tick failed");
-    res.status(500).json({ error: "Metabolism tick failed" });
+    const result = await client.query("SELECT pg_try_advisory_lock($1) AS locked", [
+      METABOLISM_LOCK_ID,
+    ]);
+    if (result.rows[0]?.locked !== true) return null;
+    locked = true;
+    return await fn();
   } finally {
-    isMetabolismRunning = false;
+    if (locked) {
+      await client.query("SELECT pg_advisory_unlock($1)", [METABOLISM_LOCK_ID]).catch(() => {});
+    }
+    client.release();
   }
-});
+}
+
+metabolismRouter.get(
+  "/metabolism-tick",
+  requireApiKey,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const result = await withMetabolismLock(async () => {
+        await runMetabolism();
+      });
+      if (result === null) {
+        res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
+        return;
+      }
+      res.status(200).json({ message: "Metabolism tick completed", status: "success" });
+    } catch (err) {
+      logger.error({ err }, "Metabolism tick failed");
+      res.status(500).json({ error: "Metabolism tick failed" });
+    }
+  }
+);
 
 metabolismRouter.get(
   "/admin/metabolism-tick",
@@ -205,20 +224,18 @@ metabolismRouter.get(
       return;
     }
 
-    if (isMetabolismRunning) {
-      res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
-      return;
-    }
-
-    isMetabolismRunning = true;
     try {
-      await runMetabolism();
+      const result = await withMetabolismLock(async () => {
+        await runMetabolism();
+      });
+      if (result === null) {
+        res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
+        return;
+      }
       res.status(200).json({ message: "Metabolism tick completed manually", status: "success" });
     } catch (err) {
       logger.error({ err }, "Admin metabolism tick failed");
       res.status(500).json({ error: "Metabolism tick failed" });
-    } finally {
-      isMetabolismRunning = false;
     }
   }
 );

@@ -1,6 +1,19 @@
 #!/usr/bin/env node
 import * as dotenv from "dotenv";
+import { createInterface } from "readline";
+
 dotenv.config();
+
+function readStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin });
+    let data = "";
+    rl.on("line", (line) => {
+      data += line + "\n";
+    });
+    rl.on("close", () => resolve(data.trim()));
+  });
+}
 
 async function main() {
   const command = process.argv[2];
@@ -10,20 +23,31 @@ async function main() {
       console.error("DOCUVIA_API_URL and MCP_PAT must be set");
       process.exit(1);
     }
+
     const projectId = process.argv[3];
     if (!projectId) {
-      console.error("Usage: docuvia sync <project_id>");
+      console.error("Usage: docuvia sync <project_id> [commit_sha]");
+      console.error("       echo <commit_sha> | docuvia sync <project_id>");
       process.exit(1);
     }
 
-    console.log(`Triggering ingestion for project ${projectId}...`);
+    // Support post-commit hook: accept commit SHA as arg or stdin
+    const commitSha = process.argv[4] ?? (process.stdin.isTTY ? undefined : await readStdin());
+
+    console.log(`Syncing project ${projectId}...`);
     try {
-      const res = await fetch(`${process.env.DOCUVIA_API_URL}/api/projects/${projectId}/sync`, {
+      const apiUrl = process.env.DOCUVIA_API_URL.replace(/\/+$/, "");
+      const res = await fetch(`${apiUrl}/api/projects/${projectId}/sync`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${process.env.MCP_PAT}` },
+        headers: {
+          Authorization: `Bearer ${process.env.MCP_PAT}`,
+          "Content-Type": "application/json",
+        },
+        body: commitSha ? JSON.stringify({ commitSha }) : undefined,
       });
-      if (!res.ok) throw new Error(await res.text());
-      console.log("Ingestion triggered successfully");
+      const body = (await res.json()) as { error?: string; message?: string };
+      if (!res.ok) throw new Error(String(body.error ?? (await res.text())));
+      console.log(String(body.message ?? "Sync completed"));
     } catch (e) {
       console.error("Sync failed:", e);
       process.exit(1);
@@ -31,7 +55,8 @@ async function main() {
     process.exit(0);
   }
 
-  console.error("Unknown command");
+  console.error(`Unknown command: ${command}`);
+  console.error("Usage: docuvia sync <project_id> [commit_sha]");
   process.exit(1);
 }
 

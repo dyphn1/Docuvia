@@ -7,7 +7,6 @@ const ALLOWED_MIMETYPES = new Set([
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "text/plain",
   "text/markdown",
-  "application/octet-stream",
 ]);
 
 const ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "pptx", "txt", "md", "map", "fv", "fd", "log"]);

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { llmConfigsTable, projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { requireApiKey } from "../middlewares/auth.js";
 
 const router = Router();
 
@@ -11,7 +12,7 @@ const LlmConfigInputSchema = z.object({
   provider: z.string().optional(),
 });
 
-router.get("/projects/:id/llm-config", async (req, res) => {
+router.get("/projects/:id/llm-config", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
@@ -34,7 +35,7 @@ router.get("/projects/:id/llm-config", async (req, res) => {
   return res.json({ ...cfg, createdAt: cfg.createdAt.toISOString() });
 });
 
-router.patch("/projects/:id/llm-config", async (req, res) => {
+router.patch("/projects/:id/llm-config", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
   const body = LlmConfigInputSchema.parse(req.body);
 

@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import fs from "fs";
-import { computeHashFromStream } from "../lib/utils/hash.js";
+import { computeHashFromBuffer } from "../lib/utils/hash.js";
 import { commitsTable, documentsTable, projectsTable } from "@workspace/db";
 import { and, eq, sql, isNull } from "drizzle-orm";
 import { getSvnLog, getSvnDiff } from "../lib/svn-client.js";
@@ -19,6 +18,7 @@ import {
 } from "../lib/ingestion-pipeline.js";
 import { ingestAstJsonl, ingestAstBatch } from "../lib/ast-ingestion-pipeline.js";
 import { logger } from "../lib/logger.js";
+import { requireApiKey } from "../middlewares/auth.js";
 
 const router = Router();
 
@@ -34,7 +34,7 @@ const SvnModeSchema = z.object({
   mode: z.enum(["full", "incremental"]).optional().default("full"),
 });
 
-router.post("/projects/:id/ingest/git", async (req, res) => {
+router.post("/projects/:id/ingest/git", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
@@ -101,7 +101,7 @@ router.post("/projects/:id/ingest/git", async (req, res) => {
   }
 });
 
-router.post("/projects/:id/ingest/svn", async (req, res) => {
+router.post("/projects/:id/ingest/svn", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
@@ -117,7 +117,7 @@ router.post("/projects/:id/ingest/svn", async (req, res) => {
   const svnUrl = body.svnUrl;
 
   // Strict URL Validation for SVN
-  if (!/^https?:\/\/|^svn:\/\//.test(svnUrl)) {
+  if (!/^https?:\/\/|^svn:\/\/|^svn\+ssh:\/\//.test(svnUrl)) {
     return res.status(400).json({ error: "Invalid SVN URL format" });
   }
 
@@ -356,9 +356,12 @@ router.get("/projects/:id/documents", async (req, res) => {
 // POST /projects/:id/ingest/ast
 // Ingests AST skeleton (.jsonl) files produced by ast-worker into the knowledge graph.
 // Accepts either a single file path or an array of file paths.
+// Supports `mode: "full" | "incremental"` — incremental mode only re-ingests files
+// whose content has changed since last scan (Sub-second Incremental Watch).
 const AstIngestSchema = z.object({
   jsonlPaths: z.union([z.string(), z.array(z.string())]).optional(),
   jsonlPath: z.string().optional(),
+  mode: z.enum(["full", "incremental"]).optional().default("full"),
 });
 
 router.post("/projects/:id/ingest/ast", async (req, res) => {
@@ -374,12 +377,25 @@ router.post("/projects/:id/ingest/ast", async (req, res) => {
     }
 
     const pathArray = Array.isArray(paths) ? paths : [paths];
-    const result = await ingestAstBatch(pathArray, projectId);
+    const mode = body.mode ?? "full";
+    const result = await ingestAstBatch(pathArray, projectId, {
+      incremental: mode === "incremental",
+    });
+
+    // Update last AST ingested timestamp on successful full scan or when incremental finds changes
+    if (mode === "full" || result.l2Created > 0 || result.l3Created > 0) {
+      await db
+        .update(projectsTable)
+        .set({ lastAstIngestedAt: new Date() })
+        .where(eq(projectsTable.id, projectId));
+    }
 
     return res.json({
       l2Created: result.l2Created,
       l3Created: result.l3Created,
       linksCreated: result.linksCreated,
+      filesSkipped: mode === "incremental" ? result.filesSkipped : undefined,
+      mode,
       errors: result.errors.length > 0 ? result.errors : undefined,
     });
   } catch (err: any) {
@@ -415,18 +431,22 @@ router.post(
   async (req, res) => {
     const projectId = Number(req.params.id);
     if (!req.file) return res.status(400).json({ error: "file required" });
+    const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+    if (!project) return res.status(404).json({ error: "Project not found" });
 
     try {
-      // Basic ANSI strip implementation
-      const filePath = req.file.path;
-      const contentHash = await computeHashFromStream(filePath);
-      const rawContent = await fs.promises.readFile(filePath, "utf-8");
-      const strippedContent = rawContent.replace(/\x1b\[[0-9;]*[mG]/g, "");
+      const buffer = req.file.buffer;
+      if (!buffer) {
+        return res.status(400).json({ error: "Uploaded file buffer is missing" });
+      }
+
+      const contentHash = computeHashFromBuffer(buffer);
+      const strippedContent = await extractText(buffer, "build_artifact", req.file.originalname);
 
       const result = await processIngestion({
         type: "document",
         projectId,
-        projectName: `Project ${projectId}`, // We should fetch this
+        projectName: project.name,
         items: [
           {
             filename: req.file.originalname,
@@ -436,8 +456,6 @@ router.post(
           },
         ],
       });
-
-      await fs.promises.unlink(filePath).catch(() => {});
       return res.json(result);
     } catch (err) {
       logger.error(

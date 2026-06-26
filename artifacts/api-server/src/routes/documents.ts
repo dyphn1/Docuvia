@@ -1,14 +1,14 @@
 import { Router } from "express";
-import fs from "fs";
 import { count } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { documentsTable, projectsTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
-import { detectDocType } from "../lib/document-parser.js";
-import { computeHashFromStream } from "../lib/utils/hash.js";
+import { detectDocType, extractText } from "../lib/document-parser.js";
+import { computeHashFromBuffer } from "../lib/utils/hash.js";
 import { logger } from "../lib/logger.js";
+import { requireApiKey } from "../middlewares/auth";
 
 const router = Router();
 
@@ -82,11 +82,11 @@ router.post("/documents/:id/affiliate", async (req, res) => {
 });
 
 // POST /documents (Upload to Misc Pool)
-router.post("/documents", documentUpload.single("file"), async (req, res) => {
+router.post("/documents", requireApiKey, documentUpload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "file required" });
 
-  // Fake userId extracted from bearer token (implementation pending auth middleware)
-  const uploadedBy = (req as any).user?.id || 1;
+  const uploadedBy = (req as any).user?.id;
+  if (!uploadedBy) return res.status(401).json({ error: "Unauthorized" });
 
   // Max's Rule: Enforce a strict file count quota for the anonymous pool
   const [quotaCheck] = await db
@@ -95,36 +95,34 @@ router.post("/documents", documentUpload.single("file"), async (req, res) => {
     .where(isNull(documentsTable.projectId));
 
   if (quotaCheck.count >= 1000) {
-    return res
-      .status(429)
-      .json({
-        error: "Misc Pool quota exceeded. Please associate existing documents to a project.",
-      });
+    return res.status(429).json({
+      error: "Misc Pool quota exceeded. Please associate existing documents to a project.",
+    });
   }
 
   try {
-    const filePath = req.file.path;
+    const fileBuffer = req.file.buffer;
+    if (!fileBuffer) {
+      return res.status(400).json({ error: "Uploaded file buffer is missing" });
+    }
 
-    // Max's Rule: Validate Magic Bytes to prevent Zip bombs and XXE via spoofed extensions
-    const fileBuffer = await fs.promises.readFile(filePath);
-    const hexHeader = fileBuffer.toString("hex", 0, 4).toUpperCase();
+    // Max's Rule: Validate Magic Bytes to prevent spoofed extensions from slipping through.
+    const hexHeader = fileBuffer.subarray(0, 4).toString("hex").toUpperCase();
 
     // PDF magic bytes: 25504446
     // DOCX/PPTX (ZIP) magic bytes: 504B0304
     const docType = detectDocType(req.file.originalname);
     if (docType === "pdf" && !hexHeader.startsWith("25504446")) {
-      await fs.promises.unlink(filePath).catch(() => {});
       return res.status(400).json({ error: "Invalid file signature. Not a true PDF." });
     }
     if ((docType === "docx" || docType === "pptx") && !hexHeader.startsWith("504B0304")) {
-      await fs.promises.unlink(filePath).catch(() => {});
       return res
         .status(400)
         .json({ error: "Invalid file signature. Not a valid Office document." });
     }
 
-    const contentHash = await computeHashFromStream(filePath);
-    const rawContent = await fs.promises.readFile(filePath, "utf-8");
+    const contentHash = computeHashFromBuffer(fileBuffer);
+    const rawContent = await extractText(fileBuffer, docType, req.file.originalname);
 
     const [inserted] = await db
       .insert(documentsTable)
@@ -139,7 +137,6 @@ router.post("/documents", documentUpload.single("file"), async (req, res) => {
       })
       .returning();
 
-    await fs.promises.unlink(filePath).catch(() => {});
     return res.json(inserted);
   } catch (err) {
     logger.error({ err }, "[POST /documents] Unhandled error");

@@ -6,6 +6,8 @@ import {
   openDocuviaSidebar,
   cleanupDocuviaDir,
   runInitProject,
+  initFixture,
+  cmdOrCtrl,
   DOCUVIA_DIR,
 } from "./helpers/launch";
 
@@ -15,8 +17,10 @@ test.describe("Phase 2: Dashboard Webview State", () => {
   let userDataDir: string;
 
   test.beforeAll(async () => {
-    userDataDir = makeTempDataDir();
+    await initFixture();
     cleanupDocuviaDir();
+
+    userDataDir = makeTempDataDir();
 
     ({ electronApp, window } = await launchVSCode({
       userDataDir,
@@ -31,7 +35,7 @@ test.describe("Phase 2: Dashboard Webview State", () => {
     await expect.poll(() => fs.existsSync(DOCUVIA_DIR), { timeout: 12_000 }).toBe(true);
 
     // Open Dashboard via Command Palette
-    await window.keyboard.press("Control+Shift+P");
+    await window.keyboard.press(`${cmdOrCtrl()}+Shift+P`);
     await window.waitForSelector(".quick-input-widget", { timeout: 10_000 });
     await window.keyboard.type("Docuvia: Open Dashboard");
     await window.keyboard.press("Enter");

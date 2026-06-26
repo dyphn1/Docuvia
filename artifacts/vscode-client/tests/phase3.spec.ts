@@ -5,6 +5,8 @@ import {
   makeTempDataDir,
   cleanupDocuviaDir,
   runInitProject,
+  initFixture,
+  cmdOrCtrl,
   DOCUVIA_DIR,
 } from "./helpers/launch";
 
@@ -14,8 +16,10 @@ test.describe("Phase 3: Chat Interaction (@docuvia)", () => {
   let userDataDir: string;
 
   test.beforeAll(async () => {
-    userDataDir = makeTempDataDir();
+    await initFixture();
     cleanupDocuviaDir();
+
+    userDataDir = makeTempDataDir();
 
     ({ electronApp, window } = await launchVSCode({
       userDataDir,
@@ -37,13 +41,13 @@ test.describe("Phase 3: Chat Interaction (@docuvia)", () => {
   });
 
   async function openChatPanel(): Promise<void> {
-    await window.keyboard.press("Control+Shift+P");
+    await window.keyboard.press(`${cmdOrCtrl()}+Shift+P`);
     await window.waitForSelector(".quick-input-widget", { timeout: 10_000 });
     await window.keyboard.type("Chat: Open Chat");
     await window.keyboard.press("Enter");
 
     // Wait for the chat input to become visible
-    const chatInput = window.locator(".interactive-input-editor .view-line").first();
+    const chatInput = window.locator(".input-editor .view-line").first();
     await chatInput.waitFor({ state: "visible", timeout: 20_000 });
   }
 

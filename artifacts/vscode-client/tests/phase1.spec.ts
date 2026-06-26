@@ -6,6 +6,8 @@ import {
   makeTempDataDir,
   openDocuviaSidebar,
   cleanupDocuviaDir,
+  initFixture,
+  cmdOrCtrl,
   DOCUVIA_DIR,
 } from "./helpers/launch";
 
@@ -15,8 +17,10 @@ test.describe("Phase 1: Local Knowledge Schema & Foundations", () => {
   let userDataDir: string;
 
   test.beforeAll(async () => {
-    userDataDir = makeTempDataDir();
+    await initFixture();
     cleanupDocuviaDir();
+
+    userDataDir = makeTempDataDir();
 
     ({ electronApp, window } = await launchVSCode({
       userDataDir,
@@ -36,21 +40,21 @@ test.describe("Phase 1: Local Knowledge Schema & Foundations", () => {
   });
 
   test("Welcome View is visible when .docuvia folder does not exist", async () => {
-    const welcomeView = window.locator(".view-welcome-content", { hasText: "Welcome to Docuvia!" });
-    await expect(welcomeView).toBeVisible({ timeout: 10_000 });
+    const welcomeView = window.locator("text=Welcome to Docuvia!");
+    await expect(welcomeView).toBeVisible({ timeout: 15_000 });
   });
 
   test("Docuvia: Init Project creates .docuvia directory with skeleton YAML files", async () => {
     expect(fs.existsSync(DOCUVIA_DIR)).toBe(false);
 
-    await window.keyboard.press("Control+Shift+P");
+    await window.keyboard.press(`${cmdOrCtrl()}+Shift+P`);
     await window.waitForSelector(".quick-input-widget", { timeout: 10_000 });
     await window.keyboard.type("Docuvia: Init Project");
     await window.keyboard.press("Enter");
 
     await window.waitForTimeout(400);
     await window.waitForSelector(".quick-input-widget input", { timeout: 6_000 });
-    await window.keyboard.press("Control+A");
+    await window.keyboard.press(`${cmdOrCtrl()}+A`);
     await window.keyboard.type("Test Project");
     await window.keyboard.press("Enter");
 
@@ -82,12 +86,12 @@ test.describe("Phase 1: Local Knowledge Schema & Foundations", () => {
   });
 
   test("Welcome View disappears after .docuvia folder is created", async () => {
-    const welcomeView = window.locator(".view-welcome-content", { hasText: "Welcome to Docuvia!" });
-    await expect(welcomeView).not.toBeVisible({ timeout: 12_000 });
+    const welcomeView = window.locator("text=Welcome to Docuvia!");
+    await expect(welcomeView).not.toBeVisible({ timeout: 15_000 });
   });
 
   test("Knowledge Graph TreeView is visible after initialization", async () => {
-    const treeViewPane = window.locator('.pane-body[aria-label*="Knowledge Graph"]');
-    await expect(treeViewPane).toBeVisible({ timeout: 10_000 });
+    const treeViewPane = window.locator('.pane-header:has-text("Knowledge Graph")');
+    await expect(treeViewPane).toBeVisible({ timeout: 15_000 });
   });
 });

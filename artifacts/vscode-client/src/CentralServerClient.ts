@@ -113,9 +113,9 @@ export class CentralServerClient {
     }
 
     // Map pushes to standard outbox events
-    const events = commits.map(commit => ({
+    const events = commits.map((commit) => ({
       type: "UPDATE_L3",
-      payload: { commitHash: commit, branchName: branch }
+      payload: { commitHash: commit, branchName: branch },
     }));
 
     const response = await fetch(`${serverUrl}/sync/push`, {

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { minimatch } from "minimatch";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { ExtractionTask, TaskQueueTreeProvider, TaskType } from "./TaskQueueTreeProvider.js";
-import { KnowledgeStore } from "./KnowledgeStore.js";
+import { KnowledgeStore, KnowledgeGraphSnapshot } from "./KnowledgeStore.js";
 import { KGNode } from "./KnowledgeGraphTreeProvider.js";
 
 // ─── Public interface ─────────────────────────────────────────────────────────
@@ -106,8 +106,15 @@ export class TaskRunner {
     const l1TagsYaml = stringifyYaml(snap.tags);
     const l2ModulesYaml = stringifyYaml(snap.modules);
 
-    // Prepare unassigned items payload
-    const unassignedItems = unassignedNodes.map((node) => {
+    // Prepare unassigned items payload (cap at 50 to prevent context window overflow)
+    const MAX_UNASSIGNED = 50;
+    const cappedNodes = unassignedNodes.slice(0, MAX_UNASSIGNED);
+    if (unassignedNodes.length > MAX_UNASSIGNED) {
+      this.outputChannel.appendLine(
+        `[Docuvia/TaskRunner] Capping auto-categorization from ${unassignedNodes.length} to ${MAX_UNASSIGNED} decisions`
+      );
+    }
+    const unassignedItems = cappedNodes.map((node) => {
       const decision = snap.decisions.get(node.id);
       return {
         l3_id: node.id,
@@ -178,8 +185,8 @@ If you are not confident about an item, exclude it from the array.`;
 
   private async applyAutoCategorization(
     workspaceRoot: string,
-    mapping: any[],
-    snap: any
+    mapping: Array<Record<string, unknown>>,
+    snap: KnowledgeGraphSnapshot
   ): Promise<void> {
     const routerUri = vscode.Uri.file(path.join(workspaceRoot, ".docuvia", "l3_router.yaml"));
     const modulesUri = vscode.Uri.file(path.join(workspaceRoot, ".docuvia", "l2_modules.yaml"));
@@ -212,8 +219,10 @@ If you are not confident about an item, exclude it from the array.`;
         if (!existingNew) {
           existingNew = {
             id: uuidv4(),
-            slug: item.new_l2_name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-            l1_tag_id: item.l1_id,
+            slug: String(item.new_l2_name)
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-"),
+            l1_tag_id: String(item.l1_id),
             name: item.new_l2_name,
             description: `Auto-generated module for ${item.new_l2_name}`,
             source_paths: [],

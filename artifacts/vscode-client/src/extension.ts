@@ -633,10 +633,16 @@ async function initProject(
       await writeIfAbsent(l1TagsPath, `project_name: ${projectName}\ntags:\n  - slug: core\n`);
 
       const l2ModulesPath = vscode.Uri.file(path.join(docuviaDir, "l2_modules.yaml"));
-      await writeIfAbsent(l2ModulesPath, `# L2 Modules — functional subsystems, linked to an L1 tag\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   l1_tag_id: <L1 tag id>\n#   source_paths: []\n`);
+      await writeIfAbsent(
+        l2ModulesPath,
+        `# L2 Modules — functional subsystems, linked to an L1 tag\n# - id: <uuid>\n#   slug: <human-readable>\n#   name: <display name>\n#   l1_tag_id: <L1 tag id>\n#   source_paths: []\n`
+      );
 
       const l3RouterPath = vscode.Uri.file(path.join(docuviaDir, "l3_router.yaml"));
-      await writeIfAbsent(l3RouterPath, `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`);
+      await writeIfAbsent(
+        l3RouterPath,
+        `# L3 Router — performance index of all L3 decisions\n# - id: <uuid>\n#   l2_module_id: <L2 module id>\n#   slug: <human-readable>\n#   title: <decision title>\n#   file_path: l3_decisions/<slug>.md\n`
+      );
 
       const profilePath = vscode.Uri.file(path.join(docuviaDir, "_project_profile.yaml"));
       await writeIfAbsent(profilePath, `# Project Profile\n`);
@@ -692,7 +698,7 @@ async function addDecision(
   const filePath = path.join(docuviaDir, "l3_decisions", filename);
 
   const content = `---\nid: ${id}\ntitle: "${title.replace(/"/g, '\\"')}"\ntype: decision\nstatus: valid\noccurrence_count: 1\n---\n\n${prefillBody}`;
-  
+
   const fs = require("fs/promises");
   await fs.writeFile(filePath, content, "utf-8");
 
@@ -703,7 +709,7 @@ async function addDecision(
 async function showDecisionsForLens(store: KnowledgeStore, data: CodeLensDecisionData) {
   const folders = vscode.workspace.workspaceFolders || [];
   const editor = vscode.window.activeTextEditor;
-  const uri = editor ? editor.document.uri : (folders.length > 0 ? folders[0].uri : undefined);
+  const uri = editor ? editor.document.uri : folders.length > 0 ? folders[0].uri : undefined;
   if (!uri) return;
 
   const snapshot = store.getSnapshotFor(uri);

@@ -275,7 +275,8 @@
     "package": "pnpm run esbuild && vsce package --no-dependencies",
     "typecheck": "tsc --noEmit",
     "watch": "tsc -p tsconfig.json --outDir out --watch",
-    "esbuild-worker": "node esbuild.worker.mjs"
+    "esbuild-worker": "node esbuild.worker.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@workspace/ast-core": "workspace:^",

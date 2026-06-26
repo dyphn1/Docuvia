@@ -78,6 +78,15 @@ jobs:
           # Vite needs NODE_ENV for production builds
           NODE_ENV: production
 
+      - name: Package VS Code extension (.vsix)
+        run: pnpm --filter @workspace/vscode-client run package
+
+      - name: Upload .vsix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docuvia-vscode
+          path: artifacts/vscode-client/*.vsix
+
   test:
     name: Vitest
     runs-on: ubuntu-latest

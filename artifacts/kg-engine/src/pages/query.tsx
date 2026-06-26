@@ -66,7 +66,7 @@ export default function Query() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${import.meta.env.VITE_MCP_PAT}`
+          Authorization: `Bearer ${import.meta.env.VITE_MCP_PAT}`,
         },
         body: JSON.stringify({
           q: query.trim(),

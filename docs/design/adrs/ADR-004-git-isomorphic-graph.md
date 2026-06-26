@@ -8,21 +8,25 @@ Knowledge is an immutable, distributed Directed Acyclic Graph (DAG) built upon I
 
 ```mermaid
 flowchart LR
-    subgraph Server Graph
-        C1((Commit 1)) --> C2((Commit 2))
-        C2 --> L3[L3: cursor_rule]
+    subgraph ServerGraph["Server Graph"]
+        S1((Commit 1))
+        S2((Commit 2))
+        S2 --> L3["L3: cursor_rule"]
     end
 
-    subgraph Local Workspace
-        C2 --> C3((Commit 3: Hotfix))
-        C3 --> C4((Commit 4: HEAD))
+    subgraph LocalWorkspace["Local Workspace"]
+        L2((Commit 2))
+        L3node((Commit 3: Hotfix))
+        L4((Commit 4: HEAD))
+        L2 --> L3node
+        L3node --> L4
     end
 
-    C4 -.-> |git merge-base| C2
-    C2 -.-> |Inherit Baseline| C4
-    C4 --> |Extract Delta| NewL3[New L3: hotfix_rule]
-    NewL3 --> |API Request| Server Graph
-    Server Graph --> |Central Lock + Commit| Orphan Branch
+    L4 -.->|"git merge-base"| S2
+    S2 -.->|"Inherit Baseline"| L4
+    L4 -->|"Extract Delta"| NewL3["New L3: hotfix_rule"]
+    NewL3 -->|"API Request"| SG["Sync to Server"]
+    SG -->|"Central Lock + Commit"| OB["Orphan Branch"]
 ```
 
 ## 1. The Baseline Inheritance (Nearest Ancestor)

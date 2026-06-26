@@ -1,4 +1,4 @@
-import { db } from "@workspace/db";
+import { db, type DbClient } from "@workspace/db";
 import {
   projectsTable,
   l2NodesTable,
@@ -32,7 +32,7 @@ import { faker } from "@faker-js/faker";
 faker.seed(123); // Seed faker for deterministic test execution
 
 // Helper to get active db or transaction client
-const getDb = (client?: any) => client ?? db;
+const getDb = (client?: DbClient) => client ?? db;
 
 export const ProjectFactory = {
   build: (overrides?: Partial<InsertProject>): InsertProject => ({
@@ -41,7 +41,7 @@ export const ProjectFactory = {
     defaultBranch: "main",
     ...overrides,
   }),
-  create: async (overrides?: Partial<InsertProject>, client?: any) => {
+  create: async (overrides?: Partial<InsertProject>, client?: DbClient) => {
     const data = ProjectFactory.build(overrides);
     const [inserted] = await getDb(client).insert(projectsTable).values(data).returning();
     return inserted;
@@ -56,7 +56,7 @@ export const L2NodeFactory = {
     description: faker.lorem.sentence(),
     ...overrides,
   }),
-  create: async (overrides?: Partial<InsertL2Node>, client?: any) => {
+  create: async (overrides?: Partial<InsertL2Node>, client?: DbClient) => {
     let projectId = overrides?.projectId;
     if (!projectId) {
       const project = await ProjectFactory.create({}, client);
@@ -76,7 +76,7 @@ export const L3NodeFactory = {
     nodeType: "change",
     ...overrides,
   }),
-  create: async (overrides?: Partial<InsertL3Node>, client?: any) => {
+  create: async (overrides?: Partial<InsertL3Node>, client?: DbClient) => {
     let l2NodeId = overrides?.l2NodeId;
     if (!l2NodeId) {
       const l2 = await L2NodeFactory.create({}, client);
@@ -98,7 +98,7 @@ export const CommitFactory = {
     vcsType: "git",
     ...overrides,
   }),
-  create: async (overrides?: Partial<InsertCommit>, client?: any) => {
+  create: async (overrides?: Partial<InsertCommit>, client?: DbClient) => {
     let projectId = overrides?.projectId;
     if (!projectId) {
       const project = await ProjectFactory.create({}, client);
@@ -118,7 +118,7 @@ export const DocumentFactory = {
     content: faker.lorem.paragraphs(2),
     ...overrides,
   }),
-  create: async (overrides?: Partial<InsertDocument>, client?: any) => {
+  create: async (overrides?: Partial<InsertDocument>, client?: DbClient) => {
     let projectId = overrides?.projectId;
     if (!projectId) {
       const project = await ProjectFactory.create({}, client);
@@ -137,7 +137,7 @@ export const ActivityLogFactory = {
     description: faker.lorem.sentence(),
     ...overrides,
   }),
-  create: async (overrides?: Partial<InsertActivityLog>, client?: any) => {
+  create: async (overrides?: Partial<InsertActivityLog>, client?: DbClient) => {
     let projectId = overrides?.projectId;
     if (!projectId) {
       const project = await ProjectFactory.create({}, client);

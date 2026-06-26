@@ -1,6 +1,7 @@
 # Knowledge Graph View: Initialization & Onboarding
 
 > **Related Architecture:**
+>
 > - [ADR-001 (VS Code Client Onboarding)](../../adrs/ADR-001-vscode-client-onboarding.md)
 > - [ADR-005 (Three-tier knowledge graph / Abstraction)](../../adrs/ADR-005-knowledge-abstraction-strategy.md)
 
@@ -29,7 +30,7 @@ Utilizing the `viewsWelcome` contribution point to handle initial states:
 
 - **Condition 1 (No Workspace)**: `workbenchState == 'empty'`
   - **Content**: "Open a folder to start using Docuvia."
-- **Condition 2 (Workspace Open, Not Initialized)**: `docuvia.knowledgeGraph.initializedCount == 0` *(State changes are propagated via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md))*
+- **Condition 2 (Workspace Open, Not Initialized)**: `docuvia.knowledgeGraph.initializedCount == 0` _(State changes are propagated via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md))_
   - **Content**: "Welcome to Docuvia! 🚀\n\nThis workspace is not connected to a Knowledge Graph.\n\n[✨ Initialize Workspace](command:docuvia.initProject)"
 
 ---

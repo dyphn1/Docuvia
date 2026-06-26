@@ -23,8 +23,8 @@ We will migrate the vector storage and search functionality to PostgreSQL using 
 
 ## Consequences
 
--   **Positive**: Eradicates OOM risks in the Node.js API server by offloading heavy vector matrix multiplication to the database.
--   **Positive**: Massive latency reduction for large datasets due to HNSW/IVFFlat indexing.
--   **Positive**: Consolidates relational data filtering and vector search into single, atomic DB transactions.
--   **Negative**: Increases infrastructure requirements; deployments must guarantee the underlying PostgreSQL instance has the `pgvector` extension installed.
--   **Negative**: Requires a potentially expensive and lock-heavy data migration to alter existing JSONB array columns into native `vector` types.
+- **Positive**: Eradicates OOM risks in the Node.js API server by offloading heavy vector matrix multiplication to the database.
+- **Positive**: Massive latency reduction for large datasets due to HNSW/IVFFlat indexing.
+- **Positive**: Consolidates relational data filtering and vector search into single, atomic DB transactions.
+- **Negative**: Increases infrastructure requirements; deployments must guarantee the underlying PostgreSQL instance has the `pgvector` extension installed.
+- **Negative**: Requires a potentially expensive and lock-heavy data migration to alter existing JSONB array columns into native `vector` types.

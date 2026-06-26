@@ -1,152 +1,120 @@
-# Docuvia - AI Developer Guide
+# Docuvia — AI Developer Guide
 
-> A full-stack TypeScript monorepo using Node.js 24, Express, React + Vite, PostgreSQL + Drizzle ORM, and MCP. It ingests version control history and exposes a knowledge graph via Agentic RAG.
+> Full-stack TypeScript monorepo (Node 24, Express 5, React+Vite, PostgreSQL+Drizzle, MCP). Ingests VCS history into a queryable knowledge graph via Agentic RAG.
 
-## Tech Stack & Architecture
+## Workspace Layout
 
-- **Frontend**: React, Vite, Tailwind CSS (`@workspace/kg-engine`)
-- **Backend**: Node.js 24, Express 5, Zod validation (`@workspace/api-server`)
-- **Database**: PostgreSQL with Drizzle ORM (`@workspace/db`)
-- **API Spec**: OpenAPI spec managed via Orval for codegen (`@workspace/api-spec`)
-
-### Workspace Layout
-
-| Directory                        | Purpose                                                                                                                  |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `kg-engine/`                     | Frontend React UI (Dashboard, Pipeline, Query, Review)                                                                   |
-| `api-server/`                    | Express API, MCP endpoints, Agentic RAG routing, Ingestion logic                                                         |
-| `vscode-client/`                 | VS Code Extension — tree view, Copilot Chat participant, CodeLens/Hover (see `artifacts/vscode-client/design/ROUTER.md`) |
-| `mockup-sandbox/`                | UI prototyping and visual component sandbox (not production)                                                             |
-| `api-spec/`                      | `openapi.yaml` — Single source of truth for all API contracts                                                            |
-| `db/`                            | Drizzle ORM schema and migrations (`projects.ts`, `commits.ts`, etc.)                                                    |
-| `integrations-openai-ai-server/` | OpenAI-compatible client wrapper                                                                                         |
-| `docs/`                          | Centralized documentation including `design/` (Arc42 + ADRs) and `roadmap/`                                              |
-
-## Development Commands
-
-All commands are executed from the repository root unless otherwise noted.
-
-### Setup & Database
-
-```bash
-pnpm install
-# DB push — apply schema to dev DB
-pnpm --filter @workspace/db run push
-# Force (destructive) push:
-pnpm --filter @workspace/db run push-force
+```
+artifacts/
+  api-server/     Express API, MCP, ingestion, Agentic RAG routing (entry: src/index.ts, esbuild bundle)
+  kg-engine/      React+Vite frontend (entry: src/main.tsx)
+  vscode-client/  VS Code extension (release via tag push, packages .vsix)
+  ast-core/       AST analysis logic
+  mockup-sandbox/ UI prototyping only (not production)
+lib/
+  db/             Drizzle ORM schema + migrations (21 tables, drizzle-kit push)
+  api-spec/       OpenAPI spec (openapi.yaml) — single source of truth
+  api-client-react/  Auto-generated React Query hooks (do not edit)
+  api-zod/           Auto-generated Zod validators (do not edit)
+  integrations-openai-ai-server/  OpenAI-compatible client wrapper
+scripts/          preinstall.mjs (blocks npm/yarn), utilities
 ```
 
-### Local Development
+## Developer Commands
 
 ```bash
-pnpm --filter @workspace/api-server run dev   # API server on port 8080
-pnpm --filter @workspace/kg-engine run dev    # Frontend on port 18774
-```
+pnpm install                    # npm/yarn blocked by preinstall script
 
-### Build & Typecheck
+# Codegen — run after EVERY openapi.yaml change
+pnpm --filter @workspace/api-spec run codegen   # Runs orval then pnpm -w run typecheck:libs
 
-```bash
-pnpm run build          # typecheck + compile all packages
-pnpm run typecheck      # Typecheck only
-```
+# Typecheck (two-phase: libs tsc --build first, then per-package)
+pnpm run typecheck
 
-### Codegen
+# Build (typecheck + compile all packages)
+pnpm run build
 
-```bash
-# Regenerate React Query hooks and Zod validators from OpenAPI spec
-pnpm --filter @workspace/api-spec run codegen
-```
+# Lint (prettier --check only, not a full linter)
+pnpm run lint
+pnpm run format                # prettier --write
 
-_Run this after **every** change to `lib/api-spec/openapi.yaml`._
-
-### Testing & Linting
-
-```bash
-pnpm prettier --write .
-pnpm test
+# Test (api-server only — kg-engine has no test script)
+pnpm test                      # vitest run --root ../.. (from api-server)
 pnpm run test:coverage
+
+# Dev servers
+pnpm --filter @workspace/api-server run dev   # PORT env var required, listens on $PORT
+pnpm --filter @workspace/kg-engine run dev    # Vite dev server, port 18774
+
+# Database
+pnpm --filter @workspace/db run push          # Apply schema to dev DB
+pnpm --filter @workspace/db run push-force    # Destructive push
 ```
 
-_(Unit tests are colocated with source as `*.unit.test.ts`; package integration tests live in `artifacts/<package>/test/integration/`. API integration tests use a real PostgreSQL database wrapped in rollback transactions plus MSW for external HTTP APIs.)_
+## CI Pipeline Order
 
-### Test Infrastructure
+The CI runs this exact sequence — replicate locally when making cross-package changes:
 
-- Shared Vitest setup is configured in `vitest.config.ts` and implemented under `artifacts/api-server/test/setup/`.
-- Use factories from `artifacts/api-server/test/support/factories.ts` to create DB state. Factories should accept overrides and remain friendly to randomized/fuzz inputs.
-- Wrap DB-backed integration tests with `withRollback(...)` from `artifacts/api-server/test/support/db.ts` so writes are rolled back after each test.
-- Add large external API responses as JSON fixtures under `artifacts/api-server/test/setup/msw/fixtures/`, then expose them through MSW handlers.
+1. `pnpm --filter @workspace/api-spec run codegen` (generates Zod schemas + React Query hooks)
+2. `pnpm run typecheck`
+3. `pnpm -r --if-present run build` (with `NODE_ENV=production` for Vite)
+4. `pnpm --filter @workspace/db run push` (to a real PostgreSQL)
+5. `pnpm run test:coverage`
 
-## 🤖 Agentic Workflow & Subagents
+## Testing Conventions
 
-This project is scaffolded with the `create-agent-launcher` workflow. When implementing complex features or making cross-package changes, you should utilize the built-in subagents rather than attempting to write all code in a single turn.
+- **Unit tests**: `*.unit.test.ts` co-located with source. Covered by root `vitest.config.ts`.
+- **Integration tests**: `artifacts/<package>/test/integration/`.
+- **Test runner**: Vitest with root config at `vitest.config.ts`. The shared setup file (`artifacts/api-server/test/setup/setup.ts`) auto-provides defaults for `PORT`, `DATABASE_URL`, `AI_INTEGRATIONS_OPENAI_*`.
+- **DB tests**: Wrap with `withRollback(...)` from `artifacts/api-server/test/support/db.ts`. Use factories from `artifacts/api-server/test/support/factories.ts`.
+- **External HTTP**: Mocked via MSW. Handlers in `artifacts/api-server/test/setup/msw/handlers.ts`; large fixtures in `artifacts/api-server/test/setup/msw/fixtures/`.
+- **k6 load tests**: In `artifacts/api-server/test/k6/`.
 
-- **Agent Launcher**: Use the `agent-launcher` skill to orchestrate multi-step implementations.
-- **Available Agents**: All 10 agents are defined in `.github/agents/`. Instructions for the state machine orchestrator loop are in `.github/copilot-instructions.md`.
+## Architecture Notes
 
-| Agent                  | When to Use                                                                  |
-| ---------------------- | ---------------------------------------------------------------------------- |
-| Requirement Analyzer   | New feature planning, ambiguity resolution                                   |
-| Backend Developer      | Express.js / Node.js implementation                                          |
-| Frontend Developer     | React + Vite UI changes                                                      |
-| Database Schema Expert | Drizzle ORM schema / migrations                                              |
-| API Architect          | OpenAPI spec + Orval codegen                                                 |
-| Task Verifier          | Post-implementation verification                                             |
-| Document Writer (MD)   | Markdown documentation only, no source code                                  |
-| Memory Keeper          | Consolidate task learnings into project memory after successful verification |
-| Shell Script Expert    | Bash, batch, and CI pipeline scripts                                         |
-| Tool Maker             | Utility scripts for AI automation reliability                                |
+- **API-first**: Never manually write API types or fetch hooks. Edit `lib/api-spec/openapi.yaml`, run codegen. Orval generates Zod schemas → `@workspace/api-zod` and React Query hooks → `@workspace/api-client-react`.
+- **Knowledge tiers**: L1 (global tags), L2 (architecture modules), L3 (implementation details anchored to commits). Stored in DB tables `l1_tags`, `l2_nodes`, `l3_nodes`.
+- **Git-isomorphic**: Knowledge syncs via the `docuvia-knowledge` orphan branch.
+- **Intent router**: `src/lib/intent-router.ts` routes queries across vector/graph/direct/hybrid with temporal decay.
+- **Webhook middleware order**: `/api/webhooks/github` is mounted with `express.raw()` **before** `express.json()` so HMAC signature validation works (see `src/app.ts`).
 
-## Conventions
+## Gotchas
 
-- **Package Manager**: Strictly use `pnpm`. `npm` and `yarn` are blocked by preinstall script.
-- **Node Version**: Strictly Node.js 24+.
-- **API First**: Do not manually write API types or fetch hooks. Always edit `openapi.yaml` and run the codegen script. Orval will generate Zod schemas and React Query hooks.
+- **`PORT` env var required** at api-server startup (no default).
+- **`pnpm lint` = `prettier --check`**, not a real linter (no ESLint configured).
+- **`pnpm test` only runs api-server tests** (kg-engine has no test script).
+- **Supply-chain defense**: `minimumReleaseAge: 1440` in `pnpm-workspace.yaml` blocks packages <1 day old.
+- **No native Ollama support** — use an OpenAI-compatible proxy (LiteLLM, etc.).
+- **autoInstallPeers: false** — add peer deps manually.
+- **Node 24+ required**; corepack-enabled pnpm 9.
+- API server uses **esbuild** for bundling (not tsc). See `build.mjs`.
 
-## Product Domain Knowledge & Core Architecture
+## Agent Workflow
 
-Docuvia is designed around an **Agentic OS Architecture**, prioritizing token efficiency, graceful degradation, and asynchronous metabolism.
+This repo has 10 subagents defined in `.github/agents/` for Claude/Copilot orchestration. For complex multi-step work, dispatch to the appropriate agent rather than doing everything in one turn. See `.github/copilot-instructions.md` for the orchestrator state machine.
 
-- **Knowledge Hierarchy**:
-  - `L1 Tags`: Global categorizations across all projects (e.g., Core Logic, API).
-  - `L2 Nodes`: Architecture modules/components, automatically clustered via Top-Down Archaeology.
-  - `L3 Nodes`: Granular implementation rules anchored to specific Git commit hashes (Incremental Deltas).
-- **Git-Isomorphic Graph**: Knowledge is stored and synchronized via the `docuvia-knowledge` orphan branch, allowing the system to project temporal deltas without constantly re-scanning full histories.
-- **Local-First, Server-Augmented**: The VS Code client operates independently for topology scanning and keyword retrieval, unlocking deep Graph traversal and Swarm Evolution only when connected to the API Server.
-- **Agentic RAG**: `intent-router.ts` handles 4-way LLM-based routing (vector, graph, direct, hybrid) with temporal decay applied to inactive knowledge nodes.
-- **Swarm Intelligence (Human-in-the-loop)**: `correction_examplesTable` captures developer overrides. The Server asynchronously distills these into global guardrails and updates the `prompt_templatesTable`.
+## Key File Paths
 
-### DB Schema Tables (`lib/db/src/schema/`)
-
-`projects`, `commits`, `documents`, `activity_log`, `l1_tags`, `l2_nodes`, `l3_nodes`, `node_links`, `review_tasks`, `correction_examples`, `pull_requests`, `project_integrations`, `notifications`, `subscriptions`, `llm_configs`, `prompt_templates`
-
-### API Server Routes (`artifacts/api-server/src/routes/`)
-
-`projects`, `commits`, `l1_tags`, `l2_nodes`, `l3_nodes`, `review_tasks`, `dashboard`, `ingest`, `generate`, `export`, `search`, `mcp`, `extensions_vscode`, `integrations`, `templates`, `github_webhooks`, `pull_requests`, `notifications`, `subscriptions`, `llm_config`, `health`
-
-### API Server Lib (`artifacts/api-server/src/lib/`)
-
-- `intent-router.ts` — 4-way Agentic RAG routing (vector / graph / direct / hybrid)
-- `document-parser.ts` — PDF, Word, PPTX, Markdown ingestion
-- `build-artifact-parser.ts` — Build artifact analysis
-- `embedding.ts` — Vector embedding generation
-- `github-client.ts` — GitHub API integration
-- `svn-client.ts` — SVN repository client
-- `slack-teams-client.ts` — Slack / Teams notification integration
-- `extensions-service.ts` — VS Code extension bridge
-- `logger.ts` — Structured logging
+| What                           | Path                                                  |
+| ------------------------------ | ----------------------------------------------------- |
+| OpenAPI spec                   | `lib/api-spec/openapi.yaml`                           |
+| Orval codegen config           | `lib/api-spec/orval.config.cjs`                       |
+| Drizzle config                 | `lib/db/drizzle.config.cjs`                           |
+| DB schema                      | `lib/db/src/schema/` (21 tables)                      |
+| API server entry               | `artifacts/api-server/src/index.ts`                   |
+| Express app + middleware order | `artifacts/api-server/src/app.ts`                     |
+| API routes                     | `artifacts/api-server/src/routes/` (24 route modules) |
+| Intent router                  | `artifacts/api-server/src/lib/intent-router.ts`       |
+| VS Code extension docs         | `artifacts/vscode-client/design/ROUTER.md`            |
+| Vitest config                  | `vitest.config.ts` (root)                             |
+| CI pipeline                    | `.github/workflows/ci.yml`                            |
+| Release (VSIX)                 | `.github/workflows/release.yml`                       |
 
 ## Do Not Edit
 
 - `lib/api-client-react/src/generated/` — Auto-generated React Query hooks.
 - `lib/api-zod/src/generated/` — Auto-generated Zod validators.
 - `pnpm-lock.yaml` — Managed by pnpm.
-
-## System Boundaries & Gotchas
-
-- **PORT Environment Variable**: The API server throws an error on startup if `PORT` is missing.
-- **Test Suite**: Vitest discovers colocated unit tests and per-package integration tests. Coverage reports are generated in `coverage/`; add module-specific thresholds as pure logic coverage is introduced.
-- **Ollama**: While earlier docs mentioned Gemma3/Ollama, the current implementation defaults strictly to an OpenAI-compatible endpoint. Do not attempt to use native Ollama adapters.
-- **Supply-Chain Defense**: `minimumReleaseAge: 1440` in `pnpm-workspace.yaml` requires all npm packages to be at least 1 day old before installation. Do NOT disable this setting. Use `minimumReleaseAgeExclude` sparingly for trusted organizations only.
 
 <!-- gitnexus:start -->
 
@@ -182,7 +150,7 @@ This project is indexed by GitNexus as **Docuvia** (6032 symbols, 9774 relations
 
 ## Cross-Repo Groups
 
-This repository is listed under GitNexus **group(s): my_workspace** (see `~/.gitnexus/groups/`). For cross-repo analysis, use MCP tools `impact`, `query`, and `context` with `repo` set to `@<groupName>` or `@<groupName>/<memberPath>` (paths match keys in that group’s `group.yaml`). Use `group_list` / `group_sync` for membership and sync. From the project root: `node .gitnexus/run.cjs group list`, `node .gitnexus/run.cjs group sync <name>`, `node .gitnexus/run.cjs group impact <name> --target <symbol> --repo <group-path>` (the `.gitnexus/run.cjs` path is repo-root-relative).
+This repository is listed under GitNexus **group(s): my_workspace** (see `~/.gitnexus/groups/`). For cross-repo analysis, use MCP tools `impact`, `query`, and `context` with `repo` set to `@<groupName>` or `@<groupName>/<memberPath>` (paths match keys in that group's `group.yaml`). Use `group_list` / `group_sync` for membership and sync. From the project root: `node .gitnexus/run.cjs group list`, `node .gitnexus/run.cjs group sync <name>`, `node .gitnexus/run.cjs group impact <name> --target <symbol> --repo <group-path>` (the `.gitnexus/run.cjs` path is repo-root-relative).
 
 ## CLI
 

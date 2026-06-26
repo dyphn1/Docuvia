@@ -12,5 +12,11 @@ lib/api-client-react/src/generated/
 # Lock files
 pnpm-lock.yaml
 
+# Tool-generated cache/index files
+.gitnexus/
+
+# Generated verification reports (cron output)
+docs/reports/
+
 # Attached assets
 attached_assets/

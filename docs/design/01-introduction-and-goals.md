@@ -20,15 +20,15 @@ The core insight: commit messages, PR descriptions, and code diffs encode archit
 
 ## 1.3 Quality Goals
 
-| Quality Goal                        | Motivation                                                                                                  | Priority    |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------- | ----------- |
-| **Accuracy of L3 Decision Records** | Developers must trust AI-generated decisions; inaccurate records erode confidence faster than no records    | 🔴 Critical |
-| **MCP Query Latency**               | AI IDEs call `/mcp/query` synchronously during autocomplete; p95 must be under 2s excluding LLM calls       | 🔴 Critical |
-| **Observability**                   | Structured logs and an activity feed are required for operators to diagnose pipeline failures and LLM drift | 🟠 High     |
-| **Extensibility — VCS Providers**   | New VCS adapters (GitLab, Bitbucket, Perforce) must be addable without modifying core services              | 🟠 High     |
-| **Extensibility — LLM Providers**   | The LLM integration must be swappable; [OpenAI-compatible interface is an abstraction boundary](09-architectural-decisions.md#adr-004-openai-compatible-llm-interface-only)               | 🟠 High     |
-| **Maintainability via API-First**   | [All API types are generated from `openapi.yaml`](09-architectural-decisions.md#adr-001-openapi-as-single-source-of-truth); zero drift between spec and implementation is mandatory    | 🟠 High     |
-| **Testability**                     | All routes and services must be unit-testable in isolation; DB integration tests must be rollback-safe      | 🟡 Medium   |
+| Quality Goal                        | Motivation                                                                                                                                                                          | Priority    |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| **Accuracy of L3 Decision Records** | Developers must trust AI-generated decisions; inaccurate records erode confidence faster than no records                                                                            | 🔴 Critical |
+| **MCP Query Latency**               | AI IDEs call `/mcp/query` synchronously during autocomplete; p95 must be under 2s excluding LLM calls                                                                               | 🔴 Critical |
+| **Observability**                   | Structured logs and an activity feed are required for operators to diagnose pipeline failures and LLM drift                                                                         | 🟠 High     |
+| **Extensibility — VCS Providers**   | New VCS adapters (GitLab, Bitbucket, Perforce) must be addable without modifying core services                                                                                      | 🟠 High     |
+| **Extensibility — LLM Providers**   | The LLM integration must be swappable; [OpenAI-compatible interface is an abstraction boundary](09-architectural-decisions.md#adr-004-openai-compatible-llm-interface-only)         | 🟠 High     |
+| **Maintainability via API-First**   | [All API types are generated from `openapi.yaml`](09-architectural-decisions.md#adr-001-openapi-as-single-source-of-truth); zero drift between spec and implementation is mandatory | 🟠 High     |
+| **Testability**                     | All routes and services must be unit-testable in isolation; DB integration tests must be rollback-safe                                                                              | 🟡 Medium   |
 
 ---
 

@@ -2,21 +2,21 @@
 
 ## 4.1 Technology Choices
 
-| Decision              | Choice                                                            | Rationale                                                                                                                      |
-| --------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| **Language**          | TypeScript (strict mode)                                          | Full-stack type safety; enables Orval codegen from OpenAPI spec; prevents entire classes of runtime errors                     |
-| **AST Engine**        | `@workspace/ast-core` (tree-sitter.wasm)                          | Universal isomorphic execution across VS Code and Node.js backend.                                                             |
-| **Concurrency Model** | Web Workers                                                       | Prevents main-thread blocking during intensive AST traversal; unified API across VS Code web and Node.js environments.         |
-| **Backend Framework** | Express 5 (ESM)                                                   | Minimal, well-understood; async-native in v5 (async error propagation); large ecosystem                                        |
-| **ORM**               | Drizzle ORM                                                       | Type-safe SQL queries as TypeScript; schema-as-code; migration support; no magic                                               |
-| **Database**          | PostgreSQL                                                        | `pgvector` extension for `vector(1536)` embedding storage; proven ACID guarantees; IVFFlat/HNSW rich indexing |
-| **Frontend**          | React 18 + Vite + shadcn/ui + Tailwind CSS                        | Fast HMR; composable design system; tree-shakeable components                                                                  |
-| **API Contract**      | OpenAPI 3.x + Orval codegen                                       | Single source of truth eliminates type drift between frontend and backend; generates both Zod validators and React Query hooks |
-| **Vector Search**     | PostgreSQL `pgvector` with [Temporal Decay filter](adrs/ADR-007-agentic-rag-routing.md)                  | Offloads vector math (cosine distance) to DB to prevent API Server OOM; enables hybrid SQL indexing (See ADR-019)              |
-| **LLM Integration**   | OpenAI-compatible interface (`lib/integrations-openai-ai-server`) | Provider-agnostic; compatible with OpenRouter, Azure OpenAI, and any `/v1/chat/completions`-compatible endpoint                |
-| **IDE Integration**   | VS Code Extension API                                             | Primary developer audience uses VS Code; enables Copilot Chat participant, CodeLens, TreeView                                  |
-| **MCP Layer**         | Custom Express routes at `/mcp/*`                                 | Compatibility with AI agent toolchains (Cursor, GitHub Copilot, Claude, etc.) that implement Model Context Protocol            |
-| **Package Manager**   | pnpm workspaces                                                   | Efficient monorepo dependency management; hoisting control; `preinstall` hook blocks accidental npm/yarn use                   |
+| Decision              | Choice                                                                                  | Rationale                                                                                                                      |
+| --------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Language**          | TypeScript (strict mode)                                                                | Full-stack type safety; enables Orval codegen from OpenAPI spec; prevents entire classes of runtime errors                     |
+| **AST Engine**        | `@workspace/ast-core` (tree-sitter.wasm)                                                | Universal isomorphic execution across VS Code and Node.js backend.                                                             |
+| **Concurrency Model** | Web Workers                                                                             | Prevents main-thread blocking during intensive AST traversal; unified API across VS Code web and Node.js environments.         |
+| **Backend Framework** | Express 5 (ESM)                                                                         | Minimal, well-understood; async-native in v5 (async error propagation); large ecosystem                                        |
+| **ORM**               | Drizzle ORM                                                                             | Type-safe SQL queries as TypeScript; schema-as-code; migration support; no magic                                               |
+| **Database**          | PostgreSQL                                                                              | `pgvector` extension for `vector(1536)` embedding storage; proven ACID guarantees; IVFFlat/HNSW rich indexing                  |
+| **Frontend**          | React 18 + Vite + shadcn/ui + Tailwind CSS                                              | Fast HMR; composable design system; tree-shakeable components                                                                  |
+| **API Contract**      | OpenAPI 3.x + Orval codegen                                                             | Single source of truth eliminates type drift between frontend and backend; generates both Zod validators and React Query hooks |
+| **Vector Search**     | PostgreSQL `pgvector` with [Temporal Decay filter](adrs/ADR-007-agentic-rag-routing.md) | Offloads vector math (cosine distance) to DB to prevent API Server OOM; enables hybrid SQL indexing (See ADR-019)              |
+| **LLM Integration**   | OpenAI-compatible interface (`lib/integrations-openai-ai-server`)                       | Provider-agnostic; compatible with OpenRouter, Azure OpenAI, and any `/v1/chat/completions`-compatible endpoint                |
+| **IDE Integration**   | VS Code Extension API                                                                   | Primary developer audience uses VS Code; enables Copilot Chat participant, CodeLens, TreeView                                  |
+| **MCP Layer**         | Custom Express routes at `/mcp/*`                                                       | Compatibility with AI agent toolchains (Cursor, GitHub Copilot, Claude, etc.) that implement Model Context Protocol            |
+| **Package Manager**   | pnpm workspaces                                                                         | Efficient monorepo dependency management; hoisting control; `preinstall` hook blocks accidental npm/yarn use                   |
 
 ---
 
@@ -35,6 +35,7 @@ flowchart TD
 ### Layer Breakdown
 
 1. **Input Layer**: Handles raw data ingestion through a **4-Phase Parsing Funnel**. Raw inputs flow through Target Allowlist &rarr; Git Blob Binary Detection &rarr; Lossless Encoding Guardrails &rarr; LLM-Assisted Extension Discovery before reaching the AST Engine and Pluggable Sinks.
+
    ```mermaid
    flowchart LR
        subgraph 1. Input Layer
@@ -58,6 +59,7 @@ flowchart TD
            AST --> SINK[Pluggable Sinks]
        end
    ```
+
 2. **Knowledge Construction Layer**: The LLM-powered engine. Translates raw inputs into [structured abstractions (L1/L2/L3)](adrs/ADR-005-knowledge-abstraction-strategy.md) and automatically queues them for human review to create a [self-improving feedback loop](adrs/ADR-006-self-evolution-architecture.md).
    ```mermaid
    flowchart LR

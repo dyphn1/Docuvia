@@ -2,7 +2,7 @@ import { logger } from "./logger.js";
 import type { ProjectIntegration } from "@workspace/db";
 import { db, projectIntegrationsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { assertPublicHostname, UnsafeUrlError } from "./ssrf-guard.js";
+import { assertPublicHttpUrl } from "./ssrf-guard.js";
 
 interface SlackBlock {
   type: string;
@@ -66,7 +66,7 @@ async function postSlackMessage(
 ): Promise<boolean> {
   const body = buildSlackPayload(eventType, payload, projectName);
   try {
-        const safeWebhookUrl = await validateIntegrationWebhookUrl("slack", webhookUrl);
+    const safeWebhookUrl = await assertPublicHttpUrl(webhookUrl, "Slack webhook URL");
     const res = await fetch(safeWebhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -134,7 +134,7 @@ async function postTeamsMessage(
 ): Promise<boolean> {
   const body = buildTeamsPayload(eventType, payload, projectName);
   try {
-        const safeWebhookUrl = await validateIntegrationWebhookUrl("slack", webhookUrl);
+    const safeWebhookUrl = await assertPublicHttpUrl(webhookUrl, "Teams webhook URL");
     const res = await fetch(safeWebhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

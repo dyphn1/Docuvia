@@ -92,4 +92,4 @@ flowchart TD
 
 ## Known Issues
 
-*(Note: Legacy YAML parsing bugs, such as the `parseTags` array mapping error, have been structurally resolved by migrating to SQLite and Database-as-IPC. There are currently no known critical initialization bugs.)*
+_(Note: Legacy YAML parsing bugs, such as the `parseTags` array mapping error, have been structurally resolved by migrating to SQLite and Database-as-IPC. There are currently no known critical initialization bugs.)_

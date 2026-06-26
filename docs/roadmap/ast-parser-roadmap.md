@@ -41,6 +41,7 @@
 ## Cron Agent Usage
 
 When the AST Language Implementor cron runs:
+
 1. Read `docs/reports/.ast-verification-index.json` to get the list of unfinished items
 2. Select the first `status: "todo"` item to implement
 3. After implementation, run build + test + DB migration

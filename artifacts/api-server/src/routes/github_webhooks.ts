@@ -51,8 +51,8 @@ async function ingestPrCommits(
   let ingested = 0;
   for (const c of commits) {
     if (existingHashes.has(c.sha)) continue;
-    const score = scoreCommit(c.commit.message);
-    // TODO: [CRITICAL BUG FIX] - The commit score is currently bypassed and ignored. Commits with a score < 30 should not be ingested to prevent noise.
+    const { valid } = scoreCommit(c.commit.message);
+    if (!valid) continue;
     await db.insert(commitsTable).values({
       projectId,
       hash: c.sha,
@@ -132,7 +132,9 @@ router.post("/:projectId", async (req, res) => {
   const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
 
   if (!webhookSecret || webhookSecret.length < 16) {
-    logger.error("GITHUB_WEBHOOK_SECRET is not properly configured (missing or too short). Failing closed.");
+    logger.error(
+      "GITHUB_WEBHOOK_SECRET is not properly configured (missing or too short). Failing closed."
+    );
     return res.status(500).json({ error: "Server misconfiguration" });
   }
 

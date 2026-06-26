@@ -18,12 +18,12 @@
 
 ## 2.2 Organizational Constraints
 
-| Constraint                        | Rule                                                                                                                      |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **AI implementation plans**       | All AI-generated implementation plans must be saved under `docs/ai_plans/` before any code is written                     |
-| **Agent scope**                   | Planning agents (Requirement Analyzer) produce only Markdown; they must not modify source code                            |
-| **No manual API types**           | Orval generates all TypeScript types and React Query hooks from `openapi.yaml`; these must never be duplicated manually   |
-| **Design documentation**          | All architecture and package-specific design documents (including VS Code client designs) are centralized in `docs/design/` (this directory) |
+| Constraint                  | Rule                                                                                                                                         |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AI implementation plans** | All AI-generated implementation plans must be saved under `docs/ai_plans/` before any code is written                                        |
+| **Agent scope**             | Planning agents (Requirement Analyzer) produce only Markdown; they must not modify source code                                               |
+| **No manual API types**     | Orval generates all TypeScript types and React Query hooks from `openapi.yaml`; these must never be duplicated manually                      |
+| **Design documentation**    | All architecture and package-specific design documents (including VS Code client designs) are centralized in `docs/design/` (this directory) |
 
 ---
 

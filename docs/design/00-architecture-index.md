@@ -86,9 +86,9 @@ The VS Code extension has its own detailed design documentation under [`docs/des
 
 ## Related Documents
 
-| Document                                                       | Purpose                                                       |
-| -------------------------------------------------------------- | ------------------------------------------------------------- |
-| [docs/roadmap/master-roadmap.md](../roadmap/master-roadmap.md) | Single Source of Truth (SSOT) tracking all development phases |
-| [AGENTS.md](../../AGENTS.md)                                   | AI developer guide — commands, conventions, agent definitions |
-| `ADR-019` | [PostgreSQL pgvector Migration](adrs/ADR-019-pgvector-migration.md)                                                                |
-| `ADR-020` | [Unified Isomorphic AST Microkernel](adrs/ADR-020-unified-isomorphic-ast-microkernel.md)                                           |
+| Document                                                       | Purpose                                                                                  |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [docs/roadmap/master-roadmap.md](../roadmap/master-roadmap.md) | Single Source of Truth (SSOT) tracking all development phases                            |
+| [AGENTS.md](../../AGENTS.md)                                   | AI developer guide — commands, conventions, agent definitions                            |
+| `ADR-019`                                                      | [PostgreSQL pgvector Migration](adrs/ADR-019-pgvector-migration.md)                      |
+| `ADR-020`                                                      | [Unified Isomorphic AST Microkernel](adrs/ADR-020-unified-isomorphic-ast-microkernel.md) |

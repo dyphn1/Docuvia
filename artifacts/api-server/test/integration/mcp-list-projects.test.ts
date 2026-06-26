@@ -25,7 +25,10 @@ describe("GET /api/mcp/list_projects", () => {
       const zetaModule = await L2NodeFactory.create(zeta.id, { name: "ingestion" });
       await L3NodeFactory.create(zetaModule.id, { title: "Ingestion decision" });
 
-      const response = await request(app).get("/api/mcp/list_projects").expect(200);
+      const response = await request(app)
+        .get("/api/mcp/list_projects")
+        .set("Authorization", "Bearer test-mcp-token")
+        .expect(200);
 
       expect(response.body).toEqual({
         projects: [

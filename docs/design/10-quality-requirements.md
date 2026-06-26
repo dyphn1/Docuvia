@@ -33,23 +33,23 @@ Quality
 
 ### 10.2.1 Performance
 
-| Scenario                 | Stimulus                                                     | Response                        | Target                             |
-| ------------------------ | ------------------------------------------------------------ | ------------------------------- | ---------------------------------- |
-| MCP query latency        | Single `POST /mcp/query` request with embedding-based search | End-to-end server response time | p95 < 2s (excluding LLM call time) |
-| [Git ingestion](adrs/ADR-004-git-isomorphic-graph.md) throughput | `POST /projects/:id/ingest/git` with 1,000 commits           | Ingestion completion time       | < 30 seconds                       |
-| [L3 generation](adrs/ADR-005-knowledge-abstraction-strategy.md)            | `POST /projects/:id/generate` with 50 unprocessed commits    | Pipeline completion time        | < 5 minutes (LLM-call-bound)       |
-| Dashboard load           | `GET /dashboard`                                             | Response time                   | < 500ms                            |
-| Knowledge Graph TreeView | [VS Code extension](adrs/ADR-001-vscode-client-onboarding.md) TreeView first render                      | Time to first node visible      | < 1 second after activation        |
+| Scenario                                                         | Stimulus                                                                            | Response                        | Target                             |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------- |
+| MCP query latency                                                | Single `POST /mcp/query` request with embedding-based search                        | End-to-end server response time | p95 < 2s (excluding LLM call time) |
+| [Git ingestion](adrs/ADR-004-git-isomorphic-graph.md) throughput | `POST /projects/:id/ingest/git` with 1,000 commits                                  | Ingestion completion time       | < 30 seconds                       |
+| [L3 generation](adrs/ADR-005-knowledge-abstraction-strategy.md)  | `POST /projects/:id/generate` with 50 unprocessed commits                           | Pipeline completion time        | < 5 minutes (LLM-call-bound)       |
+| Dashboard load                                                   | `GET /dashboard`                                                                    | Response time                   | < 500ms                            |
+| Knowledge Graph TreeView                                         | [VS Code extension](adrs/ADR-001-vscode-client-onboarding.md) TreeView first render | Time to first node visible      | < 1 second after activation        |
 
 ### 10.2.2 Reliability
 
-| Scenario                     | Stimulus                                        | Response                                                                    | Target                                 |
-| ---------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------- |
-| GitHub webhook: invalid HMAC | POST `/github/webhooks` with wrong signature    | HTTP 401; no processing                                                     | Zero false-positive webhook processing |
+| Scenario                     | Stimulus                                                                                   | Response                                                                    | Target                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------- | -------------------------------------- |
+| GitHub webhook: invalid HMAC | POST `/github/webhooks` with wrong signature                                               | HTTP 401; no processing                                                     | Zero false-positive webhook processing |
 | LLM API unavailable          | LLM endpoint times out during [generate pipeline](adrs/ADR-008-asynchronous-metabolism.md) | Graceful degradation: error logged; partial results saved; no DB corruption | No data loss; partial output committed |
-| Missing PORT env var         | `api-server` startup                            | Explicit throw with variable name in error message                          | Immediate, clear failure               |
-| DB connection failure        | PostgreSQL unavailable at startup               | Server fails fast with clear error                                          | No silent degradation                  |
-| Concurrent generate requests | Two `POST /generate` on same project            | Idempotent or serialized; no duplicate rows                                 | No duplicate L2/L3 nodes created       |
+| Missing PORT env var         | `api-server` startup                                                                       | Explicit throw with variable name in error message                          | Immediate, clear failure               |
+| DB connection failure        | PostgreSQL unavailable at startup                                                          | Server fails fast with clear error                                          | No silent degradation                  |
+| Concurrent generate requests | Two `POST /generate` on same project                                                       | Idempotent or serialized; no duplicate rows                                 | No duplicate L2/L3 nodes created       |
 
 ### 10.2.3 Maintainability
 
@@ -77,15 +77,15 @@ Quality
 
 The following quality areas have known gaps in automated test coverage:
 
-| Gap                                                  | Severity  | Reference                                                            |
-| ---------------------------------------------------- | --------- | -------------------------------------------------------------------- |
+| Gap                                                                                                    | Severity  | Reference                                                            |
+| ------------------------------------------------------------------------------------------------------ | --------- | -------------------------------------------------------------------- |
 | End-to-end LLM pipeline testing ([L1→L2→L3](adrs/ADR-005-knowledge-abstraction-strategy.md) full flow) | 🟠 High   | Requires LLM mock fixture; not yet implemented                       |
-| [VS Code extension](adrs/ADR-001-vscode-client-onboarding.md) Playwright E2E tests               | 🟠 High   | `artifacts/vscode-client/tests/` has spec stubs; fixtures incomplete |
-| Cross-project link detection accuracy                | 🟡 Medium | Cosine similarity threshold not validated against real-world data    |
-| UI component snapshot tests                          | 🟢 Low    | No snapshot tests for kg-engine React components                     |
-| GitHub webhook E2E (with real PR diff)               | 🟡 Medium | Only unit-level HMAC validation tested                               |
+| [VS Code extension](adrs/ADR-001-vscode-client-onboarding.md) Playwright E2E tests                     | 🟠 High   | `artifacts/vscode-client/tests/` has spec stubs; fixtures incomplete |
+| Cross-project link detection accuracy                                                                  | 🟡 Medium | Cosine similarity threshold not validated against real-world data    |
+| UI component snapshot tests                                                                            | 🟢 Low    | No snapshot tests for kg-engine React components                     |
+| GitHub webhook E2E (with real PR diff)                                                                 | 🟡 Medium | Only unit-level HMAC validation tested                               |
 
-*(Legacy testcase roadmaps deprecated. Refer to `AGENTS.md` for current testing strategy.)*
+_(Legacy testcase roadmaps deprecated. Refer to `AGENTS.md` for current testing strategy.)_
 
 ---
 

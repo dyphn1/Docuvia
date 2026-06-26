@@ -10,3 +10,7 @@ export function computeHashFromStream(filePath: string): Promise<string> {
     stream.on("error", reject);
   });
 }
+
+export function computeHashFromBuffer(buffer: Buffer): string {
+  return crypto.createHash("sha256").update(buffer).digest("hex");
+}

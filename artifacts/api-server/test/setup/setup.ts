@@ -4,6 +4,7 @@ process.env.PORT ||= "8080";
 process.env.DATABASE_URL ||= "postgres://postgres:postgres@127.0.0.1:5432/docuvia_test";
 process.env.AI_INTEGRATIONS_OPENAI_API_KEY ||= "test-key";
 process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ||= "http://127.0.0.1:65535/v1";
+process.env.MCP_PAT ||= "test-mcp-token";
 
 const [{ server }, { pool }] = await Promise.all([import("./msw/server"), import("@workspace/db")]);
 

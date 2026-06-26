@@ -8,18 +8,18 @@ Docuvia's [`intent-router.ts`](../../../artifacts/api-server/src/lib/intent-rout
 
 ```mermaid
 flowchart TD
-    Query[User Query] --> C1{Contains #attach or specific file extensions (.ts, src/)?}
-    C1 -- Yes --> Direct[Direct RAG: Lookup target_refs or keyword]
-    C1 -- No --> C2{Hits L1/L2 Names in Database?}
+    Query["User Query"] --> C1{"Contains #attach or specific file extensions?"}
+    C1 -- Yes --> Direct["Direct RAG: Lookup target_refs or keyword"]
+    C1 -- No --> C2{"Hits L1 or L2 Names in Database?"}
 
-    C2 -- Yes --> Graph[Graph RAG: Traverse node_links]
-    C2 -- No --> Hybrid[Hybrid / Vector LLM Arbitration]
+    C2 -- Yes --> Graph["Graph RAG: Traverse node_links"]
+    C2 -- No --> Hybrid["Hybrid / Vector LLM Arbitration"]
 ```
 
 ## 1. External Document Anchoring (The Floating Knowledge Catcher)
 
 - **Implementation Schema**: [`documentsTable` in documents.ts](../../../lib/db/src/schema/documents.ts) with `status: "unaffiliated"`.
-- When a 50-page PDF is uploaded, it is initially `unaffiliated`. *(Note: While unstructured PDFs require LLM scanning, structured files now utilize the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) and [Progressive Enrichment](ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md) to extract semantic anchors deterministically without LLM tokens).* The system scans the document to find semantic anchors in existing L2 nodes (see [Knowledge Abstraction Strategy](ADR-005-knowledge-abstraction-strategy.md)) or recent commits. Once approved via [`review_tasks.ts`](../../../artifacts/api-server/src/routes/review_tasks.ts) (Drizzle schema: [`review_tasks.ts`](../../../lib/db/src/schema/review_tasks.ts)), it is firmly anchored in the space-time of the Git graph (see [Git-Isomorphic Graph](ADR-004-git-isomorphic-graph.md)), preventing anachronistic hallucinations.
+- When a 50-page PDF is uploaded, it is initially `unaffiliated`. _(Note: While unstructured PDFs require LLM scanning, structured files now utilize the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) and [Progressive Enrichment](ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md) to extract semantic anchors deterministically without LLM tokens)._ The system scans the document to find semantic anchors in existing L2 nodes (see [Knowledge Abstraction Strategy](ADR-005-knowledge-abstraction-strategy.md)) or recent commits. Once approved via [`review_tasks.ts`](../../../artifacts/api-server/src/routes/review_tasks.ts) (Drizzle schema: [`review_tasks.ts`](../../../lib/db/src/schema/review_tasks.ts)), it is firmly anchored in the space-time of the Git graph (see [Git-Isomorphic Graph](ADR-004-git-isomorphic-graph.md)), preventing anachronistic hallucinations.
 
 ## 2. The 4-Way Strategies
 

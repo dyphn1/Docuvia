@@ -36,7 +36,7 @@ The hover provider is migrating from a legacy **UUID regex** approach to using t
 
 The provider is registered for **source files** (e.g., `typescript`, `javascript`, `typescriptreact`, `javascriptreact`, `python`).
 
-*Note: The legacy behavior of registering `yaml` and `markdown` under `.docuvia/` is obsolete. Under the [Local-First Architecture](../../../adrs/ADR-002-local-first-architecture.md) and [Orphan Branch / Maintenance](../../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) patterns, data is stored locally in SQLite and synchronized via the `docuvia-knowledge` orphan branch, not as local workspace YAML/MD files.*
+_Note: The legacy behavior of registering `yaml` and `markdown` under `.docuvia/` is obsolete. Under the [Local-First Architecture](../../../adrs/ADR-002-local-first-architecture.md) and [Orphan Branch / Maintenance](../../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) patterns, data is stored locally in SQLite and synchronized via the `docuvia-knowledge` orphan branch, not as local workspace YAML/MD files._
 
 ### Three-Priority Lookup
 

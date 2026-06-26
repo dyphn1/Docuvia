@@ -21,6 +21,7 @@ The store dynamically maps `workspaceRoot` paths to their respective Project IDs
 ## Offline Writes (CQRS Outbox)
 
 When the user triggers a command (e.g., adding a decision):
+
 1. `KnowledgeStore` writes the change directly into the local SQLite database so the UI updates instantly.
 2. The change is inserted into a `SyncOutbox` table.
 3. Once the network is restored, the changes are dispatched to the API Server where they are pushed to the [Orphan Branch](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) to maintain the [Git-Isomorphic Graph](../../adrs/ADR-004-git-isomorphic-graph.md).

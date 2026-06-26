@@ -8,13 +8,63 @@ import {
   nodeLinksTable,
   commitsTable,
 } from "@workspace/db";
-import { eq, or, and, like, sql, count, isNotNull } from "drizzle-orm";
+import { eq, and, like, sql, count, inArray } from "drizzle-orm";
 import { routeQuery, sanitizeLikeInput } from "../lib/intent-router.js";
 import { logger } from "../lib/logger.js";
 import { getAllMemories, getCompressedPayload } from "../memory/shared-memory.js";
+import {
+  McpGetDependenciesQueryParams,
+  McpGetDecisionRecordQueryParams,
+  McpImpactAnalysisQueryParams,
+  McpQueryBody as GeneratedMcpQueryBody,
+} from "@workspace/api-zod";
 import crypto from "crypto";
 
 const router = Router();
+
+const RetrieveOriginalQuery = z.object({
+  id: z.coerce.string().min(1, "id is required"),
+});
+
+const SearchKnowledgeQuery = z.object({
+  query: z.coerce.string().min(1, "query is required"),
+  project_id: z.coerce.number().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+  include_pending: z
+    .string()
+    .optional()
+    .transform((value) => value === "true"),
+});
+
+const McpQueryRequestBody = GeneratedMcpQueryBody.extend({
+  include_pending: z.boolean().optional().default(false),
+});
+
+async function collectTransitiveImpactingNodeIds(startNodeId: number): Promise<number[]> {
+  const visited = new Set<number>();
+  let frontier = [startNodeId];
+
+  while (frontier.length > 0) {
+    const links = await db
+      .select({
+        sourceNodeId: nodeLinksTable.sourceNodeId,
+      })
+      .from(nodeLinksTable)
+      .where(inArray(nodeLinksTable.targetNodeId, frontier));
+
+    const nextFrontier: number[] = [];
+    for (const link of links) {
+      if (!visited.has(link.sourceNodeId) && link.sourceNodeId !== startNodeId) {
+        visited.add(link.sourceNodeId);
+        nextFrontier.push(link.sourceNodeId);
+      }
+    }
+
+    frontier = nextFrontier;
+  }
+
+  return [...visited];
+}
 
 // Require PAT for all /mcp/* routes
 router.use("/mcp", (req, res, next) => {
@@ -32,11 +82,11 @@ router.use("/mcp", (req, res, next) => {
   }
 
   const providedToken = authHeader.substring(7);
-  
+
   // TODO: [CRITICAL BUG FIX] - `.length` checks character count, not byte length. If a multibyte character is used, `Buffer.from()` will yield different byte sizes, causing `crypto.timingSafeEqual` to crash the server with a RangeError. Use `Buffer.byteLength()` instead.
   // To avoid crypto.timingSafeEqual crashing on length mismatch, we must verify lengths first
   if (
-    providedToken.length !== expectedToken.length ||
+    Buffer.byteLength(providedToken, "utf8") !== Buffer.byteLength(expectedToken, "utf8") ||
     !crypto.timingSafeEqual(Buffer.from(providedToken), Buffer.from(expectedToken))
   ) {
     logger.warn({ ip: req.ip }, "[MCP Auth] Unauthorized MCP access attempt");
@@ -52,27 +102,32 @@ router.get("/mcp/list_projects", async (req, res) => {
     .select()
     .from(projectsTable)
     .orderBy(sql`${projectsTable.name} asc`);
-  const result = await Promise.all(
-    projects.map(async (p) => {
-      const [l2Row] = await db
-        .select({ count: count() })
-        .from(l2NodesTable)
-        .where(eq(l2NodesTable.projectId, p.id));
-      const l2Ids = await db
-        .select({ id: l2NodesTable.id })
-        .from(l2NodesTable)
-        .where(eq(l2NodesTable.projectId, p.id));
-      let l3Count = 0;
-      for (const { id } of l2Ids) {
-        const [row] = await db
-          .select({ count: count() })
-          .from(l3NodesTable)
-          .where(eq(l3NodesTable.l2NodeId, id));
-        l3Count += row.count;
-      }
-      return { id: p.id, name: p.name, repoUrl: p.repoUrl, l2Count: l2Row.count, l3Count };
+  const l2Counts = await db
+    .select({
+      projectId: l2NodesTable.projectId,
+      count: count(),
     })
-  );
+    .from(l2NodesTable)
+    .groupBy(l2NodesTable.projectId);
+
+  const l3Counts = await db
+    .select({
+      projectId: l2NodesTable.projectId,
+      count: count(),
+    })
+    .from(l3NodesTable)
+    .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
+    .groupBy(l2NodesTable.projectId);
+
+  const l2CountByProject = new Map(l2Counts.map((row) => [row.projectId, row.count]));
+  const l3CountByProject = new Map(l3Counts.map((row) => [row.projectId, row.count]));
+  const result = projects.map((p) => ({
+    id: p.id,
+    name: p.name,
+    repoUrl: p.repoUrl,
+    l2Count: l2CountByProject.get(p.id) ?? 0,
+    l3Count: l3CountByProject.get(p.id) ?? 0,
+  }));
   res.json({ projects: result });
 });
 
@@ -116,7 +171,7 @@ router.get("/mcp/search_knowledge", async (req, res) => {
   }
 
   const { query, project_id: projectId, limit, include_pending } = parsed.data;
-  const includePending = include_pending === "true";
+  const includePending = include_pending;
 
   try {
     const result = await routeQuery(query, projectId, limit, includePending);
@@ -128,7 +183,7 @@ router.get("/mcp/search_knowledge", async (req, res) => {
 });
 
 router.get("/mcp/get_dependencies", async (req, res) => {
-  const parsed = ModuleQuery.safeParse(req.query);
+  const parsed = McpGetDependenciesQueryParams.safeParse(req.query);
   if (!parsed.success) {
     return res
       .status(400)
@@ -180,7 +235,7 @@ router.get("/mcp/get_dependencies", async (req, res) => {
 });
 
 router.get("/mcp/impact_analysis", async (req, res) => {
-  const parsed = ModuleQuery.safeParse(req.query);
+  const parsed = McpImpactAnalysisQueryParams.safeParse(req.query);
   if (!parsed.success) {
     return res
       .status(400)
@@ -199,24 +254,23 @@ router.get("/mcp/impact_analysis", async (req, res) => {
     return res.json({ module: moduleName, nodeId: null, impactedModules: [], l3DecisionCount: 0 });
   }
 
-  const inLinks = await db
-    .select()
-    .from(nodeLinksTable)
-    .where(eq(nodeLinksTable.targetNodeId, node.id));
-  const impacted = await Promise.all(
-    inLinks.map(async (link) => {
-      const [source] = await db
-        .select({ name: l2NodesTable.name })
+  const impactedNodeIds = await collectTransitiveImpactingNodeIds(node.id);
+  const impactedNodes = impactedNodeIds.length
+    ? await db
+        .select({
+          id: l2NodesTable.id,
+          name: l2NodesTable.name,
+        })
         .from(l2NodesTable)
-        .where(eq(l2NodesTable.id, link.sourceNodeId));
-      return source?.name ?? `node#${link.sourceNodeId}`;
-    })
-  );
+        .where(inArray(l2NodesTable.id, impactedNodeIds))
+    : [];
+  const impactedNodeNameById = new Map(impactedNodes.map((n) => [n.id, n.name]));
+  const impacted = impactedNodeIds.map((id) => impactedNodeNameById.get(id) ?? `node#${id}`);
 
   const [l3Row] = await db
     .select({ count: count() })
     .from(l3NodesTable)
-    .where(eq(l3NodesTable.l2NodeId, node.id));
+    .where(inArray(l3NodesTable.l2NodeId, [node.id, ...impactedNodeIds]));
 
   return res.json({
     module: moduleName,
@@ -227,7 +281,7 @@ router.get("/mcp/impact_analysis", async (req, res) => {
 });
 
 router.get("/mcp/get_decision_record", async (req, res) => {
-  const parsed = DecisionRecordQuery.safeParse(req.query);
+  const parsed = McpGetDecisionRecordQueryParams.safeParse(req.query);
   if (!parsed.success) {
     return res
       .status(400)
@@ -261,15 +315,8 @@ router.get("/mcp/get_decision_record", async (req, res) => {
 // POST /mcp/query — Agentic RAG intent-routing entry point
 // ---------------------------------------------------------------------------
 
-const McpQueryBody = z.object({
-  q: z.string().min(1, "q is required").max(2000, "q must be 2000 characters or fewer"),
-  project_id: z.number().int().positive().optional(),
-  limit: z.number().int().min(1).max(50).default(10),
-  include_pending: z.boolean().optional().default(false),
-});
-
 router.post("/mcp/query", async (req, res) => {
-  const parsed = McpQueryBody.safeParse(req.body);
+  const parsed = McpQueryRequestBody.safeParse(req.body);
   if (!parsed.success) {
     return res
       .status(400)
@@ -285,6 +332,75 @@ router.post("/mcp/query", async (req, res) => {
     logger.error({ err }, "[POST /mcp/query] Unhandled error");
     return res.status(500).json({ error: "Internal server error" });
   }
+});
+
+// GET /mcp/tools — Tool discovery endpoint
+router.get("/mcp/tools", (_req, res) => {
+  res.json({
+    tools: [
+      {
+        name: "list_projects",
+        description: "List all projects in the workspace",
+        method: "GET",
+        path: "/mcp/list-projects",
+      },
+      {
+        name: "query",
+        description:
+          "Query the knowledge graph using intent routing (vector search / graph traversal / direct lookup / hybrid)",
+        method: "POST",
+        path: "/mcp/query",
+        params: {
+          query: "string",
+          project_id: "number?",
+          limit: "number?",
+          include_pending: "boolean?",
+        },
+      },
+      {
+        name: "search_knowledge",
+        description: "Keyword search across L2 nodes and L3 decisions",
+        method: "GET",
+        path: "/mcp/search-knowledge",
+        params: { query: "string", project_id: "number?", limit: "number?" },
+      },
+      {
+        name: "get_dependencies",
+        description: "Get dependency graph for a node (impact analysis)",
+        method: "GET",
+        path: "/mcp/get-dependencies",
+        params: { node_id: "number" },
+      },
+      {
+        name: "get_decision_record",
+        description: "Retrieve a specific L3 decision by ID",
+        method: "GET",
+        path: "/mcp/get-decision-record",
+        params: { id: "number" },
+      },
+      {
+        name: "impact_analysis",
+        description: "Analyze propagation paths from a starting node through link graph",
+        method: "GET",
+        path: "/mcp/impact-analysis",
+        params: { start_node_id: "number", max_depth: "number?" },
+      },
+      {
+        name: "retrieve_original_query",
+        description: "Retrieve an original query by its stored memory ID",
+        method: "GET",
+        path: "/mcp/retrieve-original-query",
+        params: { id: "string" },
+      },
+      {
+        name: "list_commits",
+        description: "List recent commits for a project",
+        method: "GET",
+        path: "/mcp/list-commits",
+        params: { project_id: "number", limit: "number?" },
+      },
+    ],
+  });
 });
 
 export default router;

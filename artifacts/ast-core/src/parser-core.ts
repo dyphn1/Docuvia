@@ -31,10 +31,7 @@ export async function initParser(locateFile: (path: string) => string): Promise<
  *   - `require 'foo'` (Ruby)    → maps foo → foo       (Ruby require)
  *   - `use Foo\Bar` (PHP)       → maps Bar → Foo\Bar   (PHP namespace use)
  */
-function buildScopeMap(
-  importStatements: Node[],
-  sourceText: string
-): Map<string, string> {
+function buildScopeMap(importStatements: Node[], sourceText: string): Map<string, string> {
   const scopeMap = new Map<string, string>();
 
   for (const stmt of importStatements) {
@@ -284,11 +281,15 @@ function buildScopeMap(
       const methodNode = stmt.childForFieldName("method");
       if (methodNode) {
         const methodName = methodNode.text;
-        if (methodName === "require" || methodName === "require_relative" || methodName === "load") {
+        if (
+          methodName === "require" ||
+          methodName === "require_relative" ||
+          methodName === "load"
+        ) {
           const args = stmt.childForFieldName("arguments");
           if (args) {
-            const strNode = args.descendantsOfType("string_content")[0]
-              || args.descendantsOfType("string")[0];
+            const strNode =
+              args.descendantsOfType("string_content")[0] || args.descendantsOfType("string")[0];
             if (strNode) {
               const libName = strNode.text.replace(/['"]/g, "");
               const shortName = libName.replace(/\.rb$/, "");
@@ -310,8 +311,8 @@ function buildScopeMap(
     ) {
       // PHP namespace use: `use App\Models\User`
       if (stmtType === "namespace_use_declaration") {
-        const nameNode = stmt.descendantsOfType("qualified_name")[0]
-          || stmt.descendantsOfType("name")[0];
+        const nameNode =
+          stmt.descendantsOfType("qualified_name")[0] || stmt.descendantsOfType("name")[0];
         if (nameNode) {
           const fullName = nameNode.text;
           const parts = fullName.split("\\");
@@ -320,8 +321,8 @@ function buildScopeMap(
         }
       } else {
         // include/require: extract the path
-        const argNode = stmt.descendantsOfType("string")[0]
-          || stmt.descendantsOfType("string_content")[0];
+        const argNode =
+          stmt.descendantsOfType("string")[0] || stmt.descendantsOfType("string_content")[0];
         if (argNode) {
           const path = argNode.text.replace(/['"]/g, "");
           scopeMap.set(path, path);
@@ -333,8 +334,8 @@ function buildScopeMap(
     // ── C# ───────────────────────────────────────────────────────────
     if (stmtType === "using_directive") {
       // `using System.Collections.Generic`
-      const nameNode = stmt.descendantsOfType("qualified_name")[0]
-        || stmt.descendantsOfType("identifier")[0];
+      const nameNode =
+        stmt.descendantsOfType("qualified_name")[0] || stmt.descendantsOfType("identifier")[0];
       if (nameNode) {
         const fullName = nameNode.text;
         const parts = fullName.split(".");
@@ -591,8 +592,7 @@ function classifyCall(callNode: Node): {
   // ── C# ───────────────────────────────────────────────────────────
   if (callType === "invocation_expression") {
     // Check if it's a method call via member_access_expression
-    const exprNode = callNode.childForFieldName("function")
-      || callNode.namedChildren[0];
+    const exprNode = callNode.childForFieldName("function") || callNode.namedChildren[0];
     if (exprNode && exprNode.type === "member_access_expression") {
       const nameNode = exprNode.childForFieldName("name");
       const objNode = exprNode.childForFieldName("expression");
@@ -621,8 +621,8 @@ function classifyCall(callNode: Node): {
   }
 
   // ── Fallback ─────────────────────────────────────────────────────
-  const fnNode = callNode.childForFieldName("function")
-    || callNode.descendantsOfType("identifier")[0];
+  const fnNode =
+    callNode.childForFieldName("function") || callNode.descendantsOfType("identifier")[0];
   return { isMethodCall: false, methodName: fnNode?.text || "" };
 }
 
@@ -672,7 +672,10 @@ export async function* generateAst(
     }
 
     const importStatements = provider.extractImports(tree.rootNode);
-    const scopeMap = buildScopeMap(importStatements, typeof fileContent === "string" ? fileContent : "");
+    const scopeMap = buildScopeMap(
+      importStatements,
+      typeof fileContent === "string" ? fileContent : ""
+    );
 
     const classDecls = provider.extractClasses(tree.rootNode);
     const functionDecls = provider.extractFunctions(tree.rootNode);

@@ -34,16 +34,16 @@ The Dashboard Panel uses a typed message protocol for bidirectional communicatio
 
 **Extension → Webview (push)**
 
-| Message type | Payload            | When sent                                          |
-| ------------ | ------------------ | -------------------------------------------------- |
+| Message type | Payload            | When sent                                                                                                                           |
+| ------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `update`     | `DashboardPayload` | On panel open and on every database update event via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md) |
 
 **Webview → Extension (receive)**
 
-| Message type   | Payload                | Effect                                                  |
-| -------------- | ---------------------- | ------------------------------------------------------- |
+| Message type   | Payload              | Effect                                                                                                                               |
+| -------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `openDecision` | `{ nodeId: string }` | Opens the specified L3 Decision from the [local SQLite database](../../adrs/ADR-002-local-first-architecture.md) in a virtual editor |
-| `openChat`     | _(none)_               | Opens GitHub Copilot Chat pre-populated with `@docuvia` |
+| `openChat`     | _(none)_             | Opens GitHub Copilot Chat pre-populated with `@docuvia`                                                                              |
 
 ### `DashboardPayload` Shape
 

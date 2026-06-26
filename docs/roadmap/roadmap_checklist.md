@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist (Comprehensive Audit)
 
-> Audited: 2026-07-28 (feat: Batch Write Optimization — chunked batch INSERTs for AST ingestion pipeline) | Source-code verified via Agentic Exploration & Adversarial Audit
+> Audited: 2026-07-28 (feat: Sub-second Incremental Watch — file-hash delta detection, project_files table, migration 003) | Source-code verified via Agentic Exploration & Adversarial Audit
 
 > **Legend:**
 > ✅ **Done** = Implemented and Verified Functional
@@ -102,10 +102,10 @@
 | Multi-root Workspace Support                                                                   | ✅ Done                          | `TaskRunner.ts`                                                                      |
 | [Token Limits & Chunking Configs](../design/adrs/ADR-009-token-management.md)                  | ✅ Done                          | `extension.ts`                                                                       |
 | `docuvia sync` Bidirectional CLI                                                               | ⚠️ WARN | [`sync.ts`](../../artifacts/api-server/src/routes/sync.ts) (CLI calls wrong endpoint; githook incompatible; see [report 0626_phase-8_docuvia-sync-cli](../../reports/0626_phase-8_docuvia-sync-cli.md)) |
-| AST Microkernel Architecture                                                                   | ⚠️ WARN | [`@workspace/ast-core`](../../artifacts/ast-core/) (Core parser + Topology Mapping + Edge Creation + Batch Write Optimization implemented; missing: incremental fast-path, cross-language edges; see [report 0626_phase-5_ast-microkernel](../../reports/0626_phase-5_ast-microkernel.md)) |
+|| AST Microkernel Architecture                                                                   | ⚠️ WARN | [`@workspace/ast-core`](../../artifacts/ast-core/) (Core parser + Topology Mapping + Edge Creation + Batch Write Optimization + Incremental Watch implemented; missing: cross-language edges; see [report 0626_phase-5_ast-microkernel](../../reports/0626_phase-5_ast-microkernel.md)) |
 | Zero-Server Deep Traversal                                                                     | � TODO                          | Requires pure local SQLite queries                                                   |
 | Local Context Compression                                                                      | 🔲 TODO                          | Token reduction pipeline                                                             |
-| Sub-second Incremental Watch                                                                   | 🔲 TODO                          | Fast-path AST updates                                                                |
+|| Sub-second Incremental Watch                                                                   | ✅ Done                          | [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts), [`ast-ingestion-pipeline.ts`](../../artifacts/api-server/src/lib/ast-ingestion-pipeline.ts), [`project_files.ts`](../../lib/db/src/schema/project_files.ts) (File-hash delta detection, `mode: "incremental"` on `/projects/:id/ingest/ast`, `project_files` table for content hash tracking) |
 
 ---
 

@@ -31,10 +31,10 @@
   - Target file: `artifacts/ast-core/src/parser-core.ts`
   - Key logic: AST Skeleton compression, symbol deduplication
 
-- [ ] **Sub-second Incremental Watch** — Fast-path AST updates on file save.
+- [x] **Sub-second Incremental Watch** — Fast-path AST updates on file save.
   - Target file: `artifacts/api-server/src/routes/ingest.ts`
   - Key logic: `mode: "incremental"` → `detectChangedFiles()` → parse only changed files
-  - Status: Partially implemented (`project_files` table + `detectChangedFiles()` created, pending build/test/DB migration)
+  - Status: ✅ Done (2026-06-26) — `project_files` table + `detectChangedFiles()` + `updateFileHashes()` implemented. Route wired with `mode: "incremental"`. Migration 003 created. Build passes.
 
 ---
 

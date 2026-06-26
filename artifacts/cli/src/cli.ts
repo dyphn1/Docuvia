@@ -3,6 +3,7 @@ import * as dotenv from "dotenv";
 import { createInterface } from "readline";
 import { initAgent } from "./commands/init-agent.js";
 import { queryCommand } from "./commands/query.js";
+import { runMcpServer } from "./mcp/server.js";
 
 dotenv.config();
 
@@ -63,6 +64,12 @@ async function main() {
     process.exit(0);
   }
 
+  if (command === "mcp") {
+    await runMcpServer();
+    // Do not exit, keep process alive for stdio transport
+    return;
+  }
+
   if (command === "query") {
     const args = process.argv.slice(3);
     let target = "";
@@ -95,6 +102,7 @@ async function main() {
   console.error("  docuvia init-agent                           # Install hooks for Claude Code and Cursor");
   console.error("  docuvia sync <project_id> [commit_sha]       # Sync local changes to server");
   console.error("  docuvia query <target> [--local]             # Query the knowledge graph");
+  console.error("  docuvia mcp                                  # Start the local MCP stdio server");
   process.exit(1);
 }
 

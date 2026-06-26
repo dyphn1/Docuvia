@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as dotenv from "dotenv";
 import { createInterface } from "readline";
+import { initAgent } from "./commands/init-agent.js";
 
 dotenv.config();
 
@@ -17,6 +18,11 @@ function readStdin(): Promise<string> {
 
 async function main() {
   const command = process.argv[2];
+
+  if (command === "init-agent") {
+    await initAgent();
+    process.exit(0);
+  }
 
   if (command === "sync") {
     if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
@@ -56,7 +62,9 @@ async function main() {
   }
 
   console.error(`Unknown command: ${command}`);
-  console.error("Usage: docuvia sync <project_id> [commit_sha]");
+  console.error("Usage:");
+  console.error("  docuvia init-agent                           # Install hooks for Claude Code and Cursor");
+  console.error("  docuvia sync <project_id> [commit_sha]       # Sync local changes to server");
   process.exit(1);
 }
 

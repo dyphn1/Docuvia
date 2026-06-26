@@ -126,7 +126,7 @@ When running as a cron job (e.g., `Docuvia Design Verification`), the Agent MUST
 
 ### 3. Duplicate Report Detection
 Before writing a new report, the Agent MUST check if a report already exists for the same topic:
-1. **Search pattern**: Look for files in `docs/reports/` matching `*_phase-X_<feature-slug>.md` (e.g., `0625_phase-1_cors-config.md` and `0626_phase-1_cors-config.md` are the same topic).
+1. **Search pattern**: Look for files in `docs/reports/` matching `*_phase-X_<feature-slug>.md` (different dates = same topic).
 2. **If duplicate exists**: Merge/update the existing report with new findings. Update the `Date` field to the latest verification date. Preserve historical findings that remain relevant.
 3. **If no duplicate**: Create a new report using the naming convention `MMDD_phase-X_feature-name.md`.
 

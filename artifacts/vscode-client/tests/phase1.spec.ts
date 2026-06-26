@@ -44,7 +44,7 @@ test.describe("Phase 1: Local Knowledge Schema & Foundations", () => {
     await expect(welcomeView).toBeVisible({ timeout: 15_000 });
   });
 
-  test("Docuvia: Init Project creates .docuvia directory with skeleton YAML files", async () => {
+  test("Docuvia: Init Project creates .docuvia directory with local.db", async () => {
     expect(fs.existsSync(DOCUVIA_DIR)).toBe(false);
 
     await window.keyboard.press(`${cmdOrCtrl()}+Shift+P`);
@@ -60,13 +60,7 @@ test.describe("Phase 1: Local Knowledge Schema & Foundations", () => {
 
     await expect.poll(() => fs.existsSync(DOCUVIA_DIR), { timeout: 12_000 }).toBe(true);
     await expect
-      .poll(() => fs.existsSync(path.join(DOCUVIA_DIR, "l1_tags.yaml")), { timeout: 12_000 })
-      .toBe(true);
-    await expect
-      .poll(() => fs.existsSync(path.join(DOCUVIA_DIR, "l2_modules.yaml")), { timeout: 12_000 })
-      .toBe(true);
-    await expect
-      .poll(() => fs.existsSync(path.join(DOCUVIA_DIR, "l3_router.yaml")), { timeout: 12_000 })
+      .poll(() => fs.existsSync(path.join(DOCUVIA_DIR, "local.db")), { timeout: 12_000 })
       .toBe(true);
     await expect
       .poll(() => fs.existsSync(path.join(DOCUVIA_DIR, "l3_decisions")), { timeout: 12_000 })
@@ -75,13 +69,6 @@ test.describe("Phase 1: Local Knowledge Schema & Foundations", () => {
       .poll(() => fs.statSync(path.join(DOCUVIA_DIR, "l3_decisions")).isDirectory(), {
         timeout: 12_000,
       })
-      .toBe(true);
-    await expect
-      .poll(
-        () =>
-          fs.readFileSync(path.join(DOCUVIA_DIR, "l1_tags.yaml"), "utf-8").includes("Test Project"),
-        { timeout: 12_000 }
-      )
       .toBe(true);
   });
 

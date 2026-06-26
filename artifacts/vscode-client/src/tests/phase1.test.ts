@@ -50,19 +50,11 @@ suite("Phase 1: Local Knowledge Schema & Foundations", () => {
       // Wait for indexing to finish
       await indexingPromise;
 
-      // 3. Verify the .docuvia folder and config files were created
+      // 3. Verify the .docuvia folder and local.db were created
       assert.ok(fs.existsSync(docuviaPath), ".docuvia directory was not created");
       assert.ok(
-        fs.existsSync(path.join(docuviaPath, "l1_tags.yaml")),
-        "l1_tags.yaml was not created"
-      );
-      assert.ok(
-        fs.existsSync(path.join(docuviaPath, "l2_modules.yaml")),
-        "l2_modules.yaml was not created"
-      );
-      assert.ok(
-        fs.existsSync(path.join(docuviaPath, "l3_router.yaml")),
-        "l3_router.yaml was not created"
+        fs.existsSync(path.join(docuviaPath, "local.db")),
+        "local.db was not created"
       );
     } catch (error) {
       assert.fail(`Command execution failed: ${error}`);

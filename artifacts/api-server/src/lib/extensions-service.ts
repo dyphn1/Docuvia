@@ -7,7 +7,7 @@ import {
   projectsTable,
 } from "@workspace/db";
 import { eq, like, isNotNull, or, and, sql } from "drizzle-orm";
-import { generateEmbedding, parseEmbedding } from "./embedding.js";
+import { generateEmbedding } from "./embedding.js";
 import { routeQuery } from "./intent-router.js";
 import { logger } from "./logger.js";
 
@@ -35,7 +35,7 @@ export async function createL3Decision(payload: VscodeCreateDecisionPayload) {
   if (!l2NodeId) throw new Error("l2NodeId required");
 
   const emb = await generateEmbedding(payload.l3Node.content ?? payload.l3Node.title ?? "");
-  const embRaw = emb ? JSON.stringify(emb) : null;
+  const embRaw = emb ?? null;
 
   const [node] = await db
     .insert(l3NodesTable)

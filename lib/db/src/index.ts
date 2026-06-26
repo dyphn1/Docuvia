@@ -20,8 +20,14 @@ if (!process.env.DATABASE_URL) {
 }
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+
+// Enable pgvector extension on pool creation
+pool.on("connect", async (client) => {
+  await client.query("CREATE EXTENSION IF NOT EXISTS vector");
+});
+
 const baseDb = drizzle(pool, { schema });
-type DbClient = typeof baseDb;
+export type DbClient = typeof baseDb;
 
 const transactionStore = new AsyncLocalStorage<DbClient>();
 

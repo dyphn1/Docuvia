@@ -9,7 +9,7 @@ import {
   commitsTable,
 } from "@workspace/db";
 import { eq, like, isNotNull, or, and, sql, ilike } from "drizzle-orm";
-import { generateEmbedding, cosineSimilarity, parseEmbedding } from "./embedding.js";
+import { generateEmbedding } from "./embedding.js";
 import { logger } from "./logger.js";
 
 // ---------------------------------------------------------------------------
@@ -188,111 +188,83 @@ export async function vectorSearchHandler(
   const results: AgenticSearchResult[] = [];
   const queryEmbedding = await generateEmbedding(query);
 
-  const l3ValidityCondition = includePending
-    ? or(eq(l3NodesTable.validityStatus, "valid"), eq(l3NodesTable.validityStatus, "pending"))
-    : eq(l3NodesTable.validityStatus, "valid");
-
   if (queryEmbedding) {
-    // Semantic search: L2 nodes
-    let l2Query = db.select().from(l2NodesTable).$dynamic();
-    if (projectId) {
-      l2Query = l2Query.where(
-        and(isNotNull(l2NodesTable.embedding), eq(l2NodesTable.projectId, projectId))
-      );
-    } else {
-      l2Query = l2Query.where(isNotNull(l2NodesTable.embedding));
-    }
-    const l2Rows = await l2Query;
+    const vectorStr = `[${queryEmbedding.join(",")}]`;
+    const l2Limit = limit;
 
-    const l2Scored = l2Rows
-      .map((node) => {
-        // TODO: [CRITICAL BUG FIX] - pgvector migration missing. In-memory cosine similarity will OOM on large graphs. Upgrade to `vector(1536)` with IVFFlat/HNSW index.
-        const emb = parseEmbedding(node.embedding);
-        const rawScore = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
-        const referenceDate = node.lastVerifiedAt ?? node.createdAt;
-        const decayFactor = calculateTemporalDecay(referenceDate);
-        const score = rawScore * decayFactor;
-        return { node, score };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
+    // L2 nodes: pgvector similarity search with temporal decay
+    const l2Sql = sql`
+      SELECT
+        l2.id, l2.name, l2.description, l2.project_id, l2.created_at, l2.last_verified_at,
+        p.name as project_name,
+        (1 - (l2.embedding::vector <=> ${vectorStr}::vector)) * EXP(-0.05 * EXTRACT(EPOCH FROM (NOW() - COALESCE(l2.last_verified_at, l2.created_at)))/86400) as score
+      FROM l2_nodes l2
+      LEFT JOIN projects p ON p.id = l2.project_id
+      WHERE l2.embedding IS NOT NULL
+      ${projectId != null ? sql`AND l2.project_id = ${projectId}` : sql``}
+      ORDER BY score DESC
+      LIMIT ${l2Limit}
+    `;
+    const l2Rows = await db.execute(l2Sql);
 
-    for (const { node, score } of l2Scored) {
-      const [proj] = await db
-        .select({ name: projectsTable.name })
-        .from(projectsTable)
-        .where(eq(projectsTable.id, node.projectId));
+    for (const row of l2Rows.rows ?? []) {
       results.push({
         source: "vector",
         nodeLayer: "l2",
-        id: node.id,
-        title: node.name,
-        content: node.description ?? null,
-        projectId: node.projectId,
-        projectName: proj?.name ?? null,
-        score,
-        createdAt: node.createdAt.toISOString(),
+        id: (row as any).id,
+        title: (row as any).name,
+        content: (row as any).description ?? null,
+        projectId: (row as any).project_id,
+        projectName: (row as any).project_name ?? null,
+        score: (row as any).score,
+        createdAt: new Date((row as any).created_at).toISOString(),
       });
     }
 
-    // Semantic search: L3 nodes
-    let l3Query = db
-      .select({
-        node: l3NodesTable,
-        projectId: l2NodesTable.projectId,
-        projectName: projectsTable.name,
-      })
-      .from(l3NodesTable)
-      .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
-      .leftJoin(projectsTable, eq(l2NodesTable.projectId, projectsTable.id))
-      .$dynamic();
+    // L3 nodes: pgvector similarity search with temporal decay
+    const l3ValidityFilter = includePending
+      ? sql`AND l3.validity_status IN ('valid', 'pending')`
+      : sql`AND l3.validity_status = 'valid'`;
 
-    if (projectId) {
-      l3Query = l3Query.where(
-        and(
-          isNotNull(l3NodesTable.embedding),
-          l3ValidityCondition!,
-          eq(l2NodesTable.projectId, projectId)
-        )
-      );
-    } else {
-      l3Query = l3Query.where(and(isNotNull(l3NodesTable.embedding), l3ValidityCondition!));
-    }
+    const l3Sql = sql`
+      SELECT
+        l3.id, l3.title, l3.content, l3.node_type, l3.created_at, l3.last_verified_at,
+        l2.project_id,
+        p.name as project_name,
+        (1 - (l3.embedding::vector <=> ${vectorStr}::vector)) * EXP(-0.05 * EXTRACT(EPOCH FROM (NOW() - COALESCE(l3.last_verified_at, l3.created_at)))/86400) as score
+      FROM l3_nodes l3
+      INNER JOIN l2_nodes l2 ON l2.id = l3.l2_node_id
+      LEFT JOIN projects p ON p.id = l2.project_id
+      WHERE l3.embedding IS NOT NULL ${l3ValidityFilter}
+      ${projectId != null ? sql`AND l2.project_id = ${projectId}` : sql``}
+      ORDER BY score DESC
+      LIMIT ${limit}
+    `;
+    const l3Rows = await db.execute(l3Sql);
 
-    const l3Rows = await l3Query;
-
-    const l3Scored = l3Rows
-      .map(({ node, projectId, projectName }) => {
-        const emb = parseEmbedding(node.embedding);
-        const rawScore = emb ? cosineSimilarity(queryEmbedding, emb) : 0;
-        const referenceDate = node.lastVerifiedAt ?? node.createdAt;
-        const decayFactor = calculateTemporalDecay(referenceDate);
-        const score = rawScore * decayFactor;
-        return { node, projectId, projectName, score };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, limit);
-
-    for (const { node, projectId, projectName, score } of l3Scored) {
+    for (const row of l3Rows.rows ?? []) {
       results.push({
         source: "vector",
         nodeLayer: "l3",
-        id: node.id,
-        title: node.title,
-        content: node.content ?? null,
-        projectId,
-        projectName,
-        score,
-        createdAt: node.createdAt.toISOString(),
+        id: (row as any).id,
+        title: (row as any).title,
+        content: (row as any).content ?? null,
+        projectId: (row as any).project_id,
+        projectName: (row as any).project_name ?? null,
+        score: (row as any).score,
+        createdAt: new Date((row as any).created_at).toISOString(),
       });
     }
   } else {
-    // Fallback: SQL LIKE search
+    // Fallback: SQL LIKE search (no embedding available)
     const escapedQuery = sanitizeLikeInput(query);
     const pattern = `%${escapedQuery}%`;
 
-    let l2FallbackQuery = db.select().from(l2NodesTable).$dynamic();
+    const l3ValidityCondition = includePending
+      ? or(eq(l3NodesTable.validityStatus, "valid"), eq(l3NodesTable.validityStatus, "pending"))
+      : eq(l3NodesTable.validityStatus, "valid");
 
+    let l2FallbackQuery = db.select().from(l2NodesTable).$dynamic();
     if (projectId) {
       l2FallbackQuery = l2FallbackQuery.where(
         and(
@@ -343,7 +315,7 @@ export async function vectorSearchHandler(
       .$dynamic();
 
     const l3FallbackConditions = [
-      l3ValidityCondition!,
+      l3ValidityCondition,
       or(
         like(l3NodesTable.title, pattern),
         like(sql`COALESCE(${l3NodesTable.content}, '')`, pattern)
@@ -373,7 +345,6 @@ export async function vectorSearchHandler(
     }
   }
 
-  results.sort((a, b) => b.score - a.score);
   results.sort((a, b) => b.score - a.score);
   return results.slice(0, limit);
 }

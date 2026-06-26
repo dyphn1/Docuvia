@@ -276,7 +276,7 @@ async function detectCrossProjectLinks(
     .where(and(ne(l2NodesTable.projectId, projectId), isNotNull(l2NodesTable.embedding)));
 
   for (const other of otherNodes) {
-    const otherEmb = parseEmbedding(other.embedding);
+    const otherEmb = other.embedding;
     if (!otherEmb) continue;
 
     const sim = cosineSimilarity(newNodeEmbedding, otherEmb);
@@ -472,7 +472,7 @@ async function runSieveModel(
     }
 
     if (decisionEmbedding && node.embedding) {
-      const nodeEmb = parseEmbedding(node.embedding);
+      const nodeEmb = node.embedding;
       if (nodeEmb) {
         scoreW4 = cosineSimilarity(decisionEmbedding, nodeEmb);
       }
@@ -945,7 +945,7 @@ router.post("/projects/:id/generate", async (req, res) => {
       if (l2Embedding) {
         await db
           .update(l2NodesTable)
-          .set({ embedding: JSON.stringify(l2Embedding) })
+          .set({ embedding: l2Embedding })
           .where(eq(l2NodesTable.id, l2node.id));
 
         // Cross-project AI detection: run for all processed L2 nodes
@@ -992,7 +992,7 @@ router.post("/projects/:id/generate", async (req, res) => {
         let bestL3Match: (typeof existingL3ForNode)[0] | undefined;
         if (l3Embedding) {
           for (const existNode of existingL3ForNode) {
-            const existEmb = parseEmbedding(existNode.embedding);
+            const existEmb = existNode.embedding;
             if (!existEmb) continue;
             const sim = cosineSimilarity(l3Embedding, existEmb);
             if (sim > maxL3Sim) {
@@ -1053,9 +1053,9 @@ router.post("/projects/:id/generate", async (req, res) => {
           if (l3Embedding) {
             await db
               .update(l3NodesTable)
-              .set({ embedding: JSON.stringify(l3Embedding) })
+              .set({ embedding: l3Embedding })
               .where(eq(l3NodesTable.id, l3node.id));
-            existingL3ForNode.push({ ...l3node, embedding: JSON.stringify(l3Embedding) });
+            existingL3ForNode.push({ ...l3node, embedding: l3Embedding });
           }
 
           // Queue review task for low-confidence nodes
@@ -1197,10 +1197,7 @@ router.post("/admin/reindex-embeddings", async (req, res) => {
     const text = `${node.name} ${node.description ?? ""}`.trim();
     const emb = await generateEmbedding(text);
     if (emb) {
-      await db
-        .update(l2NodesTable)
-        .set({ embedding: JSON.stringify(emb) })
-        .where(eq(l2NodesTable.id, node.id));
+      await db.update(l2NodesTable).set({ embedding: emb }).where(eq(l2NodesTable.id, node.id));
       l2Done++;
     }
   }
@@ -1211,10 +1208,7 @@ router.post("/admin/reindex-embeddings", async (req, res) => {
     const text = `${node.title} ${node.content ?? ""}`.trim();
     const emb = await generateEmbedding(text);
     if (emb) {
-      await db
-        .update(l3NodesTable)
-        .set({ embedding: JSON.stringify(emb) })
-        .where(eq(l3NodesTable.id, node.id));
+      await db.update(l3NodesTable).set({ embedding: emb }).where(eq(l3NodesTable.id, node.id));
       l3Done++;
     }
   }

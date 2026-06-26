@@ -21,6 +21,7 @@ export const projectsTable = pgTable("projects", {
   svnUrl: text("svn_url"),
   lastGitIngestedAt: timestamp("last_git_ingested_at"),
   lastSvnRevision: integer("last_svn_revision"),
+  lastAstIngestedAt: timestamp("last_ast_ingested_at"),
   ownerId: integer("owner_id").notNull().default(1),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

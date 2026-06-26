@@ -222,6 +222,8 @@ Deliver zero-LLM-cost structural code analysis directly in the VS Code client by
 - `@workspace/ast-core` (Microkernel engine)
 - `@workspace/plugin-ast-typescript` (Language plugin)
 - `artifacts/api-server/src/middlewares/upload.ts` (For handling non-AST multi-modal files)
+- `artifacts/api-server/src/lib/ast-ingestion-pipeline.ts` (Ingestion pipeline)
+- `artifacts/api-server/src/lib/ast/ast-worker-pool.ts` (Worker pool + quarantine)
 
 ### 🏗️ System Architecture
 ```mermaid
@@ -245,6 +247,21 @@ sequenceDiagram
     Worker->>DB: INSERT GraphNodes & Edges
     Worker-->>Main: Done (Success)
 ```
+
+### 📋 Implementation Checklist
+
+| Item | Status | Phase |
+| :--- | :--- | :--- |
+| Multi-language support (Python, Rust, Go, Java, C/C++, Ruby, PHP, C#) | ✅ Done | Phase 1 |
+| Tree-sitter Query API + Scope Map + Method/Function classification | ✅ Done | Phase 2 |
+| Knowledge Graph Ingestion (File→L2, Class/Function→L3, call/import→node_links) | ✅ Done | Phase 3 |
+| Poison Pill Quarantine (500ms timeout + AbortController) | ✅ Done | Phase 4 |
+| **Batch Write Optimization** — Streaming chunked batch INSERTs for large `.jsonl` files | 🔲 TODO | Phase 4 |
+| **Incremental Fast-Path** — `git diff-tree -M` for O(1) delta detection | 🔲 TODO | Phase 4 |
+| **Cross-Language Edges** — API contracts, framework-specific AST tracking | 🔲 TODO | Phase 4 |
+| **Zero-Server Deep Traversal** — Pure local SQLite graph queries | 🔲 TODO | Phase 5 |
+| **Local Context Compression** — Token reduction pipeline before LLM | 🔲 TODO | Phase 5 |
+| **Sub-second Incremental Watch** — Fast-path AST updates on file save | 🔲 TODO | Phase 5 |
 
 ---
 

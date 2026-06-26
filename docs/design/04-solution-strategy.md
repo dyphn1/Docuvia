@@ -43,6 +43,7 @@ flowchart TD
            GIT[Git / SVN Adapters<br/>streamed child_process]
            DOC[Document Upload &<br/>Build Artifact Parser]
            GH[GitHub Webhook Listener<br/>scoreCommit filter]
+           HOOK[Git Hooks<br/>post-commit / pre-push]
 
            subgraph 4-Phase Parsing Funnel
                direction TB
@@ -54,26 +55,33 @@ flowchart TD
            GIT --> P1
            DOC --> P1
            GH --> P1
+           HOOK --> P1
 
            P4 --> AST[Isomorphic AST Engine]
            AST --> SINK[Pluggable Sinks]
        end
    ```
 
-2. **Knowledge Construction Layer**: The LLM-powered engine. Translates raw inputs into [structured abstractions (L1/L2/L3)](adrs/ADR-005-knowledge-abstraction-strategy.md) and automatically queues them for human review to create a [self-improving feedback loop](adrs/ADR-006-self-evolution-architecture.md).
+2. **Knowledge Construction Layer**: The Git-Isomorphic Engine. Translates raw inputs into [structured abstractions (L1/L2/L3)](adrs/ADR-005-knowledge-abstraction-strategy.md). Every extraction or human correction is an Append-Only Git commit on the `docuvia-knowledge` branch, ensuring knowledge *evolution* and *identity*.
    ```mermaid
    flowchart LR
        subgraph 2. Knowledge Construction Layer
            LLM_PIPE[L1 Tagger &rarr; L2 Extractor &rarr; L3 Generator]
            REVIEW[Review Task Creation &<br/>Few-Shot Feedback Loop]
+           GIT_EVENT[Event Sourcing<br/>Append-Only Git Commit]
+           LLM_PIPE --> GIT_EVENT
+           REVIEW --> GIT_EVENT
        end
    ```
-3. **Knowledge Graph**: The storage boundary. PostgreSQL acts as the single source of truth, handling graph edge traversal and temporal vector similarity matching.
+3. **Knowledge Graph**: The CQRS projection boundary. The Git orphan branch is the absolute Single Source of Truth (Event Store). PostgreSQL acts as the Global Read Model (Projection) handling high-dimensional vector similarity (`pgvector`) and cross-project indexing, while local SQLite acts as the Local HEAD Index.
    ```mermaid
    flowchart LR
        subgraph 3. Knowledge Graph
-           DB[(PostgreSQL DB<br/>Node Links & Traversal)]
-           VEC[In-Memory Vector Index<br/>Cross-Project Detection]
+           GIT_SSOT[(Git docuvia-knowledge<br/>Event Store / SSOT)]
+           DB[(PostgreSQL DB<br/>Global Projection / pgvector)]
+           SQLITE[(Local SQLite<br/>Local HEAD Index)]
+           GIT_SSOT --> |Project| DB
+           GIT_SSOT --> |Project| SQLITE
        end
    ```
 4. **Query Layer**: The API boundary. Exposes strictly typed REST endpoints (driven by Orval/Zod) and the [4-way Agentic RAG router](adrs/ADR-007-agentic-rag-routing.md) via MCP.

@@ -25,6 +25,7 @@ import { LocalGitClient } from "../lib/git-client.js";
 import { logger } from "../lib/logger.js";
 import { z } from "zod";
 import { DEFAULT_PROMPTS } from "./templates.js";
+import { compressAstContext } from "../lib/compression.js";
 
 async function getPromptTemplate(projectId: number, templateType: string): Promise<string> {
   const [template] = await db
@@ -657,10 +658,30 @@ router.post("/projects/:id/generate", async (req, res) => {
       .from(documentsTable)
       .where(eq(documentsTable.projectId, projectId));
 
+    // Compress document context to reduce token volume sent to LLM
     const documentContext = documents.length
-      ? documents
-          .map((d) => `[${d.docType.toUpperCase()}] ${d.filename}:\n${d.content.slice(0, 800)}`)
-          .join("\n\n---\n\n")
+      ? (() => {
+          const nodes: import("../lib/compression.js").CompressibleNode[] = documents.map((d) => ({
+            title: d.filename,
+            content: d.content,
+            nodeType: d.docType,
+            confidence: 1.0,
+          }));
+          const compressed = compressAstContext(nodes, {
+            maxTotalChars: 6000,
+            maxPerNodeChars: 600,
+          });
+          logger.info(
+            {
+              projectId,
+              nodesTotal: compressed.nodesTotal,
+              nodesIncluded: compressed.nodesIncluded,
+              charsSaved: compressed.charsSaved,
+            },
+            "[generate] Document context compressed"
+          );
+          return compressed.context;
+        })()
       : "";
 
     // Step 3: L1 Tagger — using project template if available

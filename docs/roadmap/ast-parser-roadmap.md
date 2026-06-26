@@ -27,9 +27,10 @@
   - Target file: `artifacts/vscode-client/src/KnowledgeStore.ts`
   - Key logic: SQLite recursive CTE queries for graph traversal
 
-- [ ] **Local Context Compression** — Token reduction pipeline before sending to LLM.
-  - Target file: `artifacts/ast-core/src/parser-core.ts`
-  - Key logic: AST Skeleton compression, symbol deduplication
+- [x] **Local Context Compression** — Token reduction pipeline before sending to LLM.
+  - Target file: `artifacts/ast-core/src/parser-core.ts` → wired in `artifacts/api-server/src/routes/generate.ts`
+  - Key logic: AST Skeleton compression, symbol deduplication → compressAstContext() pipeline (dedup→sort→truncate→budget), maxTotalChars=6000, maxPerNodeChars=600
+  - Status: ✅ Done (2026-07-28) — compressAstContext() wired into document context pipeline in generate.ts. Documents are deduplicated, sorted by confidence, truncated, and assembled within token budget before being sent to LLM.
 
 - [x] **Sub-second Incremental Watch** — Fast-path AST updates on file save.
   - Target file: `artifacts/api-server/src/routes/ingest.ts`

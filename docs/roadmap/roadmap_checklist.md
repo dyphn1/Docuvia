@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist (Comprehensive Audit)
 
-> Audited: 2026-07-28 (feat: Sub-second Incremental Watch — file-hash delta detection, project_files table, migration 003) | Source-code verified via Agentic Exploration & Adversarial Audit
+> Audited: 2026-07-28 (feat: Local Context Compression — wired compressAstContext() into generate.ts document context pipeline) | Source-code verified via Agentic Exploration & Adversarial Audit
 
 > **Legend:**
 > ✅ **Done** = Implemented and Verified Functional
@@ -104,7 +104,7 @@
 | `docuvia sync` Bidirectional CLI                                                               | ⚠️ WARN | [`sync.ts`](../../artifacts/api-server/src/routes/sync.ts) (CLI calls wrong endpoint; githook incompatible; see [report 0626_phase-8_docuvia-sync-cli](../../reports/0626_phase-8_docuvia-sync-cli.md)) |
 || AST Microkernel Architecture                                                                   | ⚠️ WARN | [`@workspace/ast-core`](../../artifacts/ast-core/) (Core parser + Topology Mapping + Edge Creation + Batch Write Optimization + Incremental Watch implemented; missing: cross-language edges; see [report 0626_phase-5_ast-microkernel](../../reports/0626_phase-5_ast-microkernel.md)) |
 | Zero-Server Deep Traversal                                                                     | � TODO                          | Requires pure local SQLite queries                                                   |
-|| Local Context Compression                                                                      | ⚠️ WARN                          | [`compression.ts`](../../artifacts/api-server/src/lib/compression.ts) (Implemented but not wired — imported in generate.ts:28, never called; see [report 0628_phase-8_local-context-compression](../../reports/0628_phase-8_local-context-compression.md)) |
+|| Local Context Compression                                                                      | ✅ Done                          | [`compression.ts`](../../artifacts/api-server/src/lib/compression.ts), [`generate.ts`](../../artifacts/api-server/src/routes/generate.ts) (Wired into document context pipeline: dedup→sort→truncate→budget assembly, maxTotalChars=6000, maxPerNodeChars=600, compression stats logged) |
 || Sub-second Incremental Watch                                                                   | ✅ Done                          | [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts), [`ast-ingestion-pipeline.ts`](../../artifacts/api-server/src/lib/ast-ingestion-pipeline.ts), [`project_files.ts`](../../lib/db/src/schema/project_files.ts) (File-hash delta detection, `mode: "incremental"` on `/projects/:id/ingest/ast`, `project_files` table for content hash tracking) |
 
 ---

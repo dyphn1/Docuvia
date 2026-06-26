@@ -1,4 +1,4 @@
-# Docuvia — Software Architecture & Design Documentation
+﻿# Docuvia — Software Architecture & Design Documentation
 
 > Universal VCS Knowledge Graph Engine: ingest commit history, construct a three-tier knowledge graph, and expose it via REST, MCP, and VS Code UI.
 
@@ -14,7 +14,7 @@ This is the authoritative design record for engineers joining the project, AI ag
 
 | #   | Document                                                                         | Description                                       |
 | --- | -------------------------------------------------------------------------------- | ------------------------------------------------- |
-| —   | [00-architecture-index.md](00-architecture-index.md)                             | Master index (this file)                          |
+| 00  | [00-architecture-index.md](00-architecture-index.md)                             | Master index (this file)                          |
 | 1   | [01-introduction-and-goals.md](01-introduction-and-goals.md)                     | Vision, quality goals, stakeholders               |
 | 2   | [02-constraints.md](02-constraints.md)                                           | Technical, org, regulatory constraints            |
 | 3   | [03-context-and-scope.md](03-context-and-scope.md)                               | System boundary, external interfaces              |
@@ -28,6 +28,7 @@ This is the authoritative design record for engineers joining the project, AI ag
 | 11  | [11-risks-and-debt.md](11-risks-and-debt.md)                                     | Known gaps and technical debt                     |
 | 12  | [12-glossary.md](12-glossary.md)                                                 | Full product terminology                          |
 | 13  | [13-vision-and-competitive-landscape.md](13-vision-and-competitive-landscape.md) | Vision and competitive landscape                  |
+| 14  | [../evaluate/index.md](../evaluate/index.md)                                     | Design evaluation and architectural gaps          |
 
 ---
 
@@ -55,6 +56,9 @@ The detailed Agentic OS mechanisms are codified as Architecture Decision Records
 | `ADR-016` | [Git Blob-Native Identity & Checkout Thrashing Defense](adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md) |
 | `ADR-017` | [Tiered Storage & Orphan Branch Graph Maintenance](adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)           |
 | `ADR-018` | [Temporal & Conceptual Bidirectional Linking](adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md)                     |
+| `ADR-019` | [PostgreSQL pgvector Migration](adrs/ADR-019-pgvector-migration.md)                                                                |
+| `ADR-020` | [Unified Isomorphic AST Microkernel](adrs/ADR-020-unified-isomorphic-ast-microkernel.md)                                           |
+
 
 ---
 
@@ -90,5 +94,3 @@ The VS Code extension has its own detailed design documentation under [`docs/des
 | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | [docs/roadmap/master-roadmap.md](../roadmap/master-roadmap.md) | Single Source of Truth (SSOT) tracking all development phases                            |
 | [AGENTS.md](../../AGENTS.md)                                   | AI developer guide — commands, conventions, agent definitions                            |
-| `ADR-019`                                                      | [PostgreSQL pgvector Migration](adrs/ADR-019-pgvector-migration.md)                      |
-| `ADR-020`                                                      | [Unified Isomorphic AST Microkernel](adrs/ADR-020-unified-isomorphic-ast-microkernel.md) |

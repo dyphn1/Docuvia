@@ -647,6 +647,33 @@ async function initProject(
       const profilePath = vscode.Uri.file(path.join(docuviaDir, "_project_profile.yaml"));
       await writeIfAbsent(profilePath, `# Project Profile\n`);
 
+      // Install non-intrusive git post-commit hook
+      try {
+        const gitHookDir = path.join(targetRoot, ".git", "hooks");
+        const postCommitPath = path.join(gitHookDir, "post-commit");
+        if (require('fs').existsSync(gitHookDir)) {
+          const hookContent = `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n# Non-intrusively extracts AST deltas in the background\nif command -v npx &> /dev/null; then\n  # Fire and forget (do not block commit)\n  git rev-parse HEAD | npx --no-install docuvia sync local > /dev/null 2>&1 &\nfi\n`;
+          const fs = require('fs').promises;
+          
+          let shouldWriteHook = true;
+          try {
+            const existingHook = await fs.readFile(postCommitPath, 'utf8');
+            if (existingHook.includes('docuvia sync')) {
+              shouldWriteHook = false;
+            }
+          } catch (e) {
+            // Hook doesn't exist, we can write it
+          }
+
+          if (shouldWriteHook) {
+            await fs.appendFile(postCommitPath, `\n${hookContent}`, { mode: 0o755 });
+            console.log("Installed Docuvia post-commit hook.");
+          }
+        }
+      } catch (err) {
+        console.warn("Could not install git hook:", err);
+      }
+
       vscode.commands.executeCommand("docuvia.refreshKnowledgeGraph");
       void vscode.window.showInformationMessage(
         `Docuvia: Project "${projectName}" initialized. Populate the YAML files to build your knowledge graph.`

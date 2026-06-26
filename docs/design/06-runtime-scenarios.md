@@ -202,6 +202,67 @@ sequenceDiagram
 
 ---
 
+## 6.7 Scenario: AI Agent Collaboration Workflows
+
+To explicitly address the "Cognitive Gap" and "Knowledge Deficit", Docuvia formalizes three distinct workflow models for AI Agent interaction.
+
+### 6.7.1 Context-Aware Fast Path (Local)
+Used when an AI Agent (e.g. Cursor, Copilot) is working on a specific file and needs immediate, zero-token architectural context.
+
+```mermaid
+sequenceDiagram
+    participant Agent as AI Coding Agent
+    participant VSC as Docuvia VS Code Ext
+    participant LocalDB as Local SQLite (HEAD Index)
+    
+    Agent->>VSC: Query context for `src/auth.ts`
+    VSC->>LocalDB: AST Topology + File Path Match
+    LocalDB-->>VSC: Return exact L2 Module & L3 Rules
+    VSC-->>Agent: High-density context prompt
+    Note over Agent,VSC: Fast, offline, 0 LLM Tokens used
+```
+
+### 6.7.2 Global Semantic Search (Server)
+Used when an AI Agent asks a broad, exploratory question without a specific file context (e.g., "How do we handle CORS?").
+
+```mermaid
+sequenceDiagram
+    participant Agent as AI Coding Agent
+    participant VSC as Docuvia VS Code Ext
+    participant API as API Server
+    participant DB as PostgreSQL (pgvector)
+    
+    Agent->>VSC: Ask: "How is CORS handled?"
+    VSC->>API: MCP Query Request
+    API->>DB: Vector Similarity Search (pgvector)
+    DB-->>API: Match across all L3 decisions
+    API-->>Agent: Global architectural context
+    Note over Agent,DB: Leverages Server for heavy lifting
+```
+
+### 6.7.3 Git-Isomorphic Knowledge Evolution
+Used when a developer commits code, seamlessly updating the knowledge graph via Event Sourcing.
+
+```mermaid
+sequenceDiagram
+    actor Dev
+    participant Git as Local Git Repo
+    participant Hook as Git Hook (post-commit)
+    participant VSC as Local SQLite / Branch
+    participant Server as Server (PostgreSQL)
+
+    Dev->>Git: `git commit -m "fix CORS"`
+    Git->>Hook: Trigger post-commit hook
+    Hook->>VSC: Extract AST Delta
+    VSC->>VSC: Append JSON Delta to `docuvia-knowledge`
+    VSC->>VSC: Update Local SQLite (HEAD Index)
+    Note over VSC, Server: Async Background Sync
+    Server->>VSC: `git fetch docuvia-knowledge`
+    Server->>Server: Project new events into PostgreSQL
+```
+
+---
+
 ## References
 
 - [docs/design/vscode-client/command-palette/run-extraction.md](vscode-client/command-palette/run-extraction.md) – Full VS Code extraction flow

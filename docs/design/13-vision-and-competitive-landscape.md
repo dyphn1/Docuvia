@@ -2,7 +2,7 @@
 
 ## The North Star
 
-Docuvia aims to be a **Codebase Agentic OS** equipped with temporal memory and conceptual cognition. Rather than being just another tool that reads code, Docuvia empowers AI to understand:
+Docuvia aims to be a **VCS-based Knowledge Evolver** that acts as the ultimate **Cognitive Baseline for AI Agents**. Rather than being just another tool that reads code, Docuvia bridges the cognitive gap between human developers and AI assistants by ensuring both operate from a singular, explicitly documented, and temporally aware truth source.
 
 - **Spatial (AST & Blast Radius)**: What is the exact call graph and structure of the code?
 - **Temporal (History & Time)**: How did this code look in the past? What bugs were fixed, and what rules were learned from rebases?

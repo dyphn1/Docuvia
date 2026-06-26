@@ -2,7 +2,7 @@
 
 ## Core Principle
 
-Docuvia utilizes a **"Local-First, Server-Augmented"** architecture. It provides immediate, standalone value using only the VS Code Extension, seamlessly unlocking team-scale performance when connected to the API Server.
+Docuvia utilizes a **"Local-First, Server-Augmented"** architecture. It provides immediate, standalone value using the VS Code Extension as a **Local HEAD Index**, seamlessly unlocking team-scale semantic capabilities when connected to the API Server's **Global Projection**.
 
 ## Architecture Flow
 
@@ -45,9 +45,9 @@ flowchart TD
 
 To strictly adhere to both **Local-First** principles and the **Centralized Server Write Lock** (mandated to prevent split-brain), Docuvia employs the **Outbox Pattern**:
 
-1. **Offline Writes**: When a developer creates a new [L3 decision](ADR-005-knowledge-abstraction-strategy.md) offline, the [VS Code client](ADR-001-vscode-client-onboarding.md) writes it immediately to its local database (SQLite) and queues the event in a local `SyncOutbox`. The VS Code UI reflects the change instantly (Local-First).
-2. **Online Sync**: Upon network restoration, the client does _not_ execute a raw `git push`. Instead, it dispatches the outbox payloads via REST API (`POST /sync/push`) to the API Server.
-3. **Server Gatekeeper**: The [API server](ADR-003-server-side-zero-to-one.md) coordinates concurrency via [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md) (replacing in-memory Mutex locks), validates the semantic integrity of the graph (preventing dangling nodes), commits the changes to the centralized [`docuvia-knowledge` orphan branch](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md), and pushes to the Git remote.
-4. **Local Rehydration**: The client subsequently performs a `git fetch` and `git merge` from the remote branch to finalize the state and flush its local outbox.
+1. **Offline Writes**: When a developer creates a new [L3 decision](ADR-005-knowledge-abstraction-strategy.md) offline, the [VS Code client](ADR-001-vscode-client-onboarding.md) writes it immediately to its local SQLite database and records it as an append-only Delta (Event Sourcing) destined for the `docuvia-knowledge` Git branch.
+2. **Online Sync**: Upon network restoration, the client simply executes a standard `git push origin docuvia-knowledge`. 
+3. **Server Gatekeeper**: The [API server](ADR-003-server-side-zero-to-one.md) detects the updated branch, pulls the newly appended events, and projects them into the PostgreSQL database.
+4. **Conflict Resolution**: Since all events are Git commits on an orphan branch, multi-developer conflicts are naturally resolved via standard Git merge algorithms, eliminating split-brain data loss.
 
 This topology guarantees zero downtime for the developer (100% local availability) while completely preventing Git Split-Brain on the remote repository.

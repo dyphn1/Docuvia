@@ -160,6 +160,7 @@ export class CentralServerClient {
             nodeType: "decision",
           },
         ],
+        nodeLinks: [],
       };
     }
 
@@ -183,7 +184,14 @@ export class CentralServerClient {
       throw new Error(`Failed to pull snapshot: ${response.status}`);
     }
 
-    return response.json() as Promise<KnowledgeSnapshot>;
+    const data = await response.json() as Record<string, unknown>;
+    return {
+      projectId: data.projectId as number,
+      l1Tags: (data.l1Tags ?? []) as KnowledgeSnapshot["l1Tags"],
+      l2Nodes: (data.l2Nodes ?? []) as KnowledgeSnapshot["l2Nodes"],
+      l3Nodes: (data.l3Nodes ?? []) as KnowledgeSnapshot["l3Nodes"],
+      nodeLinks: (data.nodeLinks ?? []) as KnowledgeSnapshot["nodeLinks"],
+    } as KnowledgeSnapshot;
   }
 
   private _heartbeatTimeout?: NodeJS.Timeout;

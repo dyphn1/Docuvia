@@ -26,9 +26,10 @@
   - Key logic: Bridge Provider parses OpenAPI 3.x/Swagger 2.0 → api_contract JSONL events → ingestion pipeline creates L2 `pcd` + per-endpoint L3 nodes + consumer→contract links via path/operationId matching
   - Status: ✅ Done (2026-06-26) — bridge-provider.ts implements parseOpenApiSpec() + isOpenApiFile() detection; ast-worker.ts routes .yaml/.json files to bridge provider when they contain openapi/swagger keys; ingestion pipeline Phases 1/2/3.5/4.5 handle all api_contract events
 
-- [ ] **Zero-Server Deep Traversal** — Pure local SQLite graph queries, no API server dependency.
+- [x] **Zero-Server Deep Traversal** — Pure local SQLite graph queries, no API server dependency.
   - Target file: `artifacts/vscode-client/src/KnowledgeStore.ts`
-  - Key logic: SQLite recursive CTE queries for graph traversal
+  - Key logic: SQLite recursive CTE + in-memory BFS fallback, `traverseGraph()` method, `docuvia.graph.traverse` command, dual DDL blocks (l2_nodes.type + node_links), server `/projects/:id/graph` returns node_links
+  - Status: ✅ Done (2026-06-27) — implementation was in uncommitted working tree from prior session; build passes; remaining gap is edge data sync mechanism (node_links table never populated)
 
 - [x] **Local Context Compression** — Token reduction pipeline before sending to LLM.
   - Target file: `artifacts/ast-core/src/parser-core.ts` → wired in `artifacts/api-server/src/routes/generate.ts`

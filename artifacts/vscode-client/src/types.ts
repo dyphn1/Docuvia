@@ -102,9 +102,17 @@ export interface ApiL3Node {
   nodeType: string;
 }
 
+export interface ApiNodeLink {
+  id: number;
+  sourceNodeId: number;
+  targetNodeId: number;
+  linkType: string;
+}
+
 export interface KnowledgeSnapshot {
   projectId: number;
   l1Tags: ApiL1Tag[];
   l2Nodes: ApiL2Node[];
   l3Nodes: ApiL3Node[];
+  nodeLinks: ApiNodeLink[];
 }

@@ -19,6 +19,32 @@ interface IDocuviaClient {
   pullSnapshot(projectId: number): Promise<KnowledgeSnapshot>;
 }
 
+/** A directed edge in the knowledge graph (mirrors server node_links table). */
+export interface GraphEdge {
+  id: number;
+  sourceNodeId: number;
+  targetNodeId: number;
+  linkType: string;
+}
+
+/** A node in the traversal result. */
+export interface TraversalNode {
+  id: number;
+  name: string;
+  type: string;
+  depth: number;
+}
+
+/** Result of a graph traversal operation. */
+export interface TraversalResult {
+  rootId: number;
+  rootName: string;
+  direction: "dependencies" | "dependents" | "both";
+  nodes: TraversalNode[];
+  edges: GraphEdge[];
+  maxDepth: number;
+}
+
 /** In-memory snapshot of the project's knowledge graph. */
 export interface KnowledgeGraphSnapshot {
   workspaceRoot: string;
@@ -28,6 +54,8 @@ export interface KnowledgeGraphSnapshot {
   routerIndex: L3RouterEntry[];
   /** L3 decisions keyed by their ID for O(1) lookup. */
   decisions: Map<string, L3Decision>;
+  /** Directed edges loaded from node_links table (Zero-Server Deep Traversal). */
+  edges: GraphEdge[];
   loadedAt: Date;
 }
 
@@ -136,6 +164,7 @@ export class KnowledgeStore {
       let projectName = path.basename(workspaceRoot);
 
       // Local fallback: read from SQLite local.db
+      let edges: GraphEdge[] = [];
       if (tags.length === 0 && modules.length === 0) {
         try {
           const dbPath = path.join(docuviaDir.fsPath, "local.db");
@@ -151,7 +180,7 @@ export class KnowledgeStore {
               id: row.id, 
               name: row.name, 
               slug: row.slug, 
-              l1_tag_id: row.l1_tag_id, 
+              l1_tag_id: row.l1_tag_id,
               source_paths: row.source_paths ? JSON.parse(row.source_paths) : [],
               description: row.description 
             }));
@@ -176,6 +205,21 @@ export class KnowledgeStore {
                  filePath: ""
                });
             }
+
+            // Load edges from node_links for Zero-Server Deep Traversal
+            try {
+              const linkRows = db.prepare("SELECT id, source_node_id, target_node_id, link_type FROM node_links").all() as any[];
+              edges = linkRows.map(row => ({
+                id: row.id,
+                sourceNodeId: row.source_node_id,
+                targetNodeId: row.target_node_id,
+                linkType: row.link_type,
+              }));
+            } catch (linkErr) {
+              // node_links table may not exist in older DBs — non-fatal
+              this._outputChannel.appendLine(`[Docuvia] node_links not available: ${String(linkErr)}`);
+            }
+
             db.close();
             
             if (tags.length > 0 && projectName === path.basename(workspaceRoot)) {
@@ -194,11 +238,12 @@ export class KnowledgeStore {
         modules,
         routerIndex,
         decisions,
+        edges,
         loadedAt: new Date()
       });
 
       this._outputChannel.appendLine(
-        `[Docuvia] Knowledge graph loaded for ${projectName}: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions.`
+        `[Docuvia] Knowledge graph loaded for ${projectName}: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions, ${edges.length} edges.`
       );
 
       return true;
@@ -390,6 +435,216 @@ export class KnowledgeStore {
   }
 
   // ─── Lookup helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Get all edges for a workspace. Returns an empty array if no snapshot loaded.
+   */
+  getEdgesFor(workspaceRoot: string): GraphEdge[] {
+    return this._snapshots.get(workspaceRoot)?.edges ?? [];
+  }
+
+  /**
+   * Zero-Server Deep Traversal — pure local SQLite graph queries.
+   * Traverses the knowledge graph starting from a given L2 node, following
+   * directed edges via a recursive CTE against the local SQLite database.
+   *
+   * This method operates entirely on the local .docuvia/local.db — no API
+   * server calls are made. Falls back to in-memory edge traversal if the
+   * SQLite file is not available.
+   *
+   * @param workspaceRoot - The workspace folder path
+   * @param rootNodeId - The L2 node ID to start traversal from
+   * @param direction - "dependencies" (outgoing edges), "dependents" (incoming edges), or "both"
+   * @param maxDepth - Maximum traversal depth (default: 10)
+   */
+  traverseGraph(
+    workspaceRoot: string,
+    rootNodeId: number,
+    direction: "dependencies" | "dependents" | "both" = "both",
+    maxDepth: number = 10
+  ): TraversalResult {
+    const snap = this._snapshots.get(workspaceRoot);
+    if (!snap) {
+      return {
+        rootId: rootNodeId,
+        rootName: "unknown",
+        direction,
+        nodes: [],
+        edges: [],
+        maxDepth: 0,
+      };
+    }
+
+    const rootModule = snap.modules.find(m => Number(m.id) === rootNodeId);
+    const rootName = rootModule?.name ?? `node-${rootNodeId}`;
+
+    // Try SQLite recursive CTE first (faster, more complete)
+    const sqliteResult = this._traverseViaSqlite(workspaceRoot, rootNodeId, direction, maxDepth);
+    if (sqliteResult) {
+      return sqliteResult;
+    }
+
+    // Fallback: in-memory BFS traversal using loaded edges
+    return this._traverseInMemory(snap, rootNodeId, rootName, direction, maxDepth);
+  }
+
+  /**
+   * Traverse graph using SQLite recursive CTE. Returns null if local.db
+   * is unavailable or doesn't have node_links.
+   */
+  private _traverseViaSqlite(
+    workspaceRoot: string,
+    rootNodeId: number,
+    direction: "dependencies" | "dependents" | "both",
+    maxDepth: number
+  ): TraversalResult | null {
+    const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
+    try {
+      const fs = require("fs");
+      if (!fs.existsSync(dbPath)) return null;
+
+      const db = new Database(dbPath, { readonly: true });
+
+      // Verify node_links table exists
+      const tableCheck = db.prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='node_links'"
+      ).get();
+      if (!tableCheck) {
+        db.close();
+        return null;
+      }
+
+      // Get root node info
+      const rootRow = db.prepare(
+        "SELECT id, name, type FROM l2_nodes WHERE id = ?"
+      ).get(rootNodeId) as any;
+      if (!rootRow) {
+        db.close();
+        return null;
+      }
+
+      const nodes: TraversalNode[] = [{ id: rootRow.id, name: rootRow.name, type: rootRow.type ?? "module", depth: 0 }];
+      const edges: GraphEdge[] = [];
+      let actualMaxDepth = 0;
+
+      // Build the appropriate CTE based on direction
+      if (direction === "dependencies" || direction === "both") {
+        // Follow outgoing edges (source → target): what this node depends on
+        const depRows = db.prepare(`
+          WITH RECURSIVE deps AS (
+            SELECT source_node_id, target_node_id, link_type, 1 AS depth
+            FROM node_links
+            WHERE source_node_id = ?
+            UNION ALL
+            SELECT nl.source_node_id, nl.target_node_id, nl.link_type, d.depth + 1
+            FROM node_links nl
+            INNER JOIN deps d ON nl.source_node_id = d.target_node_id
+            WHERE d.depth < ?
+          )
+          SELECT d.target_node_id AS node_id, d.source_node_id, d.target_node_id, d.link_type, d.depth,
+                 n.name, n.type
+          FROM deps d
+          LEFT JOIN l2_nodes n ON n.id = d.target_node_id
+        `).all(rootNodeId, maxDepth) as any[];
+
+        for (const row of depRows) {
+          if (row.depth > actualMaxDepth) actualMaxDepth = row.depth;
+          if (!nodes.find(n => n.id === row.node_id)) {
+            nodes.push({ id: row.node_id, name: row.name ?? `node-${row.node_id}`, type: row.type ?? "module", depth: row.depth });
+          }
+          edges.push({ id: 0, sourceNodeId: row.source_node_id, targetNodeId: row.target_node_id, linkType: row.link_type });
+        }
+      }
+
+      if (direction === "dependents" || direction === "both") {
+        // Follow incoming edges (target → source): what depends on this node
+        const depRows = db.prepare(`
+          WITH RECURSIVE dependents AS (
+            SELECT source_node_id, target_node_id, link_type, 1 AS depth
+            FROM node_links
+            WHERE target_node_id = ?
+            UNION ALL
+            SELECT nl.source_node_id, nl.target_node_id, nl.link_type, d.depth + 1
+            FROM node_links nl
+            INNER JOIN dependents d ON nl.target_node_id = d.source_node_id
+            WHERE d.depth < ?
+          )
+          SELECT d.source_node_id AS node_id, d.source_node_id, d.target_node_id, d.link_type, d.depth,
+                 n.name, n.type
+          FROM dependents d
+          LEFT JOIN l2_nodes n ON n.id = d.source_node_id
+        `).all(rootNodeId, maxDepth) as any[];
+
+        for (const row of depRows) {
+          if (row.depth > actualMaxDepth) actualMaxDepth = row.depth;
+          if (!nodes.find(n => n.id === row.node_id)) {
+            nodes.push({ id: row.node_id, name: row.name ?? `node-${row.node_id}`, type: row.type ?? "module", depth: row.depth });
+          }
+          edges.push({ id: 0, sourceNodeId: row.source_node_id, targetNodeId: row.target_node_id, linkType: row.link_type });
+        }
+      }
+
+      db.close();
+      return { rootId: rootNodeId, rootName: rootRow.name, direction, nodes, edges, maxDepth: actualMaxDepth };
+    } catch (err) {
+      this._outputChannel.appendLine(`[Docuvia] SQLite traversal failed, falling back to in-memory: ${String(err)}`);
+      return null;
+    }
+  }
+
+  /**
+   * Fallback: in-memory BFS traversal using edges loaded into the snapshot.
+   * Used when local.db is not available (e.g., knowledge loaded from YAML).
+   */
+  private _traverseInMemory(
+    snap: KnowledgeGraphSnapshot,
+    rootNodeId: number,
+    rootName: string,
+    direction: "dependencies" | "dependents" | "both",
+    maxDepth: number
+  ): TraversalResult {
+    const visited = new Set<number>([rootNodeId]);
+    const nodes: TraversalNode[] = [{ id: rootNodeId, name: rootName, type: "module", depth: 0 }];
+    const edges: GraphEdge[] = [];
+    let actualMaxDepth = 0;
+
+    // BFS frontier
+    let frontier = [rootNodeId];
+    for (let depth = 1; depth <= maxDepth && frontier.length > 0; depth++) {
+      const nextFrontier: number[] = [];
+
+      for (const nodeId of frontier) {
+        for (const edge of snap.edges) {
+          let neighborId: number | undefined;
+
+          if ((direction === "dependencies" || direction === "both") && edge.sourceNodeId === nodeId) {
+            neighborId = edge.targetNodeId;
+          }
+          if ((direction === "dependents" || direction === "both") && edge.targetNodeId === nodeId) {
+            neighborId = edge.sourceNodeId;
+          }
+
+          if (neighborId !== undefined && !visited.has(neighborId)) {
+            visited.add(neighborId);
+            nextFrontier.push(neighborId);
+            const neighborModule = snap.modules.find(m => Number(m.id) === neighborId);
+            nodes.push({
+              id: neighborId,
+              name: neighborModule?.name ?? `node-${neighborId}`,
+              type: "module",
+              depth,
+            });
+            edges.push(edge);
+            actualMaxDepth = depth;
+          }
+        }
+      }
+
+      frontier = nextFrontier;
+    }
+
+    return { rootId: rootNodeId, rootName, direction, nodes, edges, maxDepth: actualMaxDepth };
+  }
 
   // ─── Private helpers ───────────────────────────────────────────────────────
 

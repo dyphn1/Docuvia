@@ -119,6 +119,11 @@
         "command": "docuvia.autoCategorizeDecisions",
         "title": "Docuvia: Auto-Categorize Decisions",
         "icon": "$(wand)"
+      },
+      {
+        "command": "docuvia.graph.traverse",
+        "title": "Docuvia: Traverse Dependency Graph",
+        "icon": "$(graph)"
       }
     ],
     "viewsWelcome": [

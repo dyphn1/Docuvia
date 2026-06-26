@@ -5,6 +5,7 @@ import {
   projectsTable,
   l2NodesTable,
   l3NodesTable,
+  nodeLinksTable,
   commitsTable,
   activityLogTable,
 } from "@workspace/db";
@@ -178,6 +179,17 @@ router.get("/projects/:id/graph", async (req, res) => {
           )})`
         )
     : [];
+  const nodeLinks = l2Nodes.length
+    ? await db
+        .select()
+        .from(nodeLinksTable)
+        .where(
+          sql`${nodeLinksTable.sourceNodeId} IN (${sql.join(
+            l2Nodes.map((n) => sql`${n.id}`),
+            sql`, `
+          )})`
+        )
+    : [];
   res.json({
     projectId: id,
     l1Tags: [],
@@ -188,6 +200,12 @@ router.get("/projects/:id/graph", async (req, res) => {
       createdAt: n.createdAt.toISOString(),
     })),
     l3Nodes: l3Nodes.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),
+    nodeLinks: nodeLinks.map((nl) => ({
+      id: nl.id,
+      sourceNodeId: nl.sourceNodeId,
+      targetNodeId: nl.targetNodeId,
+      linkType: nl.linkType,
+    })),
   });
 });
 

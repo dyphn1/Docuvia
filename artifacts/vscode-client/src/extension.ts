@@ -9,7 +9,7 @@ import { CodeLensDecisionData, DocuviaCodeLensProvider } from "./DocuviaCodeLens
 import { DocuviaHoverProvider } from "./DocuviaHoverProvider.js";
 import { KnowledgeIndexer } from "./indexer/KnowledgeIndexer.js";
 import { KGNode, KnowledgeGraphTreeProvider } from "./KnowledgeGraphTreeProvider.js";
-import { KnowledgeStore } from "./KnowledgeStore.js";
+import { KnowledgeStore, TraversalResult } from "./KnowledgeStore.js";
 import { parseGlobalConfig } from "./parser.js";
 import { SearchResultsPanel } from "./SearchResultsPanel.js";
 import { TaskQueueTreeProvider } from "./TaskQueueTreeProvider.js";
@@ -335,6 +335,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
                 slug TEXT NOT NULL,
+                type TEXT,
                 source_paths TEXT,
                 l1_tag_id TEXT,
                 description TEXT
@@ -347,6 +348,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 status TEXT,
                 created_at TEXT,
                 content TEXT
+              );
+              CREATE TABLE IF NOT EXISTS node_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                source_node_id TEXT NOT NULL,
+                target_node_id TEXT NOT NULL,
+                link_type TEXT
               );
             `);
             
@@ -427,6 +434,107 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         );
       }
       await executeSearch(context, centralClient, selectedText);
+    })
+  );
+
+  // ─── Zero-Server Deep Traversal ─────────────────────────────────────────
+  context.subscriptions.push(
+    vscode.commands.registerCommand("docuvia.graph.traverse", async (node?: KGNode) => {
+      const store = KnowledgeStore.getInstance(outputChannel);
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) {
+        void vscode.window.showWarningMessage("Docuvia: Open a workspace folder to traverse the knowledge graph.");
+        return;
+      }
+
+      // Determine root node ID — from tree view selection or user input
+      let rootNodeId: number | undefined;
+      if (node && node.kind === "l2module" && node.workspaceRoot) {
+        rootNodeId = Number(node.id);
+      } else {
+        // Show quick pick of all L2 modules across workspaces
+        const items: vscode.QuickPickItem[] = [];
+        for (const folder of folders) {
+          const snap = store.getSnapshotFor(folder.uri.fsPath);
+          if (snap) {
+            for (const mod of snap.modules) {
+              items.push({
+                label: mod.name,
+                description: path.basename(folder.uri.fsPath),
+                detail: `ID: ${mod.id}`,
+              });
+            }
+          }
+        }
+        if (items.length === 0) {
+          void vscode.window.showWarningMessage("Docuvia: No knowledge graph modules found. Run indexing first.");
+          return;
+        }
+        const picked = await vscode.window.showQuickPick(items, {
+          placeHolder: "Select a module to traverse its dependency graph",
+        });
+        if (!picked?.detail) return;
+        rootNodeId = Number(picked.detail.replace("ID: ", ""));
+      }
+
+      if (rootNodeId === undefined || isNaN(rootNodeId)) return;
+
+      // Ask for direction
+      const direction = await vscode.window.showQuickPick<
+        vscode.QuickPickItem & { value: "dependencies" | "dependents" | "both" }
+      >(
+        [
+          { label: "$(arrow-down) Dependencies", description: "What this module depends on", value: "dependencies" },
+          { label: "$(arrow-up) Dependents (Impact)", description: "What depends on this module", value: "dependents" },
+          { label: "$(arrow-both) Both Directions", description: "Full dependency graph", value: "both" },
+        ],
+        { placeHolder: "Traversal direction" }
+      );
+      if (!direction) return;
+
+      // Find the workspace root for this node
+      let workspaceRoot: string | undefined;
+      for (const folder of folders) {
+        const snap = store.getSnapshotFor(folder.uri.fsPath);
+        if (snap?.modules.find(m => Number(m.id) === rootNodeId)) {
+          workspaceRoot = folder.uri.fsPath;
+          break;
+        }
+      }
+      if (!workspaceRoot) {
+        void vscode.window.showErrorMessage("Docuvia: Could not find workspace for selected module.");
+        return;
+      }
+
+      const result: TraversalResult = store.traverseGraph(
+        workspaceRoot,
+        rootNodeId,
+        direction.value,
+        10
+      );
+
+      // Display results in a virtual document / output channel
+      const traverseChannel = vscode.window.createOutputChannel("Docuvia Graph Traversal");
+      traverseChannel.clear();
+      traverseChannel.appendLine(`Graph Traversal: ${result.rootName} (${direction.value})`);
+      traverseChannel.appendLine(`Depth: ${result.maxDepth} | Nodes: ${result.nodes.length} | Edges: ${result.edges.length}`);
+      traverseChannel.appendLine("─".repeat(60));
+
+      for (const node of result.nodes) {
+        const indent = "  ".repeat(node.depth);
+        const prefix = node.depth === 0 ? "●" : "└→";
+        traverseChannel.appendLine(`${indent}${prefix} [${node.type}] ${node.name} (depth ${node.depth})`);
+      }
+
+      if (result.edges.length > 0) {
+        traverseChannel.appendLine("");
+        traverseChannel.appendLine("Edges:");
+        for (const edge of result.edges) {
+          traverseChannel.appendLine(`  ${edge.sourceNodeId} ──[${edge.linkType}]──▶ ${edge.targetNodeId}`);
+        }
+      }
+
+      traverseChannel.show(true);
     })
   );
 }
@@ -672,6 +780,7 @@ async function initProject(
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
           slug TEXT NOT NULL,
+          type TEXT,
           source_paths TEXT,
           l1_tag_id TEXT
         );
@@ -682,6 +791,12 @@ async function initProject(
           content TEXT,
           status TEXT,
           created_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS node_links (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          source_node_id TEXT NOT NULL,
+          target_node_id TEXT NOT NULL,
+          link_type TEXT
         );
       `);
       db.close();

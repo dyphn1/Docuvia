@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../tolaria"
+		},
+		{
+			"path": "../GitNexus"
+		},
+		{
+			"path": "../graphify"
+		},
+		{
+			"path": "../code-review-graph"
+		},
+		{
+			"path": "../headroom"
+		}
+	],
+	"settings": {}
+}

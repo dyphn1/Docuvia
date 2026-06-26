@@ -1,33 +1,28 @@
-# 01. Core Architecture Conflicts
+# 01. Core Architecture: Resolving the "Conflicts" via VCS-based Event Sourcing
 
-**Severity:** 🔴 CRITICAL
-**Affected Docs:** ADR-002, ADR-004, ADR-014, ADR-019, `knowledge-graph/store.md`, `04-solution-strategy.md`
+**Status:** 🟢 RESOLVED (Paradigm Shift)
+**Affected Docs:** ADR-002, ADR-004, ADR-014, ADR-019, `04-solution-strategy.md`
 
-This section covers the most fundamental design contradictions in the system. If left unresolved, the system will fail to implement correctly or crash under boundary conditions.
+Earlier reviews identified apparent contradictions between Local-First (SQLite), Server-Side (PostgreSQL), and Git-Isomorphic storage. These were perceived as "sync conflicts" and "split-brain" issues. 
 
-## 1. Local-First (SQLite) vs `pgvector` Search Conflict
-*   **Conflict:** ADR-002 promises local-first offline availability using SQLite, but ADR-019 delegates vector search to PostgreSQL's `pgvector`.
-*   **Issue:** The VS Code extension completely loses its vector retrieval capability when offline.
-*   **Proposed Fix:**
-    *   Introduce local vector plugins like `sqlite-vec` or `sqlite-vss` to SQLite to ensure offline vector search.
-    *   Alternatively, explicitly define a "Graceful Degradation" strategy, declaring that offline mode only supports L2/L3 exact keyword matching and disables semantic search.
+However, under the refined vision of Docuvia as a **VCS-based Knowledge Evolver**, these are not conflicts. They are distinct layers of a **CQRS (Command Query Responsibility Segregation) + Event Sourcing** architecture deeply integrated with Git.
 
-## 2. Git Orphan Branch vs PostgreSQL (SSOT) Sync Conflict
-*   **Conflict:** ADR-004 stores the knowledge graph on a Git orphan branch (`docuvia-knowledge`), while ADR-014 relies on PostgreSQL for recursive graph traversal.
-*   **Issue:** During multi-developer collaboration, how are SQL deltas synced back to the Git orphan branch? There is no mechanism to handle Git push conflicts (non-fast-forward).
-*   **Proposed Fix:** Introduce an Append-Only JSON Delta mechanism on the Git branch, or treat SQL as the Single Source of Truth (SSOT) and use the Git branch purely as an asynchronous backup.
+## The Git Metaphor Mapping
 
-## 3. Database-as-IPC Anti-pattern
-*   **Conflict:** ADR-014 allows AST Parsing Workers to write directly to the database (INSERT/UPDATE).
-*   **Issue:** This causes severe coupling, easily exhausts database connection pools, and bypasses the API layer's input validation and security controls.
-*   **Proposed Fix:** AST Workers must communicate via HTTP APIs (e.g., `POST /ingest-results`). The API server should unify writing and handle database transactions.
+1.  **Git Orphan Branch (`docuvia-knowledge`) = The Event Store / Packfile**
+    *   This is the **absolute Single Source of Truth (SSOT)**.
+    *   Knowledge is *never* overwritten; it evolves. Every extraction or human correction is an Append-Only commit.
+    *   Git Commits inherently provide *Identity* and *Evolution History*. We don't resolve database sync conflicts; we resolve Git branch merges.
+2.  **Local SQLite = The Local HEAD Index**
+    *   It is **not** an SSOT. It is an ephemeral, highly optimized *projection* (Read Model) of the local Git branch.
+    *   It operates frictionlessly via Git Hooks (e.g., `post-commit`). When a developer commits, a hook extracts knowledge and updates the local SQLite index to provide instant, token-saving context to local AI Agents.
+    *   **Resolution to ADR-002 vs ADR-019:** Local SQLite doesn't need heavy `sqlite-vss` or `pgvector`. It provides topological, structural (AST), and keyword context to save AI tokens locally. Deep semantic search is gracefully deferred to the server.
+3.  **Server PostgreSQL (`pgvector`) = The Global Aggregation Index**
+    *   The server is effectively like GitHub/GitLab. It clones all branches across all projects.
+    *   It projects these branches into a giant PostgreSQL database to provide cross-project, high-dimensional semantic search (`pgvector`) and heavy AI distillation.
+    *   **Resolution to ADR-014 (DB-as-IPC):** Local Git Hooks write to the local Git Branch and SQLite. The Server consumes the Git Branch via standardized Git Pull operations or webhooks, effectively eliminating the "direct DB connection from client workers" security risk.
 
-## 4. Aggressive Last-Write-Wins (LWW) Sync Strategy
-*   **Conflict:** `knowledge-graph/store.md` defines that conflicts during local and remote sync are resolved by overwriting (Last-Write-Wins).
-*   **Issue:** For a knowledge system, LWW will silently overwrite and lose important manual corrections made by developers.
-*   **Proposed Fix:** Introduce CRDTs, Operational Transforms (OT), or provide a manual Git-style conflict resolution UI.
+## Paradigm Shifts
 
-## 5. Local-First Vision vs Server-Dependent Features
-*   **Conflict:** `04-solution-strategy.md` claims a Local-First architecture, but advanced features (Agentic RAG, Swarm Evolution) fully depend on the server.
-*   **Issue:** The terminology is misleading, and the User Journeys lack definitions for offline experiences.
-*   **Proposed Fix:** Clearly clarify that "Local-First" only applies to "reading cached graphs and basic navigation", while all AI-generated and extraction operations require an online state.
+*   **No more "Last-Write-Wins (LWW)" data loss:** Since everything is an Append-Only Git commit on the `docuvia-knowledge` branch, conflicting knowledge edits are resolved via standard Git merge mechanics, preserving all historical context.
+*   **Invisible Integration:** Docuvia is an invisible preprocessor (like ESLint). It hooks into VCS to build high-density context, solving the **Cognitive Gap** and drastically reducing the token cost (and hallucination rate) of AI coding agents like Cursor or Claude Code.

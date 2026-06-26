@@ -115,11 +115,25 @@ When an AI Agent (e.g., `Task Verifier`, `QA`, or `Explore` subagent) executes a
 ### 1. Mandatory Pre-Conditions
 - Before starting, the Agent must read [`AGENTS.md`](../../AGENTS.md) to understand the project conventions.
 - The Agent must cross-reference the feature's `Evidence / Verification Target` against its governing `ADR`.
+- The Agent must read `docs/reports/.verification-index.json` to understand which items have already been verified.
 
-### 2. Reporting Format
+### 2. Target Selection (Cron Mode)
+When running as a cron job (e.g., `Docuvia Design Verification`), the Agent MUST:
+1. **Read `docs/reports/.verification-index.json`** to identify unverified items.
+2. **Priority order**: Items with `status: "todo"` (never verified) > items with `status: "warn"` or `status: "error"` (re-verify after code changes) > items with `status: "done"` (skip unless code changed).
+3. **One item per invocation**: Verify only ONE item per cron run. Do not batch.
+4. **Full cycle**: Only after all items in a phase are verified should the agent move to re-verification of WARN/ERROR items.
+
+### 3. Duplicate Report Detection
+Before writing a new report, the Agent MUST check if a report already exists for the same topic:
+1. **Search pattern**: Look for files in `docs/reports/` matching `*_phase-X_<feature-slug>.md` (e.g., `0625_phase-1_cors-config.md` and `0626_phase-1_cors-config.md` are the same topic).
+2. **If duplicate exists**: Merge/update the existing report with new findings. Update the `Date` field to the latest verification date. Preserve historical findings that remain relevant.
+3. **If no duplicate**: Create a new report using the naming convention `MMDD_phase-X_feature-name.md`.
+
+### 4. Reporting Format
 If a discrepancy is found (e.g., a feature marked as `✅ Done` is actually missing, using a fallback, or violates its ADR constraint), the Agent MUST:
 1. **Inject a TODO in the source code**: Immediately add `// TODO: [CRITICAL BUG FIX] - <Description>` in the exact `.ts` or `.tsx` file that is failing.
-2. **Generate a Report**: Create a detailed Markdown report in the `docs/reports/` directory using the naming convention `MMDD_phase-X_feature-name.md` (e.g., `0625_phase-2_git-ingestion.md`).
+2. **Generate/Update a Report**: Create or update a detailed Markdown report in the `docs/reports/` directory using the naming convention `MMDD_phase-X_feature-name.md`.
 3. **Report Template**:
    ```markdown
    # Verification Report: [Feature Name]
@@ -134,4 +148,11 @@ If a discrepancy is found (e.g., a feature marked as `✅ Done` is actually miss
    ### Recommended Fix
    [Actionable steps for the Developer Agent to implement the fix]
    ```
-4. **Update Action Plan**: Append a summary of the failure to the `master-roadmap.md` under the relevant Phase's **Precautions** section to prevent future regressions.
+4. **Update Verification Index**: Update `docs/reports/.verification-index.json` with the new status, report filename, and verification date.
+5. **Update Checklist**: Update the checklist row's `Evidence / Verification Target` column to reference the report file.
+6. **Update Action Plan**: Append a summary of the failure to the `master-roadmap.md` under the relevant Phase's **Precautions** section to prevent future regressions.
+
+### 5. Git Commit Rules
+- **Reports in `docs/reports/` are committed to git** (shared with team).
+- **`docs/reports/.verification-index.json` is NOT committed** (local-only, add to `.gitignore`). It is used solely by the cron agent to track verification state.
+- Commit message format: `verify(phase-X): <feature-name> — <status>`.

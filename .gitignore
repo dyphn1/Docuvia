@@ -54,3 +54,6 @@ blob-report/
 # Replit
 .cache/
 .local/
+
+# Verification state (local-only, used by hermes cron)
+docs/reports/.verification-index.json

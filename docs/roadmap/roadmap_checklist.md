@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist (Comprehensive Audit)
 
-|> Audited: 2026-07-28 (feat: Batch Write Optimization — chunked batch INSERTs for AST ingestion pipeline) | Source-code verified via Agentic Exploration & Adversarial Audit
+> Audited: 2026-07-28 (feat: Batch Write Optimization — chunked batch INSERTs for AST ingestion pipeline) | Source-code verified via Agentic Exploration & Adversarial Audit
 
 > **Legend:**
 > ✅ **Done** = Implemented and Verified Functional
@@ -20,7 +20,7 @@
 | [LLM abstraction layer](../design/adrs/ADR-004-openai-compatible-llm-interface-only.md) | ⚠️ WARN | [`integrations-openai-ai-server`](../../lib/integrations-openai-ai-server/) (Only OpenAI supported)                                                                     |
 | Per-project model switching                                                             | ✅ Done | [`llm_configs.ts`](../../lib/db/src/schema/llm_configs.ts)                                                                                                              |
 | CI/CD pipeline                                                                          | ✅ Done | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (Fixed `.prettierignore` exclusions; formatted all files — lint passes clean)                              |
-| Mutex / Concurrency Control                                                             | ✅ Done | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) (Replaced in-memory flag with PG advisory lock; added Bearer token auth to public tick endpoint) |
+| Mutex / Concurrency Control                                                             | ✅ Done | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) (Uses PG advisory lock `pg_try_advisory_lock(123456789)` + `requireApiKey` on tick endpoint) |
 
 ## [Phase 2 | Input Layer](master-roadmap.md#phase-2-local-first-vs-code-client)
 
@@ -103,13 +103,13 @@
 | [Token Limits & Chunking Configs](../design/adrs/ADR-009-token-management.md)                  | ✅ Done                          | `extension.ts`                                                                       |
 | `docuvia sync` Bidirectional CLI                                                               | ⚠️ WARN | [`sync.ts`](../../artifacts/api-server/src/routes/sync.ts) (CLI calls wrong endpoint; githook incompatible; see [report 0626_phase-8_docuvia-sync-cli](../../reports/0626_phase-8_docuvia-sync-cli.md)) |
 | AST Microkernel Architecture                                                                   | ⚠️ WARN | [`@workspace/ast-core`](../../artifacts/ast-core/) (Core parser + Topology Mapping + Edge Creation + Batch Write Optimization implemented; missing: incremental fast-path, cross-language edges; see [report 0626_phase-5_ast-microkernel](../../reports/0626_phase-5_ast-microkernel.md)) |
-| Zero-Server Deep Traversal                                                                     | 🔲 TODO                          | Requires pure local SQLite queries                                                   |
+| Zero-Server Deep Traversal                                                                     | � TODO                          | Requires pure local SQLite queries                                                   |
 | Local Context Compression                                                                      | 🔲 TODO                          | Token reduction pipeline                                                             |
 | Sub-second Incremental Watch                                                                   | 🔲 TODO                          | Fast-path AST updates                                                                |
 
 ---
 
-## 🤖 Verification Reporting Protocol
+� Verification Reporting Protocol
 
 When an AI Agent (e.g., `Task Verifier`, `QA`, or `Explore` subagent) executes a validation task on the codebase based on this checklist, the Agent **MUST** document its findings using the following protocol. This ensures a closed loop between code reality, documentation, and the issue tracker.
 

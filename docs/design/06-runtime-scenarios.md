@@ -217,11 +217,11 @@ sequenceDiagram
     participant LocalDB as Local SQLite (HEAD Index)
     
     Agent->>Hook: Intends to Grep/Glob/Read codebase
-    Hook->>CLI: Intercept with `docuvia query local --context <query>`
+    Hook->>CLI: Intercept with `docuvia query "<query>" --local --format=prompt`
     CLI->>LocalDB: AST Topology + File Path Match
     LocalDB-->>CLI: Return exact L2 Module & L3 Rules
-    CLI-->>Hook: High-density context prompt
-    Hook-->>Agent: Inject `=== Docuvia Context ===` into tool output
+    CLI-->>Hook: High-density XML-like context prompt
+    Hook-->>Agent: Inject `<docuvia_context>` into tool output
     Note over Agent,LocalDB: Fast, offline, 0 LLM Tokens used, aligns Cognitive Baseline
 ```
 

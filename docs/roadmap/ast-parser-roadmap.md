@@ -9,15 +9,17 @@
 
 ### Phase 4: Resilience & Scalability
 
-- [ ] **Batch Write Optimization** — Streaming chunked batch INSERTs for large `.jsonl` files to avoid overwhelming PostgreSQL.
+- [x] **Batch Write Optimization** — Streaming chunked batch INSERTs for large `.jsonl` files to avoid overwhelming PostgreSQL.
   - Target file: `artifacts/api-server/src/lib/ast-ingestion-pipeline.ts`
-  - Key logic: Stream-read `.jsonl` → batch INSERT every N records → avoid memory bloat
+  - Key logic: 4-phase streaming pipeline (collect → batch L2 → batch L3 → batch links). BATCH_INSERT_CHUNK=500, .onConflictDoNothing(), single pre-load of existing nodes.
+  - Status: ✅ Done (2026-07-28)
 
 ### Phase 5: AST Microkernel Advanced Features
 
-- [ ] **Incremental Fast-Path** — Use `git diff-tree -M` for O(1) delta detection, only re-parse changed files.
+- [x] **Incremental Fast-Path** — Use `git diff-tree -M` for O(1) delta detection, only re-parse changed files.
   - Target file: `artifacts/api-server/src/lib/ast-ingestion-pipeline.ts`
-  - Key logic: `git diff-tree -M` → compare against `project_files` table → parse only changed/new files
+  - Key logic: `detectChangedFiles()` + `updateFileHashes()` + `mode: "incremental"` wired in ingest.ts and ast-ingestion-pipeline.ts
+  - Status: ✅ Done (2026-07-28)
 
 - [x] **Cross-Language Edges** — Cross-language dependency edge detection (API Contracts, framework-specific AST tracking).
   - Target file: `artifacts/ast-core/src/bridge-provider.ts` → wired in `artifacts/api-server/src/lib/ast/ast-worker.ts`

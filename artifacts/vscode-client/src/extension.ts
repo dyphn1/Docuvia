@@ -104,7 +104,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     vscode.languages.registerHoverProvider(
       [
-        { language: "yaml", pattern: "**/.docuvia/*.yaml" },
         { language: "markdown", pattern: "**/.docuvia/l3_decisions/*.md" },
       ],
       hoverProvider
@@ -716,7 +715,7 @@ async function initProject(
 
       vscode.commands.executeCommand("docuvia.refreshKnowledgeGraph");
       void vscode.window.showInformationMessage(
-        `Docuvia: Project "${projectName}" initialized. Populate the YAML files to build your knowledge graph.`
+        `Docuvia: Project "${projectName}" initialized. Populate the local.db to build your knowledge graph.`
       );
     }
   }

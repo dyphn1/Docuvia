@@ -20,7 +20,7 @@ flowchart TD
     CheckNet -- Offline --> ErrorNet[Chat Warning: Connect Failed / Offline Heuristics]
     CheckNet -- Online --> PromptInit[Show Chat Card: New / Connect / Demo]
     PromptInit --> Consent[Request Explicit Scaffolding Consent]
-    Consent --> ScaffoldInit[Generate l1_tags.yaml, _project_profile.yaml]
+    Consent --> ScaffoldInit[Generate local.db]
 
     Path -->|/explore| Explore[Query Local SQLite for Project Topology]
     Explore --> Match{Template matches?}
@@ -45,7 +45,7 @@ flowchart TD
 
   #### 1. Keyword type override (fast path)
 
-  If the user's prompt contains a recognised project-type token (`backend`, `frontend`, `library`, `data-science`, `cli`, `fullstack`, `monorepo`), Docuvia skips workspace detection and immediately matches the token against the built-in `L1_TEMPLATES` array. The matching template's tags are serialised to YAML and streamed to chat.
+  If the user's prompt contains a recognised project-type token (`backend`, `frontend`, `library`, `data-science`, `cli`, `fullstack`, `monorepo`), Docuvia skips workspace detection and immediately matches the token against the built-in `L1_TEMPLATES` array. The matching template's tags are formatted as markdown and streamed to chat.
 
   > ⚠️ NOTE: `data-science` is present in `TYPE_TOKENS` (`ChatParticipant.ts:157`) but has no corresponding entry in `L1_TEMPLATES`. The `if (template)` guard never fires, so workspace detection is **not** skipped – this is a dead token and a known code gap (addressed in Round 2).
 
@@ -54,7 +54,7 @@ flowchart TD
   When no type keyword is found:
   1. Reads `README.md` and `package.json` from `workspaceFolders[0]` (first workspace only).
   2. Calls `detectProjectTypes()` – scores each of the 6 built-in templates by counting how many of the template's `keywords` appear in the README text (lowercased) or the `package.json` dependency names. Returns all templates with a non-zero score.
-  3. If one or more templates match, calls `refineTagsWithLM()` – sends the detected template tags and the README excerpt to `request.model` (the user's currently selected Copilot model) for refinement. The AI is instructed to generate a comprehensive list (typically 10-25 tags) of YAML L1 tags.
+  3. If one or more templates match, calls `refineTagsWithLM()` – sends the detected template tags and the README excerpt to `request.model` (the user's currently selected Copilot model) for refinement. The AI is instructed to generate a comprehensive list (typically 10-25 tags) of structured L1 tags.
   4. **Dynamic AI Analysis**: If no built-in template matches, it calls `generateTagsDynamically()` – sending all discovered `dependencies`/`devDependencies` and the README excerpt to `request.model` for zero-shot architectural analysis. The AI dynamically generates 10-25 custom L1 tags based on the domain (e.g. Data Science, IoT, Game Engine).
   5. If dynamic AI analysis also fails (e.g. API error), it falls back to an interactive clarification message asking the user to reply with `/explore <type>`.
 
@@ -71,9 +71,9 @@ flowchart TD
 
   #### 4. Output Rendering and Accept Action
 
-  The resulting YAML from either the static templates or dynamic AI analysis is parsed by `formatYamlAsTable()` and presented to the user as a clean Markdown table in the chat (showing Name and Description).
+  The resulting structured data from either the static templates or dynamic AI analysis is parsed by `formatYamlAsTable()` and presented to the user as a clean Markdown table in the chat (showing Name and Description).
 
-  After streaming the table, Docuvia renders a `stream.button` with the label **"Accept & Write to .docuvia/l1_tags.yaml"**. Clicking it invokes the internal command `docuvia.acceptL1Tags(yamlContent)` (registered in [`extension.ts`](../../src/extension.ts)), which writes the raw YAML directly to `workspaceFolders[0]/.docuvia/l1_tags.yaml`.
+  After streaming the table, Docuvia renders a `stream.button` with the label **"Accept & Write to .docuvia/local.db"**. Clicking it invokes the internal command `docuvia.acceptL1Tags(tagData)` (registered in [`extension.ts`](../../src/extension.ts)), which writes the tags directly to `workspaceFolders[0]/.docuvia/local.db`.
 
   > ⚠️ **Single-workspace limitation**: `docuvia.acceptL1Tags` is hardcoded to write to `vscode.workspace.workspaceFolders?.[0]`, i.e. the **first** workspace folder. In a multi-root workspace with the second folder active, the tags will be written to the wrong project. The command is registered with `enablement: never` to prevent it from being invoked directly from the Command Palette.
 
@@ -88,7 +88,7 @@ flowchart TD
   - **Missing/Corrupt Configurations**: If existing `.docuvia/` files are corrupted, it prompts with a `[Repair Workspace](command:docuvia.repair)` button.
   - **Network Failures**: If "Connect" is chosen but the API is unreachable, the system fails fast, displaying an offline warning and offering a fallback to initialize locally.
 - **Scaffolding Consent**:
-  - **Transparent Generation**: Before creating the `.docuvia` directory or any orphan branches, the participant generates proposed contents for `l1_tags.yaml` and `_project_profile.yaml` based on workspace analysis.
+  - **Transparent Generation**: Before creating the `.docuvia` directory or any orphan branches, the participant generates proposed contents for `local.db` based on workspace analysis.
   - **Preview & Explicit Confirmation**: These files are previewed directly in the chat as markdown code blocks. The user must explicitly consent by clicking an `[Approve & Generate](command:docuvia.approveScaffold)` button or by typing a clear affirmative (e.g., "Looks good, approve").
 
 ### `/query`

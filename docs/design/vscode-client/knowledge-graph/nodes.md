@@ -63,7 +63,7 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
 - **Icon**: `$(info)`
 - **Scenarios**:
   - No workspace open: "No workspace folder open".
-  - Empty `l1_tags.yaml`: "No L1 tags found in l1_tags.yaml".
+  - Empty `local.db`: "No L1 tags found in local.db".
 
 ## Data Management & Sync
 

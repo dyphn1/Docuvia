@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import Database from "better-sqlite3";
 import { KnowledgeStore } from "./KnowledgeStore.js";
 
 // ─── Node types ───────────────────────────────────────────────────────────────
@@ -77,29 +77,27 @@ export class KnowledgeGraphTreeProvider
       const snap = this.store.snapshots.get(target.workspaceRoot);
       if (!snap) return;
 
-      const routerPath = path.join(target.workspaceRoot, ".docuvia", "l3_router.yaml");
+      const dbPath = path.join(target.workspaceRoot, ".docuvia", "local.db");
       try {
-        const routerBytes = await vscode.workspace.fs.readFile(vscode.Uri.file(routerPath));
-        const existingRouter = parseYaml(Buffer.from(routerBytes).toString("utf-8")) || [];
-
+        const db = new Database(dbPath);
+        const updateStmt = db.prepare("UPDATE l3_nodes SET l2_node_id = ?, updated_at = ? WHERE id = ?");
         let changed = false;
+
+        const now = new Date().toISOString();
         for (const node of l3Nodes) {
-          const entry = existingRouter.find((r: any) => r.id === node.id);
-          if (entry) {
-            entry.l2_module_id = target.id;
+          const result = updateStmt.run(target.id, now, node.id);
+          if (result.changes > 0) {
             changed = true;
           }
         }
 
+        db.close();
+
         if (changed) {
-          await vscode.workspace.fs.writeFile(
-            vscode.Uri.file(routerPath),
-            Buffer.from(stringifyYaml(existingRouter), "utf-8")
-          );
           await this.store.load();
         }
       } catch (e) {
-        console.error("Failed to update l3_router.yaml after drag and drop", e);
+        console.error("Failed to update local.db after drag and drop", e);
       }
     }
   }
@@ -211,7 +209,7 @@ export class KnowledgeGraphTreeProvider
           {
             kind: "placeholder",
             id: `__placeholder__${node.id}`,
-            label: "No L1 tags found in l1_tags.yaml",
+            label: "No L1 tags found in local.db",
           },
         ];
       }

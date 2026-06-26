@@ -194,14 +194,14 @@ The following topics require future architectural decisions. See the [master roa
 **Status:** Accepted
 
 **Context:**  
-The original design stored knowledge in PostgreSQL exclusively, with `.docuvia/` YAML files as a local working copy managed by the VS Code extension. This created two problems: (1) `.docuvia/` files were too large to commit into the working tree for large projects, as every branch checkout would carry the entire knowledge snapshot; (2) there was no mechanism to sync knowledge between developers without a live server connection.
+The original design stored knowledge in PostgreSQL exclusively, with `.docuvia/` SQLite databases as a local working copy managed by the VS Code extension. This created two problems: (1) `.docuvia/` files were too large to commit into the working tree for large projects, as every branch checkout would carry the entire knowledge snapshot; (2) there was no mechanism to sync knowledge between developers without a live server connection.
 
 **Decision:**  
 Knowledge is stored in three layers with distinct responsibilities:
 
 - **PostgreSQL** — full company-wide knowledge index, query engine, and review queue backend.
-- **`docuvia-knowledge` orphan git branch** — the canonical, human-readable YAML/Markdown knowledge files, versioned independently of source code. Managed by the Docuvia server. Developers fetch this branch to get the latest knowledge snapshot.
-- **`.docuvia/` (working tree)** — a lightweight manifest (`manifest.yaml`, `config.yaml`, `.snapshot-ref`) that points to the orphan branch HEAD. Committed to the source repo. Does NOT contain full knowledge content.
+- **`docuvia-knowledge` orphan git branch** — the canonical, human-readable SQLite/Markdown knowledge files, versioned independently of source code. Managed by the Docuvia server. Developers fetch this branch to get the latest knowledge snapshot.
+- **`.docuvia/` (working tree)** — a lightweight manifest (`local.db`, `local.db`, `.snapshot-ref`) that points to the orphan branch HEAD. Committed to the source repo. Does NOT contain full knowledge content.
 
 The git hook (`post-push`) triggers `docuvia sync`, which uploads local changes to the server. The server writes back to the orphan branch.
 
@@ -224,7 +224,7 @@ The git hook (`post-push`) triggers `docuvia sync`, which uploads local changes 
 The generate pipeline inserts a new L3 node for every commit processed, with no deduplication. A large project with many commits touching the same design concern (e.g., “JWT is used for authentication”) would produce dozens of near-identical L3 nodes, violating the principle that knowledge should be condensed, not accumulated redundantly.
 
 **Decision:**  
-Before inserting a new L3 node, the pipeline computes cosine similarity between the candidate's embedding and all existing L3 nodes under the same L2 parent. If similarity ≥ 0.85 (configurable in `.docuvia/config.yaml` as `similarity_threshold`):
+Before inserting a new L3 node, the pipeline computes cosine similarity between the candidate's embedding and all existing L3 nodes under the same L2 parent. If similarity ≥ 0.85 (configurable in `.docuvia/local.db` as `similarity_threshold`):
 
 1. The new node is NOT inserted.
 2. The matching existing node's `occurrenceCount` is incremented.
@@ -257,7 +257,7 @@ The first generate run uses a progressive batch mode: commits are processed in g
 
 Upon human confirmation:
 
-- L2 module boundaries are written as glob path patterns to `.docuvia/config.yaml` under `modules:`.
+- L2 module boundaries are written as glob path patterns to `.docuvia/local.db` under `modules:`.
 - All future commits are assigned to L2 modules deterministically by path matching — LLM is no longer used for L2 assignment.
 - Historical `commit_l2_links` rows are flagged with `reindexRequired: true` and retroactively corrected on the next generate run.
 

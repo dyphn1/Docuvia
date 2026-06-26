@@ -2,6 +2,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { minimatch } from "minimatch";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import Database from "better-sqlite3";
 import { ExtractionTask, TaskQueueTreeProvider, TaskType } from "./TaskQueueTreeProvider.js";
 import { KnowledgeStore, KnowledgeGraphSnapshot } from "./KnowledgeStore.js";
 import { KGNode } from "./KnowledgeGraphTreeProvider.js";
@@ -188,78 +189,69 @@ If you are not confident about an item, exclude it from the array.`;
     mapping: Array<Record<string, unknown>>,
     snap: KnowledgeGraphSnapshot
   ): Promise<void> {
-    const routerUri = vscode.Uri.file(path.join(workspaceRoot, ".docuvia", "l3_router.yaml"));
-    const modulesUri = vscode.Uri.file(path.join(workspaceRoot, ".docuvia", "l2_modules.yaml"));
-
-    let existingRouter: any[] = [];
-    let existingModules: any[] = [];
-
+    const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
+    
+    let db: Database.Database;
     try {
-      const routerBytes = await vscode.workspace.fs.readFile(routerUri);
-      existingRouter = parseYaml(Buffer.from(routerBytes).toString("utf-8")) || [];
-    } catch {}
-
-    try {
-      const modulesBytes = await vscode.workspace.fs.readFile(modulesUri);
-      existingModules = parseYaml(Buffer.from(modulesBytes).toString("utf-8")) || [];
-    } catch {}
+      db = new Database(dbPath);
+    } catch (err) {
+      this.outputChannel.appendLine(`[Docuvia/TaskRunner] Failed to open database: ${String(err)}`);
+      return;
+    }
 
     const { v4: uuidv4 } = await import("uuid");
 
-    let modulesChanged = false;
-    let routerChanged = false;
+    let changed = false;
 
     // First process newly proposed L2 modules to create their IDs
     for (const item of mapping) {
       if (item.new_l2_name && item.l1_id && !item.target_l2_id) {
         // check if it already exists in the newly added ones
-        let existingNew = existingModules.find(
-          (m) => m.name === item.new_l2_name && m.l1_tag_id === item.l1_id
-        );
-        if (!existingNew) {
-          existingNew = {
-            id: uuidv4(),
-            slug: String(item.new_l2_name)
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, "-"),
-            l1_tag_id: String(item.l1_id),
-            name: item.new_l2_name,
-            description: `Auto-generated module for ${item.new_l2_name}`,
-            source_paths: [],
-          };
-          existingModules.push(existingNew);
-          modulesChanged = true;
+        const stmt = db.prepare("SELECT id FROM l2_nodes WHERE name = ? AND l1_tag_id = ?");
+        const existingRow = stmt.get(item.new_l2_name, item.l1_id) as any;
+        
+        if (!existingRow) {
+          const newId = uuidv4();
+          const slug = String(item.new_l2_name)
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-");
+            
+          const insertStmt = db.prepare(
+            "INSERT INTO l2_nodes (id, slug, l1_tag_id, name, description, source_paths, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+          );
+          
+          insertStmt.run(
+            newId,
+            slug,
+            String(item.l1_id),
+            item.new_l2_name,
+            `Auto-generated module for ${item.new_l2_name}`,
+            JSON.stringify([]),
+            new Date().toISOString(),
+            new Date().toISOString()
+          );
+          changed = true;
+          item.target_l2_id = newId;
+        } else {
+          item.target_l2_id = existingRow.id;
         }
-        item.target_l2_id = existingNew.id;
       }
     }
 
-    // Now update router entries
+    // Now update router entries (l3_nodes)
     for (const item of mapping) {
       if (item.target_l2_id && item.l3_id) {
-        // Find the decision in router
-        const routerEntry = existingRouter.find((r) => r.id === item.l3_id);
-        if (routerEntry) {
-          routerEntry.l2_module_id = item.target_l2_id;
-          routerChanged = true;
+        const updateStmt = db.prepare("UPDATE l3_nodes SET l2_node_id = ?, updated_at = ? WHERE id = ?");
+        const result = updateStmt.run(item.target_l2_id, new Date().toISOString(), item.l3_id);
+        if (result.changes > 0) {
+          changed = true;
         }
       }
     }
 
-    if (modulesChanged) {
-      await vscode.workspace.fs.writeFile(
-        modulesUri,
-        Buffer.from(stringifyYaml(existingModules), "utf-8")
-      );
-    }
-    if (routerChanged) {
-      await vscode.workspace.fs.writeFile(
-        routerUri,
-        Buffer.from(stringifyYaml(existingRouter), "utf-8")
-      );
-    }
+    db.close();
 
-    if (modulesChanged || routerChanged) {
+    if (changed) {
       await this.store.load();
     }
   }
@@ -405,28 +397,25 @@ If you are not confident about an item, exclude it from the array.`;
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-");
 
-    const newRouterEntries: Array<{
-      id: string;
-      l2_module_id: string;
-      slug: string;
-      title: string;
-      file_path: string;
-    }> = [];
+    const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
+    let db: Database.Database;
+    try {
+      db = new Database(dbPath);
+    } catch (err) {
+      this.outputChannel.appendLine(`[Docuvia/TaskRunner] Failed to open database: ${String(err)}`);
+      return;
+    }
+
+    const insertStmt = db.prepare(
+      "INSERT INTO l3_nodes (id, l2_node_id, slug, title, status, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    );
 
     for (let i = 0; i < decisions.length; i++) {
       const id = uuidv4();
       const slug = `${sourceSlug}-extracted-${i + 1}`;
       const safeTitle = path.basename(sourceFile).replace(/"/g, '\\"').replace(/:/g, " -");
       const mdContent = [
-        "---",
-        `id: "${id}"`,
-        `l2_module_id: "${matchedL2Id}"`,
-        `title: "Extracted from ${safeTitle} (${i + 1})"`,
-        `date: "${date}"`,
-        `status: "proposed"`,
-        "---",
-        "",
-        `## Extracted Decisions`,
+        "## Extracted Decisions",
         "",
         "```yaml",
         decisions[i],
@@ -435,36 +424,19 @@ If you are not confident about an item, exclude it from the array.`;
         `> _Auto-extracted from \`${sourceFile}\`. Review and edit this file to promote to accepted._`,
       ].join("\n");
 
-      const uri = vscode.Uri.file(
-        path.join(workspaceRoot, ".docuvia", "l3_decisions", `${slug}.md`)
-      );
-      await vscode.workspace.fs.writeFile(uri, Buffer.from(mdContent, "utf-8"));
-      newRouterEntries.push({
+      insertStmt.run(
         id,
-        l2_module_id: matchedL2Id,
+        matchedL2Id,
         slug,
-        title: `Extracted from ${safeTitle} (${i + 1})`,
-        file_path: `l3_decisions/${slug}.md`,
-      });
+        `Extracted from ${safeTitle} (${i + 1})`,
+        "proposed",
+        mdContent,
+        new Date().toISOString(),
+        new Date().toISOString()
+      );
     }
 
-    // Update l3_router.yaml with the new entries
-    const routerUri = vscode.Uri.file(path.join(workspaceRoot, ".docuvia", "l3_router.yaml"));
-    let existingText = "";
-    try {
-      const routerBytes = await vscode.workspace.fs.readFile(routerUri);
-      existingText = Buffer.from(routerBytes).toString("utf-8");
-    } catch {
-      // file absent — start fresh
-    }
-
-    let updatedText = existingText;
-    if (updatedText.length > 0 && !updatedText.endsWith("\n")) {
-      updatedText += "\n";
-    }
-    updatedText += stringifyYaml(newRouterEntries);
-
-    await vscode.workspace.fs.writeFile(routerUri, Buffer.from(updatedText, "utf-8"));
+    db.close();
   }
 
   private chunkContent(content: string): string[] {

@@ -45,11 +45,11 @@ Defined in [`package.json`](../../../../artifacts/vscode-client/package.json) ->
 
 ---
 
-## Global Config (`~/.docuvia/config.yaml`)
+## Global Config (`~/.docuvia/local.db`)
 
 In addition to VS Code workspace settings, Docuvia reads a **global user-level config file** at activation time. This file applies across all workspaces on the machine.
 
-- **File path**: `~/.docuvia/config.yaml` (resolved via `os.homedir()`)
+- **Database path**: `~/.docuvia/local.db` (resolved via `os.homedir()`)
 - **Read at**: Extension activation (`extension.ts` → before `store.load()`)
 - **Stored in**: `KnowledgeStore.globalConfig` and passed to `TaskRunner`
 
@@ -61,18 +61,9 @@ In addition to VS Code workspace settings, Docuvia reads a **global user-level c
 | `chunking_strategy` | `'line' \| 'ast'`    | `'line'`  | How `TaskRunner` splits files before sending to the LLM. `'ast'` falls back to line chunking (not yet implemented). |
 | `telemetry.enabled` | `boolean`            | `true`    | Controls whether telemetry events are reported.                                                                     |
 
-### Example file
-
-```yaml
-server_url: "https://docuvia.example.com"
-chunking_strategy: line
-telemetry:
-  enabled: false
-```
-
 ### Fallback behaviour
 
-If `~/.docuvia/config.yaml` does not exist or cannot be read, Docuvia logs the absence and continues with all defaults applied (i.e., no `server_url`, `line` chunking, telemetry enabled).
+If `~/.docuvia/local.db` does not exist or cannot be read, Docuvia logs the absence and continues with all defaults applied (i.e., no `server_url`, `line` chunking, telemetry enabled).
 
 ---
 

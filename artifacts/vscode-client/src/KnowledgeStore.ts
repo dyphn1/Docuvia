@@ -303,7 +303,7 @@ export class KnowledgeStore {
       const scheduleReload = (uri: vscode.Uri) => {
         // Ignore temp / non-knowledge files
         const ext = uri.fsPath.split(".").pop()?.toLowerCase();
-        if (ext !== "yaml" && ext !== "md") return;
+        if (ext !== "db" && ext !== "md") return;
 
         pendingChanges.add(uri.fsPath);
         if (debounceTimer !== undefined) clearTimeout(debounceTimer);

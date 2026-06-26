@@ -138,7 +138,7 @@
         "commands": [
           {
             "name": "explore",
-            "description": "Detect project type and suggest L1 tags for .docuvia/l1_tags.yaml"
+            "description": "Detect project type and suggest L1 tags for .docuvia/local.db"
           },
           {
             "name": "query",

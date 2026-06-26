@@ -2,7 +2,7 @@
 
 ## Core Pain Points & Objectives
 
-Achieve a "Zero to One" onboarding experience within 1 minute without forcing users to learn YAML. Prevent Token explosions and AI hallucinations using a "Pre-scanning, Intelligent Proposal, and Human Consent" flow.
+Achieve a "Zero to One" onboarding experience within 1 minute without forcing users to manage SQLite directly. Prevent Token explosions and AI hallucinations using a "Pre-scanning, Intelligent Proposal, and Human Consent" flow.
 Incorporate Tolaria-inspired "First Launch" principles:
 
 - **User Autonomy (Clear Choices):** Provide explicit options rather than forcefully initializing a workspace.
@@ -38,7 +38,7 @@ sequenceDiagram
     VSC-->>User: Present QuickPick/Chat UI with proposals
     User->>VSC: Confirms or Modifies Tags
     VSC->>LocalDB: Write to Local SQLite Cache (SyncOutbox)
-    VSC->>FS: Generate _project_profile.yaml
+    VSC->>LocalDB: Generate profile tables in local.db
 ```
 
 ### 1. State Checkpoint & The `/init` Command UX (Clear Choices)
@@ -68,9 +68,9 @@ sequenceDiagram
 
 - Never blindly writes to YAML. Distinguishes between "Certain Technical Dimensions" and "Inferred Business Dimensions" in the UI.
 
-### 6. Record & Cognitive Snapshot (`_project_profile.yaml`)
+### 6. Record & Cognitive Snapshot (`local.db`)
 
-- Alongside `l1_tags.yaml`, generates a hidden `_project_profile.yaml` capturing the topology snapshot (e.g., CI/CD boundaries, primary depth). This acts as an $O(1)$ cache for future L2/L3 abstraction tasks, eliminating the need to rescan the workspace.
+- Generates a hidden profile table within `local.db` capturing the topology snapshot (e.g., CI/CD boundaries, primary depth). This acts as an $O(1)$ cache for future L2/L3 abstraction tasks, eliminating the need to rescan the workspace.
 
 ## Anchoring & Semantic Drift Prevention
 

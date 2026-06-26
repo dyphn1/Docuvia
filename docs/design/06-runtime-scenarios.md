@@ -165,7 +165,7 @@ sequenceDiagram
     API-->>TR: 202 { taskId }
     TR->>TR: Poll GET /extensions/vscode/tasks/:taskId until complete
     TR->>KS: KnowledgeStore.updateFromResult(result)
-    KS->>KS: Write l2_modules.yaml + l3_decisions/*.yaml to .docuvia/
+    KS->>KS: Write to .docuvia/local.db
     KS-->>VSC: Emit onDidChange event
     VSC->>VSC: KnowledgeGraphTreeProvider.refresh()
     VSC-->>Dev: TreeView updated with new nodes

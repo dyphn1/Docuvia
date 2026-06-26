@@ -13,7 +13,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 | B-1       | **Critical** | `TaskRunner` always writes `l2_module_id: ""` — all extracted decisions are orphaned                   | B, H              |
 | D-1       | **High**     | Journey descriptions previously claimed AST/hash anchoring — actual implementation is line-number only | D                 |
 | D-2       | **High**     | CodeLens drifts when lines are inserted above the anchored function                                    | D                 |
-| A-2       | **High**     | `acceptL1Tags` doesn't create `l2_modules.yaml` or `l3_decisions/` skeleton                            | A                 |
+| A-2       | **High**     | `acceptL1Tags` doesn't create `local.db` or `l3_decisions/` skeleton                            | A                 |
 | E-1       | **High**     | No prerequisite documentation for token setup — user hits 401 with no guidance                         | E                 |
 | E-2       | **High**     | Local `/query` uses naive `.includes()` — vocabulary-different terms return zero results               | E                 |
 | N-1       | **High**     | SearchResultsPanel mode has no local fallback when server is unavailable                               | N                 |
@@ -31,28 +31,28 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 1. User clicks the button. `docuvia.startExplore` fires, opening `@docuvia /explore` in Copilot Chat.
 2. Extension scans `package.json` and `README.md` in the first workspace folder.
 3. Project type is detected (or dynamically inferred via LLM fallback). A tailored L1 taxonomy is rendered as a Markdown table.
-4. User reviews the table and clicks **"Accept & Write to .docuvia/l1_tags.yaml"**.
-5. `docuvia.acceptL1Tags` fires and writes the YAML.
+4. User reviews the table and clicks **"Accept & Write to .docuvia/local.db"**.
+5. `docuvia.acceptL1Tags` fires and writes the tags.
 6. If `.docuvia/` already existed (e.g., from a prior `Init Project` run), the file is updated. The KG TreeView refreshes.
 
-**⚠️ Critical Workaround:** Step 4 only writes `l1_tags.yaml`. It does NOT create the `.docuvia/` directory, `l2_modules.yaml`, or `l3_decisions/`. Before clicking "Accept & Write", users must first run `Docuvia: Init Project` from the Command Palette to ensure the full skeleton exists (see Journey G). If the folder does not exist, the write fails silently.
+**⚠️ Critical Workaround:** Step 4 only writes `local.db`. It does NOT create the `.docuvia/` directory, `local.db`, or `l3_decisions/`. Before clicking "Accept & Write", users must first run `Docuvia: Init Project` from the Command Palette to ensure the full skeleton exists (see Journey G). If the folder does not exist, the write fails silently.
 
 ### Known Implementation Issues
 
 - **BUG A-1 [Critical]:** `acceptL1Tags` calls `vscode.workspace.fs.writeFile` without first calling `createDirectory`. If `.docuvia/` does not exist, the write throws `FileNotFound` — but only an "updated" toast is shown, masking the failure.
-- **BUG A-2 [High]:** `acceptL1Tags` never creates `l2_modules.yaml` or `l3_decisions/`. Any subsequent `store.load()` silently returns an empty snapshot for modules and decisions. The TreeView shows only L1 tags with no L2/L3 tree.
+- **BUG A-2 [High]:** `acceptL1Tags` never creates `local.db` or `l3_decisions/`. Any subsequent `store.load()` silently returns an empty snapshot for modules and decisions. The TreeView shows only L1 tags with no L2/L3 tree.
 - **BUG A-3 [Critical]:** In a multi-root workspace, `acceptL1Tags` always writes to `workspaceFolders[0]`. If the user ran `/explore` while focused on workspace #2, the tags for project #2 are written into project #1's `.docuvia/`. See Journey M.
 
 ### Bad Cases
 
 | Condition                                                            | Current Behavior                                                                                                                           | Expected Behavior                                                                     | Severity |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | -------- |
-| `.docuvia/` folder does not exist when "Accept & Write" is clicked   | Write silently fails. Toast says "updated" but no file is created.                                                                         | Extension creates the directory and all skeleton files before writing `l1_tags.yaml`. | Critical |
+| `.docuvia/` folder does not exist when "Accept & Write" is clicked   | Write silently fails. Toast says "updated" but no file is created.                                                                         | Extension creates the directory and all skeleton files before writing `local.db`. | Critical |
 | User is in a multi-root workspace and ran `/explore` on workspace #2 | Tags are written to workspace #1's `.docuvia/`, corrupting it.                                                                             | `acceptL1Tags` resolves target workspace from chat context.                           | Critical |
 | `README.md` is absent (e.g. a brand-new repo)                        | `/explore` continues without README content. Template detection relies on `package.json` only. May produce generic tags.                   | Acceptable — LLM fallback handles it. Warn user that results may be less accurate.    | Low      |
 | `package.json` is malformed JSON                                     | `JSON.parse` throws. Extension catches the error and continues with empty `pkgJson`. Project type detection falls through to LLM fallback. | Acceptable — LLM handles it. No crash.                                                | Low      |
 | LLM API is unavailable (no Copilot subscription / rate limit)        | `generateTagsDynamically` returns `null`. The interactive fallback message is shown asking the user to type their project type.            | Acceptable — fallback to interactive mode.                                            | Medium   |
-| User cancels the "Accept & Write" step and closes VS Code            | `.docuvia/` may exist (if `initProject` was run) with no `l1_tags.yaml`. On restart `store.load()` silently returns no tags.               | Extension should show a "pending" state in the TreeView, not silently empty.          | Low      |
+| User cancels the "Accept & Write" step and closes VS Code            | `.docuvia/` may exist (if `initProject` was run) with no `local.db`. On restart `store.load()` silently returns no tags.               | Extension should show a "pending" state in the TreeView, not silently empty.          | Low      |
 
 ---
 
@@ -69,7 +69,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 3. The extension scans recursively, filtering via `.gitignore` and `docuvia.extraction.includePatterns` (`minimatch`).
 4. Valid source files are chunked into the background `TaskQueue` (4000-char line-based chunks).
 5. Each chunk is sent to GPT-4o via the VS Code LM API. Results are parsed as YAML.
-6. L3 markdown decision files are written to `.docuvia/l3_decisions/`. `l3_router.yaml` is updated.
+6. L3 markdown decision files are written to `.docuvia/l3_decisions/`. `local.db` is updated.
 7. Task Queue TreeView shows progress per task. When all tasks complete, store is reloaded.
 
 **⚠️ Known Limitation:** All extracted decisions are saved with `l2_module_id: ""` (orphaned). They are never automatically linked to an L2 module. The phrase "automatically categorized under appropriate L2 Modules" from previous documentation was incorrect.
@@ -112,7 +112,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 
 ### Known Implementation Issues
 
-- **BUG C-1 [Medium]:** `addDecision` writes the L3 markdown file but does NOT append a new entry to `l3_router.yaml`. The router index is the primary lookup source for CodeLens and Hover. Decisions not in the router are invisible to those providers until a full reload of the router file occurs.
+- **BUG C-1 [Medium]:** `addDecision` writes the L3 markdown file but does NOT append a new entry to `local.db`. The router index is the primary lookup source for CodeLens and Hover. Decisions not in the router are invisible to those providers until a full reload of the router file occurs.
 - **BUG C-2 [Medium]:** When user selects "unassigned", `l2_module_id: "unassigned"` (a string sentinel, not UUID or empty) is written. Downstream systems expecting a UUID format may reject or silently skip this decision.
 - **BUG C-3 [Medium]:** No slug collision check. If a decision titled "Use Redis for caching" already exists, the second write with the same title silently overwrites the first. All content and the UUID of the first decision are permanently lost.
 
@@ -124,7 +124,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 | `.docuvia/` not initialized                                    | `addDecision` attempts to read `store.snapshot`. Modules list is empty. Decision may be written to wrong workspace path.                                           | Block command with "Initialize Docuvia first".                                  | High     |
 | User enters a title with only special characters (e.g., `!!!`) | Slug generation strips special characters. May produce an empty slug → file path becomes `.docuvia/l3_decisions/.md`. VS Code may error or write to a hidden file. | Validate slug is non-empty after generation.                                    | Medium   |
 | Decision title is identical to an existing decision            | Same slug computed. Existing `.md` file is overwritten silently.                                                                                                   | Check file existence before write; prompt "Overwrite?" or append `-2` suffix.   | Medium   |
-| L2 modules list is empty (no modules defined yet)              | QuickPick shows only "Create new module later…". User can only create orphaned decisions.                                                                          | Show hint: "Define L2 modules in `.docuvia/l2_modules.yaml` to link decisions." | Low      |
+| L2 modules list is empty (no modules defined yet)              | QuickPick shows only "Create new module later…". User can only create orphaned decisions.                                                                          | Show hint: "Define L2 modules in `.docuvia/local.db` to link decisions." | Low      |
 | User dismisses the title input box (presses Escape)            | `addDecision` returns early without writing any file. ✓                                                                                                            | Correct behavior.                                                               | —        |
 
 ---
@@ -151,7 +151,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 
 - **BUG D-1 [High]:** Previous design documents stated "robust AST-based or hash-based anchoring (Drift Protection)." The actual implementation uses `findDeclarationLines()` which is pure regex on line text. No AST parsing, no snippet hashing. This was a documentation error — now corrected.
 - **BUG D-2 [High]:** When lines are inserted above a function that has a lens, the lens shifts to the wrong line on the next render cycle. The decision annotation appears above the wrong function. This is the CodeLens Drift bug tracked in the roadmap.
-- **BUG D-3 [Medium]:** The `initProject` skeleton creates `l2_modules.yaml` with `source_paths: []` by default. New users who do not manually populate `source_paths` will never see any CodeLens. No UI guidance prompts them to populate these paths.
+- **BUG D-3 [Medium]:** The `initProject` skeleton creates `local.db` with `source_paths: []` by default. New users who do not manually populate `source_paths` will never see any CodeLens. No UI guidance prompts them to populate these paths.
 
 ### Bad Cases
 
@@ -172,7 +172,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 
 **Trigger:** A developer is designing a new RBAC system and types `@docuvia /query how do other projects handle RBAC?`.
 
-**Prerequisite:** A Docuvia server API token must be set via Journey K (Credential Setup), AND `server_url` must be configured in `~/.docuvia/config.yaml`. Without these, breadth queries silently return empty results or show "Authentication required."
+**Prerequisite:** A Docuvia server API token must be set via Journey K (Credential Setup), AND `server_url` must be configured in `~/.docuvia/local.db`. Without these, breadth queries silently return empty results or show "Authentication required."
 
 ### Happy Path
 
@@ -191,7 +191,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 
 | Condition                                                  | Current Behavior                                                                                                              | Expected Behavior                                                                                        | Severity |
 | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------- |
-| No `server_url` in `~/.docuvia/config.yaml`                | `CentralServerClient.query()` returns `[]` immediately. Tip to configure `server_url` is shown. ✓                             | Acceptable.                                                                                              | —        |
+| No `server_url` in `~/.docuvia/local.db`                | `CentralServerClient.query()` returns `[]` immediately. Tip to configure `server_url` is shown. ✓                             | Acceptable.                                                                                              | —        |
 | Token not set                                              | Server returns 401. `CentralServerAuthError` thrown. Chat shows "Authentication required. Run 'Docuvia: Set Server Token'." ✓ | Acceptable.                                                                                              | —        |
 | Central server is down / network unreachable               | `fetch` throws `TypeError`. Caught as generic error. Chat shows "_Cross-project search failed: TypeError: Failed to fetch_".  | Show user-friendly message: "Could not reach the Docuvia server. Check your connection or `server_url`." | Medium   |
 | User queries with vocabulary not matching stored decisions | Local `.includes()` returns zero results. No synonym suggestion.                                                              | Document as known limitation. LLM-based query expansion planned for Phase 5.                             | High     |
@@ -244,15 +244,15 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 2. If multi-root: QuickPick shows uninitialized folders. User selects one.
 3. `showInputBox` prompts for project name (pre-filled with folder name).
 4. If already initialized: warning "This project is already initialized. Overwrite?" → user chooses Overwrite or Cancel.
-5. Extension creates `.docuvia/` with skeleton: `l1_tags.yaml` (empty), `l2_modules.yaml` (empty), `l3_decisions/` folder.
+5. Extension creates `.docuvia/` with skeleton: `local.db` (empty), `local.db` (empty), `l3_decisions/` folder.
 6. `store.load()` is called. TreeView refreshes — project node appears as initialized.
-7. Later, user manually edits `l2_modules.yaml` in their editor of choice.
+7. Later, user manually edits `local.db` in their editor of choice.
 8. User runs `Docuvia: Refresh Knowledge Graph` (`docuvia.refreshKnowledgeGraph`).
 9. Store is reloaded. TreeView shows updated modules.
 
 ### Known Implementation Issues
 
-- **BUG G-1 [Low]:** `showInputBox` for project name does not validate for empty strings. Only `undefined` (Escape) aborts. Submitting an empty string writes `project_name: ""` to `l1_tags.yaml`. The TreeView shows a project node with a blank label.
+- **BUG G-1 [Low]:** `showInputBox` for project name does not validate for empty strings. Only `undefined` (Escape) aborts. Submitting an empty string writes `project_name: ""` to `local.db`. The TreeView shows a project node with a blank label.
 - **BUG G-2 [Medium]:** `KnowledgeStore.load()` uses a `_loading` flag + `_pendingReload` pattern for re-entrancy protection, but concurrent calls from the file-system watcher and explicit refresh command may race. If both fire in tight succession, one load may be dropped silently.
 
 ### Bad Cases
@@ -261,7 +261,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------- |
 | User submits empty project name                               | Skeleton is created with `project_name: ""`. TreeView shows blank project label.      | Add `validateInput` to reject empty names.                                        | Low      |
 | `docuvia.refreshKnowledgeGraph` when no `.docuvia/` exists    | Warning: "No .docuvia/ folder found in this workspace." ✓                             | Correct behavior.                                                                 | —        |
-| `.docuvia/l2_modules.yaml` contains malformed YAML            | `parseModules` throws. `store.load()` catches and continues with empty modules array. | Acceptable — but surface a parse error notification/warning icon in the TreeView. | Medium   |
+| `.docuvia/local.db` contains malformed SQLite data            | `parseModules` throws. `store.load()` catches and continues with empty modules array. | Acceptable — but surface a parse error notification/warning icon in the TreeView. | Medium   |
 | Overwrite confirmed on a workspace with actual knowledge data | All existing L1/L2/L3 content is destroyed.                                           | ⚠️ Warn user explicitly that overwriting will delete all existing knowledge data. | High     |
 
 ---
@@ -280,7 +280,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 4. **Gate 3 — File Size KB:** If file is > `docuvia.extraction.maxFileSizeKBWarning` KB (default 50), size warning appears. User proceeds.
 5. `taskRunner.queueExtraction()` is called. Task appears in Task Queue TreeView with status "Pending".
 6. `TaskRunner` chunks content into 4000-char line-based chunks. Each chunk is sent to GPT-4o.
-7. L3 decision `.md` files are written. `l3_router.yaml` is updated. Store is reloaded.
+7. L3 decision `.md` files are written. `local.db` is updated. Store is reloaded.
 8. Task status changes to "Done: N decision(s) extracted".
 9. User runs `Docuvia: Clear Completed Tasks` → done tasks removed from panel.
 
@@ -325,11 +325,11 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 9. File-system watcher triggers `store.load()`. TreeView shows decision under linked L2 module.
 10. Later, user navigates to the decision via the KG TreeView or `docuvia.openDecision`.
 
-**⚠️ Limitation:** `addDecision` does NOT update `l3_router.yaml`. The decision depends on the file-system watcher to trigger a re-read. Until reload completes, the decision is absent from CodeLens and Hover lookups.
+**⚠️ Limitation:** `addDecision` does NOT update `local.db`. The decision depends on the file-system watcher to trigger a re-read. Until reload completes, the decision is absent from CodeLens and Hover lookups.
 
 ### Known Implementation Issues
 
-- **BUG I-1 [Medium]:** `addDecision` does not append to `l3_router.yaml`. Decision is invisible to all router-based lookups until a full reload.
+- **BUG I-1 [Medium]:** `addDecision` does not append to `local.db`. Decision is invisible to all router-based lookups until a full reload.
 - **BUG I-2 [Medium]:** Selecting "unassigned" writes `l2_module_id: "unassigned"` (non-UUID string sentinel). Downstream systems expecting UUIDs will silently skip or reject this.
 - **BUG I-3 [Medium]:** No slug collision check. Two decisions with the same title produce the same slug; the second write silently destroys the first.
 
@@ -347,10 +347,10 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 
 ## Journey J: Hover Provider Interaction `[NEW]`
 
-**Goal:** Understand a function's architectural context by hovering, or get navigation hints when editing `.docuvia` YAML/Markdown files.
+**Goal:** Understand a function's architectural context by hovering, or get navigation hints when editing `.docuvia` SQLite/Markdown databases/files.
 
 **Trigger A (Code Hover):** Developer hovers over a function in a TypeScript file covered by an L2 module's `source_paths`.  
-**Trigger B (YAML Hover):** Developer opens `.docuvia/l2_modules.yaml` and hovers.  
+**Trigger B (SQLite Hover):** Developer opens `.docuvia/local.db` and hovers.  
 **Trigger C (L3 Hover):** Developer opens `.docuvia/l3_decisions/some-decision.md` and hovers.
 
 ### Happy Path (Trigger A)
@@ -362,7 +362,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 
 ### Happy Path (Trigger B/C)
 
-1. Hover fires on a `.docuvia` YAML or Markdown file.
+1. Hover fires on a `.docuvia` SQLite or Markdown file.
 2. Provider renders contextual information about the structure (e.g., field explanations).
 
 ### Known Implementation Issues
@@ -375,7 +375,7 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 
 | Condition                                                     | Current Behavior                                                                    | Expected Behavior                                                                                                  | Severity |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | -------- |
-| `source_paths` is empty for all modules                       | No hover shown for any code file.                                                   | Show a one-time info hover: "No source paths configured. Edit `.docuvia/l2_modules.yaml` to enable hover context." | Medium   |
+| `source_paths` is empty for all modules                       | No hover shown for any code file.                                                   | Show a one-time info hover: "No source paths configured. Edit `.docuvia/local.db` to enable hover context." | Medium   |
 | Hovered file belongs to uninitialized workspace               | `store.getSnapshotFor()` returns `undefined`. No hover.                             | Acceptable — no hover for uninitialized workspaces.                                                                | —        |
 | Decision file referenced in hover no longer exists            | Hover renders decision title/status but the open-file link leads to a deleted file. | Check file existence before rendering the open link.                                                               | Low      |
 | `source_paths` contains absolute paths (cross-platform issue) | No match. No hover.                                                                 | Normalize and warn on absolute paths during `store.load()`.                                                        | Medium   |
@@ -402,14 +402,14 @@ This document outlines all primary user journeys for the Docuvia VS Code Extensi
 
 ### Known Implementation Issues
 
-- **BUG K-1 [Medium]:** There is no VS Code Setting or Command for setting `server_url`. It must be configured by manually editing `~/.docuvia/config.yaml`. If this file does not exist or `server_url` is absent, `CentralServerClient` receives `undefined` as the URL. `fetch(undefined)` throws `TypeError`. The user sees a generic "Search failed" error with no guidance on how to set the URL.
+- **BUG K-1 [Medium]:** There is no VS Code Setting or Command for setting `server_url`. It must be configured by manually editing `~/.docuvia/local.db`. If this file does not exist or `server_url` is absent, `CentralServerClient` receives `undefined` as the URL. `fetch(undefined)` throws `TypeError`. The user sees a generic "Search failed" error with no guidance on how to set the URL.
 
 ### Bad Cases
 
 | Condition                                                               | Current Behavior                                                                                               | Expected Behavior                                                                                                             | Severity |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------- |
-| Token saved but `server_url` not configured in `~/.docuvia/config.yaml` | Token saved. Subsequent breadth queries fail with `TypeError: Failed to fetch undefined`. Generic error shown. | After saving token, check if `server_url` is configured. If not, prompt: "Also set `server_url` in `~/.docuvia/config.yaml`." | High     |
-| `~/.docuvia/config.yaml` has `http://` URL (not `https://`)             | `GlobalConfigSchema` validation rejects it. Falls back to `undefined`. `fetch` fails with TypeError.           | Show validation error: "server_url must use HTTPS."                                                                           | Medium   |
+| Token saved but `server_url` not configured in `~/.docuvia/local.db` | Token saved. Subsequent breadth queries fail with `TypeError: Failed to fetch undefined`. Generic error shown. | After saving token, check if `server_url` is configured. If not, prompt: "Also set `server_url` in `~/.docuvia/local.db`." | High     |
+| `~/.docuvia/local.db` has `http://` URL (not `https://`)             | `GlobalConfigSchema` validation rejects it. Falls back to `undefined`. `fetch` fails with TypeError.           | Show validation error: "server_url must use HTTPS."                                                                           | Medium   |
 | VS Code `SecretStorage` is unavailable (rare environment issue)         | `context.secrets.store()` throws. May show unhandled error to user.                                            | Wrap in try/catch with a user-friendly message.                                                                               | Medium   |
 | User runs `setServerToken` while offline                                | Token is saved locally. Future queries will fail when network is needed.                                       | Acceptable — saving to keychain is local.                                                                                     | —        |
 
@@ -464,7 +464,7 @@ _Note: This journey focuses on the three-gate UX and the distinction from the ch
 ### Known Implementation Issues
 
 - **BUG M-1 [Medium]:** Multi-root `/query` results include decisions from all workspaces but do not indicate which workspace each result came from. In a complex multi-project workspace, this creates ambiguity.
-- **BUG M-2 [Critical]:** `acceptL1Tags` always writes to `workspaceFolders[0]`. Running `/explore` on `/projects/backend` (workspace #2) and clicking "Accept & Write" overwrites `/projects/frontend`'s `l1_tags.yaml` with backend tags.
+- **BUG M-2 [Critical]:** `acceptL1Tags` always writes to `workspaceFolders[0]`. Running `/explore` on `/projects/backend` (workspace #2) and clicking "Accept & Write" overwrites `/projects/frontend`'s `local.db` with backend tags.
 
 ### Bad Cases
 
@@ -510,5 +510,5 @@ _Note: This journey focuses on the three-gate UX and the distinction from the ch
 | User enters whitespace-only query                                  | `query.trim().length === 0` check fires. Command returns early. ✓                                                        | Correct.                                                                                  | —        |
 | `defaultView = "panel"` and server is down                         | `fetch` throws. Generic "Search failed" error. Panel never opens.                                                        | Show error with guidance. Fall back to local search.                                      | High     |
 | `searchFromSelection` with an entire file selected (10,000+ chars) | Full text sent to server as query. Large HTTP body. May timeout or expose sensitive code.                                | Cap query length at ~2000 chars with a truncation notice.                                 | Medium   |
-| `defaultView = "panel"` and no `server_url` configured             | `CentralServerClient.query()` returns `[]` immediately. Panel opens but is empty. No hint that server is not configured. | Show "Server not configured. Set `server_url` in `~/.docuvia/config.yaml`." in the panel. | Medium   |
+| `defaultView = "panel"` and no `server_url` configured             | `CentralServerClient.query()` returns `[]` immediately. Panel opens but is empty. No hint that server is not configured. | Show "Server not configured. Set `server_url` in `~/.docuvia/local.db`." in the panel. | Medium   |
 | Search results contain HTML in the snippet field                   | If central server returns unescaped HTML, rendering in the Webview could enable XSS.                                     | Sanitize all server-returned content before rendering in the Webview.                     | High     |

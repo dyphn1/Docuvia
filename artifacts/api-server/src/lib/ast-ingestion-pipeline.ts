@@ -23,10 +23,12 @@ import { logger } from "./logger.js";
  *   file event   → l2_nodes (type: package | module | pcd, with pathPatterns)
  *   class event  → l3_nodes (nodeType: rule, FQN: dir::Class, under parent L2)
  *   function event → l3_nodes (nodeType: change, FQN: dir::fn, under parent L2)
+ *   api_contract event → l2_nodes (type: pcd) + l3_nodes (per-endpoint) + api_contract links
  *
  * Edge Creation (Phase 8 — Item 2):
  *   import event → node_links (depends_on edge: importer → imported module)
  *   call / method_call → node_links (calls edge: caller's module → callee's module)
+ *   api_contract event → node_links (api_contract edge: consumer → endpoint)
  *   Cross-file resolution via FQN lookup in l3_nodes + l2_nodes path patterns
  *   Batch-inserted with deduplication for efficiency
  *
@@ -44,24 +46,35 @@ import { logger } from "./logger.js";
  * L2 Type Classification:
  *   - package: directory containing an index file (index.ts, __init__.py, mod.rs, etc.)
  *   - module: standalone source file
- *   - pcd: (reserved for future pattern-based clustering)
+ *   - pcd: API contract file (OpenAPI 3.x / Swagger 2.0 specs parsed by bridge provider)
  *
  * Link Types:
  *   - depends_on: module A imports/references module B
  *   - calls: module A's code calls a function defined in module B
+ *   - api_contract: a consumer module references an API endpoint
  */
 
 // ── Constants ─────────────────────────────────────────────────────
 const BATCH_INSERT_CHUNK = 500; // Max rows per INSERT chunk (PostgreSQL parameter safety)
 
 interface AstEvent {
-  type: "file" | "class" | "function" | "call" | "method_call" | "import";
+  type: "file" | "class" | "function" | "call" | "method_call" | "import" | "api_contract";
   path?: string;
   name?: string;
   method?: string;
   object?: string;
   source?: string;
   localName?: string;
+  contractName?: string;
+  version?: string;
+  description?: string;
+  basePath?: string;
+  fullPath?: string;
+  summary?: string;
+  operationId?: string | null;
+  tags?: string[];
+  consumers?: string[];
+  filePath?: string;
   [key: string]: unknown;
 }
 
@@ -69,6 +82,7 @@ export interface IngestionResult {
   l2Created: number;
   l3Created: number;
   linksCreated: number;
+  contractsCreated: number;
   filesSkipped: number;
   errors: string[];
 }
@@ -102,6 +116,21 @@ interface CallEvent {
   object?: string;
   callerFilePath: string;
   isMethodCall: boolean;
+}
+
+interface ContractEvent {
+  contractName: string;
+  version?: string;
+  description?: string;
+  basePath?: string;
+  method?: string;
+  path?: string;
+  fullPath?: string;
+  summary?: string;
+  operationId?: string | null;
+  tags?: string[];
+  consumers?: string[];
+  filePath: string;
 }
 
 // ── Index files that indicate a directory is a "package" ──────────
@@ -344,6 +373,7 @@ export async function ingestAstJsonl(
     l2Created: 0,
     l3Created: 0,
     linksCreated: 0,
+    contractsCreated: 0,
     filesSkipped: 0,
     errors: [],
   };
@@ -356,6 +386,7 @@ export async function ingestAstJsonl(
   const functionEvents: SymbolEvent[] = [];
   const importEvents: ImportEvent[] = [];
   const callEvents: CallEvent[] = [];
+  const contractEvents: ContractEvent[] = [];
 
   // Track file path for events that don't have their own path field
   let currentFilePath: string | null = null;
@@ -435,6 +466,49 @@ export async function ingestAstJsonl(
             object: event.object as string | undefined,
             callerFilePath: currentFilePath,
             isMethodCall: event.type === "method_call",
+          });
+        }
+      }
+
+      // ── Cross-Language Edges: API contract events ──────────────
+      // Bridge provider (bridge-provider.ts) emits these for OpenAPI/Swagger specs.
+      // Top-level event has contractName but no method → file-level L2 (type: pcd).
+      // Per-endpoint event has method + path → L3 node under the contract L2.
+      if (event.type === "api_contract") {
+        const contractFilePath = (event.filePath || currentFilePath || "") as string;
+        if (!contractFilePath) {
+          result.errors.push("api_contract event missing filePath");
+          continue;
+        }
+        currentFilePath = contractFilePath;
+
+        const hasMethod = !!event.method;
+        contractEvents.push({
+          contractName: (event.contractName as string) || "",
+          version: event.version as string | undefined,
+          description: event.description as string | undefined,
+          basePath: event.basePath as string | undefined,
+          method: hasMethod ? (event.method as string) : undefined,
+          path: hasMethod ? (event.path as string) : undefined,
+          fullPath: hasMethod ? (event.fullPath as string) : undefined,
+          summary: hasMethod ? (event.summary as string) : undefined,
+          operationId: event.operationId as string | null | undefined,
+          tags: event.tags as string[] | undefined,
+          consumers: event.consumers as string[] | undefined,
+          filePath: contractFilePath,
+        });
+
+        // For the top-level contract event (no method), also register the file
+        // as an L2 node of type "pcd" so it gets created in Phase 2.
+        if (!hasMethod) {
+          const baseName = contractFilePath.split(/[/\\]/).pop() || contractFilePath;
+          const dirPath = getDirectoryPath(contractFilePath);
+          fileEvents.push({
+            filePath: contractFilePath,
+            baseName,
+            dirPath,
+            l2Type: "pcd",
+            pathPatterns: [contractFilePath],
           });
         }
       }
@@ -668,6 +742,60 @@ export async function ingestAstJsonl(
   }
 
   // ══════════════════════════════════════════════════════════════════
+  // Phase 3.5: Contract Endpoint L3 Insertion (Cross-Language Edges)
+  // Create L3 nodes for each API endpoint under the contract L2 node.
+  // ══════════════════════════════════════════════════════════════════
+
+  // Separate top-level contract events (no method) from endpoint events (has method)
+  const topLevelContracts = contractEvents.filter((e) => !e.method);
+  const endpointEvents = contractEvents.filter((e) => !!e.method);
+
+  // Map: contract filePath → L2 ID (resolved from Phase 2)
+  const contractPathToL2Id = new Map<string, number>();
+  for (const tc of topLevelContracts) {
+    const l2Id = filePathToL2Id.get(tc.filePath);
+    if (l2Id) {
+      contractPathToL2Id.set(tc.filePath, l2Id);
+    }
+  }
+
+  // Insert L3 nodes for endpoint events
+  if (endpointEvents.length > 0) {
+    const endpointL3Values = endpointEvents
+      .filter((e) => contractPathToL2Id.has(e.filePath))
+      .map((e) => ({
+        l2NodeId: contractPathToL2Id.get(e.filePath)!,
+        title: `${e.method} ${e.path}`,
+        nodeType: "change" as const,
+        aiGenerated: true,
+        source: "ast",
+        content: `API endpoint: ${e.method} ${e.fullPath || e.path}${e.summary ? ` — ${e.summary}` : ""}${e.operationId ? ` (operationId: ${e.operationId})` : ""}${e.tags && e.tags.length > 0 ? ` [${e.tags.join(", ")}]` : ""}`,
+      }));
+
+    if (endpointL3Values.length > 0) {
+      const endpointChunks = chunkArray(endpointL3Values, BATCH_INSERT_CHUNK);
+      const endpointInserted: Array<{ id: number; l2NodeId: number; title: string }> = [];
+      for (const chunk of endpointChunks) {
+        const inserted = await db.insert(l3NodesTable).values(chunk).onConflictDoNothing().returning({
+          id: l3NodesTable.id,
+          l2NodeId: l3NodesTable.l2NodeId,
+          title: l3NodesTable.title,
+        });
+        endpointInserted.push(...inserted);
+      }
+
+      // Register endpoint L3 IDs in the maps for link resolution
+      for (const ins of endpointInserted) {
+        nameToL3Id.set(ins.title, ins.id);
+        l3IdToL2Id.set(ins.id, ins.l2NodeId);
+      }
+
+      result.l3Created += endpointL3Values.length;
+      result.contractsCreated = endpointL3Values.length;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════
   // Phase 4: Batch Link Insertion
   // Resolve all imports and calls using pre-built maps.
   // ══════════════════════════════════════════════════════════════════
@@ -785,6 +913,51 @@ export async function ingestAstJsonl(
     }
   }
 
+  // ── Resolve api_contract consumer links (Cross-Language Edges) ──────
+  // For each endpoint event with consumer hints, create api_contract links
+  // from consumer L2 modules to the contract L2 node.
+  if (endpointEvents.length > 0) {
+    for (const ep of endpointEvents) {
+      if (!ep.consumers || ep.consumers.length === 0) continue;
+      const contractL2Id = contractPathToL2Id.get(ep.filePath);
+      if (!contractL2Id) continue;
+
+      for (const consumerHint of ep.consumers) {
+        // Try to resolve consumer hint to an L2 node
+        // First try by name match, then by path pattern
+        let consumerL2Id: number | null = null;
+
+        // Try pathToL2Id patterns (e.g., "src/api/client" → L2)
+        for (const [pattern, id] of pathToL2Id) {
+          if (pattern.includes(consumerHint) || consumerHint.includes(pattern.replace("/*", ""))) {
+            consumerL2Id = id;
+            break;
+          }
+        }
+
+        // Try name-based lookup
+        if (!consumerL2Id) {
+          const candidates = nameToL2Ids.get(consumerHint);
+          if (candidates && candidates.length > 0) {
+            consumerL2Id = candidates[0];
+          }
+        }
+
+        // Try operationId as function name in L3 → resolve to L2
+        if (!consumerL2Id) {
+          const l3Id = nameToL3Id.get(consumerHint);
+          if (l3Id) {
+            consumerL2Id = l3IdToL2Id.get(l3Id) || null;
+          }
+        }
+
+        if (consumerL2Id && consumerL2Id !== contractL2Id) {
+          queueLink(consumerL2Id, contractL2Id, "calls");
+        }
+      }
+    }
+  }
+
   // Batch-insert all links
   if (pendingLinks.length > 0) {
     try {
@@ -795,10 +968,10 @@ export async function ingestAstJsonl(
   }
 
   // Log activity
-  if (result.l2Created > 0 || result.l3Created > 0) {
+  if (result.l2Created > 0 || result.l3Created > 0 || result.contractsCreated > 0) {
     await db.insert(activityLogTable).values({
       type: "tag_added",
-      description: `AST ingestion: ${result.l2Created} modules, ${result.l3Created} symbols, ${result.linksCreated} links`,
+      description: `AST ingestion: ${result.l2Created} modules, ${result.l3Created} symbols, ${result.linksCreated} links, ${result.contractsCreated} contracts`,
       projectId,
     });
   }
@@ -824,6 +997,7 @@ export async function ingestAstBatch(
     l2Created: 0,
     l3Created: 0,
     linksCreated: 0,
+    contractsCreated: 0,
     filesSkipped: 0,
     errors: [],
   };
@@ -853,6 +1027,7 @@ export async function ingestAstBatch(
       aggregated.l2Created += result.l2Created;
       aggregated.l3Created += result.l3Created;
       aggregated.linksCreated += result.linksCreated;
+      aggregated.contractsCreated += result.contractsCreated;
       aggregated.errors.push(...result.errors);
     } catch (err: any) {
       aggregated.errors.push(`Failed to ingest ${jsonlPath}: ${err.message}`);

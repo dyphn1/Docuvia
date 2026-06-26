@@ -3,3 +3,4 @@ export * from "./language-registry.js";
 export * from "./language-provider.js";
 export * from "./funnel.js";
 export * from "./sink.js";
+export * from "./bridge-provider.js";

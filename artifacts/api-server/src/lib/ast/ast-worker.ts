@@ -500,6 +500,29 @@ export default async function parseAst(filePath: string): Promise<ParseResult> {
 
   const fileContent = await fs.readFile(filePath, "utf-8");
   const ext = path.extname(filePath);
+
+  // ── Bridge Provider: OpenAPI/Swagger specs ──────────────────────
+  // If the file is an API contract, emit api_contract events instead of
+  // tree-sitter AST events. This enables cross-language edge detection
+  // between API definitions and their consumers.
+  try {
+    const { isOpenApiFile, parseOpenApiSpec } = await import("@workspace/ast-core");
+    if (isOpenApiFile(fileContent, ext)) {
+      const format = ext === ".json" ? "json" : "yaml";
+      const result = await parseOpenApiSpec(fileContent, filePath, format);
+      if (result.events.length > 0) {
+        const skeleton = result.events.map((e) => JSON.stringify(e));
+        const tempFileName = `ast-bridge-${crypto.randomBytes(8).toString("hex")}.jsonl`;
+        const tempFilePath = path.join(os.tmpdir(), tempFileName);
+        await fs.writeFile(tempFilePath, skeleton.join("\n") + "\n", "utf-8");
+        return { status: "done", file: tempFilePath };
+      }
+    }
+  } catch (bridgeErr: any) {
+    // Bridge failed — fall through to tree-sitter path
+    console.warn(`Bridge provider failed for ${filePath}:`, bridgeErr.message);
+  }
+
   const { lang, provider } = await loadLanguage(ext);
 
   const parser = new Parser();

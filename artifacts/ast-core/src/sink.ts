@@ -1,5 +1,5 @@
 export interface AstEvent {
-  type: "file" | "class" | "function" | "call" | "method_call";
+  type: "file" | "class" | "function" | "call" | "method_call" | "import" | "api_contract";
   [key: string]: any;
 }
 

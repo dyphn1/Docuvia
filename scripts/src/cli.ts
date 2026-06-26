@@ -26,8 +26,9 @@ async function main() {
 
   if (command === "sync") {
     if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
-      console.error("DOCUVIA_API_URL and MCP_PAT must be set");
-      process.exit(1);
+      console.warn("⚠️  DOCUVIA_API_URL or MCP_PAT is missing in the environment.");
+      console.warn("   Skipping background sync. Please set these variables in your .env file or environment to enable syncing.");
+      process.exit(0);
     }
 
     const projectId = process.argv[3];

@@ -1,6 +1,6 @@
 # Docuvia — Phase Completion Checklist (Comprehensive Audit)
 
-> Audited: 2026-07-28 (feat: Local Context Compression — wired compressAstContext() into generate.ts document context pipeline) | Source-code verified via Agentic Exploration & Adversarial Audit
+|> Audited: 2026-06-26 (verification: 1.2.5 — SVN integration re-verification; auth fixed, diff drift persists; report 0378 lost) | Source-code verified via Agentic Exploration & Adversarial Audit
 
 > **Legend:**
 > ✅ **Done** = Implemented and Verified Functional
@@ -28,7 +28,7 @@
 | :----------------------------------------------------------------- | :-------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Git ingestion (commit + diff)                                      | ✅ Done               | [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts)                                                                                                                                              |
 | [Document ingestion](../design/adrs/ADR-012-document-misc-pool.md) | ✅ Done               | [`document-parser.ts`](../../artifacts/api-server/src/lib/document-parser.ts) (Fixed: removed application/octet-stream MIME bypass; added Bearer token auth to upload route)                                |
-| SVN integration                                                    | ⚠️ WARN               | [`svn-client.ts`](../../artifacts/api-server/src/lib/svn-client.ts) (Architecture drift: diffs stored improperly; see [report 0626_phase-2_svn-integration](../../reports/0626_phase-2_svn-integration.md)) |
+| SVN integration                                                    | ⚠️ WARN               | [`svn-client.ts`](../../artifacts/api-server/src/lib/svn-client.ts) (Architecture drift: diffs stored improperly; see [report 0629_1.2.5](../../reports/0629_1.2.5.md)) |
 | Build artifact parser                                              | ✅ Done               | [`documents.ts`](../../artifacts/api-server/src/routes/documents.ts), [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts), [`document-upload.test.ts`](../../artifacts/api-server/test/integration/document-upload.test.ts), [`build-artifact-upload.test.ts`](../../artifacts/api-server/test/integration/build-artifact-upload.test.ts) |
 
 ## [Phase 3 | Knowledge Construction Layer](master-roadmap.md#phase-3-swarm-intelligence--git-isomorphic-sync)

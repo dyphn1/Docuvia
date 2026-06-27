@@ -2,7 +2,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { minimatch } from "minimatch";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import Database from "better-sqlite3";
+import { openLocalDatabase } from "@workspace/core";
 import { ExtractionTask, TaskQueueTreeProvider, TaskType } from "./TaskQueueTreeProvider.js";
 import { KnowledgeStore, KnowledgeGraphSnapshot } from "./KnowledgeStore.js";
 import { KGNode } from "./KnowledgeGraphTreeProvider.js";
@@ -190,10 +190,10 @@ If you are not confident about an item, exclude it from the array.`;
     snap: KnowledgeGraphSnapshot
   ): Promise<void> {
     const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
-    
-    let db: Database.Database;
+
+    let db: any;
     try {
-      db = new Database(dbPath);
+      db = openLocalDatabase(dbPath);
     } catch (err) {
       this.outputChannel.appendLine(`[Docuvia/TaskRunner] Failed to open database: ${String(err)}`);
       return;
@@ -209,17 +209,17 @@ If you are not confident about an item, exclude it from the array.`;
         // check if it already exists in the newly added ones
         const stmt = db.prepare("SELECT id FROM l2_nodes WHERE name = ? AND l1_tag_id = ?");
         const existingRow = stmt.get(item.new_l2_name, item.l1_id) as any;
-        
+
         if (!existingRow) {
           const newId = uuidv4();
           const slug = String(item.new_l2_name)
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, "-");
-            
+
           const insertStmt = db.prepare(
             "INSERT INTO l2_nodes (id, slug, l1_tag_id, name, description, source_paths, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
           );
-          
+
           insertStmt.run(
             newId,
             slug,
@@ -241,7 +241,9 @@ If you are not confident about an item, exclude it from the array.`;
     // Now update router entries (l3_nodes)
     for (const item of mapping) {
       if (item.target_l2_id && item.l3_id) {
-        const updateStmt = db.prepare("UPDATE l3_nodes SET l2_node_id = ?, updated_at = ? WHERE id = ?");
+        const updateStmt = db.prepare(
+          "UPDATE l3_nodes SET l2_node_id = ?, updated_at = ? WHERE id = ?"
+        );
         const result = updateStmt.run(item.target_l2_id, new Date().toISOString(), item.l3_id);
         if (result.changes > 0) {
           changed = true;
@@ -398,9 +400,9 @@ If you are not confident about an item, exclude it from the array.`;
       .replace(/[^a-z0-9]+/g, "-");
 
     const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
-    let db: Database.Database;
+    let db: any;
     try {
-      db = new Database(dbPath);
+      db = openLocalDatabase(dbPath);
     } catch (err) {
       this.outputChannel.appendLine(`[Docuvia/TaskRunner] Failed to open database: ${String(err)}`);
       return;

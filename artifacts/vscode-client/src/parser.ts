@@ -1,8 +1,5 @@
 import { parse as parseYaml } from "yaml";
-import {
-  GlobalConfig,
-  GlobalConfigSchema,
-} from "./types.js";
+import { GlobalConfig, GlobalConfigSchema } from "./types.js";
 
 export function parseGlobalConfig(content: string, filePath: string): GlobalConfig {
   try {

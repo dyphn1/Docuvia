@@ -62,7 +62,7 @@ flowchart TD
        end
    ```
 
-2. **Knowledge Construction Layer**: The Git-Isomorphic Engine. Translates raw inputs into [structured abstractions (L1/L2/L3)](adrs/ADR-005-knowledge-abstraction-strategy.md). Every extraction or human correction is an Append-Only Git commit on the `docuvia-knowledge` branch, ensuring knowledge *evolution* and *identity*.
+2. **Knowledge Construction Layer**: The Git-Isomorphic Engine. Translates raw inputs into [structured abstractions (L1/L2/L3)](adrs/ADR-005-knowledge-abstraction-strategy.md). Every extraction or human correction is an Append-Only Git commit on the `docuvia-knowledge` branch, ensuring knowledge _evolution_ and _identity_.
    ```mermaid
    flowchart LR
        subgraph 2. Knowledge Construction Layer

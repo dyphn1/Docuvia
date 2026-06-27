@@ -207,6 +207,7 @@ sequenceDiagram
 To explicitly address the "Cognitive Gap" and "Knowledge Deficit", Docuvia formalizes three distinct workflow models for AI Agent interaction. It achieves this by broadcasting a unified cognitive baseline across all major AI tools via the `docuvia init-agent` command.
 
 ### 6.7.1 Context-Aware Fast Path (Local)
+
 Used when an AI Agent (e.g. Cursor, Claude Code, Copilot, Windsurf) is exploring the codebase. The `init-agent` command automatically provisions dynamic hooks (`.claude/hooks`, `.cursor/hooks`) and static rule files (`copilot-instructions.md`, `.windsurfrules`, etc.) to intercept the agent's actions.
 
 ```mermaid
@@ -215,7 +216,7 @@ sequenceDiagram
     participant Hook as Docuvia Agent Hook
     participant CLI as Docuvia Local CLI
     participant LocalDB as Local SQLite (HEAD Index)
-    
+
     Agent->>Hook: Intends to Grep/Glob/Read codebase
     Hook->>CLI: Intercept with `docuvia query "<query>" --local --format=prompt`
     CLI->>LocalDB: AST Topology + File Path Match
@@ -226,6 +227,7 @@ sequenceDiagram
 ```
 
 ### 6.7.2 Global Semantic Search (Server)
+
 Used when an AI Agent asks a broad, exploratory question without a specific file context (e.g., "How do we handle CORS?").
 
 ```mermaid
@@ -234,7 +236,7 @@ sequenceDiagram
     participant VSC as Docuvia VS Code Ext
     participant API as API Server
     participant DB as PostgreSQL (pgvector)
-    
+
     Agent->>VSC: Ask: "How is CORS handled?"
     VSC->>API: MCP Query Request
     API->>DB: Vector Similarity Search (pgvector)
@@ -244,6 +246,7 @@ sequenceDiagram
 ```
 
 ### 6.7.3 Git-Isomorphic Knowledge Evolution
+
 Used when a developer commits code, seamlessly updating the knowledge graph via Event Sourcing.
 
 ```mermaid

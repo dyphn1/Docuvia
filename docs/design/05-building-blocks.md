@@ -45,6 +45,57 @@ graph TD
 
 ---
 
+## 5.1.1 Architectural Pattern: Shared Core API (Hexagonal Architecture)
+
+As dictated by [ADR-021](adrs/ADR-021-shared-core-api-and-presentation-layers.md), Docuvia strictly isolates its core local-first capabilities into a **Shared Core API**. The various user and system interfaces (CLI, MCP Server, VS Code Extension, Webview) are treated purely as "Presentation Layers" or adapters. They do not hold business logic; they only format requests and present results from the Core API.
+
+```mermaid
+flowchart TD
+    subgraph Presentation["Presentation Layer (Interfaces)"]
+        direction LR
+        CLI("CLI Tool<br/>(Terminal / Automation)")
+        MCP("MCP Server<br/>(Claude / Cursor AI)")
+        VSC("VS Code Extension<br/>(IDE UI / CodeLens)")
+        TOP("Topology Webview<br/>(D3.js Visualization)")
+    end
+
+    subgraph Core["Shared Core API (Domain & Application)"]
+        direction TB
+        AST["AST Microkernel<br/>(web-tree-sitter)"]
+        IR["Intent Router<br/>(Query Dispatch)"]
+        HS["Hybrid Search<br/>(FTS5 + Vector)"]
+        GS["Graph Traversal<br/>(Edges & Impact Radius)"]
+        SYNC["Incremental Sync<br/>(Git Hooks & Hash Delta)"]
+    end
+
+    subgraph Infrastructure["Infrastructure Layer"]
+        direction LR
+        DB[("Local DB<br/>(SQLite / Drizzle)")]
+        FS[("File System")]
+        GIT[("Git<br/>(Orphan Branch)")]
+    end
+
+    %% Connections
+    CLI -->|Consumes| Core
+    MCP -->|Consumes| Core
+    VSC -->|Consumes| Core
+    TOP -->|Consumes| Core
+
+    Core -->|Reads / Writes| DB
+    Core -->|Reads| FS
+    Core -->|Reads / Writes| GIT
+
+    classDef presentation fill:#f9f2f4,stroke:#d05b76,stroke-width:2px,color:#333;
+    classDef core fill:#eef9f2,stroke:#3b8a54,stroke-width:2px,color:#333;
+    classDef infra fill:#f2f5f9,stroke:#5b8cd0,stroke-width:2px,color:#333;
+
+    class CLI,MCP,VSC,TOP presentation;
+    class AST,IR,HS,GS,SYNC core;
+    class DB,FS,GIT infra;
+```
+
+---
+
 ## 5.2 Level 2 – api-server Internal Modules
 
 [`artifacts/api-server/src/`](../../artifacts/api-server/src/)

@@ -285,8 +285,7 @@
   },
   "dependencies": {
     "@workspace/ast-core": "workspace:^",
-    "better-sqlite3": "^12.11.1",
-    "drizzle-orm": "^0.45.2",
+    "@workspace/core": "workspace:^",
     "gray-matter": "^4.0.3",
     "minimatch": "^10.2.5",
     "uuid": "^11.1.0",
@@ -295,7 +294,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/minimatch": "^6.0.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "catalog:",

@@ -1,6 +1,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import Database from "better-sqlite3";
+import { openLocalDatabase } from "@workspace/core";
 import { KnowledgeStore } from "./KnowledgeStore.js";
 
 // ─── Node types ───────────────────────────────────────────────────────────────
@@ -79,8 +79,10 @@ export class KnowledgeGraphTreeProvider
 
       const dbPath = path.join(target.workspaceRoot, ".docuvia", "local.db");
       try {
-        const db = new Database(dbPath);
-        const updateStmt = db.prepare("UPDATE l3_nodes SET l2_node_id = ?, updated_at = ? WHERE id = ?");
+        const db = openLocalDatabase(dbPath);
+        const updateStmt = db.prepare(
+          "UPDATE l3_nodes SET l2_node_id = ?, updated_at = ? WHERE id = ?"
+        );
         let changed = false;
 
         const now = new Date().toISOString();

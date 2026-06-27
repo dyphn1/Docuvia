@@ -2,6 +2,10 @@
 
 > Full-stack TypeScript monorepo (Node 24, Express 5, React+Vite, PostgreSQL+Drizzle, MCP). Ingests VCS history into a queryable knowledge graph via Agentic RAG.
 
+## 🧠 Law of State Handoff Awakening (CRITICAL)
+
+**Before making any structural changes, writing new features, or making architectural decisions, all Agents MUST read `.github/memory/MEMORY.md` to load past architectural decisions, error boundaries, and workflow constraints.** Do not assume your initial context contains all the tacit knowledge of the project.
+
 ## Workspace Layout
 
 ```
@@ -119,7 +123,7 @@ This repo has 10 subagents defined in `.github/agents/` for Claude/Copilot orche
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Docuvia** (3675 symbols, 8031 relationships, 177 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Docuvia** (4384 symbols, 8823 relationships, 182 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 import * as dotenv from "dotenv";
 import { createInterface } from "readline";
+import { initCommand } from "./commands/init.js";
 import { initAgent } from "./commands/init-agent.js";
 import { queryCommand } from "./commands/query.js";
+import { analyzeCommand } from "./commands/analyze.js";
+import { extractCommand } from "./commands/extract.js";
 import { runMcpServer } from "./mcp/server.js";
 
 dotenv.config();
@@ -21,21 +24,41 @@ function readStdin(): Promise<string> {
 async function main() {
   const command = process.argv[2];
 
+  
+  if (command === "init") {
+    await initCommand();
+    process.exit(0);
+  }
+
   if (command === "init-agent") {
     await initAgent();
+    process.exit(0);
+  }
+
+  if (command === "analyze") {
+    await analyzeCommand();
+    process.exit(0);
+  }
+
+  if (command === "extract") {
+    const targetFile = process.argv[3];
+    await extractCommand(targetFile);
     process.exit(0);
   }
 
   if (command === "sync") {
     if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
       console.warn("⚠️  DOCUVIA_API_URL or MCP_PAT is missing in the environment.");
-      console.warn("   Skipping background sync. Please set these variables in your .env file or environment to enable syncing.");
+      console.warn(
+        "   Skipping background sync. Please set these variables in your .env file or environment to enable syncing."
+      );
       process.exit(0);
     }
 
     const projectId = process.argv[3];
     if (!projectId) {
-      console.error("Usage: docuvia sync <project_id> [commit_sha]");
+        console.error("  docuvia init                                 # Initialize local project and DB");
+  console.error("Usage: docuvia sync <project_id> [commit_sha]");
       console.error("       echo <commit_sha> | docuvia sync <project_id>");
       process.exit(1);
     }
@@ -99,10 +122,17 @@ async function main() {
 
   console.error(`Unknown command: ${command}`);
   console.error("Usage:");
-  console.error("  docuvia init-agent                           # Install hooks for Claude Code and Cursor");
+  console.error("  docuvia init                                 # Initialize local project and DB");
+  console.error("  docuvia analyze                              # Analyze project for AST and tags");
+  console.error("  docuvia extract <file_path>                  # Extract decisions from a file");
+  console.error(
+    "  docuvia init-agent                           # Install hooks for Claude Code and Cursor"
+  );
   console.error("  docuvia sync <project_id> [commit_sha]       # Sync local changes to server");
   console.error("  docuvia query <target> [--local]             # Query the knowledge graph");
-  console.error("  docuvia mcp                                  # Start the local MCP stdio server");
+  console.error(
+    "  docuvia mcp                                  # Start the local MCP stdio server"
+  );
   process.exit(1);
 }
 

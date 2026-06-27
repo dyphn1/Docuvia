@@ -15,9 +15,9 @@ import { SearchResultsPanel } from "./SearchResultsPanel.js";
 import { TaskQueueTreeProvider } from "./TaskQueueTreeProvider.js";
 import { TaskRunner } from "./TaskRunner.js";
 import { minimatch } from "minimatch";
-import Database from "better-sqlite3";
 import { parse as parseYaml } from "yaml";
 import { randomUUID } from "crypto";
+import { InitService, AnalyzeService, ExtractService, openLocalDatabase } from "@workspace/core";
 
 let outputChannel: vscode.OutputChannel;
 
@@ -103,9 +103,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const hoverProvider = new DocuviaHoverProvider(store, indexer);
   context.subscriptions.push(
     vscode.languages.registerHoverProvider(
-      [
-        { language: "markdown", pattern: "**/.docuvia/l3_decisions/*.md" },
-      ],
+      [{ language: "markdown", pattern: "**/.docuvia/l3_decisions/*.md" }],
       hoverProvider
     ),
     vscode.languages.registerHoverProvider({ language: "typescript" }, hoverProvider),
@@ -124,10 +122,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.startExplore", async () => {
-      // Open the Copilot Chat view with the explore command pre-filled and executed
-      await vscode.commands.executeCommand("workbench.action.chat.open", {
-        query: "@docuvia /explore",
-      });
+      const folders = vscode.workspace.workspaceFolders || [];
+      if (folders.length === 0) {
+        void vscode.window.showWarningMessage("Docuvia: No workspace folder open.");
+        return;
+      }
+      const targetRoot = folders[0].uri.fsPath;
+      try {
+        const analyzeService = new AnalyzeService(targetRoot);
+        const result = await analyzeService.analyzeProject();
+        void vscode.window.showInformationMessage(
+          `Docuvia Analysis: Project Type = ${result.projectType}, Tags = ${result.suggestedTags.join(", ")}`
+        );
+      } catch (err: any) {
+        void vscode.window.showErrorMessage(`Docuvia: Analysis failed - ${err.message}`);
+      }
     })
   );
 
@@ -323,7 +332,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           const tags = parseYaml(yamlContent);
           if (Array.isArray(tags)) {
             const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
-            const db = new Database(dbPath);
+            const db = openLocalDatabase(dbPath);
             db.exec(`
               CREATE TABLE IF NOT EXISTS l1_tags (
                 id TEXT PRIMARY KEY,
@@ -356,11 +365,18 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 link_type TEXT
               );
             `);
-            
-            const insert = db.prepare("INSERT OR REPLACE INTO l1_tags (id, name, slug, description) VALUES (?, ?, ?, ?)");
+
+            const insert = db.prepare(
+              "INSERT OR REPLACE INTO l1_tags (id, name, slug, description) VALUES (?, ?, ?, ?)"
+            );
             for (const tag of tags) {
               const name = tag.name || "Unnamed";
-              const slug = tag.slug || name.toLowerCase().replace(/\\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+              const slug =
+                tag.slug ||
+                name
+                  .toLowerCase()
+                  .replace(/\\s+/g, "-")
+                  .replace(/[^a-z0-9-]/g, "");
               const id = tag.id || randomUUID();
               const description = tag.description || "";
               insert.run(id, name, slug, description);
@@ -443,7 +459,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const store = KnowledgeStore.getInstance(outputChannel);
       const folders = vscode.workspace.workspaceFolders;
       if (!folders || folders.length === 0) {
-        void vscode.window.showWarningMessage("Docuvia: Open a workspace folder to traverse the knowledge graph.");
+        void vscode.window.showWarningMessage(
+          "Docuvia: Open a workspace folder to traverse the knowledge graph."
+        );
         return;
       }
 
@@ -467,7 +485,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           }
         }
         if (items.length === 0) {
-          void vscode.window.showWarningMessage("Docuvia: No knowledge graph modules found. Run indexing first.");
+          void vscode.window.showWarningMessage(
+            "Docuvia: No knowledge graph modules found. Run indexing first."
+          );
           return;
         }
         const picked = await vscode.window.showQuickPick(items, {
@@ -484,9 +504,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         vscode.QuickPickItem & { value: "dependencies" | "dependents" | "both" }
       >(
         [
-          { label: "$(arrow-down) Dependencies", description: "What this module depends on", value: "dependencies" },
-          { label: "$(arrow-up) Dependents (Impact)", description: "What depends on this module", value: "dependents" },
-          { label: "$(arrow-both) Both Directions", description: "Full dependency graph", value: "both" },
+          {
+            label: "$(arrow-down) Dependencies",
+            description: "What this module depends on",
+            value: "dependencies",
+          },
+          {
+            label: "$(arrow-up) Dependents (Impact)",
+            description: "What depends on this module",
+            value: "dependents",
+          },
+          {
+            label: "$(arrow-both) Both Directions",
+            description: "Full dependency graph",
+            value: "both",
+          },
         ],
         { placeHolder: "Traversal direction" }
       );
@@ -496,13 +528,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       let workspaceRoot: string | undefined;
       for (const folder of folders) {
         const snap = store.getSnapshotFor(folder.uri.fsPath);
-        if (snap?.modules.find(m => Number(m.id) === rootNodeId)) {
+        if (snap?.modules.find((m) => Number(m.id) === rootNodeId)) {
           workspaceRoot = folder.uri.fsPath;
           break;
         }
       }
       if (!workspaceRoot) {
-        void vscode.window.showErrorMessage("Docuvia: Could not find workspace for selected module.");
+        void vscode.window.showErrorMessage(
+          "Docuvia: Could not find workspace for selected module."
+        );
         return;
       }
 
@@ -517,20 +551,26 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const traverseChannel = vscode.window.createOutputChannel("Docuvia Graph Traversal");
       traverseChannel.clear();
       traverseChannel.appendLine(`Graph Traversal: ${result.rootName} (${direction.value})`);
-      traverseChannel.appendLine(`Depth: ${result.maxDepth} | Nodes: ${result.nodes.length} | Edges: ${result.edges.length}`);
+      traverseChannel.appendLine(
+        `Depth: ${result.maxDepth} | Nodes: ${result.nodes.length} | Edges: ${result.edges.length}`
+      );
       traverseChannel.appendLine("─".repeat(60));
 
       for (const node of result.nodes) {
         const indent = "  ".repeat(node.depth);
         const prefix = node.depth === 0 ? "●" : "└→";
-        traverseChannel.appendLine(`${indent}${prefix} [${node.type}] ${node.name} (depth ${node.depth})`);
+        traverseChannel.appendLine(
+          `${indent}${prefix} [${node.type}] ${node.name} (depth ${node.depth})`
+        );
       }
 
       if (result.edges.length > 0) {
         traverseChannel.appendLine("");
         traverseChannel.appendLine("Edges:");
         for (const edge of result.edges) {
-          traverseChannel.appendLine(`  ${edge.sourceNodeId} ──[${edge.linkType}]──▶ ${edge.targetNodeId}`);
+          traverseChannel.appendLine(
+            `  ${edge.sourceNodeId} ──[${edge.linkType}]──▶ ${edge.targetNodeId}`
+          );
         }
       }
 
@@ -707,42 +747,6 @@ async function initProject(
     }
 
     if (action === NEW_GRAPH) {
-      const fs = require("fs/promises");
-      const docuviaDir = path.join(targetRoot, ".docuvia");
-
-      const docuviaExists = await fileExists(docuviaDir);
-      if (docuviaExists) {
-        const repair = await vscode.window.showWarningMessage(
-          "Repair Workspace",
-          "Proceed",
-          "Cancel"
-        );
-        if (repair !== "Proceed") return;
-      }
-
-      let branchExists = false;
-      try {
-        const { stdout } = await exec("git branch --list docuvia-knowledge", { cwd: targetRoot });
-        if (stdout.trim().length > 0) {
-          branchExists = true;
-        }
-      } catch {}
-
-      let shouldCreateBranch = true;
-      if (branchExists) {
-        const branchAction = await vscode.window.showWarningMessage(
-          "Branch 'docuvia-knowledge' already exists.",
-          "Connect to Existing",
-          "Reset/Overwrite"
-        );
-        if (!branchAction) return;
-        if (branchAction === "Reset/Overwrite") {
-          await exec("git branch -D docuvia-knowledge", { cwd: targetRoot });
-        } else {
-          shouldCreateBranch = false;
-        }
-      }
-
       const consent = await vscode.window.showWarningMessage(
         "This will create a .docuvia/ folder for settings and a hidden docuvia-knowledge orphan branch for your graph. No source code will be modified. Proceed?",
         "Yes",
@@ -750,88 +754,16 @@ async function initProject(
       );
       if (consent !== "Yes") return;
 
-      if (shouldCreateBranch) {
-        try {
-          await exec(
-            'git checkout --orphan docuvia-knowledge && git reset --hard && git commit --allow-empty -m "chore: initialize empty knowledge graph" && git checkout -',
-            { cwd: targetRoot }
-          );
-        } catch (err: any) {
-          void vscode.window.showErrorMessage(`Failed to create branch: ${err.message}`);
-          return;
-        }
-      }
-
       try {
-        await fs.mkdir(docuviaDir, { recursive: true });
-        await fs.mkdir(path.join(docuviaDir, "l3_decisions"), { recursive: true });
-      } catch {}
+        const initService = new InitService(targetRoot);
+        const result = await initService.init();
 
-      const projectName = path.basename(targetRoot);
-      const dbPath = path.join(docuviaDir, "local.db");
-      const db = new Database(dbPath);
-      db.exec(`
-        CREATE TABLE IF NOT EXISTS l1_tags (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          slug TEXT NOT NULL
-        );
-        CREATE TABLE IF NOT EXISTS l2_nodes (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          slug TEXT NOT NULL,
-          type TEXT,
-          source_paths TEXT,
-          l1_tag_id TEXT
-        );
-        CREATE TABLE IF NOT EXISTS l3_nodes (
-          id TEXT PRIMARY KEY,
-          l2_node_id TEXT,
-          title TEXT,
-          content TEXT,
-          status TEXT,
-          created_at TEXT
-        );
-        CREATE TABLE IF NOT EXISTS node_links (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          source_node_id TEXT NOT NULL,
-          target_node_id TEXT NOT NULL,
-          link_type TEXT
-        );
-      `);
-      db.close();
-
-      // Install non-intrusive git post-commit hook
-      try {
-        const gitHookDir = path.join(targetRoot, ".git", "hooks");
-        const postCommitPath = path.join(gitHookDir, "post-commit");
-        if (require('fs').existsSync(gitHookDir)) {
-          const hookContent = `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n# Non-intrusively extracts AST deltas in the background\nif command -v npx &> /dev/null; then\n  # Fire and forget (do not block commit)\n  git rev-parse HEAD | npx --no-install docuvia sync local > /dev/null 2>&1 &\nfi\n`;
-          const fs = require('fs').promises;
-          
-          let shouldWriteHook = true;
-          try {
-            const existingHook = await fs.readFile(postCommitPath, 'utf8');
-            if (existingHook.includes('docuvia sync')) {
-              shouldWriteHook = false;
-            }
-          } catch (e) {
-            // Hook doesn't exist, we can write it
-          }
-
-          if (shouldWriteHook) {
-            await fs.appendFile(postCommitPath, `\n${hookContent}`, { mode: 0o755 });
-            console.log("Installed Docuvia post-commit hook.");
-          }
-        }
-      } catch (err) {
-        console.warn("Could not install git hook:", err);
+        await store.load();
+        vscode.commands.executeCommand("docuvia.refreshKnowledgeGraph");
+        void vscode.window.showInformationMessage(`Docuvia: ${result.message}`);
+      } catch (err: any) {
+        void vscode.window.showErrorMessage(`Docuvia: ${err.message}`);
       }
-
-      vscode.commands.executeCommand("docuvia.refreshKnowledgeGraph");
-      void vscode.window.showInformationMessage(
-        `Docuvia: Project "${projectName}" initialized. Populate the local.db to build your knowledge graph.`
-      );
     }
   }
 }
@@ -855,36 +787,31 @@ async function addDecision(
   const folders = vscode.workspace.workspaceFolders || [];
   if (folders.length === 0) return;
   const workspaceRoot = folders[0].uri.fsPath;
-  const docuviaDir = path.join(workspaceRoot, ".docuvia");
+  const editor = vscode.window.activeTextEditor;
 
-  try {
-    const fs = require("fs/promises");
-    await fs.stat(docuviaDir);
-  } catch {
-    void vscode.window.showWarningMessage("Docuvia: Initialize project first.");
+  if (!editor) {
+    void vscode.window.showWarningMessage("Docuvia: Open a file to extract decisions from.");
     return;
   }
 
-  const title = await vscode.window.showInputBox({ prompt: "Decision Title" });
-  if (!title) return;
+  const filePath = editor.document.uri.fsPath;
+  const relativePath = path.relative(workspaceRoot, filePath);
 
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  if (!slug) return;
-
-  const id = Date.now();
-  const filename = `${id}-${slug}.md`;
-  const filePath = path.join(docuviaDir, "l3_decisions", filename);
-
-  const content = `---\nid: ${id}\ntitle: "${title.replace(/"/g, '\\"')}"\ntype: decision\nstatus: valid\noccurrence_count: 1\n---\n\n${prefillBody}`;
-
-  const fs = require("fs/promises");
-  await fs.writeFile(filePath, content, "utf-8");
-
-  const doc = await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
-  await vscode.window.showTextDocument(doc);
+  try {
+    const extractService = new ExtractService(workspaceRoot);
+    const result = await extractService.extractDecisions(relativePath);
+    
+    if (result.decisions.length > 0) {
+      void vscode.window.showInformationMessage(
+        `Docuvia: Extracted ${result.decisions.length} decisions from ${path.basename(filePath)}.\n- ${result.decisions.join("\n- ")}`,
+        { modal: true }
+      );
+    } else {
+      void vscode.window.showInformationMessage(`Docuvia: No decisions found in ${path.basename(filePath)}.`);
+    }
+  } catch (err: any) {
+    void vscode.window.showErrorMessage(`Docuvia: Extraction failed - ${err.message}`);
+  }
 }
 
 async function showDecisionsForLens(store: KnowledgeStore, data: CodeLensDecisionData) {

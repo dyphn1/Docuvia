@@ -10,6 +10,13 @@ Docuvia is a universal knowledge graph engine that extracts institutional knowle
 
 It is designed for teams working with large, long-lived, or specialized codebases (e.g., BIOS/firmware, embedded systems) where critical knowledge is scattered, allowing AI agents to query this knowledge via MCP.
 
+## Vision & Core Problem
+
+- **The Cognitive Gap:** In large projects, implicit rules, domain knowledge, and historical decisions are rarely documented in a standardized way. This leads to a "Cognitive Gap" where AI agents hallucinate or fail to make correct decisions because they lack context, and developers suffer from cognitive overload trying to track unknown blast radii.
+- **VCS-based Knowledge Evolver:** Docuvia solves this by tying project knowledge directly to the version control system. Using a Git orphan branch (`docuvia-knowledge`) as the storage mechanism (like a Packfile) and a local SQLite database as the working index (like the Git HEAD), knowledge travels with the repository.
+- **Frictionless UX:** Developers shouldn't stop to "write knowledge." Docuvia integrates seamlessly via hooks/CI to extract knowledge automatically. Every piece of extracted knowledge has an identity tied to a Commit Hash, creating an append-only timeline of decisions.
+- **Ultimate ROI:** Significantly reduce the tokens and time required for AI agents (like Claude Code or Cursor) to explore a project, increasing their speed, reliability, and correctness.
+
 ---
 
 ## Typical Use Cases

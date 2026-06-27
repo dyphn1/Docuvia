@@ -52,10 +52,7 @@ suite("Phase 1: Local Knowledge Schema & Foundations", () => {
 
       // 3. Verify the .docuvia folder and local.db were created
       assert.ok(fs.existsSync(docuviaPath), ".docuvia directory was not created");
-      assert.ok(
-        fs.existsSync(path.join(docuviaPath, "local.db")),
-        "local.db was not created"
-      );
+      assert.ok(fs.existsSync(path.join(docuviaPath, "local.db")), "local.db was not created");
     } catch (error) {
       assert.fail(`Command execution failed: ${error}`);
     }

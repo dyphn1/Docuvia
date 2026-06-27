@@ -7,3 +7,4 @@ This directory contains consolidated learnings, architectural decisions, and err
 - **[Architecture & Design](architecture.md)**: System boundaries, component responsibilities, and structural decisions.
 - **[Common Errors & Traps](common_errors.md)**: Recurring bugs, API gotchas, and specific coding anti-patterns to avoid.
 - **[Conventions & Best Practices](conventions.md)**: Project-specific standards for documentation, testing, and implementation.
+- **[Adversarial Workflow](workflow.md)**: Task classification, adversarial debate tiers, and multi-agent coordination rules.

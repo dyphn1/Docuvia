@@ -1,5 +1,12 @@
 # Architecture & Design Memory
 
+## Hexagonal Architecture & Core Domain
+
+- **Shared Core API (`@workspace/core`)**: Adhere to Hexagonal Architecture (ADR-021) by treating `lib/core` as the single source of truth for all business logic (e.g., `InitService`, `QueryService`, `AnalyzeService`, `ExtractService`). 
+- **Functional Core Adapters**: Ensure core services (e.g., `AnalyzeService`, `ExtractService`) implement real operational logic (such as reading from the file system via appropriate ports) rather than relying on empty stubs, keeping the core fully functional.
+- **Thin Presentation Layers**: All consumer interfaces (CLI, MCP server, VS Code extension, HTTP routes) must act purely as presentation layers. They should delegate entirely to the core services and never duplicate domain logic or interact with infrastructure directly.
+- **No Direct Infrastructure Access**: Never use raw DB clients or ORMs (like Drizzle) directly in presentation or client layers (e.g., `routes/mcp.ts`, `KnowledgeStore.ts`). All data access must be strictly mediated through `@workspace/core`.
+
 ## VS Code Client Architecture
 
 - **Eradicate Single-Root Bias**: Never use `workspaceFolders[0]`. Always pass an explicit `workspaceUri` down the call chain, and map UI instances and state to specific workspace roots.

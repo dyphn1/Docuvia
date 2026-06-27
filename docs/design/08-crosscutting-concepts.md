@@ -107,7 +107,7 @@ Docuvia adopts a paradigm designed to eliminate the "Cognitive Gap" between huma
 
 - **The Cognitive Gap**: AI Agents and developers often suffer from a lack of implicit project knowledge, leading to hallucinations or architecture-breaking code.
 - **Git Metaphor Mapping**:
-  - **The Event Store (Git Packfile)**: The Git orphan branch (`docuvia-knowledge`) is the Single Source of Truth (SSOT). Knowledge is append-only; it evolves via Git commits possessing true *Identity* and *History*.
+  - **The Event Store (Git Packfile)**: The Git orphan branch (`docuvia-knowledge`) is the Single Source of Truth (SSOT). Knowledge is append-only; it evolves via Git commits possessing true _Identity_ and _History_.
   - **The Local HEAD Index (SQLite)**: The local SQLite database in the VS Code extension acts as a rapid, ephemeral projection of the current workspace state. It provides zero-token, exact-match context (via AST and topological relations) to local AI agents without requiring a server connection.
   - **The Global Projection (PostgreSQL)**: The Server's PostgreSQL database (`pgvector`) acts as a global read model. It projects the Git events into a searchable vector space for cross-project semantic queries.
 

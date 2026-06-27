@@ -14,6 +14,7 @@
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
     "@workspace/ast-core": "workspace:*",
+    "@workspace/core": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/integrations-openai-ai-server": "workspace:*",
     "cookie-parser": "^1.4.7",

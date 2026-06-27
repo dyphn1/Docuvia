@@ -776,11 +776,15 @@ export async function ingestAstJsonl(
       const endpointChunks = chunkArray(endpointL3Values, BATCH_INSERT_CHUNK);
       const endpointInserted: Array<{ id: number; l2NodeId: number; title: string }> = [];
       for (const chunk of endpointChunks) {
-        const inserted = await db.insert(l3NodesTable).values(chunk).onConflictDoNothing().returning({
-          id: l3NodesTable.id,
-          l2NodeId: l3NodesTable.l2NodeId,
-          title: l3NodesTable.title,
-        });
+        const inserted = await db
+          .insert(l3NodesTable)
+          .values(chunk)
+          .onConflictDoNothing()
+          .returning({
+            id: l3NodesTable.id,
+            l2NodeId: l3NodesTable.l2NodeId,
+            title: l3NodesTable.title,
+          });
         endpointInserted.push(...inserted);
       }
 

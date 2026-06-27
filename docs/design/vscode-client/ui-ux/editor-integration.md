@@ -7,7 +7,7 @@
   - Keep titles short and action-oriented (e.g., `$(zap) Extract Decision`).
   - Use VS Code codicons (`$(icon-name)`) to provide visual cues.
   - Only show CodeLens where contextually appropriate (e.g., function, class, or interface definitions) to avoid cluttering the user's editor. Too many CodeLenses cause visual fatigue.
-- **Performance Constraint (Viewport-Scoped Lazy Loading)**: 
+- **Performance Constraint (Viewport-Scoped Lazy Loading)**:
   - To prevent main-thread blocking, the CodeLens provider **MUST NOT** parse or query the SQLite database for the entire file at once. It must be debounced and restricted to resolving symbols only within the current visible viewport range provided by VS Code.
 
 ### CodeLens Click Behaviour (`docuvia.showDecisionsForLens`)

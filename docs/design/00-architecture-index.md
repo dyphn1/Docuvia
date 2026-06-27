@@ -56,9 +56,8 @@ The detailed Agentic OS mechanisms are codified as Architecture Decision Records
 | `ADR-016` | [Git Blob-Native Identity & Checkout Thrashing Defense](adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md) |
 | `ADR-017` | [Tiered Storage & Orphan Branch Graph Maintenance](adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)           |
 | `ADR-018` | [Temporal & Conceptual Bidirectional Linking](adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md)                     |
-| `ADR-019` | [PostgreSQL pgvector Migration](adrs/ADR-019-pgvector-migration.md)                                                                |
-| `ADR-020` | [Unified Isomorphic AST Microkernel](adrs/ADR-020-unified-isomorphic-ast-microkernel.md)                                           |
-
+| `ADR-019` | [PostgreSQL pgvector Migration](adrs/ADR-019-pgvector-migration.md)                                                              |
+| `ADR-020` | [Unified Isomorphic AST Microkernel](adrs/ADR-020-unified-isomorphic-ast-microkernel.md)                                         |
 
 ---
 
@@ -90,7 +89,7 @@ The VS Code extension has its own detailed design documentation under [`docs/des
 
 ## Related Documents
 
-| Document                                                       | Purpose                                                                                  |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| [docs/roadmap/master-roadmap.md](../roadmap/master-roadmap.md) | Single Source of Truth (SSOT) tracking all development phases                            |
-| [AGENTS.md](../../AGENTS.md)                                   | AI developer guide — commands, conventions, agent definitions                            |
+| Document                                                       | Purpose                                                       |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| [docs/roadmap/master-roadmap.md](../roadmap/master-roadmap.md) | Single Source of Truth (SSOT) tracking all development phases |
+| [AGENTS.md](../../AGENTS.md)                                   | AI developer guide — commands, conventions, agent definitions |

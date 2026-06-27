@@ -1,5 +1,9 @@
 # Common Errors & Traps
 
+## CLI & Tooling
+
+- **Unhandled Promise Rejections**: Failing to catch database connection errors in CLI entry points leads to ugly unhandled rejection crashes. Always wrap CLI commands with proper `try/catch` or `.catch()` handlers to ensure a clean error message and a non-zero exit code when infrastructure (like the DB) is missing.
+
 ## VS Code Extension Development
 
 - **Multi-root Workspace Trap**: NEVER rely on `vscode.workspace.workspaceFolders?.[0]?.uri.fsPath` for file operations. In multi-root workspaces, this resolves to the wrong directory for files in subsequent roots. Always resolve the workspace root dynamically based on the target file's URI: `vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath))?.uri.fsPath`.

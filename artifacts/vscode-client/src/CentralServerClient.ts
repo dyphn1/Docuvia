@@ -184,7 +184,7 @@ export class CentralServerClient {
       throw new Error(`Failed to pull snapshot: ${response.status}`);
     }
 
-    const data = await response.json() as Record<string, unknown>;
+    const data = (await response.json()) as Record<string, unknown>;
     return {
       projectId: data.projectId as number,
       l1Tags: (data.l1Tags ?? []) as KnowledgeSnapshot["l1Tags"],

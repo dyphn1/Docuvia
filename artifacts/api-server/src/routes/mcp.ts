@@ -1,14 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from "@workspace/db";
-import {
-  projectsTable,
-  l2NodesTable,
-  l3NodesTable,
-  nodeLinksTable,
-  commitsTable,
-} from "@workspace/db";
-import { eq, and, like, sql, count, inArray } from "drizzle-orm";
+import { DependencyService, ImpactAnalysisService, ProjectService, DecisionRecordService } from "@workspace/core";
 import { routeQuery, sanitizeLikeInput } from "../lib/intent-router.js";
 import { logger } from "../lib/logger.js";
 import { getAllMemories, getCompressedPayload } from "../memory/shared-memory.js";
@@ -39,32 +31,6 @@ const SearchKnowledgeQuery = z.object({
 const McpQueryRequestBody = GeneratedMcpQueryBody.extend({
   include_pending: z.boolean().optional().default(false),
 });
-
-async function collectTransitiveImpactingNodeIds(startNodeId: number): Promise<number[]> {
-  const visited = new Set<number>();
-  let frontier = [startNodeId];
-
-  while (frontier.length > 0) {
-    const links = await db
-      .select({
-        sourceNodeId: nodeLinksTable.sourceNodeId,
-      })
-      .from(nodeLinksTable)
-      .where(inArray(nodeLinksTable.targetNodeId, frontier));
-
-    const nextFrontier: number[] = [];
-    for (const link of links) {
-      if (!visited.has(link.sourceNodeId) && link.sourceNodeId !== startNodeId) {
-        visited.add(link.sourceNodeId);
-        nextFrontier.push(link.sourceNodeId);
-      }
-    }
-
-    frontier = nextFrontier;
-  }
-
-  return [...visited];
-}
 
 // Require PAT for all /mcp/* routes
 router.use("/mcp", (req, res, next) => {
@@ -98,36 +64,7 @@ router.use("/mcp", (req, res, next) => {
 });
 
 router.get("/mcp/list_projects", async (req, res) => {
-  const projects = await db
-    .select()
-    .from(projectsTable)
-    .orderBy(sql`${projectsTable.name} asc`);
-  const l2Counts = await db
-    .select({
-      projectId: l2NodesTable.projectId,
-      count: count(),
-    })
-    .from(l2NodesTable)
-    .groupBy(l2NodesTable.projectId);
-
-  const l3Counts = await db
-    .select({
-      projectId: l2NodesTable.projectId,
-      count: count(),
-    })
-    .from(l3NodesTable)
-    .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
-    .groupBy(l2NodesTable.projectId);
-
-  const l2CountByProject = new Map(l2Counts.map((row) => [row.projectId, row.count]));
-  const l3CountByProject = new Map(l3Counts.map((row) => [row.projectId, row.count]));
-  const result = projects.map((p) => ({
-    id: p.id,
-    name: p.name,
-    repoUrl: p.repoUrl,
-    l2Count: l2CountByProject.get(p.id) ?? 0,
-    l3Count: l3CountByProject.get(p.id) ?? 0,
-  }));
+  const result = await ProjectService.listProjects();
   res.json({ projects: result });
 });
 
@@ -192,46 +129,9 @@ router.get("/mcp/get_dependencies", async (req, res) => {
 
   const { module: moduleName, project_id: projectId } = parsed.data;
   const escapedModuleName = sanitizeLikeInput(moduleName);
-  const nodes = await db
-    .select()
-    .from(l2NodesTable)
-    .where(like(l2NodesTable.name, `%${escapedModuleName}%`));
-  const node = projectId ? nodes.find((n) => n.projectId === projectId) : nodes[0];
 
-  if (!node) {
-    return res.json({ module: moduleName, nodeId: null, dependencies: [], dependents: [] });
-  }
-
-  const outLinks = await db
-    .select()
-    .from(nodeLinksTable)
-    .where(eq(nodeLinksTable.sourceNodeId, node.id));
-  const inLinks = await db
-    .select()
-    .from(nodeLinksTable)
-    .where(eq(nodeLinksTable.targetNodeId, node.id));
-
-  const dependencies = await Promise.all(
-    outLinks.map(async (link) => {
-      const [target] = await db
-        .select({ name: l2NodesTable.name })
-        .from(l2NodesTable)
-        .where(eq(l2NodesTable.id, link.targetNodeId));
-      return target?.name ?? `node#${link.targetNodeId}`;
-    })
-  );
-
-  const dependents = await Promise.all(
-    inLinks.map(async (link) => {
-      const [source] = await db
-        .select({ name: l2NodesTable.name })
-        .from(l2NodesTable)
-        .where(eq(l2NodesTable.id, link.sourceNodeId));
-      return source?.name ?? `node#${link.sourceNodeId}`;
-    })
-  );
-
-  return res.json({ module: moduleName, nodeId: node.id, dependencies, dependents });
+  const result = await DependencyService.getDependencies(moduleName, escapedModuleName, projectId);
+  return res.json(result);
 });
 
 router.get("/mcp/impact_analysis", async (req, res) => {
@@ -244,40 +144,9 @@ router.get("/mcp/impact_analysis", async (req, res) => {
 
   const { module: moduleName, project_id: projectId } = parsed.data;
   const escapedModuleName = sanitizeLikeInput(moduleName);
-  const nodes = await db
-    .select()
-    .from(l2NodesTable)
-    .where(like(l2NodesTable.name, `%${escapedModuleName}%`));
-  const node = projectId ? nodes.find((n) => n.projectId === projectId) : nodes[0];
 
-  if (!node) {
-    return res.json({ module: moduleName, nodeId: null, impactedModules: [], l3DecisionCount: 0 });
-  }
-
-  const impactedNodeIds = await collectTransitiveImpactingNodeIds(node.id);
-  const impactedNodes = impactedNodeIds.length
-    ? await db
-        .select({
-          id: l2NodesTable.id,
-          name: l2NodesTable.name,
-        })
-        .from(l2NodesTable)
-        .where(inArray(l2NodesTable.id, impactedNodeIds))
-    : [];
-  const impactedNodeNameById = new Map(impactedNodes.map((n) => [n.id, n.name]));
-  const impacted = impactedNodeIds.map((id) => impactedNodeNameById.get(id) ?? `node#${id}`);
-
-  const [l3Row] = await db
-    .select({ count: count() })
-    .from(l3NodesTable)
-    .where(inArray(l3NodesTable.l2NodeId, [node.id, ...impactedNodeIds]));
-
-  return res.json({
-    module: moduleName,
-    nodeId: node.id,
-    impactedModules: impacted,
-    l3DecisionCount: l3Row.count,
-  });
+  const result = await ImpactAnalysisService.analyzeImpact(moduleName, escapedModuleName, projectId);
+  return res.json(result);
 });
 
 router.get("/mcp/get_decision_record", async (req, res) => {
@@ -291,24 +160,8 @@ router.get("/mcp/get_decision_record", async (req, res) => {
   const { commit_hash: commitHash } = parsed.data;
   const escapedCommitHash = sanitizeLikeInput(commitHash);
 
-  const [commit] = await db
-    .select()
-    .from(commitsTable)
-    .where(like(commitsTable.hash, `${escapedCommitHash}%`));
-
-  const l3Nodes = await db
-    .select()
-    .from(l3NodesTable)
-    .where(like(l3NodesTable.commitHash, `${escapedCommitHash}%`));
-
-  return res.json({
-    commitHash,
-    commitMessage: commit?.message ?? null,
-    decisions: l3Nodes.map((n) => ({
-      ...n,
-      createdAt: n.createdAt.toISOString(),
-    })),
-  });
+  const result = await DecisionRecordService.getDecisionRecord(commitHash, escapedCommitHash);
+  return res.json(result);
 });
 
 // ---------------------------------------------------------------------------

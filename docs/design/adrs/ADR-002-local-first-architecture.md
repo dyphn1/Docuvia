@@ -46,7 +46,7 @@ flowchart TD
 To strictly adhere to both **Local-First** principles and the **Centralized Server Write Lock** (mandated to prevent split-brain), Docuvia employs the **Outbox Pattern**:
 
 1. **Offline Writes**: When a developer creates a new [L3 decision](ADR-005-knowledge-abstraction-strategy.md) offline, the [VS Code client](ADR-001-vscode-client-onboarding.md) writes it immediately to its local SQLite database and records it as an append-only Delta (Event Sourcing) destined for the `docuvia-knowledge` Git branch.
-2. **Online Sync**: Upon network restoration, the client simply executes a standard `git push origin docuvia-knowledge`. 
+2. **Online Sync**: Upon network restoration, the client simply executes a standard `git push origin docuvia-knowledge`.
 3. **Server Gatekeeper**: The [API server](ADR-003-server-side-zero-to-one.md) detects the updated branch, pulls the newly appended events, and projects them into the PostgreSQL database.
 4. **Conflict Resolution**: Since all events are Git commits on an orphan branch, multi-developer conflicts are naturally resolved via standard Git merge algorithms, eliminating split-brain data loss.
 

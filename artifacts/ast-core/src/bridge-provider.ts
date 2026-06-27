@@ -56,8 +56,7 @@ export async function parseOpenApiSpec(
     return { events: [], contractName: "", endpointCount: 0 };
   }
 
-  const contractName =
-    (spec.info && spec.info.title) || filePath.replace(/\.(yaml|yml|json)$/, "");
+  const contractName = (spec.info && spec.info.title) || filePath.replace(/\.(yaml|yml|json)$/, "");
 
   const events: AstEvent[] = [];
   const paths = spec.paths || {};
@@ -81,7 +80,8 @@ export async function parseOpenApiSpec(
       const operation = (pathItem as any)[method];
       if (!operation || typeof operation !== "object") continue;
 
-      const summary = operation.summary || operation.description || `${method.toUpperCase()} ${routePath}`;
+      const summary =
+        operation.summary || operation.description || `${method.toUpperCase()} ${routePath}`;
       const operationId = operation.operationId || null;
       const tags = Array.isArray(operation.tags) ? operation.tags : [];
 
@@ -124,8 +124,12 @@ export function isOpenApiFile(content: string, ext: string): boolean {
   const lines = content.split("\n", 20);
   for (const line of lines) {
     const trimmed = line.trim();
-    if (trimmed.startsWith("openapi:") || trimmed.startsWith("swagger:") ||
-        trimmed.startsWith('"openapi":') || trimmed.startsWith('"swagger":')) {
+    if (
+      trimmed.startsWith("openapi:") ||
+      trimmed.startsWith("swagger:") ||
+      trimmed.startsWith('"openapi":') ||
+      trimmed.startsWith('"swagger":')
+    ) {
       return true;
     }
   }

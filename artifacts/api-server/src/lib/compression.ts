@@ -17,7 +17,10 @@ export interface CompressResult {
   context: string;
 }
 
-export function compressAstContext(nodes: CompressibleNode[], options?: CompressOptions): CompressResult {
+export function compressAstContext(
+  nodes: CompressibleNode[],
+  options?: CompressOptions
+): CompressResult {
   if (!nodes || nodes.length === 0) {
     return { nodesTotal: 0, nodesIncluded: 0, charsSaved: 0, context: "" };
   }
@@ -34,9 +37,9 @@ export function compressAstContext(nodes: CompressibleNode[], options?: Compress
     const header = `--- ${node.title} ${node.nodeType ? `[${node.nodeType}]` : ""} ---\n`;
     let content = node.content || "";
     originalChars += content.length;
-    
+
     if (currentTotal >= maxTotal) continue;
-    
+
     if (content.length > maxPerNode) {
       content = content.substring(0, maxPerNode) + "\n... (truncated)";
     }

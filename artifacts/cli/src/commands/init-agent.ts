@@ -40,21 +40,25 @@ if (target) {
 }
 `;
 
-const HOOKS_JSON = JSON.stringify({
-  PreToolUse: [
-    {
-      hooks: [
-        {
-          command: "node ${HOOKS_DIR}/docuvia-hook.js",
-          statusMessage: "Enriching with Docuvia architectural context...",
-          timeout: 5,
-          type: "command"
-        }
-      ],
-      matcher: "Grep|Glob|Bash|Read"
-    }
-  ]
-}, null, 2);
+const HOOKS_JSON = JSON.stringify(
+  {
+    PreToolUse: [
+      {
+        hooks: [
+          {
+            command: "node ${HOOKS_DIR}/docuvia-hook.js",
+            statusMessage: "Enriching with Docuvia architectural context...",
+            timeout: 5,
+            type: "command",
+          },
+        ],
+        matcher: "Grep|Glob|Bash|Read",
+      },
+    ],
+  },
+  null,
+  2
+);
 
 const AGENT_INSTRUCTIONS = `
 <!-- docuvia:start -->
@@ -85,14 +89,12 @@ async function writeOrAppend(filePath: string, content: string, marker: string) 
   }
 }
 
-
-
 async function registerMcpServer(cwd: string) {
   console.log("\nConfiguring MCP Servers...");
-  
+
   const mcpConfig = {
     command: "npx",
-    args: ["--no-install", "docuvia", "mcp"]
+    args: ["--no-install", "docuvia", "mcp"],
   };
 
   // Cursor Configuration
@@ -134,16 +136,16 @@ async function registerMcpServer(cwd: string) {
         await fs.mkdir(path.dirname(claudeMcpPath), { recursive: true });
       }
       claudeMcp.mcpServers = claudeMcp.mcpServers || {};
-      
+
       // For global Claude config, we must provide the absolute path to the project to run npx properly
       claudeMcp.mcpServers["docuvia-local"] = {
         command: "npx",
         args: ["-y", "docuvia", "mcp"],
         env: {
-          DOCUVIA_WORKSPACE_ROOT: cwd
-        }
+          DOCUVIA_WORKSPACE_ROOT: cwd,
+        },
       };
-      
+
       await fs.writeFile(claudeMcpPath, JSON.stringify(claudeMcp, null, 2));
       console.log(`✅ Registered MCP server in: ${claudeMcpPath}`);
     } catch (e: any) {
@@ -159,40 +161,60 @@ export async function initAgent(cwd: string = process.cwd()) {
     // 1. Setup Executable Hooks (Claude Code, Cursor)
     const claudeHooksPath = path.join(cwd, CLAUDE_HOOKS_DIR);
     await fs.mkdir(claudeHooksPath, { recursive: true });
-    await fs.writeFile(path.join(claudeHooksPath, "docuvia-hook.js"), DOCUVIA_HOOK_JS, { mode: 0o755 });
-    
+    await fs.writeFile(path.join(claudeHooksPath, "docuvia-hook.js"), DOCUVIA_HOOK_JS, {
+      mode: 0o755,
+    });
+
     let claudeHooksConfig = HOOKS_JSON.replace(/\${HOOKS_DIR}/g, "${CLAUDE_PLUGIN_ROOT}/hooks");
-    await writeOrAppend(path.join(claudeHooksPath, "hooks.json"), claudeHooksConfig, "docuvia-hook.js");
+    await writeOrAppend(
+      path.join(claudeHooksPath, "hooks.json"),
+      claudeHooksConfig,
+      "docuvia-hook.js"
+    );
 
     const cursorHooksPath = path.join(cwd, CURSOR_HOOKS_DIR);
     await fs.mkdir(cursorHooksPath, { recursive: true });
-    await fs.writeFile(path.join(cursorHooksPath, "docuvia-hook.cjs"), DOCUVIA_HOOK_JS, { mode: 0o755 });
-    
-    let cursorHooksConfig = HOOKS_JSON.replace(/\${HOOKS_DIR}/g, "${CURSOR_PLUGIN_ROOT}/hooks").replace(".js", ".cjs");
-    await writeOrAppend(path.join(cursorHooksPath, "hooks.json"), cursorHooksConfig, "docuvia-hook.cjs");
+    await fs.writeFile(path.join(cursorHooksPath, "docuvia-hook.cjs"), DOCUVIA_HOOK_JS, {
+      mode: 0o755,
+    });
+
+    let cursorHooksConfig = HOOKS_JSON.replace(
+      /\${HOOKS_DIR}/g,
+      "${CURSOR_PLUGIN_ROOT}/hooks"
+    ).replace(".js", ".cjs");
+    await writeOrAppend(
+      path.join(cursorHooksPath, "hooks.json"),
+      cursorHooksConfig,
+      "docuvia-hook.cjs"
+    );
 
     // 2. Setup Static Rules/Instructions (Copilot, Windsurf, Zed, Continue, Generic)
-    
+
     // GitHub Copilot
-    await writeOrAppend(path.join(cwd, GITHUB_DIR, "copilot-instructions.md"), AGENT_INSTRUCTIONS, "docuvia:start");
-    
+    await writeOrAppend(
+      path.join(cwd, GITHUB_DIR, "copilot-instructions.md"),
+      AGENT_INSTRUCTIONS,
+      "docuvia:start"
+    );
+
     // Claude Desktop / Generic Markdown
     await writeOrAppend(path.join(cwd, "CLAUDE.md"), AGENT_INSTRUCTIONS, "docuvia:start");
-    
+
     // Windsurf
     await writeOrAppend(path.join(cwd, ".windsurfrules"), AGENT_INSTRUCTIONS, "docuvia:start");
-    
+
     // Cursor Rules (Fallback for non-hook Cursor modes)
     await writeOrAppend(path.join(cwd, ".cursorrules"), AGENT_INSTRUCTIONS, "docuvia:start");
-    
+
     // Standard LLM Crawler text
     await writeOrAppend(path.join(cwd, "llms.txt"), AGENT_INSTRUCTIONS, "docuvia:start");
 
     await registerMcpServer(cwd);
 
     console.log("\n🚀 Docuvia Agent Integrations successfully installed!");
-    console.log("Supported platforms: Claude Code, Cursor, GitHub Copilot, Windsurf, Zed, Continue, OpenCode, Gemini CLI.");
-
+    console.log(
+      "Supported platforms: Claude Code, Cursor, GitHub Copilot, Windsurf, Zed, Continue, OpenCode, Gemini CLI."
+    );
   } catch (error) {
     console.error("❌ Failed to initialize agent integrations:", error);
     process.exit(1);

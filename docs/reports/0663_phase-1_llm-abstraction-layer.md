@@ -1,0 +1,121 @@
+# Design Verification Report — Item 1.1.5
+
+**Item ID:** 1.1.5
+**Description:** LLM abstraction layer (OpenAI-compatible interface only; no multi-provider fallback)
+**Verification Date:** 2026-06-28
+**Verdict:** ⚠️ WARN
+**Type:** Re-verification (previous: 0662_phase-1_llm-abstraction-layer.md, 2026-06-28)
+
+---
+
+## Design Spec References
+
+| Document | Section | Description |
+|----------|---------|-------------|
+| ADR-004 | openai-compatible-llm-interface-only | Core LLM integration via OpenAI SDK; explicit decision to NOT support non-OpenAI providers natively (use proxy like LiteLLM instead) |
+
+---
+
+## Source Files Examined
+
+| File | Purpose |
+|------|---------|
+| `lib/integrations-openai-ai-server/src/index.ts` | Package entry; exports client, batch, image, audio modules |
+| `lib/integrations-openai-ai-server/src/client.ts` | OpenAI SDK wrapper (completions, chat, embeddings) |
+| `lib/integrations-openai-ai-server/src/batch/utils.ts` | Batch processing utilities for large-scale LLM operations |
+| `lib/integrations-openai-ai-server/src/image/client.ts` | Image generation (DALL-E) via OpenAI |
+| `lib/integrations-openai-ai-server/src/audio/client.ts` | Audio (Whisper) via OpenAI |
+| `lib/db/src/schema/llm_configs.ts` | Per-project LLM config schema (model selection, API key rotation) |
+| `artifacts/api-server/src/routes/llm_config.ts` | Per-project LLM config CRUD routes |
+| `artifacts/api-server/src/lib/embedding.ts` | Embedding generation + pgvector storage |
+| `artifacts/api-server/src/routes/generate.ts` | RAG generation endpoint (intent router → LLM call) |
+
+**Checksums (SHA-256):**
+
+| File | Hash | Previous | Change |
+|------|------|----------|--------|
+| `lib/integrations-openai-ai-server/src/client.ts` | `6ae81f25fe046fcd3e872929dc2b1ff5cd61e61feb5f0e8f177e70705c8a9eb2` | `6ae81f25fe046fcd3e872929dc2b1ff5cd61e61feb5f0e8f177e70705c8a9eb2` | Unchanged |
+| `lib/integrations-openai-ai-server/src/index.ts` | `16bb8a72af90ed0fc25e77b76c8d26b9cc432dba9a6a6306f7aa588b32707f17` | `16bb8a72af90ed0fc25e77b76c8d26b9cc432dba9a6a6306f7aa588b32707f17` | Unchanged |
+| `lib/integrations-openai-ai-server/src/batch/utils.ts` | `4cdd914861bf929cbd3c17dd8ffe92af37602ec5d1606f281597f9e3ed82cfd2` | `4cdd914861bf929cbd3c17dd8ffe92af37602ec5d1606f281597f9e3ed82cfd2` | Unchanged |
+| `lib/integrations-openai-ai-server/src/image/client.ts` | `5682c1ac92e0249ace3747b73969aab144bf0b3256d17ea0a8268fb512dcaa95` | `5682c1ac92e0249ace3747b73969aab144bf0b3256d17ea0a8268fb512dcaa95` | Unchanged |
+| `lib/integrations-openai-ai-server/src/audio/client.ts` | `6ba354839d00255b584ade54ac85da83a50fd8f080edf2aa9a8848ddf1bc2433` | `6ba354839d00255b584ade54ac85da83a50fd8f080edf2aa9a8848ddf1bc2433` | Unchanged |
+| `lib/db/src/schema/llm_configs.ts` | `3747adecb3b5fba3ab77fa0dabc3fd63d91a4169dbb04e0b6dcff78e05ca07f3` | `3747adecb3b5fba3ab77fa0dabc3fd63d91a4169dbb04e0b6dcff78e05ca07f3` | Unchanged |
+| `artifacts/api-server/src/routes/llm_config.ts` | `aacedc0f76f75fffbc72393266bd8f8cc2be3c537595ac83e8057b422a7648d9` | `aacedc0f76f75fffbc72393266bd8f8cc2be3c537595ac83e8057b422a7648d9` | Unchanged |
+| `artifacts/api-server/src/lib/embedding.ts` | `1d8b71ebfdabf6b7b0ef205dab0fb324523e40bbe05c8ef5e40fe0927fff6ff6` | `1d8b71ebfdabf6b7b0ef205dab0fb324523e40bbe05c8ef5e40fe0927fff6ff6` | Unchanged |
+| `artifacts/api-server/src/routes/generate.ts` | `41e9e00001dbabbe08bd7a08d514a2f7c7949bec2634a61b2abf7e7ff9191b85` | `41e9e00001dbabbe08bd7a08d514a2f7c7949bec2634a61b2abf7e7ff9191b85` | Unchanged |
+
+**All 9 files completely unchanged. `git log --since="2026-06-28"` shows zero commits touching any of these files.**
+
+---
+
+## Round 1 — Architecture & Design Review
+
+### Design ↔ Implementation Alignment
+
+**✅ Correctly implemented:**
+
+1. OpenAI SDK wrapper in `client.ts` — chat completions, embeddings, all using official SDK
+2. Batch processing utilities in `batch/utils.ts` for large-scale operations
+3. Image generation (DALL-E) and audio (Whisper) modules properly separated
+4. Per-project LLM config schema (`llm_configs.ts`) supports model switching and API key rotation
+5. Embedding generation + pgvector storage in `embedding.ts`
+
+### Gaps / Deviations
+
+1. **⚠️ No multi-provider fallback** — ADR-004 explicitly constrains to OpenAI-only. This is by design per the ADR, not a bug. However, the abstraction layer is thin — adding a new provider requires touching every function in `client.ts` rather than implementing a shared interface. If the project ever needs to support non-OpenAI providers (e.g., Anthropic, local models), a refactor would be needed.
+
+---
+
+## Round 2 — Code Quality & Security Review
+
+### Strengths
+
+1. Clean module separation (client, batch, image, audio)
+2. Per-project API key isolation via `llm_configs` schema
+3. Embedding storage uses pgvector with proper indexing
+
+### Issues Found
+
+1. **⚠️ Thin abstraction layer** — The OpenAI client wrapper is a single-class implementation with no interface/protocol abstraction. This is acceptable per ADR-004's explicit "OpenAI only" constraint, but noted for future provider-extension work.
+
+---
+
+## Round 3 — Integration & Completeness Review
+
+### Integration Correctness
+
+1. `generate.ts` correctly imports and uses the OpenAI client for RAG generation
+2. `embedding.ts` properly stores vectors in pgvector for semantic search
+3. `llm_config.ts` routes provide CRUD for per-project model configuration
+
+### Missing Coverage
+
+1. **None identified** — all features specified in ADR-004 are implemented.
+
+---
+
+## Changes Since Last Verification
+
+| Change | Impact |
+|--------|--------|
+| None — all 9 source files unchanged | No change |
+
+**Net change:** No code changes since 2026-06-28. All findings are carried forward.
+
+---
+
+## Findings Summary
+
+| # | Severity | Category | Finding | Status |
+|---|----------|----------|---------|--------|
+| 1 | 🟡 | Architecture | Thin OpenAI-only abstraction layer; no provider interface for future multi-provider support | Unchanged |
+| 2 | 🟢 | Security | Per-project API key isolation properly implemented | Unchanged |
+| 3 | 🟢 | Completeness | All ADR-004 requirements implemented (chat, embeddings, batch, image, audio) | Unchanged |
+
+---
+
+## Overall Verdict
+
+**⚠️ WARN**
+
+The WARN status is maintained not because of any functional defect, but because the abstraction layer is architecturally thin — it directly wraps the OpenAI SDK without a provider-agnostic interface. Per ADR-004's explicit "OpenAI only" decision, this is acceptable and intentional. The item is fully functional as designed. The WARN serves as a note that any future multi-provider requirement will necessitate a refactor of `client.ts` to introduce a provider interface/protocol pattern.

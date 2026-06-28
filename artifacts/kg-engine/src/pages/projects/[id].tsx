@@ -39,6 +39,7 @@ import { CheckCircle2 } from "lucide-react";
 import type { L2Node, L3Node } from "@workspace/api-client-react";
 import { L2BootstrapReview } from "@/components/L2BootstrapReview";
 import { ProjectTopologyGraph } from "@/components/graph/ProjectTopologyGraph";
+import { ArchitectureFlowchart } from "@/components/graph/ArchitectureFlowchart";
 
 const L3_TYPE_ICON: Record<string, React.ReactNode> = {
   change: <GitCommit className="h-3 w-3" />,
@@ -369,13 +370,19 @@ export default function ProjectDetail() {
       </div>
 
       <div className="flex-1 p-6 min-h-0 overflow-hidden">
-        <Tabs defaultValue="graph" className="h-full flex flex-col">
+        <Tabs defaultValue="architecture" className="h-full flex flex-col">
           <TabsList className="bg-background border border-border">
+            <TabsTrigger
+              value="architecture"
+              className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
+            >
+              <Network className="h-4 w-4 mr-2" /> Architecture Flow
+            </TabsTrigger>
             <TabsTrigger
               value="graph"
               className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
             >
-              <Network className="h-4 w-4 mr-2" /> Graph View
+              <Network className="h-4 w-4 mr-2" /> Topology Map
             </TabsTrigger>
             <TabsTrigger
               value="commits"
@@ -404,6 +411,10 @@ export default function ProjectDetail() {
           </TabsList>
 
           <div className="flex-1 mt-4 overflow-hidden">
+            <TabsContent value="architecture" className="h-full m-0 p-0">
+              <ArchitectureFlowchart projectId={id} />
+            </TabsContent>
+
             <TabsContent value="graph" className="h-full m-0 p-0">
               <Card className="h-full flex flex-col border-border bg-card/50">
                 <CardHeader className="flex-none border-b border-border py-4">

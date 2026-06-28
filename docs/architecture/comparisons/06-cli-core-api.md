@@ -25,4 +25,3 @@ GitNexus, Sourcegraph (Cody / sg), Cursor (Shadow Workspace), GitHub Copilot (Wo
 - Scale incremental sync (`AnalyzeService`) for large monorepos.
 - Expand semantic graph to include cross-module `IMPLEMENTS` and `EXTENDS`.
 - Refine background L3 Extraction (`--deep` flag) for better LLM context building.
-g.

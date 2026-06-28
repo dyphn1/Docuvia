@@ -2,6 +2,8 @@ import { parentPort } from "worker_threads";
 import { Parser, Language } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 
 export interface AstParseRequest {
   taskId: string;
@@ -19,6 +21,7 @@ export interface AstParseResponse {
     exports: Array<{ name: string; type: "function" | "class" | "variable" }>;
     functions: Array<{ name: string; startLine: number; endLine: number }>;
     classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }>;
+    calls: Array<{ sourceFunction: string; targetFunction: string }>;
     decisions?: string[];
   };
 }

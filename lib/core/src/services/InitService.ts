@@ -75,6 +75,15 @@ export class InitService {
         status TEXT,
         created_at TEXT
       );
+      
+      CREATE TABLE IF NOT EXISTS project_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER NOT NULL DEFAULT 1,
+        file_path TEXT NOT NULL,
+        content_hash TEXT NOT NULL,
+        last_parsed_at TEXT,
+        UNIQUE(project_id, file_path)
+      );
       CREATE TABLE IF NOT EXISTS node_links (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         source_node_id TEXT NOT NULL,

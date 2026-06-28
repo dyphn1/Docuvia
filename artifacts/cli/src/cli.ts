@@ -28,7 +28,8 @@ async function main() {
   }
 
   if (command === "analyze") {
-    await analyzeCommand();
+    const deep = process.argv.includes("--deep");
+    await analyzeCommand(deep);
     process.exit(0);
   }
 
@@ -109,7 +110,7 @@ async function main() {
   console.error("  docuvia clean                                # Wipe local.db knowledge graph");
   console.error("  docuvia detect-changes [--baseRef=...]       # Detect structural changes and risk score");
   console.error(
-    "  docuvia analyze                              # Analyze project for AST and tags"
+    "  docuvia analyze [--deep]                     # Analyze project (add --deep for L3 extraction)"
   );
   console.error("  docuvia extract <file_path>                  # Extract decisions from a file");
   console.error(

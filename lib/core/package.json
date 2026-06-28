@@ -20,6 +20,8 @@
     "@workspace/integrations-openai-ai-server": "workspace:*",
     "better-sqlite3": "^12.11.1",
     "drizzle-orm": "catalog:",
+    "fast-glob": "^3.3.3",
+    "ignore": "^7.0.5",
     "typescript": "^6.0.3",
     "web-tree-sitter": "^0.26.9"
   },

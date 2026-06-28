@@ -6,8 +6,8 @@ This document tracks the implementation status of CLI commands, their alignment 
 
 | Command | Core Service Dependency | API Alignment | MCP Tool Exists | VS Code Parity | Status / Notes |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `init` | `InitService` | ✅ Valid | ✅ `docuvia_init` | ✅ `docuvia.initProject` | Well-aligned. |
-| `analyze` | `AnalyzeService` | ✅ Valid | ✅ `docuvia_analyze` | ✅ `docuvia.startExplore` | Well-aligned. |
+| `init` | `InitService` | ✅ Valid | ✅ `docuvia_init` | ✅ `docuvia.initProject` | Well-aligned. Now uses non-intrusive Git plumbing commands. |
+| `analyze` | `AnalyzeService` | ✅ Valid | ✅ `docuvia_analyze` | ✅ `docuvia.startExplore` | Evolving to support full AST scanning via Worker Pool. |
 | `extract` | `ExtractService` | ✅ Valid | ✅ `docuvia_extract` | ✅ `docuvia.addDecision` | Well-aligned. |
 | `query` | `QueryService` | ✅ Valid | ✅ `docuvia_query_local` | ✅ Chat `query` | MCP uses `QueryService.query()` natively. |
 | `clean` | `CleanService` | ✅ Valid | ✅ `docuvia_clean` | ❌ Missing | Core service is instantiated properly with `workspaceRoot`. MCP tool added. |

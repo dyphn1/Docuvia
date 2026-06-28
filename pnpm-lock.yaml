@@ -781,6 +781,12 @@ importers:
       drizzle-orm:
         specifier: 'catalog:'
         version: 0.45.2(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)
+      fast-glob:
+        specifier: ^3.3.3
+        version: 3.3.3
+      ignore:
+        specifier: ^7.0.5
+        version: 7.0.5
       typescript:
         specifier: ^6.0.3
         version: 6.0.3

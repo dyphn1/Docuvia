@@ -13,25 +13,6 @@ export class InitService {
   public async init() {
     console.log(`[docuvia] Initializing project in ${this.workspaceRoot}`);
 
-    // 1. Check Git status
-    try {
-      const { stdout } = await exec("git status --porcelain", { cwd: this.workspaceRoot });
-      if (stdout.trim().length > 0) {
-        throw new Error(
-          "Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree."
-        );
-      }
-    } catch (err: any) {
-      if (err.message.includes("not a git repository")) {
-        throw new Error("Docuvia requires a git repository. Please run `git init` first.");
-      }
-      if (!err.message.includes("Please commit or stash")) {
-        throw new Error(`Git error: ${err.message}`);
-      } else {
-        throw err;
-      }
-    }
-
     const docuviaDir = path.join(this.workspaceRoot, ".docuvia");
 
     // 2. Setup branch
@@ -48,10 +29,9 @@ export class InitService {
     if (!branchExists) {
       try {
         console.log(`[docuvia] Creating hidden docuvia-knowledge branch...`);
-        await exec(
-          'git checkout --orphan docuvia-knowledge && git reset --hard && git commit --allow-empty -m "chore: initialize empty knowledge graph" && git checkout -',
-          { cwd: this.workspaceRoot }
-        );
+        const { stdout: treeHash } = await exec("git hash-object -t tree /dev/null", { cwd: this.workspaceRoot });
+        const { stdout: commitHash } = await exec(`echo "chore: initialize empty knowledge graph" | git commit-tree ${treeHash.trim()}`, { cwd: this.workspaceRoot });
+        await exec(`git update-ref refs/heads/docuvia-knowledge ${commitHash.trim()}`, { cwd: this.workspaceRoot });
       } catch (err: any) {
         throw new Error(`Failed to create branch: ${err.message}`);
       }

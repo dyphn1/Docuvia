@@ -12,12 +12,18 @@ export interface AstParseRequest {
   language: "typescript" | "python" | "rust" | "go" | "cpp" | "java" | "ruby" | "php";
 }
 
+export interface ImportDescriptor {
+  localName: string;
+  originalName: string;
+  modulePath: string;
+}
+
 export interface AstParseResponse {
   taskId: string;
   success: boolean;
   error?: string;
   data?: {
-    imports: Array<{ name: string; source: string; alias?: string }>;
+    imports: ImportDescriptor[];
     exports: Array<{ name: string; type: "function" | "class" | "variable" }>;
     functions: Array<{ name: string; startLine: number; endLine: number }>;
     classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }>;
@@ -64,15 +70,67 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     if (!languageLoaded) {
       // Mock logic as requested
       parser.delete();
+      
+      // Basic regex fallback for TS/JS imports
+      const imports: ImportDescriptor[] = [];
+      const importRegex = /import\s+({[^}]+}|[^{;]+)\s+from\s+['"]([^'"]+)['"]/g;
+      let match;
+      while ((match = importRegex.exec(request.code)) !== null) {
+        const specifiers = match[1].trim();
+        const modulePath = match[2];
+        if (specifiers.startsWith('{')) {
+          const parts = specifiers.slice(1, -1).split(',');
+          for (const p of parts) {
+            const t = p.trim();
+            if (!t) continue;
+            const asIdx = t.indexOf(' as ');
+            if (asIdx !== -1) {
+              imports.push({
+                localName: t.slice(asIdx + 4).trim(),
+                originalName: t.slice(0, asIdx).trim(),
+                modulePath
+              });
+            } else {
+              imports.push({ localName: t, originalName: t, modulePath });
+            }
+          }
+        } else {
+          // default or namespace import
+          if (specifiers.includes('* as ')) {
+            imports.push({
+              localName: specifiers.split(' as ')[1].trim(),
+              originalName: '*',
+              modulePath
+            });
+          } else {
+            imports.push({
+              localName: specifiers,
+              originalName: 'default',
+              modulePath
+            });
+          }
+        }
+      }
+      
+      const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
+      // Basic regex for calls (naive)
+      const callRegex = /([a-zA-Z_$][0-9a-zA-Z_$]*)\s*\(/g;
+      while ((match = callRegex.exec(request.code)) !== null) {
+        // Skip some standard keywords
+        if (['if', 'while', 'for', 'switch', 'catch', 'function'].includes(match[1])) continue;
+        calls.push({ sourceFunction: "global", targetFunction: match[1] });
+      }
+
       parentPort?.postMessage({
         taskId: request.taskId,
         success: true,
         data: {
-          imports: [],
+          imports,
           exports: [],
           functions: [],
           classes: [],
-          decisions: ["Extracted via Worker (Mocked AST parsing)"],
+          calls,
+          decisions: ["Extracted via Worker (Mocked AST parsing + regex)"],
         }
       });
       return;
@@ -86,11 +144,59 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       decisions.push(`Parsed via web-tree-sitter (nodes: ${tree.rootNode.childCount})`);
     }
 
+    // Basic regex fallback for TS/JS imports (even with tree-sitter active, as there are no queries configured here yet)
+    const imports: ImportDescriptor[] = [];
+    const importRegex = /import\s+({[^}]+}|[^{;]+)\s+from\s+['"]([^'"]+)['"]/g;
+    let match;
+    while ((match = importRegex.exec(request.code)) !== null) {
+      const specifiers = match[1].trim();
+      const modulePath = match[2];
+      if (specifiers.startsWith('{')) {
+        const parts = specifiers.slice(1, -1).split(',');
+        for (const p of parts) {
+          const t = p.trim();
+          if (!t) continue;
+          const asIdx = t.indexOf(' as ');
+          if (asIdx !== -1) {
+            imports.push({
+              localName: t.slice(asIdx + 4).trim(),
+              originalName: t.slice(0, asIdx).trim(),
+              modulePath
+            });
+          } else {
+            imports.push({ localName: t, originalName: t, modulePath });
+          }
+        }
+      } else {
+        if (specifiers.includes('* as ')) {
+          imports.push({
+            localName: specifiers.split(' as ')[1].trim(),
+            originalName: '*',
+            modulePath
+          });
+        } else {
+          imports.push({
+            localName: specifiers,
+            originalName: 'default',
+            modulePath
+          });
+        }
+      }
+    }
+    
+    const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
+    const callRegex = /([a-zA-Z_$][0-9a-zA-Z_$]*)\s*\(/g;
+    while ((match = callRegex.exec(request.code)) !== null) {
+      if (['if', 'while', 'for', 'switch', 'catch', 'function'].includes(match[1])) continue;
+      calls.push({ sourceFunction: "global", targetFunction: match[1] });
+    }
+
     const data = {
-      imports: [],
+      imports,
       exports: [],
       functions: [],
       classes: [],
+      calls,
       decisions
     };
 

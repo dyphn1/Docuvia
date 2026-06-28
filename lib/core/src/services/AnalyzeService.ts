@@ -7,6 +7,7 @@ import Database from "better-sqlite3";
 import fg from "fast-glob";
 import ignore from "ignore";
 import { AstWorkerPool } from "./AstWorkerPool.js";
+import { ScopeResolver } from "./ScopeResolver.js";
 import { exec } from "child_process";
 import * as util from "util";
 
@@ -282,6 +283,14 @@ export class AnalyzeService {
 
         await pool.terminate();
 
+        const resolver = new ScopeResolver(this.workspaceRoot);
+        for (const result of parsedResults) {
+          const locals: string[] = [];
+          if (result.data.functions) locals.push(...result.data.functions.map((f: any) => f.name));
+          if (result.data.classes) locals.push(...result.data.classes.map((c: any) => c.name));
+          resolver.registerFile(result.file, result.data.imports || [], [], locals);
+        }
+
         // Transaction for bulk inserting the new AST nodes
         const insertHash = db.prepare('INSERT INTO project_files (project_id, file_path, content_hash) VALUES (1, ?, ?) ON CONFLICT (project_id, file_path) DO UPDATE SET content_hash = excluded.content_hash, last_parsed_at = CURRENT_TIMESTAMP');
         const deleteOldL1Links = db.prepare('DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (SELECT id FROM l2_nodes WHERE source_paths = ?)');
@@ -300,6 +309,8 @@ export class AnalyzeService {
             insertL1Tag.run(tag, tag, tag, `Auto-detected tag: ${tag}`);
           }
 
+          const fileIdMap = new Map<string, string>();
+
           for (const result of parsedResults) {
             const sourcePathJson = JSON.stringify([result.file]);
             
@@ -310,6 +321,7 @@ export class AnalyzeService {
 
             // Insert new nodes
             const fileId = crypto.randomUUID();
+            fileIdMap.set(result.file, fileId);
             insertNode.run(fileId, result.file, result.file, "file", sourcePathJson, "");
 
             // Link L2 file node to L1 tags
@@ -332,20 +344,30 @@ export class AnalyzeService {
                 insertLink.run(fileId, clsId, "contains");
               }
             }
-            
-            if (result.data.imports) {
-              for (const imp of result.data.imports) {
-                const impId = crypto.randomUUID();
-                insertNode.run(impId, imp.name, imp.name, "import", sourcePathJson, `Source: ${imp.source}`);
-                insertLink.run(fileId, impId, "imports");
-              }
-            }
+          }
+
+          // Pass 2: Resolve edges using the ScopeResolver and create them
+          for (const result of parsedResults) {
+            const sourceFileId = fileIdMap.get(result.file);
+            if (!sourceFileId) continue;
 
             if (result.data.calls) {
               for (const call of result.data.calls) {
-                const callId = crypto.randomUUID();
-                insertNode.run(callId, call.targetFunction, call.targetFunction, "call", sourcePathJson, `Called by: ${call.sourceFunction}`);
-                insertLink.run(fileId, callId, "calls");
+                const resolved = resolver.resolveCall(result.file, call.targetFunction);
+                if (resolved) {
+                  // Link file to file directly, avoiding ambiguous function names across the db
+                  const targetPathJson = JSON.stringify([resolved.targetFile]);
+                  let targetFileId = fileIdMap.get(resolved.targetFile);
+                  
+                  if (!targetFileId) {
+                    const row = db.prepare("SELECT id FROM l2_nodes WHERE type = 'file' AND source_paths = ?").get(targetPathJson) as { id: string } | undefined;
+                    if (row) targetFileId = row.id;
+                  }
+
+                  if (targetFileId && targetFileId !== sourceFileId) { // avoid self-calls clutter
+                    insertLink.run(sourceFileId, targetFileId, "calls");
+                  }
+                }
               }
             }
             

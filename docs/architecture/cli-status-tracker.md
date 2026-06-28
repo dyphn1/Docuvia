@@ -31,3 +31,29 @@ This document tracks the implementation status of CLI commands, their alignment 
    - Replaced LLM extraction stub with a real local LLM extraction call in the `docuvia extract` command.
    - Fixed AST Worker Pool paths.
    - Parameterized environmental variables for OpenAI models.
+
+## Brutal Competitor Analysis (Docuvia vs. Industry Standards)
+
+When evaluated against industry-leading context engines and code-intelligence CLIs (e.g., **GitNexus**, **Sourcegraph (Cody / sg)**, **Cursor (Shadow Workspace)**, **GitHub Copilot (Workspace)**), Docuvia's current architecture exhibits several **fatal flaws** that prevent it from being a production-ready knowledge graph.
+
+### 1. Incremental Sync is Non-Existent (The "Delta" Problem)
+* **Competitors:** GitNexus uses file hashing (`crypto.createHash('sha256')`) and dirty-tracking to only parse files that have changed. Sourcegraph uses LSIF/SCIP diffs. Cursor relies on fast LSP-based invalidation.
+* **Docuvia:** `AnalyzeService.analyzeProject()` currently runs a blind `INSERT` with `crypto.randomUUID()` for every AST node it discovers. If a user runs `docuvia analyze` twice, **the entire graph duplicates**. There is zero upsert logic (`ON CONFLICT DO UPDATE`), zero file hash delta tracking, and no cleanup of deleted files. This makes the CLI completely unusable for automated workflows (like `post-commit` hooks) on large codebases because the SQLite DB will bloat infinitely.
+
+### 2. The WASM Loading Strategy is Held Together by Duct Tape
+* **Competitors:** Tree-sitter implementations in robust tools (like `GitNexus` or native Rust tools) either compile parsers directly, bundle `.wasm` explicitly via Webpack/Vite loaders, or rely on native bindings (Node-API).
+* **Docuvia:** `AstWorkerPool` and `ast-worker.ts` rely on extremely fragile path resolutions (`node_modules/tree-sitter-wasms/out/...`). Depending on how `pnpm` hoists dependencies (or doesn't), the CLI regularly fails with "WASM not found, falling back to mock". A CLI cannot ship to consumers expecting them to have a specific `node_modules` layout.
+
+### 3. Missing Semantic Call Graph (Edges are Weak)
+* **Competitors:** GitNexus builds profound execution flows (`CALLS`, `IMPLEMENTS`, `EXTENDS`, `ACCESSES`). If you query a function, you know exactly what breaks if you change it.
+* **Docuvia:** The AST worker only identifies `contains` (File contains Function) and `imports` (File imports Module). There is **no semantic link** showing that `Function A` calls `Function B`. Without this Call Graph, Docuvia is just a glorified `grep`. It cannot answer "What depends on this?".
+
+### 4. L3 Extraction (Agentic RAG) is Disconnected from the Global Scan
+* **Competitors:** Context engines automatically link high-level architectural intent (embeddings) to the underlying symbols.
+* **Docuvia:** While it claims to be a "Knowledge Graph", `docuvia analyze` only builds `L2 Nodes` (Syntax). The actual LLM-based decision extraction (`L3 Nodes`) is triggered manually via `docuvia extract <file>` and is not integrated into a background pipeline. This means the Knowledge Graph stays functionally empty of "intent" unless the user manually curates every file.
+
+### Next Steps for Survival
+To elevate Docuvia from an academic prototype to a functional tool:
+1. **Implement Delta Hashing:** Add a `file_hashes` table. `AnalyzeService` MUST skip files whose `sha256` hasn't changed, and MUST delete nodes for files that disappeared.
+2. **Upsert Logic:** Rewrite `AnalyzeService` DB transactions to use `INSERT ... ON CONFLICT (source_paths) DO UPDATE`.
+3. **AST Call Graph:** The AST Worker must parse function calls, not just declarations, and insert `CALLS` edges into `node_links`.

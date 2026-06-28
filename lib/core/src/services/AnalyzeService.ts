@@ -236,6 +236,8 @@ export class AnalyzeService {
 
       console.log(`[docuvia] Git Hash Delta check: ${filesToParse.length} files need parsing. ${skippedCount} skipped.`);
 
+      let globalFileIdMap = new Map<string, string>();
+
       if (filesToParse.length > 0 && db) {
         const workerCount = Math.max(1, (os.cpus().length || 4) - 1);
         const pool = new AstWorkerPool();
@@ -303,13 +305,12 @@ export class AnalyzeService {
 
         const runTransaction = db.transaction(() => {
           let parsedCount = 0;
+          const fileIdMap = new Map<string, string>();
           
           // Ensure all tags exist
           for (const tag of suggestedTags) {
             insertL1Tag.run(tag, tag, tag, `Auto-detected tag: ${tag}`);
           }
-
-          const fileIdMap = new Map<string, string>();
 
           for (const result of parsedResults) {
             const sourcePathJson = JSON.stringify([result.file]);
@@ -375,10 +376,11 @@ export class AnalyzeService {
             insertHash.run(result.file, result.hash);
             parsedCount++;
           }
-          return parsedCount;
+          return { parsedCount, fileIdMap };
         });
 
-        const updatedCount = runTransaction();
+        const { parsedCount: updatedCount, fileIdMap } = runTransaction();
+        globalFileIdMap = fileIdMap;
         console.log(`[docuvia] AST scan complete: ${updatedCount} updated, ${skippedCount} skipped (unchanged).`);
       } else {
         console.log(`[docuvia] AST scan complete: 0 updated, ${skippedCount} skipped (unchanged).`);
@@ -388,12 +390,61 @@ export class AnalyzeService {
 
       if (options?.deep) {
         console.log(`[docuvia] Triggering background L3 Agentic RAG extraction...`);
-        setTimeout(() => {
+        const dbPath = path.join(this.workspaceRoot, ".docuvia", "local.db");
+        setTimeout(async () => {
+          let backgroundDb;
           try {
-            console.log(`[docuvia] Background L3 extraction finished.`);
-            // L3 extraction logic would go here
+            if (existsSync(dbPath)) {
+              backgroundDb = new Database(dbPath);
+            }
+            if (!backgroundDb) return;
+
+            const { ExtractService } = await import("./ExtractService.js");
+            const extractService = new ExtractService(this.workspaceRoot);
+            
+            // Initialize l3_nodes schema if not exists just in case
+            backgroundDb.exec(\`
+              CREATE TABLE IF NOT EXISTS l3_nodes (
+                id TEXT PRIMARY KEY,
+                l2_node_id TEXT,
+                title TEXT,
+                content TEXT,
+                status TEXT,
+                created_at TEXT
+              );
+            \`);
+
+            const insertL3Node = backgroundDb.prepare('INSERT INTO l3_nodes (id, l2_node_id, title, content, status, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
+
+            for (const item of filesToParse) {
+              const l2NodeId = globalFileIdMap.get(item.file);
+              if (!l2NodeId) continue;
+
+              try {
+                const result = await extractService.extractDecisions(item.file);
+                if ((result as any).error) {
+                  continue; // Skip failed extractions
+                }
+                
+                // Clear old l3 nodes for this l2_node before inserting new ones
+                backgroundDb.prepare('DELETE FROM l3_nodes WHERE l2_node_id = ?').run(l2NodeId);
+
+                if (result.decisions) {
+                  for (const decision of result.decisions) {
+                    const l3Id = crypto.randomUUID();
+                    insertL3Node.run(l3Id, l2NodeId, decision, "", "active");
+                  }
+                }
+              } catch (e: any) {
+                console.error(\`[docuvia] L3 Extraction Error for file \${item.file}:\`, e.message);
+              }
+            }
+
+            console.log(\`[docuvia] Background L3 extraction finished.\`);
           } catch (e: any) {
-            console.error('[docuvia] L3 Extraction Error for file', allFiles[0], e);
+            console.error('[docuvia] L3 Extraction background task failed', e);
+          } finally {
+            if (backgroundDb) backgroundDb.close();
           }
         }, 1000);
       }

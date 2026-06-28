@@ -38,6 +38,7 @@ import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import type { L2Node, L3Node } from "@workspace/api-client-react";
 import { L2BootstrapReview } from "@/components/L2BootstrapReview";
+import { ProjectTopologyGraph } from "@/components/graph/ProjectTopologyGraph";
 
 const L3_TYPE_ICON: Record<string, React.ReactNode> = {
   change: <GitCommit className="h-3 w-3" />,
@@ -408,93 +409,11 @@ export default function ProjectDetail() {
                 <CardHeader className="flex-none border-b border-border py-4">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <Network className="h-4 w-4 text-primary" />
-                    Knowledge Graph Summary
+                    Interactive Topology Map
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden relative">
-                  {isLoadingGraph ? (
-                    <div className="p-6 flex justify-center">
-                      <Skeleton className="h-64 w-full" />
-                    </div>
-                  ) : graph ? (
-                    <div className="absolute inset-0 p-6 overflow-auto">
-                      <div className="space-y-8">
-                        <div>
-                          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                            L1 Tags ({graph.l1Tags.length})
-                          </h3>
-                          <div className="flex flex-wrap gap-2">
-                            {graph.l1Tags.map((tag) => (
-                              <Badge
-                                key={tag.id}
-                                variant="outline"
-                                className="bg-primary/10 border-primary/20 text-primary"
-                              >
-                                {tag.name}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6">
-                          <div>
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                              L2 Components ({graph.l2Nodes.length})
-                            </h3>
-                            <div className="space-y-2">
-                              {graph.l2Nodes.slice(0, 10).map((node) => (
-                                <div
-                                  key={node.id}
-                                  className="p-3 rounded-md border border-border bg-background text-sm flex justify-between items-center"
-                                >
-                                  <span className="font-mono text-primary">{node.name}</span>
-                                  <Badge variant="secondary" className="text-[10px] uppercase">
-                                    {node.type}
-                                  </Badge>
-                                </div>
-                              ))}
-                              {graph.l2Nodes.length > 10 && (
-                                <div className="text-xs text-muted-foreground text-center py-2">
-                                  + {graph.l2Nodes.length - 10} more
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div>
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                              L3 Entities ({graph.l3Nodes.length})
-                            </h3>
-                            <div className="space-y-2">
-                              {graph.l3Nodes.slice(0, 10).map((node) => (
-                                <div
-                                  key={node.id}
-                                  className="p-3 rounded-md border border-border bg-background text-sm"
-                                >
-                                  <div className="flex justify-between items-start mb-1">
-                                    <span className="font-medium truncate pr-2">{node.title}</span>
-                                    <Badge
-                                      variant="outline"
-                                      className="text-[10px] uppercase shrink-0 border-primary/30 text-primary/80"
-                                    >
-                                      {node.nodeType}
-                                    </Badge>
-                                  </div>
-                                </div>
-                              ))}
-                              {graph.l3Nodes.length > 10 && (
-                                <div className="text-xs text-muted-foreground text-center py-2">
-                                  + {graph.l3Nodes.length - 10} more
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-6 text-muted-foreground">No graph data available.</div>
-                  )}
+                  <ProjectTopologyGraph projectId={id} />
                 </CardContent>
               </Card>
             </TabsContent>

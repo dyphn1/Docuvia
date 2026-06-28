@@ -120,6 +120,32 @@ export async function runMcpServer() {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
+    if (name === "docuvia_context") {
+      const target = args?.target as string;
+      if (!target) return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
+      try {
+        const queryService = new QueryService(process.cwd());
+        const result = await queryService.getContext(target);
+        if (!result) return { content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }] };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      } catch (e: any) {
+        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      }
+    }
+
+    if (name === "docuvia_impact") {
+      const target = args?.target as string;
+      if (!target) return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
+      try {
+        const queryService = new QueryService(process.cwd());
+        const result = await queryService.getImpact(target);
+        if (!result) return { content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }] };
+        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+      } catch (e: any) {
+        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
+      }
+    }
+
     if (name === "docuvia_query_local") {
       const target = args?.target as string;
       if (!target) {

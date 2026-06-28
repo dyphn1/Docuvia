@@ -21,6 +21,38 @@ export async function runMcpServer() {
     return {
       tools: [
         {
+          name: "docuvia_context",
+          description: "Get structural context (incoming/outgoing edges) for a symbol.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              target: {
+                type: "string",
+                description: "The filename, concept, or module name to search for.",
+              },
+            },
+            required: ["target"],
+          },
+        },
+        {
+          name: "docuvia_impact",
+          description: "Get blast radius (direct and indirect callers) for a symbol.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              target: {
+                type: "string",
+                description: "The filename, concept, or module name to search for.",
+              },
+              escalateToLsp: {
+                type: "boolean",
+                description: "Whether to escalate to the TypeScript compiler (LSP) for precise reference resolution.",
+              }
+            },
+            required: ["target"],
+          },
+        },
+        {
           name: "docuvia_query_local",
           description:
             "Query the local Docuvia SQLite database for high-density AST context, L2 architectural modules, and L3 decision rules. Use this tool BEFORE exploring the codebase or modifying files to understand blast radius and existing constraints.",
@@ -135,36 +167,11 @@ export async function runMcpServer() {
 
     if (name === "docuvia_impact") {
       const target = args?.target as string;
+      const escalateToLsp = args?.escalateToLsp as boolean | undefined;
       if (!target) return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
       try {
         const queryService = new QueryService(process.cwd());
-        const result = await queryService.getImpact(target);
-        if (!result) return { content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }] };
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
-      }
-    }
-
-    if (name === "docuvia_context") {
-      const target = args?.target as string;
-      if (!target) return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
-      try {
-        const queryService = new QueryService(process.cwd());
-        const result = await queryService.getContext(target);
-        if (!result) return { content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }] };
-        return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-      } catch (e: any) {
-        return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
-      }
-    }
-
-    if (name === "docuvia_impact") {
-      const target = args?.target as string;
-      if (!target) return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
-      try {
-        const queryService = new QueryService(process.cwd());
-        const result = await queryService.getImpact(target);
+        const result = await queryService.getImpact(target, escalateToLsp);
         if (!result) return { content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }] };
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (e: any) {

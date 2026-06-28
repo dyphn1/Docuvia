@@ -14,4 +14,5 @@ export * from "./services/ChangeDetectionService.js";
 export * from "./services/AstWorkerPool.js";
 export * from "./workers/ast-worker.js";
 export * from "./services/SyncService.js";
-export * from "./services/ScopeResolver.js";
+export { ScopeResolver } from "./services/ScopeResolver.js";
+export * from "./services/LspEnrichmentService.js";

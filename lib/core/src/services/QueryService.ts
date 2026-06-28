@@ -4,6 +4,7 @@ import { eq, or, like, desc, and } from "drizzle-orm";
 import { l2NodesTable, l3NodesTable } from "@workspace/db/schema";
 import path from "path";
 import fs from "fs";
+import { LspEnrichmentService } from "./LspEnrichmentService.js";
 
 export interface QueryResult {
   l2?: any;
@@ -48,7 +49,7 @@ export class QueryService {
     };
   }
 
-  public async getImpact(symbol: string): Promise<any> {
+  public async getImpact(symbol: string, escalateToLsp: boolean = false): Promise<any> {
     const dbPath = path.join(this.workspaceRoot, ".docuvia", "local.db");
     if (!fs.existsSync(dbPath)) throw new Error('Local database not found.');
     const sqlite = new Database(dbPath);
@@ -58,6 +59,27 @@ export class QueryService {
     if (!targetNode) {
       sqlite.close();
       return null;
+    }
+
+    let lspEnrichedCallers: Array<{ file: string; line: number; text: string }> | undefined;
+
+    if (escalateToLsp && targetNode.source_paths) {
+      let parsedFilePath: string | undefined;
+      try {
+        const paths = JSON.parse(targetNode.source_paths);
+        if (Array.isArray(paths)) {
+          parsedFilePath = paths.find((p: string) => p.endsWith('.ts') || p.endsWith('.tsx'));
+        }
+      } catch {
+        const paths = targetNode.source_paths.split(',');
+        parsedFilePath = paths.find((p: string) => p.trim().endsWith('.ts') || p.trim().endsWith('.tsx'))?.trim();
+      }
+
+      if (parsedFilePath) {
+        const absolutePath = path.resolve(this.workspaceRoot, parsedFilePath);
+        const lspService = new LspEnrichmentService(this.workspaceRoot);
+        lspEnrichedCallers = lspService.enrichImpact(symbol, absolutePath);
+      }
     }
 
     // Simple BFS for blast radius (direct and indirect callers)
@@ -98,10 +120,17 @@ export class QueryService {
     }
 
     sqlite.close();
-    return {
+    
+    const result: any = {
       target: targetNode,
       blastRadius: impactedNodes
     };
+    
+    if (lspEnrichedCallers) {
+      result.lspEnrichedCallers = lspEnrichedCallers;
+    }
+    
+    return result;
   }
 
   constructor(private workspaceRoot: string) {}

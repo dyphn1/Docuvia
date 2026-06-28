@@ -26,20 +26,26 @@ export class AstWorkerPool implements IASTWorkerPool {
 
   async initialize(workerCount: number = 2): Promise<void> {
     // Determine if we are in .ts environment (tsx) or .js environment (dist)
-    let wPath = path.resolve(__dirname, "../workers/ast-worker.js");
     let isTs = false;
+    let wPath = path.resolve(__dirname, "../workers/ast-worker.js");
     
     if (!fs.existsSync(wPath)) {
       wPath = path.resolve(__dirname, "../workers/ast-worker.ts");
       isTs = true;
     }
 
-    // A hack for tsx/ts-node, although using import.meta.url as Worker param 
-    // might just work in Node 18+ with TS if using loaders.
-    // We can also pass execArgv if we want to force tsx inside worker:
     const workerOptions: any = {};
     if (isTs) {
-      workerOptions.execArgv = process.execArgv.join(' ').includes('tsx') ? ["--import", "tsx"] : process.execArgv;
+      try {
+        const docuviaRoot = path.resolve(__dirname, "../../../../");
+        const tsxPath = require("module").createRequire(import.meta.url).resolve("tsx", { paths: [docuviaRoot] });
+        workerOptions.execArgv = ["--import", "file://" + tsxPath.replace(/\\/g, "/")];
+      } catch(e) {
+        workerOptions.execArgv = [];
+      }
+    } else {
+      // If running from dist/ast-worker.js, we don't need any loaders.
+      workerOptions.execArgv = [];
     }
 
     for (let i = 0; i < workerCount; i++) {

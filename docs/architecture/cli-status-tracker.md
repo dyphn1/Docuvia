@@ -52,8 +52,10 @@ When evaluated against industry-leading context engines and code-intelligence CL
 * **Competitors:** Context engines automatically link high-level architectural intent (embeddings) to the underlying symbols.
 * **Docuvia:** While it claims to be a "Knowledge Graph", `docuvia analyze` only builds `L2 Nodes` (Syntax). The actual LLM-based decision extraction (`L3 Nodes`) is triggered manually via `docuvia extract <file>` and is not integrated into a background pipeline. This means the Knowledge Graph stays functionally empty of "intent" unless the user manually curates every file.
 
-### Next Steps for Survival
-To elevate Docuvia from an academic prototype to a functional tool:
-1. **Implement Delta Hashing:** Add a `file_hashes` table. `AnalyzeService` MUST skip files whose `sha256` hasn't changed, and MUST delete nodes for files that disappeared.
-2. **Upsert Logic:** Rewrite `AnalyzeService` DB transactions to use `INSERT ... ON CONFLICT (source_paths) DO UPDATE`.
-3. **AST Call Graph:** The AST Worker must parse function calls, not just declarations, and insert `CALLS` edges into `node_links`.
+### 🚀 Resolution (The "Survival" Update) - ✅ COMPLETED
+The above fatal flaws have been directly addressed and merged to achieve competitive parity:
+
+1. **Incremental Sync (Delta Hashing):** Implemented the `project_files` SQLite table. `AnalyzeService` now computes a `sha256` hash of every file, performing `UPSERT` operations (`ON CONFLICT DO UPDATE`), cleaning up stale nodes, and skipping AST parsing entirely for unchanged files. 
+2. **Robust WASM Loading:** Eliminated duct-tape path resolutions. The AST Worker now uses `createRequire(import.meta.url)` and native `require.resolve()` to safely and dynamically locate `tree-sitter-wasms` regardless of the package manager's hoisting strategy.
+3. **Semantic Call Graph:** `ast-worker.ts` now traverses `call_expression` AST nodes, extracting target functions and injecting `CALLS` edges into `node_links`, giving Docuvia true "blast radius" query capabilities similar to GitNexus.
+4. **Background L3 Extraction (Agentic RAG):** Bridged the gap between global scanning and intent extraction. Introduced the `docuvia analyze --deep` flag, which cascades into `AnalyzeService` to automatically trigger asynchronous background LLM extractions (L3 RAG) after the local AST graph is built.

@@ -6,8 +6,8 @@ _Project Focus: Prioritize Local-First features. Other features are deprioritize
 
 | Component            | Sub-feature         | Local-First Context                                             | Status / Progress                            | Score (1-10) | Internal Workspace Reference (Inspiration)                            |
 | :------------------- | :------------------ | :-------------------------------------------------------------- | :------------------------------------------- | :----------- | :-------------------------------------------------------------------- |
-| **VS Code Client**   | Editor Integration  | Seamless local IDE experience, Multi-root workspace support.    | Bare prototype. Massive gap vs Cursor.       | 3            | **code-review-graph-vscode** (MCP tool integration, Webview handling) |
-| **CodeLens / Hover** | Context Awakening   | O(1) AST symbol anchoring instead of fuzzy search.              | Planned / Prototyping                        | 3            | **GitNexus** (`context({name: "symbolName"})` O(1) lookup strategies) |
+| **VS Code Client**   | Editor Integration  | Seamless local IDE experience, Multi-root workspace support.    | Command Parity reached. Blast radius CodeLens and Hover active. | 8            | **code-review-graph-vscode** (MCP tool integration, Webview handling) |
+| **CodeLens / Hover** | Context Awakening   | O(1) AST symbol anchoring instead of fuzzy search.              | Active. Integrates `getImpact()` and `getContext()` from SQLite directly. | 8            | **GitNexus** (`context({name: "symbolName"})` O(1) lookup strategies) |
 | **Topology**         | Graph Visualization | Local HTML/D3.js visualization (`local-html-visualization`).    | Pending                                      | 1            | **code-review-graph** (D3.js interactive HTML graph generator)        |
 | **CLI**              | CLI Tools           | Local `init`, `analyze`, `extract`, `sync`, `query`, `mcp`, `status`, `clean`, and `detect-changes`. | Production parity reached. Features git-native delta hash, background RAG, and pure plumbing. | 9            | **GitNexus** (`gitnexus-cli` index, analyze, query)                   |
 
@@ -27,7 +27,7 @@ _Project Focus: Prioritize Local-First features. Other features are deprioritize
 | Component           | Sub-feature     | Local-First Context                                  | Status / Progress                              | Score (1-10) | Internal Workspace Reference (Inspiration)                          |
 | :------------------ | :-------------- | :--------------------------------------------------- | :--------------------------------------------- | :----------- | :------------------------------------------------------------------ |
 | **MCP Server**      | Context Sharing | Standardized local context for Claude/Cursor.        | Only 3 basic tools. code-review-graph has 30+. | 3            | **code-review-graph** (`main.py` FastMCP server, 30+ tools)         |
-| **Intent Router**   | Query Dispatch  | Routing queries to Text, Graph, or Local Embeddings. | Integrated with `--deep` CLI flag for background Agentic RAG extraction. | 6            | **Docuvia** (`intent-router.ts` vector/graph/direct hybrid routing) |
+| **Intent Router**   | Query Dispatch  | Routing queries to Text, Graph, or Local Embeddings. | Deep RAG auto-extraction now fully robust (persists L1/L3 without silent failing). | 8            | **Docuvia** (`intent-router.ts` vector/graph/direct hybrid routing) |
 | **Enhanced Search** | Hybrid Search   | FTS5 + Local Vector search.                          | Partial (FTS5 done, Vectors pending)           | 4            | **code-review-graph** (`search.py` FTS5 hybrid search + embeddings) |
 
 ## 4. Buffers & Boundaries
@@ -49,7 +49,7 @@ As defined in [ADR-021](../design/adrs/ADR-021-shared-core-api-and-presentation-
 | **Initialize DB**     | `docuvia.initProject`                    | `docuvia_init`        | `docuvia init`    | **[Resolved]** Implemented in `ProjectService` inside `@workspace/core`.                                  |
 | **Analyze / Explore** | `docuvia.startExplore` / Chat: `explore` | `docuvia_analyze`     | `docuvia analyze` | **[Resolved]** Implemented via `AnalyzeService` using file-scanning logic in `@workspace/core`.           |
 | **Extract Decision**  | `docuvia.addDecision` / Chat: `extract`  | `docuvia_extract`     | `docuvia extract` | **[Resolved]** Implemented via `ExtractService` inside `@workspace/core`.                                 |
-| **Sync / Refresh**    | `docuvia.refreshKnowledgeGraph`          | ❌ Missing            | `docuvia sync`    | Semantic drift: VS Code "refresh" implies UI reload, while CLI "sync" implies pushing to a remote server. |
+| **Sync / Refresh**    | `docuvia.sync` (Aliased)                 | ✅ `docuvia_sync`     | `docuvia sync`    | **[Resolved]** VS Code now registers `docuvia.sync`, aligning the vocabulary perfectly across all interfaces. |
 
 
 ## 6. Post-Survival Architecture Re-Evaluation
@@ -61,9 +61,8 @@ Following the major Phase 3 refactoring (the "Survival" update), the backend dat
 * **State Isolation:** The Git plumbing approach (orphan branches without working-tree disruption) guarantees zero interference with the user's daily git flow.
 
 **The Remaining Bottlenecks (Where to pivot next):**
-1. **The L3 Agentic RAG Gap:** While `--deep` properly triggers a background task, the actual prompt engineering, LLM request batching, and embedding generation inside the Intent Router is still stubbed out or under-developed. It needs to connect to the `@workspace/integrations-openai-ai-server`.
-2. **VS Code Client Lag (Score: 3):** We have the world's fastest hidden SQLite DB running in the CLI, but the VS Code Client is practically blind. We need to implement `CodeLens` and `Hover` providers that query the SQLite `CALLS` edges to show users the "Blast Radius" directly in their editor.
-3. **Cross-File Resolution Depth:** While we extract `CALLS` edges locally within files, we lack GitNexus's sophisticated cross-file "Scope Resolution Pipeline" (Ring 3) which stitches these edges into global execution flows (`processes`).
+1. **Cross-File Resolution Depth:** While we extract `CALLS` edges locally and bridge IDs across files (Ring 3 parity), we lack GitNexus's sophisticated grouping of these edges into high-level global execution flows (`processes`).
+2. **Webview UI / Topology:** The Graph Visualization layer in VS Code (Webview) and the browser React client (`kg-engine`) still lack D3.js interactive mappings of the newly enriched SQLite database.
 
 **Next Steps for the Development Team:**
 

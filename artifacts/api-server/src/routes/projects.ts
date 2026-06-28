@@ -3,13 +3,15 @@ import { logger } from "../lib/logger.js";
 import { db } from "@workspace/db";
 import {
   projectsTable,
+  l1TagsTable,
+  l2NodeL1TagsTable,
   l2NodesTable,
   l3NodesTable,
   nodeLinksTable,
   commitsTable,
   activityLogTable,
 } from "@workspace/db";
-import { eq, count, sql } from "drizzle-orm";
+import { eq, inArray, count, sql } from "drizzle-orm";
 import {
   CreateProjectBody,
   UpdateProjectParams,
@@ -167,36 +169,47 @@ router.delete("/projects/:id", async (req, res) => {
 
 router.get("/projects/:id/graph", async (req, res) => {
   const { id } = GetProjectGraphParams.parse({ id: Number(req.params.id) });
+  
   const l2Nodes = await db.select().from(l2NodesTable).where(eq(l2NodesTable.projectId, id));
+  const l2NodeIds = l2Nodes.map((n) => n.id);
+
+  const l1Relations = l2NodeIds.length
+    ? await db
+        .select()
+        .from(l2NodeL1TagsTable)
+        .where(inArray(l2NodeL1TagsTable.l2NodeId, l2NodeIds))
+    : [];
+
+  const l1TagIds = Array.from(new Set(l1Relations.map((r) => r.l1TagId)));
+
+  const l1Tags = l1TagIds.length
+    ? await db
+        .select()
+        .from(l1TagsTable)
+        .where(inArray(l1TagsTable.id, l1TagIds))
+    : [];
+
   const l3Nodes = l2Nodes.length
     ? await db
         .select()
         .from(l3NodesTable)
-        .where(
-          sql`${l3NodesTable.l2NodeId} IN (${sql.join(
-            l2Nodes.map((n) => sql`${n.id}`),
-            sql`, `
-          )})`
-        )
+        .where(inArray(l3NodesTable.l2NodeId, l2NodeIds))
     : [];
+    
   const nodeLinks = l2Nodes.length
     ? await db
         .select()
         .from(nodeLinksTable)
-        .where(
-          sql`${nodeLinksTable.sourceNodeId} IN (${sql.join(
-            l2Nodes.map((n) => sql`${n.id}`),
-            sql`, `
-          )})`
-        )
+        .where(inArray(nodeLinksTable.sourceNodeId, l2NodeIds))
     : [];
+    
   res.json({
     projectId: id,
-    l1Tags: [],
+    l1Tags: l1Tags.map((t) => ({ ...t, createdAt: t.createdAt.toISOString() })),
     l2Nodes: l2Nodes.map((n) => ({
       ...n,
-      l3Count: 0,
-      l1TagIds: [],
+      l3Count: l3Nodes.filter(l3 => l3.l2NodeId === n.id).length,
+      l1TagIds: l1Relations.filter(r => r.l2NodeId === n.id).map(r => r.l1TagId),
       createdAt: n.createdAt.toISOString(),
     })),
     l3Nodes: l3Nodes.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),

@@ -38,24 +38,23 @@ export class AnalyzeService {
           // Split path and get up to depth 3 directories
           const parts = trimmed.split('/');
           if (parts.length > 1) {
-            // Ignore common top-level structural folders that aren't functional domains
-            if (['.github', '.vscode', 'node_modules', 'dist', 'build', 'docs'].includes(parts[0])) continue;
-            
-            // For typical TS/JS projects, skip 'src' as the root word, use the next level
-            const isSrcRoot = parts[0] === 'src' || (parts.length > 2 && parts[1] === 'src');
+            // Defend against config/hidden folders and build directories
+            if (parts[0].startsWith('.') || ['node_modules', 'dist', 'build', 'docs', 'test', 'tests', 'scripts'].includes(parts[0])) continue;
             
             // Construct a meaningful domain prefix (e.g., 'cli', 'core/ingestion', 'mcp')
             let domain = '';
             if (parts[0] === 'src' && parts.length > 1) {
               domain = parts[1]; // src/auth -> auth
             } else if (parts.length > 2 && parts[1] === 'src') {
-              domain = parts[2]; // packages/cli/src/mcp -> mcp
+              // Workspaces: packages/cli/src/mcp -> cli
+              domain = parts[0] === 'packages' || parts[0] === 'artifacts' || parts[0] === 'crates' ? parts[1] : parts[0]; 
             } else {
-              domain = parts[0]; // fallback to top level
+              // Direct top-level folders that aren't src
+              domain = parts[0]; 
             }
             
-            // Clean up file extensions if it accidentally picked a file
-            if (!domain.includes('.')) {
+            // Ensure the domain itself isn't a file, hidden, or purely structural
+            if (!domain.includes('.') && !domain.startsWith('.') && !['src', 'lib', 'app'].includes(domain)) {
               pathCounts.set(domain, (pathCounts.get(domain) || 0) + 1);
             }
           }

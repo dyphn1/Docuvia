@@ -29,12 +29,16 @@ export class ImpactAnalysisService {
     return [...visited];
   }
 
-  public static async analyzeImpact(moduleName: string, escapedModuleName: string, projectId?: number) {
+  public static async analyzeImpact(
+    moduleName: string,
+    escapedModuleName: string,
+    projectId?: number
+  ) {
     const nodes = await db
       .select()
       .from(l2NodesTable)
       .where(like(l2NodesTable.name, `%${escapedModuleName}%`));
-    
+
     const node = projectId ? nodes.find((n) => n.projectId === projectId) : nodes[0];
 
     if (!node) {
@@ -51,7 +55,7 @@ export class ImpactAnalysisService {
           .from(l2NodesTable)
           .where(inArray(l2NodesTable.id, impactedNodeIds))
       : [];
-    
+
     const impactedNodeNameById = new Map(impactedNodes.map((n) => [n.id, n.name]));
     const impacted = impactedNodeIds.map((id) => impactedNodeNameById.get(id) ?? `node#${id}`);
 

@@ -454,7 +454,12 @@ export class KnowledgeStore {
     maxDepth: number
   ): TraversalResult | null {
     try {
-      return LocalGraphTraversalService.traverseLocalSqlite(workspaceRoot, rootNodeId, direction, maxDepth);
+      return LocalGraphTraversalService.traverseLocalSqlite(
+        workspaceRoot,
+        rootNodeId,
+        direction,
+        maxDepth
+      );
     } catch (err) {
       this._outputChannel.appendLine(
         `[Docuvia] SQLite traversal failed, falling back to in-memory: ${String(err)}`

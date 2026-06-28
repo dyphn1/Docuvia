@@ -15,9 +15,13 @@
     "build": "tsc --build"
   },
   "dependencies": {
+    "@workspace/ast-core": "workspace:^",
     "@workspace/db": "workspace:*",
+    "@workspace/integrations-openai-ai-server": "workspace:*",
     "better-sqlite3": "^12.11.1",
-    "drizzle-orm": "catalog:"
+    "drizzle-orm": "catalog:",
+    "typescript": "^6.0.3",
+    "web-tree-sitter": "^0.26.9"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

@@ -1,68 +1,120 @@
 import path from "path";
 import fs from "fs/promises";
+import { AstWorkerPool, IASTWorkerPool } from "./AstWorkerPool.js";
+import { openai } from "@workspace/integrations-openai-ai-server";
+
+let globalWorkerPool: AstWorkerPool | null = null;
+let globalWorkerPoolInitialized = false;
 
 export class ExtractService {
-  constructor(private workspaceRoot: string) {}
+  private workerPool: IASTWorkerPool;
+
+  constructor(private workspaceRoot: string, workerPool?: IASTWorkerPool) {
+    if (workerPool) {
+      this.workerPool = workerPool;
+    } else {
+      if (!globalWorkerPool) {
+        globalWorkerPool = new AstWorkerPool();
+      }
+      this.workerPool = globalWorkerPool;
+    }
+  }
+
+  private async ensureWorkerPool() {
+    if (this.workerPool === globalWorkerPool && !globalWorkerPoolInitialized) {
+      await globalWorkerPool!.initialize();
+      globalWorkerPoolInitialized = true;
+    }
+  }
 
   public async extractDecisions(filePath: string): Promise<{ decisions: string[] }> {
     console.log(`[docuvia] Extracting decisions from ${filePath}`);
-    
+
     const absolutePath = path.resolve(this.workspaceRoot, filePath);
-    
+
+    if (!absolutePath.startsWith(this.workspaceRoot)) {
+      throw new Error(`Path traversal detected: ${filePath}`);
+    }
+
+    const ext = path.extname(absolutePath).toLowerCase();
+    const astParsable = [".ts", ".tsx", ".js", ".jsx", ".py", ".rs", ".go", ".java", ".cpp", ".c"];
+    const llmWhitelist = [".md", ".txt", ".json", ".yaml", ".yml"];
+
+    if (llmWhitelist.includes(ext)) {
+      try {
+        const content = await fs.readFile(absolutePath, "utf-8");
+        const response = await openai.chat.completions.create({
+          model: process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
+          response_format: { type: "json_object" },
+          messages: [
+            {
+              role: "system",
+              content: "You are an architecture extraction agent. Your job is to extract high-level architectural decisions and patterns from this file. Output valid JSON in the format { \"decisions\": [\"decision 1\", \"decision 2\"] }."
+            },
+            {
+              role: "user",
+              content: `Extract decisions from this file:\n\n${content.substring(0, 8000)}`
+            }
+          ]
+        });
+        const parsed = JSON.parse(response.choices[0].message.content || "{\"decisions\": []}");
+        return { decisions: parsed.decisions || ["Extracted via LLM stub"] };
+      } catch (e) {
+        return { decisions: ["Extracted via LLM stub"] };
+      }
+    }
+
+    if (!astParsable.includes(ext)) {
+      throw new Error("Unsupported file type");
+    }
+
     try {
       const content = await fs.readFile(absolutePath, "utf-8");
-      const lines = content.split('\n');
-      const decisions = new Set<string>();
       
-      const importRegex = /^import\s+(?:.*?\s+from\s+)?['"](.*?)['"]/;
-      const exportClassRegex = /^\s*export\s+(?:abstract\s+)?class\s+(\w+)/;
-      const exportFunctionRegex = /^\s*export\s+(?:async\s+)?function\s+(\w+)/;
-      const exportConstRegex = /^\s*export\s+const\s+(\w+)\s*=/;
-      const decisionTagRegex = /@decision\s+(.+)/;
+      const extMap: Record<string, any> = {
+        ".ts": "typescript",
+        ".tsx": "typescript",
+        ".js": "typescript",
+        ".jsx": "typescript",
+        ".py": "python",
+        ".rs": "rust",
+        ".go": "go",
+        ".java": "java",
+        ".cpp": "cpp",
+        ".c": "cpp"
+      };
+      
+      const language = extMap[ext] || "typescript";
 
-      for (const line of lines) {
-        const decisionMatch = line.match(decisionTagRegex);
-        if (decisionMatch) {
-          decisions.add(`Explicit decision: ${decisionMatch[1].trim()}`);
-        }
+      await this.ensureWorkerPool();
 
-        const importMatch = line.match(importRegex);
-        if (importMatch && !importMatch[1].startsWith('.')) {
-          decisions.add(`Depends on external module: ${importMatch[1]}`);
-        }
+      const response = await this.workerPool.parse({
+        filePath: absolutePath,
+        code: content,
+        language
+      });
 
-        const classMatch = line.match(exportClassRegex);
-        if (classMatch) {
-          decisions.add(`Defines class: ${classMatch[1]}`);
-        }
-
-        const fnMatch = line.match(exportFunctionRegex);
-        if (fnMatch) {
-          decisions.add(`Defines function: ${fnMatch[1]}`);
-        }
-
-        const constMatch = line.match(exportConstRegex);
-        if (constMatch) {
-          decisions.add(`Defines constant/arrow-function: ${constMatch[1]}`);
-        }
+      if (!response.success || !response.data) {
+        throw new Error(response.error || "Unknown worker error");
       }
 
-      if (decisions.size === 0) {
-        if (content.includes("Hexagonal Architecture") || content.includes("hexagonal")) {
-          decisions.add("Uses Hexagonal Architecture pattern");
-        }
-        if (content.includes("Drizzle") || content.includes("drizzle")) {
-          decisions.add("Uses Drizzle ORM for database access");
-        }
+      const decisions = response.data.decisions || [];
+
+      // Add fallback structural decisions
+      if (content.includes("Hexagonal Architecture") || content.includes("hexagonal")) {
+        decisions.push("Uses Hexagonal Architecture pattern");
       }
-      
-      if (decisions.size === 0) {
-        decisions.add("No explicit structural decisions extracted.");
+      if (content.includes("Drizzle") || content.includes("drizzle")) {
+        decisions.push("Uses Drizzle ORM for database access");
       }
-      
-      return { decisions: Array.from(decisions) };
+
+      if (decisions.length === 0) {
+        decisions.push("No explicit structural decisions extracted.");
+      }
+
+      return { decisions };
     } catch (e: any) {
-      throw new Error(`Failed to read file ${filePath}: ${e.message}`);
+      throw new Error(`Failed to read or parse file ${filePath}: ${e.message}`);
     }
   }
 }

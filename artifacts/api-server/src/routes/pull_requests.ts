@@ -188,7 +188,7 @@ router.post("/projects/:id/pull-requests/:prNumber/analyze", async (req, res) =>
       if (l3Nodes.length || l2Nodes.length) {
         const context = JSON.stringify({ l2Nodes, l3Nodes }, null, 2);
         const response = await openai.chat.completions.create({
-          model: "gpt-4o",
+          model: process.env.AI_OPENAI_MODEL || "gpt-4o",
           max_completion_tokens: 1024,
           messages: [
             {

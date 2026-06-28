@@ -800,14 +800,16 @@ async function addDecision(
   try {
     const extractService = new ExtractService(workspaceRoot);
     const result = await extractService.extractDecisions(relativePath);
-    
+
     if (result.decisions.length > 0) {
       void vscode.window.showInformationMessage(
         `Docuvia: Extracted ${result.decisions.length} decisions from ${path.basename(filePath)}.\n- ${result.decisions.join("\n- ")}`,
         { modal: true }
       );
     } else {
-      void vscode.window.showInformationMessage(`Docuvia: No decisions found in ${path.basename(filePath)}.`);
+      void vscode.window.showInformationMessage(
+        `Docuvia: No decisions found in ${path.basename(filePath)}.`
+      );
     }
   } catch (err: any) {
     void vscode.window.showErrorMessage(`Docuvia: Extraction failed - ${err.message}`);

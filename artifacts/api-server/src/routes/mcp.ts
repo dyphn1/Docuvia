@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
-import { DependencyService, ImpactAnalysisService, ProjectService, DecisionRecordService } from "@workspace/core";
+import {
+  DependencyService,
+  ImpactAnalysisService,
+  ProjectService,
+  DecisionRecordService,
+} from "@workspace/core";
 import { routeQuery, sanitizeLikeInput } from "../lib/intent-router.js";
 import { logger } from "../lib/logger.js";
 import { getAllMemories, getCompressedPayload } from "../memory/shared-memory.js";
@@ -145,7 +150,11 @@ router.get("/mcp/impact_analysis", async (req, res) => {
   const { module: moduleName, project_id: projectId } = parsed.data;
   const escapedModuleName = sanitizeLikeInput(moduleName);
 
-  const result = await ImpactAnalysisService.analyzeImpact(moduleName, escapedModuleName, projectId);
+  const result = await ImpactAnalysisService.analyzeImpact(
+    moduleName,
+    escapedModuleName,
+    projectId
+  );
   return res.json(result);
 });
 

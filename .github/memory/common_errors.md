@@ -17,3 +17,7 @@
 - **Command Injection via Child Processes**: NEVER pass raw user inputs (like repository URLs) to `child_process.execFile` or `exec` without strict prior validation. Always enforce Zod schemas (e.g., `^https?://`, `^svn://`) and reject malformed URIs at the API boundary to prevent command injection.
 - **Pipeline Logic Duplication**: Avoid defining pipeline phases (deduplication, DB inserts, activity logging) redundantly across multiple webhook or API routes. This causes immediate state sync issues. Centralize into a single workflow function.
 - **Missing Pipeline Deduplication**: Not hashing ingested files (e.g., SHA-256 `contentHash`) causes explosive database growth and duplicate knowledge nodes. Always hash files upon receipt and deduplicate before processing.
+
+## Memory Leaks & WASM
+
+- **WASM Memory Leaks in web-tree-sitter**: Failing to manually invoke `.delete()` on `web-tree-sitter` `Tree` and `Parser` instances results in severe WASM memory leaks. Because WASM memory is not automatically garbage-collected by the V8 JavaScript engine, always explicitly call `tree.delete()` and `parser.delete()` within your worker threads after AST extraction is complete. Ensure worker pools also implement graceful termination.

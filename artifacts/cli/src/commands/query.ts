@@ -1,5 +1,20 @@
 import { QueryService } from "@workspace/core";
 
+export function formatPromptOutput(results: any): string {
+  let output = `<docuvia_context>\n`;
+  if (results.l2) {
+    output += `  <l2_module name="${results.l2.name}">\n`;
+  }
+  for (const l3 of results.l3) {
+    output += `    <l3_decision title="${l3.title}" status="${l3.status || "unknown"}">\n      ${l3.content || ""}\n    </l3_decision>\n`;
+  }
+  if (results.l2) {
+    output += `  </l2_module>\n`;
+  }
+  output += `</docuvia_context>`;
+  return output;
+}
+
 export async function queryCommand(
   target: string,
   options: { local?: boolean; format?: "human" | "prompt" }
@@ -16,18 +31,7 @@ export async function queryCommand(
   }
 
   if (options.format === "prompt") {
-    let output = `<docuvia_context>\n`;
-    if (results.l2) {
-      output += `  <l2_module name="${results.l2.name}">\n`;
-    }
-    for (const l3 of results.l3) {
-      output += `    <l3_decision title="${l3.title}" status="${l3.status || "unknown"}">\n      ${l3.content || ""}\n    </l3_decision>\n`;
-    }
-    if (results.l2) {
-      output += `  </l2_module>\n`;
-    }
-    output += `</docuvia_context>`;
-    console.log(output);
+    console.log(formatPromptOutput(results));
   } else {
     console.log(`\x1b[1m\x1b[36m=== Docuvia Context ===\x1b[0m\n`);
     if (results.l2) {

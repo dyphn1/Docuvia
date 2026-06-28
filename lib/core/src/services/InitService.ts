@@ -12,12 +12,14 @@ export class InitService {
 
   public async init() {
     console.log(`[docuvia] Initializing project in ${this.workspaceRoot}`);
-    
+
     // 1. Check Git status
     try {
       const { stdout } = await exec("git status --porcelain", { cwd: this.workspaceRoot });
       if (stdout.trim().length > 0) {
-        throw new Error("Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree.");
+        throw new Error(
+          "Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree."
+        );
       }
     } catch (err: any) {
       if (err.message.includes("not a git repository")) {
@@ -35,7 +37,9 @@ export class InitService {
     // 2. Setup branch
     let branchExists = false;
     try {
-      const { stdout } = await exec("git branch --list docuvia-knowledge", { cwd: this.workspaceRoot });
+      const { stdout } = await exec("git branch --list docuvia-knowledge", {
+        cwd: this.workspaceRoot,
+      });
       if (stdout.trim().length > 0) {
         branchExists = true;
       }
@@ -65,7 +69,7 @@ export class InitService {
     const dbPath = path.join(docuviaDir, "local.db");
     const isNewDb = !existsSync(dbPath);
     const db = new Database(dbPath);
-    
+
     console.log(`[docuvia] Setting up local.db SQLite schema...`);
     db.exec(`
       CREATE TABLE IF NOT EXISTS l1_tags (
@@ -112,7 +116,7 @@ export class InitService {
 
       if (hookDirExists) {
         const hookContent = `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n# Non-intrusively extracts AST deltas in the background\nif command -v npx &> /dev/null; then\n  # Fire and forget (do not block commit)\n  git rev-parse HEAD | npx --no-install docuvia sync local > /dev/null 2>&1 &\nfi\n`;
-        
+
         let shouldWriteHook = true;
         try {
           const existingHook = await fs.readFile(postCommitPath, "utf8");
@@ -122,7 +126,7 @@ export class InitService {
         } catch (e) {
           // File does not exist, safe to write
         }
-        
+
         if (shouldWriteHook) {
           console.log(`[docuvia] Installing post-commit hook...`);
           await fs.appendFile(postCommitPath, hookContent);
@@ -132,7 +136,7 @@ export class InitService {
     } catch (err) {
       console.warn("[docuvia] Could not install git hook:", err);
     }
-    
+
     return { success: true, message: "Project initialized successfully" };
   }
 }

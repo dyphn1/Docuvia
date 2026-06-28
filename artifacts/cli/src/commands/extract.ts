@@ -1,4 +1,4 @@
-import { ExtractService } from "@workspace/core";
+import { ExtractService, AstWorkerPool } from "@workspace/core";
 import process from "process";
 
 export async function extractCommand(targetFile: string) {
@@ -8,13 +8,19 @@ export async function extractCommand(targetFile: string) {
   }
 
   const workspaceRoot = process.cwd();
-  const extractService = new ExtractService(workspaceRoot);
+  const workerPool = new AstWorkerPool();
+  await workerPool.initialize(2);
+
+  const extractService = new ExtractService(workspaceRoot, workerPool);
   try {
     const result = await extractService.extractDecisions(targetFile);
     console.log(`Extracted decisions from ${targetFile}:`);
     result.decisions.forEach((decision) => console.log(`- ${decision}`));
   } catch (error: any) {
     console.error("Extraction failed:", error.message);
+    await workerPool.terminate();
     process.exit(1);
   }
+
+  await workerPool.terminate();
 }

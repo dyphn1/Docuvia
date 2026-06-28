@@ -5,17 +5,18 @@ import { l2NodesTable, l3NodesTable } from "@workspace/db/schema";
 import path from "path";
 import fs from "fs";
 
+export interface QueryResult {
+  l2?: any;
+  l3: any[];
+}
+
 export class QueryService {
   constructor(private workspaceRoot: string) {}
 
   public async query(
     target: string,
     options: { local?: boolean; format?: "human" | "prompt" } = {}
-  ) {
-    if (options.local) {
-      console.error(`[docuvia] Performing offline local SQLite search for: ${target}`);
-    }
-
+  ): Promise<QueryResult> {
     const dbPath = path.join(this.workspaceRoot, ".docuvia", "local.db");
 
     if (!fs.existsSync(dbPath)) {

@@ -8,7 +8,7 @@ export class ProjectService {
       .select()
       .from(projectsTable)
       .orderBy(sql`${projectsTable.name} asc`);
-    
+
     const l2Counts = await db
       .select({
         projectId: l2NodesTable.projectId,
@@ -28,7 +28,7 @@ export class ProjectService {
 
     const l2CountByProject = new Map(l2Counts.map((row) => [row.projectId, row.count]));
     const l3CountByProject = new Map(l3Counts.map((row) => [row.projectId, row.count]));
-    
+
     return projects.map((p) => ({
       id: p.id,
       name: p.name,

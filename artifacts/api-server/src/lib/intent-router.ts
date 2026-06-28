@@ -137,7 +137,7 @@ export async function classifyIntent(query: string): Promise<IntentClassificatio
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: CLASSIFICATION_SYSTEM_PROMPT },

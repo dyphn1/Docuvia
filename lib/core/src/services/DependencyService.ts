@@ -3,12 +3,16 @@ import { l2NodesTable, nodeLinksTable } from "@workspace/db/schema";
 import { eq, like } from "drizzle-orm";
 
 export class DependencyService {
-  public static async getDependencies(moduleName: string, escapedModuleName: string, projectId?: number) {
+  public static async getDependencies(
+    moduleName: string,
+    escapedModuleName: string,
+    projectId?: number
+  ) {
     const nodes = await db
       .select()
       .from(l2NodesTable)
       .where(like(l2NodesTable.name, `%${escapedModuleName}%`));
-    
+
     const node = projectId ? nodes.find((n) => n.projectId === projectId) : nodes[0];
 
     if (!node) {
@@ -19,7 +23,7 @@ export class DependencyService {
       .select()
       .from(nodeLinksTable)
       .where(eq(nodeLinksTable.sourceNodeId, node.id));
-    
+
     const inLinks = await db
       .select()
       .from(nodeLinksTable)

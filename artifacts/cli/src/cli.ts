@@ -6,25 +6,17 @@ import { initAgent } from "./commands/init-agent.js";
 import { queryCommand } from "./commands/query.js";
 import { analyzeCommand } from "./commands/analyze.js";
 import { extractCommand } from "./commands/extract.js";
+import { statusCommand } from "./commands/status.js";
+import { cleanCommand } from "./commands/clean.js";
+import { detectChangesCommand } from "./commands/detect-changes.js";
+import { syncCommand } from "./commands/sync.js";
 import { runMcpServer } from "./mcp/server.js";
 
 dotenv.config();
 
-function readStdin(): Promise<string> {
-  return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin });
-    let data = "";
-    rl.on("line", (line) => {
-      data += line + "\n";
-    });
-    rl.on("close", () => resolve(data.trim()));
-  });
-}
-
 async function main() {
   const command = process.argv[2];
 
-  
   if (command === "init") {
     await initCommand();
     process.exit(0);
@@ -46,44 +38,34 @@ async function main() {
     process.exit(0);
   }
 
-  if (command === "sync") {
-    if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
-      console.warn("⚠️  DOCUVIA_API_URL or MCP_PAT is missing in the environment.");
-      console.warn(
-        "   Skipping background sync. Please set these variables in your .env file or environment to enable syncing."
-      );
-      process.exit(0);
-    }
+  if (command === "status") {
+    await statusCommand();
+    process.exit(0);
+  }
 
+  if (command === "clean") {
+    await cleanCommand();
+    process.exit(0);
+  }
+
+  if (command === "detect-changes") {
+    const baseRef = process.argv.find((arg) => arg.startsWith("--baseRef="))?.split("=")[1];
+    await detectChangesCommand(baseRef);
+    process.exit(0);
+  }
+
+  if (command === "sync") {
     const projectId = process.argv[3];
     if (!projectId) {
-        console.error("  docuvia init                                 # Initialize local project and DB");
-  console.error("Usage: docuvia sync <project_id> [commit_sha]");
+      console.error(
+        "  docuvia init                                 # Initialize local project and DB"
+      );
+      console.error("Usage: docuvia sync <project_id> [commit_sha]");
       console.error("       echo <commit_sha> | docuvia sync <project_id>");
       process.exit(1);
     }
-
-    // Support post-commit hook: accept commit SHA as arg or stdin
-    const commitSha = process.argv[4] ?? (process.stdin.isTTY ? undefined : await readStdin());
-
-    console.log(`Syncing project ${projectId}...`);
-    try {
-      const apiUrl = process.env.DOCUVIA_API_URL.replace(/\/+$/, "");
-      const res = await fetch(`${apiUrl}/api/projects/${projectId}/sync`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.MCP_PAT}`,
-          "Content-Type": "application/json",
-        },
-        body: commitSha ? JSON.stringify({ commitSha }) : undefined,
-      });
-      const body = (await res.json()) as { error?: string; message?: string };
-      if (!res.ok) throw new Error(String(body.error ?? (await res.text())));
-      console.log(String(body.message ?? "Sync completed"));
-    } catch (e) {
-      console.error("Sync failed:", e);
-      process.exit(1);
-    }
+    const commitSha = process.argv[4];
+    await syncCommand(projectId, commitSha);
     process.exit(0);
   }
 
@@ -123,7 +105,12 @@ async function main() {
   console.error(`Unknown command: ${command}`);
   console.error("Usage:");
   console.error("  docuvia init                                 # Initialize local project and DB");
-  console.error("  docuvia analyze                              # Analyze project for AST and tags");
+  console.error("  docuvia status                               # Check index database health");
+  console.error("  docuvia clean                                # Wipe local.db knowledge graph");
+  console.error("  docuvia detect-changes [--baseRef=...]       # Detect structural changes and risk score");
+  console.error(
+    "  docuvia analyze                              # Analyze project for AST and tags"
+  );
   console.error("  docuvia extract <file_path>                  # Extract decisions from a file");
   console.error(
     "  docuvia init-agent                           # Install hooks for Claude Code and Cursor"
@@ -136,4 +123,7 @@ async function main() {
   process.exit(1);
 }
 
-main();
+main().catch((err) => {
+  console.error("\x1b[31m%s\x1b[0m", err instanceof Error ? err.message : String(err));
+  process.exit(1);
+});

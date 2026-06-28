@@ -114,7 +114,7 @@ async function runMetabolism() {
     for (const correction of pendingCorrections) {
       try {
         const response = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
+          model: process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
           messages: [
             {
               role: "system",

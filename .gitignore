@@ -59,3 +59,6 @@ blob-report/
 # Verification state (local-only, used by hermes cron)
 docs/reports/.verification-index.json
 docs/reports/.ast-verification-index.json
+
+# AI Auto Generated Docs
+docs/ai_plans/

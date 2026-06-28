@@ -36,13 +36,8 @@ export class AstWorkerPool implements IASTWorkerPool {
 
     const workerOptions: any = {};
     if (isTs) {
-      try {
-        const docuviaRoot = path.resolve(__dirname, "../../../../");
-        const tsxPath = require("module").createRequire(import.meta.url).resolve("tsx", { paths: [docuviaRoot] });
-        workerOptions.execArgv = ["--import", "file://" + tsxPath.replace(/\\/g, "/")];
-      } catch(e) {
-        workerOptions.execArgv = [];
-      }
+      // Inherit the exact tsx loader from the parent process, filtering out any script-specific args
+      workerOptions.execArgv = process.execArgv.filter(arg => !arg.includes('--eval') && !arg.includes('--print'));
     } else {
       // If running from dist/ast-worker.js, we don't need any loaders.
       workerOptions.execArgv = [];

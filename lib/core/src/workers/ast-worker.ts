@@ -3,6 +3,9 @@ import { Parser, Language } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
 import { createRequire } from "module";
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
 export interface AstParseRequest {
@@ -46,21 +49,32 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     // Attempt to load wasm
     let languageLoaded = false;
     try {
-      const projectRoot = process.cwd();
-      const wasmPath = path.resolve(projectRoot, `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
+      const docuviaRoot = path.resolve(__dirname, "../../../../");
+      // Use require.resolve to safely find tree-sitter-wasms no matter if it's hoisted or in .pnpm
+      let wasmPath = "";
+      try {
+        const packagePath = require.resolve(`tree-sitter-wasms/package.json`, { paths: [docuviaRoot] });
+        wasmPath = path.join(path.dirname(packagePath), "out", `tree-sitter-${request.language}.wasm`);
+      } catch (err) {
+        // Fallback to explicit path if package.json resolve fails
+        wasmPath = path.resolve(docuviaRoot, `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
+      }
+
       if (fs.existsSync(wasmPath)) {
-        const lang = await Language.load(wasmPath);
+        const wasmBytes = fs.readFileSync(wasmPath);
+        const lang = await Language.load(wasmBytes);
         parser.setLanguage(lang);
         languageLoaded = true;
       } else {
-        // Fallback for Docuvia local project structure
-        const altPath = path.resolve(projectRoot, `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
-        if (fs.existsSync(altPath)) {
-          const lang = await Language.load(altPath);
+        // Ultimate fallback for pnpm structures
+        const pnpmAltPath = path.resolve(docuviaRoot, `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
+        if (fs.existsSync(pnpmAltPath)) {
+          const wasmBytes = fs.readFileSync(pnpmAltPath);
+          const lang = await Language.load(wasmBytes);
           parser.setLanguage(lang);
           languageLoaded = true;
         } else {
-          console.warn(`[ast-worker] WASM not found, falling back to mock`);
+          console.warn(`[ast-worker] WASM not found at ${wasmPath}, falling back to mock`);
         }
       }
     } catch (e) {

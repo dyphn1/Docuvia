@@ -21,91 +21,81 @@ export class AnalyzeService {
     const suggestedTags = new Set<string>();
 
     try {
-      const packageJsonPath = path.join(this.workspaceRoot, "package.json");
-      const content = await fs.readFile(packageJsonPath, "utf-8");
-      const pkg = JSON.parse(content);
+      const configFiles = await fg([
+        "**/package.json",
+        "**/Cargo.toml",
+        "**/pyproject.toml",
+        "**/requirements.txt",
+        "**/go.mod",
+        "**/tsconfig.json",
+        "**/vite.config.*",
+        "**/drizzle.config.*",
+        "**/webpack.config.*",
+        "**/tauri.conf.*"
+      ], {
+        cwd: this.workspaceRoot,
+        ignore: ["node_modules/**", ".git/**", "dist/**", "build/**", "target/**", "venv/**", ".venv/**", "**/fixtures/**", "**/__fixtures__/**", "**/test-data/**"],
+        absolute: true,
+        deep: 3,
+      });
 
-      const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-
-      if (deps.typescript) {
-        projectType = "typescript";
-        suggestedTags.add("typescript");
-      } else if (deps.react || deps.express || deps.vue || deps.next) {
-        projectType = "javascript";
-      }
-
-      const frameworkMapping: Record<string, string[]> = {
-        react: ["react", "frontend"],
-        "react-dom": ["react", "frontend"],
-        express: ["express", "backend"],
-        vue: ["vue", "frontend"],
-        next: ["nextjs", "frontend", "ssr"],
-        "drizzle-orm": ["drizzle", "database"],
-        vite: ["vite", "build-tool"],
-        tailwindcss: ["tailwindcss", "css"],
-        jest: ["jest", "testing"],
-        vitest: ["vitest", "testing"],
-        pg: ["postgres", "database"],
-      };
-
-      for (const [dep, tags] of Object.entries(frameworkMapping)) {
-        if (deps[dep]) {
-          tags.forEach((t) => suggestedTags.add(t));
+      for (const file of configFiles) {
+        const basename = path.basename(file);
+        try {
+          const content = await fs.readFile(file, "utf-8");
+          
+          if (basename === "package.json") {
+            if (content.includes('"typescript"')) suggestedTags.add("typescript");
+            if (content.includes('"react"')) { suggestedTags.add("react"); suggestedTags.add("frontend"); }
+            if (content.includes('"vue"')) { suggestedTags.add("vue"); suggestedTags.add("frontend"); }
+            if (content.includes('"next"')) { suggestedTags.add("nextjs"); suggestedTags.add("frontend"); suggestedTags.add("ssr"); }
+            if (content.includes('"express"')) { suggestedTags.add("express"); suggestedTags.add("backend"); }
+            if (content.includes('"drizzle-orm"')) { suggestedTags.add("drizzle"); suggestedTags.add("database"); }
+            if (content.includes('"tailwindcss"')) { suggestedTags.add("tailwindcss"); suggestedTags.add("css"); }
+            if (content.includes('"jest"')) { suggestedTags.add("jest"); suggestedTags.add("testing"); }
+            if (content.includes('"vitest"')) { suggestedTags.add("vitest"); suggestedTags.add("testing"); }
+            if (content.includes('"pg"')) { suggestedTags.add("postgres"); suggestedTags.add("database"); }
+            if (content.includes('"workspaces"')) suggestedTags.add("monorepo");
+          } else if (basename === "Cargo.toml") {
+            projectType = "rust";
+            suggestedTags.add("rust");
+            if (content.includes('tokio')) { suggestedTags.add("tokio"); suggestedTags.add("async"); }
+            if (content.includes('actix')) { suggestedTags.add("actix"); suggestedTags.add("backend"); }
+            if (content.includes('serde')) suggestedTags.add("serde");
+            if (content.includes('tauri')) { suggestedTags.add("tauri"); suggestedTags.add("desktop"); }
+          } else if (basename === "pyproject.toml" || basename === "requirements.txt") {
+            projectType = "python";
+            suggestedTags.add("python");
+            if (content.includes('django')) { suggestedTags.add("django"); suggestedTags.add("backend"); }
+            if (content.includes('fastapi')) { suggestedTags.add("fastapi"); suggestedTags.add("backend"); }
+            if (content.includes('pandas')) { suggestedTags.add("pandas"); suggestedTags.add("data"); }
+          } else if (basename === "go.mod") {
+            projectType = "go";
+            suggestedTags.add("go");
+            if (content.includes('gin-gonic')) { suggestedTags.add("gin"); suggestedTags.add("backend"); }
+          } else if (basename === "tsconfig.json") {
+            if (/"strict"\s*:\s*true/.test(content)) suggestedTags.add("strict-ts");
+          } else if (basename.startsWith("vite.config")) {
+            suggestedTags.add("vite");
+            suggestedTags.add("build-tool");
+          } else if (basename.startsWith("drizzle.config")) {
+            suggestedTags.add("drizzle");
+            suggestedTags.add("database");
+          } else if (basename.startsWith("tauri.conf")) {
+            suggestedTags.add("tauri");
+            suggestedTags.add("desktop");
+          }
+        } catch (e) {
+          // ignore read errors for individual files
         }
       }
+
+      if (suggestedTags.has("typescript") || suggestedTags.has("react") || suggestedTags.has("express") || suggestedTags.has("vue")) {
+        if (projectType === "unknown") projectType = "javascript";
+      }
+
     } catch (e: any) {
-      if (e.code !== "ENOENT") {
-        console.warn(`[docuvia] Warning: Failed to process package.json: ${e.message}`);
-      }
-    }
-
-    try {
-      const tsconfigPath = path.join(this.workspaceRoot, "tsconfig.json");
-      await fs.access(tsconfigPath);
-      const tsconfigContent = await fs.readFile(tsconfigPath, "utf-8");
-      
-      let isStrict = false;
-      try {
-        const parsed = JSON.parse(tsconfigContent);
-        if (parsed?.compilerOptions?.strict === true) {
-          isStrict = true;
-        }
-      } catch (parseError: any) {
-        // Fallback to regex if JSON.parse fails due to comments
-        if (/"strict"\s*:\s*true/.test(tsconfigContent)) {
-          isStrict = true;
-        } else {
-          console.warn(`[docuvia] Warning: Failed to parse tsconfig.json: ${parseError.message}`);
-        }
-      }
-
-      if (isStrict) {
-        suggestedTags.add("strict-ts");
-      }
-    } catch (e: any) {
-      if (e.code !== "ENOENT") {
-        console.warn(`[docuvia] Warning: Failed to process tsconfig.json: ${e.message}`);
-      }
-    }
-
-    const checkFileExists = async (filename: string) => {
-      try {
-        await fs.stat(path.join(this.workspaceRoot, filename));
-        return true;
-      } catch (e: any) {
-        if (e.code !== "ENOENT") {
-          console.warn(`[docuvia] Warning: Failed to stat ${filename}: ${e.message}`);
-        }
-        return false;
-      }
-    };
-
-    if (await checkFileExists("vite.config.ts") || await checkFileExists("vite.config.js")) {
-      suggestedTags.add("vite");
-    }
-
-    if (await checkFileExists("drizzle.config.ts") || await checkFileExists("drizzle.config.cjs") || await checkFileExists("drizzle.config.js")) {
-      suggestedTags.add("drizzle");
+      console.warn(`[docuvia] Warning: Failed multi-dimensional config scanning: ${e.message}`);
     }
 
     if (projectType === "unknown") {
@@ -275,6 +265,8 @@ export class AnalyzeService {
               const res = await pool.parse({ filePath: item.file, code: item.code, language: getLanguage(item.file) });
               if (res.success && res.data) {
                 parsedResults.push({ file: item.file, hash: item.hash, data: res.data });
+              } else {
+                console.log(`[docuvia] parse returned false for ${item.file}: ${res.error}`);
               }
             } catch (e) {
               console.warn(`[docuvia] Failed to parse ${item.file}:`, e);
@@ -403,7 +395,7 @@ export class AnalyzeService {
             const extractService = new ExtractService(this.workspaceRoot);
             
             // Initialize l3_nodes schema if not exists just in case
-            backgroundDb.exec(\`
+            backgroundDb.exec(`
               CREATE TABLE IF NOT EXISTS l3_nodes (
                 id TEXT PRIMARY KEY,
                 l2_node_id TEXT,
@@ -412,7 +404,7 @@ export class AnalyzeService {
                 status TEXT,
                 created_at TEXT
               );
-            \`);
+            `);
 
             const insertL3Node = backgroundDb.prepare('INSERT INTO l3_nodes (id, l2_node_id, title, content, status, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
 
@@ -436,11 +428,11 @@ export class AnalyzeService {
                   }
                 }
               } catch (e: any) {
-                console.error(\`[docuvia] L3 Extraction Error for file \${item.file}:\`, e.message);
+                console.error(`[docuvia] L3 Extraction Error for file ${item.file}:`, e.message);
               }
             }
 
-            console.log(\`[docuvia] Background L3 extraction finished.\`);
+            console.log(`[docuvia] Background L3 extraction finished.`);
           } catch (e: any) {
             console.error('[docuvia] L3 Extraction background task failed', e);
           } finally {

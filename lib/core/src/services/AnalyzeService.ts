@@ -7,6 +7,8 @@ import Database from "better-sqlite3";
 import fg from "fast-glob";
 import ignore from "ignore";
 import { AstWorkerPool } from "./AstWorkerPool.js";
+import { exec } from "child_process";
+import * as util from "util";
 
 export class AnalyzeService {
   constructor(private workspaceRoot: string) {}
@@ -115,58 +117,71 @@ export class AnalyzeService {
 
     // --- AST Scanning logic ---
     try {
-      console.log(`[docuvia] Starting global AST scan using Git-native blob hashing...`);
       
-      const { exec } = require('child_process');
-      const util = require('util');
       const execAsync = util.promisify(exec);
+      
+      let allFiles: string[] = [];
+      const gitBlobHashes = new Map<string, string>();
+      const dirtyFiles = new Set<string>();
+      let usingGit = false;
 
-      // 1. Get tracked files & blob hashes instantly via git ls-files
-      let lsFilesOutput = "";
       try {
-        const res = await execAsync('git ls-files -s', { cwd: this.workspaceRoot });
-        lsFilesOutput = res.stdout;
+        // Test if git is available and we are in a git repository
+        await execAsync('git rev-parse --is-inside-work-tree', { cwd: this.workspaceRoot });
+        usingGit = true;
       } catch (e) {
-        console.warn("[docuvia] Git ls-files failed. Are you in a valid git repository?");
+        usingGit = false;
       }
 
-      const gitBlobHashes = new Map<string, string>();
-      for (const line of lsFilesOutput.split('\n')) {
-        if (!line.trim()) continue;
-        const [info, file] = line.split('\t');
-        const blobSha = info.split(' ')[1];
-        if (file && blobSha) {
-          gitBlobHashes.set(file, blobSha);
+      if (usingGit) {
+        console.log(`[docuvia] Starting global AST scan using Git-native blob hashing...`);
+        try {
+          const res = await execAsync('git ls-files -s', { cwd: this.workspaceRoot });
+          for (const line of res.stdout.split('\n')) {
+            if (!line.trim()) continue;
+            const [info, file] = line.split('\t');
+            const blobSha = info.split(' ')[1];
+            if (file && blobSha) gitBlobHashes.set(file, blobSha);
+          }
+          
+          const untracked = await execAsync('git ls-files --others --exclude-standard', { cwd: this.workspaceRoot });
+          const modified = await execAsync('git diff --name-only', { cwd: this.workspaceRoot });
+          
+          [...untracked.stdout.split('\n'), ...modified.stdout.split('\n')].forEach((f: string) => {
+            if (f.trim()) dirtyFiles.add(f.trim());
+          });
+
+          allFiles = [...gitBlobHashes.keys(), ...untracked.stdout.split('\n').map((f: string) => f.trim()).filter(Boolean)];
+        } catch (e) {
+          console.warn("[docuvia] Git operations failed during execution, falling back to manual globbing...");
+          usingGit = false;
         }
       }
 
-      // 2. Get untracked files
-      let untrackedFilesOutput = "";
-      try {
-        const res = await execAsync('git ls-files --others --exclude-standard', { cwd: this.workspaceRoot });
-        untrackedFilesOutput = res.stdout;
-      } catch (e) {}
+      if (!usingGit) {
+        console.log(`[docuvia] Git unavailable or no .git repository found. Falling back to fast-glob + manual sha256 hashing...`);
+        const ig = ignore();
+        try {
+          const gitignoreContent = await fs.readFile(path.join(this.workspaceRoot, ".gitignore"), "utf-8");
+          ig.add(gitignoreContent);
+        } catch (e: any) {}
 
-      // 3. Get unstaged modifications (dirty files)
-      let modifiedFilesOutput = "";
-      try {
-        const res = await execAsync('git diff --name-only', { cwd: this.workspaceRoot });
-        modifiedFilesOutput = res.stdout;
-      } catch (e) {}
+        const globbedFiles = await fg("**/*.{ts,js,jsx,tsx,py,go,rs,cpp,c,h,hpp,java,php,rb}", {
+          cwd: this.workspaceRoot,
+          ignore: ["node_modules/**", ".git/**", ".docuvia/**", "dist/**", "build/**"],
+          absolute: false,
+        });
+        
+        allFiles = ig.filter(globbedFiles);
+        // Treat all globbed files as dirty so manual hashing is forced
+        allFiles.forEach((f: string) => dirtyFiles.add(f)); 
+      }
 
-      const dirtyFiles = new Set<string>();
-      [...untrackedFilesOutput.split('\n'), ...modifiedFilesOutput.split('\n')].forEach(f => {
-        if (f.trim()) dirtyFiles.add(f.trim());
-      });
-
-      // 4. Combine all candidate files
-      let allFiles = [...gitBlobHashes.keys(), ...untrackedFilesOutput.split('\n').map(f => f.trim()).filter(Boolean)];
-      
-      // Filter by supported extensions
+      // Filter by supported extensions (redundant for glob, but ensures git outputs are clean)
       const extRegex = /\.(ts|js|jsx|tsx|py|go|rs|cpp|c|h|hpp|java|php|rb)$/;
-      allFiles = allFiles.filter(f => extRegex.test(f) && !f.includes('node_modules/') && !f.includes('.docuvia/'));
+      allFiles = allFiles.filter((f: string) => extRegex.test(f) && !f.includes('node_modules/') && !f.includes('.docuvia/'));
 
-      console.log(`[docuvia] Discovered ${allFiles.length} source files via Git.`);
+      console.log(`[docuvia] Discovered ${allFiles.length} source files.`);
 
       // 5. Connect to DB and fetch existing hashes
       const dbPath = path.join(this.workspaceRoot, ".docuvia", "local.db");

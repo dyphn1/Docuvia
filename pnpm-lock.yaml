@@ -64,6 +64,10 @@ catalogs:
 importers:
 
   .:
+    dependencies:
+      tsx:
+        specifier: ^4.22.4
+        version: 4.22.4
     devDependencies:
       '@types/supertest':
         specifier: ^7.2.0

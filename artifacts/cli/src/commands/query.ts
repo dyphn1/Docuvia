@@ -26,7 +26,7 @@ export async function queryCommand(
   try {
     results = await queryService.query(target, options);
   } catch (error: any) {
-    console.error("Error: Local database not found. Please run docuvia init.");
+    console.error("Query Error:", error);
     process.exit(1);
   }
 

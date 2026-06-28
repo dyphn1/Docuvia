@@ -1,10 +1,7 @@
 import { parentPort } from "worker_threads";
-import * as ParserModule from "web-tree-sitter";
+import { Parser, Language } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
-
-// Workaround for ESM/CJS interop issues with web-tree-sitter
-const Parser = (ParserModule as any).default || ParserModule;
 
 export interface AstParseRequest {
   taskId: string;
@@ -31,11 +28,11 @@ let parserInitialized = false;
 parentPort?.on("message", async (request: AstParseRequest) => {
   try {
     if (!parserInitialized) {
-      await (Parser as any).init();
+      await Parser.init();
       parserInitialized = true;
     }
 
-    const parser = new (Parser as any)();
+    const parser = new Parser();
     
     // Attempt to load wasm
     let languageLoaded = false;
@@ -43,14 +40,14 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       const projectRoot = process.cwd();
       const wasmPath = path.resolve(projectRoot, `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
       if (fs.existsSync(wasmPath)) {
-        const lang = await (Parser as any).Language.load(wasmPath);
+        const lang = await Language.load(wasmPath);
         parser.setLanguage(lang);
         languageLoaded = true;
       } else {
         // Fallback for Docuvia local project structure
         const altPath = path.resolve(projectRoot, `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
         if (fs.existsSync(altPath)) {
-          const lang = await (Parser as any).Language.load(altPath);
+          const lang = await Language.load(altPath);
           parser.setLanguage(lang);
           languageLoaded = true;
         } else {

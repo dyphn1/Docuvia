@@ -25,51 +25,31 @@ export class QueryService {
       );
     }
 
-    const sqlite = new Database(dbPath);
-    const db = drizzle(sqlite);
+        const sqlite = new Database(dbPath);
     const likeTarget = `%${target}%`;
-
-    const l2Nodes = l2NodesTable as any;
-    const l3Nodes = l3NodesTable as any;
-
-    const matchingL2 = db
-      .select()
-      .from(l2Nodes)
-      .where(
-        or(
-          like(l2Nodes.name, likeTarget),
-          like(l2Nodes.slug, likeTarget),
-          like(l2Nodes.source_paths, likeTarget)
-        )
-      )
-      .limit(1)
-      .get() as any;
 
     let results: { l2?: any; l3: any[] } = { l3: [] };
 
+    const matchingL2 = sqlite.prepare(`
+      SELECT * FROM l2_nodes 
+      WHERE name LIKE ? OR slug LIKE ? OR source_paths LIKE ? 
+      LIMIT 1
+    `).get(likeTarget, likeTarget, likeTarget) as any;
+
     if (matchingL2) {
       results.l2 = matchingL2;
-      const matchingL3 = db
-        .select()
-        .from(l3Nodes)
-        .where(
-          and(
-            eq(l3Nodes.l2NodeId, matchingL2.id),
-            or(like(l3Nodes.title, likeTarget), like(l3Nodes.content, likeTarget))
-          )
-        )
-        .orderBy(desc(l3Nodes.createdAt))
-        .limit(5)
-        .all() as any[];
+      const matchingL3 = sqlite.prepare(`
+        SELECT * FROM l3_nodes 
+        WHERE l2_node_id = ? AND (title LIKE ? OR content LIKE ?)
+        ORDER BY created_at DESC LIMIT 5
+      `).all(matchingL2.id, likeTarget, likeTarget) as any[];
 
       if (matchingL3.length < 5) {
-        const recentL3 = db
-          .select()
-          .from(l3Nodes)
-          .where(eq(l3Nodes.l2NodeId, matchingL2.id))
-          .orderBy(desc(l3Nodes.createdAt))
-          .limit(5)
-          .all() as any[];
+        const recentL3 = sqlite.prepare(`
+          SELECT * FROM l3_nodes 
+          WHERE l2_node_id = ? 
+          ORDER BY created_at DESC LIMIT 5
+        `).all(matchingL2.id) as any[];
 
         const existingIds = new Set(matchingL3.map((l) => l.id));
         for (const item of recentL3) {
@@ -81,13 +61,11 @@ export class QueryService {
       }
       results.l3 = matchingL3;
     } else {
-      results.l3 = db
-        .select()
-        .from(l3Nodes)
-        .where(or(like(l3Nodes.title, likeTarget), like(l3Nodes.content, likeTarget)))
-        .orderBy(desc(l3Nodes.createdAt))
-        .limit(5)
-        .all() as any[];
+      results.l3 = sqlite.prepare(`
+        SELECT * FROM l3_nodes 
+        WHERE title LIKE ? OR content LIKE ? 
+        ORDER BY created_at DESC LIMIT 5
+      `).all(likeTarget, likeTarget) as any[];
     }
 
     return results;

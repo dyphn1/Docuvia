@@ -9,25 +9,25 @@ _Project Focus: Prioritize Local-First features. Other features are deprioritize
 | **VS Code Client**   | Editor Integration  | Seamless local IDE experience, Multi-root workspace support.    | Bare prototype. Massive gap vs Cursor.       | 3            | **code-review-graph-vscode** (MCP tool integration, Webview handling) |
 | **CodeLens / Hover** | Context Awakening   | O(1) AST symbol anchoring instead of fuzzy search.              | Planned / Prototyping                        | 3            | **GitNexus** (`context({name: "symbolName"})` O(1) lookup strategies) |
 | **Topology**         | Graph Visualization | Local HTML/D3.js visualization (`local-html-visualization`).    | Pending                                      | 1            | **code-review-graph** (D3.js interactive HTML graph generator)        |
-| **CLI**              | CLI Tools           | Local `init`, `analyze`, `extract`, `sync`, `query`, `mcp`, `status`, `clean`, and `detect-changes`. | Core implemented, error handling fixed, dual-track routing. Robust but still basic. | 7            | **GitNexus** (`gitnexus-cli` index, analyze, query)                   |
+| **CLI**              | CLI Tools           | Local `init`, `analyze`, `extract`, `sync`, `query`, `mcp`, `status`, `clean`, and `detect-changes`. | Production parity reached. Features git-native delta hash, background RAG, and pure plumbing. | 9            | **GitNexus** (`gitnexus-cli` index, analyze, query)                   |
 
 ## 2. Infrastructure & Pipeline
 
 | Component             | Sub-feature         | Local-First Context                                                         | Status / Progress                                     | Score (1-10) | Internal Workspace Reference (Inspiration)                          |
 | :-------------------- | :------------------ | :-------------------------------------------------------------------------- | :---------------------------------------------------- | :----------- | :------------------------------------------------------------------ |
-| **AST Microkernel**   | web-tree-sitter     | Isomorphic offline parsing, native fallback (`native-parsing-fallback`).    | Uses native TS compiler API, but lacks true multi-language web-tree-sitter. | 3            | **code-review-graph** (`parser.py` Tree-sitter + fallbacks)         |
+| **AST Microkernel**   | web-tree-sitter     | Isomorphic offline parsing, native fallback (`native-parsing-fallback`).    | Active. Multi-language Web-tree-sitter worker pool with dynamic resolution. | 8            | **code-review-graph** (`parser.py` Tree-sitter + fallbacks)         |
 | **Worker Pool**       | Concurrency         | Non-blocking execution in isolated workers (`worker-pool-concurrency`).     | Active. Used by `AnalyzeService` for global AST scanning. | 8            | **GitNexus** (Parallel ingestion pipeline)                          |
-| **Local DB**          | SQLite/Drizzle      | High-speed IPC-bypass writing (`local-sqlite-write-pipeline`), L1~L3 nodes. | Basic CRUD with bulk insert support via `better-sqlite3` transactions. | 6            | **code-review-graph** (`graph.db` SQLite WAL mode)                  |
-| **Incremental Sync**  | Hash Deltas & Hooks | `file-hash-delta-detection`, sub-second updates, Git pre/post-commit.       | Uses git diff for delta checks. Safe but not true Turborepo hashing. | 4            | **code-review-graph** (`incremental.py` Git-based change detection) |
-| **Git Orphan Branch** | Isomorphic Sync     | Distributing local graphs without cloud via Git orphan branches.            | Integrated via plumbing (`git commit-tree`), non-intrusive. | 6            | **Docuvia** (Existing `docuvia-knowledge` branch paradigm)          |
-| **Graph Edges**       | Dependency & BFS    | AST dependency edges, local blast radius (`local-bfs-blast-radius`).        | Planned                                               | 3            | **GitNexus** (`gitnexus-impact-analysis` blast radius, BFS)         |
+| **Local DB**          | SQLite/Drizzle      | High-speed IPC-bypass writing (`local-sqlite-write-pipeline`), L1~L3 nodes. | Robust. Features synchronous bulk UPSERTs and relational schema (L1-L3). | 8            | **code-review-graph** (`graph.db` SQLite WAL mode)                  |
+| **Incremental Sync**  | Hash Deltas & Hooks | `file-hash-delta-detection`, sub-second updates, Git pre/post-commit.       | Active. Git-native blob hashing via `ls-files -s`, with graceful manual fallback. | 9            | **code-review-graph** (`incremental.py` Git-based change detection) |
+| **Git Orphan Branch** | Isomorphic Sync     | Distributing local graphs without cloud via Git orphan branches.            | Integrated via 100% pure Git plumbing (`git hash-object`, `git commit-tree`). | 9            | **Docuvia** (Existing `docuvia-knowledge` branch paradigm)          |
+| **Graph Edges**       | Dependency & BFS    | AST dependency edges, local blast radius (`local-bfs-blast-radius`).        | Active. Parser correctly injects `CALLS` semantic edges into the DB.  | 7            | **GitNexus** (`gitnexus-impact-analysis` blast radius, BFS)         |
 
 ## 3. APIs & AI Protocols
 
 | Component           | Sub-feature     | Local-First Context                                  | Status / Progress                              | Score (1-10) | Internal Workspace Reference (Inspiration)                          |
 | :------------------ | :-------------- | :--------------------------------------------------- | :--------------------------------------------- | :----------- | :------------------------------------------------------------------ |
 | **MCP Server**      | Context Sharing | Standardized local context for Claude/Cursor.        | Only 3 basic tools. code-review-graph has 30+. | 3            | **code-review-graph** (`main.py` FastMCP server, 30+ tools)         |
-| **Intent Router**   | Query Dispatch  | Routing queries to Text, Graph, or Local Embeddings. | Basic routing. Lacks LlamaIndex depth.         | 3            | **Docuvia** (`intent-router.ts` vector/graph/direct hybrid routing) |
+| **Intent Router**   | Query Dispatch  | Routing queries to Text, Graph, or Local Embeddings. | Integrated with `--deep` CLI flag for background Agentic RAG extraction. | 6            | **Docuvia** (`intent-router.ts` vector/graph/direct hybrid routing) |
 | **Enhanced Search** | Hybrid Search   | FTS5 + Local Vector search.                          | Partial (FTS5 done, Vectors pending)           | 4            | **code-review-graph** (`search.py` FTS5 hybrid search + embeddings) |
 
 ## 4. Buffers & Boundaries
@@ -50,6 +50,20 @@ As defined in [ADR-021](../design/adrs/ADR-021-shared-core-api-and-presentation-
 | **Analyze / Explore** | `docuvia.startExplore` / Chat: `explore` | `docuvia_analyze`     | `docuvia analyze` | **[Resolved]** Implemented via `AnalyzeService` using file-scanning logic in `@workspace/core`.           |
 | **Extract Decision**  | `docuvia.addDecision` / Chat: `extract`  | `docuvia_extract`     | `docuvia extract` | **[Resolved]** Implemented via `ExtractService` inside `@workspace/core`.                                 |
 | **Sync / Refresh**    | `docuvia.refreshKnowledgeGraph`          | ❌ Missing            | `docuvia sync`    | Semantic drift: VS Code "refresh" implies UI reload, while CLI "sync" implies pushing to a remote server. |
+
+
+## 6. Post-Survival Architecture Re-Evaluation
+
+Following the major Phase 3 refactoring (the "Survival" update), the backend data pipeline and CLI tools have reached near-parity with established benchmarks like **GitNexus**. 
+
+**Where Docuvia Excels:**
+* **Indexing & Persistence:** The combination of Git-native blob hashing (falling back to fast-glob), synchronous SQLite UPSERTs, and dynamic Web-tree-sitter workers has given Docuvia an extremely fast and resilient core. 
+* **State Isolation:** The Git plumbing approach (orphan branches without working-tree disruption) guarantees zero interference with the user's daily git flow.
+
+**The Remaining Bottlenecks (Where to pivot next):**
+1. **The L3 Agentic RAG Gap:** While `--deep` properly triggers a background task, the actual prompt engineering, LLM request batching, and embedding generation inside the Intent Router is still stubbed out or under-developed. It needs to connect to the `@workspace/integrations-openai-ai-server`.
+2. **VS Code Client Lag (Score: 3):** We have the world's fastest hidden SQLite DB running in the CLI, but the VS Code Client is practically blind. We need to implement `CodeLens` and `Hover` providers that query the SQLite `CALLS` edges to show users the "Blast Radius" directly in their editor.
+3. **Cross-File Resolution Depth:** While we extract `CALLS` edges locally within files, we lack GitNexus's sophisticated cross-file "Scope Resolution Pipeline" (Ring 3) which stitches these edges into global execution flows (`processes`).
 
 **Next Steps for the Development Team:**
 

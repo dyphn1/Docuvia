@@ -21,6 +21,66 @@ export class AnalyzeService {
     const suggestedTags = new Set<string>();
 
     try {
+      const execAsync = util.promisify(exec);
+
+      // --- 1. VCS-Driven Hotspot Extraction (ADR-005) ---
+      try {
+        await execAsync('git rev-parse --is-inside-work-tree', { cwd: this.workspaceRoot });
+        const gitLogRes = await execAsync('git log -n 100 --name-only --format=""', { cwd: this.workspaceRoot });
+        
+        const pathCounts = new Map<string, number>();
+        const lines = gitLogRes.stdout.split('\n');
+        
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          
+          // Split path and get up to depth 3 directories
+          const parts = trimmed.split('/');
+          if (parts.length > 1) {
+            // Ignore common top-level structural folders that aren't functional domains
+            if (['.github', '.vscode', 'node_modules', 'dist', 'build', 'docs'].includes(parts[0])) continue;
+            
+            // For typical TS/JS projects, skip 'src' as the root word, use the next level
+            const isSrcRoot = parts[0] === 'src' || (parts.length > 2 && parts[1] === 'src');
+            
+            // Construct a meaningful domain prefix (e.g., 'cli', 'core/ingestion', 'mcp')
+            let domain = '';
+            if (parts[0] === 'src' && parts.length > 1) {
+              domain = parts[1]; // src/auth -> auth
+            } else if (parts.length > 2 && parts[1] === 'src') {
+              domain = parts[2]; // packages/cli/src/mcp -> mcp
+            } else {
+              domain = parts[0]; // fallback to top level
+            }
+            
+            // Clean up file extensions if it accidentally picked a file
+            if (!domain.includes('.')) {
+              pathCounts.set(domain, (pathCounts.get(domain) || 0) + 1);
+            }
+          }
+        }
+
+        // Sort by frequency and pick the top 5 functional hotspots
+        const sortedDomains = Array.from(pathCounts.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(entry => entry[0]);
+
+        for (const domain of sortedDomains) {
+          if (domain.length > 2) { // Ignore extremely short/cryptic folders
+            suggestedTags.add(`domain:${domain}`);
+          }
+        }
+        
+        if (sortedDomains.length > 0) {
+          console.log(`[docuvia] VCS Hotspot analysis extracted functional domains: ${sortedDomains.join(', ')}`);
+        }
+      } catch (e) {
+        // Git not available or no commits yet, gracefully skip VCS hotspot extraction
+      }
+
+      // --- 2. Multi-Dimensional Config Scanning ---
       const configFiles = await fg([
         "**/package.json",
         "**/Cargo.toml",
@@ -106,11 +166,9 @@ export class AnalyzeService {
       suggestedTags.add("general");
     }
 
-    // --- AST Scanning logic ---
+    // --- 3. AST Scanning logic ---
     try {
-      
       const execAsync = util.promisify(exec);
-      
       let allFiles: string[] = [];
       const gitBlobHashes = new Map<string, string>();
       const dirtyFiles = new Set<string>();

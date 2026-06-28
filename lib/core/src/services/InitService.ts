@@ -67,6 +67,11 @@ export class InitService {
         l1_tag_id TEXT,
         description TEXT
       );
+      CREATE TABLE IF NOT EXISTS l2_node_l1_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        l2_node_id TEXT NOT NULL,
+        l1_tag_id TEXT NOT NULL
+      );
       CREATE TABLE IF NOT EXISTS l3_nodes (
         id TEXT PRIMARY KEY,
         l2_node_id TEXT,

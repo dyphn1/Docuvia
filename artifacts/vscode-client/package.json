@@ -124,6 +124,22 @@
         "command": "docuvia.graph.traverse",
         "title": "Docuvia: Traverse Dependency Graph",
         "icon": "$(graph)"
+      },
+      {
+        "command": "docuvia.clean",
+        "title": "Docuvia: Clean local graph data"
+      },
+      {
+        "command": "docuvia.status",
+        "title": "Docuvia: Show Status"
+      },
+      {
+        "command": "docuvia.detectChanges",
+        "title": "Docuvia: Detect Changes"
+      },
+      {
+        "command": "docuvia.sync",
+        "title": "Docuvia: Sync Knowledge to Remote"
       }
     ],
     "viewsWelcome": [

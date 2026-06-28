@@ -62,8 +62,9 @@ export class ExtractService {
         });
         const parsed = JSON.parse(response.choices[0].message.content || "{\"decisions\": []}");
         return { decisions: parsed.decisions || ["Extracted via LLM stub"] };
-      } catch (e) {
-        return { decisions: ["Extracted via LLM stub"] };
+      } catch (e: any) {
+        console.error(`[docuvia] L3 Extraction Error for file ${filePath}`, e);
+        throw new Error("LLM Extraction failed: " + e.message);
       }
     }
 

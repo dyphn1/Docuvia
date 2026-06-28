@@ -284,23 +284,38 @@ export class AnalyzeService {
 
         // Transaction for bulk inserting the new AST nodes
         const insertHash = db.prepare('INSERT INTO project_files (project_id, file_path, content_hash) VALUES (1, ?, ?) ON CONFLICT (project_id, file_path) DO UPDATE SET content_hash = excluded.content_hash, last_parsed_at = CURRENT_TIMESTAMP');
+        const deleteOldL1Links = db.prepare('DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (SELECT id FROM l2_nodes WHERE source_paths = ?)');
         const deleteOldLinks = db.prepare('DELETE FROM node_links WHERE source_node_id IN (SELECT id FROM l2_nodes WHERE source_paths = ?)');
         const deleteOldNodes = db.prepare('DELETE FROM l2_nodes WHERE source_paths = ?');
         const insertNode = db.prepare('INSERT INTO l2_nodes (id, name, slug, type, source_paths, description) VALUES (?, ?, ?, ?, ?, ?)');
         const insertLink = db.prepare('INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)');
+        const insertL1Tag = db.prepare('INSERT INTO l1_tags (id, name, slug, description) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO NOTHING');
+        const insertL2L1Link = db.prepare('INSERT INTO l2_node_l1_tags (l2_node_id, l1_tag_id) VALUES (?, ?)');
 
         const runTransaction = db.transaction(() => {
           let parsedCount = 0;
+          
+          // Ensure all tags exist
+          for (const tag of suggestedTags) {
+            insertL1Tag.run(tag, tag, tag, `Auto-detected tag: ${tag}`);
+          }
+
           for (const result of parsedResults) {
             const sourcePathJson = JSON.stringify([result.file]);
             
             // Clean up old nodes for this file
+            deleteOldL1Links.run(sourcePathJson);
             deleteOldLinks.run(sourcePathJson);
             deleteOldNodes.run(sourcePathJson);
 
             // Insert new nodes
             const fileId = crypto.randomUUID();
             insertNode.run(fileId, result.file, result.file, "file", sourcePathJson, "");
+
+            // Link L2 file node to L1 tags
+            for (const tag of suggestedTags) {
+              insertL2L1Link.run(fileId, tag);
+            }
 
             if (result.data.functions) {
               for (const fn of result.data.functions) {
@@ -352,7 +367,12 @@ export class AnalyzeService {
       if (options?.deep) {
         console.log(`[docuvia] Triggering background L3 Agentic RAG extraction...`);
         setTimeout(() => {
-          console.log(`[docuvia] Background L3 extraction finished.`);
+          try {
+            console.log(`[docuvia] Background L3 extraction finished.`);
+            // L3 extraction logic would go here
+          } catch (e: any) {
+            console.error('[docuvia] L3 Extraction Error for file', allFiles[0], e);
+          }
         }, 1000);
       }
     } catch (e: any) {

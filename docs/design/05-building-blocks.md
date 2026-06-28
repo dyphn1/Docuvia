@@ -94,6 +94,21 @@ flowchart TD
     class DB,FS,GIT infra;
 ```
 
+## 5.1.2 Local-First Pipeline: AST to VS Code
+
+Docuvia's local-first architecture resolves cross-file target IDs through a highly optimized pipeline. The AST Call Graph determines target IDs by matching function and class signatures across files, establishing relationships (`node_links`) representing blast radius.
+
+The Intent Router pipeline orchestrates background tasks guided by `docuvia.json`, classifying query intents and executing background extractions.
+
+```mermaid
+graph TD
+    GIT[Git Blob Hash] -->|Incremental Delta| AST[AST Worker Pool]
+    AST -->|Cross-File AST Call Graph| SQL[(SQLite Local DB)]
+    SQL -->|node_links & L3 Context| RAG[Background RAG ExtractService]
+    RAG -->|docuvia.json Intents| MCP[MCP Server]
+    MCP -->|docuvia_impact & docuvia_context| VSC[VS Code Hover/CodeLens]
+```
+
 ---
 
 ## 5.2 Level 2 – api-server Internal Modules

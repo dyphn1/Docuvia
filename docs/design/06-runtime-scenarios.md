@@ -198,6 +198,37 @@ sequenceDiagram
     API->>GH: github-client.postPrComment(pr.number, commentText)
     GH-->>API: 201 Created
     API->>DB: INSERT INTO pull_requests (prNumber, projectId, analysisResult)
+
+---
+
+## 6.7 Scenario: CLI Initialization & Deep Analysis
+
+A developer initializes Docuvia in a new repository and runs a deep analysis.
+
+- **Implementation Route**: [`artifacts/cli/src/commands/init.ts`](../../artifacts/cli/src/commands/init.ts) and [`artifacts/cli/src/commands/analyze.ts`](../../artifacts/cli/src/commands/analyze.ts)
+
+```mermaid
+sequenceDiagram
+    actor Dev
+    participant CLI as docuvia CLI
+    participant GIT as Git (Blob Hash)
+    participant AST as AST Worker Pool
+    participant DB as SQLite Local DB
+
+    Dev->>CLI: docuvia init
+    CLI->>DB: Scaffold .docuvia/local.db schema
+    CLI->>CLI: Write default docuvia.json configuration
+    CLI-->>Dev: Initialized successfully
+
+    Dev->>CLI: docuvia analyze --deep
+    CLI->>GIT: Extract file contents via Git Blob Hashing
+    CLI->>AST: Dispatch files to WASM AST Worker Pool
+    AST->>AST: Parse AST & Resolve Cross-File Call Graph Target IDs
+    AST-->>CLI: Parsed Nodes & Edges (Blast Radius)
+    CLI->>DB: Transactional INSERT into l2_nodes and node_links
+    CLI-->>Dev: Deep analysis complete
+```
+
 ```
 
 ---

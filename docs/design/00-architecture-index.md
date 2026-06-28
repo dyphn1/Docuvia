@@ -2,6 +2,29 @@
 
 > Universal VCS Knowledge Graph Engine: ingest commit history, construct a three-tier knowledge graph, and expose it via REST, MCP, and VS Code UI.
 
+## Architecture Overview Map
+
+```mermaid
+graph TD
+    %% Local First Data Flow
+    GIT[Git Blob Hash] -->|Incremental Extract| AST[AST Worker Pool]
+    AST -->|Parsed Nodes & Edges| SQL[(SQLite Local DB)]
+    SQL -->|node_links Blast Radius| RAG[Background RAG ExtractService]
+    RAG -->|docuvia.json Config| MCP[MCP Server]
+    MCP -->|docuvia_impact / docuvia_context| VS[VS Code Hover/CodeLens]
+
+    %% Styles
+    classDef git fill:#f34f29,stroke:#333,stroke-width:2px,color:#fff;
+    classDef db fill:#003b57,stroke:#333,stroke-width:2px,color:#fff;
+    classDef worker fill:#f9db24,stroke:#333,stroke-width:2px,color:#000;
+    classDef mcp fill:#6051ac,stroke:#333,stroke-width:2px,color:#fff;
+    
+    class GIT git;
+    class SQL db;
+    class AST worker;
+    class MCP mcp;
+```
+
 ## About This Documentation
 
 This suite documents the **post-implementation architecture** of Docuvia v1.0. It follows the [arc42](https://arc42.org/) structure (sections 1–12), adapted for a TypeScript monorepo. All 42 planned roadmap items are complete at the time of writing.

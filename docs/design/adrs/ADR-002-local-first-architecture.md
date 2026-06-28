@@ -1,5 +1,16 @@
 # Local-First Architecture & Graceful Server Degradation
 
+## Status
+
+**Implemented (Survival Update Complete)**
+
+The "Survival Update" features have been successfully implemented, completing the Local-First vision:
+- **WASM AST Worker Pool**: Local syntax analysis via `web-tree-sitter`.
+- **SQLite Local DB**: Standalone graph persistence using `better-sqlite3`.
+- **Git-Native Blob Hashing**: Incremental updates bypassing heavy checkouts.
+- **Background L3 RAG**: Offline decision retrieval guided by `docuvia.json`.
+- **VS Code CodeLens/Hover**: Surfacing blast radius via MCP tools `docuvia_impact` and `docuvia_context`.
+
 ## Core Principle
 
 Docuvia utilizes a **"Local-First, Server-Augmented"** architecture. It provides immediate, standalone value using the VS Code Extension as a **Local HEAD Index**, seamlessly unlocking team-scale semantic capabilities when connected to the API Server's **Global Projection**.

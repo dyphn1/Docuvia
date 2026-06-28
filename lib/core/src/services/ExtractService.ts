@@ -1,7 +1,10 @@
 import path from "path";
 import fs from "fs/promises";
+import * as fsSync from "fs";
 import { AstWorkerPool, IASTWorkerPool } from "./AstWorkerPool.js";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import Database from "better-sqlite3";
+import crypto from "crypto";
 
 let globalWorkerPool: AstWorkerPool | null = null;
 let globalWorkerPoolInitialized = false;

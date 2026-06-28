@@ -20,5 +20,5 @@ GitNexus, Sourcegraph (Cody / sg)
 - **Hardcoded Path Aliases**: Our `ScopeResolver` currently hardcodes the `@workspace/` alias logic. It does not dynamically read the `tsconfig.json` paths or `package.json` exports, meaning it will silently fail to resolve cross-file calls in projects with complex monorepo layouts (unlike GitNexus which natively uses the TypeScript compiler API).
 
 ## Immediate Next Steps
-- Upgrade the `ScopeResolver` to dynamically parse `tsconfig.json` `compilerOptions.paths` to replace the hardcoded alias hacks.
-- Implement an algorithm to traverse the existing `CALLS` edges to generate end-to-end execution flow groups (`processes`), closing the final parity gap with GitNexus.
+- Keep the AST `ScopeResolver` "fast and dumb". Avoid bloating the AST pipeline with deep compiler logic (CFG, full execution flow stitching, or parsing `tsconfig.json` paths). The indexer should focus on maintaining fast, O(1) SQLite lookups.
+- Achieve true parity with GitNexus via a **Hybrid Approach**: lazy-load an on-demand background LSP client (`LspEnrichmentService`). MCP tool calls like `docuvia_impact` will query the fast AST SQLite index first, and then conditionally escalate to the LSP for exact execution flows and taint analysis ONLY when required by an AI agent.

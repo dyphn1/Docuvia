@@ -233,11 +233,11 @@ sequenceDiagram
 
 ---
 
-## 6.7 Scenario: AI Agent Collaboration Workflows
+## 6.8 Scenario: AI Agent Collaboration Workflows
 
 To explicitly address the "Cognitive Gap" and "Knowledge Deficit", Docuvia formalizes three distinct workflow models for AI Agent interaction. It achieves this by broadcasting a unified cognitive baseline across all major AI tools via the `docuvia init-agent` command.
 
-### 6.7.1 Context-Aware Fast Path (Local)
+### 6.8.1 Context-Aware Fast Path (Local)
 
 Used when an AI Agent (e.g. Cursor, Claude Code, Copilot, Windsurf) is exploring the codebase. The `init-agent` command automatically provisions dynamic hooks (`.claude/hooks`, `.cursor/hooks`) and static rule files (`copilot-instructions.md`, `.windsurfrules`, etc.) to intercept the agent's actions.
 
@@ -257,7 +257,7 @@ sequenceDiagram
     Note over Agent,LocalDB: Fast, offline, 0 LLM Tokens used, aligns Cognitive Baseline
 ```
 
-### 6.7.2 Global Semantic Search (Server)
+### 6.8.2 Global Semantic Search (Server)
 
 Used when an AI Agent asks a broad, exploratory question without a specific file context (e.g., "How do we handle CORS?").
 
@@ -276,7 +276,7 @@ sequenceDiagram
     Note over Agent,DB: Leverages Server for heavy lifting
 ```
 
-### 6.7.3 Git-Isomorphic Knowledge Evolution
+### 6.8.3 Git-Isomorphic Knowledge Evolution
 
 Used when a developer commits code, seamlessly updating the knowledge graph via Event Sourcing.
 
@@ -296,6 +296,38 @@ sequenceDiagram
     Note over VSC, Server: Async Background Sync
     Server->>VSC: `git fetch docuvia-knowledge`
     Server->>Server: Project new events into PostgreSQL
+```
+
+---
+
+## 6.9 Scenario: Hybrid Impact Analysis (AST + LSP Escalation)
+
+When an AI Agent calls the `docuvia_impact` MCP tool, Docuvia uses a **Hybrid Approach** to provide fast and accurate analysis. It queries the fast `local.db` (SQLite) AST index first for O(1) lookups. If the confidence is low or deep verification (exact execution flows and taint analysis) is explicitly requested, it escalates to an on-demand background LSP client (`LspEnrichmentService`).
+
+- **Query Routing**: [`artifacts/api-server/src/services/QueryService.ts`](../../artifacts/api-server/src/services/QueryService.ts) (`getImpact()` with `escalateToLsp` flag)
+- **LSP Integration**: [`artifacts/api-server/src/services/LspEnrichmentService.ts`](../../artifacts/api-server/src/services/LspEnrichmentService.ts)
+
+```mermaid
+sequenceDiagram
+    participant Agent as AI Agent (MCP Client)
+    participant MCP as Docuvia MCP (docuvia_impact)
+    participant AST as SQLite (local.db)
+    participant LSP as LspEnrichmentService
+    participant Server as Language Server / VS Code
+
+    Agent->>MCP: Call docuvia_impact { target, escalate: true }
+    MCP->>AST: Fast O(1) Lookup (AST References)
+    AST-->>MCP: Surface-level dependents
+    
+    opt If escalate == true or low confidence
+        MCP->>LSP: request exact execution flow / taint analysis
+        LSP->>Server: textDocument/references (LSP)
+        Server-->>LSP: Deep scope resolution & types
+        LSP-->>MCP: Enriched exact impact paths
+    end
+
+    MCP->>MCP: Merge AST and LSP results
+    MCP-->>Agent: Comprehensive Impact Analysis
 ```
 
 ---

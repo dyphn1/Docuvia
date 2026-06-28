@@ -62,3 +62,4 @@ docs/reports/.ast-verification-index.json
 
 # AI Auto Generated Docs
 docs/ai_plans/
+.docuvia/

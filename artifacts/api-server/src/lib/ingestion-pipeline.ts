@@ -55,7 +55,7 @@ export async function processIngestion({
   projectId,
   projectName,
   items,
-}: ProcessIngestionParams): Promise<{ ingested: number; skipped: number; errors: string[] }> {
+}: ProcessIngestionParams, txParams: any = db): Promise<{ ingested: number; skipped: number; errors: string[] }> {
   let ingested = 0;
   let skipped = 0;
   const errors: string[] = [];
@@ -69,7 +69,7 @@ export async function processIngestion({
     for (let i = 0; i < gitItems.length; i += batchSize) {
       const batch = gitItems.slice(i, i + batchSize);
 
-      await db.transaction(async (tx) => {
+      await txParams.transaction(async (tx: any) => {
         const batchHashes = batch.map((c) => c.sha);
         const existingRecords = await tx
           .select({ hash: commitsTable.hash })
@@ -77,7 +77,7 @@ export async function processIngestion({
           .where(eq(commitsTable.projectId, projectId)); // Simplified for standard Drizzle
 
         const existingHashes = new Set(
-          existingRecords.filter((r) => batchHashes.includes(r.hash)).map((r) => r.hash)
+          existingRecords.filter((r: any) => batchHashes.includes(r.hash)).map((r: any) => r.hash)
         );
 
         let batchIngested = 0;
@@ -118,7 +118,7 @@ export async function processIngestion({
     }
 
     if (ingested > 0) {
-      await logAndNotify(
+      await logAndNotify(txParams, 
         projectId,
         projectName,
         "commit",
@@ -152,7 +152,7 @@ export async function processIngestion({
       }
       const fullMessage = c.diff ? `${c.message}\n\n${c.diff}` : c.message;
 
-      await db.insert(commitsTable).values({
+      await txParams.insert(commitsTable).values({
         projectId,
         hash: `svn:R${c.revision}`,
         message: fullMessage.slice(0, 4000),
@@ -165,7 +165,7 @@ export async function processIngestion({
     }
 
     if (ingested > 0) {
-      await logAndNotify(
+      await logAndNotify(txParams, 
         projectId,
         projectName,
         "commit",
@@ -189,7 +189,7 @@ export async function processIngestion({
       }
 
       try {
-        await db.insert(documentsTable).values({
+        await txParams.insert(documentsTable).values({
           projectId,
           filename: doc.filename,
           docType: doc.docType as any,
@@ -203,7 +203,7 @@ export async function processIngestion({
     }
 
     if (ingested > 0) {
-      await logAndNotify(
+      await logAndNotify(txParams, 
         projectId,
         projectName,
         "document",
@@ -216,14 +216,14 @@ export async function processIngestion({
   return { ingested, skipped, errors };
 }
 
-async function logAndNotify(
+async function logAndNotify(txParams: any, 
   projectId: number,
   projectName: string,
   activityType: "commit" | "tag_added" | "document",
   description: string,
   count: number
 ) {
-  await db.insert(activityLogTable).values({
+  await txParams.insert(activityLogTable).values({
     type: activityType,
     description,
     projectId,
@@ -240,7 +240,7 @@ async function logAndNotify(
     .where(eq(subscriptionsTable.publisherProjectId, projectId));
 
   for (const sub of subscribers) {
-    await db.insert(notificationsTable).values({
+    await txParams.insert(notificationsTable).values({
       projectId: sub.subscriberProjectId,
       type: activityType === "commit" ? "new_commit" : "new_document",
       payload: {

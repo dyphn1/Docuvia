@@ -15,6 +15,7 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
       model: EMBEDDING_MODEL,
       input: text.slice(0, 8192),
       dimensions: EMBEDDING_DIMENSIONS,
+      encoding_format: "float",
     });
     return response.data[0]?.embedding ?? null;
   } catch (err) {

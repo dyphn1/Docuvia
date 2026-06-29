@@ -39,7 +39,10 @@ export async function fetchPrCommits(
     const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/pulls/${prNumber}/commits?per_page=100&page=${page}`;
     const res = await fetch(url, { headers });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.json().catch((e) => {
+        logger.error({ err: e }, "Failed to parse JSON error response");
+        return {};
+      });
       const message = (err as { message?: string }).message ?? res.statusText;
       logger.warn(
         { owner, repo, prNumber, page, status: res.status },
@@ -96,7 +99,10 @@ export async function postPrComment(
     body: JSON.stringify({ body }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
+    const err = await res.json().catch((e) => {
+      logger.error({ err: e }, "Failed to parse JSON error response");
+      return {};
+    });
     const message = (err as { message?: string }).message ?? res.statusText;
     logger.warn(
       { owner, repo, prNumber, status: res.status },

@@ -16,14 +16,14 @@ describe("GET /api/mcp/list_projects", () => {
         repoUrl: "https://github.com/acme/alpha",
       });
 
-      const alphaApi = await L2NodeFactory.create(alpha.id, { name: "api-server" });
-      const alphaUi = await L2NodeFactory.create(alpha.id, { name: "kg-engine" });
-      await L3NodeFactory.create(alphaApi.id, { title: "API decision" });
-      await L3NodeFactory.create(alphaUi.id, { title: "UI decision" });
-      await L3NodeFactory.create(alphaUi.id, { title: "UI rule" });
+      const alphaApi = await L2NodeFactory.create({ projectId: alpha.id, name: "api-server" });
+      const alphaUi = await L2NodeFactory.create({ projectId: alpha.id, name: "kg-engine" });
+      await L3NodeFactory.create({ l2NodeId: alphaApi.id, title: "API decision" });
+      await L3NodeFactory.create({ l2NodeId: alphaUi.id, title: "UI decision" });
+      await L3NodeFactory.create({ l2NodeId: alphaUi.id, title: "UI rule" });
 
-      const zetaModule = await L2NodeFactory.create(zeta.id, { name: "ingestion" });
-      await L3NodeFactory.create(zetaModule.id, { title: "Ingestion decision" });
+      const zetaModule = await L2NodeFactory.create({ projectId: zeta.id, name: "ingestion" });
+      await L3NodeFactory.create({ l2NodeId: zetaModule.id, title: "Ingestion decision" });
 
       const response = await request(app)
         .get("/api/mcp/list_projects")

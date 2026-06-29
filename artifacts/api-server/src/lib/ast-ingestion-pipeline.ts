@@ -378,18 +378,116 @@ export async function ingestAstJsonl(
     errors: [],
   };
 
-  // ══════════════════════════════════════════════════════════════════
-  // Phase 1: Stream & Collect all events
-  // ══════════════════════════════════════════════════════════════════
+
+  const { 
+    fileEvents, classEvents, functionEvents, importEvents, callEvents, contractEvents 
+  } = await streamAndCollectEvents(jsonlPath, result);
+
+  const { filePathToL2Id, pathToL2Id } = await processBatchL2Nodes(projectId, fileEvents, result);
+
+  const { fqnToL3Id, nameToL3Id, l3IdToL2Id } = await processBatchL3Nodes(projectId, classEvents, functionEvents, filePathToL2Id, result);
+
+  const { contractEndpointToL3Id, contractPathToL2Id } = await processBatchContractEndpoints(projectId, contractEvents, filePathToL2Id, nameToL3Id, l3IdToL2Id, result);
+
+  await processBatchLinks(
+    projectId,
+    importEvents,
+    callEvents,
+    contractEvents,
+    filePathToL2Id,
+    pathToL2Id,
+    fqnToL3Id,
+    contractEndpointToL3Id,
+    nameToL3Id,
+    l3IdToL2Id,
+    contractPathToL2Id,
+    result
+  );
+
+  return result;
+}
+
+/**
+ * Ingest multiple .jsonl files (batch processing for a project).
+ * Processes files sequentially to maintain consistent L2/L3 name resolution.
+ *
+ * Supports incremental mode: when `incremental` is true, computes file hashes
+ * and skips files that haven't changed since last scan (Sub-second Incremental Watch).
+ */
+export async function ingestAstBatch(
+  jsonlPaths: string[],
+  projectId: number,
+  options: { incremental?: boolean } = {}
+): Promise<IngestionResult> {
+  const aggregated: IngestionResult = {
+    l2Created: 0,
+    l3Created: 0,
+    linksCreated: 0,
+    contractsCreated: 0,
+    filesSkipped: 0,
+    errors: [],
+  };
+
+  // ── Incremental mode: detect changed files ──────────────────────
+  let pathsToIngest = jsonlPaths;
+  if (options.incremental) {
+    const changedFiles = await detectChangedFiles(projectId, jsonlPaths);
+    pathsToIngest = jsonlPaths.filter((p) => changedFiles.has(p));
+    aggregated.filesSkipped = jsonlPaths.length - pathsToIngest.length;
+
+    logger.info(
+      {
+        projectId,
+        total: jsonlPaths.length,
+        changed: pathsToIngest.length,
+        skipped: aggregated.filesSkipped,
+      },
+      "AST incremental scan: change detection complete"
+    );
+  }
+
+  // ── Ingest only changed files ───────────────────────────────────
+  for (const jsonlPath of pathsToIngest) {
+    try {
+      const result = await ingestAstJsonl(jsonlPath, projectId);
+      aggregated.l2Created += result.l2Created;
+      aggregated.l3Created += result.l3Created;
+      aggregated.linksCreated += result.linksCreated;
+      aggregated.contractsCreated += result.contractsCreated;
+      aggregated.errors.push(...result.errors);
+    } catch (err: any) {
+      aggregated.errors.push(`Failed to ingest ${jsonlPath}: ${err.message}`);
+    }
+  }
+
+  // ── Update file hashes for next incremental scan ────────────────
+  if (options.incremental && pathsToIngest.length > 0) {
+    try {
+      await updateFileHashes(projectId, pathsToIngest);
+    } catch (err: any) {
+      aggregated.errors.push(`Failed to update file hashes: ${err.message}`);
+    }
+  }
+
+  return aggregated;
+}
+
+
+async function streamAndCollectEvents(jsonlPath: string, result: IngestionResult) {
   const fileEvents: FileEvent[] = [];
   const classEvents: SymbolEvent[] = [];
   const functionEvents: SymbolEvent[] = [];
   const importEvents: ImportEvent[] = [];
   const callEvents: CallEvent[] = [];
   const contractEvents: ContractEvent[] = [];
+  let currentFilePath: string | null = null;
+  // ══════════════════════════════════════════════════════════════════
+  // Phase 1: Stream & Collect all events
+  // ══════════════════════════════════════════════════════════════════
+  
 
   // Track file path for events that don't have their own path field
-  let currentFilePath: string | null = null;
+  
 
   const fileStream = fs.createReadStream(jsonlPath, { encoding: "utf-8" });
   const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
@@ -518,7 +616,19 @@ export async function ingestAstJsonl(
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // Phase 2: Batch L2 Node Insertion
+  
+  return { fileEvents, classEvents, functionEvents, importEvents, callEvents, contractEvents };
+}
+
+
+async function processBatchL2Nodes(
+  projectId: number,
+  fileEvents: FileEvent[],
+  result: IngestionResult
+) {
+  const filePathToL2Id = new Map<string, number>();
+  const pathToL2Id = new Map<string, number>();
+// Phase 2: Batch L2 Node Insertion
   // Deduplicate by filePath, then batch-insert new nodes.
   // ══════════════════════════════════════════════════════════════════
 
@@ -539,7 +649,7 @@ export async function ingestAstJsonl(
     .where(eq(l2NodesTable.projectId, projectId));
 
   // Build lookup: pathPattern → existing L2 node
-  const pathToL2Id = new Map<string, number>();
+  
   const nameToL2Ids = new Map<string, number[]>(); // baseName → [id, ...]
 
   for (const node of existingL2Nodes) {
@@ -554,7 +664,7 @@ export async function ingestAstJsonl(
 
   // Determine which file events need new L2 nodes
   const toInsert: FileEvent[] = [];
-  const filePathToL2Id = new Map<string, number>(); // filePath → L2 ID (new or existing)
+  // filePath
 
   for (const fe of uniqueFileEvents) {
     // Check if an L2 node already matches this file's path pattern
@@ -660,7 +770,22 @@ export async function ingestAstJsonl(
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // Phase 3: Batch L3 Node Insertion
+  
+  return { filePathToL2Id, pathToL2Id };
+}
+
+
+async function processBatchL3Nodes(
+  projectId: number,
+  classEvents: SymbolEvent[],
+  functionEvents: SymbolEvent[],
+  filePathToL2Id: Map<string, number>,
+  result: IngestionResult
+) {
+  const fqnToL3Id = new Map<string, number>();
+  const nameToL3Id = new Map<string, number>();
+  const l3IdToL2Id = new Map<number, number>();
+// Phase 3: Batch L3 Node Insertion
   // Resolve l2NodeId for all symbols, then batch-insert.
   // ══════════════════════════════════════════════════════════════════
 
@@ -704,9 +829,9 @@ export async function ingestAstJsonl(
   }
 
   // Build FQN → L3 ID and name → L3 ID maps for link resolution
-  const fqnToL3Id = new Map<string, number>();
-  const nameToL3Id = new Map<string, number>();
-  const l3IdToL2Id = new Map<number, number>();
+  
+  
+  
 
   // First, add newly inserted L3 nodes
   for (const inserted of l3InsertedIds) {
@@ -742,7 +867,22 @@ export async function ingestAstJsonl(
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // Phase 3.5: Contract Endpoint L3 Insertion (Cross-Language Edges)
+  
+  return { fqnToL3Id, nameToL3Id, l3IdToL2Id };
+}
+
+
+async function processBatchContractEndpoints(
+  projectId: number,
+  contractEvents: ContractEvent[],
+  filePathToL2Id: Map<string, number>,
+  nameToL3Id: Map<string, number>,
+  l3IdToL2Id: Map<number, number>,
+  result: IngestionResult
+) {
+  const contractEndpointToL3Id = new Map<string, number>();
+  const contractPathToL2Id = new Map<string, number>();
+// Phase 3.5: Contract Endpoint L3 Insertion (Cross-Language Edges)
   // Create L3 nodes for each API endpoint under the contract L2 node.
   // ══════════════════════════════════════════════════════════════════
 
@@ -751,7 +891,7 @@ export async function ingestAstJsonl(
   const endpointEvents = contractEvents.filter((e) => !!e.method);
 
   // Map: contract filePath → L2 ID (resolved from Phase 2)
-  const contractPathToL2Id = new Map<string, number>();
+  
   for (const tc of topLevelContracts) {
     const l2Id = filePathToL2Id.get(tc.filePath);
     if (l2Id) {
@@ -800,7 +940,32 @@ export async function ingestAstJsonl(
   }
 
   // ══════════════════════════════════════════════════════════════════
-  // Phase 4: Batch Link Insertion
+  
+  return { contractEndpointToL3Id, contractPathToL2Id };
+}
+
+
+async function processBatchLinks(
+  projectId: number,
+  importEvents: ImportEvent[],
+  callEvents: CallEvent[],
+  contractEvents: ContractEvent[],
+  filePathToL2Id: Map<string, number>,
+  pathToL2Id: Map<string, number>,
+  fqnToL3Id: Map<string, number>,
+  contractEndpointToL3Id: Map<string, number>,
+  nameToL3Id: Map<string, number>,
+  l3IdToL2Id: Map<number, number>,
+  contractPathToL2Id: Map<string, number>,
+  result: IngestionResult
+) {
+  const endpointEvents = contractEvents.filter((e) => !!e.method);
+  const existingL2Nodes = await db.select().from(l2NodesTable).where(eq(l2NodesTable.projectId, projectId));
+  const nameToL2Ids = new Map<string, number[]>();
+  for (const node of existingL2Nodes) {
+    nameToL2Ids.set(node.name, [...(nameToL2Ids.get(node.name) || []), node.id]);
+  }
+// Phase 4: Batch Link Insertion
   // Resolve all imports and calls using pre-built maps.
   // ══════════════════════════════════════════════════════════════════
 
@@ -980,72 +1145,7 @@ export async function ingestAstJsonl(
     });
   }
 
-  logger.info({ projectId, jsonlPath, result }, "AST ingestion completed (batch optimized)");
+  logger.info({ projectId,  result }, "AST ingestion completed (batch optimized)");
 
-  return result;
 }
 
-/**
- * Ingest multiple .jsonl files (batch processing for a project).
- * Processes files sequentially to maintain consistent L2/L3 name resolution.
- *
- * Supports incremental mode: when `incremental` is true, computes file hashes
- * and skips files that haven't changed since last scan (Sub-second Incremental Watch).
- */
-export async function ingestAstBatch(
-  jsonlPaths: string[],
-  projectId: number,
-  options: { incremental?: boolean } = {}
-): Promise<IngestionResult> {
-  const aggregated: IngestionResult = {
-    l2Created: 0,
-    l3Created: 0,
-    linksCreated: 0,
-    contractsCreated: 0,
-    filesSkipped: 0,
-    errors: [],
-  };
-
-  // ── Incremental mode: detect changed files ──────────────────────
-  let pathsToIngest = jsonlPaths;
-  if (options.incremental) {
-    const changedFiles = await detectChangedFiles(projectId, jsonlPaths);
-    pathsToIngest = jsonlPaths.filter((p) => changedFiles.has(p));
-    aggregated.filesSkipped = jsonlPaths.length - pathsToIngest.length;
-
-    logger.info(
-      {
-        projectId,
-        total: jsonlPaths.length,
-        changed: pathsToIngest.length,
-        skipped: aggregated.filesSkipped,
-      },
-      "AST incremental scan: change detection complete"
-    );
-  }
-
-  // ── Ingest only changed files ───────────────────────────────────
-  for (const jsonlPath of pathsToIngest) {
-    try {
-      const result = await ingestAstJsonl(jsonlPath, projectId);
-      aggregated.l2Created += result.l2Created;
-      aggregated.l3Created += result.l3Created;
-      aggregated.linksCreated += result.linksCreated;
-      aggregated.contractsCreated += result.contractsCreated;
-      aggregated.errors.push(...result.errors);
-    } catch (err: any) {
-      aggregated.errors.push(`Failed to ingest ${jsonlPath}: ${err.message}`);
-    }
-  }
-
-  // ── Update file hashes for next incremental scan ────────────────
-  if (options.incremental && pathsToIngest.length > 0) {
-    try {
-      await updateFileHashes(projectId, pathsToIngest);
-    } catch (err: any) {
-      aggregated.errors.push(`Failed to update file hashes: ${err.message}`);
-    }
-  }
-
-  return aggregated;
-}

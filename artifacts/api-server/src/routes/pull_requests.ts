@@ -1,3 +1,4 @@
+import { logger } from "../lib/logger.js";
 import { Router } from "express";
 import { db } from "@workspace/db";
 import {
@@ -224,7 +225,7 @@ router.post("/projects/:id/pull-requests/:prNumber/analyze", async (req, res) =>
             eq(pullRequestsTable.githubPrNumber, prNumber)
           )
         )
-        .catch(() => {});
+        .catch((err) => logger.warn({ err }, "Ignored error"));
     }
   });
   return;

@@ -10,6 +10,7 @@ describe("POST /api/documents", () => {
       const payload = Buffer.from("Hello Docuvia");
       const response = await request(app)
         .post("/api/documents")
+        .set("Authorization", "Bearer test-api-key")
         .attach("file", payload, {
           filename: "notes.txt",
           contentType: "text/plain",

@@ -18,7 +18,7 @@ export function ArchitectureFlowchart({ projectId }: ArchitectureFlowchartProps)
   const { data: graphData, isLoading } = useGetProjectGraph(projectId, {
     query: {
       enabled: !!projectId,
-    }
+    } as any
   });
 
   const mermaidChart = useMemo(() => {
@@ -69,7 +69,7 @@ export function ArchitectureFlowchart({ projectId }: ArchitectureFlowchartProps)
       chart += `  end\n`;
 
       // Edges only between L2s inside this domain to avoid chart explosion
-      (graphData.nodeLinks || []).forEach((link: any) => {
+      ((graphData as any).nodeLinks || []).forEach((link: any) => {
         if (l2Ids.has(link.sourceNodeId) && l2Ids.has(link.targetNodeId)) {
           chart += `  L2_${link.sourceNodeId} -->|"${link.linkType || 'calls'}"| L2_${link.targetNodeId}\n`;
         }
@@ -87,7 +87,7 @@ export function ArchitectureFlowchart({ projectId }: ArchitectureFlowchartProps)
       const l2ToL1 = new Map<number, number[]>();
       (graphData.l2Nodes || []).forEach((n: any) => l2ToL1.set(n.id, n.l1TagIds || []));
 
-      (graphData.nodeLinks || []).forEach((link: any) => {
+      ((graphData as any).nodeLinks || []).forEach((link: any) => {
         const sourceL1s = l2ToL1.get(link.sourceNodeId) || [];
         const targetL1s = l2ToL1.get(link.targetNodeId) || [];
         

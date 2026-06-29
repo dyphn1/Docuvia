@@ -11,12 +11,12 @@ describe("POST /api/projects/:id/generate", () => {
     await withRollback(async () => {
       const project = await ProjectFactory.create({ status: "active" });
 
-      await CommitFactory.create(project.id, {
+      await CommitFactory.create({ projectId: project.id,
         hash: "1234567890abcdef",
         message: "feat: add module1",
         valid: true,
       });
-      await CommitFactory.create(project.id, {
+      await CommitFactory.create({ projectId: project.id,
         hash: "abcdef1234567890",
         message: "fix: update module1",
         valid: true,
@@ -24,8 +24,12 @@ describe("POST /api/projects/:id/generate", () => {
 
       const response = await request(app)
         .post(`/api/projects/${project.id}/generate`)
-        .send({ maxCommits: 50, mode: "full" })
-        .expect(200);
+        .send({ maxCommits: 50, mode: "full" });
+      
+      console.log("RESPONSE STATUS:", response.status);
+      console.log("RESPONSE TEXT:", response.text);
+      
+      expect(response.status).toBe(200);
 
       expect(response.body).toMatchObject({
         l1TagsCreated: 1,

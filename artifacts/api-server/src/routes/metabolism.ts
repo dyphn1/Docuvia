@@ -172,7 +172,7 @@ async function withMetabolismLock<T>(fn: () => Promise<T>): Promise<T | null> {
     return await fn();
   } finally {
     if (locked) {
-      await client.query("SELECT pg_advisory_unlock($1)", [METABOLISM_LOCK_ID]).catch(() => {});
+      await client.query("SELECT pg_advisory_unlock($1)", [METABOLISM_LOCK_ID]).catch((err) => logger.warn({ err }, "Ignored error"));
     }
     client.release();
   }

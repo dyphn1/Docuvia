@@ -9,14 +9,14 @@ interface ProjectTopologyGraphProps {
 
 export function ProjectTopologyGraph({ projectId }: ProjectTopologyGraphProps) {
   const { theme } = useTheme();
-  const graphRef = useRef<any>();
+  const graphRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
 
   const { data: graphData, isLoading } = useGetProjectGraph(projectId, {
     query: {
       enabled: !!projectId,
-    }
+    } as any
   });
 
   useEffect(() => {
@@ -36,8 +36,11 @@ export function ProjectTopologyGraph({ projectId }: ProjectTopologyGraphProps) {
       };
       
       window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+      };
     }
+    return undefined;
   }, []);
 
   const formattedData = useMemo(() => {
@@ -103,7 +106,7 @@ export function ProjectTopologyGraph({ projectId }: ProjectTopologyGraphProps) {
     });
 
     // 4. Add L2-to-L2 Node Links (Dependencies/Calls)
-    (graphData.nodeLinks || []).forEach((link: any) => {
+    ((graphData as any).nodeLinks || []).forEach((link: any) => {
       links.push({
         source: `l2_${link.sourceNodeId}`,
         target: `l2_${link.targetNodeId}`,

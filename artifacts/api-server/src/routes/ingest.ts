@@ -73,19 +73,25 @@ router.post("/projects/:id/ingest/git", requireApiKey, async (req, res) => {
       }
     }
 
-    const { ingested, skipped, errors } = await processIngestion({
+    let ingested = 0; let skipped = 0; let errors: string[] = [];
+    await db.transaction(async (tx) => {
+      const res = await processIngestion({
       type: "git",
       projectId,
       projectName: project.name,
       items: gitItems,
-    });
+    }, tx);
+      ingested = res.ingested;
+      skipped = res.skipped;
+      errors = res.errors;
 
-    if (mode === "incremental" && newestCommitDate) {
-      await db
-        .update(projectsTable)
-        .set({ lastGitIngestedAt: newestCommitDate })
-        .where(eq(projectsTable.id, projectId));
-    }
+      if (mode === "incremental" && newestCommitDate) {
+        await tx
+          .update(projectsTable)
+          .set({ lastGitIngestedAt: newestCommitDate })
+          .where(eq(projectsTable.id, projectId));
+      }
+    });
 
     return res.json({
       commitsIngested: ingested,
@@ -146,15 +152,17 @@ router.post("/projects/:id/ingest/svn", requireApiKey, async (req, res) => {
 
     const flushBatch = async () => {
       if (batch.length === 0) return;
-      const { ingested, skipped, errors } = await processIngestion({
+      await db.transaction(async (tx) => {
+        const { ingested, skipped, errors } = await processIngestion({
         type: "svn",
         projectId,
         projectName: project.name,
         items: batch,
+      }, tx);
+        totalIngested += ingested;
+        totalSkipped += skipped;
+        ingestErrors.push(...errors);
       });
-      totalIngested += ingested;
-      totalSkipped += skipped;
-      ingestErrors.push(...errors);
       batch = [];
     };
 
@@ -188,10 +196,12 @@ router.post("/projects/:id/ingest/svn", requireApiKey, async (req, res) => {
   }
 
   if (svnMode === "incremental" && maxRevisionIngested > (project.lastSvnRevision ?? 0)) {
-    await db
-      .update(projectsTable)
-      .set({ lastSvnRevision: maxRevisionIngested })
-      .where(eq(projectsTable.id, projectId));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(projectsTable)
+        .set({ lastSvnRevision: maxRevisionIngested })
+        .where(eq(projectsTable.id, projectId));
+    });
   }
 
   return res.json({

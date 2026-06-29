@@ -367,7 +367,7 @@ router.post("/:projectId", async (req, res) => {
             eq(pullRequestsTable.analysisStatus, "in_progress")
           )
         )
-        .catch(() => {});
+        .catch((err) => logger.warn({ err }, "Ignored error"));
     }
   });
   return;

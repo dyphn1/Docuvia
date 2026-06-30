@@ -1,5 +1,16 @@
 # Conventions & Best Practices
 
+## Coding Standards & Guidelines
+
+To maintain codebase health, all agents and developers must adhere to the core guidelines detailed in the `docs/guidelines/` directory. **You MUST read the relevant documents in `docs/guidelines/` before starting implementation.**
+
+- **[01-typescript-react-style.md](../../docs/guidelines/01-typescript-react-style.md)**: Naming conventions (kebab-case vs PascalCase) and React component rules.
+- **[02-architecture-mvc.md](../../docs/guidelines/02-architecture-mvc.md)**: Strict MVC boundaries and placing shared logic in `lib/`.
+- **[03-pop-and-srp.md](../../docs/guidelines/03-pop-and-srp.md)**: Protocol-Oriented Programming, depending on abstractions, and Single Responsibility Principle.
+- **[04-clean-code.md](../../docs/guidelines/04-clean-code.md)**: DRY principle, avoiding duplicated logic, centralized constants, and defensive programming.
+- **[05-tdd-and-testing.md](../../docs/guidelines/05-tdd-and-testing.md)**: Red-Green-Refactor workflow and testing standards.
+- **[06-sre-and-reliability.md](../../docs/guidelines/06-sre-and-reliability.md)**: Monitoring, circuit breakers, rate limiting, and zero-downtime deployments.
+
 ## Project Management & Documentation
 
 - **Roadmap-Design Alignment**: The project roadmap (`docs/roadmap-checklist.md`) must structurally map to the design documents (`docs/design/*.md`). Organize roadmap categories to mirror architecture/design concepts (e.g., "Local-First Architecture", "Agentic RAG Routing") to maintain clear traceability between implementation tasks and architectural intent.

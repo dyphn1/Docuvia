@@ -1,7 +1,13 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { computeHashFromBuffer } from "../lib/utils/hash.js";
-import { commitsTable, documentsTable, projectsTable } from "@workspace/db";
+import {
+  commitsTable,
+  documentsTable,
+  projectsTable,
+  jobQueueTable,
+  errorReportsTable,
+} from "@workspace/db";
 import { and, eq, sql, isNull } from "drizzle-orm";
 import { getSvnLog, getSvnDiff } from "../lib/svn-client.js";
 import { IngestSvnBody, IngestDocumentBody } from "@workspace/api-zod";
@@ -396,29 +402,71 @@ router.post("/projects/:id/ingest/ast", async (req, res) => {
 
     const pathArray = Array.isArray(paths) ? paths : [paths];
     const mode = body.mode ?? "full";
-    const result = await ingestAstBatch(pathArray, projectId, {
-      incremental: mode === "incremental",
+
+    // JSONL Bulk Insert & Job Dispatch (Phase 4)
+    const [job] = await db
+      .insert(jobQueueTable)
+      .values({
+        taskType: "ast_ingest",
+        payload: { jsonlPaths: pathArray, projectId, mode },
+      })
+      .returning();
+
+    // Background asynchronous job execution
+    process.nextTick(async () => {
+      try {
+        await db
+          .update(jobQueueTable)
+          .set({ status: "processing", lockedAt: new Date() })
+          .where(eq(jobQueueTable.id, job.id));
+
+        const result = await ingestAstBatch(pathArray, projectId, {
+          incremental: mode === "incremental",
+        });
+
+        // Update last AST ingested timestamp on successful full scan or when incremental finds changes
+        if (mode === "full" || result.l2Created > 0 || result.l3Created > 0) {
+          await db
+            .update(projectsTable)
+            .set({ lastAstIngestedAt: new Date() })
+            .where(eq(projectsTable.id, projectId));
+        }
+
+        await db
+          .update(jobQueueTable)
+          .set({
+            status: "completed",
+            payload: { jsonlPaths: pathArray, projectId, mode, result },
+          })
+          .where(eq(jobQueueTable.id, job.id));
+      } catch (err: any) {
+        logger.error({ err, jobId: job.id, projectId }, "AST ingestion background job failed");
+
+        await db
+          .update(jobQueueTable)
+          .set({ status: "failed" })
+          .where(eq(jobQueueTable.id, job.id));
+        await db
+          .insert(errorReportsTable)
+          .values({
+            projectId,
+            jobId: job.id,
+            taskType: "ast_ingest_job",
+            errorMessage: err.message,
+            errorStack: err.stack,
+          })
+          .catch((dlqErr) => logger.warn({ dlqErr }, "Failed to persist DLQ for AST Job"));
+      }
     });
 
-    // Update last AST ingested timestamp on successful full scan or when incremental finds changes
-    if (mode === "full" || result.l2Created > 0 || result.l3Created > 0) {
-      await db
-        .update(projectsTable)
-        .set({ lastAstIngestedAt: new Date() })
-        .where(eq(projectsTable.id, projectId));
-    }
-
-    return res.json({
-      l2Created: result.l2Created,
-      l3Created: result.l3Created,
-      linksCreated: result.linksCreated,
-      filesSkipped: mode === "incremental" ? result.filesSkipped : undefined,
+    return res.status(202).json({
+      message: "AST ingestion job dispatched successfully",
+      jobId: job.id,
       mode,
-      errors: result.errors.length > 0 ? result.errors : undefined,
     });
   } catch (err: any) {
     logger.error({ err, projectId }, "AST ingestion endpoint failed");
-    return res.status(500).json({ error: `AST ingestion failed: ${err.message}` });
+    return res.status(500).json({ error: `AST ingestion dispatch failed: ${err.message}` });
   }
 });
 

@@ -20,7 +20,7 @@ import {
 } from "@workspace/db";
 import { desc, eq, and, sql, isNull, ne, isNotNull, inArray, or, lt } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { getLlmClientForProject } from "../lib/llm-provider.js";
 import { notifyExternalIntegrations } from "../lib/slack-teams-client.js";
 import { LocalGitClient } from "../lib/git-client.js";
 import { logger } from "../lib/logger.js";
@@ -114,6 +114,7 @@ function buildFewShotSection(corrections: Array<{ original: string; corrected: s
  * Re-synthesize L3 node content from its source commits using AI condensation.
  */
 async function condenseL3Node(
+  projectId: number,
   node: { id: number; title: string; content: string | null; sourceCommits: unknown },
   model: string
 ): Promise<string | null> {
@@ -140,7 +141,8 @@ async function condenseL3Node(
         .join("\n");
 
       try {
-        const response = await openai.chat.completions.create({
+        const { client } = await getLlmClientForProject(projectId);
+        const response = await client.chat.completions.create({
           model,
           max_completion_tokens: 1024,
           messages: [
@@ -172,6 +174,7 @@ async function condenseL3Node(
 }
 
 async function generateL1Tags(
+  projectId: number,
   commits: Array<{ message: string; hash: string }>,
   existingTags: string[],
   model: string,
@@ -182,7 +185,8 @@ async function generateL1Tags(
     ? `\nExisting global tags (reuse if applicable): ${existingTags.join(", ")}`
     : "";
 
-  const response = await openai.chat.completions.create({
+  const { client } = await getLlmClientForProject(projectId);
+  const response = await client.chat.completions.create({
     model,
     max_completion_tokens: 2048,
     messages: [
@@ -223,6 +227,7 @@ interface L2NodeAI {
 }
 
 async function generateL2Nodes(
+  projectId: number,
   commits: Array<{ message: string; hash: string }>,
   l1Tags: Array<{ id: number; name: string }>,
   documentContext: string,
@@ -242,7 +247,8 @@ async function generateL2Nodes(
       ? `\n\nL2 modules discovered in previous batches (maintain consistency with these names): ${previousL2Names.join(", ")}`
       : "";
 
-  const response = await openai.chat.completions.create({
+  const { client } = await getLlmClientForProject(projectId);
+  const response = await client.chat.completions.create({
     model,
     max_completion_tokens: 4096,
     messages: [
@@ -466,6 +472,7 @@ const SieveExtractionInputSchema = z.object({
 });
 
 async function runSieveModel(
+  projectId: number,
   sourceFile: string | undefined,
   commitHash: string | undefined,
   textToEmbed: string,
@@ -479,7 +486,7 @@ async function runSieveModel(
 
   let decisionEmbedding: number[] | null = null;
   try {
-    decisionEmbedding = await generateEmbedding(textToEmbed);
+    decisionEmbedding = await generateEmbedding(projectId, textToEmbed);
   } catch (err) {
     logger.warn({ err }, "Failed to generate embedding for Sieve Model");
   }
@@ -563,7 +570,8 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
 
   let extracted: any[] = [];
   try {
-    const response = await openai.chat.completions.create({
+    const { client } = await getLlmClientForProject(projectId);
+    const response = await client.chat.completions.create({
       model,
       max_completion_tokens: 2048,
       messages: [
@@ -590,6 +598,7 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
 
       if (isTrackA) {
         const { bestNodeId, confidence: conf } = await runSieveModel(
+          projectId,
           sourceFile,
           commitHash,
           textToEmbed,
@@ -601,6 +610,7 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
       } else {
         // Track B: fallback to sys-uncategorized initially, then use Sieve to suggest
         const { bestNodeId, confidence: conf } = await runSieveModel(
+          projectId,
           undefined,
           commitHash,
           textToEmbed,
@@ -837,18 +847,28 @@ router.post("/admin/reindex-embeddings", async (req, res) => {
   let l2Done = 0;
   for (const node of l2Nodes) {
     const text = `${node.name} ${node.description ?? ""}`.trim();
-    const emb = await generateEmbedding(text);
+    const emb = await generateEmbedding(node.projectId, text);
     if (emb) {
       await db.update(l2NodesTable).set({ embedding: emb }).where(eq(l2NodesTable.id, node.id));
       l2Done++;
     }
   }
 
-  const l3Nodes = await db.select().from(l3NodesTable).where(isNull(l3NodesTable.embedding));
+  const l3Nodes = await db
+    .select({
+      id: l3NodesTable.id,
+      title: l3NodesTable.title,
+      content: l3NodesTable.content,
+      projectId: l2NodesTable.projectId,
+    })
+    .from(l3NodesTable)
+    .innerJoin(l2NodesTable, eq(l3NodesTable.l2NodeId, l2NodesTable.id))
+    .where(isNull(l3NodesTable.embedding));
+
   let l3Done = 0;
   for (const node of l3Nodes) {
     const text = `${node.title} ${node.content ?? ""}`.trim();
-    const emb = await generateEmbedding(text);
+    const emb = await generateEmbedding(node.projectId, text);
     if (emb) {
       await db.update(l3NodesTable).set({ embedding: emb }).where(eq(l3NodesTable.id, node.id));
       l3Done++;
@@ -875,7 +895,13 @@ async function processL1Tagger(
   const l1SystemPrompt = await getPromptTemplate(projectId, "l1_tagger");
   const existingL1 = await db.select().from(l1TagsTable);
   const existingTagNames = existingL1.map((t: any) => t.name);
-  const aiL1Tags = await generateL1Tags(commitData, existingTagNames, model, l1SystemPrompt);
+  const aiL1Tags = await generateL1Tags(
+    projectId,
+    commitData,
+    existingTagNames,
+    model,
+    l1SystemPrompt
+  );
 
   for (const existing of existingL1) {
     tagMap.set(existing.name.toLowerCase(), existing.id);
@@ -884,7 +910,7 @@ async function processL1Tagger(
   const existingL1Embeddings = await Promise.all(
     existingL1.map(async (tag: any) => ({
       id: tag.id,
-      embedding: await generateEmbedding(`${tag.name} ${tag.description ?? ""}`.trim()),
+      embedding: await generateEmbedding(projectId, `${tag.name} ${tag.description ?? ""}`.trim()),
     }))
   );
 
@@ -892,7 +918,10 @@ async function processL1Tagger(
     const key = tag.name.toLowerCase();
     if (tagMap.has(key)) continue;
 
-    const candidateEmb = await generateEmbedding(`${tag.name} ${tag.description ?? ""}`.trim());
+    const candidateEmb = await generateEmbedding(
+      projectId,
+      `${tag.name} ${tag.description ?? ""}`.trim()
+    );
     if (candidateEmb) {
       let maxSim = 0;
       let bestMatchId: number | undefined;
@@ -1101,6 +1130,7 @@ async function processL2AndL3Nodes(
     for (let batchStart = 0; batchStart < commitData.length; batchStart += BATCH_SIZE) {
       const batchCommits = commitData.slice(batchStart, batchStart + BATCH_SIZE);
       const batchResult = await generateL2Nodes(
+        projectId,
         batchCommits,
         allL1Tags,
         documentContext,
@@ -1156,7 +1186,7 @@ async function processL2AndL3Nodes(
 
     // Generate and store embedding for the L2 node
     const l2EmbText = `${l2data.name} ${l2data.description ?? ""}`.trim();
-    const l2Embedding = await generateEmbedding(l2EmbText);
+    const l2Embedding = await generateEmbedding(projectId, l2EmbText);
     if (l2Embedding) {
       await db
         .update(l2NodesTable)
@@ -1198,7 +1228,7 @@ async function processL2AndL3Nodes(
 
       // Generate embedding for candidate L3 node
       const l3EmbText = `${l3data.title} ${l3data.content ?? ""}`.trim();
-      const l3Embedding = await generateEmbedding(l3EmbText);
+      const l3Embedding = await generateEmbedding(projectId, l3EmbText);
 
       // Find most similar existing L3 node for this L2
       let maxL3Sim = 0;
@@ -1226,7 +1256,7 @@ async function processL2AndL3Nodes(
 
         // Condensation check
         if (newOccurrenceCount >= condensationThreshold) {
-          const condensed = await condenseL3Node(bestL3Match as any, model);
+          const condensed = await condenseL3Node(projectId, bestL3Match as any, model);
           if (condensed) {
             await db
               .update(l3NodesTable)

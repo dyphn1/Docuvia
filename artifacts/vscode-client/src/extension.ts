@@ -483,7 +483,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
             projectId = String(configJson.projectId);
           }
         } catch (err) {
-          outputChannel.appendLine(`[Docuvia Sync] Warning: Could not read .docuvia/config.json, defaulting to projectId="1"`);
+          outputChannel.appendLine(
+            `[Docuvia Sync] Warning: Could not read .docuvia/config.json, defaulting to projectId="1"`
+          );
         }
         await syncService.sync(projectId);
         void vscode.window.showInformationMessage("Docuvia: Sync successful.");

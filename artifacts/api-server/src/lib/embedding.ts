@@ -1,4 +1,4 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { getLlmClientForProject } from "./llm-provider.js";
 import { logger } from "./logger.js";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
@@ -8,10 +8,14 @@ const EMBEDDING_DIMENSIONS = 1536;
  * Generate a normalized text embedding vector using OpenAI.
  * Returns null on failure (allows graceful fallback to SQL LIKE search).
  */
-export async function generateEmbedding(text: string): Promise<number[] | null> {
+export async function generateEmbedding(
+  projectId: number | undefined,
+  text: string
+): Promise<number[] | null> {
   if (!text?.trim()) return null;
   try {
-    const response = await openai.embeddings.create({
+    const { client } = await getLlmClientForProject(projectId);
+    const response = await client.embeddings.create({
       model: EMBEDDING_MODEL,
       input: text.slice(0, 8192),
       dimensions: EMBEDDING_DIMENSIONS,

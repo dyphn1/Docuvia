@@ -19,6 +19,8 @@
 
 ## Knowledge Graph & Agentic RAG
 
+- **Local SQLite vs PostgreSQL Parity**: Ensure schema data types (e.g., `INTEGER` vs `TEXT` for IDs) and structural columns (`contentHash`, `commitSha`) match precisely between the remote PostgreSQL (Drizzle) and the local VS Code extension SQLite database. This prevents implicit type coercion bugs during joins and ensures temporal features work locally.
+- **Explicit Edge Sync**: When pulling graph snapshots to local clients, ensure all relational edge tables (like `node_links`) are explicitly synchronized and stored locally. A local knowledge graph without edge data will fail to perform structural graph traversal.
 - **"实体化 Inbox" (Tangible Inbox / No Null Parents)**: To maintain graph integrity and RAG accuracy, strictly prohibit "orphan nodes" (null or empty `l2_module_id`). Uncategorized extractions must always map to a tangible placeholder node (e.g., `sys-uncategorized`). This ensures the structural schema remains strict and predictable across the database and OpenAPI layers.
 - **Dual-Track Extraction**: Split extraction logic based on context size. Snippets or single-file extractions attempt immediate categorization (Track A). Bulk multi-file extractions are funneled into the `sys-uncategorized` node (Track B) to avoid blocking or hallucinating module assignments.
 - **Multi-Stage Sieve Model (Sieving Uncategorized Nodes)**: Do not blast massive volumes of uncategorized content directly to an LLM for routing. Instead, implement a multi-stage scoring sieve (e.g., using Git History, Directory Structure, and Semantic Vectors) to suggest or auto-resolve the correct L2 module.
@@ -40,11 +42,14 @@
 
 ## Security & API Design
 
+- **Provider-Agnostic AI Integration**: Do not hardcode direct vendor imports (e.g., `openai`) throughout the codebase. Abstract AI calls via a dynamic factory (e.g., `getLlmClientForProject(projectId)`) to natively honor configuration states like `llm_configs.provider`.
 - **Prompt Injection Defense**: Do not rely on arbitrary XML tags within user prompts as a security boundary against injection attacks. Enforce explicit system-level segregation by passing constraints securely via the `role: "system"` payload attribute, separating instructions strictly from the `role: "user"` data inputs.
 - **Zero-Trust Administrative Routes**: Never leave admin or internal infrastructure routes unauthenticated. Always enforce appropriate authentication or network boundaries, even for internal testing or background triggers.
 
 ## Ingestion Pipeline Protocolization
 
+- **Incremental Fast-Path (AST)**: Implement O(1) incremental ingestion by utilizing tools like `git diff-tree -M` to parse only changed files rather than re-scanning the entire project tree on every sync.
+- **AST Size Limits & DLQ (Poison Pill)**: Always enforce strict file size limits (e.g., 10MB) during ingestion. Implement a persistent Dead Letter Queue (quarantine list) for consistently failing files to prevent perpetual parsing crash-loops.
 - **Streaming Parsers over Buffers**: Avoid using `execFileAsync` combined with RegExp or string manipulation for parsing large external outputs (e.g., SVN logs or external diffs) to prevent memory ballooning and Out-Of-Memory (OOM) crashes. Use `spawn` combined with streaming parsers (like the `sax` library for XML) and integrate AbortControllers to securely handle large repository histories streamingly.
 - **Unified Pipeline Abstraction**: Consolidate disparate ingestion flows (Git, SVN, Documents) into a standardized pipeline sequence (`processIngestion`): Hash deduplication -> Score -> DB Insert -> Activity Log -> Notification. This prevents logic drift between API entry points.
 - **Local Process Execution**: For source control interactions, prefer hardened local client wrappers (`child_process.execFile` with temporary directories) over remote API dependencies for operations like cloning and extracting diffs, ensuring robust handling of arbitrary or private repos.

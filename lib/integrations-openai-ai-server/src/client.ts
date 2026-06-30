@@ -1,19 +1,39 @@
 import OpenAI from "openai";
 
-if (!process.env.AI_INTEGRATIONS_OPENAI_BASE_URL) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_BASE_URL must be set. Did you forget to provision the OpenAI AI integration?"
-  );
+export interface LlmAdapterConfig {
+  provider: string;
+  model: string;
+  apiKey?: string;
+  baseUrl?: string;
 }
 
-const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-if (!apiKey) {
-  throw new Error(
-    "AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY must be set. Did you forget to provision the OpenAI AI integration?"
-  );
+export function createLlmClient(config?: Partial<LlmAdapterConfig>): OpenAI {
+  const provider = config?.provider?.toLowerCase() || "openai";
+
+  let apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
+  let baseURL = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+
+  if (provider === "ollama" || provider === "local") {
+    baseURL = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1";
+    apiKey = "ollama";
+  }
+
+  if (config?.apiKey) apiKey = config.apiKey;
+  if (config?.baseUrl) baseURL = config.baseUrl;
+
+  if (!baseURL) {
+    throw new Error("Base URL must be set. Did you forget to provision the LLM integration?");
+  }
+
+  if (!apiKey) {
+    throw new Error("API Key must be set. Did you forget to provision the LLM integration?");
+  }
+
+  return new OpenAI({
+    apiKey,
+    baseURL,
+  });
 }
 
-export const openai = new OpenAI({
-  apiKey,
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-});
+// Retained for backward compatibility during migration
+export const openai = createLlmClient();

@@ -1,4 +1,4 @@
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { getLlmClientForProject } from "./llm-provider.js";
 import { db } from "@workspace/db";
 import {
   projectsTable,
@@ -126,7 +126,7 @@ function applyTemporalDecay(baseScore: number, referenceDate: Date): number {
   return baseScore * calculateTemporalDecay(referenceDate);
 }
 
-export async function classifyIntent(query: string): Promise<IntentClassification> {
+export async function classifyIntent(query: string, projectId?: number): Promise<IntentClassification> {
   const sanitized = sanitizeQuery(query);
   const fallback: IntentClassification = {
     strategy: "vector_search",
@@ -136,8 +136,9 @@ export async function classifyIntent(query: string): Promise<IntentClassificatio
   };
 
   try {
-    const response = await openai.chat.completions.create({
-      model: process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
+    const { client, model } = await getLlmClientForProject(projectId);
+    const response = await client.chat.completions.create({
+      model: model || process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: CLASSIFICATION_SYSTEM_PROMPT },
@@ -186,7 +187,7 @@ export async function vectorSearchHandler(
   includePending = false
 ): Promise<AgenticSearchResult[]> {
   const results: AgenticSearchResult[] = [];
-  const queryEmbedding = await generateEmbedding(query);
+  const queryEmbedding = await generateEmbedding(projectId, query);
 
   if (queryEmbedding) {
     const vectorStr = `[${queryEmbedding.join(",")}]`;
@@ -656,7 +657,7 @@ export async function routeQuery(
 
   // Fallback to LLM classification
   if (!classification) {
-    classification = await classifyIntent(query);
+    classification = await classifyIntent(query, projectId);
   }
 
   logger.info(

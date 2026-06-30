@@ -9,7 +9,7 @@ import {
   projectsTable,
 } from "@workspace/db";
 import { eq, and, gte, sql } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { getLlmClientForProject } from "../lib/llm-provider.js";
 
 const router = Router();
 
@@ -188,8 +188,9 @@ router.post("/projects/:id/pull-requests/:prNumber/analyze", async (req, res) =>
 
       if (l3Nodes.length || l2Nodes.length) {
         const context = JSON.stringify({ l2Nodes, l3Nodes }, null, 2);
-        const response = await openai.chat.completions.create({
-          model: process.env.AI_OPENAI_MODEL || "gpt-4o",
+        const { client, model } = await getLlmClientForProject(projectId);
+        const response = await client.chat.completions.create({
+          model,
           max_completion_tokens: 1024,
           messages: [
             {

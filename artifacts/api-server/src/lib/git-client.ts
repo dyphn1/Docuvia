@@ -140,9 +140,13 @@ export class LocalGitClient {
   async getModifiedFiles(sha: string): Promise<string[]> {
     if (!this.repoDir) throw new Error("Repository not cloned yet");
     try {
-      const { stdout } = await execFileAsync("git", ["show", "--name-only", "--format=", sha], {
-        cwd: this.repoDir,
-      });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["diff-tree", "--no-commit-id", "--name-only", "-r", "-M", sha],
+        {
+          cwd: this.repoDir,
+        }
+      );
       return stdout.trim().split("\n").filter(Boolean);
     } catch (e) {
       logger.warn({ sha, err: e }, "Failed to get modified files for commit");

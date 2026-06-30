@@ -254,7 +254,7 @@ sequenceDiagram
     CLI-->>Hook: High-density XML-like context prompt
     Hook-->>Agent: Inject `<docuvia_context>` into tool output
     Note over Agent,LocalDB: Fast, offline, 0 LLM Tokens used, aligns Cognitive Baseline
-````
+```
 
 ### 6.8.2 Global Semantic Search (Server)
 

@@ -34,7 +34,16 @@ export async function createL3Decision(payload: VscodeCreateDecisionPayload) {
   const l2NodeId = payload.l2NodeId ?? null;
   if (!l2NodeId) throw new Error("l2NodeId required");
 
-  const emb = await generateEmbedding(payload.l3Node.content ?? payload.l3Node.title ?? "");
+  const [l2Node] = await db
+    .select({ projectId: l2NodesTable.projectId })
+    .from(l2NodesTable)
+    .where(eq(l2NodesTable.id, l2NodeId));
+  const projectId = l2Node?.projectId;
+  if (!projectId) throw new Error("l2Node not found");
+  const emb = await generateEmbedding(
+    projectId,
+    payload.l3Node.content ?? payload.l3Node.title ?? ""
+  );
   const embRaw = emb ?? null;
 
   const [node] = await db

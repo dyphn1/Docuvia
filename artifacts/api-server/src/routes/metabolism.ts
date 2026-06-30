@@ -9,7 +9,7 @@ import {
   projectsTable,
 } from "@workspace/db";
 import { isNull, inArray, and, eq, lt } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { getLlmClientForProject } from "../lib/llm-provider.js";
 import { checkCommitInDefaultBranch, parseGithubRepo } from "../lib/github-client";
 import { requireApiKey } from "../middlewares/auth";
 
@@ -113,8 +113,9 @@ async function runMetabolism() {
 
     for (const correction of pendingCorrections) {
       try {
-        const response = await openai.chat.completions.create({
-          model: process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
+        const { client, model } = await getLlmClientForProject(correction.projectId as number);
+        const response = await client.chat.completions.create({
+          model,
           messages: [
             {
               role: "system",

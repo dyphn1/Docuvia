@@ -17,7 +17,7 @@
 | Monorepo directory layout   | ✅ Done | `lib/`, `artifacts/`, `scripts/` structure                                                                                                                          |
 | Core DB schemas defined     | ✅ Done | [`schema/`](../../lib/db/src/schema/)                                                                                                                               |
 | Logging                     | ✅ Done | [`logger.ts`](../../lib/core/src/services/logger.ts)                                                                                                                |
-| LLM abstraction layer       | ⚠️ WARN | [`integrations-openai-ai-server`](../../lib/integrations-openai-ai-server/) (Only OpenAI supported)                                                                 |
+  LLM abstraction layer         ✅ Done   [0701_phase-1_llm-abstraction-layer.md](../../reports/0701_phase-1_llm-abstraction-layer.md)  
 | Per-project model switching | ✅ Done | [`llm_configs.ts`](../../lib/db/src/schema/llm_configs.ts)                                                                                                          |
 | CI/CD pipeline              | ✅ Done | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) (Fixed `.prettierignore` exclusions; formatted all files — lint passes clean)                          |
 | Mutex / Concurrency Control | ✅ Done | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) (Uses PG advisory lock `pg_try_advisory_lock(123456789)` + `requireApiKey` on tick endpoint) |

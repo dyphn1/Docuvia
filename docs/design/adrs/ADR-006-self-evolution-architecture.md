@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # Self-Evolution & Swarm Intelligence
 
 ## Core Philosophy

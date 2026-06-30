@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-010: Context Compression & Proxy Layer
 
 ## Status

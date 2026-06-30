@@ -50,12 +50,10 @@ export interface ProcessIngestionParams {
   items: (GitCommitItem | SvnCommitItem | DocumentItem)[];
 }
 
-export async function processIngestion({
-  type,
-  projectId,
-  projectName,
-  items,
-}: ProcessIngestionParams, txParams: any = db): Promise<{ ingested: number; skipped: number; errors: string[] }> {
+export async function processIngestion(
+  { type, projectId, projectName, items }: ProcessIngestionParams,
+  txParams: any = db
+): Promise<{ ingested: number; skipped: number; errors: string[] }> {
   let ingested = 0;
   let skipped = 0;
   const errors: string[] = [];
@@ -118,7 +116,8 @@ export async function processIngestion({
     }
 
     if (ingested > 0) {
-      await logAndNotify(txParams, 
+      await logAndNotify(
+        txParams,
         projectId,
         projectName,
         "commit",
@@ -165,7 +164,8 @@ export async function processIngestion({
     }
 
     if (ingested > 0) {
-      await logAndNotify(txParams, 
+      await logAndNotify(
+        txParams,
         projectId,
         projectName,
         "commit",
@@ -203,7 +203,8 @@ export async function processIngestion({
     }
 
     if (ingested > 0) {
-      await logAndNotify(txParams, 
+      await logAndNotify(
+        txParams,
         projectId,
         projectName,
         "document",
@@ -216,7 +217,8 @@ export async function processIngestion({
   return { ingested, skipped, errors };
 }
 
-async function logAndNotify(txParams: any, 
+async function logAndNotify(
+  txParams: any,
   projectId: number,
   projectName: string,
   activityType: "commit" | "tag_added" | "document",

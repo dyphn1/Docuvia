@@ -5,6 +5,10 @@ import {
   useListMiscDocuments,
   getListMiscDocumentsQueryKey,
   useAffiliateDocument,
+  useListDocuments,
+  getListDocumentsQueryKey,
+  useIngestDocument,
+  useUploadDocument,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -73,8 +77,20 @@ export default function Documents() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [documents, setDocuments] = useState<ProjectDocument[]>([]);
-  const [loadingDocs, setLoadingDocs] = useState(false);
+
+  const { data: documentsData, isLoading: loadingDocs } = useListDocuments(
+    Number(selectedProject),
+    {
+      query: {
+        enabled: !!selectedProject,
+        queryKey: getListDocumentsQueryKey(Number(selectedProject)),
+      },
+    }
+  );
+  const documents = (documentsData as ProjectDocument[]) || [];
+
+  const ingestMutation = useIngestDocument();
+  const uploadMutation = useUploadDocument();
 
   // Misc Pool state
   const {
@@ -91,22 +107,8 @@ export default function Documents() {
   const [affiliateProjectId, setAffiliateProjectId] = useState<string>("");
   const affiliateMutation = useAffiliateDocument();
 
-  const loadDocuments = async (projectId: string) => {
-    setLoadingDocs(true);
-    try {
-      const res = await fetch(`/api/projects/${projectId}/documents`);
-      const data = await res.json();
-      setDocuments(data);
-    } catch {
-      setDocuments([]);
-    } finally {
-      setLoadingDocs(false);
-    }
-  };
-
   const handleProjectChange = (id: string) => {
     setSelectedProject(id);
-    loadDocuments(id);
   };
 
   const handleIngest = async () => {
@@ -114,31 +116,47 @@ export default function Documents() {
     setLoading(true);
     setError(null);
     setSuccess(false);
-    try {
-      const url = selectedProject
-        ? `/api/projects/${selectedProject}/ingest/document`
-        : `/api/documents`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filename: filename.trim(), content: content.trim() }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to ingest document");
-      }
+
+    const onFinish = () => {
       setSuccess(true);
       setFilename("");
       setContent("");
-      if (selectedProject) {
-        await loadDocuments(selectedProject);
-      } else {
-        queryClient.invalidateQueries({ queryKey: getListMiscDocumentsQueryKey() });
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
       setLoading(false);
+    };
+
+    const onError = (e: Error) => {
+      setError(e.message || "Unknown error");
+      setLoading(false);
+    };
+
+    if (selectedProject) {
+      ingestMutation.mutate(
+        {
+          id: Number(selectedProject),
+          data: { filename: filename.trim(), content: content.trim() },
+        },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({
+              queryKey: getListDocumentsQueryKey(Number(selectedProject)),
+            });
+            onFinish();
+          },
+          onError,
+        }
+      );
+    } else {
+      const file = new window.File([content.trim()], filename.trim(), { type: "text/plain" });
+      uploadMutation.mutate(
+        { data: { file } },
+        {
+          onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: getListMiscDocumentsQueryKey() });
+            onFinish();
+          },
+          onError,
+        }
+      );
     }
   };
 

@@ -50,7 +50,10 @@ export class LspEnrichmentService {
     this.languageService = ts.createLanguageService(host, this.documentRegistry);
   }
 
-  public enrichImpact(symbolName: string, filePath: string): Array<{ file: string; line: number; text: string }> {
+  public enrichImpact(
+    symbolName: string,
+    filePath: string
+  ): Array<{ file: string; line: number; text: string }> {
     this.initLanguageService();
 
     if (!fs.existsSync(filePath)) {
@@ -61,7 +64,7 @@ export class LspEnrichmentService {
     const sourceFile = ts.createSourceFile(filePath, fileContent, ts.ScriptTarget.Latest, true);
 
     let position = -1;
-    
+
     // Find the symbol position by searching through the AST or a string match
     // Simple string search for demonstration (we'll try to find an identifier)
     const regex = new RegExp(`\\b${symbolName}\\b`);
@@ -93,7 +96,7 @@ export class LspEnrichmentService {
             results.push({
               file: entry.fileName,
               line: lineNo,
-              text: line.trim()
+              text: line.trim(),
             });
             break;
           }

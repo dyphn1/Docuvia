@@ -29,9 +29,16 @@ export class InitService {
     if (!branchExists) {
       try {
         console.log(`[docuvia] Creating hidden docuvia-knowledge branch...`);
-        const { stdout: treeHash } = await exec("git hash-object -t tree /dev/null", { cwd: this.workspaceRoot });
-        const { stdout: commitHash } = await exec(`echo "chore: initialize empty knowledge graph" | git commit-tree ${treeHash.trim()}`, { cwd: this.workspaceRoot });
-        await exec(`git update-ref refs/heads/docuvia-knowledge ${commitHash.trim()}`, { cwd: this.workspaceRoot });
+        const { stdout: treeHash } = await exec("git hash-object -t tree /dev/null", {
+          cwd: this.workspaceRoot,
+        });
+        const { stdout: commitHash } = await exec(
+          `echo "chore: initialize empty knowledge graph" | git commit-tree ${treeHash.trim()}`,
+          { cwd: this.workspaceRoot }
+        );
+        await exec(`git update-ref refs/heads/docuvia-knowledge ${commitHash.trim()}`, {
+          cwd: this.workspaceRoot,
+        });
       } catch (err: any) {
         throw new Error(`Failed to create branch: ${err.message}`);
       }

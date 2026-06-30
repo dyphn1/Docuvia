@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR 021: Shared Core API and Presentation Layers (Hexagonal Architecture)
 
 ## Context

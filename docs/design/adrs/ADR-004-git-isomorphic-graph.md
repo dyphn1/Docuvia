@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # Git-Isomorphic Knowledge Graph (Incremental Deltas)
 
 ## Core Philosophy

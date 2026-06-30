@@ -153,7 +153,7 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
     if (anchors.length === 0) return [];
 
     const lenses: vscode.CodeLens[] = [];
-    
+
     // Dynamically import QueryService here to avoid static dependency cycles or use existing instance
     const { QueryService } = await import("@workspace/core");
     const queryService = new QueryService(workspaceRoot);
@@ -163,24 +163,28 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
       try {
         const [impact, context] = await Promise.all([
           queryService.getImpact(anchor.name),
-          queryService.getContext(anchor.name)
+          queryService.getContext(anchor.name),
         ]);
         if (impact && impact.blastRadius) {
-          lenses.push(new vscode.CodeLens(range, {
-            title: `💥 Blast Radius: ${impact.blastRadius.length} nodes`,
-            command: "",
-            arguments: []
-          }));
+          lenses.push(
+            new vscode.CodeLens(range, {
+              title: `💥 Blast Radius: ${impact.blastRadius.length} nodes`,
+              command: "",
+              arguments: [],
+            })
+          );
         }
         if (context) {
           const incomingCount = context.incoming?.length || 0;
           const outgoingCount = context.outgoing?.length || 0;
           if (incomingCount > 0 || outgoingCount > 0) {
-            lenses.push(new vscode.CodeLens(range, {
-              title: `⬇️ In: ${incomingCount} | ⬆️ Out: ${outgoingCount}`,
-              command: "",
-              arguments: []
-            }));
+            lenses.push(
+              new vscode.CodeLens(range, {
+                title: `⬇️ In: ${incomingCount} | ⬆️ Out: ${outgoingCount}`,
+                command: "",
+                arguments: [],
+              })
+            );
           }
         }
       } catch (e) {
@@ -194,7 +198,7 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
       workspaceRoot,
       snapshot.modules
     );
-    
+
     if (matchedModules.length > 0) {
       const moduleData: CodeLensDecisionData[] = matchedModules
         .map((module) => {
@@ -212,11 +216,13 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
         const count = bestModule.decisionIds.length;
         for (const anchor of anchors) {
           const range = new vscode.Range(anchor.line, 0, anchor.line, 0);
-          lenses.push(new vscode.CodeLens(range, {
-            title: `🧠 Docuvia: ${count} ${count === 1 ? "Decision" : "Decisions"}`,
-            command: "docuvia.showDecisionsForLens",
-            arguments: [bestModule],
-          }));
+          lenses.push(
+            new vscode.CodeLens(range, {
+              title: `🧠 Docuvia: ${count} ${count === 1 ? "Decision" : "Decisions"}`,
+              command: "docuvia.showDecisionsForLens",
+              arguments: [bestModule],
+            })
+          );
         }
         return lenses;
       }
@@ -227,11 +233,13 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
       const offlineModule = matchedModules[0];
       for (const anchor of anchors) {
         const range = new vscode.Range(anchor.line, 0, anchor.line, 0);
-        lenses.push(new vscode.CodeLens(range, {
-          title: `🧠 Docuvia: ${offlineModule.name} — connect to server for decisions`,
-          command: "",
-          arguments: [],
-        }));
+        lenses.push(
+          new vscode.CodeLens(range, {
+            title: `🧠 Docuvia: ${offlineModule.name} — connect to server for decisions`,
+            command: "",
+            arguments: [],
+          })
+        );
       }
     }
 

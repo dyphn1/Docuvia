@@ -3,7 +3,6 @@ import githubCommits from "./fixtures/github-commits.json";
 import { openaiHandlers } from "./handlers/openai";
 
 // Max's Rule: Network-level MSW interception for LLM tests, with fuzzy factories
-import { http, HttpResponse } from "msw";
 
 export const handlers = [
   http.post("http://127.0.0.1:65535/v1/chat/completions", async ({ request }) => {
@@ -45,6 +44,12 @@ export const handlers = [
   }),
   http.post("https://api.github.com/repos/:owner/:repo/issues/:issueNumber/comments", () => {
     return HttpResponse.json({ id: 1, body: "Mock comment" }, { status: 201 });
+  }),
+  http.get("https://api.github.com/simulate-error/400", () => {
+    return HttpResponse.json({ message: "Bad Request simulation" }, { status: 400 });
+  }),
+  http.get("https://api.github.com/simulate-error/500", () => {
+    return HttpResponse.json({ message: "Internal Server Error simulation" }, { status: 500 });
   }),
   http.post("http://127.0.0.1:65535/v1/embeddings", async () => {
     return HttpResponse.json({

@@ -54,7 +54,6 @@ router.use("/mcp", (req, res, next) => {
 
   const providedToken = authHeader.substring(7);
 
-  // TODO: [CRITICAL BUG FIX] - `.length` checks character count, not byte length. If a multibyte character is used, `Buffer.from()` will yield different byte sizes, causing `crypto.timingSafeEqual` to crash the server with a RangeError. Use `Buffer.byteLength()` instead.
   // To avoid crypto.timingSafeEqual crashing on length mismatch, we must verify lengths first
   if (
     Buffer.byteLength(providedToken, "utf8") !== Buffer.byteLength(expectedToken, "utf8") ||

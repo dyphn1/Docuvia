@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-019: PostgreSQL pgvector Migration for Similarity Search
 
 ## Status

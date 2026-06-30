@@ -14,7 +14,9 @@ import * as util from "util";
 export class AnalyzeService {
   constructor(private workspaceRoot: string) {}
 
-  public async analyzeProject(options?: { deep?: boolean }): Promise<{ projectType: string; suggestedTags: string[] }> {
+  public async analyzeProject(options?: {
+    deep?: boolean;
+  }): Promise<{ projectType: string; suggestedTags: string[] }> {
     console.log(`[docuvia] Analyzing project in ${this.workspaceRoot}`);
 
     let projectType = "unknown";
@@ -25,36 +27,51 @@ export class AnalyzeService {
 
       // --- 1. VCS-Driven Hotspot Extraction (ADR-005) ---
       try {
-        await execAsync('git rev-parse --is-inside-work-tree', { cwd: this.workspaceRoot });
-        const gitLogRes = await execAsync('git log -n 100 --name-only --format=""', { cwd: this.workspaceRoot });
-        
+        await execAsync("git rev-parse --is-inside-work-tree", { cwd: this.workspaceRoot });
+        const gitLogRes = await execAsync('git log -n 100 --name-only --format=""', {
+          cwd: this.workspaceRoot,
+        });
+
         const pathCounts = new Map<string, number>();
-        const lines = gitLogRes.stdout.split('\n');
-        
+        const lines = gitLogRes.stdout.split("\n");
+
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) continue;
-          
+
           // Split path and get up to depth 3 directories
-          const parts = trimmed.split('/');
+          const parts = trimmed.split("/");
           if (parts.length > 1) {
             // Defend against config/hidden folders and build directories
-            if (parts[0].startsWith('.') || ['node_modules', 'dist', 'build', 'docs', 'test', 'tests', 'scripts'].includes(parts[0])) continue;
-            
+            if (
+              parts[0].startsWith(".") ||
+              ["node_modules", "dist", "build", "docs", "test", "tests", "scripts"].includes(
+                parts[0]
+              )
+            )
+              continue;
+
             // Construct a meaningful domain prefix (e.g., 'cli', 'core/ingestion', 'mcp')
-            let domain = '';
-            if (parts[0] === 'src' && parts.length > 1) {
+            let domain = "";
+            if (parts[0] === "src" && parts.length > 1) {
               domain = parts[1]; // src/auth -> auth
-            } else if (parts.length > 2 && parts[1] === 'src') {
+            } else if (parts.length > 2 && parts[1] === "src") {
               // Workspaces: packages/cli/src/mcp -> cli
-              domain = parts[0] === 'packages' || parts[0] === 'artifacts' || parts[0] === 'crates' ? parts[1] : parts[0]; 
+              domain =
+                parts[0] === "packages" || parts[0] === "artifacts" || parts[0] === "crates"
+                  ? parts[1]
+                  : parts[0];
             } else {
               // Direct top-level folders that aren't src
-              domain = parts[0]; 
+              domain = parts[0];
             }
-            
+
             // Ensure the domain itself isn't a file, hidden, or purely structural
-            if (!domain.includes('.') && !domain.startsWith('.') && !['src', 'lib', 'app'].includes(domain)) {
+            if (
+              !domain.includes(".") &&
+              !domain.startsWith(".") &&
+              !["src", "lib", "app"].includes(domain)
+            ) {
               pathCounts.set(domain, (pathCounts.get(domain) || 0) + 1);
             }
           }
@@ -64,74 +81,140 @@ export class AnalyzeService {
         const sortedDomains = Array.from(pathCounts.entries())
           .sort((a, b) => b[1] - a[1])
           .slice(0, 5)
-          .map(entry => entry[0]);
+          .map((entry) => entry[0]);
 
         for (const domain of sortedDomains) {
-          if (domain.length > 2) { // Ignore extremely short/cryptic folders
+          if (domain.length > 2) {
+            // Ignore extremely short/cryptic folders
             suggestedTags.add(`domain:${domain}`);
           }
         }
-        
+
         if (sortedDomains.length > 0) {
-          console.log(`[docuvia] VCS Hotspot analysis extracted functional domains: ${sortedDomains.join(', ')}`);
+          console.log(
+            `[docuvia] VCS Hotspot analysis extracted functional domains: ${sortedDomains.join(", ")}`
+          );
         }
       } catch (e) {
         // Git not available or no commits yet, gracefully skip VCS hotspot extraction
       }
 
       // --- 2. Multi-Dimensional Config Scanning ---
-      const configFiles = await fg([
-        "**/package.json",
-        "**/Cargo.toml",
-        "**/pyproject.toml",
-        "**/requirements.txt",
-        "**/go.mod",
-        "**/tsconfig.json",
-        "**/vite.config.*",
-        "**/drizzle.config.*",
-        "**/webpack.config.*",
-        "**/tauri.conf.*"
-      ], {
-        cwd: this.workspaceRoot,
-        ignore: ["node_modules/**", ".git/**", "dist/**", "build/**", "target/**", "venv/**", ".venv/**", "**/fixtures/**", "**/__fixtures__/**", "**/test-data/**"],
-        absolute: true,
-        deep: 3,
-      });
+      const configFiles = await fg(
+        [
+          "**/package.json",
+          "**/Cargo.toml",
+          "**/pyproject.toml",
+          "**/requirements.txt",
+          "**/go.mod",
+          "**/tsconfig.json",
+          "**/vite.config.*",
+          "**/drizzle.config.*",
+          "**/webpack.config.*",
+          "**/tauri.conf.*",
+        ],
+        {
+          cwd: this.workspaceRoot,
+          ignore: [
+            "node_modules/**",
+            ".git/**",
+            "dist/**",
+            "build/**",
+            "target/**",
+            "venv/**",
+            ".venv/**",
+            "**/fixtures/**",
+            "**/__fixtures__/**",
+            "**/test-data/**",
+          ],
+          absolute: true,
+          deep: 3,
+        }
+      );
 
       for (const file of configFiles) {
         const basename = path.basename(file);
         try {
           const content = await fs.readFile(file, "utf-8");
-          
+
           if (basename === "package.json") {
             if (content.includes('"typescript"')) suggestedTags.add("typescript");
-            if (content.includes('"react"')) { suggestedTags.add("react"); suggestedTags.add("frontend"); }
-            if (content.includes('"vue"')) { suggestedTags.add("vue"); suggestedTags.add("frontend"); }
-            if (content.includes('"next"')) { suggestedTags.add("nextjs"); suggestedTags.add("frontend"); suggestedTags.add("ssr"); }
-            if (content.includes('"express"')) { suggestedTags.add("express"); suggestedTags.add("backend"); }
-            if (content.includes('"drizzle-orm"')) { suggestedTags.add("drizzle"); suggestedTags.add("database"); }
-            if (content.includes('"tailwindcss"')) { suggestedTags.add("tailwindcss"); suggestedTags.add("css"); }
-            if (content.includes('"jest"')) { suggestedTags.add("jest"); suggestedTags.add("testing"); }
-            if (content.includes('"vitest"')) { suggestedTags.add("vitest"); suggestedTags.add("testing"); }
-            if (content.includes('"pg"')) { suggestedTags.add("postgres"); suggestedTags.add("database"); }
+            if (content.includes('"react"')) {
+              suggestedTags.add("react");
+              suggestedTags.add("frontend");
+            }
+            if (content.includes('"vue"')) {
+              suggestedTags.add("vue");
+              suggestedTags.add("frontend");
+            }
+            if (content.includes('"next"')) {
+              suggestedTags.add("nextjs");
+              suggestedTags.add("frontend");
+              suggestedTags.add("ssr");
+            }
+            if (content.includes('"express"')) {
+              suggestedTags.add("express");
+              suggestedTags.add("backend");
+            }
+            if (content.includes('"drizzle-orm"')) {
+              suggestedTags.add("drizzle");
+              suggestedTags.add("database");
+            }
+            if (content.includes('"tailwindcss"')) {
+              suggestedTags.add("tailwindcss");
+              suggestedTags.add("css");
+            }
+            if (content.includes('"jest"')) {
+              suggestedTags.add("jest");
+              suggestedTags.add("testing");
+            }
+            if (content.includes('"vitest"')) {
+              suggestedTags.add("vitest");
+              suggestedTags.add("testing");
+            }
+            if (content.includes('"pg"')) {
+              suggestedTags.add("postgres");
+              suggestedTags.add("database");
+            }
             if (content.includes('"workspaces"')) suggestedTags.add("monorepo");
           } else if (basename === "Cargo.toml") {
             projectType = "rust";
             suggestedTags.add("rust");
-            if (content.includes('tokio')) { suggestedTags.add("tokio"); suggestedTags.add("async"); }
-            if (content.includes('actix')) { suggestedTags.add("actix"); suggestedTags.add("backend"); }
-            if (content.includes('serde')) suggestedTags.add("serde");
-            if (content.includes('tauri')) { suggestedTags.add("tauri"); suggestedTags.add("desktop"); }
+            if (content.includes("tokio")) {
+              suggestedTags.add("tokio");
+              suggestedTags.add("async");
+            }
+            if (content.includes("actix")) {
+              suggestedTags.add("actix");
+              suggestedTags.add("backend");
+            }
+            if (content.includes("serde")) suggestedTags.add("serde");
+            if (content.includes("tauri")) {
+              suggestedTags.add("tauri");
+              suggestedTags.add("desktop");
+            }
           } else if (basename === "pyproject.toml" || basename === "requirements.txt") {
             projectType = "python";
             suggestedTags.add("python");
-            if (content.includes('django')) { suggestedTags.add("django"); suggestedTags.add("backend"); }
-            if (content.includes('fastapi')) { suggestedTags.add("fastapi"); suggestedTags.add("backend"); }
-            if (content.includes('pandas')) { suggestedTags.add("pandas"); suggestedTags.add("data"); }
+            if (content.includes("django")) {
+              suggestedTags.add("django");
+              suggestedTags.add("backend");
+            }
+            if (content.includes("fastapi")) {
+              suggestedTags.add("fastapi");
+              suggestedTags.add("backend");
+            }
+            if (content.includes("pandas")) {
+              suggestedTags.add("pandas");
+              suggestedTags.add("data");
+            }
           } else if (basename === "go.mod") {
             projectType = "go";
             suggestedTags.add("go");
-            if (content.includes('gin-gonic')) { suggestedTags.add("gin"); suggestedTags.add("backend"); }
+            if (content.includes("gin-gonic")) {
+              suggestedTags.add("gin");
+              suggestedTags.add("backend");
+            }
           } else if (basename === "tsconfig.json") {
             if (/"strict"\s*:\s*true/.test(content)) suggestedTags.add("strict-ts");
           } else if (basename.startsWith("vite.config")) {
@@ -149,10 +232,14 @@ export class AnalyzeService {
         }
       }
 
-      if (suggestedTags.has("typescript") || suggestedTags.has("react") || suggestedTags.has("express") || suggestedTags.has("vue")) {
+      if (
+        suggestedTags.has("typescript") ||
+        suggestedTags.has("react") ||
+        suggestedTags.has("express") ||
+        suggestedTags.has("vue")
+      ) {
         if (projectType === "unknown") projectType = "javascript";
       }
-
     } catch (e: any) {
       console.warn(`[docuvia] Warning: Failed multi-dimensional config scanning: ${e.message}`);
     }
@@ -175,7 +262,7 @@ export class AnalyzeService {
 
       try {
         // Test if git is available and we are in a git repository
-        await execAsync('git rev-parse --is-inside-work-tree', { cwd: this.workspaceRoot });
+        await execAsync("git rev-parse --is-inside-work-tree", { cwd: this.workspaceRoot });
         usingGit = true;
       } catch (e) {
         usingGit = false;
@@ -184,33 +271,48 @@ export class AnalyzeService {
       if (usingGit) {
         console.log(`[docuvia] Starting global AST scan using Git-native blob hashing...`);
         try {
-          const res = await execAsync('git ls-files -s', { cwd: this.workspaceRoot });
-          for (const line of res.stdout.split('\n')) {
+          const res = await execAsync("git ls-files -s", { cwd: this.workspaceRoot });
+          for (const line of res.stdout.split("\n")) {
             if (!line.trim()) continue;
-            const [info, file] = line.split('\t');
-            const blobSha = info.split(' ')[1];
+            const [info, file] = line.split("\t");
+            const blobSha = info.split(" ")[1];
             if (file && blobSha) gitBlobHashes.set(file, blobSha);
           }
-          
-          const untracked = await execAsync('git ls-files --others --exclude-standard', { cwd: this.workspaceRoot });
-          const modified = await execAsync('git diff --name-only', { cwd: this.workspaceRoot });
-          
-          [...untracked.stdout.split('\n'), ...modified.stdout.split('\n')].forEach((f: string) => {
+
+          const untracked = await execAsync("git ls-files --others --exclude-standard", {
+            cwd: this.workspaceRoot,
+          });
+          const modified = await execAsync("git diff --name-only", { cwd: this.workspaceRoot });
+
+          [...untracked.stdout.split("\n"), ...modified.stdout.split("\n")].forEach((f: string) => {
             if (f.trim()) dirtyFiles.add(f.trim());
           });
 
-          allFiles = [...gitBlobHashes.keys(), ...untracked.stdout.split('\n').map((f: string) => f.trim()).filter(Boolean)];
+          allFiles = [
+            ...gitBlobHashes.keys(),
+            ...untracked.stdout
+              .split("\n")
+              .map((f: string) => f.trim())
+              .filter(Boolean),
+          ];
         } catch (e) {
-          console.warn("[docuvia] Git operations failed during execution, falling back to manual globbing...");
+          console.warn(
+            "[docuvia] Git operations failed during execution, falling back to manual globbing..."
+          );
           usingGit = false;
         }
       }
 
       if (!usingGit) {
-        console.log(`[docuvia] Git unavailable or no .git repository found. Falling back to fast-glob + manual sha256 hashing...`);
+        console.log(
+          `[docuvia] Git unavailable or no .git repository found. Falling back to fast-glob + manual sha256 hashing...`
+        );
         const ig = ignore();
         try {
-          const gitignoreContent = await fs.readFile(path.join(this.workspaceRoot, ".gitignore"), "utf-8");
+          const gitignoreContent = await fs.readFile(
+            path.join(this.workspaceRoot, ".gitignore"),
+            "utf-8"
+          );
           ig.add(gitignoreContent);
         } catch (e: any) {}
 
@@ -219,15 +321,17 @@ export class AnalyzeService {
           ignore: ["node_modules/**", ".git/**", ".docuvia/**", "dist/**", "build/**"],
           absolute: false,
         });
-        
+
         allFiles = ig.filter(globbedFiles);
         // Treat all globbed files as dirty so manual hashing is forced
-        allFiles.forEach((f: string) => dirtyFiles.add(f)); 
+        allFiles.forEach((f: string) => dirtyFiles.add(f));
       }
 
       // Filter by supported extensions (redundant for glob, but ensures git outputs are clean)
       const extRegex = /\.(ts|js|jsx|tsx|py|go|rs|cpp|c|h|hpp|java|php|rb)$/;
-      allFiles = allFiles.filter((f: string) => extRegex.test(f) && !f.includes('node_modules/') && !f.includes('.docuvia/'));
+      allFiles = allFiles.filter(
+        (f: string) => extRegex.test(f) && !f.includes("node_modules/") && !f.includes(".docuvia/")
+      );
 
       console.log(`[docuvia] Discovered ${allFiles.length} source files.`);
 
@@ -238,7 +342,9 @@ export class AnalyzeService {
       if (existsSync(dbPath)) {
         db = new Database(dbPath);
         try {
-          const rows = db.prepare('SELECT file_path, content_hash FROM project_files').all() as any[];
+          const rows = db
+            .prepare("SELECT file_path, content_hash FROM project_files")
+            .all() as any[];
           for (const row of rows) {
             existingHashes.set(row.file_path, row.content_hash);
           }
@@ -246,7 +352,7 @@ export class AnalyzeService {
       }
 
       // 6. Determine which files actually need parsing
-      const filesToParse: Array<{ file: string, hash: string, code: string }> = [];
+      const filesToParse: Array<{ file: string; hash: string; code: string }> = [];
       let skippedCount = 0;
 
       for (const file of allFiles) {
@@ -264,7 +370,7 @@ export class AnalyzeService {
             code = await fs.readFile(path.join(this.workspaceRoot, file), "utf-8");
             if (!currentHash) {
               // Calculate hash manually for dirty/untracked files
-              currentHash = crypto.createHash('sha256').update(code).digest('hex');
+              currentHash = crypto.createHash("sha256").update(code).digest("hex");
             }
           } catch (e) {
             continue; // File might have been deleted or inaccessible
@@ -281,7 +387,9 @@ export class AnalyzeService {
         }
       }
 
-      console.log(`[docuvia] Git Hash Delta check: ${filesToParse.length} files need parsing. ${skippedCount} skipped.`);
+      console.log(
+        `[docuvia] Git Hash Delta check: ${filesToParse.length} files need parsing. ${skippedCount} skipped.`
+      );
 
       let globalFileIdMap = new Map<string, string>();
 
@@ -298,28 +406,40 @@ export class AnalyzeService {
             case ".js":
             case ".jsx":
               return "typescript";
-            case ".py": return "python";
-            case ".rs": return "rust";
-            case ".go": return "go";
+            case ".py":
+              return "python";
+            case ".rs":
+              return "rust";
+            case ".go":
+              return "go";
             case ".cpp":
             case ".cc":
             case ".c":
             case ".h":
-            case ".hpp": return "cpp";
-            case ".java": return "java";
-            case ".rb": return "ruby";
-            case ".php": return "php";
-            default: return "typescript";
+            case ".hpp":
+              return "cpp";
+            case ".java":
+              return "java";
+            case ".rb":
+              return "ruby";
+            case ".php":
+              return "php";
+            default:
+              return "typescript";
           }
         };
 
-        const parsedResults: Array<{ file: string, hash: string, data: any }> = [];
+        const parsedResults: Array<{ file: string; hash: string; data: any }> = [];
         const batchSize = 50;
         for (let i = 0; i < filesToParse.length; i += batchSize) {
           const batch = filesToParse.slice(i, i + batchSize);
           const promises = batch.map(async (item) => {
             try {
-              const res = await pool.parse({ filePath: item.file, code: item.code, language: getLanguage(item.file) });
+              const res = await pool.parse({
+                filePath: item.file,
+                code: item.code,
+                language: getLanguage(item.file),
+              });
               if (res.success && res.data) {
                 parsedResults.push({ file: item.file, hash: item.hash, data: res.data });
               } else {
@@ -343,19 +463,33 @@ export class AnalyzeService {
         }
 
         // Transaction for bulk inserting the new AST nodes
-        const insertHash = db.prepare('INSERT INTO project_files (project_id, file_path, content_hash) VALUES (1, ?, ?) ON CONFLICT (project_id, file_path) DO UPDATE SET content_hash = excluded.content_hash, last_parsed_at = CURRENT_TIMESTAMP');
-        const deleteOldL1Links = db.prepare('DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (SELECT id FROM l2_nodes WHERE source_paths = ?)');
-        const deleteOldLinks = db.prepare('DELETE FROM node_links WHERE source_node_id IN (SELECT id FROM l2_nodes WHERE source_paths = ?)');
-        const deleteOldNodes = db.prepare('DELETE FROM l2_nodes WHERE source_paths = ?');
-        const insertNode = db.prepare('INSERT INTO l2_nodes (id, name, slug, type, source_paths, description) VALUES (?, ?, ?, ?, ?, ?)');
-        const insertLink = db.prepare('INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)');
-        const insertL1Tag = db.prepare('INSERT INTO l1_tags (id, name, slug, description) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO NOTHING');
-        const insertL2L1Link = db.prepare('INSERT INTO l2_node_l1_tags (l2_node_id, l1_tag_id) VALUES (?, ?)');
+        const insertHash = db.prepare(
+          "INSERT INTO project_files (project_id, file_path, content_hash) VALUES (1, ?, ?) ON CONFLICT (project_id, file_path) DO UPDATE SET content_hash = excluded.content_hash, last_parsed_at = CURRENT_TIMESTAMP"
+        );
+        const deleteOldL1Links = db.prepare(
+          "DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (SELECT id FROM l2_nodes WHERE source_paths = ?)"
+        );
+        const deleteOldLinks = db.prepare(
+          "DELETE FROM node_links WHERE source_node_id IN (SELECT id FROM l2_nodes WHERE source_paths = ?)"
+        );
+        const deleteOldNodes = db.prepare("DELETE FROM l2_nodes WHERE source_paths = ?");
+        const insertNode = db.prepare(
+          "INSERT INTO l2_nodes (id, name, slug, type, source_paths, description) VALUES (?, ?, ?, ?, ?, ?)"
+        );
+        const insertLink = db.prepare(
+          "INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)"
+        );
+        const insertL1Tag = db.prepare(
+          "INSERT INTO l1_tags (id, name, slug, description) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO NOTHING"
+        );
+        const insertL2L1Link = db.prepare(
+          "INSERT INTO l2_node_l1_tags (l2_node_id, l1_tag_id) VALUES (?, ?)"
+        );
 
         const runTransaction = db.transaction(() => {
           let parsedCount = 0;
           const fileIdMap = new Map<string, string>();
-          
+
           // Ensure all tags exist
           for (const tag of suggestedTags) {
             insertL1Tag.run(tag, tag, tag, `Auto-detected tag: ${tag}`);
@@ -363,7 +497,7 @@ export class AnalyzeService {
 
           for (const result of parsedResults) {
             const sourcePathJson = JSON.stringify([result.file]);
-            
+
             // Clean up old nodes for this file
             deleteOldL1Links.run(sourcePathJson);
             deleteOldLinks.run(sourcePathJson);
@@ -386,7 +520,7 @@ export class AnalyzeService {
                 insertLink.run(fileId, fnId, "contains");
               }
             }
-            
+
             if (result.data.classes) {
               for (const cls of result.data.classes) {
                 const clsId = crypto.randomUUID();
@@ -408,19 +542,22 @@ export class AnalyzeService {
                   // Link file to file directly, avoiding ambiguous function names across the db
                   const targetPathJson = JSON.stringify([resolved.targetFile]);
                   let targetFileId = fileIdMap.get(resolved.targetFile);
-                  
+
                   if (!targetFileId) {
-                    const row = db.prepare("SELECT id FROM l2_nodes WHERE type = 'file' AND source_paths = ?").get(targetPathJson) as { id: string } | undefined;
+                    const row = db
+                      .prepare("SELECT id FROM l2_nodes WHERE type = 'file' AND source_paths = ?")
+                      .get(targetPathJson) as { id: string } | undefined;
                     if (row) targetFileId = row.id;
                   }
 
-                  if (targetFileId && targetFileId !== sourceFileId) { // avoid self-calls clutter
+                  if (targetFileId && targetFileId !== sourceFileId) {
+                    // avoid self-calls clutter
                     insertLink.run(sourceFileId, targetFileId, "calls");
                   }
                 }
               }
             }
-            
+
             // Update hash
             insertHash.run(result.file, result.hash);
             parsedCount++;
@@ -430,7 +567,9 @@ export class AnalyzeService {
 
         const { parsedCount: updatedCount, fileIdMap } = runTransaction();
         globalFileIdMap = fileIdMap;
-        console.log(`[docuvia] AST scan complete: ${updatedCount} updated, ${skippedCount} skipped (unchanged).`);
+        console.log(
+          `[docuvia] AST scan complete: ${updatedCount} updated, ${skippedCount} skipped (unchanged).`
+        );
       } else {
         console.log(`[docuvia] AST scan complete: 0 updated, ${skippedCount} skipped (unchanged).`);
       }
@@ -450,7 +589,7 @@ export class AnalyzeService {
 
             const { ExtractService } = await import("./ExtractService.js");
             const extractService = new ExtractService(this.workspaceRoot);
-            
+
             // Initialize l3_nodes schema if not exists just in case
             backgroundDb.exec(`
               CREATE TABLE IF NOT EXISTS l3_nodes (
@@ -463,7 +602,9 @@ export class AnalyzeService {
               );
             `);
 
-            const insertL3Node = backgroundDb.prepare('INSERT INTO l3_nodes (id, l2_node_id, title, content, status, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)');
+            const insertL3Node = backgroundDb.prepare(
+              "INSERT INTO l3_nodes (id, l2_node_id, title, content, status, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+            );
 
             for (const item of filesToParse) {
               const l2NodeId = globalFileIdMap.get(item.file);
@@ -474,9 +615,9 @@ export class AnalyzeService {
                 if ((result as any).error) {
                   continue; // Skip failed extractions
                 }
-                
+
                 // Clear old l3 nodes for this l2_node before inserting new ones
-                backgroundDb.prepare('DELETE FROM l3_nodes WHERE l2_node_id = ?').run(l2NodeId);
+                backgroundDb.prepare("DELETE FROM l3_nodes WHERE l2_node_id = ?").run(l2NodeId);
 
                 if (result.decisions) {
                   for (const decision of result.decisions) {
@@ -491,7 +632,7 @@ export class AnalyzeService {
 
             console.log(`[docuvia] Background L3 extraction finished.`);
           } catch (e: any) {
-            console.error('[docuvia] L3 Extraction background task failed', e);
+            console.error("[docuvia] L3 Extraction background task failed", e);
           } finally {
             if (backgroundDb) backgroundDb.close();
           }

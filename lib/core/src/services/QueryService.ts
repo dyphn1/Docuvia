@@ -14,48 +14,60 @@ export interface QueryResult {
 export class QueryService {
   public async getContext(symbol: string): Promise<any> {
     const dbPath = path.join(this.workspaceRoot, ".docuvia", "local.db");
-    if (!fs.existsSync(dbPath)) throw new Error('Local database not found.');
+    if (!fs.existsSync(dbPath)) throw new Error("Local database not found.");
     const sqlite = new Database(dbPath);
 
     // Find the target node
-    const targetNode = sqlite.prepare('SELECT * FROM l2_nodes WHERE name = ? LIMIT 1').get(symbol) as any;
+    const targetNode = sqlite
+      .prepare("SELECT * FROM l2_nodes WHERE name = ? LIMIT 1")
+      .get(symbol) as any;
     if (!targetNode) {
       sqlite.close();
       return null;
     }
 
     // Get incoming edges (e.g. callers)
-    const incoming = sqlite.prepare(`
+    const incoming = sqlite
+      .prepare(
+        `
       SELECT l.*, n.name as source_name, n.type as source_type 
       FROM node_links l
       JOIN l2_nodes n ON l.source_node_id = n.id
       WHERE l.target_node_id = ?
-    `).all(targetNode.id) as any[];
+    `
+      )
+      .all(targetNode.id) as any[];
 
     // Get outgoing edges (e.g. what it calls/imports)
-    const outgoing = sqlite.prepare(`
+    const outgoing = sqlite
+      .prepare(
+        `
       SELECT l.*, n.name as target_name, n.type as target_type 
       FROM node_links l
       JOIN l2_nodes n ON l.target_node_id = n.id
       WHERE l.source_node_id = ?
-    `).all(targetNode.id) as any[];
+    `
+      )
+      .all(targetNode.id) as any[];
 
     sqlite.close();
 
     return {
       target: targetNode,
       incoming,
-      outgoing
+      outgoing,
     };
   }
 
   public async getImpact(symbol: string, escalateToLsp: boolean = false): Promise<any> {
     const dbPath = path.join(this.workspaceRoot, ".docuvia", "local.db");
-    if (!fs.existsSync(dbPath)) throw new Error('Local database not found.');
+    if (!fs.existsSync(dbPath)) throw new Error("Local database not found.");
     const sqlite = new Database(dbPath);
 
     // Find the target node
-    const targetNode = sqlite.prepare('SELECT * FROM l2_nodes WHERE name = ? LIMIT 1').get(symbol) as any;
+    const targetNode = sqlite
+      .prepare("SELECT * FROM l2_nodes WHERE name = ? LIMIT 1")
+      .get(symbol) as any;
     if (!targetNode) {
       sqlite.close();
       return null;
@@ -68,11 +80,13 @@ export class QueryService {
       try {
         const paths = JSON.parse(targetNode.source_paths);
         if (Array.isArray(paths)) {
-          parsedFilePath = paths.find((p: string) => p.endsWith('.ts') || p.endsWith('.tsx'));
+          parsedFilePath = paths.find((p: string) => p.endsWith(".ts") || p.endsWith(".tsx"));
         }
       } catch {
-        const paths = targetNode.source_paths.split(',');
-        parsedFilePath = paths.find((p: string) => p.trim().endsWith('.ts') || p.trim().endsWith('.tsx'))?.trim();
+        const paths = targetNode.source_paths.split(",");
+        parsedFilePath = paths
+          .find((p: string) => p.trim().endsWith(".ts") || p.trim().endsWith(".tsx"))
+          ?.trim();
       }
 
       if (parsedFilePath) {
@@ -112,7 +126,7 @@ export class QueryService {
             name: caller.name,
             type: caller.type,
             link_type: caller.link_type,
-            depth: current.depth + 1
+            depth: current.depth + 1,
           });
           queue.push({ id: caller.source_node_id, depth: current.depth + 1 });
         }
@@ -120,16 +134,16 @@ export class QueryService {
     }
 
     sqlite.close();
-    
+
     const result: any = {
       target: targetNode,
-      blastRadius: impactedNodes
+      blastRadius: impactedNodes,
     };
-    
+
     if (lspEnrichedCallers) {
       result.lspEnrichedCallers = lspEnrichedCallers;
     }
-    
+
     return result;
   }
 
@@ -147,31 +161,43 @@ export class QueryService {
       );
     }
 
-        const sqlite = new Database(dbPath);
+    const sqlite = new Database(dbPath);
     const likeTarget = `%${target}%`;
 
     let results: { l2?: any; l3: any[] } = { l3: [] };
 
-    const matchingL2 = sqlite.prepare(`
+    const matchingL2 = sqlite
+      .prepare(
+        `
       SELECT * FROM l2_nodes 
       WHERE name LIKE ? OR slug LIKE ? OR source_paths LIKE ? 
       LIMIT 1
-    `).get(likeTarget, likeTarget, likeTarget) as any;
+    `
+      )
+      .get(likeTarget, likeTarget, likeTarget) as any;
 
     if (matchingL2) {
       results.l2 = matchingL2;
-      const matchingL3 = sqlite.prepare(`
+      const matchingL3 = sqlite
+        .prepare(
+          `
         SELECT * FROM l3_nodes 
         WHERE l2_node_id = ? AND (title LIKE ? OR content LIKE ?)
         ORDER BY created_at DESC LIMIT 5
-      `).all(matchingL2.id, likeTarget, likeTarget) as any[];
+      `
+        )
+        .all(matchingL2.id, likeTarget, likeTarget) as any[];
 
       if (matchingL3.length < 5) {
-        const recentL3 = sqlite.prepare(`
+        const recentL3 = sqlite
+          .prepare(
+            `
           SELECT * FROM l3_nodes 
           WHERE l2_node_id = ? 
           ORDER BY created_at DESC LIMIT 5
-        `).all(matchingL2.id) as any[];
+        `
+          )
+          .all(matchingL2.id) as any[];
 
         const existingIds = new Set(matchingL3.map((l) => l.id));
         for (const item of recentL3) {
@@ -183,11 +209,15 @@ export class QueryService {
       }
       results.l3 = matchingL3;
     } else {
-      results.l3 = sqlite.prepare(`
+      results.l3 = sqlite
+        .prepare(
+          `
         SELECT * FROM l3_nodes 
         WHERE title LIKE ? OR content LIKE ? 
         ORDER BY created_at DESC LIMIT 5
-      `).all(likeTarget, likeTarget) as any[];
+      `
+        )
+        .all(likeTarget, likeTarget) as any[];
     }
 
     return results;

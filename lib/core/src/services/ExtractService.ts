@@ -12,7 +12,10 @@ let globalWorkerPoolInitialized = false;
 export class ExtractService {
   private workerPool: IASTWorkerPool;
 
-  constructor(private workspaceRoot: string, workerPool?: IASTWorkerPool) {
+  constructor(
+    private workspaceRoot: string,
+    workerPool?: IASTWorkerPool
+  ) {
     if (workerPool) {
       this.workerPool = workerPool;
     } else {
@@ -52,15 +55,16 @@ export class ExtractService {
           messages: [
             {
               role: "system",
-              content: "You are an architecture extraction agent. Your job is to extract high-level architectural decisions and patterns from this file. Output valid JSON in the format { \"decisions\": [\"decision 1\", \"decision 2\"] }."
+              content:
+                'You are an architecture extraction agent. Your job is to extract high-level architectural decisions and patterns from this file. Output valid JSON in the format { "decisions": ["decision 1", "decision 2"] }.',
             },
             {
               role: "user",
-              content: `Extract decisions from this file:\n\n${content.substring(0, 8000)}`
-            }
-          ]
+              content: `Extract decisions from this file:\n\n${content.substring(0, 8000)}`,
+            },
+          ],
         });
-        const parsed = JSON.parse(response.choices[0].message.content || "{\"decisions\": []}");
+        const parsed = JSON.parse(response.choices[0].message.content || '{"decisions": []}');
         return { decisions: parsed.decisions || [] };
       } catch (e: any) {
         console.error(`[docuvia] LLM extraction failed for file ${filePath}:`, e.message);
@@ -74,7 +78,7 @@ export class ExtractService {
 
     try {
       const content = await fs.readFile(absolutePath, "utf-8");
-      
+
       const extMap: Record<string, any> = {
         ".ts": "typescript",
         ".tsx": "typescript",
@@ -85,9 +89,9 @@ export class ExtractService {
         ".go": "go",
         ".java": "java",
         ".cpp": "cpp",
-        ".c": "cpp"
+        ".c": "cpp",
       };
-      
+
       const language = extMap[ext] || "typescript";
 
       await this.ensureWorkerPool();
@@ -95,7 +99,7 @@ export class ExtractService {
       const response = await this.workerPool.parse({
         filePath: absolutePath,
         code: content,
-        language
+        language,
       });
 
       if (!response.success || !response.data) {

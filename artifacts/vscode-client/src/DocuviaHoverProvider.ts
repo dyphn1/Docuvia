@@ -12,10 +12,13 @@ export class DocuviaHoverProvider implements vscode.HoverProvider {
     this._indexer = indexer;
   }
 
-  async provideHover(document: vscode.TextDocument, position: vscode.Position): Promise<vscode.Hover | undefined> {
+  async provideHover(
+    document: vscode.TextDocument,
+    position: vscode.Position
+  ): Promise<vscode.Hover | undefined> {
     const md = new vscode.MarkdownString();
     let hasContent = false;
-    
+
     // Original Logic
     const snapshot = this._store.getSnapshotFor(document.uri);
     if (snapshot) {
@@ -49,11 +52,11 @@ export class DocuviaHoverProvider implements vscode.HoverProvider {
         const queryService = new QueryService(folder.uri.fsPath);
         const [impact, context] = await Promise.all([
           queryService.getImpact(symbol),
-          queryService.getContext(symbol)
+          queryService.getContext(symbol),
         ]);
-        
+
         let addedBlastRadius = false;
-        
+
         if (impact && impact.blastRadius && impact.blastRadius.length > 0) {
           if (hasContent) md.appendMarkdown("\n\n---\n\n");
           md.appendMarkdown(`**Docuvia Blast Radius for \`${symbol}\`**\n\n`);
@@ -71,7 +74,7 @@ export class DocuviaHoverProvider implements vscode.HoverProvider {
         if (context) {
           if (hasContent && !addedBlastRadius) md.appendMarkdown("\n\n---\n\n");
           if (addedBlastRadius) md.appendMarkdown("\n"); // Just a newline if blast radius was already added
-          
+
           if (context.incoming && context.incoming.length > 0) {
             md.appendMarkdown(`**Incoming Edges (${context.incoming.length})**:\n`);
             for (const edge of context.incoming.slice(0, 5)) {
@@ -102,7 +105,7 @@ export class DocuviaHoverProvider implements vscode.HoverProvider {
     if (hasContent) {
       return new vscode.Hover(md, wordRange || document.lineAt(position.line).range);
     }
-    
+
     return undefined;
   }
 }

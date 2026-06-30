@@ -198,6 +198,7 @@ sequenceDiagram
     API->>GH: github-client.postPrComment(pr.number, commentText)
     GH-->>API: 201 Created
     API->>DB: INSERT INTO pull_requests (prNumber, projectId, analysisResult)
+```
 
 ---
 
@@ -229,8 +230,6 @@ sequenceDiagram
     CLI-->>Dev: Deep analysis complete
 ```
 
-```
-
 ---
 
 ## 6.8 Scenario: AI Agent Collaboration Workflows
@@ -255,7 +254,7 @@ sequenceDiagram
     CLI-->>Hook: High-density XML-like context prompt
     Hook-->>Agent: Inject `<docuvia_context>` into tool output
     Note over Agent,LocalDB: Fast, offline, 0 LLM Tokens used, aligns Cognitive Baseline
-```
+````
 
 ### 6.8.2 Global Semantic Search (Server)
 
@@ -318,7 +317,7 @@ sequenceDiagram
     Agent->>MCP: Call docuvia_impact { target, escalate: true }
     MCP->>AST: Fast O(1) Lookup (AST References)
     AST-->>MCP: Surface-level dependents
-    
+
     opt If escalate == true or low confidence
         MCP->>LSP: request exact execution flow / taint analysis
         LSP->>Server: textDocument/references (LSP)

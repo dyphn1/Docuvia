@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-012: Document Misc Pool for Unaffiliated Documents
 
 **Status:** Accepted

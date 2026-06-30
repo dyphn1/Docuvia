@@ -21,3 +21,8 @@
 ## Memory Leaks & WASM
 
 - **WASM Memory Leaks in web-tree-sitter**: Failing to manually invoke `.delete()` on `web-tree-sitter` `Tree` and `Parser` instances results in severe WASM memory leaks. Because WASM memory is not automatically garbage-collected by the V8 JavaScript engine, always explicitly call `tree.delete()` and `parser.delete()` within your worker threads after AST extraction is complete. Ensure worker pools also implement graceful termination.
+
+## Security & Cryptography
+
+- **Buffer Equal Timing Leak**: NEVER use the string `.length` property for timing-safe equality checks when handling cryptographic or security-sensitive values. String length can vary for multi-byte characters, leading to crashes or information leaks. Always use `Buffer.byteLength()` before invoking `crypto.timingSafeEqual()`.
+- **Redaction Path Wildcards**: When redacting sensitive fields (like API keys) in application logs, avoid shallow or exact-path matching if the token can appear in nested objects. Ensure redaction utilities support wildcard depths (e.g., `*.authorization`, `*.OPENAI_API_KEY`) to prevent accidental credential leakage in nested request payloads.

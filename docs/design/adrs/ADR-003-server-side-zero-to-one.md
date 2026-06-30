@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # API Server: The 0-to-1 Handshake & Multi-tenant Synchronization
 
 ## Core Dilemma

@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-017: Tiered Storage & Orphan Branch Graph Maintenance
 
 ## Context

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Search, BrainCircuit, Network, Tag, GitMerge, Loader2, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
+import { useListProjects, getListProjectsQueryKey, useMcpQuery } from "@workspace/api-client-react";
 import { normalizeProjects } from "@/lib/projects";
 
 interface SearchResultItem {
@@ -55,34 +55,42 @@ export default function Query() {
   });
   const projects = normalizeProjects(projectsData);
 
-  const handleSearch = async (e: React.FormEvent) => {
+  const mcpQueryMutation = useMcpQuery({
+    request: {
+      headers: {
+        Authorization: `Bearer ${import.meta.env.VITE_MCP_PAT}`,
+      },
+    },
+  });
+
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
     setIsSearching(true);
     setError(null);
     setResults(null);
-    try {
-      const res = await fetch("/api/mcp/query", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_MCP_PAT}`,
-        },
-        body: JSON.stringify({
+
+    mcpQueryMutation.mutate(
+      {
+        data: {
           q: query.trim(),
           project_id: projectFilter !== "all" ? Number(projectFilter) : undefined,
           limit: 20,
-        }),
-      });
-      if (!res.ok) throw new Error("Search failed");
-      const data: SearchResponse = await res.json();
-      setResults(data.results);
-      setTotal(data.total);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Search failed");
-    } finally {
-      setIsSearching(false);
-    }
+        },
+      },
+      {
+        onSuccess: (data) => {
+          const resData = data as unknown as SearchResponse;
+          setResults(resData.results);
+          setTotal(resData.total);
+          setIsSearching(false);
+        },
+        onError: (e) => {
+          setError(e.message || "Search failed");
+          setIsSearching(false);
+        },
+      }
+    );
   };
 
   return (

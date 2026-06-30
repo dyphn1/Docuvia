@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-011: Two-Phase Knowledge Validity
 
 **Status:** Accepted

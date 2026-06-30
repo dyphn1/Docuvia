@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
+import {
+  useListProjects,
+  getListProjectsQueryKey,
+  useIngestGit,
+  useGenerateKnowledge,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,62 +71,69 @@ export default function Pipeline() {
   const [ingestMode, setIngestMode] = useState<"full" | "incremental">("full");
   const [generateMode, setGenerateMode] = useState<"full" | "incremental">("full");
 
+  const ingestGitMutation = useIngestGit();
+  const generateKnowledgeMutation = useGenerateKnowledge();
+
   const selectedProj = projects.find((p) => String(p.id) === selectedProject);
 
-  const handleIngest = async () => {
+  const handleIngest = () => {
     if (!selectedProject) return;
     setIngestLoading(true);
     setIngestError(null);
     setIngestResult(null);
-    try {
-      const res = await fetch(`/api/projects/${selectedProject}/ingest/git`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+
+    ingestGitMutation.mutate(
+      {
+        id: Number(selectedProject),
+        data: {
           repoUrl: repoUrl || undefined,
           branch,
           limit: Number(limit),
           githubToken: githubToken || undefined,
-          mode: ingestMode,
-        }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Ingest failed");
+          mode: ingestMode as any,
+        },
+      },
+      {
+        onSuccess: (data) => {
+          setIngestResult(data as unknown as IngestResult);
+          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          setIngestLoading(false);
+        },
+        onError: (e) => {
+          setIngestError(e.message || "Ingest failed");
+          setIngestLoading(false);
+        },
       }
-      const data = await res.json();
-      setIngestResult(data);
-      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-    } catch (e) {
-      setIngestError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setIngestLoading(false);
-    }
+    );
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!selectedProject) return;
     setGenerateLoading(true);
     setGenerateError(null);
     setGenerateResult(null);
-    try {
-      const res = await fetch(`/api/projects/${selectedProject}/generate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, maxCommits: Number(maxCommits), mode: generateMode }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Generation failed");
+
+    generateKnowledgeMutation.mutate(
+      {
+        id: Number(selectedProject),
+        data: {
+          model,
+          maxCommits: Number(maxCommits),
+          mode: generateMode as any,
+        },
+      },
+      {
+        onSuccess: (data) => {
+          setGenerateResult(data as unknown as GenerateResult);
+          queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
+          setGenerateLoading(false);
+        },
+        onError: (e) => {
+          setGenerateError(e.message || "Generation failed");
+          setGenerateLoading(false);
+        },
       }
-      const data = await res.json();
-      setGenerateResult(data);
-      queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
-    } catch (e) {
-      setGenerateError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setGenerateLoading(false);
-    }
+    );
   };
 
   return (

@@ -339,7 +339,7 @@ async function detectCrossProjectLinks(
   }
 }
 
-async function runNoiseDetection(projectId: number): Promise<number> {
+async function runNoiseDetection(db: any, projectId: number): Promise<number> {
   let noiseTasksCreated = 0;
 
   const allTags = await db.select().from(l1TagsTable);
@@ -612,137 +612,165 @@ router.post("/projects/:id/generate", async (req, res) => {
     return res.status(409).json({ error: "Project is already indexing or not in active state." });
   }
 
-  // TODO: [CRITICAL BUG FIX] - Missing transaction wrapper. The entire generation pipeline executing discrete `db.insert()` and `db.update()` statements MUST be wrapped in a `db.transaction()` block to prevent DB corruption if an LLM call fails.
   try {
-    // Step 1: Fetch valid (signal-scored) commits
-    const validCommits = await db
-      .select()
-      .from(commitsTable)
-      .where(
-        mode === "incremental"
-          ? and(
-              eq(commitsTable.projectId, projectId),
-              eq(commitsTable.valid, true),
-              isNull(commitsTable.processedAt)
-            )
-          : and(eq(commitsTable.projectId, projectId), eq(commitsTable.valid, true))
-      )
-      .orderBy(sql`${commitsTable.createdAt} desc`)
-      .limit(maxCommits);
+    const result = await db.transaction(async (tx) => {
+      // Step 1: Fetch valid (signal-scored) commits
+      const validCommits = await tx
+        .select()
+        .from(commitsTable)
+        .where(
+          mode === "incremental"
+            ? and(
+                eq(commitsTable.projectId, projectId),
+                eq(commitsTable.valid, true),
+                isNull(commitsTable.processedAt)
+              )
+            : and(eq(commitsTable.projectId, projectId), eq(commitsTable.valid, true))
+        )
+        .orderBy(sql`${commitsTable.createdAt} desc`)
+        .limit(maxCommits);
 
-    if (!validCommits.length) {
-      await db
+      if (!validCommits.length) {
+        await tx
+          .update(projectsTable)
+          .set({ status: "active", updatedAt: new Date() })
+          .where(eq(projectsTable.id, projectId));
+        return {
+          l1TagsCreated: 0,
+          l2NodesCreated: 0,
+          l3NodesCreated: 0,
+          reviewTasksCreated: 0,
+          commitsProcessed: 0,
+          crossProjectLinksDetected: 0,
+          noiseTasksCreated: 0,
+        };
+      }
+
+      const commitData = validCommits.map((c) => ({ message: c.message, hash: c.hash }));
+
+      // Step 2: Fetch project documents for context enrichment
+      const documents = await tx
+        .select({
+          filename: documentsTable.filename,
+          content: documentsTable.content,
+          docType: documentsTable.docType,
+        })
+        .from(documentsTable)
+        .where(eq(documentsTable.projectId, projectId));
+
+      // Compress document context to reduce token volume sent to LLM
+      const documentContext = documents.length
+        ? (() => {
+            const nodes: import("../lib/compression.js").CompressibleNode[] = documents.map(
+              (d) => ({
+                title: d.filename,
+                content: d.content,
+                nodeType: d.docType,
+                confidence: 1.0,
+              })
+            );
+            const compressed = compressAstContext(nodes, {
+              maxTotalChars: 6000,
+              maxPerNodeChars: 600,
+            });
+            logger.info(
+              {
+                projectId,
+                nodesTotal: compressed.nodesTotal,
+                nodesIncluded: compressed.nodesIncluded,
+                charsSaved: compressed.charsSaved,
+              },
+              "[generate] Document context compressed"
+            );
+            return compressed.context;
+          })()
+        : "";
+
+      // Declarations
+      let l1TagsCreated = 0;
+      let reviewTasksCreated = 0;
+      let l2NodesCreated = 0;
+      let l2NodesUpdated = 0;
+      let l3NodesCreated = 0;
+      let crossProjectLinksDetected = 0;
+
+      // Step 3: L1 Tagger
+      const {
+        l1TagsCreated: l1c,
+        reviewTasksCreated: rtc,
+        tagMap,
+      } = await processL1Tagger(
+        tx,
+        projectId,
+        project.name,
+        commitData,
+        model,
+        similarityThreshold
+      );
+      l1TagsCreated = l1c;
+      reviewTasksCreated = rtc;
+
+      // Steps 4-6: Generate L2/L3 Nodes and process Links
+      const { l2Created, l2Updated, l3Created, rTasksCreated, crossLinks } =
+        await processL2AndL3Nodes(
+          tx,
+          projectId,
+          project,
+          validCommits,
+          commitData,
+          documents,
+          documentContext,
+          tagMap,
+          model,
+          similarityThreshold,
+          condensationThreshold,
+          condensationReviewRequired
+        );
+      l2NodesCreated = l2Created;
+      l2NodesUpdated = l2Updated;
+      l3NodesCreated = l3Created;
+      reviewTasksCreated += rTasksCreated;
+      crossProjectLinksDetected = crossLinks;
+
+      // Step 7: Noise detection — run after all nodes are created
+      const noiseTasksCreated = await runNoiseDetection(tx, projectId);
+      if (noiseTasksCreated > 0) {
+        reviewTasksCreated += noiseTasksCreated;
+        await tx.insert(activityLogTable).values({
+          type: "review_resolved",
+          description: `Noise detection flagged ${noiseTasksCreated} L1 tag issue(s) for review`,
+          projectId,
+        });
+      }
+
+      // Mark commits as processed in incremental mode
+      if (mode === "incremental" && validCommits.length > 0) {
+        const commitIds = validCommits.map((c) => c.id);
+        await tx
+          .update(commitsTable)
+          .set({ processedAt: new Date() })
+          .where(inArray(commitsTable.id, commitIds));
+      }
+
+      await tx
         .update(projectsTable)
         .set({ status: "active", updatedAt: new Date() })
         .where(eq(projectsTable.id, projectId));
-      return res.json({
-        l1TagsCreated: 0,
-        l2NodesCreated: 0,
-        l3NodesCreated: 0,
-        reviewTasksCreated: 0,
-        commitsProcessed: 0,
-        crossProjectLinksDetected: 0,
-        noiseTasksCreated: 0,
-      });
-    }
 
-    const commitData = validCommits.map((c) => ({ message: c.message, hash: c.hash }));
-
-    // Step 2: Fetch project documents for context enrichment
-    const documents = await db
-      .select({
-        filename: documentsTable.filename,
-        content: documentsTable.content,
-        docType: documentsTable.docType,
-      })
-      .from(documentsTable)
-      .where(eq(documentsTable.projectId, projectId));
-
-    // Compress document context to reduce token volume sent to LLM
-    const documentContext = documents.length
-      ? (() => {
-          const nodes: import("../lib/compression.js").CompressibleNode[] = documents.map((d) => ({
-            title: d.filename,
-            content: d.content,
-            nodeType: d.docType,
-            confidence: 1.0,
-          }));
-          const compressed = compressAstContext(nodes, {
-            maxTotalChars: 6000,
-            maxPerNodeChars: 600,
-          });
-          logger.info(
-            {
-              projectId,
-              nodesTotal: compressed.nodesTotal,
-              nodesIncluded: compressed.nodesIncluded,
-              charsSaved: compressed.charsSaved,
-            },
-            "[generate] Document context compressed"
-          );
-          return compressed.context;
-        })()
-      : "";
-
-    // Declarations
-    let l1TagsCreated = 0;
-    let reviewTasksCreated = 0;
-    let l2NodesCreated = 0;
-    let l2NodesUpdated = 0;
-    let l3NodesCreated = 0;
-    let crossProjectLinksDetected = 0;
-
-    // Step 3: L1 Tagger
-    const { l1TagsCreated: l1c, reviewTasksCreated: rtc, tagMap } = await processL1Tagger(db, projectId, project.name, commitData, model, similarityThreshold);
-    l1TagsCreated = l1c;
-    reviewTasksCreated = rtc;
-    
-    // Steps 4-6: Generate L2/L3 Nodes and process Links
-    const { 
-      l2Created, l2Updated, l3Created, rTasksCreated, crossLinks
-    } = await processL2AndL3Nodes(db, projectId, project, validCommits, commitData, documents, documentContext, tagMap, model, similarityThreshold, condensationThreshold, condensationReviewRequired);
-    l2NodesCreated = l2Created;
-    l2NodesUpdated = l2Updated;
-    l3NodesCreated = l3Created;
-    reviewTasksCreated += rTasksCreated;
-    crossProjectLinksDetected = crossLinks;
-    
-    // Step 7: Noise detection — run after all nodes are created
-    const noiseTasksCreated = await runNoiseDetection(projectId);
-    if (noiseTasksCreated > 0) {
-      reviewTasksCreated += noiseTasksCreated;
-      await db.insert(activityLogTable).values({
-        type: "review_resolved",
-        description: `Noise detection flagged ${noiseTasksCreated} L1 tag issue(s) for review`,
-        projectId,
-      });
-    }
-
-    // Mark commits as processed in incremental mode
-    if (mode === "incremental" && validCommits.length > 0) {
-      const commitIds = validCommits.map((c) => c.id);
-      await db
-        .update(commitsTable)
-        .set({ processedAt: new Date() })
-        .where(inArray(commitsTable.id, commitIds));
-    }
-
-    await db
-      .update(projectsTable)
-      .set({ status: "active", updatedAt: new Date() })
-      .where(eq(projectsTable.id, projectId));
-
-    return res.json({
-      l1TagsCreated,
-      l2NodesCreated,
-      l2NodesUpdated,
-      l3NodesCreated,
-      reviewTasksCreated,
-      commitsProcessed: validCommits.length,
-      documentsUsed: documents.length,
-      crossProjectLinksDetected,
-      noiseTasksCreated,
+      return {
+        l1TagsCreated,
+        l2NodesCreated,
+        l2NodesUpdated,
+        l3NodesCreated,
+        reviewTasksCreated,
+        commitsProcessed: validCommits.length,
+        documentsUsed: documents.length,
+        crossProjectLinksDetected,
+        noiseTasksCreated,
+      };
     });
+
+    return res.json(result);
   } catch (err) {
     await db
       .update(projectsTable)
@@ -780,9 +808,14 @@ router.post("/admin/reindex-embeddings", async (req, res) => {
 
 export default router;
 
-
-
-async function processL1Tagger(db: any, projectId: number, projectName: string, commitData: any[], model: string, similarityThreshold: number) {
+async function processL1Tagger(
+  db: any,
+  projectId: number,
+  projectName: string,
+  commitData: any[],
+  model: string,
+  similarityThreshold: number
+) {
   let l1TagsCreated = 0;
   let reviewTasksCreated = 0;
   const tagMap = new Map<string, number>();
@@ -826,15 +859,18 @@ async function processL1Tagger(db: any, projectId: number, projectName: string, 
     }
 
     try {
-      const [created] = await db.insert(l1TagsTable).values({
-        name: tag.name,
-        category: tag.category ?? "Feature",
-        description: tag.description,
-        isAnchored: false,
-      }).returning();
+      const [created] = await db
+        .insert(l1TagsTable)
+        .values({
+          name: tag.name,
+          category: tag.category ?? "Feature",
+          description: tag.description,
+          isAnchored: false,
+        })
+        .returning();
       tagMap.set(key, created.id);
       l1TagsCreated++;
-      
+
       await db.insert(reviewTasksTable).values({
         entityType: "l1_tag",
         entityId: created.id,
@@ -860,410 +896,412 @@ async function processL1Tagger(db: any, projectId: number, projectName: string, 
   return { l1TagsCreated, reviewTasksCreated, tagMap };
 }
 
-async function processL2AndL3Nodes(db: any, projectId: number, project: any, validCommits: any[], commitData: any[], documents: any[], documentContext: string, tagMap: Map<string, number>, model: string, similarityThreshold: number, condensationThreshold: number, condensationReviewRequired: boolean) {
+async function processL2AndL3Nodes(
+  db: any,
+  projectId: number,
+  project: any,
+  validCommits: any[],
+  commitData: any[],
+  documents: any[],
+  documentContext: string,
+  tagMap: Map<string, number>,
+  model: string,
+  similarityThreshold: number,
+  condensationThreshold: number,
+  condensationReviewRequired: boolean
+) {
   let l2Created = 0;
   let l2Updated = 0;
   let l3Created = 0;
   let rTasksCreated = 0;
   let crossLinks = 0;
-// Step 4: L2 Extractor + L3 Generator — using templates + feedback loop corrections
-    const l2SystemPrompt = await getPromptTemplate(projectId, "l2_extractor");
-    const corrections = await getRecentCorrections(projectId, "l2_node");
-    const allL1Tags = await db.select().from(l1TagsTable);
+  // Step 4: L2 Extractor + L3 Generator — using templates + feedback loop corrections
+  const l2SystemPrompt = await getPromptTemplate(projectId, "l2_extractor");
+  const corrections = await getRecentCorrections(projectId, "l2_node");
+  const allL1Tags = await db.select().from(l1TagsTable);
 
-    
-    
-    
-    
+  // Build a hash → commit id map for commit→L2 backfill
+  const commitHashMap = new Map<string, number>();
+  for (const c of validCommits) {
+    commitHashMap.set(c.hash.slice(0, 8), c.id);
+    commitHashMap.set(c.hash, c.id);
+  }
 
-    // Build a hash → commit id map for commit→L2 backfill
-    const commitHashMap = new Map<string, number>();
-    for (const c of validCommits) {
-      commitHashMap.set(c.hash.slice(0, 8), c.id);
-      commitHashMap.set(c.hash, c.id);
-    }
+  // Fetch existing L2 nodes for bootstrap check and deduplication
+  const existingL2 = await db
+    .select()
+    .from(l2NodesTable)
+    .where(eq(l2NodesTable.projectId, projectId));
+  const existingL2Map = new Map<string, (typeof existingL2)[0]>();
+  for (const node of existingL2) {
+    existingL2Map.set(node.name.toLowerCase(), node);
+  }
 
-    // Fetch existing L2 nodes for bootstrap check and deduplication
-    const existingL2 = await db
-      .select()
-      .from(l2NodesTable)
-      .where(eq(l2NodesTable.projectId, projectId));
-    const existingL2Map = new Map<string, (typeof existingL2)[0]>();
-    for (const node of existingL2) {
-      existingL2Map.set(node.name.toLowerCase(), node);
-    }
+  // Check if all L2 nodes are bootstrap-confirmed (path-rule mode)
+  const allBootstrapConfirmed =
+    existingL2.length > 0 && existingL2.every((n: any) => n.isBootstrapConfirmed);
 
-    // Check if all L2 nodes are bootstrap-confirmed (path-rule mode)
-    const allBootstrapConfirmed =
-      existingL2.length > 0 && existingL2.every((n: any) => n.isBootstrapConfirmed);
+  let l2Input: L2NodeAI[] = [];
 
-    let l2Input: L2NodeAI[] = [];
+  if (allBootstrapConfirmed) {
+    logger.info(
+      { projectId },
+      "[generate] All L2 nodes bootstrap-confirmed — path-rule mode; assigning L2 based on pathPatterns"
+    );
 
-    if (allBootstrapConfirmed) {
-      logger.info(
-        { projectId },
-        "[generate] All L2 nodes bootstrap-confirmed — path-rule mode; assigning L2 based on pathPatterns"
+    const gitClient = new LocalGitClient(project.repoUrl);
+    await gitClient.clone();
+
+    try {
+      const getStaticDepth = (pattern: string): number => {
+        let depth = 0;
+        for (const part of pattern.split("/")) {
+          if (/[*?{}[\]]/.test(part)) break;
+          if (part) depth++;
+        }
+        return depth;
+      };
+
+      const getMaxDepth = (patterns: string[]): number => {
+        if (!patterns || patterns.length === 0) return 0;
+        return Math.max(...patterns.map(getStaticDepth));
+      };
+
+      const sortedL2 = [...existingL2].sort(
+        (a, b) =>
+          getMaxDepth((b.pathPatterns as string[]) || []) -
+          getMaxDepth((a.pathPatterns as string[]) || [])
       );
 
-      const gitClient = new LocalGitClient(project.repoUrl);
-      await gitClient.clone();
+      const globToRegExp = (glob: string): RegExp => {
+        const escaped = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&");
+        const regexStr = escaped
+          .replace(/\\\*\\\*/g, ".*")
+          .replace(/\\\*/g, "[^/]*")
+          .replace(/\\\?/g, ".");
+        return new RegExp(`^${regexStr}$`);
+      };
 
-      try {
-        const getStaticDepth = (pattern: string): number => {
-          let depth = 0;
-          for (const part of pattern.split("/")) {
-            if (/[*?{}[\]]/.test(part)) break;
-            if (part) depth++;
-          }
-          return depth;
-        };
-
-        const getMaxDepth = (patterns: string[]): number => {
-          if (!patterns || patterns.length === 0) return 0;
-          return Math.max(...patterns.map(getStaticDepth));
-        };
-
-        const sortedL2 = [...existingL2].sort(
-          (a, b) =>
-            getMaxDepth((b.pathPatterns as string[]) || []) -
-            getMaxDepth((a.pathPatterns as string[]) || [])
-        );
-
-        const globToRegExp = (glob: string): RegExp => {
-          const escaped = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&");
-          const regexStr = escaped
-            .replace(/\\\*\\\*/g, ".*")
-            .replace(/\\\*/g, "[^/]*")
-            .replace(/\\\?/g, ".");
-          return new RegExp(`^${regexStr}$`);
-        };
-
-        let sysNode = sortedL2.find((n) => n.type === "sys-uncategorized");
-        if (!sysNode) {
-          [sysNode] = await db
-            .insert(l2NodesTable)
-            .values({
-              projectId,
-              name: "Uncategorized",
-              type: "sys-uncategorized",
-              isSystem: true,
-              aiGenerated: false,
-              description: "System node for uncategorized commits",
-              isBootstrapConfirmed: true,
-            })
-            .returning();
-          existingL2.push(sysNode);
-        }
-
-        for (const commit of validCommits) {
-          const files = await gitClient.getModifiedFiles(commit.hash);
-          let assignedL2NodeId: number | null = null;
-          let diffPathsForLink: string[] = [];
-
-          for (const file of files) {
-            let matched = false;
-            for (const node of sortedL2) {
-              const patterns = (node.pathPatterns as string[]) || [];
-              for (const pattern of patterns) {
-                if (globToRegExp(pattern).test(file)) {
-                  assignedL2NodeId = node.id;
-                  diffPathsForLink.push(file);
-                  matched = true;
-                  break;
-                }
-              }
-              if (matched) break;
-            }
-            if (matched) break;
-          }
-
-          const targetNodeId = assignedL2NodeId ?? sysNode.id;
-
-          await db
-            .update(commitsTable)
-            .set({ l2NodeId: targetNodeId })
-            .where(eq(commitsTable.id, commit.id))
-            .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
-
-          await db
-            .insert(commitL2LinksTable)
-            .values({
-              commitId: commit.id,
-              l2NodeId: targetNodeId,
-            })
-            .onConflictDoNothing()
-            .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
-        }
-      } finally {
-        await gitClient.cleanup();
-      }
-    } else {
-      // Bootstrap mode: batch 20 commits per LLM call, pass previous L2 list for self-correction
-      const BATCH_SIZE = 20;
-      const previousL2Names: string[] = [];
-
-      for (let batchStart = 0; batchStart < commitData.length; batchStart += BATCH_SIZE) {
-        const batchCommits = commitData.slice(batchStart, batchStart + BATCH_SIZE);
-        const batchResult = await generateL2Nodes(
-          batchCommits,
-          allL1Tags,
-          documentContext,
-          model,
-          l2SystemPrompt,
-          corrections,
-          previousL2Names
-        );
-        for (const node of batchResult) {
-          if (!previousL2Names.includes(node.name)) {
-            previousL2Names.push(node.name);
-          }
-        }
-        l2Input = [...l2Input, ...batchResult];
-      }
-    }
-
-    for (const l2data of l2Input) {
-      const nameKey = l2data.name.toLowerCase();
-      let l2node: (typeof existingL2)[0];
-
-      // Deduplication: update if already exists, insert if new
-      if (existingL2Map.has(nameKey)) {
-        const existing = existingL2Map.get(nameKey)!;
-        const [updated] = await db
-          .update(l2NodesTable)
-          .set({
-            description: l2data.description,
-            type: l2data.type ?? "module",
-            aiGenerated: true,
-            needsReview: true,
-          })
-          .where(eq(l2NodesTable.id, existing.id))
-          .returning();
-        l2node = updated;
-        l2Updated++;
-      } else {
-        const [created] = await db
+      let sysNode = sortedL2.find((n) => n.type === "sys-uncategorized");
+      if (!sysNode) {
+        [sysNode] = await db
           .insert(l2NodesTable)
           .values({
             projectId,
-            name: l2data.name,
-            type: l2data.type ?? "module",
-            description: l2data.description,
-            aiGenerated: true,
-            needsReview: true,
+            name: "Uncategorized",
+            type: "sys-uncategorized",
+            isSystem: true,
+            aiGenerated: false,
+            description: "System node for uncategorized commits",
+            isBootstrapConfirmed: true,
           })
           .returning();
-        l2node = created;
-        existingL2Map.set(nameKey, created);
-        l2Created++;
+        existingL2.push(sysNode);
       }
 
-      // Generate and store embedding for the L2 node
-      const l2EmbText = `${l2data.name} ${l2data.description ?? ""}`.trim();
-      const l2Embedding = await generateEmbedding(l2EmbText);
-      if (l2Embedding) {
+      for (const commit of validCommits) {
+        const files = await gitClient.getModifiedFiles(commit.hash);
+        let assignedL2NodeId: number | null = null;
+        let diffPathsForLink: string[] = [];
+
+        for (const file of files) {
+          let matched = false;
+          for (const node of sortedL2) {
+            const patterns = (node.pathPatterns as string[]) || [];
+            for (const pattern of patterns) {
+              if (globToRegExp(pattern).test(file)) {
+                assignedL2NodeId = node.id;
+                diffPathsForLink.push(file);
+                matched = true;
+                break;
+              }
+            }
+            if (matched) break;
+          }
+          if (matched) break;
+        }
+
+        const targetNodeId = assignedL2NodeId ?? sysNode.id;
+
         await db
-          .update(l2NodesTable)
-          .set({ embedding: l2Embedding })
-          .where(eq(l2NodesTable.id, l2node.id));
+          .update(commitsTable)
+          .set({ l2NodeId: targetNodeId })
+          .where(eq(commitsTable.id, commit.id))
+          .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
 
-        // Cross-project AI detection: run for all processed L2 nodes
-        await detectCrossProjectLinks(l2node.id, l2Embedding, projectId);
-        crossLinks++;
+        await db
+          .insert(commitL2LinksTable)
+          .values({
+            commitId: commit.id,
+            l2NodeId: targetNodeId,
+          })
+          .onConflictDoNothing()
+          .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
       }
+    } finally {
+      await gitClient.cleanup();
+    }
+  } else {
+    // Bootstrap mode: batch 20 commits per LLM call, pass previous L2 list for self-correction
+    const BATCH_SIZE = 20;
+    const previousL2Names: string[] = [];
 
-      // Wire L1 tags
-      for (const tagName of l2data.l1TagNames ?? []) {
-        const tagId =
-          tagMap.get(tagName.toLowerCase()) ??
-          allL1Tags.find((t: any) => t.name.toLowerCase() === tagName.toLowerCase())?.id;
-        if (tagId) {
-          await db
-            .insert(l2NodeL1TagsTable)
-            .values({ l2NodeId: l2node.id, l1TagId: tagId })
-            .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
-          await db
-            .update(l1TagsTable)
-            .set({ usageCount: sql`${l1TagsTable.usageCount} + 1` })
-            .where(eq(l1TagsTable.id, tagId));
+    for (let batchStart = 0; batchStart < commitData.length; batchStart += BATCH_SIZE) {
+      const batchCommits = commitData.slice(batchStart, batchStart + BATCH_SIZE);
+      const batchResult = await generateL2Nodes(
+        batchCommits,
+        allL1Tags,
+        documentContext,
+        model,
+        l2SystemPrompt,
+        corrections,
+        previousL2Names
+      );
+      for (const node of batchResult) {
+        if (!previousL2Names.includes(node.name)) {
+          previousL2Names.push(node.name);
         }
       }
+      l2Input = [...l2Input, ...batchResult];
+    }
+  }
 
-      // Load existing L3 nodes for this L2 node (for semantic dedup)
-      const existingL3ForNode = await db
-        .select()
-        .from(l3NodesTable)
-        .where(and(eq(l3NodesTable.l2NodeId, l2node.id), isNotNull(l3NodesTable.embedding)));
+  for (const l2data of l2Input) {
+    const nameKey = l2data.name.toLowerCase();
+    let l2node: (typeof existingL2)[0];
 
-      // Step 5: L3 nodes — semantic dedup before insert
-      for (const l3data of l2data.l3Nodes ?? []) {
-        const confidence =
-          typeof l3data.confidence === "number"
-            ? Math.max(0, Math.min(1, l3data.confidence))
-            : 0.75;
+    // Deduplication: update if already exists, insert if new
+    if (existingL2Map.has(nameKey)) {
+      const existing = existingL2Map.get(nameKey)!;
+      const [updated] = await db
+        .update(l2NodesTable)
+        .set({
+          description: l2data.description,
+          type: l2data.type ?? "module",
+          aiGenerated: true,
+          needsReview: true,
+        })
+        .where(eq(l2NodesTable.id, existing.id))
+        .returning();
+      l2node = updated;
+      l2Updated++;
+    } else {
+      const [created] = await db
+        .insert(l2NodesTable)
+        .values({
+          projectId,
+          name: l2data.name,
+          type: l2data.type ?? "module",
+          description: l2data.description,
+          aiGenerated: true,
+          needsReview: true,
+        })
+        .returning();
+      l2node = created;
+      existingL2Map.set(nameKey, created);
+      l2Created++;
+    }
 
-        // Generate embedding for candidate L3 node
-        const l3EmbText = `${l3data.title} ${l3data.content ?? ""}`.trim();
-        const l3Embedding = await generateEmbedding(l3EmbText);
+    // Generate and store embedding for the L2 node
+    const l2EmbText = `${l2data.name} ${l2data.description ?? ""}`.trim();
+    const l2Embedding = await generateEmbedding(l2EmbText);
+    if (l2Embedding) {
+      await db
+        .update(l2NodesTable)
+        .set({ embedding: l2Embedding })
+        .where(eq(l2NodesTable.id, l2node.id));
 
-        // Find most similar existing L3 node for this L2
-        let maxL3Sim = 0;
-        let bestL3Match: (typeof existingL3ForNode)[0] | undefined;
-        if (l3Embedding) {
-          for (const existNode of existingL3ForNode) {
-            const existEmb = existNode.embedding;
-            if (!existEmb) continue;
-            const sim = cosineSimilarity(l3Embedding, existEmb);
-            if (sim > maxL3Sim) {
-              maxL3Sim = sim;
-              bestL3Match = existNode;
-            }
+      // Cross-project AI detection: run for all processed L2 nodes
+      await detectCrossProjectLinks(l2node.id, l2Embedding, projectId);
+      crossLinks++;
+    }
+
+    // Wire L1 tags
+    for (const tagName of l2data.l1TagNames ?? []) {
+      const tagId =
+        tagMap.get(tagName.toLowerCase()) ??
+        allL1Tags.find((t: any) => t.name.toLowerCase() === tagName.toLowerCase())?.id;
+      if (tagId) {
+        await db
+          .insert(l2NodeL1TagsTable)
+          .values({ l2NodeId: l2node.id, l1TagId: tagId })
+          .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
+        await db
+          .update(l1TagsTable)
+          .set({ usageCount: sql`${l1TagsTable.usageCount} + 1` })
+          .where(eq(l1TagsTable.id, tagId));
+      }
+    }
+
+    // Load existing L3 nodes for this L2 node (for semantic dedup)
+    const existingL3ForNode = await db
+      .select()
+      .from(l3NodesTable)
+      .where(and(eq(l3NodesTable.l2NodeId, l2node.id), isNotNull(l3NodesTable.embedding)));
+
+    // Step 5: L3 nodes — semantic dedup before insert
+    for (const l3data of l2data.l3Nodes ?? []) {
+      const confidence =
+        typeof l3data.confidence === "number" ? Math.max(0, Math.min(1, l3data.confidence)) : 0.75;
+
+      // Generate embedding for candidate L3 node
+      const l3EmbText = `${l3data.title} ${l3data.content ?? ""}`.trim();
+      const l3Embedding = await generateEmbedding(l3EmbText);
+
+      // Find most similar existing L3 node for this L2
+      let maxL3Sim = 0;
+      let bestL3Match: (typeof existingL3ForNode)[0] | undefined;
+      if (l3Embedding) {
+        for (const existNode of existingL3ForNode) {
+          const existEmb = existNode.embedding;
+          if (!existEmb) continue;
+          const sim = cosineSimilarity(l3Embedding, existEmb);
+          if (sim > maxL3Sim) {
+            maxL3Sim = sim;
+            bestL3Match = existNode;
           }
         }
+      }
 
-        if (maxL3Sim >= similarityThreshold && bestL3Match) {
-          // Dedup: increment occurrence count
-          const newOccurrenceCount = bestL3Match.occurrenceCount + 1;
+      if (maxL3Sim >= similarityThreshold && bestL3Match) {
+        // Dedup: increment occurrence count
+        const newOccurrenceCount = bestL3Match.occurrenceCount + 1;
 
-          await db
-            .update(l3NodesTable)
-            .set({ occurrenceCount: newOccurrenceCount })
-            .where(eq(l3NodesTable.id, bestL3Match.id));
+        await db
+          .update(l3NodesTable)
+          .set({ occurrenceCount: newOccurrenceCount })
+          .where(eq(l3NodesTable.id, bestL3Match.id));
 
-          // Condensation check
-          if (newOccurrenceCount >= condensationThreshold) {
-            const condensed = await condenseL3Node(bestL3Match as any, model);
-            if (condensed) {
-              await db
-                .update(l3NodesTable)
-                .set({ content: condensed })
-                .where(eq(l3NodesTable.id, bestL3Match.id));
-            }
-            if (condensationReviewRequired) {
-              await db.insert(reviewTasksTable).values({
-                entityType: "l3_node",
-                entityId: bestL3Match.id,
-                taskType: "validate",
-                status: "pending",
-                description: `L3 node "${bestL3Match.title}" condensed (${newOccurrenceCount} occurrences) — review AI-synthesized content`,
-              });
-              rTasksCreated++;
-            }
-          }
-        } else {
-          // Insert new L3 node with validity pending (section 2.4)
-          const [l3node] = await db
-            .insert(l3NodesTable)
-            .values({
-              l2NodeId: l2node.id,
-              title: l3data.title,
-              content: l3data.content,
-              nodeType: l3data.nodeType ?? "change",
-              commitHash: l3data.commitHash || null,
-              aiGenerated: true,
-              confidence,
-              occurrenceCount: 1,
-              validityStatus: "pending",
-            })
-            .returning();
-          l3Created++;
-
-          // Store embedding and add to cache for subsequent dedup in this batch
-          if (l3Embedding) {
+        // Condensation check
+        if (newOccurrenceCount >= condensationThreshold) {
+          const condensed = await condenseL3Node(bestL3Match as any, model);
+          if (condensed) {
             await db
               .update(l3NodesTable)
-              .set({ embedding: l3Embedding })
-              .where(eq(l3NodesTable.id, l3node.id));
-            existingL3ForNode.push({ ...l3node, embedding: l3Embedding });
+              .set({ content: condensed })
+              .where(eq(l3NodesTable.id, bestL3Match.id));
           }
-
-          // Queue review task for low-confidence nodes
-          if (confidence < 0.8) {
+          if (condensationReviewRequired) {
             await db.insert(reviewTasksTable).values({
               entityType: "l3_node",
-              entityId: l3node.id,
+              entityId: bestL3Match.id,
               taskType: "validate",
               status: "pending",
-              description: `AI-generated L3 node (confidence ${Math.round(confidence * 100)}%): "${l3data.title}" — verify content accuracy`,
+              description: `L3 node "${bestL3Match.title}" condensed (${newOccurrenceCount} occurrences) — review AI-synthesized content`,
             });
             rTasksCreated++;
           }
         }
+      } else {
+        // Insert new L3 node with validity pending (section 2.4)
+        const [l3node] = await db
+          .insert(l3NodesTable)
+          .values({
+            l2NodeId: l2node.id,
+            title: l3data.title,
+            content: l3data.content,
+            nodeType: l3data.nodeType ?? "change",
+            commitHash: l3data.commitHash || null,
+            aiGenerated: true,
+            confidence,
+            occurrenceCount: 1,
+            validityStatus: "pending",
+          })
+          .returning();
+        l3Created++;
 
-        // Step 6: Backfill commit → L2 link via commit hash (always, regardless of dedup)
-        if (l3data.commitHash) {
-          const commitId =
-            commitHashMap.get(l3data.commitHash) ??
-            commitHashMap.get(l3data.commitHash.slice(0, 8));
-          if (commitId) {
-            await db
-              .update(commitsTable)
-              .set({ l2NodeId: l2node.id })
-              .where(eq(commitsTable.id, commitId))
-              .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
-            // Also insert into commit_l2_links junction table (v2)
-            await db
-              .insert(commitL2LinksTable)
-              .values({ commitId: commitId, l2NodeId: l2node.id })
-              .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
-          }
+        // Store embedding and add to cache for subsequent dedup in this batch
+        if (l3Embedding) {
+          await db
+            .update(l3NodesTable)
+            .set({ embedding: l3Embedding })
+            .where(eq(l3NodesTable.id, l3node.id));
+          existingL3ForNode.push({ ...l3node, embedding: l3Embedding });
+        }
+
+        // Queue review task for low-confidence nodes
+        if (confidence < 0.8) {
+          await db.insert(reviewTasksTable).values({
+            entityType: "l3_node",
+            entityId: l3node.id,
+            taskType: "validate",
+            status: "pending",
+            description: `AI-generated L3 node (confidence ${Math.round(confidence * 100)}%): "${l3data.title}" — verify content accuracy`,
+          });
+          rTasksCreated++;
+        }
+      }
+
+      // Step 6: Backfill commit → L2 link via commit hash (always, regardless of dedup)
+      if (l3data.commitHash) {
+        const commitId =
+          commitHashMap.get(l3data.commitHash) ?? commitHashMap.get(l3data.commitHash.slice(0, 8));
+        if (commitId) {
+          await db
+            .update(commitsTable)
+            .set({ l2NodeId: l2node.id })
+            .where(eq(commitsTable.id, commitId))
+            .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
+          // Also insert into commit_l2_links junction table (v2)
+          await db
+            .insert(commitL2LinksTable)
+            .values({ commitId: commitId, l2NodeId: l2node.id })
+            .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
         }
       }
     }
+  }
 
-    // Create single L2 review tasks for newly created nodes
-    const postL2 = await db
-      .select()
-      .from(l2NodesTable)
-      .where(and(eq(l2NodesTable.projectId, projectId), eq(l2NodesTable.needsReview, true)));
-    const pendingL2Reviews = await db
-      .select()
-      .from(reviewTasksTable)
-      .where(
-        and(eq(reviewTasksTable.entityType, "l2_node"), eq(reviewTasksTable.status, "pending"))
-      );
-    const coveredL2Ids = new Set(pendingL2Reviews.map((t: any) => t.entityId));
+  // Create single L2 review tasks for newly created nodes
+  const postL2 = await db
+    .select()
+    .from(l2NodesTable)
+    .where(and(eq(l2NodesTable.projectId, projectId), eq(l2NodesTable.needsReview, true)));
+  const pendingL2Reviews = await db
+    .select()
+    .from(reviewTasksTable)
+    .where(and(eq(reviewTasksTable.entityType, "l2_node"), eq(reviewTasksTable.status, "pending")));
+  const coveredL2Ids = new Set(pendingL2Reviews.map((t: any) => t.entityId));
 
-    for (const node of postL2) {
-      if (!coveredL2Ids.has(node.id)) {
-        await db.insert(reviewTasksTable).values({
-          entityType: "l2_node",
-          entityId: node.id,
-          taskType: "validate",
-          status: "pending",
-          description: `AI-generated L2 node: "${node.name}" — verify this component classification is accurate`,
-        });
-        rTasksCreated++;
-      }
+  for (const node of postL2) {
+    if (!coveredL2Ids.has(node.id)) {
+      await db.insert(reviewTasksTable).values({
+        entityType: "l2_node",
+        entityId: node.id,
+        taskType: "validate",
+        status: "pending",
+        description: `AI-generated L2 node: "${node.name}" — verify this component classification is accurate`,
+      });
+      rTasksCreated++;
     }
+  }
 
-    if (l2Created > 0 || l3Created > 0) {
-      await db.insert(activityLogTable).values({
-        type: "l2_created",
-        description: `AI generated ${l2Created} new L2 nodes (${l2Updated} updated), ${l3Created} L3 nodes for "${project.name}"`,
-        projectId,
+  if (l2Created > 0 || l3Created > 0) {
+    await db.insert(activityLogTable).values({
+      type: "l2_created",
+      description: `AI generated ${l2Created} new L2 nodes (${l2Updated} updated), ${l3Created} L3 nodes for "${project.name}"`,
+      projectId,
+    });
+  }
+
+  if (l3Created > 0) {
+    const subscribers = await db
+      .select()
+      .from(subscriptionsTable)
+      .where(eq(subscriptionsTable.publisherProjectId, projectId));
+    for (const sub of subscribers) {
+      await db.insert(notificationsTable).values({
+        projectId: sub.subscriberProjectId,
+        type: "new_l3_node",
+        payload: { l3Count: l3Created, projectId },
+        read: false,
       });
     }
+    void notifyExternalIntegrations(projectId, project.name, "new_l3_node", {
+      l3Count: l3Created,
+      projectId,
+    });
+  }
 
-    if (l3Created > 0) {
-      const subscribers = await db
-        .select()
-        .from(subscriptionsTable)
-        .where(eq(subscriptionsTable.publisherProjectId, projectId));
-      for (const sub of subscribers) {
-        await db.insert(notificationsTable).values({
-          projectId: sub.subscriberProjectId,
-          type: "new_l3_node",
-          payload: { l3Count: l3Created, projectId },
-          read: false,
-        });
-      }
-      void notifyExternalIntegrations(projectId, project.name, "new_l3_node", {
-        l3Count: l3Created,
-        projectId,
-      });
-    }
-
-    
   return { l2Created, l2Updated, l3Created, rTasksCreated, crossLinks };
 }

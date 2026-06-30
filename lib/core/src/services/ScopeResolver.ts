@@ -27,7 +27,10 @@ export class ScopeResolver {
     this.localsByFile.set(normalizedPath, new Set(locals));
   }
 
-  public resolveCall(sourceFilePath: string, callName: string): { targetFile: string; targetSymbol: string } | null {
+  public resolveCall(
+    sourceFilePath: string,
+    callName: string
+  ): { targetFile: string; targetSymbol: string } | null {
     const normalizedSource = sourceFilePath.replace(/\\/g, "/");
 
     // 1. Check if it's local
@@ -44,7 +47,7 @@ export class ScopeResolver {
         if (resolvedPath) {
           return {
             targetFile: resolvedPath,
-            targetSymbol: imp.originalName === "*" ? callName : imp.originalName
+            targetSymbol: imp.originalName === "*" ? callName : imp.originalName,
           };
         }
       }
@@ -60,16 +63,16 @@ export class ScopeResolver {
       const target = path.posix.join(dir, modulePath);
       return this.findFileWithExtension(target);
     }
-    
+
     // Aliases like @workspace/...
     if (modulePath.startsWith("@workspace/")) {
       const parts = modulePath.split("/");
       const pkg = parts[1];
       const rest = parts.slice(2).join("/"); // could be empty
-      
+
       // We check artifacts/ and lib/
       const possibleRoots = [`artifacts/${pkg}/src`, `lib/${pkg}/src`];
-      
+
       for (const root of possibleRoots) {
         const targetPath = rest ? path.posix.join(root, rest) : root;
         const resolved = this.findFileWithExtension(targetPath);

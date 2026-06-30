@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-016: Git Blob-Native Identity & Checkout Thrashing Defense
 
 ## Context

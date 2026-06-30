@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # VS Code Client Onboarding & Scope Discovery (Zero to One)
 
 ## Core Pain Points & Objectives

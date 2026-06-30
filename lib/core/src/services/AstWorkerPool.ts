@@ -22,13 +22,16 @@ export class AstWorkerPool implements IASTWorkerPool {
     reject: (err: any) => void;
   }> = [];
   private taskCounter = 0;
-  private pendingTasks = new Map<string, { resolve: (val: AstParseResponse) => void; reject: (err: any) => void }>();
+  private pendingTasks = new Map<
+    string,
+    { resolve: (val: AstParseResponse) => void; reject: (err: any) => void }
+  >();
 
   async initialize(workerCount: number = 2): Promise<void> {
     // Determine if we are in .ts environment (tsx) or .js environment (dist)
     let isTs = false;
     let wPath = path.resolve(__dirname, "../workers/ast-worker.js");
-    
+
     if (!fs.existsSync(wPath)) {
       wPath = path.resolve(__dirname, "../workers/ast-worker.ts");
       isTs = true;
@@ -37,7 +40,9 @@ export class AstWorkerPool implements IASTWorkerPool {
     const workerOptions: any = {};
     if (isTs) {
       // Inherit the exact tsx loader from the parent process, filtering out any script-specific args
-      workerOptions.execArgv = process.execArgv.filter(arg => !arg.includes('--eval') && !arg.includes('--print'));
+      workerOptions.execArgv = process.execArgv.filter(
+        (arg) => !arg.includes("--eval") && !arg.includes("--print")
+      );
     } else {
       // If running from dist/ast-worker.js, we don't need any loaders.
       workerOptions.execArgv = [];
@@ -52,7 +57,7 @@ export class AstWorkerPool implements IASTWorkerPool {
           this.pendingTasks.delete(res.taskId);
           promiseCallbacks.resolve(res);
         }
-        
+
         this.workerQueue.push(worker);
         this.processQueue();
       });
@@ -80,15 +85,15 @@ export class AstWorkerPool implements IASTWorkerPool {
 
     const task = this.taskQueue.shift()!;
     const worker = this.workerQueue.shift()!;
-    
+
     const taskId = String(++this.taskCounter);
     this.pendingTasks.set(taskId, { resolve: task.resolve, reject: task.reject });
-    
+
     worker.postMessage({ ...task.request, taskId });
   }
 
   async terminate(): Promise<void> {
-    await Promise.all(this.workers.map(w => w.terminate()));
+    await Promise.all(this.workers.map((w) => w.terminate()));
     this.workers = [];
     this.workerQueue = [];
   }

@@ -25,7 +25,7 @@ export class SyncService {
     if (!res.ok) {
       throw new Error(String(body.error ?? "Sync failed"));
     }
-    
+
     if (this.onProgress) {
       this.onProgress(String(body.message ?? "Sync completed"));
     }

@@ -4,6 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Cpu, Play, Copy, CheckCircle2, ExternalLink } from "lucide-react";
+import {
+  useMcpListProjects,
+  useMcpSearchKnowledge,
+  useMcpGetDependencies,
+  useMcpImpactAnalysis,
+  useMcpGetDecisionRecord,
+  getMcpListProjectsQueryKey,
+  getMcpSearchKnowledgeQueryKey,
+  getMcpGetDependenciesQueryKey,
+  getMcpImpactAnalysisQueryKey,
+  getMcpGetDecisionRecordQueryKey,
+} from "@workspace/api-client-react";
 
 interface Endpoint {
   name: string;
@@ -67,6 +79,55 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const listProjects = useMcpListProjects({
+    query: {
+      enabled: false,
+      queryKey: getMcpListProjectsQueryKey(),
+    },
+  });
+
+  const searchKnowledgeParams = {
+    query: params.query || "",
+    project_id: params.project_id ? Number(params.project_id) : undefined,
+    limit: params.limit ? Number(params.limit) : undefined,
+  };
+  const searchKnowledge = useMcpSearchKnowledge(searchKnowledgeParams, {
+    query: {
+      enabled: false,
+      queryKey: getMcpSearchKnowledgeQueryKey(searchKnowledgeParams),
+    },
+  });
+
+  const getDependenciesParams = {
+    module: params.module || "",
+    project_id: params.project_id ? Number(params.project_id) : undefined,
+  };
+  const getDependencies = useMcpGetDependencies(getDependenciesParams, {
+    query: {
+      enabled: false,
+      queryKey: getMcpGetDependenciesQueryKey(getDependenciesParams),
+    },
+  });
+
+  const impactAnalysisParams = {
+    module: params.module || "",
+    project_id: params.project_id ? Number(params.project_id) : undefined,
+  };
+  const impactAnalysis = useMcpImpactAnalysis(impactAnalysisParams, {
+    query: {
+      enabled: false,
+      queryKey: getMcpImpactAnalysisQueryKey(impactAnalysisParams),
+    },
+  });
+
+  const getDecisionRecordParams = { commit_hash: params.commit_hash || "" };
+  const getDecisionRecord = useMcpGetDecisionRecord(getDecisionRecordParams, {
+    query: {
+      enabled: false,
+      queryKey: getMcpGetDecisionRecordQueryKey(getDecisionRecordParams),
+    },
+  });
+
   const buildUrl = () => {
     const filled = Object.entries(params).filter(([, v]) => v.trim());
     if (!filled.length) return endpoint.path;
@@ -78,9 +139,28 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch(buildUrl());
-      const data = await res.json();
-      setResult(data);
+      let res;
+      switch (endpoint.name) {
+        case "list_projects":
+          res = await listProjects.refetch();
+          break;
+        case "search_knowledge":
+          res = await searchKnowledge.refetch();
+          break;
+        case "get_dependencies":
+          res = await getDependencies.refetch();
+          break;
+        case "impact_analysis":
+          res = await impactAnalysis.refetch();
+          break;
+        case "get_decision_record":
+          res = await getDecisionRecord.refetch();
+          break;
+        default:
+          throw new Error("Unknown endpoint");
+      }
+      if (res.error) throw res.error;
+      setResult(res.data);
     } catch (e) {
       setResult({ error: e instanceof Error ? e.message : "Request failed" });
     } finally {

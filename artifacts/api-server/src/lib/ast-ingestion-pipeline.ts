@@ -378,16 +378,27 @@ export async function ingestAstJsonl(
     errors: [],
   };
 
-
-  const { 
-    fileEvents, classEvents, functionEvents, importEvents, callEvents, contractEvents 
-  } = await streamAndCollectEvents(jsonlPath, result);
+  const { fileEvents, classEvents, functionEvents, importEvents, callEvents, contractEvents } =
+    await streamAndCollectEvents(jsonlPath, result);
 
   const { filePathToL2Id, pathToL2Id } = await processBatchL2Nodes(projectId, fileEvents, result);
 
-  const { fqnToL3Id, nameToL3Id, l3IdToL2Id } = await processBatchL3Nodes(projectId, classEvents, functionEvents, filePathToL2Id, result);
+  const { fqnToL3Id, nameToL3Id, l3IdToL2Id } = await processBatchL3Nodes(
+    projectId,
+    classEvents,
+    functionEvents,
+    filePathToL2Id,
+    result
+  );
 
-  const { contractEndpointToL3Id, contractPathToL2Id } = await processBatchContractEndpoints(projectId, contractEvents, filePathToL2Id, nameToL3Id, l3IdToL2Id, result);
+  const { contractEndpointToL3Id, contractPathToL2Id } = await processBatchContractEndpoints(
+    projectId,
+    contractEvents,
+    filePathToL2Id,
+    nameToL3Id,
+    l3IdToL2Id,
+    result
+  );
 
   await processBatchLinks(
     projectId,
@@ -472,7 +483,6 @@ export async function ingestAstBatch(
   return aggregated;
 }
 
-
 async function streamAndCollectEvents(jsonlPath: string, result: IngestionResult) {
   const fileEvents: FileEvent[] = [];
   const classEvents: SymbolEvent[] = [];
@@ -484,10 +494,8 @@ async function streamAndCollectEvents(jsonlPath: string, result: IngestionResult
   // ══════════════════════════════════════════════════════════════════
   // Phase 1: Stream & Collect all events
   // ══════════════════════════════════════════════════════════════════
-  
 
   // Track file path for events that don't have their own path field
-  
 
   const fileStream = fs.createReadStream(jsonlPath, { encoding: "utf-8" });
   const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
@@ -616,10 +624,9 @@ async function streamAndCollectEvents(jsonlPath: string, result: IngestionResult
   }
 
   // ══════════════════════════════════════════════════════════════════
-  
+
   return { fileEvents, classEvents, functionEvents, importEvents, callEvents, contractEvents };
 }
-
 
 async function processBatchL2Nodes(
   projectId: number,
@@ -628,7 +635,7 @@ async function processBatchL2Nodes(
 ) {
   const filePathToL2Id = new Map<string, number>();
   const pathToL2Id = new Map<string, number>();
-// Phase 2: Batch L2 Node Insertion
+  // Phase 2: Batch L2 Node Insertion
   // Deduplicate by filePath, then batch-insert new nodes.
   // ══════════════════════════════════════════════════════════════════
 
@@ -649,7 +656,7 @@ async function processBatchL2Nodes(
     .where(eq(l2NodesTable.projectId, projectId));
 
   // Build lookup: pathPattern → existing L2 node
-  
+
   const nameToL2Ids = new Map<string, number[]>(); // baseName → [id, ...]
 
   for (const node of existingL2Nodes) {
@@ -770,10 +777,9 @@ async function processBatchL2Nodes(
   }
 
   // ══════════════════════════════════════════════════════════════════
-  
+
   return { filePathToL2Id, pathToL2Id };
 }
-
 
 async function processBatchL3Nodes(
   projectId: number,
@@ -785,7 +791,7 @@ async function processBatchL3Nodes(
   const fqnToL3Id = new Map<string, number>();
   const nameToL3Id = new Map<string, number>();
   const l3IdToL2Id = new Map<number, number>();
-// Phase 3: Batch L3 Node Insertion
+  // Phase 3: Batch L3 Node Insertion
   // Resolve l2NodeId for all symbols, then batch-insert.
   // ══════════════════════════════════════════════════════════════════
 
@@ -829,9 +835,6 @@ async function processBatchL3Nodes(
   }
 
   // Build FQN → L3 ID and name → L3 ID maps for link resolution
-  
-  
-  
 
   // First, add newly inserted L3 nodes
   for (const inserted of l3InsertedIds) {
@@ -867,10 +870,9 @@ async function processBatchL3Nodes(
   }
 
   // ══════════════════════════════════════════════════════════════════
-  
+
   return { fqnToL3Id, nameToL3Id, l3IdToL2Id };
 }
-
 
 async function processBatchContractEndpoints(
   projectId: number,
@@ -882,7 +884,7 @@ async function processBatchContractEndpoints(
 ) {
   const contractEndpointToL3Id = new Map<string, number>();
   const contractPathToL2Id = new Map<string, number>();
-// Phase 3.5: Contract Endpoint L3 Insertion (Cross-Language Edges)
+  // Phase 3.5: Contract Endpoint L3 Insertion (Cross-Language Edges)
   // Create L3 nodes for each API endpoint under the contract L2 node.
   // ══════════════════════════════════════════════════════════════════
 
@@ -891,7 +893,7 @@ async function processBatchContractEndpoints(
   const endpointEvents = contractEvents.filter((e) => !!e.method);
 
   // Map: contract filePath → L2 ID (resolved from Phase 2)
-  
+
   for (const tc of topLevelContracts) {
     const l2Id = filePathToL2Id.get(tc.filePath);
     if (l2Id) {
@@ -940,10 +942,9 @@ async function processBatchContractEndpoints(
   }
 
   // ══════════════════════════════════════════════════════════════════
-  
+
   return { contractEndpointToL3Id, contractPathToL2Id };
 }
-
 
 async function processBatchLinks(
   projectId: number,
@@ -960,12 +961,15 @@ async function processBatchLinks(
   result: IngestionResult
 ) {
   const endpointEvents = contractEvents.filter((e) => !!e.method);
-  const existingL2Nodes = await db.select().from(l2NodesTable).where(eq(l2NodesTable.projectId, projectId));
+  const existingL2Nodes = await db
+    .select()
+    .from(l2NodesTable)
+    .where(eq(l2NodesTable.projectId, projectId));
   const nameToL2Ids = new Map<string, number[]>();
   for (const node of existingL2Nodes) {
     nameToL2Ids.set(node.name, [...(nameToL2Ids.get(node.name) || []), node.id]);
   }
-// Phase 4: Batch Link Insertion
+  // Phase 4: Batch Link Insertion
   // Resolve all imports and calls using pre-built maps.
   // ══════════════════════════════════════════════════════════════════
 
@@ -1145,7 +1149,5 @@ async function processBatchLinks(
     });
   }
 
-  logger.info({ projectId,  result }, "AST ingestion completed (batch optimized)");
-
+  logger.info({ projectId, result }, "AST ingestion completed (batch optimized)");
 }
-

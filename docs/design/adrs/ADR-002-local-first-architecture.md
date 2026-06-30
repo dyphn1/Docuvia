@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # Local-First Architecture & Graceful Server Degradation
 
 ## Status
@@ -5,6 +9,7 @@
 **Implemented (Survival Update Complete)**
 
 The "Survival Update" features have been successfully implemented, completing the Local-First vision:
+
 - **WASM AST Worker Pool**: Local syntax analysis via `web-tree-sitter`.
 - **SQLite Local DB**: Standalone graph persistence using `better-sqlite3`.
 - **Git-Native Blob Hashing**: Incremental updates bypassing heavy checkouts.

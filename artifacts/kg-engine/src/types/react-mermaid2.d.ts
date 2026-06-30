@@ -1,5 +1,5 @@
-declare module 'react-mermaid2' {
-  import React from 'react';
+declare module "react-mermaid2" {
+  import React from "react";
   export interface MermaidProps {
     chart: string;
     config?: any;

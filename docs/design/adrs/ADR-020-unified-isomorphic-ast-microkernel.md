@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-020: Unified Isomorphic AST Microkernel
 
 ## Status

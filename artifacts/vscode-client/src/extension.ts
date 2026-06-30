@@ -17,7 +17,16 @@ import { TaskRunner } from "./TaskRunner.js";
 import { minimatch } from "minimatch";
 import { parse as parseYaml } from "yaml";
 import { randomUUID } from "crypto";
-import { InitService, AnalyzeService, ExtractService, openLocalDatabase, CleanService, StatusService, ChangeDetectionService, SyncService } from "@workspace/core";
+import {
+  InitService,
+  AnalyzeService,
+  ExtractService,
+  openLocalDatabase,
+  CleanService,
+  StatusService,
+  ChangeDetectionService,
+  SyncService,
+} from "@workspace/core";
 
 let outputChannel: vscode.OutputChannel;
 
@@ -421,7 +430,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const statusService = new StatusService(folders[0].uri.fsPath);
         const status = await statusService.getStatus();
         outputChannel.appendLine(`[Docuvia] Status: ${JSON.stringify(status, null, 2)}`);
-        void vscode.window.showInformationMessage(`Docuvia Status: Checked. See Output channel for details.`);
+        void vscode.window.showInformationMessage(
+          `Docuvia Status: Checked. See Output channel for details.`
+        );
       } catch (err: any) {
         void vscode.window.showErrorMessage(`Docuvia: Status failed - ${err.message}`);
       }

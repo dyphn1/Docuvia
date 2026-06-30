@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-015: Progressive Enrichment & AST/LSP Dual Engine
 
 ## Context

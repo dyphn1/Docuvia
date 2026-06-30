@@ -309,7 +309,11 @@ router.post("/:projectId", async (req, res) => {
         const prCreatedAt = prRecord?.createdAt ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
         // Generate AI summary using gpt-4o as default
-        const aiSummary = await generatePrAiSummary(projectId, prCreatedAt, process.env.AI_OPENAI_MODEL || "gpt-4o");
+        const aiSummary = await generatePrAiSummary(
+          projectId,
+          prCreatedAt,
+          process.env.AI_OPENAI_MODEL || "gpt-4o"
+        );
 
         await db
           .update(pullRequestsTable)

@@ -108,7 +108,9 @@ async function main() {
   console.error("  docuvia init                                 # Initialize local project and DB");
   console.error("  docuvia status                               # Check index database health");
   console.error("  docuvia clean                                # Wipe local.db knowledge graph");
-  console.error("  docuvia detect-changes [--baseRef=...]       # Detect structural changes and risk score");
+  console.error(
+    "  docuvia detect-changes [--baseRef=...]       # Detect structural changes and risk score"
+  );
   console.error(
     "  docuvia analyze [--deep]                     # Analyze project (add --deep for L3 extraction)"
   );

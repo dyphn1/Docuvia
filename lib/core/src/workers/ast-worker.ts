@@ -45,7 +45,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     }
 
     const parser = new Parser();
-    
+
     // Attempt to load wasm
     let languageLoaded = false;
     try {
@@ -53,11 +53,20 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       // Use require.resolve to safely find tree-sitter-wasms no matter if it's hoisted or in .pnpm
       let wasmPath = "";
       try {
-        const packagePath = require.resolve(`tree-sitter-wasms/package.json`, { paths: [docuviaRoot] });
-        wasmPath = path.join(path.dirname(packagePath), "out", `tree-sitter-${request.language}.wasm`);
+        const packagePath = require.resolve(`tree-sitter-wasms/package.json`, {
+          paths: [docuviaRoot],
+        });
+        wasmPath = path.join(
+          path.dirname(packagePath),
+          "out",
+          `tree-sitter-${request.language}.wasm`
+        );
       } catch (err) {
         // Fallback to explicit path if package.json resolve fails
-        wasmPath = path.resolve(docuviaRoot, `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
+        wasmPath = path.resolve(
+          docuviaRoot,
+          `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
+        );
       }
 
       if (fs.existsSync(wasmPath)) {
@@ -67,7 +76,10 @@ parentPort?.on("message", async (request: AstParseRequest) => {
         languageLoaded = true;
       } else {
         // Ultimate fallback for pnpm structures
-        const pnpmAltPath = path.resolve(docuviaRoot, `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
+        const pnpmAltPath = path.resolve(
+          docuviaRoot,
+          `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
+        );
         if (fs.existsSync(pnpmAltPath)) {
           const wasmBytes = fs.readFileSync(pnpmAltPath);
           const lang = await Language.load(wasmBytes);
@@ -82,128 +94,26 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     }
 
     if (!languageLoaded) {
-      // Mock logic as requested
       parser.delete();
-      
-      // Basic regex fallback for TS/JS imports
-      const imports: ImportDescriptor[] = [];
-      const importRegex = /import\s+({[^}]+}|[^{;]+)\s+from\s+['"]([^'"]+)['"]/g;
-      let match;
-      while ((match = importRegex.exec(request.code)) !== null) {
-        const specifiers = match[1].trim();
-        const modulePath = match[2];
-        if (specifiers.startsWith('{')) {
-          const parts = specifiers.slice(1, -1).split(',');
-          for (const p of parts) {
-            const t = p.trim();
-            if (!t) continue;
-            const asIdx = t.indexOf(' as ');
-            if (asIdx !== -1) {
-              imports.push({
-                localName: t.slice(asIdx + 4).trim(),
-                originalName: t.slice(0, asIdx).trim(),
-                modulePath
-              });
-            } else {
-              imports.push({ localName: t, originalName: t, modulePath });
-            }
-          }
-        } else {
-          // default or namespace import
-          if (specifiers.includes('* as ')) {
-            imports.push({
-              localName: specifiers.split(' as ')[1].trim(),
-              originalName: '*',
-              modulePath
-            });
-          } else {
-            imports.push({
-              localName: specifiers,
-              originalName: 'default',
-              modulePath
-            });
-          }
-        }
-      }
-      
-      const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
-      // Basic regex for calls (naive)
-      const callRegex = /([a-zA-Z_$][0-9a-zA-Z_$]*)\s*\(/g;
-      while ((match = callRegex.exec(request.code)) !== null) {
-        // Skip some standard keywords
-        if (['if', 'while', 'for', 'switch', 'catch', 'function'].includes(match[1])) continue;
-        calls.push({ sourceFunction: "global", targetFunction: match[1] });
-      }
-
       parentPort?.postMessage({
         taskId: request.taskId,
-        success: true,
-        data: {
-          imports,
-          exports: [],
-          functions: [],
-          classes: [],
-          calls,
-          decisions: ["Extracted via Worker (Mocked AST parsing + regex)"],
-        }
+        success: false,
+        error: `Failed to load tree-sitter language for ${request.language}`,
       });
       return;
     }
 
     // Parse the code using Tree-sitter
     const tree = parser.parse(request.code);
-    
+
     const decisions: string[] = [];
     if (tree) {
       decisions.push(`Parsed via web-tree-sitter (nodes: ${tree.rootNode.childCount})`);
     }
 
-    // Basic regex fallback for TS/JS imports (even with tree-sitter active, as there are no queries configured here yet)
+    // TODO: Implement actual tree-sitter queries for imports, exports, functions, classes, and calls
     const imports: ImportDescriptor[] = [];
-    const importRegex = /import\s+({[^}]+}|[^{;]+)\s+from\s+['"]([^'"]+)['"]/g;
-    let match;
-    while ((match = importRegex.exec(request.code)) !== null) {
-      const specifiers = match[1].trim();
-      const modulePath = match[2];
-      if (specifiers.startsWith('{')) {
-        const parts = specifiers.slice(1, -1).split(',');
-        for (const p of parts) {
-          const t = p.trim();
-          if (!t) continue;
-          const asIdx = t.indexOf(' as ');
-          if (asIdx !== -1) {
-            imports.push({
-              localName: t.slice(asIdx + 4).trim(),
-              originalName: t.slice(0, asIdx).trim(),
-              modulePath
-            });
-          } else {
-            imports.push({ localName: t, originalName: t, modulePath });
-          }
-        }
-      } else {
-        if (specifiers.includes('* as ')) {
-          imports.push({
-            localName: specifiers.split(' as ')[1].trim(),
-            originalName: '*',
-            modulePath
-          });
-        } else {
-          imports.push({
-            localName: specifiers,
-            originalName: 'default',
-            modulePath
-          });
-        }
-      }
-    }
-    
     const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
-    const callRegex = /([a-zA-Z_$][0-9a-zA-Z_$]*)\s*\(/g;
-    while ((match = callRegex.exec(request.code)) !== null) {
-      if (['if', 'while', 'for', 'switch', 'catch', 'function'].includes(match[1])) continue;
-      calls.push({ sourceFunction: "global", targetFunction: match[1] });
-    }
 
     const data = {
       imports,
@@ -211,7 +121,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       functions: [],
       classes: [],
       calls,
-      decisions
+      decisions,
     };
 
     if (tree) tree.delete();
@@ -220,13 +130,13 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     parentPort?.postMessage({
       taskId: request.taskId,
       success: true,
-      data
+      data,
     });
   } catch (err: any) {
     parentPort?.postMessage({
       taskId: request.taskId,
       success: false,
-      error: err.message
+      error: err.message,
     });
   }
 });

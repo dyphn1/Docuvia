@@ -7,6 +7,7 @@
 ## VS Code Extension Development
 
 - **Multi-root Workspace Trap**: NEVER rely on `vscode.workspace.workspaceFolders?.[0]?.uri.fsPath` for file operations. In multi-root workspaces, this resolves to the wrong directory for files in subsequent roots. Always resolve the workspace root dynamically based on the target file's URI: `vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath))?.uri.fsPath`.
+- **WASM Resolution in Extensions**: Loading `web-tree-sitter` in a VS Code extension context requires robust fallback paths to correctly resolve `.wasm` file locations across different dependency management strategies (e.g., hoisted vs. strictly linked pnpm structures) to avoid runtime initialization failures.
 
 ## Parsing & Data Transformation
 
@@ -21,6 +22,7 @@
 ## Performance & Scaling
 
 - **O(N²) In-Memory Vector Scans**: NEVER load all records (e.g., embeddings) into JS application memory to compute pairwise cosine similarities using loops. This will cause OOM crashes or massive latency spikes at scale. Always push vector math to the database layer using SQL-level operations (e.g., `pgvector`'s `<=>` distance operator) for scalable O(log N) indexing.
+- **Multer Memory Saturation**: Refactoring `multer` from `memoryStorage` to `diskStorage` prevents memory saturation during large file uploads. However, this requires updating downstream consumers to handle `req.file.path` via streams or safe `fs` reads, and ensuring explicit `fs.unlinkSync` cleanup in `finally` blocks to avoid lingering temp files.
 
 ## Memory Leaks & WASM
 

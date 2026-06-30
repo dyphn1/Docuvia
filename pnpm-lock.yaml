@@ -806,6 +806,12 @@ importers:
       ignore:
         specifier: ^7.0.5
         version: 7.0.5
+      pino:
+        specifier: ^9
+        version: 9.14.0
+      sax:
+        specifier: ^1.6.0
+        version: 1.6.0
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -819,6 +825,12 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
+      '@types/sax':
+        specifier: ^1.2.7
+        version: 1.2.7
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@25.3.5)(jsdom@14.1.0)(lightningcss@1.31.1)
 
   lib/db:
     dependencies:
@@ -15012,9 +15024,7 @@ snapshots:
       jest-runner: 24.9.0
       jest-runtime: 24.9.0
     transitivePeerDependencies:
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@jest/transform@24.9.0':
     dependencies:
@@ -16867,7 +16877,7 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 25.3.5
+      '@types/node': 22.20.0
 
   '@types/send@1.2.1':
     dependencies:
@@ -21652,7 +21662,9 @@ snapshots:
       pretty-format: 24.9.0
       throat: 4.1.0
     transitivePeerDependencies:
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   jest-leak-detector@24.9.0:
     dependencies:

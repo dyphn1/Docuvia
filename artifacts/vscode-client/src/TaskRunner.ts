@@ -275,7 +275,7 @@ If you are not confident about an item, exclude it from the array.`;
     }
 
     const model = models[0];
-    const chunks = this.chunkContent(params.content);
+    const chunks = await this.chunkContent(params.content, params.sourceFilePath);
     const allDecisions: string[] = [];
     let chunkIndex = 0;
 
@@ -437,18 +437,83 @@ If you are not confident about an item, exclude it from the array.`;
     db.close();
   }
 
-  private chunkContent(content: string): string[] {
+  private async chunkContent(content: string, filePath: string): Promise<string[]> {
     const strategy = this.globalConfig?.chunking_strategy ?? "line";
+    const chunks: string[] = [];
 
     if (strategy === "ast") {
-      // TODO: Implement AST-based chunking using tree-sitter or similar
-      this.outputChannel.appendLine(
-        "[Docuvia/TaskRunner] AST chunking requested, but falling back to line chunking (not yet implemented)."
-      );
+      try {
+        const { ParsingFunnel, initParser, LanguageRegistry } = await import("@workspace/ast-core");
+        const { Parser, Language } = await import("web-tree-sitter");
+
+        const registry = await LanguageRegistry.load();
+        const funnel = new ParsingFunnel(registry);
+        const ext = path.extname(filePath);
+        const funnelRes = funnel.process(content, filePath, ext);
+
+        if (funnelRes.accepted && funnelRes.mappedExtension) {
+          const provider = registry.getProviderForExtension(funnelRes.mappedExtension);
+          if (provider) {
+             // In VS Code extension context, resolve wasm path dynamically
+             await initParser(() => ""); // Pass dummy locator, web-tree-sitter handles Language.load path
+             
+             // Try to resolve the WASM path
+             let wasmPath = "";
+             try {
+                // Try from workspace node_modules
+                wasmPath = path.resolve(require.resolve("tree-sitter-wasms/package.json"), "..", "out", provider.wasm_file);
+             } catch (err) {
+                // Fallback to local extension node_modules
+                wasmPath = path.resolve(__dirname, "..", "node_modules", "tree-sitter-wasms", "out", provider.wasm_file);
+             }
+             
+             const fs = await import("fs");
+             let lang;
+             if (fs.existsSync(wasmPath)) {
+                const wasmBytes = fs.readFileSync(wasmPath);
+                lang = await Language.load(wasmBytes);
+             } else {
+                lang = await Language.load(wasmPath); // let web-tree-sitter try
+             }
+             
+             const parser = new Parser();
+             parser.setLanguage(lang);
+             
+             const tree = parser.parse(content);
+             if (!tree) throw new Error("Tree is null after parsing");
+             
+             const classDecls = provider.extractClasses(tree.rootNode);
+             const funcDecls = provider.extractFunctions(tree.rootNode);
+             
+             // Sort by start index
+             const nodes = [...classDecls, ...funcDecls].sort((a, b) => a.startIndex - b.startIndex);
+             
+             let lastIndex = 0;
+             for (const node of nodes) {
+                if (node.startIndex > lastIndex) {
+                   const gap = content.slice(lastIndex, node.startIndex).trim();
+                   if (gap) chunks.push(gap);
+                }
+                chunks.push(content.slice(node.startIndex, node.endIndex));
+                lastIndex = node.endIndex;
+             }
+             if (lastIndex < content.length) {
+                const tail = content.slice(lastIndex).trim();
+                if (tail) chunks.push(tail);
+             }
+             
+             this.outputChannel.appendLine(`[Docuvia/TaskRunner] AST chunking successful. Created ${chunks.length} chunks.`);
+             if (chunks.length > 0) return chunks;
+          }
+        }
+      } catch (e: any) {
+        this.outputChannel.appendLine(
+          `[Docuvia/TaskRunner] AST chunking failed: ${e.message}. Falling back to line chunking.`
+        );
+      }
     }
 
     // Default: Line-based chunking
-    const chunks: string[] = [];
     const lines = content.split("\n");
     let currentChunk = "";
 

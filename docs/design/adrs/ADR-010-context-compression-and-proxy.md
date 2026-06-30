@@ -14,6 +14,34 @@ As Docuvia enables deep structural code analysis via the [AST Microkernel (ADR-0
 
 ## Decision
 
+### Architecture Diagram
+
+```mermaid
+sequenceDiagram
+    participant LLM as LLM (Client)
+    participant Proxy as Proxy Layer
+    participant DB as SQLite Cache
+    participant AST as AST DB (Skeleton)
+    participant MCP as MCP Tool
+
+    LLM->>Proxy: Send Prompt with large code block
+    alt Context Available (Scheme A)
+        Proxy->>AST: Query AST Skeleton by path
+        AST-->>Proxy: Return 50-line Skeleton
+        Proxy->>DB: Store original text (24h TTL)
+        Proxy-->>LLM: Forward Prompt with Skeleton + retrieval ID
+    else Context Missing (Scheme B)
+        Proxy->>Proxy: Dumb Text Crusher (Regex fold)
+        Proxy->>DB: Store original text (24h TTL)
+        Proxy-->>LLM: Forward Prompt with Compressed Code + retrieval ID
+    end
+    Note over LLM, MCP: Later in the conversation...
+    LLM->>MCP: Call docuvia_retrieve_original(ID)
+    MCP->>DB: Fetch original text
+    DB-->>MCP: Original Code
+    MCP-->>LLM: Return original Code
+```
+
 We will implement a Decoupled LLM Proxy Layer with the following design:
 
 ### 1. Multi-Tier Content Detection (Zero-Parse Proxy)

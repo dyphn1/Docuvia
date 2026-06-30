@@ -2,6 +2,7 @@
 
 ## Hexagonal Architecture & Core Domain
 
+- **Strict MVC via `lib/core`**: The `api-server` strictly adheres to MVC presentation layers. All business domain logic must be extracted and maintained in the shared `lib/core` module. Controllers and HTTP routes should only handle request/response formatting and immediately delegate execution to `lib/core`.
 - **Shared Core API (`@workspace/core`)**: Adhere to Hexagonal Architecture (ADR-021) by treating `lib/core` as the single source of truth for all business logic (e.g., `InitService`, `QueryService`, `AnalyzeService`, `ExtractService`).
 - **Functional Core Adapters**: Ensure core services (e.g., `AnalyzeService`, `ExtractService`) implement real operational logic (such as reading from the file system via appropriate ports) rather than relying on empty stubs, keeping the core fully functional.
 - **Thin Presentation Layers**: All consumer interfaces (CLI, MCP server, VS Code extension, HTTP routes) must act purely as presentation layers. They should delegate entirely to the core services and never duplicate domain logic or interact with infrastructure directly.
@@ -57,5 +58,6 @@
 
 ## Performance & Resource Management
 
+- **Native LLM Streaming Proxies**: Proxying real LLM endpoints using `node:http`/`fetch` and `Readable.fromWeb(fetchResponse.body).pipe(res)` natively supports both streaming and non-streaming modes without needing mock placeholders or complex buffering logic.
 - **Chunked Streams for Large Exports**: When exporting large datasets or compiling massive documents (e.g., Markdown exports), avoid buffering the entire payload in memory before sending. Use chunked response streams (`res.write`) to transmit data progressively, preventing OOM. Ensure every chunk extraction is explicitly scoped with Auth/RBAC ownership checks (e.g., `WHERE ownerId = ?`) to maintain data security throughout the stream.
 - **CPU-Bound WASM Isolation (Worker Pools)**: Never run heavy AST parsing or CPU-bound WASM tasks (like `web-tree-sitter`) directly on the main Node.js event loop, as this blocks API responsiveness. Delegate CPU-heavy workloads to a dedicated `worker_threads` pool (e.g., `AstWorkerPool`). This isolates the WASM execution environment and ensures the main event loop remains non-blocking for HTTP requests and CLI orchestration.

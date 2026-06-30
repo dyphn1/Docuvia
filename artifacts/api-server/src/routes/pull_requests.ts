@@ -1,4 +1,4 @@
-import { logger } from "../lib/logger.js";
+import { logger } from "@workspace/core";
 import { Router } from "express";
 import { db } from "@workspace/db";
 import {
@@ -9,7 +9,7 @@ import {
   projectsTable,
 } from "@workspace/db";
 import { eq, and, gte, sql } from "drizzle-orm";
-import { getLlmClientForProject } from "../lib/llm-provider.js";
+import { getLlmClientForProject } from "@workspace/core";
 
 const router = Router();
 

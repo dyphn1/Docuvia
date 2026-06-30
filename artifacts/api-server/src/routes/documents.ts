@@ -5,10 +5,11 @@ import { documentsTable, projectsTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
-import { detectDocType, extractText } from "../lib/document-parser.js";
-import { computeHashFromBuffer } from "../lib/utils/hash.js";
-import { logger } from "../lib/logger.js";
+import { detectDocType, extractText } from "@workspace/core";
+import { computeHashFromStream } from "../lib/utils/hash.js";
+import { logger } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth";
+import fs from "fs";
 
 const router = Router();
 
@@ -101,13 +102,17 @@ router.post("/documents", requireApiKey, documentUpload.single("file"), async (r
   }
 
   try {
-    const fileBuffer = req.file.buffer;
-    if (!fileBuffer) {
-      return res.status(400).json({ error: "Uploaded file buffer is missing" });
+    const filePath = req.file.path;
+    if (!filePath) {
+      return res.status(400).json({ error: "Uploaded file path is missing" });
     }
 
     // Max's Rule: Validate Magic Bytes to prevent spoofed extensions from slipping through.
-    const hexHeader = fileBuffer.subarray(0, 4).toString("hex").toUpperCase();
+    const fd = await fs.promises.open(filePath, "r");
+    const headerBuffer = Buffer.alloc(4);
+    await fd.read(headerBuffer, 0, 4, 0);
+    await fd.close();
+    const hexHeader = headerBuffer.toString("hex").toUpperCase();
 
     // PDF magic bytes: 25504446
     // DOCX/PPTX (ZIP) magic bytes: 504B0304
@@ -121,8 +126,8 @@ router.post("/documents", requireApiKey, documentUpload.single("file"), async (r
         .json({ error: "Invalid file signature. Not a valid Office document." });
     }
 
-    const contentHash = computeHashFromBuffer(fileBuffer);
-    const rawContent = await extractText(fileBuffer, docType, req.file.originalname);
+    const contentHash = await computeHashFromStream(filePath);
+    const rawContent = await extractText(filePath, docType, req.file.originalname);
 
     const [inserted] = await db
       .insert(documentsTable)
@@ -141,6 +146,12 @@ router.post("/documents", requireApiKey, documentUpload.single("file"), async (r
   } catch (err) {
     logger.error({ err }, "[POST /documents] Unhandled error");
     return res.status(500).json({ error: "Internal server error" });
+  } finally {
+    if (req.file?.path) {
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (e) {}
+    }
   }
 });
 

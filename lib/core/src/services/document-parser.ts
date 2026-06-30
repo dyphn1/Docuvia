@@ -78,27 +78,46 @@ async function parseInWorker(buffer: Buffer, docType: SupportedDocType): Promise
 }
 
 /**
- * Extract plain text from a file buffer.
- * @param buffer  Raw file bytes
+ * Extract plain text from a file buffer or path.
+ * @param bufferOrPath  Raw file bytes or path to the file
  * @param docType Detected document type
  * @param filename Original filename (used for build artifact parsing)
  * @returns Extracted plain text string
  */
 export async function extractText(
-  buffer: Buffer,
+  bufferOrPath: Buffer | string,
   docType: SupportedDocType,
   filename?: string
 ): Promise<string> {
+  const isBuffer = Buffer.isBuffer(bufferOrPath);
   switch (docType) {
     case "pdf":
     case "docx":
     case "pptx":
-      return parseInWorker(buffer, docType);
-    case "build_artifact":
-      return extractBuildArtifactText(buffer.toString("utf-8"), filename ?? "artifact");
+      if (!isBuffer) {
+        const buf = await fs.promises.readFile(bufferOrPath);
+        return parseInWorker(buf, docType);
+      }
+      return parseInWorker(bufferOrPath, docType);
+    case "build_artifact": {
+      if (!isBuffer) {
+        // Read file contents as a string without keeping it in memory longer than necessary
+        const content = await fs.promises.readFile(bufferOrPath, "utf-8");
+        return extractBuildArtifactText(content, filename ?? "artifact");
+      }
+      return extractBuildArtifactText(bufferOrPath.toString("utf-8"), filename ?? "artifact");
+    }
     case "markdown":
     case "txt":
+      if (!isBuffer) {
+        return fs.promises.readFile(bufferOrPath, "utf-8");
+      }
+      return bufferOrPath.toString("utf-8");
     default:
-      return buffer.toString("utf-8").trim();
+      if (!isBuffer) {
+        const content = await fs.promises.readFile(bufferOrPath, "utf-8");
+        return content.trim();
+      }
+      return bufferOrPath.toString("utf-8").trim();
   }
 }

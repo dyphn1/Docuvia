@@ -2,7 +2,7 @@ import os from "node:os";
 import fs from "node:fs/promises";
 import { Piscina } from "piscina";
 import pLimit from "p-limit";
-import { logger } from "../logger.js";
+import { logger } from "@workspace/core";
 import { isQuarantined, quarantineFile } from "./quarantine-db.js";
 import { db } from "@workspace/db";
 import { errorReportsTable } from "@workspace/db";

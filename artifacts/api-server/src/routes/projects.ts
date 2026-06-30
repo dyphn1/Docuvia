@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { logger } from "../lib/logger.js";
+import { logger } from "@workspace/core";
 import { db } from "@workspace/db";
 import {
   projectsTable,
@@ -24,8 +24,8 @@ import {
   CreateCommitBody,
   ListProjectL2NodesParams,
 } from "@workspace/api-zod";
-import { LocalGitClient } from "../lib/git-client.js";
-import { processIngestion } from "../lib/ingestion-pipeline.js";
+import { LocalGitClient } from "@workspace/core";
+import { processIngestion } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
 
 const router = Router();

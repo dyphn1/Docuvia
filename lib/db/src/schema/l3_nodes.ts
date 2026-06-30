@@ -48,6 +48,7 @@ export const l3NodesTable = pgTable(
       "ivfflat",
       table.embedding.op("vector_cosine_ops")
     ),
+    l3L2NodeIdx: index("l3_nodes_l2_node_id_idx").on(table.l2NodeId),
   })
 );
 

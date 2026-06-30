@@ -1,12 +1,13 @@
 import express, { Router, Request, Response } from "express";
 import { compressPrompt } from "./compressor.js";
+import { Readable } from "node:stream";
 
 export const llmProxyRouter = Router();
 
 // Apply JSON body parsing for the proxy
 llmProxyRouter.use(express.json({ limit: "50mb" }));
 
-llmProxyRouter.post("/chat/completions", (req: Request, res: Response) => {
+llmProxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
   // OpenAI format
   const body = req.body;
   let modified = false;
@@ -45,29 +46,36 @@ llmProxyRouter.post("/chat/completions", (req: Request, res: Response) => {
     }
   }
 
-  // Proxy the request to the real LLM endpoint (mocked here)
-  // For local tests we just echo the compressed body.
-  res.json({
-    id: "chatcmpl-mock",
-    object: "chat.completion",
-    created: Date.now(),
-    model: body.model || "mock-model",
-    choices: [
-      {
-        index: 0,
-        message: {
-          role: "assistant",
-          content: "This is a mock proxy response. Received compressed payload.",
-        },
-        finish_reason: "stop",
+  // Proxy the request to the real LLM endpoint
+  const baseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || "https://api.openai.com/v1";
+  const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || "";
+
+  try {
+    const fetchResponse = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
       },
-    ],
-    // return the modified body for verification purposes
-    _debug_modified_body: body,
-  });
+      body: JSON.stringify(body),
+    });
+
+    for (const [key, value] of fetchResponse.headers.entries()) {
+      res.setHeader(key, value);
+    }
+    res.status(fetchResponse.status);
+
+    if (fetchResponse.body) {
+      Readable.fromWeb(fetchResponse.body as any).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
-llmProxyRouter.post("/messages", (req: Request, res: Response) => {
+llmProxyRouter.post("/messages", async (req: Request, res: Response) => {
   // Anthropic format
   const body = req.body;
   let modified = false;
@@ -104,21 +112,31 @@ llmProxyRouter.post("/messages", (req: Request, res: Response) => {
     }
   }
 
-  res.json({
-    id: "msg_mock",
-    type: "message",
-    role: "assistant",
-    content: [
-      {
-        type: "text",
-        text: "This is a mock proxy response. Received compressed payload.",
+  const baseUrl = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL || "https://api.anthropic.com/v1";
+  const apiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || "";
+
+  try {
+    const fetchResponse = await fetch(`${baseUrl}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
       },
-    ],
-    model: body.model || "mock-model",
-    stop_reason: "end_turn",
-    stop_sequence: null,
-    usage: { input_tokens: 10, output_tokens: 10 },
-    // return the modified body for verification purposes
-    _debug_modified_body: body,
-  });
+      body: JSON.stringify(body),
+    });
+
+    for (const [key, value] of fetchResponse.headers.entries()) {
+      res.setHeader(key, value);
+    }
+    res.status(fetchResponse.status);
+
+    if (fetchResponse.body) {
+      Readable.fromWeb(fetchResponse.body as any).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });

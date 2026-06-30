@@ -47,16 +47,24 @@ export const l2NodesTable = pgTable(
       "ivfflat",
       table.embedding.op("vector_cosine_ops")
     ),
+    l2ProjectIdx: index("l2_nodes_project_id_idx").on(table.projectId),
   })
 );
 
-export const l2NodeL1TagsTable = pgTable("l2_node_l1_tags", {
-  id: serial("id").primaryKey(),
-  l2NodeId: integer("l2_node_id")
-    .notNull()
-    .references(() => l2NodesTable.id, { onDelete: "cascade" }),
-  l1TagId: integer("l1_tag_id").notNull(),
-});
+export const l2NodeL1TagsTable = pgTable(
+  "l2_node_l1_tags",
+  {
+    id: serial("id").primaryKey(),
+    l2NodeId: integer("l2_node_id")
+      .notNull()
+      .references(() => l2NodesTable.id, { onDelete: "cascade" }),
+    l1TagId: integer("l1_tag_id").notNull(),
+  },
+  (table) => ({
+    l2NodeIdx: index("l2_node_l1_tags_l2_node_id_idx").on(table.l2NodeId),
+    l1TagIdx: index("l2_node_l1_tags_l1_tag_id_idx").on(table.l1TagId),
+  })
+);
 
 export const insertL2NodeSchema = createInsertSchema(l2NodesTable).omit({
   id: true,

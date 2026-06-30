@@ -8,7 +8,7 @@ import {
   MarkNotificationReadParams,
   MarkAllNotificationsReadBody,
 } from "@workspace/api-zod";
-import { logger } from "../lib/logger.js";
+import { logger } from "@workspace/core";
 
 const router = Router();
 

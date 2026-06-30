@@ -11,7 +11,6 @@ const ALLOWED_MIMETYPES = new Set([
 
 const ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "pptx", "txt", "md", "map", "fv", "fd", "log"]);
 
-// TODO: [CRITICAL BUG FIX] - Broken Artifact Upload. `memoryStorage()` mismatch. `document-parser.ts` handles build artifacts incorrectly due to this.
 export const documentUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },

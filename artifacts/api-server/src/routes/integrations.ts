@@ -3,8 +3,8 @@ import { db } from "@workspace/db";
 import { projectIntegrationsTable, projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { logger } from "../lib/logger.js";
-import { sendTestNotification } from "../lib/slack-teams-client.js";
+import { logger } from "@workspace/core";
+import { sendTestNotification } from "@workspace/core";
 
 const router = Router();
 

@@ -19,15 +19,15 @@ import {
   nodeLinksTable,
 } from "@workspace/db";
 import { desc, eq, and, sql, isNull, ne, isNotNull, inArray, or, lt } from "drizzle-orm";
-import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
-import { getLlmClientForProject } from "../lib/llm-provider.js";
-import { notifyExternalIntegrations } from "../lib/slack-teams-client.js";
-import { LocalGitClient } from "../lib/git-client.js";
-import { logger } from "../lib/logger.js";
+import { generateEmbedding, cosineSimilarity, parseEmbedding } from "@workspace/core";
+import { getLlmClientForProject } from "@workspace/core";
+import { notifyExternalIntegrations } from "@workspace/core";
+import { LocalGitClient } from "@workspace/core";
+import { logger } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
 import { z } from "zod";
 import { DEFAULT_PROMPTS } from "./templates.js";
-import { compressAstContext } from "../lib/compression.js";
+import { compressAstContext } from "@workspace/core";
 
 async function getPromptTemplate(projectId: number, templateType: string): Promise<string> {
   const [template] = await db
@@ -723,7 +723,7 @@ router.post("/projects/:id/generate", requireApiKey, async (req, res) => {
       // Compress document context to reduce token volume sent to LLM
       const documentContext = documents.length
         ? (() => {
-            const nodes: import("../lib/compression.js").CompressibleNode[] = documents.map(
+            const nodes: import("@workspace/core").CompressibleNode[] = documents.map(
               (d) => ({
                 title: d.filename,
                 content: d.content,

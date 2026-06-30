@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 import path from "path";
 import fs from "fs";
-import { logger } from "../lib/logger.js";
+import { logger } from "@workspace/core";
 
 const require = createRequire(import.meta.url);
 type SqliteRunResult = { changes: number };
@@ -97,10 +97,26 @@ export function startTTLJob() {
 
 // Background job to mine failed API proxy responses
 export function startMemoryMiner() {
-  // Dummy headroom learn-style logic
   setInterval(() => {
-    // In a real implementation, this would scan proxy logs for failures
-    // and distill them into rules using an LLM.
-    logger.info("[SharedMemory] Mining failed API proxy responses...");
+    try {
+      const db = getDb();
+      const stmt = db.prepare("SELECT count(*) as total, datetime(timestamp, 'start of hour') as hour FROM compressed_payloads GROUP BY hour ORDER BY hour DESC LIMIT 24");
+      const results = stmt.all() as { total: number, hour: string }[];
+      
+      const stats = {
+        totalCompressedRecent: results.reduce((acc, row) => acc + row.total, 0),
+        hourlyBreakdown: results
+      };
+      
+      // Conditionally invoke insertMemory based on identified patterns
+      if (stats.totalCompressedRecent > 50) {
+        insertMemory("miner", "proxy_stats", JSON.stringify(stats));
+        logger.info(`[SharedMemory] Mined proxy stats: ${stats.totalCompressedRecent} recent payloads, memory inserted.`);
+      } else {
+        logger.info(`[SharedMemory] Miner scanned ${stats.totalCompressedRecent} payloads, below threshold.`);
+      }
+    } catch (err) {
+      logger.error(`[SharedMemory] Error in miner: ${err}`);
+    }
   }, 60000); // every minute
 }

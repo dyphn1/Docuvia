@@ -22,11 +22,15 @@
     "drizzle-orm": "catalog:",
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.5",
+    "pino": "^9",
+    "sax": "^1.6.0",
     "typescript": "^6.0.3",
     "web-tree-sitter": "^0.26.9"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "@types/sax": "^1.2.7",
+    "vitest": "^1.0.0"
   }
 }

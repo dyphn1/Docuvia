@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { logger } from "../lib/logger";
+import { logger } from "@workspace/core";
 import { db, pool } from "@workspace/db";
 import {
   correctionExamplesTable,
@@ -9,8 +9,8 @@ import {
   projectsTable,
 } from "@workspace/db";
 import { isNull, inArray, and, eq, lt } from "drizzle-orm";
-import { getLlmClientForProject } from "../lib/llm-provider.js";
-import { checkCommitInDefaultBranch, parseGithubRepo } from "../lib/github-client";
+import { getLlmClientForProject } from "@workspace/core";
+import { checkCommitInDefaultBranch, parseGithubRepo } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth";
 
 const METABOLISM_LOCK_ID = 123456789;

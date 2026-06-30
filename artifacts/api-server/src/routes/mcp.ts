@@ -6,8 +6,8 @@ import {
   ProjectService,
   DecisionRecordService,
 } from "@workspace/core";
-import { routeQuery, sanitizeLikeInput } from "../lib/intent-router.js";
-import { logger } from "../lib/logger.js";
+import { routeQuery, sanitizeLikeInput } from "@workspace/core";
+import { logger } from "@workspace/core";
 import { getAllMemories, getCompressedPayload } from "../memory/shared-memory.js";
 import {
   McpGetDependenciesQueryParams,

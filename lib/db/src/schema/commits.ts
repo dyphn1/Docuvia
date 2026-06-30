@@ -4,7 +4,6 @@ import { z } from "zod/v4";
 import { projectsTable } from "./projects";
 import { l2NodesTable } from "./l2_nodes";
 
-// TODO: [CRITICAL BUG FIX] - Missing foreign key indexes on `projectId` and `l2NodeId`. `ON DELETE CASCADE` will cause a full table scan and deadlock the database without an explicit `.index()` declaration in pgTable.
 export const commitsTable = pgTable(
   "commits",
   {

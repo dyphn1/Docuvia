@@ -10,6 +10,24 @@ To prevent the [local PostgreSQL database](ADR-014-sql-indexed-graph-and-databas
 
 ## Decision
 
+### Architecture Diagram
+
+```mermaid
+sequenceDiagram
+    participant Active as Active DB (SQLite)
+    participant GC as GC Worker (Background)
+    participant Branch as docuvia-knowledge (Orphan Branch)
+    
+    Active->>Active: Soft delete (is_active=false)
+    Note over Active: Nodes marked as Tombstones
+    GC->>Active: Periodically fetch expired tombstones
+    Active-->>GC: Return Tombstone Data
+    GC->>GC: Serialize sub-graph to JSON
+    GC->>Branch: Commit to orphaned branch
+    Note over Branch: Commits organized by hash
+    GC->>Active: Hard delete archived tombstones
+```
+
 We will adopt a "Tiered Storage" strategy involving soft deletions and a [Git-Isomorphic Graph](ADR-004-git-isomorphic-graph.md) maintenance process:
 
 - **Stable Node Identity & Tombstoning**: Nodes will have a UUID based on semantic fingerprints. Deleted code is soft-deleted (`is_active = false`) and marked as a Tombstone.

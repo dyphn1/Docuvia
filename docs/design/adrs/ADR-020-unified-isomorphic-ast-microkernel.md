@@ -1,5 +1,5 @@
 ---
-Supersedes: None
+Supersedes: ADR-015
 ---
 
 # ADR-020: Unified Isomorphic AST Microkernel
@@ -26,7 +26,7 @@ To eliminate "split-brain" graph divergence, **C++ native bindings are strictly 
 
 ### 2. Microkernel & Dynamic Plugin Ecosystem
 
-The core engine (`@workspace/ast-core`) will act as a lightweight Microkernel. It will contain zero language-specific grammars. Languages will be separated into isolated plugin packages (e.g., `@workspace/plugin-ast-typescript`). The Microkernel dynamically lazy-loads only the `.wasm` grammars present in the user's current repository, keeping the extension startup time sub-second and the base memory footprint minimal.
+The core engine (`@workspace/ast-core`) will act as a lightweight Microkernel. It will contain zero language-specific grammars. Languages will be separated into isolated plugin packages. The Microkernel dynamically lazy-loads only the `.wasm` grammars present in the user's current repository, keeping the extension startup time sub-second and the base memory footprint minimal.
 
 ### 3. Strict Worker Thread Isolation
 

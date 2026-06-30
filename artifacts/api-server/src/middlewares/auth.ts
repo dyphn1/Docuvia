@@ -1,6 +1,6 @@
 import { type Request, type Response, type NextFunction } from "express";
 import crypto from "crypto";
-import { logger } from "../lib/logger";
+import { logger } from "@workspace/core";
 
 export function requireApiKey(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;

@@ -13,11 +13,11 @@ import {
   subscriptionsTable,
 } from "@workspace/db";
 import { eq, and, inArray, gte, sql } from "drizzle-orm";
-import { getLlmClientForProject } from "../lib/llm-provider.js";
-import { fetchPrCommits, parseGithubRepo } from "../lib/github-client.js";
-import { postPrComment } from "../lib/github-client.js";
-import { logger } from "../lib/logger.js";
-import { scoreCommit } from "../lib/commit-scorer.js";
+import { getLlmClientForProject } from "@workspace/core";
+import { fetchPrCommits, parseGithubRepo } from "@workspace/core";
+import { postPrComment } from "@workspace/core";
+import { logger } from "@workspace/core";
+import { scoreCommit } from "@workspace/core";
 
 const router = Router();
 

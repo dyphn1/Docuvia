@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { vscodeQuery, createL3Decision, getFileContext } from "../lib/extensions-service.js";
+import { vscodeQuery, createL3Decision, getFileContext } from "@workspace/core";
 
 const router = Router();
 

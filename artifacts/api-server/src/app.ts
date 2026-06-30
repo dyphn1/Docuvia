@@ -4,7 +4,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import githubWebhooksRouter from "./routes/github_webhooks";
 import { llmProxyRouter } from "./proxy/llm-proxy.js";
-import { logger } from "./lib/logger";
+import { logger } from "@workspace/core";
 
 const app: Express = express();
 app.set("trust proxy", 1);

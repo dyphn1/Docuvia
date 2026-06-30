@@ -3,8 +3,8 @@ import { z } from "zod";
 import { db } from "@workspace/db";
 import { l2NodesTable, l3NodesTable, projectsTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { logger } from "../lib/logger.js";
-import { writeKnowledgeToOrphanBranch } from "../lib/orphan-branch-writer.js";
+import { logger } from "@workspace/core";
+import { writeKnowledgeToOrphanBranch } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
 
 const router = Router();

@@ -1,3 +1,5 @@
+import { calculateTemporalDecay } from "./decay.js";
+import { sanitizeLikeInput as escapeLike } from "./sql-utils.js";
 import { getLlmClientForProject } from "./llm-provider.js";
 import { db } from "@workspace/db";
 import {
@@ -91,13 +93,10 @@ const VALID_STRATEGIES = new Set<string>([
 /**
  * Escapes SQL LIKE wildcards (% and _) to prevent injection.
  */
-export function sanitizeLikeInput(str: string): string {
+function sanitizeLikeInput(str: string): string {
   return str.replace(/[%_\\]/g, "\\$&");
 }
 
-export function escapeLike(str: string): string {
-  return str.replace(/[\\%_]/g, "\\$&");
-}
 
 /**
  * Sanitize user query before sending to LLM to prevent prompt injection.
@@ -114,13 +113,6 @@ export function sanitizeQuery(query: string): string {
  * Calculate the temporal decay factor for a node based on its last verified date.
  * Uses an exponential decay function with a 30-day half-life.
  */
-export function calculateTemporalDecay(referenceDate: Date, now: number = Date.now()): number {
-  const MS_PER_DAY = 1000 * 60 * 60 * 24;
-  const HALF_LIFE_DAYS = 30;
-  const LAMBDA = Math.LN2 / HALF_LIFE_DAYS;
-  const daysSinceVerified = (now - referenceDate.getTime()) / MS_PER_DAY;
-  return Math.exp(-LAMBDA * Math.max(0, daysSinceVerified));
-}
 
 function applyTemporalDecay(baseScore: number, referenceDate: Date): number {
   return baseScore * calculateTemporalDecay(referenceDate);

@@ -1,5 +1,5 @@
 import { parentPort } from "worker_threads";
-import { Parser, Language } from "web-tree-sitter";
+import { Parser, Language, Query } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
 import { createRequire } from "module";
@@ -48,6 +48,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
 
     // Attempt to load wasm
     let languageLoaded = false;
+    let langInstance: Language | null = null;
     try {
       const docuviaRoot = path.resolve(__dirname, "../../../../");
       // Use require.resolve to safely find tree-sitter-wasms no matter if it's hoisted or in .pnpm
@@ -71,8 +72,8 @@ parentPort?.on("message", async (request: AstParseRequest) => {
 
       if (fs.existsSync(wasmPath)) {
         const wasmBytes = fs.readFileSync(wasmPath);
-        const lang = await Language.load(wasmBytes);
-        parser.setLanguage(lang);
+        langInstance = await Language.load(wasmBytes);
+        parser.setLanguage(langInstance);
         languageLoaded = true;
       } else {
         // Ultimate fallback for pnpm structures
@@ -82,8 +83,8 @@ parentPort?.on("message", async (request: AstParseRequest) => {
         );
         if (fs.existsSync(pnpmAltPath)) {
           const wasmBytes = fs.readFileSync(pnpmAltPath);
-          const lang = await Language.load(wasmBytes);
-          parser.setLanguage(lang);
+          langInstance = await Language.load(wasmBytes);
+          parser.setLanguage(langInstance);
           languageLoaded = true;
         } else {
           console.warn(`[ast-worker] WASM not found at ${wasmPath}, falling back to mock`);
@@ -111,15 +112,77 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       decisions.push(`Parsed via web-tree-sitter (nodes: ${tree.rootNode.childCount})`);
     }
 
-    // TODO: Implement actual tree-sitter queries for imports, exports, functions, classes, and calls
     const imports: ImportDescriptor[] = [];
+    const exports: Array<{ name: string; type: "function" | "class" | "variable" }> = [];
+    const functions: Array<{ name: string; startLine: number; endLine: number }> = [];
+    const classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }> = [];
     const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
+
+    if (tree && languageLoaded && langInstance) {
+      try {
+        let qStr = ``;
+        if (request.language === "typescript") { qStr = `(import_statement (import_clause (named_imports (import_specifier name: (identifier) @import.name))) source: (string (string_fragment) @import.source))\n(import_statement (import_clause (identifier) @import.name) source: (string (string_fragment) @import.source))\n(export_statement (export_clause (export_specifier name: (identifier) @export.name)))\n(export_statement declaration: (function_declaration name: (identifier) @export.name))\n(export_statement declaration: (class_declaration name: (identifier) @export.name))\n(export_statement declaration: (lexical_declaration (variable_declarator name: (identifier) @export.name)))\n(function_declaration name: (identifier) @function)\n(method_definition name: (property_identifier) @method)\n(class_declaration name: (identifier) @class)\n(call_expression function: (identifier) @call)`; } else { qStr = `(import_statement) @import\n(function_declaration) @function\n(method_definition) @method\n(class_declaration) @class`; }
+        const q = new Query(langInstance, qStr);
+        const matches = q.matches(tree.rootNode);
+
+        const capturedNodes = new Set();
+        for (const match of matches) {
+          for (const capture of match.captures) {
+            const node = capture.node;
+            if (capturedNodes.has(node.id)) continue;
+            capturedNodes.add(node.id);
+
+            if (capture.name === "import") {
+              imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
+            } else if (capture.name === "function" || capture.name === "method") {
+              functions.push({ 
+                name: node.childForFieldName("name")?.text || "anonymous", 
+                startLine: node.startPosition.row, 
+                endLine: node.endPosition.row 
+              });
+            } else if (capture.name === "class") {
+              classes.push({ 
+                name: node.childForFieldName("name")?.text || "anonymous", 
+                startLine: node.startPosition.row, 
+                endLine: node.endPosition.row, 
+                methods: [] 
+              });
+            }
+          }
+        }
+        decisions.push("Queried nodes using web-tree-sitter Query API");
+      } catch (e) {
+        decisions.push("Query API failed, using AST fallback traversal");
+        const traverse = (node: any) => {
+          if (node.type === "import_statement") {
+            imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
+          } else if (node.type === "function_declaration" || node.type === "method_definition") {
+            functions.push({ 
+              name: node.childForFieldName("name")?.text || "anonymous", 
+              startLine: node.startPosition.row, 
+              endLine: node.endPosition.row 
+            });
+          } else if (node.type === "class_declaration") {
+            classes.push({ 
+              name: node.childForFieldName("name")?.text || "anonymous", 
+              startLine: node.startPosition.row, 
+              endLine: node.endPosition.row, 
+              methods: [] 
+            });
+          }
+          for (let i = 0; i < node.childCount; i++) {
+            traverse(node.child(i));
+          }
+        };
+        traverse(tree.rootNode);
+      }
+    }
 
     const data = {
       imports,
-      exports: [],
-      functions: [],
-      classes: [],
+      exports,
+      functions,
+      classes,
       calls,
       decisions,
     };

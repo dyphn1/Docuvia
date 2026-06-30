@@ -187,17 +187,17 @@ Key source files in [`artifacts/vscode-client/src/`](../../artifacts/vscode-clie
 | File                                                                                               | Role                                                                   |
 | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | [`extension.ts`](../../artifacts/vscode-client/src/extension.ts)                                   | Entry point: activates extension, registers all commands and providers |
-| [`ChatParticipant.ts`](../../artifacts/vscode-client/src/ChatParticipant.ts)                       | Copilot Chat `@docuvia` participant handler (slash commands)           |
-| [`KnowledgeStore.ts`](../../artifacts/vscode-client/src/KnowledgeStore.ts)                         | Model layer: manages `.docuvia/` YAML snapshot; syncs to disk          |
-| [`TaskRunner.ts`](../../artifacts/vscode-client/src/TaskRunner.ts)                                 | Orchestrates extraction and query tasks; calls api-server REST         |
-| [`KnowledgeGraphTreeProvider.ts`](../../artifacts/vscode-client/src/KnowledgeGraphTreeProvider.ts) | VS Code TreeDataProvider for the Knowledge Graph sidebar view          |
-| [`TaskQueueTreeProvider.ts`](../../artifacts/vscode-client/src/TaskQueueTreeProvider.ts)           | VS Code TreeDataProvider for the pending task queue sidebar view       |
-| [`DashboardPanel.ts`](../../artifacts/vscode-client/src/DashboardPanel.ts)                         | Webview panel: embedded dashboard                                      |
-| [`SearchResultsPanel.ts`](../../artifacts/vscode-client/src/SearchResultsPanel.ts)                 | Webview panel: displays MCP/RAG query results                          |
-| [`DocuviaCodeLensProvider.ts`](../../artifacts/vscode-client/src/DocuviaCodeLensProvider.ts)       | CodeLens provider: shows L3 decision count above functions/classes     |
-| [`DocuviaHoverProvider.ts`](../../artifacts/vscode-client/src/DocuviaHoverProvider.ts)             | Hover provider: shows L3 decision preview on symbol hover              |
-| [`CentralServerClient.ts`](../../artifacts/vscode-client/src/CentralServerClient.ts)               | HTTP client wrapper for all api-server calls from the extension        |
-| [`CredentialManager.ts`](../../artifacts/vscode-client/src/CredentialManager.ts)                   | Manages API key via VS Code SecretStorage                              |
+| [`chat-participant.ts`](../../artifacts/vscode-client/src/chat-participant.ts)                       | Copilot Chat `@docuvia` participant handler (slash commands)           |
+| [`knowledge-store.ts`](../../artifacts/vscode-client/src/knowledge-store.ts)                         | Model layer: manages `.docuvia/` YAML snapshot; syncs to disk          |
+| [`task-runner.ts`](../../artifacts/vscode-client/src/task-runner.ts)                                 | Orchestrates extraction and query tasks; calls api-server REST         |
+| [`knowledge-graph-tree-provider.ts`](../../artifacts/vscode-client/src/knowledge-graph-tree-provider.ts) | VS Code TreeDataProvider for the Knowledge Graph sidebar view          |
+| [`task-queue-tree-provider.ts`](../../artifacts/vscode-client/src/task-queue-tree-provider.ts)           | VS Code TreeDataProvider for the pending task queue sidebar view       |
+| [`dashboard-panel.ts`](../../artifacts/vscode-client/src/dashboard-panel.ts)                         | Webview panel: embedded dashboard                                      |
+| [`search-results-panel.ts`](../../artifacts/vscode-client/src/search-results-panel.ts)                 | Webview panel: displays MCP/RAG query results                          |
+| [`docuvia-code-lens-provider.ts`](../../artifacts/vscode-client/src/docuvia-code-lens-provider.ts)       | CodeLens provider: shows L3 decision count above functions/classes     |
+| [`docuvia-hover-provider.ts`](../../artifacts/vscode-client/src/docuvia-hover-provider.ts)             | Hover provider: shows L3 decision preview on symbol hover              |
+| [`central-server-client.ts`](../../artifacts/vscode-client/src/central-server-client.ts)               | HTTP client wrapper for all api-server calls from the extension        |
+| [`credential-manager.ts`](../../artifacts/vscode-client/src/credential-manager.ts)                   | Manages API key via VS Code SecretStorage                              |
 
 ---
 

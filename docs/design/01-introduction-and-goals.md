@@ -6,6 +6,19 @@
 
 The core insight: commit messages, PR descriptions, and code diffs encode architectural decisions, implementation rationale, and module relationships. Docuvia surfaces this latent knowledge in a structured, searchable, and agent-consumable form.
 
+```mermaid
+graph TD
+    A[VCS History & Artifacts] --> B(Ingestion Engine)
+    B --> C[(PostgreSQL DB)]
+    C -->|L1 Tags| D(Global Taxonomy)
+    C -->|L2 Nodes| E(Modules/Packages)
+    C -->|L3 Nodes| F(Implementation Rationale)
+    D -.-> E
+    E -.-> F
+    G[AI IDEs via MCP] --> H(Agentic RAG Router)
+    H --> C
+```
+
 ---
 
 ## 1.2 Core Requirements (Top 5 Drivers)

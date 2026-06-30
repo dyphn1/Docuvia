@@ -2,6 +2,7 @@
 
 ## Hexagonal Architecture & Core Domain
 
+- **Strict MVC via `lib/core`**: The `api-server` strictly adheres to MVC presentation layers. All business domain logic must be extracted and maintained in the shared `lib/core` module. Controllers and HTTP routes should only handle request/response formatting and immediately delegate execution to `lib/core`.
 - **Shared Core API (`@workspace/core`)**: Adhere to Hexagonal Architecture (ADR-021) by treating `lib/core` as the single source of truth for all business logic (e.g., `InitService`, `QueryService`, `AnalyzeService`, `ExtractService`).
 - **Functional Core Adapters**: Ensure core services (e.g., `AnalyzeService`, `ExtractService`) implement real operational logic (such as reading from the file system via appropriate ports) rather than relying on empty stubs, keeping the core fully functional.
 - **Thin Presentation Layers**: All consumer interfaces (CLI, MCP server, VS Code extension, HTTP routes) must act purely as presentation layers. They should delegate entirely to the core services and never duplicate domain logic or interact with infrastructure directly.
@@ -19,6 +20,8 @@
 
 ## Knowledge Graph & Agentic RAG
 
+- **Local SQLite vs PostgreSQL Parity**: Ensure schema data types (e.g., `INTEGER` vs `TEXT` for IDs) and structural columns (`contentHash`, `commitSha`) match precisely between the remote PostgreSQL (Drizzle) and the local VS Code extension SQLite database. This prevents implicit type coercion bugs during joins and ensures temporal features work locally.
+- **Explicit Edge Sync**: When pulling graph snapshots to local clients, ensure all relational edge tables (like `node_links`) are explicitly synchronized and stored locally. A local knowledge graph without edge data will fail to perform structural graph traversal.
 - **"实体化 Inbox" (Tangible Inbox / No Null Parents)**: To maintain graph integrity and RAG accuracy, strictly prohibit "orphan nodes" (null or empty `l2_module_id`). Uncategorized extractions must always map to a tangible placeholder node (e.g., `sys-uncategorized`). This ensures the structural schema remains strict and predictable across the database and OpenAPI layers.
 - **Dual-Track Extraction**: Split extraction logic based on context size. Snippets or single-file extractions attempt immediate categorization (Track A). Bulk multi-file extractions are funneled into the `sys-uncategorized` node (Track B) to avoid blocking or hallucinating module assignments.
 - **Multi-Stage Sieve Model (Sieving Uncategorized Nodes)**: Do not blast massive volumes of uncategorized content directly to an LLM for routing. Instead, implement a multi-stage scoring sieve (e.g., using Git History, Directory Structure, and Semantic Vectors) to suggest or auto-resolve the correct L2 module.
@@ -40,11 +43,14 @@
 
 ## Security & API Design
 
+- **Provider-Agnostic AI Integration**: Do not hardcode direct vendor imports (e.g., `openai`) throughout the codebase. Abstract AI calls via a dynamic factory (e.g., `getLlmClientForProject(projectId)`) to natively honor configuration states like `llm_configs.provider`.
 - **Prompt Injection Defense**: Do not rely on arbitrary XML tags within user prompts as a security boundary against injection attacks. Enforce explicit system-level segregation by passing constraints securely via the `role: "system"` payload attribute, separating instructions strictly from the `role: "user"` data inputs.
 - **Zero-Trust Administrative Routes**: Never leave admin or internal infrastructure routes unauthenticated. Always enforce appropriate authentication or network boundaries, even for internal testing or background triggers.
 
 ## Ingestion Pipeline Protocolization
 
+- **Incremental Fast-Path (AST)**: Implement O(1) incremental ingestion by utilizing tools like `git diff-tree -M` to parse only changed files rather than re-scanning the entire project tree on every sync.
+- **AST Size Limits & DLQ (Poison Pill)**: Always enforce strict file size limits (e.g., 10MB) during ingestion. Implement a persistent Dead Letter Queue (quarantine list) for consistently failing files to prevent perpetual parsing crash-loops.
 - **Streaming Parsers over Buffers**: Avoid using `execFileAsync` combined with RegExp or string manipulation for parsing large external outputs (e.g., SVN logs or external diffs) to prevent memory ballooning and Out-Of-Memory (OOM) crashes. Use `spawn` combined with streaming parsers (like the `sax` library for XML) and integrate AbortControllers to securely handle large repository histories streamingly.
 - **Unified Pipeline Abstraction**: Consolidate disparate ingestion flows (Git, SVN, Documents) into a standardized pipeline sequence (`processIngestion`): Hash deduplication -> Score -> DB Insert -> Activity Log -> Notification. This prevents logic drift between API entry points.
 - **Local Process Execution**: For source control interactions, prefer hardened local client wrappers (`child_process.execFile` with temporary directories) over remote API dependencies for operations like cloning and extracting diffs, ensuring robust handling of arbitrary or private repos.
@@ -52,5 +58,6 @@
 
 ## Performance & Resource Management
 
+- **Native LLM Streaming Proxies**: Proxying real LLM endpoints using `node:http`/`fetch` and `Readable.fromWeb(fetchResponse.body).pipe(res)` natively supports both streaming and non-streaming modes without needing mock placeholders or complex buffering logic.
 - **Chunked Streams for Large Exports**: When exporting large datasets or compiling massive documents (e.g., Markdown exports), avoid buffering the entire payload in memory before sending. Use chunked response streams (`res.write`) to transmit data progressively, preventing OOM. Ensure every chunk extraction is explicitly scoped with Auth/RBAC ownership checks (e.g., `WHERE ownerId = ?`) to maintain data security throughout the stream.
 - **CPU-Bound WASM Isolation (Worker Pools)**: Never run heavy AST parsing or CPU-bound WASM tasks (like `web-tree-sitter`) directly on the main Node.js event loop, as this blocks API responsiveness. Delegate CPU-heavy workloads to a dedicated `worker_threads` pool (e.g., `AstWorkerPool`). This isolates the WASM execution environment and ensures the main event loop remains non-blocking for HTTP requests and CLI orchestration.

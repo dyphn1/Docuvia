@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-018: Temporal & Conceptual Bidirectional Linking
 
 ## Context

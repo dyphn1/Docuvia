@@ -2,22 +2,22 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { Layout } from "@/components/layout";
+import { Layout } from "@/components/Layout";
 
-import Dashboard from "@/pages/dashboard";
-import Projects from "@/pages/projects/index";
-import ProjectDetail from "@/pages/projects/[id]";
-import L1Tags from "@/pages/l1-tags";
-import Review from "@/pages/review";
-import Query from "@/pages/query";
-import Pipeline from "@/pages/pipeline";
-import Documents from "@/pages/documents";
-import McpPage from "@/pages/mcp";
-import Templates from "@/pages/templates";
-import Subscriptions from "@/pages/subscriptions";
-import PullRequests from "@/pages/pull-requests";
-import Integrations from "@/pages/integrations";
-import NotFound from "@/pages/not-found";
+import Dashboard from "@/pages/Dashboard";
+import Projects from "@/pages/projects/Index";
+import ProjectDetail from "@/pages/projects/ProjectDetail";
+import L1Tags from "@/pages/L1Tags";
+import Review from "@/pages/Review";
+import Query from "@/pages/Query";
+import Pipeline from "@/pages/Pipeline";
+import Documents from "@/pages/Documents";
+import McpPage from "@/pages/Mcp";
+import Templates from "@/pages/Templates";
+import Subscriptions from "@/pages/Subscriptions";
+import PullRequests from "@/pages/PullRequests";
+import Integrations from "@/pages/Integrations";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -10,8 +10,8 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --if-present run typecheck",
     "lint": "prettier --check .",
     "format": "prettier --write .",
-    "test": "pnpm --filter @workspace/api-server run test",
-    "test:coverage": "pnpm --filter @workspace/api-server run test:coverage"
+    "test": "node scripts/ensure-db.mjs && pnpm --filter @workspace/api-server run test",
+    "test:coverage": "node scripts/ensure-db.mjs && pnpm --filter @workspace/api-server run test:coverage"
   },
   "private": true,
   "devDependencies": {

@@ -1,7 +1,7 @@
 # Docuvia — GitHub Copilot Instructions
 
 > **Project context, architecture, commands, and conventions**: See [AGENTS.md](../AGENTS.md).
-> All agent definitions (canonical source of truth): See [.github/agents/](agents/).
+> All agent definitions (canonical source of truth): See [.github/agents/](.github/agents/).
 
 ## Testing Navigation
 

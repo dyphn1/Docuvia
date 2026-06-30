@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # Knowledge Abstraction & Architecture Recovery (L3 -> L2)
 
 ## Core Pain Points & Objectives

@@ -18,7 +18,7 @@ graph TD
     classDef db fill:#003b57,stroke:#333,stroke-width:2px,color:#fff;
     classDef worker fill:#f9db24,stroke:#333,stroke-width:2px,color:#000;
     classDef mcp fill:#6051ac,stroke:#333,stroke-width:2px,color:#fff;
-    
+
     class GIT git;
     class SQL db;
     class AST worker;

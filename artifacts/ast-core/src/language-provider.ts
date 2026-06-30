@@ -77,49 +77,28 @@ export class DefaultProvider implements LanguageProvider {
   }
 
   extractClasses(rootNode: Node): Node[] {
-    if (this.compiledQueries?.classes) {
-      return this.captureNodes(rootNode, ["class"], this.compiledQueries.classes);
-    }
-    // Fallback to descendantsOfType
-    const nodes: Node[] = [];
-    for (const classType of this.config.classes) {
-      nodes.push(...rootNode.descendantsOfType(classType));
-    }
-    return nodes;
+    return this.extractNodes(rootNode, this.compiledQueries?.classes, ["class"], this.config.classes);
   }
 
   extractFunctions(rootNode: Node): Node[] {
-    if (this.compiledQueries?.functions) {
-      return this.captureNodes(rootNode, ["function"], this.compiledQueries.functions);
-    }
-    // Fallback to descendantsOfType
-    const nodes: Node[] = [];
-    for (const funcType of this.config.functions) {
-      nodes.push(...rootNode.descendantsOfType(funcType));
-    }
-    return nodes;
+    return this.extractNodes(rootNode, this.compiledQueries?.functions, ["function"], this.config.functions);
   }
 
   extractImports(rootNode: Node): Node[] {
-    if (this.compiledQueries?.imports) {
-      return this.captureNodes(rootNode, ["import"], this.compiledQueries.imports);
-    }
-    // Fallback to descendantsOfType
-    const nodes: Node[] = [];
-    for (const importType of this.config.imports) {
-      nodes.push(...rootNode.descendantsOfType(importType));
-    }
-    return nodes;
+    return this.extractNodes(rootNode, this.compiledQueries?.imports, ["import"], this.config.imports);
   }
 
   extractCalls(rootNode: Node): Node[] {
-    if (this.compiledQueries?.calls) {
-      return this.captureNodes(rootNode, ["call"], this.compiledQueries.calls);
+    return this.extractNodes(rootNode, this.compiledQueries?.calls, ["call"], this.config.calls);
+  }
+
+  private extractNodes(rootNode: Node, query: Query | undefined, captureNames: string[], fallbackTypes: string[]): Node[] {
+    if (query) {
+      return this.captureNodes(rootNode, captureNames, query);
     }
-    // Fallback to descendantsOfType
     const nodes: Node[] = [];
-    for (const callType of this.config.calls) {
-      nodes.push(...rootNode.descendantsOfType(callType));
+    for (const nodeType of fallbackTypes) {
+      nodes.push(...rootNode.descendantsOfType(nodeType));
     }
     return nodes;
   }

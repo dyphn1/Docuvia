@@ -25,8 +25,8 @@ Establish the foundational command infrastructure in VS Code, allowing users to 
 ### 📁 Involved Files
 
 - `artifacts/vscode-client/src/extension.ts`
-- `artifacts/vscode-client/src/TaskRunner.ts`
-- `artifacts/vscode-client/src/CentralServerClient.ts`
+- `artifacts/vscode-client/src/task-runner.ts`
+- `artifacts/vscode-client/src/central-server-client.ts`
 
 ### 🏗️ System Architecture
 
@@ -59,8 +59,8 @@ Provide a hierarchical, multi-root visualization of the `L1 -> L2 -> L3` knowled
 
 ### 📁 Involved Files
 
-- `artifacts/vscode-client/src/KnowledgeStore.ts`
-- `artifacts/vscode-client/src/KnowledgeGraphTreeProvider.ts`
+- `artifacts/vscode-client/src/knowledge-store.ts`
+- `artifacts/vscode-client/src/knowledge-graph-tree-provider.ts`
 
 ### ⚙️ Functional Operation
 
@@ -96,8 +96,8 @@ Inject contextual knowledge directly into the code editing experience unobtrusiv
 
 ### 📁 Involved Files
 
-- `artifacts/vscode-client/src/DocuviaCodeLensProvider.ts`
-- `artifacts/vscode-client/src/DocuviaHoverProvider.ts`
+- `artifacts/vscode-client/src/docuvia-code-lens-provider.ts`
+- `artifacts/vscode-client/src/docuvia-hover-provider.ts`
 
 ---
 
@@ -119,6 +119,6 @@ Provide conversational interaction via Copilot Chat and rich cross-project searc
 
 ### 📁 Involved Files
 
-- `artifacts/vscode-client/src/ChatParticipant.ts`
-- `artifacts/vscode-client/src/SearchResultsPanel.ts`
-- `artifacts/vscode-client/src/DashboardPanel.ts`
+- `artifacts/vscode-client/src/chat-participant.ts`
+- `artifacts/vscode-client/src/search-results-panel.ts`
+- `artifacts/vscode-client/src/dashboard-panel.ts`

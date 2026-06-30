@@ -51,7 +51,7 @@ sequenceDiagram
 
 4. **Task Dispatching**:
    - Creates a `CancellationTokenSource` linked to the task.
-   - Enqueues the task via [`TaskRunner.ts`](../../../../artifacts/vscode-client/src/TaskRunner.ts) -> `queueExtraction` (see [ADR-008: Asynchronous Metabolism](../../adrs/ADR-008-asynchronous-metabolism.md)) passing the file content, source path, and token.
+   - Enqueues the task via [`task-runner.ts`](../../../../artifacts/vscode-client/src/task-runner.ts) -> `queueExtraction` (see [ADR-008: Asynchronous Metabolism](../../adrs/ADR-008-asynchronous-metabolism.md)) passing the file content, source path, and token.
    - Shows a toast notification: "Extraction task queued. Check Task Queue panel."
 
 ---
@@ -87,6 +87,6 @@ Following [ADR-014 (Database-as-IPC)](../../adrs/ADR-014-sql-indexed-graph-and-d
 1. Generates a UUID and a slug (`<source-basename>-extracted-<N>`) for each extracted decision block.
 2. Executes an `INSERT` statement into the local SQLite database's `l3_nodes` table, capturing `id`, `l2_module_id: null`, `title`, `date`, and `status: "proposed"`.
 3. Defers to the background worker to sync changes to the [Git-Isomorphic Graph](../../adrs/ADR-004-git-isomorphic-graph.md) via the [Orphan Branch Maintenance](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) routine.
-4. The `KnowledgeStore` (in [`KnowledgeStore.ts`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts)) natively reflects changes via SQLite database queries, triggering a Tree Provider refresh.
+4. The `KnowledgeStore` (in [`knowledge-store.ts`](../../../../artifacts/vscode-client/src/knowledge-store.ts)) natively reflects changes via SQLite database queries, triggering a Tree Provider refresh.
 
 > **Note**: Database writes use the shared workspace SQLite file, seamlessly supporting multi-root workspaces without the limitations of `workspaceFolders[0]` file I/O.

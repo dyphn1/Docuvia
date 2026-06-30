@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-010: Context Compression & Proxy Layer
 
 ## Status
@@ -9,6 +13,34 @@ Accepted (2026-06-19)
 As Docuvia enables deep structural code analysis via the [AST Microkernel (ADR-020)](ADR-020-unified-isomorphic-ast-microkernel.md), the next bottleneck is [LLM context window limits and API costs (ADR-009)](ADR-009-token-management.md) during code review and reasoning. We need a mechanism to intercept large code blocks destined for the LLM, compress them using the pre-calculated AST Skeletons, and seamlessly retrieve the original source code only when the LLM explicitly requests it.
 
 ## Decision
+
+### Architecture Diagram
+
+```mermaid
+sequenceDiagram
+    participant LLM as LLM (Client)
+    participant Proxy as Proxy Layer
+    participant DB as SQLite Cache
+    participant AST as AST DB (Skeleton)
+    participant MCP as MCP Tool
+
+    LLM->>Proxy: Send Prompt with large code block
+    alt Context Available (Scheme A)
+        Proxy->>AST: Query AST Skeleton by path
+        AST-->>Proxy: Return 50-line Skeleton
+        Proxy->>DB: Store original text (24h TTL)
+        Proxy-->>LLM: Forward Prompt with Skeleton + retrieval ID
+    else Context Missing (Scheme B)
+        Proxy->>Proxy: Dumb Text Crusher (Regex fold)
+        Proxy->>DB: Store original text (24h TTL)
+        Proxy-->>LLM: Forward Prompt with Compressed Code + retrieval ID
+    end
+    Note over LLM, MCP: Later in the conversation...
+    LLM->>MCP: Call docuvia_retrieve_original(ID)
+    MCP->>DB: Fetch original text
+    DB-->>MCP: Original Code
+    MCP-->>LLM: Return original Code
+```
 
 We will implement a Decoupled LLM Proxy Layer with the following design:
 

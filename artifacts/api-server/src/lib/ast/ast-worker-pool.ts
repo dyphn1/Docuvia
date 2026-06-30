@@ -1,8 +1,11 @@
 import os from "node:os";
+import fs from "node:fs/promises";
 import { Piscina } from "piscina";
 import pLimit from "p-limit";
-import { logger } from "../logger.js";
+import { logger } from "@workspace/core";
 import { isQuarantined, quarantineFile } from "./quarantine-db.js";
+import { db } from "@workspace/db";
+import { errorReportsTable } from "@workspace/db";
 
 const maxThreads = Math.max(1, os.cpus().length - 1);
 
@@ -33,8 +36,33 @@ export class AstWorkerPool {
       return { status: "error", reason: "File is quarantined" };
     }
 
+    try {
+      const stats = await fs.stat(filePath);
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+      if (stats.size > MAX_FILE_SIZE) {
+        quarantineFile(filePath);
+        logger.warn(
+          { filePath, size: stats.size },
+          "File exceeds maximum size limit. Quarantining file."
+        );
+
+        await db
+          .insert(errorReportsTable)
+          .values({
+            projectId: 1, // Fallback since we don't have project context in pool directly
+            taskType: "ast_parse",
+            errorMessage: `File exceeds maximum size limit (10MB): ${filePath}`,
+          })
+          .catch((err) => logger.warn({ err }, "Failed to persist error report"));
+
+        return { status: "error", reason: "File exceeds maximum size limit (10MB)" };
+      }
+    } catch (err: any) {
+      return { status: "error", reason: `Failed to stat file: ${err.message}` };
+    }
+
     const ac = new AbortController();
-    const timeout = setTimeout(() => ac.abort(), 500);
+    const timeout = setTimeout(() => ac.abort(), 2000); // 2 second max timeout to prevent infinite loops
 
     try {
       const result = await this.pool.run(filePath, { signal: ac.signal });
@@ -43,11 +71,22 @@ export class AstWorkerPool {
     } catch (error: any) {
       clearTimeout(timeout);
       quarantineFile(filePath);
+
+      const errorMessage = error.message || "Worker error";
+      await db
+        .insert(errorReportsTable)
+        .values({
+          projectId: 1, // Fallback project context
+          taskType: "ast_parse_poison_pill",
+          errorMessage: `Poison Pill caught: ${errorMessage} in ${filePath}`,
+        })
+        .catch((err) => logger.warn({ err }, "Failed to persist error report"));
+
       logger.warn(
-        { filePath, error: error.message },
-        "AST Worker failed or timed out. Quarantining file."
+        { filePath, error: errorMessage },
+        "AST Worker failed or timed out. Quarantining file and persisting DLQ."
       );
-      return { status: "error", reason: error.message || "Worker error" };
+      return { status: "error", reason: errorMessage };
     }
   }
 

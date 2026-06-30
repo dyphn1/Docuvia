@@ -12,6 +12,8 @@ export const nodeLinksTable = pgTable("node_links", {
     .notNull()
     .references(() => l2NodesTable.id, { onDelete: "cascade" }),
   linkType: text("link_type").notNull().default("depends_on"),
+  commitSha: text("commit_sha"),
+  diffSummary: text("diff_summary"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

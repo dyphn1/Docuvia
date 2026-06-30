@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR-014: SQL-Indexed Graph and Database-as-IPC
 
 ## Context

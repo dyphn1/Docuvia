@@ -148,7 +148,7 @@ router.post("/projects/:id/l2-nodes/confirm-bootstrap", async (req, res) => {
   }
 });
 
-router.post("/l2-nodes", async (req, res) => {
+router.post("/l2-nodes", async (req, res) => { console.log("HITTING L2 NODE POST");
   const body = CreateL2NodeBody.parse(req.body);
   const [node] = await db
     .insert(l2NodesTable)

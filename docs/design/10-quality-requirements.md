@@ -2,29 +2,30 @@
 
 ## 10.1 Quality Tree
 
-```
-Quality
-├── Performance
-│   ├── MCP query latency (p95 < 2s, excluding LLM)
-│   ├── Git ingestion throughput (1000 commits < 30s)
-│   ├── L3 generation throughput (50 commits < 5 min, LLM-bound)
-│   └── Dashboard load time (GET /dashboard < 500ms)
-├── Reliability
-│   ├── Webhook HMAC validation (reject invalid signatures)
-│   ├── Graceful LLM degradation (partial results, no data loss)
-│   └── Startup invariants (PORT missing → explicit error)
-├── Maintainability
-│   ├── API type drift = zero (OpenAPI codegen enforced)
-│   ├── Unit test coverage (colocated *.unit.test.ts)
-│   └── DB test isolation (withRollback() for all integration tests)
-├── Extensibility
-│   ├── VCS providers (VcsIngestAdapter interface)
-│   ├── LLM providers (LLMClient interface)
-│   └── MCP tools (OpenAPI → codegen → route handler)
-└── Security
-    ├── HMAC-SHA256 for GitHub webhooks
-    ├── API key via VS Code SecretStorage (not plaintext settings)
-    └── Zod validation on all API request payloads (generated from OpenAPI spec)
+```mermaid
+mindmap
+  root((Quality))
+    Performance
+      MCP query latency
+      Git ingestion
+      L3 generation
+      Dashboard
+    Reliability
+      Webhook validation
+      Graceful degradation
+      Startup invariants
+    Maintainability
+      API type drift zero
+      Unit test coverage
+      DB test isolation
+    Extensibility
+      VCS providers
+      LLM providers
+      MCP tools
+    Security
+      HMAC-SHA256
+      SecretStorage
+      Zod validation
 ```
 
 ---

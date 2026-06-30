@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # ADR 013: Adversarial Implementation Protocol (Team Falsification)
 
 ## Status

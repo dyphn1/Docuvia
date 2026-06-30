@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # Asynchronous Metabolism (Database-Driven Queue)
 
 ## Core Dilemma

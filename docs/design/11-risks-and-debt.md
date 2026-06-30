@@ -14,6 +14,22 @@
 | R-08 | Multi-root workspace bugs in [VS Code extension](adrs/ADR-001-vscode-client-onboarding.md) (`acceptL1Tags`)                                                 | 🔴 Critical | Data corruption in multi-root VS Code workspaces                             | See [user-journeys.md Bugs A-1, A-2, A-3](vscode-client/ui-ux/user-journeys.md) — active open bugs                                    |
 | R-09 | `TaskRunner` always writes `l2_module_id: ""` — orphaned decisions                                                                                          | 🔴 Critical | All decisions extracted via VS Code extension are unlinked from L2 modules   | See [user-journeys.md Bug B-1](vscode-client/ui-ux/user-journeys.md) — active open bug                                                |
 
+```mermaid
+quadrantChart
+    title Risk Priority Matrix
+    x-axis Low Severity --> High Severity
+    y-axis Low Impact --> High Impact
+    quadrant-1 Monitor
+    quadrant-2 Mitigate Immediate
+    quadrant-3 Ignore
+    quadrant-4 Mitigate Planned
+    "Vector search scaling": [0.6, 0.8]
+    "Multi-hop traversal missing": [0.7, 0.4]
+    "Cross-project links": [0.5, 0.5]
+    "Orphan decisions": [0.9, 0.9]
+    "VS Code Multi-root bugs": [0.9, 0.8]
+```
+
 ---
 
 ## 11.2 Technical Debt Register

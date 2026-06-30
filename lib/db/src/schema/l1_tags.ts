@@ -1,16 +1,23 @@
-import { pgTable, text, serial, boolean, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, boolean, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const l1TagsTable = pgTable("l1_tags", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
-  category: text("category").notNull(),
-  description: text("description"),
-  isAnchored: boolean("is_anchored").notNull().default(false),
-  usageCount: integer("usage_count").notNull().default(0),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const l1TagsTable = pgTable(
+  "l1_tags",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull().unique(),
+    category: text("category").notNull(),
+    description: text("description"),
+    isAnchored: boolean("is_anchored").notNull().default(false),
+    usageCount: integer("usage_count").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("l1_tags_category_idx").on(table.category),
+    index("l1_tags_name_idx").on(table.name),
+  ]
+);
 
 export const insertL1TagSchema = createInsertSchema(l1TagsTable).omit({
   id: true,

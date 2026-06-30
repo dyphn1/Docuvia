@@ -2,7 +2,16 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { formatPromptOutput } from "../commands/query.js";
-import { InitService, AnalyzeService, ExtractService, QueryService, CleanService, StatusService, ChangeDetectionService, SyncService } from "@workspace/core";
+import {
+  InitService,
+  AnalyzeService,
+  ExtractService,
+  QueryService,
+  CleanService,
+  StatusService,
+  ChangeDetectionService,
+  SyncService,
+} from "@workspace/core";
 
 export async function runMcpServer() {
   const server = new Server(
@@ -46,8 +55,9 @@ export async function runMcpServer() {
               },
               escalateToLsp: {
                 type: "boolean",
-                description: "Whether to escalate to the TypeScript compiler (LSP) for precise reference resolution.",
-              }
+                description:
+                  "Whether to escalate to the TypeScript compiler (LSP) for precise reference resolution.",
+              },
             },
             required: ["target"],
           },
@@ -154,11 +164,15 @@ export async function runMcpServer() {
 
     if (name === "docuvia_context") {
       const target = args?.target as string;
-      if (!target) return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
+      if (!target)
+        return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
       try {
         const queryService = new QueryService(process.cwd());
         const result = await queryService.getContext(target);
-        if (!result) return { content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }] };
+        if (!result)
+          return {
+            content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }],
+          };
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (e: any) {
         return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
@@ -168,11 +182,15 @@ export async function runMcpServer() {
     if (name === "docuvia_impact") {
       const target = args?.target as string;
       const escalateToLsp = args?.escalateToLsp as boolean | undefined;
-      if (!target) return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
+      if (!target)
+        return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
       try {
         const queryService = new QueryService(process.cwd());
         const result = await queryService.getImpact(target, escalateToLsp);
-        if (!result) return { content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }] };
+        if (!result)
+          return {
+            content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }],
+          };
         return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
       } catch (e: any) {
         return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
@@ -271,7 +289,14 @@ export async function runMcpServer() {
         const cleanService = new CleanService(process.cwd());
         const result = await cleanService.clean();
         return {
-          content: [{ type: "text", text: result.deleted ? "Cleaned .docuvia/local.db database." : "No local database found to clean." }],
+          content: [
+            {
+              type: "text",
+              text: result.deleted
+                ? "Cleaned .docuvia/local.db database."
+                : "No local database found to clean.",
+            },
+          ],
         };
       } catch (e: any) {
         return {
@@ -286,7 +311,12 @@ export async function runMcpServer() {
         const statusService = new StatusService(process.cwd());
         const status = await statusService.getStatus();
         return {
-          content: [{ type: "text", text: `=== Docuvia Index Status ===\nProjects: ${status.projects}\nL2 Nodes: ${status.l2Nodes}\nL3 Decisions: ${status.l3Nodes}` }],
+          content: [
+            {
+              type: "text",
+              text: `=== Docuvia Index Status ===\nProjects: ${status.projects}\nL2 Nodes: ${status.l2Nodes}\nL3 Decisions: ${status.l3Nodes}`,
+            },
+          ],
         };
       } catch (e: any) {
         return {
@@ -324,7 +354,12 @@ export async function runMcpServer() {
 
       if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
         return {
-          content: [{ type: "text", text: "Error: DOCUVIA_API_URL or MCP_PAT is missing in the environment." }],
+          content: [
+            {
+              type: "text",
+              text: "Error: DOCUVIA_API_URL or MCP_PAT is missing in the environment.",
+            },
+          ],
           isError: true,
         };
       }

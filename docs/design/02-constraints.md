@@ -14,6 +14,14 @@
 | **PORT environment variable**  | API server throws an explicit error on startup if `PORT` is missing         | `artifacts/api-server/src/index.ts` startup check                                     |
 | **Node.js version in CI**      | Node.js 24 in GitHub Actions (Aligned with production)                      | `.github/workflows/ci.yml`                                                            |
 
+```mermaid
+flowchart LR
+    A[openapi.yaml] -->|codegen| B(Zod Schemas)
+    A -->|codegen| C(React Query Hooks)
+    B --> D[Backend Validation]
+    C --> E[Frontend Fetching]
+```
+
 ---
 
 ## 2.2 Organizational Constraints

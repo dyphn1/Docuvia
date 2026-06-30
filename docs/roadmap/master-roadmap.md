@@ -90,8 +90,8 @@ Provide a standalone, offline-capable IDE extension that interacts with local SQ
 
 ### 📁 Involved Files
 
-- `artifacts/vscode-client/src/CentralServerClient.ts`
-- `artifacts/vscode-client/src/KnowledgeStore.ts`
+- `artifacts/vscode-client/src/central-server-client.ts`
+- `artifacts/vscode-client/src/knowledge-store.ts`
 - `artifacts/vscode-client/src/extension.ts`
 
 ### 🏗️ System Architecture

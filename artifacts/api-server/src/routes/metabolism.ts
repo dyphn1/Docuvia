@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { logger } from "../lib/logger";
+import { logger } from "@workspace/core";
 import { db, pool } from "@workspace/db";
 import {
   correctionExamplesTable,
@@ -9,8 +9,8 @@ import {
   projectsTable,
 } from "@workspace/db";
 import { isNull, inArray, and, eq, lt } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
-import { checkCommitInDefaultBranch, parseGithubRepo } from "../lib/github-client";
+import { getLlmClientForProject } from "@workspace/core";
+import { checkCommitInDefaultBranch, parseGithubRepo } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth";
 
 const METABOLISM_LOCK_ID = 123456789;
@@ -113,8 +113,9 @@ async function runMetabolism() {
 
     for (const correction of pendingCorrections) {
       try {
-        const response = await openai.chat.completions.create({
-          model: process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
+        const { client, model } = await getLlmClientForProject(correction.projectId as number);
+        const response = await client.chat.completions.create({
+          model,
           messages: [
             {
               role: "system",
@@ -172,7 +173,9 @@ async function withMetabolismLock<T>(fn: () => Promise<T>): Promise<T | null> {
     return await fn();
   } finally {
     if (locked) {
-      await client.query("SELECT pg_advisory_unlock($1)", [METABOLISM_LOCK_ID]).catch(() => {});
+      await client
+        .query("SELECT pg_advisory_unlock($1)", [METABOLISM_LOCK_ID])
+        .catch((err) => logger.warn({ err }, "Ignored error"));
     }
     client.release();
   }

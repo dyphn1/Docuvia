@@ -14,7 +14,7 @@ Docuvia uses Webviews for complex data visualization that cannot be represented 
   - Snippets should highlight the matching keywords.
   - Clicking a result should ideally navigate to the file or open a detailed view.
 
-> ⚠️ **CONFLICT — Flat List, No Interaction, No Highlighting**: The current `SearchResultsPanel` implementation (`SearchResultsPanel.ts`) diverges from the above spec in three significant ways:
+> ⚠️ **CONFLICT — Flat List, No Interaction, No Highlighting**: The current `SearchResultsPanel` implementation (`search-results-panel.ts`) diverges from the above spec in three significant ways:
 >
 > 1. **No grouping**: Results are rendered as a flat list of `<div class="result-card">` elements. There is no grouping by Project, L1 Tag, or L2 Module.
 > 2. **No keyword highlighting**: The query term is displayed in the panel header but is not highlighted within result snippets.

@@ -1,5 +1,10 @@
 import crypto from "crypto";
+import fs from "fs/promises";
+import path from "path";
+import { createRequire } from "module";
 import { saveCompressedPayload } from "../memory/shared-memory.js";
+
+const require = createRequire(import.meta.url);
 
 export function dumbTextCrusher(code: string): string {
   // Replace { ... } blocks with { /* ... */ } while keeping top-level signatures.
@@ -7,10 +12,89 @@ export function dumbTextCrusher(code: string): string {
   return code.replace(/\{[\s\S]*?\}/g, "{ /* ... */ }");
 }
 
-export function mockGetAstSkeleton(path: string, code: string): string {
+let parserInitialized = false;
+
+export async function getAstSkeleton(filePath: string, code: string): Promise<string> {
   const id = crypto.randomUUID();
   saveCompressedPayload(id, code);
-  return `// [COMPRESSED_SKELETON_ID: ${id}]\n// Skeleton for ${path}\nfunction skeleton() { /* ... */ }`;
+
+  let skeleton = code;
+  try {
+    const { LanguageRegistry, ParsingFunnel, initParser } = await import("@workspace/ast-core");
+    const { Parser, Language } = await import("web-tree-sitter");
+
+    if (!parserInitialized) {
+      await initParser((scriptName) => {
+        try {
+          return require.resolve(`web-tree-sitter/${scriptName}`);
+        } catch {
+          return path.resolve(process.cwd(), "node_modules", "web-tree-sitter", scriptName);
+        }
+      });
+      parserInitialized = true;
+    }
+
+    const registry = await LanguageRegistry.load();
+    const funnel = new ParsingFunnel(registry);
+    const ext = path.extname(filePath);
+    const funnelRes = funnel.process(code, filePath, ext);
+
+    if (funnelRes.accepted && funnelRes.mappedExtension) {
+      const provider = registry.getProviderForExtension(funnelRes.mappedExtension);
+      if (provider) {
+        let wasmPath = "";
+        try {
+          wasmPath = path.resolve(
+            require.resolve("tree-sitter-wasms/package.json"),
+            "..",
+            "out",
+            provider.wasm_file
+          );
+        } catch (err) {
+          wasmPath = path.resolve(
+            process.cwd(),
+            "node_modules",
+            "tree-sitter-wasms",
+            "out",
+            provider.wasm_file
+          );
+        }
+
+        const wasmBytes = await fs.readFile(wasmPath);
+        const lang = await Language.load(wasmBytes);
+        const parser = new Parser();
+        parser.setLanguage(lang);
+
+        if ("initQueries" in provider && typeof (provider as any).initQueries === "function") {
+          (provider as any).initQueries(lang);
+        }
+
+        const tree = parser.parse(code);
+        if (tree) {
+          const classes = provider.extractClasses(tree.rootNode);
+          const functions = provider.extractFunctions(tree.rootNode);
+
+          const nodes = [...classes, ...functions].sort((a, b) => b.startIndex - a.startIndex);
+          // Filter out nodes that are contained within other nodes (to avoid overlapping replacements)
+          const topLevelNodes = nodes.filter(
+            (n) => !nodes.some((other) => other !== n && other.startIndex <= n.startIndex && other.endIndex >= n.endIndex)
+          );
+
+          for (const node of topLevelNodes) {
+            const crushed = dumbTextCrusher(node.text);
+            skeleton = skeleton.substring(0, node.startIndex) + crushed + skeleton.substring(node.endIndex);
+          }
+        }
+
+        parser.delete();
+      }
+    }
+  } catch (err: any) {
+    console.warn(`AST Skeleton generation failed for ${filePath}: ${err.message}`);
+    skeleton = dumbTextCrusher(code); // fallback
+  }
+
+  return `// [COMPRESSED_SKELETON_ID: ${id}]\n${skeleton}`;
 }
 
 interface CodeBlock {
@@ -68,7 +152,7 @@ export function extractCodeBlocks(text: string): CodeBlock[] {
   return blocks;
 }
 
-export function compressPrompt(text: string): { compressedText: string; hasChanges: boolean } {
+export async function compressPrompt(text: string): Promise<{ compressedText: string; hasChanges: boolean }> {
   let hasChanges = false;
   let compressedText = text;
 
@@ -110,7 +194,8 @@ export function compressPrompt(text: string): { compressedText: string; hasChang
 
       if (block.type === "markdown") {
         if (block.path) {
-          replacement = `\`\`\`\n${mockGetAstSkeleton(block.path, block.innerCode)}\n\`\`\``;
+          const skeletonStr = await getAstSkeleton(block.path, block.innerCode);
+          replacement = `\`\`\`\n${skeletonStr}\n\`\`\``;
         } else {
           const id = crypto.randomUUID();
           saveCompressedPayload(id, block.match);
@@ -118,7 +203,8 @@ export function compressPrompt(text: string): { compressedText: string; hasChang
         }
       } else if (block.type === "xml") {
         if (block.path) {
-          replacement = `<file path="${block.path}">\n${mockGetAstSkeleton(block.path, block.innerCode)}\n</file>`;
+          const skeletonStr = await getAstSkeleton(block.path, block.innerCode);
+          replacement = `<file path="${block.path}">\n${skeletonStr}\n</file>`;
         } else {
           const id = crypto.randomUUID();
           saveCompressedPayload(id, block.match);

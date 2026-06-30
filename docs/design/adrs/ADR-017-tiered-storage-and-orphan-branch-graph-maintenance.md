@@ -1,3 +1,7 @@
+---
+Supersedes: ADR-004
+---
+
 # ADR-017: Tiered Storage & Orphan Branch Graph Maintenance
 
 ## Context
@@ -5,6 +9,24 @@
 To prevent the [local PostgreSQL database](ADR-014-sql-indexed-graph-and-database-as-ipc.md) from growing infinitely as the project evolves through frequent edits and refactors, the graph needs a garbage collection (GC) mechanism. However, we cannot permanently delete historical knowledge (such as lessons learned from past bugs) simply because the code was refactored.
 
 ## Decision
+
+### Architecture Diagram
+
+```mermaid
+sequenceDiagram
+    participant Active as Active DB (SQLite)
+    participant GC as GC Worker (Background)
+    participant Branch as docuvia-knowledge (Orphan Branch)
+
+    Active->>Active: Soft delete (is_active=false)
+    Note over Active: Nodes marked as Tombstones
+    GC->>Active: Periodically fetch expired tombstones
+    Active-->>GC: Return Tombstone Data
+    GC->>GC: Serialize sub-graph to JSON
+    GC->>Branch: Commit to orphaned branch
+    Note over Branch: Commits organized by hash
+    GC->>Active: Hard delete archived tombstones
+```
 
 We will adopt a "Tiered Storage" strategy involving soft deletions and a [Git-Isomorphic Graph](ADR-004-git-isomorphic-graph.md) maintenance process:
 

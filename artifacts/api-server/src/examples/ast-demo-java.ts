@@ -7,44 +7,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function run() {
-  console.log("Generating dummy Java file to parse...");
-  const dummyFile = path.join(__dirname, "dummy.java");
-  await fs.writeFile(
-    dummyFile,
-    `import java.util.List;
-import java.util.ArrayList;
+  const fixtureFile = path.join(__dirname, "fixtures", "demo.java");
 
-public class MyTestClass {
-    private String name;
-
-    public MyTestClass(String name) {
-        this.name = name;
-    }
-
-    public void hello() {
-        System.out.println("Hello " + name);
-    }
-
-    public static void myTestFunction() {
-        List<String> items = new ArrayList<>();
-        items.add("Testing");
-        System.out.println(items);
-    }
-}
-
-interface Greeter {
-    void greet();
-}
-
-enum Color {
-    RED, GREEN, BLUE
-}
-`,
-    "utf-8"
-  );
-
-  console.log(`Parsing file: ${dummyFile}`);
-  const result = await parseAst(dummyFile);
+  console.log(`Parsing file: ${fixtureFile}`);
+  const result = await parseAst(fixtureFile);
 
   if (result.status === "done" && result.file) {
     console.log(`AST successfully parsed! Output written to: ${result.file}`);
@@ -55,9 +21,6 @@ enum Color {
   } else {
     console.error("AST parsing failed:", result.reason);
   }
-
-  // Cleanup
-  await fs.rm(dummyFile);
 }
 
 run().catch(console.error);

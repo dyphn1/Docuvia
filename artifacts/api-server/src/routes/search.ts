@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { l2NodesTable, l3NodesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { routeQuery } from "../lib/intent-router.js";
+import { routeQuery } from "@workspace/core";
 
 const router = Router();
 

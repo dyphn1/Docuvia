@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # Token Management & Extraction Efficiency
 
 ## Core Philosophy

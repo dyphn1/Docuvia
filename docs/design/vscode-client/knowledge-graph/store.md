@@ -2,7 +2,7 @@
 
 ## Database-as-IPC Architecture
 
-In Docuvia v1.0, [`KnowledgeStore.ts`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts) is no longer a naive in-memory singleton parsing YAML files. It acts as the robust client-side coordinator that interacts with the [Local-First Architecture](../../adrs/ADR-002-local-first-architecture.md) via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md).
+In Docuvia v1.0, [`knowledge-store.ts`](../../../../artifacts/vscode-client/src/knowledge-store.ts) is no longer a naive in-memory singleton parsing YAML files. It acts as the robust client-side coordinator that interacts with the [Local-First Architecture](../../adrs/ADR-002-local-first-architecture.md) via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md).
 
 ## Multi-Root Workspace Support
 

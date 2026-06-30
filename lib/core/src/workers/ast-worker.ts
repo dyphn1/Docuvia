@@ -1,9 +1,10 @@
 import { parentPort } from "worker_threads";
-import { Parser, Language } from "web-tree-sitter";
+import { Parser, Language, Query } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
+import { SupportedLanguage } from "@workspace/ast-core";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
@@ -12,7 +13,7 @@ export interface AstParseRequest {
   taskId: string;
   filePath: string;
   code: string;
-  language: "typescript" | "python" | "rust" | "go" | "cpp" | "java" | "ruby" | "php";
+  language: SupportedLanguage;
 }
 
 export interface ImportDescriptor {
@@ -45,173 +46,146 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     }
 
     const parser = new Parser();
-    
+
     // Attempt to load wasm
     let languageLoaded = false;
+    let langInstance: Language | null = null;
     try {
       const docuviaRoot = path.resolve(__dirname, "../../../../");
       // Use require.resolve to safely find tree-sitter-wasms no matter if it's hoisted or in .pnpm
       let wasmPath = "";
       try {
-        const packagePath = require.resolve(`tree-sitter-wasms/package.json`, { paths: [docuviaRoot] });
-        wasmPath = path.join(path.dirname(packagePath), "out", `tree-sitter-${request.language}.wasm`);
+        const packagePath = require.resolve(`tree-sitter-wasms/package.json`, {
+          paths: [docuviaRoot],
+        });
+        wasmPath = path.join(
+          path.dirname(packagePath),
+          "out",
+          `tree-sitter-${request.language}.wasm`
+        );
       } catch (err) {
         // Fallback to explicit path if package.json resolve fails
-        wasmPath = path.resolve(docuviaRoot, `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
+        wasmPath = path.resolve(
+          docuviaRoot,
+          `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
+        );
       }
 
       if (fs.existsSync(wasmPath)) {
         const wasmBytes = fs.readFileSync(wasmPath);
-        const lang = await Language.load(wasmBytes);
-        parser.setLanguage(lang);
+        langInstance = await Language.load(wasmBytes);
+        parser.setLanguage(langInstance);
         languageLoaded = true;
       } else {
         // Ultimate fallback for pnpm structures
-        const pnpmAltPath = path.resolve(docuviaRoot, `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`);
+        const pnpmAltPath = path.resolve(
+          docuviaRoot,
+          `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
+        );
         if (fs.existsSync(pnpmAltPath)) {
           const wasmBytes = fs.readFileSync(pnpmAltPath);
-          const lang = await Language.load(wasmBytes);
-          parser.setLanguage(lang);
+          langInstance = await Language.load(wasmBytes);
+          parser.setLanguage(langInstance);
           languageLoaded = true;
         } else {
-          console.warn(`[ast-worker] WASM not found at ${wasmPath}, falling back to mock`);
+          throw new Error(`[ast-worker] WASM not found at ${wasmPath}`);
         }
       }
     } catch (e) {
-      console.warn("[ast-worker] Failed to load wasm, falling back to mock", e);
+      throw new Error(`[ast-worker] Failed to load wasm: ${e instanceof Error ? e.message : e}`);
     }
 
     if (!languageLoaded) {
-      // Mock logic as requested
       parser.delete();
-      
-      // Basic regex fallback for TS/JS imports
-      const imports: ImportDescriptor[] = [];
-      const importRegex = /import\s+({[^}]+}|[^{;]+)\s+from\s+['"]([^'"]+)['"]/g;
-      let match;
-      while ((match = importRegex.exec(request.code)) !== null) {
-        const specifiers = match[1].trim();
-        const modulePath = match[2];
-        if (specifiers.startsWith('{')) {
-          const parts = specifiers.slice(1, -1).split(',');
-          for (const p of parts) {
-            const t = p.trim();
-            if (!t) continue;
-            const asIdx = t.indexOf(' as ');
-            if (asIdx !== -1) {
-              imports.push({
-                localName: t.slice(asIdx + 4).trim(),
-                originalName: t.slice(0, asIdx).trim(),
-                modulePath
-              });
-            } else {
-              imports.push({ localName: t, originalName: t, modulePath });
-            }
-          }
-        } else {
-          // default or namespace import
-          if (specifiers.includes('* as ')) {
-            imports.push({
-              localName: specifiers.split(' as ')[1].trim(),
-              originalName: '*',
-              modulePath
-            });
-          } else {
-            imports.push({
-              localName: specifiers,
-              originalName: 'default',
-              modulePath
-            });
-          }
-        }
-      }
-      
-      const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
-      // Basic regex for calls (naive)
-      const callRegex = /([a-zA-Z_$][0-9a-zA-Z_$]*)\s*\(/g;
-      while ((match = callRegex.exec(request.code)) !== null) {
-        // Skip some standard keywords
-        if (['if', 'while', 'for', 'switch', 'catch', 'function'].includes(match[1])) continue;
-        calls.push({ sourceFunction: "global", targetFunction: match[1] });
-      }
-
-      parentPort?.postMessage({
-        taskId: request.taskId,
-        success: true,
-        data: {
-          imports,
-          exports: [],
-          functions: [],
-          classes: [],
-          calls,
-          decisions: ["Extracted via Worker (Mocked AST parsing + regex)"],
-        }
-      });
-      return;
+      throw new Error(`[ast-worker] Language grammar not loaded for ${request.language}`);
     }
 
     // Parse the code using Tree-sitter
     const tree = parser.parse(request.code);
-    
+
     const decisions: string[] = [];
     if (tree) {
       decisions.push(`Parsed via web-tree-sitter (nodes: ${tree.rootNode.childCount})`);
     }
 
-    // Basic regex fallback for TS/JS imports (even with tree-sitter active, as there are no queries configured here yet)
     const imports: ImportDescriptor[] = [];
-    const importRegex = /import\s+({[^}]+}|[^{;]+)\s+from\s+['"]([^'"]+)['"]/g;
-    let match;
-    while ((match = importRegex.exec(request.code)) !== null) {
-      const specifiers = match[1].trim();
-      const modulePath = match[2];
-      if (specifiers.startsWith('{')) {
-        const parts = specifiers.slice(1, -1).split(',');
-        for (const p of parts) {
-          const t = p.trim();
-          if (!t) continue;
-          const asIdx = t.indexOf(' as ');
-          if (asIdx !== -1) {
-            imports.push({
-              localName: t.slice(asIdx + 4).trim(),
-              originalName: t.slice(0, asIdx).trim(),
-              modulePath
-            });
-          } else {
-            imports.push({ localName: t, originalName: t, modulePath });
+    const exports: Array<{ name: string; type: "function" | "class" | "variable" }> = [];
+    const functions: Array<{ name: string; startLine: number; endLine: number }> = [];
+    const classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }> =
+      [];
+    const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
+
+    if (tree && languageLoaded && langInstance) {
+      try {
+        let qStr = ``;
+        if (request.language === "typescript") {
+          qStr = `(import_statement (import_clause (named_imports (import_specifier name: (identifier) @import.name))) source: (string (string_fragment) @import.source))\n(import_statement (import_clause (identifier) @import.name) source: (string (string_fragment) @import.source))\n(export_statement (export_clause (export_specifier name: (identifier) @export.name)))\n(export_statement declaration: (function_declaration name: (identifier) @export.name))\n(export_statement declaration: (class_declaration name: (identifier) @export.name))\n(export_statement declaration: (lexical_declaration (variable_declarator name: (identifier) @export.name)))\n(function_declaration name: (identifier) @function)\n(method_definition name: (property_identifier) @method)\n(class_declaration name: (identifier) @class)\n(call_expression function: (identifier) @call)`;
+        } else {
+          qStr = `(import_statement) @import\n(function_declaration) @function\n(method_definition) @method\n(class_declaration) @class`;
+        }
+        const q = new Query(langInstance, qStr);
+        const matches = q.matches(tree.rootNode);
+
+        const capturedNodes = new Set();
+        for (const match of matches) {
+          for (const capture of match.captures) {
+            const node = capture.node;
+            if (capturedNodes.has(node.id)) continue;
+            capturedNodes.add(node.id);
+
+            if (capture.name === "import") {
+              imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
+            } else if (capture.name === "function" || capture.name === "method") {
+              functions.push({
+                name: node.childForFieldName("name")?.text || "anonymous",
+                startLine: node.startPosition.row,
+                endLine: node.endPosition.row,
+              });
+            } else if (capture.name === "class") {
+              classes.push({
+                name: node.childForFieldName("name")?.text || "anonymous",
+                startLine: node.startPosition.row,
+                endLine: node.endPosition.row,
+                methods: [],
+              });
+            }
           }
         }
-      } else {
-        if (specifiers.includes('* as ')) {
-          imports.push({
-            localName: specifiers.split(' as ')[1].trim(),
-            originalName: '*',
-            modulePath
-          });
-        } else {
-          imports.push({
-            localName: specifiers,
-            originalName: 'default',
-            modulePath
-          });
-        }
+        decisions.push("Queried nodes using web-tree-sitter Query API");
+      } catch (e) {
+        decisions.push("Query API failed, using AST fallback traversal");
+        const traverse = (node: any) => {
+          if (node.type === "import_statement") {
+            imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
+          } else if (node.type === "function_declaration" || node.type === "method_definition") {
+            functions.push({
+              name: node.childForFieldName("name")?.text || "anonymous",
+              startLine: node.startPosition.row,
+              endLine: node.endPosition.row,
+            });
+          } else if (node.type === "class_declaration") {
+            classes.push({
+              name: node.childForFieldName("name")?.text || "anonymous",
+              startLine: node.startPosition.row,
+              endLine: node.endPosition.row,
+              methods: [],
+            });
+          }
+          for (let i = 0; i < node.childCount; i++) {
+            traverse(node.child(i));
+          }
+        };
+        traverse(tree.rootNode);
       }
-    }
-    
-    const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
-    const callRegex = /([a-zA-Z_$][0-9a-zA-Z_$]*)\s*\(/g;
-    while ((match = callRegex.exec(request.code)) !== null) {
-      if (['if', 'while', 'for', 'switch', 'catch', 'function'].includes(match[1])) continue;
-      calls.push({ sourceFunction: "global", targetFunction: match[1] });
     }
 
     const data = {
       imports,
-      exports: [],
-      functions: [],
-      classes: [],
+      exports,
+      functions,
+      classes,
       calls,
-      decisions
+      decisions,
     };
 
     if (tree) tree.delete();
@@ -220,13 +194,13 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     parentPort?.postMessage({
       taskId: request.taskId,
       success: true,
-      data
+      data,
     });
   } catch (err: any) {
     parentPort?.postMessage({
       taskId: request.taskId,
       success: false,
-      error: err.message
+      error: err.message,
     });
   }
 });

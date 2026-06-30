@@ -1,5 +1,5 @@
 import rateLimit from "express-rate-limit";
-import { logger } from "./logger";
+import { logger } from "@workspace/core";
 
 function logRateLimit(req: import("express").Request) {
   logger.warn({ ip: req.ip, path: req.path }, "Rate limit exceeded");

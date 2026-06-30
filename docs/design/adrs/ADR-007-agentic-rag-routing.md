@@ -1,3 +1,7 @@
+---
+Supersedes: None
+---
+
 # Agentic RAG 4-Way Routing & Temporal Decay
 
 ## Core Architecture

@@ -13,11 +13,11 @@ import {
   subscriptionsTable,
 } from "@workspace/db";
 import { eq, and, inArray, gte, sql } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
-import { fetchPrCommits, parseGithubRepo } from "../lib/github-client.js";
-import { postPrComment } from "../lib/github-client.js";
-import { logger } from "../lib/logger.js";
-import { scoreCommit } from "../lib/commit-scorer.js";
+import { getLlmClientForProject } from "@workspace/core";
+import { fetchPrCommits, parseGithubRepo } from "@workspace/core";
+import { postPrComment } from "@workspace/core";
+import { logger } from "@workspace/core";
+import { scoreCommit } from "@workspace/core";
 
 const router = Router();
 
@@ -65,11 +65,7 @@ async function ingestPrCommits(
   return ingested;
 }
 
-async function generatePrAiSummary(
-  projectId: number,
-  prCreatedAt: Date,
-  model: string
-): Promise<string> {
+async function generatePrAiSummary(projectId: number, prCreatedAt: Date): Promise<string> {
   // Gather L3 nodes created for commits linked to this project after PR creation
   const l3Nodes = await db
     .select({
@@ -98,7 +94,9 @@ async function generatePrAiSummary(
 
   const context = JSON.stringify({ l2Nodes, l3Nodes }, null, 2);
 
-  const response = await openai.chat.completions.create({
+  const { client, model } = await getLlmClientForProject(projectId);
+
+  const response = await client.chat.completions.create({
     model,
     max_completion_tokens: 1024,
     messages: [
@@ -309,7 +307,7 @@ router.post("/:projectId", async (req, res) => {
         const prCreatedAt = prRecord?.createdAt ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
         // Generate AI summary using gpt-4o as default
-        const aiSummary = await generatePrAiSummary(projectId, prCreatedAt, process.env.AI_OPENAI_MODEL || "gpt-4o");
+        const aiSummary = await generatePrAiSummary(projectId, prCreatedAt);
 
         await db
           .update(pullRequestsTable)
@@ -367,7 +365,7 @@ router.post("/:projectId", async (req, res) => {
             eq(pullRequestsTable.analysisStatus, "in_progress")
           )
         )
-        .catch(() => {});
+        .catch((err) => logger.warn({ err }, "Ignored error"));
     }
   });
   return;

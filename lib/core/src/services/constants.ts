@@ -1,0 +1,8 @@
+export const GENERATION_BATCH_SIZE = 20;
+export const MAX_COMPLETION_TOKENS_SMALL = 1024;
+export const MAX_COMPLETION_TOKENS_MEDIUM = 2048;
+export const MAX_COMPLETION_TOKENS_LARGE = 4096;
+export const RATE_LIMIT_SLEEP_MS = 250;
+export const TIMEOUT_MS = 30 * 60 * 1000;
+export const MAX_CHUNK_SIZE = 1024;
+export const TOKEN_LIMIT = 4096;

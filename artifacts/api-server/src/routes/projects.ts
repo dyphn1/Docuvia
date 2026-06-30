@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { logger } from "../lib/logger.js";
+import { logger } from "@workspace/core";
 import { db } from "@workspace/db";
 import {
   projectsTable,
@@ -24,8 +24,8 @@ import {
   CreateCommitBody,
   ListProjectL2NodesParams,
 } from "@workspace/api-zod";
-import { LocalGitClient } from "../lib/git-client.js";
-import { processIngestion } from "../lib/ingestion-pipeline.js";
+import { LocalGitClient } from "@workspace/core";
+import { processIngestion } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
 
 const router = Router();
@@ -169,7 +169,7 @@ router.delete("/projects/:id", async (req, res) => {
 
 router.get("/projects/:id/graph", async (req, res) => {
   const { id } = GetProjectGraphParams.parse({ id: Number(req.params.id) });
-  
+
   const l2Nodes = await db.select().from(l2NodesTable).where(eq(l2NodesTable.projectId, id));
   const l2NodeIds = l2Nodes.map((n) => n.id);
 
@@ -183,33 +183,24 @@ router.get("/projects/:id/graph", async (req, res) => {
   const l1TagIds = Array.from(new Set(l1Relations.map((r) => r.l1TagId)));
 
   const l1Tags = l1TagIds.length
-    ? await db
-        .select()
-        .from(l1TagsTable)
-        .where(inArray(l1TagsTable.id, l1TagIds))
+    ? await db.select().from(l1TagsTable).where(inArray(l1TagsTable.id, l1TagIds))
     : [];
 
   const l3Nodes = l2Nodes.length
-    ? await db
-        .select()
-        .from(l3NodesTable)
-        .where(inArray(l3NodesTable.l2NodeId, l2NodeIds))
+    ? await db.select().from(l3NodesTable).where(inArray(l3NodesTable.l2NodeId, l2NodeIds))
     : [];
-    
+
   const nodeLinks = l2Nodes.length
-    ? await db
-        .select()
-        .from(nodeLinksTable)
-        .where(inArray(nodeLinksTable.sourceNodeId, l2NodeIds))
+    ? await db.select().from(nodeLinksTable).where(inArray(nodeLinksTable.sourceNodeId, l2NodeIds))
     : [];
-    
+
   res.json({
     projectId: id,
     l1Tags: l1Tags.map((t) => ({ ...t, createdAt: t.createdAt.toISOString() })),
     l2Nodes: l2Nodes.map((n) => ({
       ...n,
-      l3Count: l3Nodes.filter(l3 => l3.l2NodeId === n.id).length,
-      l1TagIds: l1Relations.filter(r => r.l2NodeId === n.id).map(r => r.l1TagId),
+      l3Count: l3Nodes.filter((l3) => l3.l2NodeId === n.id).length,
+      l1TagIds: l1Relations.filter((r) => r.l2NodeId === n.id).map((r) => r.l1TagId),
       createdAt: n.createdAt.toISOString(),
     })),
     l3Nodes: l3Nodes.map((n) => ({ ...n, createdAt: n.createdAt.toISOString() })),

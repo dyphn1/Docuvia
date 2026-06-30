@@ -95,7 +95,20 @@ The CI runs this exact sequence — replicate locally when making cross-package 
 
 ## Agent Workflow
 
-This repo has 10 subagents defined in `.github/agents/` for Claude/Copilot orchestration. For complex multi-step work, dispatch to the appropriate agent rather than doing everything in one turn. See `.github/copilot-instructions.md` for the orchestrator state machine.
+This repo has 10 subagents defined in the `.github/agents/` directory for Claude/Copilot orchestration:
+
+- [Requirement Analyzer](.github/agents/requirement-analyzer.agent.md)
+- [Backend Developer](.github/agents/backend-developer.agent.md)
+- [Frontend Developer](.github/agents/frontend-developer.agent.md)
+- [Database Schema Expert](.github/agents/database-schema-expert.agent.md)
+- [API Architect](.github/agents/api-architect.agent.md)
+- [Task Verifier](.github/agents/task-verifier.agent.md)
+- [Document Writer (MD)](.github/agents/document-writer-md.agent.md)
+- [Memory Keeper](.github/agents/memory-keeper.agent.md)
+- [Shell Script Expert](.github/agents/shell-script-expert.agent.md)
+- [Tool Maker](.github/agents/tool-maker.agent.md)
+
+For complex multi-step work, dispatch to the appropriate agent rather than doing everything in one turn. See `.github/copilot-instructions.md` for the orchestrator state machine.
 
 ## Key File Paths
 

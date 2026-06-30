@@ -1,19 +1,13 @@
 {
   "extends": "./tsconfig.base.json",
-  "compileOnSave": false,
+  "compilerOptions": {},
   "files": [],
   "references": [
-    {
-      "path": "./lib/db"
-    },
-    {
-      "path": "./lib/api-client-react"
-    },
-    {
-      "path": "./lib/api-zod"
-    },
-    {
-      "path": "./lib/integrations-openai-ai-server"
-    }
+    { "path": "./artifacts/ast-core" },
+    { "path": "./lib/core" },
+    { "path": "./lib/db" },
+    { "path": "./lib/api-client-react" },
+    { "path": "./lib/api-zod" },
+    { "path": "./lib/integrations-openai-ai-server" }
   ]
 }

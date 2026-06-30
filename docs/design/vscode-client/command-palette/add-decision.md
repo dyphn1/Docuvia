@@ -55,5 +55,5 @@ flowchart TD
    - Write the record immediately to the local SQLite database (`l3_nodes` table) and queue the event in the `SyncOutbox` ([ADR-002](../../adrs/ADR-002-local-first-architecture.md)). This eventually syncs to the centralized `docuvia-knowledge` orphan branch ([ADR-017](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)).
 
 6. **Post-Action**:
-   - Trigger a UI update by querying the SQLite database via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md), deprecating the old YAML-based [`KnowledgeStore`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts) file reload.
+   - Trigger a UI update by querying the SQLite database via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md), deprecating the old YAML-based [`KnowledgeStore`](../../../../artifacts/vscode-client/src/knowledge-store.ts) file reload.
    - Open the newly created decision as a Virtual Document in the editor so the user can finish filling it out (edits sync back to SQLite).

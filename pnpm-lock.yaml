@@ -74,7 +74,7 @@ importers:
         version: 7.2.0
       '@vitest/coverage-v8':
         specifier: ^1.0.0
-        version: 1.6.1(vitest@1.6.1(@types/node@25.3.5)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1))
+        version: 1.6.1(vitest@1.6.1)
       js-yaml:
         specifier: ^4.1.1
         version: 4.1.1
@@ -255,7 +255,7 @@ importers:
         version: 10.9.2(@types/node@25.3.5)(typescript@6.0.3)
       vitest:
         specifier: ^1.0.0
-        version: 1.6.1(@types/node@25.3.5)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
+        version: 1.6.1(@types/node@25.3.5)(@vitest/ui@1.6.1)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
 
   artifacts/ast-core:
     dependencies:
@@ -303,9 +303,21 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
+      '@vitest/ui':
+        specifier: ^1.6.1
+        version: 1.6.1(vitest@1.6.1)
+      execa:
+        specifier: ^9.6.1
+        version: 9.6.1
+      pino-pretty:
+        specifier: ^13
+        version: 13.1.3
       tsx:
         specifier: 'catalog:'
         version: 4.22.4
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@25.3.5)(@vitest/ui@1.6.1)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
 
   artifacts/kg-engine:
     dependencies:
@@ -516,7 +528,7 @@ importers:
         version: 7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.22.4)(yaml@2.8.2)
       vitest:
         specifier: ^1.0.0
-        version: 1.6.1(@types/node@25.3.5)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
+        version: 1.6.1(@types/node@25.3.5)(@vitest/ui@1.6.1)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
       wouter:
         specifier: ^3.3.5
         version: 3.9.0(react@19.1.0)
@@ -839,7 +851,7 @@ importers:
         version: 1.2.7
       vitest:
         specifier: ^1.0.0
-        version: 1.6.1(@types/node@25.3.5)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
+        version: 1.6.1(@types/node@25.3.5)(@vitest/ui@1.6.1)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
 
   lib/db:
     dependencies:
@@ -3218,6 +3230,9 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  '@polka/url@1.0.0-next.29':
+    resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
+
   '@radix-ui/number@1.1.1':
     resolution: {integrity: sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g==}
 
@@ -4709,6 +4724,11 @@ packages:
 
   '@vitest/spy@1.6.1':
     resolution: {integrity: sha512-MGcMmpGkZebsMZhbQKkAf9CX5zGvjkBTqf8Zx3ApYWXr3wG+QvEu2eXWfnIIWYSJExIp4V9FCKDEeygzkYrXMw==}
+
+  '@vitest/ui@1.6.1':
+    resolution: {integrity: sha512-xa57bCPGuzEFqGjPs3vVLyqareG8DX0uMkr5U/v5vLv5/ZUrBrPL7gzxzTJedEyZxFMfsozwTIbbYfEQVo3kgg==}
+    peerDependencies:
+      vitest: 1.6.1
 
   '@vitest/utils@1.6.1':
     resolution: {integrity: sha512-jOrrUvXM4Av9ZWiG1EajNto0u96kWAhJ1LmPmJhXXQx/32MecEKd10pOLYgS2BQx1TgkGhloPU1ArDW2vvaY6g==}
@@ -7373,6 +7393,9 @@ packages:
   flatted@2.0.2:
     resolution: {integrity: sha512-r5wGx7YeOwNWNlCA0wQ86zKyDLMQr+/RB8xy74M4hTphfmjlijTSSXGuH8rnvKZnfT9i+75zmd8jcKdMR4O6jA==}
 
+  flatted@3.4.2:
+    resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
+
   flatten@1.0.3:
     resolution: {integrity: sha512-dVsPA/UwQ8+2uoFe5GHtiBMu48dWLTdsuEd7CKGlZlD78r1TTWBvDuFaFGKCo/ZfEr95Uk56vZoX86OsHkUeIg==}
     deprecated: flatten is deprecated in favor of utility frameworks such as lodash.
@@ -9266,6 +9289,10 @@ packages:
   move-concurrently@1.0.1:
     resolution: {integrity: sha512-hdrFxZOycD/g6A6SoI2bB5NA/5NEqD0569+S47WZhPvm46sD50ZHdYaFmnua5lndde9rCHGjmfK7Z8BuCt/PcQ==}
     deprecated: This package is no longer supported.
+
+  mrmime@2.0.1:
+    resolution: {integrity: sha512-Y3wQdFg2Va6etvQ5I82yUhGdsKrcYox6p7FfL1LbK2J4V01F9TGlepTIhnK24t7koZibmg82KGglhA1XK5IsLQ==}
+    engines: {node: '>=10'}
 
   ms@2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==}
@@ -11272,6 +11299,10 @@ packages:
   sinon@22.0.0:
     resolution: {integrity: sha512-sq/6DpdXOrLyfbKlXLg/Usc7xu8YXPeLkOFZRvA3bNUSA2lhbrZ06yuXbH1fkzBPCbz9O10+7hznzUsjaYNm0Q==}
 
+  sirv@2.0.4:
+    resolution: {integrity: sha512-94Bdh3cC2PKrbgSOUqTiGPWVZeSiXfKOVZNJniWoqrWrRkB1CJzBU3NEbiTsPcYy1lDsANA/THzS+9WBiy5nfQ==}
+    engines: {node: '>= 10'}
+
   sisteransi@1.0.5:
     resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
 
@@ -11856,6 +11887,10 @@ packages:
   token-types@6.1.2:
     resolution: {integrity: sha512-dRXchy+C0IgK8WPC6xvCHFRIWYUbqqdEIKPaKo/AcTUNzwLTK6AH7RjdLWsEZcAN/TBdtfUw3PYEgPr5VPr6ww==}
     engines: {node: '>=14.16'}
+
+  totalist@3.0.1:
+    resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
+    engines: {node: '>=6'}
 
   tough-cookie@2.5.0:
     resolution: {integrity: sha512-nlLsUzgm1kfLXSXfRZMc1KLAugd4hqJHDTvc2hDIwS3mZAfMEuMbc03SujMF+GEcpaX/qboeycw6iO8JwVv2+g==}
@@ -15091,7 +15126,9 @@ snapshots:
       jest-runner: 24.9.0
       jest-runtime: 24.9.0
     transitivePeerDependencies:
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@jest/transform@24.9.0':
     dependencies:
@@ -15505,6 +15542,8 @@ snapshots:
   '@playwright/test@1.60.0':
     dependencies:
       playwright: 1.60.0
+
+  '@polka/url@1.0.0-next.29': {}
 
   '@radix-ui/number@1.1.1': {}
 
@@ -17110,7 +17149,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/coverage-v8@1.6.1(vitest@1.6.1(@types/node@25.3.5)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1))':
+  '@vitest/coverage-v8@1.6.1(vitest@1.6.1)':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -17125,7 +17164,7 @@ snapshots:
       std-env: 3.10.0
       strip-literal: 2.1.1
       test-exclude: 6.0.0
-      vitest: 1.6.1(@types/node@25.3.5)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
+      vitest: 1.6.1(@types/node@25.3.5)(@vitest/ui@1.6.1)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -17150,6 +17189,17 @@ snapshots:
   '@vitest/spy@1.6.1':
     dependencies:
       tinyspy: 2.2.1
+
+  '@vitest/ui@1.6.1(vitest@1.6.1)':
+    dependencies:
+      '@vitest/utils': 1.6.1
+      fast-glob: 3.3.3
+      fflate: 0.8.2
+      flatted: 3.4.2
+      pathe: 1.1.2
+      picocolors: 1.1.1
+      sirv: 2.0.4
+      vitest: 1.6.1(@types/node@25.3.5)(@vitest/ui@1.6.1)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
 
   '@vitest/utils@1.6.1':
     dependencies:
@@ -20516,6 +20566,8 @@ snapshots:
 
   flatted@2.0.2: {}
 
+  flatted@3.4.2: {}
+
   flatten@1.0.3: {}
 
   float-tooltip@1.7.5:
@@ -22757,6 +22809,8 @@ snapshots:
       mkdirp: 0.5.6
       rimraf: 2.7.1
       run-queue: 1.0.3
+
+  mrmime@2.0.1: {}
 
   ms@2.0.0: {}
 
@@ -25262,6 +25316,12 @@ snapshots:
       '@sinonjs/samsam': 10.0.2
       diff: 9.0.0
 
+  sirv@2.0.4:
+    dependencies:
+      '@polka/url': 1.0.0-next.29
+      mrmime: 2.0.1
+      totalist: 3.0.1
+
   sisteransi@1.0.5: {}
 
   slash@1.0.0: {}
@@ -25945,6 +26005,8 @@ snapshots:
       '@tokenizer/token': 0.3.0
       ieee754: 1.2.1
 
+  totalist@3.0.1: {}
+
   tough-cookie@2.5.0:
     dependencies:
       psl: 1.15.0
@@ -26453,7 +26515,7 @@ snapshots:
       tsx: 4.22.4
       yaml: 2.8.2
 
-  vitest@1.6.1(@types/node@25.3.5)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1):
+  vitest@1.6.1(@types/node@25.3.5)(@vitest/ui@1.6.1)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1):
     dependencies:
       '@vitest/expect': 1.6.1
       '@vitest/runner': 1.6.1
@@ -26477,6 +26539,7 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.3.5
+      '@vitest/ui': 1.6.1(vitest@1.6.1)
       happy-dom: 20.10.6
       jsdom: 14.1.0
     transitivePeerDependencies:

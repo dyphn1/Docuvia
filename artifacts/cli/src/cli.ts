@@ -56,17 +56,22 @@ async function main() {
   }
 
   if (command === "sync") {
-    const projectId = process.argv[3];
-    if (!projectId) {
+    const isLocal = process.argv.includes("--local");
+    const argsWithoutFlags = process.argv.slice(3).filter((arg) => !arg.startsWith("--"));
+    const projectId = argsWithoutFlags[0];
+    const commitSha = argsWithoutFlags[1];
+
+    if (!isLocal && !projectId) {
       console.error(
         "  docuvia init                                 # Initialize local project and DB"
       );
       console.error("Usage: docuvia sync <project_id> [commit_sha]");
+      console.error("       docuvia sync --local                    # Pack local knowledge to orphan branch");
       console.error("       echo <commit_sha> | docuvia sync <project_id>");
       process.exit(1);
     }
-    const commitSha = process.argv[4];
-    await syncCommand(projectId, commitSha);
+    
+    await syncCommand({ isLocal, projectId, commitSha });
     process.exit(0);
   }
 
@@ -119,6 +124,7 @@ async function main() {
     "  docuvia init-agent                           # Install hooks for Claude Code and Cursor"
   );
   console.error("  docuvia sync <project_id> [commit_sha]       # Sync local changes to server");
+  console.error("  docuvia sync --local                         # Pack local knowledge to orphan branch");
   console.error("  docuvia query <target> [--local]             # Query the knowledge graph");
   console.error(
     "  docuvia mcp                                  # Start the local MCP stdio server"

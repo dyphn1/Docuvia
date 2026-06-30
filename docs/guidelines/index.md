@@ -9,3 +9,4 @@ All AI agents and developers must read and adhere to these rules before writing 
 4. [Clean Code & DRY](04-clean-code.md)
 5. [TDD & Testing](05-tdd-and-testing.md)
 6. [SRE & Reliability](06-sre-and-reliability.md)
+7. [Regression, Parity, and Environment Testing](07-regression-and-parity-testing.md)

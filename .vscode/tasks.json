@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CLI: Run All Tests",
+      "type": "shell",
+      "command": "pnpm --filter @workspace/cli test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "CLI: Run Tests (UI)",
+      "type": "shell",
+      "command": "pnpm --filter @workspace/cli run test:ui",
+      "group": "test",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  ]
+}

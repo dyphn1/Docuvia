@@ -2,7 +2,7 @@
   "_meta": {
     "description": "Local verification state tracker for Docuvia Design Verification cron. NOT committed to git \u2014 used by hermes agent to track which checklist items have been verified.",
     "version": "1.0",
-    "last_updated": "2026-06-29",
+    "last_updated": "2026-06-30",
     "note_5": "zero-server-deep-traversal re-verification 0644 committed 2026-06-27: edge data flow architecturally complete (server\u2192client\u2192types) but no local.db write path for node_links. Code uncommitted >1 month.",
     "note_4": "cross-project-linking re-verified 2026-06-27 (0635): generate.ts changed but detectCrossProjectLinks() unchanged. All findings carried forward.",
     "note_2": "docuvia-sync-cli first verification completed 2026-06-26 (report was missing from prior session).",
@@ -28,8 +28,8 @@
       },
       "llm-abstraction-layer": {
         "status": "warn",
-        "report": "0671_1.1.5.md",
-        "last_verified": "2026-06-30",
+        "report": "0672_1.1.5.md",
+        "last_verified": "2026-06-29",
         "notes": "Re-verification 0671: no code changes (all checksums identical to 0670). All findings carried forward."
       },
       "per-project-model-switching": {
@@ -61,9 +61,9 @@
       },
       "svn-integration": {
         "status": "warn",
-        "report": "0645_1.2.5.md",
-        "last_verified": "2026-06-27",
-        "notes": "Re-verification 0645: no code changes (all checksums identical to 0640). Findings carried forward."
+        "report": "673_1.2.5.md",
+        "last_verified": "2026-06-30",
+        "notes": "Re-verification 673: identified architecture drift in diff storage."
       },
       "build-artifact-parser": {
         "status": "done",

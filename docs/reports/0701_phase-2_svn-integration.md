@@ -5,7 +5,7 @@
 - **Status Update Required**: WARN
 
 ### Description of Failure
-The SVN ingestion pipeline incorrectly stores the diff content in the `message` column of the `commits` table instead of the dedicated `diff` column. Specifically, in `ingestion-pipeline.ts` line 152, the code constructs `fullMessage = c.diff ? "${c.message}\n\n${c.diff}" : c.message` and stores this in the `message` field, leaving the `diff` column unused. This violates the database schema design where `message` should contain only the commit message and `diff` should contain the diff content.
+The SVN ingestion pipeline incorrectly stores the diff content in the `message` column of the `commits` table instead of the dedicated `diff` column. Specifically, in `ingestion-pipeline.ts` line 152, the code constructs `fullMessage = c.diff ? "${c.message}\n\n${c.diff}" : c.message` and stores this in the `message` field, leaving the `diff` column unused. This violates the database schema design where `message` should contain only the commit message and `diff` should contain the diff content. Re-verified on 2026-07-01: issue persists.
 
 ### Recommended Fix
 Modify the SVN ingestion block in `lib/core/src/services/ingestion-pipeline.ts` (lines 154-162) to:

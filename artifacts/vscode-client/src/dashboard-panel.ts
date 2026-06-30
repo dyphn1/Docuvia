@@ -1,8 +1,8 @@
 import { randomBytes } from "crypto";
 import * as vscode from "vscode";
-import { KnowledgeGraphSnapshot } from "./KnowledgeStore.js";
-import { KnowledgeStore } from "./KnowledgeStore.js";
-import { TaskQueueTreeProvider } from "./TaskQueueTreeProvider.js";
+import { KnowledgeGraphSnapshot } from "./knowledge-store.js";
+import { KnowledgeStore } from "./knowledge-store.js";
+import { TaskQueueTreeProvider } from "./task-queue-tree-provider.js";
 
 // ─── Message types ───────────────────────────────────────────────────────────
 

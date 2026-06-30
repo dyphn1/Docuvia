@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import * as vscode from "vscode";
-import { CentralSearchResult } from "./CentralServerClient.js";
+import { CentralSearchResult } from "./central-server-client.js";
 
 export class SearchResultsPanel {
   static readonly viewType = "docuvia.searchResults";

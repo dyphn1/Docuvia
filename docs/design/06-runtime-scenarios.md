@@ -147,7 +147,7 @@ A developer triggers extraction from VS Code, which sends a task to the api-serv
 
 See [docs/design/vscode-client/command-palette/run-extraction.md](vscode-client/command-palette/run-extraction.md) for the detailed command flow.
 
-- **VS Code Task Runner**: [`artifacts/vscode-client/src/TaskRunner.ts`](../../artifacts/vscode-client/src/TaskRunner.ts) (`runExtraction()`)
+- **VS Code Task Runner**: [`artifacts/vscode-client/src/task-runner.ts`](../../artifacts/vscode-client/src/task-runner.ts) (`runExtraction()`)
 - **Implementation Route**: [`artifacts/api-server/src/routes/extensions_vscode.ts`](../../artifacts/api-server/src/routes/extensions_vscode.ts) (`POST /extensions/vscode/extract`)
 
 ```mermaid
@@ -303,8 +303,8 @@ sequenceDiagram
 
 When an AI Agent calls the `docuvia_impact` MCP tool, Docuvia uses a **Hybrid Approach** to provide fast and accurate analysis. It queries the fast `local.db` (SQLite) AST index first for O(1) lookups. If the confidence is low or deep verification (exact execution flows and taint analysis) is explicitly requested, it escalates to an on-demand background LSP client (`LspEnrichmentService`).
 
-- **Query Routing**: [`artifacts/api-server/src/services/QueryService.ts`](../../artifacts/api-server/src/services/QueryService.ts) (`getImpact()` with `escalateToLsp` flag)
-- **LSP Integration**: [`artifacts/api-server/src/services/LspEnrichmentService.ts`](../../artifacts/api-server/src/services/LspEnrichmentService.ts)
+- **Query Routing**: [`artifacts/api-server/src/services/query-service.ts`](../../artifacts/api-server/src/services/query-service.ts) (`getImpact()` with `escalateToLsp` flag)
+- **LSP Integration**: [`lib/core/src/services/lsp-enrichment-service.ts`](../../lib/core/src/services/lsp-enrichment-service.ts)
 
 ```mermaid
 sequenceDiagram

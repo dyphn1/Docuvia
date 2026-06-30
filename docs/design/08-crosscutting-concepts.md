@@ -171,8 +171,8 @@ See [Section 8.3.2](#832-ui-architecture-mvc) for the full rule specification.
 | Layer          | VS Code Extension                                                    | React kg-engine                                                   |
 | -------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | **View**       | `KnowledgeGraphTreeProvider`, `DashboardPanel`, `SearchResultsPanel` | `.tsx` page/component files                                       |
-| **Controller** | `extension.ts` command handlers, `ChatParticipant.ts`                | Event handlers, `useQuery`/`useMutation` callsites                |
-| **Model**      | `KnowledgeStore.ts` (YAML ↔ disk)                                    | `@workspace/api-client-react` generated hooks + React Query cache |
+| **Controller** | `extension.ts` command handlers, `chat-participant.ts`                | Event handlers, `useQuery`/`useMutation` callsites                |
+| **Model**      | `knowledge-store.ts` (YAML ↔ disk)                                    | `@workspace/api-client-react` generated hooks + React Query cache |
 
 ---
 
@@ -267,8 +267,8 @@ View (re-renders via updated state / props)
 **In the VS Code extension:**
 
 - `KnowledgeGraphTreeProvider`, `DashboardPanel`, `SearchResultsPanel` = **View**
-- `extension.ts` command handlers, `ChatParticipant.ts` = **Controller**
-- `KnowledgeStore.ts` = **Model** (YAML ↔ disk)
+- `extension.ts` command handlers, `chat-participant.ts` = **Controller**
+- `knowledge-store.ts` = **Model** (YAML ↔ disk)
 
 **In the React frontend:**
 

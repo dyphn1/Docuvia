@@ -39,7 +39,7 @@ flowchart TD
 
 - Guardrails and common query structures are identified by the router without LLM latency, utilizing direct database queries per [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md).
 - When a new developer queries the AI, the router in `intent-router.ts` (handling both [Local-First](ADR-002-local-first-architecture.md) and Server-Augmented queries via [Agentic RAG Routing](ADR-007-agentic-rag-routing.md)) runs O(1) checks for `#attach` or specific domain keywords mapped from [L1/L2 database names](ADR-005-knowledge-abstraction-strategy.md) to pre-inject the guardrail natively.
-- **Implementation client sync**: Exposes synchronisation through [`CentralServerClient.ts`](../../../artifacts/vscode-client/src/CentralServerClient.ts#L79) (`sync()` and `pullSnapshot()`), fetching from the [Orphan Branch](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) to maintain the [Git-Isomorphic Graph](ADR-004-git-isomorphic-graph.md).
+- **Implementation client sync**: Exposes synchronisation through [`central-server-client.ts`](../../../artifacts/vscode-client/src/central-server-client.ts#L79) (`sync()` and `pullSnapshot()`), fetching from the [Orphan Branch](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) to maintain the [Git-Isomorphic Graph](ADR-004-git-isomorphic-graph.md).
 
 ## 4. Tool Maker Integration
 

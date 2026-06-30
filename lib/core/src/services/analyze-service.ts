@@ -6,8 +6,8 @@ import crypto from "crypto";
 import Database from "better-sqlite3";
 import fg from "fast-glob";
 import ignore from "ignore";
-import { AstWorkerPool } from "./AstWorkerPool.js";
-import { ScopeResolver } from "./ScopeResolver.js";
+import { AstWorkerPool } from "./ast-worker-pool.js";
+import { ScopeResolver } from "./scope-resolver.js";
 import { exec } from "child_process";
 import * as util from "util";
 
@@ -587,7 +587,7 @@ export class AnalyzeService {
             }
             if (!backgroundDb) return;
 
-            const { ExtractService } = await import("./ExtractService.js");
+            const { ExtractService } = await import("./extract-service.js");
             const extractService = new ExtractService(this.workspaceRoot);
 
             // Initialize l3_nodes schema if not exists just in case

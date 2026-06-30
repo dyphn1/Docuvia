@@ -4,7 +4,7 @@ import { eq, or, like, desc, and } from "drizzle-orm";
 import { l2NodesTable, l3NodesTable } from "@workspace/db/schema";
 import path from "path";
 import fs from "fs";
-import { LspEnrichmentService } from "./LspEnrichmentService.js";
+import { LspEnrichmentService } from "./lsp-enrichment-service.js";
 
 export interface QueryResult {
   l2?: any;

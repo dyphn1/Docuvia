@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import * as sinon from "sinon";
-import { KnowledgeStore } from "../KnowledgeStore.js";
+import { KnowledgeStore } from "../knowledge-store.js";
 
 suite("Phase 1: Local Knowledge Schema & Foundations", () => {
   let sandbox: sinon.SinonSandbox;

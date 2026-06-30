@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import { minimatch } from "minimatch";
-import { KnowledgeStore } from "./KnowledgeStore.js";
+import { KnowledgeStore } from "./knowledge-store.js";
 import { L2Module } from "./types.js";
 
 export interface CodeLensDecisionData {

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { IntervalTree } from "./IntervalTree.js";
-import { KnowledgeStore } from "../KnowledgeStore.js";
+import { IntervalTree } from "./interval-tree.js";
+import { KnowledgeStore } from "../knowledge-store.js";
 import { L3Decision } from "../types.js";
 
 export class KnowledgeIndexer {

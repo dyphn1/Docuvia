@@ -5,7 +5,7 @@
 - **ID**: `docuvia.assistant`
 - **Name**: `docuvia`
 - **Full Name**: `Docuvia Knowledge Graph`
-- **Source Code**: [`ChatParticipant.ts`](../../src/ChatParticipant.ts)
+- **Source Code**: [`chat-participant.ts`](../../src/chat-participant.ts)
 
 ## Handlers & Slash Commands
 
@@ -47,7 +47,7 @@ flowchart TD
 
   If the user's prompt contains a recognised project-type token (`backend`, `frontend`, `library`, `data-science`, `cli`, `fullstack`, `monorepo`), Docuvia skips workspace detection and immediately matches the token against the built-in `L1_TEMPLATES` array. The matching template's tags are formatted as markdown and streamed to chat.
 
-  > ⚠️ NOTE: `data-science` is present in `TYPE_TOKENS` (`ChatParticipant.ts:157`) but has no corresponding entry in `L1_TEMPLATES`. The `if (template)` guard never fires, so workspace detection is **not** skipped – this is a dead token and a known code gap (addressed in Round 2).
+  > ⚠️ NOTE: `data-science` is present in `TYPE_TOKENS` (`chat-participant.ts:157`) but has no corresponding entry in `L1_TEMPLATES`. The `if (template)` guard never fires, so workspace detection is **not** skipped – this is a dead token and a known code gap (addressed in Round 2).
 
   #### 2. Workspace detection (default path)
 
@@ -103,7 +103,7 @@ flowchart TD
   1. **Target Resolution**: Uses the provided path, or the active editor's file. If neither is provided, defaults to the root of the first open workspace folder.
   2. **Directory Scanning**: If the target is a directory, recursively scans for files. It automatically ignores `.git`, `node_modules`, and `.docuvia`.
   3. **Pattern Filtering**: Applies `minimatch` against `docuvia.extraction.includePatterns` (configured in settings) to ensure only valid source code files are processed.
-  4. **Task Queuing**: Reads the content of all matched files and queues individual L3 extraction tasks via [`TaskRunner.ts`](../../src/TaskRunner.ts).
+  4. **Task Queuing**: Reads the content of all matched files and queues individual L3 extraction tasks via [`task-runner.ts`](../../src/task-runner.ts).
 
 ### `/help`
 

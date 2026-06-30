@@ -54,7 +54,7 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
   - Automatically created if there are L3 decisions where `l2_module_id: unassigned` or the ID is missing/invalid.
   - Expands to show the unassigned L3 Entry Nodes.
 
-> ⚠️ **CONFLICT – Not Implemented**: The `unassigned-group` node is fully specified above but is **absent from [`KnowledgeGraphTreeProvider.ts`](../../../../artifacts/vscode-client/src/KnowledgeGraphTreeProvider.ts)**. The current `getChildren` implementation for `project` nodes only iterates L1 tags; it never checks for decisions with `l2_module_id === 'unassigned'` or an unmapped ID, and never appends an `unassigned-group` item. This node type will remain invisible to users until Round 2 adds the required logic to `KnowledgeGraphTreeProvider`.
+> ⚠️ **CONFLICT – Not Implemented**: The `unassigned-group` node is fully specified above but is **absent from [`knowledge-graph-tree-provider.ts`](../../../../artifacts/vscode-client/src/knowledge-graph-tree-provider.ts)**. The current `getChildren` implementation for `project` nodes only iterates L1 tags; it never checks for decisions with `l2_module_id === 'unassigned'` or an unmapped ID, and never appends an `unassigned-group` item. This node type will remain invisible to users until Round 2 adds the required logic to `KnowledgeGraphTreeProvider`.
 
 ### 6. Placeholder Nodes
 
@@ -67,7 +67,7 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
 
 ## Data Management & Sync
 
-- **Store**: Handled by the singleton [`KnowledgeStore`](../../../../artifacts/vscode-client/src/KnowledgeStore.ts).
+- **Store**: Handled by the singleton [`KnowledgeStore`](../../../../artifacts/vscode-client/src/knowledge-store.ts).
 - **Reactivity**: Triggered via Database-as-IPC ([ADR-014](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)) and AST Microkernel events ([ADR-020](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md)), replacing legacy `vscode.FileSystemWatcher` on `.docuvia/**`.
 - **Lazy Evaluation & Rendering**:
   - By default, nodes below Project are collapsed.

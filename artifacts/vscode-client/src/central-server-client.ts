@@ -1,5 +1,5 @@
-import { CredentialManager } from "./CredentialManager.js";
-import { KnowledgeStore } from "./KnowledgeStore.js";
+import { CredentialManager } from "./credential-manager.js";
+import { KnowledgeStore } from "./knowledge-store.js";
 import { KnowledgeSnapshot } from "./types.js";
 
 /** Request body for POST /query */

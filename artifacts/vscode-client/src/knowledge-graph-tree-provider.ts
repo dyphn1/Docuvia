@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import { openLocalDatabase } from "@workspace/core";
-import { KnowledgeStore } from "./KnowledgeStore.js";
+import { KnowledgeStore } from "./knowledge-store.js";
 
 // ─── Node types ───────────────────────────────────────────────────────────────
 

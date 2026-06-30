@@ -4,6 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
+import { SupportedLanguage } from "@workspace/ast-core";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
@@ -12,7 +13,7 @@ export interface AstParseRequest {
   taskId: string;
   filePath: string;
   code: string;
-  language: "typescript" | "python" | "rust" | "go" | "cpp" | "java" | "ruby" | "php";
+  language: SupportedLanguage;
 }
 
 export interface ImportDescriptor {

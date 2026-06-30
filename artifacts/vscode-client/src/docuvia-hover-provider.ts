@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { KnowledgeStore } from "./KnowledgeStore.js";
-import { KnowledgeIndexer } from "./indexer/KnowledgeIndexer.js";
+import { KnowledgeStore } from "./knowledge-store.js";
+import { KnowledgeIndexer } from "./indexer/knowledge-indexer.js";
 import { QueryService } from "@workspace/core";
 
 export class DocuviaHoverProvider implements vscode.HoverProvider {

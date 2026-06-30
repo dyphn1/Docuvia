@@ -3,9 +3,9 @@ import * as vscode from "vscode";
 import { minimatch } from "minimatch";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { openLocalDatabase } from "@workspace/core";
-import { ExtractionTask, TaskQueueTreeProvider, TaskType } from "./TaskQueueTreeProvider.js";
-import { KnowledgeStore, KnowledgeGraphSnapshot } from "./KnowledgeStore.js";
-import { KGNode } from "./KnowledgeGraphTreeProvider.js";
+import { ExtractionTask, TaskQueueTreeProvider, TaskType } from "./task-queue-tree-provider.js";
+import { KnowledgeStore, KnowledgeGraphSnapshot } from "./knowledge-store.js";
+import { KGNode } from "./knowledge-graph-tree-provider.js";
 
 // ─── Public interface ─────────────────────────────────────────────────────────
 

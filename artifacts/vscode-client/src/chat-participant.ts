@@ -2,9 +2,9 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { minimatch } from "minimatch";
 import { parse as parseYaml } from "yaml";
-import { CentralServerAuthError, CentralServerClient } from "./CentralServerClient.js";
-import { KnowledgeStore } from "./KnowledgeStore.js";
-import { TaskRunner } from "./TaskRunner.js";
+import { CentralServerAuthError, CentralServerClient } from "./central-server-client.js";
+import { KnowledgeStore } from "./knowledge-store.js";
+import { TaskRunner } from "./task-runner.js";
 
 // ─── L1 Template types ────────────────────────────────────────────────────────
 

@@ -27,7 +27,7 @@
   - Status: ✅ Done (2026-06-26) — bridge-provider.ts implements parseOpenApiSpec() + isOpenApiFile() detection; ast-worker.ts routes .yaml/.json files to bridge provider when they contain openapi/swagger keys; ingestion pipeline Phases 1/2/3.5/4.5 handle all api_contract events
 
 - [ ] **Zero-Server Deep Traversal** — Pure local SQLite graph queries, no API server dependency.
-  - Target file: `artifacts/vscode-client/src/KnowledgeStore.ts`
+  - Target file: `artifacts/vscode-client/src/knowledge-store.ts`
   - Key logic: SQLite recursive CTE + in-memory BFS fallback, `traverseGraph()` method, `docuvia.graph.traverse` command, dual DDL blocks (l2_nodes.type + node_links), server `/projects/:id/graph` returns node_links
   - Status: ✅ Done (2026-06-27) — implementation was in uncommitted working tree from prior session; build passes; remaining gap is edge data sync mechanism (node_links table never populated)
 

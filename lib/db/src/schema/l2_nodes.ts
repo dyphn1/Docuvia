@@ -40,6 +40,7 @@ export const l2NodesTable = pgTable(
     pathPatterns: jsonb("path_patterns"),
     reindexRequired: boolean("reindex_required").notNull().default(false),
     isBootstrapConfirmed: boolean("is_bootstrap_confirmed").notNull().default(false),
+    contentHash: text("content_hash"),
   },
   (table) => ({
     l2EmbeddingIdx: index("l2_nodes_embedding_idx").using(

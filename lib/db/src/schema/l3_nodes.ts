@@ -41,6 +41,7 @@ export const l3NodesTable = pgTable(
     verifiedUntilCommit: text("verified_until_commit"),
     validityStatus: text("validity_status").notNull().default("pending"),
     source: text("source").notNull().default("commit"),
+    contentHash: text("content_hash"),
   },
   (table) => ({
     l3EmbeddingIdx: index("l3_nodes_embedding_idx").using(

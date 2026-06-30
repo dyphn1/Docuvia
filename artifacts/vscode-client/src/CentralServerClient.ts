@@ -53,7 +53,7 @@ export class CentralServerClient {
       "Content-Type": "application/json",
     };
     if (token) {
-      headers["x-docuvia-token"] = token;
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const body: CentralQueryRequest = { q, limit };
@@ -81,42 +81,6 @@ export class CentralServerClient {
   }
 
   /**
-   * Triggers the sync pipeline for a project branch push.
-   * Calls POST /sync/push with the project ID and CQRS outbox events.
-   */
-  async sync(projectId: number, branch: string, commits: string[]): Promise<void> {
-    const serverUrl = this._store.globalConfig?.server_url;
-    if (!serverUrl) return;
-
-    const token = await this._creds.getToken();
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    if (token) {
-      headers["x-docuvia-token"] = token;
-    }
-
-    // Map pushes to standard outbox events
-    const events = commits.map((commit) => ({
-      type: "UPDATE_L3",
-      payload: { commitHash: commit, branchName: branch },
-    }));
-
-    const response = await fetch(`${serverUrl}/sync/push`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({ projectId, events }),
-    });
-
-    if (response.status === 401) {
-      throw new CentralServerAuthError();
-    }
-    if (!response.ok) {
-      throw new Error(`Sync failed: ${response.status}`);
-    }
-  }
-
-  /**
    * Pulls the full knowledge snapshot for a project from the server.
    * Calls GET /projects/{id}/graph which returns L1 tags, L2 nodes, and L3 nodes.
    */
@@ -129,7 +93,7 @@ export class CentralServerClient {
     const token = await this._creds.getToken();
     const headers: Record<string, string> = {};
     if (token) {
-      headers["x-docuvia-token"] = token;
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${serverUrl}/projects/${projectId}/graph`, { headers });
@@ -179,7 +143,7 @@ export class CentralServerClient {
       const token = await this._creds.getToken();
       const headers: Record<string, string> = {};
       if (token) {
-        headers["x-docuvia-token"] = token;
+        headers["Authorization"] = `Bearer ${token}`;
       }
       await fetch(`${serverUrl}/api/metabolism-tick`, { headers });
     } catch (error) {
@@ -196,7 +160,7 @@ export class CentralServerClient {
       "Content-Type": "application/json",
     };
     if (token) {
-      headers["x-docuvia-token"] = token;
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     try {

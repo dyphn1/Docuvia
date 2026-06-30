@@ -16,6 +16,7 @@ import {
   subscriptionsTable,
   notificationsTable,
   commitL2LinksTable,
+  nodeLinksTable,
 } from "@workspace/db";
 import { desc, eq, and, sql, isNull, ne, isNotNull, inArray, or, lt } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity, parseEmbedding } from "../lib/embedding.js";
@@ -23,6 +24,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { notifyExternalIntegrations } from "../lib/slack-teams-client.js";
 import { LocalGitClient } from "../lib/git-client.js";
 import { logger } from "../lib/logger.js";
+import { requireApiKey } from "../middlewares/auth.js";
 import { z } from "zod";
 import { DEFAULT_PROMPTS } from "./templates.js";
 import { compressAstContext } from "../lib/compression.js";
@@ -270,71 +272,118 @@ async function detectCrossProjectLinks(
   projectId: number
 ): Promise<void> {
   const SIMILARITY_THRESHOLD = 0.85;
+  const MAX_DISTANCE = 1 - SIMILARITY_THRESHOLD;
 
-  const otherNodes = await db
-    .select()
-    .from(l2NodesTable)
-    .where(and(ne(l2NodesTable.projectId, projectId), isNotNull(l2NodesTable.embedding)));
+  let similarNodes: Array<{ id: number; name: string; projectId: number; sim: number }> = [];
 
-  for (const other of otherNodes) {
-    const otherEmb = other.embedding;
-    if (!otherEmb) continue;
+  try {
+    // Try pgvector SQL distance first O(log N)
+    const results = await db
+      .select({
+        id: l2NodesTable.id,
+        name: l2NodesTable.name,
+        projectId: l2NodesTable.projectId,
+        distance: sql<number>`(${l2NodesTable.embedding} <=> ${JSON.stringify(newNodeEmbedding)}::vector)`,
+      })
+      .from(l2NodesTable)
+      .where(
+        and(
+          ne(l2NodesTable.projectId, projectId),
+          isNotNull(l2NodesTable.embedding),
+          sql`(${l2NodesTable.embedding} <=> ${JSON.stringify(newNodeEmbedding)}::vector) <= ${MAX_DISTANCE}`
+        )
+      )
+      .limit(10);
 
-    const sim = cosineSimilarity(newNodeEmbedding, otherEmb);
-    if (sim >= SIMILARITY_THRESHOLD) {
-      const alreadyExists = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(reviewTasksTable)
-        .where(
-          and(
-            eq(reviewTasksTable.entityType, "l2_node"),
-            eq(reviewTasksTable.entityId, newNodeId),
-            eq(reviewTasksTable.taskType, "merge"),
-            eq(reviewTasksTable.status, "pending")
-          )
-        );
+    similarNodes = results.map((r) => ({
+      ...r,
+      sim: 1 - r.distance,
+    }));
+  } catch (err) {
+    logger.warn({ err }, "pgvector query failed, falling back to O(N^2) in-memory scanning");
+    // Fallback: JS in-memory O(N²) scanning
+    const otherNodes = await db
+      .select()
+      .from(l2NodesTable)
+      .where(and(ne(l2NodesTable.projectId, projectId), isNotNull(l2NodesTable.embedding)));
 
-      const count = Number(alreadyExists[0]?.count ?? 0);
-      if (count === 0) {
-        await db.insert(reviewTasksTable).values({
-          entityType: "l2_node",
-          entityId: newNodeId,
-          taskType: "merge",
-          status: "pending",
-          description: `Cross-project similarity detected (${Math.round(sim * 100)}%): This module resembles "${other.name}" (node #${other.id}) from another project. Consider creating a dependency link.`,
+    for (const other of otherNodes) {
+      const otherEmb = other.embedding;
+      if (!otherEmb) continue;
+
+      const sim = cosineSimilarity(newNodeEmbedding, otherEmb);
+      if (sim >= SIMILARITY_THRESHOLD) {
+        similarNodes.push({
+          id: other.id,
+          name: other.name,
+          projectId: other.projectId,
+          sim,
         });
-
-        const crossLinkPayload = {
-          sourceProjectId: projectId,
-          targetProjectId: other.projectId,
-          similarity: Math.round(sim * 100) / 100,
-        };
-        const affectedProjectIds = [projectId, other.projectId];
-        for (const affectedId of affectedProjectIds) {
-          const subscribers = await db
-            .select()
-            .from(subscriptionsTable)
-            .where(eq(subscriptionsTable.publisherProjectId, affectedId));
-          for (const sub of subscribers) {
-            await db.insert(notificationsTable).values({
-              projectId: sub.subscriberProjectId,
-              type: "cross_link_detected",
-              payload: crossLinkPayload,
-              read: false,
-            });
-          }
-        }
-        const [projectRow] = await db
-          .select()
-          .from(projectsTable)
-          .where(eq(projectsTable.id, projectId));
-        void notifyExternalIntegrations(
-          projectId,
-          projectRow?.name ?? `Project #${projectId}`,
-          "cross_link_detected",
-          crossLinkPayload
-        );
       }
+    }
+  }
+
+  for (const other of similarNodes) {
+    const sim = other.sim;
+    const alreadyExists = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(reviewTasksTable)
+      .where(
+        and(
+          eq(reviewTasksTable.entityType, "l2_node"),
+          eq(reviewTasksTable.entityId, newNodeId),
+          eq(reviewTasksTable.taskType, "merge"),
+          eq(reviewTasksTable.status, "pending")
+        )
+      );
+
+    const count = Number(alreadyExists[0]?.count ?? 0);
+    if (count === 0) {
+      await db.insert(reviewTasksTable).values({
+        entityType: "l2_node",
+        entityId: newNodeId,
+        taskType: "merge",
+        status: "pending",
+        description: `Cross-project similarity detected (${Math.round(sim * 100)}%): This module resembles "${other.name}" (node #${other.id}) from another project. Consider creating a dependency link.`,
+      });
+
+      // Populate Knowledge Graph Edges (Cross-Project)
+      await db.insert(nodeLinksTable).values({
+        sourceNodeId: newNodeId,
+        targetNodeId: other.id,
+        linkType: "SIMILAR_LINK",
+      });
+
+      const crossLinkPayload = {
+        sourceProjectId: projectId,
+        targetProjectId: other.projectId,
+        similarity: Math.round(sim * 100) / 100,
+      };
+      const affectedProjectIds = [projectId, other.projectId];
+      for (const affectedId of affectedProjectIds) {
+        const subscribers = await db
+          .select()
+          .from(subscriptionsTable)
+          .where(eq(subscriptionsTable.publisherProjectId, affectedId));
+        for (const sub of subscribers) {
+          await db.insert(notificationsTable).values({
+            projectId: sub.subscriberProjectId,
+            type: "cross_link_detected",
+            payload: crossLinkPayload,
+            read: false,
+          });
+        }
+      }
+      const [projectRow] = await db
+        .select()
+        .from(projectsTable)
+        .where(eq(projectsTable.id, projectId));
+      void notifyExternalIntegrations(
+        projectId,
+        projectRow?.name ?? `Project #${projectId}`,
+        "cross_link_detected",
+        crossLinkPayload
+      );
     }
   }
 }
@@ -574,10 +623,13 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
 
   return res.json({ decisions });
 });
-router.post("/projects/:id/generate", async (req, res) => {
+router.post("/projects/:id/generate", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
+  if (project.ownerId !== (req as any).user?.id) {
+    return res.status(403).json({ error: "Forbidden: Not project owner" });
+  }
 
   const body = GenerateKnowledgeBody.parse(req.body ?? {});
   const model = await getModel(projectId, body.model);

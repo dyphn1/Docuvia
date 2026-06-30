@@ -350,17 +350,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
                 description TEXT
               );
               CREATE TABLE IF NOT EXISTS l2_nodes (
-                id TEXT PRIMARY KEY,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 slug TEXT NOT NULL,
                 type TEXT,
                 source_paths TEXT,
                 l1_tag_id TEXT,
-                description TEXT
+                description TEXT,
+                created_at TEXT,
+                updated_at TEXT
               );
               CREATE TABLE IF NOT EXISTS l3_nodes (
-                id TEXT PRIMARY KEY,
-                l2_node_id TEXT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                l2_node_id INTEGER,
                 title TEXT NOT NULL,
                 slug TEXT NOT NULL,
                 status TEXT,
@@ -369,9 +371,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
               );
               CREATE TABLE IF NOT EXISTS node_links (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                source_node_id TEXT NOT NULL,
-                target_node_id TEXT NOT NULL,
-                link_type TEXT
+                source_node_id INTEGER NOT NULL,
+                target_node_id INTEGER NOT NULL,
+                link_type TEXT,
+                commit_sha TEXT,
+                diff_summary TEXT
               );
             `);
 
@@ -470,7 +474,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
           token,
           (msg) => outputChannel.appendLine(`[Docuvia Sync] ${msg}`)
         );
-        const projectId = "1";
+        let projectId = "1";
+        try {
+          const configPath = path.join(folders[0].uri.fsPath, ".docuvia", "config.json");
+          const configData = await vscode.workspace.fs.readFile(vscode.Uri.file(configPath));
+          const configJson = JSON.parse(Buffer.from(configData).toString("utf-8"));
+          if (configJson.projectId) {
+            projectId = String(configJson.projectId);
+          }
+        } catch (err) {
+          outputChannel.appendLine(`[Docuvia Sync] Warning: Could not read .docuvia/config.json, defaulting to projectId="1"`);
+        }
         await syncService.sync(projectId);
         void vscode.window.showInformationMessage("Docuvia: Sync successful.");
       } catch (err: any) {

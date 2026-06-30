@@ -60,28 +60,28 @@ export class InitService {
     console.log(`[docuvia] Setting up local.db SQLite schema...`);
     db.exec(`
       CREATE TABLE IF NOT EXISTS l1_tags (
-        id TEXT PRIMARY KEY,
+        id INTEGER PRIMARY KEY,
         name TEXT NOT NULL,
         slug TEXT NOT NULL,
         description TEXT
       );
       CREATE TABLE IF NOT EXISTS l2_nodes (
-        id TEXT PRIMARY KEY,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         slug TEXT NOT NULL,
         type TEXT,
         source_paths TEXT,
-        l1_tag_id TEXT,
+        l1_tag_id INTEGER,
         description TEXT
       );
       CREATE TABLE IF NOT EXISTS l2_node_l1_tags (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        l2_node_id TEXT NOT NULL,
-        l1_tag_id TEXT NOT NULL
+        l2_node_id INTEGER NOT NULL,
+        l1_tag_id INTEGER NOT NULL
       );
       CREATE TABLE IF NOT EXISTS l3_nodes (
-        id TEXT PRIMARY KEY,
-        l2_node_id TEXT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        l2_node_id INTEGER,
         title TEXT,
         content TEXT,
         status TEXT,
@@ -98,8 +98,8 @@ export class InitService {
       );
       CREATE TABLE IF NOT EXISTS node_links (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        source_node_id TEXT NOT NULL,
-        target_node_id TEXT NOT NULL,
+        source_node_id INTEGER NOT NULL,
+        target_node_id INTEGER NOT NULL,
         link_type TEXT
       );
     `);

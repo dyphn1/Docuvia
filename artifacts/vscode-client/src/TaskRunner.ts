@@ -211,17 +211,15 @@ If you are not confident about an item, exclude it from the array.`;
         const existingRow = stmt.get(item.new_l2_name, item.l1_id) as any;
 
         if (!existingRow) {
-          const newId = uuidv4();
           const slug = String(item.new_l2_name)
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, "-");
 
           const insertStmt = db.prepare(
-            "INSERT INTO l2_nodes (id, slug, l1_tag_id, name, description, source_paths, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO l2_nodes (slug, l1_tag_id, name, description, source_paths, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
           );
 
-          insertStmt.run(
-            newId,
+          const result = insertStmt.run(
             slug,
             String(item.l1_id),
             item.new_l2_name,
@@ -231,7 +229,7 @@ If you are not confident about an item, exclude it from the array.`;
             new Date().toISOString()
           );
           changed = true;
-          item.target_l2_id = newId;
+          item.target_l2_id = result.lastInsertRowid;
         } else {
           item.target_l2_id = existingRow.id;
         }
@@ -409,11 +407,10 @@ If you are not confident about an item, exclude it from the array.`;
     }
 
     const insertStmt = db.prepare(
-      "INSERT INTO l3_nodes (id, l2_node_id, slug, title, status, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+      "INSERT INTO l3_nodes (l2_node_id, slug, title, status, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
     );
 
     for (let i = 0; i < decisions.length; i++) {
-      const id = uuidv4();
       const slug = `${sourceSlug}-extracted-${i + 1}`;
       const safeTitle = path.basename(sourceFile).replace(/"/g, '\\"').replace(/:/g, " -");
       const mdContent = [
@@ -427,7 +424,6 @@ If you are not confident about an item, exclude it from the array.`;
       ].join("\n");
 
       insertStmt.run(
-        id,
         matchedL2Id,
         slug,
         `Extracted from ${safeTitle} (${i + 1})`,

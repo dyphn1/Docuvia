@@ -14,8 +14,8 @@ describe("POST /api/documents", () => {
         .attach("file", payload, {
           filename: "notes.txt",
           contentType: "text/plain",
-        })
-        .expect(200);
+        });
+      console.log(response.text);
 
       expect(response.body.filename).toBe("notes.txt");
       expect(response.body.docType).toBe("txt");

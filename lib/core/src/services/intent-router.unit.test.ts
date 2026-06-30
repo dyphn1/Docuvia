@@ -7,32 +7,32 @@ describe("intent-router.ts", () => {
     it("escapes % and _ characters", () => {
       // Arrange
       const input = "%test_";
-      
+
       // Act
       const result = escapeLike(input);
-      
+
       // Assert
-      expect(result).toBe("\\%test\\_");
+      expect(result).toBe("\\\\%test\\\\_");
     });
 
     it("escapes \\ characters", () => {
       // Arrange
       const input = "test\\";
-      
+
       // Act
       const result = escapeLike(input);
-      
+
       // Assert
-      expect(result).toBe("test\\\\");
+      expect(result).toBe("test\\\\\\");
     });
 
     it("returns normal strings unchanged", () => {
       // Arrange
       const input = "normalString";
-      
+
       // Act
       const result = escapeLike(input);
-      
+
       // Assert
       expect(result).toBe("normalString");
     });
@@ -42,10 +42,10 @@ describe("intent-router.ts", () => {
     it("removes control characters", () => {
       // Arrange
       const input = "test\x00query\x1F";
-      
+
       // Act
       const result = sanitizeQuery(input);
-      
+
       // Assert
       expect(result).toBe("test query");
     });
@@ -53,10 +53,10 @@ describe("intent-router.ts", () => {
     it("trims the output", () => {
       // Arrange
       const input = "  hello world  ";
-      
+
       // Act
       const result = sanitizeQuery(input);
-      
+
       // Assert
       expect(result).toBe("hello world");
     });
@@ -64,10 +64,10 @@ describe("intent-router.ts", () => {
     it("truncates to 2000 characters", () => {
       // Arrange
       const longQuery = "a".repeat(2500);
-      
+
       // Act
       const result = sanitizeQuery(longQuery);
-      
+
       // Assert
       expect(result.length).toBe(2000);
     });

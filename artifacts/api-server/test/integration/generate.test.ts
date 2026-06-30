@@ -26,6 +26,7 @@ describe("POST /api/projects/:id/generate", () => {
 
       const response = await request(app)
         .post(`/api/projects/${project.id}/generate`)
+        .set("Authorization", "Bearer test-api-key")
         .send({ maxCommits: 50, mode: "full" });
 
       console.log("RESPONSE STATUS:", response.status);

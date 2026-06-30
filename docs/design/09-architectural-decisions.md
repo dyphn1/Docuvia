@@ -88,6 +88,27 @@ A three-tier hierarchy is enforced:
 
 All generate pipeline outputs must produce nodes in this hierarchy. Cross-project links connect L2 nodes across projects.
 
+```mermaid
+graph TD
+    subgraph Global
+    L1[L1 Tag: Security]
+    L1b[L1 Tag: Caching]
+    end
+    subgraph Project A
+    L2_1[L2 Node: auth-service]
+    L3_1[L3 Node: PBKDF2 used for hashing]
+    L3_2[L3 Node: 10 min session timeout]
+    end
+    subgraph Project B
+    L2_2[L2 Node: redis-client]
+    end
+    L1 --> L2_1
+    L1b --> L2_2
+    L2_1 --> L3_1
+    L2_1 --> L3_2
+    L2_1 -.->|Cross-Project Link| L2_2
+```
+
 **Consequences:**
 
 - ✅ Clean separation of concerns between global taxonomy and local knowledge

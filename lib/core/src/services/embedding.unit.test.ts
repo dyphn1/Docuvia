@@ -7,10 +7,10 @@ describe("embedding.ts", () => {
       // Arrange
       const a = [1, 2, 3];
       const b = [1, 2, 3];
-      
+
       // Act
       const result = cosineSimilarity(a, b);
-      
+
       // Assert
       expect(result).toBeCloseTo(1.0);
     });
@@ -19,10 +19,10 @@ describe("embedding.ts", () => {
       // Arrange
       const a = [1, 0];
       const b = [0, 1];
-      
+
       // Act
       const result = cosineSimilarity(a, b);
-      
+
       // Assert
       expect(result).toBeCloseTo(0.0);
     });
@@ -31,10 +31,10 @@ describe("embedding.ts", () => {
       // Arrange
       const a = [1, 2, 3];
       const b = [-1, -2, -3];
-      
+
       // Act
       const result = cosineSimilarity(a, b);
-      
+
       // Assert
       expect(result).toBeCloseTo(-1.0);
     });
@@ -43,10 +43,10 @@ describe("embedding.ts", () => {
       // Arrange
       const a: number[] = [];
       const b: number[] = [];
-      
+
       // Act
       const result = cosineSimilarity(a, b);
-      
+
       // Assert
       expect(result).toBe(0);
     });
@@ -55,10 +55,10 @@ describe("embedding.ts", () => {
       // Arrange
       const a = [1, 2];
       const b = [1, 2, 3];
-      
+
       // Act
       const result = cosineSimilarity(a, b);
-      
+
       // Assert
       expect(result).toBe(0);
     });
@@ -67,10 +67,10 @@ describe("embedding.ts", () => {
       // Arrange
       const a = [0, 0];
       const b = [1, 1];
-      
+
       // Act
       const result = cosineSimilarity(a, b);
-      
+
       // Assert
       expect(result).toBe(0);
     });
@@ -80,10 +80,10 @@ describe("embedding.ts", () => {
     it("parses valid JSON array of numbers", () => {
       // Arrange
       const raw = "[0.1, 0.2, 0.3]";
-      
+
       // Act
       const result = parseEmbedding(raw);
-      
+
       // Assert
       expect(result).toEqual([0.1, 0.2, 0.3]);
     });
@@ -91,10 +91,10 @@ describe("embedding.ts", () => {
     it("returns null for invalid JSON", () => {
       // Arrange
       const raw = "[0.1, 0.2, ";
-      
+
       // Act
       const result = parseEmbedding(raw);
-      
+
       // Assert
       expect(result).toBeNull();
     });
@@ -104,12 +104,12 @@ describe("embedding.ts", () => {
       const rawEmpty = "";
       const rawNull = null;
       const rawUndef = undefined;
-      
+
       // Act
       const resEmpty = parseEmbedding(rawEmpty);
       const resNull = parseEmbedding(rawNull);
       const resUndef = parseEmbedding(rawUndef);
-      
+
       // Assert
       expect(resEmpty).toBeNull();
       expect(resNull).toBeNull();
@@ -119,10 +119,10 @@ describe("embedding.ts", () => {
     it("returns null for JSON that is not an array", () => {
       // Arrange
       const raw = '{"a": 1}';
-      
+
       // Act
       const result = parseEmbedding(raw);
-      
+
       // Assert
       expect(result).toBeNull();
     });
@@ -130,10 +130,10 @@ describe("embedding.ts", () => {
     it("returns null for empty arrays", () => {
       // Arrange
       const raw = "[]";
-      
+
       // Act
       const result = parseEmbedding(raw);
-      
+
       // Assert
       expect(result).toBeNull();
     });

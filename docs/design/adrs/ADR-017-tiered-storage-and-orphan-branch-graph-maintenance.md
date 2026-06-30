@@ -1,5 +1,5 @@
 ---
-Supersedes: None
+Supersedes: ADR-004
 ---
 
 # ADR-017: Tiered Storage & Orphan Branch Graph Maintenance
@@ -17,7 +17,7 @@ sequenceDiagram
     participant Active as Active DB (SQLite)
     participant GC as GC Worker (Background)
     participant Branch as docuvia-knowledge (Orphan Branch)
-    
+
     Active->>Active: Soft delete (is_active=false)
     Note over Active: Nodes marked as Tombstones
     GC->>Active: Periodically fetch expired tombstones

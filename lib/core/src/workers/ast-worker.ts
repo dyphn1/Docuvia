@@ -87,21 +87,16 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           parser.setLanguage(langInstance);
           languageLoaded = true;
         } else {
-          console.warn(`[ast-worker] WASM not found at ${wasmPath}, falling back to mock`);
+          throw new Error(`[ast-worker] WASM not found at ${wasmPath}`);
         }
       }
     } catch (e) {
-      console.warn("[ast-worker] Failed to load wasm, falling back to mock", e);
+      throw new Error(`[ast-worker] Failed to load wasm: ${e instanceof Error ? e.message : e}`);
     }
 
     if (!languageLoaded) {
       parser.delete();
-      parentPort?.postMessage({
-        taskId: request.taskId,
-        success: false,
-        error: `Failed to load tree-sitter language for ${request.language}`,
-      });
-      return;
+      throw new Error(`[ast-worker] Language grammar not loaded for ${request.language}`);
     }
 
     // Parse the code using Tree-sitter
@@ -115,13 +110,18 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     const imports: ImportDescriptor[] = [];
     const exports: Array<{ name: string; type: "function" | "class" | "variable" }> = [];
     const functions: Array<{ name: string; startLine: number; endLine: number }> = [];
-    const classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }> = [];
+    const classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }> =
+      [];
     const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
 
     if (tree && languageLoaded && langInstance) {
       try {
         let qStr = ``;
-        if (request.language === "typescript") { qStr = `(import_statement (import_clause (named_imports (import_specifier name: (identifier) @import.name))) source: (string (string_fragment) @import.source))\n(import_statement (import_clause (identifier) @import.name) source: (string (string_fragment) @import.source))\n(export_statement (export_clause (export_specifier name: (identifier) @export.name)))\n(export_statement declaration: (function_declaration name: (identifier) @export.name))\n(export_statement declaration: (class_declaration name: (identifier) @export.name))\n(export_statement declaration: (lexical_declaration (variable_declarator name: (identifier) @export.name)))\n(function_declaration name: (identifier) @function)\n(method_definition name: (property_identifier) @method)\n(class_declaration name: (identifier) @class)\n(call_expression function: (identifier) @call)`; } else { qStr = `(import_statement) @import\n(function_declaration) @function\n(method_definition) @method\n(class_declaration) @class`; }
+        if (request.language === "typescript") {
+          qStr = `(import_statement (import_clause (named_imports (import_specifier name: (identifier) @import.name))) source: (string (string_fragment) @import.source))\n(import_statement (import_clause (identifier) @import.name) source: (string (string_fragment) @import.source))\n(export_statement (export_clause (export_specifier name: (identifier) @export.name)))\n(export_statement declaration: (function_declaration name: (identifier) @export.name))\n(export_statement declaration: (class_declaration name: (identifier) @export.name))\n(export_statement declaration: (lexical_declaration (variable_declarator name: (identifier) @export.name)))\n(function_declaration name: (identifier) @function)\n(method_definition name: (property_identifier) @method)\n(class_declaration name: (identifier) @class)\n(call_expression function: (identifier) @call)`;
+        } else {
+          qStr = `(import_statement) @import\n(function_declaration) @function\n(method_definition) @method\n(class_declaration) @class`;
+        }
         const q = new Query(langInstance, qStr);
         const matches = q.matches(tree.rootNode);
 
@@ -135,17 +135,17 @@ parentPort?.on("message", async (request: AstParseRequest) => {
             if (capture.name === "import") {
               imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
             } else if (capture.name === "function" || capture.name === "method") {
-              functions.push({ 
-                name: node.childForFieldName("name")?.text || "anonymous", 
-                startLine: node.startPosition.row, 
-                endLine: node.endPosition.row 
+              functions.push({
+                name: node.childForFieldName("name")?.text || "anonymous",
+                startLine: node.startPosition.row,
+                endLine: node.endPosition.row,
               });
             } else if (capture.name === "class") {
-              classes.push({ 
-                name: node.childForFieldName("name")?.text || "anonymous", 
-                startLine: node.startPosition.row, 
-                endLine: node.endPosition.row, 
-                methods: [] 
+              classes.push({
+                name: node.childForFieldName("name")?.text || "anonymous",
+                startLine: node.startPosition.row,
+                endLine: node.endPosition.row,
+                methods: [],
               });
             }
           }
@@ -157,17 +157,17 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           if (node.type === "import_statement") {
             imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
           } else if (node.type === "function_declaration" || node.type === "method_definition") {
-            functions.push({ 
-              name: node.childForFieldName("name")?.text || "anonymous", 
-              startLine: node.startPosition.row, 
-              endLine: node.endPosition.row 
+            functions.push({
+              name: node.childForFieldName("name")?.text || "anonymous",
+              startLine: node.startPosition.row,
+              endLine: node.endPosition.row,
             });
           } else if (node.type === "class_declaration") {
-            classes.push({ 
-              name: node.childForFieldName("name")?.text || "anonymous", 
-              startLine: node.startPosition.row, 
-              endLine: node.endPosition.row, 
-              methods: [] 
+            classes.push({
+              name: node.childForFieldName("name")?.text || "anonymous",
+              startLine: node.startPosition.row,
+              endLine: node.endPosition.row,
+              methods: [],
             });
           }
           for (let i = 0; i < node.childCount; i++) {

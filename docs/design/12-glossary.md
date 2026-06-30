@@ -2,6 +2,15 @@
 
 ## Core Domain Terms
 
+```mermaid
+erDiagram
+    L1_TAG ||--o{ L2_NODE : tags
+    L2_NODE ||--o{ L3_NODE : contains
+    L2_NODE }|--|{ L2_NODE : node_links
+    L3_NODE }|--|{ COMMIT : derived_from
+    COMMIT ||--o{ REVIEW_TASK : triggers
+```
+
 | Term                            | Definition                                                                                                                                                                                                                                                                                                                                                                |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **L1 Tag**                      | A global classification label applied across all projects. Represents top-level architectural or functional areas (e.g., `Security`, `Networking`, `Build System`). AI-suggested L1 candidates always enter the review queue before anchoring. Stored in the `l1_tags` table.                                                                                             |

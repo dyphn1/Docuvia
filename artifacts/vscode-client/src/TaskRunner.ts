@@ -454,56 +454,70 @@ If you are not confident about an item, exclude it from the array.`;
         if (funnelRes.accepted && funnelRes.mappedExtension) {
           const provider = registry.getProviderForExtension(funnelRes.mappedExtension);
           if (provider) {
-             // In VS Code extension context, resolve wasm path dynamically
-             await initParser(() => ""); // Pass dummy locator, web-tree-sitter handles Language.load path
-             
-             // Try to resolve the WASM path
-             let wasmPath = "";
-             try {
-                // Try from workspace node_modules
-                wasmPath = path.resolve(require.resolve("tree-sitter-wasms/package.json"), "..", "out", provider.wasm_file);
-             } catch (err) {
-                // Fallback to local extension node_modules
-                wasmPath = path.resolve(__dirname, "..", "node_modules", "tree-sitter-wasms", "out", provider.wasm_file);
-             }
-             
-             const fs = await import("fs");
-             let lang;
-             if (fs.existsSync(wasmPath)) {
-                const wasmBytes = fs.readFileSync(wasmPath);
-                lang = await Language.load(wasmBytes);
-             } else {
-                lang = await Language.load(wasmPath); // let web-tree-sitter try
-             }
-             
-             const parser = new Parser();
-             parser.setLanguage(lang);
-             
-             const tree = parser.parse(content);
-             if (!tree) throw new Error("Tree is null after parsing");
-             
-             const classDecls = provider.extractClasses(tree.rootNode);
-             const funcDecls = provider.extractFunctions(tree.rootNode);
-             
-             // Sort by start index
-             const nodes = [...classDecls, ...funcDecls].sort((a, b) => a.startIndex - b.startIndex);
-             
-             let lastIndex = 0;
-             for (const node of nodes) {
-                if (node.startIndex > lastIndex) {
-                   const gap = content.slice(lastIndex, node.startIndex).trim();
-                   if (gap) chunks.push(gap);
-                }
-                chunks.push(content.slice(node.startIndex, node.endIndex));
-                lastIndex = node.endIndex;
-             }
-             if (lastIndex < content.length) {
-                const tail = content.slice(lastIndex).trim();
-                if (tail) chunks.push(tail);
-             }
-             
-             this.outputChannel.appendLine(`[Docuvia/TaskRunner] AST chunking successful. Created ${chunks.length} chunks.`);
-             if (chunks.length > 0) return chunks;
+            // In VS Code extension context, resolve wasm path dynamically
+            await initParser(() => ""); // Pass dummy locator, web-tree-sitter handles Language.load path
+
+            // Try to resolve the WASM path
+            let wasmPath = "";
+            try {
+              // Try from workspace node_modules
+              wasmPath = path.resolve(
+                require.resolve("tree-sitter-wasms/package.json"),
+                "..",
+                "out",
+                provider.wasm_file
+              );
+            } catch (err) {
+              // Fallback to local extension node_modules
+              wasmPath = path.resolve(
+                __dirname,
+                "..",
+                "node_modules",
+                "tree-sitter-wasms",
+                "out",
+                provider.wasm_file
+              );
+            }
+
+            const fs = await import("fs");
+            let lang;
+            if (fs.existsSync(wasmPath)) {
+              const wasmBytes = fs.readFileSync(wasmPath);
+              lang = await Language.load(wasmBytes);
+            } else {
+              lang = await Language.load(wasmPath); // let web-tree-sitter try
+            }
+
+            const parser = new Parser();
+            parser.setLanguage(lang);
+
+            const tree = parser.parse(content);
+            if (!tree) throw new Error("Tree is null after parsing");
+
+            const classDecls = provider.extractClasses(tree.rootNode);
+            const funcDecls = provider.extractFunctions(tree.rootNode);
+
+            // Sort by start index
+            const nodes = [...classDecls, ...funcDecls].sort((a, b) => a.startIndex - b.startIndex);
+
+            let lastIndex = 0;
+            for (const node of nodes) {
+              if (node.startIndex > lastIndex) {
+                const gap = content.slice(lastIndex, node.startIndex).trim();
+                if (gap) chunks.push(gap);
+              }
+              chunks.push(content.slice(node.startIndex, node.endIndex));
+              lastIndex = node.endIndex;
+            }
+            if (lastIndex < content.length) {
+              const tail = content.slice(lastIndex).trim();
+              if (tail) chunks.push(tail);
+            }
+
+            this.outputChannel.appendLine(
+              `[Docuvia/TaskRunner] AST chunking successful. Created ${chunks.length} chunks.`
+            );
+            if (chunks.length > 0) return chunks;
           }
         }
       } catch (e: any) {

@@ -97,7 +97,6 @@ function sanitizeLikeInput(str: string): string {
   return str.replace(/[%_\\]/g, "\\$&");
 }
 
-
 /**
  * Sanitize user query before sending to LLM to prevent prompt injection.
  * Strips characters that could escape JSON or inject instructions.
@@ -118,7 +117,10 @@ function applyTemporalDecay(baseScore: number, referenceDate: Date): number {
   return baseScore * calculateTemporalDecay(referenceDate);
 }
 
-export async function classifyIntent(query: string, projectId?: number): Promise<IntentClassification> {
+export async function classifyIntent(
+  query: string,
+  projectId?: number
+): Promise<IntentClassification> {
   const sanitized = sanitizeQuery(query);
   const fallback: IntentClassification = {
     strategy: "vector_search",

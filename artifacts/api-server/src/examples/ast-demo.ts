@@ -7,25 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function run() {
-  console.log("Generating dummy TypeScript file to parse...");
-  const dummyFile = path.join(__dirname, "dummy.ts");
-  await fs.writeFile(
-    dummyFile,
-    `
-import { Logger } from './logger';
-
-class MyTestClass {
-  hello() {
-    Logger.log("Hello World");
-  }
-}
-
-function myTestFunction() {
-  console.log("Testing");
-}
-`,
-    "utf-8"
-  );
+  const dummyFile = path.join(__dirname, "fixtures", "demo.ts");
 
   console.log(`Parsing file: ${dummyFile}`);
   const result = await parseAst(dummyFile);
@@ -39,9 +21,6 @@ function myTestFunction() {
   } else {
     console.error("AST parsing failed:", result.reason);
   }
-
-  // Cleanup
-  await fs.rm(dummyFile);
 }
 
 run().catch(console.error);

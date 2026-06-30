@@ -723,14 +723,12 @@ router.post("/projects/:id/generate", requireApiKey, async (req, res) => {
       // Compress document context to reduce token volume sent to LLM
       const documentContext = documents.length
         ? (() => {
-            const nodes: import("@workspace/core").CompressibleNode[] = documents.map(
-              (d) => ({
-                title: d.filename,
-                content: d.content,
-                nodeType: d.docType,
-                confidence: 1.0,
-              })
-            );
+            const nodes: import("@workspace/core").CompressibleNode[] = documents.map((d) => ({
+              title: d.filename,
+              content: d.content,
+              nodeType: d.docType,
+              confidence: 1.0,
+            }));
             const compressed = compressAstContext(nodes, {
               maxTotalChars: 6000,
               maxPerNodeChars: 600,

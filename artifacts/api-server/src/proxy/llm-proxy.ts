@@ -55,7 +55,7 @@ llmProxyRouter.post("/chat/completions", async (req: Request, res: Response) => 
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(body),
     });

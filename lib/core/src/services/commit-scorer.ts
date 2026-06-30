@@ -5,7 +5,7 @@ export const SCORER_CONSTANTS = {
   DETAIL_BONUS_LENGTH: 50,
   DETAIL_BONUS_AMOUNT: 0.1,
   BOT_PENALTY_SCORE: 0.1,
-  DIFF_TODO_BONUS: 0.1,
+  DIFF_DEBT_BONUS: 0.1,
   DIFF_LENGTH_BONUS: 0.1,
   DIFF_LENGTH_THRESHOLD: 100,
   MAX_SCORE: 1.0,
@@ -57,8 +57,8 @@ export function scoreCommit(message?: string, diff?: string): { score: number; v
   }
 
   if (diff) {
-    if (diff.includes("TODO") || diff.includes("FIXME")) {
-      score += SCORER_CONSTANTS.DIFF_TODO_BONUS;
+    if (diff.includes("FIXME") || diff.includes("HACK")) {
+      score += SCORER_CONSTANTS.DIFF_DEBT_BONUS;
     }
     // simple heuristic instead of splitting full diff array to save memory
     let lines = 1;

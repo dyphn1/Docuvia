@@ -17,12 +17,7 @@ import { documentUpload } from "../middlewares/upload.js";
 import { detectDocType, extractText } from "@workspace/core";
 import multer from "multer";
 import { LocalGitClient, GitCommitData } from "@workspace/core";
-import {
-  processIngestion,
-  GitCommitItem,
-  SvnCommitItem,
-  DocumentItem,
-} from "@workspace/core";
+import { processIngestion, GitCommitItem, SvnCommitItem, DocumentItem } from "@workspace/core";
 import { ingestAstJsonl, ingestAstBatch } from "@workspace/core";
 import { logger } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
@@ -277,7 +272,8 @@ router.post(
 
       if (!content || content.length === 0) {
         return res.status(422).json({
-          error: "Extracted content is empty. The document may be encrypted or contain only images.",
+          error:
+            "Extracted content is empty. The document may be encrypted or contain only images.",
         });
       }
 
@@ -315,7 +311,9 @@ router.post(
       return res.status(201).json({ ...docs[0], createdAt: docs[0].createdAt.toISOString() });
     } finally {
       if (req.file?.path) {
-        try { fs.unlinkSync(req.file.path); } catch (e) {}
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {}
       }
     }
   }
@@ -538,7 +536,9 @@ router.post(
       return res.status(500).json({ error: "Internal server error" });
     } finally {
       if (req.file?.path) {
-        try { fs.unlinkSync(req.file.path); } catch (e) {}
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {}
       }
     }
   }

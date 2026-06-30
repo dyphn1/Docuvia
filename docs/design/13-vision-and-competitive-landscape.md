@@ -8,6 +8,14 @@ Docuvia aims to be a **VCS-based Knowledge Evolver** that acts as the ultimate *
 - **Temporal (History & Time)**: How did this code look in the past? What bugs were fixed, and what rules were learned from rebases?
 - **Conceptual (Semantics & Docs)**: Which architectural document or PR discussion explains the rationale behind this module?
 
+```mermaid
+graph LR
+    A[Spatial: AST] --> D[Universal Code Knowledge]
+    B[Temporal: VCS] --> D
+    C[Conceptual: Docs] --> D
+    D --> E[AI Agents]
+```
+
 ## Competitive Landscape Analysis
 
 By comparing Docuvia with top-tier, highly mature open-source projects, we identify best-in-class architectural paradigms that shape our evolution:

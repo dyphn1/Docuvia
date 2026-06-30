@@ -100,20 +100,26 @@ export function startMemoryMiner() {
   setInterval(() => {
     try {
       const db = getDb();
-      const stmt = db.prepare("SELECT count(*) as total, datetime(timestamp, 'start of hour') as hour FROM compressed_payloads GROUP BY hour ORDER BY hour DESC LIMIT 24");
-      const results = stmt.all() as { total: number, hour: string }[];
-      
+      const stmt = db.prepare(
+        "SELECT count(*) as total, datetime(timestamp, 'start of hour') as hour FROM compressed_payloads GROUP BY hour ORDER BY hour DESC LIMIT 24"
+      );
+      const results = stmt.all() as { total: number; hour: string }[];
+
       const stats = {
         totalCompressedRecent: results.reduce((acc, row) => acc + row.total, 0),
-        hourlyBreakdown: results
+        hourlyBreakdown: results,
       };
-      
+
       // Conditionally invoke insertMemory based on identified patterns
       if (stats.totalCompressedRecent > 50) {
         insertMemory("miner", "proxy_stats", JSON.stringify(stats));
-        logger.info(`[SharedMemory] Mined proxy stats: ${stats.totalCompressedRecent} recent payloads, memory inserted.`);
+        logger.info(
+          `[SharedMemory] Mined proxy stats: ${stats.totalCompressedRecent} recent payloads, memory inserted.`
+        );
       } else {
-        logger.info(`[SharedMemory] Miner scanned ${stats.totalCompressedRecent} payloads, below threshold.`);
+        logger.info(
+          `[SharedMemory] Miner scanned ${stats.totalCompressedRecent} payloads, below threshold.`
+        );
       }
     } catch (err) {
       logger.error(`[SharedMemory] Error in miner: ${err}`);

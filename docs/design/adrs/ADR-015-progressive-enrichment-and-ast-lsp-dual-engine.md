@@ -1,5 +1,6 @@
 ---
 Supersedes: None
+Superseded by: ADR-020
 ---
 
 # ADR-015: Progressive Enrichment & AST/LSP Dual Engine

@@ -31,3 +31,29 @@ GitNexus, Sourcegraph (Cody / sg), Cursor (Shadow Workspace), GitHub Copilot (Wo
 - Scale incremental sync (`AnalyzeService`) for large monorepos.
 - Expand semantic graph to include cross-module `IMPLEMENTS` and `EXTENDS`.
 - Refine background L3 Extraction (`--deep` flag) for better LLM context building.
+
+```mermaid
+flowchart TD
+    subgraph Competitors [Competitors: GitNexus, Sourcegraph]
+        direction TD
+        C_CLI[Heavy CLI] -->|LSIF / SCIP Diffs| C_ENGINE[Native AST Engine]
+        C_ENGINE --> C_FLOWS["Profound Execution Flows<br/>CALLS, IMPLEMENTS, EXTENDS"]
+    end
+
+    subgraph Docuvia [Docuvia]
+        direction TD
+        D_CLI[CLI: init, analyze, extract] --> D_CORE
+        D_MCP[MCP Server] --> D_CORE
+        D_IDE[VS Code Client] --> D_CORE
+        
+        D_CORE{{"@workspace/core Shared API"}} --> D_SQL[(Local SQLite DB)]
+        
+        D_SQL --> D_L2[L2 Structural Nodes]
+        D_SQL --> D_L3[L3 Commit-Anchored Decisions]
+    end
+
+    classDef comp fill:#f9d0c4,stroke:#333,stroke-width:2px;
+    classDef doc fill:#d4edda,stroke:#333,stroke-width:2px;
+    class Competitors comp;
+    class Docuvia doc;
+```

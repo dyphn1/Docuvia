@@ -7,10 +7,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function run() {
-  const dummyFile = path.join(__dirname, "fixtures", "demo.rb");
+  const fixtureFile = path.join(__dirname, "fixtures", "demo.rb");
 
-  console.log(`Parsing file: ${dummyFile}`);
-  const result = await parseAst(dummyFile);
+  console.log(`Parsing file: ${fixtureFile}`);
+  const result = await parseAst(fixtureFile);
 
   if (result.status === "done" && result.file) {
     console.log(`AST successfully parsed! Output written to: ${result.file}`);

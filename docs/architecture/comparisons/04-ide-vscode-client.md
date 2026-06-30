@@ -28,3 +28,28 @@ Cursor (Shadow Workspace)
 
 - Implement an `onDidChangeTextDocument` event listener that feeds dirty buffer contents directly to the `AstWorkerPool` for real-time, in-memory graph updates.
 - Develop a Webview-based "Topology Map" to provide a D3.js visual representation of the L2/L3 Node connections.
+
+```mermaid
+flowchart TD
+    subgraph Cursor [Competitor: Cursor]
+        direction TD
+        C_IDE[IDE Editor] -->|Deep Hooking| C_LSP["Hidden Headless LSP<br/>Shadow Workspace"]
+        C_LSP -->|Black Box Context| C_DIFF[Inline Multi-File Edit Previews]
+    end
+
+    subgraph Docuvia [Docuvia]
+        direction TD
+        D_IDE["VS Code Web/Desktop"] <--> D_EXT[Isomorphic Extension]
+        D_EXT <--> D_CORE["@workspace/core"]
+        D_CORE <--> D_SQL[(SQLite AST Graph)]
+        
+        D_SQL -->|Explicit Graph Transparency| D_LENS["Hover & CodeLens Providers<br/>Visual L2/L3 Intent"]
+        
+        D_IDE -.->|Future: Dirty Buffers| D_WORK["AstWorkerPool<br/>Real-Time Graph Updates"]
+    end
+
+    classDef comp fill:#f9d0c4,stroke:#333,stroke-width:2px;
+    classDef doc fill:#d4edda,stroke:#333,stroke-width:2px;
+    class Cursor comp;
+    class Docuvia doc;
+```

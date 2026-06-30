@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, it, expect, vi } from "vitest";
 
 // Mock the migrator to avoid actually running migrations during test

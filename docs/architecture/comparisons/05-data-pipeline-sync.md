@@ -27,3 +27,28 @@ Turborepo, GitNexus
 
 - Implement a robust JSON-based export for the SQLite DB before committing to the orphan branch, allowing Git to handle line-by-line diff merging safely.
 - Write a `CleanService.prune()` function to garbage collect orphaned L2/L3 nodes whose `source_paths` no longer exist in the working directory.
+
+```mermaid
+flowchart TD
+    subgraph Turborepo [Competitors: Turborepo / GitNexus]
+        direction TD
+        T_CHANGE["File Changes / Commits"] --> T_CACHE((Proprietary Remote Cloud Cache))
+        T_CACHE --> T_SYNC[Global State Sync]
+    end
+
+    subgraph Docuvia [Docuvia]
+        direction TD
+        D_CHANGE[File Changes] -->|crypto / git ls-files| D_HASH[Delta Detection]
+        D_HASH -->|UPSERT| D_SQL[(Local SQLite .docuvia)]
+        
+        D_SQL -->|Binary Push Conflict Risk| D_ORPHAN[Git Orphan Branch: docuvia-knowledge]
+        
+        D_SQL -.->|Future: Safe merge| D_JSON[JSON Export]
+        D_JSON -.-> D_ORPHAN
+    end
+
+    classDef comp fill:#f9d0c4,stroke:#333,stroke-width:2px;
+    classDef doc fill:#d4edda,stroke:#333,stroke-width:2px;
+    class Turborepo comp;
+    class Docuvia doc;
+```

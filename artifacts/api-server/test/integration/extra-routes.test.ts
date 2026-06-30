@@ -68,7 +68,12 @@ describe("Extra Routes API", () => {
         .get(`/api/projects/${project.id}/export`)
         .set("Authorization", "Bearer test-api-key");
       expect(response.status).toBe(200);
-      expect(response.body).toBeDefined();
+      expect(response.body).toHaveProperty("project");
+      expect(response.body).toHaveProperty("l1Tags");
+      expect(response.body).toHaveProperty("l2Nodes");
+      expect(response.body).toHaveProperty("l3Nodes");
+      expect(response.body).toHaveProperty("commits");
+      expect(response.body).toHaveProperty("exportedAt");
     });
   });
 

@@ -28,3 +28,28 @@ GitHub Copilot Workspace, GitNexus
 
 - Integrate a local vector embedding generator (e.g., `all-MiniLM-L6-v2` via ONNX) and store vectors directly in a `pgvector` or `sqlite-vss` compatible format.
 - Implement a task queue to throttle and batch `ExtractService` requests.
+
+```mermaid
+flowchart TD
+    subgraph Cloud [Competitors: Copilot Workspace, GitNexus]
+        direction TD
+        C_SRC[Source Code] --> C_BATCH[Prompt Batching]
+        C_BATCH --> C_LLM((Cloud LLM))
+        C_LLM --> C_VEC[(Native Vector DB)]
+        C_VEC --> C_SYN[Project-Wide Context Synthesis]
+    end
+
+    subgraph Local [Docuvia]
+        direction TD
+        D_SRC[Source Code] -->|Offline / No Batching| D_LLM(("Local Open-Source LLM<br/>e.g. ollama"))
+        D_LLM -->|Extract L3 Insights| D_BIND[Deterministic AST Anchoring]
+        D_BIND --> D_SQL[(SQLite FTS5)]
+        
+        D_SQL -.->|Future: ONNX + sqlite-vss| D_VEC[("pgvector / Local Vector DB")]
+    end
+
+    classDef cloud fill:#fff3cd,stroke:#333,stroke-width:2px;
+    classDef local fill:#cce5ff,stroke:#333,stroke-width:2px;
+    class Cloud cloud;
+    class Local local;
+```

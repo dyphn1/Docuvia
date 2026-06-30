@@ -15,7 +15,7 @@ llmProxyRouter.post("/chat/completions", async (req: Request, res: Response) => 
   if (body.messages && Array.isArray(body.messages)) {
     for (const msg of body.messages) {
       if (typeof msg.content === "string") {
-        const { compressedText, hasChanges } = compressPrompt(msg.content);
+        const { compressedText, hasChanges } = await compressPrompt(msg.content);
         if (hasChanges) {
           msg.content = compressedText;
           modified = true;
@@ -23,7 +23,7 @@ llmProxyRouter.post("/chat/completions", async (req: Request, res: Response) => 
       } else if (Array.isArray(msg.content)) {
         for (const part of msg.content) {
           if (part.type === "text" && typeof part.text === "string") {
-            const { compressedText, hasChanges } = compressPrompt(part.text);
+            const { compressedText, hasChanges } = await compressPrompt(part.text);
             if (hasChanges) {
               part.text = compressedText;
               modified = true;
@@ -83,7 +83,7 @@ llmProxyRouter.post("/messages", async (req: Request, res: Response) => {
   if (body.messages && Array.isArray(body.messages)) {
     for (const msg of body.messages) {
       if (typeof msg.content === "string") {
-        const { compressedText, hasChanges } = compressPrompt(msg.content);
+        const { compressedText, hasChanges } = await compressPrompt(msg.content);
         if (hasChanges) {
           msg.content = compressedText;
           modified = true;
@@ -91,7 +91,7 @@ llmProxyRouter.post("/messages", async (req: Request, res: Response) => {
       } else if (Array.isArray(msg.content)) {
         for (const part of msg.content) {
           if (part.type === "text" && typeof part.text === "string") {
-            const { compressedText, hasChanges } = compressPrompt(part.text);
+            const { compressedText, hasChanges } = await compressPrompt(part.text);
             if (hasChanges) {
               part.text = compressedText;
               modified = true;

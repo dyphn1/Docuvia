@@ -28,3 +28,30 @@ GitNexus
 
 - Add pagination and depth parameters to `docuvia_impact` and `docuvia_context`.
 - Introduce a `docuvia_query_advanced` tool that accepts raw SQLite SQL for sophisticated AI orchestration.
+
+```mermaid
+flowchart TD
+    subgraph GitNexus [Competitor: GitNexus]
+        direction TD
+        GN_AI[AI Agent] -- Read-Only MCP --> GN_TOOL["Cypher / Trace Tools"]
+        GN_TOOL --> GN_DB[(Graph DB)]
+        GN_DB --> GN_PAGER[Auto-Summarized Pager]
+        GN_PAGER --> GN_AI
+    end
+
+    subgraph Docuvia [Docuvia]
+        direction TD
+        D_AI[AI Agent] -- Read / Write MCP --> D_TOOLS[docuvia_impact, docuvia_extract]
+        D_TOOLS -->|Query Context| D_SQL[(SQLite)]
+        D_TOOLS -->|Agentic Index Repair| D_SQL
+        
+        D_AI -- docuvia_sync --> D_SYNC[Bidirectional Remote Server Sync]
+        
+        D_SQL -.->|Future: Advanced SQL / Pagination| D_TOOLS
+    end
+
+    classDef comp fill:#f9d0c4,stroke:#333,stroke-width:2px;
+    classDef doc fill:#d4edda,stroke:#333,stroke-width:2px;
+    class GitNexus comp;
+    class Docuvia doc;
+```

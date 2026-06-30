@@ -455,7 +455,13 @@ If you are not confident about an item, exclude it from the array.`;
           const provider = registry.getProviderForExtension(funnelRes.mappedExtension);
           if (provider) {
             // In VS Code extension context, resolve wasm path dynamically
-            await initParser(() => ""); // Pass dummy locator, web-tree-sitter handles Language.load path
+            await initParser((scriptName) => {
+              try {
+                return require.resolve(`web-tree-sitter/${scriptName}`);
+              } catch {
+                return path.resolve(__dirname, "..", "node_modules", "web-tree-sitter", scriptName);
+              }
+            });
 
             // Try to resolve the WASM path
             let wasmPath = "";

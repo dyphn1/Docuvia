@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import "@testing-library/jest-dom/vitest";
 import React from 'react';
 import { render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -33,7 +34,7 @@ const Wrapper = ({ children }: any) => (
 describe('App Coverage', () => {
   it('renders App', () => {
     const { container } = render(<App />);
-    expect(container).toBeTruthy();
+    expect(container.querySelector("main")).toBeInTheDocument();
   });
 
   const pages = [
@@ -56,7 +57,7 @@ describe('App Coverage', () => {
   pages.forEach(({ name, Component }) => {
     it(`renders ${name}`, () => {
       const { container } = render(<Component params={{ id: "1" }} />, { wrapper: Wrapper });
-      expect(container).toBeTruthy();
+      expect(container).not.toBeEmptyDOMElement();
     });
   });
 });

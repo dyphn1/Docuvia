@@ -1,6 +1,6 @@
 import express from "express";
 import request from "supertest";
-import { llmProxyRouter } from "./src/proxy/llm-proxy.js";
+import { llmProxyRouter } from "../../src/proxy/llm-proxy.js";
 
 const app = express();
 app.use("/proxy/v1", llmProxyRouter);

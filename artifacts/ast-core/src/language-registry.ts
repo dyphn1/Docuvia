@@ -242,6 +242,27 @@ export class LanguageRegistry {
 
   // Keep an empty or stubbed out method so api-server won't break heavily if it calls load()
   public static async load(projectRoot?: string): Promise<LanguageRegistry> {
+    try {
+      const _process = typeof globalThis !== "undefined" ? (globalThis as any).process : undefined;
+      if (_process && _process.versions && _process.versions.node) {
+        // @ts-ignore
+        const fs = await import("fs/promises");
+        // @ts-ignore
+        const path = await import("path");
+        const targetPath = projectRoot 
+          ? path.resolve(projectRoot, "languages.toml") 
+          : path.resolve(_process.cwd(), "languages.toml");
+        try {
+          await fs.access(targetPath);
+          const content = await fs.readFile(targetPath, "utf-8");
+          return LanguageRegistry.loadFromString(content);
+        } catch {
+          // File not found, fallback
+        }
+      }
+    } catch (err: any) {
+      console.warn("Failed to load languages.toml dynamically:", err.message);
+    }
     return new LanguageRegistry(DEFAULT_REGISTRY);
   }
 

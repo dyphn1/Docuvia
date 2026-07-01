@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ProjectService } from "../services/project.service";
 import { count } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { documentsTable, projectsTable } from "@workspace/db";
@@ -56,7 +57,7 @@ router.post("/documents/:id/affiliate", async (req, res) => {
   const { projectId } = parsed.data;
 
   // Verify project exists
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) {
     return res.status(404).json({ error: "Project not found" });
   }

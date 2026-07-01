@@ -11,6 +11,11 @@ export default defineConfig({
     },
   },
   test: {
+    server: {
+      deps: {
+        external: [/execa/],
+      },
+    },
     include: [
       "artifacts/*/test/**/*.test.{ts,tsx}",
       "artifacts/*/src/**/*.unit.test.{ts,tsx}",

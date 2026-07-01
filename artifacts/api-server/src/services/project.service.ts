@@ -297,4 +297,9 @@ export class ProjectService {
       await client.cleanup();
     }
   }
+
+  async getProjectById(projectId: number) {
+    const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+    return project;
+  }
 }

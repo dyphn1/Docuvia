@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ProjectService } from "../services/project.service";
 import { db } from "@workspace/db";
 import { promptTemplatesTable, projectsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
@@ -13,7 +14,7 @@ const TemplateUpdateSchema = z.object({
 
 router.get("/projects/:id/templates", async (req, res) => {
   const projectId = Number(req.params.id);
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   const types = ["l1_tagger", "l2_extractor", "l3_generator"] as const;
@@ -48,7 +49,7 @@ router.put("/projects/:id/templates/:type", async (req, res) => {
     return res.status(400).json({ error: "Invalid template type" });
   }
 
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   const body = TemplateUpdateSchema.parse(req.body);

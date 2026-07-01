@@ -6,7 +6,7 @@
 
 ## Deficit Description
 
-The current `docuvia query` command limits token consumption by simply taking the top 5 records that match a `LIKE` query. While this prevents token explosion, it completely ignores topological relationships. If module A depends on module B, and a developer queries module B, the AI is not informed about module A. `code-review-graph` solves this flawlessly via Breadth-First Search (BFS) graph traversal.
+The current `docuvia query` command limits token consumption by simply taking the top 5 records that match a `LIKE` query. While this prevents token explosion, it completely ignores topological relationships. If module A depends on module B, and a developer queries module B, the AI is not informed about module A. A generic Breadth-First Search (BFS) graph traversal solves this flawlessly.
 
 ## Acceptance Criteria
 

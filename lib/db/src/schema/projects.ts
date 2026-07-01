@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, pgEnum, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -25,7 +25,10 @@ export const projectsTable = pgTable("projects", {
   ownerId: integer("owner_id").notNull().default(1),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  ownerIdx: index("projects_owner_id_idx").on(table.ownerId),
+  repoUrlIdx: index("projects_repo_url_idx").on(table.repoUrl),
+}));
 
 export const insertProjectSchema = createInsertSchema(projectsTable).omit({
   id: true,

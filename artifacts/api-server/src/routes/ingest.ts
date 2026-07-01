@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ProjectService } from "../services/project.service";
 import { db } from "@workspace/db";
 import fs from "fs";
 import { projectsTable, documentsTable } from "@workspace/db";
@@ -36,7 +37,7 @@ const SvnModeSchema = z.object({
 
 router.post("/projects/:id/ingest/git", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   const body = GitIngestSchema.parse(req.body);
@@ -68,7 +69,7 @@ router.post("/projects/:id/ingest/git", requireApiKey, async (req, res) => {
 
 router.post("/projects/:id/ingest/svn", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   let body: ReturnType<typeof IngestSvnBody.parse>;
@@ -107,7 +108,7 @@ router.post("/projects/:id/ingest/svn", requireApiKey, async (req, res) => {
 
 router.get("/projects/:id/ingest/status", async (req, res) => {
   const projectId = Number(req.params.id);
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   try {
@@ -123,7 +124,7 @@ router.post(
   documentUpload.single("file"),
   async (req, res, next) => {
     const projectId = Number(req.params.id);
-    const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+    const project = await new ProjectService().getProjectById(projectId);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     if (!req.file) {
@@ -173,7 +174,7 @@ router.post(
 
 router.post("/projects/:id/ingest/document", async (req, res) => {
   const projectId = Number(req.params.id);
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   let body;
@@ -222,7 +223,7 @@ const AstIngestSchema = z.object({
 
 router.post("/projects/:id/ingest/ast", async (req, res) => {
   const projectId = Number(req.params.id);
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   try {
@@ -268,7 +269,7 @@ router.post(
   async (req, res) => {
     const projectId = Number(req.params.id);
     if (!req.file) return res.status(400).json({ error: "file required" });
-    const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+    const project = await new ProjectService().getProjectById(projectId);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     try {

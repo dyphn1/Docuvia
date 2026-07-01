@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { allTools } from "../../src/mcp/tools/index.js";
 
 // --- Helpers ---
 function extractIdentifiers(source: string, pattern: RegExp): string[] {
@@ -15,7 +16,6 @@ describe("Interface Parity Tests (CLI vs MCP)", () => {
   it("should ensure all core CLI commands have equivalent MCP tools", () => {
     // --- Arrange ---
     const cliSource = readFileSync(resolve(__dirname, "../../src/cli.ts"), "utf-8");
-    const mcpSource = readFileSync(resolve(__dirname, "../../src/mcp/server.ts"), "utf-8");
 
     const ignoredCliCommands = new Set(["init-agent", "mcp"]);
     const ignoredMcpTools = new Set(["context", "impact"]); // Exclusively MCP for now
@@ -24,7 +24,8 @@ describe("Interface Parity Tests (CLI vs MCP)", () => {
     const cliCommands = extractIdentifiers(cliSource, /command === "([^"]+)"/g);
 
     // Map MCP tools (e.g., docuvia_detect_changes) to CLI format (detect-changes)
-    const mcpTools = extractIdentifiers(mcpSource, /name:\s*"docuvia_([^"]+)"/g)
+    const mcpTools = Object.keys(allTools)
+      .map((name) => name.replace(/^docuvia_/, ""))
       .map((tool) => tool.replace(/_/g, "-"))
       .map((tool) => (tool === "query-local" ? "query" : tool)); // Normalize query command
 

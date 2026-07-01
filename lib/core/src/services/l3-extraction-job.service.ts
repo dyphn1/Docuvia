@@ -1,14 +1,16 @@
-import path from "path";
-import { existsSync } from "fs";
-import crypto from "crypto";
+import { Worker } from "worker_threads";
+import * as path from "path";
+import * as os from "os";
+import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
+import { existsSync } from "fs";
 import { IL3ExtractionJob } from "../interfaces/analyzer.interfaces.js";
 
 export class L3ExtractionJobService implements IL3ExtractionJob {
   public triggerBackgroundExtraction(
     workspaceRoot: string,
     filesToParse: any[],
-    fileIdMap: Map<string, string>
+    fileIdMap: Map<string, number>
   ): void {
     console.log(`[docuvia] Triggering background L3 Agentic RAG extraction...`);
     const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
@@ -27,8 +29,8 @@ export class L3ExtractionJobService implements IL3ExtractionJob {
         // Initialize l3_nodes schema if not exists just in case
         backgroundDb.exec(`
           CREATE TABLE IF NOT EXISTS l3_nodes (
-            id TEXT PRIMARY KEY,
-            l2_node_id TEXT,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            l2_node_id INTEGER,
             title TEXT,
             content TEXT,
             status TEXT,
@@ -37,7 +39,7 @@ export class L3ExtractionJobService implements IL3ExtractionJob {
         `);
 
         const insertL3Node = backgroundDb.prepare(
-          "INSERT INTO l3_nodes (id, l2_node_id, title, content, status, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"
+          "INSERT INTO l3_nodes (l2_node_id, title, content, status, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)"
         );
 
         for (const item of filesToParse) {
@@ -55,21 +57,20 @@ export class L3ExtractionJobService implements IL3ExtractionJob {
 
             if (result.decisions) {
               for (const decision of result.decisions) {
-                const l3Id = crypto.randomUUID();
-                insertL3Node.run(l3Id, l2NodeId, decision, "", "active");
+                insertL3Node.run(l2NodeId, decision, "", "active");
               }
             }
           } catch (e: any) {
             console.error(`[docuvia] L3 Extraction Error for file ${item.file}:`, e.message);
           }
         }
-
-        console.log(`[docuvia] Background L3 extraction finished.`);
       } catch (e: any) {
-        console.error("[docuvia] L3 Extraction background task failed", e);
+        console.error(`[docuvia] Background L3 extraction failed to initialize:`, e.message);
       } finally {
-        if (backgroundDb) backgroundDb.close();
+        if (backgroundDb) {
+          backgroundDb.close();
+        }
       }
-    }, 1000);
+    }, 0);
   }
 }

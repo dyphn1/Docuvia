@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ProjectService } from "../services/project.service";
 import { db } from "@workspace/db";
 import { projectsTable, l2NodesTable, l3NodesTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
@@ -26,7 +27,7 @@ const SieveExtractionInputSchema = z.object({
 
 router.post("/projects/:id/extract/sieve", async (req, res) => {
   const projectId = Number(req.params.id);
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   const bodyParsed = SieveExtractionInputSchema.safeParse(req.body ?? {});

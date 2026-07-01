@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ProjectService } from "../services/project.service";
 import { db } from "@workspace/db";
 import { llmConfigsTable, projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -14,7 +15,7 @@ const LlmConfigInputSchema = z.object({
 
 router.get("/projects/:id/llm-config", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   let [cfg] = await db

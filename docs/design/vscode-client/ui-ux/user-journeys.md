@@ -484,6 +484,27 @@ _Note: This journey focuses on the three-gate UX and the distinction from the ch
 
 **Trigger:** User runs `Docuvia: Open Search` from the Command Palette. OR: User has selected text in editor and runs `Docuvia: Search from Selection`.
 
+```mermaid
+sequenceDiagram
+    actor User
+    participant VSCode as VS Code Extension
+    participant Client as CentralServerClient
+    participant Webview as SearchResultsPanel
+    participant Chat as Copilot Chat
+
+    User->>VSCode: Run "Docuvia: Open Search" or "Search from Selection"
+    VSCode->>VSCode: executeSearch(query)
+    alt docuvia.search.defaultView == "chat"
+        VSCode->>Chat: Open chat with "@docuvia /query <query>"
+        Chat-->>User: Display query in input box
+    else docuvia.search.defaultView == "panel"
+        VSCode->>Client: query(query)
+        Client-->>VSCode: Return results
+        VSCode->>Webview: Render SearchResultsPanel
+        Webview-->>User: Display cross-project results
+    end
+```
+
 ### Happy Path (Open Search)
 
 1. `docuvia.openSearch` fires. `showInputBox` prompts for search query.

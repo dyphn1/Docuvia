@@ -143,7 +143,7 @@ Align the Knowledge Graph directly with the underlying Git commit history (using
 ### 📁 Involved Files
 
 - `lib/core/src/services/orphan-branch-writer.ts`
-- `lib/db/src/schema/correction_examples.ts`
+- `lib/db/src/schema/correction-examples.ts`
 - `lib/db/src/schema/prompt_templates.ts`
 
 ### 🏗️ System Architecture
@@ -200,8 +200,8 @@ Inject human oversight mechanisms (Review Queue), enable system portability (Exp
 
 ### 📁 Involved Files
 
-- `artifacts/api-server/src/routes/review_tasks.ts`
-- `artifacts/api-server/src/routes/github_webhooks.ts`
+- `artifacts/api-server/src/routes/review-tasks.ts`
+- `artifacts/api-server/src/routes/github-webhooks.ts`
 - `artifacts/api-server/src/routes/export.ts`
 - `lib/core/src/services/slack-teams-client.ts`
 
@@ -318,7 +318,7 @@ Remediate critical flaws discovered during adversarial audits (OOM risks, IDOR v
 ### 📁 Involved Files
 
 - `artifacts/api-server/src/routes/export.ts`
-- `artifacts/api-server/src/routes/github_webhooks.ts`
+- `artifacts/api-server/src/routes/github-webhooks.ts`
 - `artifacts/api-server/src/routes/metabolism.ts`
 - `lib/core/src/services/intent-router.ts`
 - `lib/core/src/services/svn-client.ts`

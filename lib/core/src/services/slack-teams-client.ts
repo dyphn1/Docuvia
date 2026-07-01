@@ -1,8 +1,8 @@
-import { logger } from "./logger.js";
+import { logger } from "../utils/logger.js";
 import type { ProjectIntegration } from "@workspace/db";
 import { db, projectIntegrationsTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { assertPublicHttpUrl } from "./ssrf-guard.js";
+import { assertPublicHttpUrl } from "../utils/ssrf-guard.js";
 
 interface SlackBlock {
   type: string;

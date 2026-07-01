@@ -12,7 +12,8 @@
   "main": "./src/index.ts",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc --build"
+    "build": "tsc --build",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@workspace/ast-core": "workspace:^",

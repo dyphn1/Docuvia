@@ -10,7 +10,7 @@ Accepted (2026-06-25)
 
 ## Context
 
-During the Phase 1 Foundation of Docuvia, vector search and RAG orchestration were implemented using a fallback in-memory cosine similarity calculation (`artifacts/api-server/src/lib/intent-router.ts`). While functional for early prototyping, this approach requires loading the entire [L2 and L3 embedding](ADR-005-knowledge-abstraction-strategy.md) sets into Node.js heap memory on every query.
+During the Phase 1 Foundation of Docuvia, vector search and RAG orchestration were implemented using a fallback in-memory cosine similarity calculation (`lib/core/src/services/intent-router.ts`). While functional for early prototyping, this approach requires loading the entire [L2 and L3 embedding](ADR-005-knowledge-abstraction-strategy.md) sets into Node.js heap memory on every query.
 
 As the graph scales past 100,000 nodes, the Node.js process faces significant OOM (Out Of Memory) risks, extreme latency spikes, and CPU bottlenecks. Furthermore, sorting and re-ranking entirely in memory prevents us from leveraging advanced [database-level filtering](ADR-014-sql-indexed-graph-and-database-as-ipc.md), spatial clustering, and efficient hybrid (text + vector) queries.
 

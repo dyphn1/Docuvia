@@ -41,14 +41,14 @@ flowchart TD
     subgraph Docuvia [Docuvia]
         direction TD
         D_SRC[Source Code] -->|Isomorphic web-tree-sitter| D_TS[AST Pipeline]
-        
+
         D_TS -->|Structural Only| D_SQL[(SQLite Local Index)]
         D_SQL --> D_L2[L2 Nodes]
         D_SQL --> D_L3[L3 Intent Binding]
-        
+
         D_L2 -.->|Agentic RAG queries| D_AI[AI Agent]
         D_L3 -.->|Agentic RAG queries| D_AI
-        
+
         D_LSP{{"LspEnrichmentService<br/>On-Demand LSP Client"}} -.->|Hybrid Fallback| D_SQL
     end
 

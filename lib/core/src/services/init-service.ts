@@ -61,7 +61,7 @@ export class InitService {
     db.exec(`
       CREATE TABLE IF NOT EXISTS l1_tags (
         id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
+        name TEXT NOT NULL UNIQUE,
         slug TEXT NOT NULL,
         description TEXT
       );

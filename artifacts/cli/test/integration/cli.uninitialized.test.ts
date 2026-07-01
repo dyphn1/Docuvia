@@ -7,7 +7,7 @@ describe("CLI Regression Tests - Uninitialized Environment", () => {
   beforeEach(async () => {
     sandbox = new TestSandbox();
     // Setup a clean sandbox WITHOUT running docuvia init (no local.db exists)
-    await sandbox.setup({ initGit: true }); 
+    await sandbox.setup({ initGit: true });
   });
 
   afterEach(async () => {
@@ -19,11 +19,13 @@ describe("CLI Regression Tests - Uninitialized Environment", () => {
     expect(result).toBeInstanceOf(Error);
     expect(result.exitCode).toBe(1);
     expect(result.stderr).not.toContain("SqliteError");
-    expect(result.stderr).toContain("Status check failed: Local database not found. Please run \"docuvia init\".");
+    expect(result.stderr).toContain(
+      'Status check failed: Local database not found. Please run "docuvia init".'
+    );
   }, 15000);
 
   it("should not fail when running 'analyze' in an uninitialized workspace", async () => {
-    // Analyze command creates an in-memory DB or auto-initializes if missing, 
+    // Analyze command creates an in-memory DB or auto-initializes if missing,
     // or doesn't strictly need a persisted DB. It should return exit code 0.
     const result = await sandbox.runCli(["analyze"]);
     expect(result.exitCode).toBe(0);
@@ -36,6 +38,6 @@ describe("CLI Regression Tests - Uninitialized Environment", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).not.toContain("SqliteError");
     // Accept variations of the error message but ensure it guides the user
-    expect(result.stderr).toContain("Local database not found. Please run \"docuvia.initProject\"");
+    expect(result.stderr).toContain('Local database not found. Please run "docuvia.initProject"');
   }, 15000);
 });

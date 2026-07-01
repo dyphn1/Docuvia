@@ -9,17 +9,18 @@ vi.mock("../../src/middlewares/auth.js", () => ({
 }));
 
 describe("LLM Config API", () => {
-  it("GET and PATCH llm-config", () => withRollback(async () => {
-    const project = await ProjectFactory.create();
+  it("GET and PATCH llm-config", () =>
+    withRollback(async () => {
+      const project = await ProjectFactory.create();
 
-    const getRes = await request(app).get(`/api/projects/${project.id}/llm-config`);
-    expect(getRes.status).toBe(200);
-    expect(getRes.body.model).toBe("gpt-5.2");
+      const getRes = await request(app).get(`/api/projects/${project.id}/llm-config`);
+      expect(getRes.status).toBe(200);
+      expect(getRes.body.model).toBe("gpt-5.2");
 
-    const patchRes = await request(app)
-      .patch(`/api/projects/${project.id}/llm-config`)
-      .send({ model: "gpt-4" });
-    expect(patchRes.status).toBe(200);
-    expect(patchRes.body.model).toBe("gpt-4");
-  }));
+      const patchRes = await request(app)
+        .patch(`/api/projects/${project.id}/llm-config`)
+        .send({ model: "gpt-4" });
+      expect(patchRes.status).toBe(200);
+      expect(patchRes.body.model).toBe("gpt-4");
+    }));
 });

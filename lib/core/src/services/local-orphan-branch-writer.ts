@@ -52,11 +52,7 @@ function buildL3DecisionMd(node: any): string {
   ].join("\n");
 }
 
-function buildFastImportData(
-  branch: string,
-  files: Map<string, string>,
-  nowUnix: number
-): string {
+function buildFastImportData(branch: string, files: Map<string, string>, nowUnix: number): string {
   const lines: string[] = [];
   lines.push(`commit refs/heads/${branch}`);
   lines.push(`committer Docuvia <docuvia@localhost> ${nowUnix} +0000`);
@@ -112,7 +108,7 @@ export class LocalOrphanBranchWriter {
     }
 
     const db = new Database(dbPath, { readonly: true });
-    
+
     try {
       const l1TagRows = db.prepare("SELECT name FROM l1_tags").all() as any[];
       const l2Nodes = db.prepare("SELECT * FROM l2_nodes").all() as any[];
@@ -125,11 +121,13 @@ export class LocalOrphanBranchWriter {
       for (const l2 of l2Nodes) {
         const l2Slug = slugify(l2.name);
         if (l2.source_paths) {
-            try { l2.source_paths = JSON.parse(l2.source_paths); } catch {}
+          try {
+            l2.source_paths = JSON.parse(l2.source_paths);
+          } catch {}
         }
         files.set(`l2_modules/${l2Slug}.yaml`, buildL2ModuleYaml(l2));
 
-        const l3sForL2 = l3Nodes.filter(n => n.l2_node_id === l2.id);
+        const l3sForL2 = l3Nodes.filter((n) => n.l2_node_id === l2.id);
         for (const l3 of l3sForL2) {
           const l3Slug = slugify(l3.title || "untitled");
           const filename = `${l3.id}-${l3Slug}.md`;

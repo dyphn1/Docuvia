@@ -54,7 +54,7 @@ flowchart TD
 ## 2. Server-Augmented Mode (Team-Scale Ascension)
 
 - **Heavy Computation Offloading**: API Server uses Drizzle [`commitsTable` in commits.ts](../../../lib/db/src/schema/commits.ts) to calculate true co-occurrence frequencies without local Git processing.
-- **Full RAG**: Unlocks [`intent-router.ts`](../../../artifacts/api-server/src/lib/intent-router.ts) for [4-Way Agentic RAG](ADR-007-agentic-rag-routing.md), utilizing [pgvector](ADR-019-pgvector-migration.md) and Graph Traversal.
+- **Full RAG**: Unlocks [`intent-router.ts`](../../../lib/core/src/services/intent-router.ts) for [4-Way Agentic RAG](ADR-007-agentic-rag-routing.md), utilizing [pgvector](ADR-019-pgvector-migration.md) and Graph Traversal.
 - **Asynchronous Evolution**: [Background jobs](ADR-008-asynchronous-metabolism.md) process [human-in-the-loop](ADR-006-self-evolution-architecture.md) corrections to protect all team members.
 
 ## Offline Writes & The Sync Outbox (CQRS)

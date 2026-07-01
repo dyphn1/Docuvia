@@ -35,13 +35,13 @@ describe("Command: docuvia init-agent", () => {
       "CLAUDE.md",
       ".windsurfrules",
       ".cursorrules",
-      "llms.txt"
+      "llms.txt",
     ];
 
     for (const file of filesToCheck) {
       const filePath = resolve(sandbox.dir, file);
       expect(existsSync(filePath), `Missing generated file: ${file}`).toBe(true);
-      
+
       // Verify content of markdown files
       if (file.endsWith(".md") || file.endsWith(".txt") || file.endsWith("rules")) {
         const content = readFileSync(filePath, "utf-8");

@@ -1,5 +1,5 @@
 ---
-Supersedes: ADR-015
+Supplements: ADR-015
 ---
 
 # ADR-020: Unified Isomorphic AST Microkernel

@@ -79,7 +79,7 @@ The CI runs this exact sequence — replicate locally when making cross-package 
 - **API-first**: Never manually write API types or fetch hooks. Edit `lib/api-spec/openapi.yaml`, run codegen. Orval generates Zod schemas → `@workspace/api-zod` and React Query hooks → `@workspace/api-client-react`.
 - **Knowledge tiers**: L1 (global tags), L2 (architecture modules), L3 (implementation details anchored to commits). Stored in DB tables `l1_tags`, `l2_nodes`, `l3_nodes`.
 - **Git-isomorphic**: Knowledge syncs via the `docuvia-knowledge` orphan branch.
-- **Intent router**: `src/lib/intent-router.ts` routes queries across vector/graph/direct/hybrid with temporal decay.
+- **Intent router**: `lib/core/src/services/intent-router.ts` routes queries across vector/graph/direct/hybrid with temporal decay.
 - **Webhook middleware order**: `/api/webhooks/github` is mounted with `express.raw()` **before** `express.json()` so HMAC signature validation works (see `src/app.ts`).
 
 ## Gotchas
@@ -121,8 +121,8 @@ For complex multi-step work, dispatch to the appropriate agent rather than doing
 | API server entry               | `artifacts/api-server/src/index.ts`                   |
 | Express app + middleware order | `artifacts/api-server/src/app.ts`                     |
 | API routes                     | `artifacts/api-server/src/routes/` (24 route modules) |
-| Intent router                  | `artifacts/api-server/src/lib/intent-router.ts`       |
-| VS Code extension docs         | `artifacts/vscode-client/design/ROUTER.md`            |
+| Intent router                  | `artifacts/api-server/lib/core/src/services/intent-router.ts`       |
+| VS Code extension docs         | `docs/design/vscode-client/00-router-overview.md`            |
 | Vitest config                  | `vitest.config.ts` (root)                             |
 | CI pipeline                    | `.github/workflows/ci.yml`                            |
 | Release (VSIX)                 | `.github/workflows/release.yml`                       |

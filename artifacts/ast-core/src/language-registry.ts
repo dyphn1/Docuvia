@@ -47,15 +47,18 @@ export class LanguageRegistry {
         const fs = await import("fs/promises");
         // @ts-ignore
         const path = await import("path");
-        const targetPath = projectRoot 
-          ? path.resolve(projectRoot, "languages.toml") 
+        const targetPath = projectRoot
+          ? path.resolve(projectRoot, "languages.toml")
           : path.resolve(_process.cwd(), "languages.toml");
         try {
           await fs.access(targetPath);
           const content = await fs.readFile(targetPath, "utf-8");
           return LanguageRegistry.loadFromString(content);
         } catch (fileErr: unknown) {
-          console.debug(`[LanguageRegistry] Could not read ${targetPath}, falling back to defaults. Reason:`, fileErr instanceof Error ? fileErr.message : String(fileErr));
+          console.debug(
+            `[LanguageRegistry] Could not read ${targetPath}, falling back to defaults. Reason:`,
+            fileErr instanceof Error ? fileErr.message : String(fileErr)
+          );
         }
       }
     } catch (err: unknown) {

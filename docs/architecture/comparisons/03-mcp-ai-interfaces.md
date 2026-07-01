@@ -44,9 +44,9 @@ flowchart TD
         D_AI[AI Agent] -- Read / Write MCP --> D_TOOLS[docuvia_impact, docuvia_extract]
         D_TOOLS -->|Query Context| D_SQL[(SQLite)]
         D_TOOLS -->|Agentic Index Repair| D_SQL
-        
+
         D_AI -- docuvia_sync --> D_SYNC[Bidirectional Remote Server Sync]
-        
+
         D_SQL -.->|Future: Advanced SQL / Pagination| D_TOOLS
     end
 

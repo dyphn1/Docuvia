@@ -9,6 +9,8 @@ import {
   L3Decision,
   L3RouterEntry,
 } from "./types.js";
+import { loadProjectSnapshot } from "./store/file-reader.js";
+import { mapApiSnapshot } from "./store/formatters.js";
 
 const DOCUVIA_DIR = ".docuvia";
 const GIT_KNOWLEDGE_BRANCH = "docuvia-knowledge";
@@ -148,132 +150,11 @@ export class KnowledgeStore {
   }
 
   private async _loadWorkspace(workspaceRoot: string): Promise<boolean> {
-    const docuviaDir = vscode.Uri.file(path.join(workspaceRoot, DOCUVIA_DIR));
-    try {
-      await vscode.workspace.fs.stat(docuviaDir);
-    } catch {
-      return false;
-    }
+    const snapshot = await loadProjectSnapshot(workspaceRoot, this._outputChannel);
+    if (!snapshot) return false;
 
-    this._outputChannel.appendLine(`[Docuvia] Loading knowledge graph for ${workspaceRoot}...`);
-    try {
-      let tags: L1Tag[] = [];
-      let modules: L2Module[] = [];
-      let routerIndex: L3RouterEntry[] = [];
-      let decisions = new Map<string, L3Decision>();
-      let projectName = path.basename(workspaceRoot);
-
-      // Local fallback: read from SQLite local.db via LocalSnapshotService
-      let edges: GraphEdge[] = [];
-      if (tags.length === 0 && modules.length === 0) {
-        try {
-          const snapshotService = new LocalSnapshotService(workspaceRoot);
-          const snapshot = snapshotService.getSnapshot();
-
-          if (snapshot) {
-            tags = snapshot.tags;
-            modules = snapshot.modules;
-            routerIndex = snapshot.routerIndex;
-            decisions = snapshot.decisions;
-            edges = snapshot.edges;
-
-            if (snapshot.projectName && projectName === path.basename(workspaceRoot)) {
-              projectName = snapshot.projectName;
-            }
-          }
-        } catch (err) {
-          this._outputChannel.appendLine(`[Docuvia] Local fallback failed: ${String(err)}`);
-        }
-      }
-
-      this._snapshots.set(workspaceRoot, {
-        workspaceRoot,
-        projectName,
-        tags,
-        modules,
-        routerIndex,
-        decisions,
-        edges,
-        loadedAt: new Date(),
-      });
-
-      this._outputChannel.appendLine(
-        `[Docuvia] Knowledge graph loaded for ${projectName}: ${tags.length} tags, ${modules.length} modules, ${routerIndex.length} L3 entries, ${decisions.size} decisions, ${edges.length} edges.`
-      );
-
-      return true;
-    } catch (err) {
-      this._outputChannel.appendLine(
-        `[Docuvia] Error loading knowledge graph for ${workspaceRoot}: ${String(err)}`
-      );
-      return false;
-    }
-  }
-
-  /**
-   * Maps a server API KnowledgeSnapshot (integer IDs) to the extension's
-   * KnowledgeGraphSnapshot format (string IDs, local types).
-   */
-  private _mapApiSnapshot(
-    snapshot: KnowledgeSnapshot,
-    workspaceRoot: string
-  ): {
-    projectName: string;
-    tags: L1Tag[];
-    modules: L2Module[];
-    routerIndex: L3RouterEntry[];
-    decisions: Map<string, L3Decision>;
-  } {
-    const slugify = (name: string) =>
-      name
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "");
-
-    const tags: L1Tag[] = snapshot.l1Tags.map((t) => ({
-      id: String(t.id),
-      slug: slugify(t.name),
-      name: t.name,
-      description: t.description ?? undefined,
-    }));
-
-    const modules: L2Module[] = snapshot.l2Nodes.map((n) => ({
-      id: String(n.id),
-      slug: slugify(n.name),
-      name: n.name,
-      description: n.description ?? undefined,
-      l1_tag_id: n.l1TagIds[0] !== undefined ? String(n.l1TagIds[0]) : "",
-      source_paths: [],
-    }));
-
-    const routerIndex: L3RouterEntry[] = snapshot.l3Nodes.map((n) => ({
-      id: String(n.id),
-      l2_module_id: String(n.l2NodeId),
-      slug: slugify(n.title),
-      title: n.title,
-      file_path: "",
-    }));
-
-    const decisions = new Map<string, L3Decision>();
-    for (const n of snapshot.l3Nodes) {
-      const id = String(n.id);
-      decisions.set(id, {
-        id,
-        l2_module_id: String(n.l2NodeId),
-        title: n.title,
-        status: "accepted",
-        body: n.content ?? "",
-        filePath: "",
-      });
-    }
-
-    return {
-      projectName: path.basename(workspaceRoot),
-      tags,
-      modules,
-      routerIndex,
-      decisions,
-    };
+    this._snapshots.set(workspaceRoot, snapshot);
+    return true;
   }
 
   /**
@@ -528,23 +409,5 @@ export class KnowledgeStore {
     return { rootId: rootNodeId, rootName, direction, nodes, edges, maxDepth: actualMaxDepth };
   }
 
-  // ─── Private helpers ───────────────────────────────────────────────────────
-
-  private async readUriSafe(uri: vscode.Uri): Promise<string> {
-    try {
-      const bytes = await vscode.workspace.fs.readFile(uri);
-      return Buffer.from(bytes).toString("utf-8");
-    } catch {
-      return "";
-    }
-  }
-
-  private tryParse<T>(fn: () => T, label: string): T extends any[] ? T : never {
-    try {
-      return fn() as T extends any[] ? T : never;
-    } catch (err) {
-      this._outputChannel.appendLine(`[Docuvia] Failed to parse ${label}: ${String(err)}`);
-      return [] as unknown as T extends any[] ? T : never;
-    }
-  }
+  // ─── Lookup helpers ────────────────────────────────────────────────────────
 }

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ProjectService } from "../services/project.service";
 import { z } from "zod";
 import { db } from "@workspace/db";
 import { l2NodesTable, l3NodesTable, projectsTable } from "@workspace/db";
@@ -23,7 +24,7 @@ router.post("/sync/push", requireApiKey, async (req, res) => {
   const { projectId, events } = parsed.data;
 
   // Project Ownership Auth Check
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
   if (project.ownerId !== (req as any).user?.id) {
     return res.status(403).json({ error: "Forbidden: Not project owner" });

@@ -28,8 +28,16 @@ describe("CLI Regression Tests - Argument Parsing & Edge Cases", () => {
 
   describe("Missing Required Arguments", () => {
     const missingArgsCases = [
-      { args: ["sync"], missing: "project_id", expected: "Usage: docuvia sync <project_id> [commit_sha]" },
-      { args: ["query"], missing: "target", expected: "Usage: docuvia query <target> [--local] [--format=prompt|human]" },
+      {
+        args: ["sync"],
+        missing: "project_id",
+        expected: "Usage: docuvia sync <project_id> [commit_sha]",
+      },
+      {
+        args: ["query"],
+        missing: "target",
+        expected: "Usage: docuvia query <target> [--local] [--format=prompt|human]",
+      },
       { args: ["extract"], missing: "file_path", expected: "Usage: docuvia extract <file_path>" },
     ];
 
@@ -70,14 +78,14 @@ describe("CLI Regression Tests - Argument Parsing & Edge Cases", () => {
       // Act: The MCP server runs continuously over stdio
       const ac = new AbortController();
       const processPromise = sandbox.runCli(["mcp"], { cancelSignal: ac.signal });
-      
+
       // Wait for 1.5 seconds to ensure it boots without crashing
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      
+
       // Assert: The process should still be running (exitCode is undefined/null)
       // or if it exited due to test environment closing stdin, it shouldn't be 1.
       expect(processPromise.exitCode === undefined || processPromise.exitCode === null).toBe(true);
-      
+
       // Teardown: Kill the background process so the test can exit
       ac.abort();
       await processPromise.catch(() => {}); // Catch the termination error safely
@@ -87,11 +95,7 @@ describe("CLI Regression Tests - Argument Parsing & Edge Cases", () => {
   it("should fail gracefully and show help message when unknown command is provided", async () => {
     // Arrange
     const args = ["unknown-command"];
-    const expectedErrors = [
-      "Unknown command: unknown-command",
-      "Usage:",
-      "docuvia init"
-    ];
+    const expectedErrors = ["Unknown command: unknown-command", "Usage:", "docuvia init"];
 
     // Act & Assert
     await assertCliFailure(args, expectedErrors);

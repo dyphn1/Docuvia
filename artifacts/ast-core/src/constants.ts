@@ -12,4 +12,4 @@ export const SUPPORTED_LANGUAGES = {
   CSHARP: "csharp",
 } as const;
 
-export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[keyof typeof SUPPORTED_LANGUAGES];
+export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[keyof typeof SUPPORTED_LANGUAGES];

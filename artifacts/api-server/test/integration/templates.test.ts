@@ -14,7 +14,7 @@ describe("Templates API", () => {
         .put(`/api/projects/${project.id}/templates/l1_tagger`)
         .set("Authorization", "Bearer test-api-key")
         .send({
-          systemPrompt: "L1 Tagger Content system prompt min 10 chars"
+          systemPrompt: "L1 Tagger Content system prompt min 10 chars",
         });
       expect(resPut.status).toBe(201);
 

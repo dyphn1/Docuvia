@@ -22,6 +22,24 @@
 
 ## `executeSearch` Flow
 
+```mermaid
+flowchart TD
+    Start([Execute Search]) --> Eval{Check docuvia.search.defaultView}
+    Eval -- "chat" --> OpenChat[Open Copilot Chat]
+    OpenChat --> Prefill[Prefill: @docuvia /query <user_query>]
+    Prefill --> ManualSubmit([User Presses Enter])
+    
+    Eval -- "webview" --> RAG[Agentic RAG Routing]
+    RAG --> LocalCheck{Data Fresh/Local?}
+    LocalCheck -- Yes --> Webview[Render SearchResultsPanel Webview]
+    LocalCheck -- No/Remote --> Compress[Context Compression]
+    Compress --> LLM[Remote LLM Processing]
+    LLM --> Webview
+    LocalCheck -- "Stale/Offline" --> AST[WASM / Microkernel AST Fallback]
+    AST --> Sync[Trigger Git Orphan Branch Sync]
+    Sync --> Webview
+```
+
 1. Evaluates the `docuvia.search.defaultView` setting.
 2. **If `chat`**:
    - Programmatically executes `workbench.action.chat.open` with the query prefilled as `@docuvia /query <user_query>`.

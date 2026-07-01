@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
+import { ProjectService } from "../services/project.service";
 import { db } from "@workspace/db";
 import {
   projectsTable,
@@ -28,7 +29,7 @@ const checkProjectOwnership = async (
     return;
   }
 
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  const project = await new ProjectService().getProjectById(projectId);
   if (!project) {
     res.status(404).json({ error: "Project not found" });
     return;
@@ -47,7 +48,7 @@ router.get(
   checkProjectOwnership,
   async (req, res) => {
     const projectId = Number(req.params.id);
-    const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+    const project = await new ProjectService().getProjectById(projectId);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     const [l2CountRow] = await db
@@ -138,7 +139,7 @@ router.get(
   checkProjectOwnership,
   async (req, res) => {
     const projectId = Number(req.params.id);
-    const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+    const project = await new ProjectService().getProjectById(projectId);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     res.setHeader("Content-Type", "text/markdown; charset=utf-8");

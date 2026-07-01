@@ -14,9 +14,9 @@ describe("Search API", () => {
         .set("Authorization", "Bearer test-api-key")
         .send({
           query: "how does auth work",
-          projectId: project.id
+          projectId: project.id,
         });
-      
+
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty("results");
     });
@@ -34,7 +34,7 @@ describe("Search API", () => {
         .send({
           nodeId: l2.id,
           nodeLayer: "l2",
-          interactionType: "click"
+          interactionType: "click",
         });
       expect(resL2.status).toBe(200);
 
@@ -44,7 +44,7 @@ describe("Search API", () => {
         .send({
           nodeId: l3.id,
           nodeLayer: "l3",
-          interactionType: "click"
+          interactionType: "click",
         });
       expect(resL3.status).toBe(200);
 
@@ -53,7 +53,7 @@ describe("Search API", () => {
         .set("Authorization", "Bearer test-api-key")
         .send({
           nodeId: -1,
-          nodeLayer: "invalid"
+          nodeLayer: "invalid",
         });
       expect(resFail.status).toBe(400);
     });

@@ -1,6 +1,6 @@
 import path from "path";
 import fs from "fs";
-import { openLocalDatabase } from "./database-helper.js";
+import { openLocalDatabase } from "../utils/database-helper.js";
 
 export class SyncService {
   constructor(

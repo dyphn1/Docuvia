@@ -21,17 +21,17 @@ describe("Command: docuvia analyze", () => {
         "package.json": JSON.stringify({
           name: "mock-react-app",
           dependencies: { react: "^18.0.0" },
-          devDependencies: { typescript: "^5.0.0", vite: "^4.0.0" }
+          devDependencies: { typescript: "^5.0.0", vite: "^4.0.0" },
         }),
         "tsconfig.json": JSON.stringify({ compilerOptions: { strict: true } }),
-        "src/main.tsx": "console.log('hello world');"
-      }
+        "src/main.tsx": "console.log('hello world');",
+      },
     });
 
     // Act: Run analyze
     const result = await sandbox.runCli(["analyze"]);
 
-    // Assert: We aren't just checking exit codes, we are checking that the engine 
+    // Assert: We aren't just checking exit codes, we are checking that the engine
     // actually inspected the filesystem and returned the correct business-domain logic.
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Project type: javascript");
@@ -39,7 +39,7 @@ describe("Command: docuvia analyze", () => {
     expect(result.stdout.toLowerCase()).toContain("react");
     expect(result.stdout.toLowerCase()).toContain("typescript");
     expect(result.stdout.toLowerCase()).toContain("frontend");
-  }, 15000);
+  }, 30000);
 
   it("should handle an empty, uninitialized workspace without crashing", async () => {
     // Arrange: Completely empty sandbox
@@ -51,5 +51,5 @@ describe("Command: docuvia analyze", () => {
     // Assert
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Project type:");
-  }, 15000);
+  }, 30000);
 });

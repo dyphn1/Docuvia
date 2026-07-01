@@ -9,7 +9,7 @@ import {
 import { eq, like, isNotNull, or, and, sql } from "drizzle-orm";
 import { generateEmbedding } from "./embedding.js";
 import { routeQuery } from "./intent-router.js";
-import { logger } from "./logger.js";
+import { logger } from "../utils/logger.js";
 
 export async function vscodeQuery(q: string, projectId?: number, limit = 10) {
   return routeQuery(q, projectId, limit);

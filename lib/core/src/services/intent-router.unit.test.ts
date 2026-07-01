@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { sanitizeQuery } from "./intent-router.js";
-import { sanitizeLikeInput as escapeLike } from "./sql-utils.js";
+import { sanitizeLikeInput as escapeLike } from "../utils/sql-utils.js";
 
 describe("intent-router.ts", () => {
   describe("escapeLike", () => {

@@ -4,7 +4,7 @@ import postgres from "postgres";
 import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
-import { promptTemplatesTable } from "./schema/prompt_templates";
+import { promptTemplatesTable } from "./schema/prompt-templates";
 import { isNull } from "drizzle-orm";
 
 export const DEFAULT_PROMPT_TEMPLATES = [

@@ -13,8 +13,11 @@ describe("L2 Nodes API", () => {
   it("CRUD operations for L2 Nodes", async () => {
     await withRollback(async () => {
       const project = await ProjectFactory.create();
-      
-      const [l1Tag] = await db.insert(l1TagsTable).values({ name: "t1", category: "arch", description: "desc" }).returning();
+
+      const [l1Tag] = await db
+        .insert(l1TagsTable)
+        .values({ name: "t1", category: "arch", description: "desc" })
+        .returning();
 
       // Create with L1 tag
       const resCreate = await request(app)
@@ -25,7 +28,7 @@ describe("L2 Nodes API", () => {
           name: "Auth Module",
           type: "module",
           description: "Handles authentication",
-          l1TagIds: [l1Tag.id]
+          l1TagIds: [l1Tag.id],
         });
       expect(resCreate.status).toBe(201);
       const nodeId = resCreate.body.id;
@@ -36,7 +39,7 @@ describe("L2 Nodes API", () => {
         .set("Authorization", "Bearer test-api-key")
         .send({
           name: "Auth Module Updated",
-          l1TagIds: []
+          l1TagIds: [],
         });
       expect(resPatch.status).toBe(200);
       expect(resPatch.body.name).toBe("Auth Module Updated");
@@ -48,7 +51,7 @@ describe("L2 Nodes API", () => {
         .set("Authorization", "Bearer test-api-key")
         .send({
           targetNodeId: node2.id,
-          linkType: "depends_on"
+          linkType: "depends_on",
         });
       expect(resLinkPost.status).toBe(201);
       const linkId = resLinkPost.body.id;
@@ -72,21 +75,30 @@ describe("L2 Nodes API", () => {
     await withRollback(async () => {
       const tempDir = await fsUtils.mkdtemp(path.join(os.tmpdir(), "docuvia-test-"));
       const project = await ProjectFactory.create({ repoUrl: tempDir });
-      const l2Node1 = await L2NodeFactory.create({ projectId: project.id, isBootstrapConfirmed: false });
-      const l2Node2 = await L2NodeFactory.create({ projectId: project.id, isBootstrapConfirmed: false });
+      const l2Node1 = await L2NodeFactory.create({
+        projectId: project.id,
+        isBootstrapConfirmed: false,
+      });
+      const l2Node2 = await L2NodeFactory.create({
+        projectId: project.id,
+        isBootstrapConfirmed: false,
+      });
 
       const res = await request(app)
         .post(`/api/projects/${project.id}/l2-nodes/confirm-bootstrap`)
         .set("Authorization", "Bearer test-api-key")
         .send({
           approvedModules: [{ id: l2Node1.id, pathPatterns: ["src/**/*"] }],
-          rejectedModuleIds: [l2Node2.id]
+          rejectedModuleIds: [l2Node2.id],
         });
-        
+
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      
-      const configYaml = await fsUtils.readFile(path.join(tempDir, ".docuvia", "config.yaml"), "utf-8");
+
+      const configYaml = await fsUtils.readFile(
+        path.join(tempDir, ".docuvia", "config.yaml"),
+        "utf-8"
+      );
       expect(configYaml).toContain("src/**/*");
     });
   });

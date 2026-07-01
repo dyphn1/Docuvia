@@ -2,7 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
-import githubWebhooksRouter from "./routes/github_webhooks";
+import githubWebhooksRouter from "./routes/github-webhooks";
 import { llmProxyRouter } from "./proxy/llm-proxy.js";
 import { logger } from "@workspace/core";
 

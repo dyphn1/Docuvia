@@ -28,8 +28,8 @@ Establish the core infrastructure, database models (L1/L2/L3), multi-format inge
 
 - `lib/db/src/schema/*.ts` (projects, commits, l1_tags, l2_nodes, l3_nodes)
 - `artifacts/api-server/src/routes/metabolism.ts`
-- `artifacts/api-server/src/lib/intent-router.ts`
-- `artifacts/api-server/src/lib/document-parser.ts`
+- `lib/core/src/services/intent-router.ts`
+- `lib/core/src/services/document-parser.ts`
 
 ### 🏗️ System Architecture
 
@@ -142,8 +142,8 @@ Align the Knowledge Graph directly with the underlying Git commit history (using
 
 ### 📁 Involved Files
 
-- `artifacts/api-server/src/lib/orphan-branch-writer.ts`
-- `lib/db/src/schema/correction_examples.ts`
+- `lib/core/src/services/orphan-branch-writer.ts`
+- `lib/db/src/schema/correction-examples.ts`
 - `lib/db/src/schema/prompt_templates.ts`
 
 ### 🏗️ System Architecture
@@ -200,10 +200,10 @@ Inject human oversight mechanisms (Review Queue), enable system portability (Exp
 
 ### 📁 Involved Files
 
-- `artifacts/api-server/src/routes/review_tasks.ts`
-- `artifacts/api-server/src/routes/github_webhooks.ts`
+- `artifacts/api-server/src/routes/review-tasks.ts`
+- `artifacts/api-server/src/routes/github-webhooks.ts`
 - `artifacts/api-server/src/routes/export.ts`
-- `artifacts/api-server/src/lib/slack-teams-client.ts`
+- `lib/core/src/services/slack-teams-client.ts`
 
 ### 🏗️ System Architecture
 
@@ -251,8 +251,8 @@ Deliver zero-LLM-cost structural code analysis directly in the VS Code client by
 - `@workspace/ast-core` (Microkernel engine)
 - `@workspace/plugin-ast-typescript` (Language plugin)
 - `artifacts/api-server/src/middlewares/upload.ts` (For handling non-AST multi-modal files)
-- `artifacts/api-server/src/lib/ast-ingestion-pipeline.ts` (Ingestion pipeline)
-- `artifacts/api-server/src/lib/ast/ast-worker-pool.ts` (Worker pool + quarantine)
+- `lib/core/src/services/ast-ingestion-pipeline.ts` (Ingestion pipeline)
+- `lib/core/src/services/ast/ast-worker-pool.ts` (Worker pool + quarantine)
 
 ### 🏗️ System Architecture
 
@@ -319,10 +319,10 @@ Remediate critical flaws discovered during adversarial audits (OOM risks, IDOR v
 ### 📁 Involved Files
 
 - `artifacts/api-server/src/routes/export.ts`
-- `artifacts/api-server/src/routes/github_webhooks.ts`
+- `artifacts/api-server/src/routes/github-webhooks.ts`
 - `artifacts/api-server/src/routes/metabolism.ts`
-- `artifacts/api-server/src/lib/intent-router.ts`
-- `artifacts/api-server/src/lib/svn-client.ts`
+- `lib/core/src/services/intent-router.ts`
+- `lib/core/src/services/svn-client.ts`
 
 ### 🏗️ System Architecture
 

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ProjectService } from "../services/project.service";
 import { db } from "@workspace/db";
 import { projectIntegrationsTable, projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -40,7 +41,7 @@ router.post("/projects/:id/integrations", async (req, res) => {
     const projectId = parseInt(req.params.id, 10);
     if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project id" });
 
-    const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+    const project = await new ProjectService().getProjectById(projectId);
     if (!project) return res.status(404).json({ error: "Project not found" });
 
     const body = CreateProjectIntegrationBody.parse(req.body);

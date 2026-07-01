@@ -1,5 +1,5 @@
 import { getLlmClientForProject } from "./llm-provider.js";
-import { logger } from "./logger.js";
+import { logger } from "../utils/logger.js";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const EMBEDDING_DIMENSIONS = 1536;

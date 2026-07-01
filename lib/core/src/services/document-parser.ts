@@ -1,4 +1,4 @@
-import { extractBuildArtifactText } from "./build-artifact-parser.js";
+import { extractBuildArtifactText } from "./build-artifact-aggregator.js";
 import { fork } from "node:child_process";
 import path from "node:path";
 import os from "node:os";

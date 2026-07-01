@@ -19,7 +19,7 @@ describe("L3 Nodes API", () => {
           title: "Use Redis for caching",
           content: "We decided to use Redis",
           nodeType: "decision",
-          commitHash: "abc1234"
+          commitHash: "abc1234",
         });
       expect(resCreate.status).toBe(201);
       const l3NodeId = resCreate.body.id;
@@ -36,7 +36,7 @@ describe("L3 Nodes API", () => {
         .patch(`/api/l3-nodes/${l3NodeId}`)
         .set("Authorization", "Bearer test-api-key")
         .send({
-          title: "Use Redis Updated"
+          title: "Use Redis Updated",
         });
       expect(resPatch.status).toBe(200);
       expect(resPatch.body.title).toBe("Use Redis Updated");

@@ -1,12 +1,12 @@
 ---
-Supersedes: ADR-004
+Supplements: ADR-004
 ---
 
 # ADR-017: Tiered Storage & Orphan Branch Graph Maintenance
 
 ## Context
 
-To prevent the [local PostgreSQL database](ADR-014-sql-indexed-graph-and-database-as-ipc.md) from growing infinitely as the project evolves through frequent edits and refactors, the graph needs a garbage collection (GC) mechanism. However, we cannot permanently delete historical knowledge (such as lessons learned from past bugs) simply because the code was refactored.
+To prevent the [local SQLite database](ADR-014-sql-indexed-graph-and-database-as-ipc.md) from growing infinitely as the project evolves through frequent edits and refactors, the graph needs a garbage collection (GC) mechanism. However, we cannot permanently delete historical knowledge (such as lessons learned from past bugs) simply because the code was refactored.
 
 ## Decision
 

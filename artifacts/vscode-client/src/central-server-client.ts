@@ -74,12 +74,6 @@ export class CentralServerClient {
     return response.json() as Promise<CentralSearchResult[]>;
   }
 
-  // TODO (Phase 6): OAuth2/PKCE flow — integrate with enterprise IdP for RBAC
-  async checkAuthorizationScope(_scope: string): Promise<boolean> {
-    // Default: allow all for simple/internal deployments
-    return true;
-  }
-
   /**
    * Pulls the full knowledge snapshot for a project from the server.
    * Calls GET /projects/{id}/graph which returns L1 tags, L2 nodes, and L3 nodes.

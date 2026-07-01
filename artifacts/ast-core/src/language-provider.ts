@@ -77,22 +77,42 @@ export class DefaultProvider implements LanguageProvider {
   }
 
   extractClasses(rootNode: Node): Node[] {
-    return this.extractNodes(rootNode, this.compiledQueries?.classes, ["class"], this.config.classes);
+    return this.extractNodes(
+      rootNode,
+      this.compiledQueries?.classes,
+      ["class"],
+      this.config.classes
+    );
   }
 
   extractFunctions(rootNode: Node): Node[] {
-    return this.extractNodes(rootNode, this.compiledQueries?.functions, ["function"], this.config.functions);
+    return this.extractNodes(
+      rootNode,
+      this.compiledQueries?.functions,
+      ["function"],
+      this.config.functions
+    );
   }
 
   extractImports(rootNode: Node): Node[] {
-    return this.extractNodes(rootNode, this.compiledQueries?.imports, ["import"], this.config.imports);
+    return this.extractNodes(
+      rootNode,
+      this.compiledQueries?.imports,
+      ["import"],
+      this.config.imports
+    );
   }
 
   extractCalls(rootNode: Node): Node[] {
     return this.extractNodes(rootNode, this.compiledQueries?.calls, ["call"], this.config.calls);
   }
 
-  private extractNodes(rootNode: Node, query: Query | undefined, captureNames: string[], fallbackTypes: string[]): Node[] {
+  private extractNodes(
+    rootNode: Node,
+    query: Query | undefined,
+    captureNames: string[],
+    fallbackTypes: string[]
+  ): Node[] {
     if (query) {
       return this.captureNodes(rootNode, captureNames, query);
     }

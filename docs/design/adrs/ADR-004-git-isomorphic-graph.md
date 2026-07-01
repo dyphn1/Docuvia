@@ -1,4 +1,5 @@
 ---
+Status: Supplemented by ADR-017
 Supersedes: None
 ---
 

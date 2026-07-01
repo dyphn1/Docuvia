@@ -43,6 +43,9 @@ export class AstWorkerPool implements IASTWorkerPool {
       workerOptions.execArgv = process.execArgv.filter(
         (arg) => !arg.includes("--eval") && !arg.includes("--print")
       );
+      if (!workerOptions.execArgv.some((arg: string) => arg.includes("tsx"))) {
+        workerOptions.execArgv.push("--import", "tsx");
+      }
     } else {
       // If running from dist/ast-worker.js, we don't need any loaders.
       workerOptions.execArgv = [];
@@ -64,6 +67,11 @@ export class AstWorkerPool implements IASTWorkerPool {
 
       worker.on("error", (err) => {
         console.error("[AstWorkerPool] Worker error:", err);
+        // Reject all pending tasks to prevent event loop starvation/silent exit
+        for (const [taskId, callbacks] of this.pendingTasks.entries()) {
+          callbacks.reject(err);
+          this.pendingTasks.delete(taskId);
+        }
       });
 
       this.workers.push(worker);

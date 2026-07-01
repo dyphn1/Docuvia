@@ -11,6 +11,11 @@ export default defineConfig({
     },
   },
   test: {
+    server: {
+      deps: {
+        external: [/execa/],
+      },
+    },
     include: [
       "artifacts/*/test/**/*.test.{ts,tsx}",
       "artifacts/*/src/**/*.unit.test.{ts,tsx}",
@@ -22,7 +27,7 @@ export default defineConfig({
       include: [
         "artifacts/api-server/src/**/*.ts",
         "artifacts/kg-engine/src/**/*.{ts,tsx}",
-        "lib/db/src/**/*.ts"
+        "lib/db/src/**/*.ts",
       ],
       exclude: [
         "**/dist/**",

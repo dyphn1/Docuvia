@@ -241,4 +241,4 @@ function serializePr(pr: typeof pullRequestsTable.$inferSelect) {
   };
 }
 
-export default router;
+export { router as pullRequestsRouter };

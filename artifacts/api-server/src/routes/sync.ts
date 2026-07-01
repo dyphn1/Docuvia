@@ -76,4 +76,4 @@ router.post("/sync/push", requireApiKey, async (req, res) => {
   }
 });
 
-export default router;
+export { router as syncRouter };

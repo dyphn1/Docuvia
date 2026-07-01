@@ -68,4 +68,4 @@ router.patch("/projects/:id/llm-config", requireApiKey, async (req, res) => {
   res.json({ ...cfg, createdAt: cfg.createdAt.toISOString() });
 });
 
-export default router;
+export { router as llmConfigRouter };

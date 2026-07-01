@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/Select";
+import { Badge } from "@/components/ui/Badge";
 import { Database } from "lucide-react";
 import { normalizeProjects } from "@/lib/projects";
 import { IngestCard } from "./pipeline/components/IngestCard";

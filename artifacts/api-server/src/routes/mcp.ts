@@ -264,4 +264,4 @@ router.get("/mcp/tools", (_req, res) => {
   });
 });
 
-export default router;
+export { router as mcpRouter };

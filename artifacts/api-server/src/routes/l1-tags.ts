@@ -51,4 +51,4 @@ router.delete("/l1-tags/:id", async (req, res) => {
   res.status(204).send();
 });
 
-export default router;
+export { router as l1TagsRouter };

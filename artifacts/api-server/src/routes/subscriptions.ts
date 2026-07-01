@@ -84,4 +84,4 @@ router.get("/projects/:projectId/subscriptions", async (req, res) => {
   }
 });
 
-export default router;
+export { router as subscriptionsRouter };

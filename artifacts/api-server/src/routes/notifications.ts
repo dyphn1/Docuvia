@@ -83,4 +83,4 @@ router.post("/notifications/mark-all-read", async (req, res) => {
   }
 });
 
-export default router;
+export { router as notificationsRouter };

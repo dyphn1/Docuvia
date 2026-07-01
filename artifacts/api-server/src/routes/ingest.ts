@@ -166,7 +166,9 @@ router.post(
       if (req.file?.path) {
         try {
           fs.unlinkSync(req.file.path);
-        } catch (e) {}
+        } catch (e) {
+          logger.warn({ err: e, path: req.file.path }, "Failed to delete temp file");
+        }
       }
     }
   }
@@ -294,10 +296,12 @@ router.post(
       if (req.file?.path) {
         try {
           fs.unlinkSync(req.file.path);
-        } catch (e) {}
+        } catch (e) {
+          logger.warn({ err: e, path: req.file.path }, "Failed to delete temp file");
+        }
       }
     }
   }
 );
 
-export default router;
+export { router as ingestRouter };

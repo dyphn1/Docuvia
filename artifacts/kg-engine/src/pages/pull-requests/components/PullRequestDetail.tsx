@@ -8,10 +8,10 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from "@/components/ui/sheet";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
+} from "@/components/ui/Sheet";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Separator } from "@/components/ui/Separator";
+import { Badge } from "@/components/ui/Badge";
 
 interface PullRequestDetailProps {
   projectId: number;

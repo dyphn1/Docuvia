@@ -71,7 +71,9 @@ export class FileDiscoveryService implements IFileDiscovery {
       try {
         const gitignoreContent = await fs.readFile(path.join(workspaceRoot, ".gitignore"), "utf-8");
         ig.add(gitignoreContent);
-      } catch (e: any) {}
+      } catch (e: any) {
+        console.debug("[docuvia] No .gitignore found, proceeding without it.");
+      }
 
       const globbedFiles = await fg("**/*.{ts,js,jsx,tsx,py,go,rs,cpp,c,h,hpp,java,php,rb}", {
         cwd: workspaceRoot,
@@ -102,7 +104,9 @@ export class FileDiscoveryService implements IFileDiscovery {
         for (const row of rows) {
           existingHashes.set(row.file_path, row.content_hash);
         }
-      } catch (e) {} // Table might not exist if init failed partially
+      } catch (e) {
+        console.debug("[docuvia] project_files table might not exist, skipping hash check.");
+      }
       if (db) db.close();
     }
 

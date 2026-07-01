@@ -10,7 +10,7 @@ export interface IFileDiscovery {
   discoverFiles(
     workspaceRoot: string,
     dbPath: string
-  ): Promise<{ filesToParse: any[]; existingHashes: Map<string, number>; skippedCount: number }>;
+  ): Promise<{ filesToParse: any[]; existingHashes: Map<string, string>; skippedCount: number }>;
 }
 
 export interface IGraphDatabaseRepository {

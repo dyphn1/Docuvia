@@ -7,7 +7,7 @@ import { analyzeTool } from "./analyze.js";
 import { extractTool } from "./extract.js";
 import { cleanTool } from "./clean.js";
 import { statusTool } from "./status.js";
-import { detectChangesTool } from "./detect_changes.js";
+import { detectChangesTool } from "./detect-changes.js";
 import { syncTool } from "./sync.js";
 
 export const allTools: Record<string, McpTool> = {

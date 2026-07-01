@@ -6,9 +6,9 @@ import {
   useTestProjectIntegration,
   type ProjectIntegration,
 } from "@workspace/api-client-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { Switch } from "@/components/ui/Switch";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/AlertDialog";
 import { useToast } from "@/hooks/use-toast";
 
 function integrationBadge(type: string) {

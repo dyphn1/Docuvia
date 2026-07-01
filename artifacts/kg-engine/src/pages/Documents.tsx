@@ -4,8 +4,8 @@ import {
   useListMiscDocuments,
   getListMiscDocumentsQueryKey,
 } from "@workspace/api-client-react";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/Badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { Upload, Inbox } from "lucide-react";
 import { normalizeProjects } from "@/lib/projects";
 import { UploadTab } from "./documents/components/UploadTab";

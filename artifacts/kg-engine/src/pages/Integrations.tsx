@@ -7,17 +7,17 @@ import {
   useListProjectIntegrations,
   getListProjectIntegrationsQueryKey,
 } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
+} from "@/components/ui/Select";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Separator } from "@/components/ui/Separator";
 import { normalizeProjects } from "@/lib/projects";
 import { IntegrationCard } from "./integrations/components/IntegrationCard";
 import { CreateIntegrationForm } from "./integrations/components/CreateIntegrationForm";

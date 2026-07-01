@@ -1,5 +1,5 @@
 import { useGetReviewStats, getGetReviewStatsQueryKey } from "@workspace/api-client-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { CheckCircle2, XCircle, Clock } from "lucide-react";
 
 export function ReviewStatsSidebar() {

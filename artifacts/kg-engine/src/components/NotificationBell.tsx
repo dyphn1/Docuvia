@@ -7,10 +7,10 @@ import {
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
 } from "@workspace/api-client-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/Popover";
+import { ScrollArea } from "@/components/ui/ScrollArea";
 
 const typeLabels: Record<string, { label: string; className: string }> = {
   new_commit: {

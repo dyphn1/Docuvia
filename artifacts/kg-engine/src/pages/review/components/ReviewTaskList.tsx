@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { CheckCircle2 } from "lucide-react";
 import {
   useListReviewTasks,

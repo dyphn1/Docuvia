@@ -84,4 +84,4 @@ router.post("/projects/:id/sync", requireApiKey, async (req, res) => {
   return res.json(result);
 });
 
-export default router;
+export { router as projectsRouter };

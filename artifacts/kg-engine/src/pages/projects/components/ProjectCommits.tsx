@@ -1,8 +1,8 @@
 import { format } from "date-fns";
 import { GitBranch, GitCommit, Network } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ScrollArea } from "@/components/ui/ScrollArea";
 import { useListCommits, getListCommitsQueryKey } from "@workspace/api-client-react";
 
 interface ProjectCommitsProps {

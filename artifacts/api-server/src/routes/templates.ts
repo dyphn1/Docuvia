@@ -112,4 +112,4 @@ router.delete("/projects/:id/templates/:type", async (req, res) => {
   return res.status(204).send();
 });
 
-export default router;
+export { router as templatesRouter };

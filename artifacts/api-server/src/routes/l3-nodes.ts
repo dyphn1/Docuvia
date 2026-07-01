@@ -67,4 +67,4 @@ router.delete("/l3-nodes/:id", async (req, res) => {
   res.status(204).send();
 });
 
-export default router;
+export { router as l3NodesRouter };

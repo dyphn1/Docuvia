@@ -64,7 +64,8 @@ router.get(
 
     await exportService.exportProjectToMarkdownStream(projectId, res);
     res.end();
+    return;
   }
 );
 
-export default router;
+export { router as exportRouter };

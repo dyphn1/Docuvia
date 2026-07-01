@@ -126,4 +126,4 @@ router.post("/integrations/:integrationId/test", async (req, res) => {
   }
 });
 
-export default router;
+export { router as integrationsRouter };

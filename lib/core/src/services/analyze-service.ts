@@ -43,7 +43,7 @@ export class AnalyzeService {
     const { filesToParse, skippedCount } = discoveryResult;
 
     // 3. Process ASTs
-    let globalFileIdMap = new Map<string, string>();
+    let globalFileIdMap = new Map<string, number>();
     let updatedCount = 0;
 
     if (filesToParse.length > 0) {

@@ -7,10 +7,10 @@ import {
   useExportProjectMarkdown,
   getExportProjectMarkdownQueryKey,
 } from "@workspace/api-client-react";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/Badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/Tabs";
 import { GitCommit, GitMerge, Network, CheckCircle2 } from "lucide-react";
 import { L2BootstrapReview } from "@/components/L2BootstrapReview";
 import { ProjectTopologyGraph } from "@/components/graph/ProjectTopologyGraph";

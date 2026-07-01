@@ -7,9 +7,9 @@ import {
   type L2Node,
   type L3Node,
 } from "@workspace/api-client-react";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/Badge";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ScrollArea } from "@/components/ui/ScrollArea";
 import {
   GitCommit,
   GitMerge,

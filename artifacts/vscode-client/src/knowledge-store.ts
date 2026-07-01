@@ -16,7 +16,7 @@ const DOCUVIA_DIR = ".docuvia";
 const GIT_KNOWLEDGE_BRANCH = "docuvia-knowledge";
 
 /** Structural interface used to avoid a circular import with CentralServerClient. */
-interface IDocuviaClient {
+interface DocuviaClient {
   isServerConfigured(): boolean;
   pullSnapshot(projectId: number): Promise<KnowledgeSnapshot>;
 }
@@ -76,7 +76,7 @@ export class KnowledgeStore {
   private _outputChannel: vscode.OutputChannel;
   private _loading: boolean = false;
   private _pendingReload: boolean = false;
-  private _client: IDocuviaClient | null = null;
+  private _client: DocuviaClient | null = null;
 
   private readonly _onDidLoad = new vscode.EventEmitter<void>();
   readonly onDidLoad: vscode.Event<void> = this._onDidLoad.event;
@@ -114,7 +114,7 @@ export class KnowledgeStore {
     this._globalConfig = config;
   }
 
-  setCentralClient(client: IDocuviaClient): void {
+  setCentralClient(client: DocuviaClient): void {
     this._client = client;
   }
 

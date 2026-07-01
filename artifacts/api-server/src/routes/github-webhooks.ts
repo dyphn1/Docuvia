@@ -47,4 +47,4 @@ router.post("/:projectId", async (req, res) => {
   }
 });
 
-export default router;
+export { router as githubWebhooksRouter };

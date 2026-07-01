@@ -53,4 +53,4 @@ router.get("/extensions/vscode/file-context", async (req, res) => {
   return;
 });
 
-export default router;
+export { router as extensionsVscodeRouter };

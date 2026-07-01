@@ -290,4 +290,4 @@ router.post("/l2-nodes/:id/links", async (req, res) => {
   });
 });
 
-export default router;
+export { router as l2NodesRouter };

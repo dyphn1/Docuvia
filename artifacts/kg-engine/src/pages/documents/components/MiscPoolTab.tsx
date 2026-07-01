@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useListMiscDocuments, getListMiscDocumentsQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { Inbox, Loader2, AlertCircle, File, Link2 } from "lucide-react";
 import { format } from "date-fns";
 import { AffiliateDialog } from "./AffiliateDialog";

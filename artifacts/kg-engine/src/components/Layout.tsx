@@ -21,7 +21,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/Select";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useCurrentProject } from "@/hooks/use-current-project";
 import { normalizeProjects } from "@/lib/projects";

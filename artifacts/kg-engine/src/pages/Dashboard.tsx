@@ -3,9 +3,9 @@ import {
   getGetDashboardQueryKey,
   type DashboardStats,
 } from "@workspace/api-client-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/Alert";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { Activity, AlertCircle, Database, GitMerge, Network, Tag } from "lucide-react";
 import { format } from "date-fns";
 

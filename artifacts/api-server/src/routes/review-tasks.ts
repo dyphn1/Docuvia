@@ -245,4 +245,4 @@ router.patch("/review-tasks/:id", async (req, res) => {
   return res.json(enriched);
 });
 
-export default router;
+export { router as reviewTasksRouter };

@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { Terminal } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { IngestStatusCard } from "@/components/IngestStatusCard";
 import type { Project } from "@workspace/api-client-react";
 

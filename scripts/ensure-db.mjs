@@ -31,7 +31,8 @@ async function run() {
       // Connect to the DB to create the vector extension before Drizzle tries to push
       const { Client } = await import("pg");
       const client = new Client({
-        connectionString: process.env.DATABASE_URL || "postgres://postgres:postgres@127.0.0.1:5432/docuvia_test"
+        connectionString:
+          process.env.DATABASE_URL || "postgres://postgres:postgres@127.0.0.1:5432/docuvia_test",
       });
       await client.connect();
       await client.query("CREATE EXTENSION IF NOT EXISTS vector;");
@@ -40,7 +41,7 @@ async function run() {
     } catch (e) {
       console.warn("Failed to create vector extension via pg Client:", e.message);
     }
-    
+
     console.log("Pushing database schema...");
     const pushResult = spawnSync("pnpm", ["--filter", "@workspace/db", "run", "push"], {
       stdio: "inherit",
@@ -48,7 +49,8 @@ async function run() {
       env: {
         ...process.env,
         TEST_ENV: "1",
-        DATABASE_URL: process.env.DATABASE_URL || "postgres://postgres:postgres@127.0.0.1:5432/docuvia_test",
+        DATABASE_URL:
+          process.env.DATABASE_URL || "postgres://postgres:postgres@127.0.0.1:5432/docuvia_test",
       },
     });
     if (pushResult.status !== 0) {

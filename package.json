@@ -27,6 +27,7 @@
     "typescript": "~5.9.2"
   },
   "dependencies": {
+    "pg": "^8.20.0",
     "tsx": "^4.22.4"
   }
 }

@@ -102,10 +102,10 @@ parentPort?.on("message", async (request: AstParseRequest) => {
         parser.setLanguage(langInstance);
         languageLoaded = true;
       } else {
-        throw new Error(`[ast-worker] WASM not found. Tried paths: ${attemptedPaths.join(', ')}`);
+        throw new Error(`[ast-worker] WASM not found. Tried paths: ${attemptedPaths.join(", ")}`);
       }
     } catch (e) {
-      const errMessage = e && typeof e === 'object' && 'message' in e ? e.message : String(e);
+      const errMessage = e && typeof e === "object" && "message" in e ? e.message : String(e);
       console.error(`[ast-worker] Failed to load wasm gracefully: ${errMessage}`);
       // Return empty AST gracefully instead of crashing the pipeline
       parentPort?.postMessage({

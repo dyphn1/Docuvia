@@ -6,7 +6,12 @@ import { KnowledgeStore } from "./knowledge-store.js";
 // ─── Node types ───────────────────────────────────────────────────────────────
 
 export type KGNodeKind =
-  "project" | "l1tag" | "l2module" | "l3entry" | "placeholder" | "unassigned-group";
+  | "project"
+  | "l1tag"
+  | "l2module"
+  | "l3entry"
+  | "placeholder"
+  | "unassigned-group";
 
 export interface KGNode {
   kind: KGNodeKind;
@@ -210,12 +215,14 @@ export class KnowledgeGraphTreeProvider
           },
         ];
       }
-      const tagChildren: KGNode[] = snap.tags.map((tag): KGNode => ({
-        kind: "l1tag",
-        id: tag.id,
-        label: tag.name,
-        workspaceRoot: node.workspaceRoot,
-      }));
+      const tagChildren: KGNode[] = snap.tags.map(
+        (tag): KGNode => ({
+          kind: "l1tag",
+          id: tag.id,
+          label: tag.name,
+          workspaceRoot: node.workspaceRoot,
+        })
+      );
       // Append unassigned-group node if there are any unassigned decisions
       const validModuleIds = new Set(snap.modules.map((m) => m.id));
       const hasUnassigned = [...snap.decisions.values()].some(
@@ -235,12 +242,14 @@ export class KnowledgeGraphTreeProvider
     if (node.kind === "l1tag") {
       const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
       const modules = snap ? snap.modules.filter((m) => m.l1_tag_id === node.id) : [];
-      return modules.map((mod): KGNode => ({
-        kind: "l2module",
-        id: mod.id,
-        label: mod.name,
-        workspaceRoot: node.workspaceRoot,
-      }));
+      return modules.map(
+        (mod): KGNode => ({
+          kind: "l2module",
+          id: mod.id,
+          label: mod.name,
+          workspaceRoot: node.workspaceRoot,
+        })
+      );
     }
 
     if (node.kind === "unassigned-group") {
@@ -250,13 +259,15 @@ export class KnowledgeGraphTreeProvider
       const unassigned = [...snap.decisions.values()].filter(
         (d) => d.l2_module_id === "unassigned" || !validModuleIds.has(d.l2_module_id)
       );
-      return unassigned.map((d): KGNode => ({
-        kind: "l3entry",
-        id: d.id,
-        label: d.title,
-        filePath: d.filePath,
-        workspaceRoot: node.workspaceRoot,
-      }));
+      return unassigned.map(
+        (d): KGNode => ({
+          kind: "l3entry",
+          id: d.id,
+          label: d.title,
+          filePath: d.filePath,
+          workspaceRoot: node.workspaceRoot,
+        })
+      );
     }
 
     if (node.kind === "l2module") {

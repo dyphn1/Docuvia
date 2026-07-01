@@ -1,6 +1,6 @@
 import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { commitsTable } from "./commits";
-import { l2NodesTable } from "./l2_nodes";
+import { l2NodesTable } from "./l2-nodes";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 

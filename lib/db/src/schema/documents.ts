@@ -11,7 +11,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
-import { l2NodesTable } from "./l2_nodes";
+import { l2NodesTable } from "./l2-nodes";
 
 export const documentTypeEnum = pgEnum("document_type", [
   "markdown",

@@ -1,6 +1,6 @@
 import { pgTable, serial, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
-import { jobQueueTable } from "./job_queue";
+import { jobQueueTable } from "./job-queue";
 import { projectsTable } from "./projects";
 
 // Max's Rule: Dead Letter Queue (DLQ) to prevent infinite crash loops

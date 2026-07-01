@@ -13,7 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { l2NodesTable } from "./l2_nodes";
+import { l2NodesTable } from "./l2-nodes";
 
 export const l3NodeTypeEnum = pgEnum("l3_node_type", ["change", "rule", "decision", "context"]);
 

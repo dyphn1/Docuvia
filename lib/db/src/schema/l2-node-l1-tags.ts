@@ -1,5 +1,5 @@
 import { pgTable, serial, integer, index } from "drizzle-orm/pg-core";
-import { l2NodesTable } from "./l2_nodes";
+import { l2NodesTable } from "./l2-nodes";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 

@@ -22,7 +22,7 @@ export default defineConfig({
       include: [
         "artifacts/api-server/src/**/*.ts",
         "artifacts/kg-engine/src/**/*.{ts,tsx}",
-        "lib/db/src/**/*.ts"
+        "lib/db/src/**/*.ts",
       ],
       exclude: [
         "**/dist/**",

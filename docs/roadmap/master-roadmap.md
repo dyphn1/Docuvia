@@ -314,6 +314,7 @@ Remediate critical flaws discovered during adversarial audits (OOM risks, IDOR v
 
 - **Data Migration:** Migrating from JSONB to `pgvector` requires a careful database migration script to avoid locking the production database for extended periods.
 - **SVN Parity:** Ensure the SVN client stores diffs correctly instead of stuffing them into the commit message field.
+- **SVN Integration (2026-07-01):** The SVN integration stores the diff in the commit message field instead of the dedicated diff column, causing truncation and preventing proper diff queries. See report `0701_phase-6_2_1_svn-integration.md`.
 
 ### 📁 Involved Files
 

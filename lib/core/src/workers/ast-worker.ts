@@ -56,7 +56,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       let wasmPath = "";
       try {
         const packagePath = require.resolve(`tree-sitter-wasms/package.json`, {
-          paths: [docuviaRoot],
+          paths: [__dirname, docuviaRoot],
         });
         wasmPath = path.join(
           path.dirname(packagePath),
@@ -69,6 +69,14 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           docuviaRoot,
           `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
         );
+        
+        // Another fallback for pnpm workspace structure
+        if (!fs.existsSync(wasmPath)) {
+          wasmPath = path.resolve(
+            __dirname,
+            `../../../node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
+          );
+        }
       }
 
       if (fs.existsSync(wasmPath)) {

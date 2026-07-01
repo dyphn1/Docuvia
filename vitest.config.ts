@@ -19,6 +19,7 @@ export default defineConfig({
     include: [
       "artifacts/*/test/**/*.test.{ts,tsx}",
       "artifacts/*/src/**/*.unit.test.{ts,tsx}",
+      "lib/*/test/**/*.test.{ts,tsx}",
       "lib/**/*.unit.test.{ts,tsx}",
     ],
     environment: "node",

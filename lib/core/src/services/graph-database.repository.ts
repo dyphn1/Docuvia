@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs";
 import Database from "better-sqlite3";
 import { ScopeResolver } from "./scope-resolver.js";
 import { IGraphDatabaseRepository } from "../interfaces/analyzer.interfaces.js";
@@ -9,7 +10,12 @@ export class GraphDatabaseRepository implements IGraphDatabaseRepository {
     parsedResults: any[],
     tags: string[]
   ): Promise<{ updatedCount: number; fileIdMap: Map<string, number> }> {
-    const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
+    const docuviaDir = path.join(workspaceRoot, ".docuvia");
+    if (!fs.existsSync(docuviaDir)) {
+      fs.mkdirSync(docuviaDir, { recursive: true });
+    }
+    
+    const dbPath = path.join(docuviaDir, "local.db");
     const db = new Database(dbPath);
 
     const resolver = new ScopeResolver(workspaceRoot);

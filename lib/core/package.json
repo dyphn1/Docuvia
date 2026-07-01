@@ -25,6 +25,7 @@
     "ignore": "^7.0.5",
     "pino": "^9",
     "sax": "^1.6.0",
+    "tree-sitter-wasms": "^0.1.13",
     "typescript": "^6.0.3",
     "web-tree-sitter": "^0.26.9"
   },

@@ -27,6 +27,9 @@ describe("Command: docuvia analyze", () => {
         "src/main.tsx": "console.log('hello world');",
       },
     });
+    
+    // First run init to ensure database tables are created
+    await sandbox.runCli(["init"]);
 
     // Act: Run analyze
     const result = await sandbox.runCli(["analyze"]);

@@ -1,18 +1,14 @@
 import { Router } from "express";
 import { ProjectService } from "../services/project.service";
-import { count } from "drizzle-orm";
-import { db } from "@workspace/db";
-import { documentsTable, projectsTable } from "@workspace/db";
-import { eq, isNull } from "drizzle-orm";
+import { DocumentService } from "../services/document.service";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
-import { detectDocType, extractText } from "@workspace/core";
-import { computeHashFromStream } from "../lib/utils/hash.js";
 import { logger } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth";
 import fs from "fs";
 
 const router = Router();
+const documentService = new DocumentService();
 
 import { AffiliateDocumentBody } from "@workspace/api-zod";
 
@@ -21,19 +17,8 @@ import { AffiliateDocumentBody } from "@workspace/api-zod";
  * List all documents that are not affiliated with any project (projectId IS NULL).
  */
 router.get("/documents/misc", async (_req, res) => {
-  const docs = await db
-    .select()
-    .from(documentsTable)
-    .where(isNull(documentsTable.projectId))
-    .orderBy(documentsTable.createdAt);
-
-  return res.json(
-    docs.map((d) => ({
-      ...d,
-      createdAt: d.createdAt.toISOString(),
-      affiliatedAt: d.affiliatedAt?.toISOString() ?? null,
-    }))
-  );
+  const result = await documentService.listMiscDocuments();
+  return res.json(result);
 });
 
 /**
@@ -62,25 +47,13 @@ router.post("/documents/:id/affiliate", async (req, res) => {
     return res.status(404).json({ error: "Project not found" });
   }
 
-  const [updated] = await db
-    .update(documentsTable)
-    .set({
-      projectId,
-      affiliatedAt: new Date(),
-      status: "affiliated",
-    })
-    .where(eq(documentsTable.id, id))
-    .returning();
+  const updated = await documentService.affiliateDocument(id, projectId);
 
   if (!updated) {
     return res.status(404).json({ error: "Document not found" });
   }
 
-  return res.json({
-    ...updated,
-    createdAt: updated.createdAt.toISOString(),
-    affiliatedAt: updated.affiliatedAt?.toISOString() ?? null,
-  });
+  return res.json(updated);
 });
 
 // POST /documents (Upload to Misc Pool)
@@ -90,61 +63,25 @@ router.post("/documents", requireApiKey, documentUpload.single("file"), async (r
   const uploadedBy = (req as any).user?.id;
   if (!uploadedBy) return res.status(401).json({ error: "Unauthorized" });
 
-  // Max's Rule: Enforce a strict file count quota for the anonymous pool
-  const [quotaCheck] = await db
-    .select({ count: count() })
-    .from(documentsTable)
-    .where(isNull(documentsTable.projectId));
-
-  if (quotaCheck.count >= 1000) {
-    return res.status(429).json({
-      error: "Misc Pool quota exceeded. Please associate existing documents to a project.",
-    });
-  }
-
   try {
-    const filePath = req.file.path;
-    if (!filePath) {
+    const inserted = await documentService.processAndSaveDocument(req.file, uploadedBy);
+    return res.json(inserted);
+  } catch (err: any) {
+    if (err.message === "QUOTA_EXCEEDED") {
+      return res.status(429).json({
+        error: "Misc Pool quota exceeded. Please associate existing documents to a project.",
+      });
+    }
+    if (err.message === "MISSING_FILE_PATH") {
       return res.status(400).json({ error: "Uploaded file path is missing" });
     }
-
-    // Max's Rule: Validate Magic Bytes to prevent spoofed extensions from slipping through.
-    const fd = await fs.promises.open(filePath, "r");
-    const headerBuffer = Buffer.alloc(4);
-    await fd.read(headerBuffer, 0, 4, 0);
-    await fd.close();
-    const hexHeader = headerBuffer.toString("hex").toUpperCase();
-
-    // PDF magic bytes: 25504446
-    // DOCX/PPTX (ZIP) magic bytes: 504B0304
-    const docType = detectDocType(req.file.originalname);
-    if (docType === "pdf" && !hexHeader.startsWith("25504446")) {
+    if (err.message === "INVALID_SIGNATURE_PDF") {
       return res.status(400).json({ error: "Invalid file signature. Not a true PDF." });
     }
-    if ((docType === "docx" || docType === "pptx") && !hexHeader.startsWith("504B0304")) {
-      return res
-        .status(400)
-        .json({ error: "Invalid file signature. Not a valid Office document." });
+    if (err.message === "INVALID_SIGNATURE_OFFICE") {
+      return res.status(400).json({ error: "Invalid file signature. Not a valid Office document." });
     }
 
-    const contentHash = await computeHashFromStream(filePath);
-    const rawContent = await extractText(filePath, docType, req.file.originalname);
-
-    const [inserted] = await db
-      .insert(documentsTable)
-      .values({
-        filename: req.file.originalname,
-        content: rawContent,
-        docType,
-        contentHash,
-        // Max's Rule: Explicit status flag so background workers ignore it
-        validityStatus: "pending_affiliation",
-        uploadedBy,
-      })
-      .returning();
-
-    return res.json(inserted);
-  } catch (err) {
     logger.error({ err }, "[POST /documents] Unhandled error");
     return res.status(500).json({ error: "Internal server error" });
   } finally {

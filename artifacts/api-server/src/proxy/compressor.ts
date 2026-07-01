@@ -77,12 +77,17 @@ export async function getAstSkeleton(filePath: string, code: string): Promise<st
           const nodes = [...classes, ...functions].sort((a, b) => b.startIndex - a.startIndex);
           // Filter out nodes that are contained within other nodes (to avoid overlapping replacements)
           const topLevelNodes = nodes.filter(
-            (n) => !nodes.some((other) => other !== n && other.startIndex <= n.startIndex && other.endIndex >= n.endIndex)
+            (n) =>
+              !nodes.some(
+                (other) =>
+                  other !== n && other.startIndex <= n.startIndex && other.endIndex >= n.endIndex
+              )
           );
 
           for (const node of topLevelNodes) {
             const crushed = dumbTextCrusher(node.text);
-            skeleton = skeleton.substring(0, node.startIndex) + crushed + skeleton.substring(node.endIndex);
+            skeleton =
+              skeleton.substring(0, node.startIndex) + crushed + skeleton.substring(node.endIndex);
           }
         }
 
@@ -152,7 +157,9 @@ export function extractCodeBlocks(text: string): CodeBlock[] {
   return blocks;
 }
 
-export async function compressPrompt(text: string): Promise<{ compressedText: string; hasChanges: boolean }> {
+export async function compressPrompt(
+  text: string
+): Promise<{ compressedText: string; hasChanges: boolean }> {
   let hasChanges = false;
   let compressedText = text;
 

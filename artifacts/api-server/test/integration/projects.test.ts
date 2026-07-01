@@ -23,7 +23,7 @@ describe("Projects API", () => {
         .send({
           name: "Test Project",
           repoUrl: "https://github.com/test/repo",
-          description: "Test description"
+          description: "Test description",
         });
       expect(resCreate.status).toBe(201);
       const projectId = resCreate.body.id;
@@ -40,7 +40,7 @@ describe("Projects API", () => {
         .patch(`/api/projects/${projectId}`)
         .set("Authorization", "Bearer test-api-key")
         .send({
-          name: "Updated Project"
+          name: "Updated Project",
         });
       expect(resPatch.status).toBe(200);
       expect(resPatch.body.name).toBe("Updated Project");
@@ -75,7 +75,7 @@ describe("Projects API", () => {
       expect(resL2.status).toBe(200);
 
       // POST sync
-      // It might require mocking or trigger external calls, so we mock or skip or test the error 
+      // It might require mocking or trigger external calls, so we mock or skip or test the error
       // We will skip full sync here and just do delete
 
       // Delete
@@ -83,7 +83,7 @@ describe("Projects API", () => {
         .delete(`/api/projects/${projectId}`)
         .set("Authorization", "Bearer test-api-key");
       expect(resDelete.status).toBe(204);
-      
+
       const resGetAfterDelete = await request(app)
         .get(`/api/projects/${projectId}`)
         .set("Authorization", "Bearer test-api-key");

@@ -13,7 +13,7 @@ describe("L1 Tags API", () => {
         .send({
           name: "Architecture",
           category: "general",
-          description: "System architecture docs"
+          description: "System architecture docs",
         });
       expect(resCreate.status).toBe(201);
       const tagId = resCreate.body.id;
@@ -30,7 +30,7 @@ describe("L1 Tags API", () => {
         .patch(`/api/l1-tags/${tagId}`)
         .set("Authorization", "Bearer test-api-key")
         .send({
-          name: "Arch Updated"
+          name: "Arch Updated",
         });
       expect(resPatch.status).toBe(200);
       expect(resPatch.body.name).toBe("Arch Updated");

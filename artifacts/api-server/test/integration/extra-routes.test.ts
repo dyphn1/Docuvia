@@ -31,13 +31,16 @@ describe("Extra Routes API", () => {
       const l2 = await L2NodeFactory.create({ projectId: project.id });
       const l3 = await L3NodeFactory.create({ l2NodeId: l2.id });
 
-      const [task] = await db.insert(reviewTasksTable).values({
-        entityType: "l3_node",
-        entityId: l3.id,
-        taskType: "validate",
-        description: "needs review",
-        status: "pending",
-      }).returning();
+      const [task] = await db
+        .insert(reviewTasksTable)
+        .values({
+          entityType: "l3_node",
+          entityId: l3.id,
+          taskType: "validate",
+          description: "needs review",
+          status: "pending",
+        })
+        .returning();
 
       // Get tasks
       const resGet = await request(app)
@@ -60,7 +63,7 @@ describe("Extra Routes API", () => {
       expect(resReject.status).toBe(200);
     });
   });
-  
+
   it("GET /api/projects/:id/export downloads a json file", async () => {
     await withRollback(async () => {
       const project = await ProjectFactory.create();

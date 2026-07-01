@@ -1,28 +1,26 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { computeHashFromBuffer, computeHashFromStream } from "../lib/utils/hash.js";
 import fs from "fs";
-import {
-  commitsTable,
-  documentsTable,
-  projectsTable,
-  jobQueueTable,
-  errorReportsTable,
-} from "@workspace/db";
-import { and, eq, sql, isNull } from "drizzle-orm";
-import { getSvnLog, getSvnDiff } from "@workspace/core";
+import { projectsTable, documentsTable } from "@workspace/db";
+import { and, eq, sql } from "drizzle-orm";
 import { IngestSvnBody, IngestDocumentBody } from "@workspace/api-zod";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
-import { detectDocType, extractText } from "@workspace/core";
 import multer from "multer";
-import { LocalGitClient, GitCommitData } from "@workspace/core";
-import { processIngestion, GitCommitItem, SvnCommitItem, DocumentItem } from "@workspace/core";
-import { ingestAstJsonl, ingestAstBatch } from "@workspace/core";
 import { logger } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
+import { GitIngestionService } from "../services/git-ingestion.service.js";
+import { SvnIngestionService } from "../services/svn-ingestion.service.js";
+import { DocumentIngestionService } from "../services/doc-ingestion.service.js";
+import { AstIngestionService } from "../services/ast-ingestion.service.js";
+import { ProjectStatusService } from "../services/project-status.service.js";
 
 const router = Router();
+const gitIngestionService = new GitIngestionService();
+const svnIngestionService = new SvnIngestionService();
+const docIngestionService = new DocumentIngestionService();
+const astIngestionService = new AstIngestionService();
+const projectStatusService = new ProjectStatusService();
 
 const GitIngestSchema = z.object({
   repoUrl: z.string().optional(),
@@ -42,75 +40,29 @@ router.post("/projects/:id/ingest/git", requireApiKey, async (req, res) => {
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   const body = GitIngestSchema.parse(req.body);
-  const mode = body.mode ?? "full";
   const repoUrl = body.repoUrl ?? project.repoUrl;
-  const branch = body.branch ?? "main";
-  const limit = Math.min(body.limit ?? 100, 500);
 
   if (!repoUrl) {
     return res.status(400).json({ error: "repoUrl is required" });
   }
 
-  const client = new LocalGitClient(repoUrl);
   try {
-    await client.clone(branch);
-
-    const since =
-      mode === "incremental" && project.lastGitIngestedAt ? project.lastGitIngestedAt : undefined;
-    const commits = await client.getCommits(limit, since);
-
-    const gitItems: GitCommitItem[] = [];
-    let newestCommitDate: Date | null = null;
-
-    for (const c of commits) {
-      const diff = await client.getDiff(c.sha);
-      gitItems.push({
-        ...c,
-        diff,
-      });
-
-      const commitDate = new Date(c.date ?? "");
-      if (!isNaN(commitDate.getTime()) && (!newestCommitDate || commitDate > newestCommitDate)) {
-        newestCommitDate = commitDate;
-      }
-    }
-
-    let ingested = 0;
-    let skipped = 0;
-    let errors: string[] = [];
-    await db.transaction(async (tx) => {
-      const res = await processIngestion(
-        {
-          type: "git",
-          projectId,
-          projectName: project.name,
-          items: gitItems,
-        },
-        tx
-      );
-      ingested = res.ingested;
-      skipped = res.skipped;
-      errors = res.errors;
-
-      if (mode === "incremental" && newestCommitDate) {
-        await tx
-          .update(projectsTable)
-          .set({ lastGitIngestedAt: newestCommitDate })
-          .where(eq(projectsTable.id, projectId));
-      }
+    const result = await gitIngestionService.ingestGit(project, {
+      repoUrl,
+      branch: body.branch ?? "main",
+      limit: Math.min(body.limit ?? 100, 500),
+      mode: body.mode ?? "full",
     });
 
     return res.json({
-      commitsIngested: ingested,
-      commitsSkipped: skipped,
-      totalFetched: gitItems.length,
-      errors: errors.length > 0 ? errors : undefined,
+      commitsIngested: result.ingested,
+      commitsSkipped: result.skipped,
+      totalFetched: result.totalFetched,
+      errors: result.errors.length > 0 ? result.errors : undefined,
     });
   } catch (err: any) {
     logger.error({ err }, "Git ingestion failed");
     return res.status(500).json({ error: `Git ingestion failed: ${err.message}` });
-  } finally {
-    await client.cleanup();
   }
 });
 
@@ -129,96 +81,28 @@ router.post("/projects/:id/ingest/svn", requireApiKey, async (req, res) => {
   const { mode: svnMode } = SvnModeSchema.parse(req.body);
   const svnUrl = body.svnUrl;
 
-  // Strict URL Validation for SVN
   if (!/^https?:\/\/|^svn:\/\/|^svn\+ssh:\/\//.test(svnUrl)) {
     return res.status(400).json({ error: "Invalid SVN URL format" });
   }
 
-  let startRevision = body.startRevision ?? 1;
-  const endRevision = body.endRevision ?? "HEAD";
-
-  if (svnMode === "incremental" && project.lastSvnRevision != null) {
-    startRevision = project.lastSvnRevision + 1;
-  }
-
-  let maxRevisionIngested = project.lastSvnRevision ?? 0;
-  let totalIngested = 0;
-  let totalSkipped = 0;
-  const svnErrors: string[] = [];
-  const ingestErrors: string[] = [];
-
   try {
-    const logGenerator = getSvnLog(
+    const result = await svnIngestionService.ingestSvn(project, {
       svnUrl,
-      startRevision,
-      endRevision,
-      body.username,
-      body.password
-    );
-    let batch: SvnCommitItem[] = [];
-
-    const flushBatch = async () => {
-      if (batch.length === 0) return;
-      await db.transaction(async (tx) => {
-        const { ingested, skipped, errors } = await processIngestion(
-          {
-            type: "svn",
-            projectId,
-            projectName: project.name,
-            items: batch,
-          },
-          tx
-        );
-        totalIngested += ingested;
-        totalSkipped += skipped;
-        ingestErrors.push(...errors);
-      });
-      batch = [];
-    };
-
-    for await (const rev of logGenerator) {
-      let diff = "";
-      try {
-        diff = await getSvnDiff(svnUrl, rev.revision, body.username, body.password);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        svnErrors.push(`r${rev.revision}: ${msg}`);
-      }
-
-      batch.push({
-        revision: rev.revision,
-        message: rev.message,
-        author: rev.author,
-        diff,
-      });
-
-      if (rev.revision > maxRevisionIngested) maxRevisionIngested = rev.revision;
-
-      if (batch.length >= 50) {
-        await flushBatch();
-      }
-    }
-
-    await flushBatch();
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return res.status(502).json({ error: `Failed to fetch SVN log: ${msg}` });
-  }
-
-  if (svnMode === "incremental" && maxRevisionIngested > (project.lastSvnRevision ?? 0)) {
-    await db.transaction(async (tx) => {
-      await tx
-        .update(projectsTable)
-        .set({ lastSvnRevision: maxRevisionIngested })
-        .where(eq(projectsTable.id, projectId));
+      username: body.username,
+      password: body.password,
+      startRevision: body.startRevision,
+      endRevision: body.endRevision,
+      mode: svnMode,
     });
-  }
 
-  return res.json({
-    ingested: totalIngested,
-    skipped: totalSkipped,
-    errors: [...svnErrors, ...ingestErrors],
-  });
+    return res.json({
+      ingested: result.ingested,
+      skipped: result.skipped,
+      errors: result.errors,
+    });
+  } catch (err: any) {
+    return res.status(502).json({ error: `Failed to fetch SVN log: ${err.message}` });
+  }
 });
 
 router.get("/projects/:id/ingest/status", async (req, res) => {
@@ -226,18 +110,12 @@ router.get("/projects/:id/ingest/status", async (req, res) => {
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Project not found" });
 
-  const [{ pendingCount }] = await db
-    .select({ pendingCount: sql<number>`count(*)::int` })
-    .from(commitsTable)
-    .where(and(eq(commitsTable.projectId, projectId), isNull(commitsTable.processedAt)));
-
-  return res.json({
-    projectId: project.id,
-    vcsType: project.vcsType,
-    lastGitIngestedAt: project.lastGitIngestedAt?.toISOString() ?? null,
-    lastSvnRevision: project.lastSvnRevision ?? null,
-    pendingCommits: Number(pendingCount),
-  });
+  try {
+    const status = await projectStatusService.getStatus(projectId, project);
+    return res.json(status);
+  } catch (err: any) {
+    return res.status(500).json({ error: `Failed to get status: ${err.message}` });
+  }
 });
 
 router.post(
@@ -256,59 +134,33 @@ router.post(
 
     try {
       const { originalname, path: filePath } = req.file;
-      let docType = detectDocType(originalname);
+      const commitSha = req.body.commitSha as string | undefined;
 
-      // Fix extension matching logic to map .log to build_artifact
-      const ext = originalname.split(".").pop()?.toLowerCase() ?? "";
-      if (ext === "log") docType = "build_artifact";
+      const result = await docIngestionService.ingestDocumentFromFile(
+        project,
+        filePath,
+        originalname,
+        commitSha
+      );
 
-      let content: string;
-      try {
-        content = await extractText(filePath, docType, originalname);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return res.status(422).json({ error: `Failed to parse document: ${msg}` });
+      if (result.skipped) {
+        return res.status(409).json({ error: "Document already exists" });
       }
 
-      if (!content || content.length === 0) {
+      return res
+        .status(201)
+        .json({ ...result.document, createdAt: result.document?.createdAt.toISOString() });
+    } catch (err: any) {
+      if (err.message === "Extracted content is empty") {
         return res.status(422).json({
           error:
             "Extracted content is empty. The document may be encrypted or contain only images.",
         });
       }
-
-      const docItem: DocumentItem = {
-        filename: originalname,
-        docType,
-        content,
-        commitSha: req.body.commitSha as string | undefined, // ensure commitSha is parsed
-      };
-
-      const { ingested, skipped, errors } = await processIngestion({
-        type: "document",
-        projectId,
-        projectName: project.name,
-        items: [docItem],
-      });
-
-      if (errors.length > 0) {
-        return res.status(500).json({ error: `Ingestion failed: ${errors.join(", ")}` });
+      if (err.message.startsWith("Failed to parse document")) {
+        return res.status(422).json({ error: err.message });
       }
-
-      if (skipped > 0) {
-        return res.status(409).json({ error: "Document already exists" });
-      }
-
-      const docs = await db
-        .select()
-        .from(documentsTable)
-        .where(
-          and(eq(documentsTable.projectId, projectId), eq(documentsTable.filename, originalname))
-        )
-        .orderBy(sql`${documentsTable.createdAt} desc`)
-        .limit(1);
-
-      return res.status(201).json({ ...docs[0], createdAt: docs[0].createdAt.toISOString() });
+      return res.status(500).json({ error: err.message });
     } finally {
       if (req.file?.path) {
         try {
@@ -331,45 +183,25 @@ router.post("/projects/:id/ingest/document", async (req, res) => {
     return res.status(400).json({ error: "Invalid request body", details: err });
   }
 
-  const ext = body.filename.split(".").pop()?.toLowerCase() ?? "md";
-  let docType: "markdown" | "txt" | "pdf" | "docx" | "pptx" | "build_artifact" = "markdown";
-  if (ext === "txt") docType = "txt";
-  else if (ext === "pdf") docType = "pdf";
-  else if (ext === "docx") docType = "docx";
-  else if (ext === "pptx") docType = "pptx";
-  else if (["map", "fv", "fd", "log"].includes(ext)) docType = "build_artifact"; // log handled
-  if (body.docType) docType = body.docType as any;
+  try {
+    const result = await docIngestionService.ingestDocumentFromContent(
+      project,
+      body.filename,
+      body.content,
+      body.commitSha ?? undefined,
+      body.docType as any
+    );
 
-  const docItem: DocumentItem = {
-    filename: body.filename,
-    docType,
-    content: body.content,
-    commitSha: body.commitSha ?? undefined,
-  };
+    if (result.skipped) {
+      return res.status(409).json({ error: "Document already exists" });
+    }
 
-  const { ingested, skipped, errors } = await processIngestion({
-    type: "document",
-    projectId,
-    projectName: project.name,
-    items: [docItem],
-  });
-
-  if (errors.length > 0) {
-    return res.status(500).json({ error: `Ingestion failed: ${errors.join(", ")}` });
+    return res
+      .status(201)
+      .json({ ...result.document, createdAt: result.document?.createdAt.toISOString() });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
   }
-
-  if (skipped > 0) {
-    return res.status(409).json({ error: "Document already exists" });
-  }
-
-  const docs = await db
-    .select()
-    .from(documentsTable)
-    .where(and(eq(documentsTable.projectId, projectId), eq(documentsTable.filename, body.filename)))
-    .orderBy(sql`${documentsTable.createdAt} desc`)
-    .limit(1);
-
-  return res.status(201).json({ ...docs[0], createdAt: docs[0].createdAt.toISOString() });
 });
 
 router.get("/projects/:id/documents", async (req, res) => {
@@ -382,11 +214,6 @@ router.get("/projects/:id/documents", async (req, res) => {
   res.json(docs.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })));
 });
 
-// POST /projects/:id/ingest/ast
-// Ingests AST skeleton (.jsonl) files produced by ast-worker into the knowledge graph.
-// Accepts either a single file path or an array of file paths.
-// Supports `mode: "full" | "incremental"` — incremental mode only re-ingests files
-// whose content has changed since last scan (Sub-second Incremental Watch).
 const AstIngestSchema = z.object({
   jsonlPaths: z.union([z.string(), z.array(z.string())]).optional(),
   jsonlPath: z.string().optional(),
@@ -405,70 +232,10 @@ router.post("/projects/:id/ingest/ast", async (req, res) => {
       return res.status(400).json({ error: "jsonlPath or jsonlPaths is required" });
     }
 
-    const pathArray = Array.isArray(paths) ? paths : [paths];
     const mode = body.mode ?? "full";
+    const result = await astIngestionService.dispatchAstIngestion(projectId, paths, mode);
 
-    // JSONL Bulk Insert & Job Dispatch (Phase 4)
-    const [job] = await db
-      .insert(jobQueueTable)
-      .values({
-        taskType: "ast_ingest",
-        payload: { jsonlPaths: pathArray, projectId, mode },
-      })
-      .returning();
-
-    // Background asynchronous job execution
-    process.nextTick(async () => {
-      try {
-        await db
-          .update(jobQueueTable)
-          .set({ status: "processing", lockedAt: new Date() })
-          .where(eq(jobQueueTable.id, job.id));
-
-        const result = await ingestAstBatch(pathArray, projectId, {
-          incremental: mode === "incremental",
-        });
-
-        // Update last AST ingested timestamp on successful full scan or when incremental finds changes
-        if (mode === "full" || result.l2Created > 0 || result.l3Created > 0) {
-          await db
-            .update(projectsTable)
-            .set({ lastAstIngestedAt: new Date() })
-            .where(eq(projectsTable.id, projectId));
-        }
-
-        await db
-          .update(jobQueueTable)
-          .set({
-            status: "completed",
-            payload: { jsonlPaths: pathArray, projectId, mode, result },
-          })
-          .where(eq(jobQueueTable.id, job.id));
-      } catch (err: any) {
-        logger.error({ err, jobId: job.id, projectId }, "AST ingestion background job failed");
-
-        await db
-          .update(jobQueueTable)
-          .set({ status: "failed" })
-          .where(eq(jobQueueTable.id, job.id));
-        await db
-          .insert(errorReportsTable)
-          .values({
-            projectId,
-            jobId: job.id,
-            taskType: "ast_ingest_job",
-            errorMessage: err.message,
-            errorStack: err.stack,
-          })
-          .catch((dlqErr) => logger.warn({ dlqErr }, "Failed to persist DLQ for AST Job"));
-      }
-    });
-
-    return res.status(202).json({
-      message: "AST ingestion job dispatched successfully",
-      jobId: job.id,
-      mode,
-    });
+    return res.status(202).json(result);
   } catch (err: any) {
     logger.error({ err, projectId }, "AST ingestion endpoint failed");
     return res.status(500).json({ error: `AST ingestion dispatch failed: ${err.message}` });
@@ -495,7 +262,6 @@ router.use(
   }
 );
 
-// POST /projects/:id/ingest/build-artifact
 router.post(
   "/projects/:id/ingest/build-artifact",
   documentUpload.single("file"),
@@ -511,22 +277,11 @@ router.post(
         return res.status(400).json({ error: "Uploaded file path is missing" });
       }
 
-      const contentHash = await computeHashFromStream(filePath);
-      const strippedContent = await extractText(filePath, "build_artifact", req.file.originalname);
-
-      const result = await processIngestion({
-        type: "document",
-        projectId,
-        projectName: project.name,
-        items: [
-          {
-            filename: req.file.originalname,
-            content: strippedContent,
-            docType: "build_artifact",
-            contentHash,
-          },
-        ],
-      });
+      const result = await docIngestionService.ingestBuildArtifactFromFile(
+        project,
+        filePath,
+        req.file.originalname
+      );
       return res.json(result);
     } catch (err) {
       logger.error(

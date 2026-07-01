@@ -17,12 +17,12 @@ describe("Command: docuvia query", () => {
     await sandbox.setup({ initGit: true });
 
     // Act
-    const result = await sandbox.runCli(["query", "target-symbol"]).catch(e => e);
+    const result = await sandbox.runCli(["query", "target-symbol"]).catch((e) => e);
 
     // Assert
     expect(result).toBeInstanceOf(Error);
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Local database not found. Please run \"docuvia.initProject\"");
+    expect(result.stderr).toContain('Local database not found. Please run "docuvia.initProject"');
   }, 15000);
 
   it("should query successfully after initialization", async () => {

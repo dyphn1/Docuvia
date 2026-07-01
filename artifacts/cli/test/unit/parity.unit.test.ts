@@ -4,11 +4,11 @@ import { resolve } from "path";
 
 // --- Helpers ---
 function extractIdentifiers(source: string, pattern: RegExp): string[] {
-  return [...source.matchAll(pattern)].map(m => m[1]);
+  return [...source.matchAll(pattern)].map((m) => m[1]);
 }
 
 function findMissing(expected: string[], actual: string[], ignored: Set<string>): string[] {
-  return expected.filter(item => !ignored.has(item) && !actual.includes(item));
+  return expected.filter((item) => !ignored.has(item) && !actual.includes(item));
 }
 
 describe("Interface Parity Tests (CLI vs MCP)", () => {
@@ -22,11 +22,11 @@ describe("Interface Parity Tests (CLI vs MCP)", () => {
 
     // --- Act ---
     const cliCommands = extractIdentifiers(cliSource, /command === "([^"]+)"/g);
-    
+
     // Map MCP tools (e.g., docuvia_detect_changes) to CLI format (detect-changes)
     const mcpTools = extractIdentifiers(mcpSource, /name:\s*"docuvia_([^"]+)"/g)
-      .map(tool => tool.replace(/_/g, "-"))
-      .map(tool => tool === "query-local" ? "query" : tool); // Normalize query command
+      .map((tool) => tool.replace(/_/g, "-"))
+      .map((tool) => (tool === "query-local" ? "query" : tool)); // Normalize query command
 
     const missingInMcp = findMissing(cliCommands, mcpTools, ignoredCliCommands);
     const missingInCli = findMissing(mcpTools, cliCommands, ignoredMcpTools);

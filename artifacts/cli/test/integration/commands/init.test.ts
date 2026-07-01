@@ -23,31 +23,28 @@ describe("Command: docuvia init", () => {
 
     // Assert: Execution success
     expect(result.exitCode).toBe(0);
-    
+
     // Assert: Side-effect - the database file must physically exist
     const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
     expect(existsSync(dbPath), "Local database file should be created").toBe(true);
 
     // Assert: Deep Data Integrity - open the database and verify the schema
     const db = new Database(dbPath, { readonly: true });
-    
+
     try {
       // Query the sqlite_master table to get all created tables
-      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as { name: string }[];
-      const tableNames = tables.map(t => t.name);
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+        name: string;
+      }[];
+      const tableNames = tables.map((t) => t.name);
 
       // Verify core knowledge graph tables exist (based on Docuvia schema expectations)
       // We expect it to create tables like l1_tags, l2_nodes, l3_nodes, etc.
-      const expectedCoreTables = [
-        "l1_tags", 
-        "l2_nodes", 
-        "l3_nodes"
-      ];
+      const expectedCoreTables = ["l1_tags", "l2_nodes", "l3_nodes"];
 
       for (const expectedTable of expectedCoreTables) {
         expect(tableNames).toContain(expectedTable);
       }
-
     } finally {
       db.close();
     }
@@ -61,6 +58,8 @@ describe("Command: docuvia init", () => {
     // Assert
     expect(secondResult.exitCode).toBe(0);
     // It should output success message
-    expect(secondResult.stdout || secondResult.stderr).toContain("Project initialized successfully");
+    expect(secondResult.stdout || secondResult.stderr).toContain(
+      "Project initialized successfully"
+    );
   }, 35000);
 });

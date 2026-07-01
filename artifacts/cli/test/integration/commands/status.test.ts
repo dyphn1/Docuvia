@@ -17,7 +17,7 @@ describe("Command: docuvia status", () => {
     await sandbox.setup({ initGit: true });
 
     // Act
-    const result = await sandbox.runCli(["status"]).catch(e => e);
+    const result = await sandbox.runCli(["status"]).catch((e) => e);
 
     // Assert
     expect(result).toBeInstanceOf(Error);

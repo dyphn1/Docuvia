@@ -13,7 +13,11 @@ function readStdin(): Promise<string> {
   });
 }
 
-export async function syncCommand(options: { isLocal: boolean; projectId?: string; commitSha?: string }) {
+export async function syncCommand(options: {
+  isLocal: boolean;
+  projectId?: string;
+  commitSha?: string;
+}) {
   if (options.isLocal) {
     console.log("[docuvia] Packing local knowledge graph to orphan branch...");
     try {

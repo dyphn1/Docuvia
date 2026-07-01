@@ -42,6 +42,7 @@ services:
       pnpm config set confirmModulesPurge false &&
       pnpm install --frozen-lockfile &&
       echo '🔍 Running Lint...' &&
+      pnpm run format &&
       pnpm run lint &&
       echo '⚙️ Running API Codegen...' &&
       pnpm --filter @workspace/api-spec run codegen &&

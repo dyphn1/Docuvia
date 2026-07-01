@@ -1,5 +1,5 @@
 import { calculateTemporalDecay } from "./decay.js";
-import { sanitizeLikeInput as escapeLike } from "./sql-utils.js";
+import { sanitizeLikeInput as escapeLike } from "../utils/sql-utils.js";
 import { getLlmClientForProject } from "./llm-provider.js";
 import { db } from "@workspace/db";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@workspace/db";
 import { eq, like, isNotNull, or, and, sql, ilike } from "drizzle-orm";
 import { generateEmbedding } from "./embedding.js";
-import { logger } from "./logger.js";
+import { logger } from "../utils/logger.js";
 
 // ---------------------------------------------------------------------------
 // Types

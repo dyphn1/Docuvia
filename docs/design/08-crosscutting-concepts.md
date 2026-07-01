@@ -372,7 +372,7 @@ class SvnIngestAdapter implements VcsIngestAdapter {
 
 This pattern applies to:
 
-- All service classes in `artifacts/api-server/src/lib/`
+- All service classes in `lib/core/src/services/`
 - All database access modules
 - All external API clients (`github-client.ts`, `slack-teams-client.ts`, `lib/integrations-openai-ai-server/`)
 
@@ -472,7 +472,7 @@ Internal maintenance routes are strictly authenticated.
 ## 8.7 Security Boundaries & Input Sanitization
 
 Heavy document parsing (PDF, DOCX) is strictly isolated using `child_process.fork/spawn` with hard OS-level memory/timeout boundaries, and upload endpoints enforce magic byte signature verification to prevent Zip bombs and XXE via spoofed extensions. To prevent CSRF, API CORS is strictly governed by `CORS_ORIGIN` with no wildcards in production.
-All components use a centralized structured logger (`artifacts/api-server/src/lib/logger.ts`) configured with `pino`. Crucially, to prevent PII and Auth Token leakage into log aggregators when `LOG_LEVEL=debug` is active, the logger enforces a strict, environment-agnostic redaction pipeline (stripping `authorization`, `password`, `token` keys before hitting stdout).
+All components use a centralized structured logger (`lib/core/src/utils/logger.ts`) configured with `pino`. Crucially, to prevent PII and Auth Token leakage into log aggregators when `LOG_LEVEL=debug` is active, the logger enforces a strict, environment-agnostic redaction pipeline (stripping `authorization`, `password`, `token` keys before hitting stdout).
 
 ## Verifiability
 

@@ -1,4 +1,4 @@
-import { logger } from "./logger.js";
+import { logger } from "../utils/logger.js";
 
 const GITHUB_API_BASE = "https://api.github.com";
 

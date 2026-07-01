@@ -11,7 +11,7 @@ import { eq, and } from "drizzle-orm";
 import { notifyExternalIntegrations } from "./slack-teams-client.js";
 import { scoreCommit } from "./commit-scorer.js";
 import crypto from "crypto";
-import { logger } from "./logger.js";
+import { logger } from "../utils/logger.js";
 
 type IngestType = "git" | "svn" | "document";
 

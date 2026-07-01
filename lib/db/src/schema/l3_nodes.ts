@@ -49,6 +49,9 @@ export const l3NodesTable = pgTable(
       table.embedding.op("vector_cosine_ops")
     ),
     l3L2NodeIdx: index("l3_nodes_l2_node_id_idx").on(table.l2NodeId),
+    contentHashIdx: index("l3_nodes_content_hash_idx").on(table.contentHash),
+    sourceCommitsIdx: index("l3_nodes_source_commits_idx").using("gin", table.sourceCommits),
+    introducedInCommitIdx: index("l3_nodes_introduced_in_commit_idx").on(table.introducedInCommit),
   })
 );
 

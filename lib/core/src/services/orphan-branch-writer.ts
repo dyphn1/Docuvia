@@ -3,7 +3,7 @@ import { promisify } from "node:util";
 import { db } from "@workspace/db";
 import { l1TagsTable, l2NodesTable, l3NodesTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
-import { logger } from "./logger.js";
+import { logger } from "../utils/logger.js";
 
 const execFileAsync = promisify(execFile);
 

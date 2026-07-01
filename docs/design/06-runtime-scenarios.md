@@ -80,7 +80,7 @@ sequenceDiagram
 An AI IDE sends a natural language query via MCP. The [intent router](adrs/ADR-007-agentic-rag-routing.md) classifies it and routes to the best retrieval strategy.
 
 - **Implementation Route**: [`artifacts/api-server/src/routes/mcp.ts`](../../artifacts/api-server/src/routes/mcp.ts)
-- **Orchestration Logic**: [`artifacts/api-server/src/lib/intent-router.ts`](../../artifacts/api-server/src/lib/intent-router.ts) (`routeQuery()`)
+- **Orchestration Logic**: [`lib/core/src/services/intent-router.ts`](../../lib/core/src/services/intent-router.ts) (`routeQuery()`)
 
 ```mermaid
 sequenceDiagram
@@ -178,7 +178,7 @@ sequenceDiagram
 A developer opens a PR. Docuvia receives the webhook, looks up affected L2/L3 nodes, and comments on the PR with relevant knowledge graph context.
 
 - **Implementation Route**: [`artifacts/api-server/src/routes/github_webhooks.ts`](../../artifacts/api-server/src/routes/github_webhooks.ts)
-- **GitHub Client Wrapper**: [`artifacts/api-server/src/lib/github-client.ts`](../../artifacts/api-server/src/lib/github-client.ts)
+- **GitHub Client Wrapper**: [`lib/core/src/services/github-client.ts`](../../lib/core/src/services/github-client.ts)
 
 ```mermaid
 sequenceDiagram

@@ -11,7 +11,7 @@ import {
   projectFilesTable,
 } from "@workspace/db";
 import { eq, and, sql, inArray } from "drizzle-orm";
-import { logger } from "./logger.js";
+import { logger } from "../utils/logger.js";
 
 /**
  * AST Ingestion Pipeline — Topology Mapping + Edge Creation + Batch Write Optimization

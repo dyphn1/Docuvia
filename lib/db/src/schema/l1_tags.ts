@@ -13,10 +13,9 @@ export const l1TagsTable = pgTable(
     usageCount: integer("usage_count").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
-  (table) => [
-    index("l1_tags_category_idx").on(table.category),
-    index("l1_tags_name_idx").on(table.name),
-  ]
+  (table) => ({
+    categoryIdx: index("l1_tags_category_idx").on(table.category),
+  })
 );
 
 export const insertL1TagSchema = createInsertSchema(l1TagsTable).omit({

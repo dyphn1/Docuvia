@@ -6,7 +6,7 @@ Supersedes: None
 
 ## Core Architecture
 
-Docuvia's [`intent-router.ts`](../../../artifacts/api-server/src/lib/intent-router.ts) dynamically selects the optimal retrieval strategy. Routing arbitration prioritizes $O(1)$ local caches over expensive LLM inference (facilitated by the [Local-First Architecture](ADR-002-local-first-architecture.md) and [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md) patterns).
+Docuvia's [`intent-router.ts`](../../../lib/core/src/services/intent-router.ts) dynamically selects the optimal retrieval strategy. Routing arbitration prioritizes $O(1)$ local caches over expensive LLM inference (facilitated by the [Local-First Architecture](ADR-002-local-first-architecture.md) and [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md) patterns).
 
 ## The Routing Funnel (O(1) Arbitration)
 

@@ -45,9 +45,9 @@ flowchart TD
         D_CLI[CLI: init, analyze, extract] --> D_CORE
         D_MCP[MCP Server] --> D_CORE
         D_IDE[VS Code Client] --> D_CORE
-        
+
         D_CORE{{"@workspace/core Shared API"}} --> D_SQL[(Local SQLite DB)]
-        
+
         D_SQL --> D_L2[L2 Structural Nodes]
         D_SQL --> D_L3[L3 Commit-Anchored Decisions]
     end

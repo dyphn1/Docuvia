@@ -42,9 +42,9 @@ flowchart TD
         D_IDE["VS Code Web/Desktop"] <--> D_EXT[Isomorphic Extension]
         D_EXT <--> D_CORE["@workspace/core"]
         D_CORE <--> D_SQL[(SQLite AST Graph)]
-        
+
         D_SQL -->|Explicit Graph Transparency| D_LENS["Hover & CodeLens Providers<br/>Visual L2/L3 Intent"]
-        
+
         D_IDE -.->|Future: Dirty Buffers| D_WORK["AstWorkerPool<br/>Real-Time Graph Updates"]
     end
 

@@ -19,6 +19,10 @@
 - **Pipeline Logic Duplication**: Avoid defining pipeline phases (deduplication, DB inserts, activity logging) redundantly across multiple webhook or API routes. This causes immediate state sync issues. Centralize into a single workflow function.
 - **Missing Pipeline Deduplication**: Not hashing ingested files (e.g., SHA-256 `contentHash`) causes explosive database growth and duplicate knowledge nodes. Always hash files upon receipt and deduplicate before processing.
 
+## Adversarial Workflow & AI Verifiers
+
+- **Dirty Git Tree Trap for Verifiers**: When executing a long-running, multi-step AI refactoring plan, earlier valid steps will leave the Git working tree dirty. Task Verifier agents may incorrectly fail a later step if they run generic commands like `git diff` or `git status` and misinterpret the accumulated, uncommitted changes from earlier steps as unauthorized modifications. Verifiers should carefully scope their checks (e.g., specific file diffs, focused typechecks) or acknowledge accumulated state to avoid false-positive failures.
+
 ## Performance & Scaling
 
 - **O(N²) In-Memory Vector Scans**: NEVER load all records (e.g., embeddings) into JS application memory to compute pairwise cosine similarities using loops. This will cause OOM crashes or massive latency spikes at scale. Always push vector math to the database layer using SQL-level operations (e.g., `pgvector`'s `<=>` distance operator) for scalable O(log N) indexing.

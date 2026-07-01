@@ -44,7 +44,7 @@ flowchart TD
         D_SRC[Source Code] -->|Offline / No Batching| D_LLM(("Local Open-Source LLM<br/>e.g. ollama"))
         D_LLM -->|Extract L3 Insights| D_BIND[Deterministic AST Anchoring]
         D_BIND --> D_SQL[(SQLite FTS5)]
-        
+
         D_SQL -.->|Future: ONNX + sqlite-vss| D_VEC[("pgvector / Local Vector DB")]
     end
 

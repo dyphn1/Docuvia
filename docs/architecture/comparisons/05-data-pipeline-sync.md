@@ -40,9 +40,9 @@ flowchart TD
         direction TD
         D_CHANGE[File Changes] -->|crypto / git ls-files| D_HASH[Delta Detection]
         D_HASH -->|UPSERT| D_SQL[(Local SQLite .docuvia)]
-        
+
         D_SQL -->|Binary Push Conflict Risk| D_ORPHAN[Git Orphan Branch: docuvia-knowledge]
-        
+
         D_SQL -.->|Future: Safe merge| D_JSON[JSON Export]
         D_JSON -.-> D_ORPHAN
     end

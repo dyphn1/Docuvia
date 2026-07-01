@@ -69,7 +69,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           docuviaRoot,
           `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
         );
-        
+
         // Another fallback for pnpm workspace structure
         if (!fs.existsSync(wasmPath)) {
           wasmPath = path.resolve(

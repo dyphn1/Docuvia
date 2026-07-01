@@ -10,7 +10,14 @@ import {
   subscriptionsTable,
 } from "@workspace/db";
 import { eq, and, inArray, gte } from "drizzle-orm";
-import { getLlmClientForProject, fetchPrCommits, parseGithubRepo, postPrComment, logger, scoreCommit } from "@workspace/core";
+import {
+  getLlmClientForProject,
+  fetchPrCommits,
+  parseGithubRepo,
+  postPrComment,
+  logger,
+  scoreCommit,
+} from "@workspace/core";
 
 export class GithubWebhookService {
   /**
@@ -111,11 +118,28 @@ export class GithubWebhookService {
       try {
         if (action === "opened" || action === "synchronize") {
           await this.processOpenedOrSynchronizedPr(
-            projectId, prNumber, prTitle, prBody, headSha, baseSha, author, prUrl, owner, repo, token
+            projectId,
+            prNumber,
+            prTitle,
+            prBody,
+            headSha,
+            baseSha,
+            author,
+            prUrl,
+            owner,
+            repo,
+            token
           );
         } else if (action === "closed" && isMerged) {
           await this.processMergedPr(
-            projectId, prNumber, prTitle, prUrl, mergedAtRaw, owner, repo, token
+            projectId,
+            prNumber,
+            prTitle,
+            prUrl,
+            mergedAtRaw,
+            owner,
+            repo,
+            token
           );
         } else if (action === "closed") {
           // Closed but not merged
@@ -150,9 +174,17 @@ export class GithubWebhookService {
   }
 
   private async processOpenedOrSynchronizedPr(
-    projectId: number, prNumber: number, prTitle: string, prBody: string | null,
-    headSha: string, baseSha: string, author: string, prUrl: string,
-    owner: string, repo: string, token?: string
+    projectId: number,
+    prNumber: number,
+    prTitle: string,
+    prBody: string | null,
+    headSha: string,
+    baseSha: string,
+    author: string,
+    prUrl: string,
+    owner: string,
+    repo: string,
+    token?: string
   ) {
     const existingPr = await db
       .select()
@@ -210,8 +242,14 @@ export class GithubWebhookService {
   }
 
   private async processMergedPr(
-    projectId: number, prNumber: number, prTitle: string, prUrl: string, mergedAtRaw: string | null,
-    owner: string, repo: string, token?: string
+    projectId: number,
+    prNumber: number,
+    prTitle: string,
+    prUrl: string,
+    mergedAtRaw: string | null,
+    owner: string,
+    repo: string,
+    token?: string
   ) {
     await db
       .update(pullRequestsTable)

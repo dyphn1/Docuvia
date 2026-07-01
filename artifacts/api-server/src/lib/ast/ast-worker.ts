@@ -9,7 +9,7 @@ if (workerData && parentPort) {
   try {
     // Parsing workerData
     const filePath = typeof workerData === "string" ? workerData : workerData.filePath;
-    
+
     if (!filePath || typeof filePath !== "string") {
       throw new Error("Invalid workerData: filePath must be a string");
     }

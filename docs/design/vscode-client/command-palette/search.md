@@ -28,7 +28,7 @@ flowchart TD
     Eval -- "chat" --> OpenChat[Open Copilot Chat]
     OpenChat --> Prefill[Prefill: @docuvia /query <user_query>]
     Prefill --> ManualSubmit([User Presses Enter])
-    
+
     Eval -- "webview" --> RAG[Agentic RAG Routing]
     RAG --> LocalCheck{Data Fresh/Local?}
     LocalCheck -- Yes --> Webview[Render SearchResultsPanel Webview]

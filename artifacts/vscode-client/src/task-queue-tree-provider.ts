@@ -4,11 +4,7 @@ import * as vscode from "vscode";
 
 export type TaskStatus = "pending" | "in_progress" | "done" | "failed";
 export type TaskType =
-  | "l1_extraction"
-  | "l2_extraction"
-  | "l3_extraction"
-  | "l3_auto_categorization"
-  | "generic";
+  "l1_extraction" | "l2_extraction" | "l3_extraction" | "l3_auto_categorization" | "generic";
 
 export interface ExtractionTask {
   id: string;
@@ -112,28 +108,24 @@ export class TaskQueueTreeProvider implements vscode.TreeDataProvider<TQNode> {
         return [{ kind: "task", id: "empty_placeholder", label: "No extraction tasks yet" }];
       }
       // Return all 4 status groups
-      return GROUP_CONFIGS.map(
-        (cfg): TQNode => ({
-          kind: "group",
-          id: `group_${cfg.status}`,
-          label: cfg.label,
-          status: cfg.status,
-        })
-      );
+      return GROUP_CONFIGS.map((cfg): TQNode => ({
+        kind: "group",
+        id: `group_${cfg.status}`,
+        label: cfg.label,
+        status: cfg.status,
+      }));
     }
 
     if (node.kind === "group" && node.status) {
       return this._tasks
         .filter((t) => t.status === node.status)
-        .map(
-          (t): TQNode => ({
-            kind: "task",
-            id: t.id,
-            label: t.label,
-            status: t.status,
-            detail: t.detail,
-          })
-        );
+        .map((t): TQNode => ({
+          kind: "task",
+          id: t.id,
+          label: t.label,
+          status: t.status,
+          detail: t.detail,
+        }));
     }
 
     return [];

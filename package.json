@@ -11,7 +11,9 @@
     "lint": "prettier --check .",
     "format": "prettier --write .",
     "test": "node scripts/ensure-db.mjs && pnpm --filter @workspace/api-server run test",
-    "test:coverage": "node scripts/ensure-db.mjs && pnpm --filter @workspace/api-server run test:coverage"
+    "test:coverage": "node scripts/ensure-db.mjs && pnpm --filter @workspace/api-server run test:coverage",
+    "test:ci": "docker compose -f docker-compose.ci.yml up --build --abort-on-container-exit --exit-code-from ci-runner",
+    "test:act": "docker compose -f docker-compose.act.yml run --rm act-cli act"
   },
   "private": true,
   "devDependencies": {

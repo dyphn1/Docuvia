@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  # 1. Provide Docker-in-Docker environment (allows act to spawn new containers inside)
+  act-daemon:
+    image: docker:24-dind
+    privileged: true
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    volumes:
+      - docker-certs:/certs/client
+      # IMPORTANT: Must mount local source code, and path must match act-cli
+      - .:/workspace
+    working_dir: /workspace
+
+  # 2. Environment for executing act commands
+  act-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile.act
+    environment:
+      - DOCKER_HOST=tcp://act-daemon:2376
+      - DOCKER_TLS_VERIFY=1
+      - DOCKER_CERT_PATH=/certs/client
+    volumes:
+      - docker-certs:/certs/client:ro
+      - .:/workspace # Must match act-daemon path
+    working_dir: /workspace
+    depends_on:
+      act-daemon:
+        condition: service_started
+    # Prevent container from exiting automatically
+    command: ["-c", "tail -f /dev/null"]
+
+volumes:
+  docker-certs:

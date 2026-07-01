@@ -79,7 +79,9 @@ router.post("/documents", requireApiKey, documentUpload.single("file"), async (r
       return res.status(400).json({ error: "Invalid file signature. Not a true PDF." });
     }
     if (err.message === "INVALID_SIGNATURE_OFFICE") {
-      return res.status(400).json({ error: "Invalid file signature. Not a valid Office document." });
+      return res
+        .status(400)
+        .json({ error: "Invalid file signature. Not a valid Office document." });
     }
 
     logger.error({ err }, "[POST /documents] Unhandled error");

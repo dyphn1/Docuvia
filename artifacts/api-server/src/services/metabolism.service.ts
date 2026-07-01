@@ -8,7 +8,11 @@ import {
   projectsTable,
 } from "@workspace/db";
 import { isNull, inArray, and, eq, lt } from "drizzle-orm";
-import { getLlmClientForProject, checkCommitInDefaultBranch, parseGithubRepo } from "@workspace/core";
+import {
+  getLlmClientForProject,
+  checkCommitInDefaultBranch,
+  parseGithubRepo,
+} from "@workspace/core";
 
 export class MetabolismService {
   public async runAll(): Promise<void> {

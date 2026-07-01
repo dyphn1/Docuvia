@@ -28,7 +28,12 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
   const { sourceText, sourceFile, commitHash } = bodyParsed.data;
 
   try {
-    const decisions = await generateService.extractSieveDecisions(projectId, sourceText, sourceFile, commitHash);
+    const decisions = await generateService.extractSieveDecisions(
+      projectId,
+      sourceText,
+      sourceFile,
+      commitHash
+    );
     return res.json({ decisions });
   } catch (err) {
     return res.status(500).json({ error: "Failed to extract decisions" });

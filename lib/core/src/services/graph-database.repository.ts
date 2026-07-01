@@ -14,7 +14,7 @@ export class GraphDatabaseRepository implements IGraphDatabaseRepository {
     if (!fs.existsSync(docuviaDir)) {
       fs.mkdirSync(docuviaDir, { recursive: true });
     }
-    
+
     const dbPath = path.join(docuviaDir, "local.db");
     const db = new Database(dbPath);
 

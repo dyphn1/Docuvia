@@ -1,0 +1,13 @@
+FROM docker:24-cli
+
+# Install basic tools
+RUN apk add --no-cache curl bash git nodejs npm
+
+# Install act (GitHub Actions local runner)
+RUN curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | bash
+
+ENV PATH="/root/bin:${PATH}"
+WORKDIR /workspace
+
+# Default to bash
+ENTRYPOINT ["bash"]

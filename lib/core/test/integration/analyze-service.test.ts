@@ -16,22 +16,22 @@ describe("AnalyzeService (Core Integration)", () => {
     const pkgJson = JSON.stringify({
       name: "mock-core-app",
       dependencies: { react: "^18.0.0" },
-      devDependencies: { typescript: "^5.0.0" }
+      devDependencies: { typescript: "^5.0.0" },
     });
-    
+
     await writeFile(join(tmpDir, "package.json"), pkgJson, "utf-8");
-    
+
     // Create a mock source file
     const srcDir = join(tmpDir, "src");
     await mkdir(srcDir, { recursive: true });
     await writeFile(join(tmpDir, "src/index.ts"), "export const hello = () => 'world';", "utf-8");
-    
+
     // Initialize DB manually like init-service would to provide a valid starting state
     const docuviaDir = join(tmpDir, ".docuvia");
     await mkdir(docuviaDir, { recursive: true });
     const dbPath = join(docuviaDir, "local.db");
     const db = new Database(dbPath);
-    
+
     // Create necessary schema
     db.exec(`
       CREATE TABLE IF NOT EXISTS l1_tags (
@@ -73,10 +73,13 @@ describe("AnalyzeService (Core Integration)", () => {
 
   afterEach(async () => {
     // Attempt to cleanly shutdown any worker threads to avoid hanging process
-    if ((analyzeService as any).astProcessor && typeof (analyzeService as any).astProcessor.dispose === 'function') {
+    if (
+      (analyzeService as any).astProcessor &&
+      typeof (analyzeService as any).astProcessor.dispose === "function"
+    ) {
       await (analyzeService as any).astProcessor.dispose();
     }
-    
+
     if (tmpDir && fs.existsSync(tmpDir)) {
       await rm(tmpDir, { recursive: true, force: true, maxRetries: 3 });
     }
@@ -84,7 +87,7 @@ describe("AnalyzeService (Core Integration)", () => {
 
   it("should analyze project directly and update graph database natively", async () => {
     // Act
-    // By calling the service directly instead of via child_process, 
+    // By calling the service directly instead of via child_process,
     // any errors will have a proper stack trace in Vitest output.
     const result = await analyzeService.analyzeProject();
 
@@ -98,7 +101,7 @@ describe("AnalyzeService (Core Integration)", () => {
     const db = new Database(join(tmpDir, ".docuvia/local.db"));
     const files = db.prepare("SELECT * FROM project_files").all();
     expect(files.length).toBeGreaterThan(0);
-    
+
     const nodes = db.prepare("SELECT * FROM l2_nodes").all();
     expect(nodes.length).toBeGreaterThan(0);
     db.close();

@@ -12,10 +12,18 @@ import {
 import { ProjectService } from "./project.service";
 
 export class GenerateService {
-  async extractSieveDecisions(projectId: number, sourceText: string, sourceFile?: string, commitHash?: string) {
+  async extractSieveDecisions(
+    projectId: number,
+    sourceText: string,
+    sourceFile?: string,
+    commitHash?: string
+  ) {
     const isTrackA = !!sourceFile && !sourceFile.includes(",");
 
-    const l2Nodes = await db.select().from(l2NodesTable).where(eq(l2NodesTable.projectId, projectId));
+    const l2Nodes = await db
+      .select()
+      .from(l2NodesTable)
+      .where(eq(l2NodesTable.projectId, projectId));
     const sysUncatNode = l2Nodes.find((n) => n.type === "sys-uncategorized");
     const sysUncategorizedId = sysUncatNode?.id ?? 0;
 

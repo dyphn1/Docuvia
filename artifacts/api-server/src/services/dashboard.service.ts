@@ -31,7 +31,10 @@ export class DashboardService {
       activityRows.map(async (a) => {
         let projectName: string | null = null;
         if (a.projectId) {
-          const [p] = await db.select({ name: proj.name }).from(proj).where(eq(proj.id, a.projectId));
+          const [p] = await db
+            .select({ name: proj.name })
+            .from(proj)
+            .where(eq(proj.id, a.projectId));
           projectName = p?.name ?? null;
         }
         return {

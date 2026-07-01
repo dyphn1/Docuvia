@@ -52,6 +52,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     let langInstance: Language | null = null;
     try {
       const docuviaRoot = path.resolve(__dirname, "../../../../");
+      const attemptedPaths: string[] = [];
       // Use require.resolve to safely find tree-sitter-wasms no matter if it's hoisted or in .pnpm
       let wasmPath = "";
       try {
@@ -63,12 +64,14 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           "out",
           `tree-sitter-${request.language}.wasm`
         );
+        attemptedPaths.push(wasmPath);
       } catch (err) {
         // Fallback to explicit path if package.json resolve fails
         wasmPath = path.resolve(
           docuviaRoot,
           `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
         );
+        attemptedPaths.push(wasmPath);
 
         // Another fallback for pnpm workspace structure
         if (!fs.existsSync(wasmPath)) {
@@ -76,36 +79,66 @@ parentPort?.on("message", async (request: AstParseRequest) => {
             __dirname,
             `../../../node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
           );
+          attemptedPaths.push(wasmPath);
+        }
+        if (!fs.existsSync(wasmPath)) {
+          wasmPath = path.resolve(
+            docuviaRoot,
+            `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
+          );
+          attemptedPaths.push(wasmPath);
+        }
+        if (!fs.existsSync(wasmPath)) {
+          wasmPath = path.resolve(
+            docuviaRoot,
+            `artifacts/vscode-client/out/wasm/tree-sitter-${request.language}.wasm`
+          );
+          attemptedPaths.push(wasmPath);
         }
       }
 
       if (fs.existsSync(wasmPath)) {
-        const wasmBytes = fs.readFileSync(wasmPath);
-        langInstance = await Language.load(wasmBytes);
+        langInstance = await Language.load(wasmPath);
         parser.setLanguage(langInstance);
         languageLoaded = true;
       } else {
-        // Ultimate fallback for pnpm structures
-        const pnpmAltPath = path.resolve(
-          docuviaRoot,
-          `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
-        );
-        if (fs.existsSync(pnpmAltPath)) {
-          const wasmBytes = fs.readFileSync(pnpmAltPath);
-          langInstance = await Language.load(wasmBytes);
-          parser.setLanguage(langInstance);
-          languageLoaded = true;
-        } else {
-          throw new Error(`[ast-worker] WASM not found at ${wasmPath}`);
-        }
+        throw new Error(`[ast-worker] WASM not found. Tried paths: ${attemptedPaths.join(', ')}`);
       }
     } catch (e) {
-      throw new Error(`[ast-worker] Failed to load wasm: ${e instanceof Error ? e.message : e}`);
+      const errMessage = e && typeof e === 'object' && 'message' in e ? e.message : String(e);
+      console.error(`[ast-worker] Failed to load wasm gracefully: ${errMessage}`);
+      // Return empty AST gracefully instead of crashing the pipeline
+      parentPort?.postMessage({
+        taskId: request.taskId,
+        success: true,
+        data: {
+          imports: [],
+          exports: [],
+          functions: [],
+          classes: [],
+          calls: [],
+          decisions: ["WASM load failed, AST parsing skipped"],
+        },
+      });
+      return;
     }
 
     if (!languageLoaded) {
       parser.delete();
-      throw new Error(`[ast-worker] Language grammar not loaded for ${request.language}`);
+      console.error(`[ast-worker] Language grammar not loaded for ${request.language}`);
+      parentPort?.postMessage({
+        taskId: request.taskId,
+        success: true,
+        data: {
+          imports: [],
+          exports: [],
+          functions: [],
+          classes: [],
+          calls: [],
+          decisions: ["Language grammar not loaded, AST parsing skipped"],
+        },
+      });
+      return;
     }
 
     // Parse the code using Tree-sitter
@@ -208,7 +241,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     parentPort?.postMessage({
       taskId: request.taskId,
       success: false,
-      error: err.message,
+      error: err.stack || String(err),
     });
   }
 });

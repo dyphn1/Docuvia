@@ -3,7 +3,7 @@ version: "3.8"
 services:
   # Mock GitHub Actions PostgreSQL service
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -51,8 +51,8 @@ services:
       echo '🔨 Running Build...' &&
       NODE_ENV=production pnpm -r --if-present run build &&
       echo '🗄️ Pushing Database Schema...' &&
-      pnpm --filter @workspace/db run push &&
+      node scripts/ensure-db.mjs &&
       echo '🧪 Running Tests...' &&
-      pnpm run test:coverage &&
+      VITEST_MAX_THREADS=2 VITEST_MIN_THREADS=1 pnpm run test:coverage &&
       echo '✅ CI workflow simulation completed!'
       "

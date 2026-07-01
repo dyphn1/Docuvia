@@ -58,7 +58,7 @@ export class TestSandbox {
    * Run a CLI command within this sandbox.
    */
   runCli(args: string[], options?: ExecaOptions) {
-    const tsxBin = resolve(__dirname, "../../../../node_modules/.bin/tsx.cmd");
+    const tsxBin = resolve(__dirname, `../../../../node_modules/.bin/tsx${process.platform === "win32" ? ".cmd" : ""}`);
     return execa(tsxBin, [CLI_PATH, ...args], {
       cwd: this.dir,
       ...options,

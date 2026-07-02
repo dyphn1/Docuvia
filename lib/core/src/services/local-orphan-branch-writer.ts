@@ -20,6 +20,17 @@ function buildL1TagsYaml(tagNames: string[]): string {
   return `tags:\n${lines}\n`;
 }
 
+function buildNodeLinksYaml(links: any[]): string {
+  if (links.length === 0) return "node_links: []\n";
+  const lines = links
+    .map(
+      (l) =>
+        `  - source_node_id: ${l.source_node_id}\n    target_node_id: ${l.target_node_id}\n    link_type: "${l.link_type}"`
+    )
+    .join("\n");
+  return `node_links:\n${lines}\n`;
+}
+
 function buildL2ModuleYaml(node: any): string {
   const patterns = Array.isArray(node.source_paths) ? node.source_paths : [];
   const patternsYaml =
@@ -113,10 +124,14 @@ export class LocalOrphanBranchWriter {
       const l1TagRows = db.prepare("SELECT name FROM l1_tags").all() as any[];
       const l2Nodes = db.prepare("SELECT * FROM l2_nodes").all() as any[];
       const l3Nodes = db.prepare("SELECT * FROM l3_nodes").all() as any[];
+      const nodeLinks = db.prepare("SELECT * FROM node_links").all() as any[];
 
       const l1TagsYaml = buildL1TagsYaml(l1TagRows.map((t) => t.name));
+      const nodeLinksYaml = buildNodeLinksYaml(nodeLinks);
+
       const files: Map<string, string> = new Map();
       files.set(`l1_tags.yaml`, l1TagsYaml);
+      files.set(`node_links.yaml`, nodeLinksYaml);
 
       for (const l2 of l2Nodes) {
         const l2Slug = slugify(l2.name);

@@ -35,3 +35,4 @@ graph TD
 
 - **[6. CLI & Core API Parity](comparisons/06-cli-core-api.md)**
   - _Core Challenge:_ Ensuring complete parity and consistent vocabulary (e.g., `sync` vs `refresh`) across our CLI, MCP, and VS Code presentation layers.
+  - **[7. AST Semantic Diff & Blast Radius (WASM)](07-ast-blast-radius-wasm.md)**\n - _Core Challenge:_ Using web-tree-sitter to perform semantic diffs and smart pruning to achieve zero-cost delta updates without heavy databases.

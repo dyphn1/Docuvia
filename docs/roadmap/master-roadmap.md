@@ -71,25 +71,28 @@ erDiagram
 
 ---
 
-## Phase 2: Local-First VS Code Client
+## Phase 2: Local-First VS Code Client & WASM AST Sync
 
 ### 🎯 Objective
 
-Provide a standalone, offline-capable IDE extension that interacts with local SQLite caches, guaranteeing zero compilation friction and local-first autonomy.
+Provide a standalone, offline-capable IDE extension that guarantees zero compilation friction and local-first autonomy. Utilize `web-tree-sitter` (WASM) to perform semantic AST diffs locally, slashing delta-sync overhead and removing the need for a heavy local graph database.
 
 ### 🛠️ Implementation Method
 
-- **Local Engine:** Create a `KnowledgeStore` interacting with a local SQLite DB.
+- **Smart Blast Radius (WASM):** Implement `web-tree-sitter` to parse Git diff line ranges into AST nodes. Compare old and new AST signatures to execute smart pruning (cutting off diffusion for internal statement changes).
+- **Local Engine:** Create a lightweight `KnowledgeStore` (SQLite or JSON cache) for storing graph Edges to facilitate fast reverse-dependency traversal during Level 1 contract changes.
 - **Outbox Pattern:** Offline L3 node creations are written to a `SyncOutbox` queue and synced to the central server only when online.
-- **Zero-to-One:** Implement the `/init` onboarding flow to scan `.gitignore` and `package.json` for deterministic project boundary identification.
+- **Zero-to-One:** Implement the `/init` onboarding flow to perform full AST extraction into the local cache.
 
 ### ⚠️ Precautions
 
-- **Do Not Block Main Thread:** Heavy logic must not run on the extension host thread.
-- **Offline Resilience:** The extension must function flawlessly even if `CentralServerClient.isServerConfigured()` returns false (see [ADR-002](../design/adrs/ADR-002-local-first-architecture.md)).
+- **Do Not Block Main Thread:** Heavy AST parsing must run in Web Workers (for VS Code) or background threads.
+- **Offline Resilience:** The extension must function flawlessly without `CentralServerClient`.
+- **Zero Native Build:** Do NOT use native node modules for tree-sitter to ensure cross-platform compatibility and ease of installation.
 
 ### 📁 Involved Files
 
+- `artifacts/ast-core/src/detector/semantic-diff.ts`
 - `artifacts/vscode-client/src/central-server-client.ts`
 - `artifacts/vscode-client/src/knowledge-store.ts`
 - `artifacts/vscode-client/src/extension.ts`

@@ -175,6 +175,8 @@ All schema files reside in [`lib/db/src/schema/`](../../lib/db/src/schema/):
 | [`job-queue.ts`](../../lib/db/src/schema/job-queue.ts)                       | Async job queue for [metabolism mechanism](adrs/ADR-008-asynchronous-metabolism.md)           |
 | [`error-reports.ts`](../../lib/db/src/schema/error-reports.ts)               | Dead Letter Queue for failed jobs                                                             |
 | [`commit-l2-links.ts`](../../lib/db/src/schema/commit-l2-links.ts)           | Junction table linking commits to L2 nodes                                                    |
+| [`commit-l3-links.ts`](../../lib/db/src/schema/commit-l3-links.ts)           | Junction table linking commits to L3 nodes                                                    |
+| [`project-files.ts`](../../lib/db/src/schema/project-files.ts)               | Tracked files per project, storing file hashes and AST extraction timestamps                  |
 
 ---
 

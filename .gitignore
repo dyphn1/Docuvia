@@ -66,3 +66,11 @@ docs/ai_plans/
 
 # Mockup Sandbox Auto Generated
 artifacts/mockup-sandbox/src/.generated/
+
+# Orval API generation outputs
+lib/api-spec/*.generated.yaml
+lib/api-spec/*.bundle.json
+lib/api-spec/*.orval.json
+
+# Compiled TypeScript js files in source folders
+lib/core/src/**/*.js

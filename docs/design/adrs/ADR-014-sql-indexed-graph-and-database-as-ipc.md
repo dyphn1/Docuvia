@@ -1,10 +1,12 @@
 ---
 Date: 2026-07-02
-Status: Accepted
+Status: Accepted, Supplemented by ADR-023
 Supersedes: None
 ---
 
 # ADR-014: SQL-Indexed Graph and Database-as-IPC
+
+> **Note**: The exact sequence of SQLite updates during Git hooks has been refined by **[ADR-023](ADR-023-granular-markdown-storage.md)**. The hook now updates the `docuvia-knowledge` branch first, treating the Local SQLite database as a Materialized View populated from Git diffs.
 
 ## Context
 

@@ -1,4 +1,11 @@
-# ADR 002: JSONL + Granular Markdown for Git-Native Storage
+---
+Date: 2026-07-02
+Status: Accepted
+Supersedes: ADR-017
+Supplements: ADR-004, ADR-014
+---
+
+# ADR-023: JSONL + Granular Markdown for Git-Native Storage
 
 ## Status
 
@@ -6,7 +13,7 @@ Accepted
 
 ## Context
 
-Following [ADR-001](./001-wasm-ast-blast-radius.md), Docuvia uses `web-tree-sitter` for local, fast AST diffing. We now need to define the exact storage format for the `docuvia-knowledge` orphan branch.
+Following [ADR-022](./ADR-022-wasm-ast-blast-radius.md), Docuvia uses `web-tree-sitter` for local, fast AST diffing. We now need to define the exact storage format for the `docuvia-knowledge` orphan branch.
 
 The storage format must satisfy conflicting requirements:
 

@@ -1,10 +1,12 @@
 ---
 Date: 2026-07-02
-Status: Accepted
+Status: Accepted, Partially Superseded by ADR-023
 Supplements: ADR-004
 ---
 
 # ADR-017: Tiered Storage & Orphan Branch Graph Maintenance
+
+> **Note**: The structure and role of the orphan branch (`docuvia-knowledge`) have been radically expanded by **[ADR-023](ADR-023-granular-markdown-storage.md)**. Instead of merely storing JSON tombstones asynchronously, it now serves as the immediate Single Source of Truth (SSOT) using a Granular Markdown and JSONL Vault structure updated synchronously via local Git hooks. The Tiered Storage (hot/cold) concepts here remain relevant, but the physical storage layer has evolved.
 
 ## Context
 

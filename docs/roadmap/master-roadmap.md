@@ -291,7 +291,7 @@ sequenceDiagram
 | Knowledge Graph Ingestion (File→L2, Class/Function→L3, call/import→node_links)          | ✅ Done | Phase 3 |
 | Poison Pill Quarantine (500ms timeout + AbortController)                                | ✅ Done | Phase 4 |
 | **Batch Write Optimization** — Streaming chunked batch INSERTs for large `.jsonl` files | ✅ Done | Phase 4 |
-| **Incremental Fast-Path** — `git diff-tree -M` for O(1) delta detection                 | 🔲 TODO | Phase 4 |
+| **Incremental Fast-Path** — `git diff-tree -M` for O(1) delta detection                 | ✅ Done | Phase 4 |
 | **Cross-Language Edges** — API contracts, framework-specific AST tracking               | ✅ Done | Phase 4 |
 | **Zero-Server Deep Traversal** — Pure local SQLite graph queries                        | ✅ Done | Phase 5 |
 | **Local Context Compression** — Token reduction pipeline before LLM                     | ✅ Done | Phase 5 |

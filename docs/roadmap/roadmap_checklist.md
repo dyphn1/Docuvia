@@ -35,6 +35,7 @@
 ||| Token Limits & Chunking Configs | ✅ Done | [`extension.ts`](../../artifacts/vscode-client/src/extension.ts) ||
 ||| `docuvia sync` Bidirectional CLI | ✅ Done | [`cli.ts`](../../artifacts/cli/src/cli.ts) ||
 ||| CLI Commands (analyze/init) | ✅ Done | [`cli.ts`](../../artifacts/cli/src/cli.ts) ||
+||| Smart Blast Radius (WASM Semantic Diff) | ✅ Done | [`semantic-diff.ts`](../../artifacts/ast-core/src/detector/semantic-diff.ts) ||
 ||| VS Code Blast Radius UI | ✅ Done | `Hover/CodeLens` providers via `docuvia_impact` and `docuvia_context` MCP tools ||
 ||| Natural language UI | ✅ Done | [`Query.tsx`](../../artifacts/kg-engine/src/pages/Query.tsx) ||
 
@@ -81,6 +82,7 @@
 ||| Agentic RAG (Intent Router) | ✅ Done | [`intent-router.ts`](../../lib/core/src/services/intent-router.ts) ||
 ||| Temporal Decay Scoring | ✅ Done | [`intent-router.ts`](../../lib/core/src/services/intent-router.ts) ||
 ||| AST Microkernel Architecture | ✅ Done | [`@workspace/ast-core`](../../artifacts/ast-core/) ||
+||| TypeScript `implements`/`extends` Parser | ✅ Done | [`typescript.ts`](../../artifacts/ast-core/src/parsers/typescript.ts) ||
 ||| Zero-Server Deep Traversal | ✅ Done | [`knowledge-store.ts`](../../artifacts/vscode-client/src/knowledge-store.ts) ||
 ||| Local Context Compression | ✅ Done | [`compression.ts`](../../lib/core/src/utils/compression.ts) ||
 ||| Sub-second Incremental Watch | ✅ Done | [`ast-watcher.ts`](../../artifacts/vscode-client/src/indexer/ast-watcher.ts), [`ast-ingestion-pipeline.ts`](../../lib/core/src/services/ast-ingestion-pipeline.ts) ||

@@ -1,10 +1,12 @@
 ---
 Date: 2026-07-02
-Status: Supplemented by ADR-017
+Status: Supplemented by ADR-017, ADR-022, ADR-023
 Supersedes: None
 ---
 
 # Git-Isomorphic Knowledge Graph (Incremental Deltas)
+
+> **Note**: Parts of the server-side async merge process outlined here have been superseded by **[ADR-023](ADR-023-granular-markdown-storage.md)**, which shifts the SSOT update logic to local Git hooks writing granular Markdown/JSONL directly.
 
 ## Core Philosophy
 

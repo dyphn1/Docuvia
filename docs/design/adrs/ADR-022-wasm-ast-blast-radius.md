@@ -1,4 +1,10 @@
-# ADR 001: WebAssembly AST for Git-Native Smart Blast Radius
+---
+Date: 2026-07-02
+Status: Accepted
+Supplements: ADR-020
+---
+
+# ADR-022: WebAssembly AST for Git-Native Smart Blast Radius
 
 ## Status
 

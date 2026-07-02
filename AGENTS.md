@@ -134,10 +134,9 @@ For complex multi-step work, dispatch to the appropriate agent rather than doing
 - `pnpm-lock.yaml` — Managed by pnpm.
 
 <!-- gitnexus:start -->
-
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Docuvia** (4384 symbols, 8823 relationships, 182 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Docuvia** (4923 symbols, 10592 relationships, 207 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -158,12 +157,12 @@ This project is indexed by GitNexus as **Docuvia** (4384 symbols, 8823 relations
 
 ## Resources
 
-| Resource                                 | Use for                                  |
-| ---------------------------------------- | ---------------------------------------- |
-| `gitnexus://repo/Docuvia/context`        | Codebase overview, check index freshness |
-| `gitnexus://repo/Docuvia/clusters`       | All functional areas                     |
-| `gitnexus://repo/Docuvia/processes`      | All execution flows                      |
-| `gitnexus://repo/Docuvia/process/{name}` | Step-by-step execution trace             |
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/Docuvia/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/Docuvia/clusters` | All functional areas |
+| `gitnexus://repo/Docuvia/processes` | All execution flows |
+| `gitnexus://repo/Docuvia/process/{name}` | Step-by-step execution trace |
 
 ## Cross-Repo Groups
 
@@ -171,13 +170,13 @@ This repository is listed under GitNexus **group(s): my_workspace** (see `~/.git
 
 ## CLI
 
-| Task                                         | Read this skill file                                        |
-| -------------------------------------------- | ----------------------------------------------------------- |
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md`       |
-| Blast radius / "What breaks if I change X?"  | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?"             | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md`       |
-| Rename / extract / split / refactor          | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`     |
-| Tools, resources, schema reference           | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`           |
-| Index, status, clean, wiki CLI commands      | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`             |
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->

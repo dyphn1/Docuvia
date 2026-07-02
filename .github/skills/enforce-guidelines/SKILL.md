@@ -14,10 +14,14 @@ To systematically review, audit, and refactor implementation files to ensure str
 ### 1. [Think] Audit & Scope Definition
 
 - **Load Guidelines**: You MUST read `docs/guidelines/index.md` first. Based on the target file's type (e.g., TS logic, React component, API route), identify and read the specific guideline (01 to 06) that applies to it.
-- **Define Scope**: Identify the specific target file, module, or directory requested by the user. If the user asks to process all indexed files, scope the audit to the entire workspace.
-- **Garbage Collection (Stale/Test Files)**: Evaluate if the file is an obsolete AI-generated test, temporary script, or orphaned file that is no longer needed in production or active development. If it serves no purpose, plan to **delete** it rather than refactor it.
-- **Analyze**: Evaluate the target against the applicable guidelines:
-  1. **Naming**: Are TS files `kebab-case` and React components `PascalCase`? Are they grouped by domain?
+- **Define Scope & Categorize (Context Protection)**: To prevent context overflow, DO NOT load all files at once.
+  1. Run `git ls-files` in the terminal to get the full list of tracked files in the requested scope.
+  2. Record the files and categorize them by functional area (e.g., DB Schema, Core Logic, API Routes, UI Components).
+  3. Use the `manage_todo_list` tool to create a structured plan where each functional category is a separate Todo item for sequential verification.
+- **Iterative Processing**: Work through the Todo list ONE category at a time (mark `in-progress`). For the current category:
+  - **Garbage Collection (Stale/Test Files)**: Evaluate if the file is an obsolete AI-generated test, temporary script, or orphaned file that is no longer needed in production or active development. If it serves no purpose, plan to **delete** it.
+  - **Analyze**: Evaluate the category's files against the applicable guidelines:
+    1. **Naming**: Are TS files `kebab-case` and React components `PascalCase`? Are they grouped by domain?
   2. **Architecture**: Is business logic properly extracted to `lib/`? Are controllers/views thin?
   3. **SRP & POP**: Are there any "God Objects"? Does the code depend on concrete implementations instead of interfaces?
   4. **Clean Code**: Are there magic strings/numbers? Is defensive programming (Zod, `?.`, `??`) used?

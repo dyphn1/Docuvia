@@ -39,6 +39,8 @@ export const documentsTable = pgTable(
     status: text("status").notNull().default("unaffiliated"),
   },
   (table) => ({
+    projectIdIdx: index("doc_project_id_idx").on(table.projectId),
+    l2NodeIdIdx: index("doc_l2_node_id_idx").on(table.l2NodeId),
     contentHashIdx: index("doc_content_hash_idx").on(table.contentHash),
   })
 );

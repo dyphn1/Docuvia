@@ -15,6 +15,20 @@
       "when": 1782794322661,
       "tag": "0001_colossal_mattie_franklin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782965932613,
+      "tag": "0002_harsh_dragon_lord",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782966103452,
+      "tag": "0003_peaceful_prowler",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, pgEnum, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
@@ -11,25 +11,29 @@ export const prAnalysisStatusEnum = pgEnum("pr_analysis_status", [
   "failed",
 ]);
 
-export const pullRequestsTable = pgTable("pull_requests", {
-  id: serial("id").primaryKey(),
-  projectId: integer("project_id")
-    .notNull()
-    .references(() => projectsTable.id, { onDelete: "cascade" }),
-  githubPrNumber: integer("github_pr_number").notNull(),
-  title: text("title").notNull(),
-  body: text("body"),
-  headSha: text("head_sha").notNull(),
-  baseSha: text("base_sha").notNull(),
-  author: text("author").notNull(),
-  state: prStateEnum("state").notNull().default("open"),
-  url: text("url").notNull(),
-  analysisStatus: prAnalysisStatusEnum("analysis_status").notNull().default("pending"),
-  aiSummary: text("ai_summary"),
-  mergedAt: timestamp("merged_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const pullRequestsTable = pgTable(
+  "pull_requests",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projectsTable.id, { onDelete: "cascade" }),
+    githubPrNumber: integer("github_pr_number").notNull(),
+    title: text("title").notNull(),
+    body: text("body"),
+    headSha: text("head_sha").notNull(),
+    baseSha: text("base_sha").notNull(),
+    author: text("author").notNull(),
+    state: prStateEnum("state").notNull().default("open"),
+    url: text("url").notNull(),
+    analysisStatus: prAnalysisStatusEnum("analysis_status").notNull().default("pending"),
+    aiSummary: text("ai_summary"),
+    mergedAt: timestamp("merged_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [index("pull_requests_project_id_idx").on(table.projectId)]
+);
 
 export const insertPullRequestSchema = createInsertSchema(pullRequestsTable).omit({
   id: true,

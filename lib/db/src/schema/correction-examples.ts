@@ -1,18 +1,22 @@
-import { pgTable, text, serial, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, timestamp, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
 
-export const correctionExamplesTable = pgTable("correction_examples", {
-  id: serial("id").primaryKey(),
-  projectId: integer("project_id").references(() => projectsTable.id, { onDelete: "cascade" }),
-  entityType: text("entity_type").notNull(),
-  entityId: integer("entity_id").notNull(),
-  originalContent: text("original_content").notNull(),
-  correctedContent: text("corrected_content").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  processedAt: timestamp("processed_at"),
-});
+export const correctionExamplesTable = pgTable(
+  "correction_examples",
+  {
+    id: serial("id").primaryKey(),
+    projectId: integer("project_id").references(() => projectsTable.id, { onDelete: "cascade" }),
+    entityType: text("entity_type").notNull(),
+    entityId: integer("entity_id").notNull(),
+    originalContent: text("original_content").notNull(),
+    correctedContent: text("corrected_content").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    processedAt: timestamp("processed_at"),
+  },
+  (table) => [index("correction_examples_project_id_idx").on(table.projectId)]
+);
 
 export const insertCorrectionExampleSchema = createInsertSchema(correctionExamplesTable).omit({
   id: true,

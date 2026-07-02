@@ -12,7 +12,19 @@ You are the Master Orchestrator. When executing this skill, you MUST perform a c
 
 ## Execution Pipeline
 
-### Round 1: Document & Architecture Alignment
+To prevent context window overload, the audit MUST be executed in batches grouped by functional areas.
+
+### Phase 0: Discovery & Categorization
+
+1. **Retrieve File List**: Run `git ls-files` in the terminal to capture all tracked files in the workspace.
+2. **Categorize by Functional Area**: Record the files and group them into logical domains (e.g., `api-server routes`, `kg-engine UI`, `database schema`, `documentation`, `core services`).
+3. **Initialize Todo List**: Use the `manage_todo_list` tool to create a strict plan. Each Todo item must represent the full audit of **one specific functional category**.
+
+### Phase 1: Iterative Category Audit
+
+For each functional category in the Todo list, mark it `in-progress` and execute the following 4 verification rounds strictly on the files within that category. Mark as `completed` only when all rounds for that category pass.
+
+#### Round 1: Document & Architecture Alignment
 
 **Agents Assigned:** `requirement-analyzer`, `Explore`
 **Audit Actions (HOW TO DO IT):**
@@ -51,9 +63,9 @@ You are the Master Orchestrator. When executing this skill, you MUST perform a c
 3. **Sad Path Coverage**: Read `artifacts/api-server/test/setup/msw/handlers.ts`. Verify the presence of HTTP 4xx/5xx mock responses. Flag if only "Happy Path" (200 OK) responses exist.
 4. **Metrics Verification**: Run `pnpm run test:coverage` in the terminal. Wait for the output. Flag any core package (`api-server`, `kg-engine`, `db`) that shows less than 80% Statement coverage.
 
-### Step 5: Final Reporting
+### Phase 2: Final Reporting
 
-After all 4 rounds are completed, create a consolidated report file: `docs/reports/audit-report-[DATE].md`.
+After all functional categories in the Todo list are marked `completed`, create a consolidated report file: `docs/reports/audit-report-[DATE].md`.
 **Memory Persistence**: You MUST also record the path of this new report and a summary of the pending High (Critical) tasks into `/memories/repo/active_audit.md` (using the memory tool) so the AI context never loses track of the remaining audit debt.
 
 **Formatting Rules:**

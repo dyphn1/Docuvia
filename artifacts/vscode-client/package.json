@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/vscode-client",
+  "name": "docuvia-vscode",
   "displayName": "Docuvia",
   "description": "Docuvia knowledge graph integration for VS Code.",
   "version": "0.1.0",
@@ -293,7 +293,7 @@
     "compile": "tsc -p ./",
     "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
     "esbuild": "pnpm run esbuild-base --minify && pnpm run esbuild-worker",
-    "package": "pnpm run esbuild && vsce package --no-dependencies",
+    "package": "pnpm run esbuild && vsce package --no-dependencies --skip-license",
     "typecheck": "tsc --noEmit",
     "watch": "tsc -p tsconfig.json --outDir out --watch",
     "esbuild-worker": "node esbuild.worker.mjs",

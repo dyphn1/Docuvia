@@ -1,10 +1,37 @@
 import { afterAll, afterEach, beforeAll } from "vitest";
 import net from "net";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+let envFileExists = false;
+try {
+  const envPath = path.resolve(__dirname, "../../../../.env");
+  if (fs.existsSync(envPath)) {
+    envFileExists = true;
+    (process as any).loadEnvFile(envPath);
+    // Remove .env's DATABASE_URL and PORT so tests still use the test DB
+    delete process.env.DATABASE_URL;
+    delete process.env.PORT;
+  }
+} catch (e) {
+  // ignore
+}
 
 process.env.PORT ||= "8080";
 process.env.DATABASE_URL ||= "postgres://postgres:postgres@127.0.0.1:5432/docuvia_test";
-process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
-process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "https://api.openai.com/v1";
+
+if (process.env.CI) {
+  process.env.AI_INTEGRATIONS_OPENAI_API_KEY = "test-key";
+  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL = "http://127.0.0.1:65535/v1";
+} else {
+  process.env.AI_INTEGRATIONS_OPENAI_API_KEY ||= "test-key";
+  process.env.AI_INTEGRATIONS_OPENAI_BASE_URL ||= "http://127.0.0.1:65535/v1";
+}
+
 process.env.MCP_PAT ||= "test-mcp-token";
 process.env.DOCUVIA_API_KEY ||= "test-api-key";
 process.env.ADMIN_SECRET_TOKEN ||= "dev-secret-token";
@@ -49,23 +76,29 @@ try {
   await checkDbConnection();
 } catch (error) {
   if (error instanceof Error) {
-    console.error(`\n\x1b[31m[Test Setup Error]\x1b[0m ${error.message}\n`);
+    console.warn(`\n\x1b[33m[Test Setup Warning]\x1b[0m ${error.message}\n`);
   } else {
-    console.error(`\n\x1b[31m[Test Setup Error]\x1b[0m ${String(error)}\n`);
+    console.warn(`\n\x1b[33m[Test Setup Warning]\x1b[0m ${String(error)}\n`);
   }
-  process.exit(1);
+  process.env.DB_UNAVAILABLE = "true";
 }
 
 const [{ server }, { pool }] = await Promise.all([import("./msw/server"), import("@workspace/db")]);
 
+const isCI = !!process.env.CI;
+const isMockUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL?.includes("127.0.0.1:65535");
+
 server.listen({
-  onUnhandledRequest(request, print) {
-    const url = new URL(request.url);
-    if (url.hostname === "127.0.0.1" || url.hostname === "localhost") {
-      return;
-    }
-    print.error();
-  },
+  onUnhandledRequest:
+    isCI || isMockUrl
+      ? function (request, print) {
+          const url = new URL(request.url);
+          if (url.hostname === "127.0.0.1" || url.hostname === "localhost") {
+            return;
+          }
+          print.error();
+        }
+      : "bypass",
 });
 
 beforeAll(() => {

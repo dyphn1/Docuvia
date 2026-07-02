@@ -4,7 +4,7 @@ import Database from "better-sqlite3";
 import { resolve } from "path";
 import { existsSync } from "fs";
 
-describe.skip("Command: docuvia init", () => {
+describe("Command: docuvia init", () => {
   let sandbox: TestSandbox;
 
   beforeEach(async () => {
@@ -39,8 +39,13 @@ describe.skip("Command: docuvia init", () => {
       const tableNames = tables.map((t) => t.name);
 
       // Verify core knowledge graph tables exist (based on Docuvia schema expectations)
-      // We expect it to create tables like l1_tags, l2_nodes, l3_nodes, etc.
-      const expectedCoreTables = ["l1_tags", "l2_nodes", "l3_nodes"];
+      const expectedCoreTables = [
+        "l1_tags",
+        "l2_nodes",
+        "project_files",
+        "node_links",
+        "l2_node_l1_tags",
+      ];
 
       for (const expectedTable of expectedCoreTables) {
         expect(tableNames).toContain(expectedTable);

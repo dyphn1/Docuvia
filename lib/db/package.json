@@ -5,7 +5,10 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./schema/pg": "./src/schema/pg/index.ts",
+    "./schema/sqlite": "./src/schema/sqlite/index.ts",
+    "./schema/shared": "./src/schema/shared/graph.ts"
   },
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.cjs",

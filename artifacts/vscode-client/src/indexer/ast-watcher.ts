@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as crypto from "crypto";
-import { AstProcessingService, GraphDatabaseRepository } from "@workspace/core";
+import { AstProcessingService, SqliteGraphRepository } from "@workspace/core";
 
 export class AstWatcher {
   private _astProcessor = new AstProcessingService();
-  private _graphDbRepo = new GraphDatabaseRepository();
+  private _graphDbRepo = new SqliteGraphRepository();
   private _disposables: vscode.Disposable[] = [];
 
   constructor(private outputChannel: vscode.OutputChannel) {

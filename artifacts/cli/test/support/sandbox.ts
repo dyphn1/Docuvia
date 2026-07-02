@@ -72,6 +72,7 @@ export class TestSandbox {
         NODE_ENV: "test",
         AI_INTEGRATIONS_OPENAI_BASE_URL: "http://localhost:8080",
         AI_INTEGRATIONS_OPENAI_API_KEY: "dummy",
+        DATABASE_URL: "postgres://dummy:dummy@localhost:5432/dummy",
       },
     });
   }

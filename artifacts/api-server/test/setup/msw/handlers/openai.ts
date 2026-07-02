@@ -46,8 +46,8 @@ async function openaiChatHandler({ request }: any) {
 }
 
 export const openaiHandlers = [
-  http.post("https://api.openai.com/v1/chat/completions", openaiChatHandler),
-  http.post("https://api.openai.com/v1/embeddings", async () => {
+  http.post("http://127.0.0.1:65535/v1/chat/completions", openaiChatHandler),
+  http.post("http://127.0.0.1:65535/v1/embeddings", async () => {
     console.log("MOCK EMBEDDINGS HIT!");
     return HttpResponse.json({
       object: "list",

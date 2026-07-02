@@ -60,4 +60,4 @@ export * from "./services/ast/ast-event-streamer.js";
 export * from "./services/ast/ast-change-detector.js";
 export * from "./services/ast/git-native-persistence.service.js";
 export * from "./services/ast-processing.service.js";
-export * from "./services/graph-database.repository.js";
+export * from "./services/sqlite-graph.repository.js";

@@ -57,6 +57,8 @@ router.post("/projects/:id/generate", requireApiKey, async (req, res) => {
     if (err.message === "Project is already indexing or not in active state.") {
       return res.status(409).json({ error: err.message });
     }
+    console.error("GENERATE ERROR:", err);
+    console.error("GENERATE ERROR:", err);
     logger.error({ err }, "Knowledge generation failed");
     return res.status(500).json({ error: "Failed to generate knowledge" });
   }

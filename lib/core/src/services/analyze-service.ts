@@ -11,7 +11,7 @@ import { VcsScannerService } from "./vcs-scanner.service.js";
 import { ConfigScannerService } from "./config-scanner.service.js";
 import { FileDiscoveryService } from "./file-discovery.service.js";
 import { AstProcessingService } from "./ast-processing.service.js";
-import { GraphDatabaseRepository } from "./graph-database.repository.js";
+import { SqliteGraphRepository } from "./sqlite-graph.repository.js";
 import { L3ExtractionJobService } from "./l3-extraction-job.service.js";
 
 export class AnalyzeService {
@@ -21,7 +21,7 @@ export class AnalyzeService {
     private configScanner: IConfigScanner = new ConfigScannerService(),
     private fileDiscovery: IFileDiscovery = new FileDiscoveryService(),
     private astProcessor: IAstProcessor = new AstProcessingService(),
-    private graphDbRepo: IGraphDatabaseRepository = new GraphDatabaseRepository(),
+    private graphDbRepo: IGraphDatabaseRepository = new SqliteGraphRepository(),
     private l3Job: IL3ExtractionJob = new L3ExtractionJobService()
   ) {}
 

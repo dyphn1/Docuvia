@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import * as schema from "./schema";
+import * as schema from "./schema/pg";
 import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
 import path from "node:path";
@@ -26,7 +26,7 @@ pool.on("connect", async (client) => {
   await client.query("CREATE EXTENSION IF NOT EXISTS vector");
 });
 
-const baseDb = drizzle(pool, { schema });
+const baseDb = drizzle(pool, { schema, logger: true });
 export type DbClient = typeof baseDb;
 
 const transactionStore = new AsyncLocalStorage<DbClient>();

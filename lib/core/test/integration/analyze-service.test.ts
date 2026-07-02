@@ -34,36 +34,53 @@ describe("AnalyzeService (Core Integration)", () => {
 
     // Create necessary schema
     db.exec(`
-      CREATE TABLE IF NOT EXISTS l1_tags (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        slug TEXT NOT NULL,
-        description TEXT
-      );
-      CREATE TABLE IF NOT EXISTS l2_nodes (
-        id INTEGER PRIMARY KEY,
-        name TEXT,
-        slug TEXT,
-        type TEXT,
-        source_paths TEXT,
-        description TEXT
-      );
-      CREATE TABLE IF NOT EXISTS node_links (
-        id INTEGER PRIMARY KEY,
-        source_node_id INTEGER,
-        target_node_id INTEGER,
-        link_type TEXT
-      );
-      CREATE TABLE IF NOT EXISTS l2_node_l1_tags (
-        l2_node_id INTEGER,
-        l1_tag_id INTEGER
-      );
       CREATE TABLE IF NOT EXISTS project_files (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         project_id INTEGER,
         file_path TEXT,
         content_hash TEXT,
-        last_parsed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (project_id, file_path)
+        last_parsed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(project_id, file_path)
+      );
+      CREATE TABLE IF NOT EXISTS l1_tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        slug TEXT NOT NULL,
+        description TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS l2_nodes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        project_id INTEGER,
+        name TEXT,
+        slug TEXT,
+        type TEXT,
+        is_system INTEGER DEFAULT 0,
+        description TEXT,
+        ai_generated INTEGER DEFAULT 1,
+        needs_review INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        last_verified_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        path_patterns TEXT,
+        reindex_required INTEGER DEFAULT 0,
+        is_bootstrap_confirmed INTEGER DEFAULT 0,
+        content_hash TEXT,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS node_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_node_id INTEGER,
+        target_node_id INTEGER,
+        link_type TEXT,
+        commit_sha TEXT,
+        diff_summary TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE TABLE IF NOT EXISTS l2_node_l1_tags (
+        l2_node_id INTEGER,
+        l1_tag_id INTEGER,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `);
     db.close();

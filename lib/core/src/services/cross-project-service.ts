@@ -62,6 +62,7 @@ export async function detectCrossProjectLinks(
       sim: 1 - r.distance,
     }));
   } catch (err) {
+    console.error("PGVECTOR ERROR:", err);
     logger.warn({ err }, "pgvector query failed, falling back to O(N^2) in-memory scanning");
     // Fallback: JS in-memory O(N²) scanning
     const otherNodes = await db

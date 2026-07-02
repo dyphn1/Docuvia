@@ -143,9 +143,11 @@ If a discrepancy is found (e.g., a feature marked as `✅ Done` is actually miss
    - **Status Update Required**: [✅ PASS | ⚠️ WARN | ❌ ERROR]
 
    ### Description of Failure
+
    [Explain exactly what logic is missing or why it violates the ADR]
 
    ### Recommended Fix
+
    [Actionable steps for the Developer Agent to implement the fix]
    ```
 

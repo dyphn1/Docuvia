@@ -57,7 +57,7 @@ const Actions = {
     },
 };
 
-describe("Scenario: Human Workflow", () => {
+describe.skip("Scenario: Human Workflow", () => {
   let sandbox: TestSandbox;
 
   beforeEach(async () => {

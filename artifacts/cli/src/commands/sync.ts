@@ -1,6 +1,16 @@
-import { SyncService, LocalOrphanBranchWriter } from "@workspace/core";
+import {
+  SyncService,
+  LocalOrphanBranchWriter,
+  FileDiscoveryService,
+  AstProcessingService,
+  mapAstToEvents,
+  GitNativePersistenceService,
+} from "@workspace/core";
 import { createInterface } from "readline";
 import process from "process";
+import fs from "fs/promises";
+import path from "path";
+import os from "os";
 
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
@@ -19,15 +29,49 @@ export async function syncCommand(options: {
   commitSha?: string;
 }) {
   if (options.isLocal) {
-    console.log("[docuvia] Packing local knowledge graph to orphan branch...");
+    console.log("[docuvia] Running local AST sync...");
+    let tempDir = "";
     try {
       const workspaceRoot = process.cwd();
+
+      const fileDiscovery = new FileDiscoveryService();
+      // Pass an empty dbPath string to skip SQLite hash checking
+      const { filesToParse } = await fileDiscovery.discoverFiles(workspaceRoot, "");
+
+      const astProcessor = new AstProcessingService();
+      const parsedResults = await astProcessor.processFiles(workspaceRoot, filesToParse);
+
+      const events = mapAstToEvents(parsedResults);
+
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "docuvia-sync-"));
+
+      const gitNativePersistence = new GitNativePersistenceService();
+      const result = {
+        errors: [],
+        l2Created: 0,
+        l3Created: 0,
+        linksCreated: 0,
+        contractsCreated: 0,
+        filesSkipped: 0,
+      };
+
+      await gitNativePersistence.processEvents(events, tempDir, result);
+
       const localWriter = new LocalOrphanBranchWriter(workspaceRoot);
-      await localWriter.packToBranch();
-      console.log("[docuvia] Successfully packed local knowledge to branch.");
+      await localWriter.packDirectoryToBranch(tempDir, "docuvia-knowledge");
+
+      console.log(
+        `[docuvia] Successfully packed local knowledge to branch. Nodes: ${result.l2Created + result.l3Created}, Links: ${result.linksCreated}`
+      );
     } catch (e: any) {
       console.error("Local sync (packing) failed:", e.message);
       process.exit(1);
+    } finally {
+      if (tempDir) {
+        try {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        } catch {}
+      }
     }
     return;
   }

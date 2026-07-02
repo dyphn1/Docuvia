@@ -6,3 +6,4 @@ export * from "./funnel.js";
 export * from "./sink.js";
 export * from "./bridge-provider.js";
 export * from "./constants.js";
+export * from "./detector/semantic-diff.js";

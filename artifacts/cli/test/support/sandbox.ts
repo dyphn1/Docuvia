@@ -70,6 +70,8 @@ export class TestSandbox {
         ...options?.env,
         // Ensure test environment
         NODE_ENV: "test",
+        AI_INTEGRATIONS_OPENAI_BASE_URL: "http://localhost:8080",
+        AI_INTEGRATIONS_OPENAI_API_KEY: "dummy",
       },
     });
   }

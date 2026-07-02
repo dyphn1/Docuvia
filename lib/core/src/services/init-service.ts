@@ -1,6 +1,4 @@
-import Database from "better-sqlite3";
 import fs from "fs/promises";
-import { existsSync } from "fs";
 import path from "path";
 import cp from "child_process";
 import util from "util";
@@ -13,9 +11,7 @@ export class InitService {
   public async init() {
     console.log(`[docuvia] Initializing project in ${this.workspaceRoot}`);
 
-    const docuviaDir = path.join(this.workspaceRoot, ".docuvia");
-
-    // 2. Setup branch
+    // 1. Setup branch
     let branchExists = false;
     try {
       const { stdout } = await exec("git branch --list docuvia-knowledge", {
@@ -46,66 +42,7 @@ export class InitService {
       console.log(`[docuvia] Branch docuvia-knowledge already exists.`);
     }
 
-    // 3. Create directories
-    try {
-      await fs.mkdir(docuviaDir, { recursive: true });
-      await fs.mkdir(path.join(docuviaDir, "l3_decisions"), { recursive: true });
-    } catch {}
-
-    // 4. Create SQLite database
-    const dbPath = path.join(docuviaDir, "local.db");
-    const isNewDb = !existsSync(dbPath);
-    const db = new Database(dbPath);
-
-    console.log(`[docuvia] Setting up local.db SQLite schema...`);
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS l1_tags (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL UNIQUE,
-        slug TEXT NOT NULL,
-        description TEXT
-      );
-      CREATE TABLE IF NOT EXISTS l2_nodes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        slug TEXT NOT NULL,
-        type TEXT,
-        source_paths TEXT,
-        l1_tag_id INTEGER,
-        description TEXT
-      );
-      CREATE TABLE IF NOT EXISTS l2_node_l1_tags (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        l2_node_id INTEGER NOT NULL,
-        l1_tag_id INTEGER NOT NULL
-      );
-      CREATE TABLE IF NOT EXISTS l3_nodes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        l2_node_id INTEGER,
-        title TEXT,
-        content TEXT,
-        status TEXT,
-        created_at TEXT
-      );
-      
-      CREATE TABLE IF NOT EXISTS project_files (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        project_id INTEGER NOT NULL DEFAULT 1,
-        file_path TEXT NOT NULL,
-        content_hash TEXT NOT NULL,
-        last_parsed_at TEXT,
-        UNIQUE(project_id, file_path)
-      );
-      CREATE TABLE IF NOT EXISTS node_links (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        source_node_id INTEGER NOT NULL,
-        target_node_id INTEGER NOT NULL,
-        link_type TEXT
-      );
-    `);
-    db.close();
-
-    // 5. Install Git Hook
+    // 2. Install Git Hook
     try {
       const gitHookDir = path.join(this.workspaceRoot, ".git", "hooks");
       const postCommitPath = path.join(gitHookDir, "post-commit");

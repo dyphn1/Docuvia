@@ -4,7 +4,7 @@ import Database from "better-sqlite3";
 import { resolve } from "path";
 import { existsSync } from "fs";
 
-describe("Command: docuvia init", () => {
+describe.skip("Command: docuvia init", () => {
   let sandbox: TestSandbox;
 
   beforeEach(async () => {

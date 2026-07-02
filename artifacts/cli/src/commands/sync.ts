@@ -36,7 +36,9 @@ export async function syncCommand(options: {
 
       const fileDiscovery = new FileDiscoveryService();
       // Pass an empty dbPath string to skip SQLite hash checking
-      const { filesToParse } = await fileDiscovery.discoverFiles(workspaceRoot, "");
+      const { filesToParse } = await fileDiscovery.discoverFiles(workspaceRoot, "", {
+        onlyIndexed: true,
+      });
 
       const astProcessor = new AstProcessingService();
       const parsedResults = await astProcessor.processFiles(workspaceRoot, filesToParse);

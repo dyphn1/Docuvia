@@ -9,7 +9,8 @@ export interface IConfigScanner {
 export interface IFileDiscovery {
   discoverFiles(
     workspaceRoot: string,
-    dbPath: string
+    dbPath: string,
+    options?: { onlyIndexed?: boolean }
   ): Promise<{ filesToParse: any[]; existingHashes: Map<string, string>; skippedCount: number }>;
 }
 

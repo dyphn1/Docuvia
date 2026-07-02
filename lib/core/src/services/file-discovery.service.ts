@@ -12,8 +12,10 @@ import { IFileDiscovery } from "../interfaces/analyzer.interfaces.js";
 export class FileDiscoveryService implements IFileDiscovery {
   public async discoverFiles(
     workspaceRoot: string,
-    dbPath: string
+    dbPath: string,
+    options: { onlyIndexed?: boolean } = {}
   ): Promise<{ filesToParse: any[]; existingHashes: Map<string, string>; skippedCount: number }> {
+    const { onlyIndexed = false } = options;
     const execAsync = util.promisify(exec);
     let allFiles: string[] = [];
     const gitBlobHashes = new Map<string, string>();
@@ -44,17 +46,21 @@ export class FileDiscoveryService implements IFileDiscovery {
         });
         const modified = await execAsync("git diff --name-only", { cwd: workspaceRoot });
 
-        [...untracked.stdout.split("\n"), ...modified.stdout.split("\n")].forEach((f: string) => {
-          if (f.trim()) dirtyFiles.add(f.trim());
-        });
+        if (!onlyIndexed) {
+          [...untracked.stdout.split("\n"), ...modified.stdout.split("\n")].forEach((f: string) => {
+            if (f.trim()) dirtyFiles.add(f.trim());
+          });
 
-        allFiles = [
-          ...gitBlobHashes.keys(),
-          ...untracked.stdout
-            .split("\n")
-            .map((f: string) => f.trim())
-            .filter(Boolean),
-        ];
+          allFiles = [
+            ...gitBlobHashes.keys(),
+            ...untracked.stdout
+              .split("\n")
+              .map((f: string) => f.trim())
+              .filter(Boolean),
+          ];
+        } else {
+          allFiles = [...gitBlobHashes.keys()];
+        }
       } catch (e) {
         console.warn(
           "[docuvia] Git operations failed during execution, falling back to manual globbing..."
@@ -123,10 +129,23 @@ export class FileDiscoveryService implements IFileDiscovery {
         currentHash = gitBlobHashes.get(file)!;
       }
 
+      if (onlyIndexed && usingGit && gitBlobHashes.has(file)) {
+        currentHash = gitBlobHashes.get(file)!;
+      }
+
       // If we don't have a hash (untracked/modified), or if the hash differs from DB, we MUST read the file
       if (!currentHash || existingHashes.get(file) !== currentHash) {
         try {
-          code = await fs.readFile(path.join(workspaceRoot, file), "utf-8");
+          if (onlyIndexed && usingGit && gitBlobHashes.has(file)) {
+            const blobSha = gitBlobHashes.get(file)!;
+            const catRes = await execAsync(`git cat-file blob ${blobSha}`, {
+              cwd: workspaceRoot,
+              maxBuffer: 10 * 1024 * 1024,
+            });
+            code = catRes.stdout;
+          } else {
+            code = await fs.readFile(path.join(workspaceRoot, file), "utf-8");
+          }
           if (!currentHash) {
             // Calculate hash manually for dirty/untracked files
             currentHash = crypto.createHash("sha256").update(code).digest("hex");

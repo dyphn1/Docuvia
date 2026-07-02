@@ -48,4 +48,55 @@ describe("CLI Regression Tests - Sync --local", () => {
     expect(files).toContain("knowledge/src/hello.ts.md");
     expect(files).toContain("knowledge/src/utils.ts.md");
   }, 30000);
+
+  it("should sync indexed files only and ignore unstaged/untracked files", async () => {
+    await sandbox.setup({
+      initGit: true,
+      files: {
+        "src/utils.ts": `
+          export function utils() { return "utils"; }
+        `,
+      },
+    });
+
+    await sandbox.runGit(["add", "."]);
+    await sandbox.runGit(["commit", "-m", "Initial commit"]);
+
+    const { writeFile } = await import("fs/promises");
+    const { join } = await import("path");
+
+    // Modify existing file without staging
+    await writeFile(
+      join(sandbox.dir, "src/utils.ts"),
+      `
+        export function utils() { return "dirty-utils"; }
+        export function dirtyFunction() { return "should not be parsed"; }
+      `,
+      "utf-8"
+    );
+
+    // Create untracked file
+    await writeFile(
+      join(sandbox.dir, "src/untracked.ts"),
+      `export function untracked() { return "untracked"; }`,
+      "utf-8"
+    );
+
+    const result = await sandbox.runCli(["sync", "--local"], { reject: false });
+    expect(result.exitCode).toBe(0);
+
+    const lsTree = await sandbox.runGit(["ls-tree", "-r", "docuvia-knowledge"]);
+    const files = lsTree.stdout;
+
+    // Check that untracked file is NOT in the tree
+    expect(files).not.toContain("knowledge/src/untracked.ts.md");
+    expect(files).toContain("knowledge/src/utils.ts.md");
+
+    // Extract the graph data from git blob to check if 'dirtyFunction' is present
+    const nodesJsonlResult = await sandbox.runGit(["show", "docuvia-knowledge:graph/nodes.jsonl"]);
+    const nodesContent = nodesJsonlResult.stdout;
+
+    expect(nodesContent).toContain("utils");
+    expect(nodesContent).not.toContain("dirtyFunction");
+  }, 30000);
 });

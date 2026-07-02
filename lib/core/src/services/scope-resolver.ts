@@ -11,8 +11,47 @@ export class ScopeResolver {
   private exportsByFile: Map<string, Set<string>> = new Map();
   private importsByFile: Map<string, ImportDescriptor[]> = new Map();
   private localsByFile: Map<string, Set<string>> = new Map();
+  private tsConfigPaths: Record<string, string[]> = {};
 
-  constructor(private workspaceRoot: string) {}
+  constructor(private workspaceRoot: string) {
+    this.loadTsConfigPaths();
+  }
+
+  private loadTsConfigPaths() {
+    try {
+      const tsconfigPath = path.join(this.workspaceRoot, "tsconfig.json");
+      if (fs.existsSync(tsconfigPath)) {
+        const content = fs.readFileSync(tsconfigPath, "utf-8");
+        const cleanContent = content.replace(
+          /\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g,
+          (m, g) => (g ? "" : m)
+        );
+        try {
+          const parsed = JSON.parse(cleanContent);
+          if (parsed.compilerOptions && parsed.compilerOptions.paths) {
+            this.tsConfigPaths = { ...this.tsConfigPaths, ...parsed.compilerOptions.paths };
+          }
+        } catch (e) {
+          console.error("JSON parse error:", e);
+        }
+      }
+
+      const tsconfigBasePath = path.join(this.workspaceRoot, "tsconfig.base.json");
+      if (fs.existsSync(tsconfigBasePath)) {
+        const content = fs.readFileSync(tsconfigBasePath, "utf-8");
+        const cleanContent = content.replace(
+          /\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g,
+          (m, g) => (g ? "" : m)
+        );
+        const parsed = JSON.parse(cleanContent);
+        if (parsed.compilerOptions && parsed.compilerOptions.paths) {
+          this.tsConfigPaths = { ...parsed.compilerOptions.paths, ...this.tsConfigPaths };
+        }
+      }
+    } catch (e) {
+      // Ignore fs read or parse failures
+    }
+  }
 
   public registerFile(
     filePath: string,
@@ -64,19 +103,16 @@ export class ScopeResolver {
       return this.findFileWithExtension(target);
     }
 
-    // Aliases like @workspace/...
-    if (modulePath.startsWith("@workspace/")) {
-      const parts = modulePath.split("/");
-      const pkg = parts[1];
-      const rest = parts.slice(2).join("/"); // could be empty
-
-      // We check artifacts/ and lib/
-      const possibleRoots = [`artifacts/${pkg}/src`, `lib/${pkg}/src`];
-
-      for (const root of possibleRoots) {
-        const targetPath = rest ? path.posix.join(root, rest) : root;
-        const resolved = this.findFileWithExtension(targetPath);
-        if (resolved) return resolved;
+    // Dynamic path resolution from tsconfig compilerOptions.paths
+    for (const [alias, paths] of Object.entries(this.tsConfigPaths)) {
+      const aliasPattern = alias.replace("*", "");
+      if (modulePath.startsWith(aliasPattern)) {
+        const match = modulePath.slice(aliasPattern.length);
+        for (const p of paths) {
+          const targetPath = p.replace("*", match);
+          const resolved = this.findFileWithExtension(targetPath);
+          if (resolved) return resolved;
+        }
       }
     }
 

@@ -7,6 +7,8 @@ export interface LanguageProvider {
   extractFunctions: (rootNode: Node) => Node[];
   extractImports: (rootNode: Node) => Node[];
   extractCalls: (rootNode: Node) => Node[];
+  extractImplements?: (rootNode: Node) => Node[];
+  extractExtends?: (rootNode: Node) => Node[];
   deleteQueries?: () => void;
 }
 
@@ -15,6 +17,8 @@ export interface LanguageQueryConfig {
   functions: string;
   imports: string;
   calls: string;
+  implements?: string;
+  extends?: string;
 }
 
 export interface LanguageConfig {
@@ -24,6 +28,8 @@ export interface LanguageConfig {
   classes: string[];
   functions: string[];
   calls: string[];
+  implements?: string[];
+  extends?: string[];
   queries?: LanguageQueryConfig;
 }
 
@@ -32,6 +38,8 @@ type CompiledQueries = {
   functions?: Query;
   imports?: Query;
   calls?: Query;
+  implements?: Query;
+  extends?: Query;
 };
 
 export class DefaultProvider implements LanguageProvider {
@@ -52,6 +60,8 @@ export class DefaultProvider implements LanguageProvider {
       functions: q.functions ? new Query(language, q.functions) : undefined,
       imports: q.imports ? new Query(language, q.imports) : undefined,
       calls: q.calls ? new Query(language, q.calls) : undefined,
+      implements: q.implements ? new Query(language, q.implements) : undefined,
+      extends: q.extends ? new Query(language, q.extends) : undefined,
     };
   }
 
@@ -61,6 +71,8 @@ export class DefaultProvider implements LanguageProvider {
     this.compiledQueries.functions?.delete();
     this.compiledQueries.imports?.delete();
     this.compiledQueries.calls?.delete();
+    this.compiledQueries.implements?.delete();
+    this.compiledQueries.extends?.delete();
     this.compiledQueries = null;
   }
 
@@ -105,6 +117,24 @@ export class DefaultProvider implements LanguageProvider {
 
   extractCalls(rootNode: Node): Node[] {
     return this.extractNodes(rootNode, this.compiledQueries?.calls, ["call"], this.config.calls);
+  }
+
+  extractImplements(rootNode: Node): Node[] {
+    return this.extractNodes(
+      rootNode,
+      this.compiledQueries?.implements,
+      ["implements"],
+      this.config.implements || []
+    );
+  }
+
+  extractExtends(rootNode: Node): Node[] {
+    return this.extractNodes(
+      rootNode,
+      this.compiledQueries?.extends,
+      ["extends"],
+      this.config.extends || []
+    );
   }
 
   private extractNodes(

@@ -1,40 +1,18 @@
 import { Router, Request, Response } from "express";
 import { logger } from "@workspace/core";
-import { pool } from "@workspace/db";
 import { requireApiKey } from "../middlewares/auth.js";
 import { MetabolismService } from "../services/metabolism.service.js";
 
-const METABOLISM_LOCK_ID = 123456789;
-
 const metabolismRouter = Router();
-
-async function withMetabolismLock<T>(fn: () => Promise<T>): Promise<T | null> {
-  const client = await pool.connect();
-  let locked = false;
-  try {
-    const result = await client.query("SELECT pg_try_advisory_lock($1) AS locked", [
-      METABOLISM_LOCK_ID,
-    ]);
-    if (result.rows[0]?.locked !== true) return null;
-    locked = true;
-    return await fn();
-  } finally {
-    if (locked) {
-      await client
-        .query("SELECT pg_advisory_unlock($1)", [METABOLISM_LOCK_ID])
-        .catch((err) => logger.warn({ err }, "Ignored error"));
-    }
-    client.release();
-  }
-}
 
 metabolismRouter.get(
   "/metabolism-tick",
   requireApiKey,
   async (req: Request, res: Response): Promise<void> => {
     try {
-      const result = await withMetabolismLock(async () => {
-        await new MetabolismService().runAll();
+      const service = new MetabolismService();
+      const result = await service.withMetabolismLock(async () => {
+        await service.runAll();
       });
       if (result === null) {
         res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
@@ -75,8 +53,9 @@ metabolismRouter.get(
     }
 
     try {
-      const result = await withMetabolismLock(async () => {
-        await new MetabolismService().runAll();
+      const service = new MetabolismService();
+      const result = await service.withMetabolismLock(async () => {
+        await service.runAll();
       });
       if (result === null) {
         res.status(202).json({ message: "Metabolism is already running", status: "accepted" });

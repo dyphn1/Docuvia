@@ -1,7 +1,4 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { notificationsTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
 import {
   ListProjectNotificationsParams,
   ListProjectNotificationsQueryParams,
@@ -9,23 +6,20 @@ import {
   MarkAllNotificationsReadBody,
 } from "@workspace/api-zod";
 import { logger } from "@workspace/core";
+import { NotificationService } from "../services/notification.service";
 
 const router = Router();
+const notificationService = new NotificationService();
 
 router.get("/projects/:projectId/notifications", async (req, res) => {
   try {
     const params = ListProjectNotificationsParams.parse(req.params);
     const query = ListProjectNotificationsQueryParams.parse(req.query);
 
-    const whereClause = query.unreadOnly
-      ? and(eq(notificationsTable.projectId, params.projectId), eq(notificationsTable.read, false))
-      : eq(notificationsTable.projectId, params.projectId);
-
-    const items = await db
-      .select()
-      .from(notificationsTable)
-      .where(whereClause)
-      .orderBy(sql`${notificationsTable.createdAt} desc`);
+    const items = await notificationService.getNotificationsByProjectId(
+      params.projectId,
+      query.unreadOnly ?? false
+    );
 
     return res.json({
       items: items.map((n) => ({
@@ -45,11 +39,7 @@ router.patch("/notifications/:notificationId/read", async (req, res) => {
   try {
     const params = MarkNotificationReadParams.parse(req.params);
 
-    const [updated] = await db
-      .update(notificationsTable)
-      .set({ read: true })
-      .where(eq(notificationsTable.id, params.notificationId))
-      .returning();
+    const updated = await notificationService.markAsRead(params.notificationId);
 
     if (!updated) return res.status(404).json({ error: "Notification not found" });
 
@@ -68,13 +58,7 @@ router.post("/notifications/mark-all-read", async (req, res) => {
   try {
     const body = MarkAllNotificationsReadBody.parse(req.body);
 
-    const updated = await db
-      .update(notificationsTable)
-      .set({ read: true })
-      .where(
-        and(eq(notificationsTable.projectId, body.projectId), eq(notificationsTable.read, false))
-      )
-      .returning();
+    const updated = await notificationService.markAllAsRead(body.projectId);
 
     return res.json({ updated: updated.length });
   } catch (err: unknown) {

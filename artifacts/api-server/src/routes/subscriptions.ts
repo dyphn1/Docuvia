@@ -1,39 +1,29 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { subscriptionsTable, projectsTable } from "@workspace/db";
-import { eq, or } from "drizzle-orm";
 import {
   CreateSubscriptionBody,
   DeleteSubscriptionParams,
   ListProjectSubscriptionsParams,
 } from "@workspace/api-zod";
 import { logger } from "@workspace/core";
+import { SubscriptionService } from "../services/subscription.service.js";
 
 const router = Router();
+const subscriptionService = new SubscriptionService();
 
 router.post("/subscriptions", async (req, res) => {
   try {
     const body = CreateSubscriptionBody.parse(req.body);
 
-    const [subscriber] = await db
-      .select()
-      .from(projectsTable)
-      .where(eq(projectsTable.id, body.subscriberProjectId));
+    const subscriber = await subscriptionService.getProject(body.subscriberProjectId);
     if (!subscriber) return res.status(404).json({ error: "Subscriber project not found" });
 
-    const [publisher] = await db
-      .select()
-      .from(projectsTable)
-      .where(eq(projectsTable.id, body.publisherProjectId));
+    const publisher = await subscriptionService.getProject(body.publisherProjectId);
     if (!publisher) return res.status(404).json({ error: "Publisher project not found" });
 
-    const [sub] = await db
-      .insert(subscriptionsTable)
-      .values({
-        subscriberProjectId: body.subscriberProjectId,
-        publisherProjectId: body.publisherProjectId,
-      })
-      .returning();
+    const sub = await subscriptionService.createSubscription(
+      body.subscriberProjectId,
+      body.publisherProjectId
+    );
 
     return res.status(201).json({ ...sub, createdAt: sub.createdAt.toISOString() });
   } catch (err: unknown) {
@@ -48,10 +38,7 @@ router.post("/subscriptions", async (req, res) => {
 router.delete("/subscriptions/:subscriptionId", async (req, res) => {
   try {
     const params = DeleteSubscriptionParams.parse(req.params);
-    const [deleted] = await db
-      .delete(subscriptionsTable)
-      .where(eq(subscriptionsTable.id, params.subscriptionId))
-      .returning();
+    const deleted = await subscriptionService.deleteSubscription(params.subscriptionId);
 
     if (!deleted) return res.status(404).json({ error: "Subscription not found" });
     return res.status(204).end();
@@ -65,15 +52,7 @@ router.get("/projects/:projectId/subscriptions", async (req, res) => {
   try {
     const params = ListProjectSubscriptionsParams.parse(req.params);
 
-    const subs = await db
-      .select()
-      .from(subscriptionsTable)
-      .where(
-        or(
-          eq(subscriptionsTable.subscriberProjectId, params.projectId),
-          eq(subscriptionsTable.publisherProjectId, params.projectId)
-        )
-      );
+    const subs = await subscriptionService.getSubscriptionsForProject(params.projectId);
 
     return res.json({
       subscriptions: subs.map((s) => ({ ...s, createdAt: s.createdAt.toISOString() })),

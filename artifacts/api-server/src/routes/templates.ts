@@ -1,12 +1,11 @@
 import { Router } from "express";
-import { ProjectService } from "../services/project.service";
-import { db } from "@workspace/db";
-import { promptTemplatesTable, projectsTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { ProjectService } from "../services/project.service.js";
 import { z } from "zod";
 import { DEFAULT_PROMPTS } from "@workspace/core";
+import { TemplateService } from "../services/template.service.js";
 
 const router = Router();
+const templateService = new TemplateService();
 
 const TemplateUpdateSchema = z.object({
   systemPrompt: z.string().min(10),
@@ -18,10 +17,7 @@ router.get("/projects/:id/templates", async (req, res) => {
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   const types = ["l1_tagger", "l2_extractor", "l3_generator"] as const;
-  const dbTemplates = await db
-    .select()
-    .from(promptTemplatesTable)
-    .where(eq(promptTemplatesTable.projectId, projectId));
+  const dbTemplates = await templateService.getTemplatesByProjectId(projectId);
 
   const dbMap = new Map(dbTemplates.map((t) => [t.templateType, t]));
 
@@ -54,22 +50,10 @@ router.put("/projects/:id/templates/:type", async (req, res) => {
 
   const body = TemplateUpdateSchema.parse(req.body);
 
-  const [existing] = await db
-    .select()
-    .from(promptTemplatesTable)
-    .where(
-      and(
-        eq(promptTemplatesTable.projectId, projectId),
-        eq(promptTemplatesTable.templateType, templateType as any)
-      )
-    );
+  const existing = await templateService.getTemplate(projectId, templateType);
 
   if (existing) {
-    const [updated] = await db
-      .update(promptTemplatesTable)
-      .set({ systemPrompt: body.systemPrompt, updatedAt: new Date() })
-      .where(eq(promptTemplatesTable.id, existing.id))
-      .returning();
+    const updated = await templateService.updateTemplate(existing.id, body.systemPrompt);
     return res.json({
       ...updated,
       isCustom: true,
@@ -78,15 +62,7 @@ router.put("/projects/:id/templates/:type", async (req, res) => {
     });
   }
 
-  const [created] = await db
-    .insert(promptTemplatesTable)
-    .values({
-      projectId,
-      templateType: templateType as any,
-      systemPrompt: body.systemPrompt,
-      isActive: true,
-    })
-    .returning();
+  const created = await templateService.createTemplate(projectId, templateType, body.systemPrompt);
 
   return res.status(201).json({
     ...created,
@@ -100,14 +76,7 @@ router.delete("/projects/:id/templates/:type", async (req, res) => {
   const projectId = Number(req.params.id);
   const templateType = req.params.type;
 
-  await db
-    .delete(promptTemplatesTable)
-    .where(
-      and(
-        eq(promptTemplatesTable.projectId, projectId),
-        eq(promptTemplatesTable.templateType, templateType as any)
-      )
-    );
+  await templateService.deleteTemplate(projectId, templateType);
 
   return res.status(204).send();
 });

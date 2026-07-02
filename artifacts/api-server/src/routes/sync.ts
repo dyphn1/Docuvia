@@ -1,16 +1,12 @@
 import { Router } from "express";
-import { ProjectService } from "../services/project.service";
-import { z } from "zod";
-import { db } from "@workspace/db";
-import { l2NodesTable, l3NodesTable, projectsTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { ProjectService } from "../services/project.service.js";
 import { logger } from "@workspace/core";
-import { writeKnowledgeToOrphanBranch } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
+import { SyncPushBody } from "@workspace/api-zod";
+import { SyncService } from "../services/sync.service.js";
 
 const router = Router();
-
-import { SyncPushBody } from "@workspace/api-zod";
+const syncService = new SyncService();
 
 // POST /sync/push (CQRS Outbox receiver)
 router.post("/sync/push", requireApiKey, async (req, res) => {
@@ -31,11 +27,7 @@ router.post("/sync/push", requireApiKey, async (req, res) => {
   }
 
   // 1. Acquire Central Mutex Lock for this Project
-  const lockAcquired = (await db.execute(
-    sql`SELECT pg_try_advisory_xact_lock(${projectId}) as acquired`
-  )) as any;
-
-  const acquired = lockAcquired.rows ? lockAcquired.rows[0]?.acquired : lockAcquired[0]?.acquired;
+  const acquired = await syncService.acquireProjectLock(projectId);
   if (!acquired) {
     return res.status(409).json({
       error: "Sync conflict: Resource is currently locked by another client. Try again later.",
@@ -44,30 +36,7 @@ router.post("/sync/push", requireApiKey, async (req, res) => {
 
   try {
     // 2. Apply DB Operations in Transaction (Two-phase commit prep)
-    await db.transaction(async (tx) => {
-      for (const ev of events) {
-        if (ev.type === "CREATE_L3") {
-          // Validate L2 node exists to prevent dangling references
-          const payloadL2Id = Number(ev.payload.l2NodeId);
-          const [l2] = await tx
-            .select({ id: l2NodesTable.id })
-            .from(l2NodesTable)
-            .where(eq(l2NodesTable.id, payloadL2Id));
-          if (!l2) throw new Error(`L2 Node ${payloadL2Id} does not exist`);
-
-          await tx.insert(l3NodesTable).values(ev.payload as any);
-        } else if (ev.type === "UPDATE_L3") {
-          await tx
-            .update(l3NodesTable)
-            .set(ev.payload.data as any)
-            .where(eq(l3NodesTable.id, Number(ev.payload.id)));
-        }
-        // ... (other handlers omitted for brevity)
-      }
-
-      // 3. Perform Git Sync under the same lock
-      await writeKnowledgeToOrphanBranch(projectId);
-    });
+    await syncService.processEvents(projectId, events);
 
     return res.json({ success: true, processed: events.length });
   } catch (err: any) {

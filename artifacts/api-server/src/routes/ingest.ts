@@ -1,9 +1,6 @@
 import { Router } from "express";
 import { ProjectService } from "../services/project.service";
-import { db } from "@workspace/db";
 import fs from "fs";
-import { projectsTable, documentsTable } from "@workspace/db";
-import { and, eq, sql } from "drizzle-orm";
 import { IngestSvnBody, IngestDocumentBody } from "@workspace/api-zod";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
@@ -13,6 +10,7 @@ import { requireApiKey } from "../middlewares/auth.js";
 import { GitIngestionService } from "../services/git-ingestion.service.js";
 import { SvnIngestionService } from "../services/svn-ingestion.service.js";
 import { DocumentIngestionService } from "../services/doc-ingestion.service.js";
+import { DocumentService } from "../services/document.service.js";
 import { AstIngestionService } from "../services/ast-ingestion.service.js";
 import { ProjectStatusService } from "../services/project-status.service.js";
 
@@ -20,6 +18,7 @@ const router = Router();
 const gitIngestionService = new GitIngestionService();
 const svnIngestionService = new SvnIngestionService();
 const docIngestionService = new DocumentIngestionService();
+const documentService = new DocumentService();
 const astIngestionService = new AstIngestionService();
 const projectStatusService = new ProjectStatusService();
 
@@ -209,12 +208,8 @@ router.post("/projects/:id/ingest/document", async (req, res) => {
 
 router.get("/projects/:id/documents", async (req, res) => {
   const projectId = Number(req.params.id);
-  const docs = await db
-    .select()
-    .from(documentsTable)
-    .where(eq(documentsTable.projectId, projectId))
-    .orderBy(sql`${documentsTable.createdAt} desc`);
-  res.json(docs.map((d) => ({ ...d, createdAt: d.createdAt.toISOString() })));
+  const docs = await documentService.listDocumentsByProjectId(projectId);
+  res.json(docs);
 });
 
 const AstIngestSchema = z.object({

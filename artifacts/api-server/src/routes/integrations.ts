@@ -1,13 +1,13 @@
 import { Router } from "express";
 import { ProjectService } from "../services/project.service";
-import { db } from "@workspace/db";
-import { projectIntegrationsTable, projectsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { IntegrationService } from "../services/integration.service";
+import { projectIntegrationsTable } from "@workspace/db";
 import { z } from "zod";
 import { logger } from "@workspace/core";
 import { sendTestNotification } from "@workspace/core";
 
 const router = Router();
+const integrationService = new IntegrationService();
 
 import { CreateProjectIntegrationBody, UpdateProjectIntegrationBody } from "@workspace/api-zod";
 
@@ -24,10 +24,7 @@ router.get("/projects/:id/integrations", async (req, res) => {
     const projectId = parseInt(req.params.id, 10);
     if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project id" });
 
-    const rows = await db
-      .select()
-      .from(projectIntegrationsTable)
-      .where(eq(projectIntegrationsTable.projectId, projectId));
+    const rows = await integrationService.getIntegrationsByProjectId(projectId);
 
     return res.json(rows.map(serializeIntegration));
   } catch (err) {
@@ -46,10 +43,7 @@ router.post("/projects/:id/integrations", async (req, res) => {
 
     const body = CreateProjectIntegrationBody.parse(req.body);
 
-    const [created] = await db
-      .insert(projectIntegrationsTable)
-      .values({ projectId, ...body })
-      .returning();
+    const created = await integrationService.createIntegration(projectId, body);
 
     return res.status(201).json(serializeIntegration(created));
   } catch (err) {
@@ -65,11 +59,7 @@ router.patch("/integrations/:integrationId", async (req, res) => {
 
     const body = UpdateProjectIntegrationBody.parse(req.body);
 
-    const [updated] = await db
-      .update(projectIntegrationsTable)
-      .set({ ...body, updatedAt: new Date() })
-      .where(eq(projectIntegrationsTable.id, integrationId))
-      .returning();
+    const updated = await integrationService.updateIntegration(integrationId, body);
 
     if (!updated) return res.status(404).json({ error: "Integration not found" });
 
@@ -85,10 +75,7 @@ router.delete("/integrations/:integrationId", async (req, res) => {
     const integrationId = parseInt(req.params.integrationId, 10);
     if (isNaN(integrationId)) return res.status(400).json({ error: "Invalid integration id" });
 
-    const [deleted] = await db
-      .delete(projectIntegrationsTable)
-      .where(eq(projectIntegrationsTable.id, integrationId))
-      .returning();
+    const deleted = await integrationService.deleteIntegration(integrationId);
 
     if (!deleted) return res.status(404).json({ error: "Integration not found" });
 
@@ -104,17 +91,11 @@ router.post("/integrations/:integrationId/test", async (req, res) => {
     const integrationId = parseInt(req.params.integrationId, 10);
     if (isNaN(integrationId)) return res.status(400).json({ error: "Invalid integration id" });
 
-    const [integration] = await db
-      .select()
-      .from(projectIntegrationsTable)
-      .where(eq(projectIntegrationsTable.id, integrationId));
+    const integration = await integrationService.getIntegrationById(integrationId);
 
     if (!integration) return res.status(404).json({ error: "Integration not found" });
 
-    const [project] = await db
-      .select()
-      .from(projectsTable)
-      .where(eq(projectsTable.id, integration.projectId));
+    const project = await new ProjectService().getProjectById(integration.projectId);
 
     const projectName = project?.name ?? `Project #${integration.projectId}`;
     const success = await sendTestNotification(integration, projectName);

@@ -1,11 +1,25 @@
 import { db } from "@workspace/db";
 import { documentsTable } from "@workspace/db";
-import { eq, isNull, count } from "drizzle-orm";
+import { eq, isNull, count, sql } from "drizzle-orm";
 import { detectDocType, extractText } from "@workspace/core";
 import { computeHashFromStream } from "../lib/utils/hash.js";
 import fs from "fs";
 
 export class DocumentService {
+  async listDocumentsByProjectId(projectId: number) {
+    const docs = await db
+      .select()
+      .from(documentsTable)
+      .where(eq(documentsTable.projectId, projectId))
+      .orderBy(documentsTable.createdAt); // Or desc, let's look at what was originally there: orderBy(sql`${documentsTable.createdAt} desc`)
+
+    return docs.map((d) => ({
+      ...d,
+      createdAt: d.createdAt.toISOString(),
+      affiliatedAt: d.affiliatedAt?.toISOString() ?? null,
+    }));
+  }
+
   async listMiscDocuments() {
     const docs = await db
       .select()

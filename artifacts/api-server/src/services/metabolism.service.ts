@@ -1,5 +1,5 @@
 import { logger } from "@workspace/core";
-import { db } from "@workspace/db";
+import { db, pool } from "@workspace/db";
 import {
   correctionExamplesTable,
   promptTemplatesTable,
@@ -15,6 +15,28 @@ import {
 } from "@workspace/core";
 
 export class MetabolismService {
+  private static readonly METABOLISM_LOCK_ID = 123456789;
+
+  public async withMetabolismLock<T>(fn: () => Promise<T>): Promise<T | null> {
+    const client = await pool.connect();
+    let locked = false;
+    try {
+      const result = await client.query("SELECT pg_try_advisory_lock($1) AS locked", [
+        MetabolismService.METABOLISM_LOCK_ID,
+      ]);
+      if (result.rows[0]?.locked !== true) return null;
+      locked = true;
+      return await fn();
+    } finally {
+      if (locked) {
+        await client
+          .query("SELECT pg_advisory_unlock($1)", [MetabolismService.METABOLISM_LOCK_ID])
+          .catch((err) => logger.warn({ err }, "Ignored error"));
+      }
+      client.release();
+    }
+  }
+
   public async runAll(): Promise<void> {
     logger.info("Metabolism tick started. Running background tasks...");
     await this.processPendingL3Nodes();

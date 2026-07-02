@@ -1,11 +1,10 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { l2NodesTable, l3NodesTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { routeQuery } from "@workspace/core";
+import { SearchService } from "../services/search.service.js";
 
 const router = Router();
+const searchService = new SearchService();
 
 const SearchSchema = z.object({
   query: z.string().min(1),
@@ -41,20 +40,7 @@ router.post("/search/feedback", async (req, res) => {
   const { nodeId, nodeLayer, interactionType } = body.data;
 
   try {
-    // For now, simply update the lastVerifiedAt for l2 or l3, or any node
-    // A robust implementation would log this interaction based on interactionType
-    if (nodeLayer === "l2") {
-      await db
-        .update(l2NodesTable)
-        .set({ lastVerifiedAt: new Date() })
-        .where(eq(l2NodesTable.id, nodeId));
-    } else if (nodeLayer === "l3") {
-      await db
-        .update(l3NodesTable)
-        .set({ lastVerifiedAt: new Date() })
-        .where(eq(l3NodesTable.id, nodeId));
-    }
-
+    await searchService.processFeedback(nodeId, nodeLayer, interactionType);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false });

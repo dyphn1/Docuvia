@@ -1,9 +1,7 @@
 import { logger } from "../utils/logger.js";
 import { AstEventStreamer } from "./ast/ast-event-streamer.js";
 import { AstChangeDetector } from "./ast/ast-change-detector.js";
-import { AstL2PersistenceService } from "./ast/ast-l2-persistence.js";
-import { AstL3PersistenceService } from "./ast/ast-l3-persistence.js";
-import { AstEdgePersistenceService } from "./ast/ast-edge-persistence.js";
+import { GitNativePersistenceService } from "./ast/git-native-persistence.service.js";
 import { IngestionResult } from "../types/ast-ingestion.types.js";
 
 /**
@@ -14,9 +12,7 @@ import { IngestionResult } from "../types/ast-ingestion.types.js";
 export class AstIngestionOrchestrator {
   private streamer = new AstEventStreamer();
   private changeDetector = new AstChangeDetector();
-  private l2Persistence = new AstL2PersistenceService();
-  private l3Persistence = new AstL3PersistenceService();
-  private edgePersistence = new AstEdgePersistenceService();
+  private gitPersistence = new GitNativePersistenceService();
 
   public async ingestAstJsonl(jsonlPath: string, projectId: number): Promise<IngestionResult> {
     const result: IngestionResult = {
@@ -28,47 +24,10 @@ export class AstIngestionOrchestrator {
       errors: [],
     };
 
-    const { fileEvents, classEvents, functionEvents, importEvents, callEvents, contractEvents } =
-      await this.streamer.streamAndCollectEvents(jsonlPath, result);
+    const events = await this.streamer.streamAndCollectEvents(jsonlPath, result);
 
-    const { filePathToL2Id, pathToL2Id } = await this.l2Persistence.processBatchL2Nodes(
-      projectId,
-      fileEvents,
-      result
-    );
-
-    const { fqnToL3Id, nameToL3Id, l3IdToL2Id } = await this.l3Persistence.processBatchL3Nodes(
-      projectId,
-      classEvents,
-      functionEvents,
-      filePathToL2Id,
-      result
-    );
-
-    const { contractEndpointToL3Id, contractPathToL2Id } =
-      await this.l3Persistence.processBatchContractEndpoints(
-        projectId,
-        contractEvents,
-        filePathToL2Id,
-        nameToL3Id,
-        l3IdToL2Id,
-        result
-      );
-
-    await this.edgePersistence.processBatchLinks(
-      projectId,
-      importEvents,
-      callEvents,
-      contractEvents,
-      filePathToL2Id,
-      pathToL2Id,
-      fqnToL3Id,
-      contractEndpointToL3Id,
-      nameToL3Id,
-      l3IdToL2Id,
-      contractPathToL2Id,
-      result
-    );
+    const knowledgeRoot = process.env.KNOWLEDGE_ROOT || "docuvia-knowledge";
+    await this.gitPersistence.processEvents(events, knowledgeRoot, result);
 
     return result;
   }

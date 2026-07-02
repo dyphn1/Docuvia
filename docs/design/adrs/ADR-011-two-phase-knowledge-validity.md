@@ -1,4 +1,6 @@
 ---
+Date: 2026-07-02
+Status: Accepted
 Supersedes: None
 ---
 
@@ -32,3 +34,25 @@ Both phases are required for `valid` status. A human-reviewed L3 node from an ab
 - ⚠️ Background metabolism ([ADR-008](ADR-008-asynchronous-metabolism.md)) must track branch merge status — requires either GitHub webhook integration or periodic polling of the Git tree.
 - ⚠️ `l3_nodes` and `commits` tables require `validityStatus` column
 - ⚠️ `commits` table requires `branchName text` column
+
+## Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> Phase1: AST Generation
+
+    state Phase1 {
+        [*] --> Review
+        Review --> Pending: Human Local Review
+    }
+
+    Phase1 --> Phase2: Sync via docuvia-knowledge
+
+    state Phase2 {
+        Pending --> Valid: Branch Merged
+        Pending --> Orphaned: Branch Deleted
+    }
+
+    Valid --> [*]
+    Orphaned --> [*]
+```

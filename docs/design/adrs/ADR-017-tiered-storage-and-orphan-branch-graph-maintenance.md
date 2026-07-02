@@ -1,4 +1,6 @@
 ---
+Date: 2026-07-02
+Status: Accepted
 Supplements: ADR-004
 ---
 

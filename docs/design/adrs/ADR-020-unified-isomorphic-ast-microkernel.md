@@ -1,12 +1,10 @@
 ---
+Date: 2026-07-02
+Status: Accepted
 Supplements: ADR-015
 ---
 
 # ADR-020: Unified Isomorphic AST Microkernel
-
-## Status
-
-Accepted (2026-06-25)
 
 ## Context
 
@@ -35,6 +33,31 @@ WASM heap memory must be manually freed (`tree.delete()`). To prevent memory lea
 ### 4. Zero-LLM Database-as-IPC Pipeline
 
 To completely bypass IPC (Inter-Process Communication) serialization overhead between the Worker and the Main Thread, we inherit the decision from **[ADR-014 (Database-as-IPC)](ADR-014-sql-indexed-graph-and-database-as-ipc.md)**. The isolated AST Worker handles parsing, traversing, and extracting structural metadata, and then **directly writes `GraphNode` and `GraphEdge` rows into the local SQLite database**. The main thread only sends small control signals (e.g., "parse src/auth.ts") and queries the SQLite database natively. This constitutes a [purely local](ADR-002-local-first-architecture.md), Zero-LLM pipeline that costs $0.00 to execute while keeping IPC payloads negligible.
+
+## Component Diagram
+
+```mermaid
+flowchart TD
+    subgraph Host[Main Thread / Node CLI]
+        M[Microkernel Core]
+    end
+
+    subgraph WorkerPool[Isolated Worker Threads]
+        W1[AST Worker 1<br/>web-tree-sitter]
+        W2[AST Worker 2<br/>web-tree-sitter]
+    end
+
+    M -- Control Signals (parse) --> W1
+    M -- Control Signals (parse) --> W2
+
+    subgraph Storage[Local Storage]
+        DB[(SQLite DB)]
+    end
+
+    W1 -- Direct Write (DB-as-IPC) --> DB
+    W2 -- Direct Write (DB-as-IPC) --> DB
+    M -- Native Query --> DB
+```
 
 ## Consequences
 

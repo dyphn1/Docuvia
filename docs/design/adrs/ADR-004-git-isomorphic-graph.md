@@ -1,4 +1,5 @@
 ---
+Date: 2026-07-02
 Status: Supplemented by ADR-017
 Supersedes: None
 ---

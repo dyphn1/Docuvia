@@ -1,4 +1,6 @@
 ---
+Date: 2026-07-02
+Status: Accepted
 Supersedes: None
 ---
 
@@ -25,3 +27,23 @@ When a user manually associates a misc pool document with a project (via Web UI 
 - ✅ No wasted LLM calls on documents not yet ready for knowledge extraction
 - ⚠️ `documents` schema change: `projectId` must change from `NOT NULL` to nullable; add `contentHash text`, `affiliatedAt timestamp` columns
 - ⚠️ Web UI needs a “Misc Pool” view and a “Associate with Project” action
+
+## Diagram
+
+```mermaid
+flowchart TD
+    A[Upload Document] --> B{Project ID Provided?}
+    B -- Yes --> C[Standard Pipeline]
+    B -- No --> D[Misc Pool]
+
+    subgraph Misc Pool Processing
+        D --> E[Extract Text]
+        E --> F[Compute contentHash]
+        F --> G[Store as Unaffiliated]
+    end
+
+    G -. User Action .-> H[Associate with Project]
+    H --> I{Hash Exists in Project?}
+    I -- Yes --> J[Skip Generation]
+    I -- No --> K[Promote to Generate Pipeline]
+```

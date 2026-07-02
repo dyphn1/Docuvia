@@ -24,7 +24,7 @@ suite("Phase 1: Local Knowledge Schema & Foundations", () => {
   });
 
   test("應該能執行 Docuvia: Init Project 並初始化 .docuvia 資料夾", async () => {
-    // 1. Get the current workspace folder (our empty fixture)
+    // Arrange: Get the current workspace folder (our empty fixture)
     const workspaceFolders = vscode.workspace.workspaceFolders;
     assert.ok(workspaceFolders && workspaceFolders.length > 0, "No workspace folder opened");
     const workspacePath = workspaceFolders[0].uri.fsPath;
@@ -44,13 +44,11 @@ suite("Phase 1: Local Knowledge Schema & Foundations", () => {
         });
       });
 
-      // Execute the command
+      // Act: Execute the command and wait for it
       await vscode.commands.executeCommand("docuvia.initProject");
-
-      // Wait for indexing to finish
       await indexingPromise;
 
-      // 3. Verify the .docuvia folder and local.db were created
+      // Assert: Verify the .docuvia folder and local.db were created
       assert.ok(fs.existsSync(docuviaPath), ".docuvia directory was not created");
       assert.ok(fs.existsSync(path.join(docuviaPath, "local.db")), "local.db was not created");
     } catch (error) {

@@ -1,4 +1,6 @@
 ---
+Date: 2026-07-02
+Status: Accepted
 Supersedes: None
 ---
 
@@ -22,3 +24,22 @@ Docuvia will implement an "Environment-Aware Ingestion Pipeline" that heavily le
 - **Positive**: Eliminates CPU spikes and database thrashing during branch switches.
 - **Positive**: Adapts to both Git-versioned repositories and unversioned folders.
 - **Negative**: Adds Git CLI integration dependencies and complexity to the ingest pipeline.
+
+## Diagram
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Git
+    participant FileWatcher
+    participant SQLDB
+
+    User->>Git: git checkout new-branch
+    FileWatcher->>FileWatcher: Detect .git/HEAD change
+    FileWatcher->>FileWatcher: Pause/Debounce watcher
+    FileWatcher->>Git: git diff <old_hash> <new_hash>
+    Git-->>FileWatcher: Changed files
+    FileWatcher->>SQLDB: UPDATE is_active (Flip State)
+    SQLDB-->>FileWatcher: Success
+    FileWatcher->>FileWatcher: Resume watcher
+```

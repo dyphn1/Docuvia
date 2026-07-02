@@ -38,7 +38,6 @@ export const ProjectFactory = {
   build: (overrides?: Partial<InsertProject>): InsertProject => ({
     name: faker.company.name(),
     repoUrl: faker.internet.url(),
-    defaultBranch: "main",
     ...overrides,
   }),
   create: async (overrides?: Partial<InsertProject>, client?: DbClient) => {
@@ -145,6 +144,35 @@ export const ActivityLogFactory = {
     }
     const data = ActivityLogFactory.build(projectId, overrides);
     const [inserted] = await getDb(client).insert(activityLogTable).values(data).returning();
+    return inserted;
+  },
+};
+
+export const L1TagFactory = {
+  build: (overrides?: Partial<InsertL1Tag>): InsertL1Tag => ({
+    name: faker.lorem.word() + faker.number.int(),
+    category: "general",
+    description: faker.lorem.sentence(),
+    ...overrides,
+  }),
+  create: async (overrides?: Partial<InsertL1Tag>, client?: DbClient) => {
+    const data = L1TagFactory.build(overrides);
+    const [inserted] = await getDb(client).insert(l1TagsTable).values(data).returning();
+    return inserted;
+  },
+};
+
+export const ReviewTaskFactory = {
+  build: (overrides?: Partial<InsertReviewTask>): InsertReviewTask => ({
+    entityType: "l2_node",
+    entityId: faker.number.int({ min: 1, max: 1000 }),
+    taskType: "anchor",
+    status: "pending",
+    ...overrides,
+  }),
+  create: async (overrides?: Partial<InsertReviewTask>, client?: DbClient) => {
+    const data = ReviewTaskFactory.build(overrides);
+    const [inserted] = await getDb(client).insert(reviewTasksTable).values(data).returning();
     return inserted;
   },
 };

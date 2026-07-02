@@ -1,12 +1,10 @@
 ---
+Date: 2026-07-02
+Status: Accepted
 Supersedes: None
 ---
 
 # ADR-019: PostgreSQL pgvector Migration for Similarity Search
-
-## Status
-
-Accepted (2026-06-25)
 
 ## Context
 
@@ -24,6 +22,20 @@ We will migrate the vector storage and search functionality to PostgreSQL using 
 2.  **Indexing**: Implement `IVFFlat` or `HNSW` indexes on the `embedding` columns to ensure sub-millisecond retrieval performance at scale.
 3.  **Query Migration**: Rewrite the `intent-router.ts` vector search logic to offload the cosine similarity calculations directly to the PostgreSQL engine (e.g., `SELECT * FROM l3_nodes ORDER BY embedding <=> $1 LIMIT 5`).
 4.  **Temporal Decay Integration**: Perform the base vector search (e.g., top 100) via DB-level `pgvector` operations, then apply the [temporal decay](ADR-007-agentic-rag-routing.md) (`lastVerifiedAt`) math either natively in SQL (via a combined formula) or in memory after the initial DB threshold cut-off.
+
+## Migration Flowchart
+
+```mermaid
+flowchart TD
+    A[Incoming Query] --> B[Vector Search via pgvector]
+    B -->|Cosine Similarity| C[Top 100 Candidates]
+    C --> D{Temporal Decay Application}
+    D -->|Native SQL Formula| E[Final Re-ranked Results]
+    D -->|In-Memory Fallback| E
+
+    F[Legacy In-Memory JSONB] -.->|Migration Phase| G[PostgreSQL vector type]
+    G -.-> B
+```
 
 ## Consequences
 

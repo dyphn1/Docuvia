@@ -1,4 +1,6 @@
 ---
+Date: 2026-07-02
+Status: Accepted
 Supersedes: None
 ---
 
@@ -15,6 +17,24 @@ We will adopt a "Shared Database Pattern" (Database as IPC - Inter-Process Commu
 - **Daemon Responsibility (Local Hooks)**: The [AST Microkernel worker](ADR-020-unified-isomorphic-ast-microkernel.md) directly executes `INSERT` and `UPDATE` statements into the **Local SQLite database** (the Local HEAD Index) during lightweight operations like Git Hooks.
 - **Core Responsibility (Server API)**: The central API server strictly forbids Database-as-IPC for remote workers. Remote background workers MUST communicate via REST APIs to ensure authentication, rate-limiting, and validation before writing to PostgreSQL.
 - **Data Querying**: When an [Agent](ADR-007-agentic-rag-routing.md) needs to understand the blast radius, the Core directly issues SQL `SELECT` queries or recursive CTEs (`WITH RECURSIVE`) to the database.
+
+## Sequence Diagram
+
+```mermaid
+sequenceDiagram
+    participant Worker as Daemon Worker
+    participant DB as SQLite (Local Index)
+    participant Core as API Server (Core)
+    participant Agent as Agent (Intent Router)
+
+    Note over Worker, DB: Database-as-IPC
+    Worker->>DB: INSERT/UPDATE AST nodes & edges (Git Hooks)
+
+    Agent->>Core: Request blast radius analysis
+    Core->>DB: SQL SELECT / WITH RECURSIVE
+    DB-->>Core: Return structural graph data
+    Core-->>Agent: Context provided
+```
 
 ## Consequences
 

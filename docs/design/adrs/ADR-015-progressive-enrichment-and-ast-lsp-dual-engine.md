@@ -1,5 +1,6 @@
 ---
-Status: Supplemented by ADR-020
+Date: 2026-07-02
+Status: Accepted (Supplemented by ADR-020)
 Supersedes: None
 ---
 
@@ -16,6 +17,24 @@ Docuvia will adopt a "Progressive Enrichment" (Fallback & Dual Engine) architect
 - **Tier 1 (Base - AST)**: The [AST microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) rapidly scans the entire project as a fallback mechanism. It establishes all base structural nodes (Classes, Functions, Imports) regardless of compilation status.
 - **Tier 2 (Enrichment - Resolvers)**: Lightweight, domain-specific post-build resolvers (e.g., a `tsconfig_resolver`) step in to fix broken links and implicit magic that ASTs cannot decipher.
 - **Tier 3 (On-Demand - LSP)**: A full LSP is treated as an on-demand Agent Tool (e.g., `lsp_go_to_definition`). To mask the 3-5 second cold start, Docuvia will use "Predictive Pre-warming"—asynchronously booting the LSP in the background the moment the [Intent Router](ADR-007-agentic-rag-routing.md) detects an action that might require deep code analysis. The LSP will also act as the ultimate source of truth for unsaved editor buffers (Dirty States).
+
+## Dual Engine Architecture Diagram
+
+```mermaid
+flowchart TD
+    A[Source Code / Editor Action] --> B{Tier Routing}
+    B -->|Fast Scanning / Baseline| C[Tier 1: AST Microkernel]
+    B -->|Link Fixing / Fallback| D[Tier 2: Resolvers]
+    B -->|Deep Analysis / Type Info| E[Tier 3: On-Demand LSP]
+
+    C --> F[Agentic RAG Knowledge Graph]
+    D --> F
+
+    E -.->|Predictive Pre-warming| E
+    E --> F
+
+    G[Unsaved Editor Buffers] --> E
+```
 
 ## Consequences
 

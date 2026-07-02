@@ -1,4 +1,6 @@
 ---
+Date: 2026-07-02
+Status: Accepted
 Supersedes: None
 ---
 
@@ -45,3 +47,28 @@ We adopt the **Adversarial Implementation Protocol** for all future feature deve
 ## Product Positioning Guardrail
 
 The ultimate veto power rests with the Product Positioning. If the Challenger proposes a highly secure, distributed locking mechanism that requires Kubernetes and Zookeeper, the PM will veto it because Docuvia must remain a lightweight, self-hosted, [Local-First](ADR-002-local-first-architecture.md) engine backed by PostgreSQL (acting as our [Database-as-IPC](ADR-014-sql-indexed-graph-and-database-as-ipc.md) and [pgvector store](ADR-019-pgvector-migration.md)).
+
+## Diagram
+
+```mermaid
+flowchart TD
+    A[Feature Request / Bug Fix] --> B[Role Invocation & Debate]
+
+    subgraph Adversarial Debate
+        PM[PM: Defends Local-First & Constraints]
+        Dev[Lead Dev: Proposes Architecture]
+        QA[QA: Finds Edge Cases]
+        Max[Challenger/SRE: Attacks Proposal]
+
+        Dev <--> Max
+        Dev <--> QA
+        Dev <--> PM
+    end
+
+    B --> Adversarial Debate
+    Adversarial Debate --> C{Consensus Reached?}
+    C -- No --> Adversarial Debate
+    C -- Yes --> D[Implementation & Commit]
+    D --> E[Documentation Synchronization]
+    E --> F[Mark Roadmap Checklist]
+```

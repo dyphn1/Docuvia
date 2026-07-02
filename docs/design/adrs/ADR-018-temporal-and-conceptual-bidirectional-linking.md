@@ -1,4 +1,6 @@
 ---
+Date: 2026-07-02
+Status: Accepted
 Supersedes: None
 ---
 
@@ -21,3 +23,35 @@ The graph schema will be expanded to 4D, integrating [L1/L2 conceptual nodes](AD
 - **Positive**: AI Agents can navigate complex 4D queries (e.g., tracking how a module evolved over 3 months to satisfy a specific architectural concept).
 - **Positive**: Unprecedented data resilience. The knowledge graph is immune to destructive Git history rewriting, preserving L3 lessons across rebases.
 - **Negative**: Increases the complexity of the database schema and requires constant background janitorial processing to maintain data integrity.
+
+## Diagram
+
+```mermaid
+graph TD
+    subgraph Conceptual Layer
+        L1[L1: Architecture Doc]
+        L2[L2: Module Concept]
+    end
+
+    subgraph Temporal Layer
+        V1[Commit V1]
+        V2[Commit V2]
+    end
+
+    subgraph Physical Layer
+        AST1[AST Node V1]
+        AST2[AST Node V2]
+    end
+
+    subgraph Orphan Branch
+        L3[L3: Lesson / Rule]
+    end
+
+    L2 -- IMPLEMENTS --> AST2
+    L1 -- EXPLAINS --> AST1
+    V1 -- EVOLVED_INTO --> V2
+    AST2 -- HAS_RULE --> L3
+    L3 -- Points To --> V2
+
+    Janitor((Background Janitor)) -. Validates & Self-Heals .-> L3
+```

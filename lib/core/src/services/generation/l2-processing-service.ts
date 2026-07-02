@@ -16,6 +16,7 @@ import {
   ILlmGenerationService,
   L2NodeAI,
 } from "../../interfaces/knowledge-generation.interfaces.js";
+import pLimit from "p-limit";
 import { getPromptTemplate, getRecentCorrections } from "../prompt-service.js";
 import { generateEmbedding } from "../embedding.js";
 import { detectCrossProjectLinks } from "../cross-project-service.js";
@@ -202,6 +203,8 @@ export class L2ProcessingService implements IL2ProcessingService {
       }
     }
 
+    const crossLinkTasks: Array<() => Promise<void>> = [];
+
     for (const l2data of l2Input) {
       const nameKey = l2data.name.toLowerCase();
       let l2node: (typeof existingL2)[0];
@@ -245,7 +248,34 @@ export class L2ProcessingService implements IL2ProcessingService {
           .set({ embedding: l2Embedding })
           .where(eq(l2NodesTable.id, l2node.id));
 
-        await detectCrossProjectLinks(l2node.id, l2Embedding, projectId);
+        let commitSha: string | undefined;
+        let diffSummary: string | undefined;
+        if (l2data.l3Nodes && l2data.l3Nodes.length > 0) {
+          commitSha = l2data.l3Nodes[0].commitHash;
+          const commit = commitData.find((c: any) => c.hash === commitSha);
+          if (commit) {
+            diffSummary = commit.message;
+          }
+        }
+
+        const l1TagIds: number[] = [];
+        for (const tagName of l2data.l1TagNames ?? []) {
+          const tagId =
+            tagMap.get(tagName.toLowerCase()) ??
+            allL1Tags.find((t: any) => t.name.toLowerCase() === tagName.toLowerCase())?.id;
+          if (tagId) l1TagIds.push(tagId);
+        }
+
+        crossLinkTasks.push(async () => {
+          await detectCrossProjectLinks(l2node.id, l2Embedding, projectId, {
+            commitSha,
+            diffSummary,
+            nodeContext: {
+              hasDocuments: documents && documents.length > 0,
+              l1TagIds,
+            },
+          });
+        });
         crossLinks++;
       }
 
@@ -279,6 +309,11 @@ export class L2ProcessingService implements IL2ProcessingService {
       l3Created += l3c;
       rTasksCreated += rtc;
     }
+
+    const limit = pLimit(
+      process.env.CROSS_PROJECT_RATE_LIMIT ? parseInt(process.env.CROSS_PROJECT_RATE_LIMIT, 10) : 5
+    );
+    await Promise.all(crossLinkTasks.map((task) => limit(() => task())));
 
     const postL2 = await tx
       .select()

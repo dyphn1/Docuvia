@@ -1,5 +1,5 @@
 import app from "./app";
-import { logger } from "@workspace/core";
+import { logger, JanitorService } from "@workspace/core";
 
 const rawPort = process.env["PORT"];
 
@@ -20,4 +20,21 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Start background janitor
+  const janitor = new JanitorService();
+  const JANITOR_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+
+  // Run once on startup (with a small delay)
+  setTimeout(() => {
+    janitor.reanchorL3Rules().catch((err: unknown) => {
+      logger.error({ err }, "Initial janitor run failed");
+    });
+  }, 10000);
+
+  setInterval(() => {
+    janitor.reanchorL3Rules().catch((err: unknown) => {
+      logger.error({ err }, "Janitor interval run failed");
+    });
+  }, JANITOR_INTERVAL_MS);
 });

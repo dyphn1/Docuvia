@@ -15,9 +15,25 @@ import { logger } from "../utils/logger.js";
 export async function detectCrossProjectLinks(
   newNodeId: number,
   newNodeEmbedding: number[],
-  projectId: number
+  projectId: number,
+  options?: {
+    commitSha?: string;
+    diffSummary?: string;
+    nodeContext?: {
+      hasDocuments?: boolean;
+      l1TagIds?: number[];
+    };
+  }
 ): Promise<void> {
-  const SIMILARITY_THRESHOLD = 0.85;
+  if (newNodeEmbedding.length !== 1536) {
+    logger.warn(
+      { newNodeId, length: newNodeEmbedding.length },
+      "Invalid embedding length for cross-project linking. Expected 1536."
+    );
+    return;
+  }
+
+  const SIMILARITY_THRESHOLD = parseFloat(process.env.CROSS_PROJECT_SIMILARITY_THRESHOLD || "0.85");
   const MAX_DISTANCE = 1 - SIMILARITY_THRESHOLD;
 
   let similarNodes: Array<{ id: number; name: string; projectId: number; sim: number }> = [];
@@ -93,11 +109,20 @@ export async function detectCrossProjectLinks(
         description: `Cross-project similarity detected (${Math.round(sim * 100)}%): This module resembles "${other.name}" (node #${other.id}) from another project. Consider creating a dependency link.`,
       });
 
+      let linkType = "IMPLEMENTS";
+      if (options?.commitSha) {
+        linkType = "EVOLVED_INTO";
+      } else if (options?.nodeContext?.hasDocuments) {
+        linkType = "EXPLAINS";
+      }
+
       // Populate Knowledge Graph Edges (Cross-Project)
       await db.insert(nodeLinksTable).values({
         sourceNodeId: newNodeId,
         targetNodeId: other.id,
-        linkType: "SIMILAR_LINK",
+        linkType,
+        commitSha: options?.commitSha,
+        diffSummary: options?.diffSummary,
       });
 
       const crossLinkPayload = {

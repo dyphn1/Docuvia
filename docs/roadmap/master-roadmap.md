@@ -342,4 +342,5 @@ flowchart LR
     V2 --> |Migrate| P2
     V3 --> |Migrate| P3
 ```
+
 - SVN Integration (2026-07-02): SVN diff not stored in dedicated column (see 0705_phase-2_svn-integration.md)

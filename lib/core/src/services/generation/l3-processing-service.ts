@@ -1,5 +1,11 @@
 import { eq, and, isNotNull } from "drizzle-orm";
-import { l3NodesTable, reviewTasksTable, commitsTable, commitL2LinksTable } from "@workspace/db";
+import {
+  l3NodesTable,
+  reviewTasksTable,
+  commitsTable,
+  commitL2LinksTable,
+  commitL3LinksTable,
+} from "@workspace/db";
 import {
   IL3ProcessingService,
   ILlmGenerationService,
@@ -54,7 +60,10 @@ export class L3ProcessingService implements IL3ProcessingService {
         }
       }
 
+      let currentL3Id: number | undefined;
+
       if (maxL3Sim >= similarityThreshold && bestL3Match) {
+        currentL3Id = bestL3Match.id;
         // Dedup: increment occurrence count
         const newOccurrenceCount = bestL3Match.occurrenceCount + 1;
 
@@ -103,6 +112,7 @@ export class L3ProcessingService implements IL3ProcessingService {
             validityStatus: "pending",
           })
           .returning();
+        currentL3Id = l3node.id;
         l3Created++;
 
         // Store embedding and add to cache for subsequent dedup in this batch
@@ -142,6 +152,13 @@ export class L3ProcessingService implements IL3ProcessingService {
             .insert(commitL2LinksTable)
             .values({ commitId: commitId, l2NodeId: l2node.id })
             .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
+
+          if (currentL3Id) {
+            await tx
+              .insert(commitL3LinksTable)
+              .values({ commitId: commitId, l3NodeId: currentL3Id })
+              .catch((err: unknown) => logger.warn({ err }, "Ignored error"));
+          }
         }
       }
     }

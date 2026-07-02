@@ -23,6 +23,7 @@
     "drizzle-orm": "catalog:",
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.5",
+    "p-limit": "^7.3.0",
     "pino": "^9",
     "sax": "^1.6.0",
     "tree-sitter-wasms": "^0.1.13",

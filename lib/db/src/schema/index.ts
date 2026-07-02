@@ -1,6 +1,7 @@
 export * from "./projects";
 export * from "./l1-tags";
 export * from "./commit-l2-links";
+export * from "./commit-l3-links";
 export * from "./l2-nodes";
 export * from "./l2-node-l1-tags";
 export * from "./l3-nodes";

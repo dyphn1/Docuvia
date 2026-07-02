@@ -43,6 +43,7 @@ export * from "./utils/prompts.js";
 export * from "./services/prompt-service.js";
 export * from "./services/cross-project-service.js";
 export * from "./services/noise-detection-service.js";
+export * from "./services/janitor-service.js";
 export * from "./services/generation/knowledge-generation-service.js";
 export * from "./services/generation/knowledge-generation-pipeline.js";
 export * from "./services/generation/l1-processing-service.js";

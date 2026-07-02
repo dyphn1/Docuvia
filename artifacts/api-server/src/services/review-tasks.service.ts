@@ -118,7 +118,7 @@ export class ReviewTasksService {
       .select({ count: count() })
       .from(reviewTasksTable)
       .where(gte(reviewTasksTable.createdAt, today));
-      
+
     return {
       pending: pendingRow.count,
       approved: approvedRow.count,
@@ -153,7 +153,10 @@ export class ReviewTasksService {
     // Writeback correction to the actual node + store in feedback loop
     if (body.correctedValue && task.status === "approved") {
       if (task.entityType === "l2_node") {
-        const [node] = await db.select().from(l2NodesTable).where(eq(l2NodesTable.id, task.entityId));
+        const [node] = await db
+          .select()
+          .from(l2NodesTable)
+          .where(eq(l2NodesTable.id, task.entityId));
         if (node && node.description) {
           await db.insert(correctionExamplesTable).values({
             projectId: node.projectId,
@@ -172,9 +175,15 @@ export class ReviewTasksService {
           })
           .where(eq(l2NodesTable.id, task.entityId));
       } else if (task.entityType === "l3_node") {
-        const [node] = await db.select().from(l3NodesTable).where(eq(l3NodesTable.id, task.entityId));
+        const [node] = await db
+          .select()
+          .from(l3NodesTable)
+          .where(eq(l3NodesTable.id, task.entityId));
         if (node && node.content) {
-          const [l2] = await db.select().from(l2NodesTable).where(eq(l2NodesTable.id, node.l2NodeId));
+          const [l2] = await db
+            .select()
+            .from(l2NodesTable)
+            .where(eq(l2NodesTable.id, node.l2NodeId));
           if (l2) {
             await db.insert(correctionExamplesTable).values({
               projectId: l2.projectId,
@@ -203,7 +212,10 @@ export class ReviewTasksService {
     }
 
     // Mark node as reviewed on approve/reject
-    if (task.entityType === "l2_node" && (body.status === "approved" || body.status === "rejected")) {
+    if (
+      task.entityType === "l2_node" &&
+      (body.status === "approved" || body.status === "rejected")
+    ) {
       await db
         .update(l2NodesTable)
         .set({ needsReview: false })

@@ -159,7 +159,7 @@ export class L2NodesService {
       .select({ count: count() })
       .from(l3NodesTable)
       .where(eq(l3NodesTable.l2NodeId, node.id));
-      
+
     return {
       ...node,
       l3Count: l3Row.count,
@@ -174,7 +174,7 @@ export class L2NodesService {
       .set(rest as any)
       .where(eq(l2NodesTable.id, id))
       .returning();
-      
+
     if (node && l1TagIds !== undefined) {
       await db.delete(l2NodeL1TagsTable).where(eq(l2NodeL1TagsTable.l2NodeId, id));
       if (l1TagIds.length > 0) {
@@ -183,7 +183,7 @@ export class L2NodesService {
           .values(l1TagIds.map((tagId) => ({ l2NodeId: id, l1TagId: tagId })));
       }
     }
-    
+
     if (!node) return null;
 
     const tags = await db
@@ -211,7 +211,10 @@ export class L2NodesService {
       .select()
       .from(nodeLinksTable)
       .where(eq(nodeLinksTable.sourceNodeId, id));
-    const inLinks = await db.select().from(nodeLinksTable).where(eq(nodeLinksTable.targetNodeId, id));
+    const inLinks = await db
+      .select()
+      .from(nodeLinksTable)
+      .where(eq(nodeLinksTable.targetNodeId, id));
     const all = [...outLinks, ...inLinks];
     return await Promise.all(
       all.map(async (link) => {
@@ -249,7 +252,7 @@ export class L2NodesService {
       .select({ name: l2NodesTable.name })
       .from(l2NodesTable)
       .where(eq(l2NodesTable.id, targetNodeId));
-      
+
     return {
       ...link,
       sourceNodeName: src?.name ?? null,

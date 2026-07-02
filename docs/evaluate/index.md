@@ -11,8 +11,8 @@ To elevate Docuvia to an 8-9/10 score, the monolithic evaluation has been atomiz
 
 | ID     | Domain                                                | Target Component                   | Description                                                                                                                  |
 | :----- | :---------------------------------------------------- | :--------------------------------- | :--------------------------------------------------------------------------------------------------------------------------- |
-| **01** | [Local MCP](#)           | `@workspace/cli`                   | Extract MCP tools from Express. Implement `stdio` server for 0-config Cursor/Claude integration.                             |
-| **02** | [Agent Config](#)   | `@workspace/cli` (`init-agent`)    | Automate injection of the local `stdio` MCP server into `claude_desktop_config.json` and `.cursor/mcp.json`.                 |
+| **01** | [Local MCP](#)                                        | `@workspace/cli`                   | Extract MCP tools from Express. Implement `stdio` server for 0-config Cursor/Claude integration.                             |
+| **02** | [Agent Config](#)                                     | `@workspace/cli` (`init-agent`)    | Automate injection of the local `stdio` MCP server into `claude_desktop_config.json` and `.cursor/mcp.json`.                 |
 | **03** | [Data Pipeline](./03-local-ast-extraction-sync.md)    | `@workspace/cli` (`sync`)          | Connect `sync local` to `@workspace/ast-core` to actually extract AST deltas from commits.                                   |
 | **04** | [Local Storage](./04-local-sqlite-write-pipeline.md)  | `@workspace/cli` (`sync`)          | Implement the `INSERT INTO` logic to persist extracted L2/L3 AST nodes into `.docuvia/local.db`.                             |
 | **05** | [Parsing Perf](./05-native-parsing-fallback.md)       | `@workspace/ast-core`              | Introduce Native C++ (`tree-sitter`) bindings with a graceful fallback to WASM to eliminate local OOMs and CPU spikes.       |

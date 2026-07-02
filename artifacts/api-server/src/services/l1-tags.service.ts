@@ -30,11 +30,7 @@ export class L1TagsService {
   }
 
   async updateTag(id: number, body: z.infer<typeof UpdateL1TagBody>) {
-    const [tag] = await db
-      .update(l1TagsTable)
-      .set(body)
-      .where(eq(l1TagsTable.id, id))
-      .returning();
+    const [tag] = await db.update(l1TagsTable).set(body).where(eq(l1TagsTable.id, id)).returning();
     return tag;
   }
 

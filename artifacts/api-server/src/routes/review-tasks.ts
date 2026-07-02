@@ -22,11 +22,13 @@ function getRequestUserId(req: Request): number | null {
 
 router.get("/review-tasks", async (req, res) => {
   const tasks = await reviewTasksService.getAllTasks();
-  res.json(tasks.map((task) => ({
-    ...task,
-    createdAt: task.createdAt.toISOString(),
-    resolvedAt: task.resolvedAt?.toISOString() ?? null,
-  })));
+  res.json(
+    tasks.map((task) => ({
+      ...task,
+      createdAt: task.createdAt.toISOString(),
+      resolvedAt: task.resolvedAt?.toISOString() ?? null,
+    }))
+  );
 });
 
 router.get("/review-tasks/stats", async (req, res) => {

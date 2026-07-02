@@ -98,7 +98,7 @@
 
 ---
 
- Verification Reporting Protocol
+Verification Reporting Protocol
 
 When an AI Agent (e.g., `Task Verifier`, `QA`, or `Explore` subagent) executes a validation task on the codebase based on this checklist, the Agent **MUST** document its findings using the following protocol. This ensures a closed loop between code reality, documentation, and the issue tracker.
 

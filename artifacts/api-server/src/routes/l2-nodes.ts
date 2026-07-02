@@ -64,10 +64,12 @@ router.delete("/l2-nodes/:id", async (req, res) => {
 router.get("/l2-nodes/:id/links", async (req, res) => {
   const id = Number(req.params.id);
   const links = await l2NodesService.getLinks(id);
-  res.json(links.map(link => ({
-    ...link,
-    createdAt: link.createdAt.toISOString()
-  })));
+  res.json(
+    links.map((link) => ({
+      ...link,
+      createdAt: link.createdAt.toISOString(),
+    }))
+  );
 });
 
 router.post("/l2-nodes/:id/links", async (req, res) => {

@@ -23,7 +23,7 @@ flowchart TD
 ## 1. External Document Anchoring (The Floating Knowledge Catcher)
 
 - **Implementation Schema**: [`documentsTable` in documents.ts](../../../lib/db/src/schema/documents.ts) with `status: "unaffiliated"`.
-- When a 50-page PDF is uploaded, it is initially `unaffiliated`. _(Note: While unstructured PDFs require LLM scanning, structured files now utilize the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) and [Progressive Enrichment](ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md) to extract semantic anchors deterministically without LLM tokens)._ The system scans the document to find semantic anchors in existing L2 nodes (see [Knowledge Abstraction Strategy](ADR-005-knowledge-abstraction-strategy.md)) or recent commits. Once approved via [`review_tasks.ts`](../../../artifacts/api-server/src/routes/review_tasks.ts) (Drizzle schema: [`review_tasks.ts`](../../../lib/db/src/schema/review_tasks.ts)), it is firmly anchored in the space-time of the Git graph (see [Git-Isomorphic Graph](ADR-004-git-isomorphic-graph.md)), preventing anachronistic hallucinations.
+- When a 50-page PDF is uploaded, it is initially `unaffiliated`. _(Note: While unstructured PDFs require LLM scanning, structured files now utilize the [AST Microkernel](ADR-020-unified-isomorphic-ast-microkernel.md) and [Progressive Enrichment](ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md) to extract semantic anchors deterministically without LLM tokens)._ The system scans the document to find semantic anchors in existing L2 nodes (see [Knowledge Abstraction Strategy](ADR-005-knowledge-abstraction-strategy.md)) or recent commits. Once approved via [`review-tasks.ts`](../../../artifacts/api-server/src/routes/review-tasks.ts) (Drizzle schema: [`review-tasks.ts`](../../../lib/db/src/schema/review-tasks.ts)), it is firmly anchored in the space-time of the Git graph (see [Git-Isomorphic Graph](ADR-004-git-isomorphic-graph.md)), preventing anachronistic hallucinations.
 
 ## 2. The 4-Way Strategies
 
@@ -64,5 +64,5 @@ sequenceDiagram
 
 To ensure the semantic routing fast-path functions under load and doesn't leak tokens, the CI pipeline MUST assert the following:
 
-- **Fast-Path Assertion:** Integration tests in `artifacts/api-server/test/integration/` MUST seed the database using factories, trigger an exact-match query, and use `MSW` to strictly assert that `0` external HTTP requests are made to the AI server.
+- **Fast-Path Assertion:** Integration tests in `../../artifacts/api-server/test/integration/` MUST seed the database using factories, trigger an exact-match query, and use `MSW` to strictly assert that `0` external HTTP requests are made to the AI server.
 - **Fallback Assertion:** Queries below the similarity threshold MUST assert that exactly `1` request is intercepted by MSW, validating the payload shape and prompt template.

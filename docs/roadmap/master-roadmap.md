@@ -144,7 +144,7 @@ Align the Knowledge Graph directly with the underlying Git commit history (using
 
 - `lib/core/src/services/orphan-branch-writer.ts`
 - `lib/db/src/schema/correction-examples.ts`
-- `lib/db/src/schema/prompt_templates.ts`
+- `lib/db/src/schema/prompt-templates.ts`
 
 ### 🏗️ System Architecture
 
@@ -287,12 +287,12 @@ sequenceDiagram
 | Tree-sitter Query API + Scope Map + Method/Function classification                      | ✅ Done | Phase 2 |
 | Knowledge Graph Ingestion (File→L2, Class/Function→L3, call/import→node_links)          | ✅ Done | Phase 3 |
 | Poison Pill Quarantine (500ms timeout + AbortController)                                | ✅ Done | Phase 4 |
-| **Batch Write Optimization** — Streaming chunked batch INSERTs for large `.jsonl` files | 🔲 TODO | Phase 4 |
+| **Batch Write Optimization** — Streaming chunked batch INSERTs for large `.jsonl` files | ✅ Done | Phase 4 |
 | **Incremental Fast-Path** — `git diff-tree -M` for O(1) delta detection                 | 🔲 TODO | Phase 4 |
-| **Cross-Language Edges** — API contracts, framework-specific AST tracking               | 🔲 TODO | Phase 4 |
+| **Cross-Language Edges** — API contracts, framework-specific AST tracking               | ✅ Done | Phase 4 |
 | **Zero-Server Deep Traversal** — Pure local SQLite graph queries                        | ✅ Done | Phase 5 |
 | **Local Context Compression** — Token reduction pipeline before LLM                     | ✅ Done | Phase 5 |
-| **Sub-second Incremental Watch** — Fast-path AST updates on file save                   | 🔲 TODO | Phase 5 |
+| **Sub-second Incremental Watch** — Fast-path AST updates on file save                   | ✅ Done | Phase 5 |
 | **Git Hook Integration (`post-commit`)** — Non-intrusive local AST extraction           | ✅ Done | Phase 5 |
 | **Agent AI Hook (`init-agent`)** — Broad platform support (Claude/Cursor/Copilot)       | ✅ Done | Phase 5 |
 

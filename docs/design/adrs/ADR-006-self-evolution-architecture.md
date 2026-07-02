@@ -28,7 +28,7 @@ flowchart TD
 
 ## 1. Capturing the Lesson (Human Overrides)
 
-- **Implementation Route**: User edits trigger [`review_tasks.ts`](../../../artifacts/api-server/src/routes/review_tasks.ts) (specifically resolution paths), logging the original and corrected content into the [`correction_examplesTable` in correction_examples.ts](../../../lib/db/src/schema/correction_examples.ts).
+- **Implementation Route**: User edits trigger [`review-tasks.ts`](../../../artifacts/api-server/src/routes/review-tasks.ts) (specifically resolution paths), logging the original and corrected content into the [`correction_examplesTable` in correction-examples.ts](../../../lib/db/src/schema/correction-examples.ts).
 
 ## 2. Server-Side Distillation
 

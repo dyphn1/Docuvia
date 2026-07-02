@@ -160,21 +160,21 @@ All schema files reside in [`lib/db/src/schema/`](../../lib/db/src/schema/):
 | [`documents.ts`](../../lib/db/src/schema/documents.ts)                       | Uploaded documents                                                                            |
 | [`l1-tags.ts`](../../lib/db/src/schema/l1-tags.ts)                           | Global classification tags                                                                    |
 | [`l2-nodes.ts`](../../lib/db/src/schema/l2-nodes.ts)                         | Module/package/component nodes                                                                |
-| [`l2_node_l1-tags.ts`](../../lib/db/src/schema/l2_node_l1-tags.ts)           | Junction table mapping L2 nodes to L1 tags                                                    |
+| [`l2-node-l1-tags.ts`](../../lib/db/src/schema/l2-node-l1-tags.ts)           | Junction table mapping L2 nodes to L1 tags                                                    |
 | [`l3-nodes.ts`](../../lib/db/src/schema/l3-nodes.ts)                         | Implementation decision/rule/rationale records (with embedding JSONB)                         |
 | [`node-links.ts`](../../lib/db/src/schema/node-links.ts)                     | Directed relationships between L2/L3 nodes                                                    |
 | [`review-tasks.ts`](../../lib/db/src/schema/review-tasks.ts)                 | Human-in-the-loop review queue                                                                |
 | [`correction-examples.ts`](../../lib/db/src/schema/correction-examples.ts)   | Human-approved corrections ([few-shot feedback](adrs/ADR-006-self-evolution-architecture.md)) |
-| [`prompt_templates.ts`](../../lib/db/src/schema/prompt_templates.ts)         | Per-project overridable LLM prompts                                                           |
+| [`prompt-templates.ts`](../../lib/db/src/schema/prompt-templates.ts)         | Per-project overridable LLM prompts                                                           |
 | [`subscriptions.ts`](../../lib/db/src/schema/subscriptions.ts)               | Cross-team watch subscriptions                                                                |
 | [`notifications.ts`](../../lib/db/src/schema/notifications.ts)               | Event feed for subscribed teams                                                               |
-| [`pull_requests.ts`](../../lib/db/src/schema/pull_requests.ts)               | GitHub PR analysis records                                                                    |
-| [`project_integrations.ts`](../../lib/db/src/schema/project_integrations.ts) | Slack/Teams/GitHub integration config per project                                             |
-| [`llm_configs.ts`](../../lib/db/src/schema/llm_configs.ts)                   | LLM endpoint configuration per project or globally                                            |
-| [`activity_log.ts`](../../lib/db/src/schema/activity_log.ts)                 | Audit trail for all significant system events                                                 |
-| [`job_queue.ts`](../../lib/db/src/schema/job_queue.ts)                       | Async job queue for [metabolism mechanism](adrs/ADR-008-asynchronous-metabolism.md)           |
-| [`error_reports.ts`](../../lib/db/src/schema/error_reports.ts)               | Dead Letter Queue for failed jobs                                                             |
-| [`commit_l2_links.ts`](../../lib/db/src/schema/commit_l2_links.ts)           | Junction table linking commits to L2 nodes                                                    |
+| [`pull-requests.ts`](../../lib/db/src/schema/pull-requests.ts)               | GitHub PR analysis records                                                                    |
+| [`project-integrations.ts`](../../lib/db/src/schema/project-integrations.ts) | Slack/Teams/GitHub integration config per project                                             |
+| [`llm-configs.ts`](../../lib/db/src/schema/llm-configs.ts)                   | LLM endpoint configuration per project or globally                                            |
+| [`activity-log.ts`](../../lib/db/src/schema/activity-log.ts)                 | Audit trail for all significant system events                                                 |
+| [`job-queue.ts`](../../lib/db/src/schema/job-queue.ts)                       | Async job queue for [metabolism mechanism](adrs/ADR-008-asynchronous-metabolism.md)           |
+| [`error-reports.ts`](../../lib/db/src/schema/error-reports.ts)               | Dead Letter Queue for failed jobs                                                             |
+| [`commit-l2-links.ts`](../../lib/db/src/schema/commit-l2-links.ts)           | Junction table linking commits to L2 nodes                                                    |
 
 ---
 

@@ -9,6 +9,7 @@
 - [x] 5. Missing Database Transaction Wrapper: Refactored `generate.ts` to wrap generation and insertion inside a `db.transaction()` block.
 - [x] 6. Security/Crash Risk: Modified `mcp.ts` to utilize `Buffer.byteLength()` for timing-safe equality checks.
 - [x] 7. Security/Information Leak Risk: Updated `logger.ts` redaction paths with wildcard depths for sensitive fields.
+- [x] 8. Architecture Refactor: Refactored `artifacts/api-server/src/routes/*.ts` to extract direct Drizzle ORM operations into a Service/Repository layer.
 
 ## Medium & Low Priority Tasks
 

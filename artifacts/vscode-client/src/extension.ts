@@ -11,6 +11,7 @@ import { registerCommands } from "./commands/index.js";
 import { registerProviders } from "./providers/index.js";
 import { KnowledgeGraphTreeProvider } from "./knowledge-graph-tree-provider.js";
 import { TaskQueueTreeProvider } from "./task-queue-tree-provider.js";
+import { AstWatcher } from "./indexer/ast-watcher.js";
 
 let outputChannel: vscode.OutputChannel;
 
@@ -45,6 +46,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Load knowledge graph and start watcher
   await store.load();
   store.startWatcher(context);
+
+  // Start fast-path AST watcher
+  const astWatcher = new AstWatcher(outputChannel);
+  context.subscriptions.push(astWatcher);
 
   // ─── Providers and Task Runner ────────────────────────────────────────────
   const kgProvider = new KnowledgeGraphTreeProvider(store);

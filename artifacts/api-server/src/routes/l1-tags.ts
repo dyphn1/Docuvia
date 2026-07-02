@@ -1,7 +1,5 @@
 import { Router } from "express";
-import { db } from "@workspace/db";
-import { l1TagsTable, activityLogTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { l1TagsService } from "../services/l1-tags.service.js";
 import {
   CreateL1TagBody,
   UpdateL1TagParams,
@@ -12,42 +10,27 @@ import {
 const router = Router();
 
 router.get("/l1-tags", async (req, res) => {
-  const tags = await db
-    .select()
-    .from(l1TagsTable)
-    .orderBy(sql`${l1TagsTable.usageCount} desc`);
+  const tags = await l1TagsService.getAllTags();
   res.json(tags.map((t) => ({ ...t, createdAt: t.createdAt.toISOString() })));
 });
 
 router.post("/l1-tags", async (req, res) => {
   const body = CreateL1TagBody.parse(req.body);
-  const [tag] = await db
-    .insert(l1TagsTable)
-    .values({
-      name: body.name,
-      category: body.category,
-      description: body.description ?? null,
-      isAnchored: body.isAnchored ?? false,
-    })
-    .returning();
-  await db.insert(activityLogTable).values({
-    type: "tag_added",
-    description: `L1 tag "${tag.name}" added to pool`,
-  });
+  const tag = await l1TagsService.createTag(body);
   res.status(201).json({ ...tag, createdAt: tag.createdAt.toISOString() });
 });
 
 router.patch("/l1-tags/:id", async (req, res) => {
   const { id } = UpdateL1TagParams.parse({ id: Number(req.params.id) });
   const body = UpdateL1TagBody.parse(req.body);
-  const [tag] = await db.update(l1TagsTable).set(body).where(eq(l1TagsTable.id, id)).returning();
+  const tag = await l1TagsService.updateTag(id, body);
   if (!tag) return res.status(404).json({ error: "Not found" });
   return res.json({ ...tag, createdAt: tag.createdAt.toISOString() });
 });
 
 router.delete("/l1-tags/:id", async (req, res) => {
   const { id } = DeleteL1TagParams.parse({ id: Number(req.params.id) });
-  await db.delete(l1TagsTable).where(eq(l1TagsTable.id, id));
+  await l1TagsService.deleteTag(id);
   res.status(204).send();
 });
 

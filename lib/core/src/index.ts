@@ -58,3 +58,5 @@ export * from "./services/ast/ast-change-detector.js";
 export * from "./services/ast/ast-l2-persistence.js";
 export * from "./services/ast/ast-l3-persistence.js";
 export * from "./services/ast/ast-edge-persistence.js";
+export * from "./services/ast-processing.service.js";
+export * from "./services/graph-database.repository.js";

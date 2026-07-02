@@ -117,7 +117,7 @@ sequenceDiagram
 
 A reviewer approves an AI-generated L3 decision, creating a [correction example](adrs/ADR-006-self-evolution-architecture.md) for future pipeline runs.
 
-- **Implementation Route**: [`artifacts/api-server/src/routes/review_tasks.ts`](../../artifacts/api-server/src/routes/review_tasks.ts) (specifically `POST /review_tasks/:id/resolve`)
+- **Implementation Route**: [`artifacts/api-server/src/routes/review-tasks.ts`](../../artifacts/api-server/src/routes/review-tasks.ts) (specifically `POST /review_tasks/:id/resolve`)
 
 ```mermaid
 sequenceDiagram
@@ -148,7 +148,7 @@ A developer triggers extraction from VS Code, which sends a task to the api-serv
 See [docs/design/vscode-client/command-palette/run-extraction.md](vscode-client/command-palette/run-extraction.md) for the detailed command flow.
 
 - **VS Code Task Runner**: [`artifacts/vscode-client/src/task-runner.ts`](../../artifacts/vscode-client/src/task-runner.ts) (`runExtraction()`)
-- **Implementation Route**: [`artifacts/api-server/src/routes/extensions_vscode.ts`](../../artifacts/api-server/src/routes/extensions_vscode.ts) (`POST /extensions/vscode/extract`)
+- **Implementation Route**: [`artifacts/api-server/src/routes/extensions-vscode.ts`](../../artifacts/api-server/src/routes/extensions-vscode.ts) (`POST /extensions/vscode/extract`)
 
 ```mermaid
 sequenceDiagram
@@ -177,7 +177,7 @@ sequenceDiagram
 
 A developer opens a PR. Docuvia receives the webhook, looks up affected L2/L3 nodes, and comments on the PR with relevant knowledge graph context.
 
-- **Implementation Route**: [`artifacts/api-server/src/routes/github_webhooks.ts`](../../artifacts/api-server/src/routes/github_webhooks.ts)
+- **Implementation Route**: [`artifacts/api-server/src/routes/github-webhooks.ts`](../../artifacts/api-server/src/routes/github-webhooks.ts)
 - **GitHub Client Wrapper**: [`lib/core/src/services/github-client.ts`](../../lib/core/src/services/github-client.ts)
 
 ```mermaid
@@ -303,7 +303,7 @@ sequenceDiagram
 
 When an AI Agent calls the `docuvia_impact` MCP tool, Docuvia uses a **Hybrid Approach** to provide fast and accurate analysis. It queries the fast `local.db` (SQLite) AST index first for O(1) lookups. If the confidence is low or deep verification (exact execution flows and taint analysis) is explicitly requested, it escalates to an on-demand background LSP client (`LspEnrichmentService`).
 
-- **Query Routing**: [`artifacts/api-server/src/services/query-service.ts`](../../artifacts/api-server/src/services/query-service.ts) (`getImpact()` with `escalateToLsp` flag)
+- **Query Routing**: [`artifacts/api-server/src/services/query-service.ts`](../../lib/core/src/services/query-service.ts) (`getImpact()` with `escalateToLsp` flag)
 - **LSP Integration**: [`lib/core/src/services/lsp-enrichment-service.ts`](../../lib/core/src/services/lsp-enrichment-service.ts)
 
 ```mermaid

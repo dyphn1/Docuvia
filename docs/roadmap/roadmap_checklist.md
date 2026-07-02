@@ -26,10 +26,6 @@
 
 || Item | Status | Evidence / Verification Target ||
 || :----------------------------------------------------------------- | :------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ||
-|| Git ingestion (commit + diff) | ✅ Done | [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts) ||
-|| [Document ingestion](../design/adrs/ADR-012-document-misc-pool.md) | ✅ Done | [`document-parser.ts`](../../lib/core/src/services/document-parser.ts) (Fixed: removed application/octet-stream MIME bypass; added Bearer token auth to upload route) ||
-|| SVN integration | WARN | [ingest.ts](../../artifacts/api-server/src/routes/ingest.ts), [lib/core/src/services/ingestion-pipeline.ts](../../lib/core/src/services/ingestion-pipeline.ts) (see 0701_phase-2_svn-integration.md) ||
-|| Build artifact parser | ✅ Done | [`documents.ts`](../../artifacts/api-server/src/services/document.service.ts), [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts), [`document-upload.test.ts`](artifacts/api-server/test/integration/document-upload.test.ts), [`build-artifact-upload.test.ts`](artifacts/api-server/test/integration/build-artifact-upload.test.ts) ||
 
 ## [Phase 3 | Knowledge Construction Layer](master-roadmap.md#phase-3-swarm-intelligence--git-isomorphic-sync)
 

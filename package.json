@@ -13,13 +13,16 @@
     "test": "node scripts/ensure-db.mjs && pnpm --filter @workspace/api-server run test",
     "test:coverage": "node scripts/ensure-db.mjs && pnpm --filter @workspace/api-server run test:coverage",
     "test:ci": "docker compose -f docker-compose.ci.yml up --build --abort-on-container-exit --exit-code-from ci-runner",
-    "test:act": "docker compose -f docker-compose.act.yml run --rm act-cli act"
+    "test:act": "docker compose -f docker-compose.act.yml run --rm act-cli act",
+    "prepare": "husky"
   },
   "private": true,
   "devDependencies": {
     "@types/supertest": "^7.2.0",
     "@vitest/coverage-v8": "^1.0.0",
+    "husky": "^9.1.7",
     "js-yaml": "^4.1.1",
+    "lint-staged": "^17.0.8",
     "msw": "^2.14.6",
     "playwright": "^1.60.0",
     "prettier": "^3.8.1",
@@ -29,5 +32,8 @@
   "dependencies": {
     "pg": "^8.20.0",
     "tsx": "^4.22.4"
+  },
+  "lint-staged": {
+    "*": "prettier --write --ignore-unknown"
   }
 }

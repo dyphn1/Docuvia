@@ -116,6 +116,48 @@ export class GraphDatabaseRepository implements IGraphDatabaseRepository {
           }
         }
 
+        if (result.data.implements) {
+          for (const impl of result.data.implements) {
+            const resolved = resolver.resolveCall(result.file, impl.targetInterface);
+            if (resolved) {
+              const targetPathJson = JSON.stringify([resolved.targetFile]);
+              let targetFileId = fileIdMap.get(resolved.targetFile);
+
+              if (!targetFileId) {
+                const row = db
+                  .prepare("SELECT id FROM l2_nodes WHERE type = 'file' AND source_paths = ?")
+                  .get(targetPathJson) as { id: number } | undefined;
+                if (row) targetFileId = row.id;
+              }
+
+              if (targetFileId && targetFileId !== sourceFileId) {
+                insertLink.run(sourceFileId, targetFileId, "implements");
+              }
+            }
+          }
+        }
+
+        if (result.data.extends) {
+          for (const ext of result.data.extends) {
+            const resolved = resolver.resolveCall(result.file, ext.targetClass);
+            if (resolved) {
+              const targetPathJson = JSON.stringify([resolved.targetFile]);
+              let targetFileId = fileIdMap.get(resolved.targetFile);
+
+              if (!targetFileId) {
+                const row = db
+                  .prepare("SELECT id FROM l2_nodes WHERE type = 'file' AND source_paths = ?")
+                  .get(targetPathJson) as { id: number } | undefined;
+                if (row) targetFileId = row.id;
+              }
+
+              if (targetFileId && targetFileId !== sourceFileId) {
+                insertLink.run(sourceFileId, targetFileId, "extends");
+              }
+            }
+          }
+        }
+
         insertHash.run(result.file, result.hash);
         parsedCount++;
       }

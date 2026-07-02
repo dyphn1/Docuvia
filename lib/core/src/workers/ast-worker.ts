@@ -32,6 +32,8 @@ export interface AstParseResponse {
     functions: Array<{ name: string; startLine: number; endLine: number }>;
     classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }>;
     calls: Array<{ sourceFunction: string; targetFunction: string }>;
+    implements?: Array<{ sourceClass: string; targetInterface: string }>;
+    extends?: Array<{ sourceClass: string; targetClass: string }>;
     decisions?: string[];
   };
 }
@@ -155,12 +157,14 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     const classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }> =
       [];
     const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
+    const implementsList: Array<{ sourceClass: string; targetInterface: string }> = [];
+    const extendsList: Array<{ sourceClass: string; targetClass: string }> = [];
 
     if (tree && languageLoaded && langInstance) {
       try {
         let qStr = ``;
         if (request.language === "typescript") {
-          qStr = `(import_statement (import_clause (named_imports (import_specifier name: (identifier) @import.name))) source: (string (string_fragment) @import.source))\n(import_statement (import_clause (identifier) @import.name) source: (string (string_fragment) @import.source))\n(export_statement (export_clause (export_specifier name: (identifier) @export.name)))\n(export_statement declaration: (function_declaration name: (identifier) @export.name))\n(export_statement declaration: (class_declaration name: (identifier) @export.name))\n(export_statement declaration: (lexical_declaration (variable_declarator name: (identifier) @export.name)))\n(function_declaration name: (identifier) @function)\n(method_definition name: (property_identifier) @method)\n(class_declaration name: (identifier) @class)\n(call_expression function: (identifier) @call)`;
+          qStr = `(import_statement (import_clause (named_imports (import_specifier name: (identifier) @import.name))) source: (string (string_fragment) @import.source))\n(import_statement (import_clause (identifier) @import.name) source: (string (string_fragment) @import.source))\n(export_statement (export_clause (export_specifier name: (identifier) @export.name)))\n(export_statement declaration: (function_declaration name: (identifier) @export.name))\n(export_statement declaration: (class_declaration name: (identifier) @export.name))\n(export_statement declaration: (lexical_declaration (variable_declarator name: (identifier) @export.name)))\n(function_declaration name: (identifier) @function)\n(method_definition name: (property_identifier) @method)\n(class_declaration name: (identifier) @class)\n(class_declaration name: (identifier) @class.name (class_heritage (implements_clause (_) @implements)))\n(class_declaration name: (identifier) @class.name (class_heritage (extends_clause value: (_) @extends)))\n(call_expression function: (identifier) @call)`;
         } else {
           qStr = `(import_statement) @import\n(function_declaration) @function\n(method_definition) @method\n(class_declaration) @class`;
         }
@@ -169,8 +173,25 @@ parentPort?.on("message", async (request: AstParseRequest) => {
 
         const capturedNodes = new Set();
         for (const match of matches) {
+          let className = "";
           for (const capture of match.captures) {
             const node = capture.node;
+
+            if (capture.name === "class.name") {
+              className = node.text;
+              continue;
+            }
+
+            if (capture.name === "implements") {
+              implementsList.push({ sourceClass: className, targetInterface: node.text });
+              continue;
+            }
+
+            if (capture.name === "extends") {
+              extendsList.push({ sourceClass: className, targetClass: node.text });
+              continue;
+            }
+
             if (capturedNodes.has(node.id)) continue;
             capturedNodes.add(node.id);
 
@@ -226,6 +247,8 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       functions,
       classes,
       calls,
+      implements: implementsList,
+      extends: extendsList,
       decisions,
     };
 

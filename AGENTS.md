@@ -137,7 +137,7 @@ For complex multi-step work, dispatch to the appropriate agent rather than doing
 
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Docuvia** (4982 symbols, 10648 relationships, 207 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Docuvia** (4959 symbols, 10747 relationships, 213 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

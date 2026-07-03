@@ -3,7 +3,8 @@
   "compilerOptions": {},
   "files": [],
   "references": [
-    { "path": "./artifacts/ast-core" },
+    { "path": "./lib/test-utils" },
+    { "path": "./lib/ast-core" },
     { "path": "./lib/core" },
     { "path": "./lib/db" },
     { "path": "./lib/api-client-react" },

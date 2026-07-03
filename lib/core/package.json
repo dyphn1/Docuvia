@@ -9,6 +9,9 @@
       "default": "./src/index.ts"
     }
   },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "main": "./src/index.ts",
   "types": "./dist/index.d.ts",
   "scripts": {

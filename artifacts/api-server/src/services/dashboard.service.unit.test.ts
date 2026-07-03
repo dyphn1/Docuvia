@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { DashboardService } from "./dashboard.service.js";
 // @ts-ignore
-import { withRollback } from "../../test/support/db.js";
+import { withRollback } from "@workspace/test-utils";
 // @ts-ignore
 import {
   ProjectFactory,
@@ -10,7 +10,7 @@ import {
   L3NodeFactory,
   ReviewTaskFactory,
   ActivityLogFactory,
-} from "../../test/support/factories.js";
+} from "@workspace/test-utils";
 
 describe("DashboardService", () => {
   let service: DashboardService;

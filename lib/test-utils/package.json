@@ -1,0 +1,13 @@
+{
+  "name": "@workspace/test-utils",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "@faker-js/faker": "^8.4.0"
+  }
+}

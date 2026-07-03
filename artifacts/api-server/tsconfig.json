@@ -7,6 +7,10 @@
   "include": ["src"],
   "exclude": ["src/examples/fixtures"],
   "references": [
+    { "path": "../../lib/test-utils" },
+    {
+      "path": "../../lib/ast-core"
+    },
     {
       "path": "../../lib/db"
     },

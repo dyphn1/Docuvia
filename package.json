@@ -30,6 +30,7 @@
     "typescript": "~5.9.2"
   },
   "dependencies": {
+    "@faker-js/faker": "8.4.0",
     "pg": "^8.20.0",
     "tsx": "^4.22.4"
   },

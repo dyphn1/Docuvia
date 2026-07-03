@@ -2,6 +2,7 @@
 
 ## Hexagonal Architecture & Core Domain
 
+- **Core-Driven Development (`ast-core`)**: The AST Microkernel (`ast-core`) is an isomorphic foundational capability and must reside in `lib/ast-core` as a shared library, not as a standalone artifact in `artifacts/`. This prevents domain logic coupling and ensures presentation layers (API, CLI, VS Code) can selectively compose the core parser engine without duplicating logic.
 - **Strict MVC via `lib/core`**: The `api-server` strictly adheres to MVC presentation layers. All business domain logic must be extracted and maintained in the shared `lib/core` module. Controllers and HTTP routes should only handle request/response formatting and immediately delegate execution to `lib/core`.
 - **Protocol-Oriented Service Decoupling**: For monolithic core services (e.g., `analyze-service.ts`), use constructor-based Dependency Injection and Protocol-Oriented Programming (POP). Define explicit interfaces for distinct operations (e.g., AST parsing, DB transactions, workspace scanning) to establish strict cognitive boundaries. This transition from class-based monoliths to interface-driven design drastically improves testability and maintainability.
 - **Shared Core API (`@workspace/core`)**: Adhere to Hexagonal Architecture (ADR-021) by treating `lib/core` as the single source of truth for all business logic (e.g., `InitService`, `QueryService`, `AnalyzeService`, `ExtractService`).

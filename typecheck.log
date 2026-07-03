@@ -1,0 +1,21 @@
+
+> workspace@0.0.0 typecheck D:\GitHub\Docuvia
+> pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --if-present run typecheck
+
+
+> workspace@0.0.0 typecheck:libs D:\GitHub\Docuvia
+> tsc --build
+
+Scope: 5 of 14 workspace projects
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/cli typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/kg-engine typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/mockup-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/cli typecheck: Done
+artifacts/vscode-client typecheck$ tsc --noEmit
+artifacts/api-server typecheck: src/services/dashboard.service.unit.test.ts(13,8): error TS2307: Cannot find module '@workspace/test-utils' or its corresponding type declarations.
+artifacts/api-server typecheck: Failed
+D:\GitHub\Docuvia\artifacts\api-server:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 typecheck: `tsc -p tsconfig.json --noEmit`
+Exit status 2
+ ELIFECYCLE  Command failed with exit code 2.

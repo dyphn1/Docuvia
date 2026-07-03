@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ProjectStatusService } from "./project-status.service.js";
 // @ts-ignore
-import { withRollback } from "../../test/support/db.js";
+import { withRollback } from "@workspace/test-utils";
 // @ts-ignore
-import { ProjectFactory, CommitFactory } from "../../test/support/factories.js";
+import { ProjectFactory, CommitFactory } from "@workspace/test-utils";
 import { db, commitsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 

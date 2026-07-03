@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { DocumentService } from "./document.service.js";
 // @ts-ignore
-import { withRollback } from "../../test/support/db.js";
+import { withRollback } from "@workspace/test-utils";
 // @ts-ignore
-import { DocumentFactory, ProjectFactory } from "../../test/support/factories.js";
+import { DocumentFactory, ProjectFactory } from "@workspace/test-utils";
 import { db, documentsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import fs from "fs";

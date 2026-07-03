@@ -24,7 +24,9 @@ We will adopt the **Thin Transport / Fat Orchestrator** paradigm (inspired by He
    - Executes raw HTTP requests (fetch) and handles Server-Sent Events (SSE) natively, completely bypassing bulky vendor SDKs.
    - Manages connection timeouts, `AbortController`, Rate Limiting, and Exponential Backoff centrally.
    - Executes the unified Tool-Calling loop and persists token telemetry via Drizzle ORM.
-3. **Package Refactoring**: The existing `integrations-openai-ai-server` will be generalized into a `@workspace/ai-providers` package containing concrete transports (`OpenAiTransport`, `AnthropicTransport`, `GeminiTransport`).
+3. **Centralized Library (`@workspace/llm-orchestrator`)**: To prevent LLM execution logic, HTTP fetching, and token tracking from scattering across the codebase (e.g., in `api-server`, `cli`, or `kg-engine`), we will replace `integrations-openai-ai-server` with a strictly bounded, single-purpose library package.
+   - This library acts as the sole gatekeeper for all AI interactions, encapsulating both the `LlmOrchestrator` and all concrete `ProviderTransport` classes (`OpenAiTransport`, `AnthropicTransport`, `GeminiTransport`).
+   - Consuming applications simply import this library and call `Orchestrator.execute()`. They will have zero knowledge of HTTP headers, SSE, or vendor specifics.
 
 ## Consequences
 

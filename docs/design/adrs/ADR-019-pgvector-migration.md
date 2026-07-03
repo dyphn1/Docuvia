@@ -8,11 +8,13 @@ Supersedes: None
 
 ## Context
 
+_(Ref: [`docs/architecture/comparisons/02-agentic-rag.md`](../../architecture/comparisons/02-agentic-rag.md))_
+
 During the Phase 1 Foundation of Docuvia, vector search and RAG orchestration were implemented using a fallback in-memory cosine similarity calculation (`lib/core/src/services/intent-router.ts`). While functional for early prototyping, this approach requires loading the entire [L2 and L3 embedding](ADR-005-knowledge-abstraction-strategy.md) sets into Node.js heap memory on every query.
 
 As the graph scales past 100,000 nodes, the Node.js process faces significant OOM (Out Of Memory) risks, extreme latency spikes, and CPU bottlenecks. Furthermore, sorting and re-ranking entirely in memory prevents us from leveraging advanced [database-level filtering](ADR-014-sql-indexed-graph-and-database-as-ipc.md), spatial clustering, and efficient hybrid (text + vector) queries.
 
-To transition from prototype to production-grade architecture (Milestone 6), the [Agentic RAG router](ADR-007-agentic-rag-routing.md) requires a durable, scalable, database-native vector index.
+To transition from prototype to production-grade architecture (Milestone 6), the [Agentic RAG router](ADR-007-agentic-rag-routing.md) requires a durable, scalable, database-native vector index. Competitor analysis against GitHub Copilot Workspace highlighted our deficit in native vector search capabilities, making this migration critical.
 
 ## Decision
 

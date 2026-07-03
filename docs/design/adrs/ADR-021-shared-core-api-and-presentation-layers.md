@@ -8,7 +8,10 @@ Supersedes: None
 
 ## Context
 
+_(Ref: [`docs/architecture/comparisons/06-cli-core-api.md`](../../architecture/comparisons/06-cli-core-api.md), [`docs/architecture/comparisons/03-mcp-ai-interfaces.md`](../../architecture/comparisons/03-mcp-ai-interfaces.md))_
+
 As Docuvia evolves, it surfaces multiple entry points and user interfaces: a Command Line Interface (CLI), a Model Context Protocol (MCP) server for AI agents, a VS Code Extension (Client) for developer interaction, and an interactive Topology Webview.
+Competitor analysis revealed that maintaining parity across these layers is critical; otherwise, feature drift occurs.
 
 If business logic, indexing processes, and query routing are duplicated across these interfaces, the system will become extremely difficult to maintain. Feature parity will drift (e.g., the CLI might implement an AST parse correctly, but the MCP tool might use a different, outdated logic).
 

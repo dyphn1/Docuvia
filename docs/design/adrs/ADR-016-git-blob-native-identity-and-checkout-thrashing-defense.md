@@ -8,7 +8,10 @@ Supersedes: None
 
 ## Context
 
+_(Ref: [`docs/architecture/comparisons/05-data-pipeline-sync.md`](../../architecture/comparisons/05-data-pipeline-sync.md), [`docs/evaluate/12-file-hash-delta-detection.md`](../../evaluate/12-file-hash-delta-detection.md))_
+
 When dynamically analyzing code, AST tree-diffing algorithms are computationally expensive. Additionally, when a user switches branches (e.g., `git checkout`), thousands of files may change instantly, causing a File-Watcher to trigger massive, unnecessary graph rebuilds and generate useless [database tombstones](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) (thrashing).
+Competitor analysis showed that utilizing Git's native tree objects could provide near-instant incremental scanning and deep git integration to map diff hunks.
 
 ## Decision
 

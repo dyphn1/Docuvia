@@ -22,6 +22,7 @@ We will implement a **Hybrid Temp-File Blast Radius Overlay** backed by a **Head
    - **Uncommitted (Staged/Unstaged)**: Processed by the local WASM AST engine via `git diff` asynchronously, writing AST structural deltas to temp storage in the exact format expected by the final commit.
    - **Unsaved (Dirty Buffers)**: Managed by the **Headless LSP Client Manager**. It uses the lightweight RAM index to route `textDocument/didChange` events (reading payload from temp files) to standalone child LSP processes (e.g., `tsserver`, `pyright`).
 3. **Hybrid Traversal (Async Resolution)**: The query layer implements a `VirtualGraphContext`. It asynchronously merges the pre-computed dirty nodes (from temp storage) over the read-only `local.db` edges. This keeps the memory footprint flat while providing a real-time blast radius.
+4. **Shared Library Extraction (`@workspace/headless-lsp`)**: To satisfy Hexagonal Architecture boundaries (ADR-021), the entire VFS and Headless LSP logic must reside in a dedicated shared library (`lib/headless-lsp`), preventing artifact-to-artifact dependencies and allowing both the CLI and API server to seamlessly spawn standalone LSPs.
 
 ## Consequences
 

@@ -101,10 +101,20 @@ graph TD
 - [x] Extract specific language detection and dynamic parsing capabilities into a separate dynamic plugin folder (e.g., `lib/plugins-ast` or `lib/extractors`).
 - [x] Update `package.json` references and `tsconfig.json` paths accordingly.
 
-### Phase 2: Prevent `core` from becoming a God Package
+### Phase 2: Prevent `core` from becoming a God Package [COMPLETED]
 
-- Identify domain services currently in `artifacts/api-server/src/services/` that are not strictly HTTP-bound.
-- **Do not** dump everything into `lib/core`.
-- Define foundational interfaces, dependency injection tokens, and orchestrators (like `intent-router`) in `lib/core`.
-- Move specific business implementations (e.g., specific language ingestion, specific webhook handlers) into modular plugin packages like `lib/plugins-domain` or domain-specific packages.
-- Ensure `api-server`, `cli`, and `vscode-client` compose these plugins into the `core` orchestrator without duplicating logic.
+- [x] Identify domain services currently in `artifacts/api-server/src/services/` that are not strictly HTTP-bound.
+- [x] Define foundational interfaces, dependency injection tokens, and orchestrators (like `intent-router`) in `lib/core`.
+
+### Phase 3: Dynamic AST Plugins [COMPLETED]
+
+- [x] Split AST plugins into `lib/plugins-ast` representing dynamic implementations.
+
+### Phase 4: Domain Services Extraction [COMPLETED]
+
+- [x] Extract domain services into `lib/plugins-domain`.
+
+### Phase 5: Presentation Layer Assembly [COMPLETED]
+
+- [x] Refactor `api-server` to use a lightweight DI container.
+- [x] Ensure `api-server`, `cli`, and `vscode-client` compose these plugins into the `core` orchestrator without duplicating logic.

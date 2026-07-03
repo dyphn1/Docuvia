@@ -18,8 +18,8 @@ We will implement a **Hybrid Temp-File Blast Radius Overlay** backed by a **Head
 
 1. **Strict SSOT Database**: `local.db` never stores uncommitted or unsaved state. It remains an immutable projection of HEAD.
 2. **Layered Dirty State Interception (Temp File + RAM Index)**:
-   - **Payload Offloading**: Unsaved file contents and intermediate AST JSON structures are asynchronously flushed to temporary files on disk (e.g., `.docuvia/tmp/`). The Node.js process memory strictly holds lightweight indexes (URI -> Temp File Path, Version, Content Hash).
-   - **Uncommitted (Staged/Unstaged)**: Processed by the local WASM AST engine via `git diff` asynchronously, writing AST structural deltas to temp storage.
+   - **Payload Offloading (Branch-Isomorphic Format)**: Unsaved file contents and intermediate AST JSON structures are asynchronously flushed to temporary files on disk (e.g., `.docuvia/tmp/`). Crucially, **the format of these temporary files must perfectly match the Markdown/JSON schema used in the `docuvia-knowledge` orphan branch**. The Node.js process memory strictly holds lightweight indexes (URI -> Temp File Path, Version, Content Hash).
+   - **Uncommitted (Staged/Unstaged)**: Processed by the local WASM AST engine via `git diff` asynchronously, writing AST structural deltas to temp storage in the exact format expected by the final commit.
    - **Unsaved (Dirty Buffers)**: Managed by the **Headless LSP Client Manager**. It uses the lightweight RAM index to route `textDocument/didChange` events (reading payload from temp files) to standalone child LSP processes (e.g., `tsserver`, `pyright`).
 3. **Hybrid Traversal (Async Resolution)**: The query layer implements a `VirtualGraphContext`. It asynchronously merges the pre-computed dirty nodes (from temp storage) over the read-only `local.db` edges. This keeps the memory footprint flat while providing a real-time blast radius.
 
@@ -27,5 +27,6 @@ We will implement a **Hybrid Temp-File Blast Radius Overlay** backed by a **Head
 
 - **Positive**: Absolute data integrity for `local.db`. No corrupted phantom states or locks during active typing.
 - **Positive**: Flat memory footprint. By offloading bulky source text and AST structures to local temp files, the system avoids OOM crashes during long or rapid coding sessions.
+- **Positive**: Seamless Promotion (Zero-Cost Ingestion). Because temp files share the exact format as the orphan branch, committing the changes allows the ingestion pipeline to reuse or directly promote the temp files, bypassing expensive re-parsing.
 - **Positive**: MCP agents and CI pipelines gain full semantic resolution capabilities (via Headless LSP) natively.
 - **Negative**: High architectural complexity. The backend must orchestrate asynchronous temp file I/O, child process lifetimes, and garbage collect stale temp files.

@@ -1,15 +1,11 @@
 import { db } from "@workspace/db";
 import { l2NodesTable, l3NodesTable } from "@workspace/db";
 import { eq, isNull } from "drizzle-orm";
-import { generateEmbedding } from "@workspace/core";
-import { logger } from "@workspace/core";
-import {
-  runSieveModel,
-  getPromptTemplate,
-  getModel,
-  getLlmClientForProject,
-} from "@workspace/core";
-import { ProjectService } from "./project.service";
+import { generateEmbedding } from "../embedding.js";
+import { logger } from "../../utils/logger.js";
+import { runSieveModel } from "../noise-detection-service.js";
+import { getPromptTemplate, getModel } from "../prompt-service.js";
+import { getLlmClientForProject } from "../llm-provider.js";
 
 export class GenerateService {
   async extractSieveDecisions(

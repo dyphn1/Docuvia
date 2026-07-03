@@ -1,7 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
 import { EventEmitter } from "events";
 import { pathToFileURL } from "url";
-import { logger } from "@workspace/core";
+import { logger } from "../../utils/logger.js";
 
 export interface LspMessage {
   jsonrpc: string;

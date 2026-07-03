@@ -1,4 +1,4 @@
-import { logger } from "@workspace/core";
+import { logger } from "../../utils/logger.js";
 import { VirtualFileSystem } from "./VirtualFileSystem.js";
 import { LspClient } from "./LspClient.js";
 

@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
-import { logger } from "@workspace/core";
+import { logger } from "../../utils/logger.js";
 
 export interface VfsEntry {
   uri: string;

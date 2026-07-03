@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { ProjectService } from "../services/project.service";
-import { GenerateService } from "../services/generate.service";
 import { logger } from "@workspace/core";
+import { GenerateService } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
 import { z } from "zod";
 

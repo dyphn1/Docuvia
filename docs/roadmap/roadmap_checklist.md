@@ -43,7 +43,7 @@
 
 ||| Item | Status | Evidence / Verification Target ||
 ||| :-------------------------------------------------------------------------- | :------ | :--------------------------------------------------------------------------------------------------------------------- ||
-||| Git ingestion (commit + diff) | ⚠️ WARN | [`consolidated_status_report.md`](../reports/consolidated_status_report.md) ||
+||| Git ingestion (commit + diff) | ✅ Done | [`ingestion-pipeline.ts`](../../lib/core/src/services/ingestion-pipeline.ts) ||
 ||| Document ingestion | ✅ Done | [`document-parser.ts`](../../lib/core/src/services/document-parser.ts) ||
 ||| Build artifact parser | ✅ Done | [`documents.ts`](../../artifacts/api-server/src/services/document.service.ts) ||
 ||| Commit filter | ✅ Done | `scoreCommit()` ||
@@ -95,7 +95,7 @@
 ||| pgvector Migration | ✅ Done | [`intent-router.ts`](../../lib/core/src/services/intent-router.ts) ||
 ||| Concurrency Locks | ✅ Done | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) ||
 ||| Security Hardening | ✅ Done | [`export.ts`](../../artifacts/api-server/src/routes/export.ts) ||
-||| SVN integration | ⚠️ WARN | [`consolidated_status_report.md`](../reports/consolidated_status_report.md) ||
+||| SVN integration | ⏸️ Pending | [`consolidated_status_report.md`](../reports/consolidated_status_report.md) ||
 
 ---
 

@@ -15,14 +15,14 @@ The findings from `audit-report-2026-07-02.md` have been manually verified as **
 ## 3. Unresolved Issues & Architectual Drift (⚠️ WARN)
 The following issues represent discrepancies between the design specs/ADRs and the actual code implementation. **They remain unresolved in the codebase and require active fixing.**
 
-### 3.1. SVN & Git Integration: Diffs Misplaced & Omitted
-- **Status**: ⚠️ WARN (Unresolved)
+### 3.1. SVN Integration: Diffs Misplaced & Omitted
+- **Status**: ⏸️ Pending (Paused by User)
 - **Target Files**: `lib/core/src/services/ingestion-pipeline.ts`, `lib/core/src/services/svn-client.ts`
 - **Description of Failure**:
-  The `commits` table has a dedicated `diff` column, but it is completely unused.
+  The `commits` table has a dedicated `diff` column, but it is completely unused for SVN.
   1. `getSvnLog` in `svn-client.ts` does not fetch SVN diffs, causing a silent loss of diff information.
-  2. In `ingestion-pipeline.ts`, the code concatenates the available diff to the commit `message` (`const fullMessage = c.diff ? \`\${c.message}\n\n\${c.diff}\` : c.message;`) and truncates the entire block to 4000 characters. This misuses the `message` field and leaves the `diff` column empty. This flawed logic affects **both SVN and Git** ingestion pipelines.
-- **Required Action**: Modify `getSvnLog` to properly fetch and populate `c.diff`. Update `ingestion-pipeline.ts` to store `c.message.slice(0, 4000)` in the `message` column and `c.diff.slice(0, 4000)` exclusively in the `diff` column.
+  2. In `ingestion-pipeline.ts`, the code concatenates the available diff to the commit `message` (`const fullMessage = c.diff ? \`\${c.message}\n\n\${c.diff}\` : c.message;`) and truncates the entire block to 4000 characters. This misuses the `message` field and leaves the `diff` column empty for SVN. (Note: Git diff extraction was successfully fixed to utilize the `diff` column).
+- **Required Action**: Modify `getSvnLog` to properly fetch and populate `c.diff`. Update `ingestion-pipeline.ts` for SVN to store `c.message.slice(0, 4000)` in the `message` column and `c.diff.slice(0, 4000)` exclusively in the `diff` column.
 
 ### 3.2. Cross-Project Linking Not Implemented
 - **Status**: ⚠️ WARN (Unresolved)

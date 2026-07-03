@@ -95,6 +95,7 @@ export async function processIngestion(
             projectId,
             hash: c.sha,
             message: c.message.slice(0, 4000),
+            diff: c.diff ? c.diff.slice(0, 4000) : null,
             author: c.author ?? "Unknown",
             valid,
             vcsType: "git",

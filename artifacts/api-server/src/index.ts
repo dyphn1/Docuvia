@@ -1,3 +1,6 @@
+import { setupDI } from "./di.js";
+
+setupDI();
 import app from "./app";
 import { logger, JanitorService } from "@workspace/core";
 

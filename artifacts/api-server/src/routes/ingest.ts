@@ -7,7 +7,8 @@ import { documentUpload } from "../middlewares/upload.js";
 import multer from "multer";
 import { logger } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
-import { GitIngestionService, DocumentService } from "@workspace/plugins-domain";
+import { DI_TOKENS, IGitIngestionService, IDocumentService } from "@workspace/core";
+import { container } from "../di.js";
 import { SvnIngestionService } from "../services/svn-ingestion.service.js";
 import { DocumentIngestionService } from "../services/doc-ingestion.service.js";
 
@@ -15,10 +16,10 @@ import { AstIngestionService } from "../services/ast-ingestion.service.js";
 import { ProjectStatusService } from "../services/project-status.service.js";
 
 const router = Router();
-const gitIngestionService = new GitIngestionService();
+const gitIngestionService = container.resolve<IGitIngestionService>(DI_TOKENS.GitIngestionService);
 const svnIngestionService = new SvnIngestionService();
 const docIngestionService = new DocumentIngestionService();
-const documentService = new DocumentService();
+const documentService = container.resolve<IDocumentService>(DI_TOKENS.DocumentService);
 const astIngestionService = new AstIngestionService();
 const projectStatusService = new ProjectStatusService();
 

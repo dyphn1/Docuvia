@@ -1,10 +1,11 @@
 import { Router } from "express";
-import { DashboardService } from "@workspace/plugins-domain";
+import { DI_TOKENS, IDashboardService } from "@workspace/core";
+import { container } from "../di.js";
 
 const router = Router();
-const dashboardService = new DashboardService();
 
 router.get("/dashboard", async (req, res) => {
+  const dashboardService = container.resolve<IDashboardService>(DI_TOKENS.DashboardService);
   const result = await dashboardService.getDashboardStats();
   res.json(result);
 });

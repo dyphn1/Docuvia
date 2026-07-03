@@ -34,9 +34,11 @@ The core engine (`@workspace/ast-core`) will act as a lightweight Microkernel. I
 
 WASM heap memory must be manually freed (`tree.delete()`). To prevent memory leaks from crashing the VS Code Extension Host or the main API Server, all AST parsing **must** execute inside isolated `worker_threads` (or Web Workers). If a worker OOMs or hangs on a malicious file, the Microkernel simply terminates the worker, flags the file as failed, and spawns a new worker.
 
-### 4. Zero-LLM Database-as-IPC Pipeline
+### 4. Zero-LLM Git-Native Delta Pipeline
 
-To completely bypass IPC (Inter-Process Communication) serialization overhead between the Worker and the Main Thread, we inherit the decision from **[ADR-014 (Database-as-IPC)](ADR-014-sql-indexed-graph-and-database-as-ipc.md)**. The isolated AST Worker handles parsing, traversing, and extracting structural metadata, and then **directly writes `GraphNode` and `GraphEdge` rows into the local SQLite database**. The main thread only sends small control signals (e.g., "parse src/auth.ts") and queries the SQLite database natively. This constitutes a [purely local](ADR-002-local-first-architecture.md), Zero-LLM pipeline that costs $0.00 to execute while keeping IPC payloads negligible.
+To keep the structural extraction path cheap and deterministic, the isolated AST Worker handles parsing, traversing, and extracting structural metadata without invoking the LLM. The main thread sends small control signals (for example, "parse the ranges changed by `git diff`"), and the worker returns compact branch-native deltas rather than large in-memory graph payloads.
+
+Those deltas are written to the `docuvia-knowledge` branch using the JSONL/Markdown format defined in [ADR-023](ADR-023-granular-markdown-storage.md). The local SQLite database is updated only by the materializer after the branch update succeeds, following [ADR-014](ADR-014-sql-indexed-graph-and-database-as-ipc.md). This preserves the invariant that `local.db` is the current-HEAD projection, not the source of truth.
 
 ## Component Diagram
 
@@ -54,12 +56,14 @@ flowchart TD
     M -- Control Signals (parse) --> W1
     M -- Control Signals (parse) --> W2
 
-    subgraph Storage[Local Storage]
-        DB[(SQLite DB)]
+    subgraph Storage[Git-Native Storage]
+        Branch[(docuvia-knowledge<br/>JSONL/Markdown)]
+        DB[(local.db<br/>HEAD Projection)]
     end
 
-    W1 -- Direct Write (DB-as-IPC) --> DB
-    W2 -- Direct Write (DB-as-IPC) --> DB
+    W1 -- Branch-Native Deltas --> Branch
+    W2 -- Branch-Native Deltas --> Branch
+    Branch -- Materialize Current HEAD --> DB
     M -- Native Query --> DB
 ```
 
@@ -68,6 +72,6 @@ flowchart TD
 - **Positive:** Guaranteed 100% hash parity between local IDE graphs and server-side databases ([Git-Isomorphic sync](ADR-004-git-isomorphic-graph.md) and [Orphan Branch Maintenance](ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) are safe).
 - **Positive:** VS Code Extension bundle size remains under 5MB.
 - **Positive:** Complete immunity to IDE freezing or crashes caused by AST parsing.
-- **Positive:** IPC serialization bottlenecks are eliminated via direct SQLite writes by the worker (Database-as-IPC).
+- **Positive:** IPC serialization bottlenecks are eliminated by sending compact branch-native deltas from workers and rebuilding the query cache from Git-native storage.
 - **Negative:** WASM is ~20-30% slower than native C++ bindings for massive bulk ingestion on the server (mitigated by [Asynchronous Metabolism](ADR-008-asynchronous-metabolism.md)).
-- **Negative:** Increased architectural complexity in managing a dynamic Web Worker pool and ensuring safe concurrent SQLite writes from workers.
+- **Negative:** Increased architectural complexity in managing a dynamic Web Worker pool, branch worktrees, and deterministic projection updates into SQLite.

@@ -13,7 +13,7 @@ Supersedes: None
 The "Survival Update" features have been successfully implemented, completing the Local-First vision:
 
 - **WASM AST Worker Pool**: Local syntax analysis via `web-tree-sitter`.
-- **SQLite Local DB**: Standalone graph persistence using `better-sqlite3`.
+- **SQLite Local DB**: Local HEAD projection using `better-sqlite3`; it is rebuilt/materialized from the `docuvia-knowledge` branch for the current Git `HEAD`.
 - **Git-Native Blob Hashing**: Incremental updates bypassing heavy checkouts.
 - **Background L3 RAG**: Offline decision retrieval guided by `docuvia.json`.
 - **VS Code CodeLens/Hover**: Surfacing blast radius via MCP tools `docuvia_impact` and `docuvia_context`.
@@ -33,7 +33,7 @@ flowchart TD
     subgraph Local Standalone Engine
         L1[Topology Scanning & Hotspots]
         L2[Keyword & Direct RAG]
-        L3[Synchronous Evolution]
+        L3[Git Diff + AST/LSP Blast Radius]
     end
 
     subgraph Central API Server
@@ -59,13 +59,14 @@ flowchart TD
 - **Full RAG**: Unlocks [`intent-router.ts`](../../../lib/core/src/services/intent-router.ts) for [4-Way Agentic RAG](ADR-007-agentic-rag-routing.md), utilizing [pgvector](ADR-019-pgvector-migration.md) and Graph Traversal.
 - **Asynchronous Evolution**: [Background jobs](ADR-008-asynchronous-metabolism.md) process [human-in-the-loop](ADR-006-self-evolution-architecture.md) corrections to protect all team members.
 
-## Offline Writes & The Sync Outbox (CQRS)
+## Git-Native Local Evolution & Projection (CQRS)
 
-To strictly adhere to both **Local-First** principles and the **Centralized Server Write Lock** (mandated to prevent split-brain), Docuvia employs the **Outbox Pattern**:
+To strictly adhere to **Local-First** principles without corrupting the local read model, Docuvia treats the `docuvia-knowledge` branch as the writable knowledge store and treats `local.db` as a materialized projection of that branch for the current Git `HEAD`.
 
-1. **Offline Writes**: When a developer creates a new [L3 decision](ADR-005-knowledge-abstraction-strategy.md) offline, the [VS Code client](ADR-001-vscode-client-onboarding.md) writes it immediately to its local SQLite database and records it as an append-only Delta (Event Sourcing) destined for the `docuvia-knowledge` Git branch.
-2. **Online Sync**: Upon network restoration, the client simply executes a standard `git push origin docuvia-knowledge`.
-3. **Server Gatekeeper**: The [API server](ADR-003-server-side-zero-to-one.md) detects the updated branch, pulls the newly appended events, and projects them into the PostgreSQL database.
-4. **Conflict Resolution**: Since all events are Git commits on an orphan branch, multi-developer conflicts are naturally resolved via standard Git merge algorithms, eliminating split-brain data loss.
+1. **Delta Detection**: Local changes are discovered from Git state, not from speculative database writes. The client uses `git diff` / `git diff-tree` to identify modified files and changed ranges.
+2. **Blast Radius Calculation**: The changed ranges are mapped to symbols through the local AST layer, then enriched through LSP when type/reference precision or dirty-buffer semantics are needed. LLM reasoning is a last-resort enrichment layer, not the primary diff mechanism.
+3. **Knowledge Branch Update**: The resulting structural and semantic deltas are written in the branch-native format defined by [ADR-023](ADR-023-granular-markdown-storage.md) and committed to `docuvia-knowledge`.
+4. **Local Projection Refresh**: Only after the knowledge branch is updated does Docuvia materialize the current `HEAD` view into `local.db`. The database is therefore a fast query/index cache, not the source of truth.
+5. **Server Projection**: When the branch is pushed, the API server detects the updated `docuvia-knowledge` history and projects it into PostgreSQL for team-scale search and pgvector queries.
 
-This topology guarantees zero downtime for the developer (100% local availability) while completely preventing Git Split-Brain on the remote repository.
+This topology guarantees offline availability while preventing split-brain state: uncommitted or unsynced knowledge never becomes canonical merely because it was written into `local.db`.

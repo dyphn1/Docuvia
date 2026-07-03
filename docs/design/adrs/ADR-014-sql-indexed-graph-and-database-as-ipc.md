@@ -14,9 +14,10 @@ Transmitting the entire knowledge graph (e.g., hundreds of thousands of nodes an
 
 ## Decision
 
-We will adopt a "Shared Database Pattern" (Database as IPC - Inter-Process Communication), abandoning the transmission of graph nodes over the network.
+We will adopt a "Shared Database Pattern" (Database as IPC - Inter-Process Communication) for read-optimized local graph queries while preserving the storage order defined by [ADR-023](ADR-023-granular-markdown-storage.md): the `docuvia-knowledge` branch is updated first, and `local.db` is materialized from that branch for the current Git `HEAD`.
 
-- **Daemon Responsibility (Local Hooks)**: The [AST Microkernel worker](ADR-020-unified-isomorphic-ast-microkernel.md) directly executes `INSERT` and `UPDATE` statements into the **Local SQLite database** (the Local HEAD Index) during lightweight operations like Git Hooks.
+- **Daemon Responsibility (Local Hooks)**: The local hook computes changed files and ranges with Git diff, then uses the [AST Microkernel worker](ADR-020-unified-isomorphic-ast-microkernel.md) plus LSP enrichment to calculate the blast radius. The hook writes structural and semantic deltas to the `docuvia-knowledge` branch in the branch-native JSONL/Markdown format.
+- **Projection Responsibility (Local DB)**: After the branch update succeeds, the materializer reads the `docuvia-knowledge` diff and applies `INSERT` / `UPDATE` / `DELETE` statements to the **Local SQLite database**. `local.db` is the Local HEAD Index and query cache, not the canonical write target.
 - **Core Responsibility (Server API)**: The central API server strictly forbids Database-as-IPC for remote workers. Remote background workers MUST communicate via REST APIs to ensure authentication, rate-limiting, and validation before writing to PostgreSQL.
 - **Data Querying**: When an [Agent](ADR-007-agentic-rag-routing.md) needs to understand the blast radius, the Core directly issues SQL `SELECT` queries or recursive CTEs (`WITH RECURSIVE`) to the database.
 
@@ -24,13 +25,17 @@ We will adopt a "Shared Database Pattern" (Database as IPC - Inter-Process Commu
 
 ```mermaid
 sequenceDiagram
-    participant Worker as Daemon Worker
+    participant Worker as AST/LSP Worker
+    participant Branch as docuvia-knowledge
+    participant Projector as Local DB Materializer
     participant DB as SQLite (Local Index)
     participant Core as API Server (Core)
     participant Agent as Agent (Intent Router)
 
-    Note over Worker, DB: Database-as-IPC
-    Worker->>DB: INSERT/UPDATE AST nodes & edges (Git Hooks)
+    Worker->>Worker: git diff -> AST/LSP blast radius
+    Worker->>Branch: Commit JSONL/Markdown deltas
+    Branch->>Projector: Diff current HEAD knowledge view
+    Projector->>DB: Apply projection updates
 
     Agent->>Core: Request blast radius analysis
     Core->>DB: SQL SELECT / WITH RECURSIVE
@@ -42,5 +47,5 @@ sequenceDiagram
 
 - **Positive**: Extreme transmission efficiency. The inter-process communication is reduced to minimal control commands.
 - **Positive**: Native SQL graph traversal, leveraging C-based database engines for recursive queries instead of running recursive algorithms in the V8 engine.
-- **Positive**: Seamless persistence. The database is built as the AST is scanned, enabling instant reads upon editor restart without needing to rebuild the graph.
+- **Positive**: Seamless persistence. The database can be rebuilt from the Git-native knowledge branch, enabling instant reads upon editor restart while preserving a recoverable source of truth.
 - **Negative**: Requires careful worker lifecycle management to avoid orphan processes and handling of schema migrations.

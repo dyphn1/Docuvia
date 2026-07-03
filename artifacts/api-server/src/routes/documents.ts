@@ -1,14 +1,14 @@
 import { Router } from "express";
-import { ProjectService } from "../services/project.service";
-import { DocumentService } from "@workspace/plugins-domain";
+import { ProjectService } from "../services/project.service.js";
+import { DI_TOKENS, IDocumentService } from "@workspace/core";
+import { container } from "../di.js";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
 import { logger } from "@workspace/core";
-import { requireApiKey } from "../middlewares/auth";
+import { requireApiKey } from "../middlewares/auth.js";
 import fs from "fs";
 
 const router = Router();
-const documentService = new DocumentService();
 
 import { AffiliateDocumentBody } from "@workspace/api-zod";
 
@@ -17,6 +17,7 @@ import { AffiliateDocumentBody } from "@workspace/api-zod";
  * List all documents that are not affiliated with any project (projectId IS NULL).
  */
 router.get("/documents/misc", async (_req, res) => {
+  const documentService = container.resolve<IDocumentService>(DI_TOKENS.DocumentService);
   const result = await documentService.listMiscDocuments();
   return res.json(result);
 });
@@ -47,6 +48,7 @@ router.post("/documents/:id/affiliate", async (req, res) => {
     return res.status(404).json({ error: "Project not found" });
   }
 
+  const documentService = container.resolve<IDocumentService>(DI_TOKENS.DocumentService);
   const updated = await documentService.affiliateDocument(id, projectId);
 
   if (!updated) {
@@ -62,6 +64,8 @@ router.post("/documents", requireApiKey, documentUpload.single("file"), async (r
 
   const uploadedBy = (req as any).user?.id;
   if (!uploadedBy) return res.status(401).json({ error: "Unauthorized" });
+
+  const documentService = container.resolve<IDocumentService>(DI_TOKENS.DocumentService);
 
   try {
     const inserted = await documentService.processAndSaveDocument(req.file, uploadedBy);

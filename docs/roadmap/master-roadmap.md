@@ -14,6 +14,7 @@ Establish the core infrastructure, database models (L1/L2/L3), multi-format inge
 
 ### 🛠️ Implementation Method
 
+- **Multi-Provider LLM Abstraction:** Isolate execution and HTTP SSE loops from payload generation using a Thin Transport pattern to support multiple providers (OpenAI, Anthropic, Gemini) (see [ADR-026](../design/adrs/ADR-026-multi-provider-llm-abstraction.md)).
 - **Database:** Define entities using Drizzle ORM mapped to PostgreSQL.
 - **RAG Routing:** Implement `intent-router.ts` using a 4-way classification (Direct -> Graph -> Vector -> Hybrid) prioritizing O(1) local cache.
 - **Metabolism:** Run a heartbeat-driven `metabolism-tick` worker to process heavy queues (embeddings, decay, distillation) off the main thread.
@@ -134,6 +135,8 @@ Align the Knowledge Graph directly with the underlying Git commit history (using
 
 ### 🛠️ Implementation Method
 
+- **Cross-Project Soft Linking:** Dynamically query and inject context across linked projects without hard foreign keys, using L1 Global Tags (see [ADR-024](../design/adrs/ADR-024-cross-project-soft-linking.md)).
+- **Temporal & Conceptual Linking:** Define explicit 4D graph edge semantics (`IMPLEMENTS`, `EXPLAINS`, `HAS_RULE`) and utilize a Self-Healing Janitor to re-anchor stale rules (see [ADR-018](../design/adrs/ADR-018-temporal-and-conceptual-bidirectional-linking.md)).
 - **Orphan Branch Protocol:** Serialize knowledge graph nodes as JSON/Markdown and commit them to a hidden `docuvia-knowledge` branch to avoid polluting source code.
 - **Distillation Job:** A background worker parses `correction_examples`, asks the LLM to deduce a generalized architectural rule, and saves it to `prompt_templates`.
 - **Temporal Decay:** Implement `Math.exp(-LAMBDA * daysSinceVerified)` in the RAG router to naturally fade outdated knowledge.
@@ -240,6 +243,8 @@ Deliver zero-LLM-cost structural code analysis directly in the VS Code client by
 
 ### 🛠️ Implementation Method
 
+- **Headless LSP & Hybrid Temp-File Overlay:** Expose LSP-level dirty state tracking to headless CLI/MCP environments via a local file-backed memory index, avoiding RAM limits (see [ADR-025](../design/adrs/ADR-025-hybrid-temp-file-blast-radius.md)).
+- **Progressive Enrichment (LSP Dual Engine):** Dynamically boot an LSP to supplement WASM AST analysis for unsaved editor buffers (see [ADR-015](../design/adrs/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)).
 - **Microkernel:** Build `@workspace/ast-core` that dynamically lazy-loads `web-tree-sitter` language plugins (`.wasm`).
 - **Worker Isolation:** Execute all AST parsing inside `worker_threads` (or Web Workers in VS Code) to prevent V8 main thread blocking and memory leaks.
 - **Context Compression:** Replace large code snippets with compressed AST Skeletons before sending to the LLM (see [ADR-010](../design/adrs/ADR-010-context-compression-and-proxy.md)).

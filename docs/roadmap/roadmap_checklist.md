@@ -160,3 +160,36 @@ If a discrepancy is found (e.g., a feature marked as `✅ Done` is actually miss
 - **Reports in `docs/reports/` are committed to git** (shared with team).
 - **`docs/reports/.verification-index.json` is NOT committed** (local-only, add to `.gitignore`). It is used solely by the cron agent to track verification state.
 - Commit message format: `verify(phase-X): <feature-name> — <status>`.
+
+## Architecture Decision Records (ADR) Mapping
+
+To ensure no architectural decision is implemented without being tracked on the roadmap, the following is a comprehensive mapping of all ADRs to their implementation status.
+
+| ADR     | Decision Topic                               | Roadmap Phase / Feature               | Status     |
+| :------ | :------------------------------------------- | :------------------------------------ | :--------- |
+| ADR-001 | VS Code Client Onboarding                    | Phase 2 (Workspace Onboarding)        | ✅ Done    |
+| ADR-002 | Local-First Architecture                     | Phase 2 (Standalone Engine)           | ✅ Done    |
+| ADR-003 | Server-Side Zero-to-One                      | Phase 1 & 3 (Bootstrap Blueprint)     | ✅ Done    |
+| ADR-004 | Git Isomorphic Graph                         | Phase 3 (Orphan Branch Protocol)      | ✅ Done    |
+| ADR-005 | Knowledge Abstraction Strategy               | Phase 1 (L1/L2/L3 Schemas)            | ✅ Done    |
+| ADR-006 | Self-Evolution Architecture                  | Phase 4 (Distillation Job)            | ✅ Done    |
+| ADR-007 | Agentic RAG Routing                          | Phase 5 (Intent Router)               | ✅ Done    |
+| ADR-008 | Asynchronous Metabolism                      | Phase 1 (Metabolism Engine)           | ✅ Done    |
+| ADR-009 | Token Management                             | Phase 2 (Token Limits & Chunking)     | ✅ Done    |
+| ADR-010 | Context Compression & Proxy                  | Phase 5 (Local Context Compression)   | ✅ Done    |
+| ADR-011 | Two-Phase Knowledge Validity                 | Phase 4 (Review Queue)                | ✅ Done    |
+| ADR-012 | Document Misc Pool                           | Phase 3 (Document Ingestion)          | ✅ Done    |
+| ADR-013 | Adversarial Implementation Protocol          | N/A (Process Governance)              | ✅ Done    |
+| ADR-014 | SQL-Indexed Graph & DB-as-IPC                | Phase 1 (Core DB Schemas)             | ✅ Done    |
+| ADR-015 | Progressive Enrichment & LSP Dual Engine     | Phase 5 (LSP Dual Engine)             | ⏸️ Pending |
+| ADR-016 | Git Blob Identity & Checkout Defense         | Phase 3 (Git Ingestion)               | ⏸️ Pending |
+| ADR-017 | Tiered Storage & Orphan Branch Maintenance   | Phase 3 (Orphan Branch Protocol)      | ✅ Done    |
+| ADR-018 | Temporal & Conceptual Bidirectional Linking  | Phase 3 (4D Edges & Janitor)          | ⚠️ WARN    |
+| ADR-019 | pgvector Migration                           | Phase 6 (pgvector Migration)          | ✅ Done    |
+| ADR-020 | Unified Isomorphic AST Microkernel           | Phase 5 (AST Microkernel)             | ✅ Done    |
+| ADR-021 | Shared Core API & Presentation Layers        | Phase 1 (Monorepo Layout)             | ✅ Done    |
+| ADR-022 | WASM AST Blast Radius                        | Phase 2 (Smart Blast Radius)          | ✅ Done    |
+| ADR-023 | Granular Markdown Storage                    | Phase 3 (Orphan Branch Serialization) | ✅ Done    |
+| ADR-024 | Cross-Project Soft Linking                   | Phase 3 (Cross-Project Linking)       | ✅ Done    |
+| ADR-025 | Hybrid Temp-File Blast Radius & Headless LSP | Phase 5 (Headless LSP Overlay)        | ⏸️ Pending |
+| ADR-026 | Multi-Provider LLM Abstraction Layer         | Phase 1 (LLM Abstraction Layer)       | ⏸️ Pending |

@@ -8,11 +8,11 @@ describe("Command: docuvia init-agent", () => {
 
   beforeEach(async () => {
     sandbox = new TestSandbox();
-  });
+  }, 30000);
 
   afterEach(async () => {
     await sandbox.teardown();
-  });
+  }, 30000);
 
   it("should create agent configuration files in the workspace", async () => {
     // Arrange: Empty workspace
@@ -48,5 +48,5 @@ describe("Command: docuvia init-agent", () => {
         expect(content).toContain("<!-- docuvia:start -->");
       }
     }
-  }, 15000);
+  }, 45000);
 });

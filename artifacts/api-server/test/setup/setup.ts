@@ -16,6 +16,9 @@ try {
     // Remove .env's DATABASE_URL and PORT so tests still use the test DB
     delete process.env.DATABASE_URL;
     delete process.env.PORT;
+    // Remove OpenAI keys so tests always use MSW mocks
+    delete process.env.AI_INTEGRATIONS_OPENAI_BASE_URL;
+    delete process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
   }
 } catch (e) {
   // ignore

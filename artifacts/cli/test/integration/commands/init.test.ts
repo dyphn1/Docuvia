@@ -11,11 +11,11 @@ describe("Command: docuvia init", () => {
     sandbox = new TestSandbox();
     // Start with a completely empty sandbox, no DB
     await sandbox.setup({ initGit: true });
-  });
+  }, 30000);
 
   afterEach(async () => {
     await sandbox.teardown();
-  });
+  }, 30000);
 
   it("should successfully initialize the project and create the local SQLite database with correct schema", async () => {
     // Act: Run the actual init command

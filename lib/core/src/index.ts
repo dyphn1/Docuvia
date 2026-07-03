@@ -63,3 +63,5 @@ export * from "./services/ast-processing.service.js";
 export * from "./services/sqlite-graph.repository.js";
 export * from "./services/lsp/index.js";
 export * from "./services/generation/generate.service.js";
+export * from "./interfaces/domain-services.interfaces.js";
+export * from "./interfaces/di-tokens.js";

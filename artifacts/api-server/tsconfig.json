@@ -19,6 +19,9 @@
       "path": "../../lib/api-zod"
     },
     {
+      "path": "../../lib/plugins-domain"
+    },
+    {
       "path": "../../lib/integrations-openai-ai-server"
     }
   ]

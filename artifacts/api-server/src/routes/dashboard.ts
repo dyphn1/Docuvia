@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { DashboardService } from "../services/dashboard.service";
+import { DashboardService } from "@workspace/plugins-domain";
 
 const router = Router();
 const dashboardService = new DashboardService();

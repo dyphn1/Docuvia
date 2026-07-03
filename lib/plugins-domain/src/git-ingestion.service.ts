@@ -1,6 +1,11 @@
 import { db, projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { LocalGitClient, processIngestion, GitCommitItem } from "@workspace/core";
+import {
+  LocalGitClient,
+  processIngestion,
+  GitCommitItem,
+  IGitIngestionService,
+} from "@workspace/core";
 
 export interface IngestGitOptions {
   repoUrl: string;
@@ -16,7 +21,7 @@ export interface IngestionResult {
   totalFetched?: number;
 }
 
-export class GitIngestionService {
+export class GitIngestionService implements IGitIngestionService {
   async ingestGit(
     project: typeof projectsTable.$inferSelect,
     options: IngestGitOptions

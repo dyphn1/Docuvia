@@ -10,7 +10,9 @@ import {
 } from "@workspace/db";
 import { count, eq, sql } from "drizzle-orm";
 
-export class DashboardService {
+import { IDashboardService } from "@workspace/core";
+
+export class DashboardService implements IDashboardService {
   async getDashboardStats() {
     const [projectsCount] = await db.select({ count: count() }).from(projectsTable);
     const [l1Count] = await db.select({ count: count() }).from(l1TagsTable);
@@ -28,7 +30,7 @@ export class DashboardService {
       .limit(10);
 
     const recentActivity = await Promise.all(
-      activityRows.map(async (a) => {
+      activityRows.map(async (a: any) => {
         let projectName: string | null = null;
         if (a.projectId) {
           const [p] = await db

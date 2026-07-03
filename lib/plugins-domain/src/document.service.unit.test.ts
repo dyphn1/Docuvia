@@ -8,7 +8,6 @@ import { db, documentsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import fs from "fs";
 import * as core from "@workspace/core";
-import * as hashUtils from "../lib/utils/hash.js";
 
 vi.mock("fs", () => {
   return {
@@ -20,18 +19,13 @@ vi.mock("fs", () => {
   };
 });
 
-vi.mock("@workspace/core", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@workspace/core")>();
+vi.mock("@workspace/core", async (importOriginal: any) => {
+  const actual = (await importOriginal()) as typeof import("@workspace/core");
   return {
     ...actual,
     detectDocType: vi.fn(),
-    extractText: vi.fn(),
-  };
-});
-
-vi.mock("../lib/utils/hash.js", () => {
-  return {
     computeHashFromStream: vi.fn(),
+    extractText: vi.fn(),
   };
 });
 
@@ -105,7 +99,7 @@ describe("DocumentService", () => {
         // Arrange
         // Mock fs.promises.open
         const mockFd = {
-          read: vi.fn().mockImplementation((buf) => {
+          read: vi.fn().mockImplementation((buf: any) => {
             Buffer.from("25504446", "hex").copy(buf); // Valid PDF signature
             return { bytesRead: 4 };
           }),
@@ -115,7 +109,7 @@ describe("DocumentService", () => {
 
         vi.mocked(core.detectDocType).mockReturnValue("pdf");
         vi.mocked(core.extractText).mockResolvedValue("Extracted content here");
-        vi.mocked(hashUtils.computeHashFromStream).mockResolvedValue("hash123");
+        vi.mocked(core.computeHashFromStream).mockResolvedValue("hash123");
 
         const file = {
           path: "/tmp/file.pdf",
@@ -136,7 +130,7 @@ describe("DocumentService", () => {
 
         expect(fs.promises.open).toHaveBeenCalledWith("/tmp/file.pdf", "r");
         expect(core.extractText).toHaveBeenCalledWith("/tmp/file.pdf", "pdf", "test.pdf");
-        expect(hashUtils.computeHashFromStream).toHaveBeenCalledWith("/tmp/file.pdf");
+        expect(core.computeHashFromStream).toHaveBeenCalledWith("/tmp/file.pdf");
       });
     });
 
@@ -180,7 +174,7 @@ describe("DocumentService", () => {
       await withRollback(async () => {
         // Arrange
         const mockFd = {
-          read: vi.fn().mockImplementation((buf) => {
+          read: vi.fn().mockImplementation((buf: any) => {
             Buffer.from("00000000", "hex").copy(buf); // Invalid PDF signature
             return { bytesRead: 4 };
           }),
@@ -204,7 +198,7 @@ describe("DocumentService", () => {
       await withRollback(async () => {
         // Arrange
         const mockFd = {
-          read: vi.fn().mockImplementation((buf) => {
+          read: vi.fn().mockImplementation((buf: any) => {
             Buffer.from("00000000", "hex").copy(buf); // Invalid DOCX signature
             return { bytesRead: 4 };
           }),

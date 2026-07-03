@@ -7,10 +7,10 @@ import { documentUpload } from "../middlewares/upload.js";
 import multer from "multer";
 import { logger } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
-import { GitIngestionService } from "../services/git-ingestion.service.js";
+import { GitIngestionService, DocumentService } from "@workspace/plugins-domain";
 import { SvnIngestionService } from "../services/svn-ingestion.service.js";
 import { DocumentIngestionService } from "../services/doc-ingestion.service.js";
-import { DocumentService } from "../services/document.service.js";
+
 import { AstIngestionService } from "../services/ast-ingestion.service.js";
 import { ProjectStatusService } from "../services/project-status.service.js";
 

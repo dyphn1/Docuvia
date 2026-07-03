@@ -66,7 +66,7 @@ describe("DashboardService", () => {
 
       expect(stats.recentActivity.length).toBeGreaterThanOrEqual(2);
 
-      const foundLog2 = stats.recentActivity.find((a) => a.id === log2.id);
+      const foundLog2 = stats.recentActivity.find((a: any) => a.id === log2.id);
       expect(foundLog2).toBeDefined();
       expect(foundLog2?.projectName).toBe("Project Beta");
       expect(foundLog2?.type).toBe("review_resolved");
@@ -87,7 +87,7 @@ describe("DashboardService", () => {
       const stats = await service.getDashboardStats();
 
       // Assert
-      const foundLog = stats.recentActivity.find((a) => a.id === log.id);
+      const foundLog = stats.recentActivity.find((a: any) => a.id === log.id);
       expect(foundLog).toBeDefined();
       expect(foundLog?.projectName).toBeNull();
       expect(foundLog?.type).toBe("document");

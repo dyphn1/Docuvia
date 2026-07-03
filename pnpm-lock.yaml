@@ -126,6 +126,9 @@ importers:
       '@workspace/plugins-ast':
         specifier: workspace:*
         version: link:../../lib/plugins-ast
+      '@workspace/plugins-domain':
+        specifier: workspace:*
+        version: link:../../lib/plugins-domain
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -938,6 +941,28 @@ importers:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
+
+  lib/plugins-domain:
+    dependencies:
+      '@workspace/core':
+        specifier: workspace:*
+        version: link:../core
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.3.5
+      '@workspace/test-utils':
+        specifier: workspace:*
+        version: link:../test-utils
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@25.3.5)(@vitest/ui@1.6.1)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
 
   lib/test-utils:
     dependencies:
@@ -15227,7 +15252,9 @@ snapshots:
       source-map: 0.6.1
       string-length: 2.0.0
     transitivePeerDependencies:
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@jest/schemas@29.6.3':
     dependencies:
@@ -21964,7 +21991,9 @@ snapshots:
       pretty-format: 24.9.0
       throat: 4.1.0
     transitivePeerDependencies:
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   jest-leak-detector@24.9.0:
     dependencies:

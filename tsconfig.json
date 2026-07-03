@@ -6,6 +6,7 @@
     { "path": "./lib/test-utils" },
     { "path": "./lib/ast-core" },
     { "path": "./lib/plugins-ast" },
+    { "path": "./lib/plugins-domain" },
     { "path": "./lib/core" },
     { "path": "./lib/db" },
     { "path": "./lib/api-client-react" },

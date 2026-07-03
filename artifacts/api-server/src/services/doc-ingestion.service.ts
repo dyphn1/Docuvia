@@ -1,7 +1,7 @@
 import { db, documentsTable, projectsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { processIngestion, detectDocType, extractText, DocumentItem } from "@workspace/core";
-import { computeHashFromStream } from "../lib/utils/hash.js";
+import { computeHashFromStream } from "@workspace/core";
 
 export class DocumentIngestionService {
   async ingestDocumentFromFile(

@@ -65,3 +65,4 @@ export * from "./services/lsp/index.js";
 export * from "./services/generation/generate.service.js";
 export * from "./interfaces/domain-services.interfaces.js";
 export * from "./interfaces/di-tokens.js";
+export * from "./utils/hash.js";

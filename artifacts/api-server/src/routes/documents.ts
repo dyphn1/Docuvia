@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { ProjectService } from "../services/project.service";
-import { DocumentService } from "../services/document.service";
+import { DocumentService } from "@workspace/plugins-domain";
 import { z } from "zod";
 import { documentUpload } from "../middlewares/upload.js";
 import { logger } from "@workspace/core";

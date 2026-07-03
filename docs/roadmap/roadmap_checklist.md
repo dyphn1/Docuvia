@@ -52,7 +52,7 @@
 ||| L3 Generator | ✅ Done | [`l3-nodes.service.ts`](artifacts/api-server/src/services/l3-nodes.service.ts) ||
 ||| Generate pipeline orchestrator | ✅ Done | [`generate.ts`](../../artifacts/api-server/src/services/generate.service.ts) ||
 ||| Fast-Path Filters | ✅ Done | [`intent-router.ts`](../../lib/core/src/services/intent-router.ts) ||
-||| Cross-project linking | ⚠️ WARN | [`consolidated_status_report.md`](../reports/consolidated_status_report.md) ||
+||| Cross-project linking | ✅ Done | [`generate.service.ts`](../../artifacts/api-server/src/services/generate.service.ts) ||
 ||| Orphan Branch R/W Protocol | ✅ Done | [`orphan-branch-writer.ts`](../../lib/core/src/services/orphan-branch-writer.ts) ||
 ||| Template management & Inheritance | ✅ Done | [`prompt-templates.ts`](../../lib/db/src/schema/prompt-templates.ts) ||
 

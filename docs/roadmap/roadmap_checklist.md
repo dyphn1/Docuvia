@@ -17,7 +17,7 @@
 ||| Monorepo directory layout | ✅ Done | `lib/`, `artifacts/`, `scripts/` structure ||
 ||| Core DB schemas defined | ✅ Done | [`schema/`](../../lib/db/src/schema/) ||
 ||| Logging | ✅ Done | [`logger.ts`](../../lib/core/src/utils/logger.ts) ||
-||| LLM abstraction layer | ✅ Done | [0701_phase-1_llm-abstraction-layer.md](../reports/0701_phase-1_llm-abstraction-layer.md) ||
+||| LLM abstraction layer | ⚠️ WARN | [`consolidated_status_report.md`](../reports/consolidated_status_report.md) ||
 ||| Per-project model switching | ✅ Done | [`llm-configs.ts`](../../lib/db/src/schema/llm-configs.ts) ||
 ||| CI/CD pipeline | ✅ Done | [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml) ||
 ||| Server-Side Metabolism | ✅ Done | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) ||
@@ -43,7 +43,7 @@
 
 ||| Item | Status | Evidence / Verification Target ||
 ||| :-------------------------------------------------------------------------- | :------ | :--------------------------------------------------------------------------------------------------------------------- ||
-||| Git ingestion (commit + diff) | ✅ Done | [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts) ||
+||| Git ingestion (commit + diff) | ⚠️ WARN | [`consolidated_status_report.md`](../reports/consolidated_status_report.md) ||
 ||| Document ingestion | ✅ Done | [`document-parser.ts`](../../lib/core/src/services/document-parser.ts) ||
 ||| Build artifact parser | ✅ Done | [`documents.ts`](../../artifacts/api-server/src/services/document.service.ts) ||
 ||| Commit filter | ✅ Done | `scoreCommit()` ||
@@ -52,7 +52,7 @@
 ||| L3 Generator | ✅ Done | [`l3-nodes.service.ts`](artifacts/api-server/src/services/l3-nodes.service.ts) ||
 ||| Generate pipeline orchestrator | ✅ Done | [`generate.ts`](../../artifacts/api-server/src/services/generate.service.ts) ||
 ||| Fast-Path Filters | ✅ Done | [`intent-router.ts`](../../lib/core/src/services/intent-router.ts) ||
-||| Cross-project linking | ⚠️ WARN | [`0702_phase-3_3_1_1_cross-project-linking.md`](../reports/0702_phase-3_3_1_1_cross-project-linking.md) ||
+||| Cross-project linking | ⚠️ WARN | [`consolidated_status_report.md`](../reports/consolidated_status_report.md) ||
 ||| Orphan Branch R/W Protocol | ✅ Done | [`orphan-branch-writer.ts`](../../lib/core/src/services/orphan-branch-writer.ts) ||
 ||| Template management & Inheritance | ✅ Done | [`prompt-templates.ts`](../../lib/db/src/schema/prompt-templates.ts) ||
 
@@ -95,7 +95,7 @@
 ||| pgvector Migration | ✅ Done | [`intent-router.ts`](../../lib/core/src/services/intent-router.ts) ||
 ||| Concurrency Locks | ✅ Done | [`metabolism.ts`](../../artifacts/api-server/src/routes/metabolism.ts) ||
 ||| Security Hardening | ✅ Done | [`export.ts`](../../artifacts/api-server/src/routes/export.ts) ||
-||| SVN integration | WARN | [`ingest.ts`](../../artifacts/api-server/src/routes/ingest.ts) (see 0701_phase-6_2_1_svn-integration.md) ||
+||| SVN integration | ⚠️ WARN | [`consolidated_status_report.md`](../reports/consolidated_status_report.md) ||
 
 ---
 

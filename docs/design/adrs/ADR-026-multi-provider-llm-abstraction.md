@@ -13,15 +13,22 @@ To support enterprise users and reduce vendor lock-in, Docuvia must support mult
 
 ## Decision (Proposed)
 
-We will introduce a **Multi-Provider LLM Abstraction Layer** using the Adapter pattern:
+We will adopt the **Thin Transport / Fat Orchestrator** paradigm (inspired by Hermes Agent) to decouple data transformation from execution I/O:
 
-1. **Unified Interface (`ILlmProvider`)**: All internal services (Intent Router, Metabolism Worker) will code against a standard interface that dictates methods like `generateCompletion`, `generateStream`, and `generateEmbedding`.
-2. **Unified Data Transfer Objects (DTOs)**: We will define standard `LlmMessage`, `LlmCompletionOptions`, and `LlmStreamChunk` objects to shield our business logic from provider-specific payload structures.
-3. **Error Mapping & Differentiated Retries**: Each provider adapter will catch its SDK-specific exceptions and map them to unified errors (e.g., `LlmRateLimitError`). A generic retry wrapper will handle exponential backoff based on these unified error types.
-4. **Package Refactoring**: The existing `integrations-openai-ai-server` will be generalized into a `@workspace/ai-providers` package containing concrete adapters (`OpenAiAdapter`, `AnthropicAdapter`, `GeminiAdapter`).
+1. **Thin `ProviderTransport` Interface**: Transports are pure, stateless mappers. They contain NO HTTP clients, NO SDKs, and NO retry logic.
+   - `convert_messages()`, `convert_tools()`: Maps internal models to provider-specific payloads.
+   - `build_http_request()`: Generates the exact URL, Headers, and JSON body required.
+   - `normalize_response()`, `normalize_stream_chunk()`: Maps provider-specific responses/chunks back to a unified `NormalizedResponse`.
+   - `extract_cache_stats()`, `map_finish_reason()`: Unifies telemetry and stopping conditions.
+2. **Fat `LlmOrchestrator`**: A single, central engine handles all actual I/O.
+   - Executes raw HTTP requests (fetch) and handles Server-Sent Events (SSE) natively, completely bypassing bulky vendor SDKs.
+   - Manages connection timeouts, `AbortController`, Rate Limiting, and Exponential Backoff centrally.
+   - Executes the unified Tool-Calling loop and persists token telemetry via Drizzle ORM.
+3. **Package Refactoring**: The existing `integrations-openai-ai-server` will be generalized into a `@workspace/ai-providers` package containing concrete transports (`OpenAiTransport`, `AnthropicTransport`, `GeminiTransport`).
 
 ## Consequences
 
-- **Positive**: Complete vendor independence. Users can plug in Anthropic or Gemini without altering Docuvia's core routing or generation logic.
-- **Positive**: Reliable retry handling. Differentiated error mapping prevents infinite retry loops on non-transient errors (like authentication failures).
-- **Negative**: Increased maintenance burden to keep multiple SDK adapters up to date with upstream changes.
+- **Positive**: High Testability. Transports are pure functions. We can unit test OpenRouter, Anthropic, or Gemini payload generation perfectly without mocking HTTP or needing API keys.
+- **Positive**: Zero SDK Bloat. By handling raw HTTP and SSE parsing centrally, we avoid downloading massive vendor SDKs, minimizing bundle size and cold-start latency.
+- **Positive**: Unified Telemetry & Retries. The central orchestrator ensures that prompt caching metrics, tool-call tracking, and exponential backoff behave identically across all providers.
+- **Negative**: The orchestrator must handle low-level SSE stream parsing and HTTP fetch intricacies, increasing the complexity of the core execution loop.

@@ -191,5 +191,5 @@ To ensure no architectural decision is implemented without being tracked on the 
 | ADR-022 | WASM AST Blast Radius                        | Phase 2 (Smart Blast Radius)          | ✅ Done    |
 | ADR-023 | Granular Markdown Storage                    | Phase 3 (Orphan Branch Serialization) | ✅ Done    |
 | ADR-024 | Cross-Project Soft Linking                   | Phase 3 (Cross-Project Linking)       | ✅ Done    |
-| ADR-025 | Hybrid Temp-File Blast Radius & Headless LSP | Phase 5 (Headless LSP Overlay)        | ⏸️ Pending |
+| ADR-025 | Hybrid Temp-File Blast Radius & Headless LSP | Phase 5 (Headless LSP Overlay)        | ✅ Done    |
 | ADR-026 | Multi-Provider LLM Abstraction Layer         | Phase 1 (LLM Abstraction Layer)       | ⏸️ Pending |

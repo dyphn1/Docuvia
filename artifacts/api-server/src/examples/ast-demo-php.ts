@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 /**
  * AST Parsing Demo — PHP
  *
@@ -117,7 +118,7 @@ $service->getUserById(1);
 
   // Load registry and get the PHP provider
   const registryPath = path.resolve(__dirname, "../../..");
-  const registry = await LanguageRegistry.load(registryPath);
+  const registry = await loadDefaultRegistry(registryPath);
   const provider = registry.getProviderForExtension(".php");
 
   if (!provider) {

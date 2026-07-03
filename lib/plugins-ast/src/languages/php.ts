@@ -1,4 +1,4 @@
-import type { LanguageConfig } from "../language-provider.js";
+import type { LanguageConfig } from "@workspace/ast-core";
 
 export const phpConfig: LanguageConfig = {
   extensions: [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"],

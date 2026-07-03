@@ -123,6 +123,9 @@ importers:
       '@workspace/integrations-openai-ai-server':
         specifier: workspace:*
         version: link:../../lib/integrations-openai-ai-server
+      '@workspace/plugins-ast':
+        specifier: workspace:*
+        version: link:../../lib/plugins-ast
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7
@@ -717,6 +720,9 @@ importers:
       '@workspace/core':
         specifier: workspace:^
         version: link:../../lib/core
+      '@workspace/plugins-ast':
+        specifier: workspace:*
+        version: link:../../lib/plugins-ast
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
@@ -916,6 +922,22 @@ importers:
       p-retry:
         specifier: ^7.1.1
         version: 7.1.1
+
+  lib/plugins-ast:
+    dependencies:
+      '@workspace/ast-core':
+        specifier: workspace:*
+        version: link:../ast-core
+      web-tree-sitter:
+        specifier: ^0.26.9
+        version: 0.26.10
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.0
+      typescript:
+        specifier: ^5.5.4
+        version: 5.9.3
 
   lib/test-utils:
     dependencies:
@@ -21942,9 +21964,7 @@ snapshots:
       pretty-format: 24.9.0
       throat: 4.1.0
     transitivePeerDependencies:
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   jest-leak-detector@24.9.0:
     dependencies:

@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -34,7 +35,7 @@ export async function getAstSkeleton(filePath: string, code: string): Promise<st
       parserInitialized = true;
     }
 
-    const registry = await LanguageRegistry.load();
+    const registry = await loadDefaultRegistry();
     const funnel = new ParsingFunnel(registry);
     const ext = path.extname(filePath);
     const funnelRes = funnel.process(code, filePath, ext);

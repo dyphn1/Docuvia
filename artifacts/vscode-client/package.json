@@ -301,6 +301,7 @@
   },
   "dependencies": {
     "@workspace/ast-core": "workspace:^",
+    "@workspace/plugins-ast": "workspace:*",
     "@workspace/core": "workspace:^",
     "gray-matter": "^4.0.3",
     "minimatch": "^10.2.5",

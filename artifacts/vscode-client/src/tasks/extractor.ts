@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import * as path from "path";
 import * as vscode from "vscode";
 import { minimatch } from "minimatch";
@@ -209,7 +210,7 @@ export class ExtractionHandler {
         const { ParsingFunnel, initParser, LanguageRegistry } = await import("@workspace/ast-core");
         const { Parser, Language } = await import("web-tree-sitter");
 
-        const registry = await LanguageRegistry.load();
+        const registry = await loadDefaultRegistry();
         const funnel = new ParsingFunnel(registry);
         const ext = path.extname(filePath);
         const funnelRes = funnel.process(content, filePath, ext);

@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 /**
  * AST Parsing Demo — Python
  *
@@ -76,7 +77,7 @@ async function main() {
   await Parser.init({ locateFile: () => wasmPath });
 
   // 2. Load the language registry
-  const registry = await LanguageRegistry.load();
+  const registry = await loadDefaultRegistry();
   const provider = registry.getProviderForExtension(".py");
 
   if (!provider) {

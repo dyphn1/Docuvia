@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 /**
  * AST Parsing Demo — C#
  *
@@ -138,7 +139,7 @@ namespace Docuvia.Examples
 
   // Load registry and get the C# provider
   const registryPath = path.resolve(__dirname, "../../..");
-  const registry = await LanguageRegistry.load(registryPath);
+  const registry = await loadDefaultRegistry(registryPath);
   const provider = registry.getProviderForExtension(".cs");
 
   if (!provider) {

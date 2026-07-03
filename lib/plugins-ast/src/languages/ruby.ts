@@ -1,4 +1,4 @@
-import type { LanguageConfig } from "../language-provider.js";
+import type { LanguageConfig } from "@workspace/ast-core";
 
 export const rubyConfig: LanguageConfig = {
   extensions: [".rb", ".rake", ".gemspec"],

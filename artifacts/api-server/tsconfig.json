@@ -11,6 +11,7 @@
     {
       "path": "../../lib/ast-core"
     },
+    { "path": "../../lib/plugins-ast" },
     {
       "path": "../../lib/db"
     },

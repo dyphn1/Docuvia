@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import path from "path";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs/promises";

@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import {
   generateAst,
   initParser,
@@ -13,7 +14,7 @@ let isParserInit = false;
 
 async function ensureParserInit() {
   if (isParserInit) return;
-  registry = await LanguageRegistry.load();
+  registry = await loadDefaultRegistry();
   await initParser((scriptName: string) => {
     return "../wasm/" + scriptName;
   });

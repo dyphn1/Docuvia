@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 /**
  * AST Parsing Demo — C / C++
  *
@@ -88,7 +89,7 @@ async function demo() {
   const repoRoot = path.resolve(import.meta.dirname, "..", "..", "..");
   const wasmBasePath = path.join(repoRoot, "artifacts", "api-server", "node_modules");
 
-  const registry = await LanguageRegistry.load();
+  const registry = await loadDefaultRegistry();
 
   // ── Parser.init with wasm location (same pattern as ast-worker.ts) ────────
   const { createRequire } = await import("node:module");

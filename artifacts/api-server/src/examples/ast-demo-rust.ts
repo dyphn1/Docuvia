@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import { Parser, Language } from "web-tree-sitter";
 import { createRequire } from "node:module";
 import { LanguageRegistry } from "@workspace/ast-core";
@@ -41,7 +42,7 @@ const path = await import("node:path");
 
 async function main() {
   await initParser();
-  const registry = await LanguageRegistry.load();
+  const registry = await loadDefaultRegistry();
 
   const ext = ".rs";
   const { lang, provider } = await loadLanguage(ext, registry);

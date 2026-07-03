@@ -1,3 +1,4 @@
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -25,7 +26,7 @@ async function initParser() {
   }
   if (!registry) {
     // Assuming the root is two levels up from artifacts/api-server, or process.cwd() is ok
-    registry = await LanguageRegistry.load();
+    registry = await loadDefaultRegistry();
   }
 }
 

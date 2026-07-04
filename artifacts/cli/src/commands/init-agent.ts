@@ -35,7 +35,8 @@ if (target) {
       console.log("================================");
     }
   } catch (e) {
-    // Fail silently
+    const errorMsg = (e as any).message || String(e);
+    console.error("[Docuvia Pre-Command] Failed to retrieve context: " + errorMsg);
   }
 }
 `;

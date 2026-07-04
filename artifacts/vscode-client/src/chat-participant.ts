@@ -9,18 +9,24 @@ export function registerDocuviaChatParticipant(
   context: vscode.ExtensionContext
 ): vscode.ChatParticipant {
   const handler: vscode.ChatRequestHandler = async (request, _context, stream, token) => {
-    const cmd = request.command;
-    if (cmd === "explore" || (!cmd && request.prompt.toLowerCase().includes("explore"))) {
-      return handleExplore(request, stream, token, request.prompt);
-    }
-    switch (cmd) {
-      case "query":
-        return handleQuery(request, stream);
-      case "extract":
-        return handleExtract(request, stream, token);
-      case "help":
-      default:
-        return handleHelp(stream);
+    try {
+      const cmd = request.command;
+      if (cmd === "explore" || (!cmd && request.prompt.toLowerCase().includes("explore"))) {
+        return await handleExplore(request, stream, token, request.prompt);
+      }
+      switch (cmd) {
+        case "query":
+          return await handleQuery(request, stream);
+        case "extract":
+          return await handleExtract(request, stream, token);
+        case "help":
+        default:
+          return await handleHelp(stream);
+      }
+    } catch (err: any) {
+      console.error("[ChatParticipant] Unhandled error:", err);
+      stream.markdown(`**Error:** ${err.message || String(err)}`);
+      return { errorDetails: { message: err.message || String(err) } };
     }
   };
 

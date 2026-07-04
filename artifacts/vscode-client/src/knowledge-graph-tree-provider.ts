@@ -115,7 +115,7 @@ export class KnowledgeGraphTreeProvider
       try {
         const db = openLocalDatabase(target.workspaceRoot);
         let changed = false;
-        const updateStmt = db.prepare("UPDATE l3_nodes SET l2_node_id = ? WHERE id = ?");
+        const updateStmt = db.prepare("UPDATE l3_nodes SET l2_module_id = ? WHERE id = ?");
 
         db.transaction(() => {
           for (const node of l3Nodes) {

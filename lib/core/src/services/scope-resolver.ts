@@ -48,8 +48,11 @@ export class ScopeResolver {
           this.tsConfigPaths = { ...parsed.compilerOptions.paths, ...this.tsConfigPaths };
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       // Ignore fs read or parse failures
+      console.debug(
+        `[ScopeResolver] Failed to read or parse tsconfig files: ${e.message || String(e)}`
+      );
     }
   }
 

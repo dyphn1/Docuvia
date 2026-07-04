@@ -72,8 +72,10 @@ export async function handleExplore(
       vscode.Uri.file(path.join(workspaceRoot, "README.md"))
     );
     readmeContent = Buffer.from(bytes).toString("utf-8");
-  } catch {
-    // file absent — continue
+  } catch (err: any) {
+    console.debug(
+      `[ExploreHandler] README.md not found or unreadable: ${err.message || String(err)}`
+    );
   }
 
   // Read package.json (continue if absent)
@@ -83,8 +85,10 @@ export async function handleExplore(
       vscode.Uri.file(path.join(workspaceRoot, "package.json"))
     );
     pkgJson = JSON.parse(Buffer.from(bytes).toString("utf-8")) as Record<string, unknown>;
-  } catch {
-    // file absent — continue
+  } catch (err: any) {
+    console.debug(
+      `[ExploreHandler] package.json not found or unreadable: ${err.message || String(err)}`
+    );
   }
 
   const detectedTypes = detectProjectTypes(readmeContent, pkgJson);

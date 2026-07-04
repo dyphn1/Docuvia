@@ -114,7 +114,12 @@ export class JanitorService {
                       commitId: c.id,
                       l3NodeId: node.id,
                     })
-                    .catch(() => {});
+                    .catch((err) => {
+                      logger.error(
+                        { err, commitId: c.id, l3NodeId: node.id },
+                        "Failed to insert commitL3LinksTable in janitor"
+                      );
+                    });
                 }
               });
               healedCount++;

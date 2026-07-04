@@ -4,6 +4,7 @@ import { l2NodesTable, l3NodesTable, projectsTable } from "@workspace/db/schema"
 import { count } from "drizzle-orm";
 import path from "path";
 import fs from "fs";
+import { logger } from "../utils/logger.js";
 
 export class StatusService {
   constructor(private workspaceRoot: string) {}
@@ -23,8 +24,9 @@ export class StatusService {
     try {
       const [projectsCount] = await db.select({ value: count() }).from(projectsTable);
       projectsCountValue = projectsCount.value;
-    } catch (e) {
+    } catch (e: any) {
       // Ignore if projects table is not in local sqlite
+      logger.debug({ err: e }, "projects table missing in local status check");
     }
 
     return {

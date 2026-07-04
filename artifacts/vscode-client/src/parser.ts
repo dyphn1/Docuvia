@@ -10,7 +10,8 @@ export function parseGlobalConfig(content: string, filePath: string): GlobalConf
       return GlobalConfigSchema.parse({});
     }
     return result.data;
-  } catch {
+  } catch (err: any) {
+    console.warn(`[Docuvia] Could not parse global config at ${filePath}:`, err.message || err);
     return GlobalConfigSchema.parse({});
   }
 }

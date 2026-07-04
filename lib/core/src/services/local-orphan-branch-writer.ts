@@ -65,27 +65,10 @@ export class LocalOrphanBranchWriter {
       throw new Error("git CLI not available or not in a git repository");
     }
 
-    const files: Map<string, string> = new Map();
-
-    async function walk(dir: string, base: string) {
-      const entries = await fs.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        const relPath = path.relative(base, fullPath);
-        if (entry.isDirectory()) {
-          await walk(fullPath, base);
-        } else {
-          const content = await fs.readFile(fullPath, "utf8");
-          files.set(relPath, content);
-        }
-      }
-    }
-
-    await walk(sourceDirectory, sourceDirectory);
-
-    const now = Math.floor(Date.now() / 1000);
-    const fastImportData = buildFastImportData(branch, files, now);
-
-    await runGitFastImport(this.workspaceRoot, fastImportData);
+    // Unify local CLI sync with the same Database-as-IPC outbox pipeline (A.2 - Issue 1.11)
+    // The local CLI shouldn't parse AST and write to git manually. It should use the shared pipeline.
+    throw new Error(
+      "LocalOrphanBranchWriter is deprecated. Use writeKnowledgeToOrphanBranch via Database-as-IPC instead."
+    );
   }
 }

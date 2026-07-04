@@ -92,7 +92,13 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
             })
             .returning({ id: l2NodesTable.id })
             .get();
-          const fileId = nodeInsert!.id;
+
+          if (!nodeInsert) {
+            throw new Error(
+              `[SqliteGraphRepository] Failed to insert or update L2 Node for file ${result.file}`
+            );
+          }
+          const fileId = nodeInsert.id;
           fileIdMap.set(result.file, fileId);
 
           for (const tag of tags) {
@@ -124,13 +130,15 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
                 })
                 .returning({ id: l2NodesTable.id })
                 .get();
-              tx.insert(nodeLinksTable)
-                .values({
-                  sourceNodeId: fileId,
-                  targetNodeId: fnInsert!.id,
-                  linkType: "contains",
-                })
-                .run();
+              if (fnInsert) {
+                tx.insert(nodeLinksTable)
+                  .values({
+                    sourceNodeId: fileId,
+                    targetNodeId: fnInsert.id,
+                    linkType: "contains",
+                  })
+                  .run();
+              }
             }
           }
 
@@ -147,13 +155,15 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
                 })
                 .returning({ id: l2NodesTable.id })
                 .get();
-              tx.insert(nodeLinksTable)
-                .values({
-                  sourceNodeId: fileId,
-                  targetNodeId: clsInsert!.id,
-                  linkType: "contains",
-                })
-                .run();
+              if (clsInsert) {
+                tx.insert(nodeLinksTable)
+                  .values({
+                    sourceNodeId: fileId,
+                    targetNodeId: clsInsert.id,
+                    linkType: "contains",
+                  })
+                  .run();
+              }
             }
           }
         }

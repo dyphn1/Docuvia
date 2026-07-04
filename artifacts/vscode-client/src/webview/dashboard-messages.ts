@@ -7,9 +7,13 @@ export function handleDashboardMessage(msg: WebviewMessage, targetRoot: string):
     if (!msg.filePath.startsWith(workspaceRoot)) {
       return; // Reject paths outside workspace
     }
-    void vscode.workspace
-      .openTextDocument(vscode.Uri.file(msg.filePath))
-      .then((doc) => vscode.window.showTextDocument(doc));
+    void vscode.workspace.openTextDocument(vscode.Uri.file(msg.filePath)).then(
+      (doc) => vscode.window.showTextDocument(doc),
+      (err) => {
+        console.warn(`[DashboardMessages] Failed to open decision document: ${err.message || err}`);
+        vscode.window.showErrorMessage(`Docuvia: Could not open document. ${err.message || err}`);
+      }
+    );
   }
   if (msg.type === "openChat") {
     void vscode.commands.executeCommand("workbench.action.chat.open", { query: "@docuvia" });

@@ -3,11 +3,15 @@ import { l2NodesTable, l3NodesTable, nodeLinksTable } from "@workspace/db/schema
 import { eq, like, inArray, count } from "drizzle-orm";
 
 export class ImpactAnalysisService {
-  private static async collectTransitiveImpactingNodeIds(startNodeId: number): Promise<number[]> {
+  private static async collectTransitiveImpactingNodeIds(
+    startNodeId: number,
+    maxDepth: number = 3
+  ): Promise<number[]> {
     const visited = new Set<number>();
     let frontier = [startNodeId];
+    let depth = 0;
 
-    while (frontier.length > 0) {
+    while (frontier.length > 0 && depth < maxDepth) {
       const links = await db
         .select({
           sourceNodeId: nodeLinksTable.sourceNodeId,
@@ -24,6 +28,7 @@ export class ImpactAnalysisService {
       }
 
       frontier = nextFrontier;
+      depth++;
     }
 
     return [...visited];

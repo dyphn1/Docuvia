@@ -144,8 +144,11 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
       }
       this.documentAnchors.set(document.uri.toString(), anchors);
       this._onDidChangeCodeLenses.fire();
-    } catch {
-      // ignore
+    } catch (e: any) {
+      console.warn(
+        `[DocuviaCodeLensProvider] Failed to fetch symbols for document ${document.uri.toString()}:`,
+        e.message || e
+      );
     }
   }
 }

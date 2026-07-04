@@ -75,15 +75,15 @@ export class QueryService {
 
     let lspEnrichedCallers: Array<{ file: string; line: number; text: string }> | undefined;
 
-    if (escalateToLsp && targetNode.source_paths) {
+    if (escalateToLsp && targetNode.path_patterns) {
       let parsedFilePath: string | undefined;
       try {
-        const paths = JSON.parse(targetNode.source_paths);
+        const paths = JSON.parse(targetNode.path_patterns);
         if (Array.isArray(paths)) {
           parsedFilePath = paths.find((p: string) => p.endsWith(".ts") || p.endsWith(".tsx"));
         }
       } catch {
-        const paths = targetNode.source_paths.split(",");
+        const paths = targetNode.path_patterns.split(",");
         parsedFilePath = paths
           .find((p: string) => p.trim().endsWith(".ts") || p.trim().endsWith(".tsx"))
           ?.trim();
@@ -170,7 +170,7 @@ export class QueryService {
       .prepare(
         `
       SELECT * FROM l2_nodes 
-      WHERE name LIKE ? OR slug LIKE ? OR source_paths LIKE ? 
+      WHERE name LIKE ? OR slug LIKE ? OR path_patterns LIKE ? 
       LIMIT 1
     `
       )

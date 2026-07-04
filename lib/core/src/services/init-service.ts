@@ -133,6 +133,14 @@ export class InitService {
           l1_tag_id INTEGER,
           created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
+        CREATE TABLE IF NOT EXISTS l3_nodes (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          l2_node_id INTEGER,
+          title TEXT,
+          content TEXT,
+          status TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
       `);
       db.close();
     } catch (err: any) {

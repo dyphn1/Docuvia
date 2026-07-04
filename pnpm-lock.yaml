@@ -211,8 +211,8 @@ importers:
         specifier: ^0.1.13
         version: 0.1.13
       web-tree-sitter:
-        specifier: ^0.26.9
-        version: 0.26.10
+        specifier: ^0.25.9
+        version: 0.25.9
       zod:
         specifier: 'catalog:'
         version: 3.25.76
@@ -788,8 +788,8 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
       web-tree-sitter:
-        specifier: ^0.26.9
-        version: 0.26.10
+        specifier: ^0.25.9
+        version: 0.25.9
 
   lib/api-client-react:
     dependencies:
@@ -815,8 +815,8 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1
       web-tree-sitter:
-        specifier: ^0.26.9
-        version: 0.26.10
+        specifier: ^0.25.9
+        version: 0.25.9
     devDependencies:
       '@types/js-yaml':
         specifier: ^4.0.9
@@ -867,8 +867,8 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       web-tree-sitter:
-        specifier: ^0.26.9
-        version: 0.26.9
+        specifier: ^0.25.9
+        version: 0.25.9
     devDependencies:
       '@types/better-sqlite3':
         specifier: ^7.6.13
@@ -932,8 +932,8 @@ importers:
         specifier: workspace:*
         version: link:../ast-core
       web-tree-sitter:
-        specifier: ^0.26.9
-        version: 0.26.10
+        specifier: ^0.25.9
+        version: 0.25.9
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -12671,11 +12671,13 @@ packages:
   wbuf@1.7.3:
     resolution: {integrity: sha512-O84QOnr0icsbFGLS0O3bI5FswxzRr8/gHwWkDlQFskhSPryQXvrTMxjxGP4+iWYoauLoBvfDpkrOauZ+0iZpDA==}
 
-  web-tree-sitter@0.26.10:
-    resolution: {integrity: sha512-vengBGYS7FpAerkR3o04oBL4L8MkVmjawK50AFBu7v0HZBkmF9ZavPGKoXLSSmRhp7T/YgsJ7joAS3yAxHPEqQ==}
-
-  web-tree-sitter@0.26.9:
-    resolution: {integrity: sha512-YJwSHANl6XFgeEjB8nitgj0qZYt5gkIesJ4w2srS2wcLB4GUa4xcOkM0YaMsU6WNR53YVIkDSY7Ej4pf3IXtCA==}
+  web-tree-sitter@0.25.9:
+    resolution: {integrity: sha512-J9L+SdqSu0SV517Ys6W/ROhT64PDE7TSDAvtjDoqlS6/1aK5b0rWNvukuuIdwGm3odA+I+r7Fyw0Vf/qdzNpnw==}
+    peerDependencies:
+      '@types/emscripten': ^1.40.0
+    peerDependenciesMeta:
+      '@types/emscripten':
+        optional: true
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
@@ -15255,7 +15257,9 @@ snapshots:
       source-map: 0.6.1
       string-length: 2.0.0
     transitivePeerDependencies:
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@jest/schemas@29.6.3':
     dependencies:
@@ -15280,7 +15284,9 @@ snapshots:
       jest-runner: 24.9.0
       jest-runtime: 24.9.0
     transitivePeerDependencies:
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@jest/transform@24.9.0':
     dependencies:
@@ -26802,9 +26808,7 @@ snapshots:
     dependencies:
       minimalistic-assert: 1.0.1
 
-  web-tree-sitter@0.26.10: {}
-
-  web-tree-sitter@0.26.9: {}
+  web-tree-sitter@0.25.9: {}
 
   webidl-conversions@3.0.1: {}
 

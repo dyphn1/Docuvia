@@ -62,28 +62,11 @@ export async function detectCrossProjectLinks(
       sim: 1 - r.distance,
     }));
   } catch (err) {
-    console.error("PGVECTOR ERROR:", err);
-    logger.warn({ err }, "pgvector query failed, falling back to O(N^2) in-memory scanning");
-    // Fallback: JS in-memory O(N²) scanning
-    const otherNodes = await db
-      .select()
-      .from(l2NodesTable)
-      .where(and(ne(l2NodesTable.projectId, projectId), isNotNull(l2NodesTable.embedding)));
-
-    for (const other of otherNodes) {
-      const otherEmb = other.embedding;
-      if (!otherEmb) continue;
-
-      const sim = cosineSimilarity(newNodeEmbedding, otherEmb);
-      if (sim >= SIMILARITY_THRESHOLD) {
-        similarNodes.push({
-          id: other.id,
-          name: other.name,
-          projectId: other.projectId,
-          sim,
-        });
-      }
-    }
+    logger.error(
+      { err },
+      "pgvector query failed, O(N^2) in-memory fallback is intentionally disabled to prevent out-of-memory crashes on large graphs. Throwing error."
+    );
+    throw err;
   }
 
   for (const other of similarNodes) {

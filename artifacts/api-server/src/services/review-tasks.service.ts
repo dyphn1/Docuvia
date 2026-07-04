@@ -1,4 +1,4 @@
-import { db } from "@workspace/db";
+import { db, nodeLinksTable } from "@workspace/db";
 import {
   reviewTasksTable,
   projectsTable,
@@ -149,6 +149,37 @@ export class ReviewTasksService {
       })
       .where(eq(reviewTasksTable.id, id))
       .returning();
+
+    // Cross-project linking implementation (A.4 - Issue 1.15)
+    if (
+      task.status === "approved" &&
+      task.description &&
+      task.description.includes("Cross-project similarity detected")
+    ) {
+      const match = task.description.match(/\(node #(\d+)\)/);
+      if (match && match[1]) {
+        const targetNodeId = parseInt(match[1], 10);
+        const sourceNodeId = task.entityId;
+
+        let linkType = "IMPLEMENTS";
+        if (task.description.includes("EVOLVED_INTO")) {
+          // Optional hint in description
+          linkType = "EVOLVED_INTO";
+        } else if (task.description.includes("EXPLAINS")) {
+          linkType = "EXPLAINS";
+        }
+
+        try {
+          await db.insert(nodeLinksTable).values({
+            sourceNodeId,
+            targetNodeId,
+            linkType,
+          });
+        } catch (e) {
+          // ignore duplicate links
+        }
+      }
+    }
 
     // Writeback correction to the actual node + store in feedback loop
     if (body.correctedValue && task.status === "approved") {

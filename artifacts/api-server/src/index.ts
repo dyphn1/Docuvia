@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger, JanitorService } from "@workspace/core";
+import { jobQueueWorker } from "./workers/job-queue.worker";
 
 const rawPort = process.env["PORT"];
 
@@ -20,6 +21,9 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Start job queue worker
+  jobQueueWorker.start();
 
   // Start background janitor
   const janitor = new JanitorService();

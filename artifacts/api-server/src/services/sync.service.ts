@@ -1,5 +1,5 @@
 import { db } from "@workspace/db";
-import { l2NodesTable, l3NodesTable } from "@workspace/db";
+import { l2NodesTable, l3NodesTable, jobQueueTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { writeKnowledgeToOrphanBranch } from "@workspace/core";
 import { logger } from "@workspace/core";
@@ -35,8 +35,12 @@ export class SyncService {
         // ... (other handlers omitted for brevity)
       }
 
-      // 3. Perform Git Sync under the same lock
-      await writeKnowledgeToOrphanBranch(projectId);
+      // 3. Queue the Git Sync to outbox (Database-as-IPC) instead of running synchronously
+      await tx.insert(jobQueueTable).values({
+        taskType: "sync_orphan_branch",
+        payload: { projectId },
+        status: "pending",
+      });
     });
   }
 }

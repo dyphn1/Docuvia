@@ -21,15 +21,16 @@ export class JanitorService {
   async reanchorL3Rules(): Promise<void> {
     logger.info("Starting L3 rule reanchoring janitor job...");
 
-    const pendingNodes = await db
+    // A.6 - Issue 1.20: Scan both pending and valid nodes to ensure self-healing survives history rewrites
+    const nodesToScan = await db
       .select()
       .from(l3NodesTable)
-      .where(eq(l3NodesTable.validityStatus, "pending"));
+      .where(inArray(l3NodesTable.validityStatus, ["pending", "valid"]));
 
     let healedCount = 0;
     let gcCount = 0;
 
-    for (const node of pendingNodes) {
+    for (const node of nodesToScan) {
       let validCommits = false;
       const commitsToCheck =
         node.sourceCommits && node.sourceCommits.length > 0

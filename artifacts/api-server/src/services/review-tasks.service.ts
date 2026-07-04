@@ -11,6 +11,7 @@ import {
 import { eq, sql, count, gte } from "drizzle-orm";
 import { ResolveReviewTaskBody } from "@workspace/api-zod";
 import { z } from "zod";
+import { generateEmbedding } from "@workspace/core";
 
 export class ReviewTasksService {
   private async resolveReviewTaskOwnerId(
@@ -210,26 +211,31 @@ export class ReviewTasksService {
           .select()
           .from(l3NodesTable)
           .where(eq(l3NodesTable.id, task.entityId));
-        if (node && node.content) {
-          const [l2] = await db
-            .select()
-            .from(l2NodesTable)
-            .where(eq(l2NodesTable.id, node.l2NodeId));
-          if (l2) {
-            await db.insert(correctionExamplesTable).values({
-              projectId: l2.projectId,
-              entityType: "l3_node",
-              entityId: task.entityId,
-              originalContent: node.content,
-              correctedContent: body.correctedValue,
-            });
-          }
+        let l2: typeof l2NodesTable.$inferSelect | undefined;
+        if (node) {
+          [l2] = await db.select().from(l2NodesTable).where(eq(l2NodesTable.id, node.l2NodeId));
         }
+        if (node && node.content && l2) {
+          await db.insert(correctionExamplesTable).values({
+            projectId: l2.projectId,
+            entityType: "l3_node",
+            entityId: task.entityId,
+            originalContent: node.content,
+            correctedContent: body.correctedValue,
+          });
+        }
+        const correctedEmbedding = node
+          ? await generateEmbedding(
+              l2?.projectId,
+              `${node.title} ${body.correctedValue ?? ""}`.trim()
+            )
+          : null;
         await db
           .update(l3NodesTable)
           .set({
             content: body.correctedValue,
             aiGenerated: false,
+            ...(correctedEmbedding ? { embedding: correctedEmbedding } : {}),
           })
           .where(eq(l3NodesTable.id, task.entityId));
       } else if (task.entityType === "l1_tag") {

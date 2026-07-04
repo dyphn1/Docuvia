@@ -1,7 +1,11 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { minimatch } from "minimatch";
-import { ExtractService, openLocalDatabase } from "@workspace/core";
+import {
+  ExtractService,
+  openWorkspaceLocalDatabase,
+  resolveL2NodeIdForFile,
+} from "@workspace/core";
 import { addDecisionCommand } from "./decision.js";
 
 export async function runExtractionCommand() {
@@ -54,16 +58,17 @@ export async function runExtractionCommand() {
           );
 
           if (action === "Save as Decision Record") {
-            const db = openLocalDatabase(workspaceRoot);
+            const db = openWorkspaceLocalDatabase(workspaceRoot);
+            const l2NodeId = resolveL2NodeIdForFile(db, relativePath);
             const insert = db.prepare(
-              "INSERT INTO l3_nodes (title, slug, status, content, created_at) VALUES (?, ?, ?, ?, ?)"
+              "INSERT INTO l3_nodes (l2_node_id, title, slug, status, content, created_at) VALUES (?, ?, ?, ?, ?, ?)"
             );
 
             db.transaction(() => {
               for (const d of result.decisions) {
                 const title = `Extracted from ${path.basename(filePath)}`;
                 const slug = `extracted-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-                insert.run(title, slug, "proposed", d, new Date().toISOString());
+                insert.run(l2NodeId, title, slug, "proposed", d, new Date().toISOString());
               }
             })();
             db.close();

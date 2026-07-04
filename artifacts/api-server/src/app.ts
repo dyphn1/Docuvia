@@ -6,7 +6,7 @@ import { routes as router } from "./routes";
 import { githubWebhooksRouter } from "./routes/github-webhooks";
 import { llmProxyRouter } from "./proxy/llm-proxy.js";
 import { logger } from "@workspace/core";
-import { standardLimiter } from "./lib/rate-limit.js";
+import { standardLimiter, mcpLimiter } from "./lib/rate-limit.js";
 
 const app: Express = express();
 app.set("trust proxy", 1);
@@ -40,10 +40,17 @@ if (corsOrigin) {
   app.use(cors());
 }
 
-// Mount webhook route with raw body BEFORE express.json() so HMAC validation works
-app.use("/api/webhooks/github", express.raw({ type: "application/json" }), githubWebhooksRouter);
+// Mount webhook route with raw body BEFORE express.json() so HMAC validation works.
+// Mounted ahead of the /api router (and its standardLimiter), so apply rate limiting directly here.
+app.use(
+  "/api/webhooks/github",
+  standardLimiter,
+  express.raw({ type: "application/json" }),
+  githubWebhooksRouter
+);
 
-app.use("/proxy/v1", llmProxyRouter);
+// LLM-heavy proxy — also mounted ahead of /api, use the stricter cost-prevention limiter.
+app.use("/proxy/v1", mcpLimiter, llmProxyRouter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

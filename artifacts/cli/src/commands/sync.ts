@@ -30,6 +30,10 @@ export async function syncCommand(options: {
 }) {
   if (options.isLocal) {
     console.log("[docuvia] Running local AST sync...");
+    // NOTE: this path re-parses the AST into a discarded temp dir and writes straight to the
+    // git orphan branch — it is a separate pipeline from `analyze`'s .docuvia/local.db
+    // (SqliteGraphRepository); the two never intersect. See
+    // docs/gitbook/evaluate/local-sqlite-write-pipeline.md "Current State" for details.
     let tempDir = "";
     try {
       const workspaceRoot = process.cwd();

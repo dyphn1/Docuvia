@@ -9,6 +9,27 @@ export interface LlmAdapterConfig {
   baseUrl?: string;
 }
 
+/**
+ * Shared retry/backoff wrapper for single (non-batch) LLM calls — used by createLlmClient's
+ * chat-completions patch below, and directly by lib/integrations-openai-ai-server/src/audio and
+ * .../image clients, which construct their own raw OpenAI instances (see Issue 1.21).
+ */
+export function withLlmRetry<T>(fn: () => Promise<T>): Promise<T> {
+  return pRetry(
+    async () => {
+      try {
+        return await fn();
+      } catch (error: unknown) {
+        if (isRateLimitError(error) || String(error).includes("timeout")) {
+          throw error; // Let pRetry handle it
+        }
+        throw new AbortError(error instanceof Error ? error : new Error(String(error)));
+      }
+    },
+    { retries: 5, minTimeout: 1000, maxTimeout: 15000, factor: 2 }
+  );
+}
+
 export function createLlmClient(config?: Partial<LlmAdapterConfig>): OpenAI {
   const provider = config?.provider?.toLowerCase() || "openai";
 
@@ -39,19 +60,7 @@ export function createLlmClient(config?: Partial<LlmAdapterConfig>): OpenAI {
   // A.5 - Issue 1.21 Implement Retry wrapper around the raw client chat completions
   const originalCreate = client.chat.completions.create.bind(client.chat.completions);
   client.chat.completions.create = (async (...args: any[]) => {
-    return pRetry(
-      async () => {
-        try {
-          return await (originalCreate as any)(...args);
-        } catch (error: unknown) {
-          if (isRateLimitError(error) || String(error).includes("timeout")) {
-            throw error; // Let pRetry handle it
-          }
-          throw new AbortError(error instanceof Error ? error : new Error(String(error)));
-        }
-      },
-      { retries: 5, minTimeout: 1000, maxTimeout: 15000, factor: 2 }
-    );
+    return withLlmRetry(() => (originalCreate as any)(...args));
   }) as any;
 
   return client;

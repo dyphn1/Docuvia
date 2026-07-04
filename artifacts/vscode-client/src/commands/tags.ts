@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { parse as parseYaml } from "yaml";
 import { randomUUID } from "crypto";
-import { openLocalDatabase } from "@workspace/core";
+import { openWorkspaceLocalDatabase } from "@workspace/core";
 
 export async function acceptL1TagsCommand(yamlContent: string, explicitRoot: string) {
   const workspaceRoot = explicitRoot;
@@ -20,7 +20,7 @@ export async function acceptL1TagsCommand(yamlContent: string, explicitRoot: str
   try {
     const tags = parseYaml(yamlContent);
     if (Array.isArray(tags)) {
-      const db = openLocalDatabase(workspaceRoot);
+      const db = openWorkspaceLocalDatabase(workspaceRoot);
       db.exec(`
         CREATE TABLE IF NOT EXISTS l1_tags (
           id TEXT PRIMARY KEY,

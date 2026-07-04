@@ -29,6 +29,10 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction): 
     return;
   }
 
+  // Single-tenant limitation: there is no users/api_keys table yet, so every holder of the
+  // one shared DOCUVIA_API_KEY resolves to the same identity. Downstream `ownerId !== userId`
+  // checks are real but inert until per-key user resolution exists — see crosscutting-concepts.md
+  // §8.4 "Single-Tenant Auth (Current Limitation)". Do not rely on this id for isolating distinct users.
   (req as any).user = { id: 1 };
 
   next();

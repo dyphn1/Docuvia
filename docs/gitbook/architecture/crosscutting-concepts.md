@@ -461,6 +461,8 @@ Internal maintenance routes are strictly authenticated.
 
 - **Fail-Closed Metabolism Auth**: The `/admin/metabolism-tick` route acts as a background worker orchestrator. It demands an `Authorization: Bearer` or `admin_token` that matches the server's `ADMIN_SECRET_TOKEN` environment variable. If the environment variable is not defined, the server **fails closed** (returns 500) rather than falling back to an insecure default, guaranteeing safety in production.
 
+- **Single-Tenant Auth (Current Limitation)**: `requireApiKey` (`artifacts/api-server/src/middlewares/auth.ts`) validates a single shared `DOCUVIA_API_KEY` and attaches a hardcoded `{ id: 1 }` as `req.user` — there is no `users`/`api_keys` table and no per-key identity resolution yet. Downstream `ownerId !== userId` checks (`export.ts`, `sync.ts`, `review-tasks.service.ts`) are real code but are currently inert, since every authenticated caller resolves to the same user id. **Treat the API as single-tenant/single-key until real per-user API key issuance is implemented** — do not rely on these checks for isolation between distinct human users.
+
 ---
 
 ## References

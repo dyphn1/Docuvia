@@ -29,16 +29,12 @@ metabolismRouter.get(
 metabolismRouter.get(
   "/admin/metabolism-tick",
   async (req: Request, res: Response): Promise<void> => {
-    let adminSecret = process.env.ADMIN_SECRET_TOKEN;
+    const adminSecret = process.env.ADMIN_SECRET_TOKEN;
 
     if (!adminSecret) {
-      if (process.env.NODE_ENV === "development") {
-        adminSecret = "dev-secret-token";
-      } else {
-        logger.error("ADMIN_SECRET_TOKEN is missing. Server misconfigured. Failing closed.");
-        res.status(500).json({ error: "Server misconfiguration" });
-        return;
-      }
+      logger.error("ADMIN_SECRET_TOKEN is missing. Server misconfigured. Failing closed.");
+      res.status(500).json({ error: "Server misconfiguration" });
+      return;
     }
 
     let token = req.query.admin_token as string | undefined;

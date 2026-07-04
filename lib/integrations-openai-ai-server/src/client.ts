@@ -1,4 +1,6 @@
 import OpenAI from "openai";
+import pRetry, { AbortError } from "p-retry";
+import { isRateLimitError } from "./batch/utils.js";
 
 export interface LlmAdapterConfig {
   provider: string;
@@ -29,10 +31,30 @@ export function createLlmClient(config?: Partial<LlmAdapterConfig>): OpenAI {
     throw new Error("API Key must be set. Did you forget to provision the LLM integration?");
   }
 
-  return new OpenAI({
+  const client = new OpenAI({
     apiKey,
     baseURL,
   });
+
+  // A.5 - Issue 1.21 Implement Retry wrapper around the raw client chat completions
+  const originalCreate = client.chat.completions.create.bind(client.chat.completions);
+  client.chat.completions.create = (async (...args: any[]) => {
+    return pRetry(
+      async () => {
+        try {
+          return await (originalCreate as any)(...args);
+        } catch (error: unknown) {
+          if (isRateLimitError(error) || String(error).includes("timeout")) {
+            throw error; // Let pRetry handle it
+          }
+          throw new AbortError(error instanceof Error ? error : new Error(String(error)));
+        }
+      },
+      { retries: 5, minTimeout: 1000, maxTimeout: 15000, factor: 2 }
+    );
+  }) as any;
+
+  return client;
 }
 
 // Retained for backward compatibility during migration

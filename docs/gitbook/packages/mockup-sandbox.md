@@ -18,7 +18,7 @@ A custom Vite plugin at `artifacts/mockup-sandbox/mockup-preview-plugin.ts` watc
 src/
   components/
     mockups/     — drop a .tsx file here, it's auto-registered
-    ui/          — shared building blocks (Radix-based)
+    ui/          — thin re-exports of the shared @workspace/ui-kit package (Radix-based; also used by kg-engine)
   .generated/    — auto-generated component map (do not hand-edit)
   hooks/, lib/   — supporting utilities
 ```

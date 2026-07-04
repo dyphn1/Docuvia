@@ -32,7 +32,6 @@ export * from "./services/ingestion-pipeline.js";
 export * from "./services/intent-router.js";
 export * from "./services/llm-provider.js";
 export * from "./services/orphan-branch-writer.js";
-export * from "./services/local-orphan-branch-writer.js";
 export * from "./services/slack-teams-client.js";
 export * from "./services/svn-client.js";
 export * from "./services/vector-search.js";

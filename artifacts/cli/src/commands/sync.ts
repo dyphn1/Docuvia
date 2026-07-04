@@ -1,6 +1,5 @@
 import {
   SyncService,
-  LocalOrphanBranchWriter,
   FileDiscoveryService,
   AstProcessingService,
   mapAstToEvents,

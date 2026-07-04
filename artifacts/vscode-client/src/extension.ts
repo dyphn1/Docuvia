@@ -8,6 +8,7 @@ import { registerCommands } from "./commands/index.js";
 import { registerProviders } from "./providers/index.js";
 import { KnowledgeGraphTreeProvider } from "./knowledge-graph-tree-provider.js";
 import { TaskQueueTreeProvider } from "./task-queue-tree-provider.js";
+import { shutdownGlobalWorkerPool } from "@workspace/core";
 
 let outputChannel: vscode.OutputChannel;
 
@@ -45,6 +46,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerCommands(context, outputChannel, credentialManager, kgProvider, tqProvider);
 }
 
-export function deactivate(): void {
-  // No singletons to dispose
+export async function deactivate(): Promise<void> {
+  // Terminate the module-level AST worker pool singleton so repeated activate/deactivate
+  // cycles in a long-lived host don't leak worker threads (Issue 1.10).
+  await shutdownGlobalWorkerPool();
 }

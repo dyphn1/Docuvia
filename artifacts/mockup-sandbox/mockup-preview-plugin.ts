@@ -136,6 +136,10 @@ class MockupPreviewManager {
         void this.refresh();
       }
     });
+
+    this.watcher.on("error", (err) => {
+      console.error("[mockup-preview-plugin] watcher error:", err);
+    });
   }
 
   async closeWatcher(): Promise<void> {

@@ -119,6 +119,104 @@ export class ScopeResolver {
       }
     }
 
+    // Bare package import (npm dependency or a workspace-monorepo sibling package)
+    return this.resolveBareImport(modulePath);
+  }
+
+  private packageDirCache: Map<string, string> | null = null;
+
+  /** Maps a package name (e.g. "@workspace/core") to its workspace-relative directory. */
+  private getWorkspacePackageDirs(): Map<string, string> {
+    if (this.packageDirCache) return this.packageDirCache;
+    const cache = new Map<string, string>();
+    for (const glob of this.getWorkspaceGlobs()) {
+      const starIdx = glob.indexOf("*");
+      const baseDir = (starIdx >= 0 ? glob.slice(0, starIdx) : glob).replace(/\/$/, "");
+      const fullBaseDir = path.join(this.workspaceRoot, baseDir);
+      if (!fs.existsSync(fullBaseDir)) continue;
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(fullBaseDir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        const pkgJsonPath = path.join(fullBaseDir, entry.name, "package.json");
+        if (!fs.existsSync(pkgJsonPath)) continue;
+        try {
+          const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+          if (pkgJson.name) {
+            cache.set(pkgJson.name, path.posix.join(baseDir, entry.name));
+          }
+        } catch {
+          // Ignore unreadable/invalid package.json
+        }
+      }
+    }
+    this.packageDirCache = cache;
+    return cache;
+  }
+
+  /** Reads pnpm-workspace.yaml or package.json#workspaces to find monorepo package globs. */
+  private getWorkspaceGlobs(): string[] {
+    try {
+      const pnpmWsPath = path.join(this.workspaceRoot, "pnpm-workspace.yaml");
+      if (fs.existsSync(pnpmWsPath)) {
+        const content = fs.readFileSync(pnpmWsPath, "utf-8");
+        const block = /packages:\s*\n((?:\s*-\s+.+\n?)+)/.exec(content);
+        if (block) {
+          const globs = [...block[1].matchAll(/^\s*-\s+["']?([^"'\n#]+?)["']?\s*$/gm)].map((m) =>
+            m[1].trim()
+          );
+          if (globs.length > 0) return globs;
+        }
+      }
+
+      const pkgJsonPath = path.join(this.workspaceRoot, "package.json");
+      if (fs.existsSync(pkgJsonPath)) {
+        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+        if (Array.isArray(pkgJson.workspaces)) return pkgJson.workspaces;
+        if (Array.isArray(pkgJson.workspaces?.packages)) return pkgJson.workspaces.packages;
+      }
+    } catch {
+      // Ignore fs/parse failures — not every project is a monorepo
+    }
+    return [];
+  }
+
+  private resolveBareImport(modulePath: string): string | null {
+    const match = /^(@[^/]+\/[^/]+|[^/]+)(\/.*)?$/.exec(modulePath);
+    if (!match) return null;
+    const pkgName = match[1];
+    const subpath = match[2]?.slice(1); // drop leading "/"
+
+    // 1. Workspace-monorepo sibling package (e.g. "@workspace/core" -> lib/core)
+    const workspaceDir = this.getWorkspacePackageDirs().get(pkgName);
+    if (workspaceDir) {
+      const entryTarget = subpath
+        ? path.posix.join(workspaceDir, subpath)
+        : path.posix.join(workspaceDir, "src", "index");
+      const resolved = this.findFileWithExtension(entryTarget);
+      if (resolved) return resolved;
+      // Fall back to the package root itself if no conventional entry point is found
+      const rootResolved = this.findFileWithExtension(workspaceDir);
+      if (rootResolved) return rootResolved;
+    }
+
+    // 2. External npm dependency — read its package.json main/module entry point
+    try {
+      const pkgJsonPath = path.join(this.workspaceRoot, "node_modules", pkgName, "package.json");
+      if (fs.existsSync(pkgJsonPath)) {
+        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+        const entry: string = subpath || pkgJson.module || pkgJson.main || "index.js";
+        const relPath = path.posix.join("node_modules", pkgName, entry);
+        if (fs.existsSync(path.join(this.workspaceRoot, relPath))) return relPath;
+      }
+    } catch {
+      // Ignore unreadable/invalid package.json
+    }
+
     return null;
   }
 
@@ -126,7 +224,21 @@ export class ScopeResolver {
     const fullBasePath = path.join(this.workspaceRoot, basePath);
     if (fs.existsSync(fullBasePath) && fs.statSync(fullBasePath).isFile()) return basePath;
 
-    const exts = [".ts", ".js", ".tsx", ".jsx"];
+    const exts = [
+      ".ts",
+      ".js",
+      ".tsx",
+      ".jsx",
+      ".py",
+      ".rs",
+      ".go",
+      ".java",
+      ".cpp",
+      ".cc",
+      ".c",
+      ".h",
+      ".hpp",
+    ];
     for (const ext of exts) {
       if (fs.existsSync(fullBasePath + ext)) return basePath + ext;
     }

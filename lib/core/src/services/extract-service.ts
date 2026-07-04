@@ -9,6 +9,19 @@ import crypto from "crypto";
 let globalWorkerPool: AstWorkerPool | null = null;
 let globalWorkerPoolInitialized = false;
 
+/**
+ * Terminate the module-level worker pool singleton (Issue 1.10) — call this from a host's
+ * shutdown/deactivate hook (e.g. the VS Code extension's deactivate()) to avoid leaking worker
+ * threads across repeated ExtractService usage in a long-lived process.
+ */
+export async function shutdownGlobalWorkerPool(): Promise<void> {
+  if (globalWorkerPool) {
+    await globalWorkerPool.terminate();
+    globalWorkerPool = null;
+    globalWorkerPoolInitialized = false;
+  }
+}
+
 export class ExtractService {
   private workerPool: IASTWorkerPool;
 

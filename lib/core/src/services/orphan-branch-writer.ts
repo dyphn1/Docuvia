@@ -174,7 +174,11 @@ function buildFastImportData(
 
 function runGitFastImport(fastImportData: string): Promise<void> {
   return new Promise((resolve, reject) => {
+    // Explicit cwd instead of relying on the process's ambient working directory (Issue 1.1) —
+    // configurable via DOCUVIA_KNOWLEDGE_REPO_PATH since this repo is shared across all projects.
+    const cwd = process.env.DOCUVIA_KNOWLEDGE_REPO_PATH || process.cwd();
     const child = spawn("git", ["fast-import", "--quiet"], {
+      cwd,
       stdio: ["pipe", "ignore", "pipe"],
     });
     const stderrChunks: Buffer[] = [];

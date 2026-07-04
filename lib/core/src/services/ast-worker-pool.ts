@@ -29,12 +29,21 @@ export class AstWorkerPool implements IASTWorkerPool {
     string,
     { resolve: (val: AstParseResponse) => void; reject: (err: any) => void }
   >();
+  private taskTimeouts = new Map<string, NodeJS.Timeout>();
+  private timedOutWorkers = new WeakSet<Worker>();
+
+  constructor(private readonly taskTimeoutMs: number = 30_000) {}
 
   private spawnWorker() {
     const worker = new Worker(this.wPath, this.workerOptions);
 
     worker.on("message", (res: AstParseResponse) => {
       this.workerTasks.delete(worker);
+      const timeout = this.taskTimeouts.get(res.taskId);
+      if (timeout) {
+        clearTimeout(timeout);
+        this.taskTimeouts.delete(res.taskId);
+      }
       const promiseCallbacks = this.pendingTasks.get(res.taskId);
       if (promiseCallbacks) {
         this.pendingTasks.delete(res.taskId);
@@ -46,12 +55,22 @@ export class AstWorkerPool implements IASTWorkerPool {
     });
 
     const handleError = (err: any) => {
+      const timedOut = this.timedOutWorkers.delete(worker);
       console.error("[AstWorkerPool] Worker crashed/exited:", err);
       const taskId = this.workerTasks.get(worker);
       if (taskId) {
+        const timeout = this.taskTimeouts.get(taskId);
+        if (timeout) {
+          clearTimeout(timeout);
+          this.taskTimeouts.delete(taskId);
+        }
         const callbacks = this.pendingTasks.get(taskId);
         if (callbacks) {
-          callbacks.reject(err || new Error("Worker exited unexpectedly"));
+          callbacks.reject(
+            timedOut
+              ? new Error(`AST worker task ${taskId} timed out after ${this.taskTimeoutMs}ms`)
+              : err || new Error("Worker exited unexpectedly")
+          );
           this.pendingTasks.delete(taskId);
         }
         this.workerTasks.delete(worker);
@@ -121,10 +140,26 @@ export class AstWorkerPool implements IASTWorkerPool {
     this.pendingTasks.set(taskId, { resolve: task.resolve, reject: task.reject });
     this.workerTasks.set(worker, taskId);
 
+    const timeout = setTimeout(() => {
+      this.taskTimeouts.delete(taskId);
+      this.timedOutWorkers.add(worker);
+      console.error(
+        `[AstWorkerPool] Task ${taskId} timed out after ${this.taskTimeoutMs}ms — terminating stuck worker`
+      );
+      // Deliberate termination; the worker's own "exit" handler rejects the pending task,
+      // removes it from the pool, and respawns a replacement (Issue 1.10).
+      worker.terminate().catch(() => {});
+    }, this.taskTimeoutMs);
+    this.taskTimeouts.set(taskId, timeout);
+
     worker.postMessage({ ...task.request, taskId });
   }
 
   async terminate(): Promise<void> {
+    for (const timeout of this.taskTimeouts.values()) {
+      clearTimeout(timeout);
+    }
+    this.taskTimeouts.clear();
     await Promise.all(this.workers.map((w) => w.terminate()));
     this.workers = [];
     this.workerQueue = [];

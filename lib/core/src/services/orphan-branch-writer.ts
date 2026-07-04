@@ -141,6 +141,7 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
     );
   } catch (err) {
     logger.error({ err, projectId }, "[orphan-branch-writer] failed to write to orphan branch");
+    throw err; // Rethrow so the caller (e.g. DB transaction) can rollback
   }
 }
 

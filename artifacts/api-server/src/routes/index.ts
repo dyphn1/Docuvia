@@ -21,6 +21,7 @@ import { integrationsRouter } from "./integrations";
 import { syncRouter } from "./sync";
 import { documentsRouter } from "./documents";
 import { metabolismRouter } from "./metabolism";
+import { requireApiKey } from "../middlewares/auth.js";
 import { standardLimiter, mcpLimiter } from "../lib/rate-limit";
 
 const router: IRouter = Router();
@@ -33,6 +34,10 @@ router.use("/mcp", mcpLimiter);
 router.use("/search", mcpLimiter);
 
 router.use(healthRouter);
+
+// Apply auth to all subsequent API routes
+router.use(requireApiKey);
+
 router.use(dashboardRouter);
 router.use(projectsRouter);
 router.use(l1TagsRouter);

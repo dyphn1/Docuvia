@@ -6,6 +6,7 @@ import { routes as router } from "./routes";
 import { githubWebhooksRouter } from "./routes/github-webhooks";
 import { llmProxyRouter } from "./proxy/llm-proxy.js";
 import { logger } from "@workspace/core";
+import { standardLimiter } from "./lib/rate-limit.js";
 
 const app: Express = express();
 app.set("trust proxy", 1);

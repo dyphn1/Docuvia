@@ -82,7 +82,7 @@ export class L3ProcessingService implements IL3ProcessingService {
           if (condensed) {
             await tx
               .update(l3NodesTable)
-              .set({ content: condensed })
+              .set({ content: condensed, embedding: l3Embedding })
               .where(eq(l3NodesTable.id, bestL3Match.id));
           }
           if (condensationReviewRequired) {

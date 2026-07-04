@@ -1,4 +1,6 @@
 > **Note:** This document contains competitor analysis and references that have not been fully integrated into the current implementation yet.
+>
+> **SUPERSEDED:** This fallback strategy contradicts [ADR-020](../adr/ADR-020-unified-isomorphic-ast-microkernel.md), which explicitly mandates pure WASM parsing to prevent cross-platform hash divergence. This document is retained for historical evaluation context, but the codebase correctly follows ADR-020.
 
 # 05. Native Parsing Fallback
 

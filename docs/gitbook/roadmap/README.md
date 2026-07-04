@@ -95,10 +95,9 @@ Provide a standalone, offline-capable IDE extension that guarantees zero compila
 
 ### 📁 Involved Files
 
-- `artifacts/ast-core/src/detector/semantic-diff.ts`
-- `artifacts/vscode-client/src/central-server-client.ts`
-- `artifacts/vscode-client/src/knowledge-store.ts`
+- `lib/ast-core/src/detector/semantic-diff.ts`
 - `artifacts/vscode-client/src/extension.ts`
+- _(Note: Legacy files `central-server-client.ts` and `knowledge-store.ts` removed per ADR-021)_
 
 ### 🏗️ System Architecture
 

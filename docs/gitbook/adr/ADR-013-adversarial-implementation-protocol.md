@@ -1,6 +1,6 @@
 ---
 Date: 2026-07-02
-Status: Accepted
+Status: Proposed (Aspirational/Fiction)
 Supersedes: None
 ---
 
@@ -8,7 +8,7 @@ Supersedes: None
 
 ## Status
 
-Accepted
+Proposed (Note: Currently not actively practiced. The actual agent scaffold in `.github/agents/` and `.claude/agents/` runs a linear pipeline: requirement-analyzer → execution specialist → task-verifier, without the 3-role debate or named personas described below.)
 
 ## Context
 

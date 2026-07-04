@@ -25,8 +25,7 @@ Establish the foundational command infrastructure in VS Code, allowing users to 
 ### 📁 Involved Files
 
 - `artifacts/vscode-client/src/extension.ts`
-- `artifacts/vscode-client/src/task-runner.ts`
-- `artifacts/vscode-client/src/central-server-client.ts`
+- _(Note: Legacy files such as `task-runner.ts` and `central-server-client.ts` have been removed per ADR-021)_
 
 ### 🏗️ System Architecture
 
@@ -59,8 +58,8 @@ Provide a hierarchical, multi-root visualization of the `L1 -> L2 -> L3` knowled
 
 ### 📁 Involved Files
 
-- `artifacts/vscode-client/src/knowledge-store.ts`
 - `artifacts/vscode-client/src/knowledge-graph-tree-provider.ts`
+- _(Note: Legacy `knowledge-store.ts` was removed per ADR-021)_
 
 ### ⚙️ Functional Operation
 

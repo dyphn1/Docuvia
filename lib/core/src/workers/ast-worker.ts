@@ -207,7 +207,24 @@ parentPort?.on("message", async (request: AstParseRequest) => {
             if (capturedNodes.has(node.id)) continue;
             capturedNodes.add(node.id);
 
-            if (capture.name === "import") {
+            if (capture.name === "call") {
+              if (calls.length >= 1000) continue; // Circuit breaker limit
+              let current = node.parent;
+              let sourceFunction = "anonymous";
+              while (current) {
+                if (
+                  current.type === "function_declaration" ||
+                  current.type === "method_definition" ||
+                  current.type === "arrow_function" ||
+                  current.type === "function_expression"
+                ) {
+                  sourceFunction = current.childForFieldName("name")?.text || "anonymous";
+                  break;
+                }
+                current = current.parent;
+              }
+              calls.push({ sourceFunction, targetFunction: node.text });
+            } else if (capture.name === "import") {
               imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
             } else if (capture.name === "function" || capture.name === "method") {
               functions.push({
@@ -244,6 +261,25 @@ parentPort?.on("message", async (request: AstParseRequest) => {
               endLine: node.endPosition.row,
               methods: [],
             });
+          } else if (node.type === "call_expression") {
+            if (calls.length < 1000) {
+              let current = node.parent;
+              let sourceFunction = "anonymous";
+              while (current) {
+                if (
+                  current.type === "function_declaration" ||
+                  current.type === "method_definition" ||
+                  current.type === "arrow_function" ||
+                  current.type === "function_expression"
+                ) {
+                  sourceFunction = current.childForFieldName("name")?.text || "anonymous";
+                  break;
+                }
+                current = current.parent;
+              }
+              const targetFunction = node.childForFieldName("function")?.text || "anonymous";
+              calls.push({ sourceFunction, targetFunction });
+            }
           }
           for (let i = 0; i < node.childCount; i++) {
             traverse(node.child(i));

@@ -1,23 +1,71 @@
 # Table of contents
 
 - [Docuvia Docs](README.md)
+  - [Vision & Competitive Landscape](comparisons/README.md)
 
-## Packages
+## 🚀 Getting Started
 
-- [Overview](packages/README.md)
-- [CLI](packages/cli.md)
-- [API Server](packages/api-server.md)
-- [KG Engine](packages/kg-engine.md)
-- [Mockup Sandbox](packages/mockup-sandbox.md)
-- [VS Code Client](packages/vscode-client.md)
+- [Installation](getting-started/installation.md)
+- [Quick Start](getting-started/quick-start.md)
 
-## Detailed Development Materials
+## 📖 User Guide
 
-- [Overview](development/README.md)
-- [Capabilities Matrix](development/capabilities-matrix.md)
-- [Refactoring Plan](development/refactoring-plan.md)
-- [AST Semantic Diff & Blast Radius (WASM)](development/wasm-ast-blast-radius.md)
-- [VS Code Client — Design Overview](development/vscode-client/00-router-overview.md)
+- [VS Code Extension](user-guide/vscode-client.md)
+- [CLI Commands](user-guide/cli.md)
+- [Configuration](user-guide/configuration.md)
+
+## 💡 Concepts
+
+- [Agentic RAG](comparisons/agentic-rag.md)
+- [AST & Semantic Graph](comparisons/ast-semantic-graph.md)
+- [MCP AI Interfaces](comparisons/mcp-ai-interfaces.md)
+- [IDE & VS Code Client](comparisons/ide-vscode-client.md)
+- [Data Pipeline & Sync](comparisons/data-pipeline-sync.md)
+- [CLI & Core API Parity](comparisons/cli-core-api.md)
+
+---
+
+## 🛠️ Developer Guide
+
+- [Local Setup & Dev Materials](development/README.md)
+  - [Capabilities Matrix](development/capabilities-matrix.md)
+  - [Refactoring Plan](development/refactoring-plan.md)
+  - [AST Semantic Diff (WASM)](development/wasm-ast-blast-radius.md)
+- [Engineering Patterns](development/patterns/README.md)
+  - [API-First & Codegen](development/patterns/api-codegen-pipeline.md)
+  - [Progressive Enrichment (AST+LSP)](development/patterns/progressive-enrichment.md)
+- [Packages Overview](packages/README.md)
+  - [CLI](packages/cli.md)
+  - [API Server](packages/api-server.md)
+  - [KG Engine](packages/kg-engine.md)
+  - [Mockup Sandbox](packages/mockup-sandbox.md)
+  - [VS Code Client](packages/vscode-client.md)
+- [Coding Guidelines](guidelines/README.md)
+  - [TypeScript & React Style](guidelines/typescript-react-style.md)
+  - [Architecture & MVC](guidelines/architecture-mvc.md)
+  - [POP & SRP](guidelines/pop-and-srp.md)
+  - [Clean Code & DRY](guidelines/clean-code.md)
+  - [TDD & Testing](guidelines/tdd-and-testing.md)
+  - [SRE & Reliability](guidelines/sre-and-reliability.md)
+  - [Regression & Parity Testing](guidelines/regression-and-parity-testing.md)
+
+## 📐 System Architecture
+
+- [Introduction & Goals](architecture/README.md)
+- [Constraints](architecture/constraints.md)
+- [Context & Scope](architecture/context-and-scope.md)
+- [Solution Strategy](architecture/solution-strategy.md)
+- [Building Blocks](architecture/building-blocks.md)
+- [Runtime Scenarios](architecture/runtime-scenarios.md)
+- [Deployment](architecture/deployment.md)
+- [Crosscutting Concepts](architecture/crosscutting-concepts.md)
+- [Quality Requirements](architecture/quality-requirements.md)
+- [Risks & Technical Debt](architecture/risks-and-debt.md)
+- [Glossary](architecture/glossary.md)
+
+## 📝 VS Code Client Internals
+
+- [Design Overview](development/vscode-client/00-router-overview.md)
   - [Knowledge Graph: Init Action](development/vscode-client/knowledge-graph/init-action.md)
   - [Knowledge Graph: Nodes](development/vscode-client/knowledge-graph/nodes.md)
   - [Knowledge Graph: Store](development/vscode-client/knowledge-graph/store.md)
@@ -32,21 +80,7 @@
   - [UI/UX: Webview Panels](development/vscode-client/ui-ux/webview-panels.md)
   - [UI/UX: Editor Integration](development/vscode-client/ui-ux/editor-integration.md)
 
-## System Architecture
-
-- [Introduction & Goals](architecture/README.md)
-- [Constraints](architecture/constraints.md)
-- [Context & Scope](architecture/context-and-scope.md)
-- [Solution Strategy](architecture/solution-strategy.md)
-- [Building Blocks](architecture/building-blocks.md)
-- [Runtime Scenarios](architecture/runtime-scenarios.md)
-- [Deployment](architecture/deployment.md)
-- [Crosscutting Concepts](architecture/crosscutting-concepts.md)
-- [Quality Requirements](architecture/quality-requirements.md)
-- [Risks & Technical Debt](architecture/risks-and-debt.md)
-- [Glossary](architecture/glossary.md)
-
-## ADR
+## 📋 Architecture Decision Records (ADR)
 
 - [ADR Index](adr/README.md)
 - [ADR-001: VS Code Client Onboarding](adr/ADR-001-vscode-client-onboarding.md)
@@ -76,24 +110,7 @@
 - [ADR-025: Hybrid Temp-File Blast Radius](adr/ADR-025-hybrid-temp-file-blast-radius.md)
 - [ADR-026: Multi-Provider LLM Abstraction](adr/ADR-026-multi-provider-llm-abstraction.md)
 
-## Competitive Comparisons
-
-- [Vision & Competitive Landscape](comparisons/README.md)
-- [AST & Semantic Graph](comparisons/ast-semantic-graph.md)
-- [Agentic RAG](comparisons/agentic-rag.md)
-- [MCP AI Interfaces](comparisons/mcp-ai-interfaces.md)
-- [IDE & VS Code Client](comparisons/ide-vscode-client.md)
-- [Data Pipeline & Sync](comparisons/data-pipeline-sync.md)
-- [CLI & Core API Parity](comparisons/cli-core-api.md)
-
-## Roadmap
-
-- [Master Roadmap](roadmap/README.md)
-- [Roadmap Completion Checklist](roadmap/roadmap-checklist.md)
-- [AST Parser Roadmap](roadmap/ast-parser-roadmap.md)
-- [VS Code Extension Roadmap](roadmap/vscode-roadmap.md)
-
-## Local-First Evaluation
+## 📊 Evaluation & Benchmarks
 
 - [Evaluation Registry](evaluate/README.md)
 - [Data Pipeline: AST Extraction Sync](evaluate/local-ast-extraction-sync.md)
@@ -107,13 +124,9 @@
 - [Realtime UX: Sub-second Save Updates](evaluate/sub-second-save-updates.md)
 - [Diff Opt: File-hash Delta Detection](evaluate/file-hash-delta-detection.md)
 
-## Coding Guidelines
+## 🗺️ Roadmap
 
-- [Guidelines Index](guidelines/README.md)
-- [TypeScript & React Style](guidelines/typescript-react-style.md)
-- [Architecture & MVC](guidelines/architecture-mvc.md)
-- [POP & SRP](guidelines/pop-and-srp.md)
-- [Clean Code & DRY](guidelines/clean-code.md)
-- [TDD & Testing](guidelines/tdd-and-testing.md)
-- [SRE & Reliability](guidelines/sre-and-reliability.md)
-- [Regression, Parity, and Environment Testing](guidelines/regression-and-parity-testing.md)
+- [Master Roadmap](roadmap/README.md)
+- [Roadmap Completion Checklist](roadmap/roadmap-checklist.md)
+- [AST Parser Roadmap](roadmap/ast-parser-roadmap.md)
+- [VS Code Extension Roadmap](roadmap/vscode-roadmap.md)

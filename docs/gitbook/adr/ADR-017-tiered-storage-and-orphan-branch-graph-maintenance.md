@@ -45,3 +45,7 @@ We will adopt a "Tiered Storage" strategy involving soft deletions and a [Git-Is
 - **Positive**: Preserves valuable historical context and [L3 deltas](./ADR-005-knowledge-abstraction-strategy.md) indefinitely without bloat.
 - **Positive**: Enables remote synchronization; new team members can fetch the `docuvia-knowledge` branch and instantly inherit the team's entire historical knowledge graph.
 - **Negative**: Requires robust asynchronous worker management to prevent locking the editor during GC serialization.
+
+## Implementation Status (as of 2026-07-05)
+
+**The tombstoning/GC/hydration mechanism described above is aspirational and not implemented.** There is no `is_active`/tombstone column on `l2NodesTable`/`l3NodesTable`, no background GC Worker that archives expired tombstones to the orphan branch, and no hydrate-from-branch code path anywhere in `lib/core` or `artifacts`. What _is_ implemented and live is the `docuvia-knowledge` orphan-branch write itself (`lib/core/src/services/orphan-branch-writer.ts`, `writeKnowledgeToOrphanBranch`) — but it writes a full current-state snapshot per project, not a tiered hot/cold archive of expired tombstones. Treat this ADR's tiered-storage/GC design as a future-work proposal, not a shipped capability, until the tombstone column and GC worker are actually built.

@@ -28,6 +28,10 @@ Docuvia will implement an "Environment-Aware Ingestion Pipeline" that heavily le
 - **Positive**: Adapts to both Git-versioned repositories and unversioned folders.
 - **Negative**: Adds Git CLI integration dependencies and complexity to the ingest pipeline.
 
+## Implementation Status (as of 2026-07-05)
+
+The git-level half of this ADR is implemented: `lib/core/src/services/change-detection-service.ts` runs `git diff --name-status -M` and correctly reads the new path from a `R100\told\tnew` line. However, the "zero-cost `UPDATE`" rename claim is **not yet implemented at the database layer** — `lib/core/src/services/ast/ast-change-detector.ts` (`AstChangeDetector`) still hashes and looks up rows by `filePath` alone, with no `oldPath` concept in `projectFilesTable`. A renamed-but-content-unchanged file is currently detected as "not found at this path" and re-inserted as a new file record rather than updated in place — the opposite of the zero-cost `UPDATE` this ADR describes. Tracking real DB-level rename-as-update would require an `oldPath` column plus rewiring `AstChangeDetector` to consume the rename info `change-detection-service.ts` already computes.
+
 ## Diagram
 
 ```mermaid

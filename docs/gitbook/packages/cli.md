@@ -64,12 +64,13 @@ cli.ts → QueryService.query(target, options)  (@workspace/core)
 **`docuvia sync <project_id> [--local]`**
 
 ```
-cli.ts → syncCommand()  (imports SyncService, LocalOrphanBranchWriter, FileDiscoveryService,
-                          AstProcessingService, GitNativePersistenceService from @workspace/core)
+cli.ts → syncCommand()  (imports SyncService, FileDiscoveryService, AstProcessingService,
+                          GitNativePersistenceService, writeKnowledgeToOrphanBranch from @workspace/core)
   → [--local]:
       FileDiscoveryService.discoverFiles() → AstProcessingService.processFiles()
-      → mapAstToEvents() → GitNativePersistenceService.processEvents()   — write JSONL/Markdown
-      → LocalOrphanBranchWriter.packDirectoryToBranch()                 — commit to docuvia-knowledge
+      → mapAstToEvents() → GitNativePersistenceService.processEvents()   — write to a discarded temp dir
+      → writeKnowledgeToOrphanBranch(projectId)                         — commit to docuvia-knowledge
+      (separate pipeline from `analyze`'s .docuvia/local.db — see local-sqlite-write-pipeline.md)
   → [remote]:
       SyncService.sync()  — HTTP POST to DOCUVIA_API_URL, authenticated with MCP_PAT
 ```

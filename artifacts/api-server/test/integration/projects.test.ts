@@ -1,7 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import app from "../../src/app";
-import { withRollback } from "../support/db";
+import { withRollback } from "@workspace/test-utils";
 
 describe("Projects API", () => {
   it("GET /api/projects returns a list of projects", async () => {

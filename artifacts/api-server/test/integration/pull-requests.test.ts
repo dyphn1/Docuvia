@@ -1,15 +1,10 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
-import {
-  ProjectFactory,
-  CommitFactory,
-  L2NodeFactory,
-  L3NodeFactory,
-} from "../support/factories.js";
+import { ProjectFactory, CommitFactory, L2NodeFactory, L3NodeFactory } from "@workspace/test-utils";
 import { db } from "@workspace/db";
 import { pullRequestsTable } from "@workspace/db";
-import { withRollback } from "../support/db.js";
+import { withRollback } from "@workspace/test-utils";
 
 const prDefaults = {
   headSha: "head123",

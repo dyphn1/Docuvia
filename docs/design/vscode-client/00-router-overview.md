@@ -1,3 +1,5 @@
+> **DEPRECATION NOTICE**: This document describes legacy client-side implementations (`KnowledgeStore`, `TaskRunner`, `CentralServerClient`). Per [ADR-021](../../adrs/ADR-021-shared-core-api-and-presentation-layers.md), these responsibilities have moved to the Shared Core API (`@workspace/core`). This document is pending a rewrite.
+
 # VS Code Client Design Router
 
 This directory contains the structural and functional design documentation for the Docuvia VS Code Client (`@workspace/vscode-client`).
@@ -6,6 +8,8 @@ AI Agents and developers should consult these files to understand the architectu
 
 ## Extension Component Architecture
 
+According to [ADR-021: Shared Core API and Presentation Layers](../adrs/ADR-021-shared-core-api-and-presentation-layers.md), the VS Code Client must act strictly as a presentation layer. It composes `@workspace/core` which handles all business logic, local SQLite state, and remote synchronization.
+
 ```mermaid
 graph TD
     VSC[VS Code Extension Activation] -->|Registers| CP[Command Palette Commands]
@@ -13,13 +17,13 @@ graph TD
     VSC -->|Registers| Tree[Tree View Providers]
     VSC -->|Registers| Edit[CodeLens & Hover Providers]
 
-    CP -->|Uses| Store[KnowledgeStore]
-    Chat -->|Uses| Client[CentralServerClient]
-    Tree -->|Reads| Store
-    Edit -->|Reads| Store
+    CP -->|Delegates to| Core[Shared Core API<br/>@workspace/core]
+    Chat -->|Delegates to| Core
+    Tree -->|Reads via| Core
+    Edit -->|Reads via| Core
 
-    Store -->|SQLite / DB-as-IPC| DB[(Local SQLite SyncOutbox)]
-    Client -->|REST API| Server[Docuvia API Server]
+    Core -->|SQLite / DB-as-IPC| DB[(Local SQLite)]
+    Core -->|Syncs via| Server[Docuvia API Server]
 ```
 
 ## Documentation Index

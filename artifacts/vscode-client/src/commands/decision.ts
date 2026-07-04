@@ -1,32 +1,19 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { ExtractService } from "@workspace/core";
-import { KGNode } from "../knowledge-graph-tree-provider.js";
-import { KnowledgeStore } from "../knowledge-store.js";
-import { TaskQueueTreeProvider } from "../task-queue-tree-provider.js";
-import { TaskRunner } from "../task-runner.js";
-import { KnowledgeGraphTreeProvider } from "../knowledge-graph-tree-provider.js";
-import { CodeLensDecisionData } from "../docuvia-code-lens-provider.js";
+import { KGNode, KnowledgeGraphTreeProvider } from "../knowledge-graph-tree-provider.js";
 
 export async function autoCategorizeDecisionsCommand(
   kgProvider: KnowledgeGraphTreeProvider,
-  taskRunner: TaskRunner,
   node?: KGNode
 ) {
-  if (node && node.workspaceRoot) {
-    const unassignedNodes = kgProvider.getChildren(node);
-    if (unassignedNodes.length > 0) {
-      await taskRunner.queueAutoCategorization(node.workspaceRoot, unassignedNodes);
-      vscode.commands.executeCommand("docuvia.taskQueue.focus");
-    } else {
-      vscode.window.showInformationMessage("No unassigned decisions to categorize.");
-    }
-  }
+  vscode.window.showInformationMessage(
+    "Auto-categorization is handled by the server ingestion pipeline."
+  );
 }
 
 export async function addDecisionCommand(
   context: vscode.ExtensionContext,
-  store: KnowledgeStore,
   prefillBody: string = ""
 ) {
   const folders = vscode.workspace.workspaceFolders || [];
@@ -61,10 +48,7 @@ export async function addDecisionCommand(
   }
 }
 
-export async function addDecisionFromSelectionCommand(
-  context: vscode.ExtensionContext,
-  store: KnowledgeStore
-) {
+export async function addDecisionFromSelectionCommand(context: vscode.ExtensionContext) {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.selection.isEmpty) {
     void vscode.window.showWarningMessage("Docuvia: Select code first.");
@@ -73,7 +57,7 @@ export async function addDecisionFromSelectionCommand(
   const selectedText = editor.document.getText(editor.selection);
   const langId = editor.document.languageId;
   const prefillBody = `\`\`\`${langId}\n${selectedText}\n\`\`\``;
-  await addDecisionCommand(context, store, prefillBody);
+  await addDecisionCommand(context, prefillBody);
 }
 
 export async function openDecisionCommand(filePath: string) {
@@ -82,19 +66,8 @@ export async function openDecisionCommand(filePath: string) {
   await vscode.window.showTextDocument(doc);
 }
 
-export async function showDecisionsForLensCommand(
-  store: KnowledgeStore,
-  data: CodeLensDecisionData
-) {
-  const folders = vscode.workspace.workspaceFolders || [];
-  const editor = vscode.window.activeTextEditor;
-  const uri = editor ? editor.document.uri : folders.length > 0 ? folders[0].uri : undefined;
-  if (!uri) return;
-
-  const snapshot = store.getSnapshotFor(uri);
-  const decisions = data.decisionIds
-    .map((id) => snapshot?.decisions.get(id))
-    .filter((d) => d !== undefined) as any[];
+export async function showDecisionsForLensCommand(data: { module: any; decisions: any[] }) {
+  const decisions = data.decisions || [];
 
   if (decisions.length === 0) {
     void vscode.window.showInformationMessage("Docuvia: No decisions found for this module.");
@@ -103,7 +76,7 @@ export async function showDecisionsForLensCommand(
 
   const items = decisions.map((d) => ({
     label: d.title,
-    description: `Type: ${d.type} | Status: ${d.status}`,
+    description: `Type: ${d.type || "N/A"} | Status: ${d.status}`,
     decision: d,
   }));
 

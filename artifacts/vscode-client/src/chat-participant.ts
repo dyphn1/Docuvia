@@ -1,18 +1,12 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import { CentralServerClient } from "./central-server-client.js";
-import { KnowledgeStore } from "./knowledge-store.js";
-import { TaskRunner } from "./task-runner.js";
 import { handleExplore } from "./chat/handlers/explore.js";
 import { handleQuery } from "./chat/handlers/query.js";
 import { handleExtract } from "./chat/handlers/extract.js";
 import { handleHelp } from "./chat/handlers/help.js";
 
 export function registerDocuviaChatParticipant(
-  context: vscode.ExtensionContext,
-  store: KnowledgeStore,
-  taskRunner: TaskRunner,
-  centralClient: CentralServerClient
+  context: vscode.ExtensionContext
 ): vscode.ChatParticipant {
   const handler: vscode.ChatRequestHandler = async (request, _context, stream, token) => {
     const cmd = request.command;
@@ -21,9 +15,9 @@ export function registerDocuviaChatParticipant(
     }
     switch (cmd) {
       case "query":
-        return handleQuery(request, stream, store, centralClient);
+        return handleQuery(request, stream);
       case "extract":
-        return handleExtract(request, stream, token, taskRunner);
+        return handleExtract(request, stream, token);
       case "help":
       default:
         return handleHelp(stream);

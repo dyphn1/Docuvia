@@ -1,6 +1,12 @@
 import { randomBytes } from "crypto";
 import * as vscode from "vscode";
-import { CentralSearchResult } from "./central-server-client.js";
+
+export interface CentralSearchResult {
+  title: string;
+  projectName: string;
+  snippet: string;
+  l1Tags: string[];
+}
 
 export class SearchResultsPanel {
   static readonly viewType = "docuvia.searchResults";

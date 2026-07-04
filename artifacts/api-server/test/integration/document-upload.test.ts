@@ -1,8 +1,8 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import app from "../../src/app";
-import { withRollback } from "../support/db";
-import { computeHashFromBuffer } from "../../src/lib/utils/hash";
+import { withRollback } from "@workspace/test-utils";
+import { computeHashFromBuffer } from "@workspace/core";
 
 describe("POST /api/documents", () => {
   it("stores uploaded text files with a content hash", async () => {

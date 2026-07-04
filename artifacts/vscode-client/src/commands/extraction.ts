@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { minimatch } from "minimatch";
-import { TaskRunner } from "../task-runner.js";
+import { ExtractService, openLocalDatabase } from "@workspace/core";
+import { addDecisionCommand } from "./decision.js";
 
-export async function runExtractionCommand(taskRunner: TaskRunner) {
+export async function runExtractionCommand() {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     void vscode.window.showWarningMessage("Docuvia: Open a file to extract decisions from.");
@@ -11,59 +12,73 @@ export async function runExtractionCommand(taskRunner: TaskRunner) {
   }
   const filePath = editor.document.uri.fsPath;
   const workspaceFolder = vscode.workspace.getWorkspaceFolder(editor.document.uri);
-  const relativePath = workspaceFolder
-    ? path.relative(workspaceFolder.uri.fsPath, filePath).replace(/\\/g, "/")
-    : path.basename(filePath);
+  if (!workspaceFolder) {
+    return;
+  }
+
+  const workspaceRoot = workspaceFolder.uri.fsPath;
+  const relativePath = path.relative(workspaceRoot, filePath).replace(/\\/g, "/");
 
   const config = vscode.workspace.getConfiguration("docuvia");
   const includePatterns = config.get<string[]>("extraction.includePatterns", []);
-  const maxLines = config.get<number>("extraction.maxLinesWarning", 1000);
 
-  // Check against include patterns (like .gitignore check)
-  const isIncluded = includePatterns.some((pattern) => minimatch(relativePath, pattern));
-  if (!isIncluded) {
-    const proceed = await vscode.window.showWarningMessage(
-      `Docuvia: This file type (${path.basename(filePath)}) is not in your include list. Analyze it anyway?`,
-      "Yes",
-      "No"
-    );
-    if (proceed !== "Yes") return;
+  if (includePatterns.length > 0) {
+    const isIncluded = includePatterns.some((pattern) => minimatch(relativePath, pattern));
+    if (!isIncluded) {
+      const proceed = await vscode.window.showWarningMessage(
+        `Docuvia: This file type (${path.basename(filePath)}) is not in your include list. Analyze it anyway?`,
+        "Yes",
+        "No"
+      );
+      if (proceed !== "Yes") return;
+    }
   }
 
-  // Check line count limit
-  const lineCount = editor.document.lineCount;
-  if (lineCount > maxLines) {
-    const proceed = await vscode.window.showWarningMessage(
-      `Docuvia: This file is very large (${lineCount} lines). Analyzing the entire file might be slow and consume many tokens. We recommend selecting a specific block and using right-click "Docuvia: Add Decision from Selection". Proceed anyway?`,
-      "Proceed",
-      "Cancel"
-    );
-    if (proceed !== "Proceed") return;
-  }
+  void vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: `Extracting decisions from ${path.basename(filePath)}`,
+      cancellable: false,
+    },
+    async (progress) => {
+      try {
+        const extractService = new ExtractService(workspaceRoot);
+        const result = await extractService.extractDecisions(relativePath);
 
-  // Check KB size limit
-  const maxKB = config.get<number>("extraction.maxFileSizeKBWarning", 50);
-  const fileSizeKB = Buffer.byteLength(editor.document.getText(), "utf-8") / 1024;
-  if (fileSizeKB > maxKB) {
-    const proceed = await vscode.window.showWarningMessage(
-      `Docuvia: This file is large (${fileSizeKB.toFixed(1)} KB). Extraction might be slow. Proceed anyway?`,
-      "Proceed",
-      "Cancel"
-    );
-    if (proceed !== "Proceed") return;
-  }
+        if (result.decisions && result.decisions.length > 0) {
+          const decisionsMsg = result.decisions.map((d) => `- ${d}`).join("\n");
+          const action = await vscode.window.showInformationMessage(
+            `Extracted ${result.decisions.length} decisions:\n\n${decisionsMsg}`,
+            { modal: true },
+            "Save as Decision Record"
+          );
 
-  const content = editor.document.getText();
-  const tokenSource = new vscode.CancellationTokenSource();
-  const taskId = await taskRunner
-    .queueExtraction({
-      label: `L3 extract: ${path.basename(filePath)}`,
-      content,
-      sourceFilePath: filePath,
-      token: tokenSource.token,
-    })
-    .finally(() => tokenSource.dispose());
-  void vscode.window.showInformationMessage(
-    `Docuvia: Extraction task ${taskId} queued. Check Task Queue panel.`
+          if (action === "Save as Decision Record") {
+            const db = openLocalDatabase(workspaceRoot);
+            const insert = db.prepare(
+              "INSERT INTO l3_nodes (title, slug, status, content, created_at) VALUES (?, ?, ?, ?, ?)"
+            );
+
+            db.transaction(() => {
+              for (const d of result.decisions) {
+                const title = `Extracted from ${path.basename(filePath)}`;
+                const slug = `extracted-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+                insert.run(title, slug, "proposed", d, new Date().toISOString());
+              }
+            })();
+            db.close();
+
+            vscode.window.showInformationMessage("Decisions saved successfully.");
+            vscode.commands.executeCommand("docuvia.knowledgeGraph.refresh");
+          }
+        } else {
+          vscode.window.showInformationMessage(
+            `No decisions extracted from ${path.basename(filePath)}.`
+          );
+        }
+      } catch (err: any) {
+        vscode.window.showErrorMessage(`Extraction failed: ${err.message}`);
+      }
+    }
   );
 }

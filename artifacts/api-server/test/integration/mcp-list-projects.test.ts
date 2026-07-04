@@ -1,8 +1,8 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import app from "../../src/app";
-import { L2NodeFactory, L3NodeFactory, ProjectFactory } from "../support/factories";
-import { withRollback } from "../support/db";
+import { L2NodeFactory, L3NodeFactory, ProjectFactory } from "@workspace/test-utils";
+import { withRollback } from "@workspace/test-utils";
 
 describe("GET /api/mcp/list_projects", () => {
   it("returns projects sorted by name with L2 and L3 counts", async () => {

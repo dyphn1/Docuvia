@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import "./di.js"; // Ensure DI is initialized before routes
 import { routes as router } from "./routes";
 import { githubWebhooksRouter } from "./routes/github-webhooks";
 import { llmProxyRouter } from "./proxy/llm-proxy.js";

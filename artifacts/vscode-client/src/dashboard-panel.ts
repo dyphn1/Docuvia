@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
-import { KnowledgeGraphSnapshot } from "./knowledge-store.js";
-import { KnowledgeStore } from "./knowledge-store.js";
+import { LocalSnapshotService, SnapshotData } from "@workspace/core";
 import { TaskQueueTreeProvider } from "./task-queue-tree-provider.js";
 import { getDashboardHtml } from "./webview/dashboard-html.js";
 import { handleDashboardMessage } from "./webview/dashboard-messages.js";
@@ -12,7 +11,7 @@ export type { DashboardPayload };
 // ─── Pure helper ─────────────────────────────────────────────────────────────
 
 function buildDashboardPayload(
-  snapshot: KnowledgeGraphSnapshot | null,
+  snapshot: SnapshotData | null,
   workspaceRoot: string,
   tqProvider?: TaskQueueTreeProvider
 ): DashboardPayload {
@@ -58,7 +57,7 @@ function buildDashboardPayload(
     topModules,
     pendingTaskCount: tqProvider?.getPendingCount() ?? 0,
     inProgressTaskCount: tqProvider?.getInProgressCount() ?? 0,
-    loadedAt: snapshot.loadedAt.toISOString(),
+    loadedAt: new Date().toISOString(),
     workspaceName,
   };
 }
@@ -71,7 +70,6 @@ export class DashboardPanel {
 
   static createOrShow(
     context: vscode.ExtensionContext,
-    store: KnowledgeStore,
     targetRoot: string,
     tqProvider?: TaskQueueTreeProvider
   ): void {
@@ -80,7 +78,8 @@ export class DashboardPanel {
     const currentPanel = DashboardPanel._panels.get(targetRoot);
     if (currentPanel) {
       currentPanel._panel.reveal(column);
-      currentPanel._pushData(store.getSnapshotFor(targetRoot));
+      const snapshot = new LocalSnapshotService(targetRoot).getSnapshot();
+      currentPanel._pushData(snapshot);
       return;
     }
 
@@ -95,24 +94,23 @@ export class DashboardPanel {
       }
     );
 
-    const newDashboard = new DashboardPanel(panel, context, store, targetRoot, tqProvider);
+    const newDashboard = new DashboardPanel(panel, context, targetRoot, tqProvider);
     DashboardPanel._panels.set(targetRoot, newDashboard);
   }
 
   private constructor(
     private readonly _panel: vscode.WebviewPanel,
     private readonly _context: vscode.ExtensionContext,
-    store: KnowledgeStore,
     private readonly _targetRoot: string,
     private readonly _tqProvider?: TaskQueueTreeProvider
   ) {
     this._panel.webview.html = this._buildHtml();
 
-    this._pushData(store.getSnapshotFor(this._targetRoot));
+    const snapshotService = new LocalSnapshotService(this._targetRoot);
+    this._pushData(snapshotService.getSnapshot());
 
-    const onDidLoadDisposable = store.onDidLoad(() =>
-      this._pushData(store.getSnapshotFor(this._targetRoot))
-    );
+    // We no longer have store.onDidLoad, but we can setup a watcher if desired
+    // For now, it updates when focused or created
 
     this._panel.webview.onDidReceiveMessage(
       (msg: WebviewMessage) => this._handleMessage(msg),
@@ -122,7 +120,6 @@ export class DashboardPanel {
 
     this._panel.onDidDispose(
       () => {
-        onDidLoadDisposable.dispose();
         DashboardPanel._panels.delete(this._targetRoot);
       },
       null,
@@ -130,10 +127,10 @@ export class DashboardPanel {
     );
   }
 
-  private _pushData(snapshot: KnowledgeGraphSnapshot | undefined): void {
+  private _pushData(snapshot: SnapshotData | null): void {
     void this._panel.webview.postMessage({
       type: "update",
-      data: buildDashboardPayload(snapshot || null, this._targetRoot, this._tqProvider),
+      data: buildDashboardPayload(snapshot, this._targetRoot, this._tqProvider),
     });
   }
 

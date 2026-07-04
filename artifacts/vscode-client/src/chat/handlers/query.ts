@@ -1,12 +1,10 @@
 import * as vscode from "vscode";
-import { KnowledgeStore } from "../../knowledge-store.js";
-import { CentralServerAuthError, CentralServerClient } from "../../central-server-client.js";
+import { QueryService } from "@workspace/core";
+// import { routeQuery } from "@workspace/core"; // we'll use this if it's easy to mock/setup, else we fallback.
 
 export async function handleQuery(
   request: vscode.ChatRequest,
-  stream: vscode.ChatResponseStream,
-  store: KnowledgeStore,
-  centralClient: CentralServerClient
+  stream: vscode.ChatResponseStream
 ): Promise<void> {
   const query = request.prompt.trim().toLowerCase();
   if (!query) {
@@ -16,101 +14,36 @@ export async function handleQuery(
     return;
   }
 
-  // ── Breadth routing ────────────────────────────────────────────────────────
-  if (isBreadthQuery(query)) {
-    await handleBreadthQuery(query, stream, centralClient);
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+  if (!workspaceRoot) {
+    stream.markdown("No workspace folder open.");
     return;
   }
 
-  // ── Local depth search ─────────────────────────────────────────────────────
-  if (store.snapshots.size === 0) {
-    stream.markdown("No `.docuvia/` folder loaded. Run **Docuvia: Init Project** first.");
-    return;
-  }
-
-  const matchingModules: import("../../types.js").L2Module[] = [];
-  const matchingDecisions: import("../../types.js").L3Decision[] = [];
-
-  for (const snapshot of store.snapshots.values()) {
-    matchingModules.push(
-      ...snapshot.modules.filter(
-        (m) =>
-          m.name.toLowerCase().includes(query) ||
-          m.slug.includes(query) ||
-          (m.description ?? "").toLowerCase().includes(query)
-      )
-    );
-
-    matchingDecisions.push(
-      ...[...snapshot.decisions.values()].filter(
-        (d) => d.title.toLowerCase().includes(query) || d.body.toLowerCase().includes(query)
-      )
-    );
-  }
-
-  if (matchingModules.length === 0 && matchingDecisions.length === 0) {
-    stream.markdown(`No local results found for **"${query}"**.`);
-    return;
-  }
-
-  if (matchingModules.length > 0) {
-    stream.markdown(
-      `### Matching L2 Modules\n` +
-        matchingModules
-          .map((m) => `- **${m.name}** (\`${m.slug}\`) — ${m.description ?? ""}`)
-          .join("\n")
-    );
-  }
-
-  if (matchingDecisions.length > 0) {
-    stream.markdown(
-      `### Matching L3 Decisions\n` +
-        matchingDecisions
-          .slice(0, 5)
-          .map((d) => `- **${d.title}** [${d.status}] — \`${d.filePath}\``)
-          .join("\n")
-    );
-  }
-}
-
-/** Detect cross-project "breadth" queries that should be routed to the central server. */
-function isBreadthQuery(query: string): boolean {
-  const breadthPatterns = ["other projects", "cross-project", "how do others", "how do other"];
-  return query.startsWith("@") || breadthPatterns.some((p) => query.includes(p));
-}
-
-async function handleBreadthQuery(
-  query: string,
-  stream: vscode.ChatResponseStream,
-  centralClient: CentralServerClient
-): Promise<void> {
-  stream.progress("Searching cross-project knowledge...");
   try {
-    const results = await centralClient.query(query, 10);
-    if (results.length === 0) {
-      stream.markdown(
-        `No cross-project results found for **"${query}"**.` +
-          (centralClient.isServerConfigured()
-            ? ""
-            : "\n\n_Tip: Configure `server_url` in `~/.docuvia/config.yaml` to enable cross-project search._")
-      );
+    const queryService = new QueryService(workspaceRoot);
+    const results = await queryService.query(query);
+
+    if (!results.l2 && results.l3.length === 0) {
+      stream.markdown(`No local results found for **"${query}"**.`);
       return;
     }
-    stream.markdown(`### Cross-Project Results\n`);
-    for (const r of results) {
-      const tags = r.l1Tags.length > 0 ? ` · \`${r.l1Tags.join("`, `")}\`` : "";
-      stream.markdown(`**${r.title}** — _${r.projectName}_${tags}\n> ${r.snippet}\n`);
-    }
-  } catch (err) {
-    if (err instanceof CentralServerAuthError) {
-      void vscode.window.showErrorMessage(
-        "Docuvia: Authentication required. Run 'Docuvia: Set Server Token'."
-      );
+
+    if (results.l2) {
       stream.markdown(
-        "_Authentication required. Set your server token via the Command Palette: **Docuvia: Set Server Token**._"
+        `### Matching L2 Module\n- **${results.l2.name}** (\`${results.l2.slug}\`)\n`
       );
-    } else {
-      stream.markdown(`_Cross-project search failed: ${String(err)}_`);
     }
+
+    if (results.l3.length > 0) {
+      stream.markdown(
+        `### Matching L3 Decisions\n` +
+          results.l3
+            .map((d) => `- **${d.title}**\n  > ${d.content.substring(0, 100)}...`)
+            .join("\n")
+      );
+    }
+  } catch (err: any) {
+    stream.markdown(`Error querying knowledge graph: ${err.message}`);
   }
 }

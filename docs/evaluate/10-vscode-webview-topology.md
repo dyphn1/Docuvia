@@ -1,3 +1,5 @@
+> **Note:** This document contains competitor analysis and references that have not been fully integrated into the current implementation yet.
+
 # 10. VS Code Webview Topology
 
 **Severity:** 🟡 MEDIUM

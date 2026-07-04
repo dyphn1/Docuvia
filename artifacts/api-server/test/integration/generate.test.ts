@@ -1,8 +1,8 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import app from "../../src/app";
-import { ProjectFactory, CommitFactory } from "../support/factories";
-import { withRollback } from "../support/db";
+import { ProjectFactory, CommitFactory } from "@workspace/test-utils";
+import { withRollback } from "@workspace/test-utils";
 import { db, projectsTable, l1TagsTable, l2NodesTable, l3NodesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 

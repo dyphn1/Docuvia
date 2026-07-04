@@ -1,37 +1,41 @@
-# Core Concepts: KnowledgeStore (Local-First SQLite DB)
+> **DEPRECATION NOTICE**: This document describes legacy client-side implementations (`KnowledgeStore`, `TaskRunner`, `CentralServerClient`). Per [ADR-021](../../adrs/ADR-021-shared-core-api-and-presentation-layers.md), these responsibilities have moved to the Shared Core API (`@workspace/core`). This document is pending a rewrite.
+
+> **DEPRECATION NOTICE**: This document describes legacy client-side implementations (`KnowledgeStore`, `TaskRunner`, `CentralServerClient`). Per [ADR-021](../../adrs/ADR-021-shared-core-api-and-presentation-layers.md), these responsibilities have moved to the Shared Core API (`@workspace/core`). This document is pending a rewrite.
+
+# Core Concepts: State Management via Shared Core API
+
+_(Note: Legacy implementations like `KnowledgeStore` and `CentralServerClient` inside `vscode-client` are deprecated. As per ADR-021, all state management, SQLite logic, and synchronization now reside in `@workspace/core`.)_
 
 ## Database-as-IPC Architecture
 
-In Docuvia v1.0, [`knowledge-store.ts`](../../../../artifacts/vscode-client/src/knowledge-store.ts) is no longer a naive in-memory singleton parsing YAML files. It acts as the robust client-side coordinator that interacts with the [Local-First Architecture](../../adrs/ADR-002-local-first-architecture.md) via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md).
+The VS Code Client no longer manages its own SQLite connections or in-memory models. Instead, it delegates to `@workspace/core` (specifically `sqlite-graph.repository.ts` and related services) to interact with the [Local-First Architecture](../../adrs/ADR-002-local-first-architecture.md) via [Database-as-IPC](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md).
 
 ## Multi-Root Workspace Support
 
-The store dynamically maps `workspaceRoot` paths to their respective Project IDs within the local SQLite database.
+The Core API dynamically maps `workspaceRoot` paths to their respective Project IDs within the local SQLite database. The VS Code extension simply passes `workspaceUri` strings to Core functions.
 
-## Key Methods & Operations
+## Key Operations (Delegated to Core)
 
-- `load()`: Iterates over `vscode.workspace.workspaceFolders`. For each folder, it queries the local SQLite database to retrieve the structured [L1/L2/L3 abstraction tiers](../../adrs/ADR-005-knowledge-abstraction-strategy.md). It does **not** read `.docuvia` YAML files, which are deprecated.
-- `startWatcher(context)`: Subscribes to changes directly from the [AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md).
-  - **Reactivity**: Instead of using `vscode.FileSystemWatcher` (which is blind to semantic intent), the VS Code Client receives lightweight IPC control signals from the AST Worker indicating that the SQLite graph has been updated.
-  - **Background Debouncing**: All debounce logic is handled natively by the [Asynchronous Metabolism](../../adrs/ADR-008-asynchronous-metabolism.md) worker.
-  - **Git Checkout Defense**: Branch switches do not trigger massive reloads. The store leverages [Git Blob Native Identity](../../adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md) to instantly query flipped `is_active` flags in SQLite, executing a fast incremental diff rather than a full UI rebuild.
-- `getSnapshotFor(uri)`: Resolves a given file URI to its local SQLite sub-graph, returning the contextual snapshot for CodeLens/Hover enrichment (via [Progressive Enrichment](../../adrs/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)).
-- `onDidLoad` (event): A `vscode.Event<void>` emitted to subscribers (`KnowledgeGraphTreeProvider`, `DashboardPanel`) allowing the UI to repaint when the local SQLite cache updates.
+- **Initialization**: The extension host initializes the Core dependency injection container. The Core API queries the local SQLite database to retrieve the structured [L1/L2/L3 abstraction tiers](../../adrs/ADR-005-knowledge-abstraction-strategy.md).
+- **Background Watchers**: The Core API spawns and manages the [AST Microkernel](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md).
+  - **Reactivity**: The VS Code Client subscribes to IPC control signals from the Core API indicating that the SQLite graph has been updated.
+  - **Background Debouncing**: Handled natively by the Core API [Asynchronous Metabolism](../../adrs/ADR-008-asynchronous-metabolism.md).
+  - **Git Checkout Defense**: The Core API handles [Git Blob Native Identity](../../adrs/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md).
+- **Enrichment**: Core API resolves URIs returning contextual snapshots for CodeLens/Hover (via [Progressive Enrichment](../../adrs/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)).
 
 ## Offline Writes (CQRS Outbox)
 
-When the user triggers a command (e.g., adding a decision):
+When the user triggers a command (e.g., adding a decision), the extension calls the Core API:
 
-1. `KnowledgeStore` writes the change directly into the local SQLite database so the UI updates instantly.
-2. The change is inserted into a `SyncOutbox` table.
-3. Once the network is restored, the changes are dispatched to the API Server where they are pushed to the [Orphan Branch](../../adrs/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) to maintain the [Git-Isomorphic Graph](../../adrs/ADR-004-git-isomorphic-graph.md).
+1. The Core API writes the change directly into the local SQLite database.
+2. The change is inserted into a `SyncOutbox` table (managed by `sync-service.ts`).
+3. Core API handles pushing changes to the API Server and maintaining the [Git-Isomorphic Graph](../../adrs/ADR-004-git-isomorphic-graph.md).
 
 ---
 
 ## Lifecycle / Disposal
 
-`KnowledgeStore` participates in VS Code's extension lifecycle:
+The VS Code extension manages the lifecycle of the Core instance:
 
-- **Activation**: Initializes the SQLite connection pool and spawns the AST Microkernel worker thread.
-- **`load()`**: Dispatches the initial graph read.
-- **`dispose()`**: Called by `extension.deactivate()`. Safely closes the SQLite connection, terminates the AST Microkernel worker thread, and clears all `onDidLoad` subscriptions to prevent memory leaks in the Extension Host.
+- **Activation**: Initializes the Core API container.
+- **`dispose()`**: Safely calls the Core API disposal methods to close SQLite connections and terminate background workers.

@@ -1,19 +1,14 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import { KGNode } from "../knowledge-graph-tree-provider.js";
-import { KnowledgeStore, TraversalResult } from "../knowledge-store.js";
+import { LocalGraphTraversalService, LocalSnapshotService, TraversalResult } from "@workspace/core";
 
-export async function refreshKnowledgeGraphCommand(store: KnowledgeStore) {
-  const loaded = await store.load();
-  if (loaded) {
-    void vscode.window.showInformationMessage("Docuvia: Knowledge graph refreshed.");
-  } else {
-    void vscode.window.showWarningMessage("Docuvia: No .docuvia/ folder found in this workspace.");
-  }
+export async function refreshKnowledgeGraphCommand() {
+  vscode.commands.executeCommand("docuvia.knowledgeGraph.refresh"); // Or however we want to trigger tree refresh
+  void vscode.window.showInformationMessage("Docuvia: Knowledge graph refreshed.");
 }
 
 export async function traverseGraphCommand(outputChannel: vscode.OutputChannel, node?: KGNode) {
-  const store = KnowledgeStore.getInstance(outputChannel);
   const folders = vscode.workspace.workspaceFolders;
   if (!folders || folders.length === 0) {
     void vscode.window.showWarningMessage(
@@ -28,7 +23,7 @@ export async function traverseGraphCommand(outputChannel: vscode.OutputChannel, 
   } else {
     const items: vscode.QuickPickItem[] = [];
     for (const folder of folders) {
-      const snap = store.getSnapshotFor(folder.uri.fsPath);
+      const snap = new LocalSnapshotService(folder.uri.fsPath).getSnapshot();
       if (snap) {
         for (const mod of snap.modules) {
           items.push({
@@ -80,8 +75,8 @@ export async function traverseGraphCommand(outputChannel: vscode.OutputChannel, 
 
   let workspaceRoot: string | undefined;
   for (const folder of folders) {
-    const snap = store.getSnapshotFor(folder.uri.fsPath);
-    if (snap?.modules.find((m) => Number(m.id) === rootNodeId)) {
+    const snap = new LocalSnapshotService(folder.uri.fsPath).getSnapshot();
+    if (snap?.modules.find((m: any) => Number(m.id) === rootNodeId)) {
       workspaceRoot = folder.uri.fsPath;
       break;
     }
@@ -91,12 +86,17 @@ export async function traverseGraphCommand(outputChannel: vscode.OutputChannel, 
     return;
   }
 
-  const result: TraversalResult = store.traverseGraph(
+  const result: TraversalResult | null = LocalGraphTraversalService.traverseLocalSqlite(
     workspaceRoot,
     rootNodeId,
     direction.value,
     10
   );
+
+  if (!result) {
+    void vscode.window.showErrorMessage("Docuvia: Traversal failed or returned no results.");
+    return;
+  }
 
   const traverseChannel = vscode.window.createOutputChannel("Docuvia Graph Traversal");
   traverseChannel.clear();

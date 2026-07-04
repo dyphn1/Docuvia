@@ -1,3 +1,7 @@
+> **DEPRECATION NOTICE**: This document describes legacy client-side implementations (`KnowledgeStore`, `TaskRunner`, `CentralServerClient`). Per [ADR-021](../../adrs/ADR-021-shared-core-api-and-presentation-layers.md), these responsibilities have moved to the Shared Core API (`@workspace/core`). This document is pending a rewrite.
+
+> **DEPRECATION NOTICE**: This document describes legacy client-side implementations (`KnowledgeStore`, `TaskRunner`, `CentralServerClient`). Per [ADR-021](../../adrs/ADR-021-shared-core-api-and-presentation-layers.md), these responsibilities have moved to the Shared Core API (`@workspace/core`). This document is pending a rewrite.
+
 # Knowledge Graph View: Tree Nodes & Structure
 
 ## Overview
@@ -67,10 +71,10 @@ The Knowledge Graph View is a dedicated VS Code TreeView (`docuvia.knowledgeGrap
 
 ## Data Management & Sync
 
-- **Store**: Handled by the singleton [`KnowledgeStore`](../../../../artifacts/vscode-client/src/knowledge-store.ts).
-- **Reactivity**: Triggered via Database-as-IPC ([ADR-014](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)) and AST Microkernel events ([ADR-020](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md)), replacing legacy `vscode.FileSystemWatcher` on `.docuvia/**`.
+- **Store**: Handled by the Shared Core API (`@workspace/core`) acting as the central data orchestrator. (Legacy `KnowledgeStore` in the client is deprecated).
+- **Reactivity**: Triggered via Database-as-IPC ([ADR-014](../../adrs/ADR-014-sql-indexed-graph-and-database-as-ipc.md)) and AST Microkernel events ([ADR-020](../../adrs/ADR-020-unified-isomorphic-ast-microkernel.md)) managed by the Core API, replacing legacy `vscode.FileSystemWatcher` on `.docuvia/**`.
 - **Lazy Evaluation & Rendering**:
   - By default, nodes below Project are collapsed.
-  - `getChildren` dynamically evaluates snapshots.
-  - When `onDidChangeTreeData` is fired, the store attempts to pass specific affected Project nodes for localized UI repaints, rather than rebuilding the entire multi-root tree.
-- **Snapshot**: Multi-workspace aware, maintaining a Map of snapshots keyed by workspace root path.
+  - `getChildren` dynamically evaluates snapshots by querying the Core API.
+  - When `onDidChangeTreeData` is fired by Core API events, the UI repaints specific affected Project nodes, rather than rebuilding the entire multi-root tree.
+- **Snapshot**: Multi-workspace aware, maintaining a Map of snapshots keyed by workspace root path via the Core API.

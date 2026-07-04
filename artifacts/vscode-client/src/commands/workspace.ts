@@ -1,8 +1,9 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import * as os from "os";
 import { CleanService, StatusService, ChangeDetectionService, SyncService } from "@workspace/core";
-import { KnowledgeStore } from "../knowledge-store.js";
 import { CredentialManager } from "../credential-manager.js";
+import { parseGlobalConfig } from "../parser.js";
 
 export async function cleanCommand() {
   const folders = vscode.workspace.workspaceFolders || [];
@@ -46,7 +47,6 @@ export async function detectChangesCommand(outputChannel: vscode.OutputChannel) 
 
 export async function syncCommand(
   outputChannel: vscode.OutputChannel,
-  store: KnowledgeStore,
   credentialManager: CredentialManager
 ) {
   const folders = vscode.workspace.workspaceFolders || [];
@@ -57,9 +57,20 @@ export async function syncCommand(
       void vscode.window.showErrorMessage("Docuvia: Cannot sync, no server token set.");
       return;
     }
+
+    const globalConfigPath = path.join(os.homedir(), ".docuvia", "config.yaml");
+    let globalConfigContent = "";
+    try {
+      const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(globalConfigPath));
+      globalConfigContent = Buffer.from(bytes).toString("utf-8");
+    } catch {
+      // ignore
+    }
+    const globalConfig = parseGlobalConfig(globalConfigContent, globalConfigPath);
+
     const syncService = new SyncService(
       folders[0].uri.fsPath,
-      store.globalConfig?.server_url || "http://localhost:3000",
+      globalConfig?.server_url || "http://localhost:3000",
       token,
       (msg) => outputChannel.appendLine(`[Docuvia Sync] ${msg}`)
     );

@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
-import { ProjectFactory } from "../support/factories.js";
+import { ProjectFactory } from "@workspace/test-utils";
 import { db } from "@workspace/db";
 import { notificationsTable } from "@workspace/db";
-import { withRollback } from "../support/db.js";
+import { withRollback } from "@workspace/test-utils";
 
 describe("Notifications API", () => {
   it("operations for notifications", () =>

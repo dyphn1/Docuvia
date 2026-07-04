@@ -1,8 +1,8 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import app from "../../src/app";
-import { withRollback } from "../support/db";
-import { ProjectFactory, L2NodeFactory, L3NodeFactory } from "../support/factories";
+import { withRollback } from "@workspace/test-utils";
+import { ProjectFactory, L2NodeFactory, L3NodeFactory } from "@workspace/test-utils";
 
 describe("Search API", () => {
   it("POST /search routes query", async () => {

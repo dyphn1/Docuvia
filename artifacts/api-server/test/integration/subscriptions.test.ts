@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
-import { ProjectFactory } from "../support/factories.js";
-import { withRollback } from "../support/db.js";
+import { ProjectFactory } from "@workspace/test-utils";
+import { withRollback } from "@workspace/test-utils";
 
 describe("Subscriptions API", () => {
   it("CRUD operations for subscriptions", () =>

@@ -32,3 +32,6 @@ export function setupDI() {
     new GitIngestionService()
   );
 }
+
+// Initialize immediately so routes can resolve at module level
+setupDI();

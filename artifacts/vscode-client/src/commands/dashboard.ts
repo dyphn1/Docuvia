@@ -1,11 +1,9 @@
 import * as vscode from "vscode";
 import { DashboardPanel } from "../dashboard-panel.js";
-import { KnowledgeStore } from "../knowledge-store.js";
 import { TaskQueueTreeProvider } from "../task-queue-tree-provider.js";
 
 export async function openDashboardCommand(
   context: vscode.ExtensionContext,
-  store: KnowledgeStore,
   tqProvider: TaskQueueTreeProvider,
   node?: { workspaceRoot?: string }
 ) {
@@ -25,5 +23,5 @@ export async function openDashboardCommand(
       targetRoot = picked.uri.fsPath;
     }
   }
-  DashboardPanel.createOrShow(context, store, targetRoot, tqProvider);
+  DashboardPanel.createOrShow(context, targetRoot, tqProvider);
 }

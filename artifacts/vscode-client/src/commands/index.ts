@@ -1,10 +1,7 @@
 import * as vscode from "vscode";
-import { CentralServerClient } from "../central-server-client.js";
 import { CredentialManager } from "../credential-manager.js";
 import { KnowledgeGraphTreeProvider } from "../knowledge-graph-tree-provider.js";
-import { KnowledgeStore } from "../knowledge-store.js";
 import { TaskQueueTreeProvider } from "../task-queue-tree-provider.js";
-import { TaskRunner } from "../task-runner.js";
 
 import { startExploreCommand } from "./explore.js";
 import { initProjectCommand } from "./init-project.js";
@@ -27,9 +24,6 @@ import { openSearchCommand, searchFromSelectionCommand } from "./search.js";
 export function registerCommands(
   context: vscode.ExtensionContext,
   outputChannel: vscode.OutputChannel,
-  store: KnowledgeStore,
-  taskRunner: TaskRunner,
-  centralClient: CentralServerClient,
   credentialManager: CredentialManager,
   kgProvider: KnowledgeGraphTreeProvider,
   tqProvider: TaskQueueTreeProvider
@@ -40,34 +34,34 @@ export function registerCommands(
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.initProject", (node?: any) =>
-      initProjectCommand(context, store, centralClient, node)
+      initProjectCommand(context, node)
     )
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.autoCategorizeDecisions", (node?: any) =>
-      autoCategorizeDecisionsCommand(kgProvider, taskRunner, node)
+      autoCategorizeDecisionsCommand(kgProvider, node)
     )
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.refreshKnowledgeGraph", () =>
-      refreshKnowledgeGraphCommand(store)
+      refreshKnowledgeGraphCommand()
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.addDecision", () => addDecisionCommand(context, store))
+    vscode.commands.registerCommand("docuvia.addDecision", () => addDecisionCommand(context))
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.openDashboard", (node?: any) =>
-      openDashboardCommand(context, store, tqProvider, node)
+      openDashboardCommand(context, tqProvider, node)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.runExtraction", () => runExtractionCommand(taskRunner))
+    vscode.commands.registerCommand("docuvia.runExtraction", () => runExtractionCommand())
   );
 
   context.subscriptions.push(
@@ -78,13 +72,13 @@ export function registerCommands(
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.showDecisionsForLens", (data: any) =>
-      showDecisionsForLensCommand(store, data)
+      showDecisionsForLensCommand(data)
     )
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.addDecisionFromSelection", () =>
-      addDecisionFromSelectionCommand(context, store)
+      addDecisionFromSelectionCommand(context)
     )
   );
 
@@ -97,8 +91,7 @@ export function registerCommands(
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "docuvia.acceptL1Tags",
-      (yamlContent: string, explicitRoot: string) =>
-        acceptL1TagsCommand(store, yamlContent, explicitRoot)
+      (yamlContent: string, explicitRoot: string) => acceptL1TagsCommand(yamlContent, explicitRoot)
     )
   );
 
@@ -120,7 +113,7 @@ export function registerCommands(
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.sync", () =>
-      syncCommand(outputChannel, store, credentialManager)
+      syncCommand(outputChannel, credentialManager)
     )
   );
 
@@ -137,14 +130,12 @@ export function registerCommands(
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.openSearch", () =>
-      openSearchCommand(context, centralClient)
-    )
+    vscode.commands.registerCommand("docuvia.openSearch", () => openSearchCommand(context))
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("docuvia.searchFromSelection", () =>
-      searchFromSelectionCommand(context, centralClient)
+      searchFromSelectionCommand(context)
     )
   );
 

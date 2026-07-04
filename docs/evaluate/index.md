@@ -1,3 +1,5 @@
+> **Note:** This document contains competitor analysis and references that have not been fully integrated into the current implementation yet.
+
 # Strict Local-First Evaluation & Missing Capabilities Index
 
 **Self-Evaluation Score: 3 / 10 (Disjointed Pipeline, Pseudo-Local Architecture)**

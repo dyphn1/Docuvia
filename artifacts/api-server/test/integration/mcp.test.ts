@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
-import { ProjectFactory } from "../support/factories.js";
-import { withRollback } from "../support/db.js";
+import { ProjectFactory } from "@workspace/test-utils";
+import { withRollback } from "@workspace/test-utils";
 import crypto from "crypto";
 
 vi.mock("@workspace/core", async (importOriginal) => {

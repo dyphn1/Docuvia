@@ -1,3 +1,5 @@
+> **Note:** This document contains competitor analysis and references that have not been fully integrated into the current implementation yet.
+
 # 08. AST Dependency Edge Creation
 
 **Severity:** 🟠 HIGH

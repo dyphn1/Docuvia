@@ -33,8 +33,8 @@ CREATE TABLE "project_files" (
 ALTER TABLE "commit_l2_links" DROP CONSTRAINT "commit_l2_links_commit_l2_unique";--> statement-breakpoint
 DROP INDEX "idx_commit_l2_links_commit";--> statement-breakpoint
 DROP INDEX "idx_commit_l2_links_l2";--> statement-breakpoint
-ALTER TABLE "l2_nodes" ALTER COLUMN "embedding" SET DATA TYPE vector(1536);--> statement-breakpoint
-ALTER TABLE "l3_nodes" ALTER COLUMN "embedding" SET DATA TYPE vector(1536);--> statement-breakpoint
+ALTER TABLE "l2_nodes" ALTER COLUMN "embedding" SET DATA TYPE vector(1536) USING embedding::vector;--> statement-breakpoint
+ALTER TABLE "l3_nodes" ALTER COLUMN "embedding" SET DATA TYPE vector(1536) USING embedding::vector;--> statement-breakpoint
 ALTER TABLE "l3_nodes" ALTER COLUMN "source_commits" SET DEFAULT '[]'::jsonb;--> statement-breakpoint
 ALTER TABLE "l3_nodes" ALTER COLUMN "source_commits" SET NOT NULL;--> statement-breakpoint
 ALTER TABLE "projects" ADD COLUMN "last_ast_ingested_at" timestamp;--> statement-breakpoint

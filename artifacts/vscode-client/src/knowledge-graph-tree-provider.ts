@@ -1,105 +1,78 @@
-import * as path from "path";
 import * as vscode from "vscode";
-import { openLocalDatabase } from "@workspace/core";
-import { KnowledgeStore } from "./knowledge-store.js";
+import { openLocalDatabase, LocalSnapshotService } from "@workspace/core";
+import * as fs from "fs";
+import * as path from "path";
 
 // ─── Node types ───────────────────────────────────────────────────────────────
 
-export type KGNodeKind =
-  | "project"
-  | "l1tag"
-  | "l2module"
-  | "l3entry"
-  | "placeholder"
-  | "unassigned-group";
-
-export interface KGNode {
-  kind: KGNodeKind;
-  id: string;
-  label: string;
-  /** Present on project, l1tag, l2module, l3entry nodes */
-  workspaceRoot?: string;
-  /** Only present on l3entry nodes */
-  filePath?: string;
-  /** Only present on project nodes */
-  initialized?: boolean;
-}
-
-// ─── Provider ────────────────────────────────────────────────────────────────
+export type KGNode =
+  | { kind: "project"; name: string; workspaceRoot: string; isInit: boolean }
+  | {
+      kind: "l1tag";
+      id: number;
+      name: string;
+      slug: string;
+      desc?: string;
+      workspaceRoot: string;
+    }
+  | {
+      kind: "l2module";
+      id: number;
+      name: string;
+      slug: string;
+      desc?: string;
+      workspaceRoot: string;
+    }
+  | {
+      kind: "l3decision";
+      id: number;
+      title: string;
+      slug: string;
+      filePath: string;
+      l2ModuleId: number;
+      workspaceRoot: string;
+    }
+  | {
+      kind: "unassigned-group";
+      name: string;
+      workspaceRoot: string;
+    }
+  | {
+      kind: "info";
+      message: string;
+    };
 
 export class KnowledgeGraphTreeProvider
   implements vscode.TreeDataProvider<KGNode>, vscode.TreeDragAndDropController<KGNode>
 {
-  private readonly _onDidChangeTreeData = new vscode.EventEmitter<
-    KGNode | undefined | null | void
-  >();
+  private _onDidChangeTreeData = new vscode.EventEmitter<KGNode | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   public readonly dropMimeTypes = ["application/vnd.code.tree.docuvia.knowledgeGraph"];
   public readonly dragMimeTypes = ["application/vnd.code.tree.docuvia.knowledgeGraph"];
 
-  constructor(private readonly store: KnowledgeStore) {
-    store.onDidLoad(() => this.refresh());
+  private watchers: vscode.FileSystemWatcher[] = [];
+
+  constructor() {
+    this.setupWatchers();
+    vscode.workspace.onDidChangeWorkspaceFolders(() => {
+      this.setupWatchers();
+      this.refresh();
+    });
   }
 
-  public async handleDrag(
-    source: readonly KGNode[],
-    dataTransfer: vscode.DataTransfer,
-    token: vscode.CancellationToken
-  ): Promise<void> {
-    const l3Nodes = source.filter((n) => n.kind === "l3entry");
-    if (l3Nodes.length > 0) {
-      dataTransfer.set(
-        "application/vnd.code.tree.docuvia.knowledgeGraph",
-        new vscode.DataTransferItem(l3Nodes)
-      );
-    }
-  }
-
-  public async handleDrop(
-    target: KGNode | undefined,
-    dataTransfer: vscode.DataTransfer,
-    token: vscode.CancellationToken
-  ): Promise<void> {
-    if (!target || target.kind !== "l2module" || !target.workspaceRoot) {
-      return;
-    }
-    const transferItem = dataTransfer.get("application/vnd.code.tree.docuvia.knowledgeGraph");
-    if (!transferItem) {
-      return;
-    }
-    const nodes: KGNode[] = transferItem.value;
-    const l3Nodes = nodes.filter(
-      (n) => n.kind === "l3entry" && n.workspaceRoot === target.workspaceRoot
-    );
-
-    if (l3Nodes.length > 0) {
-      const snap = this.store.snapshots.get(target.workspaceRoot);
-      if (!snap) return;
-
-      const dbPath = path.join(target.workspaceRoot, ".docuvia", "local.db");
-      try {
-        const db = openLocalDatabase(dbPath);
-        const updateStmt = db.prepare(
-          "UPDATE l3_nodes SET l2_node_id = ?, updated_at = ? WHERE id = ?"
+  private setupWatchers() {
+    this.watchers.forEach((w) => w.dispose());
+    this.watchers = [];
+    if (vscode.workspace.workspaceFolders) {
+      for (const folder of vscode.workspace.workspaceFolders) {
+        const watcher = vscode.workspace.createFileSystemWatcher(
+          new vscode.RelativePattern(folder, ".docuvia/local.db")
         );
-        let changed = false;
-
-        const now = new Date().toISOString();
-        for (const node of l3Nodes) {
-          const result = updateStmt.run(target.id, now, node.id);
-          if (result.changes > 0) {
-            changed = true;
-          }
-        }
-
-        db.close();
-
-        if (changed) {
-          await this.store.load();
-        }
-      } catch (e) {
-        console.error("Failed to update local.db after drag and drop", e);
+        watcher.onDidChange(() => this.refresh());
+        watcher.onDidCreate(() => this.refresh());
+        watcher.onDidDelete(() => this.refresh());
+        this.watchers.push(watcher);
       }
     }
   }
@@ -108,183 +81,258 @@ export class KnowledgeGraphTreeProvider
     this._onDidChangeTreeData.fire();
   }
 
+  async handleDrag(
+    source: readonly KGNode[],
+    dataTransfer: vscode.DataTransfer,
+    _token: vscode.CancellationToken
+  ): Promise<void> {
+    const l3Nodes = source.filter((n) => n.kind === "l3decision");
+    if (l3Nodes.length > 0) {
+      dataTransfer.set(
+        "application/vnd.code.tree.docuvia.knowledgeGraph",
+        new vscode.DataTransferItem(l3Nodes)
+      );
+    }
+  }
+
+  async handleDrop(
+    target: KGNode | undefined,
+    dataTransfer: vscode.DataTransfer,
+    _token: vscode.CancellationToken
+  ): Promise<void> {
+    if (!target || target.kind !== "l2module") return;
+
+    const transferItem = dataTransfer.get("application/vnd.code.tree.docuvia.knowledgeGraph");
+    if (!transferItem) return;
+
+    const l3Nodes: KGNode[] = transferItem.value;
+    if (!Array.isArray(l3Nodes)) return;
+
+    if (l3Nodes.length > 0) {
+      const snapshot = new LocalSnapshotService(target.workspaceRoot).getSnapshot();
+      if (!snapshot) return;
+
+      try {
+        const db = openLocalDatabase(target.workspaceRoot);
+        let changed = false;
+        const updateStmt = db.prepare("UPDATE l3_nodes SET l2_node_id = ? WHERE id = ?");
+
+        db.transaction(() => {
+          for (const node of l3Nodes) {
+            if (node.kind === "l3decision" && node.l2ModuleId !== target.id) {
+              updateStmt.run(target.id, node.id);
+              changed = true;
+            }
+          }
+        })();
+
+        db.close();
+
+        if (changed) {
+          this.refresh();
+        }
+      } catch (e) {
+        vscode.window.showErrorMessage(`Failed to move decision: ${String(e)}`);
+      }
+    }
+  }
+
   getTreeItem(node: KGNode): vscode.TreeItem {
     switch (node.kind) {
-      case "unassigned-group": {
-        const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.Collapsed);
-        item.iconPath = new vscode.ThemeIcon("question");
-        item.contextValue = "unassigned-group";
-        return item;
-      }
-      case "placeholder": {
-        const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
-        item.iconPath = new vscode.ThemeIcon("info");
-        return item;
-      }
       case "project": {
-        const state = node.initialized
-          ? vscode.TreeItemCollapsibleState.Expanded
-          : vscode.TreeItemCollapsibleState.None;
-        const item = new vscode.TreeItem(node.label, state);
-        item.iconPath = new vscode.ThemeIcon("root-folder");
-        item.contextValue = node.initialized ? "project-initialized" : "project-uninitialized";
-        if (!node.initialized) {
-          item.tooltip = 'Click "Init" to initialize .docuvia/ for this workspace.';
+        const item = new vscode.TreeItem(
+          node.name,
+          node.isInit
+            ? vscode.TreeItemCollapsibleState.Expanded
+            : vscode.TreeItemCollapsibleState.None
+        );
+        item.iconPath = new vscode.ThemeIcon(node.isInit ? "database" : "new-folder");
+        if (!node.isInit) {
+          item.description = "Not initialized";
+          item.contextValue = "project-uninit";
+        } else {
+          item.contextValue = "project-init";
         }
         return item;
       }
       case "l1tag": {
-        // Need snapshot for this workspace to know if there are modules
-        const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
-        const modules = snap ? snap.modules.filter((m) => m.l1_tag_id === node.id) : [];
+        const snapshot = node.workspaceRoot
+          ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
+          : undefined;
+        const modules = snapshot ? snapshot.modules.filter((m) => m.l1_tag_id === node.id) : [];
         const state =
           modules.length > 0
-            ? vscode.TreeItemCollapsibleState.Collapsed
+            ? vscode.TreeItemCollapsibleState.Expanded
             : vscode.TreeItemCollapsibleState.None;
-        const item = new vscode.TreeItem(node.label, state);
+
+        const item = new vscode.TreeItem(node.name, state);
         item.iconPath = new vscode.ThemeIcon("tag");
+        if (node.desc) item.tooltip = node.desc;
+        item.description = node.slug;
         item.contextValue = "l1tag";
         return item;
       }
+      case "unassigned-group": {
+        const item = new vscode.TreeItem(node.name, vscode.TreeItemCollapsibleState.Collapsed);
+        item.iconPath = new vscode.ThemeIcon("question");
+        item.contextValue = "unassigned-group";
+        return item;
+      }
       case "l2module": {
-        const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
-        const entries = snap ? snap.routerIndex.filter((r) => r.l2_module_id === node.id) : [];
+        const snapshot = node.workspaceRoot
+          ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
+          : undefined;
+        const entries = snapshot
+          ? snapshot.routerIndex.filter((r) => r.l2_module_id === node.id)
+          : [];
         const state =
           entries.length > 0
             ? vscode.TreeItemCollapsibleState.Collapsed
             : vscode.TreeItemCollapsibleState.None;
-        const item = new vscode.TreeItem(node.label, state);
-        item.iconPath = new vscode.ThemeIcon("package");
+
+        const item = new vscode.TreeItem(node.name, state);
+        item.iconPath = new vscode.ThemeIcon("symbol-module");
+        if (node.desc) item.tooltip = node.desc;
+        item.description = node.slug;
         item.contextValue = "l2module";
         return item;
       }
-      case "l3entry": {
-        const item = new vscode.TreeItem(node.label, vscode.TreeItemCollapsibleState.None);
-        item.iconPath = new vscode.ThemeIcon("note");
-        item.contextValue = "l3entry";
-        if (node.filePath) {
-          item.command = {
-            command: "vscode.open",
-            title: "Open Decision",
-            arguments: [vscode.Uri.file(node.filePath)],
-          };
-          item.tooltip = path.basename(node.filePath);
-        }
+      case "l3decision": {
+        const item = new vscode.TreeItem(node.title, vscode.TreeItemCollapsibleState.None);
+        item.iconPath = new vscode.ThemeIcon("file-code");
+        item.tooltip = node.filePath;
+
+        item.command = {
+          title: "Open Decision",
+          command: "docuvia.openDecision",
+          arguments: [node.filePath],
+        };
+        item.contextValue = "l3decision";
+        return item;
+      }
+      case "info": {
+        const item = new vscode.TreeItem(node.message, vscode.TreeItemCollapsibleState.None);
+        item.iconPath = new vscode.ThemeIcon("info");
         return item;
       }
     }
   }
 
-  getChildren(node?: KGNode): KGNode[] {
-    const folders = vscode.workspace.workspaceFolders || [];
-
+  async getChildren(node?: KGNode): Promise<KGNode[]> {
     if (!node) {
-      // Root level — return project nodes (one per workspace folder)
-      if (folders.length === 0) {
-        return [
-          {
-            kind: "placeholder",
-            id: "__placeholder__",
-            label: "No workspace folder open",
-          },
-        ];
+      const folders = vscode.workspace.workspaceFolders;
+      if (!folders || folders.length === 0) {
+        return [{ kind: "info", message: "No workspace open" }];
       }
       return folders.map((folder): KGNode => {
-        const isInit = this.store.snapshots.has(folder.uri.fsPath);
+        const isInit = fs.existsSync(path.join(folder.uri.fsPath, ".docuvia", "local.db"));
         return {
           kind: "project",
-          id: folder.uri.fsPath,
-          label: folder.name,
+          name: folder.name,
           workspaceRoot: folder.uri.fsPath,
-          initialized: isInit,
+          isInit,
         };
       });
     }
 
     if (node.kind === "project") {
-      if (!node.initialized || !node.workspaceRoot) {
+      if (!node.isInit) {
         return [];
       }
-      const snap = this.store.snapshots.get(node.workspaceRoot);
-      if (!snap || snap.tags.length === 0) {
+      const snapshot = new LocalSnapshotService(node.workspaceRoot).getSnapshot();
+      if (!snapshot || snapshot.tags.length === 0) {
         return [
           {
-            kind: "placeholder",
-            id: `__placeholder__${node.id}`,
-            label: "No L1 tags found in local.db",
+            kind: "info",
+            message: "No L1 Tags. Run Explore.",
           },
         ];
       }
-      const tagChildren: KGNode[] = snap.tags.map(
-        (tag): KGNode => ({
+
+      const nodes: KGNode[] = snapshot.tags.map(
+        (t): KGNode => ({
           kind: "l1tag",
-          id: tag.id,
-          label: tag.name,
+          id: t.id,
+          name: t.name,
+          slug: t.slug,
+          desc: t.description,
           workspaceRoot: node.workspaceRoot,
         })
       );
-      // Append unassigned-group node if there are any unassigned decisions
-      const validModuleIds = new Set(snap.modules.map((m) => m.id));
-      const hasUnassigned = [...snap.decisions.values()].some(
-        (d) => d.l2_module_id === "unassigned" || !validModuleIds.has(d.l2_module_id)
+
+      const validModuleIds = new Set(snapshot.modules.map((m) => m.id));
+      const unassignedL3 = snapshot.routerIndex.filter(
+        (r) => !r.l2_module_id || !validModuleIds.has(r.l2_module_id)
       );
-      if (hasUnassigned) {
-        tagChildren.push({
+      if (unassignedL3.length > 0) {
+        nodes.push({
           kind: "unassigned-group",
-          id: "__unassigned__",
-          label: "Unassigned Decisions",
+          name: "Unassigned Decisions",
           workspaceRoot: node.workspaceRoot,
         });
       }
-      return tagChildren;
+
+      return nodes;
     }
 
     if (node.kind === "l1tag") {
-      const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
-      const modules = snap ? snap.modules.filter((m) => m.l1_tag_id === node.id) : [];
+      const snapshot = node.workspaceRoot
+        ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
+        : undefined;
+      const modules = snapshot ? snapshot.modules.filter((m) => m.l1_tag_id === node.id) : [];
       return modules.map(
-        (mod): KGNode => ({
+        (m): KGNode => ({
           kind: "l2module",
-          id: mod.id,
-          label: mod.name,
+          id: m.id,
+          name: m.name,
+          slug: m.slug,
+          desc: m.description,
           workspaceRoot: node.workspaceRoot,
         })
       );
     }
 
     if (node.kind === "unassigned-group") {
-      const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
-      if (!snap) return [];
-      const validModuleIds = new Set(snap.modules.map((m) => m.id));
-      const unassigned = [...snap.decisions.values()].filter(
-        (d) => d.l2_module_id === "unassigned" || !validModuleIds.has(d.l2_module_id)
+      const snapshot = node.workspaceRoot
+        ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
+        : undefined;
+      if (!snapshot) return [];
+      const validModuleIds = new Set(snapshot.modules.map((m) => m.id));
+      const unassigned = snapshot.routerIndex.filter(
+        (r) => !r.l2_module_id || !validModuleIds.has(r.l2_module_id)
       );
+
       return unassigned.map(
-        (d): KGNode => ({
-          kind: "l3entry",
-          id: d.id,
-          label: d.title,
-          filePath: d.filePath,
+        (entry): KGNode => ({
+          kind: "l3decision",
+          id: entry.id,
+          title: entry.title,
+          slug: entry.slug,
+          filePath: entry.file_path,
+          l2ModuleId: 0,
           workspaceRoot: node.workspaceRoot,
         })
       );
     }
 
     if (node.kind === "l2module") {
-      const snap = node.workspaceRoot ? this.store.snapshots.get(node.workspaceRoot) : undefined;
-      const entries = snap ? snap.routerIndex.filter((r) => r.l2_module_id === node.id) : [];
-      return entries.map((entry): KGNode => {
-        const filePath = node.workspaceRoot
-          ? path.join(node.workspaceRoot, ".docuvia", entry.file_path)
-          : undefined;
-        return {
-          kind: "l3entry",
+      const snapshot = node.workspaceRoot
+        ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
+        : undefined;
+      const entries = snapshot
+        ? snapshot.routerIndex.filter((r) => r.l2_module_id === node.id)
+        : [];
+      return entries.map(
+        (entry): KGNode => ({
+          kind: "l3decision",
           id: entry.id,
-          label: entry.title,
-          filePath,
+          title: entry.title,
+          slug: entry.slug,
+          filePath: entry.file_path,
+          l2ModuleId: node.id,
           workspaceRoot: node.workspaceRoot,
-        };
-      });
+        })
+      );
     }
 
     return [];

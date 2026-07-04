@@ -3,13 +3,8 @@ import * as path from "path";
 import { parse as parseYaml } from "yaml";
 import { randomUUID } from "crypto";
 import { openLocalDatabase } from "@workspace/core";
-import { KnowledgeStore } from "../knowledge-store.js";
 
-export async function acceptL1TagsCommand(
-  store: KnowledgeStore,
-  yamlContent: string,
-  explicitRoot: string
-) {
+export async function acceptL1TagsCommand(yamlContent: string, explicitRoot: string) {
   const workspaceRoot = explicitRoot;
   if (!workspaceRoot) {
     vscode.window.showErrorMessage("Docuvia: Missing workspace root for acceptL1Tags command.");
@@ -25,8 +20,7 @@ export async function acceptL1TagsCommand(
   try {
     const tags = parseYaml(yamlContent);
     if (Array.isArray(tags)) {
-      const dbPath = path.join(workspaceRoot, ".docuvia", "local.db");
-      const db = openLocalDatabase(dbPath);
+      const db = openLocalDatabase(workspaceRoot);
       db.exec(`
         CREATE TABLE IF NOT EXISTS l1_tags (
           id TEXT PRIMARY KEY,
@@ -73,7 +67,7 @@ export async function acceptL1TagsCommand(
           tag.slug ||
           name
             .toLowerCase()
-            .replace(/\\s+/g, "-")
+            .replace(/\s+/g, "-")
             .replace(/[^a-z0-9-]/g, "");
         const id = tag.id || randomUUID();
         const description = tag.description || "";
@@ -85,7 +79,7 @@ export async function acceptL1TagsCommand(
     vscode.window.showErrorMessage(`Failed to insert L1 tags into local.db: ${err}`);
   }
 
-  await store.load();
+  vscode.commands.executeCommand("docuvia.knowledgeGraph.refresh");
   void vscode.window.showInformationMessage(
     "Docuvia: L1 tags imported into local.db and knowledge graph initialized."
   );

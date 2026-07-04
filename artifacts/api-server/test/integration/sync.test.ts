@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
-import { ProjectFactory, L2NodeFactory } from "../support/factories.js";
-import { withRollback } from "../support/db.js";
+import { ProjectFactory, L2NodeFactory } from "@workspace/test-utils";
+import { withRollback } from "@workspace/test-utils";
 
 vi.mock("@workspace/core", async (importOriginal) => {
   const actual = await importOriginal();

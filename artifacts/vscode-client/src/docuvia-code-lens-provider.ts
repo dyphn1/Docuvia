@@ -1,92 +1,37 @@
-import * as path from "path";
 import * as vscode from "vscode";
 import { minimatch } from "minimatch";
-import { KnowledgeStore } from "./knowledge-store.js";
+import { LocalSnapshotService } from "@workspace/core";
 import { L2Module } from "./types.js";
 
-export interface CodeLensDecisionData {
-  moduleId: string;
-  moduleName: string;
-  decisionIds: string[];
-}
-
-const DECLARATION_PATTERNS: Record<string, RegExp[]> = {
-  typescript: [
-    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
-    /^\s*(?:export\s+)?(?:abstract\s+)?class\s+\w+/,
-  ],
-  javascript: [/^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/, /^\s*(?:export\s+)?class\s+\w+/],
-  typescriptreact: [
-    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
-    /^\s*(?:export\s+)?(?:abstract\s+)?class\s+\w+/,
-  ],
-  javascriptreact: [
-    /^\s*(?:export\s+)?(?:async\s+)?function\s+\w+/,
-    /^\s*(?:export\s+)?class\s+\w+/,
-  ],
-  python: [/^\s*(?:async\s+)?def\s+\w+/, /^\s*class\s+\w+/],
-};
-
-function normalizeSourcePath(sourcePath: string): string {
-  let normalized = sourcePath.replace(/^\.\//, "");
-  if (!path.extname(normalized) && !normalized.endsWith("/")) {
-    normalized += "/";
-  }
-  return normalized;
-}
-
-function findMatchingModules(
-  documentFsPath: string,
-  workspaceRoot: string,
-  modules: L2Module[]
-): L2Module[] {
-  const relPath = path.relative(workspaceRoot, documentFsPath).split(path.sep).join("/");
-  return modules.filter((module) =>
-    module.source_paths.some((sp) => {
-      const normalized = normalizeSourcePath(sp);
-      return relPath === normalized || relPath.startsWith(normalized);
-    })
-  );
-}
-
-function findDeclarationLines(document: vscode.TextDocument): number[] {
-  const patterns = DECLARATION_PATTERNS[document.languageId] ?? [];
-  if (patterns.length === 0) return [];
-
-  const lines: number[] = [];
-  for (let i = 0; i < document.lineCount; i++) {
-    const text = document.lineAt(i).text;
-    if (patterns.some((p) => p.test(text))) {
-      lines.push(i);
-    }
-  }
-  return lines;
-}
-
 export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
-  private readonly _store: KnowledgeStore;
   private readonly _onDidChangeCodeLenses = new vscode.EventEmitter<void>();
   readonly onDidChangeCodeLenses: vscode.Event<void> = this._onDidChangeCodeLenses.event;
 
-  // Max's Rule: Cache semantic anchors mapped to document symbols
   private documentAnchors = new Map<string, { line: number; name: string }[]>();
 
-  constructor(store: KnowledgeStore, context: vscode.ExtensionContext) {
-    this._store = store;
-    store.onDidLoad(
-      () => {
-        this.documentAnchors.clear();
-        this._onDidChangeCodeLenses.fire();
-      },
-      null,
-      context.subscriptions
-    );
-
-    // Only update anchors async on save to prevent Editor Host freezing
+  constructor(context: vscode.ExtensionContext) {
     vscode.workspace.onDidSaveTextDocument(
       async (doc) => {
-        if (this._store.getSnapshotFor(doc.uri)) {
-          await this.updateSymbolAnchors(doc);
+        const workspaceRoot = vscode.workspace.getWorkspaceFolder(doc.uri)?.uri.fsPath;
+        if (workspaceRoot) {
+          const snapshotService = new LocalSnapshotService(workspaceRoot);
+          if (snapshotService.getSnapshot()) {
+            await this.updateSymbolAnchors(doc);
+          }
+        }
+      },
+      null,
+      context.subscriptions
+    );
+
+    vscode.workspace.onDidOpenTextDocument(
+      async (doc) => {
+        const workspaceRoot = vscode.workspace.getWorkspaceFolder(doc.uri)?.uri.fsPath;
+        if (workspaceRoot) {
+          const snapshotService = new LocalSnapshotService(workspaceRoot);
+          if (snapshotService.getSnapshot()) {
+            await this.updateSymbolAnchors(doc);
+          }
         }
       },
       null,
@@ -94,159 +39,113 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
     );
   }
 
-  private async updateSymbolAnchors(document: vscode.TextDocument) {
-    try {
-      // Defer to LSP for actual semantic parsing
-      const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-        "vscode.executeDocumentSymbolProvider",
-        document.uri
-      );
-
-      if (!symbols) return;
-
-      const anchors: { line: number; name: string }[] = [];
-      const extractLines = (syms: vscode.DocumentSymbol[]) => {
-        for (const sym of syms) {
-          if (
-            sym.kind === vscode.SymbolKind.Function ||
-            sym.kind === vscode.SymbolKind.Class ||
-            sym.kind === vscode.SymbolKind.Method
-          ) {
-            anchors.push({ line: sym.range.start.line, name: sym.name });
-          }
-          if (sym.children) {
-            extractLines(sym.children);
-          }
-        }
-      };
-
-      extractLines(symbols);
-      this.documentAnchors.set(document.uri.toString(), anchors);
-      this._onDidChangeCodeLenses.fire();
-    } catch (e) {
-      console.warn("Failed to execute document symbol provider", e);
-    }
+  public refresh(): void {
+    this._onDidChangeCodeLenses.fire();
   }
 
-  async provideCodeLenses(document: vscode.TextDocument): Promise<vscode.CodeLens[]> {
+  public async provideCodeLenses(
+    document: vscode.TextDocument,
+    _token: vscode.CancellationToken
+  ): Promise<vscode.CodeLens[]> {
     const folder = vscode.workspace.getWorkspaceFolder(document.uri);
     if (!folder) return [];
 
-    const snapshot = this._store.getSnapshotFor(document.uri);
+    const snapshotService = new LocalSnapshotService(folder.uri.fsPath);
+    const snapshot = snapshotService.getSnapshot();
     if (!snapshot) return [];
 
-    const workspaceRoot = folder.uri.fsPath;
+    const relativePath = vscode.workspace.asRelativePath(document.uri, false).replace(/\\/g, "/");
+    let relevantModules: L2Module[] = [];
 
-    // Use LSP cached lines if available, fallback to fast regex ONLY on initial load
-    let anchors = this.documentAnchors.get(document.uri.toString());
-    if (!anchors) {
-      const declarationLines = findDeclarationLines(document);
-      anchors = declarationLines.map((line) => {
-        const wordRange = document.getWordRangeAtPosition(new vscode.Position(line, 0));
-        const name = wordRange ? document.getText(wordRange) : "unknown";
-        return { line, name };
-      });
-      // Trigger async anchor update for next time
-      setTimeout(() => this.updateSymbolAnchors(document), 0);
+    // Convert to L2Module type matching
+    for (const mod of snapshot.modules) {
+      if (!mod.source_paths) continue;
+      for (const pattern of mod.source_paths) {
+        if (minimatch(relativePath, pattern)) {
+          relevantModules.push({
+            ...mod,
+            decisions: [], // We'll look up decisions from snapshot.decisions
+          });
+          break;
+        }
+      }
     }
 
-    if (anchors.length === 0) return [];
+    if (relevantModules.length === 0) return [];
 
     const lenses: vscode.CodeLens[] = [];
+    let lineIdx = 0;
 
-    // Dynamically import QueryService here to avoid static dependency cycles or use existing instance
-    const { QueryService } = await import("@workspace/core");
-    const queryService = new QueryService(workspaceRoot);
+    const anchors = this.documentAnchors.get(document.uri.toString());
 
-    for (const anchor of anchors) {
-      const range = new vscode.Range(anchor.line, 0, anchor.line, 0);
-      try {
-        const [impact, context] = await Promise.all([
-          queryService.getImpact(anchor.name),
-          queryService.getContext(anchor.name),
-        ]);
-        if (impact && impact.blastRadius) {
-          lenses.push(
-            new vscode.CodeLens(range, {
-              title: `💥 Blast Radius: ${impact.blastRadius.length} nodes`,
-              command: "",
-              arguments: [],
-            })
-          );
-        }
-        if (context) {
-          const incomingCount = context.incoming?.length || 0;
-          const outgoingCount = context.outgoing?.length || 0;
-          if (incomingCount > 0 || outgoingCount > 0) {
-            lenses.push(
-              new vscode.CodeLens(range, {
-                title: `⬇️ In: ${incomingCount} | ⬆️ Out: ${outgoingCount}`,
-                command: "",
-                arguments: [],
-              })
-            );
-          }
-        }
-      } catch (e) {
-        // Ignore errors if local db isn't there
-      }
-    }
+    for (const mod of relevantModules) {
+      const modDecisions = [...snapshot.decisions.values()].filter(
+        (d) => d.l2_module_id === mod.id
+      );
+      let targetLine = lineIdx;
 
-    // Original Module Decisions logic
-    const matchedModules = findMatchingModules(
-      document.uri.fsPath,
-      workspaceRoot,
-      snapshot.modules
-    );
-
-    if (matchedModules.length > 0) {
-      const moduleData: CodeLensDecisionData[] = matchedModules
-        .map((module) => {
-          const decisionIds = snapshot.routerIndex
-            .filter((r) => r.l2_module_id === module.id)
-            .map((r) => r.id);
-          return { moduleId: module.id, moduleName: module.name, decisionIds };
-        })
-        .filter((d) => d.decisionIds.length > 0);
-
-      if (moduleData.length > 0) {
-        const bestModule = [...moduleData].sort(
-          (a, b) => b.decisionIds.length - a.decisionIds.length
-        )[0];
-        const count = bestModule.decisionIds.length;
-        for (const anchor of anchors) {
-          const range = new vscode.Range(anchor.line, 0, anchor.line, 0);
-          lenses.push(
-            new vscode.CodeLens(range, {
-              title: `🧠 Docuvia: ${count} ${count === 1 ? "Decision" : "Decisions"}`,
-              command: "docuvia.showDecisionsForLens",
-              arguments: [bestModule],
-            })
-          );
-        }
-        return lenses;
-      }
-    }
-
-    // Offline fallback: we matched modules but they have no decisions locally
-    if (matchedModules.length > 0) {
-      const offlineModule = matchedModules[0];
-      for (const anchor of anchors) {
-        const range = new vscode.Range(anchor.line, 0, anchor.line, 0);
-        lenses.push(
-          new vscode.CodeLens(range, {
-            title: `🧠 Docuvia: ${offlineModule.name} — connect to server for decisions`,
-            command: "",
-            arguments: [],
-          })
+      if (anchors) {
+        const matchingAnchor = anchors.find(
+          (a) => mod.name.includes(a.name) || a.name.includes(mod.name)
         );
+        if (matchingAnchor) {
+          targetLine = matchingAnchor.line;
+        }
       }
+
+      const range = new vscode.Range(targetLine, 0, targetLine, 0);
+
+      const decisionCount = modDecisions.length;
+      let title = `◇ L2: ${mod.name}`;
+      if (decisionCount > 0) {
+        title += ` (${decisionCount} L3 decisions)`;
+      } else {
+        title += ` (Needs decisions)`;
+      }
+
+      const l2Lens = new vscode.CodeLens(range, {
+        title,
+        command: "docuvia.showDecisionsForLens",
+        arguments: [{ module: mod, decisions: modDecisions }],
+      });
+      lenses.push(l2Lens);
+
+      const extractLens = new vscode.CodeLens(range, {
+        title,
+        command: "docuvia.autoCategorizeDecisions",
+        arguments: [mod],
+      });
+      extractLens.command!.title = "Extrapolate Decisions";
+      lenses.push(extractLens);
+
+      lineIdx++;
     }
 
     return lenses;
   }
 
-  resolveCodeLens(lens: vscode.CodeLens): vscode.CodeLens {
-    return lens;
+  private async updateSymbolAnchors(document: vscode.TextDocument): Promise<void> {
+    try {
+      const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
+        "vscode.executeDocumentSymbolProvider",
+        document.uri
+      );
+      if (!symbols) return;
+
+      const anchors: { line: number; name: string }[] = [];
+      for (const sym of symbols) {
+        if (
+          sym.kind === vscode.SymbolKind.Class ||
+          sym.kind === vscode.SymbolKind.Function ||
+          sym.kind === vscode.SymbolKind.Interface
+        ) {
+          anchors.push({ line: sym.range.start.line, name: sym.name });
+        }
+      }
+      this.documentAnchors.set(document.uri.toString(), anchors);
+      this._onDidChangeCodeLenses.fire();
+    } catch {
+      // ignore
+    }
   }
 }

@@ -1,14 +1,11 @@
 import * as vscode from "vscode";
 import { DocuviaCodeLensProvider } from "../docuvia-code-lens-provider.js";
 import { DocuviaHoverProvider } from "../docuvia-hover-provider.js";
-import { KnowledgeIndexer } from "../indexer/knowledge-indexer.js";
 import { KnowledgeGraphTreeProvider } from "../knowledge-graph-tree-provider.js";
-import { KnowledgeStore } from "../knowledge-store.js";
 import { TaskQueueTreeProvider } from "../task-queue-tree-provider.js";
 
 export function registerProviders(
   context: vscode.ExtensionContext,
-  store: KnowledgeStore,
   kgProvider: KnowledgeGraphTreeProvider,
   tqProvider: TaskQueueTreeProvider
 ): void {
@@ -25,7 +22,7 @@ export function registerProviders(
   );
 
   // CodeLens Provider
-  const codeLensProvider = new DocuviaCodeLensProvider(store, context);
+  const codeLensProvider = new DocuviaCodeLensProvider(context);
   context.subscriptions.push(
     vscode.languages.registerCodeLensProvider(
       [
@@ -39,12 +36,8 @@ export function registerProviders(
     )
   );
 
-  // Knowledge Indexer
-  const indexer = new KnowledgeIndexer(store);
-  context.subscriptions.push(indexer);
-
   // Hover Provider
-  const hoverProvider = new DocuviaHoverProvider(store, indexer);
+  const hoverProvider = new DocuviaHoverProvider();
   context.subscriptions.push(
     vscode.languages.registerHoverProvider(
       [{ language: "markdown", pattern: "**/.docuvia/l3_decisions/*.md" }],

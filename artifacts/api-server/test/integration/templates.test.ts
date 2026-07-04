@@ -1,8 +1,8 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import app from "../../src/app";
-import { withRollback } from "../support/db";
-import { ProjectFactory } from "../support/factories";
+import { withRollback } from "@workspace/test-utils";
+import { ProjectFactory } from "@workspace/test-utils";
 
 describe("Templates API", () => {
   it("CRUD for templates", async () => {

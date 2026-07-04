@@ -1,3 +1,7 @@
+> **DEPRECATION NOTICE**: This document describes legacy client-side implementations (`KnowledgeStore`, `TaskRunner`, `CentralServerClient`). Per [ADR-021](../../adrs/ADR-021-shared-core-api-and-presentation-layers.md), these responsibilities have moved to the Shared Core API (`@workspace/core`). This document is pending a rewrite.
+
+> **DEPRECATION NOTICE**: This document describes legacy client-side implementations (`KnowledgeStore`, `TaskRunner`, `CentralServerClient`). Per [ADR-021](../../adrs/ADR-021-shared-core-api-and-presentation-layers.md), these responsibilities have moved to the Shared Core API (`@workspace/core`). This document is pending a rewrite.
+
 # User Journeys & Scenarios
 
 This document outlines all primary user journeys for the Docuvia VS Code Extension, covering every implemented command, provider, and UI panel. Each journey includes a happy path, known implementation issues found through 3× simulation against the actual source code, and bad cases documenting how the system behaves when encountering undefined, corrupt, or unexpected inputs.

@@ -11,9 +11,13 @@ export class ChangeDetectionService {
     let analysis = "";
 
     try {
-      const { stdout } = await execFileAsync("git", ["diff", "--name-status", baseRef || "HEAD"], {
-        cwd: this.workspaceRoot,
-      });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["diff", "--name-status", "-M", baseRef || "HEAD"],
+        {
+          cwd: this.workspaceRoot,
+        }
+      );
       const filesChanged = stdout.split("\n").filter((line) => line.trim().length > 0);
 
       let hasHighRisk = false;
@@ -21,7 +25,12 @@ export class ChangeDetectionService {
 
       for (const fileLine of filesChanged) {
         const parts = fileLine.split("\t");
-        const filePath = parts[parts.length - 1]; // Handling cases like rename where there are 3 parts
+        let filePath = parts[parts.length - 1]; // Handling cases like rename where there are 3 parts
+        const status = parts[0];
+
+        if (status.startsWith("R") && parts.length >= 3) {
+          filePath = parts[2]; // The new path is the 3rd element
+        }
 
         if (!filePath) continue;
 

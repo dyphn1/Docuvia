@@ -15,6 +15,9 @@ export interface IASTWorkerPool {
 
 export class AstWorkerPool implements IASTWorkerPool {
   private workers: Worker[] = [];
+  private workerTasks = new Map<Worker, string>();
+  private workerOptions: any = {};
+  private wPath: string = "";
   private workerQueue: Worker[] = [];
   private taskQueue: Array<{
     request: Omit<AstParseRequest, "taskId">;
@@ -27,55 +30,75 @@ export class AstWorkerPool implements IASTWorkerPool {
     { resolve: (val: AstParseResponse) => void; reject: (err: any) => void }
   >();
 
+  private spawnWorker() {
+    const worker = new Worker(this.wPath, this.workerOptions);
+
+    worker.on("message", (res: AstParseResponse) => {
+      this.workerTasks.delete(worker);
+      const promiseCallbacks = this.pendingTasks.get(res.taskId);
+      if (promiseCallbacks) {
+        this.pendingTasks.delete(res.taskId);
+        promiseCallbacks.resolve(res);
+      }
+
+      this.workerQueue.push(worker);
+      this.processQueue();
+    });
+
+    const handleError = (err: any) => {
+      console.error("[AstWorkerPool] Worker crashed/exited:", err);
+      const taskId = this.workerTasks.get(worker);
+      if (taskId) {
+        const callbacks = this.pendingTasks.get(taskId);
+        if (callbacks) {
+          callbacks.reject(err || new Error("Worker exited unexpectedly"));
+          this.pendingTasks.delete(taskId);
+        }
+        this.workerTasks.delete(worker);
+      }
+
+      // Remove from pool
+      this.workers = this.workers.filter((w) => w !== worker);
+      this.workerQueue = this.workerQueue.filter((w) => w !== worker);
+
+      // Respawn
+      this.spawnWorker();
+    };
+
+    worker.on("error", handleError);
+    worker.on("exit", (code) => {
+      if (code !== 0) handleError(new Error(`Worker exited with code ${code}`));
+    });
+
+    this.workers.push(worker);
+    this.workerQueue.push(worker);
+  }
+
   async initialize(workerCount: number = 2): Promise<void> {
     // Determine if we are in .ts environment (tsx) or .js environment (dist)
     let isTs = false;
-    let wPath = path.resolve(__dirname, "../workers/ast-worker.js");
+    this.wPath = path.resolve(__dirname, "../workers/ast-worker.js");
 
-    if (!fs.existsSync(wPath)) {
-      wPath = path.resolve(__dirname, "../workers/ast-worker.ts");
+    if (!fs.existsSync(this.wPath)) {
+      this.wPath = path.resolve(__dirname, "../workers/ast-worker.ts");
       isTs = true;
     }
 
-    const workerOptions: any = {};
     if (isTs) {
       // Inherit the exact tsx loader from the parent process, filtering out any script-specific args
-      workerOptions.execArgv = process.execArgv.filter(
+      this.workerOptions.execArgv = process.execArgv.filter(
         (arg) => !arg.includes("--eval") && !arg.includes("--print")
       );
-      if (!workerOptions.execArgv.some((arg: string) => arg.includes("tsx"))) {
-        workerOptions.execArgv.push("--import", "tsx");
+      if (!this.workerOptions.execArgv.some((arg: string) => arg.includes("tsx"))) {
+        this.workerOptions.execArgv.push("--import", "tsx");
       }
     } else {
       // If running from dist/ast-worker.js, we don't need any loaders.
-      workerOptions.execArgv = [];
+      this.workerOptions.execArgv = [];
     }
 
     for (let i = 0; i < workerCount; i++) {
-      const worker = new Worker(wPath, workerOptions);
-
-      worker.on("message", (res: AstParseResponse) => {
-        const promiseCallbacks = this.pendingTasks.get(res.taskId);
-        if (promiseCallbacks) {
-          this.pendingTasks.delete(res.taskId);
-          promiseCallbacks.resolve(res);
-        }
-
-        this.workerQueue.push(worker);
-        this.processQueue();
-      });
-
-      worker.on("error", (err) => {
-        console.error("[AstWorkerPool] Worker error:", err);
-        // Reject all pending tasks to prevent event loop starvation/silent exit
-        for (const [taskId, callbacks] of this.pendingTasks.entries()) {
-          callbacks.reject(err);
-          this.pendingTasks.delete(taskId);
-        }
-      });
-
-      this.workers.push(worker);
-      this.workerQueue.push(worker);
+      this.spawnWorker();
     }
   }
 
@@ -96,6 +119,7 @@ export class AstWorkerPool implements IASTWorkerPool {
 
     const taskId = String(++this.taskCounter);
     this.pendingTasks.set(taskId, { resolve: task.resolve, reject: task.reject });
+    this.workerTasks.set(worker, taskId);
 
     worker.postMessage({ ...task.request, taskId });
   }

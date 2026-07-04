@@ -34,11 +34,17 @@ app.listen(port, (err) => {
     janitor.reanchorL3Rules().catch((err: unknown) => {
       logger.error({ err }, "Initial janitor run failed");
     });
+    janitor.purgeOldLogsAndJobs().catch((err: unknown) => {
+      logger.error({ err }, "Initial janitor run failed");
+    });
   }, 10000);
 
   setInterval(() => {
     janitor.reanchorL3Rules().catch((err: unknown) => {
       logger.error({ err }, "Janitor interval run failed");
+    });
+    janitor.purgeOldLogsAndJobs().catch((err: unknown) => {
+      logger.error({ err }, "Janitor purge logs run failed");
     });
   }, JANITOR_INTERVAL_MS);
 });

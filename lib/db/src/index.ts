@@ -21,10 +21,9 @@ if (!process.env.DATABASE_URL) {
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-// Enable pgvector extension on pool creation
-pool.on("connect", async (client) => {
-  await client.query("CREATE EXTENSION IF NOT EXISTS vector");
-});
+// Note: Removed the async pool.on("connect") CREATE EXTENSION block to prevent unhandled rejections
+// and race conditions (Issue 1.18). The pgvector extension MUST be created manually
+// or via migration before connecting.
 
 const baseDb = drizzle(pool, { schema, logger: true });
 export type DbClient = typeof baseDb;

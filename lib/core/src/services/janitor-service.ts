@@ -2,8 +2,22 @@ import { db } from "@workspace/db";
 import { l3NodesTable, commitsTable, commitL3LinksTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { logger } from "../utils/logger.js";
+import { errorReportsTable, jobQueueTable } from "@workspace/db";
+import { lt } from "drizzle-orm";
 
 export class JanitorService {
+  async purgeOldLogsAndJobs(): Promise<void> {
+    logger.info("Starting purge of old logs and jobs...");
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    try {
+      await db.delete(errorReportsTable).where(lt(errorReportsTable.createdAt, sevenDaysAgo));
+      await db.delete(jobQueueTable).where(lt(jobQueueTable.createdAt, sevenDaysAgo));
+      logger.info("Successfully purged old error reports and jobs.");
+    } catch (err) {
+      logger.error({ err }, "Failed to purge old logs and jobs");
+    }
+  }
+
   async reanchorL3Rules(): Promise<void> {
     logger.info("Starting L3 rule reanchoring janitor job...");
 

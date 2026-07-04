@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TestSandbox } from "../support/sandbox.js";
 
-describe.skip("CLI Regression Tests - Uninitialized Environment", () => {
+describe("CLI Regression Tests - Uninitialized Environment", () => {
   let sandbox: TestSandbox;
 
   beforeEach(async () => {

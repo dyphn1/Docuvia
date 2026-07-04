@@ -3,7 +3,7 @@ import { TestSandbox } from "../../support/sandbox.js";
 import { existsSync } from "fs";
 import { resolve } from "path";
 
-describe.skip("Command: docuvia clean", () => {
+describe("Command: docuvia clean", () => {
   let sandbox: TestSandbox;
 
   beforeEach(async () => {

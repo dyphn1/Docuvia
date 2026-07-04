@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TestSandbox } from "../../support/sandbox.js";
 
-describe.skip("Command: docuvia status", () => {
+describe("Command: docuvia status", () => {
   let sandbox: TestSandbox;
 
   beforeEach(async () => {

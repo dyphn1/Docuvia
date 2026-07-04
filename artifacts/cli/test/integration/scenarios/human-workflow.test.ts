@@ -57,7 +57,7 @@ const Actions = {
     },
 };
 
-describe.skip("Scenario: Human Workflow", () => {
+describe("Scenario: Human Workflow", () => {
   let sandbox: TestSandbox;
 
   beforeEach(async () => {
@@ -78,6 +78,9 @@ describe.skip("Scenario: Human Workflow", () => {
         "src/utils.ts": "export const add = (a, b) => a + b;",
       },
     });
+
+    await sandbox.runGit(["add", "."]);
+    await sandbox.runGit(["commit", "-m", "Initial commit"]);
 
     // 2. Run the composable scenario
     await sandbox.runScenario(

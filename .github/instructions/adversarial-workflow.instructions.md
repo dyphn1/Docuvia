@@ -37,6 +37,6 @@ Commit the changes using Conventional Commits.
 
 You are not done until the knowledge artifacts are updated:
 
-1. Update `docs/roadmap/roadmap_checklist.md`.
-2. Generate/Update the verification report in `docs/roadmap/reports/` with the debate summary.
-3. Update `docs/design/` (Arc42 / ADRs) so the architectural baseline matches the new reality.
+1. Update `docs/gitbook/roadmap/roadmap_checklist.md`.
+2. Generate/Update the verification report in `docs/gitbook/roadmap/reports/` with the debate summary.
+3. Update `docs/gitbook/architecture/` (Arc42 / ADRs) so the architectural baseline matches the new reality.

@@ -47,6 +47,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
       if (namedImports) {
         const specifiers = namedImports.descendantsOfType("import_specifier");
         for (const spec of specifiers) {
+          if (!spec) continue;
           const nameNode = spec.childForFieldName("name");
           const aliasNode = spec.childForFieldName("alias");
           if (nameNode) {
@@ -84,6 +85,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
     if (stmtType === "import_statement" && stmt.descendantsOfType("dotted_name").length > 0) {
       const dottedNames = stmt.descendantsOfType("dotted_name");
       for (const dn of dottedNames) {
+        if (!dn) continue;
         const firstId = dn.descendantsOfType("identifier")[0];
         if (firstId) {
           scopeMap.set(firstId.text, dn.text);
@@ -122,6 +124,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
         if (pathNode && listNode) {
           const prefix = pathNode.text;
           for (const child of listNode.namedChildren) {
+            if (!child) continue;
             if (child.type === "use_as_clause") {
               const p = child.childForFieldName("path");
               const a = child.childForFieldName("alias");
@@ -152,6 +155,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
 
       if (arg.type === "use_list") {
         for (const child of arg.namedChildren) {
+          if (!child) continue;
           if (child.type === "identifier") {
             scopeMap.set(child.text, child.text);
           }
@@ -168,6 +172,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
       if (specList) {
         const specs = specList.descendantsOfType("import_spec");
         for (const spec of specs) {
+          if (!spec) continue;
           const pathNode = spec.childForFieldName("path");
           if (!pathNode) continue;
           const pkgPath = pathNode.text.replace(/['"]/g, "");
@@ -193,6 +198,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
       if (asterisk) {
         const scopedIds = stmt.descendantsOfType("scoped_identifier");
         const lastScoped = scopedIds[scopedIds.length - 1];
+        if (!lastScoped) continue;
         if (lastScoped) {
           const ids = lastScoped.descendantsOfType("identifier");
           const lastId = ids[ids.length - 1];
@@ -207,6 +213,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
       const ids = stmt.descendantsOfType("identifiers");
       if (scopedIds.length > 0) {
         const lastScoped = scopedIds[scopedIds.length - 1];
+        if (!lastScoped) continue;
         const allIds = lastScoped.descendantsOfType("identifier");
         const lastId = allIds[allIds.length - 1];
         if (lastId) {
@@ -214,7 +221,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
         }
       } else if (ids.length > 0) {
         const lastId = ids[ids.length - 1];
-        scopeMap.set(lastId.text, lastId.text);
+        if (lastId) scopeMap.set(lastId.text, lastId.text);
       }
       continue;
     }
@@ -232,6 +239,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
     if (stmtType === "using_declaration") {
       const children = stmt.namedChildren;
       for (const child of children) {
+        if (!child) continue;
         if (child.type === "qualified_identifier") {
           const ids = child.descendantsOfType("identifier");
           const lastId = ids[ids.length - 1];
@@ -317,6 +325,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
     const fallbackSrcText = sourceNode.text.replace(/['"]/g, "");
     const identifiers = stmt.descendantsOfType("identifier");
     for (const idNode of identifiers) {
+      if (!idNode) continue;
       if (!scopeMap.has(idNode.text)) {
         scopeMap.set(idNode.text, `${fallbackSrcText}::${idNode.text}`);
       }
@@ -335,6 +344,7 @@ function collectPythonFromImports(
   if (!namesNode) return;
 
   for (const child of stmt.namedChildren) {
+    if (!child) continue;
     if (child.type === "aliased_import") {
       const nameNode = child.childForFieldName("name");
       const aliasNode = child.childForFieldName("alias");

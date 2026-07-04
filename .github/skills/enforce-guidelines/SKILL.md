@@ -13,7 +13,7 @@ To systematically review, audit, and refactor implementation files to ensure str
 
 ### 1. [Think] Audit & Scope Definition
 
-- **Load Guidelines**: You MUST read `docs/guidelines/index.md` first. Based on the target file's type (e.g., TS logic, React component, API route), identify and read the specific guideline (01 to 06) that applies to it.
+- **Load Guidelines**: You MUST read `docs/gitbook/guidelines/index.md` first. Based on the target file's type (e.g., TS logic, React component, API route), identify and read the specific guideline (01 to 06) that applies to it.
 - **Define Scope & Categorize (Context Protection)**: To prevent context overflow, DO NOT load all files at once.
   1. Run `git ls-files` in the terminal to get the full list of tracked files in the requested scope.
   2. Record the files and categorize them by functional area (e.g., DB Schema, Core Logic, API Routes, UI Components).

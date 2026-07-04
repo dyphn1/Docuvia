@@ -58,12 +58,12 @@ _(from skill: zoom-out + skill: grill-with-docs)_
 - Before proposing a solution, read all relevant modules and map their relationships.
 - Use the project's domain vocabulary (L1/L2/L3, ingest, generate, MCP) when naming concepts.
 - Cross-reference proposed terminology against `AGENTS.md` for the Docuvia domain model.
-- Flag any proposed decisions that conflict with existing ADRs or the roadmap at `docs/roadmap-checklist.md`.
+- Flag any proposed decisions that conflict with existing ADRs or the roadmap at `docs/gitbook/roadmap/roadmap-checklist.md`.
 - Do not propose new modules that duplicate existing ones.
 
 ## Approach
 
-1. **Analyze Requirements**: Review the requirements. Use `search` and `read` tools to gather context from `kg-engine/`, `api-server/`, `api-spec/`, `db/`, `integrations-openai-ai-server/`, `vscode-client/`. Pay attention to the roadmap at `docs/roadmap-checklist.md` to understand current progress.
+1. **Analyze Requirements**: Review the requirements. Use `search` and `read` tools to gather context from `kg-engine/`, `api-server/`, `api-spec/`, `db/`, `integrations-openai-ai-server/`, `vscode-client/`. Pay attention to the roadmap at `docs/gitbook/roadmap/roadmap-checklist.md` to understand current progress.
 2. **Handle Ambiguities**: Note critical ambiguities for the user; otherwise proceed.
 3. **Document**: Use `edit` to write your plan to a Markdown file. Save a detailed implementation document at `docs/ai_plans/` as `implement_<feature-name>.md` (or `fix_<name>.md` for bug fixes). Include:
    - Implementation Goals

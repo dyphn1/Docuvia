@@ -29,10 +29,10 @@ For each functional category in the Todo list, mark it `in-progress` and execute
 **Agents Assigned:** `requirement-analyzer`, `Explore`
 **Audit Actions (HOW TO DO IT):**
 
-1. **ADR Contradiction Sweep**: Use the terminal to list `docs/design/adrs/`. Read them to build a timeline. If a newer ADR overrides an older one, it MUST have an explicit `Supersedes: [ADR-Name]` header. Flag any undocumented overrides.
-2. **Visual & Architectural Assessment**: Read `.md` files in `docs/design/` and `docs/architecture/`. Identify complex workflows, state transitions, or architecture descriptions. If a section's readability can be significantly improved with a visual diagram, verify there is a ````mermaid` block supplementing it. If missing, flag it for illustration supplement.
+1. **ADR Contradiction Sweep**: Use the terminal to list `docs/gitbook/adr/`. Read them to build a timeline. If a newer ADR overrides an older one, it MUST have an explicit `Supersedes: [ADR-Name]` header. Flag any undocumented overrides.
+2. **Visual & Architectural Assessment**: Read `.md` files in `docs/gitbook/architecture/` and `docs/gitbook/architecture/`. Identify complex workflows, state transitions, or architecture descriptions. If a section's readability can be significantly improved with a visual diagram, verify there is a ````mermaid` block supplementing it. If missing, flag it for illustration supplement.
 3. **Cross-Link Resolution**: Verify that inter-document links (e.g., `[Agent Details](./path)` in `AGENTS.md` or roadmap items) actually resolve to correct and existing files. Flag any broken markdown links, outdated references, or mismatching anchors.
-4. **Code Alignment**: If `docs/evaluate/` or `docs/design/` claims a specific module exists (e.g., "intent router"), use `grep` or `Explore` to verify the actual folder/file exists in `artifacts/` or `lib/`. Flag undocumented or missing layers.
+4. **Code Alignment**: If `docs/gitbook/evaluate/` or `docs/gitbook/architecture/` claims a specific module exists (e.g., "intent router"), use `grep` or `Explore` to verify the actual folder/file exists in `artifacts/` or `lib/`. Flag undocumented or missing layers.
 
 ### Round 2: API & Database Contract Validation
 
@@ -41,7 +41,7 @@ For each functional category in the Todo list, mark it `in-progress` and execute
 
 1. **API-First Enforcement**: Run `grep -rn 'fetch(' artifacts/kg-engine/src/` and `grep -rn 'axios' artifacts/kg-engine/src/`. If any manual HTTP calls are found, flag them as Severe. All API calls MUST use the auto-generated `@workspace/api-client-react` hooks.
 2. **Schema Integrity**: Read files in `lib/db/src/schema/`. Verify that knowledge tier tables (`l1_tags`, `l2_nodes`, `l3_nodes`) exist. Verify they have explicit index declarations (e.g., `(table) => ({ ... index(...) })`). Flag missing indexes.
-3. **Roadmap Truthfulness Check**: Read `docs/evaluate/index.md` and `docs/roadmap/`. For every `[x]` (completed item), find the corresponding source file. If the source file contains `TODO`, `stub`, or hardcoded mock returns, flag it as a "False Positive" and instruct the user to downgrade the markdown file to `[ ]`.
+3. **Roadmap Truthfulness Check**: Read `docs/gitbook/evaluate/index.md` and `docs/gitbook/roadmap/`. For every `[x]` (completed item), find the corresponding source file. If the source file contains `TODO`, `stub`, or hardcoded mock returns, flag it as a "False Positive" and instruct the user to downgrade the markdown file to `[ ]`.
 
 ### Round 3: Implementation Verification
 

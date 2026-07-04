@@ -132,7 +132,7 @@ _(Sourced from `docs/gitbook/08-known-limitations.md` and `09-faq.md`)_
 
 ## Support & Community
 
-See the full [Architectural Design Documents](docs/design/00-architecture-index.md) for deeper insights into the Local-First structure, Git-Isomorphic principles, and Swarm Intelligence mechanisms. For project tracking, see the [Master Roadmap](docs/roadmap/master-roadmap.md).
+See the full [Architectural Design Documents](docs/gitbook/architecture/README.md) for deeper insights into the Local-First structure, Git-Isomorphic principles, and Swarm Intelligence mechanisms. For project tracking, see the [Master Roadmap](docs/gitbook/roadmap/README.md).
 
 ---
 

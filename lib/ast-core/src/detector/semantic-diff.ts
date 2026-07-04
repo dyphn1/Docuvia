@@ -105,6 +105,7 @@ export class SemanticDiffDetector {
 
     if (node.startPosition.row <= range.startRow && node.endPosition.row >= range.endRow) {
       for (const child of node.children) {
+        if (!child) continue;
         const childResult = this.getSmallestContainingNode(child, range);
         if (childResult) return childResult;
       }
@@ -154,6 +155,7 @@ export class SemanticDiffDetector {
         return;
       }
       for (const child of n.children) {
+        if (!child) continue;
         traverse(child);
       }
     };
@@ -205,6 +207,7 @@ export class SemanticDiffDetector {
         sig += n.text + " ";
       } else {
         for (const child of n.children) {
+          if (!child) continue;
           traverse(child);
         }
       }

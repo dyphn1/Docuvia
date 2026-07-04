@@ -148,7 +148,7 @@ export class DefaultProvider implements LanguageProvider {
     }
     const nodes: Node[] = [];
     for (const nodeType of fallbackTypes) {
-      nodes.push(...rootNode.descendantsOfType(nodeType));
+      nodes.push(...(rootNode.descendantsOfType(nodeType).filter(Boolean) as Node[]));
     }
     return nodes;
   }

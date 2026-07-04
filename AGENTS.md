@@ -112,20 +112,20 @@ For complex multi-step work, dispatch to the appropriate agent rather than doing
 
 ## Key File Paths
 
-| What                           | Path                                                          |
-| ------------------------------ | ------------------------------------------------------------- |
-| OpenAPI spec                   | `lib/api-spec/openapi.yaml`                                   |
-| Orval codegen config           | `lib/api-spec/orval.config.cjs`                               |
-| Drizzle config                 | `lib/db/drizzle.config.cjs`                                   |
-| DB schema                      | `lib/db/src/schema/` (21 tables)                              |
-| API server entry               | `artifacts/api-server/src/index.ts`                           |
-| Express app + middleware order | `artifacts/api-server/src/app.ts`                             |
-| API routes                     | `artifacts/api-server/src/routes/` (24 route modules)         |
-| Intent router                  | `artifacts/api-server/lib/core/src/services/intent-router.ts` |
-| VS Code extension docs         | `docs/design/vscode-client/00-router-overview.md`             |
-| Vitest config                  | `vitest.config.ts` (root)                                     |
-| CI pipeline                    | `.github/workflows/ci.yml`                                    |
-| Release (VSIX)                 | `.github/workflows/release.yml`                               |
+| What                           | Path                                                           |
+| ------------------------------ | -------------------------------------------------------------- |
+| OpenAPI spec                   | `lib/api-spec/openapi.yaml`                                    |
+| Orval codegen config           | `lib/api-spec/orval.config.cjs`                                |
+| Drizzle config                 | `lib/db/drizzle.config.cjs`                                    |
+| DB schema                      | `lib/db/src/schema/` (21 tables)                               |
+| API server entry               | `artifacts/api-server/src/index.ts`                            |
+| Express app + middleware order | `artifacts/api-server/src/app.ts`                              |
+| API routes                     | `artifacts/api-server/src/routes/` (24 route modules)          |
+| Intent router                  | `artifacts/api-server/lib/core/src/services/intent-router.ts`  |
+| VS Code extension docs         | `docs/gitbook/development/vscode-client/00-router-overview.md` |
+| Vitest config                  | `vitest.config.ts` (root)                                      |
+| CI pipeline                    | `.github/workflows/ci.yml`                                     |
+| Release (VSIX)                 | `.github/workflows/release.yml`                                |
 
 ## Do Not Edit
 

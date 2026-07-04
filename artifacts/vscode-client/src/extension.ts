@@ -40,7 +40,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   registerProviders(context, kgProvider, tqProvider);
 
-  const chatParticipant = registerDocuviaChatParticipant(context);
+  const chatParticipant = registerDocuviaChatParticipant(context, tqProvider);
   context.subscriptions.push(chatParticipant);
 
   registerCommands(context, outputChannel, credentialManager, kgProvider, tqProvider);

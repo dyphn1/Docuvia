@@ -1,15 +1,18 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import { randomUUID } from "crypto";
 import {
   ExtractService,
   openWorkspaceLocalDatabase,
   resolveL2NodeIdForFile,
 } from "@workspace/core";
+import { TaskQueueTreeProvider } from "../../task-queue-tree-provider.js";
 
 export async function handleExtract(
   request: vscode.ChatRequest,
   stream: vscode.ChatResponseStream,
-  token: vscode.CancellationToken
+  token: vscode.CancellationToken,
+  tqProvider?: TaskQueueTreeProvider
 ): Promise<void> {
   const activeEditor = vscode.window.activeTextEditor;
   let targetPath = request.prompt.trim() || activeEditor?.document.uri.fsPath;
@@ -48,6 +51,15 @@ export async function handleExtract(
 
   stream.progress(`Extracting from ${path.basename(targetPath)}...`);
 
+  const taskId = randomUUID();
+  tqProvider?.addTask({
+    id: taskId,
+    label: path.basename(targetPath),
+    type: "l3_extraction",
+    status: "in_progress",
+    createdAt: new Date(),
+  });
+
   try {
     const extractService = new ExtractService(workspaceRoot);
     const relativePath = path.relative(workspaceRoot, targetPath).replace(/\\/g, "/");
@@ -76,7 +88,9 @@ export async function handleExtract(
     } else {
       stream.markdown(`No decisions extracted from \`${path.basename(targetPath)}\`.`);
     }
+    tqProvider?.updateTaskStatus(taskId, "done", `${result.decisions?.length ?? 0} decisions`);
   } catch (err: any) {
     stream.markdown(`Extraction failed: ${err.message}`);
+    tqProvider?.updateTaskStatus(taskId, "failed", err.message);
   }
 }

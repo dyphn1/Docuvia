@@ -61,7 +61,7 @@ export function registerCommands(
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.runExtraction", () => runExtractionCommand())
+    vscode.commands.registerCommand("docuvia.runExtraction", () => runExtractionCommand(tqProvider))
   );
 
   context.subscriptions.push(

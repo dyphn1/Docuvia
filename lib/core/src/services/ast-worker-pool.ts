@@ -31,6 +31,7 @@ export class AstWorkerPool implements IASTWorkerPool {
   >();
   private taskTimeouts = new Map<string, NodeJS.Timeout>();
   private timedOutWorkers = new WeakSet<Worker>();
+  private shuttingDown = false;
 
   constructor(private readonly taskTimeoutMs: number = 30_000) {}
 
@@ -80,8 +81,11 @@ export class AstWorkerPool implements IASTWorkerPool {
       this.workers = this.workers.filter((w) => w !== worker);
       this.workerQueue = this.workerQueue.filter((w) => w !== worker);
 
-      // Respawn
-      this.spawnWorker();
+      // Respawn — but not while shutting down, else terminate() would leak a fresh
+      // replacement worker for every one it just terminated.
+      if (!this.shuttingDown) {
+        this.spawnWorker();
+      }
     };
 
     worker.on("error", handleError);
@@ -156,6 +160,7 @@ export class AstWorkerPool implements IASTWorkerPool {
   }
 
   async terminate(): Promise<void> {
+    this.shuttingDown = true;
     for (const timeout of this.taskTimeouts.values()) {
       clearTimeout(timeout);
     }

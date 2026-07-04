@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
+import { randomUUID } from "crypto";
 import { minimatch } from "minimatch";
 import {
   ExtractService,
@@ -7,8 +8,9 @@ import {
   resolveL2NodeIdForFile,
 } from "@workspace/core";
 import { addDecisionCommand } from "./decision.js";
+import { TaskQueueTreeProvider } from "../task-queue-tree-provider.js";
 
-export async function runExtractionCommand() {
+export async function runExtractionCommand(tqProvider?: TaskQueueTreeProvider) {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
     void vscode.window.showWarningMessage("Docuvia: Open a file to extract decisions from.");
@@ -37,6 +39,15 @@ export async function runExtractionCommand() {
       if (proceed !== "Yes") return;
     }
   }
+
+  const taskId = randomUUID();
+  tqProvider?.addTask({
+    id: taskId,
+    label: path.basename(filePath),
+    type: "l3_extraction",
+    status: "in_progress",
+    createdAt: new Date(),
+  });
 
   void vscode.window.withProgress(
     {
@@ -81,8 +92,10 @@ export async function runExtractionCommand() {
             `No decisions extracted from ${path.basename(filePath)}.`
           );
         }
+        tqProvider?.updateTaskStatus(taskId, "done", `${result.decisions?.length ?? 0} decisions`);
       } catch (err: any) {
         vscode.window.showErrorMessage(`Extraction failed: ${err.message}`);
+        tqProvider?.updateTaskStatus(taskId, "failed", err.message);
       }
     }
   );

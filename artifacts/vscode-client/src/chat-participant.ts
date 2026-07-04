@@ -4,9 +4,11 @@ import { handleExplore } from "./chat/handlers/explore.js";
 import { handleQuery } from "./chat/handlers/query.js";
 import { handleExtract } from "./chat/handlers/extract.js";
 import { handleHelp } from "./chat/handlers/help.js";
+import { TaskQueueTreeProvider } from "./task-queue-tree-provider.js";
 
 export function registerDocuviaChatParticipant(
-  context: vscode.ExtensionContext
+  context: vscode.ExtensionContext,
+  tqProvider?: TaskQueueTreeProvider
 ): vscode.ChatParticipant {
   const handler: vscode.ChatRequestHandler = async (request, _context, stream, token) => {
     try {
@@ -18,7 +20,7 @@ export function registerDocuviaChatParticipant(
         case "query":
           return await handleQuery(request, stream);
         case "extract":
-          return await handleExtract(request, stream, token);
+          return await handleExtract(request, stream, token, tqProvider);
         case "help":
         default:
           return await handleHelp(stream);

@@ -36,6 +36,7 @@
 
 ### 1.4 Rename/move detection does not exist
 
+- **Status**: ✅ ALREADY_FIXED
 - **Target**: `lib/core/src/services/change-detection-service.ts:14-33`
 - Runs `git diff --name-status` without `-M`/`--find-renames`; only takes the final path token, so `R100\told\tnew` lines silently drop the old path. `AstChangeDetector` hashes by `filePath` alone — a renamed-but-unchanged file becomes a fresh INSERT, not an UPDATE. Contradicts ADR-016's "zero-cost rename" claim entirely.
 

@@ -11,7 +11,7 @@ export interface AstIngestionResult {
 export class AstIngestionService {
   async dispatchAstIngestion(
     projectId: number,
-    paths: string | string[],
+    paths: string | string[] | Array<{ filePath: string; oldPath?: string }>,
     mode: "full" | "incremental"
   ): Promise<AstIngestionResult> {
     const pathArray = Array.isArray(paths) ? paths : [paths];
@@ -31,7 +31,7 @@ export class AstIngestionService {
           .set({ status: "processing", lockedAt: new Date() })
           .where(eq(jobQueueTable.id, job.id));
 
-        const result = await ingestAstBatch(pathArray, projectId, {
+        const result = await ingestAstBatch(pathArray as any, projectId, {
           incremental: mode === "incremental",
         });
 

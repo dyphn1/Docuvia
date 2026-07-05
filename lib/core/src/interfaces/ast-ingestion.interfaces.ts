@@ -1,3 +1,4 @@
+export type FileIngestRequest = { filePath: string; oldPath?: string };
 import {
   IngestionResult,
   ProcessedEvents,
@@ -16,7 +17,7 @@ export interface IAstEventStreamer {
 }
 
 export interface IAstChangeDetector {
-  detectChangedFiles(projectId: number, jsonlPaths: string[]): Promise<Set<string>>;
+  detectChangedFiles(projectId: number, requests: FileIngestRequest[]): Promise<Set<string>>;
   updateFileHashes(projectId: number, jsonlPaths: string[]): Promise<void>;
   computeFileHash(filePath: string): Promise<string | null>;
 }

@@ -3,6 +3,7 @@ import { AstEventStreamer } from "./ast/ast-event-streamer.js";
 import { AstChangeDetector } from "./ast/ast-change-detector.js";
 import { GitNativePersistenceService } from "./ast/git-native-persistence.service.js";
 import { IngestionResult } from "../types/ast-ingestion.types.js";
+import { FileIngestRequest } from "../interfaces/ast-ingestion.interfaces.js";
 
 /**
  * AstIngestionOrchestrator
@@ -46,9 +47,12 @@ export class AstIngestionOrchestrator {
       errors: [],
     };
 
-    let pathsToIngest = jsonlPaths;
+    const requests: FileIngestRequest[] = jsonlPaths.map((p) =>
+      typeof p === "string" ? { filePath: p } : p
+    );
+    let pathsToIngest = requests.map((r) => r.filePath);
     if (options.incremental) {
-      const changedFiles = await this.changeDetector.detectChangedFiles(projectId, jsonlPaths);
+      const changedFiles = await this.changeDetector.detectChangedFiles(projectId, requests);
       pathsToIngest = jsonlPaths.filter((p) => changedFiles.has(p));
       aggregated.filesSkipped = jsonlPaths.length - pathsToIngest.length;
 

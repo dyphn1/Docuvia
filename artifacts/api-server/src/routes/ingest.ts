@@ -214,7 +214,13 @@ router.get("/projects/:id/documents", async (req, res) => {
 });
 
 const AstIngestSchema = z.object({
-  jsonlPaths: z.union([z.string(), z.array(z.string())]).optional(),
+  jsonlPaths: z
+    .union([
+      z.string(),
+      z.array(z.string()),
+      z.array(z.object({ filePath: z.string(), oldPath: z.string().optional() })),
+    ])
+    .optional(),
   jsonlPath: z.string().optional(),
   mode: z.enum(["full", "incremental"]).optional().default("full"),
 });

@@ -31,7 +31,8 @@ export class AstIngestionService {
           .set({ status: "processing", lockedAt: new Date() })
           .where(eq(jobQueueTable.id, job.id));
 
-        const result = await ingestAstBatch(pathArray as any, projectId, {
+        const stringPaths = pathArray.map((p) => (typeof p === "string" ? p : p.filePath));
+        const result = await ingestAstBatch(stringPaths, projectId, {
           incremental: mode === "incremental",
         });
 
@@ -49,21 +50,24 @@ export class AstIngestionService {
             payload: { jsonlPaths: pathArray, projectId, mode, result },
           })
           .where(eq(jobQueueTable.id, job.id));
-      } catch (err: any) {
+      } catch (err: unknown) {
         logger.error({ err, jobId: job.id, projectId }, "AST ingestion background job failed");
 
         await db
           .update(jobQueueTable)
           .set({ status: "failed" })
           .where(eq(jobQueueTable.id, job.id));
+
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        const errorStack = err instanceof Error ? err.stack : undefined;
         await db
           .insert(errorReportsTable)
           .values({
             projectId,
             jobId: job.id,
             taskType: "ast_ingest_job",
-            errorMessage: err.message,
-            errorStack: err.stack,
+            errorMessage,
+            errorStack,
           })
           .catch((dlqErr) => logger.warn({ dlqErr }, "Failed to persist DLQ for AST Job"));
       }

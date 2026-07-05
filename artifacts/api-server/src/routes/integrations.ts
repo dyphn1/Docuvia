@@ -5,6 +5,7 @@ import { projectIntegrationsTable } from "@workspace/db";
 import { z } from "zod";
 import { logger } from "@workspace/core";
 import { sendTestNotification } from "@workspace/core";
+import { validateBody } from "../middlewares/validate.js";
 
 const router = Router();
 const integrationService = new IntegrationService();
@@ -21,7 +22,7 @@ function serializeIntegration(row: typeof projectIntegrationsTable.$inferSelect)
 
 router.get("/projects/:id/integrations", async (req, res) => {
   try {
-    const projectId = parseInt(req.params.id, 10);
+    const projectId = parseInt(req.params.id as string, 10);
     if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project id" });
 
     const rows = await integrationService.getIntegrationsByProjectId(projectId);
@@ -33,46 +34,54 @@ router.get("/projects/:id/integrations", async (req, res) => {
   }
 });
 
-router.post("/projects/:id/integrations", async (req, res) => {
-  try {
-    const projectId = parseInt(req.params.id, 10);
-    if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project id" });
+router.post(
+  "/projects/:id/integrations",
+  validateBody(CreateProjectIntegrationBody),
+  async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id as string, 10);
+      if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project id" });
 
-    const project = await new ProjectService().getProjectById(projectId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+      const project = await new ProjectService().getProjectById(projectId);
+      if (!project) return res.status(404).json({ error: "Project not found" });
 
-    const body = CreateProjectIntegrationBody.parse(req.body);
+      const body = res.locals.validatedBody as z.infer<typeof CreateProjectIntegrationBody>;
 
-    const created = await integrationService.createIntegration(projectId, body);
+      const created = await integrationService.createIntegration(projectId, body);
 
-    return res.status(201).json(serializeIntegration(created));
-  } catch (err) {
-    logger.error({ err }, "Failed to create integration");
-    return res.status(500).json({ error: "Failed to create integration" });
+      return res.status(201).json(serializeIntegration(created));
+    } catch (err) {
+      logger.error({ err }, "Failed to create integration");
+      return res.status(500).json({ error: "Failed to create integration" });
+    }
   }
-});
+);
 
-router.patch("/integrations/:integrationId", async (req, res) => {
-  try {
-    const integrationId = parseInt(req.params.integrationId, 10);
-    if (isNaN(integrationId)) return res.status(400).json({ error: "Invalid integration id" });
+router.patch(
+  "/integrations/:integrationId",
+  validateBody(UpdateProjectIntegrationBody),
+  async (req, res) => {
+    try {
+      const integrationId = parseInt(req.params.integrationId as string, 10);
+      if (isNaN(integrationId)) return res.status(400).json({ error: "Invalid integration id" });
 
-    const body = UpdateProjectIntegrationBody.parse(req.body);
+      const body = res.locals.validatedBody as z.infer<typeof UpdateProjectIntegrationBody>;
 
-    const updated = await integrationService.updateIntegration(integrationId, body);
+      const updated = await integrationService.updateIntegration(integrationId, body);
 
-    if (!updated) return res.status(404).json({ error: "Integration not found" });
+      if (!updated) return res.status(404).json({ error: "Integration not found" });
 
-    return res.json(serializeIntegration(updated));
-  } catch (err) {
-    logger.error({ err }, "Failed to update integration");
-    return res.status(500).json({ error: "Failed to update integration" });
+      return res.json(serializeIntegration(updated));
+    } catch (err) {
+      logger.error({ err }, "Failed to update integration");
+      return res.status(500).json({ error: "Failed to update integration" });
+    }
   }
-});
+);
 
 router.delete("/integrations/:integrationId", async (req, res) => {
   try {
-    const integrationId = parseInt(req.params.integrationId, 10);
+    const integrationId = parseInt(req.params.integrationId as string, 10);
     if (isNaN(integrationId)) return res.status(400).json({ error: "Invalid integration id" });
 
     const deleted = await integrationService.deleteIntegration(integrationId);
@@ -88,7 +97,7 @@ router.delete("/integrations/:integrationId", async (req, res) => {
 
 router.post("/integrations/:integrationId/test", async (req, res) => {
   try {
-    const integrationId = parseInt(req.params.integrationId, 10);
+    const integrationId = parseInt(req.params.integrationId as string, 10);
     if (isNaN(integrationId)) return res.status(400).json({ error: "Invalid integration id" });
 
     const integration = await integrationService.getIntegrationById(integrationId);

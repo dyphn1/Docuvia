@@ -1,5 +1,6 @@
 import {
   SyncService,
+  LocalOrphanBranchWriter,
   FileDiscoveryService,
   AstProcessingService,
   mapAstToEvents,
@@ -29,10 +30,6 @@ export async function syncCommand(options: {
 }) {
   if (options.isLocal) {
     console.log("[docuvia] Running local AST sync...");
-    // NOTE: this path re-parses the AST into a discarded temp dir and writes straight to the
-    // git orphan branch — it is a separate pipeline from `analyze`'s .docuvia/local.db
-    // (SqliteGraphRepository); the two never intersect. See
-    // docs/gitbook/evaluate/local-sqlite-write-pipeline.md "Current State" for details.
     let tempDir = "";
     try {
       const workspaceRoot = process.cwd();
@@ -62,13 +59,8 @@ export async function syncCommand(options: {
 
       await gitNativePersistence.processEvents(events, tempDir, result);
 
-      // Unify local CLI sync with the shared pipeline (Database-as-IPC)
-      const { writeKnowledgeToOrphanBranch } = await import("@workspace/core");
-      // Since local CLI doesn't have a projectId for pure local sync in the old flow,
-      // we assume projectId 1 or similar for local-only DB syncs, but actually, the DB write
-      // already happened. We just need to trigger the actual writeKnowledgeToOrphanBranch.
-      // We will pass projectId = 1 as local fallback.
-      await writeKnowledgeToOrphanBranch(1);
+      const localWriter = new LocalOrphanBranchWriter(workspaceRoot);
+      await localWriter.packDirectoryToBranch(tempDir, "docuvia-knowledge");
 
       console.log(
         `[docuvia] Successfully packed local knowledge to branch. Nodes: ${result.l2Created + result.l3Created}, Links: ${result.linksCreated}`

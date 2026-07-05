@@ -34,8 +34,8 @@ if (target) {
       console.log(context);
       console.log("================================");
     }
-  } catch (e) {
-    const errorMsg = (e as any).message || String(e);
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : String(e);
     console.error("[Docuvia Pre-Command] Failed to retrieve context: " + errorMsg);
   }
 }
@@ -112,8 +112,9 @@ async function registerMcpServer(cwd: string) {
     cursorMcp.mcpServers["docuvia-local"] = mcpConfig;
     await fs.writeFile(cursorMcpPath, JSON.stringify(cursorMcp, null, 2));
     console.log(`✅ Registered MCP server in: ${cursorMcpPath}`);
-  } catch (e: any) {
-    console.warn(`⚠️ Could not configure Cursor MCP: ${e.message}`);
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.warn(`⚠️ Could not configure Cursor MCP: ${errorMessage}`);
   }
 
   // Claude Desktop Configuration (Global)
@@ -149,8 +150,9 @@ async function registerMcpServer(cwd: string) {
 
       await fs.writeFile(claudeMcpPath, JSON.stringify(claudeMcp, null, 2));
       console.log(`✅ Registered MCP server in: ${claudeMcpPath}`);
-    } catch (e: any) {
-      console.warn(`⚠️ Could not configure Claude Desktop MCP: ${e.message}`);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      console.warn(`⚠️ Could not configure Claude Desktop MCP: ${errorMessage}`);
     }
   }
 }

@@ -54,5 +54,5 @@ export * from "./components/Toggle.js";
 export * from "./components/ToggleGroup.js";
 export * from "./components/Tooltip.js";
 export * from "./hooks/use-toast.js";
-export * from "./hooks/UseMobile.js";
+export * from "./hooks/use-mobile.js";
 export * from "./lib/utils.js";

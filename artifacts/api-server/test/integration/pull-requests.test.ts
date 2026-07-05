@@ -27,7 +27,9 @@ describe("Pull Requests API", () => {
         ...prDefaults,
       });
 
-      const res = await request(app).get(`/api/projects/${project.id}/pull-requests`);
+      const res = await request(app)
+        .get(`/api/projects/${project.id}/pull-requests`)
+        .set("Authorization", "Bearer test-api-key");
       expect(res.status).toBe(200);
       expect(res.body).toHaveLength(1);
       expect(res.body[0].title).toBe("Fix bug");
@@ -54,7 +56,9 @@ describe("Pull Requests API", () => {
       const l2 = await L2NodeFactory.create({ projectId: project.id });
       await L3NodeFactory.create({ l2NodeId: l2.id, commitHash: commit.hash });
 
-      const res = await request(app).get(`/api/projects/${project.id}/pull-requests/102`);
+      const res = await request(app)
+        .get(`/api/projects/${project.id}/pull-requests/102`)
+        .set("Authorization", "Bearer test-api-key");
       expect(res.status).toBe(200);
       expect(res.body.pr.githubPrNumber).toBe(102);
       expect(res.body.commitsCount).toBe(1);
@@ -74,7 +78,9 @@ describe("Pull Requests API", () => {
         ...prDefaults,
       });
 
-      const res = await request(app).post(`/api/projects/${project.id}/pull-requests/103/analyze`);
+      const res = await request(app)
+        .post(`/api/projects/${project.id}/pull-requests/103/analyze`)
+        .set("Authorization", "Bearer test-api-key");
       expect(res.status).toBe(202);
       expect(res.body.status).toBe("triggered");
     }));

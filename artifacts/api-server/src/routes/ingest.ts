@@ -14,6 +14,7 @@ import { DocumentIngestionService } from "../services/doc-ingestion.service.js";
 
 import { AstIngestionService } from "../services/ast-ingestion.service.js";
 import { ProjectStatusService } from "../services/project-status.service.js";
+import { validateBody } from "../middlewares/validate.js";
 
 const router = Router();
 const gitIngestionService = container.resolve<IGitIngestionService>(DI_TOKENS.GitIngestionService);
@@ -35,76 +36,82 @@ const SvnModeSchema = z.object({
   mode: z.enum(["full", "incremental"]).optional().default("full"),
 });
 
-router.post("/projects/:id/ingest/git", requireApiKey, async (req, res) => {
-  const projectId = Number(req.params.id);
-  const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+router.post(
+  "/projects/:id/ingest/git",
+  requireApiKey,
+  validateBody(GitIngestSchema),
+  async (req, res) => {
+    const projectId = Number(req.params.id);
+    const project = await new ProjectService().getProjectById(projectId);
+    if (!project) return res.status(404).json({ error: "Project not found" });
 
-  const body = GitIngestSchema.parse(req.body);
-  const repoUrl = body.repoUrl ?? project.repoUrl;
+    const body = res.locals.validatedBody as z.infer<typeof GitIngestSchema>;
+    const repoUrl = body.repoUrl ?? project.repoUrl;
 
-  if (!repoUrl) {
-    return res.status(400).json({ error: "repoUrl is required" });
+    if (!repoUrl) {
+      return res.status(400).json({ error: "repoUrl is required" });
+    }
+
+    try {
+      const result = await gitIngestionService.ingestGit(project, {
+        repoUrl,
+        branch: body.branch ?? "main",
+        limit: Math.min(body.limit ?? 100, 500),
+        mode: body.mode ?? "full",
+      });
+
+      return res.json({
+        commitsIngested: result.ingested,
+        commitsSkipped: result.skipped,
+        totalFetched: result.totalFetched,
+        errors: result.errors.length > 0 ? result.errors : undefined,
+      });
+    } catch (err: any) {
+      logger.error({ err }, "Git ingestion failed");
+      return res.status(500).json({ error: `Git ingestion failed: ${err.message}` });
+    }
   }
+);
 
-  try {
-    const result = await gitIngestionService.ingestGit(project, {
-      repoUrl,
-      branch: body.branch ?? "main",
-      limit: Math.min(body.limit ?? 100, 500),
-      mode: body.mode ?? "full",
-    });
+const SvnRequestSchema = IngestSvnBody.and(SvnModeSchema);
 
-    return res.json({
-      commitsIngested: result.ingested,
-      commitsSkipped: result.skipped,
-      totalFetched: result.totalFetched,
-      errors: result.errors.length > 0 ? result.errors : undefined,
-    });
-  } catch (err: any) {
-    logger.error({ err }, "Git ingestion failed");
-    return res.status(500).json({ error: `Git ingestion failed: ${err.message}` });
+router.post(
+  "/projects/:id/ingest/svn",
+  requireApiKey,
+  validateBody(SvnRequestSchema),
+  async (req, res) => {
+    const projectId = Number(req.params.id);
+    const project = await new ProjectService().getProjectById(projectId);
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const body = res.locals.validatedBody as z.infer<typeof SvnRequestSchema>;
+
+    const svnUrl = body.svnUrl;
+
+    if (!/^https?:\/\/|^svn:\/\/|^svn\+ssh:\/\//.test(svnUrl)) {
+      return res.status(400).json({ error: "Invalid SVN URL format" });
+    }
+
+    try {
+      const result = await svnIngestionService.ingestSvn(project, {
+        svnUrl,
+        username: body.username,
+        password: body.password,
+        startRevision: body.startRevision,
+        endRevision: body.endRevision,
+        mode: body.mode,
+      });
+
+      return res.json({
+        ingested: result.ingested,
+        skipped: result.skipped,
+        errors: result.errors,
+      });
+    } catch (err: any) {
+      return res.status(502).json({ error: `Failed to fetch SVN log: ${err.message}` });
+    }
   }
-});
-
-router.post("/projects/:id/ingest/svn", requireApiKey, async (req, res) => {
-  const projectId = Number(req.params.id);
-  const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
-
-  let body: ReturnType<typeof IngestSvnBody.parse>;
-  try {
-    body = IngestSvnBody.parse(req.body);
-  } catch (err) {
-    return res.status(400).json({ error: "Invalid request body", details: err });
-  }
-
-  const { mode: svnMode } = SvnModeSchema.parse(req.body);
-  const svnUrl = body.svnUrl;
-
-  if (!/^https?:\/\/|^svn:\/\/|^svn\+ssh:\/\//.test(svnUrl)) {
-    return res.status(400).json({ error: "Invalid SVN URL format" });
-  }
-
-  try {
-    const result = await svnIngestionService.ingestSvn(project, {
-      svnUrl,
-      username: body.username,
-      password: body.password,
-      startRevision: body.startRevision,
-      endRevision: body.endRevision,
-      mode: svnMode,
-    });
-
-    return res.json({
-      ingested: result.ingested,
-      skipped: result.skipped,
-      errors: result.errors,
-    });
-  } catch (err: any) {
-    return res.status(502).json({ error: `Failed to fetch SVN log: ${err.message}` });
-  }
-});
+);
 
 router.get("/projects/:id/ingest/status", async (req, res) => {
   const projectId = Number(req.params.id);
@@ -174,17 +181,12 @@ router.post(
   }
 );
 
-router.post("/projects/:id/ingest/document", async (req, res) => {
+router.post("/projects/:id/ingest/document", validateBody(IngestDocumentBody), async (req, res) => {
   const projectId = Number(req.params.id);
   const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
-  let body;
-  try {
-    body = IngestDocumentBody.parse(req.body);
-  } catch (err) {
-    return res.status(400).json({ error: "Invalid request body", details: err });
-  }
+  const body = res.locals.validatedBody as z.infer<typeof IngestDocumentBody>;
 
   try {
     const result = await docIngestionService.ingestDocumentFromContent(
@@ -225,13 +227,13 @@ const AstIngestSchema = z.object({
   mode: z.enum(["full", "incremental"]).optional().default("full"),
 });
 
-router.post("/projects/:id/ingest/ast", async (req, res) => {
+router.post("/projects/:id/ingest/ast", validateBody(AstIngestSchema), async (req, res) => {
   const projectId = Number(req.params.id);
   const project = await new ProjectService().getProjectById(projectId);
   if (!project) return res.status(404).json({ error: "Project not found" });
 
   try {
-    const body = AstIngestSchema.parse(req.body);
+    const body = res.locals.validatedBody as z.infer<typeof AstIngestSchema>;
     const paths = body.jsonlPaths ?? body.jsonlPath;
     if (!paths) {
       return res.status(400).json({ error: "jsonlPath or jsonlPaths is required" });

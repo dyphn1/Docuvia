@@ -7,7 +7,7 @@
     ".": "./src/index.ts",
     "./components/*": "./src/components/*.tsx",
     "./hooks/use-toast": "./src/hooks/use-toast.ts",
-    "./hooks/use-mobile": "./src/hooks/UseMobile.tsx",
+    "./hooks/use-mobile": "./src/hooks/use-mobile.ts",
     "./utils": "./src/lib/utils.ts"
   },
   "scripts": {

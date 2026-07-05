@@ -24,30 +24,25 @@ export class DashboardService implements IDashboardService {
       .where(eq(reviewTasksTable.status, "pending"));
 
     const activityRows = await db
-      .select()
+      .select({
+        id: activityLogTable.id,
+        type: activityLogTable.type,
+        description: activityLogTable.description,
+        createdAt: activityLogTable.createdAt,
+        projectName: proj.name,
+      })
       .from(activityLogTable)
+      .leftJoin(proj, eq(activityLogTable.projectId, proj.id))
       .orderBy(sql`${activityLogTable.createdAt} desc`)
       .limit(10);
 
-    const recentActivity = await Promise.all(
-      activityRows.map(async (a: any) => {
-        let projectName: string | null = null;
-        if (a.projectId) {
-          const [p] = await db
-            .select({ name: proj.name })
-            .from(proj)
-            .where(eq(proj.id, a.projectId));
-          projectName = p?.name ?? null;
-        }
-        return {
-          id: a.id,
-          type: a.type,
-          description: a.description,
-          projectName,
-          createdAt: a.createdAt.toISOString(),
-        };
-      })
-    );
+    const recentActivity = activityRows.map((a) => ({
+      id: a.id,
+      type: a.type,
+      description: a.description,
+      projectName: a.projectName ?? null,
+      createdAt: a.createdAt.toISOString(),
+    }));
 
     return {
       totalProjects: projectsCount.count,

@@ -10,6 +10,7 @@ describe("Extra Routes API", () => {
     await withRollback(async () => {
       const response = await request(app)
         .get("/api/dashboard")
+        .set("Authorization", "Bearer test-api-key")
         .set("Authorization", "Bearer test-api-key");
       expect(response.status).toBe(200);
     });
@@ -19,6 +20,7 @@ describe("Extra Routes API", () => {
     await withRollback(async () => {
       const response = await request(app)
         .post("/api/search")
+        .set("Authorization", "Bearer test-api-key")
         .set("Authorization", "Bearer test-api-key")
         .send({ query: "test" });
       expect(response.status).toBe(200);
@@ -45,20 +47,23 @@ describe("Extra Routes API", () => {
       // Get tasks
       const resGet = await request(app)
         .get(`/api/review-tasks`)
+        .set("Authorization", "Bearer test-api-key")
         .set("Authorization", "Bearer test-api-key");
       expect(resGet.status).toBe(200);
 
       // Approve task
       const resApprove = await request(app)
         .patch(`/api/review-tasks/${task.id}`)
-        .set("Authorization", "Bearer 1")
+        .set("Authorization", "Bearer test-api-key")
+
         .send({ status: "approved" });
       expect(resApprove.status).toBe(200);
 
       // Reject task
       const resReject = await request(app)
         .patch(`/api/review-tasks/${task.id}`)
-        .set("Authorization", "Bearer 1")
+        .set("Authorization", "Bearer test-api-key")
+
         .send({ status: "rejected" });
       expect(resReject.status).toBe(200);
     });
@@ -69,6 +74,7 @@ describe("Extra Routes API", () => {
       const project = await ProjectFactory.create();
       const response = await request(app)
         .get(`/api/projects/${project.id}/export`)
+        .set("Authorization", "Bearer test-api-key")
         .set("Authorization", "Bearer test-api-key");
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty("project");
@@ -85,6 +91,7 @@ describe("Extra Routes API", () => {
       const project = await ProjectFactory.create();
       const response = await request(app)
         .post(`/api/webhooks/github/${project.id}`)
+        .set("Authorization", "Bearer test-api-key")
         .set("Authorization", "Bearer test-api-key")
         .set("x-github-event", "push")
         .send({ ref: "refs/heads/main" });

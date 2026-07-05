@@ -4,6 +4,7 @@ import { AstChangeDetector } from "./ast/ast-change-detector.js";
 import { GitNativePersistenceService } from "./ast/git-native-persistence.service.js";
 import { IngestionResult } from "../types/ast-ingestion.types.js";
 import { FileIngestRequest } from "../interfaces/ast-ingestion.interfaces.js";
+import { GitConstants } from "../constants/git.js";
 
 /**
  * AstIngestionOrchestrator
@@ -11,9 +12,11 @@ import { FileIngestRequest } from "../interfaces/ast-ingestion.interfaces.js";
  * Orchestrates the AST ingestion pipeline using specialized services.
  */
 export class AstIngestionOrchestrator {
-  private streamer = new AstEventStreamer();
-  private changeDetector = new AstChangeDetector();
-  private gitPersistence = new GitNativePersistenceService();
+  constructor(
+    private streamer = new AstEventStreamer(),
+    private changeDetector = new AstChangeDetector(),
+    private gitPersistence = new GitNativePersistenceService()
+  ) {}
 
   public async ingestAstJsonl(jsonlPath: string, projectId: number): Promise<IngestionResult> {
     const result: IngestionResult = {
@@ -27,7 +30,7 @@ export class AstIngestionOrchestrator {
 
     const events = await this.streamer.streamAndCollectEvents(jsonlPath, result);
 
-    const knowledgeRoot = process.env.KNOWLEDGE_ROOT || "docuvia-knowledge";
+    const knowledgeRoot = process.env.KNOWLEDGE_ROOT || GitConstants.KNOWLEDGE_ROOT;
     await this.gitPersistence.processEvents(events, knowledgeRoot, result);
 
     return result;
@@ -75,16 +78,18 @@ export class AstIngestionOrchestrator {
         aggregated.linksCreated += result.linksCreated;
         aggregated.contractsCreated += result.contractsCreated;
         aggregated.errors.push(...result.errors);
-      } catch (err: any) {
-        aggregated.errors.push(`Failed to ingest ${jsonlPath}: ${err.message}`);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        aggregated.errors.push(`Failed to ingest ${jsonlPath}: ${errorMessage}`);
       }
     }
 
     if (options.incremental && pathsToIngest.length > 0) {
       try {
         await this.changeDetector.updateFileHashes(projectId, pathsToIngest);
-      } catch (err: any) {
-        aggregated.errors.push(`Failed to update file hashes: ${err.message}`);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        aggregated.errors.push(`Failed to update file hashes: ${errorMessage}`);
       }
     }
 

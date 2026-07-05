@@ -1,5 +1,6 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
+import { RiskScore, RiskScoreType, FileRiskExtensions } from "../constants/risk-scores.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -7,7 +8,7 @@ export class ChangeDetectionService {
   constructor(private workspaceRoot: string) {}
 
   public async detectChanges(baseRef?: string) {
-    let riskScore = "Low";
+    let riskScore: RiskScoreType = RiskScore.LOW;
     let analysis = "";
 
     try {
@@ -34,22 +35,23 @@ export class ChangeDetectionService {
 
         if (!filePath) continue;
 
-        if (filePath.endsWith(".ts") || filePath.endsWith(".js") || filePath.endsWith(".json")) {
+        if (FileRiskExtensions.HIGH.some((ext) => filePath.endsWith(ext))) {
           hasHighRisk = true;
-        } else if (filePath.endsWith(".css") || filePath.endsWith(".html")) {
+        } else if (FileRiskExtensions.MEDIUM.some((ext) => filePath.endsWith(ext))) {
           hasMediumRisk = true;
         }
       }
 
       if (hasHighRisk) {
-        riskScore = "High";
+        riskScore = RiskScore.HIGH;
       } else if (hasMediumRisk) {
-        riskScore = "Medium";
+        riskScore = RiskScore.MEDIUM;
       }
 
       analysis = `Risk Score: ${riskScore}\nDetected ${filesChanged.length} changed files.`;
-    } catch (e: any) {
-      analysis = `Risk Score: ${riskScore}\nFailed to detect changes: ${e.message}`;
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      analysis = `Risk Score: ${riskScore}\nFailed to detect changes: ${errorMessage}`;
     }
 
     return {

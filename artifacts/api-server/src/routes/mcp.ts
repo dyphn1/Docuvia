@@ -16,6 +16,7 @@ import {
   McpQueryBody as GeneratedMcpQueryBody,
 } from "@workspace/api-zod";
 import crypto from "crypto";
+import { validateQuery, validateBody } from "../middlewares/validate.js";
 
 const router = Router();
 
@@ -82,15 +83,8 @@ router.get("/mcp/read_shared_memory", async (req, res) => {
   }
 });
 
-router.get("/mcp/retrieve_original", async (req, res) => {
-  const parsed = RetrieveOriginalQuery.safeParse(req.query);
-  if (!parsed.success) {
-    return res
-      .status(400)
-      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
-  }
-
-  const { id } = parsed.data;
+router.get("/mcp/retrieve_original", validateQuery(RetrieveOriginalQuery), async (req, res) => {
+  const { id } = res.locals.validatedQuery as z.infer<typeof RetrieveOriginalQuery>;
 
   try {
     const payload = getCompressedPayload(id);
@@ -103,15 +97,13 @@ router.get("/mcp/retrieve_original", async (req, res) => {
   }
 });
 
-router.get("/mcp/search_knowledge", async (req, res) => {
-  const parsed = SearchKnowledgeQuery.safeParse(req.query);
-  if (!parsed.success) {
-    return res
-      .status(400)
-      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
-  }
-
-  const { query, project_id: projectId, limit, include_pending } = parsed.data;
+router.get("/mcp/search_knowledge", validateQuery(SearchKnowledgeQuery), async (req, res) => {
+  const {
+    query,
+    project_id: projectId,
+    limit,
+    include_pending,
+  } = res.locals.validatedQuery as z.infer<typeof SearchKnowledgeQuery>;
   const includePending = include_pending;
 
   try {
@@ -123,68 +115,67 @@ router.get("/mcp/search_knowledge", async (req, res) => {
   }
 });
 
-router.get("/mcp/get_dependencies", async (req, res) => {
-  const parsed = McpGetDependenciesQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    return res
-      .status(400)
-      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
+router.get(
+  "/mcp/get_dependencies",
+  validateQuery(McpGetDependenciesQueryParams),
+  async (req, res) => {
+    const { module: moduleName, project_id: projectId } = res.locals.validatedQuery as z.infer<
+      typeof McpGetDependenciesQueryParams
+    >;
+    const escapedModuleName = sanitizeLikeInput(moduleName);
+
+    const result = await DependencyService.getDependencies(
+      moduleName,
+      escapedModuleName,
+      projectId
+    );
+    return res.json(result);
   }
+);
 
-  const { module: moduleName, project_id: projectId } = parsed.data;
-  const escapedModuleName = sanitizeLikeInput(moduleName);
+router.get(
+  "/mcp/impact_analysis",
+  validateQuery(McpImpactAnalysisQueryParams),
+  async (req, res) => {
+    const { module: moduleName, project_id: projectId } = res.locals.validatedQuery as z.infer<
+      typeof McpImpactAnalysisQueryParams
+    >;
+    const escapedModuleName = sanitizeLikeInput(moduleName);
 
-  const result = await DependencyService.getDependencies(moduleName, escapedModuleName, projectId);
-  return res.json(result);
-});
-
-router.get("/mcp/impact_analysis", async (req, res) => {
-  const parsed = McpImpactAnalysisQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    return res
-      .status(400)
-      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
+    const result = await ImpactAnalysisService.analyzeImpact(
+      moduleName,
+      escapedModuleName,
+      projectId
+    );
+    return res.json(result);
   }
+);
 
-  const { module: moduleName, project_id: projectId } = parsed.data;
-  const escapedModuleName = sanitizeLikeInput(moduleName);
+router.get(
+  "/mcp/get_decision_record",
+  validateQuery(McpGetDecisionRecordQueryParams),
+  async (req, res) => {
+    const { commit_hash: commitHash } = res.locals.validatedQuery as z.infer<
+      typeof McpGetDecisionRecordQueryParams
+    >;
+    const escapedCommitHash = sanitizeLikeInput(commitHash);
 
-  const result = await ImpactAnalysisService.analyzeImpact(
-    moduleName,
-    escapedModuleName,
-    projectId
-  );
-  return res.json(result);
-});
-
-router.get("/mcp/get_decision_record", async (req, res) => {
-  const parsed = McpGetDecisionRecordQueryParams.safeParse(req.query);
-  if (!parsed.success) {
-    return res
-      .status(400)
-      .json({ error: parsed.error.issues[0]?.message ?? "Invalid query parameters" });
+    const result = await DecisionRecordService.getDecisionRecord(commitHash, escapedCommitHash);
+    return res.json(result);
   }
-
-  const { commit_hash: commitHash } = parsed.data;
-  const escapedCommitHash = sanitizeLikeInput(commitHash);
-
-  const result = await DecisionRecordService.getDecisionRecord(commitHash, escapedCommitHash);
-  return res.json(result);
-});
+);
 
 // ---------------------------------------------------------------------------
 // POST /mcp/query — Agentic RAG intent-routing entry point
 // ---------------------------------------------------------------------------
 
-router.post("/mcp/query", async (req, res) => {
-  const parsed = McpQueryRequestBody.safeParse(req.body);
-  if (!parsed.success) {
-    return res
-      .status(400)
-      .json({ error: parsed.error.issues[0]?.message ?? "Invalid request body" });
-  }
-
-  const { q, project_id, limit, include_pending: includePending } = parsed.data;
+router.post("/mcp/query", validateBody(McpQueryRequestBody), async (req, res) => {
+  const {
+    q,
+    project_id,
+    limit,
+    include_pending: includePending,
+  } = res.locals.validatedBody as z.infer<typeof McpQueryRequestBody>;
 
   try {
     const result = await routeQuery(q, project_id, limit, includePending);

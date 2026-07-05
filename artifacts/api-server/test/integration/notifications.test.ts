@@ -22,11 +22,15 @@ describe("Notifications API", () => {
         })
         .returning();
 
-      const listRes = await request(app).get(`/api/projects/${project.id}/notifications`);
+      const listRes = await request(app)
+        .get(`/api/projects/${project.id}/notifications`)
+        .set("Authorization", "Bearer test-api-key");
       expect(listRes.status).toBe(200);
       expect(listRes.body.items).toHaveLength(1);
 
-      const readRes = await request(app).patch(`/api/notifications/${notif.id}/read`);
+      const readRes = await request(app)
+        .patch(`/api/notifications/${notif.id}/read`)
+        .set("Authorization", "Bearer test-api-key");
       expect(readRes.status).toBe(200);
       expect(readRes.body.read).toBe(true);
 
@@ -40,6 +44,7 @@ describe("Notifications API", () => {
 
       const readAllRes = await request(app)
         .post("/api/notifications/mark-all-read")
+        .set("Authorization", "Bearer test-api-key")
         .send({ projectId: project.id });
       expect(readAllRes.status).toBe(200);
       expect(readAllRes.body.updated).toBe(1);

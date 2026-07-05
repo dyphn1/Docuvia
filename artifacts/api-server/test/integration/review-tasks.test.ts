@@ -35,7 +35,7 @@ describe("Review Tasks API", () => {
 
       const res = await request(app)
         .get("/api/review-tasks?status=pending")
-        .set("Authorization", "Bearer 1");
+        .set("Authorization", "Bearer test-api-key");
       expect(res.status).toBe(200);
       expect(res.body.length).toBeGreaterThanOrEqual(3);
     });
@@ -52,7 +52,7 @@ describe("Review Tasks API", () => {
         .values({ entityType: "l1_tag", entityId: l1.id, status: "pending", taskType: "validate" });
       const res = await request(app)
         .get("/api/review-tasks/stats")
-        .set("Authorization", "Bearer 1");
+        .set("Authorization", "Bearer test-api-key");
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty("pending");
     });
@@ -71,7 +71,8 @@ describe("Review Tasks API", () => {
 
       const res = await request(app)
         .patch(`/api/review-tasks/${task.id}`)
-        .set("Authorization", "Bearer 1")
+        .set("Authorization", "Bearer test-api-key")
+
         .send({ status: "approved" });
 
       expect(res.status).toBe(200);

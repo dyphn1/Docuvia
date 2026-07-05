@@ -45,8 +45,8 @@ export class SemanticDiffDetector {
     const oldTree = this.parser.parse(oldSource);
     const newTree = this.parser.parse(newSource);
     if (!oldTree || !newTree) {
-      if (oldTree) if (oldTree) oldTree.delete();
-      if (newTree) if (newTree) newTree.delete();
+      if (oldTree) oldTree.delete();
+      if (newTree) newTree.delete();
       return [];
     }
 

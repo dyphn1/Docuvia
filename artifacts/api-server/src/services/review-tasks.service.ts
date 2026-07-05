@@ -176,7 +176,7 @@ export class ReviewTasksService {
             targetNodeId,
             linkType,
           });
-        } catch (e) {
+        } catch (e: unknown) {
           // ignore duplicate links
         }
       }

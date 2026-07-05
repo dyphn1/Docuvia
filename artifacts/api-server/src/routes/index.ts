@@ -34,6 +34,7 @@ router.use("/mcp", mcpLimiter);
 router.use("/search", mcpLimiter);
 
 router.use(healthRouter);
+router.use(mcpRouter);
 
 // Apply auth to all subsequent API routes
 router.use(requireApiKey);
@@ -47,7 +48,6 @@ router.use(reviewTasksRouter);
 router.use(ingestRouter);
 router.use(generateRouter);
 router.use(searchRouter);
-router.use(mcpRouter);
 router.use(llmConfigRouter);
 router.use(exportRouter);
 router.use(templatesRouter);

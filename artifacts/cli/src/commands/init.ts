@@ -11,8 +11,9 @@ export async function initCommand() {
 
     // Wire up the agent init which includes the post-commit hook
     await initAgent(workspaceRoot);
-  } catch (error: any) {
-    console.error("Initialization failed:", error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("Initialization failed:", errorMessage);
     process.exit(1);
   }
 }

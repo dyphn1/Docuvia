@@ -51,6 +51,7 @@
 ||| L2 Extractor | ✅ Done | `artifacts/api-server/src/services/l2-nodes.service.ts` ||
 ||| L3 Generator | ✅ Done | `artifacts/api-server/src/services/l3-nodes.service.ts` ||
 ||| Generate pipeline orchestrator | ✅ Done | `lib/core/src/services/generation/generate.service.ts` ||
+||| Parallel Swarm Review Concepts | 🔲 TODO | Planned parallel verifiers inspired by GitNexus PR Swarm Review ||
 ||| Fast-Path Filters | ✅ Done | `lib/core/src/services/intent-router.ts` ||
 ||| Cross-project linking | ✅ Done | `lib/core/src/services/cross-project-service.ts` (`detectCrossProjectLinks()`) ||
 ||| Orphan Branch R/W Protocol | ✅ Done | `lib/core/src/services/orphan-branch-writer.ts` ||
@@ -68,6 +69,8 @@
 ||| Feedback loop (corrections) | ✅ Done | `lib/db/src/schema/pg/correction-examples.ts` + `artifacts/api-server/src/services/metabolism.service.ts` (`distillPendingCorrections()`) ||
 ||| Export (Markdown / JSON) | ✅ Done | `artifacts/api-server/src/services/export.service.ts` ||
 ||| Dashboard & stats | ✅ Done | `lib/plugins-domain/src/dashboard.service.ts` (`getDashboardStats()`) ||
+||| Interactive Topology Maps | 🔲 TODO | Planned graph visualizations in Vite+React Dashboard and VS Code Client ||
+||| Rigorous Health-Check Gates | 🔲 TODO | AI suggestion gating mechanisms before committing (inspired by Tolaria) ||
 ||| Incremental update (delta-only) | ✅ Done | `lib/db/src/schema/pg/projects.ts` (`lastGitIngestedAt`, `lastAstIngestedAt`, `lastSvnRevision` cursor columns) ||
 ||| Cross-team subscription | ✅ Done | `lib/db/src/schema/pg/subscriptions.ts` + `SubscriptionService` ||
 ||| VS Code Extension Endpoints | ✅ Done | `artifacts/api-server/src/routes/extensions-vscode.ts` ||
@@ -85,6 +88,7 @@
 ||| TypeScript `implements`/`extends` Parser | 🔲 TODO | Not isolated as a dedicated parser — general parsing lives in `lib/ast-core/src/parser-core.ts` (web-tree-sitter wrapper); no specific `implements`/`extends` resolution logic confirmed ||
 ||| Zero-Server Deep Traversal | ✅ Done | `knowledge-store.ts` was deleted per ADR-021 — capability now in `lib/core/src/services/local-snapshot-service.ts` ||
 ||| Local Context Compression | ✅ Done | `lib/core/src/utils/compression.ts` (`compressAstContext()`) ||
+||| Semantic Deduplication in Agentic RAG | 🔲 TODO | Intercept and compress queries in `intent-router.ts` to reduce LLM overhead ||
 ||| Sub-second Incremental Watch | ✅ Done | `indexer/ast-watcher.ts` doesn't exist — actual watcher is `artifacts/vscode-client/src/knowledge-graph-tree-provider.ts` (`.docuvia/local.db` file watcher), plus `lib/core/src/services/ast-ingestion-pipeline.ts` ||
 ||| Background Agentic RAG | 🔲 TODO | `docuvia.json` does not exist anywhere in the repo — fabricated evidence citation. No dedicated background-RAG config file found ||
 

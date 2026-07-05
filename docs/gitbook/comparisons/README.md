@@ -18,30 +18,38 @@ graph LR
 
 ## Competitive Landscape Analysis
 
-By comparing Docuvia with top-tier, highly mature open-source projects, we identify best-in-class architectural paradigms that shape our evolution:
+By comparing Docuvia with top-tier, highly mature open-source projects, we identify best-in-class architectural paradigms that shape our evolution. _(Refer to the [Master Roadmap & Checklist](../roadmap/roadmap-checklist.md) for detailed implementation status)._
 
 ### 1. Code Knowledge Graph (Spatial Accuracy)
 
-- **`code-review-graph`**: Relies strictly on Tree-sitter (30+ languages) to generate an Abstract Syntax Tree (AST), storing exact call flows into an SQLite database without depending on raw text.
-- **`graphify`**: Maps multi-modal inputs (PDFs, images, videos) into a knowledge graph alongside code and emphasizes seamless integration with AI development environments.
-- **Docuvia**: Adopts the precision of AST via Tree-sitter while expanding nodes beyond pure code to include L1/L2 conceptual nodes derived from commit histories and architecture documents.
+| Project                 | Approach & Implementation                                                                                                                                                      | Status         |
+| :---------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------- |
+| **`code-review-graph`** | Relies strictly on Tree-sitter (30+ languages) to generate an Abstract Syntax Tree (AST), storing exact call flows into an SQLite database without depending on raw text.      | -              |
+| **`graphify`**          | Maps multi-modal inputs (PDFs, images, videos) into a knowledge graph alongside code and emphasizes seamless integration with AI development environments.                     | -              |
+| **Docuvia**             | Adopts the precision of AST via Tree-sitter while expanding nodes beyond pure code to include L1/L2 conceptual nodes derived from commit histories and architecture documents. | ✅ Implemented |
 
 ### 2. Token Efficiency Optimization
 
-- **`code-review-graph`**: Utilizes a "Blast Radius" algorithm to isolate only the affected code fragments via local BFS graph traversal. This drastically reduces token consumption by avoiding full-repo contexts.
-- **`headroom`**: Creates a proxy layer to implement Prefix Caching and Semantic Deduplication.
-- **Docuvia**: Will implement local Blast Radius calculations (e.g., `/api/graph/impact`) and semantic deduplication in the Agentic RAG router (`intent-router.ts`) to intercept and compress queries before they reach expensive LLM endpoints.
+| Project                 | Approach & Implementation                                                                                                                                                                                                     | Status     |
+| :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------- |
+| **`code-review-graph`** | Utilizes a "Blast Radius" algorithm to isolate only the affected code fragments via local BFS graph traversal. This drastically reduces token consumption by avoiding full-repo contexts.                                     | -          |
+| **`headroom`**          | Creates a proxy layer to implement Prefix Caching and Semantic Deduplication.                                                                                                                                                 | -          |
+| **Docuvia**             | Implements local Blast Radius calculations (e.g., `/api/graph/impact`) and semantic deduplication in the Agentic RAG router (`intent-router.ts`) to intercept and compress queries before they reach expensive LLM endpoints. | 🔲 Planned |
 
 ### 3. Multi-Agent Collaboration
 
-- **`GitNexus`**: Features a mature **PR Swarm Review** mechanism using 7 independent personas (risk, security, tests, etc.) that review code in parallel and synthesize a final output.
-- **Docuvia**: Orchestrates specialized agents (Frontend, Backend, Schema Expert) via a state machine (`task-verifier.agent.md`) and will borrow parallel swarm review concepts to lighten the load on singular verifiers.
+| Project        | Approach & Implementation                                                                                                                                                                               | Status     |
+| :------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :--------- |
+| **`GitNexus`** | Features a mature **PR Swarm Review** mechanism using 7 independent personas (risk, security, tests, etc.) that review code in parallel and synthesize a final output.                                  | -          |
+| **Docuvia**    | Orchestrates specialized agents (Frontend, Backend, Schema Expert) via a state machine (`task-verifier.agent.md`) and borrows parallel swarm review concepts to lighten the load on singular verifiers. | 🔲 Planned |
 
 ### 4. Frontend & Safety Guardrails
 
-- **`tolaria`**: Utilizes a Tauri-based local-first desktop app and strictly enforces a CodeScene Ratchet Gate, blocking AI-generated code that degrades codebase health.
-- **`graphify`**: Focuses on interactive visualizations (`graph.html` and Mermaid call-flows) to give human developers an immediate understanding of the graph.
-- **Docuvia**: Enhances the Vite + React Dashboard (`kg-engine`) and VS Code Client to render interactive topology maps for implementation plans, ensuring Human-in-the-loop oversight and implementing rigorous health-check gates before committing AI suggestions.
+| Project        | Approach & Implementation                                                                                                                                                                                                                              | Status     |
+| :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------- |
+| **`tolaria`**  | Utilizes a Tauri-based local-first desktop app and strictly enforces a CodeScene Ratchet Gate, blocking AI-generated code that degrades codebase health.                                                                                               | -          |
+| **`graphify`** | Focuses on interactive visualizations (`graph.html` and Mermaid call-flows) to give human developers an immediate understanding of the graph.                                                                                                          | -          |
+| **Docuvia**    | Enhances the Vite + React Dashboard (`kg-engine`) and VS Code Client to render interactive topology maps for implementation plans, ensuring Human-in-the-loop oversight and implementing rigorous health-check gates before committing AI suggestions. | 🔲 Planned |
 
 ## Strategic Implementation Priorities
 

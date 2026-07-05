@@ -13,6 +13,8 @@ When analyzing a large codebase (e.g., to find all callers of a function), there
 
 **The Docuvia Approach:** We do not choose one. We use a **Dynamic Degradation Router** (often called the AST+LSP Dual Engine) to balance latency and precision.
 
+> **Related:** This document covers the _execution_ routing — once a change is confirmed to need re-evaluation, this decides which engine handles it and how results get persisted. The _trigger_ logic that decides whether re-evaluation is needed at all lives in [AST Semantic Diff & Blast Radius](wasm-ast-blast-radius.md).
+
 ---
 
 ## 2. The Playbook: Fast vs. Slow Paths

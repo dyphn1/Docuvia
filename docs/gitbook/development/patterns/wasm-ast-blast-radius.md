@@ -40,6 +40,8 @@ The algorithm consists of three distinct phases executed upon detecting a `git d
   4. Dispatch only this localized scope for LLM re-evaluation or knowledge graph updating.
   5. Commit the updated JSON representations back to the `docuvia-knowledge` branch.
 
+> **Related:** This document covers the _trigger_ logic — deciding whether a change needs re-evaluation at all. Once diffusion is triggered, the actual inference work (which engine to use, how to degrade gracefully, how to persist results) is handled by the [Progressive Enrichment](progressive-enrichment.md) routing pattern.
+
 ## 3. Advantages over Competitors
 
 1. **Zero Native Dependencies**: By utilizing `web-tree-sitter` (WASM), the entire process runs anywhere (CLI, VS Code extension, Web) without requiring local C++ toolchains.
@@ -48,6 +50,6 @@ The algorithm consists of three distinct phases executed upon detecting a `git d
 
 ## 4. Implementation Next Steps
 
-- Create `SemanticDiffDetector` in `artifacts/ast-core/src/detector/semantic-diff.ts`.
+- Create `SemanticDiffDetector` in `lib/ast-core/src/detector/semantic-diff.ts`.
 - Implement tree-sitter query extraction for function signatures in TypeScript/JavaScript.
 - Build a proof-of-concept integrating `git diff` with AST node mapping.

@@ -57,14 +57,13 @@ Below you will find specific, low-level technical deep-dives covering areas of t
 
 - **[Capabilities Matrix](capabilities-matrix.md)** — Scored comparison of Docuvia against sibling workspace projects.
 - **[Refactoring Plan](refactoring-plan.md)** — Structural refactor moving AST parsing core into `lib/`.
-- **[AST Semantic Diff & Blast Radius (WASM)](wasm-ast-blast-radius.md)** — How `web-tree-sitter` powers semantic diffing and smart-pruned blast radius without a heavy database.
 
 ## ⚙️ Core Engine Mechanisms
 
 Before diving into specific product packages, contributors must understand the foundational pillars of the Docuvia engine. These mechanisms power everything from the API to the VS Code extension:
 
 1. **[The AST Microkernel](../adr/ADR-020-unified-isomorphic-ast-microkernel.md)**
-   Docuvia uses a WebAssembly (`web-tree-sitter`) AST engine to parse code across environments. This provides precise semantic diffing, symbol-based anchoring, and highly accurate blast radius detection without heavy backend parsing. (See also: [AST Deep Dive](wasm-ast-blast-radius.md)).
+   Docuvia uses a WebAssembly (`web-tree-sitter`) AST engine to parse code across environments. This provides precise semantic diffing, symbol-based anchoring, and highly accurate blast radius detection without heavy backend parsing. (See also: [AST Deep Dive](patterns/wasm-ast-blast-radius.md)).
 2. **[Knowledge Tiers (L1, L2, L3 Nodes)](../adr/ADR-005-knowledge-abstraction-strategy.md)**
    The database strictly organizes knowledge into three tiers: Global Taxonomy (L1), Project Modules/Packages (L2), and Implementation Decisions/Rationale (L3). Understanding this schema is mandatory when modifying the extraction pipeline or Agentic RAG routing.
 3. **[Git-Isomorphic Storage (Orphan Branch)](../adr/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md)**

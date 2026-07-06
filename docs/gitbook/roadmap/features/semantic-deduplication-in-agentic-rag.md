@@ -8,7 +8,7 @@
 
 This feature is anchored by the following core components:
 
-Intercept and compress queries in [`intent-router.ts`](../../../../intent-router.ts)
+Intercept and compress queries in [`intent-router.ts`](../../../../lib/core/src/services/intent-router.ts)
 
 ### Architecture Flow
 

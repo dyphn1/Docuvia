@@ -8,7 +8,7 @@
 
 This feature is anchored by the following core components:
 
-[`artifacts/cli/src/commands/analyze.ts`](../../../../artifacts/cli/src/commands/analyze.ts), [`init.ts`](../../../../init.ts)
+[`artifacts/cli/src/commands/analyze.ts`](../../../../artifacts/cli/src/commands/analyze.ts), [`init.ts`](../../../../artifacts/cli/src/commands/init.ts)
 
 ### Architecture Flow
 

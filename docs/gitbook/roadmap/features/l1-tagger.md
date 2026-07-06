@@ -3,6 +3,7 @@
 - **Status**: ✅ Done
 - **Phase**: Phase 1: Core API & Database (The Metabolism Engine)
 - **Evidence / Verification Target**: `artifacts/api-server/src/services/l1-tags.service.ts`
+- **ADR**: [ADR-005](../../adr/ADR-005-knowledge-abstraction-strategy.md)
 
 ## Implementation Details
 

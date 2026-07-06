@@ -3,6 +3,7 @@
 - **Status**: ✅ Done
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `artifacts/vscode-client/src/commands/init-project.ts`
+- **ADR**: [ADR-001](../../adr/ADR-001-vscode-client-onboarding.md)
 
 ## Implementation Details
 

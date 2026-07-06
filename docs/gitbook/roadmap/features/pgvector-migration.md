@@ -3,6 +3,7 @@
 - **Status**: ✅ Done
 - **Phase**: Phase 6: Architecture Hardening & Security
 - **Evidence / Verification Target**: `lib/db/src/schema/pg/l2-nodes.ts`
+- **ADR**: [ADR-019](../../adr/ADR-019-pgvector-migration.md)
 
 ## Implementation Details
 

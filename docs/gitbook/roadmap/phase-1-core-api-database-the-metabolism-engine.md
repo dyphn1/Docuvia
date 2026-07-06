@@ -6,7 +6,7 @@ Establish the core infrastructure, database models (L1/L2/L3), multi-format inge
 
 ## 🛠️ Implementation Method
 
-- **Multi-Provider LLM Abstraction:** Isolate execution loops from payload generation using a Thin Transport pattern to support multiple providers (OpenAI, Anthropic, Gemini) (see [ADR-026](../adr/ADR-026-multi-provider-llm-abstraction.md)).
+- **Multi-Provider LLM Abstraction:** Isolate execution loops from payload generation using a Thin Transport pattern designed to support multiple providers (OpenAI, Anthropic, Gemini) (see [ADR-026](../adr/ADR-026-multi-provider-llm-abstraction.md)). Currently only OpenAI/Ollama/local adapters are implemented — see [LLM abstraction layer](features/llm-abstraction-layer.md) (⚠️ WARN) for the actual provider coverage.
 - **Database:** Define entities using Drizzle ORM mapped to PostgreSQL.
 - **Metabolism:** Run a heartbeat-driven worker to process heavy queues (embeddings, decay, distillation) off the main thread.
 

@@ -3,6 +3,7 @@
 - **Status**: ✅ Done
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `lib/core/src/services/local-snapshot-service.ts`
+- **ADR**: [ADR-002](../../adr/ADR-002-local-first-architecture.md)
 
 ## Implementation Details
 

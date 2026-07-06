@@ -3,6 +3,7 @@
 - **Status**: ✅ Done
 - **Phase**: Phase 2: AST Microkernel & Semantic Diffing
 - **Evidence / Verification Target**: `lib/core/src/utils/compression.ts`
+- **ADR**: [ADR-010](../../adr/ADR-010-context-compression-and-proxy.md)
 
 ## Implementation Details
 

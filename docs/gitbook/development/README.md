@@ -55,8 +55,9 @@ pnpm --filter @workspace/kg-engine run dev    # Vite dev server (18774)
 
 Below you will find specific, low-level technical deep-dives covering areas of the system that require specialized knowledge:
 
-- **[Capabilities Matrix](capabilities-matrix.md)** — Scored comparison of Docuvia against sibling workspace projects.
 - **[Refactoring Plan](refactoring-plan.md)** — Structural refactor moving AST parsing core into `lib/`.
+
+> The scored cross-project **[Capabilities Matrix](../analysis/capabilities-matrix.md)** now lives with the rest of the competitive analysis & gap registry.
 
 ## ⚙️ Core Engine Mechanisms
 

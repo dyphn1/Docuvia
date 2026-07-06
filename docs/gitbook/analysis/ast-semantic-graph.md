@@ -1,4 +1,4 @@
-> **Note:** This document contains competitor analysis and references that have not been fully integrated into the current implementation yet.
+> **Note:** This document contains competitor analysis and self-evaluation notes that have not been fully integrated into the current implementation yet.
 
 # AST & Semantic Graph Competitor Analysis
 
@@ -59,3 +59,46 @@ flowchart TD
     class GitNexus comp;
     class Docuvia doc;
 ```
+
+---
+
+## Action Item Registry
+
+### Native Parsing Fallback (SUPERSEDED)
+
+**Severity:** 🟠 HIGH · **Target:** `@workspace/ast-core`
+
+> **SUPERSEDED:** This fallback strategy contradicts [ADR-020](../adr/ADR-020-unified-isomorphic-ast-microkernel.md), which explicitly mandates pure WASM parsing to prevent cross-platform hash divergence. Retained below for historical evaluation context only — the codebase correctly follows ADR-020 and this item requires no further action.
+
+<details>
+<summary>Original deficit description (historical)</summary>
+
+ADR-020 mandated pure WASM parsing (`web-tree-sitter`) to prevent cross-platform hash divergence. However, WASM is significantly slower than native C++ implementations. In massive legacy codebases, the initial AST scan will cause CPU spikes and unacceptable execution times. Competitors like `GitNexus` solve this by defaulting to high-speed Native C++ bindings and gracefully falling back to WASM only when binaries are unavailable.
+
+Originally proposed acceptance criteria: attempt native `tree-sitter` bindings first, fall back to `web-tree-sitter` (WASM) if unavailable, and keep AST hashing deterministic regardless of engine. All three points are moot under ADR-020's pure-WASM mandate.
+
+</details>
+
+### Worker Pool Concurrency
+
+**Severity:** 🟠 HIGH · **Target:** `@workspace/ast-core`
+
+**Deficit:** When parsing hundreds of files simultaneously (e.g., during a large git merge or initial project onboarding), running AST parsing sequentially is too slow, but running it unrestrictedly in parallel will crash the Node.js process (OOM). There is currently no robust concurrency management for local parsing.
+
+**Acceptance Criteria:**
+
+1. Implement a `worker_threads` pool in `@workspace/ast-core`.
+2. Limit the maximum concurrent workers to `os.cpus().length - 1` to ensure the machine remains responsive.
+3. Implement a strict memory ceiling and a timeout (quarantine) mechanism to kill and respawn workers that hang on malicious or overly complex source files.
+
+### AST Dependency Edge Creation
+
+**Severity:** 🟠 HIGH · **Target:** `@workspace/ast-core`
+
+**Deficit:** Currently, the AST microkernel successfully identifies files and functions to create L2 and L3 nodes, but it fails to map the relationships between them. For [Local BFS Blast Radius](cli-core-api.md#local-bfs-blast-radius) to work, the graph must actually possess edges.
+
+**Acceptance Criteria:**
+
+1. Enhance the tree-sitter logic in `@workspace/ast-core` to extract `ImportDeclaration`, `CallExpression`, and interface implementations across supported languages.
+2. Resolve local file paths to correctly identify inter-module dependencies.
+3. Output these relationships so the CLI sync pipeline can `INSERT` them into the `node_links` table in SQLite.

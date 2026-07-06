@@ -22,7 +22,7 @@
 ### 2.1 — Two disconnected local-persistence pipelines
 
 - **Target**: `artifacts/cli/src/commands/sync.ts:30-88` vs. `lib/core/src/services/sqlite-graph.repository.ts`
-- **Status**: 🟡 Live, already documented — see `docs/gitbook/evaluate/local-sqlite-write-pipeline.md` "Current State (as of 2026-07-05) — Two Disconnected Pipelines"
+- **Status**: 🟡 Live, already documented — see `docs/gitbook/analysis/data-pipeline-sync.md` "Current State (as of 2026-07-05) — Two Disconnected Pipelines"
 - `analyze` writes L2/L3 nodes into `.docuvia/local.db` via `SqliteGraphRepository`. `sync --local` re-parses the AST into a discarded temp dir and writes straight to the git orphan branch. Running one does not update the other's data.
 - **Required action**: route `sync --local` through `SqliteGraphRepository`/`.docuvia/local.db` instead of a throwaway temp dir. Explicitly called out in the doc as "a real pipeline rewrite, tracked separately" — not attempted here; **deferred, backlog**.
 

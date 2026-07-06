@@ -20,14 +20,14 @@ Whether you want to use Docuvia in your projects or contribute to its core engin
 
 - **[Getting Started](getting-started/installation.md)** — Install the extension, set up the CLI, and initialize your first graph.
 - **[User Guide](user-guide/vscode-client.md)** — Learn how to use the VS Code Extension, CLI, and advanced configuration.
-- **[Concepts & Vision](comparisons/README.md)** — Understand how Docuvia uses Agentic RAG, AST analysis, and why it's built differently.
+- **[Concepts & Vision](analysis/README.md)** — Understand how Docuvia uses Agentic RAG, AST analysis, and why it's built differently.
 
 ### 🛠️ I'm a Developer or Contributor
 
 - **[Developer Guide](development/README.md)** — Local setup, package overviews, and strict coding guidelines.
 - **[System Architecture](architecture/README.md)** — arc42-style architecture documentation (building blocks, runtime scenarios).
 - **[Architectural Decision Records (ADRs)](adr/README.md)** — Detailed technical decisions and rationale.
-- **[Evaluation & Benchmarks](evaluate/README.md)** — Local-first gap analysis and capability matrices.
+- **[Competitive Analysis & Gap Registry](analysis/README.md)** — Local-first gap analysis and capability matrices.
 - **[Roadmap](roadmap/README.md)** — Phased implementation roadmap and completion checklist.
 
 ## About this space

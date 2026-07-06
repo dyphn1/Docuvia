@@ -8,7 +8,7 @@ Supersedes: None
 
 ## Context
 
-_(Ref: [`docs/gitbook/comparisons/02-agentic-rag.md`](../comparisons/agentic-rag.md))_
+_(Ref: [`docs/gitbook/analysis/agentic-rag.md`](../analysis/agentic-rag.md))_
 
 During the Phase 1 Foundation of Docuvia, vector search and RAG orchestration were implemented using a fallback in-memory cosine similarity calculation (`lib/core/src/services/intent-router.ts`). While functional for early prototyping, this approach requires loading the entire [L2 and L3 embedding](./ADR-005-knowledge-abstraction-strategy.md) sets into Node.js heap memory on every query.
 

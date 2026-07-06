@@ -1,7 +1,7 @@
 # Table of contents
 
 - [Docuvia Docs](README.md)
-  - [Vision & Competitive Landscape](comparisons/README.md)
+  - [Vision & Competitive Landscape](analysis/README.md)
 
 ## 🚀 Getting Started
 
@@ -24,21 +24,21 @@
   - [mcp](user-guide/cli/mcp.md)
 - [Configuration](user-guide/configuration.md)
 
-## 💡 Concepts
+## 💡 Concepts & Gap Analysis
 
-- [Agentic RAG](comparisons/agentic-rag.md)
-- [AST & Semantic Graph](comparisons/ast-semantic-graph.md)
-- [MCP AI Interfaces](comparisons/mcp-ai-interfaces.md)
-- [IDE & VS Code Client](comparisons/ide-vscode-client.md)
-- [Data Pipeline & Sync](comparisons/data-pipeline-sync.md)
-- [CLI & Core API Parity](comparisons/cli-core-api.md)
+- [AST & Semantic Graph](analysis/ast-semantic-graph.md)
+- [Agentic RAG](analysis/agentic-rag.md)
+- [MCP AI Interfaces](analysis/mcp-ai-interfaces.md)
+- [IDE & VS Code Client](analysis/ide-vscode-client.md)
+- [Data Pipeline & Sync](analysis/data-pipeline-sync.md)
+- [CLI & Core API Parity](analysis/cli-core-api.md)
+- [Capabilities Matrix](analysis/capabilities-matrix.md)
 
 ---
 
 ## 🛠️ Developer Guide
 
 - [Local Setup & Dev Materials](development/README.md)
-  - [Capabilities Matrix](development/capabilities-matrix.md)
   - [Refactoring Plan](development/refactoring-plan.md)
 - [Engineering Patterns](development/patterns/README.md)
   - [API-First & Codegen](development/patterns/api-codegen-pipeline.md)
@@ -120,20 +120,6 @@
 - [ADR-024: Cross-Project Soft Linking](adr/ADR-024-cross-project-soft-linking.md)
 - [ADR-025: Hybrid Temp-File Blast Radius](adr/ADR-025-hybrid-temp-file-blast-radius.md)
 - [ADR-026: Multi-Provider LLM Abstraction](adr/ADR-026-multi-provider-llm-abstraction.md)
-
-## 📊 Evaluation & Benchmarks
-
-- [Evaluation Registry](evaluate/README.md)
-- [Data Pipeline: AST Extraction Sync](evaluate/local-ast-extraction-sync.md)
-- [Local Storage: SQLite Write Pipeline](evaluate/local-sqlite-write-pipeline.md)
-- [Parsing Perf: Native Parsing Fallback](evaluate/native-parsing-fallback.md)
-- [Worker Mgmt: Worker Pool Concurrency](evaluate/worker-pool-concurrency.md)
-- [Token Opt: Local BFS Blast Radius](evaluate/local-bfs-blast-radius.md)
-- [AST Precision: Dependency Edge Creation](evaluate/ast-dependency-edge-creation.md)
-- [Local UI: HTML Visualization](evaluate/local-html-visualization.md)
-- [IDE UI: VS Code Webview Topology](evaluate/vscode-webview-topology.md)
-- [Realtime UX: Sub-second Save Updates](evaluate/sub-second-save-updates.md)
-- [Diff Opt: File-hash Delta Detection](evaluate/file-hash-delta-detection.md)
 
 ## 🗺️ Work Dashboard & Roadmap
 

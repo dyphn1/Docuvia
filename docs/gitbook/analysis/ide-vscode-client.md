@@ -1,4 +1,4 @@
-> **Note:** This document contains competitor analysis and references that have not been fully integrated into the current implementation yet.
+> **Note:** This document contains competitor analysis and self-evaluation notes that have not been fully integrated into the current implementation yet.
 
 # IDE & VS Code Client Competitor Analysis
 
@@ -55,3 +55,33 @@ flowchart TD
     class Cursor comp;
     class Docuvia doc;
 ```
+
+---
+
+## Action Item Registry
+
+### VS Code Webview Topology
+
+**Severity:** 🟡 MEDIUM · **Target:** `@workspace/vscode-client`
+
+**Deficit:** The current VS Code extension relies on a textual TreeView to display the Knowledge Graph. While functional, it fails to convey the topological relationships (callers/callees) between modules. Text representations fall short of the mental map developers need when assessing blast radius.
+
+**Acceptance Criteria:**
+
+1. Implement a custom Webview Panel in `@workspace/vscode-client`.
+2. Reuse the D3.js/Mermaid logic from the `visualize` CLI command ([Local HTML Visualization](cli-core-api.md#local-html-visualization)) to render an interactive map inside VS Code.
+3. Wire the Webview to listen for SQLite DB update events so the graph updates in real-time as the developer codes.
+
+### Sub-second Save Updates
+
+**Severity:** 🟡 MEDIUM · **Target:** `@workspace/vscode-client`
+
+**Deficit:** The Git `post-commit` hook successfully captures knowledge at discrete milestones. However, in modern AI-assisted development (Cursor, Copilot), the AI needs context _before_ the commit happens—often while the file is actively being edited. The local graph must be continuously fresh.
+
+**Acceptance Criteria:**
+
+1. Hook into `vscode.workspace.onDidSaveTextDocument` in the extension.
+2. When a file is saved, silently trigger the local AST extraction pipeline for that single file.
+3. Update the `.docuvia/local.db` instantly. This ensures the AI Agent Hook always retrieves sub-second accurate topological context without waiting for a git commit.
+
+> Cross-reference: the roadmap lists [Sub-second Incremental Watch](../roadmap/features/sub-second-incremental-watch.md) as ✅ Done — verify against `onDidSaveTextDocument` wiring before treating this item as fully closed.

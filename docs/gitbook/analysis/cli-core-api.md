@@ -1,4 +1,4 @@
-> **Note:** This document contains competitor analysis and references that have not been fully integrated into the current implementation yet.
+> **Note:** This document contains competitor analysis and self-evaluation notes that have not been fully integrated into the current implementation yet.
 
 # CLI & Core API Parity Competitor Analysis
 
@@ -59,3 +59,36 @@ flowchart TD
     class Competitors comp;
     class Docuvia doc;
 ```
+
+---
+
+## Action Item Registry
+
+### Local BFS Blast Radius
+
+**Severity:** 🟠 HIGH · **Target:** `@workspace/cli` (`query` command)
+
+**Deficit:** The current `docuvia query` command limits token consumption by simply taking the top 5 records that match a `LIKE` query. While this prevents token explosion, it completely ignores topological relationships. If module A depends on module B, and a developer queries module B, the AI is not informed about module A. A generic Breadth-First Search (BFS) graph traversal solves this flawlessly.
+
+**Acceptance Criteria:**
+
+1. Extend `query.ts` to utilize the `node_links` table in SQLite (see [AST Dependency Edge Creation](ast-semantic-graph.md#ast-dependency-edge-creation) — this depends on edges actually existing).
+2. Implement a local BFS algorithm that accepts a target node and a `depth` parameter (e.g., depth=2).
+3. Extract and return the graph neighborhood (callers and callees) formatted tightly as part of the `<docuvia_context>` prompt.
+
+> Cross-reference: the roadmap lists [Smart Blast Radius (WASM Semantic Diff)](../roadmap/features/smart-blast-radius-wasm-semantic-diff.md) as ✅ Done — verify it specifically covers depth-parameterized BFS over `node_links` (not just semantic diffing) before treating this item as fully closed.
+
+### Local HTML Visualization
+
+**Severity:** 🟡 MEDIUM · **Target:** `@workspace/cli` (`visualize` command)
+
+**Deficit:** If a developer clones a repository offline, extracting the graph is invisible to them. Starting the `kg-engine` React dashboard requires running a dev server, which is slow and heavy. `code-review-graph` provides a zero-friction CLI command to dump the graph into a standalone HTML file. Docuvia needs this feature for immediate visual validation.
+
+**Acceptance Criteria:**
+
+1. Add a `docuvia visualize` command to `@workspace/cli`.
+2. Query `.docuvia/local.db` for `l2_nodes` and `node_links`.
+3. Generate a standalone HTML file embedding D3.js or Mermaid.js.
+4. Output the HTML file to the user's workspace (e.g., `.docuvia/graph.html`) and open it in the default browser.
+
+> Feeds into [VS Code Webview Topology](ide-vscode-client.md#vs-code-webview-topology), which reuses this same rendering logic inside the IDE.

@@ -28,7 +28,7 @@ _Docuvia Analysis_: Docuvia uses a **Progressive Enrichment (AST + LSP) Dual Eng
 - **GitNexus / code-review-graph (95)**: Achieve offline, millisecond-latency blast radius calculations natively in SQLite by utilizing pure static heuristics and bypassing compilers entirely.
 - **Docuvia (80)**: Relies on asynchronously booting an external LSP for deep cross-module inference. This introduces a 3-5s cold-start latency and makes the analysis fragile if the user's project has a broken build or missing `node_modules`.
 
-_Architectural Deep Dive:_ For a full breakdown of how Docuvia mitigates these limitations via Fast/Slow path routing, Graceful Degradation, and Cumulative Knowledge Accumulation, see the [Progressive Enrichment Playbook](patterns/progressive-enrichment.md).
+_Architectural Deep Dive:_ For a full breakdown of how Docuvia mitigates these limitations via Fast/Slow path routing, Graceful Degradation, and Cumulative Knowledge Accumulation, see the [Progressive Enrichment Playbook](../development/patterns/progressive-enrichment.md).
 
 ## 2. AI & LLM Ecosystem
 

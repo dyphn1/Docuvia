@@ -1,4 +1,6 @@
-# Vision and Competitive Landscape
+> **Note:** This document contains competitor analysis and self-evaluation notes that have not been fully integrated into the current implementation yet.
+
+# Vision, Competitive Landscape & Gap Registry
 
 ## The North Star
 
@@ -59,15 +61,40 @@ To achieve this vision, we integrate these industry-leading strategies into a co
 2. **Blast Radius Queries**: Handle dependency expansion strictly locally (via SQL BFS) to bypass massive LLM token overhead.
 3. **Graphify-like Visualization**: Empower developers with visual implementation plans rendered in the frontend to validate AI decisions safely.
 
-## Deep-Dive Comparisons
+## Self-Evaluation Score: 3 / 10 (Disjointed Pipeline, Pseudo-Local Architecture)
 
-Per-domain benchmarks against sibling workspace projects (`code-review-graph`, `graphify`, `GitNexus`, `headroom`, `tolaria`):
+**Date: 2026-06-27**
 
-1. [AST & Semantic Graph](ast-semantic-graph.md)
-2. [Agentic RAG](agentic-rag.md)
-3. [MCP AI Interfaces](mcp-ai-interfaces.md)
-4. [IDE & VS Code Client](ide-vscode-client.md)
-5. [Data Pipeline & Sync](data-pipeline-sync.md)
-6. [CLI & Core API Parity](cli-core-api.md)
+After a rigorous comparative analysis against top-tier local-first tools within the workspace (`code-review-graph`, `GitNexus`, `headroom`, `tolaria`), Docuvia currently fails to deliver a true end-to-end local experience. While the "VCS-based Knowledge Evolver" vision is established and the CLI structure is scaffolded, the data pipelines and execution modes are disjointed.
 
-See also the [Capabilities Matrix](../development/capabilities-matrix.md) for a scored side-by-side across all projects.
+To elevate Docuvia to an 8-9/10 score, the monolithic evaluation has been atomized into highly specific, actionable implementation targets, each now attached to the domain deep-dive it belongs to rather than tracked in a separate registry.
+
+## Deep-Dive Comparisons & Gap Registry
+
+Per-domain competitor benchmarks against sibling workspace projects (`code-review-graph`, `graphify`, `GitNexus`, `headroom`, `tolaria`), each followed by its atomized action-item registry (severity, target, deficit description, acceptance criteria):
+
+- [AST & Semantic Graph](ast-semantic-graph.md) — Worker Pool Concurrency, AST Dependency Edge Creation, Native Parsing Fallback (superseded)
+- [Agentic RAG](agentic-rag.md) — vector-search gap, resolved via [ADR-019](../adr/ADR-019-pgvector-migration.md)
+- [MCP AI Interfaces](mcp-ai-interfaces.md) — Local MCP (stdio server), Agent Config Auto-Injection
+- [IDE & VS Code Client](ide-vscode-client.md) — VS Code Webview Topology, Sub-second Save Updates
+- [Data Pipeline & Sync](data-pipeline-sync.md) — Local AST Extraction Sync, Local SQLite Write Pipeline, File Hash Delta Detection
+- [CLI & Core API Parity](cli-core-api.md) — Local BFS Blast Radius, Local HTML Visualization
+
+See also the [Capabilities Matrix](capabilities-matrix.md) for a scored side-by-side across all projects.
+
+## Gap Registry (quick reference)
+
+| Domain                                 | Target Component                   | Lives in                                                                         |
+| :------------------------------------- | :--------------------------------- | :------------------------------------------------------------------------------- |
+| Local MCP                              | `@workspace/cli`                   | [MCP AI Interfaces](mcp-ai-interfaces.md#local-mcp-stdio-server)                 |
+| Agent Config                           | `@workspace/cli` (`init-agent`)    | [MCP AI Interfaces](mcp-ai-interfaces.md#agent-config-auto-injection)            |
+| Data Pipeline                          | `@workspace/cli` (`sync`)          | [Data Pipeline & Sync](data-pipeline-sync.md#local-ast-extraction-sync)          |
+| Local Storage                          | `@workspace/cli` (`sync`)          | [Data Pipeline & Sync](data-pipeline-sync.md#local-sqlite-write-pipeline)        |
+| Parsing Perf _(superseded by ADR-020)_ | `@workspace/ast-core`              | [AST & Semantic Graph](ast-semantic-graph.md#native-parsing-fallback-superseded) |
+| Worker Mgmt                            | `@workspace/ast-core`              | [AST & Semantic Graph](ast-semantic-graph.md#worker-pool-concurrency)            |
+| Token Opt                              | `@workspace/cli` (`query`)         | [CLI & Core API Parity](cli-core-api.md#local-bfs-blast-radius)                  |
+| AST Precision                          | `@workspace/ast-core`              | [AST & Semantic Graph](ast-semantic-graph.md#ast-dependency-edge-creation)       |
+| Local UI                               | `@workspace/cli` (`visualize`)     | [CLI & Core API Parity](cli-core-api.md#local-html-visualization)                |
+| IDE UI                                 | `@workspace/vscode-client`         | [IDE & VS Code Client](ide-vscode-client.md#vs-code-webview-topology)            |
+| Realtime UX                            | `@workspace/vscode-client`         | [IDE & VS Code Client](ide-vscode-client.md#sub-second-save-updates)             |
+| Diff Opt                               | `@workspace/vscode-client` / `cli` | [Data Pipeline & Sync](data-pipeline-sync.md#file-hash-delta-detection)          |

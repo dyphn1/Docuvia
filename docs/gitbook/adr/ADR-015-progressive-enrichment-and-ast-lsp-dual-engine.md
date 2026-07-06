@@ -8,7 +8,7 @@ Supersedes: None
 
 ## Context
 
-_(Ref: [`docs/gitbook/comparisons/01-ast-semantic-graph.md`](../comparisons/ast-semantic-graph.md), [`docs/gitbook/comparisons/04-ide-vscode-client.md`](../comparisons/ide-vscode-client.md))_
+_(Ref: [`docs/gitbook/analysis/ast-semantic-graph.md`](../analysis/ast-semantic-graph.md), [`docs/gitbook/analysis/ide-vscode-client.md`](../analysis/ide-vscode-client.md))_
 
 Relying purely on Local AST (Tree-sitter) is fast but lacks global context and type inference capability (e.g., it cannot resolve `a.doSomething()` if `a` is imported dynamically). Conversely, running a full Language Server Protocol (LSP) daemon is perfectly accurate but too heavy, slow to cold-start, and memory-intensive to run across all project files.
 Our competitor analysis against Cursor (Shadow Workspace) and GitNexus revealed that we need a hybrid approach to match their deep execution flow tracing without suffering their C++ dependency flaws.

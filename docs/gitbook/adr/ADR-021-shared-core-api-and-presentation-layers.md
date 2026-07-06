@@ -8,7 +8,7 @@ Supersedes: None
 
 ## Context
 
-_(Ref: [`docs/gitbook/comparisons/06-cli-core-api.md`](../comparisons/cli-core-api.md), [`docs/gitbook/comparisons/03-mcp-ai-interfaces.md`](../comparisons/mcp-ai-interfaces.md))_
+_(Ref: [`docs/gitbook/analysis/cli-core-api.md`](../analysis/cli-core-api.md), [`docs/gitbook/analysis/mcp-ai-interfaces.md`](../analysis/mcp-ai-interfaces.md))_
 
 As Docuvia evolves, it surfaces multiple entry points and user interfaces: a Command Line Interface (CLI), a Model Context Protocol (MCP) server for AI agents, a VS Code Extension (Client) for developer interaction, and an interactive Topology Webview.
 Competitor analysis revealed that maintaining parity across these layers is critical; otherwise, feature drift occurs.

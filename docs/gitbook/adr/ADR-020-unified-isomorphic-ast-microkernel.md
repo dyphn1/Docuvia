@@ -8,7 +8,7 @@ Supplements: ADR-015
 
 ## Context
 
-_(Ref: [`docs/gitbook/comparisons/01-ast-semantic-graph.md`](../comparisons/ast-semantic-graph.md), [`docs/gitbook/evaluate/05-native-parsing-fallback.md`](../evaluate/native-parsing-fallback.md))_
+_(Ref: [`docs/gitbook/analysis/ast-semantic-graph.md`](../analysis/ast-semantic-graph.md#native-parsing-fallback-superseded))_
 
 Docuvia requires blazing-fast, structural code analysis (AST) to generate the [Agentic RAG](./ADR-007-agentic-rag-routing.md) [Knowledge Graph](./ADR-005-knowledge-abstraction-strategy.md) without relying on expensive Language Servers (LSP) or incurring [LLM token costs](./ADR-009-token-management.md). Historically, our architecture suffered from extreme fragmentation:
 

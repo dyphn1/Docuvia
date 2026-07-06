@@ -8,6 +8,8 @@ Supersedes: None
 
 > **Note**: Parts of the server-side async merge process outlined here have been superseded by **[ADR-023](./ADR-023-granular-markdown-storage.md)**, which shifts the SSOT update logic to local Git hooks writing granular Markdown/JSONL directly.
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Incremental Update (delta-only)](../roadmap/features/incremental-update-delta-only.md) ([Phase 1](../roadmap/phase-1-core-api-database-the-metabolism-engine.md)) and [`docuvia sync` Bidirectional CLI](../roadmap/features/docuvia-sync-bidirectional-cli.md) ([Phase 4](../roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md)).
+
 ## Core Philosophy
 
 Knowledge is an immutable, distributed Directed Acyclic Graph (DAG) built upon Incremental Deltas (Knowledge Patches), perfectly isomorphic with the Git commit tree.

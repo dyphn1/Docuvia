@@ -6,6 +6,8 @@ Supersedes: None
 
 # Self-Evolution & Swarm Intelligence
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Feedback Loop (corrections)](../roadmap/features/feedback-loop-corrections.md) and [Tool Maker Auto-Trigger](../roadmap/features/tool-maker-auto-trigger.md) in [Phase 6](../roadmap/phase-6-architecture-hardening-security.md).
+
 ## Core Philosophy
 
 The system must possess vitality. Perfect cognition in a single session is meaningless if it cannot persist. Docuvia uses a closed loop of **"Attempt -> Failure -> Human Correction -> Memory Compression -> Rule Evolution"**.
@@ -47,6 +49,4 @@ flowchart TD
 
 When the system encounters edge cases or domain-specific semantic patterns that the [AST Microkernel](./ADR-020-unified-isomorphic-ast-microkernel.md) cannot resolve naturally, the fallback is to use the LLM (via [Progressive Enrichment](./ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)). However, because LLM execution burns API tokens, this represents a recurring cost.
 
-To reduce token burn, highly deterministic new rules discovered by the LLM can trigger the Tool Maker agent. The Tool Maker will generate dedicated, lightweight parsing scripts (e.g., Python/Node.js `sniff_xyz.py` utilities or regex-based heuristic scanners) to permanently handle that specific pattern locally, offloading the work from the LLM back to local compute.
-
-- **Gap Note**: The automated Tool Maker trigger mechanism is _not implemented_.
+To reduce token burn, highly deterministic new rules discovered by the LLM can trigger the Tool Maker agent. The Tool Maker will generate dedicated, lightweight parsing scripts (e.g., Python/Node.js `sniff_xyz.py` utilities or regex-based heuristic scanners) to permanently handle that specific pattern locally, offloading the work from the LLM back to local compute. See [Tool Maker Auto-Trigger](../roadmap/features/tool-maker-auto-trigger.md) for current build status.

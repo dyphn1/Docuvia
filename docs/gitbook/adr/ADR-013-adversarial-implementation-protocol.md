@@ -10,6 +10,8 @@ Supersedes: None
 
 Proposed (Note: Currently not actively practiced. The actual agent scaffold in `.github/agents/` and `.claude/agents/` runs a linear pipeline: requirement-analyzer → execution specialist → task-verifier, without the 3-role debate or named personas described below.)
 
+> **Implementation status:** This ADR describes a team/agent _process_, not a shippable feature, so it has no corresponding entry in the [roadmap](../roadmap/README.md). Its adoption status is exactly what's stated above — proposed, not practiced — until it is actually wired into the agent scaffold.
+
 ## Context
 
 Standard AI-assisted or single-developer workflows often suffer from "happy-path" bias (or LLM sycophancy), leading to implementations that pass unit tests but fail under production constraints (e.g., OOM on large repos parsing via the [AST Microkernel](./ADR-020-unified-isomorphic-ast-microkernel.md), split-brain race conditions managing the [Orphan Branch](./ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md), N+1 query performance degradation in the [Database-as-IPC](./ADR-014-sql-indexed-graph-and-database-as-ipc.md) pipeline). We need a structured workflow that guarantees rigorous defense-in-depth _before_ code is written, without derailing the overarching product vision.
@@ -54,7 +56,7 @@ The ultimate veto power rests with the Product Positioning. If the Challenger pr
 flowchart TD
     A[Feature Request / Bug Fix] --> B[Role Invocation & Debate]
 
-    subgraph Adversarial Debate
+    subgraph AdversarialDebate ["Adversarial Debate"]
         PM[PM: Defends Local-First & Constraints]
         Dev[Lead Dev: Proposes Architecture]
         QA[QA: Finds Edge Cases]
@@ -65,9 +67,9 @@ flowchart TD
         Dev <--> PM
     end
 
-    B --> Adversarial Debate
-    Adversarial Debate --> C{Consensus Reached?}
-    C -- No --> Adversarial Debate
+    B --> AdversarialDebate
+    AdversarialDebate --> C{Consensus Reached?}
+    C -- No --> AdversarialDebate
     C -- Yes --> D[Implementation & Commit]
     D --> E[Documentation Synchronization]
     E --> F[Mark Feature Status in features/]

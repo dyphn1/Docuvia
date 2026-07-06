@@ -10,6 +10,8 @@ Supersedes: None
 
 _(Ref: [`docs/gitbook/analysis/cli-core-api.md`](../analysis/cli-core-api.md), [`docs/gitbook/analysis/mcp-ai-interfaces.md`](../analysis/mcp-ai-interfaces.md))_
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Shared Core DI Orchestrator](../roadmap/features/shared-core-di-orchestrator.md), [Domain Plugin Architecture](../roadmap/features/domain-plugin-architecture.md), and [Presentation Layer DI Composition](../roadmap/features/presentation-layer-di-composition.md) in [Phase 6](../roadmap/phase-6-architecture-hardening-security.md).
+
 As Docuvia evolves, it surfaces multiple entry points and user interfaces: a Command Line Interface (CLI), a Model Context Protocol (MCP) server for AI agents, a VS Code Extension (Client) for developer interaction, and an interactive Topology Webview.
 Competitor analysis revealed that maintaining parity across these layers is critical; otherwise, feature drift occurs.
 

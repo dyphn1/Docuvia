@@ -1,6 +1,6 @@
 ---
 Date: 2026-07-02
-Status: Accepted (Supplemented by ADR-020)
+Status: Accepted (Supplemented by ADR-020, ADR-025)
 Supersedes: None
 ---
 
@@ -9,6 +9,8 @@ Supersedes: None
 ## Context
 
 _(Ref: [`docs/gitbook/analysis/ast-semantic-graph.md`](../analysis/ast-semantic-graph.md), [`docs/gitbook/analysis/ide-vscode-client.md`](../analysis/ide-vscode-client.md))_
+
+> **Implementation status:** Tracked in the roadmap, not here — see [AST Microkernel Architecture](../roadmap/features/ast-microkernel-architecture.md) and [Smart Blast Radius (WASM Semantic Diff)](../roadmap/features/smart-blast-radius-wasm-semantic-diff.md) in [Phase 2](../roadmap/phase-2-ast-microkernel-semantic-diffing.md).
 
 Relying purely on Local AST (Tree-sitter) is fast but lacks global context and type inference capability (e.g., it cannot resolve `a.doSomething()` if `a` is imported dynamically). Conversely, running a full Language Server Protocol (LSP) daemon is perfectly accurate but too heavy, slow to cold-start, and memory-intensive to run across all project files.
 Our competitor analysis against Cursor (Shadow Workspace) and GitNexus revealed that we need a hybrid approach to match their deep execution flow tracing without suffering their C++ dependency flaws.

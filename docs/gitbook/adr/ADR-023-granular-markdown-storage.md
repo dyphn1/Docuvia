@@ -13,6 +13,8 @@ Accepted
 
 ## Context
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Orphan Branch R/W Protocol](../roadmap/features/orphan-branch-r-w-protocol.md) and [`docuvia sync` Bidirectional CLI](../roadmap/features/docuvia-sync-bidirectional-cli.md) in [Phase 4](../roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md).
+
 Following [ADR-022](./ADR-022-wasm-ast-blast-radius.md), Docuvia uses `web-tree-sitter` for local, fast AST diffing. We now need to define the exact storage format for the `docuvia-knowledge` orphan branch.
 
 The storage format must satisfy conflicting requirements:

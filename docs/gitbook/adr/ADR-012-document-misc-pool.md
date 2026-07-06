@@ -6,6 +6,8 @@ Supersedes: None
 
 # ADR-012: Document Misc Pool for Unaffiliated Documents
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Generate Pipeline Orchestrator](../roadmap/features/generate-pipeline-orchestrator.md) in [Phase 1](../roadmap/phase-1-core-api-database-the-metabolism-engine.md).
+
 **Status:** Accepted
 
 **Context:**  

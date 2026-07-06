@@ -17,6 +17,7 @@ This phase tracks the following specific features. Click on any feature to view 
 | Feature                           | Status     | Link                                                        |
 | :-------------------------------- | :--------- | :---------------------------------------------------------- |
 | Orphan Branch R/W Protocol        | ✅ Done    | [View Details](features/orphan-branch-r-w-protocol.md)      |
+| Tiered Storage & Tombstone GC     | 🔲 TODO    | [View Details](features/tiered-storage-tombstone-gc.md)     |
 | Cross-project linking             | ✅ Done    | [View Details](features/cross-project-linking.md)           |
 | Temporal Decay Scoring            | ✅ Done    | [View Details](features/temporal-decay-scoring.md)          |
 | Template management & Inheritance | ⚠️ WARN    | [View Details](features/template-management-inheritance.md) |

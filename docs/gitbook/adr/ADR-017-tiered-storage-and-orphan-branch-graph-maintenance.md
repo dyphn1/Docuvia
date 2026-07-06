@@ -8,6 +8,8 @@ Supplements: ADR-004
 
 > **Note**: The structure and role of the orphan branch (`docuvia-knowledge`) have been radically expanded by **[ADR-023](./ADR-023-granular-markdown-storage.md)**. Instead of merely storing JSON tombstones asynchronously, it now serves as the immediate Single Source of Truth (SSOT) using a Granular Markdown and JSONL Vault structure updated synchronously via local Git hooks. The Tiered Storage (hot/cold) concepts here remain relevant, but the physical storage layer has evolved.
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Orphan Branch R/W Protocol](../roadmap/features/orphan-branch-r-w-protocol.md) (the full-snapshot write, done) and [Tiered Storage & Tombstone GC](../roadmap/features/tiered-storage-tombstone-gc.md) (the soft-delete/hot-cold archival design in this ADR, not yet built) in [Phase 4](../roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md).
+
 ## Context
 
 To prevent the [local SQLite database](./ADR-014-sql-indexed-graph-and-database-as-ipc.md) from growing infinitely as the project evolves through frequent edits and refactors, the graph needs a garbage collection (GC) mechanism. However, we cannot permanently delete historical knowledge (such as lessons learned from past bugs) simply because the code was refactored.
@@ -45,7 +47,3 @@ We will adopt a "Tiered Storage" strategy involving soft deletions and a [Git-Is
 - **Positive**: Preserves valuable historical context and [L3 deltas](./ADR-005-knowledge-abstraction-strategy.md) indefinitely without bloat.
 - **Positive**: Enables remote synchronization; new team members can fetch the `docuvia-knowledge` branch and instantly inherit the team's entire historical knowledge graph.
 - **Negative**: Requires robust asynchronous worker management to prevent locking the editor during GC serialization.
-
-## Implementation Status (as of 2026-07-05)
-
-**The tombstoning/GC/hydration mechanism described above is aspirational and not implemented.** There is no `is_active`/tombstone column on `l2NodesTable`/`l3NodesTable`, no background GC Worker that archives expired tombstones to the orphan branch, and no hydrate-from-branch code path anywhere in `lib/core` or `artifacts`. What _is_ implemented and live is the `docuvia-knowledge` orphan-branch write itself (`lib/core/src/services/orphan-branch-writer.ts`, `writeKnowledgeToOrphanBranch`) — but it writes a full current-state snapshot per project, not a tiered hot/cold archive of expired tombstones. Treat this ADR's tiered-storage/GC design as a future-work proposal, not a shipped capability, until the tombstone column and GC worker are actually built.

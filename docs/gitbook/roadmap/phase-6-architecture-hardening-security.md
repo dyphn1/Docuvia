@@ -21,6 +21,7 @@ This phase tracks the following specific features. Click on any feature to view 
 | Security Hardening                | ✅ Done | [View Details](features/security-hardening.md)                |
 | Noise detection                   | ✅ Done | [View Details](features/noise-detection.md)                   |
 | Feedback loop (corrections)       | ✅ Done | [View Details](features/feedback-loop-corrections.md)         |
+| Tool Maker Auto-Trigger           | 🔲 TODO | [View Details](features/tool-maker-auto-trigger.md)           |
 | Cross-team subscription           | ✅ Done | [View Details](features/cross-team-subscription.md)           |
 | Rigorous Health-Check Gates       | 🔲 TODO | [View Details](features/rigorous-health-check-gates.md)       |
 | Parallel Swarm Review Concepts    | 🔲 TODO | [View Details](features/parallel-swarm-review-concepts.md)    |

@@ -6,6 +6,8 @@ Supersedes: None
 
 # ADR-018: Temporal & Conceptual Bidirectional Linking
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Temporal Decay Scoring](../roadmap/features/temporal-decay-scoring.md) in [Phase 4](../roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md). Note the self-healing re-anchoring Janitor described below has no dedicated roadmap entry yet.
+
 ## Context
 
 A purely spatial 3D [AST graph](./ADR-020-unified-isomorphic-ast-microkernel.md) only reflects "what calls what" at the current HEAD. To build an [Agentic OS](./ADR-007-agentic-rag-routing.md), the AI must understand the "Concept" (why a function exists in relation to architecture docs) and the "Time/History" (how and why it evolved). Furthermore, associating historical [L3 rules (deltas)](./ADR-005-knowledge-abstraction-strategy.md) solely to a commit hash is fragile due to Git history rewriting (e.g., `git rebase` or `commit --amend`).

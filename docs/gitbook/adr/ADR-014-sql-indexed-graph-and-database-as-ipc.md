@@ -8,6 +8,8 @@ Supersedes: None
 
 > **Note**: The exact sequence of SQLite updates during Git hooks has been refined by **[ADR-023](./ADR-023-granular-markdown-storage.md)**. The hook now updates the `docuvia-knowledge` branch first, treating the Local SQLite database as a Materialized View populated from Git diffs.
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Graph Index](../roadmap/features/graph-index.md) ([Phase 3](../roadmap/phase-3-agentic-rag-mcp-interfaces.md)) and [Core DB Schemas Defined](../roadmap/features/core-db-schemas-defined.md) ([Phase 1](../roadmap/phase-1-core-api-database-the-metabolism-engine.md)).
+
 ## Context
 
 Transmitting the entire knowledge graph (e.g., hundreds of thousands of nodes and edges) via gRPC or JSON between [background parsing workers](./ADR-008-asynchronous-metabolism.md) and the Docuvia core would incur massive serialization overhead and payload size bombs. While gRPC streaming solves part of the transmission issue, the instantaneous I/O and deserialization still risk blocking the main thread.

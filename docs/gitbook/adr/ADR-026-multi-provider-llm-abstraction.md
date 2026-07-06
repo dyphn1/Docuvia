@@ -1,14 +1,16 @@
 ---
 Date: 2026-07-03
 Status: Proposed
-Supersedes: ADR-004 (Partial)
+Supersedes: None
 ---
 
 # ADR-026: Multi-Provider LLM Abstraction Layer
 
+> **Implementation status:** Tracked in the roadmap, not here — see [LLM Abstraction Layer](../roadmap/features/llm-abstraction-layer.md) in [Phase 1](../roadmap/phase-1-core-api-database-the-metabolism-engine.md).
+
 ## Context
 
-Currently, our LLM integration (per ADR-004) is strictly hardcoded to the OpenAI SDK. While this simplified the initial bootstrapping of Docuvia, it limits our flexibility. Our consolidated status report flagged this as a known architectural trade-off.
+Currently, our LLM integration is strictly hardcoded to the OpenAI SDK via `lib/integrations-openai-ai-server/`, wrapping an OpenAI-compatible `/v1/chat/completions` and `/v1/embeddings` endpoint with no native Ollama, Anthropic, or Gemini adapters. While this simplified the initial bootstrapping of Docuvia, it limits our flexibility. Our consolidated status report flagged this as a known architectural trade-off.
 To support enterprise users and reduce vendor lock-in, Docuvia must support multiple providers (OpenAI, Anthropic, Gemini) seamlessly. However, different providers have different SDK interfaces, particularly concerning how they handle system prompts, error responses (e.g., rate limits), and Server-Sent Events (SSE) for streaming.
 
 ## Decision (Proposed)

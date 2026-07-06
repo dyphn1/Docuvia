@@ -6,6 +6,8 @@ Supersedes: None
 
 # Knowledge Abstraction & Architecture Recovery (L3 -> L2)
 
+> **Implementation status:** Tracked in the roadmap, not here — see [L1 Tagger](../roadmap/features/l1-tagger.md), [L2 Extractor](../roadmap/features/l2-extractor.md), and [L3 Generator](../roadmap/features/l3-generator.md) in [Phase 1](../roadmap/phase-1-core-api-database-the-metabolism-engine.md).
+
 ## Core Pain Points & Objectives
 
 Specific implementation rules (L3) are highly fragmented. We need Non-intrusive Architecture Recovery to deduce L2 modules automatically without disrupting developer flow or blowing out token limits (see [ADR-009](./ADR-009-token-management.md) and [ADR-010](./ADR-010-context-compression-and-proxy.md)).

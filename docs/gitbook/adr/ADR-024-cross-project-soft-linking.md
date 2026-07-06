@@ -6,6 +6,8 @@ Supersedes: None
 
 # ADR-024: Cross-Project Soft Linking via Global L1 Tags
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Cross-project linking](../roadmap/features/cross-project-linking.md) in [Phase 4](../roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md).
+
 ## Context
 
 When extracting architectural decisions and knowledge (L3 nodes) across a large workspace or enterprise, AI agents need context from other related projects to make consistent decisions. However, creating hardcoded foreign key relationships (`SIMILAR_LINK` or physical edges) between projects violates microservice and repository autonomy boundaries. If a project drops a dependency or a module, the hard link becomes stale and creates dangling relationships.

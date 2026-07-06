@@ -2,6 +2,7 @@
 Date: 2026-07-02
 Status: Accepted
 Supplements: ADR-015
+Supplemented by: ADR-022, ADR-025
 ---
 
 # ADR-020: Unified Isomorphic AST Microkernel
@@ -9,6 +10,8 @@ Supplements: ADR-015
 ## Context
 
 _(Ref: [`docs/gitbook/analysis/ast-semantic-graph.md`](../analysis/ast-semantic-graph.md#native-parsing-fallback-superseded))_
+
+> **Implementation status:** Tracked in the roadmap, not here — see [AST Microkernel Architecture](../roadmap/features/ast-microkernel-architecture.md) and [AST Plugin Architecture](../roadmap/features/ast-plugin-architecture.md) in [Phase 2](../roadmap/phase-2-ast-microkernel-semantic-diffing.md).
 
 Docuvia requires blazing-fast, structural code analysis (AST) to generate the [Agentic RAG](./ADR-007-agentic-rag-routing.md) [Knowledge Graph](./ADR-005-knowledge-abstraction-strategy.md) without relying on expensive Language Servers (LSP) or incurring [LLM token costs](./ADR-009-token-management.md). Historically, our architecture suffered from extreme fragmentation:
 

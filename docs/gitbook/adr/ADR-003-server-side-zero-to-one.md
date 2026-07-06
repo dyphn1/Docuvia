@@ -6,6 +6,8 @@ Supersedes: None
 
 # API Server: The 0-to-1 Handshake & Multi-tenant Synchronization
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Workspace Onboarding (`/init`)](../roadmap/features/workspace-onboarding-init.md) ([Phase 5](../roadmap/phase-5-local-first-vs-code-client-web-ui.md)) and [Orphan Branch R/W Protocol](../roadmap/features/orphan-branch-r-w-protocol.md) ([Phase 4](../roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md)).
+
 ## Core Dilemma
 
 How does the API Server discover a project for the first time without burning millions of tokens analyzing history blindly, and how does it handle team synchronization?

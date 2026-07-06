@@ -6,6 +6,8 @@ Supersedes: None
 
 # Token Management & Extraction Efficiency
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Token Limits & Chunking Configs](../roadmap/features/token-limits-chunking-configs.md) in [Phase 5](../roadmap/phase-5-local-first-vs-code-client-web-ui.md).
+
 ## Core Philosophy
 
 1. **"Solidify known boundaries and strictly adhere to them" (Local Deterministic Constraints)**

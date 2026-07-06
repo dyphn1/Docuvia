@@ -6,6 +6,8 @@ Supersedes: None
 
 # VS Code Client Onboarding & Scope Discovery (Zero to One)
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Workspace Onboarding (`/init`)](../roadmap/features/workspace-onboarding-init.md) in [Phase 5](../roadmap/phase-5-local-first-vs-code-client-web-ui.md).
+
 ## Core Pain Points & Objectives
 
 Achieve a "Zero to One" onboarding experience within 1 minute without forcing users to manage SQLite directly. Prevent Token explosions and AI hallucinations using a "Pre-scanning, Intelligent Proposal, and Human Consent" flow.

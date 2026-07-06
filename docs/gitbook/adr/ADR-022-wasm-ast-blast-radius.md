@@ -12,6 +12,8 @@ Accepted
 
 ## Context
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Smart Blast Radius (WASM Semantic Diff)](../roadmap/features/smart-blast-radius-wasm-semantic-diff.md) in [Phase 2](../roadmap/phase-2-ast-microkernel-semantic-diffing.md).
+
 Docuvia aims to be a Git-Native, Local-First knowledge extraction tool. Unlike heavy server-side indexing engines or tools that require starting a dedicated graph database (e.g., PostgreSQL or complex daemon processes), Docuvia needs to perform ultra-fast incremental updates (delta syncs) locally on developer machines.
 
 When a file changes, naive graph implementations traverse and invalidate the entire upstream dependency chain, resulting in excessive LLM API calls and high CPU usage. We need a way to accurately determine if a file modification actually changes its "public contract" (signature) or if it's merely an internal implementation detail, thereby "pruning" the blast radius to zero when possible.

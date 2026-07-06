@@ -1,22 +1,12 @@
 ---
 Date: 2026-07-02
-Status: Implemented
+Status: Accepted
 Supersedes: None
 ---
 
 # Local-First Architecture & Graceful Server Degradation
 
-## Status
-
-**Implemented (Survival Update Complete)**
-
-The "Survival Update" features have been successfully implemented, completing the Local-First vision:
-
-- **WASM AST Worker Pool**: Local syntax analysis via `web-tree-sitter`.
-- **SQLite Local DB**: Local HEAD projection using `better-sqlite3`; it is rebuilt/materialized from the `docuvia-knowledge` branch for the current Git `HEAD`.
-- **Git-Native Blob Hashing**: Incremental updates bypassing heavy checkouts.
-- **Background L3 RAG**: Offline decision retrieval guided by `docuvia.json`.
-- **VS Code CodeLens/Hover**: Surfacing blast radius via MCP tools `docuvia_impact` and `docuvia_context`.
+> **Implementation status:** Tracked in the roadmap, not here — see [Standalone Engine (Graceful Degradation)](../roadmap/features/standalone-engine-graceful-degradation.md) and [Zero-Server Deep Traversal](../roadmap/features/zero-server-deep-traversal.md) in [Phase 5](../roadmap/phase-5-local-first-vs-code-client-web-ui.md) / [Phase 2](../roadmap/phase-2-ast-microkernel-semantic-diffing.md) for what is actually built today.
 
 ## Core Principle
 
@@ -51,7 +41,7 @@ flowchart TD
 - **Implementation**: Relies on `artifacts/vscode-client/src/central-server-client.ts#L36` returning false.
 - **Architecture Recovery**: Falls back to the [AST Microkernel](./ADR-020-unified-isomorphic-ast-microkernel.md) for local topology scanning and [Git-Isomorphic Graph](./ADR-004-git-isomorphic-graph.md) resolution, bypassing naive `git log -n 100` bounds (implemented in `artifacts/vscode-client/src/knowledge-store.ts`).
 - **Agentic RAG**: Gracefully degrades to Keyword RAG and Direct Anchoring using `target_refs` (e.g. in `artifacts/vscode-client/src/docuvia-code-lens-provider.ts`).
-- **Evolution**: Local garbage collection based on `last_verified_at` [decay](./ADR-007-agentic-rag-routing.md) (Note: `last_verified_at` is currently not implemented, pending [metabolism](./ADR-008-asynchronous-metabolism.md) workers).
+- **Evolution**: Local garbage collection based on `lastVerifiedAt` [temporal decay](./ADR-007-agentic-rag-routing.md), applied via the shared Core API's `vector-search.service.ts` (see [ADR-021](./ADR-021-shared-core-api-and-presentation-layers.md)). Pruning of decayed nodes also depends on [Asynchronous Metabolism](./ADR-008-asynchronous-metabolism.md) workers — see [Server-Side Metabolism](../roadmap/features/server-side-metabolism.md) for current build status.
 
 ## 2. Server-Augmented Mode (Team-Scale Ascension)
 

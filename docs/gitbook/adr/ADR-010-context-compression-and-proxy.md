@@ -14,6 +14,8 @@ Accepted (2026-06-19)
 
 _(Ref: [`docs/gitbook/analysis/mcp-ai-interfaces.md`](../analysis/mcp-ai-interfaces.md))_
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Local Context Compression](../roadmap/features/local-context-compression.md) in [Phase 2](../roadmap/phase-2-ast-microkernel-semantic-diffing.md).
+
 As Docuvia enables deep structural code analysis via the [AST Microkernel (ADR-020)](./ADR-020-unified-isomorphic-ast-microkernel.md), the next bottleneck is [LLM context window limits and API costs (ADR-009)](./ADR-009-token-management.md) during code review and reasoning. We need a mechanism to intercept large code blocks destined for the LLM, compress them using the pre-calculated AST Skeletons, and seamlessly retrieve the original source code only when the LLM explicitly requests it.
 Our competitor analysis against GitNexus identified their "Auto-Summarized Pager" as a key feature we lack, necessitating an intelligent context compression pipeline.
 

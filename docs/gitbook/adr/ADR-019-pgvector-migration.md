@@ -6,6 +6,8 @@ Supersedes: None
 
 # ADR-019: PostgreSQL pgvector Migration for Similarity Search
 
+> **Implementation status:** Tracked in the roadmap, not here — see [pgvector Migration](../roadmap/features/pgvector-migration.md) in [Phase 6](../roadmap/phase-6-architecture-hardening-security.md).
+
 ## Context
 
 _(Ref: [`docs/gitbook/analysis/agentic-rag.md`](../analysis/agentic-rag.md))_

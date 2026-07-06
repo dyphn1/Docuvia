@@ -6,6 +6,8 @@ Supersedes: None
 
 # Asynchronous Metabolism (Database-Driven Queue)
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Server-Side Metabolism](../roadmap/features/server-side-metabolism.md) ([Phase 1](../roadmap/phase-1-core-api-database-the-metabolism-engine.md)) and [Concurrency Locks](../roadmap/features/concurrency-locks.md) ([Phase 6](../roadmap/phase-6-architecture-hardening-security.md)).
+
 ## Core Dilemma
 
 The API Server must handle heavy tasks ([Vector Embeddings](./ADR-019-pgvector-migration.md), LLM Experience Distillation, [Temporal Decay](./ADR-007-agentic-rag-routing.md), and [AST Parsing via Microkernel](./ADR-020-unified-isomorphic-ast-microkernel.md)) asynchronously without blocking the Node.js Event Loop. However, to keep the [local-first architecture](./ADR-002-local-first-architecture.md) lightweight, we strictly avoid introducing heavy infrastructure like Redis, BullMQ, or Celery.

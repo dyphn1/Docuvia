@@ -6,6 +6,8 @@ Supplements: ADR-015, ADR-022
 
 # ADR-025: Hybrid Temp-File Blast Radius Overlay & Headless LSP
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Smart Blast Radius (WASM Semantic Diff)](../roadmap/features/smart-blast-radius-wasm-semantic-diff.md) and [Sub-second Incremental Watch](../roadmap/features/sub-second-incremental-watch.md) in [Phase 2](../roadmap/phase-2-ast-microkernel-semantic-diffing.md).
+
 ## Context
 
 According to our SSOT (Single Source of Truth) principles, the `docuvia-knowledge` orphan branch is the absolute truth, and `local.db` is strictly a read-only projection of the current Git `HEAD`. However, developers and AI agents (via MCP) constantly modify code (unsaved buffers, unstaged edits). Writing these temporary, transient states to `local.db` would violate SSOT and cause database corruption (e.g., phantom nodes persisting after a `git reset --hard`).

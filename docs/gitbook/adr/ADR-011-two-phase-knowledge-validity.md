@@ -6,6 +6,8 @@ Supersedes: None
 
 # ADR-011: Two-Phase Knowledge Validity
 
+> **Implementation status:** Tracked in the roadmap, not here — see [L3 Generator](../roadmap/features/l3-generator.md) ([Phase 1](../roadmap/phase-1-core-api-database-the-metabolism-engine.md)) and [`docuvia sync` Bidirectional CLI](../roadmap/features/docuvia-sync-bidirectional-cli.md) ([Phase 4](../roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md)), which owns the merge-gate check.
+
 **Status:** Accepted
 
 **Context:**  

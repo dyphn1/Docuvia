@@ -6,6 +6,8 @@ Supersedes: None
 
 # ADR-016: Git Blob-Native Identity & Checkout Thrashing Defense
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Sub-second Incremental Watch](../roadmap/features/sub-second-incremental-watch.md) ([Phase 2](../roadmap/phase-2-ast-microkernel-semantic-diffing.md)) and [Incremental Update (delta-only)](../roadmap/features/incremental-update-delta-only.md) ([Phase 1](../roadmap/phase-1-core-api-database-the-metabolism-engine.md)).
+
 ## Context
 
 _(Ref: [`docs/gitbook/analysis/data-pipeline-sync.md`](../analysis/data-pipeline-sync.md#file-hash-delta-detection))_
@@ -28,9 +30,9 @@ Docuvia will implement an "Environment-Aware Ingestion Pipeline" that heavily le
 - **Positive**: Adapts to both Git-versioned repositories and unversioned folders.
 - **Negative**: Adds Git CLI integration dependencies and complexity to the ingest pipeline.
 
-## Implementation Status (as of 2026-07-05)
+## Implementation Note
 
-The "zero-cost `UPDATE`" rename tracking is **fully implemented** at both the Git and database layers. While `change-detection-service.ts` runs `git diff -M`, the critical Knowledge Graph inheritance happens in `lib/core/src/services/ast/ast-change-detector.ts`. The detector performs **hash-based rename inference**: if a new file path shares an exact `contentHash` with an old file path that is no longer present in the workspace, the system infers a rename/move. It immediately executes an in-place `UPDATE` on both `project_files` and `l2_nodes` to reflect the new path. This zero-cost approach perfectly preserves the L2 node ID, ensuring that all attached historical L3 Decision records and graph edges follow the file to its new location without breaking the Agentic RAG context.
+The "zero-cost `UPDATE`" rename tracking is anchored by `change-detection-service.ts` (`git diff -M`) and `lib/core/src/services/ast/ast-change-detector.ts`, which performs **hash-based rename inference**: if a new file path shares an exact `contentHash` with an old file path that is no longer present in the workspace, the system infers a rename/move and executes an in-place `UPDATE` on both `project_files` and `l2_nodes` to reflect the new path. This preserves the L2 node ID, so historical L3 Decision records and graph edges follow the file to its new location. See the roadmap link above for current completion status.
 
 ## Diagram
 

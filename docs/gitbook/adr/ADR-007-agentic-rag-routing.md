@@ -6,6 +6,8 @@ Supersedes: None
 
 # Agentic RAG 4-Way Routing & Temporal Decay
 
+> **Implementation status:** Tracked in the roadmap, not here — see [Agentic RAG (Intent Router)](../roadmap/features/agentic-rag-intent-router.md) ([Phase 3](../roadmap/phase-3-agentic-rag-mcp-interfaces.md)) and [Temporal Decay Scoring](../roadmap/features/temporal-decay-scoring.md) ([Phase 4](../roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md)).
+
 ## Core Architecture
 
 Docuvia's `lib/core/src/services/intent-router.ts` dynamically selects the optimal retrieval strategy. Routing arbitration prioritizes $O(1)$ local caches over expensive LLM inference (facilitated by the [Local-First Architecture](./ADR-002-local-first-architecture.md) and [Database-as-IPC](./ADR-014-sql-indexed-graph-and-database-as-ipc.md) patterns).

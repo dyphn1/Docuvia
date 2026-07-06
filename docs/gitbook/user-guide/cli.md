@@ -16,5 +16,6 @@ Below is the complete reference for all available commands. Click on any command
 | **[`docuvia detect-changes`](cli/detect-changes.md)** | Detect structural changes and compute risk scores against a base branch.  |
 | **[`docuvia query`](cli/query.md)**                   | Query the local knowledge graph via the terminal.                         |
 | **[`docuvia sync`](cli/sync.md)**                     | Sync local changes to the remote server or pack to a local orphan branch. |
+| **[`docuvia export --topology`](cli/export.md)**      | Export the knowledge graph as an offline interactive topology map.        |
 | **[`docuvia init-agent`](cli/init-agent.md)**         | Install AI IDE/Agent hooks for Claude Code and Cursor.                    |
 | **[`docuvia mcp`](cli/mcp.md)**                       | Start the local MCP stdio server for direct integration.                  |

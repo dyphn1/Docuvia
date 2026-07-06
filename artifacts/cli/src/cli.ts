@@ -10,6 +10,7 @@ import { statusCommand } from "./commands/status.js";
 import { cleanCommand } from "./commands/clean.js";
 import { detectChangesCommand } from "./commands/detect-changes.js";
 import { syncCommand } from "./commands/sync.js";
+import { exportTopologyCommand } from "./commands/export-topology.js";
 import { runMcpServer } from "./mcp/server.js";
 
 dotenv.config();
@@ -77,6 +78,27 @@ async function main() {
     process.exit(0);
   }
 
+  if (command === "export") {
+    const isTopology = process.argv.includes("--topology");
+    if (!isTopology) {
+      console.error(
+        "Usage: docuvia export --topology [--json] [--out=DIR] [--collapse=file|symbol|auto]"
+      );
+      process.exit(1);
+    }
+    const collapseArg = process.argv.find((arg) => arg.startsWith("--collapse="))?.split("=")[1];
+    const collapse =
+      collapseArg === "file" || collapseArg === "symbol" || collapseArg === "auto"
+        ? collapseArg
+        : undefined;
+    await exportTopologyCommand({
+      jsonOnly: process.argv.includes("--json"),
+      out: process.argv.find((arg) => arg.startsWith("--out="))?.split("=")[1],
+      collapse,
+    });
+    process.exit(0);
+  }
+
   if (command === "mcp") {
     await runMcpServer();
     // Do not exit, keep process alive for stdio transport
@@ -132,6 +154,9 @@ async function main() {
     "  docuvia sync --local                         # Pack local knowledge to orphan branch"
   );
   console.error("  docuvia query <target> [--local]             # Query the knowledge graph");
+  console.error(
+    "  docuvia export --topology [--json] [--out=DIR] # Export topology.json + offline topology.html"
+  );
   console.error(
     "  docuvia mcp                                  # Start the local MCP stdio server"
   );

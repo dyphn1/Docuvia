@@ -1,3 +1,21 @@
+import type { AstParseResponse } from "../workers/ast-worker.js";
+
+/** A file discovered on disk that still needs to be parsed (new or content-hash changed). */
+export interface DiscoveredFile {
+  file: string;
+  hash: string;
+  code: string;
+}
+
+/** The AST-worker's parse output (imports/exports/functions/classes/calls/implements/extends). */
+export type ParsedAstFileData = NonNullable<AstParseResponse["data"]>;
+
+export interface ParsedAstFileResult {
+  file: string;
+  hash: string;
+  data: ParsedAstFileData;
+}
+
 export interface IVcsScanner {
   extractHotspotTags(workspaceRoot: string): Promise<string[]>;
 }
@@ -11,25 +29,32 @@ export interface IFileDiscovery {
     workspaceRoot: string,
     dbPath: string,
     options?: { onlyIndexed?: boolean }
-  ): Promise<{ filesToParse: any[]; existingHashes: Map<string, string>; skippedCount: number }>;
+  ): Promise<{
+    filesToParse: DiscoveredFile[];
+    existingHashes: Map<string, string>;
+    skippedCount: number;
+  }>;
 }
 
 export interface IGraphDatabaseRepository {
   persistAstGraph(
     workspaceRoot: string,
-    parsedResults: any[],
+    parsedResults: ParsedAstFileResult[],
     tags: string[]
   ): Promise<{ updatedCount: number; fileIdMap: Map<string, number> }>;
 }
 
 export interface IAstProcessor {
-  processFiles(workspaceRoot: string, filesToParse: any[]): Promise<any[]>;
+  processFiles(
+    workspaceRoot: string,
+    filesToParse: DiscoveredFile[]
+  ): Promise<ParsedAstFileResult[]>;
 }
 
 export interface IL3ExtractionJob {
   triggerBackgroundExtraction(
     workspaceRoot: string,
-    filesToParse: any[],
+    filesToParse: DiscoveredFile[],
     fileIdMap: Map<string, number>
   ): void;
 }

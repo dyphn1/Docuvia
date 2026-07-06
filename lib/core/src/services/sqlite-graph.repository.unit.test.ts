@@ -136,7 +136,7 @@ describe("SqliteGraphRepository", () => {
       },
     ];
 
-    await repo.persistAstGraph(workspaceRoot, parsedResults, ["tag1"]);
+    await repo.persistAstGraph(workspaceRoot, parsedResults as any, ["tag1"]);
 
     const db = new Database(dbPath);
     try {
@@ -148,6 +148,38 @@ describe("SqliteGraphRepository", () => {
       const types = links.map((l) => l.link_type);
       expect(types).toContain("implements");
       expect(types).toContain("extends");
+
+      // Regression guard: these must be symbol-level edges (ConsumerClass -> TargetInterface /
+      // TargetClass), not file-level edges (consumer.ts -> interface.ts). Both classes share the
+      // same file, so a file-level bug would collapse source and target to the same file node.
+      const nodeByName = (name: string) =>
+        db.prepare("SELECT id FROM l2_nodes WHERE name = ?").get(name) as
+          | { id: number }
+          | undefined;
+
+      const consumerClassId = nodeByName("ConsumerClass")?.id;
+      const targetInterfaceId = nodeByName("TargetInterface")?.id;
+      const targetClassId = nodeByName("TargetClass")?.id;
+      const consumerFileId = nodeByName("src/consumer.ts")?.id;
+      const interfaceFileId = nodeByName("src/interface.ts")?.id;
+
+      expect(consumerClassId).toBeDefined();
+      expect(targetInterfaceId).toBeDefined();
+      expect(targetClassId).toBeDefined();
+
+      const implementsLink = links.find((l) => l.link_type === "implements");
+      const extendsLink = links.find((l) => l.link_type === "extends");
+
+      expect(implementsLink.source_node_id).toBe(consumerClassId);
+      expect(implementsLink.target_node_id).toBe(targetInterfaceId);
+      expect(extendsLink.source_node_id).toBe(consumerClassId);
+      expect(extendsLink.target_node_id).toBe(targetClassId);
+
+      // None of the symbol-level ids should equal the flattened file-level ids.
+      expect(implementsLink.source_node_id).not.toBe(consumerFileId);
+      expect(implementsLink.target_node_id).not.toBe(interfaceFileId);
+      expect(extendsLink.source_node_id).not.toBe(consumerFileId);
+      expect(extendsLink.target_node_id).not.toBe(interfaceFileId);
     } finally {
       db.close();
     }

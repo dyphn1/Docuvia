@@ -91,8 +91,13 @@ export class QueryService {
 
       if (parsedFilePath) {
         const absolutePath = path.resolve(this.workspaceRoot, parsedFilePath);
-        const lspService = new LspEnrichmentService(this.workspaceRoot);
-        lspEnrichedCallers = lspService.enrichImpact(symbol, absolutePath);
+        try {
+          const lspService = new LspEnrichmentService(this.workspaceRoot);
+          lspEnrichedCallers = lspService.enrichImpact(symbol, absolutePath);
+        } catch {
+          // Graceful degradation: LSP enrichment is a bonus on top of the SQLite blast radius
+          // below, not a dependency — never let it fail the whole impact query.
+        }
       }
     }
 

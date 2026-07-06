@@ -1,10 +1,17 @@
 import os from "os";
 import path from "path";
 import { AstWorkerPool } from "./ast-worker-pool.js";
-import { IAstProcessor } from "../interfaces/analyzer.interfaces.js";
+import {
+  DiscoveredFile,
+  IAstProcessor,
+  ParsedAstFileResult,
+} from "../interfaces/analyzer.interfaces.js";
 
 export class AstProcessingService implements IAstProcessor {
-  public async processFiles(workspaceRoot: string, filesToParse: any[]): Promise<any[]> {
+  public async processFiles(
+    workspaceRoot: string,
+    filesToParse: DiscoveredFile[]
+  ): Promise<ParsedAstFileResult[]> {
     const workerCount = Math.max(1, (os.cpus().length || 4) - 1);
     const pool = new AstWorkerPool();
     await pool.initialize(workerCount);
@@ -40,7 +47,7 @@ export class AstProcessingService implements IAstProcessor {
       }
     };
 
-    const parsedResults: Array<{ file: string; hash: string; data: any }> = [];
+    const parsedResults: ParsedAstFileResult[] = [];
     const batchSize = 50;
     for (let i = 0; i < filesToParse.length; i += batchSize) {
       const batch = filesToParse.slice(i, i + batchSize);

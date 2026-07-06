@@ -29,6 +29,7 @@ import type {
   FileContextResponse,
   GenerateInput,
   GenerateResult,
+  GetProjectTopologyParams,
   GitIngestInput,
   GitIngestResult,
   GithubWebhookBody,
@@ -98,6 +99,7 @@ import type {
   SyncPushInput,
   SyncResponse,
   TestProjectIntegration200,
+  TopologyGraph,
   TriggerAdminMetabolismTick200,
   TriggerMetabolismTick200,
   UploadDocumentBody,
@@ -1624,6 +1626,92 @@ export function useExportProjectMarkdown<
   }
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getExportProjectMarkdownQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the project knowledge-graph topology (versioned topology.json contract)
+ */
+export const getGetProjectTopologyUrl = (id: number, params?: GetProjectTopologyParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/projects/${id}/topology?${stringifiedParams}`
+    : `/api/projects/${id}/topology`;
+};
+
+export const getProjectTopology = async (
+  id: number,
+  params?: GetProjectTopologyParams,
+  options?: RequestInit
+): Promise<TopologyGraph> => {
+  return customFetch<TopologyGraph>(getGetProjectTopologyUrl(id, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProjectTopologyQueryKey = (id: number, params?: GetProjectTopologyParams) => {
+  return [`/api/projects/${id}/topology`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetProjectTopologyQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjectTopology>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  params?: GetProjectTopologyParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getProjectTopology>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetProjectTopologyQueryKey(id, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getProjectTopology>>> = ({ signal }) =>
+    getProjectTopology(id, params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, enabled: !!id, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjectTopology>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectTopologyQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectTopology>>
+>;
+export type GetProjectTopologyQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the project knowledge-graph topology (versioned topology.json contract)
+ */
+
+export function useGetProjectTopology<
+  TData = Awaited<ReturnType<typeof getProjectTopology>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  params?: GetProjectTopologyParams,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getProjectTopology>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  }
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectTopologyQueryOptions(id, params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

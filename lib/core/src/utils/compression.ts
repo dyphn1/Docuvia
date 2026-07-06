@@ -1,3 +1,5 @@
+import { compressAstContext as compressWithDedup } from "@workspace/ast-core";
+
 export interface CompressibleNode {
   title: string;
   content: string;
@@ -17,6 +19,11 @@ export interface CompressResult {
   context: string;
 }
 
+/**
+ * Delegates to @workspace/ast-core's dedup + confidence-sort + budget-aware assembly
+ * pipeline (see ADR-010) instead of a plain in-order truncation, so near-duplicate
+ * AST/document nodes don't eat the token budget ahead of higher-confidence ones.
+ */
 export function compressAstContext(
   nodes: CompressibleNode[],
   options?: CompressOptions
@@ -25,37 +32,15 @@ export function compressAstContext(
     return { nodesTotal: 0, nodesIncluded: 0, charsSaved: 0, context: "" };
   }
 
-  const maxTotal = options?.maxTotalChars ?? 6000;
-  const maxPerNode = options?.maxPerNodeChars ?? 600;
-
-  let result = "";
-  let currentTotal = 0;
-  let nodesIncluded = 0;
-  let originalChars = 0;
-
-  for (const node of nodes) {
-    const header = `--- ${node.title} ${node.nodeType ? `[${node.nodeType}]` : ""} ---\n`;
-    let content = node.content || "";
-    originalChars += content.length;
-
-    if (currentTotal >= maxTotal) continue;
-
-    if (content.length > maxPerNode) {
-      content = content.substring(0, maxPerNode) + "\n... (truncated)";
-    }
-
-    const entry = header + content + "\n\n";
-    if (currentTotal + entry.length <= maxTotal) {
-      result += entry;
-      currentTotal += entry.length;
-      nodesIncluded++;
-    }
-  }
+  const result = compressWithDedup(nodes, {
+    maxTotalChars: options?.maxTotalChars ?? 6000,
+    maxPerNodeChars: options?.maxPerNodeChars ?? 600,
+  });
 
   return {
-    nodesTotal: nodes.length,
-    nodesIncluded,
-    charsSaved: originalChars - currentTotal, // Approximation
-    context: result.trim(),
+    nodesTotal: result.nodesTotal,
+    nodesIncluded: result.nodesIncluded,
+    charsSaved: result.charsSaved,
+    context: result.context,
   };
 }

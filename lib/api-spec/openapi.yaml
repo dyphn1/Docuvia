@@ -519,6 +519,34 @@ paths:
                 type: string
                 format: binary
 
+  /projects/{id}/topology:
+    get:
+      operationId: getProjectTopology
+      tags: [projects]
+      summary: Get the project knowledge-graph topology (versioned topology.json contract)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: collapse
+          in: query
+          required: false
+          description: symbol = full symbol-level graph, file = fold symbols into files, auto (default) = symbol-level unless the node cap is exceeded
+          schema:
+            type: string
+            enum: [auto, file, symbol]
+      responses:
+        "200":
+          description: Topology graph
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TopologyGraph"
+        "404":
+          description: Project not found
+
   /projects/{id}/templates:
     get:
       operationId: listProjectTemplates
@@ -1940,6 +1968,96 @@ components:
             $ref: "#/components/schemas/Commit"
         exportedAt:
           type: string
+
+    TopologyGraph:
+      type: object
+      required:
+        [topologyVersion, generatedAt, workspaceRoot, collapsed, nodes, links, groups, stats]
+      properties:
+        topologyVersion:
+          type: integer
+        generatedAt:
+          type: string
+        workspaceRoot:
+          type: string
+        collapsed:
+          type: boolean
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopologyNode"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopologyLink"
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/TopologyGroup"
+        stats:
+          $ref: "#/components/schemas/TopologyStats"
+
+    TopologyNode:
+      type: object
+      required: [id, label, kind, group, degree]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [file, symbol, decision]
+        group:
+          type: integer
+        filePath:
+          type: string
+        parent:
+          type: string
+        degree:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+
+    TopologyLink:
+      type: object
+      required: [source, target, linkType, confidence]
+      properties:
+        source:
+          type: string
+        target:
+          type: string
+        linkType:
+          type: string
+        confidence:
+          type: number
+
+    TopologyGroup:
+      type: object
+      required: [id, label, source, count]
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        source:
+          type: string
+          enum: [l1_tag, directory]
+        count:
+          type: integer
+
+    TopologyStats:
+      type: object
+      required: [nodeCount, linkCount, groupCount]
+      properties:
+        nodeCount:
+          type: integer
+        linkCount:
+          type: integer
+        groupCount:
+          type: integer
 
     L1Tag:
       type: object

@@ -26,7 +26,7 @@ This phase tracks the following specific features. Click on any feature to view 
 | Review UI (frontend)                     | ✅ Done | [View Details](features/review-ui-frontend.md)                     |
 | Natural language UI                      | ✅ Done | [View Details](features/natural-language-ui.md)                    |
 | Dashboard & stats                        | ✅ Done | [View Details](features/dashboard-stats.md)                        |
-| Interactive Topology Maps                | 🔲 TODO | [View Details](features/interactive-topology-maps.md)              |
+| Interactive Topology Maps                | ✅ Done | [View Details](features/interactive-topology-maps.md)              |
 | Export (Markdown / JSON)                 | ✅ Done | [View Details](features/export-markdown-json.md)                   |
 | Slack / Teams bot                        | ✅ Done | [View Details](features/slack-teams-bot.md)                        |
 | GitHub PR integration                    | ✅ Done | [View Details](features/github-pr-integration.md)                  |

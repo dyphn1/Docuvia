@@ -188,6 +188,63 @@ export interface ProjectExport {
   exportedAt: string;
 }
 
+export type TopologyNodeKind = (typeof TopologyNodeKind)[keyof typeof TopologyNodeKind];
+
+export const TopologyNodeKind = {
+  file: "file",
+  symbol: "symbol",
+  decision: "decision",
+} as const;
+
+export interface TopologyNode {
+  id: string;
+  label: string;
+  kind: TopologyNodeKind;
+  group: number;
+  filePath?: string;
+  parent?: string;
+  degree: number;
+  tags?: string[];
+}
+
+export interface TopologyLink {
+  source: string;
+  target: string;
+  linkType: string;
+  confidence: number;
+}
+
+export type TopologyGroupSource = (typeof TopologyGroupSource)[keyof typeof TopologyGroupSource];
+
+export const TopologyGroupSource = {
+  l1_tag: "l1_tag",
+  directory: "directory",
+} as const;
+
+export interface TopologyGroup {
+  id: number;
+  label: string;
+  source: TopologyGroupSource;
+  count: number;
+}
+
+export interface TopologyStats {
+  nodeCount: number;
+  linkCount: number;
+  groupCount: number;
+}
+
+export interface TopologyGraph {
+  topologyVersion: number;
+  generatedAt: string;
+  workspaceRoot: string;
+  collapsed: boolean;
+  nodes: TopologyNode[];
+  links: TopologyLink[];
+  groups: TopologyGroup[];
+  stats: TopologyStats;
+}
+
 export interface L1TagInput {
   /** @minLength 1 */
   name: string;
@@ -1049,6 +1106,22 @@ export type ConfirmBootstrap200 = {
   success: boolean;
   message: string;
 };
+
+export type GetProjectTopologyParams = {
+  /**
+   * symbol = full symbol-level graph, file = fold symbols into files, auto (default) = symbol-level unless the node cap is exceeded
+   */
+  collapse?: GetProjectTopologyCollapse;
+};
+
+export type GetProjectTopologyCollapse =
+  (typeof GetProjectTopologyCollapse)[keyof typeof GetProjectTopologyCollapse];
+
+export const GetProjectTopologyCollapse = {
+  auto: "auto",
+  file: "file",
+  symbol: "symbol",
+} as const;
 
 export type McpSearchKnowledgeParams = {
   query: string;

@@ -4,12 +4,12 @@ import * as os from "os";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import { existsSync } from "fs";
-import { IL3ExtractionJob } from "../interfaces/analyzer.interfaces.js";
+import { DiscoveredFile, IL3ExtractionJob } from "../interfaces/analyzer.interfaces.js";
 
 export class L3ExtractionJobService implements IL3ExtractionJob {
   public triggerBackgroundExtraction(
     workspaceRoot: string,
-    filesToParse: any[],
+    filesToParse: DiscoveredFile[],
     fileIdMap: Map<string, number>
   ): void {
     console.log(`[docuvia] Triggering background L3 Agentic RAG extraction...`);

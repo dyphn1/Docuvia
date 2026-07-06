@@ -1,10 +1,8 @@
 import path from "node:path";
-import { AstParseResponse } from "../workers/ast-worker.js";
+import { ParsedAstFileResult } from "../interfaces/analyzer.interfaces.js";
 import { ProcessedEvents } from "../types/ast-ingestion.types.js";
 
-export function mapAstToEvents(
-  results: Array<{ file: string; hash: string; data: AstParseResponse }>
-): ProcessedEvents {
+export function mapAstToEvents(results: ParsedAstFileResult[]): ProcessedEvents {
   const events: ProcessedEvents = {
     fileEvents: [],
     classEvents: [],
@@ -19,8 +17,6 @@ export function mapAstToEvents(
       continue;
     }
 
-    const astData = data as any;
-
     // File event
     events.fileEvents.push({
       filePath: file,
@@ -31,7 +27,7 @@ export function mapAstToEvents(
     });
 
     // Class events
-    for (const c of astData.classes) {
+    for (const c of data.classes) {
       events.classEvents.push({
         name: c.name,
         fqn: `${file}::${c.name}`,
@@ -42,7 +38,7 @@ export function mapAstToEvents(
     }
 
     // Function events
-    for (const fn of astData.functions) {
+    for (const fn of data.functions) {
       events.functionEvents.push({
         name: fn.name,
         fqn: `${file}::${fn.name}`,
@@ -53,7 +49,7 @@ export function mapAstToEvents(
     }
 
     // Import events
-    for (const imp of astData.imports) {
+    for (const imp of data.imports) {
       events.importEvents.push({
         source: imp.modulePath,
         localName: imp.localName,
@@ -62,7 +58,7 @@ export function mapAstToEvents(
     }
 
     // Call events
-    for (const call of astData.calls) {
+    for (const call of data.calls) {
       events.callEvents.push({
         name: call.targetFunction,
         callerFilePath: file,

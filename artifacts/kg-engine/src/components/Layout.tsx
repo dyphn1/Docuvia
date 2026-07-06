@@ -13,6 +13,7 @@ import {
   Users,
   GitPullRequest,
   Webhook,
+  Network,
 } from "lucide-react";
 import { useListProjects, getListProjectsQueryKey } from "@workspace/api-client-react";
 import {
@@ -52,6 +53,7 @@ export function Layout({ children }: LayoutProps) {
         { href: "/l1-tags", label: "L1 Tag Pool", icon: Tags },
         { href: "/review", label: "Review Queue", icon: CheckCircle },
         { href: "/query", label: "Query", icon: Search },
+        { href: "/topology", label: "Topology", icon: Network },
       ],
     },
     {

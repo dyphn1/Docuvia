@@ -519,6 +519,62 @@ export const ExportProjectMarkdownParams = zod.object({
 });
 
 /**
+ * @summary Get the project knowledge-graph topology (versioned topology.json contract)
+ */
+export const GetProjectTopologyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetProjectTopologyQueryParams = zod.object({
+  collapse: zod
+    .enum(["auto", "file", "symbol"])
+    .optional()
+    .describe(
+      "symbol = full symbol-level graph, file = fold symbols into files, auto (default) = symbol-level unless the node cap is exceeded"
+    ),
+});
+
+export const GetProjectTopologyResponse = zod.object({
+  topologyVersion: zod.number(),
+  generatedAt: zod.string(),
+  workspaceRoot: zod.string(),
+  collapsed: zod.boolean(),
+  nodes: zod.array(
+    zod.object({
+      id: zod.string(),
+      label: zod.string(),
+      kind: zod.enum(["file", "symbol", "decision"]),
+      group: zod.number(),
+      filePath: zod.string().optional(),
+      parent: zod.string().optional(),
+      degree: zod.number(),
+      tags: zod.array(zod.string()).optional(),
+    })
+  ),
+  links: zod.array(
+    zod.object({
+      source: zod.string(),
+      target: zod.string(),
+      linkType: zod.string(),
+      confidence: zod.number(),
+    })
+  ),
+  groups: zod.array(
+    zod.object({
+      id: zod.number(),
+      label: zod.string(),
+      source: zod.enum(["l1_tag", "directory"]),
+      count: zod.number(),
+    })
+  ),
+  stats: zod.object({
+    nodeCount: zod.number(),
+    linkCount: zod.number(),
+    groupCount: zod.number(),
+  }),
+});
+
+/**
  * @summary List prompt templates for a project (with defaults)
  */
 export const ListProjectTemplatesParams = zod.object({

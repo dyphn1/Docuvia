@@ -2,9 +2,12 @@ import path from "path";
 import fs from "fs";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { ScopeResolver } from "./scope-resolver.js";
-import { IGraphDatabaseRepository } from "../interfaces/analyzer.interfaces.js";
+import {
+  IGraphDatabaseRepository,
+  ParsedAstFileResult,
+} from "../interfaces/analyzer.interfaces.js";
 import {
   projectFilesTable,
   l1TagsTable,
@@ -16,7 +19,7 @@ import {
 export class SqliteGraphRepository implements IGraphDatabaseRepository {
   public async persistAstGraph(
     workspaceRoot: string,
-    parsedResults: any[],
+    parsedResults: ParsedAstFileResult[],
     tags: string[]
   ): Promise<{ updatedCount: number; fileIdMap: Map<string, number> }> {
     const docuviaDir = path.join(workspaceRoot, ".docuvia");
@@ -38,8 +41,8 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
     try {
       for (const result of parsedResults) {
         const locals: string[] = [];
-        if (result.data.functions) locals.push(...result.data.functions.map((f: any) => f.name));
-        if (result.data.classes) locals.push(...result.data.classes.map((c: any) => c.name));
+        if (result.data.functions) locals.push(...result.data.functions.map((f) => f.name));
+        if (result.data.classes) locals.push(...result.data.classes.map((c) => c.name));
         resolver.registerFile(result.file, result.data.imports || [], [], locals);
       }
 
@@ -47,6 +50,9 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
       const { updatedCount, fileIdMap } = db.transaction((tx) => {
         let parsedCount = 0;
         const fileIdMap = new Map<string, number>();
+        // Per-file map of symbol name -> l2_nodes.id, so calls/implements/extends can link to the
+        // actual function/class node instead of collapsing to a file-to-file edge.
+        const symbolIdMap = new Map<string, Map<string, number>>();
 
         // Insert L1 Tags
         for (const tag of tags) {
@@ -100,6 +106,8 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
           }
           const fileId = nodeInsert.id;
           fileIdMap.set(result.file, fileId);
+          const symbolsForFile = new Map<string, number>();
+          symbolIdMap.set(result.file, symbolsForFile);
 
           for (const tag of tags) {
             const l1TagRow = tx
@@ -131,6 +139,7 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
                 .returning({ id: l2NodesTable.id })
                 .get();
               if (fnInsert) {
+                symbolsForFile.set(fn.name, fnInsert.id);
                 tx.insert(nodeLinksTable)
                   .values({
                     sourceNodeId: fileId,
@@ -156,6 +165,7 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
                 .returning({ id: l2NodesTable.id })
                 .get();
               if (clsInsert) {
+                symbolsForFile.set(cls.name, clsInsert.id);
                 tx.insert(nodeLinksTable)
                   .values({
                     sourceNodeId: fileId,
@@ -168,29 +178,52 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
           }
         }
 
+        // Resolves a symbol or file node id by name within a given file's path pattern. Falls back
+        // to a DB lookup (beyond symbolIdMap/fileIdMap) so incremental runs can still link against
+        // nodes persisted by a previous, unrelated batch.
+        const findNodeIdByName = (filePath: string, name: string): number | undefined => {
+          const row = tx
+            .select({ id: l2NodesTable.id })
+            .from(l2NodesTable)
+            .where(and(eq(l2NodesTable.pathPatterns, [filePath]), eq(l2NodesTable.name, name)))
+            .get();
+          return row?.id;
+        };
+
         for (const result of parsedResults) {
           const sourceFileId = fileIdMap.get(result.file);
           if (!sourceFileId) continue;
 
-          const processLink = (targetFunctionOrClass: string, linkType: string) => {
+          const sourceSymbols = symbolIdMap.get(result.file);
+
+          const processLink = (
+            sourceSymbolName: string | undefined,
+            targetFunctionOrClass: string,
+            linkType: string
+          ) => {
             const resolved = resolver.resolveCall(result.file, targetFunctionOrClass);
             if (resolved) {
-              const targetPathJson = [resolved.targetFile];
-              let targetFileId = fileIdMap.get(resolved.targetFile);
-              if (!targetFileId) {
-                const targetNode = tx
-                  .select({ id: l2NodesTable.id })
-                  .from(l2NodesTable)
-                  .where(eq(l2NodesTable.pathPatterns, targetPathJson))
-                  .get();
-                if (targetNode) targetFileId = targetNode.id;
-              }
-              if (targetFileId && targetFileId !== sourceFileId) {
+              // Prefer the specific target function/class node; fall back to the file node when the
+              // target isn't a tracked symbol (e.g. a re-exported value or namespace import).
+              const targetNodeId =
+                symbolIdMap.get(resolved.targetFile)?.get(resolved.targetSymbol) ??
+                findNodeIdByName(resolved.targetFile, resolved.targetSymbol) ??
+                fileIdMap.get(resolved.targetFile) ??
+                findNodeIdByName(resolved.targetFile, resolved.targetFile);
+
+              // Prefer the specific calling function/class node; fall back to the file node for
+              // module-level (top-level) call sites.
+              const sourceNodeId =
+                (sourceSymbolName && sourceSymbolName !== "anonymous"
+                  ? sourceSymbols?.get(sourceSymbolName)
+                  : undefined) ?? sourceFileId;
+
+              if (targetNodeId && targetNodeId !== sourceNodeId) {
                 tx.insert(nodeLinksTable)
                   .values({
-                    sourceNodeId: sourceFileId,
-                    targetNodeId: targetFileId,
-                    linkType: linkType,
+                    sourceNodeId,
+                    targetNodeId,
+                    linkType,
                   })
                   .run();
               }
@@ -199,19 +232,19 @@ export class SqliteGraphRepository implements IGraphDatabaseRepository {
 
           if (result.data.calls) {
             for (const call of result.data.calls) {
-              processLink(call.targetFunction, "calls");
+              processLink(call.sourceFunction, call.targetFunction, "calls");
             }
           }
 
           if (result.data.implements) {
             for (const impl of result.data.implements) {
-              processLink(impl.targetInterface, "implements");
+              processLink(impl.sourceClass, impl.targetInterface, "implements");
             }
           }
 
           if (result.data.extends) {
             for (const ext of result.data.extends) {
-              processLink(ext.targetClass, "extends");
+              processLink(ext.sourceClass, ext.targetClass, "extends");
             }
           }
 

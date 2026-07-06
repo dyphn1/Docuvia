@@ -24,6 +24,7 @@
 | `docuvia sync <project_id> [commit_sha]` | `--local`                           | Sync local AST changes. Without `--local`, pushes to the remote API server over HTTP. With `--local`, packs knowledge straight into the `docuvia-knowledge` orphan branch — no server needed.                           |
 | `docuvia init-agent`                     | —                                   | Install MCP server config + hooks for AI coding assistants (Claude Code, Cursor, Copilot) — writes `.claude/hooks/`, `.cursor/mcp.json`, `.cursorrules`, `.github/copilot-instructions.md`.                             |
 | `docuvia query <target>`                 | `--local`, `--format=human\|prompt` | Query the local knowledge graph for L2/L3 context on a symbol or file. `--format=prompt` wraps the result in an `<docuvia_context>` XML block for direct LLM prompt injection; default is human-readable (ANSI colors). |
+| `docuvia export --topology`              | `--json`, `--out=DIR`, `--collapse` | Export the knowledge graph into `topology.json` and a fully self-contained offline `topology.html` interactive viewer.                                                                                                  |
 | `docuvia mcp`                            | —                                   | Start the local MCP server over stdio (long-running; used by Claude Desktop / Cursor as a subprocess, not exited like the other commands).                                                                              |
 
 Running `docuvia` with no recognized command prints the same reference list as a fallback usage message (hardcoded in `cli.ts`, not auto-generated — there is no `--help` flag or snapshot test today).
@@ -73,6 +74,15 @@ cli.ts → syncCommand()  (imports SyncService, FileDiscoveryService, AstProcess
       (separate pipeline from `analyze`'s .docuvia/local.db — see local-sqlite-write-pipeline.md)
   → [remote]:
       SyncService.sync()  — HTTP POST to DOCUVIA_API_URL, authenticated with MCP_PAT
+```
+
+**`docuvia export --topology [--json] [--out=DIR] [--collapse=auto|file|symbol]`**
+
+```
+cli.ts → exportTopologyCommand(options)
+  → TopologyExportService.exportTopology({ collapse }) (@workspace/core)
+  → write topology.json
+  → [if not --json] write topology.html via renderTopologyHtml() inline canvas template
 ```
 
 ## Architecture Alignment

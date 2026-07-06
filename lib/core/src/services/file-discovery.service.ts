@@ -7,14 +7,18 @@ import fg from "fast-glob";
 import ignore from "ignore";
 import { exec } from "child_process";
 import * as util from "util";
-import { IFileDiscovery } from "../interfaces/analyzer.interfaces.js";
+import { DiscoveredFile, IFileDiscovery } from "../interfaces/analyzer.interfaces.js";
 
 export class FileDiscoveryService implements IFileDiscovery {
   public async discoverFiles(
     workspaceRoot: string,
     dbPath: string,
     options: { onlyIndexed?: boolean } = {}
-  ): Promise<{ filesToParse: any[]; existingHashes: Map<string, string>; skippedCount: number }> {
+  ): Promise<{
+    filesToParse: DiscoveredFile[];
+    existingHashes: Map<string, string>;
+    skippedCount: number;
+  }> {
     const { onlyIndexed = false } = options;
     const execAsync = util.promisify(exec);
     let allFiles: string[] = [];

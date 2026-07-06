@@ -10,6 +10,7 @@ import ProjectDetail from "@/pages/projects/ProjectDetail";
 import L1Tags from "@/pages/L1Tags";
 import Review from "@/pages/Review";
 import Query from "@/pages/Query";
+import Topology from "@/pages/Topology";
 import Pipeline from "@/pages/Pipeline";
 import Documents from "@/pages/Documents";
 import McpPage from "@/pages/Mcp";
@@ -38,6 +39,7 @@ function Router() {
         <Route path="/l1-tags" component={L1Tags} />
         <Route path="/review" component={Review} />
         <Route path="/query" component={Query} />
+        <Route path="/topology" component={Topology} />
         <Route path="/pipeline" component={Pipeline} />
         <Route path="/documents" component={Documents} />
         <Route path="/mcp" component={McpPage} />

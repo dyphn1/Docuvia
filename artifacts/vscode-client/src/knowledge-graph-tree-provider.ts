@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
-import { openWorkspaceLocalDatabase, LocalSnapshotService } from "@workspace/core";
+import { LocalSnapshotService } from "@workspace/core";
+import { openWorkspaceLocalDatabase } from "./db-helper.js";
 import * as fs from "fs";
 import * as path from "path";
 

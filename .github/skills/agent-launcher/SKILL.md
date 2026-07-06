@@ -79,7 +79,7 @@ _(from Karpathy: Think Before Coding + skill: handoff)_
   - Frontend only: `pnpm --filter @workspace/kg-engine run build`
   - Typecheck all: `pnpm run typecheck`
 - **AI plan documents**: Save at `docs/ai_plans/implement_<feature-name>.md` (or `fix_<name>.md` for bug fixes)
-- **Roadmap**: Refer to `docs/gitbook/roadmap/roadmap-checklist.md` for current project status (57% complete as of 2026-05-11)
+- **Roadmap**: Refer to `docs/gitbook/roadmap/README.md` for current project status (57% complete as of 2026-05-11)
 - **Critical gap areas** (high-value targets from roadmap):
   - Document parsers (PDF/Word/PPTX) — schema exists, parser impl missing
   - Vector DB wiring (Qdrant/Chroma) to `routes/search.ts`

@@ -8,7 +8,7 @@ This section is Docuvia's formal arc42-style architecture documentation: introdu
 
 For the ADRs behind these decisions, see [ADR index](../adr/README.md). For implementation-level detail, see [Detailed Development Materials](../development/README.md).
 
-## 1.1 Product Vision
+## Product Vision
 
 **Docuvia** is a Universal VCS Knowledge Graph Engine. It ingests version control history (Git, and eventually SVN), documents, and build artifacts from any software project, and constructs a queryable [three-tier knowledge graph (L1 → L2 → L3)](../adr/ADR-005-knowledge-abstraction-strategy.md). The resulting knowledge graph is exposed via a REST API, a Model Context Protocol (MCP) interface for AI IDEs, a React web dashboard, and a [VS Code extension](../adr/ADR-001-vscode-client-onboarding.md) that integrates directly into the developer's editor.
 
@@ -29,7 +29,7 @@ graph TD
 
 ---
 
-## 1.2 Core Requirements (Top 5 Drivers)
+## Core Requirements (Top 5 Drivers)
 
 1. **[Universal VCS Ingestion](../adr/ADR-004-git-isomorphic-graph.md)** — Ingest any Git (and planned SVN) repository and produce a queryable knowledge graph from commit history, documents, and build artifacts.
 2. **[Three-Tier Knowledge Structure](../adr/ADR-005-knowledge-abstraction-strategy.md)** — L1 (global classification tags) → L2 (per-project modules/packages) → L3 (implementation decisions, rules, rationale per module).
@@ -39,7 +39,7 @@ graph TD
 
 ---
 
-## 1.3 Quality Goals
+## Quality Goals
 
 | Quality Goal                        | Motivation                                                                                                                                                                | Priority    |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
@@ -53,7 +53,7 @@ graph TD
 
 ---
 
-## 1.4 Stakeholders
+## Stakeholders
 
 | Role                      | Concern                                                                          | Key Touch Points                                                |
 | ------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -68,5 +68,5 @@ graph TD
 
 ## References
 
-- [Roadmap Checklist](../roadmap/roadmap-checklist.md) — Full completion checklist (42/42 items)
+- [Master Dashboard](../roadmap/README.md) — Full completion checklist (42/42 items)
 - `AGENTS.md` — AI developer guide and architectural conventions

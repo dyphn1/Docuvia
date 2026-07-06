@@ -6,6 +6,8 @@
 
 **Before making any structural changes, writing new features, or making architectural decisions, all Agents MUST read `.github/memory/MEMORY.md` to load past architectural decisions, error boundaries, and workflow constraints.** Do not assume your initial context contains all the tacit knowledge of the project.
 
+**Before modifying any core mechanism, all Agents MUST check `docs/gitbook/development/patterns/README.md` to see if a Mechanism Playbook exists.** If it does, you MUST read the playbook and obey its `Agent Guardrails & Invariants` section to ensure implementation consistency.
+
 ## Workspace Layout
 
 ```
@@ -42,8 +44,8 @@ pnpm run build
 pnpm run lint
 pnpm run format                # prettier --write
 
-# Test (api-server only — kg-engine has no test script)
-pnpm test                      # vitest run --root ../.. (from api-server)
+# Test (api-server and cli — kg-engine has no test script)
+pnpm test                      # vitest run --root ../.. (from api-server and cli)
 pnpm run test:coverage
 
 # Dev servers
@@ -86,9 +88,9 @@ The CI runs this exact sequence — replicate locally when making cross-package 
 
 - **`PORT` env var required** at api-server startup (no default).
 - **`pnpm lint` = `prettier --check`**, not a real linter (no ESLint configured).
-- **`pnpm test` only runs api-server tests** (kg-engine has no test script).
+- **`pnpm test` runs both api-server and cli tests** (kg-engine has no test script).
 - **Supply-chain defense**: `minimumReleaseAge: 1440` in `pnpm-workspace.yaml` blocks packages <1 day old.
-- **No native Ollama support** — use an OpenAI-compatible proxy (LiteLLM, etc.).
+- **Native Ollama support** — set the provider to `ollama` and configure `OLLAMA_BASE_URL` (defaults to `http://127.0.0.1:11434/v1`).
 - **autoInstallPeers: false** — add peer deps manually.
 - **Node 24+ required**; corepack-enabled pnpm 9.
 - API server uses **esbuild** for bundling (not tsc). See `build.mjs`.

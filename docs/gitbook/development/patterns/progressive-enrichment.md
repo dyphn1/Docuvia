@@ -4,7 +4,13 @@ This document consolidates everything you need to know about how Docuvia handles
 
 ---
 
-## 1. The Core Problem: Precision vs. Resilience
+## 1. Objective / Goal
+
+The goal of Progressive Enrichment is to balance the speed and resilience of pure AST parsing with the 100% precision of LSP/compiler analysis, preventing Out-Of-Memory (OOM) crashes during massive graph ingestion while still delivering accurate semantic resolution.
+
+## 2. Context & Architecture Links
+
+When analyzing a large codebase
 
 When analyzing a large codebase (e.g., to find all callers of a function), there are two extreme approaches:
 
@@ -17,7 +23,21 @@ When analyzing a large codebase (e.g., to find all callers of a function), there
 
 ---
 
-## 2. The Playbook: Fast vs. Slow Paths
+## 3. File Locations & Boundary
+
+- **Intent Router (The Traffic Cop)**: `lib/core/src/services/intent-router.ts`
+- **LSP Enrichment**: `lib/core/src/services/lsp-enrichment-service.ts`
+- **Database Schema**: `lib/db/src/schema/pg/l3-nodes.ts` (handles confidence metadata)
+
+## 4. Agent Guardrails & Invariants
+
+> **⚠️ CRITICAL RULES FOR AI AGENTS**
+>
+> - **NEVER** initialize an LSP server (like `tsserver` or `pylsp`) inside the fast-path graph ingestion loop. This will cause OOM crashes.
+> - **ALWAYS** fallback to Tree-sitter (AST) for initial parsing, even if precision is lost.
+> - **ALWAYS** attach a `confidence` score to `node_links` generated purely by AST. If `confidence < 1.0`, it is eligible for later background LSP enrichment.
+
+## 5. Step-by-Step Implementation
 
 When a query enters the system (e.g., a hover event or an Agentic RAG MCP call), it follows strict routing rules based on latency budgets:
 
@@ -121,3 +141,17 @@ sequenceDiagram
 
 - **[Enhancement] Toolchain Extensibility:** Currently, Docuvia relies heavily on generic LSPs. We need to implement adapters to shell out directly to ultra-fast native toolchains (like SWC, Biome, or Ruff) to drastically reduce the 3-5s cold start time.
 - **[Enhancement] Local LLM RAM Profiling:** We need strict memory profiling to ensure that running a local LLM for "Intent Healing" alongside normal VS Code operations stays under our 1GB-2GB RAM budget limit.
+
+## 6. Testing & Verification
+
+To verify the degradation routing is working properly:
+
+1. **OOM Resistance Test**: Run a full `docuvia analyze --deep` on a massive repository (10k+ files) or a workspace with a missing/corrupted `node_modules` folder. The process must complete using the AST fallback without crashing.
+2. **Intent Router Tests**: Execute `pnpm --filter @workspace/api-server run test` and check the `intent-router.unit.test.ts` to ensure it correctly classifies and routes requests between Direct, Vector, and Graph paths based on the simulated confidence scores.
+
+## 7. Extensibility & Scaling
+
+To improve the speed of the "Slow Path" (LSP) in the future:
+
+- **DO NOT** try to optimize the `tsserver` wrapper. Node-based LSPs are inherently heavy.
+- **DO** build new Native Toolchain adapters (e.g., SWC, Biome, or Ruff) inside `lib/core/src/services/lsp-enrichment-service.ts`. These native Rust/C++ tools can provide near-LSP precision at AST-like speeds, reducing the reliance on the Slow Path entirely.

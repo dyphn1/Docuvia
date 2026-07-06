@@ -1,26 +1,49 @@
-# 4. Solution Strategy
+# Solution Strategy
 
-## 4.1 Technology Choices
+This document outlines the high-level technology choices and the top-level architectural decomposition of Docuvia.
 
-| Decision              | Choice                                                                                    | Rationale                                                                                                                      |
-| --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| **Language**          | TypeScript (strict mode)                                                                  | Full-stack type safety; enables Orval codegen from OpenAPI spec; prevents entire classes of runtime errors                     |
-| **AST Engine**        | `@workspace/ast-core` (tree-sitter.wasm)                                                  | Universal isomorphic execution across VS Code and Node.js backend.                                                             |
-| **Concurrency Model** | Web Workers                                                                               | Prevents main-thread blocking during intensive AST traversal; unified API across VS Code web and Node.js environments.         |
-| **Backend Framework** | Express 5 (ESM)                                                                           | Minimal, well-understood; async-native in v5 (async error propagation); large ecosystem                                        |
-| **ORM**               | Drizzle ORM                                                                               | Type-safe SQL queries as TypeScript; schema-as-code; migration support; no magic                                               |
-| **Database**          | PostgreSQL                                                                                | `pgvector` extension for `vector(1536)` embedding storage; proven ACID guarantees; IVFFlat/HNSW rich indexing                  |
-| **Frontend**          | React 18 + Vite + shadcn/ui + Tailwind CSS                                                | Fast HMR; composable design system; tree-shakeable components                                                                  |
-| **API Contract**      | OpenAPI 3.x + Orval codegen                                                               | Single source of truth eliminates type drift between frontend and backend; generates both Zod validators and React Query hooks |
-| **Vector Search**     | PostgreSQL `pgvector` with [Temporal Decay filter](../adr/ADR-007-agentic-rag-routing.md) | Offloads vector math (cosine distance) to DB to prevent API Server OOM; enables hybrid SQL indexing (See ADR-019)              |
-| **LLM Integration**   | OpenAI-compatible interface (`lib/integrations-openai-ai-server`)                         | Provider-agnostic; compatible with OpenRouter, Azure OpenAI, and any `/v1/chat/completions`-compatible endpoint                |
-| **IDE Integration**   | VS Code Extension API                                                                     | Primary developer audience uses VS Code; enables Copilot Chat participant, CodeLens, TreeView                                  |
-| **MCP Layer**         | Custom Express routes at `/mcp/*`                                                         | Compatibility with AI agent toolchains (Cursor, GitHub Copilot, Claude, etc.) that implement Model Context Protocol            |
-| **Package Manager**   | pnpm workspaces                                                                           | Efficient monorepo dependency management; hoisting control; `preinstall` hook blocks accidental npm/yarn use                   |
+## Technology Choices
+
+The technology stack is carefully selected to balance type safety, execution speed, and Agentic RAG capabilities.
+
+```mermaid
+flowchart LR
+    subgraph Frontend
+        React[React 18 + Vite]
+        UI[shadcn/ui]
+    end
+    subgraph Backend
+        Express[Express 5 ESM]
+        AST[Tree-sitter WASM]
+    end
+    subgraph Storage
+        PostgreSQL
+        pgvector
+        Drizzle[Drizzle ORM]
+    end
+
+    Frontend <--> |OpenAPI / Orval| Backend
+    Backend <--> |Type-Safe SQL| Drizzle
+    Drizzle <--> PostgreSQL
+```
+
+> **Explanation:** This diagram shows the end-to-end data flow. The Frontend communicates with the Backend strictly via types generated from the OpenAPI spec by Orval. The Backend leverages Tree-sitter for fast AST parsing and interacts with PostgreSQL (augmented by `pgvector` for AI embeddings) purely through Drizzle ORM.
+
+**Key Decisions & Status:**
+
+- **Language**: TypeScript (strict mode) for full-stack type safety.
+- **AST Engine**: `@workspace/ast-core` using `tree-sitter.wasm`. See [ADR-020](../adr/ADR-020-unified-isomorphic-ast-microkernel.md).
+  - _Status_: [✅ Implemented](../roadmap/features/ast-microkernel-architecture.md)
+- **Database & ORM**: PostgreSQL with `pgvector` and Drizzle ORM. See [ADR-019](../adr/ADR-019-pgvector-migration.md).
+  - _Status_: [✅ Implemented](../roadmap/features/pgvector-migration.md)
+- **API Contract**: OpenAPI 3.x with Orval codegen to eliminate type drift.
+  - _Status_: [✅ Implemented](../roadmap/features/ci-cd-pipeline.md)
+- **IDE Integration**: VS Code Extension API.
+  - _Status_: [✅ Implemented](../roadmap/features/workspace-onboarding-init.md)
 
 ---
 
-## 4.2 Top-Level Decomposition
+## Top-Level Decomposition
 
 Docuvia is decomposed into **five conceptual layers**, each corresponding to one or more packages in the monorepo:
 
@@ -32,115 +55,32 @@ flowchart TD
     Layer2 --> Layer1[1. Input Layer]
 ```
 
-### Layer Breakdown
+> **Explanation:** The system is divided into five distinct layers. Raw files enter the Input Layer, are structurally analyzed in the Knowledge Construction Layer, stored in the Graph database, routed by the Query Layer for RAG optimization, and finally surfaced to users and agents in the Presentation Layer.
 
-1. **Input Layer**: Handles raw data ingestion through a **4-Phase Parsing Funnel**. Raw inputs flow through Target Allowlist &rarr; Git Blob Binary Detection &rarr; Lossless Encoding Guardrails &rarr; LLM-Assisted Extension Discovery before reaching the AST Engine and Pluggable Sinks.
+### 1. Input Layer
 
-   ```mermaid
-   flowchart LR
-       subgraph 1. Input Layer
-           direction TB
-           GIT[Git / SVN Adapters<br/>streamed child_process]
-           DOC[Document Upload &<br/>Build Artifact Parser]
-           GH[GitHub Webhook Listener<br/>scoreCommit filter]
-           HOOK[Git Hooks<br/>post-commit / pre-push]
+Handles raw data ingestion from Git/SVN. Uses a 4-Phase Parsing Funnel to filter binaries and encode data safely.
 
-           subgraph 4-Phase Parsing Funnel
-               direction TB
-               P1[Target Allowlist] --> P2[Git Blob Binary Detection]
-               P2 --> P3[Lossless Encoding Guardrails]
-               P3 --> P4[LLM-Assisted Extension Discovery]
-           end
+### 2. Knowledge Construction Layer
 
-           GIT --> P1
-           DOC --> P1
-           GH --> P1
-           HOOK --> P1
+Uses the AST engine to extract structural metadata (L3 nodes, edges) and the LLM engine to extract conceptual intent (L2 nodes, summaries).
 
-           P4 --> AST[Isomorphic AST Engine]
-           AST --> SINK[Pluggable Sinks]
-       end
-   ```
+- _Status_: [✅ Implemented](../roadmap/features/l2-extractor.md)
 
-2. **Knowledge Construction Layer**: The Git-Isomorphic Engine. Translates raw inputs into [structured abstractions (L1/L2/L3)](../adr/ADR-005-knowledge-abstraction-strategy.md). Every extraction or human correction is an Append-Only Git commit on the `docuvia-knowledge` branch, ensuring knowledge _evolution_ and _identity_.
-   ```mermaid
-   flowchart LR
-       subgraph 2. Knowledge Construction Layer
-           LLM_PIPE[L1 Tagger &rarr; L2 Extractor &rarr; L3 Generator]
-           REVIEW[Review Task Creation &<br/>Few-Shot Feedback Loop]
-           GIT_EVENT[Event Sourcing<br/>Append-Only Git Commit]
-           LLM_PIPE --> GIT_EVENT
-           REVIEW --> GIT_EVENT
-       end
-   ```
-3. **Knowledge Graph**: The CQRS projection boundary. The Git orphan branch is the absolute Single Source of Truth (Event Store). PostgreSQL acts as the Global Read Model (Projection) handling high-dimensional vector similarity (`pgvector`) and cross-project indexing, while local SQLite acts as the Local HEAD Index.
-   ```mermaid
-   flowchart LR
-       subgraph 3. Knowledge Graph
-           GIT_SSOT[(Git docuvia-knowledge<br/>Event Store / SSOT)]
-           DB[(PostgreSQL DB<br/>Global Projection / pgvector)]
-           SQLITE[(Local SQLite<br/>Local HEAD Index)]
-           GIT_SSOT --> |Project| DB
-           GIT_SSOT --> |Project| SQLITE
-       end
-   ```
-4. **Query Layer**: The API boundary. Exposes strictly typed REST endpoints (driven by Orval/Zod) and the [4-way Agentic RAG router](../adr/ADR-007-agentic-rag-routing.md) via MCP.
-   ```mermaid
-   flowchart LR
-       subgraph 4. Query Layer
-           REST[REST API<br/>openapi.yaml]
-           RAG[Agentic RAG<br/>intent-router]
-           MCP[MCP Tools<br/>/mcp/*]
-       end
-   ```
-5. **Presentation Layer**: The user interfaces. The Vite-powered dashboard for administration, and the editor-native VS Code extension delivering Knowledge Graph context directly to the developer's workspace.
-   ```mermaid
-   flowchart LR
-       subgraph 5. Presentation Layer
-           FE[kg-engine<br/>React + Vite]
-           VSC[VS Code Extension<br/>Copilot Chat & MCP]
-       end
-   ```
+### 3. Knowledge Graph (Database)
 
-See [05-building-blocks.md](./building-blocks.md) for the package-level view.
+Stores the nodes and relationships. Uses `pgvector` for semantic search and `node_links` for graph BFS queries.
 
----
+- _Status_: [✅ Implemented](../roadmap/features/core-db-schemas-defined.md)
 
-## 4.3 API-First Principle
+### 4. Query Layer
 
-All API types, validation schemas, and React Query hooks are **derived from a single source of truth**: `lib/api-spec/openapi.yaml`.
+The **Intent Router** classifies incoming queries to route them optimally (Direct, Graph, Vector, or Hybrid) to minimize LLM token overhead. See [ADR-007](../adr/ADR-007-agentic-rag-routing.md).
 
-The codegen chain is:
+- _Status_: [✅ Implemented](../roadmap/features/agentic-rag-intent-router.md)
 
-```
-lib/api-spec/openapi.yaml
-        │
-        ▼ pnpm --filter @workspace/api-spec run codegen (Orval)
-        │
-        ├──▶ lib/api-zod/src/generated/        (Zod validators — backend request/response validation)
-        └──▶ lib/api-client-react/src/generated/ (React Query hooks — frontend data fetching)
-```
+### 5. Presentation Layer
 
-**Invariant:** Never hand-write API types, fetch wrappers, or Zod schemas that duplicate what Orval generates. Edit `openapi.yaml` → run codegen → commit both the spec and the generated files.
+Exposes the knowledge via MCP (for AI Agents), REST API (for Web Dashboards), and VS Code integration.
 
----
-
-## 4.4 [Human-in-the-Loop Strategy](../adr/ADR-006-self-evolution-architecture.md)
-
-The generate pipeline is LLM-powered and therefore fallible. Docuvia enforces a human review gate before any AI-generated node is anchored to the knowledge graph:
-
-1. **Pipeline output → `review_tasks`**: Every AI-suggested L1 tag, L2 node, and L3 decision record creates a `review_task` row (type: `anchor`).
-2. **Noise detection → merge/reject tasks**: The pipeline's final step scans for near-duplicate tags and low-usage L1 labels, creating `merge` and `anchor` review tasks automatically.
-3. **Human resolution**: A reviewer approves (`anchor`), merges two nodes, or rejects in the Review UI.
-4. **Correction loop**: Approved corrections are stored as `correction_examples` rows and injected as few-shot examples into the next generation run, improving LLM accuracy over time.
-
-This loop is the primary mechanism for improving knowledge graph quality without retraining an LLM.
-
----
-
-## References
-
-- [05-building-blocks.md](./building-blocks.md) — Package-level structure
-- [08-crosscutting-concepts.md](./crosscutting-concepts.md) — Domain model and architecture patterns
-- [09-architectural-decisions.md](../adr/README.md) — ADRs for each technology choice
-- [do../roadmap/master-roadmap.md](../roadmap/README.md) — Phased implementation history
+- _Status_: [✅ Implemented](../roadmap/features/mcp-route-scaffolding.md)

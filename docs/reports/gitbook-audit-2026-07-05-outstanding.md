@@ -1,6 +1,6 @@
 # GitBook Audit — Outstanding Issues Only
 
-**Supersedes**: [`gitbook-audit-2026-07-04.md`](gitbook-audit-2026-07-04.md) and [`gitbook-audit-2026-07-04-verification.md`](gitbook-audit-2026-07-04-verification.md) for the purpose of tracking _what's still broken_. Those two files remain as historical record of the audit process; this file is the live punch list, re-verified directly against source on 2026-07-05.
+**Supersedes**: Prior audit reports (`gitbook-audit-2026-07-04.md` and `gitbook-audit-2026-07-04-verification.md`) for the purpose of tracking _what's still broken_. Those two files were archived; this file is the live punch list, re-verified directly against source on 2026-07-05.
 
 **Method**: every item below was re-confirmed by reading the current cited code (not by trusting the prior reports). Anything the prior reports flagged as open but that turned out to already be fixed, or refuted, is listed in §3 and removed from the active list.
 

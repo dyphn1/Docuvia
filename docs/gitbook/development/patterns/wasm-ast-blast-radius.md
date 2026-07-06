@@ -2,12 +2,31 @@
 
 This document outlines the architecture and algorithm for Docuvia's "Smart Blast Radius" and semantic diff detection using `web-tree-sitter` (WASM AST). This strategy is the cornerstone of our Git-Native, Local-First architecture, designed to drastically outperform heavy indexing solutions (like GitNexus) in incremental update (Delta) scenarios.
 
-## 1. Core Concept: Git-Isomorphic & Smart Pruning
+## 1. Objective / Goal
+
+The goal of this mechanism is to drastically outperform heavy indexing solutions in incremental update scenarios by accurately isolating the semantic blast radius (impact) of code changes without requiring a massive, always-running graph database.
+
+## 2. Context & Architecture Links
+
+Instead of maintaining a heavy, always-running graph database
 
 Instead of maintaining a heavy, always-running graph database, Docuvia treats the Git branch (`docuvia-knowledge`) as the Single Source of Truth (SSOT).
 When files change, we do **not** blindly invalidate all dependencies. Instead, we use `web-tree-sitter` to compare the old and new ASTs. If the change is purely internal (e.g., changing a local variable), we **prune** the blast radius to zero. We only trigger cross-file updates when the public contract (signature) of a symbol changes.
 
-## 2. Algorithm Workflow
+## 3. File Locations & Boundary
+
+- **Watcher & Core Engine**: `lib/core/src/services/ast-ingestion-pipeline.ts`
+- **AST Parsing logic**: `lib/ast-core/src/parser-core.ts`
+
+## 4. Agent Guardrails & Invariants
+
+> **⚠️ CRITICAL RULES FOR AI AGENTS**
+>
+> - **NEVER** write graph updates that assume a file change invalidates all its dependents.
+> - **ALWAYS** ensure that AST diff logic checks if the change is confined to the `statement_block`. If so, do NOT traverse `CALLS` or `IMPORTS` edges.
+> - **ALWAYS** ensure the Local SQLite database is treated as an ephemeral cache for `node_links`. Do not write long-term state directly to it assuming it persists without Git sync.
+
+## 5. Step-by-Step Implementation
 
 The algorithm consists of three distinct phases executed upon detecting a `git diff`.
 
@@ -53,3 +72,18 @@ The algorithm consists of three distinct phases executed upon detecting a `git d
 - Create `SemanticDiffDetector` in `lib/ast-core/src/detector/semantic-diff.ts`.
 - Implement tree-sitter query extraction for function signatures in TypeScript/JavaScript.
 - Build a proof-of-concept integrating `git diff` with AST node mapping.
+
+## 6. Testing & Verification
+
+To verify that the Blast Radius algorithm is functioning correctly:
+
+1. **CLI Verification**: Run `docuvia detect-changes` locally. Modify a file's internal statement block (Level 0), and ensure the CLI reports 0 affected upstream dependents. Then modify a function signature (Level 1), and ensure the CLI correctly diffuses the radius to its callers.
+2. **Unit Tests**: Run parser unit tests via `pnpm --filter @workspace/ast-core run test` to verify that the diffing logic accurately distinguishes between internal and interface changes.
+
+## 7. Extensibility & Scaling
+
+When adding support for a new programming language to Docuvia:
+
+- **DO NOT** rewrite the core `Diff-to-Node` logic.
+- **DO** install the new Tree-sitter WASM grammar in `lib/ast-core/`.
+- **DO** add the language-specific semantic mapping rules (e.g., how to identify a "signature" vs a "body" in that specific language's AST) to the `parser-core.ts` configuration map.

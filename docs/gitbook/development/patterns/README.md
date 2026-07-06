@@ -4,7 +4,22 @@ This section contains **Mechanism-Centric** playbooks.
 
 In large codebases, knowledge often becomes fragmented—the "why" is in an ADR, the "where" is in the architecture document, and the "how" is scattered across READMEs.
 
-These playbooks consolidate everything you need to know about a specific core mechanism into a single page. If you are modifying a core system, read its playbook first.
+To solve the issue of **Agent Inconsistency** (where AI agents implement features inconsistently due to scattered context), these playbooks serve as the **Single Source of Truth (SSOT) for execution**. A well-written playbook must be universally comprehensible for both Humans and Machines (人機共通).
+
+> **⚠️ AGENT DIRECTIVE**
+> If a task touches any of the mechanisms listed below, the agent **MUST** read the respective playbook before planning or executing code changes.
+
+## Playbook Standard Structure
+
+Every playbook in this directory MUST follow this strict 7-part structure to ensure clarity, verifiability, and scalability:
+
+1. **Objective / Goal**: What this mechanism specifically tries to achieve.
+2. **Context & Architecture Links**: "Why we do this" (Links to ADRs).
+3. **File Locations & Boundary**: "Where the code lives and what NOT to touch".
+4. **Agent Guardrails & Invariants**: Explicit rules for Agents (e.g., "NEVER write types manually").
+5. **Step-by-Step Implementation**: The "How-to" execution sequence.
+6. **Testing & Verification**: How to locally test and verify that the mechanism works.
+7. **Extensibility & Scaling**: How to expand or extend this mechanism in the future.
 
 ## Current Patterns
 

@@ -13,7 +13,7 @@ To maintain codebase health, all agents and developers must adhere to the core g
 
 ## Project Management & Documentation
 
-- **Roadmap-Design Alignment**: The project roadmap (`docs/gitbook/roadmap/roadmap-checklist.md`) must structurally map to the design documents (`docs/gitbook/architecture/*.md`). Organize roadmap categories to mirror architecture/design concepts (e.g., "Local-First Architecture", "Agentic RAG Routing") to maintain clear traceability between implementation tasks and architectural intent.
+- **Roadmap-Design Alignment**: The project roadmap (`docs/gitbook/roadmap/README.md`) must structurally map to the design documents (`docs/gitbook/architecture/*.md`). Organize roadmap categories to mirror architecture/design concepts (e.g., "Local-First Architecture", "Agentic RAG Routing") to maintain clear traceability between implementation tasks and architectural intent.
 - **ADR Standards**: All Architecture Decision Records (ADRs) must contain consistent header metadata (e.g., `Supersedes`, `Status`, `Date`) and should utilize Mermaid diagrams where applicable to visualize system state or architectural flow.
 - **Link Integrity**: Refactoring often breaks relative links in Markdown roadmaps and documentation. Always verify and update broken relative links as part of the documentation consistency check during architectural shifts.
 

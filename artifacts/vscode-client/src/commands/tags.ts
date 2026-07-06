@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { parse as parseYaml } from "yaml";
 import { randomUUID } from "crypto";
-import { openWorkspaceLocalDatabase } from "@workspace/core";
+import { openWorkspaceLocalDatabase } from "../db-helper.js";
 
 export async function acceptL1TagsCommand(yamlContent: string, explicitRoot: string) {
   const workspaceRoot = explicitRoot;

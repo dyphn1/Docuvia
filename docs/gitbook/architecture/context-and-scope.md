@@ -1,6 +1,6 @@
-# 3. Context and Scope
+# Context and Scope
 
-## 3.1 System Context Diagram
+## System Context Diagram
 
 ```mermaid
 graph TD
@@ -25,6 +25,8 @@ graph TD
     VSC -->|REST| API
     CHAT -->|VS Code API| VSC
 ```
+
+> **Explanation:** The Developer, AI IDE, VS Code Extension, and Copilot Chat are all clients of the same `api-server`; none of them talk to PostgreSQL directly. The [VS Code extension runs locally and degrades gracefully](../adr/ADR-002-local-first-architecture.md) if the server is unreachable.
 
 ### External Integrations & Data Ingestion
 
@@ -53,9 +55,11 @@ graph TD
     API -->|HTTPS POST fire-and-forget| SLACK
 ```
 
+> **Explanation:** Git/SVN CLIs are invoked as local child processes rather than through a hosted API, keeping ingestion [git-isomorphic](../adr/ADR-004-git-isomorphic-graph.md) and provider-agnostic. Slack/Teams notifications are fire-and-forget so a failing webhook never blocks the request that triggered it.
+
 ---
 
-## 3.2 External Interfaces Table
+## External Interfaces Table
 
 | Partner                     | Direction | Protocol                           | Auth / Security                                | Key Endpoints / Commands                                           |
 | --------------------------- | --------- | ---------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------ |
@@ -72,7 +76,7 @@ graph TD
 
 ---
 
-## 3.3 System Boundary
+## System Boundary
 
 ### Inside Docuvia
 
@@ -101,6 +105,6 @@ graph TD
 
 ## References
 
-- [04-solution-strategy.md](./solution-strategy.md) — Technology choices behind these interfaces
-- [06-runtime-scenarios.md](./runtime-scenarios.md) — Runtime flows showing how interfaces are used
+- [Solution Strategy](./solution-strategy.md) — Technology choices behind these interfaces
+- [Runtime Scenarios](./runtime-scenarios.md) — Runtime flows showing how interfaces are used
 - `AGENTS.md` — External interface list (Section: Tech Stack & Architecture)

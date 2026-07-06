@@ -12,6 +12,16 @@
 
 - [VS Code Extension](user-guide/vscode-client.md)
 - [CLI Commands](user-guide/cli.md)
+  - [init](user-guide/cli/init.md)
+  - [status](user-guide/cli/status.md)
+  - [clean](user-guide/cli/clean.md)
+  - [analyze](user-guide/cli/analyze.md)
+  - [extract](user-guide/cli/extract.md)
+  - [detect-changes](user-guide/cli/detect-changes.md)
+  - [query](user-guide/cli/query.md)
+  - [sync](user-guide/cli/sync.md)
+  - [init-agent](user-guide/cli/init-agent.md)
+  - [mcp](user-guide/cli/mcp.md)
 - [Configuration](user-guide/configuration.md)
 
 ## 💡 Concepts
@@ -48,6 +58,7 @@
   - [TDD & Testing](guidelines/tdd-and-testing.md)
   - [SRE & Reliability](guidelines/sre-and-reliability.md)
   - [Regression & Parity Testing](guidelines/regression-and-parity-testing.md)
+  - [Playbook Standard](guidelines/playbook-standard.md)
 
 ## 📐 System Architecture
 
@@ -124,9 +135,12 @@
 - [Realtime UX: Sub-second Save Updates](evaluate/sub-second-save-updates.md)
 - [Diff Opt: File-hash Delta Detection](evaluate/file-hash-delta-detection.md)
 
-## 🗺️ Roadmap
+## 🗺️ Work Dashboard & Roadmap
 
-- [Master Roadmap](roadmap/README.md)
-- [Roadmap Completion Checklist](roadmap/roadmap-checklist.md)
-- [AST Parser Roadmap](roadmap/ast-parser-roadmap.md)
-- [VS Code Extension Roadmap](roadmap/vscode-roadmap.md)
+- [Master Dashboard](roadmap/README.md)
+  - [Phase 1: Core API & Database (The Metabolism Engine)](roadmap/phase-1-core-api-database-the-metabolism-engine.md)
+  - [Phase 2: AST Microkernel & Semantic Diffing](roadmap/phase-2-ast-microkernel-semantic-diffing.md)
+  - [Phase 3: Agentic RAG & MCP Interfaces](roadmap/phase-3-agentic-rag-mcp-interfaces.md)
+  - [Phase 4: Git-Isomorphic Sync & Temporal Knowledge](roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md)
+  - [Phase 5: Local-First VS Code Client & Web UI](roadmap/phase-5-local-first-vs-code-client-web-ui.md)
+  - [Phase 6: Architecture Hardening & Security](roadmap/phase-6-architecture-hardening-security.md)

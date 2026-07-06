@@ -1,57 +1,94 @@
-# 2. Constraints
+# Constraints
 
-## 2.1 Technical Constraints
+This document defines the overarching technical, organizational, and convention-based constraints for Docuvia.
 
-| Constraint                     | Value / Rule                                                                | Enforcement                                                                           |
-| ------------------------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| **Runtime**                    | Node.js 24+, TypeScript (strict mode), ESM modules only                     | `tsconfig.base.json` (`"strict": true`); `"type": "module"` in all package.json files |
-| **Package Manager**            | `pnpm` exclusively                                                          | `preinstall` script blocks `npm` and `yarn`                                           |
-| **Database**                   | PostgreSQL via Drizzle ORM only — no ORM switching                          | All schema files in `lib/db/src/schema/`; raw SQL is forbidden in application code    |
-| **API Contract**               | `lib/api-spec/openapi.yaml` is the single source of truth for all API types | Hand-written fetch code or API types are prohibited                                   |
-| **Generated Code (read-only)** | `lib/api-zod/src/generated/` and `lib/api-client-react/src/generated/`      | These files are Orval-generated; commit them but NEVER edit manually                  |
-| **Codegen trigger**            | Must run after every change to `openapi.yaml`                               | `pnpm --filter @workspace/api-spec run codegen`                                       |
-| **LLM Integration**            | OpenAI-compatible endpoint only                                             | `lib/integrations-openai-ai-server/`; no native Ollama adapter in v1                  |
-| **PORT environment variable**  | API server throws an explicit error on startup if `PORT` is missing         | `artifacts/api-server/src/index.ts` startup check                                     |
-| **Node.js version in CI**      | Node.js 24 in GitHub Actions (Aligned with production)                      | `.github/workflows/ci.yml`                                                            |
+## Technical Constraints
+
+Technical constraints are non-negotiable architectural guardrails. They restrict technology choices to guarantee long-term stability and unified developer experience.
+
+```mermaid
+flowchart TD
+    subgraph CoreStack [Core Stack]
+        Runtime[Node.js 24+ / ESM]
+        Package[pnpm]
+    end
+    subgraph Database
+        DB[(PostgreSQL)]
+        ORM[Drizzle ORM]
+        DB --- ORM
+    end
+    subgraph API
+        Spec(openapi.yaml)
+        Gen[Orval Codegen]
+        Spec --> Gen
+        Gen --> Zod[Backend Zod Schemas]
+        Gen --> Hooks[React Query Hooks]
+    end
+
+    CoreStack -.-> |Enforces| Package
+    API -.-> |Enforces| ORM
+```
+
+> **Explanation:** The core stack enforces type safety and strict dependency management. By locking to Node 24+, pnpm, and OpenAPI-driven code generation, we eliminate entire classes of runtime errors. Drizzle ORM acts as the sole bridge to PostgreSQL, ensuring no raw SQL vulnerabilities.
+
+**Key Constraints & Status:**
+
+- **Runtime & Package Manager**: Node.js 24+, `pnpm` exclusive, ESM only.
+  - _Status_: [✅ Implemented](../roadmap/features/monorepo-directory-layout.md)
+- **Database (PostgreSQL + Drizzle)**: Raw SQL is forbidden in application code. See [ADR-019](../adr/ADR-019-pgvector-migration.md).
+  - _Status_: [✅ Implemented](../roadmap/features/core-db-schemas-defined.md)
+- **API Contract (API-First)**: `openapi.yaml` drives all types. Manual fetch code is prohibited. See [API-First Playbook](../development/patterns/api-codegen-pipeline.md).
+  - _Status_: [✅ Implemented](../roadmap/features/ci-cd-pipeline.md)
+- **LLM Integration**: OpenAI-compatible endpoint. For local usage, see [ADR-026](../adr/ADR-026-multi-provider-llm-abstraction.md).
+  - _Status_: [⚠️ WARN](../roadmap/features/llm-abstraction-layer.md)
+
+---
+
+## Organizational Constraints
+
+These define how AI agents and human developers collaborate safely within the repository.
 
 ```mermaid
 flowchart LR
-    A[openapi.yaml] -->|codegen| B(Zod Schemas)
-    A -->|codegen| C(React Query Hooks)
-    B --> D[Backend Validation]
-    C --> E[Frontend Fetching]
+    Human[Human Developer] --> |Defines| Req[Requirements]
+    Req --> Agent[Requirement Analyzer]
+    Agent --> |Generates| Plan(AI Plans / docs/ai_plans)
+    Plan --> DevAgent[Backend / Frontend Agent]
+    DevAgent --> |Implements| PR[Pull Request]
 ```
 
----
+> **Explanation:** To maintain an auditable trail of decisions, AI agents are restricted to generating Markdown plans. Only when a plan is approved does the actual implementation begin via pull requests, ensuring Human-in-the-Loop oversight.
 
-## 2.2 Organizational Constraints
+**Key Constraints & Status:**
 
-| Constraint                  | Rule                                                                                                                                                       |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **AI implementation plans** | All AI-generated implementation plans must be saved under `docs/ai_plans/` before any code is written                                                      |
-| **Agent scope**             | Planning agents (Requirement Analyzer) produce only Markdown; they must not modify source code                                                             |
-| **No manual API types**     | Orval generates all TypeScript types and React Query hooks from `openapi.yaml`; these must never be duplicated manually                                    |
-| **Design documentation**    | All architecture and package-specific design documents (including VS Code client designs) are centralized in `docs/gitbook/architecture/` (this directory) |
+- **AI Implementation Plans**: All agent-driven development MUST start with an AI Plan saved in `docs/ai_plans/`. See [ADR-013](../adr/ADR-013-adversarial-implementation-protocol.md).
+- **Agent Scope Limits**: Planners produce Markdown. They do not write code.
+- **Design Documentation**: All architecture lives centrally in this GitBook directory.
 
 ---
 
-## 2.3 Conventions (Coding Rules)
+## Conventions (Coding Rules)
 
-All TypeScript source code in this repository must follow the mandatory coding rules defined in:
+All source code must follow the mandatory coding rules.
 
-> **[Section 8.3 — Coding Rules](./crosscutting-concepts.md#83-coding-rules)** of `docs/gitbook/architecture/crosscutting-concepts.md`
+```mermaid
+mindmap
+  root((Coding Rules))
+    Defensive Design
+      Guard Clauses
+      Early Returns
+    MVC
+      View
+      Controller
+      Model
+    POP
+      Protocol-Oriented
+      Interface-first
+    Clean Code
+      DRY
+      Standard Line Length
+```
 
-These rules cover:
+> **Explanation:** All code must adhere to a strict set of paradigms. We use Defensive Design (guard clauses) to fail fast, Protocol-Oriented Programming (POP) for decoupling interfaces, and the MVC pattern for UI components.
 
-- **8.3.1** Defensive Design (early return / guard clauses)
-- **8.3.2** UI Architecture: MVC (View / Controller / Model separation)
-- **8.3.3** POP — Protocol-Oriented Programming (interface-first services)
-- **8.3.4** OOP for UI Structures (class-based VS Code providers)
-- **8.3.5** Code Style Rules (line length, function length, call-chain alignment, indentation)
-
----
-
-## References
-
-- [08-crosscutting-concepts.md](./crosscutting-concepts.md) — Full coding rules with TypeScript examples
-- `AGENTS.md` — Developer guide: commands, package manager rules, Node version
+Detailed implementation of these conventions is documented in the [Crosscutting Concepts](./crosscutting-concepts.md#4-coding-guidelines) guide and enforced via our standard [Coding Guidelines](../guidelines/README.md).

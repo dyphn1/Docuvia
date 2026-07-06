@@ -13,7 +13,7 @@ _(Ref: [`docs/gitbook/comparisons/01-ast-semantic-graph.md`](../comparisons/ast-
 Docuvia requires blazing-fast, structural code analysis (AST) to generate the [Agentic RAG](./ADR-007-agentic-rag-routing.md) [Knowledge Graph](./ADR-005-knowledge-abstraction-strategy.md) without relying on expensive Language Servers (LSP) or incurring [LLM token costs](./ADR-009-token-management.md). Historically, our architecture suffered from extreme fragmentation:
 
 1. We debated C++ vs. WASM bindings, risking a "split-brain" hashing bug where the Backend and VS Code Client produced different node hashes.
-2. We struggled with bundle size limits for the VS Code extension if we monolithicly packaged 30+ parsers.
+2. We struggled with bundle size limits for the VS Code extension if we monolithically packaged 30+ parsers.
 3. We faced OOM (Out Of Memory) crashes in VS Code due to unmanaged WASM C++ heap allocations (`tree-sitter` memory leaks).
 
 Our competitor analysis against GitNexus identified that native C++ bindings are a fatal flaw for web/browser portability, leading us to strictly adopt `web-tree-sitter` across all environments.

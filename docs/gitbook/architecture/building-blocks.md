@@ -1,223 +1,114 @@
-# 5. Building Block View
+# Building Blocks
 
-## 5.1 Level 1 – Monorepo Packages
+This document decomposes Docuvia's architecture into its primary software components (packages) and describes their responsibilities and interactions.
 
-```mermaid
-graph TD
-    VSC["@workspace/vscode-client (Extension)"] -->|REST /query & /sync| API["@workspace/api-server (API Server)"]
-    KGE["@workspace/kg-engine (React UI)"] -->|React Query Hooks| API
+## Level 1 – Monorepo Packages
 
-    API -->|Drizzle ORM| DB["@workspace/db (PostgreSQL)"]
-    API -->|OpenAI Client| LLM["@workspace/integrations-openai-ai-server"]
-
-    subgraph Codegen Layer
-        SPEC["@workspace/api-spec (openapi.yaml)"] -.->|Orval Codegen| ZOD["@workspace/api-zod (Zod Validators)"]
-        SPEC -.->|Orval Codegen| CLI["@workspace/api-client-react (Query Hooks)"]
-    end
-
-    API -->|Uses| ZOD
-    KGE -->|Uses| CLI
-
-    VSC -->|Uses| AST["@workspace/ast-core (Isomorphic AST)"]
-    API -->|Uses| AST
-```
-
-| Package                                    | Location                            | Depends On                                                                        | Key Exports / Role                                                                                                             |
-| ------------------------------------------ | ----------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `@workspace/api-server`                    | `artifacts/api-server`              | `@workspace/db`, `@workspace/api-zod`, `@workspace/integrations-openai-ai-server` | All Express routes, MCP endpoints, ingestion pipeline, generate pipeline, [Agentic RAG](../adr/ADR-007-agentic-rag-routing.md) |
-| `@workspace/kg-engine`                     | `artifacts/kg-engine`               | `@workspace/api-client-react`                                                     | React + Vite frontend: Dashboard, Pipeline, Query, Review, Settings pages                                                      |
-| `@workspace/db`                            | `lib/db`                            | (none within workspace)                                                           | Drizzle ORM schema definitions, migration helpers, `db` connection instance                                                    |
-| `@workspace/api-spec`                      | `lib/api-spec`                      | (none)                                                                            | `lib/api-spec/openapi.yaml` – single source of truth; codegen script (`pnpm run codegen`)                                      |
-| `@workspace/api-zod`                       | `lib/api-zod`                       | `@workspace/api-spec` (build-time)                                                | Orval-generated Zod validators for all API request/response shapes                                                             |
-| `@workspace/api-client-react`              | `lib/api-client-react`              | `@workspace/api-spec` (build-time)                                                | Orval-generated React Query hooks for all API endpoints                                                                        |
-| `@workspace/integrations-openai-ai-server` | `lib/integrations-openai-ai-server` | (none)                                                                            | OpenAI-compatible LLM client; `LLMClient` interface and implementation                                                         |
-| `@workspace/ast-core`                      | `docs/artifacts/ast-core`           | (none - standalone WebAssembly)                                                   | Web Worker pool, Tree-sitter WASM parsers, isomorphic AST interfaces.                                                          |
-| `@workspace/vscode-client`                 | `artifacts/vscode-client`           | (standalone – REST to api-server)                                                 | VS Code Extension: TreeView, Commands, CodeLens, Hover, Chat participant, Webviews                                             |
-| `@workspace/cli`                           | `artifacts/cli`                     | `@workspace/ast-core`, `@workspace/db`                                            | Standalone CLI (`docuvia sync`, `docuvia init-agent`, `docuvia query local`)                                                   |
-
-### Dependency Constraints
-
-- `lib/*` packages **must not** import from `artifacts/*`
-- `@workspace/api-server` may import from all `lib/*` packages
-- `@workspace/kg-engine` may import from `@workspace/api-client-react` only (not from `@workspace/db` or server internals)
-- `@workspace/vscode-client` is standalone; it communicates with `@workspace/api-server` exclusively via REST HTTP
-- `@workspace/vscode-client` and `@workspace/api-server` may safely import `@workspace/ast-core`
-
----
-
-## 5.1.1 Architectural Pattern: Shared Core API (Hexagonal Architecture)
-
-As dictated by [ADR-021](../adr/ADR-021-shared-core-api-and-presentation-layers.md), Docuvia strictly isolates its core local-first capabilities into a **Shared Core API**. The various user and system interfaces (CLI, MCP Server, VS Code Extension, Webview) are treated purely as "Presentation Layers" or adapters. They do not hold business logic; they only format requests and present results from the Core API.
+Docuvia is structured as a `pnpm` monorepo to cleanly separate concerns between the API server, frontend, database schemas, and shared utilities.
 
 ```mermaid
 flowchart TD
-    subgraph Presentation["Presentation Layer (Interfaces)"]
-        direction LR
-        CLI("CLI Tool<br/>(Terminal / Automation)")
-        MCP("MCP Server<br/>(Claude / Cursor AI)")
-        VSC("VS Code Extension<br/>(IDE UI / CodeLens)")
-        TOP("Topology Webview<br/>(D3.js Visualization)")
+    subgraph Applications
+        API[artifacts/api-server]
+        VSC[artifacts/vscode-client]
+        CLI[artifacts/cli]
+        UI[artifacts/kg-engine]
     end
 
-    subgraph Core["Shared Core API (Domain & Application)"]
-        direction TB
-        AST["AST Microkernel<br/>(web-tree-sitter)"]
-        IR["Intent Router<br/>(Query Dispatch)"]
-        HS["Hybrid Search<br/>(FTS5 + Vector)"]
-        GS["Graph Traversal<br/>(Edges & Impact Radius)"]
-        SYNC["Incremental Sync<br/>(Git Hooks & Hash Delta)"]
+    subgraph Libraries
+        Core[lib/core]
+        DB[lib/db]
+        AST[lib/ast-core]
+        Zod[lib/api-zod]
     end
 
-    subgraph Infrastructure["Infrastructure Layer"]
-        direction LR
-        DB[("Local DB<br/>(SQLite / Drizzle)")]
-        FS[("File System")]
-        GIT[("Git<br/>(Orphan Branch)")]
-    end
-
-    %% Connections
-    CLI -->|Consumes| Core
-    MCP -->|Consumes| Core
-    VSC -->|Consumes| Core
-    TOP -->|Consumes| Core
-
-    Core -->|Reads / Writes| DB
-    Core -->|Reads| FS
-    Core -->|Reads / Writes| GIT
-
-    classDef presentation fill:#f9f2f4,stroke:#d05b76,stroke-width:2px,color:#333;
-    classDef core fill:#eef9f2,stroke:#3b8a54,stroke-width:2px,color:#333;
-    classDef infra fill:#f2f5f9,stroke:#5b8cd0,stroke-width:2px,color:#333;
-
-    class CLI,MCP,VSC,TOP presentation;
-    class AST,IR,HS,GS,SYNC core;
-    class DB,FS,GIT infra;
+    API --> Core
+    API --> DB
+    API --> Zod
+    VSC --> Core
+    CLI --> Core
+    CLI --> AST
 ```
 
-## 5.1.2 Local-First Pipeline: AST to VS Code
+> **Explanation:** This diagram illustrates the macro-level dependencies of the workspace. The Application layer (API, VS Code Client, CLI) always depends downward on the Library layer (Core, Database, AST). This prevents circular dependencies and ensures business logic remains reusable across interfaces.
 
-Docuvia's local-first architecture resolves cross-file target IDs through a highly optimized pipeline. The AST Call Graph determines target IDs by matching function and class signatures across files, establishing relationships (`node_links`) representing blast radius.
+**Key Components & Status:**
 
-The Intent Router pipeline orchestrates background tasks guided by `docuvia.json`, classifying query intents and executing background extractions.
+- **`artifacts/api-server`**: Express REST/MCP server. Handles metabolism and LLM integration.
+  - _Status_: [✅ Implemented](../roadmap/features/server-side-metabolism.md)
+- **`artifacts/vscode-client`**: The developer IDE extension for local knowledge graph usage.
+  - _Status_: [✅ Implemented](../roadmap/features/workspace-onboarding-init.md)
+- **`artifacts/cli`**: Command-line interface for local extraction and syncing.
+  - _Status_: [✅ Implemented](../roadmap/features/cli-commands-analyze-init.md)
+- **`lib/ast-core`**: The WASM-based AST parser microkernel, detailed in [AST Core](#2-ast-core-libast-core) below. See [ADR-020](../adr/ADR-020-unified-isomorphic-ast-microkernel.md).
+  - _Status_: [✅ Implemented](../roadmap/features/ast-microkernel-architecture.md)
+
+---
+
+## Architectural Pattern: Shared Core API (Hexagonal)
+
+Docuvia separates purely functional, side-effect-free code from interface-specific routing to avoid duplicating logic across the API server, CLI, and VS Code.
 
 ```mermaid
-graph TD
-    GIT[Git Blob Hash] -->|Incremental Delta| AST[AST Worker Pool]
-    AST -->|Cross-File AST Call Graph| SQL[(SQLite Local DB)]
-    SQL -->|node_links & L3 Context| RAG[Background RAG ExtractService]
-    RAG -->|docuvia.json Intents| MCP[MCP Server]
-    MCP -->|docuvia_impact & docuvia_context| VSC[VS Code Hover/CodeLens]
+flowchart LR
+    subgraph Interfaces
+        REST[API Server Routes]
+        MCP[MCP Server]
+        Cmd[CLI Commands]
+    end
+
+    subgraph DomainLogic ["Domain Logic (lib/core)"]
+        IS[Intent Router]
+        Gen[Generation Service]
+        Sync[Sync Service]
+    end
+
+    REST --> DomainLogic
+    MCP --> DomainLogic
+    Cmd --> DomainLogic
 ```
 
----
+> **Explanation:** By isolating our core domain logic inside `lib/core`, we ensure that the same AST ingestion and Graph querying logic can be triggered securely via HTTP REST, via MCP for AI Agents, or locally via the CLI without duplicating routing logic.
 
-## 5.2 Level 2 – api-server Internal Modules
-
-`artifacts/api-server/src`
-
-| Directory / File                              | Responsibility                                                                                                                                                                                                                                                                                                                                                                                |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `artifacts/api-server/src/routes`             | Express route handlers, one file per domain (e.g., `artifacts/api-server/src/routes/projects.ts`, `artifacts/api-server/src/routes/ingest.ts`, `artifacts/api-server/src/routes/generate.ts`, `artifacts/api-server/src/routes/review-tasks.ts`, `artifacts/api-server/src/routes/mcp.ts`, `artifacts/api-server/src/routes/github-webhooks.ts`, `artifacts/api-server/src/routes/export.ts`) |
-| `lib/core/src/services/intent-router.ts`      | Agentic RAG: [4-way LLM-based intent classification](../adr/ADR-007-agentic-rag-routing.md) (vector \| graph \| direct \| hybrid)                                                                                                                                                                                                                                                             |
-| `lib/core/src/services/github-client.ts`      | GitHub REST API client (fetch PR commits, diffs, post comments)                                                                                                                                                                                                                                                                                                                               |
-| `lib/core/src/services/slack-teams-client.ts` | Slack and Teams webhook notification dispatcher                                                                                                                                                                                                                                                                                                                                               |
-| `lib/core/src/services/extensions-service.ts` | VS Code extension endpoint logic                                                                                                                                                                                                                                                                                                                                                              |
-| `lib/core/src/services/document-parser.ts`    | Parses uploaded documents (PDF, Markdown, text)                                                                                                                                                                                                                                                                                                                                               |
-| `lib/core/src/services/svn-client.ts`         | SVN CLI wrapper (`svn log --xml`, `svn diff`)                                                                                                                                                                                                                                                                                                                                                 |
-| `lib/core/src/services/embedding.ts`          | Embedding generation (calls LLM `/v1/embeddings` endpoint)                                                                                                                                                                                                                                                                                                                                    |
-| `lib/core/src/utils/logger.ts`                | Structured logging (pino or equivalent)                                                                                                                                                                                                                                                                                                                                                       |
-| `artifacts/api-server/src/index.ts`           | Express app setup, middleware, startup (throws if `PORT` missing)                                                                                                                                                                                                                                                                                                                             |
-
-All request/response types are imported from `@workspace/api-zod` (generated). No hand-written type definitions for API shapes.
+See [ADR-021](../adr/ADR-021-shared-core-api-and-presentation-layers.md) for detailed reasoning behind this Hexagonal Architecture approach.
 
 ---
 
-## 5.3 Level 2 – kg-engine Internal Structure
+## Internal Module Decomposition
 
-`artifacts/kg-engine/src`
+Instead of exhaustive tables, below is a high-level visual representation of how internal modules collaborate across the stack.
 
-| Directory                          | Responsibility                                                                                                                      |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `artifacts/kg-engine/src/pages`    | Route-level React components: `Dashboard.tsx`, `Pipeline.tsx`, `Query.tsx`, `Review.tsx`, `Settings.tsx`, `ProjectDetail.tsx`, etc. |
-| `components/`                      | Shared UI components (tables, cards, modals, toasts) built on shadcn/ui                                                             |
-| `hooks/`                           | Custom React hooks wrapping generated React Query hooks from `@workspace/api-client-react`                                          |
-| `lib/`                             | Utility functions, formatters, date helpers                                                                                         |
-| `artifacts/kg-engine/src/App.tsx`  | Root component, routing (React Router)                                                                                              |
-| `artifacts/kg-engine/src/main.tsx` | Vite entry point                                                                                                                    |
+### 1. Database Schemas (`lib/db`)
 
-All API calls are made exclusively through `@workspace/api-client-react` generated hooks. Direct `fetch()` calls to the API are forbidden.
+```mermaid
+erDiagram
+    PROJECT ||--o{ L1_TAG : "has"
+    L1_TAG ||--o{ L2_NODE : "categorizes"
+    L2_NODE ||--o{ L3_NODE : "implements"
+    L3_NODE }|--|{ L3_NODE : "node_links (edges)"
+    PROJECT ||--o{ API_KEY : "owns"
+```
 
----
+> **Explanation:** This entity-relationship model shows the hierarchical nature of the knowledge graph. A Project has high-level L1 Tags, which categorize L2 Architectural Nodes. These L2 nodes define the concepts that the actual L3 Code Nodes implement. The `node_links` table connects L3 nodes to form the dependency graph.
 
-## 5.4 Level 2 – db Package Schemas
+_Status_: [✅ Implemented](../roadmap/features/core-db-schemas-defined.md)
 
-All schema files reside in `lib/db/src/schema`:
+### 2. AST Core (`lib/ast-core`)
 
-| Schema File                                      | Entity                                                                                          |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `docs/lib/db/src/schema/projects.ts`             | Projects (repositories registered in Docuvia)                                                   |
-| `docs/lib/db/src/schema/commits.ts`              | Ingested commits (with `processedAt` cursor)                                                    |
-| `docs/lib/db/src/schema/documents.ts`            | Uploaded documents                                                                              |
-| `docs/lib/db/src/schema/l1-tags.ts`              | Global classification tags                                                                      |
-| `docs/lib/db/src/schema/l2-nodes.ts`             | Module/package/component nodes                                                                  |
-| `docs/lib/db/src/schema/l2-node-l1-tags.ts`      | Junction table mapping L2 nodes to L1 tags                                                      |
-| `docs/lib/db/src/schema/l3-nodes.ts`             | Implementation decision/rule/rationale records (with embedding JSONB)                           |
-| `docs/lib/db/src/schema/node-links.ts`           | Directed relationships between L2/L3 nodes                                                      |
-| `docs/lib/db/src/schema/review-tasks.ts`         | Human-in-the-loop review queue                                                                  |
-| `docs/lib/db/src/schema/correction-examples.ts`  | Human-approved corrections ([few-shot feedback](../adr/ADR-006-self-evolution-architecture.md)) |
-| `docs/lib/db/src/schema/prompt-templates.ts`     | Per-project overridable LLM prompts                                                             |
-| `docs/lib/db/src/schema/subscriptions.ts`        | Cross-team watch subscriptions                                                                  |
-| `docs/lib/db/src/schema/notifications.ts`        | Event feed for subscribed teams                                                                 |
-| `docs/lib/db/src/schema/pull-requests.ts`        | GitHub PR analysis records                                                                      |
-| `docs/lib/db/src/schema/project-integrations.ts` | Slack/Teams/GitHub integration config per project                                               |
-| `docs/lib/db/src/schema/llm-configs.ts`          | LLM endpoint configuration per project or globally                                              |
-| `docs/lib/db/src/schema/activity-log.ts`         | Audit trail for all significant system events                                                   |
-| `docs/lib/db/src/schema/job-queue.ts`            | Async job queue for [metabolism mechanism](../adr/ADR-008-asynchronous-metabolism.md)           |
-| `docs/lib/db/src/schema/error-reports.ts`        | Dead Letter Queue for failed jobs                                                               |
-| `docs/lib/db/src/schema/commit-l2-links.ts`      | Junction table linking commits to L2 nodes                                                      |
-| `docs/lib/db/src/schema/commit-l3-links.ts`      | Junction table linking commits to L3 nodes                                                      |
-| `docs/lib/db/src/schema/project-files.ts`        | Tracked files per project, storing file hashes and AST extraction timestamps                    |
+```mermaid
+flowchart TD
+    Parser[Parser Core] --> TS[Tree-sitter WASM]
+    Parser --> Fallback[Regex Fallback]
+    TS --> Extract[Semantic Extraction]
+```
 
----
+> **Explanation:** The parsing funnel begins with the `parser-core`. It prefers the high-speed `tree-sitter.wasm` for precision, but gracefully degrades to Regex fallbacks for unsupported file types before extracting semantic nodes. See [ADR-020](../adr/ADR-020-unified-isomorphic-ast-microkernel.md).
 
-## 5.5 Level 2 – VS Code Extension
-
-See [docs/gitbook/development/vscode-client/00-router-overview.md](../development/vscode-client/00-router-overview.md) for the authoritative routing architecture.
-
-Key source files in `artifacts/vscode-client/src`:
-
-| File                                                           | Role                                                                   |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `artifacts/vscode-client/src/extension.ts`                     | Entry point: activates extension, registers all commands and providers |
-| `artifacts/vscode-client/src/chat-participant.ts`              | Copilot Chat `@docuvia` participant handler (slash commands)           |
-| `docs/artifacts/vscode-client/src/knowledge-store.ts`          | Model layer: manages `.docuvia/` YAML snapshot; syncs to disk          |
-| `docs/artifacts/vscode-client/src/task-runner.ts`              | Orchestrates extraction and query tasks; calls api-server REST         |
-| `artifacts/vscode-client/src/knowledge-graph-tree-provider.ts` | VS Code TreeDataProvider for the Knowledge Graph sidebar view          |
-| `artifacts/vscode-client/src/task-queue-tree-provider.ts`      | VS Code TreeDataProvider for the pending task queue sidebar view       |
-| `artifacts/vscode-client/src/dashboard-panel.ts`               | Webview panel: embedded dashboard                                      |
-| `artifacts/vscode-client/src/search-results-panel.ts`          | Webview panel: displays MCP/RAG query results                          |
-| `artifacts/vscode-client/src/docuvia-code-lens-provider.ts`    | CodeLens provider: shows L3 decision count above functions/classes     |
-| `artifacts/vscode-client/src/docuvia-hover-provider.ts`        | Hover provider: shows L3 decision preview on symbol hover              |
-| `docs/artifacts/vscode-client/src/central-server-client.ts`    | HTTP client wrapper for all api-server calls from the extension        |
-| `artifacts/vscode-client/src/credential-manager.ts`            | Manages API key via VS Code SecretStorage                              |
-
----
-
-## 5.6 Level 2 – ast-core Package
-
-`docs/artifacts/ast-core/src`
-
-| Directory / File | Responsibility                                                           |
-| ---------------- | ------------------------------------------------------------------------ |
-| `worker/`        | Web Worker pool management, message passing, and WASM instantiation      |
-| `parsers/`       | Language-specific parser registries and bindings to `tree-sitter.wasm`   |
-| `interfaces/`    | Isomorphic AST interfaces shared across Node.js and VS Code environments |
+_Status_: [✅ Implemented](../roadmap/features/ast-microkernel-architecture.md)
 
 ---
 
 ## References
 
-- [docs/gitbook/development/vscode-client/00-router-overview.md](../development/vscode-client/00-router-overview.md) – VS Code extension full routing architecture
-- [docs/gitbook/development/vscode-client/knowledge-graph/store.md](../development/vscode-client/knowledge-graph/store.md) – KnowledgeStore design
-- [do../roadmap/master-roadmap.md](../roadmap/README.md) – Phase-by-phase implementation of these packages
-- [VS Code Extension Design](../development/vscode-client/00-router-overview.md) – VS Code extension architecture
+- [ADR-020: Unified Isomorphic AST Microkernel](../adr/ADR-020-unified-isomorphic-ast-microkernel.md)
+- [ADR-021: Shared Core API and Presentation Layers](../adr/ADR-021-shared-core-api-and-presentation-layers.md)

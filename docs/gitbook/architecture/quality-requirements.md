@@ -1,6 +1,6 @@
-# 10. Quality Requirements
+# Quality Requirements
 
-## 10.1 Quality Tree
+## Quality Tree
 
 ```mermaid
 mindmap
@@ -30,9 +30,9 @@ mindmap
 
 ---
 
-## 10.2 Quality Scenarios
+## Quality Scenarios
 
-### 10.2.1 Performance
+### Performance
 
 | Scenario                                                           | Stimulus                                                                              | Response                        | Target                             |
 | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------- |
@@ -42,7 +42,7 @@ mindmap
 | Dashboard load                                                     | `GET /dashboard`                                                                      | Response time                   | < 500ms                            |
 | Knowledge Graph TreeView                                           | [VS Code extension](../adr/ADR-001-vscode-client-onboarding.md) TreeView first render | Time to first node visible      | < 1 second after activation        |
 
-### 10.2.2 Reliability
+### Reliability
 
 | Scenario                     | Stimulus                                                                                     | Response                                                                    | Target                                 |
 | ---------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------- |
@@ -52,7 +52,7 @@ mindmap
 | DB connection failure        | PostgreSQL unavailable at startup                                                            | Server fails fast with clear error                                          | No silent degradation                  |
 | Concurrent generate requests | Two `POST /generate` on same project                                                         | Idempotent or serialized; no duplicate rows                                 | No duplicate L2/L3 nodes created       |
 
-### 10.2.3 Maintainability
+### Maintainability
 
 | Concern              | Rule                                 | Mechanism                                                                                                      |
 | -------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
@@ -60,9 +60,9 @@ mindmap
 | Test isolation       | DB state must not leak between tests | `withRollback()` from `artifacts/api-server/test/support/db.ts` wraps all DB-backed integration tests          |
 | Test discoverability | Tests colocated with source          | `*.unit.test.ts` files adjacent to source modules; integration tests under `artifacts/<pkg>/test/integration/` |
 | External API mocking | No live external calls in tests      | MSW handlers in `artifacts/api-server/test/setup/msw/handlers.ts`; large fixtures in `msw/fixtures/`           |
-| Coding standards     | Consistent across team               | See [Section 8.3 Coding Rules](./crosscutting-concepts.md#83-coding-rules)                                     |
+| Coding standards     | Consistent across team               | See [Coding Guidelines](./crosscutting-concepts.md#4-coding-guidelines)                                        |
 
-### 10.2.4 Extensibility
+### Extensibility
 
 | Extension Point     | Protocol / Interface         | How to Add                                                                   |
 | ------------------- | ---------------------------- | ---------------------------------------------------------------------------- |
@@ -74,7 +74,7 @@ mindmap
 
 ---
 
-## 10.3 Known Acceptance Test Gaps
+## Known Acceptance Test Gaps
 
 The following quality areas have known gaps in automated test coverage:
 
@@ -90,13 +90,14 @@ _(Legacy testcase roadmaps deprecated. Refer to `AGENTS.md` for current testing 
 
 ---
 
-## References
-
-- [08-crosscutting-concepts.md](./crosscutting-concepts.md#83-coding-rules) — Coding rules that enforce maintainability
-- [11-risks-and-debt.md](./risks-and-debt.md) — Quality risks and known gaps
-
-- [docs/gitbook/development/vscode-client/ui-ux/user-journeys.md](../development/vscode-client/ui-ux/user-journeys.md) — VS Code extension user journeys and known bugs
-
 ## Operations & Resilience
 
 To prevent infinite crash loops, errors in the [background queue](../adr/ADR-008-asynchronous-metabolism.md) are subjected to a Dead Letter Queue (DLQ) pattern. Any job failing 3 times is isolated into the `error_reports` table.
+
+---
+
+## References
+
+- [Crosscutting Concepts](./crosscutting-concepts.md#4-coding-guidelines) — Coding rules that enforce maintainability
+- [Risks and Technical Debt](./risks-and-debt.md) — Quality risks and known gaps
+- [docs/gitbook/development/vscode-client/ui-ux/user-journeys.md](../development/vscode-client/ui-ux/user-journeys.md) — VS Code extension user journeys and known bugs

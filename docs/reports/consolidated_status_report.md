@@ -16,7 +16,7 @@ The findings from `audit-report-2026-07-02.md` have been manually verified as **
 
 ---
 
-## 3. Unresolved Issues & Architectual Drift (⚠️ WARN)
+## 3. Unresolved Issues & Architectural Drift (⚠️ WARN)
 
 The following issues represent discrepancies between the design specs/ADRs and the actual code implementation. **They remain unresolved in the codebase and require active fixing.**
 

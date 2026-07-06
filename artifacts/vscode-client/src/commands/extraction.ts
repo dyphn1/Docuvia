@@ -2,11 +2,8 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { randomUUID } from "crypto";
 import { minimatch } from "minimatch";
-import {
-  ExtractService,
-  openWorkspaceLocalDatabase,
-  resolveL2NodeIdForFile,
-} from "@workspace/core";
+import { ExtractService } from "@workspace/core";
+import { openWorkspaceLocalDatabase, resolveL2NodeIdForFile } from "../db-helper.js";
 import { addDecisionCommand } from "./decision.js";
 import { TaskQueueTreeProvider } from "../task-queue-tree-provider.js";
 

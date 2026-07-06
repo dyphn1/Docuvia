@@ -1,6 +1,6 @@
-# 11. Risks and Technical Debt
+# Risks and Technical Debt
 
-## 11.1 Risk Register
+## Risk Register
 
 | ID   | Risk                                                                                                                                                          | Severity    | Impact                                                                       | Mitigation / Status                                                                                                                       |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -32,7 +32,7 @@ quadrantChart
 
 ---
 
-## 11.2 Technical Debt Register
+## Technical Debt Register
 
 | ID   | Debt                                                                                                    | Type             | Priority  |
 | ---- | ------------------------------------------------------------------------------------------------------- | ---------------- | --------- |
@@ -46,9 +46,9 @@ quadrantChart
 
 ---
 
-## 11.3 References
+## References
 
-- Full Known Limitations: [Roadmap Checklist](../roadmap/roadmap-checklist.md)
+- Full Known Limitations: [Master Dashboard](../roadmap/README.md)
 - VS Code extension active bugs: [docs/gitbook/development/vscode-client/ui-ux/user-journeys.md](../development/vscode-client/ui-ux/user-journeys.md)
 - ADR-019 (pgvector migration): [adrs/ADR-019-pgvector-migration.md](../adr/ADR-019-pgvector-migration.md)
-- ADR-004 (LLM adapter): [09-architectural-decisions.md](../adr/README.md#adr-004-openai-compatible-llm-interface-only)
+- ADR-004 (LLM adapter, legacy decision log): [ADR Index](../adr/README.md#adr-004-openai-compatible-llm-interface-only)

@@ -121,7 +121,9 @@ async function main() {
   console.error(
     "  docuvia analyze [--deep]                     # Analyze project (add --deep for L3 extraction)"
   );
-  console.error("  docuvia extract <file_path>                  # Extract decisions from a file");
+  console.error(
+    "  docuvia extract [path]                       # Extract decisions from a file or directory"
+  );
   console.error(
     "  docuvia init-agent                           # Install hooks for Claude Code and Cursor"
   );

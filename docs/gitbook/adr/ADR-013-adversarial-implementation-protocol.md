@@ -35,7 +35,7 @@ We adopt the **Adversarial Implementation Protocol** for all future feature deve
 
 4. **Documentation Synchronization**
    Immediately after the code is committed, the developer MUST:
-   - Update `docs/gitbook/roadmap/roadmap-checklist.md` to mark the feature as `✅ PASS`.
+   - Mark the feature status in the corresponding feature file under `docs/gitbook/roadmap/features/`.
    - Generate or update the specific `docs/gitbook/reports/` verification markdown file, embedding the team's debate conclusion.
    - Retroactively update the core `docs/gitbook/architecture/` Arc42 and ADR documents so the architectural Source of Truth always perfectly mirrors the codebase.
 
@@ -70,5 +70,5 @@ flowchart TD
     C -- No --> Adversarial Debate
     C -- Yes --> D[Implementation & Commit]
     D --> E[Documentation Synchronization]
-    E --> F[Mark Roadmap Checklist]
+    E --> F[Mark Feature Status in features/]
 ```

@@ -1,6 +1,6 @@
-# 7. Deployment View
+# Deployment View
 
-## 7.1 Deployment Topology
+## Deployment Topology
 
 ### Current: Single-Host Deployment
 
@@ -29,12 +29,12 @@ All three processes (`api-server`, `kg-engine` dev server, PostgreSQL) can run o
 ### Production Considerations
 
 - `api-server` and PostgreSQL should be [separated onto distinct hosts](../adr/ADR-003-server-side-zero-to-one.md) (or containers) in production.
-- `kg-engine` static assets are served separately (Vite build produces `dist/`); static serving from `api-server` is not yet wired — see [11-risks-and-debt.md](./risks-and-debt.md#d-03).
+- `kg-engine` static assets are served separately (Vite build produces `dist/`); static serving from `api-server` is not yet wired — see [Risks and Technical Debt, D-03](./risks-and-debt.md#d-03).
 - No Docker image is provided in v1; raw Node.js process deployment is expected.
 
 ---
 
-## 7.2 Environment Variables
+## Environment Variables
 
 | Variable                | Required    | Default       | Description                                                                                                                          |
 | ----------------------- | ----------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
@@ -47,7 +47,7 @@ All three processes (`api-server`, `kg-engine` dev server, PostgreSQL) can run o
 
 ---
 
-## 7.3 Development Commands
+## Development Commands
 
 All commands are run from the repository root unless noted.
 
@@ -88,7 +88,7 @@ pnpm prettier --write .
 
 ---
 
-## 7.4 CI/CD
+## CI/CD
 
 Docuvia uses **GitHub Actions** for continuous integration.
 
@@ -107,7 +107,7 @@ Runtime environment:
 
 ---
 
-## 7.5 Deployment Considerations
+## Deployment Considerations
 
 | Concern                          | Current State                                                                    | Notes                                                                                                                             |
 | -------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
@@ -123,5 +123,5 @@ Runtime environment:
 ## References
 
 - `AGENTS.md` — Full list of development commands
-- [11-risks-and-debt.md](./risks-and-debt.md) — Known deployment gaps (D-02, D-03)
+- [Risks and Technical Debt](./risks-and-debt.md) — Known deployment gaps (D-02, D-03)
 - [docs/gitbook/roadmap/README.md](../roadmap/README.md) — SSOT Roadmap

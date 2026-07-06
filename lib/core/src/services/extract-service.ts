@@ -46,15 +46,65 @@ export class ExtractService {
     }
   }
 
-  public async extractDecisions(filePath: string): Promise<{ decisions: string[] }> {
-    console.log(`[docuvia] Extracting decisions from ${filePath}`);
+  public async extractDecisions(targetPath: string): Promise<{ decisions: string[] }> {
+    console.log(`[docuvia] Extracting decisions from ${targetPath || "workspace root"}`);
 
-    const absolutePath = path.resolve(this.workspaceRoot, filePath);
+    const absolutePath = targetPath
+      ? path.resolve(this.workspaceRoot, targetPath)
+      : this.workspaceRoot;
 
     if (!absolutePath.startsWith(this.workspaceRoot)) {
-      throw new Error(`Path traversal detected: ${filePath}`);
+      throw new Error(`Path traversal detected: ${targetPath}`);
     }
 
+    const stats = await fs.stat(absolutePath).catch(() => null);
+    if (!stats) {
+      throw new Error(`Path does not exist: ${targetPath}`);
+    }
+
+    if (stats.isDirectory()) {
+      return this.extractFromDirectory(absolutePath);
+    } else {
+      return this.extractFromFile(absolutePath);
+    }
+  }
+
+  private async extractFromDirectory(dirPath: string): Promise<{ decisions: string[] }> {
+    const astParsable = [".ts", ".tsx", ".js", ".jsx", ".py", ".rs", ".go", ".java", ".cpp", ".c"];
+    const llmWhitelist = [".md", ".txt", ".json", ".yaml", ".yml"];
+    const allowedExts = new Set([...astParsable, ...llmWhitelist]);
+
+    let allDecisions: string[] = [];
+
+    async function walkDir(currentDir: string) {
+      const entries = await fs.readdir(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.name === "node_modules" || entry.name.startsWith(".")) continue;
+        const resPath = path.resolve(currentDir, entry.name);
+        if (entry.isDirectory()) {
+          await walkDir(resPath);
+        } else if (entry.isFile() && allowedExts.has(path.extname(entry.name).toLowerCase())) {
+          try {
+            // Use this.extractFromFile context carefully in closure, binding it to service
+            const result = await (globalThis as any)._extractFromFileContext(resPath);
+            allDecisions.push(...result.decisions);
+          } catch (e: any) {
+            console.warn(`[docuvia] Skipping ${resPath}: ${e.message}`);
+          }
+        }
+      }
+    }
+
+    // Bind this to global variable so recursive function can access it without binding nightmare
+    (globalThis as any)._extractFromFileContext = this.extractFromFile.bind(this);
+    await walkDir(dirPath);
+    delete (globalThis as any)._extractFromFileContext;
+
+    // Deduplicate decisions
+    return { decisions: Array.from(new Set(allDecisions)) };
+  }
+
+  private async extractFromFile(absolutePath: string): Promise<{ decisions: string[] }> {
     const ext = path.extname(absolutePath).toLowerCase();
     const astParsable = [".ts", ".tsx", ".js", ".jsx", ".py", ".rs", ".go", ".java", ".cpp", ".c"];
     const llmWhitelist = [".md", ".txt", ".json", ".yaml", ".yml"];
@@ -80,7 +130,7 @@ export class ExtractService {
         const parsed = JSON.parse(response.choices[0].message.content || '{"decisions": []}');
         return { decisions: parsed.decisions || [] };
       } catch (e: any) {
-        console.error(`[docuvia] LLM extraction failed for file ${filePath}:`, e.message);
+        console.error(`[docuvia] LLM extraction failed for file ${absolutePath}:`, e.message);
         return { error: true, message: e.message, decisions: [] } as any;
       }
     }
@@ -135,7 +185,7 @@ export class ExtractService {
 
       return { decisions };
     } catch (e: any) {
-      throw new Error(`Failed to read or parse file ${filePath}: ${e.message}`);
+      throw new Error(`Failed to read or parse file ${absolutePath}: ${e.message}`);
     }
   }
 }

@@ -1,4 +1,4 @@
-# 07. Regression, Parity, and Environment Testing
+# Regression, Parity, and Environment Testing
 
 This document outlines the testing strategy for the interface layers (CLI, MCP, VS Code Client) to ensure consistency, backward compatibility, and strict separation from the core business logic.
 
@@ -23,21 +23,21 @@ The presentation layers (CLI, MCP, etc.) MUST NOT contain business logic.
 - **Avoid Implementation Coupling:** Do not write tests just to "pass" the current framework. If `docuvia init` is called, the test must physically open `.docuvia/local.db` using a raw SQLite client, assert that the tables (e.g., `l1_tags`, `l2_nodes`, `l3_nodes`) exist, and verify the schema matches the expected standard (comparing against architectures like `graphify` or `gitnexus`).
 - **Real-World Scale:** Tests should be capable of running against real-world, complex project fixtures (e.g., a mock of `vscode` or a massive monorepo) to prove the CLI logic handles scale, dependencies, and complex routing properly.
 
-## 3. Parity Testing (The Alignment Rule)
+## 4. Parity Testing (The Alignment Rule)
 
 **Rule:** _CLI commands, MCP tool names, and VS Code command IDs must align conceptually and structurally._
 
 - **Automated Drift Detection:** Create reflection-based or map-based tests that compare the available commands in the CLI against the registered tools in the MCP Server.
 - If a feature is added to the CLI (e.g., `export-data`), the Parity Test MUST fail until the equivalent capability is exposed via MCP, forcing developers to maintain feature parity across all AI and human interfaces.
 
-## 4. Isolated Sandboxes (Clean Environments)
+## 5. Isolated Sandboxes (Clean Environments)
 
 Tests must NEVER run against or pollute the developer's actual workspace or the production `.docuvia/local.db`.
 
 - **File System Sandbox:** Local command tests (e.g., `init`, `analyze`, `extract`) must dynamically generate temporary directories (e.g., via `fs.mkdtemp`), initialize mock git repositories, and seed dummy source code files.
 - **Network/DB Sandbox:** For tests involving network syncing (`docuvia sync`) or server interactions, use throwaway Docker Compose environments to emulate the backend API and PostgreSQL instances reliably.
 
-## 5. Target Errors & Edge Cases
+## 6. Target Errors & Edge Cases
 
 Always test how the system behaves when the target state is invalid. The interface must degrade gracefully:
 
@@ -45,7 +45,7 @@ Always test how the system behaves when the target state is invalid. The interfa
 - **Malformed Content:** Passing a file with severe syntax errors to the AST analyzer should be skipped or logged without halting the entire batch process.
 - **Uninitialized State:** Querying an empty or non-existent knowledge graph must cleanly prompt the user to run `docuvia init`.
 
-## 6. Legacy Upgrades & Migrations
+## 7. Legacy Upgrades & Migrations
 
 Because the CLI maintains local state (e.g., local SQLite databases in the user's workspace), users will inevitably run newer CLI versions against older local data structures.
 

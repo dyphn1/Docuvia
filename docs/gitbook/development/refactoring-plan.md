@@ -1,5 +1,7 @@
 # System Architecture Refactoring Plan
 
+> **Implementation status:** This plan predates and motivated [ADR-020 (Unified Isomorphic AST Microkernel)](../adr/ADR-020-unified-isomorphic-ast-microkernel.md) and [ADR-021 (Shared Core API and Presentation Layers)](../adr/ADR-021-shared-core-api-and-presentation-layers.md). Status is intentionally **not** self-declared here — each phase below links to the roadmap entry that tracks it, so completion is confirmed by the roadmap's own Status field, not by a checkbox in this document.
+
 ## 1. Current System Architecture (Issue Identified)
 
 The current workspace violates the **"Core-Driven Development"** principle. Some core libraries and shared domain services are tightly coupled inside specific product artifacts instead of being generalized in the `lib/` directory.
@@ -95,26 +97,32 @@ graph TD
 
 ## 4. Refactoring Action Plan
 
-### Phase 1: Relocate & Split `ast-core` [COMPLETED]
+### Phase 1: Relocate & Split `ast-core`
 
-- [x] Move `artifacts/ast-core` -> `lib/ast-core` (This becomes the base parser engine).
-- [x] Extract specific language detection and dynamic parsing capabilities into a separate dynamic plugin folder (e.g., `lib/plugins-ast` or `lib/extractors`).
-- [x] Update `package.json` references and `tsconfig.json` paths accordingly.
+Move `artifacts/ast-core` to `lib/ast-core` so it becomes the base parser engine rather than an end-product artifact, split the language-detection/dynamic-parsing pieces out into `lib/plugins-ast`, and update `package.json`/`tsconfig.json` references accordingly.
 
-### Phase 2: Prevent `core` from becoming a God Package [COMPLETED]
+**Status:** [AST Microkernel Architecture](../roadmap/features/ast-microkernel-architecture.md) — ✅ Done · [Monorepo Directory Layout](../roadmap/features/monorepo-directory-layout.md) — ✅ Done. Filesystem check: [`lib/ast-core/`](../../../lib/ast-core/) and [`lib/plugins-ast/`](../../../lib/plugins-ast/) both exist. **Caveat:** `artifacts/ast-core/` still exists on disk, but only as a stale `dist/` build output with no `package.json`/`src/` — the source move is real, the leftover build directory just hasn't been cleaned up.
 
-- [x] Identify domain services currently in `artifacts/api-server/src/services/` that are not strictly HTTP-bound.
-- [x] Define foundational interfaces, dependency injection tokens, and orchestrators (like `intent-router`) in `lib/core`.
+### Phase 2: Prevent `core` from becoming a God Package
 
-### Phase 3: Dynamic AST Plugins [COMPLETED]
+Identify domain services currently in `artifacts/api-server/src/services/` that are not strictly HTTP-bound, and define foundational interfaces, dependency injection tokens, and orchestrators (like `intent-router`) in `lib/core` instead.
 
-- [x] Split AST plugins into `lib/plugins-ast` representing dynamic implementations.
+**Status:** [Shared Core DI Orchestrator](../roadmap/features/shared-core-di-orchestrator.md) — ✅ Done. Decision recorded in [ADR-021](../adr/ADR-021-shared-core-api-and-presentation-layers.md).
 
-### Phase 4: Domain Services Extraction [COMPLETED]
+### Phase 3: Dynamic AST Plugins
 
-- [x] Extract domain services into `lib/plugins-domain`.
+Split AST plugins into `lib/plugins-ast` as dynamic, per-language implementations layered on top of the `lib/ast-core` base engine.
 
-### Phase 5: Presentation Layer Assembly [COMPLETED]
+**Status:** [AST Plugin Architecture](../roadmap/features/ast-plugin-architecture.md) — ✅ Done.
 
-- [x] Refactor `api-server` to use a lightweight DI container.
-- [x] Ensure `api-server`, `cli`, and `vscode-client` compose these plugins into the `core` orchestrator without duplicating logic.
+### Phase 4: Domain Services Extraction
+
+Extract domain services out of `artifacts/api-server` into `lib/plugins-domain`.
+
+**Status:** [Domain Plugin Architecture](../roadmap/features/domain-plugin-architecture.md) — ✅ Done.
+
+### Phase 5: Presentation Layer Assembly
+
+Refactor `api-server` to use a lightweight DI container, and ensure `api-server`, `cli`, and `vscode-client` compose the `lib/plugins-ast`/`lib/plugins-domain` plugins into the `lib/core` orchestrator without duplicating logic.
+
+**Status:** [Presentation Layer DI Composition](../roadmap/features/presentation-layer-di-composition.md) — ✅ Done. The parity rule this phase enforces is defined in [ADR-021](../adr/ADR-021-shared-core-api-and-presentation-layers.md)'s Parity and Naming Rule.

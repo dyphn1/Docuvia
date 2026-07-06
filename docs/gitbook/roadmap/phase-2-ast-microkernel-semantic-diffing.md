@@ -21,6 +21,7 @@ This phase tracks the following specific features. Click on any feature to view 
 | Feature                                  | Status  | Link                                                              |
 | :--------------------------------------- | :------ | :---------------------------------------------------------------- |
 | AST Microkernel Architecture             | ✅ Done | [View Details](features/ast-microkernel-architecture.md)          |
+| AST Plugin Architecture                  | ✅ Done | [View Details](features/ast-plugin-architecture.md)               |
 | TypeScript `implements`/`extends` Parser | 🔲 TODO | [View Details](features/typescript-implements-extends-parser.md)  |
 | Smart Blast Radius (WASM Semantic Diff)  | ✅ Done | [View Details](features/smart-blast-radius-wasm-semantic-diff.md) |
 | Zero-Server Deep Traversal               | ✅ Done | [View Details](features/zero-server-deep-traversal.md)            |

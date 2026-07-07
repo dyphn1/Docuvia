@@ -1,5 +1,5 @@
 import { IVectorSearchHandler } from "../../interfaces/intent-router.interfaces.js";
-import { AgenticSearchResult } from "../../types/intent-router.types.js";
+import { AgenticSearchResult, SearchMode, SearchOutcome } from "../../types/intent-router.types.js";
 import { db } from "@workspace/db";
 import { l2NodesTable, l3NodesTable, projectsTable } from "@workspace/db";
 import { eq, like, or, and, sql } from "drizzle-orm";
@@ -13,9 +13,12 @@ export class VectorSearchService implements IVectorSearchHandler {
     projectId?: number,
     limit = 10,
     includePending = false
-  ): Promise<AgenticSearchResult[]> {
+  ): Promise<SearchOutcome> {
     const results: AgenticSearchResult[] = [];
     const queryEmbedding = await generateEmbedding(projectId, query);
+    // ADR-029: when no embedding is available we gracefully degrade to keyword
+    // matching, and surface that mode so the UI can signal it.
+    const mode: SearchMode = queryEmbedding ? "semantic_vector" : "keyword_graph";
 
     if (queryEmbedding) {
       const vectorStr = `[${queryEmbedding.join(",")}]`;
@@ -175,6 +178,6 @@ export class VectorSearchService implements IVectorSearchHandler {
     }
 
     results.sort((a, b) => b.score - a.score);
-    return results.slice(0, limit);
+    return { results: results.slice(0, limit), mode };
   }
 }

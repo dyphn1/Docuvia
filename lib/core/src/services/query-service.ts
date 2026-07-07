@@ -5,6 +5,7 @@ import { l2NodesTable, l3NodesTable } from "@workspace/db/schema";
 import path from "path";
 import fs from "fs";
 import { LspEnrichmentService } from "./lsp-enrichment-service.js";
+import { runLocalNlQuery } from "./router/local-nl-query.service.js";
 
 export interface QueryResult {
   l2?: any;
@@ -166,65 +167,29 @@ export class QueryService {
       );
     }
 
-    const sqlite = new Database(dbPath);
-    const likeTarget = `%${target}%`;
+    const routeResult = await runLocalNlQuery(this.workspaceRoot, target, { limit: 10 });
 
-    let results: { l2?: any; l3: any[] } = { l3: [] };
+    let l2: any = undefined;
+    const l3: any[] = [];
 
-    const matchingL2 = sqlite
-      .prepare(
-        `
-      SELECT * FROM l2_nodes 
-      WHERE name LIKE ? OR slug LIKE ? OR path_patterns LIKE ? 
-      LIMIT 1
-    `
-      )
-      .get(likeTarget, likeTarget, likeTarget) as any;
-
-    if (matchingL2) {
-      results.l2 = matchingL2;
-      const matchingL3 = sqlite
-        .prepare(
-          `
-        SELECT * FROM l3_nodes 
-        WHERE l2_node_id = ? AND (title LIKE ? OR content LIKE ?)
-        ORDER BY created_at DESC LIMIT 5
-      `
-        )
-        .all(matchingL2.id, likeTarget, likeTarget) as any[];
-
-      if (matchingL3.length < 5) {
-        const recentL3 = sqlite
-          .prepare(
-            `
-          SELECT * FROM l3_nodes 
-          WHERE l2_node_id = ? 
-          ORDER BY created_at DESC LIMIT 5
-        `
-          )
-          .all(matchingL2.id) as any[];
-
-        const existingIds = new Set(matchingL3.map((l) => l.id));
-        for (const item of recentL3) {
-          if (!existingIds.has(item.id)) {
-            matchingL3.push(item);
-            if (matchingL3.length >= 5) break;
-          }
-        }
+    for (const res of routeResult.results) {
+      if (res.nodeLayer === "l2" && !l2) {
+        l2 = {
+          id: res.id,
+          name: res.title,
+          slug: res.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+          description: res.content,
+        };
+      } else if (res.nodeLayer === "l3") {
+        l3.push({
+          id: res.id,
+          title: res.title,
+          content: res.content,
+          status: "valid",
+        });
       }
-      results.l3 = matchingL3;
-    } else {
-      results.l3 = sqlite
-        .prepare(
-          `
-        SELECT * FROM l3_nodes 
-        WHERE title LIKE ? OR content LIKE ? 
-        ORDER BY created_at DESC LIMIT 5
-      `
-        )
-        .all(likeTarget, likeTarget) as any[];
     }
 
-    return results;
+    return { l2, l3 };
   }
 }

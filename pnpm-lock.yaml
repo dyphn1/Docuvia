@@ -907,18 +907,27 @@ importers:
         specifier: 'catalog:'
         version: 3.25.76
     devDependencies:
+      '@types/better-sqlite3':
+        specifier: ^7.6.13
+        version: 7.6.13
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
       '@types/pg':
         specifier: ^8.18.0
         version: 8.18.0
+      better-sqlite3:
+        specifier: ^12.11.1
+        version: 12.11.1
       drizzle-kit:
         specifier: ^0.31.9
         version: 0.31.9
       tsx:
         specifier: ^4.22.4
         version: 4.22.4
+      vitest:
+        specifier: ^1.0.0
+        version: 1.6.1(@types/node@25.3.5)(@vitest/ui@1.6.1)(happy-dom@20.10.6)(jsdom@14.1.0)(lightningcss@1.31.1)
 
   lib/integrations-openai-ai-server:
     dependencies:
@@ -10684,7 +10693,6 @@ packages:
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
     engines: {node: '>=10'}
-    deprecated: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
     hasBin: true
 
   prelude-ls@1.1.2:

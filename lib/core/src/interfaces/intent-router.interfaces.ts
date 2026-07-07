@@ -2,6 +2,7 @@ import {
   IntentClassification,
   AgenticSearchResult,
   RouteQueryResult,
+  SearchOutcome,
 } from "../types/intent-router.types.js";
 
 export interface IIntentClassifier {
@@ -14,7 +15,7 @@ export interface IVectorSearchHandler {
     projectId?: number,
     limit?: number,
     includePending?: boolean
-  ): Promise<AgenticSearchResult[]>;
+  ): Promise<SearchOutcome>;
 }
 
 export interface IGraphTraversalHandler {
@@ -37,7 +38,7 @@ export interface IHybridSearchHandler {
     projectId?: number,
     limit?: number,
     includePending?: boolean
-  ): Promise<AgenticSearchResult[]>;
+  ): Promise<SearchOutcome>;
 }
 
 export interface IIntentRouter {

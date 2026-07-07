@@ -3,7 +3,11 @@ import {
   IVectorSearchHandler,
   IGraphTraversalHandler,
 } from "../../interfaces/intent-router.interfaces.js";
-import { AgenticSearchResult, IntentClassification } from "../../types/intent-router.types.js";
+import {
+  AgenticSearchResult,
+  IntentClassification,
+  SearchOutcome,
+} from "../../types/intent-router.types.js";
 
 export class HybridSearchService implements IHybridSearchHandler {
   constructor(
@@ -17,16 +21,17 @@ export class HybridSearchService implements IHybridSearchHandler {
     projectId?: number,
     limit = 10,
     includePending = false
-  ): Promise<AgenticSearchResult[]> {
+  ): Promise<SearchOutcome> {
     const searchQuery = classification.entities.searchQuery ?? query;
 
-    // Step 1: vector search
-    const vectorResults = await this.vectorSearchHandler.search(
+    // Step 1: vector search (may degrade to keyword mode per ADR-029)
+    const vectorOutcome = await this.vectorSearchHandler.search(
       searchQuery,
       projectId,
       limit,
       includePending
     );
+    const vectorResults = vectorOutcome.results;
 
     // Step 2: extract unique L2 node names from top-3 vector results
     const topL2Names = vectorResults
@@ -63,6 +68,6 @@ export class HybridSearchService implements IHybridSearchHandler {
 
     // Step 5: re-rank and return top limit
     merged.sort((a, b) => b.score - a.score);
-    return merged.slice(0, limit);
+    return { results: merged.slice(0, limit), mode: vectorOutcome.mode };
   }
 }

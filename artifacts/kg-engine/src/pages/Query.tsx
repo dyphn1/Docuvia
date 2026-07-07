@@ -25,9 +25,15 @@ interface SearchResultItem {
   createdAt: string;
 }
 
+type SearchMode = "semantic_vector" | "keyword_graph";
+
 interface SearchResponse {
   results: SearchResultItem[];
   total: number;
+  routingStrategy?: string;
+  metadata?: {
+    searchMode?: SearchMode;
+  };
 }
 
 const layerColors: Record<string, string> = {
@@ -48,6 +54,7 @@ export default function Query() {
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResultItem[] | null>(null);
   const [total, setTotal] = useState(0);
+  const [searchMode, setSearchMode] = useState<SearchMode | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const { data: projectsData } = useListProjects({
@@ -82,7 +89,8 @@ export default function Query() {
         onSuccess: (data) => {
           const resData = data as unknown as SearchResponse;
           setResults(resData.results);
-          setTotal(resData.total);
+          setTotal(resData.total ?? resData.results?.length ?? 0);
+          setSearchMode(resData.metadata?.searchMode ?? null);
           setIsSearching(false);
         },
         onError: (e) => {
@@ -156,11 +164,37 @@ export default function Query() {
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <Network className="h-4 w-4 text-primary" />
               Results
+              {searchMode && (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] font-mono px-1.5 py-0 h-5 ${
+                    searchMode === "keyword_graph"
+                      ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
+                      : "bg-primary/10 border-primary/20 text-primary"
+                  }`}
+                >
+                  {searchMode === "keyword_graph" ? (
+                    <Network className="h-3 w-3 mr-1" />
+                  ) : (
+                    <BrainCircuit className="h-3 w-3 mr-1" />
+                  )}
+                  {searchMode === "keyword_graph"
+                    ? "Local Keyword/Graph Mode"
+                    : "Semantic Vector Mode"}
+                </Badge>
+              )}
             </h2>
             <div className="text-xs text-muted-foreground font-mono">
               {results.length} of {total} matches
             </div>
           </div>
+
+          {searchMode === "keyword_graph" && (
+            <div className="max-w-3xl mx-auto w-full text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+              Semantic vector search is unavailable — results were resolved via keyword (FTS)
+              matching and knowledge-graph traversal instead.
+            </div>
+          )}
 
           {results.length === 0 ? (
             <div className="max-w-3xl mx-auto w-full text-center py-12 text-muted-foreground">

@@ -47,7 +47,10 @@ describe("AnalyzeService (Core Integration)", () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
         slug TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'Feature',
         description TEXT,
+        is_anchored INTEGER NOT NULL DEFAULT 0,
+        usage_count INTEGER NOT NULL DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE IF NOT EXISTS l2_nodes (

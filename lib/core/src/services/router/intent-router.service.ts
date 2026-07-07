@@ -10,6 +10,7 @@ import {
   RouteQueryResult,
   IntentClassification,
   AgenticSearchResult,
+  SearchMode,
 } from "../../types/intent-router.types.js";
 import { db } from "@workspace/db";
 import { l1TagsTable, l2NodesTable } from "@workspace/db";
@@ -58,6 +59,7 @@ export class IntentRouterService implements IIntentRouter {
             classificationConfidence: 1.0,
             reasoning: "Exact match short-circuit",
             durationMs: Date.now() - start,
+            searchMode: "keyword_graph",
           },
         };
       }
@@ -115,6 +117,9 @@ export class IntentRouterService implements IIntentRouter {
     );
 
     let results: AgenticSearchResult[];
+    // Graph traversal and direct lookup are inherently keyword/graph operations;
+    // vector/hybrid report whether they degraded from semantic mode (ADR-029).
+    let searchMode: SearchMode = "keyword_graph";
 
     switch (classification.strategy) {
       case "graph_traversal": {
@@ -133,24 +138,28 @@ export class IntentRouterService implements IIntentRouter {
         break;
       }
       case "hybrid": {
-        results = await this.hybridSearchHandler.search(
+        const outcome = await this.hybridSearchHandler.search(
           query,
           classification,
           projectId,
           limit,
           includePending
         );
+        results = outcome.results;
+        searchMode = outcome.mode;
         break;
       }
       case "vector_search":
       default: {
         const searchQuery = classification.entities.searchQuery ?? query;
-        results = await this.vectorSearchHandler.search(
+        const outcome = await this.vectorSearchHandler.search(
           searchQuery,
           projectId,
           limit,
           includePending
         );
+        results = outcome.results;
+        searchMode = outcome.mode;
         break;
       }
     }
@@ -158,7 +167,7 @@ export class IntentRouterService implements IIntentRouter {
     const durationMs = Date.now() - start;
 
     logger.info(
-      { strategy: classification.strategy, resultCount: results.length, durationMs },
+      { strategy: classification.strategy, resultCount: results.length, durationMs, searchMode },
       "[intent-router] query complete"
     );
 
@@ -170,6 +179,7 @@ export class IntentRouterService implements IIntentRouter {
         classificationConfidence: classification.confidence,
         reasoning: classification.reasoning,
         durationMs,
+        searchMode,
       },
     };
   }

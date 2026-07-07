@@ -29,7 +29,10 @@ describe("SqliteGraphRepository", () => {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
         slug TEXT,
+        category TEXT NOT NULL DEFAULT 'Feature',
         description TEXT,
+        is_anchored INTEGER NOT NULL DEFAULT 0,
+        usage_count INTEGER NOT NULL DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE IF NOT EXISTS l2_nodes (
@@ -183,5 +186,181 @@ describe("SqliteGraphRepository", () => {
     } finally {
       db.close();
     }
+  });
+
+  it("should serialize concurrent writes through the lock queue without 'database is locked' errors (ADR-032)", async () => {
+    // Arrange — simulate parallel swarm agents persisting to the same local DB
+    const repo = new SqliteGraphRepository();
+    const parallelWrites = 5;
+    const makeResult = (index: number) => [
+      {
+        file: `src/agent-file-${index}.ts`,
+        hash: `hash-${index}`,
+        data: {
+          functions: [{ name: `agentFn${index}` }],
+          exports: [{ name: `agentFn${index}`, type: "function" }],
+        },
+      },
+    ];
+
+    // Act
+    const outcomes = await Promise.allSettled(
+      Array.from({ length: parallelWrites }, (_, i) =>
+        repo.persistAstGraph(workspaceRoot, makeResult(i) as any, ["tag1"])
+      )
+    );
+
+    // Assert — no write may crash, and specifically never with SQLITE_BUSY
+    const failures = outcomes.filter((o) => o.status === "rejected") as PromiseRejectedResult[];
+    for (const failure of failures) {
+      expect(String(failure.reason)).not.toMatch(/database is locked|SQLITE_BUSY/i);
+    }
+    expect(failures.length).toBe(0);
+
+    const db = new Database(dbPath);
+    try {
+      const rows = db
+        .prepare("SELECT file_path FROM project_files WHERE file_path LIKE 'src/agent-file-%'")
+        .all() as any[];
+      expect(rows.length).toBe(parallelWrites);
+    } finally {
+      db.close();
+    }
+  });
+
+  describe("searchLocalNodes (ADR-029 local FTS/graph fallback)", () => {
+    const persistFixture = async (repo: SqliteGraphRepository) => {
+      const parsedResults = [
+        {
+          file: "src/interface.ts",
+          hash: "hash1",
+          data: {
+            classes: [{ name: "TargetInterface" }, { name: "TargetClass" }],
+            exports: [
+              { name: "TargetInterface", type: "class" },
+              { name: "TargetClass", type: "class" },
+            ],
+          },
+        },
+        {
+          file: "src/consumer.ts",
+          hash: "hash2",
+          data: {
+            classes: [{ name: "ConsumerClass" }],
+            imports: [
+              {
+                localName: "TargetInterface",
+                originalName: "TargetInterface",
+                modulePath: "./interface",
+              },
+              { localName: "TargetClass", originalName: "TargetClass", modulePath: "./interface" },
+            ],
+            implements: [{ sourceClass: "ConsumerClass", targetInterface: "TargetInterface" }],
+            extends: [{ sourceClass: "ConsumerClass", targetClass: "TargetClass" }],
+          },
+        },
+      ];
+      await repo.persistAstGraph(workspaceRoot, parsedResults as any, ["tag1"]);
+    };
+
+    it("no longer exposes the deprecated local vector search stub", () => {
+      // Arrange
+      const repo = new SqliteGraphRepository();
+
+      // Assert — ADR-029: local vector search is fully removed, not "deferred"
+      expect((repo as any).searchSimilarNodes).toBeUndefined();
+    });
+
+    it("resolves keywords via FTS5, self-healing the index on a pre-FTS database", async () => {
+      // Arrange — beforeEach created the DB without any FTS tables
+      const repo = new SqliteGraphRepository();
+      await persistFixture(repo);
+
+      // Act
+      const results = await repo.searchLocalNodes(workspaceRoot, {
+        keywords: ["ConsumerClass"],
+        nodeRefs: [],
+      });
+
+      // Assert
+      expect(results.length).toBeGreaterThan(0);
+      expect(results[0].title).toBe("ConsumerClass");
+      expect(results[0].source).toBe("direct");
+      expect(results[0].nodeLayer).toBe("l2");
+
+      // The self-heal path must have materialized the FTS index + triggers
+      const db = new Database(dbPath);
+      try {
+        const fts = db
+          .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='l2_nodes_fts'")
+          .get();
+        expect(fts).toBeDefined();
+      } finally {
+        db.close();
+      }
+    });
+
+    it("resolves node references via AST graph traversal (linked neighbors)", async () => {
+      // Arrange
+      const repo = new SqliteGraphRepository();
+      await persistFixture(repo);
+
+      // Act
+      const results = await repo.searchLocalNodes(workspaceRoot, {
+        keywords: [],
+        nodeRefs: ["ConsumerClass"],
+      });
+
+      // Assert — the referenced node ranks first, its graph neighbors follow
+      const titles = results.map((r) => r.title);
+      expect(titles[0]).toBe("ConsumerClass");
+      expect(titles).toContain("TargetInterface");
+      expect(titles).toContain("TargetClass");
+      expect(results.every((r) => r.source === "graph")).toBe(true);
+    });
+
+    it("merges keyword and graph results without duplicates and respects the limit", async () => {
+      // Arrange
+      const repo = new SqliteGraphRepository();
+      await persistFixture(repo);
+
+      // Act
+      const results = await repo.searchLocalNodes(
+        workspaceRoot,
+        { keywords: ["ConsumerClass"], nodeRefs: ["ConsumerClass"] },
+        3
+      );
+
+      // Assert
+      expect(results.length).toBeLessThanOrEqual(3);
+      const keys = results.map((r) => `${r.nodeLayer}:${r.id}`);
+      expect(new Set(keys).size).toBe(keys.length);
+    });
+
+    it("returns an empty array when the local database does not exist", async () => {
+      // Arrange
+      const repo = new SqliteGraphRepository();
+
+      // Act
+      const results = await repo.searchLocalNodes("/mock/does-not-exist", {
+        keywords: ["anything"],
+        nodeRefs: [],
+      });
+
+      // Assert
+      expect(results).toEqual([]);
+    });
+
+    it("returns an empty array for an empty intent", async () => {
+      // Arrange
+      const repo = new SqliteGraphRepository();
+      await persistFixture(repo);
+
+      // Act
+      const results = await repo.searchLocalNodes(workspaceRoot, { keywords: [], nodeRefs: [] });
+
+      // Assert
+      expect(results).toEqual([]);
+    });
   });
 });

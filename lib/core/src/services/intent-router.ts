@@ -12,9 +12,19 @@ export type {
   IntentClassification,
   AgenticSearchResult,
   RouteQueryResult,
+  SearchMode,
+  SearchOutcome,
+  LocalQueryIntent,
 } from "../types/intent-router.types.js";
 
 export { sanitizeQuery };
+
+// Local-first NL fallback (ADR-029): LLM intent extraction + SQLite FTS5/graph
+export {
+  LocalIntentExtractionService,
+  extractKeywordsHeuristically,
+  runLocalNlQuery,
+} from "./router/local-nl-query.service.js";
 
 // Instantiate services
 const classifier = new IntentClassifierService();

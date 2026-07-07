@@ -1,6 +1,6 @@
 # Background Agentic RAG
 
-- **Status**: 🔲 TODO
+- **Status**: ✅ Done
 - **Phase**: Phase 3: Agentic RAG & MCP Interfaces
 - **Evidence / Verification Target**: No dedicated background-RAG config file found
 - **ADR**: [ADR-032](../../adr/ADR-032-parallel-swarm-review-and-background-rag.md)

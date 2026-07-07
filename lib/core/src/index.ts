@@ -71,3 +71,7 @@ export * from "./constants/git.js";
 export * from "./interfaces/domain-services.interfaces.js";
 export * from "./interfaces/di-tokens.js";
 export * from "./utils/hash.js";
+export * from "./utils/read-write-lock.js";
+export * from "./services/swarm/task-dispatcher.js";
+export * from "./services/swarm/llm-rate-limiter.js";
+export * from "./services/swarm/swarm-orchestrator.service.js";

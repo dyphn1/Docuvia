@@ -2,6 +2,7 @@ export * from "./projects.js";
 export * from "./l1-tags.js";
 export * from "./l2-nodes.js";
 export * from "./l3-nodes.js";
+export * from "./l3-node-source-commits.js";
 export * from "./l2-node-l1-tags.js";
 export * from "./node-links.js";
 export * from "./project-files.js";

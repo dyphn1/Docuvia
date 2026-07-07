@@ -2846,6 +2846,13 @@ components:
               type: string
             durationMs:
               type: number
+            searchMode:
+              type: string
+              enum: [semantic_vector, keyword_graph]
+              description: >-
+                Retrieval mode that produced the results (ADR-029). "keyword_graph"
+                signals graceful degradation to keyword/FTS matching plus graph
+                traversal instead of semantic vector search.
 
     Subscription:
       type: object

@@ -1,6 +1,6 @@
 # Core DB schemas defined
 
-- **Status**: ⚠️ WARN
+- **Status**: ✅ Done
 - **Phase**: Phase 1: Core API & Database (The Metabolism Engine)
 - **Evidence / Verification Target**: `lib/db/src/schema/pg/`
 

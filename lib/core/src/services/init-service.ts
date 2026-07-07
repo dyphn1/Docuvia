@@ -3,6 +3,7 @@ import path from "path";
 import cp from "child_process";
 import util from "util";
 import Database from "better-sqlite3";
+import { ensureLocalFtsIndex } from "./sqlite-fts.js";
 
 const exec = util.promisify(cp.exec);
 
@@ -142,6 +143,8 @@ export class InitService {
           created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
       `);
+      // FTS5 keyword indexes for the local-first natural language fallback (ADR-029)
+      ensureLocalFtsIndex(db);
       db.close();
     } catch (err: any) {
       console.warn(`[docuvia] Could not initialize database: ${err.message}`);

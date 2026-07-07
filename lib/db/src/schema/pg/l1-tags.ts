@@ -7,6 +7,8 @@ export const l1TagsTable = pgTable(
   {
     id: serial("id").primaryKey(),
     name: text("name").notNull().unique(),
+    // Nullable for backward compatibility: pre-existing rows and insert sites do not provide slugs.
+    slug: text("slug").unique(),
     category: text("category").notNull(),
     description: text("description"),
     isAnchored: boolean("is_anchored").notNull().default(false),
@@ -14,6 +16,7 @@ export const l1TagsTable = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({
+    nameIdx: index("l1_tags_name_idx").on(table.name),
     categoryIdx: index("l1_tags_category_idx").on(table.category),
   })
 );

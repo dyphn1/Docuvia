@@ -1,8 +1,9 @@
 # Sub-second Incremental Watch
 
-- **Status**: ✅ Done
+- **Status**: 🔲 TODO
 - **Phase**: Phase 2: AST Microkernel & Semantic Diffing
 - **Evidence / Verification Target**: `artifacts/vscode-client/src/knowledge-graph-tree-provider.ts`
+- **ADR**: [ADR-027](../../adr/ADR-027-sub-second-incremental-watch.md)
 
 ## Implementation Details
 

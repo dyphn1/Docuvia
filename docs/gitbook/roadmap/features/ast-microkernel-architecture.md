@@ -1,6 +1,6 @@
 # AST Microkernel Architecture
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 2: AST Microkernel & Semantic Diffing
 - **Evidence / Verification Target**: `lib/ast-core/`
 - **ADR**: [ADR-020](../../adr/ADR-020-unified-isomorphic-ast-microkernel.md)

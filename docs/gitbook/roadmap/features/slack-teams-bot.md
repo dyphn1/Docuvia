@@ -1,6 +1,6 @@
 # Slack / Teams bot
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `lib/core/src/services/slack-teams-client.ts`
 

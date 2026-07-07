@@ -1,6 +1,6 @@
 # Interactive Topology Maps
 
-- **Status**: ✅ Done (2026-07-06 — shared `buildTopologyGraph` + SQLite/PG services, CLI `docuvia export --topology` producing offline topology.json/topology.html, `GET /projects/{id}/topology` API with Orval codegen + contract tests, and the kg-engine `/topology` page with d3-force layout + blast-radius highlighting. Follow-ups: VS Code webview reuse, in-browser visual tuning of layout parameters)
+- **Status**: ⚠️ WARN (2026-07-06 — shared `buildTopologyGraph` + SQLite/PG services, CLI `docuvia export --topology` producing offline topology.json/topology.html, `GET /projects/{id}/topology` API with Orval codegen + contract tests, and the kg-engine `/topology` page with d3-force layout + blast-radius highlighting. Follow-ups: VS Code webview reuse, in-browser visual tuning of layout parameters)
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `lib/core/src/services/topology-export.service.ts`, `lib/core/src/types/topology.types.ts` — see [AI Implementation Plan](../../ai_plans/implement_interactive-topology-maps.md) for execution details.
 - **AI Plan**: [implement_interactive-topology-maps.md](../../ai_plans/implement_interactive-topology-maps.md)

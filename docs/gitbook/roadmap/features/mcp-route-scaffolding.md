@@ -1,6 +1,6 @@
 # MCP Route scaffolding
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 3: Agentic RAG & MCP Interfaces
 - **Evidence / Verification Target**: `artifacts/api-server/src/routes/mcp.ts`
 

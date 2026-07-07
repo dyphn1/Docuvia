@@ -72,7 +72,7 @@ The CI runs this exact sequence — replicate locally when making cross-package 
 - **Unit tests**: `*.unit.test.ts` co-located with source. Covered by root `vitest.config.ts`.
 - **Integration tests**: `artifacts/<package>/test/integration/`.
 - **Test runner**: Vitest with root config at `vitest.config.ts`. The shared setup file (`artifacts/api-server/test/setup/setup.ts`) auto-provides defaults for `PORT`, `DATABASE_URL`, `AI_INTEGRATIONS_OPENAI_*`.
-- **DB tests**: Wrap with `withRollback(...)` from `artifacts/api-server/test/support/db.ts`. Use factories from `artifacts/api-server/test/support/factories.ts`.
+- **DB tests**: Wrap with `withRollback(...)` from `lib/test-utils/src/db.ts`. Use factories from `lib/test-utils/src/factories.ts`.
 - **External HTTP**: Mocked via MSW. Handlers in `artifacts/api-server/test/setup/msw/handlers.ts`; large fixtures in `artifacts/api-server/test/setup/msw/fixtures/`.
 - **k6 load tests**: In `artifacts/api-server/test/k6/`.
 
@@ -139,7 +139,7 @@ For complex multi-step work, dispatch to the appropriate agent rather than doing
 
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Docuvia** (4836 symbols, 9948 relationships, 194 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Docuvia** (4954 symbols, 10208 relationships, 195 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -167,10 +167,6 @@ This project is indexed by GitNexus as **Docuvia** (4836 symbols, 9948 relations
 | `gitnexus://repo/Docuvia/clusters`       | All functional areas                     |
 | `gitnexus://repo/Docuvia/processes`      | All execution flows                      |
 | `gitnexus://repo/Docuvia/process/{name}` | Step-by-step execution trace             |
-
-## Cross-Repo Groups
-
-This repository is listed under GitNexus **group(s): my_workspace** (see `~/.gitnexus/groups/`). For cross-repo analysis, use MCP tools `impact`, `query`, and `context` with `repo` set to `@<groupName>` or `@<groupName>/<memberPath>` (paths match keys in that group’s `group.yaml`). Use `group_list` / `group_sync` for membership and sync. From the project root: `node .gitnexus/run.cjs group list`, `node .gitnexus/run.cjs group sync <name>`, `node .gitnexus/run.cjs group impact <name> --target <symbol> --repo <group-path>` (the `.gitnexus/run.cjs` path is repo-root-relative).
 
 ## CLI
 

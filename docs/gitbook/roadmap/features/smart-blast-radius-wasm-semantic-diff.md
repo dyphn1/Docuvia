@@ -1,6 +1,6 @@
 # Smart Blast Radius (WASM Semantic Diff)
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 2: AST Microkernel & Semantic Diffing
 - **Evidence / Verification Target**: `lib/ast-core/src/detector/semantic-diff.ts`
 - **ADR**: [ADR-022](../../adr/ADR-022-wasm-ast-blast-radius.md)

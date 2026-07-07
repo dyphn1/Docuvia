@@ -1,6 +1,6 @@
 # VS Code Extension Endpoints
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `artifacts/api-server/src/routes/extensions-vscode.ts`
 

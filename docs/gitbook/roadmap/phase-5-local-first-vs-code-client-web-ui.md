@@ -20,13 +20,17 @@ This phase tracks the following specific features. Click on any feature to view 
 | Workspace Onboarding (`/init`)           | ✅ Done | [View Details](features/workspace-onboarding-init.md)              |
 | Multi-root Workspace Support             | ✅ Done | [View Details](features/multi-root-workspace-support.md)           |
 | Token Limits & Chunking Configs          | ✅ Done | [View Details](features/token-limits-chunking-configs.md)          |
-| CLI Commands (analyze/init)              | ✅ Done | [View Details](features/cli-commands-analyze-init.md)              |
-| VS Code Blast Radius UI                  | ✅ Done | [View Details](features/vs-code-blast-radius-ui.md)                |
-| VS Code Extension Endpoints              | ✅ Done | [View Details](features/vs-code-extension-endpoints.md)            |
+| CLI Commands (analyze/init)              | ⚠️ WARN | [View Details](features/cli-commands-analyze-init.md)              |
+| VS Code Blast Radius UI                  | ⚠️ WARN | [View Details](features/vs-code-blast-radius-ui.md)                |
+| VS Code Extension Endpoints              | ⚠️ WARN | [View Details](features/vs-code-extension-endpoints.md)            |
 | Review UI (frontend)                     | ✅ Done | [View Details](features/review-ui-frontend.md)                     |
-| Natural language UI                      | ✅ Done | [View Details](features/natural-language-ui.md)                    |
+| Natural language UI                      | ⚠️ WARN | [View Details](features/natural-language-ui.md)                    |
 | Dashboard & stats                        | ✅ Done | [View Details](features/dashboard-stats.md)                        |
-| Interactive Topology Maps                | ✅ Done | [View Details](features/interactive-topology-maps.md)              |
+| Interactive Topology Maps                | ⚠️ WARN | [View Details](features/interactive-topology-maps.md)              |
 | Export (Markdown / JSON)                 | ✅ Done | [View Details](features/export-markdown-json.md)                   |
-| Slack / Teams bot                        | ✅ Done | [View Details](features/slack-teams-bot.md)                        |
+| Slack / Teams bot                        | ⚠️ WARN | [View Details](features/slack-teams-bot.md)                        |
 | GitHub PR integration                    | ✅ Done | [View Details](features/github-pr-integration.md)                  |
+| Document Upload UI                       | 🔲 TODO | [View Details](features/document-upload-ui.md)                     |
+| MCP Dashboard UI                         | 🔲 TODO | [View Details](features/mcp-dashboard-ui.md)                       |
+| VS Code Search Results UI                | 🔲 TODO | [View Details](features/vs-code-search-results-ui.md)              |
+| VS Code Webview Infrastructure           | 🔲 TODO | [View Details](features/vs-code-webview-infrastructure.md)         |

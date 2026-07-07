@@ -1,6 +1,6 @@
 # Temporal Decay Scoring
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 4: Git-Isomorphic Sync & Temporal Knowledge
 - **Evidence / Verification Target**: `lib/core/src/services/decay.ts`
 

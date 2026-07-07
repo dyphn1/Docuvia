@@ -20,10 +20,11 @@ This phase tracks the following specific features. Click on any feature to view 
 
 | Feature                                  | Status  | Link                                                              |
 | :--------------------------------------- | :------ | :---------------------------------------------------------------- |
-| AST Microkernel Architecture             | ✅ Done | [View Details](features/ast-microkernel-architecture.md)          |
+| AST Microkernel Architecture             | ⚠️ WARN | [View Details](features/ast-microkernel-architecture.md)          |
 | AST Plugin Architecture                  | ✅ Done | [View Details](features/ast-plugin-architecture.md)               |
 | TypeScript `implements`/`extends` Parser | 🔲 TODO | [View Details](features/typescript-implements-extends-parser.md)  |
-| Smart Blast Radius (WASM Semantic Diff)  | ✅ Done | [View Details](features/smart-blast-radius-wasm-semantic-diff.md) |
+| Smart Blast Radius (WASM Semantic Diff)  | ⚠️ WARN | [View Details](features/smart-blast-radius-wasm-semantic-diff.md) |
 | Zero-Server Deep Traversal               | ✅ Done | [View Details](features/zero-server-deep-traversal.md)            |
 | Local Context Compression                | ✅ Done | [View Details](features/local-context-compression.md)             |
-| Sub-second Incremental Watch             | ✅ Done | [View Details](features/sub-second-incremental-watch.md)          |
+| Sub-second Incremental Watch             | 🔲 TODO | [View Details](features/sub-second-incremental-watch.md)          |
+| Headless LSP Manager                     | 🔲 TODO | [View Details](features/headless-lsp-manager.md)                  |

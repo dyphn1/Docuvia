@@ -32,5 +32,11 @@ This section holds Docuvia's ADRs — one file per decision, covering the curren
 | [ADR-024](ADR-024-cross-project-soft-linking.md)                              | Cross-Project Soft Linking via Global L1 Tags                    |
 | [ADR-025](ADR-025-hybrid-temp-file-blast-radius.md)                           | Hybrid Temp-File Blast Radius Overlay & Headless LSP             |
 | [ADR-026](ADR-026-multi-provider-llm-abstraction.md)                          | Multi-Provider LLM Abstraction Layer                             |
+| [ADR-027](ADR-027-sub-second-incremental-watch.md)                            | Sub-second Incremental Watch with AST Microkernel                |
+| [ADR-028](ADR-028-semantic-deduplication-in-agentic-rag.md)                   | Semantic Deduplication in Agentic RAG                            |
+| [ADR-029](ADR-029-local-vector-index-and-natural-language-ui.md)              | Local Vector Index and Natural Language UI                       |
+| [ADR-030](ADR-030-template-management-and-inheritance.md)                     | Template Management and Inheritance                              |
+| [ADR-031](ADR-031-svn-integration-and-diff-ingestion.md)                      | SVN Integration and Diff Ingestion                               |
+| [ADR-032](ADR-032-parallel-swarm-review-and-background-rag.md)                | Parallel Swarm Review and Background Agentic RAG                 |
 
 > **Note:** The legacy decision log (originally arc42 chapter 9) has been archived and removed from this page to prevent numbering conflicts with the modern ADR list above. Concepts from the legacy log (e.g. OpenAI-only LLM interface, MVC UI layers, review-queue gating, cursor-based incremental ingestion, L3 deduplication, L2 bootstrap, Orphan Git Branch) have all been superseded or subsumed by the numbered ADRs above (see in particular ADR-004 through ADR-012, ADR-019, ADR-021, and ADR-026) and by the corresponding system architecture pages.

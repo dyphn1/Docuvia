@@ -1,36 +1,26 @@
 # SVN integration
 
-- **Status**: ⏸️ Pending
+- **Status**: ⏸️ Pending / Deprecated
 - **Phase**: Phase 4: Git-Isomorphic Sync & Temporal Knowledge
-- **Evidence / Verification Target**: `lib/core/src/services/svn-client.ts` exists but diffs not fetched
+- **Evidence / Verification Target**: `lib/core/src/services/svn-client.ts`
+- **ADR**: [ADR-031](../../adr/ADR-031-svn-integration-and-diff-ingestion.md)
 
 ## Implementation Details
 
-This feature is anchored by the following core components:
+Direct SVN integration has been formally halted and deprecated.
 
-[`lib/core/src/services/svn-client.ts`](../../../../lib/core/src/services/svn-client.ts) exists but diffs not fetched
+As outlined in ADR-031, mapping SVN constructs (sequential revisions, folder-based branches, external links) directly into our strict Git-Isomorphic architecture causes severe database collision risks and crashes the AST blast radius engine.
 
-### Architecture Flow
+To maintain the purity of the core `ingestion-pipeline.ts` and database schemas, Docuvia will remain strictly Git-first.
 
-```mermaid
-sequenceDiagram
-    participant DB as Local SQLite
-    participant CLI as Sync Service
-    participant Git as docuvia-knowledge (Orphan)
-    participant Remote as API Server
+### Future Path
 
-    DB->>CLI: Extract Edges & Nodes
-    CLI->>Git: Serialize to JSON/Markdown
-    CLI->>Remote: Push Graph Payload
-```
+Any future SVN support will not be handled natively by Docuvia's core. Instead, it will require an external translation layer or proxy tool (such as `git-svn`) to convert the SVN repository into a standard Git repository structure before it can be ingested and analyzed by Docuvia.
 
 ### Component Description
 
-- **Core Logic**: Handled primarily within the target files linked above.
-- **State Management**: Persists or queries state directly via the defined interfaces.
+- **`lib/core/src/services/svn-client.ts`**: Currently exists but is considered deprecated for diff analysis. It will not be extended further to parse diffs natively.
 
 ## Testing & Verification
 
-- Run `pnpm test` in the relevant workspace.
-- Validate the behavior locally using `docuvia` CLI or the VS Code Extension.
-- Check the [Regression & Parity Testing](../../guidelines/regression-and-parity-testing.md) guidelines.
+- SVN integration tests are no longer actively maintained for AST feature parity.

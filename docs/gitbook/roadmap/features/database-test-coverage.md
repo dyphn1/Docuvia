@@ -1,28 +1,19 @@
-# Core DB schemas defined
+# Database Test Coverage
 
-- **Status**: ⚠️ WARN
+- **Status**: 🔲 TODO
 - **Phase**: Phase 1: Core API & Database (The Metabolism Engine)
-- **Evidence / Verification Target**: `lib/db/src/schema/pg/`
+- **Evidence / Verification Target**: `lib/db/src/*.test.ts`
 
 ## Implementation Details
 
 This feature is anchored by the following core components:
 
-[`lib/db/src/schema/pg/`](../../../../lib/db/src/schema/pg/)
-
-### Architecture Flow
-
-```mermaid
-graph TD
-    Client[Client / Trigger] --> |Request| API[API Server]
-    API --> |Process| Engine[Metabolism Engine]
-    Engine --> |Read/Write| DB[(PostgreSQL)]
-    Engine -.-> |Generate| LLM[LLM Abstraction]
-```
+[`lib/db/src/index.unit.test.ts`](../../../../lib/db/src/index.unit.test.ts)
+[`lib/db/src/migrate.unit.test.ts`](../../../../lib/db/src/migrate.unit.test.ts)
 
 ### Component Description
 
-- **Core Logic**: Handled primarily within the target files linked above.
+- **Core Logic**: Ensure meaningful tests validating relationships (e.g., verifying `onDelete: "cascade"` constraints), vector operations, and unique constraints.
 - **State Management**: Persists or queries state directly via the defined interfaces.
 
 ## Testing & Verification

@@ -17,9 +17,9 @@ This phase tracks the following specific features. Click on any feature to view 
 | Feature                               | Status  | Link                                                              |
 | :------------------------------------ | :------ | :---------------------------------------------------------------- |
 | Agentic RAG (Intent Router)           | ✅ Done | [View Details](features/agentic-rag-intent-router.md)             |
-| Vector Index & Search                 | ✅ Done | [View Details](features/vector-index-search.md)                   |
+| Vector Index & Search                 | 🔲 TODO | [View Details](features/vector-index-search.md)                   |
 | Semantic search                       | ✅ Done | [View Details](features/semantic-search.md)                       |
 | Graph index                           | ✅ Done | [View Details](features/graph-index.md)                           |
-| MCP Route scaffolding                 | ✅ Done | [View Details](features/mcp-route-scaffolding.md)                 |
+| MCP Route scaffolding                 | ⚠️ WARN | [View Details](features/mcp-route-scaffolding.md)                 |
 | Semantic Deduplication in Agentic RAG | 🔲 TODO | [View Details](features/semantic-deduplication-in-agentic-rag.md) |
 | Background Agentic RAG                | 🔲 TODO | [View Details](features/background-agentic-rag.md)                |

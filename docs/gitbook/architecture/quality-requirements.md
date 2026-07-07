@@ -57,7 +57,7 @@ mindmap
 | Concern              | Rule                                 | Mechanism                                                                                                      |
 | -------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
 | API type drift       | Zero tolerance                       | All types generated from `openapi.yaml`; CI checks typecheck-and-build on every PR                             |
-| Test isolation       | DB state must not leak between tests | `withRollback()` from `artifacts/api-server/test/support/db.ts` wraps all DB-backed integration tests          |
+| Test isolation       | DB state must not leak between tests | `withRollback()` from `lib/test-utils/src/db.ts` wraps all DB-backed integration tests                         |
 | Test discoverability | Tests colocated with source          | `*.unit.test.ts` files adjacent to source modules; integration tests under `artifacts/<pkg>/test/integration/` |
 | External API mocking | No live external calls in tests      | MSW handlers in `artifacts/api-server/test/setup/msw/handlers.ts`; large fixtures in `msw/fixtures/`           |
 | Coding standards     | Consistent across team               | See [Coding Guidelines](./crosscutting-concepts.md#4-coding-guidelines)                                        |

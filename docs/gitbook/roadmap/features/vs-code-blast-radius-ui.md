@@ -1,6 +1,6 @@
 # VS Code Blast Radius UI
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `artifacts/vscode-client/src/docuvia-hover-provider.ts`
 

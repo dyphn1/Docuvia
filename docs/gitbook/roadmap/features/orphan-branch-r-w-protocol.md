@@ -1,6 +1,6 @@
 # Orphan Branch R/W Protocol
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 4: Git-Isomorphic Sync & Temporal Knowledge
 - **Evidence / Verification Target**: `lib/core/src/services/orphan-branch-writer.ts`
 

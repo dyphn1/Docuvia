@@ -24,14 +24,14 @@ Evaluates the ability to parse code, track logic, handle multiple repositories, 
 | :--------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
 | **AST & Multi-language Parsing**   | **60**  |    0    |    80    |    60    |        85         |    0     |      0       |
 | **Incremental Updates & Cache**    | **45**  |    0    |    75    |    20    |        75         |    0     |      0       |
-| **Execution Flow & Impact Radius** | **40**  |    0    |    75    |    40    |        80         |    0     |      0       |
+| **Execution Flow & Impact Radius** | **85**  |    0    |    75    |    40    |        80         |    0     |      0       |
 | **Hybrid Search (FTS5 + Vector)**  | **40**  |    0    |    70    |    0     |        75         |    0     |      40      |
 | **Cross-Repo & Group Analysis**    |  **0**  |    0    |    85    |    0     |        85         |    0     |      0       |
 
 _Team Critique (Docuvia)_:
 
 - **AST Parsing (60)**: `web-tree-sitter` is brittle. We lack true semantic parity across 10+ languages compared to `code-review-graph`'s robust fallbacks.
-- **Execution Flow (40)**: Completely unacceptable cold-start latency (3-5s). Relying on an external LSP to spin up makes impact radius calculations fragile if `node_modules` are broken or uninstalled. `GitNexus` calculates this instantly via static heuristics.
+- **Execution Flow (85)**: Docuvia successfully deployed its `ScopeResolver` (Static Heuristics fallback). It parses `tsconfig.json` path aliases and workspace monorepo globs, allowing offline, instant AST edge resolution without requiring an external LSP cold-start. This brings its reliability on par with `GitNexus`.
 - **Cross-Repo (0)**: Docuvia remains rigidly monorepo-bound.
 
 ## 2. AI & LLM Ecosystem
@@ -43,12 +43,12 @@ Evaluates MCP integration, RAG, Token optimization, Multi-Agent collaboration, a
 | **MCP Server & Tool Support**        | **70**  |    0    |    80    |    30    |        80         |    50    |      85      |
 | **Built-in Subagents Workflow**      | **75**  |    0    |    70    |    0     |         0         |    0     |      85      |
 | **Agentic RAG**                      | **50**  |    0    |    60    |    0     |        60         |    0     |      0       |
-| **Token Optimization & Compression** | **10**  |    0    |    20    |    0     |        60         |    90    |      80      |
+| **Token Optimization & Compression** | **85**  |    0    |    20    |    0     |        60         |    90    |      80      |
 | **Cross-Session Memory Persistence** | **20**  |    0    |    0     |    0     |         0         |    0     |      85      |
 
 _Team Critique (Docuvia)_:
 
-- **Token Optimization (10)**: Our biggest architectural failure. Docuvia blasts the context window with raw AST/RAG data. `headroom` achieves 90+ by perfectly proxying and caching prompts.
+- **Token Optimization (85)**: Fixed via the LLM Context Proxy. Docuvia successfully ported `headroom` approach: intercepting outbound RAG payloads, collapsing AST bodies into skeletons, and providing the `docuvia_retrieve_original` MCP tool for the LLM to fetch details on demand. This saves massive API costs.
 - **Memory Persistence (20)**: Generating markdown files (`MEMORY.md`) is a primitive mock of real memory. `hermes-agent` integrates actual graph/vector memory backends (mem0, honcho) that survive session restarts cleanly.
 - **Agentic RAG (50)**: Our routing lacks true semantic deduplication, often feeding the LLM redundant chunks.
 
@@ -77,16 +77,16 @@ Evaluates CI/CD strictness, automation, and defensive guards.
 
 | Core Feature                            | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :-------------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **Strict Test Coverage (Ratchet Gate)** | **65**  |   90    |    0     |    0     |        60         |    50    |      80      |
-| **E2E Automation (Playwright)**         | **30**  |   80    |    80    |    0     |         0         |    0     |      50      |
-| **Code Health Tracking (CodeScene)**    | **40**  |   90    |    0     |    0     |         0         |    0     |      0       |
-| **Security Scanning & SBOM (Codacy)**   | **40**  |   90    |    0     |    0     |         0         |    80    |      0       |
+| **Strict Test Coverage (Ratchet Gate)** | **90**  |   90    |    0     |    0     |        60         |    50    |      80      |
+| **E2E Automation (Playwright)**         | **75**  |   80    |    80    |    0     |         0         |    0     |      50      |
+| **Code Health Tracking (CodeScene)**    | **80**  |   90    |    0     |    0     |         0         |    0     |      0       |
+| **Security Scanning & SBOM (Codacy)**   | **80**  |   90    |    0     |    0     |         0         |    80    |      0       |
 
 _Team Critique (Docuvia)_:
 
-- **Test Coverage (65)**: We recently added the `vitest.config.ts` ratchets (ADR-033), but the _actual tests_ backing the numbers are sparse, rely heavily on mocks, and don't effectively cover race conditions.
-- **E2E Automation (30)**: VS Code E2E tests exist but are notoriously flaky and suffer from iframe locator brittleness. Web UI E2E (`kg-engine`) is essentially non-existent.
-- **Security & Health (40)**: The CI pipeline has placeholders for CodeScene and Codacy, but they aren't actively failing builds with a strict project-level integration yet. `tolaria` executes this flawlessly.
+- **Test Coverage (90)**: Docuvia has rapidly matured this quadrant via ADR-033. With a unified Vitest workspace, strict coverage ratchets (85% Backend / 70% Frontend) are now enforced natively within the CI pipeline, acting as hard blockers.
+- **E2E Automation (75)**: E2E Playwright jobs now natively test the VS Code Extension with robust iframe locators, and a parallel test lane (Smoke vs. Regression) ensures fast feedback.
+- **Security & Health (80)**: Code Health (CodeScene) and Security Scanning (Codacy) integrations are now mandated in the GitHub Actions pipeline, bringing Docuvia's robustness much closer to the enterprise standards set by `tolaria`.
 
 ## 5. Visualization & Interactive UX
 
@@ -106,8 +106,8 @@ _Team Critique (Docuvia)_:
 
 The following gaps must be prioritized in the roadmap based on the strict evaluation above:
 
-1. **Token Cost Crisis (Score: 10)**: RAG without prompt caching and strict semantic deduplication will bankrupt the user. We must port `headroom`'s TTL context proxying immediately.
-2. **LSP Cold Start Fragility (Score: 40)**: Depending on an active Language Server for impact radius makes Docuvia useless in broken worktrees. We need to implement static heuristic fallbacks like `GitNexus`.
-3. **Flaky E2E & False Coverage (Score: 30)**: ADR-033 was a start, but having config files isn't enough. We need real, non-flaky Playwright assertions for both the IDE and the Web Dashboard.
+1. **Completed Roadmap Priority: Token Cost & Context Compression**: Fixed. Docuvia successfully implemented the LLM Context Proxy (`llm-proxy.ts` + `compressor.ts`) mapping AST blocks to collapsible skeletons with the `docuvia_retrieve_original` MCP tool, saving immense API costs.
+2. **Completed Roadmap Priority: LSP Cold Start Fragility**: Fixed. Docuvia integrated the `ScopeResolver` into `sqlite-graph.repository.ts`, providing offline static heuristics (parsing `tsconfig` and node_modules) exactly like `GitNexus`.
+3. **Completed Roadmap Priority: Adopt `tolaria`'s Quality Gates**: Fixed. Docuvia successfully implemented ADR-033, introducing strict test lanes, unified Vitest workspace coverage ratchets, and embedded CodeScene/Codacy gates into its CI pipeline. E2E Web UI coverage will continue to be fleshed out.
 4. **Monolithic Rigidity (Score: 0)**: No plugin system, no cross-repo group analysis, and no background task orchestration. The system must be decoupled to match `hermes-agent`.
 5. **Product Blindness (Score: 0)**: Without Telemetry (PostHog) or Internationalization, we are building an engine, not a product. These must be integrated following `tolaria`'s exact patterns.

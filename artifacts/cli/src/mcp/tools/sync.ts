@@ -1,5 +1,6 @@
 import { SyncService } from "@workspace/core";
 import type { McpTool } from "./types.js";
+import { withErrorHandling } from "./wrapper.js";
 
 export const syncTool: McpTool = {
   definition: {
@@ -20,7 +21,7 @@ export const syncTool: McpTool = {
       required: ["projectId"],
     },
   },
-  handler: async (args: any) => {
+  handler: withErrorHandling("Error syncing project", async (args: any) => {
     const projectId = args?.projectId as string;
     const commitSha = args?.commitSha as string | undefined;
     if (!projectId) {
@@ -42,21 +43,14 @@ export const syncTool: McpTool = {
       };
     }
 
-    try {
-      const syncService = new SyncService(
-        process.cwd(),
-        process.env.DOCUVIA_API_URL,
-        process.env.MCP_PAT
-      );
-      await syncService.sync(projectId, commitSha);
-      return {
-        content: [{ type: "text", text: `Sync completed for project ${projectId}.` }],
-      };
-    } catch (e: any) {
-      return {
-        content: [{ type: "text", text: `Error syncing project: ${e.message}` }],
-        isError: true,
-      };
-    }
-  },
+    const syncService = new SyncService(
+      process.cwd(),
+      process.env.DOCUVIA_API_URL,
+      process.env.MCP_PAT
+    );
+    await syncService.sync(projectId, commitSha);
+    return {
+      content: [{ type: "text", text: `Sync completed for project ${projectId}.` }],
+    };
+  }),
 };

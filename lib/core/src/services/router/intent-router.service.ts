@@ -16,6 +16,7 @@ import { db } from "@workspace/db";
 import { l1TagsTable, l2NodesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { logger } from "../../utils/logger.js";
+import { dedupNodes, sortByConfidence, CompressibleNode } from "@workspace/ast-core";
 
 export class IntentRouterService implements IIntentRouter {
   constructor(
@@ -25,6 +26,24 @@ export class IntentRouterService implements IIntentRouter {
     private directLookupHandler: IDirectLookupHandler,
     private hybridSearchHandler: IHybridSearchHandler
   ) {}
+
+  private _deduplicateResults(results: AgenticSearchResult[]): AgenticSearchResult[] {
+    interface NodeWrapper extends CompressibleNode {
+      original: AgenticSearchResult;
+    }
+
+    const compressibleNodes: NodeWrapper[] = results.map((r) => ({
+      title: r.title,
+      content: r.content,
+      nodeType: r.nodeLayer,
+      confidence: r.score,
+      original: r,
+    }));
+
+    const deduped = dedupNodes(compressibleNodes) as NodeWrapper[];
+    const sorted = sortByConfidence(deduped) as NodeWrapper[];
+    return sorted.map((n) => n.original);
+  }
 
   async routeQuery(
     query: string,
@@ -51,10 +70,11 @@ export class IntentRouterService implements IIntentRouter {
 
       // If we find exact matches, return instantly without calling the LLM
       if (results.length > 0) {
+        const finalResults = this._deduplicateResults(results);
         return {
           routingStrategy: "direct_lookup",
           entities: { searchQuery: rawSearch },
-          results,
+          results: finalResults,
           metadata: {
             classificationConfidence: 1.0,
             reasoning: "Exact match short-circuit",
@@ -166,15 +186,22 @@ export class IntentRouterService implements IIntentRouter {
 
     const durationMs = Date.now() - start;
 
+    const finalResults = this._deduplicateResults(results);
+
     logger.info(
-      { strategy: classification.strategy, resultCount: results.length, durationMs, searchMode },
+      {
+        strategy: classification.strategy,
+        resultCount: finalResults.length,
+        durationMs,
+        searchMode,
+      },
       "[intent-router] query complete"
     );
 
     return {
       routingStrategy: classification.strategy,
       entities: classification.entities,
-      results,
+      results: finalResults,
       metadata: {
         classificationConfidence: classification.confidence,
         reasoning: classification.reasoning,

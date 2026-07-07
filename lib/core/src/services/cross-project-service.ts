@@ -9,7 +9,7 @@ import {
 } from "@workspace/db";
 import { and, eq, isNotNull, ne, sql } from "drizzle-orm";
 import { cosineSimilarity } from "./embedding.js";
-import { notifyExternalIntegrations } from "./slack-teams-client.js";
+import { notifyExternalIntegrations } from "./notification.service.js";
 import { logger } from "../utils/logger.js";
 
 export async function detectCrossProjectLinks(

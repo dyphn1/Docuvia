@@ -22,7 +22,7 @@ import { generateEmbedding } from "../embedding.js";
 import { detectCrossProjectLinks } from "../cross-project-service.js";
 import { LocalGitClient } from "../git-client.js";
 import { logger } from "../../utils/logger.js";
-import { notifyExternalIntegrations } from "../slack-teams-client.js";
+import { notifyExternalIntegrations } from "../notification.service.js";
 
 export class L2ProcessingService implements IL2ProcessingService {
   constructor(

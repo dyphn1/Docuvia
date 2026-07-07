@@ -1,6 +1,6 @@
 # Core Services Test Hardening
 
-- **Status**: 🔲 TODO
+- **Status**: ✅ Done
 - **Phase**: Phase 6: Architecture Hardening & Security
 - **Evidence / Verification Target**: `lib/core/src/services/*.test.ts`
 

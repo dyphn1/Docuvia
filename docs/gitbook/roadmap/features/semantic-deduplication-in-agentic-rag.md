@@ -1,6 +1,6 @@
 # Semantic Deduplication in Agentic RAG
 
-- **Status**: 🔲 TODO
+- **Status**: ✅ Done
 - **Phase**: Phase 3: Agentic RAG & MCP Interfaces
 - **Evidence / Verification Target**: Intercept and compress queries in `intent-router.ts`
 - **ADR**: [ADR-028](../../adr/ADR-028-semantic-deduplication-in-agentic-rag.md)

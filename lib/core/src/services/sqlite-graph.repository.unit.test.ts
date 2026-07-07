@@ -166,9 +166,9 @@ describe("SqliteGraphRepository", () => {
       const consumerFileId = nodeByName("src/consumer.ts")?.id;
       const interfaceFileId = nodeByName("src/interface.ts")?.id;
 
-      expect(consumerClassId).toBeDefined();
-      expect(targetInterfaceId).toBeDefined();
-      expect(targetClassId).toBeDefined();
+      expect(consumerClassId).toEqual(expect.any(Number));
+      expect(targetInterfaceId).toEqual(expect.any(Number));
+      expect(targetClassId).toEqual(expect.any(Number));
 
       const implementsLink = links.find((l) => l.link_type === "implements");
       const extendsLink = links.find((l) => l.link_type === "extends");
@@ -294,7 +294,7 @@ describe("SqliteGraphRepository", () => {
         const fts = db
           .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='l2_nodes_fts'")
           .get();
-        expect(fts).toBeDefined();
+        expect(fts).toEqual({ name: "l2_nodes_fts" });
       } finally {
         db.close();
       }

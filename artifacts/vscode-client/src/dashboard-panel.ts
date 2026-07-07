@@ -4,6 +4,7 @@ import { TaskQueueTreeProvider } from "./task-queue-tree-provider.js";
 import { getDashboardHtml } from "./webview/dashboard-html.js";
 import { handleDashboardMessage } from "./webview/dashboard-messages.js";
 import { DashboardPayload, WebviewMessage } from "./webview/dashboard-types.js";
+import { BaseWebviewPanel } from "./webview/base-panel.js";
 
 // Re-export for compatibility if needed elsewhere
 export type { DashboardPayload };
@@ -64,7 +65,7 @@ function buildDashboardPayload(
 
 // ─── Panel ───────────────────────────────────────────────────────────────────
 
-export class DashboardPanel {
+export class DashboardPanel extends BaseWebviewPanel {
   static readonly viewType = "docuvia.dashboard";
   private static _panels = new Map<string, DashboardPanel>();
 
@@ -83,15 +84,11 @@ export class DashboardPanel {
       return;
     }
 
-    const panel = vscode.window.createWebviewPanel(
+    const panel = BaseWebviewPanel.createPanel(
+      context,
       DashboardPanel.viewType,
       `Docuvia Dashboard (${vscode.workspace.workspaceFolders?.find((f) => f.uri.fsPath === targetRoot)?.name || "Workspace"})`,
-      column,
-      {
-        enableScripts: true,
-        localResourceRoots: [vscode.Uri.joinPath(context.extensionUri, "out")],
-        retainContextWhenHidden: true,
-      }
+      column
     );
 
     const newDashboard = new DashboardPanel(panel, context, targetRoot, tqProvider);
@@ -99,32 +96,16 @@ export class DashboardPanel {
   }
 
   private constructor(
-    private readonly _panel: vscode.WebviewPanel,
-    private readonly _context: vscode.ExtensionContext,
+    panel: vscode.WebviewPanel,
+    context: vscode.ExtensionContext,
     private readonly _targetRoot: string,
     private readonly _tqProvider?: TaskQueueTreeProvider
   ) {
+    super(panel, context);
     this._panel.webview.html = this._buildHtml();
 
     const snapshotService = new LocalSnapshotService(this._targetRoot);
     this._pushData(snapshotService.getSnapshot());
-
-    // We no longer have store.onDidLoad, but we can setup a watcher if desired
-    // For now, it updates when focused or created
-
-    this._panel.webview.onDidReceiveMessage(
-      (msg: WebviewMessage) => this._handleMessage(msg),
-      null,
-      this._context.subscriptions
-    );
-
-    this._panel.onDidDispose(
-      () => {
-        DashboardPanel._panels.delete(this._targetRoot);
-      },
-      null,
-      this._context.subscriptions
-    );
   }
 
   private _pushData(snapshot: SnapshotData | null): void {
@@ -134,8 +115,12 @@ export class DashboardPanel {
     });
   }
 
-  private _handleMessage(msg: WebviewMessage): void {
+  protected _handleMessage(msg: WebviewMessage): void {
     handleDashboardMessage(msg, this._targetRoot);
+  }
+
+  protected _onDispose(): void {
+    DashboardPanel._panels.delete(this._targetRoot);
   }
 
   private _buildHtml(): string {

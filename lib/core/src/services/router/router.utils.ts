@@ -1,4 +1,4 @@
-import { calculateTemporalDecay } from "../decay.js";
+import { calculateTemporalDecay } from "../temporal-decay.calculator.js";
 
 /**
  * Sanitize user query before sending to LLM to prevent prompt injection.

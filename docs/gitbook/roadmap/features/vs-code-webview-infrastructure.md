@@ -1,6 +1,6 @@
 # VS Code Webview Infrastructure
 
-- **Status**: 🔲 TODO
+- **Status**: ✅ Done
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `artifacts/vscode-client/src/*panel.ts`
 

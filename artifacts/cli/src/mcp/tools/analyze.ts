@@ -1,5 +1,6 @@
 import { AnalyzeService } from "@workspace/core";
 import type { McpTool } from "./types.js";
+import { withErrorHandling } from "./wrapper.js";
 
 export const analyzeTool: McpTool = {
   definition: {
@@ -10,23 +11,16 @@ export const analyzeTool: McpTool = {
       properties: {},
     },
   },
-  handler: async () => {
-    try {
-      const analyzeService = new AnalyzeService(process.cwd());
-      const result = await analyzeService.analyzeProject();
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Analysis complete. Type: ${result.projectType}. Tags: ${result.suggestedTags.join(", ")}`,
-          },
-        ],
-      };
-    } catch (e: any) {
-      return {
-        content: [{ type: "text", text: `Error analyzing project: ${e.message}` }],
-        isError: true,
-      };
-    }
-  },
+  handler: withErrorHandling("Error analyzing project", async () => {
+    const analyzeService = new AnalyzeService(process.cwd());
+    const result = await analyzeService.analyzeProject();
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Analysis complete. Type: ${result.projectType}. Tags: ${result.suggestedTags.join(", ")}`,
+        },
+      ],
+    };
+  }),
 };

@@ -8,7 +8,7 @@ import {
 } from "@workspace/db";
 import { and, eq, isNull, sql, inArray, or, lt } from "drizzle-orm";
 import { logger } from "../../utils/logger.js";
-import { compressAstContext, CompressibleNode } from "../../utils/compression.js";
+import { compressAstContext, CompressibleNode } from "@workspace/ast-core";
 import { getModel } from "../prompt-service.js";
 import { runNoiseDetection } from "../noise-detection-service.js";
 import {

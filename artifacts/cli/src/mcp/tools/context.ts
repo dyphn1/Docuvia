@@ -1,5 +1,6 @@
 import { QueryService } from "@workspace/core";
 import type { McpTool } from "./types.js";
+import { withErrorHandling } from "./wrapper.js";
 
 export const contextTool: McpTool = {
   definition: {
@@ -16,20 +17,16 @@ export const contextTool: McpTool = {
       required: ["target"],
     },
   },
-  handler: async (args: any) => {
+  handler: withErrorHandling("Error", async (args: any) => {
     const target = args?.target as string;
     if (!target)
       return { content: [{ type: "text", text: "Error: Missing target." }], isError: true };
-    try {
-      const queryService = new QueryService(process.cwd());
-      const result = await queryService.getContext(target);
-      if (!result)
-        return {
-          content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }],
-        };
-      return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
-    } catch (e: any) {
-      return { content: [{ type: "text", text: `Error: ${e.message}` }], isError: true };
-    }
-  },
+    const queryService = new QueryService(process.cwd());
+    const result = await queryService.getContext(target);
+    if (!result)
+      return {
+        content: [{ type: "text", text: `Symbol "${target}" not found in Docuvia index.` }],
+      };
+    return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+  }),
 };

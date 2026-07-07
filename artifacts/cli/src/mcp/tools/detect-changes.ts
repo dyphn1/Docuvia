@@ -1,5 +1,6 @@
 import { ChangeDetectionService } from "@workspace/core";
 import type { McpTool } from "./types.js";
+import { withErrorHandling } from "./wrapper.js";
 
 export const detectChangesTool: McpTool = {
   definition: {
@@ -15,19 +16,12 @@ export const detectChangesTool: McpTool = {
       },
     },
   },
-  handler: async (args: any) => {
+  handler: withErrorHandling("Error detecting changes", async (args: any) => {
     const baseRef = args?.baseRef as string | undefined;
-    try {
-      const changeDetectionService = new ChangeDetectionService(process.cwd());
-      const result = await changeDetectionService.detectChanges(baseRef);
-      return {
-        content: [{ type: "text", text: result.analysis }],
-      };
-    } catch (e: any) {
-      return {
-        content: [{ type: "text", text: `Error detecting changes: ${e.message}` }],
-        isError: true,
-      };
-    }
-  },
+    const changeDetectionService = new ChangeDetectionService(process.cwd());
+    const result = await changeDetectionService.detectChanges(baseRef);
+    return {
+      content: [{ type: "text", text: result.analysis }],
+    };
+  }),
 };

@@ -1,5 +1,6 @@
 import { CleanService } from "@workspace/core";
 import type { McpTool } from "./types.js";
+import { withErrorHandling } from "./wrapper.js";
 
 export const cleanTool: McpTool = {
   definition: {
@@ -10,25 +11,18 @@ export const cleanTool: McpTool = {
       properties: {},
     },
   },
-  handler: async () => {
-    try {
-      const cleanService = new CleanService(process.cwd());
-      const result = await cleanService.clean();
-      return {
-        content: [
-          {
-            type: "text",
-            text: result.deleted
-              ? "Cleaned .docuvia/local.db database."
-              : "No local database found to clean.",
-          },
-        ],
-      };
-    } catch (e: any) {
-      return {
-        content: [{ type: "text", text: `Error cleaning database: ${e.message}` }],
-        isError: true,
-      };
-    }
-  },
+  handler: withErrorHandling("Error cleaning database", async () => {
+    const cleanService = new CleanService(process.cwd());
+    const result = await cleanService.clean();
+    return {
+      content: [
+        {
+          type: "text",
+          text: result.deleted
+            ? "Cleaned .docuvia/local.db database."
+            : "No local database found to clean.",
+        },
+      ],
+    };
+  }),
 };

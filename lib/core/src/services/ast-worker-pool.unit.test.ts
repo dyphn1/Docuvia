@@ -30,7 +30,7 @@ describe("AstWorkerPool CALL edge extraction", () => {
     });
 
     expect(response.success).toBe(true);
-    expect(response.data).toBeDefined();
+    expect(response.data).toEqual(expect.any(Object));
     // Regression guard for Issue 0 (§0 of the 2026-07-04 gitbook audit): the ast-worker
     // capture switch previously had no "call" case, so calls[] was always empty and zero
     // CALL edges were ever created project-wide. Fixed in commit 1c92234.

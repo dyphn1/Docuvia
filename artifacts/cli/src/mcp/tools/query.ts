@@ -1,6 +1,7 @@
 import { QueryService } from "@workspace/core";
 import { formatPromptOutput } from "../../commands/query.js";
 import type { McpTool } from "./types.js";
+import { withErrorHandling } from "./wrapper.js";
 
 export const queryLocalTool: McpTool = {
   definition: {
@@ -19,7 +20,7 @@ export const queryLocalTool: McpTool = {
       required: ["target"],
     },
   },
-  handler: async (args: any) => {
+  handler: withErrorHandling("Error executing query", async (args: any) => {
     const target = args?.target as string;
     if (!target) {
       return {
@@ -28,18 +29,11 @@ export const queryLocalTool: McpTool = {
       };
     }
 
-    try {
-      const queryService = new QueryService(process.cwd());
-      const results = await queryService.query(target, { local: true });
-      const contextData = formatPromptOutput(results);
-      return {
-        content: [{ type: "text", text: contextData || "No context found." }],
-      };
-    } catch (e: any) {
-      return {
-        content: [{ type: "text", text: `Error executing query: ${e.message}` }],
-        isError: true,
-      };
-    }
-  },
+    const queryService = new QueryService(process.cwd());
+    const results = await queryService.query(target, { local: true });
+    const contextData = formatPromptOutput(results);
+    return {
+      content: [{ type: "text", text: contextData || "No context found." }],
+    };
+  }),
 };

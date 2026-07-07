@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { compressAstContext, CompressibleNode } from "./compression.js";
+import { compressAstContext, CompressibleNode } from "../src/compression.js";
 
 describe("compressAstContext", () => {
   it("deduplicates near-identical nodes, keeping the highest-confidence copy", () => {

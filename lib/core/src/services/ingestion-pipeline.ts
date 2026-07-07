@@ -8,7 +8,7 @@ import {
   notificationsTable,
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
-import { notifyExternalIntegrations } from "./slack-teams-client.js";
+import { notifyExternalIntegrations } from "./notification.service.js";
 import { scoreCommit } from "./commit-scorer.js";
 import crypto from "crypto";
 import { logger } from "../utils/logger.js";

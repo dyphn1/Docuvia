@@ -1,3 +1,4 @@
+import { buildFastImportData, runGitFastImport } from "../utils/git-fast-import-helper.js";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { db } from "@workspace/db";
@@ -128,12 +129,17 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
 
     const branch = "docuvia-knowledge";
     const now = Math.floor(Date.now() / 1000);
-    const fastImportData = buildFastImportData(branch, files, projectId, now);
+    const fastImportData = buildFastImportData(
+      branch,
+      files,
+      now,
+      `chore: update knowledge snapshot for project ${projectId}`
+    );
 
     // Using git fast-import. In a full Git-Isomorphic setup, we would run git fetch/merge
     // to handle 3-way merges if the client pushed to remote. But for the server-authoritative
     // push, fast-import safely overwrites the tree for the given branch.
-    await runGitFastImport(fastImportData);
+    await runGitFastImport(undefined, fastImportData);
 
     logger.info(
       { projectId, branch, fileCount: files.size },
@@ -143,52 +149,4 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
     logger.error({ err, projectId }, "[orphan-branch-writer] failed to write to orphan branch");
     throw err; // Rethrow so the caller (e.g. DB transaction) can rollback
   }
-}
-
-function buildFastImportData(
-  branch: string,
-  files: Map<string, string>,
-  projectId: number,
-  nowUnix: number
-): string {
-  const lines: string[] = [];
-  lines.push(`commit refs/heads/${branch}`);
-  lines.push(`committer Docuvia <docuvia@localhost> ${nowUnix} +0000`);
-  const msg = `chore: update knowledge snapshot for project ${projectId}`;
-  lines.push(`data ${Buffer.byteLength(msg, "utf8")}`);
-  lines.push(msg);
-
-  // Delete and recreate project subtree (replace all files for this project)
-  lines.push(`deleteall`);
-
-  for (const [filePath, content] of files) {
-    const contentBytes = Buffer.from(content, "utf8");
-    lines.push(`M 100644 inline ${filePath}`);
-    lines.push(`data ${contentBytes.length}`);
-    lines.push(content);
-  }
-
-  lines.push("");
-  return lines.join("\n");
-}
-
-function runGitFastImport(fastImportData: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    // Explicit cwd instead of relying on the process's ambient working directory (Issue 1.1) —
-    // configurable via DOCUVIA_KNOWLEDGE_REPO_PATH since this repo is shared across all projects.
-    const cwd = process.env.DOCUVIA_KNOWLEDGE_REPO_PATH || process.cwd();
-    const child = spawn("git", ["fast-import", "--quiet"], {
-      cwd,
-      stdio: ["pipe", "ignore", "pipe"],
-    });
-    const stderrChunks: Buffer[] = [];
-    child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) return resolve();
-      const stderr = Buffer.concat(stderrChunks).toString("utf8").trim();
-      reject(new Error(`git fast-import exited with code ${code}${stderr ? ": " + stderr : ""}`));
-    });
-    child.stdin.end(fastImportData, "utf8");
-  });
 }

@@ -1,5 +1,5 @@
 import app from "./app";
-import { logger, JanitorService } from "@workspace/core";
+import { logger, JanitorService, L3HealingService } from "@workspace/core";
 import { jobQueueWorker } from "./workers/job-queue.worker";
 
 const rawPort = process.env["PORT"];
@@ -27,11 +27,12 @@ app.listen(port, (err) => {
 
   // Start background janitor
   const janitor = new JanitorService();
+  const l3Healer = new L3HealingService();
   const JANITOR_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
   // Run once on startup (with a small delay)
   setTimeout(() => {
-    janitor.reanchorL3Rules().catch((err: unknown) => {
+    l3Healer.reanchorL3Rules().catch((err: unknown) => {
       logger.error({ err }, "Initial janitor run failed");
     });
     janitor.purgeOldLogsAndJobs().catch((err: unknown) => {
@@ -40,7 +41,7 @@ app.listen(port, (err) => {
   }, 10000);
 
   setInterval(() => {
-    janitor.reanchorL3Rules().catch((err: unknown) => {
+    l3Healer.reanchorL3Rules().catch((err: unknown) => {
       logger.error({ err }, "Janitor interval run failed");
     });
     janitor.purgeOldLogsAndJobs().catch((err: unknown) => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { calculateTemporalDecay } from "./decay.js";
+import { calculateTemporalDecay } from "./temporal-decay.calculator.js";
 
 describe("calculateTemporalDecay", () => {
   it("should return 1 for a date right now", () => {

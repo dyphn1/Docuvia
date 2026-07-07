@@ -91,7 +91,7 @@ describe("LlmRateLimiter", () => {
       attemptTimes.push(Date.now());
       calls++;
       if (calls < 3) {
-        throw new Error("429 Too Many Requests");
+        throw new Error("Request failed with status 429");
       }
       return "ok";
     });
@@ -115,12 +115,12 @@ describe("LlmRateLimiter", () => {
       backoff: { retries: 2, minDelayMs: 10, maxDelayMs: 100, factor: 2 },
     });
     const fn = vi.fn(async () => {
-      throw new Error("rate limit exceeded");
+      throw new Error("status 429: rate limit exceeded");
     });
 
     // Act
     const promise = limiter.execute(fn);
-    const assertion = expect(promise).rejects.toThrow("rate limit exceeded");
+    const assertion = expect(promise).rejects.toThrow("status 429");
     await vi.runAllTimersAsync();
 
     // Assert — initial attempt + 2 retries

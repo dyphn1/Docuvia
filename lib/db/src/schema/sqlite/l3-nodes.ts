@@ -33,5 +33,6 @@ export const l3NodesTable = sqliteTable(
     l3L2NodeIdx: index("l3_nodes_l2_node_id_idx").on(table.l2NodeId),
     contentHashIdx: index("l3_nodes_content_hash_idx").on(table.contentHash),
     introducedInCommitIdx: index("l3_nodes_introduced_in_commit_idx").on(table.introducedInCommit),
+    sourceCommitsIdx: index("l3_nodes_source_commits_idx").on(table.sourceCommits),
   })
 );

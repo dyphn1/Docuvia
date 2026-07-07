@@ -4,6 +4,10 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { Parser, Language } from "web-tree-sitter";
 import { SemanticDiffDetector, PruningLevel } from "../../src/detector/semantic-diff.js";
 
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+
 describe("SemanticDiffDetector", () => {
   let parser: Parser;
   let language: Language;
@@ -11,10 +15,15 @@ describe("SemanticDiffDetector", () => {
   beforeAll(async () => {
     await Parser.init();
 
-    const wasmPath = path.resolve(
-      process.cwd(),
-      "../../node_modules/.pnpm/tree-sitter-typescript@0.23.2/node_modules/tree-sitter-typescript/tree-sitter-typescript.wasm"
-    );
+    let wasmPath = "";
+    try {
+      wasmPath = require.resolve("tree-sitter-wasms/out/tree-sitter-typescript.wasm");
+    } catch {
+      wasmPath = path.resolve(
+        __dirname,
+        "../../../node_modules/tree-sitter-wasms/out/tree-sitter-typescript.wasm"
+      );
+    }
     const wasmBytes = fs.readFileSync(wasmPath);
     language = await Language.load(new Uint8Array(wasmBytes));
 

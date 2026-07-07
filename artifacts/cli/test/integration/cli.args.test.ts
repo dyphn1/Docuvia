@@ -38,7 +38,6 @@ describe("CLI Regression Tests - Argument Parsing & Edge Cases", () => {
         missing: "target",
         expected: "Usage: docuvia query <target> [--local] [--format=prompt|human]",
       },
-      { args: ["extract"], missing: "file_path", expected: "Usage: docuvia extract <file_path>" },
     ];
 
     it.each(missingArgsCases)(

@@ -47,6 +47,6 @@ describe("Command: docuvia extract", () => {
     // Assert
     expect(result).toBeInstanceOf(Error);
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain("Failed to read");
+    expect(result.stderr).toContain("Extraction failed: Path does not exist:");
   }, 15000);
 });

@@ -5,6 +5,14 @@ import * as fs from "fs";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 import type { SupportedLanguage } from "@workspace/ast-core";
+
+process.on("uncaughtException", (err) => {
+  console.error("[ast-worker] uncaughtException:", err);
+});
+process.on("unhandledRejection", (err) => {
+  console.error("[ast-worker] unhandledRejection:", err);
+});
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);

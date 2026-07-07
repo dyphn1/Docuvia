@@ -17,7 +17,9 @@ export const l1TagsTable = pgTable(
   },
   (table) => ({
     nameIdx: index("l1_tags_name_idx").on(table.name),
+    slugIdx: index("l1_tags_slug_idx").on(table.slug),
     categoryIdx: index("l1_tags_category_idx").on(table.category),
+    isAnchoredIdx: index("l1_tags_is_anchored_idx").on(table.isAnchored),
   })
 );
 

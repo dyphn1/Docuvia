@@ -86,7 +86,30 @@ The following quality areas have known gaps in automated test coverage:
 | UI component snapshot tests                                                                              | 🟢 Low    | No snapshot tests for kg-engine React components                     |
 | GitHub webhook E2E (with real PR diff)                                                                   | 🟡 Medium | Only unit-level HMAC validation tested                               |
 
-_(Legacy testcase roadmaps deprecated. Refer to `AGENTS.md` for current testing strategy.)_
+---
+
+## Testing Strategy & Quality Gates
+
+In compliance with **[ADR-033](../adr/ADR-033-strict-test-framework-and-quality-gates.md)**, Docuvia enforces strict testing thresholds across the monorepo. This alignment with the `tolaria` standard prevents regressions during autonomous agent operations.
+
+### Test Lanes
+
+- **Smoke Tests**: Curated critical paths (e.g., AST extraction, DB init) designed to execute in `< 5 minutes`. Executed via `pnpm run test:smoke`.
+- **Regression Tests**: Comprehensive test suite encompassing unit, integration, and E2E layers. Executed via `pnpm test`.
+
+### Coverage Ratchets
+
+Code coverage acts as a deployment and review gate:
+
+- **Core API & Backend**: Must maintain `≥ 85%` coverage.
+- **Frontend (Web UI)**: Must maintain `≥ 70%` coverage.
+
+### Code Health & Security
+
+- **CodeScene**: Hotspot and Average Code Health must pass thresholds defined in `.codescene-thresholds`.
+- **Codacy**: Security scans must pass with zero new Critical/High severity issues.
+
+_(For day-to-day TDD development rules, refer to `AGENTS.md`.)_
 
 ---
 

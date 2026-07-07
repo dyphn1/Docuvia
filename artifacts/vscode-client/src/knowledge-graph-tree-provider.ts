@@ -219,9 +219,11 @@ export class KnowledgeGraphTreeProvider
     if (!node) {
       const folders = vscode.workspace.workspaceFolders;
       if (!folders || folders.length === 0) {
+        vscode.commands.executeCommand("setContext", "docuvia:isInitialized", false);
         return [{ kind: "info", message: "No workspace open" }];
       }
-      return folders.map((folder): KGNode => {
+
+      const nodes = folders.map((folder): KGNode => {
         const isInit = fs.existsSync(path.join(folder.uri.fsPath, ".docuvia", "local.db"));
         return {
           kind: "project",
@@ -230,6 +232,15 @@ export class KnowledgeGraphTreeProvider
           isInit,
         };
       });
+
+      const hasInit = nodes.some((n) => n.kind === "project" && n.isInit);
+      vscode.commands.executeCommand("setContext", "docuvia:isInitialized", hasInit);
+
+      if (!hasInit) {
+        return [];
+      }
+
+      return nodes;
     }
 
     if (node.kind === "info") {

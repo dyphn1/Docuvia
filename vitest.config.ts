@@ -16,14 +16,6 @@ export default defineConfig({
         external: [/execa/],
       },
     },
-    include: [
-      "artifacts/*/test/**/*.test.{ts,tsx}",
-      "artifacts/*/src/**/*.unit.test.{ts,tsx}",
-      "lib/*/test/**/*.test.{ts,tsx}",
-      "lib/**/*.unit.test.{ts,tsx}",
-    ],
-    environment: "node",
-    setupFiles: ["artifacts/api-server/test/setup/setup.ts"],
     coverage: {
       include: [
         "artifacts/api-server/src/**/*.ts",
@@ -43,12 +35,21 @@ export default defineConfig({
         "artifacts/api-server/src/routes/ingest.ts",
         "artifacts/api-server/src/routes/github_webhooks.ts",
         "artifacts/api-server/src/routes/metabolism.ts",
-        "artifacts/kg-engine/src/components/**",
-        "artifacts/kg-engine/src/pages/**",
-        "artifacts/kg-engine/src/hooks/**",
       ],
       reportsDirectory: "coverage",
       reporter: ["text", "json", "html"],
+      thresholds: {
+        lines: 85,
+        branches: 85,
+        functions: 85,
+        statements: 85,
+        "artifacts/kg-engine/src/**/*.{ts,tsx}": {
+          lines: 70,
+          branches: 70,
+          functions: 70,
+          statements: 70,
+        },
+      },
     },
   },
 });

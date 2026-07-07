@@ -59,16 +59,24 @@ pnpm --filter @workspace/db run push-force    # Destructive push
 
 ## CI Pipeline Order
 
-The CI runs this exact sequence — replicate locally when making cross-package changes:
+The CI pipeline runs this exact sequence (enforced via `.github/workflows/ci.yml`). Replicate locally when making cross-package changes:
 
-1. `pnpm --filter @workspace/api-spec run codegen` (generates Zod schemas + React Query hooks)
-2. `pnpm run typecheck`
-3. `pnpm -r --if-present run build` (with `NODE_ENV=production` for Vite)
-4. `pnpm --filter @workspace/db run push` (to a real PostgreSQL)
-5. `pnpm run test:coverage`
+1. **Lint & Code Health**: `pnpm run lint`, CodeScene Hotspot check, and Codacy security scan.
+2. **Build**: `pnpm --filter @workspace/api-spec run codegen` -> `pnpm run typecheck` -> `pnpm -r --if-present run build`.
+3. **Database**: `pnpm --filter @workspace/db run push` (to a real PostgreSQL instance).
+4. **Smoke & E2E**: `pnpm run test:smoke` and Playwright suites for `@workspace/kg-engine` and `docuvia-vscode`.
+5. **Coverage Ratchet**: `pnpm run test:coverage` (Fails if Backend < 85% or Frontend < 70%).
 
-## Testing Conventions
+## Testing Conventions & Quality Gates
 
+> **Compliance with ADR-033**: Docuvia enforces strict testing and quality gates. All AI agents and developers MUST adhere to these rules.
+
+- **TDD (Mandatory)**: Follow the Red → Green → Refactor loop. One cycle per commit. For bugs, write a failing regression test first, then fix.
+- **Coverage Ratchet**: Test coverage is a release gate. Backend coverage must stay ≥ 85%, and Frontend coverage must stay ≥ 70%.
+- **Test Lanes**:
+  - `pnpm test:smoke`: Fast (< 5 min) suite for core critical paths only.
+  - `pnpm test`: Full regression suite.
+- **Code Health & Security**: CodeScene (Hotspot Code Health) and Codacy (Security) scans must pass with zero new Critical/High issues. Every commit must leave touched files with a higher or equal health score.
 - **Unit tests**: `*.unit.test.ts` co-located with source. Covered by root `vitest.config.ts`.
 - **Integration tests**: `artifacts/<package>/test/integration/`.
 - **Test runner**: Vitest with root config at `vitest.config.ts`. The shared setup file (`artifacts/api-server/test/setup/setup.ts`) auto-provides defaults for `PORT`, `DATABASE_URL`, `AI_INTEGRATIONS_OPENAI_*`.
@@ -139,7 +147,7 @@ For complex multi-step work, dispatch to the appropriate agent rather than doing
 
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Docuvia** (4954 symbols, 10208 relationships, 195 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Docuvia** (5297 symbols, 11134 relationships, 245 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 

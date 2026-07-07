@@ -55,13 +55,19 @@ test.describe("Phase 2: Dashboard Webview State", () => {
   });
 
   test('Dashboard webview renders the "Docuvia Dashboard" header', async () => {
-    const webviewFrame = window.frameLocator("iframe.webview.ready").last();
+    const webviewFrame = window
+      .frameLocator("iframe.webview.ready")
+      .last()
+      .frameLocator("#active-frame");
     const header = webviewFrame.locator("header");
     await expect(header).toContainText("Docuvia Dashboard", { timeout: 15_000 });
   });
 
   test("Dashboard stats show 0 tags, 0 modules, 0 decisions for empty .docuvia", async () => {
-    const webviewFrame = window.frameLocator("iframe.webview.ready").last();
+    const webviewFrame = window
+      .frameLocator("iframe.webview.ready")
+      .last()
+      .frameLocator("#active-frame");
     await expect(webviewFrame.locator("#stat-tags")).toHaveText("0", { timeout: 15_000 });
     await expect(webviewFrame.locator("#stat-modules")).toHaveText("0", { timeout: 15_000 });
     await expect(webviewFrame.locator("#stat-decisions")).toHaveText("0", { timeout: 15_000 });
@@ -70,21 +76,30 @@ test.describe("Phase 2: Dashboard Webview State", () => {
   });
 
   test("Dashboard shows the workspace name in the header", async () => {
-    const webviewFrame = window.frameLocator("iframe.webview.ready").last();
+    const webviewFrame = window
+      .frameLocator("iframe.webview.ready")
+      .last()
+      .frameLocator("#active-frame");
     const workspaceName = webviewFrame.locator("#workspace-name");
     await expect(workspaceName).not.toBeEmpty({ timeout: 10_000 });
     await expect(workspaceName).toContainText("empty-workspace", { timeout: 10_000 });
   });
 
   test('Dashboard bottom bar shows the "Ask Docuvia..." chat button', async () => {
-    const webviewFrame = window.frameLocator("iframe.webview.ready").last();
+    const webviewFrame = window
+      .frameLocator("iframe.webview.ready")
+      .last()
+      .frameLocator("#active-frame");
     const chatBtn = webviewFrame.locator("#open-chat-btn");
     await expect(chatBtn).toBeVisible({ timeout: 10_000 });
     await expect(chatBtn).toHaveText("Ask Docuvia\u2026");
   });
 
   test('Dashboard "Recent Decisions" list shows empty placeholder when no decisions exist', async () => {
-    const webviewFrame = window.frameLocator("iframe.webview.ready").last();
+    const webviewFrame = window
+      .frameLocator("iframe.webview.ready")
+      .last()
+      .frameLocator("#active-frame");
     const emptyPlaceholder = webviewFrame.locator("#recent-decisions .empty");
     await expect(emptyPlaceholder).toBeVisible({ timeout: 10_000 });
     await expect(emptyPlaceholder).toContainText("No decisions yet.");

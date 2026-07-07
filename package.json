@@ -10,8 +10,9 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --if-present run typecheck",
     "lint": "prettier --check .",
     "format": "prettier --write .",
-    "test": "node scripts/ensure-db.mjs && pnpm --filter @workspace/api-server --filter @workspace/cli run test",
-    "test:coverage": "node scripts/ensure-db.mjs && pnpm --filter @workspace/api-server --filter @workspace/cli run test:coverage",
+    "test": "node scripts/ensure-db.mjs && vitest run",
+    "test:coverage": "node scripts/ensure-db.mjs && vitest run --coverage",
+    "test:smoke": "node scripts/ensure-db.mjs && vitest run --project node-backend -t '@smoke'",
     "test:ci": "docker compose -f docker-compose.ci.yml up --build --abort-on-container-exit --exit-code-from ci-runner",
     "test:act": "docker compose -f docker-compose.act.yml run --rm act-cli act",
     "prepare": "husky"
@@ -27,7 +28,8 @@
     "playwright": "^1.60.0",
     "prettier": "^3.8.1",
     "supertest": "^6.3.3",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "vitest": "^1.6.1"
   },
   "dependencies": {
     "@faker-js/faker": "8.4.0",

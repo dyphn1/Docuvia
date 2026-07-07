@@ -3,13 +3,16 @@
 > **Project context, architecture, commands, and conventions**: See [AGENTS.md](../AGENTS.md).
 > All agent definitions (canonical source of truth): See [.github/agents/](.github/agents/).
 
-## Testing Navigation
+## Testing Navigation & Quality Gates
+
+> **ADR-033 Enforcement**: Red-Green-Refactor TDD is mandatory. Before committing, ensure your code passes CodeScene/Codacy checks.
 
 - Unit tests are colocated with source files as `*.unit.test.ts`.
 - Package integration tests live under `artifacts/<package>/test/integration/`.
 - API integration tests should use `supertest`, factories from `artifacts/api-server/test/support/factories.ts`, and `withRollback(...)` from `artifacts/api-server/test/support/db.ts`.
 - Mock external HTTP calls through MSW handlers in `artifacts/api-server/test/setup/msw/handlers.ts`; put large static payloads in `artifacts/api-server/test/setup/msw/fixtures/`.
-- Run `pnpm test` for the normal suite and `pnpm run test:coverage` when checking coverage boundaries.
+- Use `pnpm run test:smoke` to run fast critical path tests.
+- Run `pnpm test` for the normal suite and `pnpm run test:coverage` to ensure Backend ≥ 85% and Frontend ≥ 70%.
 
 ---
 

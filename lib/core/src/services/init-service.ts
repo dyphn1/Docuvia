@@ -86,6 +86,21 @@ export class InitService {
 
       console.log(`[docuvia] Initializing SQLite database...`);
       db.exec(`
+        CREATE TABLE IF NOT EXISTS projects (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          repo_url TEXT NOT NULL,
+          description TEXT,
+          status TEXT DEFAULT 'active',
+          vcs_type TEXT DEFAULT 'git',
+          svn_url TEXT,
+          last_git_ingested_at TEXT,
+          last_svn_revision INTEGER,
+          last_ast_ingested_at TEXT,
+          owner_id INTEGER DEFAULT 1,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         CREATE TABLE IF NOT EXISTS project_files (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           project_id INTEGER,
@@ -99,6 +114,9 @@ export class InitService {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT UNIQUE,
           slug TEXT,
+          category TEXT DEFAULT 'Feature',
+          is_anchored INTEGER DEFAULT 0,
+          usage_count INTEGER DEFAULT 0,
           description TEXT,
           created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
@@ -106,8 +124,7 @@ export class InitService {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           project_id INTEGER,
           name TEXT,
-          slug TEXT,
-          type TEXT,
+          type TEXT DEFAULT 'module',
           is_system INTEGER DEFAULT 0,
           description TEXT,
           ai_generated INTEGER DEFAULT 1,
@@ -139,8 +156,20 @@ export class InitService {
           l2_node_id INTEGER,
           title TEXT,
           content TEXT,
-          status TEXT,
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          node_type TEXT DEFAULT 'change',
+          source_commits TEXT DEFAULT '[]',
+          commit_hash TEXT,
+          ai_generated INTEGER DEFAULT 1,
+          confidence REAL,
+          noise_score REAL,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          last_verified_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          occurrence_count INTEGER DEFAULT 1,
+          introduced_in_commit TEXT,
+          verified_until_commit TEXT,
+          validity_status TEXT DEFAULT 'pending',
+          source TEXT DEFAULT 'commit',
+          content_hash TEXT
         );
       `);
       // FTS5 keyword indexes for the local-first natural language fallback (ADR-029)

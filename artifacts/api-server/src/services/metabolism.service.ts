@@ -9,7 +9,7 @@ import {
 } from "@workspace/db";
 import { isNull, inArray, and, eq, lt } from "drizzle-orm";
 import {
-  getLlmClientForProject,
+  getLlmOrchestratorForProject,
   checkCommitInDefaultBranch,
   parseGithubRepo,
 } from "@workspace/core";
@@ -137,8 +137,10 @@ export class MetabolismService {
 
       for (const correction of pendingCorrections) {
         try {
-          const { client, model } = await getLlmClientForProject(correction.projectId as number);
-          const response = await client.chat.completions.create({
+          const { orchestrator, model } = await getLlmOrchestratorForProject(
+            correction.projectId as number
+          );
+          const response = await orchestrator.generate({
             model,
             messages: [
               {
@@ -154,7 +156,7 @@ export class MetabolismService {
             max_tokens: 100,
           });
 
-          const guardrail = response.choices[0]?.message?.content?.trim();
+          const guardrail = response.content?.trim();
 
           if (guardrail) {
             promptsToInsert.push({

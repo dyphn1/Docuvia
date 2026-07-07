@@ -1,4 +1,4 @@
-import { getLlmClientForProject } from "./llm-provider.js";
+import { getLlmOrchestratorForProject } from "./llm-provider.js";
 import { logger } from "../utils/logger.js";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
@@ -14,13 +14,32 @@ export async function generateEmbedding(
 ): Promise<number[] | null> {
   if (!text?.trim()) return null;
   try {
-    const { client } = await getLlmClientForProject(projectId);
-    const response = await client.embeddings.create({
-      model: EMBEDDING_MODEL,
-      input: text.slice(0, 8192),
-      dimensions: EMBEDDING_DIMENSIONS,
-      encoding_format: "float",
+    const { apiKey, baseUrl, provider } = await getLlmOrchestratorForProject(projectId);
+
+    let url = baseUrl;
+    if (provider === "openai" && !url.endsWith("/embeddings")) {
+      url = url.endsWith("/") ? `${url}embeddings` : `${url}/embeddings`;
+    }
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: EMBEDDING_MODEL,
+        input: text.slice(0, 8192),
+        dimensions: EMBEDDING_DIMENSIONS,
+        encoding_format: "float",
+      }),
     });
+
+    if (!res.ok) {
+      throw new Error(`Embedding request failed: ${res.status} ${await res.text()}`);
+    }
+
+    const response = (await res.json()) as any;
     return response.data[0]?.embedding ?? null;
   } catch (err) {
     logger.warn({ err }, "[embedding] Failed to generate embedding");

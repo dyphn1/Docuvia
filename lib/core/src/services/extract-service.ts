@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs/promises";
 import * as fsSync from "fs";
 import { AstWorkerPool, IASTWorkerPool } from "./ast-worker-pool.js";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { LLMOrchestrator, openaiTransport } from "@workspace/llm-orchestrator";
 import Database from "better-sqlite3";
 import crypto from "crypto";
 
@@ -112,7 +112,16 @@ export class ExtractService {
     if (llmWhitelist.includes(ext)) {
       try {
         const content = await fs.readFile(absolutePath, "utf-8");
-        const response = await openai.chat.completions.create({
+        const orchestrator = new LLMOrchestrator({
+          profile: {
+            name: "openai",
+            baseUrl: process.env.AI_OPENAI_BASE_URL || "https://api.openai.com/v1",
+            defaultModel: process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
+          },
+          transport: openaiTransport,
+          apiKey: process.env.AI_OPENAI_API_KEY || "",
+        });
+        const response = await orchestrator.generate({
           model: process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
           response_format: { type: "json_object" },
           messages: [
@@ -127,7 +136,7 @@ export class ExtractService {
             },
           ],
         });
-        const parsed = JSON.parse(response.choices[0].message.content || '{"decisions": []}');
+        const parsed = JSON.parse(response.content || '{"decisions": []}');
         return { decisions: parsed.decisions || [] };
       } catch (e: any) {
         console.error(`[docuvia] LLM extraction failed for file ${absolutePath}:`, e.message);

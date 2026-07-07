@@ -5,7 +5,7 @@ import { generateEmbedding } from "../embedding.js";
 import { logger } from "../../utils/logger.js";
 import { runSieveModel } from "../noise-detection-service.js";
 import { getPromptTemplate, getModel } from "../prompt-service.js";
-import { getLlmClientForProject } from "../llm-provider.js";
+import { getLlmOrchestratorForProject } from "../llm-provider.js";
 
 export class GenerateService {
   async extractSieveDecisions(
@@ -28,10 +28,11 @@ export class GenerateService {
 
     let extracted: any[] = [];
     try {
-      const { client } = await getLlmClientForProject(projectId);
-      const response = await client.chat.completions.create({
-        model,
-        max_completion_tokens: 2048,
+      const { orchestrator, model: orchestratorModel } =
+        await getLlmOrchestratorForProject(projectId);
+      const response = await orchestrator.generate({
+        model: model || orchestratorModel,
+        max_tokens: 2048,
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -40,7 +41,7 @@ export class GenerateService {
           },
         ],
       });
-      const content = response.choices[0]?.message?.content ?? "[]";
+      const content = response.content ?? "[]";
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (jsonMatch) extracted = JSON.parse(jsonMatch[0]);
     } catch (err) {

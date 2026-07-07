@@ -17,7 +17,6 @@
     "@workspace/core": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/headless-lsp": "workspace:^",
-    "@workspace/integrations-openai-ai-server": "workspace:*",
     "@workspace/plugins-ast": "workspace:*",
     "@workspace/plugins-domain": "workspace:*",
     "cookie-parser": "^1.4.7",

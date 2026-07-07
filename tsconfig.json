@@ -11,7 +11,7 @@
     { "path": "./lib/db" },
     { "path": "./lib/api-client-react" },
     { "path": "./lib/api-zod" },
-    { "path": "./lib/integrations-openai-ai-server" },
-    { "path": "./lib/ui-kit" }
+    { "path": "./lib/ui-kit" },
+    { "path": "./lib/llm-orchestrator" }
   ]
 }

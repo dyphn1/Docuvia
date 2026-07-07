@@ -17,7 +17,7 @@
       "path": "../db"
     },
     {
-      "path": "../integrations-openai-ai-server"
+      "path": "../llm-orchestrator"
     }
   ]
 }

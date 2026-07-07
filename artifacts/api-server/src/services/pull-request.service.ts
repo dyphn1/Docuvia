@@ -7,7 +7,7 @@ import {
   projectsTable,
 } from "@workspace/db";
 import { eq, and, gte, sql } from "drizzle-orm";
-import { getLlmClientForProject } from "@workspace/core";
+import { getLlmOrchestratorForProject } from "@workspace/core";
 
 export class PullRequestService {
   async getPullRequestsByProjectId(projectId: number) {
@@ -116,10 +116,10 @@ export class PullRequestService {
 
       if (l3Nodes.length || l2Nodes.length) {
         const context = JSON.stringify({ l2Nodes, l3Nodes }, null, 2);
-        const { client, model } = await getLlmClientForProject(projectId);
-        const response = await client.chat.completions.create({
+        const { orchestrator, model } = await getLlmOrchestratorForProject(projectId);
+        const response = await orchestrator.generate({
           model,
-          max_completion_tokens: 1024,
+          max_tokens: 1024,
           messages: [
             {
               role: "system",
@@ -132,7 +132,7 @@ export class PullRequestService {
             },
           ],
         });
-        aiSummary = response.choices[0]?.message?.content ?? aiSummary;
+        aiSummary = response.content ?? aiSummary;
       }
 
       await this.updatePrAnalysisStatus(projectId, prNumber, "completed", aiSummary);

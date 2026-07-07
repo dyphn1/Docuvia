@@ -18,7 +18,7 @@
   "dependencies": {
     "@workspace/ast-core": "workspace:^",
     "@workspace/db": "workspace:*",
-    "@workspace/integrations-openai-ai-server": "workspace:*",
+    "@workspace/llm-orchestrator": "workspace:*",
     "better-sqlite3": "^12.11.1",
     "drizzle-orm": "catalog:",
     "fast-glob": "^3.3.3",

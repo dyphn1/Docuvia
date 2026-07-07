@@ -9,7 +9,6 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity } from "./embedding.js";
 import { logger } from "../utils/logger.js";
-import { getLlmClientForProject } from "./llm-provider.js";
 
 export async function runNoiseDetection(db: any, projectId: number): Promise<number> {
   let noiseTasksCreated = 0;

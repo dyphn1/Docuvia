@@ -11,7 +11,7 @@ import {
 } from "@workspace/db";
 import { eq, and, inArray, gte } from "drizzle-orm";
 import {
-  getLlmClientForProject,
+  getLlmOrchestratorForProject,
   fetchPrCommits,
   parseGithubRepo,
   postPrComment,
@@ -399,11 +399,11 @@ export class GithubWebhookService {
 
     const context = JSON.stringify({ l2Nodes, l3Nodes }, null, 2);
 
-    const { client, model } = await getLlmClientForProject(projectId);
+    const { orchestrator, model } = await getLlmOrchestratorForProject(projectId);
 
-    const response = await client.chat.completions.create({
+    const response = await orchestrator.generate({
       model,
-      max_completion_tokens: 1024,
+      max_tokens: 1024,
       messages: [
         {
           role: "system",
@@ -417,6 +417,6 @@ export class GithubWebhookService {
       ],
     });
 
-    return response.choices[0]?.message?.content ?? "Unable to generate summary.";
+    return response.content ?? "Unable to generate summary.";
   }
 }

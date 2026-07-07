@@ -2,7 +2,7 @@ import { db } from "@workspace/db";
 import { commitsTable } from "@workspace/db";
 import { inArray } from "drizzle-orm";
 import { logger } from "../../utils/logger.js";
-import { getLlmClientForProject } from "../llm-provider.js";
+import { getLlmOrchestratorForProject } from "../llm-provider.js";
 import { buildFewShotSection } from "../prompt-service.js";
 import {
   ILlmGenerationService,
@@ -38,10 +38,11 @@ export class LlmGenerationService implements ILlmGenerationService {
           .join("\n");
 
         try {
-          const { client } = await getLlmClientForProject(projectId);
-          const response = await client.chat.completions.create({
-            model,
-            max_completion_tokens: 1024,
+          const { orchestrator, model: orchestratorModel } =
+            await getLlmOrchestratorForProject(projectId);
+          const response = await orchestrator.generate({
+            model: model || orchestratorModel,
+            max_tokens: 1024,
             messages: [
               {
                 role: "system",
@@ -54,7 +55,7 @@ export class LlmGenerationService implements ILlmGenerationService {
               },
             ],
           });
-          synthesizedContent = response.choices[0]?.message?.content ?? synthesizedContent;
+          synthesizedContent = response.content ?? synthesizedContent;
           // Sleep to prevent rate limit
           await new Promise((resolve) => setTimeout(resolve, 500));
         } catch (e) {
@@ -82,10 +83,11 @@ export class LlmGenerationService implements ILlmGenerationService {
       ? `\nExisting global tags (reuse if applicable): ${existingTags.join(", ")}`
       : "";
 
-    const { client } = await getLlmClientForProject(projectId);
-    const response = await client.chat.completions.create({
-      model,
-      max_completion_tokens: 2048,
+    const { orchestrator, model: orchestratorModel } =
+      await getLlmOrchestratorForProject(projectId);
+    const response = await orchestrator.generate({
+      model: model || orchestratorModel,
+      max_tokens: 2048,
       messages: [
         {
           role: "system",
@@ -98,7 +100,7 @@ export class LlmGenerationService implements ILlmGenerationService {
       ],
     });
 
-    const content = response.choices[0]?.message?.content ?? "[]";
+    const content = response.content ?? "[]";
     try {
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       return jsonMatch ? JSON.parse(jsonMatch[0]) : [];
@@ -128,10 +130,11 @@ export class LlmGenerationService implements ILlmGenerationService {
         ? `\n\nL2 modules discovered in previous batches (maintain consistency with these names): ${previousL2Names.join(", ")}`
         : "";
 
-    const { client } = await getLlmClientForProject(projectId);
-    const response = await client.chat.completions.create({
-      model,
-      max_completion_tokens: 4096,
+    const { orchestrator, model: orchestratorModel } =
+      await getLlmOrchestratorForProject(projectId);
+    const response = await orchestrator.generate({
+      model: model || orchestratorModel,
+      max_tokens: 4096,
       messages: [
         {
           role: "system",
@@ -144,7 +147,7 @@ export class LlmGenerationService implements ILlmGenerationService {
       ],
     });
 
-    const content = response.choices[0]?.message?.content ?? "[]";
+    const content = response.content ?? "[]";
     try {
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       return jsonMatch ? JSON.parse(jsonMatch[0]) : [];

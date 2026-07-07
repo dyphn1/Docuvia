@@ -6,25 +6,25 @@ import {
 
 /** Builds a mocked LLM client factory (the boundary we mock, like other unit tests). */
 const makeLlmFactory = (options: { content?: string | null; reject?: boolean }) => {
-  const create = options.reject
+  const generate = options.reject
     ? vi.fn().mockRejectedValue(new Error("LLM unreachable"))
     : vi.fn().mockResolvedValue({
-        choices: [{ message: { content: options.content ?? null } }],
+        content: options.content ?? null,
       });
 
   const factory = vi.fn().mockResolvedValue({
-    client: { chat: { completions: { create } } },
+    orchestrator: { generate },
     model: "test-model",
   });
 
-  return { factory: factory as any, create };
+  return { factory: factory as any, generate };
 };
 
 describe("local-nl-query.service.ts", () => {
   describe("LocalIntentExtractionService.extractIntent", () => {
     it("parses a valid LLM JSON response into keywords and nodeRefs", async () => {
       // Arrange
-      const { factory, create } = makeLlmFactory({
+      const { factory, generate } = makeLlmFactory({
         content: JSON.stringify({
           keywords: ["authentication", "token"],
           nodeRefs: ["AuthService"],
@@ -40,7 +40,7 @@ describe("local-nl-query.service.ts", () => {
         keywords: ["authentication", "token"],
         nodeRefs: ["AuthService"],
       });
-      expect(create).toHaveBeenCalledTimes(1);
+      expect(generate).toHaveBeenCalledTimes(1);
     });
 
     it("falls back to heuristic keywords when the LLM call fails", async () => {

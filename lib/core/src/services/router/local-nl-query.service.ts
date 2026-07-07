@@ -1,4 +1,4 @@
-import { getLlmClientForProject } from "../llm-provider.js";
+import { getLlmOrchestratorForProject } from "../llm-provider.js";
 import { logger } from "../../utils/logger.js";
 import { sanitizeQuery } from "./router.utils.js";
 import { SqliteGraphRepository } from "../sqlite-graph.repository.js";
@@ -77,7 +77,7 @@ const toStringArray = (value: unknown): string[] =>
 
 export class LocalIntentExtractionService {
   constructor(
-    private readonly llmClientFactory: typeof getLlmClientForProject = getLlmClientForProject
+    private readonly llmClientFactory: typeof getLlmOrchestratorForProject = getLlmOrchestratorForProject
   ) {}
 
   async extractIntent(query: string, projectId?: number): Promise<LocalQueryIntent> {
@@ -88,8 +88,8 @@ export class LocalIntentExtractionService {
     };
 
     try {
-      const { client, model } = await this.llmClientFactory(projectId);
-      const response = await client.chat.completions.create({
+      const { orchestrator, model } = await this.llmClientFactory(projectId);
+      const response = await orchestrator.generate({
         model: model || process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
         response_format: { type: "json_object" },
         messages: [
@@ -99,7 +99,7 @@ export class LocalIntentExtractionService {
         max_tokens: 256,
       });
 
-      const raw = response.choices[0]?.message?.content;
+      const raw = response.content;
       if (!raw) return fallback;
 
       const parsed = JSON.parse(raw) as Record<string, unknown>;

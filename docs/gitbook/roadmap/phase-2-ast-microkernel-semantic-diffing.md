@@ -26,5 +26,5 @@ This phase tracks the following specific features. Click on any feature to view 
 | Smart Blast Radius (WASM Semantic Diff)  | ⚠️ WARN | [View Details](features/smart-blast-radius-wasm-semantic-diff.md) |
 | Zero-Server Deep Traversal               | ✅ Done | [View Details](features/zero-server-deep-traversal.md)            |
 | Local Context Compression                | ✅ Done | [View Details](features/local-context-compression.md)             |
-| Sub-second Incremental Watch             | 🔲 TODO | [View Details](features/sub-second-incremental-watch.md)          |
-| Headless LSP Manager                     | 🔲 TODO | [View Details](features/headless-lsp-manager.md)                  |
+| Sub-second Incremental Watch             | ✅ Done | [View Details](features/sub-second-incremental-watch.md)          |
+| Headless LSP Manager                     | ✅ Done | [View Details](features/headless-lsp-manager.md)                  |

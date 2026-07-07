@@ -24,9 +24,9 @@ This phase tracks the following specific features. Click on any feature to view 
 | Tool Maker Auto-Trigger               | 🔲 TODO | [View Details](features/tool-maker-auto-trigger.md)               |
 | Cross-team subscription               | ✅ Done | [View Details](features/cross-team-subscription.md)               |
 | Rigorous Health-Check Gates           | 🔲 TODO | [View Details](features/rigorous-health-check-gates.md)           |
-| Parallel Swarm Review Concepts        | 🔲 TODO | [View Details](features/parallel-swarm-review-concepts.md)        |
+| Parallel Swarm Review Concepts        | ✅ Done | [View Details](features/parallel-swarm-review-concepts.md)        |
 | Shared Core DI Orchestrator           | ✅ Done | [View Details](features/shared-core-di-orchestrator.md)           |
 | Domain Plugin Architecture            | ✅ Done | [View Details](features/domain-plugin-architecture.md)            |
 | Presentation Layer DI Composition     | ✅ Done | [View Details](features/presentation-layer-di-composition.md)     |
-| Core Services Test Hardening          | 🔲 TODO | [View Details](features/core-services-test-hardening.md)          |
-| Comprehensive Documentation Alignment | 🔲 TODO | [View Details](features/comprehensive-documentation-alignment.md) |
+| Core Services Test Hardening          | ✅ Done | [View Details](features/core-services-test-hardening.md)          |
+| Comprehensive Documentation Alignment | ✅ Done | [View Details](features/comprehensive-documentation-alignment.md) |

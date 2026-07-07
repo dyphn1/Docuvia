@@ -4,13 +4,17 @@ This document provides a strict, horizontal comparison of the core features and 
 
 **Focus:** This matrix is designed to ruthlessly evaluate **Docuvia's** maturity and identify architectural gaps by benchmarking it against the specialized strengths of its sibling projects, especially regarding roadmap items like visualization and plugin extensibility.
 
-## Scoring System (100-Point Strict Scale)
+## Team Consensus & Strict Voting Criteria (The "Harsh Truth")
 
-- **0-20**: Non-existent or trivial mock. Completely unusable in production.
-- **21-40**: Basic prototype. Brittle, lacks edge-case handling, or relies on heavy manual intervention.
-- **41-60**: Functional but mediocre. Meets minimum requirements but lacks optimization or scaling capabilities.
-- **61-80**: Mature and robust. Standard production quality, reliable under normal loads.
-- **81-100**: Industry-leading/Moat. State-of-the-art implementation, enforced via strict CI/CD gates, serving as the core competitive advantage of the project.
+To prevent architectural hubris, the core maintainers (representing the personas of Risk Architect, Security Reviewer, Test CI Verifier, and Core Docs Reviewer) have collectively re-evaluated these scores. Previous ratings suffered from "happy-path inflation." This updated matrix applies an extraordinarily harsh standard: a feature does not get a passing grade just because it "technically works" in a demo. It is judged on edge cases, architectural rigidity, actual token costs, and hermetic CI enforcement.
+
+## Strict Scoring System (100-Point Scale)
+
+- **0-20**: Non-existent or proof-of-concept. Breaks on edge cases. Unusable in production.
+- **21-40**: MVP. Works on the happy path, but carries massive technical debt or manual overhead.
+- **41-60**: Functional but flawed. Lacks scaling optimizations, proper abstractions, or full test coverage.
+- **61-80**: Production-ready, but with known limitations compared to state-of-the-art competitors.
+- **81-100**: Flawless, industry-leading. Fully covered by ratchet gates, handles edge cases gracefully, and serves as a true competitive moat. (Scores of 90+ are extremely rare).
 
 ## 1. Knowledge Graph & Analysis
 
@@ -18,19 +22,17 @@ Evaluates the ability to parse code, track logic, handle multiple repositories, 
 
 | Core Feature                       | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :--------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **AST & Multi-language Parsing**   | **85**  |    0    |    95    |    75    |        95         |    0     |      0       |
-| **Incremental Updates & Cache**    | **75**  |    0    |    90    |    30    |        90         |    0     |      0       |
-| **Execution Flow & Impact Radius** | **80**  |    0    |    95    |    50    |        95         |    0     |      0       |
-| **Hybrid Search (FTS5 + Vector)**  | **75**  |    0    |    90    |    0     |        90         |    0     |      50      |
-| **Cross-Repo & Group Analysis**    |  **0**  |    0    |    95    |    0     |        95         |    0     |      0       |
+| **AST & Multi-language Parsing**   | **60**  |    0    |    80    |    60    |        85         |    0     |      0       |
+| **Incremental Updates & Cache**    | **45**  |    0    |    75    |    20    |        75         |    0     |      0       |
+| **Execution Flow & Impact Radius** | **40**  |    0    |    75    |    40    |        80         |    0     |      0       |
+| **Hybrid Search (FTS5 + Vector)**  | **40**  |    0    |    70    |    0     |        75         |    0     |      40      |
+| **Cross-Repo & Group Analysis**    |  **0**  |    0    |    85    |    0     |        85         |    0     |      0       |
 
-_Docuvia Analysis_: Docuvia uses a **Progressive Enrichment (AST + LSP) Dual Engine**. While the WASM AST provides a fast baseline (85), its `Execution Flow & Impact Radius` scoring is strictly capped (80) compared to GitNexus and `code-review-graph` (95).
-Furthermore, Docuvia entirely lacks **Cross-Repo & Group Analysis (0)**, a capability that both GitNexus and code-review-graph have mastered (95) for querying across grouped workspace projects.
+_Team Critique (Docuvia)_:
 
-- **GitNexus / code-review-graph (95)**: Achieve offline, millisecond-latency blast radius calculations natively in SQLite by utilizing pure static heuristics and bypassing compilers entirely.
-- **Docuvia (80)**: Relies on asynchronously booting an external LSP for deep cross-module inference. This introduces a 3-5s cold-start latency and makes the analysis fragile if the user's project has a broken build or missing `node_modules`.
-
-_Architectural Deep Dive:_ For a full breakdown of how Docuvia mitigates these limitations via Fast/Slow path routing, Graceful Degradation, and Cumulative Knowledge Accumulation, see the [Progressive Enrichment Playbook](../development/patterns/progressive-enrichment.md).
+- **AST Parsing (60)**: `web-tree-sitter` is brittle. We lack true semantic parity across 10+ languages compared to `code-review-graph`'s robust fallbacks.
+- **Execution Flow (40)**: Completely unacceptable cold-start latency (3-5s). Relying on an external LSP to spin up makes impact radius calculations fragile if `node_modules` are broken or uninstalled. `GitNexus` calculates this instantly via static heuristics.
+- **Cross-Repo (0)**: Docuvia remains rigidly monorepo-bound.
 
 ## 2. AI & LLM Ecosystem
 
@@ -38,14 +40,17 @@ Evaluates MCP integration, RAG, Token optimization, Multi-Agent collaboration, a
 
 | Core Feature                         | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :----------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **MCP Server & Tool Support**        | **90**  |    0    |    95    |    40    |        95         |    60    |      95      |
-| **Built-in Subagents Workflow**      | **95**  |    0    |    85    |    0     |         0         |    0     |      95      |
-| **Agentic RAG**                      | **90**  |    0    |    70    |    0     |        70         |    0     |      0       |
-| **Token Optimization & Compression** | **15**  |    0    |    30    |    0     |        75         |   100    |      90      |
-| **Cross-Session Memory Persistence** | **40**  |    0    |    0     |    0     |         0         |    0     |      95      |
+| **MCP Server & Tool Support**        | **70**  |    0    |    80    |    30    |        80         |    50    |      85      |
+| **Built-in Subagents Workflow**      | **75**  |    0    |    70    |    0     |         0         |    0     |      85      |
+| **Agentic RAG**                      | **50**  |    0    |    60    |    0     |        60         |    0     |      0       |
+| **Token Optimization & Compression** | **10**  |    0    |    20    |    0     |        60         |    90    |      80      |
+| **Cross-Session Memory Persistence** | **20**  |    0    |    0     |    0     |         0         |    0     |      85      |
 
-_Docuvia Analysis_: Docuvia shines in its orchestration capabilities. Its 4-way Agentic RAG router and structured 10-subagent workflow (`.github/agents/`) are class-leading (90+). However, **Token Optimization is Docuvia's critical vulnerability (15)**. While `headroom` and `hermes-agent` have perfected token compression proxying and prompt caching (90-100), Docuvia currently lacks serious token budgeting.
-Additionally, in **Cross-Session Memory Persistence (40)**, Docuvia only has basic Markdown memory keeper logs, whereas `hermes-agent` (95) features advanced pluggable memory backends (mem0, honcho) that persist dynamically across distinct user sessions.
+_Team Critique (Docuvia)_:
+
+- **Token Optimization (10)**: Our biggest architectural failure. Docuvia blasts the context window with raw AST/RAG data. `headroom` achieves 90+ by perfectly proxying and caching prompts.
+- **Memory Persistence (20)**: Generating markdown files (`MEMORY.md`) is a primitive mock of real memory. `hermes-agent` integrates actual graph/vector memory backends (mem0, honcho) that survive session restarts cleanly.
+- **Agentic RAG (50)**: Our routing lacks true semantic deduplication, often feeding the LLM redundant chunks.
 
 ## 3. Architecture & Modern Engineering
 
@@ -53,15 +58,18 @@ Evaluates developer experience, decoupling, extensibility, and productization ma
 
 | Core Feature                            | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :-------------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **API-First Design & Codegen**          | **95**  |    0    |    50    |    0     |         0         |    0     |      40      |
-| **Cross-Platform Native/VS Code**       | **75**  |   90    |    0     |    0     |        50         |    0     |      85      |
-| **Telemetry & User Tracking (PostHog)** |  **0**  |   95    |    0     |    0     |         0         |    50    |      0       |
-| **Internationalization (i18n/L10n)**    |  **0**  |   95    |    0     |    0     |         0         |    0     |      0       |
-| **Plugin & Extension System**           |  **0**  |    0    |    80    |    0     |        80         |    0     |      95      |
-| **Background Tasks & Cron Scheduling**  |  **0**  |    0    |    0     |    0     |         0         |    0     |      95      |
+| **API-First Design & Codegen**          | **80**  |    0    |    40    |    0     |         0         |    0     |      30      |
+| **Cross-Platform Native/VS Code**       | **60**  |   80    |    0     |    0     |        40         |    0     |      75      |
+| **Telemetry & User Tracking (PostHog)** |  **0**  |   85    |    0     |    0     |         0         |    40    |      0       |
+| **Internationalization (i18n/L10n)**    |  **0**  |   85    |    0     |    0     |         0         |    0     |      0       |
+| **Plugin & Extension System**           |  **0**  |    0    |    70    |    0     |        70         |    0     |      85      |
+| **Background Tasks & Cron Scheduling**  |  **0**  |    0    |    0     |    0     |         0         |    0     |      85      |
 
-_Docuvia Analysis_: Docuvia's backend-to-frontend engineering is world-class; its strict `openapi.yaml` -> Orval -> Zod/React Query pipeline guarantees zero type drift (95). VS Code integration is solid (75) but lacks the native desktop polish of `tolaria` (90) or `hermes-agent`'s Electron app (85).
-The glaring omissions are **Telemetry (0), Internationalization (0), and Plugin Systems (0)**. `hermes-agent` absolutely dominates extensibility (95) via its dynamic skill system, Kanban dispatchers, and cron scheduling, leaving Docuvia looking highly rigid in comparison.
+_Team Critique (Docuvia)_:
+
+- **API Codegen (80)**: It works, but Orval/Zod bindings still require manual trigger updates and lack strict CI enforcement to prevent drift on uncommitted YAML files.
+- **Extensibility (0)**: Docuvia is a monolith. `hermes-agent` manages dynamic plugin loading, chron scheduling, and external API hooks elegantly.
+- **Productization (0)**: No PostHog telemetry, no i18n. `tolaria` treats these as day-one requirements for any shipping product.
 
 ## 4. QA, CI/CD & Security
 
@@ -69,34 +77,37 @@ Evaluates CI/CD strictness, automation, and defensive guards.
 
 | Core Feature                            | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :-------------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **Strict Test Coverage (Ratchet Gate)** | **90**  |   95    |    0     |    0     |        75         |    60    |      90      |
-| **E2E Automation (Playwright)**         | **75**  |   90    |    90    |    0     |         0         |    0     |      60      |
-| **Code Health Tracking (CodeScene)**    | **80**  |   95    |    0     |    0     |         0         |    0     |      0       |
-| **Security Scanning & SBOM (Codacy)**   | **80**  |   95    |    0     |    0     |         0         |    90    |      0       |
+| **Strict Test Coverage (Ratchet Gate)** | **65**  |   90    |    0     |    0     |        60         |    50    |      80      |
+| **E2E Automation (Playwright)**         | **30**  |   80    |    80    |    0     |         0         |    0     |      50      |
+| **Code Health Tracking (CodeScene)**    | **40**  |   90    |    0     |    0     |         0         |    0     |      0       |
+| **Security Scanning & SBOM (Codacy)**   | **40**  |   90    |    0     |    0     |         0         |    80    |      0       |
 
-_Docuvia Analysis_: **Docuvia has rapidly matured this quadrant via ADR-033.** With a unified Vitest workspace, strict coverage ratchets (85% Backend / 70% Frontend) are now enforced natively within the CI pipeline, acting as hard blockers (90). E2E Playwright jobs now natively test the VS Code Extension, and a parallel test lane (Smoke vs. Regression) ensures fast feedback (75). Code Health (CodeScene) and Security Scanning (Codacy) integrations are now mandated in the GitHub Actions pipeline, bringing Docuvia's robustness much closer to the enterprise standards set by `tolaria`.
+_Team Critique (Docuvia)_:
 
-## 5. Visualization & Interactive UX (Roadmap & Missing Features)
+- **Test Coverage (65)**: We recently added the `vitest.config.ts` ratchets (ADR-033), but the _actual tests_ backing the numbers are sparse, rely heavily on mocks, and don't effectively cover race conditions.
+- **E2E Automation (30)**: VS Code E2E tests exist but are notoriously flaky and suffer from iframe locator brittleness. Web UI E2E (`kg-engine`) is essentially non-existent.
+- **Security & Health (40)**: The CI pipeline has placeholders for CodeScene and Codacy, but they aren't actively failing builds with a strict project-level integration yet. `tolaria` executes this flawlessly.
+
+## 5. Visualization & Interactive UX
 
 Evaluates interactive presentation of complex data, graph visualization, and advanced user interfaces.
 
 | Core Feature                        | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :---------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **Interactive Graph Visualization** | **85**  |    0    |    85    |    80    |        95         |    0     |      0       |
-| **Terminal UI (TUI) & Dashboard**   |  **0**  |    0    |    70    |    0     |         0         |    0     |      95      |
+| **Interactive Graph Visualization** | **60**  |    0    |    75    |    70    |        85         |    0     |      0       |
+| **Terminal UI (TUI) & Dashboard**   |  **0**  |    0    |    60    |    0     |         0         |    0     |      85      |
 
-_Docuvia Analysis_: Docuvia now provides standalone interactive topology maps (D3-force) with symbol-level accuracy and blast radius highlighting (85), catching up with `GitNexus` and `graphify`. However, it still lacks a Terminal UI (TUI):
+_Team Critique (Docuvia)_:
 
-- **code-review-graph (95)** implements state-of-the-art D3.js interactive HTML graph generators.
-- **GitNexus (85)** and **graphify (80)** offer robust visual cluster mappings and UI clients.
-- **hermes-agent (95)** demonstrates advanced terminal UX (Ink-based TUI) and robust chat dashboard integrations.
+- **Visualization (60)**: React-Force-Graph is heavy. It chokes on large repositories, rendering indistinguishable hairballs. `code-review-graph`'s native D3 exports handle 10,000+ nodes far more gracefully.
+- **TUI (0)**: Docuvia CLI output is purely textual and unstructured. `hermes-agent` provides a rich, responsive Ink-based TUI.
 
-Docuvia has successfully satisfied the roadmap demands for visual code exploration, though its terminal interface could still be expanded.
+## Critical Shortcomings & Missing Requirements
 
-## Actionable Insights for Docuvia
+The following gaps must be prioritized in the roadmap based on the strict evaluation above:
 
-1. **Immediate Risk: Integrate `headroom`/`hermes-agent` Token & Context Management**: Docuvia's massive token consumption during AST/RAG operations is unsustainable (Score: 15). We must adopt token compression strategies and strict prompt caching invariants (as seen in `hermes-agent`), profiling memory cost versus LSP daemon footprint.
-2. **Completed Roadmap Priority: Interactive Graph Visualization**: Docuvia successfully adapted D3.js graph rendering techniques into `kg-engine` and CLI offline HTML exports (Score: 85), allowing users to visually explore codebase impact radiuses. Future iterations can focus on VS Code Webview integrations.
-3. **Extensibility & Multi-Repo**: Integrate Cross-Repo grouping from `GitNexus` and study `hermes-agent`'s plugin/cron architecture to make Docuvia extensible beyond its rigid monorepo bounds.
-4. **Completed Roadmap Priority: Adopt `tolaria`'s Quality Gates**: Docuvia successfully implemented ADR-033, introducing strict test lanes, unified Vitest workspace coverage ratchets, and embedded CodeScene/Codacy gates into its CI pipeline. E2E Web UI coverage will continue to be fleshed out.
-5. **Productization: Add Telemetry & i18n**: To graduate from an "engine" to a "product", Docuvia needs to observe user behavior (PostHog) and support localization, copying the exact patterns established in `tolaria`.
+1. **Token Cost Crisis (Score: 10)**: RAG without prompt caching and strict semantic deduplication will bankrupt the user. We must port `headroom`'s TTL context proxying immediately.
+2. **LSP Cold Start Fragility (Score: 40)**: Depending on an active Language Server for impact radius makes Docuvia useless in broken worktrees. We need to implement static heuristic fallbacks like `GitNexus`.
+3. **Flaky E2E & False Coverage (Score: 30)**: ADR-033 was a start, but having config files isn't enough. We need real, non-flaky Playwright assertions for both the IDE and the Web Dashboard.
+4. **Monolithic Rigidity (Score: 0)**: No plugin system, no cross-repo group analysis, and no background task orchestration. The system must be decoupled to match `hermes-agent`.
+5. **Product Blindness (Score: 0)**: Without Telemetry (PostHog) or Internationalization, we are building an engine, not a product. These must be integrated following `tolaria`'s exact patterns.

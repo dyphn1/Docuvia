@@ -82,6 +82,8 @@ Per-domain competitor benchmarks against sibling workspace projects (`code-revie
 
 See also the [Capabilities Matrix](capabilities-matrix.md) for a scored side-by-side across all projects.
 
+See also the [Feature Implementation Audit](feature-audit-2026-07-08.md) — an independent pass over every `Done`/`WARN` roadmap feature checking for fabrication, functional defects, ADR drift, and stale docs (in progress, 48/61 features analyzed as of 2026-07-08).
+
 ## Gap Registry (quick reference)
 
 | Domain                                 | Target Component                   | Lives in                                                                         |

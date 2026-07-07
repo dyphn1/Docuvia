@@ -24,7 +24,7 @@ export class GenerateService {
     const sysUncategorizedId = sysUncatNode?.id ?? 0;
 
     const model = await getModel(projectId);
-    const systemPrompt = await getPromptTemplate(projectId, "l3_generator");
+    const { compiledPrompt: systemPrompt } = await getPromptTemplate(projectId, "l3_generator");
 
     let extracted: any[] = [];
     try {

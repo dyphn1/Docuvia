@@ -22,7 +22,7 @@ export class L1ProcessingService implements IL1ProcessingService {
     let reviewTasksCreated = 0;
     const tagMap = new Map<string, number>();
 
-    const l1SystemPrompt = await getPromptTemplate(projectId, "l1_tagger");
+    const { compiledPrompt: l1SystemPrompt } = await getPromptTemplate(projectId, "l1_tagger");
     const existingL1 = await tx.select().from(l1TagsTable);
     const existingTagNames = existingL1.map((t: any) => t.name);
 

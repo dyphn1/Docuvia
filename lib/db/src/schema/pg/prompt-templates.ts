@@ -26,6 +26,8 @@ export const promptTemplatesTable = pgTable(
     templateType: promptTemplateTypeEnum("template_type").notNull(),
     systemPrompt: text("system_prompt").notNull(),
     isActive: boolean("is_active").notNull().default(true),
+    parentTemplateId: integer("parent_template_id"),
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },

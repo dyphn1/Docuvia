@@ -1,1 +1,1 @@
-export * from "./pg/index.js";
+export * from "./pg/index";

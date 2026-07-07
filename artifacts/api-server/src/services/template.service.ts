@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { promptTemplatesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, isNull, sql, desc } from "drizzle-orm";
 
 export class TemplateService {
   async getTemplatesByProjectId(projectId: number) {
@@ -54,5 +54,45 @@ export class TemplateService {
           eq(promptTemplatesTable.templateType, templateType as any)
         )
       );
+  }
+
+  async checkUpgradeWarning(template: typeof promptTemplatesTable.$inferSelect) {
+    if (!template.parentTemplateId) {
+      return { hasUpgradeWarning: false };
+    }
+    const [parentTemplate] = await db
+      .select()
+      .from(promptTemplatesTable)
+      .where(eq(promptTemplatesTable.id, template.parentTemplateId))
+      .limit(1);
+
+    if (!parentTemplate) {
+      return { hasUpgradeWarning: false };
+    }
+
+    const parentProjectId = parentTemplate.projectId;
+    const [newerParent] = await db
+      .select()
+      .from(promptTemplatesTable)
+      .where(
+        and(
+          parentProjectId === null
+            ? isNull(promptTemplatesTable.projectId)
+            : eq(promptTemplatesTable.projectId, parentProjectId),
+          eq(promptTemplatesTable.templateType, parentTemplate.templateType),
+          sql`${promptTemplatesTable.version} > ${parentTemplate.version}`
+        )
+      )
+      .orderBy(desc(promptTemplatesTable.version))
+      .limit(1);
+
+    if (newerParent) {
+      return {
+        hasUpgradeWarning: true,
+        latestParentVersion: newerParent.version,
+      };
+    }
+
+    return { hasUpgradeWarning: false };
   }
 }

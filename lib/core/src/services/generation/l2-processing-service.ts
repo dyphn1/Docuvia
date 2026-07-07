@@ -56,7 +56,7 @@ export class L2ProcessingService implements IL2ProcessingService {
     let rTasksCreated = 0;
     let crossLinks = 0;
 
-    const l2SystemPrompt = await getPromptTemplate(projectId, "l2_extractor");
+    const { compiledPrompt: l2SystemPrompt } = await getPromptTemplate(projectId, "l2_extractor");
     const corrections = await getRecentCorrections(projectId, "l2_node");
     const allL1Tags = await tx.select().from(l1TagsTable);
 

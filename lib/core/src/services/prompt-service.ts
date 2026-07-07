@@ -2,8 +2,18 @@ import { db } from "@workspace/db";
 import { llmConfigsTable, promptTemplatesTable, correctionExamplesTable } from "@workspace/db";
 import { eq, and, isNull, desc, sql } from "drizzle-orm";
 import { DEFAULT_PROMPTS } from "../utils/prompts.js";
+import Handlebars from "handlebars";
 
-export async function getPromptTemplate(projectId: number, templateType: string): Promise<string> {
+export type PromptTemplateResult = {
+  compiledPrompt: string;
+  hasUpgradeWarning: boolean;
+  latestParentVersion?: number;
+};
+
+export async function getPromptTemplate(
+  projectId: number,
+  templateType: string
+): Promise<PromptTemplateResult> {
   const [template] = await db
     .select()
     .from(promptTemplatesTable)
@@ -17,32 +27,92 @@ export async function getPromptTemplate(projectId: number, templateType: string)
     .orderBy(desc(promptTemplatesTable.createdAt))
     .limit(1);
 
-  if (template) {
-    return `${template.systemPrompt}\n\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json`;
-  }
+  let activeTemplate = template;
 
-  // Fallback to global defaults if no project-specific template exists
-  const [globalTemplate] = await db
-    .select()
-    .from(promptTemplatesTable)
-    .where(
-      and(
-        isNull(promptTemplatesTable.projectId),
-        eq(promptTemplatesTable.templateType, templateType as any),
-        eq(promptTemplatesTable.isActive, true)
+  if (!activeTemplate) {
+    // Fallback to global defaults if no project-specific template exists
+    const [globalTemplate] = await db
+      .select()
+      .from(promptTemplatesTable)
+      .where(
+        and(
+          isNull(promptTemplatesTable.projectId),
+          eq(promptTemplatesTable.templateType, templateType as any),
+          eq(promptTemplatesTable.isActive, true)
+        )
       )
-    )
-    .orderBy(desc(promptTemplatesTable.createdAt))
-    .limit(1);
+      .orderBy(desc(promptTemplatesTable.createdAt))
+      .limit(1);
 
-  if (globalTemplate) {
-    return `${globalTemplate.systemPrompt}\n\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json`;
+    activeTemplate = globalTemplate;
   }
 
-  // Fallback to hardcoded defaults
   const hardcodedDefault =
     DEFAULT_PROMPTS[templateType as keyof typeof DEFAULT_PROMPTS] || "You are an AI assistant.";
-  return `${hardcodedDefault}\n\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json`;
+
+  if (!activeTemplate) {
+    return {
+      compiledPrompt: `${hardcodedDefault}\n\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json`,
+      hasUpgradeWarning: false,
+    };
+  }
+
+  let hasUpgradeWarning = false;
+  let latestParentVersion: number | undefined;
+
+  let currentParentId = activeTemplate.parentTemplateId;
+  let depth = 0;
+
+  const hbs = Handlebars.create();
+
+  while (currentParentId && depth < 10) {
+    const [parentTemplate] = await db
+      .select()
+      .from(promptTemplatesTable)
+      .where(eq(promptTemplatesTable.id, currentParentId))
+      .limit(1);
+
+    if (!parentTemplate) break;
+
+    // Check for upgrade warning only for the immediate parent
+    if (depth === 0) {
+      const parentProjectId = parentTemplate.projectId;
+      const [newerParent] = await db
+        .select()
+        .from(promptTemplatesTable)
+        .where(
+          and(
+            parentProjectId === null
+              ? isNull(promptTemplatesTable.projectId)
+              : eq(promptTemplatesTable.projectId, parentProjectId),
+            eq(promptTemplatesTable.templateType, parentTemplate.templateType),
+            sql`${promptTemplatesTable.version} > ${parentTemplate.version}`
+          )
+        )
+        .orderBy(desc(promptTemplatesTable.version))
+        .limit(1);
+
+      if (newerParent) {
+        hasUpgradeWarning = true;
+        latestParentVersion = newerParent.version;
+      }
+    }
+
+    const partialName = depth === 0 ? "base" : `base_level_${depth}`;
+    hbs.registerPartial(partialName, parentTemplate.systemPrompt);
+
+    currentParentId = parentTemplate.parentTemplateId;
+    depth++;
+  }
+
+  // Compile the current active template
+  const compiled = hbs.compile(activeTemplate.systemPrompt)({});
+
+  return {
+    compiledPrompt: `${compiled}\n\nOUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json`,
+    hasUpgradeWarning,
+    latestParentVersion,
+  };
 }
 
 export async function getModel(projectId: number, override?: string): Promise<string> {

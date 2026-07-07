@@ -21,17 +21,27 @@ router.get("/projects/:id/templates", async (req, res) => {
 
   const dbMap = new Map(dbTemplates.map((t) => [t.templateType, t]));
 
-  const result = types.map((type) => {
-    const existing = dbMap.get(type);
-    return {
-      templateType: type,
-      systemPrompt: existing?.systemPrompt ?? DEFAULT_PROMPTS[type] ?? "",
-      isCustom: !!existing,
-      isActive: existing?.isActive ?? true,
-      id: existing?.id ?? null,
-      updatedAt: existing?.updatedAt?.toISOString() ?? null,
-    };
-  });
+  const result = await Promise.all(
+    types.map(async (type) => {
+      const existing = dbMap.get(type);
+      let upgradeInfo = { hasUpgradeWarning: false, latestParentVersion: undefined };
+      if (existing) {
+        upgradeInfo = (await templateService.checkUpgradeWarning(existing)) as any;
+      }
+      return {
+        templateType: type,
+        systemPrompt: existing?.systemPrompt ?? DEFAULT_PROMPTS[type] ?? "",
+        isCustom: !!existing,
+        isActive: existing?.isActive ?? true,
+        id: existing?.id ?? null,
+        updatedAt: existing?.updatedAt?.toISOString() ?? null,
+        parentTemplateId: existing?.parentTemplateId ?? null,
+        version: existing?.version ?? 1,
+        hasUpgradeWarning: upgradeInfo.hasUpgradeWarning,
+        latestParentVersion: upgradeInfo.latestParentVersion,
+      };
+    })
+  );
 
   return res.json(result);
 });

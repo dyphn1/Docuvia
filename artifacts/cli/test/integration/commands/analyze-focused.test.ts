@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { TestSandbox } from "../../support/sandbox.js";
 
-describe("Command: docuvia extract", () => {
+describe("Command: docuvia analyze [path]", () => {
   let sandbox: TestSandbox;
 
   beforeEach(async () => {
@@ -20,7 +20,7 @@ describe("Command: docuvia extract", () => {
 
   it("should extract decisions from a valid file", async () => {
     // Act
-    const result = await sandbox.runCli(["extract", "src/test.md"], {
+    const result = await sandbox.runCli(["analyze", "src/test.md"], {
       env: {
         // Mock API key so the LLM path runs (or throws a known mock error)
         OPENAI_API_KEY: "sk-mock-12345",
@@ -42,7 +42,7 @@ describe("Command: docuvia extract", () => {
 
   it("should fail gracefully if the file does not exist", async () => {
     // Act
-    const result = await sandbox.runCli(["extract", "src/non-existent.ts"]).catch((e) => e);
+    const result = await sandbox.runCli(["analyze", "src/non-existent.ts"]).catch((e) => e);
 
     // Assert
     expect(result).toBeInstanceOf(Error);

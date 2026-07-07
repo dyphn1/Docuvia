@@ -106,9 +106,9 @@ describe("Scenario: Human Workflow", () => {
 
       // Step C: Trigger Local Packing (Sync Local)
       // According to the architecture: DB is HEAD index, Branch is Packed state.
-      // `sync --local` must trigger the packing mechanism.
+      // `snapshot` must trigger the packing mechanism.
       async (s) => {
-        const result = await s.runCli(["sync", "--local"]);
+        const result = await s.runCli(["snapshot"]);
         expect(result.exitCode).toBe(0);
       },
 

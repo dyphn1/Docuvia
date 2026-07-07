@@ -59,8 +59,9 @@ describe("CLI Regression Tests - Argument Parsing & Edge Cases", () => {
       ["analyze", "--deep"],
       ["status"],
       ["clean"],
-      ["detect-changes"],
-      ["detect-changes", "--baseRef=main"],
+      ["review"],
+      ["review", "--baseRef=main"],
+      ["snapshot"],
     ];
 
     it.each(validCommands)(

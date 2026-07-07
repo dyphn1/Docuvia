@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { TopologyNode, TopologyLink } from "@workspace/api-client-react";
-import { computeLayout } from "./Topology";
+import { computeLayout, type SimNode } from "./TopologyGraphLogic";
 
 const node = (id: string, group: number, degree: number): TopologyNode => ({
   id,
@@ -42,7 +42,7 @@ describe("computeLayout", () => {
   it("separates different groups further apart than same-group nodes on average", () => {
     const nodes = [node("a1", 0, 1), node("a2", 0, 1), node("b1", 1, 1), node("b2", 1, 1)];
     const layout = computeLayout(nodes, []);
-    const pos = new Map(layout.nodes.map((n) => [n.id, n]));
+    const pos = new Map(layout.nodes.map((n: SimNode) => [n.id, n]));
     const dist = (p: string, q: string) => {
       const a = pos.get(p)!;
       const b = pos.get(q)!;

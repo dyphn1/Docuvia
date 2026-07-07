@@ -14,6 +14,7 @@ This master roadmap is divided into architectural phases (or Feature Domains). E
 - [Phase 5: Local-First VS Code Client & Web UI](phase-5-local-first-vs-code-client-web-ui.md)
 - [Phase 6: Architecture Hardening & Security](phase-6-architecture-hardening-security.md)
 - [Phase 7: Strict Test Framework & Quality Gates](phase-7-test-framework-quality-gates.md)
+- [Phase 8: Wizard-Style Interactive CLI](phase-8-wizard-style-interactive-cli.md)
 
 ---
 

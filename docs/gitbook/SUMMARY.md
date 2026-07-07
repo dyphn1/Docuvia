@@ -125,6 +125,7 @@
 - [ADR-031: SVN Integration and Diff Ingestion](adr/ADR-031-svn-integration-and-diff-ingestion.md)
 - [ADR-032: Parallel Swarm Review and Background Agentic RAG](adr/ADR-032-parallel-swarm-review-and-background-rag.md)
 - [ADR-033: Strict Test Framework and Quality Gates Alignment](adr/ADR-033-strict-test-framework-and-quality-gates.md)
+- [ADR-034: Wizard-Style Interactive CLI](adr/ADR-034-wizard-style-interactive-cli.md)
 
 ## 🗺️ Work Dashboard & Roadmap
 
@@ -136,3 +137,4 @@
   - [Phase 5: Local-First VS Code Client & Web UI](roadmap/phase-5-local-first-vs-code-client-web-ui.md)
   - [Phase 6: Architecture Hardening & Security](roadmap/phase-6-architecture-hardening-security.md)
   - [Phase 7: Strict Test Framework & Quality Gates](roadmap/phase-7-test-framework-quality-gates.md)
+  - [Phase 8: Wizard-Style Interactive CLI](roadmap/phase-8-wizard-style-interactive-cli.md)

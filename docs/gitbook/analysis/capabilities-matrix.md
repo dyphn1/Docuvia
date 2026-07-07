@@ -69,12 +69,12 @@ Evaluates CI/CD strictness, automation, and defensive guards.
 
 | Core Feature                            | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :-------------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **Strict Test Coverage (Ratchet Gate)** | **50**  |   95    |    0     |    0     |        75         |    60    |      90      |
-| **E2E Automation (Playwright)**         |  **0**  |   90    |    90    |    0     |         0         |    0     |      60      |
-| **Code Health Tracking (CodeScene)**    |  **0**  |   95    |    0     |    0     |         0         |    0     |      0       |
-| **Security Scanning & SBOM (Codacy)**   |  **0**  |   95    |    0     |    0     |         0         |    90    |      0       |
+| **Strict Test Coverage (Ratchet Gate)** | **90**  |   95    |    0     |    0     |        75         |    60    |      90      |
+| **E2E Automation (Playwright)**         | **75**  |   90    |    90    |    0     |         0         |    0     |      60      |
+| **Code Health Tracking (CodeScene)**    | **80**  |   95    |    0     |    0     |         0         |    0     |      0       |
+| **Security Scanning & SBOM (Codacy)**   | **80**  |   95    |    0     |    0     |         0         |    90    |      0       |
 
-_Docuvia Analysis_: **This is Docuvia's weakest quadrant.** While unit tests exist for the API server (50), the system completely lacks E2E automation for its web UI (`kg-engine` has no tests) and VS Code extension (0). Furthermore, it has zero Code Health tracking or Security/SBOM generation, areas where `tolaria` and `headroom` (90+) set strict ratchet gates. `hermes-agent` enforces hermetic testing environments with ~17k automated tests (90). Docuvia's CI pipeline needs an immediate overhaul to reach enterprise readiness.
+_Docuvia Analysis_: **Docuvia has rapidly matured this quadrant via ADR-033.** With a unified Vitest workspace, strict coverage ratchets (85% Backend / 70% Frontend) are now enforced natively within the CI pipeline, acting as hard blockers (90). E2E Playwright jobs now natively test the VS Code Extension, and a parallel test lane (Smoke vs. Regression) ensures fast feedback (75). Code Health (CodeScene) and Security Scanning (Codacy) integrations are now mandated in the GitHub Actions pipeline, bringing Docuvia's robustness much closer to the enterprise standards set by `tolaria`.
 
 ## 5. Visualization & Interactive UX (Roadmap & Missing Features)
 
@@ -98,5 +98,5 @@ Docuvia has successfully satisfied the roadmap demands for visual code explorati
 1. **Immediate Risk: Integrate `headroom`/`hermes-agent` Token & Context Management**: Docuvia's massive token consumption during AST/RAG operations is unsustainable (Score: 15). We must adopt token compression strategies and strict prompt caching invariants (as seen in `hermes-agent`), profiling memory cost versus LSP daemon footprint.
 2. **Completed Roadmap Priority: Interactive Graph Visualization**: Docuvia successfully adapted D3.js graph rendering techniques into `kg-engine` and CLI offline HTML exports (Score: 85), allowing users to visually explore codebase impact radiuses. Future iterations can focus on VS Code Webview integrations.
 3. **Extensibility & Multi-Repo**: Integrate Cross-Repo grouping from `GitNexus` and study `hermes-agent`'s plugin/cron architecture to make Docuvia extensible beyond its rigid monorepo bounds.
-4. **Technical Debt: Adopt `tolaria`'s Quality Gates**: Docuvia's lack of E2E tests and CodeScene/Codacy security scans (Score: 0) is unacceptable for a full-stack monorepo. We must implement a strict ratchet strategy for coverage and code health.
+4. **Completed Roadmap Priority: Adopt `tolaria`'s Quality Gates**: Docuvia successfully implemented ADR-033, introducing strict test lanes, unified Vitest workspace coverage ratchets, and embedded CodeScene/Codacy gates into its CI pipeline. E2E Web UI coverage will continue to be fleshed out.
 5. **Productization: Add Telemetry & i18n**: To graduate from an "engine" to a "product", Docuvia needs to observe user behavior (PostHog) and support localization, copying the exact patterns established in `tolaria`.

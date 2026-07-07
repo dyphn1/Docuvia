@@ -22,6 +22,7 @@ import { integrationsRouter } from "./integrations";
 import { syncRouter } from "./sync";
 import { documentsRouter } from "./documents";
 import { metabolismRouter } from "./metabolism";
+import vfsRouter from "./vfs.js";
 import { requireApiKey } from "../middlewares/auth.js";
 import { standardLimiter, mcpLimiter } from "../lib/rate-limit";
 
@@ -61,5 +62,6 @@ router.use(integrationsRouter);
 router.use(syncRouter);
 router.use(documentsRouter);
 router.use(metabolismRouter);
+router.use("/v1/vfs", vfsRouter);
 
 export { router as routes };

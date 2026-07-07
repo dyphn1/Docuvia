@@ -9,6 +9,7 @@ import { registerProviders } from "./providers/index.js";
 import { KnowledgeGraphTreeProvider } from "./knowledge-graph-tree-provider.js";
 import { TaskQueueTreeProvider } from "./task-queue-tree-provider.js";
 import { shutdownGlobalWorkerPool } from "@workspace/core";
+import { registerVfsWatcher } from "./vfs-watcher.js";
 
 let outputChannel: vscode.OutputChannel;
 
@@ -16,6 +17,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   outputChannel = vscode.window.createOutputChannel("Docuvia");
   context.subscriptions.push(outputChannel);
   outputChannel.appendLine("[Docuvia] Extension activating...");
+
+  registerVfsWatcher(context);
 
   // ─── Global Config ────────────────────────────────────────────────────────
   const globalConfigPath = path.join(os.homedir(), ".docuvia", "config.yaml");

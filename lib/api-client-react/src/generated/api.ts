@@ -102,6 +102,8 @@ import type {
   TopologyGraph,
   TriggerAdminMetabolismTick200,
   TriggerMetabolismTick200,
+  UpdateVfs200,
+  UpdateVfsBody,
   UploadDocumentBody,
   VscodeCreateDecisionInput,
   VscodeFileContextParams,
@@ -117,6 +119,85 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Update VFS file
+ */
+export const getUpdateVfsUrl = () => {
+  return `/api/v1/vfs/update`;
+};
+
+export const updateVfs = async (
+  updateVfsBody: UpdateVfsBody,
+  options?: RequestInit
+): Promise<UpdateVfs200> => {
+  return customFetch<UpdateVfs200>(getUpdateVfsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateVfsBody),
+  });
+};
+
+export const getUpdateVfsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVfs>>,
+    TError,
+    { data: BodyType<UpdateVfsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateVfs>>,
+  TError,
+  { data: BodyType<UpdateVfsBody> },
+  TContext
+> => {
+  const mutationKey = ["updateVfs"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && "mutationKey" in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateVfs>>,
+    { data: BodyType<UpdateVfsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateVfs(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateVfsMutationResult = NonNullable<Awaited<ReturnType<typeof updateVfs>>>;
+export type UpdateVfsMutationBody = BodyType<UpdateVfsBody>;
+export type UpdateVfsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update VFS file
+ */
+export const useUpdateVfs = <TError = ErrorType<unknown>, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVfs>>,
+    TError,
+    { data: BodyType<UpdateVfsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateVfs>>,
+  TError,
+  { data: BodyType<UpdateVfsBody> },
+  TContext
+> => {
+  return useMutation(getUpdateVfsMutationOptions(options));
+};
 
 /**
  * @summary Health check

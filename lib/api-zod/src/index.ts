@@ -6,3 +6,4 @@ export { GithubWebhookBody } from "./generated/api";
 export { ConfirmBootstrapBody } from "./generated/api";
 export { UploadDocumentBody } from "./generated/api";
 export { GetProjectTopologyParams } from "./generated/api";
+export { UpdateVfsBody } from "./generated/api";

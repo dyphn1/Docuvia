@@ -8,6 +8,19 @@
 import * as zod from "zod";
 
 /**
+ * @summary Update VFS file
+ */
+export const UpdateVfsBody = zod.object({
+  workspaceRoot: zod.string(),
+  uri: zod.string(),
+  content: zod.string(),
+});
+
+export const UpdateVfsResponse = zod.object({
+  success: zod.boolean().optional(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -1127,6 +1140,12 @@ export const McpQueryResponse = zod.object({
     classificationConfidence: zod.number(),
     reasoning: zod.string(),
     durationMs: zod.number(),
+    searchMode: zod
+      .enum(["semantic_vector", "keyword_graph"])
+      .optional()
+      .describe(
+        'Retrieval mode that produced the results (ADR-029). \"keyword_graph\" signals graceful degradation to keyword\/FTS matching plus graph traversal instead of semantic vector search.'
+      ),
   }),
 });
 

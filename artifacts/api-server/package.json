@@ -14,10 +14,11 @@
   "dependencies": {
     "@workspace/api-zod": "workspace:*",
     "@workspace/ast-core": "workspace:*",
-    "@workspace/plugins-ast": "workspace:*",
     "@workspace/core": "workspace:*",
     "@workspace/db": "workspace:*",
+    "@workspace/headless-lsp": "workspace:^",
     "@workspace/integrations-openai-ai-server": "workspace:*",
+    "@workspace/plugins-ast": "workspace:*",
     "@workspace/plugins-domain": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
@@ -50,7 +51,6 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@workspace/test-utils": "workspace:*",
     "@faker-js/faker": "^10.5.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
@@ -62,6 +62,7 @@
     "@types/pdf-parse": "^1.1.5",
     "@types/sax": "^1.2.7",
     "@types/supertest": "^7.2.0",
+    "@workspace/test-utils": "workspace:*",
     "esbuild": "^0.27.3",
     "esbuild-plugin-pino": "^2.3.3",
     "msw": "^2.14.6",

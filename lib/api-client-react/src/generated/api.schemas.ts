@@ -846,10 +846,23 @@ export interface McpQueryInput {
   limit?: number;
 }
 
+/**
+ * Retrieval mode that produced the results (ADR-029). "keyword_graph" signals graceful degradation to keyword/FTS matching plus graph traversal instead of semantic vector search.
+ */
+export type McpQueryResultMetadataSearchMode =
+  (typeof McpQueryResultMetadataSearchMode)[keyof typeof McpQueryResultMetadataSearchMode];
+
+export const McpQueryResultMetadataSearchMode = {
+  semantic_vector: "semantic_vector",
+  keyword_graph: "keyword_graph",
+} as const;
+
 export type McpQueryResultMetadata = {
   classificationConfidence: number;
   reasoning: string;
   durationMs: number;
+  /** Retrieval mode that produced the results (ADR-029). "keyword_graph" signals graceful degradation to keyword/FTS matching plus graph traversal instead of semantic vector search. */
+  searchMode?: McpQueryResultMetadataSearchMode;
 };
 
 export interface McpQueryResult {
@@ -1091,6 +1104,16 @@ export interface SyncResponse {
 export interface AffiliateDocumentInput {
   projectId: number;
 }
+
+export type UpdateVfsBody = {
+  workspaceRoot: string;
+  uri: string;
+  content: string;
+};
+
+export type UpdateVfs200 = {
+  success?: boolean;
+};
 
 export type ConfirmBootstrapBodyApprovedModulesItem = {
   id: number;

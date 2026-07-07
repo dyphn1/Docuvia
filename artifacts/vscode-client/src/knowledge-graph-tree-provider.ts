@@ -1,5 +1,4 @@
 import * as vscode from "vscode";
-import { LocalSnapshotService } from "@workspace/core";
 import { openWorkspaceLocalDatabase } from "./db-helper.js";
 import * as fs from "fs";
 import * as path from "path";
@@ -110,9 +109,6 @@ export class KnowledgeGraphTreeProvider
     if (!Array.isArray(l3Nodes)) return;
 
     if (l3Nodes.length > 0) {
-      const snapshot = new LocalSnapshotService(target.workspaceRoot).getSnapshot();
-      if (!snapshot) return;
-
       try {
         const db = openWorkspaceLocalDatabase(target.workspaceRoot);
         let changed = false;
@@ -157,12 +153,13 @@ export class KnowledgeGraphTreeProvider
         return item;
       }
       case "l1tag": {
-        const snapshot = node.workspaceRoot
-          ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
-          : undefined;
-        const modules = snapshot ? snapshot.modules.filter((m) => m.l1_tag_id === node.id) : [];
+        const db = openWorkspaceLocalDatabase(node.workspaceRoot);
+        const count = db
+          .prepare("SELECT COUNT(*) as c FROM l2_nodes WHERE l1_tag_id = ?")
+          .get(node.id).c;
+        db.close();
         const state =
-          modules.length > 0
+          count > 0
             ? vscode.TreeItemCollapsibleState.Expanded
             : vscode.TreeItemCollapsibleState.None;
 
@@ -180,14 +177,13 @@ export class KnowledgeGraphTreeProvider
         return item;
       }
       case "l2module": {
-        const snapshot = node.workspaceRoot
-          ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
-          : undefined;
-        const entries = snapshot
-          ? snapshot.routerIndex.filter((r) => r.l2_module_id === node.id)
-          : [];
+        const db = openWorkspaceLocalDatabase(node.workspaceRoot);
+        const count = db
+          .prepare("SELECT COUNT(*) as c FROM l3_nodes WHERE l2_node_id = ?")
+          .get(node.id).c;
+        db.close();
         const state =
-          entries.length > 0
+          count > 0
             ? vscode.TreeItemCollapsibleState.Collapsed
             : vscode.TreeItemCollapsibleState.None;
 
@@ -236,75 +232,66 @@ export class KnowledgeGraphTreeProvider
       });
     }
 
-    if (node.kind === "project") {
-      if (!node.isInit) {
-        return [];
-      }
-      const snapshot = new LocalSnapshotService(node.workspaceRoot).getSnapshot();
-      if (!snapshot || snapshot.tags.length === 0) {
-        return [
-          {
-            kind: "info",
-            message: "No L1 Tags. Run Explore.",
-          },
-        ];
-      }
+    if (node.kind === "info") {
+      return [];
+    }
 
-      const nodes: KGNode[] = snapshot.tags.map(
-        (t): KGNode => ({
+    const db = openWorkspaceLocalDatabase(node.workspaceRoot);
+
+    try {
+      if (node.kind === "project") {
+        if (!node.isInit) {
+          return [];
+        }
+
+        const tags = db.prepare("SELECT * FROM l1_tags").all();
+        if (tags.length === 0) {
+          return [{ kind: "info", message: "No L1 Tags. Run Explore." }];
+        }
+
+        const nodes: KGNode[] = tags.map((t: any) => ({
           kind: "l1tag",
           id: t.id,
           name: t.name,
           slug: t.slug,
           desc: t.description,
           workspaceRoot: node.workspaceRoot,
-        })
-      );
+        }));
 
-      const validModuleIds = new Set(snapshot.modules.map((m) => m.id));
-      const unassignedL3 = snapshot.routerIndex.filter(
-        (r) => !r.l2_module_id || !validModuleIds.has(r.l2_module_id)
-      );
-      if (unassignedL3.length > 0) {
-        nodes.push({
-          kind: "unassigned-group",
-          name: "Unassigned Decisions",
-          workspaceRoot: node.workspaceRoot,
-        });
+        const unassignedCount = db
+          .prepare(
+            "SELECT COUNT(*) as c FROM l3_nodes WHERE l2_node_id IS NULL OR l2_node_id NOT IN (SELECT id FROM l2_nodes)"
+          )
+          .get().c;
+        if (unassignedCount > 0) {
+          nodes.push({
+            kind: "unassigned-group",
+            name: "Unassigned Decisions",
+            workspaceRoot: node.workspaceRoot,
+          });
+        }
+        return nodes;
       }
 
-      return nodes;
-    }
-
-    if (node.kind === "l1tag") {
-      const snapshot = node.workspaceRoot
-        ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
-        : undefined;
-      const modules = snapshot ? snapshot.modules.filter((m) => m.l1_tag_id === node.id) : [];
-      return modules.map(
-        (m): KGNode => ({
+      if (node.kind === "l1tag") {
+        const modules = db.prepare("SELECT * FROM l2_nodes WHERE l1_tag_id = ?").all(node.id);
+        return modules.map((m: any) => ({
           kind: "l2module",
           id: m.id,
           name: m.name,
           slug: m.slug,
           desc: m.description,
           workspaceRoot: node.workspaceRoot,
-        })
-      );
-    }
+        }));
+      }
 
-    if (node.kind === "unassigned-group") {
-      const snapshot = node.workspaceRoot
-        ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
-        : undefined;
-      if (!snapshot) return [];
-      const validModuleIds = new Set(snapshot.modules.map((m) => m.id));
-      const unassigned = snapshot.routerIndex.filter(
-        (r) => !r.l2_module_id || !validModuleIds.has(r.l2_module_id)
-      );
-
-      return unassigned.map(
-        (entry): KGNode => ({
+      if (node.kind === "unassigned-group") {
+        const unassigned = db
+          .prepare(
+            "SELECT * FROM l3_nodes WHERE l2_node_id IS NULL OR l2_node_id NOT IN (SELECT id FROM l2_nodes)"
+          )
+          .all();
+        return unassigned.map((entry: any) => ({
           kind: "l3decision",
           id: entry.id,
           title: entry.title,
@@ -312,19 +299,12 @@ export class KnowledgeGraphTreeProvider
           filePath: entry.file_path,
           l2ModuleId: 0,
           workspaceRoot: node.workspaceRoot,
-        })
-      );
-    }
+        }));
+      }
 
-    if (node.kind === "l2module") {
-      const snapshot = node.workspaceRoot
-        ? new LocalSnapshotService(node.workspaceRoot).getSnapshot()
-        : undefined;
-      const entries = snapshot
-        ? snapshot.routerIndex.filter((r) => r.l2_module_id === node.id)
-        : [];
-      return entries.map(
-        (entry): KGNode => ({
+      if (node.kind === "l2module") {
+        const entries = db.prepare("SELECT * FROM l3_nodes WHERE l2_node_id = ?").all(node.id);
+        return entries.map((entry: any) => ({
           kind: "l3decision",
           id: entry.id,
           title: entry.title,
@@ -332,8 +312,10 @@ export class KnowledgeGraphTreeProvider
           filePath: entry.file_path,
           l2ModuleId: node.id,
           workspaceRoot: node.workspaceRoot,
-        })
-      );
+        }));
+      }
+    } finally {
+      if (db) db.close();
     }
 
     return [];

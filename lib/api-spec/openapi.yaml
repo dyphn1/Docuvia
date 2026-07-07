@@ -49,6 +49,39 @@ tags:
     description: Sync pipeline — branch push synchronization
 
 paths:
+  /v1/vfs/update:
+    post:
+      summary: Update VFS file
+      tags:
+        - extensions
+      operationId: updateVfs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - workspaceRoot
+                - uri
+                - content
+              properties:
+                workspaceRoot:
+                  type: string
+                uri:
+                  type: string
+                content:
+                  type: string
+      responses:
+        "200":
+          description: VFS updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
   /healthz:
     get:
       operationId: healthCheck

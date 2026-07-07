@@ -5,9 +5,12 @@
  * Docuvia — Universal VCS Knowledge Graph Engine API
  * OpenAPI spec version: 0.2.0
  */
+import type { McpQueryResultMetadataSearchMode } from "./mcpQueryResultMetadataSearchMode";
 
 export type McpQueryResultMetadata = {
   classificationConfidence: number;
   reasoning: string;
   durationMs: number;
+  /** Retrieval mode that produced the results (ADR-029). "keyword_graph" signals graceful degradation to keyword/FTS matching plus graph traversal instead of semantic vector search. */
+  searchMode?: McpQueryResultMetadataSearchMode;
 };

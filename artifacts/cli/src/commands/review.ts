@@ -1,7 +1,7 @@
 import { ChangeDetectionService } from "@workspace/core";
 import process from "process";
 
-export async function detectChangesCommand(baseRef?: string) {
+export async function reviewCommand(baseRef?: string) {
   try {
     console.log(`Analyzing changes${baseRef ? ` against ${baseRef}` : ""}...`);
     const changeDetectionService = new ChangeDetectionService(process.cwd());

@@ -123,11 +123,6 @@ async function main() {
       }
     }
 
-    if (!target) {
-      console.error("Usage: docuvia query <target> [--local] [--format=prompt|human]");
-      process.exit(1);
-    }
-
     await queryCommand(target, options);
     process.exit(0);
   }

@@ -1,5 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
+import { ui } from "../ui/wizard.js";
 
 const CLAUDE_HOOKS_DIR = ".claude/hooks";
 const CURSOR_HOOKS_DIR = ".cursor/hooks";
@@ -79,19 +80,19 @@ async function writeOrAppend(filePath: string, content: string, marker: string) 
     const existing = await fs.readFile(filePath, "utf8");
     if (!existing.includes(marker)) {
       await fs.appendFile(filePath, `\n${content}`);
-      console.log(`✅ Appended instructions to: ${filePath}`);
+      ui.success(`Appended instructions to: ${filePath}`);
     } else {
-      console.log(`⏭️ Instructions already exist in: ${filePath}`);
+      ui.info(`Instructions already exist in: ${filePath}`);
     }
   } catch {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, content);
-    console.log(`✅ Created: ${filePath}`);
+    ui.success(`Created: ${filePath}`);
   }
 }
 
 async function registerMcpServer(cwd: string) {
-  console.log("\nConfiguring MCP Servers...");
+  ui.info("Configuring MCP Servers...");
 
   const mcpConfig = {
     command: "npx",
@@ -111,10 +112,10 @@ async function registerMcpServer(cwd: string) {
     cursorMcp.mcpServers = cursorMcp.mcpServers || {};
     cursorMcp.mcpServers["docuvia-local"] = mcpConfig;
     await fs.writeFile(cursorMcpPath, JSON.stringify(cursorMcp, null, 2));
-    console.log(`✅ Registered MCP server in: ${cursorMcpPath}`);
+    ui.success(`Registered MCP server in: ${cursorMcpPath}`);
   } catch (e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e);
-    console.warn(`⚠️ Could not configure Cursor MCP: ${errorMessage}`);
+    ui.warn(`Could not configure Cursor MCP: ${errorMessage}`);
   }
 
   // Claude Desktop Configuration (Global)
@@ -149,16 +150,16 @@ async function registerMcpServer(cwd: string) {
       };
 
       await fs.writeFile(claudeMcpPath, JSON.stringify(claudeMcp, null, 2));
-      console.log(`✅ Registered MCP server in: ${claudeMcpPath}`);
+      ui.success(`Registered MCP server in: ${claudeMcpPath}`);
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : String(e);
-      console.warn(`⚠️ Could not configure Claude Desktop MCP: ${errorMessage}`);
+      ui.warn(`Could not configure Claude Desktop MCP: ${errorMessage}`);
     }
   }
 }
 
 export async function initAgent(cwd: string = process.cwd()) {
-  console.log("Initializing AI Agent integrations for Docuvia...\n");
+  ui.info("Initializing AI Agent integrations for Docuvia...");
 
   try {
     // 1. Setup Executable Hooks (Claude Code, Cursor)
@@ -214,12 +215,12 @@ export async function initAgent(cwd: string = process.cwd()) {
 
     await registerMcpServer(cwd);
 
-    console.log("\n🚀 Docuvia Agent Integrations successfully installed!");
-    console.log(
+    ui.success("Docuvia Agent Integrations successfully installed!");
+    ui.info(
       "Supported platforms: Claude Code, Cursor, GitHub Copilot, Windsurf, Zed, Continue, OpenCode, Gemini CLI."
     );
   } catch (error) {
-    console.error("❌ Failed to initialize agent integrations:", error);
+    ui.error(`Failed to initialize agent integrations: ${error}`);
     process.exit(1);
   }
 }

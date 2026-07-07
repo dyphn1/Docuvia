@@ -17,6 +17,7 @@ import { L3ExtractionJobService } from "./l3-extraction-job.service.js";
 export class AnalyzeService {
   constructor(
     private workspaceRoot: string,
+    private logCallback: (msg: string) => void = (msg) => console.log(msg),
     private vcsScanner: IVcsScanner = new VcsScannerService(),
     private configScanner: IConfigScanner = new ConfigScannerService(),
     private fileDiscovery: IFileDiscovery = new FileDiscoveryService(),
@@ -28,7 +29,7 @@ export class AnalyzeService {
   public async analyzeProject(options?: {
     deep?: boolean;
   }): Promise<{ projectType: string; suggestedTags: string[] }> {
-    console.log(`[docuvia] Analyzing project in ${this.workspaceRoot}`);
+    this.logCallback(`Analyzing project in ${this.workspaceRoot}...`);
 
     // 1. Gather Tags from VCS and Config
     const vcsTags = await this.vcsScanner.extractHotspotTags(this.workspaceRoot);
@@ -57,15 +58,16 @@ export class AnalyzeService {
       );
       globalFileIdMap = persistResult.fileIdMap;
       updatedCount = persistResult.updatedCount;
-      console.log(
-        `[docuvia] AST scan complete: ${updatedCount} updated, ${skippedCount} skipped (unchanged).`
+      this.logCallback(
+        `AST scan complete: ${updatedCount} updated, ${skippedCount} skipped (unchanged).`
       );
     } else {
-      console.log(`[docuvia] AST scan complete: 0 updated, ${skippedCount} skipped (unchanged).`);
+      this.logCallback(`AST scan complete: 0 updated, ${skippedCount} skipped (unchanged).`);
     }
 
     // 5. Trigger L3 Job if deep = true
     if (options?.deep) {
+      this.logCallback(`Triggering deep background semantic extraction...`);
       this.l3Job.triggerBackgroundExtraction(this.workspaceRoot, filesToParse, globalFileIdMap);
     }
 

@@ -8,10 +8,13 @@ import { ensureLocalFtsIndex } from "./sqlite-fts.js";
 const exec = util.promisify(cp.exec);
 
 export class InitService {
-  constructor(private workspaceRoot: string) {}
+  constructor(
+    private workspaceRoot: string,
+    private logCallback: (msg: string) => void = (msg) => console.log(msg)
+  ) {}
 
   public async init() {
-    console.log(`[docuvia] Initializing project in ${this.workspaceRoot}`);
+    this.logCallback(`Initializing project in ${this.workspaceRoot}...`);
 
     // 1. Setup branch
     let branchExists = false;
@@ -26,7 +29,7 @@ export class InitService {
 
     if (!branchExists) {
       try {
-        console.log(`[docuvia] Creating hidden docuvia-knowledge branch...`);
+        this.logCallback(`Creating hidden docuvia-knowledge branch...`);
         const { stdout: treeHash } = await exec("git hash-object -t tree /dev/null", {
           cwd: this.workspaceRoot,
         });
@@ -40,8 +43,6 @@ export class InitService {
       } catch (err: any) {
         throw new Error(`Failed to create branch: ${err.message}`);
       }
-    } else {
-      console.log(`[docuvia] Branch docuvia-knowledge already exists.`);
     }
 
     // 2. Install Git Hook
@@ -68,13 +69,13 @@ export class InitService {
         }
 
         if (shouldWriteHook) {
-          console.log(`[docuvia] Installing post-commit hook...`);
+          this.logCallback(`Installing post-commit hook...`);
           await fs.appendFile(postCommitPath, hookContent);
           await fs.chmod(postCommitPath, 0o755);
         }
       }
     } catch (err) {
-      console.warn("[docuvia] Could not install git hook:", err);
+      // Fail silently for hook
     }
 
     // 3. Initialize SQLite database
@@ -84,7 +85,7 @@ export class InitService {
       const dbPath = path.join(docuviaDir, "local.db");
       const db = new Database(dbPath);
 
-      console.log(`[docuvia] Initializing SQLite database...`);
+      this.logCallback(`Initializing SQLite database...`);
       db.exec(`
         CREATE TABLE IF NOT EXISTS projects (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,7 +177,7 @@ export class InitService {
       ensureLocalFtsIndex(db);
       db.close();
     } catch (err: any) {
-      console.warn(`[docuvia] Could not initialize database: ${err.message}`);
+      throw new Error(`Could not initialize database: ${err.message}`);
     }
 
     return { success: true, message: "Project initialized successfully" };

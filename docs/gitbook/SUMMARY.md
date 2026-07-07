@@ -124,6 +124,7 @@
 - [ADR-030: Template Management and Inheritance](adr/ADR-030-template-management-and-inheritance.md)
 - [ADR-031: SVN Integration and Diff Ingestion](adr/ADR-031-svn-integration-and-diff-ingestion.md)
 - [ADR-032: Parallel Swarm Review and Background Agentic RAG](adr/ADR-032-parallel-swarm-review-and-background-rag.md)
+- [ADR-033: Strict Test Framework and Quality Gates Alignment](adr/ADR-033-strict-test-framework-and-quality-gates.md)
 
 ## 🗺️ Work Dashboard & Roadmap
 
@@ -134,3 +135,4 @@
   - [Phase 4: Git-Isomorphic Sync & Temporal Knowledge](roadmap/phase-4-git-isomorphic-sync-temporal-knowledge.md)
   - [Phase 5: Local-First VS Code Client & Web UI](roadmap/phase-5-local-first-vs-code-client-web-ui.md)
   - [Phase 6: Architecture Hardening & Security](roadmap/phase-6-architecture-hardening-security.md)
+  - [Phase 7: Strict Test Framework & Quality Gates](roadmap/phase-7-test-framework-quality-gates.md)

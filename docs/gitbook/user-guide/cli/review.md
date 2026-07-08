@@ -1,16 +1,16 @@
-# docuvia-detect-changes(1)
+# docuvia-review(1)
 
 ## NAME
 
-docuvia-detect-changes - Compute structural blast radius and risk scores against a base branch
+docuvia-review - Compute structural blast radius and risk scores against a base branch
 
 ## SYNOPSIS
 
-`docuvia detect-changes [--baseRef=<branch_or_commit>]`
+`docuvia review [--baseRef=<branch_or_commit>]`
 
 ## DESCRIPTION
 
-The `docuvia detect-changes` command leverages the local knowledge graph to calculate the exact blast radius of current modifications. Rather than relying on simple text diffs (which lack semantic understanding), it queries the SQLite graph to trace upstream and downstream dependencies affected by changed AST nodes.
+The `docuvia review` command leverages the local knowledge graph to calculate the exact blast radius of current modifications. Rather than relying on simple text diffs (which lack semantic understanding), it queries the SQLite graph to trace upstream and downstream dependencies affected by changed AST nodes.
 
 This command performs a Breadth-First Search (BFS) against the `node_links` schema, traversing caller/callee paths, implementations, and exports. It outputs a risk score (**LOW**, **MEDIUM**, **HIGH**, **CRITICAL**) indicating the likelihood of introducing a regression based on the density of affected dependents and execution flows.
 
@@ -34,7 +34,7 @@ Failure. Could not resolve the base branch, or the local knowledge graph (`.docu
 Check the blast radius of uncommitted changes against the main branch:
 
 ```bash
-$ docuvia detect-changes --baseRef=main
+$ docuvia review --baseRef=main
 Analyzing structural changes against main...
 
 Risk Score: HIGH

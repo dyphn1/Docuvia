@@ -77,7 +77,7 @@ The algorithm consists of three distinct phases executed upon detecting a `git d
 
 To verify that the Blast Radius algorithm is functioning correctly:
 
-1. **CLI Verification**: Run `docuvia detect-changes` locally. Modify a file's internal statement block (Level 0), and ensure the CLI reports 0 affected upstream dependents. Then modify a function signature (Level 1), and ensure the CLI correctly diffuses the radius to its callers.
+1. **CLI Verification**: Run `docuvia review` locally. Modify a file's internal statement block (Level 0), and ensure the CLI reports 0 affected upstream dependents. Then modify a function signature (Level 1), and ensure the CLI correctly diffuses the radius to its callers.
 2. **Unit Tests**: Run parser unit tests via `pnpm --filter @workspace/ast-core run test` to verify that the diffing logic accurately distinguishes between internal and interface changes.
 
 ## 7. Extensibility & Scaling

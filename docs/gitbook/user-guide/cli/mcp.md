@@ -21,8 +21,8 @@ Once running, it exposes a suite of MCP tools directly to the LLM, empowering th
 When attached to an LLM, the following MCP capabilities become available:
 
 - `query_graph`: Equivalent to `docuvia query`.
-- `detect_changes`: Equivalent to `docuvia detect-changes`.
-- `extract_file_knowledge`: Equivalent to `docuvia extract`.
+- `detect_changes`: Equivalent to `docuvia review`.
+- `extract_file_knowledge`: Equivalent to `docuvia analyze [path]`.
 
 ## OPTIONS
 

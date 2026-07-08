@@ -41,7 +41,7 @@ Tests must NEVER run against or pollute the developer's actual workspace or the 
 
 Always test how the system behaves when the target state is invalid. The interface must degrade gracefully:
 
-- **Missing Targets:** Executing a command on a missing file (e.g., `docuvia extract non_existent.ts`) should yield a clear "File not found" error, not a crash.
+- **Missing Targets:** Executing a command on a missing file (e.g., `docuvia analyze non_existent.ts`) should yield a clear "File not found" error, not a crash.
 - **Malformed Content:** Passing a file with severe syntax errors to the AST analyzer should be skipped or logged without halting the entire batch process.
 - **Uninitialized State:** Querying an empty or non-existent knowledge graph must cleanly prompt the user to run `docuvia init`.
 

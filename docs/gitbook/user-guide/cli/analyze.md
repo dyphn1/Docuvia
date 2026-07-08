@@ -6,11 +6,13 @@ docuvia-analyze - Parse the repository and construct the AST knowledge graph
 
 ## SYNOPSIS
 
-`docuvia analyze [--deep]`
+`docuvia analyze [path] [--deep]`
 
 ## DESCRIPTION
 
 The `docuvia analyze` command is the core ingestion engine. It traverses the current workspace, processes supported source code files using Tree-sitter, and populates the local index database (`.docuvia/local.db`) with an Abstract Syntax Tree (AST) graph.
+
+When a specific `[path]` is provided, `analyze` restricts the ingestion pipeline to that single file or directory, executing AST parsing and L3 semantic extraction to derive decisions. This is exceptionally useful as a rapid feedback loop for documentation validation, checking if Architectural Decision Records (ADRs) are properly comprehended by the graph in real-time.
 
 The command maps spatial relationships (e.g., function definitions, method calls, cross-file imports, class instantiations) and constructs L2 (Architectural/Structural) and L3 (Implementation Detail) nodes. It connects these components via a local SQLite database to enable O(1) retrieval of isolated blast radii without depending on massive LLM context windows.
 
@@ -24,6 +26,9 @@ By default, the analyzer performs a standard structural extraction. This maps th
 4. **Database Upsert**: Batch-inserts the extracted nodes and edges into `.docuvia/local.db` within a single SQLite transaction to ensure ACID compliance.
 
 ## OPTIONS
+
+`[path]`
+: (Optional) The absolute or relative path to the target you want to extract knowledge from. If provided, the command scopes extraction strictly to this path.
 
 `--deep`
 : Instructs the analyzer to perform deep L3 semantic extraction. Beyond the structural call graph, this parses inner implementation details, comments, and specific domain logic to extract conceptual grounding.
@@ -49,18 +54,15 @@ Suggested tags: backend, ast-parser, cli
 ✔ Upserted 3,420 nodes and 12,050 edges.
 ```
 
-Perform a deep semantic extraction on a newly cloned repository:
+Perform a focused semantic extraction on a newly modified file:
 
 ```bash
-$ docuvia analyze --deep
-Project type: C/C++ (Firmware)
-Suggested tags: bios, edk2, low-level
-Parsing 512 files with semantic inspection...
-✔ Processed 512 files.
-✔ Upserted 14,000 nodes and 45,000 edges.
+$ docuvia analyze src/handlers/auth.ts
+✔ Extraction complete
+- Decision [D004]: We use bcrypt for hashing passwords.
 ```
 
 ## SEE ALSO
 
 - [docuvia-status(1)](status.md) - Verify the health and size of the extracted graph.
-- [docuvia-detect-changes(1)](detect-changes.md) - Leverage the generated graph to compute blast radius.
+- [docuvia-review(1)](review.md) - Leverage the generated graph to compute blast radius.

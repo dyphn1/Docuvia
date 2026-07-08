@@ -16,12 +16,8 @@ When invoked, the command performs the following operations:
 
 1. **Workspace Root Detection**: Identifies the current working directory as the workspace root. It recursively checks parent directories if invoked from a subdirectory.
 2. **Directory Creation**: Creates a hidden `.docuvia` configuration directory at the root of the workspace. This directory is typically ignored by version control (`.gitignore`).
-3. **Database Initialization**: Scaffolds a local SQLite database (`.docuvia/local.db`) with the Drizzle ORM schemas:
-   - `l1_tags`: High-level taxonomic tags.
-   - `l2_nodes`: Architectural components and boundaries.
-   - `l3_nodes`: Implementation details (classes, functions, interfaces).
-   - `node_links`: Directed edges representing relationships (e.g., `CALLS`, `IMPORTS`, `IMPLEMENTS`).
-4. **Agent Hook Installation**: Seamlessly executes the equivalent of `docuvia init-agent`. It modifies AI agent configurations (e.g., `.cursor/mcp.json` or Claude Desktop `claude_desktop_config.json`) to attach the local Model Context Protocol (MCP) server.
+3. **Database Initialization**: Scaffolds a local SQLite database (`.docuvia/local.db`) with the Drizzle ORM schemas.
+4. **Agent Hook Installation**: Seamlessly modifies AI agent configurations (e.g., `.cursor/mcp.json` or Claude Desktop `claude_desktop_config.json`) to attach the local Model Context Protocol (MCP) server.
 5. **Git Hooks Integration**: Prepares the repository to hook into the Git lifecycle (e.g., `post-commit`) to keep the knowledge graph synchronized automatically with branch changes.
 
 Running `docuvia init` in an already initialized repository is safe. It will not destroy an existing `.docuvia/local.db` but will verify that the schema is up to date and re-apply any missing hooks or MCP configurations.
@@ -67,4 +63,3 @@ $ docuvia init
 
 - [docuvia-analyze(1)](analyze.md) - Populate the initialized database with AST extractions.
 - [docuvia-clean(1)](clean.md) - Wipe the initialized database to start fresh.
-- [docuvia-init-agent(1)](init-agent.md) - Manually re-install AI IDE hooks.

@@ -11,5 +11,5 @@ Separate testing into distinct lanes to provide rapid developer feedback (`smoke
 
 ### Implementation Tasks
 
-- [ ] Define and implement `pnpm run test:smoke`. Curate critical tests (AST extraction, DB init, VS Code welcome view) into this suite. Ensure execution time is under 5 minutes.
-- [ ] Refactor existing `pnpm test` to serve as the comprehensive regression lane.
+- [x] Define and implement `pnpm run test:smoke`. Curate critical tests (AST extraction, DB init, VS Code welcome view) into this suite. Ensure execution time is under 5 minutes.
+- [x] Refactor existing `pnpm test` to serve as the comprehensive regression lane.

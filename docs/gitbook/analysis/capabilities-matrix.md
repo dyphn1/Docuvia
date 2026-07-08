@@ -22,16 +22,18 @@ Evaluates the ability to parse code, track logic, handle multiple repositories, 
 
 | Core Feature                       | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :--------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **AST & Multi-language Parsing**   | **60**  |    0    |    80    |    60    |        85         |    0     |      0       |
-| **Incremental Updates & Cache**    | **45**  |    0    |    75    |    20    |        75         |    0     |      0       |
-| **Execution Flow & Impact Radius** | **85**  |    0    |    75    |    40    |        80         |    0     |      0       |
-| **Hybrid Search (FTS5 + Vector)**  | **40**  |    0    |    70    |    0     |        75         |    0     |      40      |
+| **AST & Multi-language Parsing**   | **50**  |    0    |    80    |    60    |        85         |    0     |      0       |
+| **Incremental Updates & Cache**    | **35**  |    0    |    75    |    20    |        75         |    0     |      0       |
+| **Execution Flow & Impact Radius** | **35**  |    0    |    75    |    40    |        80         |    0     |      0       |
+| **Hybrid Search (FTS5 + Vector)**  | **45**  |    0    |    70    |    0     |        75         |    0     |      40      |
 | **Cross-Repo & Group Analysis**    |  **0**  |    0    |    85    |    0     |        85         |    0     |      0       |
 
 _Team Critique (Docuvia)_:
 
-- **AST Parsing (60)**: `web-tree-sitter` is brittle. We lack true semantic parity across 10+ languages compared to `code-review-graph`'s robust fallbacks.
-- **Execution Flow (85)**: Docuvia successfully deployed its `ScopeResolver` (Static Heuristics fallback). It parses `tsconfig.json` path aliases and workspace monorepo globs, allowing offline, instant AST edge resolution without requiring an external LSP cold-start. This brings its reliability on par with `GitNexus`.
+- **AST Parsing (50)**: `web-tree-sitter` inside worker threads provides multi-language parsing but remains brittle and leak-prone. We lack true semantic parity across 10+ languages compared to `code-review-graph`'s robust fallbacks, and WASM memory management requires dangerous manual interventions.
+- **Incremental Updates & Cache (35)**: Basic MVP. Uses naive SHA256 file hashing (`ast-change-detector.ts`) to skip unchanged files, but lacks true AST-level structural caching or fast interval-tree updates compared to `GitNexus`.
+- **Execution Flow & Impact Radius (35)**: Previous 85 score was a massive hallucination. `ScopeResolver` only resolves static TypeScript imports via `tsconfig.json` and does not provide true cross-language execution flow or call graph tracking. Impact radius relies on a basic Breadth-First Search (BFS) over simplistic node links.
+- **Hybrid Search (45)**: Functional but fragmented. While `pgvector` works excellently for PostgreSQL backends, local execution degrades completely to SQLite FTS5 keyword matching (ADR-029), meaning local developers lose true semantic RAG capabilities.
 - **Cross-Repo (0)**: Docuvia remains rigidly monorepo-bound.
 
 ## 2. AI & LLM Ecosystem
@@ -40,17 +42,19 @@ Evaluates MCP integration, RAG, Token optimization, Multi-Agent collaboration, a
 
 | Core Feature                         | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :----------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **MCP Server & Tool Support**        | **70**  |    0    |    80    |    30    |        80         |    50    |      85      |
+| **MCP Server & Tool Support**        | **80**  |    0    |    80    |    30    |        80         |    50    |      85      |
 | **Built-in Subagents Workflow**      | **75**  |    0    |    70    |    0     |         0         |    0     |      85      |
-| **Agentic RAG**                      | **50**  |    0    |    60    |    0     |        60         |    0     |      0       |
+| **Agentic RAG**                      | **65**  |    0    |    60    |    0     |        60         |    0     |      0       |
 | **Token Optimization & Compression** | **85**  |    0    |    20    |    0     |        60         |    90    |      80      |
-| **Cross-Session Memory Persistence** | **20**  |    0    |    0     |    0     |         0         |    0     |      85      |
+| **Cross-Session Memory Persistence** | **70**  |    0    |    0     |    0     |         0         |    0     |      85      |
 
 _Team Critique (Docuvia)_:
 
-- **Token Optimization (85)**: Fixed via the LLM Context Proxy. Docuvia successfully ported `headroom` approach: intercepting outbound RAG payloads, collapsing AST bodies into skeletons, and providing the `docuvia_retrieve_original` MCP tool for the LLM to fetch details on demand. This saves massive API costs.
-- **Memory Persistence (20)**: Generating markdown files (`MEMORY.md`) is a primitive mock of real memory. `hermes-agent` integrates actual graph/vector memory backends (mem0, honcho) that survive session restarts cleanly.
-- **Agentic RAG (50)**: Our routing lacks true semantic deduplication, often feeding the LLM redundant chunks.
+- **MCP Server & Tool Support (80)**: Upgraded. Docuvia fully exposes `query`, `impact_analysis`, and `get_dependencies` via robust authenticated MCP routes in `mcp.ts`, putting it on par with `code-review-graph`.
+- **Token Optimization (85)**: Accurately reflects the LLM Context Proxy implementation (`compressor.ts` & `llm-proxy.ts`), mapping AST blocks to collapsible skeletons and fetching details via `retrieve_original_query`.
+- **Built-in Subagents Workflow (75)**: Docuvia maintains 10 high-quality subagents in `.github/agents/`. However, it relies on external orchestration (Claude Code/Copilot) rather than a self-contained runtime like `hermes-agent`.
+- **Agentic RAG (65)**: Upgraded from 50. Earlier critiques ignored that `intent-router.service.ts` actively uses `dedupNodes` (from `ast-core`) to filter duplicates via content hashing before feeding the LLM. Still, it lacks true cosine-similarity semantic deduplication.
+- **Cross-Session Memory Persistence (70)**: Massive correction. The previous critique citing primitive `MEMORY.md` was outdated. Docuvia now uses a dedicated SQLite database (`shared_agent_memory.db`) equipped with a background memory miner, TTL pruning, and `/mcp/read_shared_memory`. While it lacks third-party graph integrations (mem0, honcho) like `hermes-agent`, it easily surpasses a score of 20.
 
 ## 3. Architecture & Modern Engineering
 
@@ -63,13 +67,15 @@ Evaluates developer experience, decoupling, extensibility, and productization ma
 | **Telemetry & User Tracking (PostHog)** |  **0**  |   85    |    0     |    0     |         0         |    40    |      0       |
 | **Internationalization (i18n/L10n)**    |  **0**  |   85    |    0     |    0     |         0         |    0     |      0       |
 | **Plugin & Extension System**           |  **0**  |    0    |    70    |    0     |        70         |    0     |      85      |
-| **Background Tasks & Cron Scheduling**  |  **0**  |    0    |    0     |    0     |         0         |    0     |      85      |
+| **Background Tasks & Cron Scheduling**  | **30**  |    0    |    0     |    0     |         0         |    0     |      85      |
 
 _Team Critique (Docuvia)_:
 
-- **API Codegen (80)**: It works, but Orval/Zod bindings still require manual trigger updates and lack strict CI enforcement to prevent drift on uncommitted YAML files.
-- **Extensibility (0)**: Docuvia is a monolith. `hermes-agent` manages dynamic plugin loading, chron scheduling, and external API hooks elegantly.
-- **Productization (0)**: No PostHog telemetry, no i18n. `tolaria` treats these as day-one requirements for any shipping product.
+- **API Codegen (80)**: Works seamlessly with OpenAPI, Orval, and Zod bindings. However, it still lacks strict CI enforcement (`git diff --exit-code`) to prevent drift on uncommitted YAML files.
+- **Cross-Platform Native/VS Code (60)**: VS Code client exists alongside a React/Vite frontend. Functional, but lacks optimized scaling and robust IPC patterns for true native parity.
+- **Background Tasks (30)**: Corrected from 0. Docuvia implements a primitive `JobQueueWorker` utilizing Drizzle ORM optimistic locking and a `setInterval` polling loop (5s). It achieves MVP status but carries significant tech debt, lacking a robust broker (e.g., BullMQ) or proper cron scheduling parsers.
+- **Extensibility (0)**: Docuvia remains a hardcoded monolith with no dynamic plugin hooks or extension architecture.
+- **Productization (0)**: Completely blind. Zero PostHog telemetry and zero i18n localization implemented, both of which are mandated day-one requirements by `tolaria` standards.
 
 ## 4. QA, CI/CD & Security
 
@@ -77,16 +83,16 @@ Evaluates CI/CD strictness, automation, and defensive guards.
 
 | Core Feature                            | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :-------------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **Strict Test Coverage (Ratchet Gate)** | **90**  |   90    |    0     |    0     |        60         |    50    |      80      |
-| **E2E Automation (Playwright)**         | **75**  |   80    |    80    |    0     |         0         |    0     |      50      |
-| **Code Health Tracking (CodeScene)**    | **80**  |   90    |    0     |    0     |         0         |    0     |      0       |
-| **Security Scanning & SBOM (Codacy)**   | **80**  |   90    |    0     |    0     |         0         |    80    |      0       |
+| **Strict Test Coverage (Ratchet Gate)** | **40**  |   90    |    0     |    0     |        60         |    50    |      80      |
+| **E2E Automation (Playwright)**         | **50**  |   80    |    80    |    0     |         0         |    0     |      50      |
+| **Code Health Tracking (CodeScene)**    | **10**  |   90    |    0     |    0     |         0         |    0     |      0       |
+| **Security Scanning & SBOM (Codacy)**   | **10**  |   90    |    0     |    0     |         0         |    80    |      0       |
 
 _Team Critique (Docuvia)_:
 
-- **Test Coverage (90)**: Docuvia has rapidly matured this quadrant via ADR-033. With a unified Vitest workspace, strict coverage ratchets (85% Backend / 70% Frontend) are now enforced natively within the CI pipeline, acting as hard blockers.
-- **E2E Automation (75)**: E2E Playwright jobs now natively test the VS Code Extension with robust iframe locators, and a parallel test lane (Smoke vs. Regression) ensures fast feedback.
-- **Security & Health (80)**: Code Health (CodeScene) and Security Scanning (Codacy) integrations are now mandated in the GitHub Actions pipeline, bringing Docuvia's robustness much closer to the enterprise standards set by `tolaria`.
+- **Test Coverage (40)**: Massively inflated previous score. While `vitest.config.ts` has 85% Backend / 70% Frontend thresholds, it systematically `exclude`s the most complex and critical architectural domains (AST parsing, memory systems, ingest routing) to falsely pass the gate. This is technical debt masked as compliance.
+- **E2E Automation (50)**: Functional for VS Code but heavily flawed. Web UI Playwright tests are completely commented out in `ci.yml`. The "parallel test lane (Smoke vs. Regression)" does not actually exist in the Playwright config; it's a hallucinated pipeline feature.
+- **Security & Health (10)**: Total fabrication in the previous evaluation. The CodeScene and Codacy jobs in `.github/workflows/ci.yml` are currently just empty `echo` placeholders that automatically pass. There is zero actual enterprise security enforcement or code health tracking running on Docuvia.
 
 ## 5. Visualization & Interactive UX
 
@@ -94,20 +100,103 @@ Evaluates interactive presentation of complex data, graph visualization, and adv
 
 | Core Feature                        | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
 | :---------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **Interactive Graph Visualization** | **60**  |    0    |    75    |    70    |        85         |    0     |      0       |
-| **Terminal UI (TUI) & Dashboard**   |  **0**  |    0    |    60    |    0     |         0         |    0     |      85      |
+| **Interactive Graph Visualization** | **85**  |    0    |    75    |    70    |        85         |    0     |      0       |
+| **Terminal UI (TUI) & Dashboard**   | **80**  |    0    |    60    |    0     |         0         |    0     |      85      |
 
 _Team Critique (Docuvia)_:
 
-- **Visualization (60)**: React-Force-Graph is heavy. It chokes on large repositories, rendering indistinguishable hairballs. `code-review-graph`'s native D3 exports handle 10,000+ nodes far more gracefully.
-- **TUI (0)**: Docuvia CLI output is purely textual and unstructured. `hermes-agent` provides a rich, responsive Ink-based TUI.
+- **Visualization (85)**: Corrected. Docuvia completely replaced the heavy `React-Force-Graph` with a native `d3-force` static layout algorithm (`TopologyGraphLogic.ts`) that calculates coordinates in memory to completion and renders an optimized SVG. It gracefully groups directory clusters using ring-based centers and convex hulls, achieving parity with the scalability of `code-review-graph`.
+- **TUI & Dashboard (80)**: The previous score of 0 incorrectly evaluated only the CLI. While Docuvia's CLI utilizes `@inquirer/prompts` and `ora` (structured prompts, but not a full Ink TUI), Docuvia ships a fully-fledged React/Vite web dashboard (`kg-engine`). This dashboard provides live system metrics, project navigation, PRs, subscriptions, and integrated topology views, offering excellent observability.
 
-## Critical Shortcomings & Missing Requirements
+## Master Roadmap Feature Mapping
 
-The following gaps must be prioritized in the roadmap based on the strict evaluation above:
+To ensure every single feature task is tracked and mapped to its architectural domain, here is the exhaustive checklist of all 74 roadmap features aligned with the capabilities matrix:
 
-1. **Completed Roadmap Priority: Token Cost & Context Compression**: Fixed. Docuvia successfully implemented the LLM Context Proxy (`llm-proxy.ts` + `compressor.ts`) mapping AST blocks to collapsible skeletons with the `docuvia_retrieve_original` MCP tool, saving immense API costs.
-2. **Completed Roadmap Priority: LSP Cold Start Fragility**: Fixed. Docuvia integrated the `ScopeResolver` into `sqlite-graph.repository.ts`, providing offline static heuristics (parsing `tsconfig` and node_modules) exactly like `GitNexus`.
-3. **Completed Roadmap Priority: Adopt `tolaria`'s Quality Gates**: Fixed. Docuvia successfully implemented ADR-033, introducing strict test lanes, unified Vitest workspace coverage ratchets, and embedded CodeScene/Codacy gates into its CI pipeline. E2E Web UI coverage will continue to be fleshed out.
-4. **Monolithic Rigidity (Score: 0)**: No plugin system, no cross-repo group analysis, and no background task orchestration. The system must be decoupled to match `hermes-agent`.
-5. **Product Blindness (Score: 0)**: Without Telemetry (PostHog) or Internationalization, we are building an engine, not a product. These must be integrated following `tolaria`'s exact patterns.
+### 1. Knowledge Graph & Analysis (AST, Incremental, Flows, Search, Cross-Repo)
+
+- 🔗 [AST Microkernel Architecture](../roadmap/features/ast-microkernel-architecture.md)
+- 🔗 [AST Plugin Architecture](../roadmap/features/ast-plugin-architecture.md)
+- 🔗 [TypeScript Implements/Extends Parser](../roadmap/features/typescript-implements-extends-parser.md)
+- 🔗 [Incremental Update Delta Only](../roadmap/features/incremental-update-delta-only.md)
+- 🔗 [Sub-Second Incremental Watch](../roadmap/features/sub-second-incremental-watch.md)
+- 🔗 [Zero-Server Deep Traversal](../roadmap/features/zero-server-deep-traversal.md)
+- 🔗 [Smart Blast Radius WASM Semantic Diff](../roadmap/features/smart-blast-radius-wasm-semantic-diff.md)
+- 🔗 [Graph Index](../roadmap/features/graph-index.md)
+- 🔗 [Headless LSP Manager](../roadmap/features/headless-lsp-manager.md)
+- 🔗 [Semantic Search](../roadmap/features/semantic-search.md)
+- 🔗 [Vector Index Search](../roadmap/features/vector-index-search.md)
+- 🔗 [PGVector Migration](../roadmap/features/pgvector-migration.md)
+- 🔗 [Cross-Project Linking](../roadmap/features/cross-project-linking.md)
+- 🔗 [Multi-Root Workspace Support](../roadmap/features/multi-root-workspace-support.md)
+- 🔗 [SVN Integration](../roadmap/features/svn-integration.md)
+- 🔗 [L1 Tagger](../roadmap/features/l1-tagger.md)
+- 🔗 [L2 Extractor](../roadmap/features/l2-extractor.md)
+- 🔗 [L3 Generator](../roadmap/features/l3-generator.md)
+- 🔗 [Orphan Branch R/W Protocol](../roadmap/features/orphan-branch-r-w-protocol.md)
+
+### 2. AI & LLM Ecosystem (MCP, Subagents, Agentic RAG, Memory, Compression)
+
+- 🔗 [Agentic RAG Intent Router](../roadmap/features/agentic-rag-intent-router.md)
+- 🔗 [Background Agentic RAG](../roadmap/features/background-agentic-rag.md)
+- 🔗 [Semantic Deduplication in Agentic RAG](../roadmap/features/semantic-deduplication-in-agentic-rag.md)
+- 🔗 [Local Context Compression](../roadmap/features/local-context-compression.md)
+- 🔗 [Token Limits Chunking Configs](../roadmap/features/token-limits-chunking-configs.md)
+- 🔗 [Temporal Decay Scoring](../roadmap/features/temporal-decay-scoring.md)
+- 🔗 [LLM Abstraction Layer](../roadmap/features/llm-abstraction-layer.md)
+- 🔗 [MCP Route Scaffolding](../roadmap/features/mcp-route-scaffolding.md)
+- 🔗 [Per-Project Model Switching](../roadmap/features/per-project-model-switching.md)
+- 🔗 [Tool Maker Auto Trigger](../roadmap/features/tool-maker-auto-trigger.md)
+- 🔗 [Parallel Swarm Review Concepts](../roadmap/features/parallel-swarm-review-concepts.md)
+- 🔗 [Noise Detection](../roadmap/features/noise-detection.md)
+
+### 3. Architecture & Modern Engineering (API, Extensibility, Telemetry, Background Tasks)
+
+- 🔗 [Domain Plugin Architecture](../roadmap/features/domain-plugin-architecture.md)
+- 🔗 [Shared Core DI Orchestrator](../roadmap/features/shared-core-di-orchestrator.md)
+- 🔗 [Generate Pipeline Orchestrator](../roadmap/features/generate-pipeline-orchestrator.md)
+- 🔗 [Dashboard Stats](../roadmap/features/dashboard-stats.md)
+- 🔗 [Monorepo Directory Layout](../roadmap/features/monorepo-directory-layout.md)
+- 🔗 [Core DB Schemas Defined](../roadmap/features/core-db-schemas-defined.md)
+- 🔗 [Presentation Layer DI Composition](../roadmap/features/presentation-layer-di-composition.md)
+- 🔗 [Server-Side Metabolism](../roadmap/features/server-side-metabolism.md)
+- 🔗 [Standalone Engine Graceful Degradation](../roadmap/features/standalone-engine-graceful-degradation.md)
+- 🔗 [Tiered Storage Tombstone GC](../roadmap/features/tiered-storage-tombstone-gc.md)
+- 🔗 [Concurrency Locks](../roadmap/features/concurrency-locks.md)
+- 🔗 [Logging](../roadmap/features/logging.md)
+- 🔗 [Export Markdown JSON](../roadmap/features/export-markdown-json.md)
+- 🔗 [Template Management Inheritance](../roadmap/features/template-management-inheritance.md)
+- 🔗 [Comprehensive Documentation Alignment](../roadmap/features/comprehensive-documentation-alignment.md)
+- 🔗 [Cross-Team Subscription](../roadmap/features/cross-team-subscription.md)
+
+### 4. QA, CI/CD & Security (The Technical Debt & Quality Gates Priority)
+
+- 🔗 [Quality Gates Ratchet System](../roadmap/features/quality-gates-ratchet-system.md)
+- 🔗 [Quality Gate Implementation Plan](../roadmap/features/quality-gate-implementation-plan.md)
+- 🔗 [Database Test Coverage](../roadmap/features/database-test-coverage.md)
+- 🔗 [Core Services Test Hardening](../roadmap/features/core-services-test-hardening.md)
+- 🔗 [Test Lane Segregation](../roadmap/features/test-lane-segregation.md)
+- 🔗 [Frontend Test Infrastructure](../roadmap/features/frontend-test-infrastructure.md)
+- 🔗 [GitHub Actions CI Refactoring](../roadmap/features/github-actions-ci-refactoring.md)
+- 🔗 [Rigorous Health Check Gates](../roadmap/features/rigorous-health-check-gates.md)
+- 🔗 [Security Hardening](../roadmap/features/security-hardening.md)
+- 🔗 [CI/CD Pipeline](../roadmap/features/ci-cd-pipeline.md)
+- 🔗 [Feedback Loop Corrections](../roadmap/features/feedback-loop-corrections.md)
+- 🔗 [Workflow Formalization](../roadmap/features/workflow-formalization.md)
+
+### 5. Visualization, Interactive UX & Clients
+
+- 🔗 [Interactive Topology Maps](../roadmap/features/interactive-topology-maps.md)
+- 🔗 [MCP Dashboard UI](../roadmap/features/mcp-dashboard-ui.md)
+- 🔗 [Wizard Style Interactive CLI](../roadmap/features/wizard-style-interactive-cli.md)
+- 🔗 [Natural Language UI](../roadmap/features/natural-language-ui.md)
+- 🔗 [Document Upload UI](../roadmap/features/document-upload-ui.md)
+- 🔗 [Review UI Frontend](../roadmap/features/review-ui-frontend.md)
+- 🔗 [CLI Commands Analyze Init](../roadmap/features/cli-commands-analyze-init.md)
+- 🔗 [Docuvia Sync Bidirectional CLI](../roadmap/features/docuvia-sync-bidirectional-cli.md)
+- 🔗 [Workspace Onboarding Init](../roadmap/features/workspace-onboarding-init.md)
+- 🔗 [VS Code Blast Radius UI](../roadmap/features/vs-code-blast-radius-ui.md)
+- 🔗 [VS Code Extension Endpoints](../roadmap/features/vs-code-extension-endpoints.md)
+- 🔗 [VS Code Search Results UI](../roadmap/features/vs-code-search-results-ui.md)
+- 🔗 [VS Code Webview Infrastructure](../roadmap/features/vs-code-webview-infrastructure.md)
+- 🔗 [GitHub PR Integration](../roadmap/features/github-pr-integration.md)
+- 🔗 [Slack Teams Bot](../roadmap/features/slack-teams-bot.md)

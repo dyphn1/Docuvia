@@ -11,6 +11,6 @@ Implement automated quality thresholds that prevent deteriorating code health an
 
 ### Implementation Tasks
 
-- [ ] Introduce a `.codescene-thresholds` (or equivalent SonarQube/Codacy config) file at the workspace root to track Hotspot and Average Code Health.
-- [ ] Establish a test coverage ratchet: backend ≥ 85%, frontend ≥ 70%. Configure CI to block merges if coverage drops.
-- [ ] Integrate Codacy security scan into the GitHub Actions CI pipeline.
+- [x] Introduce a `.codescene-thresholds` (or equivalent SonarQube/Codacy config) file at the workspace root to track Hotspot and Average Code Health.
+- [x] Establish a test coverage ratchet: backend ≥ 85%, frontend ≥ 70%. Configure CI to block merges if coverage drops.
+- [x] Integrate Codacy security scan into the GitHub Actions CI pipeline.

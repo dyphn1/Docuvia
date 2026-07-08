@@ -11,6 +11,6 @@ Establish a robust testing foundation for the `@workspace/kg-engine` React front
 
 ### Implementation Tasks
 
-- [ ] Configure Vitest and React Testing Library for `@workspace/kg-engine`.
-- [ ] Write unit tests for core hooks (e.g., intent-router integration) and UI components (e.g., `UploadTab`, `MiscPoolTab`).
-- [ ] Add a Playwright suite specifically for the Web UI.
+- [x] Configure Vitest and React Testing Library for `@workspace/kg-engine`.
+- [x] Write unit tests for core hooks (e.g., intent-router integration) and UI components (e.g., `UploadTab`, `MiscPoolTab`).
+- [x] Add a Playwright suite specifically for the Web UI.

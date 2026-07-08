@@ -11,7 +11,7 @@ Overhaul the GitHub Actions pipeline to natively execute parallel test lanes, E2
 
 ### Implementation Tasks
 
-- [ ] Update `.github/workflows/ci.yml` to support split `smoke` and `regression` parallel jobs.
-- [ ] Ensure `Playwright` E2E test runs (for VS Code client and Web UI) are executed natively within the CI pipeline.
-- [ ] Incorporate automated checks for CodeScene and Codacy inside the CI pipeline, acting as hard blockers for PRs targeting `main`.
-- [ ] Enforce the code coverage ratchet within the CI coverage step (failing the job if under 85% / 70%).
+- [x] Update `.github/workflows/ci.yml` to support split `smoke` and `regression` parallel jobs.
+- [x] Ensure `Playwright` E2E test runs (for VS Code client and Web UI) are executed natively within the CI pipeline.
+- [x] Incorporate automated checks for CodeScene and Codacy inside the CI pipeline, acting as hard blockers for PRs targeting `main`.
+- [x] Enforce the code coverage ratchet within the CI coverage step (failing the job if under 85% / 70%).

@@ -1,24 +1,34 @@
-import { AnalyzeService, ExtractService, AstWorkerPool } from "@workspace/core";
+import {
+  AnalyzeService,
+  ExtractService,
+  AstWorkerPool,
+  DI_TOKENS,
+  DI_KEYS,
+  container,
+} from "@workspace/core";
 import process from "process";
 import { ui } from "../ui/wizard.js";
+import { UI_MESSAGES } from "../constants/ui-messages.js";
 
 export async function analyzeCommand(targetPath?: string, deep: boolean = false) {
   const workspaceRoot = process.cwd();
 
   // If a target path is provided, we perform a focused extraction (formerly the `extract` command)
   if (targetPath) {
-    ui.header(`Analyze (Focused Extraction)`);
-    const spinner = ui.spinner(`Extracting knowledge from ${targetPath}...`).start();
+    ui.header(UI_MESSAGES.ANALYZE_FOCUSED_HEADER);
+    const spinner = ui.spinner(UI_MESSAGES.ANALYZE_FOCUSED_START + targetPath + "...").start();
     const workerPool = new AstWorkerPool();
     await workerPool.initialize(2);
 
-    const extractService = new ExtractService(workspaceRoot, workerPool);
     try {
+      const extractService = container.resolve<ExtractService>(DI_TOKENS.ExtractService);
+      (extractService as any)[DI_KEYS.WORKSPACE_ROOT] = workspaceRoot;
+      (extractService as any)[DI_KEYS.WORKER_POOL] = workerPool;
       const result = await extractService.extractDecisions(targetPath);
-      spinner.succeed(`Extraction complete`);
+      spinner.succeed(UI_MESSAGES.ANALYZE_FOCUSED_SUCCESS);
       result.decisions.forEach((decision) => ui.info(`- ${decision}`));
     } catch (error: any) {
-      spinner.fail(`Extraction failed: ${error.message}`);
+      spinner.fail(UI_MESSAGES.ANALYZE_FOCUSED_FAIL + error.message);
       await workerPool.terminate();
       process.exit(1);
     }
@@ -27,24 +37,29 @@ export async function analyzeCommand(targetPath?: string, deep: boolean = false)
   }
 
   // Otherwise, perform a full project analysis
-  ui.header("Analyze Workspace");
-  const spinner = ui.spinner("Initializing analyzer...").start();
-
-  const analyzeService = new AnalyzeService(workspaceRoot, (msg: string) => {
-    spinner.text = msg;
-  });
+  ui.header(UI_MESSAGES.ANALYZE_HEADER);
+  const spinner = ui.spinner(UI_MESSAGES.ANALYZE_START).start();
 
   try {
+    const analyzeService = container.resolve<AnalyzeService>(DI_TOKENS.AnalyzeService);
+    (analyzeService as any)[DI_KEYS.WORKSPACE_ROOT] = workspaceRoot;
+    (analyzeService as any)[DI_KEYS.LOG_CALLBACK] = (msg: string) => {
+      spinner.text = msg;
+    };
+
     const result = await analyzeService.analyzeProject({ deep });
-    spinner.succeed(`Analysis complete`);
+    spinner.succeed(UI_MESSAGES.ANALYZE_SUCCESS);
 
     // Structured Output
     console.log("");
-    ui.success(`Project Type: ${result.projectType}`);
-    ui.info(`Suggested Tags: ${result.suggestedTags.join(", ") || "None"}`);
+    ui.success(UI_MESSAGES.ANALYZE_PROJECT_TYPE + result.projectType);
+    ui.info(
+      UI_MESSAGES.ANALYZE_SUGGESTED_TAGS +
+        (result.suggestedTags.join(", ") || UI_MESSAGES.ANALYZE_NONE)
+    );
     console.log("");
   } catch (error: any) {
-    spinner.fail(`Analysis failed: ${error.message}`);
+    spinner.fail(UI_MESSAGES.ANALYZE_FAIL + error.message);
     process.exit(1);
   }
 }

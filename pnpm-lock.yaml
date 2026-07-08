@@ -283,6 +283,9 @@ importers:
 
   artifacts/cli:
     dependencies:
+      '@inquirer/checkbox':
+        specifier: ^5.2.1
+        version: 5.2.1(@types/node@25.3.5)
       '@inquirer/prompts':
         specifier: ^8.5.2
         version: 8.5.2(@types/node@25.3.5)
@@ -834,13 +837,6 @@ importers:
         version: 3.25.76
 
   lib/ast-core:
-    dependencies:
-      smol-toml:
-        specifier: ^1.6.1
-        version: 1.6.1
-      web-tree-sitter:
-        specifier: ^0.25.9
-        version: 0.25.9
     devDependencies:
       '@types/js-yaml':
         specifier: ^4.0.9
@@ -848,9 +844,15 @@ importers:
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.0
+      smol-toml:
+        specifier: ^1.6.1
+        version: 1.6.1
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
+      web-tree-sitter:
+        specifier: ^0.25.9
+        version: 0.25.9
 
   lib/core:
     dependencies:
@@ -867,8 +869,11 @@ importers:
         specifier: ^12.11.1
         version: 12.11.1
       drizzle-orm:
-        specifier: 'catalog:'
-        version: 0.45.2(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)
+        specifier: ^0.36.4
+        version: 0.36.4(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0)
+      drizzle-zod:
+        specifier: ^0.6.1
+        version: 0.6.1(drizzle-orm@0.36.4(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0))(zod@4.3.6)
       fast-glob:
         specifier: ^3.3.3
         version: 3.3.3
@@ -878,11 +883,14 @@ importers:
       ignore:
         specifier: ^7.0.5
         version: 7.0.5
+      lru-cache:
+        specifier: ^11.5.1
+        version: 11.5.1
       p-limit:
         specifier: ^7.3.0
         version: 7.3.0
       pino:
-        specifier: ^9
+        specifier: ^9.14.0
         version: 9.14.0
       sax:
         specifier: ^1.6.0
@@ -913,14 +921,17 @@ importers:
   lib/db:
     dependencies:
       drizzle-orm:
-        specifier: 'catalog:'
-        version: 0.45.2(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)
+        specifier: ^0.29.3
+        version: 0.29.5(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0)
       drizzle-zod:
         specifier: ^0.8.3
-        version: 0.8.3(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9))(zod@3.25.76)
+        version: 0.8.3(drizzle-orm@0.29.5(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0))(zod@3.25.76)
       pg:
         specifier: ^8.20.0
         version: 8.20.0
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
@@ -3056,10 +3067,6 @@ packages:
   '@iconify/utils@3.1.3':
     resolution: {integrity: sha512-LPKOXPn/zV+zis1oOfGWogaXVpqUybF3ZS6SCZIsz8vg0ivVp9+fVqyYB7xq0aiST/VhUQYGO1qo6uoYSiEJqw==}
 
-  '@inquirer/ansi@2.0.5':
-    resolution: {integrity: sha512-doc2sWgJpbFQ64UflSVd17ibMGDuxO1yKgOgLMwavzESnXjFWJqUeG8saYosqKpHp4kWiM5x1nXvEjbpx90gzw==}
-    engines: {node: '>=23.5.0 || ^22.13.0 || ^21.7.0 || ^20.12.0'}
-
   '@inquirer/ansi@2.0.7':
     resolution: {integrity: sha512-3eTuUO1vH2cZm2ZKHeQxnOqlTi9EfZDGgIe3BL3I4u+rJHocr9Fz86M4fjYABPvFnQG/gGK551HqDiIcETwU6Q==}
     engines: {node: '>=23.5.0 || ^22.13.0 || ^20.17.0'}
@@ -3135,10 +3142,6 @@ packages:
     peerDependenciesMeta:
       '@types/node':
         optional: true
-
-  '@inquirer/figures@2.0.5':
-    resolution: {integrity: sha512-NsSs4kzfm12lNetHwAn3GEuH317IzpwrMCbOuMIVytpjnJ90YYHNwdRgYGuKmVxwuIqSgqk3M5qqQt1cDk0tGQ==}
-    engines: {node: '>=23.5.0 || ^22.13.0 || ^21.7.0 || ^20.12.0'}
 
   '@inquirer/figures@2.0.7':
     resolution: {integrity: sha512-aJ8TBPOGB6f/2qziPfElISTCEd5XOYTFckA2SGjhNmiKzfK/u4ot3v0DUzGVdUnKjN10EqnnEPck36BkyfLnJw==}
@@ -7091,6 +7094,169 @@ packages:
     resolution: {integrity: sha512-GViD3IgsXn7trFyBUUHyTFBpH/FsHTxYJ66qdbVggxef4UBPHRYxQaRzYLTuekYnk9i5FIEL9pbBIwMqX/Uwrg==}
     hasBin: true
 
+  drizzle-orm@0.29.5:
+    resolution: {integrity: sha512-jS3+uyzTz4P0Y2CICx8FmRQ1eplURPaIMWDn/yq6k4ShRFj9V7vlJk67lSf2kyYPzQ60GkkNGXcJcwrxZ6QCRw==}
+    peerDependencies:
+      '@aws-sdk/client-rds-data': '>=3'
+      '@cloudflare/workers-types': '>=3'
+      '@libsql/client': '*'
+      '@neondatabase/serverless': '>=0.1'
+      '@opentelemetry/api': ^1.4.1
+      '@planetscale/database': '>=1'
+      '@types/better-sqlite3': '*'
+      '@types/pg': '*'
+      '@types/react': '>=18'
+      '@types/sql.js': '*'
+      '@vercel/postgres': '*'
+      better-sqlite3: '>=7'
+      bun-types: '*'
+      expo-sqlite: '>=13.2.0'
+      knex: '*'
+      kysely: '*'
+      mysql2: '>=2'
+      pg: '>=8'
+      postgres: '>=3'
+      react: '>=18'
+      sql.js: '>=1'
+      sqlite3: '>=5'
+    peerDependenciesMeta:
+      '@aws-sdk/client-rds-data':
+        optional: true
+      '@cloudflare/workers-types':
+        optional: true
+      '@libsql/client':
+        optional: true
+      '@neondatabase/serverless':
+        optional: true
+      '@opentelemetry/api':
+        optional: true
+      '@planetscale/database':
+        optional: true
+      '@types/better-sqlite3':
+        optional: true
+      '@types/pg':
+        optional: true
+      '@types/react':
+        optional: true
+      '@types/sql.js':
+        optional: true
+      '@vercel/postgres':
+        optional: true
+      better-sqlite3:
+        optional: true
+      bun-types:
+        optional: true
+      expo-sqlite:
+        optional: true
+      knex:
+        optional: true
+      kysely:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      postgres:
+        optional: true
+      react:
+        optional: true
+      sql.js:
+        optional: true
+      sqlite3:
+        optional: true
+
+  drizzle-orm@0.36.4:
+    resolution: {integrity: sha512-1OZY3PXD7BR00Gl61UUOFihslDldfH4NFRH2MbP54Yxi0G/PKn4HfO65JYZ7c16DeP3SpM3Aw+VXVG9j6CRSXA==}
+    peerDependencies:
+      '@aws-sdk/client-rds-data': '>=3'
+      '@cloudflare/workers-types': '>=3'
+      '@electric-sql/pglite': '>=0.2.0'
+      '@libsql/client': '>=0.10.0'
+      '@libsql/client-wasm': '>=0.10.0'
+      '@neondatabase/serverless': '>=0.10.0'
+      '@op-engineering/op-sqlite': '>=2'
+      '@opentelemetry/api': ^1.4.1
+      '@planetscale/database': '>=1'
+      '@prisma/client': '*'
+      '@tidbcloud/serverless': '*'
+      '@types/better-sqlite3': '*'
+      '@types/pg': '*'
+      '@types/react': '>=18'
+      '@types/sql.js': '*'
+      '@vercel/postgres': '>=0.8.0'
+      '@xata.io/client': '*'
+      better-sqlite3: '>=7'
+      bun-types: '*'
+      expo-sqlite: '>=14.0.0'
+      knex: '*'
+      kysely: '*'
+      mysql2: '>=2'
+      pg: '>=8'
+      postgres: '>=3'
+      prisma: '*'
+      react: '>=18'
+      sql.js: '>=1'
+      sqlite3: '>=5'
+    peerDependenciesMeta:
+      '@aws-sdk/client-rds-data':
+        optional: true
+      '@cloudflare/workers-types':
+        optional: true
+      '@electric-sql/pglite':
+        optional: true
+      '@libsql/client':
+        optional: true
+      '@libsql/client-wasm':
+        optional: true
+      '@neondatabase/serverless':
+        optional: true
+      '@op-engineering/op-sqlite':
+        optional: true
+      '@opentelemetry/api':
+        optional: true
+      '@planetscale/database':
+        optional: true
+      '@prisma/client':
+        optional: true
+      '@tidbcloud/serverless':
+        optional: true
+      '@types/better-sqlite3':
+        optional: true
+      '@types/pg':
+        optional: true
+      '@types/react':
+        optional: true
+      '@types/sql.js':
+        optional: true
+      '@vercel/postgres':
+        optional: true
+      '@xata.io/client':
+        optional: true
+      better-sqlite3:
+        optional: true
+      bun-types:
+        optional: true
+      expo-sqlite:
+        optional: true
+      knex:
+        optional: true
+      kysely:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      postgres:
+        optional: true
+      prisma:
+        optional: true
+      react:
+        optional: true
+      sql.js:
+        optional: true
+      sqlite3:
+        optional: true
+
   drizzle-orm@0.45.2:
     resolution: {integrity: sha512-kY0BSaTNYWnoDMVoyY8uxmyHjpJW1geOmBMdSSicKo9CIIWkSxMIj2rkeSR51b8KAPB7m+qysjuHme5nKP+E5Q==}
     peerDependencies:
@@ -7182,6 +7348,12 @@ packages:
         optional: true
       sqlite3:
         optional: true
+
+  drizzle-zod@0.6.1:
+    resolution: {integrity: sha512-huEbUgnsuR8tupnmLiyB2F1I2H9dswI3GfM36IbIqx9i0YUeYjRsDpJVyFVeziUvI1ogT9JHRL2Q03cC4QmvxA==}
+    peerDependencies:
+      drizzle-orm: '>=0.36.0'
+      zod: '>=3.0.0'
 
   drizzle-zod@0.8.3:
     resolution: {integrity: sha512-66yVOuvGhKJnTdiqj1/Xaaz9/qzOdRJADpDa68enqS6g3t0kpNkwNYjUuaeXgZfO/UWuIM9HIhSlJ6C5ZraMww==}
@@ -10481,6 +10653,10 @@ packages:
   pino-std-serializers@7.1.0:
     resolution: {integrity: sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw==}
 
+  pino@10.3.1:
+    resolution: {integrity: sha512-r34yH/GlQpKZbU1BvFFqOjhISRo1MNx1tWYsYvmj6KIRHSPMT2+yHOEb1SG6NMvRoHRF0a07kCOox/9yakl1vg==}
+    hasBin: true
+
   pino@9.14.0:
     resolution: {integrity: sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==}
     hasBin: true
@@ -10882,6 +11058,7 @@ packages:
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
     engines: {node: '>=10'}
+    deprecated: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
     hasBin: true
 
   prelude-ls@1.1.2:
@@ -11250,6 +11427,9 @@ packages:
   real-require@0.2.0:
     resolution: {integrity: sha512-57frrGM/OCTLqLOAh0mhVA9VBMHd+9U7Zb2THMGdBUoZVOtGbJzjxsYGDJ3A9AYYCP4hn6y1TVbaOfzWtm5GFg==}
     engines: {node: '>= 12.13.0'}
+
+  real-require@1.0.0:
+    resolution: {integrity: sha512-P4nbQYQfePJxRSmY+v/KINxVucm4NF3p3s7pJveMTtom52FR4YGltUQLB8idDXwDDWW+eYrWDFbuzUnjoWHF7g==}
 
   realpath-native@1.1.0:
     resolution: {integrity: sha512-wlgPA6cCIIg9gKz0fgAPjnzh4yR/LnXovwuo9hvyGvx3h8nX4+/iLZplfUWasXpqD8BdnGnP5njOFjkUwPzvjA==}
@@ -12263,6 +12443,10 @@ packages:
 
   thread-stream@3.1.0:
     resolution: {integrity: sha512-OqyPZ9u96VohAyMfJykzmivOrY2wfMSf3C5TtFJVgN+Hm6aj+voFhlK+kZEIv2FBh1X6Xp3DlnCOfEQ3B2J86A==}
+
+  thread-stream@4.2.0:
+    resolution: {integrity: sha512-e2zZ96wSChazBsbENf/Pcm/4swHt2cEKQ92rhUjkL9GCKiTDJIaTBenjE/m9DXi0QBmTMDkFDdOomUy20A1tDQ==}
+    engines: {node: '>=20'}
 
   three-forcegraph@1.43.4:
     resolution: {integrity: sha512-FtmiZP/T16ZQaHza3JDaDn0YTXFtg9e7pGnTeU8nzu0NNkx7MpWbF/GvmpbQsWHx3rukHtkRv1fTorLPB3FDEA==}
@@ -15493,8 +15677,6 @@ snapshots:
       '@iconify/types': 2.0.0
       import-meta-resolve: 4.2.0
 
-  '@inquirer/ansi@2.0.5': {}
-
   '@inquirer/ansi@2.0.7': {}
 
   '@inquirer/checkbox@5.2.1(@types/node@25.3.5)':
@@ -15522,9 +15704,9 @@ snapshots:
 
   '@inquirer/core@11.1.10(@types/node@25.3.5)':
     dependencies:
-      '@inquirer/ansi': 2.0.5
-      '@inquirer/figures': 2.0.5
-      '@inquirer/type': 4.0.5(@types/node@25.3.5)
+      '@inquirer/ansi': 2.0.7
+      '@inquirer/figures': 2.0.7
+      '@inquirer/type': 4.0.7(@types/node@25.3.5)
       cli-width: 4.1.0
       fast-wrap-ansi: 0.2.2
       mute-stream: 3.0.0
@@ -15565,8 +15747,6 @@ snapshots:
       iconv-lite: 0.7.2
     optionalDependencies:
       '@types/node': 25.3.5
-
-  '@inquirer/figures@2.0.5': {}
 
   '@inquirer/figures@2.0.7': {}
 
@@ -15757,9 +15937,7 @@ snapshots:
       jest-runner: 24.9.0
       jest-runtime: 24.9.0
     transitivePeerDependencies:
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@jest/transform@24.9.0':
     dependencies:
@@ -20198,6 +20376,26 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  drizzle-orm@0.29.5(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0):
+    optionalDependencies:
+      '@types/better-sqlite3': 7.6.13
+      '@types/pg': 8.18.0
+      '@types/react': 19.2.14
+      better-sqlite3: 12.11.1
+      pg: 8.20.0
+      postgres: 3.4.9
+      react: 19.1.0
+
+  drizzle-orm@0.36.4(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0):
+    optionalDependencies:
+      '@types/better-sqlite3': 7.6.13
+      '@types/pg': 8.18.0
+      '@types/react': 19.2.14
+      better-sqlite3: 12.11.1
+      pg: 8.20.0
+      postgres: 3.4.9
+      react: 19.1.0
+
   drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9):
     optionalDependencies:
       '@types/better-sqlite3': 7.6.13
@@ -20206,9 +20404,14 @@ snapshots:
       pg: 8.20.0
       postgres: 3.4.9
 
-  drizzle-zod@0.8.3(drizzle-orm@0.45.2(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9))(zod@3.25.76):
+  drizzle-zod@0.6.1(drizzle-orm@0.36.4(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0))(zod@4.3.6):
     dependencies:
-      drizzle-orm: 0.45.2(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)
+      drizzle-orm: 0.36.4(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0)
+      zod: 4.3.6
+
+  drizzle-zod@0.8.3(drizzle-orm@0.29.5(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0))(zod@3.25.76):
+    dependencies:
+      drizzle-orm: 0.29.5(@types/better-sqlite3@7.6.13)(@types/pg@8.18.0)(@types/react@19.2.14)(better-sqlite3@12.11.1)(pg@8.20.0)(postgres@3.4.9)(react@19.1.0)
       zod: 3.25.76
 
   duck@0.1.12:
@@ -24330,6 +24533,20 @@ snapshots:
 
   pino-std-serializers@7.1.0: {}
 
+  pino@10.3.1:
+    dependencies:
+      '@pinojs/redact': 0.4.0
+      atomic-sleep: 1.0.0
+      on-exit-leak-free: 2.1.2
+      pino-abstract-transport: 3.0.0
+      pino-std-serializers: 7.1.0
+      process-warning: 5.0.0
+      quick-format-unescaped: 4.0.4
+      real-require: 0.2.0
+      safe-stable-stringify: 2.5.0
+      sonic-boom: 4.2.1
+      thread-stream: 4.2.0
+
   pino@9.14.0:
     dependencies:
       '@pinojs/redact': 0.4.0
@@ -25390,6 +25607,8 @@ snapshots:
   readdirp@5.0.0: {}
 
   real-require@0.2.0: {}
+
+  real-require@1.0.0: {}
 
   realpath-native@1.1.0:
     dependencies:
@@ -26631,6 +26850,10 @@ snapshots:
   thread-stream@3.1.0:
     dependencies:
       real-require: 0.2.0
+
+  thread-stream@4.2.0:
+    dependencies:
+      real-require: 1.0.0
 
   three-forcegraph@1.43.4(three@0.185.0):
     dependencies:

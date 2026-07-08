@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import * as dotenv from "dotenv";
 import process from "process";
+import pc from "picocolors";
 
 import { initCommand } from "./commands/init.js";
 import { queryCommand } from "./commands/query.js";
@@ -14,54 +15,33 @@ import { exportTopologyCommand } from "./commands/export-topology.js";
 import { runMcpServer } from "./mcp/server.js";
 
 import { ui } from "./ui/wizard.js";
-import { CLI_COMMANDS, CLI_COMMAND_DESCRIPTIONS, CliCommand } from "@workspace/core";
+import {
+  CLI_COMMANDS,
+  CLI_COMMAND_DESCRIPTIONS,
+  CliCommand,
+  getUsageText,
+} from "./constants/cli-commands.js";
+import { CLI_FLAGS, CLI_FORMAT_OPTIONS, CLI_COLLAPSE_OPTIONS } from "./constants/cli-flags.js";
+import { UI_MESSAGES } from "./constants/ui-messages.js";
+import { ArgParser } from "./utils/arg-parser.js";
+import { setupDI } from "./di.js";
+import { TopologyCollapseMode } from "@workspace/core";
 
 dotenv.config();
 
 function printUsage() {
-  console.error("Usage:");
-  console.error(
-    `  docuvia ${CLI_COMMANDS.INIT.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.INIT]}`
-  );
-  console.error(
-    `  docuvia ${CLI_COMMANDS.ANALYZE + " [path] [--deep]"} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.ANALYZE]}`.replace(
-      " #",
-      "".padEnd(21) + "#"
-    )
-  );
-  console.error(
-    `  docuvia ${CLI_COMMANDS.QUERY + " <target> [--local]"}`.padEnd(49) +
-      `# ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.QUERY]}`
-  );
-  console.error(
-    `  docuvia ${CLI_COMMANDS.REVIEW + " [--baseRef=...]"}`.padEnd(49) +
-      `# ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.REVIEW]}`
-  );
-  console.error(
-    `  docuvia ${CLI_COMMANDS.SNAPSHOT.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.SNAPSHOT]}`
-  );
-  console.error(
-    `  docuvia ${CLI_COMMANDS.SYNC + " <project_id> [sha]"}`.padEnd(49) +
-      `# ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.SYNC]}`
-  );
-  console.error(
-    `  docuvia ${CLI_COMMANDS.STATUS.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.STATUS]}`
-  );
-  console.error(
-    `  docuvia ${CLI_COMMANDS.CLEAN.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.CLEAN]}`
-  );
-  console.error(
-    `  docuvia ${CLI_COMMANDS.EXPORT + " --topology [--json]"}`.padEnd(49) +
-      `# ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.EXPORT]}`
-  );
-  console.error(
-    `  docuvia ${CLI_COMMANDS.MCP.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.MCP]}`
-  );
+  console.error(getUsageText());
 }
 
 async function main() {
-  let command = process.argv[2] as CliCommand | undefined;
+  // Initialize Dependency Injection
+  setupDI();
 
+  let command = process.argv[2] as CliCommand | undefined;
+  const rawArgs = process.argv.slice(3);
+  const parser = new ArgParser(rawArgs);
+
+  let isInteractive = false;
   // Interactive fallback when no command is provided
   if (!command) {
     if (!process.stdin.isTTY) {
@@ -69,7 +49,8 @@ async function main() {
       process.exit(1);
     }
 
-    ui.header("Docuvia Knowledge Graph");
+    isInteractive = true;
+    ui.header(UI_MESSAGES.CLI_HEADER);
     const choices = Object.values(CLI_COMMANDS)
       // Hide MCP and EXPORT from interactive menu as they are internal/CI tools
       .filter((cmd) => cmd !== CLI_COMMANDS.MCP && cmd !== CLI_COMMANDS.EXPORT)
@@ -79,122 +60,152 @@ async function main() {
         description: CLI_COMMAND_DESCRIPTIONS[cmd],
       }));
 
-    command = (await ui.askSelect("What would you like to do?", choices)) as CliCommand;
+    command = (await ui.askSelect(UI_MESSAGES.CLI_PROMPT_ACTION, choices)) as CliCommand;
   }
 
-  switch (command) {
-    case CLI_COMMANDS.INIT:
-      await initCommand();
-      process.exit(0);
-      break;
+  try {
+    switch (command) {
+      case CLI_COMMANDS.INIT:
+        parser.checkUnknownFlags([]);
+        await initCommand();
+        break;
 
-    case CLI_COMMANDS.ANALYZE: {
-      const deep = process.argv.includes("--deep");
-      // Find the target path: it's the first positional arg after 'analyze'
-      const args = process.argv.slice(2);
-      const idx = args.indexOf(CLI_COMMANDS.ANALYZE);
-      let targetFile: string | undefined;
-      for (let i = idx + 1; i < args.length; i++) {
-        if (!args[i].startsWith("-")) {
-          targetFile = args[i];
-          break;
+      case CLI_COMMANDS.ANALYZE: {
+        parser.checkUnknownFlags([CLI_FLAGS.DEEP]);
+
+        let deep = parser.hasFlag(CLI_FLAGS.DEEP);
+        let targetFile = parser.getPositional(0);
+
+        if (isInteractive && !deep && !targetFile) {
+          const answer = await ui.askConfirm(
+            "Would you like to enable deep scanning (extract L3 decisions)?",
+            false
+          );
+          deep = answer;
         }
+
+        await analyzeCommand(targetFile, deep);
+        break;
       }
-      await analyzeCommand(targetFile, deep);
-      process.exit(0);
-      break;
-    }
 
-    case CLI_COMMANDS.STATUS:
-      await statusCommand();
-      process.exit(0);
-      break;
+      case CLI_COMMANDS.STATUS:
+        parser.checkUnknownFlags([]);
+        await statusCommand();
+        break;
 
-    case CLI_COMMANDS.CLEAN:
-      await cleanCommand();
-      process.exit(0);
-      break;
+      case CLI_COMMANDS.CLEAN:
+        parser.checkUnknownFlags([]);
+        await cleanCommand();
+        break;
 
-    case CLI_COMMANDS.REVIEW: {
-      const baseRef = process.argv.find((arg) => arg.startsWith("--baseRef="))?.split("=")[1];
-      await reviewCommand(baseRef);
-      process.exit(0);
-      break;
-    }
-
-    case CLI_COMMANDS.SNAPSHOT:
-      await snapshotCommand();
-      process.exit(0);
-      break;
-
-    case CLI_COMMANDS.SYNC: {
-      const argsWithoutFlags = process.argv.slice(3).filter((arg) => !arg.startsWith("--"));
-      const projectId = argsWithoutFlags[0];
-      const commitSha = argsWithoutFlags[1];
-      await syncCommand({ projectId, commitSha });
-      process.exit(0);
-      break;
-    }
-
-    case CLI_COMMANDS.EXPORT: {
-      const isTopology = process.argv.includes("--topology");
-      if (!isTopology) {
-        ui.error(
-          "Usage: docuvia export --topology [--json] [--out=DIR] [--collapse=file|symbol|auto]"
-        );
-        process.exit(1);
+      case CLI_COMMANDS.REVIEW: {
+        parser.checkUnknownFlags([CLI_FLAGS.BASE_REF]);
+        const baseRef = parser.getFlagValue(CLI_FLAGS.BASE_REF);
+        await reviewCommand(baseRef);
+        break;
       }
-      const collapseArg = process.argv.find((arg) => arg.startsWith("--collapse="))?.split("=")[1];
-      const collapse =
-        collapseArg === "file" || collapseArg === "symbol" || collapseArg === "auto"
-          ? collapseArg
-          : undefined;
-      await exportTopologyCommand({
-        jsonOnly: process.argv.includes("--json"),
-        out: process.argv.find((arg) => arg.startsWith("--out="))?.split("=")[1],
-        collapse,
-      });
-      process.exit(0);
-      break;
-    }
 
-    case CLI_COMMANDS.MCP:
-      await runMcpServer();
-      return; // keep alive for stdio transport
+      case CLI_COMMANDS.SNAPSHOT:
+        parser.checkUnknownFlags([]);
+        await snapshotCommand();
+        break;
 
-    case CLI_COMMANDS.QUERY: {
-      const args = process.argv.slice(2);
-      const idx = args.indexOf(CLI_COMMANDS.QUERY);
-      let target = "";
-      const options: { local?: boolean; format?: "human" | "prompt" } = {};
+      case CLI_COMMANDS.SYNC: {
+        parser.checkUnknownFlags([]);
+        const projectId = parser.getPositional(0);
+        const commitSha = parser.getPositional(1);
+        await syncCommand({ projectId, commitSha });
+        break;
+      }
 
-      for (let i = idx + 1; i < args.length; i++) {
-        const arg = args[i];
-        if (arg === "--local") {
-          options.local = true;
-        } else if (arg.startsWith("--format=")) {
-          const format = arg.substring("--format=".length);
-          if (format === "human" || format === "prompt") {
-            options.format = format as "human" | "prompt";
+      case CLI_COMMANDS.EXPORT: {
+        parser.checkUnknownFlags([
+          CLI_FLAGS.TOPOLOGY,
+          CLI_FLAGS.JSON,
+          CLI_FLAGS.OUT,
+          CLI_FLAGS.COLLAPSE,
+        ]);
+
+        let isTopology = parser.hasFlag(CLI_FLAGS.TOPOLOGY);
+        let jsonOnly = parser.hasFlag(CLI_FLAGS.JSON);
+        let out = parser.getFlagValue(CLI_FLAGS.OUT);
+        let collapseVal = parser.getFlagValue(CLI_FLAGS.COLLAPSE);
+
+        if (isInteractive) {
+          isTopology = true; // Auto enable for wizard
+          if (!collapseVal) {
+            const collapseChoices = [
+              { name: "No collapsing (Full graph)", value: "none" },
+              { name: "Collapse by File", value: CLI_COLLAPSE_OPTIONS.FILE },
+              { name: "Collapse by Symbol", value: CLI_COLLAPSE_OPTIONS.SYMBOL },
+              { name: "Auto-collapse based on size", value: CLI_COLLAPSE_OPTIONS.AUTO },
+            ];
+            const res = await ui.askSelect(
+              "How should the topology be collapsed?",
+              collapseChoices
+            );
+            if (res !== "none") collapseVal = res;
           }
-        } else if (!arg.startsWith("-") && !target) {
-          target = arg;
         }
+
+        if (!isTopology) {
+          ui.error(UI_MESSAGES.CLI_EXPORT_USAGE);
+          process.exit(1);
+        }
+
+        let collapse: TopologyCollapseMode | undefined;
+
+        if (
+          collapseVal === CLI_COLLAPSE_OPTIONS.FILE ||
+          collapseVal === CLI_COLLAPSE_OPTIONS.SYMBOL ||
+          collapseVal === CLI_COLLAPSE_OPTIONS.AUTO
+        ) {
+          collapse = collapseVal as TopologyCollapseMode;
+        }
+
+        await exportTopologyCommand({
+          jsonOnly,
+          out,
+          collapse,
+        });
+        break;
       }
 
-      await queryCommand(target, options);
-      process.exit(0);
-      break;
-    }
+      case CLI_COMMANDS.MCP:
+        parser.checkUnknownFlags([]);
+        await runMcpServer();
+        return; // keep alive for stdio transport
 
-    default:
-      ui.error(`Unknown command: ${command}`);
-      printUsage();
-      process.exit(1);
+      case CLI_COMMANDS.QUERY: {
+        parser.checkUnknownFlags([CLI_FLAGS.LOCAL, CLI_FLAGS.FORMAT]);
+        const target = parser.getPositional(0) || "";
+        const isLocal = parser.hasFlag(CLI_FLAGS.LOCAL);
+        const formatVal = parser.getFlagValue(CLI_FLAGS.FORMAT);
+
+        let format: "human" | "prompt" | undefined;
+        if (formatVal === CLI_FORMAT_OPTIONS.HUMAN || formatVal === CLI_FORMAT_OPTIONS.PROMPT) {
+          format = formatVal as "human" | "prompt";
+        }
+
+        await queryCommand(target, { local: isLocal, format });
+        break;
+      }
+
+      default:
+        ui.error(UI_MESSAGES.CLI_UNKNOWN_COMMAND + command);
+        printUsage();
+        process.exit(1);
+    }
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    ui.error(UI_MESSAGES.CLI_FATAL_ERROR + msg);
+    process.exit(1);
   }
 }
 
 main().catch((err) => {
-  console.error("\x1b[31m%s\x1b[0m", err instanceof Error ? err.message : String(err));
+  console.error(
+    pc.red(UI_MESSAGES.CLI_FATAL_ERROR + (err instanceof Error ? err.message : String(err)))
+  );
   process.exit(1);
 });

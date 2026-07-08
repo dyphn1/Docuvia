@@ -4,36 +4,40 @@ import {
   AstProcessingService,
   mapAstToEvents,
   GitNativePersistenceService,
+  DI_TOKENS,
+  DI_KEYS,
+  container,
 } from "@workspace/core";
 import process from "process";
 import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import { ui } from "../ui/wizard.js";
+import { UI_MESSAGES } from "../constants/ui-messages.js";
 
 export async function snapshotCommand() {
-  const spinner = ui.spinner("Starting local AST snapshot...").start();
+  const spinner = ui.spinner(UI_MESSAGES.SNAPSHOT_START).start();
   let tempDir = "";
   try {
     const workspaceRoot = process.cwd();
 
-    spinner.text = "Discovering source files...";
+    spinner.text = UI_MESSAGES.SNAPSHOT_DISCOVER;
     const fileDiscovery = new FileDiscoveryService();
     // Pass an empty dbPath string to skip SQLite hash checking
     const { filesToParse } = await fileDiscovery.discoverFiles(workspaceRoot, "", {
       onlyIndexed: true,
     });
 
-    spinner.text = `Parsing ${filesToParse.length} files...`;
+    spinner.text = UI_MESSAGES.SNAPSHOT_PARSE;
     const astProcessor = new AstProcessingService();
     const parsedResults = await astProcessor.processFiles(workspaceRoot, filesToParse);
 
-    spinner.text = "Mapping AST events...";
+    spinner.text = UI_MESSAGES.SNAPSHOT_MAP;
     const events = mapAstToEvents(parsedResults);
 
     tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "docuvia-sync-"));
 
-    spinner.text = "Persisting git-native structure...";
+    spinner.text = UI_MESSAGES.SNAPSHOT_PERSIST;
     const gitNativePersistence = new GitNativePersistenceService();
     const result = {
       errors: [],
@@ -46,15 +50,18 @@ export async function snapshotCommand() {
 
     await gitNativePersistence.processEvents(events, tempDir, result);
 
-    spinner.text = "Packing directory to docuvia-knowledge branch...";
-    const localWriter = new LocalOrphanBranchWriter(workspaceRoot);
+    spinner.text = UI_MESSAGES.SNAPSHOT_PACK;
+    const localWriter = container.resolve<LocalOrphanBranchWriter>(
+      DI_TOKENS.LocalOrphanBranchWriter
+    );
+    (localWriter as any)[DI_KEYS.WORKSPACE_ROOT] = workspaceRoot;
     await localWriter.packDirectoryToBranch(tempDir, "docuvia-knowledge");
 
     spinner.succeed(
-      `Successfully packed local knowledge to branch. Nodes: ${result.l2Created + result.l3Created}, Links: ${result.linksCreated}`
+      `${UI_MESSAGES.SNAPSHOT_SUCCESS} Nodes: ${result.l2Created + result.l3Created}, Links: ${result.linksCreated}`
     );
   } catch (e: any) {
-    spinner.fail(`Local snapshot (packing) failed: ${e.message}`);
+    spinner.fail(UI_MESSAGES.SNAPSHOT_FAIL + e.message);
     process.exit(1);
   } finally {
     if (tempDir) {

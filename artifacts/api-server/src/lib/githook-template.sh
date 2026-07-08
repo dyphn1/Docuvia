@@ -1,6 +1,9 @@
 #!/bin/sh
 # Docuvia post-push hook
 # Install: git config core.hooksPath .githooks
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
-COMMITS=$(git log @{u}..HEAD --format=%H | tr '\n' ',')
-docuvia sync --branch "$BRANCH" --commits "$COMMITS"
+
+# Replace YOUR_PROJECT_ID with your actual Docuvia project ID
+PROJECT_ID="YOUR_PROJECT_ID"
+COMMIT_SHA=$(git rev-parse HEAD)
+
+docuvia sync "$PROJECT_ID" "$COMMIT_SHA"

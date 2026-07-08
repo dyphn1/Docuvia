@@ -27,6 +27,7 @@
     "vitest": "^1.6.1"
   },
   "dependencies": {
+    "@inquirer/checkbox": "^5.2.1",
     "@inquirer/prompts": "^8.5.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@workspace/core": "workspace:^",

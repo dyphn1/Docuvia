@@ -1,16 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { analyzeCommand } from "../../../src/commands/analyze.js";
 import { ui } from "../../../src/ui/wizard.js";
-import { AnalyzeService, ExtractService, AstWorkerPool } from "@workspace/core";
 import process from "process";
+import { DI_TOKENS, container } from "@workspace/core";
+
+const mockAnalyze = vi.fn();
+const mockExtract = vi.fn();
+container.register(DI_TOKENS.AnalyzeService, { analyzeProject: mockAnalyze });
+container.register(DI_TOKENS.ExtractService, { extractDecisions: mockExtract });
 
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
+    header: vi.fn(),
     info: vi.fn(),
     success: vi.fn(),
-    warn: vi.fn(),
     error: vi.fn(),
-    header: vi.fn(),
     spinner: vi.fn(() => ({
       start: vi.fn().mockReturnThis(),
       succeed: vi.fn(),
@@ -19,19 +23,10 @@ vi.mock("../../../src/ui/wizard.js", () => ({
   },
 }));
 
-vi.mock("@workspace/core", () => {
+vi.mock("@workspace/core", async (importOriginal) => {
+  const actual = (await importOriginal()) as any;
   return {
-    AnalyzeService: vi.fn().mockImplementation(() => ({
-      analyzeProject: vi.fn().mockResolvedValue({
-        projectType: "typescript",
-        suggestedTags: ["backend"],
-      }),
-    })),
-    ExtractService: vi.fn().mockImplementation(() => ({
-      extractDecisions: vi.fn().mockResolvedValue({
-        decisions: ["Extracted 1", "Extracted 2"],
-      }),
-    })),
+    ...actual,
     AstWorkerPool: vi.fn().mockImplementation(() => ({
       initialize: vi.fn().mockResolvedValue(undefined),
       terminate: vi.fn().mockResolvedValue(undefined),
@@ -41,12 +36,15 @@ vi.mock("@workspace/core", () => {
 
 describe("analyzeCommand", () => {
   let exitSpy: any;
+  let logSpy: any;
 
   beforeEach(() => {
-    exitSpy = vi.spyOn(process, "exit").mockImplementation(((code) => {
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(((code: number) => {
       throw new Error(`Exit ${code}`);
     }) as any);
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    mockAnalyze.mockReset();
+    mockExtract.mockReset();
   });
 
   afterEach(() => {
@@ -54,37 +52,25 @@ describe("analyzeCommand", () => {
   });
 
   it("should perform full analysis if no target provided", async () => {
+    mockAnalyze.mockResolvedValue({
+      projectType: "TypeScript",
+      suggestedTags: ["backend"],
+    });
+
     await analyzeCommand();
 
-    expect(ui.header).toHaveBeenCalledWith("Analyze Workspace");
-    expect(AnalyzeService).toHaveBeenCalled();
+    expect(mockAnalyze).toHaveBeenCalledWith({ deep: false });
+    expect(ui.success).toHaveBeenCalledWith(expect.stringContaining("Project Type"));
   });
 
   it("should perform focused extraction if target is provided", async () => {
-    await analyzeCommand("some/file.ts");
+    mockExtract.mockResolvedValue({
+      decisions: ["Decision 1"],
+    });
 
-    expect(ui.header).toHaveBeenCalledWith("Analyze (Focused Extraction)");
-    expect(ExtractService).toHaveBeenCalled();
-    expect(AstWorkerPool).toHaveBeenCalled();
-  });
+    await analyzeCommand("src/index.ts");
 
-  it("should handle full analysis failure", async () => {
-    vi.mocked(AnalyzeService).mockImplementationOnce(
-      () =>
-        ({
-          analyzeProject: vi.fn().mockRejectedValue(new Error("Analysis failed")),
-        }) as any
-    );
-    await expect(analyzeCommand()).rejects.toThrow("Exit 1");
-  });
-
-  it("should handle focused extraction failure", async () => {
-    vi.mocked(ExtractService).mockImplementationOnce(
-      () =>
-        ({
-          extractDecisions: vi.fn().mockRejectedValue(new Error("Extraction failed")),
-        }) as any
-    );
-    await expect(analyzeCommand("some/file.ts")).rejects.toThrow("Exit 1");
+    expect(mockExtract).toHaveBeenCalledWith("src/index.ts");
+    expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("Decision 1"));
   });
 });

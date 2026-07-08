@@ -59,21 +59,21 @@ flowchart TD
 
 ## Action Item Registry
 
-### Local AST Extraction Sync
+### Local AST Extraction Snapshot
 
-**Severity:** 🔴 CRITICAL · **Target:** `@workspace/cli` (`sync` command)
+**Severity:** 🔴 CRITICAL · **Target:** `@workspace/cli` (`snapshot` command)
 
-**Deficit:** The `docuvia sync` command is currently registered to act as the `post-commit` hook, but its implementation is incomplete regarding the extraction pipeline. It attempts to call the server or do basic setup, but it does not actually stream the Git delta (the changed files in the commit) into the `@workspace/ast-core` parser. Without this link, the system is fundamentally broken: commits happen, but the AST is never analyzed locally.
+**Deficit:** The `docuvia snapshot` command is currently registered to act as the `post-commit` hook, but its implementation is incomplete regarding the extraction pipeline. It attempts to call the server or do basic setup, but it does not actually stream the Git delta (the changed files in the commit) into the `@workspace/ast-core` parser. Without this link, the system is fundamentally broken: commits happen, but the AST is never analyzed locally.
 
 **Acceptance Criteria:**
 
-1. The `docuvia sync` command must correctly read the `git diff-tree` or equivalent to determine which files were modified in the target commit.
+1. The `docuvia snapshot` command must correctly read the `git diff-tree` or equivalent to determine which files were modified in the target commit.
 2. It must route these modified files into the `@workspace/ast-core` processing queue.
 3. The processing must handle large commits gracefully without running out of memory.
 
 ### Local SQLite Write Pipeline
 
-**Severity:** 🔴 CRITICAL · **Target:** `@workspace/cli` (`sync` command)
+**Severity:** 🔴 CRITICAL · **Target:** `@workspace/cli` (`snapshot` command)
 
 **Deficit:** Even if the AST core parses the files (#03), the resulting architectural data (L2 Modules, L3 Decisions) must be durably stored in the Local HEAD Index (`.docuvia/local.db`). The current pipeline lacks the concrete `INSERT/UPDATE` mechanisms to transform AST output into the finalized SQLite schema locally.
 
@@ -88,9 +88,9 @@ flowchart TD
 These acceptance criteria are **not unified in practice**. Two independent write paths exist for the same conceptual data, and they never intersect:
 
 - **`analyze`** (`lib/core/src/services/sqlite-graph.repository.ts`, `SqliteGraphRepository.persistAstGraph`) — parses the AST and persists L2/L3 nodes into the real, durable `.docuvia/local.db` via `drizzle-orm`. This is the actual Local HEAD Index.
-- **`sync --local`** (`artifacts/cli/src/commands/sync.ts`) — re-parses the AST independently and writes into a `GitNativePersistenceService`-managed **temp directory** (`fs.mkdtemp`), which is deleted (`fs.rm`) once the orphan-branch write completes. It never reads from or writes to `.docuvia/local.db`, and currently calls `writeKnowledgeToOrphanBranch(1)` with a hardcoded `projectId`, reflecting the single-tenant limitation noted in [crosscutting-concepts.md §8.4](../architecture/crosscutting-concepts.md).
+- **`snapshot`** (`artifacts/cli/src/commands/snapshot.ts`) — re-parses the AST independently and writes into a `GitNativePersistenceService`-managed **temp directory** (`fs.mkdtemp`), which is deleted (`fs.rm`) once the orphan-branch write completes. It never reads from or writes to `.docuvia/local.db`, and currently calls `writeKnowledgeToOrphanBranch(1)` with a hardcoded `projectId`, reflecting the single-tenant limitation noted in [crosscutting-concepts.md §8.4](../architecture/crosscutting-concepts.md).
 
-Do not assume these two commands operate on the same underlying store — running one does not update the other's data. Unifying them (routing `sync --local` through `SqliteGraphRepository`/`.docuvia/local.db` instead of a discarded temp dir) is a real pipeline rewrite, tracked separately; this note exists so the divergence is at least documented rather than silent. **This is the most current, verified finding in this entire registry — re-check it before assuming any adjacent roadmap "Done" status implies it has been fixed.**
+Do not assume these two commands operate on the same underlying store — running one does not update the other's data. Unifying them (routing `snapshot` through `SqliteGraphRepository`/`.docuvia/local.db` instead of a discarded temp dir) is a real pipeline rewrite, tracked separately; this note exists so the divergence is at least documented rather than silent. **This is the most current, verified finding in this entire registry — re-check it before assuming any adjacent roadmap "Done" status implies it has been fixed.**
 
 ### File Hash Delta Detection
 

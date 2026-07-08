@@ -61,18 +61,19 @@ cli.ts → QueryService.query(target, options)  (@workspace/core)
   → format: human (ANSI) or prompt (XML for LLM injection, formatPromptOutput() in query.ts)
 ```
 
-**`docuvia sync <project_id> [--local]`**
+**`docuvia sync <project_id> [<sha>]`**
 
 ```
-cli.ts → syncCommand()  (imports SyncService, FileDiscoveryService, AstProcessingService,
-                          GitNativePersistenceService, writeKnowledgeToOrphanBranch from @workspace/core)
-  → [--local]:
-      FileDiscoveryService.discoverFiles() → AstProcessingService.processFiles()
-      → mapAstToEvents() → GitNativePersistenceService.processEvents()   — write to a discarded temp dir
-      → writeKnowledgeToOrphanBranch(projectId)                         — commit to docuvia-knowledge
-      (separate pipeline from `analyze`'s .docuvia/local.db — see local-sqlite-write-pipeline.md)
-  → [remote]:
-      SyncService.sync()  — HTTP POST to DOCUVIA_API_URL, authenticated with MCP_PAT
+cli.ts → syncCommand()  (imports SyncService from @workspace/core)
+  → SyncService.sync()  — HTTP POST to DOCUVIA_API_URL, authenticated with MCP_PAT
+```
+
+**`docuvia snapshot`**
+
+```
+cli.ts → snapshotCommand()
+  → SnapshotService.snapshot()
+  → writeKnowledgeToOrphanBranch() — commit to docuvia-knowledge
 ```
 
 **`docuvia export --topology [--json] [--out=DIR] [--collapse=auto|file|symbol]`**
@@ -90,7 +91,7 @@ The CLI is where several ADRs become directly observable in day-to-day usage:
 
 - **[ADR-002](../adr/ADR-002-local-first-architecture.md) (Local-First)** — `query` and `analyze` never require a server; they read/write `.docuvia/local.db` directly.
 - **[ADR-014](../adr/ADR-014-sql-indexed-graph-and-database-as-ipc.md) (Database-as-IPC)** — all state changes go through SQLite, never in-process objects.
-- **[ADR-017](../adr/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) (Orphan Branch)** — `sync --local` writes to the `docuvia-knowledge` branch instead of the server.
+- **[ADR-017](../adr/ADR-017-tiered-storage-and-orphan-branch-graph-maintenance.md) (Orphan Branch)** — `docuvia snapshot` writes to the `docuvia-knowledge` branch instead of the server.
 - **[ADR-020](../adr/ADR-020-unified-isomorphic-ast-microkernel.md) (AST Microkernel)** — `analyze`/`extract` parse via the same WASM `web-tree-sitter` engine used by the VS Code extension, running in isolated `worker_threads`.
 - **[ADR-023](../adr/ADR-023-granular-markdown-storage.md) (Granular Markdown Storage)** — AST deltas synced locally are written as JSONL/Markdown, not one giant blob.
 - **[ADR-021](../adr/ADR-021-shared-core-api-and-presentation-layers.md) (Shared Core API)** — every command is a thin wrapper around a `@workspace/core` service; the same services back `docuvia mcp` and the VS Code extension.

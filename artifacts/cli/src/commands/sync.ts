@@ -1,7 +1,8 @@
-import { SyncService } from "@workspace/core";
+import { SyncService, DI_TOKENS, container } from "@workspace/core";
 import { createInterface } from "readline";
 import process from "process";
 import { ui } from "../ui/wizard.js";
+import { UI_MESSAGES } from "../constants/ui-messages.js";
 
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
@@ -19,13 +20,13 @@ export async function syncCommand(options: { projectId?: string; commitSha?: str
 
   if (!projectId) {
     if (!process.stdin.isTTY) {
-      ui.error("Missing required argument: <project_id>");
+      ui.error(UI_MESSAGES.SYNC_MISSING_PROJECT_ID);
       process.exit(1);
     }
 
     // Interactive prompt for project ID if missing
     ui.info("No Project ID provided.");
-    projectId = await ui.askInput("Enter the Docuvia Project ID to sync with:");
+    projectId = await ui.askInput(UI_MESSAGES.SYNC_PROMPT_PROJECT_ID);
 
     if (!projectId) {
       ui.error("Project ID is required.");
@@ -34,29 +35,29 @@ export async function syncCommand(options: { projectId?: string; commitSha?: str
   }
 
   if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
-    ui.warn("DOCUVIA_API_URL or MCP_PAT is missing in the environment.");
-    ui.warn("Skipping remote sync. Please set these variables in your .env file or environment.");
+    ui.warn(UI_MESSAGES.SYNC_MISSING_ENV);
+    ui.warn(UI_MESSAGES.SYNC_SKIP);
     return;
   }
 
   const commitSha = options.commitSha ?? (process.stdin.isTTY ? undefined : await readStdin());
 
-  const spinner = ui.spinner(`Syncing workspace to remote project ${projectId}...`).start();
+  const spinner = ui.spinner(UI_MESSAGES.SYNC_START + projectId + "...").start();
 
-  const syncService = new SyncService(
-    process.cwd(),
-    process.env.DOCUVIA_API_URL,
-    process.env.MCP_PAT,
-    (msg: string) => {
-      spinner.text = msg;
-    }
-  );
+  const syncService = container.resolve<SyncService>(DI_TOKENS.SyncService);
+  // Bind properties that were originally in the constructor
+  (syncService as any)[DI_KEYS.WORKSPACE_ROOT] = process.cwd();
+  (syncService as any)[DI_KEYS.API_URL] = process.env.DOCUVIA_API_URL;
+  (syncService as any)[DI_KEYS.PAT] = process.env.MCP_PAT;
+  (syncService as any)[DI_KEYS.LOG_CALLBACK] = (msg: string) => {
+    spinner.text = msg;
+  };
 
   try {
     await syncService.sync(projectId, commitSha);
-    spinner.succeed("Remote sync completed successfully.");
+    spinner.succeed(UI_MESSAGES.SYNC_SUCCESS);
   } catch (e: any) {
-    spinner.fail(`Sync failed: ${e.message}`);
+    spinner.fail(UI_MESSAGES.SYNC_FAIL + e.message);
     process.exit(1);
   }
 }

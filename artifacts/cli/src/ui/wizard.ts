@@ -1,4 +1,4 @@
-import { select, confirm, input } from "@inquirer/prompts";
+import { select, confirm, input, checkbox } from "@inquirer/prompts";
 import pc from "picocolors";
 import ora from "ora";
 
@@ -30,6 +30,16 @@ export const ui = {
     choices: { name: string; value: string; description?: string }[]
   ) => {
     return await select({
+      message,
+      choices,
+    });
+  },
+
+  askCheckbox: async (
+    message: string,
+    choices: { name: string; value: string; checked?: boolean }[]
+  ) => {
+    return await checkbox({
       message,
       choices,
     });

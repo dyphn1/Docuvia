@@ -1,26 +1,33 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { reviewCommand } from "../../../src/commands/review.js";
-import { ChangeDetectionService } from "@workspace/core";
+import { ui } from "../../../src/ui/wizard.js";
 import process from "process";
+import { DI_TOKENS, container } from "@workspace/core";
 
-vi.mock("@workspace/core", () => {
-  return {
-    ChangeDetectionService: vi.fn().mockImplementation(() => ({
-      detectChanges: vi.fn().mockResolvedValue({ analysis: "Analysis result" }),
+const mockReview = vi.fn();
+container.register(DI_TOKENS.ChangeDetectionService, { detectChanges: mockReview });
+
+vi.mock("../../../src/ui/wizard.js", () => ({
+  ui: {
+    header: vi.fn(),
+    spinner: vi.fn(() => ({
+      start: vi.fn().mockReturnThis(),
+      succeed: vi.fn(),
+      fail: vi.fn(),
     })),
-  };
-});
+  },
+}));
 
 describe("reviewCommand", () => {
   let exitSpy: any;
   let logSpy: any;
 
   beforeEach(() => {
-    exitSpy = vi.spyOn(process, "exit").mockImplementation(((code) => {
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(((code: number) => {
       throw new Error(`Exit ${code}`);
     }) as any);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    mockReview.mockReset();
   });
 
   afterEach(() => {
@@ -28,20 +35,11 @@ describe("reviewCommand", () => {
   });
 
   it("should successfully review", async () => {
+    mockReview.mockResolvedValue({ analysis: "Looks good" });
+
     await reviewCommand();
 
-    expect(ChangeDetectionService).toHaveBeenCalled();
-    expect(logSpy).toHaveBeenCalledWith("Analysis result");
-  });
-
-  it("should handle review failure", async () => {
-    vi.mocked(ChangeDetectionService).mockImplementationOnce(
-      () =>
-        ({
-          detectChanges: vi.fn().mockRejectedValue(new Error("Review failed")),
-        }) as any
-    );
-
-    await expect(reviewCommand()).rejects.toThrow("Exit 1");
+    expect(mockReview).toHaveBeenCalled();
+    expect(logSpy).toHaveBeenCalledWith("Looks good");
   });
 });

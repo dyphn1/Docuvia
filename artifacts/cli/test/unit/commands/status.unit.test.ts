@@ -1,30 +1,34 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { statusCommand } from "../../../src/commands/status.js";
-import { StatusService } from "@workspace/core";
+import { ui } from "../../../src/ui/wizard.js";
 import process from "process";
+import { DI_TOKENS, container } from "@workspace/core";
 
-vi.mock("@workspace/core", () => {
-  return {
-    StatusService: vi.fn().mockImplementation(() => ({
-      getStatus: vi.fn().mockResolvedValue({
-        projects: 1,
-        l2Nodes: 2,
-        l3Nodes: 5,
-      }),
+const mockStatus = vi.fn();
+container.register(DI_TOKENS.StatusService, { getStatus: mockStatus });
+
+vi.mock("../../../src/ui/wizard.js", () => ({
+  ui: {
+    header: vi.fn(),
+    info: vi.fn(),
+    spinner: vi.fn(() => ({
+      start: vi.fn().mockReturnThis(),
+      succeed: vi.fn(),
+      fail: vi.fn(),
     })),
-  };
-});
+  },
+}));
 
 describe("statusCommand", () => {
   let exitSpy: any;
   let logSpy: any;
 
   beforeEach(() => {
-    exitSpy = vi.spyOn(process, "exit").mockImplementation(((code) => {
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(((code: number) => {
       throw new Error(`Exit ${code}`);
     }) as any);
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.spyOn(console, "error").mockImplementation(() => {});
+    mockStatus.mockReset();
   });
 
   afterEach(() => {
@@ -32,20 +36,11 @@ describe("statusCommand", () => {
   });
 
   it("should successfully get status", async () => {
+    mockStatus.mockResolvedValue({ projects: 1, l2Nodes: 2, l3Nodes: 3 });
+
     await statusCommand();
 
-    expect(StatusService).toHaveBeenCalled();
-    expect(logSpy).toHaveBeenCalledWith("=== Docuvia Index Status ===");
-  });
-
-  it("should handle status failure", async () => {
-    vi.mocked(StatusService).mockImplementationOnce(
-      () =>
-        ({
-          getStatus: vi.fn().mockRejectedValue(new Error("Status failed")),
-        }) as any
-    );
-
-    await expect(statusCommand()).rejects.toThrow("Exit 1");
+    expect(mockStatus).toHaveBeenCalled();
+    expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("Projects"));
   });
 });

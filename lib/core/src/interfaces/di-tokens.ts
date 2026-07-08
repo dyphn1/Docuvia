@@ -21,6 +21,18 @@ export const DI_TOKENS = {
   SubscriptionService: Symbol.for("SubscriptionService"),
   TemplateService: Symbol.for("TemplateService"),
   EventBus: Symbol.for("EventBus"),
+
+  // CLI / Core Services
+  InitService: Symbol.for("InitService"),
+  AnalyzeService: Symbol.for("AnalyzeService"),
+  ExtractService: Symbol.for("ExtractService"),
+  QueryService: Symbol.for("QueryService"),
+  SyncService: Symbol.for("SyncService"),
+  StatusService: Symbol.for("StatusService"),
+  ChangeDetectionService: Symbol.for("ChangeDetectionService"),
+  CleanService: Symbol.for("CleanService"),
+  TopologyExportService: Symbol.for("TopologyExportService"),
+  LocalOrphanBranchWriter: Symbol.for("LocalOrphanBranchWriter"),
 };
 
 export interface IEventBus {

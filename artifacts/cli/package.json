@@ -10,12 +10,17 @@
     "hello": "tsx ./src/hello.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --fileParallelism false",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "test:smoke": "vitest run test/integration/cli.args.test.ts",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "catalog:",
     "@vitest/ui": "^1.6.1",
+    "c8": "^11.0.0",
     "execa": "^9.6.1",
     "pino-pretty": "^13",
     "tsx": "catalog:",

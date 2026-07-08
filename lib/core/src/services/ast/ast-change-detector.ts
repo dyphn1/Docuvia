@@ -126,27 +126,38 @@ export class AstChangeDetector implements IAstChangeDetector {
   }
 
   public async updateFileHashes(projectId: number, jsonlPaths: string[]): Promise<void> {
-    const chunks = chunkArray(jsonlPaths, 500);
-    for (const chunk of chunks) {
-      const hashChecks = await Promise.all(
-        chunk.map(async (filePath) => {
-          const hash = await this.computeFileHash(filePath);
-          return { projectId, filePath, hash };
-        })
-      );
+    if (jsonlPaths.length === 0) return;
 
-      const values = hashChecks
-        .filter((v) => v.hash !== null)
-        .map((v) => ({
-          projectId: v.projectId,
-          filePath: v.filePath,
-          contentHash: v.hash!,
+    // Compute hashes for all files in a single pass
+    const hashChecks = await Promise.all(
+      jsonlPaths.map(async (filePath) => {
+        const hash = await this.computeFileHash(filePath);
+        return { projectId, filePath, hash };
+      })
+    );
+
+    // Prepare values for batch upsert
+    const values = hashChecks
+      .filter((v) => v.hash !== null)
+      .map((v) => ({
+        projectId: v.projectId,
+        filePath: v.filePath,
+        contentHash: v.hash!,
+        lastParsedAt: new Date(),
+      }));
+
+    if (values.length === 0) return;
+
+    // Single batch upsert operation: update if exists, insert if not
+    await db
+      .insert(projectFilesTable)
+      .values(values)
+      .onConflictDoUpdate({
+        target: [projectFilesTable.projectId, projectFilesTable.filePath],
+        set: {
+          contentHash: values[0]?.contentHash,
           lastParsedAt: new Date(),
-        }));
-
-      if (values.length > 0) {
-        await db.insert(projectFilesTable).values(values).onConflictDoNothing();
-      }
-    }
+        },
+      });
   }
 }

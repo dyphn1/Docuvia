@@ -16,7 +16,7 @@ import { logger } from "../../utils/logger.js";
 export class AstParseCache implements IAsxParseCache {
   private cache: LRUCache<string, AstParseResponse>;
   private _metrics: CacheMetrics = { hits: 0, misses: 0, evictions: 0 };
-  private previousSize: number = 0;
+  private totalItemsAdded: number = 0;
 
   constructor(
     maxSizeBytes: number = 500 * 1024 * 1024, // 500MB default
@@ -41,9 +41,7 @@ export class AstParseCache implements IAsxParseCache {
   }
 
   get(contentHash: string): AstParseResponse | undefined {
-    const sizeBefore = this.cache.size;
     const result = this.cache.get(contentHash);
-    const sizeAfter = this.cache.size;
 
     if (result) {
       this._metrics.hits++;
@@ -51,22 +49,23 @@ export class AstParseCache implements IAsxParseCache {
       this._metrics.misses++;
     }
 
-    // Detect evictions by size change
-    if (sizeBefore > sizeAfter) {
-      this._metrics.evictions += sizeBefore - sizeAfter;
-    }
-
     return result;
   }
 
   set(contentHash: string, result: AstParseResponse): void {
-    const sizeBefore = this.cache.size;
-    this.cache.set(contentHash, result);
-    const sizeAfter = this.cache.size;
+    const isNewItem = !this.cache.has(contentHash);
+    const itemCountBefore = isNewItem ? this.cache.dump().length : 0;
 
-    // Detect evictions by size change
-    if (sizeBefore > sizeAfter) {
-      this._metrics.evictions += sizeBefore - sizeAfter;
+    this.cache.set(contentHash, result);
+
+    if (isNewItem) {
+      const itemCountAfter = this.cache.dump().length;
+      // Calculate evictions: if adding 1 new item resulted in fewer items, some were evicted
+      // Formula: evicted = before + 1 (new item) - after
+      const evictedCount = itemCountBefore + 1 - itemCountAfter;
+      if (evictedCount > 0) {
+        this._metrics.evictions += evictedCount;
+      }
     }
   }
 

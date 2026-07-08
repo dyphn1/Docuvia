@@ -136,17 +136,24 @@ export class AstWorkerPool implements IASTWorkerPool {
       // Compute content hash for cache lookup
       const contentHash = crypto.createHash("sha256").update(request.code).digest("hex");
 
-      // Check cache first
+      // Check cache first with timing instrumentation
       if (this.cache) {
+        const cacheStartTime = performance.now();
         const cachedResult = this.cache.get(contentHash);
+        const cacheLookupTime = performance.now() - cacheStartTime;
+
         if (cachedResult) {
-          logger.debug({ contentHash }, "AST parse cache hit");
+          logger.debug(
+            { contentHash, cacheLookupTimeMs: cacheLookupTime.toFixed(2) },
+            "AST parse cache hit"
+          );
           resolve(cachedResult);
           return;
         }
       }
 
       // Queue for worker processing
+      const queuedAt = Date.now();
       this.taskQueue.push({
         request,
         resolve: (result: AstParseResponse) => {
@@ -156,7 +163,15 @@ export class AstWorkerPool implements IASTWorkerPool {
             const metrics = this.cache.metrics;
             if (metrics.hits + metrics.misses > 0 && (metrics.hits + metrics.misses) % 100 === 0) {
               const hitRate = (metrics.hits / (metrics.hits + metrics.misses)) * 100;
-              logger.info({ hitRate: hitRate.toFixed(2), ...metrics }, "AST cache metrics");
+              const queueWaitTime = Date.now() - queuedAt;
+              logger.info(
+                {
+                  hitRate: hitRate.toFixed(2),
+                  queueWaitTimeMs: queueWaitTime,
+                  ...metrics,
+                },
+                "AST cache metrics and queue performance"
+              );
             }
           }
           resolve(result);

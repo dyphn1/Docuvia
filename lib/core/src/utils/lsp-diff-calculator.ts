@@ -17,6 +17,41 @@ export interface DiffResult {
   changes: LineChange[];
 }
 
+// Performance metrics for LSP diff calculations
+export const diffMetrics = {
+  incrementalUpdates: 0,
+  fullSyncs: 0,
+  totalDiffs: 0,
+
+  recordIncremental(): void {
+    this.incrementalUpdates++;
+    this.totalDiffs++;
+  },
+
+  recordFullSync(): void {
+    this.fullSyncs++;
+    this.totalDiffs++;
+  },
+
+  getStats() {
+    if (this.totalDiffs === 0) {
+      return { incrementalRate: 0, fullSyncRate: 0 };
+    }
+    return {
+      incrementalCount: this.incrementalUpdates,
+      fullSyncCount: this.fullSyncs,
+      incrementalRate: ((this.incrementalUpdates / this.totalDiffs) * 100).toFixed(2),
+      fullSyncRate: ((this.fullSyncs / this.totalDiffs) * 100).toFixed(2),
+    };
+  },
+
+  reset(): void {
+    this.incrementalUpdates = 0;
+    this.fullSyncs = 0;
+    this.totalDiffs = 0;
+  },
+};
+
 /**
  * Calculate line-by-line diff between old and new content
  *
@@ -164,6 +199,13 @@ export function calculateLineDiff(
 
   const changePercentage = (changedLineCount / Math.max(oldLines.length, 1)) * 100;
   const useFull = changePercentage > fullSyncThreshold;
+
+  // Record metric for analysis
+  if (useFull) {
+    diffMetrics.recordFullSync();
+  } else {
+    diffMetrics.recordIncremental();
+  }
 
   return {
     full: useFull,

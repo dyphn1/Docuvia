@@ -88,35 +88,37 @@ describe("AstParseCache", () => {
   });
 
   it("should handle LRU eviction when maxSize exceeded", async () => {
-    // Create a small cache (just a few KB)
-    const smallCache = new AstParseCache(5 * 1024, 60 * 1000); // 5KB
+    // Create a small cache (10KB total) - definitely too small for multiple items
+    const smallCache = new AstParseCache(10 * 1024, 60 * 1000); // 10KB
 
     const largeResponse: AstParseResponse = {
       taskId: "1",
       success: true,
       data: {
-        imports: Array(100).fill({ localName: "test", originalName: "test", modulePath: "test" }),
-        exports: Array(100).fill({ name: "test", type: "function" as const }),
-        functions: Array(100).fill({ name: "test", startLine: 1, endLine: 10 }),
+        imports: Array(200).fill({ localName: "test", originalName: "test", modulePath: "test" }),
+        exports: Array(200).fill({ name: "test", type: "function" as const }),
+        functions: Array(200).fill({ name: "test", startLine: 1, endLine: 10 }),
         classes: [],
         calls: [],
       },
     };
 
-    // Add items until eviction should occur
-    for (let i = 0; i < 5; i++) {
+    // Add items until eviction should definitely occur
+    // Each response serializes to ~15-20KB, so with 10KB cache, we'll definitely have evictions
+    for (let i = 0; i < 3; i++) {
       smallCache.set(`hash-${i}`, largeResponse);
     }
 
-    // At least some evictions should have occurred
-    expect(smallCache.metrics.evictions).toBeGreaterThanOrEqual(0);
+    // With 10KB cache and ~15-20KB items, multiple items should have been evicted
+    expect(smallCache.metrics.evictions).toBeGreaterThan(0);
 
-    // Verify some items are still accessible
-    const anyResult = smallCache.get("hash-0");
-    if (anyResult === undefined) {
-      // Item was evicted, which is expected due to size constraints
-      expect(smallCache.metrics.misses).toBeGreaterThan(0);
-    }
+    // Verify that we can still access at least one recent item (LRU should keep recent items)
+    // The newest item should still exist
+    const newestItemExists = smallCache.get("hash-2") !== undefined;
+    expect(newestItemExists).toBe(true);
+
+    // Verify cache still functions and has content
+    expect(smallCache.metrics.hits + smallCache.metrics.misses).toBeGreaterThan(0);
   });
 
   it("should return a copy of metrics", () => {

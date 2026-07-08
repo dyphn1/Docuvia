@@ -29,7 +29,7 @@ describe("CLI Regression Tests - Uninitialized Environment", () => {
     // or doesn't strictly need a persisted DB. It should return exit code 0.
     const result = await sandbox.runCli(["analyze"]);
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Project type:");
+    expect(result.stdout).toContain("Project Type:");
   }, 15000);
 
   it("should fail gracefully when running 'query' in an uninitialized workspace", async () => {

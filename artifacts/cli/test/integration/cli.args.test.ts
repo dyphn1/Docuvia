@@ -31,12 +31,12 @@ describe("CLI Regression Tests - Argument Parsing & Edge Cases", () => {
       {
         args: ["sync"],
         missing: "project_id",
-        expected: "Usage: docuvia sync <project_id> [commit_sha]",
+        expected: "Missing required argument: <project_id>",
       },
       {
         args: ["query"],
         missing: "target",
-        expected: "Usage: docuvia query <target> [--local] [--format=prompt|human]",
+        expected: "Missing required argument: <target>",
       },
     ];
 
@@ -54,7 +54,6 @@ describe("CLI Regression Tests - Argument Parsing & Edge Cases", () => {
     // avoiding the "Unknown command:" fallback.
     const validCommands = [
       ["init"],
-      ["init-agent"],
       ["analyze"],
       ["analyze", "--deep"],
       ["status"],

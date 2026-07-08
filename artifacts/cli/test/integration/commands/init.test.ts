@@ -62,9 +62,9 @@ describe("Command: docuvia init", () => {
 
     // Assert
     expect(secondResult.exitCode).toBe(0);
-    // It should output success message
+    // It should output success message, in the TTY output stderr is often used by spinners
     expect(secondResult.stdout || secondResult.stderr).toContain(
-      "Project initialized successfully"
+      "Docuvia Agent Integrations successfully installed!"
     );
   }, 35000);
 });

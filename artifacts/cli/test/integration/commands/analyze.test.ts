@@ -37,7 +37,7 @@ describe("Command: docuvia analyze", () => {
     // Assert: We aren't just checking exit codes, we are checking that the engine
     // actually inspected the filesystem and returned the correct business-domain logic.
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Project type: javascript");
+    expect(result.stdout).toContain("Project Type: javascript");
     // The current engine detects "react", "typescript" tags based on package.json
     expect(result.stdout.toLowerCase()).toContain("react");
     expect(result.stdout.toLowerCase()).toContain("typescript");
@@ -53,6 +53,6 @@ describe("Command: docuvia analyze", () => {
 
     // Assert
     expect(result.exitCode).toBe(0);
-    expect(result.stdout).toContain("Project type:");
+    expect(result.stdout).toContain("Project Type:");
   }, 30000);
 });

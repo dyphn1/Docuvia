@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TestSandbox } from "../support/sandbox.js";
 
-describe("CLI Regression Tests - Sync --local", () => {
+describe("CLI Regression Tests - Snapshot", () => {
   let sandbox: TestSandbox;
 
   beforeEach(async () => {
@@ -31,7 +31,7 @@ describe("CLI Regression Tests - Sync --local", () => {
     await sandbox.runGit(["add", "."]);
     await sandbox.runGit(["commit", "-m", "Initial commit"]);
 
-    const result = await sandbox.runCli(["sync", "--local"], { reject: false });
+    const result = await sandbox.runCli(["snapshot"], { reject: false });
     console.log("STDOUT", result.stdout);
     console.log("STDERR", result.stderr);
     expect(result.exitCode).toBe(0);
@@ -82,7 +82,7 @@ describe("CLI Regression Tests - Sync --local", () => {
       "utf-8"
     );
 
-    const result = await sandbox.runCli(["sync", "--local"], { reject: false });
+    const result = await sandbox.runCli(["snapshot"], { reject: false });
     expect(result.exitCode).toBe(0);
 
     const lsTree = await sandbox.runGit(["ls-tree", "-r", "docuvia-knowledge"]);

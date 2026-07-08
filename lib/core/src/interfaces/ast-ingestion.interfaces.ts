@@ -11,13 +11,24 @@ import {
   L3ProcessingResult,
   ContractEndpointsResult,
 } from "../types/ast-ingestion.types.js";
+import { AstParseResponse } from "../workers/ast-worker.js";
 
 export interface IAstEventStreamer {
   streamAndCollectEvents(jsonlPath: string, result: IngestionResult): Promise<ProcessedEvents>;
 }
 
+export interface FileChangeDetectionResult {
+  changed: Set<string>;
+  hashes: Map<string, string>; // filePath -> contentHash
+  duplicates: Map<string, string[]>; // contentHash -> [filePaths]
+}
+
 export interface IAstChangeDetector {
-  detectChangedFiles(projectId: number, requests: FileIngestRequest[]): Promise<Set<string>>;
+  detectChangedFiles(
+    projectId: number,
+    requests: FileIngestRequest[]
+  ): Promise<FileChangeDetectionResult>;
+  detectChangedFilesLegacy(projectId: number, requests: FileIngestRequest[]): Promise<Set<string>>;
   updateFileHashes(projectId: number, jsonlPaths: string[]): Promise<void>;
   computeFileHash(filePath: string): Promise<string | null>;
 }
@@ -91,4 +102,17 @@ export interface IAstEdgePersistence {
       linkType: "depends_on" | "calls";
     }>
   ): Promise<number>;
+}
+
+export interface CacheMetrics {
+  hits: number;
+  misses: number;
+  evictions: number;
+}
+
+export interface IAsxParseCache {
+  get(contentHash: string): AstParseResponse | undefined;
+  set(contentHash: string, result: AstParseResponse): void;
+  metrics: CacheMetrics;
+  clear(): void;
 }

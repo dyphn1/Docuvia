@@ -24,6 +24,7 @@
     "fast-glob": "^3.3.3",
     "handlebars": "^4.7.9",
     "ignore": "^7.0.5",
+    "lru-cache": "^11.5.1",
     "p-limit": "^7.3.0",
     "pino": "^9",
     "sax": "^1.6.0",

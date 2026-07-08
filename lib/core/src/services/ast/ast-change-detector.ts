@@ -6,6 +6,7 @@ import { eq, and, inArray } from "drizzle-orm";
 import {
   IAstChangeDetector,
   FileIngestRequest,
+  FileChangeDetectionResult,
 } from "../../interfaces/ast-ingestion.interfaces.js";
 import { chunkArray } from "../../utils/array-utils.js";
 import { logger } from "../../utils/logger.js";
@@ -23,8 +24,10 @@ export class AstChangeDetector implements IAstChangeDetector {
   public async detectChangedFiles(
     projectId: number,
     requests: FileIngestRequest[]
-  ): Promise<Set<string>> {
+  ): Promise<FileChangeDetectionResult> {
     const changed = new Set<string>();
+    const hashes = new Map<string, string>();
+    const duplicates = new Map<string, string[]>();
     const currentPaths = requests.map((r) => r.filePath);
 
     // 1. Process explicit renames first
@@ -54,7 +57,7 @@ export class AstChangeDetector implements IAstChangeDetector {
       }
     }
 
-    if (currentPaths.length === 0) return changed;
+    if (currentPaths.length === 0) return { changed, hashes, duplicates };
 
     // 2. Fetch existing hashes for all current paths
     const existingFiles = await db
@@ -72,7 +75,7 @@ export class AstChangeDetector implements IAstChangeDetector {
       hashByPath.set(f.filePath, f.contentHash || "");
     }
 
-    // 3. Compare content hashes to find modified files
+    // 3. Compute hashes for all current files and track duplicates
     const hashChecks = await Promise.all(
       requests.map(async (req) => {
         const hash = await this.computeFileHash(req.filePath);
@@ -83,6 +86,16 @@ export class AstChangeDetector implements IAstChangeDetector {
     for (const { filePath, hash } of hashChecks) {
       if (!hash) continue;
 
+      // Track hash mapping
+      hashes.set(filePath, hash);
+
+      // Track duplicates
+      if (!duplicates.has(hash)) {
+        duplicates.set(hash, []);
+      }
+      duplicates.get(hash)!.push(filePath);
+
+      // Detect changes
       if (!changed.has(filePath)) {
         const storedHash = hashByPath.get(filePath);
         if (storedHash !== hash) {
@@ -91,7 +104,25 @@ export class AstChangeDetector implements IAstChangeDetector {
       }
     }
 
-    return changed;
+    logger.info(
+      {
+        projectId,
+        changedCount: changed.size,
+        totalCount: currentPaths.length,
+        duplicateGroups: duplicates.size,
+      },
+      "File change detection complete"
+    );
+
+    return { changed, hashes, duplicates };
+  }
+
+  public async detectChangedFilesLegacy(
+    projectId: number,
+    requests: FileIngestRequest[]
+  ): Promise<Set<string>> {
+    const result = await this.detectChangedFiles(projectId, requests);
+    return result.changed;
   }
 
   public async updateFileHashes(projectId: number, jsonlPaths: string[]): Promise<void> {

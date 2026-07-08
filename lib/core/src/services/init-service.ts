@@ -4,6 +4,8 @@ import cp from "child_process";
 import util from "util";
 import Database from "better-sqlite3";
 import { ensureLocalFtsIndex } from "./sqlite-fts.js";
+import { TempFileManager } from "./temp-file-manager.js";
+import { logger } from "../utils/logger.js";
 
 const exec = util.promisify(cp.exec);
 
@@ -178,6 +180,27 @@ export class InitService {
       db.close();
     } catch (err: any) {
       throw new Error(`Could not initialize database: ${err.message}`);
+    }
+
+    // 4. Initialize TempFileManager for LSP and incremental updates
+    try {
+      const tempFileManager = new TempFileManager(this.workspaceRoot);
+      await tempFileManager.initialize();
+      this.logCallback(`Initializing temp file manager...`);
+
+      // Register cleanup hook on SIGTERM
+      const cleanupHandler = async () => {
+        logger.info("Cleaning up temp files on shutdown...");
+        await tempFileManager.cleanup();
+        tempFileManager.stopCleanup();
+      };
+
+      process.on("SIGTERM", cleanupHandler);
+      process.on("SIGINT", cleanupHandler);
+
+      logger.info({ tempDir: tempFileManager.getTempDirPath() }, "Temp file manager initialized");
+    } catch (err: any) {
+      logger.warn({ error: err.message }, "Failed to initialize temp file manager (non-fatal)");
     }
 
     return { success: true, message: "Project initialized successfully" };

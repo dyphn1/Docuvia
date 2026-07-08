@@ -26,6 +26,8 @@ export interface IngestionResult {
   contractsCreated: number;
   filesSkipped: number;
   errors: string[];
+  cacheHitRate?: number;
+  duplicateGroupsCount?: number;
 }
 
 export interface FileEvent {

@@ -8,6 +8,8 @@ export interface VfsEntry {
   tempFilePath: string;
   version: number;
   contentHash: string;
+  content: string;
+  lastKnownContent?: string;
 }
 
 export class VirtualFileSystem {
@@ -38,6 +40,8 @@ export class VirtualFileSystem {
       tempFilePath,
       version,
       contentHash,
+      content,
+      lastKnownContent: "",
     };
 
     this.index.set(uri, entry);
@@ -65,11 +69,13 @@ export class VirtualFileSystem {
   async getFileContent(uri: string): Promise<string | undefined> {
     const entry = this.index.get(uri);
     if (!entry) return undefined;
-    try {
-      return await fs.readFile(entry.tempFilePath, "utf-8");
-    } catch (err) {
-      logger.error({ uri, err }, "Failed to read temp file content");
-      return undefined;
+    return entry.content;
+  }
+
+  async updateLastKnownContent(uri: string, content: string): Promise<void> {
+    const entry = this.index.get(uri);
+    if (entry) {
+      entry.lastKnownContent = content;
     }
   }
 

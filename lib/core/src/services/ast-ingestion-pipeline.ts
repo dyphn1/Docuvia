@@ -2,8 +2,9 @@ import { logger } from "../utils/logger.js";
 import { AstEventStreamer } from "./ast/ast-event-streamer.js";
 import { AstChangeDetector } from "./ast/ast-change-detector.js";
 import { GitNativePersistenceService } from "./ast/git-native-persistence.service.js";
+import { AstWorkerPool } from "./ast-worker-pool.js";
 import { IngestionResult } from "../types/ast-ingestion.types.js";
-import { FileIngestRequest } from "../interfaces/ast-ingestion.interfaces.js";
+import { FileIngestRequest, IAsxParseCache } from "../interfaces/ast-ingestion.interfaces.js";
 import { GitConstants } from "../constants/git.js";
 
 /**
@@ -15,7 +16,9 @@ export class AstIngestionOrchestrator {
   constructor(
     private streamer = new AstEventStreamer(),
     private changeDetector = new AstChangeDetector(),
-    private gitPersistence = new GitNativePersistenceService()
+    private gitPersistence = new GitNativePersistenceService(),
+    private parseCache?: IAsxParseCache,
+    private workerPool?: AstWorkerPool
   ) {}
 
   public async ingestAstJsonl(jsonlPath: string, projectId: number): Promise<IngestionResult> {
@@ -54,10 +57,13 @@ export class AstIngestionOrchestrator {
       typeof p === "string" ? { filePath: p } : p
     );
     let pathsToIngest = requests.map((r) => r.filePath);
+    let duplicateGroupsCount = 0;
+
     if (options.incremental) {
-      const changedFiles = await this.changeDetector.detectChangedFiles(projectId, requests);
-      pathsToIngest = jsonlPaths.filter((p) => changedFiles.has(p));
+      const detectionResult = await this.changeDetector.detectChangedFiles(projectId, requests);
+      pathsToIngest = jsonlPaths.filter((p) => detectionResult.changed.has(p));
       aggregated.filesSkipped = jsonlPaths.length - pathsToIngest.length;
+      duplicateGroupsCount = detectionResult.duplicates.size;
 
       logger.info(
         {
@@ -65,6 +71,7 @@ export class AstIngestionOrchestrator {
           total: jsonlPaths.length,
           changed: pathsToIngest.length,
           skipped: aggregated.filesSkipped,
+          duplicateGroups: duplicateGroupsCount,
         },
         "AST incremental scan: change detection complete"
       );
@@ -92,6 +99,25 @@ export class AstIngestionOrchestrator {
         aggregated.errors.push(`Failed to update file hashes: ${errorMessage}`);
       }
     }
+
+    // Add cache metrics if available
+    if (this.parseCache) {
+      const metrics = this.parseCache.metrics;
+      const totalRequests = metrics.hits + metrics.misses;
+      if (totalRequests > 0) {
+        aggregated.cacheHitRate = (metrics.hits / totalRequests) * 100;
+        logger.info(
+          {
+            hitRate: aggregated.cacheHitRate.toFixed(2),
+            ...metrics,
+          },
+          "AST cache metrics"
+        );
+      }
+    }
+
+    // Add duplicate groups count
+    aggregated.duplicateGroupsCount = duplicateGroupsCount;
 
     return aggregated;
   }

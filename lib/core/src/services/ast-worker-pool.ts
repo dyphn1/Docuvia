@@ -2,7 +2,10 @@ import { Worker } from "worker_threads";
 import * as path from "path";
 import * as fs from "fs";
 import { fileURLToPath } from "url";
+import crypto from "node:crypto";
 import { AstParseRequest, AstParseResponse } from "../workers/ast-worker.js";
+import { IAsxParseCache } from "../interfaces/ast-ingestion.interfaces.js";
+import { logger } from "../utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,7 +36,10 @@ export class AstWorkerPool implements IASTWorkerPool {
   private timedOutWorkers = new WeakSet<Worker>();
   private shuttingDown = false;
 
-  constructor(private readonly taskTimeoutMs: number = 30_000) {}
+  constructor(
+    private readonly taskTimeoutMs: number = 30_000,
+    private cache?: IAsxParseCache
+  ) {}
 
   private spawnWorker() {
     const worker = new Worker(this.wPath, this.workerOptions);
@@ -127,7 +133,36 @@ export class AstWorkerPool implements IASTWorkerPool {
 
   parse(request: Omit<AstParseRequest, "taskId">): Promise<AstParseResponse> {
     return new Promise((resolve, reject) => {
-      this.taskQueue.push({ request, resolve, reject });
+      // Compute content hash for cache lookup
+      const contentHash = crypto.createHash("sha256").update(request.code).digest("hex");
+
+      // Check cache first
+      if (this.cache) {
+        const cachedResult = this.cache.get(contentHash);
+        if (cachedResult) {
+          logger.debug({ contentHash }, "AST parse cache hit");
+          resolve(cachedResult);
+          return;
+        }
+      }
+
+      // Queue for worker processing
+      this.taskQueue.push({
+        request,
+        resolve: (result: AstParseResponse) => {
+          // Cache the result before resolving
+          if (this.cache) {
+            this.cache.set(contentHash, result);
+            const metrics = this.cache.metrics;
+            if (metrics.hits + metrics.misses > 0 && (metrics.hits + metrics.misses) % 100 === 0) {
+              const hitRate = (metrics.hits / (metrics.hits + metrics.misses)) * 100;
+              logger.info({ hitRate: hitRate.toFixed(2), ...metrics }, "AST cache metrics");
+            }
+          }
+          resolve(result);
+        },
+        reject,
+      });
       this.processQueue();
     });
   }

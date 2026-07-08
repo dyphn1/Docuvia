@@ -1,6 +1,7 @@
 import { logger } from "../../utils/logger.js";
 import { VirtualFileSystem } from "./VirtualFileSystem.js";
 import { LspClient } from "./LspClient.js";
+import { calculateLineDiff } from "../../utils/lsp-diff-calculator.js";
 
 export interface LspConfig {
   command: string;
@@ -70,7 +71,7 @@ export class LspClientManager {
       return;
     }
 
-    const content = await this.vfs.getFileContent(uri);
+    const content = entry.content;
     if (content === undefined) {
       logger.error({ uri }, "Failed to read file content from VFS for didChange");
       return;
@@ -78,18 +79,73 @@ export class LspClientManager {
 
     const client = await this.getClient(languageId);
 
-    // We send full content sync as a baseline, could be optimized to incremental later
-    client.sendNotification("textDocument/didChange", {
-      textDocument: {
-        uri,
-        version,
-      },
-      contentChanges: [
-        {
-          text: content,
+    const lastKnownContent = entry.lastKnownContent || "";
+    const diffResult = calculateLineDiff(lastKnownContent, content);
+
+    if (diffResult.full) {
+      // Send full content sync for large changes
+      logger.debug({ uri, version }, "Sending full content sync (>30% changed)");
+      client.sendNotification("textDocument/didChange", {
+        textDocument: {
+          uri,
+          version,
         },
-      ],
-    });
+        contentChanges: [
+          {
+            text: content,
+          },
+        ],
+      });
+    } else if (diffResult.changes.length > 0) {
+      // Send incremental changes
+      logger.debug(
+        { uri, version, changeCount: diffResult.changes.length },
+        "Sending incremental changes"
+      );
+      client.sendNotification("textDocument/didChange", {
+        textDocument: {
+          uri,
+          version,
+        },
+        contentChanges: diffResult.changes.map((change) => {
+          if (change.type === "insert") {
+            return {
+              range: {
+                start: { line: change.startLine, character: 0 },
+                end: { line: change.startLine, character: 0 },
+              },
+              text: change.newText + "\n",
+            };
+          } else if (change.type === "delete" && change.endLine !== undefined) {
+            return {
+              range: {
+                start: { line: change.startLine, character: 0 },
+                end: { line: change.endLine + 1, character: 0 },
+              },
+              text: "",
+            };
+          } else {
+            // replace
+            return {
+              range: {
+                start: { line: change.startLine, character: 0 },
+                end: {
+                  line: (change.endLine ?? change.startLine) + 1,
+                  character: 0,
+                },
+              },
+              text: change.newText + "\n",
+            };
+          }
+        }),
+      });
+    } else {
+      // No changes
+      logger.debug({ uri, version }, "No content changes");
+    }
+
+    // Update last known content for next diff
+    await this.vfs.updateLastKnownContent(uri, content);
   }
 
   async notifyFileClosed(uri: string, languageId: string): Promise<void> {

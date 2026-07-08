@@ -1,161 +1,197 @@
 #!/usr/bin/env node
 import * as dotenv from "dotenv";
-import { createInterface } from "readline";
+import process from "process";
+
 import { initCommand } from "./commands/init.js";
-import { initAgent } from "./commands/init-agent.js";
 import { queryCommand } from "./commands/query.js";
 import { analyzeCommand } from "./commands/analyze.js";
-import { extractCommand } from "./commands/extract.js";
 import { statusCommand } from "./commands/status.js";
 import { cleanCommand } from "./commands/clean.js";
-import { detectChangesCommand } from "./commands/detect-changes.js";
+import { reviewCommand } from "./commands/review.js";
 import { syncCommand } from "./commands/sync.js";
+import { snapshotCommand } from "./commands/snapshot.js";
 import { exportTopologyCommand } from "./commands/export-topology.js";
 import { runMcpServer } from "./mcp/server.js";
 
+import { ui } from "./ui/wizard.js";
+import { CLI_COMMANDS, CLI_COMMAND_DESCRIPTIONS, CliCommand } from "@workspace/core";
+
 dotenv.config();
 
-async function main() {
-  const command = process.argv[2];
-
-  if (command === "init") {
-    await initCommand();
-    process.exit(0);
-  }
-
-  if (command === "init-agent") {
-    await initAgent();
-    process.exit(0);
-  }
-
-  if (command === "analyze") {
-    const deep = process.argv.includes("--deep");
-    await analyzeCommand(deep);
-    process.exit(0);
-  }
-
-  if (command === "extract") {
-    const targetFile = process.argv[3];
-    await extractCommand(targetFile);
-    process.exit(0);
-  }
-
-  if (command === "status") {
-    await statusCommand();
-    process.exit(0);
-  }
-
-  if (command === "clean") {
-    await cleanCommand();
-    process.exit(0);
-  }
-
-  if (command === "detect-changes") {
-    const baseRef = process.argv.find((arg) => arg.startsWith("--baseRef="))?.split("=")[1];
-    await detectChangesCommand(baseRef);
-    process.exit(0);
-  }
-
-  if (command === "sync") {
-    const isLocal = process.argv.includes("--local");
-    const argsWithoutFlags = process.argv.slice(3).filter((arg) => !arg.startsWith("--"));
-    const projectId = argsWithoutFlags[0];
-    const commitSha = argsWithoutFlags[1];
-
-    if (!isLocal && !projectId) {
-      console.error(
-        "  docuvia init                                 # Initialize local project and DB"
-      );
-      console.error("Usage: docuvia sync <project_id> [commit_sha]");
-      console.error(
-        "       docuvia sync --local                    # Pack local knowledge to orphan branch"
-      );
-      console.error("       echo <commit_sha> | docuvia sync <project_id>");
-      process.exit(1);
-    }
-
-    await syncCommand({ isLocal, projectId, commitSha });
-    process.exit(0);
-  }
-
-  if (command === "export") {
-    const isTopology = process.argv.includes("--topology");
-    if (!isTopology) {
-      console.error(
-        "Usage: docuvia export --topology [--json] [--out=DIR] [--collapse=file|symbol|auto]"
-      );
-      process.exit(1);
-    }
-    const collapseArg = process.argv.find((arg) => arg.startsWith("--collapse="))?.split("=")[1];
-    const collapse =
-      collapseArg === "file" || collapseArg === "symbol" || collapseArg === "auto"
-        ? collapseArg
-        : undefined;
-    await exportTopologyCommand({
-      jsonOnly: process.argv.includes("--json"),
-      out: process.argv.find((arg) => arg.startsWith("--out="))?.split("=")[1],
-      collapse,
-    });
-    process.exit(0);
-  }
-
-  if (command === "mcp") {
-    await runMcpServer();
-    // Do not exit, keep process alive for stdio transport
-    return;
-  }
-
-  if (command === "query") {
-    const args = process.argv.slice(3);
-    let target = "";
-    const options: { local?: boolean; format?: "human" | "prompt" } = {};
-
-    for (const arg of args) {
-      if (arg === "--local") {
-        options.local = true;
-      } else if (arg.startsWith("--format=")) {
-        const format = arg.substring("--format=".length);
-        if (format === "human" || format === "prompt") {
-          options.format = format as "human" | "prompt";
-        }
-      } else if (!arg.startsWith("-") && !target) {
-        target = arg;
-      }
-    }
-
-    await queryCommand(target, options);
-    process.exit(0);
-  }
-
-  console.error(`Unknown command: ${command}`);
+function printUsage() {
   console.error("Usage:");
-  console.error("  docuvia init                                 # Initialize local project and DB");
-  console.error("  docuvia status                               # Check index database health");
-  console.error("  docuvia clean                                # Wipe local.db knowledge graph");
   console.error(
-    "  docuvia detect-changes [--baseRef=...]       # Detect structural changes and risk score"
+    `  docuvia ${CLI_COMMANDS.INIT.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.INIT]}`
   );
   console.error(
-    "  docuvia analyze [--deep]                     # Analyze project (add --deep for L3 extraction)"
+    `  docuvia ${CLI_COMMANDS.ANALYZE + " [path] [--deep]"} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.ANALYZE]}`.replace(
+      " #",
+      "".padEnd(21) + "#"
+    )
   );
   console.error(
-    "  docuvia extract [path]                       # Extract decisions from a file or directory"
+    `  docuvia ${CLI_COMMANDS.QUERY + " <target> [--local]"}`.padEnd(49) +
+      `# ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.QUERY]}`
   );
   console.error(
-    "  docuvia init-agent                           # Install hooks for Claude Code and Cursor"
-  );
-  console.error("  docuvia sync <project_id> [commit_sha]       # Sync local changes to server");
-  console.error(
-    "  docuvia sync --local                         # Pack local knowledge to orphan branch"
-  );
-  console.error("  docuvia query <target> [--local]             # Query the knowledge graph");
-  console.error(
-    "  docuvia export --topology [--json] [--out=DIR] # Export topology.json + offline topology.html"
+    `  docuvia ${CLI_COMMANDS.REVIEW + " [--baseRef=...]"}`.padEnd(49) +
+      `# ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.REVIEW]}`
   );
   console.error(
-    "  docuvia mcp                                  # Start the local MCP stdio server"
+    `  docuvia ${CLI_COMMANDS.SNAPSHOT.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.SNAPSHOT]}`
   );
-  process.exit(1);
+  console.error(
+    `  docuvia ${CLI_COMMANDS.SYNC + " <project_id> [sha]"}`.padEnd(49) +
+      `# ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.SYNC]}`
+  );
+  console.error(
+    `  docuvia ${CLI_COMMANDS.STATUS.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.STATUS]}`
+  );
+  console.error(
+    `  docuvia ${CLI_COMMANDS.CLEAN.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.CLEAN]}`
+  );
+  console.error(
+    `  docuvia ${CLI_COMMANDS.EXPORT + " --topology [--json]"}`.padEnd(49) +
+      `# ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.EXPORT]}`
+  );
+  console.error(
+    `  docuvia ${CLI_COMMANDS.MCP.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.MCP]}`
+  );
+}
+
+async function main() {
+  let command = process.argv[2] as CliCommand | undefined;
+
+  // Interactive fallback when no command is provided
+  if (!command) {
+    if (!process.stdin.isTTY) {
+      printUsage();
+      process.exit(1);
+    }
+
+    ui.header("Docuvia Knowledge Graph");
+    const choices = Object.values(CLI_COMMANDS)
+      // Hide MCP and EXPORT from interactive menu as they are internal/CI tools
+      .filter((cmd) => cmd !== CLI_COMMANDS.MCP && cmd !== CLI_COMMANDS.EXPORT)
+      .map((cmd) => ({
+        name: cmd,
+        value: cmd,
+        description: CLI_COMMAND_DESCRIPTIONS[cmd],
+      }));
+
+    command = (await ui.askSelect("What would you like to do?", choices)) as CliCommand;
+  }
+
+  switch (command) {
+    case CLI_COMMANDS.INIT:
+      await initCommand();
+      process.exit(0);
+      break;
+
+    case CLI_COMMANDS.ANALYZE: {
+      const deep = process.argv.includes("--deep");
+      // Find the target path: it's the first positional arg after 'analyze'
+      const args = process.argv.slice(2);
+      const idx = args.indexOf(CLI_COMMANDS.ANALYZE);
+      let targetFile: string | undefined;
+      for (let i = idx + 1; i < args.length; i++) {
+        if (!args[i].startsWith("-")) {
+          targetFile = args[i];
+          break;
+        }
+      }
+      await analyzeCommand(targetFile, deep);
+      process.exit(0);
+      break;
+    }
+
+    case CLI_COMMANDS.STATUS:
+      await statusCommand();
+      process.exit(0);
+      break;
+
+    case CLI_COMMANDS.CLEAN:
+      await cleanCommand();
+      process.exit(0);
+      break;
+
+    case CLI_COMMANDS.REVIEW: {
+      const baseRef = process.argv.find((arg) => arg.startsWith("--baseRef="))?.split("=")[1];
+      await reviewCommand(baseRef);
+      process.exit(0);
+      break;
+    }
+
+    case CLI_COMMANDS.SNAPSHOT:
+      await snapshotCommand();
+      process.exit(0);
+      break;
+
+    case CLI_COMMANDS.SYNC: {
+      const argsWithoutFlags = process.argv.slice(3).filter((arg) => !arg.startsWith("--"));
+      const projectId = argsWithoutFlags[0];
+      const commitSha = argsWithoutFlags[1];
+      await syncCommand({ projectId, commitSha });
+      process.exit(0);
+      break;
+    }
+
+    case CLI_COMMANDS.EXPORT: {
+      const isTopology = process.argv.includes("--topology");
+      if (!isTopology) {
+        ui.error(
+          "Usage: docuvia export --topology [--json] [--out=DIR] [--collapse=file|symbol|auto]"
+        );
+        process.exit(1);
+      }
+      const collapseArg = process.argv.find((arg) => arg.startsWith("--collapse="))?.split("=")[1];
+      const collapse =
+        collapseArg === "file" || collapseArg === "symbol" || collapseArg === "auto"
+          ? collapseArg
+          : undefined;
+      await exportTopologyCommand({
+        jsonOnly: process.argv.includes("--json"),
+        out: process.argv.find((arg) => arg.startsWith("--out="))?.split("=")[1],
+        collapse,
+      });
+      process.exit(0);
+      break;
+    }
+
+    case CLI_COMMANDS.MCP:
+      await runMcpServer();
+      return; // keep alive for stdio transport
+
+    case CLI_COMMANDS.QUERY: {
+      const args = process.argv.slice(2);
+      const idx = args.indexOf(CLI_COMMANDS.QUERY);
+      let target = "";
+      const options: { local?: boolean; format?: "human" | "prompt" } = {};
+
+      for (let i = idx + 1; i < args.length; i++) {
+        const arg = args[i];
+        if (arg === "--local") {
+          options.local = true;
+        } else if (arg.startsWith("--format=")) {
+          const format = arg.substring("--format=".length);
+          if (format === "human" || format === "prompt") {
+            options.format = format as "human" | "prompt";
+          }
+        } else if (!arg.startsWith("-") && !target) {
+          target = arg;
+        }
+      }
+
+      await queryCommand(target, options);
+      process.exit(0);
+      break;
+    }
+
+    default:
+      ui.error(`Unknown command: ${command}`);
+      printUsage();
+      process.exit(1);
+  }
 }
 
 main().catch((err) => {

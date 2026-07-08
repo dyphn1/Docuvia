@@ -20,195 +20,102 @@ To prevent architectural hubris, the core maintainers (representing the personas
 
 Evaluates the ability to parse code, track logic, handle multiple repositories, and search.
 
-| Core Feature                       | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
-| :--------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **AST & Multi-language Parsing**   | **50**  |    0    |    80    |    60    |        85         |    0     |      0       |
-| **Incremental Updates & Cache**    | **70**  |    0    |    75    |    20    |        75         |    0     |      0       |
-| **Execution Flow & Impact Radius** | **35**  |    0    |    75    |    40    |        80         |    0     |      0       |
-| **Hybrid Search (FTS5 + Vector)**  | **45**  |    0    |    70    |    0     |        75         |    0     |      40      |
-| **Cross-Repo & Group Analysis**    |  **0**  |    0    |    85    |    0     |        85         |    0     |      0       |
+| Core Feature | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **AST & Multi-language Parsing** | **50** | 0 | 80 | 60 | 85 | 0 | 0 |
+| **Incremental Updates & Cache** | **70** | 0 | 75 | 20 | 75 | 0 | 0 |
+| **Execution Flow & Impact Radius** | **35** | 0 | 75 | 40 | 80 | 0 | 0 |
+| **Hybrid Search (FTS5 + Vector)** | **45** | 0 | 70 | 0 | 75 | 0 | 40 |
+| **Cross-Repo & Group Analysis** | **0** | 0 | 85 | 0 | 85 | 0 | 0 |
 
-_Team Critique (Docuvia)_:
+### Feature Analysis & Roadmap Mapping
 
-- **AST Parsing (50)**: `web-tree-sitter` inside worker threads provides multi-language parsing for the 11 grammars registered in `lib/ast-core/src/constants.ts` (TypeScript, JavaScript, Python, Rust, Go, Java, C, C++, Ruby, PHP, C#). Import-edge extraction (`lib/ast-core/src/core/edge-computer.ts`) now covers all 11 registered languages (TS/JS, Python, Rust, Java, Ruby, PHP, Go, C/C++, C#) with full dependency edge extraction as of 2026-07-01. However, WASM heap management remains leak-prone and requires manual `tree.delete()` interventions, so we lack true semantic parity compared to `code-review-graph`'s robust fallbacks. Remediation (strict worker isolation, lazy-loaded grammar plugins) is defined in [ADR-020 (Unified Isomorphic AST Microkernel)](../adr/ADR-020-unified-isomorphic-ast-microkernel.md) and tracked via [AST Microkernel Architecture](../roadmap/features/ast-microkernel-architecture.md) / [AST Plugin Architecture](../roadmap/features/ast-plugin-architecture.md).
-- **Incremental Updates & Cache (70)**: Now includes AST parse result caching with LRU+TTL, incremental LSP diffs, content deduplication, and temp file lifecycle management. The `AstParseCache` (`lib/core/src/services/ast/ast-parse-cache.ts`) provides a 500MB LRU cache with 1-hour TTL for AST parse results, achieving cache hit rates of 90%+ on typical editor workflows. SHA-256 file hashing (`lib/core/src/services/ast/ast-change-detector.ts`) efficiently detects file changes, and batch upsert operations reduce database round-trips. LSP diff calculation selectively applies incremental updates vs. full sync based on change magnitude. Remaining items: true interval-tree indexing and cross-language semantic pruning are tracked via [ADR-027 (Sub-Second Incremental Watch)](../adr/ADR-027-sub-second-incremental-watch.md) and [Incremental Update Delta Only](../roadmap/features/incremental-update-delta-only.md).
-- **Execution Flow & Impact Radius (35)**: Corrected downward from a previously over-estimated 85. The current implementation is intentionally TypeScript-only in scope: `ScopeResolver` (`lib/core/src/services/scope-resolver.ts`) resolves static TypeScript imports via `tsconfig.json` / `tsconfig.base.json` path aliases, and impact radius relies on a basic Breadth-First Search (BFS) over these import edges. True cross-language execution flow and call-graph tracking do not exist yet; the cross-language semantic-pruning approach is specified in [ADR-022 (WASM AST Blast Radius)](../adr/ADR-022-wasm-ast-blast-radius.md) and tracked via [Smart Blast Radius WASM Semantic Diff](../roadmap/features/smart-blast-radius-wasm-semantic-diff.md).
-- **Hybrid Search (45)**: Functional but fragmented. While `pgvector` works excellently for PostgreSQL backends, local execution degrades completely to SQLite FTS5 keyword matching ([ADR-029](../adr/ADR-029-local-vector-index-and-natural-language-ui.md)), meaning local developers lose true semantic RAG capabilities. Current tradeoff: production has semantics, local has speed.
-- **Cross-Repo (0)**: The zero score reflects the absence of full cross-repository graph analysis — a deliberate architectural boundary, not an oversight. [ADR-024 (Cross-Project Soft Linking)](../adr/ADR-024-cross-project-soft-linking.md) explicitly forbids inter-project foreign keys to preserve repository autonomy; instead, projects are soft-linked at prompt time via global L1 tags (`lib/core/src/services/cross-project-service.ts`, tracked in [Cross-Project Linking](../roadmap/features/cross-project-linking.md)). Deeper multi-repository analysis remains a roadmap item — see [Multi-Root Workspace Support](../roadmap/features/multi-root-workspace-support.md).
-
-### ADR Cross-Reference Map (Knowledge Graph & Analysis)
-
-Each Knowledge Graph capability maps to the following Architecture Decision Records:
-
-| Knowledge Graph Capability         | Related ADRs                                                                                                                                                                                 |
-| :--------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **AST & Multi-language Parsing**   | [ADR-020](../adr/ADR-020-unified-isomorphic-ast-microkernel.md), [ADR-022](../adr/ADR-022-wasm-ast-blast-radius.md)                                                                          |
-| **Incremental Updates & Cache**    | [ADR-016](../adr/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md), [ADR-027](../adr/ADR-027-sub-second-incremental-watch.md)                                              |
-| **Execution Flow & Impact Radius** | [ADR-015](../adr/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md), [ADR-022](../adr/ADR-022-wasm-ast-blast-radius.md), [ADR-025](../adr/ADR-025-hybrid-temp-file-blast-radius.md)  |
-| **Hybrid Search (FTS5 + Vector)**  | [ADR-014](../adr/ADR-014-sql-indexed-graph-and-database-as-ipc.md), [ADR-019](../adr/ADR-019-pgvector-migration.md), [ADR-029](../adr/ADR-029-local-vector-index-and-natural-language-ui.md) |
-| **Cross-Repo & Group Analysis**    | [ADR-024](../adr/ADR-024-cross-project-soft-linking.md)                                                                                                                                      |
+| Core Feature | Related ADRs | Roadmap Features | Current Situation (Critique & Audit) | Recommendations |
+| :--- | :--- | :--- | :--- | :--- |
+| **AST & Multi-language Parsing** | [ADR-020](../adr/ADR-020-unified-isomorphic-ast-microkernel.md)<br>[ADR-022](../adr/ADR-022-wasm-ast-blast-radius.md) | [AST Microkernel](../roadmap/features/ast-microkernel-architecture.md), [AST Plugin](../roadmap/features/ast-plugin-architecture.md), [TS Implements/Extends Parser](../roadmap/features/typescript-implements-extends-parser.md) | `web-tree-sitter` in worker threads parses 11 grammars. Import-edge extraction works. However, WASM heap management is leak-prone (requires manual `tree.delete()`). Lacks semantic parity vs `code-review-graph`. | Implement strict worker isolation and lazy-loaded grammar plugins. |
+| **Incremental Updates & Cache** | [ADR-016](../adr/ADR-016-git-blob-native-identity-and-checkout-thrashing-defense.md)<br>[ADR-027](../adr/ADR-027-sub-second-incremental-watch.md) | [Incremental Update Delta Only](../roadmap/features/incremental-update-delta-only.md), [Sub-Second Incremental Watch](../roadmap/features/sub-second-incremental-watch.md) | Includes LRU+TTL AST parse cache, SHA-256 deduplication, and batch upserts. LSP diff calc selectively applies updates. However, Sub-Second Incremental Watch is a fake implementation (only a comment). | Build true interval-tree indexing and actual hook-driven UI events. |
+| **Execution Flow & Impact Radius** | [ADR-015](../adr/ADR-015-progressive-enrichment-and-ast-lsp-dual-engine.md)<br>[ADR-022](../adr/ADR-022-wasm-ast-blast-radius.md)<br>[ADR-025](../adr/ADR-025-hybrid-temp-file-blast-radius.md) | [Smart Blast Radius](../roadmap/features/smart-blast-radius-wasm-semantic-diff.md), [Graph Index](../roadmap/features/graph-index.md), [Headless LSP Manager](../roadmap/features/headless-lsp-manager.md), [Zero-Server Deep Traversal](../roadmap/features/zero-server-deep-traversal.md) | Intentionally TS-only. `ScopeResolver` uses `tsconfig` paths. Relies on basic BFS over import edges. Graph BFS is hardcoded to depth 3. Headless LSP Manager is just a barrel export (fabrication). | Adopt cross-language semantic-pruning approach. Implement real Headless LSP orchestrator. |
+| **Hybrid Search (FTS5 + Vector)** | [ADR-014](../adr/ADR-014-sql-indexed-graph-and-database-as-ipc.md)<br>[ADR-019](../adr/ADR-019-pgvector-migration.md)<br>[ADR-029](../adr/ADR-029-local-vector-index-and-natural-language-ui.md) | [Semantic Search](../roadmap/features/semantic-search.md), [Vector Index Search](../roadmap/features/vector-index-search.md), [PGVector Migration](../roadmap/features/pgvector-migration.md) | `pgvector` extension creation was removed. Local execution degrades to SQLite FTS5 (no semantic RAG). Vector chain has zero test coverage and hard-coupled to OpenAI endpoint shape. | Restore pgvector migration script, implement robust local vector fallback, add tests for server-side vector chain. |
+| **Cross-Repo & Group Analysis** | [ADR-024](../adr/ADR-024-cross-project-soft-linking.md) | [Cross-Project Linking](../roadmap/features/cross-project-linking.md), [Multi-Root Workspace](../roadmap/features/multi-root-workspace-support.md), [SVN Integration](../roadmap/features/svn-integration.md), [L1 Tagger](../roadmap/features/l1-tagger.md), [L2 Extractor](../roadmap/features/l2-extractor.md), [L3 Generator](../roadmap/features/l3-generator.md), [Orphan Branch R/W](../roadmap/features/orphan-branch-r-w-protocol.md) | Deliberate architectural boundary forbidding inter-project FKs. Cross-project uses embedding similarity instead of L1-tag joins. Schema missing caching topologies. Multi-root hardcodes empty strings. | Enforce L1-tag joins for cross-project, fix L1/L3 schemas, properly implement multi-root slugs. |
 
 ## 2. AI & LLM Ecosystem
 
 Evaluates MCP integration, RAG, Token optimization, Multi-Agent collaboration, and Memory.
 
-| Core Feature                         | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
-| :----------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **MCP Server & Tool Support**        | **80**  |    0    |    80    |    30    |        80         |    50    |      85      |
-| **Built-in Subagents Workflow**      | **75**  |    0    |    70    |    0     |         0         |    0     |      85      |
-| **Agentic RAG**                      | **65**  |    0    |    60    |    0     |        60         |    0     |      0       |
-| **Token Optimization & Compression** | **85**  |    0    |    20    |    0     |        60         |    90    |      80      |
-| **Cross-Session Memory Persistence** | **70**  |    0    |    0     |    0     |         0         |    0     |      85      |
+| Core Feature | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **MCP Server & Tool Support** | **80** | 0 | 80 | 30 | 80 | 50 | 85 |
+| **Built-in Subagents Workflow** | **75** | 0 | 70 | 0 | 0 | 0 | 85 |
+| **Agentic RAG** | **65** | 0 | 60 | 0 | 60 | 0 | 0 |
+| **Token Optimization & Compression** | **85** | 0 | 20 | 0 | 60 | 90 | 80 |
+| **Cross-Session Memory Persistence** | **70** | 0 | 0 | 0 | 0 | 0 | 85 |
 
-_Team Critique (Docuvia)_:
+### Feature Analysis & Roadmap Mapping
 
-- **MCP Server & Tool Support (80)**: Upgraded. Docuvia fully exposes `query`, `impact_analysis`, and `get_dependencies` via robust authenticated MCP routes in `mcp.ts`, putting it on par with `code-review-graph`.
-- **Token Optimization (85)**: Accurately reflects the LLM Context Proxy implementation (`artifacts/api-server/src/proxy/compressor.ts` & `artifacts/api-server/src/proxy/llm-proxy.ts`), mapping oversized AST blocks to collapsible skeletons (`COMPRESSED_SKELETON_ID`) and fetching details on demand via the `retrieve_original_query` MCP tool (`artifacts/api-server/src/routes/mcp.ts`). Provider routing behind the proxy is governed by [ADR-026 (Multi-Provider LLM Abstraction)](../adr/ADR-026-multi-provider-llm-abstraction.md).
-- **Built-in Subagents Workflow (75)**: Docuvia maintains 10 high-quality subagents in `.github/agents/`. However, it relies on external orchestration (Claude Code/Copilot) rather than a self-contained runtime like `hermes-agent`.
-- **Agentic RAG (65)**: Upgraded from 50. Earlier critiques ignored that `intent-router.service.ts` actively uses `dedupNodes` (from `ast-core`) to filter duplicates via content hashing before feeding the LLM. Still, it lacks true cosine-similarity semantic deduplication.
-- **Cross-Session Memory Persistence (70)**: Massive correction. The previous critique citing primitive `MEMORY.md` was outdated. Docuvia now uses a dedicated SQLite database (`shared_agent_memory.db`) equipped with a background memory miner, TTL pruning, and `/mcp/read_shared_memory`. While it lacks third-party graph integrations (mem0, honcho) like `hermes-agent`, it easily surpasses a score of 20.
+| Core Feature | Related ADRs | Roadmap Features | Current Situation (Critique & Audit) | Recommendations |
+| :--- | :--- | :--- | :--- | :--- |
+| **MCP Server & Tool Support** | [ADR-031](../adr/ADR-031-model-context-protocol-integration.md) | [MCP Route Scaffolding](../roadmap/features/mcp-route-scaffolding.md) | Fully exposes `query`, `impact_analysis`, and `get_dependencies` via robust authenticated MCP routes. Putting it on par with `code-review-graph`. Routing complete but zero integration tests against real DB data. | Write integration tests for MCP routes against real DB. |
+| **Built-in Subagents Workflow** | [ADR-032](../adr/ADR-032-agentic-rag-swarm-architecture.md) | [Parallel Swarm Review Concepts](../roadmap/features/parallel-swarm-review-concepts.md), [Tool Maker Auto Trigger](../roadmap/features/tool-maker-auto-trigger.md) | Maintains 10 high-quality subagents in `.github/agents/`. However, `SwarmOrchestrator` / `TaskDispatcher` are completely dead code (zero production imports). The swarm review never actually executes. | Either implement the orchestrator runtime or remove the dead code to rely entirely on external execution. |
+| **Agentic RAG** | [ADR-007](../adr/ADR-007-agentic-rag-intent-router.md) | [Agentic RAG Intent Router](../roadmap/features/agentic-rag-intent-router.md), [Background Agentic RAG](../roadmap/features/background-agentic-rag.md), [Semantic Deduplication](../roadmap/features/semantic-deduplication-in-agentic-rag.md) | `intent-router.service.ts` uses `dedupNodes` to filter duplicates via content hashing, but lacks true cosine-similarity semantic deduplication. Routing logic is mocked in tests, fast-path not verified. | Replace mocks in `intent-router` tests with real behavior. Implement true semantic deduplication. |
+| **Token Optimization & Compression** | [ADR-009](../adr/ADR-009-token-limits-chunking-configs.md)<br>[ADR-026](../adr/ADR-026-multi-provider-llm-abstraction.md) | [Local Context Compression](../roadmap/features/local-context-compression.md), [Token Limits Chunking Configs](../roadmap/features/token-limits-chunking-configs.md), [LLM Abstraction Layer](../roadmap/features/llm-abstraction-layer.md), [Per-Project Model Switching](../roadmap/features/per-project-model-switching.md), [Noise Detection](../roadmap/features/noise-detection.md) | Proxy maps oversized AST blocks to collapsible skeletons. However, `startTTLJob` is unreachable. Configs for limits are declared but ignored (hardcoded substring truncations). Noise Detection returns hardcoded 0.1. | Wire `startTTLJob`. Replace hardcoded truncations with config-driven limits. Implement actual noise detection logic. |
+| **Cross-Session Memory Persistence** | [ADR-010](../adr/ADR-010-local-context-compression.md) | [Temporal Decay Scoring](../roadmap/features/temporal-decay-scoring.md) | Uses dedicated SQLite DB (`shared_agent_memory.db`) with TTL pruning. Temporal decay scoring exists but is duplicated in 4 SQL queries bypassing the central calculator, with zero integration coverage. | Consolidate temporal decay logic into a single calculator. Add integration tests for decay ranking. |
 
 ## 3. Architecture & Modern Engineering
 
 Evaluates developer experience, decoupling, extensibility, and productization maturity.
 
-| Core Feature                            | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
-| :-------------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **API-First Design & Codegen**          | **80**  |    0    |    40    |    0     |         0         |    0     |      30      |
-| **Cross-Platform Native/VS Code**       | **60**  |   80    |    0     |    0     |        40         |    0     |      75      |
-| **Telemetry & User Tracking (PostHog)** |  **0**  |   85    |    0     |    0     |         0         |    40    |      0       |
-| **Internationalization (i18n/L10n)**    |  **0**  |   85    |    0     |    0     |         0         |    0     |      0       |
-| **Plugin & Extension System**           |  **0**  |    0    |    70    |    0     |        70         |    0     |      85      |
-| **Background Tasks & Cron Scheduling**  | **30**  |    0    |    0     |    0     |         0         |    0     |      85      |
+| Core Feature | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **API-First Design & Codegen** | **80** | 0 | 40 | 0 | 0 | 0 | 30 |
+| **Cross-Platform Native/VS Code** | **60** | 80 | 0 | 0 | 40 | 0 | 75 |
+| **Telemetry & User Tracking (PostHog)** | **0** | 85 | 0 | 0 | 0 | 40 | 0 |
+| **Internationalization (i18n/L10n)** | **0** | 85 | 0 | 0 | 0 | 0 | 0 |
+| **Plugin & Extension System** | **0** | 0 | 70 | 0 | 70 | 0 | 85 |
+| **Background Tasks & Cron Scheduling** | **30** | 0 | 0 | 0 | 0 | 0 | 85 |
 
-_Team Critique (Docuvia)_:
+### Feature Analysis & Roadmap Mapping
 
-- **API Codegen (80)**: Works seamlessly with OpenAPI, Orval, and Zod bindings. However, it still lacks strict CI enforcement (`git diff --exit-code`) to prevent drift on uncommitted YAML files.
-- **Cross-Platform Native/VS Code (60)**: VS Code client exists alongside a React/Vite frontend. Functional, but lacks optimized scaling and robust IPC patterns for true native parity.
-- **Background Tasks (30)**: Corrected from 0. Docuvia implements a primitive `JobQueueWorker` (`artifacts/api-server/src/workers/job-queue.worker.ts`) utilizing Drizzle ORM optimistic locking and a `setInterval` polling loop (5s). The absence of a broker (Redis/BullMQ) is a deliberate local-first choice per [ADR-008 (Asynchronous Metabolism)](../adr/ADR-008-asynchronous-metabolism.md), but it remains MVP-grade tech debt: stalled-job reclaim is stubbed yet never executed, and there are no retries or cron scheduling parsers.
-- **Extensibility (0)**: Docuvia remains a hardcoded monolith with no dynamic plugin hooks or extension architecture.
-- **Productization (0)**: Completely blind. Zero PostHog telemetry and zero i18n localization implemented, both of which are mandated day-one requirements by `tolaria` standards.
+| Core Feature | Related ADRs | Roadmap Features | Current Situation (Critique & Audit) | Recommendations |
+| :--- | :--- | :--- | :--- | :--- |
+| **API-First Design & Codegen** | [ADR-021](../adr/ADR-021-shared-core-di-orchestrator.md) | [Presentation Layer DI Composition](../roadmap/features/presentation-layer-di-composition.md), [Shared Core DI Orchestrator](../roadmap/features/shared-core-di-orchestrator.md), [Core DB Schemas Defined](../roadmap/features/core-db-schemas-defined.md) | Works seamlessly with OpenAPI, Orval, Zod. However, the DI Container is completely bypassed in reality (routes use `new ProjectService()`). Monorepo layout has empty stub packages breaking workspace contracts. | Enforce CI drift checks. Refactor routes to use DI container and eliminate direct instantiation. |
+| **Cross-Platform Native/VS Code** | - | [Dashboard Stats](../roadmap/features/dashboard-stats.md), [Comprehensive Documentation Alignment](../roadmap/features/comprehensive-documentation-alignment.md), [Cross-Team Subscription](../roadmap/features/cross-team-subscription.md) | VS Code client exists alongside React/Vite frontend. Lacks optimized IPC patterns. "Dashboard Stats" claims unified Core Services, but actually uses fragmented implementations (SQLite vs Postgres). | Standardize the backend layer across all clients to truly unify core services. |
+| **Telemetry & User Tracking** | - | [Logging](../roadmap/features/logging.md) | Zero PostHog telemetry implemented. `logging` feature is dead code with zero PII redaction tests. | Remove dead logging code or implement a proper telemetry/logging layer. |
+| **Internationalization (i18n/L10n)** | - | - | Zero i18n localization implemented. | Add translation scaffolding if required by productization goals. |
+| **Plugin & Extension System** | - | [Domain Plugin Architecture](../roadmap/features/domain-plugin-architecture.md), [Generate Pipeline Orchestrator](../roadmap/features/generate-pipeline-orchestrator.md), [Template Management Inheritance](../roadmap/features/template-management-inheritance.md) | Hardcoded monolith with no dynamic plugin hooks. Template inheritance logic is unreachable dead code. | Clean up dead template inheritance code. Implement actual plugin registry if needed. |
+| **Background Tasks & Cron Scheduling** | [ADR-008](../adr/ADR-008-asynchronous-metabolism.md) | [Server-Side Metabolism](../roadmap/features/server-side-metabolism.md), [Standalone Engine Graceful Degradation](../roadmap/features/standalone-engine-graceful-degradation.md), [Tiered Storage Tombstone GC](../roadmap/features/tiered-storage-tombstone-gc.md), [Concurrency Locks](../roadmap/features/concurrency-locks.md), [Export Markdown JSON](../roadmap/features/export-markdown-json.md) | Primitive `JobQueueWorker` using Drizzle optimistic locking. Stalled-job reclaim is stubbed but never executed. DLQ state machine missing required schema fields. | Fully implement DLQ schema fields and job reclaiming to fulfill ADR-008 requirements. |
 
 ## 4. QA, CI/CD & Security
 
 Evaluates CI/CD strictness, automation, and defensive guards.
 
-| Core Feature                            | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
-| :-------------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **Strict Test Coverage (Ratchet Gate)** | **40**  |   90    |    0     |    0     |        60         |    50    |      80      |
-| **E2E Automation (Playwright)**         | **50**  |   80    |    80    |    0     |         0         |    0     |      50      |
-| **Code Health Tracking (CodeScene)**    | **10**  |   90    |    0     |    0     |         0         |    0     |      0       |
-| **Security Scanning & SBOM (Codacy)**   | **10**  |   90    |    0     |    0     |         0         |    80    |      0       |
+| Core Feature | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Strict Test Coverage (Ratchet Gate)** | **40** | 90 | 0 | 0 | 60 | 50 | 80 |
+| **E2E Automation (Playwright)** | **50** | 80 | 80 | 0 | 0 | 0 | 50 |
+| **Code Health Tracking (CodeScene)** | **10** | 90 | 0 | 0 | 0 | 0 | 0 |
+| **Security Scanning & SBOM (Codacy)** | **10** | 90 | 0 | 0 | 0 | 80 | 0 |
 
-_Team Critique (Docuvia)_:
+### Feature Analysis & Roadmap Mapping
 
-- **Test Coverage (40)**: Massively inflated previous score. While `vitest.config.ts` has 85% Backend / 70% Frontend thresholds, it systematically `exclude`s the most complex and critical architectural domains (AST parsing, memory systems, ingest routing) to falsely pass the gate. This is technical debt masked as compliance. The remediation path is specified in [ADR-033 (Strict Test Framework and Quality Gates)](../adr/ADR-033-strict-test-framework-and-quality-gates.md) and tracked via [Quality Gates Ratchet System](../roadmap/features/quality-gates-ratchet-system.md) / [Core Services Test Hardening](../roadmap/features/core-services-test-hardening.md).
-- **E2E Automation (50)**: Functional for VS Code but heavily flawed. Web UI Playwright tests are completely commented out in `ci.yml`. The "parallel test lane (Smoke vs. Regression)" does not actually exist in the Playwright config; it's a hallucinated pipeline feature. Restoration of Web UI Playwright coverage is tracked in [Frontend Test Infrastructure](../roadmap/features/frontend-test-infrastructure.md), and the real Smoke/Regression lane split is tracked in [Test Lane Segregation](../roadmap/features/test-lane-segregation.md).
-- **Security & Health (10)**: Total fabrication in the previous evaluation. The CodeScene and Codacy jobs in `.github/workflows/ci.yml` are currently just empty `echo` placeholders that automatically pass. There is zero actual enterprise security enforcement or code health tracking running on Docuvia. Implementation of actual CodeScene and Codacy enforcement falls under the quality-gate mandate of [ADR-033](../adr/ADR-033-strict-test-framework-and-quality-gates.md) and is tracked via [Security Hardening](../roadmap/features/security-hardening.md) / [Rigorous Health Check Gates](../roadmap/features/rigorous-health-check-gates.md).
+| Core Feature | Related ADRs | Roadmap Features | Current Situation (Critique & Audit) | Recommendations |
+| :--- | :--- | :--- | :--- | :--- |
+| **Strict Test Coverage (Ratchet Gate)** | [ADR-033](../adr/ADR-033-strict-test-framework-and-quality-gates.md) | [Quality Gates Ratchet System](../roadmap/features/quality-gates-ratchet-system.md), [Quality Gate Implementation Plan](../roadmap/features/quality-gate-implementation-plan.md), [Database Test Coverage](../roadmap/features/database-test-coverage.md), [Core Services Test Hardening](../roadmap/features/core-services-test-hardening.md) | Massively inflated score. `vitest.config.ts` systematically excludes the most critical domains (`lib/core`). `lib/core` has no test script. Tests crash with OOM. Many tests are fake `expect(1).toBe(1)`. | **Priority 0:** Remove exclusions from coverage. Fix OOM tests. Enforce strict TDD for core services. |
+| **E2E Automation (Playwright)** | - | [Test Lane Segregation](../roadmap/features/test-lane-segregation.md), [Frontend Test Infrastructure](../roadmap/features/frontend-test-infrastructure.md), [Feedback Loop Corrections](../roadmap/features/feedback-loop-corrections.md), [Workflow Formalization](../roadmap/features/workflow-formalization.md) | Web UI Playwright tests are commented out in `ci.yml`. Parallel test lanes (Smoke vs Regression) are hallucinated. Feedback loop corrections have zero coverage and lose data. | Restore Playwright tests in CI. Implement actual Smoke vs Regression test lanes. |
+| **Code Health Tracking (CodeScene)** | [ADR-033](../adr/ADR-033-strict-test-framework-and-quality-gates.md) | [Rigorous Health Check Gates](../roadmap/features/rigorous-health-check-gates.md), [GitHub Actions CI Refactoring](../roadmap/features/github-actions-ci-refactoring.md), [CI/CD Pipeline](../roadmap/features/ci-cd-pipeline.md) | Total fabrication. CodeScene job in `.github/workflows/ci.yml` is an empty `echo` placeholder that auto-passes. | Integrate real CodeScene analysis into the CI pipeline. |
+| **Security Scanning & SBOM (Codacy)** | [ADR-033](../adr/ADR-033-strict-test-framework-and-quality-gates.md) | [Security Hardening](../roadmap/features/security-hardening.md) | Total fabrication. Codacy job in CI is an `echo` placeholder. `checkProjectOwnership` middleware exists, but auth always resolves to `userId=1` (inert check). | Wire up real Codacy scanning. Fix auth mock to enable real ownership checks. |
 
 ## 5. Visualization & Interactive UX
 
 Evaluates interactive presentation of complex data, graph visualization, and advanced user interfaces.
 
-| Core Feature                        | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
-| :---------------------------------- | :-----: | :-----: | :------: | :------: | :---------------: | :------: | :----------: |
-| **Interactive Graph Visualization** | **85**  |    0    |    75    |    70    |        85         |    0     |      0       |
-| **Terminal UI (TUI) & Dashboard**   | **80**  |    0    |    60    |    0     |         0         |    0     |      85      |
+| Core Feature | Docuvia | tolaria | GitNexus | graphify | code-review-graph | headroom | hermes-agent |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Interactive Graph Visualization** | **85** | 0 | 75 | 70 | 85 | 0 | 0 |
+| **Terminal UI (TUI) & Dashboard** | **80** | 0 | 60 | 0 | 0 | 0 | 85 |
 
-_Team Critique (Docuvia)_:
+### Feature Analysis & Roadmap Mapping
 
-- **Visualization (85)**: Corrected. Docuvia completely replaced the heavy `React-Force-Graph` with a native `d3-force` static layout algorithm (`TopologyGraphLogic.ts`) that calculates coordinates in memory to completion and renders an optimized SVG. It gracefully groups directory clusters using ring-based centers and convex hulls, achieving parity with the scalability of `code-review-graph`.
-- **TUI & Dashboard (80)**: The previous score of 0 incorrectly evaluated only the CLI. While Docuvia's CLI utilizes `@inquirer/prompts` and `ora` (structured prompts, but not a full Ink TUI), Docuvia ships a fully-fledged React/Vite web dashboard (`kg-engine`). This dashboard provides live system metrics, project navigation, PRs, subscriptions, and integrated topology views, offering excellent observability.
-
-## Master Roadmap Feature Mapping
-
-To ensure every single feature task is tracked and mapped to its architectural domain, here is the exhaustive checklist of all 74 roadmap features aligned with the capabilities matrix:
-
-### 1. Knowledge Graph & Analysis (AST, Incremental, Flows, Search, Cross-Repo)
-
-- 🔗 [AST Microkernel Architecture](../roadmap/features/ast-microkernel-architecture.md)
-- 🔗 [AST Plugin Architecture](../roadmap/features/ast-plugin-architecture.md)
-- 🔗 [TypeScript Implements/Extends Parser](../roadmap/features/typescript-implements-extends-parser.md)
-- 🔗 [Incremental Update Delta Only](../roadmap/features/incremental-update-delta-only.md)
-- 🔗 [Sub-Second Incremental Watch](../roadmap/features/sub-second-incremental-watch.md)
-- 🔗 [Zero-Server Deep Traversal](../roadmap/features/zero-server-deep-traversal.md)
-- 🔗 [Smart Blast Radius WASM Semantic Diff](../roadmap/features/smart-blast-radius-wasm-semantic-diff.md)
-- 🔗 [Graph Index](../roadmap/features/graph-index.md)
-- 🔗 [Headless LSP Manager](../roadmap/features/headless-lsp-manager.md)
-- 🔗 [Semantic Search](../roadmap/features/semantic-search.md)
-- 🔗 [Vector Index Search](../roadmap/features/vector-index-search.md)
-- 🔗 [PGVector Migration](../roadmap/features/pgvector-migration.md)
-- 🔗 [Cross-Project Linking](../roadmap/features/cross-project-linking.md)
-- 🔗 [Multi-Root Workspace Support](../roadmap/features/multi-root-workspace-support.md)
-- 🔗 [SVN Integration](../roadmap/features/svn-integration.md)
-- 🔗 [L1 Tagger](../roadmap/features/l1-tagger.md)
-- 🔗 [L2 Extractor](../roadmap/features/l2-extractor.md)
-- 🔗 [L3 Generator](../roadmap/features/l3-generator.md)
-- 🔗 [Orphan Branch R/W Protocol](../roadmap/features/orphan-branch-r-w-protocol.md)
-
-### 2. AI & LLM Ecosystem (MCP, Subagents, Agentic RAG, Memory, Compression)
-
-- 🔗 [Agentic RAG Intent Router](../roadmap/features/agentic-rag-intent-router.md)
-- 🔗 [Background Agentic RAG](../roadmap/features/background-agentic-rag.md)
-- 🔗 [Semantic Deduplication in Agentic RAG](../roadmap/features/semantic-deduplication-in-agentic-rag.md)
-- 🔗 [Local Context Compression](../roadmap/features/local-context-compression.md)
-- 🔗 [Token Limits Chunking Configs](../roadmap/features/token-limits-chunking-configs.md)
-- 🔗 [Temporal Decay Scoring](../roadmap/features/temporal-decay-scoring.md)
-- 🔗 [LLM Abstraction Layer](../roadmap/features/llm-abstraction-layer.md)
-- 🔗 [MCP Route Scaffolding](../roadmap/features/mcp-route-scaffolding.md)
-- 🔗 [Per-Project Model Switching](../roadmap/features/per-project-model-switching.md)
-- 🔗 [Tool Maker Auto Trigger](../roadmap/features/tool-maker-auto-trigger.md)
-- 🔗 [Parallel Swarm Review Concepts](../roadmap/features/parallel-swarm-review-concepts.md)
-- 🔗 [Noise Detection](../roadmap/features/noise-detection.md)
-
-### 3. Architecture & Modern Engineering (API, Extensibility, Telemetry, Background Tasks)
-
-- 🔗 [Domain Plugin Architecture](../roadmap/features/domain-plugin-architecture.md)
-- 🔗 [Shared Core DI Orchestrator](../roadmap/features/shared-core-di-orchestrator.md)
-- 🔗 [Generate Pipeline Orchestrator](../roadmap/features/generate-pipeline-orchestrator.md)
-- 🔗 [Dashboard Stats](../roadmap/features/dashboard-stats.md)
-- 🔗 [Monorepo Directory Layout](../roadmap/features/monorepo-directory-layout.md)
-- 🔗 [Core DB Schemas Defined](../roadmap/features/core-db-schemas-defined.md)
-- 🔗 [Presentation Layer DI Composition](../roadmap/features/presentation-layer-di-composition.md)
-- 🔗 [Server-Side Metabolism](../roadmap/features/server-side-metabolism.md)
-- 🔗 [Standalone Engine Graceful Degradation](../roadmap/features/standalone-engine-graceful-degradation.md)
-- 🔗 [Tiered Storage Tombstone GC](../roadmap/features/tiered-storage-tombstone-gc.md)
-- 🔗 [Concurrency Locks](../roadmap/features/concurrency-locks.md)
-- 🔗 [Logging](../roadmap/features/logging.md)
-- 🔗 [Export Markdown JSON](../roadmap/features/export-markdown-json.md)
-- 🔗 [Template Management Inheritance](../roadmap/features/template-management-inheritance.md)
-- 🔗 [Comprehensive Documentation Alignment](../roadmap/features/comprehensive-documentation-alignment.md)
-- 🔗 [Cross-Team Subscription](../roadmap/features/cross-team-subscription.md)
-
-### 4. QA, CI/CD & Security (The Technical Debt & Quality Gates Priority)
-
-- 🔗 [Quality Gates Ratchet System](../roadmap/features/quality-gates-ratchet-system.md)
-- 🔗 [Quality Gate Implementation Plan](../roadmap/features/quality-gate-implementation-plan.md)
-- 🔗 [Database Test Coverage](../roadmap/features/database-test-coverage.md)
-- 🔗 [Core Services Test Hardening](../roadmap/features/core-services-test-hardening.md)
-- 🔗 [Test Lane Segregation](../roadmap/features/test-lane-segregation.md)
-- 🔗 [Frontend Test Infrastructure](../roadmap/features/frontend-test-infrastructure.md)
-- 🔗 [GitHub Actions CI Refactoring](../roadmap/features/github-actions-ci-refactoring.md)
-- 🔗 [Rigorous Health Check Gates](../roadmap/features/rigorous-health-check-gates.md)
-- 🔗 [Security Hardening](../roadmap/features/security-hardening.md)
-- 🔗 [CI/CD Pipeline](../roadmap/features/ci-cd-pipeline.md)
-- 🔗 [Feedback Loop Corrections](../roadmap/features/feedback-loop-corrections.md)
-- 🔗 [Workflow Formalization](../roadmap/features/workflow-formalization.md)
-
-### 5. Visualization, Interactive UX & Clients
-
-- 🔗 [Interactive Topology Maps](../roadmap/features/interactive-topology-maps.md)
-- 🔗 [MCP Dashboard UI](../roadmap/features/mcp-dashboard-ui.md)
-- 🔗 [Wizard Style Interactive CLI](../roadmap/features/wizard-style-interactive-cli.md)
-- 🔗 [Natural Language UI](../roadmap/features/natural-language-ui.md)
-- 🔗 [Document Upload UI](../roadmap/features/document-upload-ui.md)
-- 🔗 [Review UI Frontend](../roadmap/features/review-ui-frontend.md)
-- 🔗 [CLI Commands Analyze Init](../roadmap/features/cli-commands-analyze-init.md)
-- 🔗 [Docuvia Sync Bidirectional CLI](../roadmap/features/docuvia-sync-bidirectional-cli.md)
-- 🔗 [Workspace Onboarding Init](../roadmap/features/workspace-onboarding-init.md)
-- 🔗 [VS Code Blast Radius UI](../roadmap/features/vs-code-blast-radius-ui.md)
-- 🔗 [VS Code Extension Endpoints](../roadmap/features/vs-code-extension-endpoints.md)
-- 🔗 [VS Code Search Results UI](../roadmap/features/vs-code-search-results-ui.md)
-- 🔗 [VS Code Webview Infrastructure](../roadmap/features/vs-code-webview-infrastructure.md)
-- 🔗 [GitHub PR Integration](../roadmap/features/github-pr-integration.md)
-- 🔗 [Slack Teams Bot](../roadmap/features/slack-teams-bot.md)
+| Core Feature | Related ADRs | Roadmap Features | Current Situation (Critique & Audit) | Recommendations |
+| :--- | :--- | :--- | :--- | :--- |
+| **Interactive Graph Visualization** | - | [Interactive Topology Maps](../roadmap/features/interactive-topology-maps.md), [VS Code Blast Radius UI](../roadmap/features/vs-code-blast-radius-ui.md), [VS Code Webview Infrastructure](../roadmap/features/vs-code-webview-infrastructure.md) | Replaced `React-Force-Graph` with native `d3-force` optimized SVG. Gracefully groups clusters. Hover provider runs BFS but swallows all errors silently. VS Code webview hardcodes `filePath` to `""`, making the handler dead. | Fix silent error swallowing in Hover provider. Fix hardcoded empty strings in local-snapshot-service to make Webview functional. |
+| **Terminal UI (TUI) & Dashboard** | - | [MCP Dashboard UI](../roadmap/features/mcp-dashboard-ui.md), [Wizard Style Interactive CLI](../roadmap/features/wizard-style-interactive-cli.md), [Natural Language UI](../roadmap/features/natural-language-ui.md), [Document Upload UI](../roadmap/features/document-upload-ui.md), [Review UI Frontend](../roadmap/features/review-ui-frontend.md), [CLI Commands Analyze Init](../roadmap/features/cli-commands-analyze-init.md), [Docuvia Sync Bidirectional CLI](../roadmap/features/docuvia-sync-bidirectional-cli.md), [Workspace Onboarding Init](../roadmap/features/workspace-onboarding-init.md), [VS Code Search Results UI](../roadmap/features/vs-code-search-results-ui.md), [VS Code Extension Endpoints](../roadmap/features/vs-code-extension-endpoints.md), [GitHub PR Integration](../roadmap/features/github-pr-integration.md), [Slack Teams Bot](../roadmap/features/slack-teams-bot.md) | CLI uses `@inquirer/prompts`. Web dashboard provides metrics and navigation. Workspace init only has scaffolding (empty SQLite schema). Sync CLI errors out on `--local`. Slack bot has invisible failures (fire-and-forget). VS Code Search UI is not wired up. | Build real workspace init flow. Wire up sync CLI `--local` mode. Add error handling and tracking to Slack bot integration. |

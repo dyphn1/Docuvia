@@ -1,6 +1,6 @@
 # Generate pipeline orchestrator
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 1: Core API & Database (The Metabolism Engine)
 - **Evidence / Verification Target**: `lib/core/src/services/generation/generate.service.ts`
 

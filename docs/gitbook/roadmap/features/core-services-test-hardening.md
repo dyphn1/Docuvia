@@ -1,6 +1,6 @@
 # Core Services Test Hardening
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 6: Architecture Hardening & Security
 - **Evidence / Verification Target**: `lib/core/src/services/*.test.ts`
 

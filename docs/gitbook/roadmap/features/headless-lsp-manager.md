@@ -1,6 +1,6 @@
 # Headless LSP Manager
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 2: AST Microkernel & Semantic Diffing
 - **Evidence / Verification Target**: `lib/headless-lsp/`
 - **ADR**: [ADR-025](../../adr/ADR-025-hybrid-temp-file-blast-radius.md)

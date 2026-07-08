@@ -1,6 +1,6 @@
 # Graph index
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 3: Agentic RAG & MCP Interfaces
 - **Evidence / Verification Target**: `lib/db/src/schema/pg/node-links.ts`
 

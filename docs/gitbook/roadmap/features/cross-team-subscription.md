@@ -1,6 +1,6 @@
 # Cross-team subscription
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 6: Architecture Hardening & Security
 - **Evidence / Verification Target**: `lib/db/src/schema/pg/subscriptions.ts`
 

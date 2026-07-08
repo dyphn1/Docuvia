@@ -1,6 +1,6 @@
 # Agentic RAG (Intent Router)
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 3: Agentic RAG & MCP Interfaces
 - **Evidence / Verification Target**: `lib/core/src/services/intent-router.ts`
 - **ADR**: [ADR-007](../../adr/ADR-007-agentic-rag-routing.md)

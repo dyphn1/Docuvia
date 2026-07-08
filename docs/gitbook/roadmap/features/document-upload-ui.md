@@ -1,6 +1,6 @@
 # Document Upload UI
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `artifacts/kg-engine/src/pages/documents/components/UploadTab.tsx`
 

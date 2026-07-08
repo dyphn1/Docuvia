@@ -1,6 +1,6 @@
 # Review UI (frontend)
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `artifacts/kg-engine/src/pages/Review.tsx`
 

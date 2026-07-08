@@ -1,6 +1,6 @@
 # Cross-project linking
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 4: Git-Isomorphic Sync & Temporal Knowledge
 - **Evidence / Verification Target**: `lib/core/src/services/cross-project-service.ts`
 - **ADR**: [ADR-024](../../adr/ADR-024-cross-project-soft-linking.md)

@@ -1,6 +1,6 @@
 # Shared Core DI Orchestrator
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 6: Architecture Hardening & Security
 - **Evidence / Verification Target**: `lib/core/src/interfaces/intent-router.interfaces.ts`
 

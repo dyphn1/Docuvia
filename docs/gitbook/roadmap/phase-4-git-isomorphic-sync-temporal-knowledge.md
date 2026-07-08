@@ -18,8 +18,8 @@ This phase tracks the following specific features. Click on any feature to view 
 | :-------------------------------- | :---------------------- | :---------------------------------------------------------- |
 | Orphan Branch R/W Protocol        | ⚠️ WARN                 | [View Details](features/orphan-branch-r-w-protocol.md)      |
 | Tiered Storage & Tombstone GC     | 🔲 TODO                 | [View Details](features/tiered-storage-tombstone-gc.md)     |
-| Cross-project linking             | ✅ Done                 | [View Details](features/cross-project-linking.md)           |
+| Cross-project linking             | ⚠️ WARN                 | [View Details](features/cross-project-linking.md)           |
 | Temporal Decay Scoring            | ⚠️ WARN                 | [View Details](features/temporal-decay-scoring.md)          |
-| Template management & Inheritance | ✅ Done                 | [View Details](features/template-management-inheritance.md) |
-| `docuvia sync` Bidirectional CLI  | ✅ Done                 | [View Details](features/docuvia-sync-bidirectional-cli.md)  |
+| Template management & Inheritance | ⚠️ WARN                 | [View Details](features/template-management-inheritance.md) |
+| `docuvia sync` Bidirectional CLI  | ⚠️ WARN                 | [View Details](features/docuvia-sync-bidirectional-cli.md)  |
 | SVN integration                   | ⏸️ Pending / Deprecated | [View Details](features/svn-integration.md)                 |

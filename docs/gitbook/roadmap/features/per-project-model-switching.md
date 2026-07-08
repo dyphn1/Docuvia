@@ -1,6 +1,6 @@
 # Per-project model switching
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 1: Core API & Database (The Metabolism Engine)
 - **Evidence / Verification Target**: `lib/db/src/schema/pg/llm-configs.ts` + `lib/core/src/services/llm-provider.ts`
 - **ADR**: [ADR-026](../../adr/ADR-026-multi-provider-llm-abstraction.md)

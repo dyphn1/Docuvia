@@ -1,6 +1,6 @@
 # `docuvia sync` Bidirectional CLI
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 4: Git-Isomorphic Sync & Temporal Knowledge
 - **Evidence / Verification Target**: `artifacts/cli/src/commands/sync.ts`
 

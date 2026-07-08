@@ -1,6 +1,6 @@
 # LLM abstraction layer
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 1: Core API & Database (The Metabolism Engine)
 - **Evidence / Verification Target**: `lib/integrations-openai-ai-server/src/client.ts` — no Anthropic/Gemini adapters
 - **ADR**: [ADR-026](../../adr/ADR-026-multi-provider-llm-abstraction.md)

@@ -1,6 +1,6 @@
 # Multi-root Workspace Support
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `artifacts/vscode-client/src/knowledge-graph-tree-provider.ts`
 

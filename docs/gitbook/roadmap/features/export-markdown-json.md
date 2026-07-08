@@ -1,6 +1,6 @@
 # Export (Markdown / JSON)
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `artifacts/api-server/src/services/export.service.ts`
 

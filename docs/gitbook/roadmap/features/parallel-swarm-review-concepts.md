@@ -1,6 +1,6 @@
 # Parallel Swarm Review Concepts
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 6: Architecture Hardening & Security
 - **Evidence / Verification Target**: Planned parallel verifiers inspired by GitNexus
 - **ADR**: [ADR-032](../../adr/ADR-032-parallel-swarm-review-and-background-rag.md)

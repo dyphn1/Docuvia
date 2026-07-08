@@ -1,6 +1,6 @@
 # Zero-Server Deep Traversal
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 2: AST Microkernel & Semantic Diffing
 - **Evidence / Verification Target**: `lib/core/src/services/local-snapshot-service.ts`
 

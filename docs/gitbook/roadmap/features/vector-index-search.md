@@ -1,6 +1,6 @@
 # Vector Index & Search
 
-- **Status**: ✅ Done (Deprecated/Server-Only)
+- **Status**: ⚠️ WARN (Deprecated/Server-Only)
 - **Phase**: Phase 3: Agentic RAG & MCP Interfaces
 - **Evidence / Verification Target**: `lib/core/src/services/intent-router.ts`
 - **ADR**: [ADR-029](../../adr/ADR-029-local-vector-index-and-natural-language-ui.md)

@@ -1,6 +1,6 @@
 # Presentation Layer DI Composition
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 6: Architecture Hardening & Security
 - **Evidence / Verification Target**: `artifacts/api-server/src/di.ts`
 

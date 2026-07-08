@@ -1,6 +1,6 @@
 # Template management & Inheritance
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 4: Git-Isomorphic Sync & Temporal Knowledge
 - **Evidence / Verification Target**: `lib/core/src/services/prompt-service.ts` — needs integration of Handlebars/Liquid and version pinning
 - **ADR**: [ADR-030](../../adr/ADR-030-template-management-and-inheritance.md)

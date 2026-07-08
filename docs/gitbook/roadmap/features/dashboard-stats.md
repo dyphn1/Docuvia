@@ -1,6 +1,6 @@
 # Dashboard & stats
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `lib/plugins-domain/src/dashboard.service.ts`
 

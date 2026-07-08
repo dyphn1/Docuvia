@@ -1,6 +1,6 @@
 # Incremental update (delta-only)
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 1: Core API & Database (The Metabolism Engine)
 - **Evidence / Verification Target**: `lib/db/src/schema/pg/projects.ts`
 

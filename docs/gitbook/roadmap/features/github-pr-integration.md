@@ -1,6 +1,6 @@
 # GitHub PR integration
 
-- **Status**: ✅ Done
+- **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
 - **Evidence / Verification Target**: `artifacts/api-server/src/routes/github-webhooks.ts`
 

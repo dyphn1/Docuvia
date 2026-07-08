@@ -48,6 +48,6 @@ export const insertProjectSchema = createInsertSchema(projectsTable).omit({
   createdAt: true,
   updatedAt: true,
 });
-export const updateProjectSchema = insertProjectSchema.partial();
+
 export type InsertProject = z.infer<typeof insertProjectSchema>;
 export type Project = typeof projectsTable.$inferSelect;

@@ -13,11 +13,12 @@
   "scripts": {
     "push": "drizzle-kit push --config ./drizzle.config.cjs",
     "push-force": "drizzle-kit push --force --config ./drizzle.config.cjs",
-    "migrate": "tsx src/migrate.ts"
+    "migrate": "tsx src/migrate.ts",
+    "build": "tsc -b"
   },
   "dependencies": {
     "drizzle-orm": "^0.36.0",
-    "drizzle-zod": "^0.6.1",
+    "drizzle-zod": "^0.5.1",
     "pg": "^8.20.0",
     "pino": "^10.3.1",
     "postgres": "^3.4.9",

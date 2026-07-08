@@ -33,7 +33,7 @@ export const l3NodesTable = pgTable(
     aiGenerated: boolean("ai_generated").notNull().default(true),
     confidence: real("confidence"),
     noiseScore: real("noise_score"),
-    embedding: vector("embedding", { dimensions: 1536 }),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
     lastVerifiedAt: timestamp("last_verified_at").defaultNow(),
     occurrenceCount: integer("occurrence_count").notNull().default(1),
@@ -44,13 +44,9 @@ export const l3NodesTable = pgTable(
     contentHash: text("content_hash"),
   },
   (table) => ({
-    l3EmbeddingIdx: index("l3_nodes_embedding_idx").using(
-      "ivfflat",
-      table.embedding.op("vector_cosine_ops")
-    ),
     l3L2NodeIdx: index("l3_nodes_l2_node_id_idx").on(table.l2NodeId),
     contentHashIdx: index("l3_nodes_content_hash_idx").on(table.contentHash),
-    sourceCommitsIdx: index("l3_nodes_source_commits_idx").using("gin", table.sourceCommits),
+    sourceCommitsIdx: index("l3_nodes_source_commits_idx"),
     introducedInCommitIdx: index("l3_nodes_introduced_in_commit_idx").on(table.introducedInCommit),
   })
 );

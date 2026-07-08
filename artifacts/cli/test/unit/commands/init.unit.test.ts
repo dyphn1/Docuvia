@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { initCommand } from "../../../src/commands/init.js";
 import { ui } from "../../../src/ui/wizard.js";
 import process from "process";
-import { DI_TOKENS, container } from "@workspace/core";
+import { DI_TOKENS, DI_KEYS, container } from "@workspace/core";
 import {
   CursorPlatform,
   ClaudePlatform,

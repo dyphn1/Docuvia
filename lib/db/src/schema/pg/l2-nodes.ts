@@ -34,7 +34,7 @@ export const l2NodesTable = pgTable(
     description: text("description"),
     aiGenerated: boolean("ai_generated").notNull().default(true),
     needsReview: boolean("needs_review").notNull().default(false),
-    embedding: vector("embedding", { dimensions: 1536 }),
+
     createdAt: timestamp("created_at").notNull().defaultNow(),
     lastVerifiedAt: timestamp("last_verified_at").defaultNow(),
     pathPatterns: jsonb("path_patterns"),
@@ -43,10 +43,6 @@ export const l2NodesTable = pgTable(
     contentHash: text("content_hash"),
   },
   (table) => ({
-    l2EmbeddingIdx: index("l2_nodes_embedding_idx").using(
-      "ivfflat",
-      table.embedding.op("vector_cosine_ops")
-    ),
     l2ProjectIdx: index("l2_nodes_project_id_idx").on(table.projectId),
     nameIdx: index("l2_nodes_name_idx").on(table.name),
     contentHashIdx: index("l2_nodes_content_hash_idx").on(table.contentHash),

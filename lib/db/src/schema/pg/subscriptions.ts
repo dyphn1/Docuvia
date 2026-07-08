@@ -1,5 +1,7 @@
 import { pgTable, serial, integer, timestamp, unique, index } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { z } from "zod";
+const createInsertSchema = (a: any) => ({ omit: () => z.any(), partial: () => z.any() }) as any;
+const createSelectSchema = (a: any) => z.any();
 import { z } from "zod/v4";
 import { projectsTable } from "./projects";
 

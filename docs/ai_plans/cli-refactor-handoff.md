@@ -28,3 +28,17 @@ When resuming work, the AI Agent MUST implement the following steps within `Init
    - Propose generic L1 tags based on heuristics (e.g., if `.tsx` is found, propose "Frontend").
    - *(Optional AI Expansion)* If configured, send a shallow directory snapshot to the LLM (`integrations-openai-ai-server`) to suggest more contextual L1 tags.
 4. **Cognitive Snapshot**: Write the discovered project context and proposed tags into the newly created `.docuvia/local.db` tables (`projects`, `l1_tags`).
+
+### Pending Task: Update CLI Unit & Integration Tests
+
+The massive refactoring of `artifacts/cli` successfully purged hardcoded schemas and forced the adoption of the Dependency Injection Container (`setupDI`) from `@workspace/core`.
+However, because all CLI `commands/*.ts` now use `container.resolve<Service>(...)` instead of `new Service()`, several **existing unit tests and integration tests are currently failing**.
+
+**The failures happen because:**
+1. The `container` object from `@workspace/core` is not properly mocked or populated in test setup files (like `query.unit.test.ts` or `status.unit.test.ts`), throwing `[vitest] No "container" export is defined`.
+2. The UI messages were extracted to `UI_MESSAGES` in `constants/ui-messages.ts`, so test assertions checking for exact terminal output (like `expect(stdout).toContain("...")`) need to be updated to match the new dynamic templates.
+
+**Next AI Agent Steps:**
+- Update `test/unit/commands/*.unit.test.ts` to properly mock the `@workspace/core` container.
+- Update `test/integration/*.test.ts` to match the new output strings defined in `artifacts/cli/src/constants/ui-messages.ts`.
+- Ensure `pnpm --filter @workspace/cli test` runs completely green before proceeding to the `InitService` deep-dive.

@@ -1,11 +1,11 @@
 import os from "os";
-import path from "path";
 import { AstWorkerPool } from "./ast-worker-pool.js";
 import {
   DiscoveredFile,
   IAstProcessor,
   ParsedAstFileResult,
 } from "../interfaces/analyzer.interfaces.js";
+import { detectLanguageForFile } from "../utils/language-detection.js";
 
 export class AstProcessingService implements IAstProcessor {
   public async processFiles(
@@ -16,36 +16,10 @@ export class AstProcessingService implements IAstProcessor {
     const pool = new AstWorkerPool();
     await pool.initialize(workerCount);
 
-    const getLanguage = (file: string) => {
-      const ext = path.extname(file).toLowerCase();
-      switch (ext) {
-        case ".ts":
-        case ".tsx":
-        case ".js":
-        case ".jsx":
-          return "typescript";
-        case ".py":
-          return "python";
-        case ".rs":
-          return "rust";
-        case ".go":
-          return "go";
-        case ".cpp":
-        case ".cc":
-        case ".c":
-        case ".h":
-        case ".hpp":
-          return "cpp";
-        case ".java":
-          return "java";
-        case ".rb":
-          return "ruby";
-        case ".php":
-          return "php";
-        default:
-          return "typescript";
-      }
-    };
+    // Fallback preserved for behavioral parity — pre-existing smell (files with no detected
+    // language shouldn't ideally be force-fed to the TS parser), but FileDiscoveryService already
+    // filters to registry-supported extensions upstream, so this branch should rarely trigger.
+    const getLanguage = (file: string) => detectLanguageForFile(file) ?? "typescript";
 
     const parsedResults: ParsedAstFileResult[] = [];
     const batchSize = 50;

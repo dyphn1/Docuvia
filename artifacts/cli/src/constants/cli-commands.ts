@@ -27,16 +27,17 @@ export const CLI_COMMAND_DESCRIPTIONS: Record<CliCommand, string> = {
 };
 
 export function getUsageText(): string {
-  return `Usage:
-  docuvia ${CLI_COMMANDS.INIT.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.INIT]}
-  docuvia ${(CLI_COMMANDS.ANALYZE + " [path] [--deep]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.ANALYZE]}
-  docuvia ${(CLI_COMMANDS.QUERY + " <target> [--local]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.QUERY]}
-  docuvia ${(CLI_COMMANDS.REVIEW + " [--baseRef=...]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.REVIEW]}
-  docuvia ${CLI_COMMANDS.SNAPSHOT.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.SNAPSHOT]}
-  docuvia ${(CLI_COMMANDS.SYNC + " <project_id> [sha]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.SYNC]}
-  docuvia ${CLI_COMMANDS.STATUS.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.STATUS]}
-  docuvia ${CLI_COMMANDS.CLEAN.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.CLEAN]}
-  docuvia ${(CLI_COMMANDS.EXPORT + " --topology [--json]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.EXPORT]}
-  docuvia ${CLI_COMMANDS.MCP.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.MCP]}
-`;
+  return [
+    "Usage:",
+    `  docuvia ${CLI_COMMANDS.INIT.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.INIT]}`,
+    `  docuvia ${(CLI_COMMANDS.ANALYZE + " [path] [--deep]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.ANALYZE]}`,
+    `  docuvia ${(CLI_COMMANDS.QUERY + " <target> [--local]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.QUERY]}`,
+    `  docuvia ${(CLI_COMMANDS.REVIEW + " [--baseRef=...]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.REVIEW]}`,
+    `  docuvia ${CLI_COMMANDS.SNAPSHOT.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.SNAPSHOT]}`,
+    `  docuvia ${(CLI_COMMANDS.SYNC + " <project_id> [sha]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.SYNC]}`,
+    `  docuvia ${CLI_COMMANDS.STATUS.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.STATUS]}`,
+    `  docuvia ${CLI_COMMANDS.CLEAN.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.CLEAN]}`,
+    `  docuvia ${(CLI_COMMANDS.EXPORT + " --topology [--json]").padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.EXPORT]}`,
+    `  docuvia ${CLI_COMMANDS.MCP.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[CLI_COMMANDS.MCP]}`,
+  ].join("\n");
 }

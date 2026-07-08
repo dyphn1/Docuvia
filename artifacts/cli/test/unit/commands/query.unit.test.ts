@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { queryCommand } from "../../../src/commands/query.js";
 import { ui } from "../../../src/ui/wizard.js";
 import process from "process";
-import { DI_TOKENS, container } from "@workspace/core";
+import { DI_TOKENS, DI_KEYS, container } from "@workspace/core";
 
 // We need to mock the services we are resolving from the container
 const mockQuery = vi.fn();

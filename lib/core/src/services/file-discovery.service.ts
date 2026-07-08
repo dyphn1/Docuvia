@@ -5,11 +5,14 @@ import crypto from "crypto";
 import Database from "better-sqlite3";
 import fg from "fast-glob";
 import ignore from "ignore";
-import { exec } from "child_process";
-import * as util from "util";
 import { DiscoveredFile, IFileDiscovery } from "../interfaces/analyzer.interfaces.js";
+import { IWorkspaceGitService } from "../interfaces/workspace-git.interfaces.js";
+import { WorkspaceGitService } from "./workspace-git.service.js";
+import { isSupportedSourceFile, getSupportedGlobExtensions } from "../utils/language-detection.js";
 
 export class FileDiscoveryService implements IFileDiscovery {
+  constructor(private workspaceGit: IWorkspaceGitService = new WorkspaceGitService()) {}
+
   public async discoverFiles(
     workspaceRoot: string,
     dbPath: string,
@@ -20,48 +23,28 @@ export class FileDiscoveryService implements IFileDiscovery {
     skippedCount: number;
   }> {
     const { onlyIndexed = false } = options;
-    const execAsync = util.promisify(exec);
     let allFiles: string[] = [];
     const gitBlobHashes = new Map<string, string>();
     const dirtyFiles = new Set<string>();
-    let usingGit = false;
-
-    try {
-      // Test if git is available and we are in a git repository
-      await execAsync("git rev-parse --is-inside-work-tree", { cwd: workspaceRoot });
-      usingGit = true;
-    } catch (e) {
-      usingGit = false;
-    }
+    let usingGit = await this.workspaceGit.isGitRepository(workspaceRoot);
 
     if (usingGit) {
       console.log(`[docuvia] Starting global AST scan using Git-native blob hashing...`);
       try {
-        const res = await execAsync("git ls-files -s", { cwd: workspaceRoot });
-        for (const line of res.stdout.split("\n")) {
-          if (!line.trim()) continue;
-          const [info, file] = line.split("\t");
-          const blobSha = info.split(" ")[1];
-          if (file && blobSha) gitBlobHashes.set(file, blobSha);
+        const trackedHashes = await this.workspaceGit.listTrackedFilesWithBlobHash(workspaceRoot);
+        for (const [file, blobSha] of trackedHashes) {
+          gitBlobHashes.set(file, blobSha);
         }
 
-        const untracked = await execAsync("git ls-files --others --exclude-standard", {
-          cwd: workspaceRoot,
-        });
-        const modified = await execAsync("git diff --name-only", { cwd: workspaceRoot });
+        const untracked = await this.workspaceGit.listUntrackedFiles(workspaceRoot);
+        const modified = await this.workspaceGit.listModifiedFiles(workspaceRoot);
 
         if (!onlyIndexed) {
-          [...untracked.stdout.split("\n"), ...modified.stdout.split("\n")].forEach((f: string) => {
+          [...untracked, ...modified].forEach((f: string) => {
             if (f.trim()) dirtyFiles.add(f.trim());
           });
 
-          allFiles = [
-            ...gitBlobHashes.keys(),
-            ...untracked.stdout
-              .split("\n")
-              .map((f: string) => f.trim())
-              .filter(Boolean),
-          ];
+          allFiles = [...gitBlobHashes.keys(), ...untracked];
         } else {
           allFiles = [...gitBlobHashes.keys()];
         }
@@ -85,7 +68,7 @@ export class FileDiscoveryService implements IFileDiscovery {
         console.debug("[docuvia] No .gitignore found, proceeding without it.");
       }
 
-      const globbedFiles = await fg("**/*.{ts,js,jsx,tsx,py,go,rs,cpp,c,h,hpp,java,php,rb}", {
+      const globbedFiles = await fg(`**/*.{${getSupportedGlobExtensions().join(",")}}`, {
         cwd: workspaceRoot,
         ignore: ["node_modules/**", ".git/**", ".docuvia/**", "dist/**", "build/**"],
         absolute: false,
@@ -97,9 +80,9 @@ export class FileDiscoveryService implements IFileDiscovery {
     }
 
     // Filter by supported extensions (redundant for glob, but ensures git outputs are clean)
-    const extRegex = /\.(ts|js|jsx|tsx|py|go|rs|cpp|c|h|hpp|java|php|rb)$/;
     allFiles = allFiles.filter(
-      (f: string) => extRegex.test(f) && !f.includes("node_modules/") && !f.includes(".docuvia/")
+      (f: string) =>
+        isSupportedSourceFile(f) && !f.includes("node_modules/") && !f.includes(".docuvia/")
     );
 
     console.log(`[docuvia] Discovered ${allFiles.length} source files.`);
@@ -142,11 +125,7 @@ export class FileDiscoveryService implements IFileDiscovery {
         try {
           if (onlyIndexed && usingGit && gitBlobHashes.has(file)) {
             const blobSha = gitBlobHashes.get(file)!;
-            const catRes = await execAsync(`git cat-file blob ${blobSha}`, {
-              cwd: workspaceRoot,
-              maxBuffer: 10 * 1024 * 1024,
-            });
-            code = catRes.stdout;
+            code = await this.workspaceGit.readBlobContent(workspaceRoot, blobSha);
           } else {
             code = await fs.readFile(path.join(workspaceRoot, file), "utf-8");
           }

@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { syncCommand } from "../../../src/commands/sync.js";
 import { ui } from "../../../src/ui/wizard.js";
 import process from "process";
-import { DI_TOKENS, container } from "@workspace/core";
+import { DI_TOKENS, DI_KEYS, container } from "@workspace/core";
 
 const mockSync = vi.fn();
 container.register(DI_TOKENS.SyncService, { sync: mockSync });

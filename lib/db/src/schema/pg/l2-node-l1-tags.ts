@@ -19,6 +19,6 @@ export const l2NodeL1TagsTable = pgTable(
 );
 
 export const insertL2NodeL1TagSchema = createInsertSchema(l2NodeL1TagsTable).omit({ id: true });
-export const updateL2NodeL1TagSchema = insertL2NodeL1TagSchema.partial();
+
 export type InsertL2NodeL1Tag = z.infer<typeof insertL2NodeL1TagSchema>;
 export type L2NodeL1Tag = typeof l2NodeL1TagsTable.$inferSelect;

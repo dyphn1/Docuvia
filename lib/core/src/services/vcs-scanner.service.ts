@@ -1,21 +1,21 @@
-import { exec } from "child_process";
-import * as util from "util";
 import { IVcsScanner } from "../interfaces/analyzer.interfaces.js";
+import { IWorkspaceGitService } from "../interfaces/workspace-git.interfaces.js";
+import { WorkspaceGitService } from "./workspace-git.service.js";
 
 export class VcsScannerService implements IVcsScanner {
+  constructor(private workspaceGit: IWorkspaceGitService = new WorkspaceGitService()) {}
+
   public async extractHotspotTags(workspaceRoot: string): Promise<string[]> {
     const suggestedTags = new Set<string>();
     try {
-      const execAsync = util.promisify(exec);
-
       // --- 1. VCS-Driven Hotspot Extraction (ADR-005) ---
-      await execAsync("git rev-parse --is-inside-work-tree", { cwd: workspaceRoot });
-      const gitLogRes = await execAsync('git log -n 100 --name-only --format=""', {
-        cwd: workspaceRoot,
-      });
+      const isGit = await this.workspaceGit.isGitRepository(workspaceRoot);
+      if (!isGit) return [];
+
+      const changedPaths = await this.workspaceGit.getRecentChangedFilePaths(workspaceRoot, 100);
 
       const pathCounts = new Map<string, number>();
-      const lines = gitLogRes.stdout.split("\n");
+      const lines = changedPaths;
 
       for (const line of lines) {
         const trimmed = line.trim();

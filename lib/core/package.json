@@ -19,6 +19,7 @@
     "@workspace/ast-core": "workspace:^",
     "@workspace/db": "workspace:*",
     "@workspace/llm-orchestrator": "workspace:*",
+    "@workspace/plugins-ast": "workspace:^",
     "better-sqlite3": "^12.11.1",
     "drizzle-orm": "^0.36.4",
     "drizzle-zod": "^0.6.1",

@@ -28,6 +28,6 @@ export const insertL1TagSchema = createInsertSchema(l1TagsTable).omit({
   createdAt: true,
   usageCount: true,
 });
-export const updateL1TagSchema = insertL1TagSchema.partial();
+
 export type InsertL1Tag = z.infer<typeof insertL1TagSchema>;
 export type L1Tag = typeof l1TagsTable.$inferSelect;

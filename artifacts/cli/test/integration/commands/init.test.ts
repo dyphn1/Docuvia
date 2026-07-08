@@ -9,8 +9,13 @@ describe("Command: docuvia init", () => {
 
   beforeEach(async () => {
     sandbox = new TestSandbox();
-    // Start with a completely empty sandbox, no DB
-    await sandbox.setup({ initGit: true });
+    // Seed a fixture source file so Deterministic Recon / AST parsing has something to discover.
+    await sandbox.setup({
+      initGit: true,
+      files: {
+        "src/index.ts": "export function hello(): string {\n  return 'world';\n}\n",
+      },
+    });
   }, 30000);
 
   afterEach(async () => {
@@ -50,6 +55,17 @@ describe("Command: docuvia init", () => {
       for (const expectedTable of expectedCoreTables) {
         expect(tableNames).toContain(expectedTable);
       }
+
+      // Cognitive Snapshot: a single project row and at least one proposed L1 tag.
+      const { count: projectCount } = db
+        .prepare("SELECT COUNT(*) as count FROM projects")
+        .get() as { count: number };
+      expect(projectCount).toBe(1);
+
+      const { count: tagCount } = db.prepare("SELECT COUNT(*) as count FROM l1_tags").get() as {
+        count: number;
+      };
+      expect(tagCount).toBeGreaterThanOrEqual(1);
     } finally {
       db.close();
     }
@@ -66,5 +82,17 @@ describe("Command: docuvia init", () => {
     expect(secondResult.stdout || secondResult.stderr).toContain(
       "Docuvia Agent Integrations successfully installed!"
     );
+
+    // The `projects` row must not be duplicated across repeated init runs.
+    const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
+    const db = new Database(dbPath, { readonly: true });
+    try {
+      const { count } = db.prepare("SELECT COUNT(*) as count FROM projects").get() as {
+        count: number;
+      };
+      expect(count).toBe(1);
+    } finally {
+      db.close();
+    }
   }, 35000);
 });

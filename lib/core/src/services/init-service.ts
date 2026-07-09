@@ -1,94 +1,56 @@
 import fs from "fs/promises";
 import path from "path";
-import cp from "child_process";
-import util from "util";
 import Database from "better-sqlite3";
+import { fileURLToPath, pathToFileURL } from "url";
 import { ensureLocalFtsIndex } from "./sqlite-fts.js";
 import { TempFileManager } from "./temp-file-manager.js";
 import { logger } from "../utils/logger.js";
-import { fileURLToPath } from "url";
+import { IWorkspaceGitService } from "../interfaces/workspace-git.interfaces.js";
+import { WorkspaceGitService } from "./workspace-git.service.js";
+import {
+  IFileDiscovery,
+  IAstProcessor,
+  IGraphDatabaseRepository,
+  IConfigScanner,
+  IVcsScanner,
+} from "../interfaces/analyzer.interfaces.js";
+import { FileDiscoveryService } from "./file-discovery.service.js";
+import { AstProcessingService } from "./ast-processing.service.js";
+import { SqliteGraphRepository } from "./sqlite-graph.repository.js";
+import { ConfigScannerService } from "./config-scanner.service.js";
+import { VcsScannerService } from "./vcs-scanner.service.js";
+import { detectLanguageForFile } from "../utils/language-detection.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const exec = util.promisify(cp.exec);
-
 export class InitService {
   constructor(
-    private workspaceRoot: string,
-    private logCallback: (msg: string) => void = (msg) => console.log(msg)
+    private workspaceRoot: string = process.cwd(),
+    private logCallback: (msg: string) => void = (msg) => console.log(msg),
+    private workspaceGit: IWorkspaceGitService = new WorkspaceGitService(),
+    private fileDiscovery: IFileDiscovery = new FileDiscoveryService(),
+    private astProcessor: IAstProcessor = new AstProcessingService(),
+    private graphRepository: IGraphDatabaseRepository = new SqliteGraphRepository(),
+    private configScanner: IConfigScanner = new ConfigScannerService(),
+    private vcsScanner: IVcsScanner = new VcsScannerService()
   ) {}
 
   public async init() {
     this.logCallback(`Initializing project in ${this.workspaceRoot}...`);
 
-    // 1. Setup branch
-    let branchExists = false;
+    // 1. Setup hidden knowledge-graph branch
+    await this.workspaceGit.ensureKnowledgeBranch(this.workspaceRoot);
+
+    // 2. Install post-commit hook (non-fatal on failure)
+    this.logCallback(`Installing post-commit hook...`);
+    await this.workspaceGit.installPostCommitHook(this.workspaceRoot);
+
+    // 3. Initialize SQLite database + register this workspace as the local project
+    const docuviaDir = path.join(this.workspaceRoot, ".docuvia");
+    const dbPath = path.join(docuviaDir, "local.db");
     try {
-      const { stdout } = await exec("git branch --list docuvia-knowledge", {
-        cwd: this.workspaceRoot,
-      });
-      if (stdout.trim().length > 0) {
-        branchExists = true;
-      }
-    } catch {}
-
-    if (!branchExists) {
-      try {
-        this.logCallback(`Creating hidden docuvia-knowledge branch...`);
-        const { stdout: treeHash } = await exec("git hash-object -t tree /dev/null", {
-          cwd: this.workspaceRoot,
-        });
-        const { stdout: commitHash } = await exec(
-          `echo "chore: initialize empty knowledge graph" | git commit-tree ${treeHash.trim()}`,
-          { cwd: this.workspaceRoot }
-        );
-        await exec(`git update-ref refs/heads/docuvia-knowledge ${commitHash.trim()}`, {
-          cwd: this.workspaceRoot,
-        });
-      } catch (err: any) {
-        throw new Error(`Failed to create branch: ${err.message}`);
-      }
-    }
-
-    // 2. Install Git Hook
-    try {
-      const gitHookDir = path.join(this.workspaceRoot, ".git", "hooks");
-      const postCommitPath = path.join(gitHookDir, "post-commit");
-      let hookDirExists = false;
-      try {
-        await fs.access(gitHookDir);
-        hookDirExists = true;
-      } catch {}
-
-      if (hookDirExists) {
-        const hookContent = `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n# Non-intrusively extracts AST deltas in the background\nif command -v npx &> /dev/null; then\n  # Fire and forget (do not block commit)\n  npx --no-install docuvia snapshot > /dev/null 2>&1 &\nfi\n`;
-
-        let shouldWriteHook = true;
-        try {
-          const existingHook = await fs.readFile(postCommitPath, "utf8");
-          if (existingHook.includes("docuvia snapshot")) {
-            shouldWriteHook = false;
-          }
-        } catch (e) {
-          // File does not exist, safe to write
-        }
-
-        if (shouldWriteHook) {
-          this.logCallback(`Installing post-commit hook...`);
-          await fs.appendFile(postCommitPath, hookContent);
-          await fs.chmod(postCommitPath, 0o755);
-        }
-      }
-    } catch (err) {
-      // Fail silently for hook
-    }
-
-    // 3. Initialize SQLite database
-    try {
-      const docuviaDir = path.join(this.workspaceRoot, ".docuvia");
       await fs.mkdir(docuviaDir, { recursive: true });
-      const dbPath = path.join(docuviaDir, "local.db");
       const db = new Database(dbPath);
 
       this.logCallback(`Initializing SQLite database...`);
@@ -99,12 +61,49 @@ export class InitService {
       db.exec(schemaSql);
       // FTS5 keyword indexes for the local-first natural language fallback (ADR-029)
       ensureLocalFtsIndex(db);
+
+      // One project per local.db (see GitConstants.DEFAULT_LOCAL_PROJECT_ID) — only seed the
+      // row on first init so re-running `docuvia init` stays idempotent.
+      const existingProject = db.prepare("SELECT id FROM projects LIMIT 1").get();
+      if (!existingProject) {
+        const remoteUrl = await this.workspaceGit.getRemoteUrl(this.workspaceRoot);
+        const repoUrl = remoteUrl ?? pathToFileURL(path.resolve(this.workspaceRoot)).href;
+        db.prepare("INSERT INTO projects (name, repo_url) VALUES (?, ?)").run(
+          path.basename(this.workspaceRoot),
+          repoUrl
+        );
+      }
+
       db.close();
     } catch (err: any) {
       throw new Error(`Could not initialize database: ${err.message}`);
     }
 
-    // 4. Initialize TempFileManager for LSP and incremental updates
+    // 4. Discover, parse, and persist the initial AST graph, tagged with detected
+    // config/hotspot/language tags (feature sniffing).
+    this.logCallback(`Scanning project files...`);
+    const [configResult, hotspotTags, discovery] = await Promise.all([
+      this.configScanner.scanConfigs(this.workspaceRoot),
+      this.vcsScanner.extractHotspotTags(this.workspaceRoot),
+      this.fileDiscovery.discoverFiles(this.workspaceRoot, dbPath),
+    ]);
+
+    const tags = new Set<string>([...configResult.tags, ...hotspotTags]);
+
+    this.logCallback(`Parsing ${discovery.filesToParse.length} files...`);
+    const parsedResults = await this.astProcessor.processFiles(
+      this.workspaceRoot,
+      discovery.filesToParse
+    );
+    for (const result of parsedResults) {
+      const language = detectLanguageForFile(result.file);
+      if (language) tags.add(language);
+    }
+
+    this.logCallback(`Persisting knowledge graph...`);
+    await this.graphRepository.persistAstGraph(this.workspaceRoot, parsedResults, Array.from(tags));
+
+    // 5. Initialize TempFileManager for LSP and incremental updates
     try {
       const tempFileManager = new TempFileManager(this.workspaceRoot);
       await tempFileManager.initialize();

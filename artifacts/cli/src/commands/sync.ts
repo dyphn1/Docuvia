@@ -1,4 +1,4 @@
-import { SyncService, DI_TOKENS, container } from "@workspace/core";
+import { SyncService, DI_TOKENS, DI_KEYS, container } from "@workspace/core";
 import { createInterface } from "readline";
 import process from "process";
 import { ui } from "../ui/wizard.js";

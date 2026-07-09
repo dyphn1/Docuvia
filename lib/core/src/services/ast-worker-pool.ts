@@ -224,3 +224,8 @@ export class AstWorkerPool implements IASTWorkerPool {
     this.workerQueue = [];
   }
 }
+
+// Legacy compatibility for vscode-client
+export async function shutdownGlobalWorkerPool(): Promise<void> {
+  // no-op placeholder
+}

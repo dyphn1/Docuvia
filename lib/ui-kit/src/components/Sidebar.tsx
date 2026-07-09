@@ -7,19 +7,27 @@ import { PanelLeftIcon } from "lucide-react";
 
 import { useIsMobile } from "../hooks/use-mobile";
 import { cn } from "../lib/utils";
+import {
+  HIDDEN_WHEN_COLLAPSED_TO_ICON_CLASS,
+  MENU_BUTTON_SIZE_TOP_OFFSET_CLASS,
+  MOBILE_HIT_AREA_CLASS,
+  SIDEBAR_COOKIE_MAX_AGE,
+  SIDEBAR_COOKIE_NAME,
+  SIDEBAR_KEYBOARD_SHORTCUT,
+  SIDEBAR_SLOT,
+  SIDEBAR_TOOLTIP_DELAY_DURATION_MS,
+  SIDEBAR_WIDTH,
+  SIDEBAR_WIDTH_ICON,
+  SIDEBAR_WIDTH_MOBILE,
+  SKELETON_TEXT_WIDTH_MIN_PERCENT,
+  SKELETON_TEXT_WIDTH_RANGE_PERCENT,
+} from "../constants/sidebar.js";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Separator } from "./Separator";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./Sheet";
 import { Skeleton } from "./Skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./Tooltip";
-
-const SIDEBAR_COOKIE_NAME = "sidebar_state";
-const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
-const SIDEBAR_WIDTH = "16rem";
-const SIDEBAR_WIDTH_MOBILE = "18rem";
-const SIDEBAR_WIDTH_ICON = "3rem";
-const SIDEBAR_KEYBOARD_SHORTCUT = "b";
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
@@ -114,7 +122,7 @@ function SidebarProvider({
 
   return (
     <SidebarContext.Provider value={contextValue}>
-      <TooltipProvider delayDuration={0}>
+      <TooltipProvider delayDuration={SIDEBAR_TOOLTIP_DELAY_DURATION_MS}>
         <div
           data-slot="sidebar-wrapper"
           style={
@@ -154,7 +162,7 @@ function Sidebar({
   if (collapsible === "none") {
     return (
       <div
-        data-slot="sidebar"
+        data-slot={SIDEBAR_SLOT}
         className={cn(
           "bg-sidebar text-sidebar-foreground flex h-full w-[var(--sidebar-width)] flex-col",
           className
@@ -170,8 +178,8 @@ function Sidebar({
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetContent
-          data-sidebar="sidebar"
-          data-slot="sidebar"
+          data-sidebar={SIDEBAR_SLOT}
+          data-slot={SIDEBAR_SLOT}
           data-mobile="true"
           className="bg-sidebar text-sidebar-foreground w-[var(--sidebar-width)] p-0 [&>button]:hidden"
           style={
@@ -198,7 +206,7 @@ function Sidebar({
       data-collapsible={state === "collapsed" ? collapsible : ""}
       data-variant={variant}
       data-side={side}
-      data-slot="sidebar"
+      data-slot={SIDEBAR_SLOT}
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div
@@ -228,7 +236,7 @@ function Sidebar({
         {...props}
       >
         <div
-          data-sidebar="sidebar"
+          data-sidebar={SIDEBAR_SLOT}
           data-slot="sidebar-inner"
           className="bg-sidebar group-data-[variant=floating]:border-sidebar-border flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:shadow-sm"
         >
@@ -405,8 +413,8 @@ function SidebarGroupAction({
       className={cn(
         "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         // Increases the hit area of the button on mobile.
-        "after:absolute after:-inset-2 md:after:hidden",
-        "group-data-[collapsible=icon]:hidden",
+        MOBILE_HIT_AREA_CLASS,
+        HIDDEN_WHEN_COLLAPSED_TO_ICON_CLASS,
         className
       )}
       {...props}
@@ -537,11 +545,9 @@ function SidebarMenuAction({
       className={cn(
         "text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground peer-hover/menu-button:text-sidebar-accent-foreground absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         // Increases the hit area of the button on mobile.
-        "after:absolute after:-inset-2 md:after:hidden",
-        "peer-data-[size=sm]/menu-button:top-1",
-        "peer-data-[size=default]/menu-button:top-1.5",
-        "peer-data-[size=lg]/menu-button:top-2.5",
-        "group-data-[collapsible=icon]:hidden",
+        MOBILE_HIT_AREA_CLASS,
+        MENU_BUTTON_SIZE_TOP_OFFSET_CLASS,
+        HIDDEN_WHEN_COLLAPSED_TO_ICON_CLASS,
         showOnHover &&
           "peer-data-[active=true]/menu-button:text-sidebar-accent-foreground group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 data-[state=open]:opacity-100 md:opacity-0",
         className
@@ -559,10 +565,8 @@ function SidebarMenuBadge({ className, ...props }: React.ComponentProps<"div">) 
       className={cn(
         "text-sidebar-foreground pointer-events-none absolute right-1 flex h-5 min-w-5 items-center justify-center rounded-md px-1 text-xs font-medium tabular-nums select-none",
         "peer-hover/menu-button:text-sidebar-accent-foreground peer-data-[active=true]/menu-button:text-sidebar-accent-foreground",
-        "peer-data-[size=sm]/menu-button:top-1",
-        "peer-data-[size=default]/menu-button:top-1.5",
-        "peer-data-[size=lg]/menu-button:top-2.5",
-        "group-data-[collapsible=icon]:hidden",
+        MENU_BUTTON_SIZE_TOP_OFFSET_CLASS,
+        HIDDEN_WHEN_COLLAPSED_TO_ICON_CLASS,
         className
       )}
       {...props}
@@ -579,7 +583,7 @@ function SidebarMenuSkeleton({
 }) {
   // Random width between 50 to 90%.
   const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
+    return `${Math.floor(Math.random() * SKELETON_TEXT_WIDTH_RANGE_PERCENT) + SKELETON_TEXT_WIDTH_MIN_PERCENT}%`;
   }, []);
 
   return (
@@ -610,7 +614,7 @@ function SidebarMenuSub({ className, ...props }: React.ComponentProps<"ul">) {
       data-sidebar="menu-sub"
       className={cn(
         "border-sidebar-border mx-3.5 flex min-w-0 translate-x-px flex-col gap-1 border-l px-2.5 py-0.5",
-        "group-data-[collapsible=icon]:hidden",
+        HIDDEN_WHEN_COLLAPSED_TO_ICON_CLASS,
         className
       )}
       {...props}
@@ -653,7 +657,7 @@ function SidebarMenuSubButton({
         "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",
-        "group-data-[collapsible=icon]:hidden",
+        HIDDEN_WHEN_COLLAPSED_TO_ICON_CLASS,
         className
       )}
       {...props}

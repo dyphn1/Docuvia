@@ -11,21 +11,22 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/Popover";
 import { ScrollArea } from "@/components/ui/ScrollArea";
+import {
+  NOTIFICATION_POLL_INTERVAL_MS,
+  RECENT_NOTIFICATIONS_LIMIT,
+  UNREAD_COUNT_DISPLAY_CAP,
+  PAYLOAD_SUMMARY_MAX_LENGTH,
+  NOTIFICATION_TYPE_LABELS,
+  NOTIFICATION_BELL_HEADER_TEXT,
+  NOTIFICATION_BELL_MARK_ALL_READ_TEXT,
+  NOTIFICATION_BELL_EMPTY_TEXT,
+} from "@/constants/app";
 
-const typeLabels: Record<string, { label: string; className: string }> = {
-  new_commit: {
-    label: "New Commit",
-    className: "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400",
-  },
-  new_l3_node: {
-    label: "New L3 Node",
-    className: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-  },
-  cross_link_detected: {
-    label: "Cross Link",
-    className: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
-  },
-};
+function getPayloadSummary(payload: Record<string, unknown>): string {
+  if (typeof payload.summary === "string") return payload.summary;
+  if (typeof payload.message === "string") return payload.message;
+  return JSON.stringify(payload).slice(0, PAYLOAD_SUMMARY_MAX_LENGTH);
+}
 
 interface NotificationBellProps {
   projectId: number;
@@ -37,14 +38,14 @@ export function NotificationBell({ projectId }: NotificationBellProps) {
   const { data } = useListProjectNotifications(projectId, undefined, {
     query: {
       queryKey: getListProjectNotificationsQueryKey(projectId),
-      refetchInterval: 30_000,
+      refetchInterval: NOTIFICATION_POLL_INTERVAL_MS,
       enabled: !!projectId,
     },
   });
 
   const notifications = data?.items ?? [];
   const unreadCount = notifications.filter((n) => !n.read).length;
-  const recent = notifications.slice(0, 10);
+  const recent = notifications.slice(0, RECENT_NOTIFICATIONS_LIMIT);
 
   const { mutate: markRead } = useMarkNotificationRead({
     mutation: {
@@ -66,12 +67,6 @@ export function NotificationBell({ projectId }: NotificationBellProps) {
     },
   });
 
-  const getPayloadSummary = (payload: Record<string, unknown>): string => {
-    if (typeof payload.summary === "string") return payload.summary;
-    if (typeof payload.message === "string") return payload.message;
-    return JSON.stringify(payload).slice(0, 80);
-  };
-
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -79,14 +74,16 @@ export function NotificationBell({ projectId }: NotificationBellProps) {
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-[10px] text-white flex items-center justify-center font-medium leading-none">
-              {unreadCount > 9 ? "9+" : unreadCount}
+              {unreadCount > UNREAD_COUNT_DISPLAY_CAP
+                ? `${UNREAD_COUNT_DISPLAY_CAP}+`
+                : unreadCount}
             </span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <span className="font-semibold text-sm">Notifications</span>
+          <span className="font-semibold text-sm">{NOTIFICATION_BELL_HEADER_TEXT}</span>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
@@ -94,19 +91,22 @@ export function NotificationBell({ projectId }: NotificationBellProps) {
               className="text-xs h-7 px-2"
               onClick={() => markAllRead({ data: { projectId } })}
             >
-              Mark all read
+              {NOTIFICATION_BELL_MARK_ALL_READ_TEXT}
             </Button>
           )}
         </div>
         <ScrollArea className="h-80">
           {recent.length === 0 ? (
             <div className="flex items-center justify-center h-20 text-sm text-muted-foreground">
-              No notifications
+              {NOTIFICATION_BELL_EMPTY_TEXT}
             </div>
           ) : (
             <div className="divide-y divide-border">
               {recent.map((n) => {
-                const typeInfo = typeLabels[n.type] ?? { label: n.type, className: "" };
+                const typeInfo = NOTIFICATION_TYPE_LABELS[n.type] ?? {
+                  label: n.type,
+                  className: "",
+                };
                 return (
                   <button
                     key={n.id}

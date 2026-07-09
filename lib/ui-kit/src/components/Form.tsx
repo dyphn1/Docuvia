@@ -11,6 +11,14 @@ import {
 } from "react-hook-form";
 
 import { cn } from "../lib/utils";
+import {
+  FORM_DESCRIPTION_ID_SUFFIX,
+  FORM_FIELD_CONTEXT_ERROR_MESSAGE,
+  FORM_HELP_TEXT_SIZE_CLASS,
+  FORM_ITEM_CONTEXT_ERROR_MESSAGE,
+  FORM_ITEM_ID_SUFFIX,
+  FORM_MESSAGE_ID_SUFFIX,
+} from "../constants/form.js";
 import { Label } from "./Label";
 
 const Form = FormProvider;
@@ -43,11 +51,11 @@ const useFormField = () => {
   const { getFieldState, formState } = useFormContext();
 
   if (!fieldContext) {
-    throw new Error("useFormField should be used within <FormField>");
+    throw new Error(FORM_FIELD_CONTEXT_ERROR_MESSAGE);
   }
 
   if (!itemContext) {
-    throw new Error("useFormField should be used within <FormItem>");
+    throw new Error(FORM_ITEM_CONTEXT_ERROR_MESSAGE);
   }
 
   const fieldState = getFieldState(fieldContext.name, formState);
@@ -57,9 +65,9 @@ const useFormField = () => {
   return {
     id,
     name: fieldContext.name,
-    formItemId: `${id}-form-item`,
-    formDescriptionId: `${id}-form-item-description`,
-    formMessageId: `${id}-form-item-message`,
+    formItemId: `${id}${FORM_ITEM_ID_SUFFIX}`,
+    formDescriptionId: `${id}${FORM_DESCRIPTION_ID_SUFFIX}`,
+    formMessageId: `${id}${FORM_MESSAGE_ID_SUFFIX}`,
     ...fieldState,
   };
 };
@@ -128,7 +136,7 @@ const FormDescription = React.forwardRef<
     <p
       ref={ref}
       id={formDescriptionId}
-      className={cn("text-[0.8rem] text-muted-foreground", className)}
+      className={cn(FORM_HELP_TEXT_SIZE_CLASS, "text-muted-foreground", className)}
       {...props}
     />
   );
@@ -150,7 +158,7 @@ const FormMessage = React.forwardRef<
     <p
       ref={ref}
       id={formMessageId}
-      className={cn("text-[0.8rem] font-medium text-destructive", className)}
+      className={cn(FORM_HELP_TEXT_SIZE_CLASS, "font-medium text-destructive", className)}
       {...props}
     >
       {body}

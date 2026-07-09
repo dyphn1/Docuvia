@@ -17,6 +17,32 @@ import { Upload, Loader2, CheckCircle2, AlertCircle, File, Inbox, FileText } fro
 import { format } from "date-fns";
 
 import { docTypeColors } from "../../../lib/constants";
+import {
+  ACCEPTED_UPLOAD_FILE_TYPES,
+  UPLOAD_CARD_TITLE,
+  UPLOAD_PROJECT_LABEL,
+  UPLOAD_PROJECT_OPTIONAL_LABEL,
+  UPLOAD_PROJECT_PLACEHOLDER,
+  UPLOAD_NO_PROJECT_HINT,
+  UPLOAD_FILE_FIELD_LABEL,
+  UPLOAD_DROPZONE_HINT,
+  UPLOAD_DROPZONE_FILETYPES_HINT,
+  UPLOAD_OR_PASTE_MANUALLY_LABEL,
+  UPLOAD_FILENAME_LABEL,
+  UPLOAD_FILENAME_PLACEHOLDER,
+  UPLOAD_CONTENT_LABEL,
+  UPLOAD_CONTENT_PLACEHOLDER,
+  UPLOAD_INGESTING_LABEL,
+  UPLOAD_INGEST_DOCUMENT_LABEL,
+  UPLOAD_SAVE_TO_MISC_POOL_LABEL,
+  UPLOAD_SUCCESS_MESSAGE,
+  UPLOAD_PROJECT_DOCUMENTS_CARD_TITLE,
+  UPLOAD_SELECT_PROJECT_HINT,
+  UPLOAD_NO_DOCUMENTS_LABEL,
+  UPLOAD_CHARS_SUFFIX_LABEL,
+  DOCUMENT_DATE_FORMAT_PATTERN,
+  LOADING_LABEL,
+} from "@/constants/documents";
 
 interface UploadTabProps {
   projects: { id: number; name: string }[];
@@ -54,17 +80,20 @@ export function UploadTab({ projects }: UploadTabProps) {
         <CardHeader>
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Upload className="h-4 w-4 text-primary" />
-            Upload Document
+            {UPLOAD_CARD_TITLE}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
             <Label className="text-xs">
-              Project <span className="text-muted-foreground font-normal">(optional)</span>
+              {UPLOAD_PROJECT_LABEL}{" "}
+              <span className="text-muted-foreground font-normal">
+                {UPLOAD_PROJECT_OPTIONAL_LABEL}
+              </span>
             </Label>
             <Select value={selectedProject} onValueChange={setSelectedProject}>
               <SelectTrigger>
-                <SelectValue placeholder="No project — goes to Misc Pool" />
+                <SelectValue placeholder={UPLOAD_PROJECT_PLACEHOLDER} />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((p) => (
@@ -75,28 +104,25 @@ export function UploadTab({ projects }: UploadTabProps) {
               </SelectContent>
             </Select>
             {!selectedProject && (
-              <p className="text-[10px] text-muted-foreground">
-                Without a project, the document will be saved to the Misc Pool for later
-                affiliation.
-              </p>
+              <p className="text-[10px] text-muted-foreground">{UPLOAD_NO_PROJECT_HINT}</p>
             )}
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs">Upload File (MD, TXT)</Label>
+            <Label className="text-xs">{UPLOAD_FILE_FIELD_LABEL}</Label>
             <div className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/40 transition-colors">
               <input
                 type="file"
-                accept=".md,.txt,.markdown,.log,.map"
+                accept={ACCEPTED_UPLOAD_FILE_TYPES}
                 onChange={handleFileUpload}
                 className="hidden"
                 id="file-upload"
               />
               <label htmlFor="file-upload" className="cursor-pointer">
                 <File className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-xs text-muted-foreground">Click to upload or drag & drop</p>
+                <p className="text-xs text-muted-foreground">{UPLOAD_DROPZONE_HINT}</p>
                 <p className="text-[10px] text-muted-foreground/70 mt-1">
-                  .md, .txt, .log, .map files
+                  {UPLOAD_DROPZONE_FILETYPES_HINT}
                 </p>
               </label>
             </div>
@@ -104,14 +130,14 @@ export function UploadTab({ projects }: UploadTabProps) {
 
           <div className="relative flex items-center gap-2 text-xs text-muted-foreground">
             <div className="flex-1 border-t border-border" />
-            <span>or paste manually</span>
+            <span>{UPLOAD_OR_PASTE_MANUALLY_LABEL}</span>
             <div className="flex-1 border-t border-border" />
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs">Filename</Label>
+            <Label className="text-xs">{UPLOAD_FILENAME_LABEL}</Label>
             <Input
-              placeholder="README.md"
+              placeholder={UPLOAD_FILENAME_PLACEHOLDER}
               value={filename}
               onChange={(e) => setFilename(e.target.value)}
               className="text-xs font-mono h-8"
@@ -119,9 +145,9 @@ export function UploadTab({ projects }: UploadTabProps) {
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs">Content</Label>
+            <Label className="text-xs">{UPLOAD_CONTENT_LABEL}</Label>
             <Textarea
-              placeholder="Paste document content here..."
+              placeholder={UPLOAD_CONTENT_PLACEHOLDER}
               value={content}
               onChange={(e) => setContent(e.target.value)}
               className="text-xs font-mono min-h-32 resize-none"
@@ -137,24 +163,24 @@ export function UploadTab({ projects }: UploadTabProps) {
             {loading ? (
               <>
                 <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                Ingesting...
+                {UPLOAD_INGESTING_LABEL}
               </>
             ) : selectedProject ? (
               <>
                 <Upload className="h-3 w-3 mr-2" />
-                Ingest Document
+                {UPLOAD_INGEST_DOCUMENT_LABEL}
               </>
             ) : (
               <>
                 <Inbox className="h-3 w-3 mr-2" />
-                Save to Misc Pool
+                {UPLOAD_SAVE_TO_MISC_POOL_LABEL}
               </>
             )}
           </Button>
 
           {success && (
             <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Document ingested successfully
+              <CheckCircle2 className="h-3.5 w-3.5" /> {UPLOAD_SUCCESS_MESSAGE}
             </div>
           )}
           {error && (
@@ -170,7 +196,7 @@ export function UploadTab({ projects }: UploadTabProps) {
         <CardHeader>
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <FileText className="h-4 w-4 text-primary" />
-            Project Documents
+            {UPLOAD_PROJECT_DOCUMENTS_CARD_TITLE}
             {documents.length > 0 && (
               <Badge variant="secondary" className="ml-auto text-xs">
                 {documents.length}
@@ -181,16 +207,16 @@ export function UploadTab({ projects }: UploadTabProps) {
         <CardContent>
           {!selectedProject ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              Select a project to view its documents
+              {UPLOAD_SELECT_PROJECT_HINT}
             </div>
           ) : loadingDocs ? (
             <div className="text-center py-8 text-muted-foreground text-sm flex items-center justify-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+              <Loader2 className="h-4 w-4 animate-spin" /> {LOADING_LABEL}
             </div>
           ) : documents.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">
               <FileText className="h-8 w-8 mx-auto mb-2 opacity-20" />
-              No documents ingested yet
+              {UPLOAD_NO_DOCUMENTS_LABEL}
             </div>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -212,8 +238,12 @@ export function UploadTab({ projects }: UploadTabProps) {
                     </Badge>
                   </div>
                   <div className="mt-1.5 text-[10px] text-muted-foreground flex gap-3">
-                    <span>{format(new Date(doc.createdAt as string), "MMM d, yyyy HH:mm")}</span>
-                    <span>{doc.content?.length.toLocaleString() || 0} chars</span>
+                    <span>
+                      {format(new Date(doc.createdAt as string), DOCUMENT_DATE_FORMAT_PATTERN)}
+                    </span>
+                    <span>
+                      {doc.content?.length.toLocaleString() || 0} {UPLOAD_CHARS_SUFFIX_LABEL}
+                    </span>
                   </div>
                 </div>
               ))}

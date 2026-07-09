@@ -3,6 +3,12 @@ import * as ContextMenuPrimitive from "@radix-ui/react-context-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "../lib/utils";
+import {
+  MENU_Z_INDEX_CLASS,
+  CONTEXT_MENU_CONTENT_ANIMATION_CLASSES,
+  CONTEXT_MENU_INDICATOR_ITEM_CLASSES,
+  MENU_ITEM_INDICATOR_WRAPPER_CLASSES,
+} from "../constants/menu.js";
 
 const ContextMenu = ContextMenuPrimitive.Root;
 
@@ -44,7 +50,9 @@ const ContextMenuSubContent = React.forwardRef<
   <ContextMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      "z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-context-menu-content-transform-origin]",
+      MENU_Z_INDEX_CLASS,
+      "min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg",
+      CONTEXT_MENU_CONTENT_ANIMATION_CLASSES,
       className
     )}
     {...props}
@@ -60,7 +68,9 @@ const ContextMenuContent = React.forwardRef<
     <ContextMenuPrimitive.Content
       ref={ref}
       className={cn(
-        "z-50 max-h-[--radix-context-menu-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-context-menu-content-transform-origin]",
+        MENU_Z_INDEX_CLASS,
+        "max-h-[--radix-context-menu-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+        CONTEXT_MENU_CONTENT_ANIMATION_CLASSES,
         className
       )}
       {...props}
@@ -93,14 +103,11 @@ const ContextMenuCheckboxItem = React.forwardRef<
 >(({ className, children, checked, ...props }, ref) => (
   <ContextMenuPrimitive.CheckboxItem
     ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
+    className={cn(CONTEXT_MENU_INDICATOR_ITEM_CLASSES, className)}
     checked={checked}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span className={MENU_ITEM_INDICATOR_WRAPPER_CLASSES}>
       <ContextMenuPrimitive.ItemIndicator>
         <Check className="h-4 w-4" />
       </ContextMenuPrimitive.ItemIndicator>
@@ -116,13 +123,10 @@ const ContextMenuRadioItem = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <ContextMenuPrimitive.RadioItem
     ref={ref}
-    className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-      className
-    )}
+    className={cn(CONTEXT_MENU_INDICATOR_ITEM_CLASSES, className)}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span className={MENU_ITEM_INDICATOR_WRAPPER_CLASSES}>
       <ContextMenuPrimitive.ItemIndicator>
         <Circle className="h-4 w-4 fill-current" />
       </ContextMenuPrimitive.ItemIndicator>

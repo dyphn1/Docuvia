@@ -13,6 +13,29 @@ import { Search, BrainCircuit, Network, Tag, GitMerge, Loader2, AlertCircle } fr
 import { Badge } from "@/components/ui/Badge";
 import { useListProjects, getListProjectsQueryKey, useMcpQuery } from "@workspace/api-client-react";
 import { normalizeProjects } from "@/lib/projects";
+import {
+  SEARCH_RESULT_LIMIT,
+  ALL_PROJECTS_FILTER,
+  SEARCH_MODE_KEYWORD_GRAPH,
+  QUERY_PAGE_TITLE,
+  QUERY_PAGE_SUBTITLE,
+  ALL_PROJECTS_LABEL,
+  SEARCH_INPUT_PLACEHOLDER,
+  SEARCH_BUTTON_TEXT,
+  SEARCH_FAILED_MESSAGE,
+  RESULTS_HEADING,
+  RESULTS_MATCHES_SUFFIX,
+  RESULTS_OF_TEXT,
+  SEARCH_MODE_LABELS,
+  KEYWORD_FALLBACK_NOTICE,
+  NO_RESULTS_PREFIX,
+  NO_RESULTS_SUFFIX,
+  NO_RESULTS_HINT,
+  MCP_EXAMPLE_COMMANDS,
+  MCP_ENDPOINTS_AVAILABLE_TEXT,
+  MCP_ENDPOINTS_PATH_LABEL,
+  NODE_LAYER_COLORS,
+} from "@/constants/query";
 
 interface SearchResultItem {
   nodeLayer: "l1" | "l2" | "l3";
@@ -36,12 +59,6 @@ interface SearchResponse {
   };
 }
 
-const layerColors: Record<string, string> = {
-  l1: "bg-violet-500/10 border-violet-500/20 text-violet-600 dark:text-violet-400",
-  l2: "bg-primary/10 border-primary/20 text-primary",
-  l3: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-};
-
 const nodeTypeIcon = (layer: string) => {
   if (layer === "l1") return <Tag className="h-3 w-3 mr-1" />;
   if (layer === "l2") return <GitMerge className="h-3 w-3 mr-1" />;
@@ -50,7 +67,7 @@ const nodeTypeIcon = (layer: string) => {
 
 export default function Query() {
   const [query, setQuery] = useState("");
-  const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [projectFilter, setProjectFilter] = useState<string>(ALL_PROJECTS_FILTER);
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResultItem[] | null>(null);
   const [total, setTotal] = useState(0);
@@ -81,8 +98,8 @@ export default function Query() {
       {
         data: {
           q: query.trim(),
-          project_id: projectFilter !== "all" ? Number(projectFilter) : undefined,
-          limit: 20,
+          project_id: projectFilter !== ALL_PROJECTS_FILTER ? Number(projectFilter) : undefined,
+          limit: SEARCH_RESULT_LIMIT,
         },
       },
       {
@@ -94,7 +111,7 @@ export default function Query() {
           setIsSearching(false);
         },
         onError: (e) => {
-          setError(e.message || "Search failed");
+          setError(e.message || SEARCH_FAILED_MESSAGE);
           setIsSearching(false);
         },
       }
@@ -107,21 +124,18 @@ export default function Query() {
         <div className="inline-flex items-center justify-center p-3 bg-primary/10 rounded-full mb-2">
           <BrainCircuit className="h-8 w-8 text-primary" />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Semantic Knowledge Query</h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto text-sm">
-          Search across all L1 tags, L2 modules, and L3 decision records. Results traverse the full
-          knowledge hierarchy.
-        </p>
+        <h1 className="text-3xl font-bold tracking-tight">{QUERY_PAGE_TITLE}</h1>
+        <p className="text-muted-foreground max-w-2xl mx-auto text-sm">{QUERY_PAGE_SUBTITLE}</p>
       </div>
 
       <form onSubmit={handleSearch} className="max-w-3xl mx-auto w-full mb-4">
         <div className="flex gap-2 mb-2">
           <Select value={projectFilter} onValueChange={setProjectFilter}>
             <SelectTrigger className="w-48 h-11 text-sm">
-              <SelectValue placeholder="All projects" />
+              <SelectValue placeholder={ALL_PROJECTS_LABEL} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All projects</SelectItem>
+              <SelectItem value={ALL_PROJECTS_FILTER}>{ALL_PROJECTS_LABEL}</SelectItem>
               {projects.map((p) => (
                 <SelectItem key={p.id} value={String(p.id)}>
                   {p.name}
@@ -136,7 +150,7 @@ export default function Query() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder='e.g., "How does the authentication module work?"'
+                placeholder={SEARCH_INPUT_PLACEHOLDER}
                 className="flex-1 border-0 bg-transparent h-11 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 px-3"
               />
               <Button
@@ -145,7 +159,7 @@ export default function Query() {
                 className="h-full rounded-none px-6 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
                 disabled={!query.trim() || isSearching}
               >
-                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : SEARCH_BUTTON_TEXT}
               </Button>
             </div>
           </div>
@@ -163,36 +177,35 @@ export default function Query() {
           <div className="flex items-center justify-between border-b border-border pb-2 max-w-3xl mx-auto w-full">
             <h2 className="text-sm font-semibold flex items-center gap-2">
               <Network className="h-4 w-4 text-primary" />
-              Results
+              {RESULTS_HEADING}
               {searchMode && (
                 <Badge
                   variant="outline"
                   className={`text-[10px] font-mono px-1.5 py-0 h-5 ${
-                    searchMode === "keyword_graph"
+                    searchMode === SEARCH_MODE_KEYWORD_GRAPH
                       ? "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400"
                       : "bg-primary/10 border-primary/20 text-primary"
                   }`}
                 >
-                  {searchMode === "keyword_graph" ? (
+                  {searchMode === SEARCH_MODE_KEYWORD_GRAPH ? (
                     <Network className="h-3 w-3 mr-1" />
                   ) : (
                     <BrainCircuit className="h-3 w-3 mr-1" />
                   )}
-                  {searchMode === "keyword_graph"
-                    ? "Local Keyword/Graph Mode"
-                    : "Semantic Vector Mode"}
+                  {searchMode === SEARCH_MODE_KEYWORD_GRAPH
+                    ? SEARCH_MODE_LABELS.keywordGraph
+                    : SEARCH_MODE_LABELS.semanticVector}
                 </Badge>
               )}
             </h2>
             <div className="text-xs text-muted-foreground font-mono">
-              {results.length} of {total} matches
+              {results.length} {RESULTS_OF_TEXT} {total} {RESULTS_MATCHES_SUFFIX}
             </div>
           </div>
 
-          {searchMode === "keyword_graph" && (
+          {searchMode === SEARCH_MODE_KEYWORD_GRAPH && (
             <div className="max-w-3xl mx-auto w-full text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
-              Semantic vector search is unavailable — results were resolved via keyword (FTS)
-              matching and knowledge-graph traversal instead.
+              {KEYWORD_FALLBACK_NOTICE}
             </div>
           )}
 
@@ -200,11 +213,11 @@ export default function Query() {
             <div className="max-w-3xl mx-auto w-full text-center py-12 text-muted-foreground">
               <Search className="h-12 w-12 mx-auto mb-3 opacity-20" />
               <p>
-                No results found for "<span className="font-medium">{query}</span>"
+                {NO_RESULTS_PREFIX}
+                <span className="font-medium">{query}</span>
+                {NO_RESULTS_SUFFIX}
               </p>
-              <p className="text-xs mt-1">
-                Try a different search term or run the AI pipeline to generate more knowledge nodes.
-              </p>
+              <p className="text-xs mt-1">{NO_RESULTS_HINT}</p>
             </div>
           ) : (
             <div className="max-w-3xl mx-auto w-full space-y-3 pb-8">
@@ -217,7 +230,7 @@ export default function Query() {
                     <div className="flex items-center gap-2">
                       <Badge
                         variant="outline"
-                        className={`text-[10px] font-mono uppercase px-1.5 py-0 h-5 ${layerColors[item.nodeLayer]}`}
+                        className={`text-[10px] font-mono uppercase px-1.5 py-0 h-5 ${NODE_LAYER_COLORS[item.nodeLayer]}`}
                       >
                         {nodeTypeIcon(item.nodeLayer)}
                         {item.nodeLayer.toUpperCase()}
@@ -251,14 +264,13 @@ export default function Query() {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center text-muted-foreground space-y-2">
             <div className="text-xs font-mono bg-muted/40 border border-border rounded-md px-4 py-2 space-y-1">
-              <div>search_knowledge(query, project?)</div>
-              <div>get_dependencies(module)</div>
-              <div>impact_analysis(module)</div>
-              <div>get_decision_record(commit_hash)</div>
+              {MCP_EXAMPLE_COMMANDS.map((command) => (
+                <div key={command}>{command}</div>
+              ))}
             </div>
             <p className="text-xs">
-              MCP tool endpoints available at{" "}
-              <code className="bg-muted px-1 rounded">/api/mcp/*</code>
+              {MCP_ENDPOINTS_AVAILABLE_TEXT}{" "}
+              <code className="bg-muted px-1 rounded">{MCP_ENDPOINTS_PATH_LABEL}</code>
             </p>
           </div>
         </div>

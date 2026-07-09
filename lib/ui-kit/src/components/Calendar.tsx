@@ -5,6 +5,11 @@ import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react
 import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker";
 
 import { cn } from "../lib/utils";
+import {
+  CALENDAR_MONTH_DROPDOWN_FORMAT_STYLE,
+  CALENDAR_MONTH_DROPDOWN_LOCALE,
+  NAV_BUTTON_CLASSES,
+} from "../constants/calendar.js";
 import { Button, buttonVariants } from "./Button";
 
 function Calendar({
@@ -32,7 +37,10 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
-        formatMonthDropdown: (date) => date.toLocaleString("default", { month: "short" }),
+        formatMonthDropdown: (date) =>
+          date.toLocaleString(CALENDAR_MONTH_DROPDOWN_LOCALE, {
+            month: CALENDAR_MONTH_DROPDOWN_FORMAT_STYLE,
+          }),
         ...formatters,
       }}
       classNames={{
@@ -45,12 +53,12 @@ function Calendar({
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          "h-[--cell-size] w-[--cell-size] select-none p-0 aria-disabled:opacity-50",
+          NAV_BUTTON_CLASSES,
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          "h-[--cell-size] w-[--cell-size] select-none p-0 aria-disabled:opacity-50",
+          NAV_BUTTON_CLASSES,
           defaultClassNames.button_next
         ),
         month_caption: cn(

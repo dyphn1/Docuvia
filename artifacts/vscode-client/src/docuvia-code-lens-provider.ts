@@ -2,6 +2,14 @@ import * as vscode from "vscode";
 import { minimatch } from "minimatch";
 import { LocalSnapshotService } from "@workspace/core";
 import { L2Module } from "./types.js";
+import {
+  MSG_CODELENS_L2_PREFIX,
+  MSG_CODELENS_DECISIONS,
+  MSG_CODELENS_NEEDS_DECISIONS,
+  MSG_CODELENS_EXTRAPOLATE,
+  MSG_CODELENS_SYMBOL_FETCH_FAILED,
+  DocuviaCommandInvoker,
+} from "./constants/index.js";
 
 export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
   private readonly _onDidChangeCodeLenses = new vscode.EventEmitter<void>();
@@ -96,11 +104,11 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
       const range = new vscode.Range(targetLine, 0, targetLine, 0);
 
       const decisionCount = modDecisions.length;
-      let title = `◇ L2: ${mod.name}`;
+      let title = `${MSG_CODELENS_L2_PREFIX}${mod.name}`;
       if (decisionCount > 0) {
-        title += ` (${decisionCount} L3 decisions)`;
+        title += ` (${decisionCount}${MSG_CODELENS_DECISIONS})`;
       } else {
-        title += ` (Needs decisions)`;
+        title += MSG_CODELENS_NEEDS_DECISIONS;
       }
 
       const l2Lens = new vscode.CodeLens(range, {
@@ -115,7 +123,7 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
         command: "docuvia.autoCategorizeDecisions",
         arguments: [mod],
       });
-      extractLens.command!.title = "Extrapolate Decisions";
+      extractLens.command!.title = MSG_CODELENS_EXTRAPOLATE;
       lenses.push(extractLens);
 
       lineIdx++;
@@ -126,10 +134,7 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
 
   private async updateSymbolAnchors(document: vscode.TextDocument): Promise<void> {
     try {
-      const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
-        "vscode.executeDocumentSymbolProvider",
-        document.uri
-      );
+      const symbols = await DocuviaCommandInvoker.executeDocumentSymbolProvider(document.uri);
       if (!symbols) return;
 
       const anchors: { line: number; name: string }[] = [];
@@ -144,11 +149,9 @@ export class DocuviaCodeLensProvider implements vscode.CodeLensProvider {
       }
       this.documentAnchors.set(document.uri.toString(), anchors);
       this._onDidChangeCodeLenses.fire();
-    } catch (e: any) {
-      console.warn(
-        `[DocuviaCodeLensProvider] Failed to fetch symbols for document ${document.uri.toString()}:`,
-        e.message || e
-      );
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      console.warn(`${MSG_CODELENS_SYMBOL_FETCH_FAILED}${document.uri.toString()}:`, errorMsg);
     }
   }
 }

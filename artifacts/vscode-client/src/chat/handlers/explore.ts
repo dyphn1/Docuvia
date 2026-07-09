@@ -1,13 +1,93 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import {
-  L1_TEMPLATES,
   buildRawYaml,
   formatYamlAsTable,
   detectProjectTypes,
   refineTagsWithLM,
   generateTagsDynamically,
 } from "../ontology.js";
+import { FILE_README, FILE_PACKAGE_JSON, ENCODING_UTF_8 } from "@workspace/core";
+import { L1_TEMPLATES } from "../../constants/templates.js";
+import {
+  CMD_ACCEPT_L1_TAGS,
+  MSG_SELECT_WORKSPACE_TO_EXPLORE,
+  MSG_NO_WORKSPACE_OPEN,
+  TITLE_ACCEPT_L1_TAGS,
+  MSG_READING_WORKSPACE_FILES,
+  MSG_UNRECOGNIZED_PATTERNS_DYNAMIC_ANALYSIS,
+  LABEL_DYNAMIC_CUSTOM_ARCHITECTURE,
+  MSG_INTERACTIVE_FALLBACK,
+} from "../../constants/index.js";
+
+async function getWorkspaceRoot(): Promise<string | undefined> {
+  if (vscode.window.activeTextEditor) {
+    const folder = vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri);
+    if (folder) {
+      return folder.uri.fsPath;
+    }
+  }
+
+  const folders = vscode.workspace.workspaceFolders || [];
+  if (folders.length === 1) {
+    return folders[0].uri.fsPath;
+  }
+
+  if (folders.length > 1) {
+    const picked = await vscode.window.showWorkspaceFolderPick({
+      placeHolder: MSG_SELECT_WORKSPACE_TO_EXPLORE,
+    });
+    return picked?.uri.fsPath;
+  }
+
+  return undefined;
+}
+
+async function readFileSafe(workspaceRoot: string, fileName: string): Promise<string> {
+  try {
+    const bytes = await vscode.workspace.fs.readFile(
+      vscode.Uri.file(path.join(workspaceRoot, fileName))
+    );
+    return Buffer.from(bytes).toString(ENCODING_UTF_8);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.debug(`[ExploreHandler] ${fileName} not found or unreadable: ${errorMsg}`);
+    return "";
+  }
+}
+
+async function readJsonSafe<T = Record<string, unknown>>(
+  workspaceRoot: string,
+  fileName: string
+): Promise<T> {
+  const content = await readFileSafe(workspaceRoot, fileName);
+  if (!content) {
+    return {} as T;
+  }
+  try {
+    return JSON.parse(content) as T;
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.debug(`[ExploreHandler] Failed to parse ${fileName}: ${errorMsg}`);
+    return {} as T;
+  }
+}
+
+function renderTagSuggestions(
+  stream: vscode.ChatResponseStream,
+  yaml: string,
+  workspaceRoot: string,
+  label: string,
+  prefix: string = "Detected"
+): void {
+  const table = formatYamlAsTable(yaml);
+  stream.markdown(`**${prefix}:** ${label}\n\nSuggested L1 Tags:\n\n${table}`);
+  stream.button({
+    command: CMD_ACCEPT_L1_TAGS,
+    title: TITLE_ACCEPT_L1_TAGS,
+    arguments: [yaml, workspaceRoot],
+  });
+}
 
 export async function handleExplore(
   request: vscode.ChatRequest,
@@ -15,124 +95,58 @@ export async function handleExplore(
   token: vscode.CancellationToken,
   userPrompt?: string
 ): Promise<void> {
-  // Resolve workspace root up-front so all button paths can reference it (BUG A-3 fix)
-  let workspaceRoot = vscode.window.activeTextEditor
-    ? vscode.workspace.getWorkspaceFolder(vscode.window.activeTextEditor.document.uri)?.uri.fsPath
-    : undefined;
+  const workspaceRoot = await getWorkspaceRoot();
 
   if (!workspaceRoot) {
-    const folders = vscode.workspace.workspaceFolders || [];
-    if (folders.length === 1) {
-      workspaceRoot = folders[0].uri.fsPath;
-    } else if (folders.length > 1) {
-      const picked = await vscode.window.showWorkspaceFolderPick({
-        placeHolder: "Select a workspace to explore",
-      });
-      if (picked) {
-        workspaceRoot = picked.uri.fsPath;
-      }
-    }
-  }
-
-  if (!workspaceRoot) {
-    stream.markdown("No workspace folder is open or selected.");
+    stream.markdown(MSG_NO_WORKSPACE_OPEN);
     return;
   }
 
   // If user specified a type directly, use the matching template without workspace detection
   if (userPrompt) {
     const promptLower = userPrompt.trim().toLowerCase();
-    const TYPE_TOKENS = L1_TEMPLATES.map((t) => t.projectType);
-    const matchedToken = TYPE_TOKENS.find((t) => promptLower.includes(t));
+    const matchedToken = L1_TEMPLATES.find((t: any) =>
+      promptLower.includes(t.projectType)
+    )?.projectType;
+
     if (matchedToken) {
       const template = L1_TEMPLATES.find(
-        (t) => t.projectType === matchedToken || t.keywords.includes(matchedToken)
+        (t: any) => t.projectType === matchedToken || t.keywords.includes(matchedToken)
       );
       if (template) {
         stream.progress(`Using ${template.label} template...`);
         const yaml = await buildRawYaml(template);
-        const table = formatYamlAsTable(yaml);
-        stream.markdown(`**Template:** ${template.label}\n\nSuggested L1 Tags:\n\n${table}`);
-        stream.button({
-          command: "docuvia.acceptL1Tags",
-          title: "Accept & Write to local.db",
-          arguments: [yaml, workspaceRoot],
-        });
+        renderTagSuggestions(stream, yaml, workspaceRoot, template.label, "Template");
         return;
       }
     }
   }
 
-  stream.progress("Reading workspace files...");
+  stream.progress(MSG_READING_WORKSPACE_FILES);
 
-  // Read README.md (continue if absent)
-  let readmeContent = "";
-  try {
-    const bytes = await vscode.workspace.fs.readFile(
-      vscode.Uri.file(path.join(workspaceRoot, "README.md"))
-    );
-    readmeContent = Buffer.from(bytes).toString("utf-8");
-  } catch (err: any) {
-    console.debug(
-      `[ExploreHandler] README.md not found or unreadable: ${err.message || String(err)}`
-    );
-  }
-
-  // Read package.json (continue if absent)
-  let pkgJson: Record<string, unknown> = {};
-  try {
-    const bytes = await vscode.workspace.fs.readFile(
-      vscode.Uri.file(path.join(workspaceRoot, "package.json"))
-    );
-    pkgJson = JSON.parse(Buffer.from(bytes).toString("utf-8")) as Record<string, unknown>;
-  } catch (err: any) {
-    console.debug(
-      `[ExploreHandler] package.json not found or unreadable: ${err.message || String(err)}`
-    );
-  }
+  const [readmeContent, pkgJson] = await Promise.all([
+    readFileSafe(workspaceRoot, FILE_README),
+    readJsonSafe(workspaceRoot, FILE_PACKAGE_JSON),
+  ]);
 
   const detectedTypes = detectProjectTypes(readmeContent, pkgJson);
 
   if (detectedTypes.length > 0) {
-    const label = detectedTypes.map((t) => t.label).join(" + ");
+    const label = detectedTypes.map((t: any) => t.label).join(" + ");
     stream.progress(`Detected project mix: ${label}`);
     const refinedYaml = await refineTagsWithLM(detectedTypes, readmeContent, request.model, token);
-    const table = formatYamlAsTable(refinedYaml);
-    stream.markdown(`**Detected:** ${label}\n\nSuggested L1 Tags:\n\n${table}`);
-    stream.button({
-      command: "docuvia.acceptL1Tags",
-      title: "Accept & Write to local.db",
-      arguments: [refinedYaml, workspaceRoot],
-    });
-  } else {
-    stream.progress(
-      `Unrecognized standard patterns. Analyzing dependencies dynamically with AI...`
-    );
-    const dynamicYaml = await generateTagsDynamically(readmeContent, pkgJson, request.model, token);
-
-    if (dynamicYaml) {
-      const table = formatYamlAsTable(dynamicYaml);
-      stream.markdown(
-        `**Detected:** Dynamic Custom Architecture\n\nSuggested L1 Tags:\n\n${table}`
-      );
-      stream.button({
-        command: "docuvia.acceptL1Tags",
-        title: "Accept & Write to local.db",
-        arguments: [dynamicYaml, workspaceRoot],
-      });
-    } else {
-      // Interactive fallback — ask one clarifying question
-      stream.markdown(
-        "I couldn't detect your project type automatically, and AI dynamic analysis failed.\n\n" +
-          "**What best describes your project?**\n" +
-          "- `frontend` — React, Vue, Angular, etc.\n" +
-          "- `backend` — Express, Django, Rails, etc.\n" +
-          "- `fullstack` — Both frontend and backend\n" +
-          "- `monorepo` — Multiple packages in one repo\n" +
-          "- `library` — An SDK or npm package\n" +
-          "- `cli` — A command-line tool\n\n" +
-          "Reply with `/explore <type>` (e.g. `/explore backend`) to get tag suggestions."
-      );
-    }
+    renderTagSuggestions(stream, refinedYaml, workspaceRoot, label);
+    return;
   }
+
+  stream.progress(MSG_UNRECOGNIZED_PATTERNS_DYNAMIC_ANALYSIS);
+  const dynamicYaml = await generateTagsDynamically(readmeContent, pkgJson, request.model, token);
+
+  if (dynamicYaml) {
+    renderTagSuggestions(stream, dynamicYaml, workspaceRoot, LABEL_DYNAMIC_CUSTOM_ARCHITECTURE);
+    return;
+  }
+
+  // Interactive fallback — ask one clarifying question
+  stream.markdown(MSG_INTERACTIVE_FALLBACK);
 }

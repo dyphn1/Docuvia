@@ -19,6 +19,20 @@ import { ArchitectureFlowchart } from "@/components/graph/ArchitectureFlowchart"
 import { L2Directory } from "./components/L2Directory";
 import { ProjectHeader } from "./components/ProjectHeader";
 import { ProjectCommits } from "./components/ProjectCommits";
+import {
+  PROJECT_DETAIL_SKELETON_GRID_COUNT,
+  PROJECT_NOT_FOUND_MESSAGE,
+  PROJECT_DETAIL_TABS,
+  ARCHITECTURE_FLOW_TAB_LABEL,
+  TOPOLOGY_MAP_TAB_LABEL,
+  COMMITS_TAB_LABEL,
+  L2_DIRECTORY_TAB_LABEL,
+  BOOTSTRAP_REVIEW_TAB_LABEL,
+  INTERACTIVE_TOPOLOGY_MAP_HEADING,
+  L2_COMPONENT_DIRECTORY_HEADING,
+  EXPORT_FILENAME_FALLBACK,
+  EXPORT_FILENAME_SUFFIX,
+} from "@/constants/projects";
 
 export default function ProjectDetail() {
   const params = useParams();
@@ -38,7 +52,10 @@ export default function ProjectDetail() {
       const url = window.URL.createObjectURL(new Blob([data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `${project?.name || "project"}_export.md`);
+      link.setAttribute(
+        "download",
+        `${project?.name || EXPORT_FILENAME_FALLBACK}${EXPORT_FILENAME_SUFFIX}`
+      );
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
@@ -57,7 +74,7 @@ export default function ProjectDetail() {
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-4 w-96" />
         <div className="grid grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+          {Array.from({ length: PROJECT_DETAIL_SKELETON_GRID_COUNT }, (_, i) => (
             <Skeleton key={i} className="h-24" />
           ))}
         </div>
@@ -68,7 +85,7 @@ export default function ProjectDetail() {
   if (!project)
     return (
       <div className="p-6 flex items-center justify-center h-full text-muted-foreground">
-        Project not found
+        {PROJECT_NOT_FOUND_MESSAGE}
       </div>
     );
 
@@ -82,39 +99,39 @@ export default function ProjectDetail() {
       />
 
       <div className="flex-1 p-6 min-h-0 overflow-hidden">
-        <Tabs defaultValue="architecture" className="h-full flex flex-col">
+        <Tabs defaultValue={PROJECT_DETAIL_TABS.ARCHITECTURE} className="h-full flex flex-col">
           <TabsList className="bg-background border border-border">
             <TabsTrigger
-              value="architecture"
+              value={PROJECT_DETAIL_TABS.ARCHITECTURE}
               className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
             >
-              <Network className="h-4 w-4 mr-2" /> Architecture Flow
+              <Network className="h-4 w-4 mr-2" /> {ARCHITECTURE_FLOW_TAB_LABEL}
             </TabsTrigger>
             <TabsTrigger
-              value="graph"
+              value={PROJECT_DETAIL_TABS.GRAPH}
               className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
             >
-              <Network className="h-4 w-4 mr-2" /> Topology Map
+              <Network className="h-4 w-4 mr-2" /> {TOPOLOGY_MAP_TAB_LABEL}
             </TabsTrigger>
             <TabsTrigger
-              value="commits"
+              value={PROJECT_DETAIL_TABS.COMMITS}
               className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
             >
-              <GitCommit className="h-4 w-4 mr-2" /> Commits
+              <GitCommit className="h-4 w-4 mr-2" /> {COMMITS_TAB_LABEL}
             </TabsTrigger>
             <TabsTrigger
-              value="l2"
+              value={PROJECT_DETAIL_TABS.L2}
               className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary"
             >
-              <GitMerge className="h-4 w-4 mr-2" /> L2 Directory
+              <GitMerge className="h-4 w-4 mr-2" /> {L2_DIRECTORY_TAB_LABEL}
             </TabsTrigger>
             {unconfirmedCount > 0 && (
               <TabsTrigger
-                value="bootstrap"
+                value={PROJECT_DETAIL_TABS.BOOTSTRAP}
                 className="data-[state=active]:bg-orange-500/20 data-[state=active]:text-orange-600 relative"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                Bootstrap Review
+                {BOOTSTRAP_REVIEW_TAB_LABEL}
                 <Badge className="ml-2 bg-orange-500 hover:bg-orange-600 text-[10px] h-4 min-w-4 p-0 px-1 flex items-center justify-center">
                   {unconfirmedCount}
                 </Badge>
@@ -123,16 +140,16 @@ export default function ProjectDetail() {
           </TabsList>
 
           <div className="flex-1 mt-4 overflow-hidden">
-            <TabsContent value="architecture" className="h-full m-0 p-0">
+            <TabsContent value={PROJECT_DETAIL_TABS.ARCHITECTURE} className="h-full m-0 p-0">
               <ArchitectureFlowchart projectId={id} />
             </TabsContent>
 
-            <TabsContent value="graph" className="h-full m-0 p-0">
+            <TabsContent value={PROJECT_DETAIL_TABS.GRAPH} className="h-full m-0 p-0">
               <Card className="h-full flex flex-col border-border bg-card/50">
                 <CardHeader className="flex-none border-b border-border py-4">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <Network className="h-4 w-4 text-primary" />
-                    Interactive Topology Map
+                    {INTERACTIVE_TOPOLOGY_MAP_HEADING}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden relative">
@@ -141,7 +158,7 @@ export default function ProjectDetail() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="commits" className="h-full m-0 p-0">
+            <TabsContent value={PROJECT_DETAIL_TABS.COMMITS} className="h-full m-0 p-0">
               <Card className="h-full flex flex-col border-border bg-card/50">
                 <CardContent className="flex-1 p-0 overflow-hidden">
                   <ProjectCommits projectId={id} />
@@ -149,12 +166,12 @@ export default function ProjectDetail() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="l2" className="h-full m-0 p-0">
+            <TabsContent value={PROJECT_DETAIL_TABS.L2} className="h-full m-0 p-0">
               <Card className="h-full flex flex-col border-border bg-card/50 overflow-hidden">
                 <CardHeader className="flex-none border-b border-border py-4">
                   <CardTitle className="text-sm font-medium flex items-center gap-2">
                     <GitMerge className="h-4 w-4 text-primary" />
-                    L2 Component Directory
+                    {L2_COMPONENT_DIRECTORY_HEADING}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 p-0 overflow-hidden">
@@ -163,7 +180,7 @@ export default function ProjectDetail() {
               </Card>
             </TabsContent>
             {unconfirmedCount > 0 && (
-              <TabsContent value="bootstrap" className="h-full m-0 p-0">
+              <TabsContent value={PROJECT_DETAIL_TABS.BOOTSTRAP} className="h-full m-0 p-0">
                 <div className="bg-card border border-border h-full flex flex-col rounded-lg">
                   <L2BootstrapReview projectId={id} />
                 </div>

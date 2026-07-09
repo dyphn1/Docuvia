@@ -16,6 +16,7 @@ function makeMockWorkspaceGit(overrides: Partial<IWorkspaceGitService> = {}): IW
     readBlobContent: vi.fn().mockResolvedValue(""),
     getRemoteUrl: vi.fn().mockResolvedValue(undefined),
     getRecentChangedFilePaths: vi.fn().mockResolvedValue([]),
+    hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     ...overrides,
   };
 }

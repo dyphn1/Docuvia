@@ -17,14 +17,78 @@ import {
   getGetProjectTopologyQueryKey,
 } from "@workspace/api-client-react";
 import { normalizeProjects } from "@/lib/projects";
+import { computeLayout, convexHull, nodeRadius, type SimNode } from "./TopologyGraphLogic";
 import {
   PALETTE,
   DECISION_COLOR,
-  computeLayout,
-  convexHull,
-  nodeRadius,
-  type SimNode,
-} from "./TopologyGraphLogic";
+  LINK_TYPE_CONTAINS,
+  LINK_TYPE_DECISION,
+  NODE_KIND_DECISION,
+  NODE_KIND_FILE,
+  BLAST_RADIUS_MAX_DEPTH,
+  SEARCH_RESULTS_LIMIT,
+  MIN_ZOOM,
+  MAX_ZOOM,
+  ZOOM_STEP_FACTOR,
+  WHEEL_ZOOM_SENSITIVITY,
+  DRAG_MOVE_THRESHOLD_PX,
+  FIT_VIEW_PADDING_PX,
+  FIT_VIEW_MAX_ZOOM,
+  HULL_EXPAND_FACTOR,
+  NODE_LABEL_MAX_LENGTH,
+  LABEL_VISIBILITY_DEGREE_RATIO,
+  BLAST_HIGHLIGHT_COLOR,
+  DEFAULT_LINK_COLOR,
+  FILE_NODE_STROKE_COLOR,
+  SELECTION_RING_COLOR,
+  SEARCH_INPUT_PLACEHOLDER,
+  PROJECT_SELECT_LOADING_PLACEHOLDER,
+  PROJECT_SELECT_PLACEHOLDER,
+  NODE_INFO_TITLE,
+  NODE_INFO_EMPTY_HINT,
+  GROUPS_TITLE,
+  TOPOLOGY_TITLE,
+  TOPOLOGY_LOADING_MESSAGE,
+  TOPOLOGY_ERROR_MESSAGE,
+  GROUP_LABEL_PREFIX,
+  DEGREE_LABEL_PREFIX,
+  TAGS_LABEL_PREFIX,
+  BLAST_RADIUS_LABEL_PREFIX,
+  BLAST_RADIUS_LABEL_SUFFIX,
+  STATS_NODES_SUFFIX,
+  STATS_LINKS_SUFFIX,
+  STATS_GROUPS_SUFFIX,
+  STATS_COLLAPSED_SUFFIX,
+  TOPOLOGY_PAGE_TEST_ID,
+  TOPOLOGY_SEARCH_TEST_ID,
+  TOPOLOGY_NODE_INFO_TEST_ID,
+  TOPOLOGY_PROJECT_SELECT_TEST_ID,
+  TOPOLOGY_CANVAS_TEST_ID,
+  HULL_FILL_OPACITY,
+  HULL_STROKE_OPACITY,
+  HULL_STROKE_WIDTH_BASE,
+  HULL_LABEL_FONT_SIZE_BASE,
+  HULL_LABEL_OPACITY,
+  DECISION_LINK_DASH_ON_PX,
+  DECISION_LINK_DASH_OFF_PX,
+  LINK_OPACITY_DIMMED,
+  LINK_OPACITY_CONTAINS,
+  LINK_OPACITY_BLAST,
+  LINK_OPACITY_DEFAULT,
+  LINK_STROKE_WIDTH_BLAST,
+  LINK_STROKE_WIDTH_DEFAULT,
+  NODE_DIMMED_OPACITY,
+  NODE_STROKE_WIDTH_BASE,
+  SELECTION_RING_RADIUS_PADDING_PX,
+  SELECTION_RING_STROKE_WIDTH,
+  NODE_LABEL_OFFSET_X_PX,
+  NODE_LABEL_OFFSET_Y_PX,
+  NODE_LABEL_FONT_SIZE_BASE,
+  NODE_LABEL_OPACITY,
+  BLAST_LABEL_MIN_ZOOM,
+  STROKE_NONE,
+  CURRENT_COLOR,
+} from "@/constants/topology";
 
 export default function Topology() {
   const { data: projectsData, isLoading: projectsLoading } = useListProjects();
@@ -67,7 +131,7 @@ export default function Topology() {
   const computeBlast = (id: string): Set<string> => {
     const seen = new Set([id]);
     let frontier = [id];
-    for (let depth = 0; depth < 3 && frontier.length; depth++) {
+    for (let depth = 0; depth < BLAST_RADIUS_MAX_DEPTH && frontier.length; depth++) {
       const next: string[] = [];
       for (const nid of frontier) {
         for (const edge of incoming.get(nid) ?? []) {
@@ -96,7 +160,7 @@ export default function Topology() {
     search.trim() && layout
       ? layout.nodes
           .filter((n) => n.label.toLowerCase().includes(search.trim().toLowerCase()))
-          .slice(0, 15)
+          .slice(0, SEARCH_RESULTS_LIMIT)
       : [];
 
   const centerOn = (n: SimNode) => {
@@ -109,15 +173,15 @@ export default function Topology() {
   };
 
   return (
-    <div className="flex h-full gap-4 p-4" data-testid="topology-page">
+    <div className="flex h-full gap-4 p-4" data-testid={TOPOLOGY_PAGE_TEST_ID}>
       <div className="flex w-96 flex-col gap-4 overflow-y-auto">
         <Card>
           <CardContent className="pt-4">
             <Input
-              placeholder="Search nodes…"
+              placeholder={SEARCH_INPUT_PLACEHOLDER}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              data-testid="topology-search"
+              data-testid={TOPOLOGY_SEARCH_TEST_ID}
             />
             {searchResults.map((n) => (
               <div
@@ -133,15 +197,10 @@ export default function Topology() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Node Info</CardTitle>
+            <CardTitle className="text-sm">{NODE_INFO_TITLE}</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm" data-testid="topology-node-info">
-            {!selected && (
-              <p className="text-muted-foreground">
-                Click a node to inspect it. Click it again to highlight its blast radius (upstream
-                dependents).
-              </p>
-            )}
+          <CardContent className="text-sm" data-testid={TOPOLOGY_NODE_INFO_TEST_ID}>
+            {!selected && <p className="text-muted-foreground">{NODE_INFO_EMPTY_HINT}</p>}
             {selected && (
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
@@ -151,12 +210,25 @@ export default function Topology() {
                 {selected.filePath && (
                   <div className="truncate text-muted-foreground">{selected.filePath}</div>
                 )}
-                <div>group: {graph?.groups.find((g) => g.id === selected.group)?.label}</div>
-                <div>degree: {selected.degree}</div>
-                {!!selected.tags?.length && <div>tags: {selected.tags.join(", ")}</div>}
+                <div>
+                  {GROUP_LABEL_PREFIX}
+                  {graph?.groups.find((g) => g.id === selected.group)?.label}
+                </div>
+                <div>
+                  {DEGREE_LABEL_PREFIX}
+                  {selected.degree}
+                </div>
+                {!!selected.tags?.length && (
+                  <div>
+                    {TAGS_LABEL_PREFIX}
+                    {selected.tags.join(", ")}
+                  </div>
+                )}
                 {blast && (
                   <div className="font-semibold text-destructive">
-                    blast radius: {blast.size - 1} upstream nodes
+                    {BLAST_RADIUS_LABEL_PREFIX}
+                    {blast.size - 1}
+                    {BLAST_RADIUS_LABEL_SUFFIX}
                   </div>
                 )}
               </div>
@@ -166,7 +238,7 @@ export default function Topology() {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Groups</CardTitle>
+            <CardTitle className="text-sm">{GROUPS_TITLE}</CardTitle>
           </CardHeader>
           <CardContent>
             {(graph?.groups ?? []).map((g) => (
@@ -192,9 +264,12 @@ export default function Topology() {
             ))}
             {graph && (
               <p className="mt-3 text-xs text-muted-foreground">
-                {graph.stats.nodeCount} nodes · {graph.stats.linkCount} links ·{" "}
-                {graph.stats.groupCount} groups
-                {graph.collapsed ? " · collapsed to file level" : ""}
+                {graph.stats.nodeCount}
+                {STATS_NODES_SUFFIX}
+                {graph.stats.linkCount}
+                {STATS_LINKS_SUFFIX} {graph.stats.groupCount}
+                {STATS_GROUPS_SUFFIX}
+                {graph.collapsed ? STATS_COLLAPSED_SUFFIX : ""}
               </p>
             )}
           </CardContent>
@@ -204,13 +279,17 @@ export default function Topology() {
       <Card className="flex-1 overflow-hidden relative">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="flex items-center gap-2">
-            <Network className="h-5 w-5" /> Topology
+            <Network className="h-5 w-5" /> {TOPOLOGY_TITLE}
           </CardTitle>
           <div className="w-64">
             <Select value={effectiveProjectId} onValueChange={setProjectId}>
-              <SelectTrigger data-testid="topology-project-select">
+              <SelectTrigger data-testid={TOPOLOGY_PROJECT_SELECT_TEST_ID}>
                 <SelectValue
-                  placeholder={projectsLoading ? "Loading projects…" : "Select project"}
+                  placeholder={
+                    projectsLoading
+                      ? PROJECT_SELECT_LOADING_PLACEHOLDER
+                      : PROJECT_SELECT_PLACEHOLDER
+                  }
                 />
               </SelectTrigger>
               <SelectContent>
@@ -235,7 +314,7 @@ export default function Topology() {
                 const { width, height } = svg.getBoundingClientRect();
                 const mx = width / 2;
                 const my = height / 2;
-                const k = Math.min(v.k * 1.5, 8);
+                const k = Math.min(v.k * ZOOM_STEP_FACTOR, MAX_ZOOM);
                 return { k, x: mx - ((mx - v.x) / v.k) * k, y: my - ((my - v.y) / v.k) * k };
               })
             }
@@ -252,7 +331,7 @@ export default function Topology() {
                 const { width, height } = svg.getBoundingClientRect();
                 const mx = width / 2;
                 const my = height / 2;
-                const k = Math.max(v.k / 1.5, 0.05);
+                const k = Math.max(v.k / ZOOM_STEP_FACTOR, MIN_ZOOM);
                 return { k, x: mx - ((mx - v.x) / v.k) * k, y: my - ((my - v.y) / v.k) * k };
               })
             }
@@ -269,7 +348,11 @@ export default function Topology() {
               const minY = Math.min(...layout.nodes.map((n) => n.y ?? 0));
               const maxY = Math.max(...layout.nodes.map((n) => n.y ?? 0));
               const { width, height } = svgRef.current.getBoundingClientRect();
-              const k = Math.min(width / (maxX - minX + 200), height / (maxY - minY + 200), 2);
+              const k = Math.min(
+                width / (maxX - minX + FIT_VIEW_PADDING_PX),
+                height / (maxY - minY + FIT_VIEW_PADDING_PX),
+                FIT_VIEW_MAX_ZOOM
+              );
               setView({
                 k,
                 x: width / 2 - (k * (minX + maxX)) / 2,
@@ -284,19 +367,19 @@ export default function Topology() {
         <CardContent className="h-[calc(100%-4rem)] p-0">
           {isLoading && (
             <div className="flex h-full items-center justify-center text-muted-foreground">
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Building topology…
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" /> {TOPOLOGY_LOADING_MESSAGE}
             </div>
           )}
           {!!error && (
             <div className="flex h-full items-center justify-center text-destructive">
-              <AlertCircle className="mr-2 h-5 w-5" /> Failed to load topology.
+              <AlertCircle className="mr-2 h-5 w-5" /> {TOPOLOGY_ERROR_MESSAGE}
             </div>
           )}
           {layout && !isLoading && (
             <svg
               ref={svgRef}
               className="h-full w-full cursor-grab active:cursor-grabbing"
-              data-testid="topology-canvas"
+              data-testid={TOPOLOGY_CANVAS_TEST_ID}
               onPointerDown={(e) => {
                 dragRef.current = { x: e.clientX, y: e.clientY, moved: false };
                 (e.target as Element).setPointerCapture?.(e.pointerId);
@@ -305,7 +388,8 @@ export default function Topology() {
                 if (!dragRef.current) return;
                 const dx = e.clientX - dragRef.current.x;
                 const dy = e.clientY - dragRef.current.y;
-                if (Math.abs(dx) + Math.abs(dy) > 3) dragRef.current.moved = true;
+                if (Math.abs(dx) + Math.abs(dy) > DRAG_MOVE_THRESHOLD_PX)
+                  dragRef.current.moved = true;
                 dragRef.current = { x: e.clientX, y: e.clientY, moved: dragRef.current.moved };
                 setView((v) => ({ ...v, x: v.x + dx, y: v.y + dy }));
               }}
@@ -323,7 +407,10 @@ export default function Topology() {
                 const mx = e.clientX - rect.left;
                 const my = e.clientY - rect.top;
                 setView((v) => {
-                  const k = Math.min(Math.max(v.k * Math.exp(-e.deltaY * 0.0012), 0.05), 8);
+                  const k = Math.min(
+                    Math.max(v.k * Math.exp(-e.deltaY * WHEEL_ZOOM_SENSITIVITY), MIN_ZOOM),
+                    MAX_ZOOM
+                  );
                   return { k, x: mx - ((mx - v.x) / v.k) * k, y: my - ((my - v.y) / v.k) * k };
                 });
               }}
@@ -337,7 +424,10 @@ export default function Topology() {
                   const cx = hull.reduce((s, p) => s + p.x, 0) / hull.length;
                   const cy = hull.reduce((s, p) => s + p.y, 0) / hull.length;
                   const points = hull
-                    .map((p) => `${cx + (p.x - cx) * 1.25},${cy + (p.y - cy) * 1.25}`)
+                    .map(
+                      (p) =>
+                        `${cx + (p.x - cx) * HULL_EXPAND_FACTOR},${cy + (p.y - cy) * HULL_EXPAND_FACTOR}`
+                    )
                     .join(" ");
                   const color = PALETTE[g.id % PALETTE.length];
                   return (
@@ -345,17 +435,17 @@ export default function Topology() {
                       <polygon
                         points={points}
                         fill={color}
-                        fillOpacity={0.06}
+                        fillOpacity={HULL_FILL_OPACITY}
                         stroke={color}
-                        strokeOpacity={0.3}
-                        strokeWidth={1.5 / view.k}
+                        strokeOpacity={HULL_STROKE_OPACITY}
+                        strokeWidth={HULL_STROKE_WIDTH_BASE / view.k}
                       />
                       <text
                         x={cx}
                         y={cy}
                         fill={color}
-                        opacity={0.75}
-                        fontSize={13 / view.k}
+                        opacity={HULL_LABEL_OPACITY}
+                        fontSize={HULL_LABEL_FONT_SIZE_BASE / view.k}
                         fontWeight="bold"
                         textAnchor="middle"
                       >
@@ -371,12 +461,12 @@ export default function Topology() {
                   const inBlast = blast?.has(a.id) && blast?.has(b.id);
                   const opacity =
                     blast && !inBlast
-                      ? 0.04
-                      : l.linkType === "contains"
-                        ? 0.1
+                      ? LINK_OPACITY_DIMMED
+                      : l.linkType === LINK_TYPE_CONTAINS
+                        ? LINK_OPACITY_CONTAINS
                         : inBlast
-                          ? 0.9
-                          : 0.35;
+                          ? LINK_OPACITY_BLAST
+                          : LINK_OPACITY_DEFAULT;
                   return (
                     <line
                       key={i}
@@ -385,12 +475,20 @@ export default function Topology() {
                       x2={b.x}
                       y2={b.y}
                       stroke={
-                        inBlast ? "#ff6b6b" : l.linkType === "decision" ? DECISION_COLOR : "#8b98b8"
+                        inBlast
+                          ? BLAST_HIGHLIGHT_COLOR
+                          : l.linkType === LINK_TYPE_DECISION
+                            ? DECISION_COLOR
+                            : DEFAULT_LINK_COLOR
                       }
                       strokeOpacity={opacity}
-                      strokeWidth={(inBlast ? 2 : 1) / view.k}
+                      strokeWidth={
+                        (inBlast ? LINK_STROKE_WIDTH_BLAST : LINK_STROKE_WIDTH_DEFAULT) / view.k
+                      }
                       strokeDasharray={
-                        l.linkType === "decision" ? `${4 / view.k} ${3 / view.k}` : undefined
+                        l.linkType === LINK_TYPE_DECISION
+                          ? `${DECISION_LINK_DASH_ON_PX / view.k} ${DECISION_LINK_DASH_OFF_PX / view.k}`
+                          : undefined
                       }
                     />
                   );
@@ -400,12 +498,14 @@ export default function Topology() {
                   const r = nodeRadius(n, layout.maxDegree);
                   const dimmed = blast && !blast.has(n.id);
                   const color =
-                    n.kind === "decision" ? DECISION_COLOR : PALETTE[n.group % PALETTE.length];
+                    n.kind === NODE_KIND_DECISION
+                      ? DECISION_COLOR
+                      : PALETTE[n.group % PALETTE.length];
                   const isSelected = selectedId === n.id;
                   return (
                     <g
                       key={n.id}
-                      opacity={dimmed ? 0.12 : 1}
+                      opacity={dimmed ? NODE_DIMMED_OPACITY : 1}
                       className="cursor-pointer"
                       onPointerUp={(e) => {
                         e.stopPropagation();
@@ -413,7 +513,7 @@ export default function Topology() {
                         dragRef.current = null;
                       }}
                     >
-                      {n.kind === "decision" ? (
+                      {n.kind === NODE_KIND_DECISION ? (
                         <rect
                           x={(n.x ?? 0) - r}
                           y={(n.y ?? 0) - r}
@@ -427,31 +527,33 @@ export default function Topology() {
                           cy={n.y}
                           r={r}
                           fill={color}
-                          stroke={n.kind === "file" ? "#f1f4fb" : "none"}
-                          strokeWidth={1 / view.k}
+                          stroke={n.kind === NODE_KIND_FILE ? FILE_NODE_STROKE_COLOR : STROKE_NONE}
+                          strokeWidth={NODE_STROKE_WIDTH_BASE / view.k}
                         />
                       )}
                       {isSelected && (
                         <circle
                           cx={n.x}
                           cy={n.y}
-                          r={r + 3 / view.k}
-                          fill="none"
-                          stroke="#ffffff"
-                          strokeWidth={2.5 / view.k}
+                          r={r + SELECTION_RING_RADIUS_PADDING_PX / view.k}
+                          fill={STROKE_NONE}
+                          stroke={SELECTION_RING_COLOR}
+                          strokeWidth={SELECTION_RING_STROKE_WIDTH / view.k}
                         />
                       )}
-                      {(n.degree >= layout.maxDegree * 0.3 ||
+                      {(n.degree >= layout.maxDegree * LABEL_VISIBILITY_DEGREE_RATIO ||
                         isSelected ||
-                        (blast?.has(n.id) && view.k > 0.7)) && (
+                        (blast?.has(n.id) && view.k > BLAST_LABEL_MIN_ZOOM)) && (
                         <text
-                          x={(n.x ?? 0) + r + 3 / view.k}
-                          y={(n.y ?? 0) + 4 / view.k}
-                          fontSize={11 / view.k}
-                          fill="currentColor"
-                          opacity={0.85}
+                          x={(n.x ?? 0) + r + NODE_LABEL_OFFSET_X_PX / view.k}
+                          y={(n.y ?? 0) + NODE_LABEL_OFFSET_Y_PX / view.k}
+                          fontSize={NODE_LABEL_FONT_SIZE_BASE / view.k}
+                          fill={CURRENT_COLOR}
+                          opacity={NODE_LABEL_OPACITY}
                         >
-                          {n.label.length > 34 ? `${n.label.slice(0, 33)}…` : n.label}
+                          {n.label.length > NODE_LABEL_MAX_LENGTH
+                            ? `${n.label.slice(0, NODE_LABEL_MAX_LENGTH - 1)}…`
+                            : n.label}
                         </text>
                       )}
                     </g>

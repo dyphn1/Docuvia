@@ -1,10 +1,15 @@
 import * as vscode from "vscode";
 import { AnalyzeService } from "@workspace/core";
+import {
+  MSG_EXPLORE_NO_WORKSPACE,
+  MSG_EXPLORE_ANALYSIS_FAILED,
+  MSG_EXPLORE_PROJECT_ANALYSIS,
+} from "../constants/index.js";
 
 export async function startExploreCommand() {
   const folders = vscode.workspace.workspaceFolders || [];
   if (folders.length === 0) {
-    void vscode.window.showWarningMessage("Docuvia: No workspace folder open.");
+    void vscode.window.showWarningMessage(MSG_EXPLORE_NO_WORKSPACE);
     return;
   }
   const targetRoot = folders[0].uri.fsPath;
@@ -12,9 +17,13 @@ export async function startExploreCommand() {
     const analyzeService = new AnalyzeService(targetRoot);
     const result = await analyzeService.analyzeProject();
     void vscode.window.showInformationMessage(
-      `Docuvia Analysis: Project Type = ${result.projectType}, Tags = ${result.suggestedTags.join(", ")}`
+      MSG_EXPLORE_PROJECT_ANALYSIS.replace("{0}", String(result.projectType)).replace(
+        "{1}",
+        result.suggestedTags.join(", ")
+      )
     );
-  } catch (err: any) {
-    void vscode.window.showErrorMessage(`Docuvia: Analysis failed - ${err.message}`);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(`${MSG_EXPLORE_ANALYSIS_FAILED}${errorMsg}`);
   }
 }

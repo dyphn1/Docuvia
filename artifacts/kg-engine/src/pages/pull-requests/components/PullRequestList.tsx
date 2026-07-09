@@ -1,45 +1,62 @@
 import { GitPullRequest, ExternalLink, Loader2, Play } from "lucide-react";
-import { type PullRequest } from "@workspace/api-client-react";
+import {
+  type PullRequest,
+  PullRequestState,
+  PullRequestAnalysisStatus,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";
+import {
+  PR_LIST_SKELETON_COUNT,
+  PR_STATE_BADGE_LABELS,
+  PR_ANALYSIS_STATUS_BADGE_LABELS,
+  PR_LIST_CARD_TITLE,
+  PR_VIEW_IMPACT_BUTTON_LABEL,
+  PR_ANALYZE_BUTTON_LABEL,
+  PR_LIST_EMPTY_MESSAGE,
+  PR_AUTHOR_PREFIX,
+  PR_MERGED_DATE_PREFIX,
+} from "@/constants/pull-requests";
 
-function prStateBadge(state: string) {
+function prStateBadge(state: PullRequestState) {
   switch (state) {
-    case "open":
+    case PullRequestState.open:
       return (
         <Badge variant="outline" className="text-blue-600 border-blue-300">
-          open
+          {PR_STATE_BADGE_LABELS.open}
         </Badge>
       );
-    case "merged":
-      return <Badge className="bg-purple-600 hover:bg-purple-700">merged</Badge>;
-    case "closed":
-      return <Badge variant="secondary">closed</Badge>;
+    case PullRequestState.merged:
+      return (
+        <Badge className="bg-purple-600 hover:bg-purple-700">{PR_STATE_BADGE_LABELS.merged}</Badge>
+      );
+    case PullRequestState.closed:
+      return <Badge variant="secondary">{PR_STATE_BADGE_LABELS.closed}</Badge>;
     default:
       return <Badge variant="outline">{state}</Badge>;
   }
 }
 
-function analysisStatusBadge(status: string) {
+function analysisStatusBadge(status: PullRequestAnalysisStatus) {
   switch (status) {
-    case "completed":
+    case PullRequestAnalysisStatus.completed:
       return (
         <Badge variant="outline" className="text-green-600 border-green-300">
-          analyzed
+          {PR_ANALYSIS_STATUS_BADGE_LABELS.completed}
         </Badge>
       );
-    case "in_progress":
+    case PullRequestAnalysisStatus.in_progress:
       return (
         <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-          analyzing…
+          {PR_ANALYSIS_STATUS_BADGE_LABELS.in_progress}
         </Badge>
       );
-    case "failed":
-      return <Badge variant="destructive">failed</Badge>;
+    case PullRequestAnalysisStatus.failed:
+      return <Badge variant="destructive">{PR_ANALYSIS_STATUS_BADGE_LABELS.failed}</Badge>;
     default:
-      return <Badge variant="secondary">pending</Badge>;
+      return <Badge variant="secondary">{PR_ANALYSIS_STATUS_BADGE_LABELS.pending}</Badge>;
   }
 }
 
@@ -62,24 +79,31 @@ function PrCard({ pr, onViewImpact, onAnalyze, analyzing }: PrCardProps) {
           {analysisStatusBadge(pr.analysisStatus)}
         </div>
         <div className="text-xs text-muted-foreground mt-0.5">
-          by {pr.author}
-          {pr.mergedAt && <> · merged {new Date(pr.mergedAt).toLocaleDateString()}</>}
+          {PR_AUTHOR_PREFIX}
+          {pr.author}
+          {pr.mergedAt && (
+            <>
+              {PR_MERGED_DATE_PREFIX}
+              {new Date(pr.mergedAt).toLocaleDateString()}
+            </>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {pr.analysisStatus === "completed" && (
+        {pr.analysisStatus === PullRequestAnalysisStatus.completed && (
           <Button size="sm" variant="outline" onClick={onViewImpact}>
-            View Impact
+            {PR_VIEW_IMPACT_BUTTON_LABEL}
           </Button>
         )}
-        {(pr.analysisStatus === "pending" || pr.analysisStatus === "failed") && (
+        {(pr.analysisStatus === PullRequestAnalysisStatus.pending ||
+          pr.analysisStatus === PullRequestAnalysisStatus.failed) && (
           <Button size="sm" variant="outline" onClick={onAnalyze} disabled={analyzing}>
             {analyzing ? (
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
             ) : (
               <Play className="h-3 w-3 mr-1" />
             )}
-            Analyze
+            {PR_ANALYZE_BUTTON_LABEL}
           </Button>
         )}
         <a href={pr.url} target="_blank" rel="noopener noreferrer">
@@ -112,20 +136,20 @@ export function PullRequestList({
       <CardHeader>
         <CardTitle className="text-sm flex items-center gap-2">
           <GitPullRequest className="h-4 w-4" />
-          Pull Requests
+          {PR_LIST_CARD_TITLE}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         {isLoading && (
           <div className="p-4 space-y-3">
-            {[1, 2, 3].map((i) => (
+            {Array.from({ length: PR_LIST_SKELETON_COUNT }, (_, i) => (
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
         )}
         {!isLoading && (!prs || prs.length === 0) && (
           <div className="p-6 text-center text-muted-foreground text-sm">
-            No pull requests found. Configure the webhook above to start receiving PR events.
+            {PR_LIST_EMPTY_MESSAGE}
           </div>
         )}
         {!isLoading && prs && prs.length > 0 && (

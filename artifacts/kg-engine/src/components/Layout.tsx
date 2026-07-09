@@ -26,10 +26,53 @@ import {
 import { NotificationBell } from "@/components/NotificationBell";
 import { useCurrentProject } from "@/hooks/use-current-project";
 import { normalizeProjects } from "@/lib/projects";
+import {
+  LAYOUT_BRAND_NAME,
+  LAYOUT_TAGLINE,
+  LAYOUT_VERSION_LABEL,
+  LAYOUT_FOOTER_TEXT,
+  LAYOUT_PROJECT_PLACEHOLDER,
+} from "@/constants/app";
 
 interface LayoutProps {
   children: React.ReactNode;
 }
+
+const NAV_SECTIONS = [
+  {
+    label: "Core",
+    items: [
+      { href: "/", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/projects", label: "Projects", icon: FolderGit2 },
+    ],
+  },
+  {
+    label: "Knowledge Graph",
+    items: [
+      { href: "/l1-tags", label: "L1 Tag Pool", icon: Tags },
+      { href: "/review", label: "Review Queue", icon: CheckCircle },
+      { href: "/query", label: "Query", icon: Search },
+      { href: "/topology", label: "Topology", icon: Network },
+    ],
+  },
+  {
+    label: "Pipeline",
+    items: [
+      { href: "/pipeline", label: "Ingest & Generate", icon: GitBranch },
+      { href: "/documents", label: "Documents", icon: FileText },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { href: "/mcp", label: "MCP Endpoints", icon: Cpu },
+      { href: "/templates", label: "Prompt Templates", icon: SlidersHorizontal },
+      { href: "/subscriptions", label: "Subscriptions", icon: Users },
+      { href: "/pull-requests", label: "Pull Requests", icon: GitPullRequest },
+      { href: "/integrations", label: "Integrations", icon: Webhook },
+    ],
+  },
+];
 
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
@@ -38,42 +81,6 @@ export function Layout({ children }: LayoutProps) {
   });
   const projects = normalizeProjects(projectsData);
   const { projectId, setProjectId } = useCurrentProject();
-
-  const navSections = [
-    {
-      label: "Core",
-      items: [
-        { href: "/", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/projects", label: "Projects", icon: FolderGit2 },
-      ],
-    },
-    {
-      label: "Knowledge Graph",
-      items: [
-        { href: "/l1-tags", label: "L1 Tag Pool", icon: Tags },
-        { href: "/review", label: "Review Queue", icon: CheckCircle },
-        { href: "/query", label: "Query", icon: Search },
-        { href: "/topology", label: "Topology", icon: Network },
-      ],
-    },
-    {
-      label: "Pipeline",
-      items: [
-        { href: "/pipeline", label: "Ingest & Generate", icon: GitBranch },
-        { href: "/documents", label: "Documents", icon: FileText },
-      ],
-    },
-    {
-      label: "System",
-      items: [
-        { href: "/mcp", label: "MCP Endpoints", icon: Cpu },
-        { href: "/templates", label: "Prompt Templates", icon: SlidersHorizontal },
-        { href: "/subscriptions", label: "Subscriptions", icon: Users },
-        { href: "/pull-requests", label: "Pull Requests", icon: GitPullRequest },
-        { href: "/integrations", label: "Integrations", icon: Webhook },
-      ],
-    },
-  ];
 
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
@@ -84,16 +91,14 @@ export function Layout({ children }: LayoutProps) {
               <GitBranch className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <span className="font-bold tracking-tight text-foreground">Docuvia</span>
-              <div className="text-[10px] text-muted-foreground leading-none">
-                Knowledge Graph Engine
-              </div>
+              <span className="font-bold tracking-tight text-foreground">{LAYOUT_BRAND_NAME}</span>
+              <div className="text-[10px] text-muted-foreground leading-none">{LAYOUT_TAGLINE}</div>
             </div>
           </div>
         </div>
 
         <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-4">
-          {navSections.map((section) => (
+          {NAV_SECTIONS.map((section) => (
             <div key={section.label}>
               <div className="px-3 mb-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
@@ -129,8 +134,8 @@ export function Layout({ children }: LayoutProps) {
 
         <div className="p-3 border-t border-border">
           <div className="px-3 py-2 rounded-md bg-muted/40 text-xs text-muted-foreground">
-            <div className="font-medium text-foreground mb-0.5">Docuvia v0.2</div>
-            <div>Universal VCS Knowledge Graph</div>
+            <div className="font-medium text-foreground mb-0.5">{LAYOUT_VERSION_LABEL}</div>
+            <div>{LAYOUT_FOOTER_TEXT}</div>
           </div>
         </div>
       </aside>
@@ -142,7 +147,7 @@ export function Layout({ children }: LayoutProps) {
             onValueChange={(v) => setProjectId(v ? parseInt(v, 10) : null)}
           >
             <SelectTrigger className="h-7 w-44 text-xs">
-              <SelectValue placeholder="Select project…" />
+              <SelectValue placeholder={LAYOUT_PROJECT_PLACEHOLDER} />
             </SelectTrigger>
             <SelectContent>
               {projects.map((p) => (

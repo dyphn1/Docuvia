@@ -3,7 +3,11 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
-const rawPort = process.env.PORT ?? "18774";
+const DEFAULT_DEV_PORT = "18774";
+const DEFAULT_API_BASE_URL = "http://127.0.0.1:8080";
+const DEFAULT_HOST = "0.0.0.0";
+
+const rawPort = process.env.PORT ?? DEFAULT_DEV_PORT;
 
 const port = Number(rawPort);
 
@@ -12,7 +16,7 @@ if (Number.isNaN(port) || port <= 0) {
 }
 
 const basePath = process.env.BASE_PATH ?? "/";
-const apiTarget = process.env.API_BASE_URL ?? "http://127.0.0.1:8080";
+const apiTarget = process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL;
 
 export default defineConfig({
   base: basePath,
@@ -32,7 +36,7 @@ export default defineConfig({
   server: {
     port,
     strictPort: true,
-    host: "0.0.0.0",
+    host: DEFAULT_HOST,
     allowedHosts: true,
     proxy: {
       "/api": {
@@ -46,7 +50,7 @@ export default defineConfig({
   },
   preview: {
     port,
-    host: "0.0.0.0",
+    host: DEFAULT_HOST,
     allowedHosts: true,
   },
 });

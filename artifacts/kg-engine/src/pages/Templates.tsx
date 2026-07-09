@@ -5,6 +5,15 @@ import { ScrollArea } from "@/components/ui/ScrollArea";
 import { FileCode } from "lucide-react";
 import { normalizeProjects } from "@/lib/projects";
 import { ProjectTemplates } from "./templates/ProjectTemplates";
+import {
+  PROJECT_LIST_SKELETON_COUNT,
+  TEMPLATES_PAGE_TITLE,
+  TEMPLATES_PAGE_SUBTITLE,
+  TEMPLATES_PROJECTS_SIDEBAR_LABEL,
+  TEMPLATES_NO_PROJECTS_MESSAGE,
+  TEMPLATES_SELECT_PROJECT_MESSAGE,
+  TEMPLATES_SELECT_PROJECT_HELPER_TEXT,
+} from "@/constants/templates";
 
 export default function TemplatesPage() {
   const { data: projectsData, isLoading: isLoadingProjects } = useListProjects();
@@ -17,11 +26,8 @@ export default function TemplatesPage() {
   return (
     <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex-none p-6 border-b border-border bg-card/30">
-        <h1 className="text-2xl font-bold tracking-tight">Prompt Templates</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Customize the AI system prompts used during knowledge graph generation for each project.
-          Edits override the global default and are used on the next generation run.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{TEMPLATES_PAGE_TITLE}</h1>
+        <p className="text-sm text-muted-foreground mt-1">{TEMPLATES_PAGE_SUBTITLE}</p>
       </div>
 
       <div className="flex flex-1 min-h-0">
@@ -29,13 +35,13 @@ export default function TemplatesPage() {
         <aside className="w-56 flex-shrink-0 border-r border-border bg-card/20">
           <div className="p-3 border-b border-border">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Projects
+              {TEMPLATES_PROJECTS_SIDEBAR_LABEL}
             </span>
           </div>
           <ScrollArea className="h-full">
             {isLoadingProjects ? (
               <div className="p-3 space-y-2">
-                {[1, 2, 3].map((i) => (
+                {Array.from({ length: PROJECT_LIST_SKELETON_COUNT }, (_, i) => (
                   <Skeleton key={i} className="h-8 w-full" />
                 ))}
               </div>
@@ -55,7 +61,9 @@ export default function TemplatesPage() {
                   </button>
                 ))}
                 {projects.length === 0 && (
-                  <p className="text-xs text-muted-foreground p-3">No projects found.</p>
+                  <p className="text-xs text-muted-foreground p-3">
+                    {TEMPLATES_NO_PROJECTS_MESSAGE}
+                  </p>
                 )}
               </div>
             )}
@@ -69,11 +77,8 @@ export default function TemplatesPage() {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3">
               <FileCode className="h-12 w-12 opacity-20" />
-              <p className="text-sm">Select a project to manage its prompt templates.</p>
-              <p className="text-xs">
-                Each template controls how AI generates L1 tags, L2 components, and L3 knowledge
-                nodes.
-              </p>
+              <p className="text-sm">{TEMPLATES_SELECT_PROJECT_MESSAGE}</p>
+              <p className="text-xs">{TEMPLATES_SELECT_PROJECT_HELPER_TEXT}</p>
             </div>
           )}
         </div>

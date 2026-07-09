@@ -6,6 +6,7 @@ import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
 
 import { cn } from "../lib/utils";
+import { COMMAND_LIST_MAX_HEIGHT_CLASS } from "../constants/form.js";
 import { Dialog, DialogContent } from "./Dialog";
 
 const Command = React.forwardRef<
@@ -60,7 +61,7 @@ const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+    className={cn(COMMAND_LIST_MAX_HEIGHT_CLASS, "overflow-y-auto overflow-x-hidden", className)}
     {...props}
   />
 ));

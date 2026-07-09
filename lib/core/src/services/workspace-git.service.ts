@@ -158,4 +158,9 @@ export class WorkspaceGitService implements IWorkspaceGitService {
       return [];
     }
   }
+
+  public async hasUncommittedChanges(cwd: string): Promise<boolean> {
+    const { stdout } = await execFileAsync("git", ["status", "--porcelain"], { cwd });
+    return stdout.trim().length > 0;
+  }
 }

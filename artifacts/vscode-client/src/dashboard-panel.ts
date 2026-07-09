@@ -35,7 +35,7 @@ function buildDashboardPayload(
   }
 
   const recentDecisions = [...snapshot.decisions.values()]
-    .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
+    .sort((a: any, b: any) => (b.date ?? "").localeCompare(a.date ?? ""))
     .slice(0, 5)
     .map((d) => ({ title: d.title, status: d.status, filePath: d.filePath }));
 
@@ -46,8 +46,8 @@ function buildDashboardPayload(
   }
 
   const topModules = snapshot.modules
-    .map((m) => ({ name: m.name, decisionCount: countByModule.get(m.id) ?? 0 }))
-    .sort((a, b) => b.decisionCount - a.decisionCount)
+    .map((m: any) => ({ name: m.name, decisionCount: countByModule.get(m.id) ?? 0 }))
+    .sort((a: any, b: any) => b.decisionCount - a.decisionCount)
     .slice(0, 5);
 
   return {

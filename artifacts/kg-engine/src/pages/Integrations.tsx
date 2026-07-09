@@ -21,6 +21,17 @@ import { Separator } from "@/components/ui/Separator";
 import { normalizeProjects } from "@/lib/projects";
 import { IntegrationCard } from "./integrations/components/IntegrationCard";
 import { CreateIntegrationForm } from "./integrations/components/CreateIntegrationForm";
+import {
+  INTEGRATION_SKELETON_COUNT,
+  INTEGRATIONS_PAGE_TITLE,
+  INTEGRATIONS_PAGE_SUBTITLE,
+  SELECT_PROJECT_TITLE,
+  SELECT_PROJECT_INTEGRATIONS_DESCRIPTION,
+  SELECT_PROJECT_PLACEHOLDER,
+  CONFIGURED_WEBHOOKS_TITLE,
+  CONFIGURED_WEBHOOKS_DESCRIPTION,
+  NO_INTEGRATIONS_MESSAGE,
+} from "@/constants/integrations";
 
 export default function Integrations() {
   const queryClient = useQueryClient();
@@ -50,10 +61,8 @@ export default function Integrations() {
   return (
     <div className="p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Integrations</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Forward Docuvia notifications to Slack or Microsoft Teams channels via incoming webhooks
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight">{INTEGRATIONS_PAGE_TITLE}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{INTEGRATIONS_PAGE_SUBTITLE}</p>
       </div>
 
       <Card className="border-border/50 bg-card/50">
@@ -74,15 +83,15 @@ export default function Integrations() {
 
       <Card className="border-border/50 bg-card/50">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium">Select Project</CardTitle>
+          <CardTitle className="text-sm font-medium">{SELECT_PROJECT_TITLE}</CardTitle>
           <CardDescription className="text-xs">
-            Choose a project to view and manage its webhook integrations
+            {SELECT_PROJECT_INTEGRATIONS_DESCRIPTION}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
             <SelectTrigger className="w-full max-w-sm">
-              <SelectValue placeholder="Select a project…" />
+              <SelectValue placeholder={SELECT_PROJECT_PLACEHOLDER} />
             </SelectTrigger>
             <SelectContent>
               {projects.map((p) => (
@@ -103,7 +112,7 @@ export default function Integrations() {
 
           {isLoading ? (
             <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
+              {Array.from({ length: INTEGRATION_SKELETON_COUNT }, (_, i) => (
                 <Skeleton key={i} className="h-14 w-full rounded-md" />
               ))}
             </div>
@@ -112,19 +121,19 @@ export default function Integrations() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium flex items-center gap-2">
                   <Webhook className="h-4 w-4 text-primary" />
-                  Configured Webhooks
+                  {CONFIGURED_WEBHOOKS_TITLE}
                   <Badge variant="secondary" className="ml-auto text-xs">
                     {(integrations ?? []).length}
                   </Badge>
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Toggle, test, or remove webhook integrations for this project
+                  {CONFIGURED_WEBHOOKS_DESCRIPTION}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {(integrations ?? []).length === 0 ? (
                   <p className="text-xs text-muted-foreground py-6 text-center">
-                    No integrations configured yet. Add one above to start forwarding notifications.
+                    {NO_INTEGRATIONS_MESSAGE}
                   </p>
                 ) : (
                   (integrations ?? []).map((integration) => (

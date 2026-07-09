@@ -16,64 +16,28 @@ import {
   getMcpImpactAnalysisQueryKey,
   getMcpGetDecisionRecordQueryKey,
 } from "@workspace/api-client-react";
+import {
+  type McpEndpoint,
+  MCP_ENDPOINT_NAMES,
+  MCP_ENDPOINTS,
+  COPY_FEEDBACK_DURATION_MS,
+  MCP_UNKNOWN_ENDPOINT_ERROR,
+  MCP_REQUEST_FAILED_MESSAGE,
+  MCP_RUN_BUTTON_LOADING_TEXT,
+  MCP_RUN_BUTTON_TEXT,
+  MCP_RESPONSE_LABEL,
+  MCP_PAGE_TITLE,
+  MCP_PAGE_SUBTITLE,
+  MCP_TOOLS_AVAILABLE_SUFFIX,
+  MCP_BASE_URL_PATH,
+  MCP_GET_METHOD_LABEL,
+  MCP_INTRO_TITLE,
+  MCP_INTRO_TEXT_BASE_URL,
+  MCP_INTRO_TEXT_JSON_PREFIX,
+  MCP_INTRO_TEXT_JSON_SUFFIX,
+} from "@/constants/mcp";
 
-interface Endpoint {
-  name: string;
-  method: "GET" | "POST";
-  path: string;
-  description: string;
-  params: Array<{ name: string; placeholder: string; required: boolean }>;
-}
-
-const endpoints: Endpoint[] = [
-  {
-    name: "list_projects",
-    method: "GET",
-    path: "/api/mcp/list_projects",
-    description: "List all projects with their L2/L3 node counts",
-    params: [],
-  },
-  {
-    name: "search_knowledge",
-    method: "GET",
-    path: "/api/mcp/search_knowledge",
-    description: "Semantic search across the knowledge graph",
-    params: [
-      { name: "query", placeholder: "e.g. authentication module", required: true },
-      { name: "project_id", placeholder: "optional project ID", required: false },
-      { name: "limit", placeholder: "10", required: false },
-    ],
-  },
-  {
-    name: "get_dependencies",
-    method: "GET",
-    path: "/api/mcp/get_dependencies",
-    description: "Get module dependency graph (what does this module depend on?)",
-    params: [
-      { name: "module", placeholder: "e.g. auth-service", required: true },
-      { name: "project_id", placeholder: "optional project ID", required: false },
-    ],
-  },
-  {
-    name: "impact_analysis",
-    method: "GET",
-    path: "/api/mcp/impact_analysis",
-    description: "Impact analysis (what breaks if this module changes?)",
-    params: [
-      { name: "module", placeholder: "e.g. database-layer", required: true },
-      { name: "project_id", placeholder: "optional project ID", required: false },
-    ],
-  },
-  {
-    name: "get_decision_record",
-    method: "GET",
-    path: "/api/mcp/get_decision_record",
-    description: "Fetch L3 decision records linked to a commit hash",
-    params: [{ name: "commit_hash", placeholder: "e.g. a1b2c3d", required: true }],
-  },
-];
-
-function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
+function EndpointCard({ endpoint }: { endpoint: McpEndpoint }) {
   const [params, setParams] = useState<Record<string, string>>({});
   const [result, setResult] = useState<unknown>(null);
   const [loading, setLoading] = useState(false);
@@ -141,28 +105,28 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
     try {
       let res;
       switch (endpoint.name) {
-        case "list_projects":
+        case MCP_ENDPOINT_NAMES.LIST_PROJECTS:
           res = await listProjects.refetch();
           break;
-        case "search_knowledge":
+        case MCP_ENDPOINT_NAMES.SEARCH_KNOWLEDGE:
           res = await searchKnowledge.refetch();
           break;
-        case "get_dependencies":
+        case MCP_ENDPOINT_NAMES.GET_DEPENDENCIES:
           res = await getDependencies.refetch();
           break;
-        case "impact_analysis":
+        case MCP_ENDPOINT_NAMES.IMPACT_ANALYSIS:
           res = await impactAnalysis.refetch();
           break;
-        case "get_decision_record":
+        case MCP_ENDPOINT_NAMES.GET_DECISION_RECORD:
           res = await getDecisionRecord.refetch();
           break;
         default:
-          throw new Error("Unknown endpoint");
+          throw new Error(MCP_UNKNOWN_ENDPOINT_ERROR);
       }
       if (res.error) throw res.error;
       setResult(res.data);
     } catch (e) {
-      setResult({ error: e instanceof Error ? e.message : "Request failed" });
+      setResult({ error: e instanceof Error ? e.message : MCP_REQUEST_FAILED_MESSAGE });
     } finally {
       setLoading(false);
     }
@@ -172,7 +136,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
     const base = window.location.origin;
     navigator.clipboard.writeText(`${base}${buildUrl()}`);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
   };
 
   return (
@@ -219,11 +183,11 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
 
         <Button size="sm" className="w-full" onClick={handleRun} disabled={loading}>
           {loading ? (
-            "Calling..."
+            MCP_RUN_BUTTON_LOADING_TEXT
           ) : (
             <>
               <Play className="h-3 w-3 mr-2" />
-              Run
+              {MCP_RUN_BUTTON_TEXT}
             </>
           )}
         </Button>
@@ -232,7 +196,7 @@ function EndpointCard({ endpoint }: { endpoint: Endpoint }) {
           <div className="mt-2">
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] text-muted-foreground uppercase font-medium">
-                Response
+                {MCP_RESPONSE_LABEL}
               </span>
             </div>
             <pre className="text-[10px] font-mono bg-muted/40 border border-border/50 rounded p-3 overflow-auto max-h-48 text-foreground whitespace-pre-wrap">
@@ -250,13 +214,12 @@ export default function McpPage() {
     <div className="p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">MCP Tool Endpoints</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Phase 5 — Agent-callable endpoints following the Model Context Protocol pattern
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">{MCP_PAGE_TITLE}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{MCP_PAGE_SUBTITLE}</p>
         </div>
         <Badge variant="outline" className="flex items-center gap-1.5 text-xs">
-          <Cpu className="h-3 w-3" />5 tools available
+          <Cpu className="h-3 w-3" />
+          {MCP_ENDPOINTS.length} {MCP_TOOLS_AVAILABLE_SUFFIX}
         </Badge>
       </div>
 
@@ -265,16 +228,19 @@ export default function McpPage() {
           <div className="flex items-start gap-3 text-sm">
             <ExternalLink className="h-4 w-4 text-primary mt-0.5 shrink-0" />
             <div className="space-y-1">
-              <div className="font-medium text-sm">Using these endpoints in an AI agent</div>
+              <div className="font-medium text-sm">{MCP_INTRO_TITLE}</div>
               <p className="text-xs text-muted-foreground">
-                These REST endpoints can be called by any LLM agent as tools. Base URL:{" "}
-                <code className="bg-muted px-1 rounded font-mono text-foreground">/api/mcp/</code>
+                {MCP_INTRO_TEXT_BASE_URL}{" "}
+                <code className="bg-muted px-1 rounded font-mono text-foreground">
+                  {MCP_BASE_URL_PATH}
+                </code>
               </p>
               <p className="text-xs text-muted-foreground">
-                All endpoints return JSON. Use{" "}
-                <code className="bg-muted px-1 rounded font-mono text-foreground">GET</code> with
-                query parameters. Integrate with Claude, GPT-4, or any agent framework by
-                registering these as tool definitions.
+                {MCP_INTRO_TEXT_JSON_PREFIX}{" "}
+                <code className="bg-muted px-1 rounded font-mono text-foreground">
+                  {MCP_GET_METHOD_LABEL}
+                </code>{" "}
+                {MCP_INTRO_TEXT_JSON_SUFFIX}
               </p>
             </div>
           </div>
@@ -282,7 +248,7 @@ export default function McpPage() {
       </Card>
 
       <div className="space-y-4">
-        {endpoints.map((ep) => (
+        {MCP_ENDPOINTS.map((ep) => (
           <EndpointCard key={ep.name} endpoint={ep} />
         ))}
       </div>

@@ -89,3 +89,4 @@ export * from "./services/swarm/swarm-orchestrator.service.js";
 export * from "./constants/api-messages.js";
 export * from "./constants/upload.js";
 export * from "./constants/ast.js";
+export { shutdownGlobalWorkerPool } from "./services/ast-worker-pool.js";

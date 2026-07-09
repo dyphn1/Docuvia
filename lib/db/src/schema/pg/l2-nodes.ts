@@ -41,6 +41,7 @@ export const l2NodesTable = pgTable(
     reindexRequired: boolean("reindex_required").notNull().default(false),
     isBootstrapConfirmed: boolean("is_bootstrap_confirmed").notNull().default(false),
     contentHash: text("content_hash"),
+    embedding: vector("embedding", { dimensions: 1536 }),
   },
   (table) => ({
     l2ProjectIdx: index("l2_nodes_project_id_idx").on(table.projectId),

@@ -42,6 +42,7 @@ export const l3NodesTable = pgTable(
     validityStatus: text("validity_status").notNull().default("pending"),
     source: text("source").notNull().default("commit"),
     contentHash: text("content_hash"),
+    embedding: vector("embedding", { dimensions: 1536 }),
   },
   (table) => ({
     l3L2NodeIdx: index("l3_nodes_l2_node_id_idx").on(table.l2NodeId),

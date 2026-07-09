@@ -3,6 +3,13 @@ import { DocuviaCodeLensProvider } from "../docuvia-code-lens-provider.js";
 import { DocuviaHoverProvider } from "../docuvia-hover-provider.js";
 import { KnowledgeGraphTreeProvider } from "../knowledge-graph-tree-provider.js";
 import { TaskQueueTreeProvider } from "../task-queue-tree-provider.js";
+import { DOCUVIA_DIR_NAME, DIR_L3_DECISIONS } from "@workspace/core";
+import {
+  VIEW_KNOWLEDGE_GRAPH,
+  VIEW_TASK_QUEUE,
+  SUPPORTED_CODE_LANGUAGES,
+  LANG_MARKDOWN,
+} from "../constants/index.js";
 
 export function registerProviders(
   context: vscode.ExtensionContext,
@@ -10,43 +17,30 @@ export function registerProviders(
   tqProvider: TaskQueueTreeProvider
 ): void {
   // Tree Providers
-  const kgTreeView = vscode.window.createTreeView("docuvia.knowledgeGraph", {
+  const kgTreeView = vscode.window.createTreeView(VIEW_KNOWLEDGE_GRAPH, {
     treeDataProvider: kgProvider,
     dragAndDropController: kgProvider,
     showCollapseAll: true,
   });
   context.subscriptions.push(kgTreeView);
 
-  context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("docuvia.taskQueue", tqProvider)
-  );
+  context.subscriptions.push(vscode.window.registerTreeDataProvider(VIEW_TASK_QUEUE, tqProvider));
 
   // CodeLens Provider
   const codeLensProvider = new DocuviaCodeLensProvider(context);
   context.subscriptions.push(
-    vscode.languages.registerCodeLensProvider(
-      [
-        { language: "typescript" },
-        { language: "javascript" },
-        { language: "typescriptreact" },
-        { language: "javascriptreact" },
-        { language: "python" },
-      ],
-      codeLensProvider
-    )
+    vscode.languages.registerCodeLensProvider(SUPPORTED_CODE_LANGUAGES, codeLensProvider)
   );
 
   // Hover Provider
   const hoverProvider = new DocuviaHoverProvider();
   context.subscriptions.push(
     vscode.languages.registerHoverProvider(
-      [{ language: "markdown", pattern: "**/.docuvia/l3_decisions/*.md" }],
+      [{ language: LANG_MARKDOWN, pattern: `**/${DOCUVIA_DIR_NAME}/${DIR_L3_DECISIONS}/*.md` }],
       hoverProvider
     ),
-    vscode.languages.registerHoverProvider({ language: "typescript" }, hoverProvider),
-    vscode.languages.registerHoverProvider({ language: "javascript" }, hoverProvider),
-    vscode.languages.registerHoverProvider({ language: "typescriptreact" }, hoverProvider),
-    vscode.languages.registerHoverProvider({ language: "javascriptreact" }, hoverProvider),
-    vscode.languages.registerHoverProvider({ language: "python" }, hoverProvider)
+    ...SUPPORTED_CODE_LANGUAGES.map((lang) =>
+      vscode.languages.registerHoverProvider(lang, hoverProvider)
+    )
   );
 }

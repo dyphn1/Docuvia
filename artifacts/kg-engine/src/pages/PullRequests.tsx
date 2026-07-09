@@ -21,6 +21,27 @@ import {
 import { normalizeProjects } from "@/lib/projects";
 import { PullRequestList } from "./pull-requests/components/PullRequestList";
 import { PullRequestDetail } from "./pull-requests/components/PullRequestDetail";
+import {
+  PR_LIST_REFETCH_INTERVAL_MS,
+  GITHUB_WEBHOOK_PATH_PREFIX,
+  GITHUB_WEBHOOK_PATH_PLACEHOLDER,
+  GITHUB_WEBHOOK_SECRET_ENV_VAR_NAME,
+  GITHUB_WEBHOOK_CONTENT_TYPE,
+  GITHUB_WEBHOOK_EVENT_NAME,
+  PR_PAGE_TITLE,
+  PR_PAGE_SUBTITLE,
+  PR_PROJECT_SELECT_PLACEHOLDER,
+  PR_REFRESH_BUTTON_LABEL,
+  PR_WEBHOOK_CARD_TITLE,
+  PR_WEBHOOK_CARD_DESCRIPTION,
+  PR_WEBHOOK_PAYLOAD_URL_LABEL,
+  PR_WEBHOOK_CONTENT_TYPE_LABEL,
+  PR_WEBHOOK_SECRET_LABEL,
+  PR_WEBHOOK_SECRET_HELPER_TEXT,
+  PR_WEBHOOK_SECRET_HELPER_SUFFIX,
+  PR_WEBHOOK_EVENTS_LABEL,
+  PR_NO_PROJECT_SELECTED_MESSAGE,
+} from "@/constants/pull-requests";
 
 export default function PullRequests() {
   const queryClient = useQueryClient();
@@ -44,7 +65,7 @@ export default function PullRequests() {
     query: {
       queryKey: getListPullRequestsQueryKey(projectId),
       enabled: isValidProject,
-      refetchInterval: 15000,
+      refetchInterval: PR_LIST_REFETCH_INTERVAL_MS,
     },
   });
 
@@ -76,23 +97,21 @@ export default function PullRequests() {
   };
 
   const webhookEndpoint = isValidProject
-    ? `${window.location.origin}/api/webhooks/github/${projectId}`
-    : "/api/webhooks/github/{projectId}";
+    ? `${window.location.origin}${GITHUB_WEBHOOK_PATH_PREFIX}/${projectId}`
+    : GITHUB_WEBHOOK_PATH_PLACEHOLDER;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold">GitHub PR Integration</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Automatically ingest PR commits into the knowledge graph and generate AI impact summaries.
-        </p>
+        <h1 className="text-2xl font-bold">{PR_PAGE_TITLE}</h1>
+        <p className="text-muted-foreground text-sm mt-1">{PR_PAGE_SUBTITLE}</p>
       </div>
 
       {/* Project selector */}
       <div className="flex items-center gap-3">
         <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
           <SelectTrigger className="w-64">
-            <SelectValue placeholder="Select a project…" />
+            <SelectValue placeholder={PR_PROJECT_SELECT_PLACEHOLDER} />
           </SelectTrigger>
           <SelectContent>
             {projects.map((p) => (
@@ -104,7 +123,7 @@ export default function PullRequests() {
         </Select>
         {isValidProject && (
           <Button variant="ghost" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-3 w-3 mr-1" /> Refresh
+            <RefreshCw className="h-3 w-3 mr-1" /> {PR_REFRESH_BUTTON_LABEL}
           </Button>
         )}
       </div>
@@ -112,35 +131,34 @@ export default function PullRequests() {
       {/* Webhook setup card */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Webhook Setup</CardTitle>
-          <CardDescription>
-            Configure this endpoint in your GitHub repository settings to receive PR events.
-          </CardDescription>
+          <CardTitle className="text-sm">{PR_WEBHOOK_CARD_TITLE}</CardTitle>
+          <CardDescription>{PR_WEBHOOK_CARD_DESCRIPTION}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 text-sm">
           <div>
-            <span className="text-muted-foreground">Payload URL:</span>
+            <span className="text-muted-foreground">{PR_WEBHOOK_PAYLOAD_URL_LABEL}</span>
             <code className="ml-2 text-xs bg-muted px-2 py-1 rounded font-mono break-all">
               {webhookEndpoint}
             </code>
           </div>
           <div>
-            <span className="text-muted-foreground">Content type:</span>
+            <span className="text-muted-foreground">{PR_WEBHOOK_CONTENT_TYPE_LABEL}</span>
             <code className="ml-2 text-xs bg-muted px-2 py-1 rounded font-mono">
-              application/json
+              {GITHUB_WEBHOOK_CONTENT_TYPE}
             </code>
           </div>
           <div>
-            <span className="text-muted-foreground">Secret:</span>
+            <span className="text-muted-foreground">{PR_WEBHOOK_SECRET_LABEL}</span>
             <span className="ml-2 text-xs text-muted-foreground">
-              Set <code className="bg-muted px-1 rounded">GITHUB_WEBHOOK_SECRET</code> env var on
-              the server
+              {PR_WEBHOOK_SECRET_HELPER_TEXT}{" "}
+              <code className="bg-muted px-1 rounded">{GITHUB_WEBHOOK_SECRET_ENV_VAR_NAME}</code>{" "}
+              {PR_WEBHOOK_SECRET_HELPER_SUFFIX}
             </span>
           </div>
           <div>
-            <span className="text-muted-foreground">Events:</span>
+            <span className="text-muted-foreground">{PR_WEBHOOK_EVENTS_LABEL}</span>
             <Badge variant="outline" className="ml-2 text-xs">
-              pull_request
+              {GITHUB_WEBHOOK_EVENT_NAME}
             </Badge>
           </div>
         </CardContent>
@@ -159,7 +177,7 @@ export default function PullRequests() {
 
       {!isValidProject && (
         <div className="text-center text-muted-foreground text-sm py-12">
-          Select a project to view its pull requests.
+          {PR_NO_PROJECT_SELECTED_MESSAGE}
         </div>
       )}
 

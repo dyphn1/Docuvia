@@ -4,6 +4,7 @@ import {
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { TemplateEditor } from "./TemplateEditor";
+import { PROJECT_TEMPLATES_SKELETON_COUNT } from "@/constants/templates";
 
 export function ProjectTemplates({
   projectId,
@@ -19,7 +20,7 @@ export function ProjectTemplates({
   if (isLoading) {
     return (
       <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
+        {Array.from({ length: PROJECT_TEMPLATES_SKELETON_COUNT }, (_, i) => (
           <Skeleton key={i} className="h-24 w-full" />
         ))}
       </div>
@@ -32,7 +33,7 @@ export function ProjectTemplates({
         {projectName}
       </h2>
       {(templates ?? []).map((t) => (
-        <TemplateEditor key={t.templateType} projectId={projectId} template={t as any} />
+        <TemplateEditor key={t.templateType} projectId={projectId} template={t} />
       ))}
     </div>
   );

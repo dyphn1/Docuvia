@@ -1,5 +1,10 @@
 import { randomBytes } from "crypto";
 import { CentralSearchResult } from "../search-results-panel.js";
+import {
+  HTML_HEAD_TITLE_SEARCH,
+  SEARCH_RESULTS_FOR,
+  SEARCH_RESULTS_EMPTY,
+} from "../constants/index.js";
 
 export function getSearchResultsHtml(
   cspSource: string,
@@ -66,7 +71,7 @@ export function getSearchResultsHtml(
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; style-src ${cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Docuvia: Search Results</title>
+  <title>${HTML_HEAD_TITLE_SEARCH}</title>
   <style nonce="${nonce}">
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -132,8 +137,8 @@ export function getSearchResultsHtml(
   </style>
 </head>
 <body>
-  <header>Docuvia: Search Results</header>
-  <div class="query-label">Results for: <em>${escapeHtml(query)}</em></div>
+  <header>${HTML_HEAD_TITLE_SEARCH}</header>
+  <div class="query-label">${SEARCH_RESULTS_FOR}<em>${escapeHtml(query)}</em></div>
   ${resultsHtml}
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();

@@ -1,4 +1,25 @@
 import { randomBytes } from "crypto";
+import {
+  HTML_HEAD_TITLE_DASHBOARD,
+  WEBVIEW_NO_DECISIONS,
+  WEBVIEW_NO_MODULES,
+  DASHBOARD_SECTION_QUICK_START,
+  DASHBOARD_SECTION_QUICK_START_DESC,
+  DASHBOARD_SECTION_RECENT,
+  DASHBOARD_SECTION_TOP_MODULES,
+  DASHBOARD_SECTION_REPO_OVERVIEW,
+  DASHBOARD_SECTION_REPO_OVERVIEW_DESC,
+  DASHBOARD_SECTION_COVERAGE,
+  DASHBOARD_SECTION_COVERAGE_TAGS,
+  DASHBOARD_SECTION_COVERAGE_MODULES,
+  DASHBOARD_SECTION_COVERAGE_DECISIONS,
+  DASHBOARD_SECTION_QUEUE,
+  DASHBOARD_SECTION_QUEUE_PENDING,
+  DASHBOARD_SECTION_QUEUE_IN_PROGRESS,
+  DASHBOARD_SECTION_LAST_LOADED,
+  DASHBOARD_SECTION_ASK_BUTTON,
+  DASHBOARD_OPEN_CHAT_TITLE,
+} from "../constants/index.js";
 
 export function getDashboardHtml(cspSource: string): string {
   const nonce = randomBytes(16).toString("hex");
@@ -10,7 +31,7 @@ export function getDashboardHtml(cspSource: string): string {
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; style-src ${cspSource} 'nonce-${nonce}'; script-src 'nonce-${nonce}';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Docuvia Dashboard</title>
+  <title>${HTML_HEAD_TITLE_DASHBOARD}</title>
   <style nonce="${nonce}">
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -103,71 +124,71 @@ export function getDashboardHtml(cspSource: string): string {
 </head>
 <body>
   <header>
-    Docuvia Dashboard
+    ${HTML_HEAD_TITLE_DASHBOARD}
     <span id="workspace-name" style="font-weight:normal;color:var(--vscode-descriptionForeground);margin-left:10px;font-size:0.85em;"></span>
   </header>
   <div class="main">
     <div class="left-pane">
       <div class="card">
-        <h3>Quick Start</h3>
+        <h3>${DASHBOARD_SECTION_QUICK_START}</h3>
         <p style="font-size:0.85em;color:var(--vscode-descriptionForeground);">
-          Use the <strong>Docuvia: Init Project</strong> or <strong>Docuvia: Add Decision</strong> commands to get started.
+          ${DASHBOARD_SECTION_QUICK_START_DESC}
         </p>
       </div>
       <div class="card">
-        <h3>Recent Decisions</h3>
-        <ul id="recent-decisions"><li class="empty">No decisions yet.</li></ul>
+        <h3>${DASHBOARD_SECTION_RECENT}</h3>
+        <ul id="recent-decisions"><li class="empty">${WEBVIEW_NO_DECISIONS}</li></ul>
       </div>
       <div class="card">
-        <h3>Top Modules</h3>
-        <ul id="top-modules"><li class="empty">No modules yet.</li></ul>
+        <h3>${DASHBOARD_SECTION_TOP_MODULES}</h3>
+        <ul id="top-modules"><li class="empty">${WEBVIEW_NO_MODULES}</li></ul>
       </div>
       <div class="card">
-        <h3>Repo Overview</h3>
+        <h3>${DASHBOARD_SECTION_REPO_OVERVIEW}</h3>
         <p style="font-size:0.85em;color:var(--vscode-descriptionForeground);">
-          The knowledge graph captures architectural decisions and design rationale for this codebase.
+          ${DASHBOARD_SECTION_REPO_OVERVIEW_DESC}
         </p>
       </div>
     </div>
     <div class="right-pane">
       <div class="card">
-        <h3>Coverage Stats</h3>
+        <h3>${DASHBOARD_SECTION_COVERAGE}</h3>
         <div class="stat-row">
           <div>
             <div class="stat" id="stat-tags">0</div>
-            <div class="stat-label">Tags</div>
+            <div class="stat-label">${DASHBOARD_SECTION_COVERAGE_TAGS}</div>
           </div>
           <div>
             <div class="stat" id="stat-modules">0</div>
-            <div class="stat-label">Modules</div>
+            <div class="stat-label">${DASHBOARD_SECTION_COVERAGE_MODULES}</div>
           </div>
           <div>
             <div class="stat" id="stat-decisions">0</div>
-            <div class="stat-label">Decisions</div>
+            <div class="stat-label">${DASHBOARD_SECTION_COVERAGE_DECISIONS}</div>
           </div>
         </div>
       </div>
       <div class="card">
-        <h3>Extraction Queue</h3>
+        <h3>${DASHBOARD_SECTION_QUEUE}</h3>
         <div class="stat-row">
           <div>
             <div class="stat" id="stat-pending">0</div>
-            <div class="stat-label">Pending</div>
+            <div class="stat-label">${DASHBOARD_SECTION_QUEUE_PENDING}</div>
           </div>
           <div>
             <div class="stat" id="stat-in-progress">0</div>
-            <div class="stat-label">In Progress</div>
+            <div class="stat-label">${DASHBOARD_SECTION_QUEUE_IN_PROGRESS}</div>
           </div>
         </div>
       </div>
       <div class="card">
-        <h3>Last Loaded</h3>
+        <h3>${DASHBOARD_SECTION_LAST_LOADED}</h3>
         <div id="stat-loaded-at" style="font-size:0.85em;color:var(--vscode-descriptionForeground);">—</div>
       </div>
     </div>
   </div>
   <div class="bottom-bar">
-    <button id="open-chat-btn" class="search-placeholder" title="Open Docuvia Chat">Ask Docuvia…</button>
+    <button id="open-chat-btn" class="search-placeholder" title="${DASHBOARD_OPEN_CHAT_TITLE}">${DASHBOARD_SECTION_ASK_BUTTON}</button>
     <span>🔍</span>
   </div>
 
@@ -199,7 +220,7 @@ export function getDashboardHtml(cspSource: string): string {
 
       const decisionsList = document.getElementById('recent-decisions');
       if (data.recentDecisions.length === 0) {
-        decisionsList.innerHTML = '<li class="empty">No decisions yet.</li>';
+        decisionsList.innerHTML = '<li class="empty">${WEBVIEW_NO_DECISIONS}</li>';
       } else {
         decisionsList.innerHTML = data.recentDecisions.map(function(d) {
           return '<li data-filepath="' + escapeAttr(d.filePath) + '" onclick="openDecision(this.dataset.filepath)">' +
@@ -211,7 +232,7 @@ export function getDashboardHtml(cspSource: string): string {
 
       const modulesList = document.getElementById('top-modules');
       if (data.topModules.length === 0) {
-        modulesList.innerHTML = '<li class="empty">No modules yet.</li>';
+        modulesList.innerHTML = '<li class="empty">${WEBVIEW_NO_MODULES}</li>';
       } else {
         modulesList.innerHTML = data.topModules.map(function(m) {
           return '<li>' + escapeHtml(m.name) +

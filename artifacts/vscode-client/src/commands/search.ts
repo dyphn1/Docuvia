@@ -1,5 +1,14 @@
 import * as vscode from "vscode";
 import { SearchResultsPanel } from "../search-results-panel.js";
+import {
+  MSG_SEARCH_CROSS_PROJECT_UNAVAILABLE,
+  MSG_SEARCH_FAILED,
+  MSG_SEARCH_PROMPT,
+  MSG_SEARCH_PLACEHOLDER,
+  MSG_SEARCH_SELECT_TEXT,
+  MSG_SEARCH_SELECTION_TRUNCATED,
+  DocuviaCommandInvoker,
+} from "../constants/index.js";
 
 async function executeSearch(context: vscode.ExtensionContext, query: string) {
   try {
@@ -7,23 +16,20 @@ async function executeSearch(context: vscode.ExtensionContext, query: string) {
     const viewPref = config.get<string>("search.defaultView", "chat");
 
     if (viewPref === "chat") {
-      await vscode.commands.executeCommand("workbench.action.chat.open", {
-        query: `@docuvia /query ${query}`,
-      });
+      await DocuviaCommandInvoker.executeChatOpen(`@docuvia /query ${query}`);
     } else {
-      vscode.window.showInformationMessage(
-        "Cross-project search via UI is temporarily unavailable. Use chat: /query <term> instead."
-      );
+      vscode.window.showInformationMessage(MSG_SEARCH_CROSS_PROJECT_UNAVAILABLE);
     }
-  } catch (err) {
-    void vscode.window.showErrorMessage(`Docuvia: Search failed — ${String(err)}`);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(`${MSG_SEARCH_FAILED}${errorMsg}`);
   }
 }
 
 export async function openSearchCommand(context: vscode.ExtensionContext) {
   const query = await vscode.window.showInputBox({
-    prompt: "Search cross-project knowledge",
-    placeHolder: "e.g. how do other projects handle auth",
+    prompt: MSG_SEARCH_PROMPT,
+    placeHolder: MSG_SEARCH_PLACEHOLDER,
   });
   if (!query || query.trim().length === 0) return;
   await executeSearch(context, query.trim());
@@ -32,7 +38,7 @@ export async function openSearchCommand(context: vscode.ExtensionContext) {
 export async function searchFromSelectionCommand(context: vscode.ExtensionContext) {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.selection.isEmpty) {
-    void vscode.window.showWarningMessage("Docuvia: Select code or text to search.");
+    void vscode.window.showWarningMessage(MSG_SEARCH_SELECT_TEXT);
     return;
   }
   const MAX_QUERY_LENGTH = 2000;
@@ -41,7 +47,10 @@ export async function searchFromSelectionCommand(context: vscode.ExtensionContex
     rawText.length > MAX_QUERY_LENGTH ? rawText.slice(0, MAX_QUERY_LENGTH) : rawText;
   if (rawText.length > MAX_QUERY_LENGTH) {
     void vscode.window.showWarningMessage(
-      `Docuvia: Selection was too long (${rawText.length} chars) and was truncated to ${MAX_QUERY_LENGTH} chars for search.`
+      MSG_SEARCH_SELECTION_TRUNCATED.replace("{0}", String(rawText.length)).replace(
+        "{1}",
+        String(MAX_QUERY_LENGTH)
+      )
     );
   }
   await executeSearch(context, selectedText);

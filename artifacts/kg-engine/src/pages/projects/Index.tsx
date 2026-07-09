@@ -28,13 +28,29 @@ import { Link } from "wouter";
 import { FolderGit2, Plus, Loader2, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { normalizeProjects } from "@/lib/projects";
-
-const statusColors: Record<string, string> = {
-  active: "bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400",
-  indexing: "bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400",
-  pending: "bg-muted text-muted-foreground border-border",
-  error: "bg-destructive/10 border-destructive/20 text-destructive",
-};
+import {
+  TABLE_COLUMN_COUNT,
+  PROJECT_STATUS_COLORS,
+  PROJECT_DATE_FORMAT,
+  GITHUB_URL_PREFIX,
+  PROJECTS_PAGE_TITLE,
+  PROJECTS_PAGE_SUBTITLE,
+  ADD_PROJECT_BUTTON_LABEL,
+  PROJECTS_TABLE_HEADERS,
+  PROJECTS_LOADING_MESSAGE,
+  PROJECTS_EMPTY_TITLE,
+  ADD_FIRST_PROJECT_BUTTON_LABEL,
+  ADD_PROJECT_DIALOG_TITLE,
+  PROJECT_NAME_LABEL,
+  PROJECT_NAME_PLACEHOLDER,
+  REPO_URL_LABEL,
+  REPO_URL_PLACEHOLDER,
+  REPO_URL_HELPER_TEXT,
+  CREATE_PROJECT_CANCEL_LABEL,
+  CREATING_PROJECT_LABEL,
+  CREATE_PROJECT_BUTTON_LABEL,
+  PROJECT_CREATE_ERROR_MESSAGE,
+} from "@/constants/projects";
 
 export default function Projects() {
   const queryClient = useQueryClient();
@@ -62,7 +78,7 @@ export default function Projects() {
       setName("");
       setRepoUrl("");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create project");
+      setError(e instanceof Error ? e.message : PROJECT_CREATE_ERROR_MESSAGE);
     } finally {
       setSubmitting(false);
     }
@@ -72,11 +88,11 @@ export default function Projects() {
     <div className="p-6 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Projects</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Manage indexed repositories</p>
+          <h1 className="text-2xl font-bold tracking-tight">{PROJECTS_PAGE_TITLE}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{PROJECTS_PAGE_SUBTITLE}</p>
         </div>
         <Button size="sm" onClick={() => setOpen(true)} className="gap-1.5">
-          <Plus className="h-3.5 w-3.5" /> Add Project
+          <Plus className="h-3.5 w-3.5" /> {ADD_PROJECT_BUTTON_LABEL}
         </Button>
       </div>
 
@@ -84,13 +100,13 @@ export default function Projects() {
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-border/50">
-              <TableHead>Name</TableHead>
-              <TableHead>Repository</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">L2</TableHead>
-              <TableHead className="text-right">L3</TableHead>
-              <TableHead className="text-right">Commits</TableHead>
-              <TableHead className="text-right">Added</TableHead>
+              <TableHead>{PROJECTS_TABLE_HEADERS[0]}</TableHead>
+              <TableHead>{PROJECTS_TABLE_HEADERS[1]}</TableHead>
+              <TableHead>{PROJECTS_TABLE_HEADERS[2]}</TableHead>
+              <TableHead className="text-right">{PROJECTS_TABLE_HEADERS[3]}</TableHead>
+              <TableHead className="text-right">{PROJECTS_TABLE_HEADERS[4]}</TableHead>
+              <TableHead className="text-right">{PROJECTS_TABLE_HEADERS[5]}</TableHead>
+              <TableHead className="text-right">{PROJECTS_TABLE_HEADERS[6]}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -116,14 +132,14 @@ export default function Projects() {
                     className="text-xs font-mono text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    {project.repoUrl.replace("https://github.com/", "")}
+                    {project.repoUrl.replace(GITHUB_URL_PREFIX, "")}
                     <ExternalLink className="h-2.5 w-2.5" />
                   </a>
                 </TableCell>
                 <TableCell>
                   <Badge
                     variant="outline"
-                    className={`font-mono text-[10px] uppercase ${statusColors[project.status] ?? ""}`}
+                    className={`font-mono text-[10px] uppercase ${PROJECT_STATUS_COLORS[project.status] ?? ""}`}
                   >
                     {project.status}
                   </Badge>
@@ -134,31 +150,34 @@ export default function Projects() {
                   {project.commitCount}
                 </TableCell>
                 <TableCell className="text-right text-xs text-muted-foreground">
-                  {format(new Date(project.createdAt), "MMM d, yyyy")}
+                  {format(new Date(project.createdAt), PROJECT_DATE_FORMAT)}
                 </TableCell>
               </TableRow>
             ))}
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={TABLE_COLUMN_COUNT}
+                  className="h-24 text-center text-muted-foreground"
+                >
                   <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
-                  Loading projects...
+                  {PROJECTS_LOADING_MESSAGE}
                 </TableCell>
               </TableRow>
             )}
             {!isLoading && projects.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="h-32 text-center">
+                <TableCell colSpan={TABLE_COLUMN_COUNT} className="h-32 text-center">
                   <div className="flex flex-col items-center gap-2 text-muted-foreground">
                     <FolderGit2 className="h-8 w-8 opacity-30" />
-                    <div className="text-sm">No projects yet</div>
+                    <div className="text-sm">{PROJECTS_EMPTY_TITLE}</div>
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => setOpen(true)}
                       className="gap-1.5 mt-1"
                     >
-                      <Plus className="h-3.5 w-3.5" /> Add your first project
+                      <Plus className="h-3.5 w-3.5" /> {ADD_FIRST_PROJECT_BUTTON_LABEL}
                     </Button>
                   </div>
                 </TableCell>
@@ -173,30 +192,28 @@ export default function Projects() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FolderGit2 className="h-4 w-4 text-primary" />
-              Add New Project
+              {ADD_PROJECT_DIALOG_TITLE}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Project Name</Label>
+              <Label className="text-xs font-medium">{PROJECT_NAME_LABEL}</Label>
               <Input
-                placeholder="My Repository"
+                placeholder={PROJECT_NAME_PLACEHOLDER}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="h-9"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Repository URL</Label>
+              <Label className="text-xs font-medium">{REPO_URL_LABEL}</Label>
               <Input
-                placeholder="https://github.com/owner/repo"
+                placeholder={REPO_URL_PLACEHOLDER}
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
                 className="h-9 font-mono text-sm"
               />
-              <p className="text-[10px] text-muted-foreground">
-                GitHub URLs are supported for commit ingestion
-              </p>
+              <p className="text-[10px] text-muted-foreground">{REPO_URL_HELPER_TEXT}</p>
             </div>
             {error && (
               <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-2.5">
@@ -211,7 +228,7 @@ export default function Projects() {
               onClick={() => setOpen(false)}
               disabled={submitting}
             >
-              Cancel
+              {CREATE_PROJECT_CANCEL_LABEL}
             </Button>
             <Button
               size="sm"
@@ -221,10 +238,10 @@ export default function Projects() {
               {submitting ? (
                 <>
                   <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-                  Creating...
+                  {CREATING_PROJECT_LABEL}
                 </>
               ) : (
-                "Create Project"
+                CREATE_PROJECT_BUTTON_LABEL
               )}
             </Button>
           </DialogFooter>

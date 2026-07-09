@@ -5,6 +5,12 @@ import { handleQuery } from "./chat/handlers/query.js";
 import { handleExtract } from "./chat/handlers/extract.js";
 import { handleHelp } from "./chat/handlers/help.js";
 import { TaskQueueTreeProvider } from "./task-queue-tree-provider.js";
+import { DOCUVIA_DIR_NAME } from "@workspace/core";
+import {
+  MSG_CHAT_ERROR,
+  MSG_CHAT_FOLLOWUP_EXPLORE_PROMPT,
+  MSG_CHAT_FOLLOWUP_EXPLORE_LABEL,
+} from "./constants/index.js";
 
 export function registerDocuviaChatParticipant(
   context: vscode.ExtensionContext,
@@ -25,10 +31,11 @@ export function registerDocuviaChatParticipant(
         default:
           return await handleHelp(stream);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
       console.error("[ChatParticipant] Unhandled error:", err);
-      stream.markdown(`**Error:** ${err.message || String(err)}`);
-      return { errorDetails: { message: err.message || String(err) } };
+      stream.markdown(`${MSG_CHAT_ERROR}${errorMsg}`);
+      return { errorDetails: { message: errorMsg } };
     }
   };
 
@@ -43,9 +50,13 @@ export function registerDocuviaChatParticipant(
       }
       for (const folder of folders) {
         try {
-          await vscode.workspace.fs.stat(vscode.Uri.file(path.join(folder.uri.fsPath, ".docuvia")));
+          await vscode.workspace.fs.stat(
+            vscode.Uri.file(path.join(folder.uri.fsPath, DOCUVIA_DIR_NAME))
+          );
         } catch {
-          return [{ prompt: "/explore", label: "Explore this project and suggest L1 tags" }];
+          return [
+            { prompt: MSG_CHAT_FOLLOWUP_EXPLORE_PROMPT, label: MSG_CHAT_FOLLOWUP_EXPLORE_LABEL },
+          ];
         }
       }
       return [];

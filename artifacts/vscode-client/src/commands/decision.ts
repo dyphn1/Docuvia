@@ -2,14 +2,23 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { ExtractService } from "@workspace/core";
 import { KGNode, KnowledgeGraphTreeProvider } from "../knowledge-graph-tree-provider.js";
+import {
+  MSG_AUTO_CATEGORIZE_INFO,
+  MSG_OPEN_FILE_EXTRACT_WARNING,
+  MSG_SELECT_CODE_WARNING,
+  MSG_NO_DECISIONS_FOR_MODULE,
+  MSG_SELECT_DECISION_TO_OPEN,
+  MSG_DECISION_EXTRACTED_FROM,
+  MSG_DECISION_NONE_FOUND,
+  MSG_DECISION_EXTRACTION_FAILED,
+  DocuviaCommandInvoker,
+} from "../constants/index.js";
 
 export async function autoCategorizeDecisionsCommand(
   kgProvider: KnowledgeGraphTreeProvider,
   node?: KGNode
 ) {
-  vscode.window.showInformationMessage(
-    "Auto-categorization is handled by the server ingestion pipeline."
-  );
+  vscode.window.showInformationMessage(MSG_AUTO_CATEGORIZE_INFO);
 }
 
 export async function addDecisionCommand(
@@ -22,7 +31,7 @@ export async function addDecisionCommand(
   const editor = vscode.window.activeTextEditor;
 
   if (!editor) {
-    void vscode.window.showWarningMessage("Docuvia: Open a file to extract decisions from.");
+    void vscode.window.showWarningMessage(MSG_OPEN_FILE_EXTRACT_WARNING);
     return;
   }
 
@@ -35,23 +44,26 @@ export async function addDecisionCommand(
 
     if (result.decisions.length > 0) {
       void vscode.window.showInformationMessage(
-        `Docuvia: Extracted ${result.decisions.length} decisions from ${path.basename(filePath)}.\n- ${result.decisions.join("\n- ")}`,
+        MSG_DECISION_EXTRACTED_FROM.replace("{0}", String(result.decisions.length))
+          .replace("{1}", path.basename(filePath))
+          .replace("{2}", result.decisions.join("\n- ")),
         { modal: true }
       );
     } else {
       void vscode.window.showInformationMessage(
-        `Docuvia: No decisions found in ${path.basename(filePath)}.`
+        MSG_DECISION_NONE_FOUND.replace("{0}", path.basename(filePath))
       );
     }
-  } catch (err: any) {
-    void vscode.window.showErrorMessage(`Docuvia: Extraction failed - ${err.message}`);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    void vscode.window.showErrorMessage(`${MSG_DECISION_EXTRACTION_FAILED}${errorMsg}`);
   }
 }
 
 export async function addDecisionFromSelectionCommand(context: vscode.ExtensionContext) {
   const editor = vscode.window.activeTextEditor;
   if (!editor || editor.selection.isEmpty) {
-    void vscode.window.showWarningMessage("Docuvia: Select code first.");
+    void vscode.window.showWarningMessage(MSG_SELECT_CODE_WARNING);
     return;
   }
   const selectedText = editor.document.getText(editor.selection);
@@ -70,7 +82,7 @@ export async function showDecisionsForLensCommand(data: { module: any; decisions
   const decisions = data.decisions || [];
 
   if (decisions.length === 0) {
-    void vscode.window.showInformationMessage("Docuvia: No decisions found for this module.");
+    void vscode.window.showInformationMessage(MSG_NO_DECISIONS_FOR_MODULE);
     return;
   }
 
@@ -81,10 +93,10 @@ export async function showDecisionsForLensCommand(data: { module: any; decisions
   }));
 
   const selected = await vscode.window.showQuickPick(items, {
-    placeHolder: "Select a decision to open",
+    placeHolder: MSG_SELECT_DECISION_TO_OPEN,
   });
 
   if (selected && selected.decision.filePath) {
-    vscode.commands.executeCommand("docuvia.openDecision", selected.decision.filePath);
+    await DocuviaCommandInvoker.executeOpenDecision(selected.decision.filePath);
   }
 }

@@ -6,6 +6,7 @@ import {
   getListDocumentsQueryKey,
   getListMiscDocumentsQueryKey,
 } from "@workspace/api-client-react";
+import { PLAIN_TEXT_MIME_TYPE, UPLOAD_FORM_DEFAULT_ERROR_MESSAGE } from "@/constants/documents";
 
 export function useUploadDocumentForm() {
   const queryClient = useQueryClient();
@@ -33,7 +34,7 @@ export function useUploadDocumentForm() {
     };
 
     const onError = (e: Error) => {
-      setError(e.message || "Unknown error");
+      setError(e.message || UPLOAD_FORM_DEFAULT_ERROR_MESSAGE);
       setLoading(false);
     };
 
@@ -54,7 +55,9 @@ export function useUploadDocumentForm() {
         }
       );
     } else {
-      const file = new window.File([content.trim()], filename.trim(), { type: "text/plain" });
+      const file = new window.File([content.trim()], filename.trim(), {
+        type: PLAIN_TEXT_MIME_TYPE,
+      });
       uploadMutation.mutate(
         { data: { file } },
         {

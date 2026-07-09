@@ -116,3 +116,28 @@ export interface KnowledgeSnapshot {
   l3Nodes: ApiL3Node[];
   nodeLinks: ApiNodeLink[];
 }
+
+// ─── L1 Template & Project Types ──────────────────────────────────────────────
+
+export enum ProjectType {
+  Frontend = "frontend",
+  Backend = "backend",
+  Fullstack = "fullstack",
+  Monorepo = "monorepo",
+  Library = "library",
+  Cli = "cli",
+}
+
+export interface L1TemplateTag {
+  slug: string;
+  name: string;
+  description: string;
+}
+
+export interface L1Template {
+  projectType: ProjectType;
+  label: string;
+  /** Keywords searched in README.md text (lowercased) and package.json dependency names */
+  keywords: string[];
+  tags: L1TemplateTag[];
+}

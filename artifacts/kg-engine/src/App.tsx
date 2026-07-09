@@ -1,8 +1,10 @@
+import type { ComponentType } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/Toaster";
 import { TooltipProvider } from "@/components/ui/Tooltip";
 import { Layout } from "@/components/Layout";
+import { QUERY_CLIENT_DEFAULT_RETRY, QUERY_CLIENT_REFETCH_ON_WINDOW_FOCUS } from "@/constants/app";
 
 import Dashboard from "@/pages/Dashboard";
 import Projects from "@/pages/projects/Index";
@@ -23,30 +25,36 @@ import NotFound from "@/pages/NotFound";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: false,
-      refetchOnWindowFocus: false,
+      retry: QUERY_CLIENT_DEFAULT_RETRY,
+      refetchOnWindowFocus: QUERY_CLIENT_REFETCH_ON_WINDOW_FOCUS,
     },
   },
 });
+
+const ROUTES: { path: string; component: ComponentType }[] = [
+  { path: "/", component: Dashboard },
+  { path: "/projects", component: Projects },
+  { path: "/projects/:id", component: ProjectDetail },
+  { path: "/l1-tags", component: L1Tags },
+  { path: "/review", component: Review },
+  { path: "/query", component: Query },
+  { path: "/topology", component: Topology },
+  { path: "/pipeline", component: Pipeline },
+  { path: "/documents", component: Documents },
+  { path: "/mcp", component: McpPage },
+  { path: "/templates", component: Templates },
+  { path: "/subscriptions", component: Subscriptions },
+  { path: "/pull-requests", component: PullRequests },
+  { path: "/integrations", component: Integrations },
+];
 
 function Router() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/projects" component={Projects} />
-        <Route path="/projects/:id" component={ProjectDetail} />
-        <Route path="/l1-tags" component={L1Tags} />
-        <Route path="/review" component={Review} />
-        <Route path="/query" component={Query} />
-        <Route path="/topology" component={Topology} />
-        <Route path="/pipeline" component={Pipeline} />
-        <Route path="/documents" component={Documents} />
-        <Route path="/mcp" component={McpPage} />
-        <Route path="/templates" component={Templates} />
-        <Route path="/subscriptions" component={Subscriptions} />
-        <Route path="/pull-requests" component={PullRequests} />
-        <Route path="/integrations" component={Integrations} />
+        {ROUTES.map(({ path, component }) => (
+          <Route key={path} path={path} component={component} />
+        ))}
         <Route component={NotFound} />
       </Switch>
     </Layout>

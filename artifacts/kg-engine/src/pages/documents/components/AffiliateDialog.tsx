@@ -17,6 +17,15 @@ import {
   SelectValue,
 } from "@/components/ui/Select";
 import { Loader2, AlertCircle, Link2 } from "lucide-react";
+import {
+  AFFILIATE_DIALOG_TITLE,
+  AFFILIATE_DIALOG_PROJECT_LABEL,
+  AFFILIATE_DIALOG_PROJECT_PLACEHOLDER,
+  AFFILIATE_DIALOG_ERROR_FALLBACK,
+  AFFILIATE_DIALOG_CANCEL_LABEL,
+  AFFILIATE_DIALOG_CONFIRM_LABEL,
+  AFFILIATE_DIALOG_ASSOCIATING_LABEL,
+} from "@/constants/documents";
 
 interface AffiliateDialogProps {
   open: boolean;
@@ -57,14 +66,14 @@ export function AffiliateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle className="text-sm">Associate with Project</DialogTitle>
+          <DialogTitle className="text-sm">{AFFILIATE_DIALOG_TITLE}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <div className="space-y-1">
-            <Label className="text-xs">Project</Label>
+            <Label className="text-xs">{AFFILIATE_DIALOG_PROJECT_LABEL}</Label>
             <Select value={affiliateProjectId} onValueChange={setAffiliateProjectId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select project..." />
+                <SelectValue placeholder={AFFILIATE_DIALOG_PROJECT_PLACEHOLDER} />
               </SelectTrigger>
               <SelectContent>
                 {projects.map((p) => (
@@ -80,7 +89,7 @@ export function AffiliateDialog({
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               {affiliateMutation.error instanceof Error
                 ? affiliateMutation.error.message
-                : "Failed to affiliate document"}
+                : AFFILIATE_DIALOG_ERROR_FALLBACK}
             </div>
           )}
         </div>
@@ -91,7 +100,7 @@ export function AffiliateDialog({
             onClick={() => onOpenChange(false)}
             disabled={affiliateMutation.isPending}
           >
-            Cancel
+            {AFFILIATE_DIALOG_CANCEL_LABEL}
           </Button>
           <Button
             size="sm"
@@ -101,12 +110,12 @@ export function AffiliateDialog({
             {affiliateMutation.isPending ? (
               <>
                 <Loader2 className="h-3 w-3 mr-1.5 animate-spin" />
-                Associating...
+                {AFFILIATE_DIALOG_ASSOCIATING_LABEL}
               </>
             ) : (
               <>
                 <Link2 className="h-3 w-3 mr-1.5" />
-                Confirm
+                {AFFILIATE_DIALOG_CONFIRM_LABEL}
               </>
             )}
           </Button>

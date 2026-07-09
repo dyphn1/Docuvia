@@ -29,13 +29,36 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/Dialog";
+import {
+  DEFAULT_TAG_CATEGORY,
+  TABLE_COLUMN_COUNT,
+  CREATED_DATE_FORMAT,
+  L1_TAGS_PAGE_TITLE,
+  L1_TAGS_PAGE_SUBTITLE,
+  NEW_L1_TAG_BUTTON_TEXT,
+  CREATE_L1_TAG_DIALOG_TITLE,
+  TAG_NAME_LABEL,
+  TAG_NAME_PLACEHOLDER,
+  TAG_CATEGORY_LABEL,
+  TAG_CATEGORY_PLACEHOLDER,
+  TAG_DESCRIPTION_LABEL,
+  TAG_DESCRIPTION_PLACEHOLDER,
+  CREATE_TAG_BUTTON_PENDING_TEXT,
+  CREATE_TAG_BUTTON_TEXT,
+  SEARCH_TAGS_PLACEHOLDER,
+  TABLE_HEADERS,
+  LOADING_TAGS_MESSAGE,
+  NO_TAGS_FOUND_MESSAGE,
+  EMPTY_DESCRIPTION_PLACEHOLDER,
+  INITIAL_NEW_TAG_FORM,
+} from "@/constants/l1-tags";
 
 export default function L1Tags() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const [newTag, setNewTag] = useState({ name: "", category: "domain", description: "" });
+  const [newTag, setNewTag] = useState(INITIAL_NEW_TAG_FORM);
 
   const { data: tagsData, isLoading } = useListL1Tags({
     query: { queryKey: getListL1TagsQueryKey() },
@@ -53,7 +76,7 @@ export default function L1Tags() {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListL1TagsQueryKey() });
           setIsDialogOpen(false);
-          setNewTag({ name: "", category: "domain", description: "" });
+          setNewTag(INITIAL_NEW_TAG_FORM);
         },
       }
     );
@@ -93,46 +116,46 @@ export default function L1Tags() {
     <div className="p-6 flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">L1 Tags</h1>
-          <p className="text-muted-foreground mt-1 text-sm">Global domain concepts and taxonomy</p>
+          <h1 className="text-2xl font-bold tracking-tight">{L1_TAGS_PAGE_TITLE}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">{L1_TAGS_PAGE_SUBTITLE}</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
-              <Plus className="h-4 w-4" /> New L1 Tag
+              <Plus className="h-4 w-4" /> {NEW_L1_TAG_BUTTON_TEXT}
             </Button>
           </DialogTrigger>
           <DialogContent className="border-border bg-card">
             <DialogHeader>
-              <DialogTitle>Create L1 Tag</DialogTitle>
+              <DialogTitle>{CREATE_L1_TAG_DIALOG_TITLE}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Tag Name</label>
+                <label className="text-sm font-medium">{TAG_NAME_LABEL}</label>
                 <Input
                   value={newTag.name}
                   onChange={(e) => setNewTag({ ...newTag, name: e.target.value })}
-                  placeholder="e.g. Authentication"
+                  placeholder={TAG_NAME_PLACEHOLDER}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Category</label>
+                <label className="text-sm font-medium">{TAG_CATEGORY_LABEL}</label>
                 <Input
                   value={newTag.category}
                   onChange={(e) => setNewTag({ ...newTag, category: e.target.value })}
-                  placeholder="e.g. domain, infrastructure"
+                  placeholder={TAG_CATEGORY_PLACEHOLDER}
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Description</label>
+                <label className="text-sm font-medium">{TAG_DESCRIPTION_LABEL}</label>
                 <Input
                   value={newTag.description}
                   onChange={(e) => setNewTag({ ...newTag, description: e.target.value })}
-                  placeholder="Optional description"
+                  placeholder={TAG_DESCRIPTION_PLACEHOLDER}
                 />
               </div>
               <Button className="w-full mt-4" onClick={handleCreate} disabled={createTag.isPending}>
-                {createTag.isPending ? "Creating..." : "Create Tag"}
+                {createTag.isPending ? CREATE_TAG_BUTTON_PENDING_TEXT : CREATE_TAG_BUTTON_TEXT}
               </Button>
             </div>
           </DialogContent>
@@ -143,7 +166,7 @@ export default function L1Tags() {
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search tags..."
+            placeholder={SEARCH_TAGS_PLACEHOLDER}
             className="pl-9 bg-card/50"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -156,26 +179,32 @@ export default function L1Tags() {
           <Table>
             <TableHeader className="sticky top-0 bg-card z-10 border-b border-border/50">
               <TableRow className="hover:bg-transparent">
-                <TableHead>Tag</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="text-center">Anchored</TableHead>
-                <TableHead className="text-right">Usage</TableHead>
-                <TableHead className="text-right">Created</TableHead>
+                <TableHead>{TABLE_HEADERS.tag}</TableHead>
+                <TableHead>{TABLE_HEADERS.category}</TableHead>
+                <TableHead>{TABLE_HEADERS.description}</TableHead>
+                <TableHead className="text-center">{TABLE_HEADERS.anchored}</TableHead>
+                <TableHead className="text-right">{TABLE_HEADERS.usage}</TableHead>
+                <TableHead className="text-right">{TABLE_HEADERS.created}</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    Loading tags...
+                  <TableCell
+                    colSpan={TABLE_COLUMN_COUNT}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    {LOADING_TAGS_MESSAGE}
                   </TableCell>
                 </TableRow>
               ) : filteredTags.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                    No tags found.
+                  <TableCell
+                    colSpan={TABLE_COLUMN_COUNT}
+                    className="h-24 text-center text-muted-foreground"
+                  >
+                    {NO_TAGS_FOUND_MESSAGE}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -196,7 +225,7 @@ export default function L1Tags() {
                       </Badge>
                     </TableCell>
                     <TableCell className="max-w-[300px] truncate text-muted-foreground text-sm">
-                      {tag.description || "—"}
+                      {tag.description || EMPTY_DESCRIPTION_PLACEHOLDER}
                     </TableCell>
                     <TableCell className="text-center">
                       <Switch
@@ -207,7 +236,7 @@ export default function L1Tags() {
                     </TableCell>
                     <TableCell className="text-right font-mono text-sm">{tag.usageCount}</TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
-                      {format(new Date(tag.createdAt), "MMM d, yyyy")}
+                      {format(new Date(tag.createdAt), CREATED_DATE_FORMAT)}
                     </TableCell>
                     <TableCell>
                       <Button

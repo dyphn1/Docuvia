@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { BaseWebviewPanel } from "./webview/base-panel.js";
 import { getSearchResultsHtml } from "./webview/search-results-html.js";
+import { MSG_SEARCH_RESULTS_TITLE, DocuviaCommandInvoker } from "./constants/index.js";
 
 export interface CentralSearchResult {
   title: string;
@@ -32,7 +33,7 @@ export class SearchResultsPanel extends BaseWebviewPanel {
     const panel = BaseWebviewPanel.createPanel(
       context,
       SearchResultsPanel.viewType,
-      "Docuvia: Search Results",
+      MSG_SEARCH_RESULTS_TITLE,
       column
     );
 
@@ -59,9 +60,7 @@ export class SearchResultsPanel extends BaseWebviewPanel {
 
   protected _handleMessage(message: { type: string; title?: string }): void {
     if (message.type === "openResult" && message.title) {
-      void vscode.commands.executeCommand("workbench.action.chat.open", {
-        query: `@docuvia /query ${message.title}`,
-      });
+      void DocuviaCommandInvoker.executeChatOpen(`@docuvia /query ${message.title}`);
     }
   }
 

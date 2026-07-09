@@ -8,6 +8,14 @@ import { format } from "date-fns";
 import { AffiliateDialog } from "./AffiliateDialog";
 
 import { docTypeColors } from "../../../lib/constants";
+import {
+  MISC_POOL_CARD_TITLE,
+  MISC_POOL_ERROR_LABEL,
+  MISC_POOL_EMPTY_LABEL,
+  MISC_POOL_ASSOCIATE_BUTTON_LABEL,
+  DOCUMENT_DATE_FORMAT_PATTERN,
+  LOADING_LABEL,
+} from "@/constants/documents";
 
 interface MiscDocument {
   id: number;
@@ -54,7 +62,7 @@ export function MiscPoolTab({ projects }: MiscPoolTabProps) {
         <CardHeader>
           <CardTitle className="text-sm font-medium flex items-center gap-2">
             <Inbox className="h-4 w-4 text-primary" />
-            Unaffiliated Documents
+            {MISC_POOL_CARD_TITLE}
             {miscDocs && miscDocs.length > 0 && (
               <Badge variant="secondary" className="ml-auto text-xs">
                 {miscDocs.length}
@@ -65,16 +73,16 @@ export function MiscPoolTab({ projects }: MiscPoolTabProps) {
         <CardContent>
           {miscLoading ? (
             <div className="text-center py-10 text-muted-foreground text-sm flex items-center justify-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading...
+              <Loader2 className="h-4 w-4 animate-spin" /> {LOADING_LABEL}
             </div>
           ) : miscError ? (
             <div className="text-center py-10 text-destructive text-sm flex items-center justify-center gap-2">
-              <AlertCircle className="h-4 w-4" /> Failed to load misc pool
+              <AlertCircle className="h-4 w-4" /> {MISC_POOL_ERROR_LABEL}
             </div>
           ) : !miscDocs || miscDocs.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground text-sm">
               <Inbox className="h-10 w-10 mx-auto mb-3 opacity-20" />
-              No unaffiliated documents
+              {MISC_POOL_EMPTY_LABEL}
             </div>
           ) : (
             <div className="space-y-2">
@@ -95,7 +103,7 @@ export function MiscPoolTab({ projects }: MiscPoolTabProps) {
                       </Badge>
                     </div>
                     <div className="mt-0.5 text-[10px] text-muted-foreground">
-                      {format(new Date(doc.createdAt), "MMM d, yyyy HH:mm")}
+                      {format(new Date(doc.createdAt), DOCUMENT_DATE_FORMAT_PATTERN)}
                     </div>
                   </div>
                   <Button
@@ -105,7 +113,7 @@ export function MiscPoolTab({ projects }: MiscPoolTabProps) {
                     onClick={() => openAffiliateDialog(doc.id)}
                   >
                     <Link2 className="h-3 w-3" />
-                    Associate with Project
+                    {MISC_POOL_ASSOCIATE_BUTTON_LABEL}
                   </Button>
                 </div>
               ))}

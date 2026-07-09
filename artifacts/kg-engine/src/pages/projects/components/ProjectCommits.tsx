@@ -4,6 +4,15 @@ import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { ScrollArea } from "@/components/ui/ScrollArea";
 import { useListCommits, getListCommitsQueryKey } from "@workspace/api-client-react";
+import {
+  SHORT_HASH_LENGTH,
+  PROJECT_COMMITS_SKELETON_COUNT,
+  COMMIT_VALID_LABEL,
+  COMMIT_INVALID_LABEL,
+  COMMIT_DATE_TIME_FORMAT,
+  COMMIT_LINKED_TO_L2_LABEL,
+  NO_COMMITS_MESSAGE,
+} from "@/constants/projects";
 
 interface ProjectCommitsProps {
   projectId: number;
@@ -18,7 +27,7 @@ export function ProjectCommits({ projectId }: ProjectCommitsProps) {
     <ScrollArea className="h-full">
       {isLoadingCommits ? (
         <div className="p-6 space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
+          {Array.from({ length: PROJECT_COMMITS_SKELETON_COUNT }, (_, i) => (
             <Skeleton key={i} className="h-16 w-full" />
           ))}
         </div>
@@ -38,19 +47,19 @@ export function ProjectCommits({ projectId }: ProjectCommitsProps) {
                         variant={commit.valid ? "outline" : "destructive"}
                         className={commit.valid ? "border-primary/50 text-primary" : ""}
                       >
-                        {commit.valid ? "VALID" : "INVALID"}
+                        {commit.valid ? COMMIT_VALID_LABEL : COMMIT_INVALID_LABEL}
                       </Badge>
                       <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                        {commit.hash.substring(0, 7)}
+                        {commit.hash.substring(0, SHORT_HASH_LENGTH)}
                       </span>
                     </div>
                   </div>
                   <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                     <span className="font-medium text-primary/80">{commit.author}</span>
-                    <span>{format(new Date(commit.createdAt), "MMM d, yyyy HH:mm")}</span>
+                    <span>{format(new Date(commit.createdAt), COMMIT_DATE_TIME_FORMAT)}</span>
                     {commit.l2NodeId && (
                       <span className="flex items-center gap-1 text-primary">
-                        <Network className="h-3 w-3" /> Linked to L2
+                        <Network className="h-3 w-3" /> {COMMIT_LINKED_TO_L2_LABEL}
                       </span>
                     )}
                   </div>
@@ -62,7 +71,7 @@ export function ProjectCommits({ projectId }: ProjectCommitsProps) {
       ) : (
         <div className="p-8 text-center text-muted-foreground flex flex-col items-center">
           <GitCommit className="h-12 w-12 mb-4 opacity-20" />
-          <p>No commits found for this project.</p>
+          <p>{NO_COMMITS_MESSAGE}</p>
         </div>
       )}
     </ScrollArea>

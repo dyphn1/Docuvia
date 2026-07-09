@@ -1,6 +1,13 @@
 import * as vscode from "vscode";
 import { QueryService } from "@workspace/core";
-// import { routeQuery } from "@workspace/core"; // we'll use this if it's easy to mock/setup, else we fallback.
+import {
+  MSG_QUERY_USAGE,
+  MSG_QUERY_NO_WORKSPACE,
+  MSG_QUERY_NO_RESULTS,
+  MSG_QUERY_MATCHING_L2,
+  MSG_QUERY_MATCHING_L3,
+  MSG_QUERY_FAILED,
+} from "../../constants/index.js";
 
 export async function handleQuery(
   request: vscode.ChatRequest,
@@ -8,42 +15,41 @@ export async function handleQuery(
 ): Promise<void> {
   const query = request.prompt.trim().toLowerCase();
   if (!query) {
-    stream.markdown(
-      "Usage: `/query <search term>` — searches your local `.docuvia` knowledge graph."
-    );
+    stream.markdown(MSG_QUERY_USAGE);
     return;
   }
 
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!workspaceRoot) {
-    stream.markdown("No workspace folder open.");
+    stream.markdown(MSG_QUERY_NO_WORKSPACE);
     return;
   }
 
   try {
     const queryService = new QueryService(workspaceRoot);
-    const results = await queryService.query(query);
+    const results = await queryService.query(query, {});
 
     if (!results.l2 && results.l3.length === 0) {
-      stream.markdown(`No local results found for **"${query}"**.`);
+      stream.markdown(MSG_QUERY_NO_RESULTS.replace("{0}", query));
       return;
     }
 
     if (results.l2) {
       stream.markdown(
-        `### Matching L2 Module\n- **${results.l2.name}** (\`${results.l2.slug}\`)\n`
+        MSG_QUERY_MATCHING_L2.replace("{0}", results.l2.name).replace("{1}", results.l2.slug || "")
       );
     }
 
     if (results.l3.length > 0) {
       stream.markdown(
-        `### Matching L3 Decisions\n` +
+        MSG_QUERY_MATCHING_L3 +
           results.l3
-            .map((d) => `- **${d.title}**\n  > ${d.content.substring(0, 100)}...`)
+            .map((d: any) => `- **${d.title}**\n  > ${d.content.substring(0, 100)}...`)
             .join("\n")
       );
     }
-  } catch (err: any) {
-    stream.markdown(`Error querying knowledge graph: ${err.message}`);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    stream.markdown(`${MSG_QUERY_FAILED}${errorMsg}`);
   }
 }

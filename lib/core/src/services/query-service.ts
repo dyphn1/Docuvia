@@ -40,7 +40,7 @@ export class QueryService {
     target: string,
     options: any
   ): Promise<{
-    l2: { name: string } | null;
+    l2: { name: string; slug?: string } | null;
     l3: Array<{ title: string; status?: string; content: string | null }>;
   }> {
     logger.info({ target, options }, "Querying local knowledge graph");
@@ -61,7 +61,7 @@ export class QueryService {
     const l3Results = results.filter((r) => r.nodeLayer === "l3");
 
     return {
-      l2: l2Result ? { name: l2Result.title } : null,
+      l2: l2Result ? { name: l2Result.title, slug: l2Result.title } : null,
       l3: l3Results.map((r) => ({ title: r.title, content: r.content })),
     };
   }

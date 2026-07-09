@@ -2,6 +2,30 @@ import * as vscode from "vscode";
 import { CredentialManager } from "../credential-manager.js";
 import { KnowledgeGraphTreeProvider } from "../knowledge-graph-tree-provider.js";
 import { TaskQueueTreeProvider } from "../task-queue-tree-provider.js";
+import {
+  MSG_EXTENSION_ACTIVATED_SUCCESS,
+  CMD_START_EXPLORE,
+  CMD_INIT_PROJECT,
+  CMD_AUTO_CATEGORIZE_DECISIONS,
+  CMD_REFRESH_KNOWLEDGE_GRAPH,
+  CMD_ADD_DECISION,
+  CMD_OPEN_DASHBOARD,
+  CMD_RUN_EXTRACTION,
+  CMD_CLEAR_COMPLETED_TASKS,
+  CMD_SHOW_DECISIONS_FOR_LENS,
+  CMD_ADD_DECISION_FROM_SELECTION,
+  CMD_OPEN_DECISION,
+  CMD_ACCEPT_L1_TAGS,
+  CMD_CLEAN,
+  CMD_STATUS,
+  CMD_DETECT_CHANGES,
+  CMD_SYNC,
+  CMD_SET_SERVER_TOKEN,
+  CMD_CLEAR_SERVER_TOKEN,
+  CMD_OPEN_SEARCH,
+  CMD_SEARCH_FROM_SELECTION,
+  CMD_GRAPH_TRAVERSE,
+} from "../constants/index.js";
 
 import { startExploreCommand } from "./explore.js";
 import { initProjectCommand } from "./init-project.js";
@@ -29,118 +53,114 @@ export function registerCommands(
   tqProvider: TaskQueueTreeProvider
 ): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.startExplore", startExploreCommand)
+    vscode.commands.registerCommand(CMD_START_EXPLORE, startExploreCommand)
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.initProject", (node?: any) =>
+    vscode.commands.registerCommand(CMD_INIT_PROJECT, (node?: any) =>
       initProjectCommand(context, node)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.autoCategorizeDecisions", (node?: any) =>
+    vscode.commands.registerCommand(CMD_AUTO_CATEGORIZE_DECISIONS, (node?: any) =>
       autoCategorizeDecisionsCommand(kgProvider, node)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.refreshKnowledgeGraph", () =>
+    vscode.commands.registerCommand(CMD_REFRESH_KNOWLEDGE_GRAPH, () =>
       refreshKnowledgeGraphCommand()
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.addDecision", () => addDecisionCommand(context))
+    vscode.commands.registerCommand(CMD_ADD_DECISION, () => addDecisionCommand(context))
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.openDashboard", (node?: any) =>
+    vscode.commands.registerCommand(CMD_OPEN_DASHBOARD, (node?: any) =>
       openDashboardCommand(context, tqProvider, node)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.runExtraction", () => runExtractionCommand(tqProvider))
+    vscode.commands.registerCommand(CMD_RUN_EXTRACTION, () => runExtractionCommand(tqProvider))
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.clearCompletedTasks", () =>
+    vscode.commands.registerCommand(CMD_CLEAR_COMPLETED_TASKS, () =>
       clearCompletedTasksCommand(tqProvider)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.showDecisionsForLens", (data: any) =>
+    vscode.commands.registerCommand(CMD_SHOW_DECISIONS_FOR_LENS, (data: any) =>
       showDecisionsForLensCommand(data)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.addDecisionFromSelection", () =>
+    vscode.commands.registerCommand(CMD_ADD_DECISION_FROM_SELECTION, () =>
       addDecisionFromSelectionCommand(context)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.openDecision", (filePath: string) =>
+    vscode.commands.registerCommand(CMD_OPEN_DECISION, (filePath: string) =>
       openDecisionCommand(filePath)
     )
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      "docuvia.acceptL1Tags",
+      CMD_ACCEPT_L1_TAGS,
       (yamlContent: string, explicitRoot: string) => acceptL1TagsCommand(yamlContent, explicitRoot)
     )
   );
 
-  outputChannel.appendLine("[Docuvia] Extension activated successfully.");
+  outputChannel.appendLine(MSG_EXTENSION_ACTIVATED_SUCCESS);
 
   // ─── Phase 5 Commands ─────────────────────────────────────────────────────
 
-  context.subscriptions.push(vscode.commands.registerCommand("docuvia.clean", cleanCommand));
+  context.subscriptions.push(vscode.commands.registerCommand(CMD_CLEAN, cleanCommand));
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.status", () => statusCommand(outputChannel))
+    vscode.commands.registerCommand(CMD_STATUS, () => statusCommand(outputChannel))
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.detectChanges", () =>
-      detectChangesCommand(outputChannel)
-    )
+    vscode.commands.registerCommand(CMD_DETECT_CHANGES, () => detectChangesCommand(outputChannel))
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.sync", () =>
-      syncCommand(outputChannel, credentialManager)
-    )
+    vscode.commands.registerCommand(CMD_SYNC, () => syncCommand(outputChannel, credentialManager))
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.setServerToken", () =>
+    vscode.commands.registerCommand(CMD_SET_SERVER_TOKEN, () =>
       setServerTokenCommand(credentialManager)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.clearServerToken", () =>
+    vscode.commands.registerCommand(CMD_CLEAR_SERVER_TOKEN, () =>
       clearServerTokenCommand(credentialManager)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.openSearch", () => openSearchCommand(context))
+    vscode.commands.registerCommand(CMD_OPEN_SEARCH, () => openSearchCommand(context))
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.searchFromSelection", () =>
+    vscode.commands.registerCommand(CMD_SEARCH_FROM_SELECTION, () =>
       searchFromSelectionCommand(context)
     )
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("docuvia.graph.traverse", (node?: any) =>
+    vscode.commands.registerCommand(CMD_GRAPH_TRAVERSE, (node?: any) =>
       traverseGraphCommand(outputChannel, node)
     )
   );

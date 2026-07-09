@@ -56,6 +56,7 @@ describe("InitService.init()", () => {
       readBlobContent: vi.fn().mockResolvedValue(""),
       getRemoteUrl: vi.fn().mockResolvedValue(undefined),
       getRecentChangedFilePaths: vi.fn().mockResolvedValue([]),
+      hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     };
 
     fileDiscovery = {

@@ -1,3 +1,4 @@
+import { DocuviaCommandInvoker } from "../constants/index.js";
 import * as vscode from "vscode";
 import { WebviewMessage } from "./dashboard-types.js";
 
@@ -16,6 +17,6 @@ export function handleDashboardMessage(msg: WebviewMessage, targetRoot: string):
     );
   }
   if (msg.type === "openChat") {
-    void vscode.commands.executeCommand("workbench.action.chat.open", { query: "@docuvia" });
+    void DocuviaCommandInvoker.executeChatOpen("@docuvia");
   }
 }

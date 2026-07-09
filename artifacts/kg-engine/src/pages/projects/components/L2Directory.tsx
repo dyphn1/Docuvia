@@ -20,19 +20,30 @@ import {
   Lightbulb,
   AlertCircle,
 } from "lucide-react";
+import {
+  L3_TYPE_COLOR,
+  L2_TYPE_COLOR,
+  SHORT_HASH_LENGTH,
+  CONFIDENCE_HIGH_THRESHOLD,
+  CONFIDENCE_MEDIUM_THRESHOLD,
+  L2_LIST_SKELETON_COUNT,
+  L2_TYPE_FILTER_OPTIONS,
+  L2_EMPTY_MESSAGE,
+  L2_SEARCH_PLACEHOLDER,
+  L2_NO_RESULTS_MESSAGE,
+  L2_NO_L3_NODES_MESSAGE,
+  L2_ALL_FILTER_LABEL,
+  L3_COUNT_LABEL,
+  AI_GENERATED_BADGE_LABEL,
+  NEEDS_REVIEW_BADGE_LABEL,
+} from "@/constants/projects";
 
+// Icons are React components, not literal data, so this mapping stays local.
 const L3_TYPE_ICON: Record<string, React.ReactNode> = {
   change: <GitCommit className="h-3 w-3" />,
   rule: <FileCode className="h-3 w-3" />,
   decision: <Lightbulb className="h-3 w-3" />,
   context: <BookOpen className="h-3 w-3" />,
-};
-
-const L3_TYPE_COLOR: Record<string, string> = {
-  change: "border-blue-500/30 text-blue-400",
-  rule: "border-orange-500/30 text-orange-400",
-  decision: "border-purple-500/30 text-purple-400",
-  context: "border-green-500/30 text-green-400",
 };
 
 function L3NodeRow({ node }: { node: L3Node }) {
@@ -57,9 +68,9 @@ function L3NodeRow({ node }: { node: L3Node }) {
                 Confidence:{" "}
                 <span
                   className={
-                    node.confidence >= 0.8
+                    node.confidence >= CONFIDENCE_HIGH_THRESHOLD
                       ? "text-green-400"
-                      : node.confidence >= 0.5
+                      : node.confidence >= CONFIDENCE_MEDIUM_THRESHOLD
                         ? "text-yellow-400"
                         : "text-red-400"
                   }
@@ -70,7 +81,7 @@ function L3NodeRow({ node }: { node: L3Node }) {
             )}
             {node.commitHash && (
               <span className="font-mono text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                {node.commitHash.slice(0, 7)}
+                {node.commitHash.slice(0, SHORT_HASH_LENGTH)}
               </span>
             )}
           </div>
@@ -90,12 +101,6 @@ function L2NodeCard({ node, projectId }: { node: L2Node; projectId: number }) {
     },
   });
 
-  const typeColor: Record<string, string> = {
-    module: "border-primary/40 text-primary",
-    package: "border-cyan-500/40 text-cyan-400",
-    pcd: "border-amber-500/40 text-amber-400",
-  };
-
   return (
     <div className="border border-border rounded-md bg-background overflow-hidden">
       <button
@@ -110,7 +115,7 @@ function L2NodeCard({ node, projectId }: { node: L2Node; projectId: number }) {
             <span className="font-mono text-sm font-medium text-primary">{node.name}</span>
             <Badge
               variant="outline"
-              className={`text-[9px] uppercase ${typeColor[node.type] ?? ""}`}
+              className={`text-[9px] uppercase ${L2_TYPE_COLOR[node.type] ?? ""}`}
             >
               {node.type}
             </Badge>
@@ -120,12 +125,12 @@ function L2NodeCard({ node, projectId }: { node: L2Node; projectId: number }) {
                 className="text-[9px] uppercase border-yellow-500/40 text-yellow-400 gap-1"
               >
                 <AlertCircle className="h-2.5 w-2.5" />
-                Review
+                {NEEDS_REVIEW_BADGE_LABEL}
               </Badge>
             )}
             {node.aiGenerated && (
               <Badge variant="secondary" className="text-[9px] uppercase">
-                AI
+                {AI_GENERATED_BADGE_LABEL}
               </Badge>
             )}
           </div>
@@ -134,7 +139,9 @@ function L2NodeCard({ node, projectId }: { node: L2Node; projectId: number }) {
           )}
         </div>
         <div className="shrink-0 text-right">
-          <span className="text-xs text-muted-foreground font-mono">{node.l3Count} L3</span>
+          <span className="text-xs text-muted-foreground font-mono">
+            {node.l3Count} {L3_COUNT_LABEL}
+          </span>
         </div>
       </button>
 
@@ -148,7 +155,9 @@ function L2NodeCard({ node, projectId }: { node: L2Node; projectId: number }) {
           ) : l3Nodes && l3Nodes.length > 0 ? (
             l3Nodes.map((n) => <L3NodeRow key={n.id} node={n} />)
           ) : (
-            <p className="text-xs text-muted-foreground py-2 text-center">No L3 nodes yet.</p>
+            <p className="text-xs text-muted-foreground py-2 text-center">
+              {L2_NO_L3_NODES_MESSAGE}
+            </p>
           )}
         </div>
       )}
@@ -162,21 +171,21 @@ export function L2Directory({ projectId }: { projectId: number }) {
   });
 
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>(L2_TYPE_FILTER_OPTIONS[0]);
 
   const filtered = (l2Nodes ?? []).filter((n) => {
     const matchesSearch =
       search === "" ||
       n.name.toLowerCase().includes(search.toLowerCase()) ||
       (n.description ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchesType = typeFilter === "all" || n.type === typeFilter;
+    const matchesType = typeFilter === L2_TYPE_FILTER_OPTIONS[0] || n.type === typeFilter;
     return matchesSearch && matchesType;
   });
 
   if (isLoading) {
     return (
       <div className="p-6 space-y-3">
-        {[1, 2, 3, 4].map((i) => (
+        {Array.from({ length: L2_LIST_SKELETON_COUNT }, (_, i) => (
           <Skeleton key={i} className="h-16 w-full" />
         ))}
       </div>
@@ -187,9 +196,7 @@ export function L2Directory({ projectId }: { projectId: number }) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-3 py-16">
         <GitMerge className="h-12 w-12 opacity-20" />
-        <p className="text-sm">
-          No L2 nodes found. Run the AI generation pipeline to extract components.
-        </p>
+        <p className="text-sm">{L2_EMPTY_MESSAGE}</p>
       </div>
     );
   }
@@ -204,13 +211,13 @@ export function L2Directory({ projectId }: { projectId: number }) {
       <div className="flex-none px-4 py-3 border-b border-border flex items-center gap-3 flex-wrap">
         <input
           type="text"
-          placeholder="Search components..."
+          placeholder={L2_SEARCH_PLACEHOLDER}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="flex-1 min-w-40 text-sm bg-background border border-border rounded-md px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary/50 placeholder:text-muted-foreground"
         />
         <div className="flex gap-1">
-          {(["all", "module", "package", "pcd"] as const).map((t) => (
+          {L2_TYPE_FILTER_OPTIONS.map((t) => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
@@ -220,7 +227,9 @@ export function L2Directory({ projectId }: { projectId: number }) {
                   : "text-muted-foreground hover:text-foreground border border-transparent hover:border-border"
               }`}
             >
-              {t === "all" ? `All (${counts.all})` : `${t} (${counts[t]})`}
+              {t === L2_TYPE_FILTER_OPTIONS[0]
+                ? `${L2_ALL_FILTER_LABEL} (${counts.all})`
+                : `${t} (${counts[t]})`}
             </button>
           ))}
         </div>
@@ -229,7 +238,7 @@ export function L2Directory({ projectId }: { projectId: number }) {
         <div className="p-4 space-y-2">
           {filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">
-              No results match your filter.
+              {L2_NO_RESULTS_MESSAGE}
             </p>
           ) : (
             filtered.map((node) => <L2NodeCard key={node.id} node={node} projectId={projectId} />)

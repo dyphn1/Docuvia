@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
-
-const STORAGE_KEY = "docuvia_current_project_id";
+import { CURRENT_PROJECT_STORAGE_KEY as STORAGE_KEY } from "@/constants/app";
 
 export function useCurrentProject() {
   const [projectId, setProjectIdState] = useState<number | null>(() => {

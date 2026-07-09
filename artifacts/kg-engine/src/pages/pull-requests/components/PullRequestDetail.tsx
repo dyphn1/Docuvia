@@ -12,6 +12,18 @@ import {
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Separator } from "@/components/ui/Separator";
 import { Badge } from "@/components/ui/Badge";
+import {
+  PR_DETAIL_TITLE_PREFIX,
+  PR_DETAIL_TITLE_SUFFIX,
+  PR_DETAIL_DESCRIPTION,
+  PR_DETAIL_COMMITS_LABEL,
+  PR_DETAIL_MODULES_LABEL,
+  PR_DETAIL_DECISIONS_LABEL,
+  PR_DETAIL_AI_SUMMARY_HEADING,
+  PR_DETAIL_MODULES_AFFECTED_HEADING,
+  PR_DETAIL_DECISIONS_HEADING,
+  PR_DETAIL_NO_CHANGES_MESSAGE,
+} from "@/constants/pull-requests";
 
 interface PullRequestDetailProps {
   projectId: number;
@@ -32,10 +44,12 @@ export function PullRequestDetail({ projectId, prNumber, open, onClose }: PullRe
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="right" className="w-[480px] sm:w-[600px] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>PR #{prNumber} — Knowledge Impact</SheetTitle>
-          <SheetDescription>
-            L2 modules and L3 decisions affected by this pull request.
-          </SheetDescription>
+          <SheetTitle>
+            {PR_DETAIL_TITLE_PREFIX}
+            {prNumber}
+            {PR_DETAIL_TITLE_SUFFIX}
+          </SheetTitle>
+          <SheetDescription>{PR_DETAIL_DESCRIPTION}</SheetDescription>
         </SheetHeader>
 
         {isLoading && (
@@ -50,21 +64,21 @@ export function PullRequestDetail({ projectId, prNumber, open, onClose }: PullRe
           <div className="mt-6 space-y-6">
             <div className="flex gap-3 text-sm text-muted-foreground">
               <span>
-                <strong>{data.commitsCount}</strong> commits
+                <strong>{data.commitsCount}</strong> {PR_DETAIL_COMMITS_LABEL}
               </span>
               <span>•</span>
               <span>
-                <strong>{data.l2Nodes.length}</strong> modules
+                <strong>{data.l2Nodes.length}</strong> {PR_DETAIL_MODULES_LABEL}
               </span>
               <span>•</span>
               <span>
-                <strong>{data.l3Nodes.length}</strong> decisions
+                <strong>{data.l3Nodes.length}</strong> {PR_DETAIL_DECISIONS_LABEL}
               </span>
             </div>
 
             {data.aiSummary && (
               <div>
-                <h3 className="font-semibold text-sm mb-2">AI Impact Summary</h3>
+                <h3 className="font-semibold text-sm mb-2">{PR_DETAIL_AI_SUMMARY_HEADING}</h3>
                 <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-muted rounded-md p-3 leading-relaxed">
                   {data.aiSummary}
                 </div>
@@ -73,7 +87,7 @@ export function PullRequestDetail({ projectId, prNumber, open, onClose }: PullRe
 
             {data.l2Nodes.length > 0 && (
               <div>
-                <h3 className="font-semibold text-sm mb-2">Modules Affected</h3>
+                <h3 className="font-semibold text-sm mb-2">{PR_DETAIL_MODULES_AFFECTED_HEADING}</h3>
                 <div className="space-y-2">
                   {data.l2Nodes.map((node) => (
                     <div key={node.id} className="flex items-start gap-2 text-sm">
@@ -95,7 +109,7 @@ export function PullRequestDetail({ projectId, prNumber, open, onClose }: PullRe
             {data.l3Nodes.length > 0 && (
               <div>
                 <Separator />
-                <h3 className="font-semibold text-sm mt-4 mb-2">Decisions & Changes</h3>
+                <h3 className="font-semibold text-sm mt-4 mb-2">{PR_DETAIL_DECISIONS_HEADING}</h3>
                 <div className="space-y-2">
                   {data.l3Nodes.map((node) => (
                     <div key={node.id} className="text-sm">
@@ -117,9 +131,7 @@ export function PullRequestDetail({ projectId, prNumber, open, onClose }: PullRe
             )}
 
             {!data.aiSummary && data.l2Nodes.length === 0 && data.l3Nodes.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No knowledge graph changes detected yet. Try running "Analyze Now".
-              </p>
+              <p className="text-sm text-muted-foreground">{PR_DETAIL_NO_CHANGES_MESSAGE}</p>
             )}
           </div>
         )}

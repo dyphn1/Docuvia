@@ -1,6 +1,8 @@
+import { DocuviaCommandInvoker, CONTEXT_HAS_DIRTY_FILES } from "./constants/index.js";
 import * as vscode from "vscode";
 import * as os from "os";
 import { parseGlobalConfig } from "./parser.js";
+import { ENCODING_UTF_8 } from "@workspace/core";
 
 export function registerVfsWatcher(context: vscode.ExtensionContext) {
   let debounceTimer: NodeJS.Timeout | null = null;
@@ -23,7 +25,7 @@ export function registerVfsWatcher(context: vscode.ExtensionContext) {
           let globalConfigContent = "";
           try {
             const bytes = await vscode.workspace.fs.readFile(globalConfigPath);
-            globalConfigContent = Buffer.from(bytes).toString("utf-8");
+            globalConfigContent = Buffer.from(bytes).toString(ENCODING_UTF_8);
           } catch (e) {
             // ignore
           }
@@ -46,13 +48,13 @@ export function registerVfsWatcher(context: vscode.ExtensionContext) {
             const result = (await response.json()) as any;
             if (result.dirtyFiles && result.dirtyFiles.length > 0) {
               // UI hook listener - render blast radius or update UI
-              vscode.commands.executeCommand("setContext", "docuvia.hasDirtyFiles", true);
+              await DocuviaCommandInvoker.executeSetContext(CONTEXT_HAS_DIRTY_FILES, true);
               vscode.window.setStatusBarMessage(
                 `$(circle-filled) Docuvia: ${result.dirtyFiles.length} unsaved changes`,
                 3000
               );
             } else {
-              vscode.commands.executeCommand("setContext", "docuvia.hasDirtyFiles", false);
+              await DocuviaCommandInvoker.executeSetContext(CONTEXT_HAS_DIRTY_FILES, false);
             }
           }
         } catch (err) {

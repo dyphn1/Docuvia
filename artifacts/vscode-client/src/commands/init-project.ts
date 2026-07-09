@@ -1,15 +1,28 @@
 import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
-import { InitService } from "@workspace/core";
+import { InitService, DOCUVIA_DIR_NAME, WorkspaceGitService } from "@workspace/core";
+import {
+  MSG_INIT_NO_WORKSPACE,
+  MSG_INIT_ALL_INITIALIZED,
+  MSG_INIT_SELECT_FOLDER,
+  MSG_INIT_DIRTY_TREE,
+  MSG_INIT_CONSENT,
+  MSG_INIT_GIT_ERROR,
+  MSG_INIT_SUCCESS,
+  MSG_INIT_ERROR,
+  BTN_YES,
+  BTN_NO,
+  DocuviaCommandInvoker,
+} from "../constants/index.js";
 
 export async function initProjectCommand(
   _context: vscode.ExtensionContext,
-  node?: any
+  node?: { workspaceRoot?: string }
 ): Promise<void> {
   const folders = vscode.workspace.workspaceFolders || [];
   if (folders.length === 0) {
-    void vscode.window.showErrorMessage("Docuvia: No workspace folder is open.");
+    void vscode.window.showErrorMessage(MSG_INIT_NO_WORKSPACE);
     return;
   }
 
@@ -21,12 +34,10 @@ export async function initProjectCommand(
     targetRoot = folders[0].uri.fsPath;
   } else {
     const uninitialized = folders.filter(
-      (f) => !fs.existsSync(path.join(f.uri.fsPath, ".docuvia"))
+      (f) => !fs.existsSync(path.join(f.uri.fsPath, DOCUVIA_DIR_NAME))
     );
     if (uninitialized.length === 0) {
-      void vscode.window.showInformationMessage(
-        "Docuvia: All workspace folders are already initialized."
-      );
+      void vscode.window.showInformationMessage(MSG_INIT_ALL_INITIALIZED);
       return;
     }
     const picks = uninitialized.map((f) => ({
@@ -35,45 +46,38 @@ export async function initProjectCommand(
       root: f.uri.fsPath,
     }));
     const selected = await vscode.window.showQuickPick(picks, {
-      placeHolder: "Select workspace folder to initialize",
+      placeHolder: MSG_INIT_SELECT_FOLDER,
     });
     if (!selected) return;
     targetRoot = selected.root;
   }
 
   if (targetRoot) {
-    const cp = require("child_process");
-    const util = require("util");
-    const exec = util.promisify(cp.exec);
-
     try {
-      const { stdout } = await exec("git status --porcelain", { cwd: targetRoot });
-      if (stdout.trim().length > 0) {
-        void vscode.window.showErrorMessage(
-          "Please commit or stash your changes before initializing Docuvia. Creating an orphan branch requires a clean working tree."
-        );
+      const gitService = new WorkspaceGitService();
+      const hasChanges = await gitService.hasUncommittedChanges(targetRoot);
+      if (hasChanges) {
+        void vscode.window.showErrorMessage(MSG_INIT_DIRTY_TREE);
         return;
       }
-    } catch (err: any) {
-      void vscode.window.showErrorMessage(`Git error: ${err.message}`);
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      void vscode.window.showErrorMessage(`${MSG_INIT_GIT_ERROR}${errorMsg}`);
       return;
     }
 
-    const consent = await vscode.window.showWarningMessage(
-      "This will create a .docuvia/ folder for settings and a hidden docuvia-knowledge orphan branch for your graph. No source code will be modified. Proceed?",
-      "Yes",
-      "No"
-    );
-    if (consent !== "Yes") return;
+    const consent = await vscode.window.showWarningMessage(MSG_INIT_CONSENT, BTN_YES, BTN_NO);
+    if (consent !== BTN_YES) return;
 
     try {
       const initService = new InitService(targetRoot);
       const result = await initService.init();
 
-      vscode.commands.executeCommand("docuvia.refreshKnowledgeGraph");
-      void vscode.window.showInformationMessage(`Docuvia: ${result.message}`);
-    } catch (err: any) {
-      void vscode.window.showErrorMessage(`Docuvia: ${err.message}`);
+      await DocuviaCommandInvoker.executeRefreshKnowledgeGraph();
+      void vscode.window.showInformationMessage(MSG_INIT_SUCCESS.replace("{0}", result.message));
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      void vscode.window.showErrorMessage(MSG_INIT_ERROR.replace("{0}", errorMsg));
     }
   }
 }

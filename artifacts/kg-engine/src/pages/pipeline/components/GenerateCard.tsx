@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { useGenerateKnowledge, getListProjectsQueryKey } from "@workspace/api-client-react";
+import {
+  useGenerateKnowledge,
+  getListProjectsQueryKey,
+  GenerateInputMode,
+  type GenerateResult,
+} from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,16 +18,35 @@ import {
   SelectValue,
 } from "@/components/ui/Select";
 import { Zap, CheckCircle2, AlertCircle, Loader2, Cpu } from "lucide-react";
-
-interface GenerateResult {
-  l1TagsCreated: number;
-  l2NodesCreated: number;
-  l2NodesUpdated: number;
-  l3NodesCreated: number;
-  reviewTasksCreated: number;
-  commitsProcessed: number;
-  documentsUsed: number;
-}
+import {
+  MODEL_OPTIONS,
+  DEFAULT_MODEL,
+  DEFAULT_MAX_COMMITS,
+  MIN_SIGNAL_SCORE,
+  GENERATE_CARD_TITLE,
+  GENERATE_CARD_DESCRIPTION,
+  GENERATE_STEP_1_TEXT,
+  GENERATE_STEP_2_TEXT,
+  GENERATE_STEP_3_TEXT,
+  GENERATE_STEP_4_TEXT,
+  GENERATE_STEP_5_TEXT,
+  GENERATE_MODEL_FIELD_LABEL,
+  GENERATE_MAX_COMMITS_FIELD_LABEL,
+  GENERATE_MODE_FIELD_LABEL,
+  GENERATE_RUNNING_LABEL,
+  GENERATE_RUN_BUTTON_LABEL,
+  GENERATE_COMPLETE_LABEL,
+  GENERATE_L1_TAGS_LABEL,
+  GENERATE_L2_NODES_LABEL,
+  GENERATE_L3_NODES_LABEL,
+  GENERATE_REVIEW_TASKS_LABEL,
+  GENERATE_UPDATED_SUFFIX_LABEL,
+  GENERATE_COMMITS_PROCESSED_SUFFIX,
+  GENERATE_DOCS_USED_SUFFIX,
+  GENERATE_ERROR_FALLBACK,
+  SYNC_MODE_FULL_LABEL,
+  SYNC_MODE_INCREMENTAL_LABEL,
+} from "@/constants/pipeline";
 
 interface GenerateCardProps {
   selectedProject: string;
@@ -31,9 +55,9 @@ interface GenerateCardProps {
 export function GenerateCard({ selectedProject }: GenerateCardProps) {
   const queryClient = useQueryClient();
 
-  const [model, setModel] = useState("gpt-5.2");
-  const [maxCommits, setMaxCommits] = useState("50");
-  const [generateMode, setGenerateMode] = useState<"full" | "incremental">("full");
+  const [model, setModel] = useState<string>(DEFAULT_MODEL);
+  const [maxCommits, setMaxCommits] = useState(DEFAULT_MAX_COMMITS);
+  const [generateMode, setGenerateMode] = useState<GenerateInputMode>(GenerateInputMode.full);
 
   const [generateLoading, setGenerateLoading] = useState(false);
   const [generateResult, setGenerateResult] = useState<GenerateResult | null>(null);
@@ -53,17 +77,17 @@ export function GenerateCard({ selectedProject }: GenerateCardProps) {
         data: {
           model,
           maxCommits: Number(maxCommits),
-          mode: generateMode as any,
+          mode: generateMode,
         },
       },
       {
         onSuccess: (data) => {
-          setGenerateResult(data as unknown as GenerateResult);
+          setGenerateResult(data);
           queryClient.invalidateQueries({ queryKey: getListProjectsQueryKey() });
           setGenerateLoading(false);
         },
         onError: (e) => {
-          setGenerateError(e.message || "Generation failed");
+          setGenerateError(e.message || GENERATE_ERROR_FALLBACK);
           setGenerateLoading(false);
         },
       }
@@ -75,47 +99,47 @@ export function GenerateCard({ selectedProject }: GenerateCardProps) {
       <CardHeader>
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Cpu className="h-4 w-4 text-primary" />
-          Phase 3 — AI Knowledge Generation
+          {GENERATE_CARD_TITLE}
         </CardTitle>
-        <CardDescription className="text-xs">
-          Run L1 Tagger → L2 Extractor → L3 Generator pipeline on filtered commits.
-        </CardDescription>
+        <CardDescription className="text-xs">{GENERATE_CARD_DESCRIPTION}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="p-2.5 bg-muted/40 rounded-md text-xs text-muted-foreground space-y-1 font-mono border border-border/50">
           <div className="flex items-center gap-1.5">
-            <span className="text-primary">1.</span> Filter commits by signal score (≥0.4)
+            <span className="text-primary">1.</span> {GENERATE_STEP_1_TEXT}
+            {MIN_SIGNAL_SCORE})
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-primary">2.</span> L1 Tagger — generate global classification tags
+            <span className="text-primary">2.</span> {GENERATE_STEP_2_TEXT}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-primary">3.</span> L2 Extractor — extract modules &amp; packages
+            <span className="text-primary">3.</span> {GENERATE_STEP_3_TEXT}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-primary">4.</span> L3 Generator — rules, decisions &amp; rationale
+            <span className="text-primary">4.</span> {GENERATE_STEP_4_TEXT}
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="text-primary">5.</span> Queue review tasks for human validation
+            <span className="text-primary">5.</span> {GENERATE_STEP_5_TEXT}
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
-            <Label className="text-xs">Model</Label>
+            <Label className="text-xs">{GENERATE_MODEL_FIELD_LABEL}</Label>
             <Select value={model} onValueChange={setModel}>
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gpt-5.2">gpt-5.2 (recommended)</SelectItem>
-                <SelectItem value="gpt-5.4">gpt-5.4 (most capable)</SelectItem>
-                <SelectItem value="gpt-5-mini">gpt-5-mini (fast)</SelectItem>
-                <SelectItem value="gpt-5-nano">gpt-5-nano (cheapest)</SelectItem>
+                {MODEL_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Max Commits</Label>
+            <Label className="text-xs">{GENERATE_MAX_COMMITS_FIELD_LABEL}</Label>
             <Input
               value={maxCommits}
               onChange={(e) => setMaxCommits(e.target.value)}
@@ -125,17 +149,19 @@ export function GenerateCard({ selectedProject }: GenerateCardProps) {
           </div>
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">Generation Mode</Label>
+          <Label className="text-xs">{GENERATE_MODE_FIELD_LABEL}</Label>
           <Select
             value={generateMode}
-            onValueChange={(v) => setGenerateMode(v as "full" | "incremental")}
+            onValueChange={(v) => setGenerateMode(v as GenerateInputMode)}
           >
             <SelectTrigger className="h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="full">Full Sync</SelectItem>
-              <SelectItem value="incremental">Incremental Sync</SelectItem>
+              <SelectItem value={GenerateInputMode.full}>{SYNC_MODE_FULL_LABEL}</SelectItem>
+              <SelectItem value={GenerateInputMode.incremental}>
+                {SYNC_MODE_INCREMENTAL_LABEL}
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -148,12 +174,12 @@ export function GenerateCard({ selectedProject }: GenerateCardProps) {
           {generateLoading ? (
             <>
               <Loader2 className="h-3 w-3 mr-2 animate-spin" />
-              Running pipeline...
+              {GENERATE_RUNNING_LABEL}
             </>
           ) : (
             <>
               <Zap className="h-3 w-3 mr-2" />
-              Run AI Pipeline
+              {GENERATE_RUN_BUTTON_LABEL}
             </>
           )}
         </Button>
@@ -161,40 +187,44 @@ export function GenerateCard({ selectedProject }: GenerateCardProps) {
         {generateResult && (
           <div className="p-3 bg-primary/10 border border-primary/20 rounded-md space-y-2">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-primary">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Pipeline Complete
+              <CheckCircle2 className="h-3.5 w-3.5" /> {GENERATE_COMPLETE_LABEL}
             </div>
             <div className="grid grid-cols-2 gap-2 mt-1">
               <div className="text-center p-1.5 bg-background rounded border border-border/50">
                 <div className="text-base font-bold font-mono">{generateResult.l1TagsCreated}</div>
-                <div className="text-[10px] text-muted-foreground">L1 Tags</div>
+                <div className="text-[10px] text-muted-foreground">{GENERATE_L1_TAGS_LABEL}</div>
               </div>
               <div className="text-center p-1.5 bg-background rounded border border-border/50">
                 <div className="text-base font-bold font-mono">
                   {generateResult.l2NodesCreated}
                   {(generateResult.l2NodesUpdated ?? 0) > 0 && (
                     <span className="text-[9px] text-amber-500 ml-1">
-                      +{generateResult.l2NodesUpdated} upd
+                      +{generateResult.l2NodesUpdated} {GENERATE_UPDATED_SUFFIX_LABEL}
                     </span>
                   )}
                 </div>
-                <div className="text-[10px] text-muted-foreground">L2 Nodes</div>
+                <div className="text-[10px] text-muted-foreground">{GENERATE_L2_NODES_LABEL}</div>
               </div>
               <div className="text-center p-1.5 bg-background rounded border border-border/50">
                 <div className="text-base font-bold font-mono">{generateResult.l3NodesCreated}</div>
-                <div className="text-[10px] text-muted-foreground">L3 Nodes</div>
+                <div className="text-[10px] text-muted-foreground">{GENERATE_L3_NODES_LABEL}</div>
               </div>
               <div className="text-center p-1.5 bg-background rounded border border-border/50">
                 <div className="text-base font-bold font-mono">
                   {generateResult.reviewTasksCreated}
                 </div>
-                <div className="text-[10px] text-muted-foreground">Review Tasks</div>
+                <div className="text-[10px] text-muted-foreground">
+                  {GENERATE_REVIEW_TASKS_LABEL}
+                </div>
               </div>
             </div>
             <div className="text-xs text-muted-foreground text-center space-y-0.5">
-              <div>{generateResult.commitsProcessed} commits processed → go to Review Queue</div>
+              <div>
+                {generateResult.commitsProcessed} {GENERATE_COMMITS_PROCESSED_SUFFIX}
+              </div>
               {(generateResult.documentsUsed ?? 0) > 0 && (
                 <div className="text-emerald-600 dark:text-emerald-400">
-                  {generateResult.documentsUsed} docs used as context
+                  {generateResult.documentsUsed} {GENERATE_DOCS_USED_SUFFIX}
                 </div>
               )}
             </div>

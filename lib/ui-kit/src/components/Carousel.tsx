@@ -3,6 +3,16 @@ import useEmblaCarousel, { type UseEmblaCarouselType } from "embla-carousel-reac
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { cn } from "../lib/utils";
+import {
+  CAROUSEL_ARROW_LEFT_KEY,
+  CAROUSEL_ARROW_RIGHT_KEY,
+  CAROUSEL_AXIS_HORIZONTAL,
+  CAROUSEL_AXIS_VERTICAL,
+  CAROUSEL_EMBLA_REINIT_EVENT,
+  CAROUSEL_EMBLA_SELECT_EVENT,
+  CAROUSEL_NAV_BUTTON_CLASSES,
+  CAROUSEL_NAV_ICON_CLASSES,
+} from "../constants/carousel.js";
 import { Button } from "./Button";
 
 type CarouselApi = UseEmblaCarouselType[1];
@@ -28,6 +38,14 @@ type CarouselContextProps = {
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null);
 
+function getOrientationClass(
+  orientation: CarouselProps["orientation"],
+  horizontalClass: string,
+  verticalClass: string
+) {
+  return orientation === "horizontal" ? horizontalClass : verticalClass;
+}
+
 function useCarousel() {
   const context = React.useContext(CarouselContext);
 
@@ -45,7 +63,7 @@ const Carousel = React.forwardRef<
   const [carouselRef, api] = useEmblaCarousel(
     {
       ...opts,
-      axis: orientation === "horizontal" ? "x" : "y",
+      axis: orientation === "horizontal" ? CAROUSEL_AXIS_HORIZONTAL : CAROUSEL_AXIS_VERTICAL,
     },
     plugins
   );
@@ -71,10 +89,10 @@ const Carousel = React.forwardRef<
 
   const handleKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === "ArrowLeft") {
+      if (event.key === CAROUSEL_ARROW_LEFT_KEY) {
         event.preventDefault();
         scrollPrev();
-      } else if (event.key === "ArrowRight") {
+      } else if (event.key === CAROUSEL_ARROW_RIGHT_KEY) {
         event.preventDefault();
         scrollNext();
       }
@@ -96,11 +114,11 @@ const Carousel = React.forwardRef<
     }
 
     onSelect(api);
-    api.on("reInit", onSelect);
-    api.on("select", onSelect);
+    api.on(CAROUSEL_EMBLA_REINIT_EVENT, onSelect);
+    api.on(CAROUSEL_EMBLA_SELECT_EVENT, onSelect);
 
     return () => {
-      api?.off("select", onSelect);
+      api?.off(CAROUSEL_EMBLA_SELECT_EVENT, onSelect);
     };
   }, [api, onSelect]);
 
@@ -142,7 +160,7 @@ const CarouselContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HT
           ref={ref}
           className={cn(
             "flex",
-            orientation === "horizontal" ? "-ml-4" : "-mt-4 flex-col",
+            getOrientationClass(orientation, "-ml-4", "-mt-4 flex-col"),
             className
           )}
           {...props}
@@ -164,7 +182,7 @@ const CarouselItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLD
         aria-roledescription="slide"
         className={cn(
           "min-w-0 shrink-0 grow-0 basis-full",
-          orientation === "horizontal" ? "pl-4" : "pt-4",
+          getOrientationClass(orientation, "pl-4", "pt-4"),
           className
         )}
         {...props}
@@ -184,17 +202,19 @@ const CarouselPrevious = React.forwardRef<HTMLButtonElement, React.ComponentProp
         variant={variant}
         size={size}
         className={cn(
-          "absolute  h-8 w-8 rounded-full",
-          orientation === "horizontal"
-            ? "-left-12 top-1/2 -translate-y-1/2"
-            : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
+          CAROUSEL_NAV_BUTTON_CLASSES,
+          getOrientationClass(
+            orientation,
+            "-left-12 top-1/2 -translate-y-1/2",
+            "-top-12 left-1/2 -translate-x-1/2 rotate-90"
+          ),
           className
         )}
         disabled={!canScrollPrev}
         onClick={scrollPrev}
         {...props}
       >
-        <ArrowLeft className="h-4 w-4" />
+        <ArrowLeft className={CAROUSEL_NAV_ICON_CLASSES} />
         <span className="sr-only">Previous slide</span>
       </Button>
     );
@@ -212,17 +232,19 @@ const CarouselNext = React.forwardRef<HTMLButtonElement, React.ComponentProps<ty
         variant={variant}
         size={size}
         className={cn(
-          "absolute h-8 w-8 rounded-full",
-          orientation === "horizontal"
-            ? "-right-12 top-1/2 -translate-y-1/2"
-            : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
+          CAROUSEL_NAV_BUTTON_CLASSES,
+          getOrientationClass(
+            orientation,
+            "-right-12 top-1/2 -translate-y-1/2",
+            "-bottom-12 left-1/2 -translate-x-1/2 rotate-90"
+          ),
           className
         )}
         disabled={!canScrollNext}
         onClick={scrollNext}
         {...props}
       >
-        <ArrowRight className="h-4 w-4" />
+        <ArrowRight className={CAROUSEL_NAV_ICON_CLASSES} />
         <span className="sr-only">Next slide</span>
       </Button>
     );

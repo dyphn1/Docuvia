@@ -3,14 +3,30 @@ import * as path from "path";
 import { randomUUID } from "crypto";
 import { minimatch } from "minimatch";
 import { ExtractService } from "@workspace/core";
-import { openWorkspaceLocalDatabase, resolveL2NodeIdForFile } from "../db-helper.js";
+import {
+  openWorkspaceLocalDatabase,
+  resolveL2NodeIdForFile,
+  saveExtractedDecisions,
+} from "../db-helper.js";
 import { addDecisionCommand } from "./decision.js";
 import { TaskQueueTreeProvider } from "../task-queue-tree-provider.js";
+import {
+  MSG_OPEN_FILE_EXTRACT_WARNING,
+  BTN_YES,
+  BTN_NO,
+  BTN_SAVE_DECISION_RECORD,
+  MSG_DECISIONS_SAVED,
+  MSG_EXTRACTION_NOT_IN_INCLUDE_LIST,
+  MSG_EXTRACTION_RESULTS,
+  MSG_EXTRACTION_NO_DECISIONS,
+  MSG_EXTRACTION_FAILED,
+  DocuviaCommandInvoker,
+} from "../constants/index.js";
 
 export async function runExtractionCommand(tqProvider?: TaskQueueTreeProvider) {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
-    void vscode.window.showWarningMessage("Docuvia: Open a file to extract decisions from.");
+    void vscode.window.showWarningMessage(MSG_OPEN_FILE_EXTRACT_WARNING);
     return;
   }
   const filePath = editor.document.uri.fsPath;
@@ -29,11 +45,11 @@ export async function runExtractionCommand(tqProvider?: TaskQueueTreeProvider) {
     const isIncluded = includePatterns.some((pattern) => minimatch(relativePath, pattern));
     if (!isIncluded) {
       const proceed = await vscode.window.showWarningMessage(
-        `Docuvia: This file type (${path.basename(filePath)}) is not in your include list. Analyze it anyway?`,
-        "Yes",
-        "No"
+        MSG_EXTRACTION_NOT_IN_INCLUDE_LIST.replace("{0}", path.basename(filePath)),
+        BTN_YES,
+        BTN_NO
       );
-      if (proceed !== "Yes") return;
+      if (proceed !== BTN_YES) return;
     }
   }
 
@@ -58,41 +74,37 @@ export async function runExtractionCommand(tqProvider?: TaskQueueTreeProvider) {
         const result = await extractService.extractDecisions(relativePath);
 
         if (result.decisions && result.decisions.length > 0) {
-          const decisionsMsg = result.decisions.map((d) => `- ${d}`).join("\n");
+          const decisionsMsg = result.decisions.map((d: string) => `- ${d}`).join("\n");
           const action = await vscode.window.showInformationMessage(
-            `Extracted ${result.decisions.length} decisions:\n\n${decisionsMsg}`,
+            MSG_EXTRACTION_RESULTS.replace("{0}", String(result.decisions.length)).replace(
+              "{1}",
+              decisionsMsg
+            ),
             { modal: true },
-            "Save as Decision Record"
+            BTN_SAVE_DECISION_RECORD
           );
 
-          if (action === "Save as Decision Record") {
+          if (action === BTN_SAVE_DECISION_RECORD) {
             const db = openWorkspaceLocalDatabase(workspaceRoot);
             const l2NodeId = resolveL2NodeIdForFile(db, relativePath);
-            const insert = db.prepare(
-              "INSERT INTO l3_nodes (l2_node_id, title, slug, status, content, created_at) VALUES (?, ?, ?, ?, ?, ?)"
-            );
 
-            db.transaction(() => {
-              for (const d of result.decisions) {
-                const title = `Extracted from ${path.basename(filePath)}`;
-                const slug = `extracted-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-                insert.run(l2NodeId, title, slug, "proposed", d, new Date().toISOString());
-              }
-            })();
+            saveExtractedDecisions(db, l2NodeId, path.basename(filePath), result.decisions);
+
             db.close();
 
-            vscode.window.showInformationMessage("Decisions saved successfully.");
-            vscode.commands.executeCommand("docuvia.knowledgeGraph.refresh");
+            vscode.window.showInformationMessage(MSG_DECISIONS_SAVED);
+            await DocuviaCommandInvoker.executeRefreshKnowledgeGraph();
           }
         } else {
           vscode.window.showInformationMessage(
-            `No decisions extracted from ${path.basename(filePath)}.`
+            MSG_EXTRACTION_NO_DECISIONS.replace("{0}", path.basename(filePath))
           );
         }
         tqProvider?.updateTaskStatus(taskId, "done", `${result.decisions?.length ?? 0} decisions`);
-      } catch (err: any) {
-        vscode.window.showErrorMessage(`Extraction failed: ${err.message}`);
-        tqProvider?.updateTaskStatus(taskId, "failed", err.message);
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`${MSG_EXTRACTION_FAILED}${errorMsg}`);
+        tqProvider?.updateTaskStatus(taskId, "failed", errorMsg);
       }
     }
   );

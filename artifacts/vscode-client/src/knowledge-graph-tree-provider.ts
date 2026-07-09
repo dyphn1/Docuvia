@@ -1,7 +1,34 @@
 import * as vscode from "vscode";
-import { openWorkspaceLocalDatabase } from "./db-helper.js";
+import {
+  openWorkspaceLocalDatabase,
+  updateL3DecisionL2ModuleId,
+  getL1Tags,
+  getL2ModulesByTagId,
+  getL3DecisionsByModuleId,
+  getUnassignedL3Decisions,
+  getUnassignedL3DecisionsCount,
+  getL2ModulesCountByTagId,
+  getL3DecisionsCountByModuleId,
+} from "./db-helper.js";
 import * as fs from "fs";
 import * as path from "path";
+import { DOCUVIA_DIR_NAME } from "@workspace/core";
+import {
+  MSG_TREE_UNINITIALIZED,
+  MSG_TREE_NO_TAGS,
+  MSG_TREE_UNASSIGNED_DECISIONS,
+  MSG_TREE_UNASSIGNED_DESC,
+  MSG_TREE_TOOLTIP_L1,
+  MSG_TREE_TOOLTIP_L2,
+  MSG_TREE_TOOLTIP_L3,
+  MSG_TREE_MOVE_FAILED,
+  MSG_TREE_PROJECT_NOT_INIT,
+  MSG_TREE_NO_WORKSPACE,
+  MSG_TREE_OPEN_DECISION,
+  DocuviaCommandInvoker,
+  CONTEXT_IS_INITIALIZED,
+  MIME_TYPE_KNOWLEDGE_GRAPH_TREE,
+} from "./constants/index.js";
 
 // ─── Node types ───────────────────────────────────────────────────────────────
 
@@ -48,8 +75,8 @@ export class KnowledgeGraphTreeProvider
   private _onDidChangeTreeData = new vscode.EventEmitter<KGNode | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  public readonly dropMimeTypes = ["application/vnd.code.tree.docuvia.knowledgeGraph"];
-  public readonly dragMimeTypes = ["application/vnd.code.tree.docuvia.knowledgeGraph"];
+  public readonly dropMimeTypes = [MIME_TYPE_KNOWLEDGE_GRAPH_TREE];
+  public readonly dragMimeTypes = [MIME_TYPE_KNOWLEDGE_GRAPH_TREE];
 
   private watchers: vscode.FileSystemWatcher[] = [];
 
@@ -88,10 +115,7 @@ export class KnowledgeGraphTreeProvider
   ): Promise<void> {
     const l3Nodes = source.filter((n) => n.kind === "l3decision");
     if (l3Nodes.length > 0) {
-      dataTransfer.set(
-        "application/vnd.code.tree.docuvia.knowledgeGraph",
-        new vscode.DataTransferItem(l3Nodes)
-      );
+      dataTransfer.set(MIME_TYPE_KNOWLEDGE_GRAPH_TREE, new vscode.DataTransferItem(l3Nodes));
     }
   }
 
@@ -102,7 +126,7 @@ export class KnowledgeGraphTreeProvider
   ): Promise<void> {
     if (!target || target.kind !== "l2module") return;
 
-    const transferItem = dataTransfer.get("application/vnd.code.tree.docuvia.knowledgeGraph");
+    const transferItem = dataTransfer.get(MIME_TYPE_KNOWLEDGE_GRAPH_TREE);
     if (!transferItem) return;
 
     const l3Nodes: KGNode[] = transferItem.value;
@@ -111,25 +135,20 @@ export class KnowledgeGraphTreeProvider
     if (l3Nodes.length > 0) {
       try {
         const db = openWorkspaceLocalDatabase(target.workspaceRoot);
-        let changed = false;
-        const updateStmt = db.prepare("UPDATE l3_nodes SET l2_node_id = ? WHERE id = ?");
+        const decisionIdsToUpdate = l3Nodes
+          .filter((node) => node.kind === "l3decision" && node.l2ModuleId !== target.id)
+          .map((node) => (node as any).id);
 
-        db.transaction(() => {
-          for (const node of l3Nodes) {
-            if (node.kind === "l3decision" && node.l2ModuleId !== target.id) {
-              updateStmt.run(target.id, node.id);
-              changed = true;
-            }
-          }
-        })();
+        const changed = updateL3DecisionL2ModuleId(db, decisionIdsToUpdate, target.id);
 
         db.close();
 
         if (changed) {
           this.refresh();
         }
-      } catch (e) {
-        vscode.window.showErrorMessage(`Failed to move decision: ${String(e)}`);
+      } catch (e: unknown) {
+        const errorMsg = e instanceof Error ? e.message : String(e);
+        vscode.window.showErrorMessage(`${MSG_TREE_MOVE_FAILED}${errorMsg}`);
       }
     }
   }
@@ -145,7 +164,7 @@ export class KnowledgeGraphTreeProvider
         );
         item.iconPath = new vscode.ThemeIcon(node.isInit ? "database" : "new-folder");
         if (!node.isInit) {
-          item.description = "Not initialized";
+          item.description = MSG_TREE_PROJECT_NOT_INIT;
           item.contextValue = "project-uninit";
         } else {
           item.contextValue = "project-init";
@@ -178,9 +197,7 @@ export class KnowledgeGraphTreeProvider
       }
       case "l2module": {
         const db = openWorkspaceLocalDatabase(node.workspaceRoot);
-        const count = db
-          .prepare("SELECT COUNT(*) as c FROM l3_nodes WHERE l2_node_id = ?")
-          .get(node.id).c;
+        const count = getL3DecisionsCountByModuleId(db, node.id);
         db.close();
         const state =
           count > 0
@@ -200,7 +217,7 @@ export class KnowledgeGraphTreeProvider
         item.tooltip = node.filePath;
 
         item.command = {
-          title: "Open Decision",
+          title: MSG_TREE_OPEN_DECISION,
           command: "docuvia.openDecision",
           arguments: [node.filePath],
         };
@@ -219,12 +236,12 @@ export class KnowledgeGraphTreeProvider
     if (!node) {
       const folders = vscode.workspace.workspaceFolders;
       if (!folders || folders.length === 0) {
-        vscode.commands.executeCommand("setContext", "docuvia:isInitialized", false);
-        return [{ kind: "info", message: "No workspace open" }];
+        await DocuviaCommandInvoker.executeSetContext(CONTEXT_IS_INITIALIZED, false);
+        return [{ kind: "info", message: MSG_TREE_NO_WORKSPACE }];
       }
 
       const nodes = folders.map((folder): KGNode => {
-        const isInit = fs.existsSync(path.join(folder.uri.fsPath, ".docuvia", "local.db"));
+        const isInit = fs.existsSync(path.join(folder.uri.fsPath, DOCUVIA_DIR_NAME, "local.db"));
         return {
           kind: "project",
           name: folder.name,
@@ -234,7 +251,7 @@ export class KnowledgeGraphTreeProvider
       });
 
       const hasInit = nodes.some((n) => n.kind === "project" && n.isInit);
-      vscode.commands.executeCommand("setContext", "docuvia:isInitialized", hasInit);
+      await DocuviaCommandInvoker.executeSetContext(CONTEXT_IS_INITIALIZED, hasInit);
 
       if (!hasInit) {
         return [];
@@ -255,7 +272,7 @@ export class KnowledgeGraphTreeProvider
           return [];
         }
 
-        const tags = db.prepare("SELECT * FROM l1_tags").all();
+        const tags = getL1Tags(db);
         if (tags.length === 0) {
           return [{ kind: "info", message: "No L1 Tags. Run Explore." }];
         }
@@ -269,15 +286,11 @@ export class KnowledgeGraphTreeProvider
           workspaceRoot: node.workspaceRoot,
         }));
 
-        const unassignedCount = db
-          .prepare(
-            "SELECT COUNT(*) as c FROM l3_nodes WHERE l2_node_id IS NULL OR l2_node_id NOT IN (SELECT id FROM l2_nodes)"
-          )
-          .get().c;
+        const unassignedCount = getUnassignedL3DecisionsCount(db);
         if (unassignedCount > 0) {
           nodes.push({
             kind: "unassigned-group",
-            name: "Unassigned Decisions",
+            name: MSG_TREE_UNASSIGNED_DECISIONS,
             workspaceRoot: node.workspaceRoot,
           });
         }
@@ -285,7 +298,7 @@ export class KnowledgeGraphTreeProvider
       }
 
       if (node.kind === "l1tag") {
-        const modules = db.prepare("SELECT * FROM l2_nodes WHERE l1_tag_id = ?").all(node.id);
+        const modules = getL2ModulesByTagId(db, node.id);
         return modules.map((m: any) => ({
           kind: "l2module",
           id: m.id,
@@ -297,11 +310,7 @@ export class KnowledgeGraphTreeProvider
       }
 
       if (node.kind === "unassigned-group") {
-        const unassigned = db
-          .prepare(
-            "SELECT * FROM l3_nodes WHERE l2_node_id IS NULL OR l2_node_id NOT IN (SELECT id FROM l2_nodes)"
-          )
-          .all();
+        const unassigned = getUnassignedL3Decisions(db);
         return unassigned.map((entry: any) => ({
           kind: "l3decision",
           id: entry.id,
@@ -314,7 +323,7 @@ export class KnowledgeGraphTreeProvider
       }
 
       if (node.kind === "l2module") {
-        const entries = db.prepare("SELECT * FROM l3_nodes WHERE l2_node_id = ?").all(node.id);
+        const entries = getL3DecisionsByModuleId(db, node.id);
         return entries.map((entry: any) => ({
           kind: "l3decision",
           id: entry.id,

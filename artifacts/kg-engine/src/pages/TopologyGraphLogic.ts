@@ -9,22 +9,21 @@ import {
   type SimulationNodeDatum,
 } from "d3-force";
 import type { TopologyNode, TopologyLink } from "@workspace/api-client-react";
-
-export const PALETTE = [
-  "#4E79A7",
-  "#F28E2B",
-  "#E15759",
-  "#76B7B2",
-  "#59A14F",
-  "#EDC948",
-  "#B07AA1",
-  "#FF9DA7",
-  "#9C755F",
-  "#BAB0AC",
-  "#5B8DEF",
-  "#8CD17D",
-];
-export const DECISION_COLOR = "#E8B931";
+import {
+  GROUP_RING_RADIUS_UNIT,
+  CONTAINMENT_LINK_DISTANCE,
+  DEFAULT_LINK_DISTANCE,
+  LINK_STRENGTH,
+  CHARGE_STRENGTH,
+  CHARGE_DISTANCE_MAX,
+  GROUP_CENTERING_STRENGTH,
+  DECISION_NODE_RADIUS,
+  NODE_RADIUS_BASE,
+  NODE_RADIUS_DEGREE_SCALE,
+  LINK_TYPE_CONTAINS,
+  LINK_TYPE_DECISION,
+  NODE_KIND_DECISION,
+} from "@/constants/topology";
 
 export type SimNode = TopologyNode & SimulationNodeDatum;
 export type SimLink = SimulationLinkDatum<SimNode> & Pick<TopologyLink, "linkType" | "confidence">;
@@ -50,7 +49,7 @@ export function computeLayout(nodes: TopologyNode[], links: TopologyLink[]): Lay
 
   // Seed group centers on a ring so directory clusters separate cleanly.
   const groupIds = [...new Set(simNodes.map((n) => n.group))];
-  const ringR = 150 * Math.sqrt(Math.max(groupIds.length, 1));
+  const ringR = GROUP_RING_RADIUS_UNIT * Math.sqrt(Math.max(groupIds.length, 1));
   const centers = new Map<number, { x: number; y: number }>();
   groupIds.forEach((gid, i) => {
     const a = (2 * Math.PI * i) / groupIds.length;
@@ -62,12 +61,22 @@ export function computeLayout(nodes: TopologyNode[], links: TopologyLink[]): Lay
       "link",
       forceLink<SimNode, SimLink>(simLinks)
         .id((d) => d.id)
-        .distance((l) => (l.linkType === "contains" || l.linkType === "decision" ? 60 : 140))
-        .strength(0.4)
+        .distance((l) =>
+          l.linkType === LINK_TYPE_CONTAINS || l.linkType === LINK_TYPE_DECISION
+            ? CONTAINMENT_LINK_DISTANCE
+            : DEFAULT_LINK_DISTANCE
+        )
+        .strength(LINK_STRENGTH)
     )
-    .force("charge", forceManyBody().strength(-150).distanceMax(450))
-    .force("x", forceX<SimNode>((d) => centers.get(d.group)?.x ?? 0).strength(0.08))
-    .force("y", forceY<SimNode>((d) => centers.get(d.group)?.y ?? 0).strength(0.08))
+    .force("charge", forceManyBody().strength(CHARGE_STRENGTH).distanceMax(CHARGE_DISTANCE_MAX))
+    .force(
+      "x",
+      forceX<SimNode>((d) => centers.get(d.group)?.x ?? 0).strength(GROUP_CENTERING_STRENGTH)
+    )
+    .force(
+      "y",
+      forceY<SimNode>((d) => centers.get(d.group)?.y ?? 0).strength(GROUP_CENTERING_STRENGTH)
+    )
     .force("center", forceCenter(0, 0))
     .stop();
 
@@ -112,5 +121,7 @@ export function convexHull(pts: Array<{ x: number; y: number }>): Array<{ x: num
 }
 
 export function nodeRadius(n: SimNode, maxDegree: number): number {
-  return n.kind === "decision" ? 6 : 6 + 14 * Math.sqrt(n.degree / maxDegree);
+  return n.kind === NODE_KIND_DECISION
+    ? DECISION_NODE_RADIUS
+    : NODE_RADIUS_BASE + NODE_RADIUS_DEGREE_SCALE * Math.sqrt(n.degree / maxDegree);
 }

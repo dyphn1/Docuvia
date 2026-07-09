@@ -1,4 +1,11 @@
 import * as vscode from "vscode";
+import {
+  MSG_TASK_NO_TASKS,
+  MSG_TASK_GROUP_PENDING,
+  MSG_TASK_GROUP_IN_PROGRESS,
+  MSG_TASK_GROUP_DONE,
+  MSG_TASK_GROUP_FAILED,
+} from "./constants/index.js";
 
 // ─── Domain types ─────────────────────────────────────────────────────────────
 
@@ -41,25 +48,25 @@ interface GroupConfig {
 const GROUP_CONFIGS: GroupConfig[] = [
   {
     status: "pending",
-    label: "Pending",
+    label: MSG_TASK_GROUP_PENDING,
     icon: "clock",
     collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
   },
   {
     status: "in_progress",
-    label: "In Progress",
+    label: MSG_TASK_GROUP_IN_PROGRESS,
     icon: "sync~spin",
     collapsibleState: vscode.TreeItemCollapsibleState.Expanded,
   },
   {
     status: "done",
-    label: "Done",
+    label: MSG_TASK_GROUP_DONE,
     icon: "pass-filled",
     collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
   },
   {
     status: "failed",
-    label: "Failed",
+    label: MSG_TASK_GROUP_FAILED,
     icon: "error",
     collapsibleState: vscode.TreeItemCollapsibleState.Collapsed,
   },
@@ -109,7 +116,7 @@ export class TaskQueueTreeProvider implements vscode.TreeDataProvider<TQNode> {
   getChildren(node?: TQNode): TQNode[] {
     if (!node) {
       if (this._tasks.length === 0) {
-        return [{ kind: "task", id: "empty_placeholder", label: "No extraction tasks yet" }];
+        return [{ kind: "task", id: "empty_placeholder", label: MSG_TASK_NO_TASKS }];
       }
       // Return all 4 status groups
       return GROUP_CONFIGS.map(

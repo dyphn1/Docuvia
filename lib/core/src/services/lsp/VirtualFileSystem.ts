@@ -1,3 +1,4 @@
+import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
@@ -27,10 +28,10 @@ export class VirtualFileSystem {
   }
 
   async writeDirtyFile(uri: string, content: string, version: number): Promise<VfsEntry> {
-    const contentHash = crypto.createHash("sha256").update(content).digest("hex");
+    const contentHash = crypto.createHash(HASH_ALGO_SHA256).update(content).digest(ENCODING_HEX);
 
     // Create a safe temp file name from the URI
-    const safeName = crypto.createHash("md5").update(uri).digest("hex") + ".tmp";
+    const safeName = crypto.createHash(HASH_ALGO_MD5).update(uri).digest(ENCODING_HEX) + ".tmp";
     const tempFilePath = path.join(this.tmpDir, safeName);
 
     await fs.writeFile(tempFilePath, content, "utf-8");

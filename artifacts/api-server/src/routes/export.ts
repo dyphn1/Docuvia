@@ -1,38 +1,14 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router } from "express";
 import { ProjectService } from "../services/project.service";
 import { ExportService } from "../services/export.service";
 import { requireApiKey } from "../middlewares/auth";
+import { checkProjectOwnership } from "../middlewares/ownership.js";
+import { API_MESSAGES } from "@workspace/core";
 
 const router = Router();
 const exportService = new ExportService();
 
 const requireExportAuth = [requireApiKey];
-
-const checkProjectOwnership = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  const projectId = Number(req.params.id);
-  const userId = (req as any).user?.id;
-
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
-
-  const project = await new ProjectService().getProjectById(projectId);
-  if (!project) {
-    res.status(404).json({ error: "Project not found" });
-    return;
-  }
-  if (project.ownerId !== userId) {
-    res.status(403).json({ error: "Forbidden" });
-    return;
-  }
-
-  next();
-};
 
 router.get(
   "/projects/:id/export",
@@ -41,7 +17,7 @@ router.get(
   async (req, res) => {
     const projectId = Number(req.params.id);
     const result = await exportService.exportProjectToJson(projectId);
-    if (!result) return res.status(404).json({ error: "Project not found" });
+    if (!result) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
     return res.json(result);
   }
 );
@@ -54,7 +30,7 @@ router.get(
   async (req, res) => {
     const projectId = Number(req.params.id);
     const project = await new ProjectService().getProjectById(projectId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
     res.setHeader("Content-Type", "text/markdown; charset=utf-8");
     res.setHeader(

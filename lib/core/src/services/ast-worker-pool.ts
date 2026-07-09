@@ -1,3 +1,4 @@
+import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
 import { Worker } from "worker_threads";
 import * as path from "path";
 import * as fs from "fs";
@@ -134,7 +135,10 @@ export class AstWorkerPool implements IASTWorkerPool {
   parse(request: Omit<AstParseRequest, "taskId">): Promise<AstParseResponse> {
     return new Promise((resolve, reject) => {
       // Compute content hash for cache lookup
-      const contentHash = crypto.createHash("sha256").update(request.code).digest("hex");
+      const contentHash = crypto
+        .createHash(HASH_ALGO_SHA256)
+        .update(request.code)
+        .digest(ENCODING_HEX);
 
       // Check cache first with timing instrumentation
       if (this.cache) {

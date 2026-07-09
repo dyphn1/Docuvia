@@ -1,3 +1,5 @@
+import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
+import { ENCODING_UTF_8, UTF8_ENCODING } from "@workspace/core";
 import crypto from "crypto";
 import { db } from "@workspace/db";
 import {
@@ -24,7 +26,7 @@ export class GithubWebhookService {
    * Validates the HMAC signature of the GitHub webhook payload.
    */
   public verifySignature(rawBody: Buffer, signature: string, secret: string): boolean {
-    const expected = `sha256=${crypto.createHmac("sha256", secret).update(rawBody).digest("hex")}`;
+    const expected = `sha256=${crypto.createHmac(HASH_ALGO_SHA256, secret).update(rawBody).digest(ENCODING_HEX)}`;
     // Pad to same length to avoid timing attacks if lengths differ
     const sigBuf = Buffer.from(signature.padEnd(expected.length, "\0"));
     const expBuf = Buffer.from(expected.padEnd(sigBuf.length, "\0"));
@@ -53,7 +55,7 @@ export class GithubWebhookService {
 
     let payload: Record<string, unknown>;
     try {
-      payload = JSON.parse(rawBody.toString("utf8")) as Record<string, unknown>;
+      payload = JSON.parse(rawBody.toString(UTF8_ENCODING)) as Record<string, unknown>;
     } catch {
       return { status: 400, error: "Invalid JSON payload" };
     }

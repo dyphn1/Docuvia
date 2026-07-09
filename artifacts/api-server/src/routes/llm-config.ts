@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import { ProjectService } from "../services/project.service";
 import { LlmConfigService } from "../services/llm-config.service";
@@ -15,7 +16,7 @@ const LlmConfigInputSchema = z.object({
 router.get("/projects/:id/llm-config", requireApiKey, async (req, res) => {
   const projectId = Number(req.params.id);
   const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+  if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
   const cfg = await llmConfigService.getOrCreateConfig(projectId);
   return res.json({ ...cfg, createdAt: cfg.createdAt.toISOString() });

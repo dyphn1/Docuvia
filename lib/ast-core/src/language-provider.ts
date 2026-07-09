@@ -2,6 +2,12 @@ import type { Language, Node, QueryCapture } from "web-tree-sitter";
 import { Query } from "web-tree-sitter";
 
 export interface LanguageProvider {
+  buildScopeMap?: (importStatements: Node[]) => Map<string, string>;
+  classifyCall?: (callNode: Node) => {
+    isMethodCall: boolean;
+    methodName: string;
+    objectName?: string;
+  };
   wasm_file: string;
   extractClasses: (rootNode: Node) => Node[];
   extractFunctions: (rootNode: Node) => Node[];
@@ -22,6 +28,12 @@ export interface LanguageQueryConfig {
 }
 
 export interface LanguageConfig {
+  buildScopeMap?: (importStatements: Node[]) => Map<string, string>;
+  classifyCall?: (callNode: Node) => {
+    isMethodCall: boolean;
+    methodName: string;
+    objectName?: string;
+  };
   extensions: string[];
   wasm_file: string;
   imports: string[];
@@ -43,6 +55,16 @@ type CompiledQueries = {
 };
 
 export class DefaultProvider implements LanguageProvider {
+  buildScopeMap(importStatements: Node[]): Map<string, string> {
+    if (this.config.buildScopeMap) return this.config.buildScopeMap(importStatements);
+    return new Map<string, string>();
+  }
+
+  classifyCall(callNode: Node): { isMethodCall: boolean; methodName: string; objectName?: string } {
+    if (this.config.classifyCall) return this.config.classifyCall(callNode);
+    return { isMethodCall: false, methodName: callNode.text };
+  }
+
   wasm_file: string;
   private config: LanguageConfig;
   private compiledQueries: CompiledQueries | null = null;

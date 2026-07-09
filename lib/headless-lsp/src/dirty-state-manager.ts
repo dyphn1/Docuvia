@@ -87,18 +87,19 @@ export class DirtyStateManager {
 
     for await (const event of astStream) {
       if (event.type === "file" || event.type === "class" || event.type === "function") {
+        const eventCopy: any = { ...event };
+        delete eventCopy.type;
+
         nodes.push(
           JSON.stringify({
             id: (event as any).fqn || filePath,
             type: event.type,
             name: (event as any).name || path.basename(filePath),
             filePath: filePath,
-            // You could also add the event properties if required,
-            // or just serialize the event object:
-            ...event,
+            ...eventCopy,
           })
         );
-      } else if (event.type === "calls" || event.type === "depends_on") {
+      } else if ((event.type as string) === "calls" || (event.type as string) === "depends_on") {
         edges.push(JSON.stringify(event));
       }
     }

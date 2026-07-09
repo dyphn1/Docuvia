@@ -2,8 +2,13 @@ import { db, jobQueueTable } from "@workspace/db";
 import { eq, and, isNull, lt } from "drizzle-orm";
 import { logger } from "@workspace/core";
 import { writeKnowledgeToOrphanBranch } from "@workspace/core";
-
-const POLL_INTERVAL = 5000;
+import {
+  JOB_QUEUE_POLL_INTERVAL_MS,
+  JOB_QUEUE_STALL_TIMEOUT_MS,
+  JOB_QUEUE_LIMIT,
+  JOB_STATUS,
+  JOB_TASK_TYPES,
+} from "../constants/index.js";
 
 export class JobQueueWorker {
   private timer: NodeJS.Timeout | null = null;
@@ -11,7 +16,7 @@ export class JobQueueWorker {
 
   start() {
     if (this.timer) return;
-    this.timer = setInterval(() => this.tick(), POLL_INTERVAL);
+    this.timer = setInterval(() => this.tick(), JOB_QUEUE_POLL_INTERVAL_MS);
     logger.info("JobQueueWorker started");
   }
 
@@ -28,20 +33,20 @@ export class JobQueueWorker {
 
     try {
       // 1. Find pending jobs or stalled jobs (locked more than 10 mins ago)
-      const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000);
+      const tenMinsAgo = new Date(Date.now() - JOB_QUEUE_STALL_TIMEOUT_MS);
 
       const jobs = await db
         .select()
         .from(jobQueueTable)
-        .where(eq(jobQueueTable.status, "pending"))
-        .limit(5);
+        .where(eq(jobQueueTable.status, JOB_STATUS.PENDING))
+        .limit(JOB_QUEUE_LIMIT);
 
       for (const job of jobs) {
         // Optimistic lock
         const locked = await db
           .update(jobQueueTable)
-          .set({ status: "processing", lockedAt: new Date() })
-          .where(and(eq(jobQueueTable.id, job.id), eq(jobQueueTable.status, "pending")))
+          .set({ status: JOB_STATUS.PROCESSING, lockedAt: new Date() })
+          .where(and(eq(jobQueueTable.id, job.id), eq(jobQueueTable.status, JOB_STATUS.PENDING)))
           .returning();
 
         if (locked.length === 0) continue; // Someone else got it
@@ -51,13 +56,13 @@ export class JobQueueWorker {
 
           await db
             .update(jobQueueTable)
-            .set({ status: "completed" })
+            .set({ status: JOB_STATUS.COMPLETED })
             .where(eq(jobQueueTable.id, job.id));
         } catch (err) {
           logger.error({ err, jobId: job.id }, "Job processing failed");
           await db
             .update(jobQueueTable)
-            .set({ status: "failed" })
+            .set({ status: JOB_STATUS.FAILED })
             .where(eq(jobQueueTable.id, job.id));
         }
       }
@@ -71,7 +76,7 @@ export class JobQueueWorker {
   private async processJob(job: any) {
     logger.info({ jobId: job.id, taskType: job.taskType }, "Processing job");
 
-    if (job.taskType === "sync_orphan_branch") {
+    if (job.taskType === JOB_TASK_TYPES.SYNC_ORPHAN_BRANCH) {
       const projectId = job.payload?.projectId;
       if (projectId) {
         await writeKnowledgeToOrphanBranch(projectId);

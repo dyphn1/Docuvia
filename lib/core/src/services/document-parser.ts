@@ -1,3 +1,4 @@
+import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
 import { extractBuildArtifactText } from "./build-artifact-aggregator.js";
 import { fork } from "node:child_process";
 import path from "node:path";
@@ -33,7 +34,10 @@ export function detectDocType(filename: string): SupportedDocType {
 async function parseInWorker(buffer: Buffer, docType: SupportedDocType): Promise<string> {
   return new Promise((resolve, reject) => {
     // Write buffer to temp file to pass to worker
-    const tmpFilePath = path.join(os.tmpdir(), `parse_${crypto.randomBytes(8).toString("hex")}`);
+    const tmpFilePath = path.join(
+      os.tmpdir(),
+      `parse_${crypto.randomBytes(8).toString(ENCODING_HEX)}`
+    );
     fs.writeFileSync(tmpFilePath, buffer);
 
     const workerPath = path.join(__dirname, "parser-worker.js");

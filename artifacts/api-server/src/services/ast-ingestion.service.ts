@@ -1,6 +1,7 @@
 import { db, jobQueueTable, projectsTable, errorReportsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { ingestAstBatch, logger } from "@workspace/core";
+import { JOB_STATUS, JOB_TASK_TYPES } from "../constants/index.js";
 
 export interface AstIngestionResult {
   message: string;
@@ -19,7 +20,7 @@ export class AstIngestionService {
     const [job] = await db
       .insert(jobQueueTable)
       .values({
-        taskType: "ast_ingest",
+        taskType: JOB_TASK_TYPES.AST_INGEST,
         payload: { jsonlPaths: pathArray, projectId, mode },
       })
       .returning();
@@ -28,7 +29,7 @@ export class AstIngestionService {
       try {
         await db
           .update(jobQueueTable)
-          .set({ status: "processing", lockedAt: new Date() })
+          .set({ status: JOB_STATUS.PROCESSING, lockedAt: new Date() })
           .where(eq(jobQueueTable.id, job.id));
 
         const stringPaths = pathArray.map((p) => (typeof p === "string" ? p : p.filePath));
@@ -46,7 +47,7 @@ export class AstIngestionService {
         await db
           .update(jobQueueTable)
           .set({
-            status: "completed",
+            status: JOB_STATUS.COMPLETED,
             payload: { jsonlPaths: pathArray, projectId, mode, result },
           })
           .where(eq(jobQueueTable.id, job.id));
@@ -55,7 +56,7 @@ export class AstIngestionService {
 
         await db
           .update(jobQueueTable)
-          .set({ status: "failed" })
+          .set({ status: JOB_STATUS.FAILED })
           .where(eq(jobQueueTable.id, job.id));
 
         const errorMessage = err instanceof Error ? err.message : String(err);
@@ -65,7 +66,7 @@ export class AstIngestionService {
           .values({
             projectId,
             jobId: job.id,
-            taskType: "ast_ingest_job",
+            taskType: JOB_TASK_TYPES.AST_INGEST_JOB,
             errorMessage,
             errorStack,
           })

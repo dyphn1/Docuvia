@@ -1,17 +1,19 @@
+import { API_MESSAGES } from "@workspace/core";
 import app from "./app";
 import { logger, JanitorService, L3HealingService } from "@workspace/core";
 import { jobQueueWorker } from "./workers/job-queue.worker";
+import { ENV_PORT_KEY, STARTUP_JANITOR_DELAY_MS, JANITOR_INTERVAL_MS } from "./constants/index.js";
 
-const rawPort = process.env["PORT"];
+const rawPort = process.env[ENV_PORT_KEY];
 
 if (!rawPort) {
-  throw new Error("PORT environment variable is required but was not provided.");
+  throw new Error(API_MESSAGES.PORT_REQUIRED);
 }
 
 const port = Number(rawPort);
 
 if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+  throw new Error(API_MESSAGES.INVALID_PORT(rawPort));
 }
 
 app.listen(port, (err) => {
@@ -28,7 +30,6 @@ app.listen(port, (err) => {
   // Start background janitor
   const janitor = new JanitorService();
   const l3Healer = new L3HealingService();
-  const JANITOR_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 
   // Run once on startup (with a small delay)
   setTimeout(() => {
@@ -38,7 +39,7 @@ app.listen(port, (err) => {
     janitor.purgeOldLogsAndJobs().catch((err: unknown) => {
       logger.error({ err }, "Initial janitor run failed");
     });
-  }, 10000);
+  }, STARTUP_JANITOR_DELAY_MS);
 
   setInterval(() => {
     l3Healer.reanchorL3Rules().catch((err: unknown) => {

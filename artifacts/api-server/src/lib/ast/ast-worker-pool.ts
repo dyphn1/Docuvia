@@ -1,3 +1,5 @@
+import { MAX_UPLOAD_FILE_SIZE_BYTES } from "@workspace/core";
+import { AST_STATUS } from "@workspace/core";
 import os from "node:os";
 import fs from "node:fs/promises";
 import { Piscina } from "piscina";
@@ -6,6 +8,7 @@ import { logger } from "@workspace/core";
 import { isQuarantined, quarantineFile } from "./quarantine-db.js";
 import { db } from "@workspace/db";
 import { errorReportsTable } from "@workspace/db";
+import { AST_INGESTION_DEFAULTS } from "../../constants/index.js";
 
 const maxThreads = Math.max(1, os.cpus().length - 1);
 
@@ -15,14 +18,14 @@ const workerFile = isTsNode ? "./ast-worker.ts" : "./ast-worker.mjs";
 const workerPath = new URL(workerFile, import.meta.url).href;
 
 export interface ParseResult {
-  status: "done" | "error";
+  status: typeof AST_STATUS.DONE | typeof AST_STATUS.ERROR;
   file?: string;
   reason?: string;
 }
 
 export class AstWorkerPool {
   private pool: Piscina;
-  private maxInFlight = 100;
+  private limit = pLimit(AST_INGESTION_DEFAULTS.MAX_CONCURRENT_IN_FLIGHT);
 
   constructor() {
     this.pool = new Piscina({
@@ -31,38 +34,47 @@ export class AstWorkerPool {
     });
   }
 
+  /**
+   * Helper to write a detailed error report to the dead-letter queue (error_reports db table).
+   */
+  private async persistErrorReport(taskType: string, message: string): Promise<void> {
+    await db
+      .insert(errorReportsTable)
+      .values({
+        projectId: AST_INGESTION_DEFAULTS.DEFAULT_PROJECT_ID,
+        taskType,
+        errorMessage: message,
+      })
+      .catch((err: unknown) => logger.warn({ err }, "Failed to persist error report"));
+  }
+
   private async runWithTimeout(filePath: string): Promise<ParseResult> {
     if (isQuarantined(filePath)) {
-      return { status: "error", reason: "File is quarantined" };
+      return { status: AST_STATUS.ERROR, reason: AST_INGESTION_DEFAULTS.MSG_FILE_QUARANTINED };
     }
 
     try {
       const stats = await fs.stat(filePath);
-      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
-      if (stats.size > MAX_FILE_SIZE) {
+      if (stats.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
         quarantineFile(filePath);
         logger.warn(
           { filePath, size: stats.size },
           "File exceeds maximum size limit. Quarantining file."
         );
 
-        await db
-          .insert(errorReportsTable)
-          .values({
-            projectId: 1, // Fallback since we don't have project context in pool directly
-            taskType: "ast_parse",
-            errorMessage: `File exceeds maximum size limit (10MB): ${filePath}`,
-          })
-          .catch((err) => logger.warn({ err }, "Failed to persist error report"));
+        await this.persistErrorReport(
+          AST_INGESTION_DEFAULTS.TASK_TYPE_AST_PARSE,
+          `File exceeds maximum size limit (10MB): ${filePath}`
+        );
 
-        return { status: "error", reason: "File exceeds maximum size limit (10MB)" };
+        return { status: AST_STATUS.ERROR, reason: AST_INGESTION_DEFAULTS.MSG_FILE_LIMIT_EXCEEDED };
       }
     } catch (err: any) {
-      return { status: "error", reason: `Failed to stat file: ${err.message}` };
+      return { status: AST_STATUS.ERROR, reason: `Failed to stat file: ${err.message}` };
     }
 
     const ac = new AbortController();
-    const timeout = setTimeout(() => ac.abort(), 2000); // 2 second max timeout to prevent infinite loops
+    const timeout = setTimeout(() => ac.abort(), AST_INGESTION_DEFAULTS.DEFAULT_TIMEOUT_MS); // 2 second max timeout to prevent infinite loops
 
     try {
       const result = await this.pool.run(filePath, { signal: ac.signal });
@@ -73,20 +85,16 @@ export class AstWorkerPool {
       quarantineFile(filePath);
 
       const errorMessage = error.message || "Worker error";
-      await db
-        .insert(errorReportsTable)
-        .values({
-          projectId: 1, // Fallback project context
-          taskType: "ast_parse_poison_pill",
-          errorMessage: `Poison Pill caught: ${errorMessage} in ${filePath}`,
-        })
-        .catch((err) => logger.warn({ err }, "Failed to persist error report"));
+      await this.persistErrorReport(
+        AST_INGESTION_DEFAULTS.TASK_TYPE_AST_POISON_PILL,
+        `Poison Pill caught: ${errorMessage} in ${filePath}`
+      );
 
       logger.warn(
         { filePath, error: errorMessage },
         "AST Worker failed or timed out. Quarantining file and persisting DLQ."
       );
-      return { status: "error", reason: errorMessage };
+      return { status: AST_STATUS.ERROR, reason: errorMessage };
     }
   }
 
@@ -101,8 +109,7 @@ export class AstWorkerPool {
       "Dispatching files to AST Worker Pool"
     );
 
-    const limit = pLimit(this.maxInFlight);
-    const promises = filePaths.map((filePath) => limit(() => this.runWithTimeout(filePath)));
+    const promises = filePaths.map((filePath) => this.limit(() => this.runWithTimeout(filePath)));
     const results = await Promise.all(promises);
 
     logger.info({ fileCount: filePaths.length }, "Completed AST processing for files");

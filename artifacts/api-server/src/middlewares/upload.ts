@@ -2,26 +2,22 @@ import multer, { type FileFilterCallback } from "multer";
 import type { Request } from "express";
 
 import os from "node:os";
-
-const ALLOWED_MIMETYPES = new Set([
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  "text/plain",
-  "text/markdown",
-]);
-
-const ALLOWED_EXTENSIONS = new Set(["pdf", "docx", "pptx", "txt", "md", "map", "fv", "fd", "log"]);
+import {
+  MAX_UPLOAD_FILE_SIZE_BYTES,
+  ALLOWED_DOCUMENT_MIMETYPES,
+  ALLOWED_DOCUMENT_EXTENSIONS,
+} from "@workspace/core";
+import { API_MESSAGES } from "@workspace/core";
 
 export const documentUpload = multer({
   dest: os.tmpdir(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_FILE_SIZE_BYTES },
   fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
     const ext = file.originalname.split(".").pop()?.toLowerCase() ?? "";
-    if (ALLOWED_MIMETYPES.has(file.mimetype) || ALLOWED_EXTENSIONS.has(ext)) {
+    if (ALLOWED_DOCUMENT_MIMETYPES.has(file.mimetype) || ALLOWED_DOCUMENT_EXTENSIONS.has(ext)) {
       cb(null, true);
     } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype} (.${ext})`));
+      cb(new Error(API_MESSAGES.UNSUPPORTED_FILE_TYPE(file.mimetype, ext)));
     }
   },
 });

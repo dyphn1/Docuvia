@@ -1,3 +1,4 @@
+import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { db } from "@workspace/db";
@@ -15,7 +16,7 @@ export class AstChangeDetector implements IAstChangeDetector {
   public async computeFileHash(filePath: string): Promise<string | null> {
     try {
       const content = await fs.promises.readFile(filePath, "utf-8");
-      return crypto.createHash("sha256").update(content).digest("hex");
+      return crypto.createHash(HASH_ALGO_SHA256).update(content).digest(ENCODING_HEX);
     } catch {
       return null;
     }

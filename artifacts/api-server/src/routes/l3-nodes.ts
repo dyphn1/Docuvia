@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import { l3NodesService } from "../services/l3-nodes.service.js";
 import {
@@ -28,7 +29,7 @@ router.patch("/l3-nodes/:id", async (req, res) => {
   const { id } = UpdateL3NodeParams.parse({ id: Number(req.params.id) });
   const body = UpdateL3NodeBody.parse(req.body);
   const node = await l3NodesService.updateNode(id, body);
-  if (!node) return res.status(404).json({ error: "Not found" });
+  if (!node) return res.status(404).json({ error: API_MESSAGES.NOT_FOUND });
   return res.json({ ...node, createdAt: node.createdAt.toISOString() });
 });
 

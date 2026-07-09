@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router, Request, Response } from "express";
 import { logger } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
@@ -15,13 +16,15 @@ metabolismRouter.get(
         await service.runAll();
       });
       if (result === null) {
-        res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
+        res
+          .status(202)
+          .json({ message: API_MESSAGES.METABOLISM_ALREADY_RUNNING, status: "accepted" });
         return;
       }
-      res.status(200).json({ message: "Metabolism tick completed", status: "success" });
+      res.status(200).json({ message: API_MESSAGES.METABOLISM_TICK_COMPLETED, status: "success" });
     } catch (err) {
       logger.error({ err }, "Metabolism tick failed");
-      res.status(500).json({ error: "Metabolism tick failed" });
+      res.status(500).json({ error: API_MESSAGES.METABOLISM_TICK_FAILED });
     }
   }
 );
@@ -33,7 +36,7 @@ metabolismRouter.get(
 
     if (!adminSecret) {
       logger.error("ADMIN_SECRET_TOKEN is missing. Server misconfigured. Failing closed.");
-      res.status(500).json({ error: "Server misconfiguration" });
+      res.status(500).json({ error: API_MESSAGES.SERVER_MISCONFIGURATION });
       return;
     }
 
@@ -44,7 +47,7 @@ metabolismRouter.get(
     }
 
     if (!token || token !== adminSecret) {
-      res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json({ error: API_MESSAGES.UNAUTHORIZED });
       return;
     }
 
@@ -54,13 +57,17 @@ metabolismRouter.get(
         await service.runAll();
       });
       if (result === null) {
-        res.status(202).json({ message: "Metabolism is already running", status: "accepted" });
+        res
+          .status(202)
+          .json({ message: API_MESSAGES.METABOLISM_ALREADY_RUNNING, status: "accepted" });
         return;
       }
-      res.status(200).json({ message: "Metabolism tick completed manually", status: "success" });
+      res
+        .status(200)
+        .json({ message: API_MESSAGES.METABOLISM_TICK_COMPLETED_MANUALLY, status: "success" });
     } catch (err) {
       logger.error({ err }, "Admin metabolism tick failed");
-      res.status(500).json({ error: "Metabolism tick failed" });
+      res.status(500).json({ error: API_MESSAGES.METABOLISM_TICK_FAILED });
     }
   }
 );

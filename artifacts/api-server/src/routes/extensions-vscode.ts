@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { vscodeQuery, createL3Decision, getFileContext } from "@workspace/core";
+import { API_MESSAGES } from "@workspace/core";
 
 const router = Router();
 
@@ -37,17 +38,17 @@ router.post("/extensions/vscode/create-decision", async (req, res) => {
     const node = await createL3Decision(body as any);
     res.status(201).json(node);
   } catch (err: any) {
-    res.status(400).json({ error: err?.message ?? "Bad request" });
+    res.status(400).json({ error: err?.message ?? API_MESSAGES.BAD_REQUEST });
   }
 });
 
 router.get("/extensions/vscode/file-context", async (req, res) => {
   const path = String(req.query.path ?? req.query.file ?? "");
-  if (!path) return res.status(400).json({ error: "path query param required" });
+  if (!path) return res.status(400).json({ error: API_MESSAGES.PATH_QUERY_PARAM_REQUIRED });
   const projectId = req.query.projectId ? Number(req.query.projectId) : undefined;
   const ctx = await getFileContext(path, projectId);
   if ((!ctx.l2Nodes || ctx.l2Nodes.length === 0) && (!ctx.l3Nodes || ctx.l3Nodes.length === 0)) {
-    return res.status(404).json({ error: "Not found" });
+    return res.status(404).json({ error: API_MESSAGES.NOT_FOUND });
   }
   res.json(ctx);
   return;

@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { db, documentsTable, projectsTable } from "@workspace/db";
 import { and, eq, sql } from "drizzle-orm";
 import { processIngestion, detectDocType, extractText, DocumentItem } from "@workspace/core";
@@ -19,11 +20,11 @@ export class DocumentIngestionService {
       content = await extractText(filePath, docType, originalname);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      throw new Error(`Failed to parse document: ${msg}`);
+      throw new Error(API_MESSAGES.FAILED_TO_PARSE_DOCUMENT(msg));
     }
 
     if (!content || content.length === 0) {
-      throw new Error("Extracted content is empty");
+      throw new Error(API_MESSAGES.EXTRACTED_CONTENT_EMPTY);
     }
 
     const docItem: DocumentItem = {
@@ -41,7 +42,7 @@ export class DocumentIngestionService {
     });
 
     if (errors.length > 0) {
-      throw new Error(`Ingestion failed: ${errors.join(", ")}`);
+      throw new Error(API_MESSAGES.INGESTION_FAILED(errors.join(", ")));
     }
 
     if (skipped > 0) {
@@ -92,7 +93,7 @@ export class DocumentIngestionService {
     });
 
     if (errors.length > 0) {
-      throw new Error(`Ingestion failed: ${errors.join(", ")}`);
+      throw new Error(API_MESSAGES.INGESTION_FAILED(errors.join(", ")));
     }
 
     if (skipped > 0) {

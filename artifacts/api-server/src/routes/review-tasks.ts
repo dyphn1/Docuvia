@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import type { Request } from "express";
 import { reviewTasksService } from "../services/review-tasks.service.js";
@@ -42,7 +43,7 @@ router.patch("/review-tasks/:id", async (req, res) => {
 
   const userId = getRequestUserId(req);
   if (!userId) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: API_MESSAGES.UNAUTHORIZED });
   }
 
   try {
@@ -54,13 +55,13 @@ router.patch("/review-tasks/:id", async (req, res) => {
     });
   } catch (error: any) {
     if (error.message === "Task not found") {
-      return res.status(404).json({ error: "Not found" });
+      return res.status(404).json({ error: API_MESSAGES.NOT_FOUND });
     }
     if (error.message === "Forbidden") {
-      return res.status(403).json({ error: "Forbidden" });
+      return res.status(403).json({ error: API_MESSAGES.FORBIDDEN });
     }
     console.error(error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: API_MESSAGES.INTERNAL_SERVER_ERROR });
   }
 });
 

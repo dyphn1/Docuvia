@@ -1,3 +1,5 @@
+import { ENCODING_UTF_8, UTF8_ENCODING } from "@workspace/core";
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import { z } from "zod";
 import {
@@ -45,23 +47,24 @@ router.use("/mcp", (req, res, next) => {
 
   if (!expectedToken) {
     logger.error("[MCP Auth] MCP_PAT environment variable is not set. Refusing all connections.");
-    return res.status(500).json({ error: "Server configuration error" });
+    return res.status(500).json({ error: API_MESSAGES.SERVER_CONFIGURATION_ERROR });
   }
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     logger.warn({ ip: req.ip }, "[MCP Auth] Missing or malformed Authorization header");
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: API_MESSAGES.UNAUTHORIZED });
   }
 
   const providedToken = authHeader.substring(7);
 
   // To avoid crypto.timingSafeEqual crashing on length mismatch, we must verify lengths first
   if (
-    Buffer.byteLength(providedToken, "utf8") !== Buffer.byteLength(expectedToken, "utf8") ||
+    Buffer.byteLength(providedToken, UTF8_ENCODING) !==
+      Buffer.byteLength(expectedToken, UTF8_ENCODING) ||
     !crypto.timingSafeEqual(Buffer.from(providedToken), Buffer.from(expectedToken))
   ) {
     logger.warn({ ip: req.ip }, "[MCP Auth] Unauthorized MCP access attempt");
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: API_MESSAGES.UNAUTHORIZED });
   }
 
   next();
@@ -79,7 +82,7 @@ router.get("/mcp/read_shared_memory", async (req, res) => {
     return res.json({ memories });
   } catch (err) {
     logger.error({ err }, "[GET /mcp/read_shared_memory] Error reading shared memory");
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: API_MESSAGES.INTERNAL_SERVER_ERROR });
   }
 });
 
@@ -88,12 +91,12 @@ router.get("/mcp/retrieve_original", validateQuery(RetrieveOriginalQuery), async
 
   try {
     const payload = getCompressedPayload(id);
-    if (!payload) return res.status(404).json({ error: "payload not found" });
+    if (!payload) return res.status(404).json({ error: API_MESSAGES.NOT_FOUND });
 
     return res.json({ id, original_text: payload.original_text });
   } catch (err) {
     logger.error({ err }, "[GET /mcp/retrieve_original] Error retrieving original payload");
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: API_MESSAGES.INTERNAL_SERVER_ERROR });
   }
 });
 
@@ -111,7 +114,7 @@ router.get("/mcp/search_knowledge", validateQuery(SearchKnowledgeQuery), async (
     return res.json({ query, results: result.results.slice(0, limit) });
   } catch (err) {
     logger.error({ err }, "[GET /mcp/search_knowledge] Unhandled error");
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: API_MESSAGES.INTERNAL_SERVER_ERROR });
   }
 });
 
@@ -182,7 +185,7 @@ router.post("/mcp/query", validateBody(McpQueryRequestBody), async (req, res) =>
     return res.json({ query: q, ...result });
   } catch (err) {
     logger.error({ err }, "[POST /mcp/query] Unhandled error");
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: API_MESSAGES.INTERNAL_SERVER_ERROR });
   }
 });
 

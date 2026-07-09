@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { db, nodeLinksTable } from "@workspace/db";
 import {
   reviewTasksTable,
@@ -134,11 +135,11 @@ export class ReviewTasksService {
       .select()
       .from(reviewTasksTable)
       .where(eq(reviewTasksTable.id, id));
-    if (!existingTask) throw new Error("Task not found");
+    if (!existingTask) throw new Error(API_MESSAGES.TASK_NOT_FOUND);
 
     const ownerId = await this.resolveReviewTaskOwnerId(existingTask);
     if (!ownerId || ownerId !== userId) {
-      throw new Error("Forbidden");
+      throw new Error(API_MESSAGES.FORBIDDEN);
     }
 
     const [task] = await db

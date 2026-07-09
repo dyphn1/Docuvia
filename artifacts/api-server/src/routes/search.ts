@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import { z } from "zod";
 import { routeQuery } from "@workspace/core";
@@ -26,14 +27,16 @@ router.post("/search", async (req, res) => {
     const routeResult = await routeQuery(query, projectId, limit);
     res.json({ results: routeResult.results, total: routeResult.results.length });
   } catch (error) {
-    res.status(500).json({ error: "Search failed" });
+    res.status(500).json({ error: API_MESSAGES.SEARCH_FAILED });
   }
 });
 
 router.post("/search/feedback", async (req, res) => {
   const body = FeedbackSchema.safeParse(req.body);
   if (!body.success) {
-    res.status(400).json({ error: "Invalid feedback payload", details: body.error.errors });
+    res
+      .status(400)
+      .json({ error: API_MESSAGES.INVALID_FEEDBACK_PAYLOAD, details: body.error.errors });
     return;
   }
 

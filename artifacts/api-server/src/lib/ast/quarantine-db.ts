@@ -1,8 +1,14 @@
+import { AST_QUARANTINE_DB_NAME } from "@workspace/core";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
+import { AST_INGESTION_DEFAULTS } from "../../constants/index.js";
 
-const DB_PATH = path.join(process.cwd(), "data", "ast_quarantine.db");
+const DB_PATH = path.join(
+  process.cwd(),
+  AST_INGESTION_DEFAULTS.DATA_DIR_NAME,
+  AST_QUARANTINE_DB_NAME
+);
 
 // Ensure directory exists
 const dir = path.dirname(DB_PATH);
@@ -13,19 +19,14 @@ if (!fs.existsSync(dir)) {
 export const db = new DatabaseSync(DB_PATH);
 
 // Initialize schema
-db.exec(`
-    CREATE TABLE IF NOT EXISTS quarantine_blacklist (
-        file_path TEXT PRIMARY KEY,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-`);
+db.exec(AST_INGESTION_DEFAULTS.SQL_CREATE_TABLE);
 
 export function isQuarantined(filePath: string): boolean {
-  const stmt = db.prepare("SELECT 1 FROM quarantine_blacklist WHERE file_path = ?");
+  const stmt = db.prepare(AST_INGESTION_DEFAULTS.SQL_SELECT_QUARANTINE);
   return !!stmt.get(filePath);
 }
 
 export function quarantineFile(filePath: string): void {
-  const stmt = db.prepare("INSERT OR IGNORE INTO quarantine_blacklist (file_path) VALUES (?)");
+  const stmt = db.prepare(AST_INGESTION_DEFAULTS.SQL_INSERT_QUARANTINE);
   stmt.run(filePath);
 }

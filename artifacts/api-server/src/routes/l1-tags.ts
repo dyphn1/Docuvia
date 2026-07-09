@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import { l1TagsService } from "../services/l1-tags.service.js";
 import {
@@ -24,7 +25,7 @@ router.patch("/l1-tags/:id", async (req, res) => {
   const { id } = UpdateL1TagParams.parse({ id: Number(req.params.id) });
   const body = UpdateL1TagBody.parse(req.body);
   const tag = await l1TagsService.updateTag(id, body);
-  if (!tag) return res.status(404).json({ error: "Not found" });
+  if (!tag) return res.status(404).json({ error: API_MESSAGES.NOT_FOUND });
   return res.json({ ...tag, createdAt: tag.createdAt.toISOString() });
 });
 

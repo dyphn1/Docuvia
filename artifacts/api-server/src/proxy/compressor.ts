@@ -4,13 +4,14 @@ import fs from "fs/promises";
 import path from "path";
 import { createRequire } from "module";
 import { saveCompressedPayload } from "../memory/shared-memory.js";
+import { COMPRESSOR_DEFAULTS } from "../constants/index.js";
 
 const require = createRequire(import.meta.url);
 
 export function dumbTextCrusher(code: string): string {
   // Replace { ... } blocks with { /* ... */ } while keeping top-level signatures.
   // A simplified regex approach.
-  return code.replace(/\{[\s\S]*?\}/g, "{ /* ... */ }");
+  return code.replace(/\{[\s\S]*?\}/g, COMPRESSOR_DEFAULTS.DUMB_CRUSHER_REPLACEMENT);
 }
 
 let parserInitialized = false;
@@ -29,7 +30,12 @@ export async function getAstSkeleton(filePath: string, code: string): Promise<st
         try {
           return require.resolve(`web-tree-sitter/${scriptName}`);
         } catch {
-          return path.resolve(process.cwd(), "node_modules", "web-tree-sitter", scriptName);
+          return path.resolve(
+            process.cwd(),
+            COMPRESSOR_DEFAULTS.WASM_NOT_FOUND_FALLBACK_DIR,
+            "web-tree-sitter",
+            scriptName
+          );
         }
       });
       parserInitialized = true;
@@ -46,17 +52,17 @@ export async function getAstSkeleton(filePath: string, code: string): Promise<st
         let wasmPath = "";
         try {
           wasmPath = path.resolve(
-            require.resolve("tree-sitter-wasms/package.json"),
+            require.resolve(COMPRESSOR_DEFAULTS.PKG_TREE_SITTER_WASMS),
             "..",
-            "out",
+            COMPRESSOR_DEFAULTS.DIR_OUT,
             provider.wasm_file
           );
         } catch (err) {
           wasmPath = path.resolve(
             process.cwd(),
-            "node_modules",
+            COMPRESSOR_DEFAULTS.WASM_NOT_FOUND_FALLBACK_DIR,
             "tree-sitter-wasms",
-            "out",
+            COMPRESSOR_DEFAULTS.DIR_OUT,
             provider.wasm_file
           );
         }
@@ -100,7 +106,7 @@ export async function getAstSkeleton(filePath: string, code: string): Promise<st
     skeleton = dumbTextCrusher(code); // fallback
   }
 
-  return `// [COMPRESSED_SKELETON_ID: ${id}]\n${skeleton}`;
+  return `${COMPRESSOR_DEFAULTS.SKELETON_PREFIX_ID}${id}${COMPRESSOR_DEFAULTS.SKELETON_SUFFIX_ID}${skeleton}`;
 }
 
 interface CodeBlock {
@@ -116,14 +122,13 @@ export function extractCodeBlocks(text: string): CodeBlock[] {
   const blocks: CodeBlock[] = [];
 
   // Fast Path: markdown code fences with optional path
-  const mdRegex =
-    /```[\w]*\s*(?:<!--\s*([^\n]+)\s*-->|(?:\/\/\s*|#\s*)([\w./-]+))?\s*\n([\s\S]*?)```/g;
+  const mdRegex = COMPRESSOR_DEFAULTS.MD_CODE_FENCE_REGEX;
   let match;
   while ((match = mdRegex.exec(text)) !== null) {
     // match[1] or match[2] could be the path if it's on the first line
     let path = match[1] || match[2];
     const innerCode = match[3];
-    if (!path) {
+    if (!path && innerCode) {
       // Simple heuristic for path extraction from first line of code block
       const lines = innerCode.split("\n");
       const firstLine = lines[0]?.trim();
@@ -134,24 +139,26 @@ export function extractCodeBlocks(text: string): CodeBlock[] {
         }
       }
     }
-    blocks.push({
-      match: match[0],
-      index: match.index,
-      path: path,
-      innerCode: innerCode,
-      type: "markdown",
-    });
+    if (innerCode) {
+      blocks.push({
+        match: match[0],
+        index: match.index,
+        path: path,
+        innerCode: innerCode,
+        type: COMPRESSOR_DEFAULTS.TYPE_MARKDOWN,
+      });
+    }
   }
 
   // Fast Path: XML-like tags <file path="...">...</file>
-  const xmlRegex = /<file\s+path="([^"]+)">([\s\S]*?)<\/file>/g;
+  const xmlRegex = COMPRESSOR_DEFAULTS.XML_FILE_TAG_REGEX;
   while ((match = xmlRegex.exec(text)) !== null) {
     blocks.push({
       match: match[0],
       index: match.index,
       path: match[1],
       innerCode: match[2],
-      type: "xml",
+      type: COMPRESSOR_DEFAULTS.TYPE_XML,
     });
   }
 
@@ -178,13 +185,18 @@ export async function compressPrompt(
       const braceCount = (text.match(/[{}]/g) || []).length;
 
       // Heuristic threshold
-      if (functionCount + classCount > 5 && braceCount > 20) {
+      if (
+        functionCount + classCount > COMPRESSOR_DEFAULTS.MIN_LENGTH_FOR_HEURISTIC &&
+        braceCount > 20
+      ) {
         // Scheme B: Context Missing
         const id = crypto.randomUUID();
         saveCompressedPayload(id, text);
         const crushed = dumbTextCrusher(text);
         return {
-          compressedText: `// [COMPRESSED_SKELETON_ID: ${id}]\n` + crushed,
+          compressedText:
+            `${COMPRESSOR_DEFAULTS.SKELETON_PREFIX_ID}${id}${COMPRESSOR_DEFAULTS.SKELETON_SUFFIX_ID}` +
+            crushed,
           hasChanges: true,
         };
       }
@@ -200,23 +212,23 @@ export async function compressPrompt(
       hasChanges = true;
       let replacement = block.match;
 
-      if (block.type === "markdown") {
+      if (block.type === COMPRESSOR_DEFAULTS.TYPE_MARKDOWN) {
         if (block.path) {
           const skeletonStr = await getAstSkeleton(block.path, block.innerCode);
           replacement = `\`\`\`\n${skeletonStr}\n\`\`\``;
         } else {
           const id = crypto.randomUUID();
           saveCompressedPayload(id, block.match);
-          replacement = `\`\`\`\n// [COMPRESSED_SKELETON_ID: ${id}]\n${dumbTextCrusher(block.innerCode)}\n\`\`\``;
+          replacement = `\`\`\`\n${COMPRESSOR_DEFAULTS.SKELETON_PREFIX_ID}${id}${COMPRESSOR_DEFAULTS.SKELETON_SUFFIX_ID}${dumbTextCrusher(block.innerCode)}\n\`\`\``;
         }
-      } else if (block.type === "xml") {
+      } else if (block.type === COMPRESSOR_DEFAULTS.TYPE_XML) {
         if (block.path) {
           const skeletonStr = await getAstSkeleton(block.path, block.innerCode);
           replacement = `<file path="${block.path}">\n${skeletonStr}\n</file>`;
         } else {
           const id = crypto.randomUUID();
           saveCompressedPayload(id, block.match);
-          replacement = `<file>\n// [COMPRESSED_SKELETON_ID: ${id}]\n${dumbTextCrusher(block.innerCode)}\n</file>`;
+          replacement = `<file>\n${COMPRESSOR_DEFAULTS.SKELETON_PREFIX_ID}${id}${COMPRESSOR_DEFAULTS.SKELETON_SUFFIX_ID}${dumbTextCrusher(block.innerCode)}\n</file>`;
         }
       }
 

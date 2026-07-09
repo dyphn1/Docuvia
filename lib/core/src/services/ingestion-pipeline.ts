@@ -1,3 +1,4 @@
+import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
 import { db } from "@workspace/db";
 import {
   commitsTable,
@@ -177,7 +178,9 @@ export async function processIngestion(
   } else if (type === "document") {
     const docItems = items as DocumentItem[];
     for (const doc of docItems) {
-      const hash = doc.contentHash ?? crypto.createHash("sha256").update(doc.content).digest("hex");
+      const hash =
+        doc.contentHash ??
+        crypto.createHash(HASH_ALGO_SHA256).update(doc.content).digest(ENCODING_HEX);
 
       const [existing] = await db
         .select({ id: documentsTable.id })

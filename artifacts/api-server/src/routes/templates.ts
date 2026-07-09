@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import { ProjectService } from "../services/project.service.js";
 import { z } from "zod";
@@ -14,7 +15,7 @@ const TemplateUpdateSchema = z.object({
 router.get("/projects/:id/templates", async (req, res) => {
   const projectId = Number(req.params.id);
   const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+  if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
   const types = ["l1_tagger", "l2_extractor", "l3_generator"] as const;
   const dbTemplates = await templateService.getTemplatesByProjectId(projectId);
@@ -52,11 +53,11 @@ router.put("/projects/:id/templates/:type", async (req, res) => {
 
   const validTypes = ["l1_tagger", "l2_extractor", "l3_generator"];
   if (!validTypes.includes(templateType)) {
-    return res.status(400).json({ error: "Invalid template type" });
+    return res.status(400).json({ error: API_MESSAGES.INVALID_TEMPLATE_TYPE });
   }
 
   const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+  if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
   const body = TemplateUpdateSchema.parse(req.body);
 

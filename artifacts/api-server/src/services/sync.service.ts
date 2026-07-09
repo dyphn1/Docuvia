@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { db } from "@workspace/db";
 import { l2NodesTable, l3NodesTable, jobQueueTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
@@ -23,7 +24,7 @@ export class SyncService {
             .select({ id: l2NodesTable.id })
             .from(l2NodesTable)
             .where(eq(l2NodesTable.id, payloadL2Id));
-          if (!l2) throw new Error(`L2 Node ${payloadL2Id} does not exist`);
+          if (!l2) throw new Error(API_MESSAGES.L2_NODE_DOES_NOT_EXIST(payloadL2Id));
 
           await tx.insert(l3NodesTable).values(ev.payload as any);
         } else if (ev.type === "UPDATE_L3") {

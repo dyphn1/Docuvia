@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import {
   CreateProjectBody,
@@ -31,7 +32,7 @@ router.post("/projects", async (req, res) => {
 router.get("/projects/:id", async (req, res) => {
   const { id } = GetProjectParams.parse({ id: Number(req.params.id) });
   const result = await projectService.getProject(id);
-  if (!result) return res.status(404).json({ error: "Not found" });
+  if (!result) return res.status(404).json({ error: API_MESSAGES.NOT_FOUND });
   return res.json(result);
 });
 
@@ -39,7 +40,7 @@ router.patch("/projects/:id", async (req, res) => {
   const { id } = UpdateProjectParams.parse({ id: Number(req.params.id) });
   const body = UpdateProjectBody.parse(req.body);
   const result = await projectService.updateProject(id, body);
-  if (!result) return res.status(404).json({ error: "Not found" });
+  if (!result) return res.status(404).json({ error: API_MESSAGES.NOT_FOUND });
   return res.json(result);
 });
 

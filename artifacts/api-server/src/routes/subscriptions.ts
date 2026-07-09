@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import {
   CreateSubscriptionBody,
@@ -15,10 +16,12 @@ router.post("/subscriptions", async (req, res) => {
     const body = CreateSubscriptionBody.parse(req.body);
 
     const subscriber = await subscriptionService.getProject(body.subscriberProjectId);
-    if (!subscriber) return res.status(404).json({ error: "Subscriber project not found" });
+    if (!subscriber)
+      return res.status(404).json({ error: API_MESSAGES.SUBSCRIBER_PROJECT_NOT_FOUND });
 
     const publisher = await subscriptionService.getProject(body.publisherProjectId);
-    if (!publisher) return res.status(404).json({ error: "Publisher project not found" });
+    if (!publisher)
+      return res.status(404).json({ error: API_MESSAGES.PUBLISHER_PROJECT_NOT_FOUND });
 
     const sub = await subscriptionService.createSubscription(
       body.subscriberProjectId,
@@ -28,10 +31,10 @@ router.post("/subscriptions", async (req, res) => {
     return res.status(201).json({ ...sub, createdAt: sub.createdAt.toISOString() });
   } catch (err: unknown) {
     if (err instanceof Error && err.message.toLowerCase().includes("unique")) {
-      return res.status(409).json({ error: "Subscription already exists" });
+      return res.status(409).json({ error: API_MESSAGES.SUBSCRIPTION_ALREADY_EXISTS });
     }
     logger.error({ err }, "Failed to create subscription");
-    return res.status(500).json({ error: "Failed to create subscription" });
+    return res.status(500).json({ error: API_MESSAGES.FAILED_TO_CREATE_SUBSCRIPTION });
   }
 });
 
@@ -40,11 +43,11 @@ router.delete("/subscriptions/:subscriptionId", async (req, res) => {
     const params = DeleteSubscriptionParams.parse(req.params);
     const deleted = await subscriptionService.deleteSubscription(params.subscriptionId);
 
-    if (!deleted) return res.status(404).json({ error: "Subscription not found" });
+    if (!deleted) return res.status(404).json({ error: API_MESSAGES.SUBSCRIPTION_NOT_FOUND });
     return res.status(204).end();
   } catch (err: unknown) {
     logger.error({ err }, "Failed to delete subscription");
-    return res.status(500).json({ error: "Failed to delete subscription" });
+    return res.status(500).json({ error: API_MESSAGES.FAILED_TO_DELETE_SUBSCRIPTION });
   }
 });
 
@@ -59,7 +62,7 @@ router.get("/projects/:projectId/subscriptions", async (req, res) => {
     });
   } catch (err: unknown) {
     logger.error({ err }, "Failed to list subscriptions");
-    return res.status(500).json({ error: "Failed to list subscriptions" });
+    return res.status(500).json({ error: API_MESSAGES.FAILED_TO_LIST_SUBSCRIPTIONS });
   }
 });
 

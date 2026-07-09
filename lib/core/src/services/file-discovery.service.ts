@@ -1,3 +1,4 @@
+import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
@@ -131,7 +132,7 @@ export class FileDiscoveryService implements IFileDiscovery {
           }
           if (!currentHash) {
             // Calculate hash manually for dirty/untracked files
-            currentHash = crypto.createHash("sha256").update(code).digest("hex");
+            currentHash = crypto.createHash(HASH_ALGO_SHA256).update(code).digest(ENCODING_HEX);
           }
         } catch (e) {
           continue; // File might have been deleted or inaccessible

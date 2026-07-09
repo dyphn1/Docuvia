@@ -1,3 +1,4 @@
+import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { AstParseCache } from "./ast/ast-parse-cache.js";
 import { AstWorkerPool } from "./ast-worker-pool.js";
@@ -33,7 +34,10 @@ describe("AST Ingestion Pipeline Integration", () => {
     };
 
     const testCode = "export function test() {}";
-    const contentHash = require("crypto").createHash("sha256").update(testCode).digest("hex");
+    const contentHash = require("crypto")
+      .createHash(HASH_ALGO_SHA256)
+      .update(testCode)
+      .digest(ENCODING_HEX);
 
     // Manually populate cache to simulate cached parse
     cache.set(contentHash, mockResponse);
@@ -47,7 +51,10 @@ describe("AST Ingestion Pipeline Integration", () => {
 
   it("should benchmark same file parsed 10x (expect cache hits 9/10)", async () => {
     const testCode = "export function test() {}";
-    const contentHash = require("crypto").createHash("sha256").update(testCode).digest("hex");
+    const contentHash = require("crypto")
+      .createHash(HASH_ALGO_SHA256)
+      .update(testCode)
+      .digest(ENCODING_HEX);
 
     const mockResponse: AstParseResponse = {
       taskId: "1",
@@ -78,8 +85,14 @@ describe("AST Ingestion Pipeline Integration", () => {
     const testCode1 = "export function test() {}";
     const testCode2 = "export function test() {}"; // Same content
 
-    const hash1 = require("crypto").createHash("sha256").update(testCode1).digest("hex");
-    const hash2 = require("crypto").createHash("sha256").update(testCode2).digest("hex");
+    const hash1 = require("crypto")
+      .createHash(HASH_ALGO_SHA256)
+      .update(testCode1)
+      .digest(ENCODING_HEX);
+    const hash2 = require("crypto")
+      .createHash(HASH_ALGO_SHA256)
+      .update(testCode2)
+      .digest(ENCODING_HEX);
 
     // Same content should have same hash
     expect(hash1).toBe(hash2);

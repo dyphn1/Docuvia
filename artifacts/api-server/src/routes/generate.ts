@@ -7,6 +7,7 @@ import { z } from "zod";
 
 import { GenerateKnowledgeBody } from "@workspace/api-zod";
 import { executeKnowledgeGeneration } from "@workspace/core";
+import { API_MESSAGES } from "@workspace/core";
 
 const router = Router();
 const generateService = new GenerateService();
@@ -20,10 +21,10 @@ const SieveExtractionInputSchema = z.object({
 router.post("/projects/:id/extract/sieve", async (req, res) => {
   const projectId = Number(req.params.id);
   const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+  if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
   const bodyParsed = SieveExtractionInputSchema.safeParse(req.body ?? {});
-  if (!bodyParsed.success) return res.status(400).json({ error: "Invalid input" });
+  if (!bodyParsed.success) return res.status(400).json({ error: API_MESSAGES.INVALID_INPUT });
 
   const { sourceText, sourceFile, commitHash } = bodyParsed.data;
 
@@ -36,7 +37,7 @@ router.post("/projects/:id/extract/sieve", async (req, res) => {
     );
     return res.json({ decisions });
   } catch (err) {
-    return res.status(500).json({ error: "Failed to extract decisions" });
+    return res.status(500).json({ error: API_MESSAGES.FAILED_TO_EXTRACT_DECISIONS });
   }
 });
 
@@ -48,19 +49,17 @@ router.post("/projects/:id/generate", requireApiKey, async (req, res) => {
     const result = await executeKnowledgeGeneration(projectId, (req as any).user?.id, body);
     return res.json(result);
   } catch (err: any) {
-    if (err.message === "Project not found") {
+    if (err.message === API_MESSAGES.PROJECT_NOT_FOUND) {
       return res.status(404).json({ error: err.message });
     }
-    if (err.message === "Forbidden: Not project owner") {
+    if (err.message === API_MESSAGES.FORBIDDEN_NOT_PROJECT_OWNER) {
       return res.status(403).json({ error: err.message });
     }
-    if (err.message === "Project is already indexing or not in active state.") {
+    if (err.message === API_MESSAGES.PROJECT_ALREADY_INDEXING) {
       return res.status(409).json({ error: err.message });
     }
-    console.error("GENERATE ERROR:", err);
-    console.error("GENERATE ERROR:", err);
     logger.error({ err }, "Knowledge generation failed");
-    return res.status(500).json({ error: "Failed to generate knowledge" });
+    return res.status(500).json({ error: API_MESSAGES.FAILED_TO_GENERATE_KNOWLEDGE });
   }
 });
 

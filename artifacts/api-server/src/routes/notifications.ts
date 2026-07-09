@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import {
   ListProjectNotificationsParams,
@@ -31,7 +32,7 @@ router.get("/projects/:projectId/notifications", async (req, res) => {
     });
   } catch (err: unknown) {
     logger.error({ err }, "Failed to list notifications");
-    return res.status(500).json({ error: "Failed to list notifications" });
+    return res.status(500).json({ error: API_MESSAGES.FAILED_TO_LIST_NOTIFICATIONS });
   }
 });
 
@@ -41,7 +42,7 @@ router.patch("/notifications/:notificationId/read", async (req, res) => {
 
     const updated = await notificationService.markAsRead(params.notificationId);
 
-    if (!updated) return res.status(404).json({ error: "Notification not found" });
+    if (!updated) return res.status(404).json({ error: API_MESSAGES.NOTIFICATION_NOT_FOUND });
 
     return res.json({
       ...updated,
@@ -50,7 +51,7 @@ router.patch("/notifications/:notificationId/read", async (req, res) => {
     });
   } catch (err: unknown) {
     logger.error({ err }, "Failed to mark notification as read");
-    return res.status(500).json({ error: "Failed to mark notification as read" });
+    return res.status(500).json({ error: API_MESSAGES.FAILED_TO_MARK_NOTIFICATION_READ });
   }
 });
 
@@ -63,7 +64,7 @@ router.post("/notifications/mark-all-read", async (req, res) => {
     return res.json({ updated: updated.length });
   } catch (err: unknown) {
     logger.error({ err }, "Failed to mark all notifications as read");
-    return res.status(500).json({ error: "Failed to mark all notifications as read" });
+    return res.status(500).json({ error: API_MESSAGES.FAILED_TO_MARK_ALL_NOTIFICATIONS_READ });
   }
 });
 

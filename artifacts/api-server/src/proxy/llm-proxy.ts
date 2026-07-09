@@ -1,11 +1,19 @@
 import express, { Router, Request, Response } from "express";
 import { compressPrompt } from "./compressor.js";
 import { Readable } from "node:stream";
+import { API_MESSAGES } from "@workspace/core";
+import {
+  PROXY_JSON_LIMIT,
+  OPENAI_DEFAULT_BASE_URL,
+  ANTHROPIC_DEFAULT_BASE_URL,
+  ANTHROPIC_VERSION_HEADER_KEY,
+  ANTHROPIC_VERSION_HEADER_VAL,
+} from "../constants/index.js";
 
 export const llmProxyRouter = Router();
 
 // Apply JSON body parsing for the proxy
-llmProxyRouter.use(express.json({ limit: "50mb" }));
+llmProxyRouter.use(express.json({ limit: PROXY_JSON_LIMIT }));
 
 llmProxyRouter.post("/chat/completions", async (req: Request, res: Response) => {
   // OpenAI format
@@ -35,8 +43,7 @@ llmProxyRouter.post("/chat/completions", async (req: Request, res: Response) => 
 
     // Inject system prompt instructing the LLM about the MCP tool
     if (modified) {
-      const systemInstruction =
-        "System: Some large code blocks have been compressed. Use the `docuvia_retrieve_original` MCP tool with the provided COMPRESSED_SKELETON_ID if you need to read the full code.";
+      const systemInstruction = API_MESSAGES.COMPRESSED_BLOCK_INSTRUCTION;
       const firstMsg = body.messages[0];
       if (firstMsg && firstMsg.role === "system") {
         firstMsg.content += "\n" + systemInstruction;
@@ -47,7 +54,7 @@ llmProxyRouter.post("/chat/completions", async (req: Request, res: Response) => 
   }
 
   // Proxy the request to the real LLM endpoint
-  const baseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || "https://api.openai.com/v1";
+  const baseUrl = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL || OPENAI_DEFAULT_BASE_URL;
   const apiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || "";
 
   try {
@@ -103,8 +110,7 @@ llmProxyRouter.post("/messages", async (req: Request, res: Response) => {
   }
 
   if (modified) {
-    const systemInstruction =
-      "System: Some large code blocks have been compressed. Use the `docuvia_retrieve_original` MCP tool with the provided COMPRESSED_SKELETON_ID if you need to read the full code.";
+    const systemInstruction = API_MESSAGES.COMPRESSED_BLOCK_INSTRUCTION;
     if (body.system) {
       body.system += "\n" + systemInstruction;
     } else {
@@ -112,7 +118,7 @@ llmProxyRouter.post("/messages", async (req: Request, res: Response) => {
     }
   }
 
-  const baseUrl = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL || "https://api.anthropic.com/v1";
+  const baseUrl = process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL || ANTHROPIC_DEFAULT_BASE_URL;
   const apiKey = process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY || "";
 
   try {
@@ -121,7 +127,7 @@ llmProxyRouter.post("/messages", async (req: Request, res: Response) => {
       headers: {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
+        [ANTHROPIC_VERSION_HEADER_KEY]: ANTHROPIC_VERSION_HEADER_VAL,
       },
       body: JSON.stringify(body),
     });

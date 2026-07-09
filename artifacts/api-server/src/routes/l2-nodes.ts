@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import { l2NodesService } from "../services/l2-nodes.service.js";
 import {
@@ -26,10 +27,10 @@ router.post("/projects/:id/l2-nodes/confirm-bootstrap", async (req, res) => {
     return res.json({ success: true, message: "Bootstrap confirmed successfully" });
   } catch (error: any) {
     if (error.message === "Project not found") {
-      return res.status(404).json({ error: "Project not found" });
+      return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
     }
     console.error(error);
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: API_MESSAGES.INTERNAL_SERVER_ERROR });
   }
 });
 
@@ -46,7 +47,7 @@ router.patch("/l2-nodes/:id", async (req, res) => {
   const { id } = UpdateL2NodeParams.parse({ id: Number(req.params.id) });
   const body = UpdateL2NodeBody.parse(req.body);
   const node = await l2NodesService.updateNode(id, body);
-  if (!node) return res.status(404).json({ error: "Not found" });
+  if (!node) return res.status(404).json({ error: API_MESSAGES.NOT_FOUND });
 
   return res.json({
     ...node,

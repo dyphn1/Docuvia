@@ -15,6 +15,8 @@ import { DocumentIngestionService } from "../services/doc-ingestion.service.js";
 import { AstIngestionService } from "../services/ast-ingestion.service.js";
 import { ProjectStatusService } from "../services/project-status.service.js";
 import { validateBody } from "../middlewares/validate.js";
+import { API_MESSAGES } from "@workspace/core";
+import { MAX_UPLOAD_FILE_SIZE_LABEL } from "@workspace/core";
 
 const router = Router();
 const gitIngestionService = container.resolve<IGitIngestionService>(DI_TOKENS.GitIngestionService);
@@ -43,13 +45,13 @@ router.post(
   async (req, res) => {
     const projectId = Number(req.params.id);
     const project = await new ProjectService().getProjectById(projectId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
     const body = res.locals.validatedBody as z.infer<typeof GitIngestSchema>;
     const repoUrl = body.repoUrl ?? project.repoUrl;
 
     if (!repoUrl) {
-      return res.status(400).json({ error: "repoUrl is required" });
+      return res.status(400).json({ error: API_MESSAGES.REPO_URL_REQUIRED });
     }
 
     try {
@@ -82,14 +84,14 @@ router.post(
   async (req, res) => {
     const projectId = Number(req.params.id);
     const project = await new ProjectService().getProjectById(projectId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
     const body = res.locals.validatedBody as z.infer<typeof SvnRequestSchema>;
 
     const svnUrl = body.svnUrl;
 
     if (!/^https?:\/\/|^svn:\/\/|^svn\+ssh:\/\//.test(svnUrl)) {
-      return res.status(400).json({ error: "Invalid SVN URL format" });
+      return res.status(400).json({ error: API_MESSAGES.INVALID_SVN_URL_FORMAT });
     }
 
     try {
@@ -116,7 +118,7 @@ router.post(
 router.get("/projects/:id/ingest/status", async (req, res) => {
   const projectId = Number(req.params.id);
   const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+  if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
   try {
     const status = await projectStatusService.getStatus(projectId, project);
@@ -132,12 +134,10 @@ router.post(
   async (req, res, next) => {
     const projectId = Number(req.params.id);
     const project = await new ProjectService().getProjectById(projectId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
     if (!req.file) {
-      return res
-        .status(400)
-        .json({ error: "No file uploaded. Use multipart/form-data with field name 'file'." });
+      return res.status(400).json({ error: API_MESSAGES.NO_FILE_UPLOADED });
     }
 
     try {
@@ -152,7 +152,7 @@ router.post(
       );
 
       if (result.skipped) {
-        return res.status(409).json({ error: "Document already exists" });
+        return res.status(409).json({ error: API_MESSAGES.DOCUMENT_ALREADY_EXISTS });
       }
 
       return res
@@ -161,8 +161,7 @@ router.post(
     } catch (err: any) {
       if (err.message === "Extracted content is empty") {
         return res.status(422).json({
-          error:
-            "Extracted content is empty. The document may be encrypted or contain only images.",
+          error: API_MESSAGES.EXTRACTED_CONTENT_EMPTY,
         });
       }
       if (err.message.startsWith("Failed to parse document")) {
@@ -184,7 +183,7 @@ router.post(
 router.post("/projects/:id/ingest/document", validateBody(IngestDocumentBody), async (req, res) => {
   const projectId = Number(req.params.id);
   const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+  if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
   const body = res.locals.validatedBody as z.infer<typeof IngestDocumentBody>;
 
@@ -198,7 +197,7 @@ router.post("/projects/:id/ingest/document", validateBody(IngestDocumentBody), a
     );
 
     if (result.skipped) {
-      return res.status(409).json({ error: "Document already exists" });
+      return res.status(409).json({ error: API_MESSAGES.DOCUMENT_ALREADY_EXISTS });
     }
 
     return res
@@ -230,13 +229,13 @@ const AstIngestSchema = z.object({
 router.post("/projects/:id/ingest/ast", validateBody(AstIngestSchema), async (req, res) => {
   const projectId = Number(req.params.id);
   const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+  if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
   try {
     const body = res.locals.validatedBody as z.infer<typeof AstIngestSchema>;
     const paths = body.jsonlPaths ?? body.jsonlPath;
     if (!paths) {
-      return res.status(400).json({ error: "jsonlPath or jsonlPaths is required" });
+      return res.status(400).json({ error: API_MESSAGES.JSONL_PATH_REQUIRED });
     }
 
     const mode = body.mode ?? "full";
@@ -258,7 +257,9 @@ router.use(
   ) => {
     if (err instanceof multer.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
-        return res.status(413).json({ error: "File too large. Maximum size is 10 MB." });
+        return res
+          .status(413)
+          .json({ error: API_MESSAGES.FILE_TOO_LARGE(MAX_UPLOAD_FILE_SIZE_LABEL) });
       }
       return res.status(400).json({ error: `Upload error: ${err.message}` });
     }
@@ -274,14 +275,14 @@ router.post(
   documentUpload.single("file"),
   async (req, res) => {
     const projectId = Number(req.params.id);
-    if (!req.file) return res.status(400).json({ error: "file required" });
+    if (!req.file) return res.status(400).json({ error: API_MESSAGES.FILE_REQUIRED });
     const project = await new ProjectService().getProjectById(projectId);
-    if (!project) return res.status(404).json({ error: "Project not found" });
+    if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
 
     try {
       const filePath = req.file.path;
       if (!filePath) {
-        return res.status(400).json({ error: "Uploaded file path is missing" });
+        return res.status(400).json({ error: API_MESSAGES.UPLOADED_FILE_PATH_MISSING });
       }
 
       const result = await docIngestionService.ingestBuildArtifactFromFile(
@@ -295,7 +296,7 @@ router.post(
         { err, projectId },
         "[POST /projects/:id/ingest/build-artifact] Unhandled error"
       );
-      return res.status(500).json({ error: "Internal server error" });
+      return res.status(500).json({ error: API_MESSAGES.INTERNAL_SERVER_ERROR });
     } finally {
       if (req.file?.path) {
         try {

@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { db } from "@workspace/db";
 import {
   l2NodesTable,
@@ -24,7 +25,7 @@ export class L2NodesService {
       .where(eq(projectsTable.id, projectId));
 
     if (!project) {
-      throw new Error("Project not found");
+      throw new Error(API_MESSAGES.PROJECT_NOT_FOUND);
     }
 
     // 1. Update approved modules

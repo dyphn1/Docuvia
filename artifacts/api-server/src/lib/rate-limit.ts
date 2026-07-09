@@ -1,5 +1,11 @@
 import rateLimit from "express-rate-limit";
 import { logger } from "@workspace/core";
+import { API_MESSAGES } from "@workspace/core";
+import {
+  RATE_LIMIT_WINDOW_MS,
+  RATE_LIMIT_STANDARD_MAX,
+  RATE_LIMIT_MCP_MAX,
+} from "../constants/index.js";
 
 function logRateLimit(req: import("express").Request) {
   logger.warn({ ip: req.ip, path: req.path }, "Rate limit exceeded");
@@ -7,9 +13,9 @@ function logRateLimit(req: import("express").Request) {
 
 // Rate limiting for standard API endpoints (prevent abuse)
 export const standardLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // Limit each IP to 500 requests per windowMs
-  message: { error: "Too many requests from this IP, please try again later." },
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_STANDARD_MAX,
+  message: { error: API_MESSAGES.STANDARD_RATE_LIMIT_MESSAGE },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   handler: (req, res, _next, options) => {
@@ -20,9 +26,9 @@ export const standardLimiter = rateLimit({
 
 // Stricter rate limiting for MCP / LLM-heavy endpoints (cost prevention)
 export const mcpLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: { error: "Too many MCP or Search requests. Rate limit exceeded." },
+  windowMs: RATE_LIMIT_WINDOW_MS,
+  max: RATE_LIMIT_MCP_MAX,
+  message: { error: API_MESSAGES.MCP_RATE_LIMIT_MESSAGE },
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res, _next, options) => {

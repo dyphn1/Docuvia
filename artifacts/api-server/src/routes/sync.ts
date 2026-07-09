@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { Router } from "express";
 import { ProjectService } from "../services/project.service.js";
 import { logger } from "@workspace/core";
@@ -21,9 +22,9 @@ router.post("/sync/push", requireApiKey, async (req, res) => {
 
   // Project Ownership Auth Check
   const project = await new ProjectService().getProjectById(projectId);
-  if (!project) return res.status(404).json({ error: "Project not found" });
+  if (!project) return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
   if (project.ownerId !== (req as any).user?.id) {
-    return res.status(403).json({ error: "Forbidden: Not project owner" });
+    return res.status(403).json({ error: API_MESSAGES.FORBIDDEN_NOT_PROJECT_OWNER });
   }
 
   // 1. Acquire Central Mutex Lock for this Project

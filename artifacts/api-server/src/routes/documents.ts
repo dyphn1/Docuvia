@@ -7,6 +7,7 @@ import { documentUpload } from "../middlewares/upload.js";
 import { logger } from "@workspace/core";
 import { requireApiKey } from "../middlewares/auth.js";
 import fs from "fs";
+import { API_MESSAGES } from "@workspace/core";
 
 const router = Router();
 
@@ -30,14 +31,14 @@ router.get("/documents/misc", async (_req, res) => {
 router.post("/documents/:id/affiliate", async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id) || id <= 0) {
-    return res.status(400).json({ error: "Invalid document id" });
+    return res.status(400).json({ error: API_MESSAGES.INVALID_DOCUMENT_ID });
   }
 
   const parsed = AffiliateDocumentBody.safeParse(req.body);
   if (!parsed.success) {
     return res
       .status(400)
-      .json({ error: parsed.error.issues[0]?.message ?? "Invalid request body" });
+      .json({ error: parsed.error.issues[0]?.message ?? API_MESSAGES.INVALID_REQUEST_BODY });
   }
 
   const { projectId } = parsed.data;
@@ -45,14 +46,14 @@ router.post("/documents/:id/affiliate", async (req, res) => {
   // Verify project exists
   const project = await new ProjectService().getProjectById(projectId);
   if (!project) {
-    return res.status(404).json({ error: "Project not found" });
+    return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
   }
 
   const documentService = container.resolve<IDocumentService>(DI_TOKENS.DocumentService);
   const updated = await documentService.affiliateDocument(id, projectId);
 
   if (!updated) {
-    return res.status(404).json({ error: "Document not found" });
+    return res.status(404).json({ error: API_MESSAGES.DOCUMENT_NOT_FOUND });
   }
 
   return res.json(updated);
@@ -60,10 +61,10 @@ router.post("/documents/:id/affiliate", async (req, res) => {
 
 // POST /documents (Upload to Misc Pool)
 router.post("/documents", requireApiKey, documentUpload.single("file"), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: "file required" });
+  if (!req.file) return res.status(400).json({ error: API_MESSAGES.FILE_REQUIRED });
 
   const uploadedBy = (req as any).user?.id;
-  if (!uploadedBy) return res.status(401).json({ error: "Unauthorized" });
+  if (!uploadedBy) return res.status(401).json({ error: API_MESSAGES.UNAUTHORIZED });
 
   const documentService = container.resolve<IDocumentService>(DI_TOKENS.DocumentService);
 
@@ -73,23 +74,21 @@ router.post("/documents", requireApiKey, documentUpload.single("file"), async (r
   } catch (err: any) {
     if (err.message === "QUOTA_EXCEEDED") {
       return res.status(429).json({
-        error: "Misc Pool quota exceeded. Please associate existing documents to a project.",
+        error: API_MESSAGES.MISC_POOL_QUOTA_EXCEEDED,
       });
     }
     if (err.message === "MISSING_FILE_PATH") {
-      return res.status(400).json({ error: "Uploaded file path is missing" });
+      return res.status(400).json({ error: API_MESSAGES.UPLOADED_FILE_PATH_MISSING });
     }
     if (err.message === "INVALID_SIGNATURE_PDF") {
-      return res.status(400).json({ error: "Invalid file signature. Not a true PDF." });
+      return res.status(400).json({ error: API_MESSAGES.INVALID_SIGNATURE_PDF });
     }
     if (err.message === "INVALID_SIGNATURE_OFFICE") {
-      return res
-        .status(400)
-        .json({ error: "Invalid file signature. Not a valid Office document." });
+      return res.status(400).json({ error: API_MESSAGES.INVALID_SIGNATURE_OFFICE });
     }
 
     logger.error({ err }, "[POST /documents] Unhandled error");
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: API_MESSAGES.INTERNAL_SERVER_ERROR });
   } finally {
     if (req.file?.path) {
       try {

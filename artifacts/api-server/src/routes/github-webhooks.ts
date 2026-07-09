@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 // Max's Rule: VCR-style testing uses static signed fixtures.
 // Do not test against live GitHub API in CI to prevent rate limits.
 import { Router } from "express";
@@ -12,7 +13,7 @@ const webhookService = new GithubWebhookService();
 router.post("/:projectId", async (req, res) => {
   const projectId = Number(req.params.projectId);
   if (isNaN(projectId)) {
-    return res.status(400).json({ error: "Invalid projectId" });
+    return res.status(400).json({ error: API_MESSAGES.GITHUB_WEBHOOK_INVALID_PROJECT_ID });
   }
 
   const rawBody = req.body as Buffer;
@@ -25,7 +26,7 @@ router.post("/:projectId", async (req, res) => {
     logger.error(
       "GITHUB_WEBHOOK_SECRET is not properly configured (missing or too short). Failing closed."
     );
-    return res.status(500).json({ error: "Server misconfiguration" });
+    return res.status(500).json({ error: API_MESSAGES.SERVER_MISCONFIGURATION });
   }
 
   try {
@@ -43,7 +44,7 @@ router.post("/:projectId", async (req, res) => {
     return res.status(result.status).json({ message: result.message });
   } catch (err) {
     logger.error({ err, projectId }, "Unhandled error in webhook processing");
-    return res.status(500).json({ error: "Internal server error" });
+    return res.status(500).json({ error: API_MESSAGES.INTERNAL_SERVER_ERROR });
   }
 });
 

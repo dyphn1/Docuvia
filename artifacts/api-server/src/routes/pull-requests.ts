@@ -1,3 +1,4 @@
+import { API_MESSAGES } from "@workspace/core";
 import { logger } from "@workspace/core";
 import { Router } from "express";
 import { PullRequestService } from "../services/pull-request.service.js";
@@ -11,12 +12,12 @@ const pullRequestService = new PullRequestService();
 router.get("/projects/:id/pull-requests", async (req, res) => {
   const projectId = Number(req.params.id);
   if (isNaN(projectId)) {
-    return res.status(400).json({ error: "Invalid project id" });
+    return res.status(400).json({ error: API_MESSAGES.INVALID_PROJECT_ID });
   }
 
   const project = await new ProjectService().getProjectById(projectId);
   if (!project) {
-    return res.status(404).json({ error: "Project not found" });
+    return res.status(404).json({ error: API_MESSAGES.PROJECT_NOT_FOUND });
   }
 
   const prs = await pullRequestService.getPullRequestsByProjectId(projectId);
@@ -29,13 +30,13 @@ router.get("/projects/:id/pull-requests/:prNumber", async (req, res) => {
   const projectId = Number(req.params.id);
   const prNumber = Number(req.params.prNumber);
   if (isNaN(projectId) || isNaN(prNumber)) {
-    return res.status(400).json({ error: "Invalid parameters" });
+    return res.status(400).json({ error: API_MESSAGES.INVALID_PARAMETERS });
   }
 
   const pr = await pullRequestService.getPullRequest(projectId, prNumber);
 
   if (!pr) {
-    return res.status(404).json({ error: "Pull request not found" });
+    return res.status(404).json({ error: API_MESSAGES.PULL_REQUEST_NOT_FOUND });
   }
 
   const commits = await pullRequestService.getCommitsAfterPr(projectId, pr.createdAt);
@@ -76,13 +77,13 @@ router.post("/projects/:id/pull-requests/:prNumber/analyze", async (req, res) =>
   const projectId = Number(req.params.id);
   const prNumber = Number(req.params.prNumber);
   if (isNaN(projectId) || isNaN(prNumber)) {
-    return res.status(400).json({ error: "Invalid parameters" });
+    return res.status(400).json({ error: API_MESSAGES.INVALID_PARAMETERS });
   }
 
   const pr = await pullRequestService.getPullRequest(projectId, prNumber);
 
   if (!pr) {
-    return res.status(404).json({ error: "Pull request not found" });
+    return res.status(404).json({ error: API_MESSAGES.PULL_REQUEST_NOT_FOUND });
   }
 
   if (pr.analysisStatus === "completed") {
@@ -92,7 +93,7 @@ router.post("/projects/:id/pull-requests/:prNumber/analyze", async (req, res) =>
     });
   }
 
-  res.status(202).json({ status: "triggered", message: "Analysis triggered" });
+  res.status(202).json({ status: "triggered", message: API_MESSAGES.ANALYSIS_TRIGGERED });
 
   setImmediate(async () => {
     try {

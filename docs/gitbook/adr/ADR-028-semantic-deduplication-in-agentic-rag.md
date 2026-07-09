@@ -1,8 +1,11 @@
+---
+Date: 2026-07-07
+Status: Accepted
+Supersedes: None
+Supplements: ADR-007
+---
+
 # ADR 028: Semantic Deduplication in Agentic RAG
-
-## Status
-
-Accepted
 
 ## Context
 

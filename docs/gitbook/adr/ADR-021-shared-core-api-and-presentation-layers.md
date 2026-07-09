@@ -2,6 +2,7 @@
 Date: 2026-07-02
 Status: Accepted
 Supersedes: None
+Supplemented by: ADR-029
 ---
 
 # ADR 021: Shared Core API and Presentation Layers (Hexagonal Architecture)
@@ -41,7 +42,7 @@ flowchart TD
         direction TB
         AST["AST Microkernel<br/>(web-tree-sitter)"]
         IR["Intent Router<br/>(Query Dispatch)"]
-        HS["Hybrid Search<br/>(FTS5 + Vector)"]
+        HS["Hybrid Search<br/>(FTS5, Local-Only)"]
         GS["Graph Traversal<br/>(Edges & Impact Radius)"]
         SYNC["Incremental Sync<br/>(Git Hooks & Hash Delta)"]
     end
@@ -71,6 +72,10 @@ flowchart TD
     class AST,IR,HS,GS,SYNC core;
     class DB,FS,GIT infra;
 ```
+
+> **Note on Vector Search Scope**: The `Hybrid Search` capability shown above resolves to **FTS5 + Graph Traversal only** when the Core API runs inside a local-first Presentation Layer (CLI, MCP, VS Code Client, Webview). Embedding-based vector search is a **Server-only** capability backed by `pgvector` and is never bundled into local clients — see [ADR-029](./ADR-029-local-vector-index-and-natural-language-ui.md) for the rationale (hardware heterogeneity, avoiding local embedding-model/runtime bloat) and [ADR-019](./ADR-019-pgvector-migration.md) for the server-side implementation.
+>
+> This does not violate the Shared Core / Hexagonal principle: `Hybrid Search` is a single logical port, but its adapter differs by deployment context (SQLite FTS5 locally vs. PostgreSQL `pgvector` when the Core runs within the central API Server).
 
 ## Parity and Naming Rule
 

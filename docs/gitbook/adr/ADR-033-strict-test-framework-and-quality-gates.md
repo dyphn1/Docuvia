@@ -1,8 +1,10 @@
+---
+Date: 2026-07-07
+Status: Accepted
+Supersedes: None
+---
+
 # ADR-033: Strict Test Framework and Quality Gates Alignment
-
-## Status
-
-Accepted
 
 ## Context
 

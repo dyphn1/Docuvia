@@ -1,8 +1,15 @@
+---
+Date: 2026-07-07
+Status: Accepted
+Supersedes: None
+Supplements: ADR-004
+---
+
 # ADR 031: SVN Integration Deprecation (Pending Git-Bridge Translation)
 
 ## Status
 
-Pending / Deprecated
+Accepted — the decision to halt native SVN ingestion and defer to an external `git-svn` bridge is final. ("Pending" describes the deferred _feature_, not the status of this _decision_.)
 
 ## Context
 

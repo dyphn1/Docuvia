@@ -1,7 +1,8 @@
 ---
 Date: 2026-07-02
-Status: Accepted (Supplemented by ADR-020, ADR-025)
+Status: Accepted
 Supersedes: None
+Supplemented by: ADR-020, ADR-025
 ---
 
 # ADR-015: Progressive Enrichment & AST/LSP Dual Engine

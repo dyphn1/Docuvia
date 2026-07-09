@@ -1,8 +1,10 @@
+---
+Date: 2026-07-07
+Status: Accepted
+Supersedes: None
+---
+
 # ADR-034: Wizard-Style Interactive CLI
-
-## Status
-
-Accepted
 
 ## Context
 

@@ -2,6 +2,7 @@
 Date: 2026-07-03
 Status: Accepted
 Supplements: ADR-015, ADR-022
+Supplemented by: ADR-027
 ---
 
 # ADR-025: Hybrid Temp-File Blast Radius Overlay & Headless LSP

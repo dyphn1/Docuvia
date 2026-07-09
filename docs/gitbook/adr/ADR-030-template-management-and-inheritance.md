@@ -1,8 +1,10 @@
+---
+Date: 2026-07-07
+Status: Accepted
+Supersedes: None
+---
+
 # ADR 030: Template Management and Inheritance
-
-## Status
-
-Accepted
 
 ## Context
 

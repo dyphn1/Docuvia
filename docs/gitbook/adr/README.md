@@ -32,11 +32,11 @@ This section holds Docuvia's ADRs — one file per decision, covering the curren
 | [ADR-024](ADR-024-cross-project-soft-linking.md)                              | Cross-Project Soft Linking via Global L1 Tags                    |
 | [ADR-025](ADR-025-hybrid-temp-file-blast-radius.md)                           | Hybrid Temp-File Blast Radius Overlay & Headless LSP             |
 | [ADR-026](ADR-026-multi-provider-llm-abstraction.md)                          | Multi-Provider LLM Abstraction Layer                             |
-| [ADR-027](ADR-027-sub-second-incremental-watch.md)                            | Sub-second Incremental Watch with AST Microkernel                |
+| [ADR-027](ADR-027-sub-second-incremental-watch.md)                            | Sub-second Incremental Watch via Hook-Driven Thin Client         |
 | [ADR-028](ADR-028-semantic-deduplication-in-agentic-rag.md)                   | Semantic Deduplication in Agentic RAG                            |
-| [ADR-029](ADR-029-local-vector-index-and-natural-language-ui.md)              | Local Vector Index and Natural Language UI                       |
+| [ADR-029](ADR-029-local-vector-index-and-natural-language-ui.md)              | Deprecation of Local Vector Search & NL UI Graceful Degradation  |
 | [ADR-030](ADR-030-template-management-and-inheritance.md)                     | Template Management and Inheritance                              |
-| [ADR-031](ADR-031-svn-integration-and-diff-ingestion.md)                      | SVN Integration and Diff Ingestion                               |
+| [ADR-031](ADR-031-svn-integration-and-diff-ingestion.md)                      | SVN Integration Deprecation (Pending Git-Bridge Translation)     |
 | [ADR-032](ADR-032-parallel-swarm-review-and-background-rag.md)                | Parallel Swarm Review and Background Agentic RAG                 |
 | [ADR-033](ADR-033-strict-test-framework-and-quality-gates.md)                 | Strict Test Framework and Quality Gates Alignment                |
 | [ADR-034](ADR-034-wizard-style-interactive-cli.md)                            | Wizard-Style Interactive CLI                                     |

@@ -1,8 +1,10 @@
+---
+Date: 2026-07-07
+Status: Accepted
+Supersedes: None
+---
+
 # ADR 032: Parallel Swarm Review and Background Agentic RAG
-
-## Status
-
-Accepted
 
 ## Context
 

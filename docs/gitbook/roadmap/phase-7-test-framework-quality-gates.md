@@ -28,4 +28,8 @@ See details in: [Feature 4: GitHub Actions CI Pipeline Refactoring](features/git
 
 ### 5. Workflow Formalization
 
-See details in: [Feature 5: Workflow Formalization](features/workflow-formalization.md)ly before remote execution.
+See details in: [Feature 5: Workflow Formalization](features/workflow-formalization.md)
+
+### Consolidated Implementation Plan
+
+Cross-cutting execution plan tying the five deliverables above together: [Quality Gates & Local Workflow Implementation Plan](features/quality-gate-implementation-plan.md)

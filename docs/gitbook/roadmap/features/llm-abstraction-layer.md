@@ -2,14 +2,14 @@
 
 - **Status**: ⚠️ WARN
 - **Phase**: Phase 1: Core API & Database (The Metabolism Engine)
-- **Evidence / Verification Target**: `lib/integrations-openai-ai-server/src/client.ts` — no Anthropic/Gemini adapters
+- **Evidence / Verification Target**: `lib/llm-orchestrator/src/orchestrator.ts`, `lib/llm-orchestrator/src/{openai,anthropic,gemini}.ts` — transport adapters exist for all three providers; verify per-project provider switching and production wiring before upgrading past WARN
 - **ADR**: [ADR-026](../../adr/ADR-026-multi-provider-llm-abstraction.md)
 
 ## Implementation Details
 
 This feature is anchored by the following core components:
 
-[`lib/integrations-openai-ai-server/src/client.ts`](../../../../lib/integrations-openai-ai-server/src/client.ts) — no Anthropic/Gemini adapters
+[`lib/llm-orchestrator/src/orchestrator.ts`](../../../../lib/llm-orchestrator/src/orchestrator.ts) — Thin Transport orchestrator with `openai.ts`, `anthropic.ts`, and `gemini.ts` provider transports
 
 ### Architecture Flow
 

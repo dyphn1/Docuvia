@@ -6,24 +6,12 @@
 
 ## Implementation Details
 
-This feature is anchored by the following core components:
-
-[`artifacts/vscode-client/package.json`](../../../../artifacts/vscode-client/package.json)
-
-### Architecture Flow
-
-```mermaid
-graph TD
-    VSC[VS Code Extension] --> |Commands| Core[Core Services]
-    UI[Web Dashboard] --> |REST| API[Local API Server]
-    Core --> |Analyze| DB[(Local SQLite)]
-    API --> DB
-```
+The previous Evidence Target (`artifacts/vscode-client/package.json`) does not contain anything related to this feature — its only "token"-related entries are `docuvia.setServerToken`/`docuvia.clearServerToken` (server auth commands), unrelated to LLM token limits or document chunking. There is no `chunkSize`/`maxTokens`-style configuration anywhere in that file. No dedicated token-limit/chunking config surface has been located yet — this feature has not been started; the old evidence link was simply wrong, not stale.
 
 ### Component Description
 
-- **Core Logic**: Handled primarily within the target files linked above.
-- **State Management**: Persists or queries state directly via the defined interfaces.
+- **Core Logic**: Not yet implemented — no chunking/token-limit configuration surface exists in the codebase as of this audit.
+- **State Management**: N/A.
 
 ## Testing & Verification
 

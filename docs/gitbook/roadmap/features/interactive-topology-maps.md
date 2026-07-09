@@ -1,15 +1,18 @@
 # Interactive Topology Maps
 
-- **Status**: ⚠️ WARN (2026-07-06 — shared `buildTopologyGraph` + SQLite/PG services, CLI `docuvia export --topology` producing offline topology.json/topology.html, `GET /projects/{id}/topology` API with Orval codegen + contract tests, and the kg-engine `/topology` page with d3-force layout + blast-radius highlighting. Follow-ups: VS Code webview reuse, in-browser visual tuning of layout parameters)
+- **Status**: ⚠️ WARN (regressed 2026-07-09 — see note below; original 2026-07-06 note claimed a working `buildTopologyGraph` + SQLite/PG pipeline, CLI `docuvia export --topology`, `GET /projects/{id}/topology` API, and kg-engine `/topology` page with d3-force layout. The CLI, API route, and `Topology.tsx` page still exist, but the core `TopologyExportService` data-generation logic was gutted by commit `fee7521` ("Correct the fraudulent source code...") and now returns hardcoded empty data. Needs re-implementation, not just a follow-up.)
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
-- **Evidence / Verification Target**: `lib/core/src/services/topology-export.service.ts`, `lib/core/src/types/topology.types.ts` — see [AI Implementation Plan](../../ai_plans/implement_interactive-topology-maps.md) for execution details.
-- **AI Plan**: [implement_interactive-topology-maps.md](../../ai_plans/implement_interactive-topology-maps.md)
+- **Evidence / Verification Target**: `lib/core/src/services/topology-export.service.ts`, `lib/core/src/types/topology.types.ts`
 
 ## Implementation Details
 
-Modeled after **graphify**'s "one graph dataset, many renderings" export architecture (`graphify/export.py`), adapted for Docuvia's local-first constraints and decision-graph (L3) semantics:
+**Current reality**: `lib/core/src/services/topology-export.service.ts` is now a ~24-line stub whose `exportTopology()` always returns hardcoded empty `{ nodes: [], links: [], groups: [] }` regardless of DB content — it never opens `.docuvia/local.db`. Its own unit test (`topology-export.service.unit.test.ts`) still exercises the full described behavior (symbol nodes, decision nodes, collapse modes) and would fail against the current stub, confirming this is a regression rather than the doc simply predating the feature. Git history: `cdb266c` implemented the real version → `fee7521` ("Correct the fraudulent source code...") gutted it to the stub above → doc was not updated to match.
 
-1. **Machine-readable `topology.json`** — versioned schema generated read-only from `.docuvia/local.db` (`l2_nodes`, symbol-level `node_links`, `l3_nodes` decisions, `l1_tags` as groups) by a new `TopologyExportService` in `lib/core`. No DB migration required. Server-side collapse to file-level view beyond a node cap (instead of graphify's hard 5000-node rejection).
+The rest of the pipeline described below (CLI, API route, `Topology.tsx` UI) still exists as real code — only the core data-generation step is currently broken.
+
+Original design intent, modeled after **graphify**'s "one graph dataset, many renderings" export architecture (`graphify/export.py`), adapted for Docuvia's local-first constraints and decision-graph (L3) semantics:
+
+1. **Machine-readable `topology.json`** — versioned schema generated read-only from `.docuvia/local.db` (`l2_nodes`, symbol-level `node_links`, `l3_nodes` decisions, `l1_tags` as groups) by a new `TopologyExportService` in `lib/core`. No DB migration required. Server-side collapse to file-level view beyond a node cap (instead of graphify's hard 5000-node rejection). **This step is currently stubbed out — see above.**
 2. **Self-contained `topology.html`** — CLI command `docuvia export --topology`; interactive force-layout page with search, click-to-inspect (blast-radius upstream highlight), group legend filtering, and groups rendered as layer containers (graphify hyperedge convex-hull technique). Renderer is inlined at build time — **no CDN**, fully offline.
 3. **kg-engine Dashboard page** — API-first: `GET /api/projects/{projectId}/topology` added to `openapi.yaml` → Orval codegen → `Topology.tsx` using the already-present `d3-force` dependency. Node click overlays impact-analysis blast radius (leverages the 2026-07-06 symbol-level `node_links` fix).
 4. **VS Code webview** (follow-up) — reuse the self-contained HTML in a `WebviewPanel`.

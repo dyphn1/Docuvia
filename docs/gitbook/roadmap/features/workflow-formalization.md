@@ -11,5 +11,5 @@ Formalize and enforce Test-Driven Development and local verification practices f
 
 ### Implementation Tasks
 
-- [x] Enforce TDD (Red-Green-Refactor) as a mandatory practice for all AI agents and human developers.
-- [x] Implement pre-push hooks that enforce the quality and coverage gates locally before remote execution.
+- [ ] Enforce TDD (Red-Green-Refactor) as a mandatory practice for all AI agents and human developers.
+- [ ] Implement pre-push hooks that enforce the quality and coverage gates locally before remote execution.

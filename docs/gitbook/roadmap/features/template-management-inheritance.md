@@ -2,19 +2,19 @@
 
 - **Status**: ⚠️ WARN
 - **Phase**: Phase 4: Git-Isomorphic Sync & Temporal Knowledge
-- **Evidence / Verification Target**: `lib/core/src/services/prompt-service.ts` — needs integration of Handlebars/Liquid and version pinning
+- **Evidence / Verification Target**: `lib/core/src/services/prompt-service.ts`, `lib/db/src/schema/pg/prompt-templates.ts`
 - **ADR**: [ADR-030](../../adr/ADR-030-template-management-and-inheritance.md)
 
 ## Implementation Details
 
-This feature introduces a robust template inheritance model using an industry-standard template engine and strict version pinning to prevent breaking changes.
+Implemented as of commit `a2d1905` (2026-07-07, "feat(templates): implement Handlebars template inheritance and schema versions"). `prompt-service.ts` imports and compiles templates with `Handlebars` (`hbs.compile()`), registers parent templates as partials, and implements version pinning with upgrade-warning detection (`hasUpgradeWarning`, `latestParentVersion`). `prompt-templates.ts` has `parentTemplateId` and `version` columns.
 
 ### Core Goals
 
-1. **Handlebars/Liquid Integration**: Integrate a mature templating engine (e.g., Handlebars or Liquid) in `prompt-service.ts` to natively handle partials and block-level inheritance instead of building a custom parser.
-2. **Schema Migration for Versioning**: Update the database schema to support immutable, versioned templates.
-3. **Strict Version Pinning**: Child templates must reference a specific version of their parent (e.g., `global-base-v1`) and will never auto-upgrade.
-4. **Warning UX**: Implement a UI/CLI notification mechanism that alerts users when a newer version of their parent template is available, prompting manual review and migration.
+1. ~~**Handlebars/Liquid Integration**~~ Done — `prompt-service.ts` uses Handlebars for partials and block-level inheritance.
+2. ~~**Schema Migration for Versioning**~~ Done — `prompt-templates.ts` has `version`/`parentTemplateId` columns.
+3. ~~**Strict Version Pinning**~~ Done — child templates pin to a specific parent version via `parentTemplateId`.
+4. **Warning UX**: `hasUpgradeWarning`/`latestParentVersion` exist at the service layer — verify a UI/CLI surface actually renders this warning to the user before marking fully complete.
 
 ### Architecture Flow
 

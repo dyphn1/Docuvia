@@ -7,23 +7,28 @@
 
 ## Implementation Details
 
-This feature is anchored by the following core components:
+`lib/headless-lsp/src/` is implemented, but not as a headless LSP process manager. It does **not** spawn or manage any LSP child process (e.g. `tsserver`) — there is no LSP client/server wiring anywhere in the package. Instead it implements a lighter temp-file overlay:
 
-`lib/headless-lsp/` (Not implemented yet)
+- `DirtyStateManager` (`dirty-state-manager.ts`) tracks unsaved editor buffer contents.
+- `VirtualFileSystem` (`vfs.ts`) writes those dirty contents to `.docuvia/tmp/` and parses them directly via `web-tree-sitter`/`generateAst` from `@workspace/ast-core` — i.e. dirty buffers are re-parsed with the AST microkernel itself rather than proxied through a real LSP.
+
+This matches ADR-025's "Hybrid Temp-File Blast Radius Overlay" name more literally than its "Headless LSP" framing suggests — there is a temp-file overlay, but no LSP.
 
 ### Architecture Flow
 
 ```mermaid
 graph TD
-    VSC[VS Code Client / Editor Buffers] --> |Dirty State| HLSP[Headless LSP Manager]
-    HLSP --> |VirtualGraphContext| Query[Query Service]
+    VSC[VS Code Client / Editor Buffers] --> |Dirty State| DSM[DirtyStateManager]
+    DSM --> |Write buffer| VFS[VirtualFileSystem .docuvia/tmp]
+    VFS --> |Parse via web-tree-sitter| AST[ast-core generateAst]
+    AST --> |Overlay Result| Query[Query Service]
     Query --> |Return| VSC
 ```
 
 ### Component Description
 
-- **Core Logic**: Manages standalone LSP child processes (e.g. `tsserver`) to analyze dirty unsaved editor buffers.
-- **State Management**: Writes dirty state to temporary files matching the orphan branch schema, bypassing the SSOT DB to prevent corruption.
+- **Core Logic**: `DirtyStateManager` tracks dirty buffers; `VirtualFileSystem` persists them to `.docuvia/tmp/` and re-parses via the AST microkernel — no LSP process is spawned.
+- **State Management**: Writes dirty state to temporary files, bypassing the SSOT DB to prevent corruption.
 
 ## Testing & Verification
 

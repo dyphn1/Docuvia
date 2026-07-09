@@ -2,11 +2,11 @@
 
 - **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
-- **Evidence / Verification Target**: `artifacts/kg-engine/src/pages/Review.tsx`
+- **Evidence / Verification Target**: `artifacts/kg-engine/src/pages/Review.tsx` (thin page shell — actual logic lives in its child components below)
 
 ## Implementation Details
 
-This feature is anchored by the following core components:
+`Review.tsx` itself is only an 11-line composition wrapper; the real logic lives in the components it renders: `ReviewTaskList` and `ReviewStatsSidebar`. Feature is real, but "Core Logic handled primarily within the target file" understates where the logic actually lives.
 
 [`artifacts/kg-engine/src/pages/Review.tsx`](../../../../artifacts/kg-engine/src/pages/Review.tsx)
 

@@ -7,24 +7,20 @@
 
 ## Implementation Details
 
-This feature is anchored by the following core components:
-
-[`lib/db/src/schema/pg/l2-nodes.ts`](../../../../lib/db/src/schema/pg/l2-nodes.ts)
+**Gap is deeper than WARN suggests.** `l2-nodes.ts` and `l3-nodes.ts` import `vector` from `drizzle-orm/pg-core` but never use it — neither table actually defines an `embedding`/`vector(1536)` column, contradicting ADR-019's decision text ("Modify l2_nodesTable and l3_nodesTable ... to use vector(1536) for the embedding column"). Meanwhile `lib/core/src/services/generation/generate.service.ts` and `noise-detection-service.ts` already reference `l2NodesTable.embedding` / `node.embedding` in code — i.e. application code assumes a column that does not exist in the schema. This should be treated as a live bug risk (undefined-column reference), not just an incomplete migration, and verified before other pgvector-dependent features (vector-index-search, semantic-search) are trusted.
 
 ### Architecture Flow
 
 ```mermaid
 graph TD
-    Req[Incoming Request] --> Auth{Auth & Locks}
-    Auth --> |Valid| Proc[Process]
-    Auth --> |Invalid| Reject[403 / 401]
-    Proc --> DB[(Hardened DB)]
+    Gen[generate.service.ts] -->|references l2NodesTable.embedding| Schema[l2-nodes.ts schema]
+    Schema -.->|column does NOT exist| Missing[No vector/embedding column defined]
 ```
 
 ### Component Description
 
-- **Core Logic**: Handled primarily within the target files linked above.
-- **State Management**: Persists or queries state directly via the defined interfaces.
+- **Core Logic**: `l2-nodes.ts`/`l3-nodes.ts` import `vector` but don't declare an embedding column; `generate.service.ts`/`noise-detection-service.ts` read/write `.embedding` on these tables anyway.
+- **State Management**: Unverified — needs a migration adding the actual `vector(1536)` column before the embedding-writing code paths can work as written.
 
 ## Testing & Verification
 

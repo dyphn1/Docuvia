@@ -20,7 +20,7 @@ graph TD
 
 ### Component Description
 
-- **Core Logic**: Domain services (e.g. document, git-ingestion, dashboard, sync) that previously lived tightly coupled inside `artifacts/api-server/src/services/` were extracted into `lib/plugins-domain`, per the [System Architecture Refactoring Plan](../../development/refactoring-plan.md#phase-4-domain-services-extraction).
+- **Core Logic**: Domain services `document.service.ts`, `git-ingestion.service.ts`, and `dashboard.service.ts` have been extracted from `artifacts/api-server/src/services/` into `lib/plugins-domain`, per the [System Architecture Refactoring Plan](../../development/refactoring-plan.md#phase-4-domain-services-extraction). `sync.service.ts` has **not** been extracted yet — it still lives in `artifacts/api-server/src/services/sync.service.ts`.
 - **State Management**: Persists or queries state directly via the defined interfaces.
 
 ## Testing & Verification

@@ -2,14 +2,14 @@
 
 - **Status**: ⚠️ WARN
 - **Phase**: Phase 2: AST Microkernel & Semantic Diffing
-- **Evidence / Verification Target**: `lib/core/src/utils/compression.ts`
+- **Evidence / Verification Target**: `lib/ast-core/src/compression.ts`
 - **ADR**: [ADR-010](../../adr/ADR-010-context-compression-and-proxy.md)
 
 ## Implementation Details
 
 This feature is anchored by the following core components:
 
-[`lib/core/src/utils/compression.ts`](../../../../lib/core/src/utils/compression.ts)
+[`lib/ast-core/src/compression.ts`](../../../../lib/ast-core/src/compression.ts)
 
 ### Architecture Flow
 

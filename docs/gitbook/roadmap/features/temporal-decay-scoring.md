@@ -2,13 +2,13 @@
 
 - **Status**: ⚠️ WARN
 - **Phase**: Phase 4: Git-Isomorphic Sync & Temporal Knowledge
-- **Evidence / Verification Target**: `lib/core/src/services/decay.ts`
+- **Evidence / Verification Target**: `lib/core/src/services/temporal-decay.calculator.ts`
 
 ## Implementation Details
 
 This feature is anchored by the following core components:
 
-[`lib/core/src/services/decay.ts`](../../../../lib/core/src/services/decay.ts)
+[`lib/core/src/services/temporal-decay.calculator.ts`](../../../../lib/core/src/services/temporal-decay.calculator.ts)
 
 ### Architecture Flow
 

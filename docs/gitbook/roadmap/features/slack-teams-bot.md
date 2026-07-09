@@ -2,13 +2,13 @@
 
 - **Status**: ⚠️ WARN
 - **Phase**: Phase 5: Local-First VS Code Client & Web UI
-- **Evidence / Verification Target**: `lib/core/src/services/slack-teams-client.ts`
+- **Evidence / Verification Target**: `lib/core/src/services/slack.provider.ts`, `lib/core/src/services/teams.provider.ts`
 
 ## Implementation Details
 
 This feature is anchored by the following core components:
 
-[`lib/core/src/services/slack-teams-client.ts`](../../../../lib/core/src/services/slack-teams-client.ts)
+[`lib/core/src/services/slack.provider.ts`](../../../../lib/core/src/services/slack.provider.ts), [`lib/core/src/services/teams.provider.ts`](../../../../lib/core/src/services/teams.provider.ts)
 
 ### Architecture Flow
 

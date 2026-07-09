@@ -6,11 +6,11 @@
 
 ## Implementation Details
 
-This feature is anchored by the following core components:
+The CLI wiring exists (`sync.ts` prompts for `<project_id>` when missing, per the Phase 8 wizard-CLI work), but the sync logic it calls into is not implemented: `SyncService.sync()` in `lib/core/src/services/sync-service.ts` is a literal no-op stub that only logs and returns — it does not extract edges/nodes, serialize to JSON/Markdown, or push anything. The diagram below is the _intended_ design, not current behavior.
 
-[`artifacts/cli/src/commands/sync.ts`](../../../../artifacts/cli/src/commands/sync.ts)
+**Known bug**: `artifacts/cli/src/commands/sync.ts` references `DI_KEYS` without importing it — this is likely a runtime `ReferenceError` on the code path that uses it and should be checked before relying on this command.
 
-### Architecture Flow
+### Architecture Flow (target design, not yet implemented)
 
 ```mermaid
 sequenceDiagram
@@ -26,8 +26,8 @@ sequenceDiagram
 
 ### Component Description
 
-- **Core Logic**: Handled primarily within the target files linked above.
-- **State Management**: Persists or queries state directly via the defined interfaces.
+- **Core Logic**: `SyncService.sync()` (`lib/core/src/services/sync-service.ts`) is currently a stub — see note above.
+- **State Management**: Not yet wired; no state is persisted or pushed by this command today.
 
 ## Testing & Verification
 

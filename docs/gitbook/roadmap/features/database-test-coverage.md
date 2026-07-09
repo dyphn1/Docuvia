@@ -6,14 +6,13 @@
 
 ## Implementation Details
 
-This feature is anchored by the following core components:
+[`lib/db/src/index.unit.test.ts`](../../../../lib/db/src/index.unit.test.ts) and [`lib/db/src/migrate.unit.test.ts`](../../../../lib/db/src/migrate.unit.test.ts) are both trivial (one test each, mocking migration) — the cascade/unique/vector-op gap called out below is real for these two files.
 
-[`lib/db/src/index.unit.test.ts`](../../../../lib/db/src/index.unit.test.ts)
-[`lib/db/src/migrate.unit.test.ts`](../../../../lib/db/src/migrate.unit.test.ts)
+However, [`lib/db/src/schema/sqlite/sqlite-schema.unit.test.ts`](../../../../lib/db/src/schema/sqlite/sqlite-schema.unit.test.ts) (not previously listed as evidence) already contains real cascade-delete tests (`projects → l2_nodes → l3_nodes → l3_node_source_commits`) and unique-constraint tests — that part of the gap is partially closed on the SQLite side. No pgvector/embedding-specific test exists anywhere in `lib/db` (consistent with the schema gap noted in [pgvector Migration](pgvector-migration.md)) — the vector-operations gap is still fully open.
 
 ### Component Description
 
-- **Core Logic**: Ensure meaningful tests validating relationships (e.g., verifying `onDelete: "cascade"` constraints), vector operations, and unique constraints.
+- **Core Logic**: Cascade/unique coverage exists for SQLite (`sqlite-schema.unit.test.ts`) but not for the Postgres schema (`index.unit.test.ts`/`migrate.unit.test.ts` are still trivial). Vector-operation tests don't exist for either.
 - **State Management**: Persists or queries state directly via the defined interfaces.
 
 ## Testing & Verification

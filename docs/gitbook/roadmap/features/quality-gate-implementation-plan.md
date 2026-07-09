@@ -16,45 +16,45 @@ Create an operational implementation plan for Phase 7 that turns Docuvia's curre
 
 ### 1. Enforce Code Health and Security Gates
 
-- [x] Add a workspace-level ratchet configuration file for code health checks.
+- [ ] Add a workspace-level ratchet configuration file for code health checks.
   - Prefer `.codescene-thresholds` or equivalent file.
   - Track Hotspot and Average Code Health targets.
-- [x] Wire CodeScene health checks into GitHub Actions.
+- [ ] Wire CodeScene health checks into GitHub Actions.
   - Ensure the gate fails when quality drops below target.
-- [x] Integrate Codacy security scans into GitHub Actions.
+- [ ] Integrate Codacy security scans into GitHub Actions.
   - Ensure the gate fails on Critical/High findings.
 
 ### 2. Formalize Coverage Ratchet Enforcement
 
-- [x] Confirm and enforce backend coverage `>= 85%`.
-- [x] Confirm and enforce frontend coverage `>= 70%`.
-- [x] Update CI to fail on coverage regression.
-- [x] Add explicit coverage upload or reporting step as needed.
+- [ ] Confirm and enforce backend coverage `>= 85%`.
+- [ ] Confirm and enforce frontend coverage `>= 70%`.
+- [ ] Update CI to fail on coverage regression.
+- [ ] Add explicit coverage upload or reporting step as needed.
 
 ### 3. Strengthen Local Git Hook Policy
 
-- [x] Add a `.husky/pre-push` hook that runs the critical verification commands before pushing.
-- [x] Extend `.husky/pre-commit` beyond lint-staged if necessary.
-- [x] Document the expected local gate behavior in `AGENTS.md`.
+- [ ] Add a `.husky/pre-push` hook that runs the critical verification commands before pushing.
+- [ ] Extend `.husky/pre-commit` beyond lint-staged if necessary.
+- [ ] Document the expected local gate behavior in `AGENTS.md`.
 
 ### 4. Improve CI Pipeline and Workflow Formalization
 
-- [x] Refactor `.github/workflows/ci.yml` to clearly separate: lint/security, typecheck/build, smoke, regression, and e2e lanes.
-- [x] Add documentation-check or docs gating if applicable.
-- [x] Ensure the CI job names and failure conditions match the roadmap.
+- [ ] Refactor `.github/workflows/ci.yml` to clearly separate: lint/security, typecheck/build, smoke, regression, and e2e lanes.
+- [ ] Add documentation-check or docs gating if applicable.
+- [ ] Ensure the CI job names and failure conditions match the roadmap.
 
 ### 5. Document Team and AI Developer Expectations
 
-- [x] Update `AGENTS.md` with a Phase 7 workflow checklist.
-- [x] Include mandatory TDD and quality-gate compliance language.
-- [x] Add a small developer guidance section for local pre-push validation.
+- [ ] Update `AGENTS.md` with a Phase 7 workflow checklist.
+- [ ] Include mandatory TDD and quality-gate compliance language.
+- [ ] Add a small developer guidance section for local pre-push validation.
 
 ## Verification
 
-- [x] `pnpm test:smoke` passes.
-- [x] `pnpm test:coverage` passes with ratcheted thresholds.
-- [x] GitHub Actions CI runs include the new code health and security gates.
-- [x] Local commit and push hooks operate and block when a gate fails.
+- [ ] `pnpm test:smoke` passes.
+- [ ] `pnpm test:coverage` passes with ratcheted thresholds.
+- [ ] GitHub Actions CI runs include the new code health and security gates.
+- [ ] Local commit and push hooks operate and block when a gate fails.
 
 ## Notes
 

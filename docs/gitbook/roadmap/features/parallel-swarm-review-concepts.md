@@ -2,12 +2,19 @@
 
 - **Status**: ⚠️ WARN
 - **Phase**: Phase 6: Architecture Hardening & Security
-- **Evidence / Verification Target**: Planned parallel verifiers inspired by GitNexus
+- **Evidence / Verification Target**: `lib/core/src/services/swarm/task-dispatcher.ts`, `lib/core/src/services/swarm/llm-rate-limiter.ts`, `lib/core/src/services/swarm/swarm-orchestrator.service.ts`, `lib/core/src/utils/read-write-lock.ts`
 - **ADR**: [ADR-032](../../adr/ADR-032-parallel-swarm-review-and-background-rag.md)
 
 ## Implementation Details
 
-This feature is anchored by the following core components to implement parallel subagents while mitigating `database is locked` issues and LLM API rate limits.
+Despite the "Concepts" name and "Planned" evidence framing, this is substantially built, not just conceptual — every component in the diagram below exists in `lib/core/src/services/swarm/`, each explicitly commented "(ADR-032)" and covered by unit tests:
+
+- `task-dispatcher.ts`: hard-caps concurrency at `MAX_PARALLEL_AGENTS = 3` via `p-limit`.
+- `llm-rate-limiter.ts`: token-bucket + exponential backoff.
+- `swarm-orchestrator.service.ts`: dispatch + aggregation.
+- `lib/core/src/utils/read-write-lock.ts`: FIFO read/write lock queue (mitigates SQLite `database is locked`).
+
+**Not implemented**: the "local model fallback when LLM rate limits are exhausted" sub-claim — retries currently just reuse the same LLM call, they don't route to a local model.
 
 ### Architecture Flow
 

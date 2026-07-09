@@ -38,6 +38,6 @@ describe("CLI Regression Tests - Uninitialized Environment", () => {
     expect(result.exitCode).toBe(1);
     expect(result.stderr).not.toContain("SqliteError");
     // Accept variations of the error message but ensure it guides the user
-    expect(result.stderr).toContain('Local database not found. Please run "docuvia.initProject"');
+    expect(result.stderr).toContain('Local database not found. Please run "docuvia init".');
   }, 15000);
 });

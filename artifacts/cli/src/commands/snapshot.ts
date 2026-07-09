@@ -9,7 +9,7 @@ import {
   GitConstants,
 } from "@workspace/core";
 import process from "process";
-import fs from "fs/promises";
+import * as fs from "fs/promises";
 import path from "path";
 import os from "os";
 import { ui } from "../ui/wizard.js";

@@ -4,11 +4,16 @@ import * as os from "os";
 import * as path from "path";
 import Database from "better-sqlite3";
 import { exportTopologyCommand } from "./export-topology.js";
+import { setupDI } from "../di.js";
 
 describe("exportTopologyCommand", () => {
   let workspaceRoot: string;
 
   beforeEach(() => {
+    // This unit test invokes the command directly (bypassing the cli.ts entry point that
+    // normally calls setupDI() once at process start), so the DI container must be populated
+    // here or container.resolve(DI_TOKENS.TopologyExportService) throws "Service not found".
+    setupDI();
     workspaceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-export-topo-"));
     fs.mkdirSync(path.join(workspaceRoot, ".docuvia"), { recursive: true });
     const db = new Database(path.join(workspaceRoot, ".docuvia", "local.db"));

@@ -52,6 +52,6 @@ export async function exportTopologyCommand(options: ExportTopologyOptions = {})
     spinner.succeed(successMessage);
   } catch (error: any) {
     spinner.fail(UI_MESSAGES.EXPORT_FAIL + error.message);
-    process.exit(1);
+    throw error;
   }
 }

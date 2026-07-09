@@ -36,7 +36,9 @@ describe("Command: docuvia status", () => {
     // Assert
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Docuvia Index Status");
-    expect(result.stdout).toContain("Projects: 0"); // A newly initialized DB has 0 projects until analyzed
+    // InitService always creates exactly one `projects` row as part of `init()` (ADR-034),
+    // so a freshly initialized (but not yet analyzed) workspace reports 1 project.
+    expect(result.stdout).toContain("Projects: 1");
     expect(result.stdout).toContain("L2 Nodes:");
     expect(result.stdout).toContain("L3 Decisions:");
   }, 25000);

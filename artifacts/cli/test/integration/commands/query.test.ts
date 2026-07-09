@@ -22,7 +22,7 @@ describe("Command: docuvia query", () => {
     // Assert
     expect(result).toBeInstanceOf(Error);
     expect(result.exitCode).toBe(1);
-    expect(result.stderr).toContain('Local database not found. Please run "docuvia.initProject"');
+    expect(result.stderr).toContain('Local database not found. Please run "docuvia init".');
   }, 15000);
 
   it("should query successfully after initialization", async () => {

@@ -98,7 +98,7 @@ export const UI_MESSAGES = {
   STATUS_PROJECTS: "Projects: ",
   STATUS_L2_NODES: "L2 Nodes: ",
   STATUS_L3_DECISIONS: "L3 Decisions: ",
-  STATUS_FAIL: "Failed to read index: ",
+  STATUS_FAIL: "Status check failed: ",
 
   // Sync Command
   SYNC_MISSING_PROJECT_ID: "Missing required argument: <project_id>",

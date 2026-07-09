@@ -3,7 +3,7 @@ import { snapshotCommand } from "../../../src/commands/snapshot.js";
 import { ui } from "../../../src/ui/wizard.js";
 import process from "process";
 import { DI_TOKENS, DI_KEYS, container } from "@workspace/core";
-import fs from "fs/promises";
+import * as fs from "fs/promises";
 
 // Ensure DI mapping exists
 const mockWriter = { packDirectoryToBranch: vi.fn() };

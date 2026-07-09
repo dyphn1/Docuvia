@@ -14,7 +14,7 @@ export const analyzeTool: McpTool = {
   },
   handler: withErrorHandling(MCP_TOOL_MESSAGES.ERROR_ANALYZING, async () => {
     const analyzeService = new AnalyzeService(process.cwd());
-    const result = await analyzeService.analyzeProject();
+    const result = await analyzeService.analyzeProject({});
     return {
       content: [
         {

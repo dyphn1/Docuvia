@@ -101,7 +101,9 @@ describe("Scenario: Human Workflow", () => {
         const result = await s.runCli(["status"]);
         expect(result.exitCode).toBe(0);
         expect(result.stdout).toContain("Docuvia Index Status");
-        expect(result.stdout).toContain("Projects: 0"); // AST fails in sandbox, so 0 is expected
+        // InitService always creates exactly one `projects` row as part of `init()` (ADR-034);
+        // this count is independent of whether AST parsing succeeded in the sandbox.
+        expect(result.stdout).toContain("Projects: 1");
       },
 
       // Step C: Trigger Local Packing (Sync Local)

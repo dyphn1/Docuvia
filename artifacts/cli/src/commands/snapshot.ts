@@ -6,6 +6,7 @@ import {
   GitNativePersistenceService,
   DI_TOKENS,
   DI_KEYS,
+  GitConstants,
 } from "@workspace/core";
 import process from "process";
 import fs from "fs/promises";
@@ -13,7 +14,6 @@ import path from "path";
 import os from "os";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
-import { DOCUVIA_KNOWLEDGE_BRANCH } from "../constants/docuvia-paths.js";
 import { resolveConfiguredService } from "../utils/resolve-service.js";
 
 export async function snapshotCommand(workspaceRoot: string = process.cwd()) {
@@ -54,7 +54,7 @@ export async function snapshotCommand(workspaceRoot: string = process.cwd()) {
       DI_TOKENS.LocalOrphanBranchWriter,
       { [DI_KEYS.WORKSPACE_ROOT]: workspaceRoot }
     );
-    await localWriter.packDirectoryToBranch(tempDir, DOCUVIA_KNOWLEDGE_BRANCH);
+    await localWriter.packDirectoryToBranch(tempDir, GitConstants.KNOWLEDGE_ROOT);
 
     spinner.succeed(
       `${UI_MESSAGES.SNAPSHOT_SUCCESS} Nodes: ${result.l2Created + result.l3Created}, Links: ${result.linksCreated}`

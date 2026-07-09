@@ -5,6 +5,7 @@ import { db } from "@workspace/db";
 import { l1TagsTable, l2NodesTable, l3NodesTable } from "@workspace/db";
 import { eq, sql } from "drizzle-orm";
 import { logger } from "../utils/logger.js";
+import { GitConstants } from "../constants/git.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -127,7 +128,7 @@ export async function writeKnowledgeToOrphanBranch(projectId: number): Promise<v
       }
     }
 
-    const branch = "docuvia-knowledge";
+    const branch = GitConstants.KNOWLEDGE_ROOT;
     const now = Math.floor(Date.now() / 1000);
     const fastImportData = buildFastImportData(
       branch,

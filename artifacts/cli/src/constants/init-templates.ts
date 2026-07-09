@@ -83,15 +83,6 @@ export const HOOKS_JSON = JSON.stringify(
   2
 );
 
-export const GIT_POST_COMMIT_HOOK = `#!/bin/bash
-# Docuvia Knowledge Graph Evolver Hook
-# Non-intrusively extracts AST deltas in the background
-if command -v npx &> /dev/null; then
-  # Fire and forget (do not block commit)
-  npx --no-install docuvia snapshot > /dev/null 2>&1 &
-fi
-`;
-
 export const AGENT_INSTRUCTIONS = `
 <!-- ${AGENT_INSTRUCTIONS_MARKER} -->
 # Docuvia — Codebase Knowledge Evolver

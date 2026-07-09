@@ -110,4 +110,9 @@ export const UI_MESSAGES = {
   SYNC_START: "Syncing workspace to remote project ",
   SYNC_SUCCESS: "Remote sync completed successfully.",
   SYNC_FAIL: "Sync failed: ",
+
+  // Filesystem write helper (writeOrAppend)
+  FS_APPENDED: "Appended instructions to: ",
+  FS_ALREADY_EXISTS: "Instructions already exist in: ",
+  FS_CREATED: "Created: ",
 };

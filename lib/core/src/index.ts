@@ -72,6 +72,8 @@ export * from "./services/lsp/index.js";
 export * from "./services/generation/generate.service.js";
 export * from "./constants/risk-scores.js";
 export * from "./constants/git.js";
+export * from "./constants/paths.js";
+export * from "./constants/encoding.js";
 export * from "./interfaces/domain-services.interfaces.js";
 export * from "./interfaces/di-tokens.js";
 export * from "./interfaces/di-keys.js";

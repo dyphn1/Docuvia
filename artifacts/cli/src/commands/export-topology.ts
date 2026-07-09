@@ -1,15 +1,17 @@
 import * as fs from "fs";
 import * as path from "path";
 import process from "process";
-import { TopologyExportService, TopologyCollapseMode, DI_TOKENS, DI_KEYS } from "@workspace/core";
+import {
+  TopologyExportService,
+  TopologyCollapseMode,
+  DI_TOKENS,
+  DI_KEYS,
+  DOCUVIA_DIR_NAME,
+} from "@workspace/core";
 import { renderTopologyHtml } from "./topology-html-template.js";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
-import {
-  DOCUVIA_DIR_NAME,
-  TOPOLOGY_JSON_FILENAME,
-  TOPOLOGY_HTML_FILENAME,
-} from "../constants/docuvia-paths.js";
+import { TOPOLOGY_JSON_FILENAME, TOPOLOGY_HTML_FILENAME } from "../constants/docuvia-paths.js";
 import { resolveConfiguredService } from "../utils/resolve-service.js";
 
 export interface ExportTopologyOptions {

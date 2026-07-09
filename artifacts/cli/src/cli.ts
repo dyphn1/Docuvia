@@ -51,10 +51,7 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
   const targetFile = ctx.parser.getPositional(0);
 
   if (ctx.isInteractive && !deep && !targetFile) {
-    deep = await ui.askConfirm(
-      "Would you like to enable deep scanning (extract L3 decisions)?",
-      false
-    );
+    deep = await ui.askConfirm(UI_MESSAGES.CLI_DEEP_SCAN_PROMPT, false);
   }
 
   await analyzeCommand(targetFile, deep, ctx.workspaceRoot);
@@ -88,15 +85,17 @@ async function handleSync(ctx: CommandContext): Promise<void> {
   await syncCommand({ projectId, commitSha }, ctx.workspaceRoot);
 }
 
+const COLLAPSE_CHOICE_NONE_VALUE = "none";
+
 async function askExportCollapseMode(): Promise<string | undefined> {
   const collapseChoices = [
-    { name: "No collapsing (Full graph)", value: "none" },
-    { name: "Collapse by File", value: CLI_COLLAPSE_OPTIONS.FILE },
-    { name: "Collapse by Symbol", value: CLI_COLLAPSE_OPTIONS.SYMBOL },
-    { name: "Auto-collapse based on size", value: CLI_COLLAPSE_OPTIONS.AUTO },
+    { name: UI_MESSAGES.CLI_COLLAPSE_CHOICE_NONE, value: COLLAPSE_CHOICE_NONE_VALUE },
+    { name: UI_MESSAGES.CLI_COLLAPSE_CHOICE_FILE, value: CLI_COLLAPSE_OPTIONS.FILE },
+    { name: UI_MESSAGES.CLI_COLLAPSE_CHOICE_SYMBOL, value: CLI_COLLAPSE_OPTIONS.SYMBOL },
+    { name: UI_MESSAGES.CLI_COLLAPSE_CHOICE_AUTO, value: CLI_COLLAPSE_OPTIONS.AUTO },
   ];
-  const res = await ui.askSelect("How should the topology be collapsed?", collapseChoices);
-  return res !== "none" ? res : undefined;
+  const res = await ui.askSelect(UI_MESSAGES.CLI_COLLAPSE_PROMPT, collapseChoices);
+  return res !== COLLAPSE_CHOICE_NONE_VALUE ? res : undefined;
 }
 
 async function handleExport(ctx: CommandContext): Promise<void> {

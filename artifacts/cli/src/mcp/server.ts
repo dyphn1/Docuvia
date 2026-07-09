@@ -2,7 +2,12 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { allTools, toolDefinitions } from "./tools/index.js";
-import { MCP_SERVER_NAME, MCP_SERVER_VERSION, MCP_SERVER_READY_MESSAGE } from "./constants.js";
+import {
+  MCP_SERVER_NAME,
+  MCP_SERVER_VERSION,
+  MCP_SERVER_READY_MESSAGE,
+  MCP_TOOL_NOT_FOUND_MESSAGE,
+} from "./constants.js";
 
 export async function runMcpServer() {
   const server = new Server(
@@ -31,7 +36,7 @@ export async function runMcpServer() {
       return tool.handler(args);
     }
 
-    throw new Error(`Tool not found: ${name}`);
+    throw new Error(MCP_TOOL_NOT_FOUND_MESSAGE(name));
   });
 
   const transport = new StdioServerTransport();

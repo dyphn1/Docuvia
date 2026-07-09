@@ -11,11 +11,16 @@ import {
   HOOKS_CONFIG_FILENAME,
   CURSOR_MCP_CONFIG_PATH,
   MCP_SERVER_ALIAS,
+  PLATFORM_NAME_CURSOR,
+  NPX_COMMAND,
+  NPX_NO_INSTALL_FLAG,
+  DOCUVIA_MCP_LAUNCH_ARGS,
 } from "../constants/init-templates.js";
+import { UTF8_ENCODING } from "../constants/encoding.js";
 import { writeOrAppend } from "../utils/fs-utils.js";
 
 export class CursorPlatform extends BasePlatform {
-  readonly name = "Cursor";
+  readonly name = PLATFORM_NAME_CURSOR;
 
   async configure(cwd: string): Promise<void> {
     await this.configureHooks(cwd);
@@ -45,15 +50,15 @@ export class CursorPlatform extends BasePlatform {
     try {
       let cursorMcp: any = { mcpServers: {} };
       try {
-        const existing = await fs.readFile(cursorMcpPath, "utf8");
+        const existing = await fs.readFile(cursorMcpPath, UTF8_ENCODING);
         cursorMcp = JSON.parse(existing);
       } catch {
         await fs.mkdir(path.dirname(cursorMcpPath), { recursive: true });
       }
       cursorMcp.mcpServers = cursorMcp.mcpServers || {};
       cursorMcp.mcpServers[MCP_SERVER_ALIAS] = {
-        command: "npx",
-        args: ["--no-install", "docuvia", "mcp"],
+        command: NPX_COMMAND,
+        args: [NPX_NO_INSTALL_FLAG, ...DOCUVIA_MCP_LAUNCH_ARGS],
       };
       await fs.writeFile(cursorMcpPath, JSON.stringify(cursorMcp, null, 2));
       ui.success(UI_MESSAGES.INIT_HOOKS_REGISTERED_MCP + cursorMcpPath);

@@ -6,6 +6,12 @@ export const UI_MESSAGES = {
   CLI_FATAL_ERROR: "Fatal error: ",
   CLI_EXPORT_USAGE:
     "Usage: docuvia export --topology [--json] [--out=DIR] [--collapse=file|symbol|auto]",
+  CLI_DEEP_SCAN_PROMPT: "Would you like to enable deep scanning (extract L3 decisions)?",
+  CLI_COLLAPSE_PROMPT: "How should the topology be collapsed?",
+  CLI_COLLAPSE_CHOICE_NONE: "No collapsing (Full graph)",
+  CLI_COLLAPSE_CHOICE_FILE: "Collapse by File",
+  CLI_COLLAPSE_CHOICE_SYMBOL: "Collapse by Symbol",
+  CLI_COLLAPSE_CHOICE_AUTO: "Auto-collapse based on size",
 
   // Init Command
   INIT_HEADER: "Initialize Docuvia",

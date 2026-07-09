@@ -12,21 +12,32 @@ import {
   HOOKS_CONFIG_FILENAME,
   CLAUDE_DESKTOP_CONFIG_FILENAME,
   MCP_SERVER_ALIAS,
+  PLATFORM_NAME_CLAUDE,
+  NPX_COMMAND,
+  NPX_YES_FLAG,
+  DOCUVIA_MCP_LAUNCH_ARGS,
+  DOCUVIA_WORKSPACE_ROOT_ENV_VAR,
 } from "../constants/init-templates.js";
+import { UTF8_ENCODING } from "../constants/encoding.js";
 import { writeOrAppend } from "../utils/fs-utils.js";
 
 function resolveClaudeDesktopConfigDir(): string {
   if (process.platform === "win32") {
-    return path.join(process.env.APPDATA || "", "Claude");
+    return path.join(process.env.APPDATA || "", PLATFORM_NAME_CLAUDE);
   }
   if (process.platform === "darwin") {
-    return path.join(process.env.HOME || "", "Library", "Application Support", "Claude");
+    return path.join(
+      process.env.HOME || "",
+      "Library",
+      "Application Support",
+      PLATFORM_NAME_CLAUDE
+    );
   }
-  return path.join(process.env.HOME || "", ".config", "Claude");
+  return path.join(process.env.HOME || "", ".config", PLATFORM_NAME_CLAUDE);
 }
 
 export class ClaudePlatform extends BasePlatform {
-  readonly name = "Claude";
+  readonly name = PLATFORM_NAME_CLAUDE;
 
   async configure(cwd: string): Promise<void> {
     await this.configureHooks(cwd);
@@ -56,7 +67,7 @@ export class ClaudePlatform extends BasePlatform {
     try {
       let claudeMcp: any = { mcpServers: {} };
       try {
-        const existing = await fs.readFile(claudeMcpPath, "utf8");
+        const existing = await fs.readFile(claudeMcpPath, UTF8_ENCODING);
         claudeMcp = JSON.parse(existing);
       } catch {
         await fs.mkdir(path.dirname(claudeMcpPath), { recursive: true });
@@ -65,10 +76,10 @@ export class ClaudePlatform extends BasePlatform {
 
       // For global Claude config, we must provide the absolute path to the project to run npx properly
       claudeMcp.mcpServers[MCP_SERVER_ALIAS] = {
-        command: "npx",
-        args: ["-y", "docuvia", "mcp"],
+        command: NPX_COMMAND,
+        args: [NPX_YES_FLAG, ...DOCUVIA_MCP_LAUNCH_ARGS],
         env: {
-          DOCUVIA_WORKSPACE_ROOT: cwd,
+          [DOCUVIA_WORKSPACE_ROOT_ENV_VAR]: cwd,
         },
       };
 

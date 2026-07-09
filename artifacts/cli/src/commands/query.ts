@@ -10,7 +10,7 @@ export function formatPromptOutput(results: any): string {
     output += `  <l2_module name="${results.l2.name}">\n`;
   }
   for (const l3 of results.l3) {
-    output += `    <l3_decision title="${l3.title}" status="${l3.status || "unknown"}">\n      ${l3.content || ""}\n    </l3_decision>\n`;
+    output += `    <l3_decision title="${l3.title}" status="${l3.status || UI_MESSAGES.QUERY_UNKNOWN_STATUS}">\n      ${l3.content || ""}\n    </l3_decision>\n`;
   }
   if (results.l2) {
     output += `  </l2_module>\n`;

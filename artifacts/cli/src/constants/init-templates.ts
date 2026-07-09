@@ -10,11 +10,22 @@ export const CURSOR_MCP_CONFIG_PATH = ".cursor/mcp.json";
 export const CLAUDE_DESKTOP_CONFIG_FILENAME = "claude_desktop_config.json";
 export const MCP_SERVER_ALIAS = "docuvia-local";
 
-export const GITHUB_COPILOT_INSTRUCTIONS_PATH = ".github/copilot-instructions.md";
+export const COPILOT_INSTRUCTIONS_FILENAME = "copilot-instructions.md";
 export const CLAUDE_MD_FILENAME = "CLAUDE.md";
 export const WINDSURF_RULES_FILENAME = ".windsurfrules";
 export const CURSOR_RULES_FILENAME = ".cursorrules";
 export const LLMS_TXT_FILENAME = "llms.txt";
+export const AGENT_INSTRUCTIONS_MARKER = "docuvia:start";
+
+export const PLATFORM_NAME_CURSOR = "Cursor";
+export const PLATFORM_NAME_CLAUDE = "Claude";
+export const PLATFORM_NAME_MARKDOWN_AGENTS = "Markdown Agents";
+
+export const NPX_COMMAND = "npx";
+export const NPX_YES_FLAG = "-y";
+export const NPX_NO_INSTALL_FLAG = "--no-install";
+export const DOCUVIA_MCP_LAUNCH_ARGS = ["docuvia", "mcp"];
+export const DOCUVIA_WORKSPACE_ROOT_ENV_VAR = "DOCUVIA_WORKSPACE_ROOT";
 
 export const DOCUVIA_HOOK_JS = `#!/usr/bin/env node
 /**
@@ -82,7 +93,7 @@ fi
 `;
 
 export const AGENT_INSTRUCTIONS = `
-<!-- docuvia:start -->
+<!-- ${AGENT_INSTRUCTIONS_MARKER} -->
 # Docuvia — Codebase Knowledge Evolver
 
 This project uses Docuvia to manage architectural context and prevent blast-radius regressions.

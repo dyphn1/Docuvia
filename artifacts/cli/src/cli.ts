@@ -33,169 +33,187 @@ function printUsage() {
   console.error(getUsageText());
 }
 
-async function main() {
-  // Initialize Dependency Injection
-  setupDI();
+interface CommandContext {
+  parser: ArgParser;
+  isInteractive: boolean;
+  workspaceRoot: string;
+}
 
-  let command = process.argv[2] as CliCommand | undefined;
-  const rawArgs = process.argv.slice(3);
-  const parser = new ArgParser(rawArgs);
+async function handleInit(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([]);
+  await initCommand(ctx.workspaceRoot);
+}
 
-  let isInteractive = false;
-  // Interactive fallback when no command is provided
-  if (!command) {
-    if (!process.stdin.isTTY) {
-      printUsage();
-      process.exit(1);
-    }
+async function handleAnalyze(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([CLI_FLAGS.DEEP]);
 
-    isInteractive = true;
-    ui.header(UI_MESSAGES.CLI_HEADER);
-    const choices = Object.values(CLI_COMMANDS)
-      // Hide MCP and EXPORT from interactive menu as they are internal/CI tools
-      .filter((cmd) => cmd !== CLI_COMMANDS.MCP && cmd !== CLI_COMMANDS.EXPORT)
-      .map((cmd) => ({
-        name: cmd,
-        value: cmd,
-        description: CLI_COMMAND_DESCRIPTIONS[cmd],
-      }));
+  let deep = ctx.parser.hasFlag(CLI_FLAGS.DEEP);
+  const targetFile = ctx.parser.getPositional(0);
 
-    command = (await ui.askSelect(UI_MESSAGES.CLI_PROMPT_ACTION, choices)) as CliCommand;
+  if (ctx.isInteractive && !deep && !targetFile) {
+    deep = await ui.askConfirm(
+      "Would you like to enable deep scanning (extract L3 decisions)?",
+      false
+    );
   }
 
-  try {
-    switch (command) {
-      case CLI_COMMANDS.INIT:
-        parser.checkUnknownFlags([]);
-        await initCommand();
-        break;
+  await analyzeCommand(targetFile, deep, ctx.workspaceRoot);
+}
 
-      case CLI_COMMANDS.ANALYZE: {
-        parser.checkUnknownFlags([CLI_FLAGS.DEEP]);
+async function handleStatus(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([]);
+  await statusCommand(ctx.workspaceRoot);
+}
 
-        let deep = parser.hasFlag(CLI_FLAGS.DEEP);
-        let targetFile = parser.getPositional(0);
+async function handleClean(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([]);
+  await cleanCommand(ctx.workspaceRoot);
+}
 
-        if (isInteractive && !deep && !targetFile) {
-          const answer = await ui.askConfirm(
-            "Would you like to enable deep scanning (extract L3 decisions)?",
-            false
-          );
-          deep = answer;
-        }
+async function handleReview(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([CLI_FLAGS.BASE_REF]);
+  const baseRef = ctx.parser.getFlagValue(CLI_FLAGS.BASE_REF);
+  await reviewCommand(baseRef, ctx.workspaceRoot);
+}
 
-        await analyzeCommand(targetFile, deep);
-        break;
-      }
+async function handleSnapshot(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([]);
+  await snapshotCommand(ctx.workspaceRoot);
+}
 
-      case CLI_COMMANDS.STATUS:
-        parser.checkUnknownFlags([]);
-        await statusCommand();
-        break;
+async function handleSync(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([]);
+  const projectId = ctx.parser.getPositional(0);
+  const commitSha = ctx.parser.getPositional(1);
+  await syncCommand({ projectId, commitSha }, ctx.workspaceRoot);
+}
 
-      case CLI_COMMANDS.CLEAN:
-        parser.checkUnknownFlags([]);
-        await cleanCommand();
-        break;
+async function askExportCollapseMode(): Promise<string | undefined> {
+  const collapseChoices = [
+    { name: "No collapsing (Full graph)", value: "none" },
+    { name: "Collapse by File", value: CLI_COLLAPSE_OPTIONS.FILE },
+    { name: "Collapse by Symbol", value: CLI_COLLAPSE_OPTIONS.SYMBOL },
+    { name: "Auto-collapse based on size", value: CLI_COLLAPSE_OPTIONS.AUTO },
+  ];
+  const res = await ui.askSelect("How should the topology be collapsed?", collapseChoices);
+  return res !== "none" ? res : undefined;
+}
 
-      case CLI_COMMANDS.REVIEW: {
-        parser.checkUnknownFlags([CLI_FLAGS.BASE_REF]);
-        const baseRef = parser.getFlagValue(CLI_FLAGS.BASE_REF);
-        await reviewCommand(baseRef);
-        break;
-      }
+async function handleExport(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([
+    CLI_FLAGS.TOPOLOGY,
+    CLI_FLAGS.JSON,
+    CLI_FLAGS.OUT,
+    CLI_FLAGS.COLLAPSE,
+  ]);
 
-      case CLI_COMMANDS.SNAPSHOT:
-        parser.checkUnknownFlags([]);
-        await snapshotCommand();
-        break;
+  let isTopology = ctx.parser.hasFlag(CLI_FLAGS.TOPOLOGY);
+  const jsonOnly = ctx.parser.hasFlag(CLI_FLAGS.JSON);
+  const out = ctx.parser.getFlagValue(CLI_FLAGS.OUT);
+  let collapseVal = ctx.parser.getFlagValue(CLI_FLAGS.COLLAPSE);
 
-      case CLI_COMMANDS.SYNC: {
-        parser.checkUnknownFlags([]);
-        const projectId = parser.getPositional(0);
-        const commitSha = parser.getPositional(1);
-        await syncCommand({ projectId, commitSha });
-        break;
-      }
-
-      case CLI_COMMANDS.EXPORT: {
-        parser.checkUnknownFlags([
-          CLI_FLAGS.TOPOLOGY,
-          CLI_FLAGS.JSON,
-          CLI_FLAGS.OUT,
-          CLI_FLAGS.COLLAPSE,
-        ]);
-
-        let isTopology = parser.hasFlag(CLI_FLAGS.TOPOLOGY);
-        let jsonOnly = parser.hasFlag(CLI_FLAGS.JSON);
-        let out = parser.getFlagValue(CLI_FLAGS.OUT);
-        let collapseVal = parser.getFlagValue(CLI_FLAGS.COLLAPSE);
-
-        if (isInteractive) {
-          isTopology = true; // Auto enable for wizard
-          if (!collapseVal) {
-            const collapseChoices = [
-              { name: "No collapsing (Full graph)", value: "none" },
-              { name: "Collapse by File", value: CLI_COLLAPSE_OPTIONS.FILE },
-              { name: "Collapse by Symbol", value: CLI_COLLAPSE_OPTIONS.SYMBOL },
-              { name: "Auto-collapse based on size", value: CLI_COLLAPSE_OPTIONS.AUTO },
-            ];
-            const res = await ui.askSelect(
-              "How should the topology be collapsed?",
-              collapseChoices
-            );
-            if (res !== "none") collapseVal = res;
-          }
-        }
-
-        if (!isTopology) {
-          ui.error(UI_MESSAGES.CLI_EXPORT_USAGE);
-          process.exit(1);
-        }
-
-        let collapse: TopologyCollapseMode | undefined;
-
-        if (
-          collapseVal === CLI_COLLAPSE_OPTIONS.FILE ||
-          collapseVal === CLI_COLLAPSE_OPTIONS.SYMBOL ||
-          collapseVal === CLI_COLLAPSE_OPTIONS.AUTO
-        ) {
-          collapse = collapseVal as TopologyCollapseMode;
-        }
-
-        await exportTopologyCommand({
-          jsonOnly,
-          out,
-          collapse,
-        });
-        break;
-      }
-
-      case CLI_COMMANDS.MCP:
-        parser.checkUnknownFlags([]);
-        await runMcpServer();
-        return; // keep alive for stdio transport
-
-      case CLI_COMMANDS.QUERY: {
-        parser.checkUnknownFlags([CLI_FLAGS.LOCAL, CLI_FLAGS.FORMAT]);
-        const target = parser.getPositional(0) || "";
-        const isLocal = parser.hasFlag(CLI_FLAGS.LOCAL);
-        const formatVal = parser.getFlagValue(CLI_FLAGS.FORMAT);
-
-        let format: "human" | "prompt" | undefined;
-        if (formatVal === CLI_FORMAT_OPTIONS.HUMAN || formatVal === CLI_FORMAT_OPTIONS.PROMPT) {
-          format = formatVal as "human" | "prompt";
-        }
-
-        await queryCommand(target, { local: isLocal, format });
-        break;
-      }
-
-      default:
-        ui.error(UI_MESSAGES.CLI_UNKNOWN_COMMAND + command);
-        printUsage();
-        process.exit(1);
+  if (ctx.isInteractive) {
+    isTopology = true; // Auto enable for wizard
+    if (!collapseVal) {
+      collapseVal = await askExportCollapseMode();
     }
+  }
+
+  if (!isTopology) {
+    ui.error(UI_MESSAGES.CLI_EXPORT_USAGE);
+    process.exit(1);
+  }
+
+  let collapse: TopologyCollapseMode | undefined;
+  if (
+    collapseVal === CLI_COLLAPSE_OPTIONS.FILE ||
+    collapseVal === CLI_COLLAPSE_OPTIONS.SYMBOL ||
+    collapseVal === CLI_COLLAPSE_OPTIONS.AUTO
+  ) {
+    collapse = collapseVal as TopologyCollapseMode;
+  }
+
+  await exportTopologyCommand({ jsonOnly, out, collapse, workspaceRoot: ctx.workspaceRoot });
+}
+
+async function handleMcp(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([]);
+  await runMcpServer();
+}
+
+async function handleQuery(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([CLI_FLAGS.LOCAL, CLI_FLAGS.FORMAT]);
+  const target = ctx.parser.getPositional(0) || "";
+  const isLocal = ctx.parser.hasFlag(CLI_FLAGS.LOCAL);
+  const formatVal = ctx.parser.getFlagValue(CLI_FLAGS.FORMAT);
+
+  let format: "human" | "prompt" | undefined;
+  if (formatVal === CLI_FORMAT_OPTIONS.HUMAN || formatVal === CLI_FORMAT_OPTIONS.PROMPT) {
+    format = formatVal as "human" | "prompt";
+  }
+
+  await queryCommand(target, { local: isLocal, format }, ctx.workspaceRoot);
+}
+
+const COMMAND_HANDLERS: Record<CliCommand, (ctx: CommandContext) => Promise<void>> = {
+  [CLI_COMMANDS.INIT]: handleInit,
+  [CLI_COMMANDS.ANALYZE]: handleAnalyze,
+  [CLI_COMMANDS.STATUS]: handleStatus,
+  [CLI_COMMANDS.CLEAN]: handleClean,
+  [CLI_COMMANDS.REVIEW]: handleReview,
+  [CLI_COMMANDS.SNAPSHOT]: handleSnapshot,
+  [CLI_COMMANDS.SYNC]: handleSync,
+  [CLI_COMMANDS.EXPORT]: handleExport,
+  [CLI_COMMANDS.MCP]: handleMcp,
+  [CLI_COMMANDS.QUERY]: handleQuery,
+};
+
+async function resolveCommand(): Promise<{
+  command: CliCommand | undefined;
+  isInteractive: boolean;
+}> {
+  const command = process.argv[2] as CliCommand | undefined;
+  if (command) {
+    return { command, isInteractive: false };
+  }
+
+  if (!process.stdin.isTTY) {
+    printUsage();
+    process.exit(1);
+  }
+
+  ui.header(UI_MESSAGES.CLI_HEADER);
+  const choices = Object.values(CLI_COMMANDS)
+    // Hide MCP and EXPORT from interactive menu as they are internal/CI tools
+    .filter((cmd) => cmd !== CLI_COMMANDS.MCP && cmd !== CLI_COMMANDS.EXPORT)
+    .map((cmd) => ({
+      name: cmd,
+      value: cmd,
+      description: CLI_COMMAND_DESCRIPTIONS[cmd],
+    }));
+
+  const selected = (await ui.askSelect(UI_MESSAGES.CLI_PROMPT_ACTION, choices)) as CliCommand;
+  return { command: selected, isInteractive: true };
+}
+
+async function main() {
+  setupDI();
+
+  const rawArgs = process.argv.slice(3);
+  const parser = new ArgParser(rawArgs);
+  const workspaceRoot = process.cwd();
+  const { command, isInteractive } = await resolveCommand();
+  const handler = command ? COMMAND_HANDLERS[command] : undefined;
+
+  try {
+    if (!handler) {
+      ui.error(UI_MESSAGES.CLI_UNKNOWN_COMMAND + command);
+      printUsage();
+      process.exit(1);
+      return;
+    }
+
+    await handler({ parser, isInteractive, workspaceRoot });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
     ui.error(UI_MESSAGES.CLI_FATAL_ERROR + msg);

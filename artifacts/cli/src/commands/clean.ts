@@ -1,9 +1,10 @@
-import { CleanService, DI_TOKENS, DI_KEYS, container } from "@workspace/core";
+import { CleanService, DI_TOKENS, DI_KEYS } from "@workspace/core";
 import process from "process";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { resolveConfiguredService } from "../utils/resolve-service.js";
 
-export async function cleanCommand() {
+export async function cleanCommand(workspaceRoot: string = process.cwd()) {
   ui.header(UI_MESSAGES.CLEAN_HEADER);
 
   if (process.stdin.isTTY) {
@@ -17,8 +18,9 @@ export async function cleanCommand() {
   const spinner = ui.spinner(UI_MESSAGES.CLEAN_START).start();
 
   try {
-    const cleanService = container.resolve<CleanService>(DI_TOKENS.CleanService);
-    (cleanService as any)[DI_KEYS.WORKSPACE_ROOT] = process.cwd();
+    const cleanService = resolveConfiguredService<CleanService>(DI_TOKENS.CleanService, {
+      [DI_KEYS.WORKSPACE_ROOT]: workspaceRoot,
+    });
     const result = await cleanService.clean();
     spinner.succeed(UI_MESSAGES.CLEAN_SUCCESS + " " + result.message);
   } catch (e: any) {

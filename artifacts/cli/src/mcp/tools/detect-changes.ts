@@ -1,6 +1,7 @@
 import { ChangeDetectionService } from "@workspace/core";
 import type { McpTool } from "./types.js";
 import { withErrorHandling } from "./wrapper.js";
+import { MCP_TOOL_MESSAGES } from "./messages.js";
 
 export const detectChangesTool: McpTool = {
   definition: {
@@ -16,7 +17,7 @@ export const detectChangesTool: McpTool = {
       },
     },
   },
-  handler: withErrorHandling("Error detecting changes", async (args: any) => {
+  handler: withErrorHandling(MCP_TOOL_MESSAGES.ERROR_DETECTING_CHANGES, async (args: any) => {
     const baseRef = args?.baseRef as string | undefined;
     const changeDetectionService = new ChangeDetectionService(process.cwd());
     const result = await changeDetectionService.detectChanges(baseRef);

@@ -1,16 +1,17 @@
-import { ChangeDetectionService, DI_TOKENS, DI_KEYS, container } from "@workspace/core";
+import { ChangeDetectionService, DI_TOKENS, DI_KEYS } from "@workspace/core";
 import process from "process";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { resolveConfiguredService } from "../utils/resolve-service.js";
 
-export async function reviewCommand(baseRef?: string) {
+export async function reviewCommand(baseRef?: string, workspaceRoot: string = process.cwd()) {
   ui.header(UI_MESSAGES.REVIEW_HEADER);
   const spinner = ui.spinner(UI_MESSAGES.REVIEW_START).start();
   try {
-    const changeDetectionService = container.resolve<ChangeDetectionService>(
-      DI_TOKENS.ChangeDetectionService
+    const changeDetectionService = resolveConfiguredService<ChangeDetectionService>(
+      DI_TOKENS.ChangeDetectionService,
+      { [DI_KEYS.WORKSPACE_ROOT]: workspaceRoot }
     );
-    (changeDetectionService as any)[DI_KEYS.WORKSPACE_ROOT] = process.cwd();
     const result = await changeDetectionService.detectChanges(baseRef);
     spinner.succeed(
       UI_MESSAGES.REVIEW_SUCCESS + (baseRef ? `${UI_MESSAGES.REVIEW_AGAINST}${baseRef}` : "")

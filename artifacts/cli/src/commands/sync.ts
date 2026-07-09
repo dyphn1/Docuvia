@@ -1,8 +1,9 @@
-import { SyncService, DI_TOKENS, DI_KEYS, container } from "@workspace/core";
+import { SyncService, DI_TOKENS, DI_KEYS } from "@workspace/core";
 import { createInterface } from "readline";
 import process from "process";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { resolveConfiguredService } from "../utils/resolve-service.js";
 
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
@@ -15,24 +16,30 @@ function readStdin(): Promise<string> {
   });
 }
 
-export async function syncCommand(options: { projectId?: string; commitSha?: string }) {
-  let projectId = options.projectId;
+async function resolveProjectId(projectId?: string): Promise<string> {
+  if (projectId) return projectId;
 
-  if (!projectId) {
-    if (!process.stdin.isTTY) {
-      ui.error(UI_MESSAGES.SYNC_MISSING_PROJECT_ID);
-      process.exit(1);
-    }
-
-    // Interactive prompt for project ID if missing
-    ui.info("No Project ID provided.");
-    projectId = await ui.askInput(UI_MESSAGES.SYNC_PROMPT_PROJECT_ID);
-
-    if (!projectId) {
-      ui.error("Project ID is required.");
-      process.exit(1);
-    }
+  if (!process.stdin.isTTY) {
+    ui.error(UI_MESSAGES.SYNC_MISSING_PROJECT_ID);
+    process.exit(1);
   }
+
+  ui.info(UI_MESSAGES.SYNC_NO_PROJECT_ID_PROVIDED);
+  const enteredProjectId = await ui.askInput(UI_MESSAGES.SYNC_PROMPT_PROJECT_ID);
+
+  if (!enteredProjectId) {
+    ui.error(UI_MESSAGES.SYNC_PROJECT_ID_REQUIRED);
+    process.exit(1);
+  }
+
+  return enteredProjectId;
+}
+
+export async function syncCommand(
+  options: { projectId?: string; commitSha?: string },
+  workspaceRoot: string = process.cwd()
+) {
+  const projectId = await resolveProjectId(options.projectId);
 
   if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
     ui.warn(UI_MESSAGES.SYNC_MISSING_ENV);
@@ -44,14 +51,14 @@ export async function syncCommand(options: { projectId?: string; commitSha?: str
 
   const spinner = ui.spinner(UI_MESSAGES.SYNC_START + projectId + "...").start();
 
-  const syncService = container.resolve<SyncService>(DI_TOKENS.SyncService);
-  // Bind properties that were originally in the constructor
-  (syncService as any)[DI_KEYS.WORKSPACE_ROOT] = process.cwd();
-  (syncService as any)[DI_KEYS.API_URL] = process.env.DOCUVIA_API_URL;
-  (syncService as any)[DI_KEYS.PAT] = process.env.MCP_PAT;
-  (syncService as any)[DI_KEYS.LOG_CALLBACK] = (msg: string) => {
-    spinner.text = msg;
-  };
+  const syncService = resolveConfiguredService<SyncService>(DI_TOKENS.SyncService, {
+    [DI_KEYS.WORKSPACE_ROOT]: workspaceRoot,
+    [DI_KEYS.API_URL]: process.env.DOCUVIA_API_URL,
+    [DI_KEYS.PAT]: process.env.MCP_PAT,
+    [DI_KEYS.LOG_CALLBACK]: (msg: string) => {
+      spinner.text = msg;
+    },
+  });
 
   try {
     await syncService.sync(projectId, commitSha);

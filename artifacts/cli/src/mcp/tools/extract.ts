@@ -1,6 +1,7 @@
 import { ExtractService } from "@workspace/core";
 import type { McpTool } from "./types.js";
 import { withErrorHandling } from "./wrapper.js";
+import { MCP_TOOL_MESSAGES } from "./messages.js";
 
 export const extractTool: McpTool = {
   definition: {
@@ -17,11 +18,11 @@ export const extractTool: McpTool = {
       required: ["filePath"],
     },
   },
-  handler: withErrorHandling("Error extracting decisions", async (args: any) => {
+  handler: withErrorHandling(MCP_TOOL_MESSAGES.ERROR_EXTRACTING, async (args: any) => {
     const filePath = args?.filePath as string;
     if (!filePath) {
       return {
-        content: [{ type: "text", text: "Error: Missing 'filePath' argument." }],
+        content: [{ type: "text", text: MCP_TOOL_MESSAGES.ERROR_MISSING_FILE_PATH }],
         isError: true,
       };
     }
@@ -32,7 +33,7 @@ export const extractTool: McpTool = {
       content: [
         {
           type: "text",
-          text: `Extraction complete.\nDecisions:\n${result.decisions.map((d: string) => `- ${d}`).join("\n")}`,
+          text: MCP_TOOL_MESSAGES.EXTRACT_COMPLETE(result.decisions),
         },
       ],
     };

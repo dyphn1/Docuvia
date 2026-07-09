@@ -1,29 +1,30 @@
 import * as path from "path";
 import { BasePlatform } from "./base.platform.js";
 import { AGENT_INSTRUCTIONS, GITHUB_DIR } from "../constants/init-templates.js";
+import {
+  CLAUDE_MD_FILENAME,
+  WINDSURF_RULES_FILENAME,
+  CURSOR_RULES_FILENAME,
+  LLMS_TXT_FILENAME,
+} from "../constants/init-templates.js";
 import { writeOrAppend } from "../utils/fs-utils.js";
+
+const AGENT_INSTRUCTIONS_MARKER = "docuvia:start";
 
 export class GenericMarkdownPlatform extends BasePlatform {
   readonly name = "Markdown Agents";
 
   async configure(cwd: string): Promise<void> {
-    // GitHub Copilot
-    await writeOrAppend(
-      path.join(cwd, GITHUB_DIR, "copilot-instructions.md"),
-      AGENT_INSTRUCTIONS,
-      "docuvia:start"
-    );
+    const targetPaths = [
+      path.join(cwd, GITHUB_DIR, "copilot-instructions.md"), // GitHub Copilot
+      path.join(cwd, CLAUDE_MD_FILENAME), // Claude Desktop / Generic Markdown
+      path.join(cwd, WINDSURF_RULES_FILENAME),
+      path.join(cwd, CURSOR_RULES_FILENAME), // Fallback for non-hook Cursor modes
+      path.join(cwd, LLMS_TXT_FILENAME), // Standard LLM Crawler text
+    ];
 
-    // Claude Desktop / Generic Markdown
-    await writeOrAppend(path.join(cwd, "CLAUDE.md"), AGENT_INSTRUCTIONS, "docuvia:start");
-
-    // Windsurf
-    await writeOrAppend(path.join(cwd, ".windsurfrules"), AGENT_INSTRUCTIONS, "docuvia:start");
-
-    // Cursor Rules (Fallback for non-hook Cursor modes)
-    await writeOrAppend(path.join(cwd, ".cursorrules"), AGENT_INSTRUCTIONS, "docuvia:start");
-
-    // Standard LLM Crawler text
-    await writeOrAppend(path.join(cwd, "llms.txt"), AGENT_INSTRUCTIONS, "docuvia:start");
+    for (const targetPath of targetPaths) {
+      await writeOrAppend(targetPath, AGENT_INSTRUCTIONS, AGENT_INSTRUCTIONS_MARKER);
+    }
   }
 }

@@ -25,6 +25,7 @@ export const UI_MESSAGES = {
     "Supported platforms: Claude Code, Cursor, GitHub Copilot, Windsurf, Zed, Continue, OpenCode, Gemini CLI.",
   INIT_HOOKS_FAIL: "Failed to initialize agent integrations: ",
   INIT_HOOKS_SELECT: "Which AI Agent integrations would you like to install?",
+  INIT_HOOKS_NONE_SELECTED: "No platforms selected. Skipping agent integrations.",
 
   // Analyze Command
   ANALYZE_HEADER: "Analyze Workspace",
@@ -95,6 +96,8 @@ export const UI_MESSAGES = {
 
   // Sync Command
   SYNC_MISSING_PROJECT_ID: "Missing required argument: <project_id>",
+  SYNC_NO_PROJECT_ID_PROVIDED: "No Project ID provided.",
+  SYNC_PROJECT_ID_REQUIRED: "Project ID is required.",
   SYNC_PROMPT_PROJECT_ID: "Enter the Docuvia Project ID to sync with:",
   SYNC_MISSING_ENV: "DOCUVIA_API_URL or MCP_PAT is missing in the environment.",
   SYNC_SKIP: "Skipping remote sync. Please set these variables in your .env file or environment.",

@@ -1,6 +1,7 @@
 import { StatusService } from "@workspace/core";
 import type { McpTool } from "./types.js";
 import { withErrorHandling } from "./wrapper.js";
+import { MCP_TOOL_MESSAGES } from "./messages.js";
 
 export const statusTool: McpTool = {
   definition: {
@@ -11,14 +12,14 @@ export const statusTool: McpTool = {
       properties: {},
     },
   },
-  handler: withErrorHandling("Error checking status", async () => {
+  handler: withErrorHandling(MCP_TOOL_MESSAGES.ERROR_CHECKING_STATUS, async () => {
     const statusService = new StatusService(process.cwd());
     const status = await statusService.getStatus();
     return {
       content: [
         {
           type: "text",
-          text: `=== Docuvia Index Status ===\nProjects: ${status.projects}\nL2 Nodes: ${status.l2Nodes}\nL3 Decisions: ${status.l3Nodes}`,
+          text: MCP_TOOL_MESSAGES.STATUS_REPORT(status),
         },
       ],
     };

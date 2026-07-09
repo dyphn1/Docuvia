@@ -1,6 +1,7 @@
 import { SyncService } from "@workspace/core";
 import type { McpTool } from "./types.js";
 import { withErrorHandling } from "./wrapper.js";
+import { MCP_TOOL_MESSAGES } from "./messages.js";
 
 export const syncTool: McpTool = {
   definition: {
@@ -21,24 +22,19 @@ export const syncTool: McpTool = {
       required: ["projectId"],
     },
   },
-  handler: withErrorHandling("Error syncing project", async (args: any) => {
+  handler: withErrorHandling(MCP_TOOL_MESSAGES.ERROR_SYNCING, async (args: any) => {
     const projectId = args?.projectId as string;
     const commitSha = args?.commitSha as string | undefined;
     if (!projectId) {
       return {
-        content: [{ type: "text", text: "Error: Missing 'projectId' argument." }],
+        content: [{ type: "text", text: MCP_TOOL_MESSAGES.ERROR_MISSING_PROJECT_ID }],
         isError: true,
       };
     }
 
     if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
       return {
-        content: [
-          {
-            type: "text",
-            text: "Error: DOCUVIA_API_URL or MCP_PAT is missing in the environment.",
-          },
-        ],
+        content: [{ type: "text", text: MCP_TOOL_MESSAGES.ERROR_MISSING_SYNC_ENV }],
         isError: true,
       };
     }
@@ -50,7 +46,7 @@ export const syncTool: McpTool = {
     );
     await syncService.sync(projectId, commitSha);
     return {
-      content: [{ type: "text", text: `Sync completed for project ${projectId}.` }],
+      content: [{ type: "text", text: MCP_TOOL_MESSAGES.SYNC_COMPLETE(projectId) }],
     };
   }),
 };

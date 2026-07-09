@@ -2,6 +2,20 @@ export const CLAUDE_HOOKS_DIR = ".claude/hooks";
 export const CURSOR_HOOKS_DIR = ".cursor/hooks";
 export const GITHUB_DIR = ".github";
 
+export const DOCUVIA_HOOK_JS_FILENAME = "docuvia-hook.js";
+export const DOCUVIA_HOOK_CJS_FILENAME = "docuvia-hook.cjs";
+export const HOOKS_CONFIG_FILENAME = "hooks.json";
+
+export const CURSOR_MCP_CONFIG_PATH = ".cursor/mcp.json";
+export const CLAUDE_DESKTOP_CONFIG_FILENAME = "claude_desktop_config.json";
+export const MCP_SERVER_ALIAS = "docuvia-local";
+
+export const GITHUB_COPILOT_INSTRUCTIONS_PATH = ".github/copilot-instructions.md";
+export const CLAUDE_MD_FILENAME = "CLAUDE.md";
+export const WINDSURF_RULES_FILENAME = ".windsurfrules";
+export const CURSOR_RULES_FILENAME = ".cursorrules";
+export const LLMS_TXT_FILENAME = "llms.txt";
+
 export const DOCUVIA_HOOK_JS = `#!/usr/bin/env node
 /**
  * Docuvia Agent Hook

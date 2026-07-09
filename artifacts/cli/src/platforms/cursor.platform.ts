@@ -3,17 +3,29 @@ import * as path from "path";
 import { BasePlatform } from "./base.platform.js";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
-import { CURSOR_HOOKS_DIR, DOCUVIA_HOOK_JS, HOOKS_JSON } from "../constants/init-templates.js";
+import {
+  CURSOR_HOOKS_DIR,
+  DOCUVIA_HOOK_JS,
+  HOOKS_JSON,
+  DOCUVIA_HOOK_CJS_FILENAME,
+  HOOKS_CONFIG_FILENAME,
+  CURSOR_MCP_CONFIG_PATH,
+  MCP_SERVER_ALIAS,
+} from "../constants/init-templates.js";
 import { writeOrAppend } from "../utils/fs-utils.js";
 
 export class CursorPlatform extends BasePlatform {
   readonly name = "Cursor";
 
   async configure(cwd: string): Promise<void> {
-    // 1. Setup Executable Hooks
+    await this.configureHooks(cwd);
+    await this.configureMcpServer(cwd);
+  }
+
+  private async configureHooks(cwd: string): Promise<void> {
     const cursorHooksPath = path.join(cwd, CURSOR_HOOKS_DIR);
     await fs.mkdir(cursorHooksPath, { recursive: true });
-    await fs.writeFile(path.join(cursorHooksPath, "docuvia-hook.cjs"), DOCUVIA_HOOK_JS, {
+    await fs.writeFile(path.join(cursorHooksPath, DOCUVIA_HOOK_CJS_FILENAME), DOCUVIA_HOOK_JS, {
       mode: 0o755,
     });
 
@@ -22,13 +34,14 @@ export class CursorPlatform extends BasePlatform {
       "${CURSOR_PLUGIN_ROOT}/hooks"
     ).replace(".js", ".cjs");
     await writeOrAppend(
-      path.join(cursorHooksPath, "hooks.json"),
+      path.join(cursorHooksPath, HOOKS_CONFIG_FILENAME),
       cursorHooksConfig,
-      "docuvia-hook.cjs"
+      DOCUVIA_HOOK_CJS_FILENAME
     );
+  }
 
-    // 2. Setup MCP Server
-    const cursorMcpPath = path.join(cwd, ".cursor", "mcp.json");
+  private async configureMcpServer(cwd: string): Promise<void> {
+    const cursorMcpPath = path.join(cwd, CURSOR_MCP_CONFIG_PATH);
     try {
       let cursorMcp: any = { mcpServers: {} };
       try {
@@ -38,7 +51,7 @@ export class CursorPlatform extends BasePlatform {
         await fs.mkdir(path.dirname(cursorMcpPath), { recursive: true });
       }
       cursorMcp.mcpServers = cursorMcp.mcpServers || {};
-      cursorMcp.mcpServers["docuvia-local"] = {
+      cursorMcp.mcpServers[MCP_SERVER_ALIAS] = {
         command: "npx",
         args: ["--no-install", "docuvia", "mcp"],
       };

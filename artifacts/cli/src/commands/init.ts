@@ -1,32 +1,20 @@
-import * as fs from "fs/promises";
-import * as path from "path";
 import process from "process";
 import { ui } from "../ui/wizard.js";
-import { InitService, DI_TOKENS, DI_KEYS, container } from "@workspace/core";
+import { InitService, DI_TOKENS, DI_KEYS } from "@workspace/core";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { CursorPlatform, ClaudePlatform, GenericMarkdownPlatform } from "../platforms/index.js";
+import { resolveConfiguredService } from "../utils/resolve-service.js";
 
-export async function initCommand(cwd: string = process.cwd()) {
-  ui.header(UI_MESSAGES.INIT_HEADER);
-
-  // Optional interactive confirmation if TTY
-  if (process.stdin.isTTY) {
-    const proceed = await ui.askConfirm(UI_MESSAGES.INIT_CONFIRM, true);
-    if (!proceed) {
-      ui.warn(UI_MESSAGES.INIT_ABORTED);
-      process.exit(0);
-    }
-  }
-
+async function runDatabaseInit(cwd: string): Promise<void> {
   const spinner = ui.spinner(UI_MESSAGES.INIT_START).start();
 
   try {
-    const initService = container.resolve<InitService>(DI_TOKENS.InitService);
-    // Bind constructor dependencies manually since we didn't fully restructure InitService yet
-    (initService as any)[DI_KEYS.WORKSPACE_ROOT] = cwd;
-    (initService as any)[DI_KEYS.LOG_CALLBACK] = (msg: string) => {
-      spinner.text = msg;
-    };
+    const initService = resolveConfiguredService<InitService>(DI_TOKENS.InitService, {
+      [DI_KEYS.WORKSPACE_ROOT]: cwd,
+      [DI_KEYS.LOG_CALLBACK]: (msg: string) => {
+        spinner.text = msg;
+      },
+    });
 
     const result = await initService.init();
     spinner.succeed(result.message);
@@ -35,7 +23,9 @@ export async function initCommand(cwd: string = process.cwd()) {
     spinner.fail(UI_MESSAGES.INIT_FAILED + errorMessage);
     process.exit(1);
   }
+}
 
+async function configureAgentIntegrations(cwd: string): Promise<void> {
   ui.info(UI_MESSAGES.INIT_AGENT_HOOKS);
 
   try {
@@ -59,7 +49,7 @@ export async function initCommand(cwd: string = process.cwd()) {
     }
 
     if (selectedPlatforms.length === 0) {
-      ui.info("No platforms selected. Skipping agent integrations.");
+      ui.info(UI_MESSAGES.INIT_HOOKS_NONE_SELECTED);
       return;
     }
 
@@ -73,4 +63,20 @@ export async function initCommand(cwd: string = process.cwd()) {
     ui.error(UI_MESSAGES.INIT_HOOKS_FAIL + error);
     process.exit(1);
   }
+}
+
+export async function initCommand(cwd: string = process.cwd()) {
+  ui.header(UI_MESSAGES.INIT_HEADER);
+
+  // Optional interactive confirmation if TTY
+  if (process.stdin.isTTY) {
+    const proceed = await ui.askConfirm(UI_MESSAGES.INIT_CONFIRM, true);
+    if (!proceed) {
+      ui.warn(UI_MESSAGES.INIT_ABORTED);
+      process.exit(0);
+    }
+  }
+
+  await runDatabaseInit(cwd);
+  await configureAgentIntegrations(cwd);
 }

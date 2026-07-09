@@ -2,12 +2,13 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { allTools, toolDefinitions } from "./tools/index.js";
+import { MCP_SERVER_NAME, MCP_SERVER_VERSION, MCP_SERVER_READY_MESSAGE } from "./constants.js";
 
 export async function runMcpServer() {
   const server = new Server(
     {
-      name: "docuvia-local-mcp",
-      version: "0.1.0",
+      name: MCP_SERVER_NAME,
+      version: MCP_SERVER_VERSION,
     },
     {
       capabilities: {
@@ -35,5 +36,5 @@ export async function runMcpServer() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Docuvia Local MCP Server running on stdio");
+  console.error(MCP_SERVER_READY_MESSAGE);
 }

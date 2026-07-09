@@ -6,7 +6,6 @@ import {
   GitNativePersistenceService,
   DI_TOKENS,
   DI_KEYS,
-  container,
 } from "@workspace/core";
 import process from "process";
 import fs from "fs/promises";
@@ -14,13 +13,13 @@ import path from "path";
 import os from "os";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { DOCUVIA_KNOWLEDGE_BRANCH } from "../constants/docuvia-paths.js";
+import { resolveConfiguredService } from "../utils/resolve-service.js";
 
-export async function snapshotCommand() {
+export async function snapshotCommand(workspaceRoot: string = process.cwd()) {
   const spinner = ui.spinner(UI_MESSAGES.SNAPSHOT_START).start();
   let tempDir = "";
   try {
-    const workspaceRoot = process.cwd();
-
     spinner.text = UI_MESSAGES.SNAPSHOT_DISCOVER;
     const fileDiscovery = new FileDiscoveryService();
     // Pass an empty dbPath string to skip SQLite hash checking
@@ -51,11 +50,11 @@ export async function snapshotCommand() {
     await gitNativePersistence.processEvents(events, tempDir, result);
 
     spinner.text = UI_MESSAGES.SNAPSHOT_PACK;
-    const localWriter = container.resolve<LocalOrphanBranchWriter>(
-      DI_TOKENS.LocalOrphanBranchWriter
+    const localWriter = resolveConfiguredService<LocalOrphanBranchWriter>(
+      DI_TOKENS.LocalOrphanBranchWriter,
+      { [DI_KEYS.WORKSPACE_ROOT]: workspaceRoot }
     );
-    (localWriter as any)[DI_KEYS.WORKSPACE_ROOT] = workspaceRoot;
-    await localWriter.packDirectoryToBranch(tempDir, "docuvia-knowledge");
+    await localWriter.packDirectoryToBranch(tempDir, DOCUVIA_KNOWLEDGE_BRANCH);
 
     spinner.succeed(
       `${UI_MESSAGES.SNAPSHOT_SUCCESS} Nodes: ${result.l2Created + result.l3Created}, Links: ${result.linksCreated}`

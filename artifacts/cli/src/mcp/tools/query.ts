@@ -2,6 +2,7 @@ import { QueryService } from "@workspace/core";
 import { formatPromptOutput } from "../../commands/query.js";
 import type { McpTool } from "./types.js";
 import { withErrorHandling } from "./wrapper.js";
+import { MCP_TOOL_MESSAGES } from "./messages.js";
 
 export const queryLocalTool: McpTool = {
   definition: {
@@ -20,11 +21,11 @@ export const queryLocalTool: McpTool = {
       required: ["target"],
     },
   },
-  handler: withErrorHandling("Error executing query", async (args: any) => {
+  handler: withErrorHandling(MCP_TOOL_MESSAGES.ERROR_QUERYING, async (args: any) => {
     const target = args?.target as string;
     if (!target) {
       return {
-        content: [{ type: "text", text: "Error: Missing 'target' argument." }],
+        content: [{ type: "text", text: MCP_TOOL_MESSAGES.ERROR_MISSING_QUERY_TARGET }],
         isError: true,
       };
     }
@@ -33,7 +34,7 @@ export const queryLocalTool: McpTool = {
     const results = await queryService.query(target, { local: true });
     const contextData = formatPromptOutput(results);
     return {
-      content: [{ type: "text", text: contextData || "No context found." }],
+      content: [{ type: "text", text: contextData || MCP_TOOL_MESSAGES.NO_CONTEXT_FOUND }],
     };
   }),
 };

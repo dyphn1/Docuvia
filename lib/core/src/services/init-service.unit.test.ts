@@ -69,7 +69,7 @@ describe("InitService.init()", () => {
     astProcessor = {
       processFiles: vi.fn().mockImplementation(async () => {
         callOrder.push("processFiles");
-        return parsedResults;
+        return { parsed: parsedResults, failures: [] };
       }),
     };
 
@@ -175,5 +175,88 @@ describe("InitService.init()", () => {
     } finally {
       db.close();
     }
+  });
+
+  it("reports success:true, partialFailure:false, filesFailed:0 when all files parse", async () => {
+    const service = makeService();
+    const result = await service.init();
+
+    expect(result.success).toBe(true);
+    expect(result.partialFailure).toBe(false);
+    expect(result.filesRequested).toBe(filesToParse.length);
+    expect(result.filesParsed).toBe(parsedResults.length);
+    expect(result.filesFailed).toBe(0);
+    expect(result.message).toBe("Project initialized successfully");
+  });
+
+  it("reports partialFailure:true and a non-generic message when astProcessor.processFiles returns failures", async () => {
+    (astProcessor.processFiles as any).mockImplementation(async () => {
+      callOrder.push("processFiles");
+      return {
+        parsed: [],
+        failures: [{ file: "src/broken.ts", hash: "h", error: "Worker exited with code 1" }],
+      };
+    });
+    const service = makeService();
+    const result = await service.init();
+
+    expect(result.partialFailure).toBe(true);
+    expect(result.filesFailed).toBe(1);
+    expect(result.message).not.toBe("Project initialized successfully");
+    expect(result.message).toContain("1");
+    expect(result.failures).toEqual([
+      { file: "src/broken.ts", hash: "h", error: "Worker exited with code 1" },
+    ]);
+  });
+
+  it("reproduces the audit scenario: 13 of 50 files fail, init still completes and reports the exact counts", async () => {
+    // Representative smaller N (50 instead of the audit's 4236) to keep the test fast — the
+    // ratio (13 failures) matters more than the absolute count for this test's purpose.
+    const auditFilesToParse = Array.from({ length: 50 }, (_, i) => ({
+      file: `src/file-${i}.ts`,
+      hash: `hash-${i}`,
+      code: `// file ${i}`,
+    }));
+    const auditFailures = Array.from({ length: 13 }, (_, i) => ({
+      file: `src/file-${i}.ts`,
+      hash: `hash-${i}`,
+      error: "Worker exited with code 1",
+    }));
+    const auditParsed = auditFilesToParse.slice(13).map((f) => ({
+      file: f.file,
+      hash: f.hash,
+      data: { imports: [], exports: [], functions: [], classes: [], calls: [] },
+    }));
+
+    (fileDiscovery.discoverFiles as any).mockImplementation(async () => {
+      callOrder.push("discoverFiles");
+      return { filesToParse: auditFilesToParse, existingHashes: new Map(), skippedCount: 0 };
+    });
+    (astProcessor.processFiles as any).mockImplementation(async () => {
+      callOrder.push("processFiles");
+      return { parsed: auditParsed, failures: auditFailures };
+    });
+
+    const service = makeService();
+    const result = await service.init();
+
+    expect(result.filesRequested).toBe(50);
+    expect(result.filesParsed).toBe(37);
+    expect(result.filesFailed).toBe(13);
+    expect(result.filesParsed + result.filesFailed).toBe(result.filesRequested);
+    expect(result.success).toBe(true);
+    expect(result.partialFailure).toBe(true);
+
+    // G3: an agent could `Read` this exact file after a real run.
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "init.log");
+    expect(fs.existsSync(logPath)).toBe(true);
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .split("\n")
+      .filter((line) => line.length > 0)
+      .map((line) => JSON.parse(line));
+    const summaryLine = lines[lines.length - 1];
+    expect(summaryLine.event).toBe("init.summary");
+    expect(summaryLine.filesFailed).toBe(13);
   });
 });

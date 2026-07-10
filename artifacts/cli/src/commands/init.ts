@@ -17,7 +17,11 @@ async function runDatabaseInit(cwd: string): Promise<void> {
     });
 
     const result = await initService.init();
-    spinner.succeed(result.message);
+    if (result.partialFailure) {
+      spinner.warn(result.message);
+    } else {
+      spinner.succeed(result.message);
+    }
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     spinner.fail(UI_MESSAGES.INIT_FAILED + errorMessage);

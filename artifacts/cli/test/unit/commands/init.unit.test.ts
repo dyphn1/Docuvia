@@ -12,6 +12,10 @@ import {
 const mockInit = vi.fn();
 container.register(DI_TOKENS.InitService, { init: mockInit });
 
+const spinnerSucceed = vi.fn();
+const spinnerWarn = vi.fn();
+const spinnerFail = vi.fn();
+
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
     header: vi.fn(),
@@ -23,8 +27,9 @@ vi.mock("../../../src/ui/wizard.js", () => ({
     askCheckbox: vi.fn().mockResolvedValue(["Cursor", "Claude", "Markdown Agents"]),
     spinner: vi.fn(() => ({
       start: vi.fn().mockReturnThis(),
-      succeed: vi.fn(),
-      fail: vi.fn(),
+      succeed: spinnerSucceed,
+      warn: spinnerWarn,
+      fail: spinnerFail,
     })),
   },
 }));
@@ -48,6 +53,9 @@ describe("initCommand", () => {
       throw new Error(`Exit ${code}`);
     }) as any);
     mockInit.mockReset();
+    spinnerSucceed.mockReset();
+    spinnerWarn.mockReset();
+    spinnerFail.mockReset();
     Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
   });
 
@@ -72,5 +80,37 @@ describe("initCommand", () => {
 
     expect(ui.askConfirm).toHaveBeenCalled();
     expect(mockInit).toHaveBeenCalled();
+  });
+
+  it("calls spinner.succeed with the success message when partialFailure is false", async () => {
+    mockInit.mockResolvedValue({
+      success: true,
+      partialFailure: false,
+      message: "Project initialized successfully",
+    });
+
+    await initCommand();
+
+    expect(spinnerSucceed).toHaveBeenCalledWith("Project initialized successfully");
+    expect(spinnerWarn).not.toHaveBeenCalled();
+  });
+
+  // Audit reproduction: 13 of 4236 files failed to parse in the real run this fix addresses.
+  // This unit test uses a small mocked count, but exercises the exact same branch.
+  it("calls spinner.warn (not succeed) with a message containing the failure count when partialFailure is true", async () => {
+    mockInit.mockResolvedValue({
+      success: true,
+      partialFailure: true,
+      filesRequested: 4236,
+      filesParsed: 4223,
+      filesFailed: 13,
+      message:
+        "Project initialized — 13 of 4236 files failed to parse (see .docuvia/logs/init.log)",
+    });
+
+    await initCommand();
+
+    expect(spinnerWarn).toHaveBeenCalledWith(expect.stringContaining("13"));
+    expect(spinnerSucceed).not.toHaveBeenCalled();
   });
 });

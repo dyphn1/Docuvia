@@ -17,7 +17,7 @@ vi.mock("@workspace/core", async (importOriginal) => {
       discoverFiles: vi.fn().mockResolvedValue({ filesToParse: ["test.ts"] }),
     })),
     AstProcessingService: vi.fn().mockImplementation(() => ({
-      processFiles: vi.fn().mockResolvedValue([]),
+      processFiles: vi.fn().mockResolvedValue({ parsed: [], failures: [] }),
     })),
     mapAstToEvents: vi.fn().mockReturnValue([]),
     GitNativePersistenceService: vi.fn().mockImplementation(() => ({

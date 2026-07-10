@@ -1,19 +1,24 @@
 import os from "os";
-import { AstWorkerPool } from "./ast-worker-pool.js";
+import { AstWorkerPool, AstWorkerCrashError, IASTWorkerPool } from "./ast-worker-pool.js";
 import {
+  AstParseFailure,
+  AstProcessResult,
   DiscoveredFile,
   IAstProcessor,
   ParsedAstFileResult,
 } from "../interfaces/analyzer.interfaces.js";
 import { detectLanguageForFile } from "../utils/language-detection.js";
+import { logger } from "../utils/logger.js";
 
 export class AstProcessingService implements IAstProcessor {
+  constructor(private readonly workerPool?: IASTWorkerPool) {}
+
   public async processFiles(
     workspaceRoot: string,
     filesToParse: DiscoveredFile[]
-  ): Promise<ParsedAstFileResult[]> {
+  ): Promise<AstProcessResult> {
     const workerCount = Math.max(1, (os.cpus().length || 4) - 1);
-    const pool = new AstWorkerPool();
+    const pool = this.workerPool ?? new AstWorkerPool();
     await pool.initialize(workerCount);
 
     // Fallback preserved for behavioral parity — pre-existing smell (files with no detected
@@ -22,6 +27,7 @@ export class AstProcessingService implements IAstProcessor {
     const getLanguage = (file: string) => detectLanguageForFile(file) ?? "typescript";
 
     const parsedResults: ParsedAstFileResult[] = [];
+    const failures: AstParseFailure[] = [];
     const batchSize = 50;
     for (let i = 0; i < filesToParse.length; i += batchSize) {
       const batch = filesToParse.slice(i, i + batchSize);
@@ -35,16 +41,25 @@ export class AstProcessingService implements IAstProcessor {
           if (res.success && res.data) {
             parsedResults.push({ file: item.file, hash: item.hash, data: res.data });
           } else {
-            console.log(`[docuvia] parse returned false for ${item.file}: ${res.error}`);
+            const error = res.error ?? "parse returned success=false with no error detail";
+            logger.warn({ file: item.file, error }, "AST parse returned failure result");
+            failures.push({ file: item.file, hash: item.hash, error });
           }
         } catch (e) {
-          console.warn(`[docuvia] Failed to parse ${item.file}:`, e);
+          const error =
+            e instanceof AstWorkerCrashError
+              ? e.message
+              : e instanceof Error
+                ? e.message
+                : String(e);
+          logger.error({ file: item.file, error }, "AST parse threw (worker crash or rejection)");
+          failures.push({ file: item.file, hash: item.hash, error });
         }
       });
       await Promise.all(promises);
     }
 
     await pool.terminate();
-    return parsedResults;
+    return { parsed: parsedResults, failures };
   }
 }

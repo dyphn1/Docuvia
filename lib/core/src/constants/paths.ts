@@ -3,6 +3,10 @@ export const DOCUVIA_DIR_NAME = ".docuvia";
 export const SHARED_AGENT_MEMORY_DB_NAME = "shared_agent_memory.db";
 export const AST_QUARANTINE_DB_NAME = "ast_quarantine.db";
 
+/** Directory (relative to `DOCUVIA_DIR_NAME`) holding persisted, AI-inspectable run logs. */
+export const DOCUVIA_LOGS_DIR_NAME = "logs";
+export const INIT_LOG_FILE_NAME = "init.log";
+
 export const FILE_README = "README.md";
 export const FILE_PACKAGE_JSON = "package.json";
 export const FILE_GLOBAL_CONFIG_YAML = "config.yaml";

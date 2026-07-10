@@ -29,7 +29,10 @@ export async function snapshotCommand(workspaceRoot: string = process.cwd()) {
 
     spinner.text = UI_MESSAGES.SNAPSHOT_PARSE;
     const astProcessor = new AstProcessingService();
-    const parsedResults = await astProcessor.processFiles(workspaceRoot, filesToParse);
+    const { parsed: parsedResults, failures } = await astProcessor.processFiles(
+      workspaceRoot,
+      filesToParse
+    );
 
     spinner.text = UI_MESSAGES.SNAPSHOT_MAP;
     const events = mapAstToEvents(parsedResults);
@@ -56,9 +59,14 @@ export async function snapshotCommand(workspaceRoot: string = process.cwd()) {
     );
     await localWriter.packDirectoryToBranch(tempDir, GitConstants.KNOWLEDGE_ROOT);
 
-    spinner.succeed(
-      `${UI_MESSAGES.SNAPSHOT_SUCCESS} Nodes: ${result.l2Created + result.l3Created}, Links: ${result.linksCreated}`
-    );
+    const summaryMessage = `${UI_MESSAGES.SNAPSHOT_SUCCESS} Nodes: ${result.l2Created + result.l3Created}, Links: ${result.linksCreated}`;
+    if (failures.length > 0) {
+      spinner.warn(
+        `${summaryMessage} — ${failures.length} of ${filesToParse.length} files failed to parse`
+      );
+    } else {
+      spinner.succeed(summaryMessage);
+    }
   } catch (e: any) {
     spinner.fail(UI_MESSAGES.SNAPSHOT_FAIL + e.message);
     process.exit(1);

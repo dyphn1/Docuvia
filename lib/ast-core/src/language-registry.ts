@@ -66,10 +66,12 @@ export class LanguageRegistry {
           const content = await fs.readFile(targetPath, "utf-8");
           return LanguageRegistry.loadFromString(content, base);
         } catch (fileErr: unknown) {
-          console.debug(
-            `[LanguageRegistry] Could not read ${targetPath}, falling back to defaults. Reason:`,
-            fileErr instanceof Error ? fileErr.message : String(fileErr)
-          );
+          if (_process.env?.LOG_LEVEL === "debug") {
+            console.debug(
+              `[LanguageRegistry] Could not read ${targetPath}, falling back to defaults. Reason:`,
+              fileErr instanceof Error ? fileErr.message : String(fileErr)
+            );
+          }
         }
       }
     } catch (err: unknown) {

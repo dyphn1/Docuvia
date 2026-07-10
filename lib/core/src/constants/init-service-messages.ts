@@ -9,4 +9,6 @@ export const INIT_SERVICE_MESSAGES = {
   WRITING_SNAPSHOT: "Writing cognitive snapshot to local.db...",
   INITIALIZING_TEMP_FILES: "Initializing temp file manager...",
   SUCCESS: "Project initialized successfully",
+  PARTIAL_SUCCESS: (failed: number, requested: number) =>
+    `Project initialized — ${failed} of ${requested} files failed to parse (see .docuvia/logs/init.log)`,
 } as const;

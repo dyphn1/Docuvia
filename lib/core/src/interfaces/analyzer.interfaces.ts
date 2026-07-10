@@ -44,11 +44,19 @@ export interface IGraphDatabaseRepository {
   ): Promise<{ updatedCount: number; fileIdMap: Map<string, number> }>;
 }
 
+export interface AstParseFailure {
+  file: string;
+  hash: string;
+  error: string;
+}
+
+export interface AstProcessResult {
+  parsed: ParsedAstFileResult[];
+  failures: AstParseFailure[];
+}
+
 export interface IAstProcessor {
-  processFiles(
-    workspaceRoot: string,
-    filesToParse: DiscoveredFile[]
-  ): Promise<ParsedAstFileResult[]>;
+  processFiles(workspaceRoot: string, filesToParse: DiscoveredFile[]): Promise<AstProcessResult>;
 }
 
 export interface IL3ExtractionJob {

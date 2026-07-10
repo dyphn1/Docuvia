@@ -15,6 +15,33 @@ Severity key: 🔴 High (breaks core usage or silently loses/fakes data) · 🟡
 
 ---
 
+## Update — 2026-07-10 (post-audit follow-up)
+
+### ✅ Resolved: `docuvia init` dishonest success reporting (was 🔴, first bullet of the `docuvia init` section below)
+
+Implemented per [`docs/ai_plans/fix_init_honest_reporting.md`](../ai_plans/fix_init_honest_reporting.md): `AstWorkerPool` now attributes a crash to the specific in-flight file (`AstWorkerCrashError` + `taskFilePaths` tracking, no leak on either the success or crash path); `AstProcessingService.processFiles()` returns `{ parsed, failures }` instead of silently dropping failed files; `InitService.init()` returns honest `filesRequested`/`filesParsed`/`filesFailed`/`partialFailure` counts instead of an unconditional `"Project initialized successfully"`; a persisted `.docuvia/logs/init.log` (JSONL: `init.start` / `init.parse_failure` / `init.summary`) now exists so a human or AI agent can verify what happened after the fact instead of trusting a vanished terminal message; `docuvia snapshot` (same underlying pipeline, same symptom in this audit) was fixed in the same pass. Also fixed as a prerequisite: the cross-cutting `pino-pretty`/`tsx` startup crash (`logger.ts`), which previously prevented any of this logging from being reachable outside the `NODE_ENV=production` workaround.
+
+Re-tested against the same `hermes-agent` checkout used in this audit (see finding below) — the honest counts now correctly show `filesRequested: 4236, filesParsed: 4236, filesFailed: 0` even in a run that hit the exact same 13 worker-crash symptom documented below, because our tests independently confirm `filesParsed + filesFailed === filesRequested` always holds. Not part of this fix: the other stubbed commands (`review`, `sync`, `analyze <path>`), `export --topology`'s zero-link default, `query`'s thin result, and `init`'s undocumented global-config/hook side effects — all still open, see their sections below.
+
+### ✅ Resolved: `AstWorkerPool` "13 crashes" were never crashes — `pool.terminate()` was being misreported
+
+Initial re-testing of the fix above still showed the same **13 `AstWorkerPool` crash log lines** from the original audit, so this was tracked as a new, undiagnosed finding (spawn-time worker failures). Root-causing it further overturned that framing entirely:
+
+- Adding `{taskId, filePath}` attribution to the crash log first showed all 13 events had no in-flight task (`hadInFlightTask: false`) — consistent with a spawn-time race, so a spawn-serialization queue (`AstWorkerPool.enqueueSpawn`/`spawnChain`) was added to stagger worker creation. **This made no measurable difference** — the same 13 events recurred, still tightly clustered in time, even with spawns fully serialized and staggered.
+- Re-examining the log position revealed the actual mechanism: `AstProcessingService.processFiles()` calls `pool.terminate()` unconditionally at the end of every run (or immediately, if the git-hash delta check finds zero files needing parsing — reproduced with an empty file list too). `pool.terminate()` calls `worker.terminate()` on every still-alive worker.
+- **Directly verified with an isolated repro** (`new Worker(...)`, no task ever sent, `await worker.terminate()`): Node reports this as `exit` code `1`, even though nothing went wrong. `AstWorkerPool`'s existing `worker.on("exit", (code) => { if (code !== 0) handleError(...) })` treated _any_ non-zero exit as a crash, with no check for whether the pool was already shutting down intentionally.
+- `os.cpus().length - 1` on the test machine is exactly **13** — meaning every single run, all 13 pool workers (still alive/idle when `terminate()` fires) were self-reporting as "crashed," 100% of the time, unrelated to file content, spawn timing, or task volume. This is the entire explanation for the original audit's "13 reproducible `AstWorkerPool` crashes" finding.
+
+**Fix** (`ast-worker-pool.ts`, `handleError`): check `this.shuttingDown` before classifying an exit as a crash; if the pool is already tearing down, log at `debug` ("AST worker exited during pool shutdown (expected)") instead of `error` ("AST worker crashed/exited"). Re-verified against the same `hermes-agent` checkout (fresh index, no cache): **zero crash log lines**, `filesRequested: 4236, filesParsed: 4236, filesFailed: 0`. The spawn-serialization queue was kept (cheap, harmless structural safeguard against a literal synchronous spawn burst) but its artificial stagger delay was removed after confirming it contributed nothing — a 0ms/150ms A-B comparison against the same 4,236-file scan showed identical results either way. New regression test: `ast-worker-pool.unit.test.ts` → `"does not log idle workers stopped by terminate() as crashes"`.
+
+This also means the `docuvia snapshot`/`init` runtime was never actually losing data or crashing during real parsing work — the entire "13 crashes" signal was a false alarm from imprecise exit-code handling in normal shutdown, not a parsing pipeline defect. The `filesFailed` honesty fix above remains correct and necessary regardless (it now correctly reports 0 failures instead of an unconditional "success" string), but the worker-crash noise it was designed to make visible turned out not to represent real crashes at all.
+
+### ⚠️ Still open: `init`'s full CLI flow (agent-integration side effects) not re-verified this session
+
+All re-testing above was done by calling `InitService.init()` directly (the same code path as `runDatabaseInit()` in `artifacts/cli/src/commands/init.ts`), deliberately bypassing `configureAgentIntegrations()` — the second phase of `docuvia init` that writes `.cursor/`, `.claude/`, `.windsurfrules`, `.cursorrules`, `llms.txt`, and (for non-TTY invocations) the **machine-global** `claude_desktop_config.json`. That side-effect surface, and the "silently writes 8 tool integrations + one global file, undocumented, no opt-out flag" finding from the original audit (`docuvia init` section, third bullet), is **unchanged and still open** — not addressed by either fix in this update. A full end-to-end `docuvia init` run (not just `InitService.init()` in isolation) has not been re-verified since these fixes landed.
+
+---
+
 ## Cross-cutting issue (affects every command)
 
 ### 🔴 CLI cannot start outside `NODE_ENV=production`

@@ -17,12 +17,35 @@ export interface IASTWorkerPool {
   terminate(): Promise<void>;
 }
 
+export class AstWorkerCrashError extends Error {
+  constructor(
+    public readonly filePath: string | undefined,
+    public readonly cause: unknown
+  ) {
+    super(
+      `AST worker crashed while parsing ${filePath ?? "(unknown file)"}: ` +
+        (cause instanceof Error ? cause.message : String(cause))
+    );
+    this.name = "AstWorkerCrashError";
+  }
+}
+
 export class AstWorkerPool implements IASTWorkerPool {
   private workers: Worker[] = [];
   private workerTasks = new Map<Worker, string>();
   private workerOptions: any = {};
   private wPath: string = "";
   private workerQueue: Worker[] = [];
+  // Serializes worker creation so we never fire off N `new Worker()` calls in the same
+  // synchronous loop iteration (every spawn, including crash-triggered respawns, goes
+  // through this chain). NOTE: this turned out NOT to be the fix for the "13 AstWorkerPool
+  // crashes" documented in docs/analysis/docuvia-cli-vs-gitnexus-2026-07-10.md — that was
+  // root-caused to a logging bug (see handleError below): normal pool.terminate() shutdown
+  // was being misreported as crashes, regardless of spawn timing. A staggered-delay variant
+  // of this queue was tried and verified (against a real 4,236-file run) to make no
+  // difference either way. Kept as a cheap, harmless structural safeguard against a literal
+  // spawn burst, but the actual fix lives in handleError's `shuttingDown` check.
+  private spawnChain: Promise<void> = Promise.resolve();
   private taskQueue: Array<{
     request: Omit<AstParseRequest, "taskId">;
     resolve: (val: AstParseResponse) => void;
@@ -34,15 +57,28 @@ export class AstWorkerPool implements IASTWorkerPool {
     { resolve: (val: AstParseResponse) => void; reject: (err: any) => void }
   >();
   private taskTimeouts = new Map<string, NodeJS.Timeout>();
+  private taskFilePaths = new Map<string, string>();
   private timedOutWorkers = new WeakSet<Worker>();
   private shuttingDown = false;
 
   constructor(
     private readonly taskTimeoutMs: number = 30_000,
-    private cache?: IAsxParseCache
+    private cache?: IAsxParseCache,
+    private readonly workerScriptPathOverride?: string
   ) {}
 
-  private spawnWorker() {
+  /** Queues a worker spawn behind any spawn already in flight — see `spawnChain` above. */
+  private enqueueSpawn(): Promise<void> {
+    this.spawnChain = this.spawnChain.then(async () => {
+      this.spawnWorker();
+      // Yield one tick so N queued spawns can't collapse back into a single synchronous
+      // burst — see the `spawnChain` comment for why this is deliberately not a real delay.
+      await new Promise((resolve) => setImmediate(resolve));
+    });
+    return this.spawnChain;
+  }
+
+  private spawnWorker(): Worker {
     const worker = new Worker(this.wPath, this.workerOptions);
 
     worker.on("message", (res: AstParseResponse) => {
@@ -55,6 +91,7 @@ export class AstWorkerPool implements IASTWorkerPool {
       const promiseCallbacks = this.pendingTasks.get(res.taskId);
       if (promiseCallbacks) {
         this.pendingTasks.delete(res.taskId);
+        this.taskFilePaths.delete(res.taskId);
         promiseCallbacks.resolve(res);
       }
 
@@ -64,8 +101,32 @@ export class AstWorkerPool implements IASTWorkerPool {
 
     const handleError = (err: any) => {
       const timedOut = this.timedOutWorkers.delete(worker);
-      console.error("[AstWorkerPool] Worker crashed/exited:", err);
       const taskId = this.workerTasks.get(worker);
+      const filePath = taskId ? this.taskFilePaths.get(taskId) : undefined;
+
+      if (this.shuttingDown) {
+        // pool.terminate() forcibly stops every still-alive worker via worker.terminate(),
+        // and Node reports that as a non-zero "exit" event (verified directly: an idle,
+        // never-used worker.terminate() exits with code 1) even though nothing went wrong.
+        // This is the actual explanation for the "13 AstWorkerPool crashes" documented in
+        // docs/analysis/docuvia-cli-vs-gitnexus-2026-07-10.md — os.cpus().length - 1 workers
+        // are still alive and idle when processFiles() finishes and calls pool.terminate(),
+        // and every one of them was being misreported as a crash. Log at debug, not error.
+        logger.debug({ taskId, filePath }, "AST worker exited during pool shutdown (expected)");
+      } else {
+        logger.error(
+          {
+            taskId,
+            filePath,
+            hadInFlightTask: Boolean(taskId),
+            err:
+              err instanceof Error
+                ? { message: err.message, stack: err.stack, name: err.name }
+                : err,
+          },
+          "AST worker crashed/exited"
+        );
+      }
       if (taskId) {
         const timeout = this.taskTimeouts.get(taskId);
         if (timeout) {
@@ -75,13 +136,17 @@ export class AstWorkerPool implements IASTWorkerPool {
         const callbacks = this.pendingTasks.get(taskId);
         if (callbacks) {
           callbacks.reject(
-            timedOut
-              ? new Error(`AST worker task ${taskId} timed out after ${this.taskTimeoutMs}ms`)
-              : err || new Error("Worker exited unexpectedly")
+            new AstWorkerCrashError(
+              filePath,
+              timedOut
+                ? new Error(`AST worker task ${taskId} timed out after ${this.taskTimeoutMs}ms`)
+                : err || new Error("Worker exited unexpectedly")
+            )
           );
           this.pendingTasks.delete(taskId);
         }
         this.workerTasks.delete(worker);
+        this.taskFilePaths.delete(taskId);
       }
 
       // Remove from pool
@@ -89,9 +154,11 @@ export class AstWorkerPool implements IASTWorkerPool {
       this.workerQueue = this.workerQueue.filter((w) => w !== worker);
 
       // Respawn — but not while shutting down, else terminate() would leak a fresh
-      // replacement worker for every one it just terminated.
+      // replacement worker for every one it just terminated. Routed through the same
+      // spawn queue as initialize() so a burst of near-simultaneous crashes doesn't just
+      // recreate the thundering-herd respawn cluster it's meant to prevent.
       if (!this.shuttingDown) {
-        this.spawnWorker();
+        this.enqueueSpawn();
       }
     };
 
@@ -102,9 +169,27 @@ export class AstWorkerPool implements IASTWorkerPool {
 
     this.workers.push(worker);
     this.workerQueue.push(worker);
+
+    return worker;
   }
 
   async initialize(workerCount: number = 2): Promise<void> {
+    if (this.workerScriptPathOverride) {
+      // Test-only seam: bypass the dist/ts resolution below entirely so tests can point
+      // the pool at a fixture worker script (e.g. one that deterministically crashes).
+      this.wPath = this.workerScriptPathOverride;
+      this.workerOptions.execArgv = process.execArgv.filter(
+        (arg) => !arg.includes("--eval") && !arg.includes("--print")
+      );
+      if (!this.workerOptions.execArgv.some((arg: string) => arg.includes("tsx"))) {
+        this.workerOptions.execArgv.push("--import", "tsx");
+      }
+      for (let i = 0; i < workerCount; i++) {
+        await this.enqueueSpawn();
+      }
+      return;
+    }
+
     // Determine if we are in .ts environment (tsx) or .js environment (dist)
     let isTs = false;
     this.wPath = path.resolve(__dirname, "../workers/ast-worker.js");
@@ -128,7 +213,7 @@ export class AstWorkerPool implements IASTWorkerPool {
     }
 
     for (let i = 0; i < workerCount; i++) {
-      this.spawnWorker();
+      await this.enqueueSpawn();
     }
   }
 
@@ -197,12 +282,14 @@ export class AstWorkerPool implements IASTWorkerPool {
     const taskId = String(++this.taskCounter);
     this.pendingTasks.set(taskId, { resolve: task.resolve, reject: task.reject });
     this.workerTasks.set(worker, taskId);
+    this.taskFilePaths.set(taskId, task.request.filePath);
 
     const timeout = setTimeout(() => {
       this.taskTimeouts.delete(taskId);
       this.timedOutWorkers.add(worker);
-      console.error(
-        `[AstWorkerPool] Task ${taskId} timed out after ${this.taskTimeoutMs}ms — terminating stuck worker`
+      logger.error(
+        { taskId, filePath: this.taskFilePaths.get(taskId), taskTimeoutMs: this.taskTimeoutMs },
+        "AST worker task timed out — terminating stuck worker"
       );
       // Deliberate termination; the worker's own "exit" handler rejects the pending task,
       // removes it from the pool, and respawns a replacement (Issue 1.10).

@@ -20,6 +20,8 @@ import { SqliteGraphRepository } from "./sqlite-graph.repository.js";
 import { ConfigScannerService } from "./config-scanner.service.js";
 import { VcsScannerService } from "./vcs-scanner.service.js";
 import { detectLanguageForFile } from "../utils/language-detection.js";
+import { appendInitLogLine, writeInitSummary } from "./init-log-writer.js";
+import { INIT_SERVICE_MESSAGES } from "../constants/init-service-messages.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +40,10 @@ export class InitService {
 
   public async init() {
     this.logCallback(`Initializing project in ${this.workspaceRoot}...`);
+    await appendInitLogLine(this.workspaceRoot, {
+      event: "init.start",
+      workspaceRoot: this.workspaceRoot,
+    });
 
     // 1. Setup hidden knowledge-graph branch
     await this.workspaceGit.ensureKnowledgeBranch(this.workspaceRoot);
@@ -91,13 +97,16 @@ export class InitService {
     const tags = new Set<string>([...configResult.tags, ...hotspotTags]);
 
     this.logCallback(`Parsing ${discovery.filesToParse.length} files...`);
-    const parsedResults = await this.astProcessor.processFiles(
+    const { parsed: parsedResults, failures } = await this.astProcessor.processFiles(
       this.workspaceRoot,
       discovery.filesToParse
     );
     for (const result of parsedResults) {
       const language = detectLanguageForFile(result.file);
       if (language) tags.add(language);
+    }
+    for (const failure of failures) {
+      await appendInitLogLine(this.workspaceRoot, { event: "init.parse_failure", ...failure });
     }
 
     this.logCallback(`Persisting knowledge graph...`);
@@ -124,6 +133,35 @@ export class InitService {
       logger.warn({ error: err.message }, "Failed to initialize temp file manager (non-fatal)");
     }
 
-    return { success: true, message: "Project initialized successfully" };
+    const filesRequested = discovery.filesToParse.length;
+    const filesParsed = parsedResults.length;
+    const filesFailed = failures.length;
+
+    if (filesFailed > 0) {
+      logger.warn(
+        { filesRequested, filesParsed, filesFailed, failures },
+        "init completed with parse failures"
+      );
+    }
+
+    await writeInitSummary(this.workspaceRoot, {
+      filesRequested,
+      filesParsed,
+      filesFailed,
+      failures,
+    });
+
+    return {
+      success: true,
+      partialFailure: filesFailed > 0,
+      message:
+        filesFailed === 0
+          ? INIT_SERVICE_MESSAGES.SUCCESS
+          : INIT_SERVICE_MESSAGES.PARTIAL_SUCCESS(filesFailed, filesRequested),
+      filesRequested,
+      filesParsed,
+      filesFailed,
+      failures,
+    };
   }
 }

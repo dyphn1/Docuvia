@@ -5,6 +5,7 @@ import * as fs from "fs";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 import type { SupportedLanguage, LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
+import { parseImportDescriptors } from "@workspace/ast-core";
 import { loadDefaultRegistry } from "@workspace/plugins-ast";
 
 process.on("uncaughtException", (err) => {
@@ -277,9 +278,8 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           });
         }
 
-        for (const node of provider.extractImports(tree.rootNode)) {
-          imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
-        }
+        const importNodes = provider.extractImports(tree.rootNode);
+        imports.push(...parseImportDescriptors(importNodes));
 
         const functionIds = new Set(functionNodes.map((n) => n.id));
         const callNodes = provider.extractCalls(tree.rootNode);

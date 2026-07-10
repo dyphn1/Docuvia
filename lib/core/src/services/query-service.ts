@@ -42,6 +42,7 @@ export class QueryService {
   ): Promise<{
     l2: { name: string; slug?: string } | null;
     l3: Array<{ title: string; status?: string; content: string | null }>;
+    context: LocalContextResult | null;
   }> {
     logger.info({ target, options }, "Querying local knowledge graph");
     this.assertDbExists();
@@ -60,9 +61,24 @@ export class QueryService {
     const l2Result = results.find((r) => r.nodeLayer === "l2");
     const l3Results = results.filter((r) => r.nodeLayer === "l3");
 
+    // Additive: richer structural context (incoming/outgoing edges) from the AST graph,
+    // alongside the existing name-based l2/l3 lookup above. `getContext()` resolves `target`
+    // itself (exact/LIKE match against l2_nodes) rather than reusing l2Result, since a fuzzy
+    // FTS match here may not correspond to an exact graph node (in which case this is null).
+    let context: LocalContextResult | null = null;
+    try {
+      context = await this.getContext(target);
+    } catch {
+      // getContext() throws if the local DB doesn't exist, but assertDbExists() above already
+      // guarantees it does — this catch only guards against unexpected lookup failures so
+      // query() never throws because of the additive context lookup.
+      context = null;
+    }
+
     return {
       l2: l2Result ? { name: l2Result.title, slug: l2Result.title } : null,
       l3: l3Results.map((r) => ({ title: r.title, content: r.content })),
+      context,
     };
   }
 

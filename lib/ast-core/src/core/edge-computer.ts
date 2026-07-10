@@ -22,8 +22,25 @@ import { AstEvent } from "../sink.js";
  *   - `require 'foo'`           → maps foo → foo
  *   - `use Foo\Bar`             → maps Bar → Foo\Bar
  */
-export function buildScopeMap(importStatements: Node[], sourceText: string): Map<string, string> {
-  const scopeMap = new Map<string, string>();
+export interface ParsedImportDescriptor {
+  localName: string;
+  originalName: string;
+  modulePath: string;
+}
+
+/**
+ * Parses import/use/require statements into structured {localName, originalName, modulePath}
+ * descriptors, one per language-specific binding. This is the single source of truth for
+ * import parsing across languages — buildScopeMap() is a thin wrapper over this that encodes
+ * the same data into the opaque `${modulePath}::${originalName}` string format EdgeComputer
+ * expects (kept only for that consumer's backward compatibility).
+ *
+ * `originalName: "*"` marks namespace/default/whole-module bindings that don't resolve to a
+ * single named symbol (e.g. `import * as X`, Python dotted `import a.b.c`, C's `#include`) —
+ * callers (ScopeResolver.resolveCall) treat "*" as "fall back to the call name itself".
+ */
+export function parseImportDescriptors(importStatements: Node[]): ParsedImportDescriptor[] {
+  const descriptors: ParsedImportDescriptor[] = [];
 
   for (const stmt of importStatements) {
     const stmtType = stmt.type;
@@ -38,7 +55,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
       if (namespaceImport) {
         const nsId = namespaceImport.descendantsOfType("identifier")[0];
         if (nsId) {
-          scopeMap.set(nsId.text, srcText);
+          descriptors.push({ localName: nsId.text, originalName: "*", modulePath: srcText });
         }
         continue;
       }
@@ -53,7 +70,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
           if (nameNode) {
             const importedName = nameNode.text;
             const localName = aliasNode ? aliasNode.text : importedName;
-            scopeMap.set(localName, `${srcText}::${importedName}`);
+            descriptors.push({ localName, originalName: importedName, modulePath: srcText });
           }
         }
         continue;
@@ -61,7 +78,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
 
       const defaultId = stmt.descendantsOfType("identifier")[0];
       if (defaultId) {
-        scopeMap.set(defaultId.text, srcText);
+        descriptors.push({ localName: defaultId.text, originalName: "*", modulePath: srcText });
       }
       continue;
     }
@@ -77,7 +94,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
 
       const names = stmt.childForFieldName("name");
       if (names) {
-        collectPythonFromImports(stmt, sourceStr, scopeMap);
+        collectPythonFromImportDescriptors(stmt, sourceStr, descriptors);
       }
       continue;
     }
@@ -88,7 +105,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
         if (!dn) continue;
         const firstId = dn.descendantsOfType("identifier")[0];
         if (firstId) {
-          scopeMap.set(firstId.text, dn.text);
+          descriptors.push({ localName: firstId.text, originalName: "*", modulePath: dn.text });
         }
       }
       const aliased = stmt.descendantsOfType("aliased_import")[0];
@@ -96,7 +113,11 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
         const nameNode = aliased.childForFieldName("name");
         const aliasNode = aliased.childForFieldName("alias");
         if (nameNode && aliasNode) {
-          scopeMap.set(aliasNode.text, nameNode.text);
+          descriptors.push({
+            localName: aliasNode.text,
+            originalName: "*",
+            modulePath: nameNode.text,
+          });
         }
       }
       continue;
@@ -111,7 +132,11 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
         const pathNode = arg.childForFieldName("path");
         const aliasNode = arg.childForFieldName("alias");
         if (pathNode && aliasNode) {
-          scopeMap.set(aliasNode.text, pathNode.text);
+          descriptors.push({
+            localName: aliasNode.text,
+            originalName: "*",
+            modulePath: pathNode.text,
+          });
         }
         continue;
       }
@@ -129,14 +154,26 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
               const p = child.childForFieldName("path");
               const a = child.childForFieldName("alias");
               if (p && a) {
-                scopeMap.set(a.text, `${prefix}::${p.text}`);
+                descriptors.push({
+                  localName: a.text,
+                  originalName: "*",
+                  modulePath: `${prefix}::${p.text}`,
+                });
               }
             } else if (child.type === "identifier") {
-              scopeMap.set(child.text, `${prefix}::${child.text}`);
+              descriptors.push({
+                localName: child.text,
+                originalName: "*",
+                modulePath: `${prefix}::${child.text}`,
+              });
             } else if (child.type === "scoped_identifier") {
               const lastPart = child.descendantsOfType("identifier").pop();
               if (lastPart) {
-                scopeMap.set(lastPart.text, `${prefix}::${child.text}`);
+                descriptors.push({
+                  localName: lastPart.text,
+                  originalName: "*",
+                  modulePath: `${prefix}::${child.text}`,
+                });
               }
             }
           }
@@ -148,7 +185,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
         const ids = arg.descendantsOfType("identifier");
         const lastId = ids[ids.length - 1];
         if (lastId) {
-          scopeMap.set(lastId.text, arg.text);
+          descriptors.push({ localName: lastId.text, originalName: "*", modulePath: arg.text });
         }
         continue;
       }
@@ -157,7 +194,11 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
         for (const child of arg.namedChildren) {
           if (!child) continue;
           if (child.type === "identifier") {
-            scopeMap.set(child.text, child.text);
+            descriptors.push({
+              localName: child.text,
+              originalName: "*",
+              modulePath: child.text,
+            });
           }
         }
         continue;
@@ -181,11 +222,11 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
           if (nameNode) {
             if (nameNode.type === "dot") continue;
             if (nameNode.type === "blank_identifier") continue;
-            scopeMap.set(nameNode.text, pkgPath);
+            descriptors.push({ localName: nameNode.text, originalName: "*", modulePath: pkgPath });
           } else {
             const segments = pkgPath.split("/");
             const pkgName = segments[segments.length - 1];
-            scopeMap.set(pkgName, pkgPath);
+            descriptors.push({ localName: pkgName, originalName: "*", modulePath: pkgPath });
           }
         }
       }
@@ -203,7 +244,11 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
           const ids = lastScoped.descendantsOfType("identifier");
           const lastId = ids[ids.length - 1];
           if (lastId) {
-            scopeMap.set(lastId.text, lastScoped.text);
+            descriptors.push({
+              localName: lastId.text,
+              originalName: "*",
+              modulePath: lastScoped.text,
+            });
           }
         }
         continue;
@@ -217,11 +262,17 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
         const allIds = lastScoped.descendantsOfType("identifier");
         const lastId = allIds[allIds.length - 1];
         if (lastId) {
-          scopeMap.set(lastId.text, lastScoped.text);
+          descriptors.push({
+            localName: lastId.text,
+            originalName: "*",
+            modulePath: lastScoped.text,
+          });
         }
       } else if (ids.length > 0) {
         const lastId = ids[ids.length - 1];
-        if (lastId) scopeMap.set(lastId.text, lastId.text);
+        if (lastId) {
+          descriptors.push({ localName: lastId.text, originalName: "*", modulePath: lastId.text });
+        }
       }
       continue;
     }
@@ -231,7 +282,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
       const pathNode = stmt.childForFieldName("path");
       if (pathNode) {
         const includePath = pathNode.text.replace(/[<>"']/g, "");
-        scopeMap.set(includePath, includePath);
+        descriptors.push({ localName: includePath, originalName: "*", modulePath: includePath });
       }
       continue;
     }
@@ -244,10 +295,10 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
           const ids = child.descendantsOfType("identifier");
           const lastId = ids[ids.length - 1];
           if (lastId) {
-            scopeMap.set(lastId.text, child.text);
+            descriptors.push({ localName: lastId.text, originalName: "*", modulePath: child.text });
           }
         } else if (child.type === "identifier") {
-          scopeMap.set(child.text, child.text);
+          descriptors.push({ localName: child.text, originalName: "*", modulePath: child.text });
         }
       }
       continue;
@@ -270,7 +321,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
             if (strNode) {
               const libName = strNode.text.replace(/['"]/g, "");
               const shortName = libName.replace(/\.rb$/, "");
-              scopeMap.set(shortName, libName);
+              descriptors.push({ localName: shortName, originalName: "*", modulePath: libName });
             }
           }
         }
@@ -293,14 +344,14 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
           const fullName = nameNode.text;
           const parts = fullName.split("\\");
           const shortName = parts[parts.length - 1];
-          scopeMap.set(shortName, fullName);
+          descriptors.push({ localName: shortName, originalName: "*", modulePath: fullName });
         }
       } else {
         const argNode =
           stmt.descendantsOfType("string")[0] || stmt.descendantsOfType("string_content")[0];
         if (argNode) {
           const path = argNode.text.replace(/['"]/g, "");
-          scopeMap.set(path, path);
+          descriptors.push({ localName: path, originalName: "*", modulePath: path });
         }
       }
       continue;
@@ -314,7 +365,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
         const fullName = nameNode.text;
         const parts = fullName.split(".");
         const shortName = parts[parts.length - 1];
-        scopeMap.set(shortName, fullName);
+        descriptors.push({ localName: shortName, originalName: "*", modulePath: fullName });
       }
       continue;
     }
@@ -326,19 +377,42 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
     const identifiers = stmt.descendantsOfType("identifier");
     for (const idNode of identifiers) {
       if (!idNode) continue;
-      if (!scopeMap.has(idNode.text)) {
-        scopeMap.set(idNode.text, `${fallbackSrcText}::${idNode.text}`);
+      // Mirrors the original `if (!scopeMap.has(idNode.text))` guard: skip if a descriptor
+      // for this localName was already collected (from this or an earlier statement).
+      if (!descriptors.some((d) => d.localName === idNode.text)) {
+        descriptors.push({
+          localName: idNode.text,
+          originalName: idNode.text,
+          modulePath: fallbackSrcText,
+        });
       }
     }
   }
 
+  return descriptors;
+}
+
+/**
+ * Thin wrapper over parseImportDescriptors() that encodes descriptors into the opaque
+ * `${modulePath}::${originalName}` string format EdgeComputer.computeCallEdges consumes.
+ * Preserved for backward compatibility (AstTraverser / headless-lsp) — reproduces the exact
+ * same Map<localName, encodedValue> output the original hand-written implementation produced.
+ */
+export function buildScopeMap(importStatements: Node[], sourceText: string): Map<string, string> {
+  const scopeMap = new Map<string, string>();
+  for (const d of parseImportDescriptors(importStatements)) {
+    scopeMap.set(
+      d.localName,
+      d.originalName === "*" ? d.modulePath : `${d.modulePath}::${d.originalName}`
+    );
+  }
   return scopeMap;
 }
 
-function collectPythonFromImports(
+function collectPythonFromImportDescriptors(
   stmt: Node,
   sourceStr: string,
-  scopeMap: Map<string, string>
+  descriptors: ParsedImportDescriptor[]
 ): void {
   const namesNode = stmt.childForFieldName("name");
   if (!namesNode) return;
@@ -349,16 +423,28 @@ function collectPythonFromImports(
       const nameNode = child.childForFieldName("name");
       const aliasNode = child.childForFieldName("alias");
       if (nameNode && aliasNode) {
-        scopeMap.set(aliasNode.text, `${sourceStr}::${nameNode.text}`);
+        descriptors.push({
+          localName: aliasNode.text,
+          originalName: nameNode.text,
+          modulePath: sourceStr,
+        });
       }
     } else if (child.type === "dotted_name") {
       const ids = child.descendantsOfType("identifier");
       const lastId = ids[ids.length - 1];
       if (lastId) {
-        scopeMap.set(lastId.text, `${sourceStr}::${child.text}`);
+        descriptors.push({
+          localName: lastId.text,
+          originalName: child.text,
+          modulePath: sourceStr,
+        });
       }
     } else if (child.type === "identifier") {
-      scopeMap.set(child.text, `${sourceStr}::${child.text}`);
+      descriptors.push({
+        localName: child.text,
+        originalName: child.text,
+        modulePath: sourceStr,
+      });
     }
   }
 }

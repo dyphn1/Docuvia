@@ -80,6 +80,8 @@ export const UI_MESSAGES = {
   QUERY_NO_L2: "No matching L2 module found. Showing global results.",
   QUERY_L3_PREFIX: "[Decision]",
   QUERY_UNKNOWN_STATUS: "unknown",
+  QUERY_INCOMING_HEADER: "Incoming (called by)",
+  QUERY_OUTGOING_HEADER: "Outgoing (calls)",
 
   // Snapshot Command
   SNAPSHOT_START: "Starting local AST snapshot...",

@@ -15,6 +15,26 @@ export function formatPromptOutput(results: any): string {
   if (results.l2) {
     output += `  </l2_module>\n`;
   }
+
+  const incoming = results.context?.incoming ?? [];
+  const outgoing = results.context?.outgoing ?? [];
+  if (incoming.length > 0 || outgoing.length > 0) {
+    if (incoming.length > 0) {
+      output += `  <incoming>\n`;
+      for (const i of incoming) {
+        output += `    <caller name="${i.source_name}" type="${i.source_type}" />\n`;
+      }
+      output += `  </incoming>\n`;
+    }
+    if (outgoing.length > 0) {
+      output += `  <outgoing>\n`;
+      for (const o of outgoing) {
+        output += `    <callee name="${o.target_name}" type="${o.target_type}" />\n`;
+      }
+      output += `  </outgoing>\n`;
+    }
+  }
+
   output += `</docuvia_context>`;
   return output;
 }
@@ -36,6 +56,24 @@ function printHumanResults(results: any): void {
     }
     console.log(``);
   }
+
+  const incoming = results.context?.incoming ?? [];
+  const outgoing = results.context?.outgoing ?? [];
+  if (incoming.length > 0) {
+    ui.header(UI_MESSAGES.QUERY_INCOMING_HEADER);
+    for (const i of incoming) {
+      console.log(`  ${i.source_name} (${i.source_type})`);
+    }
+    console.log(``);
+  }
+  if (outgoing.length > 0) {
+    ui.header(UI_MESSAGES.QUERY_OUTGOING_HEADER);
+    for (const o of outgoing) {
+      console.log(`  ${o.target_name} (${o.target_type})`);
+    }
+    console.log(``);
+  }
+
   console.log("");
 }
 

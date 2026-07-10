@@ -7,8 +7,8 @@ import {
   notificationsTable,
   projectsTable,
 } from "@workspace/db";
-import { and, eq, isNotNull, ne, sql } from "drizzle-orm";
-import { cosineSimilarity } from "./embedding.js";
+import { and, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
+import { cosineSimilarity, EMBEDDING_DIMENSIONS } from "./embedding.js";
 import { notifyExternalIntegrations } from "./notification.service.js";
 import { logger } from "../utils/logger.js";
 
@@ -25,10 +25,10 @@ export async function detectCrossProjectLinks(
     };
   }
 ): Promise<void> {
-  if (newNodeEmbedding.length !== 1536) {
+  if (newNodeEmbedding.length !== EMBEDDING_DIMENSIONS) {
     logger.warn(
       { newNodeId, length: newNodeEmbedding.length },
-      "Invalid embedding length for cross-project linking. Expected 1536."
+      `Invalid embedding length for cross-project linking. Expected ${EMBEDDING_DIMENSIONS}.`
     );
     return;
   }
@@ -115,24 +115,25 @@ export async function detectCrossProjectLinks(
         similarity: Math.round(sim * 100) / 100,
       };
       const affectedProjectIds = [projectId, other.projectId];
-      for (const affectedId of affectedProjectIds) {
-        const subscribers = await db
+      const [subscribers, [projectRow]] = await Promise.all([
+        db
           .select()
           .from(subscriptionsTable)
-          .where(eq(subscriptionsTable.publisherProjectId, affectedId));
-        for (const sub of subscribers) {
-          await db.insert(notificationsTable).values({
+          .where(inArray(subscriptionsTable.publisherProjectId, affectedProjectIds)),
+        db.select().from(projectsTable).where(eq(projectsTable.id, projectId)),
+      ]);
+
+      if (subscribers.length > 0) {
+        await db.insert(notificationsTable).values(
+          subscribers.map((sub) => ({
             projectId: sub.subscriberProjectId,
             type: "cross_link_detected",
             payload: crossLinkPayload,
             read: false,
-          });
-        }
+          }))
+        );
       }
-      const [projectRow] = await db
-        .select()
-        .from(projectsTable)
-        .where(eq(projectsTable.id, projectId));
+
       void notifyExternalIntegrations(
         projectId,
         projectRow?.name ?? `Project #${projectId}`,

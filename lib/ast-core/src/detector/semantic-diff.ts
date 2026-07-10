@@ -53,6 +53,7 @@ export class SemanticDiffDetector {
     const results: ModifiedNode[] = [];
 
     try {
+      const oldNodeIndex = this.buildNodeIndex(oldTree.rootNode);
       const processedNodes = new Set<number>();
 
       for (const range of changedLineRanges) {
@@ -67,7 +68,10 @@ export class SemanticDiffDetector {
         }
         processedNodes.add(semanticBoundary.id);
 
-        const oldNode = this.findMatchingNodeInOldTree(oldTree.rootNode, semanticBoundary);
+        const newName = this.getNodeName(semanticBoundary);
+        const oldNode = newName
+          ? oldNodeIndex.get(`${semanticBoundary.type}::${newName}`)
+          : undefined;
 
         let pruningLevel = PruningLevel.CONTRACT_CHANGED;
 
@@ -81,7 +85,7 @@ export class SemanticDiffDetector {
         }
 
         results.push({
-          nodeId: this.getNodeName(semanticBoundary) || semanticBoundary.id.toString(),
+          nodeId: newName || semanticBoundary.id.toString(),
           nodeType: semanticBoundary.type,
           pruningLevel,
           newRange: {
@@ -96,6 +100,32 @@ export class SemanticDiffDetector {
     }
 
     return results;
+  }
+
+  /**
+   * Indexes old-tree nodes by `${type}::${name}` so matching a changed
+   * boundary against the old tree is an O(1) lookup instead of a full
+   * tree search per changed range. Only semantic-boundary types are
+   * indexed since that's the only kind of node ever looked up.
+   */
+  private buildNodeIndex(root: Node): Map<string, Node> {
+    const index = new Map<string, Node>();
+
+    const visit = (n: Node) => {
+      if (SEMANTIC_TYPES.has(n.type)) {
+        const name = this.getNodeName(n);
+        const key = name ? `${n.type}::${name}` : null;
+        if (key && !index.has(key)) {
+          index.set(key, n);
+        }
+      }
+      for (const child of n.children) {
+        if (child) visit(child);
+      }
+    };
+
+    visit(root);
+    return index;
   }
 
   private getSmallestContainingNode(node: Node, range: LineRange): Node | null {
@@ -141,29 +171,6 @@ export class SemanticDiffDetector {
     return null;
   }
 
-  private findMatchingNodeInOldTree(oldRoot: Node, newNode: Node): Node | null {
-    const newName = this.getNodeName(newNode);
-    if (!newName) return null;
-
-    let match: Node | null = null;
-
-    // Simple tree traversal
-    const traverse = (n: Node) => {
-      if (match) return;
-      if (n.type === newNode.type && this.getNodeName(n) === newName) {
-        match = n;
-        return;
-      }
-      for (const child of n.children) {
-        if (!child) continue;
-        traverse(child);
-      }
-    };
-
-    traverse(oldRoot);
-    return match;
-  }
-
   private getSignature(node: Node): string {
     const body = node.childForFieldName("body") || node.childForFieldName("value");
 
@@ -197,14 +204,14 @@ export class SemanticDiffDetector {
   }
 
   private getTextExcludingNode(root: Node, exclude: Node): string {
-    let sig = "";
+    const tokens: string[] = [];
 
     const traverse = (n: Node) => {
       if (n.id === exclude.id) return;
 
-      // If node has no children or it's just a text token, append its text
+      // If node has no children or it's just a text token, collect its text
       if (n.childCount === 0) {
-        sig += n.text + " ";
+        tokens.push(n.text);
       } else {
         for (const child of n.children) {
           if (!child) continue;
@@ -214,6 +221,6 @@ export class SemanticDiffDetector {
     };
 
     traverse(root);
-    return sig.trim().replace(/\s+/g, " "); // Normalize whitespace
+    return tokens.join(" ").trim().replace(/\s+/g, " "); // Normalize whitespace
   }
 }

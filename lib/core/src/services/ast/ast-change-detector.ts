@@ -3,7 +3,7 @@ import fs from "node:fs";
 import crypto from "node:crypto";
 import { db } from "@workspace/db";
 import { projectFilesTable, l2NodesTable } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import {
   IAstChangeDetector,
   FileIngestRequest,
@@ -60,16 +60,24 @@ export class AstChangeDetector implements IAstChangeDetector {
 
     if (currentPaths.length === 0) return { changed, hashes, duplicates };
 
-    // 2. Fetch existing hashes for all current paths
-    const existingFiles = await db
-      .select()
-      .from(projectFilesTable)
-      .where(
-        and(
-          eq(projectFilesTable.projectId, projectId),
-          inArray(projectFilesTable.filePath, currentPaths)
+    // 2. Fetch existing hashes for all current paths, chunked to stay under
+    // Postgres's bound-parameter limit on large repos.
+    const pathChunks = chunkArray(currentPaths, 500);
+    const existingFiles = (
+      await Promise.all(
+        pathChunks.map((chunk) =>
+          db
+            .select()
+            .from(projectFilesTable)
+            .where(
+              and(
+                eq(projectFilesTable.projectId, projectId),
+                inArray(projectFilesTable.filePath, chunk)
+              )
+            )
         )
-      );
+      )
+    ).flat();
 
     const hashByPath = new Map<string, string>();
     for (const f of existingFiles) {
@@ -156,8 +164,8 @@ export class AstChangeDetector implements IAstChangeDetector {
       .onConflictDoUpdate({
         target: [projectFilesTable.projectId, projectFilesTable.filePath],
         set: {
-          contentHash: values[0]?.contentHash,
-          lastParsedAt: new Date(),
+          contentHash: sql`excluded.content_hash`,
+          lastParsedAt: sql`excluded.last_parsed_at`,
         },
       });
   }

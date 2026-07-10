@@ -21,6 +21,10 @@ export interface IngestionResult {
   totalFetched?: number;
 }
 
+// `git show` is spawned per commit to fetch its diff; cap how many run concurrently
+// so a large commit range doesn't fork hundreds of subprocesses at once.
+const DIFF_FETCH_CONCURRENCY = 10;
+
 export class GitIngestionService implements IGitIngestionService {
   async ingestGit(
     project: typeof projectsTable.$inferSelect,
@@ -37,15 +41,16 @@ export class GitIngestionService implements IGitIngestionService {
       const commits = await client.getCommits(options.limit, since);
 
       const gitItems: GitCommitItem[] = [];
+      for (let i = 0; i < commits.length; i += DIFF_FETCH_CONCURRENCY) {
+        const batch = commits.slice(i, i + DIFF_FETCH_CONCURRENCY);
+        const batchWithDiffs = await Promise.all(
+          batch.map(async (c) => ({ ...c, diff: await client.getDiff(c.sha) }))
+        );
+        gitItems.push(...batchWithDiffs);
+      }
+
       let newestCommitDate: Date | null = null;
-
       for (const c of commits) {
-        const diff = await client.getDiff(c.sha);
-        gitItems.push({
-          ...c,
-          diff,
-        });
-
         const commitDate = new Date(c.date ?? "");
         if (!isNaN(commitDate.getTime()) && (!newestCommitDate || commitDate > newestCommitDate)) {
           newestCommitDate = commitDate;
@@ -78,10 +83,10 @@ export class GitIngestionService implements IGitIngestionService {
       });
 
       return {
-        ingested: ingested,
-        skipped: skipped,
+        ingested,
+        skipped,
         totalFetched: gitItems.length,
-        errors: errors,
+        errors,
       };
     } finally {
       await client.cleanup();

@@ -31,6 +31,8 @@ export interface ProviderProfile {
 }
 
 export interface ProviderTransport {
+  getAuthHeaders(apiKey: string): Record<string, string>;
+  buildUrl(baseUrl: string, stream: boolean): string;
   transformRequest(req: NormalizedRequest): any;
   transformResponse(res: any): NormalizedResponse;
   transformStreamChunk?(chunk: any): string;

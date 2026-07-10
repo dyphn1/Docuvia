@@ -10,39 +10,43 @@ import { and, eq, sql } from "drizzle-orm";
 import { generateEmbedding, cosineSimilarity } from "./embedding.js";
 import { logger } from "../utils/logger.js";
 
+async function fetchPendingEntityIds(db: any, taskType: "anchor" | "merge"): Promise<Set<number>> {
+  const rows = await db
+    .select({ entityId: reviewTasksTable.entityId })
+    .from(reviewTasksTable)
+    .where(
+      and(
+        eq(reviewTasksTable.entityType, "l1_tag"),
+        eq(reviewTasksTable.taskType, taskType),
+        eq(reviewTasksTable.status, "pending")
+      )
+    );
+  return new Set(rows.map((r: { entityId: number }) => r.entityId));
+}
+
 export async function runNoiseDetection(db: any, projectId: number): Promise<number> {
   let noiseTasksCreated = 0;
 
   const allTags = await db.select().from(l1TagsTable);
 
+  const flaggedAnchorIds = await fetchPendingEntityIds(db, "anchor");
   for (const tag of allTags) {
     if (tag.isAnchored) continue;
 
-    if (tag.usageCount <= 1) {
-      const alreadyFlagged = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(reviewTasksTable)
-        .where(
-          and(
-            eq(reviewTasksTable.entityType, "l1_tag"),
-            eq(reviewTasksTable.entityId, tag.id),
-            eq(reviewTasksTable.taskType, "anchor"),
-            eq(reviewTasksTable.status, "pending")
-          )
-        );
-      if (Number(alreadyFlagged[0]?.count ?? 0) === 0) {
-        await db.insert(reviewTasksTable).values({
-          entityType: "l1_tag",
-          entityId: tag.id,
-          taskType: "anchor",
-          status: "pending",
-          description: `Noise detection: Tag "${tag.name}" has very low usage (${tag.usageCount} times). Consider merging with an existing tag or removing it.`,
-        });
-        noiseTasksCreated++;
-      }
+    if (tag.usageCount <= 1 && !flaggedAnchorIds.has(tag.id)) {
+      await db.insert(reviewTasksTable).values({
+        entityType: "l1_tag",
+        entityId: tag.id,
+        taskType: "anchor",
+        status: "pending",
+        description: `Noise detection: Tag "${tag.name}" has very low usage (${tag.usageCount} times). Consider merging with an existing tag or removing it.`,
+      });
+      flaggedAnchorIds.add(tag.id);
+      noiseTasksCreated++;
     }
   }
 
+  const flaggedMergeIds = await fetchPendingEntityIds(db, "merge");
   for (let i = 0; i < allTags.length; i++) {
     for (let j = i + 1; j < allTags.length; j++) {
       const a = allTags[i];
@@ -52,19 +56,7 @@ export async function runNoiseDetection(db: any, projectId: number): Promise<num
       const bName = b.name.toLowerCase().replace(/[-_\s]/g, "");
       if (aName === bName || aName.startsWith(bName) || bName.startsWith(aName)) {
         const aId = Math.min(a.id, b.id);
-        const bId = Math.max(a.id, b.id);
-        const alreadyFlagged = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(reviewTasksTable)
-          .where(
-            and(
-              eq(reviewTasksTable.entityType, "l1_tag"),
-              eq(reviewTasksTable.entityId, aId),
-              eq(reviewTasksTable.taskType, "merge"),
-              eq(reviewTasksTable.status, "pending")
-            )
-          );
-        if (Number(alreadyFlagged[0]?.count ?? 0) === 0) {
+        if (!flaggedMergeIds.has(aId)) {
           await db.insert(reviewTasksTable).values({
             entityType: "l1_tag",
             entityId: aId,
@@ -72,6 +64,7 @@ export async function runNoiseDetection(db: any, projectId: number): Promise<num
             status: "pending",
             description: `Noise detection: Tag "${a.name}" appears to be a near-duplicate of "${b.name}". Consider merging these tags.`,
           });
+          flaggedMergeIds.add(aId);
           noiseTasksCreated++;
         }
       }

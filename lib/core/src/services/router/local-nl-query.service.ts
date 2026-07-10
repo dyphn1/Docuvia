@@ -90,7 +90,7 @@ export class LocalIntentExtractionService {
     try {
       const { orchestrator, model } = await this.llmClientFactory(projectId);
       const response = await orchestrator.generate({
-        model: model || process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
+        model,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: EXTRACTION_SYSTEM_PROMPT },

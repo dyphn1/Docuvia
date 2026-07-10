@@ -60,11 +60,7 @@ export function scoreCommit(message?: string, diff?: string): { score: number; v
     if (diff.includes("FIXME") || diff.includes("HACK")) {
       score += SCORER_CONSTANTS.DIFF_DEBT_BONUS;
     }
-    // simple heuristic instead of splitting full diff array to save memory
-    let lines = 1;
-    for (let i = 0; i < diff.length; i++) {
-      if (diff[i] === "\n") lines++;
-    }
+    const lines = (diff.match(/\n/g)?.length ?? 0) + 1;
 
     if (lines > SCORER_CONSTANTS.DIFF_LENGTH_THRESHOLD) {
       score += SCORER_CONSTANTS.DIFF_LENGTH_BONUS;

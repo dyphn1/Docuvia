@@ -71,7 +71,6 @@ export * from "./services/sqlite-graph.repository.js";
 export * from "./services/topology-export.service.js";
 export * from "./services/topology-builder.js";
 export * from "./types/topology.types.js";
-export * from "./services/lsp/index.js";
 export * from "./services/generation/generate.service.js";
 export * from "./constants/risk-scores.js";
 export * from "./constants/git.js";

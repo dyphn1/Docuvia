@@ -7,6 +7,11 @@ export interface ImportDescriptor {
   modulePath: string;
 }
 
+/** Strips // and /* *\/ comments from JSONC content (e.g. tsconfig.json) so it can be JSON.parse'd. */
+function stripJsonComments(content: string): string {
+  return content.replace(/\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g, (m, g) => (g ? "" : m));
+}
+
 export class ScopeResolver {
   private exportsByFile: Map<string, Set<string>> = new Map();
   private importsByFile: Map<string, ImportDescriptor[]> = new Map();
@@ -22,10 +27,7 @@ export class ScopeResolver {
       const tsconfigPath = path.join(this.workspaceRoot, "tsconfig.json");
       if (fs.existsSync(tsconfigPath)) {
         const content = fs.readFileSync(tsconfigPath, "utf-8");
-        const cleanContent = content.replace(
-          /\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g,
-          (m, g) => (g ? "" : m)
-        );
+        const cleanContent = stripJsonComments(content);
         try {
           const parsed = JSON.parse(cleanContent);
           if (parsed.compilerOptions && parsed.compilerOptions.paths) {
@@ -39,10 +41,7 @@ export class ScopeResolver {
       const tsconfigBasePath = path.join(this.workspaceRoot, "tsconfig.base.json");
       if (fs.existsSync(tsconfigBasePath)) {
         const content = fs.readFileSync(tsconfigBasePath, "utf-8");
-        const cleanContent = content.replace(
-          /\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g,
-          (m, g) => (g ? "" : m)
-        );
+        const cleanContent = stripJsonComments(content);
         const parsed = JSON.parse(cleanContent);
         if (parsed.compilerOptions && parsed.compilerOptions.paths) {
           this.tsConfigPaths = { ...parsed.compilerOptions.paths, ...this.tsConfigPaths };

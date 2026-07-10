@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { l2NodesTable, nodeLinksTable } from "@workspace/db/schema";
-import { eq, like } from "drizzle-orm";
+import { and, eq, inArray, like } from "drizzle-orm";
 
 export class DependencyService {
   public static async getDependencies(
@@ -8,45 +8,39 @@ export class DependencyService {
     escapedModuleName: string,
     projectId?: number
   ) {
+    const nameFilter = like(l2NodesTable.name, `%${escapedModuleName}%`);
     const nodes = await db
       .select()
       .from(l2NodesTable)
-      .where(like(l2NodesTable.name, `%${escapedModuleName}%`));
+      .where(projectId ? and(nameFilter, eq(l2NodesTable.projectId, projectId)) : nameFilter);
 
-    const node = projectId ? nodes.find((n) => n.projectId === projectId) : nodes[0];
+    const node = nodes[0];
 
     if (!node) {
       return { module: moduleName, nodeId: null, dependencies: [], dependents: [] };
     }
 
-    const outLinks = await db
-      .select()
-      .from(nodeLinksTable)
-      .where(eq(nodeLinksTable.sourceNodeId, node.id));
+    const [outLinks, inLinks] = await Promise.all([
+      db.select().from(nodeLinksTable).where(eq(nodeLinksTable.sourceNodeId, node.id)),
+      db.select().from(nodeLinksTable).where(eq(nodeLinksTable.targetNodeId, node.id)),
+    ]);
 
-    const inLinks = await db
-      .select()
-      .from(nodeLinksTable)
-      .where(eq(nodeLinksTable.targetNodeId, node.id));
-
-    const dependencies = await Promise.all(
-      outLinks.map(async (link) => {
-        const [target] = await db
-          .select({ name: l2NodesTable.name })
+    const relatedNodeIds = [
+      ...new Set([...outLinks.map((l) => l.targetNodeId), ...inLinks.map((l) => l.sourceNodeId)]),
+    ];
+    const relatedNodes = relatedNodeIds.length
+      ? await db
+          .select({ id: l2NodesTable.id, name: l2NodesTable.name })
           .from(l2NodesTable)
-          .where(eq(l2NodesTable.id, link.targetNodeId));
-        return target?.name ?? `node#${link.targetNodeId}`;
-      })
+          .where(inArray(l2NodesTable.id, relatedNodeIds))
+      : [];
+    const nameById = new Map(relatedNodes.map((n) => [n.id, n.name]));
+
+    const dependencies = outLinks.map(
+      (link) => nameById.get(link.targetNodeId) ?? `node#${link.targetNodeId}`
     );
-
-    const dependents = await Promise.all(
-      inLinks.map(async (link) => {
-        const [source] = await db
-          .select({ name: l2NodesTable.name })
-          .from(l2NodesTable)
-          .where(eq(l2NodesTable.id, link.sourceNodeId));
-        return source?.name ?? `node#${link.sourceNodeId}`;
-      })
+    const dependents = inLinks.map(
+      (link) => nameById.get(link.sourceNodeId) ?? `node#${link.sourceNodeId}`
     );
 
     return { module: moduleName, nodeId: node.id, dependencies, dependents };

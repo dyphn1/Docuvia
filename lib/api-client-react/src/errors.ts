@@ -1,41 +1,5 @@
-export function getMediaType(headers: Headers): string | null {
-  const value = headers.get("content-type");
-  return value ? value.split(";", 1)[0].trim().toLowerCase() : null;
-}
-
-export function isJsonMediaType(mediaType: string | null): boolean {
-  return mediaType === "application/json" || Boolean(mediaType?.endsWith("+json"));
-}
-
-export function isTextMediaType(mediaType: string | null): boolean {
-  return Boolean(
-    mediaType &&
-    (mediaType.startsWith("text/") ||
-      mediaType === "application/xml" ||
-      mediaType === "text/xml" ||
-      mediaType.endsWith("+xml") ||
-      mediaType === "application/x-www-form-urlencoded")
-  );
-}
-
-const NO_BODY_STATUS = new Set([204, 205, 304]);
-
-export function hasNoBody(response: Response, method: string): boolean {
-  if (method === "HEAD") return true;
-  if (NO_BODY_STATUS.has(response.status)) return true;
-  if (response.headers.get("content-length") === "0") return true;
-  if (response.body === null) return true;
-  return false;
-}
-
-export function stripBom(text: string): string {
-  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
-}
-
-export function looksLikeJson(text: string): boolean {
-  const trimmed = text.trimStart();
-  return trimmed.startsWith("{") || trimmed.startsWith("[");
-}
+import { getMediaType, isJsonMediaType, isTextMediaType } from "./media-type.js";
+import { hasNoBody, looksLikeJson, readNormalizedText, tryParseJson } from "./response-body.js";
 
 function getStringField(value: unknown, key: string): string | undefined {
   if (!value || typeof value !== "object") return undefined;
@@ -66,31 +30,24 @@ export function buildErrorMessage(response: Response, data: unknown): string {
     getStringField(data, "error_description") ??
     getStringField(data, "error");
 
-  if (title && detail) return `${prefix}: ${title} — ${detail}`;
-  if (detail) return `${prefix}: ${detail}`;
-  if (message) return `${prefix}: ${message}`;
-  if (title) return `${prefix}: ${title}`;
-
-  return prefix;
+  const text = title && detail ? `${title} — ${detail}` : (detail ?? message ?? title);
+  return text ? `${prefix}: ${text}` : prefix;
 }
 
-export class ApiError<T = unknown> extends Error {
-  readonly name = "ApiError";
+abstract class HttpResponseError extends Error {
   readonly status: number;
   readonly statusText: string;
-  readonly data: T | null;
   readonly headers: Headers;
   readonly response: Response;
   readonly method: string;
   readonly url: string;
 
-  constructor(response: Response, data: T | null, requestInfo: { method: string; url: string }) {
-    super(buildErrorMessage(response, data));
+  constructor(message: string, response: Response, requestInfo: { method: string; url: string }) {
+    super(message);
     Object.setPrototypeOf(this, new.target.prototype);
 
     this.status = response.status;
     this.statusText = response.statusText;
-    this.data = data;
     this.headers = response.headers;
     this.response = response;
     this.method = requestInfo.method;
@@ -98,14 +55,18 @@ export class ApiError<T = unknown> extends Error {
   }
 }
 
-export class ResponseParseError extends Error {
+export class ApiError<T = unknown> extends HttpResponseError {
+  readonly name = "ApiError";
+  readonly data: T | null;
+
+  constructor(response: Response, data: T | null, requestInfo: { method: string; url: string }) {
+    super(buildErrorMessage(response, data), response, requestInfo);
+    this.data = data;
+  }
+}
+
+export class ResponseParseError extends HttpResponseError {
   readonly name = "ResponseParseError";
-  readonly status: number;
-  readonly statusText: string;
-  readonly headers: Headers;
-  readonly response: Response;
-  readonly method: string;
-  readonly url: string;
   readonly rawBody: string;
   readonly cause: unknown;
 
@@ -117,16 +78,10 @@ export class ResponseParseError extends Error {
   ) {
     super(
       `Failed to parse response from ${requestInfo.method} ${response.url || requestInfo.url} ` +
-        `(${response.status} ${response.statusText}) as JSON`
+        `(${response.status} ${response.statusText}) as JSON`,
+      response,
+      requestInfo
     );
-    Object.setPrototypeOf(this, new.target.prototype);
-
-    this.status = response.status;
-    this.statusText = response.statusText;
-    this.headers = response.headers;
-    this.response = response;
-    this.method = requestInfo.method;
-    this.url = response.url || requestInfo.url;
     this.rawBody = rawBody;
     this.cause = cause;
   }
@@ -144,20 +99,15 @@ export async function parseErrorBody(response: Response, method: string): Promis
     return typeof response.blob === "function" ? response.blob() : response.text();
   }
 
-  const raw = await response.text();
-  const normalized = stripBom(raw);
-  const trimmed = normalized.trim();
+  const { raw, normalized, trimmed } = await readNormalizedText(response);
 
   if (trimmed === "") {
     return null;
   }
 
-  if (isJsonMediaType(mediaType) || looksLikeJson(normalized)) {
-    try {
-      return JSON.parse(normalized);
-    } catch {
-      return raw;
-    }
+  if (isJsonMediaType(mediaType) || looksLikeJson(trimmed)) {
+    const parsed = tryParseJson(normalized);
+    return parsed.ok ? parsed.value : raw;
   }
 
   return raw;

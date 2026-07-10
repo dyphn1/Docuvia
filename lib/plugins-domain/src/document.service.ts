@@ -9,19 +9,23 @@ import {
 } from "@workspace/core";
 import fs from "fs";
 
+function serializeDocument(d: any) {
+  return {
+    ...d,
+    createdAt: d.createdAt.toISOString(),
+    affiliatedAt: d.affiliatedAt?.toISOString() ?? null,
+  };
+}
+
 export class DocumentService implements IDocumentService {
   async listDocumentsByProjectId(projectId: number) {
     const docs = await db
       .select()
       .from(documentsTable)
       .where(eq(documentsTable.projectId, projectId))
-      .orderBy(documentsTable.createdAt); // Or desc, let's look at what was originally there: orderBy(sql`${documentsTable.createdAt} desc`)
+      .orderBy(documentsTable.createdAt);
 
-    return docs.map((d: any) => ({
-      ...d,
-      createdAt: d.createdAt.toISOString(),
-      affiliatedAt: d.affiliatedAt?.toISOString() ?? null,
-    }));
+    return docs.map(serializeDocument);
   }
 
   async listMiscDocuments() {
@@ -31,11 +35,7 @@ export class DocumentService implements IDocumentService {
       .where(isNull(documentsTable.projectId))
       .orderBy(documentsTable.createdAt);
 
-    return docs.map((d: any) => ({
-      ...d,
-      createdAt: d.createdAt.toISOString(),
-      affiliatedAt: d.affiliatedAt?.toISOString() ?? null,
-    }));
+    return docs.map(serializeDocument);
   }
 
   async affiliateDocument(id: number, projectId: number) {
@@ -51,11 +51,7 @@ export class DocumentService implements IDocumentService {
 
     if (!updated) return null;
 
-    return {
-      ...updated,
-      createdAt: updated.createdAt.toISOString(),
-      affiliatedAt: updated.affiliatedAt?.toISOString() ?? null,
-    };
+    return serializeDocument(updated);
   }
 
   async processAndSaveDocument(file: any, uploadedBy: number) {

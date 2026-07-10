@@ -54,12 +54,12 @@ export class AstParseCache implements IAsxParseCache {
 
   set(contentHash: string, result: AstParseResponse): void {
     const isNewItem = !this.cache.has(contentHash);
-    const itemCountBefore = isNewItem ? this.cache.dump().length : 0;
+    const itemCountBefore = isNewItem ? this.cache.size : 0;
 
     this.cache.set(contentHash, result);
 
     if (isNewItem) {
-      const itemCountAfter = this.cache.dump().length;
+      const itemCountAfter = this.cache.size;
       // Calculate evictions: if adding 1 new item resulted in fewer items, some were evicted
       // Formula: evicted = before + 1 (new item) - after
       const evictedCount = itemCountBefore + 1 - itemCountAfter;

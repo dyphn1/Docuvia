@@ -1,4 +1,6 @@
 import { useEffect, useState, type ComponentType } from "react";
+import { MOCKUPS_DIR_NAME, MOCKUP_FILE_EXTENSION } from "../constants/mockups";
+import { PREVIEW_ERROR_MESSAGES } from "../constants/preview-messages";
 
 export type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 
@@ -7,13 +9,17 @@ export interface PreviewRendererProps {
   modules: ModuleMap;
 }
 
+function lastFunctionExport(mod: Record<string, unknown>): ComponentType | undefined {
+  const fns = Object.values(mod).filter((v) => typeof v === "function");
+  return fns[fns.length - 1] as ComponentType | undefined;
+}
+
 function resolveComponent(mod: Record<string, unknown>, name: string): ComponentType | undefined {
-  const fns = Object.values(mod).filter((v) => typeof v === "function") as ComponentType[];
   return (
     (mod.default as ComponentType) ||
     (mod.Preview as ComponentType) ||
     (mod[name] as ComponentType) ||
-    fns[fns.length - 1]
+    lastFunctionExport(mod)
   );
 }
 
@@ -28,10 +34,10 @@ export function PreviewRenderer({ componentPath, modules }: PreviewRendererProps
     setError(null);
 
     async function loadComponent(): Promise<void> {
-      const key = `./components/mockups/${componentPath}.tsx`;
+      const key = `./${MOCKUPS_DIR_NAME}/${componentPath}${MOCKUP_FILE_EXTENSION}`;
       const loader = modules[key];
       if (!loader) {
-        setError(`No component found at ${componentPath}.tsx`);
+        setError(PREVIEW_ERROR_MESSAGES.COMPONENT_NOT_FOUND(componentPath));
         return;
       }
 
@@ -43,9 +49,7 @@ export function PreviewRenderer({ componentPath, modules }: PreviewRendererProps
         const name = componentPath.split("/").pop() ?? "";
         const comp = resolveComponent(mod, name);
         if (!comp) {
-          setError(
-            `No exported React component found in ${componentPath}.tsx\n\nMake sure the file has at least one exported function component.`
-          );
+          setError(PREVIEW_ERROR_MESSAGES.NO_EXPORTED_COMPONENT(componentPath));
           return;
         }
         setComponent(() => comp);
@@ -55,7 +59,7 @@ export function PreviewRenderer({ componentPath, modules }: PreviewRendererProps
         }
 
         const message = e instanceof Error ? e.message : String(e);
-        setError(`Failed to load preview.\n${message}`);
+        setError(PREVIEW_ERROR_MESSAGES.LOAD_FAILED(message));
       }
     }
 

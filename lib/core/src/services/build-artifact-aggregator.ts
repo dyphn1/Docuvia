@@ -75,16 +75,13 @@ export class BuildArtifactAggregator {
     if (parsed.diagnostics.length > 0) {
       lines.push("");
       lines.push("## Build Diagnostics");
-      if (errors.length > 0) {
-        lines.push(`### Errors (${errors.length})`);
-        for (const d of errors.slice(0, 10)) {
-          const loc = d.file ? `[${d.file}${d.line != null ? `:${d.line}` : ""}]` : "";
-          lines.push(`- ${loc} ${d.message}`);
-        }
-      }
-      if (warnings.length > 0) {
-        lines.push(`### Warnings (${warnings.length})`);
-        for (const d of warnings.slice(0, 10)) {
+      for (const [label, group] of [
+        ["Errors", errors],
+        ["Warnings", warnings],
+      ] as const) {
+        if (group.length === 0) continue;
+        lines.push(`### ${label} (${group.length})`);
+        for (const d of group.slice(0, 10)) {
           const loc = d.file ? `[${d.file}${d.line != null ? `:${d.line}` : ""}]` : "";
           lines.push(`- ${loc} ${d.message}`);
         }

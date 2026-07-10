@@ -1,9 +1,9 @@
-import { logger } from "../utils/logger.js";
-import { assertPublicHttpUrl } from "../utils/ssrf-guard.js";
-import type { INotificationProvider } from "./notification.provider.js";
+import { BaseWebhookNotificationProvider } from "./notification.provider.js";
 
-export class TeamsProvider implements INotificationProvider {
-  private buildPayload(
+export class TeamsProvider extends BaseWebhookNotificationProvider {
+  protected readonly providerLabel = "Teams";
+
+  protected buildPayload(
     eventType: string,
     payload: Record<string, unknown>,
     projectName: string
@@ -44,35 +44,5 @@ export class TeamsProvider implements INotificationProvider {
         },
       ],
     };
-  }
-
-  async notify(
-    webhookUrl: string,
-    eventType: string,
-    payload: Record<string, unknown>,
-    projectName: string
-  ): Promise<boolean> {
-    const body = this.buildPayload(eventType, payload, projectName);
-    try {
-      const safeWebhookUrl = await assertPublicHttpUrl(webhookUrl, "Teams webhook URL");
-      const res = await fetch(safeWebhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        logger.warn({ status: res.status, webhookUrl }, "Teams webhook returned non-OK status");
-        return false;
-      }
-      return true;
-    } catch (err) {
-      logger.warn({ err, webhookUrl }, "Failed to post to Teams webhook");
-      return false;
-    }
-  }
-
-  async sendTestNotification(webhookUrl: string, projectName: string): Promise<boolean> {
-    const testPayload: Record<string, unknown> = { l3Count: 3, commitCount: 5 };
-    return this.notify(webhookUrl, "new_l3_node", testPayload, projectName);
   }
 }

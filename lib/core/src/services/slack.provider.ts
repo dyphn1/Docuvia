@@ -1,18 +1,18 @@
-import { logger } from "../utils/logger.js";
-import { assertPublicHttpUrl } from "../utils/ssrf-guard.js";
-import type { INotificationProvider } from "./notification.provider.js";
+import { BaseWebhookNotificationProvider } from "./notification.provider.js";
 
 interface SlackBlock {
   type: string;
   text?: { type: string; text: string };
 }
 
-export class SlackProvider implements INotificationProvider {
-  private buildPayload(
+export class SlackProvider extends BaseWebhookNotificationProvider {
+  protected readonly providerLabel = "Slack";
+
+  protected buildPayload(
     eventType: string,
     payload: Record<string, unknown>,
     projectName: string
-  ): { text: string; blocks: SlackBlock[] } {
+  ): Record<string, unknown> {
     const emojiMap: Record<string, string> = {
       new_commit: ":git:",
       new_l3_node: ":bulb:",
@@ -55,35 +55,5 @@ export class SlackProvider implements INotificationProvider {
       text: summary,
       blocks: [{ type: "section", text: { type: "mrkdwn", text: summary } }, ...fields],
     };
-  }
-
-  async notify(
-    webhookUrl: string,
-    eventType: string,
-    payload: Record<string, unknown>,
-    projectName: string
-  ): Promise<boolean> {
-    const body = this.buildPayload(eventType, payload, projectName);
-    try {
-      const safeWebhookUrl = await assertPublicHttpUrl(webhookUrl, "Slack webhook URL");
-      const res = await fetch(safeWebhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        logger.warn({ status: res.status, webhookUrl }, "Slack webhook returned non-OK status");
-        return false;
-      }
-      return true;
-    } catch (err) {
-      logger.warn({ err, webhookUrl }, "Failed to post to Slack webhook");
-      return false;
-    }
-  }
-
-  async sendTestNotification(webhookUrl: string, projectName: string): Promise<boolean> {
-    const testPayload: Record<string, unknown> = { l3Count: 3, commitCount: 5 };
-    return this.notify(webhookUrl, "new_l3_node", testPayload, projectName);
   }
 }

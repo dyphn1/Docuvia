@@ -11,7 +11,6 @@ import {
   vector,
   index,
 } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { l2NodesTable } from "./l2-nodes";
 
@@ -52,9 +51,25 @@ export const l3NodesTable = pgTable(
   })
 );
 
-export const insertL3NodeSchema = createInsertSchema(l3NodesTable).omit({
-  id: true,
-  createdAt: true,
+// Hand-written rather than createInsertSchema(l3NodesTable) — see l2-nodes.ts for why
+// (drizzle-zod crashes on any table with a `vector`/pgvector column).
+export const insertL3NodeSchema = z.object({
+  l2NodeId: z.number(),
+  title: z.string(),
+  content: z.string().nullable().optional(),
+  nodeType: z.enum(l3NodeTypeEnum.enumValues).optional(),
+  sourceCommits: z.any().optional(),
+  commitHash: z.string().nullable().optional(),
+  aiGenerated: z.boolean().optional(),
+  confidence: z.number().nullable().optional(),
+  noiseScore: z.number().nullable().optional(),
+  lastVerifiedAt: z.date().nullable().optional(),
+  occurrenceCount: z.number().optional(),
+  introducedInCommit: z.string().nullable().optional(),
+  verifiedUntilCommit: z.string().nullable().optional(),
+  validityStatus: z.string().optional(),
+  source: z.string().optional(),
+  contentHash: z.string().nullable().optional(),
 });
 export const updateL3NodeSchema = insertL3NodeSchema.partial();
 export type InsertL3Node = z.infer<typeof insertL3NodeSchema>;

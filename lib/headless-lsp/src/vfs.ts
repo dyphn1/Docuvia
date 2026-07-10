@@ -1,6 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+/** Converts a `file://` LSP URI to a platform-native filesystem path. Passes through unchanged if not a `file://` URI. */
+export function uriToFilePath(uri: string): string {
+  if (!uri.startsWith("file://")) return uri;
+  if (process.platform === "win32") {
+    return decodeURIComponent(uri.replace("file:///", "").replace(/\//g, "\\"));
+  }
+  return decodeURIComponent(uri.replace("file://", ""));
+}
+
 export class VirtualFileSystem {
   private tempDir: string;
   private cache: Map<string, string>;
@@ -17,16 +26,7 @@ export class VirtualFileSystem {
   }
 
   private getGitIsomorphicPath(uri: string): string {
-    let filePath = uri;
-    if (uri.startsWith("file://")) {
-      if (process.platform === "win32") {
-        filePath = uri.replace("file:///", "").replace(/\//g, "\\");
-        filePath = decodeURIComponent(filePath);
-      } else {
-        filePath = decodeURIComponent(uri.replace("file://", ""));
-      }
-    }
-
+    const filePath = uriToFilePath(uri);
     let relPath = path.relative(this.workspaceRoot, filePath);
     if (relPath.startsWith("..") || path.isAbsolute(relPath)) {
       // Fallback if outside workspace
@@ -62,6 +62,8 @@ export class VirtualFileSystem {
   }
 
   async writeAst(nodes: string[], edges: string[]): Promise<void> {
+    if (nodes.length === 0 && edges.length === 0) return;
+
     const graphDir = path.join(this.tempDir, "graph");
     await fs.mkdir(graphDir, { recursive: true });
 

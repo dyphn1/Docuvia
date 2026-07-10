@@ -65,19 +65,10 @@ export async function* generateAst(
     const traverser = new AstTraverser(provider, tree.rootNode);
     const edgeComputer = new EdgeComputer(traverser.getImports(), textContent, filePath);
 
-    const parsedFile: ParsedFile = {
-      filePath,
-      events: [
-        { type: "file", path: filePath },
-        ...traverser.extractClasses(),
-        ...traverser.extractFunctions(),
-        ...edgeComputer.computeCallEdges(traverser.getCalls()),
-      ],
-    };
-
-    for (const event of parsedFile.events) {
-      yield event;
-    }
+    yield { type: "file", path: filePath };
+    yield* traverser.extractClasses();
+    yield* traverser.extractFunctions();
+    yield* edgeComputer.computeCallEdges(traverser.getCalls());
   } finally {
     tree.delete();
     parser.delete();

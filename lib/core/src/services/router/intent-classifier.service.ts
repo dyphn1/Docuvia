@@ -49,7 +49,7 @@ export class IntentClassifierService implements IIntentClassifier {
     try {
       const { orchestrator, model } = await getLlmOrchestratorForProject(projectId);
       const response = await orchestrator.generate({
-        model: model || process.env.AI_OPENAI_FAST_MODEL || "gpt-4o-mini",
+        model,
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: CLASSIFICATION_SYSTEM_PROMPT },

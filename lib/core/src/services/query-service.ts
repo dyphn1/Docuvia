@@ -79,14 +79,10 @@ export class QueryService {
       const node = this.findNodeByName(db, target);
       if (!node) return null;
 
-      const incoming = db
-        .prepare(
-          `SELECT n.name as source_name, n.type as source_type
-           FROM node_links l
-           JOIN l2_nodes n ON n.id = l.source_node_id
-           WHERE l.target_node_id = ?`
-        )
-        .all(node.id) as Array<{ source_name: string; source_type: string }>;
+      const incoming = this.queryIncomingEdges(db, node.id).map((r) => ({
+        source_name: r.name,
+        source_type: r.type,
+      }));
 
       const outgoing = db
         .prepare(
@@ -118,19 +114,24 @@ export class QueryService {
       const node = this.findNodeByName(db, target);
       if (!node) return null;
 
-      const blastRadius = db
-        .prepare(
-          `SELECT n.name as name, n.type as type
-           FROM node_links l
-           JOIN l2_nodes n ON n.id = l.source_node_id
-           WHERE l.target_node_id = ?`
-        )
-        .all(node.id) as Array<{ name: string; type: string }>;
-
-      return { blastRadius };
+      return { blastRadius: this.queryIncomingEdges(db, node.id) };
     } finally {
       db.close();
     }
+  }
+
+  private queryIncomingEdges(
+    db: Database.Database,
+    nodeId: number
+  ): Array<{ name: string; type: string }> {
+    return db
+      .prepare(
+        `SELECT n.name as name, n.type as type
+         FROM node_links l
+         JOIN l2_nodes n ON n.id = l.source_node_id
+         WHERE l.target_node_id = ?`
+      )
+      .all(nodeId) as Array<{ name: string; type: string }>;
   }
 
   private findNodeByName(

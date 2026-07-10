@@ -1,6 +1,12 @@
 import { NormalizedRequest, NormalizedResponse, ProviderTransport } from "./types.js";
 
 export const anthropicTransport: ProviderTransport = {
+  getAuthHeaders: (apiKey: string) => ({
+    "x-api-key": apiKey,
+    "anthropic-version": "2023-06-01",
+    "content-type": "application/json",
+  }),
+  buildUrl: (baseUrl: string) => baseUrl,
   transformRequest: (req: NormalizedRequest) => {
     const systemMessage = req.messages.find((m) => m.role === "system")?.content;
     const messages = req.messages

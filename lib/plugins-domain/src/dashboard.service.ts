@@ -6,7 +6,6 @@ import {
   l3NodesTable,
   reviewTasksTable,
   activityLogTable,
-  projectsTable as proj,
 } from "@workspace/db";
 import { count, eq, sql } from "drizzle-orm";
 
@@ -14,14 +13,16 @@ import { IDashboardService } from "@workspace/core";
 
 export class DashboardService implements IDashboardService {
   async getDashboardStats() {
-    const [projectsCount] = await db.select({ count: count() }).from(projectsTable);
-    const [l1Count] = await db.select({ count: count() }).from(l1TagsTable);
-    const [l2Count] = await db.select({ count: count() }).from(l2NodesTable);
-    const [l3Count] = await db.select({ count: count() }).from(l3NodesTable);
-    const [pendingCount] = await db
-      .select({ count: count() })
-      .from(reviewTasksTable)
-      .where(eq(reviewTasksTable.status, "pending"));
+    const [[projectsCount], [l1Count], [l2Count], [l3Count], [pendingCount]] = await Promise.all([
+      db.select({ count: count() }).from(projectsTable),
+      db.select({ count: count() }).from(l1TagsTable),
+      db.select({ count: count() }).from(l2NodesTable),
+      db.select({ count: count() }).from(l3NodesTable),
+      db
+        .select({ count: count() })
+        .from(reviewTasksTable)
+        .where(eq(reviewTasksTable.status, "pending")),
+    ]);
 
     const activityRows = await db
       .select({
@@ -29,10 +30,10 @@ export class DashboardService implements IDashboardService {
         type: activityLogTable.type,
         description: activityLogTable.description,
         createdAt: activityLogTable.createdAt,
-        projectName: proj.name,
+        projectName: projectsTable.name,
       })
       .from(activityLogTable)
-      .leftJoin(proj, eq(activityLogTable.projectId, proj.id))
+      .leftJoin(projectsTable, eq(activityLogTable.projectId, projectsTable.id))
       .orderBy(sql`${activityLogTable.createdAt} desc`)
       .limit(10);
 

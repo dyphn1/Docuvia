@@ -27,6 +27,7 @@ export class TempFileManager {
   private cleanupInterval: NodeJS.Timeout | null = null;
   private fileLocks = new Map<string, Promise<void>>();
   private concurrencyLimit = pLimit(5); // 5 concurrent file operations
+  private ttlMs: number;
 
   constructor(
     workspaceRoot: string,
@@ -35,6 +36,7 @@ export class TempFileManager {
     cleanupIntervalMs: number = 30 * 60 * 1000 // 30 minutes default
   ) {
     this.tempDir = path.join(workspaceRoot, ".docuvia", "tmp");
+    this.ttlMs = ttlMs;
     this.lruCache = new LRUCache<string, FileEntry>({
       max: 10000, // Max number of tracked files
       maxSize: maxSizeBytes,
@@ -119,7 +121,7 @@ export class TempFileManager {
         const staleFiles: string[] = [];
 
         for (const [filePath, entry] of this.lruCache.entries()) {
-          if (now - entry.lastAccessedAt > 4 * 60 * 60 * 1000) {
+          if (now - entry.lastAccessedAt > this.ttlMs) {
             staleFiles.push(filePath);
           }
         }

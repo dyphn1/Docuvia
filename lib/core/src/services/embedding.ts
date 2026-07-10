@@ -2,7 +2,7 @@ import { getLlmOrchestratorForProject } from "./llm-provider.js";
 import { logger } from "../utils/logger.js";
 
 const EMBEDDING_MODEL = "text-embedding-3-small";
-const EMBEDDING_DIMENSIONS = 1536;
+export const EMBEDDING_DIMENSIONS = 1536;
 
 /**
  * Generate a normalized text embedding vector using OpenAI.

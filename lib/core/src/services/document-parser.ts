@@ -1,4 +1,4 @@
-import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
+import { ENCODING_HEX, HASH_ALGO_SHA256 } from "@workspace/core";
 import { extractBuildArtifactText } from "./build-artifact-aggregator.js";
 import { fork } from "node:child_process";
 import path from "node:path";

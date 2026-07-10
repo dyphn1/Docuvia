@@ -9,6 +9,13 @@ import { logger } from "../utils/logger.js";
 
 const execFileAsync = promisify(execFile);
 
+// git processes piped into `readline` can exit 141 (SIGPIPE) once the reader is done with
+// the stream; that's expected, not a failure.
+const SIGPIPE_EXIT_CODE = 141;
+function isSuccessfulGitExit(code: number | null): boolean {
+  return code === 0 || code === SIGPIPE_EXIT_CODE;
+}
+
 export interface GitCommitData {
   sha: string;
   message: string;
@@ -93,7 +100,7 @@ export class LocalGitClient {
 
     return new Promise((resolve, reject) => {
       child.on("close", (code) => {
-        if (code !== 0 && code !== 141) reject(new Error(`Git log failed with code ${code}`));
+        if (!isSuccessfulGitExit(code)) reject(new Error(`Git log failed with code ${code}`));
         else resolve(commits);
       });
       child.on("error", reject);
@@ -171,7 +178,7 @@ export class LocalGitClient {
       });
 
       child.on("close", (code) => {
-        if (code !== 0 && code !== 141) {
+        if (!isSuccessfulGitExit(code)) {
           logger.warn({ sha, code }, "Failed to get diff for commit");
           resolve("");
         } else {

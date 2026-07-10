@@ -1,10 +1,11 @@
 import { parentPort } from "worker_threads";
-import { Parser, Language, Query } from "web-tree-sitter";
+import { Parser, Language, type Node } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
-import type { SupportedLanguage } from "@workspace/ast-core";
+import type { SupportedLanguage, LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
+import { loadDefaultRegistry } from "@workspace/plugins-ast";
 
 process.on("uncaughtException", (err) => {
   console.error("[ast-worker] uncaughtException:", err);
@@ -47,6 +48,100 @@ export interface AstParseResponse {
 }
 
 let parserInitialized = false;
+let registryPromise: Promise<LanguageRegistry> | null = null;
+
+function getRegistry(): Promise<LanguageRegistry> {
+  registryPromise ??= loadDefaultRegistry();
+  return registryPromise;
+}
+
+/**
+ * Resolves the on-disk path of a tree-sitter grammar's .wasm file, trying
+ * package.json resolution first (works whether tree-sitter-wasms is hoisted
+ * or nested under .pnpm) and falling back to a handful of known workspace
+ * layouts otherwise.
+ */
+function resolveWasmPath(wasmFile: string): { wasmPath: string; attemptedPaths: string[] } {
+  const docuviaRoot = path.resolve(__dirname, "../../../../");
+  const attemptedPaths: string[] = [];
+
+  try {
+    const packagePath = require.resolve(`tree-sitter-wasms/package.json`, {
+      paths: [__dirname, docuviaRoot],
+    });
+    const wasmPath = path.join(path.dirname(packagePath), "out", wasmFile);
+    attemptedPaths.push(wasmPath);
+    if (fs.existsSync(wasmPath)) return { wasmPath, attemptedPaths };
+  } catch {
+    // fall through to explicit path candidates below
+  }
+
+  const candidates = [
+    path.resolve(docuviaRoot, `node_modules/tree-sitter-wasms/out/${wasmFile}`),
+    path.resolve(__dirname, `../../../node_modules/tree-sitter-wasms/out/${wasmFile}`),
+    path.resolve(
+      docuviaRoot,
+      `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/${wasmFile}`
+    ),
+    path.resolve(docuviaRoot, `artifacts/vscode-client/out/wasm/${wasmFile}`),
+  ];
+
+  for (const candidate of candidates) {
+    attemptedPaths.push(candidate);
+    if (fs.existsSync(candidate)) return { wasmPath: candidate, attemptedPaths };
+  }
+
+  return { wasmPath: candidates[candidates.length - 1], attemptedPaths };
+}
+
+/** Regex fallback for imports so graph edges still work when WASM fails to load (e.g. in tests). */
+function extractFallbackImports(code: string): ImportDescriptor[] {
+  const fallbackImports: ImportDescriptor[] = [];
+  const importMatches = code.matchAll(/import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/g);
+  for (const match of importMatches) {
+    fallbackImports.push({
+      localName: match[1].trim(),
+      originalName: match[1].trim(),
+      modulePath: match[2],
+    });
+  }
+  return fallbackImports;
+}
+
+function getNodeName(node: Node): string {
+  return (
+    node.childForFieldName("name")?.text ||
+    node.descendantsOfType("identifier")[0]?.text ||
+    "anonymous"
+  );
+}
+
+/**
+ * Extracts just the callee (target function/method name) from a call node.
+ * The field holding the callee expression is named differently across
+ * grammars ("function" for TS/JS/Python/Rust/Go/C/C++, "name" for Java/PHP,
+ * "method" for Ruby) — try the common ones, falling back to the whole
+ * node's text if none match.
+ */
+function getCallTargetText(node: Node): string {
+  const callee =
+    node.childForFieldName("function") ||
+    node.childForFieldName("name") ||
+    node.childForFieldName("method");
+  return callee?.text ?? node.text;
+}
+
+/** Walks up from `node` to find the nearest ancestor present in `containerIds` (function/class nodes already extracted for this file), returning its name, or "anonymous" for top-level (file-scoped) call/implements/extends sites. */
+function findEnclosingContainerName(node: Node, containerIds: Set<number>): string {
+  let current = node.parent;
+  while (current) {
+    if (containerIds.has(current.id)) {
+      return getNodeName(current);
+    }
+    current = current.parent;
+  }
+  return "anonymous";
+}
 
 parentPort?.on("message", async (request: AstParseRequest) => {
   try {
@@ -55,86 +150,38 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       parserInitialized = true;
     }
 
-    const parser = new Parser();
+    const registry = await getRegistry();
+    const ext = path.extname(request.filePath);
+    const provider: LanguageProvider | undefined = registry.getProviderForExtension(ext);
 
-    // Attempt to load wasm
-    let languageLoaded = false;
-    let langInstance: Language | null = null;
-    try {
-      const docuviaRoot = path.resolve(__dirname, "../../../../");
-      const attemptedPaths: string[] = [];
-      // Use require.resolve to safely find tree-sitter-wasms no matter if it's hoisted or in .pnpm
-      let wasmPath = "";
-      try {
-        const packagePath = require.resolve(`tree-sitter-wasms/package.json`, {
-          paths: [__dirname, docuviaRoot],
-        });
-        wasmPath = path.join(
-          path.dirname(packagePath),
-          "out",
-          `tree-sitter-${request.language}.wasm`
-        );
-        attemptedPaths.push(wasmPath);
-      } catch (err) {
-        // Fallback to explicit path if package.json resolve fails
-        wasmPath = path.resolve(
-          docuviaRoot,
-          `node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
-        );
-        attemptedPaths.push(wasmPath);
-
-        // Another fallback for pnpm workspace structure
-        if (!fs.existsSync(wasmPath)) {
-          wasmPath = path.resolve(
-            __dirname,
-            `../../../node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
-          );
-          attemptedPaths.push(wasmPath);
-        }
-        if (!fs.existsSync(wasmPath)) {
-          wasmPath = path.resolve(
-            docuviaRoot,
-            `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/tree-sitter-${request.language}.wasm`
-          );
-          attemptedPaths.push(wasmPath);
-        }
-        if (!fs.existsSync(wasmPath)) {
-          wasmPath = path.resolve(
-            docuviaRoot,
-            `artifacts/vscode-client/out/wasm/tree-sitter-${request.language}.wasm`
-          );
-          attemptedPaths.push(wasmPath);
-        }
-      }
-
-      if (fs.existsSync(wasmPath)) {
-        langInstance = await Language.load(wasmPath);
-        parser.setLanguage(langInstance);
-        languageLoaded = true;
-      } else {
-        throw new Error(`[ast-worker] WASM not found. Tried paths: ${attemptedPaths.join(", ")}`);
-      }
-    } catch (e) {
-      const errMessage = e && typeof e === "object" && "message" in e ? e.message : String(e);
-      console.error(`[ast-worker] Failed to load wasm gracefully: `, e);
-
-      // Basic regex fallback for imports to ensure graph edges work even when WASM fails (e.g., in tests)
-      const fallbackImports: ImportDescriptor[] = [];
-      const importMatches = request.code.matchAll(/import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/g);
-      for (const match of importMatches) {
-        fallbackImports.push({
-          localName: match[1].trim(),
-          originalName: match[1].trim(),
-          modulePath: match[2],
-        });
-      }
-
-      // Return empty AST gracefully instead of crashing the pipeline
+    if (!provider) {
+      console.error(`[ast-worker] No language provider registered for extension ${ext}`);
       parentPort?.postMessage({
         taskId: request.taskId,
         success: true,
         data: {
-          imports: fallbackImports,
+          imports: [],
+          exports: [],
+          functions: [],
+          classes: [],
+          calls: [],
+          decisions: [`No language provider registered for extension ${ext}`],
+        },
+      });
+      return;
+    }
+
+    const { wasmPath, attemptedPaths } = resolveWasmPath(provider.wasm_file);
+
+    if (!fs.existsSync(wasmPath)) {
+      console.error(
+        `[ast-worker] WASM not found for ${request.language}. Tried paths: ${attemptedPaths.join(", ")}`
+      );
+      parentPort?.postMessage({
+        taskId: request.taskId,
+        success: true,
+        data: {
+          imports: extractFallbackImports(request.code),
           exports: [],
           functions: [],
           classes: [],
@@ -145,32 +192,19 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       return;
     }
 
-    if (!languageLoaded) {
-      parser.delete();
-      console.error(`[ast-worker] Language grammar not loaded for ${request.language}`);
-      parentPort?.postMessage({
-        taskId: request.taskId,
-        success: true,
-        data: {
-          imports: [],
-          exports: [],
-          functions: [],
-          classes: [],
-          calls: [],
-          decisions: ["Language grammar not loaded, AST parsing skipped"],
-        },
-      });
-      return;
-    }
+    const langInstance = await Language.load(wasmPath);
+    const parser = new Parser();
+    parser.setLanguage(langInstance);
 
-    // Parse the code using Tree-sitter
+    // Note: intentionally not calling provider.initQueries() here — some compiled
+    // query strings in @workspace/plugins-ast currently fail to parse against the
+    // installed grammar (a pre-existing, separate issue). DefaultProvider falls
+    // back to its per-language node-type lists (descendantsOfType) when queries
+    // aren't compiled, which is what we rely on here.
+
     const tree = parser.parse(request.code);
 
     const decisions: string[] = [];
-    if (tree) {
-      decisions.push(`Parsed via web-tree-sitter (nodes: ${tree.rootNode.childCount})`);
-    }
-
     const imports: ImportDescriptor[] = [];
     const exports: Array<{ name: string; type: "function" | "class" | "variable" }> = [];
     const functions: Array<{ name: string; startLine: number; endLine: number }> = [];
@@ -180,120 +214,66 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     const implementsList: Array<{ sourceClass: string; targetInterface: string }> = [];
     const extendsList: Array<{ sourceClass: string; targetClass: string }> = [];
 
-    if (tree && languageLoaded && langInstance) {
+    if (tree) {
+      decisions.push(`Parsed via web-tree-sitter (nodes: ${tree.rootNode.childCount})`);
+
       try {
-        let qStr = ``;
-        if (request.language === "typescript") {
-          qStr = `(import_statement (import_clause (named_imports (import_specifier name: (identifier) @import.name))) source: (string (string_fragment) @import.source))\n(import_statement (import_clause (identifier) @import.name) source: (string (string_fragment) @import.source))\n(export_statement (export_clause (export_specifier name: (identifier) @export.name)))\n(export_statement declaration: (function_declaration name: (identifier) @export.name))\n(export_statement declaration: (class_declaration name: (identifier) @export.name))\n(export_statement declaration: (lexical_declaration (variable_declarator name: (identifier) @export.name)))\n(function_declaration name: (identifier) @function)\n(method_definition name: (property_identifier) @method)\n(class_declaration name: (identifier) @class)\n(class_declaration name: (identifier) @class.name (class_heritage (implements_clause (_) @implements)))\n(class_declaration name: (identifier) @class.name (class_heritage (extends_clause value: (_) @extends)))\n(call_expression function: (identifier) @call)`;
-        } else {
-          qStr = `(import_statement) @import\n(function_declaration) @function\n(method_definition) @method\n(class_declaration) @class`;
+        const classNodes = provider.extractClasses(tree.rootNode);
+        for (const node of classNodes) {
+          classes.push({
+            name: getNodeName(node),
+            startLine: node.startPosition.row,
+            endLine: node.endPosition.row,
+            methods: [],
+          });
         }
-        const q = new Query(langInstance, qStr);
-        const matches = q.matches(tree.rootNode);
 
-        const capturedNodes = new Set();
-        for (const match of matches) {
-          let className = "";
-          for (const capture of match.captures) {
-            const node = capture.node;
+        const functionNodes = provider.extractFunctions(tree.rootNode);
+        for (const node of functionNodes) {
+          functions.push({
+            name: getNodeName(node),
+            startLine: node.startPosition.row,
+            endLine: node.endPosition.row,
+          });
+        }
 
-            if (capture.name === "class.name") {
-              className = node.text;
-              continue;
-            }
+        for (const node of provider.extractImports(tree.rootNode)) {
+          imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
+        }
 
-            if (capture.name === "implements") {
-              implementsList.push({ sourceClass: className, targetInterface: node.text });
-              continue;
-            }
+        const functionIds = new Set(functionNodes.map((n) => n.id));
+        const callNodes = provider.extractCalls(tree.rootNode);
+        for (const node of callNodes) {
+          if (calls.length >= 1000) break; // Circuit breaker limit
+          calls.push({
+            sourceFunction: findEnclosingContainerName(node, functionIds),
+            targetFunction: getCallTargetText(node),
+          });
+        }
 
-            if (capture.name === "extends") {
-              extendsList.push({ sourceClass: className, targetClass: node.text });
-              continue;
-            }
-
-            if (capturedNodes.has(node.id)) continue;
-            capturedNodes.add(node.id);
-
-            if (capture.name === "call") {
-              if (calls.length >= 1000) continue; // Circuit breaker limit
-              let current = node.parent;
-              let sourceFunction = "anonymous";
-              while (current) {
-                if (
-                  current.type === "function_declaration" ||
-                  current.type === "method_definition" ||
-                  current.type === "arrow_function" ||
-                  current.type === "function_expression"
-                ) {
-                  sourceFunction = current.childForFieldName("name")?.text || "anonymous";
-                  break;
-                }
-                current = current.parent;
-              }
-              calls.push({ sourceFunction, targetFunction: node.text });
-            } else if (capture.name === "import") {
-              imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
-            } else if (capture.name === "function" || capture.name === "method") {
-              functions.push({
-                name: node.childForFieldName("name")?.text || "anonymous",
-                startLine: node.startPosition.row,
-                endLine: node.endPosition.row,
-              });
-            } else if (capture.name === "class") {
-              classes.push({
-                name: node.childForFieldName("name")?.text || "anonymous",
-                startLine: node.startPosition.row,
-                endLine: node.endPosition.row,
-                methods: [],
-              });
-            }
+        const classIds = new Set(classNodes.map((n) => n.id));
+        if (provider.extractImplements) {
+          for (const node of provider.extractImplements(tree.rootNode)) {
+            implementsList.push({
+              sourceClass: findEnclosingContainerName(node, classIds),
+              targetInterface: node.text,
+            });
           }
         }
-        decisions.push("Queried nodes using web-tree-sitter Query API");
+        if (provider.extractExtends) {
+          for (const node of provider.extractExtends(tree.rootNode)) {
+            extendsList.push({
+              sourceClass: findEnclosingContainerName(node, classIds),
+              targetClass: node.text,
+            });
+          }
+        }
+
+        decisions.push("Queried nodes using @workspace/ast-core LanguageProvider");
       } catch (e) {
-        decisions.push("Query API failed, using AST fallback traversal");
-        const traverse = (node: any) => {
-          if (node.type === "import_statement") {
-            imports.push({ localName: node.text, originalName: node.text, modulePath: "" });
-          } else if (node.type === "function_declaration" || node.type === "method_definition") {
-            functions.push({
-              name: node.childForFieldName("name")?.text || "anonymous",
-              startLine: node.startPosition.row,
-              endLine: node.endPosition.row,
-            });
-          } else if (node.type === "class_declaration") {
-            classes.push({
-              name: node.childForFieldName("name")?.text || "anonymous",
-              startLine: node.startPosition.row,
-              endLine: node.endPosition.row,
-              methods: [],
-            });
-          } else if (node.type === "call_expression") {
-            if (calls.length < 1000) {
-              let current = node.parent;
-              let sourceFunction = "anonymous";
-              while (current) {
-                if (
-                  current.type === "function_declaration" ||
-                  current.type === "method_definition" ||
-                  current.type === "arrow_function" ||
-                  current.type === "function_expression"
-                ) {
-                  sourceFunction = current.childForFieldName("name")?.text || "anonymous";
-                  break;
-                }
-                current = current.parent;
-              }
-              const targetFunction = node.childForFieldName("function")?.text || "anonymous";
-              calls.push({ sourceFunction, targetFunction });
-            }
-          }
-          for (let i = 0; i < node.childCount; i++) {
-            traverse(node.child(i));
-          }
-        };
-        traverse(tree.rootNode);
+        decisions.push(
+          `ast-core provider query failed: ${e instanceof Error ? e.message : String(e)}`
+        );
       }
     }
 

@@ -8,7 +8,7 @@ import {
   subscriptionsTable,
   notificationsTable,
 } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { notifyExternalIntegrations } from "./notification.service.js";
 import { scoreCommit } from "./commit-scorer.js";
 import crypto from "crypto";
@@ -73,11 +73,11 @@ export async function processIngestion(
         const existingRecords = await tx
           .select({ hash: commitsTable.hash })
           .from(commitsTable)
-          .where(eq(commitsTable.projectId, projectId)); // Simplified for standard Drizzle
+          .where(
+            and(eq(commitsTable.projectId, projectId), inArray(commitsTable.hash, batchHashes))
+          );
 
-        const existingHashes = new Set(
-          existingRecords.filter((r: any) => batchHashes.includes(r.hash)).map((r: any) => r.hash)
-        );
+        const existingHashes = new Set(existingRecords.map((r: any) => r.hash));
 
         let batchIngested = 0;
         let lastHash = "";
@@ -129,19 +129,24 @@ export async function processIngestion(
     }
   } else if (type === "svn") {
     const svnItems = items as SvnCommitItem[];
-    for (const c of svnItems) {
-      const [existing] = await db
-        .select({ id: commitsTable.id })
-        .from(commitsTable)
-        .where(
-          and(
-            eq(commitsTable.projectId, projectId),
-            eq(commitsTable.vcsType, "svn"),
-            eq(commitsTable.revision, c.revision)
-          )
-        );
 
-      if (existing) {
+    const existingRevisions = await db
+      .select({ revision: commitsTable.revision })
+      .from(commitsTable)
+      .where(
+        and(
+          eq(commitsTable.projectId, projectId),
+          eq(commitsTable.vcsType, "svn"),
+          inArray(
+            commitsTable.revision,
+            svnItems.map((c) => c.revision)
+          )
+        )
+      );
+    const existingRevisionSet = new Set(existingRevisions.map((r) => r.revision));
+
+    for (const c of svnItems) {
+      if (existingRevisionSet.has(c.revision)) {
         skipped++;
         continue;
       }
@@ -162,6 +167,7 @@ export async function processIngestion(
         revision: c.revision,
         vcsType: "svn",
       });
+      existingRevisionSet.add(c.revision);
       ingested++;
     }
 

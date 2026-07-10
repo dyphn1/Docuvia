@@ -26,7 +26,6 @@ export type DispatchResult<T> =
  */
 export class TaskDispatcher {
   public readonly concurrency: number;
-  private active = 0;
   private readonly limit: ReturnType<typeof pLimit>;
 
   constructor(concurrency: number = MAX_PARALLEL_AGENTS) {
@@ -36,7 +35,7 @@ export class TaskDispatcher {
 
   /** Number of tasks currently executing (never exceeds `concurrency`). */
   public get activeCount(): number {
-    return this.active;
+    return this.limit.activeCount;
   }
 
   /** Runs all tasks under the concurrency cap and waits for every one to settle. */
@@ -47,7 +46,6 @@ export class TaskDispatcher {
   /** Queues a single task; resolves once the task settles. */
   public async dispatch<T>(task: DispatchTask<T>): Promise<DispatchResult<T>> {
     return this.limit(async () => {
-      this.active++;
       try {
         const value = await task.run();
         return { name: task.name, status: "fulfilled" as const, value };
@@ -57,8 +55,6 @@ export class TaskDispatcher {
           status: "rejected" as const,
           error: error instanceof Error ? error : new Error(String(error)),
         };
-      } finally {
-        this.active--;
       }
     });
   }

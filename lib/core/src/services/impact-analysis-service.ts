@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { l2NodesTable, l3NodesTable, nodeLinksTable } from "@workspace/db/schema";
-import { eq, like, inArray, count } from "drizzle-orm";
+import { and, eq, like, inArray, count } from "drizzle-orm";
 
 export class ImpactAnalysisService {
   private static async collectTransitiveImpactingNodeIds(
@@ -39,12 +39,13 @@ export class ImpactAnalysisService {
     escapedModuleName: string,
     projectId?: number
   ) {
+    const nameFilter = like(l2NodesTable.name, `%${escapedModuleName}%`);
     const nodes = await db
       .select()
       .from(l2NodesTable)
-      .where(like(l2NodesTable.name, `%${escapedModuleName}%`));
+      .where(projectId ? and(nameFilter, eq(l2NodesTable.projectId, projectId)) : nameFilter);
 
-    const node = projectId ? nodes.find((n) => n.projectId === projectId) : nodes[0];
+    const node = nodes[0];
 
     if (!node) {
       return { module: moduleName, nodeId: null, impactedModules: [], l3DecisionCount: 0 };

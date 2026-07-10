@@ -8,28 +8,26 @@ export class AstTraverser {
     private rootNode: Node
   ) {}
 
-  extractClasses(): AstEvent[] {
+  private getDeclName(node: Node): string | undefined {
+    const nameNode = node.childForFieldName("name") || node.descendantsOfType("identifier")[0];
+    return nameNode?.text;
+  }
+
+  private extractNamed(nodes: Node[], type: "class" | "function"): AstEvent[] {
     const events: AstEvent[] = [];
-    const classDecls = this.provider.extractClasses(this.rootNode);
-    for (const cls of classDecls) {
-      const nameNode = cls.childForFieldName("name") || cls.descendantsOfType("identifier")[0];
-      if (nameNode) {
-        events.push({ type: "class", name: nameNode.text });
-      }
+    for (const node of nodes) {
+      const name = this.getDeclName(node);
+      if (name) events.push({ type, name });
     }
     return events;
   }
 
+  extractClasses(): AstEvent[] {
+    return this.extractNamed(this.provider.extractClasses(this.rootNode), "class");
+  }
+
   extractFunctions(): AstEvent[] {
-    const events: AstEvent[] = [];
-    const functionDecls = this.provider.extractFunctions(this.rootNode);
-    for (const fn of functionDecls) {
-      const nameNode = fn.childForFieldName("name") || fn.descendantsOfType("identifier")[0];
-      if (nameNode) {
-        events.push({ type: "function", name: nameNode.text });
-      }
-    }
-    return events;
+    return this.extractNamed(this.provider.extractFunctions(this.rootNode), "function");
   }
 
   getImports(): Node[] {

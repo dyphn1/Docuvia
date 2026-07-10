@@ -1,4 +1,4 @@
-import { ENCODING_HEX, ENCODING_BASE64, HASH_ALGO_SHA256, HASH_ALGO_MD5 } from "@workspace/core";
+import { ENCODING_HEX, HASH_ALGO_SHA256 } from "@workspace/core";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";

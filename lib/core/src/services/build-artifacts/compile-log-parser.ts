@@ -5,10 +5,8 @@ import {
 } from "../../interfaces/build-artifact.interfaces.js";
 
 export class CompileLogParser implements IBuildArtifactParser {
-  canParse(filename: string, content: string): boolean {
-    const errorCount = (content.match(/\berror:/gi) ?? []).length;
-    const warningCount = (content.match(/\bwarning:/gi) ?? []).length;
-    return errorCount + warningCount > 3 || true; // Fallback parser
+  canParse(_filename: string, _content: string): boolean {
+    return true; // Fallback parser — always matches, must be registered last.
   }
 
   parse(content: string, filename: string): ParsedBuildArtifact {

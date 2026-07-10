@@ -1,6 +1,15 @@
 import { NormalizedRequest, NormalizedResponse, ProviderTransport } from "./types.js";
 
 export const geminiTransport: ProviderTransport = {
+  getAuthHeaders: (apiKey: string) => ({
+    "content-type": "application/json",
+    "x-goog-api-key": apiKey,
+  }),
+  buildUrl: (baseUrl: string, stream: boolean) => {
+    const endpoint = stream ? "streamGenerateContent?alt=sse" : "generateContent";
+    // Assume baseUrl includes model part, if not it needs appending
+    return `${baseUrl}:${endpoint}`;
+  },
   transformRequest: (req: NormalizedRequest) => {
     const systemMessage = req.messages.find((m) => m.role === "system")?.content;
     const contents = req.messages

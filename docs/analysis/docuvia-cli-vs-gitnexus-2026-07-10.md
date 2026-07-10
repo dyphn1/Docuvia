@@ -40,6 +40,25 @@ This also means the `docuvia snapshot`/`init` runtime was never actually losing 
 
 All re-testing above was done by calling `InitService.init()` directly (the same code path as `runDatabaseInit()` in `artifacts/cli/src/commands/init.ts`), deliberately bypassing `configureAgentIntegrations()` — the second phase of `docuvia init` that writes `.cursor/`, `.claude/`, `.windsurfrules`, `.cursorrules`, `llms.txt`, and (for non-TTY invocations) the **machine-global** `claude_desktop_config.json`. That side-effect surface, and the "silently writes 8 tool integrations + one global file, undocumented, no opt-out flag" finding from the original audit (`docuvia init` section, third bullet), is **unchanged and still open** — not addressed by either fix in this update. A full end-to-end `docuvia init` run (not just `InitService.init()` in isolation) has not been re-verified since these fixes landed.
 
+### 📊 Re-measured coverage vs. GitNexus, post-fix (same `hermes-agent` checkout)
+
+With the fixes above applied, rebuilt the index from scratch (`rm -rf .docuvia`, fresh `InitService.init()` run) and queried `.docuvia/local.db` directly rather than trusting a printed summary:
+
+|                      | Docuvia `init` (post-fix, this run) | GitNexus (original audit, `analyze --force`) | Ratio |
+| -------------------- | ----------------------------------- | -------------------------------------------- | ----- |
+| Files                | 4,236                               | 5,938 (explicitly skips 9 files >512KB)      | 71%   |
+| Nodes (`l2_nodes`)   | 84,380                              | 152,049                                      | 56%   |
+| Edges (`node_links`) | 123,916                             | 283,552                                      | 44%   |
+
+**Unchanged from the original audit** — this fix touched crash-reporting/shutdown-logging only, not file discovery or graph extraction, so these counts match the pre-fix numbers almost exactly (84,380 nodes then and now; 123,916 links matches the original audit's `export --topology --collapse=symbol` figure).
+
+**What the fix actually changes about these numbers**: before, every run also logged 13 "AstWorkerPool crashed" events, so there was no way to know whether the 71%/56%/44% gap partly reflected data silently dropped by those crashes on top of a real coverage gap. Now confirmed via `filesRequested === filesParsed` (4,236 = 4,236, 0 failures) and zero crash log lines that nothing was being silently lost — the entire gap vs. GitNexus is a genuine coverage/extraction-depth difference, not crash-related data loss.
+
+**Not yet investigated** — root cause of the gap itself:
+
+- Why file discovery finds ~1,700 fewer files than GitNexus (extension coverage? `.gitignore` handling? no oversized-file skip-list like GitNexus's explicit 9-file report?) — `file-discovery.service.ts` not audited this session.
+- Why node/edge extraction density is lower per file than GitNexus's (symbol-extraction granularity, language/grammar coverage gaps in `lib/ast-core`'s tree-sitter providers) — not investigated this session.
+
 ---
 
 ## Cross-cutting issue (affects every command)

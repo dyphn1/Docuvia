@@ -61,18 +61,14 @@ _(from skill: zoom-out + skill: grill-with-docs)_
 - Flag any proposed decisions that conflict with existing ADRs or the roadmap at `docs/gitbook/roadmap/README.md`.
 - Do not propose new modules that duplicate existing ones.
 
-## Approach
+## Approach (Todo-Driven)
 
-1. **Analyze Requirements**: Review the requirements. Use `search` and `read` tools to gather context from `kg-engine/`, `api-server/`, `api-spec/`, `db/`, `integrations-openai-ai-server/`, `vscode-client/`. Pay attention to the roadmap at `docs/gitbook/roadmap/README.md` and the granular `features/` directory to understand current progress.
-2. **Handle Ambiguities**: Note critical ambiguities for the user; otherwise proceed.
-3. **Document**: Use `edit` to write your plan to a Markdown file. Save a detailed implementation document at `docs/ai_plans/` as `implement_<feature-name>.md` (or `fix_<name>.md` for bug fixes). Include:
-   - Implementation Goals
-   - Approach / Methodology
-   - Detailed Implementation Steps
-   - Implementation Details (classes, APIs, files, paths)
-   - Which pnpm workspace packages are affected
-   - Architecture Diagrams (if applicable)
-4. **Output Handover Block**: Produce a structured Handover Block for the main Orchestrator.
+You MUST use the `manage_todo_list` tool to structure your work before making any changes.
+
+1. **[ ] Gate 1: Analyze Requirements**: Review the requirements using `search` and `read` tools. Pay attention to `docs/gitbook/roadmap/README.md`.
+2. **[ ] Gate 2: Handle Ambiguities**: Note critical ambiguities for the user; ask questions if needed.
+3. **[ ] Gate 3: Document**: Write a detailed implementation document at `docs/ai_plans/`.
+4. **[ ] Gate 4: Output Handover Block**: Produce a structured Handover Block for the main Orchestrator.
 
 ## Agent Selection Guide
 

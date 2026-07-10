@@ -8,23 +8,24 @@
 
 **Before modifying any core mechanism, all Agents MUST check `docs/gitbook/development/patterns/README.md` to see if a Mechanism Playbook exists.** If it does, you MUST read the playbook and obey its `Agent Guardrails & Invariants` section to ensure implementation consistency.
 
-## Workspace Layout
+## 🛑 AI Harness Protocol & Todo-Driven Execution (CRITICAL)
 
-```
-artifacts/
-  api-server/     Express API, MCP, ingestion, Agentic RAG routing (entry: src/index.ts, esbuild bundle)
-  kg-engine/      React+Vite frontend (entry: src/main.tsx)
-  vscode-client/  VS Code extension (release via tag push, packages .vsix)
-  ast-core/       AST analysis logic
-  mockup-sandbox/ UI prototyping only (not production)
-lib/
-  db/             Drizzle ORM schema + migrations (21 tables, drizzle-kit push)
-  api-spec/       OpenAPI spec (openapi.yaml) — single source of truth
-  api-client-react/  Auto-generated React Query hooks (do not edit)
-  api-zod/           Auto-generated Zod validators (do not edit)
-  integrations-openai-ai-server/  OpenAI-compatible client wrapper
-scripts/          preinstall.mjs (blocks npm/yarn), utilities
-```
+**No execution without a physical validation gate.** All AI Agents MUST adhere to the Multi-Domain Constraint System defined in `.github/skills/ai-harness/SKILL.md` and `.github/skills/todo-driven-workflow/SKILL.md`.
+
+1. Identify your domain (Code, Database, API, or Docs).
+2. Initialize your gates as a Todo list using `manage_todo_list` tool BEFORE making any changes.
+3. Pause for user confirmation between gates (e.g., Impact Analysis -> Contract/Types -> Red Test -> Green Implementation).
+   Do NOT execute an entire harness sequence in an unbroken background run.
+
+## 🧭 Architecture & Code Navigation
+
+> **IMPORTANT**: The codebase evolves rapidly. **Do NOT rely on hardcoded paths.**
+> You MUST use **GitNexus** as your primary search and navigation engine.
+>
+> - Use the `query_graph` or `semantic_search` tools to locate architecture, modules, and files.
+> - Before making changes, ALWAYS run impact analysis via GitNexus.
+>
+> _Note: Legacy architecture snapshots have been moved to `.github/memory/architecture.md` for historical reference only._
 
 ## Developer Commands
 
@@ -84,25 +85,6 @@ The CI pipeline runs this exact sequence (enforced via `.github/workflows/ci.yml
 - **External HTTP**: Mocked via MSW. Handlers in `artifacts/api-server/test/setup/msw/handlers.ts`; large fixtures in `artifacts/api-server/test/setup/msw/fixtures/`.
 - **k6 load tests**: In `artifacts/api-server/test/k6/`.
 
-## Architecture Notes
-
-- **API-first**: Never manually write API types or fetch hooks. Edit `lib/api-spec/openapi.yaml`, run codegen. Orval generates Zod schemas → `@workspace/api-zod` and React Query hooks → `@workspace/api-client-react`.
-- **Knowledge tiers**: L1 (global tags), L2 (architecture modules), L3 (implementation details anchored to commits). Stored in DB tables `l1_tags`, `l2_nodes`, `l3_nodes`.
-- **Git-isomorphic**: Knowledge syncs via the `docuvia-knowledge` orphan branch.
-- **Intent router**: `lib/core/src/services/intent-router.ts` routes queries across vector/graph/direct/hybrid with temporal decay.
-- **Webhook middleware order**: `/api/webhooks/github` is mounted with `express.raw()` **before** `express.json()` so HMAC signature validation works (see `src/app.ts`).
-
-## Gotchas
-
-- **`PORT` env var required** at api-server startup (no default).
-- **`pnpm lint` = `prettier --check`**, not a real linter (no ESLint configured).
-- **`pnpm test` runs both api-server and cli tests** (kg-engine has no test script).
-- **Supply-chain defense**: `minimumReleaseAge: 1440` in `pnpm-workspace.yaml` blocks packages <1 day old.
-- **Native Ollama support** — set the provider to `ollama` and configure `OLLAMA_BASE_URL` (defaults to `http://127.0.0.1:11434/v1`).
-- **autoInstallPeers: false** — add peer deps manually.
-- **Node 24+ required**; corepack-enabled pnpm 9.
-- API server uses **esbuild** for bundling (not tsc). See `build.mjs`.
-
 ## Agent Workflow
 
 This repo has 10 subagents defined in the `.github/agents/` directory for Claude/Copilot orchestration:
@@ -118,30 +100,7 @@ This repo has 10 subagents defined in the `.github/agents/` directory for Claude
 - [Shell Script Expert](.github/agents/shell-script-expert.agent.md)
 - [Tool Maker](.github/agents/tool-maker.agent.md)
 
-For complex multi-step work, dispatch to the appropriate agent rather than doing everything in one turn. See `.github/copilot-instructions.md` for the orchestrator state machine.
-
-## Key File Paths
-
-| What                           | Path                                                           |
-| ------------------------------ | -------------------------------------------------------------- |
-| OpenAPI spec                   | `lib/api-spec/openapi.yaml`                                    |
-| Orval codegen config           | `lib/api-spec/orval.config.cjs`                                |
-| Drizzle config                 | `lib/db/drizzle.config.cjs`                                    |
-| DB schema                      | `lib/db/src/schema/` (21 tables)                               |
-| API server entry               | `artifacts/api-server/src/index.ts`                            |
-| Express app + middleware order | `artifacts/api-server/src/app.ts`                              |
-| API routes                     | `artifacts/api-server/src/routes/` (24 route modules)          |
-| Intent router                  | `artifacts/api-server/lib/core/src/services/intent-router.ts`  |
-| VS Code extension docs         | `docs/gitbook/development/vscode-client/00-router-overview.md` |
-| Vitest config                  | `vitest.config.ts` (root)                                      |
-| CI pipeline                    | `.github/workflows/ci.yml`                                     |
-| Release (VSIX)                 | `.github/workflows/release.yml`                                |
-
-## Do Not Edit
-
-- `lib/api-client-react/src/generated/` — Auto-generated React Query hooks.
-- `lib/api-zod/src/generated/` — Auto-generated Zod validators.
-- `pnpm-lock.yaml` — Managed by pnpm.
+For complex multi-step work, dispatch to the appropriate agent rather than doing everything in one turn. See `.github/instructions/orchestrator.instructions.md` for the orchestrator state machine and harness routing rules.
 
 <!-- gitnexus:start -->
 

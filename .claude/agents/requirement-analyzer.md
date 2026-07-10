@@ -15,6 +15,5 @@ tools: Read, Edit, Glob, Grep
 
 ## Claude-Specific Constraints
 
-- Use `AskUserQuestion` to pause and clarify when requirements are ambiguous.
 - Do NOT use a subagent tool — output a `### 🤝 Handover Block` for the orchestrator instead.
 - Save implementation plans at `docs/ai_plans/implement_<feature-name>.md`.

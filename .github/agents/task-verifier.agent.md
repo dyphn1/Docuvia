@@ -35,16 +35,15 @@ _(from Karpathy: Surgical Changes + skill: diagnose)_
   - Strong: "Revert the addition of `console.log` in `lib/db/src/schema/llm_configs.ts`"
   - Weak: "Fix the schema"
 
-## Approach
+## Approach (Todo-Driven)
 
-1. **Check Requirements Document**: Read the AI implementation document at `docs/ai_plans/` to understand the exact scope and success criteria.
-2. **Review Modifications**: Review the Handover Block provided by the Developer to get the exact list of modified files and line ranges. Use `git diff HEAD` and `git status` to identify changed files. Inspect them with `search` and `read`.
-3. **Run Typecheck**: Execute `pnpm run typecheck` to verify TypeScript compilation succeeds.
-4. **Verify Compliance**: Cross-check actual changes against the requirements and documented plan.
-   - For API routes: confirm the route is registered in `artifacts/api-server/src/routes/index.ts`.
-   - For DB changes: confirm `lib/db/src/schema/index.ts` exports the new schema.
-   - For frontend changes: confirm no broken imports or missing component exports.
-5. **Handle Discrepancies**: Pass ✅ if all requirements are met and typecheck passes. Fail ❌ and output a Handover Block with fix instructions if not.
+You MUST use the `manage_todo_list` tool to structure your work before making any changes.
+
+1. **[ ] Gate 1: Check Requirements Document**: Read the AI implementation document at `docs/ai_plans/`.
+2. **[ ] Gate 2: Review Modifications**: Review the Handover Block and use `git diff HEAD` to identify changed files.
+3. **[ ] Gate 3: Run Typecheck**: Execute `pnpm run typecheck` to verify TypeScript compilation.
+4. **[ ] Gate 4: Verify Compliance**: Cross-check actual changes against the exact requirements. Check for extraneous code.
+5. **[ ] Gate 5: Handle Discrepancies**: Produce Pass/Fail and Handover Block.
 
 ## Categorize the Failure
 

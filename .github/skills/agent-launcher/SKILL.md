@@ -1,10 +1,7 @@
 ---
 name: agent-launcher
 description: >
-  Use when the user requests a complex, multi-step agentic workflow, such as
-  designing, implementing, and verifying a feature, or orchestrating tasks
-  across multiple subagents. Triggers the closed-loop Requirement Analyzer →
-  specialist Developer → Task Verifier pipeline for the Docuvia project.
+  Use when the user requests a complex, multi-step agentic workflow. This skill acts as the master orchestrator, chaining the Requirement Analyzer, Domain Developers, Task Verifier, and Memory Keeper. It enforces strict physical validation gates by binding execution to the `/ai-harness` protocol.
 ---
 
 # Agent Launcher Workflow
@@ -22,15 +19,19 @@ Read `.github/agents/*.agent.md` to see the full list. Summary:
 | `Frontend Developer`     | Implement React/Vite/shadcn-ui frontend components            |
 | `Database Schema Expert` | Design/modify Drizzle ORM schemas + migrations                |
 | `API Architect`          | Modify OpenAPI spec + trigger Orval codegen                   |
+| `Document Writer (MD)`   | Edit and format Markdown documentation                        |
+| `Shell Script Expert`    | Bash, batch, and CI pipeline scripts                          |
+| `Tool Maker`             | Write small utility scripts to bypass blockers                |
 | `Task Verifier`          | Verify implementation against requirements (read-only)        |
+| `Memory Keeper`          | Consolidate lessons learned into `MEMORY.md`                  |
 
 ## Process Overview
 
 1. **Discover Available Agents**: Read all `.github/agents/*.agent.md` files to understand current capabilities.
-2. **Determine the Workflow Path**:
-   - _Scenario A: New Feature Request_ → **Requirement Analyzer** → Specialist Agent(s) → **Task Verifier**
-   - _Scenario B: Requirements Already Defined_ → Specialist Agent → **Task Verifier**
-   - _Scenario C: Multi-layer Feature_ → **Database Schema Expert** → **API Architect** → **Backend Developer** → **Frontend Developer** → **Task Verifier**
+2. **Determine the Workflow Path & Harness**:
+   - _Scenario A: New Feature_ → **Requirement Analyzer** → [Domain Agent(s) + Required Harness] → **Task Verifier** → **Memory Keeper**
+   - _Scenario B: Requirements Already Defined_ → [Domain Agent + Required Harness] → **Task Verifier** → **Memory Keeper**
+   - _Scenario C: Multi-layer Feature_ → **Database Schema Expert** → **API Architect** → **Backend Developer** → **Frontend Developer** → **Task Verifier** → **Memory Keeper**
    - _Scenario D: Verification Failed_ → Appropriate Specialist Agent (again) → **Task Verifier**
 3. **Execute the Loop**: Dispatch the task using `runSubagent`. Wait for a Handover Block or Re-dispatch Request Block.
 4. **Continue the Loop**: When a block is received, IMMEDIATELY use `runSubagent` to call the next agent.
@@ -40,12 +41,10 @@ Read `.github/agents/*.agent.md` to see the full list. Summary:
 
 - **Do not** perform implementation or deep analysis yourself.
 - **Only invoke ONE sub-agent at a time.**
+- **Harness Routing**: When dispatching an agent for execution, you MUST specify the domain's Harness Protocol from the `/ai-harness` skill in the context summary (e.g., "Follow the [Database Harness] rules" or "Follow the [Code Harness] rules"). This enforces physical validation gates.
 - **Always pass** the relevant document paths and a concise context summary to the next sub-agent.
-- **Forced Confirmation**: After the Requirement Analyzer returns its Handover Block, use `vscode_askQuestions`:
-  - Ask: "Requirement analysis completed. Any further changes needed before implementation?"
-  - Options: `[{"label": "Yes, I have changes"}, {"label": "No, proceed to implementation"}]`
-  - Set `allowFreeformInput: true`.
-- **Automatic Hand-off**: If "No, proceed to implementation" → immediately invoke the recommended agent via `runSubagent`.
+- **Forced Confirmation**: After the Requirement Analyzer returns its Handover Block, use `vscode_askQuestions` (or prompt the user) to confirm before implementation.
+- **Automatic Hand-off**: If the user confirms → immediately invoke the recommended agent via `runSubagent`.
 - Be resilient: if Task Verifier fails, re-invoke the appropriate specialist agent with the error context.
 
 ## Behavioral Guidelines
@@ -72,18 +71,5 @@ _(from Karpathy: Think Before Coding + skill: handoff)_
 
 ## Project-Specific Notes
 
-- **Primary Language**: TypeScript (pnpm monorepo, ESM)
-- **Build verification commands**:
-  - Full monorepo: `pnpm run build`
-  - API server only: `pnpm --filter @workspace/api-server run build`
-  - Frontend only: `pnpm --filter @workspace/kg-engine run build`
-  - Typecheck all: `pnpm run typecheck`
 - **AI plan documents**: Save at `docs/ai_plans/implement_<feature-name>.md` (or `fix_<name>.md` for bug fixes)
-- **Roadmap**: Refer to `docs/gitbook/roadmap/README.md` for current project status (57% complete as of 2026-05-11)
-- **Critical gap areas** (high-value targets from roadmap):
-  - Document parsers (PDF/Word/PPTX) — schema exists, parser impl missing
-  - Vector DB wiring (Qdrant/Chroma) to `routes/search.ts`
-  - Generate pipeline depth — L1→L2→L3 chain in `routes/generate.ts`
-  - Agentic RAG intent-routing layer
-- **Codegen**: If OpenAPI spec changes, run `pnpm --filter @workspace/api-spec run generate` to regenerate Zod + React Query hooks
 - **Monorepo**: pnpm workspaces — use `pnpm --filter <package-name>` for package-scoped commands

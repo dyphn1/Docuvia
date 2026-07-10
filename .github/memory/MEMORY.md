@@ -11,5 +11,6 @@ This directory contains consolidated learnings, architectural decisions, and err
 - **[Architecture & Design](architecture.md)**: System boundaries, component responsibilities, and structural decisions.
 - **[Common Errors & Traps](common_errors.md)**: Recurring bugs, API gotchas, and specific coding anti-patterns to avoid.
 - **[Conventions & Best Practices](conventions.md)**: Project-specific standards for documentation, testing, and implementation.
+- **[Testing & Quality Gates](testing_and_quality.md)**: Test boundaries, coverage ratchets, and CI pipeline rules.
 - **[Adversarial Workflow](workflow.md)**: Task classification, adversarial debate tiers, and multi-agent coordination rules.
 - **[Active Audit](active_audit.md)**: Tracking of ongoing security and architectural audit tasks.

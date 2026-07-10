@@ -3,19 +3,6 @@
 > **Project context, architecture, commands, and conventions**: See [AGENTS.md](../AGENTS.md).
 > All agent definitions (canonical source of truth): See [.github/agents/](.github/agents/).
 
-## Testing Navigation & Quality Gates
-
-> **ADR-033 Enforcement**: Red-Green-Refactor TDD is mandatory. Before committing, ensure your code passes CodeScene/Codacy checks.
-
-- Unit tests are colocated with source files as `*.unit.test.ts`.
-- Package integration tests live under `artifacts/<package>/test/integration/`.
-- API integration tests should use `supertest`, factories from `artifacts/api-server/test/support/factories.ts`, and `withRollback(...)` from `artifacts/api-server/test/support/db.ts`.
-- Mock external HTTP calls through MSW handlers in `artifacts/api-server/test/setup/msw/handlers.ts`; put large static payloads in `artifacts/api-server/test/setup/msw/fixtures/`.
-- Use `pnpm run test:smoke` to run fast critical path tests.
-- Run `pnpm test` for the normal suite and `pnpm run test:coverage` to ensure Backend ≥ 85% and Frontend ≥ 70%.
-
----
-
 ## 🤖 State Machine Orchestrator Instructions (Auto-Drive Loop)
 
 Act as the Master Orchestrator for this workspace. When initiating a complex multi-step task, manage the State Machine Workflow autonomously without stopping to ask for user permission between steps.
@@ -23,11 +10,11 @@ Act as the Master Orchestrator for this workspace. When initiating a complex mul
 ### Rules of Orchestration:
 
 1. **AGENT FIRST**: Before executing any action or fulfilling a user request, ALWAYS check the available agents list to see if an appropriate subagent exists for the task. If one exists, dispatch the task to that agent via the `runSubagent` tool instead of performing the action yourself.
-2. **NO INTERRUPTIONS**: When a subagent completes its execution and outputs a structured block like `### 🤝 Handover Block`, `### 📋 Dispatch Plan`, or `### 🔁 Re-dispatch Request Block`, IMMEDIATELY parse the block and use the `runSubagent` tool to invoke the recommended next agent.
-3. **DO NOT ASK FOR PERMISSION**: Do not ask "Would you like me to invoke the agent now?". Execute the `runSubagent` tool immediately with the provided context.
+2. **HARNESS ROUTING & TODOS**: When dispatching an Execution Agent, you MUST specify the domain's Harness Protocol (e.g., "[Code Harness]" or "[Database Harness]"). The assigned agent MUST use a Todo list using `manage_todo_list` to execute the gates step-by-step and PAUSE for user confirmation after each gate. DO NOT let execution agents run entire workflows uninterrupted.
+3. **NO INTERRUPTIONS FOR ROUTING**: When a subagent completes its entire todo list and outputs a structured block like `### 🤝 Handover Block`, `### 📋 Dispatch Plan`, or `### 🔁 Re-dispatch Request Block`, IMMEDIATELY parse the block and use the `runSubagent` tool to invoke the recommended next agent.
 4. **STATE TRANSITIONS**:
    - If the output requires **ANALYSIS**, invoke `Requirement Analyzer`.
-   - If the output includes a **Dispatch Plan**, invoke the recommended Execution Agent.
+   - If the output includes a **Dispatch Plan**, invoke the recommended Execution Agent + Required Harness.
    - If an Execution Agent finishes, ALWAYS invoke `Task Verifier`.
    - If `Task Verifier` outputs a **Fail / Re-dispatch Request**, invoke the Execution Agent again with the error context.
    - If `Task Verifier` outputs a **Pass / Release**, stop the loop and summarize the final result for the user.

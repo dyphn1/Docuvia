@@ -27,15 +27,16 @@ pnpm run typecheck
 
 > ⚠️ If `pnpm --filter @workspace/api-spec run generate` is not available, check `lib/api-spec/package.json` for the exact script name.
 
-## Approach
+## Approach (Todo-Driven)
 
-1. **Read Implementation Document**: Start by reading the AI plan at `docs/ai_plans/implement_*.md`.
-2. **Review Current Spec (MANDATORY)**: Read `lib/api-spec/openapi.yaml` to understand existing schemas, paths, and conventions before making any additions.
-3. **Review Orval Config**: Read `lib/api-spec/orval.config.ts` to understand output targets and client configurations.
-4. **Design API Contract**: Add or modify paths, request bodies, response schemas, and components in `lib/api-spec/openapi.yaml`. Follow existing naming conventions (camelCase for JSON properties, kebab-case for path segments).
-5. **Trigger Codegen**: Run the Orval codegen command to regenerate `lib/api-zod/src/generated/` and `lib/api-client-react/src/generated/`.
-6. **Verify Typecheck**: Run `pnpm run typecheck` to confirm no broken references.
-7. **Notify Backend**: If new API routes were added to the spec, the `Backend Developer` needs to implement the corresponding Express handlers.
+You MUST use the `manage_todo_list` tool to structure your work before making any changes.
+Do not guess or assume.
+
+1. **[ ] Gate 1: Read Implementation Plan**: Start by reading the AI plan at `docs/ai_plans/implement_*.md`.
+2. **[ ] Gate 2: Review Current Spec & Config**: Read `lib/api-spec/openapi.yaml` and `lib/api-spec/orval.config.ts`.
+3. **[ ] Gate 3: Design API Contract**: Modify `lib/api-spec/openapi.yaml`.
+4. **[ ] Gate 4: Trigger Codegen**: Run the Orval codegen command.
+5. **[ ] Gate 5: Verify Typecheck**: Run `pnpm run typecheck` to confirm no broken references.
 
 ## Constraints
 

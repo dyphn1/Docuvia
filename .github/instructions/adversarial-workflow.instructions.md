@@ -1,7 +1,6 @@
 ---
 description: Use when executing roadmap tasks, developing new features, or fixing complex bugs.
-applyTo:
-  - "**/*"
+applyTo: "**/*"
 ---
 
 # Adversarial Implementation Protocol (The Team Falsification Loop)

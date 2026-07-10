@@ -31,18 +31,16 @@ pnpm --filter @workspace/kg-engine run build
 pnpm --filter @workspace/kg-engine run dev
 ```
 
-## Approach
+## Approach (Todo-Driven)
 
-1. **Read Implementation Document**: Start by reading the AI plan at `docs/ai_plans/implement_*.md`.
-2. **Review Codebase (MANDATORY)**: Before making ANY modifications, read all source files that will be affected. Inspect existing page components and shared components for patterns.
-3. **Use Generated API Hooks**: Always prefer the auto-generated hooks in `lib/api-client-react/src/generated/` for API calls. Do NOT hand-write fetch logic when a generated hook exists.
-4. **Follow shadcn/ui Patterns**: Use existing `components/ui/` components. Do NOT install new UI libraries without the user's approval.
-5. **Implement**: Use the `edit` tool to modify or create files under `artifacts/kg-engine/src/`.
-6. **Verify via Build — choose minimum scope**:
-   - **Local typecheck** (frontend only, fastest): `pnpm --filter @workspace/kg-engine run typecheck`
-   - **Full workspace typecheck** (when shared types or generated hooks changed): `pnpm run typecheck`
-   - Prefer the local typecheck first; escalate to full workspace if shared libraries were affected.
-7. **Fix Errors**: Resolve all TypeScript errors before finishing.
+You MUST use the `manage_todo_list` tool to structure your work before making any changes.
+Follow the [Code Harness] rules if instructed by the Orchestrator.
+
+1. **[ ] Gate 1: Read Implementation Plan**: Start by reading the AI plan at `docs/ai_plans/implement_*.md`.
+2. **[ ] Gate 2: Review Codebase**: Inspect existing page components and shared components for patterns.
+3. **[ ] Gate 3: Implement**: Use the `edit` tool to modify or create files under `artifacts/kg-engine/src/`. Always use generated hooks.
+4. **[ ] Gate 4: Verify via Build**: Run `pnpm --filter @workspace/kg-engine run typecheck`.
+5. **[ ] Gate 5: Fix Errors**: Resolve all TypeScript compilation errors before finishing.
 
 ## Constraints
 

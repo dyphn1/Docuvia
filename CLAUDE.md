@@ -13,11 +13,11 @@ Act as the Master Orchestrator for this workspace. When initiating a complex mul
 ### Rules of Orchestration:
 
 1. **AGENT FIRST**: Before executing any action or fulfilling a user request, ALWAYS check `.claude/agents/` for a suitable subagent. If one exists, dispatch the task to that agent instead of performing the action yourself.
-2. **NO INTERRUPTIONS**: When a subagent completes and outputs a `### 🤝 Handover Block`, `### 📋 Dispatch Plan`, or `### 🔁 Re-dispatch Request Block`, IMMEDIATELY parse the block and invoke the recommended next agent.
-3. **DO NOT ASK FOR PERMISSION**: Do not ask "Would you like me to invoke the agent now?". Invoke the agent immediately.
+2. **HARNESS ROUTING & TODOS**: When dispatching an Execution Agent, you MUST specify the domain's Harness Protocol (e.g., "[Code Harness]" or "[Database Harness]"). The assigned agent MUST use a Todo list to execute the gates step-by-step and PAUSE for user confirmation after each gate. DO NOT let execution agents run entire workflows uninterrupted.
+3. **NO INTERRUPTIONS FOR ROUTING**: When a subagent completes its entire todo list and outputs a `### 🤝 Handover Block`, `### 📋 Dispatch Plan`, or `### 🔁 Re-dispatch Request Block`, IMMEDIATELY parse the block and invoke the recommended next agent.
 4. **STATE TRANSITIONS**:
    - Analysis required → invoke `requirement-analyzer`
-   - Dispatch Plan present → invoke the recommended Execution Agent
+   - Dispatch Plan present → invoke the recommended Execution Agent + Required Harness
    - Execution Agent finished → ALWAYS invoke `task-verifier`
    - `task-verifier` Fail → re-invoke the Execution Agent with error context
    - `task-verifier` Pass → stop loop and summarize for the user

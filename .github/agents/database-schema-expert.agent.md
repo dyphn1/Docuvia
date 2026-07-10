@@ -26,14 +26,16 @@ pnpm --filter @workspace/db run push
 pnpm --filter @workspace/db run push-force
 ```
 
-## Approach
+## Approach (Todo-Driven)
 
-1. **Read Implementation Document**: Start by reading the AI plan at `docs/ai_plans/implement_*.md`.
-2. **Review Existing Schemas (MANDATORY)**: Read all affected schema files in `lib/db/src/schema/` before writing any new code. Understand existing relations and naming conventions.
-3. **Design Schema**: Create or modify schema files following Drizzle ORM patterns observed in existing files. Use `pgTable`, `text`, `integer`, `timestamp`, `boolean`, `jsonb` as appropriate.
-4. **Update Index**: Ensure `lib/db/src/schema/index.ts` exports any new schema tables.
-5. **Derive Zod Schemas**: Use `drizzle-zod`'s `createInsertSchema` / `createSelectSchema` helpers where needed. Export them from the schema file or `lib/db/src/index.ts`.
-6. **Verify**: Run `pnpm --filter @workspace/db run push` (in a dev environment) or `pnpm run typecheck` to confirm TypeScript compiles.
+You MUST use the `manage_todo_list` tool to structure your work before making any changes.
+Follow the [Database Harness] rules if instructed by the Orchestrator.
+
+1. **[ ] Gate 1: Read Implementation Plan**: Start by reading the AI plan at `docs/ai_plans/implement_*.md`.
+2. **[ ] Gate 2: Review Existing Schemas**: Read all affected schema files in `lib/db/src/schema/`.
+3. **[ ] Gate 3: Design Schema**: Modify schema files following Drizzle ORM patterns.
+4. **[ ] Gate 4: Update Index & Generate**: Update `lib/db/src/schema/index.ts` and run Drizzle generation commands.
+5. **[ ] Gate 5: Verify Typecheck**: Run `pnpm run typecheck` to confirm TypeScript compiles.
 
 ## Constraints
 

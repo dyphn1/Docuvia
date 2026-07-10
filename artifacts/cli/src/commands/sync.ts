@@ -65,6 +65,9 @@ export async function syncCommand(
     spinner.succeed(UI_MESSAGES.SYNC_SUCCESS);
   } catch (e: any) {
     spinner.fail(UI_MESSAGES.SYNC_FAIL + e.message);
-    process.exit(1);
+    // process.exitCode (not process.exit()) — this path follows real network calls (GET
+    // l2-nodes / POST sync/push); forcing an immediate exit while fetch/undici handles are
+    // still closing crashes natively on Windows. See analyze.ts for the same fix + reasoning.
+    process.exitCode = 1;
   }
 }

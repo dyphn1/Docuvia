@@ -23,17 +23,6 @@ vi.mock("../../../src/ui/wizard.js", () => ({
   },
 }));
 
-vi.mock("@workspace/core", async (importOriginal) => {
-  const actual = (await importOriginal()) as any;
-  return {
-    ...actual,
-    AstWorkerPool: vi.fn().mockImplementation(() => ({
-      initialize: vi.fn().mockResolvedValue(undefined),
-      terminate: vi.fn().mockResolvedValue(undefined),
-    })),
-  };
-});
-
 describe("analyzeCommand", () => {
   let exitSpy: any;
   let logSpy: any;

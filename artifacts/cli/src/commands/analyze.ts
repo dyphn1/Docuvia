@@ -1,4 +1,4 @@
-import { AnalyzeService, ExtractService, AstWorkerPool, DI_TOKENS, DI_KEYS } from "@workspace/core";
+import { AnalyzeService, ExtractService, DI_TOKENS, DI_KEYS } from "@workspace/core";
 import process from "process";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
@@ -7,13 +7,12 @@ import { resolveConfiguredService } from "../utils/resolve-service.js";
 async function runFocusedExtraction(targetPath: string, workspaceRoot: string): Promise<void> {
   ui.header(UI_MESSAGES.ANALYZE_FOCUSED_HEADER);
   const spinner = ui.spinner(UI_MESSAGES.ANALYZE_FOCUSED_START + targetPath + "...").start();
-  const workerPool = new AstWorkerPool();
-  await workerPool.initialize(2);
 
   try {
+    // Decision extraction is a plain file-read + LLM call (see ExtractService) — no AST
+    // parsing, so no AstWorkerPool is spawned here.
     const extractService = resolveConfiguredService<ExtractService>(DI_TOKENS.ExtractService, {
       [DI_KEYS.WORKSPACE_ROOT]: workspaceRoot,
-      [DI_KEYS.WORKER_POOL]: workerPool,
     });
     const result = await extractService.extractDecisions(targetPath);
     spinner.succeed(UI_MESSAGES.ANALYZE_FOCUSED_SUCCESS);
@@ -28,10 +27,13 @@ async function runFocusedExtraction(targetPath: string, workspaceRoot: string): 
     });
   } catch (error: any) {
     spinner.fail(UI_MESSAGES.ANALYZE_FOCUSED_FAIL + error.message);
-    await workerPool.terminate();
-    process.exit(1);
+    // Set the exit code and return rather than calling process.exit() directly — this path
+    // may follow a real network call (the LLM request), and forcing an immediate exit while
+    // Node's fetch/undici handles are still being torn down crashes natively on Windows
+    // (`Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)`). Letting the event loop
+    // drain naturally avoids the race.
+    process.exitCode = 1;
   }
-  await workerPool.terminate();
 }
 
 async function runFullAnalysis(deep: boolean, workspaceRoot: string): Promise<void> {

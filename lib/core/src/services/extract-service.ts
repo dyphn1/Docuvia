@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { AstWorkerPool } from "./ast-worker-pool.js";
 import { logger } from "../utils/logger.js";
 import { DEFAULT_PROMPTS } from "../utils/prompts.js";
 import { resolveLocalLlmOrchestrator } from "./local-llm-provider.js";
@@ -28,14 +27,7 @@ interface CollectedFile {
 }
 
 export class ExtractService {
-  constructor(
-    private workspaceRoot: string = process.cwd(),
-    // Retained for DI-key compatibility (`DI_KEYS.WORKER_POOL`) and because `analyze.ts`
-    // still constructs/terminates an `AstWorkerPool` around the call site — this design
-    // doesn't need AST parsing (just raw file reads + an LLM call), so it's unused here.
-    // Flagged as a candidate for removal in a future, non-driveby cleanup.
-    private workerPool?: AstWorkerPool
-  ) {}
+  constructor(private workspaceRoot: string = process.cwd()) {}
 
   public async extractDecisions(targetPath: string): Promise<ExtractDecisionsResult> {
     logger.info({ targetPath }, "Extracting decisions");

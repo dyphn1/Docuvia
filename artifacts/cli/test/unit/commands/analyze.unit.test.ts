@@ -65,7 +65,9 @@ describe("analyzeCommand", () => {
 
   it("should perform focused extraction if target is provided", async () => {
     mockExtract.mockResolvedValue({
-      decisions: ["Decision 1"],
+      decisions: [
+        { title: "Decision 1", nodeType: "decision", content: "Because reasons.", confidence: 0.9 },
+      ],
     });
 
     await analyzeCommand("src/index.ts");

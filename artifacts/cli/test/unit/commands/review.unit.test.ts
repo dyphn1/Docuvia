@@ -35,7 +35,13 @@ describe("reviewCommand", () => {
   });
 
   it("should successfully review", async () => {
-    mockReview.mockResolvedValue({ analysis: "Looks good" });
+    mockReview.mockResolvedValue({
+      baseRef: null,
+      filesChanged: [],
+      affectedNodes: [],
+      riskLevel: "LOW",
+      analysis: "Looks good",
+    });
 
     await reviewCommand();
 

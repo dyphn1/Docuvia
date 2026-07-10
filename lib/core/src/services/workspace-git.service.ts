@@ -3,7 +3,7 @@ import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import { GitConstants } from "../constants/git.js";
-import { IWorkspaceGitService } from "../interfaces/workspace-git.interfaces.js";
+import { ChangedFileEntry, IWorkspaceGitService } from "../interfaces/workspace-git.interfaces.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -162,5 +162,83 @@ export class WorkspaceGitService implements IWorkspaceGitService {
   public async hasUncommittedChanges(cwd: string): Promise<boolean> {
     const { stdout } = await execFileAsync("git", ["status", "--porcelain"], { cwd });
     return stdout.trim().length > 0;
+  }
+
+  /**
+   * Files changed relative to `baseRef` (deliberately diffed straight against the working
+   * tree, not `<baseRef>...HEAD`, so uncommitted edits are included) or, with no `baseRef`,
+   * working-tree changes against HEAD merged with untracked files (which `git diff` never
+   * reports). Parses git's `--name-status` letters into a stable status enum; for renames
+   * (`R###\told\tnew`) the new path is used.
+   */
+  public async getChangedFilesSince(cwd: string, baseRef?: string): Promise<ChangedFileEntry[]> {
+    const entries: ChangedFileEntry[] = [];
+    const seen = new Set<string>();
+
+    try {
+      const { stdout } = await execFileAsync("git", ["diff", "--name-status", baseRef ?? "HEAD"], {
+        cwd,
+      });
+
+      for (const line of stdout.split("\n")) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+
+        const parts = trimmed.split("\t");
+        const statusCode = parts[0] ?? "";
+        let file: string | undefined;
+        let status: ChangedFileEntry["status"];
+
+        if (statusCode.startsWith("R")) {
+          status = "renamed";
+          file = parts[2] ?? parts[1];
+        } else if (statusCode.startsWith("A")) {
+          status = "added";
+          file = parts[1];
+        } else if (statusCode.startsWith("D")) {
+          status = "deleted";
+          file = parts[1];
+        } else {
+          status = "modified";
+          file = parts[1];
+        }
+
+        if (file && !seen.has(file)) {
+          seen.add(file);
+          entries.push({ file, status });
+        }
+      }
+    } catch {
+      // No commits yet, baseRef doesn't exist, or git is unavailable; fall through so
+      // untracked files (when no baseRef was given) can still be reported honestly.
+    }
+
+    if (!baseRef) {
+      const untracked = await this.listUntrackedFiles(cwd);
+      for (const file of untracked) {
+        if (!seen.has(file)) {
+          seen.add(file);
+          entries.push({ file, status: "added" });
+        }
+      }
+    }
+
+    return entries;
+  }
+
+  /**
+   * Files touched by a specific commit sha, run directly against the local workspace
+   * (mirrors the command `LocalGitClient.getModifiedFiles()` uses against a cloned repo).
+   */
+  public async getFilesChangedByCommit(cwd: string, sha: string): Promise<string[]> {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["diff-tree", "--no-commit-id", "--name-only", "-r", sha],
+      { cwd }
+    );
+    return stdout
+      .split("\n")
+      .map((f) => f.trim())
+      .filter(Boolean);
   }
 }

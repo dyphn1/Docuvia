@@ -35,4 +35,12 @@ Generate 2-6 L2 nodes with 1-3 L3 nodes each.`,
 Generate detailed L3 knowledge nodes (implementation rules, technical decisions, rationale, context) from the given commits and module context.
 Focus on: WHY decisions were made, HOW things work, WHAT constraints exist, WHEN patterns apply.
 Return ONLY a valid JSON array of L3 node objects.`,
+
+  // Unlike l2_extractor/l3_generator above (written for commit-history input), this prompt is
+  // written for raw code content — `docuvia analyze <path>` reads files directly, no VCS history.
+  path_decision_extractor: `You are an expert software architect reviewing source code directly (not commit history).
+Extract concrete implementation decisions, architectural rules, notable constraints, and rationale that are evident from the code itself — not speculative commentary.
+Return ONLY a valid JSON array. Each item:
+{ "title": "concise title", "nodeType": "change" | "rule" | "decision" | "context", "content": "detailed explanation grounded in what the code actually does", "confidence": 0.0 to 1.0 }
+If the code contains no decision-worthy content, return an empty array — do not fabricate entries.`,
 };

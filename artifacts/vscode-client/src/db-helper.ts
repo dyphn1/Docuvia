@@ -18,11 +18,18 @@ export function resolveL2NodeIdForFile(db: any, relativePath: string): number | 
   }
 }
 
+export interface ExtractedDecisionLike {
+  title: string;
+  nodeType?: string;
+  content: string;
+  confidence?: number;
+}
+
 export function saveExtractedDecisions(
   db: any,
   l2NodeId: number | null,
   fileName: string,
-  decisions: string[]
+  decisions: ExtractedDecisionLike[]
 ): void {
   const insert = db.prepare(
     "INSERT INTO l3_nodes (l2_node_id, title, slug, status, content, created_at) VALUES (?, ?, ?, ?, ?, ?)"
@@ -30,9 +37,9 @@ export function saveExtractedDecisions(
 
   db.transaction(() => {
     for (const d of decisions) {
-      const title = `Extracted from ${fileName}`;
+      const title = d.title || `Extracted from ${fileName}`;
       const slug = `extracted-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-      insert.run(l2NodeId, title, slug, "proposed", d, new Date().toISOString());
+      insert.run(l2NodeId, title, slug, "proposed", d.content ?? "", new Date().toISOString());
     }
   })();
 }

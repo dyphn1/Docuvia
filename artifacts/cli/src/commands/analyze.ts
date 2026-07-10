@@ -17,7 +17,15 @@ async function runFocusedExtraction(targetPath: string, workspaceRoot: string): 
     });
     const result = await extractService.extractDecisions(targetPath);
     spinner.succeed(UI_MESSAGES.ANALYZE_FOCUSED_SUCCESS);
-    result.decisions.forEach((decision) => ui.info(`- ${decision}`));
+    if (result.decisions.length === 0) {
+      ui.info("No decision-worthy content found.");
+    }
+    result.decisions.forEach((decision) => {
+      ui.info(`[${decision.nodeType}] ${decision.title} (confidence: ${decision.confidence})`);
+      if (decision.content) {
+        console.log(`    ${decision.content}`);
+      }
+    });
   } catch (error: any) {
     spinner.fail(UI_MESSAGES.ANALYZE_FOCUSED_FAIL + error.message);
     await workerPool.terminate();

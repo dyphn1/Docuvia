@@ -46,7 +46,7 @@ export async function addDecisionCommand(
       void vscode.window.showInformationMessage(
         MSG_DECISION_EXTRACTED_FROM.replace("{0}", String(result.decisions.length))
           .replace("{1}", path.basename(filePath))
-          .replace("{2}", result.decisions.join("\n- ")),
+          .replace("{2}", result.decisions.map((d) => d.title).join("\n- ")),
         { modal: true }
       );
     } else {

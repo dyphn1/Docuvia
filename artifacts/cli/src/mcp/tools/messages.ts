@@ -20,8 +20,14 @@ export const MCP_TOOL_MESSAGES = {
   CLEAN_SUCCESS: "Cleaned .docuvia/local.db database.",
   CLEAN_NOT_FOUND: "No local database found to clean.",
   INIT_SUCCESS: "Docuvia initialized successfully.",
-  EXTRACT_COMPLETE: (decisions: string[]) =>
-    `Extraction complete.\nDecisions:\n${decisions.map((d) => `- ${d}`).join("\n")}`,
+  EXTRACT_COMPLETE: (
+    decisions: Array<{ title: string; nodeType: string; content: string; confidence: number }>
+  ) =>
+    decisions.length === 0
+      ? "Extraction complete. No decision-worthy content found."
+      : `Extraction complete.\nDecisions:\n${decisions
+          .map((d) => `- [${d.nodeType}] ${d.title} (confidence: ${d.confidence})\n  ${d.content}`)
+          .join("\n")}`,
   STATUS_REPORT: (status: { projects: number; l2Nodes: number; l3Nodes: number }) =>
     `=== Docuvia Index Status ===\nProjects: ${status.projects}\nL2 Nodes: ${status.l2Nodes}\nL3 Decisions: ${status.l3Nodes}`,
   SYNC_COMPLETE: (projectId: string) => `Sync completed for project ${projectId}.`,

@@ -15,7 +15,14 @@ vi.mock("@workspace/core", () => {
     })),
     ExtractService: vi.fn().mockImplementation(() => ({
       extractDecisions: vi.fn().mockResolvedValue({
-        decisions: ["Decision 1"],
+        decisions: [
+          {
+            title: "Decision 1",
+            nodeType: "decision",
+            content: "Because reasons.",
+            confidence: 0.9,
+          },
+        ],
       }),
     })),
     QueryService: vi.fn().mockImplementation(() => ({

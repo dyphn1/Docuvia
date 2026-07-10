@@ -17,6 +17,18 @@ export async function reviewCommand(baseRef?: string, workspaceRoot: string = pr
       UI_MESSAGES.REVIEW_SUCCESS + (baseRef ? `${UI_MESSAGES.REVIEW_AGAINST}${baseRef}` : "")
     );
     console.log("");
+    console.log(`Files changed: ${result.filesChanged.length}`);
+
+    const riskLine = `Risk level: ${result.riskLevel}`;
+    if (result.riskLevel === "CRITICAL") {
+      ui.error(riskLine);
+    } else if (result.riskLevel === "HIGH") {
+      ui.warn(riskLine);
+    } else {
+      console.log(riskLine);
+    }
+
+    console.log("");
     console.log(result.analysis);
   } catch (error: any) {
     spinner.fail(UI_MESSAGES.REVIEW_FAIL + error.message);

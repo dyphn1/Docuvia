@@ -74,7 +74,9 @@ export async function runExtractionCommand(tqProvider?: TaskQueueTreeProvider) {
         const result = await extractService.extractDecisions(relativePath);
 
         if (result.decisions && result.decisions.length > 0) {
-          const decisionsMsg = result.decisions.map((d: string) => `- ${d}`).join("\n");
+          const decisionsMsg = result.decisions
+            .map((d) => `- [${d.nodeType}] ${d.title}`)
+            .join("\n");
           const action = await vscode.window.showInformationMessage(
             MSG_EXTRACTION_RESULTS.replace("{0}", String(result.decisions.length)).replace(
               "{1}",

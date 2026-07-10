@@ -11,4 +11,6 @@ export const INIT_SERVICE_MESSAGES = {
   SUCCESS: "Project initialized successfully",
   PARTIAL_SUCCESS: (failed: number, requested: number) =>
     `Project initialized — ${failed} of ${requested} files failed to parse (see .docuvia/logs/init.log)`,
+  SUCCESS_WITH_SKIPPED_OVERSIZED: (skipped: number) =>
+    `Project initialized successfully — ${skipped} oversized file(s) skipped (see .docuvia/logs/init.log)`,
 } as const;

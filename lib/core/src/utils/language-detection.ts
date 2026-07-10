@@ -14,14 +14,30 @@ const EXT_TO_LANGUAGE: Map<string, SupportedLanguage> = (() => {
   return map;
 })();
 
+/**
+ * Ruby project files that conventionally carry no extension (mirrors GitNexus's own
+ * RUBY_EXTENSIONLESS_FILES set). `path.extname()`-based detection can never match these,
+ * so they need an explicit basename allowlist.
+ */
+export const RUBY_EXTENSIONLESS_BASENAMES = new Set([
+  "Rakefile",
+  "Gemfile",
+  "Guardfile",
+  "Vagrantfile",
+  "Brewfile",
+]);
+
 /** Returns the DEFAULT_REGISTRY language name for a file (e.g. "typescript"), or undefined. */
 export function detectLanguageForFile(filePath: string): SupportedLanguage | undefined {
-  return EXT_TO_LANGUAGE.get(path.extname(filePath).toLowerCase());
+  const byExt = EXT_TO_LANGUAGE.get(path.extname(filePath).toLowerCase());
+  if (byExt) return byExt;
+  return RUBY_EXTENSIONLESS_BASENAMES.has(path.basename(filePath)) ? "ruby" : undefined;
 }
 
 /** True if the AST layer (LanguageRegistry) recognizes this file's extension at all. */
 export function isSupportedSourceFile(filePath: string): boolean {
-  return EXT_TO_LANGUAGE.has(path.extname(filePath).toLowerCase());
+  if (EXT_TO_LANGUAGE.has(path.extname(filePath).toLowerCase())) return true;
+  return RUBY_EXTENSIONLESS_BASENAMES.has(path.basename(filePath));
 }
 
 /** Extensions with the leading dot stripped, for building fast-glob brace patterns. */

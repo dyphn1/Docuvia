@@ -61,7 +61,7 @@ function getRegistry(): Promise<LanguageRegistry> {
  * or nested under .pnpm) and falling back to a handful of known workspace
  * layouts otherwise.
  */
-function resolveWasmPath(wasmFile: string): { wasmPath: string; attemptedPaths: string[] } {
+export function resolveWasmPath(wasmFile: string): { wasmPath: string; attemptedPaths: string[] } {
   const docuviaRoot = path.resolve(__dirname, "../../../../");
   const attemptedPaths: string[] = [];
 
@@ -114,6 +114,46 @@ function getNodeName(node: Node): string {
     node.descendantsOfType("identifier")[0]?.text ||
     "anonymous"
   );
+}
+
+/**
+ * For anonymous callables (arrow_function/function_expression with no own name), resolve
+ * the binding name from the nearest enclosing variable_declarator / assignment_expression /
+ * pair (object property) / public_field_definition (class field arrow method). Returns
+ * "anonymous" for truly unbound cases (IIFEs, bare callback arguments).
+ *
+ * Named nodes (function_declaration, method_definition) already have a "name" field, so the
+ * fast path below returns the same result getNodeName() would — safe to use uniformly for
+ * every function-kind node, not just anonymous ones.
+ */
+export function resolveCallableName(node: Node): string {
+  const ownName = node.childForFieldName("name");
+  if (ownName) return ownName.text;
+
+  const NAME_BEARING_PARENTS = new Set([
+    "variable_declarator", // const foo = () => {}
+    "assignment_expression", // foo = () => {}
+    "pair", // { foo: () => {} }  (object literal property)
+    "public_field_definition", // class { foo = () => {} }
+  ]);
+  let current = node.parent;
+  while (current) {
+    // An "arguments" ancestor means this callable is itself passed as a call argument
+    // (e.g. arr.map(x => x + 1)) rather than being the direct value of a declarator/
+    // assignment/property/field. Stop here — climbing further would misattribute the
+    // name of the outer binding the call happens to live inside (e.g. `results` in
+    // `const results = arr.map(x => x + 1)`) to this unrelated, unbound callback.
+    if (current.type === "arguments") break;
+    if (NAME_BEARING_PARENTS.has(current.type)) {
+      const nameNode =
+        current.childForFieldName("name") ||
+        current.childForFieldName("key") ||
+        current.childForFieldName("left");
+      if (nameNode) return nameNode.text;
+    }
+    current = current.parent;
+  }
+  return "anonymous";
 }
 
 /**
@@ -231,7 +271,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
         const functionNodes = provider.extractFunctions(tree.rootNode);
         for (const node of functionNodes) {
           functions.push({
-            name: getNodeName(node),
+            name: resolveCallableName(node),
             startLine: node.startPosition.row,
             endLine: node.endPosition.row,
           });

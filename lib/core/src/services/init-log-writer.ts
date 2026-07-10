@@ -7,6 +7,9 @@ export interface InitLogSummary {
   filesParsed: number;
   filesFailed: number;
   failures: { file: string; hash: string; error: string }[];
+  /** Count of files skipped during discovery for exceeding MAX_FILE_SIZE_BYTES. Additive
+   *  field on top of the original honest-reporting contract. */
+  filesSkippedOversized?: number;
 }
 
 export async function appendInitLogLine(

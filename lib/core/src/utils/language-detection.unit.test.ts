@@ -27,6 +27,33 @@ describe("language-detection", () => {
     expect(isSupportedSourceFile("foo.exe")).toBe(false);
   });
 
+  it("detects .mjs/.cjs as javascript and .mts/.cts as typescript (same grammar, extra module-resolution extensions)", () => {
+    expect(detectLanguageForFile("foo.mjs")).toBe("javascript");
+    expect(detectLanguageForFile("foo.cjs")).toBe("javascript");
+    expect(detectLanguageForFile("foo.mts")).toBe("typescript");
+    expect(detectLanguageForFile("foo.cts")).toBe("typescript");
+  });
+
+  it("detects .cu/.cuh as cpp", () => {
+    expect(detectLanguageForFile("kernel.cu")).toBe("cpp");
+    expect(detectLanguageForFile("kernel.cuh")).toBe("cpp");
+  });
+
+  it("detects extensionless Ruby convention files by basename", () => {
+    expect(detectLanguageForFile("Gemfile")).toBe("ruby");
+    expect(detectLanguageForFile("Rakefile")).toBe("ruby");
+    expect(detectLanguageForFile("Guardfile")).toBe("ruby");
+    expect(detectLanguageForFile("Vagrantfile")).toBe("ruby");
+    expect(detectLanguageForFile("Brewfile")).toBe("ruby");
+    expect(detectLanguageForFile("path/to/Gemfile")).toBe("ruby");
+    expect(isSupportedSourceFile("Gemfile")).toBe(true);
+  });
+
+  it("does not treat arbitrary extensionless files as Ruby", () => {
+    expect(detectLanguageForFile("README")).toBeUndefined();
+    expect(isSupportedSourceFile("README")).toBe(false);
+  });
+
   it("getSupportedGlobExtensions returns a non-empty, dot-free extension list matching DEFAULT_REGISTRY", () => {
     const exts = getSupportedGlobExtensions();
     expect(exts.length).toBeGreaterThan(0);

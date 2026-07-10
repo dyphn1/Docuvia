@@ -108,6 +108,12 @@ export class InitService {
     for (const failure of failures) {
       await appendInitLogLine(this.workspaceRoot, { event: "init.parse_failure", ...failure });
     }
+    for (const skipped of discovery.skippedOversized) {
+      await appendInitLogLine(this.workspaceRoot, {
+        event: "init.file_skipped_oversized",
+        ...skipped,
+      });
+    }
 
     this.logCallback(`Persisting knowledge graph...`);
     await this.graphRepository.persistAstGraph(this.workspaceRoot, parsedResults, Array.from(tags));
@@ -136,11 +142,12 @@ export class InitService {
     const filesRequested = discovery.filesToParse.length;
     const filesParsed = parsedResults.length;
     const filesFailed = failures.length;
+    const filesSkippedOversized = discovery.skippedOversized.length;
 
-    if (filesFailed > 0) {
+    if (filesFailed > 0 || filesSkippedOversized > 0) {
       logger.warn(
-        { filesRequested, filesParsed, filesFailed, failures },
-        "init completed with parse failures"
+        { filesRequested, filesParsed, filesFailed, filesSkippedOversized, failures },
+        "init completed with parse failures or skipped files"
       );
     }
 
@@ -149,19 +156,23 @@ export class InitService {
       filesParsed,
       filesFailed,
       failures,
+      filesSkippedOversized,
     });
 
     return {
       success: true,
       partialFailure: filesFailed > 0,
       message:
-        filesFailed === 0
-          ? INIT_SERVICE_MESSAGES.SUCCESS
-          : INIT_SERVICE_MESSAGES.PARTIAL_SUCCESS(filesFailed, filesRequested),
+        filesFailed > 0
+          ? INIT_SERVICE_MESSAGES.PARTIAL_SUCCESS(filesFailed, filesRequested)
+          : filesSkippedOversized > 0
+            ? INIT_SERVICE_MESSAGES.SUCCESS_WITH_SKIPPED_OVERSIZED(filesSkippedOversized)
+            : INIT_SERVICE_MESSAGES.SUCCESS,
       filesRequested,
       filesParsed,
       filesFailed,
       failures,
+      filesSkippedOversized,
     };
   }
 }

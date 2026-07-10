@@ -73,4 +73,41 @@ describe("FileDiscoveryService", () => {
     expect(discoveredFiles.some((f) => f.endsWith("y.exe"))).toBe(false);
     expect(discoveredFiles.some((f) => f.includes("node_modules"))).toBe(false);
   });
+
+  it("discovers extensionless Ruby convention files (e.g. Gemfile) in the non-git fallback", async () => {
+    fs.writeFileSync(path.join(tmpDir, "Gemfile"), "source 'https://rubygems.org'\n");
+    fs.writeFileSync(path.join(tmpDir, "Rakefile"), "task :default\n");
+    fs.writeFileSync(path.join(tmpDir, "README"), "not a source file\n");
+
+    const mockGit = makeMockWorkspaceGit({ isGitRepository: vi.fn().mockResolvedValue(false) });
+
+    const service = new FileDiscoveryService(mockGit);
+    const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+    const { filesToParse } = await service.discoverFiles(tmpDir, dbPath);
+
+    const discoveredFiles = filesToParse.map((f) => f.file);
+    expect(discoveredFiles).toContain("Gemfile");
+    expect(discoveredFiles).toContain("Rakefile");
+    expect(discoveredFiles).not.toContain("README");
+  });
+
+  it("skips files over the oversized-file threshold and reports them in skippedOversized instead of silently dropping or fully parsing them", async () => {
+    const oversizedContent = "x".repeat(512_001);
+    fs.writeFileSync(path.join(tmpDir, "huge.ts"), oversizedContent);
+    fs.writeFileSync(path.join(tmpDir, "small.ts"), "export const a = 1;\n");
+
+    const mockGit = makeMockWorkspaceGit({ isGitRepository: vi.fn().mockResolvedValue(false) });
+
+    const service = new FileDiscoveryService(mockGit);
+    const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+    const { filesToParse, skippedOversized } = await service.discoverFiles(tmpDir, dbPath);
+
+    const discoveredFiles = filesToParse.map((f) => f.file);
+    expect(discoveredFiles.some((f) => f.endsWith("huge.ts"))).toBe(false);
+    expect(discoveredFiles.some((f) => f.endsWith("small.ts"))).toBe(true);
+
+    expect(skippedOversized).toHaveLength(1);
+    expect(skippedOversized[0].file).toBe("huge.ts");
+    expect(skippedOversized[0].sizeBytes).toBeGreaterThan(512_000);
+  });
 });

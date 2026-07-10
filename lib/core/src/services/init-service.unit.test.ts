@@ -62,7 +62,7 @@ describe("InitService.init()", () => {
     fileDiscovery = {
       discoverFiles: vi.fn().mockImplementation(async () => {
         callOrder.push("discoverFiles");
-        return { filesToParse, existingHashes: new Map(), skippedCount: 0 };
+        return { filesToParse, existingHashes: new Map(), skippedCount: 0, skippedOversized: [] };
       }),
     };
 
@@ -189,6 +189,42 @@ describe("InitService.init()", () => {
     expect(result.message).toBe("Project initialized successfully");
   });
 
+  it("threads filesSkippedOversized from discovery into the result, init.log, and success message", async () => {
+    (fileDiscovery.discoverFiles as any).mockImplementation(async () => {
+      callOrder.push("discoverFiles");
+      return {
+        filesToParse,
+        existingHashes: new Map(),
+        skippedCount: 0,
+        skippedOversized: [{ file: "src/huge.ts", sizeBytes: 600_000 }],
+      };
+    });
+
+    const service = makeService();
+    const result = await service.init();
+
+    expect(result.filesFailed).toBe(0);
+    expect((result as any).filesSkippedOversized).toBe(1);
+    expect(result.message).toContain("1");
+    expect(result.message).not.toBe("Project initialized successfully");
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "init.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .split("\n")
+      .filter((line) => line.length > 0)
+      .map((line) => JSON.parse(line));
+
+    const skippedLine = lines.find((l: any) => l.event === "init.file_skipped_oversized");
+    expect(skippedLine).toBeDefined();
+    expect(skippedLine.file).toBe("src/huge.ts");
+    expect(skippedLine.sizeBytes).toBe(600_000);
+
+    const summaryLine = lines[lines.length - 1];
+    expect(summaryLine.event).toBe("init.summary");
+    expect(summaryLine.filesSkippedOversized).toBe(1);
+  });
+
   it("reports partialFailure:true and a non-generic message when astProcessor.processFiles returns failures", async () => {
     (astProcessor.processFiles as any).mockImplementation(async () => {
       callOrder.push("processFiles");
@@ -230,7 +266,12 @@ describe("InitService.init()", () => {
 
     (fileDiscovery.discoverFiles as any).mockImplementation(async () => {
       callOrder.push("discoverFiles");
-      return { filesToParse: auditFilesToParse, existingHashes: new Map(), skippedCount: 0 };
+      return {
+        filesToParse: auditFilesToParse,
+        existingHashes: new Map(),
+        skippedCount: 0,
+        skippedOversized: [],
+      };
     });
     (astProcessor.processFiles as any).mockImplementation(async () => {
       callOrder.push("processFiles");

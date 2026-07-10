@@ -61,6 +61,22 @@ With the fixes above applied, rebuilt the index from scratch (`rm -rf .docuvia`,
 
 ---
 
+## Update — 2026-07-10 (root-cause investigation + fix plan)
+
+### ✅ Root causes found for both open items above
+
+Investigated by diffing Docuvia's language registry (`lib/plugins-ast/src/languages/*.ts`) directly against the installed `gitnexus@1.6.9` package's own extension map (`.../npm/node_modules/gitnexus/dist/_shared/language-detection.js`), and by tracing the actual `init`/`snapshot` code path (`lib/core/src/workers/ast-worker.ts`, confirmed as the real consumer per `fix_init_honest_reporting.md`'s call-graph tracing — **not** `lib/ast-core`'s `AstTraverser`/`generateAst`, which turned out to be used only by `lib/headless-lsp`'s hover provider, a red herring for this specific gap).
+
+**File-discovery gap (71% ratio)**: Docuvia is missing `.mjs`/`.cjs` (JavaScript), `.mts`/`.cts` (TypeScript), and `.cu`/`.cuh` (C++) — extensions using grammars Docuvia already has, just not mapped to them — plus extensionless Ruby files (`Rakefile`, `Gemfile`, etc., which `isSupportedSourceFile()` structurally can't match since it's purely `path.extname()`-based). Also confirmed Docuvia has no oversized-file skip-list at all (GitNexus explicitly skips + reports 9 files >512KB; Docuvia has no size check anywhere in `file-discovery.service.ts`), so the two counts aren't even measuring the same thing today.
+
+**Node/edge density gap (56%/44% ratios)**: contrary to an initial hypothesis (that `extractImplements`/`extractExtends` were unwired — true, but in the `headless-lsp` path only, which doesn't affect these numbers), the real, sourced gap is that TypeScript's and JavaScript's `LanguageConfig.classes`/`.functions` node-type lists (`lib/plugins-ast/src/languages/typescript.ts`, `javascript.ts`) are narrower than every other language in the same registry — Java/C#/PHP/Rust/C/C++ all already treat their `interface`/`enum`/`struct`/`trait` constructs as class-like nodes, but TypeScript's `classes` list has only `class_declaration`. More significantly, **TS/JS `functions` only matches `function_declaration`/`method_definition`** — arrow functions and function expressions (`const foo = () => {}`, ubiquitous in modern JS/TS) are entirely invisible to the extractor. Since `hermes-agent` is a Python/JS/TS repo, this is a plausible dominant contributor to the density gap.
+
+Full root-cause writeup, decision points, and a bounded implementation plan (file-discovery extensions + oversized-file reporting + TS/JS symbol-kind broadening + an anonymous-callable naming fix needed to make the broadening safe): [`docs/ai_plans/improve_index_coverage_vs_gitnexus.md`](../ai_plans/improve_index_coverage_vs_gitnexus.md).
+
+**Explicitly deferred** (see that plan's non-goals section): new language grammars (Kotlin/Swift/Dart/Vue/Cobol), matching GitNexus's full relationship-type breadth (`HAS_METHOD`/`HAS_PROPERTY`/`METHOD_OVERRIDES`/`ACCESSES`/`INJECTS`), fixing the separately pre-existing broken compiled-query strings (`provider.initQueries()` is deliberately bypassed today per a standing comment in `ast-worker.ts`), and wiring `extractImplements`/`extractExtends` into the `headless-lsp` hover path (real gap, but doesn't move the audited `init`/`snapshot` numbers).
+
+---
+
 ## Cross-cutting issue (affects every command)
 
 ### 🔴 CLI cannot start outside `NODE_ENV=production`

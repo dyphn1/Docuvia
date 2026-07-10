@@ -1,7 +1,7 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 
 export const cppConfig: LanguageConfig = {
-  extensions: [".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".hh"],
+  extensions: [".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".hh", ".cu", ".cuh"],
   wasm_file: "tree-sitter-cpp.wasm",
   imports: ["preproc_include", "using_declaration"],
   classes: [

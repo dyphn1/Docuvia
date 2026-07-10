@@ -33,6 +33,7 @@ export interface IFileDiscovery {
     filesToParse: DiscoveredFile[];
     existingHashes: Map<string, string>;
     skippedCount: number;
+    skippedOversized: { file: string; sizeBytes: number }[];
   }>;
 }
 

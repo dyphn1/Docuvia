@@ -9,7 +9,13 @@ import ignore from "ignore";
 import { DiscoveredFile, IFileDiscovery } from "../interfaces/analyzer.interfaces.js";
 import { IWorkspaceGitService } from "../interfaces/workspace-git.interfaces.js";
 import { WorkspaceGitService } from "./workspace-git.service.js";
-import { isSupportedSourceFile, getSupportedGlobExtensions } from "../utils/language-detection.js";
+import {
+  isSupportedSourceFile,
+  getSupportedGlobExtensions,
+  RUBY_EXTENSIONLESS_BASENAMES,
+} from "../utils/language-detection.js";
+import { MAX_FILE_SIZE_BYTES } from "../constants/paths.js";
+import { logger } from "../utils/logger.js";
 
 export class FileDiscoveryService implements IFileDiscovery {
   constructor(private workspaceGit: IWorkspaceGitService = new WorkspaceGitService()) {}
@@ -22,6 +28,7 @@ export class FileDiscoveryService implements IFileDiscovery {
     filesToParse: DiscoveredFile[];
     existingHashes: Map<string, string>;
     skippedCount: number;
+    skippedOversized: { file: string; sizeBytes: number }[];
   }> {
     const { onlyIndexed = false } = options;
     let allFiles: string[] = [];
@@ -69,11 +76,23 @@ export class FileDiscoveryService implements IFileDiscovery {
         console.debug("[docuvia] No .gitignore found, proceeding without it.");
       }
 
-      const globbedFiles = await fg(`**/*.{${getSupportedGlobExtensions().join(",")}}`, {
-        cwd: workspaceRoot,
-        ignore: ["node_modules/**", ".git/**", ".docuvia/**", "dist/**", "build/**"],
-        absolute: false,
-      });
+      const globIgnore = ["node_modules/**", ".git/**", ".docuvia/**", "dist/**", "build/**"];
+
+      const [extensionMatches, extensionlessBasenameMatches] = await Promise.all([
+        fg(`**/*.{${getSupportedGlobExtensions().join(",")}}`, {
+          cwd: workspaceRoot,
+          ignore: globIgnore,
+          absolute: false,
+        }),
+        // Ruby's extensionless conventional files (Rakefile, Gemfile, ...) can't match the
+        // extension-only glob pattern above at all — they need a second, explicit pattern.
+        fg(`**/{${Array.from(RUBY_EXTENSIONLESS_BASENAMES).join(",")}}`, {
+          cwd: workspaceRoot,
+          ignore: globIgnore,
+          absolute: false,
+        }),
+      ]);
+      const globbedFiles = [...extensionMatches, ...extensionlessBasenameMatches];
 
       allFiles = ig.filter(globbedFiles);
       // Treat all globbed files as dirty so manual hashing is forced
@@ -106,6 +125,7 @@ export class FileDiscoveryService implements IFileDiscovery {
 
     // Determine which files actually need parsing
     const filesToParse: Array<{ file: string; hash: string; code: string }> = [];
+    const skippedOversized: { file: string; sizeBytes: number }[] = [];
     let skippedCount = 0;
 
     for (const file of allFiles) {
@@ -140,7 +160,13 @@ export class FileDiscoveryService implements IFileDiscovery {
 
         // Check again after manual hashing
         if (existingHashes.get(file) !== currentHash) {
-          filesToParse.push({ file, hash: currentHash, code });
+          const sizeBytes = Buffer.byteLength(code);
+          if (sizeBytes > MAX_FILE_SIZE_BYTES) {
+            logger.warn({ file, sizeBytes }, "Skipping oversized file");
+            skippedOversized.push({ file, sizeBytes });
+          } else {
+            filesToParse.push({ file, hash: currentHash, code });
+          }
         } else {
           skippedCount++;
         }
@@ -150,9 +176,9 @@ export class FileDiscoveryService implements IFileDiscovery {
     }
 
     console.log(
-      `[docuvia] Git Hash Delta check: ${filesToParse.length} files need parsing. ${skippedCount} skipped.`
+      `[docuvia] Git Hash Delta check: ${filesToParse.length} files need parsing. ${skippedCount} skipped. ${skippedOversized.length} skipped as oversized.`
     );
 
-    return { filesToParse, existingHashes, skippedCount };
+    return { filesToParse, existingHashes, skippedCount, skippedOversized };
   }
 }

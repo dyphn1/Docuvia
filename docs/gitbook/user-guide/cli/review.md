@@ -49,4 +49,5 @@ Review the dependents list before proceeding.
 ## SEE ALSO
 
 - [docuvia-query(1)](query.md) - Manually query specific paths or nodes affected by the change.
+- [docuvia-impact(1)](impact.md) - Standalone by-symbol blast-radius lookup, using the same underlying risk logic as `review`, without needing a git diff.
 - [docuvia-analyze(1)](analyze.md) - Ensure your local graph is up to date before detecting changes.

@@ -49,7 +49,7 @@ Running `docuvia` with no recognized command prints the same reference list as a
 
 - `claude_desktop_config.json` at the OS-specific Claude Desktop config path (`%APPDATA%/Claude/` on Windows, `~/Library/Application Support/Claude/` on macOS, `~/.config/Claude/` on Linux) — registers Docuvia's MCP server for Claude Desktop.
 
-  This write is **gated**: it only happens when `--global` is passed on the command line, or — when running `init` interactively (TTY) without `--global` — after an explicit confirmation prompt (default: No). Non-interactive runs without `--global` skip this write entirely and print a message pointing back here.
+  This write is **gated**: it only happens when `--global` is passed on the command line, or — when running `init` interactively (TTY) without `--global` — after an explicit confirmation prompt (default: No). Non-interactive runs without `--global` skip this write entirely and print a message pointing back here. See [ADR-035](../adr/ADR-035-opt-in-global-side-effect-gating.md) for the governing decision — this gating pattern applies to any future command touching machine-global state, not just `init`.
 
   ```
   docuvia init --global
@@ -57,7 +57,7 @@ Running `docuvia` with no recognized command prints the same reference list as a
 
 ### Structured command logs
 
-Every one-shot CLI command (everything except the long-running `docuvia mcp` server) persists a JSONL run log under `.docuvia/logs/<command>.log` — one JSON object per line with a `ts` timestamp, a `.start` event at the beginning, a `.summary` event on success, and a `.error` event on failure. This lets a human or AI agent inspect what a run actually did after the fact instead of trusting a possibly-lost terminal message. Logging failures never fail the command itself.
+Every one-shot CLI command (everything except the long-running `docuvia mcp` server) persists a JSONL run log under `.docuvia/logs/<command>.log` — one JSON object per line with a `ts` timestamp, a `.start` event at the beginning, a `.summary` event on success, and a `.error` event on failure. This lets a human or AI agent inspect what a run actually did after the fact instead of trusting a possibly-lost terminal message. Logging failures never fail the command itself. See [ADR-036](../adr/ADR-036-persisted-structured-command-logging.md) for the governing decision.
 
 ## Call Chains
 

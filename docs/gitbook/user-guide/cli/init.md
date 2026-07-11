@@ -24,7 +24,17 @@ Running `docuvia init` in an already initialized repository is safe. It will not
 
 ## OPTIONS
 
-This command currently takes no explicit options from the command line.
+`--global`
+: Opt in to also registering Docuvia's MCP server in the **machine-global** Claude Desktop config (`claude_desktop_config.json`, outside any repository — shared by every project on the machine). Without this flag, `init` only writes repo-scoped files; in an interactive (TTY) session you'll be asked to confirm instead (default: No). See "Side Effects" below.
+
+## SIDE EFFECTS
+
+`init` writes two categories of state:
+
+- **Repo-scoped** (default, always): `.docuvia/local.db`, `.docuvia/logs/init.log`, `.cursor/`, `.claude/hooks/`, `.windsurfrules`, `.cursorrules`, `llms.txt`, `.github/copilot-instructions.md`, `.git/hooks/post-commit`, and a marked block appended to `CLAUDE.md`. All confined to the target repository.
+- **Machine-global** (opt-in only, via `--global` or an interactive confirmation): the Claude Desktop MCP config at the OS-specific path (`%APPDATA%/Claude/` on Windows, `~/Library/Application Support/Claude/` on macOS, `~/.config/Claude/` on Linux) — affects every project on the machine, not just this one.
+
+Full technical detail: [`docs/gitbook/packages/cli.md`](../../packages/cli.md#init-side-effects).
 
 ## ENVIRONMENT VARIABLES
 

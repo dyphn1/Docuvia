@@ -20,7 +20,7 @@ The query engine operates across multiple tiers:
 
 1. **Direct Match**: Looks for exact symbol matches in the L3 node index.
 2. **Semantic Match**: If configured, performs an embedding-based search for architectural concepts.
-3. **Graph Traversal**: Retrieves `CALLS`, `IMPORTS`, and `IMPLEMENTS` edges connected to the found node.
+3. **Graph Traversal**: Retrieves both incoming (callers) and outgoing (callees) edges connected to the found node from the local `node_links` table, printed as separate "Incoming (called by)" / "Outgoing (calls)" sections (or `<incoming>`/`<outgoing>` blocks in `--format=prompt`).
 
 ## OPTIONS
 
@@ -49,11 +49,15 @@ Query the local graph for a specific utility function:
 
 ```bash
 $ docuvia query "formatDate" --local --format=human
-Found L3 Node: formatDate
-File: src/utils/time.ts
-Callers:
-  - src/components/DatePicker.tsx (12 calls)
-  - src/services/reporting.ts (2 calls)
+Docuvia Context
+[L2 Module] formatDate
+
+Incoming (called by)
+  DatePicker.tsx (function)
+  reporting.ts (function)
+
+Outgoing (calls)
+  parseISO (function)
 ```
 
 Extract token-optimized context and feed it directly to an AI CLI tool:

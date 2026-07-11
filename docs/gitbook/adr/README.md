@@ -40,5 +40,7 @@ This section holds Docuvia's ADRs — one file per decision, covering the curren
 | [ADR-032](ADR-032-parallel-swarm-review-and-background-rag.md)                | Parallel Swarm Review and Background Agentic RAG                 |
 | [ADR-033](ADR-033-strict-test-framework-and-quality-gates.md)                 | Strict Test Framework and Quality Gates Alignment                |
 | [ADR-034](ADR-034-wizard-style-interactive-cli.md)                            | Wizard-Style Interactive CLI                                     |
+| [ADR-035](ADR-035-opt-in-global-side-effect-gating.md)                        | Opt-In Gating for Machine-Global Side Effects                    |
+| [ADR-036](ADR-036-persisted-structured-command-logging.md)                    | Persisted Structured Command Logging for Post-Hoc Auditability   |
 
 > **Note:** The legacy decision log (originally arc42 chapter 9) has been archived and removed from this page to prevent numbering conflicts with the modern ADR list above. Concepts from the legacy log (e.g. OpenAI-only LLM interface, MVC UI layers, review-queue gating, cursor-based incremental ingestion, L3 deduplication, L2 bootstrap, Orphan Git Branch) have all been superseded or subsumed by the numbered ADRs above (see in particular ADR-004 through ADR-012, ADR-019, ADR-021, and ADR-026) and by the corresponding system architecture pages.

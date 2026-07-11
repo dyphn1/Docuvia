@@ -26,13 +26,34 @@ export interface ChangeDetectionResult {
  * unrelated concern (commit-message/diff *noise* filtering for L3 generation, not
  * blast-radius risk) and is deliberately not reused here.
  */
-const IMPACT_RISK_THRESHOLDS = {
+export const IMPACT_RISK_THRESHOLDS = {
   HIGH_MIN: 6,
   CRITICAL_MIN: 21,
 } as const;
 
 /** A diff this large is inherently riskier to review even if individually low-impact. */
 const LARGE_DIFF_FILE_FLOOR = 10;
+
+/**
+ * Shared LOW/MEDIUM/HIGH/CRITICAL derivation from a raw impacted-node count, using
+ * `IMPACT_RISK_THRESHOLDS` above. Used both by `detectChanges()` (per-diff aggregate count)
+ * and the standalone `docuvia impact <target>` command (single-symbol blast-radius count) so
+ * the two never drift apart on what counts as "risky". Deliberately excludes `review`'s own
+ * "large diff floor" LOW→MEDIUM bump (`LARGE_DIFF_FILE_FLOOR`) — that's driven by diff size,
+ * not impacted-node count, and doesn't apply to a single-symbol `impact` query.
+ */
+export function computeImpactRiskLevel(impactedCount: number): RiskLevel {
+  if (impactedCount >= IMPACT_RISK_THRESHOLDS.CRITICAL_MIN) {
+    return "CRITICAL";
+  }
+  if (impactedCount >= IMPACT_RISK_THRESHOLDS.HIGH_MIN) {
+    return "HIGH";
+  }
+  if (impactedCount >= 1) {
+    return "MEDIUM";
+  }
+  return "LOW";
+}
 
 export class ChangeDetectionService {
   constructor(
@@ -81,16 +102,7 @@ export class ChangeDetectionService {
       }
     }
 
-    let riskLevel: RiskLevel;
-    if (totalImpacted >= IMPACT_RISK_THRESHOLDS.CRITICAL_MIN) {
-      riskLevel = "CRITICAL";
-    } else if (totalImpacted >= IMPACT_RISK_THRESHOLDS.HIGH_MIN) {
-      riskLevel = "HIGH";
-    } else if (totalImpacted >= 1) {
-      riskLevel = "MEDIUM";
-    } else {
-      riskLevel = "LOW";
-    }
+    let riskLevel: RiskLevel = computeImpactRiskLevel(totalImpacted);
 
     // A huge diff is inherently riskier to review even if individually low-impact.
     if (riskLevel === "LOW" && filesChanged.length > LARGE_DIFF_FILE_FLOOR) {

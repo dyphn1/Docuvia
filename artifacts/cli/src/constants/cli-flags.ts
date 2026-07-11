@@ -8,6 +8,7 @@ export const CLI_FLAGS = {
   OUT: "--out=",
   COLLAPSE: "--collapse=",
   GLOBAL: "--global",
+  ESCALATE_TO_LSP: "--escalateToLsp",
 } as const;
 
 export const CLI_FORMAT_OPTIONS = {

@@ -87,6 +87,18 @@ export const UI_MESSAGES = {
   QUERY_INCOMING_HEADER: "Incoming (called by)",
   QUERY_OUTGOING_HEADER: "Outgoing (calls)",
 
+  // Impact Command
+  IMPACT_HEADER: "Blast Radius",
+  IMPACT_MISSING_TARGET: "Missing required argument: <target>",
+  IMPACT_START: "Computing blast radius for ",
+  IMPACT_SUCCESS: "Blast radius computed for ",
+  IMPACT_NOT_FOUND: "No matching node found for ",
+  IMPACT_FAIL: "Impact analysis failed: ",
+  IMPACT_BLAST_RADIUS_HEADER: "Blast Radius (direct dependents)",
+  IMPACT_NO_DEPENDENTS:
+    "No dependents found — this symbol has no direct callers/dependents in the local graph.",
+  IMPACT_RISK_PREFIX: "Risk level: ",
+
   // Snapshot Command
   SNAPSHOT_START: "Starting local AST snapshot...",
   SNAPSHOT_DISCOVER: "Discovering source files...",

@@ -5,6 +5,7 @@ import pc from "picocolors";
 
 import { initCommand } from "./commands/init.js";
 import { queryCommand } from "./commands/query.js";
+import { impactCommand } from "./commands/impact.js";
 import { analyzeCommand } from "./commands/analyze.js";
 import { statusCommand } from "./commands/status.js";
 import { cleanCommand } from "./commands/clean.js";
@@ -155,6 +156,14 @@ async function handleQuery(ctx: CommandContext): Promise<void> {
   await queryCommand(target, { local: isLocal, format }, ctx.workspaceRoot);
 }
 
+async function handleImpact(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([CLI_FLAGS.ESCALATE_TO_LSP]);
+  const target = ctx.parser.getPositional(0) || "";
+  const escalateToLsp = ctx.parser.hasFlag(CLI_FLAGS.ESCALATE_TO_LSP);
+
+  await impactCommand(target, { escalateToLsp }, ctx.workspaceRoot);
+}
+
 const COMMAND_HANDLERS: Record<CliCommand, (ctx: CommandContext) => Promise<void>> = {
   [CLI_COMMANDS.INIT]: handleInit,
   [CLI_COMMANDS.ANALYZE]: handleAnalyze,
@@ -166,6 +175,7 @@ const COMMAND_HANDLERS: Record<CliCommand, (ctx: CommandContext) => Promise<void
   [CLI_COMMANDS.EXPORT]: handleExport,
   [CLI_COMMANDS.MCP]: handleMcp,
   [CLI_COMMANDS.QUERY]: handleQuery,
+  [CLI_COMMANDS.IMPACT]: handleImpact,
 };
 
 async function resolveCommand(): Promise<{

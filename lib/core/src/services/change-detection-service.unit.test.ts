@@ -4,7 +4,7 @@ import os from "os";
 import path from "path";
 import { execFileSync } from "child_process";
 import Database from "better-sqlite3";
-import { ChangeDetectionService } from "./change-detection-service.js";
+import { ChangeDetectionService, computeImpactRiskLevel } from "./change-detection-service.js";
 import { QueryService } from "./query-service.js";
 import { LOCAL_DB_NOT_FOUND_MESSAGE } from "./status-service.js";
 
@@ -185,5 +185,53 @@ describe("ChangeDetectionService.detectChanges", () => {
     const result = await service.detectChanges();
 
     expect(result.riskLevel).toBe("HIGH");
+  });
+
+  it("bumps LOW to MEDIUM when the diff spans more than the large-diff file floor, even with zero impacted nodes (large-diff floor is review-specific, not part of computeImpactRiskLevel)", async () => {
+    initRepo(tmpDir);
+    fs.writeFileSync(path.join(tmpDir, "a.ts"), "export const a = 1;\n");
+    git(tmpDir, ["add", "."]);
+    git(tmpDir, ["commit", "-q", "-m", "initial"]);
+
+    // 11 untracked files > LARGE_DIFF_FILE_FLOOR (10), none of which resolve to any graph node.
+    for (let i = 0; i < 11; i++) {
+      fs.writeFileSync(path.join(tmpDir, `file${i}.ts`), `export const v${i} = ${i};\n`);
+    }
+
+    createEmptyLocalDb(path.join(tmpDir, ".docuvia", "local.db"));
+
+    const service = new ChangeDetectionService(tmpDir);
+    const result = await service.detectChanges();
+
+    expect(result.filesChanged.length).toBeGreaterThan(10);
+    expect(result.affectedNodes).toEqual([]);
+    expect(result.riskLevel).toBe("MEDIUM");
+  });
+});
+
+describe("computeImpactRiskLevel (shared by review's detectChanges() and the standalone impact command)", () => {
+  it("returns LOW for zero impacted nodes", () => {
+    expect(computeImpactRiskLevel(0)).toBe("LOW");
+  });
+
+  it("returns MEDIUM just below the HIGH threshold", () => {
+    expect(computeImpactRiskLevel(1)).toBe("MEDIUM");
+    expect(computeImpactRiskLevel(5)).toBe("MEDIUM");
+  });
+
+  it("returns HIGH at and above the HIGH threshold, below CRITICAL", () => {
+    expect(computeImpactRiskLevel(6)).toBe("HIGH");
+    expect(computeImpactRiskLevel(20)).toBe("HIGH");
+  });
+
+  it("returns CRITICAL at and above the CRITICAL threshold", () => {
+    expect(computeImpactRiskLevel(21)).toBe("CRITICAL");
+    expect(computeImpactRiskLevel(100)).toBe("CRITICAL");
+  });
+
+  it("does not apply review's large-diff floor bump (that's applied separately in detectChanges())", () => {
+    // computeImpactRiskLevel is a pure function of the impacted count alone — it has no
+    // knowledge of filesChanged.length, so a count of 0 is always LOW regardless of diff size.
+    expect(computeImpactRiskLevel(0)).toBe("LOW");
   });
 });

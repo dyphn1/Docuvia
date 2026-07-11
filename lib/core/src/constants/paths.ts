@@ -13,6 +13,7 @@ export const REVIEW_LOG_FILE_NAME = "review.log";
 export const SYNC_LOG_FILE_NAME = "sync.log";
 export const SNAPSHOT_LOG_FILE_NAME = "snapshot.log";
 export const QUERY_LOG_FILE_NAME = "query.log";
+export const IMPACT_LOG_FILE_NAME = "impact.log";
 export const EXPORT_TOPOLOGY_LOG_FILE_NAME = "export-topology.log";
 
 export const FILE_README = "README.md";

@@ -506,3 +506,15 @@
 | Milestone 9: Cross-Cutting Concerns                    | 22      | 12      | 9      | 0     | 19                   |
 | Milestone 10: Deployment & Operations                  | 12      | 7       | 4      | 0     | 6                    |
 | **TOTAL**                                              | **162** | **101** | **47** | **4** | **78**               |
+
+---
+
+## Addendum: Audit-Driven CLI Command-Parity Improvements
+
+Not part of the original 10-milestone/162-item ADR-scoped plan above — tracked separately so it doesn't distort that scope's counts. Emerged from [`docuvia-cli-vs-gitnexus-2026-07-10.md`](../analysis/docuvia-cli-vs-gitnexus-2026-07-10.md) and [`gitnexus-vs-docuvia-full-command-matrix-2026-07-11.md`](../analysis/gitnexus-vs-docuvia-full-command-matrix-2026-07-11.md).
+
+- [x] A.1 ✅ `docuvia impact <target>` CLI command — expose the already-built, already-tested `QueryService.getImpact()` (used internally by `docuvia review` and the `docuvia_impact` MCP tool) as a standalone by-symbol command. Spec: [`cli.md`](../gitbook/packages/cli.md#command-reference). No new ADR — follows the existing thin-CLI-wrapper-over-`@workspace/core`-service pattern already decided in [ADR-021](../gitbook/adr/ADR-021-shared-core-api-and-presentation-layers.md).
+
+| Item ID | Last Verified | Report File                        | Status  |
+| ------- | ------------- | ---------------------------------- | ------- |
+| A.1     | 2026-07-11    | [0097_A.1.md](reports/0097_A.1.md) | ✅ PASS |

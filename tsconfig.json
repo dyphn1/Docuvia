@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {},
+  "files": [],
+  "references": [
+    { "path": "./lib/ast-core" },
+    { "path": "./lib/plugins-ast" },
+    { "path": "./lib/schema" },
+    { "path": "./lib/core" },
+    { "path": "./artifacts/cli" }
+  ]
+}

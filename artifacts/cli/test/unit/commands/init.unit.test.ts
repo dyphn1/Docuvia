@@ -1,0 +1,162 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { initCommand } from "../../../src/commands/init.js";
+import { ui } from "../../../src/ui/wizard.js";
+import process from "process";
+import {
+  CursorPlatform,
+  ClaudePlatform,
+  GenericMarkdownPlatform,
+} from "../../../src/platforms/index.js";
+
+const mockExecute = vi.fn();
+const mockDispose = vi.fn();
+const mockBuildInitCapability = vi.fn();
+
+vi.mock("@workspace/core", () => ({
+  buildInitCapability: (...args: unknown[]) => mockBuildInitCapability(...args),
+}));
+
+const spinnerSucceed = vi.fn();
+const spinnerWarn = vi.fn();
+const spinnerFail = vi.fn();
+
+vi.mock("../../../src/ui/wizard.js", () => ({
+  ui: {
+    header: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    askConfirm: vi.fn(),
+    askCheckbox: vi.fn().mockResolvedValue(["Cursor", "Claude", "Markdown Agents"]),
+    spinner: vi.fn(() => ({
+      text: "",
+      start: vi.fn().mockReturnThis(),
+      succeed: spinnerSucceed,
+      warn: spinnerWarn,
+      fail: spinnerFail,
+    })),
+  },
+}));
+
+// Mock the platforms so they don't actually write files
+vi.mock("../../../src/platforms/index.js", () => {
+  return {
+    CursorPlatform: vi.fn().mockImplementation(() => ({ name: "Cursor", configure: vi.fn() })),
+    ClaudePlatform: vi.fn().mockImplementation(() => ({ name: "Claude", configure: vi.fn() })),
+    GenericMarkdownPlatform: vi
+      .fn()
+      .mockImplementation(() => ({ name: "Markdown Agents", configure: vi.fn() })),
+  };
+});
+
+describe("initCommand", () => {
+  let exitSpy: any;
+
+  beforeEach(() => {
+    exitSpy = vi.spyOn(process, "exit").mockImplementation(((code: number) => {
+      throw new Error(`Exit ${code}`);
+    }) as any);
+    mockExecute.mockReset();
+    mockDispose.mockReset();
+    mockBuildInitCapability.mockReset();
+    mockBuildInitCapability.mockResolvedValue({ execute: mockExecute, dispose: mockDispose });
+    spinnerSucceed.mockReset();
+    spinnerWarn.mockReset();
+    spinnerFail.mockReset();
+    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should initialize docuvia non-interactively via buildInitCapability", async () => {
+    mockExecute.mockResolvedValue({ success: true, partialFailure: false, message: "Success" });
+
+    await initCommand();
+
+    expect(mockBuildInitCapability).toHaveBeenCalledWith(
+      expect.objectContaining({ workspaceRoot: expect.any(String) })
+    );
+    expect(mockExecute).toHaveBeenCalled();
+    expect(mockDispose).toHaveBeenCalled();
+  });
+
+  it("should proceed if confirmed in TTY", async () => {
+    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    vi.mocked(ui.askConfirm).mockResolvedValue(true);
+    mockExecute.mockResolvedValue({ success: true, partialFailure: false, message: "Success" });
+
+    await initCommand();
+
+    expect(ui.askConfirm).toHaveBeenCalled();
+    expect(mockExecute).toHaveBeenCalled();
+  });
+
+  it("calls spinner.succeed with the success message when partialFailure is false", async () => {
+    mockExecute.mockResolvedValue({
+      success: true,
+      partialFailure: false,
+      message: "Project initialized successfully",
+    });
+
+    await initCommand();
+
+    expect(spinnerSucceed).toHaveBeenCalledWith("Project initialized successfully");
+    expect(spinnerWarn).not.toHaveBeenCalled();
+  });
+
+  // Audit reproduction: 13 of 4236 files failed to parse in the real run this fix addresses.
+  // This unit test uses a small mocked count, but exercises the exact same branch.
+  it("calls spinner.warn (not succeed) with a message containing the failure count when partialFailure is true", async () => {
+    mockExecute.mockResolvedValue({
+      success: true,
+      partialFailure: true,
+      filesRequested: 4236,
+      filesParsed: 4223,
+      filesFailed: 13,
+      message:
+        "Project initialized — 13 of 4236 files failed to parse (see .docuvia/logs/init.log)",
+    });
+
+    await initCommand();
+
+    expect(spinnerWarn).toHaveBeenCalledWith(expect.stringContaining("13"));
+    expect(spinnerSucceed).not.toHaveBeenCalled();
+  });
+
+  it("calls dispose() (and spinner.fail) even when execute() throws", async () => {
+    mockExecute.mockRejectedValue(new Error("boom"));
+
+    await expect(initCommand()).rejects.toThrow("Exit 1");
+
+    expect(mockDispose).toHaveBeenCalled();
+    expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("boom"));
+  });
+
+  describe("--global threading to platform.configure", () => {
+    it("passes allowGlobalMcpConfig=true through to every platform's configure() when the --global flag was set", async () => {
+      mockExecute.mockResolvedValue({ success: true, partialFailure: false, message: "Success" });
+
+      await initCommand(process.cwd(), true);
+
+      const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
+      const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
+      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock.results[0].value;
+
+      expect(claudeInstance.configure).toHaveBeenCalledWith(process.cwd(), true);
+      expect(cursorInstance.configure).toHaveBeenCalledWith(process.cwd(), true);
+      expect(markdownInstance.configure).toHaveBeenCalledWith(process.cwd(), true);
+    });
+
+    it("passes allowGlobalMcpConfig=false through to platform.configure() by default (--global absent)", async () => {
+      mockExecute.mockResolvedValue({ success: true, partialFailure: false, message: "Success" });
+
+      await initCommand(process.cwd());
+
+      const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
+      expect(claudeInstance.configure).toHaveBeenCalledWith(process.cwd(), false);
+    });
+  });
+});

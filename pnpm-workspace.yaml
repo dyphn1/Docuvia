@@ -1,0 +1,29 @@
+# Supply-chain defense: require any npm package version to have been published
+# for at least 1 day before pnpm will install it. Do not disable.
+minimumReleaseAge: 1440
+
+packages:
+  - artifacts/*
+  - lib/*
+
+catalog:
+  "@types/node": ^25.3.3
+  tsx: ^4.21.0
+  typescript: ^5.7.3
+
+autoInstallPeers: false
+
+supportedArchitectures:
+  os:
+    - current
+    - darwin
+    - linux
+    - win32
+  cpu:
+    - current
+    - x64
+    - arm64
+  libc:
+    - current
+    - glibc
+    - musl

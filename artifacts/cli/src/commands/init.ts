@@ -1,0 +1,109 @@
+import process from "process";
+import { buildInitCapability } from "@workspace/core";
+import { ui } from "../ui/wizard.js";
+import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { CursorPlatform, ClaudePlatform, GenericMarkdownPlatform } from "../platforms/index.js";
+
+/**
+ * Thin caller of the core composition root, per the migration plan's "CLI + MCP shared
+ * composition root" section. This replaces old Docuvia's container-resolved-service
+ * lookup (the deleted DI-container pattern) entirely — `buildInitCapability` is the only
+ * place `InitCommand`'s concrete dependencies get constructed, and both this file and
+ * `mcp/tools/init.ts` call it identically.
+ */
+async function runDatabaseInit(cwd: string): Promise<void> {
+  const spinner = ui.spinner(UI_MESSAGES.INIT_START).start();
+
+  const command = await buildInitCapability({
+    workspaceRoot: cwd,
+    onProgress: (msg: string) => {
+      spinner.text = msg;
+    },
+  });
+
+  try {
+    const result = await command.execute();
+    if (result.partialFailure) {
+      spinner.warn(result.message);
+    } else {
+      spinner.succeed(result.message);
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    spinner.fail(UI_MESSAGES.INIT_FAILED + errorMessage);
+    throw error;
+  } finally {
+    // Lifecycle owned by the composition root's caller only (per the plan's memory-layer
+    // section) — always closes the GraphStore, whether execute() succeeded or threw.
+    await command.dispose();
+  }
+}
+
+async function configureAgentIntegrations(
+  cwd: string,
+  allowGlobalMcpConfig: boolean
+): Promise<void> {
+  ui.info(UI_MESSAGES.INIT_AGENT_HOOKS);
+
+  try {
+    const availablePlatforms = [
+      new CursorPlatform(),
+      new ClaudePlatform(),
+      new GenericMarkdownPlatform(),
+    ];
+
+    let selectedPlatforms = availablePlatforms;
+
+    if (process.stdin.isTTY) {
+      const choices = availablePlatforms.map((p) => ({
+        name: p.name,
+        value: p.name,
+        checked: true,
+      }));
+
+      const selectedNames = await ui.askCheckbox(UI_MESSAGES.INIT_HOOKS_SELECT, choices);
+      selectedPlatforms = availablePlatforms.filter((p) => selectedNames.includes(p.name));
+    }
+
+    if (selectedPlatforms.length === 0) {
+      ui.info(UI_MESSAGES.INIT_HOOKS_NONE_SELECTED);
+      return;
+    }
+
+    for (const platform of selectedPlatforms) {
+      await platform.configure(cwd, allowGlobalMcpConfig);
+    }
+
+    ui.success(UI_MESSAGES.INIT_HOOKS_SUCCESS);
+    ui.info(UI_MESSAGES.INIT_HOOKS_SUPPORTED);
+  } catch (error) {
+    ui.error(UI_MESSAGES.INIT_HOOKS_FAIL + error);
+    process.exit(1);
+  }
+}
+
+export async function initCommand(
+  cwd: string = process.cwd(),
+  allowGlobalMcpConfig: boolean = false
+) {
+  ui.header(UI_MESSAGES.INIT_HEADER);
+
+  // Optional interactive confirmation if TTY
+  if (process.stdin.isTTY) {
+    const proceed = await ui.askConfirm(UI_MESSAGES.INIT_CONFIRM, true);
+    if (!proceed) {
+      ui.warn(UI_MESSAGES.INIT_ABORTED);
+      process.exit(0);
+    }
+  }
+
+  try {
+    await runDatabaseInit(cwd);
+  } catch {
+    // runDatabaseInit already reported the failure (spinner.fail) and ran dispose() in its
+    // own finally before this catch sees the rethrown error.
+    process.exit(1);
+  }
+
+  await configureAgentIntegrations(cwd, allowGlobalMcpConfig);
+}

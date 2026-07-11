@@ -1,19 +1,17 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import process from "process";
+import { docuviaMemory } from "@workspace/contracts";
+import { docuviaApi } from "@workspace/ui-core";
 import { initCommand } from "../../../src/commands/init.js";
 import { ui } from "../../../src/ui/wizard.js";
-import process from "process";
 import {
   CursorPlatform,
   ClaudePlatform,
   GenericMarkdownPlatform,
 } from "../../../src/platforms/index.js";
 
-const mockExecute = vi.fn();
-const mockDispose = vi.fn();
-const mockBuildInitCapability = vi.fn();
-
-vi.mock("@workspace/core", () => ({
-  buildInitCapability: (...args: unknown[]) => mockBuildInitCapability(...args),
+vi.mock("@workspace/ui-core", () => ({
+  docuviaApi: { init: vi.fn() },
 }));
 
 const spinnerSucceed = vi.fn();
@@ -50,6 +48,8 @@ vi.mock("../../../src/platforms/index.js", () => {
   };
 });
 
+const mockInit = vi.mocked(docuviaApi.init);
+
 describe("initCommand", () => {
   let exitSpy: any;
 
@@ -57,10 +57,7 @@ describe("initCommand", () => {
     exitSpy = vi.spyOn(process, "exit").mockImplementation(((code: number) => {
       throw new Error(`Exit ${code}`);
     }) as any);
-    mockExecute.mockReset();
-    mockDispose.mockReset();
-    mockBuildInitCapability.mockReset();
-    mockBuildInitCapability.mockResolvedValue({ execute: mockExecute, dispose: mockDispose });
+    mockInit.mockReset();
     spinnerSucceed.mockReset();
     spinnerWarn.mockReset();
     spinnerFail.mockReset();
@@ -71,35 +68,37 @@ describe("initCommand", () => {
     vi.clearAllMocks();
   });
 
-  it("should initialize docuvia non-interactively via buildInitCapability", async () => {
-    mockExecute.mockResolvedValue({ success: true, partialFailure: false, message: "Success" });
+  it("should initialize docuvia non-interactively via docuviaApi.init, scoping memory to a fresh UUID and cleaning it up afterwards", async () => {
+    mockInit.mockImplementation(async (scopeId) => {
+      // Assert the CLI already injected workspaceRoot before calling the Orchestration layer.
+      expect(docuviaMemory.get(scopeId, "workspaceRoot")).toEqual(expect.any(String));
+      return { success: true, partialFailure: false, message: "Success" } as any;
+    });
+    const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
     await initCommand();
 
-    expect(mockBuildInitCapability).toHaveBeenCalledWith(
-      expect.objectContaining({ workspaceRoot: expect.any(String) })
-    );
-    expect(mockExecute).toHaveBeenCalled();
-    expect(mockDispose).toHaveBeenCalled();
+    expect(mockInit).toHaveBeenCalled();
+    expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 
   it("should proceed if confirmed in TTY", async () => {
     Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
     vi.mocked(ui.askConfirm).mockResolvedValue(true);
-    mockExecute.mockResolvedValue({ success: true, partialFailure: false, message: "Success" });
+    mockInit.mockResolvedValue({ success: true, partialFailure: false, message: "Success" } as any);
 
     await initCommand();
 
     expect(ui.askConfirm).toHaveBeenCalled();
-    expect(mockExecute).toHaveBeenCalled();
+    expect(mockInit).toHaveBeenCalled();
   });
 
   it("calls spinner.succeed with the success message when partialFailure is false", async () => {
-    mockExecute.mockResolvedValue({
+    mockInit.mockResolvedValue({
       success: true,
       partialFailure: false,
       message: "Project initialized successfully",
-    });
+    } as any);
 
     await initCommand();
 
@@ -110,15 +109,14 @@ describe("initCommand", () => {
   // Audit reproduction: 13 of 4236 files failed to parse in the real run this fix addresses.
   // This unit test uses a small mocked count, but exercises the exact same branch.
   it("calls spinner.warn (not succeed) with a message containing the failure count when partialFailure is true", async () => {
-    mockExecute.mockResolvedValue({
+    mockInit.mockResolvedValue({
       success: true,
       partialFailure: true,
       filesRequested: 4236,
       filesParsed: 4223,
       filesFailed: 13,
-      message:
-        "Project initialized — 13 of 4236 files failed to parse (see .docuvia/logs/init.log)",
-    });
+      message: "Project initialized — 13 of 4236 files failed to parse (see .docuvia/logs/init.log)",
+    } as any);
 
     await initCommand();
 
@@ -126,18 +124,19 @@ describe("initCommand", () => {
     expect(spinnerSucceed).not.toHaveBeenCalled();
   });
 
-  it("calls dispose() (and spinner.fail) even when execute() throws", async () => {
-    mockExecute.mockRejectedValue(new Error("boom"));
+  it("calls spinner.fail and still deletes the memory scope when docuviaApi.init() throws", async () => {
+    mockInit.mockRejectedValue(new Error("boom"));
+    const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
     await expect(initCommand()).rejects.toThrow("Exit 1");
 
-    expect(mockDispose).toHaveBeenCalled();
     expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("boom"));
+    expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 
   describe("--global threading to platform.configure", () => {
     it("passes allowGlobalMcpConfig=true through to every platform's configure() when the --global flag was set", async () => {
-      mockExecute.mockResolvedValue({ success: true, partialFailure: false, message: "Success" });
+      mockInit.mockResolvedValue({ success: true, partialFailure: false, message: "Success" } as any);
 
       await initCommand(process.cwd(), true);
 
@@ -151,7 +150,7 @@ describe("initCommand", () => {
     });
 
     it("passes allowGlobalMcpConfig=false through to platform.configure() by default (--global absent)", async () => {
-      mockExecute.mockResolvedValue({ success: true, partialFailure: false, message: "Success" });
+      mockInit.mockResolvedValue({ success: true, partialFailure: false, message: "Success" } as any);
 
       await initCommand(process.cwd());
 

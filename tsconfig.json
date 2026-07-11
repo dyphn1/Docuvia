@@ -4,9 +4,12 @@
   "files": [],
   "references": [
     { "path": "./lib/ast-core" },
+    { "path": "./lib/contracts" },
+    { "path": "./lib/libgit2" },
     { "path": "./lib/plugins-ast" },
     { "path": "./lib/schema" },
     { "path": "./lib/core" },
+    { "path": "./lib/ui-core" },
     { "path": "./artifacts/cli" }
   ]
 }

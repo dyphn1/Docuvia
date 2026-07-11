@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TestSandbox } from "../../support/sandbox.js";
 import Database from "better-sqlite3";
 import { resolve } from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 
 describe("Command: docuvia init", () => {
   let sandbox: TestSandbox;
@@ -69,6 +69,20 @@ describe("Command: docuvia init", () => {
     } finally {
       db.close();
     }
+
+    // Assert: the hidden knowledge-graph branch was created.
+    const branchOut = await sandbox.runGit(["branch", "--list", "docuvia-knowledge"]);
+    expect(branchOut.stdout).toContain("docuvia-knowledge");
+
+    // Assert: a JSONL run log was written, bracketed by init.start/init.summary.
+    const logPath = resolve(sandbox.dir, ".docuvia/logs/init.log");
+    expect(existsSync(logPath)).toBe(true);
+    const lines = readFileSync(logPath, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    expect(lines[0].event).toBe("init.start");
+    expect(lines[lines.length - 1].event).toBe("init.summary");
   }, 25000);
 
   it("should be idempotent (running init twice doesn't crash or corrupt the DB)", async () => {

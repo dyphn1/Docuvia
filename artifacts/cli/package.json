@@ -24,10 +24,16 @@
     "@inquirer/checkbox": "^5.2.1",
     "@inquirer/prompts": "^8.5.2",
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "@workspace/contracts": "workspace:^",
     "@workspace/core": "workspace:^",
+    "@workspace/libgit2": "workspace:^",
+    "@workspace/schema": "workspace:^",
+    "@workspace/ui-core": "workspace:^",
     "better-sqlite3": "^12.11.1",
     "dotenv": "^17.4.2",
     "ora": "^9.4.1",
-    "picocolors": "^1.1.1"
+    "picocolors": "^1.1.1",
+    "pino": "^9.14.0",
+    "zod": "^3.24.1"
   }
 }

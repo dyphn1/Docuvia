@@ -1,14 +1,16 @@
-import { buildInitCapability } from "@workspace/core";
+import crypto from "node:crypto";
+import { z } from "zod";
+import { docuviaMemory } from "@workspace/contracts";
+import { docuviaApi } from "@workspace/ui-core";
+import "../../registration.js";
 import type { McpTool } from "./types.js";
 import { withErrorHandling } from "./wrapper.js";
 import { MCP_TOOL_MESSAGES } from "./messages.js";
+import { createPinoBackedLogger } from "../../logging/create-logger.js";
 
-/**
- * Thin caller of the *same* composition root the CLI `init` command uses
- * (`commands/init.ts`'s `runDatabaseInit`) — the concrete fix for old Docuvia's MCP tool
- * constructing its service directly (bypassing any shared setup entirely). No `onProgress`
- * here (MCP has no spinner to update).
- */
+/** Boundary validation (design-spirit.md #4) — `docuvia_init` takes no arguments today, but every MCP tool input is parsed regardless so a future field addition can't silently skip validation. */
+const InitToolInputSchema = z.object({}).strict();
+
 export const initTool: McpTool = {
   definition: {
     name: "docuvia_init",
@@ -18,15 +20,21 @@ export const initTool: McpTool = {
       properties: {},
     },
   },
-  handler: withErrorHandling(MCP_TOOL_MESSAGES.ERROR_INITIALIZING, async () => {
-    const command = await buildInitCapability({ workspaceRoot: process.cwd() });
+  handler: withErrorHandling(MCP_TOOL_MESSAGES.ERROR_INITIALIZING, async (args) => {
+    InitToolInputSchema.parse(args ?? {});
+
+    const scopeId = crypto.randomUUID();
+    const logger = createPinoBackedLogger();
+    docuviaMemory.createScope(scopeId);
+    docuviaMemory.set(scopeId, "workspaceRoot", process.cwd());
+
     try {
-      const result = await command.execute();
+      const result = await docuviaApi.init(scopeId, logger);
       return {
         content: [{ type: "text", text: result.message }],
       };
     } finally {
-      await command.dispose();
+      docuviaMemory.deleteScope(scopeId);
     }
   }),
 };

@@ -18,20 +18,20 @@
   },
   "dependencies": {
     "@workspace/ast-core": "workspace:^",
+    "@workspace/contracts": "workspace:^",
     "@workspace/plugins-ast": "workspace:^",
-    "@workspace/schema": "workspace:^",
-    "better-sqlite3": "^12.11.1",
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.5",
     "lru-cache": "^11.5.1",
     "p-limit": "^7.3.0",
-    "pino": "^9.14.0",
     "tree-sitter-wasms": "^0.1.13",
     "web-tree-sitter": "^0.25.9"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "catalog:",
+    "@workspace/schema": "workspace:^",
+    "better-sqlite3": "^12.11.1",
     "tsx": "catalog:",
     "vitest": "^1.6.1"
   }

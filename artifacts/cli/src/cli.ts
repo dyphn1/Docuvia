@@ -3,6 +3,7 @@ import * as dotenv from "dotenv";
 import process from "process";
 import pc from "picocolors";
 
+import "./registration.js";
 import { initCommand } from "./commands/init.js";
 import { runMcpServer } from "./mcp/server.js";
 

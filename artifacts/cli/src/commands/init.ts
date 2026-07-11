@@ -1,41 +1,53 @@
 import process from "process";
-import { buildInitCapability } from "@workspace/core";
+import crypto from "node:crypto";
+import { z } from "zod";
+import { docuviaMemory, DocuviaError } from "@workspace/contracts";
+import { docuviaApi } from "@workspace/ui-core";
+import "../registration.js";
 import { ui } from "../ui/wizard.js";
+import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { CursorPlatform, ClaudePlatform, GenericMarkdownPlatform } from "../platforms/index.js";
 
+/** Boundary validation (design-spirit.md #4) — the first thing that touches CLI-supplied input. */
+const InitInputSchema = z.object({
+  cwd: z.string().min(1, "workspace root must not be empty"),
+  allowGlobalMcpConfig: z.boolean(),
+});
+
 /**
- * Thin caller of the core composition root, per the migration plan's "CLI + MCP shared
- * composition root" section. This replaces old Docuvia's container-resolved-service
- * lookup (the deleted DI-container pattern) entirely — `buildInitCapability` is the only
- * place `InitCommand`'s concrete dependencies get constructed, and both this file and
- * `mcp/tools/init.ts` call it identically.
+ * Thin caller of `docuviaApi.init()` — the Presentation layer's job is limited to: generate a
+ * request-scoped memory UUID, inject config into `docuviaMemory`, own the logger sink, call the
+ * Orchestration layer, and garbage-collect the memory scope when done (see
+ * docs/gitbook/architecture/application-lifecycle-and-state.md's "Bootstrapper & Garbage
+ * Collector" role).
  */
 async function runDatabaseInit(cwd: string): Promise<void> {
   const spinner = ui.spinner(UI_MESSAGES.INIT_START).start();
-
-  const command = await buildInitCapability({
-    workspaceRoot: cwd,
-    onProgress: (msg: string) => {
-      spinner.text = msg;
-    },
+  const scopeId = crypto.randomUUID();
+  const logger = createPinoBackedLogger();
+  // Surface workflow progress on the spinner too, in addition to the pino sink.
+  logger.onLog((event) => {
+    if (event.level === "info") spinner.text = event.message;
   });
 
+  docuviaMemory.createScope(scopeId);
+  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
+
   try {
-    const result = await command.execute();
+    const result = await docuviaApi.init(scopeId, logger);
     if (result.partialFailure) {
       spinner.warn(result.message);
     } else {
       spinner.succeed(result.message);
     }
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage =
+      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
     spinner.fail(UI_MESSAGES.INIT_FAILED + errorMessage);
     throw error;
   } finally {
-    // Lifecycle owned by the composition root's caller only (per the plan's memory-layer
-    // section) — always closes the GraphStore, whether execute() succeeded or threw.
-    await command.dispose();
+    docuviaMemory.deleteScope(scopeId);
   }
 }
 
@@ -86,6 +98,8 @@ export async function initCommand(
   cwd: string = process.cwd(),
   allowGlobalMcpConfig: boolean = false
 ) {
+  const input = InitInputSchema.parse({ cwd, allowGlobalMcpConfig });
+
   ui.header(UI_MESSAGES.INIT_HEADER);
 
   // Optional interactive confirmation if TTY
@@ -98,12 +112,12 @@ export async function initCommand(
   }
 
   try {
-    await runDatabaseInit(cwd);
+    await runDatabaseInit(input.cwd);
   } catch {
-    // runDatabaseInit already reported the failure (spinner.fail) and ran dispose() in its
-    // own finally before this catch sees the rethrown error.
+    // runDatabaseInit already reported the failure (spinner.fail) and deleted its memory
+    // scope in its own finally before this catch sees the rethrown error.
     process.exit(1);
   }
 
-  await configureAgentIntegrations(cwd, allowGlobalMcpConfig);
+  await configureAgentIntegrations(input.cwd, input.allowGlobalMcpConfig);
 }

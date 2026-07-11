@@ -1,23 +1,10 @@
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import "./register.js";
 
 export { applyMigrations } from "./sqlite/migration-runner.js";
-export type {
-  ProjectRow,
-  ProjectFileRow,
-  L1TagRow,
-  L2NodeRow,
-  NodeLinkRow,
-  L2NodeL1TagRow,
-  L3NodeRow,
-} from "./sqlite/types.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-/**
- * Resolved path to the migrations folder, independent of the current
- * working directory of whatever process imports this package (consumers in
- * `lib/core`'s `GraphStore.open()` point at this rather than a hardcoded
- * relative path).
- */
-export const MIGRATIONS_DIR = path.join(__dirname, "sqlite", "migrations");
+export { MIGRATIONS_DIR } from "./sqlite/paths.js";
+export { GraphStore } from "./sqlite/graph-store.js";
+export { ProjectsRepo } from "./sqlite/repos/projects-repo.js";
+export { ProjectFilesRepo } from "./sqlite/repos/files-repo.js";
+export { TagsRepo } from "./sqlite/repos/tags-repo.js";
+export { GraphNodesRepo } from "./sqlite/repos/graph-repo.js";
+export { FtsRepo } from "./sqlite/repos/fts-repo.js";

@@ -20,3 +20,4 @@ Before modifying or creating any core mechanism, you MUST read the corresponding
 - [Unified Error Handling Strategy](docs/gitbook/architecture/error-handling-architecture.md)
 - [Event-Driven Logging](docs/gitbook/architecture/logging-architecture.md)
 - [Testing & Quality Gates](docs/gitbook/architecture/testing-and-quality-architecture.md)
+- [IPC Logger Protocol](docs/gitbook/guidelines/playbook-ipc-logging.md) — required before touching `worker_threads`/`child_process` code (e.g. `lib/core/src/ast/`)

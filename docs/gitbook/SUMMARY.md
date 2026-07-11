@@ -13,6 +13,9 @@
 ## 🛠️ Coding Guidelines
 * [Overview](guidelines/README.md)
 * [Design Spirit & Core Principles](guidelines/design-spirit.md)
-* [File Placement & Folder Rules](guidelines/file-placement-rules.md)* [The Playbook Standard](guidelines/playbook-standard.md)
+* [File Placement & Folder Rules](guidelines/file-placement-rules.md)
+* [The Playbook Standard](guidelines/playbook-standard.md)
+* [Playbook: IPC Logger Protocol](guidelines/playbook-ipc-logging.md)
+
 ## 📋 Architecture Decision Records
 * [ADR Index](adr/README.md)

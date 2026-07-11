@@ -11,3 +11,4 @@ As an AI Agent or Developer contributing to this repository, you are expected to
 *   **[Design Spirit & Core Principles](design-spirit.md)**: Details our approach to Protocol-Oriented Programming (POP), the Single Responsibility Principle (SRP), Clean Code, and Defensive Programming.
 *   **[File Placement & Folder Rules](file-placement-rules.md)**: A practical guide (Q&A style) on exactly where to place your code based on its responsibilities, ensuring you never violate the Virtual Contracts architecture.
 *   **[The Playbook Standard](playbook-standard.md)**: How to document complex mechanisms so that both human developers and AI agents can execute tasks consistently without hallucination.
+*   **[Playbook: IPC Logger Protocol](playbook-ipc-logging.md)**: How to log from inside a `worker_thread`/`child_process` without a live `ILogger` reference — mandatory reading before touching `lib/core/src/ast/` or spawning any new isolated context.

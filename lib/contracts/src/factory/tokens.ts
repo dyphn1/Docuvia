@@ -1,18 +1,51 @@
+import type { ILogger } from "../logging/types.js";
+import type { IGitProvider } from "../interfaces/git.interfaces.js";
+import type { IKnowledgeGitService } from "../interfaces/knowledge-git.interfaces.js";
+import type {
+  IConfigScanner,
+  IFileDiscovery,
+  IVcsScanner,
+} from "../interfaces/discovery.interfaces.js";
+import type { IAstProcessor } from "../interfaces/ast.interfaces.js";
+import type { IGraphPersister } from "../interfaces/graph-persister.interfaces.js";
+import type { GraphStoreOpenOptions, IGraphStore } from "../interfaces/graph-store.interfaces.js";
+import type { ITempFileManager } from "../interfaces/temp-file-manager.interfaces.js";
+
 /**
- * Registration tokens for `docuviaFactory`. One token per interface — implementation
- * libraries register a provider against a token; orchestration resolves by token and only
- * ever sees the associated interface type (declared alongside each token's usage site).
+ * A phantom-typed registration token — see
+ * docs/gitbook/architecture/virtual-contracts-architecture.md#8 (Type-Safe Registry). At
+ * runtime this is nothing but a `symbol`; `T`/`P` never hold a real value — they exist purely
+ * so `docuviaFactory.register()`/`.resolve()` can infer the provider's return type and params
+ * type directly from the token argument, with zero manual generic annotations at any call site
+ * and zero possibility of requesting one interface through a differently-typed token.
+ */
+export type Token<T, P = void> = symbol & { readonly __docuviaToken?: { result: T; params: P } };
+
+/** Creates a token carrying its `T`/`P` as a compile-time-only phantom type. `description` is
+ *  only for debugging (shows up in `Symbol#description` / error messages) — it carries no
+ *  type information itself. */
+export function createToken<T, P = void>(description: string): Token<T, P> {
+  return Symbol(description) as Token<T, P>;
+}
+
+type LoggerParams = { logger?: ILogger };
+
+/**
+ * Every registration token in the workspace. This is the single declaration point pairing a
+ * token with its interface (and, where relevant, its per-call params shape) — the "register it
+ * in the TokenMap" step every new capability goes through. Everywhere else in the codebase,
+ * `register()`/`resolve()` infer everything from whichever `TOKENS.X` value is passed in.
  */
 export const TOKENS = {
-  GitProvider: Symbol("IGitProvider"),
-  KnowledgeGitService: Symbol("IKnowledgeGitService"),
-  FileDiscovery: Symbol("IFileDiscovery"),
-  ConfigScanner: Symbol("IConfigScanner"),
-  VcsScanner: Symbol("IVcsScanner"),
-  AstProcessor: Symbol("IAstProcessor"),
-  GraphPersister: Symbol("IGraphPersister"),
-  TempFileManager: Symbol("ITempFileManager"),
-  GraphStoreOpener: Symbol("GraphStoreOpener"),
+  GitProvider: createToken<IGitProvider>("IGitProvider"),
+  KnowledgeGitService: createToken<IKnowledgeGitService, LoggerParams>("IKnowledgeGitService"),
+  FileDiscovery: createToken<IFileDiscovery, LoggerParams>("IFileDiscovery"),
+  ConfigScanner: createToken<IConfigScanner, LoggerParams>("IConfigScanner"),
+  VcsScanner: createToken<IVcsScanner, LoggerParams>("IVcsScanner"),
+  AstProcessor: createToken<IAstProcessor, LoggerParams>("IAstProcessor"),
+  GraphPersister: createToken<IGraphPersister>("IGraphPersister"),
+  TempFileManager:
+    createToken<(workspaceRoot: string, logger?: ILogger) => ITempFileManager>("TempFileManager"),
+  GraphStoreOpener:
+    createToken<(opts: GraphStoreOpenOptions) => Promise<IGraphStore>>("GraphStoreOpener"),
 } as const;
-
-export type Token = (typeof TOKENS)[keyof typeof TOKENS];

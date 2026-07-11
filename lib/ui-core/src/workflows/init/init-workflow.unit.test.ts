@@ -11,6 +11,7 @@ import {
   type IAstProcessor,
   type IConfigScanner,
   type IFileDiscovery,
+  type GraphStoreOpenOptions,
   type IGitProvider,
   type IGraphPersister,
   type IGraphStore,
@@ -95,7 +96,9 @@ describe("InitWorkflow.execute()", () => {
   let tmpDir: string;
   let callOrder: string[];
   let store: IGraphStore;
-  let openStoreSpy: ReturnType<typeof vi.fn>;
+  let openStoreSpy: ReturnType<
+    typeof vi.fn<[GraphStoreOpenOptions], Promise<IGraphStore>>
+  >;
 
   const filesToParse = [{ file: "src/a.ts", hash: "hash-a", code: "export const a = 1;" }];
   const parsedResults = [
@@ -155,7 +158,7 @@ describe("InitWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.AstProcessor, () => astProcessor);
     docuviaFactory.register(TOKENS.GraphPersister, () => graphPersister);
     docuviaFactory.register(TOKENS.TempFileManager, () => () => tempFileManager);
-    openStoreSpy = vi.fn().mockResolvedValue(store);
+    openStoreSpy = vi.fn<[GraphStoreOpenOptions], Promise<IGraphStore>>().mockResolvedValue(store);
     docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
 
     docuviaFactory.lock();

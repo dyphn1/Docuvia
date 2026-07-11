@@ -1,4 +1,4 @@
-import { docuviaFactory, TOKENS, type GraphStoreOpenOptions, type IGraphStore } from "@workspace/contracts";
+import { docuviaFactory, TOKENS } from "@workspace/contracts";
 import { GraphStore } from "./sqlite/graph-store.js";
 
 /**
@@ -8,7 +8,4 @@ import { GraphStore } from "./sqlite/graph-store.js";
  * the Orchestration layer resolves this once, then explicitly `await`s it with the per-run
  * `dbPath`, matching "ui-core explicitly calls .initialize()" for every transient resource.
  */
-docuviaFactory.register<(opts: GraphStoreOpenOptions) => Promise<IGraphStore>>(
-  TOKENS.GraphStoreOpener,
-  () => GraphStore.open
-);
+docuviaFactory.register(TOKENS.GraphStoreOpener, () => GraphStore.open);

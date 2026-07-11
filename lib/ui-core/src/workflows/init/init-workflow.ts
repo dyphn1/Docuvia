@@ -6,17 +6,8 @@ import {
   LOCAL_DB_FILE_NAME,
   DocuviaError,
   ErrorCodes,
-  type IAstProcessor,
-  type IConfigScanner,
-  type IFileDiscovery,
-  type IGitProvider,
-  type IGraphPersister,
   type IGraphStore,
-  type IKnowledgeGitService,
   type ILogger,
-  type ITempFileManager,
-  type IVcsScanner,
-  type GraphStoreOpenOptions,
 } from "@workspace/contracts";
 import { INIT_MESSAGES } from "./init-messages.js";
 import { appendInitLogLine, writeInitSummary } from "./init-log-writer.js";
@@ -60,33 +51,18 @@ export class InitWorkflow {
     logger.info(INIT_MESSAGES.INITIALIZING(workspaceRoot));
     await appendInitLogLine(workspaceRoot, { event: "init.start", workspaceRoot });
 
-    const git = docuviaFactory.resolve<IGitProvider>(TOKENS.GitProvider);
-    const knowledgeGit = docuviaFactory.resolve<IKnowledgeGitService, { logger?: ILogger }>(
-      TOKENS.KnowledgeGitService,
-      { logger }
-    );
-    const fileDiscovery = docuviaFactory.resolve<IFileDiscovery, { logger?: ILogger }>(
-      TOKENS.FileDiscovery,
-      { logger }
-    );
-    const configScanner = docuviaFactory.resolve<IConfigScanner, { logger?: ILogger }>(
-      TOKENS.ConfigScanner,
-      { logger }
-    );
-    const vcsScanner = docuviaFactory.resolve<IVcsScanner, { logger?: ILogger }>(TOKENS.VcsScanner, {
-      logger,
-    });
-    const astProcessor = docuviaFactory.resolve<IAstProcessor, { logger?: ILogger }>(
-      TOKENS.AstProcessor,
-      { logger }
-    );
-    const graphPersister = docuviaFactory.resolve<IGraphPersister>(TOKENS.GraphPersister);
-    const buildTempFileManager = docuviaFactory.resolve<
-      (workspaceRoot: string, logger?: ILogger) => ITempFileManager
-    >(TOKENS.TempFileManager);
-    const openStore = docuviaFactory.resolve<(opts: GraphStoreOpenOptions) => Promise<IGraphStore>>(
-      TOKENS.GraphStoreOpener
-    );
+    // No generic annotations — each TOKENS.X value carries its own return/params types, so
+    // `resolve()` infers the correct interface automatically (see
+    // docs/gitbook/architecture/virtual-contracts-architecture.md#8).
+    const git = docuviaFactory.resolve(TOKENS.GitProvider);
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, { logger });
+    const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, { logger });
+    const configScanner = docuviaFactory.resolve(TOKENS.ConfigScanner, { logger });
+    const vcsScanner = docuviaFactory.resolve(TOKENS.VcsScanner, { logger });
+    const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, { logger });
+    const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+    const buildTempFileManager = docuviaFactory.resolve(TOKENS.TempFileManager);
+    const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
 
     let store: IGraphStore;
     try {

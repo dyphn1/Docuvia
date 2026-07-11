@@ -11,17 +11,23 @@ export type Provider<T, P = void> = (factory: DocuviaFactory, params: P) => T;
 
 /**
  * The only globally permitted registration factory — see
- * docs/gitbook/architecture/virtual-contracts-architecture.md. Stores *constructors*, not
- * active instances: every `resolve()` call returns a brand-new, transient instance (unless a
- * provider deliberately closes over a shared singleton itself). Implementation libraries
- * self-register a provider as a side effect of being imported; orchestration resolves by
- * token and never imports the concrete implementation module directly.
+ * docs/gitbook/architecture/virtual-contracts-architecture.md#8 (Type-Safe Registry). Stores
+ * *constructors*, not active instances: every `resolve()` call returns a brand-new, transient
+ * instance (unless a provider deliberately closes over a shared singleton itself).
+ * Implementation libraries self-register a provider as a side effect of being imported;
+ * orchestration resolves by token and never imports the concrete implementation module
+ * directly.
+ *
+ * Type safety comes entirely from `Token<T, P>` (see `tokens.ts`) being a phantom-typed
+ * `symbol` — `register()`/`resolve()` infer `T`/`P` straight from whichever token value is
+ * passed in, so requesting one interface through a token typed for another is a compile error,
+ * with zero manual generic annotations needed at any call site.
  */
 export class DocuviaFactory {
-  private readonly providers = new Map<Token, Provider<unknown, unknown>>();
+  private readonly providers = new Map<symbol, Provider<unknown, unknown>>();
   private locked = false;
 
-  register<T, P = void>(token: Token, provider: Provider<T, P>): void {
+  register<T, P = void>(token: Token<T, P>, provider: Provider<T, P>): void {
     if (this.locked) {
       throw new DocuviaError(
         ErrorCodes.FACTORY_LOCKED,
@@ -31,7 +37,7 @@ export class DocuviaFactory {
     this.providers.set(token, provider as Provider<unknown, unknown>);
   }
 
-  resolve<T, P = void>(token: Token, params?: P): T {
+  resolve<T, P = void>(token: Token<T, P>, params?: P): T {
     const provider = this.providers.get(token);
     if (!provider) {
       throw new DocuviaError(
@@ -43,7 +49,7 @@ export class DocuviaFactory {
     return provider(this, params as P) as T;
   }
 
-  has(token: Token): boolean {
+  has(token: symbol): boolean {
     return this.providers.has(token);
   }
 

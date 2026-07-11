@@ -58,7 +58,7 @@ The lifecycle and state management duties are strictly partitioned:
 
 ### 🟥 The Presentation Layer (`artifacts/cli`, `mcp`)
 *   **The Bootstrapper & Garbage Collector**: Responsible for generating the Context UUID, reading configurations, and injecting them into `docuviaMemory`. Crucially, because it is the only layer that knows when a command or request is fully complete, **it is strictly responsible for Garbage Collection**. It must explicitly delete the UUID context from `docuviaMemory` at the end of the run to prevent Out-of-Memory (OOM) leaks.
-*   **The Trigger**: Explicitly imports implementation libraries to ensure they execute their registration code during the Node.js module loading phase.
+*   **The Trigger**: Explicitly imports implementation libraries to ensure they execute their registration code during the Node.js module loading phase. We intentionally use explicit imports (rather than auto-discovery) at this stage to keep the bootstrapping fail-fast and avoid ambiguous teardown boundaries.
 
 ### 🟦 The Orchestration Layer (`lib/ui-core`)
 *   **The Lifecycle Owner**: Because objects from the factory are transient, `ui-core` owns them entirely. It explicitly calls `.initialize()` and `.close()` on the instances.

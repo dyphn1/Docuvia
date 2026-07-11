@@ -130,3 +130,13 @@ This design completely quarantines technical details, allowing human developers 
 
 1.  **Mandatory Mapping Overhead**: Even if the underlying database schema looks exactly like the `contracts` type, the implementation layer **must** manually write the mapping logic. This introduces unavoidable boilerplate code.
 2.  **Initial Learning Curve**: For new developers (or AI agents), you cannot simply "Go to Definition" in your IDE to find the execution code, as it will only jump to the interface. You must understand the Factory registration mechanism to locate the actual implementation files.
+
+---
+
+## 8. Import Restrictions & Type Safety (Coupling Prevention)
+
+To prevent boundary erosion and long-term coupling, strict import rules apply between layers:
+
+1. **Tech Providers (`lib/schema`, `lib/libgit2`, `lib/ast-core`)**: **Strictly Forbidden** for any upper layer (`ui-core`, `artifacts/*`) to import anything from these packages, **including `import type`**. Tech providers wrap volatile third-party dependencies; allowing type imports would leak those dependencies' shapes (e.g., ORM query objects or Tree-sitter AST nodes) into the orchestration logic, breaking the Virtual Contracts isolation.
+2. **Domain Core (`lib/core`)**: **Strictly Forbidden** for upper layers to import anything, **including `import type`**. While `core` contains pure business logic, allowing `import type` inevitably leads to high coupling and boundary erosion. The Orchestrator (`ui-core`) acts as the "purchaser" and `contracts` as the "bidding spec"; `core` simply fulfills the spec.
+3. **The Solution: Type-Safe Registry**: Instead of relaxing import rules to alleviate the "writing interfaces is tedious" complaint, the `docuviaFactory` and `tokens.ts` are designed as a **Type-Safe Registry (TokenMap)**. Developers declare the required interface in `contracts`, register it in the `TokenMap`, and `docuviaFactory.resolve('TokenName')` provides 100% compile-time type safety without manual generic annotations or cross-layer type imports. All shared definitions must live in `contracts`.

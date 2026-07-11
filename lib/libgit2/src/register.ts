@@ -1,4 +1,4 @@
-import { docuviaFactory, TOKENS, type IGitProvider } from "@workspace/contracts";
+import { docuviaFactory, TOKENS } from "@workspace/contracts";
 import { Libgit2Provider } from "./libgit2-provider.js";
 
 /**
@@ -7,4 +7,4 @@ import { Libgit2Provider } from "./libgit2-provider.js";
  * once, for its side effect only, by the Presentation layer. Every `resolve()` afterwards
  * returns a fresh, transient `Libgit2Provider` (it holds no state, so transience costs nothing).
  */
-docuviaFactory.register<IGitProvider>(TOKENS.GitProvider, () => new Libgit2Provider());
+docuviaFactory.register(TOKENS.GitProvider, () => new Libgit2Provider());

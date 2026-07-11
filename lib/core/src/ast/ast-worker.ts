@@ -7,23 +7,24 @@ import { fileURLToPath } from "url";
 import type { SupportedLanguage, LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
 import { parseImportDescriptors } from "@workspace/ast-core";
 import { loadDefaultRegistry } from "@workspace/plugins-ast";
+import { IpcLoggerClient } from "@workspace/contracts";
 
 /**
  * Worker threads share the host process's stdout/stderr by default, so `console.*` here would
  * corrupt MCP's stdio JSON-RPC stream exactly like it would in the main thread (see
  * docs/gitbook/architecture/logging-architecture.md). A live `ILogger` callback can't cross the
- * `postMessage` structured-clone boundary, so unexpected crashes are reported as a `{type:
- * "log"}` message instead — `AstWorkerPool` forwards it to its own injected logger.
+ * `postMessage` structured-clone boundary, so unexpected crashes are reported through the
+ * standard IPC Logger Protocol instead (see
+ * docs/gitbook/guidelines/playbook-ipc-logging.md) — `AstWorkerPool` routes it back to its own
+ * injected logger via `IpcLogRouter`.
  */
-function postFatalLog(message: string, context: Record<string, unknown>): void {
-  parentPort?.postMessage({ type: "log", level: "error", message, context });
-}
+const logger = new IpcLoggerClient((message) => parentPort?.postMessage(message));
 
 process.on("uncaughtException", (err) => {
-  postFatalLog("AST worker uncaughtException", { error: err instanceof Error ? err.message : String(err) });
+  logger.error("AST worker uncaughtException", { error: err instanceof Error ? err.message : String(err) });
 });
 process.on("unhandledRejection", (err) => {
-  postFatalLog("AST worker unhandledRejection", { error: err instanceof Error ? err.message : String(err) });
+  logger.error("AST worker unhandledRejection", { error: err instanceof Error ? err.message : String(err) });
 });
 
 const __filename = fileURLToPath(import.meta.url);

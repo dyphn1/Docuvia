@@ -5,8 +5,8 @@ import * as fs from "fs";
 import { fileURLToPath } from "url";
 import crypto from "node:crypto";
 import type { AstParseRequest, AstParseResponse } from "./ast-worker.js";
-import type { ILogger } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import type { ILogger, IIpcLogMessage } from "@workspace/contracts";
+import { createNoopLogger, IpcLogRouter } from "@workspace/contracts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,18 +47,6 @@ export class AstWorkerCrashError extends Error {
   }
 }
 
-/** A message a worker posts proactively (not in response to a parse request) — see `ast-worker.ts`'s `postFatalLog`, the only way a worker thread can route a log event back through the injected `ILogger` without crossing the `postMessage` boundary with a live callback. */
-interface WorkerLogMessage {
-  type: "log";
-  level: "warn" | "error";
-  message: string;
-  context?: Record<string, unknown>;
-}
-
-function isWorkerLogMessage(msg: unknown): msg is WorkerLogMessage {
-  return typeof msg === "object" && msg !== null && (msg as any).type === "log";
-}
-
 export class AstWorkerPool implements IASTWorkerPool {
   private workers: Worker[] = [];
   private workerTasks = new Map<Worker, string>();
@@ -83,13 +71,19 @@ export class AstWorkerPool implements IASTWorkerPool {
   private taskFilePaths = new Map<string, string>();
   private timedOutWorkers = new WeakSet<Worker>();
   private shuttingDown = false;
+  private readonly ipcLogRouter: IpcLogRouter;
 
   constructor(
     private readonly logger: ILogger = createNoopLogger(),
     private readonly taskTimeoutMs: number = 30_000,
     private cache?: IAsxParseCache,
     private readonly workerScriptPathOverride?: string
-  ) {}
+  ) {
+    // See docs/gitbook/guidelines/playbook-ipc-logging.md — the worker can't hold a live
+    // ILogger, so it sends IIpcLogMessages; this pool already has the real per-request logger
+    // (injected here, from the Factory's params), so routing is a direct forward.
+    this.ipcLogRouter = new IpcLogRouter(this.logger);
+  }
 
   /** Queues a worker spawn behind any spawn already in flight — see `spawnChain` above. */
   private enqueueSpawn(): Promise<void> {
@@ -105,11 +99,8 @@ export class AstWorkerPool implements IASTWorkerPool {
   private spawnWorker(): Worker {
     const worker = new Worker(this.wPath, this.workerOptions);
 
-    worker.on("message", (res: AstParseResponse | WorkerLogMessage) => {
-      if (isWorkerLogMessage(res)) {
-        this.logger[res.level](res.message, res.context);
-        return;
-      }
+    worker.on("message", (res: AstParseResponse | IIpcLogMessage) => {
+      if (this.ipcLogRouter.handleMessage(res)) return;
 
       this.workerTasks.delete(worker);
       const timeout = this.taskTimeouts.get(res.taskId);

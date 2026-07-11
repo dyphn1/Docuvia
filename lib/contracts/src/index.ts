@@ -1,5 +1,9 @@
 export type { ILogger, LogEvent, LogLevel } from "./logging/types.js";
 export { Logger, createNoopLogger } from "./logging/logger.js";
+export type { IIpcLogMessage } from "./logging/ipc-log-message.js";
+export { isIpcLogMessage } from "./logging/ipc-log-message.js";
+export { IpcLoggerClient } from "./logging/ipc-logger-client.js";
+export { IpcLogRouter } from "./logging/ipc-log-router.js";
 
 export { ErrorCodes } from "./errors/error-codes.js";
 export type { ErrorCode } from "./errors/error-codes.js";
@@ -9,7 +13,7 @@ export { DocuviaMemory, docuviaMemory } from "./memory/docuvia-memory.js";
 
 export { DocuviaFactory, docuviaFactory } from "./factory/docuvia-factory.js";
 export type { Provider } from "./factory/docuvia-factory.js";
-export { TOKENS } from "./factory/tokens.js";
+export { TOKENS, createToken } from "./factory/tokens.js";
 export type { Token } from "./factory/tokens.js";
 
 export type { ChangedFileEntry, IGitProvider } from "./interfaces/git.interfaces.js";

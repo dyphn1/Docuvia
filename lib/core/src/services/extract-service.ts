@@ -4,6 +4,8 @@ import { logger } from "../utils/logger.js";
 import { DEFAULT_PROMPTS } from "../utils/prompts.js";
 import { resolveLocalLlmOrchestrator } from "./local-llm-provider.js";
 import { isSupportedSourceFile } from "../utils/language-detection.js";
+import { appendCommandLogLine } from "./command-log-writer.js";
+import { ANALYZE_LOG_FILE_NAME } from "../constants/paths.js";
 
 /** Files at/above this count are dropped from analysis rather than silently included. */
 export const MAX_ANALYZE_FILES = 40;
@@ -31,10 +33,20 @@ export class ExtractService {
 
   public async extractDecisions(targetPath: string): Promise<ExtractDecisionsResult> {
     logger.info({ targetPath }, "Extracting decisions");
+    await appendCommandLogLine(this.workspaceRoot, ANALYZE_LOG_FILE_NAME, {
+      event: "analyze.focused.start",
+      targetPath,
+    }).catch(() => {});
 
     const resolvedPath = path.resolve(this.workspaceRoot, targetPath);
     if (!fs.existsSync(resolvedPath)) {
-      throw new Error(`Path does not exist: ${targetPath}`);
+      const message = `Path does not exist: ${targetPath}`;
+      await appendCommandLogLine(this.workspaceRoot, ANALYZE_LOG_FILE_NAME, {
+        event: "analyze.focused.error",
+        targetPath,
+        message,
+      }).catch(() => {});
+      throw new Error(message);
     }
 
     const { files, droppedFiles } = this.collectSourceFiles(resolvedPath);
@@ -46,6 +58,11 @@ export class ExtractService {
     }
 
     if (files.length === 0) {
+      await appendCommandLogLine(this.workspaceRoot, ANALYZE_LOG_FILE_NAME, {
+        event: "analyze.focused.summary",
+        targetPath,
+        decisionsCount: 0,
+      }).catch(() => {});
       return { decisions: [] };
     }
 
@@ -66,11 +83,23 @@ export class ExtractService {
     try {
       parsed = JSON.parse(response.content);
     } catch {
-      throw new Error("LLM returned non-JSON output for decision extraction");
+      const message = "LLM returned non-JSON output for decision extraction";
+      await appendCommandLogLine(this.workspaceRoot, ANALYZE_LOG_FILE_NAME, {
+        event: "analyze.focused.error",
+        targetPath,
+        message,
+      }).catch(() => {});
+      throw new Error(message);
     }
 
     if (!Array.isArray(parsed)) {
-      throw new Error("LLM returned non-JSON output for decision extraction");
+      const message = "LLM returned non-JSON output for decision extraction";
+      await appendCommandLogLine(this.workspaceRoot, ANALYZE_LOG_FILE_NAME, {
+        event: "analyze.focused.error",
+        targetPath,
+        message,
+      }).catch(() => {});
+      throw new Error(message);
     }
 
     const decisions: ExtractedDecision[] = parsed.map((item: any) => ({
@@ -79,6 +108,12 @@ export class ExtractService {
       content: String(item?.content ?? ""),
       confidence: typeof item?.confidence === "number" ? item.confidence : 0,
     }));
+
+    await appendCommandLogLine(this.workspaceRoot, ANALYZE_LOG_FILE_NAME, {
+      event: "analyze.focused.summary",
+      targetPath,
+      decisionsCount: decisions.length,
+    }).catch(() => {});
 
     return { decisions };
   }

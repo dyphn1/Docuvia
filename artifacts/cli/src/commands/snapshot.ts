@@ -7,6 +7,8 @@ import {
   DI_TOKENS,
   DI_KEYS,
   GitConstants,
+  appendCommandLogLine,
+  SNAPSHOT_LOG_FILE_NAME,
 } from "@workspace/core";
 import process from "process";
 import * as fs from "fs/promises";
@@ -19,6 +21,10 @@ import { resolveConfiguredService } from "../utils/resolve-service.js";
 export async function snapshotCommand(workspaceRoot: string = process.cwd()) {
   const spinner = ui.spinner(UI_MESSAGES.SNAPSHOT_START).start();
   let tempDir = "";
+  await appendCommandLogLine(workspaceRoot, SNAPSHOT_LOG_FILE_NAME, {
+    event: "snapshot.start",
+    workspaceRoot,
+  }).catch(() => {});
   try {
     spinner.text = UI_MESSAGES.SNAPSHOT_DISCOVER;
     const fileDiscovery = new FileDiscoveryService();
@@ -59,7 +65,14 @@ export async function snapshotCommand(workspaceRoot: string = process.cwd()) {
     );
     await localWriter.packDirectoryToBranch(tempDir, GitConstants.KNOWLEDGE_ROOT);
 
-    const summaryMessage = `${UI_MESSAGES.SNAPSHOT_SUCCESS} Nodes: ${result.l2Created + result.l3Created}, Links: ${result.linksCreated}`;
+    const summaryMessage = `${UI_MESSAGES.SNAPSHOT_SUCCESS} Nodes: ${result.l2Created + result.l3Created}, call/import sites: ${result.linksCreated}`;
+    await appendCommandLogLine(workspaceRoot, SNAPSHOT_LOG_FILE_NAME, {
+      event: "snapshot.summary",
+      nodesCreated: result.l2Created + result.l3Created,
+      linksCreated: result.linksCreated,
+      filesFailed: failures.length,
+      filesRequested: filesToParse.length,
+    }).catch(() => {});
     if (failures.length > 0) {
       spinner.warn(
         `${summaryMessage} — ${failures.length} of ${filesToParse.length} files failed to parse`
@@ -68,6 +81,10 @@ export async function snapshotCommand(workspaceRoot: string = process.cwd()) {
       spinner.succeed(summaryMessage);
     }
   } catch (e: any) {
+    await appendCommandLogLine(workspaceRoot, SNAPSHOT_LOG_FILE_NAME, {
+      event: "snapshot.error",
+      message: e.message,
+    }).catch(() => {});
     spinner.fail(UI_MESSAGES.SNAPSHOT_FAIL + e.message);
     process.exit(1);
   } finally {

@@ -1,4 +1,5 @@
 export * from "./services/query-service.js";
+export * from "./services/command-log-writer.js";
 export * from "./services/init-service.js";
 export * from "./services/analyze-service.js";
 export * from "./services/extract-service.js";

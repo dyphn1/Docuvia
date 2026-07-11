@@ -6,7 +6,8 @@ import { logger } from "../utils/logger.js";
 import { WorkspaceGitService } from "./workspace-git.service.js";
 import { IWorkspaceGitService } from "../interfaces/workspace-git.interfaces.js";
 import { LOCAL_DB_NOT_FOUND_MESSAGE } from "./status-service.js";
-import { DOCUVIA_DIR_NAME, DOCUVIA_LOGS_DIR_NAME } from "../constants/paths.js";
+import { DOCUVIA_DIR_NAME, DOCUVIA_LOGS_DIR_NAME, SYNC_LOG_FILE_NAME } from "../constants/paths.js";
+import { appendCommandLogLine } from "./command-log-writer.js";
 
 export const SYNC_STATE_FILE_NAME = "sync-state.json";
 
@@ -107,6 +108,11 @@ export class SyncService {
   public async sync(projectId: string, commitSha?: string): Promise<SyncResult> {
     this.logCallback(`Starting sync for project ${projectId}...`);
     logger.info({ projectId, commitSha }, "Syncing to remote");
+    await appendCommandLogLine(this.workspaceRoot, SYNC_LOG_FILE_NAME, {
+      event: "sync.start",
+      projectId,
+      commitSha: commitSha ?? null,
+    }).catch(() => {});
 
     const changedFiles = commitSha
       ? await this.workspaceGit.getFilesChangedByCommit(this.workspaceRoot, commitSha)
@@ -120,10 +126,22 @@ export class SyncService {
       const message = "Nothing to sync: no changed files detected.";
       this.logCallback(message);
       logger.info({ projectId }, message);
+      await appendCommandLogLine(this.workspaceRoot, SYNC_LOG_FILE_NAME, {
+        event: "sync.summary",
+        projectId,
+        synced: 0,
+        skipped: 0,
+        message,
+      }).catch(() => {});
       return { synced: 0, skipped: 0, message };
     }
 
     if (!fs.existsSync(this.getDbPath())) {
+      await appendCommandLogLine(this.workspaceRoot, SYNC_LOG_FILE_NAME, {
+        event: "sync.error",
+        projectId,
+        message: LOCAL_DB_NOT_FOUND_MESSAGE,
+      }).catch(() => {});
       throw new Error(LOCAL_DB_NOT_FOUND_MESSAGE);
     }
 
@@ -137,6 +155,11 @@ export class SyncService {
         { projectId, status: l2ListRes.status },
         `Failed to fetch remote L2 nodes: ${message}`
       );
+      await appendCommandLogLine(this.workspaceRoot, SYNC_LOG_FILE_NAME, {
+        event: "sync.error",
+        projectId,
+        message: `Failed to fetch remote L2 nodes: ${message}`,
+      }).catch(() => {});
       throw new Error(`Failed to fetch remote L2 nodes: ${message}`);
     }
     const remoteL2Nodes = (await l2ListRes.json()) as RemoteL2NodeSummary[];
@@ -192,6 +215,13 @@ export class SyncService {
       const message = `Nothing new to sync (${skippedL2Count} module(s) skipped, no remote match).`;
       this.logCallback(message);
       logger.info({ projectId, skippedL2Count }, message);
+      await appendCommandLogLine(this.workspaceRoot, SYNC_LOG_FILE_NAME, {
+        event: "sync.summary",
+        projectId,
+        synced: 0,
+        skipped: skippedL2Count,
+        message,
+      }).catch(() => {});
       return { synced: 0, skipped: skippedL2Count, message };
     }
 
@@ -208,6 +238,11 @@ export class SyncService {
     if (!pushRes.ok) {
       const message = await this.parseErrorBody(pushRes);
       logger.warn({ projectId, status: pushRes.status }, `Sync push failed: ${message}`);
+      await appendCommandLogLine(this.workspaceRoot, SYNC_LOG_FILE_NAME, {
+        event: "sync.error",
+        projectId,
+        message: `Sync push failed: ${message}`,
+      }).catch(() => {});
       throw new Error(`Sync push failed: ${message}`);
     }
 
@@ -221,6 +256,13 @@ export class SyncService {
     const message = `Synced ${synced} decision(s), ${skippedL2Count} module(s) skipped.`;
     this.logCallback(message);
     logger.info({ projectId, synced, skippedL2Count }, message);
+    await appendCommandLogLine(this.workspaceRoot, SYNC_LOG_FILE_NAME, {
+      event: "sync.summary",
+      projectId,
+      synced,
+      skipped: skippedL2Count,
+      message,
+    }).catch(() => {});
 
     return { synced, skipped: skippedL2Count, message };
   }

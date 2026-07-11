@@ -39,9 +39,39 @@ function resolveClaudeDesktopConfigDir(): string {
 export class ClaudePlatform extends BasePlatform {
   readonly name = PLATFORM_NAME_CLAUDE;
 
-  async configure(cwd: string): Promise<void> {
+  async configure(cwd: string, allowGlobalMcpConfig = false): Promise<void> {
     await this.configureHooks(cwd);
-    await this.configureMcpServer(cwd);
+    await this.maybeConfigureMcpServer(cwd, allowGlobalMcpConfig);
+  }
+
+  /**
+   * `configureMcpServer` writes a machine-global config file (shared across every project on
+   * this machine, not just `cwd`). Only proceed when the caller explicitly opted in via
+   * `--global`, or — when running interactively — after an explicit confirm defaulting to "No".
+   * In non-TTY runs without `--global`, skip and tell the user how to enable it.
+   */
+  private async maybeConfigureMcpServer(cwd: string, allowGlobalMcpConfig: boolean): Promise<void> {
+    const claudeConfigDir = resolveClaudeDesktopConfigDir();
+    if (!claudeConfigDir) return;
+    const claudeMcpPath = path.join(claudeConfigDir, CLAUDE_DESKTOP_CONFIG_FILENAME);
+
+    if (allowGlobalMcpConfig) {
+      await this.configureMcpServer(cwd);
+      return;
+    }
+
+    if (process.stdin.isTTY) {
+      const proceed = await ui.askConfirm(
+        `${UI_MESSAGES.INIT_GLOBAL_MCP_CONFIRM} (${claudeMcpPath})`,
+        false
+      );
+      if (proceed) {
+        await this.configureMcpServer(cwd);
+        return;
+      }
+    }
+
+    ui.info(`${UI_MESSAGES.INIT_GLOBAL_MCP_SKIPPED} (${claudeMcpPath})`);
   }
 
   private async configureHooks(cwd: string): Promise<void> {

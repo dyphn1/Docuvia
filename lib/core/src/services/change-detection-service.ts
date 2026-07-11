@@ -5,6 +5,8 @@ import { WorkspaceGitService } from "./workspace-git.service.js";
 import { IWorkspaceGitService } from "../interfaces/workspace-git.interfaces.js";
 import { QueryService } from "./query-service.js";
 import { LOCAL_DB_NOT_FOUND_MESSAGE } from "./status-service.js";
+import { appendCommandLogLine } from "./command-log-writer.js";
+import { REVIEW_LOG_FILE_NAME } from "../constants/paths.js";
 
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
@@ -50,9 +52,17 @@ export class ChangeDetectionService {
 
   public async detectChanges(baseRef?: string): Promise<ChangeDetectionResult> {
     logger.info({ baseRef }, "Detecting changes");
+    await appendCommandLogLine(this.workspaceRoot, REVIEW_LOG_FILE_NAME, {
+      event: "review.start",
+      baseRef: baseRef ?? null,
+    }).catch(() => {});
 
     const dbPath = path.join(this.workspaceRoot, ".docuvia", "local.db");
     if (!fs.existsSync(dbPath)) {
+      await appendCommandLogLine(this.workspaceRoot, REVIEW_LOG_FILE_NAME, {
+        event: "review.error",
+        message: LOCAL_DB_NOT_FOUND_MESSAGE,
+      }).catch(() => {});
       throw new Error(LOCAL_DB_NOT_FOUND_MESSAGE);
     }
 
@@ -94,6 +104,14 @@ export class ChangeDetectionService {
       riskLevel,
       totalImpacted
     );
+
+    await appendCommandLogLine(this.workspaceRoot, REVIEW_LOG_FILE_NAME, {
+      event: "review.summary",
+      baseRef: baseRef ?? null,
+      riskLevel,
+      filesChanged: filesChanged.length,
+      affectedNodes: affectedNodes.length,
+    }).catch(() => {});
 
     return {
       baseRef: baseRef ?? null,

@@ -1,6 +1,5 @@
-import fs from "fs/promises";
-import path from "path";
-import { DOCUVIA_DIR_NAME, DOCUVIA_LOGS_DIR_NAME, INIT_LOG_FILE_NAME } from "../constants/paths.js";
+import { INIT_LOG_FILE_NAME } from "../constants/paths.js";
+import { appendCommandLogLine } from "./command-log-writer.js";
 
 export interface InitLogSummary {
   filesRequested: number;
@@ -16,18 +15,7 @@ export async function appendInitLogLine(
   workspaceRoot: string,
   event: Record<string, unknown>
 ): Promise<void> {
-  const logPath = path.join(
-    workspaceRoot,
-    DOCUVIA_DIR_NAME,
-    DOCUVIA_LOGS_DIR_NAME,
-    INIT_LOG_FILE_NAME
-  );
-  await fs.mkdir(path.dirname(logPath), { recursive: true });
-  await fs.appendFile(
-    logPath,
-    JSON.stringify({ ts: new Date().toISOString(), ...event }) + "\n",
-    "utf8"
-  );
+  await appendCommandLogLine(workspaceRoot, INIT_LOG_FILE_NAME, event);
 }
 
 export async function writeInitSummary(

@@ -1,7 +1,17 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
+import pLimit from "p-limit";
 import { ProcessedEvents, IngestionResult } from "../../types/ast-ingestion.types.js";
 import { logger } from "../../utils/logger.js";
+
+// Bounded concurrency for the per-symbol/per-file markdown write loops below. `writeMarkdown`
+// runs once per file node and once per class/function symbol — tens of thousands of times on a
+// large repo — so running these fully sequentially (one fs call at a time) dominates `snapshot`'s
+// wall-clock time. `os.cpus().length * 4` mirrors the concurrency heuristic already used
+// elsewhere in this codebase (see `l2-processing-service.ts`'s `pLimit` usage) sized for I/O-bound
+// (not CPU-bound) work, where waiting on one fs call doesn't block issuing the next.
+const MARKDOWN_WRITE_CONCURRENCY = os.cpus().length * 4;
 
 export class GitNativePersistenceService {
   public async processEvents(
@@ -101,31 +111,44 @@ export class GitNativePersistenceService {
       result.errors.push(`Failed to write JSONL files: ${err.message}`);
     }
 
-    // Write Markdown files
-    for (const f of events.fileEvents) {
-      await this.writeMarkdown(
-        path.join(knowledgeDir, `${f.filePath}.md`),
-        { id: f.filePath, type: "file", name: f.baseName },
-        `# File: ${f.baseName}\n\nPath: \`${f.filePath}\`\n`,
-        result
-      );
-    }
+    // Write Markdown files. Bounded-concurrency, not sequential — see `MARKDOWN_WRITE_CONCURRENCY`.
+    // `result.errors.push(...)` inside `writeMarkdown` is safe to call concurrently: JS's
+    // single-threaded event loop means array pushes from concurrent promises never interleave
+    // mid-operation, and no other shared mutable state is touched by `writeMarkdown`.
+    const limit = pLimit(MARKDOWN_WRITE_CONCURRENCY);
 
-    for (const sym of [...events.classEvents, ...events.functionEvents]) {
-      const parsedPath = path.parse(sym.filePath);
-      const symbolMdPath = path.join(
-        knowledgeDir,
-        parsedPath.dir,
-        parsedPath.name,
-        `${sym.name}.md`
-      );
-      await this.writeMarkdown(
-        symbolMdPath,
-        { id: sym.fqn, type: "symbol", fqn: sym.fqn, filePath: sym.filePath },
-        `# Symbol: ${sym.name}\n\nFQN: \`${sym.fqn}\`\n`,
-        result
-      );
-    }
+    await Promise.all(
+      events.fileEvents.map((f) =>
+        limit(() =>
+          this.writeMarkdown(
+            path.join(knowledgeDir, `${f.filePath}.md`),
+            { id: f.filePath, type: "file", name: f.baseName },
+            `# File: ${f.baseName}\n\nPath: \`${f.filePath}\`\n`,
+            result
+          )
+        )
+      )
+    );
+
+    await Promise.all(
+      [...events.classEvents, ...events.functionEvents].map((sym) =>
+        limit(() => {
+          const parsedPath = path.parse(sym.filePath);
+          const symbolMdPath = path.join(
+            knowledgeDir,
+            parsedPath.dir,
+            parsedPath.name,
+            `${sym.name}.md`
+          );
+          return this.writeMarkdown(
+            symbolMdPath,
+            { id: sym.fqn, type: "symbol", fqn: sym.fqn, filePath: sym.filePath },
+            `# Symbol: ${sym.name}\n\nFQN: \`${sym.fqn}\`\n`,
+            result
+          );
+        })
+      )
+    );
   }
 
   private async writeMarkdown(
@@ -137,15 +160,6 @@ export class GitNativePersistenceService {
     try {
       await fs.mkdir(path.dirname(filePath), { recursive: true });
 
-      let existingContent = "";
-      try {
-        existingContent = await fs.readFile(filePath, "utf8");
-      } catch (err: any) {
-        if (err.code !== "ENOENT") {
-          throw err;
-        }
-      }
-
       const fm =
         "---\n" +
         Object.entries(frontmatter)
@@ -153,16 +167,11 @@ export class GitNativePersistenceService {
           .join("\n") +
         "\n---\n";
 
-      if (existingContent) {
-        // Strip existing frontmatter if present and prepend new one
-        const fmRegex = /^---[\s\S]*?---\n/;
-        if (fmRegex.test(existingContent)) {
-          existingContent = existingContent.replace(fmRegex, "");
-        }
-        await fs.writeFile(filePath, fm + existingContent, "utf8");
-      } else {
-        await fs.writeFile(filePath, fm + body, "utf8");
-      }
+      // No existing-content read/merge here: every caller passes a path under a fresh,
+      // just-created empty tempDir (see snapshot.ts's `fs.mkdtemp`), so there is never
+      // pre-existing content to preserve — the read this used to do was a guaranteed
+      // ENOENT on every single call, doubling this function's fs round-trips for nothing.
+      await fs.writeFile(filePath, fm + body, "utf8");
     } catch (err: any) {
       result.errors.push(`Failed to write markdown file ${filePath}: ${err.message}`);
     }

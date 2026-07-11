@@ -9,24 +9,42 @@ import {
   TopologyBuildTagRow,
 } from "./topology-builder.js";
 import { logger } from "../utils/logger.js";
+import { appendCommandLogLine } from "./command-log-writer.js";
+import { EXPORT_TOPOLOGY_LOG_FILE_NAME } from "../constants/paths.js";
 
 const LOCAL_DB_NOT_FOUND_MESSAGE = 'Local database not found. Please run "docuvia init".';
 
 export class TopologyExportService {
   constructor(private workspaceRoot: string = process.cwd()) {}
 
-  public exportTopology(options: TopologyExportOptions = {}): TopologyGraph {
+  public async exportTopology(options: TopologyExportOptions = {}): Promise<TopologyGraph> {
     logger.info({ options }, "Exporting topology");
+    await appendCommandLogLine(this.workspaceRoot, EXPORT_TOPOLOGY_LOG_FILE_NAME, {
+      event: "export-topology.start",
+      collapse: options.collapse ?? null,
+    }).catch(() => {});
 
     const dbPath = path.join(this.workspaceRoot, ".docuvia", "local.db");
     if (!fs.existsSync(dbPath)) {
+      await appendCommandLogLine(this.workspaceRoot, EXPORT_TOPOLOGY_LOG_FILE_NAME, {
+        event: "export-topology.error",
+        message: LOCAL_DB_NOT_FOUND_MESSAGE,
+      }).catch(() => {});
       throw new Error(LOCAL_DB_NOT_FOUND_MESSAGE);
     }
 
     const db = new Database(dbPath, { readonly: true });
     try {
       const input = this.loadInput(db);
-      return buildTopologyGraph(input, options);
+      const graph = buildTopologyGraph(input, options);
+      await appendCommandLogLine(this.workspaceRoot, EXPORT_TOPOLOGY_LOG_FILE_NAME, {
+        event: "export-topology.summary",
+        nodeCount: graph.stats.nodeCount,
+        linkCount: graph.stats.linkCount,
+        groupCount: graph.stats.groupCount,
+        collapsed: graph.collapsed,
+      }).catch(() => {});
+      return graph;
     } finally {
       db.close();
     }

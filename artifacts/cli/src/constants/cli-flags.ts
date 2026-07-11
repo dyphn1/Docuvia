@@ -7,6 +7,7 @@ export const CLI_FLAGS = {
   JSON: "--json",
   OUT: "--out=",
   COLLAPSE: "--collapse=",
+  GLOBAL: "--global",
 } as const;
 
 export const CLI_FORMAT_OPTIONS = {

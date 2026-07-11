@@ -202,6 +202,18 @@ describe("SyncService.sync", () => {
     expect(syncState[PROJECT_ID].syncedContentHashes.sort()).toEqual(
       ["hash-already-synced", "hash-new"].sort()
     );
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "sync.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(lines.some((l) => l.event === "sync.start" && l.projectId === PROJECT_ID)).toBe(true);
+    const summary = lines.find((l) => l.event === "sync.summary");
+    expect(summary).toBeDefined();
+    expect(summary.synced).toBe(1);
+    expect(summary.skipped).toBe(1);
   });
 
   it("rejects when the POST to /sync/push returns a non-ok response", async () => {
@@ -232,5 +244,13 @@ describe("SyncService.sync", () => {
     // The failed push must not have recorded any hashes as synced.
     const syncState = readSyncState(tmpDir);
     expect(syncState[PROJECT_ID].syncedContentHashes).toEqual([]);
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "sync.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(lines.some((l) => l.event === "sync.error" && /boom/.test(l.message))).toBe(true);
   });
 });

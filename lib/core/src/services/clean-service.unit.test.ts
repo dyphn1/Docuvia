@@ -31,8 +31,10 @@ describe("CleanService", () => {
 
   afterEach(() => {
     if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+    // recursive: true (not rmdirSync) — the clean.start/clean.summary logging test below leaves
+    // a non-empty .docuvia/logs/ subdirectory behind.
     if (fs.existsSync(path.join(workspaceRoot, ".docuvia")))
-      fs.rmdirSync(path.join(workspaceRoot, ".docuvia"));
+      fs.rmSync(path.join(workspaceRoot, ".docuvia"), { recursive: true, force: true });
   });
 
   it("should remove stale records not in activeFiles", async () => {
@@ -57,5 +59,23 @@ describe("CleanService", () => {
     expect(tags.length).toBe(0);
 
     db.close();
+  });
+
+  it("logs a clean.start and clean.summary JSONL event to .docuvia/logs/clean.log", async () => {
+    const service = new CleanService(workspaceRoot);
+    const result = await service.clean();
+    expect(result.deleted).toBe(true);
+
+    const logPath = path.join(workspaceRoot, ".docuvia", "logs", "clean.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+    expect(lines.some((l) => l.event === "clean.start")).toBe(true);
+    const summary = lines.find((l) => l.event === "clean.summary");
+    expect(summary).toBeDefined();
+    expect(summary.deleted).toBe(true);
   });
 });

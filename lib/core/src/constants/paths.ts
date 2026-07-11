@@ -6,6 +6,14 @@ export const AST_QUARANTINE_DB_NAME = "ast_quarantine.db";
 /** Directory (relative to `DOCUVIA_DIR_NAME`) holding persisted, AI-inspectable run logs. */
 export const DOCUVIA_LOGS_DIR_NAME = "logs";
 export const INIT_LOG_FILE_NAME = "init.log";
+export const ANALYZE_LOG_FILE_NAME = "analyze.log";
+export const STATUS_LOG_FILE_NAME = "status.log";
+export const CLEAN_LOG_FILE_NAME = "clean.log";
+export const REVIEW_LOG_FILE_NAME = "review.log";
+export const SYNC_LOG_FILE_NAME = "sync.log";
+export const SNAPSHOT_LOG_FILE_NAME = "snapshot.log";
+export const QUERY_LOG_FILE_NAME = "query.log";
+export const EXPORT_TOPOLOGY_LOG_FILE_NAME = "export-topology.log";
 
 export const FILE_README = "README.md";
 export const FILE_PACKAGE_JSON = "package.json";

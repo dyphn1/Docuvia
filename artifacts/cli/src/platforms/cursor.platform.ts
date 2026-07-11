@@ -22,7 +22,7 @@ import { writeOrAppend } from "../utils/fs-utils.js";
 export class CursorPlatform extends BasePlatform {
   readonly name = PLATFORM_NAME_CURSOR;
 
-  async configure(cwd: string): Promise<void> {
+  async configure(cwd: string, _allowGlobalMcpConfig?: boolean): Promise<void> {
     await this.configureHooks(cwd);
     await this.configureMcpServer(cwd);
   }

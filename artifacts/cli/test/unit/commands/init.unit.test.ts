@@ -113,4 +113,29 @@ describe("initCommand", () => {
     expect(spinnerWarn).toHaveBeenCalledWith(expect.stringContaining("13"));
     expect(spinnerSucceed).not.toHaveBeenCalled();
   });
+
+  describe("--global threading to platform.configure", () => {
+    it("passes allowGlobalMcpConfig=true through to every platform's configure() when the --global flag was set", async () => {
+      mockInit.mockResolvedValue({ message: "Success" });
+
+      await initCommand(process.cwd(), true);
+
+      const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
+      const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
+      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock.results[0].value;
+
+      expect(claudeInstance.configure).toHaveBeenCalledWith(process.cwd(), true);
+      expect(cursorInstance.configure).toHaveBeenCalledWith(process.cwd(), true);
+      expect(markdownInstance.configure).toHaveBeenCalledWith(process.cwd(), true);
+    });
+
+    it("passes allowGlobalMcpConfig=false through to platform.configure() by default (--global absent)", async () => {
+      mockInit.mockResolvedValue({ message: "Success" });
+
+      await initCommand(process.cwd());
+
+      const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
+      expect(claudeInstance.configure).toHaveBeenCalledWith(process.cwd(), false);
+    });
+  });
 });

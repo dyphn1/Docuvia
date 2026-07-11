@@ -3,11 +3,17 @@ import path from "path";
 import { existsSync } from "fs";
 import Database from "better-sqlite3";
 import { logger } from "../utils/logger.js";
+import { appendCommandLogLine } from "./command-log-writer.js";
+import { CLEAN_LOG_FILE_NAME } from "../constants/paths.js";
 
 export class CleanService {
   constructor(private workspaceRoot: string = process.cwd()) {}
 
   public async clean(): Promise<{ deleted: boolean; message: string }> {
+    await appendCommandLogLine(this.workspaceRoot, CLEAN_LOG_FILE_NAME, {
+      event: "clean.start",
+    }).catch(() => {});
+
     const docuviaDir = path.join(this.workspaceRoot, ".docuvia");
     const dbPath = path.join(docuviaDir, "local.db");
 
@@ -15,9 +21,19 @@ export class CleanService {
       await fs.access(dbPath);
       await fs.unlink(dbPath);
       logger.info({ path: dbPath }, "Deleted local database");
-      return { deleted: true, message: "Cleaned .docuvia/local.db database." };
+      const result = { deleted: true, message: "Cleaned .docuvia/local.db database." };
+      await appendCommandLogLine(this.workspaceRoot, CLEAN_LOG_FILE_NAME, {
+        event: "clean.summary",
+        ...result,
+      }).catch(() => {});
+      return result;
     } catch {
-      return { deleted: false, message: "No local database found to clean." };
+      const result = { deleted: false, message: "No local database found to clean." };
+      await appendCommandLogLine(this.workspaceRoot, CLEAN_LOG_FILE_NAME, {
+        event: "clean.summary",
+        ...result,
+      }).catch(() => {});
+      return result;
     }
   }
 

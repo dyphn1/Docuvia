@@ -61,6 +61,15 @@ describe("ExtractService.extractDecisions", () => {
       /Path does not exist/
     );
     expect(fetchMock).not.toHaveBeenCalled();
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(lines.some((l) => l.event === "analyze.focused.start")).toBe(true);
+    expect(lines.some((l) => l.event === "analyze.focused.error")).toBe(true);
   });
 
   it("reads a single file, calls the LLM with the path_decision_extractor prompt, and parses the richer decision shape", async () => {
@@ -94,6 +103,19 @@ describe("ExtractService.extractDecisions", () => {
     expect(requestBody.messages[1].role).toBe("user");
     expect(requestBody.messages[1].content).toContain("foo.ts");
     expect(requestBody.messages[1].content).toContain("export function foo()");
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(
+      lines.some((l) => l.event === "analyze.focused.start" && l.targetPath === "foo.ts")
+    ).toBe(true);
+    const summary = lines.find((l) => l.event === "analyze.focused.summary");
+    expect(summary).toBeDefined();
+    expect(summary.decisionsCount).toBe(1);
   });
 
   it("throws a clear error when the LLM returns non-JSON output", async () => {

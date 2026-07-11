@@ -118,6 +118,51 @@ describe("ChangeDetectionService.detectChanges", () => {
     expect(result.affectedNodes[0].impactedBy).toHaveLength(2);
   });
 
+  it("logs a review.start and review.summary JSONL event to .docuvia/logs/review.log", async () => {
+    initRepo(tmpDir);
+    fs.writeFileSync(path.join(tmpDir, "a.ts"), "export const a = 1;\n");
+    git(tmpDir, ["add", "."]);
+    git(tmpDir, ["commit", "-q", "-m", "initial"]);
+    fs.writeFileSync(path.join(tmpDir, "a.ts"), "export const a = 2;\n");
+
+    createEmptyLocalDb(path.join(tmpDir, ".docuvia", "local.db"));
+
+    const service = new ChangeDetectionService(tmpDir);
+    const result = await service.detectChanges();
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "review.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+    expect(lines.some((l) => l.event === "review.start")).toBe(true);
+    const summary = lines.find((l) => l.event === "review.summary");
+    expect(summary).toBeDefined();
+    expect(summary.riskLevel).toBe(result.riskLevel);
+    expect(summary.filesChanged).toBe(result.filesChanged.length);
+  });
+
+  it("logs a review.error JSONL event when the local database is missing", async () => {
+    initRepo(tmpDir);
+    fs.writeFileSync(path.join(tmpDir, "a.ts"), "export const a = 1;\n");
+    git(tmpDir, ["add", "."]);
+    git(tmpDir, ["commit", "-q", "-m", "initial"]);
+
+    const service = new ChangeDetectionService(tmpDir);
+    await expect(service.detectChanges()).rejects.toThrow(LOCAL_DB_NOT_FOUND_MESSAGE);
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "review.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+
+    expect(lines.some((l) => l.event === "review.error")).toBe(true);
+  });
+
   it("escalates risk to HIGH when total impacted nodes crosses the HIGH threshold (mocked QueryService)", async () => {
     initRepo(tmpDir);
     fs.writeFileSync(path.join(tmpDir, "a.ts"), "export const a = 1;\n");

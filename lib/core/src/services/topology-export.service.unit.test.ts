@@ -79,8 +79,8 @@ describe("TopologyExportService", () => {
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
-  it("exports symbol-level nodes with correct kinds, decision nodes, and directory groups", () => {
-    const graph = new TopologyExportService(workspaceRoot).exportTopology();
+  it("exports symbol-level nodes with correct kinds, decision nodes, and directory groups", async () => {
+    const graph = await new TopologyExportService(workspaceRoot).exportTopology();
 
     expect(graph.topologyVersion).toBe(1);
     expect(graph.collapsed).toBe(false);
@@ -116,10 +116,25 @@ describe("TopologyExportService", () => {
 
     expect(graph.stats.nodeCount).toBe(graph.nodes.length);
     expect(graph.stats.linkCount).toBe(graph.links.length);
+
+    const logPath = path.join(workspaceRoot, ".docuvia", "logs", "export-topology.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(lines.some((l) => l.event === "export-topology.start")).toBe(true);
+    const summary = lines.find((l) => l.event === "export-topology.summary");
+    expect(summary).toBeDefined();
+    expect(summary.nodeCount).toBe(graph.stats.nodeCount);
+    expect(summary.linkCount).toBe(graph.stats.linkCount);
+    expect(summary.collapsed).toBe(false);
   });
 
-  it("collapse: 'file' folds symbol links into file-to-file edges without self-loops or dupes", () => {
-    const graph = new TopologyExportService(workspaceRoot).exportTopology({ collapse: "file" });
+  it("collapse: 'file' folds symbol links into file-to-file edges without self-loops or dupes", async () => {
+    const graph = await new TopologyExportService(workspaceRoot).exportTopology({
+      collapse: "file",
+    });
 
     expect(graph.collapsed).toBe(true);
     expect(graph.nodes.some((n) => n.kind === "symbol")).toBe(false);
@@ -135,24 +150,32 @@ describe("TopologyExportService", () => {
     expect(graph.nodes.some((n) => n.kind === "decision")).toBe(true);
   });
 
-  it("collapse: 'auto' folds when node count exceeds maxNodes", () => {
+  it("collapse: 'auto' folds when node count exceeds maxNodes", async () => {
     const service = new TopologyExportService(workspaceRoot);
-    expect(service.exportTopology({ maxNodes: 3 }).collapsed).toBe(true);
-    expect(service.exportTopology({ maxNodes: 100 }).collapsed).toBe(false);
+    expect((await service.exportTopology({ maxNodes: 3 })).collapsed).toBe(true);
+    expect((await service.exportTopology({ maxNodes: 100 })).collapsed).toBe(false);
   });
 
-  it("throws a clear error when the local database is missing", () => {
+  it("throws a clear error when the local database is missing", async () => {
     const emptyRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-topology-empty-"));
     try {
-      expect(() => new TopologyExportService(emptyRoot).exportTopology()).toThrow(
+      await expect(new TopologyExportService(emptyRoot).exportTopology()).rejects.toThrow(
         /Local database not found/
       );
+
+      const logPath = path.join(emptyRoot, ".docuvia", "logs", "export-topology.log");
+      const lines = fs
+        .readFileSync(logPath, "utf8")
+        .trim()
+        .split("\n")
+        .map((line) => JSON.parse(line));
+      expect(lines.some((l) => l.event === "export-topology.error")).toBe(true);
     } finally {
       fs.rmSync(emptyRoot, { recursive: true, force: true });
     }
   });
 
-  it("supports the legacy schema (UUID string ids, source_paths column)", () => {
+  it("supports the legacy schema (UUID string ids, source_paths column)", async () => {
     const legacyRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-topology-legacy-"));
     try {
       fs.mkdirSync(path.join(legacyRoot, ".docuvia"), { recursive: true });
@@ -169,7 +192,7 @@ describe("TopologyExportService", () => {
       `);
       db.close();
 
-      const graph = new TopologyExportService(legacyRoot).exportTopology();
+      const graph = await new TopologyExportService(legacyRoot).exportTopology();
 
       expect(graph.nodes).toHaveLength(2);
       expect(graph.nodes.every((n) => n.kind === "file")).toBe(true);
@@ -186,7 +209,7 @@ describe("TopologyExportService", () => {
     }
   });
 
-  it("tolerates a workspace without l3_nodes or tag tables", () => {
+  it("tolerates a workspace without l3_nodes or tag tables", async () => {
     const bareRoot = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-topology-bare-"));
     try {
       fs.mkdirSync(path.join(bareRoot, ".docuvia"), { recursive: true });
@@ -199,7 +222,7 @@ describe("TopologyExportService", () => {
       `);
       db.close();
 
-      const graph = new TopologyExportService(bareRoot).exportTopology();
+      const graph = await new TopologyExportService(bareRoot).exportTopology();
       expect(graph.nodes).toHaveLength(1);
       expect(graph.nodes[0].kind).toBe("file");
     } finally {

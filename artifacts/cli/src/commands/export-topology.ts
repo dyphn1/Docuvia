@@ -34,7 +34,7 @@ export async function exportTopologyCommand(options: ExportTopologyOptions = {})
       { [DI_KEYS.WORKSPACE_ROOT]: workspaceRoot }
     );
 
-    const graph = service.exportTopology({ collapse: options.collapse });
+    const graph = await service.exportTopology({ collapse: options.collapse });
 
     const outDir = options.out ?? path.join(workspaceRoot, DOCUVIA_DIR_NAME);
     fs.mkdirSync(outDir, { recursive: true });

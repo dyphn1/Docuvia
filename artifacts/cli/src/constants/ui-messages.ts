@@ -32,6 +32,10 @@ export const UI_MESSAGES = {
   INIT_HOOKS_FAIL: "Failed to initialize agent integrations: ",
   INIT_HOOKS_SELECT: "Which AI Agent integrations would you like to install?",
   INIT_HOOKS_NONE_SELECTED: "No platforms selected. Skipping agent integrations.",
+  INIT_GLOBAL_MCP_CONFIRM:
+    "Register Docuvia's MCP server in the machine-global Claude Desktop config (affects every project, not just this repo)?",
+  INIT_GLOBAL_MCP_SKIPPED:
+    "Skipped global Claude Desktop MCP registration. Re-run with --global to enable, or add it manually — see docs/gitbook/packages/cli.md.",
 
   // Analyze Command
   ANALYZE_HEADER: "Analyze Workspace",

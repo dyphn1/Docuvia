@@ -29,7 +29,10 @@ async function runDatabaseInit(cwd: string): Promise<void> {
   }
 }
 
-async function configureAgentIntegrations(cwd: string): Promise<void> {
+async function configureAgentIntegrations(
+  cwd: string,
+  allowGlobalMcpConfig: boolean
+): Promise<void> {
   ui.info(UI_MESSAGES.INIT_AGENT_HOOKS);
 
   try {
@@ -58,7 +61,7 @@ async function configureAgentIntegrations(cwd: string): Promise<void> {
     }
 
     for (const platform of selectedPlatforms) {
-      await platform.configure(cwd);
+      await platform.configure(cwd, allowGlobalMcpConfig);
     }
 
     ui.success(UI_MESSAGES.INIT_HOOKS_SUCCESS);
@@ -69,7 +72,10 @@ async function configureAgentIntegrations(cwd: string): Promise<void> {
   }
 }
 
-export async function initCommand(cwd: string = process.cwd()) {
+export async function initCommand(
+  cwd: string = process.cwd(),
+  allowGlobalMcpConfig: boolean = false
+) {
   ui.header(UI_MESSAGES.INIT_HEADER);
 
   // Optional interactive confirmation if TTY
@@ -82,5 +88,5 @@ export async function initCommand(cwd: string = process.cwd()) {
   }
 
   await runDatabaseInit(cwd);
-  await configureAgentIntegrations(cwd);
+  await configureAgentIntegrations(cwd, allowGlobalMcpConfig);
 }

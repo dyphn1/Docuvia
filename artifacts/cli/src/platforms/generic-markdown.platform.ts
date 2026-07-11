@@ -16,7 +16,7 @@ import { writeOrAppend } from "../utils/fs-utils.js";
 export class GenericMarkdownPlatform extends BasePlatform {
   readonly name = PLATFORM_NAME_MARKDOWN_AGENTS;
 
-  async configure(cwd: string): Promise<void> {
+  async configure(cwd: string, _allowGlobalMcpConfig?: boolean): Promise<void> {
     const targetPaths = [
       path.join(cwd, GITHUB_DIR, COPILOT_INSTRUCTIONS_FILENAME), // GitHub Copilot
       path.join(cwd, CLAUDE_MD_FILENAME), // Claude Desktop / Generic Markdown

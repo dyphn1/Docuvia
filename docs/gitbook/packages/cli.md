@@ -13,20 +13,50 @@
 
 ## Command Reference
 
-| Command                               | Flags                               | Description                                                                                                                                                                                                             |
-| ------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docuvia init`                        | —                                   | Initialize the local project: creates `.docuvia/local.db` (SQLite) and installs MCP server config + hooks for AI coding assistants (Claude Code, Cursor, Copilot).                                                      |
-| `docuvia analyze [path]`              | `--deep`                            | Scan the workspace for file types and project tags. With `--deep`, also triggers background L3 decision extraction. If a `[path]` is provided, scopes the extraction to a specific file or directory.                   |
-| `docuvia status`                      | —                                   | Report local index health — project count, L2 node count, L3 decision count.                                                                                                                                            |
-| `docuvia clean`                       | —                                   | Wipe the local `.docuvia/local.db` knowledge graph database.                                                                                                                                                            |
-| `docuvia review`                      | `--baseRef=<ref>`                   | Detect structural changes and a risk score against a git ref (default: working tree diff).                                                                                                                              |
-| `docuvia sync [<project_id>] [<sha>]` | —                                   | Sync local AST changes to the remote API server over HTTP.                                                                                                                                                              |
-| `docuvia snapshot`                    | —                                   | Pack knowledge straight into the `docuvia-knowledge` orphan branch — no server needed.                                                                                                                                  |
-| `docuvia query <target>`              | `--local`, `--format=human\|prompt` | Query the local knowledge graph for L2/L3 context on a symbol or file. `--format=prompt` wraps the result in an `<docuvia_context>` XML block for direct LLM prompt injection; default is human-readable (ANSI colors). |
-| `docuvia export --topology`           | `--json`, `--out=DIR`, `--collapse` | Export the knowledge graph into `topology.json` and a fully self-contained offline `topology.html` interactive viewer.                                                                                                  |
-| `docuvia mcp`                         | —                                   | Start the local MCP server over stdio (long-running; used by Claude Desktop / Cursor as a subprocess, not exited like the other commands).                                                                              |
+| Command                               | Flags                               | Description                                                                                                                                                                                                                                                                                               |
+| ------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docuvia init`                        | `--global`                          | Initialize the local project: creates `.docuvia/local.db` (SQLite) and installs MCP server config + hooks for AI coding assistants (Claude Code, Cursor, Copilot). See "`init` side effects" below for the full list of files touched, including the opt-in machine-global write gated behind `--global`. |
+| `docuvia analyze [path]`              | `--deep`                            | Scan the workspace for file types and project tags. With `--deep`, also triggers background L3 decision extraction. If a `[path]` is provided, scopes the extraction to a specific file or directory.                                                                                                     |
+| `docuvia status`                      | —                                   | Report local index health — project count, L2 node count, L3 decision count.                                                                                                                                                                                                                              |
+| `docuvia clean`                       | —                                   | Wipe the local `.docuvia/local.db` knowledge graph database.                                                                                                                                                                                                                                              |
+| `docuvia review`                      | `--baseRef=<ref>`                   | Detect structural changes and a risk score against a git ref (default: working tree diff).                                                                                                                                                                                                                |
+| `docuvia sync [<project_id>] [<sha>]` | —                                   | Sync local AST changes to the remote API server over HTTP.                                                                                                                                                                                                                                                |
+| `docuvia snapshot`                    | —                                   | Pack knowledge straight into the `docuvia-knowledge` orphan branch — no server needed.                                                                                                                                                                                                                    |
+| `docuvia query <target>`              | `--local`, `--format=human\|prompt` | Query the local knowledge graph for L2/L3 context on a symbol or file. `--format=prompt` wraps the result in an `<docuvia_context>` XML block for direct LLM prompt injection; default is human-readable (ANSI colors).                                                                                   |
+| `docuvia export --topology`           | `--json`, `--out=DIR`, `--collapse` | Export the knowledge graph into `topology.json` and a fully self-contained offline `topology.html` interactive viewer.                                                                                                                                                                                    |
+| `docuvia mcp`                         | —                                   | Start the local MCP server over stdio (long-running; used by Claude Desktop / Cursor as a subprocess, not exited like the other commands).                                                                                                                                                                |
 
 Running `docuvia` with no recognized command prints the same reference list as a fallback usage message (hardcoded in `cli.ts`, not auto-generated — there is no `--help` flag or snapshot test today).
+
+### `init` side effects
+
+`docuvia init` writes more than `.docuvia/local.db`. The full set of paths it can touch, split by scope:
+
+**Always, repo-scoped** (confined to the target repo, safe to re-run):
+
+- `.docuvia/local.db` — SQLite knowledge graph database
+- `.docuvia/logs/init.log` — persisted JSONL run log (see "Structured command logs" below)
+- `.cursor/hooks/*` — Cursor agent hook scripts
+- `.cursor/mcp.json` — Cursor's repo-scoped MCP server registration
+- `.claude/hooks/hooks.json`, `.claude/hooks/docuvia-hook.js` — Claude Code hook scripts
+- `.github/copilot-instructions.md` — GitHub Copilot instructions
+- `.windsurfrules`, `.cursorrules`, `llms.txt` — generic agent instruction files
+- `.git/hooks/post-commit` — post-commit hook that keeps the `docuvia-knowledge` orphan branch in sync
+- `CLAUDE.md` — appends a `<!-- docuvia:start -->` / `<!-- docuvia:end -->` marked block (existing content outside the markers is preserved)
+
+**Opt-in, machine-global** (shared across every project on the machine, not scoped to this repo):
+
+- `claude_desktop_config.json` at the OS-specific Claude Desktop config path (`%APPDATA%/Claude/` on Windows, `~/Library/Application Support/Claude/` on macOS, `~/.config/Claude/` on Linux) — registers Docuvia's MCP server for Claude Desktop.
+
+  This write is **gated**: it only happens when `--global` is passed on the command line, or — when running `init` interactively (TTY) without `--global` — after an explicit confirmation prompt (default: No). Non-interactive runs without `--global` skip this write entirely and print a message pointing back here.
+
+  ```
+  docuvia init --global
+  ```
+
+### Structured command logs
+
+Every one-shot CLI command (everything except the long-running `docuvia mcp` server) persists a JSONL run log under `.docuvia/logs/<command>.log` — one JSON object per line with a `ts` timestamp, a `.start` event at the beginning, a `.summary` event on success, and a `.error` event on failure. This lets a human or AI agent inspect what a run actually did after the fact instead of trusting a possibly-lost terminal message. Logging failures never fail the command itself.
 
 ## Call Chains
 

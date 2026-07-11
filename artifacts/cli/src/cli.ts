@@ -40,8 +40,9 @@ interface CommandContext {
 }
 
 async function handleInit(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
-  await initCommand(ctx.workspaceRoot);
+  ctx.parser.checkUnknownFlags([CLI_FLAGS.GLOBAL]);
+  const allowGlobalMcpConfig = ctx.parser.hasFlag(CLI_FLAGS.GLOBAL);
+  await initCommand(ctx.workspaceRoot, allowGlobalMcpConfig);
 }
 
 async function handleAnalyze(ctx: CommandContext): Promise<void> {

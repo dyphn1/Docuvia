@@ -85,6 +85,17 @@ describe("QueryService.query() — merged context (section 4)", () => {
       incoming: [{ source_name: "main", source_type: "function" }],
       outgoing: [{ target_name: "utilFn", target_type: "function" }],
     });
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "query.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(lines.some((l) => l.event === "query.start" && l.target === "helper")).toBe(true);
+    const summary = lines.find((l) => l.event === "query.summary");
+    expect(summary).toBeDefined();
+    expect(summary.found).toBe(true);
   });
 
   it("does not throw and returns context: null when getContext() finds no matching graph node", async () => {
@@ -96,5 +107,15 @@ describe("QueryService.query() — merged context (section 4)", () => {
     expect(result.l2).toBeNull();
     expect(result.l3).toEqual([]);
     expect(result.context).toBeNull();
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "query.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    const summary = lines.find((l) => l.event === "query.summary");
+    expect(summary).toBeDefined();
+    expect(summary.found).toBe(false);
   });
 });

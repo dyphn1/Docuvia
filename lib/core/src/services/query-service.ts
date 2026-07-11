@@ -5,6 +5,8 @@ import { logger } from "../utils/logger.js";
 import { SqliteGraphRepository } from "./sqlite-graph.repository.js";
 import { LocalQueryIntent } from "../types/intent-router.types.js";
 import { LOCAL_DB_NOT_FOUND_MESSAGE } from "./status-service.js";
+import { appendCommandLogLine } from "./command-log-writer.js";
+import { QUERY_LOG_FILE_NAME } from "../constants/paths.js";
 
 export interface LocalContextResult {
   incoming: Array<{ source_name: string; source_type: string }>;
@@ -45,7 +47,22 @@ export class QueryService {
     context: LocalContextResult | null;
   }> {
     logger.info({ target, options }, "Querying local knowledge graph");
-    this.assertDbExists();
+    await appendCommandLogLine(this.workspaceRoot, QUERY_LOG_FILE_NAME, {
+      event: "query.start",
+      target,
+      format: options?.format,
+    }).catch(() => {});
+
+    try {
+      this.assertDbExists();
+    } catch (err: any) {
+      await appendCommandLogLine(this.workspaceRoot, QUERY_LOG_FILE_NAME, {
+        event: "query.error",
+        target,
+        message: err instanceof Error ? err.message : String(err),
+      }).catch(() => {});
+      throw err;
+    }
 
     const intent: LocalQueryIntent = {
       keywords: target.split(/\s+/).filter(Boolean),
@@ -74,6 +91,13 @@ export class QueryService {
       // query() never throws because of the additive context lookup.
       context = null;
     }
+
+    const found = Boolean(l2Result) || l3Results.length > 0 || Boolean(context);
+    await appendCommandLogLine(this.workspaceRoot, QUERY_LOG_FILE_NAME, {
+      event: "query.summary",
+      target,
+      found,
+    }).catch(() => {});
 
     return {
       l2: l2Result ? { name: l2Result.title, slug: l2Result.title } : null,

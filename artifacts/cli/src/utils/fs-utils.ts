@@ -1,6 +1,6 @@
 import * as fs from "fs/promises";
 import * as path from "path";
-import { UTF8_ENCODING } from "@workspace/core";
+import { UTF8_ENCODING } from "@workspace/contracts";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 

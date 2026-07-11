@@ -50,6 +50,7 @@ function makeMockGitProvider(): IGitProvider {
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
+    packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -76,19 +77,29 @@ function makeMockStore(): IGraphStore {
         };
         return projectRow;
       }),
+      count: vi.fn().mockImplementation(() => (projectRow ? 1 : 0)),
     },
     files: { getAllHashes: vi.fn().mockReturnValue([]), upsertFile: vi.fn() },
-    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn() },
+    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn(), getAllTagLinks: vi.fn() },
     graph: {
       deleteNodesForPath: vi.fn().mockReturnValue([]),
       insertNode: vi.fn().mockReturnValue(1),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn().mockReturnValue(undefined),
+      count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
+      findNodesForChangedFiles: vi.fn().mockReturnValue([]),
+      findNodeByName: vi.fn(),
+      getIncomingEdges: vi.fn(),
+      getOutgoingEdges: vi.fn(),
+      getAllNodes: vi.fn(),
+      getAllLinks: vi.fn(),
     },
-    fts: {},
+    l3: { getById: vi.fn(), getAllExportable: vi.fn() },
+    fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     withWriteLock: async (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
+    pruneMissingFiles: vi.fn().mockReturnValue({ prunedFiles: 0, prunedNodes: 0 }),
   };
 }
 
@@ -125,6 +136,7 @@ describe("InitWorkflow.execute()", () => {
         callOrder.push("installPostCommitHook");
         return { installed: true };
       }),
+      packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
     };
     const fileDiscovery: IFileDiscovery = {
       discoverFiles: vi.fn().mockImplementation(async () => {
@@ -182,6 +194,7 @@ describe("InitWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
       ensureKnowledgeBranch: vi.fn().mockRejectedValue(new Error("boom")),
       installPostCommitHook: vi.fn(),
+      packSnapshotToKnowledgeBranch: vi.fn(),
     }));
     docuviaFactory.register(TOKENS.FileDiscovery, () => ({ discoverFiles: vi.fn() }));
     docuviaFactory.register(TOKENS.ConfigScanner, () => ({ scanConfigs: vi.fn() }));
@@ -232,6 +245,7 @@ describe("InitWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
       ensureKnowledgeBranch: vi.fn().mockResolvedValue({ created: true }),
       installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
+      packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
     }));
     docuviaFactory.register(TOKENS.FileDiscovery, () => ({
       discoverFiles: vi

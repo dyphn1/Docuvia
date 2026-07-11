@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { IProjectsRepo, ProjectRow } from "@workspace/contracts";
+import { DocuviaError, ErrorCodes, type IProjectsRepo, type ProjectRow } from "@workspace/contracts";
 
 /**
  * `projects` repo — one project row per local.db (see `GitConstants.DEFAULT_LOCAL_PROJECT_ID`
@@ -23,5 +23,14 @@ export class ProjectsRepo implements IProjectsRepo {
     return this.db
       .prepare("SELECT * FROM projects WHERE id = ?")
       .get(result.lastInsertRowid) as ProjectRow;
+  }
+
+  /** Row count of the `projects` table — used by `status`. */
+  count(): number {
+    try {
+      return (this.db.prepare("SELECT COUNT(*) as c FROM projects").get() as { c: number }).c;
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to count projects", err);
+    }
   }
 }

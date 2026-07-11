@@ -6,6 +6,7 @@
     { "path": "../../lib/contracts" },
     { "path": "../../lib/core" },
     { "path": "../../lib/libgit2" },
+    { "path": "../../lib/remote-api" },
     { "path": "../../lib/schema" },
     { "path": "../../lib/ui-core" }
   ]

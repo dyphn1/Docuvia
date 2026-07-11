@@ -1,5 +1,5 @@
 import type Database from "better-sqlite3";
-import type { ITagsRepo } from "@workspace/contracts";
+import { DocuviaError, ErrorCodes, type ITagsRepo } from "@workspace/contracts";
 
 /** `tags` repo — `l1_tags` upsert + `l2_node_l1_tags` linking (feature-sniffing tags detected during `init`). */
 export class TagsRepo implements ITagsRepo {
@@ -29,5 +29,21 @@ export class TagsRepo implements ITagsRepo {
     this.db
       .prepare("INSERT INTO l2_node_l1_tags (l2_node_id, l1_tag_id) VALUES (?, ?)")
       .run(l2NodeId, l1TagId);
+  }
+
+  /** Every (l2NodeId, tagName) pairing — used by `export-topology` to tag file nodes. */
+  getAllTagLinks(): Array<{ l2NodeId: number; name: string }> {
+    try {
+      const rows = this.db
+        .prepare(
+          `SELECT lt.l2_node_id as l2_node_id, t.name as name
+           FROM l2_node_l1_tags lt
+           JOIN l1_tags t ON t.id = lt.l1_tag_id`
+        )
+        .all() as Array<{ l2_node_id: number; name: string }>;
+      return rows.map((row) => ({ l2NodeId: row.l2_node_id, name: row.name }));
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to get all tag links", err);
+    }
   }
 }

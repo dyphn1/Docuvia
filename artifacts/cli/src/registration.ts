@@ -7,3 +7,4 @@
 import "@workspace/libgit2";
 import "@workspace/schema";
 import "@workspace/core";
+import "@workspace/remote-api";

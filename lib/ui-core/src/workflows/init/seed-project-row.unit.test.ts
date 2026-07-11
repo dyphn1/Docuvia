@@ -23,6 +23,7 @@ function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvide
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
+    packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -49,6 +50,7 @@ function makeMockProjectsRepo(existing?: ProjectRow): IProjectsRepo {
       };
       return row;
     }),
+    count: vi.fn().mockImplementation(() => (row ? 1 : 0)),
   };
 }
 

@@ -11,6 +11,7 @@ import { ProjectsRepo } from "./repos/projects-repo.js";
 import { ProjectFilesRepo } from "./repos/files-repo.js";
 import { TagsRepo } from "./repos/tags-repo.js";
 import { GraphNodesRepo } from "./repos/graph-repo.js";
+import { L3NodesRepo } from "./repos/l3-nodes-repo.js";
 import { FtsRepo } from "./repos/fts-repo.js";
 
 /**
@@ -26,6 +27,7 @@ export class GraphStore implements IGraphStore {
   private readonly filesRepo: ProjectFilesRepo;
   private readonly tagsRepo: TagsRepo;
   private readonly graphRepo: GraphNodesRepo;
+  private readonly l3Repo: L3NodesRepo;
   private readonly ftsRepo: FtsRepo;
 
   private constructor(private readonly db: Database.Database) {
@@ -33,6 +35,7 @@ export class GraphStore implements IGraphStore {
     this.filesRepo = new ProjectFilesRepo(db);
     this.tagsRepo = new TagsRepo(db);
     this.graphRepo = new GraphNodesRepo(db);
+    this.l3Repo = new L3NodesRepo(db);
     this.ftsRepo = new FtsRepo(db);
   }
 
@@ -85,6 +88,10 @@ export class GraphStore implements IGraphStore {
     return this.graphRepo;
   }
 
+  get l3(): L3NodesRepo {
+    return this.l3Repo;
+  }
+
   get fts(): FtsRepo {
     return this.ftsRepo;
   }
@@ -97,5 +104,63 @@ export class GraphStore implements IGraphStore {
   /** Runs `fn` while holding a shared read lock — may run alongside other readers, but never while a writer holds the exclusive lock. */
   async withReadLock<T>(fn: () => Promise<T> | T): Promise<T> {
     return this.lock.runRead(fn);
+  }
+
+  /**
+   * Surgically removes `project_files`/`l2_nodes` (and their `node_links`/`l2_node_l1_tags`) for
+   * files no longer present in `activeFiles`, in a single transaction (see `IGraphStore`'s doc
+   * comment). A node is stale when its `path_patterns` (a single-element JSON array — see
+   * `GraphNodesRepo`'s doc comment) is missing, unparsable, or not in `activeFiles`.
+   */
+  pruneMissingFiles(activeFiles: string[]): { prunedFiles: number; prunedNodes: number } {
+    try {
+      const activeSet = new Set(activeFiles);
+
+      const staleNodeIds = (
+        this.db.prepare("SELECT id, path_patterns FROM l2_nodes").all() as {
+          id: number;
+          path_patterns: string | null;
+        }[]
+      )
+        .filter((row) => {
+          let paths: string[];
+          try {
+            paths = row.path_patterns ? JSON.parse(row.path_patterns) : [];
+          } catch {
+            paths = [];
+          }
+          return paths.length === 0 || paths.every((p) => !activeSet.has(p));
+        })
+        .map((row) => row.id);
+
+      const prune = this.db.transaction((ids: number[]) => {
+        if (ids.length > 0) {
+          const placeholders = ids.map(() => "?").join(",");
+          this.db
+            .prepare(`DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (${placeholders})`)
+            .run(...ids);
+          this.db
+            .prepare(
+              `DELETE FROM node_links WHERE source_node_id IN (${placeholders}) OR target_node_id IN (${placeholders})`
+            )
+            .run(...ids, ...ids);
+          this.db.prepare(`DELETE FROM l2_nodes WHERE id IN (${placeholders})`).run(...ids);
+        }
+
+        const allFiles = this.db.prepare("SELECT file_path FROM project_files").all() as {
+          file_path: string;
+        }[];
+        const staleFiles = allFiles.filter((f) => !activeSet.has(f.file_path));
+        for (const { file_path } of staleFiles) {
+          this.db.prepare("DELETE FROM project_files WHERE file_path = ?").run(file_path);
+        }
+        return staleFiles.length;
+      });
+
+      const prunedFiles = prune(staleNodeIds);
+      return { prunedFiles, prunedNodes: staleNodeIds.length };
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to prune missing files", err);
+    }
   }
 }

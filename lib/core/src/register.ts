@@ -1,5 +1,7 @@
 import { docuviaFactory, TOKENS } from "@workspace/contracts";
 import { KnowledgeGitService } from "./git/knowledge-git.service.js";
+import { SnapshotRendererService } from "./git/snapshot-renderer.service.js";
+import { ChangeDetectionService } from "./git/change-detection.service.js";
 import { FileDiscoveryService } from "./discovery/file-discovery.service.js";
 import { ConfigScannerService } from "./discovery/config-scanner.service.js";
 import { VcsScannerService } from "./discovery/vcs-scanner.service.js";
@@ -7,6 +9,9 @@ import { AstProcessingService } from "./ast/ast-processing.service.js";
 import { AstWorkerPool } from "./ast/ast-worker-pool.js";
 import { GraphPersisterService } from "./graph/persist-ast-graph.js";
 import { TempFileManager } from "./temp-files/temp-file-manager.js";
+import { QueryService } from "./query/query.service.js";
+import { ImpactService } from "./impact/impact.service.js";
+import { TopologyBuilderService } from "./topology/topology-builder.service.js";
 
 /**
  * Self-registration side effect (see
@@ -49,3 +54,16 @@ docuviaFactory.register(
   TOKENS.TempFileManager,
   () => (workspaceRoot, logger) => new TempFileManager(workspaceRoot, logger)
 );
+
+docuviaFactory.register(TOKENS.QueryService, (_f, params) => new QueryService(params?.logger));
+
+docuviaFactory.register(TOKENS.ImpactService, (_f, params) => new ImpactService(params?.logger));
+
+docuviaFactory.register(
+  TOKENS.ChangeDetectionService,
+  (f, params) => new ChangeDetectionService(f.resolve(TOKENS.ImpactService, params), params?.logger)
+);
+
+docuviaFactory.register(TOKENS.TopologyBuilder, () => new TopologyBuilderService());
+
+docuviaFactory.register(TOKENS.SnapshotRenderer, () => new SnapshotRendererService());

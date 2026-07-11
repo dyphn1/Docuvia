@@ -13,6 +13,18 @@ export const DOCUVIA_DIR_NAME = ".docuvia";
 export const DOCUVIA_LOGS_DIR_NAME = "logs";
 
 export const INIT_LOG_FILE_NAME = "init.log";
+export const CLEAN_LOG_FILE_NAME = "clean.log";
+export const STATUS_LOG_FILE_NAME = "status.log";
+export const SYNC_LOG_FILE_NAME = "sync.log";
+export const ANALYZE_LOG_FILE_NAME = "analyze.log";
+export const REVIEW_LOG_FILE_NAME = "review.log";
+export const IMPACT_LOG_FILE_NAME = "impact.log";
+export const QUERY_LOG_FILE_NAME = "query.log";
+export const EXPORT_TOPOLOGY_LOG_FILE_NAME = "export-topology.log";
+export const SNAPSHOT_LOG_FILE_NAME = "snapshot.log";
 
 /** Filename (relative to `DOCUVIA_DIR_NAME`) of the local SQLite database. */
 export const LOCAL_DB_FILE_NAME = "local.db";
+
+/** Filename (relative to `DOCUVIA_DIR_NAME/DOCUVIA_LOGS_DIR_NAME`) of the `sync` content-hash dedup cache. */
+export const SYNC_STATE_FILE_NAME = "sync-state.json";

@@ -33,4 +33,11 @@ export interface IGitProvider {
   hasUncommittedChanges(cwd: string): Promise<boolean>;
   getChangedFilesSince(cwd: string, baseRef?: string): Promise<ChangedFileEntry[]>;
   getFilesChangedByCommit(cwd: string, sha: string): Promise<string[]>;
+  /**
+   * Packs every file under `sourceDir` onto `branchName` as a fresh root commit via
+   * `git fast-import` (`deleteall` + one `M 100644 inline <path>` per file), wholesale replacing
+   * the branch's entire tree. Always forces the ref update — `deleteall` makes every call a
+   * complete, independent snapshot, so it must land regardless of the branch's prior history.
+   */
+  packDirectoryToBranch(cwd: string, sourceDir: string, branchName: string): Promise<void>;
 }

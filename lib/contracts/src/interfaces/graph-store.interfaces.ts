@@ -100,6 +100,8 @@ export interface L3NodeRow {
 export interface IProjectsRepo {
   getFirst(): ProjectRow | undefined;
   insert(input: { name: string; repoUrl: string }): ProjectRow;
+  /** Row count of the `projects` table — used by `status`. */
+  count(): number;
 }
 
 export interface IProjectFilesRepo {
@@ -111,6 +113,17 @@ export interface ITagsRepo {
   upsertTag(name: string): void;
   getIdByName(name: string): number | undefined;
   linkNodeToTag(l2NodeId: number, l1TagId: number): void;
+  /**
+   * Every (l2NodeId, tagName) pairing across the whole project — used by `export-topology` to
+   * attach tag metadata onto file nodes (mirrors old Docuvia's `l2_node_l1_tags`/`l1_tags` join).
+   */
+  getAllTagLinks(): Array<{ l2NodeId: number; name: string }>;
+}
+
+/** One `l2_nodes` row plus its child `l3_nodes` rows — the shape `sync` needs to decide what to push. */
+export interface L2NodeWithL3Children {
+  l2Node: L2NodeRow;
+  l3Nodes: L3NodeRow[];
 }
 
 export interface IGraphNodesRepo {
@@ -124,9 +137,51 @@ export interface IGraphNodesRepo {
   }): number;
   insertLink(input: { sourceNodeId: number; targetNodeId: number; linkType: string }): void;
   findNodeIdByName(filePath: string, name: string): number | undefined;
+  /** Row counts of `l2_nodes`/`l3_nodes` — used by `status`. */
+  count(): { l2Nodes: number; l3Nodes: number };
+  /**
+   * l2_nodes whose `path_patterns` intersects `changedFiles`, each paired with its l3_nodes —
+   * used by `sync` to find locally-generated decisions to push for a changed-file set (mirrors
+   * old Docuvia's `SyncService.readLocalCandidates`).
+   */
+  findNodesForChangedFiles(changedFiles: string[]): L2NodeWithL3Children[];
+  /**
+   * Resolves a node by name for `query`/`impact`/`review`'s blast-radius lookups: exact match
+   * first, falling back to a `LIKE %target%` match (mirrors old Docuvia's
+   * `QueryService.findNodeByName`). Undefined when nothing matches either way.
+   */
+  findNodeByName(target: string): { id: number; name: string; type: string } | undefined;
+  /**
+   * Nodes with an outgoing `node_links` edge INTO `nodeId` — i.e. things that depend on/call it
+   * (the 1-hop "blast radius"). Mirrors old Docuvia's `QueryService.queryIncomingEdges`.
+   */
+  getIncomingEdges(nodeId: number): Array<{ id: number; name: string; type: string }>;
+  /** Nodes `nodeId` links out to (used by `query`'s structural context). */
+  getOutgoingEdges(nodeId: number): Array<{ id: number; name: string; type: string }>;
+  /** Every `l2_nodes` row — used by `export-topology`. */
+  getAllNodes(): L2NodeRow[];
+  /** Every `node_links` row — used by `export-topology`. */
+  getAllLinks(): NodeLinkRow[];
 }
 
-export interface IFtsRepo {}
+export interface IL3NodesRepo {
+  getById(id: number): L3NodeRow | undefined;
+  /**
+   * Every `l3_nodes` row excluding stale/superseded decisions (`validity_status = 'garbage'`) —
+   * used by `export-topology` (mirrors old Docuvia's `TopologyExportService.isExportableStatus`).
+   */
+  getAllExportable(): L3NodeRow[];
+}
+
+export interface IFtsRepo {
+  /**
+   * FTS5 keyword search over `l2_nodes` (name/description/path_patterns), ranked by `rank`.
+   * Returns full mapped rows, not the fts5 virtual table's own shape.
+   */
+  searchL2Nodes(keywords: string[], limit: number): L2NodeRow[];
+  /** FTS5 keyword search over `l3_nodes` (title/content), ranked by `rank`. */
+  searchL3Nodes(keywords: string[], limit: number): L3NodeRow[];
+}
 
 /**
  * The shared memory/state layer surface — implemented by `lib/schema`'s `GraphStore`. One
@@ -138,10 +193,21 @@ export interface IGraphStore {
   readonly files: IProjectFilesRepo;
   readonly tags: ITagsRepo;
   readonly graph: IGraphNodesRepo;
+  readonly l3: IL3NodesRepo;
   readonly fts: IFtsRepo;
   withWriteLock<T>(fn: () => Promise<T> | T): Promise<T>;
   withReadLock<T>(fn: () => Promise<T> | T): Promise<T>;
   close(): Promise<void>;
+  /**
+   * Surgically removes `project_files`/`l2_nodes` (and their `node_links`/`l2_node_l1_tags`) for
+   * files no longer present in `activeFiles`, in a single transaction — without wiping the whole
+   * database. A node is stale when none of its `path_patterns` entries are in `activeFiles`
+   * (mirrors old Docuvia's `CleanService.prune`, adapted to this schema's `path_patterns` column
+   * instead of the old `source_paths` column). Not currently wired to any workflow/CLI command —
+   * old Docuvia never called it from a command either (see `docs/gitbook/analysis/data-pipeline-sync.md`);
+   * it is exposed here so a future incremental-sync workflow can use it.
+   */
+  pruneMissingFiles(activeFiles: string[]): { prunedFiles: number; prunedNodes: number };
 }
 
 export interface GraphStoreOpenOptions {

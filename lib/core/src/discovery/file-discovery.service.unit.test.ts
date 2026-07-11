@@ -24,6 +24,7 @@ function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvide
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
+    packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

@@ -18,7 +18,7 @@ import {
   DOCUVIA_MCP_LAUNCH_ARGS,
   DOCUVIA_WORKSPACE_ROOT_ENV_VAR,
 } from "../constants/init-templates.js";
-import { UTF8_ENCODING } from "@workspace/core";
+import { UTF8_ENCODING } from "@workspace/contracts";
 import { writeOrAppend } from "../utils/fs-utils.js";
 
 function resolveClaudeDesktopConfigDir(): string {

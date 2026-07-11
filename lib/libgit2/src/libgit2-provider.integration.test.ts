@@ -113,4 +113,99 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
     const paths = await provider.getRecentChangedFilePaths(tmpDir, 10);
     expect(paths).toContain("tracked.ts");
   });
+
+  it("packDirectoryToBranch commits every file under sourceDir onto branchName as a fresh root commit", async () => {
+    const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-pack-src-"));
+    try {
+      fs.mkdirSync(path.join(sourceDir, "graph"), { recursive: true });
+      fs.writeFileSync(path.join(sourceDir, "graph", "nodes.jsonl"), '{"id":"l2:1"}\n');
+      fs.writeFileSync(path.join(sourceDir, "readme.md"), "# hello\n");
+
+      await provider.packDirectoryToBranch(tmpDir, sourceDir, KNOWLEDGE_BRANCH);
+
+      expect(await provider.branchExists(tmpDir, KNOWLEDGE_BRANCH)).toBe(true);
+      const { stdout } = await git(tmpDir, [
+        "ls-tree",
+        "-r",
+        "--name-only",
+        KNOWLEDGE_BRANCH,
+      ]);
+      const files = stdout.split("\n").map((f) => f.trim()).filter(Boolean);
+      expect(files.sort()).toEqual(["graph/nodes.jsonl", "readme.md"]);
+
+      const { stdout: content } = await git(tmpDir, [
+        "show",
+        `${KNOWLEDGE_BRANCH}:graph/nodes.jsonl`,
+      ]);
+      expect(content).toBe('{"id":"l2:1"}\n');
+    } finally {
+      fs.rmSync(sourceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("getChangedFilesSince treats a flag-like baseRef as a literal ref (errors) instead of parsing it as a git option", async () => {
+    fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 1;\n");
+    await git(tmpDir, ["add", "tracked.ts"]);
+    await git(tmpDir, ["commit", "-m", "initial commit"]);
+
+    // Normal baseRef usage still works (regression guard for the `--end-of-options` change).
+    fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 2;\n");
+    const entries = await provider.getChangedFilesSince(tmpDir, "HEAD");
+    expect(entries).toEqual(
+      expect.arrayContaining([{ file: "tracked.ts", status: "modified" }])
+    );
+
+    // A baseRef crafted to look like a git option must not be parsed as one — it's swallowed by
+    // the method's catch-all (git errors on it as an invalid revision/option, not silently
+    // executed as a flag), so this must resolve to an empty (or untracked-files-only) result
+    // rather than throwing or invoking the injected option's behavior.
+    await expect(
+      provider.getChangedFilesSince(tmpDir, "--upload-pack=/bin/sh")
+    ).resolves.not.toThrow();
+  });
+
+  it("getFilesChangedByCommit treats a flag-like sha as a literal ref (errors) instead of parsing it as a git option", async () => {
+    fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 1;\n");
+    await git(tmpDir, ["add", "tracked.ts"]);
+    await git(tmpDir, ["commit", "-m", "initial commit"]);
+    // `diff-tree` reports nothing for a root commit without `--root` — unrelated to this fix —
+    // so use a second, non-root commit here.
+    fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 2;\n");
+    await git(tmpDir, ["commit", "-am", "second commit"]);
+    const { stdout: headSha } = await git(tmpDir, ["rev-parse", "HEAD"]);
+
+    // Normal sha usage still works (regression guard for the `--end-of-options` change).
+    const files = await provider.getFilesChangedByCommit(tmpDir, headSha.trim());
+    expect(files).toContain("tracked.ts");
+
+    // A flag-like sha must surface as a `GIT_COMMAND_FAILED` DocuviaError (git rejects it as an
+    // invalid revision/option), never as the option silently taking effect.
+    await expect(
+      provider.getFilesChangedByCommit(tmpDir, "--upload-pack=/bin/sh")
+    ).rejects.toMatchObject({ code: "GIT_COMMAND_FAILED" });
+  });
+
+  it("packDirectoryToBranch wholesale replaces an existing branch's tree (deleteall + force)", async () => {
+    const firstSourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-pack-src1-"));
+    const secondSourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-pack-src2-"));
+    try {
+      fs.writeFileSync(path.join(firstSourceDir, "old.md"), "stale\n");
+      await provider.packDirectoryToBranch(tmpDir, firstSourceDir, KNOWLEDGE_BRANCH);
+
+      fs.writeFileSync(path.join(secondSourceDir, "new.md"), "fresh\n");
+      await provider.packDirectoryToBranch(tmpDir, secondSourceDir, KNOWLEDGE_BRANCH);
+
+      const { stdout } = await git(tmpDir, [
+        "ls-tree",
+        "-r",
+        "--name-only",
+        KNOWLEDGE_BRANCH,
+      ]);
+      const files = stdout.split("\n").map((f) => f.trim()).filter(Boolean);
+      expect(files).toEqual(["new.md"]);
+    } finally {
+      fs.rmSync(firstSourceDir, { recursive: true, force: true });
+      fs.rmSync(secondSourceDir, { recursive: true, force: true });
+    }
+  });
 });

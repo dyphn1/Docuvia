@@ -63,4 +63,17 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     this.logger.info("Installed post-commit hook");
     return { installed: true };
   }
+
+  /**
+   * Packs a rendered snapshot directory (see `ISnapshotRenderer`) onto the hidden knowledge
+   * branch, wholesale replacing its tree — the `snapshot` command's git-write step.
+   */
+  public async packSnapshotToKnowledgeBranch(
+    cwd: string,
+    sourceDir: string,
+    branchName: string = GitConstants.KNOWLEDGE_ROOT
+  ): Promise<void> {
+    await this.git.packDirectoryToBranch(cwd, sourceDir, branchName);
+    this.logger.info("Packed snapshot onto knowledge branch", { branchName });
+  }
 }

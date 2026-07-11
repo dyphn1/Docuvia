@@ -23,6 +23,7 @@ function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvide
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
+    packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -118,5 +119,44 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
 
     expect(result).toEqual({ installed: false });
     expect(logger.events.some((e) => e.level === "warn")).toBe(true);
+  });
+});
+
+describe("KnowledgeGitService.packSnapshotToKnowledgeBranch()", () => {
+  it("delegates to IGitProvider.packDirectoryToBranch with the default knowledge branch name", async () => {
+    const git = makeMockGitProvider();
+    const service = new KnowledgeGitService(git);
+
+    await service.packSnapshotToKnowledgeBranch("/workspace", "/tmp/snapshot-render");
+
+    expect(git.packDirectoryToBranch).toHaveBeenCalledWith(
+      "/workspace",
+      "/tmp/snapshot-render",
+      GitConstants.KNOWLEDGE_ROOT
+    );
+  });
+
+  it("uses an explicit branchName override when given", async () => {
+    const git = makeMockGitProvider();
+    const service = new KnowledgeGitService(git);
+
+    await service.packSnapshotToKnowledgeBranch("/workspace", "/tmp/snapshot-render", "custom-branch");
+
+    expect(git.packDirectoryToBranch).toHaveBeenCalledWith(
+      "/workspace",
+      "/tmp/snapshot-render",
+      "custom-branch"
+    );
+  });
+
+  it("propagates a failure from the underlying git provider", async () => {
+    const git = makeMockGitProvider({
+      packDirectoryToBranch: vi.fn().mockRejectedValue(new Error("git fast-import failed")),
+    });
+    const service = new KnowledgeGitService(git);
+
+    await expect(
+      service.packSnapshotToKnowledgeBranch("/workspace", "/tmp/snapshot-render")
+    ).rejects.toThrow("git fast-import failed");
   });
 });

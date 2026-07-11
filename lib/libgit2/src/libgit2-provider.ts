@@ -3,6 +3,7 @@ import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import { DocuviaError, ErrorCodes, type ChangedFileEntry, type IGitProvider } from "@workspace/contracts";
+import { buildFastImportData, collectDirectoryFiles, runFastImport } from "./fast-import.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -196,9 +197,15 @@ export class Libgit2Provider implements IGitProvider {
     const seen = new Set<string>();
 
     try {
-      const { stdout } = await execFileAsync("git", ["diff", "--name-status", baseRef ?? "HEAD"], {
-        cwd,
-      });
+      // `--end-of-options` stops option parsing for the trailing `baseRef` argument so a
+      // caller-supplied ref beginning with `-` (e.g. `--upload-pack=...`) can't be parsed as a
+      // flag — unlike a bare `--`, it does not reclassify the following argument as a pathspec,
+      // so this preserves normal `git diff --name-status <ref>` semantics for legitimate refs.
+      const { stdout } = await execFileAsync(
+        "git",
+        ["diff", "--name-status", "--end-of-options", baseRef ?? "HEAD"],
+        { cwd }
+      );
 
       for (const line of stdout.split("\n")) {
         const trimmed = line.trim();
@@ -252,9 +259,10 @@ export class Libgit2Provider implements IGitProvider {
    */
   public async getFilesChangedByCommit(cwd: string, sha: string): Promise<string[]> {
     try {
+      // See `getChangedFilesSince()`'s comment above on `--end-of-options` vs a bare `--`.
       const { stdout } = await execFileAsync(
         "git",
-        ["diff-tree", "--no-commit-id", "--name-only", "-r", sha],
+        ["diff-tree", "--no-commit-id", "--name-only", "-r", "--end-of-options", sha],
         { cwd }
       );
       return stdout
@@ -263,6 +271,26 @@ export class Libgit2Provider implements IGitProvider {
         .filter(Boolean);
     } catch (err) {
       throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git diff-tree failed", err);
+    }
+  }
+
+  public async packDirectoryToBranch(
+    cwd: string,
+    sourceDir: string,
+    branchName: string
+  ): Promise<void> {
+    try {
+      const files = await collectDirectoryFiles(sourceDir);
+      const now = Math.floor(Date.now() / 1000);
+      const fastImportData = buildFastImportData(
+        branchName,
+        files,
+        now,
+        `chore: snapshot of ${branchName}`
+      );
+      await runFastImport(cwd, fastImportData);
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.GIT_FAST_IMPORT_FAILED, "git fast-import failed", err);
     }
   }
 }

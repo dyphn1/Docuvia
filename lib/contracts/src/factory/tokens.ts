@@ -10,6 +10,12 @@ import type { IAstProcessor } from "../interfaces/ast.interfaces.js";
 import type { IGraphPersister } from "../interfaces/graph-persister.interfaces.js";
 import type { GraphStoreOpenOptions, IGraphStore } from "../interfaces/graph-store.interfaces.js";
 import type { ITempFileManager } from "../interfaces/temp-file-manager.interfaces.js";
+import type { IRemoteSyncClient } from "../interfaces/remote-sync.interfaces.js";
+import type { IQueryService } from "../interfaces/query.interfaces.js";
+import type { IImpactService } from "../interfaces/impact.interfaces.js";
+import type { IChangeDetectionService } from "../interfaces/change-detection.interfaces.js";
+import type { ITopologyBuilder } from "../interfaces/topology.interfaces.js";
+import type { ISnapshotRenderer } from "../interfaces/snapshot.interfaces.js";
 
 /**
  * A phantom-typed registration token — see
@@ -48,4 +54,15 @@ export const TOKENS = {
     createToken<(workspaceRoot: string, logger?: ILogger) => ITempFileManager>("TempFileManager"),
   GraphStoreOpener:
     createToken<(opts: GraphStoreOpenOptions) => Promise<IGraphStore>>("GraphStoreOpener"),
+  /** A builder function, not a shared instance — mirrors `TempFileManager`'s token shape since
+   *  construction needs per-run config (`apiUrl`/`pat`) sourced from `docuviaMemory`, not
+   *  swappable tech. */
+  RemoteSyncClient:
+    createToken<() => IRemoteSyncClient>("RemoteSyncClient"),
+  QueryService: createToken<IQueryService, LoggerParams>("IQueryService"),
+  ImpactService: createToken<IImpactService, LoggerParams>("IImpactService"),
+  ChangeDetectionService:
+    createToken<IChangeDetectionService, LoggerParams>("IChangeDetectionService"),
+  TopologyBuilder: createToken<ITopologyBuilder, LoggerParams>("ITopologyBuilder"),
+  SnapshotRenderer: createToken<ISnapshotRenderer>("ISnapshotRenderer"),
 } as const;

@@ -7,4 +7,5 @@ export { ProjectsRepo } from "./sqlite/repos/projects-repo.js";
 export { ProjectFilesRepo } from "./sqlite/repos/files-repo.js";
 export { TagsRepo } from "./sqlite/repos/tags-repo.js";
 export { GraphNodesRepo } from "./sqlite/repos/graph-repo.js";
+export { L3NodesRepo } from "./sqlite/repos/l3-nodes-repo.js";
 export { FtsRepo } from "./sqlite/repos/fts-repo.js";

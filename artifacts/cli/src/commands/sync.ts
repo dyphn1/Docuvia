@@ -1,0 +1,89 @@
+import process from "process";
+import crypto from "node:crypto";
+import { createInterface } from "readline";
+import { docuviaMemory, DocuviaError } from "@workspace/contracts";
+import { docuviaApi } from "@workspace/ui-core";
+import "../registration.js";
+import { ui } from "../ui/wizard.js";
+import { createPinoBackedLogger } from "../logging/create-logger.js";
+import { UI_MESSAGES } from "../constants/ui-messages.js";
+
+function readStdin(): Promise<string> {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin });
+    let data = "";
+    rl.on("line", (line) => {
+      data += line + "\n";
+    });
+    rl.on("close", () => resolve(data.trim()));
+  });
+}
+
+async function resolveProjectId(projectId?: string): Promise<string> {
+  if (projectId) return projectId;
+
+  if (!process.stdin.isTTY) {
+    ui.error(UI_MESSAGES.SYNC_MISSING_PROJECT_ID);
+    process.exit(1);
+  }
+
+  ui.info(UI_MESSAGES.SYNC_NO_PROJECT_ID_PROVIDED);
+  const entered = await ui.askInput(UI_MESSAGES.SYNC_PROMPT_PROJECT_ID);
+
+  if (!entered) {
+    ui.error(UI_MESSAGES.SYNC_PROJECT_ID_REQUIRED);
+    process.exit(1);
+  }
+
+  return entered;
+}
+
+/**
+ * Thin caller of `docuviaApi.sync()` — mirrors `init.ts`'s Presentation-layer responsibilities.
+ * `DOCUVIA_API_URL`/`MCP_PAT` are read from `process.env` here (only the Presentation layer may
+ * touch `process.env` — see docs/gitbook/architecture/application-lifecycle-and-state.md) and
+ * injected into `docuviaMemory` for the Orchestration layer to read.
+ */
+export async function syncCommand(
+  options: { projectId?: string; commitSha?: string },
+  cwd: string = process.cwd()
+) {
+  const projectId = await resolveProjectId(options.projectId);
+
+  if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
+    ui.warn(UI_MESSAGES.SYNC_MISSING_ENV);
+    ui.warn(UI_MESSAGES.SYNC_SKIP);
+    return;
+  }
+
+  const commitSha = options.commitSha ?? (process.stdin.isTTY ? undefined : await readStdin());
+
+  const spinner = ui.spinner(UI_MESSAGES.SYNC_START + projectId + "...").start();
+  const scopeId = crypto.randomUUID();
+  const logger = createPinoBackedLogger();
+  logger.onLog((event) => {
+    if (event.level === "info") spinner.text = event.message;
+  });
+
+  docuviaMemory.createScope(scopeId);
+  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
+  docuviaMemory.set(scopeId, "apiUrl", process.env.DOCUVIA_API_URL);
+  docuviaMemory.set(scopeId, "pat", process.env.MCP_PAT);
+  docuviaMemory.set(scopeId, "projectId", projectId);
+  docuviaMemory.set(scopeId, "commitSha", commitSha || undefined);
+
+  try {
+    const result = await docuviaApi.sync(scopeId, logger);
+    spinner.succeed(UI_MESSAGES.SYNC_SUCCESS + " " + result.message);
+  } catch (error: unknown) {
+    const message =
+      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+    spinner.fail(UI_MESSAGES.SYNC_FAIL + message);
+    // process.exitCode (not process.exit()) — this path follows real network calls (GET
+    // l2-nodes / POST sync/push); forcing an immediate exit while fetch/undici handles are
+    // still closing crashes natively on Windows. See old Docuvia's sync.ts for the same fix.
+    process.exitCode = 1;
+  } finally {
+    docuviaMemory.deleteScope(scopeId);
+  }
+}

@@ -42,15 +42,55 @@ export type {
   NodeLinkRow,
   L2NodeL1TagRow,
   L3NodeRow,
+  L2NodeWithL3Children,
   IProjectsRepo,
   IProjectFilesRepo,
   ITagsRepo,
   IGraphNodesRepo,
+  IL3NodesRepo,
   IFtsRepo,
   IGraphStore,
   GraphStoreOpenOptions,
 } from "./interfaces/graph-store.interfaces.js";
 export type { IGraphPersister } from "./interfaces/graph-persister.interfaces.js";
+export type {
+  RemoteL2NodeSummary,
+  CreateL3EventPayload,
+  SyncPushEvent,
+  SyncPushResult,
+  RemoteSyncClientConfig,
+  IRemoteSyncClient,
+} from "./interfaces/remote-sync.interfaces.js";
+export type { RiskLevel, BlastRadiusEntry, IImpactService } from "./interfaces/impact.interfaces.js";
+export type {
+  ChangeDetectionResult,
+  IChangeDetectionService,
+} from "./interfaces/change-detection.interfaces.js";
+export type {
+  GraphEdgeRef,
+  GraphContext,
+  LocalSearchResult,
+  LocalQueryResult,
+  IQueryService,
+} from "./interfaces/query.interfaces.js";
+export { TOPOLOGY_VERSION } from "./interfaces/topology.interfaces.js";
+export type {
+  TopologyNodeKind,
+  TopologyCollapseMode,
+  TopologyNode,
+  TopologyLink,
+  TopologyGroup,
+  TopologyStats,
+  TopologyGraph,
+  TopologyExportOptions,
+  TopologyBuildInput,
+  ITopologyBuilder,
+} from "./interfaces/topology.interfaces.js";
+export type {
+  SnapshotRenderInput,
+  SnapshotRenderResult,
+  ISnapshotRenderer,
+} from "./interfaces/snapshot.interfaces.js";
 
 export { createMockLogger, resetFactoryForTests } from "./testing/mocks.js";
 export type { MockLogger } from "./testing/mocks.js";
@@ -61,5 +101,17 @@ export {
   DOCUVIA_DIR_NAME,
   DOCUVIA_LOGS_DIR_NAME,
   INIT_LOG_FILE_NAME,
+  CLEAN_LOG_FILE_NAME,
+  STATUS_LOG_FILE_NAME,
+  SYNC_LOG_FILE_NAME,
+  ANALYZE_LOG_FILE_NAME,
+  REVIEW_LOG_FILE_NAME,
+  IMPACT_LOG_FILE_NAME,
+  QUERY_LOG_FILE_NAME,
+  EXPORT_TOPOLOGY_LOG_FILE_NAME,
+  SNAPSHOT_LOG_FILE_NAME,
   LOCAL_DB_FILE_NAME,
+  SYNC_STATE_FILE_NAME,
 } from "./constants/paths.js";
+
+export { UTF8_ENCODING } from "./constants/encoding.js";

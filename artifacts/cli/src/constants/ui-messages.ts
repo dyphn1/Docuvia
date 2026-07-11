@@ -1,9 +1,8 @@
 /**
- * Trimmed to just the `INIT_*`/general-CLI/filesystem-helper messages `init` actually uses
- * (per the migration plan's step 8) — old Docuvia's ~100+ message file also carried
- * `ANALYZE_*`/`QUERY_*`/`IMPACT_*`/`REVIEW_*`/`SNAPSHOT_*`/`STATUS_*`/`SYNC_*`/`CLEAN_*`/
- * `EXPORT_*` for commands that don't exist in this milestone. Port the rest in alongside
- * each command as it's rebuilt.
+ * `INIT_*`/general-CLI/filesystem-helper messages, plus `CLEAN_*`/`STATUS_*`/`SYNC_*`/`ANALYZE_*`
+ * for the commands rebuilt so far — old Docuvia's ~100+ message file also carried `QUERY_*`/
+ * `IMPACT_*`/`REVIEW_*`/`SNAPSHOT_*`/`EXPORT_*` for commands that don't exist in this milestone.
+ * Port the rest in alongside each command as it's rebuilt.
  */
 export const UI_MESSAGES = {
   // General CLI
@@ -40,4 +39,87 @@ export const UI_MESSAGES = {
   FS_APPENDED: "Appended instructions to: ",
   FS_ALREADY_EXISTS: "Instructions already exist in: ",
   FS_CREATED: "Created: ",
+
+  // Clean Command
+  CLEAN_HEADER: "Clean Docuvia Database",
+  CLEAN_CONFIRM: "This will permanently delete the local Docuvia database. Continue?",
+  CLEAN_ABORTED: "Clean aborted.",
+  CLEAN_START: "Cleaning database...",
+  CLEAN_SUCCESS: "Clean complete. ",
+  CLEAN_FAIL: "Clean failed: ",
+
+  // Status Command
+  STATUS_START: "Getting status...",
+  STATUS_SUCCESS: "Status retrieved.",
+  STATUS_FAIL: "Failed to get status: ",
+  STATUS_HEADER: "Docuvia Status",
+  STATUS_PROJECTS: "Projects: ",
+  STATUS_L2_NODES: "L2 Nodes: ",
+  STATUS_L3_DECISIONS: "L3 Decisions: ",
+
+  // Sync Command
+  SYNC_MISSING_PROJECT_ID: "Project ID is required when not running interactively.",
+  SYNC_NO_PROJECT_ID_PROVIDED: "No project ID provided.",
+  SYNC_PROMPT_PROJECT_ID: "Enter the project ID to sync to: ",
+  SYNC_PROJECT_ID_REQUIRED: "Project ID is required.",
+  SYNC_MISSING_ENV: "DOCUVIA_API_URL and/or MCP_PAT are not set.",
+  SYNC_SKIP: "Skipping sync.",
+  SYNC_START: "Starting sync for project ",
+  SYNC_SUCCESS: "Sync complete.",
+  SYNC_FAIL: "Sync failed: ",
+
+  // Analyze Command
+  ANALYZE_HEADER: "Analyze Project",
+  ANALYZE_START: "Analyzing project...",
+  ANALYZE_SUCCESS: "Analysis complete.",
+  ANALYZE_FAIL: "Analysis failed: ",
+  ANALYZE_PROJECT_TYPE: "Project Type: ",
+  ANALYZE_SUGGESTED_TAGS: "Suggested Tags: ",
+  ANALYZE_NONE: "none",
+  ANALYZE_TARGET_PATH_NOT_SUPPORTED:
+    "Analyzing a specific file/path (decision extraction) is not yet supported in this build. Run `docuvia analyze` with no path for a project-wide config scan.",
+
+  // Review Command
+  REVIEW_HEADER: "Review Changes",
+  REVIEW_START: "Analyzing changes...",
+  REVIEW_SUCCESS: "Analysis complete.",
+  REVIEW_AGAINST: " against ",
+  REVIEW_FAIL: "Review failed: ",
+
+  // Impact Command
+  IMPACT_HEADER: "Impact Analysis",
+  IMPACT_MISSING_TARGET: "A target symbol/module name is required.",
+  IMPACT_START: "Resolving blast radius for ",
+  IMPACT_SUCCESS: "Resolved blast radius for ",
+  IMPACT_FAIL: "Impact analysis failed: ",
+  IMPACT_NOT_FOUND: "No matching node found for ",
+  IMPACT_BLAST_RADIUS_HEADER: "Blast Radius",
+  IMPACT_NO_DEPENDENTS: "No dependents found.",
+  IMPACT_RISK_PREFIX: "Risk level: ",
+
+  // Query Command
+  QUERY_HEADER: "Query Knowledge Graph",
+  QUERY_PROMPT_TARGET: "What would you like to query? ",
+  QUERY_MISSING_TARGET: "A query target is required (pass it as an argument).",
+  QUERY_MISSING_TARGET_NON_TTY: "A query target is required.",
+  QUERY_START: "Querying local knowledge graph for ",
+  QUERY_FOUND: "Query resolved for ",
+  QUERY_FAIL: "Query failed: ",
+  QUERY_CONTEXT_HEADER: "Query Results",
+  QUERY_L2_PREFIX: "Module: ",
+  QUERY_NO_L2: "No matching module found.",
+  QUERY_L3_PREFIX: "Decision: ",
+  QUERY_UNKNOWN_STATUS: "unknown",
+  QUERY_INCOMING_HEADER: "Incoming (callers/dependents)",
+  QUERY_OUTGOING_HEADER: "Outgoing (dependencies)",
+
+  // Export Topology Command
+  EXPORT_START: "Exporting topology...",
+  EXPORT_SUCCESS: "Exported topology to ",
+  EXPORT_FAIL: "Export failed: ",
+
+  // Snapshot Command
+  SNAPSHOT_START: "Packing knowledge graph snapshot...",
+  SNAPSHOT_SUCCESS: "Snapshot packed onto the knowledge branch. ",
+  SNAPSHOT_FAIL: "Snapshot failed: ",
 };

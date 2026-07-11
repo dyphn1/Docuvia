@@ -1,0 +1,26 @@
+{
+  "name": "@workspace/remote-api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "main": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@workspace/contracts": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vitest": "^1.6.1"
+  }
+}

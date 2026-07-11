@@ -1,9 +1,6 @@
-import path from "path";
 import {
   docuviaFactory,
   TOKENS,
-  DOCUVIA_DIR_NAME,
-  LOCAL_DB_FILE_NAME,
   DocuviaError,
   ErrorCodes,
   type IGraphStore,
@@ -17,11 +14,9 @@ import { runDiscoveryPipeline } from "./run-discovery-pipeline.js";
 import { runParseAndPersist } from "./run-parse-and-persist.js";
 import { initTempLifecycle } from "./init-temp-lifecycle.js";
 import { buildInitResult, type InitResult } from "./init-result.js";
+import { resolveDbPath } from "../../utils/resolve-db-path.js";
 
-/** `<workspaceRoot>/.docuvia/local.db`. */
-export function resolveDbPath(workspaceRoot: string): string {
-  return path.join(workspaceRoot, DOCUVIA_DIR_NAME, LOCAL_DB_FILE_NAME);
-}
+export { resolveDbPath };
 
 /**
  * The `init` workflow — the Orchestration Layer's composition for the `init` capability (see

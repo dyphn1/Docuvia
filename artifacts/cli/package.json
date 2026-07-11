@@ -27,6 +27,7 @@
     "@workspace/contracts": "workspace:^",
     "@workspace/core": "workspace:^",
     "@workspace/libgit2": "workspace:^",
+    "@workspace/remote-api": "workspace:^",
     "@workspace/schema": "workspace:^",
     "@workspace/ui-core": "workspace:^",
     "better-sqlite3": "^12.11.1",

@@ -1,4 +1,3 @@
-export const UTF8_ENCODING = "utf8";
 export const ENCODING_UTF_8 = "utf-8";
 export const ENCODING_HEX = "hex";
 export const ENCODING_BASE64 = "base64";

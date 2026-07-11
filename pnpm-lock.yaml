@@ -53,6 +53,9 @@ importers:
       '@workspace/libgit2':
         specifier: workspace:^
         version: link:../../lib/libgit2
+      '@workspace/remote-api':
+        specifier: workspace:^
+        version: link:../../lib/remote-api
       '@workspace/schema':
         specifier: workspace:^
         version: link:../../lib/schema
@@ -178,6 +181,9 @@ importers:
       '@workspace/contracts':
         specifier: workspace:^
         version: link:../contracts
+      p-limit:
+        specifier: ^7.3.0
+        version: 7.3.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -201,6 +207,19 @@ importers:
       typescript:
         specifier: ^5.5.4
         version: 5.9.3
+
+  lib/remote-api:
+    dependencies:
+      '@workspace/contracts':
+        specifier: workspace:^
+        version: link:../contracts
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.9.5
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@25.9.5)
 
   lib/schema:
     dependencies:

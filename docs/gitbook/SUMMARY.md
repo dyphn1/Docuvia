@@ -33,3 +33,6 @@
 
 ## �📋 Architecture Decision Records
 * [ADR Index](adr/README.md)
+
+## 📊 Analysis
+* [Docuvia2 vs Docuvia1 vs GitNexus (2026-07-12)](analysis/docuvia2-vs-docuvia1-vs-gitnexus-2026-07-12.md)

@@ -13,6 +13,7 @@ import { TagsRepo } from "./repos/tags-repo.js";
 import { GraphNodesRepo } from "./repos/graph-repo.js";
 import { L3NodesRepo } from "./repos/l3-nodes-repo.js";
 import { FtsRepo } from "./repos/fts-repo.js";
+import { MetaRepo } from "./repos/meta-repo.js";
 
 /**
  * The shared memory/state layer (see docs/gitbook/architecture/virtual-contracts-architecture.md
@@ -29,6 +30,7 @@ export class GraphStore implements IGraphStore {
   private readonly graphRepo: GraphNodesRepo;
   private readonly l3Repo: L3NodesRepo;
   private readonly ftsRepo: FtsRepo;
+  private readonly metaRepo: MetaRepo;
 
   private constructor(private readonly db: Database.Database) {
     this.projectsRepo = new ProjectsRepo(db);
@@ -37,6 +39,7 @@ export class GraphStore implements IGraphStore {
     this.graphRepo = new GraphNodesRepo(db);
     this.l3Repo = new L3NodesRepo(db);
     this.ftsRepo = new FtsRepo(db);
+    this.metaRepo = new MetaRepo(db);
   }
 
   static async open(opts: GraphStoreOpenOptions): Promise<GraphStore> {
@@ -94,6 +97,10 @@ export class GraphStore implements IGraphStore {
 
   get fts(): FtsRepo {
     return this.ftsRepo;
+  }
+
+  get meta(): MetaRepo {
+    return this.metaRepo;
   }
 
   /** Runs `fn` while holding the exclusive write lock (ADR-032) — serializes writers so parallel callers never race the single WAL writer slot. */

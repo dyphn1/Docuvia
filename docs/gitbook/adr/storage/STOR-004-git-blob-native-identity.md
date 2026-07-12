@@ -1,5 +1,5 @@
 ---
-id: STOR-005
+id: STOR-004
 title: Git Blob-Native Identity and Content Hash Caching
 status: proposed
 date: 2026-07-06
@@ -11,7 +11,7 @@ superseded_by: []
 # Git Blob-Native Identity and Content Hash Caching
 
 ## Context
-Because SQLite is the sole source of truth (STOR-001), checking out a different git branch locally forces the system to re-analyze files that were previously analyzed on that branch, resulting in "checkout thrashing" and wasted CPU cycles.
+Because Git is the sole source of truth and SQLite is only a disposable, rebuildable cache (STOR-001, STOR-002), checking out a different git branch locally forces the system to re-analyze files that were previously analyzed on that branch, resulting in "checkout thrashing" and wasted CPU cycles.
 
 ## Decision
 *(Partially implemented in Docuvia2; Local caching mechanism is proposed).*

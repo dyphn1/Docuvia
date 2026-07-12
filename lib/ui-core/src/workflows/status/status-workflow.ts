@@ -3,6 +3,7 @@ import { STATUS_MESSAGES } from "./status-messages.js";
 import { appendStatusLogLine } from "./status-log-writer.js";
 import type { StatusResult } from "./status-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { ensureHydrated } from "../../utils/ensure-hydrated.js";
 
 /**
  * The `status` workflow — opens `.docuvia/local.db` readonly and reports row counts for
@@ -20,6 +21,8 @@ export class StatusWorkflow {
 
     logger.info(STATUS_MESSAGES.GETTING_STATUS);
     await appendStatusLogLine(workspaceRoot, { event: "status.start" });
+
+    await ensureHydrated(workspaceRoot, logger);
 
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
 

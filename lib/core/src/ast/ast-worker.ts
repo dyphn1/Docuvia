@@ -2,12 +2,23 @@ import { parentPort } from "worker_threads";
 import { Parser, Language, type Node } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
+import { createHash } from "crypto";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
 import type { SupportedLanguage, LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
 import { parseImportDescriptors } from "@workspace/ast-core";
 import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import { IpcLoggerClient } from "@workspace/contracts";
+import { ENCODING_HEX, HASH_ALGO_SHA256 } from "../constants/encoding.js";
+
+/**
+ * Symbol-level feature hash (STOR-005): a hash of the AST node's own exact source span
+ * (`node.text`), independent of the containing file's blob hash. Lets a single-symbol edit
+ * produce a one-line JSONL diff for that symbol without touching its untouched siblings' hashes.
+ */
+function symbolContentHash(node: Node): string {
+  return createHash(HASH_ALGO_SHA256).update(node.text).digest(ENCODING_HEX);
+}
 
 /**
  * Worker threads share the host process's stdout/stderr by default, so `console.*` here would
@@ -51,8 +62,14 @@ export interface AstParseResponse {
   data?: {
     imports: ImportDescriptor[];
     exports: Array<{ name: string; type: "function" | "class" | "variable" }>;
-    functions: Array<{ name: string; startLine: number; endLine: number }>;
-    classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }>;
+    functions: Array<{ name: string; startLine: number; endLine: number; contentHash?: string }>;
+    classes: Array<{
+      name: string;
+      startLine: number;
+      endLine: number;
+      methods: string[];
+      contentHash?: string;
+    }>;
     calls: Array<{ sourceFunction: string; targetFunction: string }>;
     implements?: Array<{ sourceClass: string; targetInterface: string }>;
     extends?: Array<{ sourceClass: string; targetClass: string }>;
@@ -259,9 +276,19 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     const decisions: string[] = [];
     const imports: ImportDescriptor[] = [];
     const exports: Array<{ name: string; type: "function" | "class" | "variable" }> = [];
-    const functions: Array<{ name: string; startLine: number; endLine: number }> = [];
-    const classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }> =
-      [];
+    const functions: Array<{
+      name: string;
+      startLine: number;
+      endLine: number;
+      contentHash: string;
+    }> = [];
+    const classes: Array<{
+      name: string;
+      startLine: number;
+      endLine: number;
+      methods: string[];
+      contentHash: string;
+    }> = [];
     const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
     const implementsList: Array<{ sourceClass: string; targetInterface: string }> = [];
     const extendsList: Array<{ sourceClass: string; targetClass: string }> = [];
@@ -277,6 +304,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
             startLine: node.startPosition.row,
             endLine: node.endPosition.row,
             methods: [],
+            contentHash: symbolContentHash(node),
           });
         }
 
@@ -286,6 +314,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
             name: resolveCallableName(node),
             startLine: node.startPosition.row,
             endLine: node.endPosition.row,
+            contentHash: symbolContentHash(node),
           });
         }
 

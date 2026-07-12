@@ -19,6 +19,8 @@ import { ExportTopologyWorkflow } from "./workflows/export-topology/export-topol
 import type { TopologyExportOptions, TopologyGraph } from "@workspace/contracts";
 import { SnapshotWorkflow } from "./workflows/snapshot/snapshot-workflow.js";
 import type { SnapshotResult } from "./workflows/snapshot/snapshot-result.js";
+import { HydrateWorkflow } from "./workflows/hydrate/hydrate-workflow.js";
+import type { HydrateResult } from "./workflows/hydrate/hydrate-result.js";
 
 function requireMemory<T>(scopeId: string, key: string): T {
   const value = docuviaMemory.get<T>(scopeId, key);
@@ -96,5 +98,10 @@ export const docuviaApi = {
   async snapshot(scopeId: string, logger: ILogger): Promise<SnapshotResult> {
     const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
     return new SnapshotWorkflow(workspaceRoot, logger).execute();
+  },
+
+  async hydrate(scopeId: string, logger: ILogger): Promise<HydrateResult> {
+    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    return new HydrateWorkflow(workspaceRoot, logger).execute();
   },
 };

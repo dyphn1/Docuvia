@@ -44,13 +44,21 @@ export function buildFastImportData(
   branch: string,
   files: Map<string, string>,
   nowUnix: number,
-  commitMessage: string
+  commitMessage: string,
+  parentCommitSha?: string
 ): string {
   const lines: string[] = [];
   lines.push(`commit refs/heads/${branch}`);
   lines.push(`committer Docuvia <docuvia@localhost> ${nowUnix} +0000`);
   lines.push(`data ${Buffer.byteLength(commitMessage, "utf8")}`);
   lines.push(commitMessage);
+
+  // Parenting on the branch's current tip (STOR-001 point 2 — "continuous stacking") is what
+  // keeps prior commits reachable; omitted only for the branch's very first commit, which is
+  // necessarily a root commit.
+  if (parentCommitSha) {
+    lines.push(`from ${parentCommitSha}`);
+  }
 
   lines.push(`deleteall`);
 
@@ -67,14 +75,15 @@ export function buildFastImportData(
 }
 
 /**
- * Spawns `git fast-import --quiet --force` and streams `fastImportData` to its stdin. `--force`
- * is always passed: every caller's payload starts with `deleteall` (see `buildFastImportData`),
- * so each import is a complete, independent snapshot that must land regardless of the branch's
- * prior history.
+ * Spawns `git fast-import --quiet` and streams `fastImportData` to its stdin. `--force` is
+ * deliberately NOT passed: `buildFastImportData` always parents a new commit on the branch's
+ * current tip (see its `from` line), so every import is a fast-forward. If the caller ever
+ * computes a stale parent, fast-import failing loudly here is correct — silently forcing past it
+ * would orphan history (STOR-001 point 2).
  */
 export function runFastImport(cwd: string, fastImportData: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn("git", ["fast-import", "--quiet", "--force"], {
+    const child = spawn("git", ["fast-import", "--quiet"], {
       cwd,
       stdio: ["pipe", "ignore", "pipe"],
     });

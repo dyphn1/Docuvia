@@ -19,6 +19,7 @@ function makeL2(overrides: Partial<L2NodeRow> = {}): L2NodeRow {
     is_bootstrap_confirmed: 0,
     content_hash: null,
     updated_at: "2026-01-01T00:00:00.000Z",
+    node_key: null,
     ...overrides,
   };
 }

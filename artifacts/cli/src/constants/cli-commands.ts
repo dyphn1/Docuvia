@@ -16,6 +16,7 @@ export const CLI_COMMANDS = {
   QUERY: "query",
   EXPORT_TOPOLOGY: "export-topology",
   SNAPSHOT: "snapshot",
+  HYDRATE: "hydrate",
 } as const;
 
 export type CliCommand = (typeof CLI_COMMANDS)[keyof typeof CLI_COMMANDS];
@@ -32,6 +33,7 @@ export const CLI_COMMAND_DESCRIPTIONS: Record<CliCommand, string> = {
   [CLI_COMMANDS.QUERY]: "Query the local knowledge graph (keyword + structural search)",
   [CLI_COMMANDS.EXPORT_TOPOLOGY]: "Export the knowledge graph as topology.json/topology.html",
   [CLI_COMMANDS.SNAPSHOT]: "Pack the local knowledge graph onto the hidden knowledge branch",
+  [CLI_COMMANDS.HYDRATE]: "Rebuild the local database from the hidden knowledge branch",
 };
 
 export function getUsageText(): string {

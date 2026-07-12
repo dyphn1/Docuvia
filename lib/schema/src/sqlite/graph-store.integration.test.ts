@@ -375,4 +375,110 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     store = await GraphStore.open({ dbPath });
     expect(store.projects.getFirst()?.name).toBe("demo");
   });
+
+  it("meta repo: get()/set() round-trip, and upserts an existing key rather than erroring", () => {
+    expect(store.meta.get("knowledgeTipSha")).toBeUndefined();
+
+    store.meta.set("knowledgeTipSha", "aaa111");
+    expect(store.meta.get("knowledgeTipSha")).toBe("aaa111");
+
+    store.meta.set("knowledgeTipSha", "bbb222");
+    expect(store.meta.get("knowledgeTipSha")).toBe("bbb222");
+  });
+
+  it("graph repo: bulkLoadGraph() wipes existing nodes/links and rebuilds from node_key, dropping edges with an unresolvable endpoint", () => {
+    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    // Pre-existing state that bulkLoadGraph must wipe, not merge with.
+    const staleId = store.graph.insertNode({
+      projectId: project.id,
+      name: "stale.ts",
+      pathPatterns: ["stale.ts"],
+    });
+    insertL3NodeFixture(dbPath, { l2NodeId: staleId, title: "stale decision" });
+
+    const result = store.graph.bulkLoadGraph({
+      projectId: project.id,
+      nodes: [
+        { nodeKey: "src/auth.ts", name: "src/auth.ts", filePath: "src/auth.ts" },
+        { nodeKey: "src/auth.ts#login", name: "login", filePath: "src/auth.ts" },
+      ],
+      edges: [
+        { source: "src/auth.ts", target: "src/auth.ts#login", type: "contains" },
+        // References a node_key that doesn't exist among `nodes` — must be dropped, not inserted
+        // with a dangling foreign id.
+        { source: "src/auth.ts#login", target: "src/auth.ts#missing", type: "calls" },
+      ],
+    });
+
+    expect(result).toEqual({ nodesLoaded: 2, edgesLoaded: 1, edgesDropped: 1 });
+    expect(store.graph.count()).toEqual({ l2Nodes: 2, l3Nodes: 1 }); // l3_nodes untouched by design (not yet git-serialized — STOR-002 known gap)
+    expect(store.graph.getAllNodes().map((n) => n.node_key).sort()).toEqual([
+      "src/auth.ts",
+      "src/auth.ts#login",
+    ]);
+    expect(store.graph.findNodeIdByName("stale.ts", "stale.ts")).toBeUndefined();
+
+    const fileNode = store.graph.findNodeByName("src/auth.ts");
+    const symbolNode = store.graph.findNodeByName("login");
+    expect(store.graph.getOutgoingEdges(fileNode!.id).map((n) => n.name)).toEqual(["login"]);
+    expect(store.graph.getOutgoingEdges(symbolNode!.id)).toEqual([]); // the dangling edge never landed
+  });
+
+  it("graph repo: bulkLoadGraph() leaves l2_nodes_fts correctly searchable (triggers are dropped and the index rebuilt, not just skipped)", () => {
+    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+
+    store.graph.bulkLoadGraph({
+      projectId: project.id,
+      nodes: [
+        { nodeKey: "src/auth.ts", name: "authService", filePath: "src/auth.ts" },
+        { nodeKey: "src/db.ts", name: "databaseService", filePath: "src/db.ts" },
+      ],
+      edges: [],
+    });
+
+    expect(store.fts.searchL2Nodes(["authService"], 10).map((n) => n.node_key)).toEqual([
+      "src/auth.ts",
+    ]);
+    expect(store.fts.searchL2Nodes(["databaseService"], 10).map((n) => n.node_key)).toEqual([
+      "src/db.ts",
+    ]);
+
+    // Normal (non-bulk) insert/delete/update must still keep the FTS index in sync afterward —
+    // proves the triggers were actually recreated, not left dropped.
+    const newNodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "cacheService",
+      pathPatterns: ["src/cache.ts"],
+    });
+    expect(store.fts.searchL2Nodes(["cacheService"], 10).map((n) => n.id)).toEqual([newNodeId]);
+  });
+
+  it("graph repo: bulkLoadGraph() restores 100,000 nodes in under 10 seconds (STOR-002's hard performance bar)", () => {
+    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+
+    const NODE_COUNT = 100_000;
+    const nodes = Array.from({ length: NODE_COUNT }, (_, i) => ({
+      nodeKey: `src/file${i}.ts`,
+      name: `src/file${i}.ts`,
+      filePath: `src/file${i}.ts`,
+    }));
+    // One edge per node (to its predecessor) — same order of magnitude as the nodes themselves.
+    const edges = Array.from({ length: NODE_COUNT - 1 }, (_, i) => ({
+      source: `src/file${i}.ts`,
+      target: `src/file${i + 1}.ts`,
+      type: "depends_on",
+    }));
+
+    const start = performance.now();
+    const result = store.graph.bulkLoadGraph({ projectId: project.id, nodes, edges });
+    const elapsedMs = performance.now() - start;
+
+    expect(result).toEqual({
+      nodesLoaded: NODE_COUNT,
+      edgesLoaded: NODE_COUNT - 1,
+      edgesDropped: 0,
+    });
+    expect(store.graph.count().l2Nodes).toBe(NODE_COUNT);
+    expect(elapsedMs).toBeLessThan(10_000);
+  });
 });

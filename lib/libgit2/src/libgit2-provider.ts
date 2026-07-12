@@ -149,6 +149,65 @@ export class Libgit2Provider implements IGitProvider {
     }
   }
 
+  public async readFileAtRef(cwd: string, ref: string, filePath: string): Promise<string | undefined> {
+    try {
+      const posixPath = filePath.split(path.sep).join(path.posix.sep);
+      const { stdout } = await execFileAsync("git", ["show", `${ref}:${posixPath}`], {
+        cwd,
+        maxBuffer: 64 * 1024 * 1024,
+      });
+      return stdout;
+    } catch {
+      // Ref or path doesn't exist — a normal, expected outcome (e.g. hydrating a knowledge
+      // branch that hasn't been snapshotted yet), not a fatal error.
+      return undefined;
+    }
+  }
+
+  public async getCommitLog(
+    cwd: string,
+    ref: string,
+    maxCount = 1000
+  ): Promise<Array<{ sha: string; message: string }>> {
+    try {
+      // `%x01` separates sha/body within a record, `%x00` separates records — both effectively
+      // never appear in a real commit message, so this survives multi-line messages intact
+      // (unlike splitting the whole log on `\n`).
+      const { stdout } = await execFileAsync(
+        "git",
+        ["log", ref, "-n", String(maxCount), "--format=%H%x01%B%x00"],
+        { cwd, maxBuffer: 64 * 1024 * 1024 }
+      );
+      return stdout
+        .split("\x00")
+        .map((record) => record.trim())
+        .filter(Boolean)
+        .map((record) => {
+          const sepIndex = record.indexOf("\x01");
+          return { sha: record.slice(0, sepIndex), message: record.slice(sepIndex + 1) };
+        });
+    } catch {
+      // Ref doesn't exist / no commits yet.
+      return [];
+    }
+  }
+
+  public async getCommitAncestry(cwd: string, ref: string, maxCount = 1000): Promise<string[]> {
+    try {
+      const { stdout } = await execFileAsync(
+        "git",
+        ["rev-list", ref, "-n", String(maxCount)],
+        { cwd }
+      );
+      return stdout
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
   public async getRemoteUrl(cwd: string): Promise<string | undefined> {
     try {
       const { stdout } = await execFileAsync("git", ["remote", "get-url", "origin"], { cwd });
@@ -274,19 +333,48 @@ export class Libgit2Provider implements IGitProvider {
     }
   }
 
+  public async getHeadSha(cwd: string): Promise<string | undefined> {
+    try {
+      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd });
+      const sha = stdout.trim();
+      return sha.length > 0 ? sha : undefined;
+    } catch {
+      // Unborn HEAD (no commits yet) or not a git repo — callers treat this as "no source commit
+      // to stamp", not a fatal error.
+      return undefined;
+    }
+  }
+
+  public async getBranchTipSha(cwd: string, branchName: string): Promise<string | undefined> {
+    try {
+      const { stdout } = await execFileAsync(
+        "git",
+        ["rev-parse", "--verify", "--quiet", `refs/heads/${branchName}`],
+        { cwd }
+      );
+      const sha = stdout.trim();
+      return sha.length > 0 ? sha : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   public async packDirectoryToBranch(
     cwd: string,
     sourceDir: string,
-    branchName: string
+    branchName: string,
+    commitMessage: string
   ): Promise<void> {
     try {
       const files = await collectDirectoryFiles(sourceDir);
       const now = Math.floor(Date.now() / 1000);
+      const parentCommitSha = await this.getBranchTipSha(cwd, branchName);
       const fastImportData = buildFastImportData(
         branchName,
         files,
         now,
-        `chore: snapshot of ${branchName}`
+        commitMessage,
+        parentCommitSha
       );
       await runFastImport(cwd, fastImportData);
     } catch (err) {

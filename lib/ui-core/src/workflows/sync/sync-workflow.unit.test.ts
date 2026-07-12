@@ -35,6 +35,11 @@ function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvide
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
+    getHeadSha: vi.fn().mockResolvedValue(undefined),
+    getBranchTipSha: vi.fn().mockResolvedValue(undefined),
+    readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    getCommitLog: vi.fn().mockResolvedValue([]),
+    getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -57,6 +62,7 @@ function makeL2(overrides: Partial<L2NodeRow> = {}): L2NodeRow {
     is_bootstrap_confirmed: 0,
     content_hash: null,
     updated_at: "2026-01-01T00:00:00.000Z",
+    node_key: null,
     ...overrides,
   };
 }
@@ -102,9 +108,11 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getOutgoingEdges: vi.fn(),
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
+      bulkLoadGraph: vi.fn(),
     },
     l3: { getById: vi.fn(), getAllExportable: vi.fn() },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
+    meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
@@ -183,6 +191,7 @@ describe("SyncWorkflow.execute()", () => {
         getOutgoingEdges: vi.fn(),
         getAllNodes: vi.fn(),
         getAllLinks: vi.fn(),
+        bulkLoadGraph: vi.fn(),
         findNodesForChangedFiles: vi.fn().mockReturnValue([
           { l2Node: makeL2({ id: 10, name: "src/a.ts" }), l3Nodes: [makeL3({ l2_node_id: 10 })] },
         ]),
@@ -246,6 +255,7 @@ describe("SyncWorkflow.execute()", () => {
         getOutgoingEdges: vi.fn(),
         getAllNodes: vi.fn(),
         getAllLinks: vi.fn(),
+        bulkLoadGraph: vi.fn(),
         findNodesForChangedFiles: vi.fn().mockReturnValue([
           { l2Node: makeL2({ id: 10, name: "src/a.ts" }), l3Nodes: [makeL3()] },
         ]),
@@ -290,6 +300,7 @@ describe("SyncWorkflow.execute()", () => {
         getOutgoingEdges: vi.fn(),
         getAllNodes: vi.fn(),
         getAllLinks: vi.fn(),
+        bulkLoadGraph: vi.fn(),
         findNodesForChangedFiles: vi.fn().mockReturnValue([
           { l2Node: makeL2({ id: 10, name: "src/a.ts" }), l3Nodes: [makeL3({ content_hash: "hash-1" })] },
         ]),

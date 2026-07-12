@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type { IGitProvider, IKnowledgeGitService, ILogger } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
 import { GitConstants } from "./git-constants.js";
@@ -14,7 +17,14 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     private readonly logger: ILogger = createNoopLogger()
   ) {}
 
-  /** Ensures the hidden `docuvia-knowledge` branch exists, creating it as an empty, rootless commit if missing. A thrown error here is fatal to `init`. */
+  /**
+   * Ensures the hidden `docuvia-knowledge` branch exists. Its first commit is produced by the
+   * exact same mechanism as every later `snapshot` — an empty graph (nothing has been analyzed
+   * yet), stamped with the current source HEAD hash — rather than a separate, unstamped
+   * "initialize empty knowledge graph" commit disconnected from source history (STOR-001 point
+   * 5): the branch is never in a state that doesn't correspond to some source commit. A thrown
+   * error here is fatal to `init`.
+   */
   public async ensureKnowledgeBranch(
     cwd: string,
     branchName: string = GitConstants.KNOWLEDGE_ROOT
@@ -24,8 +34,13 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       return { created: false };
     }
 
-    const commitSha = await this.git.commitEmptyTree(cwd, GitConstants.KNOWLEDGE_BRANCH_COMMIT_MESSAGE);
-    await this.git.updateBranchRef(cwd, branchName, commitSha);
+    const emptyDir = await fs.mkdtemp(path.join(os.tmpdir(), "docuvia-empty-knowledge-"));
+    try {
+      await this.packSnapshotToKnowledgeBranch(cwd, emptyDir, branchName);
+    } finally {
+      await fs.rm(emptyDir, { recursive: true, force: true });
+    }
+
     this.logger.info("Created hidden knowledge branch", { branchName });
     return { created: true };
   }
@@ -66,14 +81,29 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
   /**
    * Packs a rendered snapshot directory (see `ISnapshotRenderer`) onto the hidden knowledge
-   * branch, wholesale replacing its tree — the `snapshot` command's git-write step.
+   * branch, wholesale replacing its tree (parented on the branch's current tip — see
+   * `IGitProvider.packDirectoryToBranch`) — the `snapshot` command's git-write step.
    */
   public async packSnapshotToKnowledgeBranch(
     cwd: string,
     sourceDir: string,
     branchName: string = GitConstants.KNOWLEDGE_ROOT
   ): Promise<void> {
-    await this.git.packDirectoryToBranch(cwd, sourceDir, branchName);
+    const commitMessage = await this.buildSnapshotCommitMessage(cwd);
+    await this.git.packDirectoryToBranch(cwd, sourceDir, branchName, commitMessage);
     this.logger.info("Packed snapshot onto knowledge branch", { branchName });
+  }
+
+  /**
+   * `Snapshot [<7-char>]` subject for human-facing `git log --grep` lookup, plus a full 40-char
+   * `Docuvia-Source` trailer for unambiguous machine lookup (STOR-001 point 4) — 7-char prefixes
+   * can collide in large repositories. Falls back to an unstamped message on an unborn HEAD (a
+   * freshly `git init`-ed source repo with no commits yet) rather than failing `snapshot`/`init`
+   * outright over a missing stamp.
+   */
+  private async buildSnapshotCommitMessage(cwd: string): Promise<string> {
+    const sourceSha = await this.git.getHeadSha(cwd);
+    if (!sourceSha) return "Snapshot [unknown]";
+    return `Snapshot [${sourceSha.slice(0, 7)}]\n\n${GitConstants.SOURCE_COMMIT_TRAILER_KEY}: ${sourceSha}`;
   }
 }

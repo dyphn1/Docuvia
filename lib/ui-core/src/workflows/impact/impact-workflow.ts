@@ -3,6 +3,7 @@ import { IMPACT_MESSAGES } from "./impact-messages.js";
 import { appendImpactLogLine } from "./impact-log-writer.js";
 import type { ImpactResult } from "./impact-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { ensureHydrated } from "../../utils/ensure-hydrated.js";
 
 /**
  * The `impact` workflow — 1-hop blast-radius lookup by target name (exact-then-LIKE), via the
@@ -33,6 +34,8 @@ export class ImpactWorkflow {
       target,
       escalateToLsp: options.escalateToLsp ?? false,
     });
+
+    await ensureHydrated(workspaceRoot, logger);
 
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
     let store;

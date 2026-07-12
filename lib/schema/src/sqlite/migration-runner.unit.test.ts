@@ -59,6 +59,7 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "is_bootstrap_confirmed",
     "content_hash",
     "updated_at",
+    "node_key",
   ],
   node_links: [
     "id",
@@ -90,6 +91,7 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "source",
     "content_hash",
   ],
+  docuvia_meta: ["key", "value"],
 };
 
 const EXPECTED_FTS_TABLES = ["l2_nodes_fts", "l3_nodes_fts"];
@@ -137,7 +139,11 @@ describe("applyMigrations", () => {
     const rows = db.prepare("SELECT filename FROM schema_migrations").all() as {
       filename: string;
     }[];
-    expect(rows.map((r) => r.filename)).toEqual(["0001_init.sql"]);
+    expect(rows.map((r) => r.filename)).toEqual([
+      "0001_init.sql",
+      "0002_l2_node_key.sql",
+      "0003_docuvia_meta.sql",
+    ]);
   });
 
   it("is a no-op on a second run: does not re-apply and does not error", () => {
@@ -149,7 +155,7 @@ describe("applyMigrations", () => {
     expect(() => applyMigrations(db, MIGRATIONS_DIR)).not.toThrow();
 
     const migrationRows = db.prepare("SELECT filename FROM schema_migrations").all();
-    expect(migrationRows).toHaveLength(1);
+    expect(migrationRows).toHaveLength(3);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

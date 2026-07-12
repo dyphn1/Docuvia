@@ -16,6 +16,7 @@ import type { IImpactService } from "../interfaces/impact.interfaces.js";
 import type { IChangeDetectionService } from "../interfaces/change-detection.interfaces.js";
 import type { ITopologyBuilder } from "../interfaces/topology.interfaces.js";
 import type { ISnapshotRenderer } from "../interfaces/snapshot.interfaces.js";
+import type { IHydrationService } from "../interfaces/hydration.interfaces.js";
 
 /**
  * A phantom-typed registration token — see
@@ -65,4 +66,5 @@ export const TOKENS = {
     createToken<IChangeDetectionService, LoggerParams>("IChangeDetectionService"),
   TopologyBuilder: createToken<ITopologyBuilder, LoggerParams>("ITopologyBuilder"),
   SnapshotRenderer: createToken<ISnapshotRenderer>("ISnapshotRenderer"),
+  HydrationService: createToken<IHydrationService, LoggerParams>("IHydrationService"),
 } as const;

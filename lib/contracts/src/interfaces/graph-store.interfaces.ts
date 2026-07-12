@@ -58,6 +58,8 @@ export interface L2NodeRow {
   is_bootstrap_confirmed: 0 | 1;
   content_hash: string | null;
   updated_at: string;
+  /** Deterministic `<file_path>` / `<file_path>#<symbolName>` identity (STOR-005). Null on rows inserted before this column existed. */
+  node_key: string | null;
 }
 
 export interface NodeLinkRow {
@@ -97,6 +99,16 @@ export interface L3NodeRow {
   content_hash: string | null;
 }
 
+/**
+ * Small key/value store (`docuvia_meta` table) — currently used to remember the knowledge-branch
+ * tip sha `local.db` was last hydrated from (STOR-002), so read commands can cheaply detect
+ * staleness without re-parsing JSONL on every call.
+ */
+export interface IMetaRepo {
+  get(key: string): string | undefined;
+  set(key: string, value: string): void;
+}
+
 export interface IProjectsRepo {
   getFirst(): ProjectRow | undefined;
   insert(input: { name: string; repoUrl: string }): ProjectRow;
@@ -134,6 +146,15 @@ export interface IGraphNodesRepo {
     type?: string;
     description?: string;
     pathPatterns: string[];
+    /**
+     * Deterministic export identity (STOR-005) — `<file_path>` for file nodes,
+     * `<file_path>#<symbolName>` for function/class nodes. Optional: when omitted, `GraphNodesRepo`
+     * derives it from `pathPatterns[0]`/`name` using the same convention, so callers that don't
+     * care about the exported id (most tests) don't need to compute it themselves.
+     */
+    nodeKey?: string;
+    /** Feature hash of the node's own content (STOR-005) — the file's own hash for file nodes, a hash of the symbol's exact source span for function/class nodes. */
+    contentHash?: string;
   }): number;
   insertLink(input: { sourceNodeId: number; targetNodeId: number; linkType: string }): void;
   findNodeIdByName(filePath: string, name: string): number | undefined;
@@ -162,6 +183,19 @@ export interface IGraphNodesRepo {
   getAllNodes(): L2NodeRow[];
   /** Every `node_links` row — used by `export-topology`. */
   getAllLinks(): NodeLinkRow[];
+  /**
+   * Rebuild-not-upsert bulk load (STOR-002 hydration): wipes `l2_nodes`/`node_links`/
+   * `l2_node_l1_tags` and re-inserts `nodes`/`edges` inside a single transaction with prepared
+   * statements (no ORM, no autocommit loop — the exact failure mode STOR-002 exists to prevent).
+   * `nodes[].nodeKey` is the git-exported identity (STOR-005); `edges[].source`/`target`
+   * reference it, not a rowid. An edge whose source/target key isn't among `nodes` is dropped
+   * rather than inserted with a dangling reference (referential-integrity repair — STOR-002).
+   */
+  bulkLoadGraph(input: {
+    projectId: number;
+    nodes: Array<{ nodeKey: string; name: string; filePath?: string }>;
+    edges: Array<{ source: string; target: string; type: string }>;
+  }): { nodesLoaded: number; edgesLoaded: number; edgesDropped: number };
 }
 
 export interface IL3NodesRepo {
@@ -195,6 +229,7 @@ export interface IGraphStore {
   readonly graph: IGraphNodesRepo;
   readonly l3: IL3NodesRepo;
   readonly fts: IFtsRepo;
+  readonly meta: IMetaRepo;
   withWriteLock<T>(fn: () => Promise<T> | T): Promise<T>;
   withReadLock<T>(fn: () => Promise<T> | T): Promise<T>;
   close(): Promise<void>;

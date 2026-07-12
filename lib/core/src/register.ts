@@ -2,6 +2,7 @@ import { docuviaFactory, TOKENS } from "@workspace/contracts";
 import { KnowledgeGitService } from "./git/knowledge-git.service.js";
 import { SnapshotRendererService } from "./git/snapshot-renderer.service.js";
 import { ChangeDetectionService } from "./git/change-detection.service.js";
+import { HydrationService } from "./git/hydration.service.js";
 import { FileDiscoveryService } from "./discovery/file-discovery.service.js";
 import { ConfigScannerService } from "./discovery/config-scanner.service.js";
 import { VcsScannerService } from "./discovery/vcs-scanner.service.js";
@@ -67,3 +68,7 @@ docuviaFactory.register(
 docuviaFactory.register(TOKENS.TopologyBuilder, () => new TopologyBuilderService());
 
 docuviaFactory.register(TOKENS.SnapshotRenderer, () => new SnapshotRendererService());
+
+docuviaFactory.register(TOKENS.HydrationService, (f, params) =>
+  new HydrationService(f.resolve(TOKENS.GitProvider), params?.logger)
+);

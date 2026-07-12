@@ -10,6 +10,17 @@ import {
 } from "@workspace/contracts";
 
 /**
+ * Fallback node_key (STOR-005) for callers that don't pass one explicitly: `<path>` when `name`
+ * already IS the path (a file node, matching `persist-ast-graph.ts`'s convention), else
+ * `<path>#<name>` (a symbol node). Falls back to bare `name` if `pathPatterns` is empty.
+ */
+function deriveNodeKey(pathPatterns: string[], name: string): string {
+  const path = pathPatterns[0];
+  if (!path) return name;
+  return path === name ? path : `${path}#${name}`;
+}
+
+/**
  * `graph` repo — `l2_nodes` / `node_links` persistence. Path-pattern matching convention: a
  * node's `path_patterns` column stores a single-element JSON array `["<file path>"]`.
  */
@@ -38,25 +49,35 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     return ids;
   }
 
-  /** Inserts an l2_node (file/function/class) and returns its new id. */
+  /**
+   * Inserts an l2_node (file/function/class) and returns its new id. `nodeKey` is the
+   * deterministic export identity (STOR-005); `id` remains an internal SQLite rowid used only for
+   * in-database joins (`node_links`, `l3_nodes.l2_node_id`, ...), never for the git-exported
+   * JSONL, which must key off `node_key` instead.
+   */
   insertNode(input: {
     projectId: number;
     name: string;
     type?: string;
     description?: string;
     pathPatterns: string[];
+    nodeKey?: string;
+    contentHash?: string;
   }): number {
+    const nodeKey = input.nodeKey ?? deriveNodeKey(input.pathPatterns, input.name);
     const result = this.db
       .prepare(
-        `INSERT INTO l2_nodes (project_id, name, type, description, path_patterns)
-         VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO l2_nodes (project_id, name, type, description, path_patterns, node_key, content_hash)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.projectId,
         input.name,
         input.type ?? "module",
         input.description ?? "",
-        JSON.stringify(input.pathPatterns)
+        JSON.stringify(input.pathPatterns),
+        nodeKey,
+        input.contentHash ?? null
       );
     return Number(result.lastInsertRowid);
   }
@@ -210,4 +231,94 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to get all node links", err);
     }
   }
+
+  /**
+   * Rebuild-not-upsert bulk load (STOR-002 hydration). Single `db.transaction()` wrapping
+   * prepared-statement loops — no autocommit-per-row, no ORM — per STOR-002's performance
+   * guardrails. `node_key` is the stable cross-machine identity (STOR-005); edges reference it
+   * instead of a rowid, so a fresh rowid space each hydration is fine — it's assigned here and
+   * never leaves this process.
+   */
+  bulkLoadGraph(input: {
+    projectId: number;
+    nodes: Array<{ nodeKey: string; name: string; filePath?: string }>;
+    edges: Array<{ source: string; target: string; type: string }>;
+  }): { nodesLoaded: number; edgesLoaded: number; edgesDropped: number } {
+    try {
+      const run = this.db.transaction(() => {
+        // The l2_nodes_fts AFTER-INSERT trigger fires (and tokenizes) once per row, which is the
+        // dominant cost at 100k+ nodes (STOR-002's <10s bar). Dropping the triggers for the
+        // duration of the bulk load and resyncing the FTS5 index with a single 'rebuild' command
+        // afterward does the same tokenization work in bulk instead of once per row.
+        this.db.exec(FTS_TRIGGER_DROP_SQL);
+
+        this.db.exec("DELETE FROM node_links");
+        this.db.exec("DELETE FROM l2_node_l1_tags");
+        this.db.exec("DELETE FROM l2_nodes");
+
+        const insertNode = this.db.prepare(
+          `INSERT INTO l2_nodes (project_id, name, type, description, path_patterns, node_key)
+           VALUES (?, ?, 'module', '', ?, ?)`
+        );
+        const keyToId = new Map<string, number>();
+        for (const node of input.nodes) {
+          const result = insertNode.run(
+            input.projectId,
+            node.name,
+            JSON.stringify(node.filePath ? [node.filePath] : []),
+            node.nodeKey
+          );
+          keyToId.set(node.nodeKey, Number(result.lastInsertRowid));
+        }
+
+        const insertLink = this.db.prepare(
+          "INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)"
+        );
+        let edgesLoaded = 0;
+        let edgesDropped = 0;
+        for (const edge of input.edges) {
+          const sourceId = keyToId.get(edge.source);
+          const targetId = keyToId.get(edge.target);
+          if (sourceId === undefined || targetId === undefined) {
+            edgesDropped++;
+            continue;
+          }
+          insertLink.run(sourceId, targetId, edge.type);
+          edgesLoaded++;
+        }
+
+        this.db.exec("INSERT INTO l2_nodes_fts(l2_nodes_fts) VALUES('rebuild')");
+        this.db.exec(FTS_TRIGGER_RECREATE_SQL);
+
+        return { nodesLoaded: input.nodes.length, edgesLoaded, edgesDropped };
+      });
+      return run();
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to bulk-load graph", err);
+    }
+  }
 }
+
+const FTS_TRIGGER_DROP_SQL = `
+  DROP TRIGGER IF EXISTS l2_nodes_fts_ai;
+  DROP TRIGGER IF EXISTS l2_nodes_fts_ad;
+  DROP TRIGGER IF EXISTS l2_nodes_fts_au;
+`;
+
+/** Must stay textually identical to the trigger definitions in migrations/0001_init.sql — bulkLoadGraph() drops these for the duration of the load and recreates them here afterward. */
+const FTS_TRIGGER_RECREATE_SQL = `
+  CREATE TRIGGER IF NOT EXISTS l2_nodes_fts_ai AFTER INSERT ON l2_nodes BEGIN
+    INSERT INTO l2_nodes_fts(rowid, name, description, path_patterns)
+    VALUES (new.id, new.name, new.description, new.path_patterns);
+  END;
+  CREATE TRIGGER IF NOT EXISTS l2_nodes_fts_ad AFTER DELETE ON l2_nodes BEGIN
+    INSERT INTO l2_nodes_fts(l2_nodes_fts, rowid, name, description, path_patterns)
+    VALUES ('delete', old.id, old.name, old.description, old.path_patterns);
+  END;
+  CREATE TRIGGER IF NOT EXISTS l2_nodes_fts_au AFTER UPDATE ON l2_nodes BEGIN
+    INSERT INTO l2_nodes_fts(l2_nodes_fts, rowid, name, description, path_patterns)
+    VALUES ('delete', old.id, old.name, old.description, old.path_patterns);
+    INSERT INTO l2_nodes_fts(rowid, name, description, path_patterns)
+    VALUES (new.id, new.name, new.description, new.path_patterns);
+  END;
+`;

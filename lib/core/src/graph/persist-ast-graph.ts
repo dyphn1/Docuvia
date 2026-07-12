@@ -54,6 +54,8 @@ export class GraphPersisterService implements IGraphPersister {
           type: "module",
           description: "",
           pathPatterns: [result.file],
+          nodeKey: result.file,
+          contentHash: result.hash,
         });
         fileIdMap.set(result.file, fileId);
         const symbolsForFile = new Map<string, number>();
@@ -71,6 +73,8 @@ export class GraphPersisterService implements IGraphPersister {
             type: "module",
             description: "",
             pathPatterns: [result.file],
+            nodeKey: `${result.file}#${fn.name}`,
+            contentHash: fn.contentHash,
           });
           symbolsForFile.set(fn.name, fnId);
           store.graph.insertLink({ sourceNodeId: fileId, targetNodeId: fnId, linkType: "contains" });
@@ -83,6 +87,8 @@ export class GraphPersisterService implements IGraphPersister {
             type: "module",
             description: "",
             pathPatterns: [result.file],
+            nodeKey: `${result.file}#${cls.name}`,
+            contentHash: cls.contentHash,
           });
           symbolsForFile.set(cls.name, clsId);
           store.graph.insertLink({ sourceNodeId: fileId, targetNodeId: clsId, linkType: "contains" });

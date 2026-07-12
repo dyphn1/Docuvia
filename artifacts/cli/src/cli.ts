@@ -14,6 +14,7 @@ import { impactCommand } from "./commands/impact.js";
 import { queryCommand } from "./commands/query.js";
 import { exportTopologyCommand } from "./commands/export-topology.js";
 import { snapshotCommand } from "./commands/snapshot.js";
+import { hydrateCommand } from "./commands/hydrate.js";
 import { runMcpServer } from "./mcp/server.js";
 import type { TopologyCollapseMode } from "@workspace/contracts";
 
@@ -114,10 +115,15 @@ async function handleSnapshot(ctx: CommandContext): Promise<void> {
   await snapshotCommand(ctx.workspaceRoot);
 }
 
+async function handleHydrate(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([]);
+  await hydrateCommand(ctx.workspaceRoot);
+}
+
 /**
  * `init`/`mcp`/`clean`/`status`/`sync`/`analyze`/`review`/`impact`/`query`/`export-topology`/
- * `snapshot` are wired so far. Structured so each later command is added as one more `handleX`
- * function + one more `COMMAND_HANDLERS` entry, without restructuring dispatch.
+ * `snapshot`/`hydrate` are wired so far. Structured so each later command is added as one more
+ * `handleX` function + one more `COMMAND_HANDLERS` entry, without restructuring dispatch.
  */
 const COMMAND_HANDLERS: Record<CliCommand, (ctx: CommandContext) => Promise<void>> = {
   [CLI_COMMANDS.INIT]: handleInit,
@@ -131,6 +137,7 @@ const COMMAND_HANDLERS: Record<CliCommand, (ctx: CommandContext) => Promise<void
   [CLI_COMMANDS.QUERY]: handleQuery,
   [CLI_COMMANDS.EXPORT_TOPOLOGY]: handleExportTopology,
   [CLI_COMMANDS.SNAPSHOT]: handleSnapshot,
+  [CLI_COMMANDS.HYDRATE]: handleHydrate,
 };
 
 async function resolveCommand(): Promise<{

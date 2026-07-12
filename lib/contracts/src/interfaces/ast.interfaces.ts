@@ -9,8 +9,14 @@ export interface AstImportDescriptor {
 export interface ParsedAstFileData {
   imports: AstImportDescriptor[];
   exports: Array<{ name: string; type: "function" | "class" | "variable" }>;
-  functions: Array<{ name: string; startLine: number; endLine: number }>;
-  classes: Array<{ name: string; startLine: number; endLine: number; methods: string[] }>;
+  functions: Array<{ name: string; startLine: number; endLine: number; contentHash?: string }>;
+  classes: Array<{
+    name: string;
+    startLine: number;
+    endLine: number;
+    methods: string[];
+    contentHash?: string;
+  }>;
   calls: Array<{ sourceFunction: string; targetFunction: string }>;
   implements?: Array<{ sourceClass: string; targetInterface: string }>;
   extends?: Array<{ sourceClass: string; targetClass: string }>;

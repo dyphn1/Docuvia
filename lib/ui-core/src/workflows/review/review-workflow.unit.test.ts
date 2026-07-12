@@ -9,8 +9,18 @@ import {
   type IGraphStore,
   type IGitProvider,
   type IChangeDetectionService,
+  type IHydrationService,
 } from "@workspace/contracts";
 import { ReviewWorkflow } from "./review-workflow.js";
+
+function makeMockHydrationService(overrides: Partial<IHydrationService> = {}): IHydrationService {
+  return {
+    resolveHydrationCommit: vi.fn(),
+    isStale: vi.fn().mockResolvedValue(false),
+    hydrate: vi.fn(),
+    ...overrides,
+  };
+}
 
 function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvider {
   return {
@@ -31,6 +41,11 @@ function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvide
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
+    getHeadSha: vi.fn().mockResolvedValue(undefined),
+    getBranchTipSha: vi.fn().mockResolvedValue(undefined),
+    readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    getCommitLog: vi.fn().mockResolvedValue([]),
+    getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
@@ -53,9 +68,11 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getOutgoingEdges: vi.fn(),
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
+      bulkLoadGraph: vi.fn(),
     },
     l3: { getById: vi.fn(), getAllExportable: vi.fn() },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
+    meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
@@ -94,6 +111,7 @@ describe("ReviewWorkflow.execute()", () => {
     });
     const changeDetectionService: IChangeDetectionService = { detectChanges };
     docuviaFactory.register(TOKENS.ChangeDetectionService, () => changeDetectionService);
+    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
     docuviaFactory.lock();
 
     const result = await new ReviewWorkflow("/workspace/demo", createMockLogger()).execute("main");
@@ -106,7 +124,8 @@ describe("ReviewWorkflow.execute()", () => {
       filesChanged: [{ file: "src/a.ts", status: "modified" }],
     });
     expect(result.riskLevel).toBe("LOW");
-    expect(store.close).toHaveBeenCalledTimes(1);
+    // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
+    expect(store.close).toHaveBeenCalledTimes(2);
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
@@ -133,11 +152,12 @@ describe("ReviewWorkflow.execute()", () => {
       }),
     };
     docuviaFactory.register(TOKENS.ChangeDetectionService, () => changeDetectionService);
+    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
     docuviaFactory.lock();
 
     await expect(
       new ReviewWorkflow("/workspace/demo", createMockLogger()).execute()
     ).rejects.toThrow("boom");
-    expect(store.close).toHaveBeenCalledTimes(1);
+    expect(store.close).toHaveBeenCalledTimes(2);
   });
 });

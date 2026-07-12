@@ -17,9 +17,23 @@ Past iterations failed because restoring knowledge from Git back into a database
 
 ## Decision
 The local SQLite database (`local.db` inside `.docuvia/`) acts entirely as an **Ephemeral Query Engine**.
-1. **Disposable**: The database can be deleted (`docuvia clean`) or corrupted at any time without causing permanent data loss. 
-2. **Hydration**: When the user opens the project or pulls new changes from the Git remote, the system parses the JSONL files from the `docuvia-knowledge` branch and hydrates them into the SQLite database.
+1. **Disposable**: The database can be deleted (`docuvia clean`) or corrupted at any time without causing permanent data loss — contingent on point 3 actually holding (see Known Gap below).
+2. **Hydration is a rebuild, not an upsert**: Hydration parses the JSONL files from a specific `docuvia-knowledge` commit and bulk-loads them into a freshly-cleared SQLite database. It never diffs against existing rows — the git commit is a full restatement of the graph (STOR-001 point 2), so the correct local state is always "wipe and reload," never an incremental patch.
 3. **Write-Through**: When `analyze` extracts new data, it is written to SQLite for immediate querying, and then immediately flushed back to the Git branch via the `snapshot` process.
+
+### Hydration Trigger & Staleness Check
+"When the user opens the project" is not a real CLI event, so hydration is triggered explicitly instead:
+- A `meta` table in `local.db` stores the knowledge-branch tip SHA that the current database contents were hydrated from.
+- Every read-path command (`query`, `impact`, `status`, `review`, …) compares that stored tip SHA against `docuvia-knowledge`'s current tip before running. If they differ, or `local.db` doesn't exist, hydration runs first, automatically.
+- An explicit `docuvia hydrate` command exists for cases where a user wants to force it (e.g. after manually editing the knowledge branch).
+
+### Source-Commit Lookup (Read-Time Nearest-Ancestor Resolution)
+Because a single clone's knowledge-branch journal can contain entries stamped with different source commits (STOR-001 point 2 — rollback, multi-branch development), hydrating "the current state" means resolving *which* knowledge commit corresponds to the current source `HEAD`, not just reading the branch tip blindly:
+1. One pass over the knowledge branch (`git log docuvia-knowledge --format="%H %s%n%(trailers:key=Docuvia-Source,valueonly)"`) builds a `Map<sourceSha, knowledgeSha>` from the `Docuvia-Source` trailers (STOR-001 point 4). If the same source SHA was analyzed more than once (rollback re-analysis), the newest wins.
+2. One pass over source ancestry (`git rev-list HEAD`) finds the first SHA present in that map — in the normal forward-development case this hits on the first or second entry.
+3. Hydrate from the resolved knowledge commit, not necessarily the branch's absolute tip.
+
+This map is cached in the `meta` table, keyed by the knowledge-branch tip SHA it was built from (invalidated whenever that tip moves) — it is a disposable index like the rest of `local.db`; the git log scan above is always the source of truth it's rebuilt from.
 
 ### Strict Performance Guardrails for Hydration
 To prevent the "6-minute hydration" failure from recurring, AI Agents and developers implementing the Hydration pipeline MUST adhere to the following physical constraints:
@@ -31,16 +45,22 @@ To prevent the "6-minute hydration" failure from recurring, AI Agents and develo
 
 ```mermaid
 flowchart TD
-    Git[(Git: docuvia-knowledge)] --> |1. Read JSONL Stream| Parser[Node.js Stream Parser]
+    Check{tip SHA in meta\nmatches branch tip?} --> |stale/missing| Resolve[Resolve nearest-ancestor\nknowledge commit for source HEAD]
+    Resolve --> |1. Read JSONL Stream| Parser[Node.js Stream Parser]
     Parser --> |2. Batch Arrays| Tx[BEGIN TRANSACTION]
-    Tx --> |3. Bulk Insert| SQLite[(local.db)]
-    SQLite --> |4. COMMIT| Ready[Ready for Query/Impact]
-    
+    Tx --> |3. Bulk Insert| SQLite[(local.db, cleared first)]
+    SQLite --> |4. COMMIT + store tip SHA in meta| Ready[Ready for Query/Impact]
+    Check --> |fresh| Ready
+
     style Tx fill:#f96,stroke:#333,stroke-width:2px
     style SQLite fill:#bbf,stroke:#333,stroke-width:2px
 ```
 
+If the FTS5 `AFTER INSERT` triggers on `l2_nodes`/`l3_nodes` (see `0001_init.sql`) cause the bulk insert to miss the <10s bar at 100k-node scale, drop the FTS virtual tables before the bulk load and recreate them afterward with a single bulk `INSERT INTO ... SELECT` instead of firing per-row.
+
+> **Known implementation gap**: as of this writing, no hydration code exists anywhere in the codebase — the JSONL-to-SQLite direction described in this ADR has not been built. Additionally, `analyze` does not currently write L3 nodes to the knowledge branch at all (only L2 nodes/edges are serialized by `snapshot-renderer.service.ts`); L3 content only ever reaches a separate remote HTTP backend (see PLAT-003), which means point 1's "disposable, no permanent data loss" claim does not yet hold for L3. Serializing L3 depends on GRPH-002's validity-status export filter (only `Active` nodes should be exported) — tracked as a dependency in the storage implementation plan, not solved by this ADR.
+
 ## Consequences
-- **Positive**: Provides the blazing-fast SQL JOIN performance required for real-time `query` and `impact` commands, while keeping the data safely versioned in Git. Strict performance guardrails prevent poor implementations from breaking the UX.
-- **Negative**: Adds the architectural overhead of writing a reliable and highly optimized Hydration (Git -> SQLite) engine to complement the existing Export (SQLite -> Git) engine.
+- **Positive**: Provides the blazing-fast SQL JOIN performance required for real-time `query` and `impact` commands, while keeping the data safely versioned in Git. Strict performance guardrails prevent poor implementations from breaking the UX. Rebuild-not-upsert semantics keep hydration simple (no reconciliation logic needed locally).
+- **Negative**: Adds the architectural overhead of writing a reliable and highly optimized Hydration (Git -> SQLite) engine to complement the existing Export (SQLite -> Git) engine, including the nearest-ancestor source-commit resolution step. Every read-path command now carries a staleness-check cost (cheap — one ref comparison — except on the cache-miss path).
 

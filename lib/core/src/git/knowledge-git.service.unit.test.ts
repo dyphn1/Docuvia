@@ -23,27 +23,35 @@ function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvide
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
+    getHeadSha: vi.fn().mockResolvedValue("a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"),
+    getBranchTipSha: vi.fn().mockResolvedValue(undefined),
+    readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    getCommitLog: vi.fn().mockResolvedValue([]),
+    getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
 
 describe("KnowledgeGitService.ensureKnowledgeBranch()", () => {
-  it("creates the branch (commitEmptyTree -> updateBranchRef) when it does not already exist", async () => {
+  it("creates the branch via the same packDirectoryToBranch mechanism as snapshot, stamped with the source HEAD hash, when it does not already exist", async () => {
     const git = makeMockGitProvider({ branchExists: vi.fn().mockResolvedValue(false) });
     const service = new KnowledgeGitService(git);
 
     const result = await service.ensureKnowledgeBranch("/workspace");
 
     expect(result).toEqual({ created: true });
-    expect(git.commitEmptyTree).toHaveBeenCalledWith(
-      "/workspace",
-      GitConstants.KNOWLEDGE_BRANCH_COMMIT_MESSAGE
-    );
-    expect(git.updateBranchRef).toHaveBeenCalledWith(
-      "/workspace",
-      GitConstants.KNOWLEDGE_ROOT,
-      "deadbeef"
+    expect(git.commitEmptyTree).not.toHaveBeenCalled();
+    expect(git.updateBranchRef).not.toHaveBeenCalled();
+    expect(git.packDirectoryToBranch).toHaveBeenCalledTimes(1);
+    const [cwd, sourceDir, branchName, commitMessage] = (
+      git.packDirectoryToBranch as ReturnType<typeof vi.fn>
+    ).mock.calls[0];
+    expect(cwd).toBe("/workspace");
+    expect(typeof sourceDir).toBe("string");
+    expect(branchName).toBe(GitConstants.KNOWLEDGE_ROOT);
+    expect(commitMessage).toBe(
+      "Snapshot [a1b2c3d]\n\nDocuvia-Source: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
     );
   });
 
@@ -54,18 +62,17 @@ describe("KnowledgeGitService.ensureKnowledgeBranch()", () => {
     const result = await service.ensureKnowledgeBranch("/workspace");
 
     expect(result).toEqual({ created: false });
-    expect(git.commitEmptyTree).not.toHaveBeenCalled();
-    expect(git.updateBranchRef).not.toHaveBeenCalled();
+    expect(git.packDirectoryToBranch).not.toHaveBeenCalled();
   });
 
   it("propagates a failure from the underlying git provider (fatal to init)", async () => {
     const git = makeMockGitProvider({
-      commitEmptyTree: vi.fn().mockRejectedValue(new Error("git commit-tree failed")),
+      packDirectoryToBranch: vi.fn().mockRejectedValue(new Error("git fast-import failed")),
     });
     const service = new KnowledgeGitService(git);
 
     await expect(service.ensureKnowledgeBranch("/workspace")).rejects.toThrow(
-      "git commit-tree failed"
+      "git fast-import failed"
     );
   });
 });
@@ -123,7 +130,7 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
 });
 
 describe("KnowledgeGitService.packSnapshotToKnowledgeBranch()", () => {
-  it("delegates to IGitProvider.packDirectoryToBranch with the default knowledge branch name", async () => {
+  it("delegates to IGitProvider.packDirectoryToBranch with the default knowledge branch name and a source-hash-stamped commit message", async () => {
     const git = makeMockGitProvider();
     const service = new KnowledgeGitService(git);
 
@@ -132,7 +139,8 @@ describe("KnowledgeGitService.packSnapshotToKnowledgeBranch()", () => {
     expect(git.packDirectoryToBranch).toHaveBeenCalledWith(
       "/workspace",
       "/tmp/snapshot-render",
-      GitConstants.KNOWLEDGE_ROOT
+      GitConstants.KNOWLEDGE_ROOT,
+      "Snapshot [a1b2c3d]\n\nDocuvia-Source: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
     );
   });
 
@@ -145,7 +153,22 @@ describe("KnowledgeGitService.packSnapshotToKnowledgeBranch()", () => {
     expect(git.packDirectoryToBranch).toHaveBeenCalledWith(
       "/workspace",
       "/tmp/snapshot-render",
-      "custom-branch"
+      "custom-branch",
+      "Snapshot [a1b2c3d]\n\nDocuvia-Source: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"
+    );
+  });
+
+  it("falls back to an unstamped message on an unborn HEAD (no source commits yet)", async () => {
+    const git = makeMockGitProvider({ getHeadSha: vi.fn().mockResolvedValue(undefined) });
+    const service = new KnowledgeGitService(git);
+
+    await service.packSnapshotToKnowledgeBranch("/workspace", "/tmp/snapshot-render");
+
+    expect(git.packDirectoryToBranch).toHaveBeenCalledWith(
+      "/workspace",
+      "/tmp/snapshot-render",
+      GitConstants.KNOWLEDGE_ROOT,
+      "Snapshot [unknown]"
     );
   });
 

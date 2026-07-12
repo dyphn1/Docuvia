@@ -50,6 +50,11 @@ function makeMockGitProvider(): IGitProvider {
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
+    getHeadSha: vi.fn().mockResolvedValue(undefined),
+    getBranchTipSha: vi.fn().mockResolvedValue(undefined),
+    readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    getCommitLog: vi.fn().mockResolvedValue([]),
+    getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
   };
 }
@@ -93,9 +98,11 @@ function makeMockStore(): IGraphStore {
       getOutgoingEdges: vi.fn(),
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
+      bulkLoadGraph: vi.fn(),
     },
     l3: { getById: vi.fn(), getAllExportable: vi.fn() },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
+    meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),

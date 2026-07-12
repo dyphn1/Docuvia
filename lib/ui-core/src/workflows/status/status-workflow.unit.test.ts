@@ -7,8 +7,18 @@ import {
   createMockLogger,
   type GraphStoreOpenOptions,
   type IGraphStore,
+  type IHydrationService,
 } from "@workspace/contracts";
 import { StatusWorkflow } from "./status-workflow.js";
+
+function makeMockHydrationService(overrides: Partial<IHydrationService> = {}): IHydrationService {
+  return {
+    resolveHydrationCommit: vi.fn(),
+    isStale: vi.fn().mockResolvedValue(false),
+    hydrate: vi.fn(),
+    ...overrides,
+  };
+}
 
 /** Pure orchestration unit test — see docs/gitbook/architecture/testing-and-quality-architecture.md's "Factory Lock". */
 function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
@@ -28,9 +38,11 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getOutgoingEdges: vi.fn(),
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
+      bulkLoadGraph: vi.fn(),
     },
     l3: { getById: vi.fn(), getAllExportable: vi.fn() },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
+    meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
@@ -54,6 +66,7 @@ describe("StatusWorkflow.execute()", () => {
       .fn<[GraphStoreOpenOptions], Promise<IGraphStore>>()
       .mockResolvedValue(store);
     docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
+    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
     docuviaFactory.lock();
 
     const result = await new StatusWorkflow("/workspace/demo", createMockLogger()).execute();
@@ -62,7 +75,8 @@ describe("StatusWorkflow.execute()", () => {
       expect.objectContaining({ readonly: true })
     );
     expect(result).toEqual({ projects: 1, l2Nodes: 4, l3Nodes: 9 });
-    expect(store.close).toHaveBeenCalledTimes(1);
+    // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
+    expect(store.close).toHaveBeenCalledTimes(2);
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
@@ -94,14 +108,16 @@ describe("StatusWorkflow.execute()", () => {
         getOutgoingEdges: vi.fn(),
         getAllNodes: vi.fn(),
         getAllLinks: vi.fn(),
+        bulkLoadGraph: vi.fn(),
       },
     });
     docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
     docuviaFactory.lock();
 
     await expect(
       new StatusWorkflow("/workspace/demo", createMockLogger()).execute()
     ).rejects.toThrow("boom");
-    expect(store.close).toHaveBeenCalledTimes(1);
+    expect(store.close).toHaveBeenCalledTimes(2);
   });
 });

@@ -7,9 +7,19 @@ import {
   createMockLogger,
   type GraphStoreOpenOptions,
   type IGraphStore,
+  type IHydrationService,
   type IImpactService,
 } from "@workspace/contracts";
 import { ImpactWorkflow } from "./impact-workflow.js";
+
+function makeMockHydrationService(overrides: Partial<IHydrationService> = {}): IHydrationService {
+  return {
+    resolveHydrationCommit: vi.fn(),
+    isStale: vi.fn().mockResolvedValue(false),
+    hydrate: vi.fn(),
+    ...overrides,
+  };
+}
 
 function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
@@ -28,9 +38,11 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getOutgoingEdges: vi.fn(),
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
+      bulkLoadGraph: vi.fn(),
     },
     l3: { getById: vi.fn(), getAllExportable: vi.fn() },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
+    meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
@@ -60,13 +72,15 @@ describe("ImpactWorkflow.execute()", () => {
       computeRiskLevel: vi.fn().mockReturnValue("MEDIUM"),
     };
     docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
     docuviaFactory.lock();
 
     const result = await new ImpactWorkflow("/workspace/demo", createMockLogger()).execute("target");
 
     expect(result).toEqual({ blastRadius: [{ name: "caller", type: "module" }], riskLevel: "MEDIUM" });
     expect(impactService.computeRiskLevel).toHaveBeenCalledWith(1);
-    expect(store.close).toHaveBeenCalledTimes(1);
+    // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
+    expect(store.close).toHaveBeenCalledTimes(2);
   });
 
   it("returns null when the target does not resolve", async () => {
@@ -77,12 +91,13 @@ describe("ImpactWorkflow.execute()", () => {
       computeRiskLevel: vi.fn(),
     };
     docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
     docuviaFactory.lock();
 
     const result = await new ImpactWorkflow("/workspace/demo", createMockLogger()).execute("nope");
 
     expect(result).toBeNull();
-    expect(store.close).toHaveBeenCalledTimes(1);
+    expect(store.close).toHaveBeenCalledTimes(2);
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {

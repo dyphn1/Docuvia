@@ -33,11 +33,35 @@ export interface IGitProvider {
   hasUncommittedChanges(cwd: string): Promise<boolean>;
   getChangedFilesSince(cwd: string, baseRef?: string): Promise<ChangedFileEntry[]>;
   getFilesChangedByCommit(cwd: string, sha: string): Promise<string[]>;
+  /** Full 40-char sha of the current source commit (`git rev-parse HEAD`), or `undefined` on an unborn/headless HEAD (e.g. a freshly `git init`-ed repo with no commits yet). */
+  getHeadSha(cwd: string): Promise<string | undefined>;
+  /** Full 40-char sha of `branchName`'s current tip, or `undefined` if the branch doesn't exist yet. Used to parent the next `packDirectoryToBranch` commit on it (STOR-001 point 2). */
+  getBranchTipSha(cwd: string, branchName: string): Promise<string | undefined>;
+  /** File content at `ref:filePath` (`git show <ref>:<filePath>`), or `undefined` if the ref or path doesn't exist. Used by hydration (STOR-002) to read `graph/*.jsonl` off the knowledge branch without checking it out. */
+  readFileAtRef(cwd: string, ref: string, filePath: string): Promise<string | undefined>;
   /**
-   * Packs every file under `sourceDir` onto `branchName` as a fresh root commit via
-   * `git fast-import` (`deleteall` + one `M 100644 inline <path>` per file), wholesale replacing
-   * the branch's entire tree. Always forces the ref update — `deleteall` makes every call a
-   * complete, independent snapshot, so it must land regardless of the branch's prior history.
+   * `ref`'s commit history (newest first), each with its full commit message body — raw, no
+   * Docuvia-specific trailer parsing (that's `lib/core`'s job). `[]` if `ref` doesn't exist or has
+   * no commits. `maxCount` bounds the walk (default 1000).
    */
-  packDirectoryToBranch(cwd: string, sourceDir: string, branchName: string): Promise<void>;
+  getCommitLog(
+    cwd: string,
+    ref: string,
+    maxCount?: number
+  ): Promise<Array<{ sha: string; message: string }>>;
+  /** Shas of `ref`'s ancestry (newest first, `ref` itself included). `[]` if `ref` doesn't exist or has no commits. `maxCount` bounds the walk (default 1000). */
+  getCommitAncestry(cwd: string, ref: string, maxCount?: number): Promise<string[]>;
+  /**
+   * Packs every file under `sourceDir` onto `branchName` as a full-tree-replace commit
+   * (`deleteall` + one `M 100644 inline <path>` per file) via `git fast-import`, parented on the
+   * branch's current tip (via `getBranchTipSha`) when it already has one — a root commit only the
+   * very first time the branch is created. Every import is therefore a fast-forward; no `--force`
+   * is used (STOR-001 point 2 — "continuous stacking", never an unreachable, orphaned history).
+   */
+  packDirectoryToBranch(
+    cwd: string,
+    sourceDir: string,
+    branchName: string,
+    commitMessage: string
+  ): Promise<void>;
 }

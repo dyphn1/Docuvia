@@ -29,9 +29,11 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getOutgoingEdges: vi.fn(),
       getAllNodes: vi.fn().mockReturnValue([]),
       getAllLinks: vi.fn().mockReturnValue([]),
+      bulkLoadGraph: vi.fn(),
     },
     l3: { getById: vi.fn(), getAllExportable: vi.fn() },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
+    meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
@@ -63,6 +65,7 @@ describe("SnapshotWorkflow.execute()", () => {
         getOutgoingEdges: vi.fn(),
         getAllNodes: vi.fn().mockReturnValue([{ id: 1 }]),
         getAllLinks: vi.fn().mockReturnValue([{ id: 1 }]),
+        bulkLoadGraph: vi.fn(),
       },
     });
     const openStoreSpy = vi

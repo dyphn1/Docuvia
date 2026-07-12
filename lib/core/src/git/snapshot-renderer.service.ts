@@ -55,10 +55,15 @@ export class SnapshotRendererService implements ISnapshotRenderer {
       }
     }
 
+    // node_key (STOR-005) is the deterministic, cross-machine export identity; rowid ("l2:<id>")
+    // is only a fallback for rows persisted before the node_key column existed.
+    const nodeKeyById = new Map<number, string>();
+    for (const row of l2Rows) nodeKeyById.set(row.id, row.node_key ?? "l2:" + row.id);
+
     const nodes: RenderNode[] = l2Rows.map((row) => {
       const containingFileId = containingFileIdByNodeId.get(row.id);
       return {
-        id: "l2:" + row.id,
+        id: nodeKeyById.get(row.id)!,
         kind: containingFileId !== undefined ? "symbol" : "file",
         name: row.name,
         type: row.type,
@@ -74,8 +79,8 @@ export class SnapshotRendererService implements ISnapshotRenderer {
     );
     const edgesData = linkRows.map((link) =>
       JSON.stringify({
-        source: "l2:" + link.source_node_id,
-        target: "l2:" + link.target_node_id,
+        source: nodeKeyById.get(link.source_node_id) ?? "l2:" + link.source_node_id,
+        target: nodeKeyById.get(link.target_node_id) ?? "l2:" + link.target_node_id,
         type: link.link_type,
       })
     );

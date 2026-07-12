@@ -49,9 +49,11 @@ export type {
   IGraphNodesRepo,
   IL3NodesRepo,
   IFtsRepo,
+  IMetaRepo,
   IGraphStore,
   GraphStoreOpenOptions,
 } from "./interfaces/graph-store.interfaces.js";
+export type { HydrationResult, IHydrationService } from "./interfaces/hydration.interfaces.js";
 export type { IGraphPersister } from "./interfaces/graph-persister.interfaces.js";
 export type {
   RemoteL2NodeSummary,
@@ -110,6 +112,7 @@ export {
   QUERY_LOG_FILE_NAME,
   EXPORT_TOPOLOGY_LOG_FILE_NAME,
   SNAPSHOT_LOG_FILE_NAME,
+  HYDRATE_LOG_FILE_NAME,
   LOCAL_DB_FILE_NAME,
   SYNC_STATE_FILE_NAME,
 } from "./constants/paths.js";

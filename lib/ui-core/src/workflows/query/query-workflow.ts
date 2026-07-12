@@ -3,6 +3,7 @@ import { QUERY_MESSAGES } from "./query-messages.js";
 import { appendQueryLogLine } from "./query-log-writer.js";
 import type { QueryResult } from "./query-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { ensureHydrated } from "../../utils/ensure-hydrated.js";
 
 /**
  * The `query` workflow — local-first (no-LLM) natural-language + structural query, delegated
@@ -21,6 +22,8 @@ export class QueryWorkflow {
 
     logger.info(QUERY_MESSAGES.QUERYING);
     await appendQueryLogLine(workspaceRoot, { event: "query.start", target });
+
+    await ensureHydrated(workspaceRoot, logger);
 
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
     let store;

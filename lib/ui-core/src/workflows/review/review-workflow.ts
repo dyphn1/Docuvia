@@ -3,6 +3,7 @@ import { REVIEW_MESSAGES } from "./review-messages.js";
 import { appendReviewLogLine } from "./review-log-writer.js";
 import type { ReviewResult } from "./review-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { ensureHydrated } from "../../utils/ensure-hydrated.js";
 
 /**
  * The `review` workflow (file-level change detection) — resolves the changed-file set via
@@ -26,6 +27,8 @@ export class ReviewWorkflow {
     const git = docuviaFactory.resolve(TOKENS.GitProvider);
     const rawChanges = await git.getChangedFilesSince(workspaceRoot, baseRef);
     const filesChanged = rawChanges.map((c) => ({ file: c.file, status: c.status }));
+
+    await ensureHydrated(workspaceRoot, logger);
 
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
     let store;

@@ -103,6 +103,75 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
     expect(content).toBe("export const a = 1;\n");
   });
 
+  it("getHeadSha returns the current HEAD sha, and undefined on an unborn HEAD (no commits yet)", async () => {
+    expect(await provider.getHeadSha(tmpDir)).toBeUndefined();
+
+    fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 1;\n");
+    await git(tmpDir, ["add", "tracked.ts"]);
+    await git(tmpDir, ["commit", "-m", "initial commit"]);
+    const { stdout: headSha } = await git(tmpDir, ["rev-parse", "HEAD"]);
+
+    expect(await provider.getHeadSha(tmpDir)).toBe(headSha.trim());
+  });
+
+  it("getBranchTipSha returns the branch's tip sha, and undefined when the branch doesn't exist yet", async () => {
+    expect(await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH)).toBeUndefined();
+
+    const sha = await provider.commitEmptyTree(tmpDir, "chore: initialize empty knowledge graph");
+    await provider.updateBranchRef(tmpDir, KNOWLEDGE_BRANCH, sha);
+
+    expect(await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH)).toBe(sha);
+  });
+
+  it("readFileAtRef returns file content at a ref, and undefined for a missing ref or path", async () => {
+    expect(await provider.readFileAtRef(tmpDir, "does-not-exist", "foo.ts")).toBeUndefined();
+
+    fs.mkdirSync(path.join(tmpDir, "graph"));
+    fs.writeFileSync(path.join(tmpDir, "graph", "nodes.jsonl"), '{"id":"a"}\n{"id":"b"}\n');
+    await git(tmpDir, ["add", "-A"]);
+    await git(tmpDir, ["commit", "-m", "seed"]);
+
+    expect(await provider.readFileAtRef(tmpDir, "HEAD", "graph/nodes.jsonl")).toBe(
+      '{"id":"a"}\n{"id":"b"}\n'
+    );
+    expect(await provider.readFileAtRef(tmpDir, "HEAD", "graph/missing.jsonl")).toBeUndefined();
+  });
+
+  it("getCommitLog returns sha+message pairs (newest first), preserving a multi-line trailer body, and [] with no commits yet", async () => {
+    expect(await provider.getCommitLog(tmpDir, "HEAD")).toEqual([]);
+
+    fs.writeFileSync(path.join(tmpDir, "a.ts"), "export const a = 1;\n");
+    await git(tmpDir, ["add", "a.ts"]);
+    await git(tmpDir, ["commit", "-m", "Snapshot [aaa1111]\n\nDocuvia-Source: aaa1111111111111111111111111111111111"]);
+
+    fs.writeFileSync(path.join(tmpDir, "a.ts"), "export const a = 2;\n");
+    await git(tmpDir, ["commit", "-am", "Snapshot [bbb2222]\n\nDocuvia-Source: bbb2222222222222222222222222222222222"]);
+
+    const log = await provider.getCommitLog(tmpDir, "HEAD");
+    expect(log).toHaveLength(2);
+    expect(log[0].message).toContain("Snapshot [bbb2222]");
+    expect(log[0].message).toContain("Docuvia-Source: bbb2222222222222222222222222222222222");
+    expect(log[1].message).toContain("Snapshot [aaa1111]");
+    expect(log.every((entry) => /^[0-9a-f]{40}$/.test(entry.sha))).toBe(true);
+  });
+
+  it("getCommitAncestry returns ancestry shas (newest first), and [] with no commits yet", async () => {
+    expect(await provider.getCommitAncestry(tmpDir, "HEAD")).toEqual([]);
+
+    fs.writeFileSync(path.join(tmpDir, "a.ts"), "export const a = 1;\n");
+    await git(tmpDir, ["add", "a.ts"]);
+    await git(tmpDir, ["commit", "-m", "first"]);
+    const { stdout: firstSha } = await git(tmpDir, ["rev-parse", "HEAD"]);
+
+    fs.writeFileSync(path.join(tmpDir, "a.ts"), "export const a = 2;\n");
+    await git(tmpDir, ["commit", "-am", "second"]);
+    const { stdout: secondSha } = await git(tmpDir, ["rev-parse", "HEAD"]);
+
+    const ancestry = await provider.getCommitAncestry(tmpDir, "HEAD");
+    expect(ancestry).toEqual([secondSha.trim(), firstSha.trim()]);
+    expect(await provider.getCommitAncestry(tmpDir, "HEAD", 1)).toEqual([secondSha.trim()]);
+  });
+
   it("getRecentChangedFilePaths returns changed paths from recent commit history, and [] with no commits yet", async () => {
     expect(await provider.getRecentChangedFilePaths(tmpDir, 10)).toEqual([]);
 
@@ -114,14 +183,19 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
     expect(paths).toContain("tracked.ts");
   });
 
-  it("packDirectoryToBranch commits every file under sourceDir onto branchName as a fresh root commit", async () => {
+  it("packDirectoryToBranch commits every file under sourceDir onto branchName as a root commit (first-ever call) with the given commit message", async () => {
     const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-pack-src-"));
     try {
       fs.mkdirSync(path.join(sourceDir, "graph"), { recursive: true });
       fs.writeFileSync(path.join(sourceDir, "graph", "nodes.jsonl"), '{"id":"l2:1"}\n');
       fs.writeFileSync(path.join(sourceDir, "readme.md"), "# hello\n");
 
-      await provider.packDirectoryToBranch(tmpDir, sourceDir, KNOWLEDGE_BRANCH);
+      await provider.packDirectoryToBranch(
+        tmpDir,
+        sourceDir,
+        KNOWLEDGE_BRANCH,
+        "Snapshot [0000000]"
+      );
 
       expect(await provider.branchExists(tmpDir, KNOWLEDGE_BRANCH)).toBe(true);
       const { stdout } = await git(tmpDir, [
@@ -138,6 +212,17 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
         `${KNOWLEDGE_BRANCH}:graph/nodes.jsonl`,
       ]);
       expect(content).toBe('{"id":"l2:1"}\n');
+
+      const { stdout: message } = await git(tmpDir, ["log", "-1", "--format=%B", KNOWLEDGE_BRANCH]);
+      expect(message.trim()).toBe("Snapshot [0000000]");
+
+      const { stdout: parentCount } = await git(tmpDir, [
+        "log",
+        "-1",
+        "--format=%P",
+        KNOWLEDGE_BRANCH,
+      ]);
+      expect(parentCount.trim()).toBe("");
     } finally {
       fs.rmSync(sourceDir, { recursive: true, force: true });
     }
@@ -185,16 +270,28 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
     ).rejects.toMatchObject({ code: "GIT_COMMAND_FAILED" });
   });
 
-  it("packDirectoryToBranch wholesale replaces an existing branch's tree (deleteall + force)", async () => {
+  it("packDirectoryToBranch wholesale replaces an existing branch's tree while parenting the new commit on the prior tip (continuous stacking, STOR-001 point 2)", async () => {
     const firstSourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-pack-src1-"));
     const secondSourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-pack-src2-"));
     try {
       fs.writeFileSync(path.join(firstSourceDir, "old.md"), "stale\n");
-      await provider.packDirectoryToBranch(tmpDir, firstSourceDir, KNOWLEDGE_BRANCH);
+      await provider.packDirectoryToBranch(
+        tmpDir,
+        firstSourceDir,
+        KNOWLEDGE_BRANCH,
+        "Snapshot [1111111]"
+      );
+      const firstSha = await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH);
 
       fs.writeFileSync(path.join(secondSourceDir, "new.md"), "fresh\n");
-      await provider.packDirectoryToBranch(tmpDir, secondSourceDir, KNOWLEDGE_BRANCH);
+      await provider.packDirectoryToBranch(
+        tmpDir,
+        secondSourceDir,
+        KNOWLEDGE_BRANCH,
+        "Snapshot [2222222]"
+      );
 
+      // Tree is wholesale replaced (old.md is gone) ...
       const { stdout } = await git(tmpDir, [
         "ls-tree",
         "-r",
@@ -203,6 +300,14 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
       ]);
       const files = stdout.split("\n").map((f) => f.trim()).filter(Boolean);
       expect(files).toEqual(["new.md"]);
+
+      // ... but the first commit stays reachable as the second commit's parent, instead of being
+      // orphaned by a fresh root commit — the bug STOR-001 point 2 exists to prevent.
+      const { stdout: parents } = await git(tmpDir, ["log", "-1", "--format=%P", KNOWLEDGE_BRANCH]);
+      expect(parents.trim()).toBe(firstSha);
+
+      const { stdout: log } = await git(tmpDir, ["log", "--format=%H", KNOWLEDGE_BRANCH]);
+      expect(log.trim().split("\n")).toHaveLength(2);
     } finally {
       fs.rmSync(firstSourceDir, { recursive: true, force: true });
       fs.rmSync(secondSourceDir, { recursive: true, force: true });

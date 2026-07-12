@@ -122,4 +122,10 @@ export const UI_MESSAGES = {
   SNAPSHOT_START: "Packing knowledge graph snapshot...",
   SNAPSHOT_SUCCESS: "Snapshot packed onto the knowledge branch. ",
   SNAPSHOT_FAIL: "Snapshot failed: ",
+
+  // Hydrate Command
+  HYDRATE_START: "Hydrating local database from the knowledge branch...",
+  HYDRATE_SUCCESS: "Hydrated local database. ",
+  HYDRATE_NOTHING: "Nothing to hydrate from yet — run \"docuvia init\" first.",
+  HYDRATE_FAIL: "Hydrate failed: ",
 };

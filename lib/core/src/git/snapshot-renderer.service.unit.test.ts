@@ -22,6 +22,7 @@ function makeL2(overrides: Partial<L2NodeRow> = {}): L2NodeRow {
     is_bootstrap_confirmed: 0,
     content_hash: null,
     updated_at: "2026-01-01T00:00:00.000Z",
+    node_key: null,
     ...overrides,
   };
 }
@@ -85,6 +86,33 @@ describe("SnapshotRendererService.render()", () => {
       { source: "l2:1", target: "l2:2", type: "contains" },
       { source: "l2:2", target: "l2:2", type: "calls" },
     ]);
+  });
+
+  it("uses node_key (STOR-005) as the exported id instead of the rowid when present", async () => {
+    const fileNode = makeL2({
+      id: 1,
+      name: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+      node_key: "src/a.ts",
+    });
+    const fnNode = makeL2({
+      id: 2,
+      name: "doThing",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+      node_key: "src/a.ts#doThing",
+    });
+    const containsLink = makeLink({ source_node_id: 1, target_node_id: 2, link_type: "contains" });
+
+    await renderer.render({ outDir, l2Rows: [fileNode, fnNode], linkRows: [containsLink] });
+
+    const nodes = readJsonl(path.join(outDir, "graph", "nodes.jsonl"));
+    expect(nodes).toEqual([
+      { id: "src/a.ts", type: "file", name: "src/a.ts", filePath: "src/a.ts" },
+      { id: "src/a.ts#doThing", type: "symbol", name: "doThing", filePath: "src/a.ts" },
+    ]);
+
+    const edges = readJsonl(path.join(outDir, "graph", "edges.jsonl"));
+    expect(edges).toEqual([{ source: "src/a.ts", target: "src/a.ts#doThing", type: "contains" }]);
   });
 
   it("writes one markdown file per file node at knowledge/<filePath>.md", async () => {

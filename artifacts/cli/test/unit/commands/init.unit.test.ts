@@ -26,7 +26,9 @@ vi.mock("../../../src/ui/wizard.js", () => ({
     warn: vi.fn(),
     error: vi.fn(),
     askConfirm: vi.fn(),
-    askCheckbox: vi.fn().mockResolvedValue(["Cursor", "Claude", "Markdown Agents"]),
+    askCheckbox: vi
+      .fn()
+      .mockResolvedValue(["Cursor", "Claude", "Markdown Agents"]),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -40,11 +42,24 @@ vi.mock("../../../src/ui/wizard.js", () => ({
 // Mock the platforms so they don't actually write files
 vi.mock("../../../src/platforms/index.js", () => {
   return {
-    CursorPlatform: vi.fn().mockImplementation(() => ({ name: "Cursor", configure: vi.fn() })),
-    ClaudePlatform: vi.fn().mockImplementation(() => ({ name: "Claude", configure: vi.fn() })),
-    GenericMarkdownPlatform: vi
-      .fn()
-      .mockImplementation(() => ({ name: "Markdown Agents", configure: vi.fn() })),
+    CursorPlatform: vi.fn().mockImplementation(() => ({
+      name: "Cursor",
+      slug: "cursor",
+      installHooks: vi.fn(),
+      uninstallHooks: vi.fn(),
+    })),
+    ClaudePlatform: vi.fn().mockImplementation(() => ({
+      name: "Claude",
+      slug: "claude",
+      installHooks: vi.fn(),
+      uninstallHooks: vi.fn(),
+    })),
+    GenericMarkdownPlatform: vi.fn().mockImplementation(() => ({
+      name: "Markdown Agents",
+      slug: "markdown",
+      installHooks: vi.fn(),
+      uninstallHooks: vi.fn(),
+    })),
   };
 });
 
@@ -61,7 +76,10 @@ describe("initCommand", () => {
     spinnerSucceed.mockReset();
     spinnerWarn.mockReset();
     spinnerFail.mockReset();
-    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+    });
   });
 
   afterEach(() => {
@@ -71,8 +89,14 @@ describe("initCommand", () => {
   it("should initialize docuvia non-interactively via docuviaApi.init, scoping memory to a fresh UUID and cleaning it up afterwards", async () => {
     mockInit.mockImplementation(async (scopeId) => {
       // Assert the CLI already injected workspaceRoot before calling the Orchestration layer.
-      expect(docuviaMemory.get(scopeId, "workspaceRoot")).toEqual(expect.any(String));
-      return { success: true, partialFailure: false, message: "Success" } as any;
+      expect(docuviaMemory.get(scopeId, "workspaceRoot")).toEqual(
+        expect.any(String),
+      );
+      return {
+        success: true,
+        partialFailure: false,
+        message: "Success",
+      } as any;
     });
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
@@ -83,9 +107,16 @@ describe("initCommand", () => {
   });
 
   it("should proceed if confirmed in TTY", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
     vi.mocked(ui.askConfirm).mockResolvedValue(true);
-    mockInit.mockResolvedValue({ success: true, partialFailure: false, message: "Success" } as any);
+    mockInit.mockResolvedValue({
+      success: true,
+      partialFailure: false,
+      message: "Success",
+    } as any);
 
     await initCommand();
 
@@ -102,7 +133,9 @@ describe("initCommand", () => {
 
     await initCommand();
 
-    expect(spinnerSucceed).toHaveBeenCalledWith("Project initialized successfully");
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      "Project initialized successfully",
+    );
     expect(spinnerWarn).not.toHaveBeenCalled();
   });
 
@@ -115,7 +148,8 @@ describe("initCommand", () => {
       filesRequested: 4236,
       filesParsed: 4223,
       filesFailed: 13,
-      message: "Project initialized — 13 of 4236 files failed to parse (see .docuvia/logs/init.log)",
+      message:
+        "Project initialized — 13 of 4236 files failed to parse (see .docuvia/logs/init.log)",
     } as any);
 
     await initCommand();
@@ -134,28 +168,126 @@ describe("initCommand", () => {
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 
-  describe("--global threading to platform.configure", () => {
+  describe("--global threading to platform.installHooks", () => {
     it("passes allowGlobalMcpConfig=true through to every platform's configure() when the --global flag was set", async () => {
-      mockInit.mockResolvedValue({ success: true, partialFailure: false, message: "Success" } as any);
+      mockInit.mockResolvedValue({
+        success: true,
+        partialFailure: false,
+        message: "Success",
+      } as any);
 
       await initCommand(process.cwd(), true);
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
       const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
-      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock.results[0].value;
+      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock
+        .results[0].value;
 
-      expect(claudeInstance.configure).toHaveBeenCalledWith(process.cwd(), true);
-      expect(cursorInstance.configure).toHaveBeenCalledWith(process.cwd(), true);
-      expect(markdownInstance.configure).toHaveBeenCalledWith(process.cwd(), true);
+      expect(claudeInstance.installHooks).toHaveBeenCalledWith(
+        process.cwd(),
+        true,
+      );
+      expect(cursorInstance.installHooks).toHaveBeenCalledWith(
+        process.cwd(),
+        true,
+      );
+      expect(markdownInstance.installHooks).toHaveBeenCalledWith(
+        process.cwd(),
+        true,
+      );
     });
 
-    it("passes allowGlobalMcpConfig=false through to platform.configure() by default (--global absent)", async () => {
-      mockInit.mockResolvedValue({ success: true, partialFailure: false, message: "Success" } as any);
+    it("passes allowGlobalMcpConfig=false through to platform.installHooks() by default (--global absent)", async () => {
+      mockInit.mockResolvedValue({
+        success: true,
+        partialFailure: false,
+        message: "Success",
+      } as any);
 
       await initCommand(process.cwd());
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
-      expect(claudeInstance.configure).toHaveBeenCalledWith(process.cwd(), false);
+      expect(claudeInstance.installHooks).toHaveBeenCalledWith(
+        process.cwd(),
+        false,
+      );
+    });
+  });
+
+  describe("--platform selection", () => {
+    it("installs only the platforms named in the --platform flag, skipping the interactive checkbox", async () => {
+      mockInit.mockResolvedValue({
+        success: true,
+        partialFailure: false,
+        message: "Success",
+      } as any);
+
+      await initCommand(process.cwd(), false, "claude,cursor");
+
+      expect(ui.askCheckbox).not.toHaveBeenCalled();
+
+      const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
+      const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
+      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock
+        .results[0].value;
+
+      expect(claudeInstance.installHooks).toHaveBeenCalled();
+      expect(cursorInstance.installHooks).toHaveBeenCalled();
+      expect(markdownInstance.installHooks).not.toHaveBeenCalled();
+    });
+
+    it("is case-insensitive and tolerates surrounding whitespace", async () => {
+      mockInit.mockResolvedValue({
+        success: true,
+        partialFailure: false,
+        message: "Success",
+      } as any);
+
+      await initCommand(process.cwd(), false, " Claude , CURSOR ");
+
+      const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
+      const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
+      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock
+        .results[0].value;
+
+      expect(claudeInstance.installHooks).toHaveBeenCalled();
+      expect(cursorInstance.installHooks).toHaveBeenCalled();
+      expect(markdownInstance.installHooks).not.toHaveBeenCalled();
+    });
+
+    it("reports an error and exits when an unknown platform slug is given", async () => {
+      mockInit.mockResolvedValue({
+        success: true,
+        partialFailure: false,
+        message: "Success",
+      } as any);
+
+      await expect(
+        initCommand(process.cwd(), false, "notaplatform"),
+      ).rejects.toThrow("Exit 1");
+
+      expect(ui.error).toHaveBeenCalledWith(
+        expect.stringContaining("Unknown --platform value"),
+      );
+    });
+
+    it("installs every platform when --platform is omitted (default behavior preserved)", async () => {
+      mockInit.mockResolvedValue({
+        success: true,
+        partialFailure: false,
+        message: "Success",
+      } as any);
+
+      await initCommand(process.cwd());
+
+      const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
+      const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
+      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock
+        .results[0].value;
+
+      expect(claudeInstance.installHooks).toHaveBeenCalled();
+      expect(cursorInstance.installHooks).toHaveBeenCalled();
+      expect(markdownInstance.installHooks).toHaveBeenCalled();
     });
   });
 });

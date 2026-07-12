@@ -1,0 +1,5 @@
+echo "Running typecheck..."
+pnpm run typecheck
+
+echo "Formatting staged files..."
+pnpm exec lint-staged

@@ -1,4 +1,9 @@
-import { docuviaMemory, DocuviaError, ErrorCodes, type ILogger } from "@workspace/contracts";
+import {
+  docuviaMemory,
+  DocuviaError,
+  ErrorCodes,
+  type ILogger,
+} from "@workspace/contracts";
 import { InitWorkflow } from "./workflows/init/init-workflow.js";
 import type { InitResult } from "./workflows/init/init-result.js";
 import { CleanWorkflow } from "./workflows/clean/clean-workflow.js";
@@ -16,20 +21,28 @@ import type { ImpactResult } from "./workflows/impact/impact-result.js";
 import { QueryWorkflow } from "./workflows/query/query-workflow.js";
 import type { QueryResult } from "./workflows/query/query-result.js";
 import { ExportTopologyWorkflow } from "./workflows/export-topology/export-topology-workflow.js";
-import type { TopologyExportOptions, TopologyGraph } from "@workspace/contracts";
+import type {
+  TopologyExportOptions,
+  TopologyGraph,
+} from "@workspace/contracts";
 import { SnapshotWorkflow } from "./workflows/snapshot/snapshot-workflow.js";
 import type { SnapshotResult } from "./workflows/snapshot/snapshot-result.js";
 import { HydrateWorkflow } from "./workflows/hydrate/hydrate-workflow.js";
 import type { HydrateResult } from "./workflows/hydrate/hydrate-result.js";
 import { SyncKnowledgeWorkflow } from "./workflows/sync-knowledge/sync-knowledge-workflow.js";
 import type { KnowledgeBranchSyncResult } from "@workspace/contracts";
+import {
+  DoctorWorkflow,
+  type DoctorOptions,
+} from "./workflows/doctor/doctor-workflow.js";
+import type { DoctorResult } from "./workflows/doctor/doctor-result.js";
 
 function requireMemory<T>(scopeId: string, key: string): T {
   const value = docuviaMemory.get<T>(scopeId, key);
   if (value === undefined) {
     throw new DocuviaError(
       ErrorCodes.INVALID_INPUT,
-      `docuviaApi: no "${key}" set in memory scope "${scopeId}"`
+      `docuviaApi: no "${key}" set in memory scope "${scopeId}"`,
     );
   }
   return value;
@@ -63,7 +76,10 @@ export const docuviaApi = {
     const pat = requireMemory<string>(scopeId, "pat");
     const projectId = requireMemory<string>(scopeId, "projectId");
     const commitSha = docuviaMemory.get<string>(scopeId, "commitSha");
-    return new SyncWorkflow(workspaceRoot, logger, apiUrl, pat).execute({ projectId, commitSha });
+    return new SyncWorkflow(workspaceRoot, logger, apiUrl, pat).execute({
+      projectId,
+      commitSha,
+    });
   },
 
   async analyze(scopeId: string, logger: ILogger): Promise<AnalyzeResult> {
@@ -81,7 +97,9 @@ export const docuviaApi = {
     const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
     const target = requireMemory<string>(scopeId, "target");
     const escalateToLsp = docuviaMemory.get<boolean>(scopeId, "escalateToLsp");
-    return new ImpactWorkflow(workspaceRoot, logger).execute(target, { escalateToLsp });
+    return new ImpactWorkflow(workspaceRoot, logger).execute(target, {
+      escalateToLsp,
+    });
   },
 
   async query(scopeId: string, logger: ILogger): Promise<QueryResult> {
@@ -91,10 +109,18 @@ export const docuviaApi = {
     return new QueryWorkflow(workspaceRoot, logger).execute(target, limit);
   },
 
-  async exportTopology(scopeId: string, logger: ILogger): Promise<TopologyGraph> {
+  async exportTopology(
+    scopeId: string,
+    logger: ILogger,
+  ): Promise<TopologyGraph> {
     const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
-    const collapse = docuviaMemory.get<TopologyExportOptions["collapse"]>(scopeId, "collapse");
-    return new ExportTopologyWorkflow(workspaceRoot, logger).execute({ collapse });
+    const collapse = docuviaMemory.get<TopologyExportOptions["collapse"]>(
+      scopeId,
+      "collapse",
+    );
+    return new ExportTopologyWorkflow(workspaceRoot, logger).execute({
+      collapse,
+    });
   },
 
   async snapshot(scopeId: string, logger: ILogger): Promise<SnapshotResult> {
@@ -107,8 +133,20 @@ export const docuviaApi = {
     return new HydrateWorkflow(workspaceRoot, logger).execute();
   },
 
-  async syncKnowledge(scopeId: string, logger: ILogger): Promise<KnowledgeBranchSyncResult> {
+  async syncKnowledge(
+    scopeId: string,
+    logger: ILogger,
+  ): Promise<KnowledgeBranchSyncResult> {
     const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
     return new SyncKnowledgeWorkflow(workspaceRoot, logger).execute();
+  },
+
+  async doctor(
+    scopeId: string,
+    logger: ILogger,
+    options?: DoctorOptions,
+  ): Promise<DoctorResult> {
+    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    return new DoctorWorkflow(workspaceRoot, logger).execute(options);
   },
 };

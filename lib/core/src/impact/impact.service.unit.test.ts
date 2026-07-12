@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { RiskLevels } from "@workspace/contracts";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -19,7 +20,10 @@ describe("ImpactService", () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-impact-service-"));
     const dbPath = path.join(tmpDir, ".docuvia", "local.db");
     store = await GraphStore.open({ dbPath });
-    projectId = store.projects.insert({ name: "demo", repoUrl: "file:///demo" }).id;
+    projectId = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    }).id;
   });
 
   afterEach(async () => {
@@ -29,21 +33,29 @@ describe("ImpactService", () => {
 
   describe("computeRiskLevel()", () => {
     it("returns LOW for zero impacted nodes", () => {
-      expect(impactService.computeRiskLevel(0)).toBe("LOW");
+      expect(impactService.computeRiskLevel(0)).toBe(RiskLevels.LOW);
     });
 
     it("returns MEDIUM below the HIGH threshold", () => {
-      expect(impactService.computeRiskLevel(1)).toBe("MEDIUM");
-      expect(impactService.computeRiskLevel(IMPACT_RISK_THRESHOLDS.HIGH_MIN - 1)).toBe("MEDIUM");
+      expect(impactService.computeRiskLevel(1)).toBe(RiskLevels.MEDIUM);
+      expect(
+        impactService.computeRiskLevel(IMPACT_RISK_THRESHOLDS.HIGH_MIN - 1),
+      ).toBe(RiskLevels.MEDIUM);
     });
 
     it("returns HIGH at/above the HIGH threshold, below CRITICAL", () => {
-      expect(impactService.computeRiskLevel(IMPACT_RISK_THRESHOLDS.HIGH_MIN)).toBe("HIGH");
-      expect(impactService.computeRiskLevel(IMPACT_RISK_THRESHOLDS.CRITICAL_MIN - 1)).toBe("HIGH");
+      expect(
+        impactService.computeRiskLevel(IMPACT_RISK_THRESHOLDS.HIGH_MIN),
+      ).toBe(RiskLevels.HIGH);
+      expect(
+        impactService.computeRiskLevel(IMPACT_RISK_THRESHOLDS.CRITICAL_MIN - 1),
+      ).toBe(RiskLevels.HIGH);
     });
 
     it("returns CRITICAL at/above the CRITICAL threshold", () => {
-      expect(impactService.computeRiskLevel(IMPACT_RISK_THRESHOLDS.CRITICAL_MIN)).toBe("CRITICAL");
+      expect(
+        impactService.computeRiskLevel(IMPACT_RISK_THRESHOLDS.CRITICAL_MIN),
+      ).toBe(RiskLevels.CRITICAL);
     });
   });
 
@@ -63,7 +75,11 @@ describe("ImpactService", () => {
         name: "caller",
         pathPatterns: ["src/a.ts"],
       });
-      store.graph.insertLink({ sourceNodeId: callerId, targetNodeId: targetId, linkType: "calls" });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
 
       expect(impactService.getBlastRadius(store, "sharedUtil")).toEqual([
         { name: "caller", type: "module" },
@@ -81,7 +97,11 @@ describe("ImpactService", () => {
         name: "caller",
         pathPatterns: ["src/a.ts"],
       });
-      store.graph.insertLink({ sourceNodeId: callerId, targetNodeId: targetId, linkType: "calls" });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
 
       expect(impactService.getBlastRadius(store, "sharedUtil")).toEqual([
         { name: "caller", type: "module" },

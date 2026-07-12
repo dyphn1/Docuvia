@@ -29,7 +29,8 @@ export const UI_MESSAGES = {
     "Supported platforms: Claude Code, Cursor, GitHub Copilot, Windsurf, Zed, Continue, OpenCode, Gemini CLI.",
   INIT_HOOKS_FAIL: "Failed to initialize agent integrations: ",
   INIT_HOOKS_SELECT: "Which AI Agent integrations would you like to install?",
-  INIT_HOOKS_NONE_SELECTED: "No platforms selected. Skipping agent integrations.",
+  INIT_HOOKS_NONE_SELECTED:
+    "No platforms selected. Skipping agent integrations.",
   INIT_GLOBAL_MCP_CONFIRM:
     "Register Docuvia's MCP server in the machine-global Claude Desktop config (affects every project, not just this repo)?",
   INIT_GLOBAL_MCP_SKIPPED:
@@ -42,7 +43,8 @@ export const UI_MESSAGES = {
 
   // Clean Command
   CLEAN_HEADER: "Clean Docuvia Database",
-  CLEAN_CONFIRM: "This will permanently delete the local Docuvia database. Continue?",
+  CLEAN_CONFIRM:
+    "This will permanently delete the local Docuvia database. Continue?",
   CLEAN_ABORTED: "Clean aborted.",
   CLEAN_START: "Cleaning database...",
   CLEAN_SUCCESS: "Clean complete. ",
@@ -58,7 +60,8 @@ export const UI_MESSAGES = {
   STATUS_L3_DECISIONS: "L3 Decisions: ",
 
   // Sync Command
-  SYNC_MISSING_PROJECT_ID: "Project ID is required when not running interactively.",
+  SYNC_MISSING_PROJECT_ID:
+    "Project ID is required when not running interactively.",
   SYNC_NO_PROJECT_ID_PROVIDED: "No project ID provided.",
   SYNC_PROMPT_PROJECT_ID: "Enter the project ID to sync to: ",
   SYNC_PROJECT_ID_REQUIRED: "Project ID is required.",
@@ -97,6 +100,38 @@ export const UI_MESSAGES = {
   IMPACT_NO_DEPENDENTS: "No dependents found.",
   IMPACT_RISK_PREFIX: "Risk level: ",
 
+  // Uninstall Command
+  UNINSTALL_HEADER: "Uninstall Docuvia2 Integrations",
+  UNINSTALL_START: "Uninstalling Docuvia2 integrations...",
+  UNINSTALL_SUCCESS_CLEAN: "Cleaned Docuvia: ",
+  UNINSTALL_FAIL_CLEAN: "Failed to clean Docuvia directory: ",
+  UNINSTALL_SUCCESS:
+    "Docuvia2 uninstalled successfully. Backup files (.bak) were created for modified Markdown files.",
+  UNINSTALL_FAIL: "Uninstall failed: ",
+  UNINSTALL_HOOKS_SELECT:
+    "Which AI Agent integrations would you like to uninstall?",
+  UNINSTALL_KEEP_DB: "Skipping local database cleanup (--keep-db).",
+
+  // Doctor Command
+  DOCTOR_HEADER: "Docuvia Doctor Diagnostics",
+  DOCTOR_START: "Running diagnostics...",
+  DOCTOR_DB_NOT_FOUND: "Local database not found at ",
+  DOCTOR_DB_NO_RUNNER: "DiagnosticRunnerDb not registered",
+  DOCTOR_GIT_NO_RUNNER: "DiagnosticRunnerGit not registered",
+  DOCTOR_GIT_FAIL: "Git remote reachability check failed: ",
+  DOCTOR_CLAUDE_FOUND: "Claude hooks found",
+  DOCTOR_CLAUDE_NOT_FOUND: "Claude hooks not found (run init to install)",
+  DOCTOR_CURSOR_FOUND: "Cursor hooks found",
+  DOCTOR_CURSOR_NOT_FOUND: "Cursor hooks not found (run init to install)",
+  DOCTOR_ALL_PASSED: "\nAll diagnostics passed.",
+  DOCTOR_SOME_FAILED: "\nSome diagnostics failed.",
+  DOCTOR_FAIL: "Doctor failed: ",
+
+  // Doctor Log Analysis
+  DOCTOR_LOGS_HEADER: "Checking Log Files...",
+  DOCTOR_LOGS_ERRORS_FOUND: "Errors found in logs:",
+  DOCTOR_LOGS_NO_ERRORS: "No critical errors found in recent logs.",
+
   // Query Command
   QUERY_HEADER: "Query Knowledge Graph",
   QUERY_PROMPT_TARGET: "What would you like to query? ",
@@ -126,15 +161,19 @@ export const UI_MESSAGES = {
   // Hydrate Command
   HYDRATE_START: "Hydrating local database from the knowledge branch...",
   HYDRATE_SUCCESS: "Hydrated local database. ",
-  HYDRATE_NOTHING: "Nothing to hydrate from yet — run \"docuvia init\" first.",
+  HYDRATE_NOTHING: 'Nothing to hydrate from yet — run "docuvia init" first.',
   HYDRATE_FAIL: "Hydrate failed: ",
 
   // Sync Knowledge Command
   SYNC_KNOWLEDGE_START: "Reconciling the knowledge branch with the remote...",
-  SYNC_KNOWLEDGE_NO_REMOTE: "No remote reachable — nothing to reconcile (offline or no origin configured).",
-  SYNC_KNOWLEDGE_UP_TO_DATE: "Knowledge branch is already up to date with the remote.",
-  SYNC_KNOWLEDGE_FAST_FORWARDED: "Fast-forwarded the local knowledge branch to the remote.",
+  SYNC_KNOWLEDGE_NO_REMOTE:
+    "No remote reachable — nothing to reconcile (offline or no origin configured).",
+  SYNC_KNOWLEDGE_UP_TO_DATE:
+    "Knowledge branch is already up to date with the remote.",
+  SYNC_KNOWLEDGE_FAST_FORWARDED:
+    "Fast-forwarded the local knowledge branch to the remote.",
   SYNC_KNOWLEDGE_PUSHED: "Pushed the local knowledge branch to the remote.",
-  SYNC_KNOWLEDGE_MERGED: "Merged the diverged knowledge branch and pushed the result.",
+  SYNC_KNOWLEDGE_MERGED:
+    "Merged the diverged knowledge branch and pushed the result.",
   SYNC_KNOWLEDGE_FAIL: "Knowledge branch sync failed: ",
 };

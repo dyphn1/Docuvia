@@ -9,3 +9,8 @@ import { GraphStore } from "./sqlite/graph-store.js";
  * `dbPath`, matching "ui-core explicitly calls .initialize()" for every transient resource.
  */
 docuviaFactory.register(TOKENS.GraphStoreOpener, () => GraphStore.open);
+import { SqliteDiagnosticRunner } from "./sqlite/diagnostic-runner.js";
+docuviaFactory.register(
+  TOKENS.DiagnosticRunnerDb,
+  () => new SqliteDiagnosticRunner(),
+);

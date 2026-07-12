@@ -7,12 +7,13 @@ import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
-import { CursorPlatform, ClaudePlatform, GenericMarkdownPlatform } from "../platforms/index.js";
+import { selectPlatforms } from "../utils/platform-selection.js";
 
 /** Boundary validation (design-spirit.md #4) — the first thing that touches CLI-supplied input. */
 const InitInputSchema = z.object({
   cwd: z.string().min(1, "workspace root must not be empty"),
   allowGlobalMcpConfig: z.boolean(),
+  platformFilter: z.string().optional(),
 });
 
 /**
@@ -43,7 +44,9 @@ async function runDatabaseInit(cwd: string): Promise<void> {
     }
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.INIT_FAILED + errorMessage);
     throw error;
   } finally {
@@ -53,29 +56,16 @@ async function runDatabaseInit(cwd: string): Promise<void> {
 
 async function configureAgentIntegrations(
   cwd: string,
-  allowGlobalMcpConfig: boolean
+  allowGlobalMcpConfig: boolean,
+  platformFilter: string | undefined,
 ): Promise<void> {
   ui.info(UI_MESSAGES.INIT_AGENT_HOOKS);
 
   try {
-    const availablePlatforms = [
-      new CursorPlatform(),
-      new ClaudePlatform(),
-      new GenericMarkdownPlatform(),
-    ];
-
-    let selectedPlatforms = availablePlatforms;
-
-    if (process.stdin.isTTY) {
-      const choices = availablePlatforms.map((p) => ({
-        name: p.name,
-        value: p.name,
-        checked: true,
-      }));
-
-      const selectedNames = await ui.askCheckbox(UI_MESSAGES.INIT_HOOKS_SELECT, choices);
-      selectedPlatforms = availablePlatforms.filter((p) => selectedNames.includes(p.name));
-    }
+    const selectedPlatforms = await selectPlatforms(
+      UI_MESSAGES.INIT_HOOKS_SELECT,
+      platformFilter,
+    );
 
     if (selectedPlatforms.length === 0) {
       ui.info(UI_MESSAGES.INIT_HOOKS_NONE_SELECTED);
@@ -83,7 +73,7 @@ async function configureAgentIntegrations(
     }
 
     for (const platform of selectedPlatforms) {
-      await platform.configure(cwd, allowGlobalMcpConfig);
+      await platform.installHooks(cwd, allowGlobalMcpConfig);
     }
 
     ui.success(UI_MESSAGES.INIT_HOOKS_SUCCESS);
@@ -96,9 +86,14 @@ async function configureAgentIntegrations(
 
 export async function initCommand(
   cwd: string = process.cwd(),
-  allowGlobalMcpConfig: boolean = false
+  allowGlobalMcpConfig: boolean = false,
+  platformFilter?: string,
 ) {
-  const input = InitInputSchema.parse({ cwd, allowGlobalMcpConfig });
+  const input = InitInputSchema.parse({
+    cwd,
+    allowGlobalMcpConfig,
+    platformFilter,
+  });
 
   ui.header(UI_MESSAGES.INIT_HEADER);
 
@@ -119,5 +114,9 @@ export async function initCommand(
     process.exit(1);
   }
 
-  await configureAgentIntegrations(input.cwd, input.allowGlobalMcpConfig);
+  await configureAgentIntegrations(
+    input.cwd,
+    input.allowGlobalMcpConfig,
+    input.platformFilter,
+  );
 }

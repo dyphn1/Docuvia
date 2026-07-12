@@ -16,7 +16,10 @@ export type { Provider } from "./factory/docuvia-factory.js";
 export { TOKENS, createToken } from "./factory/tokens.js";
 export type { Token } from "./factory/tokens.js";
 
-export type { ChangedFileEntry, IGitProvider } from "./interfaces/git.interfaces.js";
+export type {
+  ChangedFileEntry,
+  IGitProvider,
+} from "./interfaces/git.interfaces.js";
 export type {
   IKnowledgeGitService,
   KnowledgeBranchSyncResult,
@@ -56,7 +59,10 @@ export type {
   IGraphStore,
   GraphStoreOpenOptions,
 } from "./interfaces/graph-store.interfaces.js";
-export type { HydrationResult, IHydrationService } from "./interfaces/hydration.interfaces.js";
+export type {
+  HydrationResult,
+  IHydrationService,
+} from "./interfaces/hydration.interfaces.js";
 export type { IGraphPersister } from "./interfaces/graph-persister.interfaces.js";
 export type {
   RemoteL2NodeSummary,
@@ -66,7 +72,12 @@ export type {
   RemoteSyncClientConfig,
   IRemoteSyncClient,
 } from "./interfaces/remote-sync.interfaces.js";
-export type { RiskLevel, BlastRadiusEntry, IImpactService } from "./interfaces/impact.interfaces.js";
+export { RiskLevels } from "./interfaces/impact.interfaces.js";
+export type {
+  RiskLevel,
+  BlastRadiusEntry,
+  IImpactService,
+} from "./interfaces/impact.interfaces.js";
 export type {
   ChangeDetectionResult,
   IChangeDetectionService,
@@ -122,3 +133,10 @@ export {
 } from "./constants/paths.js";
 
 export { UTF8_ENCODING } from "./constants/encoding.js";
+export { DiagnosticStatus } from "./interfaces/diagnostic.interfaces.js";
+export type {
+  DiagnosticResult,
+  IDiagnosticRunner,
+  DiagnosticStatusType,
+} from "./interfaces/diagnostic.interfaces.js";
+export type { IIntegrationManager } from "./interfaces/integration.interfaces.js";

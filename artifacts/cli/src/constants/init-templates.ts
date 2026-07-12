@@ -21,6 +21,11 @@ export const PLATFORM_NAME_CURSOR = "Cursor";
 export const PLATFORM_NAME_CLAUDE = "Claude";
 export const PLATFORM_NAME_MARKDOWN_AGENTS = "Markdown Agents";
 
+// Stable, CLI-facing identifiers for --platform= — PLATFORM_NAME_* above is the display name only.
+export const PLATFORM_SLUG_CURSOR = "cursor";
+export const PLATFORM_SLUG_CLAUDE = "claude";
+export const PLATFORM_SLUG_MARKDOWN_AGENTS = "markdown";
+
 export const NPX_COMMAND = "npx";
 export const NPX_YES_FLAG = "-y";
 export const NPX_NO_INSTALL_FLAG = "--no-install";
@@ -80,7 +85,7 @@ export const HOOKS_JSON = JSON.stringify(
     ],
   },
   null,
-  2
+  2,
 );
 
 export const AGENT_INSTRUCTIONS = `

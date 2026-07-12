@@ -7,7 +7,14 @@ import type { IGraphStore } from "./graph-store.interfaces.js";
  * Shared by the standalone `docuvia impact <target>` command and `review`'s per-file
  * aggregation, so the two never drift apart on what counts as "risky".
  */
-export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+export const RiskLevels = {
+  LOW: "LOW",
+  MEDIUM: "MEDIUM",
+  HIGH: "HIGH",
+  CRITICAL: "CRITICAL",
+} as const;
+
+export type RiskLevel = (typeof RiskLevels)[keyof typeof RiskLevels];
 
 export interface BlastRadiusEntry {
   name: string;
@@ -21,5 +28,8 @@ export interface IImpactService {
    * 1-hop blast radius (direct callers/dependents) for `target`, resolved exact-then-LIKE.
    * Undefined when `target` doesn't resolve to any node.
    */
-  getBlastRadius(store: IGraphStore, target: string): BlastRadiusEntry[] | undefined;
+  getBlastRadius(
+    store: IGraphStore,
+    target: string,
+  ): BlastRadiusEntry[] | undefined;
 }

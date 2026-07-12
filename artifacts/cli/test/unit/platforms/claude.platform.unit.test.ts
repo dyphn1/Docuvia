@@ -30,8 +30,12 @@ describe("ClaudePlatform.configure — global MCP config gating", () => {
   let originalIsTTY: boolean | undefined;
 
   beforeEach(async () => {
-    repoDir = await fs.mkdtemp(path.join(os.tmpdir(), "docuvia-claude-platform-repo-"));
-    globalConfigDir = await fs.mkdtemp(path.join(os.tmpdir(), "docuvia-claude-platform-global-"));
+    repoDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "docuvia-claude-platform-repo-"),
+    );
+    globalConfigDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "docuvia-claude-platform-global-"),
+    );
     originalAppData = process.env.APPDATA;
     process.env.APPDATA = globalConfigDir;
     originalIsTTY = process.stdin.isTTY;
@@ -65,54 +69,75 @@ describe("ClaudePlatform.configure — global MCP config gating", () => {
   }
 
   it("writes the global config when allowGlobalMcpConfig=true (--global passed)", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+    });
 
     const platform = new ClaudePlatform();
-    await platform.configure(repoDir, true);
+    await platform.installHooks(repoDir, true);
 
     expect(await globalConfigExists()).toBe(true);
     // Repo-scoped hooks are always written regardless of the global gate.
     expect(
-      await fs.access(path.join(repoDir, ".claude", "hooks", "docuvia-hook.js")).then(
-        () => true,
-        () => false
-      )
+      await fs
+        .access(path.join(repoDir, ".claude", "hooks", "docuvia-hook.js"))
+        .then(
+          () => true,
+          () => false,
+        ),
     ).toBe(true);
   });
 
   it("skips the global write in non-TTY mode without --global, but still configures local hooks", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+    });
 
     const platform = new ClaudePlatform();
-    await platform.configure(repoDir, false);
+    await platform.installHooks(repoDir, false);
 
     expect(await globalConfigExists()).toBe(false);
-    expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("Skipped global"));
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("Skipped global"),
+    );
     expect(
-      await fs.access(path.join(repoDir, ".claude", "hooks", "docuvia-hook.js")).then(
-        () => true,
-        () => false
-      )
+      await fs
+        .access(path.join(repoDir, ".claude", "hooks", "docuvia-hook.js"))
+        .then(
+          () => true,
+          () => false,
+        ),
     ).toBe(true);
   });
 
   it("prompts for confirmation in TTY mode without --global, and skips the global write when declined", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
     vi.mocked(ui.askConfirm).mockResolvedValue(false);
 
     const platform = new ClaudePlatform();
-    await platform.configure(repoDir, false);
+    await platform.installHooks(repoDir, false);
 
-    expect(ui.askConfirm).toHaveBeenCalledWith(expect.stringContaining("machine-global"), false);
+    expect(ui.askConfirm).toHaveBeenCalledWith(
+      expect.stringContaining("machine-global"),
+      false,
+    );
     expect(await globalConfigExists()).toBe(false);
   });
 
   it("writes the global config in TTY mode without --global when the confirmation is accepted", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
     vi.mocked(ui.askConfirm).mockResolvedValue(true);
 
     const platform = new ClaudePlatform();
-    await platform.configure(repoDir, false);
+    await platform.installHooks(repoDir, false);
 
     expect(await globalConfigExists()).toBe(true);
   });

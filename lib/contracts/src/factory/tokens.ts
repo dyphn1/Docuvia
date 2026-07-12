@@ -8,7 +8,10 @@ import type {
 } from "../interfaces/discovery.interfaces.js";
 import type { IAstProcessor } from "../interfaces/ast.interfaces.js";
 import type { IGraphPersister } from "../interfaces/graph-persister.interfaces.js";
-import type { GraphStoreOpenOptions, IGraphStore } from "../interfaces/graph-store.interfaces.js";
+import type {
+  GraphStoreOpenOptions,
+  IGraphStore,
+} from "../interfaces/graph-store.interfaces.js";
 import type { ITempFileManager } from "../interfaces/temp-file-manager.interfaces.js";
 import type { IRemoteSyncClient } from "../interfaces/remote-sync.interfaces.js";
 import type { IQueryService } from "../interfaces/query.interfaces.js";
@@ -17,6 +20,7 @@ import type { IChangeDetectionService } from "../interfaces/change-detection.int
 import type { ITopologyBuilder } from "../interfaces/topology.interfaces.js";
 import type { ISnapshotRenderer } from "../interfaces/snapshot.interfaces.js";
 import type { IHydrationService } from "../interfaces/hydration.interfaces.js";
+import type { IDiagnosticRunner } from "../interfaces/diagnostic.interfaces.js";
 
 /**
  * A phantom-typed registration token — see
@@ -26,7 +30,9 @@ import type { IHydrationService } from "../interfaces/hydration.interfaces.js";
  * type directly from the token argument, with zero manual generic annotations at any call site
  * and zero possibility of requesting one interface through a differently-typed token.
  */
-export type Token<T, P = void> = symbol & { readonly __docuviaToken?: { result: T; params: P } };
+export type Token<T, P = void> = symbol & {
+  readonly __docuviaToken?: { result: T; params: P };
+};
 
 /** Creates a token carrying its `T`/`P` as a compile-time-only phantom type. `description` is
  *  only for debugging (shows up in `Symbol#description` / error messages) — it carries no
@@ -45,26 +51,40 @@ type LoggerParams = { logger?: ILogger };
  */
 export const TOKENS = {
   GitProvider: createToken<IGitProvider>("IGitProvider"),
-  KnowledgeGitService: createToken<IKnowledgeGitService, LoggerParams>("IKnowledgeGitService"),
+  KnowledgeGitService: createToken<IKnowledgeGitService, LoggerParams>(
+    "IKnowledgeGitService",
+  ),
   FileDiscovery: createToken<IFileDiscovery, LoggerParams>("IFileDiscovery"),
   ConfigScanner: createToken<IConfigScanner, LoggerParams>("IConfigScanner"),
   VcsScanner: createToken<IVcsScanner, LoggerParams>("IVcsScanner"),
   AstProcessor: createToken<IAstProcessor, LoggerParams>("IAstProcessor"),
   GraphPersister: createToken<IGraphPersister>("IGraphPersister"),
   TempFileManager:
-    createToken<(workspaceRoot: string, logger?: ILogger) => ITempFileManager>("TempFileManager"),
+    createToken<(workspaceRoot: string, logger?: ILogger) => ITempFileManager>(
+      "TempFileManager",
+    ),
   GraphStoreOpener:
-    createToken<(opts: GraphStoreOpenOptions) => Promise<IGraphStore>>("GraphStoreOpener"),
+    createToken<(opts: GraphStoreOpenOptions) => Promise<IGraphStore>>(
+      "GraphStoreOpener",
+    ),
   /** A builder function, not a shared instance — mirrors `TempFileManager`'s token shape since
    *  construction needs per-run config (`apiUrl`/`pat`) sourced from `docuviaMemory`, not
    *  swappable tech. */
-  RemoteSyncClient:
-    createToken<() => IRemoteSyncClient>("RemoteSyncClient"),
+  RemoteSyncClient: createToken<() => IRemoteSyncClient>("RemoteSyncClient"),
   QueryService: createToken<IQueryService, LoggerParams>("IQueryService"),
   ImpactService: createToken<IImpactService, LoggerParams>("IImpactService"),
-  ChangeDetectionService:
-    createToken<IChangeDetectionService, LoggerParams>("IChangeDetectionService"),
-  TopologyBuilder: createToken<ITopologyBuilder, LoggerParams>("ITopologyBuilder"),
+  ChangeDetectionService: createToken<IChangeDetectionService, LoggerParams>(
+    "IChangeDetectionService",
+  ),
+  TopologyBuilder: createToken<ITopologyBuilder, LoggerParams>(
+    "ITopologyBuilder",
+  ),
   SnapshotRenderer: createToken<ISnapshotRenderer>("ISnapshotRenderer"),
-  HydrationService: createToken<IHydrationService, LoggerParams>("IHydrationService"),
+  HydrationService: createToken<IHydrationService, LoggerParams>(
+    "IHydrationService",
+  ),
+  DiagnosticRunnerDb: createToken<IDiagnosticRunner>("DiagnosticRunnerDb"),
+  DiagnosticRunnerGit: createToken<IDiagnosticRunner, LoggerParams>(
+    "DiagnosticRunnerGit",
+  ),
 } as const;

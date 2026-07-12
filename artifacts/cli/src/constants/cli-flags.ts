@@ -8,4 +8,10 @@ export const CLI_FLAGS = {
   OUT: "--out=",
   JSON_ONLY: "--json-only",
   COLLAPSE: "--collapse=",
+  PLATFORM: "--platform=",
+  KEEP_DB: "--keep-db",
+  SKIP_DB: "--skip-db",
+  SKIP_GIT: "--skip-git",
+  SKIP_HOOKS: "--skip-hooks",
+  SKIP_LOGS: "--skip-logs",
 } as const;

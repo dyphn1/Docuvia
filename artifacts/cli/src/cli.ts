@@ -16,6 +16,8 @@ import { exportTopologyCommand } from "./commands/export-topology.js";
 import { snapshotCommand } from "./commands/snapshot.js";
 import { hydrateCommand } from "./commands/hydrate.js";
 import { syncKnowledgeCommand } from "./commands/sync-knowledge.js";
+import { uninstallCommand } from "./commands/uninstall.js";
+import { doctorCommand } from "./commands/doctor.js";
 import { runMcpServer } from "./mcp/server.js";
 import type { TopologyCollapseMode } from "@workspace/contracts";
 
@@ -43,9 +45,10 @@ interface CommandContext {
 }
 
 async function handleInit(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([CLI_FLAGS.GLOBAL]);
+  ctx.parser.checkUnknownFlags([CLI_FLAGS.GLOBAL, CLI_FLAGS.PLATFORM]);
   const allowGlobalMcpConfig = ctx.parser.hasFlag(CLI_FLAGS.GLOBAL);
-  await initCommand(ctx.workspaceRoot, allowGlobalMcpConfig);
+  const platform = ctx.parser.getFlagValue(CLI_FLAGS.PLATFORM);
+  await initCommand(ctx.workspaceRoot, allowGlobalMcpConfig, platform);
 }
 
 async function handleMcp(ctx: CommandContext): Promise<void> {
@@ -97,17 +100,23 @@ async function handleImpact(ctx: CommandContext): Promise<void> {
 async function handleQuery(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags([CLI_FLAGS.FORMAT, CLI_FLAGS.LIMIT]);
   const target = ctx.parser.getPositional(0);
-  const format = ctx.parser.getFlagValue(CLI_FLAGS.FORMAT) as "human" | "prompt" | undefined;
+  const format = ctx.parser.getFlagValue(CLI_FLAGS.FORMAT) as
+    "human" | "prompt" | undefined;
   const limitRaw = ctx.parser.getFlagValue(CLI_FLAGS.LIMIT);
   const limit = limitRaw ? Number(limitRaw) : undefined;
   await queryCommand(target, { format, limit }, ctx.workspaceRoot);
 }
 
 async function handleExportTopology(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([CLI_FLAGS.OUT, CLI_FLAGS.JSON_ONLY, CLI_FLAGS.COLLAPSE]);
+  ctx.parser.checkUnknownFlags([
+    CLI_FLAGS.OUT,
+    CLI_FLAGS.JSON_ONLY,
+    CLI_FLAGS.COLLAPSE,
+  ]);
   const out = ctx.parser.getFlagValue(CLI_FLAGS.OUT);
   const jsonOnly = ctx.parser.hasFlag(CLI_FLAGS.JSON_ONLY);
-  const collapse = ctx.parser.getFlagValue(CLI_FLAGS.COLLAPSE) as TopologyCollapseMode | undefined;
+  const collapse = ctx.parser.getFlagValue(CLI_FLAGS.COLLAPSE) as
+    TopologyCollapseMode | undefined;
   await exportTopologyCommand({ out, jsonOnly, collapse }, ctx.workspaceRoot);
 }
 
@@ -121,6 +130,42 @@ async function handleHydrate(ctx: CommandContext): Promise<void> {
   await hydrateCommand(ctx.workspaceRoot);
 }
 
+async function handleUninstall(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([
+    CLI_FLAGS.GLOBAL,
+    CLI_FLAGS.PLATFORM,
+    CLI_FLAGS.KEEP_DB,
+  ]);
+  const allowGlobalMcpConfig = ctx.parser.hasFlag(CLI_FLAGS.GLOBAL);
+  const platform = ctx.parser.getFlagValue(CLI_FLAGS.PLATFORM);
+  const keepDb = ctx.parser.hasFlag(CLI_FLAGS.KEEP_DB);
+  await uninstallCommand(
+    ctx.workspaceRoot,
+    allowGlobalMcpConfig,
+    platform,
+    keepDb,
+  );
+}
+
+async function handleDoctor(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags([
+    CLI_FLAGS.SKIP_DB,
+    CLI_FLAGS.SKIP_GIT,
+    CLI_FLAGS.SKIP_HOOKS,
+    CLI_FLAGS.SKIP_LOGS,
+  ]);
+  const skipDb = ctx.parser.hasFlag(CLI_FLAGS.SKIP_DB);
+  const skipGit = ctx.parser.hasFlag(CLI_FLAGS.SKIP_GIT);
+  const skipHooks = ctx.parser.hasFlag(CLI_FLAGS.SKIP_HOOKS);
+  const skipLogs = ctx.parser.hasFlag(CLI_FLAGS.SKIP_LOGS);
+  await doctorCommand(ctx.workspaceRoot, {
+    skipDb,
+    skipGit,
+    skipHooks,
+    skipLogs,
+  });
+}
+
 async function handleSyncKnowledge(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags([]);
   await syncKnowledgeCommand(ctx.workspaceRoot);
@@ -132,7 +177,10 @@ async function handleSyncKnowledge(ctx: CommandContext): Promise<void> {
  * added as one more `handleX` function + one more `COMMAND_HANDLERS` entry, without restructuring
  * dispatch.
  */
-const COMMAND_HANDLERS: Record<CliCommand, (ctx: CommandContext) => Promise<void>> = {
+const COMMAND_HANDLERS: Record<
+  CliCommand,
+  (ctx: CommandContext) => Promise<void>
+> = {
   [CLI_COMMANDS.INIT]: handleInit,
   [CLI_COMMANDS.MCP]: handleMcp,
   [CLI_COMMANDS.CLEAN]: handleClean,
@@ -146,6 +194,8 @@ const COMMAND_HANDLERS: Record<CliCommand, (ctx: CommandContext) => Promise<void
   [CLI_COMMANDS.SNAPSHOT]: handleSnapshot,
   [CLI_COMMANDS.HYDRATE]: handleHydrate,
   [CLI_COMMANDS.SYNC_KNOWLEDGE]: handleSyncKnowledge,
+  [CLI_COMMANDS.UNINSTALL]: handleUninstall,
+  [CLI_COMMANDS.DOCTOR]: handleDoctor,
 };
 
 async function resolveCommand(): Promise<{
@@ -172,7 +222,10 @@ async function resolveCommand(): Promise<{
       description: CLI_COMMAND_DESCRIPTIONS[cmd],
     }));
 
-  const selected = (await ui.askSelect(UI_MESSAGES.CLI_PROMPT_ACTION, choices)) as CliCommand;
+  const selected = (await ui.askSelect(
+    UI_MESSAGES.CLI_PROMPT_ACTION,
+    choices,
+  )) as CliCommand;
   return { command: selected, isInteractive: true };
 }
 
@@ -201,7 +254,10 @@ async function main() {
 
 main().catch((err) => {
   console.error(
-    pc.red(UI_MESSAGES.CLI_FATAL_ERROR + (err instanceof Error ? err.message : String(err)))
+    pc.red(
+      UI_MESSAGES.CLI_FATAL_ERROR +
+        (err instanceof Error ? err.message : String(err)),
+    ),
   );
   process.exit(1);
 });

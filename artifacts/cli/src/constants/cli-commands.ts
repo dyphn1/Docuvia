@@ -18,6 +18,8 @@ export const CLI_COMMANDS = {
   SNAPSHOT: "snapshot",
   HYDRATE: "hydrate",
   SYNC_KNOWLEDGE: "sync-knowledge",
+  UNINSTALL: "uninstall",
+  DOCTOR: "doctor",
 } as const;
 
 export type CliCommand = (typeof CLI_COMMANDS)[keyof typeof CLI_COMMANDS];
@@ -30,19 +32,27 @@ export const CLI_COMMAND_DESCRIPTIONS: Record<CliCommand, string> = {
   [CLI_COMMANDS.SYNC]: "Push locally-generated decisions to the remote backend",
   [CLI_COMMANDS.ANALYZE]: "Detect project type/tags from config files",
   [CLI_COMMANDS.REVIEW]: "Detect changed-file blast radius and risk level",
-  [CLI_COMMANDS.IMPACT]: "Show the blast radius/risk level for a symbol or module",
-  [CLI_COMMANDS.QUERY]: "Query the local knowledge graph (keyword + structural search)",
-  [CLI_COMMANDS.EXPORT_TOPOLOGY]: "Export the knowledge graph as topology.json/topology.html",
-  [CLI_COMMANDS.SNAPSHOT]: "Pack the local knowledge graph onto the hidden knowledge branch",
-  [CLI_COMMANDS.HYDRATE]: "Rebuild the local database from the hidden knowledge branch",
-  [CLI_COMMANDS.SYNC_KNOWLEDGE]: "Reconcile the hidden knowledge branch with the remote (fetch/merge/push)",
+  [CLI_COMMANDS.IMPACT]:
+    "Show the blast radius/risk level for a symbol or module",
+  [CLI_COMMANDS.QUERY]:
+    "Query the local knowledge graph (keyword + structural search)",
+  [CLI_COMMANDS.EXPORT_TOPOLOGY]:
+    "Export the knowledge graph as topology.json/topology.html",
+  [CLI_COMMANDS.SNAPSHOT]:
+    "Pack the local knowledge graph onto the hidden knowledge branch",
+  [CLI_COMMANDS.HYDRATE]:
+    "Rebuild the local database from the hidden knowledge branch",
+  [CLI_COMMANDS.SYNC_KNOWLEDGE]:
+    "Reconcile the hidden knowledge branch with the remote (fetch/merge/push)",
+  [CLI_COMMANDS.UNINSTALL]: "Uninstall Docuvia2 integrations and local DB",
+  [CLI_COMMANDS.DOCTOR]: "Run diagnostic checks on Docuvia2 setup",
 };
 
 export function getUsageText(): string {
   return [
     "Usage:",
     ...Object.values(CLI_COMMANDS).map(
-      (cmd) => `  docuvia ${cmd.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[cmd]}`
+      (cmd) => `  docuvia ${cmd.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[cmd]}`,
     ),
   ].join("\n");
 }

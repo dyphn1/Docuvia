@@ -1,9 +1,15 @@
-export interface PlatformConfigurator {
-  readonly name: string;
-  configure(cwd: string, allowGlobalMcpConfig?: boolean): Promise<void>;
-}
+import type { IIntegrationManager } from "@workspace/contracts";
 
-export abstract class BasePlatform implements PlatformConfigurator {
+export abstract class BasePlatform implements IIntegrationManager {
   abstract readonly name: string;
-  abstract configure(cwd: string, allowGlobalMcpConfig?: boolean): Promise<void>;
+  /** Stable CLI-facing identifier used to select this platform via --platform=. */
+  abstract readonly slug: string;
+  abstract installHooks(
+    cwd: string,
+    allowGlobalMcpConfig?: boolean,
+  ): Promise<void>;
+  abstract uninstallHooks(
+    cwd: string,
+    allowGlobalMcpConfig?: boolean,
+  ): Promise<void>;
 }

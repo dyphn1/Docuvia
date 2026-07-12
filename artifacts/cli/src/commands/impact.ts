@@ -1,13 +1,22 @@
 import process from "process";
 import crypto from "node:crypto";
-import { docuviaMemory, DocuviaError, type BlastRadiusEntry, type RiskLevel } from "@workspace/contracts";
+import {
+  docuviaMemory,
+  DocuviaError,
+  RiskLevels,
+  type BlastRadiusEntry,
+  type RiskLevel,
+} from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 
-function printBlastRadius(blastRadius: BlastRadiusEntry[], riskLevel: RiskLevel): void {
+function printBlastRadius(
+  blastRadius: BlastRadiusEntry[],
+  riskLevel: RiskLevel,
+): void {
   ui.header(UI_MESSAGES.IMPACT_BLAST_RADIUS_HEADER);
 
   if (blastRadius.length === 0) {
@@ -20,9 +29,9 @@ function printBlastRadius(blastRadius: BlastRadiusEntry[], riskLevel: RiskLevel)
 
   console.log("");
   const riskLine = UI_MESSAGES.IMPACT_RISK_PREFIX + riskLevel;
-  if (riskLevel === "CRITICAL") {
+  if (riskLevel === RiskLevels.CRITICAL) {
     ui.error(riskLine);
-  } else if (riskLevel === "HIGH") {
+  } else if (riskLevel === RiskLevels.HIGH) {
     ui.warn(riskLine);
   } else {
     console.log(riskLine);
@@ -37,7 +46,7 @@ function printBlastRadius(blastRadius: BlastRadiusEntry[], riskLevel: RiskLevel)
 export async function impactCommand(
   target: string,
   options: { escalateToLsp?: boolean } = {},
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ): Promise<void> {
   ui.header(UI_MESSAGES.IMPACT_HEADER);
 
@@ -47,7 +56,9 @@ export async function impactCommand(
     return;
   }
 
-  const spinner = ui.spinner(UI_MESSAGES.IMPACT_START + '"' + target + '"...').start();
+  const spinner = ui
+    .spinner(UI_MESSAGES.IMPACT_START + '"' + target + '"...')
+    .start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
@@ -72,7 +83,9 @@ export async function impactCommand(
     printBlastRadius(result.blastRadius, result.riskLevel);
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.IMPACT_FAIL + message);
     process.exitCode = 1;
   } finally {

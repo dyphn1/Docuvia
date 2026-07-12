@@ -8,3 +8,8 @@ import { Libgit2Provider } from "./libgit2-provider.js";
  * returns a fresh, transient `Libgit2Provider` (it holds no state, so transience costs nothing).
  */
 docuviaFactory.register(TOKENS.GitProvider, () => new Libgit2Provider());
+import { GitDiagnosticRunner } from "./diagnostic-runner.js";
+docuviaFactory.register(
+  TOKENS.DiagnosticRunnerGit,
+  () => new GitDiagnosticRunner(),
+);

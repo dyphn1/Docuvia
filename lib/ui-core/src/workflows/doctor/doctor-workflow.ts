@@ -57,6 +57,7 @@ export class DoctorWorkflow {
           status: DiagnosticStatus.FAIL,
           message: `Local database not found at ${dbPath}`,
         };
+        allPassed = false;
       }
     }
 

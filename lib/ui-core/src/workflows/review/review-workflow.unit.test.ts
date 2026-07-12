@@ -47,6 +47,15 @@ function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvide
     getCommitLog: vi.fn().mockResolvedValue([]),
     getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
+    fetchRef: vi.fn().mockResolvedValue(undefined),
+    pushRef: vi.fn().mockResolvedValue(undefined),
+    getRefSha: vi.fn().mockResolvedValue(undefined),
+    isAncestor: vi.fn().mockResolvedValue(false),
+    getTreeSha: vi.fn().mockResolvedValue("tree-sha"),
+    getCommitTimestamp: vi.fn().mockResolvedValue(0),
+    createMergeCommit: vi.fn().mockResolvedValue("merge-sha"),
+    acquireKnowledgeLock: vi.fn().mockResolvedValue(undefined),
+    releaseKnowledgeLock: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

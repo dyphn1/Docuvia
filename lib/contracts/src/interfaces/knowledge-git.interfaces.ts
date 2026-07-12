@@ -1,3 +1,18 @@
+/** Outcome of `IKnowledgeGitService.syncKnowledgeBranch()` (STOR-001 point 3). */
+export interface KnowledgeBranchSyncResult {
+  /**
+   * `no-remote`: no `origin` configured, or the fetch failed (offline) — purely local, not an
+   * error. `up-to-date`: local and remote already match. `fast-forwarded-local`: local moved to
+   * match a strictly-ahead remote (or adopted the remote wholesale when no local copy existed).
+   * `pushed-local`: local was strictly ahead (or the remote had no copy yet) and was pushed.
+   * `merged`: local and remote had genuinely diverged; a tree-adoption merge commit was created
+   * and pushed.
+   */
+  status: "no-remote" | "up-to-date" | "fast-forwarded-local" | "pushed-local" | "merged";
+  /** The branch's resulting tip sha. Undefined only for `no-remote`. */
+  branchTipSha?: string;
+}
+
 /**
  * Docuvia-specific git behavior — implemented by `lib/core/git` on top of `IGitProvider`.
  * This is the "generating knowledge branches" example named directly in
@@ -8,4 +23,17 @@ export interface IKnowledgeGitService {
   installPostCommitHook(cwd: string): Promise<{ installed: boolean }>;
   /** Packs a rendered snapshot directory (see `ISnapshotRenderer`) onto the hidden knowledge branch, wholesale replacing its tree. */
   packSnapshotToKnowledgeBranch(cwd: string, sourceDir: string, branchName?: string): Promise<void>;
+  /**
+   * Cross-clone reconciliation (STOR-001 point 3): fetches `origin`'s copy of the knowledge
+   * branch and reconciles it with the local one — a plain fast-forward in either direction when
+   * possible, or a tree-adoption merge (winner = the side whose stamped source commit is a
+   * descendant of the other's, falling back to committer timestamp) when they've genuinely
+   * diverged. A no-op (`status: "no-remote"`) when there's no `origin`, or the fetch fails
+   * (offline) — this never fails a caller's `snapshot`/`hydrate` over a network hiccup.
+   */
+  syncKnowledgeBranch(
+    cwd: string,
+    branchName?: string,
+    remote?: string
+  ): Promise<KnowledgeBranchSyncResult>;
 }

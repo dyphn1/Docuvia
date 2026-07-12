@@ -21,6 +21,8 @@ import { SnapshotWorkflow } from "./workflows/snapshot/snapshot-workflow.js";
 import type { SnapshotResult } from "./workflows/snapshot/snapshot-result.js";
 import { HydrateWorkflow } from "./workflows/hydrate/hydrate-workflow.js";
 import type { HydrateResult } from "./workflows/hydrate/hydrate-result.js";
+import { SyncKnowledgeWorkflow } from "./workflows/sync-knowledge/sync-knowledge-workflow.js";
+import type { KnowledgeBranchSyncResult } from "@workspace/contracts";
 
 function requireMemory<T>(scopeId: string, key: string): T {
   const value = docuviaMemory.get<T>(scopeId, key);
@@ -103,5 +105,10 @@ export const docuviaApi = {
   async hydrate(scopeId: string, logger: ILogger): Promise<HydrateResult> {
     const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
     return new HydrateWorkflow(workspaceRoot, logger).execute();
+  },
+
+  async syncKnowledge(scopeId: string, logger: ILogger): Promise<KnowledgeBranchSyncResult> {
+    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    return new SyncKnowledgeWorkflow(workspaceRoot, logger).execute();
   },
 };

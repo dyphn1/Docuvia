@@ -7,24 +7,12 @@ import type {
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
 import { GitConstants } from "./git-constants.js";
+import { parseSourceTrailer } from "./git-trailers.js";
 
 /** Knowledge branch is a dedicated orphan branch of small, purpose-built commits — this comfortably bounds it without truncating any real history. */
 const KNOWLEDGE_LOG_SCAN_LIMIT = 5000;
 /** Bounds the source-HEAD ancestry walk during nearest-ancestor resolution. */
 const SOURCE_ANCESTRY_WALK_LIMIT = 2000;
-
-const SOURCE_TRAILER_PREFIX = `${GitConstants.SOURCE_COMMIT_TRAILER_KEY}: `;
-
-/** Extracts the `Docuvia-Source: <sha>` trailer (STOR-001 point 4) from a commit message body, or undefined if absent (e.g. the `Snapshot [unknown]` fallback message on an unborn source HEAD). */
-function parseSourceTrailer(message: string): string | undefined {
-  for (const line of message.split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith(SOURCE_TRAILER_PREFIX)) {
-      return trimmed.slice(SOURCE_TRAILER_PREFIX.length).trim();
-    }
-  }
-  return undefined;
-}
 
 interface RenderedNode {
   id: string;

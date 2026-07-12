@@ -23,6 +23,7 @@ export const QUERY_LOG_FILE_NAME = "query.log";
 export const EXPORT_TOPOLOGY_LOG_FILE_NAME = "export-topology.log";
 export const SNAPSHOT_LOG_FILE_NAME = "snapshot.log";
 export const HYDRATE_LOG_FILE_NAME = "hydrate.log";
+export const SYNC_KNOWLEDGE_LOG_FILE_NAME = "sync-knowledge.log";
 
 /** Filename (relative to `DOCUVIA_DIR_NAME`) of the local SQLite database. */
 export const LOCAL_DB_FILE_NAME = "local.db";

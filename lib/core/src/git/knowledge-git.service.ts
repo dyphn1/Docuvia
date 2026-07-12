@@ -1,9 +1,16 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { IGitProvider, IKnowledgeGitService, ILogger } from "@workspace/contracts";
+import type {
+  IGitProvider,
+  IKnowledgeGitService,
+  ILogger,
+  KnowledgeBranchSyncResult,
+} from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
 import { GitConstants } from "./git-constants.js";
+import { parseSourceTrailer } from "./git-trailers.js";
+import { withKnowledgeBranchLock } from "./knowledge-branch-lock.js";
 
 /**
  * Docuvia's git-specific domain logic, built entirely on `IGitProvider`'s raw primitives — the
@@ -82,16 +89,147 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   /**
    * Packs a rendered snapshot directory (see `ISnapshotRenderer`) onto the hidden knowledge
    * branch, wholesale replacing its tree (parented on the branch's current tip — see
-   * `IGitProvider.packDirectoryToBranch`) — the `snapshot` command's git-write step.
+   * `IGitProvider.packDirectoryToBranch`) — the `snapshot` command's git-write step. Holds the
+   * knowledge-branch lock so this can't race a concurrent `syncKnowledgeBranch()`.
    */
   public async packSnapshotToKnowledgeBranch(
     cwd: string,
     sourceDir: string,
     branchName: string = GitConstants.KNOWLEDGE_ROOT
   ): Promise<void> {
-    const commitMessage = await this.buildSnapshotCommitMessage(cwd);
-    await this.git.packDirectoryToBranch(cwd, sourceDir, branchName, commitMessage);
-    this.logger.info("Packed snapshot onto knowledge branch", { branchName });
+    await withKnowledgeBranchLock(this.git, cwd, async () => {
+      const commitMessage = await this.buildSnapshotCommitMessage(cwd);
+      await this.git.packDirectoryToBranch(cwd, sourceDir, branchName, commitMessage);
+      this.logger.info("Packed snapshot onto knowledge branch", { branchName });
+    });
+  }
+
+  /**
+   * Cross-clone reconciliation (STOR-001 point 3). Holds the knowledge-branch lock so this can't
+   * race a concurrent `packSnapshotToKnowledgeBranch()` (e.g. the post-commit hook's background
+   * snapshot firing mid-reconciliation).
+   */
+  public async syncKnowledgeBranch(
+    cwd: string,
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
+    remote: string = "origin"
+  ): Promise<KnowledgeBranchSyncResult> {
+    return withKnowledgeBranchLock(this.git, cwd, () => this.reconcile(cwd, branchName, remote));
+  }
+
+  private async reconcile(
+    cwd: string,
+    branchName: string,
+    remote: string
+  ): Promise<KnowledgeBranchSyncResult> {
+    const remoteUrl = await this.git.getRemoteUrl(cwd);
+    if (!remoteUrl) {
+      this.logger.debug("No remote configured; skipping knowledge branch reconciliation", {
+        branchName,
+      });
+      return { status: "no-remote" };
+    }
+
+    try {
+      await this.git.fetchRef(cwd, remote, branchName);
+    } catch (err) {
+      // Network/remote failure — degrade gracefully offline rather than failing the caller
+      // (snapshot/hydrate) over a transient network hiccup.
+      this.logger.warn("Failed to fetch knowledge branch from remote; continuing offline", {
+        branchName,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return { status: "no-remote" };
+    }
+
+    const remoteSha = await this.git.getRefSha(cwd, `refs/remotes/${remote}/${branchName}`);
+    const localSha = await this.git.getBranchTipSha(cwd, branchName);
+
+    if (!remoteSha) {
+      if (localSha) await this.pushQuietly(cwd, remote, branchName);
+      return { status: "pushed-local", branchTipSha: localSha };
+    }
+    if (!localSha) {
+      await this.git.updateBranchRef(cwd, branchName, remoteSha);
+      this.logger.info("Adopted remote knowledge branch (no local copy existed)", { branchName });
+      return { status: "fast-forwarded-local", branchTipSha: remoteSha };
+    }
+    if (localSha === remoteSha) {
+      return { status: "up-to-date", branchTipSha: localSha };
+    }
+
+    if (await this.git.isAncestor(cwd, localSha, remoteSha)) {
+      await this.git.updateBranchRef(cwd, branchName, remoteSha);
+      this.logger.info("Fast-forwarded local knowledge branch to remote", { branchName, remoteSha });
+      return { status: "fast-forwarded-local", branchTipSha: remoteSha };
+    }
+    if (await this.git.isAncestor(cwd, remoteSha, localSha)) {
+      await this.pushQuietly(cwd, remote, branchName);
+      return { status: "pushed-local", branchTipSha: localSha };
+    }
+
+    // True divergence — tree-adoption merge (STOR-001 point 3): create a 2-parent merge commit
+    // wholesale adopting the winning side's tree, rather than a content-level merge of both.
+    const winnerSha = await this.resolveMergeWinner(cwd, localSha, remoteSha);
+    const winningTree = await this.git.getTreeSha(cwd, winnerSha);
+    const mergeMessage = `Merge knowledge branch (${winnerSha === localSha ? "local" : "remote"} wins)`;
+    const mergeSha = await this.git.createMergeCommit(
+      cwd,
+      winningTree,
+      [localSha, remoteSha],
+      mergeMessage
+    );
+    await this.git.updateBranchRef(cwd, branchName, mergeSha);
+    await this.pushQuietly(cwd, remote, branchName);
+
+    this.logger.info("Merged diverged knowledge branch", {
+      branchName,
+      winner: winnerSha === localSha ? "local" : "remote",
+      mergeSha,
+    });
+    return { status: "merged", branchTipSha: mergeSha };
+  }
+
+  private async pushQuietly(cwd: string, remote: string, branchName: string): Promise<void> {
+    try {
+      await this.git.pushRef(cwd, remote, branchName);
+    } catch (err) {
+      this.logger.warn("Failed to push knowledge branch to remote; will retry on next sync", {
+        branchName,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  /**
+   * Picks the winning side of a genuine divergence: the side whose stamped `Docuvia-Source`
+   * commit is a descendant of the other's (topological recency in the *source* repository — see
+   * STOR-001 point 3), falling back to committer timestamp when neither stamped source is an
+   * ancestor of the other (unrelated source lines, or one side's source commit isn't reachable in
+   * this clone's object database at all — e.g. a peer analyzed a commit not yet fetched here).
+   */
+  private async resolveMergeWinner(cwd: string, shaA: string, shaB: string): Promise<string> {
+    const [logA, logB] = await Promise.all([
+      this.git.getCommitLog(cwd, shaA, 1),
+      this.git.getCommitLog(cwd, shaB, 1),
+    ]);
+    const sourceA = logA[0] ? parseSourceTrailer(logA[0].message) : undefined;
+    const sourceB = logB[0] ? parseSourceTrailer(logB[0].message) : undefined;
+
+    if (sourceA && sourceB) {
+      try {
+        if (await this.git.isAncestor(cwd, sourceA, sourceB)) return shaB;
+        if (await this.git.isAncestor(cwd, sourceB, sourceA)) return shaA;
+      } catch {
+        // Fall through to the timestamp fallback below.
+      }
+    }
+
+    const [tsA, tsB] = await Promise.all([
+      this.git.getCommitTimestamp(cwd, shaA),
+      this.git.getCommitTimestamp(cwd, shaB),
+    ]);
+    return tsA >= tsB ? shaA : shaB;
   }
 
   /**

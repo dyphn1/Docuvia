@@ -29,6 +29,15 @@ function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvide
     getCommitLog: vi.fn().mockResolvedValue([]),
     getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
+    fetchRef: vi.fn().mockResolvedValue(undefined),
+    pushRef: vi.fn().mockResolvedValue(undefined),
+    getRefSha: vi.fn().mockResolvedValue(undefined),
+    isAncestor: vi.fn().mockResolvedValue(false),
+    getTreeSha: vi.fn().mockResolvedValue("tree-sha"),
+    getCommitTimestamp: vi.fn().mockResolvedValue(0),
+    createMergeCommit: vi.fn().mockResolvedValue("merge-sha"),
+    acquireKnowledgeLock: vi.fn().mockResolvedValue(undefined),
+    releaseKnowledgeLock: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
@@ -181,5 +190,228 @@ describe("KnowledgeGitService.packSnapshotToKnowledgeBranch()", () => {
     await expect(
       service.packSnapshotToKnowledgeBranch("/workspace", "/tmp/snapshot-render")
     ).rejects.toThrow("git fast-import failed");
+  });
+});
+
+describe("KnowledgeGitService.syncKnowledgeBranch()", () => {
+  it("is a no-op (status: no-remote) when there's no origin remote configured", async () => {
+    const git = makeMockGitProvider({ getRemoteUrl: vi.fn().mockResolvedValue(undefined) });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ status: "no-remote" });
+    expect(git.fetchRef).not.toHaveBeenCalled();
+  });
+
+  it("degrades gracefully (status: no-remote) when fetch fails — e.g. offline", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      fetchRef: vi.fn().mockRejectedValue(new Error("could not resolve host")),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ status: "no-remote" });
+  });
+
+  it("is up-to-date when local and remote tips already match", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      getBranchTipSha: vi.fn().mockResolvedValue("sha-1"),
+      getRefSha: vi.fn().mockResolvedValue("sha-1"),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ status: "up-to-date", branchTipSha: "sha-1" });
+    expect(git.updateBranchRef).not.toHaveBeenCalled();
+    expect(git.pushRef).not.toHaveBeenCalled();
+  });
+
+  it("adopts the remote wholesale when there's no local copy yet", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      getBranchTipSha: vi.fn().mockResolvedValue(undefined),
+      getRefSha: vi.fn().mockResolvedValue("remote-sha"),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ status: "fast-forwarded-local", branchTipSha: "remote-sha" });
+    expect(git.updateBranchRef).toHaveBeenCalledWith(
+      "/workspace",
+      GitConstants.KNOWLEDGE_ROOT,
+      "remote-sha"
+    );
+  });
+
+  it("pushes the local branch when the remote has no copy yet", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      getBranchTipSha: vi.fn().mockResolvedValue("local-sha"),
+      getRefSha: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ status: "pushed-local", branchTipSha: "local-sha" });
+    expect(git.pushRef).toHaveBeenCalledWith("/workspace", "origin", GitConstants.KNOWLEDGE_ROOT);
+  });
+
+  it("fast-forwards local to remote when remote is strictly ahead", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      getBranchTipSha: vi.fn().mockResolvedValue("local-sha"),
+      getRefSha: vi.fn().mockResolvedValue("remote-sha"),
+      isAncestor: vi.fn().mockImplementation((_cwd, ancestor, descendant) =>
+        Promise.resolve(ancestor === "local-sha" && descendant === "remote-sha")
+      ),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ status: "fast-forwarded-local", branchTipSha: "remote-sha" });
+    expect(git.updateBranchRef).toHaveBeenCalledWith(
+      "/workspace",
+      GitConstants.KNOWLEDGE_ROOT,
+      "remote-sha"
+    );
+    expect(git.createMergeCommit).not.toHaveBeenCalled();
+  });
+
+  it("pushes local to remote when local is strictly ahead", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      getBranchTipSha: vi.fn().mockResolvedValue("local-sha"),
+      getRefSha: vi.fn().mockResolvedValue("remote-sha"),
+      isAncestor: vi.fn().mockImplementation((_cwd, ancestor, descendant) =>
+        Promise.resolve(ancestor === "remote-sha" && descendant === "local-sha")
+      ),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ status: "pushed-local", branchTipSha: "local-sha" });
+    expect(git.pushRef).toHaveBeenCalledWith("/workspace", "origin", GitConstants.KNOWLEDGE_ROOT);
+    expect(git.createMergeCommit).not.toHaveBeenCalled();
+  });
+
+  it("on true divergence, picks the winner whose stamped source commit is the topological descendant, adopts its tree, and pushes the merge", async () => {
+    const sourceOld = "source-old-sha";
+    const sourceNew = "source-new-sha";
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      getBranchTipSha: vi.fn().mockResolvedValue("local-sha"),
+      getRefSha: vi.fn().mockResolvedValue("remote-sha"),
+      isAncestor: vi.fn().mockImplementation((_cwd, ancestor, descendant) => {
+        // Neither commit is a fast-forward ancestor of the other (true divergence)...
+        if (ancestor === "local-sha" || ancestor === "remote-sha") return Promise.resolve(false);
+        // ...but remote's stamped source is a descendant of local's — remote wins.
+        return Promise.resolve(ancestor === sourceOld && descendant === sourceNew);
+      }),
+      getCommitLog: vi.fn().mockImplementation((_cwd, ref) => {
+        if (ref === "local-sha") {
+          return Promise.resolve([
+            { sha: "local-sha", message: `Snapshot [aaa]\n\n${GitConstants.SOURCE_COMMIT_TRAILER_KEY}: ${sourceOld}` },
+          ]);
+        }
+        if (ref === "remote-sha") {
+          return Promise.resolve([
+            { sha: "remote-sha", message: `Snapshot [bbb]\n\n${GitConstants.SOURCE_COMMIT_TRAILER_KEY}: ${sourceNew}` },
+          ]);
+        }
+        return Promise.resolve([]);
+      }),
+      getTreeSha: vi.fn().mockResolvedValue("remote-tree"),
+      createMergeCommit: vi.fn().mockResolvedValue("merge-sha"),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ status: "merged", branchTipSha: "merge-sha" });
+    expect(git.getTreeSha).toHaveBeenCalledWith("/workspace", "remote-sha");
+    expect(git.createMergeCommit).toHaveBeenCalledWith(
+      "/workspace",
+      "remote-tree",
+      ["local-sha", "remote-sha"],
+      expect.stringContaining("remote wins")
+    );
+    expect(git.updateBranchRef).toHaveBeenCalledWith(
+      "/workspace",
+      GitConstants.KNOWLEDGE_ROOT,
+      "merge-sha"
+    );
+    expect(git.pushRef).toHaveBeenCalledWith("/workspace", "origin", GitConstants.KNOWLEDGE_ROOT);
+  });
+
+  it("on true divergence with unstamped/unrelated source commits, falls back to the newer committer timestamp", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      getBranchTipSha: vi.fn().mockResolvedValue("local-sha"),
+      getRefSha: vi.fn().mockResolvedValue("remote-sha"),
+      isAncestor: vi.fn().mockResolvedValue(false),
+      getCommitLog: vi.fn().mockResolvedValue([]), // no Docuvia-Source trailer on either side
+      getCommitTimestamp: vi.fn().mockImplementation((_cwd, sha) =>
+        Promise.resolve(sha === "local-sha" ? 100 : 200)
+      ),
+      getTreeSha: vi.fn().mockResolvedValue("local-tree"),
+      createMergeCommit: vi.fn().mockResolvedValue("merge-sha"),
+    });
+    const service = new KnowledgeGitService(git);
+
+    await service.syncKnowledgeBranch("/workspace");
+
+    // remote-sha has the newer timestamp (200 > 100), so it should win.
+    expect(git.getTreeSha).toHaveBeenCalledWith("/workspace", "remote-sha");
+  });
+
+  it("still returns status:merged when the post-merge push fails (degrades gracefully offline)", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      getBranchTipSha: vi.fn().mockResolvedValue("local-sha"),
+      getRefSha: vi.fn().mockResolvedValue("remote-sha"),
+      isAncestor: vi.fn().mockResolvedValue(false),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      getCommitTimestamp: vi.fn().mockResolvedValue(0),
+      getTreeSha: vi.fn().mockResolvedValue("some-tree"),
+      createMergeCommit: vi.fn().mockResolvedValue("merge-sha"),
+      pushRef: vi.fn().mockRejectedValue(new Error("connection reset")),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ status: "merged", branchTipSha: "merge-sha" });
+  });
+
+  it("holds the knowledge branch lock for the duration of the reconciliation", async () => {
+    const order: string[] = [];
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      acquireKnowledgeLock: vi.fn().mockImplementation(async () => {
+        order.push("acquire");
+      }),
+      releaseKnowledgeLock: vi.fn().mockImplementation(async () => {
+        order.push("release");
+      }),
+      getBranchTipSha: vi.fn().mockImplementation(async () => {
+        order.push("reconcile");
+        return "sha-1";
+      }),
+      getRefSha: vi.fn().mockResolvedValue("sha-1"),
+    });
+    const service = new KnowledgeGitService(git);
+
+    await service.syncKnowledgeBranch("/workspace");
+
+    expect(order).toEqual(["acquire", "reconcile", "release"]);
   });
 });

@@ -64,4 +64,40 @@ export interface IGitProvider {
     branchName: string,
     commitMessage: string
   ): Promise<void>;
+
+  /** `git fetch <remote> <ref>` — updates `refs/remotes/<remote>/<ref>` from the remote. Used for cross-clone reconciliation (STOR-001 point 3). Throws on network/remote failure — callers decide whether that's fatal. */
+  fetchRef(cwd: string, remote: string, ref: string): Promise<void>;
+  /** `git push <remote> refs/heads/<branchName>:refs/heads/<branchName>` — an explicit refspec, since the knowledge branch is normally never checked out. */
+  pushRef(cwd: string, remote: string, branchName: string): Promise<void>;
+  /** Full 40-char sha `ref` resolves to (`git rev-parse --verify --quiet <ref>`), or `undefined` if it doesn't exist. Unlike `getBranchTipSha`, `ref` may be any ref form (e.g. `refs/remotes/origin/docuvia-knowledge`), not just `refs/heads/<name>`. */
+  getRefSha(cwd: string, ref: string): Promise<string | undefined>;
+  /** `true` if `ancestorSha` is an ancestor of (or equal to) `descendantSha` (`git merge-base --is-ancestor`) — used to detect a plain fast-forward before falling back to a full merge. */
+  isAncestor(cwd: string, ancestorSha: string, descendantSha: string): Promise<boolean>;
+  /** The tree object sha `commitish` points at (`git rev-parse <commitish>^{tree}`) — the tree wholesale-adopted by a tree-adoption merge commit (STOR-001 point 3). */
+  getTreeSha(cwd: string, commitish: string): Promise<string>;
+  /** Unix seconds of `sha`'s committer timestamp (`git show -s --format=%ct`) — the wall-clock fallback when neither side of a divergence is a source-topological descendant of the other. */
+  getCommitTimestamp(cwd: string, sha: string): Promise<number>;
+  /**
+   * `git commit-tree <treeSha> -p <parentShas[0]> -p <parentShas[1]> ... -m <message>` — creates a
+   * merge commit whose tree is wholesale adopted from one side (a "tree-adoption merge", STOR-001
+   * point 3), not a content-level merge of both sides. Uses the same synthetic `Docuvia
+   * <docuvia@localhost>` committer identity as `packDirectoryToBranch`, not the local git config.
+   */
+  createMergeCommit(
+    cwd: string,
+    treeSha: string,
+    parentShas: string[],
+    message: string
+  ): Promise<string>;
+
+  /**
+   * Blocks until the advisory `.git/docuvia-knowledge.lock` file is exclusively created (retrying
+   * with a timeout), so `snapshot`'s pack and cross-clone reconciliation's fetch/merge/push can
+   * never race each other's `update-ref` (STOR-001). A lock file older than a staleness threshold
+   * is assumed to belong to a crashed process and is stolen rather than waited out forever. Throws
+   * if the wait times out without acquiring it.
+   */
+  acquireKnowledgeLock(cwd: string): Promise<void>;
+  /** Releases the lock acquired by `acquireKnowledgeLock` (best-effort — a missing lock file is not an error). */
+  releaseKnowledgeLock(cwd: string): Promise<void>;
 }

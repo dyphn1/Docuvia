@@ -56,6 +56,15 @@ function makeMockGitProvider(): IGitProvider {
     getCommitLog: vi.fn().mockResolvedValue([]),
     getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
+    fetchRef: vi.fn().mockResolvedValue(undefined),
+    pushRef: vi.fn().mockResolvedValue(undefined),
+    getRefSha: vi.fn().mockResolvedValue(undefined),
+    isAncestor: vi.fn().mockResolvedValue(false),
+    getTreeSha: vi.fn().mockResolvedValue("tree-sha"),
+    getCommitTimestamp: vi.fn().mockResolvedValue(0),
+    createMergeCommit: vi.fn().mockResolvedValue("merge-sha"),
+    acquireKnowledgeLock: vi.fn().mockResolvedValue(undefined),
+    releaseKnowledgeLock: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -144,6 +153,7 @@ describe("InitWorkflow.execute()", () => {
         return { installed: true };
       }),
       packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
+      syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
     };
     const fileDiscovery: IFileDiscovery = {
       discoverFiles: vi.fn().mockImplementation(async () => {
@@ -202,6 +212,7 @@ describe("InitWorkflow.execute()", () => {
       ensureKnowledgeBranch: vi.fn().mockRejectedValue(new Error("boom")),
       installPostCommitHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
+      syncKnowledgeBranch: vi.fn(),
     }));
     docuviaFactory.register(TOKENS.FileDiscovery, () => ({ discoverFiles: vi.fn() }));
     docuviaFactory.register(TOKENS.ConfigScanner, () => ({ scanConfigs: vi.fn() }));
@@ -253,6 +264,7 @@ describe("InitWorkflow.execute()", () => {
       ensureKnowledgeBranch: vi.fn().mockResolvedValue({ created: true }),
       installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
       packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
+      syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
     }));
     docuviaFactory.register(TOKENS.FileDiscovery, () => ({
       discoverFiles: vi

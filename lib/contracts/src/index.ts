@@ -17,7 +17,10 @@ export { TOKENS, createToken } from "./factory/tokens.js";
 export type { Token } from "./factory/tokens.js";
 
 export type { ChangedFileEntry, IGitProvider } from "./interfaces/git.interfaces.js";
-export type { IKnowledgeGitService } from "./interfaces/knowledge-git.interfaces.js";
+export type {
+  IKnowledgeGitService,
+  KnowledgeBranchSyncResult,
+} from "./interfaces/knowledge-git.interfaces.js";
 export type {
   DiscoveredFile,
   DiscoveryResult,
@@ -113,6 +116,7 @@ export {
   EXPORT_TOPOLOGY_LOG_FILE_NAME,
   SNAPSHOT_LOG_FILE_NAME,
   HYDRATE_LOG_FILE_NAME,
+  SYNC_KNOWLEDGE_LOG_FILE_NAME,
   LOCAL_DB_FILE_NAME,
   SYNC_STATE_FILE_NAME,
 } from "./constants/paths.js";

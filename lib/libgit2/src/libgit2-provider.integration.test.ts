@@ -314,3 +314,190 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
     }
   });
 });
+
+describe("Libgit2Provider — cross-clone reconciliation primitives (STOR-001 point 3)", () => {
+  let tmpDir: string;
+  let remoteDir: string;
+  let provider: Libgit2Provider;
+
+  beforeEach(async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-clone-a-"));
+    remoteDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-remote-"));
+    provider = new Libgit2Provider();
+
+    for (const dir of [tmpDir, remoteDir]) {
+      await git(dir, ["init"]);
+      await git(dir, ["config", "user.name", "Test User"]);
+      await git(dir, ["config", "user.email", "test@example.com"]);
+    }
+    // Give the "remote" an initial commit on its own default branch (never docuvia-knowledge), so
+    // pushing docuvia-knowledge to it never touches remoteDir's checked-out branch.
+    fs.writeFileSync(path.join(remoteDir, "readme.md"), "remote\n");
+    await git(remoteDir, ["add", "-A"]);
+    await git(remoteDir, ["commit", "-m", "init"]);
+
+    await git(tmpDir, ["remote", "add", "origin", remoteDir]);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(remoteDir, { recursive: true, force: true });
+  });
+
+  it("pushRef publishes the branch, fetchRef + getRefSha read it back into refs/remotes/origin/*", async () => {
+    const sourceDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-recon-src-"));
+    try {
+      fs.writeFileSync(path.join(sourceDir, "a.md"), "hi\n");
+      await provider.packDirectoryToBranch(tmpDir, sourceDir, KNOWLEDGE_BRANCH, "Snapshot [aaa]");
+      const localSha = await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH);
+
+      expect(await provider.getRefSha(tmpDir, `refs/remotes/origin/${KNOWLEDGE_BRANCH}`)).toBeUndefined();
+
+      await provider.pushRef(tmpDir, "origin", KNOWLEDGE_BRANCH);
+
+      // Verify from a second, independent clone that it actually landed on the "remote".
+      const cloneDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-clone-b-"));
+      try {
+        await git(cloneDir, ["init"]);
+        await git(cloneDir, ["remote", "add", "origin", remoteDir]);
+        await provider.fetchRef(cloneDir, "origin", KNOWLEDGE_BRANCH);
+        expect(await provider.getRefSha(cloneDir, `refs/remotes/origin/${KNOWLEDGE_BRANCH}`)).toBe(
+          localSha
+        );
+      } finally {
+        fs.rmSync(cloneDir, { recursive: true, force: true });
+      }
+    } finally {
+      fs.rmSync(sourceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("getRefSha returns undefined for a ref that doesn't exist", async () => {
+    expect(await provider.getRefSha(tmpDir, "refs/heads/does-not-exist")).toBeUndefined();
+  });
+
+  it("isAncestor detects fast-forward relationships and rejects unrelated/reversed ones", async () => {
+    fs.writeFileSync(path.join(tmpDir, "a.md"), "1\n");
+    await git(tmpDir, ["add", "-A"]);
+    await git(tmpDir, ["commit", "-m", "first"]);
+    const { stdout: firstSha } = await git(tmpDir, ["rev-parse", "HEAD"]);
+
+    fs.writeFileSync(path.join(tmpDir, "a.md"), "2\n");
+    await git(tmpDir, ["commit", "-am", "second"]);
+    const { stdout: secondSha } = await git(tmpDir, ["rev-parse", "HEAD"]);
+
+    expect(await provider.isAncestor(tmpDir, firstSha.trim(), secondSha.trim())).toBe(true);
+    expect(await provider.isAncestor(tmpDir, secondSha.trim(), firstSha.trim())).toBe(false);
+    expect(await provider.isAncestor(tmpDir, firstSha.trim(), firstSha.trim())).toBe(true);
+  });
+
+  it("getTreeSha / getCommitTimestamp / createMergeCommit build a valid 2-parent tree-adoption merge commit", async () => {
+    const sourceDirA = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-recon-a-"));
+    const sourceDirB = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-recon-b-"));
+    try {
+      fs.writeFileSync(path.join(sourceDirA, "a.md"), "from A\n");
+      await provider.packDirectoryToBranch(tmpDir, sourceDirA, KNOWLEDGE_BRANCH, "Snapshot [aaa]");
+      const shaA = (await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH))!;
+
+      // Simulate independent divergence (two clones that each started their own knowledge
+      // branch): delete the ref, then pack a different tree as a second, unrelated root commit.
+      await git(tmpDir, ["update-ref", "-d", `refs/heads/${KNOWLEDGE_BRANCH}`]);
+      fs.writeFileSync(path.join(sourceDirB, "b.md"), "from B\n");
+      await provider.packDirectoryToBranch(tmpDir, sourceDirB, KNOWLEDGE_BRANCH, "Snapshot [bbb]");
+      const shaB = (await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH))!;
+
+      expect(await provider.isAncestor(tmpDir, shaA, shaB)).toBe(false);
+      expect(await provider.isAncestor(tmpDir, shaB, shaA)).toBe(false);
+
+      const timestampA = await provider.getCommitTimestamp(tmpDir, shaA);
+      expect(timestampA).toBeGreaterThan(0);
+
+      const winningTree = await provider.getTreeSha(tmpDir, shaB); // adopt B's tree wholesale
+      const mergeSha = await provider.createMergeCommit(
+        tmpDir,
+        winningTree,
+        [shaA, shaB],
+        "Merge knowledge branch"
+      );
+
+      const { stdout: parents } = await git(tmpDir, ["log", "-1", "--format=%P", mergeSha]);
+      expect(parents.trim().split(" ")).toEqual([shaA, shaB]);
+
+      const { stdout: committer } = await git(tmpDir, ["log", "-1", "--format=%cn <%ce>", mergeSha]);
+      expect(committer.trim()).toBe("Docuvia <docuvia@localhost>");
+
+      const { stdout: mergeTreeSha } = await git(tmpDir, ["log", "-1", "--format=%T", mergeSha]);
+      expect(mergeTreeSha.trim()).toBe(winningTree);
+
+      // The merge commit's content matches B's tree (the adopted side), not A's.
+      await git(tmpDir, ["update-ref", `refs/heads/${KNOWLEDGE_BRANCH}`, mergeSha]);
+      const { stdout: files } = await git(tmpDir, ["ls-tree", "-r", "--name-only", KNOWLEDGE_BRANCH]);
+      expect(files.trim().split("\n")).toEqual(["b.md"]);
+    } finally {
+      fs.rmSync(sourceDirA, { recursive: true, force: true });
+      fs.rmSync(sourceDirB, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("Libgit2Provider — acquireKnowledgeLock / releaseKnowledgeLock", () => {
+  let tmpDir: string;
+  let provider: Libgit2Provider;
+
+  beforeEach(async () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-lock-"));
+    provider = new Libgit2Provider();
+    await git(tmpDir, ["init"]);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("acquires and releases the lock file under .git/", async () => {
+    const lockPath = path.join(tmpDir, ".git", "docuvia-knowledge.lock");
+    expect(fs.existsSync(lockPath)).toBe(false);
+
+    await provider.acquireKnowledgeLock(tmpDir);
+    expect(fs.existsSync(lockPath)).toBe(true);
+
+    await provider.releaseKnowledgeLock(tmpDir);
+    expect(fs.existsSync(lockPath)).toBe(false);
+  });
+
+  it("releaseKnowledgeLock on an already-released lock is a no-op, not an error", async () => {
+    await expect(provider.releaseKnowledgeLock(tmpDir)).resolves.toBeUndefined();
+  });
+
+  it("serializes two concurrent acquirers instead of both succeeding at once", async () => {
+    const events: string[] = [];
+
+    await provider.acquireKnowledgeLock(tmpDir);
+    events.push("first:acquired");
+
+    const secondAcquire = provider.acquireKnowledgeLock(tmpDir).then(() => {
+      events.push("second:acquired");
+    });
+
+    // The second acquirer must still be waiting — give it a moment to (not) succeed.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    expect(events).toEqual(["first:acquired"]);
+
+    await provider.releaseKnowledgeLock(tmpDir);
+    await secondAcquire;
+    expect(events).toEqual(["first:acquired", "second:acquired"]);
+
+    await provider.releaseKnowledgeLock(tmpDir);
+  });
+
+  it("steals a stale lock left behind by a crashed process instead of waiting forever", async () => {
+    const lockPath = path.join(tmpDir, ".git", "docuvia-knowledge.lock");
+    fs.writeFileSync(lockPath, "");
+    const oldTime = new Date(Date.now() - 120_000);
+    fs.utimesSync(lockPath, oldTime, oldTime);
+
+    await expect(provider.acquireKnowledgeLock(tmpDir)).resolves.toBeUndefined();
+
+    await provider.releaseKnowledgeLock(tmpDir);
+  });
+});

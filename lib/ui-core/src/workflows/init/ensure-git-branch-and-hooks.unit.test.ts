@@ -8,6 +8,7 @@ function makeMockKnowledgeGit(overrides: Partial<IKnowledgeGitService> = {}): IK
     ensureKnowledgeBranch: vi.fn().mockResolvedValue({ created: true }),
     installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
     packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
+    syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
     ...overrides,
   };
 }

@@ -9,7 +9,13 @@ const execFileAsync = promisify(execFile);
 
 /** The well-known empty-tree SHA — identical in every git repository. */
 const EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
-const GIT_HOOKS_DIR = [".git", "hooks"] as const;
+const GIT_DIR_NAME = ".git";
+const GIT_HOOKS_DIR = [GIT_DIR_NAME, "hooks"] as const;
+
+const KNOWLEDGE_LOCK_FILE_NAME = "docuvia-knowledge.lock";
+const KNOWLEDGE_LOCK_MAX_WAIT_MS = 10_000;
+const KNOWLEDGE_LOCK_RETRY_INTERVAL_MS = 100;
+const KNOWLEDGE_LOCK_STALE_MS = 60_000;
 
 /**
  * Raw Git technology provider — every method here is a thin, single git shell-out with no
@@ -380,5 +386,135 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(ErrorCodes.GIT_FAST_IMPORT_FAILED, "git fast-import failed", err);
     }
+  }
+
+  public async fetchRef(cwd: string, remote: string, ref: string): Promise<void> {
+    try {
+      await execFileAsync("git", ["fetch", remote, ref], { cwd });
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git fetch failed", err);
+    }
+  }
+
+  public async pushRef(cwd: string, remote: string, branchName: string): Promise<void> {
+    try {
+      await execFileAsync(
+        "git",
+        ["push", remote, `refs/heads/${branchName}:refs/heads/${branchName}`],
+        { cwd }
+      );
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git push failed", err);
+    }
+  }
+
+  public async getRefSha(cwd: string, ref: string): Promise<string | undefined> {
+    try {
+      const { stdout } = await execFileAsync("git", ["rev-parse", "--verify", "--quiet", ref], {
+        cwd,
+      });
+      const sha = stdout.trim();
+      return sha.length > 0 ? sha : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  public async isAncestor(cwd: string, ancestorSha: string, descendantSha: string): Promise<boolean> {
+    try {
+      await execFileAsync("git", ["merge-base", "--is-ancestor", ancestorSha, descendantSha], {
+        cwd,
+      });
+      return true;
+    } catch (err) {
+      // Exit code 1 means "not an ancestor" — a normal, expected outcome, not a failure. Any
+      // other exit code (invalid sha, unrelated histories git can't even compare) is a real error.
+      if (typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === 1) {
+        return false;
+      }
+      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git merge-base --is-ancestor failed", err);
+    }
+  }
+
+  public async getTreeSha(cwd: string, commitish: string): Promise<string> {
+    try {
+      const { stdout } = await execFileAsync("git", ["rev-parse", `${commitish}^{tree}`], { cwd });
+      return stdout.trim();
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git rev-parse ^{tree} failed", err);
+    }
+  }
+
+  public async getCommitTimestamp(cwd: string, sha: string): Promise<number> {
+    try {
+      const { stdout } = await execFileAsync("git", ["show", "-s", "--format=%ct", sha], { cwd });
+      return Number(stdout.trim());
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git show --format=%ct failed", err);
+    }
+  }
+
+  public async createMergeCommit(
+    cwd: string,
+    treeSha: string,
+    parentShas: string[],
+    message: string
+  ): Promise<string> {
+    try {
+      const parentArgs = parentShas.flatMap((sha) => ["-p", sha]);
+      const { stdout } = await execFileAsync(
+        "git",
+        ["commit-tree", treeSha, ...parentArgs, "-m", message],
+        {
+          cwd,
+          env: {
+            ...process.env,
+            GIT_AUTHOR_NAME: "Docuvia",
+            GIT_AUTHOR_EMAIL: "docuvia@localhost",
+            GIT_COMMITTER_NAME: "Docuvia",
+            GIT_COMMITTER_EMAIL: "docuvia@localhost",
+          },
+        }
+      );
+      return stdout.trim();
+    } catch (err) {
+      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git commit-tree (merge) failed", err);
+    }
+  }
+
+  public async acquireKnowledgeLock(cwd: string): Promise<void> {
+    const lockPath = path.join(cwd, GIT_DIR_NAME, KNOWLEDGE_LOCK_FILE_NAME);
+    const deadline = Date.now() + KNOWLEDGE_LOCK_MAX_WAIT_MS;
+
+    for (;;) {
+      try {
+        const handle = await fs.open(lockPath, "wx");
+        await handle.close();
+        return;
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
+          throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "Failed to acquire knowledge lock", err);
+        }
+
+        const stat = await fs.stat(lockPath).catch(() => undefined);
+        if (stat && Date.now() - stat.mtimeMs > KNOWLEDGE_LOCK_STALE_MS) {
+          await fs.rm(lockPath, { force: true });
+          continue;
+        }
+
+        if (Date.now() > deadline) {
+          throw new DocuviaError(
+            ErrorCodes.GIT_COMMAND_FAILED,
+            `Timed out waiting for the knowledge branch lock at ${lockPath} — another Docuvia process may be stuck`
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, KNOWLEDGE_LOCK_RETRY_INTERVAL_MS));
+      }
+    }
+  }
+
+  public async releaseKnowledgeLock(cwd: string): Promise<void> {
+    const lockPath = path.join(cwd, GIT_DIR_NAME, KNOWLEDGE_LOCK_FILE_NAME);
+    await fs.rm(lockPath, { force: true });
   }
 }

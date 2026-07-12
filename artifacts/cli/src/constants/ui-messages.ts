@@ -128,4 +128,13 @@ export const UI_MESSAGES = {
   HYDRATE_SUCCESS: "Hydrated local database. ",
   HYDRATE_NOTHING: "Nothing to hydrate from yet — run \"docuvia init\" first.",
   HYDRATE_FAIL: "Hydrate failed: ",
+
+  // Sync Knowledge Command
+  SYNC_KNOWLEDGE_START: "Reconciling the knowledge branch with the remote...",
+  SYNC_KNOWLEDGE_NO_REMOTE: "No remote reachable — nothing to reconcile (offline or no origin configured).",
+  SYNC_KNOWLEDGE_UP_TO_DATE: "Knowledge branch is already up to date with the remote.",
+  SYNC_KNOWLEDGE_FAST_FORWARDED: "Fast-forwarded the local knowledge branch to the remote.",
+  SYNC_KNOWLEDGE_PUSHED: "Pushed the local knowledge branch to the remote.",
+  SYNC_KNOWLEDGE_MERGED: "Merged the diverged knowledge branch and pushed the result.",
+  SYNC_KNOWLEDGE_FAIL: "Knowledge branch sync failed: ",
 };

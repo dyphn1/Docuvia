@@ -1,4 +1,4 @@
-# Architecture Guideline: Inter-Process/Thread Logging (IPC Logger)
+# IPC Logging Architecture
 
 > **Mandatory Architecture Protocol:**
 > When executing logic in an isolated context (such as a `worker_thread` or a `child_process`), direct interaction with the main thread's `ILogger` or `docuviaMemory` is physically impossible due to V8 memory isolation. 

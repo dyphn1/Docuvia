@@ -5,6 +5,7 @@
 Docuvia2 is the next-generation, simplified, and highly modular iteration of the Docuvia knowledge graph engine. It ingests Git history, documents, and code to construct a queryable knowledge graph, exposing it to AI agents via CLI and MCP.
 
 ## Documentation
+
 The complete documentation, including the critical system architecture and design principles, is available in the `docs/gitbook/` directory.
 
 - [Prologue: Vision & Goal](docs/gitbook/README.md)
@@ -16,4 +17,5 @@ The complete documentation, including the critical system architecture and desig
   - [Strict Testing & Quality Gates](docs/gitbook/architecture/testing-and-quality-architecture.md)
 
 ## For AI Agents and Developers
+
 Before contributing, please read [AGENTS.md](AGENTS.md) carefully to understand the strict architectural constraints of this repository.

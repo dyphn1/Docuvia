@@ -55,8 +55,12 @@ describe("hydrateCommand", () => {
     await hydrateCommand();
 
     expect(mockHydrate).toHaveBeenCalled();
-    expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("3 nodes"));
-    expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("2 edges"));
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("3 nodes"),
+    );
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("2 edges"),
+    );
   });
 
   it("mentions dropped dangling edges when any were dropped", async () => {
@@ -70,11 +74,18 @@ describe("hydrateCommand", () => {
 
     await hydrateCommand();
 
-    expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("1 dangling edge"));
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("1 dangling edge"),
+    );
   });
 
   it("warns instead of succeeding when there's nothing to hydrate from yet", async () => {
-    mockHydrate.mockResolvedValue({ hydrated: false, nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 });
+    mockHydrate.mockResolvedValue({
+      hydrated: false,
+      nodesLoaded: 0,
+      edgesLoaded: 0,
+      edgesDropped: 0,
+    });
 
     await hydrateCommand();
 
@@ -83,12 +94,16 @@ describe("hydrateCommand", () => {
   });
 
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.hydrate() throws", async () => {
-    mockHydrate.mockRejectedValue(new Error('Local database not found. Please run "docuvia init".'));
+    mockHydrate.mockRejectedValue(
+      new Error('Local database not found. Please run "docuvia init".'),
+    );
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
     await expect(hydrateCommand()).rejects.toThrow("Exit 1");
 
-    expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("docuvia init"));
+    expect(spinnerFail).toHaveBeenCalledWith(
+      expect.stringContaining("docuvia init"),
+    );
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

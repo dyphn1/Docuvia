@@ -14,5 +14,3 @@ This section holds Docuvia2's Architectural Decision Records (ADRs). The decisio
 - **[Interface (IFCE)](interface/README.md)**: CLI UX, VS Code client, prompt handling.
 - **[Platform (PLAT)](platform/README.md)**: Virtual Contracts, Local-first architecture, hooks.
 - **[Legacy (Legacy)](legacy/README.md)**: Frozen Docuvia1 ADRs kept for historical context.
-
-

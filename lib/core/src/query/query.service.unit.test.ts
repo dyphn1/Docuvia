@@ -15,7 +15,10 @@ describe("QueryService", () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-query-service-"));
     const dbPath = path.join(tmpDir, ".docuvia", "local.db");
     store = await GraphStore.open({ dbPath });
-    projectId = store.projects.insert({ name: "demo", repoUrl: "file:///demo" }).id;
+    projectId = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    }).id;
   });
 
   afterEach(async () => {
@@ -25,9 +28,9 @@ describe("QueryService", () => {
 
   describe("extractKeywords()", () => {
     it("strips stop words and dedups tokens", () => {
-      expect(queryService.extractKeywords("what is the authService for")).toEqual([
-        "authService",
-      ]);
+      expect(
+        queryService.extractKeywords("what is the authService for"),
+      ).toEqual(["authService"]);
     });
 
     it("keeps identifier-ish tokens (dots/slashes/dashes) intact", () => {
@@ -48,10 +51,26 @@ describe("QueryService", () => {
         name: "authService",
         pathPatterns: ["src/auth.ts"],
       });
-      const callerId = store.graph.insertNode({ projectId, name: "caller", pathPatterns: ["src/a.ts"] });
-      const calleeId = store.graph.insertNode({ projectId, name: "callee", pathPatterns: ["src/b.ts"] });
-      store.graph.insertLink({ sourceNodeId: callerId, targetNodeId: targetId, linkType: "calls" });
-      store.graph.insertLink({ sourceNodeId: targetId, targetNodeId: calleeId, linkType: "calls" });
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "caller",
+        pathPatterns: ["src/a.ts"],
+      });
+      const calleeId = store.graph.insertNode({
+        projectId,
+        name: "callee",
+        pathPatterns: ["src/b.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
+      store.graph.insertLink({
+        sourceNodeId: targetId,
+        targetNodeId: calleeId,
+        linkType: "calls",
+      });
 
       expect(queryService.getContext(store, "authService")).toEqual({
         incoming: [{ name: "caller", type: "module" }],
@@ -76,8 +95,16 @@ describe("QueryService", () => {
         description: "handles authentication",
         pathPatterns: ["src/auth.ts"],
       });
-      const callerId = store.graph.insertNode({ projectId, name: "caller", pathPatterns: ["src/a.ts"] });
-      store.graph.insertLink({ sourceNodeId: callerId, targetNodeId: targetId, linkType: "calls" });
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "caller",
+        pathPatterns: ["src/a.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
 
       const result = queryService.query(store, "authService");
 
@@ -95,8 +122,16 @@ describe("QueryService", () => {
         description: "handles authentication",
         pathPatterns: ["src/auth.ts"],
       });
-      const callerId = store.graph.insertNode({ projectId, name: "caller", pathPatterns: ["src/a.ts"] });
-      store.graph.insertLink({ sourceNodeId: callerId, targetNodeId: targetId, linkType: "calls" });
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "caller",
+        pathPatterns: ["src/a.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
 
       vi.spyOn(queryService, "getContext").mockImplementation(() => {
         throw new Error("boom");

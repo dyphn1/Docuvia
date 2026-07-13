@@ -1,6 +1,6 @@
 # Application Lifecycle & State Management
 
-> **Mandatory Architecture Protocol:** 
+> **Mandatory Architecture Protocol:**
 > Implementation libraries must never instantiate their own heavy resources (like DB connections or WASM workers) at the module level. Lifecycle ownership (Initialization and Teardown) belongs strictly to the Orchestration Layer (`ui-core`). Furthermore, libraries are strictly forbidden from reading `process.env` directly; all configuration must be injected via `docuviaMemory`.
 
 ---
@@ -53,19 +53,23 @@ sequenceDiagram
 The lifecycle and state management duties are strictly partitioned:
 
 ### 🟨 The Virtual Layer (`lib/contracts`)
-*   **`docuviaFactory` (Transient by Default)**: Stores *Constructors* or *Providers*, not active instances. By default, every time the Orchestrator requests an object, it receives a **brand new, transient instance**. A factory does not manage the lifecycle of what it produces; there may be a few explicit Singleton objects defined in `contracts`, but they are the exception.
-*   **`docuviaMemory` (UUID Scoping & Teardown)**: The **only** source of truth for runtime configurations. To prevent state pollution in concurrent environments (like a long-running MCP Server serving multiple workspaces), memory states are isolated using a **UUID** (e.g., hashed from the workspace path). 
+
+- **`docuviaFactory` (Transient by Default)**: Stores _Constructors_ or _Providers_, not active instances. By default, every time the Orchestrator requests an object, it receives a **brand new, transient instance**. A factory does not manage the lifecycle of what it produces; there may be a few explicit Singleton objects defined in `contracts`, but they are the exception.
+- **`docuviaMemory` (UUID Scoping & Teardown)**: The **only** source of truth for runtime configurations. To prevent state pollution in concurrent environments (like a long-running MCP Server serving multiple workspaces), memory states are isolated using a **UUID** (e.g., hashed from the workspace path).
 
 ### 🟥 The Presentation Layer (`artifacts/cli`, `mcp`)
-*   **The Bootstrapper & Garbage Collector**: Responsible for generating the Context UUID, reading configurations, and injecting them into `docuviaMemory`. Crucially, because it is the only layer that knows when a command or request is fully complete, **it is strictly responsible for Garbage Collection**. It must explicitly delete the UUID context from `docuviaMemory` at the end of the run to prevent Out-of-Memory (OOM) leaks.
-*   **The Trigger**: Explicitly imports implementation libraries to ensure they execute their registration code during the Node.js module loading phase. We intentionally use explicit imports (rather than auto-discovery) at this stage to keep the bootstrapping fail-fast and avoid ambiguous teardown boundaries.
+
+- **The Bootstrapper & Garbage Collector**: Responsible for generating the Context UUID, reading configurations, and injecting them into `docuviaMemory`. Crucially, because it is the only layer that knows when a command or request is fully complete, **it is strictly responsible for Garbage Collection**. It must explicitly delete the UUID context from `docuviaMemory` at the end of the run to prevent Out-of-Memory (OOM) leaks.
+- **The Trigger**: Explicitly imports implementation libraries to ensure they execute their registration code during the Node.js module loading phase. We intentionally use explicit imports (rather than auto-discovery) at this stage to keep the bootstrapping fail-fast and avoid ambiguous teardown boundaries.
 
 ### 🟦 The Orchestration Layer (`lib/ui-core`)
-*   **The Lifecycle Owner**: Because objects from the factory are transient, `ui-core` owns them entirely. It explicitly calls `.initialize()` and `.close()` on the instances.
-*   **Concurrency Locks**: If `ui-core` spawns multiple processes or retrieves multiple transient DB instances that act on the same target, it manages concurrency exactly like `git` does: by issuing a **Lock**. The orchestration flow must acquire a lock for a target resource, preventing simultaneous writes that would cause database collisions.
+
+- **The Lifecycle Owner**: Because objects from the factory are transient, `ui-core` owns them entirely. It explicitly calls `.initialize()` and `.close()` on the instances.
+- **Concurrency Locks**: If `ui-core` spawns multiple processes or retrieves multiple transient DB instances that act on the same target, it manages concurrency exactly like `git` does: by issuing a **Lock**. The orchestration flow must acquire a lock for a target resource, preventing simultaneous writes that would cause database collisions.
 
 ### 🟩 The Implementation Layer (`lib/schema`, `lib/core`)
-*   **The Follower**: It waits for `.initialize()` to be called. It reads settings exclusively from `docuviaMemory` using the Context UUID passed down by the Orchestrator.
+
+- **The Follower**: It waits for `.initialize()` to be called. It reads settings exclusively from `docuviaMemory` using the Context UUID passed down by the Orchestrator.
 
 ---
 
@@ -76,6 +80,7 @@ To create a predictable, race-condition-free runtime environment where the core 
 ## 4. The Problem
 
 In standard Node.js applications, two major anti-patterns often emerge:
+
 1.  **Implicit Async Initialization**: A database module exports an already-connected instance. If `ui-core` imports it, it has to guess whether the connection is ready, leading to brittle `await setTimeout()` hacks or unhandled promise rejections.
 2.  **Environment Coupling**: Deeply nested libraries read `process.env.DATABASE_URL` directly. This makes the library impossible to run in a VS Code Webview or a Browser Extension, as `process.env` does not exist there.
 

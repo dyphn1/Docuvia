@@ -38,7 +38,10 @@ describe("cleanCommand", () => {
     mockClean.mockReset();
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
-    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+    });
   });
 
   afterEach(() => {
@@ -47,7 +50,9 @@ describe("cleanCommand", () => {
 
   it("cleans non-interactively via docuviaApi.clean, scoping memory to a fresh UUID and cleaning it up afterwards", async () => {
     mockClean.mockImplementation(async (scopeId) => {
-      expect(docuviaMemory.get(scopeId, "workspaceRoot")).toEqual(expect.any(String));
+      expect(docuviaMemory.get(scopeId, "workspaceRoot")).toEqual(
+        expect.any(String),
+      );
       return { deleted: true, message: "Cleaned .docuvia/local.db database." };
     });
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
@@ -55,12 +60,17 @@ describe("cleanCommand", () => {
     await cleanCommand();
 
     expect(mockClean).toHaveBeenCalled();
-    expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("Cleaned"));
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("Cleaned"),
+    );
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 
   it("aborts without calling docuviaApi.clean when not confirmed in TTY", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
     vi.mocked(ui.askConfirm).mockResolvedValue(false);
 
     await expect(cleanCommand()).rejects.toThrow("Exit 0");

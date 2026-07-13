@@ -35,7 +35,9 @@ interface RenderNode {
  * currently persists every node (file, function, class) with `type: "module"`.
  */
 export class SnapshotRendererService implements ISnapshotRenderer {
-  public async render(input: SnapshotRenderInput): Promise<SnapshotRenderResult> {
+  public async render(
+    input: SnapshotRenderInput,
+  ): Promise<SnapshotRenderResult> {
     const { outDir, l2Rows, linkRows } = input;
 
     const graphDir = path.join(outDir, "graph");
@@ -44,7 +46,8 @@ export class SnapshotRendererService implements ISnapshotRenderer {
     await fs.mkdir(knowledgeDir, { recursive: true });
 
     const filePathById = new Map<number, string | undefined>();
-    for (const row of l2Rows) filePathById.set(row.id, parsePathPattern(row.path_patterns));
+    for (const row of l2Rows)
+      filePathById.set(row.id, parsePathPattern(row.path_patterns));
 
     // A node is a "symbol" iff some `contains` link targets it; its containing file's id comes
     // from that same link's source.
@@ -58,7 +61,8 @@ export class SnapshotRendererService implements ISnapshotRenderer {
     // node_key (STOR-005) is the deterministic, cross-machine export identity; rowid ("l2:<id>")
     // is only a fallback for rows persisted before the node_key column existed.
     const nodeKeyById = new Map<number, string>();
-    for (const row of l2Rows) nodeKeyById.set(row.id, row.node_key ?? "l2:" + row.id);
+    for (const row of l2Rows)
+      nodeKeyById.set(row.id, row.node_key ?? "l2:" + row.id);
 
     const nodes: RenderNode[] = l2Rows.map((row) => {
       const containingFileId = containingFileIdByNodeId.get(row.id);
@@ -75,21 +79,36 @@ export class SnapshotRendererService implements ISnapshotRenderer {
     });
 
     const nodesData = nodes.map((node) =>
-      JSON.stringify({ id: node.id, type: node.kind, name: node.name, filePath: node.filePath })
+      JSON.stringify({
+        id: node.id,
+        type: node.kind,
+        name: node.name,
+        filePath: node.filePath,
+      }),
     );
     const edgesData = linkRows.map((link) =>
       JSON.stringify({
-        source: nodeKeyById.get(link.source_node_id) ?? "l2:" + link.source_node_id,
-        target: nodeKeyById.get(link.target_node_id) ?? "l2:" + link.target_node_id,
+        source:
+          nodeKeyById.get(link.source_node_id) ?? "l2:" + link.source_node_id,
+        target:
+          nodeKeyById.get(link.target_node_id) ?? "l2:" + link.target_node_id,
         type: link.link_type,
-      })
+      }),
     );
 
     if (nodesData.length > 0) {
-      await fs.writeFile(path.join(graphDir, "nodes.jsonl"), nodesData.join("\n") + "\n", "utf8");
+      await fs.writeFile(
+        path.join(graphDir, "nodes.jsonl"),
+        nodesData.join("\n") + "\n",
+        "utf8",
+      );
     }
     if (edgesData.length > 0) {
-      await fs.writeFile(path.join(graphDir, "edges.jsonl"), edgesData.join("\n") + "\n", "utf8");
+      await fs.writeFile(
+        path.join(graphDir, "edges.jsonl"),
+        edgesData.join("\n") + "\n",
+        "utf8",
+      );
     }
 
     const limit = pLimit(MARKDOWN_WRITE_CONCURRENCY);
@@ -114,11 +133,11 @@ export class SnapshotRendererService implements ISnapshotRenderer {
             errors.push(
               `Failed to write markdown for node ${node.id} (${node.name}): ${
                 err instanceof Error ? err.message : String(err)
-              }`
+              }`,
             );
           }
-        })
-      )
+        }),
+      ),
     );
 
     return {
@@ -170,7 +189,9 @@ function sanitizeSegment(segment: string): string {
 function sanitizeRelativePath(relPath: string): string {
   return relPath
     .split(/[\\/]+/)
-    .filter((segment) => segment.length > 0 && segment !== "." && segment !== "..")
+    .filter(
+      (segment) => segment.length > 0 && segment !== "." && segment !== "..",
+    )
     .map(sanitizeSegment)
     .join(path.sep);
 }
@@ -181,19 +202,33 @@ function sanitizeRelativePath(relPath: string): string {
  * filtering above. Throws (caught by the per-node try/catch in `render()`) rather than returning
  * an escaping path.
  */
-function resolveWithinKnowledgeDir(knowledgeDir: string, relPath: string): string {
+function resolveWithinKnowledgeDir(
+  knowledgeDir: string,
+  relPath: string,
+): string {
   const resolvedKnowledgeDir = path.resolve(knowledgeDir);
   const resolved = path.resolve(resolvedKnowledgeDir, relPath);
-  if (resolved !== resolvedKnowledgeDir && !resolved.startsWith(resolvedKnowledgeDir + path.sep)) {
-    throw new Error(`Sanitized markdown path escapes knowledge directory: ${relPath}`);
+  if (
+    resolved !== resolvedKnowledgeDir &&
+    !resolved.startsWith(resolvedKnowledgeDir + path.sep)
+  ) {
+    throw new Error(
+      `Sanitized markdown path escapes knowledge directory: ${relPath}`,
+    );
   }
   return resolved;
 }
 
-function markdownPathFor(knowledgeDir: string, node: RenderNode): string | undefined {
+function markdownPathFor(
+  knowledgeDir: string,
+  node: RenderNode,
+): string | undefined {
   if (node.kind === "file") {
     if (!node.filePath) return undefined;
-    return resolveWithinKnowledgeDir(knowledgeDir, `${sanitizeRelativePath(node.filePath)}.md`);
+    return resolveWithinKnowledgeDir(
+      knowledgeDir,
+      `${sanitizeRelativePath(node.filePath)}.md`,
+    );
   }
 
   if (!node.filePath) return undefined;
@@ -201,7 +236,7 @@ function markdownPathFor(knowledgeDir: string, node: RenderNode): string | undef
   const safeName = sanitizeSegment(node.name);
   return resolveWithinKnowledgeDir(
     knowledgeDir,
-    path.join(parsedPath.dir, parsedPath.name, `${safeName}.md`)
+    path.join(parsedPath.dir, parsedPath.name, `${safeName}.md`),
   );
 }
 

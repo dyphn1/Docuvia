@@ -42,10 +42,18 @@ export class GraphNodesRepo implements IGraphNodesRepo {
 
     const placeholders = ids.map(() => "?").join(",");
     this.db
-      .prepare(`DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (${placeholders})`)
+      .prepare(
+        `DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (${placeholders})`,
+      )
       .run(...ids);
-    this.db.prepare(`DELETE FROM node_links WHERE source_node_id IN (${placeholders})`).run(...ids);
-    this.db.prepare(`DELETE FROM l2_nodes WHERE id IN (${placeholders})`).run(...ids);
+    this.db
+      .prepare(
+        `DELETE FROM node_links WHERE source_node_id IN (${placeholders})`,
+      )
+      .run(...ids);
+    this.db
+      .prepare(`DELETE FROM l2_nodes WHERE id IN (${placeholders})`)
+      .run(...ids);
     return ids;
   }
 
@@ -64,11 +72,12 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     nodeKey?: string;
     contentHash?: string;
   }): number {
-    const nodeKey = input.nodeKey ?? deriveNodeKey(input.pathPatterns, input.name);
+    const nodeKey =
+      input.nodeKey ?? deriveNodeKey(input.pathPatterns, input.name);
     const result = this.db
       .prepare(
         `INSERT INTO l2_nodes (project_id, name, type, description, path_patterns, node_key, content_hash)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.projectId,
@@ -77,15 +86,21 @@ export class GraphNodesRepo implements IGraphNodesRepo {
         input.description ?? "",
         JSON.stringify(input.pathPatterns),
         nodeKey,
-        input.contentHash ?? null
+        input.contentHash ?? null,
       );
     return Number(result.lastInsertRowid);
   }
 
   /** Inserts a node_links edge between two l2_nodes. */
-  insertLink(input: { sourceNodeId: number; targetNodeId: number; linkType: string }): void {
+  insertLink(input: {
+    sourceNodeId: number;
+    targetNodeId: number;
+    linkType: string;
+  }): void {
     this.db
-      .prepare("INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)")
+      .prepare(
+        "INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)",
+      )
       .run(input.sourceNodeId, input.targetNodeId, input.linkType);
   }
 
@@ -102,14 +117,22 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   count(): { l2Nodes: number; l3Nodes: number } {
     try {
       const l2Nodes = (
-        this.db.prepare("SELECT COUNT(*) as c FROM l2_nodes").get() as { c: number }
+        this.db.prepare("SELECT COUNT(*) as c FROM l2_nodes").get() as {
+          c: number;
+        }
       ).c;
       const l3Nodes = (
-        this.db.prepare("SELECT COUNT(*) as c FROM l3_nodes").get() as { c: number }
+        this.db.prepare("SELECT COUNT(*) as c FROM l3_nodes").get() as {
+          c: number;
+        }
       ).c;
       return { l2Nodes, l3Nodes };
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to count l2/l3 nodes", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        "Failed to count l2/l3 nodes",
+        err,
+      );
     }
   }
 
@@ -120,7 +143,9 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   findNodesForChangedFiles(changedFiles: string[]): L2NodeWithL3Children[] {
     try {
       const changedSet = new Set(changedFiles);
-      const allNodes = this.db.prepare("SELECT * FROM l2_nodes").all() as L2NodeRow[];
+      const allNodes = this.db
+        .prepare("SELECT * FROM l2_nodes")
+        .all() as L2NodeRow[];
 
       const candidates = allNodes.filter((node) => {
         if (!node.path_patterns) return false;
@@ -132,7 +157,9 @@ export class GraphNodesRepo implements IGraphNodesRepo {
         }
       });
 
-      const l3Stmt = this.db.prepare("SELECT * FROM l3_nodes WHERE l2_node_id = ?");
+      const l3Stmt = this.db.prepare(
+        "SELECT * FROM l3_nodes WHERE l2_node_id = ?",
+      );
       return candidates.map((l2Node) => ({
         l2Node,
         l3Nodes: l3Stmt.all(l2Node.id) as L3NodeRow[],
@@ -141,7 +168,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         "Failed to find nodes for changed files",
-        err
+        err,
       );
     }
   }
@@ -150,7 +177,9 @@ export class GraphNodesRepo implements IGraphNodesRepo {
    * Resolves a node by name: exact match first, falling back to a `LIKE %target%` match
    * (mirrors old Docuvia's `QueryService.findNodeByName`).
    */
-  findNodeByName(target: string): { id: number; name: string; type: string } | undefined {
+  findNodeByName(
+    target: string,
+  ): { id: number; name: string; type: string } | undefined {
     try {
       const exact = this.db
         .prepare("SELECT id, name, type FROM l2_nodes WHERE name = ? LIMIT 1")
@@ -159,13 +188,16 @@ export class GraphNodesRepo implements IGraphNodesRepo {
 
       const escaped = target.replace(/[\\%_]/g, (m) => `\\${m}`);
       return this.db
-        .prepare("SELECT id, name, type FROM l2_nodes WHERE name LIKE ? ESCAPE '\\' LIMIT 1")
-        .get(`%${escaped}%`) as { id: number; name: string; type: string } | undefined;
+        .prepare(
+          "SELECT id, name, type FROM l2_nodes WHERE name LIKE ? ESCAPE '\\' LIMIT 1",
+        )
+        .get(`%${escaped}%`) as
+        { id: number; name: string; type: string } | undefined;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         `Failed to find node by name: ${target}`,
-        err
+        err,
       );
     }
   }
@@ -175,41 +207,45 @@ export class GraphNodesRepo implements IGraphNodesRepo {
    * dedupes a neighbor that's connected by more than one edge type (e.g. both a `calls` and a
    * `depends_on` link between the same pair of nodes), so it isn't double-counted.
    */
-  getIncomingEdges(nodeId: number): Array<{ id: number; name: string; type: string }> {
+  getIncomingEdges(
+    nodeId: number,
+  ): Array<{ id: number; name: string; type: string }> {
     try {
       return this.db
         .prepare(
           `SELECT DISTINCT n.id as id, n.name as name, n.type as type
            FROM node_links l
            JOIN l2_nodes n ON n.id = l.source_node_id
-           WHERE l.target_node_id = ?`
+           WHERE l.target_node_id = ?`,
         )
         .all(nodeId) as Array<{ id: number; name: string; type: string }>;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         `Failed to get incoming edges for node ${nodeId}`,
-        err
+        err,
       );
     }
   }
 
   /** Nodes nodeId links out to. See `getIncomingEdges()`'s doc comment on the `DISTINCT`. */
-  getOutgoingEdges(nodeId: number): Array<{ id: number; name: string; type: string }> {
+  getOutgoingEdges(
+    nodeId: number,
+  ): Array<{ id: number; name: string; type: string }> {
     try {
       return this.db
         .prepare(
           `SELECT DISTINCT n.id as id, n.name as name, n.type as type
            FROM node_links l
            JOIN l2_nodes n ON n.id = l.target_node_id
-           WHERE l.source_node_id = ?`
+           WHERE l.source_node_id = ?`,
         )
         .all(nodeId) as Array<{ id: number; name: string; type: string }>;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         `Failed to get outgoing edges for node ${nodeId}`,
-        err
+        err,
       );
     }
   }
@@ -219,7 +255,11 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     try {
       return this.db.prepare("SELECT * FROM l2_nodes").all() as L2NodeRow[];
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to get all l2 nodes", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        "Failed to get all l2 nodes",
+        err,
+      );
     }
   }
 
@@ -228,7 +268,11 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     try {
       return this.db.prepare("SELECT * FROM node_links").all() as NodeLinkRow[];
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to get all node links", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        "Failed to get all node links",
+        err,
+      );
     }
   }
 
@@ -258,7 +302,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
 
         const insertNode = this.db.prepare(
           `INSERT INTO l2_nodes (project_id, name, type, description, path_patterns, node_key)
-           VALUES (?, ?, 'module', '', ?, ?)`
+           VALUES (?, ?, 'module', '', ?, ?)`,
         );
         const keyToId = new Map<string, number>();
         for (const node of input.nodes) {
@@ -266,13 +310,13 @@ export class GraphNodesRepo implements IGraphNodesRepo {
             input.projectId,
             node.name,
             JSON.stringify(node.filePath ? [node.filePath] : []),
-            node.nodeKey
+            node.nodeKey,
           );
           keyToId.set(node.nodeKey, Number(result.lastInsertRowid));
         }
 
         const insertLink = this.db.prepare(
-          "INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)"
+          "INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)",
         );
         let edgesLoaded = 0;
         let edgesDropped = 0;
@@ -287,14 +331,20 @@ export class GraphNodesRepo implements IGraphNodesRepo {
           edgesLoaded++;
         }
 
-        this.db.exec("INSERT INTO l2_nodes_fts(l2_nodes_fts) VALUES('rebuild')");
+        this.db.exec(
+          "INSERT INTO l2_nodes_fts(l2_nodes_fts) VALUES('rebuild')",
+        );
         this.db.exec(FTS_TRIGGER_RECREATE_SQL);
 
         return { nodesLoaded: input.nodes.length, edgesLoaded, edgesDropped };
       });
       return run();
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to bulk-load graph", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        "Failed to bulk-load graph",
+        err,
+      );
     }
   }
 }

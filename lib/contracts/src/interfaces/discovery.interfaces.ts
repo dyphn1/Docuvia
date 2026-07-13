@@ -22,12 +22,14 @@ export interface IFileDiscovery {
   discoverFiles(
     workspaceRoot: string,
     filesRepo: FileHashLookup,
-    options?: { onlyIndexed?: boolean }
+    options?: { onlyIndexed?: boolean },
   ): Promise<DiscoveryResult>;
 }
 
 export interface IConfigScanner {
-  scanConfigs(workspaceRoot: string): Promise<{ projectType: string; tags: string[] }>;
+  scanConfigs(
+    workspaceRoot: string,
+  ): Promise<{ projectType: string; tags: string[] }>;
 }
 
 export interface IVcsScanner {

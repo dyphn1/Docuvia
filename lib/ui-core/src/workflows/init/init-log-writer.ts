@@ -11,14 +11,14 @@ export interface InitLogSummary {
 
 export async function appendInitLogLine(
   workspaceRoot: string,
-  event: Record<string, unknown>
+  event: Record<string, unknown>,
 ): Promise<void> {
   await appendCommandLogLine(workspaceRoot, INIT_LOG_FILE_NAME, event);
 }
 
 export async function writeInitSummary(
   workspaceRoot: string,
-  summary: InitLogSummary
+  summary: InitLogSummary,
 ): Promise<void> {
   await appendInitLogLine(workspaceRoot, { event: "init.summary", ...summary });
 }

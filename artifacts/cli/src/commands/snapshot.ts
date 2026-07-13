@@ -22,11 +22,13 @@ export async function snapshotCommand(cwd: string = process.cwd()) {
   try {
     const result = await docuviaApi.snapshot(scopeId, logger);
     spinner.succeed(
-      `${UI_MESSAGES.SNAPSHOT_SUCCESS}${result.nodesWritten} nodes, ${result.edgesWritten} edges, ${result.markdownFilesWritten} markdown files`
+      `${UI_MESSAGES.SNAPSHOT_SUCCESS}${result.nodesWritten} nodes, ${result.edgesWritten} edges, ${result.markdownFilesWritten} markdown files`,
     );
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.SNAPSHOT_FAIL + message);
     process.exit(1);
   } finally {

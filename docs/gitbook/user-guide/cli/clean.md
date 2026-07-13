@@ -23,16 +23,18 @@ When you run `docuvia clean`:
 3. **Wipe Logs (Optional)**: If `--logs` is provided, the entire `.docuvia/logs/` directory is permanently deleted.
 4. **Command Logging**: A structured JSONL log is written to `.docuvia/logs/clean.log` (unless `--logs` was used, in which case the log directory is destroyed).
 
-*(Note: `clean` does NOT delete the `docuvia-knowledge` git orphan branch).*
+_(Note: `clean` does NOT delete the `docuvia-knowledge` git orphan branch)._
 
 ## Examples
 
 Interactive clean:
+
 ```bash
 docuvia clean
 ```
 
 Force clean in a CI pipeline or headless script:
+
 ```bash
 docuvia clean --force
 ```

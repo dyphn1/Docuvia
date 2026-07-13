@@ -34,7 +34,10 @@ export class ImpactService implements IImpactService {
     return "LOW";
   }
 
-  getBlastRadius(store: IGraphStore, target: string): BlastRadiusEntry[] | undefined {
+  getBlastRadius(
+    store: IGraphStore,
+    target: string,
+  ): BlastRadiusEntry[] | undefined {
     const node = store.graph.findNodeByName(target);
     if (!node) {
       this.logger.debug("No node resolved for impact target", { target });
@@ -44,7 +47,10 @@ export class ImpactService implements IImpactService {
     const blastRadius = store.graph
       .getIncomingEdges(node.id)
       .map(({ name, type }) => ({ name, type }));
-    this.logger.debug("Resolved blast radius", { target, count: blastRadius.length });
+    this.logger.debug("Resolved blast radius", {
+      target,
+      count: blastRadius.length,
+    });
     return blastRadius;
   }
 }

@@ -12,7 +12,9 @@ interface IOtherThing {
 
 const TOKEN = createToken<ITestThing>("ITestThing");
 const DEP_TOKEN = createToken<string>("IDependency");
-const PARAMS_TOKEN = createToken<{ logger?: string }, { logger?: string }>("IParamsThing");
+const PARAMS_TOKEN = createToken<{ logger?: string }, { logger?: string }>(
+  "IParamsThing",
+);
 const OTHER_TOKEN = createToken<IOtherThing>("IOtherThing");
 
 describe("DocuviaFactory", () => {
@@ -33,7 +35,9 @@ describe("DocuviaFactory", () => {
 
   it("resolve() throws FACTORY_TOKEN_NOT_REGISTERED for an unregistered token", () => {
     expect(() => factory.resolve(TOKEN)).toThrowError(
-      expect.objectContaining({ code: ErrorCodes.FACTORY_TOKEN_NOT_REGISTERED })
+      expect.objectContaining({
+        code: ErrorCodes.FACTORY_TOKEN_NOT_REGISTERED,
+      }),
     );
   });
 
@@ -47,14 +51,16 @@ describe("DocuviaFactory", () => {
   it("passes per-call params through to the provider without going through the registry", () => {
     factory.register(PARAMS_TOKEN, (_f, params) => params);
 
-    expect(factory.resolve(PARAMS_TOKEN, { logger: "injected" })).toEqual({ logger: "injected" });
+    expect(factory.resolve(PARAMS_TOKEN, { logger: "injected" })).toEqual({
+      logger: "injected",
+    });
   });
 
   it("lock() prevents further registrations, throwing FACTORY_LOCKED", () => {
     factory.lock();
 
     expect(() => factory.register(TOKEN, () => ({}))).toThrowError(
-      expect.objectContaining({ code: ErrorCodes.FACTORY_LOCKED })
+      expect.objectContaining({ code: ErrorCodes.FACTORY_LOCKED }),
     );
   });
 

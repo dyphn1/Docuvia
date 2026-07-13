@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import type { FileHashLookup, IConfigScanner, IFileDiscovery, IVcsScanner } from "@workspace/contracts";
+import type {
+  FileHashLookup,
+  IConfigScanner,
+  IFileDiscovery,
+  IVcsScanner,
+} from "@workspace/contracts";
 import { runDiscoveryPipeline } from "./run-discovery-pipeline.js";
 
 function makeMockFilesRepo(): FileHashLookup {
@@ -21,11 +26,18 @@ describe("runDiscoveryPipeline", () => {
         return ["domain:core"];
       }),
     };
-    const filesToParse = [{ file: "src/a.ts", hash: "hash-a", code: "export const a = 1;" }];
+    const filesToParse = [
+      { file: "src/a.ts", hash: "hash-a", code: "export const a = 1;" },
+    ];
     const fileDiscovery: IFileDiscovery = {
       discoverFiles: vi.fn().mockImplementation(async () => {
         callOrder.push("discoverFiles");
-        return { filesToParse, existingHashes: new Map(), skippedCount: 0, skippedOversized: [] };
+        return {
+          filesToParse,
+          existingHashes: new Map(),
+          skippedCount: 0,
+          skippedOversized: [],
+        };
       }),
     };
 
@@ -38,17 +50,29 @@ describe("runDiscoveryPipeline", () => {
     });
 
     // All three ran (order among themselves is not asserted — Promise.all — only that each ran).
-    expect(callOrder.sort()).toEqual(["discoverFiles", "extractHotspotTags", "scanConfigs"]);
+    expect(callOrder.sort()).toEqual([
+      "discoverFiles",
+      "extractHotspotTags",
+      "scanConfigs",
+    ]);
     expect(result.filesToParse).toEqual(filesToParse);
-    expect(Array.from(result.tags).sort()).toEqual(["backend", "domain:core", "typescript"]);
+    expect(Array.from(result.tags).sort()).toEqual([
+      "backend",
+      "domain:core",
+      "typescript",
+    ]);
     expect(result.projectType).toBe("typescript");
   });
 
   it("threads skippedOversized through from discovery untouched", async () => {
     const configScanner: IConfigScanner = {
-      scanConfigs: vi.fn().mockResolvedValue({ projectType: "generic", tags: [] }),
+      scanConfigs: vi
+        .fn()
+        .mockResolvedValue({ projectType: "generic", tags: [] }),
     };
-    const vcsScanner: IVcsScanner = { extractHotspotTags: vi.fn().mockResolvedValue([]) };
+    const vcsScanner: IVcsScanner = {
+      extractHotspotTags: vi.fn().mockResolvedValue([]),
+    };
     const fileDiscovery: IFileDiscovery = {
       discoverFiles: vi.fn().mockResolvedValue({
         filesToParse: [],
@@ -66,6 +90,8 @@ describe("runDiscoveryPipeline", () => {
       workspaceRoot: "/workspace",
     });
 
-    expect(result.skippedOversized).toEqual([{ file: "src/huge.ts", sizeBytes: 600_000 }]);
+    expect(result.skippedOversized).toEqual([
+      { file: "src/huge.ts", sizeBytes: 600_000 },
+    ]);
   });
 });

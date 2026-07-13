@@ -4,8 +4,16 @@ import { compressAstContext, CompressibleNode } from "../src/compression.js";
 describe("compressAstContext", () => {
   it("deduplicates near-identical nodes, keeping the highest-confidence copy", () => {
     const nodes: CompressibleNode[] = [
-      { title: "auth.ts", content: "export function login() {}", confidence: 0.4 },
-      { title: "auth.ts", content: "export function login() {}", confidence: 0.9 },
+      {
+        title: "auth.ts",
+        content: "export function login() {}",
+        confidence: 0.4,
+      },
+      {
+        title: "auth.ts",
+        content: "export function login() {}",
+        confidence: 0.9,
+      },
     ];
 
     const result = compressAstContext(nodes);
@@ -21,7 +29,10 @@ describe("compressAstContext", () => {
     ];
 
     // Budget fits exactly one truncated entry (~31 chars), not both (~61 chars).
-    const result = compressAstContext(nodes, { maxTotalChars: 35, maxPerNodeChars: 5 });
+    const result = compressAstContext(nodes, {
+      maxTotalChars: 35,
+      maxPerNodeChars: 5,
+    });
 
     expect(result.context).toContain("high-confidence");
     expect(result.context).not.toContain("low-confidence");
@@ -29,6 +40,11 @@ describe("compressAstContext", () => {
 
   it("returns an empty result for an empty node list", () => {
     const result = compressAstContext([]);
-    expect(result).toEqual({ nodesTotal: 0, nodesIncluded: 0, charsSaved: 0, context: "" });
+    expect(result).toEqual({
+      nodesTotal: 0,
+      nodesIncluded: 0,
+      charsSaved: 0,
+      context: "",
+    });
   });
 });

@@ -5,11 +5,12 @@ import { AstEvent } from "../sink.js";
 export class AstTraverser {
   constructor(
     private provider: LanguageProvider,
-    private rootNode: Node
+    private rootNode: Node,
   ) {}
 
   private getDeclName(node: Node): string | undefined {
-    const nameNode = node.childForFieldName("name") || node.descendantsOfType("identifier")[0];
+    const nameNode =
+      node.childForFieldName("name") || node.descendantsOfType("identifier")[0];
     return nameNode?.text;
   }
 
@@ -23,11 +24,17 @@ export class AstTraverser {
   }
 
   extractClasses(): AstEvent[] {
-    return this.extractNamed(this.provider.extractClasses(this.rootNode), "class");
+    return this.extractNamed(
+      this.provider.extractClasses(this.rootNode),
+      "class",
+    );
   }
 
   extractFunctions(): AstEvent[] {
-    return this.extractNamed(this.provider.extractFunctions(this.rootNode), "function");
+    return this.extractNamed(
+      this.provider.extractFunctions(this.rootNode),
+      "function",
+    );
   }
 
   getImports(): Node[] {

@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-03
 Status: Deprecated
 Supplements: ADR-015, ADR-022
@@ -35,4 +36,4 @@ We will implement a **Hybrid Temp-File Blast Radius Overlay** backed by a **Head
 - **Positive**: Seamless Promotion (Zero-Cost Ingestion). Because temp files share the exact format as the orphan branch, committing the changes allows the ingestion pipeline to reuse or directly promote the temp files, bypassing expensive re-parsing.
 - **Positive**: MCP agents and CI pipelines gain full semantic resolution capabilities (via Headless LSP) natively.
 - **Negative**: High architectural complexity. The backend must orchestrate asynchronous temp file I/O, child process lifetimes, and garbage collect stale temp files.
-superseded_by: []
+  superseded_by: []

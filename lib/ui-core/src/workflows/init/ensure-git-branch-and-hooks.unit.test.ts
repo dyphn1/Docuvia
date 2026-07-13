@@ -3,7 +3,9 @@ import type { IKnowledgeGitService } from "@workspace/contracts";
 import { createMockLogger } from "@workspace/contracts";
 import { ensureGitBranchAndHooks } from "./ensure-git-branch-and-hooks.js";
 
-function makeMockKnowledgeGit(overrides: Partial<IKnowledgeGitService> = {}): IKnowledgeGitService {
+function makeMockKnowledgeGit(
+  overrides: Partial<IKnowledgeGitService> = {},
+): IKnowledgeGitService {
   return {
     ensureKnowledgeBranch: vi.fn().mockResolvedValue({ created: true }),
     installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
@@ -27,19 +29,28 @@ describe("ensureGitBranchAndHooks", () => {
       }),
     });
 
-    const result = await ensureGitBranchAndHooks(knowledgeGit, "/workspace", createMockLogger());
+    const result = await ensureGitBranchAndHooks(
+      knowledgeGit,
+      "/workspace",
+      createMockLogger(),
+    );
 
-    expect(callOrder).toEqual(["ensureKnowledgeBranch", "installPostCommitHook"]);
+    expect(callOrder).toEqual([
+      "ensureKnowledgeBranch",
+      "installPostCommitHook",
+    ]);
     expect(result).toEqual({ branchCreated: true, hookInstalled: true });
   });
 
   it("propagates ensureKnowledgeBranch failures (fatal to init)", async () => {
     const knowledgeGit = makeMockKnowledgeGit({
-      ensureKnowledgeBranch: vi.fn().mockRejectedValue(new Error("Failed to create branch: boom")),
+      ensureKnowledgeBranch: vi
+        .fn()
+        .mockRejectedValue(new Error("Failed to create branch: boom")),
     });
 
     await expect(
-      ensureGitBranchAndHooks(knowledgeGit, "/workspace", createMockLogger())
+      ensureGitBranchAndHooks(knowledgeGit, "/workspace", createMockLogger()),
     ).rejects.toThrow("Failed to create branch: boom");
   });
 
@@ -48,7 +59,11 @@ describe("ensureGitBranchAndHooks", () => {
       installPostCommitHook: vi.fn().mockResolvedValue({ installed: false }),
     });
 
-    const result = await ensureGitBranchAndHooks(knowledgeGit, "/workspace", createMockLogger());
+    const result = await ensureGitBranchAndHooks(
+      knowledgeGit,
+      "/workspace",
+      createMockLogger(),
+    );
     expect(result.hookInstalled).toBe(false);
   });
 
@@ -58,6 +73,8 @@ describe("ensureGitBranchAndHooks", () => {
 
     await ensureGitBranchAndHooks(knowledgeGit, "/workspace", logger);
 
-    expect(logger.events.some((e) => e.message === "Installing post-commit hook...")).toBe(true);
+    expect(
+      logger.events.some((e) => e.message === "Installing post-commit hook..."),
+    ).toBe(true);
   });
 });

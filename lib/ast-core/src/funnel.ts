@@ -9,7 +9,11 @@ export interface FunnelResult {
 export class ParsingFunnel {
   constructor(private registry: LanguageRegistry) {}
 
-  public process(fileContent: Uint8Array | string, filePath: string, ext: string): FunnelResult {
+  public process(
+    fileContent: Uint8Array | string,
+    filePath: string,
+    ext: string,
+  ): FunnelResult {
     let buffer: Uint8Array;
     let contentString: string | undefined;
 
@@ -24,7 +28,10 @@ export class ParsingFunnel {
     const checkLength = Math.min(buffer.length, 8000);
     for (let i = 0; i < checkLength; i++) {
       if (buffer[i] === 0) {
-        return { accepted: false, reason: "Binary file detected (NUL byte found)" };
+        return {
+          accepted: false,
+          reason: "Binary file detected (NUL byte found)",
+        };
       }
     }
 
@@ -32,9 +39,14 @@ export class ParsingFunnel {
     if (contentString === undefined) {
       try {
         // Use fatal: true to strictly enforce valid UTF-8
-        contentString = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+        contentString = new TextDecoder("utf-8", { fatal: true }).decode(
+          buffer,
+        );
       } catch (err) {
-        return { accepted: false, reason: "Lossless Encoding Guardrail failed (Invalid UTF-8)" };
+        return {
+          accepted: false,
+          reason: "Lossless Encoding Guardrail failed (Invalid UTF-8)",
+        };
       }
     }
 
@@ -43,7 +55,9 @@ export class ParsingFunnel {
 
     if (!mappedExtension || mappedExtension === "") {
       // Try shebang detection
-      const firstLineMatch = contentString ? contentString.match(/^(?:#!\s*)(.*)/) : null;
+      const firstLineMatch = contentString
+        ? contentString.match(/^(?:#!\s*)(.*)/)
+        : null;
       if (firstLineMatch) {
         const shebang = firstLineMatch[1];
         if (shebang.includes("node") || shebang.includes("js")) {
@@ -57,12 +71,18 @@ export class ParsingFunnel {
     }
 
     if (!mappedExtension || mappedExtension === "") {
-      return { accepted: false, reason: "No file extension and no shebang detected" };
+      return {
+        accepted: false,
+        reason: "No file extension and no shebang detected",
+      };
     }
 
     const provider = this.registry.getProviderForExtension(mappedExtension);
     if (!provider) {
-      return { accepted: false, reason: `Extension ${mappedExtension} not allowed` };
+      return {
+        accepted: false,
+        reason: `Extension ${mappedExtension} not allowed`,
+      };
     }
 
     return { accepted: true, mappedExtension };

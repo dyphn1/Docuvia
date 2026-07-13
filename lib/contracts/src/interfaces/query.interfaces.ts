@@ -35,7 +35,11 @@ export interface IQueryService {
   /** Structural context (incoming/outgoing edges) for a resolved node, or null if `target` doesn't resolve. */
   getContext(store: IGraphStore, target: string): GraphContext | null;
   /** FTS keyword search + node-ref exact/LIKE lookup + 1-hop neighbor traversal, deduped and ranked. */
-  search(store: IGraphStore, target: string, limit?: number): LocalSearchResult[];
+  search(
+    store: IGraphStore,
+    target: string,
+    limit?: number,
+  ): LocalSearchResult[];
   /** End-to-end query: `search()` bucketed into {l2, l3} plus `getContext()`. */
   query(store: IGraphStore, target: string, limit?: number): LocalQueryResult;
 }

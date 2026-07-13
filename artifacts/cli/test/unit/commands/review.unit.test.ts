@@ -57,12 +57,16 @@ describe("reviewCommand", () => {
   });
 
   it("uses ui.error for a CRITICAL risk level and deletes the memory scope even on failure", async () => {
-    mockReview.mockRejectedValue(new Error('Local database not found. Please run "docuvia init".'));
+    mockReview.mockRejectedValue(
+      new Error('Local database not found. Please run "docuvia init".'),
+    );
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
     await reviewCommand();
 
-    expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("docuvia init"));
+    expect(spinnerFail).toHaveBeenCalledWith(
+      expect.stringContaining("docuvia init"),
+    );
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
     expect(process.exitCode).toBe(1);
   });

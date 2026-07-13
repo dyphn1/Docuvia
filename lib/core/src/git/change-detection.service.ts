@@ -19,10 +19,12 @@ const LARGE_DIFF_FILE_FLOOR = 10;
 export class ChangeDetectionService implements IChangeDetectionService {
   constructor(
     private readonly impactService: IImpactService = new ImpactService(),
-    private readonly logger: ILogger = createNoopLogger()
+    private readonly logger: ILogger = createNoopLogger(),
   ) {}
 
-  detectChanges(input: Parameters<IChangeDetectionService["detectChanges"]>[0]): ChangeDetectionResult {
+  detectChanges(
+    input: Parameters<IChangeDetectionService["detectChanges"]>[0],
+  ): ChangeDetectionResult {
     const { store, baseRef, filesChanged } = input;
 
     const affectedNodes: ChangeDetectionResult["affectedNodes"] = [];
@@ -43,7 +45,13 @@ export class ChangeDetectionService implements IChangeDetectionService {
       riskLevel = "MEDIUM";
     }
 
-    const analysis = this.buildAnalysis(baseRef, filesChanged, affectedNodes, riskLevel, totalImpacted);
+    const analysis = this.buildAnalysis(
+      baseRef,
+      filesChanged,
+      affectedNodes,
+      riskLevel,
+      totalImpacted,
+    );
     this.logger.debug("Detected changes", {
       baseRef,
       filesChanged: filesChanged.length,
@@ -59,7 +67,7 @@ export class ChangeDetectionService implements IChangeDetectionService {
     filesChanged: ChangeDetectionResult["filesChanged"],
     affectedNodes: ChangeDetectionResult["affectedNodes"],
     riskLevel: ChangeDetectionResult["riskLevel"],
-    totalImpacted: number
+    totalImpacted: number,
   ): string {
     const lines: string[] = [];
     lines.push(`Base: ${baseRef ?? "working tree (HEAD)"}`);
@@ -69,7 +77,9 @@ export class ChangeDetectionService implements IChangeDetectionService {
     if (affectedNodes.length === 0) {
       lines.push("No local graph impact detected for the changed files.");
     } else {
-      lines.push(`Impacted nodes: ${totalImpacted} across ${affectedNodes.length} changed file(s).`);
+      lines.push(
+        `Impacted nodes: ${totalImpacted} across ${affectedNodes.length} changed file(s).`,
+      );
       lines.push("Top affected files:");
       const top = [...affectedNodes]
         .sort((a, b) => b.impactedBy.length - a.impactedBy.length)
@@ -79,7 +89,9 @@ export class ChangeDetectionService implements IChangeDetectionService {
           .slice(0, 5)
           .map((n) => `${n.name} (${n.type})`)
           .join(", ");
-        lines.push(`  - ${node.file}: ${node.impactedBy.length} dependent(s) [${names}]`);
+        lines.push(
+          `  - ${node.file}: ${node.impactedBy.length} dependent(s) [${names}]`,
+        );
       }
     }
 

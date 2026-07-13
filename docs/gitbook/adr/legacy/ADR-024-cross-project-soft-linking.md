@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-03
 Status: Superseded
 Supersedes: None
@@ -51,4 +52,5 @@ graph TD
     Query -. Dynamically Finds .-> L2_B
     Query -- Injects Context --> LLM[LLM Generator]
 ```
+
 superseded_by: []

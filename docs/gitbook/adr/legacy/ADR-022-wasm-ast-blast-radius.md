@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Deprecated
 Supplements: ADR-020
@@ -40,4 +41,4 @@ The architecture involves three phases during a delta update:
 - **Positive**: Drastic reduction in LLM costs and local processing time for incremental updates. True "Local-First" feel.
 - **Negative**: We must implement custom signature-comparison logic for each supported language (TypeScript, Python, etc.) within the `ast-core` package.
 - **Negative**: WASM memory limits might require careful handling for exceptionally large files (though rare).
-superseded_by: []
+  superseded_by: []

@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Superseded
 Supersedes: None
@@ -94,4 +95,4 @@ By aligning the interfaces structurally and conceptually, we drastically reduce 
 - **Positive:** Single source of truth for business logic. Zero drift between the CLI and the MCP server. Easier testing (we only need to test the Core API thoroughly, while presentation tests can be shallow).
 - **Positive:** Faster development cycles when adding new competitors' features, as they only need to be implemented once in the Core API and exposed via the existing presentation shells.
 - **Negative:** Requires strict discipline. Developers cannot write "quick scripts" or "quick hacks" inside the VS Code extension code or CLI code directly; it must be pushed down to the Core API.
-superseded_by: []
+  superseded_by: []

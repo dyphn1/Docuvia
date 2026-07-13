@@ -26,6 +26,7 @@ When you run `docuvia review`:
 ## Examples
 
 Review the current branch against `main`:
+
 ```bash
 docuvia review --base main
 ```

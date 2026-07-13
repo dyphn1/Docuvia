@@ -47,7 +47,10 @@ export class GraphStore implements IGraphStore {
       fs.mkdirSync(path.dirname(opts.dbPath), { recursive: true });
 
       const db = opts.readonly
-        ? new DatabaseConstructor(opts.dbPath, { readonly: true, fileMustExist: true })
+        ? new DatabaseConstructor(opts.dbPath, {
+            readonly: true,
+            fileMustExist: true,
+          })
         : new DatabaseConstructor(opts.dbPath);
 
       // WAL pragmas (ADR-032): permit concurrent readers with a single writer.
@@ -61,13 +64,21 @@ export class GraphStore implements IGraphStore {
         try {
           applyMigrations(db, MIGRATIONS_DIR);
         } catch (err) {
-          throw new DocuviaError(ErrorCodes.DB_MIGRATION_FAILED, "Failed to apply migrations", err);
+          throw new DocuviaError(
+            ErrorCodes.DB_MIGRATION_FAILED,
+            "Failed to apply migrations",
+            err,
+          );
         }
       }
 
       return new GraphStore(db);
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_OPEN_FAILED, `Failed to open database at ${opts.dbPath}`, err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_OPEN_FAILED,
+        `Failed to open database at ${opts.dbPath}`,
+        err,
+      );
     }
   }
 
@@ -119,7 +130,10 @@ export class GraphStore implements IGraphStore {
    * comment). A node is stale when its `path_patterns` (a single-element JSON array — see
    * `GraphNodesRepo`'s doc comment) is missing, unparsable, or not in `activeFiles`.
    */
-  pruneMissingFiles(activeFiles: string[]): { prunedFiles: number; prunedNodes: number } {
+  pruneMissingFiles(activeFiles: string[]): {
+    prunedFiles: number;
+    prunedNodes: number;
+  } {
     try {
       const activeSet = new Set(activeFiles);
 
@@ -144,22 +158,30 @@ export class GraphStore implements IGraphStore {
         if (ids.length > 0) {
           const placeholders = ids.map(() => "?").join(",");
           this.db
-            .prepare(`DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (${placeholders})`)
+            .prepare(
+              `DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (${placeholders})`,
+            )
             .run(...ids);
           this.db
             .prepare(
-              `DELETE FROM node_links WHERE source_node_id IN (${placeholders}) OR target_node_id IN (${placeholders})`
+              `DELETE FROM node_links WHERE source_node_id IN (${placeholders}) OR target_node_id IN (${placeholders})`,
             )
             .run(...ids, ...ids);
-          this.db.prepare(`DELETE FROM l2_nodes WHERE id IN (${placeholders})`).run(...ids);
+          this.db
+            .prepare(`DELETE FROM l2_nodes WHERE id IN (${placeholders})`)
+            .run(...ids);
         }
 
-        const allFiles = this.db.prepare("SELECT file_path FROM project_files").all() as {
+        const allFiles = this.db
+          .prepare("SELECT file_path FROM project_files")
+          .all() as {
           file_path: string;
         }[];
         const staleFiles = allFiles.filter((f) => !activeSet.has(f.file_path));
         for (const { file_path } of staleFiles) {
-          this.db.prepare("DELETE FROM project_files WHERE file_path = ?").run(file_path);
+          this.db
+            .prepare("DELETE FROM project_files WHERE file_path = ?")
+            .run(file_path);
         }
         return staleFiles.length;
       });
@@ -167,7 +189,11 @@ export class GraphStore implements IGraphStore {
       const prunedFiles = prune(staleNodeIds);
       return { prunedFiles, prunedNodes: staleNodeIds.length };
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to prune missing files", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        "Failed to prune missing files",
+        err,
+      );
     }
   }
 }

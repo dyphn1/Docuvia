@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-07
 Status: Deprecated
 Supersedes: None
@@ -36,4 +37,4 @@ Docuvia will remain strictly a Git-Isomorphic system.
 - **Positive**: The core API, ingestion pipeline, and database schema (`local.db` and PostgreSQL) remain pure and unpolluted by SVN-specific hacks or composite keys.
 - **Positive**: Ast engines do not need to be refactored to filter out SVN's directory-based branching logic.
 - **Negative**: Teams exclusively using SVN cannot use Docuvia natively without first setting up a `git-svn` translation proxy layer.
-superseded_by: []
+  superseded_by: []

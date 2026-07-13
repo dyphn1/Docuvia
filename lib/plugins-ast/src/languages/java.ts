@@ -11,7 +11,11 @@ export const javaConfig: LanguageConfig = {
     "annotation_type_declaration",
     "record_declaration",
   ],
-  functions: ["method_declaration", "constructor_declaration", "compact_constructor_declaration"],
+  functions: [
+    "method_declaration",
+    "constructor_declaration",
+    "compact_constructor_declaration",
+  ],
   calls: ["method_invocation", "explicit_constructor_invocation"],
   queries: {
     classes: `(class_declaration name: (identifier) @class) (interface_declaration name: (identifier) @class) (enum_declaration name: (identifier) @class) (annotation_type_declaration name: (identifier) @class) (record_declaration name: (identifier) @class)`,

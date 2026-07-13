@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Superseded
 Supplements: ADR-015
@@ -79,4 +80,4 @@ flowchart TD
 - **Positive:** IPC serialization bottlenecks are eliminated by sending compact branch-native deltas from workers and rebuilding the query cache from Git-native storage.
 - **Negative:** WASM is ~20-30% slower than native C++ bindings for massive bulk ingestion on the server (mitigated by [Asynchronous Metabolism](./ADR-008-asynchronous-metabolism.md)).
 - **Negative:** Increased architectural complexity in managing a dynamic Web Worker pool, branch worktrees, and deterministic projection updates into SQLite.
-superseded_by: []
+  superseded_by: []

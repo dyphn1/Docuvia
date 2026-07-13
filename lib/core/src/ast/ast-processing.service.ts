@@ -16,12 +16,12 @@ export class AstProcessingService implements IAstProcessor {
   // Only `lib/ui-core`'s composition is allowed to construct a concrete service.
   constructor(
     private readonly workerPool: IASTWorkerPool,
-    private readonly logger: ILogger = createNoopLogger()
+    private readonly logger: ILogger = createNoopLogger(),
   ) {}
 
   public async processFiles(
     workspaceRoot: string,
-    filesToParse: DiscoveredFile[]
+    filesToParse: DiscoveredFile[],
   ): Promise<AstProcessResult> {
     const pool = this.workerPool;
     const workerCount = Math.max(1, (os.cpus().length || 4) - 1);
@@ -30,7 +30,8 @@ export class AstProcessingService implements IAstProcessor {
     // Fallback preserved for behavioral parity — pre-existing smell (files with no detected
     // language shouldn't ideally be force-fed to the TS parser), but FileDiscoveryService already
     // filters to registry-supported extensions upstream, so this branch should rarely trigger.
-    const getLanguage = (file: string) => detectLanguageForFile(file) ?? "typescript";
+    const getLanguage = (file: string) =>
+      detectLanguageForFile(file) ?? "typescript";
 
     const parsedResults: ParsedAstFileResult[] = [];
     const failures: AstParseFailure[] = [];
@@ -52,8 +53,12 @@ export class AstProcessingService implements IAstProcessor {
               language: detectLanguageForFile(item.file),
             });
           } else {
-            const error = res.error ?? "parse returned success=false with no error detail";
-            this.logger.warn("AST parse returned failure result", { file: item.file, error });
+            const error =
+              res.error ?? "parse returned success=false with no error detail";
+            this.logger.warn("AST parse returned failure result", {
+              file: item.file,
+              error,
+            });
             failures.push({ file: item.file, hash: item.hash, error });
           }
         } catch (e) {
@@ -63,7 +68,10 @@ export class AstProcessingService implements IAstProcessor {
               : e instanceof Error
                 ? e.message
                 : String(e);
-          this.logger.error("AST parse threw (worker crash or rejection)", { file: item.file, error });
+          this.logger.error("AST parse threw (worker crash or rejection)", {
+            file: item.file,
+            error,
+          });
           failures.push({ file: item.file, hash: item.hash, error });
         }
       });

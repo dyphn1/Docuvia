@@ -28,10 +28,14 @@ export const RUBY_EXTENSIONLESS_BASENAMES = new Set([
 ]);
 
 /** Returns the DEFAULT_REGISTRY language name for a file (e.g. "typescript"), or undefined. */
-export function detectLanguageForFile(filePath: string): SupportedLanguage | undefined {
+export function detectLanguageForFile(
+  filePath: string,
+): SupportedLanguage | undefined {
   const byExt = EXT_TO_LANGUAGE.get(path.extname(filePath).toLowerCase());
   if (byExt) return byExt;
-  return RUBY_EXTENSIONLESS_BASENAMES.has(path.basename(filePath)) ? "ruby" : undefined;
+  return RUBY_EXTENSIONLESS_BASENAMES.has(path.basename(filePath))
+    ? "ruby"
+    : undefined;
 }
 
 /** True if the AST layer (LanguageRegistry) recognizes this file's extension at all. */
@@ -42,5 +46,7 @@ export function isSupportedSourceFile(filePath: string): boolean {
 
 /** Extensions with the leading dot stripped, for building fast-glob brace patterns. */
 export function getSupportedGlobExtensions(): string[] {
-  return Array.from(EXT_TO_LANGUAGE.keys()).map((ext) => ext.replace(/^\./, ""));
+  return Array.from(EXT_TO_LANGUAGE.keys()).map((ext) =>
+    ext.replace(/^\./, ""),
+  );
 }

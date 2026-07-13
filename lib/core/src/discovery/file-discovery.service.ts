@@ -23,13 +23,13 @@ import { MAX_FILE_SIZE_BYTES } from "../constants/paths.js";
 export class FileDiscoveryService implements IFileDiscovery {
   constructor(
     private readonly git: IGitProvider,
-    private readonly logger: ILogger = createNoopLogger()
+    private readonly logger: ILogger = createNoopLogger(),
   ) {}
 
   public async discoverFiles(
     workspaceRoot: string,
     filesRepo: FileHashLookup,
-    options: { onlyIndexed?: boolean } = {}
+    options: { onlyIndexed?: boolean } = {},
   ): Promise<DiscoveryResult> {
     const { onlyIndexed = false } = options;
     let allFiles: string[] = [];
@@ -38,9 +38,12 @@ export class FileDiscoveryService implements IFileDiscovery {
     let usingGit = await this.git.isGitRepository(workspaceRoot);
 
     if (usingGit) {
-      this.logger.debug("Starting global AST scan using Git-native blob hashing");
+      this.logger.debug(
+        "Starting global AST scan using Git-native blob hashing",
+      );
       try {
-        const trackedHashes = await this.git.listTrackedFilesWithBlobHash(workspaceRoot);
+        const trackedHashes =
+          await this.git.listTrackedFilesWithBlobHash(workspaceRoot);
         for (const [file, blobSha] of trackedHashes) {
           gitBlobHashes.set(file, blobSha);
         }
@@ -58,42 +61,58 @@ export class FileDiscoveryService implements IFileDiscovery {
           allFiles = [...gitBlobHashes.keys()];
         }
       } catch (e) {
-        this.logger.warn("Git operations failed during discovery, falling back to manual globbing", {
-          error: e instanceof Error ? e.message : String(e),
-        });
+        this.logger.warn(
+          "Git operations failed during discovery, falling back to manual globbing",
+          {
+            error: e instanceof Error ? e.message : String(e),
+          },
+        );
         usingGit = false;
       }
     }
 
     if (!usingGit) {
       this.logger.debug(
-        "Git unavailable or no .git repository found; falling back to fast-glob + manual sha256 hashing"
+        "Git unavailable or no .git repository found; falling back to fast-glob + manual sha256 hashing",
       );
       const ig = ignore();
       try {
-        const gitignoreContent = await fs.readFile(path.join(workspaceRoot, ".gitignore"), "utf-8");
+        const gitignoreContent = await fs.readFile(
+          path.join(workspaceRoot, ".gitignore"),
+          "utf-8",
+        );
         ig.add(gitignoreContent);
       } catch {
         this.logger.debug("No .gitignore found, proceeding without it");
       }
 
-      const globIgnore = ["node_modules/**", ".git/**", ".docuvia/**", "dist/**", "build/**"];
+      const globIgnore = [
+        "node_modules/**",
+        ".git/**",
+        ".docuvia/**",
+        "dist/**",
+        "build/**",
+      ];
 
-      const [extensionMatches, extensionlessBasenameMatches] = await Promise.all([
-        fg(`**/*.{${getSupportedGlobExtensions().join(",")}}`, {
-          cwd: workspaceRoot,
-          ignore: globIgnore,
-          absolute: false,
-        }),
-        // Ruby's extensionless conventional files (Rakefile, Gemfile, ...) can't match the
-        // extension-only glob pattern above at all — they need a second, explicit pattern.
-        fg(`**/{${Array.from(RUBY_EXTENSIONLESS_BASENAMES).join(",")}}`, {
-          cwd: workspaceRoot,
-          ignore: globIgnore,
-          absolute: false,
-        }),
-      ]);
-      const globbedFiles = [...extensionMatches, ...extensionlessBasenameMatches];
+      const [extensionMatches, extensionlessBasenameMatches] =
+        await Promise.all([
+          fg(`**/*.{${getSupportedGlobExtensions().join(",")}}`, {
+            cwd: workspaceRoot,
+            ignore: globIgnore,
+            absolute: false,
+          }),
+          // Ruby's extensionless conventional files (Rakefile, Gemfile, ...) can't match the
+          // extension-only glob pattern above at all — they need a second, explicit pattern.
+          fg(`**/{${Array.from(RUBY_EXTENSIONLESS_BASENAMES).join(",")}}`, {
+            cwd: workspaceRoot,
+            ignore: globIgnore,
+            absolute: false,
+          }),
+        ]);
+      const globbedFiles = [
+        ...extensionMatches,
+        ...extensionlessBasenameMatches,
+      ];
 
       allFiles = ig.filter(globbedFiles);
       // Treat all globbed files as dirty so manual hashing is forced
@@ -103,7 +122,9 @@ export class FileDiscoveryService implements IFileDiscovery {
     // Filter by supported extensions (redundant for glob, but ensures git outputs are clean)
     allFiles = allFiles.filter(
       (f: string) =>
-        isSupportedSourceFile(f) && !f.includes("node_modules/") && !f.includes(".docuvia/")
+        isSupportedSourceFile(f) &&
+        !f.includes("node_modules/") &&
+        !f.includes(".docuvia/"),
     );
 
     this.logger.debug("Discovered source files", { count: allFiles.length });
@@ -145,7 +166,10 @@ export class FileDiscoveryService implements IFileDiscovery {
           }
           if (!currentHash) {
             // Calculate hash manually for dirty/untracked files
-            currentHash = crypto.createHash(HASH_ALGO_SHA256).update(code).digest(ENCODING_HEX);
+            currentHash = crypto
+              .createHash(HASH_ALGO_SHA256)
+              .update(code)
+              .digest(ENCODING_HEX);
           }
         } catch {
           continue; // File might have been deleted or inaccessible

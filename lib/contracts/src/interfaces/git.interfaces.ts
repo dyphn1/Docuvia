@@ -17,7 +17,11 @@ export interface IGitProvider {
    *  git's well-known empty tree, and returns the new commit sha. */
   commitEmptyTree(cwd: string, message: string): Promise<string>;
   /** `git update-ref refs/heads/<branchName> <commitSha>`. */
-  updateBranchRef(cwd: string, branchName: string, commitSha: string): Promise<void>;
+  updateBranchRef(
+    cwd: string,
+    branchName: string,
+    commitSha: string,
+  ): Promise<void>;
 
   hooksDirExists(cwd: string): Promise<boolean>;
   readHookFile(cwd: string, hookName: string): Promise<string | undefined>;
@@ -29,16 +33,26 @@ export interface IGitProvider {
   listModifiedFiles(cwd: string): Promise<string[]>;
   readBlobContent(cwd: string, sha: string): Promise<string>;
   getRemoteUrl(cwd: string): Promise<string | undefined>;
-  getRecentChangedFilePaths(cwd: string, maxCommits?: number): Promise<string[]>;
+  getRecentChangedFilePaths(
+    cwd: string,
+    maxCommits?: number,
+  ): Promise<string[]>;
   hasUncommittedChanges(cwd: string): Promise<boolean>;
-  getChangedFilesSince(cwd: string, baseRef?: string): Promise<ChangedFileEntry[]>;
+  getChangedFilesSince(
+    cwd: string,
+    baseRef?: string,
+  ): Promise<ChangedFileEntry[]>;
   getFilesChangedByCommit(cwd: string, sha: string): Promise<string[]>;
   /** Full 40-char sha of the current source commit (`git rev-parse HEAD`), or `undefined` on an unborn/headless HEAD (e.g. a freshly `git init`-ed repo with no commits yet). */
   getHeadSha(cwd: string): Promise<string | undefined>;
   /** Full 40-char sha of `branchName`'s current tip, or `undefined` if the branch doesn't exist yet. Used to parent the next `packDirectoryToBranch` commit on it (STOR-001 point 2). */
   getBranchTipSha(cwd: string, branchName: string): Promise<string | undefined>;
   /** File content at `ref:filePath` (`git show <ref>:<filePath>`), or `undefined` if the ref or path doesn't exist. Used by hydration (STOR-002) to read `graph/*.jsonl` off the knowledge branch without checking it out. */
-  readFileAtRef(cwd: string, ref: string, filePath: string): Promise<string | undefined>;
+  readFileAtRef(
+    cwd: string,
+    ref: string,
+    filePath: string,
+  ): Promise<string | undefined>;
   /**
    * `ref`'s commit history (newest first), each with its full commit message body — raw, no
    * Docuvia-specific trailer parsing (that's `lib/core`'s job). `[]` if `ref` doesn't exist or has
@@ -47,10 +61,14 @@ export interface IGitProvider {
   getCommitLog(
     cwd: string,
     ref: string,
-    maxCount?: number
+    maxCount?: number,
   ): Promise<Array<{ sha: string; message: string }>>;
   /** Shas of `ref`'s ancestry (newest first, `ref` itself included). `[]` if `ref` doesn't exist or has no commits. `maxCount` bounds the walk (default 1000). */
-  getCommitAncestry(cwd: string, ref: string, maxCount?: number): Promise<string[]>;
+  getCommitAncestry(
+    cwd: string,
+    ref: string,
+    maxCount?: number,
+  ): Promise<string[]>;
   /**
    * Packs every file under `sourceDir` onto `branchName` as a full-tree-replace commit
    * (`deleteall` + one `M 100644 inline <path>` per file) via `git fast-import`, parented on the
@@ -62,7 +80,7 @@ export interface IGitProvider {
     cwd: string,
     sourceDir: string,
     branchName: string,
-    commitMessage: string
+    commitMessage: string,
   ): Promise<void>;
 
   /** `git fetch <remote> <ref>` — updates `refs/remotes/<remote>/<ref>` from the remote. Used for cross-clone reconciliation (STOR-001 point 3). Throws on network/remote failure — callers decide whether that's fatal. */
@@ -72,7 +90,11 @@ export interface IGitProvider {
   /** Full 40-char sha `ref` resolves to (`git rev-parse --verify --quiet <ref>`), or `undefined` if it doesn't exist. Unlike `getBranchTipSha`, `ref` may be any ref form (e.g. `refs/remotes/origin/docuvia-knowledge`), not just `refs/heads/<name>`. */
   getRefSha(cwd: string, ref: string): Promise<string | undefined>;
   /** `true` if `ancestorSha` is an ancestor of (or equal to) `descendantSha` (`git merge-base --is-ancestor`) — used to detect a plain fast-forward before falling back to a full merge. */
-  isAncestor(cwd: string, ancestorSha: string, descendantSha: string): Promise<boolean>;
+  isAncestor(
+    cwd: string,
+    ancestorSha: string,
+    descendantSha: string,
+  ): Promise<boolean>;
   /** The tree object sha `commitish` points at (`git rev-parse <commitish>^{tree}`) — the tree wholesale-adopted by a tree-adoption merge commit (STOR-001 point 3). */
   getTreeSha(cwd: string, commitish: string): Promise<string>;
   /** Unix seconds of `sha`'s committer timestamp (`git show -s --format=%ct`) — the wall-clock fallback when neither side of a divergence is a source-topological descendant of the other. */
@@ -87,7 +109,7 @@ export interface IGitProvider {
     cwd: string,
     treeSha: string,
     parentShas: string[],
-    message: string
+    message: string,
   ): Promise<string>;
 
   /**

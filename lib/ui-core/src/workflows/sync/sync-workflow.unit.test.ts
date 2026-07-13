@@ -16,7 +16,9 @@ import {
 } from "@workspace/contracts";
 import { SyncWorkflow } from "./sync-workflow.js";
 
-function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvider {
+function makeMockGitProvider(
+  overrides: Partial<IGitProvider> = {},
+): IGitProvider {
   return {
     isGitRepository: vi.fn().mockResolvedValue(true),
     branchExists: vi.fn().mockResolvedValue(false),
@@ -104,7 +106,12 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
     projects: { getFirst: vi.fn(), insert: vi.fn(), count: vi.fn() },
     files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
-    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn(), getAllTagLinks: vi.fn() },
+    tags: {
+      upsertTag: vi.fn(),
+      getIdByName: vi.fn(),
+      linkNodeToTag: vi.fn(),
+      getAllTagLinks: vi.fn(),
+    },
     graph: {
       deleteNodesForPath: vi.fn(),
       insertNode: vi.fn(),
@@ -130,7 +137,9 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   };
 }
 
-function makeMockRemoteSyncClient(overrides: Partial<IRemoteSyncClient> = {}): IRemoteSyncClient {
+function makeMockRemoteSyncClient(
+  overrides: Partial<IRemoteSyncClient> = {},
+): IRemoteSyncClient {
   return {
     initialize: vi.fn(),
     fetchRemoteL2Nodes: vi.fn().mockResolvedValue([]),
@@ -143,7 +152,9 @@ describe("SyncWorkflow.execute()", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-sync-workflow-test-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-sync-workflow-test-"),
+    );
     resetFactoryForTests();
   });
 
@@ -158,7 +169,12 @@ describe("SyncWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
     docuviaFactory.lock();
 
-    const result = await new SyncWorkflow(tmpDir, createMockLogger(), "https://api", "pat").execute({
+    const result = await new SyncWorkflow(
+      tmpDir,
+      createMockLogger(),
+      "https://api",
+      "pat",
+    ).execute({
       projectId: "1",
     });
 
@@ -172,20 +188,37 @@ describe("SyncWorkflow.execute()", () => {
 
   it("throws a DocuviaError with a run-docuvia-init message when the db is missing", async () => {
     docuviaFactory.register(TOKENS.GitProvider, () =>
-      makeMockGitProvider({ listModifiedFiles: vi.fn().mockResolvedValue(["src/a.ts"]) })
+      makeMockGitProvider({
+        listModifiedFiles: vi.fn().mockResolvedValue(["src/a.ts"]),
+      }),
     );
-    const dbOpenError = new DocuviaError("DB_OPEN_FAILED", "Failed to open database at /x: ENOENT");
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockRejectedValue(dbOpenError));
+    const dbOpenError = new DocuviaError(
+      "DB_OPEN_FAILED",
+      "Failed to open database at /x: ENOENT",
+    );
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockRejectedValue(dbOpenError),
+    );
     docuviaFactory.lock();
 
     await expect(
-      new SyncWorkflow(tmpDir, createMockLogger(), "https://api", "pat").execute({ projectId: "1" })
-    ).rejects.toMatchObject({ code: "DB_OPEN_FAILED", message: expect.stringContaining("docuvia init") });
+      new SyncWorkflow(
+        tmpDir,
+        createMockLogger(),
+        "https://api",
+        "pat",
+      ).execute({ projectId: "1" }),
+    ).rejects.toMatchObject({
+      code: "DB_OPEN_FAILED",
+      message: expect.stringContaining("docuvia init"),
+    });
   });
 
   it("uses getFilesChangedByCommit given a commitSha, matches candidates against remote L2 nodes, and pushes new events", async () => {
     docuviaFactory.register(TOKENS.GitProvider, () =>
-      makeMockGitProvider({ getFilesChangedByCommit: vi.fn().mockResolvedValue(["src/a.ts"]) })
+      makeMockGitProvider({
+        getFilesChangedByCommit: vi.fn().mockResolvedValue(["src/a.ts"]),
+      }),
     );
 
     const store = makeMockStore({
@@ -202,25 +235,45 @@ describe("SyncWorkflow.execute()", () => {
         getAllLinks: vi.fn(),
         bulkLoadGraph: vi.fn(),
         findNodesForChangedFiles: vi.fn().mockReturnValue([
-          { l2Node: makeL2({ id: 10, name: "src/a.ts" }), l3Nodes: [makeL3({ l2_node_id: 10 })] },
+          {
+            l2Node: makeL2({ id: 10, name: "src/a.ts" }),
+            l3Nodes: [makeL3({ l2_node_id: 10 })],
+          },
         ]),
       },
     });
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
 
     const remoteSyncClient = makeMockRemoteSyncClient({
-      fetchRemoteL2Nodes: vi.fn().mockResolvedValue([{ id: 999, name: "src/a.ts" }]),
-      pushSyncEvents: vi.fn().mockResolvedValue({ success: true, processed: 1 }),
+      fetchRemoteL2Nodes: vi
+        .fn()
+        .mockResolvedValue([{ id: 999, name: "src/a.ts" }]),
+      pushSyncEvents: vi
+        .fn()
+        .mockResolvedValue({ success: true, processed: 1 }),
     });
-    docuviaFactory.register(TOKENS.RemoteSyncClient, () => () => remoteSyncClient);
+    docuviaFactory.register(
+      TOKENS.RemoteSyncClient,
+      () => () => remoteSyncClient,
+    );
     docuviaFactory.lock();
 
-    const result = await new SyncWorkflow(tmpDir, createMockLogger(), "https://api", "pat").execute({
+    const result = await new SyncWorkflow(
+      tmpDir,
+      createMockLogger(),
+      "https://api",
+      "pat",
+    ).execute({
       projectId: "1",
       commitSha: "abc123",
     });
 
-    expect(remoteSyncClient.initialize).toHaveBeenCalledWith({ apiUrl: "https://api", pat: "pat" });
+    expect(remoteSyncClient.initialize).toHaveBeenCalledWith({
+      apiUrl: "https://api",
+      pat: "pat",
+    });
     expect(remoteSyncClient.pushSyncEvents).toHaveBeenCalledWith("1", [
       {
         type: "CREATE_L3",
@@ -243,14 +296,19 @@ describe("SyncWorkflow.execute()", () => {
     expect(store.close).toHaveBeenCalledTimes(1);
 
     const stateFile = JSON.parse(
-      fs.readFileSync(path.join(tmpDir, ".docuvia", "logs", "sync-state.json"), "utf8")
+      fs.readFileSync(
+        path.join(tmpDir, ".docuvia", "logs", "sync-state.json"),
+        "utf8",
+      ),
     );
     expect(stateFile["1"].syncedContentHashes).toEqual(["hash-1"]);
   });
 
   it("skips L2 nodes with no matching remote node and counts them in skipped", async () => {
     docuviaFactory.register(TOKENS.GitProvider, () =>
-      makeMockGitProvider({ listModifiedFiles: vi.fn().mockResolvedValue(["src/a.ts"]) })
+      makeMockGitProvider({
+        listModifiedFiles: vi.fn().mockResolvedValue(["src/a.ts"]),
+      }),
     );
     const store = makeMockStore({
       graph: {
@@ -266,16 +324,31 @@ describe("SyncWorkflow.execute()", () => {
         getAllLinks: vi.fn(),
         bulkLoadGraph: vi.fn(),
         findNodesForChangedFiles: vi.fn().mockReturnValue([
-          { l2Node: makeL2({ id: 10, name: "src/a.ts" }), l3Nodes: [makeL3()] },
+          {
+            l2Node: makeL2({ id: 10, name: "src/a.ts" }),
+            l3Nodes: [makeL3()],
+          },
         ]),
       },
     });
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
-    const remoteSyncClient = makeMockRemoteSyncClient({ fetchRemoteL2Nodes: vi.fn().mockResolvedValue([]) });
-    docuviaFactory.register(TOKENS.RemoteSyncClient, () => () => remoteSyncClient);
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    const remoteSyncClient = makeMockRemoteSyncClient({
+      fetchRemoteL2Nodes: vi.fn().mockResolvedValue([]),
+    });
+    docuviaFactory.register(
+      TOKENS.RemoteSyncClient,
+      () => () => remoteSyncClient,
+    );
     docuviaFactory.lock();
 
-    const result = await new SyncWorkflow(tmpDir, createMockLogger(), "https://api", "pat").execute({
+    const result = await new SyncWorkflow(
+      tmpDir,
+      createMockLogger(),
+      "https://api",
+      "pat",
+    ).execute({
       projectId: "1",
     });
 
@@ -291,11 +364,13 @@ describe("SyncWorkflow.execute()", () => {
     fs.mkdirSync(path.join(tmpDir, ".docuvia", "logs"), { recursive: true });
     fs.writeFileSync(
       path.join(tmpDir, ".docuvia", "logs", "sync-state.json"),
-      JSON.stringify({ "1": { syncedContentHashes: ["hash-1"] } })
+      JSON.stringify({ "1": { syncedContentHashes: ["hash-1"] } }),
     );
 
     docuviaFactory.register(TOKENS.GitProvider, () =>
-      makeMockGitProvider({ listModifiedFiles: vi.fn().mockResolvedValue(["src/a.ts"]) })
+      makeMockGitProvider({
+        listModifiedFiles: vi.fn().mockResolvedValue(["src/a.ts"]),
+      }),
     );
     const store = makeMockStore({
       graph: {
@@ -311,18 +386,33 @@ describe("SyncWorkflow.execute()", () => {
         getAllLinks: vi.fn(),
         bulkLoadGraph: vi.fn(),
         findNodesForChangedFiles: vi.fn().mockReturnValue([
-          { l2Node: makeL2({ id: 10, name: "src/a.ts" }), l3Nodes: [makeL3({ content_hash: "hash-1" })] },
+          {
+            l2Node: makeL2({ id: 10, name: "src/a.ts" }),
+            l3Nodes: [makeL3({ content_hash: "hash-1" })],
+          },
         ]),
       },
     });
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
     const remoteSyncClient = makeMockRemoteSyncClient({
-      fetchRemoteL2Nodes: vi.fn().mockResolvedValue([{ id: 999, name: "src/a.ts" }]),
+      fetchRemoteL2Nodes: vi
+        .fn()
+        .mockResolvedValue([{ id: 999, name: "src/a.ts" }]),
     });
-    docuviaFactory.register(TOKENS.RemoteSyncClient, () => () => remoteSyncClient);
+    docuviaFactory.register(
+      TOKENS.RemoteSyncClient,
+      () => () => remoteSyncClient,
+    );
     docuviaFactory.lock();
 
-    const result = await new SyncWorkflow(tmpDir, createMockLogger(), "https://api", "pat").execute({
+    const result = await new SyncWorkflow(
+      tmpDir,
+      createMockLogger(),
+      "https://api",
+      "pat",
+    ).execute({
       projectId: "1",
     });
 

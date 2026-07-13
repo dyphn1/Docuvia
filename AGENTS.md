@@ -1,6 +1,6 @@
 # Docuvia2 — AI Developer Guide
 
-> **CRITICAL INSTRUCTION FOR ALL AI AGENTS & DEVELOPERS:** 
+> **CRITICAL INSTRUCTION FOR ALL AI AGENTS & DEVELOPERS:**
 > Docuvia2 is built on a strict, non-negotiable **Two-Layer Virtual Contracts Architecture**. Do not write a single line of implementation code without reading and understanding the architecture guides in `docs/gitbook/architecture/`.
 
 ## 🏛️ Core Architectural Mandates

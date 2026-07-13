@@ -41,7 +41,9 @@ describe("exportTopologyCommand", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-export-topology-cli-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-export-topology-cli-"),
+    );
     mockExportTopology.mockReset();
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
@@ -71,8 +73,12 @@ describe("exportTopologyCommand", () => {
 
     await exportTopologyCommand({ jsonOnly: true }, tmpDir);
 
-    expect(fs.existsSync(path.join(tmpDir, ".docuvia", "topology.json"))).toBe(true);
-    expect(fs.existsSync(path.join(tmpDir, ".docuvia", "topology.html"))).toBe(false);
+    expect(fs.existsSync(path.join(tmpDir, ".docuvia", "topology.json"))).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.join(tmpDir, ".docuvia", "topology.html"))).toBe(
+      false,
+    );
   });
 
   it("writes into a custom output directory when out is given", async () => {

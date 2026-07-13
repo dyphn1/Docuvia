@@ -15,9 +15,36 @@ import { createNoopLogger } from "@workspace/contracts";
  * unconditionally here.
  */
 const STOP_WORDS = new Set([
-  "a", "an", "and", "are", "can", "do", "does", "for", "from", "how", "i", "in", "is", "it", "me",
-  "of", "on", "or", "show", "that", "the", "this", "to", "what", "when", "where", "which", "who",
-  "why", "with",
+  "a",
+  "an",
+  "and",
+  "are",
+  "can",
+  "do",
+  "does",
+  "for",
+  "from",
+  "how",
+  "i",
+  "in",
+  "is",
+  "it",
+  "me",
+  "of",
+  "on",
+  "or",
+  "show",
+  "that",
+  "the",
+  "this",
+  "to",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
+  "with",
 ]);
 
 type ScoredResult = LocalSearchResult & { score: number };
@@ -42,8 +69,12 @@ export class QueryService implements IQueryService {
     if (!node) return null;
 
     return {
-      incoming: store.graph.getIncomingEdges(node.id).map(({ name, type }) => ({ name, type })),
-      outgoing: store.graph.getOutgoingEdges(node.id).map(({ name, type }) => ({ name, type })),
+      incoming: store.graph
+        .getIncomingEdges(node.id)
+        .map(({ name, type }) => ({ name, type })),
+      outgoing: store.graph
+        .getOutgoingEdges(node.id)
+        .map(({ name, type }) => ({ name, type })),
     };
   }
 
@@ -58,10 +89,22 @@ export class QueryService implements IQueryService {
     const keywords = this.extractKeywords(target);
     if (keywords.length > 0) {
       store.fts.searchL2Nodes(keywords, limit).forEach((row, i) =>
-        put({ layer: "l2", id: row.id, title: row.name, content: row.description, score: 0.9 - i * 0.01 })
+        put({
+          layer: "l2",
+          id: row.id,
+          title: row.name,
+          content: row.description,
+          score: 0.9 - i * 0.01,
+        }),
       );
       store.fts.searchL3Nodes(keywords, limit).forEach((row, i) =>
-        put({ layer: "l3", id: row.id, title: row.title, content: row.content, score: 0.85 - i * 0.01 })
+        put({
+          layer: "l3",
+          id: row.id,
+          title: row.title,
+          content: row.content,
+          score: 0.85 - i * 0.01,
+        }),
       );
     }
 
@@ -69,7 +112,13 @@ export class QueryService implements IQueryService {
     if (nodeRef) {
       const resolved = store.graph.findNodeByName(nodeRef);
       if (resolved) {
-        put({ layer: "l2", id: resolved.id, title: resolved.name, content: null, score: 0.95 });
+        put({
+          layer: "l2",
+          id: resolved.id,
+          title: resolved.name,
+          content: null,
+          score: 0.95,
+        });
 
         const neighbors = [
           ...store.graph.getOutgoingEdges(resolved.id),
@@ -82,12 +131,15 @@ export class QueryService implements IQueryService {
             title: neighbor.name,
             content: `Linked to ${resolved.name}`,
             score: 0.7 - i * 0.01,
-          })
+          }),
         );
       }
     }
 
-    this.logger.debug("Searched local knowledge graph", { target, resultCount: merged.size });
+    this.logger.debug("Searched local knowledge graph", {
+      target,
+      resultCount: merged.size,
+    });
 
     return Array.from(merged.values())
       .sort((a, b) => b.score - a.score)
@@ -108,10 +160,13 @@ export class QueryService implements IQueryService {
     try {
       context = this.getContext(store, target);
     } catch (err) {
-      this.logger.debug("getContext() failed during query(), falling back to null context", {
-        target,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      this.logger.debug(
+        "getContext() failed during query(), falling back to null context",
+        {
+          target,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
       context = null;
     }
 

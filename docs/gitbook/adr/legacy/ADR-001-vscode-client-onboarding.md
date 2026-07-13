@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Superseded
 Supersedes: None
@@ -88,4 +89,4 @@ To prevent line-number drift and Editor Host freezing when providing `vscode.Cod
 1. **AST Primary:** Anchoring is primarily handled by the local WASM AST Microkernel ([ADR-020](./ADR-020-unified-isomorphic-ast-microkernel.md)) running in a Web Worker, which is fast and handles raw source perfectly without compilation.
 2. **LSP Fallback:** If the AST cannot resolve complex dependencies or is dealing with unsaved "dirty" editor buffers, the system falls back to `vscode.executeDocumentSymbolProvider` (LSP).
 3. **LLM Last Resort:** Only if both deterministic parsers fail does the system delegate to an LLM to heuristically anchor the logic.
-superseded_by: []
+   superseded_by: []

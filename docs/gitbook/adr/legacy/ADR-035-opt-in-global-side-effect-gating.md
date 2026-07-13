@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-11
 Status: Superseded
 Supersedes: None
@@ -28,4 +29,4 @@ This was first implemented for `docuvia init`'s Claude Desktop MCP registration 
 - **Positive**: A per-repo command can no longer surprise a user by mutating unrelated projects' tooling configuration. Matches the "consent for anything outside the sandbox" expectation any local-first, repo-scoped tool should meet.
 - **Negative**: Slightly more friction for the common case (a user who genuinely wants the global registration every time now needs `--global` or to answer a prompt) — judged an acceptable tradeoff given the blast radius of getting it wrong is silent, cross-project state mutation.
 - **Scope**: This ADR governs _global_ (outside-repo) writes only. Repo-scoped side effects (like `init`'s `.cursor/`, `.claude/` writes) are unaffected — those remain default-on, since they're confined to, and reversible within, the target repository.
-superseded_by: []
+  superseded_by: []

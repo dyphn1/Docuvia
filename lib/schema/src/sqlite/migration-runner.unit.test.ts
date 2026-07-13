@@ -101,7 +101,10 @@ describe("applyMigrations", () => {
   let db: Database.Database;
 
   beforeEach(() => {
-    dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-schema-")), "local.db");
+    dbPath = path.join(
+      fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-schema-")),
+      "local.db",
+    );
     db = new Database(dbPath);
   });
 
@@ -115,19 +118,23 @@ describe("applyMigrations", () => {
 
     for (const [table, expectedColumns] of Object.entries(EXPECTED_TABLES)) {
       const row = db
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+        )
         .get(table);
       expect(row, `expected table "${table}" to exist`).toBeDefined();
 
-      const columns = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map(
-        (c) => c.name
-      );
+      const columns = (
+        db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+      ).map((c) => c.name);
       expect(columns.sort()).toEqual([...expectedColumns].sort());
     }
 
     for (const table of EXPECTED_FTS_TABLES) {
       const row = db
-        .prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?")
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+        )
         .get(table);
       expect(row, `expected FTS5 table "${table}" to exist`).toBeDefined();
     }
@@ -150,11 +157,16 @@ describe("applyMigrations", () => {
     applyMigrations(db, MIGRATIONS_DIR);
     // A working table + row so a naive re-run (e.g. re-running CREATE TABLE
     // without IF NOT EXISTS, or re-inserting a UNIQUE row) would throw.
-    db.prepare("INSERT INTO projects (name, repo_url) VALUES (?, ?)").run("demo", "file:///demo");
+    db.prepare("INSERT INTO projects (name, repo_url) VALUES (?, ?)").run(
+      "demo",
+      "file:///demo",
+    );
 
     expect(() => applyMigrations(db, MIGRATIONS_DIR)).not.toThrow();
 
-    const migrationRows = db.prepare("SELECT filename FROM schema_migrations").all();
+    const migrationRows = db
+      .prepare("SELECT filename FROM schema_migrations")
+      .all();
     expect(migrationRows).toHaveLength(3);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();

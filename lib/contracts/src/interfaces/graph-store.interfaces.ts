@@ -118,7 +118,11 @@ export interface IProjectsRepo {
 
 export interface IProjectFilesRepo {
   getAllHashes(): Array<{ filePath: string; contentHash: string | null }>;
-  upsertFile(input: { projectId: number; filePath: string; contentHash: string | null }): void;
+  upsertFile(input: {
+    projectId: number;
+    filePath: string;
+    contentHash: string | null;
+  }): void;
 }
 
 export interface ITagsRepo {
@@ -156,7 +160,11 @@ export interface IGraphNodesRepo {
     /** Feature hash of the node's own content (STOR-005) — the file's own hash for file nodes, a hash of the symbol's exact source span for function/class nodes. */
     contentHash?: string;
   }): number;
-  insertLink(input: { sourceNodeId: number; targetNodeId: number; linkType: string }): void;
+  insertLink(input: {
+    sourceNodeId: number;
+    targetNodeId: number;
+    linkType: string;
+  }): void;
   findNodeIdByName(filePath: string, name: string): number | undefined;
   /** Row counts of `l2_nodes`/`l3_nodes` — used by `status`. */
   count(): { l2Nodes: number; l3Nodes: number };
@@ -171,14 +179,20 @@ export interface IGraphNodesRepo {
    * first, falling back to a `LIKE %target%` match (mirrors old Docuvia's
    * `QueryService.findNodeByName`). Undefined when nothing matches either way.
    */
-  findNodeByName(target: string): { id: number; name: string; type: string } | undefined;
+  findNodeByName(
+    target: string,
+  ): { id: number; name: string; type: string } | undefined;
   /**
    * Nodes with an outgoing `node_links` edge INTO `nodeId` — i.e. things that depend on/call it
    * (the 1-hop "blast radius"). Mirrors old Docuvia's `QueryService.queryIncomingEdges`.
    */
-  getIncomingEdges(nodeId: number): Array<{ id: number; name: string; type: string }>;
+  getIncomingEdges(
+    nodeId: number,
+  ): Array<{ id: number; name: string; type: string }>;
   /** Nodes `nodeId` links out to (used by `query`'s structural context). */
-  getOutgoingEdges(nodeId: number): Array<{ id: number; name: string; type: string }>;
+  getOutgoingEdges(
+    nodeId: number,
+  ): Array<{ id: number; name: string; type: string }>;
   /** Every `l2_nodes` row — used by `export-topology`. */
   getAllNodes(): L2NodeRow[];
   /** Every `node_links` row — used by `export-topology`. */
@@ -242,7 +256,10 @@ export interface IGraphStore {
    * old Docuvia never called it from a command either (see `docs/gitbook/analysis/data-pipeline-sync.md`);
    * it is exposed here so a future incremental-sync workflow can use it.
    */
-  pruneMissingFiles(activeFiles: string[]): { prunedFiles: number; prunedNodes: number };
+  pruneMissingFiles(activeFiles: string[]): {
+    prunedFiles: number;
+    prunedNodes: number;
+  };
 }
 
 export interface GraphStoreOpenOptions {

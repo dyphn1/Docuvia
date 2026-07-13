@@ -22,7 +22,8 @@ function makeNode(spec: FakeSpec): Node {
   const node = {
     type: spec.type,
     text: spec.text ?? "",
-    descendantsOfType: (t: string) => (spec.descendants?.[t] ?? []).map(makeNode),
+    descendantsOfType: (t: string) =>
+      (spec.descendants?.[t] ?? []).map(makeNode),
     childForFieldName: (f: string) => {
       const child = spec.fields?.[f];
       return child ? makeNode(child) : undefined;
@@ -57,7 +58,9 @@ describe("parseImportDescriptors", () => {
       },
     };
     const result = parseImportDescriptors([makeNode(spec)]);
-    expect(result).toEqual([{ localName: "helper", originalName: "helper", modulePath: "./b" }]);
+    expect(result).toEqual([
+      { localName: "helper", originalName: "helper", modulePath: "./b" },
+    ]);
   });
 
   it("TS named import with alias: import { A as B } from 'bar'", () => {
@@ -85,7 +88,9 @@ describe("parseImportDescriptors", () => {
       },
     };
     const result = parseImportDescriptors([makeNode(spec)]);
-    expect(result).toEqual([{ localName: "B", originalName: "A", modulePath: "bar" }]);
+    expect(result).toEqual([
+      { localName: "B", originalName: "A", modulePath: "bar" },
+    ]);
   });
 
   it("TS namespace import: import * as NS from 'bar'", () => {
@@ -102,7 +107,9 @@ describe("parseImportDescriptors", () => {
       },
     };
     const result = parseImportDescriptors([makeNode(spec)]);
-    expect(result).toEqual([{ localName: "NS", originalName: "*", modulePath: "bar" }]);
+    expect(result).toEqual([
+      { localName: "NS", originalName: "*", modulePath: "bar" },
+    ]);
   });
 
   it("TS default import: import Foo from 'bar'", () => {
@@ -116,7 +123,9 @@ describe("parseImportDescriptors", () => {
       },
     };
     const result = parseImportDescriptors([makeNode(spec)]);
-    expect(result).toEqual([{ localName: "Foo", originalName: "*", modulePath: "bar" }]);
+    expect(result).toEqual([
+      { localName: "Foo", originalName: "*", modulePath: "bar" },
+    ]);
   });
 
   it("Python: from x import y", () => {
@@ -130,7 +139,9 @@ describe("parseImportDescriptors", () => {
       namedChildren: [{ type: "identifier", text: "y" }],
     };
     const result = parseImportDescriptors([makeNode(spec)]);
-    expect(result).toEqual([{ localName: "y", originalName: "y", modulePath: "x" }]);
+    expect(result).toEqual([
+      { localName: "y", originalName: "y", modulePath: "x" },
+    ]);
   });
 
   it("Rust: use foo::bar as baz", () => {
@@ -147,7 +158,9 @@ describe("parseImportDescriptors", () => {
       },
     };
     const result = parseImportDescriptors([makeNode(spec)]);
-    expect(result).toEqual([{ localName: "baz", originalName: "*", modulePath: "foo::bar" }]);
+    expect(result).toEqual([
+      { localName: "baz", originalName: "*", modulePath: "foo::bar" },
+    ]);
   });
 
   it('Go: import "pkg"', () => {
@@ -161,7 +174,9 @@ describe("parseImportDescriptors", () => {
               import_spec: [
                 {
                   type: "import_spec",
-                  fields: { path: { type: "interpreted_string_literal", text: '"pkg"' } },
+                  fields: {
+                    path: { type: "interpreted_string_literal", text: '"pkg"' },
+                  },
                 },
               ],
             },
@@ -170,7 +185,9 @@ describe("parseImportDescriptors", () => {
       },
     };
     const result = parseImportDescriptors([makeNode(spec)]);
-    expect(result).toEqual([{ localName: "pkg", originalName: "*", modulePath: "pkg" }]);
+    expect(result).toEqual([
+      { localName: "pkg", originalName: "*", modulePath: "pkg" },
+    ]);
   });
 });
 

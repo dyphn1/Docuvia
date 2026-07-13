@@ -16,7 +16,9 @@ describe("command-log-writer", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-command-log-writer-test-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-command-log-writer-test-"),
+    );
   });
 
   afterEach(() => {
@@ -31,7 +33,10 @@ describe("command-log-writer", () => {
   });
 
   it("writes one JSON object per line, each with a ts field plus the given event fields", async () => {
-    await appendCommandLogLine(tmpDir, "query.log", { event: "query.start", target: "foo" });
+    await appendCommandLogLine(tmpDir, "query.log", {
+      event: "query.start",
+      target: "foo",
+    });
 
     const logPath = path.join(tmpDir, ".docuvia", "logs", "query.log");
     const lines = readLines(logPath) as Array<Record<string, unknown>>;
@@ -44,8 +49,14 @@ describe("command-log-writer", () => {
   });
 
   it("appends rather than truncates across multiple invocations targeting the same log file", async () => {
-    await appendCommandLogLine(tmpDir, "sync.log", { event: "sync.start", projectId: "1" });
-    await appendCommandLogLine(tmpDir, "sync.log", { event: "sync.summary", synced: 3 });
+    await appendCommandLogLine(tmpDir, "sync.log", {
+      event: "sync.start",
+      projectId: "1",
+    });
+    await appendCommandLogLine(tmpDir, "sync.log", {
+      event: "sync.summary",
+      synced: 3,
+    });
 
     const logPath = path.join(tmpDir, ".docuvia", "logs", "sync.log");
     const lines = readLines(logPath) as Array<Record<string, unknown>>;
@@ -60,8 +71,12 @@ describe("command-log-writer", () => {
     await appendCommandLogLine(tmpDir, "clean.log", { event: "clean.start" });
     await appendCommandLogLine(tmpDir, "status.log", { event: "status.start" });
 
-    const cleanLines = readLines(path.join(tmpDir, ".docuvia", "logs", "clean.log"));
-    const statusLines = readLines(path.join(tmpDir, ".docuvia", "logs", "status.log"));
+    const cleanLines = readLines(
+      path.join(tmpDir, ".docuvia", "logs", "clean.log"),
+    );
+    const statusLines = readLines(
+      path.join(tmpDir, ".docuvia", "logs", "status.log"),
+    );
 
     expect(cleanLines.length).toBe(1);
     expect(statusLines.length).toBe(1);

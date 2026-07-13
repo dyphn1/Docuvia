@@ -46,9 +46,15 @@ describe("ScopeResolver", () => {
     const resolver = new ScopeResolver(workspaceRoot);
     resolver.registerFile(
       "src/consumer.ts",
-      [{ localName: "someFunc", originalName: "someFunc", modulePath: "@workspace/core" }],
+      [
+        {
+          localName: "someFunc",
+          originalName: "someFunc",
+          modulePath: "@workspace/core",
+        },
+      ],
       [],
-      []
+      [],
     );
 
     const result = resolver.resolveCall("src/consumer.ts", "someFunc");
@@ -61,7 +67,8 @@ describe("ScopeResolver", () => {
   it("resolves a bare workspace-monorepo package import via pnpm-workspace.yaml + package.json name", () => {
     vi.spyOn(fs, "existsSync").mockImplementation((p: any) => {
       const sp = String(p).replace(/\\/g, "/");
-      if (sp.endsWith("tsconfig.json") || sp.endsWith("tsconfig.base.json")) return false;
+      if (sp.endsWith("tsconfig.json") || sp.endsWith("tsconfig.base.json"))
+        return false;
       if (sp.endsWith("pnpm-workspace.yaml")) return true;
       if (sp.endsWith("/lib")) return true;
       if (sp.endsWith("lib/db/package.json")) return true;
@@ -82,7 +89,8 @@ describe("ScopeResolver", () => {
 
     vi.spyOn(fs, "statSync").mockImplementation((p: any) => {
       const sp = String(p).replace(/\\/g, "/");
-      if (sp.endsWith("lib/db/src/index.ts")) return { isFile: () => true } as any;
+      if (sp.endsWith("lib/db/src/index.ts"))
+        return { isFile: () => true } as any;
       throw new Error(`File not found: ${p}`);
     });
 
@@ -97,9 +105,15 @@ describe("ScopeResolver", () => {
     const resolver = new ScopeResolver(workspaceRoot);
     resolver.registerFile(
       "src/consumer.ts",
-      [{ localName: "dbClient", originalName: "dbClient", modulePath: "@workspace/db" }],
+      [
+        {
+          localName: "dbClient",
+          originalName: "dbClient",
+          modulePath: "@workspace/db",
+        },
+      ],
       [],
-      []
+      [],
     );
 
     const result = resolver.resolveCall("src/consumer.ts", "dbClient");

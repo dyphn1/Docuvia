@@ -56,11 +56,16 @@ type CompiledQueries = {
 
 export class DefaultProvider implements LanguageProvider {
   buildScopeMap(importStatements: Node[]): Map<string, string> {
-    if (this.config.buildScopeMap) return this.config.buildScopeMap(importStatements);
+    if (this.config.buildScopeMap)
+      return this.config.buildScopeMap(importStatements);
     return new Map<string, string>();
   }
 
-  classifyCall(callNode: Node): { isMethodCall: boolean; methodName: string; objectName?: string } {
+  classifyCall(callNode: Node): {
+    isMethodCall: boolean;
+    methodName: string;
+    objectName?: string;
+  } {
     if (this.config.classifyCall) return this.config.classifyCall(callNode);
     return { isMethodCall: false, methodName: callNode.text };
   }
@@ -98,7 +103,11 @@ export class DefaultProvider implements LanguageProvider {
     this.compiledQueries = null;
   }
 
-  private captureNodes(rootNode: Node, captureNames: string[], query?: Query): Node[] {
+  private captureNodes(
+    rootNode: Node,
+    captureNames: string[],
+    query?: Query,
+  ): Node[] {
     if (!query) return [];
     const captures: QueryCapture[] = query.captures(rootNode);
     const nodes: Node[] = [];
@@ -115,7 +124,7 @@ export class DefaultProvider implements LanguageProvider {
       rootNode,
       this.compiledQueries?.classes,
       ["class"],
-      this.config.classes
+      this.config.classes,
     );
   }
 
@@ -124,7 +133,7 @@ export class DefaultProvider implements LanguageProvider {
       rootNode,
       this.compiledQueries?.functions,
       ["function"],
-      this.config.functions
+      this.config.functions,
     );
   }
 
@@ -133,12 +142,17 @@ export class DefaultProvider implements LanguageProvider {
       rootNode,
       this.compiledQueries?.imports,
       ["import"],
-      this.config.imports
+      this.config.imports,
     );
   }
 
   extractCalls(rootNode: Node): Node[] {
-    return this.extractNodes(rootNode, this.compiledQueries?.calls, ["call"], this.config.calls);
+    return this.extractNodes(
+      rootNode,
+      this.compiledQueries?.calls,
+      ["call"],
+      this.config.calls,
+    );
   }
 
   extractImplements(rootNode: Node): Node[] {
@@ -146,7 +160,7 @@ export class DefaultProvider implements LanguageProvider {
       rootNode,
       this.compiledQueries?.implements,
       ["implements"],
-      this.config.implements || []
+      this.config.implements || [],
     );
   }
 
@@ -155,7 +169,7 @@ export class DefaultProvider implements LanguageProvider {
       rootNode,
       this.compiledQueries?.extends,
       ["extends"],
-      this.config.extends || []
+      this.config.extends || [],
     );
   }
 
@@ -163,14 +177,16 @@ export class DefaultProvider implements LanguageProvider {
     rootNode: Node,
     query: Query | undefined,
     captureNames: string[],
-    fallbackTypes: string[]
+    fallbackTypes: string[],
   ): Node[] {
     if (query) {
       return this.captureNodes(rootNode, captureNames, query);
     }
     const nodes: Node[] = [];
     for (const nodeType of fallbackTypes) {
-      nodes.push(...(rootNode.descendantsOfType(nodeType).filter(Boolean) as Node[]));
+      nodes.push(
+        ...(rootNode.descendantsOfType(nodeType).filter(Boolean) as Node[]),
+      );
     }
     return nodes;
   }

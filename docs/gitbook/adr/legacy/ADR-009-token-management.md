@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Deprecated
 Supersedes: None
@@ -37,4 +38,4 @@ pie title Prompt Context Injection Limit (e.g. 8K Tokens)
 ## 3. Batching & Chunking
 
 - Configurations like `docuvia.extraction.maxFileSizeKBWarning` must be exposed. Massive `/analyze_l2` tasks are sliced into chunks and queued via [Database-as-IPC](./ADR-014-sql-indexed-graph-and-database-as-ipc.md) to be processed by the [Asynchronous Metabolism](./ADR-008-asynchronous-metabolism.md) workers to prevent context overflow.
-superseded_by: []
+  superseded_by: []

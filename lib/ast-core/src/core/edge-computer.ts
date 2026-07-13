@@ -39,7 +39,9 @@ export interface ParsedImportDescriptor {
  * single named symbol (e.g. `import * as X`, Python dotted `import a.b.c`, C's `#include`) —
  * callers (ScopeResolver.resolveCall) treat "*" as "fall back to the call name itself".
  */
-export function parseImportDescriptors(importStatements: Node[]): ParsedImportDescriptor[] {
+export function parseImportDescriptors(
+  importStatements: Node[],
+): ParsedImportDescriptor[] {
   const descriptors: ParsedImportDescriptor[] = [];
 
   for (const stmt of importStatements) {
@@ -55,7 +57,11 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
       if (namespaceImport) {
         const nsId = namespaceImport.descendantsOfType("identifier")[0];
         if (nsId) {
-          descriptors.push({ localName: nsId.text, originalName: "*", modulePath: srcText });
+          descriptors.push({
+            localName: nsId.text,
+            originalName: "*",
+            modulePath: srcText,
+          });
         }
         continue;
       }
@@ -70,7 +76,11 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
           if (nameNode) {
             const importedName = nameNode.text;
             const localName = aliasNode ? aliasNode.text : importedName;
-            descriptors.push({ localName, originalName: importedName, modulePath: srcText });
+            descriptors.push({
+              localName,
+              originalName: importedName,
+              modulePath: srcText,
+            });
           }
         }
         continue;
@@ -78,7 +88,11 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
 
       const defaultId = stmt.descendantsOfType("identifier")[0];
       if (defaultId) {
-        descriptors.push({ localName: defaultId.text, originalName: "*", modulePath: srcText });
+        descriptors.push({
+          localName: defaultId.text,
+          originalName: "*",
+          modulePath: srcText,
+        });
       }
       continue;
     }
@@ -99,13 +113,20 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
       continue;
     }
 
-    if (stmtType === "import_statement" && stmt.descendantsOfType("dotted_name").length > 0) {
+    if (
+      stmtType === "import_statement" &&
+      stmt.descendantsOfType("dotted_name").length > 0
+    ) {
       const dottedNames = stmt.descendantsOfType("dotted_name");
       for (const dn of dottedNames) {
         if (!dn) continue;
         const firstId = dn.descendantsOfType("identifier")[0];
         if (firstId) {
-          descriptors.push({ localName: firstId.text, originalName: "*", modulePath: dn.text });
+          descriptors.push({
+            localName: firstId.text,
+            originalName: "*",
+            modulePath: dn.text,
+          });
         }
       }
       const aliased = stmt.descendantsOfType("aliased_import")[0];
@@ -185,7 +206,11 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
         const ids = arg.descendantsOfType("identifier");
         const lastId = ids[ids.length - 1];
         if (lastId) {
-          descriptors.push({ localName: lastId.text, originalName: "*", modulePath: arg.text });
+          descriptors.push({
+            localName: lastId.text,
+            originalName: "*",
+            modulePath: arg.text,
+          });
         }
         continue;
       }
@@ -222,11 +247,19 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
           if (nameNode) {
             if (nameNode.type === "dot") continue;
             if (nameNode.type === "blank_identifier") continue;
-            descriptors.push({ localName: nameNode.text, originalName: "*", modulePath: pkgPath });
+            descriptors.push({
+              localName: nameNode.text,
+              originalName: "*",
+              modulePath: pkgPath,
+            });
           } else {
             const segments = pkgPath.split("/");
             const pkgName = segments[segments.length - 1];
-            descriptors.push({ localName: pkgName, originalName: "*", modulePath: pkgPath });
+            descriptors.push({
+              localName: pkgName,
+              originalName: "*",
+              modulePath: pkgPath,
+            });
           }
         }
       }
@@ -271,7 +304,11 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
       } else if (ids.length > 0) {
         const lastId = ids[ids.length - 1];
         if (lastId) {
-          descriptors.push({ localName: lastId.text, originalName: "*", modulePath: lastId.text });
+          descriptors.push({
+            localName: lastId.text,
+            originalName: "*",
+            modulePath: lastId.text,
+          });
         }
       }
       continue;
@@ -282,7 +319,11 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
       const pathNode = stmt.childForFieldName("path");
       if (pathNode) {
         const includePath = pathNode.text.replace(/[<>"']/g, "");
-        descriptors.push({ localName: includePath, originalName: "*", modulePath: includePath });
+        descriptors.push({
+          localName: includePath,
+          originalName: "*",
+          modulePath: includePath,
+        });
       }
       continue;
     }
@@ -295,10 +336,18 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
           const ids = child.descendantsOfType("identifier");
           const lastId = ids[ids.length - 1];
           if (lastId) {
-            descriptors.push({ localName: lastId.text, originalName: "*", modulePath: child.text });
+            descriptors.push({
+              localName: lastId.text,
+              originalName: "*",
+              modulePath: child.text,
+            });
           }
         } else if (child.type === "identifier") {
-          descriptors.push({ localName: child.text, originalName: "*", modulePath: child.text });
+          descriptors.push({
+            localName: child.text,
+            originalName: "*",
+            modulePath: child.text,
+          });
         }
       }
       continue;
@@ -317,11 +366,16 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
           const args = stmt.childForFieldName("arguments");
           if (args) {
             const strNode =
-              args.descendantsOfType("string_content")[0] || args.descendantsOfType("string")[0];
+              args.descendantsOfType("string_content")[0] ||
+              args.descendantsOfType("string")[0];
             if (strNode) {
               const libName = strNode.text.replace(/['"]/g, "");
               const shortName = libName.replace(/\.rb$/, "");
-              descriptors.push({ localName: shortName, originalName: "*", modulePath: libName });
+              descriptors.push({
+                localName: shortName,
+                originalName: "*",
+                modulePath: libName,
+              });
             }
           }
         }
@@ -339,19 +393,29 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
     ) {
       if (stmtType === "namespace_use_declaration") {
         const nameNode =
-          stmt.descendantsOfType("qualified_name")[0] || stmt.descendantsOfType("name")[0];
+          stmt.descendantsOfType("qualified_name")[0] ||
+          stmt.descendantsOfType("name")[0];
         if (nameNode) {
           const fullName = nameNode.text;
           const parts = fullName.split("\\");
           const shortName = parts[parts.length - 1];
-          descriptors.push({ localName: shortName, originalName: "*", modulePath: fullName });
+          descriptors.push({
+            localName: shortName,
+            originalName: "*",
+            modulePath: fullName,
+          });
         }
       } else {
         const argNode =
-          stmt.descendantsOfType("string")[0] || stmt.descendantsOfType("string_content")[0];
+          stmt.descendantsOfType("string")[0] ||
+          stmt.descendantsOfType("string_content")[0];
         if (argNode) {
           const path = argNode.text.replace(/['"]/g, "");
-          descriptors.push({ localName: path, originalName: "*", modulePath: path });
+          descriptors.push({
+            localName: path,
+            originalName: "*",
+            modulePath: path,
+          });
         }
       }
       continue;
@@ -360,12 +424,17 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
     // ── C# ───────────────────────────────────────────────────────────
     if (stmtType === "using_directive") {
       const nameNode =
-        stmt.descendantsOfType("qualified_name")[0] || stmt.descendantsOfType("identifier")[0];
+        stmt.descendantsOfType("qualified_name")[0] ||
+        stmt.descendantsOfType("identifier")[0];
       if (nameNode) {
         const fullName = nameNode.text;
         const parts = fullName.split(".");
         const shortName = parts[parts.length - 1];
-        descriptors.push({ localName: shortName, originalName: "*", modulePath: fullName });
+        descriptors.push({
+          localName: shortName,
+          originalName: "*",
+          modulePath: fullName,
+        });
       }
       continue;
     }
@@ -398,12 +467,17 @@ export function parseImportDescriptors(importStatements: Node[]): ParsedImportDe
  * Preserved for backward compatibility (AstTraverser / headless-lsp) — reproduces the exact
  * same Map<localName, encodedValue> output the original hand-written implementation produced.
  */
-export function buildScopeMap(importStatements: Node[], sourceText: string): Map<string, string> {
+export function buildScopeMap(
+  importStatements: Node[],
+  sourceText: string,
+): Map<string, string> {
   const scopeMap = new Map<string, string>();
   for (const d of parseImportDescriptors(importStatements)) {
     scopeMap.set(
       d.localName,
-      d.originalName === "*" ? d.modulePath : `${d.modulePath}::${d.originalName}`
+      d.originalName === "*"
+        ? d.modulePath
+        : `${d.modulePath}::${d.originalName}`,
     );
   }
   return scopeMap;
@@ -412,7 +486,7 @@ export function buildScopeMap(importStatements: Node[], sourceText: string): Map
 function collectPythonFromImportDescriptors(
   stmt: Node,
   sourceStr: string,
-  descriptors: ParsedImportDescriptor[]
+  descriptors: ParsedImportDescriptor[],
 ): void {
   const namesNode = stmt.childForFieldName("name");
   if (!namesNode) return;
@@ -620,7 +694,8 @@ export function classifyCall(callNode: Node): {
 
   // ── C# ───────────────────────────────────────────────────────────
   if (callType === "invocation_expression") {
-    const exprNode = callNode.childForFieldName("function") || callNode.namedChildren[0];
+    const exprNode =
+      callNode.childForFieldName("function") || callNode.namedChildren[0];
     if (exprNode && exprNode.type === "member_access_expression") {
       const nameNode = exprNode.childForFieldName("name");
       const objNode = exprNode.childForFieldName("expression");
@@ -648,7 +723,8 @@ export function classifyCall(callNode: Node): {
 
   // ── Fallback ─────────────────────────────────────────────────────
   const fnNode =
-    callNode.childForFieldName("function") || callNode.descendantsOfType("identifier")[0];
+    callNode.childForFieldName("function") ||
+    callNode.descendantsOfType("identifier")[0];
   return { isMethodCall: false, methodName: fnNode?.text || "" };
 }
 

@@ -26,12 +26,19 @@ export async function runParseAndPersist(deps: {
   /** Config + hotspot tags from `runDiscoveryPipeline`; a fresh `Set` is returned with per-file language tags folded in — the input is never mutated. */
   tags: Set<string>;
 }): Promise<RunParseAndPersistResult> {
-  const { astProcessor, graphPersister, store, workspaceRoot, projectId, filesToParse, skippedOversized } =
-    deps;
+  const {
+    astProcessor,
+    graphPersister,
+    store,
+    workspaceRoot,
+    projectId,
+    filesToParse,
+    skippedOversized,
+  } = deps;
 
   const { parsed: parsedResults, failures } = await astProcessor.processFiles(
     workspaceRoot,
-    filesToParse
+    filesToParse,
   );
 
   const tags = new Set(deps.tags);
@@ -40,10 +47,16 @@ export async function runParseAndPersist(deps: {
   }
 
   for (const failure of failures) {
-    await appendInitLogLine(workspaceRoot, { event: "init.parse_failure", ...failure });
+    await appendInitLogLine(workspaceRoot, {
+      event: "init.parse_failure",
+      ...failure,
+    });
   }
   for (const skipped of skippedOversized) {
-    await appendInitLogLine(workspaceRoot, { event: "init.file_skipped_oversized", ...skipped });
+    await appendInitLogLine(workspaceRoot, {
+      event: "init.file_skipped_oversized",
+      ...skipped,
+    });
   }
 
   await graphPersister.persist({

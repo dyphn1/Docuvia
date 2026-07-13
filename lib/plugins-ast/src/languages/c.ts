@@ -4,7 +4,12 @@ export const cConfig: LanguageConfig = {
   extensions: [".c", ".h"],
   wasm_file: "tree-sitter-c.wasm",
   imports: ["preproc_include"],
-  classes: ["struct_specifier", "enum_specifier", "union_specifier", "type_definition"],
+  classes: [
+    "struct_specifier",
+    "enum_specifier",
+    "union_specifier",
+    "type_definition",
+  ],
   functions: ["function_definition"],
   calls: ["call_expression"],
   queries: {

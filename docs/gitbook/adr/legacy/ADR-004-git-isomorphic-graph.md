@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Supplemented by ADR-017, ADR-022, ADR-023
 Supersedes: None
@@ -84,4 +85,4 @@ The [local-first syncing mechanism](./ADR-002-local-first-architecture.md) and g
 
 - **Extension Offline Resilience:** `@vscode/test-electron` test suites MUST launch the extension with the API server mocked as unreachable (503). The test MUST assert that local knowledge graph modifications successfully persist to the local SQLite cache without throwing unhandled exceptions to the user.
 - **Outbox Sync Guarantee:** API server integration tests MUST use `withRollback(...)` to insert a pending Git synchronization event into the Outbox table to verify [Database-as-IPC](./ADR-014-sql-indexed-graph-and-database-as-ipc.md). A worker tick MUST assert the `git` command execution (via mocked `child_process` or equivalent) and the subsequent deletion/status-update of the Outbox row.
-superseded_by: []
+  superseded_by: []

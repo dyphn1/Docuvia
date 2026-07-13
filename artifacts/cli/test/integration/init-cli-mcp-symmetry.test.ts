@@ -19,21 +19,26 @@ import { initTool } from "../../src/mcp/tools/init.js";
 function makeGitFixture(prefix: string): string {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   execFileSync("git", ["init", "-b", "main"], { cwd: tmpDir });
-  execFileSync("git", ["config", "user.email", "test@docuvia.dev"], { cwd: tmpDir });
+  execFileSync("git", ["config", "user.email", "test@docuvia.dev"], {
+    cwd: tmpDir,
+  });
   execFileSync("git", ["config", "user.name", "Docuvia Test"], { cwd: tmpDir });
 
   fs.writeFileSync(
     path.join(tmpDir, "index.ts"),
-    "import { helper } from './helper';\nexport function main() { return helper(); }\n"
+    "import { helper } from './helper';\nexport function main() { return helper(); }\n",
   );
-  fs.writeFileSync(path.join(tmpDir, "helper.ts"), "export function helper() { return 42; }\n");
+  fs.writeFileSync(
+    path.join(tmpDir, "helper.ts"),
+    "export function helper() { return 42; }\n",
+  );
   fs.writeFileSync(
     path.join(tmpDir, "package.json"),
     JSON.stringify({
       name: "symmetry-fixture",
       version: "0.0.0",
       dependencies: { typescript: "^5" },
-    })
+    }),
   );
 
   execFileSync("git", ["add", "."], { cwd: tmpDir });
@@ -46,14 +51,16 @@ function tableRowCounts(dbPath: string): Record<string, number> {
   try {
     const tables = raw
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'schema_migrations' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts%'"
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name != 'schema_migrations' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '%_fts%'",
       )
       .all()
       .map((r: any) => r.name as string);
 
     const counts: Record<string, number> = {};
     for (const table of tables) {
-      const row = raw.prepare(`SELECT COUNT(*) as c FROM "${table}"`).get() as { c: number };
+      const row = raw.prepare(`SELECT COUNT(*) as c FROM "${table}"`).get() as {
+        c: number;
+      };
       counts[table] = row.c;
     }
     return counts;
@@ -71,12 +78,18 @@ describe("CLI `docuvia init` and MCP `docuvia_init` produce equivalent local.db 
     workspaceA = makeGitFixture("docuvia-symmetry-cli-");
     workspaceB = makeGitFixture("docuvia-symmetry-mcp-");
     originalIsTTY = process.stdin.isTTY;
-    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+    });
   }, 30_000);
 
   afterEach(() => {
     vi.restoreAllMocks();
-    Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: originalIsTTY,
+      configurable: true,
+    });
     fs.rmSync(workspaceA, { recursive: true, force: true });
     fs.rmSync(workspaceB, { recursive: true, force: true });
   });

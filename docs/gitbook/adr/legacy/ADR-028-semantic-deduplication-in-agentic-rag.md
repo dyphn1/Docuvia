@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-07
 Status: Deprecated
 Supersedes: None
@@ -42,4 +43,4 @@ Specifically, the pipeline will:
 
 - **Pipeline Latency**: The deduplication algorithm adds a minor computational overhead during the retrieval phase prior to LLM invocation.
 - **Tuning Complexity**: The similarity threshold must be carefully calibrated. If set too low, it may discard nuanced but distinct information; if set too high, the deduplication will be ineffective.
-superseded_by: []
+  superseded_by: []

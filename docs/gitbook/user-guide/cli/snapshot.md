@@ -18,11 +18,12 @@ When you run `docuvia snapshot`:
 4. **Commit Reverse Lookup**: The first 7 characters of your source code's commit hash are appended to the knowledge branch's commit message. This allows near-instant reverse lookup of architectural impact using `git log --grep="<7-char-hash>"`.
 5. **Command Logging**: A structured JSONL log is written to `.docuvia/logs/snapshot.log`.
 
-*(Note: This command is automatically triggered by the `post-commit` hook installed via `docuvia init`).*
+_(Note: This command is automatically triggered by the `post-commit` hook installed via `docuvia init`)._
 
 ## Examples
 
 Manually force a snapshot export:
+
 ```bash
 docuvia snapshot
 ```

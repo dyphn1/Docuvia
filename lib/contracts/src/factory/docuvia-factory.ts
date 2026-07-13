@@ -31,7 +31,7 @@ export class DocuviaFactory {
     if (this.locked) {
       throw new DocuviaError(
         ErrorCodes.FACTORY_LOCKED,
-        `Cannot register "${String(token.description)}": factory is locked (test isolation)`
+        `Cannot register "${String(token.description)}": factory is locked (test isolation)`,
       );
     }
     this.providers.set(token, provider as Provider<unknown, unknown>);
@@ -43,7 +43,7 @@ export class DocuviaFactory {
       throw new DocuviaError(
         ErrorCodes.FACTORY_TOKEN_NOT_REGISTERED,
         `No provider registered for "${String(token.description)}" — the implementation ` +
-          `library that owns it was never imported for its registration side effect`
+          `library that owns it was never imported for its registration side effect`,
       );
     }
     return provider(this, params as P) as T;

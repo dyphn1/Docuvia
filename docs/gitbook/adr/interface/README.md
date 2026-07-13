@@ -5,8 +5,8 @@ The Docuvia2 CLI (Command Line Interface) is built as a wizard-style interactive
 
 ## Decisions
 
-| ID | Decision | Status | Notes |
-|----|----------|--------|-------|
-| [IFCE-001](IFCE-001-wizard-style-interactive-cli.md) | Wizard-Style Interactive CLI | accepted | Carries forward legacy ADR-034 |
-| [IFCE-002](IFCE-002-strict-repo-scoped-boundaries.md) | Strict Repo-Scoped Boundaries | accepted | Cancels global writes, strictly confining state to the project |
-| [IFCE-003](IFCE-003-persisted-structured-command-log.md) | Persisted Structured Command Log | accepted | Carries forward legacy ADR-036 |
+| ID                                                       | Decision                         | Status   | Notes                                                          |
+| -------------------------------------------------------- | -------------------------------- | -------- | -------------------------------------------------------------- |
+| [IFCE-001](IFCE-001-wizard-style-interactive-cli.md)     | Wizard-Style Interactive CLI     | accepted | Carries forward legacy ADR-034                                 |
+| [IFCE-002](IFCE-002-strict-repo-scoped-boundaries.md)    | Strict Repo-Scoped Boundaries    | accepted | Cancels global writes, strictly confining state to the project |
+| [IFCE-003](IFCE-003-persisted-structured-command-log.md) | Persisted Structured Command Log | accepted | Carries forward legacy ADR-036                                 |

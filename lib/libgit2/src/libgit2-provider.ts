@@ -2,8 +2,17 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
-import { DocuviaError, ErrorCodes, type ChangedFileEntry, type IGitProvider } from "@workspace/contracts";
-import { buildFastImportData, collectDirectoryFiles, runFastImport } from "./fast-import.js";
+import {
+  DocuviaError,
+  ErrorCodes,
+  type ChangedFileEntry,
+  type IGitProvider,
+} from "@workspace/contracts";
+import {
+  buildFastImportData,
+  collectDirectoryFiles,
+  runFastImport,
+} from "./fast-import.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -29,7 +38,9 @@ const KNOWLEDGE_LOCK_STALE_MS = 60_000;
 export class Libgit2Provider implements IGitProvider {
   public async isGitRepository(cwd: string): Promise<boolean> {
     try {
-      await execFileAsync("git", ["rev-parse", "--is-inside-work-tree"], { cwd });
+      await execFileAsync("git", ["rev-parse", "--is-inside-work-tree"], {
+        cwd,
+      });
       return true;
     } catch {
       return false;
@@ -38,10 +49,18 @@ export class Libgit2Provider implements IGitProvider {
 
   public async branchExists(cwd: string, branchName: string): Promise<boolean> {
     try {
-      const { stdout } = await execFileAsync("git", ["branch", "--list", branchName], { cwd });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["branch", "--list", branchName],
+        { cwd },
+      );
       return stdout.trim().length > 0;
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git branch --list failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git branch --list failed",
+        err,
+      );
     }
   }
 
@@ -50,19 +69,35 @@ export class Libgit2Provider implements IGitProvider {
       const { stdout } = await execFileAsync(
         "git",
         ["commit-tree", EMPTY_TREE_SHA, "-m", message],
-        { cwd }
+        { cwd },
       );
       return stdout.trim();
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_BRANCH_CREATE_FAILED, "git commit-tree failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_BRANCH_CREATE_FAILED,
+        "git commit-tree failed",
+        err,
+      );
     }
   }
 
-  public async updateBranchRef(cwd: string, branchName: string, commitSha: string): Promise<void> {
+  public async updateBranchRef(
+    cwd: string,
+    branchName: string,
+    commitSha: string,
+  ): Promise<void> {
     try {
-      await execFileAsync("git", ["update-ref", `refs/heads/${branchName}`, commitSha], { cwd });
+      await execFileAsync(
+        "git",
+        ["update-ref", `refs/heads/${branchName}`, commitSha],
+        { cwd },
+      );
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_BRANCH_CREATE_FAILED, "git update-ref failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_BRANCH_CREATE_FAILED,
+        "git update-ref failed",
+        err,
+      );
     }
   }
 
@@ -75,34 +110,59 @@ export class Libgit2Provider implements IGitProvider {
     }
   }
 
-  public async readHookFile(cwd: string, hookName: string): Promise<string | undefined> {
+  public async readHookFile(
+    cwd: string,
+    hookName: string,
+  ): Promise<string | undefined> {
     try {
-      return await fs.readFile(path.join(cwd, ...GIT_HOOKS_DIR, hookName), "utf8");
+      return await fs.readFile(
+        path.join(cwd, ...GIT_HOOKS_DIR, hookName),
+        "utf8",
+      );
     } catch {
       return undefined;
     }
   }
 
-  public async appendHookFile(cwd: string, hookName: string, content: string): Promise<void> {
+  public async appendHookFile(
+    cwd: string,
+    hookName: string,
+    content: string,
+  ): Promise<void> {
     try {
       await fs.appendFile(path.join(cwd, ...GIT_HOOKS_DIR, hookName), content);
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_HOOK_INSTALL_FAILED, "Writing hook file failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_HOOK_INSTALL_FAILED,
+        "Writing hook file failed",
+        err,
+      );
     }
   }
 
-  public async makeHookExecutable(cwd: string, hookName: string): Promise<void> {
+  public async makeHookExecutable(
+    cwd: string,
+    hookName: string,
+  ): Promise<void> {
     try {
       await fs.chmod(path.join(cwd, ...GIT_HOOKS_DIR, hookName), 0o755);
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_HOOK_INSTALL_FAILED, "chmod on hook file failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_HOOK_INSTALL_FAILED,
+        "chmod on hook file failed",
+        err,
+      );
     }
   }
 
-  public async listTrackedFilesWithBlobHash(cwd: string): Promise<Map<string, string>> {
+  public async listTrackedFilesWithBlobHash(
+    cwd: string,
+  ): Promise<Map<string, string>> {
     const blobHashes = new Map<string, string>();
     try {
-      const { stdout } = await execFileAsync("git", ["ls-files", "-s"], { cwd });
+      const { stdout } = await execFileAsync("git", ["ls-files", "-s"], {
+        cwd,
+      });
       for (const line of stdout.split("\n")) {
         if (!line.trim()) continue;
         const [info, file] = line.split("\t");
@@ -111,7 +171,11 @@ export class Libgit2Provider implements IGitProvider {
       }
       return blobHashes;
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git ls-files -s failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git ls-files -s failed",
+        err,
+      );
     }
   }
 
@@ -120,26 +184,36 @@ export class Libgit2Provider implements IGitProvider {
       const { stdout } = await execFileAsync(
         "git",
         ["ls-files", "--others", "--exclude-standard"],
-        { cwd }
+        { cwd },
       );
       return stdout
         .split("\n")
         .map((f) => f.trim())
         .filter(Boolean);
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git ls-files --others failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git ls-files --others failed",
+        err,
+      );
     }
   }
 
   public async listModifiedFiles(cwd: string): Promise<string[]> {
     try {
-      const { stdout } = await execFileAsync("git", ["diff", "--name-only"], { cwd });
+      const { stdout } = await execFileAsync("git", ["diff", "--name-only"], {
+        cwd,
+      });
       return stdout
         .split("\n")
         .map((f) => f.trim())
         .filter(Boolean);
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git diff --name-only failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git diff --name-only failed",
+        err,
+      );
     }
   }
 
@@ -151,17 +225,29 @@ export class Libgit2Provider implements IGitProvider {
       });
       return stdout;
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git cat-file blob failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git cat-file blob failed",
+        err,
+      );
     }
   }
 
-  public async readFileAtRef(cwd: string, ref: string, filePath: string): Promise<string | undefined> {
+  public async readFileAtRef(
+    cwd: string,
+    ref: string,
+    filePath: string,
+  ): Promise<string | undefined> {
     try {
       const posixPath = filePath.split(path.sep).join(path.posix.sep);
-      const { stdout } = await execFileAsync("git", ["show", `${ref}:${posixPath}`], {
-        cwd,
-        maxBuffer: 64 * 1024 * 1024,
-      });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["show", `${ref}:${posixPath}`],
+        {
+          cwd,
+          maxBuffer: 64 * 1024 * 1024,
+        },
+      );
       return stdout;
     } catch {
       // Ref or path doesn't exist — a normal, expected outcome (e.g. hydrating a knowledge
@@ -173,7 +259,7 @@ export class Libgit2Provider implements IGitProvider {
   public async getCommitLog(
     cwd: string,
     ref: string,
-    maxCount = 1000
+    maxCount = 1000,
   ): Promise<Array<{ sha: string; message: string }>> {
     try {
       // `%x01` separates sha/body within a record, `%x00` separates records — both effectively
@@ -182,7 +268,7 @@ export class Libgit2Provider implements IGitProvider {
       const { stdout } = await execFileAsync(
         "git",
         ["log", ref, "-n", String(maxCount), "--format=%H%x01%B%x00"],
-        { cwd, maxBuffer: 64 * 1024 * 1024 }
+        { cwd, maxBuffer: 64 * 1024 * 1024 },
       );
       return stdout
         .split("\x00")
@@ -190,7 +276,10 @@ export class Libgit2Provider implements IGitProvider {
         .filter(Boolean)
         .map((record) => {
           const sepIndex = record.indexOf("\x01");
-          return { sha: record.slice(0, sepIndex), message: record.slice(sepIndex + 1) };
+          return {
+            sha: record.slice(0, sepIndex),
+            message: record.slice(sepIndex + 1),
+          };
         });
     } catch {
       // Ref doesn't exist / no commits yet.
@@ -198,12 +287,16 @@ export class Libgit2Provider implements IGitProvider {
     }
   }
 
-  public async getCommitAncestry(cwd: string, ref: string, maxCount = 1000): Promise<string[]> {
+  public async getCommitAncestry(
+    cwd: string,
+    ref: string,
+    maxCount = 1000,
+  ): Promise<string[]> {
     try {
       const { stdout } = await execFileAsync(
         "git",
         ["rev-list", ref, "-n", String(maxCount)],
-        { cwd }
+        { cwd },
       );
       return stdout
         .split("\n")
@@ -216,7 +309,11 @@ export class Libgit2Provider implements IGitProvider {
 
   public async getRemoteUrl(cwd: string): Promise<string | undefined> {
     try {
-      const { stdout } = await execFileAsync("git", ["remote", "get-url", "origin"], { cwd });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["remote", "get-url", "origin"],
+        { cwd },
+      );
       const url = stdout.trim();
       return url.length > 0 ? url : undefined;
     } catch {
@@ -224,12 +321,15 @@ export class Libgit2Provider implements IGitProvider {
     }
   }
 
-  public async getRecentChangedFilePaths(cwd: string, maxCommits = 100): Promise<string[]> {
+  public async getRecentChangedFilePaths(
+    cwd: string,
+    maxCommits = 100,
+  ): Promise<string[]> {
     try {
       const { stdout } = await execFileAsync(
         "git",
         ["log", "-n", String(maxCommits), "--name-only", "--format="],
-        { cwd }
+        { cwd },
       );
       return stdout
         .split("\n")
@@ -243,10 +343,16 @@ export class Libgit2Provider implements IGitProvider {
 
   public async hasUncommittedChanges(cwd: string): Promise<boolean> {
     try {
-      const { stdout } = await execFileAsync("git", ["status", "--porcelain"], { cwd });
+      const { stdout } = await execFileAsync("git", ["status", "--porcelain"], {
+        cwd,
+      });
       return stdout.trim().length > 0;
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git status --porcelain failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git status --porcelain failed",
+        err,
+      );
     }
   }
 
@@ -257,7 +363,10 @@ export class Libgit2Provider implements IGitProvider {
    * reports). Parses git's `--name-status` letters into a stable status enum; for renames
    * (`R###\told\tnew`) the new path is used.
    */
-  public async getChangedFilesSince(cwd: string, baseRef?: string): Promise<ChangedFileEntry[]> {
+  public async getChangedFilesSince(
+    cwd: string,
+    baseRef?: string,
+  ): Promise<ChangedFileEntry[]> {
     const entries: ChangedFileEntry[] = [];
     const seen = new Set<string>();
 
@@ -269,7 +378,7 @@ export class Libgit2Provider implements IGitProvider {
       const { stdout } = await execFileAsync(
         "git",
         ["diff", "--name-status", "--end-of-options", baseRef ?? "HEAD"],
-        { cwd }
+        { cwd },
       );
 
       for (const line of stdout.split("\n")) {
@@ -322,26 +431,42 @@ export class Libgit2Provider implements IGitProvider {
    * Files touched by a specific commit sha, run directly against the local workspace
    * (mirrors the command `LocalGitClient.getModifiedFiles()` uses against a cloned repo).
    */
-  public async getFilesChangedByCommit(cwd: string, sha: string): Promise<string[]> {
+  public async getFilesChangedByCommit(
+    cwd: string,
+    sha: string,
+  ): Promise<string[]> {
     try {
       // See `getChangedFilesSince()`'s comment above on `--end-of-options` vs a bare `--`.
       const { stdout } = await execFileAsync(
         "git",
-        ["diff-tree", "--no-commit-id", "--name-only", "-r", "--end-of-options", sha],
-        { cwd }
+        [
+          "diff-tree",
+          "--no-commit-id",
+          "--name-only",
+          "-r",
+          "--end-of-options",
+          sha,
+        ],
+        { cwd },
       );
       return stdout
         .split("\n")
         .map((f) => f.trim())
         .filter(Boolean);
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git diff-tree failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git diff-tree failed",
+        err,
+      );
     }
   }
 
   public async getHeadSha(cwd: string): Promise<string | undefined> {
     try {
-      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], { cwd });
+      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], {
+        cwd,
+      });
       const sha = stdout.trim();
       return sha.length > 0 ? sha : undefined;
     } catch {
@@ -351,12 +476,15 @@ export class Libgit2Provider implements IGitProvider {
     }
   }
 
-  public async getBranchTipSha(cwd: string, branchName: string): Promise<string | undefined> {
+  public async getBranchTipSha(
+    cwd: string,
+    branchName: string,
+  ): Promise<string | undefined> {
     try {
       const { stdout } = await execFileAsync(
         "git",
         ["rev-parse", "--verify", "--quiet", `refs/heads/${branchName}`],
-        { cwd }
+        { cwd },
       );
       const sha = stdout.trim();
       return sha.length > 0 ? sha : undefined;
@@ -369,7 +497,7 @@ export class Libgit2Provider implements IGitProvider {
     cwd: string,
     sourceDir: string,
     branchName: string,
-    commitMessage: string
+    commitMessage: string,
   ): Promise<void> {
     try {
       const files = await collectDirectoryFiles(sourceDir);
@@ -380,39 +508,66 @@ export class Libgit2Provider implements IGitProvider {
         files,
         now,
         commitMessage,
-        parentCommitSha
+        parentCommitSha,
       );
       await runFastImport(cwd, fastImportData);
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_FAST_IMPORT_FAILED, "git fast-import failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_FAST_IMPORT_FAILED,
+        "git fast-import failed",
+        err,
+      );
     }
   }
 
-  public async fetchRef(cwd: string, remote: string, ref: string): Promise<void> {
+  public async fetchRef(
+    cwd: string,
+    remote: string,
+    ref: string,
+  ): Promise<void> {
     try {
       await execFileAsync("git", ["fetch", remote, ref], { cwd });
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git fetch failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git fetch failed",
+        err,
+      );
     }
   }
 
-  public async pushRef(cwd: string, remote: string, branchName: string): Promise<void> {
+  public async pushRef(
+    cwd: string,
+    remote: string,
+    branchName: string,
+  ): Promise<void> {
     try {
       await execFileAsync(
         "git",
         ["push", remote, `refs/heads/${branchName}:refs/heads/${branchName}`],
-        { cwd }
+        { cwd },
       );
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git push failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git push failed",
+        err,
+      );
     }
   }
 
-  public async getRefSha(cwd: string, ref: string): Promise<string | undefined> {
+  public async getRefSha(
+    cwd: string,
+    ref: string,
+  ): Promise<string | undefined> {
     try {
-      const { stdout } = await execFileAsync("git", ["rev-parse", "--verify", "--quiet", ref], {
-        cwd,
-      });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["rev-parse", "--verify", "--quiet", ref],
+        {
+          cwd,
+        },
+      );
       const sha = stdout.trim();
       return sha.length > 0 ? sha : undefined;
     } catch {
@@ -420,37 +575,70 @@ export class Libgit2Provider implements IGitProvider {
     }
   }
 
-  public async isAncestor(cwd: string, ancestorSha: string, descendantSha: string): Promise<boolean> {
+  public async isAncestor(
+    cwd: string,
+    ancestorSha: string,
+    descendantSha: string,
+  ): Promise<boolean> {
     try {
-      await execFileAsync("git", ["merge-base", "--is-ancestor", ancestorSha, descendantSha], {
-        cwd,
-      });
+      await execFileAsync(
+        "git",
+        ["merge-base", "--is-ancestor", ancestorSha, descendantSha],
+        {
+          cwd,
+        },
+      );
       return true;
     } catch (err) {
       // Exit code 1 means "not an ancestor" — a normal, expected outcome, not a failure. Any
       // other exit code (invalid sha, unrelated histories git can't even compare) is a real error.
-      if (typeof err === "object" && err !== null && "code" in err && (err as { code: unknown }).code === 1) {
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        (err as { code: unknown }).code === 1
+      ) {
         return false;
       }
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git merge-base --is-ancestor failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git merge-base --is-ancestor failed",
+        err,
+      );
     }
   }
 
   public async getTreeSha(cwd: string, commitish: string): Promise<string> {
     try {
-      const { stdout } = await execFileAsync("git", ["rev-parse", `${commitish}^{tree}`], { cwd });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["rev-parse", `${commitish}^{tree}`],
+        { cwd },
+      );
       return stdout.trim();
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git rev-parse ^{tree} failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git rev-parse ^{tree} failed",
+        err,
+      );
     }
   }
 
   public async getCommitTimestamp(cwd: string, sha: string): Promise<number> {
     try {
-      const { stdout } = await execFileAsync("git", ["show", "-s", "--format=%ct", sha], { cwd });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["show", "-s", "--format=%ct", sha],
+        { cwd },
+      );
       return Number(stdout.trim());
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git show --format=%ct failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git show --format=%ct failed",
+        err,
+      );
     }
   }
 
@@ -458,7 +646,7 @@ export class Libgit2Provider implements IGitProvider {
     cwd: string,
     treeSha: string,
     parentShas: string[],
-    message: string
+    message: string,
   ): Promise<string> {
     try {
       const parentArgs = parentShas.flatMap((sha) => ["-p", sha]);
@@ -474,11 +662,15 @@ export class Libgit2Provider implements IGitProvider {
             GIT_COMMITTER_NAME: "Docuvia",
             GIT_COMMITTER_EMAIL: "docuvia@localhost",
           },
-        }
+        },
       );
       return stdout.trim();
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "git commit-tree (merge) failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        "git commit-tree (merge) failed",
+        err,
+      );
     }
   }
 
@@ -493,7 +685,11 @@ export class Libgit2Provider implements IGitProvider {
         return;
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
-          throw DocuviaError.wrap(ErrorCodes.GIT_COMMAND_FAILED, "Failed to acquire knowledge lock", err);
+          throw DocuviaError.wrap(
+            ErrorCodes.GIT_COMMAND_FAILED,
+            "Failed to acquire knowledge lock",
+            err,
+          );
         }
 
         const stat = await fs.stat(lockPath).catch(() => undefined);
@@ -505,10 +701,12 @@ export class Libgit2Provider implements IGitProvider {
         if (Date.now() > deadline) {
           throw new DocuviaError(
             ErrorCodes.GIT_COMMAND_FAILED,
-            `Timed out waiting for the knowledge branch lock at ${lockPath} — another Docuvia process may be stuck`
+            `Timed out waiting for the knowledge branch lock at ${lockPath} — another Docuvia process may be stuck`,
           );
         }
-        await new Promise((resolve) => setTimeout(resolve, KNOWLEDGE_LOCK_RETRY_INTERVAL_MS));
+        await new Promise((resolve) =>
+          setTimeout(resolve, KNOWLEDGE_LOCK_RETRY_INTERVAL_MS),
+        );
       }
     }
   }

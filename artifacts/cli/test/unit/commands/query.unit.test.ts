@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import process from "process";
 import { docuviaApi } from "@workspace/ui-core";
-import { queryCommand, formatPromptOutput } from "../../../src/commands/query.js";
+import {
+  queryCommand,
+  formatPromptOutput,
+} from "../../../src/commands/query.js";
 import { ui } from "../../../src/ui/wizard.js";
 
 vi.mock("@workspace/ui-core", () => ({
@@ -74,22 +77,34 @@ describe("queryCommand", () => {
   });
 
   it("resolves the query and prints human-readable results by default", async () => {
-    mockQuery.mockResolvedValue({ l2: { name: "authService" }, l3: [], context: null });
+    mockQuery.mockResolvedValue({
+      l2: { name: "authService" },
+      l3: [],
+      context: null,
+    });
 
     await queryCommand("authService");
 
     expect(mockQuery).toHaveBeenCalled();
     expect(spinnerSucceed).toHaveBeenCalled();
-    expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("authService"));
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("authService"),
+    );
   });
 
   it("prints the prompt XML block and skips the spinner when format is 'prompt'", async () => {
-    mockQuery.mockResolvedValue({ l2: { name: "authService" }, l3: [], context: null });
+    mockQuery.mockResolvedValue({
+      l2: { name: "authService" },
+      l3: [],
+      context: null,
+    });
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await queryCommand("authService", { format: "prompt" });
 
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("<docuvia_context>"));
+    expect(logSpy).toHaveBeenCalledWith(
+      expect.stringContaining("<docuvia_context>"),
+    );
     logSpy.mockRestore();
   });
 

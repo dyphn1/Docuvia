@@ -12,11 +12,11 @@ docuvia analyze [path]
 
 ### Arguments
 
-- `[path]` *(Optional)*: The specific file or directory to analyze. If omitted, the wizard will prompt you or default to analyzing the entire workspace.
+- `[path]` _(Optional)_: The specific file or directory to analyze. If omitted, the wizard will prompt you or default to analyzing the entire workspace.
 
 ### Flags
 
-- `--escalate-to-lsp`: *(Documented No-Op in Docuvia2)* Initially intended to trigger a headless Language Server Protocol (LSP) instance for deep references. Currently a no-op; falls back to AST static analysis.
+- `--escalate-to-lsp`: _(Documented No-Op in Docuvia2)_ Initially intended to trigger a headless Language Server Protocol (LSP) instance for deep references. Currently a no-op; falls back to AST static analysis.
 
 ## Under the Hood
 
@@ -31,11 +31,13 @@ When you run `docuvia analyze`:
 ## Examples
 
 Analyze the entire workspace:
+
 ```bash
 docuvia analyze
 ```
 
 Analyze a specific module:
+
 ```bash
 docuvia analyze src/auth/
 ```

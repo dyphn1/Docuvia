@@ -4,7 +4,7 @@ import { createNoopLogger } from "@workspace/contracts";
 export class VcsScannerService implements IVcsScanner {
   constructor(
     private readonly git: IGitProvider,
-    private readonly logger: ILogger = createNoopLogger()
+    private readonly logger: ILogger = createNoopLogger(),
   ) {}
 
   public async extractHotspotTags(workspaceRoot: string): Promise<string[]> {
@@ -14,7 +14,10 @@ export class VcsScannerService implements IVcsScanner {
       const isGit = await this.git.isGitRepository(workspaceRoot);
       if (!isGit) return [];
 
-      const changedPaths = await this.git.getRecentChangedFilePaths(workspaceRoot, 100);
+      const changedPaths = await this.git.getRecentChangedFilePaths(
+        workspaceRoot,
+        100,
+      );
 
       const pathCounts = new Map<string, number>();
 
@@ -28,7 +31,15 @@ export class VcsScannerService implements IVcsScanner {
           // Defend against config/hidden folders and build directories
           if (
             parts[0].startsWith(".") ||
-            ["node_modules", "dist", "build", "docs", "test", "tests", "scripts"].includes(parts[0])
+            [
+              "node_modules",
+              "dist",
+              "build",
+              "docs",
+              "test",
+              "tests",
+              "scripts",
+            ].includes(parts[0])
           )
             continue;
 
@@ -39,7 +50,9 @@ export class VcsScannerService implements IVcsScanner {
           } else if (parts.length > 2 && parts[1] === "src") {
             // Workspaces: packages/cli/src/mcp -> cli
             domain =
-              parts[0] === "packages" || parts[0] === "artifacts" || parts[0] === "crates"
+              parts[0] === "packages" ||
+              parts[0] === "artifacts" ||
+              parts[0] === "crates"
                 ? parts[1]
                 : parts[0];
           } else {

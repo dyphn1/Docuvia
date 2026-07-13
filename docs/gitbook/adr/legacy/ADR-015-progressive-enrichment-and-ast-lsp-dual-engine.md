@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Deprecated
 Supersedes: None
@@ -49,4 +50,4 @@ flowchart TD
 - **Positive**: Minimizes memory usage since the LSP is not used for global ingestion and is disposed of after an idle timeout.
 - **Positive**: Solves the dirty state synchronization issue by deferring it directly to the LSP.
 - **Negative**: Increased architectural complexity by having to orchestrate and manage both an AST engine and an LSP client tool.
-superseded_by: []
+  superseded_by: []

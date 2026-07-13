@@ -28,7 +28,7 @@ export interface BridgeParseResult {
 export async function parseOpenApiSpec(
   content: string,
   filePath: string,
-  format: "yaml" | "json"
+  format: "yaml" | "json",
 ): Promise<BridgeParseResult> {
   let spec: any;
 
@@ -56,7 +56,9 @@ export async function parseOpenApiSpec(
     return { events: [], contractName: "", endpointCount: 0 };
   }
 
-  const contractName = (spec.info && spec.info.title) || filePath.replace(/\.(yaml|yml|json)$/, "");
+  const contractName =
+    (spec.info && spec.info.title) ||
+    filePath.replace(/\.(yaml|yml|json)$/, "");
 
   const events: AstEvent[] = [];
   const paths = spec.paths || {};
@@ -75,13 +77,23 @@ export async function parseOpenApiSpec(
   for (const [routePath, pathItem] of Object.entries(paths)) {
     if (!pathItem || typeof pathItem !== "object") continue;
 
-    const methods = ["get", "post", "put", "delete", "patch", "options", "head"];
+    const methods = [
+      "get",
+      "post",
+      "put",
+      "delete",
+      "patch",
+      "options",
+      "head",
+    ];
     for (const method of methods) {
       const operation = (pathItem as any)[method];
       if (!operation || typeof operation !== "object") continue;
 
       const summary =
-        operation.summary || operation.description || `${method.toUpperCase()} ${routePath}`;
+        operation.summary ||
+        operation.description ||
+        `${method.toUpperCase()} ${routePath}`;
       const operationId = operation.operationId || null;
       const tags = Array.isArray(operation.tags) ? operation.tags : [];
 
@@ -107,7 +119,8 @@ export async function parseOpenApiSpec(
   return {
     events,
     contractName,
-    endpointCount: events.filter((e) => e.type === "api_contract" && e.method).length,
+    endpointCount: events.filter((e) => e.type === "api_contract" && e.method)
+      .length,
   };
 }
 

@@ -16,7 +16,12 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
     projects: { getFirst: vi.fn(), insert: vi.fn(), count: vi.fn() },
     files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
-    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn(), getAllTagLinks: vi.fn() },
+    tags: {
+      upsertTag: vi.fn(),
+      getIdByName: vi.fn(),
+      linkNodeToTag: vi.fn(),
+      getAllTagLinks: vi.fn(),
+    },
     graph: {
       deleteNodesForPath: vi.fn(),
       insertNode: vi.fn(),
@@ -73,8 +78,14 @@ describe("SnapshotWorkflow.execute()", () => {
       .mockResolvedValue(store);
     docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
 
-    const renderResult = { nodesWritten: 1, edgesWritten: 1, markdownFilesWritten: 1 };
-    const renderer: ISnapshotRenderer = { render: vi.fn().mockResolvedValue(renderResult) };
+    const renderResult = {
+      nodesWritten: 1,
+      edgesWritten: 1,
+      markdownFilesWritten: 1,
+    };
+    const renderer: ISnapshotRenderer = {
+      render: vi.fn().mockResolvedValue(renderResult),
+    };
     docuviaFactory.register(TOKENS.SnapshotRenderer, () => renderer);
 
     const knowledgeGit: IKnowledgeGitService = {
@@ -86,25 +97,35 @@ describe("SnapshotWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
     docuviaFactory.lock();
 
-    const result = await new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute();
+    const result = await new SnapshotWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
 
     expect(store.graph.getAllNodes).toHaveBeenCalled();
     expect(store.graph.getAllLinks).toHaveBeenCalled();
     expect(renderer.render).toHaveBeenCalledWith(
-      expect.objectContaining({ l2Rows: [{ id: 1 }], linkRows: [{ id: 1 }] })
+      expect.objectContaining({ l2Rows: [{ id: 1 }], linkRows: [{ id: 1 }] }),
     );
     expect(knowledgeGit.packSnapshotToKnowledgeBranch).toHaveBeenCalledWith(
       "/workspace/demo",
-      expect.any(String)
+      expect.any(String),
     );
     expect(result).toEqual(renderResult);
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
-    const dbOpenError = new DocuviaError("DB_OPEN_FAILED", "Failed to open database at /x: ENOENT");
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockRejectedValue(dbOpenError));
-    docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({ render: vi.fn() }));
+    const dbOpenError = new DocuviaError(
+      "DB_OPEN_FAILED",
+      "Failed to open database at /x: ENOENT",
+    );
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockRejectedValue(dbOpenError),
+    );
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
+      render: vi.fn(),
+    }));
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
@@ -114,7 +135,7 @@ describe("SnapshotWorkflow.execute()", () => {
     docuviaFactory.lock();
 
     await expect(
-      new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute()
+      new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toMatchObject({
       code: "DB_OPEN_FAILED",
       message: expect.stringContaining("docuvia init"),
@@ -123,20 +144,28 @@ describe("SnapshotWorkflow.execute()", () => {
 
   it("closes the store even when packSnapshotToKnowledgeBranch throws", async () => {
     const store = makeMockStore();
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
     docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
-      render: vi.fn().mockResolvedValue({ nodesWritten: 0, edgesWritten: 0, markdownFilesWritten: 0 }),
+      render: vi.fn().mockResolvedValue({
+        nodesWritten: 0,
+        edgesWritten: 0,
+        markdownFilesWritten: 0,
+      }),
     }));
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
-      packSnapshotToKnowledgeBranch: vi.fn().mockRejectedValue(new Error("git fast-import failed")),
+      packSnapshotToKnowledgeBranch: vi
+        .fn()
+        .mockRejectedValue(new Error("git fast-import failed")),
       syncKnowledgeBranch: vi.fn(),
     }));
     docuviaFactory.lock();
 
     await expect(
-      new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute()
+      new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toThrow("git fast-import failed");
     expect(store.close).toHaveBeenCalledTimes(1);
   });

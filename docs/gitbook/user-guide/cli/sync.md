@@ -1,6 +1,6 @@
 # `docuvia sync`
 
-The `sync` command synchronizes the local Docuvia state with the remote Cloud API Server. 
+The `sync` command synchronizes the local Docuvia state with the remote Cloud API Server.
 
 > **Note on Docuvia2:** Currently, `sync` only implements the client-side stub to fetch updates from the server. Advanced server-side multi-tenant handshakes are deferred.
 
@@ -21,6 +21,7 @@ When you run `docuvia sync`:
 ## Examples
 
 Run a synchronization:
+
 ```bash
 docuvia sync
 ```

@@ -42,5 +42,8 @@ export interface RemoteSyncClientConfig {
 export interface IRemoteSyncClient {
   initialize(config: RemoteSyncClientConfig): void;
   fetchRemoteL2Nodes(projectId: string): Promise<RemoteL2NodeSummary[]>;
-  pushSyncEvents(projectId: string, events: SyncPushEvent[]): Promise<SyncPushResult>;
+  pushSyncEvents(
+    projectId: string,
+    events: SyncPushEvent[],
+  ): Promise<SyncPushResult>;
 }

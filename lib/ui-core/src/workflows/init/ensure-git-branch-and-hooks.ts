@@ -5,12 +5,14 @@ import { INIT_MESSAGES } from "./init-messages.js";
 export async function ensureGitBranchAndHooks(
   knowledgeGit: IKnowledgeGitService,
   workspaceRoot: string,
-  logger: ILogger
+  logger: ILogger,
 ): Promise<{ branchCreated: boolean; hookInstalled: boolean }> {
-  const { created: branchCreated } = await knowledgeGit.ensureKnowledgeBranch(workspaceRoot);
+  const { created: branchCreated } =
+    await knowledgeGit.ensureKnowledgeBranch(workspaceRoot);
 
   logger.info(INIT_MESSAGES.INSTALLING_HOOK);
-  const { installed: hookInstalled } = await knowledgeGit.installPostCommitHook(workspaceRoot);
+  const { installed: hookInstalled } =
+    await knowledgeGit.installPostCommitHook(workspaceRoot);
 
   return { branchCreated, hookInstalled };
 }

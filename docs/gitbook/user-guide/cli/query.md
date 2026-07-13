@@ -1,6 +1,6 @@
 # `docuvia query`
 
-The `query` command searches the local SQLite knowledge graph for specific nodes, concepts, or symbols. 
+The `query` command searches the local SQLite knowledge graph for specific nodes, concepts, or symbols.
 
 > **Note on Docuvia2:** Local Vector Search has been officially deprecated. The `query` command uses strict Heuristic Keyword Querying (FTS5 + BM25 matching) and 1-hop SQL joins. It does NOT invoke an LLM for agentic 4-way routing.
 
@@ -25,11 +25,13 @@ When you run `docuvia query`:
 ## Examples
 
 Find context regarding authentication:
+
 ```bash
 docuvia query "authentication middleware"
 ```
 
 Interactive mode:
+
 ```bash
 docuvia query
 ```

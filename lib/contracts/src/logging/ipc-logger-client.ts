@@ -10,7 +10,9 @@ import type { IIpcLogMessage } from "./ipc-log-message.js";
  * it never needs to know it's running isolated.
  */
 export class IpcLoggerClient implements ILogger {
-  constructor(private readonly postMessageFn: (message: IIpcLogMessage) => void) {}
+  constructor(
+    private readonly postMessageFn: (message: IIpcLogMessage) => void,
+  ) {}
 
   debug(message: string, context?: Record<string, unknown>): void {
     this.send("debug", message, context);
@@ -33,7 +35,11 @@ export class IpcLoggerClient implements ILogger {
     return () => {};
   }
 
-  private send(level: IIpcLogMessage["level"], message: string, context?: Record<string, unknown>): void {
+  private send(
+    level: IIpcLogMessage["level"],
+    message: string,
+    context?: Record<string, unknown>,
+  ): void {
     const payload: IIpcLogMessage = context
       ? { type: "ipc-log", level, message, context }
       : { type: "ipc-log", level, message };

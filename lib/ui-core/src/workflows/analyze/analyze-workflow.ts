@@ -11,7 +11,7 @@ import type { AnalyzeResult } from "./analyze-result.js";
 export class AnalyzeWorkflow {
   constructor(
     private readonly workspaceRoot: string,
-    private readonly logger: ILogger
+    private readonly logger: ILogger,
   ) {}
 
   public async execute(): Promise<AnalyzeResult> {
@@ -20,11 +20,17 @@ export class AnalyzeWorkflow {
     logger.info(ANALYZE_MESSAGES.ANALYZING);
     await appendAnalyzeLogLine(workspaceRoot, { event: "analyze.start" });
 
-    const configScanner = docuviaFactory.resolve(TOKENS.ConfigScanner, { logger });
-    const { projectType, tags } = await configScanner.scanConfigs(workspaceRoot);
+    const configScanner = docuviaFactory.resolve(TOKENS.ConfigScanner, {
+      logger,
+    });
+    const { projectType, tags } =
+      await configScanner.scanConfigs(workspaceRoot);
 
     const result: AnalyzeResult = { projectType, suggestedTags: tags };
-    await appendAnalyzeLogLine(workspaceRoot, { event: "analyze.summary", ...result });
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: "analyze.summary",
+      ...result,
+    });
     return result;
   }
 }

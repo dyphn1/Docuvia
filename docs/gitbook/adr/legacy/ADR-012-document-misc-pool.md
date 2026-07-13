@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Deprecated
 Supersedes: None
@@ -50,4 +51,5 @@ flowchart TD
     I -- Yes --> J[Skip Generation]
     I -- No --> K[Promote to Generate Pipeline]
 ```
+
 superseded_by: []

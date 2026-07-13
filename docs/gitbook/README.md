@@ -16,4 +16,4 @@ graph TD
 
 This space serves as the primary documentation for **Docuvia2** — the next-generation, refactored version of the knowledge graph engine. Our architecture focuses on an isomorphic AST microkernel, centralized schema, and robust composition.
 
-*(This README serves as the prologue to the project's goals. We will expand the structural documentation, ADRs, and API guides progressively.)*
+_(This README serves as the prologue to the project's goals. We will expand the structural documentation, ADRs, and API guides progressively.)_

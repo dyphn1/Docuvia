@@ -14,27 +14,31 @@ const InitToolInputSchema = z.object({}).strict();
 export const initTool: McpTool = {
   definition: {
     name: "docuvia_init",
-    description: "Initialize the local Docuvia SQLite database in the current workspace.",
+    description:
+      "Initialize the local Docuvia SQLite database in the current workspace.",
     inputSchema: {
       type: "object",
       properties: {},
     },
   },
-  handler: withErrorHandling(MCP_TOOL_MESSAGES.ERROR_INITIALIZING, async (args) => {
-    InitToolInputSchema.parse(args ?? {});
+  handler: withErrorHandling(
+    MCP_TOOL_MESSAGES.ERROR_INITIALIZING,
+    async (args) => {
+      InitToolInputSchema.parse(args ?? {});
 
-    const scopeId = crypto.randomUUID();
-    const logger = createPinoBackedLogger();
-    docuviaMemory.createScope(scopeId);
-    docuviaMemory.set(scopeId, "workspaceRoot", process.cwd());
+      const scopeId = crypto.randomUUID();
+      const logger = createPinoBackedLogger();
+      docuviaMemory.createScope(scopeId);
+      docuviaMemory.set(scopeId, "workspaceRoot", process.cwd());
 
-    try {
-      const result = await docuviaApi.init(scopeId, logger);
-      return {
-        content: [{ type: "text", text: result.message }],
-      };
-    } finally {
-      docuviaMemory.deleteScope(scopeId);
-    }
-  }),
+      try {
+        const result = await docuviaApi.init(scopeId, logger);
+        return {
+          content: [{ type: "text", text: result.message }],
+        };
+      } finally {
+        docuviaMemory.deleteScope(scopeId);
+      }
+    },
+  ),
 };

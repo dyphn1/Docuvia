@@ -44,7 +44,10 @@ describe("syncCommand", () => {
     process.exitCode = undefined;
     process.env.DOCUVIA_API_URL = "https://api.example.com";
     process.env.MCP_PAT = "test-pat";
-    Object.defineProperty(process.stdin, "isTTY", { value: false, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: false,
+      configurable: true,
+    });
   });
 
   afterEach(() => {
@@ -70,26 +73,43 @@ describe("syncCommand", () => {
 
   it("calls docuviaApi.sync with workspaceRoot/apiUrl/pat/projectId/commitSha scoped in memory, and cleans up the scope afterwards", async () => {
     mockSync.mockImplementation(async (scopeId) => {
-      expect(docuviaMemory.get(scopeId, "workspaceRoot")).toEqual(expect.any(String));
-      expect(docuviaMemory.get(scopeId, "apiUrl")).toBe("https://api.example.com");
+      expect(docuviaMemory.get(scopeId, "workspaceRoot")).toEqual(
+        expect.any(String),
+      );
+      expect(docuviaMemory.get(scopeId, "apiUrl")).toBe(
+        "https://api.example.com",
+      );
       expect(docuviaMemory.get(scopeId, "pat")).toBe("test-pat");
       expect(docuviaMemory.get(scopeId, "projectId")).toBe("42");
       expect(docuviaMemory.get(scopeId, "commitSha")).toBe("abc123");
-      return { synced: 2, skipped: 0, message: "Synced 2 decision(s), 0 module(s) skipped." };
+      return {
+        synced: 2,
+        skipped: 0,
+        message: "Synced 2 decision(s), 0 module(s) skipped.",
+      };
     });
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
     await syncCommand({ projectId: "42", commitSha: "abc123" });
 
     expect(mockSync).toHaveBeenCalled();
-    expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("Synced 2"));
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("Synced 2"),
+    );
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 
   it("prompts for a project id via ui.askInput when omitted and stdin is a TTY", async () => {
-    Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
     vi.mocked(ui.askInput).mockResolvedValue("77");
-    mockSync.mockResolvedValue({ synced: 0, skipped: 0, message: "Nothing to sync" });
+    mockSync.mockResolvedValue({
+      synced: 0,
+      skipped: 0,
+      message: "Nothing to sync",
+    });
 
     await syncCommand({});
 
@@ -102,7 +122,9 @@ describe("syncCommand", () => {
 
     await syncCommand({ projectId: "1", commitSha: "abc" });
 
-    expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("network down"));
+    expect(spinnerFail).toHaveBeenCalledWith(
+      expect.stringContaining("network down"),
+    );
     expect(process.exitCode).toBe(1);
     expect(exitSpy).not.toHaveBeenCalled();
   });

@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Superseded
 Supersedes: None
@@ -59,4 +60,5 @@ stateDiagram-v2
     Valid --> [*]
     Orphaned --> [*]
 ```
+
 superseded_by: []

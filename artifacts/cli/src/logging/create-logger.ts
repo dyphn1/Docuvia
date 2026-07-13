@@ -16,9 +16,14 @@ function buildTransport() {
     // Resolve eagerly so a broken/unresolvable pino-pretty fails fast into the catch
     // below instead of surfacing asynchronously from inside pino's worker thread.
     require.resolve("pino-pretty");
-    return { target: "pino-pretty", options: { colorize: true, destination: 2 } };
+    return {
+      target: "pino-pretty",
+      options: { colorize: true, destination: 2 },
+    };
   } catch {
-    process.stderr.write("[docuvia] pino-pretty unavailable, falling back to plain JSON logs.\n");
+    process.stderr.write(
+      "[docuvia] pino-pretty unavailable, falling back to plain JSON logs.\n",
+    );
     return undefined;
   }
 }
@@ -60,7 +65,7 @@ export function createPinoBackedLogger(): Logger {
     },
     // No transport -> plain JSON path: write directly to fd 2 (stderr) instead of pino's
     // stdout default.
-    transport ? undefined : pino.destination(2)
+    transport ? undefined : pino.destination(2),
   );
 
   const logger = new Logger();

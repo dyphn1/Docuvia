@@ -30,20 +30,25 @@ interface NormalizedL3Row {
 }
 
 export class TopologyBuilderService implements ITopologyBuilder {
-  build(input: TopologyBuildInput, options: TopologyExportOptions = {}): TopologyGraph {
-    const l2Rows = input.l2Rows.map(
-      (row): NormalizedL2Row => ({ id: row.id, name: row.name, filePath: parseFilePath(row.path_patterns) })
-    );
-    const linkRows = input.linkRows.map(
-      (row): NormalizedLinkRow => ({
-        sourceNodeId: row.source_node_id,
-        targetNodeId: row.target_node_id,
-        linkType: row.link_type,
-      })
-    );
-    const l3Rows = input.l3Rows.map(
-      (row): NormalizedL3Row => ({ id: row.id, l2NodeId: row.l2_node_id, title: row.title })
-    );
+  build(
+    input: TopologyBuildInput,
+    options: TopologyExportOptions = {},
+  ): TopologyGraph {
+    const l2Rows = input.l2Rows.map((row): NormalizedL2Row => ({
+      id: row.id,
+      name: row.name,
+      filePath: parseFilePath(row.path_patterns),
+    }));
+    const linkRows = input.linkRows.map((row): NormalizedLinkRow => ({
+      sourceNodeId: row.source_node_id,
+      targetNodeId: row.target_node_id,
+      linkType: row.link_type,
+    }));
+    const l3Rows = input.l3Rows.map((row): NormalizedL3Row => ({
+      id: row.id,
+      l2NodeId: row.l2_node_id,
+      title: row.title,
+    }));
     const tagRows = input.tagRows;
 
     const filePathById = new Map<string, string | undefined>();
@@ -54,7 +59,10 @@ export class TopologyBuilderService implements ITopologyBuilder {
     const containingFileId = new Map<string, string>();
     for (const link of linkRows) {
       if (link.linkType === "contains") {
-        containingFileId.set(String(link.targetNodeId), String(link.sourceNodeId));
+        containingFileId.set(
+          String(link.targetNodeId),
+          String(link.sourceNodeId),
+        );
       }
     }
 
@@ -69,16 +77,25 @@ export class TopologyBuilderService implements ITopologyBuilder {
     const maxNodes = options.maxNodes ?? DEFAULT_MAX_NODES;
     const fullNodeCount = l2Rows.length + l3Rows.length;
     const collapse =
-      options.collapse === "file" || (options.collapse !== "symbol" && fullNodeCount > maxNodes);
+      options.collapse === "file" ||
+      (options.collapse !== "symbol" && fullNodeCount > maxNodes);
 
     const built = collapse
       ? buildCollapsed(l2Rows, linkRows, l3Rows, containingFileId, filePathById)
-      : buildSymbolLevel(l2Rows, linkRows, l3Rows, containingFileId, filePathById);
+      : buildSymbolLevel(
+          l2Rows,
+          linkRows,
+          l3Rows,
+          containingFileId,
+          filePathById,
+        );
     const nodes = built.nodes;
     const rawLinks = built.links;
 
     const nodeIdSet = new Set(nodes.map((n) => n.id));
-    const links = rawLinks.filter((l) => nodeIdSet.has(l.source) && nodeIdSet.has(l.target));
+    const links = rawLinks.filter(
+      (l) => nodeIdSet.has(l.source) && nodeIdSet.has(l.target),
+    );
 
     const groupIdByLabel = new Map<string, number>();
     const groups: TopologyGroup[] = [];
@@ -130,7 +147,7 @@ function buildSymbolLevel(
   linkRows: NormalizedLinkRow[],
   l3Rows: NormalizedL3Row[],
   containingFileId: Map<string, string>,
-  filePathById: Map<string, string | undefined>
+  filePathById: Map<string, string | undefined>,
 ): { nodes: TopologyNode[]; links: TopologyLink[] } {
   const nodes: TopologyNode[] = l2Rows.map((row) => ({
     id: "l2:" + row.id,
@@ -157,9 +174,10 @@ function buildCollapsed(
   linkRows: NormalizedLinkRow[],
   l3Rows: NormalizedL3Row[],
   containingFileId: Map<string, string>,
-  filePathById: Map<string, string | undefined>
+  filePathById: Map<string, string | undefined>,
 ): { nodes: TopologyNode[]; links: TopologyLink[] } {
-  const toFileId = (id: number | string) => containingFileId.get(String(id)) ?? String(id);
+  const toFileId = (id: number | string) =>
+    containingFileId.get(String(id)) ?? String(id);
 
   const nodes: TopologyNode[] = l2Rows
     .filter((row) => !containingFileId.has(String(row.id)))
@@ -182,7 +200,12 @@ function buildCollapsed(
     const key = source + "|" + target + "|" + link.linkType;
     if (seen.has(key)) continue;
     seen.add(key);
-    links.push({ source: "l2:" + source, target: "l2:" + target, linkType: link.linkType, confidence: 1 });
+    links.push({
+      source: "l2:" + source,
+      target: "l2:" + target,
+      linkType: link.linkType,
+      confidence: 1,
+    });
   }
 
   appendDecisions(nodes, links, l3Rows, filePathById);
@@ -193,7 +216,7 @@ function appendDecisions(
   nodes: TopologyNode[],
   links: TopologyLink[],
   l3Rows: NormalizedL3Row[],
-  filePathById: Map<string, string | undefined>
+  filePathById: Map<string, string | undefined>,
 ): void {
   const nodeIds = new Set(nodes.map((n) => n.id));
   for (const row of l3Rows) {
@@ -208,7 +231,12 @@ function appendDecisions(
       parent: parentId,
       degree: 0,
     });
-    links.push({ source: "l3:" + row.id, target: parentId, linkType: "decision", confidence: 1 });
+    links.push({
+      source: "l3:" + row.id,
+      target: parentId,
+      linkType: "decision",
+      confidence: 1,
+    });
   }
 }
 

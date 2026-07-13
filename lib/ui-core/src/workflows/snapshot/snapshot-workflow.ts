@@ -25,29 +25,44 @@ import { resolveDbPath } from "../../utils/resolve-db-path.js";
 export class SnapshotWorkflow {
   constructor(
     private readonly workspaceRoot: string,
-    private readonly logger: ILogger
+    private readonly logger: ILogger,
   ) {}
 
   public async execute(): Promise<SnapshotResult> {
     const { workspaceRoot, logger } = this;
 
     logger.info(SNAPSHOT_MESSAGES.SNAPSHOTTING);
-    await appendSnapshotLogLine(workspaceRoot, { event: "snapshot.start", workspaceRoot });
+    await appendSnapshotLogLine(workspaceRoot, {
+      event: "snapshot.start",
+      workspaceRoot,
+    });
 
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
-    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, { logger });
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger,
+    });
     const snapshotRenderer = docuviaFactory.resolve(TOKENS.SnapshotRenderer);
 
     let store;
     try {
-      store = await openStore({ dbPath: resolveDbPath(workspaceRoot), readonly: true });
+      store = await openStore({
+        dbPath: resolveDbPath(workspaceRoot),
+        readonly: true,
+      });
     } catch (err) {
-      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_OPEN_FAILED) {
+      if (
+        err instanceof DocuviaError &&
+        err.code === ErrorCodes.DB_OPEN_FAILED
+      ) {
         await appendSnapshotLogLine(workspaceRoot, {
           event: "snapshot.error",
           message: SNAPSHOT_MESSAGES.DB_NOT_FOUND,
         });
-        throw new DocuviaError(ErrorCodes.DB_OPEN_FAILED, SNAPSHOT_MESSAGES.DB_NOT_FOUND, err);
+        throw new DocuviaError(
+          ErrorCodes.DB_OPEN_FAILED,
+          SNAPSHOT_MESSAGES.DB_NOT_FOUND,
+          err,
+        );
       }
       throw err;
     }
@@ -56,11 +71,20 @@ export class SnapshotWorkflow {
       const l2Rows = store.graph.getAllNodes();
       const linkRows = store.graph.getAllLinks();
 
-      const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "docuvia-snapshot-"));
+      const tempDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), "docuvia-snapshot-"),
+      );
       try {
-        const renderResult = await snapshotRenderer.render({ outDir: tempDir, l2Rows, linkRows });
+        const renderResult = await snapshotRenderer.render({
+          outDir: tempDir,
+          l2Rows,
+          linkRows,
+        });
 
-        await knowledgeGit.packSnapshotToKnowledgeBranch(workspaceRoot, tempDir);
+        await knowledgeGit.packSnapshotToKnowledgeBranch(
+          workspaceRoot,
+          tempDir,
+        );
 
         await appendSnapshotLogLine(workspaceRoot, {
           event: "snapshot.summary",

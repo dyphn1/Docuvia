@@ -41,7 +41,7 @@ describe("DocuviaMemory", () => {
 
   it("set() throws MEMORY_SCOPE_NOT_FOUND when the scope was never created", () => {
     expect(() => memory.set("never-created", "key", "value")).toThrowError(
-      expect.objectContaining({ code: ErrorCodes.MEMORY_SCOPE_NOT_FOUND })
+      expect.objectContaining({ code: ErrorCodes.MEMORY_SCOPE_NOT_FOUND }),
     );
   });
 

@@ -21,7 +21,7 @@ import { withKnowledgeBranchLock } from "./knowledge-branch-lock.js";
 export class KnowledgeGitService implements IKnowledgeGitService {
   constructor(
     private readonly git: IGitProvider,
-    private readonly logger: ILogger = createNoopLogger()
+    private readonly logger: ILogger = createNoopLogger(),
   ) {}
 
   /**
@@ -34,14 +34,16 @@ export class KnowledgeGitService implements IKnowledgeGitService {
    */
   public async ensureKnowledgeBranch(
     cwd: string,
-    branchName: string = GitConstants.KNOWLEDGE_ROOT
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
   ): Promise<{ created: boolean }> {
     if (await this.git.branchExists(cwd, branchName)) {
       this.logger.debug("Knowledge branch already exists", { branchName });
       return { created: false };
     }
 
-    const emptyDir = await fs.mkdtemp(path.join(os.tmpdir(), "docuvia-empty-knowledge-"));
+    const emptyDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "docuvia-empty-knowledge-"),
+    );
     try {
       await this.packSnapshotToKnowledgeBranch(cwd, emptyDir, branchName);
     } finally {
@@ -57,11 +59,15 @@ export class KnowledgeGitService implements IKnowledgeGitService {
    * Non-fatal by design: `.git/hooks` may not exist (e.g. a bare repo, or `.git` mounted
    * read-only), and a broken hook shouldn't fail `init` itself.
    */
-  public async installPostCommitHook(cwd: string): Promise<{ installed: boolean }> {
+  public async installPostCommitHook(
+    cwd: string,
+  ): Promise<{ installed: boolean }> {
     const hookName = GitConstants.POST_COMMIT_HOOK_NAME;
 
     if (!(await this.git.hooksDirExists(cwd))) {
-      this.logger.debug("No .git/hooks directory; skipping post-commit hook install");
+      this.logger.debug(
+        "No .git/hooks directory; skipping post-commit hook install",
+      );
       return { installed: false };
     }
 
@@ -72,7 +78,11 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     }
 
     try {
-      await this.git.appendHookFile(cwd, hookName, GitConstants.POST_COMMIT_HOOK_CONTENT);
+      await this.git.appendHookFile(
+        cwd,
+        hookName,
+        GitConstants.POST_COMMIT_HOOK_CONTENT,
+      );
       await this.git.makeHookExecutable(cwd, hookName);
     } catch (err) {
       // Non-fatal to init — a broken hook write shouldn't fail the whole workflow.
@@ -95,11 +105,16 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   public async packSnapshotToKnowledgeBranch(
     cwd: string,
     sourceDir: string,
-    branchName: string = GitConstants.KNOWLEDGE_ROOT
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
   ): Promise<void> {
     await withKnowledgeBranchLock(this.git, cwd, async () => {
       const commitMessage = await this.buildSnapshotCommitMessage(cwd);
-      await this.git.packDirectoryToBranch(cwd, sourceDir, branchName, commitMessage);
+      await this.git.packDirectoryToBranch(
+        cwd,
+        sourceDir,
+        branchName,
+        commitMessage,
+      );
       this.logger.info("Packed snapshot onto knowledge branch", { branchName });
     });
   }
@@ -112,21 +127,26 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   public async syncKnowledgeBranch(
     cwd: string,
     branchName: string = GitConstants.KNOWLEDGE_ROOT,
-    remote: string = "origin"
+    remote: string = "origin",
   ): Promise<KnowledgeBranchSyncResult> {
-    return withKnowledgeBranchLock(this.git, cwd, () => this.reconcile(cwd, branchName, remote));
+    return withKnowledgeBranchLock(this.git, cwd, () =>
+      this.reconcile(cwd, branchName, remote),
+    );
   }
 
   private async reconcile(
     cwd: string,
     branchName: string,
-    remote: string
+    remote: string,
   ): Promise<KnowledgeBranchSyncResult> {
     const remoteUrl = await this.git.getRemoteUrl(cwd);
     if (!remoteUrl) {
-      this.logger.debug("No remote configured; skipping knowledge branch reconciliation", {
-        branchName,
-      });
+      this.logger.debug(
+        "No remote configured; skipping knowledge branch reconciliation",
+        {
+          branchName,
+        },
+      );
       return { status: "no-remote" };
     }
 
@@ -135,14 +155,20 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     } catch (err) {
       // Network/remote failure — degrade gracefully offline rather than failing the caller
       // (snapshot/hydrate) over a transient network hiccup.
-      this.logger.warn("Failed to fetch knowledge branch from remote; continuing offline", {
-        branchName,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      this.logger.warn(
+        "Failed to fetch knowledge branch from remote; continuing offline",
+        {
+          branchName,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
       return { status: "no-remote" };
     }
 
-    const remoteSha = await this.git.getRefSha(cwd, `refs/remotes/${remote}/${branchName}`);
+    const remoteSha = await this.git.getRefSha(
+      cwd,
+      `refs/remotes/${remote}/${branchName}`,
+    );
     const localSha = await this.git.getBranchTipSha(cwd, branchName);
 
     if (!remoteSha) {
@@ -151,7 +177,10 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     }
     if (!localSha) {
       await this.git.updateBranchRef(cwd, branchName, remoteSha);
-      this.logger.info("Adopted remote knowledge branch (no local copy existed)", { branchName });
+      this.logger.info(
+        "Adopted remote knowledge branch (no local copy existed)",
+        { branchName },
+      );
       return { status: "fast-forwarded-local", branchTipSha: remoteSha };
     }
     if (localSha === remoteSha) {
@@ -160,7 +189,10 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
     if (await this.git.isAncestor(cwd, localSha, remoteSha)) {
       await this.git.updateBranchRef(cwd, branchName, remoteSha);
-      this.logger.info("Fast-forwarded local knowledge branch to remote", { branchName, remoteSha });
+      this.logger.info("Fast-forwarded local knowledge branch to remote", {
+        branchName,
+        remoteSha,
+      });
       return { status: "fast-forwarded-local", branchTipSha: remoteSha };
     }
     if (await this.git.isAncestor(cwd, remoteSha, localSha)) {
@@ -177,7 +209,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       cwd,
       winningTree,
       [localSha, remoteSha],
-      mergeMessage
+      mergeMessage,
     );
     await this.git.updateBranchRef(cwd, branchName, mergeSha);
     await this.pushQuietly(cwd, remote, branchName);
@@ -190,14 +222,21 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     return { status: "merged", branchTipSha: mergeSha };
   }
 
-  private async pushQuietly(cwd: string, remote: string, branchName: string): Promise<void> {
+  private async pushQuietly(
+    cwd: string,
+    remote: string,
+    branchName: string,
+  ): Promise<void> {
     try {
       await this.git.pushRef(cwd, remote, branchName);
     } catch (err) {
-      this.logger.warn("Failed to push knowledge branch to remote; will retry on next sync", {
-        branchName,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      this.logger.warn(
+        "Failed to push knowledge branch to remote; will retry on next sync",
+        {
+          branchName,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      );
     }
   }
 
@@ -208,7 +247,11 @@ export class KnowledgeGitService implements IKnowledgeGitService {
    * ancestor of the other (unrelated source lines, or one side's source commit isn't reachable in
    * this clone's object database at all — e.g. a peer analyzed a commit not yet fetched here).
    */
-  private async resolveMergeWinner(cwd: string, shaA: string, shaB: string): Promise<string> {
+  private async resolveMergeWinner(
+    cwd: string,
+    shaA: string,
+    shaB: string,
+  ): Promise<string> {
     const [logA, logB] = await Promise.all([
       this.git.getCommitLog(cwd, shaA, 1),
       this.git.getCommitLog(cwd, shaB, 1),

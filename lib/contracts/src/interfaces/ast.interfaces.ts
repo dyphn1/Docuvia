@@ -9,7 +9,12 @@ export interface AstImportDescriptor {
 export interface ParsedAstFileData {
   imports: AstImportDescriptor[];
   exports: Array<{ name: string; type: "function" | "class" | "variable" }>;
-  functions: Array<{ name: string; startLine: number; endLine: number; contentHash?: string }>;
+  functions: Array<{
+    name: string;
+    startLine: number;
+    endLine: number;
+    contentHash?: string;
+  }>;
   classes: Array<{
     name: string;
     startLine: number;
@@ -43,5 +48,8 @@ export interface AstProcessResult {
 }
 
 export interface IAstProcessor {
-  processFiles(workspaceRoot: string, filesToParse: DiscoveredFile[]): Promise<AstProcessResult>;
+  processFiles(
+    workspaceRoot: string,
+    filesToParse: DiscoveredFile[],
+  ): Promise<AstProcessResult>;
 }

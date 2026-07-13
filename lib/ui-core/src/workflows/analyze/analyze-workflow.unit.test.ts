@@ -15,7 +15,9 @@ describe("AnalyzeWorkflow.execute()", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-analyze-workflow-test-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-analyze-workflow-test-"),
+    );
     resetFactoryForTests();
   });
 
@@ -26,20 +28,31 @@ describe("AnalyzeWorkflow.execute()", () => {
 
   it("resolves IConfigScanner from the factory and returns its scan result", async () => {
     const configScanner: IConfigScanner = {
-      scanConfigs: vi.fn().mockResolvedValue({ projectType: "typescript", tags: ["typescript", "react"] }),
+      scanConfigs: vi.fn().mockResolvedValue({
+        projectType: "typescript",
+        tags: ["typescript", "react"],
+      }),
     };
     docuviaFactory.register(TOKENS.ConfigScanner, () => configScanner);
     docuviaFactory.lock();
 
-    const result = await new AnalyzeWorkflow(tmpDir, createMockLogger()).execute();
+    const result = await new AnalyzeWorkflow(
+      tmpDir,
+      createMockLogger(),
+    ).execute();
 
     expect(configScanner.scanConfigs).toHaveBeenCalledWith(tmpDir);
-    expect(result).toEqual({ projectType: "typescript", suggestedTags: ["typescript", "react"] });
+    expect(result).toEqual({
+      projectType: "typescript",
+      suggestedTags: ["typescript", "react"],
+    });
   });
 
   it("logs an analyze.start and analyze.summary JSONL event to .docuvia/logs/analyze.log", async () => {
     const configScanner: IConfigScanner = {
-      scanConfigs: vi.fn().mockResolvedValue({ projectType: "generic", tags: ["general"] }),
+      scanConfigs: vi
+        .fn()
+        .mockResolvedValue({ projectType: "generic", tags: ["general"] }),
     };
     docuviaFactory.register(TOKENS.ConfigScanner, () => configScanner);
     docuviaFactory.lock();

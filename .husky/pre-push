@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "Running full typecheck..."
+pnpm run typecheck
+
+echo "Running full build..."
+pnpm run build
+
+echo "Running full test suite and global coverage..."
+pnpm run test

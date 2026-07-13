@@ -19,6 +19,7 @@ When you run `docuvia status`:
 ## Examples
 
 Check the current graph stats:
+
 ```bash
 docuvia status
 ```

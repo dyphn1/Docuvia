@@ -21,10 +21,12 @@ import { resolveDbPath } from "../../utils/resolve-db-path.js";
 export class ExportTopologyWorkflow {
   constructor(
     private readonly workspaceRoot: string,
-    private readonly logger: ILogger
+    private readonly logger: ILogger,
   ) {}
 
-  public async execute(options: TopologyExportOptions = {}): Promise<TopologyGraph> {
+  public async execute(
+    options: TopologyExportOptions = {},
+  ): Promise<TopologyGraph> {
     const { workspaceRoot, logger } = this;
 
     logger.info(EXPORT_TOPOLOGY_MESSAGES.EXPORTING);
@@ -36,20 +38,32 @@ export class ExportTopologyWorkflow {
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
     let store;
     try {
-      store = await openStore({ dbPath: resolveDbPath(workspaceRoot), readonly: true });
+      store = await openStore({
+        dbPath: resolveDbPath(workspaceRoot),
+        readonly: true,
+      });
     } catch (err) {
-      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_OPEN_FAILED) {
+      if (
+        err instanceof DocuviaError &&
+        err.code === ErrorCodes.DB_OPEN_FAILED
+      ) {
         await appendExportTopologyLogLine(workspaceRoot, {
           event: "export-topology.error",
           message: EXPORT_TOPOLOGY_MESSAGES.DB_NOT_FOUND,
         });
-        throw new DocuviaError(ErrorCodes.DB_OPEN_FAILED, EXPORT_TOPOLOGY_MESSAGES.DB_NOT_FOUND, err);
+        throw new DocuviaError(
+          ErrorCodes.DB_OPEN_FAILED,
+          EXPORT_TOPOLOGY_MESSAGES.DB_NOT_FOUND,
+          err,
+        );
       }
       throw err;
     }
 
     try {
-      const topologyBuilder = docuviaFactory.resolve(TOKENS.TopologyBuilder, { logger });
+      const topologyBuilder = docuviaFactory.resolve(TOKENS.TopologyBuilder, {
+        logger,
+      });
       const graph = topologyBuilder.build(
         {
           workspaceRoot,
@@ -58,7 +72,7 @@ export class ExportTopologyWorkflow {
           l3Rows: store.l3.getAllExportable(),
           tagRows: store.tags.getAllTagLinks(),
         },
-        options
+        options,
       );
 
       await appendExportTopologyLogLine(workspaceRoot, {

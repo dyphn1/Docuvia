@@ -27,7 +27,7 @@ function includesRule(
   id: string,
   matchesFile: (basename: string) => boolean,
   marker: string,
-  tags: string[]
+  tags: string[],
 ): ConfigDetectionRule {
   return {
     id,
@@ -39,7 +39,7 @@ function includesRule(
 function presenceRule(
   id: string,
   matchesFile: (basename: string) => boolean,
-  result: ConfigDetectionResult
+  result: ConfigDetectionResult,
 ): ConfigDetectionRule {
   return { id, matchesFile, detect: () => result };
 }
@@ -52,27 +52,68 @@ const isGoMod = exact("go.mod");
 const isTsconfig = exact("tsconfig.json");
 
 export const CONFIG_DETECTION_RULES: ConfigDetectionRule[] = [
-  includesRule("package.json:typescript", isPackageJson, '"typescript"', ["typescript"]),
-  includesRule("package.json:react", isPackageJson, '"react"', ["react", "frontend"]),
+  includesRule("package.json:typescript", isPackageJson, '"typescript"', [
+    "typescript",
+  ]),
+  includesRule("package.json:react", isPackageJson, '"react"', [
+    "react",
+    "frontend",
+  ]),
   includesRule("package.json:vue", isPackageJson, '"vue"', ["vue", "frontend"]),
-  includesRule("package.json:next", isPackageJson, '"next"', ["nextjs", "frontend", "ssr"]),
-  includesRule("package.json:express", isPackageJson, '"express"', ["express", "backend"]),
-  includesRule("package.json:drizzle-orm", isPackageJson, '"drizzle-orm"', ["drizzle", "database"]),
-  includesRule("package.json:tailwindcss", isPackageJson, '"tailwindcss"', ["tailwindcss", "css"]),
-  includesRule("package.json:jest", isPackageJson, '"jest"', ["jest", "testing"]),
-  includesRule("package.json:vitest", isPackageJson, '"vitest"', ["vitest", "testing"]),
-  includesRule("package.json:pg", isPackageJson, '"pg"', ["postgres", "database"]),
-  includesRule("package.json:workspaces", isPackageJson, '"workspaces"', ["monorepo"]),
+  includesRule("package.json:next", isPackageJson, '"next"', [
+    "nextjs",
+    "frontend",
+    "ssr",
+  ]),
+  includesRule("package.json:express", isPackageJson, '"express"', [
+    "express",
+    "backend",
+  ]),
+  includesRule("package.json:drizzle-orm", isPackageJson, '"drizzle-orm"', [
+    "drizzle",
+    "database",
+  ]),
+  includesRule("package.json:tailwindcss", isPackageJson, '"tailwindcss"', [
+    "tailwindcss",
+    "css",
+  ]),
+  includesRule("package.json:jest", isPackageJson, '"jest"', [
+    "jest",
+    "testing",
+  ]),
+  includesRule("package.json:vitest", isPackageJson, '"vitest"', [
+    "vitest",
+    "testing",
+  ]),
+  includesRule("package.json:pg", isPackageJson, '"pg"', [
+    "postgres",
+    "database",
+  ]),
+  includesRule("package.json:workspaces", isPackageJson, '"workspaces"', [
+    "monorepo",
+  ]),
 
-  presenceRule("cargo:base", isCargoToml, { projectType: "rust", tags: ["rust"] }),
+  presenceRule("cargo:base", isCargoToml, {
+    projectType: "rust",
+    tags: ["rust"],
+  }),
   includesRule("cargo:tokio", isCargoToml, "tokio", ["tokio", "async"]),
   includesRule("cargo:actix", isCargoToml, "actix", ["actix", "backend"]),
   includesRule("cargo:serde", isCargoToml, "serde", ["serde"]),
   includesRule("cargo:tauri", isCargoToml, "tauri", ["tauri", "desktop"]),
 
-  presenceRule("python:base", isPythonMarker, { projectType: "python", tags: ["python"] }),
-  includesRule("python:django", isPythonMarker, "django", ["django", "backend"]),
-  includesRule("python:fastapi", isPythonMarker, "fastapi", ["fastapi", "backend"]),
+  presenceRule("python:base", isPythonMarker, {
+    projectType: "python",
+    tags: ["python"],
+  }),
+  includesRule("python:django", isPythonMarker, "django", [
+    "django",
+    "backend",
+  ]),
+  includesRule("python:fastapi", isPythonMarker, "fastapi", [
+    "fastapi",
+    "backend",
+  ]),
   includesRule("python:pandas", isPythonMarker, "pandas", ["pandas", "data"]),
 
   presenceRule("go:base", isGoMod, { projectType: "go", tags: ["go"] }),
@@ -81,12 +122,19 @@ export const CONFIG_DETECTION_RULES: ConfigDetectionRule[] = [
   {
     id: "tsconfig:strict",
     matchesFile: isTsconfig,
-    detect: (content) => (/"strict"\s*:\s*true/.test(content) ? { tags: ["strict-ts"] } : null),
+    detect: (content) =>
+      /"strict"\s*:\s*true/.test(content) ? { tags: ["strict-ts"] } : null,
   },
 
-  presenceRule("vite:presence", prefix("vite.config"), { tags: ["vite", "build-tool"] }),
-  presenceRule("drizzle:presence", prefix("drizzle.config"), { tags: ["drizzle", "database"] }),
-  presenceRule("tauri:presence", prefix("tauri.conf"), { tags: ["tauri", "desktop"] }),
+  presenceRule("vite:presence", prefix("vite.config"), {
+    tags: ["vite", "build-tool"],
+  }),
+  presenceRule("drizzle:presence", prefix("drizzle.config"), {
+    tags: ["drizzle", "database"],
+  }),
+  presenceRule("tauri:presence", prefix("tauri.conf"), {
+    tags: ["tauri", "desktop"],
+  }),
 ];
 
 const CONFIG_GLOB_PATTERNS = [
@@ -119,7 +167,7 @@ export class ConfigScannerService implements IConfigScanner {
   constructor(private readonly logger: ILogger = createNoopLogger()) {}
 
   public async scanConfigs(
-    workspaceRoot: string
+    workspaceRoot: string,
   ): Promise<{ projectType: string; tags: string[] }> {
     let projectType = "unknown";
     const suggestedTags = new Set<string>();
@@ -159,7 +207,9 @@ export class ConfigScannerService implements IConfigScanner {
         if (projectType === "unknown") projectType = "javascript";
       }
     } catch (e: any) {
-      this.logger.warn("Config scanning failed", { error: e?.message ?? String(e) });
+      this.logger.warn("Config scanning failed", {
+        error: e?.message ?? String(e),
+      });
     }
 
     if (projectType === "unknown") {

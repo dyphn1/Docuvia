@@ -27,11 +27,15 @@ export async function hydrateCommand(cwd: string = process.cwd()) {
     }
     spinner.succeed(
       `${UI_MESSAGES.HYDRATE_SUCCESS}${result.nodesLoaded} nodes, ${result.edgesLoaded} edges` +
-        (result.edgesDropped > 0 ? `, ${result.edgesDropped} dangling edge(s) dropped` : "")
+        (result.edgesDropped > 0
+          ? `, ${result.edgesDropped} dangling edge(s) dropped`
+          : ""),
     );
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.HYDRATE_FAIL + message);
     process.exit(1);
   } finally {

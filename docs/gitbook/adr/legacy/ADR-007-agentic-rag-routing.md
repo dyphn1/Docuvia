@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Deprecated
 Supersedes: None
@@ -71,4 +72,4 @@ To ensure the semantic routing fast-path functions under load and doesn't leak t
 
 - **Fast-Path Assertion:** Integration tests in `../../artifacts/api-server/test/integration/` MUST seed the database using factories, trigger an exact-match query, and use `MSW` to strictly assert that `0` external HTTP requests are made to the AI server.
 - **Fallback Assertion:** Queries below the similarity threshold MUST assert that exactly `1` request is intercepted by MSW, validating the payload shape and prompt template.
-superseded_by: []
+  superseded_by: []

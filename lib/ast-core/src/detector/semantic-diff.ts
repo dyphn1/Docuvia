@@ -32,7 +32,7 @@ const SEMANTIC_TYPES = new Set([
 export class SemanticDiffDetector {
   constructor(
     private parser: Parser,
-    private lang: Language
+    private lang: Language,
   ) {
     this.parser.setLanguage(this.lang);
   }
@@ -40,7 +40,7 @@ export class SemanticDiffDetector {
   public analyze(
     oldSource: string,
     newSource: string,
-    changedLineRanges: LineRange[]
+    changedLineRanges: LineRange[],
   ): ModifiedNode[] {
     const oldTree = this.parser.parse(oldSource);
     const newTree = this.parser.parse(newSource);
@@ -57,7 +57,10 @@ export class SemanticDiffDetector {
       const processedNodes = new Set<number>();
 
       for (const range of changedLineRanges) {
-        const smallestNode = this.getSmallestContainingNode(newTree.rootNode, range);
+        const smallestNode = this.getSmallestContainingNode(
+          newTree.rootNode,
+          range,
+        );
         if (!smallestNode) continue;
 
         const semanticBoundary = this.findSemanticBoundary(smallestNode);
@@ -129,11 +132,17 @@ export class SemanticDiffDetector {
   }
 
   private getSmallestContainingNode(node: Node, range: LineRange): Node | null {
-    if (node.startPosition.row > range.endRow || node.endPosition.row < range.startRow) {
+    if (
+      node.startPosition.row > range.endRow ||
+      node.endPosition.row < range.startRow
+    ) {
       return null;
     }
 
-    if (node.startPosition.row <= range.startRow && node.endPosition.row >= range.endRow) {
+    if (
+      node.startPosition.row <= range.startRow &&
+      node.endPosition.row >= range.endRow
+    ) {
       for (const child of node.children) {
         if (!child) continue;
         const childResult = this.getSmallestContainingNode(child, range);
@@ -161,8 +170,13 @@ export class SemanticDiffDetector {
     if (nameNode) return nameNode.text;
 
     // Handle variable declarations: variable_declaration -> variable_declarator -> name
-    if (node.type === "variable_declaration" || node.type === "lexical_declaration") {
-      const decl = node.children.find((c: Node) => c.type === "variable_declarator");
+    if (
+      node.type === "variable_declaration" ||
+      node.type === "lexical_declaration"
+    ) {
+      const decl = node.children.find(
+        (c: Node) => c.type === "variable_declarator",
+      );
       if (decl) {
         const declName = decl.childForFieldName("name");
         if (declName) return declName.text;
@@ -172,7 +186,8 @@ export class SemanticDiffDetector {
   }
 
   private getSignature(node: Node): string {
-    const body = node.childForFieldName("body") || node.childForFieldName("value");
+    const body =
+      node.childForFieldName("body") || node.childForFieldName("value");
 
     // For variable_declarator, body could be the arrow function body or object value
     // In tree-sitter TS: variable_declarator has 'name' and 'value'
@@ -182,8 +197,13 @@ export class SemanticDiffDetector {
     // if the value is an arrow function, its body is 'body'.
 
     // If the node is a variable_declaration, we want the signature to ignore the arrow function body.
-    if (node.type === "variable_declaration" || node.type === "lexical_declaration") {
-      const decl = node.children.find((c: Node) => c.type === "variable_declarator");
+    if (
+      node.type === "variable_declaration" ||
+      node.type === "lexical_declaration"
+    ) {
+      const decl = node.children.find(
+        (c: Node) => c.type === "variable_declarator",
+      );
       if (decl) {
         const value = decl.childForFieldName("value");
         if (value && value.type === "arrow_function") {

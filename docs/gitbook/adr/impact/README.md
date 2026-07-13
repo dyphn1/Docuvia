@@ -7,7 +7,7 @@ The architecture mandates a Tri-Layer approach: **AST + LSP + LLM**.
 
 ## Decisions
 
-| ID | Decision | Status | Notes |
-|----|----------|--------|-------|
-| [IMPT-001](IMPT-001-sql-single-hop-blast-radius.md) | SQL Single-hop Blast Radius (Heuristic Filter) | accepted | Fast heuristic filter (Currently implemented) |
-| [IMPT-002](IMPT-002-lsp-for-absolute-quality.md) | LSP Escalation for Absolute Quality | accepted | **Architecture accepted, Pending Implementation**. Re-establishes LSP dominance in accuracy, rejecting the sacrifice of data integrity purely for speed. |
+| ID                                                  | Decision                                       | Status   | Notes                                                                                                                                                    |
+| --------------------------------------------------- | ---------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [IMPT-001](IMPT-001-sql-single-hop-blast-radius.md) | SQL Single-hop Blast Radius (Heuristic Filter) | accepted | Fast heuristic filter (Currently implemented)                                                                                                            |
+| [IMPT-002](IMPT-002-lsp-for-absolute-quality.md)    | LSP Escalation for Absolute Quality            | accepted | **Architecture accepted, Pending Implementation**. Re-establishes LSP dominance in accuracy, rejecting the sacrifice of data integrity purely for speed. |

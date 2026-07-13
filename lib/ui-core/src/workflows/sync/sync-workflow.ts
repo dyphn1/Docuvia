@@ -25,10 +25,13 @@ export class SyncWorkflow {
     private readonly workspaceRoot: string,
     private readonly logger: ILogger,
     private readonly apiUrl: string,
-    private readonly pat: string
+    private readonly pat: string,
   ) {}
 
-  public async execute(input: { projectId: string; commitSha?: string }): Promise<SyncResult> {
+  public async execute(input: {
+    projectId: string;
+    commitSha?: string;
+  }): Promise<SyncResult> {
     const { workspaceRoot, logger } = this;
     const { projectId, commitSha } = input;
 
@@ -49,29 +52,49 @@ export class SyncWorkflow {
 
     const changedFilesSet = new Set(changedFiles.filter(Boolean));
     if (changedFilesSet.size === 0) {
-      const result: SyncResult = { synced: 0, skipped: 0, message: SYNC_MESSAGES.NOTHING_TO_SYNC };
-      await appendSyncLogLine(workspaceRoot, { event: "sync.summary", projectId, ...result });
+      const result: SyncResult = {
+        synced: 0,
+        skipped: 0,
+        message: SYNC_MESSAGES.NOTHING_TO_SYNC,
+      };
+      await appendSyncLogLine(workspaceRoot, {
+        event: "sync.summary",
+        projectId,
+        ...result,
+      });
       return result;
     }
 
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
     let store;
     try {
-      store = await openStore({ dbPath: resolveDbPath(workspaceRoot), readonly: true });
+      store = await openStore({
+        dbPath: resolveDbPath(workspaceRoot),
+        readonly: true,
+      });
     } catch (err) {
-      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_OPEN_FAILED) {
+      if (
+        err instanceof DocuviaError &&
+        err.code === ErrorCodes.DB_OPEN_FAILED
+      ) {
         await appendSyncLogLine(workspaceRoot, {
           event: "sync.error",
           projectId,
           message: SYNC_MESSAGES.DB_NOT_FOUND,
         });
-        throw new DocuviaError(ErrorCodes.DB_OPEN_FAILED, SYNC_MESSAGES.DB_NOT_FOUND, err);
+        throw new DocuviaError(
+          ErrorCodes.DB_OPEN_FAILED,
+          SYNC_MESSAGES.DB_NOT_FOUND,
+          err,
+        );
       }
       throw err;
     }
 
     try {
-      const buildRemoteSyncClient = docuviaFactory.resolve(TOKENS.RemoteSyncClient);
+      const buildRemoteSyncClient = docuviaFactory.resolve(
+        TOKENS.RemoteSyncClient,
+      );
       const remoteSyncClient = buildRemoteSyncClient();
       remoteSyncClient.initialize({ apiUrl: this.apiUrl, pat: this.pat });
 
@@ -80,12 +103,18 @@ export class SyncWorkflow {
         remoteL2Nodes = await remoteSyncClient.fetchRemoteL2Nodes(projectId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await appendSyncLogLine(workspaceRoot, { event: "sync.error", projectId, message });
+        await appendSyncLogLine(workspaceRoot, {
+          event: "sync.error",
+          projectId,
+          message,
+        });
         throw err;
       }
       const nameToRemoteId = new Map(remoteL2Nodes.map((n) => [n.name, n.id]));
 
-      const candidates = store.graph.findNodesForChangedFiles(Array.from(changedFilesSet));
+      const candidates = store.graph.findNodesForChangedFiles(
+        Array.from(changedFilesSet),
+      );
 
       const syncState = await loadSyncState(workspaceRoot);
       const projectState = syncState[projectId] ?? { syncedContentHashes: [] };
@@ -113,7 +142,9 @@ export class SyncWorkflow {
               content: l3.content,
               nodeType: l3.node_type as SyncPushEvent["payload"]["nodeType"],
               confidence: l3.confidence,
-              sourceCommits: l3.source_commits ? JSON.parse(l3.source_commits) : undefined,
+              sourceCommits: l3.source_commits
+                ? JSON.parse(l3.source_commits)
+                : undefined,
               contentHash: l3.content_hash,
             },
           });
@@ -124,8 +155,16 @@ export class SyncWorkflow {
 
       if (events.length === 0) {
         const message = SYNC_MESSAGES.NOTHING_NEW(skippedL2Count);
-        const result: SyncResult = { synced: 0, skipped: skippedL2Count, message };
-        await appendSyncLogLine(workspaceRoot, { event: "sync.summary", projectId, ...result });
+        const result: SyncResult = {
+          synced: 0,
+          skipped: skippedL2Count,
+          message,
+        };
+        await appendSyncLogLine(workspaceRoot, {
+          event: "sync.summary",
+          projectId,
+          ...result,
+        });
         return result;
       }
 
@@ -134,18 +173,28 @@ export class SyncWorkflow {
         pushResult = await remoteSyncClient.pushSyncEvents(projectId, events);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await appendSyncLogLine(workspaceRoot, { event: "sync.error", projectId, message });
+        await appendSyncLogLine(workspaceRoot, {
+          event: "sync.error",
+          projectId,
+          message,
+        });
         throw err;
       }
 
-      projectState.syncedContentHashes = Array.from(new Set([...syncedHashes, ...newlySyncedHashes]));
+      projectState.syncedContentHashes = Array.from(
+        new Set([...syncedHashes, ...newlySyncedHashes]),
+      );
       syncState[projectId] = projectState;
       await saveSyncState(workspaceRoot, syncState);
 
       const synced = pushResult.processed ?? events.length;
       const message = SYNC_MESSAGES.SYNCED(synced, skippedL2Count);
       const result: SyncResult = { synced, skipped: skippedL2Count, message };
-      await appendSyncLogLine(workspaceRoot, { event: "sync.summary", projectId, ...result });
+      await appendSyncLogLine(workspaceRoot, {
+        event: "sync.summary",
+        projectId,
+        ...result,
+      });
       return result;
     } finally {
       await store.close();

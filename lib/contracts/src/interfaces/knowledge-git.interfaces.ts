@@ -8,7 +8,12 @@ export interface KnowledgeBranchSyncResult {
    * `merged`: local and remote had genuinely diverged; a tree-adoption merge commit was created
    * and pushed.
    */
-  status: "no-remote" | "up-to-date" | "fast-forwarded-local" | "pushed-local" | "merged";
+  status:
+    | "no-remote"
+    | "up-to-date"
+    | "fast-forwarded-local"
+    | "pushed-local"
+    | "merged";
   /** The branch's resulting tip sha. Undefined only for `no-remote`. */
   branchTipSha?: string;
 }
@@ -19,10 +24,17 @@ export interface KnowledgeBranchSyncResult {
  * docs/gitbook/architecture/virtual-contracts-architecture.md's Domain Core section.
  */
 export interface IKnowledgeGitService {
-  ensureKnowledgeBranch(cwd: string, branchName?: string): Promise<{ created: boolean }>;
+  ensureKnowledgeBranch(
+    cwd: string,
+    branchName?: string,
+  ): Promise<{ created: boolean }>;
   installPostCommitHook(cwd: string): Promise<{ installed: boolean }>;
   /** Packs a rendered snapshot directory (see `ISnapshotRenderer`) onto the hidden knowledge branch, wholesale replacing its tree. */
-  packSnapshotToKnowledgeBranch(cwd: string, sourceDir: string, branchName?: string): Promise<void>;
+  packSnapshotToKnowledgeBranch(
+    cwd: string,
+    sourceDir: string,
+    branchName?: string,
+  ): Promise<void>;
   /**
    * Cross-clone reconciliation (STOR-001 point 3): fetches `origin`'s copy of the knowledge
    * branch and reconciles it with the local one — a plain fast-forward in either direction when
@@ -34,6 +46,6 @@ export interface IKnowledgeGitService {
   syncKnowledgeBranch(
     cwd: string,
     branchName?: string,
-    remote?: string
+    remote?: string,
   ): Promise<KnowledgeBranchSyncResult>;
 }

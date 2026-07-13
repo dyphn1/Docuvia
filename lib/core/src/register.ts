@@ -29,46 +29,76 @@ import { TopologyBuilderService } from "./topology/topology-builder.service.js";
  * from the factory (it's request-scoped, not swappable tech), so the Orchestration layer passes
  * it explicitly on every `resolve()` call.
  */
-docuviaFactory.register(TOKENS.KnowledgeGitService, (f, params) =>
-  new KnowledgeGitService(f.resolve(TOKENS.GitProvider), params?.logger)
+docuviaFactory.register(
+  TOKENS.KnowledgeGitService,
+  (f, params) =>
+    new KnowledgeGitService(f.resolve(TOKENS.GitProvider), params?.logger),
 );
 
-docuviaFactory.register(TOKENS.FileDiscovery, (f, params) =>
-  new FileDiscoveryService(f.resolve(TOKENS.GitProvider), params?.logger)
+docuviaFactory.register(
+  TOKENS.FileDiscovery,
+  (f, params) =>
+    new FileDiscoveryService(f.resolve(TOKENS.GitProvider), params?.logger),
 );
 
-docuviaFactory.register(TOKENS.ConfigScanner, (_f, params) =>
-  new ConfigScannerService(params?.logger)
+docuviaFactory.register(
+  TOKENS.ConfigScanner,
+  (_f, params) => new ConfigScannerService(params?.logger),
 );
 
-docuviaFactory.register(TOKENS.VcsScanner, (f, params) =>
-  new VcsScannerService(f.resolve(TOKENS.GitProvider), params?.logger)
+docuviaFactory.register(
+  TOKENS.VcsScanner,
+  (f, params) =>
+    new VcsScannerService(f.resolve(TOKENS.GitProvider), params?.logger),
 );
 
-docuviaFactory.register(TOKENS.AstProcessor, (_f, params) =>
-  new AstProcessingService(new AstWorkerPool(params?.logger), params?.logger)
+docuviaFactory.register(
+  TOKENS.AstProcessor,
+  (_f, params) =>
+    new AstProcessingService(new AstWorkerPool(params?.logger), params?.logger),
 );
 
-docuviaFactory.register(TOKENS.GraphPersister, () => new GraphPersisterService());
+docuviaFactory.register(
+  TOKENS.GraphPersister,
+  () => new GraphPersisterService(),
+);
 
 docuviaFactory.register(
   TOKENS.TempFileManager,
-  () => (workspaceRoot, logger) => new TempFileManager(workspaceRoot, logger)
+  () => (workspaceRoot, logger) => new TempFileManager(workspaceRoot, logger),
 );
 
-docuviaFactory.register(TOKENS.QueryService, (_f, params) => new QueryService(params?.logger));
+docuviaFactory.register(
+  TOKENS.QueryService,
+  (_f, params) => new QueryService(params?.logger),
+);
 
-docuviaFactory.register(TOKENS.ImpactService, (_f, params) => new ImpactService(params?.logger));
+docuviaFactory.register(
+  TOKENS.ImpactService,
+  (_f, params) => new ImpactService(params?.logger),
+);
 
 docuviaFactory.register(
   TOKENS.ChangeDetectionService,
-  (f, params) => new ChangeDetectionService(f.resolve(TOKENS.ImpactService, params), params?.logger)
+  (f, params) =>
+    new ChangeDetectionService(
+      f.resolve(TOKENS.ImpactService, params),
+      params?.logger,
+    ),
 );
 
-docuviaFactory.register(TOKENS.TopologyBuilder, () => new TopologyBuilderService());
+docuviaFactory.register(
+  TOKENS.TopologyBuilder,
+  () => new TopologyBuilderService(),
+);
 
-docuviaFactory.register(TOKENS.SnapshotRenderer, () => new SnapshotRendererService());
+docuviaFactory.register(
+  TOKENS.SnapshotRenderer,
+  () => new SnapshotRendererService(),
+);
 
-docuviaFactory.register(TOKENS.HydrationService, (f, params) =>
-  new HydrationService(f.resolve(TOKENS.GitProvider), params?.logger)
+docuviaFactory.register(
+  TOKENS.HydrationService,
+  (f, params) =>
+    new HydrationService(f.resolve(TOKENS.GitProvider), params?.logger),
 );

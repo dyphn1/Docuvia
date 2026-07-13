@@ -16,13 +16,18 @@ import { DOCUVIA_DIR_NAME, DOCUVIA_LOGS_DIR_NAME } from "@workspace/contracts";
 export async function appendCommandLogLine(
   workspaceRoot: string,
   logFileName: string,
-  event: Record<string, unknown>
+  event: Record<string, unknown>,
 ): Promise<void> {
-  const logPath = path.join(workspaceRoot, DOCUVIA_DIR_NAME, DOCUVIA_LOGS_DIR_NAME, logFileName);
+  const logPath = path.join(
+    workspaceRoot,
+    DOCUVIA_DIR_NAME,
+    DOCUVIA_LOGS_DIR_NAME,
+    logFileName,
+  );
   await fs.mkdir(path.dirname(logPath), { recursive: true });
   await fs.appendFile(
     logPath,
     JSON.stringify({ ts: new Date().toISOString(), ...event }) + "\n",
-    "utf8"
+    "utf8",
   );
 }

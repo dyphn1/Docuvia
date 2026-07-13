@@ -1,6 +1,10 @@
 import process from "process";
 import crypto from "node:crypto";
-import { docuviaMemory, DocuviaError, type LocalQueryResult } from "@workspace/contracts";
+import {
+  docuviaMemory,
+  DocuviaError,
+  type LocalQueryResult,
+} from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
@@ -28,14 +32,18 @@ export function formatPromptOutput(result: LocalQueryResult): string {
     if (incoming.length > 0) {
       lines.push("  <incoming>");
       for (const i of incoming) {
-        lines.push('    <caller name="' + i.name + '" type="' + i.type + '" />');
+        lines.push(
+          '    <caller name="' + i.name + '" type="' + i.type + '" />',
+        );
       }
       lines.push("  </incoming>");
     }
     if (outgoing.length > 0) {
       lines.push("  <outgoing>");
       for (const o of outgoing) {
-        lines.push('    <callee name="' + o.name + '" type="' + o.type + '" />');
+        lines.push(
+          '    <callee name="' + o.name + '" type="' + o.type + '" />',
+        );
       }
       lines.push("  </outgoing>");
     }
@@ -104,7 +112,7 @@ async function resolveQueryTarget(target?: string): Promise<string> {
 export async function queryCommand(
   target?: string,
   options: { format?: "human" | "prompt"; limit?: number } = {},
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ) {
   const queryTarget = await resolveQueryTarget(target);
   const isPromptFormat = options.format === "prompt";
@@ -113,7 +121,9 @@ export async function queryCommand(
   const logger = createPinoBackedLogger();
   let spinner: ReturnType<typeof ui.spinner> | undefined;
   if (!isPromptFormat) {
-    spinner = ui.spinner(UI_MESSAGES.QUERY_START + '"' + queryTarget + '"...').start();
+    spinner = ui
+      .spinner(UI_MESSAGES.QUERY_START + '"' + queryTarget + '"...')
+      .start();
     logger.onLog((event) => {
       if (event.level === "info" && spinner) spinner.text = event.message;
     });
@@ -133,7 +143,9 @@ export async function queryCommand(
     }
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     if (spinner) spinner.fail(UI_MESSAGES.QUERY_FAIL + message);
     else console.error(UI_MESSAGES.QUERY_FAIL + message);
     process.exitCode = 1;

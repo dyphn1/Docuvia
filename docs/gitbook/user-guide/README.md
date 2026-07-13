@@ -7,5 +7,5 @@ Docuvia is designed with a **Local-First** philosophy. Your knowledge graph live
 ## In This Guide
 
 - **[CLI Commands](cli.md)**: The definitive reference for the `docuvia` Command Line Interface. Learn how to initialize workspaces, trigger AST analysis, export topologies, and perform impact analysis.
-- *(Coming Soon)* **Configuration**: How to customize `.docuvia` settings and tweak AST parsing behavior.
-- *(Coming Soon)* **VS Code Extension**: How to use the interactive graphical client to visualize your architecture directly within your editor.
+- _(Coming Soon)_ **Configuration**: How to customize `.docuvia` settings and tweak AST parsing behavior.
+- _(Coming Soon)_ **VS Code Extension**: How to use the interactive graphical client to visualize your architecture directly within your editor.

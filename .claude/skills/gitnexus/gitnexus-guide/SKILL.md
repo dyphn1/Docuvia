@@ -57,7 +57,13 @@ For any task involving code understanding, debugging, impact analysis, or refact
 ```jsonc
 {
   "repositories": [
-    { "name": "...", "path": "...", "indexedAt": "...", "lastCommit": "...", "stats": {} },
+    {
+      "name": "...",
+      "path": "...",
+      "indexedAt": "...",
+      "lastCommit": "...",
+      "stats": {},
+    },
   ],
   "pagination": {
     "total": 437,

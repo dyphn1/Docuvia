@@ -12,7 +12,9 @@ describe("IpcLoggerClient", () => {
     client.warn("w");
     client.error("e");
 
-    const levels = postMessageFn.mock.calls.map(([msg]: [IIpcLogMessage]) => msg.level);
+    const levels = postMessageFn.mock.calls.map(
+      ([msg]: [IIpcLogMessage]) => msg.level,
+    );
     expect(levels).toEqual(["debug", "info", "warn", "error"]);
   });
 

@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Superseded, Partially Superseded by ADR-023
 Supplements: ADR-004
@@ -48,4 +49,4 @@ We will adopt a "Tiered Storage" strategy involving soft deletions and a [Git-Is
 - **Positive**: Preserves valuable historical context and [L3 deltas](./ADR-005-knowledge-abstraction-strategy.md) indefinitely without bloat.
 - **Positive**: Enables remote synchronization; new team members can fetch the `docuvia-knowledge` branch and instantly inherit the team's entire historical knowledge graph.
 - **Negative**: Requires robust asynchronous worker management to prevent locking the editor during GC serialization.
-superseded_by: []
+  superseded_by: []

@@ -9,7 +9,9 @@ describe("LanguageRegistry.load() console.debug gating", () => {
   const ORIGINAL_LOG_LEVEL = process.env.LOG_LEVEL;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-language-registry-test-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-language-registry-test-"),
+    );
   });
 
   afterEach(() => {

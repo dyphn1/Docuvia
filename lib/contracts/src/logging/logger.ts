@@ -33,8 +33,14 @@ export class Logger implements ILogger {
     return () => this.listeners.delete(listener);
   }
 
-  private emit(level: LogLevel, message: string, context?: Record<string, unknown>): void {
-    const event: LogEvent = context ? { level, message, context } : { level, message };
+  private emit(
+    level: LogLevel,
+    message: string,
+    context?: Record<string, unknown>,
+  ): void {
+    const event: LogEvent = context
+      ? { level, message, context }
+      : { level, message };
     for (const listener of this.listeners) listener(event);
   }
 }

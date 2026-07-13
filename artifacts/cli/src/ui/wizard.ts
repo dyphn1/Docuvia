@@ -27,7 +27,7 @@ export const ui = {
 
   askSelect: async (
     message: string,
-    choices: { name: string; value: string; description?: string }[]
+    choices: { name: string; value: string; description?: string }[],
   ) => {
     return await select({
       message,
@@ -37,7 +37,7 @@ export const ui = {
 
   askCheckbox: async (
     message: string,
-    choices: { name: string; value: string; checked?: boolean }[]
+    choices: { name: string; value: string; checked?: boolean }[],
   ) => {
     return await checkbox({
       message,

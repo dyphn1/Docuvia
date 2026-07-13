@@ -20,9 +20,11 @@ describe("CONFIG_DETECTION_RULES (per-rule unit tests, no filesystem I/O)", () =
       const rule = ruleById("package.json:typescript");
       expect(rule.matchesFile("package.json")).toBe(true);
       expect(rule.matchesFile("tsconfig.json")).toBe(false);
-      expect(rule.detect('{"devDependencies":{"typescript":"5.0.0"}}')).toEqual({
-        tags: ["typescript"],
-      });
+      expect(rule.detect('{"devDependencies":{"typescript":"5.0.0"}}')).toEqual(
+        {
+          tags: ["typescript"],
+        },
+      );
       expect(rule.detect("{}")).toBeNull();
     });
 
@@ -64,7 +66,9 @@ describe("CONFIG_DETECTION_RULES (per-rule unit tests, no filesystem I/O)", () =
 
     it("tailwindcss: tags tailwindcss + css", () => {
       const rule = ruleById("package.json:tailwindcss");
-      expect(rule.detect('{"devDependencies":{"tailwindcss":"3.0.0"}}')).toEqual({
+      expect(
+        rule.detect('{"devDependencies":{"tailwindcss":"3.0.0"}}'),
+      ).toEqual({
         tags: ["tailwindcss", "css"],
       });
     });
@@ -92,7 +96,9 @@ describe("CONFIG_DETECTION_RULES (per-rule unit tests, no filesystem I/O)", () =
 
     it("workspaces: tags monorepo", () => {
       const rule = ruleById("package.json:workspaces");
-      expect(rule.detect('{"workspaces":["packages/*"]}')).toEqual({ tags: ["monorepo"] });
+      expect(rule.detect('{"workspaces":["packages/*"]}')).toEqual({
+        tags: ["monorepo"],
+      });
     });
   });
 
@@ -102,7 +108,10 @@ describe("CONFIG_DETECTION_RULES (per-rule unit tests, no filesystem I/O)", () =
       expect(rule.matchesFile("Cargo.toml")).toBe(true);
       expect(rule.matchesFile("cargo.toml")).toBe(false);
       expect(rule.detect("")).toEqual({ projectType: "rust", tags: ["rust"] });
-      expect(rule.detect('[package]\nname = "x"')).toEqual({ projectType: "rust", tags: ["rust"] });
+      expect(rule.detect('[package]\nname = "x"')).toEqual({
+        projectType: "rust",
+        tags: ["rust"],
+      });
     });
 
     it("tokio/actix/serde/tauri are independently content-gated", () => {
@@ -114,7 +123,9 @@ describe("CONFIG_DETECTION_RULES (per-rule unit tests, no filesystem I/O)", () =
       expect(ruleById("cargo:actix").detect('actix-web = "4"')).toEqual({
         tags: ["actix", "backend"],
       });
-      expect(ruleById("cargo:serde").detect('serde = "1"')).toEqual({ tags: ["serde"] });
+      expect(ruleById("cargo:serde").detect('serde = "1"')).toEqual({
+        tags: ["serde"],
+      });
       expect(ruleById("cargo:tauri").detect('tauri = "1"')).toEqual({
         tags: ["tauri", "desktop"],
       });
@@ -127,7 +138,10 @@ describe("CONFIG_DETECTION_RULES (per-rule unit tests, no filesystem I/O)", () =
       expect(rule.matchesFile("pyproject.toml")).toBe(true);
       expect(rule.matchesFile("requirements.txt")).toBe(true);
       expect(rule.matchesFile("setup.py")).toBe(false);
-      expect(rule.detect("")).toEqual({ projectType: "python", tags: ["python"] });
+      expect(rule.detect("")).toEqual({
+        projectType: "python",
+        tags: ["python"],
+      });
     });
 
     it("django/fastapi/pandas are independently content-gated", () => {
@@ -148,11 +162,16 @@ describe("CONFIG_DETECTION_RULES (per-rule unit tests, no filesystem I/O)", () =
     it("base rule always contributes go", () => {
       const rule = ruleById("go:base");
       expect(rule.matchesFile("go.mod")).toBe(true);
-      expect(rule.detect("module example.com/x")).toEqual({ projectType: "go", tags: ["go"] });
+      expect(rule.detect("module example.com/x")).toEqual({
+        projectType: "go",
+        tags: ["go"],
+      });
     });
 
     it("gin-gonic is content-gated", () => {
-      expect(ruleById("go:gin").detect("github.com/gin-gonic/gin v1.9.0")).toEqual({
+      expect(
+        ruleById("go:gin").detect("github.com/gin-gonic/gin v1.9.0"),
+      ).toEqual({
         tags: ["gin", "backend"],
       });
       expect(ruleById("go:gin").detect("")).toBeNull();
@@ -163,7 +182,9 @@ describe("CONFIG_DETECTION_RULES (per-rule unit tests, no filesystem I/O)", () =
     it('matches only when "strict": true is present', () => {
       const rule = ruleById("tsconfig:strict");
       expect(rule.matchesFile("tsconfig.json")).toBe(true);
-      expect(rule.detect('{"compilerOptions":{"strict":true}}')).toEqual({ tags: ["strict-ts"] });
+      expect(rule.detect('{"compilerOptions":{"strict":true}}')).toEqual({
+        tags: ["strict-ts"],
+      });
       expect(rule.detect('{"compilerOptions":{"strict":false}}')).toBeNull();
       expect(rule.detect("{}")).toBeNull();
     });
@@ -171,18 +192,30 @@ describe("CONFIG_DETECTION_RULES (per-rule unit tests, no filesystem I/O)", () =
 
   describe("presence-only config files (vite.config.*, drizzle.config.*, tauri.conf.*)", () => {
     it("match by basename prefix and contribute tags regardless of content, matching old Docuvia's behavior", () => {
-      expect(ruleById("vite:presence").matchesFile("vite.config.ts")).toBe(true);
-      expect(ruleById("vite:presence").matchesFile("vite.config.mjs")).toBe(true);
-      expect(ruleById("vite:presence").matchesFile("vite.config.js")).toBe(true);
+      expect(ruleById("vite:presence").matchesFile("vite.config.ts")).toBe(
+        true,
+      );
+      expect(ruleById("vite:presence").matchesFile("vite.config.mjs")).toBe(
+        true,
+      );
+      expect(ruleById("vite:presence").matchesFile("vite.config.js")).toBe(
+        true,
+      );
       expect(ruleById("vite:presence").matchesFile("other.ts")).toBe(false);
-      expect(ruleById("vite:presence").detect("")).toEqual({ tags: ["vite", "build-tool"] });
+      expect(ruleById("vite:presence").detect("")).toEqual({
+        tags: ["vite", "build-tool"],
+      });
 
-      expect(ruleById("drizzle:presence").matchesFile("drizzle.config.ts")).toBe(true);
+      expect(
+        ruleById("drizzle:presence").matchesFile("drizzle.config.ts"),
+      ).toBe(true);
       expect(ruleById("drizzle:presence").detect("anything")).toEqual({
         tags: ["drizzle", "database"],
       });
 
-      expect(ruleById("tauri:presence").matchesFile("tauri.conf.json")).toBe(true);
+      expect(ruleById("tauri:presence").matchesFile("tauri.conf.json")).toBe(
+        true,
+      );
       expect(ruleById("tauri:presence").detect("anything")).toEqual({
         tags: ["tauri", "desktop"],
       });
@@ -195,7 +228,9 @@ describe("ConfigScannerService.scanConfigs() (integration, real filesystem)", ()
   let service: ConfigScannerService;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-config-scanner-test-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-config-scanner-test-"),
+    );
     service = new ConfigScannerService();
   });
 
@@ -215,26 +250,39 @@ describe("ConfigScannerService.scanConfigs() (integration, real filesystem)", ()
       JSON.stringify({
         dependencies: { react: "18.0.0", express: "4.0.0" },
         devDependencies: { typescript: "5.0.0", vitest: "1.0.0" },
-      })
+      }),
     );
     const result = await service.scanConfigs(tmpDir);
     expect(result.projectType).toBe("javascript");
     expect(result.tags.sort()).toEqual(
-      ["backend", "express", "frontend", "react", "testing", "typescript", "vitest"].sort()
+      [
+        "backend",
+        "express",
+        "frontend",
+        "react",
+        "testing",
+        "typescript",
+        "vitest",
+      ].sort(),
     );
   });
 
   it("Cargo.toml sets projectType rust even when other content-based tags are also present", async () => {
-    fs.writeFileSync(path.join(tmpDir, "Cargo.toml"), '[dependencies]\ntokio = "1"\nserde = "1"\n');
+    fs.writeFileSync(
+      path.join(tmpDir, "Cargo.toml"),
+      '[dependencies]\ntokio = "1"\nserde = "1"\n',
+    );
     const result = await service.scanConfigs(tmpDir);
     expect(result.projectType).toBe("rust");
-    expect(result.tags.sort()).toEqual(["async", "rust", "serde", "tokio"].sort());
+    expect(result.tags.sort()).toEqual(
+      ["async", "rust", "serde", "tokio"].sort(),
+    );
   });
 
   it("go.mod sets projectType go and detects gin-gonic", async () => {
     fs.writeFileSync(
       path.join(tmpDir, "go.mod"),
-      "module example.com/svc\n\nrequire github.com/gin-gonic/gin v1.9.0\n"
+      "module example.com/svc\n\nrequire github.com/gin-gonic/gin v1.9.0\n",
     );
     const result = await service.scanConfigs(tmpDir);
     expect(result.projectType).toBe("go");
@@ -243,17 +291,22 @@ describe("ConfigScannerService.scanConfigs() (integration, real filesystem)", ()
 
   it("presence-only files (vite.config.ts) contribute tags without any content match", async () => {
     fs.writeFileSync(path.join(tmpDir, "package.json"), "{}");
-    fs.writeFileSync(path.join(tmpDir, "vite.config.ts"), "export default {}\n");
+    fs.writeFileSync(
+      path.join(tmpDir, "vite.config.ts"),
+      "export default {}\n",
+    );
     const result = await service.scanConfigs(tmpDir);
     expect(result.tags).toContain("vite");
     expect(result.tags).toContain("build-tool");
   });
 
   it("ignores node_modules and other excluded directories", async () => {
-    fs.mkdirSync(path.join(tmpDir, "node_modules", "some-pkg"), { recursive: true });
+    fs.mkdirSync(path.join(tmpDir, "node_modules", "some-pkg"), {
+      recursive: true,
+    });
     fs.writeFileSync(
       path.join(tmpDir, "node_modules", "some-pkg", "package.json"),
-      JSON.stringify({ dependencies: { react: "18.0.0" } })
+      JSON.stringify({ dependencies: { react: "18.0.0" } }),
     );
     const result = await service.scanConfigs(tmpDir);
     expect(result).toEqual({ projectType: "generic", tags: ["general"] });

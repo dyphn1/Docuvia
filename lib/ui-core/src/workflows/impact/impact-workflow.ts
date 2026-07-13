@@ -1,4 +1,10 @@
-import { docuviaFactory, TOKENS, DocuviaError, ErrorCodes, type ILogger } from "@workspace/contracts";
+import {
+  docuviaFactory,
+  TOKENS,
+  DocuviaError,
+  ErrorCodes,
+  type ILogger,
+} from "@workspace/contracts";
 import { IMPACT_MESSAGES } from "./impact-messages.js";
 import { appendImpactLogLine } from "./impact-log-writer.js";
 import type { ImpactResult } from "./impact-result.js";
@@ -15,12 +21,12 @@ import { ensureHydrated } from "../../utils/ensure-hydrated.js";
 export class ImpactWorkflow {
   constructor(
     private readonly workspaceRoot: string,
-    private readonly logger: ILogger
+    private readonly logger: ILogger,
   ) {}
 
   public async execute(
     target: string,
-    options: { escalateToLsp?: boolean } = {}
+    options: { escalateToLsp?: boolean } = {},
   ): Promise<ImpactResult | null> {
     const { workspaceRoot, logger } = this;
 
@@ -40,21 +46,33 @@ export class ImpactWorkflow {
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
     let store;
     try {
-      store = await openStore({ dbPath: resolveDbPath(workspaceRoot), readonly: true });
+      store = await openStore({
+        dbPath: resolveDbPath(workspaceRoot),
+        readonly: true,
+      });
     } catch (err) {
-      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_OPEN_FAILED) {
+      if (
+        err instanceof DocuviaError &&
+        err.code === ErrorCodes.DB_OPEN_FAILED
+      ) {
         await appendImpactLogLine(workspaceRoot, {
           event: "impact.error",
           target,
           message: IMPACT_MESSAGES.DB_NOT_FOUND,
         });
-        throw new DocuviaError(ErrorCodes.DB_OPEN_FAILED, IMPACT_MESSAGES.DB_NOT_FOUND, err);
+        throw new DocuviaError(
+          ErrorCodes.DB_OPEN_FAILED,
+          IMPACT_MESSAGES.DB_NOT_FOUND,
+          err,
+        );
       }
       throw err;
     }
 
     try {
-      const impactService = docuviaFactory.resolve(TOKENS.ImpactService, { logger });
+      const impactService = docuviaFactory.resolve(TOKENS.ImpactService, {
+        logger,
+      });
       const blastRadius = impactService.getBlastRadius(store, target);
 
       if (!blastRadius) {

@@ -8,7 +8,7 @@ import { FetchRemoteSyncClient } from "./fetch-remote-sync-client.js";
  *  loopback, matching this layer's "Isolated Integration Tests / Real I/O Required" rule (see
  *  docs/gitbook/architecture/testing-and-quality-architecture.md). */
 function startServer(
-  handler: (req: http.IncomingMessage, res: http.ServerResponse) => void
+  handler: (req: http.IncomingMessage, res: http.ServerResponse) => void,
 ): Promise<{ url: string; close: () => Promise<void> }> {
   return new Promise((resolve) => {
     const server = http.createServer(handler);
@@ -64,7 +64,9 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
       code: "SYNC_FETCH_FAILED",
       message: expect.stringContaining("unauthorized"),
     });
-    await expect(client.fetchRemoteL2Nodes("42")).rejects.toBeInstanceOf(DocuviaError);
+    await expect(client.fetchRemoteL2Nodes("42")).rejects.toBeInstanceOf(
+      DocuviaError,
+    );
   });
 
   it("pushSyncEvents POSTs to /sync/push with the events body and returns the parsed result", async () => {
@@ -90,7 +92,9 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     expect(result).toEqual({ success: true, processed: 1 });
     expect(JSON.parse(receivedBody)).toEqual({
       projectId: 42,
-      events: [{ type: "CREATE_L3", payload: { l2NodeId: 1, title: "a decision" } }],
+      events: [
+        { type: "CREATE_L3", payload: { l2NodeId: 1, title: "a decision" } },
+      ],
     });
   });
 
@@ -120,7 +124,9 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "secret-pat" });
 
-    await expect(client.fetchRemoteL2Nodes("42")).rejects.toBeInstanceOf(DocuviaError);
+    await expect(client.fetchRemoteL2Nodes("42")).rejects.toBeInstanceOf(
+      DocuviaError,
+    );
     await expect(client.fetchRemoteL2Nodes("42")).rejects.toMatchObject({
       code: "SYNC_FETCH_FAILED",
       message: expect.stringContaining("not valid JSON"),
@@ -137,7 +143,9 @@ describe("FetchRemoteSyncClient (integration, real HTTP over loopback)", () => {
     const client = new FetchRemoteSyncClient();
     client.initialize({ apiUrl: server.url, pat: "secret-pat" });
 
-    await expect(client.pushSyncEvents("42", [])).rejects.toBeInstanceOf(DocuviaError);
+    await expect(client.pushSyncEvents("42", [])).rejects.toBeInstanceOf(
+      DocuviaError,
+    );
     await expect(client.pushSyncEvents("42", [])).rejects.toMatchObject({
       code: "SYNC_PUSH_FAILED",
       message: expect.stringContaining("not valid JSON"),

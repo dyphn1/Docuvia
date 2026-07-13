@@ -61,12 +61,16 @@ describe("statusCommand", () => {
   });
 
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.status() throws", async () => {
-    mockStatus.mockRejectedValue(new Error('Local database not found. Please run "docuvia init".'));
+    mockStatus.mockRejectedValue(
+      new Error('Local database not found. Please run "docuvia init".'),
+    );
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
     await expect(statusCommand()).rejects.toThrow("Exit 1");
 
-    expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("docuvia init"));
+    expect(spinnerFail).toHaveBeenCalledWith(
+      expect.stringContaining("docuvia init"),
+    );
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -25,11 +25,12 @@ When you run `docuvia impact`:
 3. **Format Output**: The wizard UI formats the output into a color-coded table.
 4. **Command Logging**: A structured JSONL log is written to `.docuvia/logs/impact.log`.
 
-*(Note: Multi-hop traversal and real-time WASM AST analysis for unsaved dirty buffers are currently deferred in Docuvia2).*
+_(Note: Multi-hop traversal and real-time WASM AST analysis for unsaved dirty buffers are currently deferred in Docuvia2)._
 
 ## Examples
 
 Find what depends on a specific authentication function:
+
 ```bash
 docuvia impact verifyToken --direction upstream
 ```

@@ -22,14 +22,21 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
-      syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "merged", branchTipSha: "merge-sha" }),
+      syncKnowledgeBranch: vi
+        .fn()
+        .mockResolvedValue({ status: "merged", branchTipSha: "merge-sha" }),
     };
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
     docuviaFactory.lock();
 
-    const result = await new SyncKnowledgeWorkflow("/workspace/demo", createMockLogger()).execute();
+    const result = await new SyncKnowledgeWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
 
-    expect(knowledgeGit.syncKnowledgeBranch).toHaveBeenCalledWith("/workspace/demo");
+    expect(knowledgeGit.syncKnowledgeBranch).toHaveBeenCalledWith(
+      "/workspace/demo",
+    );
     expect(result).toEqual({ status: "merged", branchTipSha: "merge-sha" });
   });
 
@@ -44,7 +51,10 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
     docuviaFactory.lock();
 
     await expect(
-      new SyncKnowledgeWorkflow("/workspace/demo", createMockLogger()).execute()
+      new SyncKnowledgeWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute(),
     ).rejects.toThrow("lock timeout");
   });
 });

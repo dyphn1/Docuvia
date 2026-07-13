@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-11
 Status: Superseded
 Supersedes: None
@@ -29,4 +30,4 @@ Implemented via a shared `appendCommandLogLine(workspaceRoot, logFileName, event
 - **Positive**: Any command's actual behavior is now inspectable after the fact — critical for headless/background AI-agent invocations where stdout is not reliably captured, and for debugging "it said success but X didn't happen" reports.
 - **Negative**: A small, ever-growing set of log files under `.docuvia/logs/` with no rotation/retention policy defined yet — acceptable for now since `.docuvia/` is already gitignored, ephemeral, local state, but worth revisiting if log volume becomes a real disk-usage concern.
 - **Non-goals**: This does not cover `docuvia mcp`'s individual tool-call-level logging (a different, higher-frequency, long-running-process concern), nor does it replace `logger` (pino)'s existing in-process debug logging — the two are complementary (pino for real-time/verbose debugging, this JSONL log for durable, minimal, post-hoc auditability).
-superseded_by: []
+  superseded_by: []

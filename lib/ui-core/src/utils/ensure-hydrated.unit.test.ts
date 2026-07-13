@@ -65,14 +65,12 @@ describe("ensureHydrated()", () => {
       resolveHydrationCommit: vi.fn(),
       isStale: vi.fn().mockResolvedValue(true),
       markSynced: vi.fn(),
-      hydrate: vi
-        .fn()
-        .mockResolvedValue({
-          hydrated: true,
-          nodesLoaded: 1,
-          edgesLoaded: 0,
-          edgesDropped: 0,
-        }),
+      hydrate: vi.fn().mockResolvedValue({
+        hydrated: true,
+        nodesLoaded: 1,
+        edgesLoaded: 0,
+        edgesDropped: 0,
+      }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();

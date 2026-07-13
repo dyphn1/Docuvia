@@ -1,4 +1,8 @@
-import type { L2NodeRow, L3NodeRow, NodeLinkRow } from "./graph-store.interfaces.js";
+import type {
+  L2NodeRow,
+  L3NodeRow,
+  NodeLinkRow,
+} from "./graph-store.interfaces.js";
 
 /**
  * Topology export schema (machine-readable knowledge-graph projection), ported near-verbatim
@@ -91,5 +95,8 @@ export interface TopologyBuildInput {
 }
 
 export interface ITopologyBuilder {
-  build(input: TopologyBuildInput, options?: TopologyExportOptions): TopologyGraph;
+  build(
+    input: TopologyBuildInput,
+    options?: TopologyExportOptions,
+  ): TopologyGraph;
 }

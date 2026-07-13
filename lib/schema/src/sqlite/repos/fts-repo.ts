@@ -31,11 +31,15 @@ export class FtsRepo implements IFtsRepo {
            JOIN l2_nodes n ON n.id = f.rowid
            WHERE l2_nodes_fts MATCH ?
            ORDER BY rank
-           LIMIT ?`
+           LIMIT ?`,
         )
         .all(matchExpr, limit) as L2NodeRow[];
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to search l2 nodes via FTS", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        "Failed to search l2 nodes via FTS",
+        err,
+      );
     }
   }
 
@@ -51,11 +55,15 @@ export class FtsRepo implements IFtsRepo {
            JOIN l3_nodes n ON n.id = f.rowid
            WHERE l3_nodes_fts MATCH ?
            ORDER BY rank
-           LIMIT ?`
+           LIMIT ?`,
         )
         .all(matchExpr, limit) as L3NodeRow[];
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, "Failed to search l3 nodes via FTS", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        "Failed to search l3 nodes via FTS",
+        err,
+      );
     }
   }
 }

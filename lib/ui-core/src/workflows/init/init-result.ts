@@ -20,7 +20,13 @@ export function buildInitResult(input: {
   failures: AstParseFailure[];
   filesSkippedOversized: number;
 }): InitResult {
-  const { filesRequested, filesParsed, filesFailed, failures, filesSkippedOversized } = input;
+  const {
+    filesRequested,
+    filesParsed,
+    filesFailed,
+    failures,
+    filesSkippedOversized,
+  } = input;
 
   const message =
     filesFailed > 0

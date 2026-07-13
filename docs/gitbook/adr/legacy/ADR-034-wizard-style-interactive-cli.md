@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-07
 Status: Superseded
 Supersedes: None
@@ -28,4 +29,4 @@ We will refactor the Docuvia `@workspace/cli` to use a Wizard-style UX architect
 
 - **Positive**: Drastically lowers the barrier to entry for new developers. Prevents frustrating syntax errors by guiding users through complex commands. Brings Docuvia's CLI polish up to the enterprise standards of its workspace peers.
 - **Negative**: Adds UI dependencies (`inquirer`, `ora`, `chalk`) to the CLI package, slightly increasing bundle size and execution overhead. Tests evaluating CLI `stdout` may need to be updated to strip ANSI color codes or handle interactive TTY contexts.
-superseded_by: []
+  superseded_by: []

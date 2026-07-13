@@ -1,4 +1,9 @@
-import { docuviaFactory, TOKENS, type ILogger, type KnowledgeBranchSyncResult } from "@workspace/contracts";
+import {
+  docuviaFactory,
+  TOKENS,
+  type ILogger,
+  type KnowledgeBranchSyncResult,
+} from "@workspace/contracts";
 import { SYNC_KNOWLEDGE_MESSAGES } from "./sync-knowledge-messages.js";
 import { appendSyncKnowledgeLogLine } from "./sync-knowledge-log-writer.js";
 
@@ -17,16 +22,21 @@ import { appendSyncKnowledgeLogLine } from "./sync-knowledge-log-writer.js";
 export class SyncKnowledgeWorkflow {
   constructor(
     private readonly workspaceRoot: string,
-    private readonly logger: ILogger
+    private readonly logger: ILogger,
   ) {}
 
   public async execute(): Promise<KnowledgeBranchSyncResult> {
     const { workspaceRoot, logger } = this;
 
     logger.info(SYNC_KNOWLEDGE_MESSAGES.SYNCING);
-    await appendSyncKnowledgeLogLine(workspaceRoot, { event: "sync-knowledge.start", workspaceRoot });
+    await appendSyncKnowledgeLogLine(workspaceRoot, {
+      event: "sync-knowledge.start",
+      workspaceRoot,
+    });
 
-    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, { logger });
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger,
+    });
     const result = await knowledgeGit.syncKnowledgeBranch(workspaceRoot);
 
     await appendSyncKnowledgeLogLine(workspaceRoot, {

@@ -1,6 +1,10 @@
 export * from "./languages/index.js";
 
-import { LanguageRegistry, LanguageRegistryData, SUPPORTED_LANGUAGES } from "@workspace/ast-core";
+import {
+  LanguageRegistry,
+  LanguageRegistryData,
+  SUPPORTED_LANGUAGES,
+} from "@workspace/ast-core";
 import { typescriptConfig } from "./languages/typescript.js";
 import { javascriptConfig } from "./languages/javascript.js";
 import { pythonConfig } from "./languages/python.js";
@@ -29,10 +33,14 @@ export const DEFAULT_REGISTRY: LanguageRegistryData = {
   },
 };
 
-export async function loadDefaultRegistry(projectRoot?: string): Promise<LanguageRegistry> {
+export async function loadDefaultRegistry(
+  projectRoot?: string,
+): Promise<LanguageRegistry> {
   return LanguageRegistry.load(projectRoot, DEFAULT_REGISTRY);
 }
 
-export function loadDefaultRegistryFromString(tomlContent?: string): LanguageRegistry {
+export function loadDefaultRegistryFromString(
+  tomlContent?: string,
+): LanguageRegistry {
   return LanguageRegistry.loadFromString(tomlContent, DEFAULT_REGISTRY);
 }

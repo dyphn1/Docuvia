@@ -3,7 +3,7 @@ import { appendCommandLogLine } from "../../utils/command-log-writer.js";
 
 export async function appendStatusLogLine(
   workspaceRoot: string,
-  event: Record<string, unknown>
+  event: Record<string, unknown>,
 ): Promise<void> {
   await appendCommandLogLine(workspaceRoot, STATUS_LOG_FILE_NAME, event);
 }

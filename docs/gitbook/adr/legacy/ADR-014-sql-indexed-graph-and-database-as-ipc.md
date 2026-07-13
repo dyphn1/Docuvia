@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Superseded, Supplemented by ADR-023
 Supersedes: None
@@ -52,4 +53,4 @@ sequenceDiagram
 - **Positive**: Native SQL graph traversal, leveraging C-based database engines for recursive queries instead of running recursive algorithms in the V8 engine.
 - **Positive**: Seamless persistence. The database can be rebuilt from the Git-native knowledge branch, enabling instant reads upon editor restart while preserving a recoverable source of truth.
 - **Negative**: Requires careful worker lifecycle management to avoid orphan processes and handling of schema migrations.
-superseded_by: []
+  superseded_by: []

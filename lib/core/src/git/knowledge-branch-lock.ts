@@ -9,7 +9,7 @@ import type { IGitProvider } from "@workspace/contracts";
 export async function withKnowledgeBranchLock<T>(
   git: IGitProvider,
   cwd: string,
-  fn: () => Promise<T>
+  fn: () => Promise<T>,
 ): Promise<T> {
   await git.acquireKnowledgeLock(cwd);
   try {

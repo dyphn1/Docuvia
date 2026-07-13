@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import type { AstProcessResult, IAstProcessor, IGraphPersister, IGraphStore } from "@workspace/contracts";
+import type {
+  AstProcessResult,
+  IAstProcessor,
+  IGraphPersister,
+  IGraphStore,
+} from "@workspace/contracts";
 import { runParseAndPersist } from "./run-parse-and-persist.js";
 
 // `store` is opaque to `runParseAndPersist` — it's only forwarded, untouched, to the
@@ -17,17 +22,27 @@ function makeAstProcessor(result: AstProcessResult): IAstProcessor {
   return { processFiles: vi.fn().mockResolvedValue(result) };
 }
 
-function makeGraphPersister(): IGraphPersister & { persist: ReturnType<typeof vi.fn> } {
+function makeGraphPersister(): IGraphPersister & {
+  persist: ReturnType<typeof vi.fn>;
+} {
   return { persist: vi.fn().mockResolvedValue({ updatedCount: 0 }) };
 }
 
-const filesToParse = [{ file: "src/a.ts", hash: "hash-a", code: "export function foo() { bar(); }" }];
+const filesToParse = [
+  {
+    file: "src/a.ts",
+    hash: "hash-a",
+    code: "export function foo() { bar(); }",
+  },
+];
 
 describe("runParseAndPersist", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-run-parse-and-persist-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-run-parse-and-persist-"),
+    );
   });
 
   afterEach(() => {
@@ -40,7 +55,13 @@ describe("runParseAndPersist", () => {
         {
           file: "src/a.ts",
           hash: "hash-a",
-          data: { imports: [], exports: [], functions: [], classes: [], calls: [] },
+          data: {
+            imports: [],
+            exports: [],
+            functions: [],
+            classes: [],
+            calls: [],
+          },
           language: "typescript",
         },
       ],
@@ -66,7 +87,7 @@ describe("runParseAndPersist", () => {
         workspaceRoot: tmpDir,
         projectId: 1,
         tags: expect.arrayContaining(["backend", "typescript"]),
-      })
+      }),
     );
   });
 
@@ -76,7 +97,13 @@ describe("runParseAndPersist", () => {
         {
           file: "src/a.ts",
           hash: "hash-a",
-          data: { imports: [], exports: [], functions: [], classes: [], calls: [] },
+          data: {
+            imports: [],
+            exports: [],
+            functions: [],
+            classes: [],
+            calls: [],
+          },
           language: "typescript",
         },
       ],
@@ -101,7 +128,13 @@ describe("runParseAndPersist", () => {
   it("logs a JSONL init.parse_failure entry per astProcessor failure", async () => {
     const astProcessor = makeAstProcessor({
       parsed: [],
-      failures: [{ file: "src/broken.ts", hash: "h", error: "Worker exited with code 1" }],
+      failures: [
+        {
+          file: "src/broken.ts",
+          hash: "h",
+          error: "Worker exited with code 1",
+        },
+      ],
     });
 
     await runParseAndPersist({
@@ -145,7 +178,9 @@ describe("runParseAndPersist", () => {
       .split("\n")
       .filter(Boolean)
       .map((l) => JSON.parse(l));
-    const skippedLine = lines.find((l) => l.event === "init.file_skipped_oversized");
+    const skippedLine = lines.find(
+      (l) => l.event === "init.file_skipped_oversized",
+    );
     expect(skippedLine).toBeDefined();
     expect(skippedLine.file).toBe("src/huge.ts");
     expect(skippedLine.sizeBytes).toBe(600_000);

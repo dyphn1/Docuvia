@@ -2,7 +2,10 @@ import fs from "fs";
 import path from "path";
 import { describe, it, expect, beforeAll } from "vitest";
 import { Parser, Language } from "web-tree-sitter";
-import { SemanticDiffDetector, PruningLevel } from "../../src/detector/semantic-diff.js";
+import {
+  SemanticDiffDetector,
+  PruningLevel,
+} from "../../src/detector/semantic-diff.js";
 
 import { createRequire } from "module";
 
@@ -17,11 +20,12 @@ describe("SemanticDiffDetector", () => {
 
     let wasmPath = "";
     try {
-      wasmPath = require.resolve("tree-sitter-wasms/out/tree-sitter-typescript.wasm");
+      wasmPath =
+        require.resolve("tree-sitter-wasms/out/tree-sitter-typescript.wasm");
     } catch {
       wasmPath = path.resolve(
         __dirname,
-        "../../../node_modules/tree-sitter-wasms/out/tree-sitter-typescript.wasm"
+        "../../../node_modules/tree-sitter-wasms/out/tree-sitter-typescript.wasm",
       );
     }
     const wasmBytes = fs.readFileSync(wasmPath);
@@ -45,7 +49,9 @@ describe("SemanticDiffDetector", () => {
     `;
 
     const detector = new SemanticDiffDetector(parser, language);
-    const results = detector.analyze(oldSource, newSource, [{ startRow: 2, endRow: 3 }]);
+    const results = detector.analyze(oldSource, newSource, [
+      { startRow: 2, endRow: 3 },
+    ]);
 
     expect(results).toHaveLength(1);
     expect(results[0].nodeType).toBe("function_declaration");
@@ -65,7 +71,9 @@ describe("SemanticDiffDetector", () => {
     `;
 
     const detector = new SemanticDiffDetector(parser, language);
-    const results = detector.analyze(oldSource, newSource, [{ startRow: 1, endRow: 1 }]);
+    const results = detector.analyze(oldSource, newSource, [
+      { startRow: 1, endRow: 1 },
+    ]);
 
     expect(results).toHaveLength(1);
     expect(results[0].pruningLevel).toBe(PruningLevel.CONTRACT_CHANGED);

@@ -4,14 +4,20 @@ import { AstProcessingService } from "./ast-processing.service.js";
 import { AstWorkerCrashError, type IASTWorkerPool } from "./ast-worker-pool.js";
 import type { AstParseResponse } from "./ast-worker.js";
 
-const emptyData = { imports: [], exports: [], functions: [], classes: [], calls: [] };
+const emptyData = {
+  imports: [],
+  exports: [],
+  functions: [],
+  classes: [],
+  calls: [],
+};
 
 function makeFile(file: string): DiscoveredFile {
   return { file, hash: `hash-${file}`, code: `// ${file}` };
 }
 
 function makeFakePool(
-  parseImpl: (request: { filePath: string }) => Promise<AstParseResponse>
+  parseImpl: (request: { filePath: string }) => Promise<AstParseResponse>,
 ): IASTWorkerPool {
   return {
     initialize: async () => undefined,
@@ -64,7 +70,10 @@ describe("AstProcessingService.processFiles()", () => {
     const files = [makeFile("a.ts"), makeFile("crash.ts")];
     const pool = makeFakePool(async (request) => {
       if (request.filePath === "crash.ts") {
-        throw new AstWorkerCrashError("crash.ts", new Error("Worker exited with code 1"));
+        throw new AstWorkerCrashError(
+          "crash.ts",
+          new Error("Worker exited with code 1"),
+        );
       }
       return { taskId: "t", success: true, data: emptyData };
     });
@@ -83,15 +92,22 @@ describe("AstProcessingService.processFiles()", () => {
   // across at least 3 of the 4 batches — proves failure attribution survives batching.
   it("reproduces the audit's 13-crash/4236-file profile: batches of failures scattered across multiple 50-file batches all get attributed correctly", async () => {
     const totalFiles = 200;
-    const files = Array.from({ length: totalFiles }, (_, i) => makeFile(`file-${i}.ts`));
+    const files = Array.from({ length: totalFiles }, (_, i) =>
+      makeFile(`file-${i}.ts`),
+    );
 
-    const failingIndices = new Set([3, 17, 41, 55, 62, 88, 97, 110, 128, 149, 161, 175, 199]);
+    const failingIndices = new Set([
+      3, 17, 41, 55, 62, 88, 97, 110, 128, 149, 161, 175, 199,
+    ]);
     expect(failingIndices.size).toBe(13);
 
     const pool = makeFakePool(async (request) => {
       const idx = Number(request.filePath.replace(/^file-(\d+)\.ts$/, "$1"));
       if (failingIndices.has(idx)) {
-        throw new AstWorkerCrashError(request.filePath, new Error("Worker exited with code 1"));
+        throw new AstWorkerCrashError(
+          request.filePath,
+          new Error("Worker exited with code 1"),
+        );
       }
       return { taskId: "t", success: true, data: emptyData };
     });
@@ -103,14 +119,20 @@ describe("AstProcessingService.processFiles()", () => {
     expect(result.parsed.length).toBe(totalFiles - 13);
 
     const failedFiles = result.failures.map((f) => f.file);
-    const expectedFailedFiles = Array.from(failingIndices).map((i) => `file-${i}.ts`);
+    const expectedFailedFiles = Array.from(failingIndices).map(
+      (i) => `file-${i}.ts`,
+    );
     expect(new Set(failedFiles)).toEqual(new Set(expectedFailedFiles));
     // No duplication.
     expect(failedFiles.length).toBe(new Set(failedFiles).size);
   });
 
   it("attaches the detected language to each parsed result", async () => {
-    const pool = makeFakePool(async () => ({ taskId: "t", success: true, data: emptyData }));
+    const pool = makeFakePool(async () => ({
+      taskId: "t",
+      success: true,
+      data: emptyData,
+    }));
     const service = new AstProcessingService(pool);
 
     const result = await service.processFiles("/workspace", [makeFile("a.ts")]);

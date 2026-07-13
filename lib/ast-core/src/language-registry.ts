@@ -1,5 +1,9 @@
 import { parse } from "smol-toml";
-import { LanguageProvider, LanguageConfig, DefaultProvider } from "./language-provider.js";
+import {
+  LanguageProvider,
+  LanguageConfig,
+  DefaultProvider,
+} from "./language-provider.js";
 
 export interface LanguageRegistryData {
   languages: Record<string, LanguageConfig>;
@@ -27,7 +31,7 @@ export class LanguageRegistry {
 
   public static loadFromString(
     tomlContent?: string,
-    baseConfig?: LanguageRegistryData
+    baseConfig?: LanguageRegistryData,
   ): LanguageRegistry {
     const base = baseConfig || { languages: {} };
     if (!tomlContent) {
@@ -48,11 +52,14 @@ export class LanguageRegistry {
 
   public static async load(
     projectRoot?: string,
-    baseConfig?: LanguageRegistryData
+    baseConfig?: LanguageRegistryData,
   ): Promise<LanguageRegistry> {
     const base = baseConfig || { languages: {} };
     try {
-      const _process = typeof globalThis !== "undefined" ? (globalThis as any).process : undefined;
+      const _process =
+        typeof globalThis !== "undefined"
+          ? (globalThis as any).process
+          : undefined;
       if (_process && _process.versions && _process.versions.node) {
         // @ts-ignore
         const fs = await import("fs/promises");
@@ -69,7 +76,7 @@ export class LanguageRegistry {
           if (_process.env?.LOG_LEVEL === "debug") {
             console.debug(
               `[LanguageRegistry] Could not read ${targetPath}, falling back to defaults. Reason:`,
-              fileErr instanceof Error ? fileErr.message : String(fileErr)
+              fileErr instanceof Error ? fileErr.message : String(fileErr),
             );
           }
         }
@@ -85,7 +92,10 @@ export class LanguageRegistry {
     return this.extToProviderMap.get(ext);
   }
 
-  public registerProvider(extensions: string[], provider: LanguageProvider): void {
+  public registerProvider(
+    extensions: string[],
+    provider: LanguageProvider,
+  ): void {
     for (const ext of extensions) {
       this.extToProviderMap.set(ext, provider);
     }

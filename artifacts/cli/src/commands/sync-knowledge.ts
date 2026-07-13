@@ -1,6 +1,10 @@
 import process from "process";
 import crypto from "node:crypto";
-import { docuviaMemory, DocuviaError, type KnowledgeBranchSyncResult } from "@workspace/contracts";
+import {
+  docuviaMemory,
+  DocuviaError,
+  type KnowledgeBranchSyncResult,
+} from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
@@ -36,7 +40,9 @@ export async function syncKnowledgeCommand(cwd: string = process.cwd()) {
     spinner.succeed(STATUS_MESSAGES[result.status]);
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.SYNC_KNOWLEDGE_FAIL + message);
     process.exit(1);
   } finally {

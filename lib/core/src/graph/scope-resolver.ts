@@ -15,7 +15,10 @@ export interface ImportDescriptor {
 
 /** Strips // and /* *\/ comments from JSONC content (e.g. tsconfig.json) so it can be JSON.parse'd. */
 function stripJsonComments(content: string): string {
-  return content.replace(/\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g, (m, g) => (g ? "" : m));
+  return content.replace(
+    /\\"|"(?:\\"|[^"])*"|(\/\/.*|\/\*[\s\S]*?\*\/)/g,
+    (m, g) => (g ? "" : m),
+  );
 }
 
 export class ScopeResolver {
@@ -26,7 +29,7 @@ export class ScopeResolver {
 
   constructor(
     private workspaceRoot: string,
-    private readonly logger: ILogger = createNoopLogger()
+    private readonly logger: ILogger = createNoopLogger(),
   ) {
     this.loadTsConfigPaths();
   }
@@ -40,7 +43,10 @@ export class ScopeResolver {
         try {
           const parsed = JSON.parse(cleanContent);
           if (parsed.compilerOptions && parsed.compilerOptions.paths) {
-            this.tsConfigPaths = { ...this.tsConfigPaths, ...parsed.compilerOptions.paths };
+            this.tsConfigPaths = {
+              ...this.tsConfigPaths,
+              ...parsed.compilerOptions.paths,
+            };
           }
         } catch (e) {
           this.logger.debug("Failed to JSON-parse tsconfig.json", {
@@ -49,13 +55,19 @@ export class ScopeResolver {
         }
       }
 
-      const tsconfigBasePath = path.join(this.workspaceRoot, "tsconfig.base.json");
+      const tsconfigBasePath = path.join(
+        this.workspaceRoot,
+        "tsconfig.base.json",
+      );
       if (fs.existsSync(tsconfigBasePath)) {
         const content = fs.readFileSync(tsconfigBasePath, "utf-8");
         const cleanContent = stripJsonComments(content);
         const parsed = JSON.parse(cleanContent);
         if (parsed.compilerOptions && parsed.compilerOptions.paths) {
-          this.tsConfigPaths = { ...parsed.compilerOptions.paths, ...this.tsConfigPaths };
+          this.tsConfigPaths = {
+            ...parsed.compilerOptions.paths,
+            ...this.tsConfigPaths,
+          };
         }
       }
     } catch (e: any) {
@@ -70,7 +82,7 @@ export class ScopeResolver {
     filePath: string,
     imports: ImportDescriptor[],
     exports: string[],
-    locals: string[]
+    locals: string[],
   ) {
     // We store using relative paths to workspace root, using posix forward slashes
     const normalizedPath = filePath.replace(/\\/g, "/");
@@ -81,7 +93,7 @@ export class ScopeResolver {
 
   public resolveCall(
     sourceFilePath: string,
-    callName: string
+    callName: string,
   ): { targetFile: string; targetSymbol: string } | null {
     const normalizedSource = sourceFilePath.replace(/\\/g, "/");
 
@@ -95,11 +107,15 @@ export class ScopeResolver {
     const imports = this.importsByFile.get(normalizedSource) || [];
     for (const imp of imports) {
       if (imp.localName === callName) {
-        const resolvedPath = this.resolveModulePath(normalizedSource, imp.modulePath);
+        const resolvedPath = this.resolveModulePath(
+          normalizedSource,
+          imp.modulePath,
+        );
         if (resolvedPath) {
           return {
             targetFile: resolvedPath,
-            targetSymbol: imp.originalName === "*" ? callName : imp.originalName,
+            targetSymbol:
+              imp.originalName === "*" ? callName : imp.originalName,
           };
         }
       }
@@ -108,7 +124,10 @@ export class ScopeResolver {
     return null;
   }
 
-  private resolveModulePath(sourceFile: string, modulePath: string): string | null {
+  private resolveModulePath(
+    sourceFile: string,
+    modulePath: string,
+  ): string | null {
     // Relative paths
     if (modulePath.startsWith(".")) {
       const dir = path.posix.dirname(sourceFile);
@@ -141,7 +160,10 @@ export class ScopeResolver {
     const cache = new Map<string, string>();
     for (const glob of this.getWorkspaceGlobs()) {
       const starIdx = glob.indexOf("*");
-      const baseDir = (starIdx >= 0 ? glob.slice(0, starIdx) : glob).replace(/\/$/, "");
+      const baseDir = (starIdx >= 0 ? glob.slice(0, starIdx) : glob).replace(
+        /\/$/,
+        "",
+      );
       const fullBaseDir = path.join(this.workspaceRoot, baseDir);
       if (!fs.existsSync(fullBaseDir)) continue;
       let entries: fs.Dirent[];
@@ -176,9 +198,9 @@ export class ScopeResolver {
         const content = fs.readFileSync(pnpmWsPath, "utf-8");
         const block = /packages:\s*\n((?:\s*-\s+.+\n?)+)/.exec(content);
         if (block) {
-          const globs = [...block[1].matchAll(/^\s*-\s+["']?([^"'\n#]+?)["']?\s*$/gm)].map((m) =>
-            m[1].trim()
-          );
+          const globs = [
+            ...block[1].matchAll(/^\s*-\s+["']?([^"'\n#]+?)["']?\s*$/gm),
+          ].map((m) => m[1].trim());
           if (globs.length > 0) return globs;
         }
       }
@@ -187,7 +209,8 @@ export class ScopeResolver {
       if (fs.existsSync(pkgJsonPath)) {
         const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
         if (Array.isArray(pkgJson.workspaces)) return pkgJson.workspaces;
-        if (Array.isArray(pkgJson.workspaces?.packages)) return pkgJson.workspaces.packages;
+        if (Array.isArray(pkgJson.workspaces?.packages))
+          return pkgJson.workspaces.packages;
       }
     } catch {
       // Ignore fs/parse failures — not every project is a monorepo
@@ -216,12 +239,19 @@ export class ScopeResolver {
 
     // 2. External npm dependency — read its package.json main/module entry point
     try {
-      const pkgJsonPath = path.join(this.workspaceRoot, "node_modules", pkgName, "package.json");
+      const pkgJsonPath = path.join(
+        this.workspaceRoot,
+        "node_modules",
+        pkgName,
+        "package.json",
+      );
       if (fs.existsSync(pkgJsonPath)) {
         const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
-        const entry: string = subpath || pkgJson.module || pkgJson.main || "index.js";
+        const entry: string =
+          subpath || pkgJson.module || pkgJson.main || "index.js";
         const relPath = path.posix.join("node_modules", pkgName, entry);
-        if (fs.existsSync(path.join(this.workspaceRoot, relPath))) return relPath;
+        if (fs.existsSync(path.join(this.workspaceRoot, relPath)))
+          return relPath;
       }
     } catch {
       // Ignore unreadable/invalid package.json
@@ -232,7 +262,8 @@ export class ScopeResolver {
 
   private findFileWithExtension(basePath: string): string | null {
     const fullBasePath = path.join(this.workspaceRoot, basePath);
-    if (fs.existsSync(fullBasePath) && fs.statSync(fullBasePath).isFile()) return basePath;
+    if (fs.existsSync(fullBasePath) && fs.statSync(fullBasePath).isFile())
+      return basePath;
 
     const exts = [
       ".ts",

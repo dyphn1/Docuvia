@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Superseded
 Supersedes: None
@@ -79,4 +80,4 @@ To avoid the immense engineering complexity of "Proxy Streaming Hell" (handling 
 
 - **Positive**: Drastically reduces LLM token costs by replacing large codefiles with 50-line AST skeletons. Decoupled architecture prevents the proxy from crashing the SSE stream. Scheme A/B prevents generating corrupted ASTs from context-less snippets.
 - **Negative**: Requires maintaining a separate SQLite cache for intercepted payloads (`compressed_payloads`). Relies on LLM instruction-following to invoke the retrieval tool successfully.
-superseded_by: []
+  superseded_by: []

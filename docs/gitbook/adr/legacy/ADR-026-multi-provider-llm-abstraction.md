@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-03
 Status: Proposed
 Supersedes: None
@@ -37,4 +38,4 @@ We will adopt the **Thin Transport / Fat Orchestrator** paradigm (inspired by He
 - **Positive**: Zero SDK Bloat. By handling raw HTTP and SSE parsing centrally, we avoid downloading massive vendor SDKs, minimizing bundle size and cold-start latency.
 - **Positive**: Unified Telemetry & Retries. The central orchestrator ensures that prompt caching metrics, tool-call tracking, and exponential backoff behave identically across all providers.
 - **Negative**: The orchestrator must handle low-level SSE stream parsing and HTTP fetch intricacies, increasing the complexity of the core execution loop.
-superseded_by: []
+  superseded_by: []

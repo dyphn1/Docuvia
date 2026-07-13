@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-07
 Status: Superseded
 Supersedes: None
@@ -65,4 +66,5 @@ sequenceDiagram
     WinB->>WinB: emit "dirty state calculated" hook -> re-render
     Note over WinA,WinB: Neither window called the other directly;<br/>the shared temp directory is the sync point.
 ```
+
 superseded_by: []

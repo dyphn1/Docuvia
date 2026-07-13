@@ -14,18 +14,26 @@ import { resolveDbPath } from "./resolve-db-path.js";
  * same failure as a clearer `DB_OPEN_FAILED` `DocuviaError` with its usual "run docuvia init"
  * messaging, so there's no value in this helper throwing its own, less-specific error first.
  */
-export async function ensureHydrated(workspaceRoot: string, logger: ILogger): Promise<void> {
+export async function ensureHydrated(
+  workspaceRoot: string,
+  logger: ILogger,
+): Promise<void> {
   const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
 
   let store;
   try {
-    store = await openStore({ dbPath: resolveDbPath(workspaceRoot), readonly: false });
+    store = await openStore({
+      dbPath: resolveDbPath(workspaceRoot),
+      readonly: false,
+    });
   } catch {
     return;
   }
 
   try {
-    const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, { logger });
+    const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
+      logger,
+    });
     if (await hydrationService.isStale(workspaceRoot, store)) {
       await hydrationService.hydrate(workspaceRoot, store);
     }

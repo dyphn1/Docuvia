@@ -16,7 +16,7 @@ When you run `docuvia mcp`:
 2. **Tool Exposure**: It exposes tools like `query`, `impact`, and `review` directly to the connected LLM.
 3. **Service Layer**: The MCP server wraps the identical `@workspace/core` logic as the standard CLI commands, ensuring behavioral parity.
 
-*(Note: Because this is a long-running process, it does NOT write to the one-shot JSONL command logs in `.docuvia/logs/`. It uses standard pino debug logging internally if configured).*
+_(Note: Because this is a long-running process, it does NOT write to the one-shot JSONL command logs in `.docuvia/logs/`. It uses standard pino debug logging internally if configured)._
 
 ## Configuration
 

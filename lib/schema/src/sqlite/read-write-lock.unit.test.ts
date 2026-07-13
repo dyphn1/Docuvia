@@ -54,7 +54,9 @@ describe("ReadWriteLock", () => {
     const lock = new ReadWriteLock();
     const events: string[] = [];
     let releaseReader!: () => void;
-    const readerGate = new Promise<void>((resolve) => (releaseReader = resolve));
+    const readerGate = new Promise<void>(
+      (resolve) => (releaseReader = resolve),
+    );
 
     // Act
     const reader1 = lock.runRead(async () => {
@@ -80,7 +82,12 @@ describe("ReadWriteLock", () => {
     await Promise.all([reader1, writer, reader2]);
 
     // Assert
-    expect(events).toEqual(["reader1-start", "reader1-end", "writer", "reader2"]);
+    expect(events).toEqual([
+      "reader1-start",
+      "reader1-end",
+      "writer",
+      "reader2",
+    ]);
   });
 
   it("should release the lock when the guarded function throws", async () => {
@@ -91,7 +98,7 @@ describe("ReadWriteLock", () => {
     await expect(
       lock.runWrite(async () => {
         throw new Error("boom");
-      })
+      }),
     ).rejects.toThrow("boom");
 
     // Assert — lock must be reusable after the failure

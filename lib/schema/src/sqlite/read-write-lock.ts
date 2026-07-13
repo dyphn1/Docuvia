@@ -33,7 +33,10 @@ export class ReadWriteLock {
 
   private acquireRead(): Promise<void> {
     // Fast path: no writer active and no writer waiting ahead of us.
-    if (!this.writerActive && !this.queue.some((waiter) => waiter.kind === "write")) {
+    if (
+      !this.writerActive &&
+      !this.queue.some((waiter) => waiter.kind === "write")
+    ) {
       this.activeReaders++;
       return Promise.resolve();
     }
@@ -48,7 +51,11 @@ export class ReadWriteLock {
   }
 
   private acquireWrite(): Promise<void> {
-    if (!this.writerActive && this.activeReaders === 0 && this.queue.length === 0) {
+    if (
+      !this.writerActive &&
+      this.activeReaders === 0 &&
+      this.queue.length === 0
+    ) {
       this.writerActive = true;
       return Promise.resolve();
     }

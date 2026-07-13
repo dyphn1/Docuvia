@@ -5,7 +5,9 @@ import * as path from "path";
 import type { FileHashLookup, IGitProvider } from "@workspace/contracts";
 import { FileDiscoveryService } from "./file-discovery.service.js";
 
-function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvider {
+function makeMockGitProvider(
+  overrides: Partial<IGitProvider> = {},
+): IGitProvider {
   return {
     isGitRepository: vi.fn().mockResolvedValue(false),
     branchExists: vi.fn().mockResolvedValue(false),
@@ -46,7 +48,7 @@ function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvide
 /** Mocks the narrow `FileHashLookup` dependency `FileDiscoveryService` takes instead of a raw
  *  `dbPath`. Defaults to "no existing hashes" — equivalent to a fresh workspace. */
 function makeMockFilesRepo(
-  hashes: Array<{ filePath: string; contentHash: string | null }> = []
+  hashes: Array<{ filePath: string; contentHash: string | null }> = [],
 ): FileHashLookup {
   return { getAllHashes: vi.fn().mockReturnValue(hashes) };
 }
@@ -55,7 +57,9 @@ describe("FileDiscoveryService", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-file-discovery-test-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-file-discovery-test-"),
+    );
   });
 
   afterEach(() => {
@@ -73,12 +77,15 @@ describe("FileDiscoveryService", () => {
         new Map([
           ["a.ts", "sha-a"],
           ["b.exe", "sha-b"],
-        ])
+        ]),
       ),
     });
 
     const service = new FileDiscoveryService(mockGit);
-    const { filesToParse } = await service.discoverFiles(tmpDir, makeMockFilesRepo());
+    const { filesToParse } = await service.discoverFiles(
+      tmpDir,
+      makeMockFilesRepo(),
+    );
 
     const discoveredFiles = filesToParse.map((f) => f.file);
     expect(discoveredFiles).toContain("a.ts");
@@ -89,12 +96,20 @@ describe("FileDiscoveryService", () => {
     fs.writeFileSync(path.join(tmpDir, "x.py"), "a = 1\n");
     fs.writeFileSync(path.join(tmpDir, "y.exe"), "binary-not-source");
     fs.mkdirSync(path.join(tmpDir, "node_modules"), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, "node_modules", "skip.ts"), "export const skip = 1;\n");
+    fs.writeFileSync(
+      path.join(tmpDir, "node_modules", "skip.ts"),
+      "export const skip = 1;\n",
+    );
 
-    const mockGit = makeMockGitProvider({ isGitRepository: vi.fn().mockResolvedValue(false) });
+    const mockGit = makeMockGitProvider({
+      isGitRepository: vi.fn().mockResolvedValue(false),
+    });
 
     const service = new FileDiscoveryService(mockGit);
-    const { filesToParse } = await service.discoverFiles(tmpDir, makeMockFilesRepo());
+    const { filesToParse } = await service.discoverFiles(
+      tmpDir,
+      makeMockFilesRepo(),
+    );
 
     const discoveredFiles = filesToParse.map((f) => f.file);
     expect(discoveredFiles.some((f) => f.endsWith("x.py"))).toBe(true);
@@ -103,14 +118,22 @@ describe("FileDiscoveryService", () => {
   });
 
   it("discovers extensionless Ruby convention files (e.g. Gemfile) in the non-git fallback", async () => {
-    fs.writeFileSync(path.join(tmpDir, "Gemfile"), "source 'https://rubygems.org'\n");
+    fs.writeFileSync(
+      path.join(tmpDir, "Gemfile"),
+      "source 'https://rubygems.org'\n",
+    );
     fs.writeFileSync(path.join(tmpDir, "Rakefile"), "task :default\n");
     fs.writeFileSync(path.join(tmpDir, "README"), "not a source file\n");
 
-    const mockGit = makeMockGitProvider({ isGitRepository: vi.fn().mockResolvedValue(false) });
+    const mockGit = makeMockGitProvider({
+      isGitRepository: vi.fn().mockResolvedValue(false),
+    });
 
     const service = new FileDiscoveryService(mockGit);
-    const { filesToParse } = await service.discoverFiles(tmpDir, makeMockFilesRepo());
+    const { filesToParse } = await service.discoverFiles(
+      tmpDir,
+      makeMockFilesRepo(),
+    );
 
     const discoveredFiles = filesToParse.map((f) => f.file);
     expect(discoveredFiles).toContain("Gemfile");
@@ -123,12 +146,14 @@ describe("FileDiscoveryService", () => {
     fs.writeFileSync(path.join(tmpDir, "huge.ts"), oversizedContent);
     fs.writeFileSync(path.join(tmpDir, "small.ts"), "export const a = 1;\n");
 
-    const mockGit = makeMockGitProvider({ isGitRepository: vi.fn().mockResolvedValue(false) });
+    const mockGit = makeMockGitProvider({
+      isGitRepository: vi.fn().mockResolvedValue(false),
+    });
 
     const service = new FileDiscoveryService(mockGit);
     const { filesToParse, skippedOversized } = await service.discoverFiles(
       tmpDir,
-      makeMockFilesRepo()
+      makeMockFilesRepo(),
     );
 
     const discoveredFiles = filesToParse.map((f) => f.file);
@@ -141,16 +166,26 @@ describe("FileDiscoveryService", () => {
   });
 
   it("does not re-parse a file whose hash matches the repo's existing hash", async () => {
-    fs.writeFileSync(path.join(tmpDir, "unchanged.ts"), "export const a = 1;\n");
+    fs.writeFileSync(
+      path.join(tmpDir, "unchanged.ts"),
+      "export const a = 1;\n",
+    );
 
     const mockGit = makeMockGitProvider({
       isGitRepository: vi.fn().mockResolvedValue(true),
-      listTrackedFilesWithBlobHash: vi.fn().mockResolvedValue(new Map([["unchanged.ts", "sha-1"]])),
+      listTrackedFilesWithBlobHash: vi
+        .fn()
+        .mockResolvedValue(new Map([["unchanged.ts", "sha-1"]])),
     });
 
     const service = new FileDiscoveryService(mockGit);
-    const filesRepo = makeMockFilesRepo([{ filePath: "unchanged.ts", contentHash: "sha-1" }]);
-    const { filesToParse, skippedCount } = await service.discoverFiles(tmpDir, filesRepo);
+    const filesRepo = makeMockFilesRepo([
+      { filePath: "unchanged.ts", contentHash: "sha-1" },
+    ]);
+    const { filesToParse, skippedCount } = await service.discoverFiles(
+      tmpDir,
+      filesRepo,
+    );
 
     expect(filesToParse.map((f) => f.file)).not.toContain("unchanged.ts");
     expect(skippedCount).toBe(1);

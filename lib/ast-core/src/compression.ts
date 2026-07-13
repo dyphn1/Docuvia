@@ -42,7 +42,9 @@ export function dedupNodes(nodes: CompressibleNode[]): CompressibleNode[] {
 /**
  * Sort nodes by confidence descending, then by title for stability.
  */
-export function sortByConfidence(nodes: CompressibleNode[]): CompressibleNode[] {
+export function sortByConfidence(
+  nodes: CompressibleNode[],
+): CompressibleNode[] {
   return [...nodes].sort((a, b) => {
     const confDiff = (b.confidence ?? 0) - (a.confidence ?? 0);
     if (confDiff !== 0) return confDiff;
@@ -53,7 +55,10 @@ export function sortByConfidence(nodes: CompressibleNode[]): CompressibleNode[] 
 /**
  * Truncate node content to maxPerNodeChars, adding ellipsis if truncated.
  */
-function truncateContent(content: string | null | undefined, maxChars: number): string {
+function truncateContent(
+  content: string | null | undefined,
+  maxChars: number,
+): string {
   if (!content) return "";
   if (content.length <= maxChars) return content;
   return content.slice(0, maxChars - 3) + "...";
@@ -65,7 +70,7 @@ function truncateContent(content: string | null | undefined, maxChars: number): 
  */
 export function assembleContext(
   nodes: CompressibleNode[],
-  options: CompressionOptions = {}
+  options: CompressionOptions = {},
 ): { context: string; nodesIncluded: number; nodesTotal: number } {
   const maxTotal = options.maxTotalChars ?? 8000;
   const maxPerNode = options.maxPerNodeChars ?? 500;
@@ -96,12 +101,23 @@ export function assembleContext(
  */
 export function compressAstContext(
   nodes: CompressibleNode[],
-  options: CompressionOptions = {}
-): { context: string; nodesIncluded: number; nodesTotal: number; charsSaved: number } {
-  const originalLength = nodes.reduce((sum, n) => sum + (n.content?.length ?? 0), 0);
+  options: CompressionOptions = {},
+): {
+  context: string;
+  nodesIncluded: number;
+  nodesTotal: number;
+  charsSaved: number;
+} {
+  const originalLength = nodes.reduce(
+    (sum, n) => sum + (n.content?.length ?? 0),
+    0,
+  );
 
   const deduped = dedupNodes(nodes);
-  const { context, nodesIncluded, nodesTotal } = assembleContext(deduped, options);
+  const { context, nodesIncluded, nodesTotal } = assembleContext(
+    deduped,
+    options,
+  );
 
   return {
     context,

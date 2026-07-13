@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-07
 Status: Superseded
 Supersedes: None
@@ -36,4 +37,4 @@ The _true_ solution for the Natural Language UI in offline mode is not to force 
 ### Negative
 
 - **Semantic Search Limitations Offline**: Offline mode relies on LLM intent extraction and FTS, which may not catch pure semantic similarities as effectively as true cosine similarity.
-superseded_by: []
+  superseded_by: []

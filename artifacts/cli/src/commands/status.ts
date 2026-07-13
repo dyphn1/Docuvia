@@ -28,7 +28,9 @@ export async function statusCommand(cwd: string = process.cwd()) {
     ui.info(`${UI_MESSAGES.STATUS_L3_DECISIONS}${status.l3Nodes}`);
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.STATUS_FAIL + message);
     process.exit(1);
   } finally {

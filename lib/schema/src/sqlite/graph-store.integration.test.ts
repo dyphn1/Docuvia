@@ -10,15 +10,13 @@ import { GraphStore } from "./graph-store.js";
  *  raw rows via a short-lived second connection to the same WAL-mode file. */
 function insertL3NodeFixture(
   dbPath: string,
-  input: { l2NodeId: number; title: string; contentHash?: string }
+  input: { l2NodeId: number; title: string; contentHash?: string },
 ): void {
   const db = new Database(dbPath);
   try {
-    db.prepare("INSERT INTO l3_nodes (l2_node_id, title, content_hash) VALUES (?, ?, ?)").run(
-      input.l2NodeId,
-      input.title,
-      input.contentHash ?? null
-    );
+    db.prepare(
+      "INSERT INTO l3_nodes (l2_node_id, title, content_hash) VALUES (?, ?, ?)",
+    ).run(input.l2NodeId, input.title, input.contentHash ?? null);
   } finally {
     db.close();
   }
@@ -43,7 +41,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   it("applies the schema on open", () => {
     // Exercised indirectly: a fresh temp file with no pre-existing schema
     // must already support inserts against every table the pilot touches.
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     expect(project.id).toBeGreaterThan(0);
     expect(project.name).toBe("demo");
     expect(project.repo_url).toBe("file:///demo");
@@ -52,32 +53,59 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   it("projects repo: getFirst()/insert() round-trip", () => {
     expect(store.projects.getFirst()).toBeUndefined();
 
-    const inserted = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const inserted = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     const first = store.projects.getFirst();
     expect(first).toEqual(inserted);
   });
 
   it("files repo: upsertFile()/getAllHashes() round-trip", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
 
     expect(store.files.getAllHashes()).toEqual([]);
 
-    store.files.upsertFile({ projectId: project.id, filePath: "src/a.ts", contentHash: "hash1" });
-    store.files.upsertFile({ projectId: project.id, filePath: "src/b.ts", contentHash: "hash2" });
-    expect(store.files.getAllHashes().sort((a, b) => a.filePath.localeCompare(b.filePath))).toEqual([
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/a.ts",
+      contentHash: "hash1",
+    });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/b.ts",
+      contentHash: "hash2",
+    });
+    expect(
+      store.files
+        .getAllHashes()
+        .sort((a, b) => a.filePath.localeCompare(b.filePath)),
+    ).toEqual([
       { filePath: "src/a.ts", contentHash: "hash1" },
       { filePath: "src/b.ts", contentHash: "hash2" },
     ]);
 
     // Re-upserting the same (project, path) updates the hash rather than duplicating the row.
-    store.files.upsertFile({ projectId: project.id, filePath: "src/a.ts", contentHash: "hash1-updated" });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/a.ts",
+      contentHash: "hash1-updated",
+    });
     const hashes = store.files.getAllHashes();
     expect(hashes).toHaveLength(2);
-    expect(hashes.find((h) => h.filePath === "src/a.ts")?.contentHash).toBe("hash1-updated");
+    expect(hashes.find((h) => h.filePath === "src/a.ts")?.contentHash).toBe(
+      "hash1-updated",
+    );
   });
 
   it("tags repo: upsertTag()/getIdByName()/linkNodeToTag()", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     const nodeId = store.graph.insertNode({
       projectId: project.id,
       name: "src/a.ts",
@@ -95,7 +123,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("graph repo: insertNode()/insertLink()/findNodeIdByName()/deleteNodesForPath()", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
 
     const fileNodeId = store.graph.insertNode({
       projectId: project.id,
@@ -107,7 +138,11 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       name: "doThing",
       pathPatterns: ["src/a.ts"],
     });
-    store.graph.insertLink({ sourceNodeId: fileNodeId, targetNodeId: fnNodeId, linkType: "contains" });
+    store.graph.insertLink({
+      sourceNodeId: fileNodeId,
+      targetNodeId: fnNodeId,
+      linkType: "contains",
+    });
 
     expect(store.graph.findNodeIdByName("src/a.ts", "doThing")).toBe(fnNodeId);
     expect(store.graph.findNodeIdByName("src/a.ts", "missing")).toBeUndefined();
@@ -124,7 +159,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("graph repo: count() reports l2_nodes/l3_nodes row counts", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     expect(store.graph.count()).toEqual({ l2Nodes: 0, l3Nodes: 0 });
 
     const nodeId = store.graph.insertNode({
@@ -138,7 +176,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("graph repo: findNodesForChangedFiles() returns l2_nodes intersecting the changed-file set, each paired with its l3_nodes", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
 
     const changedNodeId = store.graph.insertNode({
       projectId: project.id,
@@ -170,10 +211,21 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("pruneMissingFiles() deletes stale l2_nodes/node_links/l2_node_l1_tags/project_files not in activeFiles, in one transaction", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
 
-    store.files.upsertFile({ projectId: project.id, filePath: "src/active.ts", contentHash: "h1" });
-    store.files.upsertFile({ projectId: project.id, filePath: "src/stale.ts", contentHash: "h2" });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/active.ts",
+      contentHash: "h1",
+    });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/stale.ts",
+      contentHash: "h2",
+    });
 
     const activeNodeId = store.graph.insertNode({
       projectId: project.id,
@@ -185,7 +237,11 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       name: "src/stale.ts",
       pathPatterns: ["src/stale.ts"],
     });
-    store.graph.insertLink({ sourceNodeId: activeNodeId, targetNodeId: staleNodeId, linkType: "depends_on" });
+    store.graph.insertLink({
+      sourceNodeId: activeNodeId,
+      targetNodeId: staleNodeId,
+      linkType: "depends_on",
+    });
     store.tags.upsertTag("typescript");
     const tagId = store.tags.getIdByName("typescript") as number;
     store.tags.linkNodeToTag(staleNodeId, tagId);
@@ -193,13 +249,22 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     const result = store.pruneMissingFiles(["src/active.ts"]);
 
     expect(result).toEqual({ prunedFiles: 1, prunedNodes: 1 });
-    expect(store.files.getAllHashes().map((f) => f.filePath)).toEqual(["src/active.ts"]);
-    expect(store.graph.findNodeIdByName("src/active.ts", "src/active.ts")).toBe(activeNodeId);
-    expect(store.graph.findNodeIdByName("src/stale.ts", "src/stale.ts")).toBeUndefined();
+    expect(store.files.getAllHashes().map((f) => f.filePath)).toEqual([
+      "src/active.ts",
+    ]);
+    expect(store.graph.findNodeIdByName("src/active.ts", "src/active.ts")).toBe(
+      activeNodeId,
+    );
+    expect(
+      store.graph.findNodeIdByName("src/stale.ts", "src/stale.ts"),
+    ).toBeUndefined();
   });
 
   it("graph repo: findNodeByName() resolves exact match first, then falls back to a LIKE match", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     const nodeId = store.graph.insertNode({
       projectId: project.id,
       name: "doSomethingSpecific",
@@ -221,7 +286,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("graph repo: getIncomingEdges()/getOutgoingEdges() report the 1-hop blast radius", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     const callerId = store.graph.insertNode({
       projectId: project.id,
       name: "caller",
@@ -232,7 +300,11 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       name: "callee",
       pathPatterns: ["src/b.ts"],
     });
-    store.graph.insertLink({ sourceNodeId: callerId, targetNodeId: calleeId, linkType: "calls" });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: calleeId,
+      linkType: "calls",
+    });
 
     expect(store.graph.getIncomingEdges(calleeId)).toEqual([
       { id: callerId, name: "caller", type: "module" },
@@ -244,7 +316,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("graph repo: getIncomingEdges()/getOutgoingEdges() dedupe a neighbor connected by more than one edge type", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     const callerId = store.graph.insertNode({
       projectId: project.id,
       name: "caller",
@@ -257,7 +332,11 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     });
     // Two distinct edges between the same pair of nodes — the neighbor must still be reported
     // exactly once, not once per edge.
-    store.graph.insertLink({ sourceNodeId: callerId, targetNodeId: calleeId, linkType: "calls" });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: calleeId,
+      linkType: "calls",
+    });
     store.graph.insertLink({
       sourceNodeId: callerId,
       targetNodeId: calleeId,
@@ -273,12 +352,32 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("graph repo: getAllNodes()/getAllLinks() return every row — used by export-topology", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
-    const a = store.graph.insertNode({ projectId: project.id, name: "a", pathPatterns: ["src/a.ts"] });
-    const b = store.graph.insertNode({ projectId: project.id, name: "b", pathPatterns: ["src/b.ts"] });
-    store.graph.insertLink({ sourceNodeId: a, targetNodeId: b, linkType: "calls" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const a = store.graph.insertNode({
+      projectId: project.id,
+      name: "a",
+      pathPatterns: ["src/a.ts"],
+    });
+    const b = store.graph.insertNode({
+      projectId: project.id,
+      name: "b",
+      pathPatterns: ["src/b.ts"],
+    });
+    store.graph.insertLink({
+      sourceNodeId: a,
+      targetNodeId: b,
+      linkType: "calls",
+    });
 
-    expect(store.graph.getAllNodes().map((n) => n.id).sort()).toEqual([a, b].sort());
+    expect(
+      store.graph
+        .getAllNodes()
+        .map((n) => n.id)
+        .sort(),
+    ).toEqual([a, b].sort());
     expect(store.graph.getAllLinks()).toHaveLength(1);
     expect(store.graph.getAllLinks()[0]).toMatchObject({
       source_node_id: a,
@@ -288,7 +387,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("tags repo: getAllTagLinks() returns every (l2NodeId, tagName) pairing", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     const nodeId = store.graph.insertNode({
       projectId: project.id,
       name: "src/a.ts",
@@ -298,11 +400,16 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     const tagId = store.tags.getIdByName("typescript") as number;
     store.tags.linkNodeToTag(nodeId, tagId);
 
-    expect(store.tags.getAllTagLinks()).toEqual([{ l2NodeId: nodeId, name: "typescript" }]);
+    expect(store.tags.getAllTagLinks()).toEqual([
+      { l2NodeId: nodeId, name: "typescript" },
+    ]);
   });
 
   it("l3 repo: getById()/getAllExportable() round-trip and exclude garbage decisions", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     const nodeId = store.graph.insertNode({
       projectId: project.id,
       name: "src/a.ts",
@@ -314,7 +421,7 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     try {
       db2
         .prepare(
-          "INSERT INTO l3_nodes (l2_node_id, title, validity_status) VALUES (?, ?, 'garbage')"
+          "INSERT INTO l3_nodes (l2_node_id, title, validity_status) VALUES (?, ?, 'garbage')",
         )
         .run(nodeId, "garbage decision");
     } finally {
@@ -329,16 +436,24 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("fts repo: searchL2Nodes()/searchL3Nodes() keyword-match against name/description and title/content", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     const nodeId = store.graph.insertNode({
       projectId: project.id,
       name: "authService",
       description: "handles authentication",
       pathPatterns: ["src/auth.ts"],
     });
-    insertL3NodeFixture(dbPath, { l2NodeId: nodeId, title: "switched to JWT auth" });
+    insertL3NodeFixture(dbPath, {
+      l2NodeId: nodeId,
+      title: "switched to JWT auth",
+    });
 
-    expect(store.fts.searchL2Nodes(["authentication"], 10).map((n) => n.id)).toEqual([nodeId]);
+    expect(
+      store.fts.searchL2Nodes(["authentication"], 10).map((n) => n.id),
+    ).toEqual([nodeId]);
     expect(store.fts.searchL2Nodes([], 10)).toEqual([]);
     expect(store.fts.searchL3Nodes(["JWT"], 10).map((n) => n.title)).toEqual([
       "switched to JWT auth",
@@ -387,7 +502,10 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
   });
 
   it("graph repo: bulkLoadGraph() wipes existing nodes/links and rebuilds from node_key, dropping edges with an unresolvable endpoint", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
     // Pre-existing state that bulkLoadGraph must wipe, not merge with.
     const staleId = store.graph.insertNode({
       projectId: project.id,
@@ -399,49 +517,82 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     const result = store.graph.bulkLoadGraph({
       projectId: project.id,
       nodes: [
-        { nodeKey: "src/auth.ts", name: "src/auth.ts", filePath: "src/auth.ts" },
-        { nodeKey: "src/auth.ts#login", name: "login", filePath: "src/auth.ts" },
+        {
+          nodeKey: "src/auth.ts",
+          name: "src/auth.ts",
+          filePath: "src/auth.ts",
+        },
+        {
+          nodeKey: "src/auth.ts#login",
+          name: "login",
+          filePath: "src/auth.ts",
+        },
       ],
       edges: [
-        { source: "src/auth.ts", target: "src/auth.ts#login", type: "contains" },
+        {
+          source: "src/auth.ts",
+          target: "src/auth.ts#login",
+          type: "contains",
+        },
         // References a node_key that doesn't exist among `nodes` — must be dropped, not inserted
         // with a dangling foreign id.
-        { source: "src/auth.ts#login", target: "src/auth.ts#missing", type: "calls" },
+        {
+          source: "src/auth.ts#login",
+          target: "src/auth.ts#missing",
+          type: "calls",
+        },
       ],
     });
 
     expect(result).toEqual({ nodesLoaded: 2, edgesLoaded: 1, edgesDropped: 1 });
     expect(store.graph.count()).toEqual({ l2Nodes: 2, l3Nodes: 1 }); // l3_nodes untouched by design (not yet git-serialized — STOR-002 known gap)
-    expect(store.graph.getAllNodes().map((n) => n.node_key).sort()).toEqual([
-      "src/auth.ts",
-      "src/auth.ts#login",
-    ]);
-    expect(store.graph.findNodeIdByName("stale.ts", "stale.ts")).toBeUndefined();
+    expect(
+      store.graph
+        .getAllNodes()
+        .map((n) => n.node_key)
+        .sort(),
+    ).toEqual(["src/auth.ts", "src/auth.ts#login"]);
+    expect(
+      store.graph.findNodeIdByName("stale.ts", "stale.ts"),
+    ).toBeUndefined();
 
     const fileNode = store.graph.findNodeByName("src/auth.ts");
     const symbolNode = store.graph.findNodeByName("login");
-    expect(store.graph.getOutgoingEdges(fileNode!.id).map((n) => n.name)).toEqual(["login"]);
+    expect(
+      store.graph.getOutgoingEdges(fileNode!.id).map((n) => n.name),
+    ).toEqual(["login"]);
     expect(store.graph.getOutgoingEdges(symbolNode!.id)).toEqual([]); // the dangling edge never landed
   });
 
   it("graph repo: bulkLoadGraph() leaves l2_nodes_fts correctly searchable (triggers are dropped and the index rebuilt, not just skipped)", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
 
     store.graph.bulkLoadGraph({
       projectId: project.id,
       nodes: [
-        { nodeKey: "src/auth.ts", name: "authService", filePath: "src/auth.ts" },
-        { nodeKey: "src/db.ts", name: "databaseService", filePath: "src/db.ts" },
+        {
+          nodeKey: "src/auth.ts",
+          name: "authService",
+          filePath: "src/auth.ts",
+        },
+        {
+          nodeKey: "src/db.ts",
+          name: "databaseService",
+          filePath: "src/db.ts",
+        },
       ],
       edges: [],
     });
 
-    expect(store.fts.searchL2Nodes(["authService"], 10).map((n) => n.node_key)).toEqual([
-      "src/auth.ts",
-    ]);
-    expect(store.fts.searchL2Nodes(["databaseService"], 10).map((n) => n.node_key)).toEqual([
-      "src/db.ts",
-    ]);
+    expect(
+      store.fts.searchL2Nodes(["authService"], 10).map((n) => n.node_key),
+    ).toEqual(["src/auth.ts"]);
+    expect(
+      store.fts.searchL2Nodes(["databaseService"], 10).map((n) => n.node_key),
+    ).toEqual(["src/db.ts"]);
 
     // Normal (non-bulk) insert/delete/update must still keep the FTS index in sync afterward —
     // proves the triggers were actually recreated, not left dropped.
@@ -450,11 +601,16 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       name: "cacheService",
       pathPatterns: ["src/cache.ts"],
     });
-    expect(store.fts.searchL2Nodes(["cacheService"], 10).map((n) => n.id)).toEqual([newNodeId]);
+    expect(
+      store.fts.searchL2Nodes(["cacheService"], 10).map((n) => n.id),
+    ).toEqual([newNodeId]);
   });
 
   it("graph repo: bulkLoadGraph() restores 100,000 nodes in under 10 seconds (STOR-002's hard performance bar)", () => {
-    const project = store.projects.insert({ name: "demo", repoUrl: "file:///demo" });
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
 
     const NODE_COUNT = 100_000;
     const nodes = Array.from({ length: NODE_COUNT }, (_, i) => ({
@@ -470,7 +626,11 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     }));
 
     const start = performance.now();
-    const result = store.graph.bulkLoadGraph({ projectId: project.id, nodes, edges });
+    const result = store.graph.bulkLoadGraph({
+      projectId: project.id,
+      nodes,
+      edges,
+    });
     const elapsedMs = performance.now() - start;
 
     expect(result).toEqual({

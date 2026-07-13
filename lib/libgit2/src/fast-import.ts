@@ -16,7 +16,9 @@ import pLimit from "p-limit";
 // go through `limit()`.
 const COLLECT_FILES_READ_CONCURRENCY = os.cpus().length * 4;
 
-export async function collectDirectoryFiles(sourceDir: string): Promise<Map<string, string>> {
+export async function collectDirectoryFiles(
+  sourceDir: string,
+): Promise<Map<string, string>> {
   const files = new Map<string, string>();
   const limit = pLimit(COLLECT_FILES_READ_CONCURRENCY);
 
@@ -32,7 +34,7 @@ export async function collectDirectoryFiles(sourceDir: string): Promise<Map<stri
           const content = await limit(() => fs.readFile(fullPath, "utf-8"));
           files.set(relPath, content);
         }
-      })
+      }),
     );
   };
 
@@ -45,7 +47,7 @@ export function buildFastImportData(
   files: Map<string, string>,
   nowUnix: number,
   commitMessage: string,
-  parentCommitSha?: string
+  parentCommitSha?: string,
 ): string {
   const lines: string[] = [];
   lines.push(`commit refs/heads/${branch}`);
@@ -81,7 +83,10 @@ export function buildFastImportData(
  * computes a stale parent, fast-import failing loudly here is correct — silently forcing past it
  * would orphan history (STOR-001 point 2).
  */
-export function runFastImport(cwd: string, fastImportData: string): Promise<void> {
+export function runFastImport(
+  cwd: string,
+  fastImportData: string,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn("git", ["fast-import", "--quiet"], {
       cwd,
@@ -89,11 +94,15 @@ export function runFastImport(cwd: string, fastImportData: string): Promise<void
     });
     const stderrChunks: Buffer[] = [];
     child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
-    child.on("error", reject);
-    child.on("close", (code) => {
+    (child as any).on("error", reject);
+    (child as any).on("close", (code: number) => {
       if (code === 0) return resolve();
       const stderr = Buffer.concat(stderrChunks).toString("utf8").trim();
-      reject(new Error(`git fast-import exited with code ${code}${stderr ? ": " + stderr : ""}`));
+      reject(
+        new Error(
+          `git fast-import exited with code ${code}${stderr ? ": " + stderr : ""}`,
+        ),
+      );
     });
     child.stdin.end(fastImportData, "utf8");
   });

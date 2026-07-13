@@ -14,7 +14,10 @@ import { UI_MESSAGES } from "../constants/ui-messages.js";
  * prints a clear "not yet supported" message instead of silently no-op'ing or attempting LLM
  * extraction.
  */
-export async function analyzeCommand(targetPath?: string, cwd: string = process.cwd()) {
+export async function analyzeCommand(
+  targetPath?: string,
+  cwd: string = process.cwd(),
+) {
   if (targetPath) {
     ui.error(UI_MESSAGES.ANALYZE_TARGET_PATH_NOT_SUPPORTED);
     process.exitCode = 1;
@@ -37,11 +40,14 @@ export async function analyzeCommand(targetPath?: string, cwd: string = process.
     spinner.succeed(UI_MESSAGES.ANALYZE_SUCCESS);
     ui.info(UI_MESSAGES.ANALYZE_PROJECT_TYPE + result.projectType);
     ui.info(
-      UI_MESSAGES.ANALYZE_SUGGESTED_TAGS + (result.suggestedTags.join(", ") || UI_MESSAGES.ANALYZE_NONE)
+      UI_MESSAGES.ANALYZE_SUGGESTED_TAGS +
+        (result.suggestedTags.join(", ") || UI_MESSAGES.ANALYZE_NONE),
     );
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.ANALYZE_FAIL + message);
     process.exit(1);
   } finally {

@@ -6,7 +6,10 @@ import { AstWorkerPool, AstWorkerCrashError } from "./ast-worker-pool.js";
 import { CRASH_SENTINEL_FILE_PATH } from "./ast-worker-pool.crash-fixture.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CRASH_FIXTURE_WORKER_PATH = path.resolve(__dirname, "./ast-worker-pool.crash-fixture.ts");
+const CRASH_FIXTURE_WORKER_PATH = path.resolve(
+  __dirname,
+  "./ast-worker-pool.crash-fixture.ts",
+);
 
 describe("AstWorkerPool CALL edge extraction", () => {
   let pool: AstWorkerPool | undefined;
@@ -64,11 +67,20 @@ describe("AstWorkerPool CALL edge extraction", () => {
 
   it("attributes a worker crash to the specific file being parsed, not an adjacent one", async () => {
     // workerCount: 1 makes this deterministic — a single worker, one task in flight at a time.
-    pool = new AstWorkerPool(undefined, 30_000, undefined, CRASH_FIXTURE_WORKER_PATH);
+    pool = new AstWorkerPool(
+      undefined,
+      30_000,
+      undefined,
+      CRASH_FIXTURE_WORKER_PATH,
+    );
     await pool.initialize(1);
 
     await expect(
-      pool.parse({ filePath: CRASH_SENTINEL_FILE_PATH, code: "", language: "typescript" })
+      pool.parse({
+        filePath: CRASH_SENTINEL_FILE_PATH,
+        code: "",
+        language: "typescript",
+      }),
     ).rejects.toMatchObject({
       name: "AstWorkerCrashError",
       filePath: CRASH_SENTINEL_FILE_PATH,
@@ -76,11 +88,20 @@ describe("AstWorkerPool CALL edge extraction", () => {
   }, 15000);
 
   it("respawns a worker after a crash and continues serving subsequent tasks", async () => {
-    pool = new AstWorkerPool(undefined, 30_000, undefined, CRASH_FIXTURE_WORKER_PATH);
+    pool = new AstWorkerPool(
+      undefined,
+      30_000,
+      undefined,
+      CRASH_FIXTURE_WORKER_PATH,
+    );
     await pool.initialize(1);
 
     await expect(
-      pool.parse({ filePath: CRASH_SENTINEL_FILE_PATH, code: "", language: "typescript" })
+      pool.parse({
+        filePath: CRASH_SENTINEL_FILE_PATH,
+        code: "",
+        language: "typescript",
+      }),
     ).rejects.toBeInstanceOf(AstWorkerCrashError);
 
     // Matches the audit's observation that the pool *does* respawn (13 crashes, but the
@@ -94,7 +115,12 @@ describe("AstWorkerPool CALL edge extraction", () => {
   }, 15000);
 
   it("does not leak taskFilePaths entries across successful parses", async () => {
-    pool = new AstWorkerPool(undefined, 30_000, undefined, CRASH_FIXTURE_WORKER_PATH);
+    pool = new AstWorkerPool(
+      undefined,
+      30_000,
+      undefined,
+      CRASH_FIXTURE_WORKER_PATH,
+    );
     await pool.initialize(1);
 
     for (const file of ["a.ts", "b.ts", "c.ts"]) {
@@ -111,7 +137,12 @@ describe("AstWorkerPool CALL edge extraction", () => {
     // the pool used to treat every non-zero exit as a crash regardless of *why* the worker
     // exited, so its own normal shutdown was self-reporting as a wave of crashes.
     const logger = createMockLogger();
-    pool = new AstWorkerPool(logger, 30_000, undefined, CRASH_FIXTURE_WORKER_PATH);
+    pool = new AstWorkerPool(
+      logger,
+      30_000,
+      undefined,
+      CRASH_FIXTURE_WORKER_PATH,
+    );
     await pool.initialize(3);
 
     await pool.terminate();
@@ -119,7 +150,7 @@ describe("AstWorkerPool CALL edge extraction", () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
 
     const crashLogs = logger.events.filter(
-      (e) => e.level === "error" && e.message === "AST worker crashed/exited"
+      (e) => e.level === "error" && e.message === "AST worker crashed/exited",
     );
     expect(crashLogs).toHaveLength(0);
 

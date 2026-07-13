@@ -46,7 +46,7 @@ async function resolveProjectId(projectId?: string): Promise<string> {
  */
 export async function syncCommand(
   options: { projectId?: string; commitSha?: string },
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ) {
   const projectId = await resolveProjectId(options.projectId);
 
@@ -56,9 +56,12 @@ export async function syncCommand(
     return;
   }
 
-  const commitSha = options.commitSha ?? (process.stdin.isTTY ? undefined : await readStdin());
+  const commitSha =
+    options.commitSha ?? (process.stdin.isTTY ? undefined : await readStdin());
 
-  const spinner = ui.spinner(UI_MESSAGES.SYNC_START + projectId + "...").start();
+  const spinner = ui
+    .spinner(UI_MESSAGES.SYNC_START + projectId + "...")
+    .start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
@@ -77,7 +80,9 @@ export async function syncCommand(
     spinner.succeed(UI_MESSAGES.SYNC_SUCCESS + " " + result.message);
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.SYNC_FAIL + message);
     // process.exitCode (not process.exit()) — this path follows real network calls (GET
     // l2-nodes / POST sync/push); forcing an immediate exit while fetch/undici handles are

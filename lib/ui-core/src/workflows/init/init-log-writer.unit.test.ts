@@ -16,7 +16,9 @@ describe("init-log-writer", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-init-log-writer-test-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-init-log-writer-test-"),
+    );
   });
 
   afterEach(() => {
@@ -28,7 +30,9 @@ describe("init-log-writer", () => {
       filesRequested: 5,
       filesParsed: 4,
       filesFailed: 1,
-      failures: [{ file: "src/broken.ts", hash: "h1", error: "Unexpected token" }],
+      failures: [
+        { file: "src/broken.ts", hash: "h1", error: "Unexpected token" },
+      ],
     };
 
     await writeInitSummary(tmpDir, summary);
@@ -47,7 +51,10 @@ describe("init-log-writer", () => {
   });
 
   it("appends rather than truncates across multiple invocations", async () => {
-    await appendInitLogLine(tmpDir, { event: "init.start", workspaceRoot: tmpDir });
+    await appendInitLogLine(tmpDir, {
+      event: "init.start",
+      workspaceRoot: tmpDir,
+    });
     await appendInitLogLine(tmpDir, {
       event: "init.parse_failure",
       file: "src/a.ts",

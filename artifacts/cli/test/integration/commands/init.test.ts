@@ -13,7 +13,8 @@ describe("Command: docuvia init", () => {
     await sandbox.setup({
       initGit: true,
       files: {
-        "src/index.ts": "export function hello(): string {\n  return 'world';\n}\n",
+        "src/index.ts":
+          "export function hello(): string {\n  return 'world';\n}\n",
       },
     });
   }, 30000);
@@ -31,14 +32,18 @@ describe("Command: docuvia init", () => {
 
     // Assert: Side-effect - the database file must physically exist
     const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
-    expect(existsSync(dbPath), "Local database file should be created").toBe(true);
+    expect(existsSync(dbPath), "Local database file should be created").toBe(
+      true,
+    );
 
     // Assert: Deep Data Integrity - open the database and verify the schema
     const db = new Database(dbPath, { readonly: true });
 
     try {
       // Query the sqlite_master table to get all created tables
-      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all() as {
+      const tables = db
+        .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+        .all() as {
         name: string;
       }[];
       const tableNames = tables.map((t) => t.name);
@@ -62,7 +67,9 @@ describe("Command: docuvia init", () => {
         .get() as { count: number };
       expect(projectCount).toBe(1);
 
-      const { count: tagCount } = db.prepare("SELECT COUNT(*) as count FROM l1_tags").get() as {
+      const { count: tagCount } = db
+        .prepare("SELECT COUNT(*) as count FROM l1_tags")
+        .get() as {
         count: number;
       };
       expect(tagCount).toBeGreaterThanOrEqual(1);
@@ -71,7 +78,11 @@ describe("Command: docuvia init", () => {
     }
 
     // Assert: the hidden knowledge-graph branch was created.
-    const branchOut = await sandbox.runGit(["branch", "--list", "docuvia-knowledge"]);
+    const branchOut = await sandbox.runGit([
+      "branch",
+      "--list",
+      "docuvia-knowledge",
+    ]);
     expect(branchOut.stdout).toContain("docuvia-knowledge");
 
     // Assert: a JSONL run log was written, bracketed by init.start/init.summary.
@@ -94,14 +105,16 @@ describe("Command: docuvia init", () => {
     expect(secondResult.exitCode).toBe(0);
     // It should output success message, in the TTY output stderr is often used by spinners
     expect(secondResult.stdout || secondResult.stderr).toContain(
-      "Docuvia Agent Integrations successfully installed!"
+      "Docuvia Agent Integrations successfully installed!",
     );
 
     // The `projects` row must not be duplicated across repeated init runs.
     const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
     const db = new Database(dbPath, { readonly: true });
     try {
-      const { count } = db.prepare("SELECT COUNT(*) as count FROM projects").get() as {
+      const { count } = db
+        .prepare("SELECT COUNT(*) as count FROM projects")
+        .get() as {
         count: number;
       };
       expect(count).toBe(1);

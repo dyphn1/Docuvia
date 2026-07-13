@@ -33,7 +33,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting
-        run: pnpm run format -- --check .
+        run: pnpm exec prettier --check .
 
       - name: Type check (all packages)
         run: pnpm run typecheck

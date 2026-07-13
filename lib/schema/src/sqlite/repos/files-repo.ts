@@ -14,17 +14,24 @@ export class ProjectFilesRepo implements IProjectFilesRepo {
     const rows = this.db
       .prepare("SELECT file_path, content_hash FROM project_files")
       .all() as Pick<ProjectFileRow, "file_path" | "content_hash">[];
-    return rows.map((row) => ({ filePath: row.file_path, contentHash: row.content_hash }));
+    return rows.map((row) => ({
+      filePath: row.file_path,
+      contentHash: row.content_hash,
+    }));
   }
 
   /** Upserts a file's content hash after (re-)parsing, keyed on (project_id, file_path). */
-  upsertFile(input: { projectId: number; filePath: string; contentHash: string | null }): void {
+  upsertFile(input: {
+    projectId: number;
+    filePath: string;
+    contentHash: string | null;
+  }): void {
     this.db
       .prepare(
         `INSERT INTO project_files (project_id, file_path, content_hash, last_parsed_at)
          VALUES (?, ?, ?, CURRENT_TIMESTAMP)
          ON CONFLICT(project_id, file_path)
-         DO UPDATE SET content_hash = excluded.content_hash, last_parsed_at = CURRENT_TIMESTAMP`
+         DO UPDATE SET content_hash = excluded.content_hash, last_parsed_at = CURRENT_TIMESTAMP`,
       )
       .run(input.projectId, input.filePath, input.contentHash);
   }

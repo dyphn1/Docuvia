@@ -51,7 +51,10 @@ describe("analyzeCommand", () => {
   });
 
   it("prints projectType/suggestedTags on success when no target path is given", async () => {
-    mockAnalyze.mockResolvedValue({ projectType: "typescript", suggestedTags: ["typescript", "react"] });
+    mockAnalyze.mockResolvedValue({
+      projectType: "typescript",
+      suggestedTags: ["typescript", "react"],
+    });
 
     await analyzeCommand();
 
@@ -64,7 +67,9 @@ describe("analyzeCommand", () => {
     await analyzeCommand("src/foo.ts");
 
     expect(mockAnalyze).not.toHaveBeenCalled();
-    expect(ui.error).toHaveBeenCalledWith(expect.stringContaining("not yet supported"));
+    expect(ui.error).toHaveBeenCalledWith(
+      expect.stringContaining("not yet supported"),
+    );
     expect(process.exitCode).toBe(1);
   });
 

@@ -8,4 +8,7 @@ import { FetchRemoteSyncClient } from "./fetch-remote-sync-client.js";
  * per `sync` run, then explicitly `.initialize()`d with the per-run `apiUrl`/`pat` sourced from
  * `docuviaMemory` by the Orchestration layer.
  */
-docuviaFactory.register(TOKENS.RemoteSyncClient, () => () => new FetchRemoteSyncClient());
+docuviaFactory.register(
+  TOKENS.RemoteSyncClient,
+  () => () => new FetchRemoteSyncClient(),
+);

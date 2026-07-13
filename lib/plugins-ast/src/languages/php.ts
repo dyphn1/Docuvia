@@ -10,9 +10,18 @@ export const phpConfig: LanguageConfig = {
     "require_expression",
     "require_once_expression",
   ],
-  classes: ["class_declaration", "interface_declaration", "trait_declaration", "enum_declaration"],
+  classes: [
+    "class_declaration",
+    "interface_declaration",
+    "trait_declaration",
+    "enum_declaration",
+  ],
   functions: ["function_definition", "method_declaration"],
-  calls: ["function_call_expression", "member_call_expression", "scoped_call_expression"],
+  calls: [
+    "function_call_expression",
+    "member_call_expression",
+    "scoped_call_expression",
+  ],
   queries: {
     classes: `(class_declaration name: (name) @class) (interface_declaration name: (name) @class) (trait_declaration name: (name) @class) (enum_declaration name: (name) @class)`,
     functions: `(function_definition name: (name) @function) (method_declaration name: (name) @function)`,

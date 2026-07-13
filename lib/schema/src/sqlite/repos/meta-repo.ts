@@ -7,12 +7,16 @@ export class MetaRepo implements IMetaRepo {
 
   get(key: string): string | undefined {
     try {
-      const row = this.db.prepare("SELECT value FROM docuvia_meta WHERE key = ?").get(key) as
-        | { value: string }
-        | undefined;
+      const row = this.db
+        .prepare("SELECT value FROM docuvia_meta WHERE key = ?")
+        .get(key) as { value: string } | undefined;
       return row?.value;
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, `Failed to read meta key "${key}"`, err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        `Failed to read meta key "${key}"`,
+        err,
+      );
     }
   }
 
@@ -20,11 +24,15 @@ export class MetaRepo implements IMetaRepo {
     try {
       this.db
         .prepare(
-          "INSERT INTO docuvia_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+          "INSERT INTO docuvia_meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
         )
         .run(key, value);
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, `Failed to write meta key "${key}"`, err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        `Failed to write meta key "${key}"`,
+        err,
+      );
     }
   }
 }

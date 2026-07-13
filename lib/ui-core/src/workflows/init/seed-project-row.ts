@@ -1,6 +1,10 @@
 import path from "path";
 import { pathToFileURL } from "url";
-import type { IGitProvider, IProjectsRepo, ProjectRow } from "@workspace/contracts";
+import type {
+  IGitProvider,
+  IProjectsRepo,
+  ProjectRow,
+} from "@workspace/contracts";
 
 /**
  * Phase 2: the idempotency-check-and-insert logic. One project row per local.db — only seeds
@@ -10,7 +14,7 @@ import type { IGitProvider, IProjectsRepo, ProjectRow } from "@workspace/contrac
 export async function seedProjectRow(
   projectsRepo: IProjectsRepo,
   git: IGitProvider,
-  workspaceRoot: string
+  workspaceRoot: string,
 ): Promise<ProjectRow> {
   const existing = projectsRepo.getFirst();
   if (existing) return existing;

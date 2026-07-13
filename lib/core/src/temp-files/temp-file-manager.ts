@@ -33,7 +33,7 @@ export class TempFileManager implements ITempFileManager {
     private readonly logger: ILogger = createNoopLogger(),
     maxSizeBytes: number = 1024 * 1024 * 1024, // 1GB default
     ttlMs: number = 4 * 60 * 60 * 1000, // 4 hours default
-    _cleanupIntervalMs: number = 30 * 60 * 1000 // 30 minutes default
+    _cleanupIntervalMs: number = 30 * 60 * 1000, // 30 minutes default
   ) {
     this.tempDir = path.join(workspaceRoot, ".docuvia", "tmp");
     this.ttlMs = ttlMs;
@@ -49,7 +49,9 @@ export class TempFileManager implements ITempFileManager {
   async initialize(): Promise<void> {
     try {
       await fs.mkdir(this.tempDir, { recursive: true });
-      this.logger.info("TempFileManager initialized", { tempDir: this.tempDir });
+      this.logger.info("TempFileManager initialized", {
+        tempDir: this.tempDir,
+      });
 
       // Start periodic cleanup
       this.startCleanupSchedule(30 * 60 * 1000); // 30 minutes
@@ -116,7 +118,9 @@ export class TempFileManager implements ITempFileManager {
   private startCleanupSchedule(intervalMs: number): void {
     this.cleanupInterval = setInterval(() => {
       this.cleanup().catch((err) => {
-        this.logger.error("Cleanup failed", { error: err instanceof Error ? err.message : String(err) });
+        this.logger.error("Cleanup failed", {
+          error: err instanceof Error ? err.message : String(err),
+        });
       });
     }, intervalMs);
     this.cleanupInterval.unref(); // Don't prevent process exit
@@ -144,7 +148,9 @@ export class TempFileManager implements ITempFileManager {
           cacheSize: this.lruCache.size,
         });
       } catch (err) {
-        this.logger.error("Cleanup error", { error: err instanceof Error ? err.message : String(err) });
+        this.logger.error("Cleanup error", {
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     });
   }

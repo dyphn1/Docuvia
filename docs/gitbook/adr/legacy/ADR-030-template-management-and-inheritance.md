@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-07
 Status: Superseded
 Supersedes: None
@@ -34,4 +35,4 @@ We will adopt a mature, existing templating engine and implement a strict versio
 - **Storage Overhead**: Immutable versioning means we will store multiple versions of templates over time, increasing database size.
 - **UX Friction**: Users will need to manually upgrade child templates to inherit changes from new parent versions, though the warning UX mitigates the discoverability issue.
 - **Third-Party Dependency**: We are coupling our prompt rendering to an external template engine's syntax and lifecycle, though Handlebars/Liquid are industry standards.
-superseded_by: []
+  superseded_by: []

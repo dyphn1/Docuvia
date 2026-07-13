@@ -53,7 +53,9 @@ describe("SnapshotRendererService.render()", () => {
   const renderer = new SnapshotRendererService();
 
   beforeEach(() => {
-    outDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-snapshot-renderer-test-"));
+    outDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-snapshot-renderer-test-"),
+    );
   });
 
   afterEach(() => {
@@ -61,10 +63,27 @@ describe("SnapshotRendererService.render()", () => {
   });
 
   it("writes graph/nodes.jsonl and graph/edges.jsonl reflecting every l2/link row", async () => {
-    const fileNode = makeL2({ id: 1, name: "src/a.ts", path_patterns: JSON.stringify(["src/a.ts"]) });
-    const fnNode = makeL2({ id: 2, name: "doThing", path_patterns: JSON.stringify(["src/a.ts"]) });
-    const containsLink = makeLink({ source_node_id: 1, target_node_id: 2, link_type: "contains" });
-    const callsLink = makeLink({ id: 2, source_node_id: 2, target_node_id: 2, link_type: "calls" });
+    const fileNode = makeL2({
+      id: 1,
+      name: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const fnNode = makeL2({
+      id: 2,
+      name: "doThing",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const containsLink = makeLink({
+      source_node_id: 1,
+      target_node_id: 2,
+      link_type: "contains",
+    });
+    const callsLink = makeLink({
+      id: 2,
+      source_node_id: 2,
+      target_node_id: 2,
+      link_type: "calls",
+    });
 
     const result = await renderer.render({
       outDir,
@@ -101,24 +120,47 @@ describe("SnapshotRendererService.render()", () => {
       path_patterns: JSON.stringify(["src/a.ts"]),
       node_key: "src/a.ts#doThing",
     });
-    const containsLink = makeLink({ source_node_id: 1, target_node_id: 2, link_type: "contains" });
+    const containsLink = makeLink({
+      source_node_id: 1,
+      target_node_id: 2,
+      link_type: "contains",
+    });
 
-    await renderer.render({ outDir, l2Rows: [fileNode, fnNode], linkRows: [containsLink] });
+    await renderer.render({
+      outDir,
+      l2Rows: [fileNode, fnNode],
+      linkRows: [containsLink],
+    });
 
     const nodes = readJsonl(path.join(outDir, "graph", "nodes.jsonl"));
     expect(nodes).toEqual([
       { id: "src/a.ts", type: "file", name: "src/a.ts", filePath: "src/a.ts" },
-      { id: "src/a.ts#doThing", type: "symbol", name: "doThing", filePath: "src/a.ts" },
+      {
+        id: "src/a.ts#doThing",
+        type: "symbol",
+        name: "doThing",
+        filePath: "src/a.ts",
+      },
     ]);
 
     const edges = readJsonl(path.join(outDir, "graph", "edges.jsonl"));
-    expect(edges).toEqual([{ source: "src/a.ts", target: "src/a.ts#doThing", type: "contains" }]);
+    expect(edges).toEqual([
+      { source: "src/a.ts", target: "src/a.ts#doThing", type: "contains" },
+    ]);
   });
 
   it("writes one markdown file per file node at knowledge/<filePath>.md", async () => {
-    const fileNode = makeL2({ id: 1, name: "src/a.ts", path_patterns: JSON.stringify(["src/a.ts"]) });
+    const fileNode = makeL2({
+      id: 1,
+      name: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
 
-    const result = await renderer.render({ outDir, l2Rows: [fileNode], linkRows: [] });
+    const result = await renderer.render({
+      outDir,
+      l2Rows: [fileNode],
+      linkRows: [],
+    });
 
     expect(result.markdownFilesWritten).toBe(1);
     const mdPath = path.join(outDir, "knowledge", "src", "a.ts.md");
@@ -129,9 +171,21 @@ describe("SnapshotRendererService.render()", () => {
   });
 
   it("writes one markdown file per symbol node at knowledge/<dir>/<basename>/<symbol>.md", async () => {
-    const fileNode = makeL2({ id: 1, name: "src/a.ts", path_patterns: JSON.stringify(["src/a.ts"]) });
-    const fnNode = makeL2({ id: 2, name: "doThing", path_patterns: JSON.stringify(["src/a.ts"]) });
-    const containsLink = makeLink({ source_node_id: 1, target_node_id: 2, link_type: "contains" });
+    const fileNode = makeL2({
+      id: 1,
+      name: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const fnNode = makeL2({
+      id: 2,
+      name: "doThing",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const containsLink = makeLink({
+      source_node_id: 1,
+      target_node_id: 2,
+      link_type: "contains",
+    });
 
     const result = await renderer.render({
       outDir,
@@ -150,9 +204,18 @@ describe("SnapshotRendererService.render()", () => {
   it("skips graph files and reports zero counts for an empty graph", async () => {
     const result = await renderer.render({ outDir, l2Rows: [], linkRows: [] });
 
-    expect(result).toEqual({ nodesWritten: 0, edgesWritten: 0, markdownFilesWritten: 0, errors: [] });
-    expect(fs.existsSync(path.join(outDir, "graph", "nodes.jsonl"))).toBe(false);
-    expect(fs.existsSync(path.join(outDir, "graph", "edges.jsonl"))).toBe(false);
+    expect(result).toEqual({
+      nodesWritten: 0,
+      edgesWritten: 0,
+      markdownFilesWritten: 0,
+      errors: [],
+    });
+    expect(fs.existsSync(path.join(outDir, "graph", "nodes.jsonl"))).toBe(
+      false,
+    );
+    expect(fs.existsSync(path.join(outDir, "graph", "edges.jsonl"))).toBe(
+      false,
+    );
   });
 
   it("sanitizes a path-traversal filePath instead of writing outside knowledgeDir", async () => {
@@ -162,22 +225,40 @@ describe("SnapshotRendererService.render()", () => {
       path_patterns: JSON.stringify(["../../evil.ts"]),
     });
 
-    const result = await renderer.render({ outDir, l2Rows: [fileNode], linkRows: [] });
+    const result = await renderer.render({
+      outDir,
+      l2Rows: [fileNode],
+      linkRows: [],
+    });
 
     expect(result.errors).toEqual([]);
     expect(result.markdownFilesWritten).toBe(1);
 
     // Sanitized to a relative path contained within knowledgeDir/outDir — no traversal outside.
     const knowledgeDir = path.join(outDir, "knowledge");
-    const written = fs.readdirSync(knowledgeDir, { recursive: true }) as string[];
+    const written = fs.readdirSync(knowledgeDir, {
+      recursive: true,
+    }) as string[];
     expect(written.some((f) => f.toString().endsWith("evil.ts.md"))).toBe(true);
     expect(fs.existsSync(path.join(outDir, "..", "evil.ts.md"))).toBe(false);
   });
 
   it("sanitizes illegal filename characters in a symbol's name instead of crashing", async () => {
-    const fileNode = makeL2({ id: 1, name: "src/a.ts", path_patterns: JSON.stringify(["src/a.ts"]) });
-    const fnNode = makeL2({ id: 2, name: 'do:this<>"|?*', path_patterns: JSON.stringify(["src/a.ts"]) });
-    const containsLink = makeLink({ source_node_id: 1, target_node_id: 2, link_type: "contains" });
+    const fileNode = makeL2({
+      id: 1,
+      name: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const fnNode = makeL2({
+      id: 2,
+      name: 'do:this<>"|?*',
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const containsLink = makeLink({
+      source_node_id: 1,
+      target_node_id: 2,
+      link_type: "contains",
+    });
 
     const result = await renderer.render({
       outDir,

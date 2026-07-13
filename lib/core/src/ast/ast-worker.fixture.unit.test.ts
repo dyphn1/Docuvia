@@ -39,9 +39,13 @@ describe("typescript fixture: real tree-sitter parse (Steps 4-6)", () => {
 
   beforeAll(async () => {
     await Parser.init();
-    const { wasmPath, attemptedPaths } = resolveWasmPath(typescriptConfig.wasm_file);
+    const { wasmPath, attemptedPaths } = resolveWasmPath(
+      typescriptConfig.wasm_file,
+    );
     if (!wasmPath) {
-      throw new Error(`tree-sitter-typescript.wasm not found. Tried: ${attemptedPaths.join(", ")}`);
+      throw new Error(
+        `tree-sitter-typescript.wasm not found. Tried: ${attemptedPaths.join(", ")}`,
+      );
     }
     const lang = await Language.load(wasmPath);
     const parser = new Parser();
@@ -65,7 +69,9 @@ describe("typescript fixture: real tree-sitter parse (Steps 4-6)", () => {
 
   it("extracts arrow functions and resolves their binding name, not an inner identifier", () => {
     const provider = new DefaultProvider(typescriptConfig);
-    const names = provider.extractFunctions(rootNode).map((n) => resolveCallableName(n));
+    const names = provider
+      .extractFunctions(rootNode)
+      .map((n) => resolveCallableName(n));
 
     expect(names).toContain("handler");
     expect(names).toContain("asyncFn");
@@ -77,14 +83,18 @@ describe("typescript fixture: real tree-sitter parse (Steps 4-6)", () => {
 
   it("falls back to 'anonymous' for a truly unbound arrow function (bare callback argument)", () => {
     const provider = new DefaultProvider(typescriptConfig);
-    const names = provider.extractFunctions(rootNode).map((n) => resolveCallableName(n));
+    const names = provider
+      .extractFunctions(rootNode)
+      .map((n) => resolveCallableName(n));
 
     expect(names).toContain("anonymous");
   });
 
   it("regression: does not misattribute the outer variable's name to an arrow function passed as a call argument (const results = arr.map(x => x + 1))", () => {
     const provider = new DefaultProvider(typescriptConfig);
-    const names = provider.extractFunctions(rootNode).map((n) => resolveCallableName(n));
+    const names = provider
+      .extractFunctions(rootNode)
+      .map((n) => resolveCallableName(n));
 
     // The callback `x => x + 1` is an argument to `.map()`, not the direct value bound
     // to `results` — walking up must stop at the `arguments` node boundary and return
@@ -114,9 +124,13 @@ describe("typescript fixture: import resolution regression (cross-file calls)", 
 
   beforeAll(async () => {
     await Parser.init();
-    const { wasmPath, attemptedPaths } = resolveWasmPath(typescriptConfig.wasm_file);
+    const { wasmPath, attemptedPaths } = resolveWasmPath(
+      typescriptConfig.wasm_file,
+    );
     if (!wasmPath) {
-      throw new Error(`tree-sitter-typescript.wasm not found. Tried: ${attemptedPaths.join(", ")}`);
+      throw new Error(
+        `tree-sitter-typescript.wasm not found. Tried: ${attemptedPaths.join(", ")}`,
+      );
     }
     const lang = await Language.load(wasmPath);
     const parser = new Parser();

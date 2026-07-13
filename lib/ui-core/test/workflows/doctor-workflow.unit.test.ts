@@ -58,11 +58,9 @@ describe("DoctorWorkflow", () => {
     it("runs DiagnosticRunnerDb and accumulates results", async () => {
       vi.mocked(fs.stat).mockResolvedValue({} as any);
       const dbRunner = {
-        checkHealth: vi
-          .fn()
-          .mockResolvedValue({
-            check1: { status: DiagnosticStatus.PASS, message: "ok" },
-          }),
+        checkHealth: vi.fn().mockResolvedValue({
+          check1: { status: DiagnosticStatus.PASS, message: "ok" },
+        }),
       };
       docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => dbRunner);
 
@@ -75,11 +73,9 @@ describe("DoctorWorkflow", () => {
     it("runs DiagnosticRunnerDb and catches failures", async () => {
       vi.mocked(fs.stat).mockResolvedValue({} as any);
       const dbRunner = {
-        checkHealth: vi
-          .fn()
-          .mockResolvedValue({
-            check1: { status: DiagnosticStatus.FAIL, message: "err" },
-          }),
+        checkHealth: vi.fn().mockResolvedValue({
+          check1: { status: DiagnosticStatus.FAIL, message: "err" },
+        }),
       };
       docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => dbRunner);
 
@@ -102,11 +98,9 @@ describe("DoctorWorkflow", () => {
 
     it("runs DiagnosticRunnerGit and accumulates results", async () => {
       const gitRunner = {
-        checkHealth: vi
-          .fn()
-          .mockResolvedValue({
-            git1: { status: DiagnosticStatus.PASS, message: "ok" },
-          }),
+        checkHealth: vi.fn().mockResolvedValue({
+          git1: { status: DiagnosticStatus.PASS, message: "ok" },
+        }),
       };
       docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => gitRunner);
 

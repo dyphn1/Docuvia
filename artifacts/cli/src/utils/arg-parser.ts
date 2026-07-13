@@ -28,7 +28,10 @@ export class ArgParser {
           this.parsedFlags.set(key, valParts.join(ARG_FLAG_VALUE_SEPARATOR));
         } else {
           // Check if next arg is a value (not starting with -)
-          if (i + 1 < this.args.length && !this.args[i + 1].startsWith(ARG_SHORT_FLAG_PREFIX)) {
+          if (
+            i + 1 < this.args.length &&
+            !this.args[i + 1].startsWith(ARG_SHORT_FLAG_PREFIX)
+          ) {
             this.parsedFlags.set(arg, this.args[i + 1]);
             i++;
           } else {
@@ -44,12 +47,16 @@ export class ArgParser {
   }
 
   public hasFlag(flag: string): boolean {
-    const key = flag.endsWith(ARG_FLAG_VALUE_SEPARATOR) ? flag.slice(0, -1) : flag;
+    const key = flag.endsWith(ARG_FLAG_VALUE_SEPARATOR)
+      ? flag.slice(0, -1)
+      : flag;
     return this.parsedFlags.has(key);
   }
 
   public getFlagValue(flag: string): string | undefined {
-    const key = flag.endsWith(ARG_FLAG_VALUE_SEPARATOR) ? flag.slice(0, -1) : flag;
+    const key = flag.endsWith(ARG_FLAG_VALUE_SEPARATOR)
+      ? flag.slice(0, -1)
+      : flag;
     const val = this.parsedFlags.get(key);
     return typeof val === "string" ? val : undefined;
   }
@@ -64,9 +71,11 @@ export class ArgParser {
 
   public checkUnknownFlags(allowedFlags: string[]): void {
     const allowedKeys = allowedFlags.map((f) =>
-      f.endsWith(ARG_FLAG_VALUE_SEPARATOR) ? f.slice(0, -1) : f
+      f.endsWith(ARG_FLAG_VALUE_SEPARATOR) ? f.slice(0, -1) : f,
     );
-    const unknown = Array.from(this.parsedFlags.keys()).filter((k) => !allowedKeys.includes(k));
+    const unknown = Array.from(this.parsedFlags.keys()).filter(
+      (k) => !allowedKeys.includes(k),
+    );
     if (unknown.length > 0) {
       throw new Error(CLI_ERROR_MESSAGES.UNKNOWN_OPTIONS(unknown.join(", ")));
     }

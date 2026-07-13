@@ -345,14 +345,12 @@ describe("InitWorkflow.execute()", () => {
       syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
     }));
     docuviaFactory.register(TOKENS.FileDiscovery, () => ({
-      discoverFiles: vi
-        .fn()
-        .mockResolvedValue({
-          filesToParse,
-          existingHashes: new Map(),
-          skippedCount: 0,
-          skippedOversized: [],
-        }),
+      discoverFiles: vi.fn().mockResolvedValue({
+        filesToParse,
+        existingHashes: new Map(),
+        skippedCount: 0,
+        skippedOversized: [],
+      }),
     }));
     docuviaFactory.register(TOKENS.ConfigScanner, () => ({
       scanConfigs: vi

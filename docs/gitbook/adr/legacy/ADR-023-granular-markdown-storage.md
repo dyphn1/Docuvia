@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Superseded
 Supersedes: ADR-017
@@ -73,4 +74,4 @@ The databases (both local SQLite for MCP caching and remote PostgreSQL for pgvec
 
 - **Positive**: Complete data ownership and offline resilience. The DB is fully restorable from Git.
 - **Negative**: We must manage Git worktrees carefully inside the hook to edit the `docuvia-knowledge` branch without disrupting the user's active working tree.
-superseded_by: []
+  superseded_by: []

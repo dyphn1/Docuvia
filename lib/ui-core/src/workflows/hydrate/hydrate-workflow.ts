@@ -16,20 +16,28 @@ import { resolveDbPath } from "../../utils/resolve-db-path.js";
 export class HydrateWorkflow {
   constructor(
     private readonly workspaceRoot: string,
-    private readonly logger: ILogger
+    private readonly logger: ILogger,
   ) {}
 
   public async execute(): Promise<HydrateResult> {
     const { workspaceRoot, logger } = this;
 
     logger.info(HYDRATE_MESSAGES.HYDRATING);
-    await appendHydrateLogLine(workspaceRoot, { event: "hydrate.start", workspaceRoot });
+    await appendHydrateLogLine(workspaceRoot, {
+      event: "hydrate.start",
+      workspaceRoot,
+    });
 
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
-    const store = await openStore({ dbPath: resolveDbPath(workspaceRoot), readonly: false });
+    const store = await openStore({
+      dbPath: resolveDbPath(workspaceRoot),
+      readonly: false,
+    });
 
     try {
-      const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, { logger });
+      const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
+        logger,
+      });
       const result = await hydrationService.hydrate(workspaceRoot, store);
 
       if (!result.hydrated) {

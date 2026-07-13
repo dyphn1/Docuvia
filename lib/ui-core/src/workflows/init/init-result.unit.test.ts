@@ -63,7 +63,7 @@ describe("buildInitResult", () => {
     expect(result.partialFailure).toBe(true);
     expect(result.filesParsed + result.filesFailed).toBe(result.filesRequested);
     expect(result.message).toBe(
-      "Project initialized — 13 of 50 files failed to parse (see .docuvia/logs/init.log)"
+      "Project initialized — 13 of 50 files failed to parse (see .docuvia/logs/init.log)",
     );
   });
 });

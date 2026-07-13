@@ -42,22 +42,34 @@ describe("snapshotCommand", () => {
   });
 
   it("reports node/edge/markdown counts on success", async () => {
-    mockSnapshot.mockResolvedValue({ nodesWritten: 3, edgesWritten: 2, markdownFilesWritten: 3 });
+    mockSnapshot.mockResolvedValue({
+      nodesWritten: 3,
+      edgesWritten: 2,
+      markdownFilesWritten: 3,
+    });
 
     await snapshotCommand();
 
     expect(mockSnapshot).toHaveBeenCalled();
-    expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("3 nodes"));
-    expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("2 edges"));
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("3 nodes"),
+    );
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("2 edges"),
+    );
   });
 
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.snapshot() throws", async () => {
-    mockSnapshot.mockRejectedValue(new Error('Local database not found. Please run "docuvia init".'));
+    mockSnapshot.mockRejectedValue(
+      new Error('Local database not found. Please run "docuvia init".'),
+    );
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
     await expect(snapshotCommand()).rejects.toThrow("Exit 1");
 
-    expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("docuvia init"));
+    expect(spinnerFail).toHaveBeenCalledWith(
+      expect.stringContaining("docuvia init"),
+    );
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

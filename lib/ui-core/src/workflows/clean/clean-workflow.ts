@@ -13,7 +13,7 @@ import { resolveDbPath } from "../../utils/resolve-db-path.js";
 export class CleanWorkflow {
   constructor(
     private readonly workspaceRoot: string,
-    private readonly logger: ILogger
+    private readonly logger: ILogger,
   ) {}
 
   public async execute(): Promise<CleanResult> {
@@ -31,7 +31,10 @@ export class CleanWorkflow {
     }
 
     if (!exists) {
-      const result: CleanResult = { deleted: false, message: CLEAN_MESSAGES.NOT_FOUND };
+      const result: CleanResult = {
+        deleted: false,
+        message: CLEAN_MESSAGES.NOT_FOUND,
+      };
       await writeCleanSummary(workspaceRoot, result);
       return result;
     }
@@ -42,12 +45,15 @@ export class CleanWorkflow {
       throw DocuviaError.wrap(
         ErrorCodes.CLEAN_WORKFLOW_FAILED,
         `Failed to delete database at ${dbPath}`,
-        err
+        err,
       );
     }
 
     logger.info(`Deleted local database at ${dbPath}`);
-    const result: CleanResult = { deleted: true, message: CLEAN_MESSAGES.DELETED };
+    const result: CleanResult = {
+      deleted: true,
+      message: CLEAN_MESSAGES.DELETED,
+    };
     await writeCleanSummary(workspaceRoot, result);
     return result;
   }

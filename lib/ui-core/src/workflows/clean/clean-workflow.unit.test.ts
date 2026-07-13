@@ -10,7 +10,9 @@ describe("CleanWorkflow.execute()", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-clean-workflow-test-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-clean-workflow-test-"),
+    );
   });
 
   afterEach(() => {
@@ -22,16 +24,28 @@ describe("CleanWorkflow.execute()", () => {
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
     fs.writeFileSync(dbPath, "fake-db-contents");
 
-    const result = await new CleanWorkflow(tmpDir, createMockLogger()).execute();
+    const result = await new CleanWorkflow(
+      tmpDir,
+      createMockLogger(),
+    ).execute();
 
-    expect(result).toEqual({ deleted: true, message: "Cleaned .docuvia/local.db database." });
+    expect(result).toEqual({
+      deleted: true,
+      message: "Cleaned .docuvia/local.db database.",
+    });
     expect(fs.existsSync(dbPath)).toBe(false);
   });
 
   it("reports deleted:false when no database exists", async () => {
-    const result = await new CleanWorkflow(tmpDir, createMockLogger()).execute();
+    const result = await new CleanWorkflow(
+      tmpDir,
+      createMockLogger(),
+    ).execute();
 
-    expect(result).toEqual({ deleted: false, message: "No local database found to clean." });
+    expect(result).toEqual({
+      deleted: false,
+      message: "No local database found to clean.",
+    });
   });
 
   it("logs a clean.start and clean.summary JSONL event to .docuvia/logs/clean.log", async () => {

@@ -1,5 +1,10 @@
 import type Database from "better-sqlite3";
-import { DocuviaError, ErrorCodes, type IL3NodesRepo, type L3NodeRow } from "@workspace/contracts";
+import {
+  DocuviaError,
+  ErrorCodes,
+  type IL3NodesRepo,
+  type L3NodeRow,
+} from "@workspace/contracts";
 
 /**
  * `l3` repo — read-only surface over `l3_nodes` (AI-generated decisions). Deliberately no
@@ -13,10 +18,13 @@ export class L3NodesRepo implements IL3NodesRepo {
   getById(id: number): L3NodeRow | undefined {
     try {
       return this.db.prepare("SELECT * FROM l3_nodes WHERE id = ?").get(id) as
-        | L3NodeRow
-        | undefined;
+        L3NodeRow | undefined;
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.DB_QUERY_FAILED, `Failed to get l3 node by id ${id}`, err);
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        `Failed to get l3 node by id ${id}`,
+        err,
+      );
     }
   }
 
@@ -30,7 +38,7 @@ export class L3NodesRepo implements IL3NodesRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         "Failed to get all exportable l3 nodes",
-        err
+        err,
       );
     }
   }

@@ -53,20 +53,30 @@ describe("syncKnowledgeCommand", () => {
   });
 
   it("reports success for a merge result", async () => {
-    mockSyncKnowledge.mockResolvedValue({ status: "merged", branchTipSha: "merge-sha" });
+    mockSyncKnowledge.mockResolvedValue({
+      status: "merged",
+      branchTipSha: "merge-sha",
+    });
 
     await syncKnowledgeCommand();
 
     expect(mockSyncKnowledge).toHaveBeenCalled();
-    expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("Merged"));
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("Merged"),
+    );
   });
 
   it("reports success for an up-to-date result", async () => {
-    mockSyncKnowledge.mockResolvedValue({ status: "up-to-date", branchTipSha: "sha-1" });
+    mockSyncKnowledge.mockResolvedValue({
+      status: "up-to-date",
+      branchTipSha: "sha-1",
+    });
 
     await syncKnowledgeCommand();
 
-    expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("up to date"));
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("up to date"),
+    );
   });
 
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.syncKnowledge() throws", async () => {
@@ -75,7 +85,9 @@ describe("syncKnowledgeCommand", () => {
 
     await expect(syncKnowledgeCommand()).rejects.toThrow("Exit 1");
 
-    expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("lock timeout"));
+    expect(spinnerFail).toHaveBeenCalledWith(
+      expect.stringContaining("lock timeout"),
+    );
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

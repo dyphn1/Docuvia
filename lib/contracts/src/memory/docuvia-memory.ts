@@ -22,7 +22,7 @@ export class DocuviaMemory {
     if (!scope) {
       throw new DocuviaError(
         ErrorCodes.MEMORY_SCOPE_NOT_FOUND,
-        `Cannot set "${key}": memory scope "${scopeId}" was never created`
+        `Cannot set "${key}": memory scope "${scopeId}" was never created`,
       );
     }
     scope.set(key, value);

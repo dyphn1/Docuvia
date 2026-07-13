@@ -11,14 +11,17 @@ superseded_by: []
 # Strict Repo-Scoped Boundaries (No Global Side Effects)
 
 ## Context
-Previously, `docuvia init` supported an opt-in `--global` flag (legacy ADR-035) to automatically register the Docuvia MCP server into the user's OS-level Claude Desktop configuration (`claude_desktop_config.json`). 
+
+Previously, `docuvia init` supported an opt-in `--global` flag (legacy ADR-035) to automatically register the Docuvia MCP server into the user's OS-level Claude Desktop configuration (`claude_desktop_config.json`).
 
 While this seemed convenient, it fundamentally violated the sandboxed nature of a CLI tool. Writing to a global configuration file creates several severe edge cases:
+
 1. **Multi-Project Collisions**: If the CLI uses a static JSON key (e.g., `"docuvia"`), initializing Project B will overwrite the configuration for Project A.
 2. **Orphaned Global State**: If a user deletes the project folder or runs `docuvia clean`, the global configuration file retains a dead path pointing to the deleted project, causing AI clients to crash on startup.
 3. **Unexpected Behavior**: A project-level tool should not alter the OS environment.
 
 ## Decision
+
 We enforce **Strict Repo-Scoped Boundaries**. The Docuvia CLI is explicitly forbidden from making any machine-global state mutations.
 
 1. **No Global Flags**: The `--global` flag is completely removed from all commands.
@@ -26,5 +29,6 @@ We enforce **Strict Repo-Scoped Boundaries**. The Docuvia CLI is explicitly forb
 3. **Manual MCP Registration**: The CLI will not attempt to edit AI client configurations (like Claude Desktop or Cursor). Instead, the CLI or documentation will simply print the necessary JSON snippet and instruct the user to copy-paste it manually.
 
 ## Consequences
+
 - **Positive**: Complete safety and predictability. The CLI behaves like a standard Unix tool (like `git`), never leaving orphaned global state or polluting the OS. Users can safely delete the `.docuvia` directory or the entire repository to completely uninstall Docuvia without side effects.
 - **Negative**: Slightly more onboarding friction. Users must manually copy-paste the MCP server configuration into their respective AI editors.

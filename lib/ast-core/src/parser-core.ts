@@ -5,14 +5,18 @@ import { AstEvent } from "./sink.js";
 import { AstTraverser } from "./core/ast-traverser.js";
 import { EdgeComputer } from "./core/edge-computer.js";
 
-export type WasmLoader = (wasmFileName: string) => Promise<Uint8Array | ArrayBuffer | string>;
+export type WasmLoader = (
+  wasmFileName: string,
+) => Promise<Uint8Array | ArrayBuffer | string>;
 
 export interface ParsedFile {
   filePath: string;
   events: AstEvent[];
 }
 
-export async function initParser(locateFile: (path: string) => string): Promise<void> {
+export async function initParser(
+  locateFile: (path: string) => string,
+): Promise<void> {
   await Parser.init({ locateFile });
 }
 
@@ -21,7 +25,7 @@ export async function* generateAst(
   filePath: string,
   ext: string,
   registry: LanguageRegistry,
-  loadWasm: WasmLoader
+  loadWasm: WasmLoader,
 ): AsyncGenerator<AstEvent, void, undefined> {
   const provider = registry.getProviderForExtension(ext);
   if (!provider) {
@@ -47,7 +51,9 @@ export async function* generateAst(
   parser.setLanguage(lang);
 
   const textContent =
-    typeof fileContent === "string" ? fileContent : new TextDecoder("utf-8").decode(fileContent);
+    typeof fileContent === "string"
+      ? fileContent
+      : new TextDecoder("utf-8").decode(fileContent);
 
   const tree = parser.parse(textContent);
 
@@ -63,7 +69,11 @@ export async function* generateAst(
     }
 
     const traverser = new AstTraverser(provider, tree.rootNode);
-    const edgeComputer = new EdgeComputer(traverser.getImports(), textContent, filePath);
+    const edgeComputer = new EdgeComputer(
+      traverser.getImports(),
+      textContent,
+      filePath,
+    );
 
     yield { type: "file", path: filePath };
     yield* traverser.extractClasses();

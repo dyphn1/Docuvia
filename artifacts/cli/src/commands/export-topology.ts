@@ -14,7 +14,10 @@ import { renderTopologyHtml } from "./topology-html-template.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
-import { TOPOLOGY_JSON_FILENAME, TOPOLOGY_HTML_FILENAME } from "../constants/docuvia-paths.js";
+import {
+  TOPOLOGY_JSON_FILENAME,
+  TOPOLOGY_HTML_FILENAME,
+} from "../constants/docuvia-paths.js";
 
 export interface ExportTopologyOptions {
   /** Output directory (default: <workspaceRoot>/.docuvia) */
@@ -27,7 +30,7 @@ export interface ExportTopologyOptions {
 /** Thin caller of docuviaApi.exportTopology() - mirrors init.ts's Presentation-layer responsibilities. */
 export async function exportTopologyCommand(
   options: ExportTopologyOptions = {},
-  cwd: string = process.cwd()
+  cwd: string = process.cwd(),
 ): Promise<void> {
   const spinner = ui.spinner(UI_MESSAGES.EXPORT_START).start();
   const scopeId = crypto.randomUUID();
@@ -38,7 +41,8 @@ export async function exportTopologyCommand(
 
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, "workspaceRoot", cwd);
-  if (options.collapse) docuviaMemory.set(scopeId, "collapse", options.collapse);
+  if (options.collapse)
+    docuviaMemory.set(scopeId, "collapse", options.collapse);
 
   try {
     const graph = await docuviaApi.exportTopology(scopeId, logger);
@@ -70,7 +74,9 @@ export async function exportTopologyCommand(
     spinner.succeed(successMessage);
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.EXPORT_FAIL + message);
     process.exitCode = 1;
   } finally {

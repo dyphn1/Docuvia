@@ -60,7 +60,9 @@ describe("language-detection", () => {
     expect(exts.every((ext) => !ext.startsWith("."))).toBe(true);
 
     const allRegistryExtensions = new Set(
-      Object.values(DEFAULT_REGISTRY.languages).flatMap((config) => config.extensions)
+      Object.values(DEFAULT_REGISTRY.languages).flatMap(
+        (config) => config.extensions,
+      ),
     );
     for (const ext of exts) {
       expect(allRegistryExtensions.has(`.${ext}`)).toBe(true);

@@ -1,5 +1,6 @@
 ---
 ---
+
 Date: 2026-07-02
 Status: Superseded
 Supersedes: None
@@ -101,4 +102,4 @@ To ensure the caching topology behaves as designed and does not silently degrade
 1.  **Integration Testing:** All routing paths must be covered by package integration tests located in `../../artifacts/api-server/test/integration/`.
 2.  **Test Isolation:** Tests must use the `withRollback(...)` utility from `artifacts/api-server/test/support/db.ts` to seed mock `l1_tags`, `l2_nodes`, and `l3_nodes` records before execution.
 3.  **LLM Bypass Assertions:** Tests must assert that a query with a valid L3 cache match _never_ triggers an external HTTP call to the LLM. This is verified by ensuring the MSW interceptors (`artifacts/api-server/test/setup/msw/handlers.ts`) do not register a call to the OpenAI-compatible endpoint during an L3 cache hit.
-superseded_by: []
+    superseded_by: []

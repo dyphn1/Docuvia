@@ -21,7 +21,9 @@ describe("initTempLifecycle", () => {
   let tmpDir: string;
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-init-temp-lifecycle-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-init-temp-lifecycle-"),
+    );
   });
 
   afterEach(() => {
@@ -32,7 +34,11 @@ describe("initTempLifecycle", () => {
     const tempDirPath = path.join(tmpDir, ".docuvia", "tmp");
     const build = vi.fn().mockReturnValue(makeFakeTempFileManager(tempDirPath));
 
-    const lifecycle = await initTempLifecycle(build, tmpDir, createMockLogger());
+    const lifecycle = await initTempLifecycle(
+      build,
+      tmpDir,
+      createMockLogger(),
+    );
 
     expect(lifecycle).toBeDefined();
     expect(fs.existsSync(tempDirPath)).toBe(true);
@@ -46,7 +52,11 @@ describe("initTempLifecycle", () => {
     const tempDirPath = path.join(tmpDir, ".docuvia", "tmp");
     const build = vi.fn().mockReturnValue(makeFakeTempFileManager(tempDirPath));
 
-    const lifecycle = await initTempLifecycle(build, tmpDir, createMockLogger());
+    const lifecycle = await initTempLifecycle(
+      build,
+      tmpDir,
+      createMockLogger(),
+    );
     expect(() => lifecycle?.stop()).not.toThrow();
   });
 

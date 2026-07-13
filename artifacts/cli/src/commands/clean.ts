@@ -34,7 +34,9 @@ export async function cleanCommand(cwd: string = process.cwd()) {
     spinner.succeed(UI_MESSAGES.CLEAN_SUCCESS + result.message);
   } catch (error: unknown) {
     const message =
-      error instanceof DocuviaError || error instanceof Error ? error.message : String(error);
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
     spinner.fail(UI_MESSAGES.CLEAN_FAIL + message);
     process.exit(1);
   } finally {

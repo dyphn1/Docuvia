@@ -4,7 +4,7 @@
   "lint-staged": {
     "*.ts": [
       "prettier --write",
-      "node scripts/check-coverage.mjs"
+      "vitest related --run --passWithNoTests"
     ],
     "*.{js,json,md,yml,yaml}": "prettier --write --ignore-unknown"
   },

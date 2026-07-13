@@ -30,7 +30,7 @@ export class FetchRemoteSyncClient implements IRemoteSyncClient {
     if (!this.config) {
       throw new DocuviaError(
         ErrorCodes.SYNC_FETCH_FAILED,
-        "FetchRemoteSyncClient used before initialize() was called"
+        "FetchRemoteSyncClient used before initialize() was called",
       );
     }
     return this.config;
@@ -45,7 +45,9 @@ export class FetchRemoteSyncClient implements IRemoteSyncClient {
     }
   }
 
-  public async fetchRemoteL2Nodes(projectId: string): Promise<RemoteL2NodeSummary[]> {
+  public async fetchRemoteL2Nodes(
+    projectId: string,
+  ): Promise<RemoteL2NodeSummary[]> {
     const { apiUrl, pat } = this.getConfig();
     let res: Response;
     try {
@@ -54,14 +56,18 @@ export class FetchRemoteSyncClient implements IRemoteSyncClient {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.SYNC_FETCH_FAILED, "Failed to fetch remote L2 nodes", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.SYNC_FETCH_FAILED,
+        "Failed to fetch remote L2 nodes",
+        err,
+      );
     }
 
     if (!res.ok) {
       const message = await this.parseErrorBody(res);
       throw new DocuviaError(
         ErrorCodes.SYNC_FETCH_FAILED,
-        `Failed to fetch remote L2 nodes: ${message}`
+        `Failed to fetch remote L2 nodes: ${message}`,
       );
     }
 
@@ -71,12 +77,15 @@ export class FetchRemoteSyncClient implements IRemoteSyncClient {
       throw DocuviaError.wrap(
         ErrorCodes.SYNC_FETCH_FAILED,
         "Failed to fetch remote L2 nodes: response body was not valid JSON",
-        err
+        err,
       );
     }
   }
 
-  public async pushSyncEvents(projectId: string, events: SyncPushEvent[]): Promise<SyncPushResult> {
+  public async pushSyncEvents(
+    projectId: string,
+    events: SyncPushEvent[],
+  ): Promise<SyncPushResult> {
     const { apiUrl, pat } = this.getConfig();
     let res: Response;
     try {
@@ -90,12 +99,19 @@ export class FetchRemoteSyncClient implements IRemoteSyncClient {
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.SYNC_PUSH_FAILED, "Sync push failed", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.SYNC_PUSH_FAILED,
+        "Sync push failed",
+        err,
+      );
     }
 
     if (!res.ok) {
       const message = await this.parseErrorBody(res);
-      throw new DocuviaError(ErrorCodes.SYNC_PUSH_FAILED, `Sync push failed: ${message}`);
+      throw new DocuviaError(
+        ErrorCodes.SYNC_PUSH_FAILED,
+        `Sync push failed: ${message}`,
+      );
     }
 
     try {
@@ -104,7 +120,7 @@ export class FetchRemoteSyncClient implements IRemoteSyncClient {
       throw DocuviaError.wrap(
         ErrorCodes.SYNC_PUSH_FAILED,
         "Sync push failed: response body was not valid JSON",
-        err
+        err,
       );
     }
   }

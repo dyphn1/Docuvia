@@ -27,7 +27,9 @@ interface RenderedEdge {
   type: string;
 }
 
-function parseNodesJsonl(raw: string | undefined): Array<{ nodeKey: string; name: string; filePath?: string }> {
+function parseNodesJsonl(
+  raw: string | undefined,
+): Array<{ nodeKey: string; name: string; filePath?: string }> {
   if (!raw) return [];
   return raw
     .split("\n")
@@ -39,7 +41,9 @@ function parseNodesJsonl(raw: string | undefined): Array<{ nodeKey: string; name
     });
 }
 
-function parseEdgesJsonl(raw: string | undefined): Array<{ source: string; target: string; type: string }> {
+function parseEdgesJsonl(
+  raw: string | undefined,
+): Array<{ source: string; target: string; type: string }> {
   if (!raw) return [];
   return raw
     .split("\n")
@@ -55,7 +59,7 @@ function parseEdgesJsonl(raw: string | undefined): Array<{ source: string; targe
 export class HydrationService implements IHydrationService {
   constructor(
     private readonly git: IGitProvider,
-    private readonly logger: ILogger = createNoopLogger()
+    private readonly logger: ILogger = createNoopLogger(),
   ) {}
 
   /**
@@ -68,12 +72,16 @@ export class HydrationService implements IHydrationService {
    */
   public async resolveHydrationCommit(
     cwd: string,
-    branchName: string = GitConstants.KNOWLEDGE_ROOT
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
   ): Promise<string | undefined> {
     const tip = await this.git.getBranchTipSha(cwd, branchName);
     if (!tip) return undefined;
 
-    const log = await this.git.getCommitLog(cwd, branchName, KNOWLEDGE_LOG_SCAN_LIMIT);
+    const log = await this.git.getCommitLog(
+      cwd,
+      branchName,
+      KNOWLEDGE_LOG_SCAN_LIMIT,
+    );
     const sourceToKnowledge = new Map<string, string>();
     for (const entry of log) {
       const sourceSha = parseSourceTrailer(entry.message);
@@ -83,7 +91,11 @@ export class HydrationService implements IHydrationService {
     }
     if (sourceToKnowledge.size === 0) return tip;
 
-    const ancestry = await this.git.getCommitAncestry(cwd, "HEAD", SOURCE_ANCESTRY_WALK_LIMIT);
+    const ancestry = await this.git.getCommitAncestry(
+      cwd,
+      "HEAD",
+      SOURCE_ANCESTRY_WALK_LIMIT,
+    );
     for (const sourceSha of ancestry) {
       const match = sourceToKnowledge.get(sourceSha);
       if (match) return match;
@@ -100,14 +112,22 @@ export class HydrationService implements IHydrationService {
   public async hydrate(
     cwd: string,
     store: IGraphStore,
-    branchName: string = GitConstants.KNOWLEDGE_ROOT
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
   ): Promise<HydrationResult> {
     const knowledgeSha = await this.resolveHydrationCommit(cwd, branchName);
     if (!knowledgeSha) {
-      this.logger.debug("Nothing to hydrate from yet — knowledge branch doesn't exist", {
-        branchName,
-      });
-      return { hydrated: false, nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 };
+      this.logger.debug(
+        "Nothing to hydrate from yet — knowledge branch doesn't exist",
+        {
+          branchName,
+        },
+      );
+      return {
+        hydrated: false,
+        nodesLoaded: 0,
+        edgesLoaded: 0,
+        edgesDropped: 0,
+      };
     }
 
     const [nodesJsonl, edgesJsonl] = await Promise.all([
@@ -128,18 +148,35 @@ export class HydrationService implements IHydrationService {
       return loaded;
     });
 
-    this.logger.info("Hydrated knowledge graph from git", { knowledgeSha, ...bulkResult });
+    this.logger.info("Hydrated knowledge graph from git", {
+      knowledgeSha,
+      ...bulkResult,
+    });
     return { hydrated: true, knowledgeSha, ...bulkResult };
   }
 
   public async isStale(
     cwd: string,
     store: IGraphStore,
-    branchName: string = GitConstants.KNOWLEDGE_ROOT
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
   ): Promise<boolean> {
     const resolved = await this.resolveHydrationCommit(cwd, branchName);
     if (!resolved) return false;
-    const hydratedFrom = store.meta.get(GitConstants.META_KEY_KNOWLEDGE_TIP_SHA);
+    const hydratedFrom = store.meta.get(
+      GitConstants.META_KEY_KNOWLEDGE_TIP_SHA,
+    );
     return hydratedFrom !== resolved;
+  }
+
+  public async markSynced(
+    cwd: string,
+    store: IGraphStore,
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
+  ): Promise<void> {
+    const resolved = await this.resolveHydrationCommit(cwd, branchName);
+    if (!resolved) return;
+    await store.withWriteLock(() => {
+      store.meta.set(GitConstants.META_KEY_KNOWLEDGE_TIP_SHA, resolved);
+    });
   }
 }

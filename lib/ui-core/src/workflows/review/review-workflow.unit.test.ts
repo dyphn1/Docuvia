@@ -13,16 +13,21 @@ import {
 } from "@workspace/contracts";
 import { ReviewWorkflow } from "./review-workflow.js";
 
-function makeMockHydrationService(overrides: Partial<IHydrationService> = {}): IHydrationService {
+function makeMockHydrationService(
+  overrides: Partial<IHydrationService> = {},
+): IHydrationService {
   return {
     resolveHydrationCommit: vi.fn(),
     isStale: vi.fn().mockResolvedValue(false),
+    markSynced: vi.fn(),
     hydrate: vi.fn(),
     ...overrides,
   };
 }
 
-function makeMockGitProvider(overrides: Partial<IGitProvider> = {}): IGitProvider {
+function makeMockGitProvider(
+  overrides: Partial<IGitProvider> = {},
+): IGitProvider {
   return {
     isGitRepository: vi.fn().mockResolvedValue(true),
     branchExists: vi.fn().mockResolvedValue(false),
@@ -64,7 +69,12 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
     projects: { getFirst: vi.fn(), insert: vi.fn(), count: vi.fn() },
     files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
-    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn(), getAllTagLinks: vi.fn() },
+    tags: {
+      upsertTag: vi.fn(),
+      getIdByName: vi.fn(),
+      linkNodeToTag: vi.fn(),
+      getAllTagLinks: vi.fn(),
+    },
     graph: {
       deleteNodesForPath: vi.fn(),
       insertNode: vi.fn(),
@@ -101,7 +111,9 @@ describe("ReviewWorkflow.execute()", () => {
 
   it("fetches changed files, delegates to ChangeDetectionService, and closes the store", async () => {
     const gitProvider = makeMockGitProvider({
-      getChangedFilesSince: vi.fn().mockResolvedValue([{ file: "src/a.ts", status: "modified" }]),
+      getChangedFilesSince: vi
+        .fn()
+        .mockResolvedValue([{ file: "src/a.ts", status: "modified" }]),
     });
     docuviaFactory.register(TOKENS.GitProvider, () => gitProvider);
 
@@ -119,14 +131,27 @@ describe("ReviewWorkflow.execute()", () => {
       analysis: "Base: main\nFiles changed: 1\nRisk level: LOW",
     });
     const changeDetectionService: IChangeDetectionService = { detectChanges };
-    docuviaFactory.register(TOKENS.ChangeDetectionService, () => changeDetectionService);
-    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
+    docuviaFactory.register(
+      TOKENS.ChangeDetectionService,
+      () => changeDetectionService,
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
     docuviaFactory.lock();
 
-    const result = await new ReviewWorkflow("/workspace/demo", createMockLogger()).execute("main");
+    const result = await new ReviewWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("main");
 
-    expect(gitProvider.getChangedFilesSince).toHaveBeenCalledWith("/workspace/demo", "main");
-    expect(openStoreSpy).toHaveBeenCalledWith(expect.objectContaining({ readonly: true }));
+    expect(gitProvider.getChangedFilesSince).toHaveBeenCalledWith(
+      "/workspace/demo",
+      "main",
+    );
+    expect(openStoreSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ readonly: true }),
+    );
     expect(detectChanges).toHaveBeenCalledWith({
       store,
       baseRef: "main",
@@ -139,12 +164,17 @@ describe("ReviewWorkflow.execute()", () => {
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
     docuviaFactory.register(TOKENS.GitProvider, () => makeMockGitProvider());
-    const dbOpenError = new DocuviaError("DB_OPEN_FAILED", "Failed to open database at /x: ENOENT");
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockRejectedValue(dbOpenError));
+    const dbOpenError = new DocuviaError(
+      "DB_OPEN_FAILED",
+      "Failed to open database at /x: ENOENT",
+    );
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockRejectedValue(dbOpenError),
+    );
     docuviaFactory.lock();
 
     await expect(
-      new ReviewWorkflow("/workspace/demo", createMockLogger()).execute()
+      new ReviewWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toMatchObject({
       code: "DB_OPEN_FAILED",
       message: expect.stringContaining("docuvia init"),
@@ -154,18 +184,25 @@ describe("ReviewWorkflow.execute()", () => {
   it("closes the store even when detectChanges() throws", async () => {
     docuviaFactory.register(TOKENS.GitProvider, () => makeMockGitProvider());
     const store = makeMockStore();
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
     const changeDetectionService: IChangeDetectionService = {
       detectChanges: vi.fn().mockImplementation(() => {
         throw new Error("boom");
       }),
     };
-    docuviaFactory.register(TOKENS.ChangeDetectionService, () => changeDetectionService);
-    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
+    docuviaFactory.register(
+      TOKENS.ChangeDetectionService,
+      () => changeDetectionService,
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
     docuviaFactory.lock();
 
     await expect(
-      new ReviewWorkflow("/workspace/demo", createMockLogger()).execute()
+      new ReviewWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toThrow("boom");
     expect(store.close).toHaveBeenCalledTimes(2);
   });

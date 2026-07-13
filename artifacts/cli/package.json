@@ -37,6 +37,8 @@
     "ora": "^9.4.1",
     "picocolors": "^1.1.1",
     "pino": "^9.14.0",
+    "tree-sitter-wasms": "^0.1.13",
+    "web-tree-sitter": "^0.25.9",
     "zod": "^3.24.1"
   }
 }

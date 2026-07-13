@@ -22,10 +22,15 @@ describe("GraphPersisterService.persist()", () => {
   let persister: GraphPersisterService;
 
   beforeEach(async () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-persist-ast-graph-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-persist-ast-graph-"),
+    );
     const dbPath = path.join(tmpDir, ".docuvia", "local.db");
     store = await GraphStore.open({ dbPath });
-    projectId = store.projects.insert({ name: "demo", repoUrl: "file:///demo" }).id;
+    projectId = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    }).id;
     persister = new GraphPersisterService();
   });
 
@@ -49,13 +54,21 @@ describe("GraphPersisterService.persist()", () => {
       },
     ];
 
-    await persister.persist({ store, workspaceRoot: tmpDir, projectId, parsedResults, tags: ["typescript"] });
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults,
+      tags: ["typescript"],
+    });
 
     const fileNodeId = store.graph.findNodeIdByName("src/a.ts", "src/a.ts");
     const fnNodeId = store.graph.findNodeIdByName("src/a.ts", "foo");
     expect(fileNodeId).toBeDefined();
     expect(fnNodeId).toBeDefined();
-    expect(store.files.getAllHashes()).toEqual([{ filePath: "src/a.ts", contentHash: "hash-a" }]);
+    expect(store.files.getAllHashes()).toEqual([
+      { filePath: "src/a.ts", contentHash: "hash-a" },
+    ]);
   });
 
   it("upserts and links every given tag to each persisted file node", async () => {
@@ -63,7 +76,13 @@ describe("GraphPersisterService.persist()", () => {
       {
         file: "src/a.ts",
         hash: "hash-a",
-        data: { imports: [], exports: [], functions: [], classes: [], calls: [] },
+        data: {
+          imports: [],
+          exports: [],
+          functions: [],
+          classes: [],
+          calls: [],
+        },
       },
     ];
 
@@ -97,7 +116,13 @@ describe("GraphPersisterService.persist()", () => {
       },
     ];
 
-    await persister.persist({ store, workspaceRoot: tmpDir, projectId, parsedResults, tags: [] });
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults,
+      tags: [],
+    });
 
     const fooId = store.graph.findNodeIdByName("src/a.ts", "foo");
     const barId = store.graph.findNodeIdByName("src/a.ts", "bar");
@@ -112,10 +137,60 @@ describe("GraphPersisterService.persist()", () => {
     try {
       const link = raw
         .prepare(
-          "SELECT * FROM node_links WHERE source_node_id = ? AND target_node_id = ? AND link_type = 'calls'"
+          "SELECT * FROM node_links WHERE source_node_id = ? AND target_node_id = ? AND link_type = 'calls'",
         )
         .get(fooId, barId);
       expect(link).toBeDefined();
+    } finally {
+      raw.close();
+    }
+  });
+
+  it("disambiguates same-named symbols in one file instead of throwing on the node_key UNIQUE constraint (regression: multiple 'anonymous' callbacks in one file used to crash init)", async () => {
+    const parsedResults: ParsedAstFileResult[] = [
+      {
+        file: "src/a.ts",
+        hash: "hash-a",
+        data: {
+          imports: [],
+          exports: [],
+          functions: [
+            // resolveCallableName() returns the literal string "anonymous" for every truly-unbound
+            // callback in a file (e.g. two separate bare arguments to .then()/.map()) — a file with
+            // 2+ of these used to insert the identical node_key twice and throw.
+            { name: "anonymous", startLine: 5, endLine: 6 },
+            { name: "anonymous", startLine: 10, endLine: 11 },
+            // Two chained/nested callbacks can even share a start line (e.g.
+            // `x.map(() => {}).filter(() => {})`), so the line-based disambiguation must itself
+            // fall back further rather than collide.
+            { name: "anonymous", startLine: 20, endLine: 20 },
+            { name: "anonymous", startLine: 20, endLine: 20 },
+          ],
+          classes: [],
+          calls: [],
+        },
+      },
+    ];
+
+    await expect(
+      persister.persist({
+        store,
+        workspaceRoot: tmpDir,
+        projectId,
+        parsedResults,
+        tags: [],
+      }),
+    ).resolves.toEqual({ updatedCount: 1 });
+
+    const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+    const raw = new DatabaseCtor(dbPath, { readonly: true });
+    try {
+      const rows = raw
+        .prepare("SELECT node_key FROM l2_nodes WHERE name = 'anonymous'")
+        .all() as { node_key: string }[];
+      const nodeKeys = rows.map((r) => r.node_key);
+      expect(nodeKeys).toHaveLength(4);
+      expect(new Set(nodeKeys).size).toBe(4); // every node_key is unique — none collided
     } finally {
       raw.close();
     }
@@ -155,6 +230,8 @@ describe("GraphPersisterService.persist()", () => {
     // no duplicates left behind by the second persist.
     expect(store.graph.findNodeIdByName("src/a.ts", "src/a.ts")).toBeDefined();
     expect(store.graph.findNodeIdByName("src/a.ts", "foo")).toBeDefined();
-    expect(store.files.getAllHashes()).toEqual([{ filePath: "src/a.ts", contentHash: "hash-a" }]);
+    expect(store.files.getAllHashes()).toEqual([
+      { filePath: "src/a.ts", contentHash: "hash-a" },
+    ]);
   });
 });

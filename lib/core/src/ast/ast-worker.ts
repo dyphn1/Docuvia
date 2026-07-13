@@ -5,19 +5,28 @@ import * as fs from "fs";
 import { createHash } from "crypto";
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
-import type { SupportedLanguage, LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
+import type {
+  SupportedLanguage,
+  LanguageProvider,
+  LanguageRegistry,
+} from "@workspace/ast-core";
 import { parseImportDescriptors } from "@workspace/ast-core";
 import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import { IpcLoggerClient } from "@workspace/contracts";
-import { ENCODING_HEX, HASH_ALGO_SHA256 } from "../constants/encoding.js";
 
 /**
  * Symbol-level feature hash (STOR-005): a hash of the AST node's own exact source span
  * (`node.text`), independent of the containing file's blob hash. Lets a single-symbol edit
  * produce a one-line JSONL diff for that symbol without touching its untouched siblings' hashes.
+ *
+ * Inlines the "sha256"/"hex" literals `../constants/encoding.js` also exports rather than
+ * importing them: this file is the one place in the codebase that must run standalone inside a
+ * `worker_threads` Worker, and a relative `.js`-to-`.ts` sibling import needs a resolve hook that
+ * tsx registers on the main thread but does not propagate into workers — a Node/tsx limitation,
+ * not a bundling one (dist/ sidesteps it by shipping a fully-compiled worker instead).
  */
 function symbolContentHash(node: Node): string {
-  return createHash(HASH_ALGO_SHA256).update(node.text).digest(ENCODING_HEX);
+  return createHash("sha256").update(node.text).digest("hex");
 }
 
 /**
@@ -29,13 +38,19 @@ function symbolContentHash(node: Node): string {
  * docs/gitbook/guidelines/playbook-ipc-logging.md) — `AstWorkerPool` routes it back to its own
  * injected logger via `IpcLogRouter`.
  */
-const logger = new IpcLoggerClient((message) => parentPort?.postMessage(message));
+const logger = new IpcLoggerClient((message) =>
+  parentPort?.postMessage(message),
+);
 
 process.on("uncaughtException", (err) => {
-  logger.error("AST worker uncaughtException", { error: err instanceof Error ? err.message : String(err) });
+  logger.error("AST worker uncaughtException", {
+    error: err instanceof Error ? err.message : String(err),
+  });
 });
 process.on("unhandledRejection", (err) => {
-  logger.error("AST worker unhandledRejection", { error: err instanceof Error ? err.message : String(err) });
+  logger.error("AST worker unhandledRejection", {
+    error: err instanceof Error ? err.message : String(err),
+  });
 });
 
 const __filename = fileURLToPath(import.meta.url);
@@ -62,7 +77,12 @@ export interface AstParseResponse {
   data?: {
     imports: ImportDescriptor[];
     exports: Array<{ name: string; type: "function" | "class" | "variable" }>;
-    functions: Array<{ name: string; startLine: number; endLine: number; contentHash?: string }>;
+    functions: Array<{
+      name: string;
+      startLine: number;
+      endLine: number;
+      contentHash?: string;
+    }>;
     classes: Array<{
       name: string;
       startLine: number;
@@ -91,7 +111,10 @@ function getRegistry(): Promise<LanguageRegistry> {
  * or nested under .pnpm) and falling back to a handful of known workspace
  * layouts otherwise.
  */
-export function resolveWasmPath(wasmFile: string): { wasmPath: string; attemptedPaths: string[] } {
+export function resolveWasmPath(wasmFile: string): {
+  wasmPath: string;
+  attemptedPaths: string[];
+} {
   const docuviaRoot = path.resolve(__dirname, "../../../../");
   const attemptedPaths: string[] = [];
 
@@ -108,17 +131,21 @@ export function resolveWasmPath(wasmFile: string): { wasmPath: string; attempted
 
   const candidates = [
     path.resolve(docuviaRoot, `node_modules/tree-sitter-wasms/out/${wasmFile}`),
-    path.resolve(__dirname, `../../../node_modules/tree-sitter-wasms/out/${wasmFile}`),
+    path.resolve(
+      __dirname,
+      `../../../node_modules/tree-sitter-wasms/out/${wasmFile}`,
+    ),
     path.resolve(
       docuviaRoot,
-      `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/${wasmFile}`
+      `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/${wasmFile}`,
     ),
     path.resolve(docuviaRoot, `artifacts/vscode-client/out/wasm/${wasmFile}`),
   ];
 
   for (const candidate of candidates) {
     attemptedPaths.push(candidate);
-    if (fs.existsSync(candidate)) return { wasmPath: candidate, attemptedPaths };
+    if (fs.existsSync(candidate))
+      return { wasmPath: candidate, attemptedPaths };
   }
 
   return { wasmPath: candidates[candidates.length - 1], attemptedPaths };
@@ -127,7 +154,9 @@ export function resolveWasmPath(wasmFile: string): { wasmPath: string; attempted
 /** Regex fallback for imports so graph edges still work when WASM fails to load (e.g. in tests). */
 function extractFallbackImports(code: string): ImportDescriptor[] {
   const fallbackImports: ImportDescriptor[] = [];
-  const importMatches = code.matchAll(/import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/g);
+  const importMatches = code.matchAll(
+    /import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/g,
+  );
   for (const match of importMatches) {
     fallbackImports.push({
       localName: match[1].trim(),
@@ -202,7 +231,10 @@ function getCallTargetText(node: Node): string {
 }
 
 /** Walks up from `node` to find the nearest ancestor present in `containerIds` (function/class nodes already extracted for this file), returning its name, or "anonymous" for top-level (file-scoped) call/implements/extends sites. */
-function findEnclosingContainerName(node: Node, containerIds: Set<number>): string {
+function findEnclosingContainerName(
+  node: Node,
+  containerIds: Set<number>,
+): string {
   let current = node.parent;
   while (current) {
     if (containerIds.has(current.id)) {
@@ -222,7 +254,8 @@ parentPort?.on("message", async (request: AstParseRequest) => {
 
     const registry = await getRegistry();
     const ext = path.extname(request.filePath);
-    const provider: LanguageProvider | undefined = registry.getProviderForExtension(ext);
+    const provider: LanguageProvider | undefined =
+      registry.getProviderForExtension(ext);
 
     if (!provider) {
       parentPort?.postMessage({
@@ -275,7 +308,10 @@ parentPort?.on("message", async (request: AstParseRequest) => {
 
     const decisions: string[] = [];
     const imports: ImportDescriptor[] = [];
-    const exports: Array<{ name: string; type: "function" | "class" | "variable" }> = [];
+    const exports: Array<{
+      name: string;
+      type: "function" | "class" | "variable";
+    }> = [];
     const functions: Array<{
       name: string;
       startLine: number;
@@ -290,11 +326,16 @@ parentPort?.on("message", async (request: AstParseRequest) => {
       contentHash: string;
     }> = [];
     const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
-    const implementsList: Array<{ sourceClass: string; targetInterface: string }> = [];
+    const implementsList: Array<{
+      sourceClass: string;
+      targetInterface: string;
+    }> = [];
     const extendsList: Array<{ sourceClass: string; targetClass: string }> = [];
 
     if (tree) {
-      decisions.push(`Parsed via web-tree-sitter (nodes: ${tree.rootNode.childCount})`);
+      decisions.push(
+        `Parsed via web-tree-sitter (nodes: ${tree.rootNode.childCount})`,
+      );
 
       try {
         const classNodes = provider.extractClasses(tree.rootNode);
@@ -349,10 +390,12 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           }
         }
 
-        decisions.push("Queried nodes using @workspace/ast-core LanguageProvider");
+        decisions.push(
+          "Queried nodes using @workspace/ast-core LanguageProvider",
+        );
       } catch (e) {
         decisions.push(
-          `ast-core provider query failed: ${e instanceof Error ? e.message : String(e)}`
+          `ast-core provider query failed: ${e instanceof Error ? e.message : String(e)}`,
         );
       }
     }

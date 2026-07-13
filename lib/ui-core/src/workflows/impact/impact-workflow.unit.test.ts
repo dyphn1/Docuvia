@@ -12,10 +12,13 @@ import {
 } from "@workspace/contracts";
 import { ImpactWorkflow } from "./impact-workflow.js";
 
-function makeMockHydrationService(overrides: Partial<IHydrationService> = {}): IHydrationService {
+function makeMockHydrationService(
+  overrides: Partial<IHydrationService> = {},
+): IHydrationService {
   return {
     resolveHydrationCommit: vi.fn(),
     isStale: vi.fn().mockResolvedValue(false),
+    markSynced: vi.fn(),
     hydrate: vi.fn(),
     ...overrides,
   };
@@ -25,7 +28,12 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
     projects: { getFirst: vi.fn(), insert: vi.fn(), count: vi.fn() },
     files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
-    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn(), getAllTagLinks: vi.fn() },
+    tags: {
+      upsertTag: vi.fn(),
+      getIdByName: vi.fn(),
+      linkNodeToTag: vi.fn(),
+      getAllTagLinks: vi.fn(),
+    },
     graph: {
       deleteNodesForPath: vi.fn(),
       insertNode: vi.fn(),
@@ -68,16 +76,26 @@ describe("ImpactWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
 
     const impactService: IImpactService = {
-      getBlastRadius: vi.fn().mockReturnValue([{ name: "caller", type: "module" }]),
+      getBlastRadius: vi
+        .fn()
+        .mockReturnValue([{ name: "caller", type: "module" }]),
       computeRiskLevel: vi.fn().mockReturnValue("MEDIUM"),
     };
     docuviaFactory.register(TOKENS.ImpactService, () => impactService);
-    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
     docuviaFactory.lock();
 
-    const result = await new ImpactWorkflow("/workspace/demo", createMockLogger()).execute("target");
+    const result = await new ImpactWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("target");
 
-    expect(result).toEqual({ blastRadius: [{ name: "caller", type: "module" }], riskLevel: "MEDIUM" });
+    expect(result).toEqual({
+      blastRadius: [{ name: "caller", type: "module" }],
+      riskLevel: "MEDIUM",
+    });
     expect(impactService.computeRiskLevel).toHaveBeenCalledWith(1);
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
@@ -85,28 +103,42 @@ describe("ImpactWorkflow.execute()", () => {
 
   it("returns null when the target does not resolve", async () => {
     const store = makeMockStore();
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
     const impactService: IImpactService = {
       getBlastRadius: vi.fn().mockReturnValue(undefined),
       computeRiskLevel: vi.fn(),
     };
     docuviaFactory.register(TOKENS.ImpactService, () => impactService);
-    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
     docuviaFactory.lock();
 
-    const result = await new ImpactWorkflow("/workspace/demo", createMockLogger()).execute("nope");
+    const result = await new ImpactWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("nope");
 
     expect(result).toBeNull();
     expect(store.close).toHaveBeenCalledTimes(2);
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
-    const dbOpenError = new DocuviaError("DB_OPEN_FAILED", "Failed to open database at /x: ENOENT");
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockRejectedValue(dbOpenError));
+    const dbOpenError = new DocuviaError(
+      "DB_OPEN_FAILED",
+      "Failed to open database at /x: ENOENT",
+    );
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockRejectedValue(dbOpenError),
+    );
     docuviaFactory.lock();
 
     await expect(
-      new ImpactWorkflow("/workspace/demo", createMockLogger()).execute("target")
+      new ImpactWorkflow("/workspace/demo", createMockLogger()).execute(
+        "target",
+      ),
     ).rejects.toMatchObject({
       code: "DB_OPEN_FAILED",
       message: expect.stringContaining("docuvia init"),

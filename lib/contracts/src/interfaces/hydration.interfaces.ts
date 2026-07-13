@@ -24,9 +24,16 @@ export interface IHydrationService {
    * commit matches (e.g. all-legacy/unstamped history, or a source HEAD unrelated to any stamp).
    * `undefined` when the knowledge branch doesn't exist yet.
    */
-  resolveHydrationCommit(cwd: string, branchName?: string): Promise<string | undefined>;
+  resolveHydrationCommit(
+    cwd: string,
+    branchName?: string,
+  ): Promise<string | undefined>;
   /** Hydrates `store` from the resolved knowledge-branch commit and records its sha in `store.meta` for future staleness checks. A no-op (`hydrated: false`) when there's nothing to hydrate from yet. */
-  hydrate(cwd: string, store: IGraphStore, branchName?: string): Promise<HydrationResult>;
+  hydrate(
+    cwd: string,
+    store: IGraphStore,
+    branchName?: string,
+  ): Promise<HydrationResult>;
   /**
    * `true` when `store`'s recorded tip sha (`store.meta`) no longer matches what
    * `resolveHydrationCommit` resolves to right now — i.e. `store` needs (re-)hydrating. Note this
@@ -35,5 +42,20 @@ export interface IHydrationService {
    * out a different branch). `false` when there's nothing to hydrate from yet (an empty
    * `local.db` in that state isn't "stale", just uninitialized).
    */
-  isStale(cwd: string, store: IGraphStore, branchName?: string): Promise<boolean>;
+  isStale(
+    cwd: string,
+    store: IGraphStore,
+    branchName?: string,
+  ): Promise<boolean>;
+  /**
+   * Records the current knowledge-branch commit in `store.meta` *without* touching `store.graph`
+   * — for callers (e.g. `init`) whose local graph was just populated directly (not hydrated from
+   * git) and would otherwise look "stale" to the very next `isStale()` check, since `store.meta`
+   * was never set. A no-op when the knowledge branch doesn't exist yet.
+   */
+  markSynced(
+    cwd: string,
+    store: IGraphStore,
+    branchName?: string,
+  ): Promise<void>;
 }

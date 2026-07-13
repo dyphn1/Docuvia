@@ -5,6 +5,7 @@ import { tmpdir } from "os";
 import Database from "better-sqlite3";
 
 const CLI_PATH = resolve(__dirname, "../../src/cli.ts");
+const CLI_DIST_PATH = resolve(__dirname, "../../dist/cli.js");
 
 export interface SandboxOptions {
   /** Mock files to create in the sandbox. Key is relative path, value is content. */
@@ -27,8 +28,12 @@ export class TestSandbox {
     if (options.initGit) {
       await execa("git", ["init"], { cwd: this.dir });
       // Set dummy user for git commits to avoid issues in CI
-      await execa("git", ["config", "user.name", "Test User"], { cwd: this.dir });
-      await execa("git", ["config", "user.email", "test@example.com"], { cwd: this.dir });
+      await execa("git", ["config", "user.name", "Test User"], {
+        cwd: this.dir,
+      });
+      await execa("git", ["config", "user.email", "test@example.com"], {
+        cwd: this.dir,
+      });
     }
 
     if (options.files) {
@@ -47,7 +52,12 @@ export class TestSandbox {
   async teardown() {
     if (this.dir) {
       try {
-        await rm(this.dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+        await rm(this.dir, {
+          recursive: true,
+          force: true,
+          maxRetries: 3,
+          retryDelay: 100,
+        });
       } catch (err) {
         console.warn(`Failed to cleanup sandbox dir ${this.dir}:`, err);
       }
@@ -67,7 +77,7 @@ export class TestSandbox {
   runCli(args: string[], options?: ExecaOptions) {
     const tsxBin = resolve(
       __dirname,
-      `../../node_modules/.bin/tsx${process.platform === "win32" ? ".cmd" : ""}`
+      `../../node_modules/.bin/tsx${process.platform === "win32" ? ".cmd" : ""}`,
     );
     return execa(tsxBin, [CLI_PATH, ...args], {
       cwd: this.dir,
@@ -76,6 +86,28 @@ export class TestSandbox {
         ...process.env,
         ...options?.env,
         // Ensure test environment
+        NODE_ENV: "test",
+      },
+    });
+  }
+
+  /**
+   * Run a command against the *compiled* `dist/cli.js` via plain `node` — not `tsx`. Every other
+   * `runCli()` invocation in this suite runs from TypeScript source via `tsx`, whose loader
+   * quietly papers over bugs that only exist in the bundled build (duplicated shebangs, workers
+   * that need a real standalone `.js` file, assets like the tree-sitter wasm/grammar files and
+   * SQL migrations that a bundler can relocate away from their `__dirname`-relative source
+   * layout). Use this — not `runCli()` — for any test asserting "the shipped CLI actually works",
+   * since that's the one thing `tsx`-based tests structurally cannot catch. Requires `dist/cli.js`
+   * to already be built (see `buildDistCli()`).
+   */
+  runDistCli(args: string[], options?: ExecaOptions) {
+    return execa(process.execPath, [CLI_DIST_PATH, ...args], {
+      cwd: this.dir,
+      ...options,
+      env: {
+        ...process.env,
+        ...options?.env,
         NODE_ENV: "test",
       },
     });
@@ -104,4 +136,14 @@ export class TestSandbox {
       await action(this);
     }
   }
+}
+
+/**
+ * (Re)builds `dist/cli.js` via `tsup`, for tests that use `TestSandbox.runDistCli()`. Always
+ * rebuilds from current source rather than trusting a possibly-stale `dist/` on disk, so these
+ * tests fail the moment a packaging regression is introduced, in CI or locally, independent of
+ * whether some other step already ran `pnpm run build`.
+ */
+export async function buildDistCli(): Promise<void> {
+  await execa("npx", ["tsup"], { cwd: resolve(__dirname, "../..") });
 }

@@ -14,7 +14,12 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
     projects: { getFirst: vi.fn(), insert: vi.fn(), count: vi.fn() },
     files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
-    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn(), getAllTagLinks: vi.fn() },
+    tags: {
+      upsertTag: vi.fn(),
+      getIdByName: vi.fn(),
+      linkNodeToTag: vi.fn(),
+      getAllTagLinks: vi.fn(),
+    },
     graph: {
       deleteNodesForPath: vi.fn(),
       insertNode: vi.fn(),
@@ -66,35 +71,53 @@ describe("HydrateWorkflow.execute()", () => {
     const hydrationService: IHydrationService = {
       resolveHydrationCommit: vi.fn(),
       isStale: vi.fn(),
+      markSynced: vi.fn(),
       hydrate: vi.fn().mockResolvedValue(hydrationResult),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
 
-    const result = await new HydrateWorkflow("/workspace/demo", createMockLogger()).execute();
+    const result = await new HydrateWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
 
     expect(openStoreSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ readonly: false })
+      expect.objectContaining({ readonly: false }),
     );
-    expect(hydrationService.hydrate).toHaveBeenCalledWith("/workspace/demo", store);
+    expect(hydrationService.hydrate).toHaveBeenCalledWith(
+      "/workspace/demo",
+      store,
+    );
     expect(result).toEqual(hydrationResult);
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
   it("returns hydrated:false without throwing when there's nothing to hydrate from yet", async () => {
     const store = makeMockStore();
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
     const hydrationService: IHydrationService = {
       resolveHydrationCommit: vi.fn(),
       isStale: vi.fn(),
+      markSynced: vi.fn(),
       hydrate: vi
         .fn()
-        .mockResolvedValue({ hydrated: false, nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
+        .mockResolvedValue({
+          hydrated: false,
+          nodesLoaded: 0,
+          edgesLoaded: 0,
+          edgesDropped: 0,
+        }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
 
-    const result = await new HydrateWorkflow("/workspace/demo", createMockLogger()).execute();
+    const result = await new HydrateWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
 
     expect(result.hydrated).toBe(false);
     expect(store.close).toHaveBeenCalledTimes(1);
@@ -102,17 +125,20 @@ describe("HydrateWorkflow.execute()", () => {
 
   it("closes the store even when hydrate() throws", async () => {
     const store = makeMockStore();
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
     const hydrationService: IHydrationService = {
       resolveHydrationCommit: vi.fn(),
       isStale: vi.fn(),
+      markSynced: vi.fn(),
       hydrate: vi.fn().mockRejectedValue(new Error("git command failed")),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
 
     await expect(
-      new HydrateWorkflow("/workspace/demo", createMockLogger()).execute()
+      new HydrateWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toThrow("git command failed");
     expect(store.close).toHaveBeenCalledTimes(1);
   });

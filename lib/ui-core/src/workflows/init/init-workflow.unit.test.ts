@@ -15,6 +15,7 @@ import {
   type IGitProvider,
   type IGraphPersister,
   type IGraphStore,
+  type IHydrationService,
   type IKnowledgeGitService,
   type ITempFileManager,
   type IVcsScanner,
@@ -73,28 +74,35 @@ function makeMockStore(): IGraphStore {
   return {
     projects: {
       getFirst: vi.fn().mockImplementation(() => projectRow),
-      insert: vi.fn().mockImplementation((input: { name: string; repoUrl: string }) => {
-        projectRow = {
-          id: 1,
-          name: input.name,
-          repo_url: input.repoUrl,
-          description: null,
-          status: "active",
-          vcs_type: "git",
-          svn_url: null,
-          last_git_ingested_at: null,
-          last_svn_revision: null,
-          last_ast_ingested_at: null,
-          owner_id: 1,
-          created_at: "2026-01-01T00:00:00.000Z",
-          updated_at: "2026-01-01T00:00:00.000Z",
-        };
-        return projectRow;
-      }),
+      insert: vi
+        .fn()
+        .mockImplementation((input: { name: string; repoUrl: string }) => {
+          projectRow = {
+            id: 1,
+            name: input.name,
+            repo_url: input.repoUrl,
+            description: null,
+            status: "active",
+            vcs_type: "git",
+            svn_url: null,
+            last_git_ingested_at: null,
+            last_svn_revision: null,
+            last_ast_ingested_at: null,
+            owner_id: 1,
+            created_at: "2026-01-01T00:00:00.000Z",
+            updated_at: "2026-01-01T00:00:00.000Z",
+          };
+          return projectRow;
+        }),
       count: vi.fn().mockImplementation(() => (projectRow ? 1 : 0)),
     },
     files: { getAllHashes: vi.fn().mockReturnValue([]), upsertFile: vi.fn() },
-    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn(), getAllTagLinks: vi.fn() },
+    tags: {
+      upsertTag: vi.fn(),
+      getIdByName: vi.fn(),
+      linkNodeToTag: vi.fn(),
+      getAllTagLinks: vi.fn(),
+    },
     graph: {
       deleteNodesForPath: vi.fn().mockReturnValue([]),
       insertNode: vi.fn().mockReturnValue(1),
@@ -115,7 +123,9 @@ function makeMockStore(): IGraphStore {
     withWriteLock: async (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
-    pruneMissingFiles: vi.fn().mockReturnValue({ prunedFiles: 0, prunedNodes: 0 }),
+    pruneMissingFiles: vi
+      .fn()
+      .mockReturnValue({ prunedFiles: 0, prunedNodes: 0 }),
   };
 }
 
@@ -127,7 +137,9 @@ describe("InitWorkflow.execute()", () => {
     typeof vi.fn<[GraphStoreOpenOptions], Promise<IGraphStore>>
   >;
 
-  const filesToParse = [{ file: "src/a.ts", hash: "hash-a", code: "export const a = 1;" }];
+  const filesToParse = [
+    { file: "src/a.ts", hash: "hash-a", code: "export const a = 1;" },
+  ];
   const parsedResults = [
     {
       file: "src/a.ts",
@@ -137,7 +149,9 @@ describe("InitWorkflow.execute()", () => {
   ];
 
   beforeEach(() => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-init-workflow-test-"));
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-init-workflow-test-"),
+    );
     callOrder = [];
     store = makeMockStore();
 
@@ -158,25 +172,40 @@ describe("InitWorkflow.execute()", () => {
     const fileDiscovery: IFileDiscovery = {
       discoverFiles: vi.fn().mockImplementation(async () => {
         callOrder.push("discoverFiles");
-        return { filesToParse, existingHashes: new Map(), skippedCount: 0, skippedOversized: [] };
+        return {
+          filesToParse,
+          existingHashes: new Map(),
+          skippedCount: 0,
+          skippedOversized: [],
+        };
       }),
     };
     const astProcessor: IAstProcessor = {
-      processFiles: vi.fn().mockImplementation(async (): Promise<AstProcessResult> => {
-        callOrder.push("processFiles");
-        return { parsed: parsedResults, failures: [] };
-      }),
+      processFiles: vi
+        .fn()
+        .mockImplementation(async (): Promise<AstProcessResult> => {
+          callOrder.push("processFiles");
+          return { parsed: parsedResults, failures: [] };
+        }),
     };
     const configScanner: IConfigScanner = {
-      scanConfigs: vi.fn().mockResolvedValue({ projectType: "typescript", tags: ["typescript"] }),
+      scanConfigs: vi
+        .fn()
+        .mockResolvedValue({ projectType: "typescript", tags: ["typescript"] }),
     };
-    const vcsScanner: IVcsScanner = { extractHotspotTags: vi.fn().mockResolvedValue([]) };
-    const graphPersister: IGraphPersister = { persist: vi.fn().mockResolvedValue({ updatedCount: 1 }) };
+    const vcsScanner: IVcsScanner = {
+      extractHotspotTags: vi.fn().mockResolvedValue([]),
+    };
+    const graphPersister: IGraphPersister = {
+      persist: vi.fn().mockResolvedValue({ updatedCount: 1 }),
+    };
     const tempFileManager: ITempFileManager = {
       initialize: vi.fn().mockResolvedValue(undefined),
       cleanup: vi.fn().mockResolvedValue(undefined),
       stopCleanup: vi.fn(),
-      getTempDirPath: vi.fn().mockReturnValue(path.join(tmpDir, ".docuvia", "tmp")),
+      getTempDirPath: vi
+        .fn()
+        .mockReturnValue(path.join(tmpDir, ".docuvia", "tmp")),
     };
 
     docuviaFactory.register(TOKENS.GitProvider, () => makeMockGitProvider());
@@ -186,9 +215,23 @@ describe("InitWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.VcsScanner, () => vcsScanner);
     docuviaFactory.register(TOKENS.AstProcessor, () => astProcessor);
     docuviaFactory.register(TOKENS.GraphPersister, () => graphPersister);
-    docuviaFactory.register(TOKENS.TempFileManager, () => () => tempFileManager);
-    openStoreSpy = vi.fn<[GraphStoreOpenOptions], Promise<IGraphStore>>().mockResolvedValue(store);
+    docuviaFactory.register(
+      TOKENS.TempFileManager,
+      () => () => tempFileManager,
+    );
+    openStoreSpy = vi
+      .fn<[GraphStoreOpenOptions], Promise<IGraphStore>>()
+      .mockResolvedValue(store);
     docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
+    const hydrationService: IHydrationService = {
+      resolveHydrationCommit: vi.fn(),
+      isStale: vi.fn(),
+      markSynced: vi.fn().mockImplementation(async () => {
+        callOrder.push("markSynced");
+      }),
+      hydrate: vi.fn(),
+    };
+    docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
 
     docuviaFactory.lock();
   });
@@ -201,7 +244,9 @@ describe("InitWorkflow.execute()", () => {
   it("opens the store at <workspaceRoot>/.docuvia/local.db and closes it when execute() completes", async () => {
     await new InitWorkflow(tmpDir, createMockLogger()).execute();
 
-    expect(openStoreSpy).toHaveBeenCalledWith({ dbPath: resolveDbPath(tmpDir) });
+    expect(openStoreSpy).toHaveBeenCalledWith({
+      dbPath: resolveDbPath(tmpDir),
+    });
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
@@ -214,20 +259,43 @@ describe("InitWorkflow.execute()", () => {
       packSnapshotToKnowledgeBranch: vi.fn(),
       syncKnowledgeBranch: vi.fn(),
     }));
-    docuviaFactory.register(TOKENS.FileDiscovery, () => ({ discoverFiles: vi.fn() }));
-    docuviaFactory.register(TOKENS.ConfigScanner, () => ({ scanConfigs: vi.fn() }));
-    docuviaFactory.register(TOKENS.VcsScanner, () => ({ extractHotspotTags: vi.fn() }));
-    docuviaFactory.register(TOKENS.AstProcessor, () => ({ processFiles: vi.fn() }));
-    docuviaFactory.register(TOKENS.GraphPersister, () => ({ persist: vi.fn() }));
-    docuviaFactory.register(TOKENS.TempFileManager, () => () => ({}) as ITempFileManager);
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.FileDiscovery, () => ({
+      discoverFiles: vi.fn(),
+    }));
+    docuviaFactory.register(TOKENS.ConfigScanner, () => ({
+      scanConfigs: vi.fn(),
+    }));
+    docuviaFactory.register(TOKENS.VcsScanner, () => ({
+      extractHotspotTags: vi.fn(),
+    }));
+    docuviaFactory.register(TOKENS.AstProcessor, () => ({
+      processFiles: vi.fn(),
+    }));
+    docuviaFactory.register(TOKENS.GraphPersister, () => ({
+      persist: vi.fn(),
+    }));
+    docuviaFactory.register(
+      TOKENS.TempFileManager,
+      () => () => ({}) as ITempFileManager,
+    );
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () => ({
+      resolveHydrationCommit: vi.fn(),
+      isStale: vi.fn(),
+      markSynced: vi.fn().mockResolvedValue(undefined),
+      hydrate: vi.fn(),
+    }));
     docuviaFactory.lock();
 
-    await expect(new InitWorkflow(tmpDir, createMockLogger()).execute()).rejects.toThrow("boom");
+    await expect(
+      new InitWorkflow(tmpDir, createMockLogger()).execute(),
+    ).rejects.toThrow("boom");
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
-  it("wires branch -> hook -> discovery -> AST parse in order", async () => {
+  it("wires branch -> hook -> discovery -> AST parse -> markSynced in order", async () => {
     const result = await new InitWorkflow(tmpDir, createMockLogger()).execute();
 
     expect(result.success).toBe(true);
@@ -236,7 +304,17 @@ describe("InitWorkflow.execute()", () => {
       "installPostCommitHook",
       "discoverFiles",
       "processFiles",
+      "markSynced",
     ]);
+  });
+
+  it("regression: calls hydrationService.markSynced() after persisting so the next read-path command's ensureHydrated() doesn't immediately overwrite the graph just built (see HydrationService.markSynced() docs)", async () => {
+    await new InitWorkflow(tmpDir, createMockLogger()).execute();
+
+    const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
+      logger: createMockLogger(),
+    });
+    expect(hydrationService.markSynced).toHaveBeenCalledWith(tmpDir, store);
   });
 
   it("is idempotent: a second execute() run does not duplicate the projects row", async () => {
@@ -269,26 +347,51 @@ describe("InitWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.FileDiscovery, () => ({
       discoverFiles: vi
         .fn()
-        .mockResolvedValue({ filesToParse, existingHashes: new Map(), skippedCount: 0, skippedOversized: [] }),
+        .mockResolvedValue({
+          filesToParse,
+          existingHashes: new Map(),
+          skippedCount: 0,
+          skippedOversized: [],
+        }),
     }));
     docuviaFactory.register(TOKENS.ConfigScanner, () => ({
-      scanConfigs: vi.fn().mockResolvedValue({ projectType: "generic", tags: [] }),
+      scanConfigs: vi
+        .fn()
+        .mockResolvedValue({ projectType: "generic", tags: [] }),
     }));
-    docuviaFactory.register(TOKENS.VcsScanner, () => ({ extractHotspotTags: vi.fn().mockResolvedValue([]) }));
+    docuviaFactory.register(TOKENS.VcsScanner, () => ({
+      extractHotspotTags: vi.fn().mockResolvedValue([]),
+    }));
     docuviaFactory.register(TOKENS.AstProcessor, () => ({
       processFiles: vi.fn().mockResolvedValue({
         parsed: [],
-        failures: [{ file: "src/broken.ts", hash: "h", error: "Worker exited with code 1" }],
+        failures: [
+          {
+            file: "src/broken.ts",
+            hash: "h",
+            error: "Worker exited with code 1",
+          },
+        ],
       }),
     }));
-    docuviaFactory.register(TOKENS.GraphPersister, () => ({ persist: vi.fn().mockResolvedValue({ updatedCount: 0 }) }));
+    docuviaFactory.register(TOKENS.GraphPersister, () => ({
+      persist: vi.fn().mockResolvedValue({ updatedCount: 0 }),
+    }));
     docuviaFactory.register(TOKENS.TempFileManager, () => () => ({
       initialize: vi.fn().mockResolvedValue(undefined),
       cleanup: vi.fn(),
       stopCleanup: vi.fn(),
       getTempDirPath: vi.fn().mockReturnValue(""),
     }));
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(makeMockStore()));
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(makeMockStore()),
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () => ({
+      resolveHydrationCommit: vi.fn(),
+      isStale: vi.fn(),
+      markSynced: vi.fn().mockResolvedValue(undefined),
+      hydrate: vi.fn(),
+    }));
     docuviaFactory.lock();
 
     const result = await new InitWorkflow(tmpDir, createMockLogger()).execute();

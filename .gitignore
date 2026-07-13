@@ -40,3 +40,7 @@ docs/ai_plans/
 # Compiled TypeScript js files in source folders
 lib/core/src/**/*.js
 lib/schema/src/**/*.js
+
+# Dev-mode-compiled AST worker (see ast-worker-pool.ts's compileWorkerForDevMode()) — a
+# still-being-written temp file, renamed atomically once complete.
+lib/core/src/**/*.js.*.tmp

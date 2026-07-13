@@ -37,24 +37,35 @@ export { resolveDbPath };
 export class InitWorkflow {
   constructor(
     private readonly workspaceRoot: string,
-    private readonly logger: ILogger
+    private readonly logger: ILogger,
   ) {}
 
   public async execute(): Promise<InitResult> {
     const { workspaceRoot, logger } = this;
 
     logger.info(INIT_MESSAGES.INITIALIZING(workspaceRoot));
-    await appendInitLogLine(workspaceRoot, { event: "init.start", workspaceRoot });
+    await appendInitLogLine(workspaceRoot, {
+      event: "init.start",
+      workspaceRoot,
+    });
 
     // No generic annotations — each TOKENS.X value carries its own return/params types, so
     // `resolve()` infers the correct interface automatically (see
     // docs/gitbook/architecture/virtual-contracts-architecture.md#8).
     const git = docuviaFactory.resolve(TOKENS.GitProvider);
-    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, { logger });
-    const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, { logger });
-    const configScanner = docuviaFactory.resolve(TOKENS.ConfigScanner, { logger });
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger,
+    });
+    const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, {
+      logger,
+    });
+    const configScanner = docuviaFactory.resolve(TOKENS.ConfigScanner, {
+      logger,
+    });
     const vcsScanner = docuviaFactory.resolve(TOKENS.VcsScanner, { logger });
-    const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, { logger });
+    const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
+      logger,
+    });
     const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
     const buildTempFileManager = docuviaFactory.resolve(TOKENS.TempFileManager);
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
@@ -63,7 +74,11 @@ export class InitWorkflow {
     try {
       store = await openStore({ dbPath: resolveDbPath(workspaceRoot) });
     } catch (err) {
-      throw DocuviaError.wrap(ErrorCodes.INIT_WORKFLOW_FAILED, "Failed to open the local database", err);
+      throw DocuviaError.wrap(
+        ErrorCodes.INIT_WORKFLOW_FAILED,
+        "Failed to open the local database",
+        err,
+      );
     }
 
     try {
@@ -97,12 +112,27 @@ export class InitWorkflow {
       });
       logger.info(INIT_MESSAGES.PERSISTING_GRAPH);
 
+      // 4b. The graph this just built came from a direct parse, not a git hydration, so
+      // `store.meta`'s recorded knowledge-tip sha is still unset. Without this, the very next
+      // read-path command's `ensureHydrated()` would see `isStale() === true` (nothing recorded
+      // != the branch's — possibly still-empty — initial commit from step 1) and immediately
+      // overwrite the graph just persisted above with that stale/empty git snapshot. Record the
+      // current tip now so it isn't touched until an explicit `snapshot`/`hydrate` moves it.
+      const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
+        logger,
+      });
+      await hydrationService.markSynced(workspaceRoot, store);
+
       // 5. Temp file manager for LSP/incremental updates (non-fatal on failure). Registers
       // exactly one SIGTERM/SIGINT pair for this invocation, removed in `finally` below — a
       // single `init` invocation is its own scope; a multi-command shared-handler abstraction
       // is future work once more commands exist.
       logger.info(INIT_MESSAGES.INITIALIZING_TEMP_FILES);
-      const tempLifecycle = await initTempLifecycle(buildTempFileManager, workspaceRoot, logger);
+      const tempLifecycle = await initTempLifecycle(
+        buildTempFileManager,
+        workspaceRoot,
+        logger,
+      );
 
       let cleanupHandler: (() => void) | undefined;
       if (tempLifecycle) {
@@ -110,7 +140,11 @@ export class InitWorkflow {
           logger.info("Cleaning up temp files on shutdown...");
           tempLifecycle.tempFileManager
             .cleanup()
-            .catch((err) => logger.error("Temp file cleanup on shutdown failed", { error: String(err) }))
+            .catch((err) =>
+              logger.error("Temp file cleanup on shutdown failed", {
+                error: String(err),
+              }),
+            )
             .finally(() => tempLifecycle.stop());
         };
         process.on("SIGTERM", cleanupHandler);

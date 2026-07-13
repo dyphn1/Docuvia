@@ -11,6 +11,55 @@ import { createNoopLogger, IpcLogRouter } from "@workspace/contracts";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * Compiles `ast-worker.ts` into a real, standalone `ast-worker.js` sitting right next to it, for
+ * dev/test runs where `dist/`'s own pre-built worker (built as its own tsup entry — see
+ * artifacts/cli/tsup.config.ts) doesn't exist yet.
+ *
+ * This exists because tsx's `.js`-to-`.ts` resolve hook — the one that lets the *main* thread
+ * transparently run TypeScript from source — does not propagate into `worker_threads`, on any
+ * Node/tsx version tested (confirmed empirically: identical failure whether the loader is passed
+ * as an absolute file:// URL, the bare "tsx" specifier, or the documented "tsx/esm" register
+ * entry point). Spawning a raw `.ts` worker with that loader inherited via `execArgv` reliably
+ * throws `ERR_MODULE_NOT_FOUND` on the first relative import that needs the remap — not just in
+ * this file, but in every relatively-imported module reachable from it (e.g. `@workspace/contracts`'s
+ * own internal `./logging/logger.js`-style re-exports), so there is no finite set of individual
+ * imports to work around. Compiling once, up front, sidesteps the whole class of problem the same
+ * way the production build does — just lazily, for dev/test instead of via a separate build step.
+ *
+ * `web-tree-sitter` is kept external rather than bundled: it locates its own `tree-sitter.wasm`
+ * relative to its own module file at runtime, which stays correct as long as it keeps resolving
+ * through `lib/core`'s real `node_modules/web-tree-sitter` (true here, since `lib/core` declares
+ * it as a direct dependency) rather than being physically relocated into a bundle.
+ *
+ * Writes atomically (compile to a per-process temp file, then rename) so concurrent test workers
+ * compiling at the same time can't observe — or produce — a partially-written file.
+ */
+async function compileWorkerForDevMode(
+  sourcePath: string,
+  outPath: string,
+): Promise<void> {
+  const esbuild = await import("esbuild");
+  const tmpPath = `${outPath}.${process.pid}.tmp`;
+
+  await esbuild.build({
+    entryPoints: [sourcePath],
+    outfile: tmpPath,
+    bundle: true,
+    format: "esm",
+    platform: "node",
+    target: "node20",
+    // No createRequire banner needed here (unlike artifacts/cli/tsup.config.ts's build of this
+    // same file): ast-worker.ts already declares its own top-level
+    // `const require = createRequire(import.meta.url)` for resolveWasmPath()'s
+    // require.resolve() calls, which — since esbuild bundles everything into one shared
+    // scope — any bundled-in CJS interop code ends up using too.
+    external: ["web-tree-sitter"],
+  });
+
+  fs.renameSync(tmpPath, outPath);
+}
+
 export interface CacheMetrics {
   hits: number;
   misses: number;
@@ -37,11 +86,11 @@ export interface IASTWorkerPool {
 export class AstWorkerCrashError extends Error {
   constructor(
     public readonly filePath: string | undefined,
-    public readonly cause: unknown
+    public readonly cause: unknown,
   ) {
     super(
       `AST worker crashed while parsing ${filePath ?? "(unknown file)"}: ` +
-        (cause instanceof Error ? cause.message : String(cause))
+        (cause instanceof Error ? cause.message : String(cause)),
     );
     this.name = "AstWorkerCrashError";
   }
@@ -77,7 +126,7 @@ export class AstWorkerPool implements IASTWorkerPool {
     private readonly logger: ILogger = createNoopLogger(),
     private readonly taskTimeoutMs: number = 30_000,
     private cache?: IAsxParseCache,
-    private readonly workerScriptPathOverride?: string
+    private readonly workerScriptPathOverride?: string,
   ) {
     // See docs/gitbook/guidelines/playbook-ipc-logging.md — the worker can't hold a live
     // ILogger, so it sends IIpcLogMessages; this pool already has the real per-request logger
@@ -128,13 +177,19 @@ export class AstWorkerPool implements IASTWorkerPool {
         // pool.terminate() forcibly stops every still-alive worker via worker.terminate(),
         // and Node reports that as a non-zero "exit" event even though nothing went wrong.
         // Every still-idle worker at shutdown time would otherwise be misreported as a crash.
-        this.logger.debug("AST worker exited during pool shutdown (expected)", { taskId, filePath });
+        this.logger.debug("AST worker exited during pool shutdown (expected)", {
+          taskId,
+          filePath,
+        });
       } else {
         this.logger.error("AST worker crashed/exited", {
           taskId,
           filePath,
           hadInFlightTask: Boolean(taskId),
-          error: err instanceof Error ? { message: err.message, name: err.name } : err,
+          error:
+            err instanceof Error
+              ? { message: err.message, name: err.name }
+              : err,
         });
       }
       if (taskId) {
@@ -149,9 +204,11 @@ export class AstWorkerPool implements IASTWorkerPool {
             new AstWorkerCrashError(
               filePath,
               timedOut
-                ? new Error(`AST worker task ${taskId} timed out after ${this.taskTimeoutMs}ms`)
-                : err || new Error("Worker exited unexpectedly")
-            )
+                ? new Error(
+                    `AST worker task ${taskId} timed out after ${this.taskTimeoutMs}ms`,
+                  )
+                : err || new Error("Worker exited unexpectedly"),
+            ),
           );
           this.pendingTasks.delete(taskId);
         }
@@ -189,9 +246,11 @@ export class AstWorkerPool implements IASTWorkerPool {
       // the pool at a fixture worker script (e.g. one that deterministically crashes).
       this.wPath = this.workerScriptPathOverride;
       this.workerOptions.execArgv = process.execArgv.filter(
-        (arg) => !arg.includes("--eval") && !arg.includes("--print")
+        (arg) => !arg.includes("--eval") && !arg.includes("--print"),
       );
-      if (!this.workerOptions.execArgv.some((arg: string) => arg.includes("tsx"))) {
+      if (
+        !this.workerOptions.execArgv.some((arg: string) => arg.includes("tsx"))
+      ) {
         this.workerOptions.execArgv.push("--import", "tsx");
       }
       for (let i = 0; i < workerCount; i++) {
@@ -200,27 +259,17 @@ export class AstWorkerPool implements IASTWorkerPool {
       return;
     }
 
-    // Determine if we are in .ts environment (tsx) or .js environment (dist)
-    let isTs = false;
+    // Determine if we are in a dist/ (pre-built) or dev/test (raw source) environment.
     this.wPath = path.resolve(__dirname, "./ast-worker.js");
 
     if (!fs.existsSync(this.wPath)) {
-      this.wPath = path.resolve(__dirname, "./ast-worker.ts");
-      isTs = true;
+      const sourcePath = path.resolve(__dirname, "./ast-worker.ts");
+      await compileWorkerForDevMode(sourcePath, this.wPath);
     }
 
-    if (isTs) {
-      // Inherit the exact tsx loader from the parent process, filtering out any script-specific args
-      this.workerOptions.execArgv = process.execArgv.filter(
-        (arg) => !arg.includes("--eval") && !arg.includes("--print")
-      );
-      if (!this.workerOptions.execArgv.some((arg: string) => arg.includes("tsx"))) {
-        this.workerOptions.execArgv.push("--import", "tsx");
-      }
-    } else {
-      // If running from dist/ast-worker.js, we don't need any loaders.
-      this.workerOptions.execArgv = [];
-    }
+    // Either dist/'s own pre-built worker, or the one compileWorkerForDevMode() just produced —
+    // both are real, standalone .js, so no loader is ever needed.
+    this.workerOptions.execArgv = [];
 
     for (let i = 0; i < workerCount; i++) {
       await this.enqueueSpawn();
@@ -260,8 +309,12 @@ export class AstWorkerPool implements IASTWorkerPool {
           if (this.cache) {
             this.cache.set(contentHash, result);
             const metrics = this.cache.metrics;
-            if (metrics.hits + metrics.misses > 0 && (metrics.hits + metrics.misses) % 100 === 0) {
-              const hitRate = (metrics.hits / (metrics.hits + metrics.misses)) * 100;
+            if (
+              metrics.hits + metrics.misses > 0 &&
+              (metrics.hits + metrics.misses) % 100 === 0
+            ) {
+              const hitRate =
+                (metrics.hits / (metrics.hits + metrics.misses)) * 100;
               const queueWaitTime = Date.now() - queuedAt;
               this.logger.info("AST cache metrics and queue performance", {
                 hitRate: Number(hitRate.toFixed(2)),
@@ -287,18 +340,24 @@ export class AstWorkerPool implements IASTWorkerPool {
     const worker = this.workerQueue.shift()!;
 
     const taskId = String(++this.taskCounter);
-    this.pendingTasks.set(taskId, { resolve: task.resolve, reject: task.reject });
+    this.pendingTasks.set(taskId, {
+      resolve: task.resolve,
+      reject: task.reject,
+    });
     this.workerTasks.set(worker, taskId);
     this.taskFilePaths.set(taskId, task.request.filePath);
 
     const timeout = setTimeout(() => {
       this.taskTimeouts.delete(taskId);
       this.timedOutWorkers.add(worker);
-      this.logger.error("AST worker task timed out — terminating stuck worker", {
-        taskId,
-        filePath: this.taskFilePaths.get(taskId),
-        taskTimeoutMs: this.taskTimeoutMs,
-      });
+      this.logger.error(
+        "AST worker task timed out — terminating stuck worker",
+        {
+          taskId,
+          filePath: this.taskFilePaths.get(taskId),
+          taskTimeoutMs: this.taskTimeoutMs,
+        },
+      );
       // Deliberate termination; the worker's own "exit" handler rejects the pending task,
       // removes it from the pool, and respawns a replacement.
       worker.terminate().catch(() => {});

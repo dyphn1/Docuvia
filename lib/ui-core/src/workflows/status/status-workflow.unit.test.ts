@@ -11,10 +11,13 @@ import {
 } from "@workspace/contracts";
 import { StatusWorkflow } from "./status-workflow.js";
 
-function makeMockHydrationService(overrides: Partial<IHydrationService> = {}): IHydrationService {
+function makeMockHydrationService(
+  overrides: Partial<IHydrationService> = {},
+): IHydrationService {
   return {
     resolveHydrationCommit: vi.fn(),
     isStale: vi.fn().mockResolvedValue(false),
+    markSynced: vi.fn(),
     hydrate: vi.fn(),
     ...overrides,
   };
@@ -23,9 +26,18 @@ function makeMockHydrationService(overrides: Partial<IHydrationService> = {}): I
 /** Pure orchestration unit test — see docs/gitbook/architecture/testing-and-quality-architecture.md's "Factory Lock". */
 function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
-    projects: { getFirst: vi.fn(), insert: vi.fn(), count: vi.fn().mockReturnValue(1) },
+    projects: {
+      getFirst: vi.fn(),
+      insert: vi.fn(),
+      count: vi.fn().mockReturnValue(1),
+    },
     files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
-    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn(), getAllTagLinks: vi.fn() },
+    tags: {
+      upsertTag: vi.fn(),
+      getIdByName: vi.fn(),
+      linkNodeToTag: vi.fn(),
+      getAllTagLinks: vi.fn(),
+    },
     graph: {
       deleteNodesForPath: vi.fn(),
       insertNode: vi.fn(),
@@ -66,13 +78,18 @@ describe("StatusWorkflow.execute()", () => {
       .fn<[GraphStoreOpenOptions], Promise<IGraphStore>>()
       .mockResolvedValue(store);
     docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
-    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
     docuviaFactory.lock();
 
-    const result = await new StatusWorkflow("/workspace/demo", createMockLogger()).execute();
+    const result = await new StatusWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
 
     expect(openStoreSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ readonly: true })
+      expect.objectContaining({ readonly: true }),
     );
     expect(result).toEqual({ projects: 1, l2Nodes: 4, l3Nodes: 9 });
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
@@ -80,12 +97,17 @@ describe("StatusWorkflow.execute()", () => {
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
-    const dbOpenError = new DocuviaError("DB_OPEN_FAILED", "Failed to open database at /x: ENOENT");
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockRejectedValue(dbOpenError));
+    const dbOpenError = new DocuviaError(
+      "DB_OPEN_FAILED",
+      "Failed to open database at /x: ENOENT",
+    );
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockRejectedValue(dbOpenError),
+    );
     docuviaFactory.lock();
 
     await expect(
-      new StatusWorkflow("/workspace/demo", createMockLogger()).execute()
+      new StatusWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toMatchObject({
       code: "DB_OPEN_FAILED",
       message: expect.stringContaining("docuvia init"),
@@ -111,12 +133,16 @@ describe("StatusWorkflow.execute()", () => {
         bulkLoadGraph: vi.fn(),
       },
     });
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
-    docuviaFactory.register(TOKENS.HydrationService, () => makeMockHydrationService());
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
     docuviaFactory.lock();
 
     await expect(
-      new StatusWorkflow("/workspace/demo", createMockLogger()).execute()
+      new StatusWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toThrow("boom");
     expect(store.close).toHaveBeenCalledTimes(2);
   });

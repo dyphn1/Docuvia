@@ -14,7 +14,12 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
     projects: { getFirst: vi.fn(), insert: vi.fn(), count: vi.fn() },
     files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
-    tags: { upsertTag: vi.fn(), getIdByName: vi.fn(), linkNodeToTag: vi.fn(), getAllTagLinks: vi.fn() },
+    tags: {
+      upsertTag: vi.fn(),
+      getIdByName: vi.fn(),
+      linkNodeToTag: vi.fn(),
+      getAllTagLinks: vi.fn(),
+    },
     graph: {
       deleteNodesForPath: vi.fn(),
       insertNode: vi.fn(),
@@ -51,30 +56,45 @@ describe("ensureHydrated()", () => {
 
   it("hydrates when IHydrationService.isStale() says the store is stale", async () => {
     const store = makeMockStore();
-    docuviaFactory.register(
-      TOKENS.GraphStoreOpener,
-      () => vi.fn<[GraphStoreOpenOptions], Promise<IGraphStore>>().mockResolvedValue(store)
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi
+        .fn<[GraphStoreOpenOptions], Promise<IGraphStore>>()
+        .mockResolvedValue(store),
     );
     const hydrationService: IHydrationService = {
       resolveHydrationCommit: vi.fn(),
       isStale: vi.fn().mockResolvedValue(true),
-      hydrate: vi.fn().mockResolvedValue({ hydrated: true, nodesLoaded: 1, edgesLoaded: 0, edgesDropped: 0 }),
+      markSynced: vi.fn(),
+      hydrate: vi
+        .fn()
+        .mockResolvedValue({
+          hydrated: true,
+          nodesLoaded: 1,
+          edgesLoaded: 0,
+          edgesDropped: 0,
+        }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
 
     await ensureHydrated("/workspace/demo", createMockLogger());
 
-    expect(hydrationService.hydrate).toHaveBeenCalledWith("/workspace/demo", store);
+    expect(hydrationService.hydrate).toHaveBeenCalledWith(
+      "/workspace/demo",
+      store,
+    );
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
   it("does not hydrate when IHydrationService.isStale() says the store is up to date", async () => {
     const store = makeMockStore();
-    docuviaFactory.register(TOKENS.GraphStoreOpener, () => vi.fn().mockResolvedValue(store));
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
     const hydrationService: IHydrationService = {
       resolveHydrationCommit: vi.fn(),
       isStale: vi.fn().mockResolvedValue(false),
+      markSynced: vi.fn(),
       hydrate: vi.fn(),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
@@ -88,17 +108,20 @@ describe("ensureHydrated()", () => {
 
   it("silently returns (does not throw) when the store can't be opened, leaving the caller's own openStore() to surface the error", async () => {
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
-      vi.fn().mockRejectedValue(new Error("ENOENT"))
+      vi.fn().mockRejectedValue(new Error("ENOENT")),
     );
     const hydrationService: IHydrationService = {
       resolveHydrationCommit: vi.fn(),
       isStale: vi.fn(),
+      markSynced: vi.fn(),
       hydrate: vi.fn(),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
 
-    await expect(ensureHydrated("/workspace/demo", createMockLogger())).resolves.toBeUndefined();
+    await expect(
+      ensureHydrated("/workspace/demo", createMockLogger()),
+    ).resolves.toBeUndefined();
     expect(hydrationService.isStale).not.toHaveBeenCalled();
   });
 });

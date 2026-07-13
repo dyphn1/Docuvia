@@ -1,4 +1,8 @@
-import type { IGraphPersister, IGraphStore, ParsedAstFileResult } from "@workspace/contracts";
+import type {
+  IGraphPersister,
+  IGraphStore,
+  ParsedAstFileResult,
+} from "@workspace/contracts";
 import { ScopeResolver } from "./scope-resolver.js";
 
 /**
@@ -28,9 +32,16 @@ export class GraphPersisterService implements IGraphPersister {
       const resolver = new ScopeResolver(workspaceRoot);
       for (const result of parsedResults) {
         const locals: string[] = [];
-        if (result.data.functions) locals.push(...result.data.functions.map((f) => f.name));
-        if (result.data.classes) locals.push(...result.data.classes.map((c) => c.name));
-        resolver.registerFile(result.file, result.data.imports || [], [], locals);
+        if (result.data.functions)
+          locals.push(...result.data.functions.map((f) => f.name));
+        if (result.data.classes)
+          locals.push(...result.data.classes.map((c) => c.name));
+        resolver.registerFile(
+          result.file,
+          result.data.imports || [],
+          [],
+          locals,
+        );
       }
 
       const fileIdMap = new Map<string, number>();
@@ -66,40 +77,78 @@ export class GraphPersisterService implements IGraphPersister {
           if (tagId !== undefined) store.tags.linkNodeToTag(fileId, tagId);
         }
 
+        // Two symbols in the same file can share a name (multiple truly-anonymous callbacks all
+        // named "anonymous" by resolveCallableName(), overloaded functions, same-named methods on
+        // different classes, chained/nested callbacks sharing a start line, ...). node_key is
+        // `${file}#${name}` and UNIQUE(project_id, node_key), so a second insert under an
+        // already-used key would throw. Disambiguate only on actual collision, preferring the
+        // symbol's start line (readable, usually enough) and falling back to a counter for the
+        // rare case where even that repeats (e.g. `x.map(() => {}).filter(() => {})` on one line) —
+        // guaranteed unique, so the common non-colliding case keeps its plain `file#name` key.
+        const usedNodeKeys = new Set<string>([result.file]);
+        const uniqueNodeKey = (baseKey: string, startLine: number): string => {
+          if (!usedNodeKeys.has(baseKey)) return baseKey;
+          const lineKey = `${baseKey}@L${startLine}`;
+          if (!usedNodeKeys.has(lineKey)) return lineKey;
+          let n = 2;
+          while (usedNodeKeys.has(`${lineKey}#${n}`)) n++;
+          return `${lineKey}#${n}`;
+        };
+
         for (const fn of result.data.functions ?? []) {
+          const nodeKey = uniqueNodeKey(
+            `${result.file}#${fn.name}`,
+            fn.startLine,
+          );
+          usedNodeKeys.add(nodeKey);
           const fnId = store.graph.insertNode({
             projectId,
             name: fn.name,
             type: "module",
             description: "",
             pathPatterns: [result.file],
-            nodeKey: `${result.file}#${fn.name}`,
+            nodeKey,
             contentHash: fn.contentHash,
           });
           symbolsForFile.set(fn.name, fnId);
-          store.graph.insertLink({ sourceNodeId: fileId, targetNodeId: fnId, linkType: "contains" });
+          store.graph.insertLink({
+            sourceNodeId: fileId,
+            targetNodeId: fnId,
+            linkType: "contains",
+          });
         }
 
         for (const cls of result.data.classes ?? []) {
+          const nodeKey = uniqueNodeKey(
+            `${result.file}#${cls.name}`,
+            cls.startLine,
+          );
+          usedNodeKeys.add(nodeKey);
           const clsId = store.graph.insertNode({
             projectId,
             name: cls.name,
             type: "module",
             description: "",
             pathPatterns: [result.file],
-            nodeKey: `${result.file}#${cls.name}`,
+            nodeKey,
             contentHash: cls.contentHash,
           });
           symbolsForFile.set(cls.name, clsId);
-          store.graph.insertLink({ sourceNodeId: fileId, targetNodeId: clsId, linkType: "contains" });
+          store.graph.insertLink({
+            sourceNodeId: fileId,
+            targetNodeId: clsId,
+            linkType: "contains",
+          });
         }
       }
 
       // Resolves a symbol or file node id by name within a given file's path pattern. Falls back
       // to a DB lookup (beyond symbolIdMap/fileIdMap) so incremental runs can still link against
       // nodes persisted by a previous, unrelated batch.
-      const findNodeIdByName = (filePath: string, name: string): number | undefined =>
-        store.graph.findNodeIdByName(filePath, name);
+      const findNodeIdByName = (
+        filePath: string,
+        name: string,
+      ): number | undefined => store.graph.findNodeIdByName(filePath, name);
 
       for (const result of parsedResults) {
         const sourceFileId = fileIdMap.get(result.file);
@@ -110,9 +159,12 @@ export class GraphPersisterService implements IGraphPersister {
         const processLink = (
           sourceSymbolName: string | undefined,
           targetFunctionOrClass: string,
-          linkType: string
+          linkType: string,
         ) => {
-          const resolved = resolver.resolveCall(result.file, targetFunctionOrClass);
+          const resolved = resolver.resolveCall(
+            result.file,
+            targetFunctionOrClass,
+          );
           if (!resolved) return;
 
           // Prefer the specific target function/class node; fall back to the file node when the
@@ -145,7 +197,11 @@ export class GraphPersisterService implements IGraphPersister {
           processLink(ext.sourceClass, ext.targetClass, "extends");
         }
 
-        store.files.upsertFile({ projectId, filePath: result.file, contentHash: result.hash });
+        store.files.upsertFile({
+          projectId,
+          filePath: result.file,
+          contentHash: result.hash,
+        });
         updatedCount++;
       }
 

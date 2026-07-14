@@ -9,18 +9,29 @@ export async function writeOrAppend(
   content: string,
   marker: string,
 ) {
+  let existing: string | undefined;
   try {
-    const existing = await fs.readFile(filePath, UTF8_ENCODING);
-    if (!existing.includes(marker)) {
-      await fs.appendFile(filePath, `\n${content}`);
-      ui.success(UI_MESSAGES.FS_APPENDED + filePath);
-    } else {
-      ui.info(UI_MESSAGES.FS_ALREADY_EXISTS + filePath);
+    existing = await fs.readFile(filePath, UTF8_ENCODING);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      ui.warn(
+        `${UI_MESSAGES.FS_READ_ERROR}${filePath} (${(err as NodeJS.ErrnoException).code ?? "unknown error"}); creating a new file instead of appending`,
+      );
     }
-  } catch {
+  }
+
+  if (existing === undefined) {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
     await fs.writeFile(filePath, content);
     ui.success(UI_MESSAGES.FS_CREATED + filePath);
+    return;
+  }
+
+  if (!existing.includes(marker)) {
+    await fs.appendFile(filePath, `\n${content}`);
+    ui.success(UI_MESSAGES.FS_APPENDED + filePath);
+  } else {
+    ui.info(UI_MESSAGES.FS_ALREADY_EXISTS + filePath);
   }
 }
 

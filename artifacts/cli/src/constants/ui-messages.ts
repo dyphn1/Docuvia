@@ -18,6 +18,8 @@ export const UI_MESSAGES = {
   INIT_START: "Starting initialization...",
   INIT_FAILED: "Initialization failed: ",
   INIT_AGENT_HOOKS: "Initializing AI Agent integrations for Docuvia...",
+  INIT_LOCK_WAITING:
+    "Another `docuvia init` is already running in this workspace; waiting for it to finish...",
 
   // Init Agent Hooks
   INIT_HOOKS_CONFIG_MCP: "Configuring MCP Servers...",
@@ -40,6 +42,7 @@ export const UI_MESSAGES = {
   FS_APPENDED: "Appended instructions to: ",
   FS_ALREADY_EXISTS: "Instructions already exist in: ",
   FS_CREATED: "Created: ",
+  FS_READ_ERROR: "Could not read ",
 
   // Clean Command
   CLEAN_HEADER: "Clean Docuvia Database",

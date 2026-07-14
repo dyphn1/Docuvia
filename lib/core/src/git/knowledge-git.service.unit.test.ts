@@ -94,6 +94,30 @@ describe("KnowledgeGitService.ensureKnowledgeBranch()", () => {
       "git fast-import failed",
     );
   });
+
+  it("PLAT-006: re-checks inside the lock and skips a duplicate initial commit when a concurrent process created the branch in between", async () => {
+    // First check (before the lock) sees no branch; the re-check (after acquiring the lock)
+    // sees it now exists — simulating a second process winning the race in between.
+    const branchExists = vi
+      .fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const git = makeMockGitProvider({ branchExists });
+    const logger = createMockLogger();
+    const service = new KnowledgeGitService(git, logger);
+
+    const result = await service.ensureKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ created: false });
+    expect(git.packDirectoryToBranch).not.toHaveBeenCalled();
+    expect(git.acquireKnowledgeLock).toHaveBeenCalledTimes(1);
+    expect(git.releaseKnowledgeLock).toHaveBeenCalledTimes(1);
+    expect(
+      logger.events.some(
+        (e) => e.level === "warn" && /concurrent process/.test(e.message),
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("KnowledgeGitService.installPostCommitHook()", () => {
@@ -151,6 +175,32 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
 
     expect(result).toEqual({ installed: false });
     expect(logger.events.some((e) => e.level === "warn")).toBe(true);
+  });
+
+  it("PLAT-006: re-checks inside the lock and skips a duplicate append when a concurrent process installed the hook in between", async () => {
+    // First check (before the lock) sees no marker; the re-check (after acquiring the lock)
+    // sees it now present — simulating a second process winning the race in between.
+    const readHookFile = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(
+        `#!/bin/bash\n${GitConstants.POST_COMMIT_HOOK_MARKER}\n`,
+      );
+    const git = makeMockGitProvider({ readHookFile });
+    const logger = createMockLogger();
+    const service = new KnowledgeGitService(git, logger);
+
+    const result = await service.installPostCommitHook("/workspace");
+
+    expect(result).toEqual({ installed: false });
+    expect(git.appendHookFile).not.toHaveBeenCalled();
+    expect(git.acquireKnowledgeLock).toHaveBeenCalledTimes(1);
+    expect(git.releaseKnowledgeLock).toHaveBeenCalledTimes(1);
+    expect(
+      logger.events.some(
+        (e) => e.level === "warn" && /concurrent process/.test(e.message),
+      ),
+    ).toBe(true);
   });
 });
 

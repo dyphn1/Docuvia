@@ -34,7 +34,7 @@ This document adopts a **Top-Down** perspective. By starting from the CLI comman
   - [STOR-001] Git Branch as Sole Source of Truth (Analysis results ultimately land in Git)
   - [STOR-004] Git Blob-Native Identity (Uses content hashing to prevent checkout thrashing)
   - [GRPH-003] Unified AST Microkernel (Shared AST parsing engine)
-- **Deferred Scope**: Currently does not implement LLM extraction of L3 nodes (LLM-001, LLM-002).
+- **Deferred Scope**: Currently does not implement LLM extraction of L3 nodes. The underlying multi-provider transport is settled in [llm/LLM-002] (bridges to CLIProxyAPI, superseding [llm/LLM-001]); an extraction-specific ADR is still pending.
 
 ### `docuvia snapshot`
 

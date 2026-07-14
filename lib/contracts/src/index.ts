@@ -72,6 +72,20 @@ export type {
   RemoteSyncClientConfig,
   IRemoteSyncClient,
 } from "./interfaces/remote-sync.interfaces.js";
+export type {
+  LlmClientConfig,
+  ChatMessageRole,
+  ChatToolCall,
+  ChatMessage,
+  ChatToolDefinition,
+  ChatCompletionRequest,
+  ChatCompletionChoice,
+  ChatCompletionResult,
+  ChatCompletionChunkDelta,
+  ChatCompletionChunkChoice,
+  ChatCompletionChunk,
+  ILlmClient,
+} from "./interfaces/llm-client.interfaces.js";
 export { RiskLevels } from "./interfaces/impact.interfaces.js";
 export type {
   RiskLevel,

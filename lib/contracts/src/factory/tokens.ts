@@ -14,6 +14,7 @@ import type {
 } from "../interfaces/graph-store.interfaces.js";
 import type { ITempFileManager } from "../interfaces/temp-file-manager.interfaces.js";
 import type { IRemoteSyncClient } from "../interfaces/remote-sync.interfaces.js";
+import type { ILlmClient } from "../interfaces/llm-client.interfaces.js";
 import type { IQueryService } from "../interfaces/query.interfaces.js";
 import type { IImpactService } from "../interfaces/impact.interfaces.js";
 import type { IChangeDetectionService } from "../interfaces/change-detection.interfaces.js";
@@ -71,6 +72,10 @@ export const TOKENS = {
    *  construction needs per-run config (`apiUrl`/`pat`) sourced from `docuviaMemory`, not
    *  swappable tech. */
   RemoteSyncClient: createToken<() => IRemoteSyncClient>("RemoteSyncClient"),
+  /** A builder function, not a shared instance — mirrors `RemoteSyncClient`'s token shape since
+   *  construction needs per-run config (`baseUrl`/`apiKey`) sourced from `docuviaMemory`, not
+   *  swappable tech. */
+  LlmClient: createToken<() => ILlmClient>("LlmClient"),
   QueryService: createToken<IQueryService, LoggerParams>("IQueryService"),
   ImpactService: createToken<IImpactService, LoggerParams>("IImpactService"),
   ChangeDetectionService: createToken<IChangeDetectionService, LoggerParams>(

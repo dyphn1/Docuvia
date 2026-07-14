@@ -82,8 +82,13 @@ export const UI_MESSAGES = {
   ANALYZE_PROJECT_TYPE: "Project Type: ",
   ANALYZE_SUGGESTED_TAGS: "Suggested Tags: ",
   ANALYZE_NONE: "none",
-  ANALYZE_TARGET_PATH_NOT_SUPPORTED:
-    "Analyzing a specific file/path (decision extraction) is not yet supported in this build. Run `docuvia analyze` with no path for a project-wide config scan.",
+  ANALYZE_LLM_MISSING_ENV:
+    "AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL and a model (AI_DOCUVIA_MODEL or AI_DOCUVIA_FAST_MODEL) must be set to analyze a specific path.",
+  ANALYZE_FOCUSED_HEADER: "Analyze Path",
+  ANALYZE_FOCUSED_START: "Extracting decisions from ",
+  ANALYZE_FOCUSED_SUCCESS: "Decision extraction complete.",
+  ANALYZE_FOCUSED_FAIL: "Decision extraction failed: ",
+  ANALYZE_FOCUSED_NONE: "No decision-worthy content found.",
 
   // Review Command
   REVIEW_HEADER: "Review Changes",

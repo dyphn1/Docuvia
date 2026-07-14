@@ -17,7 +17,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@workspace/contracts": "workspace:^"
+    "@workspace/contracts": "workspace:^",
+    "@workspace/core": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "catalog:",

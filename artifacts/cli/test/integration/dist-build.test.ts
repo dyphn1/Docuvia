@@ -125,4 +125,64 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
     expect(impactResult.exitCode).toBe(0);
     expect(impactResult.stdout).not.toContain("No matching node found");
   }, 30000);
+
+  // Regression test for a crash reproduced manually by launching several `node dist/cli.js init`
+  // processes at the same instant against the same workspace: all of them open GraphStore before
+  // any has recorded a migration, all attempt
+  // `INSERT INTO schema_migrations (filename) VALUES (...)` for the same file
+  // (lib/schema/src/sqlite/migration-runner.ts), and every loser's `UNIQUE(filename)` violation
+  // surfaces all the way up as an unhandled "Initialization failed: Failed to apply migrations"
+  // with `process.exit(1)`. Reproduces here (not via tsx — see this file's module comment)
+  // because plain `node` starts fast enough for the processes to land inside the same race
+  // window. Two terminals racing `init` is a realistic scenario (a double-clicked setup script,
+  // an IDE-triggered hook overlapping a manual run), not a contrived one.
+  //
+  // The race itself is inherently timing-dependent (OS process-scheduling jitter), so a single
+  // 4-way race only lands inside the window some of the time. Running several independent
+  // rounds, each in its own fresh workspace, drives the odds of missing a real regression here
+  // down close to zero without asserting anything timing-specific — every round must still exit
+  // 0 for every process.
+  it("does not crash when several init processes race against the compiled build in the same workspace", async () => {
+    const ROUNDS = 5;
+    const PROCESSES_PER_ROUND = 4;
+
+    for (let round = 0; round < ROUNDS; round++) {
+      const roundSandbox = new TestSandbox();
+      await roundSandbox.setup({
+        initGit: true,
+        files: {
+          "src/index.ts":
+            "export function hello(): string {\n  return 'world';\n}\n",
+        },
+      });
+
+      try {
+        const results = await Promise.allSettled(
+          Array.from({ length: PROCESSES_PER_ROUND }, () =>
+            roundSandbox.runDistCli(["init"]),
+          ),
+        );
+
+        const exitCodes = results.map((r) =>
+          r.status === "fulfilled"
+            ? r.value.exitCode
+            : ((r.reason as { exitCode?: number }).exitCode ?? "unknown"),
+        );
+
+        expect(
+          exitCodes.every((code) => code === 0),
+          `round ${round}: expected every concurrent init run to exit 0, got: ${JSON.stringify(exitCodes)}`,
+        ).toBe(true);
+
+        // The race must not have left the database unusable for a normal run to build on.
+        const { count } = roundSandbox
+          .getDb()
+          .prepare("SELECT COUNT(*) as count FROM projects")
+          .get() as { count: number };
+        expect(count).toBe(1);
+      } finally {
+        await roundSandbox.teardown();
+      }
+    }
+  }, 90000);
 });

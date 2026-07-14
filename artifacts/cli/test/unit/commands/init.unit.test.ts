@@ -168,6 +168,14 @@ describe("initCommand", () => {
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects with a validation error before touching docuviaApi.init when cwd is an empty string", async () => {
+    await expect(initCommand("")).rejects.toThrow(
+      /workspace root must not be empty/,
+    );
+
+    expect(mockInit).not.toHaveBeenCalled();
+  });
+
   describe("--global threading to platform.installHooks", () => {
     it("passes allowGlobalMcpConfig=true through to every platform's configure() when the --global flag was set", async () => {
       mockInit.mockResolvedValue({

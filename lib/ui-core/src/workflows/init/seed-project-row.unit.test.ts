@@ -50,28 +50,32 @@ function makeMockGitProvider(
 
 function makeMockProjectsRepo(existing?: ProjectRow): IProjectsRepo {
   let row = existing;
+  const doInsert = (input: { name: string; repoUrl: string }) => {
+    row = {
+      id: 1,
+      name: input.name,
+      repo_url: input.repoUrl,
+      description: null,
+      status: "active",
+      vcs_type: "git",
+      svn_url: null,
+      last_git_ingested_at: null,
+      last_svn_revision: null,
+      last_ast_ingested_at: null,
+      owner_id: 1,
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    };
+    return row;
+  };
   return {
     getFirst: vi.fn().mockImplementation(() => row),
-    insert: vi
+    insert: vi.fn().mockImplementation(doInsert),
+    getOrInsert: vi
       .fn()
-      .mockImplementation((input: { name: string; repoUrl: string }) => {
-        row = {
-          id: 1,
-          name: input.name,
-          repo_url: input.repoUrl,
-          description: null,
-          status: "active",
-          vcs_type: "git",
-          svn_url: null,
-          last_git_ingested_at: null,
-          last_svn_revision: null,
-          last_ast_ingested_at: null,
-          owner_id: 1,
-          created_at: "2026-01-01T00:00:00.000Z",
-          updated_at: "2026-01-01T00:00:00.000Z",
-        };
-        return row;
-      }),
+      .mockImplementation((input: { name: string; repoUrl: string }) =>
+        row ? row : doInsert(input),
+      ),
     count: vi.fn().mockImplementation(() => (row ? 1 : 0)),
   };
 }
@@ -92,7 +96,7 @@ describe("seedProjectRow", () => {
     );
 
     expect(result.repo_url).toBe("https://github.com/example/repo.git");
-    expect(projectsRepo.insert).toHaveBeenCalledWith({
+    expect(projectsRepo.getOrInsert).toHaveBeenCalledWith({
       name: "my-repo",
       repoUrl: "https://github.com/example/repo.git",
     });

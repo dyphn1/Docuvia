@@ -96,6 +96,12 @@ describe("Command: docuvia init", () => {
     expect(lines[lines.length - 1].event).toBe("init.summary");
   }, 25000);
 
+  // NOTE: the concurrent-init race regression test lives in dist-build.test.ts, not here — see
+  // that file's comment for why: this test file's `sandbox.runCli()` drives the CLI via `tsx`,
+  // whose per-process startup jitter was enough in practice to avoid lining up the race window,
+  // making it an unreliable regression guard for a bug that reproduces reliably against the
+  // compiled `dist/cli.js`.
+
   it("should be idempotent (running init twice doesn't crash or corrupt the DB)", async () => {
     // Act: Run init twice
     await sandbox.runCli(["init"]);

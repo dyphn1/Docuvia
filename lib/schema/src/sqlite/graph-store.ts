@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import fsPromises from "node:fs/promises";
 import path from "node:path";
 import DatabaseConstructor from "better-sqlite3";
 import type Database from "better-sqlite3";
@@ -14,6 +15,60 @@ import { GraphNodesRepo } from "./repos/graph-repo.js";
 import { L3NodesRepo } from "./repos/l3-nodes-repo.js";
 import { FtsRepo } from "./repos/fts-repo.js";
 import { MetaRepo } from "./repos/meta-repo.js";
+
+const INIT_LOCK_MAX_WAIT_MS = 10_000;
+const INIT_LOCK_RETRY_INTERVAL_MS = 100;
+const INIT_LOCK_STALE_MS = 60_000;
+
+/**
+ * Cross-process mutex around a fresh database's first bootstrap (WAL-mode switch + migrations)
+ * — same shape as libgit2-provider.ts's `acquireKnowledgeLock`/`releaseKnowledgeLock`. Needed
+ * because two `docuvia init` processes racing the same workspace both reach `GraphStore.open()`
+ * before either has finished bootstrapping: SQLite's own `busy_timeout` only smooths out
+ * SQLITE_BUSY on individual statements, not the "switch journal_mode to WAL" + "apply pending
+ * migrations" sequence as a whole, so without this lock the loser can still see a raw
+ * `SqliteError: database is locked` or a `schema_migrations` UNIQUE violation.
+ */
+async function acquireInitLock(dbPath: string): Promise<string> {
+  const lockPath = `${dbPath}.init-lock`;
+  const deadline = Date.now() + INIT_LOCK_MAX_WAIT_MS;
+
+  for (;;) {
+    try {
+      const handle = await fsPromises.open(lockPath, "wx");
+      await handle.close();
+      return lockPath;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
+        throw DocuviaError.wrap(
+          ErrorCodes.DB_LOCKED,
+          "Failed to acquire database init lock",
+          err,
+        );
+      }
+
+      const stat = await fsPromises.stat(lockPath).catch(() => undefined);
+      if (stat && Date.now() - stat.mtimeMs > INIT_LOCK_STALE_MS) {
+        await fsPromises.rm(lockPath, { force: true });
+        continue;
+      }
+
+      if (Date.now() > deadline) {
+        throw new DocuviaError(
+          ErrorCodes.DB_LOCKED,
+          `Timed out waiting for the database init lock at ${lockPath} — another Docuvia process may be stuck`,
+        );
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, INIT_LOCK_RETRY_INTERVAL_MS),
+      );
+    }
+  }
+}
+
+async function releaseInitLock(lockPath: string): Promise<void> {
+  await fsPromises.rm(lockPath, { force: true });
+}
 
 /**
  * The shared memory/state layer (see docs/gitbook/architecture/virtual-contracts-architecture.md
@@ -43,9 +98,23 @@ export class GraphStore implements IGraphStore {
   }
 
   static async open(opts: GraphStoreOpenOptions): Promise<GraphStore> {
-    try {
-      fs.mkdirSync(path.dirname(opts.dbPath), { recursive: true });
+    // Only writers bootstrap (switch journal mode, apply migrations) — that sequence isn't safe
+    // against a second process doing the same thing at the same time (see acquireInitLock's
+    // comment), so serialize it with a cross-process lock. Readonly opens never touch the file
+    // and don't need it. The lock file lives next to dbPath, so its directory must exist first.
+    fs.mkdirSync(path.dirname(opts.dbPath), { recursive: true });
 
+    const lockPath = opts.readonly
+      ? undefined
+      : await acquireInitLock(opts.dbPath).catch((err) => {
+          throw DocuviaError.wrap(
+            ErrorCodes.DB_OPEN_FAILED,
+            `Failed to open database at ${opts.dbPath}`,
+            err,
+          );
+        });
+
+    try {
       const db = opts.readonly
         ? new DatabaseConstructor(opts.dbPath, {
             readonly: true,
@@ -79,6 +148,8 @@ export class GraphStore implements IGraphStore {
         `Failed to open database at ${opts.dbPath}`,
         err,
       );
+    } finally {
+      if (lockPath) await releaseInitLock(lockPath);
     }
   }
 

@@ -112,6 +112,13 @@ export interface IMetaRepo {
 export interface IProjectsRepo {
   getFirst(): ProjectRow | undefined;
   insert(input: { name: string; repoUrl: string }): ProjectRow;
+  /**
+   * Atomic get-or-insert: returns the existing project row if one exists, otherwise inserts
+   * `input` and returns the new row — all inside one write-locked transaction, so two processes
+   * racing `docuvia init` on a fresh workspace can't both observe "no project yet" and both
+   * insert (see seed-project-row.ts).
+   */
+  getOrInsert(input: { name: string; repoUrl: string }): ProjectRow;
   /** Row count of the `projects` table — used by `status`. */
   count(): number;
 }

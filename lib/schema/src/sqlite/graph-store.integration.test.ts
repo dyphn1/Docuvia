@@ -61,6 +61,24 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(first).toEqual(inserted);
   });
 
+  it("projects repo: getOrInsert() inserts once and returns the same row on every later call", () => {
+    const first = store.projects.getOrInsert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    expect(first.name).toBe("demo");
+
+    // A second call with different input must not insert a second row — it returns the row
+    // already there (this is the atomic replacement for a caller composing getFirst()+insert()
+    // itself, which two racing `docuvia init` processes could both see as empty).
+    const second = store.projects.getOrInsert({
+      name: "other",
+      repoUrl: "file:///other",
+    });
+    expect(second).toEqual(first);
+    expect(store.projects.count()).toBe(1);
+  });
+
   it("files repo: upsertFile()/getAllHashes() round-trip", () => {
     const project = store.projects.insert({
       name: "demo",

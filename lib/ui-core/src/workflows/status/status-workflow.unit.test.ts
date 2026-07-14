@@ -29,6 +29,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     projects: {
       getFirst: vi.fn(),
       insert: vi.fn(),
+      getOrInsert: vi.fn(),
       count: vi.fn().mockReturnValue(1),
     },
     files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },

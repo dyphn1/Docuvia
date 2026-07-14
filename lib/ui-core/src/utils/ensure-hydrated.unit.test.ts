@@ -12,7 +12,12 @@ import { ensureHydrated } from "./ensure-hydrated.js";
 
 function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
-    projects: { getFirst: vi.fn(), insert: vi.fn(), count: vi.fn() },
+    projects: {
+      getFirst: vi.fn(),
+      insert: vi.fn(),
+      getOrInsert: vi.fn(),
+      count: vi.fn(),
+    },
     files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
     tags: {
       upsertTag: vi.fn(),

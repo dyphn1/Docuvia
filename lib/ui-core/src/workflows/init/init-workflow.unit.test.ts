@@ -71,29 +71,33 @@ function makeMockGitProvider(): IGitProvider {
 
 function makeMockStore(): IGraphStore {
   let projectRow: ProjectRow | undefined;
+  const doInsert = (input: { name: string; repoUrl: string }) => {
+    projectRow = {
+      id: 1,
+      name: input.name,
+      repo_url: input.repoUrl,
+      description: null,
+      status: "active",
+      vcs_type: "git",
+      svn_url: null,
+      last_git_ingested_at: null,
+      last_svn_revision: null,
+      last_ast_ingested_at: null,
+      owner_id: 1,
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    };
+    return projectRow;
+  };
   return {
     projects: {
       getFirst: vi.fn().mockImplementation(() => projectRow),
-      insert: vi
+      insert: vi.fn().mockImplementation(doInsert),
+      getOrInsert: vi
         .fn()
-        .mockImplementation((input: { name: string; repoUrl: string }) => {
-          projectRow = {
-            id: 1,
-            name: input.name,
-            repo_url: input.repoUrl,
-            description: null,
-            status: "active",
-            vcs_type: "git",
-            svn_url: null,
-            last_git_ingested_at: null,
-            last_svn_revision: null,
-            last_ast_ingested_at: null,
-            owner_id: 1,
-            created_at: "2026-01-01T00:00:00.000Z",
-            updated_at: "2026-01-01T00:00:00.000Z",
-          };
-          return projectRow;
-        }),
+        .mockImplementation((input: { name: string; repoUrl: string }) =>
+          projectRow ? projectRow : doInsert(input),
+        ),
       count: vi.fn().mockImplementation(() => (projectRow ? 1 : 0)),
     },
     files: { getAllHashes: vi.fn().mockReturnValue([]), upsertFile: vi.fn() },
@@ -321,7 +325,7 @@ describe("InitWorkflow.execute()", () => {
     await new InitWorkflow(tmpDir, createMockLogger()).execute();
     await new InitWorkflow(tmpDir, createMockLogger()).execute();
 
-    expect((store.projects.insert as any).mock.calls.length).toBe(1);
+    expect((store.projects.getOrInsert as any).mock.calls.length).toBe(1);
   });
 
   it("reports success:true, partialFailure:false, filesFailed:0 when all files parse", async () => {

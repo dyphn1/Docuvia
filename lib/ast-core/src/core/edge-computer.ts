@@ -1,5 +1,26 @@
 import { Node } from "web-tree-sitter";
 import { AstEvent } from "../sink.js";
+import { AstEventType } from "../constants/ast-event-constants.js";
+
+/**
+ * Marks namespace/default/whole-module import bindings that don't resolve to a
+ * single named symbol (e.g. `import * as X`, Python dotted `import a.b.c`, C's
+ * `#include`) — see {@link parseImportDescriptors} JSDoc above for the full contract.
+ */
+const WILDCARD_IMPORT_MARKER = "*";
+
+/** Ruby stdlib call names that behave like import statements. */
+const RUBY_IMPORT_METHOD_NAMES = [
+  "require",
+  "require_relative",
+  "load",
+] as const;
+
+/** Sentinel used when a call resolves to the enclosing constructor/self reference. */
+const SELF_REFERENCE_KEYWORD = "this";
+
+/** Synthetic method name assigned to constructor-invocation call edges. */
+const CONSTRUCTOR_CALL_METHOD_NAME = "new";
 
 /**
  * Build a scope map from import statements.
@@ -59,7 +80,7 @@ export function parseImportDescriptors(
         if (nsId) {
           descriptors.push({
             localName: nsId.text,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: srcText,
           });
         }
@@ -90,7 +111,7 @@ export function parseImportDescriptors(
       if (defaultId) {
         descriptors.push({
           localName: defaultId.text,
-          originalName: "*",
+          originalName: WILDCARD_IMPORT_MARKER,
           modulePath: srcText,
         });
       }
@@ -124,7 +145,7 @@ export function parseImportDescriptors(
         if (firstId) {
           descriptors.push({
             localName: firstId.text,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: dn.text,
           });
         }
@@ -136,7 +157,7 @@ export function parseImportDescriptors(
         if (nameNode && aliasNode) {
           descriptors.push({
             localName: aliasNode.text,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: nameNode.text,
           });
         }
@@ -155,7 +176,7 @@ export function parseImportDescriptors(
         if (pathNode && aliasNode) {
           descriptors.push({
             localName: aliasNode.text,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: pathNode.text,
           });
         }
@@ -177,14 +198,14 @@ export function parseImportDescriptors(
               if (p && a) {
                 descriptors.push({
                   localName: a.text,
-                  originalName: "*",
+                  originalName: WILDCARD_IMPORT_MARKER,
                   modulePath: `${prefix}::${p.text}`,
                 });
               }
             } else if (child.type === "identifier") {
               descriptors.push({
                 localName: child.text,
-                originalName: "*",
+                originalName: WILDCARD_IMPORT_MARKER,
                 modulePath: `${prefix}::${child.text}`,
               });
             } else if (child.type === "scoped_identifier") {
@@ -192,7 +213,7 @@ export function parseImportDescriptors(
               if (lastPart) {
                 descriptors.push({
                   localName: lastPart.text,
-                  originalName: "*",
+                  originalName: WILDCARD_IMPORT_MARKER,
                   modulePath: `${prefix}::${child.text}`,
                 });
               }
@@ -208,7 +229,7 @@ export function parseImportDescriptors(
         if (lastId) {
           descriptors.push({
             localName: lastId.text,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: arg.text,
           });
         }
@@ -221,7 +242,7 @@ export function parseImportDescriptors(
           if (child.type === "identifier") {
             descriptors.push({
               localName: child.text,
-              originalName: "*",
+              originalName: WILDCARD_IMPORT_MARKER,
               modulePath: child.text,
             });
           }
@@ -249,7 +270,7 @@ export function parseImportDescriptors(
             if (nameNode.type === "blank_identifier") continue;
             descriptors.push({
               localName: nameNode.text,
-              originalName: "*",
+              originalName: WILDCARD_IMPORT_MARKER,
               modulePath: pkgPath,
             });
           } else {
@@ -257,7 +278,7 @@ export function parseImportDescriptors(
             const pkgName = segments[segments.length - 1];
             descriptors.push({
               localName: pkgName,
-              originalName: "*",
+              originalName: WILDCARD_IMPORT_MARKER,
               modulePath: pkgPath,
             });
           }
@@ -279,7 +300,7 @@ export function parseImportDescriptors(
           if (lastId) {
             descriptors.push({
               localName: lastId.text,
-              originalName: "*",
+              originalName: WILDCARD_IMPORT_MARKER,
               modulePath: lastScoped.text,
             });
           }
@@ -297,7 +318,7 @@ export function parseImportDescriptors(
         if (lastId) {
           descriptors.push({
             localName: lastId.text,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: lastScoped.text,
           });
         }
@@ -306,7 +327,7 @@ export function parseImportDescriptors(
         if (lastId) {
           descriptors.push({
             localName: lastId.text,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: lastId.text,
           });
         }
@@ -321,7 +342,7 @@ export function parseImportDescriptors(
         const includePath = pathNode.text.replace(/[<>"']/g, "");
         descriptors.push({
           localName: includePath,
-          originalName: "*",
+          originalName: WILDCARD_IMPORT_MARKER,
           modulePath: includePath,
         });
       }
@@ -338,14 +359,14 @@ export function parseImportDescriptors(
           if (lastId) {
             descriptors.push({
               localName: lastId.text,
-              originalName: "*",
+              originalName: WILDCARD_IMPORT_MARKER,
               modulePath: child.text,
             });
           }
         } else if (child.type === "identifier") {
           descriptors.push({
             localName: child.text,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: child.text,
           });
         }
@@ -359,9 +380,7 @@ export function parseImportDescriptors(
       if (methodNode) {
         const methodName = methodNode.text;
         if (
-          methodName === "require" ||
-          methodName === "require_relative" ||
-          methodName === "load"
+          (RUBY_IMPORT_METHOD_NAMES as readonly string[]).includes(methodName)
         ) {
           const args = stmt.childForFieldName("arguments");
           if (args) {
@@ -373,7 +392,7 @@ export function parseImportDescriptors(
               const shortName = libName.replace(/\.rb$/, "");
               descriptors.push({
                 localName: shortName,
-                originalName: "*",
+                originalName: WILDCARD_IMPORT_MARKER,
                 modulePath: libName,
               });
             }
@@ -401,7 +420,7 @@ export function parseImportDescriptors(
           const shortName = parts[parts.length - 1];
           descriptors.push({
             localName: shortName,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: fullName,
           });
         }
@@ -413,7 +432,7 @@ export function parseImportDescriptors(
           const path = argNode.text.replace(/['"]/g, "");
           descriptors.push({
             localName: path,
-            originalName: "*",
+            originalName: WILDCARD_IMPORT_MARKER,
             modulePath: path,
           });
         }
@@ -432,7 +451,7 @@ export function parseImportDescriptors(
         const shortName = parts[parts.length - 1];
         descriptors.push({
           localName: shortName,
-          originalName: "*",
+          originalName: WILDCARD_IMPORT_MARKER,
           modulePath: fullName,
         });
       }
@@ -475,7 +494,7 @@ export function buildScopeMap(
   for (const d of parseImportDescriptors(importStatements)) {
     scopeMap.set(
       d.localName,
-      d.originalName === "*"
+      d.originalName === WILDCARD_IMPORT_MARKER
         ? d.modulePath
         : `${d.modulePath}::${d.originalName}`,
     );
@@ -623,8 +642,8 @@ export function classifyCall(callNode: Node): {
     const objNode = callNode.childForFieldName("constructor");
     return {
       isMethodCall: true,
-      methodName: objNode?.text || "this",
-      objectName: "this",
+      methodName: objNode?.text || SELF_REFERENCE_KEYWORD,
+      objectName: SELF_REFERENCE_KEYWORD,
     };
   }
 
@@ -716,7 +735,7 @@ export function classifyCall(callNode: Node): {
     const typeNode = callNode.childForFieldName("type");
     return {
       isMethodCall: true,
-      methodName: "new",
+      methodName: CONSTRUCTOR_CALL_METHOD_NAME,
       objectName: typeNode?.text,
     };
   }
@@ -750,13 +769,13 @@ export class EdgeComputer {
 
       if (classification.isMethodCall) {
         events.push({
-          type: "method_call",
+          type: AstEventType.METHOD_CALL,
           name: fqn,
           method: classification.methodName,
           object: classification.objectName,
         });
       } else {
-        events.push({ type: "call", name: fqn });
+        events.push({ type: AstEventType.CALL, name: fqn });
       }
     }
     return events;

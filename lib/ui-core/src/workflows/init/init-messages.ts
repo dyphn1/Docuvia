@@ -11,4 +11,20 @@ export const INIT_MESSAGES = {
     `Project initialized — ${failed} of ${requested} files failed to parse (see .docuvia/logs/init.log)`,
   SUCCESS_WITH_SKIPPED_OVERSIZED: (skipped: number) =>
     `Project initialized successfully — ${skipped} oversized file(s) skipped (see .docuvia/logs/init.log)`,
+  OPEN_DB_FAILED: "Failed to open the local database",
+  TEMP_FILE_MANAGER_INITIALIZED: "Temp file manager initialized",
+  TEMP_FILE_MANAGER_INIT_FAILED:
+    "Failed to initialize temp file manager (non-fatal)",
+  CLEANING_UP_TEMP_FILES: "Cleaning up temp files on shutdown...",
+  TEMP_FILE_CLEANUP_FAILED: "Temp file cleanup on shutdown failed",
+  PARSE_FAILURES_OR_SKIPPED:
+    "init completed with parse failures or skipped files",
+} as const;
+
+/** Structured-log event names appended to `init.log` by the `init` workflow. */
+export const INIT_EVENTS = {
+  START: "init.start",
+  SUMMARY: "init.summary",
+  PARSE_FAILURE: "init.parse_failure",
+  FILE_SKIPPED_OVERSIZED: "init.file_skipped_oversized",
 } as const;

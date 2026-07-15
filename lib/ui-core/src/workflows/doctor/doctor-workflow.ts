@@ -2,13 +2,21 @@ import {
   docuviaFactory,
   TOKENS,
   DOCUVIA_DIR_NAME,
+  DOCUVIA_LOGS_DIR_NAME,
   LOCAL_DB_FILE_NAME,
   DocuviaError,
+  ErrorCodes,
+  UTF8_ENCODING,
   type ILogger,
   type DiagnosticResult,
   DiagnosticStatus,
 } from "@workspace/contracts";
 import type { DoctorResult } from "./doctor-result.js";
+import {
+  DOCTOR_DIAGNOSTIC_KEYS,
+  DOCTOR_MESSAGES,
+  LOG_FILE_EXTENSION,
+} from "./doctor-messages.js";
 import * as path from "path";
 import * as fs from "fs/promises";
 
@@ -46,16 +54,16 @@ export class DoctorWorkflow {
             if (res.status === DiagnosticStatus.FAIL) allPassed = false;
           }
         } else {
-          diagnostics["db_runner"] = {
+          diagnostics[DOCTOR_DIAGNOSTIC_KEYS.DB_RUNNER] = {
             status: DiagnosticStatus.FAIL,
-            message: "DiagnosticRunnerDb not registered",
+            message: DOCTOR_MESSAGES.DB_RUNNER_NOT_REGISTERED,
           };
           allPassed = false;
         }
       } else {
-        diagnostics["db_found"] = {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.DB_FOUND] = {
           status: DiagnosticStatus.FAIL,
-          message: `Local database not found at ${dbPath}`,
+          message: DOCTOR_MESSAGES.DB_NOT_FOUND_AT(dbPath),
         };
         allPassed = false;
       }
@@ -81,49 +89,53 @@ export class DoctorWorkflow {
 
           let suggestion = undefined;
           if (error instanceof DocuviaError) {
-            if (error.code === "GIT_NETWORK_TIMEOUT") {
-              suggestion =
-                "The Git remote operation timed out (5000ms). Check your internet connection or DNS settings.";
+            if (error.code === ErrorCodes.GIT_NETWORK_TIMEOUT) {
+              suggestion = DOCTOR_MESSAGES.GIT_NETWORK_TIMEOUT_SUGGESTION;
             } else if (
-              error.code === "GIT_COMMAND_FAILED" &&
-              message.includes("does not appear to be a git repository")
+              error.code === ErrorCodes.GIT_COMMAND_FAILED &&
+              message.includes(DOCTOR_MESSAGES.GIT_NOT_A_REPO_TEXT)
             ) {
-              suggestion =
-                "Ensure this workspace is a valid Git repository and the remote 'origin' is set correctly.";
+              suggestion = DOCTOR_MESSAGES.GIT_NOT_A_REPO_SUGGESTION;
             } else if (
-              error.code === "GIT_COMMAND_FAILED" &&
-              message.includes("Could not read from remote repository")
+              error.code === ErrorCodes.GIT_COMMAND_FAILED &&
+              message.includes(DOCTOR_MESSAGES.GIT_REMOTE_UNREADABLE_TEXT)
             ) {
-              suggestion =
-                "Check your SSH keys, PAT, or Git credentials for the remote repository.";
+              suggestion = DOCTOR_MESSAGES.GIT_REMOTE_UNREADABLE_SUGGESTION;
             }
           }
 
-          diagnostics["git_reachability"] = {
+          diagnostics[DOCTOR_DIAGNOSTIC_KEYS.GIT_REACHABILITY] = {
             status: DiagnosticStatus.FAIL,
-            message: `Git remote reachability check failed: ${message}`,
+            message: DOCTOR_MESSAGES.GIT_REACHABILITY_FAILED(message),
             suggestion,
           };
         }
       } else {
-        diagnostics["git_runner"] = {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.GIT_RUNNER] = {
           status: DiagnosticStatus.FAIL,
-          message: "DiagnosticRunnerGit not registered",
+          message: DOCTOR_MESSAGES.GIT_RUNNER_NOT_REGISTERED,
         };
         allPassed = false;
       }
     }
 
     if (!skipLogs) {
-      const logPath = path.join(this.workspaceRoot, DOCUVIA_DIR_NAME, "logs");
+      const logPath = path.join(
+        this.workspaceRoot,
+        DOCUVIA_DIR_NAME,
+        DOCUVIA_LOGS_DIR_NAME,
+      );
       let errorsFound = 0;
       let logsChecked = 0;
       try {
         const logs = await fs.readdir(logPath);
         for (const log of logs) {
-          if (!log.endsWith(".log")) continue;
+          if (!log.endsWith(LOG_FILE_EXTENSION)) continue;
           logsChecked++;
-          const content = await fs.readFile(path.join(logPath, log), "utf-8");
+          const content = await fs.readFile(
+            path.join(logPath, log),
+            UTF8_ENCODING,
+          );
           const lines = content.split("\n").filter((l) => l.trim().length > 0);
           for (const line of lines) {
             try {
@@ -137,22 +149,22 @@ export class DoctorWorkflow {
           }
         }
         if (errorsFound > 0) {
-          diagnostics["logs"] = {
+          diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LOGS] = {
             status: DiagnosticStatus.FAIL,
-            message: `Found ${errorsFound} critical errors in logs.`,
-            suggestion: "Check the files in .docuvia/logs/ for details.",
+            message: DOCTOR_MESSAGES.LOGS_ERRORS_FOUND(errorsFound),
+            suggestion: DOCTOR_MESSAGES.LOGS_ERRORS_FOUND_SUGGESTION,
           };
           allPassed = false;
         } else {
-          diagnostics["logs"] = {
+          diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LOGS] = {
             status: DiagnosticStatus.PASS,
-            message: `Checked ${logsChecked} log files, no critical errors found.`,
+            message: DOCTOR_MESSAGES.LOGS_CHECKED_CLEAN(logsChecked),
           };
         }
       } catch {
-        diagnostics["logs"] = {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LOGS] = {
           status: DiagnosticStatus.PASS,
-          message: `No logs found at ${logPath}`,
+          message: DOCTOR_MESSAGES.LOGS_NOT_FOUND_AT(logPath),
         };
       }
     }

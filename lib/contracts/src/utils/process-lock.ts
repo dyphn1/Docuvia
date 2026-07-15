@@ -1,4 +1,17 @@
 import fs from "node:fs/promises";
+import { UTF8_ENCODING } from "../constants/encoding.js";
+
+/** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists — the basis of this module's exclusive-create lock. */
+const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
+/** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
+const ERRNO_EEXIST = "EEXIST" as const;
+/** `NodeJS.ErrnoException.code` reported by `process.kill(pid, 0)` when `pid` exists but the current process lacks permission to signal it (still means "alive"). */
+const ERRNO_EPERM = "EPERM" as const;
+
+const ProcessLockErrorMessages = {
+  TIMED_OUT_WAITING: (lockPath: string) =>
+    `Timed out waiting for the lock at ${lockPath} — another process may be stuck`,
+} as const;
 
 /** Tunables for {@link acquireProcessLock}; all have defaults, override per call site. */
 export interface ProcessLockOptions {
@@ -41,13 +54,13 @@ function isProcessAlive(pid: number): boolean {
     process.kill(pid, 0);
     return true;
   } catch (err) {
-    return (err as NodeJS.ErrnoException).code === "EPERM";
+    return (err as NodeJS.ErrnoException).code === ERRNO_EPERM;
   }
 }
 
 async function readLockPid(lockPath: string): Promise<number | undefined> {
   try {
-    const pid = Number.parseInt(await fs.readFile(lockPath, "utf8"), 10);
+    const pid = Number.parseInt(await fs.readFile(lockPath, UTF8_ENCODING), 10);
     return Number.isFinite(pid) ? pid : undefined;
   } catch {
     return undefined;
@@ -86,12 +99,12 @@ export async function acquireProcessLock(
 
   for (;;) {
     try {
-      const handle = await fs.open(lockPath, "wx");
+      const handle = await fs.open(lockPath, FS_FLAG_EXCLUSIVE_CREATE_WRITE);
       await handle.writeFile(String(process.pid));
       await handle.close();
       break;
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== "EEXIST") throw err;
+      if ((err as NodeJS.ErrnoException).code !== ERRNO_EEXIST) throw err;
 
       if (!notifiedWaiting) {
         notifiedWaiting = true;
@@ -102,9 +115,7 @@ export async function acquireProcessLock(
         continue;
 
       if (Date.now() > deadline) {
-        throw new Error(
-          `Timed out waiting for the lock at ${lockPath} — another process may be stuck`,
-        );
+        throw new Error(ProcessLockErrorMessages.TIMED_OUT_WAITING(lockPath));
       }
       await sleep(opts.retryIntervalMs);
     }

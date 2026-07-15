@@ -6,7 +6,16 @@ import type {
   LocalQueryResult,
   LocalSearchResult,
 } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import { createNoopLogger, QueryResultLayers } from "@workspace/contracts";
+
+const QueryMessages = {
+  INVALID_LIMIT_FALLBACK:
+    "Ignoring invalid query limit, falling back to default",
+  SEARCHED_LOCAL_KNOWLEDGE_GRAPH: "Searched local knowledge graph",
+  GET_CONTEXT_FAILED:
+    "getContext() failed during query(), falling back to null context",
+  linkedTo: (name: string) => `Linked to ${name}`,
+} as const;
 
 /**
  * Deterministic stop-word list — ported from old Docuvia's `local-nl-query.service.ts`, where it
@@ -86,14 +95,11 @@ export class QueryService implements IQueryService {
     // two different, silently wrong behaviors from the same bad input. Normalize once here so
     // every caller (CLI, MCP server, tests) gets the same safe behavior regardless of call site.
     if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
-      this.logger.warn(
-        "Ignoring invalid query limit, falling back to default",
-        {
-          target,
-          invalidLimit: limit,
-          fallback: 10,
-        },
-      );
+      this.logger.warn(QueryMessages.INVALID_LIMIT_FALLBACK, {
+        target,
+        invalidLimit: limit,
+        fallback: 10,
+      });
       limit = 10;
     }
 
@@ -108,7 +114,7 @@ export class QueryService implements IQueryService {
     if (keywords.length > 0) {
       store.fts.searchL2Nodes(keywords, limit).forEach((row, i) =>
         put({
-          layer: "l2",
+          layer: QueryResultLayers.L2,
           id: row.id,
           title: row.name,
           content: row.description,
@@ -117,7 +123,7 @@ export class QueryService implements IQueryService {
       );
       store.fts.searchL3Nodes(keywords, limit).forEach((row, i) =>
         put({
-          layer: "l3",
+          layer: QueryResultLayers.L3,
           id: row.id,
           title: row.title,
           content: row.content,
@@ -131,7 +137,7 @@ export class QueryService implements IQueryService {
       const resolved = store.graph.findNodeByName(nodeRef);
       if (resolved) {
         put({
-          layer: "l2",
+          layer: QueryResultLayers.L2,
           id: resolved.id,
           title: resolved.name,
           content: null,
@@ -144,17 +150,17 @@ export class QueryService implements IQueryService {
         ];
         neighbors.slice(0, limit).forEach((neighbor, i) =>
           put({
-            layer: "l2",
+            layer: QueryResultLayers.L2,
             id: neighbor.id,
             title: neighbor.name,
-            content: `Linked to ${resolved.name}`,
+            content: QueryMessages.linkedTo(resolved.name),
             score: 0.7 - i * 0.01,
           }),
         );
       }
     }
 
-    this.logger.debug("Searched local knowledge graph", {
+    this.logger.debug(QueryMessages.SEARCHED_LOCAL_KNOWLEDGE_GRAPH, {
       target,
       resultCount: merged.size,
     });
@@ -167,8 +173,8 @@ export class QueryService implements IQueryService {
 
   query(store: IGraphStore, target: string, limit = 10): LocalQueryResult {
     const results = this.search(store, target, limit);
-    const l2Result = results.find((r) => r.layer === "l2");
-    const l3Results = results.filter((r) => r.layer === "l3");
+    const l2Result = results.find((r) => r.layer === QueryResultLayers.L2);
+    const l3Results = results.filter((r) => r.layer === QueryResultLayers.L3);
 
     // `getContext()` is an additive structural lookup on top of the FTS/name-ref search above —
     // ported from old Docuvia's `QueryService.query()`, which wrapped this same call so a
@@ -178,13 +184,10 @@ export class QueryService implements IQueryService {
     try {
       context = this.getContext(store, target);
     } catch (err) {
-      this.logger.debug(
-        "getContext() failed during query(), falling back to null context",
-        {
-          target,
-          error: err instanceof Error ? err.message : String(err),
-        },
-      );
+      this.logger.debug(QueryMessages.GET_CONTEXT_FAILED, {
+        target,
+        error: err instanceof Error ? err.message : String(err),
+      });
       context = null;
     }
 

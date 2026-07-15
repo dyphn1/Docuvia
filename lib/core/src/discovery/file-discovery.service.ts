@@ -12,13 +12,21 @@ import type {
   IGitProvider,
   ILogger,
 } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import {
+  createNoopLogger,
+  DOCUVIA_DIR_NAME,
+  UTF8_ENCODING,
+} from "@workspace/contracts";
 import {
   isSupportedSourceFile,
   getSupportedGlobExtensions,
   RUBY_EXTENSIONLESS_BASENAMES,
 } from "../utils/language-detection.js";
 import { MAX_FILE_SIZE_BYTES } from "../constants/paths.js";
+import {
+  DISCOVERY_MESSAGES,
+  COMMON_GLOB_IGNORE_PATTERNS,
+} from "./discovery-constants.js";
 
 export class FileDiscoveryService implements IFileDiscovery {
   constructor(
@@ -38,9 +46,7 @@ export class FileDiscoveryService implements IFileDiscovery {
     let usingGit = await this.git.isGitRepository(workspaceRoot);
 
     if (usingGit) {
-      this.logger.debug(
-        "Starting global AST scan using Git-native blob hashing",
-      );
+      this.logger.debug(DISCOVERY_MESSAGES.STARTING_GIT_BLOB_SCAN);
       try {
         const trackedHashes =
           await this.git.listTrackedFilesWithBlobHash(workspaceRoot);
@@ -61,37 +67,29 @@ export class FileDiscoveryService implements IFileDiscovery {
           allFiles = [...gitBlobHashes.keys()];
         }
       } catch (e) {
-        this.logger.warn(
-          "Git operations failed during discovery, falling back to manual globbing",
-          {
-            error: e instanceof Error ? e.message : String(e),
-          },
-        );
+        this.logger.warn(DISCOVERY_MESSAGES.GIT_OPS_FAILED_FALLBACK, {
+          error: e instanceof Error ? e.message : String(e),
+        });
         usingGit = false;
       }
     }
 
     if (!usingGit) {
-      this.logger.debug(
-        "Git unavailable or no .git repository found; falling back to fast-glob + manual sha256 hashing",
-      );
+      this.logger.debug(DISCOVERY_MESSAGES.GIT_UNAVAILABLE_FALLBACK);
       const ig = ignore();
       try {
         const gitignoreContent = await fs.readFile(
           path.join(workspaceRoot, ".gitignore"),
-          "utf-8",
+          UTF8_ENCODING,
         );
         ig.add(gitignoreContent);
       } catch {
-        this.logger.debug("No .gitignore found, proceeding without it");
+        this.logger.debug(DISCOVERY_MESSAGES.NO_GITIGNORE_FOUND);
       }
 
       const globIgnore = [
-        "node_modules/**",
-        ".git/**",
-        ".docuvia/**",
-        "dist/**",
-        "build/**",
+        ...COMMON_GLOB_IGNORE_PATTERNS,
+        `${DOCUVIA_DIR_NAME}/**`,
       ];
 
       const [extensionMatches, extensionlessBasenameMatches] =
@@ -124,10 +122,12 @@ export class FileDiscoveryService implements IFileDiscovery {
       (f: string) =>
         isSupportedSourceFile(f) &&
         !f.includes("node_modules/") &&
-        !f.includes(".docuvia/"),
+        !f.includes(`${DOCUVIA_DIR_NAME}/`),
     );
 
-    this.logger.debug("Discovered source files", { count: allFiles.length });
+    this.logger.debug(DISCOVERY_MESSAGES.DISCOVERED_SOURCE_FILES, {
+      count: allFiles.length,
+    });
 
     // Read existing hashes via the injected repo (narrowed to `FileHashLookup`) — a fresh
     // workspace has no rows yet, which `getAllHashes()` already handles by returning an empty
@@ -162,7 +162,10 @@ export class FileDiscoveryService implements IFileDiscovery {
             const blobSha = gitBlobHashes.get(file)!;
             code = await this.git.readBlobContent(workspaceRoot, blobSha);
           } else {
-            code = await fs.readFile(path.join(workspaceRoot, file), "utf-8");
+            code = await fs.readFile(
+              path.join(workspaceRoot, file),
+              UTF8_ENCODING,
+            );
           }
           if (!currentHash) {
             // Calculate hash manually for dirty/untracked files
@@ -179,7 +182,10 @@ export class FileDiscoveryService implements IFileDiscovery {
         if (existingHashes.get(file) !== currentHash) {
           const sizeBytes = Buffer.byteLength(code);
           if (sizeBytes > MAX_FILE_SIZE_BYTES) {
-            this.logger.warn("Skipping oversized file", { file, sizeBytes });
+            this.logger.warn(DISCOVERY_MESSAGES.SKIPPING_OVERSIZED_FILE, {
+              file,
+              sizeBytes,
+            });
             skippedOversized.push({ file, sizeBytes });
           } else {
             filesToParse.push({ file, hash: currentHash, code });
@@ -192,7 +198,7 @@ export class FileDiscoveryService implements IFileDiscovery {
       }
     }
 
-    this.logger.debug("Git hash delta check complete", {
+    this.logger.debug(DISCOVERY_MESSAGES.GIT_HASH_DELTA_CHECK_COMPLETE, {
       filesToParse: filesToParse.length,
       skipped: skippedCount,
       skippedOversized: skippedOversized.length,

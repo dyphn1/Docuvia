@@ -5,7 +5,7 @@ import {
   ErrorCodes,
   type ILogger,
 } from "@workspace/contracts";
-import { REVIEW_MESSAGES } from "./review-messages.js";
+import { REVIEW_EVENTS, REVIEW_MESSAGES } from "./review-messages.js";
 import { appendReviewLogLine } from "./review-log-writer.js";
 import type { ReviewResult } from "./review-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
@@ -29,7 +29,7 @@ export class ReviewWorkflow {
 
     logger.info(REVIEW_MESSAGES.DETECTING_CHANGES);
     await appendReviewLogLine(workspaceRoot, {
-      event: "review.start",
+      event: REVIEW_EVENTS.START,
       baseRef: baseRef ?? null,
     });
 
@@ -55,7 +55,7 @@ export class ReviewWorkflow {
         err.code === ErrorCodes.DB_OPEN_FAILED
       ) {
         await appendReviewLogLine(workspaceRoot, {
-          event: "review.error",
+          event: REVIEW_EVENTS.ERROR,
           message: REVIEW_MESSAGES.DB_NOT_FOUND,
         });
         throw new DocuviaError(
@@ -79,7 +79,7 @@ export class ReviewWorkflow {
       });
 
       await appendReviewLogLine(workspaceRoot, {
-        event: "review.summary",
+        event: REVIEW_EVENTS.SUMMARY,
         baseRef: baseRef ?? null,
         riskLevel: result.riskLevel,
         filesChanged: result.filesChanged.length,

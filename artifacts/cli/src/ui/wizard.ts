@@ -14,6 +14,7 @@ export const ui = {
   success: (msg: string) => console.log(pc.green(`✔ ${msg}`)),
   warn: (msg: string) => console.warn(pc.yellow(`⚠ ${msg}`)),
   error: (msg: string) => console.error(pc.red(`✖ ${msg}`)),
+  log: (msg?: string) => console.log(msg ?? ""),
 
   header: (title: string) => {
     console.log();

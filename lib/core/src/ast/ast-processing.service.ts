@@ -9,7 +9,9 @@ import type {
   ParsedAstFileResult,
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
+import { SUPPORTED_LANGUAGES } from "@workspace/ast-core";
 import { detectLanguageForFile } from "../utils/language-detection.js";
+import { AstMessages } from "./ast-constants.js";
 
 export class AstProcessingService implements IAstProcessor {
   // `workerPool` is a required constructor parameter — no `?? new AstWorkerPool()` default.
@@ -31,7 +33,7 @@ export class AstProcessingService implements IAstProcessor {
     // language shouldn't ideally be force-fed to the TS parser), but FileDiscoveryService already
     // filters to registry-supported extensions upstream, so this branch should rarely trigger.
     const getLanguage = (file: string) =>
-      detectLanguageForFile(file) ?? "typescript";
+      detectLanguageForFile(file) ?? SUPPORTED_LANGUAGES.TYPESCRIPT;
 
     const parsedResults: ParsedAstFileResult[] = [];
     const failures: AstParseFailure[] = [];
@@ -53,9 +55,8 @@ export class AstProcessingService implements IAstProcessor {
               language: detectLanguageForFile(item.file),
             });
           } else {
-            const error =
-              res.error ?? "parse returned success=false with no error detail";
-            this.logger.warn("AST parse returned failure result", {
+            const error = res.error ?? AstMessages.PARSE_FAILURE_NO_DETAIL;
+            this.logger.warn(AstMessages.PARSE_FAILURE_RESULT, {
               file: item.file,
               error,
             });
@@ -68,7 +69,7 @@ export class AstProcessingService implements IAstProcessor {
               : e instanceof Error
                 ? e.message
                 : String(e);
-          this.logger.error("AST parse threw (worker crash or rejection)", {
+          this.logger.error(AstMessages.PARSE_THREW, {
             file: item.file,
             error,
           });

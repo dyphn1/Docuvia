@@ -1,5 +1,13 @@
 import type { DiscoveredFile } from "./discovery.interfaces.js";
 
+export const AstExportKinds = {
+  FUNCTION: "function",
+  CLASS: "class",
+  VARIABLE: "variable",
+} as const;
+export type AstExportKind =
+  (typeof AstExportKinds)[keyof typeof AstExportKinds];
+
 export interface AstImportDescriptor {
   localName: string;
   originalName: string;
@@ -8,7 +16,7 @@ export interface AstImportDescriptor {
 
 export interface ParsedAstFileData {
   imports: AstImportDescriptor[];
-  exports: Array<{ name: string; type: "function" | "class" | "variable" }>;
+  exports: Array<{ name: string; type: AstExportKind }>;
   functions: Array<{
     name: string;
     startLine: number;

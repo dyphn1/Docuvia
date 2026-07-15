@@ -4,8 +4,9 @@ import type {
   IImpactService,
   ILogger,
 } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import { createNoopLogger, RiskLevels } from "@workspace/contracts";
 import { ImpactService } from "../impact/impact.service.js";
+import { GitMessages } from "./git-constants.js";
 
 /** A diff this large is inherently riskier to review even if individually low-impact (ported from old Docuvia's `LARGE_DIFF_FILE_FLOOR`). */
 const LARGE_DIFF_FILE_FLOOR = 10;
@@ -41,8 +42,11 @@ export class ChangeDetectionService implements IChangeDetectionService {
     let riskLevel = this.impactService.computeRiskLevel(totalImpacted);
 
     // A huge diff is inherently riskier to review even if individually low-impact.
-    if (riskLevel === "LOW" && filesChanged.length > LARGE_DIFF_FILE_FLOOR) {
-      riskLevel = "MEDIUM";
+    if (
+      riskLevel === RiskLevels.LOW &&
+      filesChanged.length > LARGE_DIFF_FILE_FLOOR
+    ) {
+      riskLevel = RiskLevels.MEDIUM;
     }
 
     const analysis = this.buildAnalysis(
@@ -52,7 +56,7 @@ export class ChangeDetectionService implements IChangeDetectionService {
       riskLevel,
       totalImpacted,
     );
-    this.logger.debug("Detected changes", {
+    this.logger.debug(GitMessages.DETECTED_CHANGES, {
       baseRef,
       filesChanged: filesChanged.length,
       affectedNodes: affectedNodes.length,
@@ -70,17 +74,19 @@ export class ChangeDetectionService implements IChangeDetectionService {
     totalImpacted: number,
   ): string {
     const lines: string[] = [];
-    lines.push(`Base: ${baseRef ?? "working tree (HEAD)"}`);
-    lines.push(`Files changed: ${filesChanged.length}`);
-    lines.push(`Risk level: ${riskLevel}`);
+    lines.push(
+      GitMessages.analysisBase(baseRef ?? GitMessages.WORKING_TREE_HEAD),
+    );
+    lines.push(GitMessages.analysisFilesChanged(filesChanged.length));
+    lines.push(GitMessages.analysisRiskLevel(riskLevel));
 
     if (affectedNodes.length === 0) {
-      lines.push("No local graph impact detected for the changed files.");
+      lines.push(GitMessages.NO_LOCAL_GRAPH_IMPACT);
     } else {
       lines.push(
-        `Impacted nodes: ${totalImpacted} across ${affectedNodes.length} changed file(s).`,
+        GitMessages.analysisImpactedNodes(totalImpacted, affectedNodes.length),
       );
-      lines.push("Top affected files:");
+      lines.push(GitMessages.TOP_AFFECTED_FILES);
       const top = [...affectedNodes]
         .sort((a, b) => b.impactedBy.length - a.impactedBy.length)
         .slice(0, 5);
@@ -90,7 +96,11 @@ export class ChangeDetectionService implements IChangeDetectionService {
           .map((n) => `${n.name} (${n.type})`)
           .join(", ");
         lines.push(
-          `  - ${node.file}: ${node.impactedBy.length} dependent(s) [${names}]`,
+          GitMessages.analysisAffectedFileLine(
+            node.file,
+            node.impactedBy.length,
+            names,
+          ),
         );
       }
     }

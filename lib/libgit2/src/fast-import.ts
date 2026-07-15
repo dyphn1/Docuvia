@@ -3,6 +3,13 @@ import fs from "fs/promises";
 import path from "path";
 import os from "os";
 import pLimit from "p-limit";
+import { UTF8_ENCODING } from "@workspace/contracts";
+import { DOCUVIA_GIT_IDENTITY } from "./constants/git-identity.js";
+import { GIT_BRANCH_REF_PREFIX } from "./constants/git-refs.js";
+
+/** `runFastImport`'s failure message when the spawned `git fast-import` process exits non-zero. */
+const FAST_IMPORT_EXIT_ERROR_MESSAGE = (code: number, stderr: string): string =>
+  `git fast-import exited with code ${code}${stderr ? ": " + stderr : ""}`;
 
 /**
  * Raw `git fast-import` mechanics — pure wire-format encoding and directory reading, no
@@ -31,7 +38,9 @@ export async function collectDirectoryFiles(
           await walk(fullPath);
         } else if (entry.isFile()) {
           const relPath = path.relative(sourceDir, fullPath);
-          const content = await limit(() => fs.readFile(fullPath, "utf-8"));
+          const content = await limit(() =>
+            fs.readFile(fullPath, UTF8_ENCODING),
+          );
           files.set(relPath, content);
         }
       }),
@@ -50,9 +59,11 @@ export function buildFastImportData(
   parentCommitSha?: string,
 ): string {
   const lines: string[] = [];
-  lines.push(`commit refs/heads/${branch}`);
-  lines.push(`committer Docuvia <docuvia@localhost> ${nowUnix} +0000`);
-  lines.push(`data ${Buffer.byteLength(commitMessage, "utf8")}`);
+  lines.push(`commit ${GIT_BRANCH_REF_PREFIX}${branch}`);
+  lines.push(
+    `committer ${DOCUVIA_GIT_IDENTITY.NAME} <${DOCUVIA_GIT_IDENTITY.EMAIL}> ${nowUnix} +0000`,
+  );
+  lines.push(`data ${Buffer.byteLength(commitMessage, UTF8_ENCODING)}`);
   lines.push(commitMessage);
 
   // Parenting on the branch's current tip (STOR-001 point 2 — "continuous stacking") is what
@@ -65,7 +76,7 @@ export function buildFastImportData(
   lines.push(`deleteall`);
 
   for (const [filePath, content] of files) {
-    const contentBytes = Buffer.from(content, "utf8");
+    const contentBytes = Buffer.from(content, UTF8_ENCODING);
     const posixPath = filePath.split(path.sep).join(path.posix.sep);
     lines.push(`M 100644 inline ${posixPath}`);
     lines.push(`data ${contentBytes.length}`);
@@ -97,13 +108,9 @@ export function runFastImport(
     (child as any).on("error", reject);
     (child as any).on("close", (code: number) => {
       if (code === 0) return resolve();
-      const stderr = Buffer.concat(stderrChunks).toString("utf8").trim();
-      reject(
-        new Error(
-          `git fast-import exited with code ${code}${stderr ? ": " + stderr : ""}`,
-        ),
-      );
+      const stderr = Buffer.concat(stderrChunks).toString(UTF8_ENCODING).trim();
+      reject(new Error(FAST_IMPORT_EXIT_ERROR_MESSAGE(code, stderr)));
     });
-    child.stdin.end(fastImportData, "utf8");
+    child.stdin.end(fastImportData, UTF8_ENCODING);
   });
 }

@@ -5,6 +5,7 @@ import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import {
   CURSOR_HOOKS_DIR,
+  CURSOR_PLUGIN_HOOKS_DIR,
   DOCUVIA_HOOK_JS,
   HOOKS_JSON,
   DOCUVIA_HOOK_CJS_FILENAME,
@@ -45,7 +46,7 @@ export class CursorPlatform extends BasePlatform {
 
     let cursorHooksConfig = HOOKS_JSON.replace(
       /\${HOOKS_DIR}/g,
-      "${CURSOR_PLUGIN_ROOT}/hooks",
+      CURSOR_PLUGIN_HOOKS_DIR,
     ).replace(".js", ".cjs");
     await writeOrAppend(
       path.join(cursorHooksPath, HOOKS_CONFIG_FILENAME),
@@ -81,17 +82,22 @@ export class CursorPlatform extends BasePlatform {
     const cursorHooksPath = path.join(cwd, CURSOR_HOOKS_DIR);
     try {
       await fs.unlink(path.join(cursorHooksPath, DOCUVIA_HOOK_CJS_FILENAME));
-      ui.success(`Removed ${DOCUVIA_HOOK_CJS_FILENAME}`);
+      ui.success(
+        `${UI_MESSAGES.UNINSTALL_REMOVED_FILE_PREFIX}${DOCUVIA_HOOK_CJS_FILENAME}`,
+      );
     } catch {}
 
     const { removeBlock } = await import("../utils/fs-utils.js");
-    const { CURSOR_RULES_FILENAME, AGENT_INSTRUCTIONS_MARKER } =
-      await import("../constants/init-templates.js");
+    const {
+      CURSOR_RULES_FILENAME,
+      AGENT_INSTRUCTIONS_MARKER,
+      AGENT_INSTRUCTIONS_END_MARKER,
+    } = await import("../constants/init-templates.js");
     const cursorRulesPath = path.join(cwd, CURSOR_RULES_FILENAME);
     await removeBlock(
       cursorRulesPath,
       `<!-- ${AGENT_INSTRUCTIONS_MARKER} -->`,
-      "<!-- docuvia:end -->",
+      `<!-- ${AGENT_INSTRUCTIONS_END_MARKER} -->`,
     );
 
     const hooksJsonPath = path.join(cursorHooksPath, HOOKS_CONFIG_FILENAME);
@@ -100,7 +106,7 @@ export class CursorPlatform extends BasePlatform {
       const content = await fs.readFile(hooksJsonPath, UTF8_ENCODING);
       if (
         content.trim() ===
-        HOOKS_JSON.replace(/\$\{HOOKS_DIR\}/g, "${CURSOR_PLUGIN_ROOT}/hooks")
+        HOOKS_JSON.replace(/\$\{HOOKS_DIR\}/g, CURSOR_PLUGIN_HOOKS_DIR)
           .replace(".js", ".cjs")
           .trim()
       ) {
@@ -121,7 +127,9 @@ export class CursorPlatform extends BasePlatform {
       if (cursorMcp?.mcpServers && cursorMcp.mcpServers[MCP_SERVER_ALIAS]) {
         delete cursorMcp.mcpServers[MCP_SERVER_ALIAS];
         await fs.writeFile(cursorMcpPath, JSON.stringify(cursorMcp, null, 2));
-        ui.success(`Removed MCP server from ${cursorMcpPath}`);
+        ui.success(
+          `${UI_MESSAGES.UNINSTALL_REMOVED_MCP_SERVER_PREFIX}${cursorMcpPath}`,
+        );
       }
     } catch {}
   }

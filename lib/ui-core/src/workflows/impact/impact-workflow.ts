@@ -5,7 +5,7 @@ import {
   ErrorCodes,
   type ILogger,
 } from "@workspace/contracts";
-import { IMPACT_MESSAGES } from "./impact-messages.js";
+import { IMPACT_EVENTS, IMPACT_MESSAGES } from "./impact-messages.js";
 import { appendImpactLogLine } from "./impact-log-writer.js";
 import type { ImpactResult } from "./impact-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
@@ -36,7 +36,7 @@ export class ImpactWorkflow {
 
     logger.info(IMPACT_MESSAGES.RESOLVING);
     await appendImpactLogLine(workspaceRoot, {
-      event: "impact.start",
+      event: IMPACT_EVENTS.START,
       target,
       escalateToLsp: options.escalateToLsp ?? false,
     });
@@ -56,7 +56,7 @@ export class ImpactWorkflow {
         err.code === ErrorCodes.DB_OPEN_FAILED
       ) {
         await appendImpactLogLine(workspaceRoot, {
-          event: "impact.error",
+          event: IMPACT_EVENTS.ERROR,
           target,
           message: IMPACT_MESSAGES.DB_NOT_FOUND,
         });
@@ -77,7 +77,7 @@ export class ImpactWorkflow {
 
       if (!blastRadius) {
         await appendImpactLogLine(workspaceRoot, {
-          event: "impact.summary",
+          event: IMPACT_EVENTS.SUMMARY,
           target,
           found: false,
           blastRadiusCount: 0,
@@ -88,7 +88,7 @@ export class ImpactWorkflow {
 
       const riskLevel = impactService.computeRiskLevel(blastRadius.length);
       await appendImpactLogLine(workspaceRoot, {
-        event: "impact.summary",
+        event: IMPACT_EVENTS.SUMMARY,
         target,
         found: true,
         blastRadiusCount: blastRadius.length,

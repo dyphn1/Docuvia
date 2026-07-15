@@ -4,53 +4,101 @@ import {
   docuviaMemory,
   DocuviaError,
   type LocalQueryResult,
+  MemoryKeys,
+  LogLevels,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import {
+  QUERY_OUTPUT_FORMATS,
+  type QueryOutputFormat,
+} from "../constants/cli-flags.js";
+
+const XML_TAGS = {
+  CONTEXT_START: "<docuvia_context>",
+  CONTEXT_END: "</docuvia_context>",
+  L2_START_PREFIX: '  <l2_module name="',
+  L2_START_SUFFIX: '">',
+  L2_END: "  </l2_module>",
+  L3_START_PREFIX: '    <l3_decision title="',
+  L3_START_SUFFIX: '">',
+  L3_CONTENT_PREFIX: "      ",
+  L3_END: "    </l3_decision>",
+  INCOMING_START: "  <incoming>",
+  INCOMING_END: "  </incoming>",
+  CALLER_PREFIX: '    <caller name="',
+  CALLER_MID: '" type="',
+  CALLER_SUFFIX: '" />',
+  OUTGOING_START: "  <outgoing>",
+  OUTGOING_END: "  </outgoing>",
+  CALLEE_PREFIX: '    <callee name="',
+  CALLEE_MID: '" type="',
+  CALLEE_SUFFIX: '" />',
+} as const;
+
+const FORMAT_MARKERS = {
+  INDENT_TWO: "  ",
+  NEWLINE: "\n",
+  OPEN_PAREN: " (",
+  CLOSE_PAREN: ")",
+  EMPTY: "",
+} as const;
 
 export function formatPromptOutput(result: LocalQueryResult): string {
   const lines: string[] = [];
-  lines.push("<docuvia_context>");
+  lines.push(XML_TAGS.CONTEXT_START);
   if (result.l2) {
-    lines.push('  <l2_module name="' + result.l2.name + '">');
+    lines.push(
+      XML_TAGS.L2_START_PREFIX + result.l2.name + XML_TAGS.L2_START_SUFFIX,
+    );
   }
   for (const l3 of result.l3) {
-    lines.push('    <l3_decision title="' + l3.title + '">');
-    lines.push("      " + (l3.content || ""));
-    lines.push("    </l3_decision>");
+    lines.push(XML_TAGS.L3_START_PREFIX + l3.title + XML_TAGS.L3_START_SUFFIX);
+    lines.push(
+      XML_TAGS.L3_CONTENT_PREFIX + (l3.content || FORMAT_MARKERS.EMPTY),
+    );
+    lines.push(XML_TAGS.L3_END);
   }
   if (result.l2) {
-    lines.push("  </l2_module>");
+    lines.push(XML_TAGS.L2_END);
   }
 
   const incoming = result.context?.incoming ?? [];
   const outgoing = result.context?.outgoing ?? [];
   if (incoming.length > 0 || outgoing.length > 0) {
     if (incoming.length > 0) {
-      lines.push("  <incoming>");
+      lines.push(XML_TAGS.INCOMING_START);
       for (const i of incoming) {
         lines.push(
-          '    <caller name="' + i.name + '" type="' + i.type + '" />',
+          XML_TAGS.CALLER_PREFIX +
+            i.name +
+            XML_TAGS.CALLER_MID +
+            i.type +
+            XML_TAGS.CALLER_SUFFIX,
         );
       }
-      lines.push("  </incoming>");
+      lines.push(XML_TAGS.INCOMING_END);
     }
     if (outgoing.length > 0) {
-      lines.push("  <outgoing>");
+      lines.push(XML_TAGS.OUTGOING_START);
       for (const o of outgoing) {
         lines.push(
-          '    <callee name="' + o.name + '" type="' + o.type + '" />',
+          XML_TAGS.CALLEE_PREFIX +
+            o.name +
+            XML_TAGS.CALLEE_MID +
+            o.type +
+            XML_TAGS.CALLEE_SUFFIX,
         );
       }
-      lines.push("  </outgoing>");
+      lines.push(XML_TAGS.OUTGOING_END);
     }
   }
 
-  lines.push("</docuvia_context>");
-  return lines.join("\n");
+  lines.push(XML_TAGS.CONTEXT_END);
+  return lines.join(FORMAT_MARKERS.NEWLINE);
 }
 
 function printHumanResults(result: LocalQueryResult): void {
@@ -60,13 +108,18 @@ function printHumanResults(result: LocalQueryResult): void {
   } else {
     ui.warn(UI_MESSAGES.QUERY_NO_L2);
   }
-  console.log("");
+  ui.log(FORMAT_MARKERS.EMPTY);
   for (const l3 of result.l3) {
     ui.success(UI_MESSAGES.QUERY_L3_PREFIX + l3.title);
     if (l3.content) {
-      console.log("  " + l3.content.split("\n").join("\n  "));
+      ui.log(
+        FORMAT_MARKERS.INDENT_TWO +
+          l3.content
+            .split(FORMAT_MARKERS.NEWLINE)
+            .join(FORMAT_MARKERS.NEWLINE + FORMAT_MARKERS.INDENT_TWO),
+      );
     }
-    console.log("");
+    ui.log(FORMAT_MARKERS.EMPTY);
   }
 
   const incoming = result.context?.incoming ?? [];
@@ -74,19 +127,31 @@ function printHumanResults(result: LocalQueryResult): void {
   if (incoming.length > 0) {
     ui.header(UI_MESSAGES.QUERY_INCOMING_HEADER);
     for (const i of incoming) {
-      console.log("  " + i.name + " (" + i.type + ")");
+      ui.log(
+        FORMAT_MARKERS.INDENT_TWO +
+          i.name +
+          FORMAT_MARKERS.OPEN_PAREN +
+          i.type +
+          FORMAT_MARKERS.CLOSE_PAREN,
+      );
     }
-    console.log("");
+    ui.log(FORMAT_MARKERS.EMPTY);
   }
   if (outgoing.length > 0) {
     ui.header(UI_MESSAGES.QUERY_OUTGOING_HEADER);
     for (const o of outgoing) {
-      console.log("  " + o.name + " (" + o.type + ")");
+      ui.log(
+        FORMAT_MARKERS.INDENT_TWO +
+          o.name +
+          FORMAT_MARKERS.OPEN_PAREN +
+          o.type +
+          FORMAT_MARKERS.CLOSE_PAREN,
+      );
     }
-    console.log("");
+    ui.log(FORMAT_MARKERS.EMPTY);
   }
 
-  console.log("");
+  ui.log(FORMAT_MARKERS.EMPTY);
 }
 
 async function resolveQueryTarget(target?: string): Promise<string> {
@@ -111,11 +176,11 @@ async function resolveQueryTarget(target?: string): Promise<string> {
 /** Thin caller of docuviaApi.query() - mirrors init.ts's Presentation-layer responsibilities. */
 export async function queryCommand(
   target?: string,
-  options: { format?: "human" | "prompt"; limit?: number } = {},
+  options: { format?: QueryOutputFormat; limit?: number } = {},
   cwd: string = process.cwd(),
 ) {
   const queryTarget = await resolveQueryTarget(target);
-  const isPromptFormat = options.format === "prompt";
+  const isPromptFormat = options.format === QUERY_OUTPUT_FORMATS.PROMPT;
 
   let limit = options.limit;
   if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
@@ -131,21 +196,22 @@ export async function queryCommand(
       .spinner(UI_MESSAGES.QUERY_START + '"' + queryTarget + '"...')
       .start();
     logger.onLog((event) => {
-      if (event.level === "info" && spinner) spinner.text = event.message;
+      if (event.level === LogLevels.INFO && spinner)
+        spinner.text = event.message;
     });
   }
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
-  docuviaMemory.set(scopeId, "target", queryTarget);
-  if (limit !== undefined) docuviaMemory.set(scopeId, "limit", limit);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.TARGET, queryTarget);
+  if (limit !== undefined) docuviaMemory.set(scopeId, MemoryKeys.LIMIT, limit);
 
   let result: LocalQueryResult;
   try {
     result = await docuviaApi.query(scopeId, logger);
     if (spinner) {
       spinner.succeed(UI_MESSAGES.QUERY_FOUND + '"' + queryTarget + '"');
-      console.log("");
+      ui.log("");
     }
   } catch (error: unknown) {
     const message =
@@ -153,7 +219,7 @@ export async function queryCommand(
         ? error.message
         : String(error);
     if (spinner) spinner.fail(UI_MESSAGES.QUERY_FAIL + message);
-    else console.error(UI_MESSAGES.QUERY_FAIL + message);
+    else ui.error(UI_MESSAGES.QUERY_FAIL + message);
     process.exitCode = 1;
     return;
   } finally {
@@ -161,7 +227,7 @@ export async function queryCommand(
   }
 
   if (isPromptFormat) {
-    console.log(formatPromptOutput(result));
+    ui.log(formatPromptOutput(result));
   } else {
     printHumanResults(result);
   }

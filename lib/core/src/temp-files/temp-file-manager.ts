@@ -3,7 +3,25 @@ import path from "node:path";
 import { LRUCache } from "lru-cache";
 import pLimit from "p-limit";
 import type { ILogger, ITempFileManager } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import {
+  createNoopLogger,
+  UTF8_ENCODING,
+  DOCUVIA_DIR_NAME,
+} from "@workspace/contracts";
+
+const TEMP_SUBDIR_NAME = "tmp";
+
+const TempFileMessages = {
+  INITIALIZED: "TempFileManager initialized",
+  INIT_FAILED: "Failed to initialize TempFileManager",
+  FILE_TRACKED: "File tracked",
+  TRACK_FAILED: "Failed to track file",
+  ACCESS_FAILED: "Failed to access file",
+  FILE_REMOVED: "File removed",
+  CLEANUP_FAILED: "Cleanup failed",
+  CLEANUP_COMPLETED: "Temp directory cleanup completed",
+  CLEANUP_ERROR: "Cleanup error",
+} as const;
 
 interface FileEntry {
   filePath: string;
@@ -35,7 +53,7 @@ export class TempFileManager implements ITempFileManager {
     ttlMs: number = 4 * 60 * 60 * 1000, // 4 hours default
     _cleanupIntervalMs: number = 30 * 60 * 1000, // 30 minutes default
   ) {
-    this.tempDir = path.join(workspaceRoot, ".docuvia", "tmp");
+    this.tempDir = path.join(workspaceRoot, DOCUVIA_DIR_NAME, TEMP_SUBDIR_NAME);
     this.ttlMs = ttlMs;
     this.lruCache = new LRUCache<string, FileEntry>({
       max: 10000, // Max number of tracked files
@@ -49,14 +67,14 @@ export class TempFileManager implements ITempFileManager {
   async initialize(): Promise<void> {
     try {
       await fs.mkdir(this.tempDir, { recursive: true });
-      this.logger.info("TempFileManager initialized", {
+      this.logger.info(TempFileMessages.INITIALIZED, {
         tempDir: this.tempDir,
       });
 
       // Start periodic cleanup
       this.startCleanupSchedule(30 * 60 * 1000); // 30 minutes
     } catch (err) {
-      this.logger.error("Failed to initialize TempFileManager", {
+      this.logger.error(TempFileMessages.INIT_FAILED, {
         error: err instanceof Error ? err.message : String(err),
       });
       throw err;
@@ -74,9 +92,12 @@ export class TempFileManager implements ITempFileManager {
           sizeBytes: stat.size,
         };
         this.lruCache.set(filePath, entry);
-        this.logger.debug("File tracked", { filePath, sizeBytes: stat.size });
+        this.logger.debug(TempFileMessages.FILE_TRACKED, {
+          filePath,
+          sizeBytes: stat.size,
+        });
       } catch (err) {
-        this.logger.warn("Failed to track file", {
+        this.logger.warn(TempFileMessages.TRACK_FAILED, {
           filePath,
           error: err instanceof Error ? err.message : String(err),
         });
@@ -92,10 +113,10 @@ export class TempFileManager implements ITempFileManager {
           entry.lastAccessedAt = Date.now();
           this.lruCache.set(filePath, entry); // Update access time
         }
-        const content = await fs.readFile(filePath, "utf-8");
+        const content = await fs.readFile(filePath, UTF8_ENCODING);
         return content;
       } catch (err) {
-        this.logger.warn("Failed to access file", {
+        this.logger.warn(TempFileMessages.ACCESS_FAILED, {
           filePath,
           error: err instanceof Error ? err.message : String(err),
         });
@@ -107,7 +128,7 @@ export class TempFileManager implements ITempFileManager {
   private async removeFileSync(filePath: string): Promise<void> {
     try {
       await fs.unlink(filePath);
-      this.logger.debug("File removed", { filePath });
+      this.logger.debug(TempFileMessages.FILE_REMOVED, { filePath });
     } catch (err: unknown) {
       if ((err as any)?.code !== "ENOENT") {
         throw err;
@@ -118,7 +139,7 @@ export class TempFileManager implements ITempFileManager {
   private startCleanupSchedule(intervalMs: number): void {
     this.cleanupInterval = setInterval(() => {
       this.cleanup().catch((err) => {
-        this.logger.error("Cleanup failed", {
+        this.logger.error(TempFileMessages.CLEANUP_FAILED, {
           error: err instanceof Error ? err.message : String(err),
         });
       });
@@ -143,12 +164,12 @@ export class TempFileManager implements ITempFileManager {
           await this.removeFileSync(filePath);
         }
 
-        this.logger.info("Temp directory cleanup completed", {
+        this.logger.info(TempFileMessages.CLEANUP_COMPLETED, {
           removedCount: staleFiles.length,
           cacheSize: this.lruCache.size,
         });
       } catch (err) {
-        this.logger.error("Cleanup error", {
+        this.logger.error(TempFileMessages.CLEANUP_ERROR, {
           error: err instanceof Error ? err.message : String(err),
         });
       }

@@ -16,6 +16,7 @@ export const WINDSURF_RULES_FILENAME = ".windsurfrules";
 export const CURSOR_RULES_FILENAME = ".cursorrules";
 export const LLMS_TXT_FILENAME = "llms.txt";
 export const AGENT_INSTRUCTIONS_MARKER = "docuvia:start";
+export const AGENT_INSTRUCTIONS_END_MARKER = "docuvia:end";
 
 export const PLATFORM_NAME_CURSOR = "Cursor";
 export const PLATFORM_NAME_CLAUDE = "Claude";
@@ -25,6 +26,11 @@ export const PLATFORM_NAME_MARKDOWN_AGENTS = "Markdown Agents";
 export const PLATFORM_SLUG_CURSOR = "cursor";
 export const PLATFORM_SLUG_CLAUDE = "claude";
 export const PLATFORM_SLUG_MARKDOWN_AGENTS = "markdown";
+
+// Literal placeholder text written into each platform's hooks.json `${HOOKS_DIR}` substitution —
+// the platform itself expands these at runtime, so they must stay un-interpolated here.
+export const CLAUDE_PLUGIN_HOOKS_DIR = "${CLAUDE_PLUGIN_ROOT}/hooks";
+export const CURSOR_PLUGIN_HOOKS_DIR = "${CURSOR_PLUGIN_ROOT}/hooks";
 
 export const NPX_COMMAND = "npx";
 export const NPX_YES_FLAG = "-y";

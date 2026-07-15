@@ -5,3 +5,10 @@ export const IMPACT_MESSAGES = {
   ESCALATE_TO_LSP_NOT_IMPLEMENTED:
     "--escalate-to-lsp is not yet implemented; falling back to local graph-based blast radius.",
 } as const;
+
+/** Structured-log event names appended to `impact.log` by the `impact` workflow. */
+export const IMPACT_EVENTS = {
+  START: "impact.start",
+  ERROR: "impact.error",
+  SUMMARY: "impact.summary",
+} as const;

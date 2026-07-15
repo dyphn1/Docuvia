@@ -9,6 +9,14 @@ import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
+/** Key this runner reports its single check under in `checkHealth`'s result map. */
+const GIT_DIAGNOSTIC_KEY_NETWORK = "git_network" as const;
+
+const GIT_DIAGNOSTIC_MESSAGES = {
+  REMOTE_REACHABLE: "Git remote is reachable",
+  REMOTE_REACHABILITY_CHECK_FAILED: "Git remote reachability check failed",
+} as const;
+
 export class GitDiagnosticRunner implements IDiagnosticRunner {
   async checkHealth(cwd: string): Promise<Record<string, DiagnosticResult>> {
     const results: Record<string, DiagnosticResult> = {};
@@ -19,9 +27,9 @@ export class GitDiagnosticRunner implements IDiagnosticRunner {
         cwd,
         timeout: 5000,
       });
-      results["git_network"] = {
+      results[GIT_DIAGNOSTIC_KEY_NETWORK] = {
         status: DiagnosticStatus.PASS,
-        message: "Git remote is reachable",
+        message: GIT_DIAGNOSTIC_MESSAGES.REMOTE_REACHABLE,
       };
     } catch (err: any) {
       const code = err.killed
@@ -29,7 +37,7 @@ export class GitDiagnosticRunner implements IDiagnosticRunner {
         : ErrorCodes.GIT_COMMAND_FAILED;
       throw DocuviaError.wrap(
         code,
-        "Git remote reachability check failed",
+        GIT_DIAGNOSTIC_MESSAGES.REMOTE_REACHABILITY_CHECK_FAILED,
         err,
       );
     }

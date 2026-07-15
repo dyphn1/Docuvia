@@ -6,6 +6,7 @@ import {
   docuviaMemory,
   DocuviaError,
   DiagnosticStatus,
+  MemoryKeys,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
@@ -44,7 +45,7 @@ export async function doctorCommand(
     const logger = createPinoBackedLogger();
 
     docuviaMemory.createScope(scopeId);
-    docuviaMemory.set(scopeId, "workspaceRoot", workspaceRoot);
+    docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
 
     let allPassed = true;
 
@@ -58,11 +59,23 @@ export async function doctorCommand(
 
       for (const [key, res] of Object.entries(result.diagnostics)) {
         if (res.status === DiagnosticStatus.PASS) {
-          ui.success(`[${key}] ${res.message}`);
+          ui.success(
+            UI_MESSAGES.DOCTOR_DIAGNOSTIC_PREFIX +
+              key +
+              UI_MESSAGES.DOCTOR_DIAGNOSTIC_SUFFIX +
+              res.message,
+          );
         } else {
-          ui.error(`[${key}] ${res.message}`);
-          if (res.details) ui.warn(`    ${res.details}`);
-          if (res.suggestion) ui.info(`    💡 Fix: ${res.suggestion}`);
+          ui.error(
+            UI_MESSAGES.DOCTOR_DIAGNOSTIC_PREFIX +
+              key +
+              UI_MESSAGES.DOCTOR_DIAGNOSTIC_SUFFIX +
+              res.message,
+          );
+          if (res.details)
+            ui.warn(UI_MESSAGES.DOCTOR_DETAILS_PREFIX + res.details);
+          if (res.suggestion)
+            ui.info(UI_MESSAGES.DOCTOR_SUGGESTION_PREFIX + res.suggestion);
         }
       }
     } catch (error: unknown) {
@@ -77,7 +90,7 @@ export async function doctorCommand(
     }
 
     if (skipHooks) {
-      ui.info("[Hooks] Skipped (--skip-hooks)");
+      ui.info(UI_MESSAGES.DOCTOR_HOOKS_SKIPPED);
     } else {
       const claudeHooksPath = path.join(
         workspaceRoot,
@@ -92,11 +105,23 @@ export async function doctorCommand(
       const hasClaude = await fs.stat(claudeHooksPath).catch(() => null);
       const hasCursor = await fs.stat(cursorHooksPath).catch(() => null);
 
-      if (hasClaude) ui.success(`[Hooks] ${UI_MESSAGES.DOCTOR_CLAUDE_FOUND}`);
-      else ui.warn(`[Hooks] ${UI_MESSAGES.DOCTOR_CLAUDE_NOT_FOUND}`);
+      if (hasClaude)
+        ui.success(
+          `${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${UI_MESSAGES.DOCTOR_CLAUDE_FOUND}`,
+        );
+      else
+        ui.warn(
+          `${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${UI_MESSAGES.DOCTOR_CLAUDE_NOT_FOUND}`,
+        );
 
-      if (hasCursor) ui.success(`[Hooks] ${UI_MESSAGES.DOCTOR_CURSOR_FOUND}`);
-      else ui.warn(`[Hooks] ${UI_MESSAGES.DOCTOR_CURSOR_NOT_FOUND}`);
+      if (hasCursor)
+        ui.success(
+          `${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${UI_MESSAGES.DOCTOR_CURSOR_FOUND}`,
+        );
+      else
+        ui.warn(
+          `${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${UI_MESSAGES.DOCTOR_CURSOR_NOT_FOUND}`,
+        );
     }
 
     if (allPassed) {

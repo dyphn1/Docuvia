@@ -1,4 +1,5 @@
 import type { LanguageConfig } from "@workspace/ast-core";
+import { QueryCaptureName } from "../constants/query-capture-names.js";
 
 export const csharpConfig: LanguageConfig = {
   extensions: [".cs"],
@@ -21,9 +22,9 @@ export const csharpConfig: LanguageConfig = {
   ],
   calls: ["invocation_expression", "object_creation_expression"],
   queries: {
-    classes: `(class_declaration name: (identifier) @class) (struct_declaration name: (identifier) @class) (interface_declaration name: (identifier) @class) (enum_declaration name: (identifier) @class) (record_declaration name: (identifier) @class)`,
-    functions: `(method_declaration name: (identifier) @function) (constructor_declaration name: (identifier) @function) (destructor_declaration) @function (conversion_operator_declaration) @function (operator_declaration) @function (local_function_statement) @function`,
-    imports: `(using_directive) @import`,
-    calls: `(invocation_expression) @call (object_creation_expression) @call`,
+    classes: `(class_declaration name: (identifier) @${QueryCaptureName.CLASS}) (struct_declaration name: (identifier) @${QueryCaptureName.CLASS}) (interface_declaration name: (identifier) @${QueryCaptureName.CLASS}) (enum_declaration name: (identifier) @${QueryCaptureName.CLASS}) (record_declaration name: (identifier) @${QueryCaptureName.CLASS})`,
+    functions: `(method_declaration name: (identifier) @${QueryCaptureName.FUNCTION}) (constructor_declaration name: (identifier) @${QueryCaptureName.FUNCTION}) (destructor_declaration) @${QueryCaptureName.FUNCTION} (conversion_operator_declaration) @${QueryCaptureName.FUNCTION} (operator_declaration) @${QueryCaptureName.FUNCTION} (local_function_statement) @${QueryCaptureName.FUNCTION}`,
+    imports: `(using_directive) @${QueryCaptureName.IMPORT}`,
+    calls: `(invocation_expression) @${QueryCaptureName.CALL} (object_creation_expression) @${QueryCaptureName.CALL}`,
   },
 };

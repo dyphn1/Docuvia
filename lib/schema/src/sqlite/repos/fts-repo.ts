@@ -6,6 +6,12 @@ import {
   type L2NodeRow,
   type L3NodeRow,
 } from "@workspace/contracts";
+import { SchemaTables } from "../constants.js";
+
+const FTS_REPO_ERROR_MESSAGES = {
+  SEARCH_L2_FAILED: "Failed to search l2 nodes via FTS",
+  SEARCH_L3_FAILED: "Failed to search l3 nodes via FTS",
+} as const;
 
 /**
  * `fts` repo — the FTS5 keyword-search surface (ADR-029), mirroring old Docuvia's
@@ -27,9 +33,9 @@ export class FtsRepo implements IFtsRepo {
       return this.db
         .prepare(
           `SELECT n.*
-           FROM l2_nodes_fts f
-           JOIN l2_nodes n ON n.id = f.rowid
-           WHERE l2_nodes_fts MATCH ?
+           FROM ${SchemaTables.L2_NODES_FTS} f
+           JOIN ${SchemaTables.L2_NODES} n ON n.id = f.rowid
+           WHERE ${SchemaTables.L2_NODES_FTS} MATCH ?
            ORDER BY rank
            LIMIT ?`,
         )
@@ -37,7 +43,7 @@ export class FtsRepo implements IFtsRepo {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to search l2 nodes via FTS",
+        FTS_REPO_ERROR_MESSAGES.SEARCH_L2_FAILED,
         err,
       );
     }
@@ -51,9 +57,9 @@ export class FtsRepo implements IFtsRepo {
       return this.db
         .prepare(
           `SELECT n.*
-           FROM l3_nodes_fts f
-           JOIN l3_nodes n ON n.id = f.rowid
-           WHERE l3_nodes_fts MATCH ?
+           FROM ${SchemaTables.L3_NODES_FTS} f
+           JOIN ${SchemaTables.L3_NODES} n ON n.id = f.rowid
+           WHERE ${SchemaTables.L3_NODES_FTS} MATCH ?
            ORDER BY rank
            LIMIT ?`,
         )
@@ -61,7 +67,7 @@ export class FtsRepo implements IFtsRepo {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to search l3 nodes via FTS",
+        FTS_REPO_ERROR_MESSAGES.SEARCH_L3_FAILED,
         err,
       );
     }

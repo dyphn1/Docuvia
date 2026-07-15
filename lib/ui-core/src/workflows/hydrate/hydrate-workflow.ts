@@ -1,5 +1,5 @@
 import { docuviaFactory, TOKENS, type ILogger } from "@workspace/contracts";
-import { HYDRATE_MESSAGES } from "./hydrate-messages.js";
+import { HYDRATE_EVENTS, HYDRATE_MESSAGES } from "./hydrate-messages.js";
 import { appendHydrateLogLine } from "./hydrate-log-writer.js";
 import type { HydrateResult } from "./hydrate-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
@@ -24,7 +24,7 @@ export class HydrateWorkflow {
 
     logger.info(HYDRATE_MESSAGES.HYDRATING);
     await appendHydrateLogLine(workspaceRoot, {
-      event: "hydrate.start",
+      event: HYDRATE_EVENTS.START,
       workspaceRoot,
     });
 
@@ -42,7 +42,7 @@ export class HydrateWorkflow {
 
       if (!result.hydrated) {
         await appendHydrateLogLine(workspaceRoot, {
-          event: "hydrate.summary",
+          event: HYDRATE_EVENTS.SUMMARY,
           hydrated: false,
           message: HYDRATE_MESSAGES.NOTHING_TO_HYDRATE,
         });
@@ -50,7 +50,7 @@ export class HydrateWorkflow {
       }
 
       await appendHydrateLogLine(workspaceRoot, {
-        event: "hydrate.summary",
+        event: HYDRATE_EVENTS.SUMMARY,
         hydrated: true,
         knowledgeSha: result.knowledgeSha,
         nodesLoaded: result.nodesLoaded,

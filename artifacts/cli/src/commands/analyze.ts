@@ -1,11 +1,23 @@
 import process from "process";
 import crypto from "node:crypto";
-import { docuviaMemory, DocuviaError } from "@workspace/contracts";
+import {
+  docuviaMemory,
+  DocuviaError,
+  MemoryKeys,
+  LogLevels,
+} from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+
+/**
+ * Mirrors `AnalyzeResultKind.CONFIG_SCAN` from `lib/ui-core`'s `analyze-result.ts` — not
+ * re-exported through `@workspace/ui-core`'s barrel, so the discriminant value is duplicated
+ * here rather than imported (only the `AnalyzeResult` type crosses that boundary today).
+ */
+const ANALYZE_RESULT_KIND_CONFIG_SCAN = "configScan";
 
 /**
  * Thin caller of `docuviaApi.analyze()` — both branches:
@@ -53,22 +65,22 @@ export async function analyzeCommand(
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
-    if (event.level === "info") spinner.text = event.message;
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
   if (targetPath) {
-    docuviaMemory.set(scopeId, "targetPath", targetPath);
-    docuviaMemory.set(scopeId, "llmBaseUrl", llmBaseUrl);
-    docuviaMemory.set(scopeId, "llmApiKey", llmApiKey);
-    docuviaMemory.set(scopeId, "llmModel", llmModel);
+    docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, targetPath);
+    docuviaMemory.set(scopeId, MemoryKeys.LLM_BASE_URL, llmBaseUrl);
+    docuviaMemory.set(scopeId, MemoryKeys.LLM_API_KEY, llmApiKey);
+    docuviaMemory.set(scopeId, MemoryKeys.LLM_MODEL, llmModel);
   }
 
   try {
     const result = await docuviaApi.analyze(scopeId, logger);
 
-    if (result.kind === "configScan") {
+    if (result.kind === ANALYZE_RESULT_KIND_CONFIG_SCAN) {
       spinner.succeed(UI_MESSAGES.ANALYZE_SUCCESS);
       ui.info(UI_MESSAGES.ANALYZE_PROJECT_TYPE + result.projectType);
       ui.info(
@@ -82,10 +94,18 @@ export async function analyzeCommand(
       } else {
         for (const decision of result.decisions) {
           ui.info(
-            `[${decision.nodeType}] ${decision.title} (confidence: ${decision.confidence})`,
+            UI_MESSAGES.ANALYZE_DECISION_PREFIX +
+              decision.nodeType +
+              UI_MESSAGES.ANALYZE_DECISION_MID +
+              decision.title +
+              UI_MESSAGES.ANALYZE_DECISION_CONFIDENCE_PREFIX +
+              decision.confidence +
+              UI_MESSAGES.ANALYZE_DECISION_CONFIDENCE_SUFFIX,
           );
           if (decision.content) {
-            console.log(`    ${decision.content}`);
+            ui.log(
+              UI_MESSAGES.ANALYZE_DECISION_CONTENT_PREFIX + decision.content,
+            );
           }
         }
       }

@@ -1,4 +1,5 @@
 import {
+  CHAT_TOOL_TYPE,
   DocuviaError,
   ErrorCodes,
   type ChatCompletionChunk,
@@ -9,6 +10,9 @@ import {
   type ILlmClient,
   type LlmClientConfig,
 } from "@workspace/contracts";
+import { LlmApiHttp } from "./constants/http.js";
+import { LlmApiMessages } from "./constants/messages.js";
+import { LlmApiPaths } from "./constants/paths.js";
 
 const REQUEST_TIMEOUT_MS = 30000;
 
@@ -31,7 +35,7 @@ export class FetchLlmClient implements ILlmClient {
     if (!this.config) {
       throw new DocuviaError(
         ErrorCodes.LLM_NOT_INITIALIZED,
-        "FetchLlmClient used before initialize() was called",
+        LlmApiMessages.CLIENT_USED_BEFORE_INITIALIZE,
       );
     }
     return this.config;
@@ -51,10 +55,13 @@ export class FetchLlmClient implements ILlmClient {
     accept?: string,
   ): Record<string, string> {
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      [LlmApiHttp.HEADER_CONTENT_TYPE]: LlmApiHttp.CONTENT_TYPE_JSON,
     };
     if (accept) headers.Accept = accept;
-    if (config.apiKey) headers.Authorization = `Bearer ${config.apiKey}`;
+    if (config.apiKey)
+      headers[LlmApiHttp.HEADER_AUTHORIZATION] = LlmApiHttp.bearerAuth(
+        config.apiKey,
+      );
     return headers;
   }
 
@@ -108,7 +115,7 @@ export class FetchLlmClient implements ILlmClient {
     toolCalls:
       | Array<{
           id: string;
-          type: "function";
+          type: typeof CHAT_TOOL_TYPE;
           function: { name: string; arguments: string };
         }>
       | undefined,
@@ -128,7 +135,7 @@ export class FetchLlmClient implements ILlmClient {
     tool_call_id?: string;
     tool_calls?: Array<{
       id: string;
-      type: "function";
+      type: typeof CHAT_TOOL_TYPE;
       function: { name: string; arguments: string };
     }>;
   }): ChatMessage {
@@ -175,7 +182,7 @@ export class FetchLlmClient implements ILlmClient {
         content?: string;
         tool_calls?: Array<{
           id: string;
-          type: "function";
+          type: typeof CHAT_TOOL_TYPE;
           function: { name: string; arguments: string };
         }>;
       };
@@ -209,8 +216,8 @@ export class FetchLlmClient implements ILlmClient {
     const config = this.getConfig();
     let res: Response;
     try {
-      res = await fetch(`${config.baseUrl}/v1/chat/completions`, {
-        method: "POST",
+      res = await fetch(`${config.baseUrl}${LlmApiPaths.CHAT_COMPLETIONS}`, {
+        method: LlmApiHttp.METHOD_POST,
         headers: this.buildHeaders(config),
         body: JSON.stringify(this.buildRequestBody(request, false)),
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -218,7 +225,7 @@ export class FetchLlmClient implements ILlmClient {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
-        "Chat completion failed",
+        LlmApiMessages.CHAT_COMPLETION_FAILED,
         err,
       );
     }
@@ -227,7 +234,7 @@ export class FetchLlmClient implements ILlmClient {
       const message = await this.parseErrorBody(res);
       throw new DocuviaError(
         ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
-        `Chat completion failed: ${message}`,
+        LlmApiMessages.chatCompletionFailedWithReason(message),
       );
     }
 
@@ -239,7 +246,7 @@ export class FetchLlmClient implements ILlmClient {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
-        "Chat completion failed: response body was not valid JSON",
+        LlmApiMessages.CHAT_COMPLETION_INVALID_JSON,
         err,
       );
     }
@@ -249,7 +256,10 @@ export class FetchLlmClient implements ILlmClient {
     request: ChatCompletionRequest,
   ): AsyncIterable<ChatCompletionChunk> {
     const config = this.getConfig();
-    const headers = this.buildHeaders(config, "text/event-stream");
+    const headers = this.buildHeaders(
+      config,
+      LlmApiHttp.CONTENT_TYPE_EVENT_STREAM,
+    );
     const body = JSON.stringify(this.buildRequestBody(request, true));
     const parseErrorBody = this.parseErrorBody.bind(this);
     const fromWireChunk = this.fromWireChunk.bind(this);
@@ -257,8 +267,8 @@ export class FetchLlmClient implements ILlmClient {
     async function* generate(): AsyncGenerator<ChatCompletionChunk> {
       let res: Response;
       try {
-        res = await fetch(`${config.baseUrl}/v1/chat/completions`, {
-          method: "POST",
+        res = await fetch(`${config.baseUrl}${LlmApiPaths.CHAT_COMPLETIONS}`, {
+          method: LlmApiHttp.METHOD_POST,
           headers,
           body,
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -266,7 +276,7 @@ export class FetchLlmClient implements ILlmClient {
       } catch (err) {
         throw DocuviaError.wrap(
           ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
-          "Chat completion stream failed",
+          LlmApiMessages.CHAT_COMPLETION_STREAM_FAILED,
           err,
         );
       }
@@ -275,7 +285,7 @@ export class FetchLlmClient implements ILlmClient {
         const message = await parseErrorBody(res);
         throw new DocuviaError(
           ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
-          `Chat completion stream failed: ${message}`,
+          LlmApiMessages.chatCompletionStreamFailedWithReason(message),
         );
       }
 
@@ -297,10 +307,10 @@ export class FetchLlmClient implements ILlmClient {
 
           const line = block.trim();
           if (!line) continue;
-          const payload = line.startsWith("data: ")
-            ? line.slice("data: ".length)
+          const payload = line.startsWith(LlmApiHttp.SSE_DATA_PREFIX)
+            ? line.slice(LlmApiHttp.SSE_DATA_PREFIX.length)
             : line;
-          if (payload === "[DONE]") return;
+          if (payload === LlmApiHttp.SSE_DONE_SENTINEL) return;
 
           try {
             const wireChunk = JSON.parse(payload) as Parameters<
@@ -310,7 +320,7 @@ export class FetchLlmClient implements ILlmClient {
           } catch (err) {
             throw DocuviaError.wrap(
               ErrorCodes.LLM_STREAM_FAILED,
-              "Chat completion stream failed: chunk was not valid JSON",
+              LlmApiMessages.CHAT_COMPLETION_STREAM_INVALID_JSON,
               err,
             );
           }

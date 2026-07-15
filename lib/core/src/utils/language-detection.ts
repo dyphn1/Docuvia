@@ -1,6 +1,10 @@
 import path from "path";
 import { DEFAULT_REGISTRY } from "@workspace/plugins-ast";
-import type { LanguageConfig, SupportedLanguage } from "@workspace/ast-core";
+import {
+  SUPPORTED_LANGUAGES,
+  type LanguageConfig,
+  type SupportedLanguage,
+} from "@workspace/ast-core";
 
 const EXT_TO_LANGUAGE: Map<string, SupportedLanguage> = (() => {
   const map = new Map<string, SupportedLanguage>();
@@ -34,7 +38,7 @@ export function detectLanguageForFile(
   const byExt = EXT_TO_LANGUAGE.get(path.extname(filePath).toLowerCase());
   if (byExt) return byExt;
   return RUBY_EXTENSIONLESS_BASENAMES.has(path.basename(filePath))
-    ? "ruby"
+    ? SUPPORTED_LANGUAGES.RUBY
     : undefined;
 }
 

@@ -18,11 +18,27 @@ export interface LlmClientConfig {
   apiKey?: string;
 }
 
-export type ChatMessageRole = "system" | "user" | "assistant" | "tool";
+export const ChatMessageRoles = {
+  SYSTEM: "system",
+  USER: "user",
+  ASSISTANT: "assistant",
+  TOOL: "tool",
+} as const;
+export type ChatMessageRole =
+  (typeof ChatMessageRoles)[keyof typeof ChatMessageRoles];
+
+/** The only tool kind CLIProxyAPI's OpenAI-compatible surface supports today. */
+export const CHAT_TOOL_TYPE = "function" as const;
+
+/** Values for `ChatCompletionRequest.toolChoice` short-hand modes ("auto" lets the model decide, "none" forbids tool calls). */
+export const ChatToolChoiceModes = {
+  AUTO: "auto",
+  NONE: "none",
+} as const;
 
 export interface ChatToolCall {
   id: string;
-  type: "function";
+  type: typeof CHAT_TOOL_TYPE;
   function: { name: string; arguments: string };
 }
 
@@ -35,7 +51,7 @@ export interface ChatMessage {
 }
 
 export interface ChatToolDefinition {
-  type: "function";
+  type: typeof CHAT_TOOL_TYPE;
   function: {
     name: string;
     description?: string;
@@ -48,7 +64,9 @@ export interface ChatCompletionRequest {
   messages: ChatMessage[];
   tools?: ChatToolDefinition[];
   toolChoice?:
-    "auto" | "none" | { type: "function"; function: { name: string } };
+    | typeof ChatToolChoiceModes.AUTO
+    | typeof ChatToolChoiceModes.NONE
+    | { type: typeof CHAT_TOOL_TYPE; function: { name: string } };
   temperature?: number;
   maxTokens?: number;
 }

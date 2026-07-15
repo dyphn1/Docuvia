@@ -6,10 +6,26 @@ import type {
   TopologyGroup,
   TopologyLink,
   TopologyNode,
+  LinkType,
 } from "@workspace/contracts";
-import { TOPOLOGY_VERSION } from "@workspace/contracts";
+import {
+  TOPOLOGY_VERSION,
+  LinkTypes,
+  TopologyNodeKinds,
+  TopologyCollapseModes,
+  TopologyGroupSources,
+} from "@workspace/contracts";
+import {
+  L2_NODE_ID_PREFIX,
+  toL2NodeId,
+  toL3NodeId,
+} from "../constants/node-ids.js";
 
 const DEFAULT_MAX_NODES = 2000;
+/** Cluster label for nodes with no resolvable file path. */
+const UNGROUPED_CLUSTER_LABEL = "(ungrouped)";
+/** Cluster label for a node whose file path has no parent directory (repo-root file). */
+const ROOT_CLUSTER_LABEL = ".";
 
 interface NormalizedL2Row {
   id: number;
@@ -20,7 +36,7 @@ interface NormalizedL2Row {
 interface NormalizedLinkRow {
   sourceNodeId: number;
   targetNodeId: number;
-  linkType: string;
+  linkType: LinkType;
 }
 
 interface NormalizedL3Row {
@@ -58,7 +74,7 @@ export class TopologyBuilderService implements ITopologyBuilder {
 
     const containingFileId = new Map<string, string>();
     for (const link of linkRows) {
-      if (link.linkType === "contains") {
+      if (link.linkType === LinkTypes.CONTAINS) {
         containingFileId.set(
           String(link.targetNodeId),
           String(link.sourceNodeId),
@@ -77,8 +93,9 @@ export class TopologyBuilderService implements ITopologyBuilder {
     const maxNodes = options.maxNodes ?? DEFAULT_MAX_NODES;
     const fullNodeCount = l2Rows.length + l3Rows.length;
     const collapse =
-      options.collapse === "file" ||
-      (options.collapse !== "symbol" && fullNodeCount > maxNodes);
+      options.collapse === TopologyCollapseModes.FILE ||
+      (options.collapse !== TopologyCollapseModes.SYMBOL &&
+        fullNodeCount > maxNodes);
 
     const built = collapse
       ? buildCollapsed(l2Rows, linkRows, l3Rows, containingFileId, filePathById)
@@ -105,13 +122,18 @@ export class TopologyBuilderService implements ITopologyBuilder {
       if (groupId === undefined) {
         groupId = groups.length;
         groupIdByLabel.set(label, groupId);
-        groups.push({ id: groupId, label, source: "directory", count: 0 });
+        groups.push({
+          id: groupId,
+          label,
+          source: TopologyGroupSources.DIRECTORY,
+          count: 0,
+        });
       }
       node.group = groupId;
       groups[groupId].count++;
 
-      if (node.kind === "file") {
-        const tags = tagsByNodeId.get(node.id.slice("l2:".length));
+      if (node.kind === TopologyNodeKinds.FILE) {
+        const tags = tagsByNodeId.get(node.id.slice(L2_NODE_ID_PREFIX.length));
         if (tags && tags.length) node.tags = tags;
       }
     }
@@ -150,17 +172,19 @@ function buildSymbolLevel(
   filePathById: Map<string, string | undefined>,
 ): { nodes: TopologyNode[]; links: TopologyLink[] } {
   const nodes: TopologyNode[] = l2Rows.map((row) => ({
-    id: "l2:" + row.id,
+    id: toL2NodeId(row.id),
     label: row.name,
-    kind: containingFileId.has(String(row.id)) ? "symbol" : "file",
+    kind: containingFileId.has(String(row.id))
+      ? TopologyNodeKinds.SYMBOL
+      : TopologyNodeKinds.FILE,
     group: 0,
     filePath: filePathById.get(String(row.id)),
     degree: 0,
   }));
 
   const links: TopologyLink[] = linkRows.map((link) => ({
-    source: "l2:" + link.sourceNodeId,
-    target: "l2:" + link.targetNodeId,
+    source: toL2NodeId(link.sourceNodeId),
+    target: toL2NodeId(link.targetNodeId),
     linkType: link.linkType,
     confidence: 1,
   }));
@@ -182,9 +206,9 @@ function buildCollapsed(
   const nodes: TopologyNode[] = l2Rows
     .filter((row) => !containingFileId.has(String(row.id)))
     .map((row) => ({
-      id: "l2:" + row.id,
+      id: toL2NodeId(row.id),
       label: row.name,
-      kind: "file" as const,
+      kind: TopologyNodeKinds.FILE,
       group: 0,
       filePath: filePathById.get(String(row.id)),
       degree: 0,
@@ -193,7 +217,7 @@ function buildCollapsed(
   const links: TopologyLink[] = [];
   const seen = new Set<string>();
   for (const link of linkRows) {
-    if (link.linkType === "contains") continue;
+    if (link.linkType === LinkTypes.CONTAINS) continue;
     const source = toFileId(link.sourceNodeId);
     const target = toFileId(link.targetNodeId);
     if (source === target) continue;
@@ -201,8 +225,8 @@ function buildCollapsed(
     if (seen.has(key)) continue;
     seen.add(key);
     links.push({
-      source: "l2:" + source,
-      target: "l2:" + target,
+      source: toL2NodeId(source),
+      target: toL2NodeId(target),
       linkType: link.linkType,
       confidence: 1,
     });
@@ -220,31 +244,31 @@ function appendDecisions(
 ): void {
   const nodeIds = new Set(nodes.map((n) => n.id));
   for (const row of l3Rows) {
-    const parentId = "l2:" + row.l2NodeId;
+    const parentId = toL2NodeId(row.l2NodeId);
     if (!nodeIds.has(parentId)) continue;
     nodes.push({
-      id: "l3:" + row.id,
+      id: toL3NodeId(row.id),
       label: row.title,
-      kind: "decision",
+      kind: TopologyNodeKinds.DECISION,
       group: 0,
       filePath: filePathById.get(String(row.l2NodeId)),
       parent: parentId,
       degree: 0,
     });
     links.push({
-      source: "l3:" + row.id,
+      source: toL3NodeId(row.id),
       target: parentId,
-      linkType: "decision",
+      linkType: LinkTypes.DECISION,
       confidence: 1,
     });
   }
 }
 
 function clusterLabel(filePath: string | undefined): string {
-  if (!filePath) return "(ungrouped)";
+  if (!filePath) return UNGROUPED_CLUSTER_LABEL;
   const posixPath = filePath.split(String.fromCharCode(92)).join("/");
   const segments = posixPath.split("/").filter(Boolean);
-  if (segments.length <= 1) return ".";
+  if (segments.length <= 1) return ROOT_CLUSTER_LABEL;
   return segments.slice(0, Math.min(2, segments.length - 1)).join("/");
 }
 

@@ -1,3 +1,4 @@
+import path from "node:path";
 import type {
   HydrationResult,
   IGitProvider,
@@ -6,7 +7,7 @@ import type {
   ILogger,
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
-import { GitConstants } from "./git-constants.js";
+import { GitConstants, GitMessages } from "./git-constants.js";
 import { parseSourceTrailer } from "./git-trailers.js";
 
 /** Knowledge branch is a dedicated orphan branch of small, purpose-built commits — this comfortably bounds it without truncating any real history. */
@@ -116,12 +117,9 @@ export class HydrationService implements IHydrationService {
   ): Promise<HydrationResult> {
     const knowledgeSha = await this.resolveHydrationCommit(cwd, branchName);
     if (!knowledgeSha) {
-      this.logger.debug(
-        "Nothing to hydrate from yet — knowledge branch doesn't exist",
-        {
-          branchName,
-        },
-      );
+      this.logger.debug(GitMessages.NOTHING_TO_HYDRATE, {
+        branchName,
+      });
       return {
         hydrated: false,
         nodesLoaded: 0,
@@ -131,8 +129,22 @@ export class HydrationService implements IHydrationService {
     }
 
     const [nodesJsonl, edgesJsonl] = await Promise.all([
-      this.git.readFileAtRef(cwd, knowledgeSha, "graph/nodes.jsonl"),
-      this.git.readFileAtRef(cwd, knowledgeSha, "graph/edges.jsonl"),
+      this.git.readFileAtRef(
+        cwd,
+        knowledgeSha,
+        path.posix.join(
+          GitConstants.GRAPH_DIR_NAME,
+          GitConstants.NODES_JSONL_NAME,
+        ),
+      ),
+      this.git.readFileAtRef(
+        cwd,
+        knowledgeSha,
+        path.posix.join(
+          GitConstants.GRAPH_DIR_NAME,
+          GitConstants.EDGES_JSONL_NAME,
+        ),
+      ),
     ]);
 
     const nodes = parseNodesJsonl(nodesJsonl);
@@ -148,7 +160,7 @@ export class HydrationService implements IHydrationService {
       return loaded;
     });
 
-    this.logger.info("Hydrated knowledge graph from git", {
+    this.logger.info(GitMessages.HYDRATED_KNOWLEDGE_GRAPH, {
       knowledgeSha,
       ...bulkResult,
     });

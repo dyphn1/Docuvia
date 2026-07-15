@@ -7,7 +7,30 @@ import {
   type L2NodeWithL3Children,
   type L3NodeRow,
   type NodeLinkRow,
+  L2NodeTypes,
 } from "@workspace/contracts";
+import { SchemaTables, SchemaColumns } from "../constants.js";
+
+const GRAPH_REPO_ERROR_MESSAGES = {
+  COUNT_FAILED: "Failed to count l2/l3 nodes",
+  FIND_NODES_FOR_CHANGED_FILES_FAILED: "Failed to find nodes for changed files",
+  FIND_NODE_BY_NAME_FAILED: (target: string) =>
+    `Failed to find node by name: ${target}`,
+  INCOMING_EDGES_FAILED: (nodeId: number) =>
+    `Failed to get incoming edges for node ${nodeId}`,
+  OUTGOING_EDGES_FAILED: (nodeId: number) =>
+    `Failed to get outgoing edges for node ${nodeId}`,
+  ALL_NODES_FAILED: "Failed to get all l2 nodes",
+  ALL_LINKS_FAILED: "Failed to get all node links",
+  BULK_LOAD_FAILED: "Failed to bulk-load graph",
+} as const;
+
+/** FTS5 sync-trigger names on `l2_nodes_fts` (see `migrations/0001_init.sql`) — dropped/recreated around `bulkLoadGraph`'s bulk insert. */
+const SchemaTriggers = {
+  L2_NODES_FTS_AFTER_INSERT: "l2_nodes_fts_ai",
+  L2_NODES_FTS_AFTER_DELETE: "l2_nodes_fts_ad",
+  L2_NODES_FTS_AFTER_UPDATE: "l2_nodes_fts_au",
+} as const;
 
 /**
  * Fallback node_key (STOR-005) for callers that don't pass one explicitly: `<path>` when `name`
@@ -35,7 +58,9 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   deleteNodesForPath(filePath: string): number[] {
     const pattern = JSON.stringify([filePath]);
     const rows = this.db
-      .prepare("SELECT id FROM l2_nodes WHERE path_patterns = ?")
+      .prepare(
+        `SELECT id FROM ${SchemaTables.L2_NODES} WHERE ${SchemaColumns.PATH_PATTERNS} = ?`,
+      )
       .all(pattern) as { id: number }[];
     const ids = rows.map((row) => row.id);
     if (ids.length === 0) return ids;
@@ -43,16 +68,18 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     const placeholders = ids.map(() => "?").join(",");
     this.db
       .prepare(
-        `DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (${placeholders})`,
+        `DELETE FROM ${SchemaTables.L2_NODE_L1_TAGS} WHERE ${SchemaColumns.L2_NODE_ID} IN (${placeholders})`,
       )
       .run(...ids);
     this.db
       .prepare(
-        `DELETE FROM node_links WHERE source_node_id IN (${placeholders})`,
+        `DELETE FROM ${SchemaTables.NODE_LINKS} WHERE ${SchemaColumns.SOURCE_NODE_ID} IN (${placeholders})`,
       )
       .run(...ids);
     this.db
-      .prepare(`DELETE FROM l2_nodes WHERE id IN (${placeholders})`)
+      .prepare(
+        `DELETE FROM ${SchemaTables.L2_NODES} WHERE id IN (${placeholders})`,
+      )
       .run(...ids);
     return ids;
   }
@@ -76,13 +103,13 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       input.nodeKey ?? deriveNodeKey(input.pathPatterns, input.name);
     const result = this.db
       .prepare(
-        `INSERT INTO l2_nodes (project_id, name, type, description, path_patterns, node_key, content_hash)
+        `INSERT INTO ${SchemaTables.L2_NODES} (${SchemaColumns.PROJECT_ID}, name, type, description, ${SchemaColumns.PATH_PATTERNS}, ${SchemaColumns.NODE_KEY}, ${SchemaColumns.CONTENT_HASH})
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         input.projectId,
         input.name,
-        input.type ?? "module",
+        input.type ?? L2NodeTypes.MODULE,
         input.description ?? "",
         JSON.stringify(input.pathPatterns),
         nodeKey,
@@ -99,7 +126,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   }): void {
     this.db
       .prepare(
-        "INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)",
+        `INSERT INTO ${SchemaTables.NODE_LINKS} (${SchemaColumns.SOURCE_NODE_ID}, ${SchemaColumns.TARGET_NODE_ID}, ${SchemaColumns.LINK_TYPE}) VALUES (?, ?, ?)`,
       )
       .run(input.sourceNodeId, input.targetNodeId, input.linkType);
   }
@@ -108,7 +135,9 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   findNodeIdByName(filePath: string, name: string): number | undefined {
     const pattern = JSON.stringify([filePath]);
     const row = this.db
-      .prepare("SELECT id FROM l2_nodes WHERE path_patterns = ? AND name = ?")
+      .prepare(
+        `SELECT id FROM ${SchemaTables.L2_NODES} WHERE ${SchemaColumns.PATH_PATTERNS} = ? AND name = ?`,
+      )
       .get(pattern, name) as { id: number } | undefined;
     return row?.id;
   }
@@ -117,12 +146,16 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   count(): { l2Nodes: number; l3Nodes: number } {
     try {
       const l2Nodes = (
-        this.db.prepare("SELECT COUNT(*) as c FROM l2_nodes").get() as {
+        this.db
+          .prepare(`SELECT COUNT(*) as c FROM ${SchemaTables.L2_NODES}`)
+          .get() as {
           c: number;
         }
       ).c;
       const l3Nodes = (
-        this.db.prepare("SELECT COUNT(*) as c FROM l3_nodes").get() as {
+        this.db
+          .prepare(`SELECT COUNT(*) as c FROM ${SchemaTables.L3_NODES}`)
+          .get() as {
           c: number;
         }
       ).c;
@@ -130,7 +163,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to count l2/l3 nodes",
+        GRAPH_REPO_ERROR_MESSAGES.COUNT_FAILED,
         err,
       );
     }
@@ -144,7 +177,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     try {
       const changedSet = new Set(changedFiles);
       const allNodes = this.db
-        .prepare("SELECT * FROM l2_nodes")
+        .prepare(`SELECT * FROM ${SchemaTables.L2_NODES}`)
         .all() as L2NodeRow[];
 
       const candidates = allNodes.filter((node) => {
@@ -158,7 +191,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       });
 
       const l3Stmt = this.db.prepare(
-        "SELECT * FROM l3_nodes WHERE l2_node_id = ?",
+        `SELECT * FROM ${SchemaTables.L3_NODES} WHERE ${SchemaColumns.L2_NODE_ID} = ?`,
       );
       return candidates.map((l2Node) => ({
         l2Node,
@@ -167,7 +200,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to find nodes for changed files",
+        GRAPH_REPO_ERROR_MESSAGES.FIND_NODES_FOR_CHANGED_FILES_FAILED,
         err,
       );
     }
@@ -182,21 +215,23 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   ): { id: number; name: string; type: string } | undefined {
     try {
       const exact = this.db
-        .prepare("SELECT id, name, type FROM l2_nodes WHERE name = ? LIMIT 1")
+        .prepare(
+          `SELECT id, name, type FROM ${SchemaTables.L2_NODES} WHERE name = ? LIMIT 1`,
+        )
         .get(target) as { id: number; name: string; type: string } | undefined;
       if (exact) return exact;
 
       const escaped = target.replace(/[\\%_]/g, (m) => `\\${m}`);
       return this.db
         .prepare(
-          "SELECT id, name, type FROM l2_nodes WHERE name LIKE ? ESCAPE '\\' LIMIT 1",
+          `SELECT id, name, type FROM ${SchemaTables.L2_NODES} WHERE name LIKE ? ESCAPE '\\' LIMIT 1`,
         )
         .get(`%${escaped}%`) as
         { id: number; name: string; type: string } | undefined;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        `Failed to find node by name: ${target}`,
+        GRAPH_REPO_ERROR_MESSAGES.FIND_NODE_BY_NAME_FAILED(target),
         err,
       );
     }
@@ -214,15 +249,15 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       return this.db
         .prepare(
           `SELECT DISTINCT n.id as id, n.name as name, n.type as type
-           FROM node_links l
-           JOIN l2_nodes n ON n.id = l.source_node_id
-           WHERE l.target_node_id = ?`,
+           FROM ${SchemaTables.NODE_LINKS} l
+           JOIN ${SchemaTables.L2_NODES} n ON n.id = l.${SchemaColumns.SOURCE_NODE_ID}
+           WHERE l.${SchemaColumns.TARGET_NODE_ID} = ?`,
         )
         .all(nodeId) as Array<{ id: number; name: string; type: string }>;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        `Failed to get incoming edges for node ${nodeId}`,
+        GRAPH_REPO_ERROR_MESSAGES.INCOMING_EDGES_FAILED(nodeId),
         err,
       );
     }
@@ -236,15 +271,15 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       return this.db
         .prepare(
           `SELECT DISTINCT n.id as id, n.name as name, n.type as type
-           FROM node_links l
-           JOIN l2_nodes n ON n.id = l.target_node_id
-           WHERE l.source_node_id = ?`,
+           FROM ${SchemaTables.NODE_LINKS} l
+           JOIN ${SchemaTables.L2_NODES} n ON n.id = l.${SchemaColumns.TARGET_NODE_ID}
+           WHERE l.${SchemaColumns.SOURCE_NODE_ID} = ?`,
         )
         .all(nodeId) as Array<{ id: number; name: string; type: string }>;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        `Failed to get outgoing edges for node ${nodeId}`,
+        GRAPH_REPO_ERROR_MESSAGES.OUTGOING_EDGES_FAILED(nodeId),
         err,
       );
     }
@@ -253,11 +288,13 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   /** Every l2_nodes row — used by `export-topology`. */
   getAllNodes(): L2NodeRow[] {
     try {
-      return this.db.prepare("SELECT * FROM l2_nodes").all() as L2NodeRow[];
+      return this.db
+        .prepare(`SELECT * FROM ${SchemaTables.L2_NODES}`)
+        .all() as L2NodeRow[];
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to get all l2 nodes",
+        GRAPH_REPO_ERROR_MESSAGES.ALL_NODES_FAILED,
         err,
       );
     }
@@ -266,11 +303,13 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   /** Every node_links row — used by `export-topology`. */
   getAllLinks(): NodeLinkRow[] {
     try {
-      return this.db.prepare("SELECT * FROM node_links").all() as NodeLinkRow[];
+      return this.db
+        .prepare(`SELECT * FROM ${SchemaTables.NODE_LINKS}`)
+        .all() as NodeLinkRow[];
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to get all node links",
+        GRAPH_REPO_ERROR_MESSAGES.ALL_LINKS_FAILED,
         err,
       );
     }
@@ -296,19 +335,20 @@ export class GraphNodesRepo implements IGraphNodesRepo {
         // afterward does the same tokenization work in bulk instead of once per row.
         this.db.exec(FTS_TRIGGER_DROP_SQL);
 
-        this.db.exec("DELETE FROM node_links");
-        this.db.exec("DELETE FROM l2_node_l1_tags");
-        this.db.exec("DELETE FROM l2_nodes");
+        this.db.exec(`DELETE FROM ${SchemaTables.NODE_LINKS}`);
+        this.db.exec(`DELETE FROM ${SchemaTables.L2_NODE_L1_TAGS}`);
+        this.db.exec(`DELETE FROM ${SchemaTables.L2_NODES}`);
 
         const insertNode = this.db.prepare(
-          `INSERT INTO l2_nodes (project_id, name, type, description, path_patterns, node_key)
-           VALUES (?, ?, 'module', '', ?, ?)`,
+          `INSERT INTO ${SchemaTables.L2_NODES} (${SchemaColumns.PROJECT_ID}, name, type, description, ${SchemaColumns.PATH_PATTERNS}, ${SchemaColumns.NODE_KEY})
+           VALUES (?, ?, ?, '', ?, ?)`,
         );
         const keyToId = new Map<string, number>();
         for (const node of input.nodes) {
           const result = insertNode.run(
             input.projectId,
             node.name,
+            L2NodeTypes.MODULE,
             JSON.stringify(node.filePath ? [node.filePath] : []),
             node.nodeKey,
           );
@@ -316,7 +356,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
         }
 
         const insertLink = this.db.prepare(
-          "INSERT INTO node_links (source_node_id, target_node_id, link_type) VALUES (?, ?, ?)",
+          `INSERT INTO ${SchemaTables.NODE_LINKS} (${SchemaColumns.SOURCE_NODE_ID}, ${SchemaColumns.TARGET_NODE_ID}, ${SchemaColumns.LINK_TYPE}) VALUES (?, ?, ?)`,
         );
         let edgesLoaded = 0;
         let edgesDropped = 0;
@@ -332,7 +372,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
         }
 
         this.db.exec(
-          "INSERT INTO l2_nodes_fts(l2_nodes_fts) VALUES('rebuild')",
+          `INSERT INTO ${SchemaTables.L2_NODES_FTS}(${SchemaTables.L2_NODES_FTS}) VALUES('rebuild')`,
         );
         this.db.exec(FTS_TRIGGER_RECREATE_SQL);
 
@@ -342,7 +382,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to bulk-load graph",
+        GRAPH_REPO_ERROR_MESSAGES.BULK_LOAD_FAILED,
         err,
       );
     }
@@ -350,25 +390,25 @@ export class GraphNodesRepo implements IGraphNodesRepo {
 }
 
 const FTS_TRIGGER_DROP_SQL = `
-  DROP TRIGGER IF EXISTS l2_nodes_fts_ai;
-  DROP TRIGGER IF EXISTS l2_nodes_fts_ad;
-  DROP TRIGGER IF EXISTS l2_nodes_fts_au;
+  DROP TRIGGER IF EXISTS ${SchemaTriggers.L2_NODES_FTS_AFTER_INSERT};
+  DROP TRIGGER IF EXISTS ${SchemaTriggers.L2_NODES_FTS_AFTER_DELETE};
+  DROP TRIGGER IF EXISTS ${SchemaTriggers.L2_NODES_FTS_AFTER_UPDATE};
 `;
 
 /** Must stay textually identical to the trigger definitions in migrations/0001_init.sql — bulkLoadGraph() drops these for the duration of the load and recreates them here afterward. */
 const FTS_TRIGGER_RECREATE_SQL = `
-  CREATE TRIGGER IF NOT EXISTS l2_nodes_fts_ai AFTER INSERT ON l2_nodes BEGIN
-    INSERT INTO l2_nodes_fts(rowid, name, description, path_patterns)
-    VALUES (new.id, new.name, new.description, new.path_patterns);
+  CREATE TRIGGER IF NOT EXISTS ${SchemaTriggers.L2_NODES_FTS_AFTER_INSERT} AFTER INSERT ON ${SchemaTables.L2_NODES} BEGIN
+    INSERT INTO ${SchemaTables.L2_NODES_FTS}(rowid, name, description, ${SchemaColumns.PATH_PATTERNS})
+    VALUES (new.id, new.name, new.description, new.${SchemaColumns.PATH_PATTERNS});
   END;
-  CREATE TRIGGER IF NOT EXISTS l2_nodes_fts_ad AFTER DELETE ON l2_nodes BEGIN
-    INSERT INTO l2_nodes_fts(l2_nodes_fts, rowid, name, description, path_patterns)
-    VALUES ('delete', old.id, old.name, old.description, old.path_patterns);
+  CREATE TRIGGER IF NOT EXISTS ${SchemaTriggers.L2_NODES_FTS_AFTER_DELETE} AFTER DELETE ON ${SchemaTables.L2_NODES} BEGIN
+    INSERT INTO ${SchemaTables.L2_NODES_FTS}(${SchemaTables.L2_NODES_FTS}, rowid, name, description, ${SchemaColumns.PATH_PATTERNS})
+    VALUES ('delete', old.id, old.name, old.description, old.${SchemaColumns.PATH_PATTERNS});
   END;
-  CREATE TRIGGER IF NOT EXISTS l2_nodes_fts_au AFTER UPDATE ON l2_nodes BEGIN
-    INSERT INTO l2_nodes_fts(l2_nodes_fts, rowid, name, description, path_patterns)
-    VALUES ('delete', old.id, old.name, old.description, old.path_patterns);
-    INSERT INTO l2_nodes_fts(rowid, name, description, path_patterns)
-    VALUES (new.id, new.name, new.description, new.path_patterns);
+  CREATE TRIGGER IF NOT EXISTS ${SchemaTriggers.L2_NODES_FTS_AFTER_UPDATE} AFTER UPDATE ON ${SchemaTables.L2_NODES} BEGIN
+    INSERT INTO ${SchemaTables.L2_NODES_FTS}(${SchemaTables.L2_NODES_FTS}, rowid, name, description, ${SchemaColumns.PATH_PATTERNS})
+    VALUES ('delete', old.id, old.name, old.description, old.${SchemaColumns.PATH_PATTERNS});
+    INSERT INTO ${SchemaTables.L2_NODES_FTS}(rowid, name, description, ${SchemaColumns.PATH_PATTERNS})
+    VALUES (new.id, new.name, new.description, new.${SchemaColumns.PATH_PATTERNS});
   END;
 `;

@@ -6,4 +6,4 @@
  * `lib/contracts` (see docs/gitbook/architecture/virtual-contracts-architecture.md) — never on
  * `lib/core` directly.
  */
-export const UTF8_ENCODING = "utf8";
+export const UTF8_ENCODING = "utf8" as const;

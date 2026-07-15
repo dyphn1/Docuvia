@@ -6,10 +6,17 @@
  * cannot be starved. Used by `GraphStore` to serialize SQLite writes so parallel callers never
  * crash with SQLITE_BUSY ("database is locked").
  */
+/** Waiter kind in {@link ReadWriteLock}'s FIFO queue. */
+const LockWaiterKind = {
+  READ: "read",
+  WRITE: "write",
+} as const;
+type LockWaiterKindType = (typeof LockWaiterKind)[keyof typeof LockWaiterKind];
+
 export class ReadWriteLock {
   private activeReaders = 0;
   private writerActive = false;
-  private queue: Array<{ kind: "read" | "write"; grant: () => void }> = [];
+  private queue: Array<{ kind: LockWaiterKindType; grant: () => void }> = [];
 
   /** Runs `fn` while holding a shared read lock. */
   public async runRead<T>(fn: () => Promise<T> | T): Promise<T> {
@@ -35,13 +42,13 @@ export class ReadWriteLock {
     // Fast path: no writer active and no writer waiting ahead of us.
     if (
       !this.writerActive &&
-      !this.queue.some((waiter) => waiter.kind === "write")
+      !this.queue.some((waiter) => waiter.kind === LockWaiterKind.WRITE)
     ) {
       this.activeReaders++;
       return Promise.resolve();
     }
     return new Promise((resolve) => {
-      this.queue.push({ kind: "read", grant: resolve });
+      this.queue.push({ kind: LockWaiterKind.READ, grant: resolve });
     });
   }
 
@@ -60,7 +67,7 @@ export class ReadWriteLock {
       return Promise.resolve();
     }
     return new Promise((resolve) => {
-      this.queue.push({ kind: "write", grant: resolve });
+      this.queue.push({ kind: LockWaiterKind.WRITE, grant: resolve });
     });
   }
 
@@ -74,7 +81,7 @@ export class ReadWriteLock {
 
     while (this.queue.length > 0) {
       const next = this.queue[0];
-      if (next.kind === "write") {
+      if (next.kind === LockWaiterKind.WRITE) {
         if (this.activeReaders === 0) {
           this.queue.shift();
           this.writerActive = true;

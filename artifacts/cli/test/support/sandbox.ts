@@ -59,7 +59,9 @@ export class TestSandbox {
           retryDelay: 100,
         });
       } catch (err) {
-        console.warn(`Failed to cleanup sandbox dir ${this.dir}:`, err);
+        process.emitWarning(
+          `Failed to cleanup sandbox dir ${this.dir}: ${err instanceof Error ? err.message : String(err)}`,
+        );
       }
     }
   }

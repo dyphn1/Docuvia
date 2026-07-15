@@ -11,5 +11,6 @@ This directory contains consolidated learnings, architectural decisions, and err
 - **[Architecture & Design](architecture.md)**: Docuvia2's verified package layout, the `GraphStore` memory layer, the composition-root DI convention, and the schema single source of truth.
 - **[Common Errors & Traps](common_errors.md)**: Recurring bugs, API gotchas, and specific coding anti-patterns to avoid.
 - **[Conventions & Best Practices](conventions.md)**: Project-specific standards for documentation, testing, and implementation.
+- **[Development Guardrails](development_guardrails.md)**: Two-pass self-audit loop and positive reference patterns for virtual contracts, constants, database configuration, and quality gates.
 - **[Testing & Quality Gates](testing_and_quality.md)**: Test boundaries and observed test patterns.
 - **[Adversarial Workflow](workflow.md)**: Task classification, adversarial debate tiers, and multi-agent coordination rules.

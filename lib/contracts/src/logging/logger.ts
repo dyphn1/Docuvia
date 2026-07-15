@@ -1,3 +1,4 @@
+import { LogLevels } from "./types.js";
 import type { ILogger, LogEvent, LogLevel } from "./types.js";
 
 /**
@@ -12,19 +13,19 @@ export class Logger implements ILogger {
   private readonly listeners = new Set<(event: LogEvent) => void>();
 
   debug(message: string, context?: Record<string, unknown>): void {
-    this.emit("debug", message, context);
+    this.emit(LogLevels.DEBUG, message, context);
   }
 
   info(message: string, context?: Record<string, unknown>): void {
-    this.emit("info", message, context);
+    this.emit(LogLevels.INFO, message, context);
   }
 
   warn(message: string, context?: Record<string, unknown>): void {
-    this.emit("warn", message, context);
+    this.emit(LogLevels.WARN, message, context);
   }
 
   error(message: string, context?: Record<string, unknown>): void {
-    this.emit("error", message, context);
+    this.emit(LogLevels.ERROR, message, context);
   }
 
   /** Registers a listener; returns an unsubscribe function. */

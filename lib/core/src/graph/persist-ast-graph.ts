@@ -1,9 +1,12 @@
-import type {
-  IGraphPersister,
-  IGraphStore,
-  ParsedAstFileResult,
+import {
+  type IGraphPersister,
+  type IGraphStore,
+  type ParsedAstFileResult,
+  L2NodeTypes,
+  LinkTypes,
 } from "@workspace/contracts";
 import { ScopeResolver } from "./scope-resolver.js";
+import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
 
 /**
  * Redistributes old `SqliteGraphRepository.persistAstGraph()`'s logic onto `IGraphStore`'s
@@ -62,7 +65,7 @@ export class GraphPersisterService implements IGraphPersister {
         const fileId = store.graph.insertNode({
           projectId,
           name: result.file,
-          type: "module",
+          type: L2NodeTypes.MODULE,
           description: "",
           pathPatterns: [result.file],
           nodeKey: result.file,
@@ -104,7 +107,7 @@ export class GraphPersisterService implements IGraphPersister {
           const fnId = store.graph.insertNode({
             projectId,
             name: fn.name,
-            type: "module",
+            type: L2NodeTypes.MODULE,
             description: "",
             pathPatterns: [result.file],
             nodeKey,
@@ -114,7 +117,7 @@ export class GraphPersisterService implements IGraphPersister {
           store.graph.insertLink({
             sourceNodeId: fileId,
             targetNodeId: fnId,
-            linkType: "contains",
+            linkType: LinkTypes.CONTAINS,
           });
         }
 
@@ -127,7 +130,7 @@ export class GraphPersisterService implements IGraphPersister {
           const clsId = store.graph.insertNode({
             projectId,
             name: cls.name,
-            type: "module",
+            type: L2NodeTypes.MODULE,
             description: "",
             pathPatterns: [result.file],
             nodeKey,
@@ -137,7 +140,7 @@ export class GraphPersisterService implements IGraphPersister {
           store.graph.insertLink({
             sourceNodeId: fileId,
             targetNodeId: clsId,
-            linkType: "contains",
+            linkType: LinkTypes.CONTAINS,
           });
         }
       }
@@ -178,7 +181,7 @@ export class GraphPersisterService implements IGraphPersister {
           // Prefer the specific calling function/class node; fall back to the file node for
           // module-level (top-level) call sites.
           const sourceNodeId =
-            (sourceSymbolName && sourceSymbolName !== "anonymous"
+            (sourceSymbolName && sourceSymbolName !== ANONYMOUS_SYMBOL_NAME
               ? sourceSymbols?.get(sourceSymbolName)
               : undefined) ?? sourceFileId;
 
@@ -188,13 +191,21 @@ export class GraphPersisterService implements IGraphPersister {
         };
 
         for (const call of result.data.calls ?? []) {
-          processLink(call.sourceFunction, call.targetFunction, "calls");
+          processLink(
+            call.sourceFunction,
+            call.targetFunction,
+            LinkTypes.CALLS,
+          );
         }
         for (const impl of result.data.implements ?? []) {
-          processLink(impl.sourceClass, impl.targetInterface, "implements");
+          processLink(
+            impl.sourceClass,
+            impl.targetInterface,
+            LinkTypes.IMPLEMENTS,
+          );
         }
         for (const ext of result.data.extends ?? []) {
-          processLink(ext.sourceClass, ext.targetClass, "extends");
+          processLink(ext.sourceClass, ext.targetClass, LinkTypes.EXTENDS);
         }
 
         store.files.upsertFile({

@@ -1,4 +1,5 @@
 import type { LanguageConfig } from "@workspace/ast-core";
+import { QueryCaptureName } from "../constants/query-capture-names.js";
 
 export const rubyConfig: LanguageConfig = {
   extensions: [".rb", ".rake", ".gemspec"],
@@ -8,9 +9,9 @@ export const rubyConfig: LanguageConfig = {
   functions: ["method", "singleton_method"],
   calls: ["call", "command_call"],
   queries: {
-    classes: `(class name: [(constant) (scope)] @class) (module name: (constant) @class) (singleton_class) @class`,
-    functions: `(method name: (identifier) @function) (singleton_method name: (identifier) @function)`,
-    imports: `(call method: (identifier) @_method @_method.match?(/^(require|require_relative|load)$/) @import)`,
-    calls: `(call method: (identifier) @call) (command_call method: (identifier) @call)`,
+    classes: `(class name: [(constant) (scope)] @${QueryCaptureName.CLASS}) (module name: (constant) @${QueryCaptureName.CLASS}) (singleton_class) @${QueryCaptureName.CLASS}`,
+    functions: `(method name: (identifier) @${QueryCaptureName.FUNCTION}) (singleton_method name: (identifier) @${QueryCaptureName.FUNCTION})`,
+    imports: `(call method: (identifier) @_method @_method.match?(/^(require|require_relative|load)$/) @${QueryCaptureName.IMPORT})`,
+    calls: `(call method: (identifier) @${QueryCaptureName.CALL}) (command_call method: (identifier) @${QueryCaptureName.CALL})`,
   },
 };

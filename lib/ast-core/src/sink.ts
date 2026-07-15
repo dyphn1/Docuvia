@@ -1,12 +1,7 @@
+import { AstEventType } from "./constants/ast-event-constants.js";
+
 export interface AstEvent {
-  type:
-    | "file"
-    | "class"
-    | "function"
-    | "call"
-    | "method_call"
-    | "import"
-    | "api_contract";
+  type: AstEventType;
   [key: string]: any;
 }
 

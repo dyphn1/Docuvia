@@ -1,5 +1,12 @@
 import type { Language, Node, QueryCapture } from "web-tree-sitter";
 import { Query } from "web-tree-sitter";
+import { AstEventType } from "./constants/ast-event-constants.js";
+
+/** Query capture group names for relationships without an AstEvent.type counterpart. */
+const QueryCaptureName = {
+  IMPLEMENTS: "implements",
+  EXTENDS: "extends",
+} as const;
 
 export interface LanguageProvider {
   buildScopeMap?: (importStatements: Node[]) => Map<string, string>;
@@ -123,7 +130,7 @@ export class DefaultProvider implements LanguageProvider {
     return this.extractNodes(
       rootNode,
       this.compiledQueries?.classes,
-      ["class"],
+      [AstEventType.CLASS],
       this.config.classes,
     );
   }
@@ -132,7 +139,7 @@ export class DefaultProvider implements LanguageProvider {
     return this.extractNodes(
       rootNode,
       this.compiledQueries?.functions,
-      ["function"],
+      [AstEventType.FUNCTION],
       this.config.functions,
     );
   }
@@ -141,7 +148,7 @@ export class DefaultProvider implements LanguageProvider {
     return this.extractNodes(
       rootNode,
       this.compiledQueries?.imports,
-      ["import"],
+      [AstEventType.IMPORT],
       this.config.imports,
     );
   }
@@ -150,7 +157,7 @@ export class DefaultProvider implements LanguageProvider {
     return this.extractNodes(
       rootNode,
       this.compiledQueries?.calls,
-      ["call"],
+      [AstEventType.CALL],
       this.config.calls,
     );
   }
@@ -159,7 +166,7 @@ export class DefaultProvider implements LanguageProvider {
     return this.extractNodes(
       rootNode,
       this.compiledQueries?.implements,
-      ["implements"],
+      [QueryCaptureName.IMPLEMENTS],
       this.config.implements || [],
     );
   }
@@ -168,7 +175,7 @@ export class DefaultProvider implements LanguageProvider {
     return this.extractNodes(
       rootNode,
       this.compiledQueries?.extends,
-      ["extends"],
+      [QueryCaptureName.EXTENDS],
       this.config.extends || [],
     );
   }

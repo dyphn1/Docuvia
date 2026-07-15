@@ -17,6 +17,7 @@ vi.mock("../../../src/ui/wizard.js", () => ({
     header: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
+    log: vi.fn(),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -37,6 +38,7 @@ describe("impactCommand", () => {
     spinnerWarn.mockReset();
     vi.mocked(ui.warn).mockReset();
     vi.mocked(ui.error).mockReset();
+    vi.mocked(ui.log).mockReset();
     process.exitCode = undefined;
   });
 
@@ -57,7 +59,6 @@ describe("impactCommand", () => {
       blastRadius: [{ name: "caller", type: "module" }],
       riskLevel: "MEDIUM",
     });
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await impactCommand("target");
 
@@ -65,8 +66,7 @@ describe("impactCommand", () => {
     expect(spinnerSucceed).toHaveBeenCalled();
     // Closes docs/cli-test-analysis/impact.md #1 — the blast-radius print loop was previously
     // unasserted, so a broken console.log() there would have gone unnoticed.
-    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("caller"));
-    logSpy.mockRestore();
+    expect(ui.log).toHaveBeenCalledWith(expect.stringContaining("caller"));
   });
 
   it("warns when no matching node is found (docuviaApi.impact() resolves null)", async () => {

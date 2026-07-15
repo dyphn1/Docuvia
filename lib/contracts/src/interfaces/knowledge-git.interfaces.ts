@@ -1,3 +1,13 @@
+export const KnowledgeBranchSyncStatuses = {
+  NO_REMOTE: "no-remote",
+  UP_TO_DATE: "up-to-date",
+  FAST_FORWARDED_LOCAL: "fast-forwarded-local",
+  PUSHED_LOCAL: "pushed-local",
+  MERGED: "merged",
+} as const;
+export type KnowledgeBranchSyncStatus =
+  (typeof KnowledgeBranchSyncStatuses)[keyof typeof KnowledgeBranchSyncStatuses];
+
 /** Outcome of `IKnowledgeGitService.syncKnowledgeBranch()` (STOR-001 point 3). */
 export interface KnowledgeBranchSyncResult {
   /**
@@ -8,12 +18,7 @@ export interface KnowledgeBranchSyncResult {
    * `merged`: local and remote had genuinely diverged; a tree-adoption merge commit was created
    * and pushed.
    */
-  status:
-    | "no-remote"
-    | "up-to-date"
-    | "fast-forwarded-local"
-    | "pushed-local"
-    | "merged";
+  status: KnowledgeBranchSyncStatus;
   /** The branch's resulting tip sha. Undefined only for `no-remote`. */
   branchTipSha?: string;
 }

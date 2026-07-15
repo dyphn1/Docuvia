@@ -5,6 +5,18 @@ export const ANALYZE_MESSAGES = {
     `Extracting decisions from ${targetPath}...`,
   FILES_DROPPED: (count: number) =>
     `Dropped ${count} file(s) from decision extraction (file-count/byte cap)`,
+  PATH_NOT_FOUND: (targetPath: string) => `Path does not exist: ${targetPath}`,
+  LLM_NON_JSON_OUTPUT: "LLM returned non-JSON output for decision extraction",
+  FILE_READ_FAILED: "Failed to read file for decision extraction",
+} as const;
+
+/** Structured-log event names appended to `analyze.log` by the `analyze` workflow. */
+export const ANALYZE_EVENTS = {
+  START: "analyze.start",
+  SUMMARY: "analyze.summary",
+  FOCUSED_START: "analyze.focused.start",
+  FOCUSED_ERROR: "analyze.focused.error",
+  FOCUSED_SUMMARY: "analyze.focused.summary",
 } as const;
 
 /**

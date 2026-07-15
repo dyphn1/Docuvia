@@ -2,7 +2,14 @@ import fg from "fast-glob";
 import path from "path";
 import fs from "fs/promises";
 import type { IConfigScanner, ILogger } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import { createNoopLogger, UTF8_ENCODING } from "@workspace/contracts";
+import {
+  ConfigTags,
+  ProjectTypes,
+  GENERAL_TAG,
+  DISCOVERY_MESSAGES,
+  COMMON_GLOB_IGNORE_PATTERNS,
+} from "./discovery-constants.js";
 
 export interface ConfigDetectionResult {
   tags: string[];
@@ -53,20 +60,23 @@ const isTsconfig = exact("tsconfig.json");
 
 export const CONFIG_DETECTION_RULES: ConfigDetectionRule[] = [
   includesRule("package.json:typescript", isPackageJson, '"typescript"', [
-    "typescript",
+    ConfigTags.TYPESCRIPT,
   ]),
   includesRule("package.json:react", isPackageJson, '"react"', [
-    "react",
+    ConfigTags.REACT,
     "frontend",
   ]),
-  includesRule("package.json:vue", isPackageJson, '"vue"', ["vue", "frontend"]),
+  includesRule("package.json:vue", isPackageJson, '"vue"', [
+    ConfigTags.VUE,
+    "frontend",
+  ]),
   includesRule("package.json:next", isPackageJson, '"next"', [
     "nextjs",
     "frontend",
     "ssr",
   ]),
   includesRule("package.json:express", isPackageJson, '"express"', [
-    "express",
+    ConfigTags.EXPRESS,
     "backend",
   ]),
   includesRule("package.json:drizzle-orm", isPackageJson, '"drizzle-orm"', [
@@ -151,10 +161,7 @@ const CONFIG_GLOB_PATTERNS = [
 ];
 
 const CONFIG_GLOB_IGNORE = [
-  "node_modules/**",
-  ".git/**",
-  "dist/**",
-  "build/**",
+  ...COMMON_GLOB_IGNORE_PATTERNS,
   "target/**",
   "venv/**",
   ".venv/**",
@@ -169,7 +176,7 @@ export class ConfigScannerService implements IConfigScanner {
   public async scanConfigs(
     workspaceRoot: string,
   ): Promise<{ projectType: string; tags: string[] }> {
-    let projectType = "unknown";
+    let projectType: string = ProjectTypes.UNKNOWN;
     const suggestedTags = new Set<string>();
 
     try {
@@ -184,7 +191,7 @@ export class ConfigScannerService implements IConfigScanner {
         const basename = path.basename(file);
         let content: string;
         try {
-          content = await fs.readFile(file, "utf-8");
+          content = await fs.readFile(file, UTF8_ENCODING);
         } catch {
           continue;
         }
@@ -199,25 +206,26 @@ export class ConfigScannerService implements IConfigScanner {
       }
 
       if (
-        suggestedTags.has("typescript") ||
-        suggestedTags.has("react") ||
-        suggestedTags.has("express") ||
-        suggestedTags.has("vue")
+        suggestedTags.has(ConfigTags.TYPESCRIPT) ||
+        suggestedTags.has(ConfigTags.REACT) ||
+        suggestedTags.has(ConfigTags.EXPRESS) ||
+        suggestedTags.has(ConfigTags.VUE)
       ) {
-        if (projectType === "unknown") projectType = "javascript";
+        if (projectType === ProjectTypes.UNKNOWN)
+          projectType = ProjectTypes.JAVASCRIPT;
       }
     } catch (e: any) {
-      this.logger.warn("Config scanning failed", {
+      this.logger.warn(DISCOVERY_MESSAGES.CONFIG_SCAN_FAILED, {
         error: e?.message ?? String(e),
       });
     }
 
-    if (projectType === "unknown") {
-      projectType = "generic";
+    if (projectType === ProjectTypes.UNKNOWN) {
+      projectType = ProjectTypes.GENERIC;
     }
 
     if (suggestedTags.size === 0) {
-      suggestedTags.add("general");
+      suggestedTags.add(GENERAL_TAG);
     }
 
     return { projectType, tags: Array.from(suggestedTags) };

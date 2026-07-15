@@ -1,5 +1,10 @@
 import type { IGitProvider, IVcsScanner, ILogger } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
+import {
+  DISCOVERY_MESSAGES,
+  VCS_IGNORED_TOP_LEVEL_DIRS,
+  VCS_NON_DOMAIN_DIRS,
+} from "./discovery-constants.js";
 
 export class VcsScannerService implements IVcsScanner {
   constructor(
@@ -31,15 +36,7 @@ export class VcsScannerService implements IVcsScanner {
           // Defend against config/hidden folders and build directories
           if (
             parts[0].startsWith(".") ||
-            [
-              "node_modules",
-              "dist",
-              "build",
-              "docs",
-              "test",
-              "tests",
-              "scripts",
-            ].includes(parts[0])
+            VCS_IGNORED_TOP_LEVEL_DIRS.includes(parts[0])
           )
             continue;
 
@@ -64,7 +61,7 @@ export class VcsScannerService implements IVcsScanner {
           if (
             !domain.includes(".") &&
             !domain.startsWith(".") &&
-            !["src", "lib", "app"].includes(domain)
+            !VCS_NON_DOMAIN_DIRS.includes(domain)
           ) {
             pathCounts.set(domain, (pathCounts.get(domain) || 0) + 1);
           }
@@ -85,7 +82,7 @@ export class VcsScannerService implements IVcsScanner {
       }
 
       if (sortedDomains.length > 0) {
-        this.logger.debug("VCS hotspot analysis extracted functional domains", {
+        this.logger.debug(DISCOVERY_MESSAGES.VCS_HOTSPOT_DOMAINS_EXTRACTED, {
           domains: sortedDomains,
         });
       }

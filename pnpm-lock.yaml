@@ -127,6 +127,10 @@ importers:
         version: 1.6.1(@types/node@25.9.5)
 
   lib/ast-core:
+    dependencies:
+      "@workspace/contracts":
+        specifier: workspace:^
+        version: link:../contracts
     devDependencies:
       "@types/js-yaml":
         specifier: ^4.0.9

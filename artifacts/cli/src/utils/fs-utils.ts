@@ -15,7 +15,7 @@ export async function writeOrAppend(
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
       ui.warn(
-        `${UI_MESSAGES.FS_READ_ERROR}${filePath} (${(err as NodeJS.ErrnoException).code ?? "unknown error"}); creating a new file instead of appending`,
+        `${UI_MESSAGES.FS_READ_ERROR}${filePath} (${(err as NodeJS.ErrnoException).code ?? UI_MESSAGES.FS_READ_ERROR_UNKNOWN_CODE}); creating a new file instead of appending`,
       );
     }
   }
@@ -64,7 +64,9 @@ export async function removeBlock(
     const before = existing.slice(0, startIndex);
     const after = existing.slice(endIndex + endMarker.length);
     await fs.writeFile(filePath, (before + after).trim() + "\n", UTF8_ENCODING);
-    ui.success(`Removed block from ${filePath} (backup created)`);
+    ui.success(
+      `${UI_MESSAGES.FS_BLOCK_REMOVED_PREFIX}${filePath}${UI_MESSAGES.FS_BLOCK_REMOVED_SUFFIX}`,
+    );
     return true;
   } catch {
     return false;

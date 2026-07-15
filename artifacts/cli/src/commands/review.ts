@@ -1,6 +1,12 @@
 import process from "process";
 import crypto from "node:crypto";
-import { docuviaMemory, DocuviaError, RiskLevels } from "@workspace/contracts";
+import {
+  docuviaMemory,
+  DocuviaError,
+  RiskLevels,
+  MemoryKeys,
+  LogLevels,
+} from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
@@ -17,12 +23,12 @@ export async function reviewCommand(
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
-    if (event.level === "info") spinner.text = event.message;
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
-  if (baseRef) docuviaMemory.set(scopeId, "baseRef", baseRef);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  if (baseRef) docuviaMemory.set(scopeId, MemoryKeys.BASE_REF, baseRef);
 
   try {
     const result = await docuviaApi.review(scopeId, logger);
@@ -30,20 +36,20 @@ export async function reviewCommand(
       UI_MESSAGES.REVIEW_SUCCESS +
         (baseRef ? UI_MESSAGES.REVIEW_AGAINST + baseRef : ""),
     );
-    console.log("");
-    console.log("Files changed: " + result.filesChanged.length);
+    ui.log("");
+    ui.log(UI_MESSAGES.REVIEW_FILES_CHANGED + result.filesChanged.length);
 
-    const riskLine = "Risk level: " + result.riskLevel;
+    const riskLine = UI_MESSAGES.REVIEW_RISK_PREFIX + result.riskLevel;
     if (result.riskLevel === RiskLevels.CRITICAL) {
       ui.error(riskLine);
     } else if (result.riskLevel === RiskLevels.HIGH) {
       ui.warn(riskLine);
     } else {
-      console.log(riskLine);
+      ui.log(riskLine);
     }
 
-    console.log("");
-    console.log(result.analysis);
+    ui.log("");
+    ui.log(result.analysis);
   } catch (error: unknown) {
     const message =
       error instanceof DocuviaError || error instanceof Error

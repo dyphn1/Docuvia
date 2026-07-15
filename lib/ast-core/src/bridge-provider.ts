@@ -11,6 +11,40 @@
  */
 
 import { AstEvent } from "./sink.js";
+import { AstEventType } from "./constants/ast-event-constants.js";
+
+export const SpecFormat = {
+  YAML: "yaml",
+  JSON: "json",
+} as const;
+export type SpecFormat = (typeof SpecFormat)[keyof typeof SpecFormat];
+
+/** File extensions recognized as candidate OpenAPI/Swagger spec files. */
+export const OPENAPI_SPEC_EXTENSIONS = [".yaml", ".yml", ".json"] as const;
+
+const HTTP_METHODS = [
+  "get",
+  "post",
+  "put",
+  "delete",
+  "patch",
+  "options",
+  "head",
+] as const;
+
+/** Signature key prefixes checked when sniffing a file for an OpenAPI/Swagger spec. */
+const OPENAPI_SIGNATURE_PREFIXES = [
+  "openapi:",
+  "swagger:",
+  '"openapi":',
+  '"swagger":',
+] as const;
+
+/** OpenAPI vendor-extension key prefixes used to hint cross-language consumers. */
+const ConsumerExtensionKeyPrefixes = {
+  CONSUMER: "x-consumer",
+  CLIENT: "x-client",
+} as const;
 
 export interface BridgeParseResult {
   events: AstEvent[];
@@ -28,12 +62,12 @@ export interface BridgeParseResult {
 export async function parseOpenApiSpec(
   content: string,
   filePath: string,
-  format: "yaml" | "json",
+  format: SpecFormat,
 ): Promise<BridgeParseResult> {
   let spec: any;
 
   try {
-    if (format === "yaml") {
+    if (format === SpecFormat.YAML) {
       // Dynamic import to avoid pulling js-yaml into the default tree-sitter path
       const yaml = await import("js-yaml");
       spec = yaml.load(content);
@@ -65,7 +99,7 @@ export async function parseOpenApiSpec(
 
   // Emit a top-level contract event
   events.push({
-    type: "api_contract",
+    type: AstEventType.API_CONTRACT,
     contractName,
     version: isOpenApi3 ? spec.openapi : spec.swagger,
     description: spec.info?.description || "",
@@ -77,16 +111,7 @@ export async function parseOpenApiSpec(
   for (const [routePath, pathItem] of Object.entries(paths)) {
     if (!pathItem || typeof pathItem !== "object") continue;
 
-    const methods = [
-      "get",
-      "post",
-      "put",
-      "delete",
-      "patch",
-      "options",
-      "head",
-    ];
-    for (const method of methods) {
+    for (const method of HTTP_METHODS) {
       const operation = (pathItem as any)[method];
       if (!operation || typeof operation !== "object") continue;
 
@@ -98,7 +123,7 @@ export async function parseOpenApiSpec(
       const tags = Array.isArray(operation.tags) ? operation.tags : [];
 
       events.push({
-        type: "api_contract",
+        type: AstEventType.API_CONTRACT,
         contractName,
         version: isOpenApi3 ? spec.openapi : spec.swagger,
         method: method.toUpperCase(),
@@ -119,8 +144,9 @@ export async function parseOpenApiSpec(
   return {
     events,
     contractName,
-    endpointCount: events.filter((e) => e.type === "api_contract" && e.method)
-      .length,
+    endpointCount: events.filter(
+      (e) => e.type === AstEventType.API_CONTRACT && e.method,
+    ).length,
   };
 }
 
@@ -129,7 +155,9 @@ export async function parseOpenApiSpec(
  * Fast path: check for 'openapi' or 'swagger' key at root level.
  */
 export function isOpenApiFile(content: string, ext: string): boolean {
-  if (![".yaml", ".yml", ".json"].includes(ext.toLowerCase())) {
+  if (
+    !(OPENAPI_SPEC_EXTENSIONS as readonly string[]).includes(ext.toLowerCase())
+  ) {
     return false;
   }
 
@@ -138,10 +166,7 @@ export function isOpenApiFile(content: string, ext: string): boolean {
   for (const line of lines) {
     const trimmed = line.trim();
     if (
-      trimmed.startsWith("openapi:") ||
-      trimmed.startsWith("swagger:") ||
-      trimmed.startsWith('"openapi":') ||
-      trimmed.startsWith('"swagger":')
+      OPENAPI_SIGNATURE_PREFIXES.some((prefix) => trimmed.startsWith(prefix))
     ) {
       return true;
     }
@@ -179,7 +204,10 @@ function extractConsumers(operation: any): string[] {
 
   // Look for x-consumer or x-client extensions
   for (const key of Object.keys(operation)) {
-    if (key.startsWith("x-consumer") || key.startsWith("x-client")) {
+    if (
+      key.startsWith(ConsumerExtensionKeyPrefixes.CONSUMER) ||
+      key.startsWith(ConsumerExtensionKeyPrefixes.CLIENT)
+    ) {
       const val = operation[key];
       if (typeof val === "string") {
         consumers.push(val);

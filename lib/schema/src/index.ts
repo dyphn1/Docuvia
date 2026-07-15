@@ -2,6 +2,7 @@ import "./register.js";
 
 export { applyMigrations } from "./sqlite/migration-runner.js";
 export { MIGRATIONS_DIR } from "./sqlite/paths.js";
+export { SQLiteConstants } from "./sqlite/constants.js";
 export { GraphStore } from "./sqlite/graph-store.js";
 export { ProjectsRepo } from "./sqlite/repos/projects-repo.js";
 export { ProjectFilesRepo } from "./sqlite/repos/files-repo.js";

@@ -16,6 +16,7 @@ vi.mock("../../../src/ui/wizard.js", () => ({
     header: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
+    log: vi.fn(),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -34,6 +35,7 @@ describe("reviewCommand", () => {
     spinnerFail.mockReset();
     vi.mocked(ui.warn).mockReset();
     vi.mocked(ui.error).mockReset();
+    vi.mocked(ui.log).mockReset();
     process.exitCode = undefined;
   });
 
@@ -50,17 +52,14 @@ describe("reviewCommand", () => {
       analysis: "Base: main\nFiles changed: 1\nRisk level: LOW",
     });
 
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-
     await reviewCommand("main");
 
     expect(mockReview).toHaveBeenCalled();
     expect(spinnerSucceed).toHaveBeenCalled();
     // Closes docs/cli-test-analysis/review.md #1 — "Files changed: N" was previously unasserted.
-    expect(logSpy).toHaveBeenCalledWith(
+    expect(ui.log).toHaveBeenCalledWith(
       expect.stringContaining("Files changed: 1"),
     );
-    logSpy.mockRestore();
   });
 
   it("uses ui.error for a CRITICAL risk level and deletes the memory scope even on failure", async () => {

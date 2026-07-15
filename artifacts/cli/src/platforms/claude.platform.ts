@@ -6,6 +6,7 @@ import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import {
   CLAUDE_HOOKS_DIR,
+  CLAUDE_PLUGIN_HOOKS_DIR,
   DOCUVIA_HOOK_JS,
   HOOKS_JSON,
   DOCUVIA_HOOK_JS_FILENAME,
@@ -89,7 +90,7 @@ export class ClaudePlatform extends BasePlatform {
 
     let claudeHooksConfig = HOOKS_JSON.replace(
       /\${HOOKS_DIR}/g,
-      "${CLAUDE_PLUGIN_ROOT}/hooks",
+      CLAUDE_PLUGIN_HOOKS_DIR,
     );
     await writeOrAppend(
       path.join(claudeHooksPath, HOOKS_CONFIG_FILENAME),
@@ -139,7 +140,9 @@ export class ClaudePlatform extends BasePlatform {
     const claudeHooksPath = path.join(cwd, CLAUDE_HOOKS_DIR);
     try {
       await fs.unlink(path.join(claudeHooksPath, DOCUVIA_HOOK_JS_FILENAME));
-      ui.success(`Removed ${DOCUVIA_HOOK_JS_FILENAME}`);
+      ui.success(
+        `${UI_MESSAGES.UNINSTALL_REMOVED_FILE_PREFIX}${DOCUVIA_HOOK_JS_FILENAME}`,
+      );
     } catch {}
     const hooksJsonPath = path.join(claudeHooksPath, HOOKS_CONFIG_FILENAME);
     let removedHookJson = false;
@@ -147,10 +150,7 @@ export class ClaudePlatform extends BasePlatform {
       const content = await fs.readFile(hooksJsonPath, UTF8_ENCODING);
       if (
         content.trim() ===
-        HOOKS_JSON.replace(
-          /\$\{HOOKS_DIR\}/g,
-          "\${CLAUDE_PLUGIN_ROOT}/hooks",
-        ).trim()
+        HOOKS_JSON.replace(/\$\{HOOKS_DIR\}/g, CLAUDE_PLUGIN_HOOKS_DIR).trim()
       ) {
         await fs.unlink(hooksJsonPath);
         removedHookJson = true;
@@ -173,7 +173,9 @@ export class ClaudePlatform extends BasePlatform {
         if (claudeMcp?.mcpServers && claudeMcp.mcpServers[MCP_SERVER_ALIAS]) {
           delete claudeMcp.mcpServers[MCP_SERVER_ALIAS];
           await fs.writeFile(claudeMcpPath, JSON.stringify(claudeMcp, null, 2));
-          ui.success(`Removed MCP server from ${claudeMcpPath}`);
+          ui.success(
+            `${UI_MESSAGES.UNINSTALL_REMOVED_MCP_SERVER_PREFIX}${claudeMcpPath}`,
+          );
         }
       } catch {}
     }

@@ -12,7 +12,8 @@ import type {
 } from "@workspace/ast-core";
 import { parseImportDescriptors } from "@workspace/ast-core";
 import { loadDefaultRegistry } from "@workspace/plugins-ast";
-import { IpcLoggerClient } from "@workspace/contracts";
+import { IpcLoggerClient, type AstExportKind } from "@workspace/contracts";
+import { AstMessages } from "./ast-constants.js";
 
 /**
  * Symbol-level feature hash (STOR-005): a hash of the AST node's own exact source span
@@ -43,12 +44,12 @@ const logger = new IpcLoggerClient((message) =>
 );
 
 process.on("uncaughtException", (err) => {
-  logger.error("AST worker uncaughtException", {
+  logger.error(AstMessages.WORKER_UNCAUGHT_EXCEPTION, {
     error: err instanceof Error ? err.message : String(err),
   });
 });
 process.on("unhandledRejection", (err) => {
-  logger.error("AST worker unhandledRejection", {
+  logger.error(AstMessages.WORKER_UNHANDLED_REJECTION, {
     error: err instanceof Error ? err.message : String(err),
   });
 });
@@ -76,7 +77,7 @@ export interface AstParseResponse {
   error?: string;
   data?: {
     imports: ImportDescriptor[];
-    exports: Array<{ name: string; type: "function" | "class" | "variable" }>;
+    exports: Array<{ name: string; type: AstExportKind }>;
     functions: Array<{
       name: string;
       startLine: number;
@@ -171,7 +172,7 @@ function getNodeName(node: Node): string {
   return (
     node.childForFieldName("name")?.text ||
     node.descendantsOfType("identifier")[0]?.text ||
-    "anonymous"
+    AstMessages.ANONYMOUS_NAME
   );
 }
 
@@ -212,7 +213,7 @@ export function resolveCallableName(node: Node): string {
     }
     current = current.parent;
   }
-  return "anonymous";
+  return AstMessages.ANONYMOUS_NAME;
 }
 
 /**
@@ -242,7 +243,7 @@ function findEnclosingContainerName(
     }
     current = current.parent;
   }
-  return "anonymous";
+  return AstMessages.ANONYMOUS_NAME;
 }
 
 parentPort?.on("message", async (request: AstParseRequest) => {
@@ -267,7 +268,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           functions: [],
           classes: [],
           calls: [],
-          decisions: [`No language provider registered for extension ${ext}`],
+          decisions: [AstMessages.noLanguageProviderForExtension(ext)],
         },
       });
       return;
@@ -286,8 +287,10 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           classes: [],
           calls: [],
           decisions: [
-            `WASM not found for ${request.language}, AST parsing skipped (Regex fallback used). ` +
-              `Tried paths: ${attemptedPaths.join(", ")}`,
+            AstMessages.wasmNotFound(
+              request.language,
+              attemptedPaths.join(", "),
+            ),
           ],
         },
       });
@@ -310,7 +313,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     const imports: ImportDescriptor[] = [];
     const exports: Array<{
       name: string;
-      type: "function" | "class" | "variable";
+      type: AstExportKind;
     }> = [];
     const functions: Array<{
       name: string;
@@ -333,9 +336,7 @@ parentPort?.on("message", async (request: AstParseRequest) => {
     const extendsList: Array<{ sourceClass: string; targetClass: string }> = [];
 
     if (tree) {
-      decisions.push(
-        `Parsed via web-tree-sitter (nodes: ${tree.rootNode.childCount})`,
-      );
+      decisions.push(AstMessages.parsedViaTreeSitter(tree.rootNode.childCount));
 
       try {
         const classNodes = provider.extractClasses(tree.rootNode);
@@ -390,12 +391,12 @@ parentPort?.on("message", async (request: AstParseRequest) => {
           }
         }
 
-        decisions.push(
-          "Queried nodes using @workspace/ast-core LanguageProvider",
-        );
+        decisions.push(AstMessages.QUERIED_VIA_LANGUAGE_PROVIDER);
       } catch (e) {
         decisions.push(
-          `ast-core provider query failed: ${e instanceof Error ? e.message : String(e)}`,
+          AstMessages.providerQueryFailed(
+            e instanceof Error ? e.message : String(e),
+          ),
         );
       }
     }

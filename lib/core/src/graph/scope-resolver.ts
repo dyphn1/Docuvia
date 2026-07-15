@@ -1,7 +1,7 @@
 import * as path from "path";
 import * as fs from "fs";
 import type { ILogger } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import { createNoopLogger, UTF8_ENCODING } from "@workspace/contracts";
 
 /**
  * Cross-file call/implements/extends edge resolution — the logic `persist-ast-graph.ts` uses
@@ -21,6 +21,46 @@ function stripJsonComments(content: string): string {
   );
 }
 
+const TSCONFIG_FILENAME = "tsconfig.json";
+const TSCONFIG_BASE_FILENAME = "tsconfig.base.json";
+const PACKAGE_JSON_FILENAME = "package.json";
+const PNPM_WORKSPACE_FILENAME = "pnpm-workspace.yaml";
+const NODE_MODULES_DIR_NAME = "node_modules";
+const DEFAULT_PACKAGE_ENTRY_FILENAME = "index.js";
+
+/** Extensions tried, in order, when resolving an import that names no extension of its own. */
+const RESOLVABLE_FILE_EXTENSIONS = [
+  ".ts",
+  ".js",
+  ".tsx",
+  ".jsx",
+  ".py",
+  ".rs",
+  ".go",
+  ".java",
+  ".cpp",
+  ".cc",
+  ".c",
+  ".h",
+  ".hpp",
+];
+
+/** Index-file suffixes tried when a bare directory import resolves to a package/folder. */
+const RESOLVABLE_INDEX_SUFFIXES = ["/index.ts", "/index.js"];
+
+const ScopeResolverMessages = {
+  TSCONFIG_PARSE_FAILED: "Failed to JSON-parse tsconfig.json",
+  TSCONFIG_FILES_READ_FAILED: "Failed to read or parse tsconfig files",
+} as const;
+
+/**
+ * Marks namespace/default/whole-module import bindings that don't resolve to a real named
+ * export — mirrors `@workspace/ast-core`'s private `WILDCARD_IMPORT_MARKER`
+ * (`lib/ast-core/src/core/edge-computer.ts`), which is what actually produces
+ * `ImportDescriptor.originalName: "*"` values this class consumes.
+ */
+const WILDCARD_IMPORT_MARKER = "*";
+
 export class ScopeResolver {
   private exportsByFile: Map<string, Set<string>> = new Map();
   private importsByFile: Map<string, ImportDescriptor[]> = new Map();
@@ -36,9 +76,9 @@ export class ScopeResolver {
 
   private loadTsConfigPaths() {
     try {
-      const tsconfigPath = path.join(this.workspaceRoot, "tsconfig.json");
+      const tsconfigPath = path.join(this.workspaceRoot, TSCONFIG_FILENAME);
       if (fs.existsSync(tsconfigPath)) {
-        const content = fs.readFileSync(tsconfigPath, "utf-8");
+        const content = fs.readFileSync(tsconfigPath, UTF8_ENCODING);
         const cleanContent = stripJsonComments(content);
         try {
           const parsed = JSON.parse(cleanContent);
@@ -49,7 +89,7 @@ export class ScopeResolver {
             };
           }
         } catch (e) {
-          this.logger.debug("Failed to JSON-parse tsconfig.json", {
+          this.logger.debug(ScopeResolverMessages.TSCONFIG_PARSE_FAILED, {
             error: e instanceof Error ? e.message : String(e),
           });
         }
@@ -57,10 +97,10 @@ export class ScopeResolver {
 
       const tsconfigBasePath = path.join(
         this.workspaceRoot,
-        "tsconfig.base.json",
+        TSCONFIG_BASE_FILENAME,
       );
       if (fs.existsSync(tsconfigBasePath)) {
-        const content = fs.readFileSync(tsconfigBasePath, "utf-8");
+        const content = fs.readFileSync(tsconfigBasePath, UTF8_ENCODING);
         const cleanContent = stripJsonComments(content);
         const parsed = JSON.parse(cleanContent);
         if (parsed.compilerOptions && parsed.compilerOptions.paths) {
@@ -72,7 +112,7 @@ export class ScopeResolver {
       }
     } catch (e: any) {
       // Ignore fs read or parse failures
-      this.logger.debug("Failed to read or parse tsconfig files", {
+      this.logger.debug(ScopeResolverMessages.TSCONFIG_FILES_READ_FAILED, {
         error: e?.message ?? String(e),
       });
     }
@@ -115,7 +155,9 @@ export class ScopeResolver {
           return {
             targetFile: resolvedPath,
             targetSymbol:
-              imp.originalName === "*" ? callName : imp.originalName,
+              imp.originalName === WILDCARD_IMPORT_MARKER
+                ? callName
+                : imp.originalName,
           };
         }
       }
@@ -174,10 +216,16 @@ export class ScopeResolver {
       }
       for (const entry of entries) {
         if (!entry.isDirectory()) continue;
-        const pkgJsonPath = path.join(fullBaseDir, entry.name, "package.json");
+        const pkgJsonPath = path.join(
+          fullBaseDir,
+          entry.name,
+          PACKAGE_JSON_FILENAME,
+        );
         if (!fs.existsSync(pkgJsonPath)) continue;
         try {
-          const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+          const pkgJson = JSON.parse(
+            fs.readFileSync(pkgJsonPath, UTF8_ENCODING),
+          );
           if (pkgJson.name) {
             cache.set(pkgJson.name, path.posix.join(baseDir, entry.name));
           }
@@ -193,9 +241,9 @@ export class ScopeResolver {
   /** Reads pnpm-workspace.yaml or package.json#workspaces to find monorepo package globs. */
   private getWorkspaceGlobs(): string[] {
     try {
-      const pnpmWsPath = path.join(this.workspaceRoot, "pnpm-workspace.yaml");
+      const pnpmWsPath = path.join(this.workspaceRoot, PNPM_WORKSPACE_FILENAME);
       if (fs.existsSync(pnpmWsPath)) {
-        const content = fs.readFileSync(pnpmWsPath, "utf-8");
+        const content = fs.readFileSync(pnpmWsPath, UTF8_ENCODING);
         const block = /packages:\s*\n((?:\s*-\s+.+\n?)+)/.exec(content);
         if (block) {
           const globs = [
@@ -205,9 +253,9 @@ export class ScopeResolver {
         }
       }
 
-      const pkgJsonPath = path.join(this.workspaceRoot, "package.json");
+      const pkgJsonPath = path.join(this.workspaceRoot, PACKAGE_JSON_FILENAME);
       if (fs.existsSync(pkgJsonPath)) {
-        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
         if (Array.isArray(pkgJson.workspaces)) return pkgJson.workspaces;
         if (Array.isArray(pkgJson.workspaces?.packages))
           return pkgJson.workspaces.packages;
@@ -241,15 +289,18 @@ export class ScopeResolver {
     try {
       const pkgJsonPath = path.join(
         this.workspaceRoot,
-        "node_modules",
+        NODE_MODULES_DIR_NAME,
         pkgName,
-        "package.json",
+        PACKAGE_JSON_FILENAME,
       );
       if (fs.existsSync(pkgJsonPath)) {
-        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, "utf-8"));
+        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
         const entry: string =
-          subpath || pkgJson.module || pkgJson.main || "index.js";
-        const relPath = path.posix.join("node_modules", pkgName, entry);
+          subpath ||
+          pkgJson.module ||
+          pkgJson.main ||
+          DEFAULT_PACKAGE_ENTRY_FILENAME;
+        const relPath = path.posix.join(NODE_MODULES_DIR_NAME, pkgName, entry);
         if (fs.existsSync(path.join(this.workspaceRoot, relPath)))
           return relPath;
       }
@@ -265,26 +316,10 @@ export class ScopeResolver {
     if (fs.existsSync(fullBasePath) && fs.statSync(fullBasePath).isFile())
       return basePath;
 
-    const exts = [
-      ".ts",
-      ".js",
-      ".tsx",
-      ".jsx",
-      ".py",
-      ".rs",
-      ".go",
-      ".java",
-      ".cpp",
-      ".cc",
-      ".c",
-      ".h",
-      ".hpp",
-    ];
-    for (const ext of exts) {
+    for (const ext of RESOLVABLE_FILE_EXTENSIONS) {
       if (fs.existsSync(fullBasePath + ext)) return basePath + ext;
     }
-    const indexExts = ["/index.ts", "/index.js"];
-    for (const ext of indexExts) {
+    for (const ext of RESOLVABLE_INDEX_SUFFIXES) {
       if (fs.existsSync(fullBasePath + ext)) return basePath + ext;
     }
     return null; // unresolved

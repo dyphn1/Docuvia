@@ -3,10 +3,11 @@ import {
   TOKENS,
   DocuviaError,
   ErrorCodes,
+  SyncPushEventTypes,
   type ILogger,
   type SyncPushEvent,
 } from "@workspace/contracts";
-import { SYNC_MESSAGES } from "./sync-messages.js";
+import { SYNC_EVENTS, SYNC_MESSAGES } from "./sync-messages.js";
 import { appendSyncLogLine } from "./sync-log-writer.js";
 import {
   loadSyncState,
@@ -41,7 +42,7 @@ export class SyncWorkflow {
 
     logger.info(SYNC_MESSAGES.STARTING(projectId));
     await appendSyncLogLine(workspaceRoot, {
-      event: "sync.start",
+      event: SYNC_EVENTS.START,
       projectId,
       commitSha: commitSha ?? null,
     });
@@ -62,7 +63,7 @@ export class SyncWorkflow {
         message: SYNC_MESSAGES.NOTHING_TO_SYNC,
       };
       await appendSyncLogLine(workspaceRoot, {
-        event: "sync.summary",
+        event: SYNC_EVENTS.SUMMARY,
         projectId,
         ...result,
       });
@@ -82,7 +83,7 @@ export class SyncWorkflow {
         err.code === ErrorCodes.DB_OPEN_FAILED
       ) {
         await appendSyncLogLine(workspaceRoot, {
-          event: "sync.error",
+          event: SYNC_EVENTS.ERROR,
           projectId,
           message: SYNC_MESSAGES.DB_NOT_FOUND,
         });
@@ -108,7 +109,7 @@ export class SyncWorkflow {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         await appendSyncLogLine(workspaceRoot, {
-          event: "sync.error",
+          event: SYNC_EVENTS.ERROR,
           projectId,
           message,
         });
@@ -148,7 +149,7 @@ export class SyncWorkflow {
                 continue;
 
               events.push({
-                type: "CREATE_L3",
+                type: SyncPushEventTypes.CREATE_L3,
                 payload: {
                   l2NodeId: remoteL2Id,
                   title: l3.title,
@@ -184,7 +185,7 @@ export class SyncWorkflow {
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             await appendSyncLogLine(workspaceRoot, {
-              event: "sync.error",
+              event: SYNC_EVENTS.ERROR,
               projectId,
               message,
             });
@@ -207,7 +208,7 @@ export class SyncWorkflow {
       );
 
       await appendSyncLogLine(workspaceRoot, {
-        event: "sync.summary",
+        event: SYNC_EVENTS.SUMMARY,
         projectId,
         ...result,
       });

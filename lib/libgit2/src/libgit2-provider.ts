@@ -3,8 +3,10 @@ import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
 import {
+  ChangedFileStatuses,
   DocuviaError,
   ErrorCodes,
+  UTF8_ENCODING,
   type ChangedFileEntry,
   type IGitProvider,
 } from "@workspace/contracts";
@@ -13,6 +15,8 @@ import {
   collectDirectoryFiles,
   runFastImport,
 } from "./fast-import.js";
+import { DOCUVIA_GIT_IDENTITY } from "./constants/git-identity.js";
+import { GIT_BRANCH_REF_PREFIX, GIT_HEAD_REF } from "./constants/git-refs.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -25,6 +29,38 @@ const KNOWLEDGE_LOCK_FILE_NAME = "docuvia-knowledge.lock";
 const KNOWLEDGE_LOCK_MAX_WAIT_MS = 10_000;
 const KNOWLEDGE_LOCK_RETRY_INTERVAL_MS = 100;
 const KNOWLEDGE_LOCK_STALE_MS = 60_000;
+
+/** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists —
+ *  the basis of `acquireKnowledgeLock`'s exclusive-create lock. */
+const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
+/** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
+const ERRNO_EEXIST = "EEXIST" as const;
+
+/** Failure messages for each raw git shell-out this provider wraps, passed to `DocuviaError.wrap`
+ *  as the user-facing/log context (see the class doc comment on why every failure is wrapped). */
+const GIT_PROVIDER_ERROR_MESSAGES = {
+  BRANCH_LIST_FAILED: "git branch --list failed",
+  COMMIT_TREE_FAILED: "git commit-tree failed",
+  UPDATE_REF_FAILED: "git update-ref failed",
+  HOOK_FILE_WRITE_FAILED: "Writing hook file failed",
+  HOOK_FILE_CHMOD_FAILED: "chmod on hook file failed",
+  LS_FILES_STAGED_FAILED: "git ls-files -s failed",
+  LS_FILES_OTHERS_FAILED: "git ls-files --others failed",
+  DIFF_NAME_ONLY_FAILED: "git diff --name-only failed",
+  CAT_FILE_BLOB_FAILED: "git cat-file blob failed",
+  STATUS_PORCELAIN_FAILED: "git status --porcelain failed",
+  DIFF_TREE_FAILED: "git diff-tree failed",
+  FAST_IMPORT_FAILED: "git fast-import failed",
+  FETCH_FAILED: "git fetch failed",
+  PUSH_FAILED: "git push failed",
+  MERGE_BASE_IS_ANCESTOR_FAILED: "git merge-base --is-ancestor failed",
+  REV_PARSE_TREE_FAILED: "git rev-parse ^{tree} failed",
+  SHOW_COMMIT_TIMESTAMP_FAILED: "git show --format=%ct failed",
+  COMMIT_TREE_MERGE_FAILED: "git commit-tree (merge) failed",
+  KNOWLEDGE_LOCK_ACQUIRE_FAILED: "Failed to acquire knowledge lock",
+  KNOWLEDGE_LOCK_TIMED_OUT: (lockPath: string) =>
+    `Timed out waiting for the knowledge branch lock at ${lockPath} — another Docuvia process may be stuck`,
+} as const;
 
 /**
  * Raw Git technology provider — every method here is a thin, single git shell-out with no
@@ -58,7 +94,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git branch --list failed",
+        GIT_PROVIDER_ERROR_MESSAGES.BRANCH_LIST_FAILED,
         err,
       );
     }
@@ -75,7 +111,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_BRANCH_CREATE_FAILED,
-        "git commit-tree failed",
+        GIT_PROVIDER_ERROR_MESSAGES.COMMIT_TREE_FAILED,
         err,
       );
     }
@@ -89,13 +125,13 @@ export class Libgit2Provider implements IGitProvider {
     try {
       await execFileAsync(
         "git",
-        ["update-ref", `refs/heads/${branchName}`, commitSha],
+        ["update-ref", `${GIT_BRANCH_REF_PREFIX}${branchName}`, commitSha],
         { cwd },
       );
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_BRANCH_CREATE_FAILED,
-        "git update-ref failed",
+        GIT_PROVIDER_ERROR_MESSAGES.UPDATE_REF_FAILED,
         err,
       );
     }
@@ -117,7 +153,7 @@ export class Libgit2Provider implements IGitProvider {
     try {
       return await fs.readFile(
         path.join(cwd, ...GIT_HOOKS_DIR, hookName),
-        "utf8",
+        UTF8_ENCODING,
       );
     } catch {
       return undefined;
@@ -134,7 +170,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
-        "Writing hook file failed",
+        GIT_PROVIDER_ERROR_MESSAGES.HOOK_FILE_WRITE_FAILED,
         err,
       );
     }
@@ -149,7 +185,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
-        "chmod on hook file failed",
+        GIT_PROVIDER_ERROR_MESSAGES.HOOK_FILE_CHMOD_FAILED,
         err,
       );
     }
@@ -173,7 +209,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git ls-files -s failed",
+        GIT_PROVIDER_ERROR_MESSAGES.LS_FILES_STAGED_FAILED,
         err,
       );
     }
@@ -193,7 +229,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git ls-files --others failed",
+        GIT_PROVIDER_ERROR_MESSAGES.LS_FILES_OTHERS_FAILED,
         err,
       );
     }
@@ -211,7 +247,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git diff --name-only failed",
+        GIT_PROVIDER_ERROR_MESSAGES.DIFF_NAME_ONLY_FAILED,
         err,
       );
     }
@@ -227,7 +263,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git cat-file blob failed",
+        GIT_PROVIDER_ERROR_MESSAGES.CAT_FILE_BLOB_FAILED,
         err,
       );
     }
@@ -350,7 +386,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git status --porcelain failed",
+        GIT_PROVIDER_ERROR_MESSAGES.STATUS_PORCELAIN_FAILED,
         err,
       );
     }
@@ -377,7 +413,7 @@ export class Libgit2Provider implements IGitProvider {
       // so this preserves normal `git diff --name-status <ref>` semantics for legitimate refs.
       const { stdout } = await execFileAsync(
         "git",
-        ["diff", "--name-status", "--end-of-options", baseRef ?? "HEAD"],
+        ["diff", "--name-status", "--end-of-options", baseRef ?? GIT_HEAD_REF],
         { cwd },
       );
 
@@ -391,16 +427,16 @@ export class Libgit2Provider implements IGitProvider {
         let status: ChangedFileEntry["status"];
 
         if (statusCode.startsWith("R")) {
-          status = "renamed";
+          status = ChangedFileStatuses.RENAMED;
           file = parts[2] ?? parts[1];
         } else if (statusCode.startsWith("A")) {
-          status = "added";
+          status = ChangedFileStatuses.ADDED;
           file = parts[1];
         } else if (statusCode.startsWith("D")) {
-          status = "deleted";
+          status = ChangedFileStatuses.DELETED;
           file = parts[1];
         } else {
-          status = "modified";
+          status = ChangedFileStatuses.MODIFIED;
           file = parts[1];
         }
 
@@ -419,7 +455,7 @@ export class Libgit2Provider implements IGitProvider {
       for (const file of untracked) {
         if (!seen.has(file)) {
           seen.add(file);
-          entries.push({ file, status: "added" });
+          entries.push({ file, status: ChangedFileStatuses.ADDED });
         }
       }
     }
@@ -456,7 +492,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git diff-tree failed",
+        GIT_PROVIDER_ERROR_MESSAGES.DIFF_TREE_FAILED,
         err,
       );
     }
@@ -464,9 +500,11 @@ export class Libgit2Provider implements IGitProvider {
 
   public async getHeadSha(cwd: string): Promise<string | undefined> {
     try {
-      const { stdout } = await execFileAsync("git", ["rev-parse", "HEAD"], {
-        cwd,
-      });
+      const { stdout } = await execFileAsync(
+        "git",
+        ["rev-parse", GIT_HEAD_REF],
+        { cwd },
+      );
       const sha = stdout.trim();
       return sha.length > 0 ? sha : undefined;
     } catch {
@@ -483,7 +521,12 @@ export class Libgit2Provider implements IGitProvider {
     try {
       const { stdout } = await execFileAsync(
         "git",
-        ["rev-parse", "--verify", "--quiet", `refs/heads/${branchName}`],
+        [
+          "rev-parse",
+          "--verify",
+          "--quiet",
+          `${GIT_BRANCH_REF_PREFIX}${branchName}`,
+        ],
         { cwd },
       );
       const sha = stdout.trim();
@@ -514,7 +557,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_FAST_IMPORT_FAILED,
-        "git fast-import failed",
+        GIT_PROVIDER_ERROR_MESSAGES.FAST_IMPORT_FAILED,
         err,
       );
     }
@@ -530,7 +573,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git fetch failed",
+        GIT_PROVIDER_ERROR_MESSAGES.FETCH_FAILED,
         err,
       );
     }
@@ -542,15 +585,18 @@ export class Libgit2Provider implements IGitProvider {
     branchName: string,
   ): Promise<void> {
     try {
+      const branchRef = `${GIT_BRANCH_REF_PREFIX}${branchName}`;
       await execFileAsync(
         "git",
-        ["push", remote, `refs/heads/${branchName}:refs/heads/${branchName}`],
-        { cwd },
+        ["push", remote, `${branchRef}:${branchRef}`],
+        {
+          cwd,
+        },
       );
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git push failed",
+        GIT_PROVIDER_ERROR_MESSAGES.PUSH_FAILED,
         err,
       );
     }
@@ -602,7 +648,7 @@ export class Libgit2Provider implements IGitProvider {
       }
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git merge-base --is-ancestor failed",
+        GIT_PROVIDER_ERROR_MESSAGES.MERGE_BASE_IS_ANCESTOR_FAILED,
         err,
       );
     }
@@ -619,7 +665,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git rev-parse ^{tree} failed",
+        GIT_PROVIDER_ERROR_MESSAGES.REV_PARSE_TREE_FAILED,
         err,
       );
     }
@@ -636,7 +682,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git show --format=%ct failed",
+        GIT_PROVIDER_ERROR_MESSAGES.SHOW_COMMIT_TIMESTAMP_FAILED,
         err,
       );
     }
@@ -657,10 +703,10 @@ export class Libgit2Provider implements IGitProvider {
           cwd,
           env: {
             ...process.env,
-            GIT_AUTHOR_NAME: "Docuvia",
-            GIT_AUTHOR_EMAIL: "docuvia@localhost",
-            GIT_COMMITTER_NAME: "Docuvia",
-            GIT_COMMITTER_EMAIL: "docuvia@localhost",
+            GIT_AUTHOR_NAME: DOCUVIA_GIT_IDENTITY.NAME,
+            GIT_AUTHOR_EMAIL: DOCUVIA_GIT_IDENTITY.EMAIL,
+            GIT_COMMITTER_NAME: DOCUVIA_GIT_IDENTITY.NAME,
+            GIT_COMMITTER_EMAIL: DOCUVIA_GIT_IDENTITY.EMAIL,
           },
         },
       );
@@ -668,7 +714,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
-        "git commit-tree (merge) failed",
+        GIT_PROVIDER_ERROR_MESSAGES.COMMIT_TREE_MERGE_FAILED,
         err,
       );
     }
@@ -680,14 +726,14 @@ export class Libgit2Provider implements IGitProvider {
 
     for (;;) {
       try {
-        const handle = await fs.open(lockPath, "wx");
+        const handle = await fs.open(lockPath, FS_FLAG_EXCLUSIVE_CREATE_WRITE);
         await handle.close();
         return;
       } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
+        if ((err as NodeJS.ErrnoException).code !== ERRNO_EEXIST) {
           throw DocuviaError.wrap(
             ErrorCodes.GIT_COMMAND_FAILED,
-            "Failed to acquire knowledge lock",
+            GIT_PROVIDER_ERROR_MESSAGES.KNOWLEDGE_LOCK_ACQUIRE_FAILED,
             err,
           );
         }
@@ -701,7 +747,7 @@ export class Libgit2Provider implements IGitProvider {
         if (Date.now() > deadline) {
           throw new DocuviaError(
             ErrorCodes.GIT_COMMAND_FAILED,
-            `Timed out waiting for the knowledge branch lock at ${lockPath} — another Docuvia process may be stuck`,
+            GIT_PROVIDER_ERROR_MESSAGES.KNOWLEDGE_LOCK_TIMED_OUT(lockPath),
           );
         }
         await new Promise((resolve) =>

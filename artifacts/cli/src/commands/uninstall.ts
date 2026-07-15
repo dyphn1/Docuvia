@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { selectPlatforms } from "../utils/platform-selection.js";
-import { docuviaMemory, DocuviaError } from "@workspace/contracts";
+import { docuviaMemory, DocuviaError, MemoryKeys } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import "../registration.js";
@@ -40,10 +40,13 @@ export async function uninstallCommand(
         await platform.uninstallHooks(workspaceRoot, allowGlobalMcpConfig);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        logger.warn(`uninstallHooks failed for platform "${platform.name}"`, {
-          platform: platform.name,
-          error: message,
-        });
+        logger.warn(
+          `${UI_MESSAGES.UNINSTALL_HOOKS_FAIL_LOG}"${platform.name}"`,
+          {
+            platform: platform.name,
+            error: message,
+          },
+        );
         ui.warn(
           UI_MESSAGES.UNINSTALL_PLATFORM_FAIL + platform.name + ": " + message,
         );
@@ -57,7 +60,7 @@ export async function uninstallCommand(
       const scopeId = crypto.randomUUID();
 
       docuviaMemory.createScope(scopeId);
-      docuviaMemory.set(scopeId, "workspaceRoot", workspaceRoot);
+      docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
 
       try {
         const result = await docuviaApi.clean(scopeId, logger);
@@ -67,9 +70,11 @@ export async function uninstallCommand(
           error instanceof DocuviaError || error instanceof Error
             ? error.message
             : String(error);
-        logger.warn("uninstall's database cleanup failed", { error: message });
+        logger.warn(UI_MESSAGES.UNINSTALL_DB_CLEANUP_FAIL_LOG, {
+          error: message,
+        });
         ui.warn(UI_MESSAGES.UNINSTALL_FAIL_CLEAN + message);
-        failures.push("local database cleanup");
+        failures.push(UI_MESSAGES.UNINSTALL_DB_CLEANUP_FAILURE_NAME);
       } finally {
         docuviaMemory.deleteScope(scopeId);
       }
@@ -83,7 +88,7 @@ export async function uninstallCommand(
     }
   } catch (e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e);
-    logger.error("uninstall failed", { error: errorMessage });
+    logger.error(UI_MESSAGES.UNINSTALL_FAIL_LOG, { error: errorMessage });
     ui.warn(UI_MESSAGES.UNINSTALL_FAIL + errorMessage);
     process.exitCode = 1;
   }

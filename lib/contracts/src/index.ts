@@ -1,7 +1,11 @@
 export type { ILogger, LogEvent, LogLevel } from "./logging/types.js";
+export { LogLevels } from "./logging/types.js";
 export { Logger, createNoopLogger } from "./logging/logger.js";
 export type { IIpcLogMessage } from "./logging/ipc-log-message.js";
-export { isIpcLogMessage } from "./logging/ipc-log-message.js";
+export {
+  isIpcLogMessage,
+  IpcLogMessageType,
+} from "./logging/ipc-log-message.js";
 export { IpcLoggerClient } from "./logging/ipc-logger-client.js";
 export { IpcLogRouter } from "./logging/ipc-log-router.js";
 
@@ -9,7 +13,12 @@ export { ErrorCodes } from "./errors/error-codes.js";
 export type { ErrorCode } from "./errors/error-codes.js";
 export { DocuviaError } from "./errors/docuvia-error.js";
 
-export { DocuviaMemory, docuviaMemory } from "./memory/docuvia-memory.js";
+export {
+  DocuviaMemory,
+  docuviaMemory,
+  MemoryKeys,
+} from "./memory/docuvia-memory.js";
+export type { MemoryKey } from "./memory/docuvia-memory.js";
 
 export { DocuviaFactory, docuviaFactory } from "./factory/docuvia-factory.js";
 export type { Provider } from "./factory/docuvia-factory.js";
@@ -18,12 +27,16 @@ export type { Token } from "./factory/tokens.js";
 
 export type {
   ChangedFileEntry,
+  ChangedFileStatus,
   IGitProvider,
 } from "./interfaces/git.interfaces.js";
+export { ChangedFileStatuses } from "./interfaces/git.interfaces.js";
 export type {
   IKnowledgeGitService,
   KnowledgeBranchSyncResult,
+  KnowledgeBranchSyncStatus,
 } from "./interfaces/knowledge-git.interfaces.js";
+export { KnowledgeBranchSyncStatuses } from "./interfaces/knowledge-git.interfaces.js";
 export type {
   DiscoveredFile,
   DiscoveryResult,
@@ -33,6 +46,7 @@ export type {
   IVcsScanner,
 } from "./interfaces/discovery.interfaces.js";
 export type {
+  AstExportKind,
   AstImportDescriptor,
   ParsedAstFileData,
   ParsedAstFileResult,
@@ -40,6 +54,7 @@ export type {
   AstProcessResult,
   IAstProcessor,
 } from "./interfaces/ast.interfaces.js";
+export { AstExportKinds } from "./interfaces/ast.interfaces.js";
 export type {
   ProjectRow,
   ProjectFileRow,
@@ -58,6 +73,18 @@ export type {
   IMetaRepo,
   IGraphStore,
   GraphStoreOpenOptions,
+  ProjectStatus,
+  L2NodeType,
+  LinkType,
+  L3NodeType,
+  ValidityStatus,
+} from "./interfaces/graph-store.interfaces.js";
+export {
+  ProjectStatuses,
+  L2NodeTypes,
+  LinkTypes,
+  L3NodeTypes,
+  ValidityStatuses,
 } from "./interfaces/graph-store.interfaces.js";
 export type {
   HydrationResult,
@@ -68,10 +95,12 @@ export type {
   RemoteL2NodeSummary,
   CreateL3EventPayload,
   SyncPushEvent,
+  SyncPushEventType,
   SyncPushResult,
   RemoteSyncClientConfig,
   IRemoteSyncClient,
 } from "./interfaces/remote-sync.interfaces.js";
+export { SyncPushEventTypes } from "./interfaces/remote-sync.interfaces.js";
 export type {
   LlmClientConfig,
   ChatMessageRole,
@@ -85,6 +114,11 @@ export type {
   ChatCompletionChunkChoice,
   ChatCompletionChunk,
   ILlmClient,
+} from "./interfaces/llm-client.interfaces.js";
+export {
+  ChatMessageRoles,
+  CHAT_TOOL_TYPE,
+  ChatToolChoiceModes,
 } from "./interfaces/llm-client.interfaces.js";
 export { RiskLevels } from "./interfaces/impact.interfaces.js";
 export type {
@@ -101,12 +135,15 @@ export type {
   GraphContext,
   LocalSearchResult,
   LocalQueryResult,
+  QueryResultLayer,
   IQueryService,
 } from "./interfaces/query.interfaces.js";
+export { QueryResultLayers } from "./interfaces/query.interfaces.js";
 export { TOPOLOGY_VERSION } from "./interfaces/topology.interfaces.js";
 export type {
   TopologyNodeKind,
   TopologyCollapseMode,
+  TopologyGroupSource,
   TopologyNode,
   TopologyLink,
   TopologyGroup,
@@ -115,6 +152,11 @@ export type {
   TopologyExportOptions,
   TopologyBuildInput,
   ITopologyBuilder,
+} from "./interfaces/topology.interfaces.js";
+export {
+  TopologyNodeKinds,
+  TopologyCollapseModes,
+  TopologyGroupSources,
 } from "./interfaces/topology.interfaces.js";
 export type {
   SnapshotRenderInput,

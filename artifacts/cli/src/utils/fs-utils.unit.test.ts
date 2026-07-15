@@ -12,6 +12,7 @@ vi.mock("fs/promises", async (importOriginal) => {
 
 import * as fs from "fs/promises";
 import { writeOrAppend } from "./fs-utils.js";
+import { UTF8_ENCODING } from "@workspace/contracts";
 
 const tempDirs: string[] = [];
 
@@ -39,7 +40,7 @@ describe("writeOrAppend()", () => {
 
     await writeOrAppend(filePath, "content", "marker");
 
-    await expect(fs.readFile(filePath, "utf8")).resolves.toBe("content");
+    await expect(fs.readFile(filePath, UTF8_ENCODING)).resolves.toBe("content");
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
@@ -49,7 +50,7 @@ describe("writeOrAppend()", () => {
 
     await writeOrAppend(filePath, "new block [marker]", "[marker]");
 
-    await expect(fs.readFile(filePath, "utf8")).resolves.toBe(
+    await expect(fs.readFile(filePath, UTF8_ENCODING)).resolves.toBe(
       "existing content\nnew block [marker]",
     );
   });
@@ -60,7 +61,7 @@ describe("writeOrAppend()", () => {
 
     await writeOrAppend(filePath, "new block [marker]", "[marker]");
 
-    await expect(fs.readFile(filePath, "utf8")).resolves.toBe(
+    await expect(fs.readFile(filePath, UTF8_ENCODING)).resolves.toBe(
       "existing [marker] content",
     );
   });
@@ -79,6 +80,8 @@ describe("writeOrAppend()", () => {
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0][0]).toContain("EACCES");
     // Falls back to creating/overwriting, same as the ENOENT path — the warning is what changed.
-    await expect(fs.readFile(filePath, "utf8")).resolves.toBe("new content");
+    await expect(fs.readFile(filePath, UTF8_ENCODING)).resolves.toBe(
+      "new content",
+    );
   });
 });

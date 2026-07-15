@@ -8,7 +8,11 @@ import {
   ErrorCodes,
   type ILogger,
 } from "@workspace/contracts";
-import { SNAPSHOT_MESSAGES } from "./snapshot-messages.js";
+import {
+  SNAPSHOT_EVENTS,
+  SNAPSHOT_MESSAGES,
+  SNAPSHOT_TEMP_DIR_PREFIX,
+} from "./snapshot-messages.js";
 import { appendSnapshotLogLine } from "./snapshot-log-writer.js";
 import type { SnapshotResult } from "./snapshot-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
@@ -33,7 +37,7 @@ export class SnapshotWorkflow {
 
     logger.info(SNAPSHOT_MESSAGES.SNAPSHOTTING);
     await appendSnapshotLogLine(workspaceRoot, {
-      event: "snapshot.start",
+      event: SNAPSHOT_EVENTS.START,
       workspaceRoot,
     });
 
@@ -55,7 +59,7 @@ export class SnapshotWorkflow {
         err.code === ErrorCodes.DB_OPEN_FAILED
       ) {
         await appendSnapshotLogLine(workspaceRoot, {
-          event: "snapshot.error",
+          event: SNAPSHOT_EVENTS.ERROR,
           message: SNAPSHOT_MESSAGES.DB_NOT_FOUND,
         });
         throw new DocuviaError(
@@ -72,7 +76,7 @@ export class SnapshotWorkflow {
       const linkRows = store.graph.getAllLinks();
 
       const tempDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), "docuvia-snapshot-"),
+        path.join(os.tmpdir(), SNAPSHOT_TEMP_DIR_PREFIX),
       );
       try {
         const renderResult = await snapshotRenderer.render({
@@ -87,7 +91,7 @@ export class SnapshotWorkflow {
         );
 
         await appendSnapshotLogLine(workspaceRoot, {
-          event: "snapshot.summary",
+          event: SNAPSHOT_EVENTS.SUMMARY,
           nodesWritten: renderResult.nodesWritten,
           edgesWritten: renderResult.edgesWritten,
           markdownFilesWritten: renderResult.markdownFilesWritten,

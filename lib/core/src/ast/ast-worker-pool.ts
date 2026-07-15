@@ -7,6 +7,7 @@ import crypto from "node:crypto";
 import type { AstParseRequest, AstParseResponse } from "./ast-worker.js";
 import type { ILogger, IIpcLogMessage } from "@workspace/contracts";
 import { createNoopLogger, IpcLogRouter } from "@workspace/contracts";
+import { AstMessages } from "./ast-constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,8 +90,9 @@ export class AstWorkerCrashError extends Error {
     public readonly cause: unknown,
   ) {
     super(
-      `AST worker crashed while parsing ${filePath ?? "(unknown file)"}: ` +
-        (cause instanceof Error ? cause.message : String(cause)),
+      AstMessages.workerCrashWhileParsing(
+        filePath ?? AstMessages.UNKNOWN_FILE,
+      ) + (cause instanceof Error ? cause.message : String(cause)),
     );
     this.name = "AstWorkerCrashError";
   }
@@ -177,12 +179,12 @@ export class AstWorkerPool implements IASTWorkerPool {
         // pool.terminate() forcibly stops every still-alive worker via worker.terminate(),
         // and Node reports that as a non-zero "exit" event even though nothing went wrong.
         // Every still-idle worker at shutdown time would otherwise be misreported as a crash.
-        this.logger.debug("AST worker exited during pool shutdown (expected)", {
+        this.logger.debug(AstMessages.WORKER_EXITED_DURING_SHUTDOWN, {
           taskId,
           filePath,
         });
       } else {
-        this.logger.error("AST worker crashed/exited", {
+        this.logger.error(AstMessages.WORKER_CRASHED_EXITED, {
           taskId,
           filePath,
           hadInFlightTask: Boolean(taskId),
@@ -205,9 +207,9 @@ export class AstWorkerPool implements IASTWorkerPool {
               filePath,
               timedOut
                 ? new Error(
-                    `AST worker task ${taskId} timed out after ${this.taskTimeoutMs}ms`,
+                    AstMessages.taskTimedOutAfterMs(taskId, this.taskTimeoutMs),
                   )
-                : err || new Error("Worker exited unexpectedly"),
+                : err || new Error(AstMessages.WORKER_EXITED_UNEXPECTEDLY),
             ),
           );
           this.pendingTasks.delete(taskId);
@@ -231,7 +233,8 @@ export class AstWorkerPool implements IASTWorkerPool {
 
     worker.on("error", handleError);
     worker.on("exit", (code) => {
-      if (code !== 0) handleError(new Error(`Worker exited with code ${code}`));
+      if (code !== 0)
+        handleError(new Error(AstMessages.workerExitedWithCode(code)));
     });
 
     this.workers.push(worker);
@@ -291,7 +294,7 @@ export class AstWorkerPool implements IASTWorkerPool {
         const cacheLookupTime = performance.now() - cacheStartTime;
 
         if (cachedResult) {
-          this.logger.debug("AST parse cache hit", {
+          this.logger.debug(AstMessages.PARSE_CACHE_HIT, {
             contentHash,
             cacheLookupTimeMs: Number(cacheLookupTime.toFixed(2)),
           });
@@ -316,11 +319,14 @@ export class AstWorkerPool implements IASTWorkerPool {
               const hitRate =
                 (metrics.hits / (metrics.hits + metrics.misses)) * 100;
               const queueWaitTime = Date.now() - queuedAt;
-              this.logger.info("AST cache metrics and queue performance", {
-                hitRate: Number(hitRate.toFixed(2)),
-                queueWaitTimeMs: queueWaitTime,
-                ...metrics,
-              });
+              this.logger.info(
+                AstMessages.CACHE_METRICS_AND_QUEUE_PERFORMANCE,
+                {
+                  hitRate: Number(hitRate.toFixed(2)),
+                  queueWaitTimeMs: queueWaitTime,
+                  ...metrics,
+                },
+              );
             }
           }
           resolve(result);
@@ -350,14 +356,11 @@ export class AstWorkerPool implements IASTWorkerPool {
     const timeout = setTimeout(() => {
       this.taskTimeouts.delete(taskId);
       this.timedOutWorkers.add(worker);
-      this.logger.error(
-        "AST worker task timed out — terminating stuck worker",
-        {
-          taskId,
-          filePath: this.taskFilePaths.get(taskId),
-          taskTimeoutMs: this.taskTimeoutMs,
-        },
-      );
+      this.logger.error(AstMessages.TASK_TIMED_OUT_TERMINATING, {
+        taskId,
+        filePath: this.taskFilePaths.get(taskId),
+        taskTimeoutMs: this.taskTimeoutMs,
+      });
       // Deliberate termination; the worker's own "exit" handler rejects the pending task,
       // removes it from the pool, and respawns a replacement.
       worker.terminate().catch(() => {});

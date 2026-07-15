@@ -9,12 +9,15 @@ import {
   acquireProcessLock,
   DOCUVIA_DIR_NAME,
   INIT_COMMAND_LOCK_FILE_NAME,
+  MemoryKeys,
+  LogLevels,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { CLI_ERROR_MESSAGES } from "../constants/cli-errors.js";
 import { selectPlatforms } from "../utils/platform-selection.js";
 
 /**
@@ -29,7 +32,7 @@ const INIT_COMMAND_LOCK_STALE_MS = 30_000;
 
 /** Boundary validation (design-spirit.md #4) — the first thing that touches CLI-supplied input. */
 const InitInputSchema = z.object({
-  cwd: z.string().min(1, "workspace root must not be empty"),
+  cwd: z.string().min(1, CLI_ERROR_MESSAGES.WORKSPACE_ROOT_EMPTY),
   allowGlobalMcpConfig: z.boolean(),
   platformFilter: z.string().optional(),
 });
@@ -47,11 +50,11 @@ async function runDatabaseInit(cwd: string): Promise<void> {
   const logger = createPinoBackedLogger();
   // Surface workflow progress on the spinner too, in addition to the pino sink.
   logger.onLog((event) => {
-    if (event.level === "info") spinner.text = event.message;
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
 
   try {
     const result = await docuviaApi.init(scopeId, logger);

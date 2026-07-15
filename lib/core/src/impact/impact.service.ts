@@ -5,7 +5,12 @@ import type {
   ILogger,
   RiskLevel,
 } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import { createNoopLogger, RiskLevels } from "@workspace/contracts";
+
+const ImpactMessages = {
+  NO_NODE_RESOLVED: "No node resolved for impact target",
+  RESOLVED_BLAST_RADIUS: "Resolved blast radius",
+} as const;
 
 /**
  * Thresholds for the impacted-node count, modeled on GitNexus's own LOW/MEDIUM/HIGH/CRITICAL
@@ -28,10 +33,12 @@ export class ImpactService implements IImpactService {
   constructor(private readonly logger: ILogger = createNoopLogger()) {}
 
   computeRiskLevel(impactedCount: number): RiskLevel {
-    if (impactedCount >= IMPACT_RISK_THRESHOLDS.CRITICAL_MIN) return "CRITICAL";
-    if (impactedCount >= IMPACT_RISK_THRESHOLDS.HIGH_MIN) return "HIGH";
-    if (impactedCount >= 1) return "MEDIUM";
-    return "LOW";
+    if (impactedCount >= IMPACT_RISK_THRESHOLDS.CRITICAL_MIN)
+      return RiskLevels.CRITICAL;
+    if (impactedCount >= IMPACT_RISK_THRESHOLDS.HIGH_MIN)
+      return RiskLevels.HIGH;
+    if (impactedCount >= 1) return RiskLevels.MEDIUM;
+    return RiskLevels.LOW;
   }
 
   getBlastRadius(
@@ -40,14 +47,14 @@ export class ImpactService implements IImpactService {
   ): BlastRadiusEntry[] | undefined {
     const node = store.graph.findNodeByName(target);
     if (!node) {
-      this.logger.debug("No node resolved for impact target", { target });
+      this.logger.debug(ImpactMessages.NO_NODE_RESOLVED, { target });
       return undefined;
     }
 
     const blastRadius = store.graph
       .getIncomingEdges(node.id)
       .map(({ name, type }) => ({ name, type }));
-    this.logger.debug("Resolved blast radius", {
+    this.logger.debug(ImpactMessages.RESOLVED_BLAST_RADIUS, {
       target,
       count: blastRadius.length,
     });

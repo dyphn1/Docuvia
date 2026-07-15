@@ -1,4 +1,26 @@
 import { LanguageRegistry } from "./language-registry.js";
+import { UTF8_ENCODING } from "@workspace/contracts";
+
+const FunnelRejectionReasons = {
+  BINARY_FILE_DETECTED: "Binary file detected (NUL byte found)",
+  INVALID_UTF8: "Lossless Encoding Guardrail failed (Invalid UTF-8)",
+  NO_EXTENSION_NO_SHEBANG: "No file extension and no shebang detected",
+  EXTENSION_NOT_ALLOWED: (ext: string) => `Extension ${ext} not allowed`,
+} as const;
+
+const ShebangMarkers = {
+  NODE: "node",
+  JS: "js",
+  PYTHON: "python",
+  BASH: "bash",
+  SH: "sh",
+} as const;
+
+const ShebangExtensions = {
+  JAVASCRIPT: ".js",
+  PYTHON: ".py",
+  SHELL: ".sh",
+} as const;
 
 export interface FunnelResult {
   accepted: boolean;
@@ -30,7 +52,7 @@ export class ParsingFunnel {
       if (buffer[i] === 0) {
         return {
           accepted: false,
-          reason: "Binary file detected (NUL byte found)",
+          reason: FunnelRejectionReasons.BINARY_FILE_DETECTED,
         };
       }
     }
@@ -39,13 +61,13 @@ export class ParsingFunnel {
     if (contentString === undefined) {
       try {
         // Use fatal: true to strictly enforce valid UTF-8
-        contentString = new TextDecoder("utf-8", { fatal: true }).decode(
+        contentString = new TextDecoder(UTF8_ENCODING, { fatal: true }).decode(
           buffer,
         );
       } catch (err) {
         return {
           accepted: false,
-          reason: "Lossless Encoding Guardrail failed (Invalid UTF-8)",
+          reason: FunnelRejectionReasons.INVALID_UTF8,
         };
       }
     }
@@ -60,12 +82,18 @@ export class ParsingFunnel {
         : null;
       if (firstLineMatch) {
         const shebang = firstLineMatch[1];
-        if (shebang.includes("node") || shebang.includes("js")) {
-          mappedExtension = ".js";
-        } else if (shebang.includes("python")) {
-          mappedExtension = ".py";
-        } else if (shebang.includes("bash") || shebang.includes("sh")) {
-          mappedExtension = ".sh";
+        if (
+          shebang.includes(ShebangMarkers.NODE) ||
+          shebang.includes(ShebangMarkers.JS)
+        ) {
+          mappedExtension = ShebangExtensions.JAVASCRIPT;
+        } else if (shebang.includes(ShebangMarkers.PYTHON)) {
+          mappedExtension = ShebangExtensions.PYTHON;
+        } else if (
+          shebang.includes(ShebangMarkers.BASH) ||
+          shebang.includes(ShebangMarkers.SH)
+        ) {
+          mappedExtension = ShebangExtensions.SHELL;
         }
       }
     }
@@ -73,7 +101,7 @@ export class ParsingFunnel {
     if (!mappedExtension || mappedExtension === "") {
       return {
         accepted: false,
-        reason: "No file extension and no shebang detected",
+        reason: FunnelRejectionReasons.NO_EXTENSION_NO_SHEBANG,
       };
     }
 
@@ -81,7 +109,7 @@ export class ParsingFunnel {
     if (!provider) {
       return {
         accepted: false,
-        reason: `Extension ${mappedExtension} not allowed`,
+        reason: FunnelRejectionReasons.EXTENSION_NOT_ALLOWED(mappedExtension),
       };
     }
 

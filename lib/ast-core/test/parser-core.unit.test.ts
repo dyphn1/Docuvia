@@ -146,7 +146,7 @@ describe("parser-core", () => {
     expect(parseMock).toHaveBeenCalledWith("hello");
   });
 
-  it("generateAst logs warning and returns if loadWasm fails", async () => {
+  it("generateAst throws if loadWasm fails", async () => {
     const registry = new LanguageRegistry();
     const provider = new DefaultProvider({
       extensions: [".ts"],
@@ -155,7 +155,6 @@ describe("parser-core", () => {
     registry.registerProvider([".ts"], provider);
 
     const loadWasm = vi.fn().mockRejectedValue(new Error("Network error"));
-    const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     const generator = generateAst(
       "content",
@@ -164,17 +163,12 @@ describe("parser-core", () => {
       registry,
       loadWasm,
     );
-    const events = [];
-    for await (const event of generator) {
-      events.push(event);
-    }
 
-    expect(events.length).toBe(0);
-    expect(consoleSpy).toHaveBeenCalledWith(
-      "Failed to load grammar WASM test.wasm:",
-      expect.any(Error),
-    );
-    consoleSpy.mockRestore();
+    await expect(async () => {
+      for await (const _ of generator) {
+        // no-op
+      }
+    }).rejects.toThrow("Failed to load grammar WASM test.wasm: Network error");
   });
 
   it("generateAst throws if parse returns null", async () => {

@@ -5,6 +5,8 @@
  * Strategy: deduplicate → confidence-sort → truncate → budget-aware assembly.
  */
 
+const DEFAULT_NODE_TYPE_LABEL = "node";
+
 export interface CompressibleNode {
   title: string;
   content?: string | null;
@@ -83,7 +85,7 @@ export function assembleContext(
   let totalChars = 0;
 
   for (const node of sorted) {
-    const entry = `- [${node.nodeType ?? "node"}] ${node.title}: ${truncateContent(node.content, maxPerNode)}`;
+    const entry = `- [${node.nodeType ?? DEFAULT_NODE_TYPE_LABEL}] ${node.title}: ${truncateContent(node.content, maxPerNode)}`;
     if (totalChars + entry.length > maxTotal) break;
     parts.push(entry);
     totalChars += entry.length;

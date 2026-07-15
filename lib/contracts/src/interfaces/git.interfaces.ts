@@ -3,9 +3,18 @@
  * semantics (no "knowledge branch", no "post-commit hook" concept); see
  * `knowledge-git.interfaces.ts` for the Domain Core layer built on top of this.
  */
+export const ChangedFileStatuses = {
+  ADDED: "added",
+  MODIFIED: "modified",
+  DELETED: "deleted",
+  RENAMED: "renamed",
+} as const;
+export type ChangedFileStatus =
+  (typeof ChangedFileStatuses)[keyof typeof ChangedFileStatuses];
+
 export interface ChangedFileEntry {
   file: string;
-  status: "added" | "modified" | "deleted" | "renamed";
+  status: ChangedFileStatus;
 }
 
 export interface IGitProvider {

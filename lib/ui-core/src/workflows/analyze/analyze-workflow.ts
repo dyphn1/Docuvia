@@ -8,14 +8,21 @@ import {
   type ILogger,
 } from "@workspace/contracts";
 import {
+  ANALYZE_EVENTS,
   ANALYZE_MESSAGES,
   DECISION_EXTRACTION_SYSTEM_PROMPT,
 } from "./analyze-messages.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { collectSourceFiles } from "./decision-extraction.js";
-import type { AnalyzeResult, ExtractedDecision } from "./analyze-result.js";
+import {
+  AnalyzeResultKind,
+  DecisionNodeType,
+  type AnalyzeResult,
+  type ExtractedDecision,
+} from "./analyze-result.js";
 
-const VALID_NODE_TYPES = ["change", "rule", "decision", "context"] as const;
+const VALID_NODE_TYPES = Object.values(DecisionNodeType);
+const MARKDOWN_CODE_FENCE = "```";
 
 /**
  * Strips a wrapping markdown code fence (```` ```json\n...\n``` ```` or bare ```` ```\n...\n``` ````)
@@ -25,7 +32,10 @@ const VALID_NODE_TYPES = ["change", "rule", "decision", "context"] as const;
  */
 export function stripMarkdownCodeFence(raw: string): string {
   const trimmed = raw.trim();
-  if (!trimmed.startsWith("```") || !trimmed.endsWith("```")) {
+  if (
+    !trimmed.startsWith(MARKDOWN_CODE_FENCE) ||
+    !trimmed.endsWith(MARKDOWN_CODE_FENCE)
+  ) {
     return raw;
   }
 
@@ -76,7 +86,7 @@ export class AnalyzeWorkflow {
     const { workspaceRoot, logger } = this;
 
     logger.info(ANALYZE_MESSAGES.ANALYZING);
-    await appendAnalyzeLogLine(workspaceRoot, { event: "analyze.start" });
+    await appendAnalyzeLogLine(workspaceRoot, { event: ANALYZE_EVENTS.START });
 
     const configScanner = docuviaFactory.resolve(TOKENS.ConfigScanner, {
       logger,
@@ -85,12 +95,12 @@ export class AnalyzeWorkflow {
       await configScanner.scanConfigs(workspaceRoot);
 
     const result: AnalyzeResult = {
-      kind: "configScan",
+      kind: AnalyzeResultKind.CONFIG_SCAN,
       projectType,
       suggestedTags: tags,
     };
     await appendAnalyzeLogLine(workspaceRoot, {
-      event: "analyze.summary",
+      event: ANALYZE_EVENTS.SUMMARY,
       projectType: result.projectType,
       suggestedTags: result.suggestedTags,
     });
@@ -104,15 +114,15 @@ export class AnalyzeWorkflow {
 
     logger.info(ANALYZE_MESSAGES.EXTRACTING(targetPath));
     await appendAnalyzeLogLine(workspaceRoot, {
-      event: "analyze.focused.start",
+      event: ANALYZE_EVENTS.FOCUSED_START,
       targetPath,
     });
 
     const resolvedPath = path.resolve(workspaceRoot, targetPath);
     if (!fs.existsSync(resolvedPath)) {
-      const message = `Path does not exist: ${targetPath}`;
+      const message = ANALYZE_MESSAGES.PATH_NOT_FOUND(targetPath);
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.error",
+        event: ANALYZE_EVENTS.FOCUSED_ERROR,
         targetPath,
         message,
       });
@@ -133,11 +143,15 @@ export class AnalyzeWorkflow {
 
     if (files.length === 0) {
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.summary",
+        event: ANALYZE_EVENTS.FOCUSED_SUMMARY,
         targetPath,
         decisionsCount: 0,
       });
-      return { kind: "decisionExtraction", targetPath, decisions: [] };
+      return {
+        kind: AnalyzeResultKind.DECISION_EXTRACTION,
+        targetPath,
+        decisions: [],
+      };
     }
 
     const userMessage = files
@@ -163,9 +177,9 @@ export class AnalyzeWorkflow {
     const rawContent = response.choices[0]?.message.content;
     let parsed: unknown;
     if (rawContent === null || rawContent === undefined) {
-      const message = "LLM returned non-JSON output for decision extraction";
+      const message = ANALYZE_MESSAGES.LLM_NON_JSON_OUTPUT;
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.error",
+        event: ANALYZE_EVENTS.FOCUSED_ERROR,
         targetPath,
         message,
       });
@@ -174,9 +188,9 @@ export class AnalyzeWorkflow {
     try {
       parsed = JSON.parse(stripMarkdownCodeFence(rawContent));
     } catch {
-      const message = "LLM returned non-JSON output for decision extraction";
+      const message = ANALYZE_MESSAGES.LLM_NON_JSON_OUTPUT;
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.error",
+        event: ANALYZE_EVENTS.FOCUSED_ERROR,
         targetPath,
         message,
       });
@@ -184,9 +198,9 @@ export class AnalyzeWorkflow {
     }
 
     if (!Array.isArray(parsed)) {
-      const message = "LLM returned non-JSON output for decision extraction";
+      const message = ANALYZE_MESSAGES.LLM_NON_JSON_OUTPUT;
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.error",
+        event: ANALYZE_EVENTS.FOCUSED_ERROR,
         targetPath,
         message,
       });
@@ -197,17 +211,21 @@ export class AnalyzeWorkflow {
       title: String(item?.title ?? ""),
       nodeType: (VALID_NODE_TYPES as readonly string[]).includes(item?.nodeType)
         ? (item.nodeType as ExtractedDecision["nodeType"])
-        : "context",
+        : DecisionNodeType.CONTEXT,
       content: String(item?.content ?? ""),
       confidence: typeof item?.confidence === "number" ? item.confidence : 0,
     }));
 
     await appendAnalyzeLogLine(workspaceRoot, {
-      event: "analyze.focused.summary",
+      event: ANALYZE_EVENTS.FOCUSED_SUMMARY,
       targetPath,
       decisionsCount: decisions.length,
     });
 
-    return { kind: "decisionExtraction", targetPath, decisions };
+    return {
+      kind: AnalyzeResultKind.DECISION_EXTRACTION,
+      targetPath,
+      decisions,
+    };
   }
 }

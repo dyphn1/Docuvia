@@ -7,7 +7,10 @@ import {
   type TopologyExportOptions,
   type TopologyGraph,
 } from "@workspace/contracts";
-import { EXPORT_TOPOLOGY_MESSAGES } from "./export-topology-messages.js";
+import {
+  EXPORT_TOPOLOGY_EVENTS,
+  EXPORT_TOPOLOGY_MESSAGES,
+} from "./export-topology-messages.js";
 import { appendExportTopologyLogLine } from "./export-topology-log-writer.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 
@@ -31,7 +34,7 @@ export class ExportTopologyWorkflow {
 
     logger.info(EXPORT_TOPOLOGY_MESSAGES.EXPORTING);
     await appendExportTopologyLogLine(workspaceRoot, {
-      event: "export-topology.start",
+      event: EXPORT_TOPOLOGY_EVENTS.START,
       collapse: options.collapse ?? null,
     });
 
@@ -48,7 +51,7 @@ export class ExportTopologyWorkflow {
         err.code === ErrorCodes.DB_OPEN_FAILED
       ) {
         await appendExportTopologyLogLine(workspaceRoot, {
-          event: "export-topology.error",
+          event: EXPORT_TOPOLOGY_EVENTS.ERROR,
           message: EXPORT_TOPOLOGY_MESSAGES.DB_NOT_FOUND,
         });
         throw new DocuviaError(
@@ -76,7 +79,7 @@ export class ExportTopologyWorkflow {
       );
 
       await appendExportTopologyLogLine(workspaceRoot, {
-        event: "export-topology.summary",
+        event: EXPORT_TOPOLOGY_EVENTS.SUMMARY,
         nodeCount: graph.stats.nodeCount,
         linkCount: graph.stats.linkCount,
         groupCount: graph.stats.groupCount,

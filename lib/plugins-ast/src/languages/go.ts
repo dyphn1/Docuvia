@@ -1,4 +1,5 @@
 import type { LanguageConfig } from "@workspace/ast-core";
+import { QueryCaptureName } from "../constants/query-capture-names.js";
 
 export const goConfig: LanguageConfig = {
   extensions: [".go"],
@@ -8,9 +9,9 @@ export const goConfig: LanguageConfig = {
   functions: ["function_declaration", "method_declaration"],
   calls: ["call_expression"],
   queries: {
-    classes: `(type_declaration name: (type_identifier) @class)`,
-    functions: `(function_declaration name: (identifier) @function) (method_declaration name: (field_identifier) @function)`,
-    imports: `(import_declaration) @import`,
-    calls: `(call_expression function: [(identifier) (selector_expression)] @call)`,
+    classes: `(type_declaration name: (type_identifier) @${QueryCaptureName.CLASS})`,
+    functions: `(function_declaration name: (identifier) @${QueryCaptureName.FUNCTION}) (method_declaration name: (field_identifier) @${QueryCaptureName.FUNCTION})`,
+    imports: `(import_declaration) @${QueryCaptureName.IMPORT}`,
+    calls: `(call_expression function: [(identifier) (selector_expression)] @${QueryCaptureName.CALL})`,
   },
 };

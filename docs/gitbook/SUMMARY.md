@@ -63,4 +63,5 @@
 
 ## 📊 Analysis
 
-- [Docuvia2 vs Docuvia1 vs GitNexus (2026-07-12)](analysis/docuvia2-vs-docuvia1-vs-gitnexus-2026-07-12.md)
+- [Cross-Product CLI Benchmark (2026-07-13)](analysis/cross-product-cli-benchmark.md)
+- [Background Knowledge Loop — Gap Analysis (2026-07-16)](analysis/background-knowledge-loop-gap-analysis.md)

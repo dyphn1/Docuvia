@@ -1,9 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import process from "process";
-import { docuviaMemory } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
+import { docuviaMemory } from "@workspace/contracts";
 import { analyzeCommand } from "../../../src/commands/analyze.js";
 import { ui } from "../../../src/ui/wizard.js";
+import { UI_MESSAGES } from "../../../src/constants/ui-messages.js";
 
 vi.mock("@workspace/ui-core", () => ({
   docuviaApi: { analyze: vi.fn() },
@@ -11,81 +12,280 @@ vi.mock("@workspace/ui-core", () => ({
 
 const spinnerSucceed = vi.fn();
 const spinnerFail = vi.fn();
+let lastSpinnerInstance:
+  | {
+      text: string;
+      start: ReturnType<typeof vi.fn>;
+      succeed: typeof spinnerSucceed;
+      fail: typeof spinnerFail;
+    }
+  | undefined;
 
 // header/info/error are referenced eagerly (as direct object properties, evaluated when the
-// mocked module is first imported — before any later top-level `const` in this file has
-// initialized), so they must be inline `vi.fn()` here; assert on `ui.info`/`ui.error` directly.
-// Only closures (like `spinner`'s returned object) can safely reference outer consts.
+// mocked module is first imported -- before any later top-level const in this file has
+// initialized), so they must be inline vi.fn() here; assert on ui.info/ui.error directly.
+// Only closures (like the object returned by spinner) can safely reference outer consts.
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
     header: vi.fn(),
     info: vi.fn(),
     error: vi.fn(),
-    spinner: vi.fn(() => ({
-      text: "",
-      start: vi.fn().mockReturnThis(),
-      succeed: spinnerSucceed,
-      fail: spinnerFail,
-    })),
+    spinner: vi.fn((text: string) => {
+      lastSpinnerInstance = {
+        text,
+        start: vi.fn().mockReturnThis(),
+        succeed: spinnerSucceed,
+        fail: spinnerFail,
+      };
+      return lastSpinnerInstance;
+    }),
   },
 }));
 
 const mockAnalyze = vi.mocked(docuviaApi.analyze);
 
+const ENV_KEYS = [
+  "AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL",
+  "AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY",
+  "AI_DOCUVIA_MODEL",
+  "AI_DOCUVIA_FAST_MODEL",
+] as const;
+
 describe("analyzeCommand", () => {
-  let exitSpy: any;
+  let originalEnv: Record<string, string | undefined>;
 
   beforeEach(() => {
-    exitSpy = vi.spyOn(process, "exit").mockImplementation(((code: number) => {
-      throw new Error(`Exit ${code}`);
-    }) as any);
+    originalEnv = {};
+    for (const key of ENV_KEYS) {
+      originalEnv[key] = process.env[key];
+      delete process.env[key];
+    }
     mockAnalyze.mockReset();
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
+    lastSpinnerInstance = undefined;
     vi.mocked(ui.info).mockReset();
     vi.mocked(ui.error).mockReset();
+    vi.mocked(ui.header).mockReset();
     process.exitCode = undefined;
   });
 
   afterEach(() => {
+    for (const key of ENV_KEYS) {
+      if (originalEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = originalEnv[key];
+    }
     vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
-  it("prints projectType/suggestedTags on success when no target path is given", async () => {
-    mockAnalyze.mockResolvedValue({
-      projectType: "typescript",
-      suggestedTags: ["typescript", "react"],
+  describe("no target path (config scan)", () => {
+    it("prints projectType/suggestedTags on success", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "configScan",
+        projectType: "typescript",
+        suggestedTags: ["typescript", "react"],
+      });
+
+      await analyzeCommand();
+
+      expect(mockAnalyze).toHaveBeenCalled();
+      expect(spinnerSucceed).toHaveBeenCalled();
+      expect(ui.info).toHaveBeenCalledWith(
+        expect.stringContaining("typescript"),
+      );
     });
 
-    await analyzeCommand();
+    it("calls spinner.fail and sets process.exitCode = 1 (not process.exit()) when docuviaApi.analyze() throws", async () => {
+      mockAnalyze.mockRejectedValue(new Error("boom"));
 
-    expect(mockAnalyze).toHaveBeenCalled();
-    expect(spinnerSucceed).toHaveBeenCalled();
-    expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("typescript"));
+      await analyzeCommand();
+
+      expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("boom"));
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("prints a large (50-entry) suggestedTags list as a single joined ui.info call without truncation or throwing", async () => {
+      const tags = Array.from({ length: 50 }, (_, i) => "tag-" + i);
+      mockAnalyze.mockResolvedValue({
+        kind: "configScan",
+        projectType: "generic",
+        suggestedTags: tags,
+      });
+
+      await analyzeCommand();
+
+      expect(ui.info).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_SUGGESTED_TAGS + tags.join(", "),
+      );
+    });
+
+    it("updates spinner.text when the underlying workflow emits an info log event mid-call", async () => {
+      mockAnalyze.mockImplementation(async (_scopeId, logger) => {
+        logger.info("Scanning configs...");
+        return {
+          kind: "configScan",
+          projectType: "generic",
+          suggestedTags: [],
+        };
+      });
+
+      await analyzeCommand();
+
+      expect(lastSpinnerInstance?.text).toBe("Scanning configs...");
+    });
+
+    it("does not leak docuviaMemory scopes across repeated runs (idempotency)", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "configScan",
+        projectType: "generic",
+        suggestedTags: [],
+      });
+      const createScopeSpy = vi.spyOn(docuviaMemory, "createScope");
+      const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
+
+      await analyzeCommand();
+      await analyzeCommand();
+
+      expect(createScopeSpy).toHaveBeenCalledTimes(2);
+      expect(deleteScopeSpy).toHaveBeenCalledTimes(2);
+      expect(spinnerSucceed).toHaveBeenCalledTimes(2);
+    });
   });
 
-  it('prints a "not yet supported" message and does not call docuviaApi.analyze() when a target path is given', async () => {
-    await analyzeCommand("src/foo.ts");
+  describe("target path given (focused LLM decision extraction)", () => {
+    it("does not call docuviaApi.analyze() and exits 1 with ANALYZE_LLM_MISSING_ENV when the base URL env var is missing", async () => {
+      process.env.AI_DOCUVIA_MODEL = "some-model";
 
-    expect(mockAnalyze).not.toHaveBeenCalled();
-    expect(ui.error).toHaveBeenCalledWith(
-      expect.stringContaining("not yet supported"),
-    );
-    expect(process.exitCode).toBe(1);
-  });
+      await analyzeCommand("src/foo.ts");
 
-  it("calls spinner.fail and still deletes the memory scope when docuviaApi.analyze() throws", async () => {
-    mockAnalyze.mockRejectedValue(new Error("boom"));
-    const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
+      expect(mockAnalyze).not.toHaveBeenCalled();
+      expect(ui.error).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_LLM_MISSING_ENV,
+      );
+      expect(process.exitCode).toBe(1);
+    });
 
-    await analyzeCommand();
+    it("does not call docuviaApi.analyze() and exits 1 when both model env vars are missing (base URL set)", async () => {
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
+        "http://localhost:8317";
 
-    expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("boom"));
-    // Regression guard: process.exit() terminates the process before a pending `finally` runs,
-    // which would silently skip docuviaMemory.deleteScope() — see docs/cli-test-analysis/
-    // README.md's "Bugs found during verification" #1. Must use process.exitCode instead.
-    expect(exitSpy).not.toHaveBeenCalled();
-    expect(process.exitCode).toBe(1);
-    expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
+      await analyzeCommand("src/foo.ts");
+
+      expect(mockAnalyze).not.toHaveBeenCalled();
+      expect(ui.error).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_LLM_MISSING_ENV,
+      );
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("accepts AI_DOCUVIA_FAST_MODEL alone (no AI_DOCUVIA_MODEL) as the model", async () => {
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
+        "http://localhost:8317";
+      process.env.AI_DOCUVIA_FAST_MODEL = "fast-model";
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [],
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand("src/foo.ts");
+
+      expect(mockAnalyze).toHaveBeenCalled();
+      expect(setSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        "llmModel",
+        "fast-model",
+      );
+    });
+
+    it("sets targetPath/llmBaseUrl/llmApiKey/llmModel into docuviaMemory and calls docuviaApi.analyze() when env vars are present", async () => {
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
+        "http://localhost:8317";
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY = "secret-key";
+      process.env.AI_DOCUVIA_MODEL = "big-model";
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [],
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand("src/foo.ts");
+
+      expect(mockAnalyze).toHaveBeenCalled();
+      const scopeId = mockAnalyze.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "targetPath", "src/foo.ts");
+      expect(setSpy).toHaveBeenCalledWith(
+        scopeId,
+        "llmBaseUrl",
+        "http://localhost:8317",
+      );
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "llmApiKey", "secret-key");
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "llmModel", "big-model");
+    });
+
+    it("prints [nodeType] title (confidence: N) plus content lines for each decision on success", async () => {
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
+        "http://localhost:8317";
+      process.env.AI_DOCUVIA_MODEL = "big-model";
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [
+          {
+            title: "Use exitCode not exit()",
+            nodeType: "rule",
+            content: "Avoids a Windows crash while fetch handles close.",
+            confidence: 0.85,
+          },
+        ],
+      });
+      const consoleLogSpy = vi
+        .spyOn(console, "log")
+        .mockImplementation(() => {});
+
+      await analyzeCommand("src/foo.ts");
+
+      expect(spinnerSucceed).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_FOCUSED_SUCCESS,
+      );
+      expect(ui.info).toHaveBeenCalledWith(
+        "[rule] Use exitCode not exit() (confidence: 0.85)",
+      );
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        "    Avoids a Windows crash while fetch handles close.",
+      );
+    });
+
+    it("prints ANALYZE_FOCUSED_NONE when decisions is empty", async () => {
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
+        "http://localhost:8317";
+      process.env.AI_DOCUVIA_MODEL = "big-model";
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [],
+      });
+
+      await analyzeCommand("src/foo.ts");
+
+      expect(ui.info).toHaveBeenCalledWith(UI_MESSAGES.ANALYZE_FOCUSED_NONE);
+    });
+
+    it("calls spinner.fail and sets process.exitCode = 1 (not process.exit()) when docuviaApi.analyze() rejects", async () => {
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
+        "http://localhost:8317";
+      process.env.AI_DOCUVIA_MODEL = "big-model";
+      mockAnalyze.mockRejectedValue(new Error("LLM exploded"));
+
+      await analyzeCommand("src/foo.ts");
+
+      expect(spinnerFail).toHaveBeenCalledWith(
+        expect.stringContaining("LLM exploded"),
+      );
+      expect(process.exitCode).toBe(1);
+    });
   });
 });

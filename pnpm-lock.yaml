@@ -67,6 +67,9 @@ importers:
       "@workspace/libgit2":
         specifier: workspace:^
         version: link:../../lib/libgit2
+      "@workspace/llm-api":
+        specifier: workspace:^
+        version: link:../../lib/llm-api
       "@workspace/remote-api":
         specifier: workspace:^
         version: link:../../lib/remote-api
@@ -218,6 +221,19 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1(@types/node@25.9.5)
 
+  lib/llm-api:
+    dependencies:
+      "@workspace/contracts":
+        specifier: workspace:^
+        version: link:../contracts
+    devDependencies:
+      "@types/node":
+        specifier: "catalog:"
+        version: 25.9.5
+      vitest:
+        specifier: ^1.6.1
+        version: 1.6.1(@types/node@25.9.5)
+
   lib/plugins-ast:
     dependencies:
       "@workspace/ast-core":
@@ -271,6 +287,9 @@ importers:
       "@workspace/contracts":
         specifier: workspace:^
         version: link:../contracts
+      "@workspace/core":
+        specifier: workspace:^
+        version: link:../core
     devDependencies:
       "@types/node":
         specifier: "catalog:"

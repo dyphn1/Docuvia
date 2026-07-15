@@ -51,9 +51,11 @@ Each agent below is a thin adapter that loads the canonical spec from `.github/a
 - Subagents cannot spawn further subagents — output a Handover Block instead
 - Save AI implementation plans at `docs/ai_plans/implement_<feature-name>.md`
 
+<!-- gitnexus:start -->
+
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **Docuvia** (5297 symbols, 11134 relationships, 245 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **Docuvia** (2859 symbols, 6947 relationships, 209 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -82,6 +84,10 @@ This project is indexed by GitNexus as **Docuvia** (5297 symbols, 11134 relation
 | `gitnexus://repo/Docuvia/processes`      | All execution flows                      |
 | `gitnexus://repo/Docuvia/process/{name}` | Step-by-step execution trace             |
 
+## Cross-Repo Groups
+
+This repository is listed under GitNexus **group(s): my_workspace** (see `~/.gitnexus/groups/`). For cross-repo analysis, use MCP tools `impact`, `query`, and `context` with `repo` set to `@<groupName>` or `@<groupName>/<memberPath>` (paths match keys in that group’s `group.yaml`). Use `group_list` / `group_sync` for membership and sync. From the project root: `node .gitnexus/run.cjs group list`, `node .gitnexus/run.cjs group sync <name>`, `node .gitnexus/run.cjs group impact <name> --target <symbol> --repo <group-path>` (the `.gitnexus/run.cjs` path is repo-root-relative).
+
 ## CLI
 
 | Task                                         | Read this skill file                                        |
@@ -92,3 +98,5 @@ This project is indexed by GitNexus as **Docuvia** (5297 symbols, 11134 relation
 | Rename / extract / split / refactor          | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md`     |
 | Tools, resources, schema reference           | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md`           |
 | Index, status, clean, wiki CLI commands      | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md`             |
+
+<!-- gitnexus:end -->

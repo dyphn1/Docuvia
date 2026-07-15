@@ -163,15 +163,14 @@ describe("initCommand", () => {
     mockInit.mockRejectedValue(new Error("boom"));
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await initCommand();
+    await expect(initCommand()).rejects.toThrow("Exit 1");
 
     expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("boom"));
-    // Regression guard: process.exit() terminates the process before a pending `finally` runs,
-    // which would silently skip docuviaMemory.deleteScope() — see docs/cli-test-analysis/
-    // README.md's "Bugs found during verification" #1. Must use process.exitCode instead, plus
-    // an explicit `return` so configureAgentIntegrations() doesn't run after a failed DB init.
-    expect(exitSpy).not.toHaveBeenCalled();
-    expect(process.exitCode).toBe(1);
+    // process.exit(1) here is safe (unlike the process.exit()-before-finally bug fixed
+    // elsewhere in this session — see docs/cli-test-analysis/README.md's "Bugs found and
+    // fixed" #1): PLAT-006's single-flight lock restructuring calls it only after the
+    // lock-release `finally` has already completed, with nothing pending after it — including
+    // docuviaMemory.deleteScope(), which already ran inside runDatabaseInit()'s own finally.
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
     expect(ClaudePlatform).not.toHaveBeenCalled();
   });
@@ -278,15 +277,13 @@ describe("initCommand", () => {
         message: "Success",
       } as any);
 
-      await initCommand(process.cwd(), false, "notaplatform");
+      await expect(
+        initCommand(process.cwd(), false, "notaplatform"),
+      ).rejects.toThrow("Exit 1");
 
       expect(ui.error).toHaveBeenCalledWith(
         expect.stringContaining("Unknown --platform value"),
       );
-      // Regression guard: process.exit() risks a native crash on Windows while installHooks'
-      // own pending I/O is still closing — see the comment beside this call site in init.ts.
-      expect(exitSpy).not.toHaveBeenCalled();
-      expect(process.exitCode).toBe(1);
     });
 
     it("installs every platform when --platform is omitted (default behavior preserved)", async () => {

@@ -26,30 +26,24 @@ For reference, this is the checklist every command was screened against:
 
 ## Status table
 
-| Command                                   | Status                   | Remaining open items                                                               |
-| ----------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------- |
-| [`analyze`](#analyze--resolved)           | ✅ Resolved              | — (see "Bugs found and fixed" #1 below for a fix made during this reorg)           |
-| [`init`](./init-concurrency-status.md)    | ✅ Resolved (bugs fixed) | unaudited: hook install / git-branch setup concurrency (follow-up)                 |
-| [`clean`](./clean.md)                     | ⚠️ 1 open                | `EBUSY`/unlink failure untested                                                    |
-| [`doctor`](./doctor.md)                   | ⚠️ 2 open                | hooks `fs.stat` rejection branch untested; concurrent `doctor`+`hydrate` unaudited |
-| [`export-topology`](./export-topology.md) | ⚠️ 2 open                | embedded HTML/JSON graph data never verified; `--out` as existing file untested    |
-| [`hydrate`](./hydrate.md)                 | ⚠️ 2 open                | concurrency unaudited; no idempotency fast-path/test                               |
-| [`impact`](./impact.md)                   | ✅ Resolved              | —                                                                                  |
-| [`query`](./query.md)                     | ⚠️ 3 open                | interactive Ctrl+C path untested; no prompt-size guard; no scope-cleanup test      |
-| [`review`](./review.md)                   | ⚠️ 1 open                | large/binary-file payload untested                                                 |
-| [`snapshot`](./snapshot.md)               | ⚠️ 2 open                | spinner-text unasserted; read-only-directory untested                              |
-| [`status`](./status.md)                   | ✅ Resolved              | — (file kept as an audit record, like `init`'s)                                    |
-| [`sync-knowledge`](./sync-knowledge.md)   | ✅ Resolved              | — (file kept as an audit record, like `init`'s)                                    |
-| [`sync`](./sync.md)                       | ⚠️ 2 open                | `readStdin()` untested; invalid `commitSha` format untested                        |
-| [`uninstall`](./uninstall.md)             | ⚠️ 1 open                | concurrent DB write untested                                                       |
+| Command                                   | Status                   | Remaining open items                                                                                                                                                                            |
+| ----------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`analyze`](./analyze-status.md)          | ✅ Resolved              | see `analyze-status.md`'s own Follow-ups (LLM base-URL suffix edge case, one missing error-log line)                                                                                            |
+| [`init`](./init-concurrency-status.md)    | ✅ Resolved (bugs fixed) | none — the "unaudited hook-install/branch-setup concurrency" follow-up was closed by [PLAT-006](../gitbook/adr/platform/PLAT-006-init-single-flight-lock.md)'s whole-command single-flight lock |
+| [`clean`](./clean.md)                     | ⚠️ 1 open                | `EBUSY`/unlink failure untested                                                                                                                                                                 |
+| [`doctor`](./doctor.md)                   | ⚠️ 2 open                | hooks `fs.stat` rejection branch untested; concurrent `doctor`+`hydrate` unaudited                                                                                                              |
+| [`export-topology`](./export-topology.md) | ⚠️ 2 open                | embedded HTML/JSON graph data never verified; `--out` as existing file untested                                                                                                                 |
+| [`hydrate`](./hydrate.md)                 | ⚠️ 2 open                | concurrency unaudited; no idempotency fast-path/test                                                                                                                                            |
+| [`impact`](./impact.md)                   | ✅ Resolved              | —                                                                                                                                                                                               |
+| [`query`](./query.md)                     | ⚠️ 3 open                | interactive Ctrl+C path untested; no prompt-size guard; no scope-cleanup test                                                                                                                   |
+| [`review`](./review.md)                   | ⚠️ 1 open                | large/binary-file payload untested                                                                                                                                                              |
+| [`snapshot`](./snapshot.md)               | ⚠️ 2 open                | spinner-text unasserted; read-only-directory untested                                                                                                                                           |
+| [`status`](./status.md)                   | ✅ Resolved              | — (file kept as an audit record, like `init`'s)                                                                                                                                                 |
+| [`sync-knowledge`](./sync-knowledge.md)   | ✅ Resolved              | — (file kept as an audit record, like `init`'s)                                                                                                                                                 |
+| [`sync`](./sync.md)                       | ⚠️ 2 open                | `readStdin()` untested; invalid `commitSha` format untested                                                                                                                                     |
+| [`uninstall`](./uninstall.md)             | ⚠️ 1 open                | concurrent DB write untested                                                                                                                                                                    |
 
 Legend: ✅ resolved · ⚠️ open, low-severity coverage gaps only (no known behavioral bugs remaining).
-
-### `analyze` — Resolved
-
-Not re-verified in this pass (test-gap claims were handled in a prior session) — but see "Bugs
-found and fixed" #1 below for a `process.exit()`/`finally` fix made to it during this reorg. No
-dedicated status doc; the original speculative claims file has been removed as superseded.
 
 ## Bugs found and fixed (2026-07-15)
 
@@ -64,11 +58,16 @@ regression tests.
    so the memory-scope cleanup never actually ran on error in production. The existing unit tests
    mocked `process.exit` to throw instead of truly exiting, which let `finally` run under the mock
    and masked the bug. `review` and `sync` already avoided this correctly by using
-   `process.exitCode = 1` instead — all six commands above now do the same, and `init.ts`'s two
-   `process.exit(1)` call sites (hook-install failure, and the post-`runDatabaseInit` guard) were
-   also switched to `process.exitCode` (+ an explicit `return` where control flow needed to stop)
-   for the same reason. Regression tests assert `process.exit` was never called and that
-   `deleteScope` still ran, in each of the six commands' unit tests plus `init.unit.test.ts`.
+   `process.exitCode = 1` instead — `clean`, `hydrate`, `snapshot`, `status`, and `sync-knowledge`
+   were fixed the same way in this session. `analyze` had the identical bug, independently found
+   and fixed (also to `process.exitCode`) by a concurrent session's `analyze <targetPath>` LLM
+   feature work — see [analyze-status.md](./analyze-status.md). `init.ts`'s single-flight-lock
+   restructuring ([PLAT-006](../gitbook/adr/platform/PLAT-006-init-single-flight-lock.md), also
+   concurrent with this session) independently resolved its own `process.exit()` call sites by
+   deferring them to after the lock-release `finally`, which is safe since nothing follows them —
+   a different mechanism than `process.exitCode`, but the same outcome: cleanup always runs before
+   exit. Regression tests assert `process.exit` was never called and `deleteScope` still ran for
+   each of the five commands fixed directly in this session.
 2. **`sync-state.json` race under concurrent `sync`** — `lib/ui-core/src/workflows/sync/sync-state.ts`
    did an unguarded read-modify-write of the dedup-state file. Two concurrent `docuvia sync` runs
    could silently clobber each other's update, losing a synced-content-hash entry. Fixed with a
@@ -100,6 +99,7 @@ regression tests.
 ## Individual command status files
 
 - [`init-concurrency-status.md`](./init-concurrency-status.md) — `init` (resolved; bugs fixed)
+- [`analyze-status.md`](./analyze-status.md) — `analyze` (resolved; LLM decision-extraction feature + test-gap fixes)
 - [`clean.md`](./clean.md)
 - [`doctor.md`](./doctor.md)
 - [`export-topology.md`](./export-topology.md)

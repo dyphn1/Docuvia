@@ -63,23 +63,23 @@ stress test were clean after the fix.
 
 ## Follow-ups / not yet done
 
-1. **Other steps in the `init` workflow may have the same class of race, unaudited.** The two bugs
-   found were in the DB bootstrap (migrations) and the `projects` row seed — both are "check state,
-   then act" patterns. `run-discovery-pipeline.ts`, hook installation
-   (`configureAgentIntegrations`/`platform.installHooks`), and the git branch/hook setup in
-   `ensure-git-branch-and-hooks.ts` were **not** stress-tested for concurrent-`init` safety. The
-   knowledge-branch side already has `acquireKnowledgeLock`, so it may already be safe — that
-   wasn't independently re-verified under load, only assumed from the existing lock's presence.
-2. **User raised a broader architectural idea**: a "single-flight" / leader-registration pattern —
-   under concurrency, one process does the real work and others just wait on the result, rather
-   than each racing to completion and one being discarded. Searched this repo's ADRs
-   (`docs/gitbook/adr/**`) and old Docuvia's docs for a prior write-up of this; no exact match
-   found — old Docuvia's closest analog was a **Postgres advisory lock** guarding orphan-branch
-   writes (`orphan-branch-r-w-protocol.md`), which doesn't port directly since Docuvia2 is
-   local-first SQLite with no Postgres server. The two fixes applied here are the file-lock /
-   `IMMEDIATE`-transaction equivalent of that idea, scoped narrowly to the two bugs found — not
-   the general-purpose mechanism the user described. If a broader single-flight layer across the
-   whole `init` command (not just DB writes) is wanted, that's still open for design.
+1. ~~Other steps in the `init` workflow may have the same class of race, unaudited.~~ **Resolved** —
+   a follow-up session's audit found exactly this ("check persisted state, then conditionally
+   mutate it, no lock around the pair") unprotected in three more places
+   (`KnowledgeGitService.ensureKnowledgeBranch()`'s `branchExists()` check, `installPostCommitHook()`'s
+   marker check, and `writeOrAppend()`'s check-then-append), and closed the whole class at once with
+   a coarse workspace-level single-flight lock around the entire `init` command — see
+   [PLAT-006](../gitbook/adr/platform/PLAT-006-init-single-flight-lock.md).
+2. ~~User raised a broader architectural idea: a "single-flight" / leader-registration pattern...~~
+   **Resolved, with a correction**: PLAT-006 adopted a single-flight _lock_ (not leader/follower
+   outcome-mirroring — a waiter reruns `init` itself under the lock rather than replaying another
+   process's result, relying on `init`'s existing idempotency to make the rerun a fast no-op).
+   PLAT-006 also flags that **this doc's original claim of a "Postgres advisory lock" /
+   `orphan-branch-r-w-protocol.md` precedent in old Docuvia was fabricated** — that filename and the
+   string "advisory lock" do not exist anywhere in this repo or old Docuvia's docs; do not cite it.
+   The real precedent, found later, was legacy ADR-027 ("Hook-Driven Thin Client"), though it turned
+   out to solve an orthogonal problem (non-conflicting parallel work notified via a shared hook, not
+   mutual exclusion over identical mutations).
 3. ~~The `docs/cli-test-analysis/init.md` source doc itself was not corrected.~~ **Done** — as part
    of the broader `docs/cli-test-analysis/` reorg (2026-07-15), the original speculative `init.md`
    was removed since this doc fully supersedes it. See [README.md](./README.md) for the

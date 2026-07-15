@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/ui-core",
+  "name": "@workspace/llm-api",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -17,8 +17,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@workspace/contracts": "workspace:^",
-    "@workspace/core": "workspace:^"
+    "@workspace/contracts": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "catalog:",

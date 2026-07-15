@@ -1,14 +1,16 @@
 ---
 id: LLM-001
 title: Multi-Provider LLM Abstraction Layer
-status: accepted
+status: superseded
 date: 2026-07-06
 domains: [llm]
 supersedes: [legacy/ADR-026]
-superseded_by: []
+superseded_by: [llm/LLM-002]
 ---
 
 # Multi-Provider LLM Abstraction Layer
+
+> **Superseded by [LLM-002](LLM-002-cliproxyapi-bridge.md)**: instead of building this in-house transport layer, Docuvia2 bridges to the self-hosted [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) proxy, which already implements multi-provider OAuth and normalization.
 
 ## Context
 

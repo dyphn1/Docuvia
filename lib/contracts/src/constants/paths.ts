@@ -28,5 +28,8 @@ export const SYNC_KNOWLEDGE_LOG_FILE_NAME = "sync-knowledge.log";
 /** Filename (relative to `DOCUVIA_DIR_NAME`) of the local SQLite database. */
 export const LOCAL_DB_FILE_NAME = "local.db";
 
+/** Filename (relative to `DOCUVIA_DIR_NAME`) of the whole-`init`-command single-flight lockfile (PLAT-006). */
+export const INIT_COMMAND_LOCK_FILE_NAME = "init.lock";
+
 /** Filename (relative to `DOCUVIA_DIR_NAME/DOCUVIA_LOGS_DIR_NAME`) of the `sync` content-hash dedup cache. */
 export const SYNC_STATE_FILE_NAME = "sync-state.json";

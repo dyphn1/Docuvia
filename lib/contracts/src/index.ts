@@ -72,6 +72,20 @@ export type {
   RemoteSyncClientConfig,
   IRemoteSyncClient,
 } from "./interfaces/remote-sync.interfaces.js";
+export type {
+  LlmClientConfig,
+  ChatMessageRole,
+  ChatToolCall,
+  ChatMessage,
+  ChatToolDefinition,
+  ChatCompletionRequest,
+  ChatCompletionChoice,
+  ChatCompletionResult,
+  ChatCompletionChunkDelta,
+  ChatCompletionChunkChoice,
+  ChatCompletionChunk,
+  ILlmClient,
+} from "./interfaces/llm-client.interfaces.js";
 export { RiskLevels } from "./interfaces/impact.interfaces.js";
 export type {
   RiskLevel,
@@ -130,9 +144,15 @@ export {
   SYNC_KNOWLEDGE_LOG_FILE_NAME,
   LOCAL_DB_FILE_NAME,
   SYNC_STATE_FILE_NAME,
+  INIT_COMMAND_LOCK_FILE_NAME,
 } from "./constants/paths.js";
 
 export { UTF8_ENCODING } from "./constants/encoding.js";
+export { acquireProcessLock } from "./utils/process-lock.js";
+export type {
+  ProcessLockOptions,
+  ProcessLockHandle,
+} from "./utils/process-lock.js";
 export { DiagnosticStatus } from "./interfaces/diagnostic.interfaces.js";
 export type {
   DiagnosticResult,

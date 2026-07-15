@@ -41,17 +41,33 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       return { created: false };
     }
 
-    const emptyDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), "docuvia-empty-knowledge-"),
-    );
-    try {
-      await this.packSnapshotToKnowledgeBranch(cwd, emptyDir, branchName);
-    } finally {
-      await fs.rm(emptyDir, { recursive: true, force: true });
-    }
+    return withKnowledgeBranchLock(this.git, cwd, async () => {
+      // Re-check inside the lock: another process may have created the branch between our
+      // pre-lock check above and acquiring the lock here (PLAT-006).
+      if (await this.git.branchExists(cwd, branchName)) {
+        this.logger.warn(
+          "Knowledge branch was created by a concurrent process; skipping duplicate initial commit",
+          { branchName },
+        );
+        return { created: false };
+      }
 
-    this.logger.info("Created hidden knowledge branch", { branchName });
-    return { created: true };
+      const emptyDir = await fs.mkdtemp(
+        path.join(os.tmpdir(), "docuvia-empty-knowledge-"),
+      );
+      try {
+        await this.packSnapshotToKnowledgeBranchLocked(
+          cwd,
+          emptyDir,
+          branchName,
+        );
+      } finally {
+        await fs.rm(emptyDir, { recursive: true, force: true });
+      }
+
+      this.logger.info("Created hidden knowledge branch", { branchName });
+      return { created: true };
+    });
   }
 
   /**
@@ -77,23 +93,36 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       return { installed: false };
     }
 
-    try {
-      await this.git.appendHookFile(
-        cwd,
-        hookName,
-        GitConstants.POST_COMMIT_HOOK_CONTENT,
-      );
-      await this.git.makeHookExecutable(cwd, hookName);
-    } catch (err) {
-      // Non-fatal to init — a broken hook write shouldn't fail the whole workflow.
-      this.logger.warn("Failed to install post-commit hook", {
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return { installed: false };
-    }
+    // Reuses the knowledge-branch lock (the existing cross-process mutex for git-state writes
+    // in this workspace, STOR-001) rather than a bespoke lockfile — the check above is a TOCTOU
+    // race between processes, so it's re-checked here inside the lock (PLAT-006).
+    return withKnowledgeBranchLock(this.git, cwd, async () => {
+      const recheckHook = await this.git.readHookFile(cwd, hookName);
+      if (recheckHook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER)) {
+        this.logger.warn(
+          "Post-commit hook was installed by a concurrent process; skipping duplicate append",
+        );
+        return { installed: false };
+      }
 
-    this.logger.info("Installed post-commit hook");
-    return { installed: true };
+      try {
+        await this.git.appendHookFile(
+          cwd,
+          hookName,
+          GitConstants.POST_COMMIT_HOOK_CONTENT,
+        );
+        await this.git.makeHookExecutable(cwd, hookName);
+      } catch (err) {
+        // Non-fatal to init — a broken hook write shouldn't fail the whole workflow.
+        this.logger.warn("Failed to install post-commit hook", {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return { installed: false };
+      }
+
+      this.logger.info("Installed post-commit hook");
+      return { installed: true };
+    });
   }
 
   /**
@@ -107,16 +136,27 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     sourceDir: string,
     branchName: string = GitConstants.KNOWLEDGE_ROOT,
   ): Promise<void> {
-    await withKnowledgeBranchLock(this.git, cwd, async () => {
-      const commitMessage = await this.buildSnapshotCommitMessage(cwd);
-      await this.git.packDirectoryToBranch(
-        cwd,
-        sourceDir,
-        branchName,
-        commitMessage,
-      );
-      this.logger.info("Packed snapshot onto knowledge branch", { branchName });
-    });
+    await withKnowledgeBranchLock(this.git, cwd, () =>
+      this.packSnapshotToKnowledgeBranchLocked(cwd, sourceDir, branchName),
+    );
+  }
+
+  /** Core of `packSnapshotToKnowledgeBranch`, without acquiring the lock itself — for callers
+   *  (`ensureKnowledgeBranch`) that already hold it, avoiding a same-process re-acquire deadlock
+   *  against the non-reentrant `acquireKnowledgeLock`. */
+  private async packSnapshotToKnowledgeBranchLocked(
+    cwd: string,
+    sourceDir: string,
+    branchName: string,
+  ): Promise<void> {
+    const commitMessage = await this.buildSnapshotCommitMessage(cwd);
+    await this.git.packDirectoryToBranch(
+      cwd,
+      sourceDir,
+      branchName,
+      commitMessage,
+    );
+    this.logger.info("Packed snapshot onto knowledge branch", { branchName });
   }
 
   /**

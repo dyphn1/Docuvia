@@ -84,7 +84,19 @@ export const docuviaApi = {
 
   async analyze(scopeId: string, logger: ILogger): Promise<AnalyzeResult> {
     const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
-    return new AnalyzeWorkflow(workspaceRoot, logger).execute();
+    const targetPath = docuviaMemory.get<string>(scopeId, "targetPath");
+    if (!targetPath) {
+      return new AnalyzeWorkflow(workspaceRoot, logger).execute();
+    }
+    const llmBaseUrl = requireMemory<string>(scopeId, "llmBaseUrl");
+    const llmModel = requireMemory<string>(scopeId, "llmModel");
+    const llmApiKey = docuviaMemory.get<string>(scopeId, "llmApiKey");
+    return new AnalyzeWorkflow(workspaceRoot, logger, {
+      targetPath,
+      llmBaseUrl,
+      llmApiKey,
+      llmModel,
+    }).execute();
   },
 
   async review(scopeId: string, logger: ILogger): Promise<ReviewResult> {

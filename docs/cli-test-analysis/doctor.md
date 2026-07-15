@@ -1,31 +1,18 @@
-# CLI Command Analysis: `doctor`
+# `doctor` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+Checked against `artifacts/cli/src/commands/doctor.ts`, `lib/ui-core/src/workflows/doctor/doctor-workflow.ts`,
+and `lib/schema/test/sqlite/diagnostic-runner.unit.test.ts`.
 
-**Concrete Evidence**: The hook verification logic manually checks `fs.stat(claudeHooksPath)`. The test mocks `fs.stat` to always resolve successfully (`{ size: 100 }`), but it never tests the branch where `fs.stat` rejects (file not found).
+| #   | Claim                                                          | Verdict              | Evidence                                                                                                                                                                                                                                    |
+| --- | -------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `fs.stat` rejection branch (hooks not found) never tested      | **Confirmed — open** | `doctor.unit.test.ts`'s `beforeEach` always mocks `fs.stat` to resolve `{size:100}`; the `.catch(() => null)` path (`doctor.ts:92-93`) driving `DOCTOR_CLAUDE_NOT_FOUND`/`DOCTOR_CURSOR_NOT_FOUND` is never exercised.                      |
+| 2   | Hardcoded English success messages                             | Overstated           | Accurate description, but no i18n framework exists anywhere in this codebase.                                                                                                                                                               |
+| 3   | Only 3 diagnostics tested, no 50+ rendering test               | Overstated           | The render loop (`doctor.ts:59-67`) is a plain `Object.entries()` iteration with no count-sensitive logic.                                                                                                                                  |
+| 4   | Conflicting skip combos (`all skips true`) untested            | Stale                | `doctor-workflow.unit.test.ts:28-37` tests `skipDb+skipGit+skipLogs=true` → `{allPassed:true, diagnostics:{}}`.                                                                                                                             |
+| 5   | Can't detect a corrupted physical SQLite DB                    | Overstated           | `diagnostic-runner.unit.test.ts:55-82` tests bad `integrity_check`/pragma-throw paths; `test/integration/commands/doctor.test.ts` runs a real on-disk DB end-to-end. Only literal byte-corruption (vs. mocked pragma response) is untested. |
+| 6   | `doctor` running concurrently with `hydrate` populating the DB | **Confirmed — open** | No test anywhere exercises this; same class of unaudited concurrency gap flagged as a follow-up in `init-concurrency-status.md`.                                                                                                            |
+| 7   | Idempotency / caching not tested                               | False                | `DoctorWorkflow` has no cache of any kind — it's a stateless recompute every call. The claim presumes a mechanism that doesn't exist.                                                                                                       |
 
-## 2. Missing Language Support
-
-**Concrete Evidence**: Asserts like `expect(ui.success).toHaveBeenCalledWith(expect.stringContaining("All diagnostics passed."))` rely heavily on hardcoded English text.
-
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: The mock returns exactly three diagnostics (`sqlite_integrity`, `git_reachability`, `logs`). It doesn't test UI rendering when there are 50+ diagnostics or deeply nested error details.
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-**Concrete Evidence**: The `options` object takes `skipDb`, `skipGit`, etc., but doesn't test conflicting combinations (e.g., what if all skips are true? Does it just do nothing?).
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Mocking `fs.stat` and `docuviaApi.doctor` means we never test if the doctor can actually detect a corrupted physical SQLite database.
-
-## 6. No Command Combination Checks
-
-Doesn't test running `doctor` while `hydrate` is populating the DB.
-
-## 7. No Consideration for Idempotency
-
-Running `doctor` twice is not tested. Does it use a cache? Does it take the same amount of time?
+**Open**: #1 (hooks `fs.stat` rejection branch — cheap to close), #6 (concurrent `doctor` + `hydrate` — unaudited, low priority).
+**Bugs observed**: None.
+**Tests run**: `doctor.unit.test.ts` (4/4), `test/integration/commands/doctor.test.ts` (1/1), `doctor-workflow.unit.test.ts` (14/14), `diagnostic-runner.unit.test.ts` (6/6) — all pass.

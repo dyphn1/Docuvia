@@ -76,6 +76,7 @@ describe("initCommand", () => {
     spinnerSucceed.mockReset();
     spinnerWarn.mockReset();
     spinnerFail.mockReset();
+    process.exitCode = undefined;
     Object.defineProperty(process.stdin, "isTTY", {
       value: false,
       configurable: true,
@@ -162,10 +163,17 @@ describe("initCommand", () => {
     mockInit.mockRejectedValue(new Error("boom"));
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await expect(initCommand()).rejects.toThrow("Exit 1");
+    await initCommand();
 
     expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("boom"));
+    // Regression guard: process.exit() terminates the process before a pending `finally` runs,
+    // which would silently skip docuviaMemory.deleteScope() — see docs/cli-test-analysis/
+    // README.md's "Bugs found during verification" #1. Must use process.exitCode instead, plus
+    // an explicit `return` so configureAgentIntegrations() doesn't run after a failed DB init.
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
+    expect(ClaudePlatform).not.toHaveBeenCalled();
   });
 
   it("rejects with a validation error before touching docuviaApi.init when cwd is an empty string", async () => {
@@ -270,13 +278,15 @@ describe("initCommand", () => {
         message: "Success",
       } as any);
 
-      await expect(
-        initCommand(process.cwd(), false, "notaplatform"),
-      ).rejects.toThrow("Exit 1");
+      await initCommand(process.cwd(), false, "notaplatform");
 
       expect(ui.error).toHaveBeenCalledWith(
         expect.stringContaining("Unknown --platform value"),
       );
+      // Regression guard: process.exit() risks a native crash on Windows while installHooks'
+      // own pending I/O is still closing — see the comment beside this call site in init.ts.
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
     });
 
     it("installs every platform when --platform is omitted (default behavior preserved)", async () => {

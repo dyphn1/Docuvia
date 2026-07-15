@@ -111,6 +111,9 @@ export const UI_MESSAGES = {
   UNINSTALL_HOOKS_SELECT:
     "Which AI Agent integrations would you like to uninstall?",
   UNINSTALL_KEEP_DB: "Skipping local database cleanup (--keep-db).",
+  UNINSTALL_INVALID_WORKSPACE_ROOT: "Workspace root must not be empty.",
+  UNINSTALL_PLATFORM_FAIL: "Failed to uninstall hooks for ",
+  UNINSTALL_PARTIAL: "Uninstall completed with failures: ",
 
   // Doctor Command
   DOCTOR_HEADER: "Docuvia Doctor Diagnostics",
@@ -147,6 +150,8 @@ export const UI_MESSAGES = {
   QUERY_UNKNOWN_STATUS: "unknown",
   QUERY_INCOMING_HEADER: "Incoming (callers/dependents)",
   QUERY_OUTGOING_HEADER: "Outgoing (dependencies)",
+  QUERY_INVALID_LIMIT:
+    "Ignoring invalid --limit value (must be a positive integer): ",
 
   // Export Topology Command
   EXPORT_START: "Exporting topology...",

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import process from "process";
+import { docuviaMemory } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import {
   queryCommand,
@@ -115,5 +116,27 @@ describe("queryCommand", () => {
 
     expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("boom"));
     expect(process.exitCode).toBe(1);
+  });
+
+  it("warns and ignores an invalid (negative) --limit instead of passing it through silently", async () => {
+    mockQuery.mockResolvedValue({ l2: null, l3: [], context: null });
+    const setSpy = vi.spyOn(docuviaMemory, "set");
+
+    await queryCommand("authService", { limit: -5 });
+
+    expect(ui.warn).toHaveBeenCalledWith(expect.stringContaining("-5"));
+    expect(setSpy).not.toHaveBeenCalledWith(expect.any(String), "limit", -5);
+  });
+
+  it("passes a valid --limit through to the memory scope unchanged", async () => {
+    mockQuery.mockResolvedValue({ l2: null, l3: [], context: null });
+    const setSpy = vi.spyOn(docuviaMemory, "set");
+
+    await queryCommand("authService", { limit: 5 });
+
+    expect(setSpy).toHaveBeenCalledWith(expect.any(String), "limit", 5);
+    expect(ui.warn).not.toHaveBeenCalledWith(
+      expect.stringContaining("Ignoring invalid --limit"),
+    );
   });
 });

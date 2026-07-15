@@ -118,6 +118,52 @@ describe("uninstallCommand", () => {
     expect(process.exitCode).toBe(1);
   });
 
+  it("rejects an empty workspaceRoot before touching any platform or docuviaApi.clean", async () => {
+    await uninstallCommand("", false);
+
+    expect(ui.error).toHaveBeenCalledWith(
+      expect.stringContaining("must not be empty"),
+    );
+    expect(process.exitCode).toBe(1);
+    expect(mockClean).not.toHaveBeenCalled();
+    expect(ClaudePlatform).not.toHaveBeenCalled();
+  });
+
+  it("still uninstalls the remaining platforms and still cleans the database when one platform's uninstallHooks throws", async () => {
+    mockClean.mockResolvedValue({
+      success: true,
+      partialFailure: false,
+      message: "Cleaned",
+    } as any);
+    vi.mocked(ClaudePlatform).mockImplementationOnce(
+      () =>
+        ({
+          name: "Claude",
+          slug: "claude",
+          uninstallHooks: vi
+            .fn()
+            .mockRejectedValue(new Error("EPERM: hook file locked")),
+        }) as any,
+    );
+
+    await uninstallCommand(process.cwd(), false);
+
+    const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
+    const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
+    const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock.results[0]
+      .value;
+
+    // The throwing platform is still attempted, and so are the others after it — previously a
+    // single platform's throw propagated straight to the outer catch, silently skipping both the
+    // remaining platforms in the loop and the database cleanup step below.
+    expect(claudeInstance.uninstallHooks).toHaveBeenCalled();
+    expect(cursorInstance.uninstallHooks).toHaveBeenCalled();
+    expect(markdownInstance.uninstallHooks).toHaveBeenCalled();
+    expect(mockClean).toHaveBeenCalled();
+    expect(ui.warn).toHaveBeenCalledWith(expect.stringContaining("Claude"));
+    expect(process.exitCode).toBe(1);
+  });
+
   describe("--platform selection", () => {
     it("uninstalls only the platforms named in the --platform flag", async () => {
       mockClean.mockResolvedValue({

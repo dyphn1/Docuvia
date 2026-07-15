@@ -1,31 +1,20 @@
-# CLI Command Analysis: `uninstall`
+# `uninstall` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+Checked against `artifacts/cli/src/commands/uninstall.ts`, `lib/ui-core/src/workflows/clean/clean-workflow.ts`,
+and `artifacts/cli/src/platforms/cursor.platform.ts`.
 
-**Concrete Evidence**: It verifies `uninstallHooks` is called, but doesn't test what happens if one platform's `uninstallHooks` throws an error—does it abort the database cleanup?
+| #   | Claim                                                                           | Verdict                            | Evidence                                                                                                                                                                                                                                                                                                                                            |
+| --- | ------------------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Doesn't test whether one platform's `uninstallHooks` throwing aborts DB cleanup | **Confirmed — fixed**              | See bug note below.                                                                                                                                                                                                                                                                                                                                 |
+| 2   | `expect.stringContaining("Unknown --platform value")` relies on English         | Overstated                         | The string is real (`cli-errors.ts:3-4`), but this is the same CLI-wide absence of i18n as every other command, not `uninstall`-specific.                                                                                                                                                                                                           |
+| 3   | Doesn't test partial deletion failures on locked files                          | Overstated                         | `clean-workflow.ts` only ever deletes a single file — there's no multi-file "partial deletion" concept. A locked-file failure is handled generically (wrapped `DocuviaError`), just not exercised by a dedicated test.                                                                                                                              |
+| 4   | No invalid `workspaceRoot` checks                                               | **Confirmed — fixed**              | `uninstallCommand(workspaceRoot: string, ...)` had no default and no validation, unlike `init.ts`/`sync.ts` which default to `process.cwd()`. Same class of gap as `init`'s claim #1. Fixed: now rejects an empty `workspaceRoot` up front with `UI_MESSAGES.UNINSTALL_INVALID_WORKSPACE_ROOT`, before touching any platform or `docuviaApi.clean`. |
+| 5   | Mocks bypass actual file deletion                                               | Stale                              | Real filesystem deletion is tested below the CLI-command layer: `clean-workflow.unit.test.ts:22-37` (real fs ops) and `cursor.platform.unit.test.ts:103-148` (real hook-file removal, including a graceful-rmdir-failure case).                                                                                                                     |
+| 6   | No test for uninstalling while another process writes to the DB                 | **Confirmed — open** (modest risk) | No lock/coordination exists in `clean-workflow.ts`'s `fs.unlink` call, and no test covers concurrent DB access during uninstall. A Windows `EBUSY` would surface as a wrapped error, not silent corruption.                                                                                                                                         |
+| 7   | No test for running uninstall twice (files already gone)                        | Overstated                         | No test literally runs it twice, but the underlying building blocks are proven idempotent-safe (`clean-workflow.unit.test.ts:39-49`, `cursor.platform.unit.test.ts:130`).                                                                                                                                                                           |
 
-## 2. Missing Language Support
+**Open**: #6 (concurrent DB write untested — modest risk, not yet fixed).
 
-**Concrete Evidence**: `expect(ui.warn).toHaveBeenCalledWith(expect.stringContaining("Unknown --platform value"))` relies on English.
+**Bug fixed (2026-07-15)**: `uninstall.ts:24-26`'s platform-uninstall loop had no per-platform try/catch. A throw from any platform's `uninstallHooks` propagated straight to the outer catch, which only warned and set `process.exitCode = 1`. This meant a single platform's hook-uninstall failure silently skipped **both** the remaining platforms in the loop **and** the database cleanup step, with only a generic top-level error message and no indication of which platforms/DB were left untouched. Fixed: each platform's `uninstallHooks` failure is now caught individually, logged (pino, with platform name + error) and warned to the user, and the loop continues to the remaining platforms; the database cleanup step always runs afterward regardless of platform failures; a final summary warning lists every failure, with `process.exitCode = 1` if anything failed. Regression test in `uninstall.unit.test.ts`: "still uninstalls the remaining platforms and still cleans the database when one platform's uninstallHooks throws".
 
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: Mock returns successful deletion. Doesn't test partial deletion failures on locked files.
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-No invalid `workspaceRoot` checks.
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Mocks bypass actual file deletion.
-
-## 6. No Command Combination Checks
-
-No test for uninstalling while another process is writing to the DB.
-
-## 7. No Consideration for Idempotency
-
-**Concrete Evidence**: No test for running uninstall twice (when files are already gone).
+**Tests run**: `uninstall.unit.test.ts` (8/8), `clean-workflow.unit.test.ts` (3/3), `cursor.platform.unit.test.ts` (9/9) — all pass.

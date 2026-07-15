@@ -1,11 +1,12 @@
 # `init` Concurrency Audit — Status (2026-07-14)
 
-Follow-up to [init.md](init.md)'s test-gap analysis. That doc's claims were verified against
-source and running tests; two claims turned out to be stale (already fixed elsewhere), one was
-overstated, and the concurrency gap (#6) turned out to be a real, reproducible crash — worse than
-"untested". This doc records where that work landed and what's still open.
+Follow-up to `init.md`'s original test-gap analysis (that file has since been removed — its
+claims are fully superseded by the verification below). Those claims were checked against source
+and running tests; two turned out to be stale (already fixed elsewhere), one was overstated, and
+the concurrency gap (#6) turned out to be a real, reproducible crash — worse than "untested". This
+doc records where that work landed and what's still open.
 
-## What was verified against `init.md`
+## What was verified against the original `init.md` claims
 
 | #   | Claim                                                             | Verdict                                                                                                                  |
 | --- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -79,9 +80,10 @@ stress test were clean after the fix.
    `IMMEDIATE`-transaction equivalent of that idea, scoped narrowly to the two bugs found — not
    the general-purpose mechanism the user described. If a broader single-flight layer across the
    whole `init` command (not just DB writes) is wanted, that's still open for design.
-3. **The `docs/cli-test-analysis/init.md` source doc itself was not corrected.** Claims #2, #3, #7
-   in that file are stale or wrong as written (see table above) — worth updating so a future reader
-   doesn't re-investigate already-closed gaps or trust a fabricated code reference (`UI_MESSAGES.INIT_SUCCESS`).
+3. ~~The `docs/cli-test-analysis/init.md` source doc itself was not corrected.~~ **Done** — as part
+   of the broader `docs/cli-test-analysis/` reorg (2026-07-15), the original speculative `init.md`
+   was removed since this doc fully supersedes it. See [README.md](./README.md) for the
+   all-commands status table produced by that same reorg.
 4. **Test pollution cleanup**: during manual reproduction, one command accidentally ran `docuvia
 init` against the real `artifacts/cli` directory instead of a temp sandbox, creating
    `.claude/`, `.cursor/`, `.github/`, `CLAUDE.md`, `.cursorrules`, `.windsurfrules`, `llms.txt`.

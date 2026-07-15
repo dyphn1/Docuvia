@@ -117,6 +117,12 @@ export async function queryCommand(
   const queryTarget = await resolveQueryTarget(target);
   const isPromptFormat = options.format === "prompt";
 
+  let limit = options.limit;
+  if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
+    ui.warn(UI_MESSAGES.QUERY_INVALID_LIMIT + limit);
+    limit = undefined;
+  }
+
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   let spinner: ReturnType<typeof ui.spinner> | undefined;
@@ -132,7 +138,7 @@ export async function queryCommand(
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, "workspaceRoot", cwd);
   docuviaMemory.set(scopeId, "target", queryTarget);
-  if (options.limit) docuviaMemory.set(scopeId, "limit", options.limit);
+  if (limit !== undefined) docuviaMemory.set(scopeId, "limit", limit);
 
   let result: LocalQueryResult;
   try {

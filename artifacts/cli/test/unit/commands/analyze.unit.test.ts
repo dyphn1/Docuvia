@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import process from "process";
+import { docuviaMemory } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { analyzeCommand } from "../../../src/commands/analyze.js";
 import { ui } from "../../../src/ui/wizard.js";
@@ -73,11 +74,18 @@ describe("analyzeCommand", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it("calls spinner.fail when docuviaApi.analyze() throws", async () => {
+  it("calls spinner.fail and still deletes the memory scope when docuviaApi.analyze() throws", async () => {
     mockAnalyze.mockRejectedValue(new Error("boom"));
+    const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await expect(analyzeCommand()).rejects.toThrow("Exit 1");
+    await analyzeCommand();
 
     expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("boom"));
+    // Regression guard: process.exit() terminates the process before a pending `finally` runs,
+    // which would silently skip docuviaMemory.deleteScope() — see docs/cli-test-analysis/
+    // README.md's "Bugs found during verification" #1. Must use process.exitCode instead.
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+    expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

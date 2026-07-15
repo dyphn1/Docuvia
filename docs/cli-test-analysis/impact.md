@@ -1,31 +1,18 @@
-# CLI Command Analysis: `impact`
+# `impact` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+Checked against `artifacts/cli/src/commands/impact.ts`, `lib/ui-core/src/workflows/impact/impact-workflow.ts`,
+`lib/core/src/impact/impact.service.ts`, and `lib/schema/src/sqlite/repos/graph-repo.ts`.
 
-**Concrete Evidence**: The `printBlastRadius` function uses `console.log` and `ui.error` based on risk levels. The test verifies `spinnerSucceed` is called, but it doesn't mock `console.log` to verify that the dependent modules are actually printed to the screen.
+| #   | Claim                                                                                      | Verdict               | Evidence                                                                                                                                                                                                                                                   |
+| --- | ------------------------------------------------------------------------------------------ | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Test checks `spinnerSucceed` but never verifies `console.log` prints the dependent modules | **Confirmed — fixed** | `impact.unit.test.ts` only asserted `spinnerSucceed`; no `console.log` spy existed. The per-entry print loop in `impact.ts:25-27` is now asserted.                                                                                                         |
+| 2   | Hardcoded `"Risk level: "` breaks if localized                                             | False                 | No i18n system exists in this codebase; `IMPACT_RISK_PREFIX` is plain English by design.                                                                                                                                                                   |
+| 3   | Mock returns 1 entry; doesn't test console output at 2,000 impacted files                  | Overstated            | `printBlastRadius` is a trivial for-loop with no size-dependent branch — 2000 items exercise the same code path as 1.                                                                                                                                      |
+| 4   | No test for regex-injection string or extremely long target names                          | False                 | Target is never used as a regex. `findNodeByName` (`graph-repo.ts:180-196`) uses parameterized SQL plus explicit LIKE-metacharacter escaping before a `LIKE ... ESCAPE '\\'` query — both SQL and LIKE-wildcard injection are already prevented by design. |
+| 5   | Mocking `docuviaApi.impact` means no real AST-resolution testing                           | False                 | `impact.service.unit.test.ts` uses a real temp `GraphStore` (real SQLite), exercising real node/edge resolution — 7/7 passing.                                                                                                                             |
+| 6   | No test for `impact` running while `sync-knowledge` updates the graph                      | Overstated            | `impact` opens the store `readonly: true`, and WAL mode (ADR-032) is specifically designed so readers see a consistent snapshot during concurrent writes — an architectural guarantee, not a demonstrated risk.                                            |
+| 7   | No test checks if the impact query caches results                                          | False                 | No caching layer exists anywhere in `ImpactWorkflow`/`ImpactService` — every call re-queries from scratch by design. The claim presupposes a feature that was never built.                                                                                 |
 
-## 2. Missing Language Support
-
-**Concrete Evidence**: Hardcoded English like `"Risk level: "` is used directly in `printBlastRadius`. Tests will fail if localized.
-
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: The mock returns `blastRadius: [{ name: "caller", type: "module" }]`. It doesn't test the console output when 2,000 files are impacted.
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-**Concrete Evidence**: The test checks empty target `""`, but doesn't check passing a regex injection string or extremely long target names.
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Since it's mocked, we don't test if actual AST resolution fails to find the symbol.
-
-## 6. No Command Combination Checks
-
-No test for running `impact` while `sync-knowledge` is updating the graph.
-
-## 7. No Consideration for Idempotency
-
-No test checks if the impact query caches results for immediate subsequent runs.
+**Open**: none — closed 2026-07-15.
+**Bugs observed**: None.
+**Tests run**: `impact.unit.test.ts` (4/4), `impact-workflow.unit.test.ts` (3/3), `impact.service.unit.test.ts` (7/7, real SQLite) — all pass.

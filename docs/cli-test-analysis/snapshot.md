@@ -1,31 +1,20 @@
-# CLI Command Analysis: `snapshot`
+# `snapshot` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+Checked against `artifacts/cli/src/commands/snapshot.ts`, `lib/core/src/git/snapshot-renderer.service.ts`,
+and `lib/libgit2/src/libgit2-provider.ts`.
 
-**Concrete Evidence**: Logger `onLog` event updating `spinner.text` is unverified in tests.
+| #   | Claim                                                 | Verdict               | Evidence                                                                                                                                                                                                                                                                                                 |
+| --- | ----------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Logger `onLog` → `spinner.text` update unverified     | **Confirmed — fixed** | `snapshot.ts:15-17` wires `logger.onLog` to `spinner.text`; `snapshot.unit.test.ts` never asserted on `spinner.text`. Test added.                                                                                                                                                                        |
+| 2   | `stringContaining("3 nodes")` hardcodes English       | False                 | No i18n exists anywhere in the repo.                                                                                                                                                                                                                                                                     |
+| 3   | 3-file mock vs. 10,000-file/fd-limit scenario         | Overstated            | `SnapshotRendererService` already uses `pLimit(MARKDOWN_WRITE_CONCURRENCY)` specifically to bound concurrent fs writes and avoid fd exhaustion — the claimed risk is already engineered against.                                                                                                         |
+| 4   | Read-only directory not tested                        | **Confirmed — open**  | No test simulates an EACCES/EROFS write failure for the snapshot temp-dir render or the knowledge-branch pack step.                                                                                                                                                                                      |
+| 5   | Mock bypasses actual file writing                     | Overstated            | True at the CLI-test level, but `SnapshotWorkflow.unit.test.ts` exercises the full render→pack orchestration against a real contract, and `libgit2-provider.integration.test.ts` exercises real file writes/git packing end-to-end.                                                                      |
+| 6   | No test for concurrent snapshots                      | Overstated            | `packSnapshotToKnowledgeBranch` already holds a real cross-process file lock (`acquireKnowledgeLock`/`releaseKnowledgeLock`, same shape that fixed init's concurrency bug) via `withKnowledgeBranchLock`, and that lock-hold behavior is unit-tested. No stress test exists, but the mitigation is real. |
+| 7   | Running snapshot twice — overwrite or fail unverified | Stale                 | `libgit2-provider.integration.test.ts:338` directly answers this: it overwrites (wholesale tree replace) while preserving history as a parent commit.                                                                                                                                                    |
 
-## 2. Missing Language Support
+**Open**: #4 (read-only directory untested).
 
-**Concrete Evidence**: `expect.stringContaining("3 nodes")` hardcodes English grammar.
+**Bug fixed (2026-07-15)**: `snapshotCommand`'s catch block called `process.exit(1)` (`snapshot.ts:33`) **before** the `finally` block that calls `docuviaMemory.deleteScope(scopeId)` (line 35). `process.exit()` terminates the process immediately and does not unwind through pending `finally` blocks — verified with a minimal repro. So on every real-world error, the memory-scope cleanup never actually ran. The existing test mocked `process.exit` to throw instead of truly exiting, which let `finally` run under the mock and masked this — a false-positive test. Fixed by switching to `process.exitCode = 1` (matching `review`'s existing correct pattern); `snapshot.unit.test.ts` now asserts `process.exit` is never called and `deleteScope` still ran. Same bug class also existed in `status`, `clean`, `hydrate`, `sync-knowledge`, and `analyze` — all fixed together, see [README.md](./README.md)'s "Bugs found and fixed" #1.
 
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: Mocking 3 files written vs testing a real scenario where 10,000 markdown files are generated, which tests Node.js `fs` file descriptor limits.
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-**Concrete Evidence**: Doesn't test running in a read-only directory.
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Mock bypasses actual file writing.
-
-## 6. No Command Combination Checks
-
-No test for concurrent snapshots.
-
-## 7. No Consideration for Idempotency
-
-**Concrete Evidence**: Running `snapshot` twice. Does it overwrite or fail? Unverified.
+**Tests run**: `snapshot.unit.test.ts` (3/3), `snapshot-workflow.unit.test.ts` (3/3), `knowledge-git.service.unit.test.ts` (22/22), `libgit2-provider.integration.test.ts` (24/24) — all pass.

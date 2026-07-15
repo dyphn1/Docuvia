@@ -79,6 +79,24 @@ export class QueryService implements IQueryService {
   }
 
   search(store: IGraphStore, target: string, limit = 10): LocalSearchResult[] {
+    // An invalid `limit` (negative, zero, non-integer, NaN) must not silently produce
+    // inconsistent results: the FTS path below binds it straight into SQL `LIMIT ?`, where
+    // SQLite treats a negative value as "unlimited", while the neighbor path uses
+    // `Array.prototype.slice(0, limit)`, where a negative value truncates from the end instead —
+    // two different, silently wrong behaviors from the same bad input. Normalize once here so
+    // every caller (CLI, MCP server, tests) gets the same safe behavior regardless of call site.
+    if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
+      this.logger.warn(
+        "Ignoring invalid query limit, falling back to default",
+        {
+          target,
+          invalidLimit: limit,
+          fallback: 10,
+        },
+      );
+      limit = 10;
+    }
+
     const merged = new Map<string, ScoredResult>();
     const put = (result: ScoredResult): void => {
       const key = `${result.layer}:${result.id}`;

@@ -1,31 +1,20 @@
-# CLI Command Analysis: `query`
+# `query` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+Checked against `artifacts/cli/src/commands/query.ts`, `lib/ui-core/src/workflows/query/query-workflow.ts`,
+`lib/core/src/query/query.service.ts`, and `lib/schema/src/sqlite/repos/fts-repo.ts`.
 
-**Concrete Evidence**: The interactive prompt `ui.askInput` in `resolveQueryTarget` is barely tested for edge cases (e.g., what if the user hits Ctrl+C?). The test also lacks assertions on `printHumanResults` UI formatting calls.
+| #   | Claim                                                                                    | Verdict               | Evidence                                                                                                                                                                                                                                   |
+| --- | ---------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `ui.askInput`/Ctrl+C path barely tested; lacks `printHumanResults` formatting assertions | **Confirmed — open**  | `query.unit.test.ts`'s `ui` mock doesn't even define `askInput` — the entire interactive TTY branch of `resolveQueryTarget` (`query.ts:92-109`, including the Ctrl+C/empty-input exit path) is completely untested, not just "barely."     |
+| 2   | English XML tags in `formatPromptOutput` break if localized                              | False                 | No i18n system exists; XML tags/labels are fixed by design, not translatable content.                                                                                                                                                      |
+| 3   | Tiny mocks; a 1,000-caller node could produce an oversized LLM prompt, untested          | **Confirmed — open**  | `formatPromptOutput` (`query.ts:14-54`) has no truncation/size cap on `incoming`/`outgoing`/`l3` — it unconditionally iterates the full arrays. No guard exists anywhere in the stack.                                                     |
+| 4   | No test for invalid `limit` (negative/NaN)                                               | **Confirmed — fixed** | `cli.ts:106` does `Number(limitRaw)` with zero validation. `QueryService.search()`'s `.slice(0, limit)` behaved inconsistently with the FTS path's `LIMIT ?` binding (SQLite treats a negative `LIMIT` as unlimited) — see bug note below. |
+| 5   | Mocks bypass actual database queries                                                     | Overstated            | Real DB queries are tested — `query.service.unit.test.ts` uses a real temp SQLite store, and FTS search is integration-tested in `graph-store.integration.test.ts:456-476,609-623`.                                                        |
+| 6   | Doesn't test running queries while the DB is being hydrated                              | Overstated            | `query` also opens readonly; same WAL-mode architectural guarantee as `impact` #6 — no demonstrated risk.                                                                                                                                  |
+| 7   | No test that memory scope is cleaned up after repeated queries                           | **Confirmed — open**  | Unlike `hydrate.unit.test.ts`/`impact.unit.test.ts` (both spy on `docuviaMemory.deleteScope`), `query.unit.test.ts` never imports `docuviaMemory` at all — scope cleanup on success or failure is completely unverified.                   |
 
-## 2. Missing Language Support
+**Open**: #1 (interactive Ctrl+C path entirely untested), #3 (no size guard on prompt output), #7 (no scope-cleanup verification).
 
-**Concrete Evidence**: `formatPromptOutput` uses English XML tags `<docuvia_context>`. While XML tags usually aren't translated, the UI output assertions rely on English strings.
+**Bug fixed (2026-07-15)**: A negative `--limit` used to yield **unlimited** results from the FTS-backed path (`LIMIT -N` in SQLite) but a **truncated-to-near-empty** result from the name-ref/neighbor path (`Array.prototype.slice(0, negative)`), inside the same `search()` call (`lib/core/src/query/query.service.ts`). Fixed by normalizing an invalid `limit` (non-integer, ≤ 0, `NaN`) to the default of 10 in `QueryService.search()` itself — so every caller (CLI, MCP server, tests) gets the same safe behavior regardless of call site — with a logged warning. `query.ts` additionally warns the user directly (`UI_MESSAGES.QUERY_INVALID_LIMIT`) and doesn't forward an invalid `--limit` into `docuviaMemory`. Regression tests: `query.service.unit.test.ts`'s "search() limit validation" block and two new cases in `query.unit.test.ts`.
 
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: `l3` and `context` mocks are tiny arrays. If a node has 1,000 callers, `formatPromptOutput` might generate a prompt too large for an LLM, but this is not tested.
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-**Concrete Evidence**: No test for passing an invalid `limit` option (e.g., negative numbers or NaN).
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Mocks bypass actual database queries.
-
-## 6. No Command Combination Checks
-
-Does not test running queries while the DB is being hydrated.
-
-## 7. No Consideration for Idempotency
-
-Queries should be idempotent, but there are no tests ensuring that memory scope is perfectly cleaned up after 100 consecutive queries in the same process.
+**Tests run**: `query.unit.test.ts` (7/7), `query-workflow.unit.test.ts` (2/2), `query.service.unit.test.ts` (12/12, real SQLite) — all pass.

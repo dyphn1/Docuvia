@@ -1,31 +1,18 @@
-# CLI Command Analysis: `hydrate`
+# `hydrate` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+Checked against `artifacts/cli/src/commands/hydrate.ts`, `lib/ui-core/src/workflows/hydrate/hydrate-workflow.ts`,
+`lib/core/src/git/hydration.service.ts`, and `lib/schema/src/sqlite/graph-store.integration.test.ts`.
 
-**Concrete Evidence**: The `spinner.text` update via `logger.onLog` is never triggered or asserted in the unit test.
+| #   | Claim                                                                   | Verdict               | Evidence                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ----------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `spinner.text` update via `logger.onLog` never triggered/asserted       | **Confirmed — fixed** | None of the tests in `hydrate.unit.test.ts` invoked the `logger.onLog` callback or read `spinner.text`; `hydrate.ts:15-17` wires it but it was a dead path in tests. Test added.                                                                                                                                                                             |
+| 2   | i18n: hardcoded "dangling edge" string breaks if translated             | False                 | No i18n/locale infrastructure exists anywhere in the CLI; `UI_MESSAGES` is plain hardcoded English by design.                                                                                                                                                                                                                                                |
+| 3   | No test for 500k-node hydration / spinner blocking the event loop       | Overstated            | The CLI layer is a thin caller; the actual bulk-load cost is scale-tested at the correct layer — `graph-store.integration.test.ts:627` "restores 100,000 nodes in under 10 seconds" (real SQLite, passing).                                                                                                                                                  |
+| 4   | No test for a read-permission-denied directory                          | Overstated            | Any thrown error already hits the same generic catch-and-`spinner.fail` path, which **is** tested; only the specific error-message wording is untested.                                                                                                                                                                                                      |
+| 5   | Mocking `docuviaApi.hydrate` means no real libgit2/SQLite-write testing | False                 | Real libgit2 ops are integration-tested in `libgit2-provider.integration.test.ts`; real SQLite writes are covered in `graph-store.integration.test.ts:522-660`.                                                                                                                                                                                              |
+| 6   | No concurrent-`hydrate` coverage                                        | **Confirmed — open**  | No stress test exists for concurrent `hydrate`. `HydrateWorkflow` opens the store non-readonly, so it goes through the same `acquireInitLock` path fixed for `init`, but the `bulkLoadGraph` wholesale-replace write step was never independently stress-tested — matches the exact "unaudited" caveat flagged in `init-concurrency-status.md`'s follow-ups. |
+| 7   | No idempotency test (does a 2nd run return immediately?)                | **Confirmed — open**  | `HydrationService.hydrate()` (`hydration.service.ts:112-156`) has no staleness short-circuit — it unconditionally re-reads git and re-runs `bulkLoadGraph` every call. Output is idempotent (same data), but there's no "already up to date, skip" fast path or test for it.                                                                                 |
 
-## 2. Missing Language Support
-
-**Concrete Evidence**: The test uses `expect.stringContaining("dangling edge")`. This will fail if the message is translated to another language.
-
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: The mock returns `nodesLoaded: 3, edgesLoaded: 2`. It does not test CLI behavior during a massive hydration of 500,000 nodes that might take 10 minutes (e.g., does the spinner animate correctly without blocking the event loop?).
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-**Concrete Evidence**: No test verifies what happens if the CLI is run in a directory completely lacking read permissions.
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Mocking `docuviaApi.hydrate` means we don't test the actual Libgit2 binding failures or SQLite write errors that occur in reality.
-
-## 6. No Command Combination Checks
-
-No test for concurrent `hydrate` calls, which could corrupt the SQLite DB or result in SQLITE_BUSY.
-
-## 7. No Consideration for Idempotency
-
-**Concrete Evidence**: If `hydrate` is run twice, does the second run return immediately? The test doesn't simulate or assert this.
+**Open**: #6 (hydrate-specific concurrency unaudited), #7 (no fast-path/test for repeat hydration).
+**Bugs observed**: The shared `process.exit()`/`finally` bug also affected `hydrate` — fixed, see [README.md](./README.md)'s "Bugs found and fixed" #1. #6/#7 don't rise to incorrect behavior — #6 is unverified-not-confirmed-broken; #7 is a missing optimization, not a correctness bug.
+**Tests run**: `hydrate.unit.test.ts` (5/5), `hydrate-workflow.unit.test.ts` (3/3), `hydration.service.unit.test.ts` (13/13), `graph-store.integration.test.ts` (23/23) — all pass.

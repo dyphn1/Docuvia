@@ -1,31 +1,18 @@
-# CLI Command Analysis: `sync-knowledge`
+# `sync-knowledge` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+Checked against `artifacts/cli/src/commands/sync-knowledge.ts`, `lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts`,
+and `lib/core/src/git/knowledge-git.service.ts`.
 
-**Concrete Evidence**: The test covers `no-remote`, `merged`, `up-to-date`, but completely misses the `fast-forwarded-local` and `pushed-local` branches defined in `STATUS_MESSAGES`.
+| #   | Claim                                                                                       | Verdict               | Evidence                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Test covers `no-remote`/`merged`/`up-to-date`, misses `fast-forwarded-local`/`pushed-local` | **Confirmed — fixed** | `sync-knowledge.ts:14-20` defines all 5 `STATUS_MESSAGES` entries, but `sync-knowledge.unit.test.ts` only exercised 3 of them (plus a reject case). Two tests added covering the `fast-forwarded-local`/`pushed-local` branches. |
+| 2   | `expect.stringContaining("Merged")` hardcoded English                                       | Overstated            | True as stated, but universal across this CLI — no i18n framework exists anywhere.                                                                                                                                               |
+| 3   | Doesn't test CLI behavior on an actual git merge conflict/divergence                        | False                 | Divergence/reconciliation logic is thoroughly tested at the correct layer (`knowledge-git.service.unit.test.ts:369,431`). The CLI test mocking `docuviaApi.syncKnowledge` is the right boundary.                                 |
+| 4   | Doesn't test running in a non-git directory                                                 | Overstated            | Functionally covered: `libgit2-provider.ts:310-322`'s real `getRemoteUrl()` swallows any failure (non-git dir included) and returns `undefined`, the same path already tested as the "no-remote" case.                           |
+| 5   | Mocks bypass actual libgit2 operations                                                      | Overstated            | True for the CLI unit test by design; real libgit2 calls are exercised in `knowledge-git.service.unit.test.ts` (22 passing tests).                                                                                               |
+| 6   | No test for syncing while impact analysis is running                                        | Confirmed (low risk)  | No such test exists; `sync-knowledge` opens no DB, so risk is low, but genuinely untested.                                                                                                                                       |
+| 7   | No idempotency test for running sync twice when already up to date                          | Stale                 | `knowledge-git.service.unit.test.ts:254` "is up-to-date when local and remote tips already match" directly covers this.                                                                                                          |
 
-## 2. Missing Language Support
-
-**Concrete Evidence**: `expect.stringContaining("Merged")` is hardcoded.
-
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: The mock returns a simple status string. It doesn't test the CLI behavior when a Git merge conflict actually occurs.
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-Doesn't test running in a non-git directory.
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Mocks bypass actual libgit2 operations.
-
-## 6. No Command Combination Checks
-
-No test for syncing while impact analysis is running.
-
-## 7. No Consideration for Idempotency
-
-No test for running sync twice when already up to date.
+**Open**: none — closed 2026-07-15.
+**Bugs observed**: None (aside from the shared `process.exit()`/`finally` bug also present in this command, fixed — see [README.md](./README.md)'s "Bugs found and fixed" #1).
+**Tests run**: `sync-knowledge.unit.test.ts` (6/6), `sync-knowledge-workflow.unit.test.ts` (2/2), `knowledge-git.service.unit.test.ts` (22/22) — all pass.

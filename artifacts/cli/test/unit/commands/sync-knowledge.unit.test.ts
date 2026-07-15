@@ -37,6 +37,7 @@ describe("syncKnowledgeCommand", () => {
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
     spinnerWarn.mockReset();
+    process.exitCode = undefined;
   });
 
   afterEach(() => {
@@ -79,15 +80,44 @@ describe("syncKnowledgeCommand", () => {
     );
   });
 
+  it("reports success for a fast-forwarded-local result", async () => {
+    mockSyncKnowledge.mockResolvedValue({
+      status: "fast-forwarded-local",
+      branchTipSha: "sha-2",
+    });
+
+    await syncKnowledgeCommand();
+
+    expect(spinnerSucceed).toHaveBeenCalled();
+    expect(spinnerFail).not.toHaveBeenCalled();
+  });
+
+  it("reports success for a pushed-local result", async () => {
+    mockSyncKnowledge.mockResolvedValue({
+      status: "pushed-local",
+      branchTipSha: "sha-3",
+    });
+
+    await syncKnowledgeCommand();
+
+    expect(spinnerSucceed).toHaveBeenCalled();
+    expect(spinnerFail).not.toHaveBeenCalled();
+  });
+
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.syncKnowledge() throws", async () => {
     mockSyncKnowledge.mockRejectedValue(new Error("lock timeout"));
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await expect(syncKnowledgeCommand()).rejects.toThrow("Exit 1");
+    await syncKnowledgeCommand();
 
     expect(spinnerFail).toHaveBeenCalledWith(
       expect.stringContaining("lock timeout"),
     );
+    // Regression guard: process.exit() terminates the process before a pending `finally` runs,
+    // which would silently skip docuviaMemory.deleteScope() — see docs/cli-test-analysis/
+    // README.md's "Bugs found during verification" #1. Must use process.exitCode instead.
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

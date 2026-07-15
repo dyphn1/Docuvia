@@ -38,6 +38,7 @@ describe("cleanCommand", () => {
     mockClean.mockReset();
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
+    process.exitCode = undefined;
     Object.defineProperty(process.stdin, "isTTY", {
       value: false,
       configurable: true,
@@ -82,9 +83,14 @@ describe("cleanCommand", () => {
     mockClean.mockRejectedValue(new Error("boom"));
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await expect(cleanCommand()).rejects.toThrow("Exit 1");
+    await cleanCommand();
 
     expect(spinnerFail).toHaveBeenCalledWith(expect.stringContaining("boom"));
+    // Regression guard: process.exit() terminates the process before a pending `finally` runs,
+    // which would silently skip docuviaMemory.deleteScope() — see docs/cli-test-analysis/
+    // README.md's "Bugs found during verification" #1. Must use process.exitCode instead.
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

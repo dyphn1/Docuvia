@@ -1,31 +1,20 @@
-# CLI Command Analysis: `sync`
+# `sync` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+Checked against `artifacts/cli/src/commands/sync.ts`, `lib/ui-core/src/workflows/sync/sync-workflow.ts`,
+`lib/ui-core/src/workflows/sync/sync-state.ts`, and `lib/remote-api/src/fetch-remote-sync-client.ts`.
 
-**Concrete Evidence**: The `readStdin()` function reads from `process.stdin`, but there are no tests that actually pipe a large mock payload into stdin to verify it works correctly.
+| #   | Claim                                                             | Verdict                                    | Evidence                                                                                                                                                                                                                                                                        |
+| --- | ----------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | `readStdin()` never exercised with a real piped payload           | **Confirmed — open**                       | Every test in `sync.unit.test.ts` either passes `commitSha` explicitly or hits the TTY branch, short-circuiting before `readStdin()` (`sync.ts:11-20`) is ever called. The function is entirely untested.                                                                       |
+| 2   | `expect.stringContaining("Synced 2")` hardcoded English           | Overstated                                 | Same systemic caveat — no i18n framework exists anywhere in this CLI.                                                                                                                                                                                                           |
+| 3   | Doesn't simulate 500 skipped files with "detailed warnings"       | False                                      | No per-file warning mechanism exists to test — `SyncResult`/`SYNC_MESSAGES` only ever carry an aggregate `skipped` count in a single message string.                                                                                                                            |
+| 4   | Doesn't check behavior for an invalid `commitSha` format          | **Confirmed — open** (low severity)        | No format validation exists anywhere in `sync.ts`/`sync-workflow.ts` — `commitSha` is passed straight to `git.getFilesChangedByCommit()`. Any resulting error would propagate through the existing generic catch, not crash, but it's untested.                                 |
+| 5   | Mocks bypass network; "Undici" connection-reset handling untested | Overstated / mischaracterized              | The client uses Node's native global `fetch`, not `undici` directly. Every fetch failure is caught and wrapped as `DocuviaError` (`fetch-remote-sync-client.ts:53-107`), proven against a real HTTP server in `fetch-remote-sync-client.integration.test.ts` (6 passing tests). |
+| 6   | No test for concurrent syncs                                      | **Confirmed — open, and a real bug found** | See below.                                                                                                                                                                                                                                                                      |
+| 7   | No idempotency test for re-syncing the same commit SHA            | Stale                                      | `sync-workflow.unit.test.ts:368-426` pre-seeds `sync-state.json` with an already-synced content hash and asserts the re-sync is a no-op.                                                                                                                                        |
 
-## 2. Missing Language Support
+**Open**: #1 (`readStdin` untested), #4 (no invalid-`commitSha`-format test).
 
-**Concrete Evidence**: `expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("Synced 2"))` is hardcoded English.
+**Bug fixed (2026-07-15)**: `sync-state.ts:23-41`'s `loadSyncState()`/`saveSyncState()` did a plain read-modify-write of `.docuvia/logs/sync-state.json` with **no file lock** — unlike the knowledge-branch side, which has `acquireKnowledgeLock`. Two concurrent `docuvia sync` invocations could both load the same dedup state, and the second writer's save would silently clobber the first's update, losing a `syncedContentHashes` entry. Same "check-state-then-act without a lock" pattern as the `init` migration/projects-row race documented in [init-concurrency-status.md](./init-concurrency-status.md). Fixed with a cross-process file lock, `withSyncStateLock` (same shape as `init`'s `acquireInitLock`), wrapping the load→mutate→push→save cycle in `sync-workflow.ts`. Regression test: `sync-state.unit.test.ts`'s "serializes concurrent load-mutate-save cycles instead of racing" reproduces the race with two concurrent writers and asserts both updates survive.
 
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: Mock returns `{ synced: 2, skipped: 0 }`. Doesn't simulate handling 500 skipped files with detailed warnings.
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-**Concrete Evidence**: Does not check behavior if `commitSha` is an invalid format.
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Mocks bypass actual network requests. We don't test if Undici handles connection resets properly without crashing the CLI.
-
-## 6. No Command Combination Checks
-
-No test for concurrent syncs.
-
-## 7. No Consideration for Idempotency
-
-No test for re-syncing the same commit SHA.
+**Tests run**: `sync.unit.test.ts` (5/5), `sync-workflow.unit.test.ts` (5/5), `sync-state.unit.test.ts` (5/5, new), `fetch-remote-sync-client.integration.test.ts` (6/6) — all pass.

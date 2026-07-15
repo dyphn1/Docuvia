@@ -3,6 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { GraphStore } from "@workspace/schema";
+import { createMockLogger } from "@workspace/contracts";
 import { QueryService } from "./query.service.js";
 
 describe("QueryService", () => {
@@ -141,6 +142,60 @@ describe("QueryService", () => {
 
       expect(result.l2).toEqual({ name: "authService" });
       expect(result.context).toBeNull();
+    });
+  });
+
+  describe("search() limit validation", () => {
+    // Regression test for a real bug: an invalid `limit` used to produce two different, silently
+    // wrong behaviors in the same call — the FTS path binds it straight into SQL `LIMIT ?`, where
+    // SQLite treats a negative value as "unlimited", while the neighbor path used
+    // `Array.prototype.slice(0, limit)`, where a negative value truncates from the end instead.
+    function seedHubWithNeighbors(count: number): void {
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "hub",
+        pathPatterns: ["src/hub.ts"],
+      });
+      for (let i = 0; i < count; i++) {
+        const neighborId = store.graph.insertNode({
+          projectId,
+          name: `neighbor-${i}`,
+          pathPatterns: [`src/n${i}.ts`],
+        });
+        store.graph.insertLink({
+          sourceNodeId: targetId,
+          targetNodeId: neighborId,
+          linkType: "calls",
+        });
+      }
+    }
+
+    it.each([-5, NaN, 2.5, 0])(
+      "treats an invalid limit (%p) the same as the default (10) instead of silently misbehaving",
+      (invalidLimit) => {
+        seedHubWithNeighbors(15);
+
+        const defaultResult = queryService.search(store, "hub", 10);
+        const invalidResult = queryService.search(store, "hub", invalidLimit);
+
+        expect(invalidResult).toEqual(defaultResult);
+      },
+    );
+
+    it("logs a warning when falling back from an invalid limit", () => {
+      seedHubWithNeighbors(3);
+      const logger = createMockLogger();
+      const loggedService = new QueryService(logger);
+
+      loggedService.search(store, "hub", -1);
+
+      expect(logger.events).toContainEqual(
+        expect.objectContaining({
+          level: "warn",
+          message: expect.stringContaining("Ignoring invalid query limit"),
+          context: expect.objectContaining({ invalidLimit: -1, fallback: 10 }),
+        }),
+      );
     });
   });
 });

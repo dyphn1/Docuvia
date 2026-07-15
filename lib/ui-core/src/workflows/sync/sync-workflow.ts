@@ -8,7 +8,11 @@ import {
 } from "@workspace/contracts";
 import { SYNC_MESSAGES } from "./sync-messages.js";
 import { appendSyncLogLine } from "./sync-log-writer.js";
-import { loadSyncState, saveSyncState } from "./sync-state.js";
+import {
+  loadSyncState,
+  saveSyncState,
+  withSyncStateLock,
+} from "./sync-state.js";
 import type { SyncResult } from "./sync-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 
@@ -116,80 +120,92 @@ export class SyncWorkflow {
         Array.from(changedFilesSet),
       );
 
-      const syncState = await loadSyncState(workspaceRoot);
-      const projectState = syncState[projectId] ?? { syncedContentHashes: [] };
-      const syncedHashes = new Set(projectState.syncedContentHashes);
+      // The load→mutate→save cycle below races against any other `docuvia sync` process
+      // touching the same workspace's sync-state.json — held for the push call too, since the
+      // decision of what's "newly synced" is only valid under the lock that guards the save.
+      const result = await withSyncStateLock(
+        workspaceRoot,
+        async (): Promise<SyncResult> => {
+          const syncState = await loadSyncState(workspaceRoot);
+          const projectState = syncState[projectId] ?? {
+            syncedContentHashes: [],
+          };
+          const syncedHashes = new Set(projectState.syncedContentHashes);
 
-      const events: SyncPushEvent[] = [];
-      const newlySyncedHashes: string[] = [];
-      let skippedL2Count = 0;
+          const events: SyncPushEvent[] = [];
+          const newlySyncedHashes: string[] = [];
+          let skippedL2Count = 0;
 
-      for (const { l2Node, l3Nodes } of candidates) {
-        const remoteL2Id = nameToRemoteId.get(l2Node.name);
-        if (remoteL2Id === undefined) {
-          skippedL2Count++;
-          continue;
-        }
+          for (const { l2Node, l3Nodes } of candidates) {
+            const remoteL2Id = nameToRemoteId.get(l2Node.name);
+            if (remoteL2Id === undefined) {
+              skippedL2Count++;
+              continue;
+            }
 
-        for (const l3 of l3Nodes) {
-          if (l3.content_hash && syncedHashes.has(l3.content_hash)) continue;
+            for (const l3 of l3Nodes) {
+              if (l3.content_hash && syncedHashes.has(l3.content_hash))
+                continue;
 
-          events.push({
-            type: "CREATE_L3",
-            payload: {
-              l2NodeId: remoteL2Id,
-              title: l3.title,
-              content: l3.content,
-              nodeType: l3.node_type as SyncPushEvent["payload"]["nodeType"],
-              confidence: l3.confidence,
-              sourceCommits: l3.source_commits
-                ? JSON.parse(l3.source_commits)
-                : undefined,
-              contentHash: l3.content_hash,
-            },
-          });
+              events.push({
+                type: "CREATE_L3",
+                payload: {
+                  l2NodeId: remoteL2Id,
+                  title: l3.title,
+                  content: l3.content,
+                  nodeType:
+                    l3.node_type as SyncPushEvent["payload"]["nodeType"],
+                  confidence: l3.confidence,
+                  sourceCommits: l3.source_commits
+                    ? JSON.parse(l3.source_commits)
+                    : undefined,
+                  contentHash: l3.content_hash,
+                },
+              });
 
-          if (l3.content_hash) newlySyncedHashes.push(l3.content_hash);
-        }
-      }
+              if (l3.content_hash) newlySyncedHashes.push(l3.content_hash);
+            }
+          }
 
-      if (events.length === 0) {
-        const message = SYNC_MESSAGES.NOTHING_NEW(skippedL2Count);
-        const result: SyncResult = {
-          synced: 0,
-          skipped: skippedL2Count,
-          message,
-        };
-        await appendSyncLogLine(workspaceRoot, {
-          event: "sync.summary",
-          projectId,
-          ...result,
-        });
-        return result;
-      }
+          if (events.length === 0) {
+            return {
+              synced: 0,
+              skipped: skippedL2Count,
+              message: SYNC_MESSAGES.NOTHING_NEW(skippedL2Count),
+            };
+          }
 
-      let pushResult;
-      try {
-        pushResult = await remoteSyncClient.pushSyncEvents(projectId, events);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        await appendSyncLogLine(workspaceRoot, {
-          event: "sync.error",
-          projectId,
-          message,
-        });
-        throw err;
-      }
+          let pushResult;
+          try {
+            pushResult = await remoteSyncClient.pushSyncEvents(
+              projectId,
+              events,
+            );
+          } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            await appendSyncLogLine(workspaceRoot, {
+              event: "sync.error",
+              projectId,
+              message,
+            });
+            throw err;
+          }
 
-      projectState.syncedContentHashes = Array.from(
-        new Set([...syncedHashes, ...newlySyncedHashes]),
+          projectState.syncedContentHashes = Array.from(
+            new Set([...syncedHashes, ...newlySyncedHashes]),
+          );
+          syncState[projectId] = projectState;
+          await saveSyncState(workspaceRoot, syncState);
+
+          const synced = pushResult.processed ?? events.length;
+          return {
+            synced,
+            skipped: skippedL2Count,
+            message: SYNC_MESSAGES.SYNCED(synced, skippedL2Count),
+          };
+        },
       );
-      syncState[projectId] = projectState;
-      await saveSyncState(workspaceRoot, syncState);
 
-      const synced = pushResult.processed ?? events.length;
-      const message = SYNC_MESSAGES.SYNCED(synced, skippedL2Count);
-      const result: SyncResult = { synced, skipped: skippedL2Count, message };
       await appendSyncLogLine(workspaceRoot, {
         event: "sync.summary",
         projectId,

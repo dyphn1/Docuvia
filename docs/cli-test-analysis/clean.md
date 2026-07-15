@@ -1,31 +1,20 @@
-# CLI Command Analysis: `clean`
+# `clean` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+The original 7 speculative claims for this command were checked against the actual source
+(`artifacts/cli/src/commands/clean.ts`, `lib/ui-core/src/workflows/clean/clean-workflow.ts`) and
+tests (`clean.unit.test.ts`, `clean-workflow.unit.test.ts`, `docuvia-memory.unit.test.ts`). Most
+were stale or overstated; one real gap remains.
 
-**Concrete Evidence**: While `docuviaApi.clean` is mocked, the test doesn't verify if `docuviaMemory.set(scopeId, "workspaceRoot", cwd)` properly unregisters on a successful run beyond a simple `deleteScopeSpy` count.
+| #   | Claim                                                     | Verdict              | Evidence                                                                                                                                                                                  |
+| --- | --------------------------------------------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Memory-scope unregister only checked via a spy call count | Stale                | `docuvia-memory.unit.test.ts:48-56` already proves `deleteScope()` clears all values; `clean.unit.test.ts:58-66` confirms it's called once per run.                                       |
+| 2   | `UI_MESSAGES.CLEAN_SUCCESS` fragile if translated         | Overstated           | The constant exists (`ui-messages.ts:50`), but no i18n framework exists anywhere in this CLI — there is nothing to translate against.                                                     |
+| 3   | No test for a 5GB DB / partial deletion failure           | Overstated           | `CleanWorkflow.execute()` does one `fs.unlink(dbPath)` — an atomic syscall with no size-dependent or partial-deletion branching to test.                                                  |
+| 4   | Invalid/non-existent `cwd` not tested                     | Confirmed (benign)   | Untested, but tracing the code shows a missing dir just resolves to `exists=false` → "No local database found to clean." No crash risk.                                                   |
+| 5   | Windows `EBUSY` file-lock not tested                      | **Confirmed — open** | `clean-workflow.ts:42-50` wraps `fs.unlink` in try/catch → wrapped `DocuviaError`, but no test ever makes `fs.unlink` throw. Only "exists→deleted" and "doesn't exist" paths are covered. |
+| 6   | Background `sync` holding a DB lock not tested            | Overstated           | Same code path as #5 (any locked-file failure hits the same catch); not a distinct gap.                                                                                                   |
+| 7   | No idempotency test (clean on an already-clean repo)      | Stale                | `clean-workflow.unit.test.ts:39-49` "reports deleted:false when no database exists" directly covers this.                                                                                 |
 
-## 2. Missing Language Support
-
-**Concrete Evidence**: Asserts like `expect(spinnerSucceed).toHaveBeenCalledWith(expect.stringContaining("Cleaned"))` will break if `UI_MESSAGES.CLEAN_SUCCESS` is translated.
-
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: The mock returns `{ deleted: true, message: "Cleaned .docuvia/local.db database." }`. It doesn't test what happens if the database is 5GB and takes 30 seconds to clean, nor does it test partial deletion failures.
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-**Concrete Evidence**: There are no tests for passing an invalid `cwd` path that doesn't exist.
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Since the actual file deletion in `docuviaApi.clean` is mocked, the test doesn't verify if the CLI properly handles Windows file-lock (`EBUSY`) errors.
-
-## 6. No Command Combination Checks
-
-If a background `sync` is holding a lock on the database, the test doesn't check if `clean` gracefully aborts or crashes.
-
-## 7. No Consideration for Idempotency
-
-**Concrete Evidence**: There is no test to verify the behavior when running `clean` on an already clean repository (e.g., should it say "Nothing to clean"?).
+**Open**: #5 — the `fs.unlink` failure/`EBUSY` catch branch is real, untested code.
+**Bugs observed**: None.
+**Tests run**: `clean.unit.test.ts` (3/3 pass), `clean-workflow.unit.test.ts` (3/3 pass).

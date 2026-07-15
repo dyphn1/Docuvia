@@ -32,7 +32,9 @@ export async function statusCommand(cwd: string = process.cwd()) {
         ? error.message
         : String(error);
     spinner.fail(UI_MESSAGES.STATUS_FAIL + message);
-    process.exit(1);
+    // process.exitCode (not process.exit()) — process.exit() terminates before the `finally`
+    // below runs, silently skipping the memory-scope cleanup.
+    process.exitCode = 1;
   } finally {
     docuviaMemory.deleteScope(scopeId);
   }

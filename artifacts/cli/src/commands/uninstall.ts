@@ -13,6 +13,14 @@ export async function uninstallCommand(
   platformFilter?: string,
   keepDb: boolean = false,
 ): Promise<void> {
+  if (!workspaceRoot) {
+    ui.error(UI_MESSAGES.UNINSTALL_INVALID_WORKSPACE_ROOT);
+    process.exitCode = 1;
+    return;
+  }
+
+  const logger = createPinoBackedLogger();
+
   try {
     ui.header(UI_MESSAGES.UNINSTALL_HEADER);
     ui.info(UI_MESSAGES.UNINSTALL_START);
@@ -21,15 +29,32 @@ export async function uninstallCommand(
       UI_MESSAGES.UNINSTALL_HOOKS_SELECT,
       platformFilter,
     );
+
+    // Each platform is uninstalled independently: one platform's hook-removal failure must not
+    // silently skip the remaining platforms, nor the database cleanup below — previously it did
+    // (a single throw here propagated straight to the outer catch), leaving the workspace in an
+    // unknown partial state with no indication of what succeeded.
+    const failures: string[] = [];
     for (const platform of selectedPlatforms) {
-      await platform.uninstallHooks(workspaceRoot, allowGlobalMcpConfig);
+      try {
+        await platform.uninstallHooks(workspaceRoot, allowGlobalMcpConfig);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        logger.warn(`uninstallHooks failed for platform "${platform.name}"`, {
+          platform: platform.name,
+          error: message,
+        });
+        ui.warn(
+          UI_MESSAGES.UNINSTALL_PLATFORM_FAIL + platform.name + ": " + message,
+        );
+        failures.push(platform.name);
+      }
     }
 
     if (keepDb) {
       ui.info(UI_MESSAGES.UNINSTALL_KEEP_DB);
     } else {
       const scopeId = crypto.randomUUID();
-      const logger = createPinoBackedLogger();
 
       docuviaMemory.createScope(scopeId);
       docuviaMemory.set(scopeId, "workspaceRoot", workspaceRoot);
@@ -42,16 +67,23 @@ export async function uninstallCommand(
           error instanceof DocuviaError || error instanceof Error
             ? error.message
             : String(error);
+        logger.warn("uninstall's database cleanup failed", { error: message });
         ui.warn(UI_MESSAGES.UNINSTALL_FAIL_CLEAN + message);
-        throw error;
+        failures.push("local database cleanup");
       } finally {
         docuviaMemory.deleteScope(scopeId);
       }
     }
 
-    ui.success(UI_MESSAGES.UNINSTALL_SUCCESS);
+    if (failures.length > 0) {
+      ui.warn(UI_MESSAGES.UNINSTALL_PARTIAL + failures.join(", "));
+      process.exitCode = 1;
+    } else {
+      ui.success(UI_MESSAGES.UNINSTALL_SUCCESS);
+    }
   } catch (e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e);
+    logger.error("uninstall failed", { error: errorMessage });
     ui.warn(UI_MESSAGES.UNINSTALL_FAIL + errorMessage);
     process.exitCode = 1;
   }

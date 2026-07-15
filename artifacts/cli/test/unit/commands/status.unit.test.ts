@@ -43,6 +43,7 @@ describe("statusCommand", () => {
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
     vi.mocked(ui.info).mockReset();
+    process.exitCode = undefined;
   });
 
   afterEach(() => {
@@ -55,6 +56,7 @@ describe("statusCommand", () => {
     await statusCommand();
 
     expect(spinnerSucceed).toHaveBeenCalled();
+    expect(ui.header).toHaveBeenCalled();
     expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("1"));
     expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("5"));
     expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("12"));
@@ -66,11 +68,17 @@ describe("statusCommand", () => {
     );
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await expect(statusCommand()).rejects.toThrow("Exit 1");
+    await statusCommand();
 
     expect(spinnerFail).toHaveBeenCalledWith(
       expect.stringContaining("docuvia init"),
     );
+    // Regression guard: process.exit() terminates the process before a pending `finally` runs,
+    // which would silently skip docuviaMemory.deleteScope() — this was a real, previously
+    // unfixed bug (see docs/cli-test-analysis/README.md's "Bugs found during verification" #1).
+    // Must use process.exitCode instead.
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

@@ -57,11 +57,16 @@ describe("impactCommand", () => {
       blastRadius: [{ name: "caller", type: "module" }],
       riskLevel: "MEDIUM",
     });
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await impactCommand("target");
 
     expect(mockImpact).toHaveBeenCalled();
     expect(spinnerSucceed).toHaveBeenCalled();
+    // Closes docs/cli-test-analysis/impact.md #1 — the blast-radius print loop was previously
+    // unasserted, so a broken console.log() there would have gone unnoticed.
+    expect(logSpy).toHaveBeenCalledWith(expect.stringContaining("caller"));
+    logSpy.mockRestore();
   });
 
   it("warns when no matching node is found (docuviaApi.impact() resolves null)", async () => {

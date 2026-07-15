@@ -35,6 +35,7 @@ describe("snapshotCommand", () => {
     mockSnapshot.mockReset();
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
+    process.exitCode = undefined;
   });
 
   afterEach(() => {
@@ -59,17 +60,37 @@ describe("snapshotCommand", () => {
     );
   });
 
+  it("updates spinner.text as the workflow logger emits info events", async () => {
+    // Closes docs/cli-test-analysis/snapshot.md #1 — the logger.onLog -> spinner.text wiring
+    // (snapshot.ts) was previously never exercised by a test.
+    mockSnapshot.mockImplementation(async (_scopeId, logger) => {
+      logger.info("Rendering markdown files...");
+      return { nodesWritten: 3, edgesWritten: 2, markdownFilesWritten: 3 };
+    });
+
+    await snapshotCommand();
+
+    const spinnerInstance = vi.mocked(ui.spinner).mock.results[0].value;
+    expect(spinnerInstance.text).toBe("Rendering markdown files...");
+  });
+
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.snapshot() throws", async () => {
     mockSnapshot.mockRejectedValue(
       new Error('Local database not found. Please run "docuvia init".'),
     );
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await expect(snapshotCommand()).rejects.toThrow("Exit 1");
+    await snapshotCommand();
 
     expect(spinnerFail).toHaveBeenCalledWith(
       expect.stringContaining("docuvia init"),
     );
+    // Regression guard: process.exit() terminates the process before a pending `finally` runs,
+    // which would silently skip docuviaMemory.deleteScope() — this was a real, previously
+    // unfixed bug (see docs/cli-test-analysis/README.md's "Bugs found during verification" #1).
+    // Must use process.exitCode instead.
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

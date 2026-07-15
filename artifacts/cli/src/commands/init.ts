@@ -80,7 +80,9 @@ async function configureAgentIntegrations(
     ui.info(UI_MESSAGES.INIT_HOOKS_SUPPORTED);
   } catch (error) {
     ui.error(UI_MESSAGES.INIT_HOOKS_FAIL + error);
-    process.exit(1);
+    // process.exitCode (not process.exit()) — an immediate exit here can crash natively on
+    // Windows while installHooks' own pending file/network I/O is still closing.
+    process.exitCode = 1;
   }
 }
 
@@ -110,8 +112,12 @@ export async function initCommand(
     await runDatabaseInit(input.cwd);
   } catch {
     // runDatabaseInit already reported the failure (spinner.fail) and deleted its memory
-    // scope in its own finally before this catch sees the rethrown error.
-    process.exit(1);
+    // scope in its own finally before this catch sees the rethrown error. process.exitCode
+    // (not process.exit()) plus an explicit `return` — process.exit() risks a native crash on
+    // Windows while I/O is still closing; `return` is what actually stops
+    // configureAgentIntegrations() from running after a failed DB init.
+    process.exitCode = 1;
+    return;
   }
 
   await configureAgentIntegrations(

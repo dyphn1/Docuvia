@@ -1,31 +1,18 @@
-# CLI Command Analysis: `review`
+# `review` — Verified Test-Gap Status (2026-07-15)
 
-## 1. Incomplete Functionality
+Checked against `artifacts/cli/src/commands/review.ts`, `lib/ui-core/src/workflows/review/review-workflow.ts`,
+and `lib/libgit2/src/libgit2-provider.ts`.
 
-**Concrete Evidence**: `console.log("Files changed: " + result.filesChanged.length)` is not asserted in the tests. We don't know if the output is actually printed correctly.
+| #   | Claim                                                              | Verdict                             | Evidence                                                                                                                                                                                                                                         |
+| --- | ------------------------------------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `console.log("Files changed: ...")` not asserted in tests          | **Confirmed — fixed**               | `review.ts:34`; `review.unit.test.ts` only asserted `mockReview` called + `spinnerSucceed` called, never inspecting `console.log` output. Test added.                                                                                            |
+| 2   | `stringContaining("docuvia init")` breaks under localization       | False                               | No i18n/l10n framework exists anywhere in the repo.                                                                                                                                                                                              |
+| 3   | Mock uses one small file; 500-file/binary-file PR payload untested | **Confirmed — open** (low severity) | `review.unit.test.ts:47` uses a 1-file mock; no large/binary-file scenario exists at CLI level, though `ReviewWorkflow` has no scale/binary special-casing that would actually break.                                                            |
+| 4   | No test for malformed `baseRef` (e.g. `-invalid-branch`)           | False                               | `libgit2-provider.ts:374-381` deliberately uses `--end-of-options` to make a flag-like `baseRef` safe, and `libgit2-provider.integration.test.ts:293` directly tests a flag-like `baseRef` (`--upload-pack=/bin/sh`) resolving without throwing. |
+| 5   | Review crashes on Git "detached HEAD" error                        | False                               | `git diff --name-status` doesn't error on detached HEAD, and genuine git failures are silently swallowed by a catch-all in `getChangedFilesSince` — no crash path exists.                                                                        |
+| 6   | No test for review during a Git merge in progress                  | Overstated                          | Same catch-all swallows any git-diff failure; `git diff` behaves normally during an in-progress merge.                                                                                                                                           |
+| 7   | Idempotency (running review twice) untested                        | Overstated                          | `review` is strictly read-only — nothing for an idempotency test to actually verify.                                                                                                                                                             |
 
-## 2. Missing Language Support
-
-**Concrete Evidence**: The test asserts `expect.stringContaining("docuvia init")`. Localization breaks this.
-
-## 3. Lack of Project Complexity
-
-**Concrete Evidence**: The mock uses `[{ file: "src/a.ts", status: "modified" }]`. In a real PR review, there could be 500 changed files, including binary files. The test doesn't simulate this payload.
-
-## 4. Incomplete Parameter & I/O Checks (Must test ALL parameters, inputs, outputs, and supported possibilities)
-
-**Concrete Evidence**: No test for passing a malformed `baseRef` (e.g., `-invalid-branch`).
-
-**Crucial Rule**: We MUST check ALL parameters, ALL inputs and outputs, and ALL supported possibilities for this command. The current tests only scratch the surface and fail to exhaustively verify the command behavior across different configurations and edge cases.
-
-## 5. No Compilation Scenarios
-
-Since API is mocked, it doesn't test if the review command crashes when Git throws a detached HEAD error.
-
-## 6. No Command Combination Checks
-
-No test for running review while a Git merge is in progress.
-
-## 7. No Consideration for Idempotency
-
-Running review twice on the same unmodified branch is not tested.
+**Open**: #3 (large/binary payload untested, low real risk).
+**Bugs observed**: None. `reviewCommand` correctly uses `process.exitCode = 1` (not `process.exit()`), so its `finally` block reliably runs — the correct pattern (contrast with `snapshot`/`status`).
+**Tests run**: `review.unit.test.ts` (2/2), `review-workflow.unit.test.ts` (3/3), `libgit2-provider.integration.test.ts` (24/24, includes the malformed-baseRef regression test) — all pass.

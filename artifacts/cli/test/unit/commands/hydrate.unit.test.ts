@@ -3,6 +3,7 @@ import process from "process";
 import { docuviaMemory } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { hydrateCommand } from "../../../src/commands/hydrate.js";
+import { ui } from "../../../src/ui/wizard.js";
 
 vi.mock("@workspace/ui-core", () => ({
   docuviaApi: { hydrate: vi.fn() },
@@ -37,6 +38,7 @@ describe("hydrateCommand", () => {
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
     spinnerWarn.mockReset();
+    process.exitCode = undefined;
   });
 
   afterEach(() => {
@@ -79,6 +81,26 @@ describe("hydrateCommand", () => {
     );
   });
 
+  it("updates spinner.text as the workflow logger emits info events", async () => {
+    // Closes docs/cli-test-analysis/hydrate.md #1 — the logger.onLog -> spinner.text wiring
+    // (hydrate.ts) was previously never exercised by a test.
+    mockHydrate.mockImplementation(async (_scopeId, logger) => {
+      logger.info("Scanning workspace files...");
+      return {
+        hydrated: true,
+        knowledgeSha: "abc1234",
+        nodesLoaded: 3,
+        edgesLoaded: 2,
+        edgesDropped: 0,
+      };
+    });
+
+    await hydrateCommand();
+
+    const spinnerInstance = vi.mocked(ui.spinner).mock.results[0].value;
+    expect(spinnerInstance.text).toBe("Scanning workspace files...");
+  });
+
   it("warns instead of succeeding when there's nothing to hydrate from yet", async () => {
     mockHydrate.mockResolvedValue({
       hydrated: false,
@@ -99,11 +121,16 @@ describe("hydrateCommand", () => {
     );
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await expect(hydrateCommand()).rejects.toThrow("Exit 1");
+    await hydrateCommand();
 
     expect(spinnerFail).toHaveBeenCalledWith(
       expect.stringContaining("docuvia init"),
     );
+    // Regression guard: process.exit() terminates the process before a pending `finally` runs,
+    // which would silently skip docuviaMemory.deleteScope() — see docs/cli-test-analysis/
+    // README.md's "Bugs found during verification" #1. Must use process.exitCode instead.
+    expect(exitSpy).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 });

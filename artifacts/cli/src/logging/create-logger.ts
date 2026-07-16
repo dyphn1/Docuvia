@@ -29,6 +29,7 @@ const PINO_REDACT_PATHS = [
   "*.*.OPENAI_API_KEY",
 ] as const;
 const PINO_REDACT_CENSOR = "[REDACTED]";
+const DOCUVIA_PRETTY_LOGS_ENABLED_VALUE = "1";
 
 /**
  * Every destination writes to stderr (fd 2), never stdout — `docuvia mcp` uses stdout
@@ -36,7 +37,8 @@ const PINO_REDACT_CENSOR = "[REDACTED]";
  * message), and a stray stdout write from any log level would corrupt that stream.
  */
 function buildTransport() {
-  const wantsPretty = process.env.DOCUVIA_PRETTY_LOGS === "1";
+  const wantsPretty =
+    process.env.DOCUVIA_PRETTY_LOGS === DOCUVIA_PRETTY_LOGS_ENABLED_VALUE;
   if (!wantsPretty) return undefined;
   try {
     // Resolve eagerly so a broken/unresolvable pino-pretty fails fast into the catch

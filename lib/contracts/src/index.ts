@@ -190,6 +190,7 @@ export {
 } from "./constants/paths.js";
 
 export { UTF8_ENCODING } from "./constants/encoding.js";
+export { GIT_DEFAULT_REMOTE_NAME } from "./constants/git-conventions.js";
 export { acquireProcessLock } from "./utils/process-lock.js";
 export type {
   ProcessLockOptions,

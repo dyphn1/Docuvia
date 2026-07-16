@@ -21,6 +21,9 @@ import {
 import { UTF8_ENCODING } from "@workspace/contracts";
 import { writeOrAppend } from "../utils/fs-utils.js";
 
+const HOOK_JS_EXTENSION = ".js";
+const HOOK_CJS_EXTENSION = ".cjs";
+
 export class CursorPlatform extends BasePlatform {
   readonly name = PLATFORM_NAME_CURSOR;
   readonly slug = PLATFORM_SLUG_CURSOR;
@@ -47,7 +50,7 @@ export class CursorPlatform extends BasePlatform {
     let cursorHooksConfig = HOOKS_JSON.replace(
       /\${HOOKS_DIR}/g,
       CURSOR_PLUGIN_HOOKS_DIR,
-    ).replace(".js", ".cjs");
+    ).replace(HOOK_JS_EXTENSION, HOOK_CJS_EXTENSION);
     await writeOrAppend(
       path.join(cursorHooksPath, HOOKS_CONFIG_FILENAME),
       cursorHooksConfig,
@@ -107,7 +110,7 @@ export class CursorPlatform extends BasePlatform {
       if (
         content.trim() ===
         HOOKS_JSON.replace(/\$\{HOOKS_DIR\}/g, CURSOR_PLUGIN_HOOKS_DIR)
-          .replace(".js", ".cjs")
+          .replace(HOOK_JS_EXTENSION, HOOK_CJS_EXTENSION)
           .trim()
       ) {
         await fs.unlink(hooksJsonPath);

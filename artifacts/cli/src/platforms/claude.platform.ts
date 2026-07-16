@@ -23,19 +23,29 @@ import {
 import { UTF8_ENCODING } from "@workspace/contracts";
 import { writeOrAppend } from "../utils/fs-utils.js";
 
+const NODE_PLATFORM_WIN32 = "win32";
+const NODE_PLATFORM_DARWIN = "darwin";
+const MACOS_LIBRARY_DIR = "Library";
+const MACOS_APPLICATION_SUPPORT_DIR = "Application Support";
+const XDG_CONFIG_DIR = ".config";
+
 function resolveClaudeDesktopConfigDir(): string {
-  if (process.platform === "win32") {
+  if (process.platform === NODE_PLATFORM_WIN32) {
     return path.join(process.env.APPDATA || "", PLATFORM_NAME_CLAUDE);
   }
-  if (process.platform === "darwin") {
+  if (process.platform === NODE_PLATFORM_DARWIN) {
     return path.join(
       process.env.HOME || "",
-      "Library",
-      "Application Support",
+      MACOS_LIBRARY_DIR,
+      MACOS_APPLICATION_SUPPORT_DIR,
       PLATFORM_NAME_CLAUDE,
     );
   }
-  return path.join(process.env.HOME || "", ".config", PLATFORM_NAME_CLAUDE);
+  return path.join(
+    process.env.HOME || "",
+    XDG_CONFIG_DIR,
+    PLATFORM_NAME_CLAUDE,
+  );
 }
 
 export class ClaudePlatform extends BasePlatform {

@@ -1,9 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const RUST_EXTENSIONS = [".rs"];
+const RUST_WASM_FILE = "tree-sitter-rust.wasm";
+
 export const rustConfig: LanguageConfig = {
-  extensions: [".rs"],
-  wasm_file: "tree-sitter-rust.wasm",
+  extensions: RUST_EXTENSIONS,
+  wasm_file: RUST_WASM_FILE,
   imports: ["use_declaration"],
   classes: ["struct_item", "enum_item", "union_item", "trait_item"],
   functions: ["function_item"],

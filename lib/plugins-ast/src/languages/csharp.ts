@@ -1,9 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const CSHARP_EXTENSIONS = [".cs"];
+const CSHARP_WASM_FILE = "tree-sitter-c_sharp.wasm";
+
 export const csharpConfig: LanguageConfig = {
-  extensions: [".cs"],
-  wasm_file: "tree-sitter-c_sharp.wasm",
+  extensions: CSHARP_EXTENSIONS,
+  wasm_file: CSHARP_WASM_FILE,
   imports: ["using_directive"],
   classes: [
     "class_declaration",

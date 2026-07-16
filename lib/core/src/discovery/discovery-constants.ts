@@ -14,10 +14,96 @@ export const ProjectTypes = {
   UNKNOWN: "unknown",
   JAVASCRIPT: "javascript",
   GENERIC: "generic",
+  RUST: "rust",
+  PYTHON: "python",
+  GO: "go",
 } as const;
 
 /** Fallback tag added when config-file scanning surfaces nothing more specific. */
 export const GENERAL_TAG = "general";
+
+/**
+ * Non-sentinel tags `CONFIG_DETECTION_RULES` attaches to a matched config file. Unlike
+ * `ConfigTags`, none of these are read back/compared elsewhere in `ConfigScannerService` — they're
+ * pure output — but several are reused verbatim across multiple detection rules in the same table,
+ * so they're still centralized here to keep those repeats in sync.
+ */
+export const ConfigDetectionTags = {
+  FRONTEND: "frontend",
+  BACKEND: "backend",
+  NEXTJS: "nextjs",
+  SSR: "ssr",
+  DRIZZLE: "drizzle",
+  DATABASE: "database",
+  TAILWINDCSS: "tailwindcss",
+  CSS: "css",
+  JEST: "jest",
+  TESTING: "testing",
+  VITEST: "vitest",
+  POSTGRES: "postgres",
+  MONOREPO: "monorepo",
+  TOKIO: "tokio",
+  ASYNC: "async",
+  ACTIX: "actix",
+  SERDE: "serde",
+  TAURI: "tauri",
+  DESKTOP: "desktop",
+  DJANGO: "django",
+  FASTAPI: "fastapi",
+  PANDAS: "pandas",
+  DATA: "data",
+  GIN: "gin",
+  STRICT_TS: "strict-ts",
+  VITE: "vite",
+  BUILD_TOOL: "build-tool",
+} as const;
+
+/** Stable ids for each entry in `CONFIG_DETECTION_RULES`, looked up by id in its unit tests. */
+export const ConfigRuleIds = {
+  PACKAGE_JSON_TYPESCRIPT: "package.json:typescript",
+  PACKAGE_JSON_REACT: "package.json:react",
+  PACKAGE_JSON_VUE: "package.json:vue",
+  PACKAGE_JSON_NEXT: "package.json:next",
+  PACKAGE_JSON_EXPRESS: "package.json:express",
+  PACKAGE_JSON_DRIZZLE_ORM: "package.json:drizzle-orm",
+  PACKAGE_JSON_TAILWINDCSS: "package.json:tailwindcss",
+  PACKAGE_JSON_JEST: "package.json:jest",
+  PACKAGE_JSON_VITEST: "package.json:vitest",
+  PACKAGE_JSON_PG: "package.json:pg",
+  PACKAGE_JSON_WORKSPACES: "package.json:workspaces",
+  CARGO_BASE: "cargo:base",
+  CARGO_TOKIO: "cargo:tokio",
+  CARGO_ACTIX: "cargo:actix",
+  CARGO_SERDE: "cargo:serde",
+  CARGO_TAURI: "cargo:tauri",
+  PYTHON_BASE: "python:base",
+  PYTHON_DJANGO: "python:django",
+  PYTHON_FASTAPI: "python:fastapi",
+  PYTHON_PANDAS: "python:pandas",
+  GO_BASE: "go:base",
+  GO_GIN: "go:gin",
+  TSCONFIG_STRICT: "tsconfig:strict",
+  VITE_PRESENCE: "vite:presence",
+  DRIZZLE_PRESENCE: "drizzle:presence",
+  TAURI_PRESENCE: "tauri:presence",
+} as const;
+
+/** Exact basenames `CONFIG_DETECTION_RULES` matches on (`exact(...)`/`isPythonMarker`). */
+export const ConfigFilenames = {
+  PACKAGE_JSON: "package.json",
+  CARGO_TOML: "Cargo.toml",
+  PYPROJECT_TOML: "pyproject.toml",
+  REQUIREMENTS_TXT: "requirements.txt",
+  GO_MOD: "go.mod",
+  TSCONFIG_JSON: "tsconfig.json",
+} as const;
+
+/** Basename prefixes `CONFIG_DETECTION_RULES` matches on (`prefix(...)`) for presence-only configs. */
+export const ConfigFilePrefixes = {
+  VITE_CONFIG: "vite.config",
+  DRIZZLE_CONFIG: "drizzle.config",
+  TAURI_CONF: "tauri.conf",
+} as const;
 
 export const DISCOVERY_MESSAGES = {
   CONFIG_SCAN_FAILED: "Config scanning failed",
@@ -36,12 +122,18 @@ export const DISCOVERY_MESSAGES = {
 } as const;
 
 /**
+ * Dependency-install directory name every scan in this package excludes, whether via a glob
+ * ignore pattern (`COMMON_GLOB_IGNORE_PATTERNS`) or a plain substring check (`FileDiscoveryService`).
+ */
+export const NODE_MODULES_DIR_NAME = "node_modules";
+
+/**
  * Ignore patterns shared by every fast-glob scan in this package (config detection and
  * general source-file discovery) — a single source of truth so the two scans can't drift on
  * what "always skip this" means.
  */
 export const COMMON_GLOB_IGNORE_PATTERNS = [
-  "node_modules/**",
+  `${NODE_MODULES_DIR_NAME}/**`,
   ".git/**",
   "dist/**",
   "build/**",
@@ -49,7 +141,7 @@ export const COMMON_GLOB_IGNORE_PATTERNS = [
 
 /** Top-level path segments `VcsScannerService` never treats as a functional "domain" hotspot. */
 export const VCS_IGNORED_TOP_LEVEL_DIRS: string[] = [
-  "node_modules",
+  NODE_MODULES_DIR_NAME,
   "dist",
   "build",
   "docs",
@@ -58,5 +150,12 @@ export const VCS_IGNORED_TOP_LEVEL_DIRS: string[] = [
   "scripts",
 ];
 
+/**
+ * Top-level path segment `VcsScannerService` treats as a workspace's conventional source root
+ * when deriving a functional domain from a changed file path (e.g. `src/auth` -> `auth`). Shared
+ * with `VCS_NON_DOMAIN_DIRS` below so the two checks can't drift on what "src" means.
+ */
+export const SRC_DIR_SEGMENT = "src";
+
 /** Structural (non-domain-meaningful) folder names `VcsScannerService` filters out of its final domain guess. */
-export const VCS_NON_DOMAIN_DIRS: string[] = ["src", "lib", "app"];
+export const VCS_NON_DOMAIN_DIRS: string[] = [SRC_DIR_SEGMENT, "lib", "app"];

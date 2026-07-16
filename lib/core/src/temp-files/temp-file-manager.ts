@@ -11,6 +11,9 @@ import {
 
 const TEMP_SUBDIR_NAME = "tmp";
 
+/** Node.js system error code for "no such file or directory" — expected/ignorable when unlinking an already-gone temp file. */
+const ERRNO_ENOENT = "ENOENT";
+
 const TempFileMessages = {
   INITIALIZED: "TempFileManager initialized",
   INIT_FAILED: "Failed to initialize TempFileManager",
@@ -130,7 +133,7 @@ export class TempFileManager implements ITempFileManager {
       await fs.unlink(filePath);
       this.logger.debug(TempFileMessages.FILE_REMOVED, { filePath });
     } catch (err: unknown) {
-      if ((err as any)?.code !== "ENOENT") {
+      if ((err as any)?.code !== ERRNO_ENOENT) {
         throw err;
       }
     }

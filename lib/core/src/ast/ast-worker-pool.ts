@@ -7,10 +7,30 @@ import crypto from "node:crypto";
 import type { AstParseRequest, AstParseResponse } from "./ast-worker.js";
 import type { ILogger, IIpcLogMessage } from "@workspace/contracts";
 import { createNoopLogger, IpcLogRouter } from "@workspace/contracts";
-import { AstMessages } from "./ast-constants.js";
+import { AST_WORKER_CRASH_ERROR_NAME, AstMessages } from "./ast-constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/** esbuild options for `compileWorkerForDevMode()` below — literal values dictated by esbuild's own API. */
+const DevWorkerBuildConfig = {
+  FORMAT: "esm",
+  PLATFORM: "node",
+  TARGET: "node20",
+  EXTERNAL_TREE_SITTER: "web-tree-sitter",
+} as const;
+
+/**
+ * Node `execArgv` flags manipulated by `initialize()`'s test-only fixture seam: the test runner's
+ * own `--eval`/`--print` flags must be stripped before respawning workers against a fixture
+ * script, and `--import tsx` re-registers the `tsx` ESM loader for that fixture worker.
+ */
+const NodeExecArgvFlags = {
+  EVAL: "--eval",
+  PRINT: "--print",
+  IMPORT: "--import",
+  TSX_LOADER: "tsx",
+} as const;
 
 /**
  * Compiles `ast-worker.ts` into a real, standalone `ast-worker.js` sitting right next to it, for
@@ -47,15 +67,15 @@ async function compileWorkerForDevMode(
     entryPoints: [sourcePath],
     outfile: tmpPath,
     bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node20",
+    format: DevWorkerBuildConfig.FORMAT,
+    platform: DevWorkerBuildConfig.PLATFORM,
+    target: DevWorkerBuildConfig.TARGET,
     // No createRequire banner needed here (unlike artifacts/cli/tsup.config.ts's build of this
     // same file): ast-worker.ts already declares its own top-level
     // `const require = createRequire(import.meta.url)` for resolveWasmPath()'s
     // require.resolve() calls, which — since esbuild bundles everything into one shared
     // scope — any bundled-in CJS interop code ends up using too.
-    external: ["web-tree-sitter"],
+    external: [DevWorkerBuildConfig.EXTERNAL_TREE_SITTER],
   });
 
   fs.renameSync(tmpPath, outPath);
@@ -94,7 +114,7 @@ export class AstWorkerCrashError extends Error {
         filePath ?? AstMessages.UNKNOWN_FILE,
       ) + (cause instanceof Error ? cause.message : String(cause)),
     );
-    this.name = "AstWorkerCrashError";
+    this.name = AST_WORKER_CRASH_ERROR_NAME;
   }
 }
 
@@ -249,12 +269,19 @@ export class AstWorkerPool implements IASTWorkerPool {
       // the pool at a fixture worker script (e.g. one that deterministically crashes).
       this.wPath = this.workerScriptPathOverride;
       this.workerOptions.execArgv = process.execArgv.filter(
-        (arg) => !arg.includes("--eval") && !arg.includes("--print"),
+        (arg) =>
+          !arg.includes(NodeExecArgvFlags.EVAL) &&
+          !arg.includes(NodeExecArgvFlags.PRINT),
       );
       if (
-        !this.workerOptions.execArgv.some((arg: string) => arg.includes("tsx"))
+        !this.workerOptions.execArgv.some((arg: string) =>
+          arg.includes(NodeExecArgvFlags.TSX_LOADER),
+        )
       ) {
-        this.workerOptions.execArgv.push("--import", "tsx");
+        this.workerOptions.execArgv.push(
+          NodeExecArgvFlags.IMPORT,
+          NodeExecArgvFlags.TSX_LOADER,
+        );
       }
       for (let i = 0; i < workerCount; i++) {
         await this.enqueueSpawn();

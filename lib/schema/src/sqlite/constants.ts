@@ -7,6 +7,14 @@ export const SQLiteConstants = {
   WAL_FILE_SUFFIX: "-wal",
 } as const;
 
+/** SQLite's own `PRAGMA <name>` identifiers passed to `db.pragma(...)` — external pragma vocabulary, not project-defined. */
+export const SqlitePragmaNames = {
+  BUSY_TIMEOUT: "busy_timeout",
+  JOURNAL_MODE: "journal_mode",
+  SYNCHRONOUS: "synchronous",
+  INTEGRITY_CHECK: "integrity_check",
+} as const;
+
 /**
  * Names of every table (and FTS5 virtual table) in the local SQLite schema (see
  * `sqlite/migrations/0001_init.sql` / `0003_docuvia_meta.sql`) — single source of truth for the

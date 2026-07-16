@@ -1,9 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const RUBY_EXTENSIONS = [".rb", ".rake", ".gemspec"];
+const RUBY_WASM_FILE = "tree-sitter-ruby.wasm";
+
 export const rubyConfig: LanguageConfig = {
-  extensions: [".rb", ".rake", ".gemspec"],
-  wasm_file: "tree-sitter-ruby.wasm",
+  extensions: RUBY_EXTENSIONS,
+  wasm_file: RUBY_WASM_FILE,
   imports: ["call"], // Ruby has no import statements; require/load are method calls
   classes: ["class", "module", "singleton_class"],
   functions: ["method", "singleton_method"],

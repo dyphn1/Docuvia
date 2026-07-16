@@ -1,3 +1,5 @@
+import { GIT_DEFAULT_REMOTE_NAME } from "@workspace/contracts";
+
 /** Docuvia-specific git conventions — the domain semantics layered on top of `IGitProvider`'s raw primitives. */
 export const GitConstants = {
   KNOWLEDGE_ROOT: "docuvia-knowledge",
@@ -17,6 +19,16 @@ export const GitConstants = {
     `  npx --no-install docuvia snapshot > /dev/null 2>&1 &\n` +
     `fi\n`,
   LOCAL_REMOTE_URL_SCHEME: "file://",
+  /** Git's conventional name for the default/primary remote — shared with `lib/libgit2` via
+   *  `@workspace/contracts`'s `GIT_DEFAULT_REMOTE_NAME` per the Virtual Contracts rule that
+   *  values needed by both a Domain Core and a Tech Provider package live in contracts. */
+  DEFAULT_REMOTE_NAME: GIT_DEFAULT_REMOTE_NAME,
+  /** Prefix for a remote-tracking ref path (`refs/remotes/<remote>/<branch>`), used when reading
+   *  the remote's copy of the knowledge branch tip during reconciliation. */
+  REMOTE_REF_PREFIX: "refs/remotes/",
+  /** The special ref name for the currently checked-out commit, used when walking source HEAD's
+   *  ancestry during hydration's nearest-ancestor lookup. */
+  HEAD_REF: "HEAD",
   /** One project per local.db (first row created by the `init` workflow). */
   DEFAULT_LOCAL_PROJECT_ID: 1,
   /** `docuvia_meta` key storing the knowledge-branch commit sha `local.db` was last hydrated from (STOR-002). */

@@ -7,7 +7,12 @@ import type { GraphStoreOpenOptions, IGraphStore } from "@workspace/contracts";
 import { DocuviaError, ErrorCodes } from "@workspace/contracts";
 import { applyMigrations } from "./migration-runner.js";
 import { MIGRATIONS_DIR } from "./paths.js";
-import { SQLiteConstants, SchemaTables, SchemaColumns } from "./constants.js";
+import {
+  SQLiteConstants,
+  SqlitePragmaNames,
+  SchemaTables,
+  SchemaColumns,
+} from "./constants.js";
 import { ReadWriteLock } from "./read-write-lock.js";
 import { ProjectsRepo } from "./repos/projects-repo.js";
 import { ProjectFilesRepo } from "./repos/files-repo.js";
@@ -144,10 +149,16 @@ export class GraphStore implements IGraphStore {
       // WAL pragmas (ADR-032): permit concurrent readers with a single writer.
       // busy_timeout is a connection-level runtime pragma and safe to set even on a readonly
       // connection; journal_mode/synchronous mutate the file and are skipped for readonly opens.
-      db.pragma(`busy_timeout = ${SQLiteConstants.BUSY_TIMEOUT_MS}`);
+      db.pragma(
+        `${SqlitePragmaNames.BUSY_TIMEOUT} = ${SQLiteConstants.BUSY_TIMEOUT_MS}`,
+      );
       if (!opts.readonly) {
-        db.pragma(`journal_mode = ${SQLiteConstants.JOURNAL_MODE}`);
-        db.pragma(`synchronous = ${SQLiteConstants.SYNCHRONOUS}`);
+        db.pragma(
+          `${SqlitePragmaNames.JOURNAL_MODE} = ${SQLiteConstants.JOURNAL_MODE}`,
+        );
+        db.pragma(
+          `${SqlitePragmaNames.SYNCHRONOUS} = ${SQLiteConstants.SYNCHRONOUS}`,
+        );
 
         try {
           applyMigrations(db, MIGRATIONS_DIR);

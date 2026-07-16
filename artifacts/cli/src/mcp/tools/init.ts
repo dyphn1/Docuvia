@@ -12,13 +12,17 @@ import { createPinoBackedLogger } from "../../logging/create-logger.js";
 /** Boundary validation (design-spirit.md #4) — `docuvia_init` takes no arguments today, but every MCP tool input is parsed regardless so a future field addition can't silently skip validation. */
 const InitToolInputSchema = z.object({}).strict();
 
+const DOCUVIA_INIT_TOOL_NAME = "docuvia_init";
+const DOCUVIA_INIT_TOOL_DESCRIPTION =
+  "Initialize the local Docuvia SQLite database in the current workspace.";
+const JSON_SCHEMA_TYPE_OBJECT = "object";
+
 export const initTool: McpTool = {
   definition: {
-    name: "docuvia_init",
-    description:
-      "Initialize the local Docuvia SQLite database in the current workspace.",
+    name: DOCUVIA_INIT_TOOL_NAME,
+    description: DOCUVIA_INIT_TOOL_DESCRIPTION,
     inputSchema: {
-      type: "object",
+      type: JSON_SCHEMA_TYPE_OBJECT,
       properties: {},
     },
   },

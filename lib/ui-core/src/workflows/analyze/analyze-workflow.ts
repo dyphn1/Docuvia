@@ -5,6 +5,7 @@ import {
   TOKENS,
   DocuviaError,
   ErrorCodes,
+  ChatMessageRoles,
   type ILogger,
 } from "@workspace/contracts";
 import {
@@ -169,8 +170,11 @@ export class AnalyzeWorkflow {
       model: options!.llmModel!,
       temperature: 0.2,
       messages: [
-        { role: "system", content: DECISION_EXTRACTION_SYSTEM_PROMPT },
-        { role: "user", content: userMessage },
+        {
+          role: ChatMessageRoles.SYSTEM,
+          content: DECISION_EXTRACTION_SYSTEM_PROMPT,
+        },
+        { role: ChatMessageRoles.USER, content: userMessage },
       ],
     });
 

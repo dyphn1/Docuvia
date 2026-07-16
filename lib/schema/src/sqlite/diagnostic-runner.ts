@@ -5,7 +5,7 @@ import {
   type DiagnosticResult,
   type IDiagnosticRunner,
 } from "@workspace/contracts";
-import { SQLiteConstants } from "./constants.js";
+import { SQLiteConstants, SqlitePragmaNames } from "./constants.js";
 
 /** Keys of the `Record<string, DiagnosticResult>` this runner reports — `docuvia doctor`'s check ids for the SQLite technology provider. */
 const DiagnosticCheckIds = {
@@ -56,7 +56,9 @@ export class SqliteDiagnosticRunner implements IDiagnosticRunner {
     }
 
     try {
-      const integrity = db.pragma("integrity_check", { simple: true });
+      const integrity = db.pragma(SqlitePragmaNames.INTEGRITY_CHECK, {
+        simple: true,
+      });
       if (
         integrity === INTEGRITY_CHECK_OK ||
         (Array.isArray(integrity) &&

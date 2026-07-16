@@ -1,9 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const GO_EXTENSIONS = [".go"];
+const GO_WASM_FILE = "tree-sitter-go.wasm";
+
 export const goConfig: LanguageConfig = {
-  extensions: [".go"],
-  wasm_file: "tree-sitter-go.wasm",
+  extensions: GO_EXTENSIONS,
+  wasm_file: GO_WASM_FILE,
   imports: ["import_declaration"],
   classes: ["type_declaration"],
   functions: ["function_declaration", "method_declaration"],

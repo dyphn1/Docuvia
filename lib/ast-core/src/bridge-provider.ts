@@ -46,6 +46,9 @@ const ConsumerExtensionKeyPrefixes = {
   CLIENT: "x-client",
 } as const;
 
+/** Marks the root of a URL path when deriving an OpenAPI spec's base path. */
+const ROOT_URL_PATH = "/";
+
 export interface BridgeParseResult {
   events: AstEvent[];
   contractName: string;
@@ -181,10 +184,10 @@ function extractBasePath(spec: any): string {
       // Strip scheme/host if present, keep path
       try {
         const u = new URL(url);
-        return u.pathname === "/" ? "" : u.pathname;
+        return u.pathname === ROOT_URL_PATH ? "" : u.pathname;
       } catch {
         // Relative path
-        return url.startsWith("/") ? url : "";
+        return url.startsWith(ROOT_URL_PATH) ? url : "";
       }
     }
   }

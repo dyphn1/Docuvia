@@ -16,6 +16,7 @@ import {
   QUERY_OUTPUT_FORMATS,
   type QueryOutputFormat,
 } from "../constants/cli-flags.js";
+import { OUTPUT_FORMAT_MARKERS as FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 
 const XML_TAGS = {
   CONTEXT_START: "<docuvia_context>",
@@ -37,14 +38,6 @@ const XML_TAGS = {
   CALLEE_PREFIX: '    <callee name="',
   CALLEE_MID: '" type="',
   CALLEE_SUFFIX: '" />',
-} as const;
-
-const FORMAT_MARKERS = {
-  INDENT_TWO: "  ",
-  NEWLINE: "\n",
-  OPEN_PAREN: " (",
-  CLOSE_PAREN: ")",
-  EMPTY: "",
 } as const;
 
 export function formatPromptOutput(result: LocalQueryResult): string {
@@ -193,7 +186,13 @@ export async function queryCommand(
   let spinner: ReturnType<typeof ui.spinner> | undefined;
   if (!isPromptFormat) {
     spinner = ui
-      .spinner(UI_MESSAGES.QUERY_START + '"' + queryTarget + '"...')
+      .spinner(
+        UI_MESSAGES.QUERY_START +
+          FORMAT_MARKERS.DOUBLE_QUOTE +
+          queryTarget +
+          FORMAT_MARKERS.DOUBLE_QUOTE +
+          "...",
+      )
       .start();
     logger.onLog((event) => {
       if (event.level === LogLevels.INFO && spinner)
@@ -210,7 +209,12 @@ export async function queryCommand(
   try {
     result = await docuviaApi.query(scopeId, logger);
     if (spinner) {
-      spinner.succeed(UI_MESSAGES.QUERY_FOUND + '"' + queryTarget + '"');
+      spinner.succeed(
+        UI_MESSAGES.QUERY_FOUND +
+          FORMAT_MARKERS.DOUBLE_QUOTE +
+          queryTarget +
+          FORMAT_MARKERS.DOUBLE_QUOTE,
+      );
       ui.log("");
     }
   } catch (error: unknown) {

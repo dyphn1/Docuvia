@@ -131,6 +131,7 @@ export const UI_MESSAGES = {
   UNINSTALL_KEEP_DB: "Skipping local database cleanup (--keep-db).",
   UNINSTALL_INVALID_WORKSPACE_ROOT: "Workspace root must not be empty.",
   UNINSTALL_PLATFORM_FAIL: "Failed to uninstall hooks for ",
+  UNINSTALL_PLATFORM_FAIL_MID: ": ",
   UNINSTALL_PARTIAL: "Uninstall completed with failures: ",
   UNINSTALL_DB_CLEANUP_FAILURE_NAME: "local database cleanup",
   UNINSTALL_HOOKS_FAIL_LOG: "uninstallHooks failed for platform ",

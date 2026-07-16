@@ -2,6 +2,10 @@ import * as path from "path";
 import * as fs from "fs";
 import type { ILogger } from "@workspace/contracts";
 import { createNoopLogger, UTF8_ENCODING } from "@workspace/contracts";
+import {
+  ConfigFilenames,
+  NODE_MODULES_DIR_NAME,
+} from "../discovery/discovery-constants.js";
 
 /**
  * Cross-file call/implements/extends edge resolution — the logic `persist-ast-graph.ts` uses
@@ -21,12 +25,22 @@ function stripJsonComments(content: string): string {
   );
 }
 
-const TSCONFIG_FILENAME = "tsconfig.json";
 const TSCONFIG_BASE_FILENAME = "tsconfig.base.json";
-const PACKAGE_JSON_FILENAME = "package.json";
 const PNPM_WORKSPACE_FILENAME = "pnpm-workspace.yaml";
-const NODE_MODULES_DIR_NAME = "node_modules";
 const DEFAULT_PACKAGE_ENTRY_FILENAME = "index.js";
+/** Conventional entry-point segments (`<pkg>/src/index`) tried for a workspace-monorepo sibling
+ *  package when its module path names no subpath of its own. */
+const WORKSPACE_ENTRY_SRC_DIR = "src";
+const WORKSPACE_ENTRY_BASENAME = "index";
+
+/** Substitution token in tsconfig `compilerOptions.paths` aliases (e.g. `"@app/*": [...]`) and in
+ *  pnpm workspace package globs (e.g. `"packages/*"`) — distinct from `WILDCARD_IMPORT_MARKER`
+ *  below, which marks an unresolved *import binding*, not a path pattern. */
+const PATH_WILDCARD_TOKEN = "*";
+
+/** Leading character of a relative-import module path (`./foo`, `../foo`), distinguishing it from
+ *  a tsconfig-path-aliased or bare-package import in `resolveModulePath`. */
+const RELATIVE_IMPORT_PREFIX = ".";
 
 /** Extensions tried, in order, when resolving an import that names no extension of its own. */
 const RESOLVABLE_FILE_EXTENSIONS = [
@@ -76,7 +90,10 @@ export class ScopeResolver {
 
   private loadTsConfigPaths() {
     try {
-      const tsconfigPath = path.join(this.workspaceRoot, TSCONFIG_FILENAME);
+      const tsconfigPath = path.join(
+        this.workspaceRoot,
+        ConfigFilenames.TSCONFIG_JSON,
+      );
       if (fs.existsSync(tsconfigPath)) {
         const content = fs.readFileSync(tsconfigPath, UTF8_ENCODING);
         const cleanContent = stripJsonComments(content);
@@ -171,7 +188,7 @@ export class ScopeResolver {
     modulePath: string,
   ): string | null {
     // Relative paths
-    if (modulePath.startsWith(".")) {
+    if (modulePath.startsWith(RELATIVE_IMPORT_PREFIX)) {
       const dir = path.posix.dirname(sourceFile);
       const target = path.posix.join(dir, modulePath);
       return this.findFileWithExtension(target);
@@ -179,11 +196,11 @@ export class ScopeResolver {
 
     // Dynamic path resolution from tsconfig compilerOptions.paths
     for (const [alias, paths] of Object.entries(this.tsConfigPaths)) {
-      const aliasPattern = alias.replace("*", "");
+      const aliasPattern = alias.replace(PATH_WILDCARD_TOKEN, "");
       if (modulePath.startsWith(aliasPattern)) {
         const match = modulePath.slice(aliasPattern.length);
         for (const p of paths) {
-          const targetPath = p.replace("*", match);
+          const targetPath = p.replace(PATH_WILDCARD_TOKEN, match);
           const resolved = this.findFileWithExtension(targetPath);
           if (resolved) return resolved;
         }
@@ -201,7 +218,7 @@ export class ScopeResolver {
     if (this.packageDirCache) return this.packageDirCache;
     const cache = new Map<string, string>();
     for (const glob of this.getWorkspaceGlobs()) {
-      const starIdx = glob.indexOf("*");
+      const starIdx = glob.indexOf(PATH_WILDCARD_TOKEN);
       const baseDir = (starIdx >= 0 ? glob.slice(0, starIdx) : glob).replace(
         /\/$/,
         "",
@@ -219,7 +236,7 @@ export class ScopeResolver {
         const pkgJsonPath = path.join(
           fullBaseDir,
           entry.name,
-          PACKAGE_JSON_FILENAME,
+          ConfigFilenames.PACKAGE_JSON,
         );
         if (!fs.existsSync(pkgJsonPath)) continue;
         try {
@@ -253,7 +270,10 @@ export class ScopeResolver {
         }
       }
 
-      const pkgJsonPath = path.join(this.workspaceRoot, PACKAGE_JSON_FILENAME);
+      const pkgJsonPath = path.join(
+        this.workspaceRoot,
+        ConfigFilenames.PACKAGE_JSON,
+      );
       if (fs.existsSync(pkgJsonPath)) {
         const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
         if (Array.isArray(pkgJson.workspaces)) return pkgJson.workspaces;
@@ -277,7 +297,11 @@ export class ScopeResolver {
     if (workspaceDir) {
       const entryTarget = subpath
         ? path.posix.join(workspaceDir, subpath)
-        : path.posix.join(workspaceDir, "src", "index");
+        : path.posix.join(
+            workspaceDir,
+            WORKSPACE_ENTRY_SRC_DIR,
+            WORKSPACE_ENTRY_BASENAME,
+          );
       const resolved = this.findFileWithExtension(entryTarget);
       if (resolved) return resolved;
       // Fall back to the package root itself if no conventional entry point is found
@@ -291,7 +315,7 @@ export class ScopeResolver {
         this.workspaceRoot,
         NODE_MODULES_DIR_NAME,
         pkgName,
-        PACKAGE_JSON_FILENAME,
+        ConfigFilenames.PACKAGE_JSON,
       );
       if (fs.existsSync(pkgJsonPath)) {
         const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));

@@ -167,7 +167,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   public async syncKnowledgeBranch(
     cwd: string,
     branchName: string = GitConstants.KNOWLEDGE_ROOT,
-    remote: string = "origin",
+    remote: string = GitConstants.DEFAULT_REMOTE_NAME,
   ): Promise<KnowledgeBranchSyncResult> {
     return withKnowledgeBranchLock(this.git, cwd, () =>
       this.reconcile(cwd, branchName, remote),
@@ -201,7 +201,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
     const remoteSha = await this.git.getRefSha(
       cwd,
-      `refs/remotes/${remote}/${branchName}`,
+      `${GitConstants.REMOTE_REF_PREFIX}${remote}/${branchName}`,
     );
     const localSha = await this.git.getBranchTipSha(cwd, branchName);
 

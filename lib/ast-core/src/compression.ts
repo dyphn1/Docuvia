@@ -7,6 +7,9 @@
 
 const DEFAULT_NODE_TYPE_LABEL = "node";
 
+/** Appended to truncated node content to signal that it was cut off. */
+const TRUNCATION_ELLIPSIS = "...";
+
 export interface CompressibleNode {
   title: string;
   content?: string | null;
@@ -63,7 +66,10 @@ function truncateContent(
 ): string {
   if (!content) return "";
   if (content.length <= maxChars) return content;
-  return content.slice(0, maxChars - 3) + "...";
+  return (
+    content.slice(0, maxChars - TRUNCATION_ELLIPSIS.length) +
+    TRUNCATION_ELLIPSIS
+  );
 }
 
 /**

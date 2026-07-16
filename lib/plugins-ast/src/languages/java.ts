@@ -1,9 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const JAVA_EXTENSIONS = [".java"];
+const JAVA_WASM_FILE = "tree-sitter-java.wasm";
+
 export const javaConfig: LanguageConfig = {
-  extensions: [".java"],
-  wasm_file: "tree-sitter-java.wasm",
+  extensions: JAVA_EXTENSIONS,
+  wasm_file: JAVA_WASM_FILE,
   imports: ["import_declaration"],
   classes: [
     "class_declaration",

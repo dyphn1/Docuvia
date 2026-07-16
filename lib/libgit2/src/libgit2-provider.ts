@@ -6,6 +6,7 @@ import {
   ChangedFileStatuses,
   DocuviaError,
   ErrorCodes,
+  GIT_DEFAULT_REMOTE_NAME,
   UTF8_ENCODING,
   type ChangedFileEntry,
   type IGitProvider,
@@ -17,8 +18,80 @@ import {
 } from "./fast-import.js";
 import { DOCUVIA_GIT_IDENTITY } from "./constants/git-identity.js";
 import { GIT_BRANCH_REF_PREFIX, GIT_HEAD_REF } from "./constants/git-refs.js";
+import { GIT_BIN } from "./constants/git-cli.js";
 
 const execFileAsync = promisify(execFile);
+
+/** Git subcommand names (the first positional argv element after `git`) this provider shells
+ *  out to. */
+const GIT_SUBCOMMAND = {
+  REV_PARSE: "rev-parse",
+  BRANCH: "branch",
+  COMMIT_TREE: "commit-tree",
+  UPDATE_REF: "update-ref",
+  LS_FILES: "ls-files",
+  DIFF: "diff",
+  DIFF_TREE: "diff-tree",
+  CAT_FILE: "cat-file",
+  SHOW: "show",
+  LOG: "log",
+  REV_LIST: "rev-list",
+  REMOTE: "remote",
+  STATUS: "status",
+  FETCH: "fetch",
+  PUSH: "push",
+  MERGE_BASE: "merge-base",
+} as const;
+
+/** Git CLI flags/arguments (beyond the subcommand name itself) this provider shells out with. */
+const GIT_ARG = {
+  IS_INSIDE_WORK_TREE: "--is-inside-work-tree",
+  LIST: "--list",
+  MESSAGE_FLAG: "-m",
+  /** `ls-files -s` — list staged entries with their blob sha. */
+  STAGED: "-s",
+  OTHERS: "--others",
+  EXCLUDE_STANDARD: "--exclude-standard",
+  NAME_ONLY: "--name-only",
+  BLOB: "blob",
+  MAX_COUNT_FLAG: "-n",
+  /** `%H` full sha, `%x01` field separator, `%B` raw body, `%x00` record separator — see
+   *  `getCommitLog`'s comment on why these bytes were chosen. */
+  LOG_FORMAT_SHA_AND_BODY: "--format=%H%x01%B%x00",
+  GET_URL: "get-url",
+  /** `--format=` with nothing after `=` — suppresses the commit line itself so `git log
+   *  --name-only` output is purely the touched file paths. */
+  EMPTY_FORMAT: "--format=",
+  PORCELAIN: "--porcelain",
+  NAME_STATUS: "--name-status",
+  END_OF_OPTIONS: "--end-of-options",
+  NO_COMMIT_ID: "--no-commit-id",
+  RECURSIVE: "-r",
+  VERIFY: "--verify",
+  QUIET: "--quiet",
+  IS_ANCESTOR: "--is-ancestor",
+  /** Revision syntax suffix selecting a commit's tree object (`git rev-parse <rev>^{tree}`). */
+  TREE_SUFFIX: "^{tree}",
+  /** `show -s` — suppress the diff output, leaving only the requested `--format`. */
+  SUPPRESS_DIFF: "-s",
+  COMMIT_TIMESTAMP_FORMAT: "--format=%ct",
+  PARENT_FLAG: "-p",
+} as const;
+
+/** Raw control-character separators `getCommitLog`'s `%x01`/`%x00` `--format` placeholders
+ *  (see `GIT_ARG.LOG_FORMAT_SHA_AND_BODY`) actually print into the log output — effectively
+ *  never appear in a real commit message, so parsing on them survives multi-line messages
+ *  intact (unlike splitting the whole log on `\n`). */
+const GIT_LOG_RECORD_SEPARATOR = "\x00" as const;
+const GIT_LOG_FIELD_SEPARATOR = "\x01" as const;
+
+/** `git diff --name-status`'s single-letter status codes this provider parses into
+ *  `ChangedFileEntry["status"]` (see `getChangedFilesSince`). */
+const GIT_DIFF_STATUS_CODE = {
+  RENAMED: "R",
+  ADDED: "A",
+  DELETED: "D",
+} as const;
 
 /** The well-known empty-tree SHA — identical in every git repository. */
 const EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
@@ -74,9 +147,11 @@ const GIT_PROVIDER_ERROR_MESSAGES = {
 export class Libgit2Provider implements IGitProvider {
   public async isGitRepository(cwd: string): Promise<boolean> {
     try {
-      await execFileAsync("git", ["rev-parse", "--is-inside-work-tree"], {
-        cwd,
-      });
+      await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.IS_INSIDE_WORK_TREE],
+        { cwd },
+      );
       return true;
     } catch {
       return false;
@@ -86,8 +161,8 @@ export class Libgit2Provider implements IGitProvider {
   public async branchExists(cwd: string, branchName: string): Promise<boolean> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["branch", "--list", branchName],
+        GIT_BIN,
+        [GIT_SUBCOMMAND.BRANCH, GIT_ARG.LIST, branchName],
         { cwd },
       );
       return stdout.trim().length > 0;
@@ -103,8 +178,13 @@ export class Libgit2Provider implements IGitProvider {
   public async commitEmptyTree(cwd: string, message: string): Promise<string> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["commit-tree", EMPTY_TREE_SHA, "-m", message],
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.COMMIT_TREE,
+          EMPTY_TREE_SHA,
+          GIT_ARG.MESSAGE_FLAG,
+          message,
+        ],
         { cwd },
       );
       return stdout.trim();
@@ -124,8 +204,12 @@ export class Libgit2Provider implements IGitProvider {
   ): Promise<void> {
     try {
       await execFileAsync(
-        "git",
-        ["update-ref", `${GIT_BRANCH_REF_PREFIX}${branchName}`, commitSha],
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.UPDATE_REF,
+          `${GIT_BRANCH_REF_PREFIX}${branchName}`,
+          commitSha,
+        ],
         { cwd },
       );
     } catch (err) {
@@ -196,9 +280,11 @@ export class Libgit2Provider implements IGitProvider {
   ): Promise<Map<string, string>> {
     const blobHashes = new Map<string, string>();
     try {
-      const { stdout } = await execFileAsync("git", ["ls-files", "-s"], {
-        cwd,
-      });
+      const { stdout } = await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.LS_FILES, GIT_ARG.STAGED],
+        { cwd },
+      );
       for (const line of stdout.split("\n")) {
         if (!line.trim()) continue;
         const [info, file] = line.split("\t");
@@ -218,8 +304,8 @@ export class Libgit2Provider implements IGitProvider {
   public async listUntrackedFiles(cwd: string): Promise<string[]> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["ls-files", "--others", "--exclude-standard"],
+        GIT_BIN,
+        [GIT_SUBCOMMAND.LS_FILES, GIT_ARG.OTHERS, GIT_ARG.EXCLUDE_STANDARD],
         { cwd },
       );
       return stdout
@@ -237,9 +323,11 @@ export class Libgit2Provider implements IGitProvider {
 
   public async listModifiedFiles(cwd: string): Promise<string[]> {
     try {
-      const { stdout } = await execFileAsync("git", ["diff", "--name-only"], {
-        cwd,
-      });
+      const { stdout } = await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.DIFF, GIT_ARG.NAME_ONLY],
+        { cwd },
+      );
       return stdout
         .split("\n")
         .map((f) => f.trim())
@@ -255,10 +343,14 @@ export class Libgit2Provider implements IGitProvider {
 
   public async readBlobContent(cwd: string, sha: string): Promise<string> {
     try {
-      const { stdout } = await execFileAsync("git", ["cat-file", "blob", sha], {
-        cwd,
-        maxBuffer: 10 * 1024 * 1024,
-      });
+      const { stdout } = await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.CAT_FILE, GIT_ARG.BLOB, sha],
+        {
+          cwd,
+          maxBuffer: 10 * 1024 * 1024,
+        },
+      );
       return stdout;
     } catch (err) {
       throw DocuviaError.wrap(
@@ -277,8 +369,8 @@ export class Libgit2Provider implements IGitProvider {
     try {
       const posixPath = filePath.split(path.sep).join(path.posix.sep);
       const { stdout } = await execFileAsync(
-        "git",
-        ["show", `${ref}:${posixPath}`],
+        GIT_BIN,
+        [GIT_SUBCOMMAND.SHOW, `${ref}:${posixPath}`],
         {
           cwd,
           maxBuffer: 64 * 1024 * 1024,
@@ -298,20 +390,25 @@ export class Libgit2Provider implements IGitProvider {
     maxCount = 1000,
   ): Promise<Array<{ sha: string; message: string }>> {
     try {
-      // `%x01` separates sha/body within a record, `%x00` separates records — both effectively
-      // never appear in a real commit message, so this survives multi-line messages intact
-      // (unlike splitting the whole log on `\n`).
+      // See `GIT_LOG_RECORD_SEPARATOR`/`GIT_LOG_FIELD_SEPARATOR`'s doc comment on why the log is
+      // parsed on these separators rather than split on `\n`.
       const { stdout } = await execFileAsync(
-        "git",
-        ["log", ref, "-n", String(maxCount), "--format=%H%x01%B%x00"],
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.LOG,
+          ref,
+          GIT_ARG.MAX_COUNT_FLAG,
+          String(maxCount),
+          GIT_ARG.LOG_FORMAT_SHA_AND_BODY,
+        ],
         { cwd, maxBuffer: 64 * 1024 * 1024 },
       );
       return stdout
-        .split("\x00")
+        .split(GIT_LOG_RECORD_SEPARATOR)
         .map((record) => record.trim())
         .filter(Boolean)
         .map((record) => {
-          const sepIndex = record.indexOf("\x01");
+          const sepIndex = record.indexOf(GIT_LOG_FIELD_SEPARATOR);
           return {
             sha: record.slice(0, sepIndex),
             message: record.slice(sepIndex + 1),
@@ -330,8 +427,13 @@ export class Libgit2Provider implements IGitProvider {
   ): Promise<string[]> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["rev-list", ref, "-n", String(maxCount)],
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.REV_LIST,
+          ref,
+          GIT_ARG.MAX_COUNT_FLAG,
+          String(maxCount),
+        ],
         { cwd },
       );
       return stdout
@@ -346,8 +448,8 @@ export class Libgit2Provider implements IGitProvider {
   public async getRemoteUrl(cwd: string): Promise<string | undefined> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["remote", "get-url", "origin"],
+        GIT_BIN,
+        [GIT_SUBCOMMAND.REMOTE, GIT_ARG.GET_URL, GIT_DEFAULT_REMOTE_NAME],
         { cwd },
       );
       const url = stdout.trim();
@@ -363,8 +465,14 @@ export class Libgit2Provider implements IGitProvider {
   ): Promise<string[]> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["log", "-n", String(maxCommits), "--name-only", "--format="],
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.LOG,
+          GIT_ARG.MAX_COUNT_FLAG,
+          String(maxCommits),
+          GIT_ARG.NAME_ONLY,
+          GIT_ARG.EMPTY_FORMAT,
+        ],
         { cwd },
       );
       return stdout
@@ -379,9 +487,11 @@ export class Libgit2Provider implements IGitProvider {
 
   public async hasUncommittedChanges(cwd: string): Promise<boolean> {
     try {
-      const { stdout } = await execFileAsync("git", ["status", "--porcelain"], {
-        cwd,
-      });
+      const { stdout } = await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.STATUS, GIT_ARG.PORCELAIN],
+        { cwd },
+      );
       return stdout.trim().length > 0;
     } catch (err) {
       throw DocuviaError.wrap(
@@ -412,8 +522,13 @@ export class Libgit2Provider implements IGitProvider {
       // flag — unlike a bare `--`, it does not reclassify the following argument as a pathspec,
       // so this preserves normal `git diff --name-status <ref>` semantics for legitimate refs.
       const { stdout } = await execFileAsync(
-        "git",
-        ["diff", "--name-status", "--end-of-options", baseRef ?? GIT_HEAD_REF],
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.DIFF,
+          GIT_ARG.NAME_STATUS,
+          GIT_ARG.END_OF_OPTIONS,
+          baseRef ?? GIT_HEAD_REF,
+        ],
         { cwd },
       );
 
@@ -426,13 +541,13 @@ export class Libgit2Provider implements IGitProvider {
         let file: string | undefined;
         let status: ChangedFileEntry["status"];
 
-        if (statusCode.startsWith("R")) {
+        if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.RENAMED)) {
           status = ChangedFileStatuses.RENAMED;
           file = parts[2] ?? parts[1];
-        } else if (statusCode.startsWith("A")) {
+        } else if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.ADDED)) {
           status = ChangedFileStatuses.ADDED;
           file = parts[1];
-        } else if (statusCode.startsWith("D")) {
+        } else if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.DELETED)) {
           status = ChangedFileStatuses.DELETED;
           file = parts[1];
         } else {
@@ -474,13 +589,13 @@ export class Libgit2Provider implements IGitProvider {
     try {
       // See `getChangedFilesSince()`'s comment above on `--end-of-options` vs a bare `--`.
       const { stdout } = await execFileAsync(
-        "git",
+        GIT_BIN,
         [
-          "diff-tree",
-          "--no-commit-id",
-          "--name-only",
-          "-r",
-          "--end-of-options",
+          GIT_SUBCOMMAND.DIFF_TREE,
+          GIT_ARG.NO_COMMIT_ID,
+          GIT_ARG.NAME_ONLY,
+          GIT_ARG.RECURSIVE,
+          GIT_ARG.END_OF_OPTIONS,
           sha,
         ],
         { cwd },
@@ -501,8 +616,8 @@ export class Libgit2Provider implements IGitProvider {
   public async getHeadSha(cwd: string): Promise<string | undefined> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["rev-parse", GIT_HEAD_REF],
+        GIT_BIN,
+        [GIT_SUBCOMMAND.REV_PARSE, GIT_HEAD_REF],
         { cwd },
       );
       const sha = stdout.trim();
@@ -520,11 +635,11 @@ export class Libgit2Provider implements IGitProvider {
   ): Promise<string | undefined> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
+        GIT_BIN,
         [
-          "rev-parse",
-          "--verify",
-          "--quiet",
+          GIT_SUBCOMMAND.REV_PARSE,
+          GIT_ARG.VERIFY,
+          GIT_ARG.QUIET,
           `${GIT_BRANCH_REF_PREFIX}${branchName}`,
         ],
         { cwd },
@@ -569,7 +684,9 @@ export class Libgit2Provider implements IGitProvider {
     ref: string,
   ): Promise<void> {
     try {
-      await execFileAsync("git", ["fetch", remote, ref], { cwd });
+      await execFileAsync(GIT_BIN, [GIT_SUBCOMMAND.FETCH, remote, ref], {
+        cwd,
+      });
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
@@ -587,8 +704,8 @@ export class Libgit2Provider implements IGitProvider {
     try {
       const branchRef = `${GIT_BRANCH_REF_PREFIX}${branchName}`;
       await execFileAsync(
-        "git",
-        ["push", remote, `${branchRef}:${branchRef}`],
+        GIT_BIN,
+        [GIT_SUBCOMMAND.PUSH, remote, `${branchRef}:${branchRef}`],
         {
           cwd,
         },
@@ -608,8 +725,8 @@ export class Libgit2Provider implements IGitProvider {
   ): Promise<string | undefined> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["rev-parse", "--verify", "--quiet", ref],
+        GIT_BIN,
+        [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.VERIFY, GIT_ARG.QUIET, ref],
         {
           cwd,
         },
@@ -628,8 +745,13 @@ export class Libgit2Provider implements IGitProvider {
   ): Promise<boolean> {
     try {
       await execFileAsync(
-        "git",
-        ["merge-base", "--is-ancestor", ancestorSha, descendantSha],
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.MERGE_BASE,
+          GIT_ARG.IS_ANCESTOR,
+          ancestorSha,
+          descendantSha,
+        ],
         {
           cwd,
         },
@@ -657,8 +779,8 @@ export class Libgit2Provider implements IGitProvider {
   public async getTreeSha(cwd: string, commitish: string): Promise<string> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["rev-parse", `${commitish}^{tree}`],
+        GIT_BIN,
+        [GIT_SUBCOMMAND.REV_PARSE, `${commitish}${GIT_ARG.TREE_SUFFIX}`],
         { cwd },
       );
       return stdout.trim();
@@ -674,8 +796,13 @@ export class Libgit2Provider implements IGitProvider {
   public async getCommitTimestamp(cwd: string, sha: string): Promise<number> {
     try {
       const { stdout } = await execFileAsync(
-        "git",
-        ["show", "-s", "--format=%ct", sha],
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.SHOW,
+          GIT_ARG.SUPPRESS_DIFF,
+          GIT_ARG.COMMIT_TIMESTAMP_FORMAT,
+          sha,
+        ],
         { cwd },
       );
       return Number(stdout.trim());
@@ -695,10 +822,19 @@ export class Libgit2Provider implements IGitProvider {
     message: string,
   ): Promise<string> {
     try {
-      const parentArgs = parentShas.flatMap((sha) => ["-p", sha]);
+      const parentArgs = parentShas.flatMap((sha) => [
+        GIT_ARG.PARENT_FLAG,
+        sha,
+      ]);
       const { stdout } = await execFileAsync(
-        "git",
-        ["commit-tree", treeSha, ...parentArgs, "-m", message],
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.COMMIT_TREE,
+          treeSha,
+          ...parentArgs,
+          GIT_ARG.MESSAGE_FLAG,
+          message,
+        ],
         {
           cwd,
           env: {

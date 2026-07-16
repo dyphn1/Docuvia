@@ -6,6 +6,48 @@ import pLimit from "p-limit";
 import { UTF8_ENCODING } from "@workspace/contracts";
 import { DOCUVIA_GIT_IDENTITY } from "./constants/git-identity.js";
 import { GIT_BRANCH_REF_PREFIX } from "./constants/git-refs.js";
+import { GIT_BIN } from "./constants/git-cli.js";
+
+/** `git fast-import` subcommand/flag this module invokes (see `runFastImport`). */
+const GIT_FAST_IMPORT_SUBCOMMAND = "fast-import" as const;
+const GIT_FAST_IMPORT_QUIET_FLAG = "--quiet" as const;
+
+/** `child_process.spawn`'s stdio config values used for the `git fast-import` child process. */
+const CHILD_PROCESS_STDIO_MODE = {
+  PIPE: "pipe",
+  IGNORE: "ignore",
+} as const;
+
+/** `ChildProcess` event names this module listens for. */
+const CHILD_PROCESS_EVENT = {
+  DATA: "data",
+  ERROR: "error",
+  CLOSE: "close",
+} as const;
+
+/**
+ * `git fast-import` stream format keywords this builder emits (see `git help fast-import`).
+ * Each is a bare command verb; callers append the rest of the line themselves.
+ */
+const FAST_IMPORT_COMMAND = {
+  COMMIT: "commit",
+  COMMITTER: "committer",
+  DATA: "data",
+  FROM: "from",
+  DELETE_ALL: "deleteall",
+  MODIFY: "M",
+} as const;
+
+/** Git tree-entry file mode for a plain (non-executable, non-symlink) regular file. */
+const GIT_FILE_MODE_REGULAR = "100644" as const;
+
+/** `fast-import`'s inline data mode — file content follows immediately in the stream, as
+ *  opposed to referencing an already-known blob mark/sha. */
+const FAST_IMPORT_DATA_MODE_INLINE = "inline" as const;
+
+/** Fixed UTC (`+0000`) offset stamped on synthetic Docuvia commits — `DOCUVIA_GIT_IDENTITY`
+ *  never reflects local git config, so there is no real timezone to report. */
+const UTC_TIMEZONE_OFFSET = "+0000" as const;
 
 /** `runFastImport`'s failure message when the spawned `git fast-import` process exits non-zero. */
 const FAST_IMPORT_EXIT_ERROR_MESSAGE = (code: number, stderr: string): string =>
@@ -59,27 +101,31 @@ export function buildFastImportData(
   parentCommitSha?: string,
 ): string {
   const lines: string[] = [];
-  lines.push(`commit ${GIT_BRANCH_REF_PREFIX}${branch}`);
+  lines.push(`${FAST_IMPORT_COMMAND.COMMIT} ${GIT_BRANCH_REF_PREFIX}${branch}`);
   lines.push(
-    `committer ${DOCUVIA_GIT_IDENTITY.NAME} <${DOCUVIA_GIT_IDENTITY.EMAIL}> ${nowUnix} +0000`,
+    `${FAST_IMPORT_COMMAND.COMMITTER} ${DOCUVIA_GIT_IDENTITY.NAME} <${DOCUVIA_GIT_IDENTITY.EMAIL}> ${nowUnix} ${UTC_TIMEZONE_OFFSET}`,
   );
-  lines.push(`data ${Buffer.byteLength(commitMessage, UTF8_ENCODING)}`);
+  lines.push(
+    `${FAST_IMPORT_COMMAND.DATA} ${Buffer.byteLength(commitMessage, UTF8_ENCODING)}`,
+  );
   lines.push(commitMessage);
 
   // Parenting on the branch's current tip (STOR-001 point 2 — "continuous stacking") is what
   // keeps prior commits reachable; omitted only for the branch's very first commit, which is
   // necessarily a root commit.
   if (parentCommitSha) {
-    lines.push(`from ${parentCommitSha}`);
+    lines.push(`${FAST_IMPORT_COMMAND.FROM} ${parentCommitSha}`);
   }
 
-  lines.push(`deleteall`);
+  lines.push(FAST_IMPORT_COMMAND.DELETE_ALL);
 
   for (const [filePath, content] of files) {
     const contentBytes = Buffer.from(content, UTF8_ENCODING);
     const posixPath = filePath.split(path.sep).join(path.posix.sep);
-    lines.push(`M 100644 inline ${posixPath}`);
-    lines.push(`data ${contentBytes.length}`);
+    lines.push(
+      `${FAST_IMPORT_COMMAND.MODIFY} ${GIT_FILE_MODE_REGULAR} ${FAST_IMPORT_DATA_MODE_INLINE} ${posixPath}`,
+    );
+    lines.push(`${FAST_IMPORT_COMMAND.DATA} ${contentBytes.length}`);
     lines.push(content);
   }
 
@@ -99,14 +145,24 @@ export function runFastImport(
   fastImportData: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn("git", ["fast-import", "--quiet"], {
-      cwd,
-      stdio: ["pipe", "ignore", "pipe"],
-    });
+    const child = spawn(
+      GIT_BIN,
+      [GIT_FAST_IMPORT_SUBCOMMAND, GIT_FAST_IMPORT_QUIET_FLAG],
+      {
+        cwd,
+        stdio: [
+          CHILD_PROCESS_STDIO_MODE.PIPE,
+          CHILD_PROCESS_STDIO_MODE.IGNORE,
+          CHILD_PROCESS_STDIO_MODE.PIPE,
+        ],
+      },
+    );
     const stderrChunks: Buffer[] = [];
-    child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
-    (child as any).on("error", reject);
-    (child as any).on("close", (code: number) => {
+    child.stderr.on(CHILD_PROCESS_EVENT.DATA, (chunk: Buffer) =>
+      stderrChunks.push(chunk),
+    );
+    (child as any).on(CHILD_PROCESS_EVENT.ERROR, reject);
+    (child as any).on(CHILD_PROCESS_EVENT.CLOSE, (code: number) => {
       if (code === 0) return resolve();
       const stderr = Buffer.concat(stderrChunks).toString(UTF8_ENCODING).trim();
       reject(new Error(FAST_IMPORT_EXIT_ERROR_MESSAGE(code, stderr)));

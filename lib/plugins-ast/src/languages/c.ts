@@ -1,9 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const C_EXTENSIONS = [".c", ".h"];
+const C_WASM_FILE = "tree-sitter-c.wasm";
+
 export const cConfig: LanguageConfig = {
-  extensions: [".c", ".h"],
-  wasm_file: "tree-sitter-c.wasm",
+  extensions: C_EXTENSIONS,
+  wasm_file: C_WASM_FILE,
   imports: ["preproc_include"],
   classes: [
     "struct_specifier",

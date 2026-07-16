@@ -1,9 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const PHP_EXTENSIONS = [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"];
+const PHP_WASM_FILE = "tree-sitter-php.wasm";
+
 export const phpConfig: LanguageConfig = {
-  extensions: [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"],
-  wasm_file: "tree-sitter-php.wasm",
+  extensions: PHP_EXTENSIONS,
+  wasm_file: PHP_WASM_FILE,
   imports: [
     "namespace_use_declaration",
     "include_expression",

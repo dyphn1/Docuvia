@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { OUTPUT_FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 import { selectPlatforms } from "../utils/platform-selection.js";
 import { docuviaMemory, DocuviaError, MemoryKeys } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
@@ -41,14 +42,17 @@ export async function uninstallCommand(
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         logger.warn(
-          `${UI_MESSAGES.UNINSTALL_HOOKS_FAIL_LOG}"${platform.name}"`,
+          `${UI_MESSAGES.UNINSTALL_HOOKS_FAIL_LOG}${OUTPUT_FORMAT_MARKERS.DOUBLE_QUOTE}${platform.name}${OUTPUT_FORMAT_MARKERS.DOUBLE_QUOTE}`,
           {
             platform: platform.name,
             error: message,
           },
         );
         ui.warn(
-          UI_MESSAGES.UNINSTALL_PLATFORM_FAIL + platform.name + ": " + message,
+          UI_MESSAGES.UNINSTALL_PLATFORM_FAIL +
+            platform.name +
+            UI_MESSAGES.UNINSTALL_PLATFORM_FAIL_MID +
+            message,
         );
         failures.push(platform.name);
       }

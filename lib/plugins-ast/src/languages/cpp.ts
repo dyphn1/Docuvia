@@ -1,9 +1,21 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const CPP_EXTENSIONS = [
+  ".cpp",
+  ".cxx",
+  ".cc",
+  ".hpp",
+  ".hxx",
+  ".hh",
+  ".cu",
+  ".cuh",
+];
+const CPP_WASM_FILE = "tree-sitter-cpp.wasm";
+
 export const cppConfig: LanguageConfig = {
-  extensions: [".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".hh", ".cu", ".cuh"],
-  wasm_file: "tree-sitter-cpp.wasm",
+  extensions: CPP_EXTENSIONS,
+  wasm_file: CPP_WASM_FILE,
   imports: ["preproc_include", "using_declaration"],
   classes: [
     "class_specifier",

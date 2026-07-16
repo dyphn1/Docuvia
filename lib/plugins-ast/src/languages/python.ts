@@ -1,9 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const PYTHON_EXTENSIONS = [".py"];
+const PYTHON_WASM_FILE = "tree-sitter-python.wasm";
+
 export const pythonConfig: LanguageConfig = {
-  extensions: [".py"],
-  wasm_file: "tree-sitter-python.wasm",
+  extensions: PYTHON_EXTENSIONS,
+  wasm_file: PYTHON_WASM_FILE,
   imports: ["import_statement", "import_from_statement"],
   classes: ["class_definition"],
   functions: ["function_definition"],

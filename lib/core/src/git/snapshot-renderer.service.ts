@@ -185,6 +185,15 @@ export class SnapshotRendererService implements ISnapshotRenderer {
 // Characters illegal (or reserved) in filenames on common filesystems, plus ASCII control chars.
 const ILLEGAL_FILENAME_CHARS = /[<>:"|?*\x00-\x1f]/g;
 
+/** Path segments meaning "current directory" / "parent directory" — rejected outright by
+ *  `sanitizeRelativePath` rather than sanitized, since they carry traversal semantics no
+ *  character-replacement can neutralize. */
+const CURRENT_DIR_SEGMENT = ".";
+const PARENT_DIR_SEGMENT = "..";
+
+/** Extension applied to every rendered knowledge-branch markdown file (`{name}.md`). */
+const MARKDOWN_FILE_EXTENSION = ".md";
+
 /**
  * Sanitizes a single path segment (a directory or file name, never a full path) for safe use on
  * disk: illegal/control characters are replaced with `_`. Does not handle `..`/`.` traversal —
@@ -204,7 +213,10 @@ function sanitizeRelativePath(relPath: string): string {
   return relPath
     .split(/[\\/]+/)
     .filter(
-      (segment) => segment.length > 0 && segment !== "." && segment !== "..",
+      (segment) =>
+        segment.length > 0 &&
+        segment !== CURRENT_DIR_SEGMENT &&
+        segment !== PARENT_DIR_SEGMENT,
     )
     .map(sanitizeSegment)
     .join(path.sep);
@@ -242,7 +254,7 @@ function markdownPathFor(
     if (!node.filePath) return undefined;
     return resolveWithinKnowledgeDir(
       knowledgeDir,
-      `${sanitizeRelativePath(node.filePath)}.md`,
+      `${sanitizeRelativePath(node.filePath)}${MARKDOWN_FILE_EXTENSION}`,
     );
   }
 
@@ -251,7 +263,11 @@ function markdownPathFor(
   const safeName = sanitizeSegment(node.name);
   return resolveWithinKnowledgeDir(
     knowledgeDir,
-    path.join(parsedPath.dir, parsedPath.name, `${safeName}.md`),
+    path.join(
+      parsedPath.dir,
+      parsedPath.name,
+      `${safeName}${MARKDOWN_FILE_EXTENSION}`,
+    ),
   );
 }
 

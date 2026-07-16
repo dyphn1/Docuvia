@@ -14,13 +14,7 @@ import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
-
-const FORMAT_MARKERS = {
-  INDENT_TWO: "  ",
-  OPEN_PAREN: " (",
-  CLOSE_PAREN: ")",
-  EMPTY: "",
-} as const;
+import { OUTPUT_FORMAT_MARKERS as FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 
 function printBlastRadius(
   blastRadius: BlastRadiusEntry[],
@@ -72,7 +66,13 @@ export async function impactCommand(
   }
 
   const spinner = ui
-    .spinner(UI_MESSAGES.IMPACT_START + '"' + target + '"...')
+    .spinner(
+      UI_MESSAGES.IMPACT_START +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        target +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        "...",
+    )
     .start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
@@ -90,11 +90,21 @@ export async function impactCommand(
     const result = await docuviaApi.impact(scopeId, logger);
 
     if (!result) {
-      spinner.warn(UI_MESSAGES.IMPACT_NOT_FOUND + '"' + target + '"');
+      spinner.warn(
+        UI_MESSAGES.IMPACT_NOT_FOUND +
+          FORMAT_MARKERS.DOUBLE_QUOTE +
+          target +
+          FORMAT_MARKERS.DOUBLE_QUOTE,
+      );
       return;
     }
 
-    spinner.succeed(UI_MESSAGES.IMPACT_SUCCESS + '"' + target + '"');
+    spinner.succeed(
+      UI_MESSAGES.IMPACT_SUCCESS +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        target +
+        FORMAT_MARKERS.DOUBLE_QUOTE,
+    );
     ui.log("");
     printBlastRadius(result.blastRadius, result.riskLevel);
   } catch (error: unknown) {

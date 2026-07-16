@@ -1,9 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 
+const TYPESCRIPT_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts"];
+const TYPESCRIPT_WASM_FILE = "tree-sitter-typescript.wasm";
+
 export const typescriptConfig: LanguageConfig = {
-  extensions: [".ts", ".tsx", ".mts", ".cts"],
-  wasm_file: "tree-sitter-typescript.wasm",
+  extensions: TYPESCRIPT_EXTENSIONS,
+  wasm_file: TYPESCRIPT_WASM_FILE,
   imports: ["import_statement"],
   classes: [
     "class_declaration",

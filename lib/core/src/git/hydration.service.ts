@@ -94,7 +94,7 @@ export class HydrationService implements IHydrationService {
 
     const ancestry = await this.git.getCommitAncestry(
       cwd,
-      "HEAD",
+      GitConstants.HEAD_REF,
       SOURCE_ANCESTRY_WALK_LIMIT,
     );
     for (const sourceSha of ancestry) {

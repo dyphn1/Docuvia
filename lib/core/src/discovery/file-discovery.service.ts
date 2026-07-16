@@ -26,7 +26,10 @@ import { MAX_FILE_SIZE_BYTES } from "../constants/paths.js";
 import {
   DISCOVERY_MESSAGES,
   COMMON_GLOB_IGNORE_PATTERNS,
+  NODE_MODULES_DIR_NAME,
 } from "./discovery-constants.js";
+
+const GITIGNORE_FILENAME = ".gitignore";
 
 export class FileDiscoveryService implements IFileDiscovery {
   constructor(
@@ -79,7 +82,7 @@ export class FileDiscoveryService implements IFileDiscovery {
       const ig = ignore();
       try {
         const gitignoreContent = await fs.readFile(
-          path.join(workspaceRoot, ".gitignore"),
+          path.join(workspaceRoot, GITIGNORE_FILENAME),
           UTF8_ENCODING,
         );
         ig.add(gitignoreContent);
@@ -121,7 +124,7 @@ export class FileDiscoveryService implements IFileDiscovery {
     allFiles = allFiles.filter(
       (f: string) =>
         isSupportedSourceFile(f) &&
-        !f.includes("node_modules/") &&
+        !f.includes(`${NODE_MODULES_DIR_NAME}/`) &&
         !f.includes(`${DOCUVIA_DIR_NAME}/`),
     );
 

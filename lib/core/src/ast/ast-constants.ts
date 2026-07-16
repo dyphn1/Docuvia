@@ -1,5 +1,8 @@
 import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
 
+/** `Error.name` for `AstWorkerCrashError` — see `docuvia-error.ts`'s `DOCUVIA_ERROR_NAME` for the same convention. */
+export const AST_WORKER_CRASH_ERROR_NAME = "AstWorkerCrashError" as const;
+
 /** Log/error messages and shared literals for the AST parsing pipeline (worker pool + worker + processing service). */
 export const AstMessages = {
   PARSE_FAILURE_NO_DETAIL: "parse returned success=false with no error detail",

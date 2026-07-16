@@ -42,6 +42,26 @@
 
 - [ADR Index](adr/README.md)
 
+## 🔄 Workflows
+
+- [Overview](workflows/README.md)
+- [init — Execution Flow vs. Architecture Decisions](workflows/init-execution-flow.md)
+- [clean — Execution Flow vs. Architecture Decisions](workflows/clean-execution-flow.md)
+- [status — Execution Flow vs. Architecture Decisions](workflows/status-execution-flow.md)
+- [sync — Execution Flow vs. Architecture Decisions](workflows/sync-execution-flow.md)
+- [analyze — Execution Flow vs. Architecture Decisions](workflows/analyze-execution-flow.md)
+- [review — Execution Flow vs. Architecture Decisions](workflows/review-execution-flow.md)
+- [impact — Execution Flow vs. Architecture Decisions](workflows/impact-execution-flow.md)
+- [query — Execution Flow vs. Architecture Decisions](workflows/query-execution-flow.md)
+- [export-topology — Execution Flow vs. Architecture Decisions](workflows/export-topology-execution-flow.md)
+- [snapshot — Execution Flow vs. Architecture Decisions](workflows/snapshot-execution-flow.md)
+- [hydrate — Execution Flow vs. Architecture Decisions](workflows/hydrate-execution-flow.md)
+- [sync-knowledge — Execution Flow vs. Architecture Decisions](workflows/sync-knowledge-execution-flow.md)
+- [doctor — Execution Flow vs. Architecture Decisions](workflows/doctor-execution-flow.md)
+- [uninstall — Execution Flow vs. Architecture Decisions](workflows/uninstall-execution-flow.md)
+- [mcp — Execution Flow vs. Architecture Decisions](workflows/mcp-execution-flow.md)
+
 ## 📊 Analysis
 
-- [Docuvia2 vs Docuvia1 vs GitNexus (2026-07-12)](analysis/docuvia2-vs-docuvia1-vs-gitnexus-2026-07-12.md)
+- [Cross-Product CLI Benchmark (2026-07-13)](analysis/cross-product-cli-benchmark.md)
+- [Background Knowledge Loop — Gap Analysis (2026-07-16)](analysis/background-knowledge-loop-gap-analysis.md)

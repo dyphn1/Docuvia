@@ -57,45 +57,13 @@ export class SemanticDiffDetector {
       const processedNodes = new Set<number>();
 
       for (const range of changedLineRanges) {
-        const smallestNode = this.getSmallestContainingNode(
-          newTree.rootNode,
+        const modified = this.processChangedRange(
           range,
+          newTree.rootNode,
+          oldNodeIndex,
+          processedNodes,
         );
-        if (!smallestNode) continue;
-
-        const semanticBoundary = this.findSemanticBoundary(smallestNode);
-        if (!semanticBoundary) continue;
-
-        if (processedNodes.has(semanticBoundary.id)) {
-          continue; // Already processed this boundary for another line range
-        }
-        processedNodes.add(semanticBoundary.id);
-
-        const newName = this.getNodeName(semanticBoundary);
-        const oldNode = newName
-          ? oldNodeIndex.get(`${semanticBoundary.type}::${newName}`)
-          : undefined;
-
-        let pruningLevel = PruningLevel.CONTRACT_CHANGED;
-
-        if (oldNode) {
-          const oldSig = this.getSignature(oldNode);
-          const newSig = this.getSignature(semanticBoundary);
-
-          if (oldSig === newSig) {
-            pruningLevel = PruningLevel.INTERNAL_LOGIC;
-          }
-        }
-
-        results.push({
-          nodeId: newName || semanticBoundary.id.toString(),
-          nodeType: semanticBoundary.type,
-          pruningLevel,
-          newRange: {
-            startRow: semanticBoundary.startPosition.row,
-            endRow: semanticBoundary.endPosition.row,
-          },
-        });
+        if (modified) results.push(modified);
       }
     } finally {
       if (oldTree) oldTree.delete();
@@ -103,6 +71,62 @@ export class SemanticDiffDetector {
     }
 
     return results;
+  }
+
+  /**
+   * Resolves a single changed line range against the new tree's smallest containing
+   * semantic boundary, dedupes against already-processed boundaries, and builds the
+   * corresponding {@link ModifiedNode} — or returns `null` when the range yields nothing
+   * new to report.
+   */
+  private processChangedRange(
+    range: LineRange,
+    newRoot: Node,
+    oldNodeIndex: Map<string, Node>,
+    processedNodes: Set<number>,
+  ): ModifiedNode | null {
+    const smallestNode = this.getSmallestContainingNode(newRoot, range);
+    if (!smallestNode) return null;
+
+    const semanticBoundary = this.findSemanticBoundary(smallestNode);
+    if (!semanticBoundary) return null;
+
+    if (processedNodes.has(semanticBoundary.id)) {
+      return null; // Already processed this boundary for another line range
+    }
+    processedNodes.add(semanticBoundary.id);
+
+    const newName = this.getNodeName(semanticBoundary);
+    const oldNode = newName
+      ? oldNodeIndex.get(`${semanticBoundary.type}::${newName}`)
+      : undefined;
+
+    const pruningLevel = this.resolvePruningLevel(oldNode, semanticBoundary);
+
+    return {
+      nodeId: newName || semanticBoundary.id.toString(),
+      nodeType: semanticBoundary.type,
+      pruningLevel,
+      newRange: {
+        startRow: semanticBoundary.startPosition.row,
+        endRow: semanticBoundary.endPosition.row,
+      },
+    };
+  }
+
+  /** Compares old vs. new signatures to decide whether a change is purely internal. */
+  private resolvePruningLevel(
+    oldNode: Node | undefined,
+    semanticBoundary: Node,
+  ): PruningLevel {
+    if (!oldNode) return PruningLevel.CONTRACT_CHANGED;
+
+    const oldSig = this.getSignature(oldNode);
+    const newSig = this.getSignature(semanticBoundary);
+
+    return oldSig === newSig
+      ? PruningLevel.INTERNAL_LOGIC
+      : PruningLevel.CONTRACT_CHANGED;
   }
 
   /**

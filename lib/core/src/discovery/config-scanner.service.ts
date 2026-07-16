@@ -230,33 +230,8 @@ export class ConfigScannerService implements IConfigScanner {
         deep: 3,
       });
 
-      for (const file of configFiles) {
-        const basename = path.basename(file);
-        let content: string;
-        try {
-          content = await fs.readFile(file, UTF8_ENCODING);
-        } catch {
-          continue;
-        }
-
-        for (const rule of CONFIG_DETECTION_RULES) {
-          if (!rule.matchesFile(basename)) continue;
-          const result = rule.detect(content);
-          if (!result) continue;
-          if (result.projectType) projectType = result.projectType;
-          for (const tag of result.tags) suggestedTags.add(tag);
-        }
-      }
-
-      if (
-        suggestedTags.has(ConfigTags.TYPESCRIPT) ||
-        suggestedTags.has(ConfigTags.REACT) ||
-        suggestedTags.has(ConfigTags.EXPRESS) ||
-        suggestedTags.has(ConfigTags.VUE)
-      ) {
-        if (projectType === ProjectTypes.UNKNOWN)
-          projectType = ProjectTypes.JAVASCRIPT;
-      }
+      projectType = await this.scanAllConfigFiles(configFiles, suggestedTags);
+      projectType = this.resolveJavascriptFallback(projectType, suggestedTags);
     } catch (e: any) {
       this.logger.warn(DISCOVERY_MESSAGES.CONFIG_SCAN_FAILED, {
         error: e?.message ?? String(e),
@@ -272,5 +247,74 @@ export class ConfigScannerService implements IConfigScanner {
     }
 
     return { projectType, tags: Array.from(suggestedTags) };
+  }
+
+  /** Reads and applies detection rules to every discovered config file, returning the last project type a rule reported (or `ProjectTypes.UNKNOWN` if none did). */
+  private async scanAllConfigFiles(
+    configFiles: string[],
+    suggestedTags: Set<string>,
+  ): Promise<string> {
+    let projectType: string = ProjectTypes.UNKNOWN;
+
+    for (const file of configFiles) {
+      const content = await this.readConfigFileContent(file);
+      if (content === null) continue;
+
+      const basename = path.basename(file);
+      const detectedType = this.applyDetectionRules(
+        basename,
+        content,
+        suggestedTags,
+      );
+      if (detectedType) projectType = detectedType;
+    }
+
+    return projectType;
+  }
+
+  /** Reads a single config file's content, returning `null` (to be skipped) if it can't be read. */
+  private async readConfigFileContent(file: string): Promise<string | null> {
+    try {
+      return await fs.readFile(file, UTF8_ENCODING);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Runs every detection rule matching `basename` against `content`, merging matched tags into `suggestedTags` and returning the last matched project type, if any. */
+  private applyDetectionRules(
+    basename: string,
+    content: string,
+    suggestedTags: Set<string>,
+  ): string | undefined {
+    let projectType: string | undefined;
+
+    for (const rule of CONFIG_DETECTION_RULES) {
+      if (!rule.matchesFile(basename)) continue;
+      const result = rule.detect(content);
+      if (!result) continue;
+      if (result.projectType) projectType = result.projectType;
+      for (const tag of result.tags) suggestedTags.add(tag);
+    }
+
+    return projectType;
+  }
+
+  /** Falls back to `ProjectTypes.JAVASCRIPT` when JS/TS-family tags were detected but no rule pinned a more specific project type. */
+  private resolveJavascriptFallback(
+    projectType: string,
+    suggestedTags: Set<string>,
+  ): string {
+    const hasJsFamilyIndicator =
+      suggestedTags.has(ConfigTags.TYPESCRIPT) ||
+      suggestedTags.has(ConfigTags.REACT) ||
+      suggestedTags.has(ConfigTags.EXPRESS) ||
+      suggestedTags.has(ConfigTags.VUE);
+
+    if (hasJsFamilyIndicator && projectType === ProjectTypes.UNKNOWN) {
+      return ProjectTypes.JAVASCRIPT;
+    }
+
+    return projectType;
   }
 }

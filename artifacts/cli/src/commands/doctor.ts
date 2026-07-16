@@ -6,6 +6,7 @@ import {
   docuviaMemory,
   DocuviaError,
   DiagnosticStatus,
+  type DiagnosticResult,
   MemoryKeys,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
@@ -27,6 +28,97 @@ export interface DoctorOptions {
   skipLogs?: boolean;
 }
 
+function printDiagnosticResult(key: string, res: DiagnosticResult): void {
+  if (res.status === DiagnosticStatus.PASS) {
+    ui.success(
+      UI_MESSAGES.DOCTOR_DIAGNOSTIC_PREFIX +
+        key +
+        UI_MESSAGES.DOCTOR_DIAGNOSTIC_SUFFIX +
+        res.message,
+    );
+    return;
+  }
+  ui.error(
+    UI_MESSAGES.DOCTOR_DIAGNOSTIC_PREFIX +
+      key +
+      UI_MESSAGES.DOCTOR_DIAGNOSTIC_SUFFIX +
+      res.message,
+  );
+  if (res.details) ui.warn(UI_MESSAGES.DOCTOR_DETAILS_PREFIX + res.details);
+  if (res.suggestion)
+    ui.info(UI_MESSAGES.DOCTOR_SUGGESTION_PREFIX + res.suggestion);
+}
+
+async function runDoctorDiagnostics(
+  scopeId: string,
+  logger: ReturnType<typeof createPinoBackedLogger>,
+  workspaceRoot: string,
+  options: Pick<DoctorOptions, "skipDb" | "skipGit" | "skipLogs">,
+): Promise<boolean> {
+  docuviaMemory.createScope(scopeId);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
+
+  try {
+    const result = await docuviaApi.doctor(scopeId, logger, options);
+    for (const [key, res] of Object.entries(result.diagnostics)) {
+      printDiagnosticResult(key, res);
+    }
+    return result.allPassed;
+  } catch (error: unknown) {
+    const message =
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
+    ui.error(UI_MESSAGES.DOCTOR_FAIL + message);
+    return false;
+  } finally {
+    docuviaMemory.deleteScope(scopeId);
+  }
+}
+
+function reportHookPresence(
+  found: boolean,
+  foundMessage: string,
+  notFoundMessage: string,
+): void {
+  if (found) ui.success(`${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${foundMessage}`);
+  else ui.warn(`${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${notFoundMessage}`);
+}
+
+async function reportDoctorHooksStatus(
+  workspaceRoot: string,
+  skipHooks: boolean,
+): Promise<void> {
+  if (skipHooks) {
+    ui.info(UI_MESSAGES.DOCTOR_HOOKS_SKIPPED);
+    return;
+  }
+
+  const claudeHooksPath = path.join(
+    workspaceRoot,
+    CLAUDE_HOOKS_DIR,
+    DOCUVIA_HOOK_JS_FILENAME,
+  );
+  const cursorHooksPath = path.join(
+    workspaceRoot,
+    CURSOR_HOOKS_DIR,
+    DOCUVIA_HOOK_CJS_FILENAME,
+  );
+  const hasClaude = await fs.stat(claudeHooksPath).catch(() => null);
+  const hasCursor = await fs.stat(cursorHooksPath).catch(() => null);
+
+  reportHookPresence(
+    !!hasClaude,
+    UI_MESSAGES.DOCTOR_CLAUDE_FOUND,
+    UI_MESSAGES.DOCTOR_CLAUDE_NOT_FOUND,
+  );
+  reportHookPresence(
+    !!hasCursor,
+    UI_MESSAGES.DOCTOR_CURSOR_FOUND,
+    UI_MESSAGES.DOCTOR_CURSOR_NOT_FOUND,
+  );
+}
+
 export async function doctorCommand(
   workspaceRoot: string,
   options: DoctorOptions = {},
@@ -44,85 +136,14 @@ export async function doctorCommand(
     const scopeId = crypto.randomUUID();
     const logger = createPinoBackedLogger();
 
-    docuviaMemory.createScope(scopeId);
-    docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
+    const allPassed = await runDoctorDiagnostics(
+      scopeId,
+      logger,
+      workspaceRoot,
+      { skipDb, skipGit, skipLogs },
+    );
 
-    let allPassed = true;
-
-    try {
-      const result = await docuviaApi.doctor(scopeId, logger, {
-        skipDb,
-        skipGit,
-        skipLogs,
-      });
-      allPassed = result.allPassed;
-
-      for (const [key, res] of Object.entries(result.diagnostics)) {
-        if (res.status === DiagnosticStatus.PASS) {
-          ui.success(
-            UI_MESSAGES.DOCTOR_DIAGNOSTIC_PREFIX +
-              key +
-              UI_MESSAGES.DOCTOR_DIAGNOSTIC_SUFFIX +
-              res.message,
-          );
-        } else {
-          ui.error(
-            UI_MESSAGES.DOCTOR_DIAGNOSTIC_PREFIX +
-              key +
-              UI_MESSAGES.DOCTOR_DIAGNOSTIC_SUFFIX +
-              res.message,
-          );
-          if (res.details)
-            ui.warn(UI_MESSAGES.DOCTOR_DETAILS_PREFIX + res.details);
-          if (res.suggestion)
-            ui.info(UI_MESSAGES.DOCTOR_SUGGESTION_PREFIX + res.suggestion);
-        }
-      }
-    } catch (error: unknown) {
-      const message =
-        error instanceof DocuviaError || error instanceof Error
-          ? error.message
-          : String(error);
-      ui.error(UI_MESSAGES.DOCTOR_FAIL + message);
-      allPassed = false;
-    } finally {
-      docuviaMemory.deleteScope(scopeId);
-    }
-
-    if (skipHooks) {
-      ui.info(UI_MESSAGES.DOCTOR_HOOKS_SKIPPED);
-    } else {
-      const claudeHooksPath = path.join(
-        workspaceRoot,
-        CLAUDE_HOOKS_DIR,
-        DOCUVIA_HOOK_JS_FILENAME,
-      );
-      const cursorHooksPath = path.join(
-        workspaceRoot,
-        CURSOR_HOOKS_DIR,
-        DOCUVIA_HOOK_CJS_FILENAME,
-      );
-      const hasClaude = await fs.stat(claudeHooksPath).catch(() => null);
-      const hasCursor = await fs.stat(cursorHooksPath).catch(() => null);
-
-      if (hasClaude)
-        ui.success(
-          `${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${UI_MESSAGES.DOCTOR_CLAUDE_FOUND}`,
-        );
-      else
-        ui.warn(
-          `${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${UI_MESSAGES.DOCTOR_CLAUDE_NOT_FOUND}`,
-        );
-
-      if (hasCursor)
-        ui.success(
-          `${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${UI_MESSAGES.DOCTOR_CURSOR_FOUND}`,
-        );
-      else
-        ui.warn(
-          `${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${UI_MESSAGES.DOCTOR_CURSOR_NOT_FOUND}`,
-        );
-    }
+    await reportDoctorHooksStatus(workspaceRoot, skipHooks);
 
     if (allPassed) {
       ui.success(UI_MESSAGES.DOCTOR_ALL_PASSED);

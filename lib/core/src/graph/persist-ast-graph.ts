@@ -31,192 +31,374 @@ export class GraphPersisterService implements IGraphPersister {
   }): Promise<{ updatedCount: number }> {
     const { store, workspaceRoot, projectId, parsedResults, tags } = input;
 
-    return store.withWriteLock(() => {
-      const resolver = new ScopeResolver(workspaceRoot);
-      for (const result of parsedResults) {
-        const locals: string[] = [];
-        if (result.data.functions)
-          locals.push(...result.data.functions.map((f) => f.name));
-        if (result.data.classes)
-          locals.push(...result.data.classes.map((c) => c.name));
-        resolver.registerFile(
-          result.file,
-          result.data.imports || [],
-          [],
-          locals,
-        );
-      }
+    return store.withWriteLock(() =>
+      this.persistLocked(store, workspaceRoot, projectId, parsedResults, tags),
+    );
+  }
 
-      const fileIdMap = new Map<string, number>();
-      // Per-file map of symbol name -> l2_nodes.id, so calls/implements/extends can link to the
-      // actual function/class node instead of collapsing to a file-to-file edge.
-      const symbolIdMap = new Map<string, Map<string, number>>();
-      let updatedCount = 0;
+  /** Core of `persist()`, run inside `store.withWriteLock()`. */
+  private persistLocked(
+    store: IGraphStore,
+    workspaceRoot: string,
+    projectId: number,
+    parsedResults: ParsedAstFileResult[],
+    tags: string[],
+  ): { updatedCount: number } {
+    const resolver = new ScopeResolver(workspaceRoot);
+    this.registerResolverFiles(resolver, parsedResults);
 
-      for (const tag of tags) {
-        store.tags.upsertTag(tag);
-      }
+    const fileIdMap = new Map<string, number>();
+    // Per-file map of symbol name -> l2_nodes.id, so calls/implements/extends can link to the
+    // actual function/class node instead of collapsing to a file-to-file edge.
+    const symbolIdMap = new Map<string, Map<string, number>>();
 
-      for (const result of parsedResults) {
-        // Delete any stale nodes (and their outgoing links/tag-links) for this path so a
-        // re-parsed file's old graph state doesn't linger.
-        store.graph.deleteNodesForPath(result.file);
+    this.upsertTags(store, tags);
+    this.persistFileAndSymbolNodes(
+      store,
+      projectId,
+      parsedResults,
+      tags,
+      fileIdMap,
+      symbolIdMap,
+    );
+    const updatedCount = this.linkParsedResults(
+      store,
+      resolver,
+      projectId,
+      parsedResults,
+      fileIdMap,
+      symbolIdMap,
+    );
 
-        const fileId = store.graph.insertNode({
-          projectId,
-          name: result.file,
-          type: L2NodeTypes.MODULE,
-          description: "",
-          pathPatterns: [result.file],
-          nodeKey: result.file,
-          contentHash: result.hash,
-        });
-        fileIdMap.set(result.file, fileId);
-        const symbolsForFile = new Map<string, number>();
-        symbolIdMap.set(result.file, symbolsForFile);
+    return { updatedCount };
+  }
 
-        for (const tag of tags) {
-          const tagId = store.tags.getIdByName(tag);
-          if (tagId !== undefined) store.tags.linkNodeToTag(fileId, tagId);
-        }
+  /** Registers every parsed file's imports/locals with the resolver up front, so cross-file
+   *  call/implements/extends resolution below can see the whole batch, not just files processed
+   *  so far. */
+  private registerResolverFiles(
+    resolver: ScopeResolver,
+    parsedResults: ParsedAstFileResult[],
+  ): void {
+    for (const result of parsedResults) {
+      const locals: string[] = [];
+      if (result.data.functions)
+        locals.push(...result.data.functions.map((f) => f.name));
+      if (result.data.classes)
+        locals.push(...result.data.classes.map((c) => c.name));
+      resolver.registerFile(result.file, result.data.imports || [], [], locals);
+    }
+  }
 
-        // Two symbols in the same file can share a name (multiple truly-anonymous callbacks all
-        // named "anonymous" by resolveCallableName(), overloaded functions, same-named methods on
-        // different classes, chained/nested callbacks sharing a start line, ...). node_key is
-        // `${file}#${name}` and UNIQUE(project_id, node_key), so a second insert under an
-        // already-used key would throw. Disambiguate only on actual collision, preferring the
-        // symbol's start line (readable, usually enough) and falling back to a counter for the
-        // rare case where even that repeats (e.g. `x.map(() => {}).filter(() => {})` on one line) —
-        // guaranteed unique, so the common non-colliding case keeps its plain `file#name` key.
-        const usedNodeKeys = new Set<string>([result.file]);
-        const uniqueNodeKey = (baseKey: string, startLine: number): string => {
-          if (!usedNodeKeys.has(baseKey)) return baseKey;
-          const lineKey = `${baseKey}@L${startLine}`;
-          if (!usedNodeKeys.has(lineKey)) return lineKey;
-          let n = 2;
-          while (usedNodeKeys.has(`${lineKey}#${n}`)) n++;
-          return `${lineKey}#${n}`;
-        };
+  private upsertTags(store: IGraphStore, tags: string[]): void {
+    for (const tag of tags) {
+      store.tags.upsertTag(tag);
+    }
+  }
 
-        for (const fn of result.data.functions ?? []) {
-          const nodeKey = uniqueNodeKey(
-            `${result.file}#${fn.name}`,
-            fn.startLine,
-          );
-          usedNodeKeys.add(nodeKey);
-          const fnId = store.graph.insertNode({
-            projectId,
-            name: fn.name,
-            type: L2NodeTypes.MODULE,
-            description: "",
-            pathPatterns: [result.file],
-            nodeKey,
-            contentHash: fn.contentHash,
-          });
-          symbolsForFile.set(fn.name, fnId);
-          store.graph.insertLink({
-            sourceNodeId: fileId,
-            targetNodeId: fnId,
-            linkType: LinkTypes.CONTAINS,
-          });
-        }
+  /** Inserts a file node (plus its function/class symbol nodes) for every parsed result,
+   *  populating `fileIdMap`/`symbolIdMap` for the linking pass below. */
+  private persistFileAndSymbolNodes(
+    store: IGraphStore,
+    projectId: number,
+    parsedResults: ParsedAstFileResult[],
+    tags: string[],
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+  ): void {
+    for (const result of parsedResults) {
+      // Delete any stale nodes (and their outgoing links/tag-links) for this path so a
+      // re-parsed file's old graph state doesn't linger.
+      store.graph.deleteNodesForPath(result.file);
 
-        for (const cls of result.data.classes ?? []) {
-          const nodeKey = uniqueNodeKey(
-            `${result.file}#${cls.name}`,
-            cls.startLine,
-          );
-          usedNodeKeys.add(nodeKey);
-          const clsId = store.graph.insertNode({
-            projectId,
-            name: cls.name,
-            type: L2NodeTypes.MODULE,
-            description: "",
-            pathPatterns: [result.file],
-            nodeKey,
-            contentHash: cls.contentHash,
-          });
-          symbolsForFile.set(cls.name, clsId);
-          store.graph.insertLink({
-            sourceNodeId: fileId,
-            targetNodeId: clsId,
-            linkType: LinkTypes.CONTAINS,
-          });
-        }
-      }
+      const fileId = store.graph.insertNode({
+        projectId,
+        name: result.file,
+        type: L2NodeTypes.MODULE,
+        description: "",
+        pathPatterns: [result.file],
+        nodeKey: result.file,
+        contentHash: result.hash,
+      });
+      fileIdMap.set(result.file, fileId);
+      const symbolsForFile = new Map<string, number>();
+      symbolIdMap.set(result.file, symbolsForFile);
 
-      // Resolves a symbol or file node id by name within a given file's path pattern. Falls back
-      // to a DB lookup (beyond symbolIdMap/fileIdMap) so incremental runs can still link against
-      // nodes persisted by a previous, unrelated batch.
-      const findNodeIdByName = (
-        filePath: string,
-        name: string,
-      ): number | undefined => store.graph.findNodeIdByName(filePath, name);
+      this.linkFileToTags(store, fileId, tags);
 
-      for (const result of parsedResults) {
-        const sourceFileId = fileIdMap.get(result.file);
-        if (!sourceFileId) continue;
+      // Two symbols in the same file can share a name (multiple truly-anonymous callbacks all
+      // named "anonymous" by resolveCallableName(), overloaded functions, same-named methods on
+      // different classes, chained/nested callbacks sharing a start line, ...). node_key is
+      // `${file}#${name}` and UNIQUE(project_id, node_key), so a second insert under an
+      // already-used key would throw. Disambiguate only on actual collision, preferring the
+      // symbol's start line (readable, usually enough) and falling back to a counter for the
+      // rare case where even that repeats (e.g. `x.map(() => {}).filter(() => {})` on one line) —
+      // guaranteed unique, so the common non-colliding case keeps its plain `file#name` key.
+      const usedNodeKeys = new Set<string>([result.file]);
+      this.insertFunctionNodes(
+        store,
+        projectId,
+        result,
+        fileId,
+        symbolsForFile,
+        usedNodeKeys,
+      );
+      this.insertClassNodes(
+        store,
+        projectId,
+        result,
+        fileId,
+        symbolsForFile,
+        usedNodeKeys,
+      );
+    }
+  }
 
-        const sourceSymbols = symbolIdMap.get(result.file);
+  private linkFileToTags(
+    store: IGraphStore,
+    fileId: number,
+    tags: string[],
+  ): void {
+    for (const tag of tags) {
+      const tagId = store.tags.getIdByName(tag);
+      if (tagId !== undefined) store.tags.linkNodeToTag(fileId, tagId);
+    }
+  }
 
-        const processLink = (
-          sourceSymbolName: string | undefined,
-          targetFunctionOrClass: string,
-          linkType: string,
-        ) => {
-          const resolved = resolver.resolveCall(
-            result.file,
-            targetFunctionOrClass,
-          );
-          if (!resolved) return;
+  /** Disambiguates a candidate `node_key`, per the collision-handling rules described where this
+   *  is called from (`persistFileAndSymbolNodes`). */
+  private buildUniqueNodeKey(
+    usedNodeKeys: Set<string>,
+    baseKey: string,
+    startLine: number,
+  ): string {
+    if (!usedNodeKeys.has(baseKey)) return baseKey;
+    const lineKey = `${baseKey}@L${startLine}`;
+    if (!usedNodeKeys.has(lineKey)) return lineKey;
+    let n = 2;
+    while (usedNodeKeys.has(`${lineKey}#${n}`)) n++;
+    return `${lineKey}#${n}`;
+  }
 
-          // Prefer the specific target function/class node; fall back to the file node when the
-          // target isn't a tracked symbol (e.g. a re-exported value or namespace import).
-          const targetNodeId =
-            symbolIdMap.get(resolved.targetFile)?.get(resolved.targetSymbol) ??
-            findNodeIdByName(resolved.targetFile, resolved.targetSymbol) ??
-            fileIdMap.get(resolved.targetFile) ??
-            findNodeIdByName(resolved.targetFile, resolved.targetFile);
+  private insertFunctionNodes(
+    store: IGraphStore,
+    projectId: number,
+    result: ParsedAstFileResult,
+    fileId: number,
+    symbolsForFile: Map<string, number>,
+    usedNodeKeys: Set<string>,
+  ): void {
+    for (const fn of result.data.functions ?? []) {
+      const nodeKey = this.buildUniqueNodeKey(
+        usedNodeKeys,
+        `${result.file}#${fn.name}`,
+        fn.startLine,
+      );
+      usedNodeKeys.add(nodeKey);
+      const fnId = store.graph.insertNode({
+        projectId,
+        name: fn.name,
+        type: L2NodeTypes.MODULE,
+        description: "",
+        pathPatterns: [result.file],
+        nodeKey,
+        contentHash: fn.contentHash,
+      });
+      symbolsForFile.set(fn.name, fnId);
+      store.graph.insertLink({
+        sourceNodeId: fileId,
+        targetNodeId: fnId,
+        linkType: LinkTypes.CONTAINS,
+      });
+    }
+  }
 
-          // Prefer the specific calling function/class node; fall back to the file node for
-          // module-level (top-level) call sites.
-          const sourceNodeId =
-            (sourceSymbolName && sourceSymbolName !== ANONYMOUS_SYMBOL_NAME
-              ? sourceSymbols?.get(sourceSymbolName)
-              : undefined) ?? sourceFileId;
+  private insertClassNodes(
+    store: IGraphStore,
+    projectId: number,
+    result: ParsedAstFileResult,
+    fileId: number,
+    symbolsForFile: Map<string, number>,
+    usedNodeKeys: Set<string>,
+  ): void {
+    for (const cls of result.data.classes ?? []) {
+      const nodeKey = this.buildUniqueNodeKey(
+        usedNodeKeys,
+        `${result.file}#${cls.name}`,
+        cls.startLine,
+      );
+      usedNodeKeys.add(nodeKey);
+      const clsId = store.graph.insertNode({
+        projectId,
+        name: cls.name,
+        type: L2NodeTypes.MODULE,
+        description: "",
+        pathPatterns: [result.file],
+        nodeKey,
+        contentHash: cls.contentHash,
+      });
+      symbolsForFile.set(cls.name, clsId);
+      store.graph.insertLink({
+        sourceNodeId: fileId,
+        targetNodeId: clsId,
+        linkType: LinkTypes.CONTAINS,
+      });
+    }
+  }
 
-          if (targetNodeId && targetNodeId !== sourceNodeId) {
-            store.graph.insertLink({ sourceNodeId, targetNodeId, linkType });
-          }
-        };
+  /** Links calls/implements/extends edges for every parsed result and upserts its file row.
+   *  Returns the number of files processed (matches old `updatedCount` semantics). */
+  private linkParsedResults(
+    store: IGraphStore,
+    resolver: ScopeResolver,
+    projectId: number,
+    parsedResults: ParsedAstFileResult[],
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+  ): number {
+    let updatedCount = 0;
 
-        for (const call of result.data.calls ?? []) {
-          processLink(
-            call.sourceFunction,
-            call.targetFunction,
-            LinkTypes.CALLS,
-          );
-        }
-        for (const impl of result.data.implements ?? []) {
-          processLink(
-            impl.sourceClass,
-            impl.targetInterface,
-            LinkTypes.IMPLEMENTS,
-          );
-        }
-        for (const ext of result.data.extends ?? []) {
-          processLink(ext.sourceClass, ext.targetClass, LinkTypes.EXTENDS);
-        }
+    for (const result of parsedResults) {
+      const sourceFileId = fileIdMap.get(result.file);
+      if (!sourceFileId) continue;
 
-        store.files.upsertFile({
-          projectId,
-          filePath: result.file,
-          contentHash: result.hash,
-        });
-        updatedCount++;
-      }
+      this.linkParsedResultRelations(
+        store,
+        resolver,
+        result,
+        sourceFileId,
+        fileIdMap,
+        symbolIdMap,
+      );
 
-      return { updatedCount };
-    });
+      store.files.upsertFile({
+        projectId,
+        filePath: result.file,
+        contentHash: result.hash,
+      });
+      updatedCount++;
+    }
+
+    return updatedCount;
+  }
+
+  private linkParsedResultRelations(
+    store: IGraphStore,
+    resolver: ScopeResolver,
+    result: ParsedAstFileResult,
+    sourceFileId: number,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+  ): void {
+    const sourceSymbols = symbolIdMap.get(result.file);
+
+    for (const call of result.data.calls ?? []) {
+      this.linkSymbolReference(
+        store,
+        resolver,
+        result.file,
+        sourceFileId,
+        sourceSymbols,
+        fileIdMap,
+        symbolIdMap,
+        call.sourceFunction,
+        call.targetFunction,
+        LinkTypes.CALLS,
+      );
+    }
+    for (const impl of result.data.implements ?? []) {
+      this.linkSymbolReference(
+        store,
+        resolver,
+        result.file,
+        sourceFileId,
+        sourceSymbols,
+        fileIdMap,
+        symbolIdMap,
+        impl.sourceClass,
+        impl.targetInterface,
+        LinkTypes.IMPLEMENTS,
+      );
+    }
+    for (const ext of result.data.extends ?? []) {
+      this.linkSymbolReference(
+        store,
+        resolver,
+        result.file,
+        sourceFileId,
+        sourceSymbols,
+        fileIdMap,
+        symbolIdMap,
+        ext.sourceClass,
+        ext.targetClass,
+        LinkTypes.EXTENDS,
+      );
+    }
+  }
+
+  /** Resolves one call/implements/extends edge and, if the resolved target is a real (and
+   *  distinct) node, inserts the link. Mirrors old inline `processLink` closure 1:1. */
+  private linkSymbolReference(
+    store: IGraphStore,
+    resolver: ScopeResolver,
+    sourceFile: string,
+    sourceFileId: number,
+    sourceSymbols: Map<string, number> | undefined,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+    sourceSymbolName: string | undefined,
+    targetFunctionOrClass: string,
+    linkType: string,
+  ): void {
+    const resolved = resolver.resolveCall(sourceFile, targetFunctionOrClass);
+    if (!resolved) return;
+
+    const targetNodeId = this.resolveTargetNodeId(
+      store,
+      fileIdMap,
+      symbolIdMap,
+      resolved.targetFile,
+      resolved.targetSymbol,
+    );
+    const sourceNodeId = this.resolveSourceNodeId(
+      sourceSymbols,
+      sourceSymbolName,
+      sourceFileId,
+    );
+
+    if (targetNodeId && targetNodeId !== sourceNodeId) {
+      store.graph.insertLink({ sourceNodeId, targetNodeId, linkType });
+    }
+  }
+
+  /** Prefers the specific target function/class node; falls back to the file node when the
+   *  target isn't a tracked symbol (e.g. a re-exported value or namespace import). */
+  private resolveTargetNodeId(
+    store: IGraphStore,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+    targetFile: string,
+    targetSymbol: string,
+  ): number | undefined {
+    return (
+      symbolIdMap.get(targetFile)?.get(targetSymbol) ??
+      store.graph.findNodeIdByName(targetFile, targetSymbol) ??
+      fileIdMap.get(targetFile) ??
+      store.graph.findNodeIdByName(targetFile, targetFile)
+    );
+  }
+
+  /** Prefers the specific calling function/class node; falls back to the file node for
+   *  module-level (top-level) call sites. */
+  private resolveSourceNodeId(
+    sourceSymbols: Map<string, number> | undefined,
+    sourceSymbolName: string | undefined,
+    sourceFileId: number,
+  ): number {
+    const symbolId =
+      sourceSymbolName && sourceSymbolName !== ANONYMOUS_SYMBOL_NAME
+        ? sourceSymbols?.get(sourceSymbolName)
+        : undefined;
+    return symbolId ?? sourceFileId;
   }
 }

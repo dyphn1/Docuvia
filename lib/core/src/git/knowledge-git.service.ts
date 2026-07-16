@@ -187,17 +187,8 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       return { status: KnowledgeBranchSyncStatuses.NO_REMOTE };
     }
 
-    try {
-      await this.git.fetchRef(cwd, remote, branchName);
-    } catch (err) {
-      // Network/remote failure — degrade gracefully offline rather than failing the caller
-      // (snapshot/hydrate) over a transient network hiccup.
-      this.logger.warn(GitMessages.FAILED_TO_FETCH_CONTINUING_OFFLINE, {
-        branchName,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      return { status: KnowledgeBranchSyncStatuses.NO_REMOTE };
-    }
+    const fetched = await this.tryFetchRemoteBranch(cwd, branchName, remote);
+    if (!fetched) return { status: KnowledgeBranchSyncStatuses.NO_REMOTE };
 
     const remoteSha = await this.git.getRefSha(
       cwd,
@@ -205,28 +196,124 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     );
     const localSha = await this.git.getBranchTipSha(cwd, branchName);
 
+    return this.resolveBranchSyncOutcome(
+      cwd,
+      branchName,
+      remote,
+      localSha,
+      remoteSha,
+    );
+  }
+
+  /** Fetches the remote's copy of the knowledge branch, degrading gracefully (rather than
+   *  throwing) on a transient network/remote failure so the caller (snapshot/hydrate) can keep
+   *  working offline. */
+  private async tryFetchRemoteBranch(
+    cwd: string,
+    branchName: string,
+    remote: string,
+  ): Promise<boolean> {
+    try {
+      await this.git.fetchRef(cwd, remote, branchName);
+      return true;
+    } catch (err) {
+      this.logger.warn(GitMessages.FAILED_TO_FETCH_CONTINUING_OFFLINE, {
+        branchName,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return false;
+    }
+  }
+
+  /** Decides the sync outcome once both `localSha`/`remoteSha` are known: missing-side adoption,
+   *  already-in-sync, fast-forward, or (falling through) genuine divergence. */
+  private async resolveBranchSyncOutcome(
+    cwd: string,
+    branchName: string,
+    remote: string,
+    localSha: string | undefined,
+    remoteSha: string | undefined,
+  ): Promise<KnowledgeBranchSyncResult> {
+    const shaResolution = await this.resolveMissingShaOutcome(
+      cwd,
+      branchName,
+      remote,
+      localSha,
+      remoteSha,
+    );
+    if ("resolved" in shaResolution) return shaResolution.resolved;
+    const { localSha: local, remoteSha: remoteTip } = shaResolution;
+
+    if (local === remoteTip) {
+      return {
+        status: KnowledgeBranchSyncStatuses.UP_TO_DATE,
+        branchTipSha: local,
+      };
+    }
+
+    const fastForwardResult = await this.resolveFastForwardOutcome(
+      cwd,
+      branchName,
+      remote,
+      local,
+      remoteTip,
+    );
+    if (fastForwardResult) return fastForwardResult;
+
+    return this.mergeDivergedBranches(
+      cwd,
+      branchName,
+      remote,
+      local,
+      remoteTip,
+    );
+  }
+
+  /** Handles the two "one side has no commit yet" cases (adopting the other side outright).
+   *  Returns the resolved sync result for those cases, or the narrowed (both-defined) shas so
+   *  the caller can proceed to fast-forward/divergence handling. */
+  private async resolveMissingShaOutcome(
+    cwd: string,
+    branchName: string,
+    remote: string,
+    localSha: string | undefined,
+    remoteSha: string | undefined,
+  ): Promise<
+    | { resolved: KnowledgeBranchSyncResult }
+    | { localSha: string; remoteSha: string }
+  > {
     if (!remoteSha) {
       if (localSha) await this.pushQuietly(cwd, remote, branchName);
       return {
-        status: KnowledgeBranchSyncStatuses.PUSHED_LOCAL,
-        branchTipSha: localSha,
+        resolved: {
+          status: KnowledgeBranchSyncStatuses.PUSHED_LOCAL,
+          branchTipSha: localSha,
+        },
       };
     }
     if (!localSha) {
       await this.git.updateBranchRef(cwd, branchName, remoteSha);
       this.logger.info(GitMessages.ADOPTED_REMOTE_BRANCH, { branchName });
       return {
-        status: KnowledgeBranchSyncStatuses.FAST_FORWARDED_LOCAL,
-        branchTipSha: remoteSha,
+        resolved: {
+          status: KnowledgeBranchSyncStatuses.FAST_FORWARDED_LOCAL,
+          branchTipSha: remoteSha,
+        },
       };
     }
-    if (localSha === remoteSha) {
-      return {
-        status: KnowledgeBranchSyncStatuses.UP_TO_DATE,
-        branchTipSha: localSha,
-      };
-    }
+    return { localSha, remoteSha };
+  }
 
+  /** Handles the two non-diverged, both-shas-defined cases: local is an ancestor of remote (fast
+   *  forward local), or remote is an ancestor of local (push local). Returns `undefined` when
+   *  neither holds (genuine divergence), for the caller to handle. */
+  private async resolveFastForwardOutcome(
+    cwd: string,
+    branchName: string,
+    remote: string,
+    localSha: string,
+    remoteSha: string,
+  ): Promise<KnowledgeBranchSyncResult | undefined> {
     if (await this.git.isAncestor(cwd, localSha, remoteSha)) {
       await this.git.updateBranchRef(cwd, branchName, remoteSha);
       this.logger.info(GitMessages.FAST_FORWARDED_LOCAL_BRANCH, {
@@ -245,9 +332,18 @@ export class KnowledgeGitService implements IKnowledgeGitService {
         branchTipSha: localSha,
       };
     }
+    return undefined;
+  }
 
-    // True divergence — tree-adoption merge (STOR-001 point 3): create a 2-parent merge commit
-    // wholesale adopting the winning side's tree, rather than a content-level merge of both.
+  /** True divergence — tree-adoption merge (STOR-001 point 3): create a 2-parent merge commit
+   *  wholesale adopting the winning side's tree, rather than a content-level merge of both. */
+  private async mergeDivergedBranches(
+    cwd: string,
+    branchName: string,
+    remote: string,
+    localSha: string,
+    remoteSha: string,
+  ): Promise<KnowledgeBranchSyncResult> {
     const winnerSha = await this.resolveMergeWinner(cwd, localSha, remoteSha);
     const winningTree = await this.git.getTreeSha(cwd, winnerSha);
     const mergeMessage = GitMessages.mergeCommitMessage(winnerSha === localSha);

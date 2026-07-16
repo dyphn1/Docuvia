@@ -90,48 +90,61 @@ export class ScopeResolver {
 
   private loadTsConfigPaths() {
     try {
-      const tsconfigPath = path.join(
-        this.workspaceRoot,
-        ConfigFilenames.TSCONFIG_JSON,
-      );
-      if (fs.existsSync(tsconfigPath)) {
-        const content = fs.readFileSync(tsconfigPath, UTF8_ENCODING);
-        const cleanContent = stripJsonComments(content);
-        try {
-          const parsed = JSON.parse(cleanContent);
-          if (parsed.compilerOptions && parsed.compilerOptions.paths) {
-            this.tsConfigPaths = {
-              ...this.tsConfigPaths,
-              ...parsed.compilerOptions.paths,
-            };
-          }
-        } catch (e) {
-          this.logger.debug(ScopeResolverMessages.TSCONFIG_PARSE_FAILED, {
-            error: e instanceof Error ? e.message : String(e),
-          });
-        }
-      }
-
-      const tsconfigBasePath = path.join(
-        this.workspaceRoot,
-        TSCONFIG_BASE_FILENAME,
-      );
-      if (fs.existsSync(tsconfigBasePath)) {
-        const content = fs.readFileSync(tsconfigBasePath, UTF8_ENCODING);
-        const cleanContent = stripJsonComments(content);
-        const parsed = JSON.parse(cleanContent);
-        if (parsed.compilerOptions && parsed.compilerOptions.paths) {
-          this.tsConfigPaths = {
-            ...parsed.compilerOptions.paths,
-            ...this.tsConfigPaths,
-          };
-        }
-      }
+      this.mergeProjectTsConfigPaths();
+      this.mergeBaseTsConfigPaths();
     } catch (e: any) {
       // Ignore fs read or parse failures
       this.logger.debug(ScopeResolverMessages.TSCONFIG_FILES_READ_FAILED, {
         error: e?.message ?? String(e),
       });
+    }
+  }
+
+  /** Merges `tsconfig.json`'s `compilerOptions.paths`, with a JSON.parse failure here logged and
+   *  swallowed (not fatal to `loadTsConfigPaths` as a whole) so a base tsconfig can still merge
+   *  below. */
+  private mergeProjectTsConfigPaths(): void {
+    const tsconfigPath = path.join(
+      this.workspaceRoot,
+      ConfigFilenames.TSCONFIG_JSON,
+    );
+    if (!fs.existsSync(tsconfigPath)) return;
+
+    const content = fs.readFileSync(tsconfigPath, UTF8_ENCODING);
+    const cleanContent = stripJsonComments(content);
+    try {
+      const parsed = JSON.parse(cleanContent);
+      if (parsed.compilerOptions && parsed.compilerOptions.paths) {
+        this.tsConfigPaths = {
+          ...this.tsConfigPaths,
+          ...parsed.compilerOptions.paths,
+        };
+      }
+    } catch (e) {
+      this.logger.debug(ScopeResolverMessages.TSCONFIG_PARSE_FAILED, {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
+  /** Merges `tsconfig.base.json`'s `compilerOptions.paths` (lower precedence than the project
+   *  tsconfig's — see the spread order below). Any failure here propagates to the outer
+   *  `loadTsConfigPaths` try/catch, matching the original inline behavior. */
+  private mergeBaseTsConfigPaths(): void {
+    const tsconfigBasePath = path.join(
+      this.workspaceRoot,
+      TSCONFIG_BASE_FILENAME,
+    );
+    if (!fs.existsSync(tsconfigBasePath)) return;
+
+    const content = fs.readFileSync(tsconfigBasePath, UTF8_ENCODING);
+    const cleanContent = stripJsonComments(content);
+    const parsed = JSON.parse(cleanContent);
+    if (parsed.compilerOptions && parsed.compilerOptions.paths) {
+      this.tsConfigPaths = {
+        ...parsed.compilerOptions.paths,
+        ...this.tsConfigPaths,
+      };
     }
   }
 
@@ -218,41 +231,59 @@ export class ScopeResolver {
     if (this.packageDirCache) return this.packageDirCache;
     const cache = new Map<string, string>();
     for (const glob of this.getWorkspaceGlobs()) {
-      const starIdx = glob.indexOf(PATH_WILDCARD_TOKEN);
-      const baseDir = (starIdx >= 0 ? glob.slice(0, starIdx) : glob).replace(
-        /\/$/,
-        "",
-      );
-      const fullBaseDir = path.join(this.workspaceRoot, baseDir);
-      if (!fs.existsSync(fullBaseDir)) continue;
-      let entries: fs.Dirent[];
-      try {
-        entries = fs.readdirSync(fullBaseDir, { withFileTypes: true });
-      } catch {
-        continue;
-      }
-      for (const entry of entries) {
-        if (!entry.isDirectory()) continue;
-        const pkgJsonPath = path.join(
-          fullBaseDir,
-          entry.name,
-          ConfigFilenames.PACKAGE_JSON,
-        );
-        if (!fs.existsSync(pkgJsonPath)) continue;
-        try {
-          const pkgJson = JSON.parse(
-            fs.readFileSync(pkgJsonPath, UTF8_ENCODING),
-          );
-          if (pkgJson.name) {
-            cache.set(pkgJson.name, path.posix.join(baseDir, entry.name));
-          }
-        } catch {
-          // Ignore unreadable/invalid package.json
-        }
-      }
+      this.collectPackageDirsForGlob(glob, cache);
     }
     this.packageDirCache = cache;
     return cache;
+  }
+
+  /** Scans one workspace glob's base directory for immediate subdirectories with a
+   *  `package.json`, registering each into `cache`. */
+  private collectPackageDirsForGlob(
+    glob: string,
+    cache: Map<string, string>,
+  ): void {
+    const starIdx = glob.indexOf(PATH_WILDCARD_TOKEN);
+    const baseDir = (starIdx >= 0 ? glob.slice(0, starIdx) : glob).replace(
+      /\/$/,
+      "",
+    );
+    const fullBaseDir = path.join(this.workspaceRoot, baseDir);
+    if (!fs.existsSync(fullBaseDir)) return;
+
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(fullBaseDir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      this.registerPackageDirEntry(baseDir, fullBaseDir, entry, cache);
+    }
+  }
+
+  private registerPackageDirEntry(
+    baseDir: string,
+    fullBaseDir: string,
+    entry: fs.Dirent,
+    cache: Map<string, string>,
+  ): void {
+    if (!entry.isDirectory()) return;
+    const pkgJsonPath = path.join(
+      fullBaseDir,
+      entry.name,
+      ConfigFilenames.PACKAGE_JSON,
+    );
+    if (!fs.existsSync(pkgJsonPath)) return;
+    try {
+      const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
+      if (pkgJson.name) {
+        cache.set(pkgJson.name, path.posix.join(baseDir, entry.name));
+      }
+    } catch {
+      // Ignore unreadable/invalid package.json
+    }
   }
 
   /** Reads pnpm-workspace.yaml or package.json#workspaces to find monorepo package globs. */
@@ -293,23 +324,40 @@ export class ScopeResolver {
     const subpath = match[2]?.slice(1); // drop leading "/"
 
     // 1. Workspace-monorepo sibling package (e.g. "@workspace/core" -> lib/core)
-    const workspaceDir = this.getWorkspacePackageDirs().get(pkgName);
-    if (workspaceDir) {
-      const entryTarget = subpath
-        ? path.posix.join(workspaceDir, subpath)
-        : path.posix.join(
-            workspaceDir,
-            WORKSPACE_ENTRY_SRC_DIR,
-            WORKSPACE_ENTRY_BASENAME,
-          );
-      const resolved = this.findFileWithExtension(entryTarget);
-      if (resolved) return resolved;
-      // Fall back to the package root itself if no conventional entry point is found
-      const rootResolved = this.findFileWithExtension(workspaceDir);
-      if (rootResolved) return rootResolved;
-    }
+    const workspaceResolved = this.resolveWorkspaceSiblingImport(
+      pkgName,
+      subpath,
+    );
+    if (workspaceResolved) return workspaceResolved;
 
     // 2. External npm dependency — read its package.json main/module entry point
+    return this.resolveNodeModulesImport(pkgName, subpath);
+  }
+
+  private resolveWorkspaceSiblingImport(
+    pkgName: string,
+    subpath: string | undefined,
+  ): string | null {
+    const workspaceDir = this.getWorkspacePackageDirs().get(pkgName);
+    if (!workspaceDir) return null;
+
+    const entryTarget = subpath
+      ? path.posix.join(workspaceDir, subpath)
+      : path.posix.join(
+          workspaceDir,
+          WORKSPACE_ENTRY_SRC_DIR,
+          WORKSPACE_ENTRY_BASENAME,
+        );
+    const resolved = this.findFileWithExtension(entryTarget);
+    if (resolved) return resolved;
+    // Fall back to the package root itself if no conventional entry point is found
+    return this.findFileWithExtension(workspaceDir);
+  }
+
+  private resolveNodeModulesImport(
+    pkgName: string,
+    subpath: string | undefined,
+  ): string | null {
     try {
       const pkgJsonPath = path.join(
         this.workspaceRoot,
@@ -317,22 +365,21 @@ export class ScopeResolver {
         pkgName,
         ConfigFilenames.PACKAGE_JSON,
       );
-      if (fs.existsSync(pkgJsonPath)) {
-        const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
-        const entry: string =
-          subpath ||
-          pkgJson.module ||
-          pkgJson.main ||
-          DEFAULT_PACKAGE_ENTRY_FILENAME;
-        const relPath = path.posix.join(NODE_MODULES_DIR_NAME, pkgName, entry);
-        if (fs.existsSync(path.join(this.workspaceRoot, relPath)))
-          return relPath;
-      }
+      if (!fs.existsSync(pkgJsonPath)) return null;
+
+      const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, UTF8_ENCODING));
+      const entry: string =
+        subpath ||
+        pkgJson.module ||
+        pkgJson.main ||
+        DEFAULT_PACKAGE_ENTRY_FILENAME;
+      const relPath = path.posix.join(NODE_MODULES_DIR_NAME, pkgName, entry);
+      if (fs.existsSync(path.join(this.workspaceRoot, relPath))) return relPath;
+      return null;
     } catch {
       // Ignore unreadable/invalid package.json
+      return null;
     }
-
-    return null;
   }
 
   private findFileWithExtension(basePath: string): string | null {

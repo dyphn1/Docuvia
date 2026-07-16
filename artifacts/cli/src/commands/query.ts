@@ -4,6 +4,7 @@ import {
   docuviaMemory,
   DocuviaError,
   type LocalQueryResult,
+  type GraphEdgeRef,
   MemoryKeys,
   LogLevels,
 } from "@workspace/contracts";
@@ -40,9 +41,8 @@ const XML_TAGS = {
   CALLEE_SUFFIX: '" />',
 } as const;
 
-export function formatPromptOutput(result: LocalQueryResult): string {
+function buildPromptL2Lines(result: LocalQueryResult): string[] {
   const lines: string[] = [];
-  lines.push(XML_TAGS.CONTEXT_START);
   if (result.l2) {
     lines.push(
       XML_TAGS.L2_START_PREFIX + result.l2.name + XML_TAGS.L2_START_SUFFIX,
@@ -58,51 +58,71 @@ export function formatPromptOutput(result: LocalQueryResult): string {
   if (result.l2) {
     lines.push(XML_TAGS.L2_END);
   }
+  return lines;
+}
 
+function buildPromptIncomingLines(incoming: GraphEdgeRef[]): string[] {
+  if (incoming.length === 0) return [];
+  const lines: string[] = [XML_TAGS.INCOMING_START];
+  for (const i of incoming) {
+    lines.push(
+      XML_TAGS.CALLER_PREFIX +
+        i.name +
+        XML_TAGS.CALLER_MID +
+        i.type +
+        XML_TAGS.CALLER_SUFFIX,
+    );
+  }
+  lines.push(XML_TAGS.INCOMING_END);
+  return lines;
+}
+
+function buildPromptOutgoingLines(outgoing: GraphEdgeRef[]): string[] {
+  if (outgoing.length === 0) return [];
+  const lines: string[] = [XML_TAGS.OUTGOING_START];
+  for (const o of outgoing) {
+    lines.push(
+      XML_TAGS.CALLEE_PREFIX +
+        o.name +
+        XML_TAGS.CALLEE_MID +
+        o.type +
+        XML_TAGS.CALLEE_SUFFIX,
+    );
+  }
+  lines.push(XML_TAGS.OUTGOING_END);
+  return lines;
+}
+
+function buildPromptContextLines(result: LocalQueryResult): string[] {
   const incoming = result.context?.incoming ?? [];
   const outgoing = result.context?.outgoing ?? [];
-  if (incoming.length > 0 || outgoing.length > 0) {
-    if (incoming.length > 0) {
-      lines.push(XML_TAGS.INCOMING_START);
-      for (const i of incoming) {
-        lines.push(
-          XML_TAGS.CALLER_PREFIX +
-            i.name +
-            XML_TAGS.CALLER_MID +
-            i.type +
-            XML_TAGS.CALLER_SUFFIX,
-        );
-      }
-      lines.push(XML_TAGS.INCOMING_END);
-    }
-    if (outgoing.length > 0) {
-      lines.push(XML_TAGS.OUTGOING_START);
-      for (const o of outgoing) {
-        lines.push(
-          XML_TAGS.CALLEE_PREFIX +
-            o.name +
-            XML_TAGS.CALLEE_MID +
-            o.type +
-            XML_TAGS.CALLEE_SUFFIX,
-        );
-      }
-      lines.push(XML_TAGS.OUTGOING_END);
-    }
-  }
+  if (incoming.length === 0 && outgoing.length === 0) return [];
+  return [
+    ...buildPromptIncomingLines(incoming),
+    ...buildPromptOutgoingLines(outgoing),
+  ];
+}
 
-  lines.push(XML_TAGS.CONTEXT_END);
+export function formatPromptOutput(result: LocalQueryResult): string {
+  const lines: string[] = [
+    XML_TAGS.CONTEXT_START,
+    ...buildPromptL2Lines(result),
+    ...buildPromptContextLines(result),
+    XML_TAGS.CONTEXT_END,
+  ];
   return lines.join(FORMAT_MARKERS.NEWLINE);
 }
 
-function printHumanResults(result: LocalQueryResult): void {
-  ui.header(UI_MESSAGES.QUERY_CONTEXT_HEADER);
+function printHumanL2Header(result: LocalQueryResult): void {
   if (result.l2) {
     ui.info(UI_MESSAGES.QUERY_L2_PREFIX + result.l2.name);
   } else {
     ui.warn(UI_MESSAGES.QUERY_NO_L2);
   }
-  ui.log(FORMAT_MARKERS.EMPTY);
-  for (const l3 of result.l3) {
+}
+
+function printHumanL3Entries(l3s: LocalQueryResult["l3"]): void {
+  for (const l3 of l3s) {
     ui.success(UI_MESSAGES.QUERY_L3_PREFIX + l3.title);
     if (l3.content) {
       ui.log(
@@ -114,35 +134,33 @@ function printHumanResults(result: LocalQueryResult): void {
     }
     ui.log(FORMAT_MARKERS.EMPTY);
   }
+}
+
+function printHumanEdgeList(edges: GraphEdgeRef[], header: string): void {
+  if (edges.length === 0) return;
+  ui.header(header);
+  for (const edge of edges) {
+    ui.log(
+      FORMAT_MARKERS.INDENT_TWO +
+        edge.name +
+        FORMAT_MARKERS.OPEN_PAREN +
+        edge.type +
+        FORMAT_MARKERS.CLOSE_PAREN,
+    );
+  }
+  ui.log(FORMAT_MARKERS.EMPTY);
+}
+
+function printHumanResults(result: LocalQueryResult): void {
+  ui.header(UI_MESSAGES.QUERY_CONTEXT_HEADER);
+  printHumanL2Header(result);
+  ui.log(FORMAT_MARKERS.EMPTY);
+  printHumanL3Entries(result.l3);
 
   const incoming = result.context?.incoming ?? [];
   const outgoing = result.context?.outgoing ?? [];
-  if (incoming.length > 0) {
-    ui.header(UI_MESSAGES.QUERY_INCOMING_HEADER);
-    for (const i of incoming) {
-      ui.log(
-        FORMAT_MARKERS.INDENT_TWO +
-          i.name +
-          FORMAT_MARKERS.OPEN_PAREN +
-          i.type +
-          FORMAT_MARKERS.CLOSE_PAREN,
-      );
-    }
-    ui.log(FORMAT_MARKERS.EMPTY);
-  }
-  if (outgoing.length > 0) {
-    ui.header(UI_MESSAGES.QUERY_OUTGOING_HEADER);
-    for (const o of outgoing) {
-      ui.log(
-        FORMAT_MARKERS.INDENT_TWO +
-          o.name +
-          FORMAT_MARKERS.OPEN_PAREN +
-          o.type +
-          FORMAT_MARKERS.CLOSE_PAREN,
-      );
-    }
-    ui.log(FORMAT_MARKERS.EMPTY);
-  }
+  printHumanEdgeList(incoming, UI_MESSAGES.QUERY_INCOMING_HEADER);
+  printHumanEdgeList(outgoing, UI_MESSAGES.QUERY_OUTGOING_HEADER);
 
   ui.log(FORMAT_MARKERS.EMPTY);
 }
@@ -166,48 +184,51 @@ async function resolveQueryTarget(target?: string): Promise<string> {
   return queryTarget;
 }
 
-/** Thin caller of docuviaApi.query() - mirrors init.ts's Presentation-layer responsibilities. */
-export async function queryCommand(
-  target?: string,
-  options: { format?: QueryOutputFormat; limit?: number } = {},
-  cwd: string = process.cwd(),
-) {
-  const queryTarget = await resolveQueryTarget(target);
-  const isPromptFormat = options.format === QUERY_OUTPUT_FORMATS.PROMPT;
-
-  let limit = options.limit;
+function resolveQueryLimit(limit: number | undefined): number | undefined {
   if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
     ui.warn(UI_MESSAGES.QUERY_INVALID_LIMIT + limit);
-    limit = undefined;
+    return undefined;
   }
+  return limit;
+}
 
-  const scopeId = crypto.randomUUID();
-  const logger = createPinoBackedLogger();
-  let spinner: ReturnType<typeof ui.spinner> | undefined;
-  if (!isPromptFormat) {
-    spinner = ui
-      .spinner(
-        UI_MESSAGES.QUERY_START +
-          FORMAT_MARKERS.DOUBLE_QUOTE +
-          queryTarget +
-          FORMAT_MARKERS.DOUBLE_QUOTE +
-          "...",
-      )
-      .start();
-    logger.onLog((event) => {
-      if (event.level === LogLevels.INFO && spinner)
-        spinner.text = event.message;
-    });
-  }
+function startQuerySpinner(
+  isPromptFormat: boolean,
+  queryTarget: string,
+  logger: ReturnType<typeof createPinoBackedLogger>,
+): ReturnType<typeof ui.spinner> | undefined {
+  if (isPromptFormat) return undefined;
 
+  const spinner = ui
+    .spinner(
+      UI_MESSAGES.QUERY_START +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        queryTarget +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        "...",
+    )
+    .start();
+  logger.onLog((event) => {
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
+  });
+  return spinner;
+}
+
+async function runQuery(
+  scopeId: string,
+  logger: ReturnType<typeof createPinoBackedLogger>,
+  cwd: string,
+  queryTarget: string,
+  limit: number | undefined,
+  spinner: ReturnType<typeof ui.spinner> | undefined,
+): Promise<LocalQueryResult | undefined> {
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
   docuviaMemory.set(scopeId, MemoryKeys.TARGET, queryTarget);
   if (limit !== undefined) docuviaMemory.set(scopeId, MemoryKeys.LIMIT, limit);
 
-  let result: LocalQueryResult;
   try {
-    result = await docuviaApi.query(scopeId, logger);
+    const result = await docuviaApi.query(scopeId, logger);
     if (spinner) {
       spinner.succeed(
         UI_MESSAGES.QUERY_FOUND +
@@ -217,6 +238,7 @@ export async function queryCommand(
       );
       ui.log("");
     }
+    return result;
   } catch (error: unknown) {
     const message =
       error instanceof DocuviaError || error instanceof Error
@@ -225,10 +247,35 @@ export async function queryCommand(
     if (spinner) spinner.fail(UI_MESSAGES.QUERY_FAIL + message);
     else ui.error(UI_MESSAGES.QUERY_FAIL + message);
     process.exitCode = 1;
-    return;
+    return undefined;
   } finally {
     docuviaMemory.deleteScope(scopeId);
   }
+}
+
+/** Thin caller of docuviaApi.query() - mirrors init.ts's Presentation-layer responsibilities. */
+export async function queryCommand(
+  target?: string,
+  options: { format?: QueryOutputFormat; limit?: number } = {},
+  cwd: string = process.cwd(),
+) {
+  const queryTarget = await resolveQueryTarget(target);
+  const isPromptFormat = options.format === QUERY_OUTPUT_FORMATS.PROMPT;
+  const limit = resolveQueryLimit(options.limit);
+
+  const scopeId = crypto.randomUUID();
+  const logger = createPinoBackedLogger();
+  const spinner = startQuerySpinner(isPromptFormat, queryTarget, logger);
+
+  const result = await runQuery(
+    scopeId,
+    logger,
+    cwd,
+    queryTarget,
+    limit,
+    spinner,
+  );
+  if (!result) return;
 
   if (isPromptFormat) {
     ui.log(formatPromptOutput(result));

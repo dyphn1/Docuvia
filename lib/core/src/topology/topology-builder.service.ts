@@ -67,35 +67,13 @@ export class TopologyBuilderService implements ITopologyBuilder {
     }));
     const tagRows = input.tagRows;
 
-    const filePathById = new Map<string, string | undefined>();
-    for (const row of l2Rows) {
-      filePathById.set(String(row.id), row.filePath);
-    }
-
-    const containingFileId = new Map<string, string>();
-    for (const link of linkRows) {
-      if (link.linkType === LinkTypes.CONTAINS) {
-        containingFileId.set(
-          String(link.targetNodeId),
-          String(link.sourceNodeId),
-        );
-      }
-    }
-
-    const tagsByNodeId = new Map<string, string[]>();
-    for (const row of tagRows) {
-      const key = String(row.l2NodeId);
-      const list = tagsByNodeId.get(key);
-      if (list) list.push(row.name);
-      else tagsByNodeId.set(key, [row.name]);
-    }
+    const filePathById = buildFilePathIndex(l2Rows);
+    const containingFileId = buildContainingFileIndex(linkRows);
+    const tagsByNodeId = buildTagsIndex(tagRows);
 
     const maxNodes = options.maxNodes ?? DEFAULT_MAX_NODES;
     const fullNodeCount = l2Rows.length + l3Rows.length;
-    const collapse =
-      options.collapse === TopologyCollapseModes.FILE ||
-      (options.collapse !== TopologyCollapseModes.SYMBOL &&
-        fullNodeCount > maxNodes);
+    const collapse = shouldCollapse(options, fullNodeCount, maxNodes);
 
     const built = collapse
       ? buildCollapsed(l2Rows, linkRows, l3Rows, containingFileId, filePathById)
@@ -114,38 +92,8 @@ export class TopologyBuilderService implements ITopologyBuilder {
       (l) => nodeIdSet.has(l.source) && nodeIdSet.has(l.target),
     );
 
-    const groupIdByLabel = new Map<string, number>();
-    const groups: TopologyGroup[] = [];
-    for (const node of nodes) {
-      const label = clusterLabel(node.filePath);
-      let groupId = groupIdByLabel.get(label);
-      if (groupId === undefined) {
-        groupId = groups.length;
-        groupIdByLabel.set(label, groupId);
-        groups.push({
-          id: groupId,
-          label,
-          source: TopologyGroupSources.DIRECTORY,
-          count: 0,
-        });
-      }
-      node.group = groupId;
-      groups[groupId].count++;
-
-      if (node.kind === TopologyNodeKinds.FILE) {
-        const tags = tagsByNodeId.get(node.id.slice(L2_NODE_ID_PREFIX.length));
-        if (tags && tags.length) node.tags = tags;
-      }
-    }
-
-    const degree = new Map<string, number>();
-    for (const link of links) {
-      degree.set(link.source, (degree.get(link.source) ?? 0) + 1);
-      degree.set(link.target, (degree.get(link.target) ?? 0) + 1);
-    }
-    for (const node of nodes) {
-      node.degree = degree.get(node.id) ?? 0;
-    }
+    const groups = assignGroups(nodes, tagsByNodeId);
+    computeDegrees(nodes, links);
 
     return {
       topologyVersion: TOPOLOGY_VERSION,
@@ -161,6 +109,100 @@ export class TopologyBuilderService implements ITopologyBuilder {
         groupCount: groups.length,
       },
     };
+  }
+}
+
+function buildFilePathIndex(
+  l2Rows: NormalizedL2Row[],
+): Map<string, string | undefined> {
+  const filePathById = new Map<string, string | undefined>();
+  for (const row of l2Rows) {
+    filePathById.set(String(row.id), row.filePath);
+  }
+  return filePathById;
+}
+
+function buildContainingFileIndex(
+  linkRows: NormalizedLinkRow[],
+): Map<string, string> {
+  const containingFileId = new Map<string, string>();
+  for (const link of linkRows) {
+    if (link.linkType === LinkTypes.CONTAINS) {
+      containingFileId.set(
+        String(link.targetNodeId),
+        String(link.sourceNodeId),
+      );
+    }
+  }
+  return containingFileId;
+}
+
+function buildTagsIndex(
+  tagRows: TopologyBuildInput["tagRows"],
+): Map<string, string[]> {
+  const tagsByNodeId = new Map<string, string[]>();
+  for (const row of tagRows) {
+    const key = String(row.l2NodeId);
+    const list = tagsByNodeId.get(key);
+    if (list) list.push(row.name);
+    else tagsByNodeId.set(key, [row.name]);
+  }
+  return tagsByNodeId;
+}
+
+function shouldCollapse(
+  options: TopologyExportOptions,
+  fullNodeCount: number,
+  maxNodes: number,
+): boolean {
+  return (
+    options.collapse === TopologyCollapseModes.FILE ||
+    (options.collapse !== TopologyCollapseModes.SYMBOL &&
+      fullNodeCount > maxNodes)
+  );
+}
+
+/** Assigns each node to a directory-cluster group (creating groups on first use) and, for file
+ *  nodes, attaches any tags — both mutate `nodes` in place, matching the original inline loop. */
+function assignGroups(
+  nodes: TopologyNode[],
+  tagsByNodeId: Map<string, string[]>,
+): TopologyGroup[] {
+  const groupIdByLabel = new Map<string, number>();
+  const groups: TopologyGroup[] = [];
+  for (const node of nodes) {
+    const label = clusterLabel(node.filePath);
+    let groupId = groupIdByLabel.get(label);
+    if (groupId === undefined) {
+      groupId = groups.length;
+      groupIdByLabel.set(label, groupId);
+      groups.push({
+        id: groupId,
+        label,
+        source: TopologyGroupSources.DIRECTORY,
+        count: 0,
+      });
+    }
+    node.group = groupId;
+    groups[groupId].count++;
+
+    if (node.kind === TopologyNodeKinds.FILE) {
+      const tags = tagsByNodeId.get(node.id.slice(L2_NODE_ID_PREFIX.length));
+      if (tags && tags.length) node.tags = tags;
+    }
+  }
+  return groups;
+}
+
+/** Computes each node's in+out degree over `links` and stamps it onto `node.degree` in place. */
+function computeDegrees(nodes: TopologyNode[], links: TopologyLink[]): void {
+  const degree = new Map<string, number>();
+  for (const link of links) {
+    degree.set(link.source, (degree.get(link.source) ?? 0) + 1);
+    degree.set(link.target, (degree.get(link.target) ?? 0) + 1);
+  }
+  for (const node of nodes) {
+    node.degree = degree.get(node.id) ?? 0;
   }
 }
 

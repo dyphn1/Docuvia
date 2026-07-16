@@ -1,5 +1,5 @@
 import { parentPort } from "worker_threads";
-import { Parser, Language, type Node } from "web-tree-sitter";
+import { Parser, Language, type Node, type Tree } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
 import { createHash } from "crypto";
@@ -246,180 +246,243 @@ function findEnclosingContainerName(
   return AstMessages.ANONYMOUS_NAME;
 }
 
-parentPort?.on("message", async (request: AstParseRequest) => {
-  try {
-    if (!parserInitialized) {
-      await Parser.init();
-      parserInitialized = true;
+/** Shape of a fully-populated `AstParseResponse["data"]` (i.e. the non-optional variant produced once parsing has actually run). */
+type AstExtractionResult = NonNullable<AstParseResponse["data"]>;
+
+/** Extracts class declaration nodes via the provider and appends their summaries to `classes`. Returns the raw nodes so callers can derive id sets for edge extraction. */
+function collectClassNodes(
+  tree: Tree,
+  provider: LanguageProvider,
+  classes: AstExtractionResult["classes"],
+): Node[] {
+  const classNodes = provider.extractClasses(tree.rootNode);
+  for (const node of classNodes) {
+    classes.push({
+      name: getNodeName(node),
+      startLine: node.startPosition.row,
+      endLine: node.endPosition.row,
+      methods: [],
+      contentHash: symbolContentHash(node),
+    });
+  }
+  return classNodes;
+}
+
+/** Extracts function/method declaration nodes via the provider and appends their summaries to `functions`. Returns the raw nodes so callers can derive id sets for edge extraction. */
+function collectFunctionNodes(
+  tree: Tree,
+  provider: LanguageProvider,
+  functions: AstExtractionResult["functions"],
+): Node[] {
+  const functionNodes = provider.extractFunctions(tree.rootNode);
+  for (const node of functionNodes) {
+    functions.push({
+      name: resolveCallableName(node),
+      startLine: node.startPosition.row,
+      endLine: node.endPosition.row,
+      contentHash: symbolContentHash(node),
+    });
+  }
+  return functionNodes;
+}
+
+/** Extracts call-site edges via the provider, attributing each call to its enclosing function (or "anonymous"), up to the 1000-call circuit breaker. */
+function collectCallEdges(
+  tree: Tree,
+  provider: LanguageProvider,
+  functionNodes: Node[],
+  calls: AstExtractionResult["calls"],
+): void {
+  const functionIds = new Set(functionNodes.map((n) => n.id));
+  const callNodes = provider.extractCalls(tree.rootNode);
+  for (const node of callNodes) {
+    if (calls.length >= 1000) break; // Circuit breaker limit
+    calls.push({
+      sourceFunction: findEnclosingContainerName(node, functionIds),
+      targetFunction: getCallTargetText(node),
+    });
+  }
+}
+
+/** Extracts `implements` edges via the provider, if it supports them, attributing each to its enclosing class. */
+function collectImplementsEdges(
+  tree: Tree,
+  provider: LanguageProvider,
+  classNodes: Node[],
+  implementsList: NonNullable<AstExtractionResult["implements"]>,
+): void {
+  if (!provider.extractImplements) return;
+  const classIds = new Set(classNodes.map((n) => n.id));
+  for (const node of provider.extractImplements(tree.rootNode)) {
+    implementsList.push({
+      sourceClass: findEnclosingContainerName(node, classIds),
+      targetInterface: node.text,
+    });
+  }
+}
+
+/** Extracts `extends` edges via the provider, if it supports them, attributing each to its enclosing class. */
+function collectExtendsEdges(
+  tree: Tree,
+  provider: LanguageProvider,
+  classNodes: Node[],
+  extendsList: NonNullable<AstExtractionResult["extends"]>,
+): void {
+  if (!provider.extractExtends) return;
+  const classIds = new Set(classNodes.map((n) => n.id));
+  for (const node of provider.extractExtends(tree.rootNode)) {
+    extendsList.push({
+      sourceClass: findEnclosingContainerName(node, classIds),
+      targetClass: node.text,
+    });
+  }
+}
+
+/**
+ * Runs every provider-driven extraction against a parsed tree (or returns empty results plus a
+ * decision note if parsing produced no tree). A single try/catch wraps the whole pass, matching
+ * the original inline behavior of recording a `providerQueryFailed` decision instead of throwing
+ * when any one extractor misbehaves.
+ */
+function extractAstData(
+  tree: Tree | null,
+  provider: LanguageProvider,
+): AstExtractionResult {
+  const decisions: string[] = [];
+  const imports: ImportDescriptor[] = [];
+  const exports: AstExtractionResult["exports"] = [];
+  const functions: AstExtractionResult["functions"] = [];
+  const classes: AstExtractionResult["classes"] = [];
+  const calls: AstExtractionResult["calls"] = [];
+  const implementsList: NonNullable<AstExtractionResult["implements"]> = [];
+  const extendsList: NonNullable<AstExtractionResult["extends"]> = [];
+
+  if (tree) {
+    decisions.push(AstMessages.parsedViaTreeSitter(tree.rootNode.childCount));
+
+    try {
+      const classNodes = collectClassNodes(tree, provider, classes);
+      const functionNodes = collectFunctionNodes(tree, provider, functions);
+
+      const importNodes = provider.extractImports(tree.rootNode);
+      imports.push(...parseImportDescriptors(importNodes));
+
+      collectCallEdges(tree, provider, functionNodes, calls);
+      collectImplementsEdges(tree, provider, classNodes, implementsList);
+      collectExtendsEdges(tree, provider, classNodes, extendsList);
+
+      decisions.push(AstMessages.QUERIED_VIA_LANGUAGE_PROVIDER);
+    } catch (e) {
+      decisions.push(
+        AstMessages.providerQueryFailed(
+          e instanceof Error ? e.message : String(e),
+        ),
+      );
     }
+  }
 
-    const registry = await getRegistry();
-    const ext = path.extname(request.filePath);
-    const provider: LanguageProvider | undefined =
-      registry.getProviderForExtension(ext);
+  return {
+    imports,
+    exports,
+    functions,
+    classes,
+    calls,
+    implements: implementsList,
+    extends: extendsList,
+    decisions,
+  };
+}
 
-    if (!provider) {
-      parentPort?.postMessage({
-        taskId: request.taskId,
-        success: true,
-        data: {
-          imports: [],
-          exports: [],
-          functions: [],
-          classes: [],
-          calls: [],
-          decisions: [AstMessages.noLanguageProviderForExtension(ext)],
-        },
-      });
-      return;
-    }
+/** Parses `request.code` with the resolved provider/grammar and runs the full AST extraction pass, releasing the tree-sitter tree/parser handles once done. */
+function parseAndExtract(
+  code: string,
+  provider: LanguageProvider,
+  langInstance: Language,
+): AstExtractionResult {
+  const parser = new Parser();
+  parser.setLanguage(langInstance);
 
-    const { wasmPath, attemptedPaths } = resolveWasmPath(provider.wasm_file);
+  // Note: intentionally not calling provider.initQueries() here — some compiled
+  // query strings in @workspace/plugins-ast currently fail to parse against the
+  // installed grammar (a pre-existing, separate issue). DefaultProvider falls
+  // back to its per-language node-type lists (descendantsOfType) when queries
+  // aren't compiled, which is what we rely on here.
 
-    if (!fs.existsSync(wasmPath)) {
-      parentPort?.postMessage({
-        taskId: request.taskId,
-        success: true,
-        data: {
-          imports: extractFallbackImports(request.code),
-          exports: [],
-          functions: [],
-          classes: [],
-          calls: [],
-          decisions: [
-            AstMessages.wasmNotFound(
-              request.language,
-              attemptedPaths.join(", "),
-            ),
-          ],
-        },
-      });
-      return;
-    }
+  const tree = parser.parse(code);
+  const data = extractAstData(tree, provider);
 
-    const langInstance = await Language.load(wasmPath);
-    const parser = new Parser();
-    parser.setLanguage(langInstance);
+  if (tree) tree.delete();
+  parser.delete();
 
-    // Note: intentionally not calling provider.initQueries() here — some compiled
-    // query strings in @workspace/plugins-ast currently fail to parse against the
-    // installed grammar (a pre-existing, separate issue). DefaultProvider falls
-    // back to its per-language node-type lists (descendantsOfType) when queries
-    // aren't compiled, which is what we rely on here.
+  return data;
+}
 
-    const tree = parser.parse(request.code);
+/**
+ * Resolves a language provider for `request.filePath` and produces the full parse response,
+ * short-circuiting with an empty-but-successful result (plus an explanatory decision note) when
+ * no provider is registered for the extension or its wasm grammar can't be located on disk.
+ */
+async function buildParseResponse(
+  request: AstParseRequest,
+): Promise<AstParseResponse> {
+  if (!parserInitialized) {
+    await Parser.init();
+    parserInitialized = true;
+  }
 
-    const decisions: string[] = [];
-    const imports: ImportDescriptor[] = [];
-    const exports: Array<{
-      name: string;
-      type: AstExportKind;
-    }> = [];
-    const functions: Array<{
-      name: string;
-      startLine: number;
-      endLine: number;
-      contentHash: string;
-    }> = [];
-    const classes: Array<{
-      name: string;
-      startLine: number;
-      endLine: number;
-      methods: string[];
-      contentHash: string;
-    }> = [];
-    const calls: Array<{ sourceFunction: string; targetFunction: string }> = [];
-    const implementsList: Array<{
-      sourceClass: string;
-      targetInterface: string;
-    }> = [];
-    const extendsList: Array<{ sourceClass: string; targetClass: string }> = [];
+  const registry = await getRegistry();
+  const ext = path.extname(request.filePath);
+  const provider: LanguageProvider | undefined =
+    registry.getProviderForExtension(ext);
 
-    if (tree) {
-      decisions.push(AstMessages.parsedViaTreeSitter(tree.rootNode.childCount));
-
-      try {
-        const classNodes = provider.extractClasses(tree.rootNode);
-        for (const node of classNodes) {
-          classes.push({
-            name: getNodeName(node),
-            startLine: node.startPosition.row,
-            endLine: node.endPosition.row,
-            methods: [],
-            contentHash: symbolContentHash(node),
-          });
-        }
-
-        const functionNodes = provider.extractFunctions(tree.rootNode);
-        for (const node of functionNodes) {
-          functions.push({
-            name: resolveCallableName(node),
-            startLine: node.startPosition.row,
-            endLine: node.endPosition.row,
-            contentHash: symbolContentHash(node),
-          });
-        }
-
-        const importNodes = provider.extractImports(tree.rootNode);
-        imports.push(...parseImportDescriptors(importNodes));
-
-        const functionIds = new Set(functionNodes.map((n) => n.id));
-        const callNodes = provider.extractCalls(tree.rootNode);
-        for (const node of callNodes) {
-          if (calls.length >= 1000) break; // Circuit breaker limit
-          calls.push({
-            sourceFunction: findEnclosingContainerName(node, functionIds),
-            targetFunction: getCallTargetText(node),
-          });
-        }
-
-        const classIds = new Set(classNodes.map((n) => n.id));
-        if (provider.extractImplements) {
-          for (const node of provider.extractImplements(tree.rootNode)) {
-            implementsList.push({
-              sourceClass: findEnclosingContainerName(node, classIds),
-              targetInterface: node.text,
-            });
-          }
-        }
-        if (provider.extractExtends) {
-          for (const node of provider.extractExtends(tree.rootNode)) {
-            extendsList.push({
-              sourceClass: findEnclosingContainerName(node, classIds),
-              targetClass: node.text,
-            });
-          }
-        }
-
-        decisions.push(AstMessages.QUERIED_VIA_LANGUAGE_PROVIDER);
-      } catch (e) {
-        decisions.push(
-          AstMessages.providerQueryFailed(
-            e instanceof Error ? e.message : String(e),
-          ),
-        );
-      }
-    }
-
-    const data = {
-      imports,
-      exports,
-      functions,
-      classes,
-      calls,
-      implements: implementsList,
-      extends: extendsList,
-      decisions,
-    };
-
-    if (tree) tree.delete();
-    parser.delete();
-
-    parentPort?.postMessage({
+  if (!provider) {
+    return {
       taskId: request.taskId,
       success: true,
-      data,
-    });
+      data: {
+        imports: [],
+        exports: [],
+        functions: [],
+        classes: [],
+        calls: [],
+        decisions: [AstMessages.noLanguageProviderForExtension(ext)],
+      },
+    };
+  }
+
+  const { wasmPath, attemptedPaths } = resolveWasmPath(provider.wasm_file);
+
+  if (!fs.existsSync(wasmPath)) {
+    return {
+      taskId: request.taskId,
+      success: true,
+      data: {
+        imports: extractFallbackImports(request.code),
+        exports: [],
+        functions: [],
+        classes: [],
+        calls: [],
+        decisions: [
+          AstMessages.wasmNotFound(request.language, attemptedPaths.join(", ")),
+        ],
+      },
+    };
+  }
+
+  const langInstance = await Language.load(wasmPath);
+  const data = parseAndExtract(request.code, provider, langInstance);
+
+  return {
+    taskId: request.taskId,
+    success: true,
+    data,
+  };
+}
+
+parentPort?.on("message", async (request: AstParseRequest) => {
+  try {
+    const response = await buildParseResponse(request);
+    parentPort?.postMessage(response);
   } catch (err: any) {
     parentPort?.postMessage({
       taskId: request.taskId,

@@ -532,50 +532,77 @@ export class Libgit2Provider implements IGitProvider {
         { cwd },
       );
 
-      for (const line of stdout.split("\n")) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        const parts = trimmed.split("\t");
-        const statusCode = parts[0] ?? "";
-        let file: string | undefined;
-        let status: ChangedFileEntry["status"];
-
-        if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.RENAMED)) {
-          status = ChangedFileStatuses.RENAMED;
-          file = parts[2] ?? parts[1];
-        } else if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.ADDED)) {
-          status = ChangedFileStatuses.ADDED;
-          file = parts[1];
-        } else if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.DELETED)) {
-          status = ChangedFileStatuses.DELETED;
-          file = parts[1];
-        } else {
-          status = ChangedFileStatuses.MODIFIED;
-          file = parts[1];
-        }
-
-        if (file && !seen.has(file)) {
-          seen.add(file);
-          entries.push({ file, status });
-        }
-      }
+      this.collectNameStatusEntries(stdout, entries, seen);
     } catch {
       // No commits yet, baseRef doesn't exist, or git is unavailable; fall through so
       // untracked files (when no baseRef was given) can still be reported honestly.
     }
 
     if (!baseRef) {
-      const untracked = await this.listUntrackedFiles(cwd);
-      for (const file of untracked) {
-        if (!seen.has(file)) {
-          seen.add(file);
-          entries.push({ file, status: ChangedFileStatuses.ADDED });
-        }
-      }
+      await this.mergeUntrackedFiles(cwd, entries, seen);
     }
 
     return entries;
+  }
+
+  /** Parses `git diff --name-status` output lines into `entries`/`seen` — the line-parsing core
+   *  of `getChangedFilesSince`. Mutates both in place to share the same dedup set as the
+   *  untracked-files merge step. */
+  private collectNameStatusEntries(
+    stdout: string,
+    entries: ChangedFileEntry[],
+    seen: Set<string>,
+  ): void {
+    for (const line of stdout.split("\n")) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      const parts = trimmed.split("\t");
+      const statusCode = parts[0] ?? "";
+      const { file, status } = this.parseNameStatusLine(statusCode, parts);
+
+      if (file && !seen.has(file)) {
+        seen.add(file);
+        entries.push({ file, status });
+      }
+    }
+  }
+
+  /** Maps a single `git diff --name-status` line's status letter + tab-separated `parts` into a
+   *  `ChangedFileEntry`'s file/status — see `getChangedFilesSince`'s doc comment on renames. */
+  private parseNameStatusLine(
+    statusCode: string,
+    parts: string[],
+  ): { file: string | undefined; status: ChangedFileEntry["status"] } {
+    if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.RENAMED)) {
+      return {
+        status: ChangedFileStatuses.RENAMED,
+        file: parts[2] ?? parts[1],
+      };
+    }
+    if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.ADDED)) {
+      return { status: ChangedFileStatuses.ADDED, file: parts[1] };
+    }
+    if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.DELETED)) {
+      return { status: ChangedFileStatuses.DELETED, file: parts[1] };
+    }
+    return { status: ChangedFileStatuses.MODIFIED, file: parts[1] };
+  }
+
+  /** `!baseRef` branch of `getChangedFilesSince` — folds in untracked files (which `git diff`
+   *  never reports) as `ADDED`, deduped against the same `seen` set as the diff output. */
+  private async mergeUntrackedFiles(
+    cwd: string,
+    entries: ChangedFileEntry[],
+    seen: Set<string>,
+  ): Promise<void> {
+    const untracked = await this.listUntrackedFiles(cwd);
+    for (const file of untracked) {
+      if (!seen.has(file)) {
+        seen.add(file);
+        entries.push({ file, status: ChangedFileStatuses.ADDED });
+      }
+    }
   }
 
   /**

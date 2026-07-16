@@ -47,56 +47,27 @@ export class ParsingFunnel {
     }
 
     // Step C: Git Binary Bypass (inspect first 8000 bytes for \0)
-    const checkLength = Math.min(buffer.length, 8000);
-    for (let i = 0; i < checkLength; i++) {
-      if (buffer[i] === 0) {
-        return {
-          accepted: false,
-          reason: FunnelRejectionReasons.BINARY_FILE_DETECTED,
-        };
-      }
+    if (this.containsNulByte(buffer)) {
+      return {
+        accepted: false,
+        reason: FunnelRejectionReasons.BINARY_FILE_DETECTED,
+      };
     }
 
     // Step D: Lossless Encoding Guardrail
     if (contentString === undefined) {
-      try {
-        // Use fatal: true to strictly enforce valid UTF-8
-        contentString = new TextDecoder(UTF8_ENCODING, { fatal: true }).decode(
-          buffer,
-        );
-      } catch (err) {
+      const decoded = this.decodeUtf8OrNull(buffer);
+      if (decoded === null) {
         return {
           accepted: false,
           reason: FunnelRejectionReasons.INVALID_UTF8,
         };
       }
+      contentString = decoded;
     }
 
     // Step A & B: Extension Allowlist & Shebang Detection
-    let mappedExtension = ext;
-
-    if (!mappedExtension || mappedExtension === "") {
-      // Try shebang detection
-      const firstLineMatch = contentString
-        ? contentString.match(/^(?:#!\s*)(.*)/)
-        : null;
-      if (firstLineMatch) {
-        const shebang = firstLineMatch[1];
-        if (
-          shebang.includes(ShebangMarkers.NODE) ||
-          shebang.includes(ShebangMarkers.JS)
-        ) {
-          mappedExtension = ShebangExtensions.JAVASCRIPT;
-        } else if (shebang.includes(ShebangMarkers.PYTHON)) {
-          mappedExtension = ShebangExtensions.PYTHON;
-        } else if (
-          shebang.includes(ShebangMarkers.BASH) ||
-          shebang.includes(ShebangMarkers.SH)
-        ) {
-          mappedExtension = ShebangExtensions.SHELL;
-        }
-      }
-    }
+    const mappedExtension = this.resolveMappedExtension(ext, contentString);
 
     if (!mappedExtension || mappedExtension === "") {
       return {
@@ -114,5 +85,68 @@ export class ParsingFunnel {
     }
 
     return { accepted: true, mappedExtension };
+  }
+
+  /** Inspects the first 8000 bytes for a NUL byte, the git binary-detection heuristic. */
+  private containsNulByte(buffer: Uint8Array): boolean {
+    const checkLength = Math.min(buffer.length, 8000);
+    for (let i = 0; i < checkLength; i++) {
+      if (buffer[i] === 0) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /** Strictly decodes a buffer as UTF-8, returning `null` on any invalid byte sequence. */
+  private decodeUtf8OrNull(buffer: Uint8Array): string | null {
+    try {
+      // Use fatal: true to strictly enforce valid UTF-8
+      return new TextDecoder(UTF8_ENCODING, { fatal: true }).decode(buffer);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  /**
+   * Resolves the extension used for provider lookup: the passed-in `ext` if present,
+   * otherwise whatever `detectShebangExtension` can infer from the file content.
+   */
+  private resolveMappedExtension(
+    ext: string,
+    contentString: string | undefined,
+  ): string {
+    if (!ext || ext === "") {
+      return this.detectShebangExtension(contentString) || ext;
+    }
+    return ext;
+  }
+
+  /** Maps a shebang line to a known extension; returns undefined when no shebang matches. */
+  private detectShebangExtension(
+    contentString: string | undefined,
+  ): string | undefined {
+    const firstLineMatch = contentString
+      ? contentString.match(/^(?:#!\s*)(.*)/)
+      : null;
+    if (!firstLineMatch) return undefined;
+
+    const shebang = firstLineMatch[1];
+    if (
+      shebang.includes(ShebangMarkers.NODE) ||
+      shebang.includes(ShebangMarkers.JS)
+    ) {
+      return ShebangExtensions.JAVASCRIPT;
+    }
+    if (shebang.includes(ShebangMarkers.PYTHON)) {
+      return ShebangExtensions.PYTHON;
+    }
+    if (
+      shebang.includes(ShebangMarkers.BASH) ||
+      shebang.includes(ShebangMarkers.SH)
+    ) {
+      return ShebangExtensions.SHELL;
+    }
+    return undefined;
   }
 }

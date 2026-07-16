@@ -9,6 +9,7 @@ import {
   type IGraphStore,
   type IKnowledgeGitService,
   type ILogger,
+  type ISemanticDiffAnalyzer,
 } from "@workspace/contracts";
 import {
   GitConstants,
@@ -67,7 +68,58 @@ export async function runDeltaIngestion(deps: {
     fromSha,
     headSha,
   );
+  const { toDelete, toReparse } = partitionChangedEntries(changedEntries);
 
+  const { filesToParse, skippedOversized, tierBEntries } =
+    await collectFilesToParse(deps, toReparse);
+
+  // §6b's locking requirement: the delta persist step (deletes + re-parse/persist + Tier B queue
+  // + last-ingested-sha meta write) runs under the knowledge-branch lock, the same discipline
+  // `snapshot`'s git-write step uses — so a concurrent `snapshot` can't read a half-updated
+  // local.db mid-delta.
+  let failures: AstParseFailure[] = [];
+  await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, async () => {
+    failures = await persistDelta(deps, {
+      toDelete,
+      filesToParse,
+      skippedOversized,
+      tierBEntries,
+    });
+  });
+
+  const filesReparsed = filesToParse.length - failures.length;
+
+  await appendAnalyzeLogLine(workspaceRoot, {
+    event: "analyze.delta.summary",
+    fromSha,
+    headSha,
+    filesReparsed,
+    filesDeleted: toDelete.size,
+    filesFailed: failures.length,
+    filesSkippedOversized: skippedOversized.length,
+    tierBQueued: tierBEntries.length,
+  });
+
+  return {
+    kind: "autoDelta",
+    fromSha,
+    headSha,
+    filesReparsed,
+    filesDeleted: toDelete.size,
+    filesFailed: failures.length,
+    filesSkippedOversized: skippedOversized.length,
+    tierBQueued: tierBEntries.length,
+  };
+}
+
+type DeltaDeps = Parameters<typeof runDeltaIngestion>[0];
+
+/** Splits a name-status diff into paths whose L2 rows must be dropped (deleted files + renames'
+ *  old paths) and discoverable source files to re-parse (§6b: renames are delete + add). */
+function partitionChangedEntries(changedEntries: ChangedFileEntry[]): {
+  toDelete: Set<string>;
+  toReparse: ChangedFileEntry[];
+} {
   const toDelete = new Set<string>();
   const toReparse: ChangedFileEntry[] = [];
 
@@ -82,6 +134,21 @@ export async function runDeltaIngestion(deps: {
     if (!isDiscoverableSourceFile(entry.file)) continue;
     toReparse.push(entry);
   }
+
+  return { toDelete, toReparse };
+}
+
+/** Reads each re-parse candidate at `headSha`, applying the same oversize guard `init`'s
+ *  discovery uses, and classifies modified files for the Tier B queue. */
+async function collectFilesToParse(
+  deps: DeltaDeps,
+  toReparse: ChangedFileEntry[],
+): Promise<{
+  filesToParse: DiscoveredFile[];
+  skippedOversized: { file: string; sizeBytes: number }[];
+  tierBEntries: TierBQueueEntry[];
+}> {
+  const { workspaceRoot, logger, git, headSha } = deps;
 
   const blobHashes = await git.listTrackedFilesWithBlobHash(workspaceRoot);
   const semanticDiffAnalyzer = docuviaFactory.resolve(
@@ -116,97 +183,97 @@ export async function runDeltaIngestion(deps: {
       crypto.createHash("sha256").update(content).digest("hex");
     filesToParse.push({ file: entry.file, hash, code: content });
 
-    // Classification only for a true in-place modification — added/renamed files have no
-    // meaningful "old content" at this path to diff against (§6b: renames are delete + add).
-    if (entry.status === "modified") {
-      const oldContent = await git.readFileAtRef(
-        workspaceRoot,
-        fromSha,
-        entry.file,
-      );
-      if (oldContent !== undefined) {
-        const lineRanges = await git.getChangedLineRanges(
-          workspaceRoot,
-          fromSha,
-          headSha,
-          entry.file,
-        );
-        if (lineRanges.length > 0) {
-          const findings = await semanticDiffAnalyzer.analyzeFile({
-            filePath: entry.file,
-            oldContent,
-            newContent: content,
-            changedLineRanges: lineRanges,
-          });
-          if (findings.some((f) => f.pruningLevel === 1)) {
-            tierBEntries.push({ file: entry.file, commitSha: headSha });
-          }
-        }
-      }
+    if (await isContractChanged(deps, semanticDiffAnalyzer, entry, content)) {
+      tierBEntries.push({ file: entry.file, commitSha: headSha });
     }
   }
 
-  let failures: AstParseFailure[] = [];
+  return { filesToParse, skippedOversized, tierBEntries };
+}
 
-  // §6b's locking requirement: the delta persist step (deletes + re-parse/persist + Tier B queue
-  // + last-ingested-sha meta write) runs under the knowledge-branch lock, the same discipline
-  // `snapshot`'s git-write step uses — so a concurrent `snapshot` can't read a half-updated
-  // local.db mid-delta.
-  await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, async () => {
-    if (toDelete.size > 0) {
-      await store.withWriteLock(() => {
-        for (const file of toDelete) store.graph.deleteNodesForPath(file);
-      });
-    }
+/** Detector classification (§6b) — only a true in-place modification is classified (added/renamed
+ *  files have no meaningful "old content" at this path to diff against); re-parsing is never
+ *  gated on the outcome. */
+async function isContractChanged(
+  deps: DeltaDeps,
+  semanticDiffAnalyzer: ISemanticDiffAnalyzer,
+  entry: ChangedFileEntry,
+  newContent: string,
+): Promise<boolean> {
+  const { workspaceRoot, git, fromSha, headSha } = deps;
+  if (entry.status !== "modified") return false;
 
-    if (filesToParse.length > 0) {
-      const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
-        logger,
-      });
-      const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+  const oldContent = await git.readFileAtRef(
+    workspaceRoot,
+    fromSha,
+    entry.file,
+  );
+  if (oldContent === undefined) return false;
 
-      const result = await runParseAndPersist({
-        astProcessor,
-        graphPersister,
-        store,
-        workspaceRoot,
-        projectId,
-        filesToParse,
-        skippedOversized,
-        tags: new Set(),
-      });
-      failures = result.failures;
-    }
+  const lineRanges = await git.getChangedLineRanges(
+    workspaceRoot,
+    fromSha,
+    headSha,
+    entry.file,
+  );
+  if (lineRanges.length === 0) return false;
 
+  const findings = await semanticDiffAnalyzer.analyzeFile({
+    filePath: entry.file,
+    oldContent,
+    newContent,
+    changedLineRanges: lineRanges,
+  });
+  return findings.some((f) => f.pruningLevel === 1);
+}
+
+/** The lock-held persist step: drop L2 rows for deleted/renamed-old paths, re-parse + persist the
+ *  changed files via the shared `runParseAndPersist` phase helper, append the Tier B queue, and
+ *  stamp the last-ingested source sha. Returns the parse failures. */
+async function persistDelta(
+  deps: DeltaDeps,
+  work: {
+    toDelete: Set<string>;
+    filesToParse: DiscoveredFile[];
+    skippedOversized: { file: string; sizeBytes: number }[];
+    tierBEntries: TierBQueueEntry[];
+  },
+): Promise<AstParseFailure[]> {
+  const { workspaceRoot, logger, store, projectId, headSha } = deps;
+  const { toDelete, filesToParse, skippedOversized, tierBEntries } = work;
+
+  if (toDelete.size > 0) {
     await store.withWriteLock(() => {
-      if (tierBEntries.length > 0) {
-        appendTierBQueueEntries(store, tierBEntries);
-      }
-      store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
+      for (const file of toDelete) store.graph.deleteNodesForPath(file);
     });
+  }
+
+  let failures: AstParseFailure[] = [];
+  if (filesToParse.length > 0) {
+    const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
+      logger,
+    });
+    const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+
+    const result = await runParseAndPersist({
+      astProcessor,
+      graphPersister,
+      store,
+      workspaceRoot,
+      projectId,
+      filesToParse,
+      skippedOversized,
+      tags: new Set(),
+    });
+    failures = result.failures;
+  }
+
+  await store.withWriteLock(() => {
+    if (tierBEntries.length > 0) {
+      appendTierBQueueEntries(store, tierBEntries);
+    }
+    store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
   });
 
-  const filesReparsed = filesToParse.length - failures.length;
-
-  await appendAnalyzeLogLine(workspaceRoot, {
-    event: "analyze.delta.summary",
-    fromSha,
-    headSha,
-    filesReparsed,
-    filesDeleted: toDelete.size,
-    filesFailed: failures.length,
-    filesSkippedOversized: skippedOversized.length,
-    tierBQueued: tierBEntries.length,
-  });
-
-  return {
-    kind: "autoDelta",
-    fromSha,
-    headSha,
-    filesReparsed,
-    filesDeleted: toDelete.size,
-    filesFailed: failures.length,
-    filesSkippedOversized: skippedOversized.length,
-    tierBQueued: tierBEntries.length,
-  };
+  return failures;
 }

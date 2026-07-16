@@ -6,7 +6,9 @@ import {
   DocuviaError,
   ErrorCodes,
   ChatMessageRoles,
+  type IGitProvider,
   type IGraphStore,
+  type IKnowledgeGitService,
   type ILogger,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/core";
@@ -131,63 +133,7 @@ export class AnalyzeWorkflow {
         readonly: false,
       });
 
-      const headSha = await git.getHeadSha(workspaceRoot);
-      const lastIngestedSha = store.meta.get(
-        GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
-      );
-
-      // 1. Sha fast-path — first check, regardless of graph state.
-      if (headSha && lastIngestedSha && headSha === lastIngestedSha) {
-        logger.info(ANALYZE_MESSAGES.AUTO_NOOP);
-        await appendAnalyzeLogLine(workspaceRoot, {
-          event: ANALYZE_EVENTS.DELTA_NOOP,
-          headSha,
-        });
-        return { kind: AnalyzeResultKind.AUTO_DELTA_NOOP, headSha };
-      }
-
-      // 2. Empty-graph check -> full ingestion.
-      const project = store.projects.getFirst();
-      const { l2Nodes } = store.graph.count();
-      if (!project || l2Nodes === 0) {
-        return await runFullIngestion({ workspaceRoot, logger, store, git });
-      }
-
-      // Non-empty graph but nothing to diff against (unborn/headless HEAD, no commits yet) —
-      // an extremely unlikely combination (the graph would ordinarily only be populated via a
-      // full ingestion or git hydration, both of which need at least one commit), but treated as
-      // a harmless no-op rather than crashing on a `git diff` against a ref that doesn't exist.
-      if (!headSha) {
-        await appendAnalyzeLogLine(workspaceRoot, {
-          event: ANALYZE_EVENTS.DELTA_NO_HEAD,
-        });
-        return { kind: AnalyzeResultKind.AUTO_DELTA_NOOP, headSha: null };
-      }
-
-      // 3. Delta — resolve the baseline sha.
-      let fromSha = lastIngestedSha;
-      if (!fromSha) {
-        fromSha =
-          await knowledgeGit.resolveNewestSourceTrailerSha(workspaceRoot);
-      }
-      if (!fromSha) {
-        // Neither the meta key nor a stamped knowledge-branch commit exists — a pre-Slice-2
-        // workspace whose knowledge branch (if any) predates the `Docuvia-Source` trailer, or one
-        // that never ran `init`'s ingestion at all despite having L2 nodes some other way. One-time
-        // full re-ingest, per §6a's fallback order.
-        return await runFullIngestion({ workspaceRoot, logger, store, git });
-      }
-
-      return await runDeltaIngestion({
-        workspaceRoot,
-        logger,
-        store,
-        git,
-        knowledgeGit,
-        projectId: project.id,
-        fromSha,
-        headSha,
-      });
+      return await this.dispatchAutoMode(store, git, knowledgeGit);
     } catch (err) {
       // Run-level failure JSONL (phase1-decision-integration.md §6c dispatch-2b follow-up): a
       // crashing auto-mode run previously left only `process.exitCode` + stderr behind, which is
@@ -205,6 +151,72 @@ export class AnalyzeWorkflow {
     } finally {
       await store?.close();
     }
+  }
+
+  /** The fast-path/full/delta decision tree behind `executeAutoMode`'s error/close envelope. */
+  private async dispatchAutoMode(
+    store: IGraphStore,
+    git: IGitProvider,
+    knowledgeGit: IKnowledgeGitService,
+  ): Promise<AnalyzeResult> {
+    const { workspaceRoot, logger } = this;
+
+    const headSha = await git.getHeadSha(workspaceRoot);
+    const lastIngestedSha = store.meta.get(
+      GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+    );
+
+    // 1. Sha fast-path — first check, regardless of graph state.
+    if (headSha && lastIngestedSha && headSha === lastIngestedSha) {
+      logger.info(ANALYZE_MESSAGES.AUTO_NOOP);
+      await appendAnalyzeLogLine(workspaceRoot, {
+        event: ANALYZE_EVENTS.DELTA_NOOP,
+        headSha,
+      });
+      return { kind: AnalyzeResultKind.AUTO_DELTA_NOOP, headSha };
+    }
+
+    // 2. Empty-graph check -> full ingestion.
+    const project = store.projects.getFirst();
+    const { l2Nodes } = store.graph.count();
+    if (!project || l2Nodes === 0) {
+      return await runFullIngestion({ workspaceRoot, logger, store, git });
+    }
+
+    // Non-empty graph but nothing to diff against (unborn/headless HEAD, no commits yet) —
+    // an extremely unlikely combination (the graph would ordinarily only be populated via a
+    // full ingestion or git hydration, both of which need at least one commit), but treated as
+    // a harmless no-op rather than crashing on a `git diff` against a ref that doesn't exist.
+    if (!headSha) {
+      await appendAnalyzeLogLine(workspaceRoot, {
+        event: ANALYZE_EVENTS.DELTA_NO_HEAD,
+      });
+      return { kind: AnalyzeResultKind.AUTO_DELTA_NOOP, headSha: null };
+    }
+
+    // 3. Delta — resolve the baseline sha.
+    let fromSha = lastIngestedSha;
+    if (!fromSha) {
+      fromSha = await knowledgeGit.resolveNewestSourceTrailerSha(workspaceRoot);
+    }
+    if (!fromSha) {
+      // Neither the meta key nor a stamped knowledge-branch commit exists — a pre-Slice-2
+      // workspace whose knowledge branch (if any) predates the `Docuvia-Source` trailer, or one
+      // that never ran `init`'s ingestion at all despite having L2 nodes some other way. One-time
+      // full re-ingest, per §6a's fallback order.
+      return await runFullIngestion({ workspaceRoot, logger, store, git });
+    }
+
+    return await runDeltaIngestion({
+      workspaceRoot,
+      logger,
+      store,
+      git,
+      knowledgeGit,
+      projectId: project.id,
+      fromSha,
+      headSha,
+    });
   }
 
   private async executeDecisionExtraction(
@@ -357,25 +369,10 @@ export class AnalyzeWorkflow {
   ): Promise<{ persisted: number; deduped: number }> {
     if (decisions.length === 0) return { persisted: 0, deduped: 0 };
 
-    const { workspaceRoot, options } = this;
-    const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+    const { workspaceRoot } = this;
 
-    let store: IGraphStore;
-    try {
-      store = await openStore({
-        dbPath: resolveDbPath(workspaceRoot),
-        readonly: false,
-      });
-    } catch (err) {
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_OPEN_FAILED
-      ) {
-        await this.warnNoGraphToAttach(workspaceRoot);
-        return { persisted: 0, deduped: 0 };
-      }
-      throw err;
-    }
+    const store = await this.openStoreForPersist(workspaceRoot);
+    if (store === null) return { persisted: 0, deduped: 0 };
 
     try {
       const project = store.projects.getFirst();
@@ -395,38 +392,81 @@ export class AnalyzeWorkflow {
         return { persisted: 0, deduped: 0 };
       }
 
-      const git = docuviaFactory.resolve(TOKENS.GitProvider);
-      const commitSha = (await git.getHeadSha(workspaceRoot)) ?? null;
-      const sourceFiles = files.map((f) => toNodeKey(f.relativePath));
-
-      let persisted = 0;
-      let deduped = 0;
-      for (const decision of decisions) {
-        const result = store.l3.upsertDecision({
-          projectId: project.id,
-          l2NodeId: anchorL2NodeId,
-          title: decision.title,
-          content: decision.content,
-          nodeType: decision.nodeType,
-          confidence: decision.confidence,
-          commitSha,
-          extractionModel: options?.llmModel ?? null,
-          sourceFiles,
-        });
-        if (result.deduped) deduped++;
-        else persisted++;
-      }
+      const counts = await this.upsertDecisions(
+        store,
+        project.id,
+        anchorL2NodeId,
+        files,
+        decisions,
+      );
 
       await appendAnalyzeLogLine(workspaceRoot, {
         event: ANALYZE_EVENTS.FOCUSED_PERSISTED,
-        persisted,
-        deduped,
+        persisted: counts.persisted,
+        deduped: counts.deduped,
       });
 
-      return { persisted, deduped };
+      return counts;
     } finally {
       await store.close();
     }
+  }
+
+  /** Opens the store for the persist step; a missing/unopenable local database is the §3b
+   *  empty-graph precondition (warn + skip), not a failure of the extraction itself. */
+  private async openStoreForPersist(
+    workspaceRoot: string,
+  ): Promise<IGraphStore | null> {
+    const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+    try {
+      return await openStore({
+        dbPath: resolveDbPath(workspaceRoot),
+        readonly: false,
+      });
+    } catch (err) {
+      if (
+        err instanceof DocuviaError &&
+        err.code === ErrorCodes.DB_OPEN_FAILED
+      ) {
+        await this.warnNoGraphToAttach(workspaceRoot);
+        return null;
+      }
+      throw err;
+    }
+  }
+
+  /** The §3c content-hash upsert loop — every decision lands as a new row or an occurrence bump. */
+  private async upsertDecisions(
+    store: IGraphStore,
+    projectId: number,
+    anchorL2NodeId: number,
+    files: CollectedFile[],
+    decisions: ExtractedDecision[],
+  ): Promise<{ persisted: number; deduped: number }> {
+    const { workspaceRoot, options } = this;
+    const git = docuviaFactory.resolve(TOKENS.GitProvider);
+    const commitSha = (await git.getHeadSha(workspaceRoot)) ?? null;
+    const sourceFiles = files.map((f) => toNodeKey(f.relativePath));
+
+    let persisted = 0;
+    let deduped = 0;
+    for (const decision of decisions) {
+      const result = store.l3.upsertDecision({
+        projectId,
+        l2NodeId: anchorL2NodeId,
+        title: decision.title,
+        content: decision.content,
+        nodeType: decision.nodeType,
+        confidence: decision.confidence,
+        commitSha,
+        extractionModel: options?.llmModel ?? null,
+        sourceFiles,
+      });
+      if (result.deduped) deduped++;
+      else persisted++;
+    }
+
+    return { persisted, deduped };
   }
 
   private async warnNoGraphToAttach(workspaceRoot: string): Promise<void> {

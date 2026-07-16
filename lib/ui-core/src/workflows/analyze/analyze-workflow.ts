@@ -96,22 +96,28 @@ export class AnalyzeWorkflow {
     logger.info(ANALYZE_MESSAGES.AUTO_ANALYZING);
     await appendAnalyzeLogLine(workspaceRoot, { event: "analyze.auto.start" });
 
-    const git = docuviaFactory.resolve(TOKENS.GitProvider);
-    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
-      logger,
-    });
-    const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
-
-    // Known caveat (Slice 1 verification): opening the store with `readonly: false` on a
-    // never-`init`'d workspace silently creates an empty migrated DB rather than throwing
-    // `DB_OPEN_FAILED` — the empty-graph precondition below must be (and is) detected via the
-    // missing-project-row/L2-count check, not a caught `DB_OPEN_FAILED`.
-    const store = await openStore({
-      dbPath: resolveDbPath(workspaceRoot),
-      readonly: false,
-    });
+    // Declared outside the try so the finally can close it, but resolved/opened INSIDE the try:
+    // a store-open/migration failure (DB_OPEN_FAILED — corrupted local.db, disk full) is exactly
+    // the kind of realistic background-hook failure the `analyze.auto.error` line below must
+    // capture, not silently rethrow past.
+    let store: IGraphStore | undefined;
 
     try {
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+        logger,
+      });
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+
+      // Known caveat (Slice 1 verification): opening the store with `readonly: false` on a
+      // never-`init`'d workspace silently creates an empty migrated DB rather than throwing
+      // `DB_OPEN_FAILED` — the empty-graph precondition below must be (and is) detected via the
+      // missing-project-row/L2-count check, not a caught `DB_OPEN_FAILED`.
+      store = await openStore({
+        dbPath: resolveDbPath(workspaceRoot),
+        readonly: false,
+      });
+
       const headSha = await git.getHeadSha(workspaceRoot);
       const lastIngestedSha = store.meta.get(
         GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
@@ -169,8 +175,22 @@ export class AnalyzeWorkflow {
         fromSha,
         headSha,
       });
+    } catch (err) {
+      // Run-level failure JSONL (phase1-decision-integration.md §6c dispatch-2b follow-up): a
+      // crashing auto-mode run previously left only `process.exitCode` + stderr behind, which is
+      // an invisible failure once the post-commit hook fires it in the background (no developer
+      // watching stderr). Mirrors `executeDecisionExtraction`'s `analyze.focused.error` shape —
+      // one event covering the whole auto-mode dispatch (store open/migration, fast-path check,
+      // empty-graph check, and both `runFullIngestion`/`runDeltaIngestion`), since a failure can
+      // occur before the mode is even determined.
+      const message = err instanceof Error ? err.message : String(err);
+      await appendAnalyzeLogLine(workspaceRoot, {
+        event: "analyze.auto.error",
+        message,
+      });
+      throw err;
     } finally {
-      await store.close();
+      await store?.close();
     }
   }
 

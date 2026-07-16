@@ -34,6 +34,11 @@ export interface IGitProvider {
   hooksDirExists(cwd: string): Promise<boolean>;
   readHookFile(cwd: string, hookName: string): Promise<string | undefined>;
   appendHookFile(cwd: string, hookName: string, content: string): Promise<void>;
+  /** Wholesale-overwrites the hook file's content (unlike `appendHookFile`) — used for an
+   *  in-place legacy-hook upgrade (phase1-decision-integration.md §6c), where the caller has
+   *  already computed the full replacement content (old Docuvia block removed, new block
+   *  appended, any other user content preserved) and just needs it written back atomically. */
+  writeHookFile(cwd: string, hookName: string, content: string): Promise<void>;
   makeHookExecutable(cwd: string, hookName: string): Promise<void>;
 
   listTrackedFilesWithBlobHash(cwd: string): Promise<Map<string, string>>;

@@ -141,6 +141,22 @@ export class Libgit2Provider implements IGitProvider {
     }
   }
 
+  public async writeHookFile(
+    cwd: string,
+    hookName: string,
+    content: string,
+  ): Promise<void> {
+    try {
+      await fs.writeFile(path.join(cwd, ...GIT_HOOKS_DIR, hookName), content);
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_HOOK_INSTALL_FAILED,
+        "Writing hook file failed",
+        err,
+      );
+    }
+  }
+
   public async makeHookExecutable(
     cwd: string,
     hookName: string,

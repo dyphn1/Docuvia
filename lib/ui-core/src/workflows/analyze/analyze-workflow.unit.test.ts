@@ -6,6 +6,7 @@ import {
   docuviaFactory,
   TOKENS,
   DocuviaError,
+  ErrorCodes,
   resetFactoryForTests,
   createMockLogger,
   type GraphStoreOpenOptions,
@@ -65,6 +66,7 @@ function makeMockGitProvider(
     hooksDirExists: vi.fn().mockResolvedValue(false),
     readHookFile: vi.fn().mockResolvedValue(undefined),
     appendHookFile: vi.fn().mockResolvedValue(undefined),
+    writeHookFile: vi.fn().mockResolvedValue(undefined),
     makeHookExecutable: vi.fn().mockResolvedValue(undefined),
     listTrackedFilesWithBlobHash: vi.fn().mockResolvedValue(new Map()),
     listUntrackedFiles: vi.fn().mockResolvedValue([]),
@@ -419,6 +421,93 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
     await new AnalyzeWorkflow(tmpDir, createMockLogger()).execute();
 
     expect(store.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs analyze.auto.error and rethrows when the run itself throws (run-level failure JSONL, phase1-decision-integration.md §6c)", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: 1 } as any),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 5, l3Nodes: 0 }),
+      },
+      meta: {
+        get: vi
+          .fn()
+          .mockImplementation((key: string) =>
+            key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+              ? "old-sha"
+              : undefined,
+          ),
+        set: vi.fn(),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({ getHeadSha: vi.fn().mockResolvedValue("new-sha") }),
+    );
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    vi.mocked(runDeltaIngestion).mockRejectedValueOnce(
+      new Error("boom: delta ingestion exploded"),
+    );
+
+    await expect(
+      new AnalyzeWorkflow(tmpDir, createMockLogger()).execute(),
+    ).rejects.toThrow("boom: delta ingestion exploded");
+
+    expect(store.close).toHaveBeenCalledTimes(1);
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    const errorLine = lines.find((l) => l.event === "analyze.auto.error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine!.message).toBe("boom: delta ingestion exploded");
+  });
+
+  it("logs analyze.auto.error and rethrows when the store open itself fails (DB_OPEN_FAILED — e.g. corrupted local.db in a background hook-fired run)", async () => {
+    const openStoreSpy = vi
+      .fn<[GraphStoreOpenOptions], Promise<IGraphStore>>()
+      .mockRejectedValue(
+        new DocuviaError(
+          ErrorCodes.DB_OPEN_FAILED,
+          "Failed to open the local database",
+        ),
+      );
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
+    docuviaFactory.register(TOKENS.GitProvider, () => makeMockGitProvider());
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    await expect(
+      new AnalyzeWorkflow(tmpDir, createMockLogger()).execute(),
+    ).rejects.toThrow("Failed to open the local database");
+
+    expect(runFullIngestion).not.toHaveBeenCalled();
+    expect(runDeltaIngestion).not.toHaveBeenCalled();
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    const errorLine = lines.find((l) => l.event === "analyze.auto.error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine!.message).toBe("Failed to open the local database");
   });
 });
 

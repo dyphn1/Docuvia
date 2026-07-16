@@ -15,6 +15,7 @@ function makeMockGitProvider(
     hooksDirExists: vi.fn().mockResolvedValue(true),
     readHookFile: vi.fn().mockResolvedValue(undefined),
     appendHookFile: vi.fn().mockResolvedValue(undefined),
+    writeHookFile: vi.fn().mockResolvedValue(undefined),
     makeHookExecutable: vi.fn().mockResolvedValue(undefined),
     listTrackedFilesWithBlobHash: vi.fn().mockResolvedValue(new Map()),
     listUntrackedFiles: vi.fn().mockResolvedValue([]),
@@ -202,6 +203,111 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
         (e) => e.level === "warn" && /concurrent process/.test(e.message),
       ),
     ).toBe(true);
+  });
+
+  describe("legacy hook upgrade (docuvia snapshot -> docuvia analyze, phase1-decision-integration.md §6c)", () => {
+    it("replaces the legacy block in place: old block gone, new block present, non-Docuvia user content preserved", async () => {
+      const existingHook =
+        `#!/bin/bash\necho "user pre-commit-style content"\n` +
+        GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT;
+      const git = makeMockGitProvider({
+        readHookFile: vi.fn().mockResolvedValue(existingHook),
+      });
+      const logger = createMockLogger();
+      const service = new KnowledgeGitService(git, logger);
+
+      const result = await service.installPostCommitHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.appendHookFile).not.toHaveBeenCalled();
+      expect(git.writeHookFile).toHaveBeenCalledTimes(1);
+      const [cwd, hookName, writtenContent] = (
+        git.writeHookFile as ReturnType<typeof vi.fn>
+      ).mock.calls[0];
+      expect(cwd).toBe("/workspace");
+      expect(hookName).toBe(GitConstants.POST_COMMIT_HOOK_NAME);
+
+      // Old block gone (its exact legacy content is no longer present).
+      expect(writtenContent).not.toContain(
+        GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT,
+      );
+      expect(writtenContent).not.toContain(
+        GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
+      );
+      // New block present.
+      expect(writtenContent).toContain(GitConstants.POST_COMMIT_HOOK_CONTENT);
+      // Non-Docuvia user content preserved.
+      expect(writtenContent).toContain('echo "user pre-commit-style content"');
+
+      expect(git.makeHookExecutable).toHaveBeenCalled();
+      expect(
+        logger.events.some(
+          (e) =>
+            e.level === "info" &&
+            /Upgraded legacy post-commit hook/.test(e.message),
+        ),
+      ).toBe(true);
+    });
+
+    it("upgrades a legacy hook with no other user content (old block was the entire file)", async () => {
+      const git = makeMockGitProvider({
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT),
+      });
+      const service = new KnowledgeGitService(git);
+
+      const result = await service.installPostCommitHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.writeHookFile).toHaveBeenCalledWith(
+        "/workspace",
+        GitConstants.POST_COMMIT_HOOK_NAME,
+        GitConstants.POST_COMMIT_HOOK_CONTENT,
+      );
+    });
+
+    it("PLAT-006: re-checks inside the lock and skips the legacy upgrade when a concurrent process already upgraded it in between", async () => {
+      // First check (before the lock) sees only the legacy marker; the re-check (after acquiring
+      // the lock) sees the new marker already present — simulating a second process winning the
+      // upgrade race in between.
+      const readHookFile = vi
+        .fn()
+        .mockResolvedValueOnce(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT)
+        .mockResolvedValueOnce(GitConstants.POST_COMMIT_HOOK_CONTENT);
+      const git = makeMockGitProvider({ readHookFile });
+      const logger = createMockLogger();
+      const service = new KnowledgeGitService(git, logger);
+
+      const result = await service.installPostCommitHook("/workspace");
+
+      expect(result).toEqual({ installed: false });
+      expect(git.writeHookFile).not.toHaveBeenCalled();
+      expect(git.appendHookFile).not.toHaveBeenCalled();
+      expect(git.acquireKnowledgeLock).toHaveBeenCalledTimes(1);
+      expect(git.releaseKnowledgeLock).toHaveBeenCalledTimes(1);
+      expect(
+        logger.events.some(
+          (e) => e.level === "warn" && /concurrent process/.test(e.message),
+        ),
+      ).toBe(true);
+    });
+
+    it("does not throw when the legacy-upgrade write fails — logs a warning and reports installed:false instead", async () => {
+      const git = makeMockGitProvider({
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT),
+        writeHookFile: vi.fn().mockRejectedValue(new Error("EACCES")),
+      });
+      const logger = createMockLogger();
+      const service = new KnowledgeGitService(git, logger);
+
+      const result = await service.installPostCommitHook("/workspace");
+
+      expect(result).toEqual({ installed: false });
+      expect(logger.events.some((e) => e.level === "warn")).toBe(true);
+    });
   });
 });
 

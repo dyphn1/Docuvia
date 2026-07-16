@@ -218,3 +218,31 @@ implementer flagged three judgment calls; owner-level rulings:
    the minimal surface that lets `lib/ui-core` honor the locking requirement without breaking
    the Virtual Contracts token-only boundary, and it mirrors the existing
    `withKnowledgeBranchLock` helper's shape exactly.
+
+### 6e. Dispatch 2b — completion record (2026-07-17)
+
+Dispatch 2a committed as `0e66ed6`. Dispatch 2b implemented per §6c in order (error JSONL →
+the two gating concurrency tests → hook flip), first verification **failed** on two surgical
+defects — `openStore` sat outside the `analyze.auto.error`-logged try (a `DB_OPEN_FAILED`
+would still be an invisible failure), and a stale "fires `docuvia snapshot`" docstring — both
+fixed and re-verified (build green; 100 test files / 616 tests green, including a new
+store-open-failure regression test). Deviation accepted: one `analyze.auto.error` event
+instead of per-mode names, since a failure can precede mode determination.
+
+**Verification findings worth keeping (Tier A semantics):**
+
+- **No hook self-trigger is possible**: knowledge-branch writes go through `git fast-import`
+  / `commit-tree` plumbing, which never fires the post-commit hook; and any spurious re-entry
+  hits the sha fast-path noop.
+- `init` never writes `lastIngestedSourceSha` — the first post-`init` delta resolves its
+  baseline via the knowledge branch's `Docuvia-Source` trailer fallback. By design, not a bug.
+- `uninstall` has never removed the git post-commit hook (pre-existing; mitigated by
+  `npx --no-install`'s silent no-op). Slice 5's `doctor` checks are the home for this and for
+  detecting a user-edited legacy hook block (bytes diverged → upgrade degrades to
+  append-without-removal, leaving both blocks live).
+
+**Slice 2 status: complete.** Wire 1 is closed — the post-commit hook now runs
+`docuvia analyze` (auto mode), per-commit L2 freshness lives in `local.db`, and the two
+`cli-test-analysis` concurrency items (`analyze`+`snapshot`, `doctor`+`hydrate`) are closed.
+Next: Slice 3 (Tier B — `escalateToLsp` spawn-per-batch, batch snapshot, pre-push +
+commit-cap triggers, `tierBQueue` consumption).

@@ -14,6 +14,7 @@ function makeMockGitProvider(
     hooksDirExists: vi.fn().mockResolvedValue(true),
     readHookFile: vi.fn().mockResolvedValue(undefined),
     appendHookFile: vi.fn().mockResolvedValue(undefined),
+    writeHookFile: vi.fn().mockResolvedValue(undefined),
     makeHookExecutable: vi.fn().mockResolvedValue(undefined),
     listTrackedFilesWithBlobHash: vi.fn().mockResolvedValue(new Map()),
     listUntrackedFiles: vi.fn().mockResolvedValue([]),

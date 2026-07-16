@@ -74,9 +74,13 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   }
 
   /**
-   * Installs the post-commit hook that fires `docuvia snapshot` after every commit.
-   * Non-fatal by design: `.git/hooks` may not exist (e.g. a bare repo, or `.git` mounted
-   * read-only), and a broken hook shouldn't fail `init` itself.
+   * Installs the post-commit hook that fires `docuvia analyze` after every commit (PLAT-007
+   * Tier A; flipped from `docuvia snapshot` in Slice 2 dispatch 2b —
+   * phase1-decision-integration.md §6c). A hook file still carrying the legacy `docuvia
+   * snapshot` block is upgraded in place: the old block's exact content is removed and the new
+   * block appended, preserving any non-Docuvia user content in the same file. Non-fatal by
+   * design: `.git/hooks` may not exist (e.g. a bare repo, or `.git` mounted read-only), and a
+   * broken hook shouldn't fail `init` itself.
    */
   public async installPostCommitHook(
     cwd: string,
@@ -108,12 +112,30 @@ export class KnowledgeGitService implements IKnowledgeGitService {
         return { installed: false };
       }
 
+      // Legacy upgrade (phase1-decision-integration.md §6c, Slice 2 dispatch 2b's hook flip): a
+      // pre-2b installation has the old `docuvia snapshot` marker but not the new `docuvia
+      // analyze` one. Replace the old Docuvia block in place — remove its exact content, then
+      // append the new block — rather than appending a second, duplicate Docuvia block alongside
+      // the old one. Re-checked inside the lock for the same TOCTOU reason as the marker check
+      // above (PLAT-006).
+      const hasLegacyHook = recheckHook?.includes(
+        GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
+      );
+
       try {
-        await this.git.appendHookFile(
-          cwd,
-          hookName,
-          GitConstants.POST_COMMIT_HOOK_CONTENT,
-        );
+        if (hasLegacyHook) {
+          const upgradedHook =
+            recheckHook!
+              .split(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT)
+              .join("") + GitConstants.POST_COMMIT_HOOK_CONTENT;
+          await this.git.writeHookFile(cwd, hookName, upgradedHook);
+        } else {
+          await this.git.appendHookFile(
+            cwd,
+            hookName,
+            GitConstants.POST_COMMIT_HOOK_CONTENT,
+          );
+        }
         await this.git.makeHookExecutable(cwd, hookName);
       } catch (err) {
         // Non-fatal to init — a broken hook write shouldn't fail the whole workflow.
@@ -123,7 +145,11 @@ export class KnowledgeGitService implements IKnowledgeGitService {
         return { installed: false };
       }
 
-      this.logger.info("Installed post-commit hook");
+      this.logger.info(
+        hasLegacyHook
+          ? "Upgraded legacy post-commit hook (docuvia snapshot -> docuvia analyze)"
+          : "Installed post-commit hook",
+      );
       return { installed: true };
     });
   }

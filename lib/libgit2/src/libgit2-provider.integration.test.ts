@@ -82,6 +82,27 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
     expect(content).toContain(HOOK_MARKER);
   });
 
+  it("writeHookFile wholesale-overwrites the hook file's content (unlike appendHookFile)", async () => {
+    await provider.appendHookFile(
+      tmpDir,
+      HOOK_NAME,
+      `#!/bin/bash\n# ${HOOK_MARKER}\n`,
+    );
+    expect(await provider.readHookFile(tmpDir, HOOK_NAME)).toContain(
+      HOOK_MARKER,
+    );
+
+    await provider.writeHookFile(
+      tmpDir,
+      HOOK_NAME,
+      "#!/bin/bash\n# docuvia analyze\n",
+    );
+
+    const content = await provider.readHookFile(tmpDir, HOOK_NAME);
+    expect(content).toBe("#!/bin/bash\n# docuvia analyze\n");
+    expect(content).not.toContain(HOOK_MARKER);
+  });
+
   it("getRemoteUrl returns undefined when no origin remote is configured, and the URL once one is added", async () => {
     expect(await provider.getRemoteUrl(tmpDir)).toBeUndefined();
 

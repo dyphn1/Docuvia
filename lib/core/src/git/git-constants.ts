@@ -4,8 +4,29 @@ export const GitConstants = {
   /** Commit-message trailer key (STOR-001 point 4) carrying the full 40-char source-commit sha, read back by Phase 2's nearest-ancestor hydration lookup. */
   SOURCE_COMMIT_TRAILER_KEY: "Docuvia-Source",
   POST_COMMIT_HOOK_NAME: "post-commit",
-  POST_COMMIT_HOOK_MARKER: "docuvia snapshot",
+  /**
+   * `analyze` auto mode (PLAT-007 Tier A) is the hook's command as of Slice 2 dispatch 2b
+   * (phase1-decision-integration.md §6c) — gated by the `analyze`+`snapshot` and `doctor`+
+   * `hydrate` concurrency tests, which must exist and pass before this flip. See
+   * `LEGACY_POST_COMMIT_HOOK_MARKER`/`LEGACY_POST_COMMIT_HOOK_CONTENT` for the pre-2b hook this
+   * replaces in-place on an existing installation.
+   */
+  POST_COMMIT_HOOK_MARKER: "docuvia analyze",
   POST_COMMIT_HOOK_CONTENT:
+    `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n` +
+    `# Non-intrusively extracts AST deltas in the background\n` +
+    `if command -v npx &> /dev/null; then\n` +
+    `  # Fire and forget (do not block commit)\n` +
+    `  npx --no-install docuvia analyze > /dev/null 2>&1 &\n` +
+    `fi\n`,
+  /**
+   * The pre-Slice-2b hook's marker/content, retained verbatim so `installPostCommitHook` can
+   * recognize a hook installed before the `snapshot` -> `analyze` flip and replace it in place
+   * (phase1-decision-integration.md §6c) rather than appending a second, duplicate Docuvia block
+   * alongside the old one.
+   */
+  LEGACY_POST_COMMIT_HOOK_MARKER: "docuvia snapshot",
+  LEGACY_POST_COMMIT_HOOK_CONTENT:
     `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n` +
     `# Non-intrusively extracts AST deltas in the background\n` +
     `if command -v npx &> /dev/null; then\n` +

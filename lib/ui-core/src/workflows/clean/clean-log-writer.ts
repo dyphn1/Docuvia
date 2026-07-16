@@ -1,5 +1,6 @@
 import { CLEAN_LOG_FILE_NAME } from "@workspace/contracts";
 import { appendCommandLogLine } from "../../utils/command-log-writer.js";
+import { CLEAN_EVENTS } from "./clean-messages.js";
 
 export async function appendCleanLogLine(
   workspaceRoot: string,
@@ -13,7 +14,7 @@ export async function writeCleanSummary(
   summary: { deleted: boolean; message: string },
 ): Promise<void> {
   await appendCleanLogLine(workspaceRoot, {
-    event: "clean.summary",
+    event: CLEAN_EVENTS.SUMMARY,
     ...summary,
   });
 }

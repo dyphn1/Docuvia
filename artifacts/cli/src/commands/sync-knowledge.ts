@@ -3,7 +3,10 @@ import crypto from "node:crypto";
 import {
   docuviaMemory,
   DocuviaError,
+  KnowledgeBranchSyncStatuses,
   type KnowledgeBranchSyncResult,
+  MemoryKeys,
+  LogLevels,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
@@ -12,11 +15,13 @@ import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 
 const STATUS_MESSAGES: Record<KnowledgeBranchSyncResult["status"], string> = {
-  "no-remote": UI_MESSAGES.SYNC_KNOWLEDGE_NO_REMOTE,
-  "up-to-date": UI_MESSAGES.SYNC_KNOWLEDGE_UP_TO_DATE,
-  "fast-forwarded-local": UI_MESSAGES.SYNC_KNOWLEDGE_FAST_FORWARDED,
-  "pushed-local": UI_MESSAGES.SYNC_KNOWLEDGE_PUSHED,
-  merged: UI_MESSAGES.SYNC_KNOWLEDGE_MERGED,
+  [KnowledgeBranchSyncStatuses.NO_REMOTE]: UI_MESSAGES.SYNC_KNOWLEDGE_NO_REMOTE,
+  [KnowledgeBranchSyncStatuses.UP_TO_DATE]:
+    UI_MESSAGES.SYNC_KNOWLEDGE_UP_TO_DATE,
+  [KnowledgeBranchSyncStatuses.FAST_FORWARDED_LOCAL]:
+    UI_MESSAGES.SYNC_KNOWLEDGE_FAST_FORWARDED,
+  [KnowledgeBranchSyncStatuses.PUSHED_LOCAL]: UI_MESSAGES.SYNC_KNOWLEDGE_PUSHED,
+  [KnowledgeBranchSyncStatuses.MERGED]: UI_MESSAGES.SYNC_KNOWLEDGE_MERGED,
 };
 
 /** Thin caller of `docuviaApi.syncKnowledge()` — mirrors `hydrate.ts`'s Presentation-layer responsibilities. */
@@ -25,15 +30,15 @@ export async function syncKnowledgeCommand(cwd: string = process.cwd()) {
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
-    if (event.level === "info") spinner.text = event.message;
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
 
   try {
     const result = await docuviaApi.syncKnowledge(scopeId, logger);
-    if (result.status === "no-remote") {
+    if (result.status === KnowledgeBranchSyncStatuses.NO_REMOTE) {
       spinner.warn(STATUS_MESSAGES[result.status]);
       return;
     }

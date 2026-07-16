@@ -41,6 +41,16 @@ export class GenericMarkdownPlatform extends BasePlatform {
 
   async uninstallHooks(cwd: string): Promise<void> {
     const { removeBlock } = await import("../utils/fs-utils.js");
+    const {
+      GITHUB_DIR,
+      COPILOT_INSTRUCTIONS_FILENAME,
+      CLAUDE_MD_FILENAME,
+      WINDSURF_RULES_FILENAME,
+      CURSOR_RULES_FILENAME,
+      LLMS_TXT_FILENAME,
+      AGENT_INSTRUCTIONS_MARKER,
+      AGENT_INSTRUCTIONS_END_MARKER,
+    } = await import("../constants/init-templates.js");
     const targetPaths = [
       path.join(cwd, GITHUB_DIR, COPILOT_INSTRUCTIONS_FILENAME),
       path.join(cwd, CLAUDE_MD_FILENAME),
@@ -52,7 +62,7 @@ export class GenericMarkdownPlatform extends BasePlatform {
       await removeBlock(
         targetPath,
         `<!-- ${AGENT_INSTRUCTIONS_MARKER} -->`,
-        "<!-- docuvia:end -->",
+        `<!-- ${AGENT_INSTRUCTIONS_END_MARKER} -->`,
       );
     }
   }

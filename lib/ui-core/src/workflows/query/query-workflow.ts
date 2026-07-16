@@ -5,7 +5,7 @@ import {
   ErrorCodes,
   type ILogger,
 } from "@workspace/contracts";
-import { QUERY_MESSAGES } from "./query-messages.js";
+import { QUERY_EVENTS, QUERY_MESSAGES } from "./query-messages.js";
 import { appendQueryLogLine } from "./query-log-writer.js";
 import type { QueryResult } from "./query-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
@@ -27,7 +27,10 @@ export class QueryWorkflow {
     const { workspaceRoot, logger } = this;
 
     logger.info(QUERY_MESSAGES.QUERYING);
-    await appendQueryLogLine(workspaceRoot, { event: "query.start", target });
+    await appendQueryLogLine(workspaceRoot, {
+      event: QUERY_EVENTS.START,
+      target,
+    });
 
     await ensureHydrated(workspaceRoot, logger);
 
@@ -44,7 +47,7 @@ export class QueryWorkflow {
         err.code === ErrorCodes.DB_OPEN_FAILED
       ) {
         await appendQueryLogLine(workspaceRoot, {
-          event: "query.error",
+          event: QUERY_EVENTS.ERROR,
           target,
           message: QUERY_MESSAGES.DB_NOT_FOUND,
         });
@@ -66,7 +69,7 @@ export class QueryWorkflow {
       const found =
         Boolean(result.l2) || result.l3.length > 0 || Boolean(result.context);
       await appendQueryLogLine(workspaceRoot, {
-        event: "query.summary",
+        event: QUERY_EVENTS.SUMMARY,
         target,
         found,
       });

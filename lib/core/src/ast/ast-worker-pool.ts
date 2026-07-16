@@ -7,9 +7,30 @@ import crypto from "node:crypto";
 import type { AstParseRequest, AstParseResponse } from "./ast-worker.js";
 import type { ILogger, IIpcLogMessage } from "@workspace/contracts";
 import { createNoopLogger, IpcLogRouter } from "@workspace/contracts";
+import { AST_WORKER_CRASH_ERROR_NAME, AstMessages } from "./ast-constants.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/** esbuild options for `compileWorkerForDevMode()` below — literal values dictated by esbuild's own API. */
+const DevWorkerBuildConfig = {
+  FORMAT: "esm",
+  PLATFORM: "node",
+  TARGET: "node20",
+  EXTERNAL_TREE_SITTER: "web-tree-sitter",
+} as const;
+
+/**
+ * Node `execArgv` flags manipulated by `initialize()`'s test-only fixture seam: the test runner's
+ * own `--eval`/`--print` flags must be stripped before respawning workers against a fixture
+ * script, and `--import tsx` re-registers the `tsx` ESM loader for that fixture worker.
+ */
+const NodeExecArgvFlags = {
+  EVAL: "--eval",
+  PRINT: "--print",
+  IMPORT: "--import",
+  TSX_LOADER: "tsx",
+} as const;
 
 /**
  * Compiles `ast-worker.ts` into a real, standalone `ast-worker.js` sitting right next to it, for
@@ -46,15 +67,15 @@ async function compileWorkerForDevMode(
     entryPoints: [sourcePath],
     outfile: tmpPath,
     bundle: true,
-    format: "esm",
-    platform: "node",
-    target: "node20",
+    format: DevWorkerBuildConfig.FORMAT,
+    platform: DevWorkerBuildConfig.PLATFORM,
+    target: DevWorkerBuildConfig.TARGET,
     // No createRequire banner needed here (unlike artifacts/cli/tsup.config.ts's build of this
     // same file): ast-worker.ts already declares its own top-level
     // `const require = createRequire(import.meta.url)` for resolveWasmPath()'s
     // require.resolve() calls, which — since esbuild bundles everything into one shared
     // scope — any bundled-in CJS interop code ends up using too.
-    external: ["web-tree-sitter"],
+    external: [DevWorkerBuildConfig.EXTERNAL_TREE_SITTER],
   });
 
   fs.renameSync(tmpPath, outPath);
@@ -89,10 +110,11 @@ export class AstWorkerCrashError extends Error {
     public readonly cause: unknown,
   ) {
     super(
-      `AST worker crashed while parsing ${filePath ?? "(unknown file)"}: ` +
-        (cause instanceof Error ? cause.message : String(cause)),
+      AstMessages.workerCrashWhileParsing(
+        filePath ?? AstMessages.UNKNOWN_FILE,
+      ) + (cause instanceof Error ? cause.message : String(cause)),
     );
-    this.name = "AstWorkerCrashError";
+    this.name = AST_WORKER_CRASH_ERROR_NAME;
   }
 }
 
@@ -177,12 +199,12 @@ export class AstWorkerPool implements IASTWorkerPool {
         // pool.terminate() forcibly stops every still-alive worker via worker.terminate(),
         // and Node reports that as a non-zero "exit" event even though nothing went wrong.
         // Every still-idle worker at shutdown time would otherwise be misreported as a crash.
-        this.logger.debug("AST worker exited during pool shutdown (expected)", {
+        this.logger.debug(AstMessages.WORKER_EXITED_DURING_SHUTDOWN, {
           taskId,
           filePath,
         });
       } else {
-        this.logger.error("AST worker crashed/exited", {
+        this.logger.error(AstMessages.WORKER_CRASHED_EXITED, {
           taskId,
           filePath,
           hadInFlightTask: Boolean(taskId),
@@ -205,9 +227,9 @@ export class AstWorkerPool implements IASTWorkerPool {
               filePath,
               timedOut
                 ? new Error(
-                    `AST worker task ${taskId} timed out after ${this.taskTimeoutMs}ms`,
+                    AstMessages.taskTimedOutAfterMs(taskId, this.taskTimeoutMs),
                   )
-                : err || new Error("Worker exited unexpectedly"),
+                : err || new Error(AstMessages.WORKER_EXITED_UNEXPECTEDLY),
             ),
           );
           this.pendingTasks.delete(taskId);
@@ -231,7 +253,8 @@ export class AstWorkerPool implements IASTWorkerPool {
 
     worker.on("error", handleError);
     worker.on("exit", (code) => {
-      if (code !== 0) handleError(new Error(`Worker exited with code ${code}`));
+      if (code !== 0)
+        handleError(new Error(AstMessages.workerExitedWithCode(code)));
     });
 
     this.workers.push(worker);
@@ -246,12 +269,19 @@ export class AstWorkerPool implements IASTWorkerPool {
       // the pool at a fixture worker script (e.g. one that deterministically crashes).
       this.wPath = this.workerScriptPathOverride;
       this.workerOptions.execArgv = process.execArgv.filter(
-        (arg) => !arg.includes("--eval") && !arg.includes("--print"),
+        (arg) =>
+          !arg.includes(NodeExecArgvFlags.EVAL) &&
+          !arg.includes(NodeExecArgvFlags.PRINT),
       );
       if (
-        !this.workerOptions.execArgv.some((arg: string) => arg.includes("tsx"))
+        !this.workerOptions.execArgv.some((arg: string) =>
+          arg.includes(NodeExecArgvFlags.TSX_LOADER),
+        )
       ) {
-        this.workerOptions.execArgv.push("--import", "tsx");
+        this.workerOptions.execArgv.push(
+          NodeExecArgvFlags.IMPORT,
+          NodeExecArgvFlags.TSX_LOADER,
+        );
       }
       for (let i = 0; i < workerCount; i++) {
         await this.enqueueSpawn();
@@ -291,7 +321,7 @@ export class AstWorkerPool implements IASTWorkerPool {
         const cacheLookupTime = performance.now() - cacheStartTime;
 
         if (cachedResult) {
-          this.logger.debug("AST parse cache hit", {
+          this.logger.debug(AstMessages.PARSE_CACHE_HIT, {
             contentHash,
             cacheLookupTimeMs: Number(cacheLookupTime.toFixed(2)),
           });
@@ -316,11 +346,14 @@ export class AstWorkerPool implements IASTWorkerPool {
               const hitRate =
                 (metrics.hits / (metrics.hits + metrics.misses)) * 100;
               const queueWaitTime = Date.now() - queuedAt;
-              this.logger.info("AST cache metrics and queue performance", {
-                hitRate: Number(hitRate.toFixed(2)),
-                queueWaitTimeMs: queueWaitTime,
-                ...metrics,
-              });
+              this.logger.info(
+                AstMessages.CACHE_METRICS_AND_QUEUE_PERFORMANCE,
+                {
+                  hitRate: Number(hitRate.toFixed(2)),
+                  queueWaitTimeMs: queueWaitTime,
+                  ...metrics,
+                },
+              );
             }
           }
           resolve(result);
@@ -350,14 +383,11 @@ export class AstWorkerPool implements IASTWorkerPool {
     const timeout = setTimeout(() => {
       this.taskTimeouts.delete(taskId);
       this.timedOutWorkers.add(worker);
-      this.logger.error(
-        "AST worker task timed out — terminating stuck worker",
-        {
-          taskId,
-          filePath: this.taskFilePaths.get(taskId),
-          taskTimeoutMs: this.taskTimeoutMs,
-        },
-      );
+      this.logger.error(AstMessages.TASK_TIMED_OUT_TERMINATING, {
+        taskId,
+        filePath: this.taskFilePaths.get(taskId),
+        taskTimeoutMs: this.taskTimeoutMs,
+      });
       // Deliberate termination; the worker's own "exit" handler rejects the pending task,
       // removes it from the pool, and respawns a replacement.
       worker.terminate().catch(() => {});

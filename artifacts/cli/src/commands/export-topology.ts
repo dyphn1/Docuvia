@@ -7,6 +7,8 @@ import {
   DocuviaError,
   DOCUVIA_DIR_NAME,
   type TopologyCollapseMode,
+  MemoryKeys,
+  LogLevels,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
@@ -36,13 +38,13 @@ export async function exportTopologyCommand(
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
-    if (event.level === "info") spinner.text = event.message;
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
   if (options.collapse)
-    docuviaMemory.set(scopeId, "collapse", options.collapse);
+    docuviaMemory.set(scopeId, MemoryKeys.COLLAPSE, options.collapse);
 
   try {
     const graph = await docuviaApi.exportTopology(scopeId, logger);
@@ -56,20 +58,20 @@ export async function exportTopologyCommand(
     let successMessage =
       UI_MESSAGES.EXPORT_SUCCESS +
       jsonPath +
-      " (" +
+      UI_MESSAGES.EXPORT_STATS_PREFIX +
       graph.stats.nodeCount +
-      " nodes, " +
+      UI_MESSAGES.EXPORT_STATS_NODES +
       graph.stats.linkCount +
-      " links, " +
+      UI_MESSAGES.EXPORT_STATS_LINKS +
       graph.stats.groupCount +
-      " groups" +
-      (graph.collapsed ? ", collapsed" : "") +
-      ")";
+      UI_MESSAGES.EXPORT_STATS_GROUPS +
+      (graph.collapsed ? UI_MESSAGES.EXPORT_STATS_COLLAPSED : "") +
+      UI_MESSAGES.EXPORT_STATS_SUFFIX;
 
     if (!options.jsonOnly) {
       const htmlPath = path.join(outDir, TOPOLOGY_HTML_FILENAME);
       fs.writeFileSync(htmlPath, renderTopologyHtml(graph));
-      successMessage += " and " + htmlPath;
+      successMessage += UI_MESSAGES.EXPORT_HTML_SEPARATOR + htmlPath;
     }
     spinner.succeed(successMessage);
   } catch (error: unknown) {

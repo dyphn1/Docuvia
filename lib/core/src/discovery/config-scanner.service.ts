@@ -2,7 +2,18 @@ import fg from "fast-glob";
 import path from "path";
 import fs from "fs/promises";
 import type { IConfigScanner, ILogger } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import { createNoopLogger, UTF8_ENCODING } from "@workspace/contracts";
+import {
+  ConfigTags,
+  ProjectTypes,
+  GENERAL_TAG,
+  DISCOVERY_MESSAGES,
+  COMMON_GLOB_IGNORE_PATTERNS,
+  ConfigDetectionTags,
+  ConfigRuleIds,
+  ConfigFilenames,
+  ConfigFilePrefixes,
+} from "./discovery-constants.js";
 
 export interface ConfigDetectionResult {
   tags: string[];
@@ -44,117 +55,156 @@ function presenceRule(
   return { id, matchesFile, detect: () => result };
 }
 
-const isPackageJson = exact("package.json");
-const isCargoToml = exact("Cargo.toml");
+const isPackageJson = exact(ConfigFilenames.PACKAGE_JSON);
+const isCargoToml = exact(ConfigFilenames.CARGO_TOML);
 const isPythonMarker = (basename: string) =>
-  basename === "pyproject.toml" || basename === "requirements.txt";
-const isGoMod = exact("go.mod");
-const isTsconfig = exact("tsconfig.json");
+  basename === ConfigFilenames.PYPROJECT_TOML ||
+  basename === ConfigFilenames.REQUIREMENTS_TXT;
+const isGoMod = exact(ConfigFilenames.GO_MOD);
+const isTsconfig = exact(ConfigFilenames.TSCONFIG_JSON);
 
 export const CONFIG_DETECTION_RULES: ConfigDetectionRule[] = [
-  includesRule("package.json:typescript", isPackageJson, '"typescript"', [
-    "typescript",
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_TYPESCRIPT,
+    isPackageJson,
+    '"typescript"',
+    [ConfigTags.TYPESCRIPT],
+  ),
+  includesRule(ConfigRuleIds.PACKAGE_JSON_REACT, isPackageJson, '"react"', [
+    ConfigTags.REACT,
+    ConfigDetectionTags.FRONTEND,
   ]),
-  includesRule("package.json:react", isPackageJson, '"react"', [
-    "react",
-    "frontend",
+  includesRule(ConfigRuleIds.PACKAGE_JSON_VUE, isPackageJson, '"vue"', [
+    ConfigTags.VUE,
+    ConfigDetectionTags.FRONTEND,
   ]),
-  includesRule("package.json:vue", isPackageJson, '"vue"', ["vue", "frontend"]),
-  includesRule("package.json:next", isPackageJson, '"next"', [
-    "nextjs",
-    "frontend",
-    "ssr",
+  includesRule(ConfigRuleIds.PACKAGE_JSON_NEXT, isPackageJson, '"next"', [
+    ConfigDetectionTags.NEXTJS,
+    ConfigDetectionTags.FRONTEND,
+    ConfigDetectionTags.SSR,
   ]),
-  includesRule("package.json:express", isPackageJson, '"express"', [
-    "express",
-    "backend",
+  includesRule(ConfigRuleIds.PACKAGE_JSON_EXPRESS, isPackageJson, '"express"', [
+    ConfigTags.EXPRESS,
+    ConfigDetectionTags.BACKEND,
   ]),
-  includesRule("package.json:drizzle-orm", isPackageJson, '"drizzle-orm"', [
-    "drizzle",
-    "database",
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_DRIZZLE_ORM,
+    isPackageJson,
+    '"drizzle-orm"',
+    [ConfigDetectionTags.DRIZZLE, ConfigDetectionTags.DATABASE],
+  ),
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_TAILWINDCSS,
+    isPackageJson,
+    '"tailwindcss"',
+    [ConfigDetectionTags.TAILWINDCSS, ConfigDetectionTags.CSS],
+  ),
+  includesRule(ConfigRuleIds.PACKAGE_JSON_JEST, isPackageJson, '"jest"', [
+    ConfigDetectionTags.JEST,
+    ConfigDetectionTags.TESTING,
   ]),
-  includesRule("package.json:tailwindcss", isPackageJson, '"tailwindcss"', [
-    "tailwindcss",
-    "css",
+  includesRule(ConfigRuleIds.PACKAGE_JSON_VITEST, isPackageJson, '"vitest"', [
+    ConfigDetectionTags.VITEST,
+    ConfigDetectionTags.TESTING,
   ]),
-  includesRule("package.json:jest", isPackageJson, '"jest"', [
-    "jest",
-    "testing",
+  includesRule(ConfigRuleIds.PACKAGE_JSON_PG, isPackageJson, '"pg"', [
+    ConfigDetectionTags.POSTGRES,
+    ConfigDetectionTags.DATABASE,
   ]),
-  includesRule("package.json:vitest", isPackageJson, '"vitest"', [
-    "vitest",
-    "testing",
-  ]),
-  includesRule("package.json:pg", isPackageJson, '"pg"', [
-    "postgres",
-    "database",
-  ]),
-  includesRule("package.json:workspaces", isPackageJson, '"workspaces"', [
-    "monorepo",
-  ]),
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_WORKSPACES,
+    isPackageJson,
+    '"workspaces"',
+    [ConfigDetectionTags.MONOREPO],
+  ),
 
-  presenceRule("cargo:base", isCargoToml, {
-    projectType: "rust",
-    tags: ["rust"],
+  presenceRule(ConfigRuleIds.CARGO_BASE, isCargoToml, {
+    projectType: ProjectTypes.RUST,
+    tags: [ProjectTypes.RUST],
   }),
-  includesRule("cargo:tokio", isCargoToml, "tokio", ["tokio", "async"]),
-  includesRule("cargo:actix", isCargoToml, "actix", ["actix", "backend"]),
-  includesRule("cargo:serde", isCargoToml, "serde", ["serde"]),
-  includesRule("cargo:tauri", isCargoToml, "tauri", ["tauri", "desktop"]),
+  includesRule(ConfigRuleIds.CARGO_TOKIO, isCargoToml, "tokio", [
+    ConfigDetectionTags.TOKIO,
+    ConfigDetectionTags.ASYNC,
+  ]),
+  includesRule(ConfigRuleIds.CARGO_ACTIX, isCargoToml, "actix", [
+    ConfigDetectionTags.ACTIX,
+    ConfigDetectionTags.BACKEND,
+  ]),
+  includesRule(ConfigRuleIds.CARGO_SERDE, isCargoToml, "serde", [
+    ConfigDetectionTags.SERDE,
+  ]),
+  includesRule(ConfigRuleIds.CARGO_TAURI, isCargoToml, "tauri", [
+    ConfigDetectionTags.TAURI,
+    ConfigDetectionTags.DESKTOP,
+  ]),
 
-  presenceRule("python:base", isPythonMarker, {
-    projectType: "python",
-    tags: ["python"],
+  presenceRule(ConfigRuleIds.PYTHON_BASE, isPythonMarker, {
+    projectType: ProjectTypes.PYTHON,
+    tags: [ProjectTypes.PYTHON],
   }),
-  includesRule("python:django", isPythonMarker, "django", [
-    "django",
-    "backend",
+  includesRule(ConfigRuleIds.PYTHON_DJANGO, isPythonMarker, "django", [
+    ConfigDetectionTags.DJANGO,
+    ConfigDetectionTags.BACKEND,
   ]),
-  includesRule("python:fastapi", isPythonMarker, "fastapi", [
-    "fastapi",
-    "backend",
+  includesRule(ConfigRuleIds.PYTHON_FASTAPI, isPythonMarker, "fastapi", [
+    ConfigDetectionTags.FASTAPI,
+    ConfigDetectionTags.BACKEND,
   ]),
-  includesRule("python:pandas", isPythonMarker, "pandas", ["pandas", "data"]),
+  includesRule(ConfigRuleIds.PYTHON_PANDAS, isPythonMarker, "pandas", [
+    ConfigDetectionTags.PANDAS,
+    ConfigDetectionTags.DATA,
+  ]),
 
-  presenceRule("go:base", isGoMod, { projectType: "go", tags: ["go"] }),
-  includesRule("go:gin", isGoMod, "gin-gonic", ["gin", "backend"]),
+  presenceRule(ConfigRuleIds.GO_BASE, isGoMod, {
+    projectType: ProjectTypes.GO,
+    tags: [ProjectTypes.GO],
+  }),
+  includesRule(ConfigRuleIds.GO_GIN, isGoMod, "gin-gonic", [
+    ConfigDetectionTags.GIN,
+    ConfigDetectionTags.BACKEND,
+  ]),
 
   {
-    id: "tsconfig:strict",
+    id: ConfigRuleIds.TSCONFIG_STRICT,
     matchesFile: isTsconfig,
     detect: (content) =>
-      /"strict"\s*:\s*true/.test(content) ? { tags: ["strict-ts"] } : null,
+      /"strict"\s*:\s*true/.test(content)
+        ? { tags: [ConfigDetectionTags.STRICT_TS] }
+        : null,
   },
 
-  presenceRule("vite:presence", prefix("vite.config"), {
-    tags: ["vite", "build-tool"],
-  }),
-  presenceRule("drizzle:presence", prefix("drizzle.config"), {
-    tags: ["drizzle", "database"],
-  }),
-  presenceRule("tauri:presence", prefix("tauri.conf"), {
-    tags: ["tauri", "desktop"],
-  }),
+  presenceRule(
+    ConfigRuleIds.VITE_PRESENCE,
+    prefix(ConfigFilePrefixes.VITE_CONFIG),
+    { tags: [ConfigDetectionTags.VITE, ConfigDetectionTags.BUILD_TOOL] },
+  ),
+  presenceRule(
+    ConfigRuleIds.DRIZZLE_PRESENCE,
+    prefix(ConfigFilePrefixes.DRIZZLE_CONFIG),
+    { tags: [ConfigDetectionTags.DRIZZLE, ConfigDetectionTags.DATABASE] },
+  ),
+  presenceRule(
+    ConfigRuleIds.TAURI_PRESENCE,
+    prefix(ConfigFilePrefixes.TAURI_CONF),
+    { tags: [ConfigDetectionTags.TAURI, ConfigDetectionTags.DESKTOP] },
+  ),
 ];
 
 const CONFIG_GLOB_PATTERNS = [
-  "**/package.json",
-  "**/Cargo.toml",
-  "**/pyproject.toml",
-  "**/requirements.txt",
-  "**/go.mod",
-  "**/tsconfig.json",
-  "**/vite.config.*",
-  "**/drizzle.config.*",
+  `**/${ConfigFilenames.PACKAGE_JSON}`,
+  `**/${ConfigFilenames.CARGO_TOML}`,
+  `**/${ConfigFilenames.PYPROJECT_TOML}`,
+  `**/${ConfigFilenames.REQUIREMENTS_TXT}`,
+  `**/${ConfigFilenames.GO_MOD}`,
+  `**/${ConfigFilenames.TSCONFIG_JSON}`,
+  `**/${ConfigFilePrefixes.VITE_CONFIG}.*`,
+  `**/${ConfigFilePrefixes.DRIZZLE_CONFIG}.*`,
   "**/webpack.config.*",
-  "**/tauri.conf.*",
+  `**/${ConfigFilePrefixes.TAURI_CONF}.*`,
 ];
 
 const CONFIG_GLOB_IGNORE = [
-  "node_modules/**",
-  ".git/**",
-  "dist/**",
-  "build/**",
+  ...COMMON_GLOB_IGNORE_PATTERNS,
   "target/**",
   "venv/**",
   ".venv/**",
@@ -169,7 +219,7 @@ export class ConfigScannerService implements IConfigScanner {
   public async scanConfigs(
     workspaceRoot: string,
   ): Promise<{ projectType: string; tags: string[] }> {
-    let projectType = "unknown";
+    let projectType: string = ProjectTypes.UNKNOWN;
     const suggestedTags = new Set<string>();
 
     try {
@@ -180,46 +230,91 @@ export class ConfigScannerService implements IConfigScanner {
         deep: 3,
       });
 
-      for (const file of configFiles) {
-        const basename = path.basename(file);
-        let content: string;
-        try {
-          content = await fs.readFile(file, "utf-8");
-        } catch {
-          continue;
-        }
-
-        for (const rule of CONFIG_DETECTION_RULES) {
-          if (!rule.matchesFile(basename)) continue;
-          const result = rule.detect(content);
-          if (!result) continue;
-          if (result.projectType) projectType = result.projectType;
-          for (const tag of result.tags) suggestedTags.add(tag);
-        }
-      }
-
-      if (
-        suggestedTags.has("typescript") ||
-        suggestedTags.has("react") ||
-        suggestedTags.has("express") ||
-        suggestedTags.has("vue")
-      ) {
-        if (projectType === "unknown") projectType = "javascript";
-      }
+      projectType = await this.scanAllConfigFiles(configFiles, suggestedTags);
+      projectType = this.resolveJavascriptFallback(projectType, suggestedTags);
     } catch (e: any) {
-      this.logger.warn("Config scanning failed", {
+      this.logger.warn(DISCOVERY_MESSAGES.CONFIG_SCAN_FAILED, {
         error: e?.message ?? String(e),
       });
     }
 
-    if (projectType === "unknown") {
-      projectType = "generic";
+    if (projectType === ProjectTypes.UNKNOWN) {
+      projectType = ProjectTypes.GENERIC;
     }
 
     if (suggestedTags.size === 0) {
-      suggestedTags.add("general");
+      suggestedTags.add(GENERAL_TAG);
     }
 
     return { projectType, tags: Array.from(suggestedTags) };
+  }
+
+  /** Reads and applies detection rules to every discovered config file, returning the last project type a rule reported (or `ProjectTypes.UNKNOWN` if none did). */
+  private async scanAllConfigFiles(
+    configFiles: string[],
+    suggestedTags: Set<string>,
+  ): Promise<string> {
+    let projectType: string = ProjectTypes.UNKNOWN;
+
+    for (const file of configFiles) {
+      const content = await this.readConfigFileContent(file);
+      if (content === null) continue;
+
+      const basename = path.basename(file);
+      const detectedType = this.applyDetectionRules(
+        basename,
+        content,
+        suggestedTags,
+      );
+      if (detectedType) projectType = detectedType;
+    }
+
+    return projectType;
+  }
+
+  /** Reads a single config file's content, returning `null` (to be skipped) if it can't be read. */
+  private async readConfigFileContent(file: string): Promise<string | null> {
+    try {
+      return await fs.readFile(file, UTF8_ENCODING);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Runs every detection rule matching `basename` against `content`, merging matched tags into `suggestedTags` and returning the last matched project type, if any. */
+  private applyDetectionRules(
+    basename: string,
+    content: string,
+    suggestedTags: Set<string>,
+  ): string | undefined {
+    let projectType: string | undefined;
+
+    for (const rule of CONFIG_DETECTION_RULES) {
+      if (!rule.matchesFile(basename)) continue;
+      const result = rule.detect(content);
+      if (!result) continue;
+      if (result.projectType) projectType = result.projectType;
+      for (const tag of result.tags) suggestedTags.add(tag);
+    }
+
+    return projectType;
+  }
+
+  /** Falls back to `ProjectTypes.JAVASCRIPT` when JS/TS-family tags were detected but no rule pinned a more specific project type. */
+  private resolveJavascriptFallback(
+    projectType: string,
+    suggestedTags: Set<string>,
+  ): string {
+    const hasJsFamilyIndicator =
+      suggestedTags.has(ConfigTags.TYPESCRIPT) ||
+      suggestedTags.has(ConfigTags.REACT) ||
+      suggestedTags.has(ConfigTags.EXPRESS) ||
+      suggestedTags.has(ConfigTags.VUE);
+
+    if (hasJsFamilyIndicator && projectType === ProjectTypes.UNKNOWN) {
+      return ProjectTypes.JAVASCRIPT;
+    }
+
+    return projectType;
   }
 }

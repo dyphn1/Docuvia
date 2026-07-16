@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, it, expect, afterEach } from "vitest";
 import { acquireProcessLock } from "./process-lock.js";
+import { UTF8_ENCODING } from "../constants/encoding.js";
 
 const tempDirs: string[] = [];
 
@@ -85,7 +86,7 @@ describe("acquireProcessLock()", () => {
       staleAfterMs: 50,
     });
 
-    await expect(fs.readFile(lockPath, "utf8")).resolves.toBe(
+    await expect(fs.readFile(lockPath, UTF8_ENCODING)).resolves.toBe(
       String(process.pid),
     );
     await lock.release();

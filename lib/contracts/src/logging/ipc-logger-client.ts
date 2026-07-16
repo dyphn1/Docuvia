@@ -1,4 +1,6 @@
+import { LogLevels } from "./types.js";
 import type { ILogger } from "./types.js";
+import { IpcLogMessageType } from "./ipc-log-message.js";
 import type { IIpcLogMessage } from "./ipc-log-message.js";
 
 /**
@@ -15,19 +17,19 @@ export class IpcLoggerClient implements ILogger {
   ) {}
 
   debug(message: string, context?: Record<string, unknown>): void {
-    this.send("debug", message, context);
+    this.send(LogLevels.DEBUG, message, context);
   }
 
   info(message: string, context?: Record<string, unknown>): void {
-    this.send("info", message, context);
+    this.send(LogLevels.INFO, message, context);
   }
 
   warn(message: string, context?: Record<string, unknown>): void {
-    this.send("warn", message, context);
+    this.send(LogLevels.WARN, message, context);
   }
 
   error(message: string, context?: Record<string, unknown>): void {
-    this.send("error", message, context);
+    this.send(LogLevels.ERROR, message, context);
   }
 
   /** An isolated context has no listeners of its own to register — logs only ever flow outward through `postMessageFn`. Returns a no-op unsubscribe for interface conformance. */
@@ -41,8 +43,8 @@ export class IpcLoggerClient implements ILogger {
     context?: Record<string, unknown>,
   ): void {
     const payload: IIpcLogMessage = context
-      ? { type: "ipc-log", level, message, context }
-      : { type: "ipc-log", level, message };
+      ? { type: IpcLogMessageType, level, message, context }
+      : { type: IpcLogMessageType, level, message };
     this.postMessageFn(payload);
   }
 }

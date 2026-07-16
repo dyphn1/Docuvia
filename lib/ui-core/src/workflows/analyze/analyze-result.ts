@@ -1,9 +1,28 @@
+/** `ExtractedDecision.nodeType` values — mirrors GitNexus's L3 node-type vocabulary. */
+export const DecisionNodeType = {
+  CHANGE: "change",
+  RULE: "rule",
+  DECISION: "decision",
+  CONTEXT: "context",
+} as const;
+export type DecisionNodeType =
+  (typeof DecisionNodeType)[keyof typeof DecisionNodeType];
+
 export interface ExtractedDecision {
   title: string;
-  nodeType: "change" | "rule" | "decision" | "context";
+  nodeType: DecisionNodeType;
   content: string;
   confidence: number;
 }
+
+/** `AnalyzeResult.kind` discriminant values. The old `configScan` kind died with the no-arg
+ *  auto-mode breaking change (PLAT-007 Tier A; phase1-decision-integration.md §6a). */
+export const AnalyzeResultKind = {
+  AUTO_FULL_INGESTION: "autoFullIngestion",
+  AUTO_DELTA: "autoDelta",
+  AUTO_DELTA_NOOP: "autoDeltaNoop",
+  DECISION_EXTRACTION: "decisionExtraction",
+} as const;
 
 /**
  * No-arg `docuvia analyze` result shapes (PLAT-007 Tier A; phase1-decision-integration.md §6).
@@ -16,7 +35,7 @@ export type AutoModeResult =
       /** Graph had no project row or no L2 nodes — ran the same discovery -> config-scan ->
        *  AST-parse -> persist pipeline `init` Phase 3-4 uses. The old config-scan-only output
        *  (`projectType`/`suggestedTags`) is reported as part of this, per §6a. */
-      kind: "autoFullIngestion";
+      kind: typeof AnalyzeResultKind.AUTO_FULL_INGESTION;
       projectType: string;
       suggestedTags: string[];
       filesRequested: number;
@@ -28,7 +47,7 @@ export type AutoModeResult =
       /** Non-empty graph, `HEAD` had moved since the last ingestion — re-parsed added/modified
        *  source files (filtered by the same discovery rules), dropped deleted files' L2 rows, and
        *  enqueued any `CONTRACT_CHANGED` files into the Tier B queue (§6b). */
-      kind: "autoDelta";
+      kind: typeof AnalyzeResultKind.AUTO_DELTA;
       fromSha: string;
       headSha: string;
       filesReparsed: number;
@@ -44,14 +63,14 @@ export type AutoModeResult =
        *  the first check auto mode makes. `headSha` is `null` on an unborn/headless HEAD (no
        *  commits yet) with an already-populated graph — nothing to diff against, so this is
        *  treated as a harmless no-op rather than an error. */
-      kind: "autoDeltaNoop";
+      kind: typeof AnalyzeResultKind.AUTO_DELTA_NOOP;
       headSha: string | null;
     };
 
 export type AnalyzeResult =
   | AutoModeResult
   | {
-      kind: "decisionExtraction";
+      kind: typeof AnalyzeResultKind.DECISION_EXTRACTION;
       targetPath: string;
       decisions: ExtractedDecision[];
       /** Count of `decisions` newly written to `l3_nodes` (a fresh content_hash). */

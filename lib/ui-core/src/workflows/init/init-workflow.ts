@@ -6,7 +6,7 @@ import {
   type IGraphStore,
   type ILogger,
 } from "@workspace/contracts";
-import { INIT_MESSAGES } from "./init-messages.js";
+import { INIT_EVENTS, INIT_MESSAGES } from "./init-messages.js";
 import { appendInitLogLine, writeInitSummary } from "./init-log-writer.js";
 import { ensureGitBranchAndHooks } from "./ensure-git-branch-and-hooks.js";
 import { seedProjectRow } from "./seed-project-row.js";
@@ -17,6 +17,9 @@ import { buildInitResult, type InitResult } from "./init-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 
 export { resolveDbPath };
+
+/** Node.js shutdown signals this workflow briefly listens for while a temp-file manager is active. */
+const INIT_SHUTDOWN_SIGNALS = ["SIGTERM", "SIGINT"] as const;
 
 /**
  * The `init` workflow — the Orchestration Layer's composition for the `init` capability (see
@@ -45,7 +48,7 @@ export class InitWorkflow {
 
     logger.info(INIT_MESSAGES.INITIALIZING(workspaceRoot));
     await appendInitLogLine(workspaceRoot, {
-      event: "init.start",
+      event: INIT_EVENTS.START,
       workspaceRoot,
     });
 
@@ -76,7 +79,7 @@ export class InitWorkflow {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.INIT_WORKFLOW_FAILED,
-        "Failed to open the local database",
+        INIT_MESSAGES.OPEN_DB_FAILED,
         err,
       );
     }
@@ -137,18 +140,19 @@ export class InitWorkflow {
       let cleanupHandler: (() => void) | undefined;
       if (tempLifecycle) {
         cleanupHandler = () => {
-          logger.info("Cleaning up temp files on shutdown...");
+          logger.info(INIT_MESSAGES.CLEANING_UP_TEMP_FILES);
           tempLifecycle.tempFileManager
             .cleanup()
             .catch((err) =>
-              logger.error("Temp file cleanup on shutdown failed", {
+              logger.error(INIT_MESSAGES.TEMP_FILE_CLEANUP_FAILED, {
                 error: String(err),
               }),
             )
             .finally(() => tempLifecycle.stop());
         };
-        process.on("SIGTERM", cleanupHandler);
-        process.on("SIGINT", cleanupHandler);
+        for (const signal of INIT_SHUTDOWN_SIGNALS) {
+          process.on(signal, cleanupHandler);
+        }
       }
 
       try {
@@ -158,7 +162,7 @@ export class InitWorkflow {
         const filesSkippedOversized = discoveryResult.skippedOversized.length;
 
         if (filesFailed > 0 || filesSkippedOversized > 0) {
-          logger.warn("init completed with parse failures or skipped files", {
+          logger.warn(INIT_MESSAGES.PARSE_FAILURES_OR_SKIPPED, {
             filesRequested,
             filesParsed,
             filesFailed,
@@ -186,8 +190,9 @@ export class InitWorkflow {
       } finally {
         // Deregister so this invocation never leaves a dangling process-level listener.
         if (cleanupHandler) {
-          process.removeListener("SIGTERM", cleanupHandler);
-          process.removeListener("SIGINT", cleanupHandler);
+          for (const signal of INIT_SHUTDOWN_SIGNALS) {
+            process.removeListener(signal, cleanupHandler);
+          }
         }
       }
     } finally {

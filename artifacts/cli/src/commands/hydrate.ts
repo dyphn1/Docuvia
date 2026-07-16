@@ -1,6 +1,11 @@
 import process from "process";
 import crypto from "node:crypto";
-import { docuviaMemory, DocuviaError } from "@workspace/contracts";
+import {
+  docuviaMemory,
+  DocuviaError,
+  MemoryKeys,
+  LogLevels,
+} from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
@@ -13,11 +18,11 @@ export async function hydrateCommand(cwd: string = process.cwd()) {
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
-    if (event.level === "info") spinner.text = event.message;
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
 
   try {
     const result = await docuviaApi.hydrate(scopeId, logger);
@@ -26,9 +31,9 @@ export async function hydrateCommand(cwd: string = process.cwd()) {
       return;
     }
     spinner.succeed(
-      `${UI_MESSAGES.HYDRATE_SUCCESS}${result.nodesLoaded} nodes, ${result.edgesLoaded} edges` +
+      `${UI_MESSAGES.HYDRATE_SUCCESS}${result.nodesLoaded}${UI_MESSAGES.HYDRATE_NODES_LOADED}${result.edgesLoaded}${UI_MESSAGES.HYDRATE_EDGES_LOADED}` +
         (result.edgesDropped > 0
-          ? `, ${result.edgesDropped} dangling edge(s) dropped`
+          ? `${UI_MESSAGES.HYDRATE_EDGES_DROPPED_PREFIX}${result.edgesDropped}${UI_MESSAGES.HYDRATE_EDGES_DROPPED_SUFFIX}`
           : ""),
     );
   } catch (error: unknown) {

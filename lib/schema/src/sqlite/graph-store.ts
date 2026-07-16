@@ -7,6 +7,12 @@ import type { GraphStoreOpenOptions, IGraphStore } from "@workspace/contracts";
 import { DocuviaError, ErrorCodes } from "@workspace/contracts";
 import { applyMigrations } from "./migration-runner.js";
 import { MIGRATIONS_DIR } from "./paths.js";
+import {
+  SQLiteConstants,
+  SqlitePragmaNames,
+  SchemaTables,
+  SchemaColumns,
+} from "./constants.js";
 import { ReadWriteLock } from "./read-write-lock.js";
 import { ProjectsRepo } from "./repos/projects-repo.js";
 import { ProjectFilesRepo } from "./repos/files-repo.js";
@@ -19,6 +25,21 @@ import { MetaRepo } from "./repos/meta-repo.js";
 const INIT_LOCK_MAX_WAIT_MS = 10_000;
 const INIT_LOCK_RETRY_INTERVAL_MS = 100;
 const INIT_LOCK_STALE_MS = 60_000;
+/** Suffix appended to `dbPath` for the cross-process init-bootstrap lock file (see `acquireInitLock`). */
+const INIT_LOCK_FILE_SUFFIX = ".init-lock" as const;
+/** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists — the basis of `acquireInitLock`'s exclusive-create lock (same shape as `lib/contracts`'s `process-lock.ts`). */
+const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
+/** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
+const ERRNO_EEXIST = "EEXIST" as const;
+
+const GRAPH_STORE_ERROR_MESSAGES = {
+  INIT_LOCK_ACQUIRE_FAILED: "Failed to acquire database init lock",
+  INIT_LOCK_TIMED_OUT: (lockPath: string) =>
+    `Timed out waiting for the database init lock at ${lockPath} — another Docuvia process may be stuck`,
+  OPEN_FAILED: (dbPath: string) => `Failed to open database at ${dbPath}`,
+  MIGRATIONS_FAILED: "Failed to apply migrations",
+  PRUNE_MISSING_FILES_FAILED: "Failed to prune missing files",
+} as const;
 
 /**
  * Cross-process mutex around a fresh database's first bootstrap (WAL-mode switch + migrations)
@@ -30,19 +51,22 @@ const INIT_LOCK_STALE_MS = 60_000;
  * `SqliteError: database is locked` or a `schema_migrations` UNIQUE violation.
  */
 async function acquireInitLock(dbPath: string): Promise<string> {
-  const lockPath = `${dbPath}.init-lock`;
+  const lockPath = `${dbPath}${INIT_LOCK_FILE_SUFFIX}`;
   const deadline = Date.now() + INIT_LOCK_MAX_WAIT_MS;
 
   for (;;) {
     try {
-      const handle = await fsPromises.open(lockPath, "wx");
+      const handle = await fsPromises.open(
+        lockPath,
+        FS_FLAG_EXCLUSIVE_CREATE_WRITE,
+      );
       await handle.close();
       return lockPath;
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== "EEXIST") {
+      if ((err as NodeJS.ErrnoException).code !== ERRNO_EEXIST) {
         throw DocuviaError.wrap(
           ErrorCodes.DB_LOCKED,
-          "Failed to acquire database init lock",
+          GRAPH_STORE_ERROR_MESSAGES.INIT_LOCK_ACQUIRE_FAILED,
           err,
         );
       }
@@ -56,7 +80,7 @@ async function acquireInitLock(dbPath: string): Promise<string> {
       if (Date.now() > deadline) {
         throw new DocuviaError(
           ErrorCodes.DB_LOCKED,
-          `Timed out waiting for the database init lock at ${lockPath} — another Docuvia process may be stuck`,
+          GRAPH_STORE_ERROR_MESSAGES.INIT_LOCK_TIMED_OUT(lockPath),
         );
       }
       await new Promise((resolve) =>
@@ -109,7 +133,7 @@ export class GraphStore implements IGraphStore {
       : await acquireInitLock(opts.dbPath).catch((err) => {
           throw DocuviaError.wrap(
             ErrorCodes.DB_OPEN_FAILED,
-            `Failed to open database at ${opts.dbPath}`,
+            GRAPH_STORE_ERROR_MESSAGES.OPEN_FAILED(opts.dbPath),
             err,
           );
         });
@@ -125,17 +149,23 @@ export class GraphStore implements IGraphStore {
       // WAL pragmas (ADR-032): permit concurrent readers with a single writer.
       // busy_timeout is a connection-level runtime pragma and safe to set even on a readonly
       // connection; journal_mode/synchronous mutate the file and are skipped for readonly opens.
-      db.pragma("busy_timeout = 10000");
+      db.pragma(
+        `${SqlitePragmaNames.BUSY_TIMEOUT} = ${SQLiteConstants.BUSY_TIMEOUT_MS}`,
+      );
       if (!opts.readonly) {
-        db.pragma("journal_mode = WAL");
-        db.pragma("synchronous = NORMAL");
+        db.pragma(
+          `${SqlitePragmaNames.JOURNAL_MODE} = ${SQLiteConstants.JOURNAL_MODE}`,
+        );
+        db.pragma(
+          `${SqlitePragmaNames.SYNCHRONOUS} = ${SQLiteConstants.SYNCHRONOUS}`,
+        );
 
         try {
           applyMigrations(db, MIGRATIONS_DIR);
         } catch (err) {
           throw new DocuviaError(
             ErrorCodes.DB_MIGRATION_FAILED,
-            "Failed to apply migrations",
+            GRAPH_STORE_ERROR_MESSAGES.MIGRATIONS_FAILED,
             err,
           );
         }
@@ -145,7 +175,7 @@ export class GraphStore implements IGraphStore {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_OPEN_FAILED,
-        `Failed to open database at ${opts.dbPath}`,
+        GRAPH_STORE_ERROR_MESSAGES.OPEN_FAILED(opts.dbPath),
         err,
       );
     } finally {
@@ -209,7 +239,11 @@ export class GraphStore implements IGraphStore {
       const activeSet = new Set(activeFiles);
 
       const staleNodeIds = (
-        this.db.prepare("SELECT id, path_patterns FROM l2_nodes").all() as {
+        this.db
+          .prepare(
+            `SELECT id, ${SchemaColumns.PATH_PATTERNS} FROM ${SchemaTables.L2_NODES}`,
+          )
+          .all() as {
           id: number;
           path_patterns: string | null;
         }[]
@@ -230,28 +264,34 @@ export class GraphStore implements IGraphStore {
           const placeholders = ids.map(() => "?").join(",");
           this.db
             .prepare(
-              `DELETE FROM l2_node_l1_tags WHERE l2_node_id IN (${placeholders})`,
+              `DELETE FROM ${SchemaTables.L2_NODE_L1_TAGS} WHERE ${SchemaColumns.L2_NODE_ID} IN (${placeholders})`,
             )
             .run(...ids);
           this.db
             .prepare(
-              `DELETE FROM node_links WHERE source_node_id IN (${placeholders}) OR target_node_id IN (${placeholders})`,
+              `DELETE FROM ${SchemaTables.NODE_LINKS} WHERE ${SchemaColumns.SOURCE_NODE_ID} IN (${placeholders}) OR ${SchemaColumns.TARGET_NODE_ID} IN (${placeholders})`,
             )
             .run(...ids, ...ids);
           this.db
-            .prepare(`DELETE FROM l2_nodes WHERE id IN (${placeholders})`)
+            .prepare(
+              `DELETE FROM ${SchemaTables.L2_NODES} WHERE id IN (${placeholders})`,
+            )
             .run(...ids);
         }
 
         const allFiles = this.db
-          .prepare("SELECT file_path FROM project_files")
+          .prepare(
+            `SELECT ${SchemaColumns.FILE_PATH} FROM ${SchemaTables.PROJECT_FILES}`,
+          )
           .all() as {
           file_path: string;
         }[];
         const staleFiles = allFiles.filter((f) => !activeSet.has(f.file_path));
         for (const { file_path } of staleFiles) {
           this.db
-            .prepare("DELETE FROM project_files WHERE file_path = ?")
+            .prepare(
+              `DELETE FROM ${SchemaTables.PROJECT_FILES} WHERE ${SchemaColumns.FILE_PATH} = ?`,
+            )
             .run(file_path);
         }
         return staleFiles.length;
@@ -262,7 +302,7 @@ export class GraphStore implements IGraphStore {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to prune missing files",
+        GRAPH_STORE_ERROR_MESSAGES.PRUNE_MISSING_FILES_FAILED,
         err,
       );
     }

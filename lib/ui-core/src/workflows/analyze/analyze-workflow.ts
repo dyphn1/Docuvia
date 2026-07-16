@@ -5,11 +5,13 @@ import {
   TOKENS,
   DocuviaError,
   ErrorCodes,
+  ChatMessageRoles,
   type IGraphStore,
   type ILogger,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/core";
 import {
+  ANALYZE_EVENTS,
   ANALYZE_MESSAGES,
   DECISION_EXTRACTION_SYSTEM_PROMPT,
 } from "./analyze-messages.js";
@@ -19,12 +21,18 @@ import {
   type CollectedFile,
 } from "./decision-extraction.js";
 import { resolveAnchorL2NodeId, toNodeKey } from "./anchor-resolution.js";
-import type { AnalyzeResult, ExtractedDecision } from "./analyze-result.js";
+import {
+  AnalyzeResultKind,
+  DecisionNodeType,
+  type AnalyzeResult,
+  type ExtractedDecision,
+} from "./analyze-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
 
-const VALID_NODE_TYPES = ["change", "rule", "decision", "context"] as const;
+const VALID_NODE_TYPES = Object.values(DecisionNodeType);
+const MARKDOWN_CODE_FENCE = "```";
 
 /**
  * Strips a wrapping markdown code fence (```` ```json\n...\n``` ```` or bare ```` ```\n...\n``` ````)
@@ -34,7 +42,10 @@ const VALID_NODE_TYPES = ["change", "rule", "decision", "context"] as const;
  */
 export function stripMarkdownCodeFence(raw: string): string {
   const trimmed = raw.trim();
-  if (!trimmed.startsWith("```") || !trimmed.endsWith("```")) {
+  if (
+    !trimmed.startsWith(MARKDOWN_CODE_FENCE) ||
+    !trimmed.endsWith(MARKDOWN_CODE_FENCE)
+  ) {
     return raw;
   }
 
@@ -94,7 +105,9 @@ export class AnalyzeWorkflow {
     const { workspaceRoot, logger } = this;
 
     logger.info(ANALYZE_MESSAGES.AUTO_ANALYZING);
-    await appendAnalyzeLogLine(workspaceRoot, { event: "analyze.auto.start" });
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.AUTO_START,
+    });
 
     // Declared outside the try so the finally can close it, but resolved/opened INSIDE the try:
     // a store-open/migration failure (DB_OPEN_FAILED — corrupted local.db, disk full) is exactly
@@ -127,10 +140,10 @@ export class AnalyzeWorkflow {
       if (headSha && lastIngestedSha && headSha === lastIngestedSha) {
         logger.info(ANALYZE_MESSAGES.AUTO_NOOP);
         await appendAnalyzeLogLine(workspaceRoot, {
-          event: "analyze.delta.noop",
+          event: ANALYZE_EVENTS.DELTA_NOOP,
           headSha,
         });
-        return { kind: "autoDeltaNoop", headSha };
+        return { kind: AnalyzeResultKind.AUTO_DELTA_NOOP, headSha };
       }
 
       // 2. Empty-graph check -> full ingestion.
@@ -146,9 +159,9 @@ export class AnalyzeWorkflow {
       // a harmless no-op rather than crashing on a `git diff` against a ref that doesn't exist.
       if (!headSha) {
         await appendAnalyzeLogLine(workspaceRoot, {
-          event: "analyze.delta.no_head",
+          event: ANALYZE_EVENTS.DELTA_NO_HEAD,
         });
-        return { kind: "autoDeltaNoop", headSha: null };
+        return { kind: AnalyzeResultKind.AUTO_DELTA_NOOP, headSha: null };
       }
 
       // 3. Delta — resolve the baseline sha.
@@ -185,7 +198,7 @@ export class AnalyzeWorkflow {
       // occur before the mode is even determined.
       const message = err instanceof Error ? err.message : String(err);
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.auto.error",
+        event: ANALYZE_EVENTS.AUTO_ERROR,
         message,
       });
       throw err;
@@ -201,15 +214,15 @@ export class AnalyzeWorkflow {
 
     logger.info(ANALYZE_MESSAGES.EXTRACTING(targetPath));
     await appendAnalyzeLogLine(workspaceRoot, {
-      event: "analyze.focused.start",
+      event: ANALYZE_EVENTS.FOCUSED_START,
       targetPath,
     });
 
     const resolvedPath = path.resolve(workspaceRoot, targetPath);
     if (!fs.existsSync(resolvedPath)) {
-      const message = `Path does not exist: ${targetPath}`;
+      const message = ANALYZE_MESSAGES.PATH_NOT_FOUND(targetPath);
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.error",
+        event: ANALYZE_EVENTS.FOCUSED_ERROR,
         targetPath,
         message,
       });
@@ -230,12 +243,12 @@ export class AnalyzeWorkflow {
 
     if (files.length === 0) {
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.summary",
+        event: ANALYZE_EVENTS.FOCUSED_SUMMARY,
         targetPath,
         decisionsCount: 0,
       });
       return {
-        kind: "decisionExtraction",
+        kind: AnalyzeResultKind.DECISION_EXTRACTION,
         targetPath,
         decisions: [],
         persisted: 0,
@@ -258,17 +271,20 @@ export class AnalyzeWorkflow {
       model: options!.llmModel!,
       temperature: 0.2,
       messages: [
-        { role: "system", content: DECISION_EXTRACTION_SYSTEM_PROMPT },
-        { role: "user", content: userMessage },
+        {
+          role: ChatMessageRoles.SYSTEM,
+          content: DECISION_EXTRACTION_SYSTEM_PROMPT,
+        },
+        { role: ChatMessageRoles.USER, content: userMessage },
       ],
     });
 
     const rawContent = response.choices[0]?.message.content;
     let parsed: unknown;
     if (rawContent === null || rawContent === undefined) {
-      const message = "LLM returned non-JSON output for decision extraction";
+      const message = ANALYZE_MESSAGES.LLM_NON_JSON_OUTPUT;
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.error",
+        event: ANALYZE_EVENTS.FOCUSED_ERROR,
         targetPath,
         message,
       });
@@ -277,9 +293,9 @@ export class AnalyzeWorkflow {
     try {
       parsed = JSON.parse(stripMarkdownCodeFence(rawContent));
     } catch {
-      const message = "LLM returned non-JSON output for decision extraction";
+      const message = ANALYZE_MESSAGES.LLM_NON_JSON_OUTPUT;
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.error",
+        event: ANALYZE_EVENTS.FOCUSED_ERROR,
         targetPath,
         message,
       });
@@ -287,9 +303,9 @@ export class AnalyzeWorkflow {
     }
 
     if (!Array.isArray(parsed)) {
-      const message = "LLM returned non-JSON output for decision extraction";
+      const message = ANALYZE_MESSAGES.LLM_NON_JSON_OUTPUT;
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.error",
+        event: ANALYZE_EVENTS.FOCUSED_ERROR,
         targetPath,
         message,
       });
@@ -300,7 +316,7 @@ export class AnalyzeWorkflow {
       title: String(item?.title ?? ""),
       nodeType: (VALID_NODE_TYPES as readonly string[]).includes(item?.nodeType)
         ? (item.nodeType as ExtractedDecision["nodeType"])
-        : "context",
+        : DecisionNodeType.CONTEXT,
       content: String(item?.content ?? ""),
       confidence: typeof item?.confidence === "number" ? item.confidence : 0,
     }));
@@ -312,13 +328,13 @@ export class AnalyzeWorkflow {
     );
 
     await appendAnalyzeLogLine(workspaceRoot, {
-      event: "analyze.focused.summary",
+      event: ANALYZE_EVENTS.FOCUSED_SUMMARY,
       targetPath,
       decisionsCount: decisions.length,
     });
 
     return {
-      kind: "decisionExtraction",
+      kind: AnalyzeResultKind.DECISION_EXTRACTION,
       targetPath,
       decisions,
       persisted,
@@ -402,7 +418,7 @@ export class AnalyzeWorkflow {
       }
 
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.focused.persisted",
+        event: ANALYZE_EVENTS.FOCUSED_PERSISTED,
         persisted,
         deduped,
       });
@@ -416,7 +432,7 @@ export class AnalyzeWorkflow {
   private async warnNoGraphToAttach(workspaceRoot: string): Promise<void> {
     this.logger.warn(ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH);
     await appendAnalyzeLogLine(workspaceRoot, {
-      event: "analyze.focused.persist_skipped",
+      event: ANALYZE_EVENTS.FOCUSED_PERSIST_SKIPPED,
       message: ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH,
     });
   }

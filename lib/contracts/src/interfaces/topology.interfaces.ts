@@ -2,6 +2,7 @@ import type {
   L2NodeRow,
   L3NodeRow,
   NodeLinkRow,
+  LinkType,
 } from "./graph-store.interfaces.js";
 
 /**
@@ -12,9 +13,21 @@ import type {
  */
 export const TOPOLOGY_VERSION = 1;
 
-export type TopologyNodeKind = "file" | "symbol" | "decision";
+export const TopologyNodeKinds = {
+  FILE: "file",
+  SYMBOL: "symbol",
+  DECISION: "decision",
+} as const;
+export type TopologyNodeKind =
+  (typeof TopologyNodeKinds)[keyof typeof TopologyNodeKinds];
 
-export type TopologyCollapseMode = "auto" | "file" | "symbol";
+export const TopologyCollapseModes = {
+  AUTO: "auto",
+  FILE: "file",
+  SYMBOL: "symbol",
+} as const;
+export type TopologyCollapseMode =
+  (typeof TopologyCollapseModes)[keyof typeof TopologyCollapseModes];
 
 export interface TopologyNode {
   /** Stable id: "l2:<l2_nodes.id>" or "l3:<l3_nodes.id>" */
@@ -36,17 +49,23 @@ export interface TopologyNode {
 export interface TopologyLink {
   source: string;
   target: string;
-  /** contains | calls | implements | extends | imports | depends_on | decision */
-  linkType: string;
+  linkType: LinkType;
   /** 0-1; reserved for LSP-enriched / inferred edges. Static AST edges are 1. */
   confidence: number;
 }
+
+export const TopologyGroupSources = {
+  L1_TAG: "l1_tag",
+  DIRECTORY: "directory",
+} as const;
+export type TopologyGroupSource =
+  (typeof TopologyGroupSources)[keyof typeof TopologyGroupSources];
 
 export interface TopologyGroup {
   id: number;
   label: string;
   /** How the group was derived. Directory clustering is the v1 default. */
-  source: "l1_tag" | "directory";
+  source: TopologyGroupSource;
   /** Number of member nodes */
   count: number;
 }

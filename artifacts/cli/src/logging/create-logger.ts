@@ -1,8 +1,35 @@
 import pino from "pino";
 import { createRequire } from "module";
-import { Logger, type LogEvent } from "@workspace/contracts";
+import { Logger, LogLevels, type LogEvent } from "@workspace/contracts";
 
 const require = createRequire(import.meta.url);
+
+const PINO_PRETTY_MODULE_NAME = "pino-pretty";
+const PINO_PRETTY_UNAVAILABLE_MESSAGE = `[docuvia] ${PINO_PRETTY_MODULE_NAME} unavailable, falling back to plain JSON logs.\n`;
+
+/** Redacted regardless of nesting depth — auth/secret-shaped fields wherever they appear in log context. */
+const PINO_REDACT_PATHS = [
+  "req.headers.authorization",
+  "req.headers.Authorization",
+  "*.authorization",
+  "*.Authorization",
+  "*.*.authorization",
+  "*.*.Authorization",
+  "password",
+  "*.password",
+  "*.*.password",
+  "token",
+  "*.token",
+  "*.*.token",
+  "apiKey",
+  "*.apiKey",
+  "*.*.apiKey",
+  "OPENAI_API_KEY",
+  "*.OPENAI_API_KEY",
+  "*.*.OPENAI_API_KEY",
+] as const;
+const PINO_REDACT_CENSOR = "[REDACTED]";
+const DOCUVIA_PRETTY_LOGS_ENABLED_VALUE = "1";
 
 /**
  * Every destination writes to stderr (fd 2), never stdout — `docuvia mcp` uses stdout
@@ -10,20 +37,19 @@ const require = createRequire(import.meta.url);
  * message), and a stray stdout write from any log level would corrupt that stream.
  */
 function buildTransport() {
-  const wantsPretty = process.env.DOCUVIA_PRETTY_LOGS === "1";
+  const wantsPretty =
+    process.env.DOCUVIA_PRETTY_LOGS === DOCUVIA_PRETTY_LOGS_ENABLED_VALUE;
   if (!wantsPretty) return undefined;
   try {
     // Resolve eagerly so a broken/unresolvable pino-pretty fails fast into the catch
     // below instead of surfacing asynchronously from inside pino's worker thread.
-    require.resolve("pino-pretty");
+    require.resolve(PINO_PRETTY_MODULE_NAME);
     return {
-      target: "pino-pretty",
+      target: PINO_PRETTY_MODULE_NAME,
       options: { colorize: true, destination: 2 },
     };
   } catch {
-    process.stderr.write(
-      "[docuvia] pino-pretty unavailable, falling back to plain JSON logs.\n",
-    );
+    process.stderr.write(PINO_PRETTY_UNAVAILABLE_MESSAGE);
     return undefined;
   }
 }
@@ -37,29 +63,10 @@ export function createPinoBackedLogger(): Logger {
   const transport = buildTransport();
   const pinoInstance = pino(
     {
-      level: process.env.LOG_LEVEL || "info",
+      level: process.env.LOG_LEVEL || LogLevels.INFO,
       redact: {
-        paths: [
-          "req.headers.authorization",
-          "req.headers.Authorization",
-          "*.authorization",
-          "*.Authorization",
-          "*.*.authorization",
-          "*.*.Authorization",
-          "password",
-          "*.password",
-          "*.*.password",
-          "token",
-          "*.token",
-          "*.*.token",
-          "apiKey",
-          "*.apiKey",
-          "*.*.apiKey",
-          "OPENAI_API_KEY",
-          "*.OPENAI_API_KEY",
-          "*.*.OPENAI_API_KEY",
-        ],
-        censor: "[REDACTED]",
+        paths: [...PINO_REDACT_PATHS],
+        censor: PINO_REDACT_CENSOR,
       },
       transport,
     },

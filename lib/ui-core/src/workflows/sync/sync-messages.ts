@@ -8,3 +8,10 @@ export const SYNC_MESSAGES = {
   SYNCED: (synced: number, skippedL2Count: number) =>
     `Synced ${synced} decision(s), ${skippedL2Count} module(s) skipped.`,
 } as const;
+
+/** Structured-log event names appended to `sync.log` by the `sync` workflow. */
+export const SYNC_EVENTS = {
+  START: "sync.start",
+  ERROR: "sync.error",
+  SUMMARY: "sync.summary",
+} as const;

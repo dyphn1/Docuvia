@@ -15,3 +15,11 @@ export const CLI_FLAGS = {
   SKIP_HOOKS: "--skip-hooks",
   SKIP_LOGS: "--skip-logs",
 } as const;
+
+/** Values accepted by `--format=` (`query` command) — shared between `cli.ts`'s flag cast and `query.ts`'s runtime dispatch. */
+export const QUERY_OUTPUT_FORMATS = {
+  HUMAN: "human",
+  PROMPT: "prompt",
+} as const;
+export type QueryOutputFormat =
+  (typeof QUERY_OUTPUT_FORMATS)[keyof typeof QUERY_OUTPUT_FORMATS];

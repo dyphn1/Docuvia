@@ -1,7 +1,12 @@
 import process from "process";
 import crypto from "node:crypto";
 import { createInterface } from "readline";
-import { docuviaMemory, DocuviaError } from "@workspace/contracts";
+import {
+  docuviaMemory,
+  DocuviaError,
+  MemoryKeys,
+  LogLevels,
+} from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
@@ -65,15 +70,15 @@ export async function syncCommand(
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
-    if (event.level === "info") spinner.text = event.message;
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
-  docuviaMemory.set(scopeId, "apiUrl", process.env.DOCUVIA_API_URL);
-  docuviaMemory.set(scopeId, "pat", process.env.MCP_PAT);
-  docuviaMemory.set(scopeId, "projectId", projectId);
-  docuviaMemory.set(scopeId, "commitSha", commitSha || undefined);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.API_URL, process.env.DOCUVIA_API_URL);
+  docuviaMemory.set(scopeId, MemoryKeys.PAT, process.env.MCP_PAT);
+  docuviaMemory.set(scopeId, MemoryKeys.PROJECT_ID, projectId);
+  docuviaMemory.set(scopeId, MemoryKeys.COMMIT_SHA, commitSha || undefined);
 
   try {
     const result = await docuviaApi.sync(scopeId, logger);

@@ -22,6 +22,7 @@ vi.mock("../../../src/ui/wizard.js", () => ({
     warn: vi.fn(),
     error: vi.fn(),
     success: vi.fn(),
+    log: vi.fn(),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -68,6 +69,7 @@ describe("queryCommand", () => {
     spinnerFail.mockReset();
     vi.mocked(ui.info).mockReset();
     vi.mocked(ui.error).mockReset();
+    vi.mocked(ui.log).mockReset();
     exitSpy = vi.spyOn(process, "exit").mockImplementation(((code: number) => {
       throw new Error("Exit " + code);
     }) as any);
@@ -99,14 +101,12 @@ describe("queryCommand", () => {
       l3: [],
       context: null,
     });
-    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     await queryCommand("authService", { format: "prompt" });
 
-    expect(logSpy).toHaveBeenCalledWith(
+    expect(ui.log).toHaveBeenCalledWith(
       expect.stringContaining("<docuvia_context>"),
     );
-    logSpy.mockRestore();
   });
 
   it("calls spinner.fail when docuviaApi.query() throws", async () => {

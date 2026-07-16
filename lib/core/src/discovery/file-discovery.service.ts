@@ -12,13 +12,40 @@ import type {
   IGitProvider,
   ILogger,
 } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
+import {
+  createNoopLogger,
+  DOCUVIA_DIR_NAME,
+  UTF8_ENCODING,
+} from "@workspace/contracts";
 import {
   isDiscoverableSourceFile,
   getSupportedGlobExtensions,
   RUBY_EXTENSIONLESS_BASENAMES,
 } from "../utils/language-detection.js";
 import { MAX_FILE_SIZE_BYTES } from "../constants/paths.js";
+import {
+  DISCOVERY_MESSAGES,
+  COMMON_GLOB_IGNORE_PATTERNS,
+} from "./discovery-constants.js";
+
+const GITIGNORE_FILENAME = ".gitignore";
+
+/** Per-file discovery state shared across the git/glob candidate scan and the hash-delta resolution loop. */
+interface FileResolutionContext {
+  workspaceRoot: string;
+  onlyIndexed: boolean;
+  usingGit: boolean;
+  gitBlobHashes: Map<string, string>;
+  dirtyFiles: Set<string>;
+  existingHashes: Map<string, string>;
+}
+
+/** Outcome of resolving a single candidate file against known git blob hashes and previously stored content hashes. */
+type FileOutcome =
+  | { kind: "parse"; entry: DiscoveredFile }
+  | { kind: "oversized"; file: string; sizeBytes: number }
+  | { kind: "skip" }
+  | { kind: "unreadable" };
 
 export class FileDiscoveryService implements IFileDiscovery {
   constructor(
@@ -32,167 +59,284 @@ export class FileDiscoveryService implements IFileDiscovery {
     options: { onlyIndexed?: boolean } = {},
   ): Promise<DiscoveryResult> {
     const { onlyIndexed = false } = options;
-    let allFiles: string[] = [];
     const gitBlobHashes = new Map<string, string>();
     const dirtyFiles = new Set<string>();
-    let usingGit = await this.git.isGitRepository(workspaceRoot);
 
-    if (usingGit) {
-      this.logger.debug(
-        "Starting global AST scan using Git-native blob hashing",
-      );
-      try {
-        const trackedHashes =
-          await this.git.listTrackedFilesWithBlobHash(workspaceRoot);
-        for (const [file, blobSha] of trackedHashes) {
-          gitBlobHashes.set(file, blobSha);
-        }
+    const { allFiles, usingGit } = await this.resolveCandidateFiles(
+      workspaceRoot,
+      onlyIndexed,
+      gitBlobHashes,
+      dirtyFiles,
+    );
 
-        const untracked = await this.git.listUntrackedFiles(workspaceRoot);
-        const modified = await this.git.listModifiedFiles(workspaceRoot);
+    const existingHashes = this.buildExistingHashesMap(filesRepo);
 
-        if (!onlyIndexed) {
-          [...untracked, ...modified].forEach((f: string) => {
-            if (f.trim()) dirtyFiles.add(f.trim());
-          });
+    const fileCtx: FileResolutionContext = {
+      workspaceRoot,
+      onlyIndexed,
+      usingGit,
+      gitBlobHashes,
+      dirtyFiles,
+      existingHashes,
+    };
 
-          allFiles = [...gitBlobHashes.keys(), ...untracked];
-        } else {
-          allFiles = [...gitBlobHashes.keys()];
-        }
-      } catch (e) {
-        this.logger.warn(
-          "Git operations failed during discovery, falling back to manual globbing",
-          {
-            error: e instanceof Error ? e.message : String(e),
-          },
-        );
-        usingGit = false;
-      }
-    }
+    const { filesToParse, skippedOversized, skippedCount } =
+      await this.categorizeFiles(allFiles, fileCtx);
 
-    if (!usingGit) {
-      this.logger.debug(
-        "Git unavailable or no .git repository found; falling back to fast-glob + manual sha256 hashing",
-      );
-      const ig = ignore();
-      try {
-        const gitignoreContent = await fs.readFile(
-          path.join(workspaceRoot, ".gitignore"),
-          "utf-8",
-        );
-        ig.add(gitignoreContent);
-      } catch {
-        this.logger.debug("No .gitignore found, proceeding without it");
-      }
-
-      const globIgnore = [
-        "node_modules/**",
-        ".git/**",
-        ".docuvia/**",
-        "dist/**",
-        "build/**",
-      ];
-
-      const [extensionMatches, extensionlessBasenameMatches] =
-        await Promise.all([
-          fg(`**/*.{${getSupportedGlobExtensions().join(",")}}`, {
-            cwd: workspaceRoot,
-            ignore: globIgnore,
-            absolute: false,
-          }),
-          // Ruby's extensionless conventional files (Rakefile, Gemfile, ...) can't match the
-          // extension-only glob pattern above at all — they need a second, explicit pattern.
-          fg(`**/{${Array.from(RUBY_EXTENSIONLESS_BASENAMES).join(",")}}`, {
-            cwd: workspaceRoot,
-            ignore: globIgnore,
-            absolute: false,
-          }),
-        ]);
-      const globbedFiles = [
-        ...extensionMatches,
-        ...extensionlessBasenameMatches,
-      ];
-
-      allFiles = ig.filter(globbedFiles);
-      // Treat all globbed files as dirty so manual hashing is forced
-      allFiles.forEach((f: string) => dirtyFiles.add(f));
-    }
-
-    // Filter by supported extensions (redundant for glob, but ensures git outputs are clean)
-    allFiles = allFiles.filter((f: string) => isDiscoverableSourceFile(f));
-
-    this.logger.debug("Discovered source files", { count: allFiles.length });
-
-    // Read existing hashes via the injected repo (narrowed to `FileHashLookup`) — a fresh
-    // workspace has no rows yet, which `getAllHashes()` already handles by returning an empty
-    // array.
-    const existingHashes = new Map<string, string>();
-    for (const { filePath, contentHash } of filesRepo.getAllHashes()) {
-      if (contentHash !== null) existingHashes.set(filePath, contentHash);
-    }
-
-    // Determine which files actually need parsing
-    const filesToParse: DiscoveredFile[] = [];
-    const skippedOversized: { file: string; sizeBytes: number }[] = [];
-    let skippedCount = 0;
-
-    for (const file of allFiles) {
-      let currentHash = "";
-      let code = "";
-      const isDirty = dirtyFiles.has(file);
-
-      if (!isDirty && gitBlobHashes.has(file)) {
-        currentHash = gitBlobHashes.get(file)!;
-      }
-
-      if (onlyIndexed && usingGit && gitBlobHashes.has(file)) {
-        currentHash = gitBlobHashes.get(file)!;
-      }
-
-      // If we don't have a hash (untracked/modified), or if the hash differs from DB, we MUST read the file
-      if (!currentHash || existingHashes.get(file) !== currentHash) {
-        try {
-          if (onlyIndexed && usingGit && gitBlobHashes.has(file)) {
-            const blobSha = gitBlobHashes.get(file)!;
-            code = await this.git.readBlobContent(workspaceRoot, blobSha);
-          } else {
-            code = await fs.readFile(path.join(workspaceRoot, file), "utf-8");
-          }
-          if (!currentHash) {
-            // Calculate hash manually for dirty/untracked files
-            currentHash = crypto
-              .createHash(HASH_ALGO_SHA256)
-              .update(code)
-              .digest(ENCODING_HEX);
-          }
-        } catch {
-          continue; // File might have been deleted or inaccessible
-        }
-
-        // Check again after manual hashing
-        if (existingHashes.get(file) !== currentHash) {
-          const sizeBytes = Buffer.byteLength(code);
-          if (sizeBytes > MAX_FILE_SIZE_BYTES) {
-            this.logger.warn("Skipping oversized file", { file, sizeBytes });
-            skippedOversized.push({ file, sizeBytes });
-          } else {
-            filesToParse.push({ file, hash: currentHash, code });
-          }
-        } else {
-          skippedCount++;
-        }
-      } else {
-        skippedCount++;
-      }
-    }
-
-    this.logger.debug("Git hash delta check complete", {
+    this.logger.debug(DISCOVERY_MESSAGES.GIT_HASH_DELTA_CHECK_COMPLETE, {
       filesToParse: filesToParse.length,
       skipped: skippedCount,
       skippedOversized: skippedOversized.length,
     });
 
     return { filesToParse, existingHashes, skippedCount, skippedOversized };
+  }
+
+  /** Determines the candidate file list: git-tracked/untracked scan when a git repo is present (falling back to a glob scan on failure), or a plain glob scan otherwise. Filters to supported source files either way. */
+  private async resolveCandidateFiles(
+    workspaceRoot: string,
+    onlyIndexed: boolean,
+    gitBlobHashes: Map<string, string>,
+    dirtyFiles: Set<string>,
+  ): Promise<{ allFiles: string[]; usingGit: boolean }> {
+    let usingGit = await this.git.isGitRepository(workspaceRoot);
+    let allFiles: string[] = [];
+
+    if (usingGit) {
+      this.logger.debug(DISCOVERY_MESSAGES.STARTING_GIT_BLOB_SCAN);
+      const gitFiles = await this.scanGitTrackedFiles(
+        workspaceRoot,
+        onlyIndexed,
+        gitBlobHashes,
+        dirtyFiles,
+      );
+      if (gitFiles) {
+        allFiles = gitFiles;
+      } else {
+        usingGit = false;
+      }
+    }
+
+    if (!usingGit) {
+      allFiles = await this.discoverViaGlobFallback(workspaceRoot, dirtyFiles);
+    }
+
+    // Single shared filter — the exact same rule `analyze` auto mode's delta ingestion applies
+    // to its git-diff-derived file list (phase1-decision-integration.md §6b).
+    allFiles = allFiles.filter((f: string) => isDiscoverableSourceFile(f));
+
+    this.logger.debug(DISCOVERY_MESSAGES.DISCOVERED_SOURCE_FILES, {
+      count: allFiles.length,
+    });
+
+    return { allFiles, usingGit };
+  }
+
+  /** Scans tracked/untracked/modified files via git, populating `gitBlobHashes`/`dirtyFiles`. Returns `null` (signalling a glob fallback) if any git operation throws. */
+  private async scanGitTrackedFiles(
+    workspaceRoot: string,
+    onlyIndexed: boolean,
+    gitBlobHashes: Map<string, string>,
+    dirtyFiles: Set<string>,
+  ): Promise<string[] | null> {
+    try {
+      const trackedHashes =
+        await this.git.listTrackedFilesWithBlobHash(workspaceRoot);
+      for (const [file, blobSha] of trackedHashes) {
+        gitBlobHashes.set(file, blobSha);
+      }
+
+      const untracked = await this.git.listUntrackedFiles(workspaceRoot);
+      const modified = await this.git.listModifiedFiles(workspaceRoot);
+
+      if (!onlyIndexed) {
+        [...untracked, ...modified].forEach((f: string) => {
+          if (f.trim()) dirtyFiles.add(f.trim());
+        });
+
+        return [...gitBlobHashes.keys(), ...untracked];
+      }
+
+      return [...gitBlobHashes.keys()];
+    } catch (e) {
+      this.logger.warn(DISCOVERY_MESSAGES.GIT_OPS_FAILED_FALLBACK, {
+        error: e instanceof Error ? e.message : String(e),
+      });
+      return null;
+    }
+  }
+
+  /** Glob-based candidate scan used when no git repository is available (or git ops failed): honors `.gitignore` and treats every match as dirty so its hash is always computed manually. */
+  private async discoverViaGlobFallback(
+    workspaceRoot: string,
+    dirtyFiles: Set<string>,
+  ): Promise<string[]> {
+    this.logger.debug(DISCOVERY_MESSAGES.GIT_UNAVAILABLE_FALLBACK);
+    const ig = ignore();
+    try {
+      const gitignoreContent = await fs.readFile(
+        path.join(workspaceRoot, GITIGNORE_FILENAME),
+        UTF8_ENCODING,
+      );
+      ig.add(gitignoreContent);
+    } catch {
+      this.logger.debug(DISCOVERY_MESSAGES.NO_GITIGNORE_FOUND);
+    }
+
+    const globIgnore = [
+      ...COMMON_GLOB_IGNORE_PATTERNS,
+      `${DOCUVIA_DIR_NAME}/**`,
+    ];
+
+    const [extensionMatches, extensionlessBasenameMatches] = await Promise.all([
+      fg(`**/*.{${getSupportedGlobExtensions().join(",")}}`, {
+        cwd: workspaceRoot,
+        ignore: globIgnore,
+        absolute: false,
+      }),
+      // Ruby's extensionless conventional files (Rakefile, Gemfile, ...) can't match the
+      // extension-only glob pattern above at all — they need a second, explicit pattern.
+      fg(`**/{${Array.from(RUBY_EXTENSIONLESS_BASENAMES).join(",")}}`, {
+        cwd: workspaceRoot,
+        ignore: globIgnore,
+        absolute: false,
+      }),
+    ]);
+    const globbedFiles = [...extensionMatches, ...extensionlessBasenameMatches];
+
+    const allFiles = ig.filter(globbedFiles);
+    // Treat all globbed files as dirty so manual hashing is forced
+    allFiles.forEach((f: string) => dirtyFiles.add(f));
+    return allFiles;
+  }
+
+  /** Reads existing hashes via the injected repo (narrowed to `FileHashLookup`) — a fresh workspace has no rows yet, which `getAllHashes()` already handles by returning an empty array. */
+  private buildExistingHashesMap(
+    filesRepo: FileHashLookup,
+  ): Map<string, string> {
+    const existingHashes = new Map<string, string>();
+    for (const { filePath, contentHash } of filesRepo.getAllHashes()) {
+      if (contentHash !== null) existingHashes.set(filePath, contentHash);
+    }
+    return existingHashes;
+  }
+
+  /** Resolves each candidate file's hash-delta outcome and buckets it into files-to-parse, oversized skips, or counted/uncounted skips. */
+  private async categorizeFiles(
+    allFiles: string[],
+    ctx: FileResolutionContext,
+  ): Promise<{
+    filesToParse: DiscoveredFile[];
+    skippedOversized: { file: string; sizeBytes: number }[];
+    skippedCount: number;
+  }> {
+    const filesToParse: DiscoveredFile[] = [];
+    const skippedOversized: { file: string; sizeBytes: number }[] = [];
+    let skippedCount = 0;
+
+    for (const file of allFiles) {
+      const outcome = await this.resolveFileOutcome(file, ctx);
+      switch (outcome.kind) {
+        case "parse":
+          filesToParse.push(outcome.entry);
+          break;
+        case "oversized":
+          skippedOversized.push({
+            file: outcome.file,
+            sizeBytes: outcome.sizeBytes,
+          });
+          break;
+        case "skip":
+          skippedCount++;
+          break;
+        case "unreadable":
+          // File might have been deleted or inaccessible — excluded from all counts.
+          break;
+      }
+    }
+
+    return { filesToParse, skippedOversized, skippedCount };
+  }
+
+  /** Determines what to do with a single candidate file: skip if its hash already matches the stored one (without or after a read), skip silently if it can't be read, flag as oversized, or queue it for parsing. */
+  private async resolveFileOutcome(
+    file: string,
+    ctx: FileResolutionContext,
+  ): Promise<FileOutcome> {
+    const currentHash = this.resolveKnownBlobHash(file, ctx);
+
+    // If we already have a hash and it matches the stored one, no read is needed.
+    if (currentHash && ctx.existingHashes.get(file) === currentHash) {
+      return { kind: "skip" };
+    }
+
+    const read = await this.readFileForHashing(file, currentHash, ctx);
+    if (!read) {
+      return { kind: "unreadable" };
+    }
+
+    // Check again after manual hashing
+    if (ctx.existingHashes.get(file) === read.hash) {
+      return { kind: "skip" };
+    }
+
+    const sizeBytes = Buffer.byteLength(read.code);
+    if (sizeBytes > MAX_FILE_SIZE_BYTES) {
+      this.logger.warn(DISCOVERY_MESSAGES.SKIPPING_OVERSIZED_FILE, {
+        file,
+        sizeBytes,
+      });
+      return { kind: "oversized", file, sizeBytes };
+    }
+
+    return { kind: "parse", entry: { file, hash: read.hash, code: read.code } };
+  }
+
+  /** Looks up a file's already-known content hash from the git blob scan, if any (empty string when unknown and a read is required). */
+  private resolveKnownBlobHash(
+    file: string,
+    ctx: FileResolutionContext,
+  ): string {
+    const isDirty = ctx.dirtyFiles.has(file);
+    let currentHash = "";
+
+    if (!isDirty && ctx.gitBlobHashes.has(file)) {
+      currentHash = ctx.gitBlobHashes.get(file)!;
+    }
+
+    if (ctx.onlyIndexed && ctx.usingGit && ctx.gitBlobHashes.has(file)) {
+      currentHash = ctx.gitBlobHashes.get(file)!;
+    }
+
+    return currentHash;
+  }
+
+  /** Reads a file's content (from the git blob store when indexing an already-known blob, from disk otherwise) and computes its hash manually if one wasn't already known. Returns `null` if the file is missing or inaccessible. */
+  private async readFileForHashing(
+    file: string,
+    currentHash: string,
+    ctx: FileResolutionContext,
+  ): Promise<{ code: string; hash: string } | null> {
+    try {
+      let code: string;
+      if (ctx.onlyIndexed && ctx.usingGit && ctx.gitBlobHashes.has(file)) {
+        const blobSha = ctx.gitBlobHashes.get(file)!;
+        code = await this.git.readBlobContent(ctx.workspaceRoot, blobSha);
+      } else {
+        code = await fs.readFile(
+          path.join(ctx.workspaceRoot, file),
+          UTF8_ENCODING,
+        );
+      }
+
+      // Calculate hash manually for dirty/untracked files
+      const hash =
+        currentHash ||
+        crypto.createHash(HASH_ALGO_SHA256).update(code).digest(ENCODING_HEX);
+
+      return { code, hash };
+    } catch {
+      return null;
+    }
   }
 }

@@ -30,6 +30,7 @@ vi.mock("../../../src/ui/wizard.js", () => ({
     header: vi.fn(),
     info: vi.fn(),
     error: vi.fn(),
+    log: vi.fn(),
     spinner: vi.fn((text: string) => {
       lastSpinnerInstance = {
         text,
@@ -296,10 +297,6 @@ describe("analyzeCommand", () => {
         persisted: 1,
         deduped: 0,
       });
-      const consoleLogSpy = vi
-        .spyOn(console, "log")
-        .mockImplementation(() => {});
-
       await analyzeCommand("src/foo.ts");
 
       expect(spinnerSucceed).toHaveBeenCalledWith(
@@ -308,7 +305,7 @@ describe("analyzeCommand", () => {
       expect(ui.info).toHaveBeenCalledWith(
         "[rule] Use exitCode not exit() (confidence: 0.85)",
       );
-      expect(consoleLogSpy).toHaveBeenCalledWith(
+      expect(ui.log).toHaveBeenCalledWith(
         "    Avoids a Windows crash while fetch handles close.",
       );
       expect(ui.info).toHaveBeenCalledWith(

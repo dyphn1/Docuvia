@@ -1,6 +1,7 @@
 import { Node } from "web-tree-sitter";
 import { LanguageProvider } from "../language-provider.js";
 import { AstEvent } from "../sink.js";
+import { AstEventType } from "../constants/ast-event-constants.js";
 
 export class AstTraverser {
   constructor(
@@ -14,7 +15,10 @@ export class AstTraverser {
     return nameNode?.text;
   }
 
-  private extractNamed(nodes: Node[], type: "class" | "function"): AstEvent[] {
+  private extractNamed(
+    nodes: Node[],
+    type: typeof AstEventType.CLASS | typeof AstEventType.FUNCTION,
+  ): AstEvent[] {
     const events: AstEvent[] = [];
     for (const node of nodes) {
       const name = this.getDeclName(node);
@@ -26,14 +30,14 @@ export class AstTraverser {
   extractClasses(): AstEvent[] {
     return this.extractNamed(
       this.provider.extractClasses(this.rootNode),
-      "class",
+      AstEventType.CLASS,
     );
   }
 
   extractFunctions(): AstEvent[] {
     return this.extractNamed(
       this.provider.extractFunctions(this.rootNode),
-      "function",
+      AstEventType.FUNCTION,
     );
   }
 

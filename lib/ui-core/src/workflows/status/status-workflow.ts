@@ -5,7 +5,7 @@ import {
   ErrorCodes,
   type ILogger,
 } from "@workspace/contracts";
-import { STATUS_MESSAGES } from "./status-messages.js";
+import { STATUS_EVENTS, STATUS_MESSAGES } from "./status-messages.js";
 import { appendStatusLogLine } from "./status-log-writer.js";
 import type { StatusResult } from "./status-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
@@ -26,7 +26,7 @@ export class StatusWorkflow {
     const { workspaceRoot, logger } = this;
 
     logger.info(STATUS_MESSAGES.GETTING_STATUS);
-    await appendStatusLogLine(workspaceRoot, { event: "status.start" });
+    await appendStatusLogLine(workspaceRoot, { event: STATUS_EVENTS.START });
 
     await ensureHydrated(workspaceRoot, logger);
 
@@ -51,7 +51,7 @@ export class StatusWorkflow {
           err,
         );
         await appendStatusLogLine(workspaceRoot, {
-          event: "status.error",
+          event: STATUS_EVENTS.ERROR,
           message: STATUS_MESSAGES.DB_NOT_FOUND,
         });
         throw notFound;
@@ -67,7 +67,7 @@ export class StatusWorkflow {
         l3Nodes,
       };
       await appendStatusLogLine(workspaceRoot, {
-        event: "status.summary",
+        event: STATUS_EVENTS.SUMMARY,
         ...result,
       });
       return result;

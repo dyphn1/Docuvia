@@ -5,6 +5,9 @@ import {
   type IProjectsRepo,
   type ProjectRow,
 } from "@workspace/contracts";
+import { SchemaTables } from "../constants.js";
+
+const PROJECTS_REPO_COUNT_FAILED_MESSAGE = "Failed to count projects" as const;
 
 /**
  * `projects` repo — one project row per local.db (see `GitConstants.DEFAULT_LOCAL_PROJECT_ID`
@@ -18,17 +21,20 @@ export class ProjectsRepo implements IProjectsRepo {
 
   /** Returns the first project row, or undefined if none has been seeded yet. */
   getFirst(): ProjectRow | undefined {
-    return this.db.prepare("SELECT * FROM projects LIMIT 1").get() as
-      ProjectRow | undefined;
+    return this.db
+      .prepare(`SELECT * FROM ${SchemaTables.PROJECTS} LIMIT 1`)
+      .get() as ProjectRow | undefined;
   }
 
   /** Inserts a new project row and returns it. Always inserts — callers check `getFirst()` first. */
   insert(input: { name: string; repoUrl: string }): ProjectRow {
     const result = this.db
-      .prepare("INSERT INTO projects (name, repo_url) VALUES (?, ?)")
+      .prepare(
+        `INSERT INTO ${SchemaTables.PROJECTS} (name, repo_url) VALUES (?, ?)`,
+      )
       .run(input.name, input.repoUrl);
     return this.db
-      .prepare("SELECT * FROM projects WHERE id = ?")
+      .prepare(`SELECT * FROM ${SchemaTables.PROJECTS} WHERE id = ?`)
       .get(result.lastInsertRowid) as ProjectRow;
   }
 
@@ -51,14 +57,16 @@ export class ProjectsRepo implements IProjectsRepo {
   count(): number {
     try {
       return (
-        this.db.prepare("SELECT COUNT(*) as c FROM projects").get() as {
+        this.db
+          .prepare(`SELECT COUNT(*) as c FROM ${SchemaTables.PROJECTS}`)
+          .get() as {
           c: number;
         }
       ).c;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to count projects",
+        PROJECTS_REPO_COUNT_FAILED_MESSAGE,
         err,
       );
     }

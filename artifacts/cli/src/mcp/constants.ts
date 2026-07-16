@@ -4,3 +4,6 @@ export const MCP_SERVER_READY_MESSAGE =
   "Docuvia Local MCP Server running on stdio";
 export const MCP_TOOL_NOT_FOUND_MESSAGE = (name: string) =>
   `Tool not found: ${name}`;
+
+/** MCP tool response `content[].type` discriminant — the only kind these tools emit today. */
+export const MCP_CONTENT_TYPE_TEXT = "text";

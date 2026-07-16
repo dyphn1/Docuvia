@@ -2,6 +2,34 @@ import { DocuviaError } from "../errors/docuvia-error.js";
 import { ErrorCodes } from "../errors/error-codes.js";
 
 /**
+ * Valid keys for the UUID-scoped runtime configuration store.
+ * Prevents magic-string typing errors across layers.
+ */
+export const MemoryKeys = {
+  WORKSPACE_ROOT: "workspaceRoot",
+  API_URL: "apiUrl",
+  PAT: "pat",
+  PROJECT_ID: "projectId",
+  COMMIT_SHA: "commitSha",
+  TARGET_PATH: "targetPath",
+  LLM_BASE_URL: "llmBaseUrl",
+  LLM_MODEL: "llmModel",
+  LLM_API_KEY: "llmApiKey",
+  BASE_REF: "baseRef",
+  TARGET: "target",
+  ESCALATE_TO_LSP: "escalateToLsp",
+  LIMIT: "limit",
+  COLLAPSE: "collapse",
+} as const;
+
+export type MemoryKey = (typeof MemoryKeys)[keyof typeof MemoryKeys];
+
+const MemoryErrorMessages = {
+  SCOPE_NOT_FOUND: (key: MemoryKey, scopeId: string) =>
+    `Cannot set "${key}": memory scope "${scopeId}" was never created`,
+} as const;
+
+/**
  * UUID-scoped runtime configuration store — see
  * docs/gitbook/architecture/application-lifecycle-and-state.md. The *only* source of truth
  * for runtime configuration (workspace paths, log level, feature flags, ...). Implementation
@@ -17,18 +45,18 @@ export class DocuviaMemory {
     if (!this.scopes.has(scopeId)) this.scopes.set(scopeId, new Map());
   }
 
-  set<T>(scopeId: string, key: string, value: T): void {
+  set<T>(scopeId: string, key: MemoryKey, value: T): void {
     const scope = this.scopes.get(scopeId);
     if (!scope) {
       throw new DocuviaError(
         ErrorCodes.MEMORY_SCOPE_NOT_FOUND,
-        `Cannot set "${key}": memory scope "${scopeId}" was never created`,
+        MemoryErrorMessages.SCOPE_NOT_FOUND(key, scopeId),
       );
     }
     scope.set(key, value);
   }
 
-  get<T>(scopeId: string, key: string): T | undefined {
+  get<T>(scopeId: string, key: MemoryKey): T | undefined {
     return this.scopes.get(scopeId)?.get(key) as T | undefined;
   }
 

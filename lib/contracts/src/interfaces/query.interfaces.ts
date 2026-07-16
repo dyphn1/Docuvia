@@ -16,8 +16,15 @@ export interface GraphContext {
   outgoing: GraphEdgeRef[];
 }
 
+export const QueryResultLayers = {
+  L2: "l2",
+  L3: "l3",
+} as const;
+export type QueryResultLayer =
+  (typeof QueryResultLayers)[keyof typeof QueryResultLayers];
+
 export interface LocalSearchResult {
-  layer: "l2" | "l3";
+  layer: QueryResultLayer;
   id: number;
   title: string;
   content: string | null;

@@ -1,6 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import type Database from "better-sqlite3";
+import { UTF8_ENCODING } from "@workspace/contracts";
+import { SchemaTables, SchemaColumns } from "./constants.js";
+
+const SQL_MIGRATION_FILE_EXTENSION = ".sql" as const;
 
 /**
  * Minimal, hand-written SQLite migration runner (no external migration
@@ -21,26 +25,30 @@ export function applyMigrations(
   migrationsDir: string,
 ): void {
   db.exec(
-    `CREATE TABLE IF NOT EXISTS schema_migrations (
+    `CREATE TABLE IF NOT EXISTS ${SchemaTables.SCHEMA_MIGRATIONS} (
        id INTEGER PRIMARY KEY AUTOINCREMENT,
-       filename TEXT NOT NULL UNIQUE,
+       ${SchemaColumns.FILENAME} TEXT NOT NULL UNIQUE,
        applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
      )`,
   );
 
   const filenames = fs
     .readdirSync(migrationsDir)
-    .filter((f) => f.endsWith(".sql"))
+    .filter((f) => f.endsWith(SQL_MIGRATION_FILE_EXTENSION))
     .sort();
 
   const recordApplied = db.prepare(
-    "INSERT INTO schema_migrations (filename) VALUES (?)",
+    `INSERT INTO ${SchemaTables.SCHEMA_MIGRATIONS} (${SchemaColumns.FILENAME}) VALUES (?)`,
   );
 
   const applyPending = db.transaction(() => {
     const applied = new Set(
       (
-        db.prepare("SELECT filename FROM schema_migrations").all() as {
+        db
+          .prepare(
+            `SELECT ${SchemaColumns.FILENAME} FROM ${SchemaTables.SCHEMA_MIGRATIONS}`,
+          )
+          .all() as {
           filename: string;
         }[]
       ).map((row) => row.filename),
@@ -49,7 +57,10 @@ export function applyMigrations(
     for (const filename of filenames) {
       if (applied.has(filename)) continue;
 
-      const sql = fs.readFileSync(path.join(migrationsDir, filename), "utf8");
+      const sql = fs.readFileSync(
+        path.join(migrationsDir, filename),
+        UTF8_ENCODING,
+      );
       db.exec(sql);
       recordApplied.run(filename);
     }

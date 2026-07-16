@@ -1,6 +1,10 @@
 import fs from "fs/promises";
 import path from "path";
-import { DOCUVIA_DIR_NAME, DOCUVIA_LOGS_DIR_NAME } from "@workspace/contracts";
+import {
+  DOCUVIA_DIR_NAME,
+  DOCUVIA_LOGS_DIR_NAME,
+  UTF8_ENCODING,
+} from "@workspace/contracts";
 
 /**
  * Shared JSONL run-log writer used by every one-shot CLI command's workflow (`init`, `analyze`,
@@ -28,6 +32,6 @@ export async function appendCommandLogLine(
   await fs.appendFile(
     logPath,
     JSON.stringify({ ts: new Date().toISOString(), ...event }) + "\n",
-    "utf8",
+    UTF8_ENCODING,
   );
 }

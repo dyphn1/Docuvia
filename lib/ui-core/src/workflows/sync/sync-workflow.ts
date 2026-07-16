@@ -3,10 +3,12 @@ import {
   TOKENS,
   DocuviaError,
   ErrorCodes,
+  SyncPushEventTypes,
   type ILogger,
+  type L2NodeWithL3Children,
   type SyncPushEvent,
 } from "@workspace/contracts";
-import { SYNC_MESSAGES } from "./sync-messages.js";
+import { SYNC_EVENTS, SYNC_MESSAGES } from "./sync-messages.js";
 import { appendSyncLogLine } from "./sync-log-writer.js";
 import {
   loadSyncState,
@@ -41,7 +43,7 @@ export class SyncWorkflow {
 
     logger.info(SYNC_MESSAGES.STARTING(projectId));
     await appendSyncLogLine(workspaceRoot, {
-      event: "sync.start",
+      event: SYNC_EVENTS.START,
       projectId,
       commitSha: commitSha ?? null,
     });
@@ -62,7 +64,7 @@ export class SyncWorkflow {
         message: SYNC_MESSAGES.NOTHING_TO_SYNC,
       };
       await appendSyncLogLine(workspaceRoot, {
-        event: "sync.summary",
+        event: SYNC_EVENTS.SUMMARY,
         projectId,
         ...result,
       });
@@ -82,7 +84,7 @@ export class SyncWorkflow {
         err.code === ErrorCodes.DB_OPEN_FAILED
       ) {
         await appendSyncLogLine(workspaceRoot, {
-          event: "sync.error",
+          event: SYNC_EVENTS.ERROR,
           projectId,
           message: SYNC_MESSAGES.DB_NOT_FOUND,
         });
@@ -108,7 +110,7 @@ export class SyncWorkflow {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         await appendSyncLogLine(workspaceRoot, {
-          event: "sync.error",
+          event: SYNC_EVENTS.ERROR,
           projectId,
           message,
         });
@@ -132,40 +134,8 @@ export class SyncWorkflow {
           };
           const syncedHashes = new Set(projectState.syncedContentHashes);
 
-          const events: SyncPushEvent[] = [];
-          const newlySyncedHashes: string[] = [];
-          let skippedL2Count = 0;
-
-          for (const { l2Node, l3Nodes } of candidates) {
-            const remoteL2Id = nameToRemoteId.get(l2Node.name);
-            if (remoteL2Id === undefined) {
-              skippedL2Count++;
-              continue;
-            }
-
-            for (const l3 of l3Nodes) {
-              if (l3.content_hash && syncedHashes.has(l3.content_hash))
-                continue;
-
-              events.push({
-                type: "CREATE_L3",
-                payload: {
-                  l2NodeId: remoteL2Id,
-                  title: l3.title,
-                  content: l3.content,
-                  nodeType:
-                    l3.node_type as SyncPushEvent["payload"]["nodeType"],
-                  confidence: l3.confidence,
-                  sourceCommits: l3.source_commits
-                    ? JSON.parse(l3.source_commits)
-                    : undefined,
-                  contentHash: l3.content_hash,
-                },
-              });
-
-              if (l3.content_hash) newlySyncedHashes.push(l3.content_hash);
-            }
-          }
+          const { events, newlySyncedHashes, skippedL2Count } =
+            this.buildSyncPushEvents(candidates, nameToRemoteId, syncedHashes);
 
           if (events.length === 0) {
             return {
@@ -184,7 +154,7 @@ export class SyncWorkflow {
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             await appendSyncLogLine(workspaceRoot, {
-              event: "sync.error",
+              event: SYNC_EVENTS.ERROR,
               projectId,
               message,
             });
@@ -207,7 +177,7 @@ export class SyncWorkflow {
       );
 
       await appendSyncLogLine(workspaceRoot, {
-        event: "sync.summary",
+        event: SYNC_EVENTS.SUMMARY,
         projectId,
         ...result,
       });
@@ -215,5 +185,62 @@ export class SyncWorkflow {
     } finally {
       await store.close();
     }
+  }
+
+  /**
+   * Builds the `CREATE_L3` push events for `candidates` — skipping L2 nodes with no matching
+   * remote id and L3 nodes already covered by `syncedHashes` — the event-construction core of
+   * `execute`'s `withSyncStateLock` callback.
+   */
+  private buildSyncPushEvents(
+    candidates: L2NodeWithL3Children[],
+    nameToRemoteId: Map<string, number>,
+    syncedHashes: Set<string>,
+  ): {
+    events: SyncPushEvent[];
+    newlySyncedHashes: string[];
+    skippedL2Count: number;
+  } {
+    const events: SyncPushEvent[] = [];
+    const newlySyncedHashes: string[] = [];
+    let skippedL2Count = 0;
+
+    for (const { l2Node, l3Nodes } of candidates) {
+      const remoteL2Id = nameToRemoteId.get(l2Node.name);
+      if (remoteL2Id === undefined) {
+        skippedL2Count++;
+        continue;
+      }
+
+      for (const l3 of l3Nodes) {
+        if (l3.content_hash && syncedHashes.has(l3.content_hash)) continue;
+
+        events.push(this.buildL3PushEvent(remoteL2Id, l3));
+        if (l3.content_hash) newlySyncedHashes.push(l3.content_hash);
+      }
+    }
+
+    return { events, newlySyncedHashes, skippedL2Count };
+  }
+
+  /** Builds a single `CREATE_L3` push event payload for `l3`, attributed to `l2NodeId`. */
+  private buildL3PushEvent(
+    l2NodeId: number,
+    l3: L2NodeWithL3Children["l3Nodes"][number],
+  ): SyncPushEvent {
+    return {
+      type: SyncPushEventTypes.CREATE_L3,
+      payload: {
+        l2NodeId,
+        title: l3.title,
+        content: l3.content,
+        nodeType: l3.node_type as SyncPushEvent["payload"]["nodeType"],
+        confidence: l3.confidence,
+        sourceCommits: l3.source_commits
+          ? JSON.parse(l3.source_commits)
+          : undefined,
+        contentHash: l3.content_hash,
+      },
+    };
   }
 }

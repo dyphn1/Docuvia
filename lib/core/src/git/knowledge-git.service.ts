@@ -7,8 +7,11 @@ import type {
   ILogger,
   KnowledgeBranchSyncResult,
 } from "@workspace/contracts";
-import { createNoopLogger } from "@workspace/contracts";
-import { GitConstants } from "./git-constants.js";
+import {
+  createNoopLogger,
+  KnowledgeBranchSyncStatuses,
+} from "@workspace/contracts";
+import { GitConstants, GitMessages } from "./git-constants.js";
 import { parseSourceTrailer } from "./git-trailers.js";
 import { withKnowledgeBranchLock } from "./knowledge-branch-lock.js";
 
@@ -40,7 +43,9 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     branchName: string = GitConstants.KNOWLEDGE_ROOT,
   ): Promise<{ created: boolean }> {
     if (await this.git.branchExists(cwd, branchName)) {
-      this.logger.debug("Knowledge branch already exists", { branchName });
+      this.logger.debug(GitMessages.KNOWLEDGE_BRANCH_ALREADY_EXISTS, {
+        branchName,
+      });
       return { created: false };
     }
 
@@ -48,15 +53,14 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       // Re-check inside the lock: another process may have created the branch between our
       // pre-lock check above and acquiring the lock here (PLAT-006).
       if (await this.git.branchExists(cwd, branchName)) {
-        this.logger.warn(
-          "Knowledge branch was created by a concurrent process; skipping duplicate initial commit",
-          { branchName },
-        );
+        this.logger.warn(GitMessages.CONCURRENT_INITIAL_COMMIT_SKIPPED, {
+          branchName,
+        });
         return { created: false };
       }
 
       const emptyDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), "docuvia-empty-knowledge-"),
+        path.join(os.tmpdir(), GitConstants.EMPTY_KNOWLEDGE_TEMP_DIR_PREFIX),
       );
       try {
         await this.packSnapshotToKnowledgeBranchLocked(
@@ -68,7 +72,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
         await fs.rm(emptyDir, { recursive: true, force: true });
       }
 
-      this.logger.info("Created hidden knowledge branch", { branchName });
+      this.logger.info(GitMessages.CREATED_KNOWLEDGE_BRANCH, { branchName });
       return { created: true };
     });
   }
@@ -88,15 +92,13 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     const hookName = GitConstants.POST_COMMIT_HOOK_NAME;
 
     if (!(await this.git.hooksDirExists(cwd))) {
-      this.logger.debug(
-        "No .git/hooks directory; skipping post-commit hook install",
-      );
+      this.logger.debug(GitMessages.NO_GIT_HOOKS_DIR);
       return { installed: false };
     }
 
     const existingHook = await this.git.readHookFile(cwd, hookName);
     if (existingHook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER)) {
-      this.logger.debug("Post-commit hook already installed");
+      this.logger.debug(GitMessages.POST_COMMIT_HOOK_ALREADY_INSTALLED);
       return { installed: false };
     }
 
@@ -106,9 +108,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     return withKnowledgeBranchLock(this.git, cwd, async () => {
       const recheckHook = await this.git.readHookFile(cwd, hookName);
       if (recheckHook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER)) {
-        this.logger.warn(
-          "Post-commit hook was installed by a concurrent process; skipping duplicate append",
-        );
+        this.logger.warn(GitMessages.CONCURRENT_HOOK_INSTALL_SKIPPED);
         return { installed: false };
       }
 
@@ -139,7 +139,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
         await this.git.makeHookExecutable(cwd, hookName);
       } catch (err) {
         // Non-fatal to init — a broken hook write shouldn't fail the whole workflow.
-        this.logger.warn("Failed to install post-commit hook", {
+        this.logger.warn(GitMessages.FAILED_TO_INSTALL_HOOK, {
           error: err instanceof Error ? err.message : String(err),
         });
         return { installed: false };
@@ -147,8 +147,8 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
       this.logger.info(
         hasLegacyHook
-          ? "Upgraded legacy post-commit hook (docuvia snapshot -> docuvia analyze)"
-          : "Installed post-commit hook",
+          ? GitMessages.UPGRADED_LEGACY_POST_COMMIT_HOOK
+          : GitMessages.INSTALLED_POST_COMMIT_HOOK,
       );
       return { installed: true };
     });
@@ -185,7 +185,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       branchName,
       commitMessage,
     );
-    this.logger.info("Packed snapshot onto knowledge branch", { branchName });
+    this.logger.info(GitMessages.PACKED_SNAPSHOT_ONTO_BRANCH, { branchName });
   }
 
   /**
@@ -196,7 +196,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   public async syncKnowledgeBranch(
     cwd: string,
     branchName: string = GitConstants.KNOWLEDGE_ROOT,
-    remote: string = "origin",
+    remote: string = GitConstants.DEFAULT_REMOTE_NAME,
   ): Promise<KnowledgeBranchSyncResult> {
     return withKnowledgeBranchLock(this.git, cwd, () =>
       this.reconcile(cwd, branchName, remote),
@@ -210,70 +210,172 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   ): Promise<KnowledgeBranchSyncResult> {
     const remoteUrl = await this.git.getRemoteUrl(cwd);
     if (!remoteUrl) {
-      this.logger.debug(
-        "No remote configured; skipping knowledge branch reconciliation",
-        {
-          branchName,
-        },
-      );
-      return { status: "no-remote" };
+      this.logger.debug(GitMessages.NO_REMOTE_SKIP_RECONCILIATION, {
+        branchName,
+      });
+      return { status: KnowledgeBranchSyncStatuses.NO_REMOTE };
     }
 
-    try {
-      await this.git.fetchRef(cwd, remote, branchName);
-    } catch (err) {
-      // Network/remote failure — degrade gracefully offline rather than failing the caller
-      // (snapshot/hydrate) over a transient network hiccup.
-      this.logger.warn(
-        "Failed to fetch knowledge branch from remote; continuing offline",
-        {
-          branchName,
-          error: err instanceof Error ? err.message : String(err),
-        },
-      );
-      return { status: "no-remote" };
-    }
+    const fetched = await this.tryFetchRemoteBranch(cwd, branchName, remote);
+    if (!fetched) return { status: KnowledgeBranchSyncStatuses.NO_REMOTE };
 
     const remoteSha = await this.git.getRefSha(
       cwd,
-      `refs/remotes/${remote}/${branchName}`,
+      `${GitConstants.REMOTE_REF_PREFIX}${remote}/${branchName}`,
     );
     const localSha = await this.git.getBranchTipSha(cwd, branchName);
 
+    return this.resolveBranchSyncOutcome(
+      cwd,
+      branchName,
+      remote,
+      localSha,
+      remoteSha,
+    );
+  }
+
+  /** Fetches the remote's copy of the knowledge branch, degrading gracefully (rather than
+   *  throwing) on a transient network/remote failure so the caller (snapshot/hydrate) can keep
+   *  working offline. */
+  private async tryFetchRemoteBranch(
+    cwd: string,
+    branchName: string,
+    remote: string,
+  ): Promise<boolean> {
+    try {
+      await this.git.fetchRef(cwd, remote, branchName);
+      return true;
+    } catch (err) {
+      this.logger.warn(GitMessages.FAILED_TO_FETCH_CONTINUING_OFFLINE, {
+        branchName,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return false;
+    }
+  }
+
+  /** Decides the sync outcome once both `localSha`/`remoteSha` are known: missing-side adoption,
+   *  already-in-sync, fast-forward, or (falling through) genuine divergence. */
+  private async resolveBranchSyncOutcome(
+    cwd: string,
+    branchName: string,
+    remote: string,
+    localSha: string | undefined,
+    remoteSha: string | undefined,
+  ): Promise<KnowledgeBranchSyncResult> {
+    const shaResolution = await this.resolveMissingShaOutcome(
+      cwd,
+      branchName,
+      remote,
+      localSha,
+      remoteSha,
+    );
+    if ("resolved" in shaResolution) return shaResolution.resolved;
+    const { localSha: local, remoteSha: remoteTip } = shaResolution;
+
+    if (local === remoteTip) {
+      return {
+        status: KnowledgeBranchSyncStatuses.UP_TO_DATE,
+        branchTipSha: local,
+      };
+    }
+
+    const fastForwardResult = await this.resolveFastForwardOutcome(
+      cwd,
+      branchName,
+      remote,
+      local,
+      remoteTip,
+    );
+    if (fastForwardResult) return fastForwardResult;
+
+    return this.mergeDivergedBranches(
+      cwd,
+      branchName,
+      remote,
+      local,
+      remoteTip,
+    );
+  }
+
+  /** Handles the two "one side has no commit yet" cases (adopting the other side outright).
+   *  Returns the resolved sync result for those cases, or the narrowed (both-defined) shas so
+   *  the caller can proceed to fast-forward/divergence handling. */
+  private async resolveMissingShaOutcome(
+    cwd: string,
+    branchName: string,
+    remote: string,
+    localSha: string | undefined,
+    remoteSha: string | undefined,
+  ): Promise<
+    | { resolved: KnowledgeBranchSyncResult }
+    | { localSha: string; remoteSha: string }
+  > {
     if (!remoteSha) {
       if (localSha) await this.pushQuietly(cwd, remote, branchName);
-      return { status: "pushed-local", branchTipSha: localSha };
+      return {
+        resolved: {
+          status: KnowledgeBranchSyncStatuses.PUSHED_LOCAL,
+          branchTipSha: localSha,
+        },
+      };
     }
     if (!localSha) {
       await this.git.updateBranchRef(cwd, branchName, remoteSha);
-      this.logger.info(
-        "Adopted remote knowledge branch (no local copy existed)",
-        { branchName },
-      );
-      return { status: "fast-forwarded-local", branchTipSha: remoteSha };
+      this.logger.info(GitMessages.ADOPTED_REMOTE_BRANCH, { branchName });
+      return {
+        resolved: {
+          status: KnowledgeBranchSyncStatuses.FAST_FORWARDED_LOCAL,
+          branchTipSha: remoteSha,
+        },
+      };
     }
-    if (localSha === remoteSha) {
-      return { status: "up-to-date", branchTipSha: localSha };
-    }
+    return { localSha, remoteSha };
+  }
 
+  /** Handles the two non-diverged, both-shas-defined cases: local is an ancestor of remote (fast
+   *  forward local), or remote is an ancestor of local (push local). Returns `undefined` when
+   *  neither holds (genuine divergence), for the caller to handle. */
+  private async resolveFastForwardOutcome(
+    cwd: string,
+    branchName: string,
+    remote: string,
+    localSha: string,
+    remoteSha: string,
+  ): Promise<KnowledgeBranchSyncResult | undefined> {
     if (await this.git.isAncestor(cwd, localSha, remoteSha)) {
       await this.git.updateBranchRef(cwd, branchName, remoteSha);
-      this.logger.info("Fast-forwarded local knowledge branch to remote", {
+      this.logger.info(GitMessages.FAST_FORWARDED_LOCAL_BRANCH, {
         branchName,
         remoteSha,
       });
-      return { status: "fast-forwarded-local", branchTipSha: remoteSha };
+      return {
+        status: KnowledgeBranchSyncStatuses.FAST_FORWARDED_LOCAL,
+        branchTipSha: remoteSha,
+      };
     }
     if (await this.git.isAncestor(cwd, remoteSha, localSha)) {
       await this.pushQuietly(cwd, remote, branchName);
-      return { status: "pushed-local", branchTipSha: localSha };
+      return {
+        status: KnowledgeBranchSyncStatuses.PUSHED_LOCAL,
+        branchTipSha: localSha,
+      };
     }
+    return undefined;
+  }
 
-    // True divergence — tree-adoption merge (STOR-001 point 3): create a 2-parent merge commit
-    // wholesale adopting the winning side's tree, rather than a content-level merge of both.
+  /** True divergence — tree-adoption merge (STOR-001 point 3): create a 2-parent merge commit
+   *  wholesale adopting the winning side's tree, rather than a content-level merge of both. */
+  private async mergeDivergedBranches(
+    cwd: string,
+    branchName: string,
+    remote: string,
+    localSha: string,
+    remoteSha: string,
+  ): Promise<KnowledgeBranchSyncResult> {
     const winnerSha = await this.resolveMergeWinner(cwd, localSha, remoteSha);
     const winningTree = await this.git.getTreeSha(cwd, winnerSha);
-    const mergeMessage = `Merge knowledge branch (${winnerSha === localSha ? "local" : "remote"} wins)`;
+    const mergeMessage = GitMessages.mergeCommitMessage(winnerSha === localSha);
     const mergeSha = await this.git.createMergeCommit(
       cwd,
       winningTree,
@@ -283,12 +385,18 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     await this.git.updateBranchRef(cwd, branchName, mergeSha);
     await this.pushQuietly(cwd, remote, branchName);
 
-    this.logger.info("Merged diverged knowledge branch", {
+    this.logger.info(GitMessages.MERGED_DIVERGED_BRANCH, {
       branchName,
-      winner: winnerSha === localSha ? "local" : "remote",
+      winner:
+        winnerSha === localSha
+          ? GitMessages.MERGE_WINNER_LOCAL
+          : GitMessages.MERGE_WINNER_REMOTE,
       mergeSha,
     });
-    return { status: "merged", branchTipSha: mergeSha };
+    return {
+      status: KnowledgeBranchSyncStatuses.MERGED,
+      branchTipSha: mergeSha,
+    };
   }
 
   private async pushQuietly(
@@ -299,13 +407,10 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     try {
       await this.git.pushRef(cwd, remote, branchName);
     } catch (err) {
-      this.logger.warn(
-        "Failed to push knowledge branch to remote; will retry on next sync",
-        {
-          branchName,
-          error: err instanceof Error ? err.message : String(err),
-        },
-      );
+      this.logger.warn(GitMessages.FAILED_TO_PUSH_WILL_RETRY, {
+        branchName,
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
@@ -386,7 +491,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
    */
   private async buildSnapshotCommitMessage(cwd: string): Promise<string> {
     const sourceSha = await this.git.getHeadSha(cwd);
-    if (!sourceSha) return "Snapshot [unknown]";
-    return `Snapshot [${sourceSha.slice(0, 7)}]\n\n${GitConstants.SOURCE_COMMIT_TRAILER_KEY}: ${sourceSha}`;
+    if (!sourceSha) return GitMessages.SNAPSHOT_UNKNOWN;
+    return GitMessages.snapshotCommitMessage(sourceSha);
   }
 }

@@ -1,5 +1,11 @@
 import type Database from "better-sqlite3";
 import { DocuviaError, ErrorCodes, type ITagsRepo } from "@workspace/contracts";
+import { SchemaTables, SchemaColumns } from "../constants.js";
+
+const TAGS_REPO_MESSAGES = {
+  AUTO_DETECTED_TAG_DESCRIPTION: (name: string) => `Auto-detected tag: ${name}`,
+  GET_ALL_TAG_LINKS_FAILED: "Failed to get all tag links",
+} as const;
 
 /** `tags` repo — `l1_tags` upsert + `l2_node_l1_tags` linking (feature-sniffing tags detected during `init`). */
 export class TagsRepo implements ITagsRepo {
@@ -9,17 +15,17 @@ export class TagsRepo implements ITagsRepo {
   upsertTag(name: string): void {
     this.db
       .prepare(
-        `INSERT INTO l1_tags (name, slug, description)
+        `INSERT INTO ${SchemaTables.L1_TAGS} (name, slug, description)
          VALUES (?, ?, ?)
          ON CONFLICT(name) DO NOTHING`,
       )
-      .run(name, name, `Auto-detected tag: ${name}`);
+      .run(name, name, TAGS_REPO_MESSAGES.AUTO_DETECTED_TAG_DESCRIPTION(name));
   }
 
   /** Looks up a tag's id by name. */
   getIdByName(name: string): number | undefined {
     const row = this.db
-      .prepare("SELECT id FROM l1_tags WHERE name = ?")
+      .prepare(`SELECT id FROM ${SchemaTables.L1_TAGS} WHERE name = ?`)
       .get(name) as { id: number } | undefined;
     return row?.id;
   }
@@ -28,7 +34,7 @@ export class TagsRepo implements ITagsRepo {
   linkNodeToTag(l2NodeId: number, l1TagId: number): void {
     this.db
       .prepare(
-        "INSERT INTO l2_node_l1_tags (l2_node_id, l1_tag_id) VALUES (?, ?)",
+        `INSERT INTO ${SchemaTables.L2_NODE_L1_TAGS} (${SchemaColumns.L2_NODE_ID}, ${SchemaColumns.L1_TAG_ID}) VALUES (?, ?)`,
       )
       .run(l2NodeId, l1TagId);
   }
@@ -38,16 +44,16 @@ export class TagsRepo implements ITagsRepo {
     try {
       const rows = this.db
         .prepare(
-          `SELECT lt.l2_node_id as l2_node_id, t.name as name
-           FROM l2_node_l1_tags lt
-           JOIN l1_tags t ON t.id = lt.l1_tag_id`,
+          `SELECT lt.${SchemaColumns.L2_NODE_ID} as ${SchemaColumns.L2_NODE_ID}, t.name as name
+           FROM ${SchemaTables.L2_NODE_L1_TAGS} lt
+           JOIN ${SchemaTables.L1_TAGS} t ON t.id = lt.${SchemaColumns.L1_TAG_ID}`,
         )
         .all() as Array<{ l2_node_id: number; name: string }>;
       return rows.map((row) => ({ l2NodeId: row.l2_node_id, name: row.name }));
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to get all tag links",
+        TAGS_REPO_MESSAGES.GET_ALL_TAG_LINKS_FAILED,
         err,
       );
     }

@@ -1,4 +1,5 @@
 import type { ILogger, ITempFileManager } from "@workspace/contracts";
+import { INIT_MESSAGES } from "./init-messages.js";
 
 export interface InitTempLifecycle {
   tempFileManager: ITempFileManager;
@@ -18,12 +19,12 @@ export async function initTempLifecycle(
   try {
     const tempFileManager = buildTempFileManager(workspaceRoot, logger);
     await tempFileManager.initialize();
-    logger.info("Temp file manager initialized", {
+    logger.info(INIT_MESSAGES.TEMP_FILE_MANAGER_INITIALIZED, {
       tempDir: tempFileManager.getTempDirPath(),
     });
     return { tempFileManager, stop: () => tempFileManager.stopCleanup() };
   } catch (err: any) {
-    logger.warn("Failed to initialize temp file manager (non-fatal)", {
+    logger.warn(INIT_MESSAGES.TEMP_FILE_MANAGER_INIT_FAILED, {
       error: err?.message ?? String(err),
     });
     return undefined;

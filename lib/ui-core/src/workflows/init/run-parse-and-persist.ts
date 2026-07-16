@@ -7,6 +7,7 @@ import type {
   ParsedAstFileResult,
 } from "@workspace/contracts";
 import { appendInitLogLine } from "./init-log-writer.js";
+import { INIT_EVENTS } from "./init-messages.js";
 
 export interface RunParseAndPersistResult {
   parsedResults: ParsedAstFileResult[];
@@ -48,13 +49,13 @@ export async function runParseAndPersist(deps: {
 
   for (const failure of failures) {
     await appendInitLogLine(workspaceRoot, {
-      event: "init.parse_failure",
+      event: INIT_EVENTS.PARSE_FAILURE,
       ...failure,
     });
   }
   for (const skipped of skippedOversized) {
     await appendInitLogLine(workspaceRoot, {
-      event: "init.file_skipped_oversized",
+      event: INIT_EVENTS.FILE_SKIPPED_OVERSIZED,
       ...skipped,
     });
   }

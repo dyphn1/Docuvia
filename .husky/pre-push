@@ -1,8 +1,8 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 echo "Running full typecheck..."
 pnpm run typecheck
+
+echo "Running lint and complexity budget checks..."
+pnpm run lint
 
 echo "Running full build..."
 pnpm run build

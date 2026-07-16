@@ -1,9 +1,16 @@
+export const LogLevels = {
+  DEBUG: "debug",
+  INFO: "info",
+  WARN: "warn",
+  ERROR: "error",
+} as const;
+
 /**
  * Every log emitted anywhere in the workspace must conform to this shape — see
  * docs/gitbook/architecture/logging-architecture.md. `context` carries structured data
  * (file paths, counts, durations); it is never string-interpolated into `message`.
  */
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = (typeof LogLevels)[keyof typeof LogLevels];
 
 export interface LogEvent {
   level: LogLevel;

@@ -5,6 +5,11 @@
  * Strategy: deduplicate → confidence-sort → truncate → budget-aware assembly.
  */
 
+const DEFAULT_NODE_TYPE_LABEL = "node";
+
+/** Appended to truncated node content to signal that it was cut off. */
+const TRUNCATION_ELLIPSIS = "...";
+
 export interface CompressibleNode {
   title: string;
   content?: string | null;
@@ -61,7 +66,10 @@ function truncateContent(
 ): string {
   if (!content) return "";
   if (content.length <= maxChars) return content;
-  return content.slice(0, maxChars - 3) + "...";
+  return (
+    content.slice(0, maxChars - TRUNCATION_ELLIPSIS.length) +
+    TRUNCATION_ELLIPSIS
+  );
 }
 
 /**
@@ -83,7 +91,7 @@ export function assembleContext(
   let totalChars = 0;
 
   for (const node of sorted) {
-    const entry = `- [${node.nodeType ?? "node"}] ${node.title}: ${truncateContent(node.content, maxPerNode)}`;
+    const entry = `- [${node.nodeType ?? DEFAULT_NODE_TYPE_LABEL}] ${node.title}: ${truncateContent(node.content, maxPerNode)}`;
     if (totalChars + entry.length > maxTotal) break;
     parts.push(entry);
     totalChars += entry.length;

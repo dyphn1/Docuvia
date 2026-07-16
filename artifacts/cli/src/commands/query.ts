@@ -4,89 +4,165 @@ import {
   docuviaMemory,
   DocuviaError,
   type LocalQueryResult,
+  type GraphEdgeRef,
+  MemoryKeys,
+  LogLevels,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import {
+  QUERY_OUTPUT_FORMATS,
+  type QueryOutputFormat,
+} from "../constants/cli-flags.js";
+import { OUTPUT_FORMAT_MARKERS as FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 
-export function formatPromptOutput(result: LocalQueryResult): string {
+const XML_TAGS = {
+  CONTEXT_START: "<docuvia_context>",
+  CONTEXT_END: "</docuvia_context>",
+  L2_START_PREFIX: '  <l2_module name="',
+  L2_START_SUFFIX: '">',
+  L2_END: "  </l2_module>",
+  L3_START_PREFIX: '    <l3_decision title="',
+  L3_START_SUFFIX: '">',
+  L3_CONTENT_PREFIX: "      ",
+  L3_END: "    </l3_decision>",
+  INCOMING_START: "  <incoming>",
+  INCOMING_END: "  </incoming>",
+  CALLER_PREFIX: '    <caller name="',
+  CALLER_MID: '" type="',
+  CALLER_SUFFIX: '" />',
+  OUTGOING_START: "  <outgoing>",
+  OUTGOING_END: "  </outgoing>",
+  CALLEE_PREFIX: '    <callee name="',
+  CALLEE_MID: '" type="',
+  CALLEE_SUFFIX: '" />',
+} as const;
+
+function buildPromptL2Lines(result: LocalQueryResult): string[] {
   const lines: string[] = [];
-  lines.push("<docuvia_context>");
   if (result.l2) {
-    lines.push('  <l2_module name="' + result.l2.name + '">');
+    lines.push(
+      XML_TAGS.L2_START_PREFIX + result.l2.name + XML_TAGS.L2_START_SUFFIX,
+    );
   }
   for (const l3 of result.l3) {
-    lines.push('    <l3_decision title="' + l3.title + '">');
-    lines.push("      " + (l3.content || ""));
-    lines.push("    </l3_decision>");
+    lines.push(XML_TAGS.L3_START_PREFIX + l3.title + XML_TAGS.L3_START_SUFFIX);
+    lines.push(
+      XML_TAGS.L3_CONTENT_PREFIX + (l3.content || FORMAT_MARKERS.EMPTY),
+    );
+    lines.push(XML_TAGS.L3_END);
   }
   if (result.l2) {
-    lines.push("  </l2_module>");
+    lines.push(XML_TAGS.L2_END);
   }
-
-  const incoming = result.context?.incoming ?? [];
-  const outgoing = result.context?.outgoing ?? [];
-  if (incoming.length > 0 || outgoing.length > 0) {
-    if (incoming.length > 0) {
-      lines.push("  <incoming>");
-      for (const i of incoming) {
-        lines.push(
-          '    <caller name="' + i.name + '" type="' + i.type + '" />',
-        );
-      }
-      lines.push("  </incoming>");
-    }
-    if (outgoing.length > 0) {
-      lines.push("  <outgoing>");
-      for (const o of outgoing) {
-        lines.push(
-          '    <callee name="' + o.name + '" type="' + o.type + '" />',
-        );
-      }
-      lines.push("  </outgoing>");
-    }
-  }
-
-  lines.push("</docuvia_context>");
-  return lines.join("\n");
+  return lines;
 }
 
-function printHumanResults(result: LocalQueryResult): void {
-  ui.header(UI_MESSAGES.QUERY_CONTEXT_HEADER);
+function buildPromptIncomingLines(incoming: GraphEdgeRef[]): string[] {
+  if (incoming.length === 0) return [];
+  const lines: string[] = [XML_TAGS.INCOMING_START];
+  for (const i of incoming) {
+    lines.push(
+      XML_TAGS.CALLER_PREFIX +
+        i.name +
+        XML_TAGS.CALLER_MID +
+        i.type +
+        XML_TAGS.CALLER_SUFFIX,
+    );
+  }
+  lines.push(XML_TAGS.INCOMING_END);
+  return lines;
+}
+
+function buildPromptOutgoingLines(outgoing: GraphEdgeRef[]): string[] {
+  if (outgoing.length === 0) return [];
+  const lines: string[] = [XML_TAGS.OUTGOING_START];
+  for (const o of outgoing) {
+    lines.push(
+      XML_TAGS.CALLEE_PREFIX +
+        o.name +
+        XML_TAGS.CALLEE_MID +
+        o.type +
+        XML_TAGS.CALLEE_SUFFIX,
+    );
+  }
+  lines.push(XML_TAGS.OUTGOING_END);
+  return lines;
+}
+
+function buildPromptContextLines(result: LocalQueryResult): string[] {
+  const incoming = result.context?.incoming ?? [];
+  const outgoing = result.context?.outgoing ?? [];
+  if (incoming.length === 0 && outgoing.length === 0) return [];
+  return [
+    ...buildPromptIncomingLines(incoming),
+    ...buildPromptOutgoingLines(outgoing),
+  ];
+}
+
+export function formatPromptOutput(result: LocalQueryResult): string {
+  const lines: string[] = [
+    XML_TAGS.CONTEXT_START,
+    ...buildPromptL2Lines(result),
+    ...buildPromptContextLines(result),
+    XML_TAGS.CONTEXT_END,
+  ];
+  return lines.join(FORMAT_MARKERS.NEWLINE);
+}
+
+function printHumanL2Header(result: LocalQueryResult): void {
   if (result.l2) {
     ui.info(UI_MESSAGES.QUERY_L2_PREFIX + result.l2.name);
   } else {
     ui.warn(UI_MESSAGES.QUERY_NO_L2);
   }
-  console.log("");
-  for (const l3 of result.l3) {
+}
+
+function printHumanL3Entries(l3s: LocalQueryResult["l3"]): void {
+  for (const l3 of l3s) {
     ui.success(UI_MESSAGES.QUERY_L3_PREFIX + l3.title);
     if (l3.content) {
-      console.log("  " + l3.content.split("\n").join("\n  "));
+      ui.log(
+        FORMAT_MARKERS.INDENT_TWO +
+          l3.content
+            .split(FORMAT_MARKERS.NEWLINE)
+            .join(FORMAT_MARKERS.NEWLINE + FORMAT_MARKERS.INDENT_TWO),
+      );
     }
-    console.log("");
+    ui.log(FORMAT_MARKERS.EMPTY);
   }
+}
+
+function printHumanEdgeList(edges: GraphEdgeRef[], header: string): void {
+  if (edges.length === 0) return;
+  ui.header(header);
+  for (const edge of edges) {
+    ui.log(
+      FORMAT_MARKERS.INDENT_TWO +
+        edge.name +
+        FORMAT_MARKERS.OPEN_PAREN +
+        edge.type +
+        FORMAT_MARKERS.CLOSE_PAREN,
+    );
+  }
+  ui.log(FORMAT_MARKERS.EMPTY);
+}
+
+function printHumanResults(result: LocalQueryResult): void {
+  ui.header(UI_MESSAGES.QUERY_CONTEXT_HEADER);
+  printHumanL2Header(result);
+  ui.log(FORMAT_MARKERS.EMPTY);
+  printHumanL3Entries(result.l3);
 
   const incoming = result.context?.incoming ?? [];
   const outgoing = result.context?.outgoing ?? [];
-  if (incoming.length > 0) {
-    ui.header(UI_MESSAGES.QUERY_INCOMING_HEADER);
-    for (const i of incoming) {
-      console.log("  " + i.name + " (" + i.type + ")");
-    }
-    console.log("");
-  }
-  if (outgoing.length > 0) {
-    ui.header(UI_MESSAGES.QUERY_OUTGOING_HEADER);
-    for (const o of outgoing) {
-      console.log("  " + o.name + " (" + o.type + ")");
-    }
-    console.log("");
-  }
+  printHumanEdgeList(incoming, UI_MESSAGES.QUERY_INCOMING_HEADER);
+  printHumanEdgeList(outgoing, UI_MESSAGES.QUERY_OUTGOING_HEADER);
 
-  console.log("");
+  ui.log(FORMAT_MARKERS.EMPTY);
 }
 
 async function resolveQueryTarget(target?: string): Promise<string> {
@@ -108,60 +184,101 @@ async function resolveQueryTarget(target?: string): Promise<string> {
   return queryTarget;
 }
 
-/** Thin caller of docuviaApi.query() - mirrors init.ts's Presentation-layer responsibilities. */
-export async function queryCommand(
-  target?: string,
-  options: { format?: "human" | "prompt"; limit?: number } = {},
-  cwd: string = process.cwd(),
-) {
-  const queryTarget = await resolveQueryTarget(target);
-  const isPromptFormat = options.format === "prompt";
-
-  let limit = options.limit;
+function resolveQueryLimit(limit: number | undefined): number | undefined {
   if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
     ui.warn(UI_MESSAGES.QUERY_INVALID_LIMIT + limit);
-    limit = undefined;
+    return undefined;
   }
+  return limit;
+}
 
-  const scopeId = crypto.randomUUID();
-  const logger = createPinoBackedLogger();
-  let spinner: ReturnType<typeof ui.spinner> | undefined;
-  if (!isPromptFormat) {
-    spinner = ui
-      .spinner(UI_MESSAGES.QUERY_START + '"' + queryTarget + '"...')
-      .start();
-    logger.onLog((event) => {
-      if (event.level === "info" && spinner) spinner.text = event.message;
-    });
-  }
+function startQuerySpinner(
+  isPromptFormat: boolean,
+  queryTarget: string,
+  logger: ReturnType<typeof createPinoBackedLogger>,
+): ReturnType<typeof ui.spinner> | undefined {
+  if (isPromptFormat) return undefined;
 
+  const spinner = ui
+    .spinner(
+      UI_MESSAGES.QUERY_START +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        queryTarget +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        "...",
+    )
+    .start();
+  logger.onLog((event) => {
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
+  });
+  return spinner;
+}
+
+async function runQuery(
+  scopeId: string,
+  logger: ReturnType<typeof createPinoBackedLogger>,
+  cwd: string,
+  queryTarget: string,
+  limit: number | undefined,
+  spinner: ReturnType<typeof ui.spinner> | undefined,
+): Promise<LocalQueryResult | undefined> {
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
-  docuviaMemory.set(scopeId, "target", queryTarget);
-  if (limit !== undefined) docuviaMemory.set(scopeId, "limit", limit);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.TARGET, queryTarget);
+  if (limit !== undefined) docuviaMemory.set(scopeId, MemoryKeys.LIMIT, limit);
 
-  let result: LocalQueryResult;
   try {
-    result = await docuviaApi.query(scopeId, logger);
+    const result = await docuviaApi.query(scopeId, logger);
     if (spinner) {
-      spinner.succeed(UI_MESSAGES.QUERY_FOUND + '"' + queryTarget + '"');
-      console.log("");
+      spinner.succeed(
+        UI_MESSAGES.QUERY_FOUND +
+          FORMAT_MARKERS.DOUBLE_QUOTE +
+          queryTarget +
+          FORMAT_MARKERS.DOUBLE_QUOTE,
+      );
+      ui.log("");
     }
+    return result;
   } catch (error: unknown) {
     const message =
       error instanceof DocuviaError || error instanceof Error
         ? error.message
         : String(error);
     if (spinner) spinner.fail(UI_MESSAGES.QUERY_FAIL + message);
-    else console.error(UI_MESSAGES.QUERY_FAIL + message);
+    else ui.error(UI_MESSAGES.QUERY_FAIL + message);
     process.exitCode = 1;
-    return;
+    return undefined;
   } finally {
     docuviaMemory.deleteScope(scopeId);
   }
+}
+
+/** Thin caller of docuviaApi.query() - mirrors init.ts's Presentation-layer responsibilities. */
+export async function queryCommand(
+  target?: string,
+  options: { format?: QueryOutputFormat; limit?: number } = {},
+  cwd: string = process.cwd(),
+) {
+  const queryTarget = await resolveQueryTarget(target);
+  const isPromptFormat = options.format === QUERY_OUTPUT_FORMATS.PROMPT;
+  const limit = resolveQueryLimit(options.limit);
+
+  const scopeId = crypto.randomUUID();
+  const logger = createPinoBackedLogger();
+  const spinner = startQuerySpinner(isPromptFormat, queryTarget, logger);
+
+  const result = await runQuery(
+    scopeId,
+    logger,
+    cwd,
+    queryTarget,
+    limit,
+    spinner,
+  );
+  if (!result) return;
 
   if (isPromptFormat) {
-    console.log(formatPromptOutput(result));
+    ui.log(formatPromptOutput(result));
   } else {
     printHumanResults(result);
   }

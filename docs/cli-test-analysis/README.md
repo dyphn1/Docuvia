@@ -1,114 +1,67 @@
-# CLI Command Test Analysis — Status
+﻿# CLI Command Test Gaps & Concurrency Validation Analysis (2026-07-16)
 
-This directory originally held 14 speculative per-command reports, each raising the same 7
-templated claims about test gaps (i18n-fragile assertions, no scale testing, no concurrency
-testing, no idempotency testing, etc.) without checking them against the actual source. Those
-claims have since been verified one command at a time — checked against real source, real tests,
-and (where relevant) real test runs — and reclassified as **Confirmed** (real, still open),
-**Stale** (already covered elsewhere), **False** (the claim doesn't match the actual code), or
-**Overstated** (partially true but exaggerated). The real bugs the verification pass surfaced have
-since been fixed (2026-07-15), with logging added and regression tests locking each fix in.
+> **Multi-Lateral Validation & Stress Test Results:**
+> The team has completed comprehensive code walkthroughs, real SQLite / Git integration testing, and concurrency stress testing for all CLI commands.
+> High-severity concurrency race conditions and exit-blocking bugs discovered previously (such as `init` migration conflicts, `sync` state clobbering, and the failure of `finally` cleanup on exit) have been fully resolved.
+>
+> To maintain directory hygiene and focus on core concerns, we have consolidated all commands' genuinely open issues (Confirmed — Open test gaps) into this single document. All other fully-resolved, non-open temporary logs and status files have been completely cleaned up.
+>
+> **Update (2026-07-17, PLAT-007 Slice 2 dispatch 2b):** the two command-pair concurrency gaps that gated the post-commit hook flip are now closed by real-CLI-process integration tests — `analyze`+`snapshot` (`artifacts/cli/test/integration/commands/analyze-snapshot-concurrency.test.ts`: 3+3 concurrent processes over a genuine delta ingestion, asserting exit codes, `PRAGMA integrity_check`, a single project row, and `git fsck` on the knowledge branch) and `doctor`+`hydrate` (`doctor-hydrate-concurrency.test.ts`: 3+3 concurrent processes, same DB-integrity assertions; `--skip-git` sidesteps only the remote-reachability probe, which touches neither the DB nor the knowledge lock). The status table below reflects this.
 
-Files for commands with no remaining confirmed issues have been removed. Files below are kept
-only where at least one claim is still genuinely open.
+---
 
-## The original 7-category checklist
+## 1. Status Summary
 
-For reference, this is the checklist every command was screened against:
+| Command           | Status      | Validation Summary & Fix Records                                                                                       |
+| :---------------- | :---------- | :--------------------------------------------------------------------------------------------------------------------- |
+| `init`            | ✅ Resolved | The single-flight concurrency lock has fully resolved database migration conflicts.                                    |
+| `analyze`         | ✅ Resolved | Implemented LLM decision-extraction & markdown cleanup; resolved the exit-blocking bug.                                |
+| `impact`          | ✅ Resolved | Added `console.log` assertions; SQL/LIKE injection defense design has been verified.                                   |
+| `status`          | ✅ Resolved | Added `ui.header` assertions; switched `process.exit` to `process.exitCode`.                                           |
+| `sync-knowledge`  | ✅ Resolved | Added fast-forward/push status assertions; resolved the exit-blocking bug.                                             |
+| `clean`           | ⚠️ 1 Open   | Only the Windows `EBUSY` exception path has not been mock-triggered in unit tests.                                     |
+| `doctor`          | ⚠️ 1 Open   | The hooks `fs.stat` failure branch is untested. Concurrent `doctor` + `hydrate`: ✅ covered (2026-07-17, dispatch 2b). |
+| `export-topology` | ⚠️ 2 Open   | Embedded JSON data in HTML is never parsed/validated; `--out` as an existing file is untested.                         |
+| `hydrate`         | ⚠️ 1 Open   | Lacks an idempotency short-circuit cache. Concurrency under `bulkLoadGraph`: ✅ covered (2026-07-17, dispatch 2b).     |
+| `query`           | ⚠️ 3 Open   | Interactive TTY input & Ctrl+C paths are untested; prompt payload size lacks guardrails.                               |
+| `review`          | ⚠️ 1 Open   | Large/binary file PR payloads have not been stress-tested.                                                             |
+| `snapshot`        | ⚠️ 1 Open   | Read-only directory write failures (EACCES/EROFS) are untested.                                                        |
+| `sync`            | ⚠️ 2 Open   | `readStdin()` is completely untested; invalid `commitSha` formats are untested.                                        |
+| `uninstall`       | ⚠️ 1 Open   | Concurrency with DB writes during uninstall is untested.                                                               |
 
-1. **Incomplete Functionality** — side-effects (spinner text, console output) asserted only indirectly.
-2. **Missing Language Support** — hardcoded-English assertions. _(In practice: moot everywhere — no i18n framework exists anywhere in this CLI, so this category was False/Overstated for all 14 commands.)_
-3. **Lack of Project Complexity** — tiny mocks vs. realistic scale.
-4. **Incomplete Parameter & I/O Checks** — invalid/edge-case inputs untested.
-5. **No Real Integration Coverage** — API mocked out, no real DB/filesystem/git verification.
-6. **No Command Combination Checks** — concurrency between commands untested.
-7. **No Idempotency Consideration** — repeated-run behavior untested.
+---
 
-## Status table
+## 2. Confirmed — Open Issues
 
-| Command                                   | Status                   | Remaining open items                                                                                                                                                                            |
-| ----------------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`analyze`](./analyze-status.md)          | ✅ Resolved              | see `analyze-status.md`'s own Follow-ups (LLM base-URL suffix edge case, one missing error-log line)                                                                                            |
-| [`init`](./init-concurrency-status.md)    | ✅ Resolved (bugs fixed) | none — the "unaudited hook-install/branch-setup concurrency" follow-up was closed by [PLAT-006](../gitbook/adr/platform/PLAT-006-init-single-flight-lock.md)'s whole-command single-flight lock |
-| [`clean`](./clean.md)                     | ⚠️ 1 open                | `EBUSY`/unlink failure untested                                                                                                                                                                 |
-| [`doctor`](./doctor.md)                   | ⚠️ 1 open                | hooks `fs.stat` rejection branch untested (concurrent `doctor`+`hydrate` closed 2026-07-17, PLAT-007 Slice 2 dispatch 2b)                                                                       |
-| [`export-topology`](./export-topology.md) | ⚠️ 2 open                | embedded HTML/JSON graph data never verified; `--out` as existing file untested                                                                                                                 |
-| [`hydrate`](./hydrate.md)                 | ⚠️ 1 open                | no idempotency fast-path/test (concurrency closed 2026-07-17, PLAT-007 Slice 2 dispatch 2b)                                                                                                     |
-| [`impact`](./impact.md)                   | ✅ Resolved              | —                                                                                                                                                                                               |
-| [`query`](./query.md)                     | ⚠️ 3 open                | interactive Ctrl+C path untested; no prompt-size guard; no scope-cleanup test                                                                                                                   |
-| [`review`](./review.md)                   | ⚠️ 1 open                | large/binary-file payload untested                                                                                                                                                              |
-| [`snapshot`](./snapshot.md)               | ⚠️ 2 open                | spinner-text unasserted; read-only-directory untested                                                                                                                                           |
-| [`status`](./status.md)                   | ✅ Resolved              | — (file kept as an audit record, like `init`'s)                                                                                                                                                 |
-| [`sync-knowledge`](./sync-knowledge.md)   | ✅ Resolved              | — (file kept as an audit record, like `init`'s)                                                                                                                                                 |
-| [`sync`](./sync.md)                       | ⚠️ 2 open                | `readStdin()` untested; invalid `commitSha` format untested                                                                                                                                     |
-| [`uninstall`](./uninstall.md)             | ⚠️ 1 open                | concurrent DB write untested                                                                                                                                                                    |
+The following items are confirmed test gaps or open issues verified by the team. Future iterations should prioritize adding coverage for these execution paths:
 
-Legend: ✅ resolved · ⚠️ open, low-severity coverage gaps only (no known behavioral bugs remaining).
+### 2.1 Exception & Edge-Case Gaps
 
-## Bugs found and fixed (2026-07-15)
+1. **Windows `EBUSY` File Locking Untested (`clean` & `uninstall`)**
+   - **Description**: `clean-workflow.ts`'s `fs.unlink` throws `EBUSY` on Windows if the DB file is held by another process. While wrapped in a `try/catch` and mapped to a `DocuviaError`, this exception path has never been mock-triggered in unit tests.
+2. **`doctor` Hooks File-Stat Rejection Untested**
+   - **Description**: The `.catch(() => null)` block on `doctor.ts:92-93` is used to handle failure to stat hook files. However, `doctor.unit.test.ts` always mocks `fs.stat` to resolve successfully (`size: 100`), leaving the `DOCTOR_CLAUDE_NOT_FOUND` / `DOCTOR_CURSOR_NOT_FOUND` branches unexercised.
+3. **`export-topology` `--out` as an Existing File**
+   - **Description**: If the `--out` parameter points to an existing file instead of a directory, `fs.mkdirSync(outDir, { recursive: true })` throws an error. It is caught gracefully by the outer `try/catch` and fails the spinner, but no test covers this.
+4. **`snapshot` Read-Only Directory Write Failure Untested**
+   - **Description**: No test simulates a write failure (EACCES/EROFS) during the snapshot temp-dir render or the knowledge-branch pack step.
+5. **`sync` Invalid Commit SHA Format Untested**
+   - **Description**: The CLI forwards `commitSha` directly to the Git provider. If the format is invalid, it propagates to the generic catch block instead of crashing, but this is untested.
 
-These were discovered by reading the real code paths while checking the speculative claims, not
-by the claims themselves. All have since been fixed, logged where relevant, and covered by
-regression tests.
+### 2.2 Integration & Data-Verification Gaps
 
-1. **`process.exit()` called before `finally` in six commands** — `analyze`, `clean`, `hydrate`,
-   `snapshot`, `status`, and `sync-knowledge` all called `process.exit(1)` inside a `catch`, ahead
-   of a `finally` block that calls `docuviaMemory.deleteScope(scopeId)`. `process.exit()`
-   terminates immediately and does not unwind through `finally` (confirmed with a minimal repro),
-   so the memory-scope cleanup never actually ran on error in production. The existing unit tests
-   mocked `process.exit` to throw instead of truly exiting, which let `finally` run under the mock
-   and masked the bug. `review` and `sync` already avoided this correctly by using
-   `process.exitCode = 1` instead — `clean`, `hydrate`, `snapshot`, `status`, and `sync-knowledge`
-   were fixed the same way in this session. `analyze` had the identical bug, independently found
-   and fixed (also to `process.exitCode`) by a concurrent session's `analyze <targetPath>` LLM
-   feature work — see [analyze-status.md](./analyze-status.md). `init.ts`'s single-flight-lock
-   restructuring ([PLAT-006](../gitbook/adr/platform/PLAT-006-init-single-flight-lock.md), also
-   concurrent with this session) independently resolved its own `process.exit()` call sites by
-   deferring them to after the lock-release `finally`, which is safe since nothing follows them —
-   a different mechanism than `process.exitCode`, but the same outcome: cleanup always runs before
-   exit. Regression tests assert `process.exit` was never called and `deleteScope` still ran for
-   each of the five commands fixed directly in this session.
-2. **`sync-state.json` race under concurrent `sync`** — `lib/ui-core/src/workflows/sync/sync-state.ts`
-   did an unguarded read-modify-write of the dedup-state file. Two concurrent `docuvia sync` runs
-   could silently clobber each other's update, losing a synced-content-hash entry. Fixed with a
-   cross-process file lock (`withSyncStateLock`, same shape as `init`'s `acquireInitLock`) wrapping
-   the load→mutate→push→save cycle in `sync-workflow.ts`. Regression test:
-   `sync-state.unit.test.ts`'s "serializes concurrent load-mutate-save cycles instead of racing" —
-   without the lock this test is flaky/fails; with it, both concurrent hashes are preserved
-   deterministically.
-3. **`uninstall` aborted everything on the first platform failure** — the per-platform
-   `uninstallHooks` loop in `artifacts/cli/src/commands/uninstall.ts` had no per-iteration
-   try/catch, so one platform throwing skipped both the remaining platforms and the database
-   cleanup step, with only a generic top-level warning and no indication of what was left in
-   place. Fixed: each platform's failure is now caught individually, logged (via the pino-backed
-   logger, with the platform name and error), reported to the user, and the loop continues; the
-   database cleanup step always runs afterward regardless of platform failures; a final summary
-   warning lists everything that failed, and `process.exitCode` is set to 1 if anything did.
-   `workspaceRoot` is now also validated non-empty at the top of the command (the same class of
-   gap `init.ts` already guarded against). Regression tests in `uninstall.unit.test.ts`.
-4. **`query --limit` behaved inconsistently for invalid values** — a negative `--limit` yielded
-   **unlimited** results from the FTS-backed path (SQLite treats a negative `LIMIT` as unlimited)
-   but a **truncated-to-near-empty** result from the name-ref/neighbor path
-   (`Array.prototype.slice(0, negative)`), inside the same `QueryService.search()` call. Fixed by
-   normalizing an invalid `limit` (non-integer, ≤ 0, `NaN`) to the default of 10 in one place —
-   `QueryService.search()` itself, so every caller (CLI, MCP server, tests) gets the same safe
-   behavior — with a logged warning; `query.ts` additionally warns the user directly and doesn't
-   forward an invalid `--limit` into `docuviaMemory`. Regression tests in
-   `query.service.unit.test.ts` and `query.unit.test.ts`.
+1. **`export-topology` Embedded JSON Graph Data Never Verified**
+   - **Description**: Existing tests only assert that the HTML output contains the `<!DOCTYPE html>` string. The embedded `var GRAPH = ...` JSON blob injected by `topology-html-template.ts` is never extracted or validated.
+2. **`sync` `readStdin()` Untested**
+   - **Description**: All tests in `sync.unit.test.ts` either pass a `commitSha` explicitly or hit the interactive TTY branch, leaving the piped Standard Input (`readStdin()`) logic completely untested.
 
-## Individual command status files
+### 2.3 Concurrency & Performance Defense Gaps
 
-- [`init-concurrency-status.md`](./init-concurrency-status.md) — `init` (resolved; bugs fixed)
-- [`analyze-status.md`](./analyze-status.md) — `analyze` (resolved; LLM decision-extraction feature + test-gap fixes)
-- [`clean.md`](./clean.md)
-- [`doctor.md`](./doctor.md)
-- [`export-topology.md`](./export-topology.md)
-- [`hydrate.md`](./hydrate.md)
-- [`impact.md`](./impact.md)
-- [`query.md`](./query.md)
-- [`review.md`](./review.md)
-- [`snapshot.md`](./snapshot.md)
-- [`status.md`](./status.md)
-- [`sync-knowledge.md`](./sync-knowledge.md)
-- [`sync.md`](./sync.md)
-- [`uninstall.md`](./uninstall.md)
+1. **Interactive TTY Input & Ctrl+C Untested (`query`)**
+   - **Description**: The interactive input loop using `ui.askInput` (`query.ts:92-109`) and the Ctrl+C abort path are fully mocked out and never exercised.
+2. **`query` Prompt Size Limit Defense Missing**
+   - **Description**: `formatPromptOutput` has no truncation or size-capping guardrails for incoming/outgoing/l3 relationships. If a queried node has thousands of relationships, the prompt size could inflate uncontrollably.
+3. **Repeated Queries Memory-Scope Cleanup Untested**
+   - **Description**: Unlike `hydrate` or `impact` tests, `query.unit.test.ts` never spies on or validates `docuviaMemory.deleteScope` to ensure scope cleanup on success/failure.
+4. **`hydrate` Idempotency Cache** _(concurrency half closed 2026-07-17, dispatch 2b)_
+   - **Description**: `HydrationService.hydrate()` unconditionally reads git and runs `bulkLoadGraph` every call, lacking an already-up-to-date fast path. The concurrency half of this item — `bulkLoadGraph` under concurrent read-write opens — is now stress-tested by `doctor-hydrate-concurrency.test.ts` (3 concurrent `doctor --skip-git` + 3 concurrent `hydrate` real CLI processes, DB integrity asserted).

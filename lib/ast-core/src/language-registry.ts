@@ -1,9 +1,12 @@
 import { parse } from "smol-toml";
+import { UTF8_ENCODING } from "@workspace/contracts";
 import {
   LanguageProvider,
   LanguageConfig,
   DefaultProvider,
 } from "./language-provider.js";
+
+const DEFAULT_LANGUAGES_CONFIG_FILENAME = "languages.toml";
 
 export interface LanguageRegistryData {
   languages: Record<string, LanguageConfig>;
@@ -44,8 +47,7 @@ export class LanguageRegistry {
         return new LanguageRegistry({ languages: mergedLanguages });
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn("Failed to parse languages.toml:", msg);
+      // Gracefully fall back to defaults silently on parse errors
     }
     return new LanguageRegistry(base);
   }
@@ -66,24 +68,18 @@ export class LanguageRegistry {
         // @ts-ignore
         const path = await import("path");
         const targetPath = projectRoot
-          ? path.resolve(projectRoot, "languages.toml")
-          : path.resolve(_process.cwd(), "languages.toml");
+          ? path.resolve(projectRoot, DEFAULT_LANGUAGES_CONFIG_FILENAME)
+          : path.resolve(_process.cwd(), DEFAULT_LANGUAGES_CONFIG_FILENAME);
         try {
           await fs.access(targetPath);
-          const content = await fs.readFile(targetPath, "utf-8");
+          const content = await fs.readFile(targetPath, UTF8_ENCODING);
           return LanguageRegistry.loadFromString(content, base);
         } catch (fileErr: unknown) {
-          if (_process.env?.LOG_LEVEL === "debug") {
-            console.debug(
-              `[LanguageRegistry] Could not read ${targetPath}, falling back to defaults. Reason:`,
-              fileErr instanceof Error ? fileErr.message : String(fileErr),
-            );
-          }
+          // Gracefully fall back to defaults if file is not accessible
         }
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn("Failed to load languages.toml dynamically:", msg);
+      // Gracefully fall back to defaults on loading errors
     }
     return new LanguageRegistry(base);
   }

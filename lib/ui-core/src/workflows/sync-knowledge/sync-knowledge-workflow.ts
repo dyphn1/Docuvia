@@ -4,7 +4,10 @@ import {
   type ILogger,
   type KnowledgeBranchSyncResult,
 } from "@workspace/contracts";
-import { SYNC_KNOWLEDGE_MESSAGES } from "./sync-knowledge-messages.js";
+import {
+  SYNC_KNOWLEDGE_EVENTS,
+  SYNC_KNOWLEDGE_MESSAGES,
+} from "./sync-knowledge-messages.js";
 import { appendSyncKnowledgeLogLine } from "./sync-knowledge-log-writer.js";
 
 /**
@@ -30,7 +33,7 @@ export class SyncKnowledgeWorkflow {
 
     logger.info(SYNC_KNOWLEDGE_MESSAGES.SYNCING);
     await appendSyncKnowledgeLogLine(workspaceRoot, {
-      event: "sync-knowledge.start",
+      event: SYNC_KNOWLEDGE_EVENTS.START,
       workspaceRoot,
     });
 
@@ -40,7 +43,7 @@ export class SyncKnowledgeWorkflow {
     const result = await knowledgeGit.syncKnowledgeBranch(workspaceRoot);
 
     await appendSyncKnowledgeLogLine(workspaceRoot, {
-      event: "sync-knowledge.summary",
+      event: SYNC_KNOWLEDGE_EVENTS.SUMMARY,
       status: result.status,
       branchTipSha: result.branchTipSha ?? null,
     });

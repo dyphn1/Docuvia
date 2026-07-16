@@ -43,6 +43,9 @@ export const UI_MESSAGES = {
   FS_ALREADY_EXISTS: "Instructions already exist in: ",
   FS_CREATED: "Created: ",
   FS_READ_ERROR: "Could not read ",
+  FS_READ_ERROR_UNKNOWN_CODE: "unknown error",
+  FS_BLOCK_REMOVED_PREFIX: "Removed block from ",
+  FS_BLOCK_REMOVED_SUFFIX: " (backup created)",
 
   // Clean Command
   CLEAN_HEADER: "Clean Docuvia Database",
@@ -108,6 +111,11 @@ export const UI_MESSAGES = {
   ANALYZE_FOCUSED_NONE: "No decision-worthy content found.",
   ANALYZE_FOCUSED_PERSISTED: (persisted: number, deduped: number) =>
     `${persisted} persisted, ${deduped} deduplicated`,
+  ANALYZE_DECISION_PREFIX: "[",
+  ANALYZE_DECISION_MID: "] ",
+  ANALYZE_DECISION_CONFIDENCE_PREFIX: " (confidence: ",
+  ANALYZE_DECISION_CONFIDENCE_SUFFIX: ")",
+  ANALYZE_DECISION_CONTENT_PREFIX: "    ",
 
   // Review Command
   REVIEW_HEADER: "Review Changes",
@@ -115,6 +123,8 @@ export const UI_MESSAGES = {
   REVIEW_SUCCESS: "Analysis complete.",
   REVIEW_AGAINST: " against ",
   REVIEW_FAIL: "Review failed: ",
+  REVIEW_FILES_CHANGED: "Files changed: ",
+  REVIEW_RISK_PREFIX: "Risk level: ",
 
   // Impact Command
   IMPACT_HEADER: "Impact Analysis",
@@ -140,7 +150,14 @@ export const UI_MESSAGES = {
   UNINSTALL_KEEP_DB: "Skipping local database cleanup (--keep-db).",
   UNINSTALL_INVALID_WORKSPACE_ROOT: "Workspace root must not be empty.",
   UNINSTALL_PLATFORM_FAIL: "Failed to uninstall hooks for ",
+  UNINSTALL_PLATFORM_FAIL_MID: ": ",
   UNINSTALL_PARTIAL: "Uninstall completed with failures: ",
+  UNINSTALL_DB_CLEANUP_FAILURE_NAME: "local database cleanup",
+  UNINSTALL_HOOKS_FAIL_LOG: "uninstallHooks failed for platform ",
+  UNINSTALL_DB_CLEANUP_FAIL_LOG: "uninstall's database cleanup failed",
+  UNINSTALL_FAIL_LOG: "uninstall failed",
+  UNINSTALL_REMOVED_FILE_PREFIX: "Removed ",
+  UNINSTALL_REMOVED_MCP_SERVER_PREFIX: "Removed MCP server from ",
 
   // Doctor Command
   DOCTOR_HEADER: "Docuvia Doctor Diagnostics",
@@ -156,6 +173,12 @@ export const UI_MESSAGES = {
   DOCTOR_ALL_PASSED: "\nAll diagnostics passed.",
   DOCTOR_SOME_FAILED: "\nSome diagnostics failed.",
   DOCTOR_FAIL: "Doctor failed: ",
+  DOCTOR_HOOKS_SKIPPED: "[Hooks] Skipped (--skip-hooks)",
+  DOCTOR_HOOKS_PREFIX: "[Hooks] ",
+  DOCTOR_DIAGNOSTIC_PREFIX: "[",
+  DOCTOR_DIAGNOSTIC_SUFFIX: "] ",
+  DOCTOR_DETAILS_PREFIX: "    ",
+  DOCTOR_SUGGESTION_PREFIX: "    💡 Fix: ",
 
   // Doctor Log Analysis
   DOCTOR_LOGS_HEADER: "Checking Log Files...",
@@ -184,17 +207,31 @@ export const UI_MESSAGES = {
   EXPORT_START: "Exporting topology...",
   EXPORT_SUCCESS: "Exported topology to ",
   EXPORT_FAIL: "Export failed: ",
+  EXPORT_STATS_PREFIX: " (",
+  EXPORT_STATS_NODES: " nodes, ",
+  EXPORT_STATS_LINKS: " links, ",
+  EXPORT_STATS_GROUPS: " groups",
+  EXPORT_STATS_COLLAPSED: ", collapsed",
+  EXPORT_STATS_SUFFIX: ")",
+  EXPORT_HTML_SEPARATOR: " and ",
 
   // Snapshot Command
   SNAPSHOT_START: "Packing knowledge graph snapshot...",
   SNAPSHOT_SUCCESS: "Snapshot packed onto the knowledge branch. ",
   SNAPSHOT_FAIL: "Snapshot failed: ",
+  SNAPSHOT_NODES_WRITTEN: " nodes, ",
+  SNAPSHOT_EDGES_WRITTEN: " edges, ",
+  SNAPSHOT_MARKDOWN_WRITTEN: " markdown files",
 
   // Hydrate Command
   HYDRATE_START: "Hydrating local database from the knowledge branch...",
   HYDRATE_SUCCESS: "Hydrated local database. ",
   HYDRATE_NOTHING: 'Nothing to hydrate from yet — run "docuvia init" first.',
   HYDRATE_FAIL: "Hydrate failed: ",
+  HYDRATE_NODES_LOADED: " nodes, ",
+  HYDRATE_EDGES_LOADED: " edges",
+  HYDRATE_EDGES_DROPPED_PREFIX: ", ",
+  HYDRATE_EDGES_DROPPED_SUFFIX: " dangling edge(s) dropped",
 
   // Sync Knowledge Command
   SYNC_KNOWLEDGE_START: "Reconciling the knowledge branch with the remote...",

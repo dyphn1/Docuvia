@@ -6,12 +6,15 @@ import {
   RiskLevels,
   type BlastRadiusEntry,
   type RiskLevel,
+  MemoryKeys,
+  LogLevels,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { OUTPUT_FORMAT_MARKERS as FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 
 function printBlastRadius(
   blastRadius: BlastRadiusEntry[],
@@ -23,20 +26,26 @@ function printBlastRadius(
     ui.warn(UI_MESSAGES.IMPACT_NO_DEPENDENTS);
   } else {
     for (const entry of blastRadius) {
-      console.log("  " + entry.name + " (" + entry.type + ")");
+      ui.log(
+        FORMAT_MARKERS.INDENT_TWO +
+          entry.name +
+          FORMAT_MARKERS.OPEN_PAREN +
+          entry.type +
+          FORMAT_MARKERS.CLOSE_PAREN,
+      );
     }
   }
 
-  console.log("");
+  ui.log(FORMAT_MARKERS.EMPTY);
   const riskLine = UI_MESSAGES.IMPACT_RISK_PREFIX + riskLevel;
   if (riskLevel === RiskLevels.CRITICAL) {
     ui.error(riskLine);
   } else if (riskLevel === RiskLevels.HIGH) {
     ui.warn(riskLine);
   } else {
-    console.log(riskLine);
+    ui.log(riskLine);
   }
-  console.log("");
+  ui.log(FORMAT_MARKERS.EMPTY);
 }
 
 /**
@@ -57,29 +66,46 @@ export async function impactCommand(
   }
 
   const spinner = ui
-    .spinner(UI_MESSAGES.IMPACT_START + '"' + target + '"...')
+    .spinner(
+      UI_MESSAGES.IMPACT_START +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        target +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        "...",
+    )
     .start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
-    if (event.level === "info") spinner.text = event.message;
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
-  docuviaMemory.set(scopeId, "target", target);
-  if (options.escalateToLsp) docuviaMemory.set(scopeId, "escalateToLsp", true);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.TARGET, target);
+  if (options.escalateToLsp)
+    docuviaMemory.set(scopeId, MemoryKeys.ESCALATE_TO_LSP, true);
 
   try {
     const result = await docuviaApi.impact(scopeId, logger);
 
     if (!result) {
-      spinner.warn(UI_MESSAGES.IMPACT_NOT_FOUND + '"' + target + '"');
+      spinner.warn(
+        UI_MESSAGES.IMPACT_NOT_FOUND +
+          FORMAT_MARKERS.DOUBLE_QUOTE +
+          target +
+          FORMAT_MARKERS.DOUBLE_QUOTE,
+      );
       return;
     }
 
-    spinner.succeed(UI_MESSAGES.IMPACT_SUCCESS + '"' + target + '"');
-    console.log("");
+    spinner.succeed(
+      UI_MESSAGES.IMPACT_SUCCESS +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        target +
+        FORMAT_MARKERS.DOUBLE_QUOTE,
+    );
+    ui.log("");
     printBlastRadius(result.blastRadius, result.riskLevel);
   } catch (error: unknown) {
     const message =

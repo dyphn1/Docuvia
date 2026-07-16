@@ -1,16 +1,20 @@
 import type { LanguageConfig } from "@workspace/ast-core";
+import { QueryCaptureName } from "../constants/query-capture-names.js";
+
+const PYTHON_EXTENSIONS = [".py"];
+const PYTHON_WASM_FILE = "tree-sitter-python.wasm";
 
 export const pythonConfig: LanguageConfig = {
-  extensions: [".py"],
-  wasm_file: "tree-sitter-python.wasm",
+  extensions: PYTHON_EXTENSIONS,
+  wasm_file: PYTHON_WASM_FILE,
   imports: ["import_statement", "import_from_statement"],
   classes: ["class_definition"],
   functions: ["function_definition"],
   calls: ["call"],
   queries: {
-    classes: `(class_definition name: (identifier) @class)`,
-    functions: `(function_definition name: (identifier) @function)`,
-    imports: `(import_statement) @import (import_from_statement) @import`,
-    calls: `(call function: [(identifier) (attribute)] @call)`,
+    classes: `(class_definition name: (identifier) @${QueryCaptureName.CLASS})`,
+    functions: `(function_definition name: (identifier) @${QueryCaptureName.FUNCTION})`,
+    imports: `(import_statement) @${QueryCaptureName.IMPORT} (import_from_statement) @${QueryCaptureName.IMPORT}`,
+    calls: `(call function: [(identifier) (attribute)] @${QueryCaptureName.CALL})`,
   },
 };

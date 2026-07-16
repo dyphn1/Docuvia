@@ -2,8 +2,11 @@ import {
   docuviaMemory,
   DocuviaError,
   ErrorCodes,
+  MemoryKeys,
   type ILogger,
+  type MemoryKey,
 } from "@workspace/contracts";
+import { DOCUVIA_API_MESSAGES } from "./constants/docuvia-api-messages.js";
 import { InitWorkflow } from "./workflows/init/init-workflow.js";
 import type { InitResult } from "./workflows/init/init-result.js";
 import { CleanWorkflow } from "./workflows/clean/clean-workflow.js";
@@ -37,12 +40,12 @@ import {
 } from "./workflows/doctor/doctor-workflow.js";
 import type { DoctorResult } from "./workflows/doctor/doctor-result.js";
 
-function requireMemory<T>(scopeId: string, key: string): T {
+function requireMemory<T>(scopeId: string, key: MemoryKey): T {
   const value = docuviaMemory.get<T>(scopeId, key);
   if (value === undefined) {
     throw new DocuviaError(
       ErrorCodes.INVALID_INPUT,
-      `docuviaApi: no "${key}" set in memory scope "${scopeId}"`,
+      DOCUVIA_API_MESSAGES.MISSING_MEMORY_KEY(key, scopeId),
     );
   }
   return value;
@@ -56,26 +59,38 @@ function requireMemory<T>(scopeId: string, key: string): T {
  */
 export const docuviaApi = {
   async init(scopeId: string, logger: ILogger): Promise<InitResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
     return new InitWorkflow(workspaceRoot, logger).execute();
   },
 
   async clean(scopeId: string, logger: ILogger): Promise<CleanResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
     return new CleanWorkflow(workspaceRoot, logger).execute();
   },
 
   async status(scopeId: string, logger: ILogger): Promise<StatusResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
     return new StatusWorkflow(workspaceRoot, logger).execute();
   },
 
   async sync(scopeId: string, logger: ILogger): Promise<SyncResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
-    const apiUrl = requireMemory<string>(scopeId, "apiUrl");
-    const pat = requireMemory<string>(scopeId, "pat");
-    const projectId = requireMemory<string>(scopeId, "projectId");
-    const commitSha = docuviaMemory.get<string>(scopeId, "commitSha");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    const apiUrl = requireMemory<string>(scopeId, MemoryKeys.API_URL);
+    const pat = requireMemory<string>(scopeId, MemoryKeys.PAT);
+    const projectId = requireMemory<string>(scopeId, MemoryKeys.PROJECT_ID);
+    const commitSha = docuviaMemory.get<string>(scopeId, MemoryKeys.COMMIT_SHA);
     return new SyncWorkflow(workspaceRoot, logger, apiUrl, pat).execute({
       projectId,
       commitSha,
@@ -83,14 +98,23 @@ export const docuviaApi = {
   },
 
   async analyze(scopeId: string, logger: ILogger): Promise<AnalyzeResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
-    const targetPath = docuviaMemory.get<string>(scopeId, "targetPath");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    const targetPath = docuviaMemory.get<string>(
+      scopeId,
+      MemoryKeys.TARGET_PATH,
+    );
     if (!targetPath) {
       return new AnalyzeWorkflow(workspaceRoot, logger).execute();
     }
-    const llmBaseUrl = requireMemory<string>(scopeId, "llmBaseUrl");
-    const llmModel = requireMemory<string>(scopeId, "llmModel");
-    const llmApiKey = docuviaMemory.get<string>(scopeId, "llmApiKey");
+    const llmBaseUrl = requireMemory<string>(scopeId, MemoryKeys.LLM_BASE_URL);
+    const llmModel = requireMemory<string>(scopeId, MemoryKeys.LLM_MODEL);
+    const llmApiKey = docuviaMemory.get<string>(
+      scopeId,
+      MemoryKeys.LLM_API_KEY,
+    );
     return new AnalyzeWorkflow(workspaceRoot, logger, {
       targetPath,
       llmBaseUrl,
@@ -100,24 +124,36 @@ export const docuviaApi = {
   },
 
   async review(scopeId: string, logger: ILogger): Promise<ReviewResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
-    const baseRef = docuviaMemory.get<string>(scopeId, "baseRef");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    const baseRef = docuviaMemory.get<string>(scopeId, MemoryKeys.BASE_REF);
     return new ReviewWorkflow(workspaceRoot, logger).execute(baseRef);
   },
 
   async impact(scopeId: string, logger: ILogger): Promise<ImpactResult | null> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
-    const target = requireMemory<string>(scopeId, "target");
-    const escalateToLsp = docuviaMemory.get<boolean>(scopeId, "escalateToLsp");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    const target = requireMemory<string>(scopeId, MemoryKeys.TARGET);
+    const escalateToLsp = docuviaMemory.get<boolean>(
+      scopeId,
+      MemoryKeys.ESCALATE_TO_LSP,
+    );
     return new ImpactWorkflow(workspaceRoot, logger).execute(target, {
       escalateToLsp,
     });
   },
 
   async query(scopeId: string, logger: ILogger): Promise<QueryResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
-    const target = requireMemory<string>(scopeId, "target");
-    const limit = docuviaMemory.get<number>(scopeId, "limit");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    const target = requireMemory<string>(scopeId, MemoryKeys.TARGET);
+    const limit = docuviaMemory.get<number>(scopeId, MemoryKeys.LIMIT);
     return new QueryWorkflow(workspaceRoot, logger).execute(target, limit);
   },
 
@@ -125,10 +161,13 @@ export const docuviaApi = {
     scopeId: string,
     logger: ILogger,
   ): Promise<TopologyGraph> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
     const collapse = docuviaMemory.get<TopologyExportOptions["collapse"]>(
       scopeId,
-      "collapse",
+      MemoryKeys.COLLAPSE,
     );
     return new ExportTopologyWorkflow(workspaceRoot, logger).execute({
       collapse,
@@ -136,12 +175,18 @@ export const docuviaApi = {
   },
 
   async snapshot(scopeId: string, logger: ILogger): Promise<SnapshotResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
     return new SnapshotWorkflow(workspaceRoot, logger).execute();
   },
 
   async hydrate(scopeId: string, logger: ILogger): Promise<HydrateResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
     return new HydrateWorkflow(workspaceRoot, logger).execute();
   },
 
@@ -149,7 +194,10 @@ export const docuviaApi = {
     scopeId: string,
     logger: ILogger,
   ): Promise<KnowledgeBranchSyncResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
     return new SyncKnowledgeWorkflow(workspaceRoot, logger).execute();
   },
 
@@ -158,7 +206,10 @@ export const docuviaApi = {
     logger: ILogger,
     options?: DoctorOptions,
   ): Promise<DoctorResult> {
-    const workspaceRoot = requireMemory<string>(scopeId, "workspaceRoot");
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
     return new DoctorWorkflow(workspaceRoot, logger).execute(options);
   },
 };

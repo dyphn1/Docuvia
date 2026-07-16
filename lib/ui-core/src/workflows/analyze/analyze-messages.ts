@@ -19,6 +19,25 @@ export const ANALYZE_MESSAGES = {
    */
   NO_GRAPH_TO_ATTACH:
     "run `docuvia init` first — decisions need a graph to attach to",
+  PATH_NOT_FOUND: (targetPath: string) => `Path does not exist: ${targetPath}`,
+  LLM_NON_JSON_OUTPUT: "LLM returned non-JSON output for decision extraction",
+  FILE_READ_FAILED: "Failed to read file for decision extraction",
+} as const;
+
+/** Structured-log event names appended to `analyze.log` by the `analyze` workflow. The old
+ *  config-scan-only `analyze.start`/`analyze.summary` events died with the no-arg auto-mode
+ *  breaking change (PLAT-007 Tier A; phase1-decision-integration.md §6a). */
+export const ANALYZE_EVENTS = {
+  AUTO_START: "analyze.auto.start",
+  /** Run-level failure line covering the whole auto-mode dispatch (phase1-decision-integration.md §6c). */
+  AUTO_ERROR: "analyze.auto.error",
+  DELTA_NOOP: "analyze.delta.noop",
+  DELTA_NO_HEAD: "analyze.delta.no_head",
+  FOCUSED_START: "analyze.focused.start",
+  FOCUSED_ERROR: "analyze.focused.error",
+  FOCUSED_SUMMARY: "analyze.focused.summary",
+  FOCUSED_PERSISTED: "analyze.focused.persisted",
+  FOCUSED_PERSIST_SKIPPED: "analyze.focused.persist_skipped",
 } as const;
 
 /**

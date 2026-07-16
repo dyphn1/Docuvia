@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import { DocuviaError, ErrorCodes, type ILogger } from "@workspace/contracts";
-import { CLEAN_MESSAGES } from "./clean-messages.js";
+import { CLEAN_EVENTS, CLEAN_MESSAGES } from "./clean-messages.js";
 import { appendCleanLogLine, writeCleanSummary } from "./clean-log-writer.js";
 import type { CleanResult } from "./clean-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
@@ -21,7 +21,7 @@ export class CleanWorkflow {
     const dbPath = resolveDbPath(workspaceRoot);
 
     logger.info(CLEAN_MESSAGES.CLEANING(dbPath));
-    await appendCleanLogLine(workspaceRoot, { event: "clean.start" });
+    await appendCleanLogLine(workspaceRoot, { event: CLEAN_EVENTS.START });
 
     let exists = true;
     try {
@@ -44,12 +44,12 @@ export class CleanWorkflow {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.CLEAN_WORKFLOW_FAILED,
-        `Failed to delete database at ${dbPath}`,
+        CLEAN_MESSAGES.DELETE_FAILED(dbPath),
         err,
       );
     }
 
-    logger.info(`Deleted local database at ${dbPath}`);
+    logger.info(CLEAN_MESSAGES.DELETED_AT(dbPath));
     const result: CleanResult = {
       deleted: true,
       message: CLEAN_MESSAGES.DELETED,

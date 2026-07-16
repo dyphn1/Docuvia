@@ -1,5 +1,6 @@
 import { INIT_LOG_FILE_NAME } from "@workspace/contracts";
 import { appendCommandLogLine } from "../../utils/command-log-writer.js";
+import { INIT_EVENTS } from "./init-messages.js";
 
 export interface InitLogSummary {
   filesRequested: number;
@@ -20,5 +21,8 @@ export async function writeInitSummary(
   workspaceRoot: string,
   summary: InitLogSummary,
 ): Promise<void> {
-  await appendInitLogLine(workspaceRoot, { event: "init.summary", ...summary });
+  await appendInitLogLine(workspaceRoot, {
+    event: INIT_EVENTS.SUMMARY,
+    ...summary,
+  });
 }

@@ -1,8 +1,12 @@
 import type { LanguageConfig } from "@workspace/ast-core";
+import { QueryCaptureName } from "../constants/query-capture-names.js";
+
+const PHP_EXTENSIONS = [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"];
+const PHP_WASM_FILE = "tree-sitter-php.wasm";
 
 export const phpConfig: LanguageConfig = {
-  extensions: [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"],
-  wasm_file: "tree-sitter-php.wasm",
+  extensions: PHP_EXTENSIONS,
+  wasm_file: PHP_WASM_FILE,
   imports: [
     "namespace_use_declaration",
     "include_expression",
@@ -23,9 +27,9 @@ export const phpConfig: LanguageConfig = {
     "scoped_call_expression",
   ],
   queries: {
-    classes: `(class_declaration name: (name) @class) (interface_declaration name: (name) @class) (trait_declaration name: (name) @class) (enum_declaration name: (name) @class)`,
-    functions: `(function_definition name: (name) @function) (method_declaration name: (name) @function)`,
-    imports: `(namespace_use_declaration) @import (include_expression) @import (include_once_expression) @import (require_expression) @import (require_once_expression) @import`,
-    calls: `(function_call_expression function: (name) @call) (member_call_expression name: (name) @call) (scoped_call_expression name: (name) @call)`,
+    classes: `(class_declaration name: (name) @${QueryCaptureName.CLASS}) (interface_declaration name: (name) @${QueryCaptureName.CLASS}) (trait_declaration name: (name) @${QueryCaptureName.CLASS}) (enum_declaration name: (name) @${QueryCaptureName.CLASS})`,
+    functions: `(function_definition name: (name) @${QueryCaptureName.FUNCTION}) (method_declaration name: (name) @${QueryCaptureName.FUNCTION})`,
+    imports: `(namespace_use_declaration) @${QueryCaptureName.IMPORT} (include_expression) @${QueryCaptureName.IMPORT} (include_once_expression) @${QueryCaptureName.IMPORT} (require_expression) @${QueryCaptureName.IMPORT} (require_once_expression) @${QueryCaptureName.IMPORT}`,
+    calls: `(function_call_expression function: (name) @${QueryCaptureName.CALL}) (member_call_expression name: (name) @${QueryCaptureName.CALL}) (scoped_call_expression name: (name) @${QueryCaptureName.CALL})`,
   },
 };

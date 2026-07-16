@@ -1,6 +1,11 @@
 import process from "process";
 import crypto from "node:crypto";
-import { docuviaMemory, DocuviaError } from "@workspace/contracts";
+import {
+  docuviaMemory,
+  DocuviaError,
+  MemoryKeys,
+  LogLevels,
+} from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
@@ -23,11 +28,11 @@ export async function cleanCommand(cwd: string = process.cwd()) {
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
-    if (event.level === "info") spinner.text = event.message;
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
   docuviaMemory.createScope(scopeId);
-  docuviaMemory.set(scopeId, "workspaceRoot", cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
 
   try {
     const result = await docuviaApi.clean(scopeId, logger);

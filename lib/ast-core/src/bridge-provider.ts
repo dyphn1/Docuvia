@@ -11,6 +11,43 @@
  */
 
 import { AstEvent } from "./sink.js";
+import { AstEventType } from "./constants/ast-event-constants.js";
+
+export const SpecFormat = {
+  YAML: "yaml",
+  JSON: "json",
+} as const;
+export type SpecFormat = (typeof SpecFormat)[keyof typeof SpecFormat];
+
+/** File extensions recognized as candidate OpenAPI/Swagger spec files. */
+export const OPENAPI_SPEC_EXTENSIONS = [".yaml", ".yml", ".json"] as const;
+
+const HTTP_METHODS = [
+  "get",
+  "post",
+  "put",
+  "delete",
+  "patch",
+  "options",
+  "head",
+] as const;
+
+/** Signature key prefixes checked when sniffing a file for an OpenAPI/Swagger spec. */
+const OPENAPI_SIGNATURE_PREFIXES = [
+  "openapi:",
+  "swagger:",
+  '"openapi":',
+  '"swagger":',
+] as const;
+
+/** OpenAPI vendor-extension key prefixes used to hint cross-language consumers. */
+const ConsumerExtensionKeyPrefixes = {
+  CONSUMER: "x-consumer",
+  CLIENT: "x-client",
+} as const;
+
+/** Marks the root of a URL path when deriving an OpenAPI spec's base path. */
+const ROOT_URL_PATH = "/";
 
 export interface BridgeParseResult {
   events: AstEvent[];
@@ -25,102 +62,161 @@ export interface BridgeParseResult {
  * The ingestion pipeline can link these to L2 nodes via path pattern matching
  * or naming conventions (e.g., an SDK client calls a documented endpoint).
  */
+/** Result of parsing raw spec content, before OpenAPI/Swagger version detection. */
+const EMPTY_PARSE_RESULT: BridgeParseResult = {
+  events: [],
+  contractName: "",
+  endpointCount: 0,
+};
+
+/**
+ * Parses raw spec text (YAML or JSON) into a plain object. Returns `null` on any
+ * parse failure, mirroring the original try/catch's "swallow and treat as no spec"
+ * behavior.
+ */
+async function parseSpecContent(
+  content: string,
+  format: SpecFormat,
+): Promise<any> {
+  try {
+    if (format === SpecFormat.YAML) {
+      // Dynamic import to avoid pulling js-yaml into the default tree-sitter path
+      const yaml = await import("js-yaml");
+      return yaml.load(content);
+    }
+    return JSON.parse(content);
+  } catch (err: any) {
+    return null;
+  }
+}
+
+/** Detects whether a parsed spec object declares itself as OpenAPI 3.x or Swagger 2.0. */
+function detectOpenApiVersion(spec: any): {
+  isOpenApi3: boolean;
+  isSwagger2: boolean;
+} {
+  return {
+    isOpenApi3: spec.openapi && typeof spec.openapi === "string",
+    isSwagger2: spec.swagger && typeof spec.swagger === "string",
+  };
+}
+
+function buildContractSummaryEvent(
+  spec: any,
+  contractName: string,
+  isOpenApi3: boolean,
+  filePath: string,
+): AstEvent {
+  return {
+    type: AstEventType.API_CONTRACT,
+    contractName,
+    version: isOpenApi3 ? spec.openapi : spec.swagger,
+    description: spec.info?.description || "",
+    filePath,
+    basePath: extractBasePath(spec),
+  };
+}
+
+function buildEndpointEvent(
+  method: (typeof HTTP_METHODS)[number],
+  routePath: string,
+  operation: any,
+  spec: any,
+  contractName: string,
+  isOpenApi3: boolean,
+  filePath: string,
+): AstEvent {
+  const summary =
+    operation.summary ||
+    operation.description ||
+    `${method.toUpperCase()} ${routePath}`;
+  const operationId = operation.operationId || null;
+  const tags = Array.isArray(operation.tags) ? operation.tags : [];
+
+  return {
+    type: AstEventType.API_CONTRACT,
+    contractName,
+    version: isOpenApi3 ? spec.openapi : spec.swagger,
+    method: method.toUpperCase(),
+    path: routePath,
+    fullPath: `${extractBasePath(spec)}${routePath}`,
+    summary,
+    operationId,
+    tags,
+    filePath,
+    // Cross-language link hints — matching hints for consumer
+    // detection: tags or operationId can be used to match
+    // function names in client SDKs.
+    consumers: extractConsumers(operation),
+  };
+}
+
+/** Emits one event per HTTP-method operation across every path in the spec. */
+function buildEndpointEvents(
+  spec: any,
+  contractName: string,
+  isOpenApi3: boolean,
+  filePath: string,
+): AstEvent[] {
+  const events: AstEvent[] = [];
+  const paths = spec.paths || {};
+
+  for (const [routePath, pathItem] of Object.entries(paths)) {
+    if (!pathItem || typeof pathItem !== "object") continue;
+
+    for (const method of HTTP_METHODS) {
+      const operation = (pathItem as any)[method];
+      if (!operation || typeof operation !== "object") continue;
+
+      events.push(
+        buildEndpointEvent(
+          method,
+          routePath,
+          operation,
+          spec,
+          contractName,
+          isOpenApi3,
+          filePath,
+        ),
+      );
+    }
+  }
+
+  return events;
+}
+
 export async function parseOpenApiSpec(
   content: string,
   filePath: string,
-  format: "yaml" | "json",
+  format: SpecFormat,
 ): Promise<BridgeParseResult> {
-  let spec: any;
-
-  try {
-    if (format === "yaml") {
-      // Dynamic import to avoid pulling js-yaml into the default tree-sitter path
-      const yaml = await import("js-yaml");
-      spec = yaml.load(content);
-    } else {
-      spec = JSON.parse(content);
-    }
-  } catch (err: any) {
-    return { events: [], contractName: "", endpointCount: 0 };
-  }
+  const spec = await parseSpecContent(content, format);
 
   if (!spec || typeof spec !== "object") {
-    return { events: [], contractName: "", endpointCount: 0 };
+    return EMPTY_PARSE_RESULT;
   }
 
-  // Detect OpenAPI version
-  const isOpenApi3 = spec.openapi && typeof spec.openapi === "string";
-  const isSwagger2 = spec.swagger && typeof spec.swagger === "string";
+  const { isOpenApi3, isSwagger2 } = detectOpenApiVersion(spec);
 
   if (!isOpenApi3 && !isSwagger2) {
-    return { events: [], contractName: "", endpointCount: 0 };
+    return EMPTY_PARSE_RESULT;
   }
 
   const contractName =
     (spec.info && spec.info.title) ||
     filePath.replace(/\.(yaml|yml|json)$/, "");
 
-  const events: AstEvent[] = [];
-  const paths = spec.paths || {};
-
-  // Emit a top-level contract event
-  events.push({
-    type: "api_contract",
-    contractName,
-    version: isOpenApi3 ? spec.openapi : spec.swagger,
-    description: spec.info?.description || "",
-    filePath,
-    basePath: extractBasePath(spec),
-  });
-
-  // Emit one event per endpoint
-  for (const [routePath, pathItem] of Object.entries(paths)) {
-    if (!pathItem || typeof pathItem !== "object") continue;
-
-    const methods = [
-      "get",
-      "post",
-      "put",
-      "delete",
-      "patch",
-      "options",
-      "head",
-    ];
-    for (const method of methods) {
-      const operation = (pathItem as any)[method];
-      if (!operation || typeof operation !== "object") continue;
-
-      const summary =
-        operation.summary ||
-        operation.description ||
-        `${method.toUpperCase()} ${routePath}`;
-      const operationId = operation.operationId || null;
-      const tags = Array.isArray(operation.tags) ? operation.tags : [];
-
-      events.push({
-        type: "api_contract",
-        contractName,
-        version: isOpenApi3 ? spec.openapi : spec.swagger,
-        method: method.toUpperCase(),
-        path: routePath,
-        fullPath: `${extractBasePath(spec)}${routePath}`,
-        summary,
-        operationId,
-        tags,
-        filePath,
-        // Cross-language link hints — matching hints for consumer
-        // detection: tags or operationId can be used to match
-        // function names in client SDKs.
-        consumers: extractConsumers(operation),
-      });
-    }
-  }
+  const events: AstEvent[] = [
+    buildContractSummaryEvent(spec, contractName, isOpenApi3, filePath),
+    ...buildEndpointEvents(spec, contractName, isOpenApi3, filePath),
+  ];
 
   return {
     events,
     contractName,
-    endpointCount: events.filter((e) => e.type === "api_contract" && e.method)
-      .length,
+    endpointCount: events.filter(
+      (e) => e.type === AstEventType.API_CONTRACT && e.method,
+    ).length,
   };
 }
 
@@ -129,7 +225,9 @@ export async function parseOpenApiSpec(
  * Fast path: check for 'openapi' or 'swagger' key at root level.
  */
 export function isOpenApiFile(content: string, ext: string): boolean {
-  if (![".yaml", ".yml", ".json"].includes(ext.toLowerCase())) {
+  if (
+    !(OPENAPI_SPEC_EXTENSIONS as readonly string[]).includes(ext.toLowerCase())
+  ) {
     return false;
   }
 
@@ -138,10 +236,7 @@ export function isOpenApiFile(content: string, ext: string): boolean {
   for (const line of lines) {
     const trimmed = line.trim();
     if (
-      trimmed.startsWith("openapi:") ||
-      trimmed.startsWith("swagger:") ||
-      trimmed.startsWith('"openapi":') ||
-      trimmed.startsWith('"swagger":')
+      OPENAPI_SIGNATURE_PREFIXES.some((prefix) => trimmed.startsWith(prefix))
     ) {
       return true;
     }
@@ -149,18 +244,22 @@ export function isOpenApiFile(content: string, ext: string): boolean {
   return false;
 }
 
+/** Strips scheme/host from an OpenAPI 3.x `servers[0].url`, keeping only the path. */
+function extractBasePathFromServerUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return u.pathname === ROOT_URL_PATH ? "" : u.pathname;
+  } catch {
+    // Relative path
+    return url.startsWith(ROOT_URL_PATH) ? url : "";
+  }
+}
+
 function extractBasePath(spec: any): string {
   if (spec.servers && Array.isArray(spec.servers) && spec.servers[0]) {
     const url = spec.servers[0].url;
     if (url && typeof url === "string") {
-      // Strip scheme/host if present, keep path
-      try {
-        const u = new URL(url);
-        return u.pathname === "/" ? "" : u.pathname;
-      } catch {
-        // Relative path
-        return url.startsWith("/") ? url : "";
-      }
+      return extractBasePathFromServerUrl(url);
     }
   }
   if (spec.host && spec.basePath) {
@@ -179,7 +278,10 @@ function extractConsumers(operation: any): string[] {
 
   // Look for x-consumer or x-client extensions
   for (const key of Object.keys(operation)) {
-    if (key.startsWith("x-consumer") || key.startsWith("x-client")) {
+    if (
+      key.startsWith(ConsumerExtensionKeyPrefixes.CONSUMER) ||
+      key.startsWith(ConsumerExtensionKeyPrefixes.CLIENT)
+    ) {
       const val = operation[key];
       if (typeof val === "string") {
         consumers.push(val);

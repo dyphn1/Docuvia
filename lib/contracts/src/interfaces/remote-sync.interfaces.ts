@@ -1,3 +1,5 @@
+import type { L3NodeType } from "./graph-store.interfaces.js";
+
 /**
  * Remote backend sync surface — implemented by `lib/remote-api`'s fetch-backed HTTP client. Pure
  * network I/O with no Docuvia-specific dedup logic (the content-hash cache lives in
@@ -14,14 +16,20 @@ export interface CreateL3EventPayload {
   l2NodeId: number;
   title: string;
   content?: string | null;
-  nodeType?: "change" | "rule" | "decision" | "context";
+  nodeType?: L3NodeType;
   confidence?: number | null;
   sourceCommits?: string[];
   contentHash?: string | null;
 }
 
+export const SyncPushEventTypes = {
+  CREATE_L3: "CREATE_L3",
+} as const;
+export type SyncPushEventType =
+  (typeof SyncPushEventTypes)[keyof typeof SyncPushEventTypes];
+
 export interface SyncPushEvent {
-  type: "CREATE_L3";
+  type: SyncPushEventType;
   payload: CreateL3EventPayload;
 }
 

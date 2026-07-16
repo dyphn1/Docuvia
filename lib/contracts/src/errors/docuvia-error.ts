@@ -1,5 +1,7 @@
 import type { ErrorCode } from "./error-codes.js";
 
+const DOCUVIA_ERROR_NAME = "DocuviaError" as const;
+
 /**
  * The single base error class used across the entire workspace — see
  * docs/gitbook/architecture/error-handling-architecture.md's "Catch, Wrap, and Bubble"
@@ -13,7 +15,7 @@ export class DocuviaError extends Error {
 
   constructor(code: ErrorCode, message: string, cause?: unknown) {
     super(message);
-    this.name = "DocuviaError";
+    this.name = DOCUVIA_ERROR_NAME;
     this.code = code;
     this.cause = cause;
   }

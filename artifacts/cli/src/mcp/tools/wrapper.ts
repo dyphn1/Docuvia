@@ -1,4 +1,5 @@
 import type { McpTool } from "./types.js";
+import { MCP_CONTENT_TYPE_TEXT } from "../constants.js";
 
 export function withErrorHandling(
   errorMessagePrefix: string,
@@ -10,7 +11,10 @@ export function withErrorHandling(
     } catch (e: any) {
       return {
         content: [
-          { type: "text", text: `${errorMessagePrefix}: ${e.message}` },
+          {
+            type: MCP_CONTENT_TYPE_TEXT,
+            text: `${errorMessagePrefix}: ${e.message}`,
+          },
         ],
         isError: true,
       };

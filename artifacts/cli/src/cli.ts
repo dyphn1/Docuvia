@@ -28,14 +28,14 @@ import {
   CliCommand,
   getUsageText,
 } from "./constants/cli-commands.js";
-import { CLI_FLAGS } from "./constants/cli-flags.js";
+import { CLI_FLAGS, type QueryOutputFormat } from "./constants/cli-flags.js";
 import { UI_MESSAGES } from "./constants/ui-messages.js";
 import { ArgParser } from "./utils/arg-parser.js";
 
 dotenv.config();
 
 function printUsage() {
-  console.error(getUsageText());
+  ui.error(getUsageText());
 }
 
 interface CommandContext {
@@ -101,7 +101,7 @@ async function handleQuery(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags([CLI_FLAGS.FORMAT, CLI_FLAGS.LIMIT]);
   const target = ctx.parser.getPositional(0);
   const format = ctx.parser.getFlagValue(CLI_FLAGS.FORMAT) as
-    "human" | "prompt" | undefined;
+    QueryOutputFormat | undefined;
   const limitRaw = ctx.parser.getFlagValue(CLI_FLAGS.LIMIT);
   const limit = limitRaw ? Number(limitRaw) : undefined;
   await queryCommand(target, { format, limit }, ctx.workspaceRoot);
@@ -253,11 +253,9 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(
-    pc.red(
-      UI_MESSAGES.CLI_FATAL_ERROR +
-        (err instanceof Error ? err.message : String(err)),
-    ),
+  ui.error(
+    UI_MESSAGES.CLI_FATAL_ERROR +
+      (err instanceof Error ? err.message : String(err)),
   );
   process.exit(1);
 });

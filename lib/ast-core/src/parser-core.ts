@@ -1,9 +1,19 @@
 import { Parser, Language } from "web-tree-sitter";
+import { UTF8_ENCODING } from "@workspace/contracts";
 import { LanguageRegistry } from "./language-registry.js";
 import { DefaultProvider } from "./language-provider.js";
 import { AstEvent } from "./sink.js";
 import { AstTraverser } from "./core/ast-traverser.js";
 import { EdgeComputer } from "./core/edge-computer.js";
+import { AstEventType } from "./constants/ast-event-constants.js";
+
+const ParserErrorMessages = {
+  NO_LANGUAGE_PROVIDER: (ext: string) =>
+    `No language provider found for extension: ${ext}`,
+  WASM_LOAD_FAILED: (wasmFileName: string, msg: string) =>
+    `Failed to load grammar WASM ${wasmFileName}: ${msg}`,
+  PARSE_FAILED: "Failed to parse file with tree-sitter",
+} as const;
 
 export type WasmLoader = (
   wasmFileName: string,
@@ -29,16 +39,16 @@ export async function* generateAst(
 ): AsyncGenerator<AstEvent, void, undefined> {
   const provider = registry.getProviderForExtension(ext);
   if (!provider) {
-    throw new Error(`No language provider found for extension: ${ext}`);
+    throw new Error(ParserErrorMessages.NO_LANGUAGE_PROVIDER(ext));
   }
 
   const wasmFileName = provider.wasm_file;
   let wasmBytesOrPath;
   try {
     wasmBytesOrPath = await loadWasm(wasmFileName);
-  } catch (error) {
-    console.warn(`Failed to load grammar WASM ${wasmFileName}:`, error);
-    return;
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    throw new Error(ParserErrorMessages.WASM_LOAD_FAILED(wasmFileName, msg));
   }
 
   // Handle both Uint8Array/ArrayBuffer and string paths
@@ -53,13 +63,13 @@ export async function* generateAst(
   const textContent =
     typeof fileContent === "string"
       ? fileContent
-      : new TextDecoder("utf-8").decode(fileContent);
+      : new TextDecoder(UTF8_ENCODING).decode(fileContent);
 
   const tree = parser.parse(textContent);
 
   if (!tree) {
     parser.delete();
-    throw new Error("Failed to parse file with tree-sitter");
+    throw new Error(ParserErrorMessages.PARSE_FAILED);
   }
 
   try {
@@ -75,7 +85,7 @@ export async function* generateAst(
       filePath,
     );
 
-    yield { type: "file", path: filePath };
+    yield { type: AstEventType.FILE, path: filePath };
     yield* traverser.extractClasses();
     yield* traverser.extractFunctions();
     yield* edgeComputer.computeCallEdges(traverser.getCalls());

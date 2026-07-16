@@ -9,6 +9,14 @@ import type { Token } from "./tokens.js";
  */
 export type Provider<T, P = void> = (factory: DocuviaFactory, params: P) => T;
 
+const FactoryErrorMessages = {
+  REGISTER_LOCKED: (description: string) =>
+    `Cannot register "${description}": factory is locked (test isolation)`,
+  PROVIDER_NOT_REGISTERED: (description: string) =>
+    `No provider registered for "${description}" — the implementation ` +
+    `library that owns it was never imported for its registration side effect`,
+} as const;
+
 /**
  * The only globally permitted registration factory — see
  * docs/gitbook/architecture/virtual-contracts-architecture.md#8 (Type-Safe Registry). Stores
@@ -31,7 +39,7 @@ export class DocuviaFactory {
     if (this.locked) {
       throw new DocuviaError(
         ErrorCodes.FACTORY_LOCKED,
-        `Cannot register "${String(token.description)}": factory is locked (test isolation)`,
+        FactoryErrorMessages.REGISTER_LOCKED(String(token.description)),
       );
     }
     this.providers.set(token, provider as Provider<unknown, unknown>);
@@ -42,8 +50,7 @@ export class DocuviaFactory {
     if (!provider) {
       throw new DocuviaError(
         ErrorCodes.FACTORY_TOKEN_NOT_REGISTERED,
-        `No provider registered for "${String(token.description)}" — the implementation ` +
-          `library that owns it was never imported for its registration side effect`,
+        FactoryErrorMessages.PROVIDER_NOT_REGISTERED(String(token.description)),
       );
     }
     return provider(this, params as P) as T;

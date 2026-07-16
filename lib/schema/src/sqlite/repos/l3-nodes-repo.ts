@@ -5,7 +5,14 @@ import {
   ErrorCodes,
   type IL3NodesRepo,
   type L3NodeRow,
+  ValidityStatuses,
 } from "@workspace/contracts";
+import { SchemaTables } from "../constants.js";
+
+const L3_NODES_ERROR_MESSAGES = {
+  GET_BY_ID_FAILED: (id: number) => `Failed to get l3 node by id ${id}`,
+  GET_ALL_EXPORTABLE_FAILED: "Failed to get all exportable l3 nodes",
+} as const;
 
 /** `content_hash` = sha256 over `nodeType + "\n" + title + "\n" + content` (phase1-decision-integration.md §3c). */
 function computeContentHash(
@@ -29,12 +36,13 @@ export class L3NodesRepo implements IL3NodesRepo {
 
   getById(id: number): L3NodeRow | undefined {
     try {
-      return this.db.prepare("SELECT * FROM l3_nodes WHERE id = ?").get(id) as
-        L3NodeRow | undefined;
+      return this.db
+        .prepare(`SELECT * FROM ${SchemaTables.L3_NODES} WHERE id = ?`)
+        .get(id) as L3NodeRow | undefined;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        `Failed to get l3 node by id ${id}`,
+        L3_NODES_ERROR_MESSAGES.GET_BY_ID_FAILED(id),
         err,
       );
     }
@@ -44,12 +52,14 @@ export class L3NodesRepo implements IL3NodesRepo {
   getAllExportable(): L3NodeRow[] {
     try {
       return this.db
-        .prepare("SELECT * FROM l3_nodes WHERE validity_status != 'garbage'")
+        .prepare(
+          `SELECT * FROM ${SchemaTables.L3_NODES} WHERE validity_status != '${ValidityStatuses.GARBAGE}'`,
+        )
         .all() as L3NodeRow[];
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to get all exportable l3 nodes",
+        L3_NODES_ERROR_MESSAGES.GET_ALL_EXPORTABLE_FAILED,
         err,
       );
     }

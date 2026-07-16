@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import type { IProjectFilesRepo, ProjectFileRow } from "@workspace/contracts";
+import { SchemaTables, SchemaColumns } from "../constants.js";
 
 /** `files` repo — `project_files` reads/writes for the file-discovery hash-diff. */
 export class ProjectFilesRepo implements IProjectFilesRepo {
@@ -12,7 +13,9 @@ export class ProjectFilesRepo implements IProjectFilesRepo {
    */
   getAllHashes(): Array<{ filePath: string; contentHash: string | null }> {
     const rows = this.db
-      .prepare("SELECT file_path, content_hash FROM project_files")
+      .prepare(
+        `SELECT ${SchemaColumns.FILE_PATH}, ${SchemaColumns.CONTENT_HASH} FROM ${SchemaTables.PROJECT_FILES}`,
+      )
       .all() as Pick<ProjectFileRow, "file_path" | "content_hash">[];
     return rows.map((row) => ({
       filePath: row.file_path,
@@ -28,10 +31,10 @@ export class ProjectFilesRepo implements IProjectFilesRepo {
   }): void {
     this.db
       .prepare(
-        `INSERT INTO project_files (project_id, file_path, content_hash, last_parsed_at)
+        `INSERT INTO ${SchemaTables.PROJECT_FILES} (${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH}, ${SchemaColumns.CONTENT_HASH}, last_parsed_at)
          VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-         ON CONFLICT(project_id, file_path)
-         DO UPDATE SET content_hash = excluded.content_hash, last_parsed_at = CURRENT_TIMESTAMP`,
+         ON CONFLICT(${SchemaColumns.PROJECT_ID}, ${SchemaColumns.FILE_PATH})
+         DO UPDATE SET ${SchemaColumns.CONTENT_HASH} = excluded.${SchemaColumns.CONTENT_HASH}, last_parsed_at = CURRENT_TIMESTAMP`,
       )
       .run(input.projectId, input.filePath, input.contentHash);
   }

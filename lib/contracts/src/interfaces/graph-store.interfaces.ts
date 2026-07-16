@@ -6,12 +6,19 @@
  * type) are typed as `0 | 1`, matching what `better-sqlite3` hands back without an explicit
  * conversion layer.
  */
+export const ProjectStatuses = {
+  ACTIVE: "active",
+  ARCHIVED: "archived",
+} as const;
+export type ProjectStatus =
+  (typeof ProjectStatuses)[keyof typeof ProjectStatuses];
+
 export interface ProjectRow {
   id: number;
   name: string;
   repo_url: string;
   description: string | null;
-  status: string;
+  status: ProjectStatus;
   vcs_type: string;
   svn_url: string | null;
   last_git_ingested_at: string | null;
@@ -42,11 +49,18 @@ export interface L1TagRow {
   created_at: string;
 }
 
+export const L2NodeTypes = {
+  MODULE: "module",
+  PACKAGE: "package",
+  PCD: "pcd",
+} as const;
+export type L2NodeType = (typeof L2NodeTypes)[keyof typeof L2NodeTypes];
+
 export interface L2NodeRow {
   id: number;
   project_id: number;
   name: string;
-  type: string;
+  type: L2NodeType;
   is_system: 0 | 1;
   description: string | null;
   ai_generated: 0 | 1;
@@ -62,11 +76,22 @@ export interface L2NodeRow {
   node_key: string | null;
 }
 
+export const LinkTypes = {
+  CONTAINS: "contains",
+  CALLS: "calls",
+  IMPLEMENTS: "implements",
+  EXTENDS: "extends",
+  IMPORTS: "imports",
+  DEPENDS_ON: "depends_on",
+  DECISION: "decision",
+} as const;
+export type LinkType = (typeof LinkTypes)[keyof typeof LinkTypes];
+
 export interface NodeLinkRow {
   id: number;
   source_node_id: number;
   target_node_id: number;
-  link_type: string;
+  link_type: LinkType;
   commit_sha: string | null;
   diff_summary: string | null;
   created_at: string;
@@ -78,12 +103,29 @@ export interface L2NodeL1TagRow {
   created_at: string;
 }
 
+export const L3NodeTypes = {
+  CHANGE: "change",
+  RULE: "rule",
+  DECISION: "decision",
+  CONTEXT: "context",
+} as const;
+export type L3NodeType = (typeof L3NodeTypes)[keyof typeof L3NodeTypes];
+
+export const ValidityStatuses = {
+  PENDING: "pending",
+  ACTIVE: "active",
+  DRAFT: "draft",
+  GARBAGE: "garbage",
+} as const;
+export type ValidityStatus =
+  (typeof ValidityStatuses)[keyof typeof ValidityStatuses];
+
 export interface L3NodeRow {
   id: number;
   l2_node_id: number;
   title: string;
   content: string | null;
-  node_type: string;
+  node_type: L3NodeType;
   source_commits: string;
   commit_hash: string | null;
   ai_generated: 0 | 1;
@@ -94,7 +136,7 @@ export interface L3NodeRow {
   occurrence_count: number;
   introduced_in_commit: string | null;
   verified_until_commit: string | null;
-  validity_status: string;
+  validity_status: ValidityStatus;
   source: string;
   content_hash: string | null;
   /** LLM model id used for extraction (e.g. `gpt-4o-mini`) — null on rows inserted before this column existed, or when the extraction path never set it. */

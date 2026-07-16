@@ -6,6 +6,7 @@ import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import {
   CLAUDE_HOOKS_DIR,
+  CLAUDE_PLUGIN_HOOKS_DIR,
   DOCUVIA_HOOK_JS,
   HOOKS_JSON,
   DOCUVIA_HOOK_JS_FILENAME,
@@ -22,19 +23,92 @@ import {
 import { UTF8_ENCODING } from "@workspace/contracts";
 import { writeOrAppend } from "../utils/fs-utils.js";
 
+const NODE_PLATFORM_WIN32 = "win32";
+const NODE_PLATFORM_DARWIN = "darwin";
+const MACOS_LIBRARY_DIR = "Library";
+const MACOS_APPLICATION_SUPPORT_DIR = "Application Support";
+const XDG_CONFIG_DIR = ".config";
+
+async function removeClaudeHookFile(claudeHooksPath: string): Promise<void> {
+  try {
+    await fs.unlink(path.join(claudeHooksPath, DOCUVIA_HOOK_JS_FILENAME));
+    ui.success(
+      `${UI_MESSAGES.UNINSTALL_REMOVED_FILE_PREFIX}${DOCUVIA_HOOK_JS_FILENAME}`,
+    );
+  } catch {
+    // Best-effort removal — file may not exist.
+  }
+}
+
+/** Removes the shared hooks config file, but only if it still matches Docuvia's stock content. */
+async function removeClaudeHooksConfig(
+  claudeHooksPath: string,
+): Promise<boolean> {
+  const hooksJsonPath = path.join(claudeHooksPath, HOOKS_CONFIG_FILENAME);
+  try {
+    const content = await fs.readFile(hooksJsonPath, UTF8_ENCODING);
+    if (
+      content.trim() ===
+      HOOKS_JSON.replace(/\$\{HOOKS_DIR\}/g, CLAUDE_PLUGIN_HOOKS_DIR).trim()
+    ) {
+      await fs.unlink(hooksJsonPath);
+      return true;
+    }
+  } catch {
+    // Best-effort removal — file may not exist or be unreadable.
+  }
+  return false;
+}
+
+async function removeClaudeHooksDirIfEmpty(
+  claudeHooksPath: string,
+): Promise<void> {
+  try {
+    await fs.rmdir(claudeHooksPath);
+  } catch {
+    // Best-effort removal — directory may be non-empty or already gone.
+  }
+}
+
+async function removeClaudeMcpServerEntry(
+  claudeConfigDir: string,
+): Promise<void> {
+  const claudeMcpPath = path.join(
+    claudeConfigDir,
+    CLAUDE_DESKTOP_CONFIG_FILENAME,
+  );
+  try {
+    const existing = await fs.readFile(claudeMcpPath, UTF8_ENCODING);
+    const claudeMcp = JSON.parse(existing);
+    if (claudeMcp?.mcpServers && claudeMcp.mcpServers[MCP_SERVER_ALIAS]) {
+      delete claudeMcp.mcpServers[MCP_SERVER_ALIAS];
+      await fs.writeFile(claudeMcpPath, JSON.stringify(claudeMcp, null, 2));
+      ui.success(
+        `${UI_MESSAGES.UNINSTALL_REMOVED_MCP_SERVER_PREFIX}${claudeMcpPath}`,
+      );
+    }
+  } catch {
+    // Best-effort removal — config file may not exist or be unreadable.
+  }
+}
+
 function resolveClaudeDesktopConfigDir(): string {
-  if (process.platform === "win32") {
+  if (process.platform === NODE_PLATFORM_WIN32) {
     return path.join(process.env.APPDATA || "", PLATFORM_NAME_CLAUDE);
   }
-  if (process.platform === "darwin") {
+  if (process.platform === NODE_PLATFORM_DARWIN) {
     return path.join(
       process.env.HOME || "",
-      "Library",
-      "Application Support",
+      MACOS_LIBRARY_DIR,
+      MACOS_APPLICATION_SUPPORT_DIR,
       PLATFORM_NAME_CLAUDE,
     );
   }
-  return path.join(process.env.HOME || "", ".config", PLATFORM_NAME_CLAUDE);
+  return path.join(
+    process.env.HOME || "",
+    XDG_CONFIG_DIR,
+    PLATFORM_NAME_CLAUDE,
+  );
 }
 
 export class ClaudePlatform extends BasePlatform {
@@ -89,7 +163,7 @@ export class ClaudePlatform extends BasePlatform {
 
     let claudeHooksConfig = HOOKS_JSON.replace(
       /\${HOOKS_DIR}/g,
-      "${CLAUDE_PLUGIN_ROOT}/hooks",
+      CLAUDE_PLUGIN_HOOKS_DIR,
     );
     await writeOrAppend(
       path.join(claudeHooksPath, HOOKS_CONFIG_FILENAME),
@@ -137,45 +211,17 @@ export class ClaudePlatform extends BasePlatform {
     allowGlobalMcpConfig = false,
   ): Promise<void> {
     const claudeHooksPath = path.join(cwd, CLAUDE_HOOKS_DIR);
-    try {
-      await fs.unlink(path.join(claudeHooksPath, DOCUVIA_HOOK_JS_FILENAME));
-      ui.success(`Removed ${DOCUVIA_HOOK_JS_FILENAME}`);
-    } catch {}
-    const hooksJsonPath = path.join(claudeHooksPath, HOOKS_CONFIG_FILENAME);
-    let removedHookJson = false;
-    try {
-      const content = await fs.readFile(hooksJsonPath, UTF8_ENCODING);
-      if (
-        content.trim() ===
-        HOOKS_JSON.replace(
-          /\$\{HOOKS_DIR\}/g,
-          "\${CLAUDE_PLUGIN_ROOT}/hooks",
-        ).trim()
-      ) {
-        await fs.unlink(hooksJsonPath);
-        removedHookJson = true;
-      }
-    } catch {}
+
+    await removeClaudeHookFile(claudeHooksPath);
+
+    const removedHookJson = await removeClaudeHooksConfig(claudeHooksPath);
     if (removedHookJson) {
-      try {
-        await fs.rmdir(claudeHooksPath);
-      } catch {}
+      await removeClaudeHooksDirIfEmpty(claudeHooksPath);
     }
+
     const claudeConfigDir = resolveClaudeDesktopConfigDir();
     if (claudeConfigDir) {
-      const claudeMcpPath = path.join(
-        claudeConfigDir,
-        CLAUDE_DESKTOP_CONFIG_FILENAME,
-      );
-      try {
-        const existing = await fs.readFile(claudeMcpPath, UTF8_ENCODING);
-        const claudeMcp = JSON.parse(existing);
-        if (claudeMcp?.mcpServers && claudeMcp.mcpServers[MCP_SERVER_ALIAS]) {
-          delete claudeMcp.mcpServers[MCP_SERVER_ALIAS];
-          await fs.writeFile(claudeMcpPath, JSON.stringify(claudeMcp, null, 2));
-          ui.success(`Removed MCP server from ${claudeMcpPath}`);
-        }
-      } catch {}
+      await removeClaudeMcpServerEntry(claudeConfigDir);
     }
   }
 }

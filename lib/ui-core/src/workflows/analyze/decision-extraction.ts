@@ -1,7 +1,9 @@
 import fs from "fs";
 import path from "path";
 import { isSupportedSourceFile } from "@workspace/core";
+import { DOCUVIA_DIR_NAME, UTF8_ENCODING } from "@workspace/contracts";
 import type { ILogger } from "@workspace/contracts";
+import { ANALYZE_MESSAGES } from "./analyze-messages.js";
 
 /** Files at/above this count are dropped from analysis rather than silently included. */
 export const MAX_ANALYZE_FILES = 40;
@@ -13,7 +15,14 @@ export interface CollectedFile {
   content: string;
 }
 
-const EXCLUDED_DIR_NAMES = new Set(["node_modules", ".git", ".docuvia"]);
+const NODE_MODULES_DIR_NAME = "node_modules";
+const GIT_DIR_NAME = ".git";
+
+const EXCLUDED_DIR_NAMES = new Set([
+  NODE_MODULES_DIR_NAME,
+  GIT_DIR_NAME,
+  DOCUVIA_DIR_NAME,
+]);
 
 /** Recursively lists every file path under `dir`, skipping `node_modules`/`.git`/`.docuvia`. */
 function walkDirectory(dir: string): string[] {
@@ -68,9 +77,9 @@ export function collectSourceFiles(
 
     let content: string;
     try {
-      content = fs.readFileSync(filePath, "utf8");
+      content = fs.readFileSync(filePath, UTF8_ENCODING);
     } catch (err) {
-      logger.warn("Failed to read file for decision extraction", {
+      logger.warn(ANALYZE_MESSAGES.FILE_READ_FAILED, {
         filePath,
         error: err instanceof Error ? err.message : String(err),
       });

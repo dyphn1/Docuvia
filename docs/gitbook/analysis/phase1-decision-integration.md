@@ -241,8 +241,87 @@ instead of per-mode names, since a failure can precede mode determination.
   detecting a user-edited legacy hook block (bytes diverged → upgrade degrades to
   append-without-removal, leaving both blocks live).
 
-**Slice 2 status: complete.** Wire 1 is closed — the post-commit hook now runs
-`docuvia analyze` (auto mode), per-commit L2 freshness lives in `local.db`, and the two
-`cli-test-analysis` concurrency items (`analyze`+`snapshot`, `doctor`+`hydrate`) are closed.
-Next: Slice 3 (Tier B — `escalateToLsp` spawn-per-batch, batch snapshot, pre-push +
-commit-cap triggers, `tierBQueue` consumption).
+**Slice 2 status: complete** (pushed as `b316f2f` + merge `9b6d517` + `056939a`). Wire 1 is
+closed — the post-commit hook now runs `docuvia analyze` (auto mode), per-commit L2 freshness
+lives in `local.db`, and the two `cli-test-analysis` concurrency items (`analyze`+`snapshot`,
+`doctor`+`hydrate`) are closed. Merge note: the upstream magic-strings sweep landed mid-slice;
+Slice 2 code now follows its conventions (`GitMessages`, `ANALYZE_EVENTS`, `AnalyzeResultKind`,
+`ChangedFileStatuses`) and the ESLint cyclomatic-complexity budget (max 10) is enforced in
+pre-push — future slices must budget for it. Next: §7.
+
+## 7. Forward log — Slices 3–5 (recorded ahead of implementation, 2026-07-17)
+
+What remains of Phase 1, with everything the Slice 1/2 work established that feeds it. Slice 3
+needs a §6-style integration contract **before** dispatch; the open sub-decisions to settle are
+listed explicitly.
+
+### 7a. Slice 3 — Tier B: LSP escalation batch
+
+**Already decided** (PLAT-007 + §2 of this report — not to be re-litigated):
+
+- Implement `escalateToLsp` for real; **spawn-per-batch** headless LSP, no resident daemon.
+- Batch = the composition `analyze --escalate-to-lsp && snapshot`, orchestrated by a thin
+  scheduler — `--escalate-to-lsp` is a flag on `analyze`, never a new command.
+- Triggers: **pre-push hook + commit cap (default 20) only** — no idle timer in Phase 1.
+- LSP runs **only over the accumulated `tierBQueue`** (`docuvia_meta` JSON of
+  `{file, commitSha}` deduped by file, written by Tier A since `0e66ed6`); a queue with only
+  `INTERNAL_LOGIC` changes skips LSP entirely.
+- **One snapshot per batch** — this is the knowledge-branch growth policy; Tier A never
+  snapshots.
+- Locking/logging discipline: knowledge-branch lock for writes, JSONL run logs, failures only
+  to logs + exit code (same bar the 2b verifier enforced on Tier A).
+
+**Open sub-decisions for the Slice 3 contract** (settle first, §6-style):
+
+1. **LSP server choice + bootstrap**: which server (`typescript-language-server` vs raw
+   `tsserver`), how it's resolved (user-supplied binary? npx? bundled?), and what `doctor`
+   should say when it's absent. IMPT-003 names the tri-layer but not the binary.
+2. **What "corrected edges" means concretely**: which LSP capabilities run (references,
+   definitions?) over queue files, and how results map onto `node_links` rows — including
+   whether stale _incoming_ edges (the drift Tier A accepts on per-file replace) get repaired
+   here, which is the whole point of the backstop.
+3. **Queue consumption semantics**: drain-all vs batch-size cap; on LSP failure, re-queue or
+   drop-with-log; queue entries whose file has since been deleted.
+4. **Commit-cap counter**: where it lives (a `docuvia_meta` counter bumped by Tier A vs derived
+   from `lastIngestedSourceSha..HEAD` commit count at hook time) and where it resets.
+5. **Pre-push hook mechanics**: reuse `installPostCommitHook`'s marker + lock + legacy-upgrade
+   pattern for a `pre-push` hook; decide interplay with Phase 2's `sync-knowledge` scheduling
+   so the two pre-push steps don't double-fetch (gap analysis §6 Phase 2 flags this — decide
+   them **together**).
+6. **Gating tests**: batch vs concurrent `analyze`/`snapshot`; a batch interrupted mid-LSP
+   (crash) must leave the queue re-runnable (idempotency).
+
+### 7b. Slice 4 — Tier C: budgeted async LLM queue
+
+Decided: candidates = commit messages + `CONTRACT_CHANGED` symbols, enqueued by Tiers A/B;
+consumption under explicit per-day call/token caps (queue waits when exhausted); local
+OpenAI-shaped endpoint as default tier via the LLM-002 bridge, remote opt-in; docuvia never
+manages the model process; persists via Slice 1's `upsertDecision` path (provenance included).
+To settle at contract time: queue/budget storage shape, what triggers consumption without a
+daemon (fold into the Tier B batch?), and prompt shape for commit-message extraction.
+
+### 7c. Slice 5 — reliability (`doctor`)
+
+- "Hook present but docuvia not resolvable" (`npx --no-install` silently no-ops — the invisible
+  failure PLAT-007 forbids).
+- Legacy-hook detection: `docuvia snapshot` block still live, including the edited-legacy-block
+  case (bytes diverged → 2b's upgrade degrades to append-without-removal, leaving **both**
+  blocks firing).
+- `uninstall` has never removed the git post-commit hook (pre-2b fact, found by the 2b
+  verifier) — decide whether `uninstall` should start removing it or `doctor` just reports it.
+- LLM endpoint reachability (Tier C's `doctor` half); LSP binary presence (7a.1).
+
+### 7d. Watchlist accumulated from Slice 1/2 verifications (no slice owns these yet)
+
+| Item                                     | Source                   | Note                                                                                                                                                                                                                               |
+| ---------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hydrate-then-delta optimization          | 2a ruling 1              | Empty `local.db` + populated knowledge branch currently full re-parses; hydrating then delta-ing from the `Docuvia-Source` trailer would be cheaper on big repos. Correctness is fine as-is (`markSynced` prevents stale clobber). |
+| Delta log misattribution                 | 2a verifier              | Delta's reuse of `runParseAndPersist` writes `init.parse_failure`/`init.file_skipped_oversized` events to `init.log` (oversize skips double-logged). Wants an event-name/log-target parameter on the shared helper.                |
+| Dirty-index hash edge                    | 2a verifier              | Delta takes blob hashes from the index but content at `headSha`; a dirty index can mismatch the `files` dedup table. Harmless today; recheck in Tier B.                                                                            |
+| `getChangedFilesSince` asymmetry footgun | 2a test dispatch         | No-arg merges untracked files; explicit `baseRef` (even `"HEAD"`) does not. Documented + pinned by integration tests, but easy to misuse in future call sites.                                                                     |
+| L3 never reaches the knowledge branch    | 2a verifier learning     | Snapshot packs L2/links only and hydration restores L2 only — L3 durability rests entirely on `local.db` + remote `sync`. Whether L3 belongs in the snapshot is a **Phase 2 (distribute)** design question.                        |
+| Focused-path missing error-log line      | pre-merge analyze status | A `chatCompletion` throw in `analyze <targetPath>` logs `analyze.focused.error` only on some paths (the old analyze-status follow-up dropped in the upstream docs consolidation — re-verify and close or fix).                     |
+| `.gitignore` `graphify-out/` line        | outside agent flow       | Appeared in the working tree unowned; deliberately left uncommitted by Slices 1–2. Commit or drop explicitly.                                                                                                                      |
+
+Phase 2 (distribute) and Phase 3 (consume) remain as mapped in the gap analysis §6 — Phase 3's
+"verify reads serve a fresh graph" check becomes actionable now that Tier A ships.

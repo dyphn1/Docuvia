@@ -128,3 +128,69 @@ Slice 1 is dispatched to a Sonnet-class implementation agent with this report as
 (§3 is the contract; the implementer has latitude on code placement, none on the decisions).
 Slices 2–5 follow sequentially, each gated by verification of the previous; Slice 2 additionally
 requires the two open concurrency tests before the hook flips.
+
+> **Status update (2026-07-16):** Slice 1 implemented, task-verifier passed, committed as
+> `871c961`. Slice 2's integration-level contract is §6 below.
+
+## 6. Slice 2 (Tier A) — integration-level design decisions
+
+PLAT-007's Tier A section is the spec; the gaps it leaves to implementation are decided here.
+Slice 2 ships as **two sequential dispatches**: **2a** — `analyze` auto mode with delta
+ingestion, hook untouched; **2b** — the two gating concurrency tests, then the hook flip. The
+hook must not call `analyze` until 2b's tests pass (PLAT-007 reliability requirement).
+
+### 6a. Mode selection and the last-ingested sha
+
+No-arg `analyze` becomes auto mode (breaking change accepted in PLAT-007):
+
+- **Full ingestion** when the graph has no project row or no L2 nodes: the same pipeline `init`
+  Phase 3–4 uses (discovery → config scan → `AstProcessingService` → `GraphPersister`), reusing
+  those components — not a re-implementation. The old config-scan-only output becomes a step of
+  this (its result still reported); tests and user-facing docs update in the same change.
+- **Delta ingestion** otherwise, anchored on a new `docuvia_meta` key (`GitConstants`
+  addition, e.g. `META_KEY_LAST_INGESTED_SOURCE_SHA`) written after every successful full or
+  delta ingestion. Resolution order when the key is absent (pre-Slice-2 workspaces): newest
+  `Docuvia-Source` trailer on the knowledge branch, else full re-ingest once.
+- **Sha fast-path**: `HEAD == lastIngestedSourceSha` → log (`analyze.delta.noop` JSONL line)
+  and exit 0 immediately. This is the idempotency fast-path; it must be the first check.
+- `analyze <targetPath>` behavior (Slice 1) is untouched; `--escalate-to-lsp` is Slice 3, not
+  this slice.
+
+### 6b. Delta semantics: re-parse changed files; detector classifies for Tier B
+
+- Diff `lastIngestedSourceSha → HEAD` (name-status). Added/modified source files — filtered by
+  the same discovery ignore/oversize rules `init` uses — are re-parsed through
+  `AstProcessingService` and re-persisted. Per-file replace: delete the file's existing L2 rows
+  (and their links) before persisting its fresh parse. Deleted files: drop their L2 rows.
+  Renames: treated as delete + add. Cross-file edge drift is accepted per PLAT-007 (Tier B is
+  the backstop).
+- **`SemanticDiffDetector`'s Tier A role is classification, not parse-avoidance**: changed
+  files are re-parsed regardless (cost ∝ diff, already sub-second); the detector runs on each
+  changed file (old content via `git show <sha>:<path>`, new from HEAD, hunk line-ranges from
+  the diff) solely to assign pruning levels. Any `CONTRACT_CHANGED` node enqueues its file for
+  Tier B. This keeps Tier A simple while giving Tier B exactly the queue PLAT-007 specifies.
+- **Tier B queue storage**: a `docuvia_meta` key (`tierBQueue`) holding a JSON array of
+  `{file, commitSha}` entries, deduped by file. Disposable like the rest of `local.db` (git
+  remains the source of truth); consumed by Slice 3. No new table.
+- Locking: the delta persist step takes the knowledge-branch lock (PLAT-007 reliability
+  requirement), same discipline as `hydrate`/`snapshot`. Failures go to JSONL logs
+  (`analyze.log`) and `process.exitCode`, never to the committing developer.
+
+### 6c. Dispatch 2b: concurrency tests, then the hook flip
+
+1. **Gating tests** (open items in `docs/cli-test-analysis/README.md`): concurrent
+   `analyze` (delta write) + `snapshot` (read + pack), and concurrent `doctor` + `hydrate` —
+   following the existing `analyze-concurrency.test.ts` pattern. Both must pass before step 2.
+2. **Hook flip with legacy upgrade**: `POST_COMMIT_HOOK_CONTENT` switches to
+   `npx --no-install docuvia analyze`; `POST_COMMIT_HOOK_MARKER` becomes `"docuvia analyze"`
+   with the old `"docuvia snapshot"` retained as a legacy marker constant.
+   `installPostCommitHook` recognizes a legacy block and replaces it in place (under the
+   existing knowledge-branch lock, PLAT-006 discipline) instead of appending a duplicate.
+   `doctor`'s "legacy hook" and "hook present but docuvia not resolvable" checks stay in
+   Slice 5.
+
+**Acceptance for Slice 2:** full build + suite green; on a real repo: commit → hook fires →
+changed file's L2 rows update while unchanged files' rows are untouched; second run with no new
+commit is a sub-second no-op (fast-path); `CONTRACT_CHANGED` edits land in `tierBQueue`;
+`snapshot` output unchanged in shape. Hook flip present only after both concurrency tests exist
+and pass.

@@ -8,12 +8,118 @@ import {
   DocuviaError,
   resetFactoryForTests,
   createMockLogger,
+  type GraphStoreOpenOptions,
   type IConfigScanner,
+  type IGitProvider,
+  type IGraphStore,
   type ILlmClient,
 } from "@workspace/contracts";
 import { AnalyzeWorkflow, stripMarkdownCodeFence } from "./analyze-workflow.js";
-import { DECISION_EXTRACTION_SYSTEM_PROMPT } from "./analyze-messages.js";
+import {
+  ANALYZE_MESSAGES,
+  DECISION_EXTRACTION_SYSTEM_PROMPT,
+} from "./analyze-messages.js";
 import { MAX_ANALYZE_FILES } from "./decision-extraction.js";
+
+/** Same shape as `lib/ui-core/src/workflows/init/init-workflow.unit.test.ts`'s helper. */
+function makeMockGitProvider(
+  overrides: Partial<IGitProvider> = {},
+): IGitProvider {
+  return {
+    isGitRepository: vi.fn().mockResolvedValue(true),
+    branchExists: vi.fn().mockResolvedValue(false),
+    commitEmptyTree: vi.fn().mockResolvedValue("sha"),
+    updateBranchRef: vi.fn().mockResolvedValue(undefined),
+    hooksDirExists: vi.fn().mockResolvedValue(false),
+    readHookFile: vi.fn().mockResolvedValue(undefined),
+    appendHookFile: vi.fn().mockResolvedValue(undefined),
+    makeHookExecutable: vi.fn().mockResolvedValue(undefined),
+    listTrackedFilesWithBlobHash: vi.fn().mockResolvedValue(new Map()),
+    listUntrackedFiles: vi.fn().mockResolvedValue([]),
+    listModifiedFiles: vi.fn().mockResolvedValue([]),
+    readBlobContent: vi.fn().mockResolvedValue(""),
+    getRemoteUrl: vi.fn().mockResolvedValue(undefined),
+    getRecentChangedFilePaths: vi.fn().mockResolvedValue([]),
+    hasUncommittedChanges: vi.fn().mockResolvedValue(false),
+    getChangedFilesSince: vi.fn().mockResolvedValue([]),
+    getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
+    getHeadSha: vi
+      .fn()
+      .mockResolvedValue("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"),
+    getBranchTipSha: vi.fn().mockResolvedValue(undefined),
+    readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    getCommitLog: vi.fn().mockResolvedValue([]),
+    getCommitAncestry: vi.fn().mockResolvedValue([]),
+    packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
+    fetchRef: vi.fn().mockResolvedValue(undefined),
+    pushRef: vi.fn().mockResolvedValue(undefined),
+    getRefSha: vi.fn().mockResolvedValue(undefined),
+    isAncestor: vi.fn().mockResolvedValue(false),
+    getTreeSha: vi.fn().mockResolvedValue("tree-sha"),
+    getCommitTimestamp: vi.fn().mockResolvedValue(0),
+    createMergeCommit: vi.fn().mockResolvedValue("merge-sha"),
+    acquireKnowledgeLock: vi.fn().mockResolvedValue(undefined),
+    releaseKnowledgeLock: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
+/** Empty-graph default: no project row, so decision-extraction tests that don't care about
+ *  persistence get a deterministic persisted:0/deduped:0 result plus a warn log, without each
+ *  test having to register its own store. */
+function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
+  return {
+    projects: {
+      getFirst: vi.fn().mockReturnValue(undefined),
+      insert: vi.fn(),
+      getOrInsert: vi.fn(),
+      count: vi.fn(),
+    },
+    files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
+    tags: {
+      upsertTag: vi.fn(),
+      getIdByName: vi.fn(),
+      linkNodeToTag: vi.fn(),
+      getAllTagLinks: vi.fn(),
+    },
+    graph: {
+      deleteNodesForPath: vi.fn(),
+      insertNode: vi.fn(),
+      insertLink: vi.fn(),
+      findNodeIdByName: vi.fn(),
+      findNodeIdByNodeKey: vi.fn().mockReturnValue(undefined),
+      count: vi.fn(),
+      findNodesForChangedFiles: vi.fn(),
+      findNodeByName: vi.fn(),
+      getIncomingEdges: vi.fn(),
+      getOutgoingEdges: vi.fn(),
+      getAllNodes: vi.fn(),
+      getAllLinks: vi.fn(),
+      bulkLoadGraph: vi.fn(),
+    },
+    l3: {
+      getById: vi.fn(),
+      getAllExportable: vi.fn(),
+      upsertDecision: vi.fn().mockReturnValue({ id: 1, deduped: false }),
+    },
+    fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
+    meta: { get: vi.fn(), set: vi.fn() },
+    withWriteLock: async (fn) => fn(),
+    withReadLock: async (fn) => fn(),
+    close: vi.fn().mockResolvedValue(undefined),
+    pruneMissingFiles: vi.fn(),
+    ...overrides,
+  };
+}
+
+function registerDefaultPersistenceMocks(store: IGraphStore = makeMockStore()) {
+  const openStoreSpy = vi
+    .fn<[GraphStoreOpenOptions], Promise<IGraphStore>>()
+    .mockResolvedValue(store);
+  docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
+  docuviaFactory.register(TOKENS.GitProvider, () => makeMockGitProvider());
+  return { store, openStoreSpy };
+}
 
 describe("AnalyzeWorkflow.execute()", () => {
   let tmpDir: string;
@@ -100,6 +206,10 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
       path.join(os.tmpdir(), "docuvia-analyze-workflow-extraction-test-"),
     );
     resetFactoryForTests();
+    // Default: empty graph (no project row) — persistDecisions() warns and skips rather than
+    // throwing "no provider registered" for tests that don't care about persistence. Tests that
+    // exercise the persistence path itself re-register a more specific store before locking.
+    registerDefaultPersistenceMocks();
   });
 
   afterEach(() => {
@@ -140,6 +250,8 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
       kind: "decisionExtraction",
       targetPath: "README.md",
       decisions: [],
+      persisted: 0,
+      deduped: 0,
     });
     expect(llmClientBuilderProvider).not.toHaveBeenCalled();
   });
@@ -213,6 +325,8 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
           confidence: 0.9,
         },
       ],
+      persisted: 0,
+      deduped: 0,
     });
 
     const lines = readAnalyzeLog();
@@ -305,6 +419,8 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
           confidence: 0.7,
         },
       ],
+      persisted: 0,
+      deduped: 0,
     });
   });
 
@@ -428,6 +544,8 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
       decisions: [
         { title: "", nodeType: "context", content: "", confidence: 0 },
       ],
+      persisted: 0,
+      deduped: 0,
     });
   });
 
@@ -453,6 +571,248 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
         (e.context as { droppedFiles: string[] }).droppedFiles.length === 1,
     );
     expect(warnEvent).toBeDefined();
+  });
+
+  describe("L3 persistence (phase1-decision-integration.md §3)", () => {
+    it("persists each decision through store.l3.upsertDecision with full provenance when the target path resolves an exact node_key match", async () => {
+      fs.writeFileSync(path.join(tmpDir, "sample.ts"), "export const x = 1;\n");
+      registerLlmClientReturning(
+        JSON.stringify([
+          {
+            title: "Uses a const export",
+            nodeType: "decision",
+            content: "x is exported as a const.",
+            confidence: 0.9,
+          },
+        ]),
+      );
+      const store = makeMockStore({
+        projects: {
+          getFirst: vi.fn().mockReturnValue({
+            id: 7,
+            name: "demo",
+            repo_url: "file:///demo",
+            description: null,
+            status: "active",
+            vcs_type: "git",
+            svn_url: null,
+            last_git_ingested_at: null,
+            last_svn_revision: null,
+            last_ast_ingested_at: null,
+            owner_id: 1,
+            created_at: "2026-01-01T00:00:00.000Z",
+            updated_at: "2026-01-01T00:00:00.000Z",
+          }),
+          insert: vi.fn(),
+          getOrInsert: vi.fn(),
+          count: vi.fn(),
+        },
+      });
+      (
+        store.graph.findNodeIdByNodeKey as ReturnType<typeof vi.fn>
+      ).mockImplementation((nodeKey: string) =>
+        nodeKey === "sample.ts" ? 42 : undefined,
+      );
+      registerDefaultPersistenceMocks(store);
+      docuviaFactory.lock();
+
+      const result = await new AnalyzeWorkflow(tmpDir, createMockLogger(), {
+        targetPath: "sample.ts",
+        ...llmOptions,
+      }).execute();
+
+      expect(store.l3.upsertDecision).toHaveBeenCalledTimes(1);
+      expect(store.l3.upsertDecision).toHaveBeenCalledWith({
+        projectId: 7,
+        l2NodeId: 42,
+        title: "Uses a const export",
+        content: "x is exported as a const.",
+        nodeType: "decision",
+        confidence: 0.9,
+        commitSha: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        extractionModel: llmOptions.llmModel,
+        sourceFiles: ["sample.ts"],
+      });
+      expect(result).toMatchObject({ persisted: 1, deduped: 0 });
+      expect(store.close).toHaveBeenCalled();
+
+      const lines = readAnalyzeLog();
+      const persistedLine = lines.find(
+        (l) => l.event === "analyze.focused.persisted",
+      );
+      expect(persistedLine).toMatchObject({ persisted: 1, deduped: 0 });
+    });
+
+    it("counts persisted vs deduped independently based on each upsertDecision() call's return value", async () => {
+      fs.writeFileSync(path.join(tmpDir, "sample.ts"), "export const x = 1;\n");
+      registerLlmClientReturning(
+        JSON.stringify([
+          {
+            title: "Decision A",
+            nodeType: "decision",
+            content: "content A",
+            confidence: 0.9,
+          },
+          {
+            title: "Decision B",
+            nodeType: "decision",
+            content: "content B",
+            confidence: 0.8,
+          },
+        ]),
+      );
+      const store = makeMockStore({
+        projects: {
+          getFirst: vi.fn().mockReturnValue({ id: 1 } as any),
+          insert: vi.fn(),
+          getOrInsert: vi.fn(),
+          count: vi.fn(),
+        },
+      });
+      (
+        store.graph.findNodeIdByNodeKey as ReturnType<typeof vi.fn>
+      ).mockReturnValue(1);
+      (store.l3.upsertDecision as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce({ id: 1, deduped: false })
+        .mockReturnValueOnce({ id: 2, deduped: true });
+      registerDefaultPersistenceMocks(store);
+      docuviaFactory.lock();
+
+      const result = await new AnalyzeWorkflow(tmpDir, createMockLogger(), {
+        targetPath: "sample.ts",
+        ...llmOptions,
+      }).execute();
+
+      expect(result).toMatchObject({ persisted: 1, deduped: 1 });
+    });
+
+    it("warns and persists nothing (but still returns decisions) when the graph has no project row yet", async () => {
+      fs.writeFileSync(path.join(tmpDir, "sample.ts"), "export const x = 1;\n");
+      registerLlmClientReturning(
+        JSON.stringify([
+          {
+            title: "Some decision",
+            nodeType: "decision",
+            content: "content",
+            confidence: 0.9,
+          },
+        ]),
+      );
+      // Default beforeEach store already has getFirst() -> undefined.
+      docuviaFactory.lock();
+
+      const logger = createMockLogger();
+      const result = await new AnalyzeWorkflow(tmpDir, logger, {
+        targetPath: "sample.ts",
+        ...llmOptions,
+      }).execute();
+
+      expect(result).toMatchObject({ persisted: 0, deduped: 0 });
+      expect(
+        result.kind === "decisionExtraction" && result.decisions,
+      ).toHaveLength(1);
+      expect(
+        logger.events.some(
+          (e) =>
+            e.level === "warn" &&
+            e.message === ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH,
+        ),
+      ).toBe(true);
+
+      const lines = readAnalyzeLog();
+      expect(
+        lines.some((l) => l.event === "analyze.focused.persist_skipped"),
+      ).toBe(true);
+      expect(lines.some((l) => l.event === "analyze.focused.persisted")).toBe(
+        false,
+      );
+    });
+
+    it("warns and persists nothing (exits without throwing) when the local database doesn't exist yet", async () => {
+      fs.writeFileSync(path.join(tmpDir, "sample.ts"), "export const x = 1;\n");
+      registerLlmClientReturning(
+        JSON.stringify([
+          {
+            title: "Some decision",
+            nodeType: "decision",
+            content: "content",
+            confidence: 0.9,
+          },
+        ]),
+      );
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi
+          .fn()
+          .mockRejectedValue(
+            new DocuviaError("DB_OPEN_FAILED", "Failed to open database"),
+          ),
+      );
+      docuviaFactory.register(TOKENS.GitProvider, () => makeMockGitProvider());
+      docuviaFactory.lock();
+
+      const logger = createMockLogger();
+      const result = await new AnalyzeWorkflow(tmpDir, logger, {
+        targetPath: "sample.ts",
+        ...llmOptions,
+      }).execute();
+
+      expect(result).toMatchObject({ persisted: 0, deduped: 0 });
+      expect(
+        logger.events.some(
+          (e) =>
+            e.level === "warn" &&
+            e.message === ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH,
+        ),
+      ).toBe(true);
+    });
+
+    it("resolves the anchor via the first collected source file's L2 node for a directory target with no exact node_key match", async () => {
+      fs.mkdirSync(path.join(tmpDir, "src"));
+      fs.writeFileSync(
+        path.join(tmpDir, "src", "a.ts"),
+        "export const a = 1;\n",
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, "src", "b.ts"),
+        "export const b = 1;\n",
+      );
+      registerLlmClientReturning(
+        JSON.stringify([
+          {
+            title: "Directory-level decision",
+            nodeType: "decision",
+            content: "content",
+            confidence: 0.9,
+          },
+        ]),
+      );
+      const store = makeMockStore({
+        projects: {
+          getFirst: vi.fn().mockReturnValue({ id: 1 } as any),
+          insert: vi.fn(),
+          getOrInsert: vi.fn(),
+          count: vi.fn(),
+        },
+      });
+      // No exact match on the directory itself ("src"); only the second file resolves.
+      (
+        store.graph.findNodeIdByNodeKey as ReturnType<typeof vi.fn>
+      ).mockImplementation((nodeKey: string) =>
+        nodeKey === "src/b.ts" ? 99 : undefined,
+      );
+      registerDefaultPersistenceMocks(store);
+      docuviaFactory.lock();
+
+      const result = await new AnalyzeWorkflow(tmpDir, createMockLogger(), {
+        targetPath: "src",
+        ...llmOptions,
+      }).execute();
+
+      expect(store.l3.upsertDecision).toHaveBeenCalledWith(
+        expect.objectContaining({ l2NodeId: 99 }),
+      );
+      expect(result).toMatchObject({ persisted: 1, deduped: 0 });
+    });
   });
 });
 

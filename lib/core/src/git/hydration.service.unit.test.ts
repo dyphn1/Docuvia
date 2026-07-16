@@ -63,6 +63,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),
+      findNodeIdByNodeKey: vi.fn(),
       count: vi.fn(),
       findNodesForChangedFiles: vi.fn(),
       findNodeByName: vi.fn(),
@@ -74,7 +75,11 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
         .fn()
         .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
     },
-    l3: { getById: vi.fn(), getAllExportable: vi.fn() },
+    l3: {
+      getById: vi.fn(),
+      getAllExportable: vi.fn(),
+      upsertDecision: vi.fn(),
+    },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
@@ -204,6 +209,7 @@ describe("HydrationService.hydrate()", () => {
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
+        findNodeIdByNodeKey: vi.fn(),
         count: vi.fn(),
         findNodesForChangedFiles: vi.fn(),
         findNodeByName: vi.fn(),

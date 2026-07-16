@@ -57,6 +57,8 @@ function makeL3(overrides: Partial<L3NodeRow> = {}): L3NodeRow {
     validity_status: "pending",
     source: "commit",
     content_hash: null,
+    extraction_model: null,
+    source_files: null,
     ...overrides,
   };
 }

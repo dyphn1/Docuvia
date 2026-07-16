@@ -5,6 +5,7 @@ import {
   TOKENS,
   DocuviaError,
   ErrorCodes,
+  type IGraphStore,
   type ILogger,
 } from "@workspace/contracts";
 import {
@@ -12,8 +13,13 @@ import {
   DECISION_EXTRACTION_SYSTEM_PROMPT,
 } from "./analyze-messages.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
-import { collectSourceFiles } from "./decision-extraction.js";
+import {
+  collectSourceFiles,
+  type CollectedFile,
+} from "./decision-extraction.js";
+import { resolveAnchorL2NodeId, toNodeKey } from "./anchor-resolution.js";
 import type { AnalyzeResult, ExtractedDecision } from "./analyze-result.js";
+import { resolveDbPath } from "../../utils/resolve-db-path.js";
 
 const VALID_NODE_TYPES = ["change", "rule", "decision", "context"] as const;
 
@@ -137,7 +143,13 @@ export class AnalyzeWorkflow {
         targetPath,
         decisionsCount: 0,
       });
-      return { kind: "decisionExtraction", targetPath, decisions: [] };
+      return {
+        kind: "decisionExtraction",
+        targetPath,
+        decisions: [],
+        persisted: 0,
+        deduped: 0,
+      };
     }
 
     const userMessage = files
@@ -202,12 +214,119 @@ export class AnalyzeWorkflow {
       confidence: typeof item?.confidence === "number" ? item.confidence : 0,
     }));
 
+    const { persisted, deduped } = await this.persistDecisions(
+      resolvedPath,
+      files,
+      decisions,
+    );
+
     await appendAnalyzeLogLine(workspaceRoot, {
       event: "analyze.focused.summary",
       targetPath,
       decisionsCount: decisions.length,
     });
 
-    return { kind: "decisionExtraction", targetPath, decisions };
+    return {
+      kind: "decisionExtraction",
+      targetPath,
+      decisions,
+      persisted,
+      deduped,
+    };
+  }
+
+  /**
+   * Writes `decisions` through to `l3_nodes` (phase1-decision-integration.md §3, PLAT-007 Tier C
+   * point 1). Resolves the `NOT NULL` `l2_node_id` anchor via `resolveAnchorL2NodeId`; when it
+   * can't be resolved (empty/not-yet-ingested graph), persists nothing and warns rather than
+   * inventing a synthetic L2 node — decisions are still returned to the caller either way, and
+   * this never throws (a missing local database is a legitimate, expected precondition here, not
+   * a failure of the extraction itself).
+   */
+  private async persistDecisions(
+    resolvedTargetPath: string,
+    files: CollectedFile[],
+    decisions: ExtractedDecision[],
+  ): Promise<{ persisted: number; deduped: number }> {
+    if (decisions.length === 0) return { persisted: 0, deduped: 0 };
+
+    const { workspaceRoot, options } = this;
+    const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+
+    let store: IGraphStore;
+    try {
+      store = await openStore({
+        dbPath: resolveDbPath(workspaceRoot),
+        readonly: false,
+      });
+    } catch (err) {
+      if (
+        err instanceof DocuviaError &&
+        err.code === ErrorCodes.DB_OPEN_FAILED
+      ) {
+        await this.warnNoGraphToAttach(workspaceRoot);
+        return { persisted: 0, deduped: 0 };
+      }
+      throw err;
+    }
+
+    try {
+      const project = store.projects.getFirst();
+      if (!project) {
+        await this.warnNoGraphToAttach(workspaceRoot);
+        return { persisted: 0, deduped: 0 };
+      }
+
+      const anchorL2NodeId = resolveAnchorL2NodeId(
+        store,
+        workspaceRoot,
+        resolvedTargetPath,
+        files,
+      );
+      if (anchorL2NodeId === undefined) {
+        await this.warnNoGraphToAttach(workspaceRoot);
+        return { persisted: 0, deduped: 0 };
+      }
+
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const commitSha = (await git.getHeadSha(workspaceRoot)) ?? null;
+      const sourceFiles = files.map((f) => toNodeKey(f.relativePath));
+
+      let persisted = 0;
+      let deduped = 0;
+      for (const decision of decisions) {
+        const result = store.l3.upsertDecision({
+          projectId: project.id,
+          l2NodeId: anchorL2NodeId,
+          title: decision.title,
+          content: decision.content,
+          nodeType: decision.nodeType,
+          confidence: decision.confidence,
+          commitSha,
+          extractionModel: options?.llmModel ?? null,
+          sourceFiles,
+        });
+        if (result.deduped) deduped++;
+        else persisted++;
+      }
+
+      await appendAnalyzeLogLine(workspaceRoot, {
+        event: "analyze.focused.persisted",
+        persisted,
+        deduped,
+      });
+
+      return { persisted, deduped };
+    } finally {
+      await store.close();
+    }
+  }
+
+  private async warnNoGraphToAttach(workspaceRoot: string): Promise<void> {
+    this.logger.warn(ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH);
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: "analyze.focused.persist_skipped",
+      message: ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH,
+    });
   }
 }

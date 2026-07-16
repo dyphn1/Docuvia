@@ -203,6 +203,25 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   }
 
   /**
+   * Resolves an l2_node's id by its exact STOR-005 `node_key`. Used by `analyze <targetPath>`'s
+   * decision-extraction anchor resolution.
+   */
+  findNodeIdByNodeKey(nodeKey: string): number | undefined {
+    try {
+      const row = this.db
+        .prepare("SELECT id FROM l2_nodes WHERE node_key = ?")
+        .get(nodeKey) as { id: number } | undefined;
+      return row?.id;
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        `Failed to find node by node_key: ${nodeKey}`,
+        err,
+      );
+    }
+  }
+
+  /**
    * Nodes with an outgoing node_links edge INTO nodeId — the 1-hop "blast radius". `DISTINCT`
    * dedupes a neighbor that's connected by more than one edge type (e.g. both a `calls` and a
    * `depends_on` link between the same pair of nodes), so it isn't double-counted.

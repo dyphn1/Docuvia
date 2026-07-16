@@ -89,6 +89,8 @@ export const UI_MESSAGES = {
   ANALYZE_FOCUSED_SUCCESS: "Decision extraction complete.",
   ANALYZE_FOCUSED_FAIL: "Decision extraction failed: ",
   ANALYZE_FOCUSED_NONE: "No decision-worthy content found.",
+  ANALYZE_FOCUSED_PERSISTED: (persisted: number, deduped: number) =>
+    `${persisted} persisted, ${deduped} deduplicated`,
 
   // Review Command
   REVIEW_HEADER: "Review Changes",

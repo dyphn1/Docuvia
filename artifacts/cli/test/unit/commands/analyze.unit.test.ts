@@ -187,6 +187,8 @@ describe("analyzeCommand", () => {
         kind: "decisionExtraction",
         targetPath: "src/foo.ts",
         decisions: [],
+        persisted: 0,
+        deduped: 0,
       });
       const setSpy = vi.spyOn(docuviaMemory, "set");
 
@@ -209,6 +211,8 @@ describe("analyzeCommand", () => {
         kind: "decisionExtraction",
         targetPath: "src/foo.ts",
         decisions: [],
+        persisted: 0,
+        deduped: 0,
       });
       const setSpy = vi.spyOn(docuviaMemory, "set");
 
@@ -241,6 +245,8 @@ describe("analyzeCommand", () => {
             confidence: 0.85,
           },
         ],
+        persisted: 1,
+        deduped: 0,
       });
       const consoleLogSpy = vi
         .spyOn(console, "log")
@@ -257,6 +263,58 @@ describe("analyzeCommand", () => {
       expect(consoleLogSpy).toHaveBeenCalledWith(
         "    Avoids a Windows crash while fetch handles close.",
       );
+      expect(ui.info).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_FOCUSED_PERSISTED(1, 0),
+      );
+    });
+
+    it("reports N persisted, M deduplicated after the per-decision output", async () => {
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
+        "http://localhost:8317";
+      process.env.AI_DOCUVIA_MODEL = "big-model";
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [
+          {
+            title: "Decision A",
+            nodeType: "decision",
+            content: "content A",
+            confidence: 0.9,
+          },
+          {
+            title: "Decision B",
+            nodeType: "decision",
+            content: "content B",
+            confidence: 0.8,
+          },
+        ],
+        persisted: 1,
+        deduped: 1,
+      });
+
+      await analyzeCommand("src/foo.ts");
+
+      expect(ui.info).toHaveBeenCalledWith("1 persisted, 1 deduplicated");
+    });
+
+    it("does not print a persisted/deduplicated line when decisions is empty", async () => {
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
+        "http://localhost:8317";
+      process.env.AI_DOCUVIA_MODEL = "big-model";
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [],
+        persisted: 0,
+        deduped: 0,
+      });
+
+      await analyzeCommand("src/foo.ts");
+
+      expect(ui.info).not.toHaveBeenCalledWith(
+        expect.stringContaining("deduplicated"),
+      );
     });
 
     it("prints ANALYZE_FOCUSED_NONE when decisions is empty", async () => {
@@ -267,6 +325,8 @@ describe("analyzeCommand", () => {
         kind: "decisionExtraction",
         targetPath: "src/foo.ts",
         decisions: [],
+        persisted: 0,
+        deduped: 0,
       });
 
       await analyzeCommand("src/foo.ts");

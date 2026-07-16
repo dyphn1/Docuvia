@@ -97,6 +97,10 @@ export interface L3NodeRow {
   validity_status: string;
   source: string;
   content_hash: string | null;
+  /** LLM model id used for extraction (e.g. `gpt-4o-mini`) — null on rows inserted before this column existed, or when the extraction path never set it. */
+  extraction_model: string | null;
+  /** JSON array of workspace-relative source file paths the decision was extracted from — null on rows inserted before this column existed. */
+  source_files: string | null;
 }
 
 /**
@@ -190,6 +194,13 @@ export interface IGraphNodesRepo {
     target: string,
   ): { id: number; name: string; type: string } | undefined;
   /**
+   * Resolves an l2_node's id by its exact STOR-005 `node_key` (deterministic `<file_path>` /
+   * `<file_path>#<symbolName>` identity) — used by `analyze <targetPath>`'s decision-extraction
+   * anchor resolution (phase1-decision-integration.md §3b). Undefined if no row has that
+   * `node_key` (e.g. a pre-STOR-005 row, or the path/symbol was never ingested).
+   */
+  findNodeIdByNodeKey(nodeKey: string): number | undefined;
+  /**
    * Nodes with an outgoing `node_links` edge INTO `nodeId` — i.e. things that depend on/call it
    * (the 1-hop "blast radius"). Mirrors old Docuvia's `QueryService.queryIncomingEdges`.
    */
@@ -226,6 +237,30 @@ export interface IL3NodesRepo {
    * used by `export-topology` (mirrors old Docuvia's `TopologyExportService.isExportableStatus`).
    */
   getAllExportable(): L3NodeRow[];
+  /**
+   * Content-hash upsert for `analyze <targetPath>`'s LLM decision-extraction pipeline
+   * (phase1-decision-integration.md §3c; PLAT-007 Tier C point 1). `content_hash` = sha256 over
+   * `nodeType + "\n" + title + "\n" + content`. When a row with the same `content_hash` already
+   * exists for `projectId` (joined via `l2_nodes.project_id` — `l3_nodes` has no `project_id`
+   * column of its own): bumps `occurrence_count`, refreshes `last_verified_at`, and appends
+   * `commitSha` to `source_commits` if not already present — no duplicate row is inserted.
+   * Otherwise inserts a new row with `commit_hash` = `commitSha`, `source_commits` =
+   * `[commitSha]`, `source` = `'analyze'`, `ai_generated` = 1, `validity_status` left at its
+   * column default (`'pending'`).
+   */
+  upsertDecision(input: {
+    projectId: number;
+    l2NodeId: number;
+    title: string;
+    content: string;
+    nodeType: string;
+    confidence: number;
+    /** HEAD sha at extraction time, or `null` on an unborn/headless HEAD (no commits yet). */
+    commitSha: string | null;
+    extractionModel: string | null;
+    /** Workspace-relative source file paths the decision was extracted from. */
+    sourceFiles: string[];
+  }): { id: number; deduped: boolean };
 }
 
 export interface IFtsRepo {

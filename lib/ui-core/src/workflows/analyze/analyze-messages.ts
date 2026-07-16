@@ -5,6 +5,14 @@ export const ANALYZE_MESSAGES = {
     `Extracting decisions from ${targetPath}...`,
   FILES_DROPPED: (count: number) =>
     `Dropped ${count} file(s) from decision extraction (file-count/byte cap)`,
+  /**
+   * phase1-decision-integration.md §3b, case 3: no L2 node could be resolved for this
+   * extraction run (empty or not-yet-ingested graph, or a project row that doesn't exist yet).
+   * Decisions are still returned to the caller/CLI, just never persisted — never invent a
+   * synthetic L2 anchor node.
+   */
+  NO_GRAPH_TO_ATTACH:
+    "run `docuvia init` first — decisions need a graph to attach to",
 } as const;
 
 /**

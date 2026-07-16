@@ -88,6 +88,12 @@ export async function analyzeCommand(
             console.log(`    ${decision.content}`);
           }
         }
+        ui.info(
+          UI_MESSAGES.ANALYZE_FOCUSED_PERSISTED(
+            result.persisted,
+            result.deduped,
+          ),
+        );
       }
     }
   } catch (error: unknown) {

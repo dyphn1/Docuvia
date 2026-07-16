@@ -44,6 +44,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),
+      findNodeIdByNodeKey: vi.fn(),
       count: vi.fn().mockReturnValue({ l2Nodes: 4, l3Nodes: 9 }),
       findNodesForChangedFiles: vi.fn(),
       findNodeByName: vi.fn(),
@@ -53,7 +54,11 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),
     },
-    l3: { getById: vi.fn(), getAllExportable: vi.fn() },
+    l3: {
+      getById: vi.fn(),
+      getAllExportable: vi.fn(),
+      upsertDecision: vi.fn(),
+    },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
@@ -122,6 +127,7 @@ describe("StatusWorkflow.execute()", () => {
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
+        findNodeIdByNodeKey: vi.fn(),
         count: vi.fn().mockImplementation(() => {
           throw new Error("boom");
         }),

@@ -453,6 +453,199 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(store.l3.getById(999999)).toBeUndefined();
   });
 
+  it("graph repo: findNodeIdByNodeKey() resolves the exact STOR-005 node_key, undefined otherwise", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+
+    expect(store.graph.findNodeIdByNodeKey("src/a.ts")).toBe(nodeId);
+    expect(store.graph.findNodeIdByNodeKey("src/missing.ts")).toBeUndefined();
+  });
+
+  it("l3 repo: upsertDecision() inserts a new row with full provenance on the first call", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+
+    const result = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      title: "Uses async/await throughout",
+      content: "All I/O paths use async/await rather than raw promise chains.",
+      nodeType: "decision",
+      confidence: 0.9,
+      commitSha: "abc123",
+      extractionModel: "gpt-4o-mini",
+      sourceFiles: ["src/a.ts"],
+    });
+
+    expect(result.deduped).toBe(false);
+    const row = store.l3.getById(result.id);
+    expect(row).toMatchObject({
+      l2_node_id: nodeId,
+      title: "Uses async/await throughout",
+      node_type: "decision",
+      commit_hash: "abc123",
+      ai_generated: 1,
+      source: "analyze",
+      validity_status: "pending",
+      occurrence_count: 1,
+      extraction_model: "gpt-4o-mini",
+    });
+    expect(JSON.parse(row!.source_commits)).toEqual(["abc123"]);
+    expect(JSON.parse(row!.source_files!)).toEqual(["src/a.ts"]);
+    expect(row!.content_hash).toBeTruthy();
+  });
+
+  it("l3 repo: upsertDecision() bumps occurrence_count and appends a new commit sha instead of duplicating the row on a content_hash match", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+    const decision = {
+      title: "Uses async/await throughout",
+      content: "All I/O paths use async/await rather than raw promise chains.",
+      nodeType: "decision",
+      confidence: 0.9,
+      extractionModel: "gpt-4o-mini",
+      sourceFiles: ["src/a.ts"],
+    };
+
+    const first = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      ...decision,
+      commitSha: "commit-1",
+    });
+    const second = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      ...decision,
+      commitSha: "commit-2",
+    });
+
+    expect(first.deduped).toBe(false);
+    expect(second.deduped).toBe(true);
+    expect(second.id).toBe(first.id);
+    expect(store.graph.count().l3Nodes).toBe(1);
+
+    const row = store.l3.getById(first.id);
+    expect(row?.occurrence_count).toBe(2);
+    expect(JSON.parse(row!.source_commits)).toEqual(["commit-1", "commit-2"]);
+
+    // Re-running with the same commit sha again must not duplicate it in source_commits.
+    const third = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      ...decision,
+      commitSha: "commit-2",
+    });
+    expect(third.deduped).toBe(true);
+    const rowAfterRepeat = store.l3.getById(first.id);
+    expect(rowAfterRepeat?.occurrence_count).toBe(3);
+    expect(JSON.parse(rowAfterRepeat!.source_commits)).toEqual([
+      "commit-1",
+      "commit-2",
+    ]);
+  });
+
+  it("l3 repo: upsertDecision() does not dedup across different projects even with the same content_hash", () => {
+    const projectA = store.projects.insert({
+      name: "a",
+      repoUrl: "file:///a",
+    });
+    const projectB = store.projects.insert({
+      name: "b",
+      repoUrl: "file:///b",
+    });
+    const nodeA = store.graph.insertNode({
+      projectId: projectA.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+    const nodeB = store.graph.insertNode({
+      projectId: projectB.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+    const decision = {
+      title: "Same decision text",
+      content: "Same content.",
+      nodeType: "decision",
+      confidence: 0.9,
+      commitSha: "commit-1",
+      extractionModel: null,
+      sourceFiles: ["src/a.ts"],
+    };
+
+    const first = store.l3.upsertDecision({
+      projectId: projectA.id,
+      l2NodeId: nodeA,
+      ...decision,
+    });
+    const second = store.l3.upsertDecision({
+      projectId: projectB.id,
+      l2NodeId: nodeB,
+      ...decision,
+    });
+
+    expect(first.deduped).toBe(false);
+    expect(second.deduped).toBe(false);
+    expect(second.id).not.toBe(first.id);
+    expect(store.graph.count().l3Nodes).toBe(2);
+  });
+
+  it("l3 repo: upsertDecision() with commitSha null (unborn HEAD) leaves source_commits empty and commit_hash null", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+
+    const result = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      title: "No commits yet",
+      content: "Repo has no commits.",
+      nodeType: "context",
+      confidence: 0.5,
+      commitSha: null,
+      extractionModel: null,
+      sourceFiles: ["src/a.ts"],
+    });
+
+    const row = store.l3.getById(result.id);
+    expect(row?.commit_hash).toBeNull();
+    expect(JSON.parse(row!.source_commits)).toEqual([]);
+  });
+
   it("fts repo: searchL2Nodes()/searchL3Nodes() keyword-match against name/description and title/content", () => {
     const project = store.projects.insert({
       name: "demo",

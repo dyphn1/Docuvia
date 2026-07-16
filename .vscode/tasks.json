@@ -21,12 +21,40 @@
     {
       "label": "Run Tests (with Coverage)",
       "type": "shell",
-      "command": "pnpm test",
+      "command": "pnpm run lint && pnpm test",
       "group": {
         "kind": "test",
         "isDefault": true
       },
       "problemMatcher": []
+    },
+    {
+      "label": "Register CLI to Local (npm link)",
+      "type": "shell",
+      "command": "pnpm --filter @workspace/cli run build && cd artifacts/cli && npm link",
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "Unregister CLI from Local (npm unlink)",
+      "type": "shell",
+      "command": "cd artifacts/cli && npm unlink",
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "Register CLI to Local (pnpm link)",
+      "type": "shell",
+      "command": "pnpm --filter @workspace/cli run build && cd artifacts/cli && pnpm link --global",
+      "problemMatcher": [],
+      "group": "none"
+    },
+    {
+      "label": "Unregister CLI from Local (pnpm unlink)",
+      "type": "shell",
+      "command": "cd artifacts/cli && pnpm unlink --global",
+      "problemMatcher": [],
+      "group": "none"
     }
   ]
 }

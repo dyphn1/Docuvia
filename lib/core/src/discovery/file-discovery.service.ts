@@ -14,7 +14,7 @@ import type {
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
 import {
-  isSupportedSourceFile,
+  isDiscoverableSourceFile,
   getSupportedGlobExtensions,
   RUBY_EXTENSIONLESS_BASENAMES,
 } from "../utils/language-detection.js";
@@ -120,12 +120,7 @@ export class FileDiscoveryService implements IFileDiscovery {
     }
 
     // Filter by supported extensions (redundant for glob, but ensures git outputs are clean)
-    allFiles = allFiles.filter(
-      (f: string) =>
-        isSupportedSourceFile(f) &&
-        !f.includes("node_modules/") &&
-        !f.includes(".docuvia/"),
-    );
+    allFiles = allFiles.filter((f: string) => isDiscoverableSourceFile(f));
 
     this.logger.debug("Discovered source files", { count: allFiles.length });
 

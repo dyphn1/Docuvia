@@ -6,6 +6,14 @@
 export interface ChangedFileEntry {
   file: string;
   status: "added" | "modified" | "deleted" | "renamed";
+  /** Previous path for a `status: "renamed"` entry (the `old` half of git's `R###\told\tnew` name-status line). Undefined for every other status. */
+  oldFile?: string;
+}
+
+/** 0-indexed, tree-sitter-convention `[startRow, endRow]` (inclusive) line range touched by a diff hunk. */
+export interface DiffLineRange {
+  startRow: number;
+  endRow: number;
 }
 
 export interface IGitProvider {
@@ -38,10 +46,34 @@ export interface IGitProvider {
     maxCommits?: number,
   ): Promise<string[]>;
   hasUncommittedChanges(cwd: string): Promise<boolean>;
+  /**
+   * With no `toRef`: files changed relative to `baseRef`, diffed straight against the working
+   * tree (not `<baseRef>...HEAD`) merged with untracked files — the original, commit-to-working-tree
+   * semantics every pre-existing caller relies on. With `toRef` also given: a strict two-ref diff
+   * (`git diff --name-status <baseRef> <toRef>`, no working-tree/untracked merging) — the
+   * commit-to-commit semantics `analyze` auto mode's delta ingestion needs to diff
+   * `lastIngestedSourceSha -> HEAD` (phase1-decision-integration.md §6b). Either way, renames
+   * (`R###\told\tnew`) report the new path in `file`, with `oldFile` carrying the old one.
+   */
   getChangedFilesSince(
     cwd: string,
     baseRef?: string,
+    toRef?: string,
   ): Promise<ChangedFileEntry[]>;
+  /**
+   * 0-indexed line ranges (tree-sitter convention) touched by `fromRef -> toRef`'s diff of a
+   * single file (`git diff --unified=0 <fromRef> <toRef> -- <filePath>`, parsed from unified-diff
+   * hunk headers). Feeds `SemanticDiffDetector`'s classification pass
+   * (phase1-decision-integration.md §6b) — approximate by design (context-free hunks, not a full
+   * AST diff), and never the sole gate on whether a file gets re-parsed. `[]` if the file has no
+   * textual diff between the two refs (or either ref/path doesn't exist).
+   */
+  getChangedLineRanges(
+    cwd: string,
+    fromRef: string,
+    toRef: string,
+    filePath: string,
+  ): Promise<DiffLineRange[]>;
   getFilesChangedByCommit(cwd: string, sha: string): Promise<string[]>;
   /** Full 40-char sha of the current source commit (`git rev-parse HEAD`), or `undefined` on an unborn/headless HEAD (e.g. a freshly `git init`-ed repo with no commits yet). */
   getHeadSha(cwd: string): Promise<string | undefined>;

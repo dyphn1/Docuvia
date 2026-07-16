@@ -194,3 +194,27 @@ changed file's L2 rows update while unchanged files' rows are untouched; second 
 commit is a sub-second no-op (fast-path); `CONTRACT_CHANGED` edits land in `tierBQueue`;
 `snapshot` output unchanged in shape. Hook flip present only after both concurrency tests exist
 and pass.
+
+### 6d. Dispatch 2a — post-implementation rulings (2026-07-17)
+
+Dispatch 2a is implemented (build green, full suite 98 files / 599 tests green). The
+implementer flagged three judgment calls; owner-level rulings:
+
+1. **No hydration attempt before full ingestion (empty `local.db`, knowledge branch has data)
+   — accepted, not a defect.** A fresh re-parse of HEAD is at least as current as any
+   knowledge-branch snapshot (which may itself be the stale day-one graph Wire 1 produced),
+   and the post-ingestion `markSynced` call — the same discipline `init` uses — prevents a
+   later `ensureHydrated` from clobbering the fresh graph with the older snapshot.
+   _Follow-up (optimization, not correctness):_ on large repos, hydrate-then-delta (hydrate
+   the snapshot, then delta from its `Docuvia-Source` trailer to HEAD) would be cheaper than a
+   full re-parse. Parked on the watchlist.
+2. **Missing integration tests for the new libgit2 surface — ruled blocking; fixed before 2b.**
+   The two-ref mode of `getChangedFilesSince` (added/modified/deleted/renamed between two
+   shas) and `getChangedLineRanges` (`git diff --unified=0` hunk-header parsing) are the
+   foundation delta ingestion stands on, and real shell-out parsing was only exercised through
+   mocks. Tests added to `libgit2-provider.integration.test.ts` following its existing
+   real-temp-git-repo pattern.
+3. **Generic `IKnowledgeGitService.runUnderKnowledgeLock<T>` pass-through — accepted.** It is
+   the minimal surface that lets `lib/ui-core` honor the locking requirement without breaking
+   the Virtual Contracts token-only boundary, and it mirrors the existing
+   `withKnowledgeBranchLock` helper's shape exactly.

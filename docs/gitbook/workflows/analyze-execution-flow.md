@@ -2,31 +2,53 @@
 
 > Method: ADR context from `docs/gitbook/adr/**`; call sequence traced from
 > `artifacts/cli/src/commands/analyze.ts` through `lib/ui-core/src/workflows/analyze/analyze-workflow.ts`.
+>
+> **Updated for PLAT-007 Tier A** (see
+> [phase1-decision-integration.md §6](../analysis/phase1-decision-integration.md#6-slice-2-tier-a--integration-level-design-decisions)):
+> no-arg `analyze` is no longer a read-only config scan — it is now **auto mode**, dispatching to
+> a sha fast-path no-op, full ingestion, or delta ingestion. The old config-scan-only diagram below
+> is superseded by Mode A's new dispatch.
 
 `docuvia analyze` is two genuinely different flows dispatched on one condition — whether
 `targetPath` was given — so it gets two diagrams rather than one artificially merged one.
 
-## Mode A — No `targetPath`: Project-Wide Config Scan
+## Mode A — No `targetPath`: Auto Mode (Ingestion)
 
 ```mermaid
 sequenceDiagram
-    actor User as User / AI Agent
+    actor User as User / AI Agent / post-commit hook
     participant CLI as CLI (commands/analyze.ts)
     participant API as docuviaApi.analyze()
-    participant WF as AnalyzeWorkflow
-    participant Scan as ConfigScanner
+    participant WF as AnalyzeWorkflow.executeAutoMode
+    participant Store as local.db (docuvia_meta)
+    participant Full as runFullIngestion
+    participant Delta as runDeltaIngestion
     participant Log as analyze.log (JSONL)
 
     User->>CLI: docuvia analyze, no path
     CLI->>API: docuviaApi.analyze scopeId logger
     API->>WF: new AnalyzeWorkflow execute
-    WF->>Log: analyze.start
-    WF->>Scan: scanConfigs workspaceRoot
-    Scan-->>WF: projectType, suggestedTags
-    WF->>Log: analyze.summary
-    WF-->>API: kind configScan, projectType, tags
+    WF->>Store: open local.db read-write
+    WF->>Store: meta.get lastIngestedSourceSha
+    alt HEAD equals lastIngestedSourceSha
+        WF->>Log: analyze.delta.noop
+        WF-->>API: kind autoDeltaNoop
+    else graph has no project row or no L2 nodes
+        WF->>Full: runFullIngestion
+        Note right of Full: seedProjectRow -> runDiscoveryPipeline -> runParseAndPersist -> markSynced (init's own Phase 2-4 helpers, reused verbatim)
+        Full->>Store: meta.set lastIngestedSourceSha = HEAD
+        Full-->>WF: kind autoFullIngestion
+        WF-->>API: result
+    else non-empty graph, HEAD moved
+        WF->>WF: resolve fromSha (meta key, else newest Docuvia-Source trailer, else fall through to full ingestion)
+        WF->>Delta: runDeltaIngestion fromSha HEAD
+        Note right of Delta: diff fromSha->HEAD, re-parse added/modified/renamed files, drop deleted files' L2 rows, classify modified files for the Tier B queue -- all under the knowledge-branch lock
+        Delta->>Store: meta.set lastIngestedSourceSha = HEAD
+        Delta-->>WF: kind autoDelta
+        WF-->>API: result
+    end
     API-->>CLI: result
-    CLI-->>User: prints project type and tags
+    CLI-->>User: prints outcome-specific summary
 ```
 
 ## Mode B — `targetPath` given: Focused LLM Decision Extraction
@@ -82,12 +104,13 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| Step                                                                                            | Governing ADR(s)                                                                      | Verdict                                      |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Config scan (project type + tags)                                                               | — (no dedicated ADR; feeds `init`'s discovery pipeline)                               | —                                            |
-| `ILlmClient` over CLIProxyAPI's OpenAI-compatible endpoint, config injected via `docuviaMemory` | [LLM-002](../adr/llm/LLM-002-cliproxyapi-bridge.md)                                   | ⚠️ **ADR status note stale** — see below     |
-| Missing LLM env vars → hard failure (exit 1), not silent skip                                   | code comment in `analyze.ts` contrasting itself with `sync.ts`'s missing-env behavior | ✅ Match (internally consistent, deliberate) |
-| `analyze.start`/`analyze.focused.start`/`.summary` JSONL log                                    | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)             | ✅ Match                                     |
+| Step                                                                                            | Governing ADR(s)                                                                                                                                                                                                    | Verdict                                      |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Auto mode (fast-path / full ingestion / delta ingestion)                                        | [PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md), [phase1-decision-integration.md §6](../analysis/phase1-decision-integration.md#6-slice-2-tier-a--integration-level-design-decisions) | ✅ Match                                     |
+| Config scan (project type + tags) — now a step of full ingestion, not the whole command         | — (no dedicated ADR; feeds `init`'s discovery pipeline)                                                                                                                                                             | —                                            |
+| `ILlmClient` over CLIProxyAPI's OpenAI-compatible endpoint, config injected via `docuviaMemory` | [LLM-002](../adr/llm/LLM-002-cliproxyapi-bridge.md)                                                                                                                                                                 | ⚠️ **ADR status note stale** — see below     |
+| Missing LLM env vars → hard failure (exit 1), not silent skip                                   | code comment in `analyze.ts` contrasting itself with `sync.ts`'s missing-env behavior                                                                                                                               | ✅ Match (internally consistent, deliberate) |
+| `analyze.start`/`analyze.focused.start`/`.summary` JSONL log                                    | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)                                                                                                                                           | ✅ Match                                     |
 
 ## Conflicts Found
 

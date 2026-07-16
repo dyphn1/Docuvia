@@ -82,6 +82,23 @@ export const UI_MESSAGES = {
   ANALYZE_PROJECT_TYPE: "Project Type: ",
   ANALYZE_SUGGESTED_TAGS: "Suggested Tags: ",
   ANALYZE_NONE: "none",
+  // Auto mode (PLAT-007 Tier A) — no-arg `analyze`'s three outcomes.
+  ANALYZE_AUTO_FULL_SUCCESS: "Full ingestion complete.",
+  ANALYZE_AUTO_FULL_SUMMARY: (
+    filesParsed: number,
+    filesRequested: number,
+    filesFailed: number,
+  ) =>
+    `Parsed ${filesParsed}/${filesRequested} file(s) (${filesFailed} failed).`,
+  ANALYZE_AUTO_DELTA_SUCCESS: "Delta ingestion complete.",
+  ANALYZE_AUTO_DELTA_SUMMARY: (
+    filesReparsed: number,
+    filesDeleted: number,
+    tierBQueued: number,
+  ) =>
+    `Re-parsed ${filesReparsed} file(s), dropped ${filesDeleted} deleted file(s)` +
+    (tierBQueued > 0 ? `, queued ${tierBQueued} file(s) for Tier B.` : "."),
+  ANALYZE_AUTO_NOOP_SUCCESS: "Already up to date.",
   ANALYZE_LLM_MISSING_ENV:
     "AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL and a model (AI_DOCUVIA_MODEL or AI_DOCUVIA_FAST_MODEL) must be set to analyze a specific path.",
   ANALYZE_FOCUSED_HEADER: "Analyze Path",

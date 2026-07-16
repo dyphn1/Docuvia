@@ -6,6 +6,7 @@ import {
   DocuviaError,
   ErrorCodes,
   type ChangedFileEntry,
+  type DiffLineRange,
   type IGitProvider,
 } from "@workspace/contracts";
 import {
@@ -357,29 +358,40 @@ export class Libgit2Provider implements IGitProvider {
   }
 
   /**
-   * Files changed relative to `baseRef` (deliberately diffed straight against the working
-   * tree, not `<baseRef>...HEAD`, so uncommitted edits are included) or, with no `baseRef`,
-   * working-tree changes against HEAD merged with untracked files (which `git diff` never
-   * reports). Parses git's `--name-status` letters into a stable status enum; for renames
-   * (`R###\told\tnew`) the new path is used.
+   * With no `toRef`: files changed relative to `baseRef` (deliberately diffed straight against
+   * the working tree, not `<baseRef>...HEAD`, so uncommitted edits are included) or, with no
+   * `baseRef` either, working-tree changes against HEAD merged with untracked files (which `git
+   * diff` never reports) — the original, commit-to-working-tree semantics every pre-existing
+   * caller relies on. With `toRef` also given: a strict two-ref diff (`git diff --name-status
+   * <baseRef> <toRef>`), no working-tree/untracked merging — the commit-to-commit semantics
+   * `analyze` auto mode's delta ingestion needs. Parses git's `--name-status` letters into a
+   * stable status enum; for renames (`R###\told\tnew`) the new path is used, with `oldFile`
+   * carrying the old one.
    */
   public async getChangedFilesSince(
     cwd: string,
     baseRef?: string,
+    toRef?: string,
   ): Promise<ChangedFileEntry[]> {
     const entries: ChangedFileEntry[] = [];
     const seen = new Set<string>();
 
     try {
-      // `--end-of-options` stops option parsing for the trailing `baseRef` argument so a
+      // `--end-of-options` stops option parsing for the trailing ref argument(s) so a
       // caller-supplied ref beginning with `-` (e.g. `--upload-pack=...`) can't be parsed as a
       // flag — unlike a bare `--`, it does not reclassify the following argument as a pathspec,
-      // so this preserves normal `git diff --name-status <ref>` semantics for legitimate refs.
-      const { stdout } = await execFileAsync(
-        "git",
-        ["diff", "--name-status", "--end-of-options", baseRef ?? "HEAD"],
-        { cwd },
-      );
+      // so this preserves normal `git diff --name-status <ref> [<ref>]` semantics for legitimate
+      // refs.
+      const diffArgs = toRef
+        ? [
+            "diff",
+            "--name-status",
+            "--end-of-options",
+            baseRef ?? "HEAD",
+            toRef,
+          ]
+        : ["diff", "--name-status", "--end-of-options", baseRef ?? "HEAD"];
+      const { stdout } = await execFileAsync("git", diffArgs, { cwd });
 
       for (const line of stdout.split("\n")) {
         const trimmed = line.trim();
@@ -388,10 +400,12 @@ export class Libgit2Provider implements IGitProvider {
         const parts = trimmed.split("\t");
         const statusCode = parts[0] ?? "";
         let file: string | undefined;
+        let oldFile: string | undefined;
         let status: ChangedFileEntry["status"];
 
         if (statusCode.startsWith("R")) {
           status = "renamed";
+          oldFile = parts[1];
           file = parts[2] ?? parts[1];
         } else if (statusCode.startsWith("A")) {
           status = "added";
@@ -406,15 +420,17 @@ export class Libgit2Provider implements IGitProvider {
 
         if (file && !seen.has(file)) {
           seen.add(file);
-          entries.push({ file, status });
+          entries.push(
+            status === "renamed" ? { file, status, oldFile } : { file, status },
+          );
         }
       }
     } catch {
-      // No commits yet, baseRef doesn't exist, or git is unavailable; fall through so
-      // untracked files (when no baseRef was given) can still be reported honestly.
+      // No commits yet, a ref doesn't exist, or git is unavailable; fall through so
+      // untracked files (when no baseRef/toRef was given) can still be reported honestly.
     }
 
-    if (!baseRef) {
+    if (!baseRef && !toRef) {
       const untracked = await this.listUntrackedFiles(cwd);
       for (const file of untracked) {
         if (!seen.has(file)) {
@@ -425,6 +441,66 @@ export class Libgit2Provider implements IGitProvider {
     }
 
     return entries;
+  }
+
+  /**
+   * 0-indexed line ranges (tree-sitter convention) touched by `fromRef -> toRef`'s diff of a
+   * single file, parsed from `git diff --unified=0`'s hunk headers (`@@ -oldStart,oldLines
+   * +newStart,newLines @@`). Only the "new file" (`+`) side is used, since callers diff old vs.
+   * new content by ref, not by patching. A hunk with `newLines === 0` (a pure deletion — nothing
+   * added at this position in the new file) is represented as a zero-width anchor range at the
+   * insertion point, so a deletion-only change still produces a locatable range rather than being
+   * silently dropped.
+   */
+  public async getChangedLineRanges(
+    cwd: string,
+    fromRef: string,
+    toRef: string,
+    filePath: string,
+  ): Promise<DiffLineRange[]> {
+    const ranges: DiffLineRange[] = [];
+    try {
+      // See getChangedFilesSince()'s comment above on `--end-of-options` vs a bare `--`; here a
+      // literal `--` is also needed regardless, to separate the two refs from the trailing
+      // pathspec.
+      const { stdout } = await execFileAsync(
+        "git",
+        [
+          "diff",
+          "--unified=0",
+          "--no-color",
+          "--end-of-options",
+          fromRef,
+          toRef,
+          "--",
+          filePath,
+        ],
+        { cwd },
+      );
+
+      const hunkHeader = /^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/;
+      for (const line of stdout.split("\n")) {
+        const match = hunkHeader.exec(line);
+        if (!match) continue;
+
+        const newStart = Number(match[1]);
+        const newLines = match[2] === undefined ? 1 : Number(match[2]);
+
+        if (newLines === 0) {
+          const anchor = Math.max(newStart - 1, 0);
+          ranges.push({ startRow: anchor, endRow: anchor });
+        } else {
+          ranges.push({
+            startRow: newStart - 1,
+            endRow: newStart - 1 + newLines - 1,
+          });
+        }
+      }
+    } catch {
+      // A ref/path that doesn't exist, or git being unavailable, just yields no ranges — callers
+      // treat this as "nothing to classify for this file", never a fatal error.
+    }
+    return ranges;
   }
 
   /**

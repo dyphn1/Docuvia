@@ -1,6 +1,12 @@
 /** Progress/result messages for the `analyze` workflow. */
 export const ANALYZE_MESSAGES = {
   ANALYZING: "Analyzing project...",
+  /** No-arg auto mode (PLAT-007 Tier A) — printed before the fast-path/full/delta branch is known. */
+  AUTO_ANALYZING: "Checking knowledge graph freshness...",
+  AUTO_FULL_INGESTION:
+    "No existing knowledge graph found — running full ingestion...",
+  AUTO_DELTA_INGESTION: "Re-parsing changed files since the last analysis...",
+  AUTO_NOOP: "Knowledge graph already up to date with HEAD.",
   EXTRACTING: (targetPath: string) =>
     `Extracting decisions from ${targetPath}...`,
   FILES_DROPPED: (count: number) =>

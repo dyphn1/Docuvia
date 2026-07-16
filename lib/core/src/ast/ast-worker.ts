@@ -3,8 +3,7 @@ import { Parser, Language, type Node } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
 import { createHash } from "crypto";
-import { createRequire } from "module";
-import { fileURLToPath } from "url";
+import { resolveWasmPath } from "./resolve-wasm-path.js";
 import type {
   SupportedLanguage,
   LanguageProvider,
@@ -52,10 +51,6 @@ process.on("unhandledRejection", (err) => {
     error: err instanceof Error ? err.message : String(err),
   });
 });
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const require = createRequire(import.meta.url);
 
 export interface AstParseRequest {
   taskId: string;
@@ -106,50 +101,13 @@ function getRegistry(): Promise<LanguageRegistry> {
 }
 
 /**
- * Resolves the on-disk path of a tree-sitter grammar's .wasm file, trying
- * package.json resolution first (works whether tree-sitter-wasms is hoisted
- * or nested under .pnpm) and falling back to a handful of known workspace
- * layouts otherwise.
+ * Re-exported for backward compatibility (existing importer: `ast-worker.fixture.unit.test.ts`)
+ * — the real implementation moved to `resolve-wasm-path.ts` so it can also be imported from the
+ * main thread (by `SemanticDiffAnalyzerService`) without pulling in this file's
+ * `worker_threads`-only side effects (`parentPort?.on(...)`, process-level
+ * `uncaughtException`/`unhandledRejection` handlers). See that file's doc comment for why.
  */
-export function resolveWasmPath(wasmFile: string): {
-  wasmPath: string;
-  attemptedPaths: string[];
-} {
-  const docuviaRoot = path.resolve(__dirname, "../../../../");
-  const attemptedPaths: string[] = [];
-
-  try {
-    const packagePath = require.resolve(`tree-sitter-wasms/package.json`, {
-      paths: [__dirname, docuviaRoot],
-    });
-    const wasmPath = path.join(path.dirname(packagePath), "out", wasmFile);
-    attemptedPaths.push(wasmPath);
-    if (fs.existsSync(wasmPath)) return { wasmPath, attemptedPaths };
-  } catch {
-    // fall through to explicit path candidates below
-  }
-
-  const candidates = [
-    path.resolve(docuviaRoot, `node_modules/tree-sitter-wasms/out/${wasmFile}`),
-    path.resolve(
-      __dirname,
-      `../../../node_modules/tree-sitter-wasms/out/${wasmFile}`,
-    ),
-    path.resolve(
-      docuviaRoot,
-      `node_modules/.pnpm/tree-sitter-wasms@0.1.13/node_modules/tree-sitter-wasms/out/${wasmFile}`,
-    ),
-    path.resolve(docuviaRoot, `artifacts/vscode-client/out/wasm/${wasmFile}`),
-  ];
-
-  for (const candidate of candidates) {
-    attemptedPaths.push(candidate);
-    if (fs.existsSync(candidate))
-      return { wasmPath: candidate, attemptedPaths };
-  }
-
-  return { wasmPath: candidates[candidates.length - 1], attemptedPaths };
-}
+export { resolveWasmPath };
 
 /** Regex fallback for imports so graph edges still work when WASM fails to load (e.g. in tests). */
 function extractFallbackImports(code: string): ImportDescriptor[] {

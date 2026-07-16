@@ -11,6 +11,8 @@ function makeMockKnowledgeGit(
     installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
     packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
     syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
+    resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+    runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
     ...overrides,
   };
 }

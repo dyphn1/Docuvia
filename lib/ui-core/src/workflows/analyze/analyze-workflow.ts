@@ -8,6 +8,7 @@ import {
   type IGraphStore,
   type ILogger,
 } from "@workspace/contracts";
+import { GitConstants } from "@workspace/core";
 import {
   ANALYZE_MESSAGES,
   DECISION_EXTRACTION_SYSTEM_PROMPT,
@@ -20,6 +21,8 @@ import {
 import { resolveAnchorL2NodeId, toNodeKey } from "./anchor-resolution.js";
 import type { AnalyzeResult, ExtractedDecision } from "./analyze-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { runFullIngestion } from "./run-full-ingestion.js";
+import { runDeltaIngestion } from "./run-delta-ingestion.js";
 
 const VALID_NODE_TYPES = ["change", "rule", "decision", "context"] as const;
 
@@ -75,32 +78,100 @@ export class AnalyzeWorkflow {
     if (this.options?.targetPath) {
       return this.executeDecisionExtraction(this.options.targetPath);
     }
-    return this.executeConfigScan();
+    return this.executeAutoMode();
   }
 
-  private async executeConfigScan(): Promise<AnalyzeResult> {
+  /**
+   * No-arg `analyze` — auto mode (PLAT-007 Tier A; phase1-decision-integration.md §6). Order of
+   * checks, all against one store open/close:
+   *   1. Sha fast-path (§6a, "must be the first check"): `HEAD === lastIngestedSourceSha` -> noop.
+   *   2. Empty-graph check (no project row or no L2 nodes) -> full ingestion.
+   *   3. Otherwise delta: resolve the baseline sha (`lastIngestedSourceSha`, falling back to the
+   *      newest `Docuvia-Source` trailer on the knowledge branch for pre-Slice-2 workspaces, else
+   *      a one-time full re-ingest) and diff it to `HEAD`.
+   */
+  private async executeAutoMode(): Promise<AnalyzeResult> {
     const { workspaceRoot, logger } = this;
 
-    logger.info(ANALYZE_MESSAGES.ANALYZING);
-    await appendAnalyzeLogLine(workspaceRoot, { event: "analyze.start" });
+    logger.info(ANALYZE_MESSAGES.AUTO_ANALYZING);
+    await appendAnalyzeLogLine(workspaceRoot, { event: "analyze.auto.start" });
 
-    const configScanner = docuviaFactory.resolve(TOKENS.ConfigScanner, {
+    const git = docuviaFactory.resolve(TOKENS.GitProvider);
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
       logger,
     });
-    const { projectType, tags } =
-      await configScanner.scanConfigs(workspaceRoot);
+    const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
 
-    const result: AnalyzeResult = {
-      kind: "configScan",
-      projectType,
-      suggestedTags: tags,
-    };
-    await appendAnalyzeLogLine(workspaceRoot, {
-      event: "analyze.summary",
-      projectType: result.projectType,
-      suggestedTags: result.suggestedTags,
+    // Known caveat (Slice 1 verification): opening the store with `readonly: false` on a
+    // never-`init`'d workspace silently creates an empty migrated DB rather than throwing
+    // `DB_OPEN_FAILED` — the empty-graph precondition below must be (and is) detected via the
+    // missing-project-row/L2-count check, not a caught `DB_OPEN_FAILED`.
+    const store = await openStore({
+      dbPath: resolveDbPath(workspaceRoot),
+      readonly: false,
     });
-    return result;
+
+    try {
+      const headSha = await git.getHeadSha(workspaceRoot);
+      const lastIngestedSha = store.meta.get(
+        GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+      );
+
+      // 1. Sha fast-path — first check, regardless of graph state.
+      if (headSha && lastIngestedSha && headSha === lastIngestedSha) {
+        logger.info(ANALYZE_MESSAGES.AUTO_NOOP);
+        await appendAnalyzeLogLine(workspaceRoot, {
+          event: "analyze.delta.noop",
+          headSha,
+        });
+        return { kind: "autoDeltaNoop", headSha };
+      }
+
+      // 2. Empty-graph check -> full ingestion.
+      const project = store.projects.getFirst();
+      const { l2Nodes } = store.graph.count();
+      if (!project || l2Nodes === 0) {
+        return await runFullIngestion({ workspaceRoot, logger, store, git });
+      }
+
+      // Non-empty graph but nothing to diff against (unborn/headless HEAD, no commits yet) —
+      // an extremely unlikely combination (the graph would ordinarily only be populated via a
+      // full ingestion or git hydration, both of which need at least one commit), but treated as
+      // a harmless no-op rather than crashing on a `git diff` against a ref that doesn't exist.
+      if (!headSha) {
+        await appendAnalyzeLogLine(workspaceRoot, {
+          event: "analyze.delta.no_head",
+        });
+        return { kind: "autoDeltaNoop", headSha: null };
+      }
+
+      // 3. Delta — resolve the baseline sha.
+      let fromSha = lastIngestedSha;
+      if (!fromSha) {
+        fromSha =
+          await knowledgeGit.resolveNewestSourceTrailerSha(workspaceRoot);
+      }
+      if (!fromSha) {
+        // Neither the meta key nor a stamped knowledge-branch commit exists — a pre-Slice-2
+        // workspace whose knowledge branch (if any) predates the `Docuvia-Source` trailer, or one
+        // that never ran `init`'s ingestion at all despite having L2 nodes some other way. One-time
+        // full re-ingest, per §6a's fallback order.
+        return await runFullIngestion({ workspaceRoot, logger, store, git });
+      }
+
+      return await runDeltaIngestion({
+        workspaceRoot,
+        logger,
+        store,
+        git,
+        knowledgeGit,
+        projectId: project.id,
+        fromSha,
+        headSha,
+      });
+    } finally {
+      await store.close();
+    }
   }
 
   private async executeDecisionExtraction(

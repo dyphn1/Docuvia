@@ -651,3 +651,240 @@ describe("Libgit2Provider — acquireKnowledgeLock / releaseKnowledgeLock", () =
     await provider.releaseKnowledgeLock(tmpDir);
   });
 });
+
+describe("Libgit2Provider — getChangedFilesSince two-ref mode (Slice 2a delta ingestion, phase1-decision-integration.md §6d ruling 2)", () => {
+  let tmpDir: string;
+  let provider: Libgit2Provider;
+
+  beforeEach(async () => {
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-libgit2-tworef-test-"),
+    );
+    provider = new Libgit2Provider();
+    await git(tmpDir, ["init"]);
+    await git(tmpDir, ["config", "user.name", "Test User"]);
+    await git(tmpDir, ["config", "user.email", "test@example.com"]);
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("reports added, modified, deleted, and renamed (with oldFile, across directories) between two commit shas, and omits untouched files", async () => {
+    // Commit A: the baseline.
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "kept.ts"), "export const kept = 1;\n");
+    fs.writeFileSync(path.join(tmpDir, "modified.ts"), "export const m = 1;\n");
+    fs.writeFileSync(path.join(tmpDir, "deleted.ts"), "export const d = 1;\n");
+    fs.writeFileSync(
+      path.join(tmpDir, "src", "old-name.ts"),
+      "export const renamed = 1;\nexport const line2 = 2;\n",
+    );
+    await git(tmpDir, ["add", "-A"]);
+    await git(tmpDir, ["commit", "-m", "A"]);
+    const { stdout: baseShaOut } = await git(tmpDir, ["rev-parse", "HEAD"]);
+    const baseSha = baseShaOut.trim();
+
+    // Commit B: add, modify, delete, and rename-across-directories relative to A.
+    fs.writeFileSync(path.join(tmpDir, "added.ts"), "export const a = 1;\n");
+    fs.writeFileSync(path.join(tmpDir, "modified.ts"), "export const m = 2;\n");
+    fs.rmSync(path.join(tmpDir, "deleted.ts"));
+    fs.mkdirSync(path.join(tmpDir, "lib"), { recursive: true });
+    await git(tmpDir, ["mv", "src/old-name.ts", "lib/new-name.ts"]);
+    await git(tmpDir, ["add", "-A"]);
+    await git(tmpDir, ["commit", "-m", "B"]);
+    const { stdout: toShaOut } = await git(tmpDir, ["rev-parse", "HEAD"]);
+    const toSha = toShaOut.trim();
+
+    const entries = await provider.getChangedFilesSince(tmpDir, baseSha, toSha);
+
+    expect(entries).toEqual(
+      expect.arrayContaining([
+        { file: "added.ts", status: "added" },
+        { file: "modified.ts", status: "modified" },
+        { file: "deleted.ts", status: "deleted" },
+        {
+          file: "lib/new-name.ts",
+          status: "renamed",
+          oldFile: "src/old-name.ts",
+        },
+      ]),
+    );
+    // kept.ts was untouched between A and B — must not appear.
+    expect(entries.find((e) => e.file === "kept.ts")).toBeUndefined();
+    // The old rename path must not additionally appear as its own "deleted" entry.
+    expect(entries.find((e) => e.file === "src/old-name.ts")).toBeUndefined();
+    expect(entries).toHaveLength(4);
+  });
+
+  it("single-ref legacy mode (no toRef) still diffs against the working tree and merges untracked files (regression guard)", async () => {
+    fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 1;\n");
+    await git(tmpDir, ["add", "tracked.ts"]);
+    await git(tmpDir, ["commit", "-m", "initial commit"]);
+
+    // Uncommitted modification + a new untracked file — neither is a commit yet.
+    fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 2;\n");
+    fs.writeFileSync(
+      path.join(tmpDir, "untracked.ts"),
+      "export const b = 1;\n",
+    );
+
+    // No baseRef, no toRef: implicit HEAD, working-tree diff merged with untracked files — the
+    // only call shape that merges in untracked files (per the method's `if (!baseRef && !toRef)`
+    // gate).
+    const implicitEntries = await provider.getChangedFilesSince(tmpDir);
+    expect(implicitEntries).toEqual(
+      expect.arrayContaining([
+        { file: "tracked.ts", status: "modified" },
+        { file: "untracked.ts", status: "added" },
+      ]),
+    );
+
+    // Explicit baseRef="HEAD", no toRef: still a working-tree diff (uncommitted edits are
+    // included), but untracked files are deliberately NOT merged in once baseRef is supplied
+    // explicitly — this is the pre-existing single-ref contract this test guards.
+    const explicitEntries = await provider.getChangedFilesSince(tmpDir, "HEAD");
+    expect(explicitEntries).toEqual([
+      { file: "tracked.ts", status: "modified" },
+    ]);
+  });
+});
+
+describe("Libgit2Provider — getChangedLineRanges hunk-header parsing (Slice 2a delta ingestion, phase1-decision-integration.md §6d ruling 2)", () => {
+  let tmpDir: string;
+  let provider: Libgit2Provider;
+  let baseSha: string;
+
+  function lines(n: number): string {
+    return Array.from({ length: n }, (_, i) => `l${i + 1}`).join("\n") + "\n";
+  }
+
+  async function commitFile(): Promise<void> {
+    await git(tmpDir, ["add", "-A"]);
+    await git(tmpDir, ["commit", "-m", "change"]);
+  }
+
+  async function headSha(): Promise<string> {
+    const { stdout } = await git(tmpDir, ["rev-parse", "HEAD"]);
+    return stdout.trim();
+  }
+
+  beforeEach(async () => {
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-libgit2-hunks-test-"),
+    );
+    provider = new Libgit2Provider();
+    await git(tmpDir, ["init"]);
+    await git(tmpDir, ["config", "user.name", "Test User"]);
+    await git(tmpDir, ["config", "user.email", "test@example.com"]);
+
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), lines(20));
+    await commitFile();
+    baseSha = await headSha();
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("a single-line change yields one range spanning that one line", async () => {
+    const content = lines(20).split("\n");
+    content[9] = "l10-changed"; // 0-indexed array, line 10
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), content.join("\n"));
+    await commitFile();
+    const toSha = await headSha();
+
+    const ranges = await provider.getChangedLineRanges(
+      tmpDir,
+      baseSha,
+      toSha,
+      "f.ts",
+    );
+    expect(ranges).toEqual([{ startRow: 9, endRow: 9 }]);
+  });
+
+  it("a multi-line contiguous change yields one range spanning all touched lines", async () => {
+    const content = lines(20).split("\n");
+    content[9] = "l10-x";
+    content[10] = "l11-x";
+    content[11] = "l12-x";
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), content.join("\n"));
+    await commitFile();
+    const toSha = await headSha();
+
+    const ranges = await provider.getChangedLineRanges(
+      tmpDir,
+      baseSha,
+      toSha,
+      "f.ts",
+    );
+    expect(ranges).toEqual([{ startRow: 9, endRow: 11 }]);
+  });
+
+  it("multiple disjoint hunks in one file yield one range per hunk", async () => {
+    const content = lines(20).split("\n");
+    content[1] = "l2-x"; // line 2
+    content[17] = "l18-x"; // line 18 — far enough from line 2 that --unified=0 keeps them separate
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), content.join("\n"));
+    await commitFile();
+    const toSha = await headSha();
+
+    const ranges = await provider.getChangedLineRanges(
+      tmpDir,
+      baseSha,
+      toSha,
+      "f.ts",
+    );
+    expect(ranges).toEqual([
+      { startRow: 1, endRow: 1 },
+      { startRow: 17, endRow: 17 },
+    ]);
+  });
+
+  it("a pure insertion (nothing removed) yields a range spanning only the newly inserted lines", async () => {
+    const content = lines(20).split("\n");
+    content.splice(5, 0, "NEWLINE1", "NEWLINE2"); // insert after line 5 (0-indexed position 5)
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), content.join("\n"));
+    await commitFile();
+    const toSha = await headSha();
+
+    const ranges = await provider.getChangedLineRanges(
+      tmpDir,
+      baseSha,
+      toSha,
+      "f.ts",
+    );
+    // Old side is a zero-length insertion point; new side gains 2 lines (new lines 6-7, 0-indexed 5-6).
+    expect(ranges).toEqual([{ startRow: 5, endRow: 6 }]);
+  });
+
+  it("a pure deletion (nothing added) yields a zero-width anchor range at the insertion point, per the documented contract", async () => {
+    const content = lines(20).split("\n");
+    content.splice(4, 2); // delete lines 5-6 (0-indexed positions 4-5), nothing replaces them
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), content.join("\n"));
+    await commitFile();
+    const toSha = await headSha();
+
+    const ranges = await provider.getChangedLineRanges(
+      tmpDir,
+      baseSha,
+      toSha,
+      "f.ts",
+    );
+    // git reports "@@ -5,2 +4,0 @@" (new side is zero-length); the implementation's documented
+    // contract anchors a deletion-only hunk at max(newStart - 1, 0) as a zero-width range so the
+    // deletion is still locatable rather than silently dropped.
+    expect(ranges).toEqual([{ startRow: 3, endRow: 3 }]);
+  });
+
+  it("a file with no changes between refs yields an empty range list", async () => {
+    // Diffing a ref against itself for a file that was never touched.
+    const ranges = await provider.getChangedLineRanges(
+      tmpDir,
+      baseSha,
+      baseSha,
+      "f.ts",
+    );
+    expect(ranges).toEqual([]);
+  });
+});

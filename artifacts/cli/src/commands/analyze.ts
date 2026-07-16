@@ -9,7 +9,9 @@ import { UI_MESSAGES } from "../constants/ui-messages.js";
 
 /**
  * Thin caller of `docuviaApi.analyze()` — both branches:
- * - No `targetPath`: project-wide config scan (mirrors old Docuvia's `runFullAnalysis`).
+ * - No `targetPath`: auto mode (PLAT-007 Tier A; phase1-decision-integration.md §6) — a sha
+ *   fast-path no-op, full ingestion (empty graph), or delta ingestion (non-empty graph, `HEAD`
+ *   moved), each reported with its own `result.kind`-specific summary below.
  * - `targetPath` given: focused LLM decision extraction (mirrors old Docuvia's
  *   `runFocusedExtraction`/the old `extract` command). Requires
  *   `AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL` and a model
@@ -68,32 +70,59 @@ export async function analyzeCommand(
   try {
     const result = await docuviaApi.analyze(scopeId, logger);
 
-    if (result.kind === "configScan") {
-      spinner.succeed(UI_MESSAGES.ANALYZE_SUCCESS);
-      ui.info(UI_MESSAGES.ANALYZE_PROJECT_TYPE + result.projectType);
-      ui.info(
-        UI_MESSAGES.ANALYZE_SUGGESTED_TAGS +
-          (result.suggestedTags.join(", ") || UI_MESSAGES.ANALYZE_NONE),
-      );
-    } else {
-      spinner.succeed(UI_MESSAGES.ANALYZE_FOCUSED_SUCCESS);
-      if (result.decisions.length === 0) {
-        ui.info(UI_MESSAGES.ANALYZE_FOCUSED_NONE);
-      } else {
-        for (const decision of result.decisions) {
-          ui.info(
-            `[${decision.nodeType}] ${decision.title} (confidence: ${decision.confidence})`,
-          );
-          if (decision.content) {
-            console.log(`    ${decision.content}`);
-          }
-        }
+    switch (result.kind) {
+      case "autoFullIngestion": {
+        spinner.succeed(UI_MESSAGES.ANALYZE_AUTO_FULL_SUCCESS);
+        ui.info(UI_MESSAGES.ANALYZE_PROJECT_TYPE + result.projectType);
         ui.info(
-          UI_MESSAGES.ANALYZE_FOCUSED_PERSISTED(
-            result.persisted,
-            result.deduped,
+          UI_MESSAGES.ANALYZE_SUGGESTED_TAGS +
+            (result.suggestedTags.join(", ") || UI_MESSAGES.ANALYZE_NONE),
+        );
+        ui.info(
+          UI_MESSAGES.ANALYZE_AUTO_FULL_SUMMARY(
+            result.filesParsed,
+            result.filesRequested,
+            result.filesFailed,
           ),
         );
+        break;
+      }
+      case "autoDelta": {
+        spinner.succeed(UI_MESSAGES.ANALYZE_AUTO_DELTA_SUCCESS);
+        ui.info(
+          UI_MESSAGES.ANALYZE_AUTO_DELTA_SUMMARY(
+            result.filesReparsed,
+            result.filesDeleted,
+            result.tierBQueued,
+          ),
+        );
+        break;
+      }
+      case "autoDeltaNoop": {
+        spinner.succeed(UI_MESSAGES.ANALYZE_AUTO_NOOP_SUCCESS);
+        break;
+      }
+      case "decisionExtraction": {
+        spinner.succeed(UI_MESSAGES.ANALYZE_FOCUSED_SUCCESS);
+        if (result.decisions.length === 0) {
+          ui.info(UI_MESSAGES.ANALYZE_FOCUSED_NONE);
+        } else {
+          for (const decision of result.decisions) {
+            ui.info(
+              `[${decision.nodeType}] ${decision.title} (confidence: ${decision.confidence})`,
+            );
+            if (decision.content) {
+              console.log(`    ${decision.content}`);
+            }
+          }
+          ui.info(
+            UI_MESSAGES.ANALYZE_FOCUSED_PERSISTED(
+              result.persisted,
+              result.deduped,
+            ),
+          );
+        }
+        break;
       }
     }
   } catch (error: unknown) {

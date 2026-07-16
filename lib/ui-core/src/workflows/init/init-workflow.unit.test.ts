@@ -50,6 +50,7 @@ function makeMockGitProvider(): IGitProvider {
     getRecentChangedFilePaths: vi.fn().mockResolvedValue([]),
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
+    getChangedLineRanges: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
     getHeadSha: vi.fn().mockResolvedValue(undefined),
     getBranchTipSha: vi.fn().mockResolvedValue(undefined),
@@ -177,6 +178,8 @@ describe("InitWorkflow.execute()", () => {
       }),
       packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
       syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
     };
     const fileDiscovery: IFileDiscovery = {
       discoverFiles: vi.fn().mockImplementation(async () => {
@@ -267,6 +270,8 @@ describe("InitWorkflow.execute()", () => {
       installPostCommitHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
       syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
     }));
     docuviaFactory.register(TOKENS.FileDiscovery, () => ({
       discoverFiles: vi.fn(),
@@ -352,6 +357,8 @@ describe("InitWorkflow.execute()", () => {
       installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
       packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
       syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
     }));
     docuviaFactory.register(TOKENS.FileDiscovery, () => ({
       discoverFiles: vi.fn().mockResolvedValue({

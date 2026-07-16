@@ -9,17 +9,49 @@ import {
   resetFactoryForTests,
   createMockLogger,
   type GraphStoreOpenOptions,
-  type IConfigScanner,
   type IGitProvider,
   type IGraphStore,
+  type IKnowledgeGitService,
   type ILlmClient,
 } from "@workspace/contracts";
+import { GitConstants } from "@workspace/core";
 import { AnalyzeWorkflow, stripMarkdownCodeFence } from "./analyze-workflow.js";
 import {
   ANALYZE_MESSAGES,
   DECISION_EXTRACTION_SYSTEM_PROMPT,
 } from "./analyze-messages.js";
 import { MAX_ANALYZE_FILES } from "./decision-extraction.js";
+import { runFullIngestion } from "./run-full-ingestion.js";
+import { runDeltaIngestion } from "./run-delta-ingestion.js";
+
+// The dispatcher logic (fast-path / empty-graph / fallback-resolution-order) is
+// AnalyzeWorkflow.executeAutoMode()'s own responsibility; runFullIngestion/runDeltaIngestion's
+// internal behavior is covered by their own dedicated unit tests
+// (run-full-ingestion.unit.test.ts / run-delta-ingestion.unit.test.ts). Mocking both modules
+// here isolates the dispatch decision under test from their real (heavier) implementations.
+vi.mock("./run-full-ingestion.js", () => ({
+  runFullIngestion: vi.fn().mockResolvedValue({
+    kind: "autoFullIngestion",
+    projectType: "typescript",
+    suggestedTags: [],
+    filesRequested: 0,
+    filesParsed: 0,
+    filesFailed: 0,
+    filesSkippedOversized: 0,
+  }),
+}));
+vi.mock("./run-delta-ingestion.js", () => ({
+  runDeltaIngestion: vi.fn().mockResolvedValue({
+    kind: "autoDelta",
+    fromSha: "from",
+    headSha: "head",
+    filesReparsed: 0,
+    filesDeleted: 0,
+    filesFailed: 0,
+    filesSkippedOversized: 0,
+    tierBQueued: 0,
+  }),
+}));
 
 /** Same shape as `lib/ui-core/src/workflows/init/init-workflow.unit.test.ts`'s helper. */
 function makeMockGitProvider(
@@ -42,6 +74,7 @@ function makeMockGitProvider(
     getRecentChangedFilePaths: vi.fn().mockResolvedValue([]),
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
+    getChangedLineRanges: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
     getHeadSha: vi
       .fn()
@@ -121,7 +154,27 @@ function registerDefaultPersistenceMocks(store: IGraphStore = makeMockStore()) {
   return { store, openStoreSpy };
 }
 
-describe("AnalyzeWorkflow.execute()", () => {
+function makeMockKnowledgeGit(
+  overrides: Partial<IKnowledgeGitService> = {},
+): IKnowledgeGitService {
+  return {
+    ensureKnowledgeBranch: vi.fn(),
+    installPostCommitHook: vi.fn(),
+    packSnapshotToKnowledgeBranch: vi.fn(),
+    syncKnowledgeBranch: vi.fn(),
+    resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+    runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+    ...overrides,
+  };
+}
+
+/**
+ * `AnalyzeWorkflow.execute()`'s no-arg branch — auto mode (PLAT-007 Tier A;
+ * phase1-decision-integration.md §6). Tests here cover only the *dispatch* decision (fast-path /
+ * empty-graph / fallback-resolution-order); `runFullIngestion`/`runDeltaIngestion` are mocked
+ * (see the top-of-file `vi.mock` calls) and get their own dedicated behavior tests.
+ */
+describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -129,6 +182,8 @@ describe("AnalyzeWorkflow.execute()", () => {
       path.join(os.tmpdir(), "docuvia-analyze-workflow-test-"),
     );
     resetFactoryForTests();
+    vi.mocked(runFullIngestion).mockClear();
+    vi.mocked(runDeltaIngestion).mockClear();
   });
 
   afterEach(() => {
@@ -136,14 +191,28 @@ describe("AnalyzeWorkflow.execute()", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("resolves IConfigScanner from the factory and returns its scan result", async () => {
-    const configScanner: IConfigScanner = {
-      scanConfigs: vi.fn().mockResolvedValue({
-        projectType: "typescript",
-        tags: ["typescript", "react"],
+  it("fast-path noop: HEAD equal to the last-ingested-source-sha meta key exits immediately without dispatching full or delta ingestion", async () => {
+    const store = makeMockStore({
+      meta: {
+        get: vi
+          .fn()
+          .mockImplementation((key: string) =>
+            key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+              ? "same-sha"
+              : undefined,
+          ),
+        set: vi.fn(),
+      },
+    });
+    const { openStoreSpy } = registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({
+        getHeadSha: vi.fn().mockResolvedValue("same-sha"),
       }),
-    };
-    docuviaFactory.register(TOKENS.ConfigScanner, () => configScanner);
+    );
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
     docuviaFactory.lock();
 
     const result = await new AnalyzeWorkflow(
@@ -151,24 +220,13 @@ describe("AnalyzeWorkflow.execute()", () => {
       createMockLogger(),
     ).execute();
 
-    expect(configScanner.scanConfigs).toHaveBeenCalledWith(tmpDir);
-    expect(result).toEqual({
-      kind: "configScan",
-      projectType: "typescript",
-      suggestedTags: ["typescript", "react"],
+    expect(result).toEqual({ kind: "autoDeltaNoop", headSha: "same-sha" });
+    expect(runFullIngestion).not.toHaveBeenCalled();
+    expect(runDeltaIngestion).not.toHaveBeenCalled();
+    expect(openStoreSpy).toHaveBeenCalledWith({
+      dbPath: expect.stringContaining("local.db"),
+      readonly: false,
     });
-  });
-
-  it("logs an analyze.start and analyze.summary JSONL event to .docuvia/logs/analyze.log", async () => {
-    const configScanner: IConfigScanner = {
-      scanConfigs: vi
-        .fn()
-        .mockResolvedValue({ projectType: "generic", tags: ["general"] }),
-    };
-    docuviaFactory.register(TOKENS.ConfigScanner, () => configScanner);
-    docuviaFactory.lock();
-
-    await new AnalyzeWorkflow(tmpDir, createMockLogger()).execute();
 
     const logPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
     const lines = fs
@@ -176,11 +234,191 @@ describe("AnalyzeWorkflow.execute()", () => {
       .trim()
       .split("\n")
       .map((line) => JSON.parse(line));
+    expect(lines.some((l) => l.event === "analyze.delta.noop")).toBe(true);
+  });
 
-    expect(lines.some((l) => l.event === "analyze.start")).toBe(true);
-    const summary = lines.find((l) => l.event === "analyze.summary");
-    expect(summary?.projectType).toBe("generic");
-    expect(summary?.suggestedTags).toEqual(["general"]);
+  it("dispatches to runFullIngestion when the graph has no project row", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue(undefined),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 5, l3Nodes: 0 }),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new AnalyzeWorkflow(
+      tmpDir,
+      createMockLogger(),
+    ).execute();
+
+    expect(runFullIngestion).toHaveBeenCalledTimes(1);
+    expect(runDeltaIngestion).not.toHaveBeenCalled();
+    expect(result.kind).toBe("autoFullIngestion");
+  });
+
+  it("dispatches to runFullIngestion when the graph has a project row but zero L2 nodes", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: 1 } as any),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    await new AnalyzeWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(runFullIngestion).toHaveBeenCalledTimes(1);
+    expect(runDeltaIngestion).not.toHaveBeenCalled();
+  });
+
+  it("dispatches to runDeltaIngestion with the meta-key sha as the baseline when the graph is non-empty and HEAD has moved", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: 1 } as any),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 5, l3Nodes: 0 }),
+      },
+      meta: {
+        get: vi
+          .fn()
+          .mockImplementation((key: string) =>
+            key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+              ? "old-sha"
+              : undefined,
+          ),
+        set: vi.fn(),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({ getHeadSha: vi.fn().mockResolvedValue("new-sha") }),
+    );
+    const knowledgeGit = makeMockKnowledgeGit();
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
+    docuviaFactory.lock();
+
+    await new AnalyzeWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(knowledgeGit.resolveNewestSourceTrailerSha).not.toHaveBeenCalled();
+    expect(runDeltaIngestion).toHaveBeenCalledWith(
+      expect.objectContaining({ fromSha: "old-sha", headSha: "new-sha" }),
+    );
+    expect(runFullIngestion).not.toHaveBeenCalled();
+  });
+
+  it("fallback resolution order: falls back to the newest Docuvia-Source trailer when the meta key is absent (pre-Slice-2 workspace)", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: 1 } as any),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 5, l3Nodes: 0 }),
+      },
+      meta: { get: vi.fn().mockReturnValue(undefined), set: vi.fn() },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({ getHeadSha: vi.fn().mockResolvedValue("new-sha") }),
+    );
+    const knowledgeGit = makeMockKnowledgeGit({
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue("trailer-sha"),
+    });
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
+    docuviaFactory.lock();
+
+    await new AnalyzeWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(knowledgeGit.resolveNewestSourceTrailerSha).toHaveBeenCalled();
+    expect(runDeltaIngestion).toHaveBeenCalledWith(
+      expect.objectContaining({ fromSha: "trailer-sha", headSha: "new-sha" }),
+    );
+  });
+
+  it("fallback resolution order: falls back to a one-time full re-ingest when neither the meta key nor a knowledge-branch trailer resolves", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue({ id: 1 } as any),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 5, l3Nodes: 0 }),
+      },
+      meta: { get: vi.fn().mockReturnValue(undefined), set: vi.fn() },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({ getHeadSha: vi.fn().mockResolvedValue("new-sha") }),
+    );
+    const knowledgeGit = makeMockKnowledgeGit({
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+    });
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
+    docuviaFactory.lock();
+
+    const result = await new AnalyzeWorkflow(
+      tmpDir,
+      createMockLogger(),
+    ).execute();
+
+    expect(runFullIngestion).toHaveBeenCalledTimes(1);
+    expect(runDeltaIngestion).not.toHaveBeenCalled();
+    expect(result.kind).toBe("autoFullIngestion");
+  });
+
+  it("closes the store when execute() completes", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue(undefined),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    await new AnalyzeWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(store.close).toHaveBeenCalledTimes(1);
   });
 });
 

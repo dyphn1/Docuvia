@@ -12,6 +12,9 @@ import { GitConstants } from "./git-constants.js";
 import { parseSourceTrailer } from "./git-trailers.js";
 import { withKnowledgeBranchLock } from "./knowledge-branch-lock.js";
 
+/** Knowledge branch is a dedicated orphan branch of small, purpose-built commits — this comfortably bounds `resolveNewestSourceTrailerSha`'s log scan without truncating any real history (mirrors `HydrationService`'s identical scan-depth choice). */
+const KNOWLEDGE_LOG_SCAN_LIMIT = 5000;
+
 /**
  * Docuvia's git-specific domain logic, built entirely on `IGitProvider`'s raw primitives — the
  * "generating knowledge branches" example named directly in
@@ -313,6 +316,39 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       this.git.getCommitTimestamp(cwd, shaB),
     ]);
     return tsA >= tsB ? shaA : shaB;
+  }
+
+  /**
+   * The `Docuvia-Source` trailer sha stamped on `branchName`'s most recent commit that carries
+   * one — `analyze` auto mode's delta-baseline fallback for pre-Slice-2 workspaces where
+   * `docuvia_meta`'s `lastIngestedSourceSha` key hasn't been written yet
+   * (phase1-decision-integration.md §6a's fallback order). Unlike `HydrationService`'s
+   * `resolveHydrationCommit` (which maps every stamped source sha and intersects with source
+   * HEAD's ancestry to find the *matching* knowledge commit), this only wants the newest stamped
+   * value, full stop — no ancestry walk needed.
+   */
+  public async resolveNewestSourceTrailerSha(
+    cwd: string,
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
+  ): Promise<string | undefined> {
+    const log = await this.git.getCommitLog(
+      cwd,
+      branchName,
+      KNOWLEDGE_LOG_SCAN_LIMIT,
+    );
+    for (const entry of log) {
+      const sourceSha = parseSourceTrailer(entry.message);
+      if (sourceSha) return sourceSha;
+    }
+    return undefined;
+  }
+
+  /** Thin pass-through to `withKnowledgeBranchLock` — see `IKnowledgeGitService`'s doc comment. */
+  public async runUnderKnowledgeLock<T>(
+    cwd: string,
+    fn: () => Promise<T>,
+  ): Promise<T> {
+    return withKnowledgeBranchLock(this.git, cwd, fn);
   }
 
   /**

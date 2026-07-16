@@ -79,20 +79,64 @@ describe("analyzeCommand", () => {
     vi.restoreAllMocks();
   });
 
-  describe("no target path (config scan)", () => {
-    it("prints projectType/suggestedTags on success", async () => {
+  describe("no target path (auto mode)", () => {
+    it("prints projectType/suggestedTags/file summary on a full-ingestion result", async () => {
       mockAnalyze.mockResolvedValue({
-        kind: "configScan",
+        kind: "autoFullIngestion",
         projectType: "typescript",
         suggestedTags: ["typescript", "react"],
+        filesRequested: 3,
+        filesParsed: 3,
+        filesFailed: 0,
+        filesSkippedOversized: 0,
       });
 
       await analyzeCommand();
 
       expect(mockAnalyze).toHaveBeenCalled();
-      expect(spinnerSucceed).toHaveBeenCalled();
+      expect(spinnerSucceed).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_AUTO_FULL_SUCCESS,
+      );
       expect(ui.info).toHaveBeenCalledWith(
         expect.stringContaining("typescript"),
+      );
+      expect(ui.info).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_AUTO_FULL_SUMMARY(3, 3, 0),
+      );
+    });
+
+    it("prints a re-parsed/deleted/queued summary on a delta result", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "autoDelta",
+        fromSha: "aaa",
+        headSha: "bbb",
+        filesReparsed: 2,
+        filesDeleted: 1,
+        filesFailed: 0,
+        filesSkippedOversized: 0,
+        tierBQueued: 1,
+      });
+
+      await analyzeCommand();
+
+      expect(spinnerSucceed).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_AUTO_DELTA_SUCCESS,
+      );
+      expect(ui.info).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_AUTO_DELTA_SUMMARY(2, 1, 1),
+      );
+    });
+
+    it("prints an up-to-date message on a noop result", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "autoDeltaNoop",
+        headSha: "bbb",
+      });
+
+      await analyzeCommand();
+
+      expect(spinnerSucceed).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_AUTO_NOOP_SUCCESS,
       );
     });
 
@@ -108,9 +152,13 @@ describe("analyzeCommand", () => {
     it("prints a large (50-entry) suggestedTags list as a single joined ui.info call without truncation or throwing", async () => {
       const tags = Array.from({ length: 50 }, (_, i) => "tag-" + i);
       mockAnalyze.mockResolvedValue({
-        kind: "configScan",
+        kind: "autoFullIngestion",
         projectType: "generic",
         suggestedTags: tags,
+        filesRequested: 0,
+        filesParsed: 0,
+        filesFailed: 0,
+        filesSkippedOversized: 0,
       });
 
       await analyzeCommand();
@@ -122,24 +170,24 @@ describe("analyzeCommand", () => {
 
     it("updates spinner.text when the underlying workflow emits an info log event mid-call", async () => {
       mockAnalyze.mockImplementation(async (_scopeId, logger) => {
-        logger.info("Scanning configs...");
+        logger.info("Checking knowledge graph freshness...");
         return {
-          kind: "configScan",
-          projectType: "generic",
-          suggestedTags: [],
+          kind: "autoDeltaNoop",
+          headSha: null,
         };
       });
 
       await analyzeCommand();
 
-      expect(lastSpinnerInstance?.text).toBe("Scanning configs...");
+      expect(lastSpinnerInstance?.text).toBe(
+        "Checking knowledge graph freshness...",
+      );
     });
 
     it("does not leak docuviaMemory scopes across repeated runs (idempotency)", async () => {
       mockAnalyze.mockResolvedValue({
-        kind: "configScan",
-        projectType: "generic",
-        suggestedTags: [],
+        kind: "autoDeltaNoop",
+        headSha: null,
       });
       const createScopeSpy = vi.spyOn(docuviaMemory, "createScope");
       const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");

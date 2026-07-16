@@ -50,3 +50,18 @@ export function getSupportedGlobExtensions(): string[] {
     ext.replace(/^\./, ""),
   );
 }
+
+/**
+ * `FileDiscoveryService.discoverFiles()`'s post-glob/post-git-list filter, extracted so
+ * `analyze` auto mode's delta ingestion (phase1-decision-integration.md §6b) can apply the exact
+ * same ignore rule to a git-diff-derived file list without duplicating it — "filtered by the
+ * SAME discovery ignore/oversize rules `init` uses" per the spec. `discoverFiles()` itself is
+ * refactored to call this too, so there is exactly one place this rule lives.
+ */
+export function isDiscoverableSourceFile(filePath: string): boolean {
+  return (
+    isSupportedSourceFile(filePath) &&
+    !filePath.includes("node_modules/") &&
+    !filePath.includes(".docuvia/")
+  );
+}

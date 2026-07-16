@@ -7,12 +7,17 @@
  * anything else — plain constants it needs (e.g. `UTF8_ENCODING`) live in `@workspace/contracts`
  * instead, which both `lib/core` and `artifacts/cli` are allowed to depend on.
  *
- * One narrow, deliberate exception: `isSupportedSourceFile` below. It is pure, side-effect-free
- * "which file extensions count as source code" domain knowledge, not a swappable technology and
- * not DI-registered behind a token (see `lib/ui-core/src/workflows/analyze/decision-extraction.ts`'s
- * Decision 2 writeup) — `lib/ui-core`'s decision-extraction file-walk reuses it directly rather
- * than re-implementing the extension table, which would drift from the AST layer's own registry.
+ * A handful of narrow, deliberate exceptions below: pure, side-effect-free domain knowledge, not
+ * a swappable technology and not DI-registered behind a token (see
+ * `lib/ui-core/src/workflows/analyze/decision-extraction.ts`'s Decision 2 writeup for
+ * `isSupportedSourceFile`'s original precedent) — `lib/ui-core`'s file-walks reuse these directly
+ * rather than re-implementing them, which would drift from `lib/core`'s own source of truth.
  */
 import "./register.js";
 
-export { isSupportedSourceFile } from "./utils/language-detection.js";
+export {
+  isSupportedSourceFile,
+  isDiscoverableSourceFile,
+} from "./utils/language-detection.js";
+export { MAX_FILE_SIZE_BYTES } from "./constants/paths.js";
+export { GitConstants } from "./git/git-constants.js";

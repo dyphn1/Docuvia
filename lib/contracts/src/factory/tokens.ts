@@ -22,6 +22,7 @@ import type { ITopologyBuilder } from "../interfaces/topology.interfaces.js";
 import type { ISnapshotRenderer } from "../interfaces/snapshot.interfaces.js";
 import type { IHydrationService } from "../interfaces/hydration.interfaces.js";
 import type { IDiagnosticRunner } from "../interfaces/diagnostic.interfaces.js";
+import type { ISemanticDiffAnalyzer } from "../interfaces/semantic-diff.interfaces.js";
 
 /**
  * A phantom-typed registration token — see
@@ -91,5 +92,8 @@ export const TOKENS = {
   DiagnosticRunnerDb: createToken<IDiagnosticRunner>("DiagnosticRunnerDb"),
   DiagnosticRunnerGit: createToken<IDiagnosticRunner, LoggerParams>(
     "DiagnosticRunnerGit",
+  ),
+  SemanticDiffAnalyzer: createToken<ISemanticDiffAnalyzer, LoggerParams>(
+    "ISemanticDiffAnalyzer",
   ),
 } as const;

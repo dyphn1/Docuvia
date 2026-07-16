@@ -13,6 +13,7 @@ import { TempFileManager } from "./temp-files/temp-file-manager.js";
 import { QueryService } from "./query/query.service.js";
 import { ImpactService } from "./impact/impact.service.js";
 import { TopologyBuilderService } from "./topology/topology-builder.service.js";
+import { SemanticDiffAnalyzerService } from "./detector/semantic-diff-analyzer.service.js";
 
 /**
  * Self-registration side effect (see
@@ -101,4 +102,9 @@ docuviaFactory.register(
   TOKENS.HydrationService,
   (f, params) =>
     new HydrationService(f.resolve(TOKENS.GitProvider), params?.logger),
+);
+
+docuviaFactory.register(
+  TOKENS.SemanticDiffAnalyzer,
+  (_f, params) => new SemanticDiffAnalyzerService(params?.logger),
 );

@@ -18,8 +18,14 @@ export type { Token } from "./factory/tokens.js";
 
 export type {
   ChangedFileEntry,
+  DiffLineRange,
   IGitProvider,
 } from "./interfaces/git.interfaces.js";
+export type {
+  SemanticPruningLevel,
+  SemanticDiffModifiedNode,
+  ISemanticDiffAnalyzer,
+} from "./interfaces/semantic-diff.interfaces.js";
 export type {
   IKnowledgeGitService,
   KnowledgeBranchSyncResult,

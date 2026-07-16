@@ -1,18 +1,22 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { resolve } from "path";
 import { existsSync, readFileSync } from "fs";
+import Database from "better-sqlite3";
 import { TestSandbox } from "../../support/sandbox.js";
 
 const CONCURRENT_RUNS = 5;
 
 /**
- * Regression coverage for docs/cli-test-analysis/analyze.md claim 6, retargeted per
- * analyze-status.md's B.1 verdict: AnalyzeWorkflow's config-scan path never opens the SQLite
- * store (no TOKENS.GraphStoreOpener call), so it cannot race with `init`'s DB/migration writes
- * the way init-concurrency-status.md's bug did. The real, cheaply-testable risk here is N
- * concurrent `analyze` runs all appending to the same `.docuvia/logs/analyze.log` file via
- * `fs.appendFile` -- this test proves that produces N well-formed, non-interleaved JSONL run
- * pairs rather than corrupted/merged lines.
+ * Regression coverage for docs/cli-test-analysis/analyze.md claim 6, retargeted twice now:
+ * analyze-status.md's B.1 verdict (config-scan never opened the SQLite store, so the real risk
+ * was only the shared JSONL log file), then again per PLAT-007/phase1-decision-integration.md
+ * §6a's auto-mode breaking change -- no-arg `analyze` on an empty graph now runs full ingestion,
+ * which DOES open `local.db` read-write (`TOKENS.GraphStoreOpener`). This fixture has no source
+ * files, so every concurrent run's empty-graph check (no L2 nodes) keeps re-triggering full
+ * ingestion -- deliberately exercising `GraphStore`'s WAL/busy_timeout concurrent-writer handling
+ * (ADR-032) under N real concurrent processes, not just the JSONL-append race the original test
+ * covered. `seedProjectRow`'s atomic `getOrInsert` must keep the project row from being
+ * duplicated across the pile-up.
  */
 describe("Command: docuvia analyze (concurrent runs, real filesystem)", () => {
   let sandbox: TestSandbox;
@@ -30,7 +34,7 @@ describe("Command: docuvia analyze (concurrent runs, real filesystem)", () => {
     await sandbox.teardown();
   }, 30000);
 
-  it(`resolves all ${CONCURRENT_RUNS} concurrent analyze runs without throwing and writes well-formed, uncorrupted JSONL log lines`, async () => {
+  it(`resolves all ${CONCURRENT_RUNS} concurrent analyze runs without throwing, writes well-formed JSONL log lines, and never duplicates the project row`, async () => {
     const runs = Array.from({ length: CONCURRENT_RUNS }, () =>
       sandbox.runCli(["analyze"], { reject: false }),
     );
@@ -48,12 +52,25 @@ describe("Command: docuvia analyze (concurrent runs, real filesystem)", () => {
     // concurrent write would produce a line that fails JSON.parse or merges two events together.
     const parsedLines = rawLines.map((line) => JSON.parse(line));
 
-    const startEvents = parsedLines.filter((l) => l.event === "analyze.start");
+    const startEvents = parsedLines.filter(
+      (l) => l.event === "analyze.auto.start",
+    );
     const summaryEvents = parsedLines.filter(
-      (l) => l.event === "analyze.summary",
+      (l) => l.event === "analyze.full.summary",
     );
     expect(startEvents.length).toBe(CONCURRENT_RUNS);
     expect(summaryEvents.length).toBe(CONCURRENT_RUNS);
-    expect(parsedLines.length).toBe(CONCURRENT_RUNS * 2);
-  }, 60000);
+
+    const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
+    expect(existsSync(dbPath)).toBe(true);
+    const db = new Database(dbPath, { readonly: true });
+    try {
+      const { count } = db
+        .prepare("SELECT COUNT(*) as count FROM projects")
+        .get() as { count: number };
+      expect(count).toBe(1);
+    } finally {
+      db.close();
+    }
+  }, 90000);
 });

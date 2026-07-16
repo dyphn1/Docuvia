@@ -1,8 +1,8 @@
 # `docuvia analyze`
 
-The `analyze` command is the core engine of Docuvia. It reads source code, parses the Abstract Syntax Tree (AST), extracts structural metadata, and stores the resulting L2 (Implementation) nodes and edges into the local SQLite database.
-
-> **Note on Docuvia2:** Currently, `analyze` only performs AST parsing and structural extraction. The LLM-driven L3 (Domain Concept) extraction is deferred. If you attempt to invoke LLM extraction, it will output a "not supported yet" message.
+`analyze` is Docuvia's ingestion command — it keeps the local knowledge graph (`local.db`) up to
+date with your source code. It has two modes, dispatched on whether a path argument is given
+(PLAT-007 — see [Tiered Background Knowledge Evolution](../../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md)):
 
 ## Usage
 
@@ -12,31 +12,56 @@ docuvia analyze [path]
 
 ### Arguments
 
-- `[path]` _(Optional)_: The specific file or directory to analyze. If omitted, the wizard will prompt you or default to analyzing the entire workspace.
+- `[path]` _(Optional)_: A specific file or directory to run focused LLM decision extraction
+  against. **Omit it** to run auto mode (see below) — this is the mode the post-commit hook and
+  most manual invocations use.
 
 ### Flags
 
-- `--escalate-to-lsp`: _(Documented No-Op in Docuvia2)_ Initially intended to trigger a headless Language Server Protocol (LSP) instance for deep references. Currently a no-op; falls back to AST static analysis.
+- `--escalate-to-lsp`: _(Not yet implemented)_ Tier B's LSP quality pass — reserved, currently a
+  no-op.
 
-## Under the Hood
+## Mode A — No path: auto mode (ingestion)
 
-When you run `docuvia analyze`:
+> **Breaking change from earlier Docuvia2 builds:** no-arg `analyze` used to be a read-only
+> project-type/tag scan that never touched the graph. It now performs real ingestion — the scan
+> becomes a step of that, not the whole command.
 
-1. **File Discovery**: The engine scans the target path, respecting `.gitignore` and `docuvia.config.json` exclude patterns.
-2. **Checkout Thrashing Defense**: It calculates the Git Blob hash for each file. If the content hash matches a previously cached analysis in SQLite, it skips parsing.
-3. **AST Parsing**: The Unified Isomorphic AST Microkernel parses the source into a normalized tree.
-4. **Graph Persistence**: Nodes (functions, classes, exports) and Edges (calls, imports) are written to `local.db` as the Sole Source of Truth.
-5. **Command Logging**: A structured JSONL log is written to `.docuvia/logs/analyze.log`.
+Auto mode picks one of three outcomes, in this order:
+
+1. **Fast-path no-op**: if `HEAD` already equals the source commit the graph was last ingested
+   from, `analyze` exits immediately (sub-second) without touching the filesystem further. This is
+   what makes it safe to run on every commit.
+2. **Full ingestion**: if the graph has no project row or no L2 nodes yet (a fresh workspace, or
+   one whose `local.db` was deleted), `analyze` runs the same discovery -> config-scan ->
+   AST-parse -> persist pipeline `docuvia init` uses. The project-type/tag scan's output is
+   reported as part of this.
+3. **Delta ingestion**: otherwise, `analyze` diffs the last-ingested source commit against `HEAD`,
+   re-parses only the added/modified/renamed source files (filtered by the same ignore/oversize
+   rules as full ingestion), and drops deleted files' nodes. A lightweight structural classifier
+   flags files whose public surface (not just internal logic) changed — the accumulated list feeds
+   a later, more expensive cross-file consistency pass (Tier B), not yet implemented in this
+   milestone.
+
+Every run — no-op, full, or delta — writes a structured JSONL log to `.docuvia/logs/analyze.log`.
+
+## Mode B — Path given: focused LLM decision extraction
+
+Passing a file or directory switches to a focused pass: Docuvia reads the target's source,
+sends it to an LLM, and extracts concrete implementation decisions/rules/context as L3 nodes
+attached to the graph (deduplicated by content hash). This requires
+`AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL` and a model
+(`AI_DOCUVIA_MODEL`/`AI_DOCUVIA_FAST_MODEL`) to be set — missing env vars are a hard failure.
 
 ## Examples
 
-Analyze the entire workspace:
+Update the graph from the current source state (auto mode):
 
 ```bash
 docuvia analyze
 ```
 
-Analyze a specific module:
+Extract decisions from a specific module (focused LLM extraction):
 
 ```bash
 docuvia analyze src/auth/

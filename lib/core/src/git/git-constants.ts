@@ -17,4 +17,18 @@ export const GitConstants = {
   DEFAULT_LOCAL_PROJECT_ID: 1,
   /** `docuvia_meta` key storing the knowledge-branch commit sha `local.db` was last hydrated from (STOR-002). */
   META_KEY_KNOWLEDGE_TIP_SHA: "hydratedKnowledgeSha",
+  /**
+   * `docuvia_meta` key storing the source commit sha `local.db`'s graph was last *ingested*
+   * from — distinct from `META_KEY_KNOWLEDGE_TIP_SHA`, which tracks the last git *hydration*
+   * (phase1-decision-integration.md §6a; PLAT-007 Tier A). Written after every successful full or
+   * delta `analyze` auto-mode ingestion; read back as the idempotency fast-path (`HEAD ===` this
+   * value → no-op) and as the delta baseline (`this value -> HEAD`).
+   */
+  META_KEY_LAST_INGESTED_SOURCE_SHA: "lastIngestedSourceSha",
+  /**
+   * `docuvia_meta` key holding a JSON array of `{file, commitSha}` entries, deduped by `file` —
+   * the Tier B queue `analyze` auto mode's delta ingestion enqueues `CONTRACT_CHANGED` files into
+   * (phase1-decision-integration.md §6b; PLAT-007 Tier B). Not consumed until Slice 3.
+   */
+  META_KEY_TIER_B_QUEUE: "tierBQueue",
 } as const;

@@ -104,6 +104,8 @@ describe("SnapshotWorkflow.execute()", () => {
       installPostCommitHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
       syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
     };
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
     docuviaFactory.lock();
@@ -142,6 +144,8 @@ describe("SnapshotWorkflow.execute()", () => {
       installPostCommitHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
       syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
     }));
     docuviaFactory.lock();
 
@@ -172,6 +176,8 @@ describe("SnapshotWorkflow.execute()", () => {
         .fn()
         .mockRejectedValue(new Error("git fast-import failed")),
       syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
     }));
     docuviaFactory.lock();
 

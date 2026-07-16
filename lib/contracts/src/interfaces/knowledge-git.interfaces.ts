@@ -48,4 +48,27 @@ export interface IKnowledgeGitService {
     branchName?: string,
     remote?: string,
   ): Promise<KnowledgeBranchSyncResult>;
+  /**
+   * The `Docuvia-Source` trailer sha stamped on the knowledge branch's most recent commit that
+   * carries one (STOR-001 point 4) — `analyze` auto mode's delta-baseline fallback for pre-Slice-2
+   * workspaces where `docuvia_meta`'s `lastIngestedSourceSha` key hasn't been written yet
+   * (phase1-decision-integration.md §6a's fallback order). Undefined if the branch doesn't exist
+   * or none of its commits carry the trailer.
+   */
+  resolveNewestSourceTrailerSha(
+    cwd: string,
+    branchName?: string,
+  ): Promise<string | undefined>;
+  /**
+   * Runs `fn` while holding the knowledge-branch lock (the same advisory
+   * `.git/docuvia-knowledge.lock` `packSnapshotToKnowledgeBranch`/`syncKnowledgeBranch` use,
+   * STOR-001/PLAT-006) — `analyze` auto mode's delta persist step takes this lock for its
+   * local.db writes (phase1-decision-integration.md §6b's locking requirement; PLAT-007's
+   * reliability section), even though it doesn't itself mutate the knowledge branch ref, so it
+   * can't race a concurrent `snapshot`'s read-then-pack of the same local.db. Exposed as a
+   * generic method (rather than requiring `lib/ui-core` to import `lib/core`'s
+   * `withKnowledgeBranchLock` helper directly) to keep the Orchestration layer resolving
+   * everything by token, per the Virtual Contracts architecture.
+   */
+  runUnderKnowledgeLock<T>(cwd: string, fn: () => Promise<T>): Promise<T>;
 }

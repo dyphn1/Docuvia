@@ -45,6 +45,7 @@ function makeMockGitProvider(
     getRecentChangedFilePaths: vi.fn().mockResolvedValue([]),
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
+    getChangedLineRanges: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
     getHeadSha: vi.fn().mockResolvedValue(undefined),
     getBranchTipSha: vi.fn().mockResolvedValue(undefined),

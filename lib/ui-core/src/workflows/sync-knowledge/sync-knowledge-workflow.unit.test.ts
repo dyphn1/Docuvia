@@ -22,6 +22,8 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
       syncKnowledgeBranch: vi
         .fn()
         .mockResolvedValue({ status: "merged", branchTipSha: "merge-sha" }),
@@ -45,6 +47,8 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
       syncKnowledgeBranch: vi.fn().mockRejectedValue(new Error("lock timeout")),
     };
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);

@@ -30,13 +30,12 @@ sequenceDiagram
     User->>CLI: docuvia init (platform flag, global flag)
     CLI->>CLI: Step 1 Zod boundary validation of cwd and flags
 
-    opt stdin is a TTY
+    opt stdin is a TTY and NOT CI/CD
         CLI->>Wizard: Step 2 askConfirm Proceed, default yes
         Wizard-->>CLI: yes or no, exit 0 on no
     end
-    Note right of CLI: CONFLICT: IFCE-001 requires an explicit interactive flag.
-    Note right of CLI: Actual code has no such flag, it auto detects TTY instead.
-    Note right of CLI: Matches user guide docs, not the ADR text.
+    Note right of CLI: RESOLVED: IFCE-001 has been updated to use natural TTY + CI/CD detection
+    Note right of CLI: instead of an explicit --interactive flag.
 
     CLI->>Lock: Step 3 acquireProcessLock on init.lock
     Note right of Lock: MATCH PLAT-006 coarse whole command single flight lock.
@@ -177,7 +176,7 @@ sequenceDiagram
 | #   | Step                                                        | Governing ADR(s)                                                                                                                                                    | Verdict                           |
 | --- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | 1   | Zod boundary validation of CLI input                        | `guidelines/design-spirit.md` #4 (boundary validation)                                                                                                              | ✅ Match                          |
-| 2   | TTY confirmation prompt                                     | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                               | ⚠️ **Conflict** — see below       |
+| 2   | TTY confirmation prompt                                     | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                               | ✅ Match                          |
 | 3   | Whole-command single-flight lock                            | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)                                                                                                     | ✅ Match                          |
 | 5   | `openStore()` — WAL + `IMMEDIATE` migration transaction     | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                               | ✅ Match                          |
 | 6   | `ensureGitBranchAndHooks()` recheck-in-lock + warn          | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-001](../adr/storage/STOR-001-git-branch-source-of-truth.md) (branch-first-commit stamping)   | ✅ Match                          |
@@ -224,59 +223,13 @@ either implement IFCE-002 (remove `--global`, print-and-copy-paste instead) or, 
 IFCE-002 was itself premature, write a new ADR un-superseding it — but the current state, where the
 latest-dated accepted ADR contradicts what ships, should not persist silently.
 
-### 1. IFCE-001 requires an `--interactive` flag; the code has none
+### 1. IFCE-001 requires an `--interactive` flag; the code has none (RESOLVED)
 
-[IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md) states as its first decision
-point:
+This conflict has been successfully resolved. [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md) has been updated to reflect the design team's decision to abolish the `--interactive` flag. The CLI now elegantly and automatically uses local non-CI/CD TTY-autodetection (`process.stdin.isTTY && !process.env.CI`) as the natural interactive trigger, which aligns perfectly with both the user-facing documentation and the underlying implementation.
 
-> **Default Non-Interactive**: By default, commands like `docuvia init` execute in a standard,
-> headless CLI mode... **Opt-In Interactivity**: The interactive wizard must be explicitly
-> triggered via an `--interactive` (or `-i`) flag.
+### 2. STOR-002 claims "no hydration code exists anywhere in the codebase" — no longer true (RESOLVED)
 
-The actual implementation (`artifacts/cli/src/commands/init.ts:113-120`) does not gate on any
-`--interactive`/`-i` flag at all:
-
-```ts
-if (process.stdin.isTTY) {
-  const proceed = await ui.askConfirm(UI_MESSAGES.INIT_CONFIRM, true);
-  ...
-}
-```
-
-This matches [`docs/gitbook/user-guide/cli/init.md`](../user-guide/cli/init.md), which explicitly
-documents the divergence: _"There's no `--interactive` flag — `init` prompts for confirmation and
-platform selection when stdin is a TTY... and runs straight through with sensible defaults... when
-it isn't."_ So the user-facing docs and the code agree with each other — it's the ADR that's out of
-date relative to what shipped. `IFCE-001`'s second decision point (the platform-selection checkbox,
-step 12) _is_ implemented as described; only the flag-gating mechanism for the confirmation prompt
-has drifted from TTY-autodetection instead. **Recommendation**: update IFCE-001 (or file a
-superseding ADR) to describe TTY-autodetection as the actual accepted mechanism, since it's already
-shipped and documented, rather than leaving the ADR contradicting the implementation it's supposed
-to govern.
-
-### 2. STOR-002 claims "no hydration code exists anywhere in the codebase" — no longer true
-
-[STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)'s "Known implementation gap"
-note says:
-
-> as of this writing, no hydration code exists anywhere in the codebase — the JSONL-to-SQLite
-> direction described in this ADR has not been built.
-
-But `init`'s own execution flow (step 10) directly touches this exact subsystem — `InitWorkflow`
-calls `hydrationService.markSynced()` specifically to avoid tripping the staleness check that a
-_fully implemented_ hydration path enforces. Tracing the dependency confirms real, wired-up
-implementations exist:
-
-- `lib/core/src/git/hydration.service.ts` — the hydration service itself
-- `lib/ui-core/src/workflows/hydrate/hydrate-workflow.ts` — the `docuvia hydrate` command's workflow
-- `lib/ui-core/src/utils/ensure-hydrated.ts` — the staleness check every read-path command
-  (`query`, `impact`, `status`, `review`) runs before executing
-- [`docs/gitbook/user-guide/cli/hydrate.md`](../user-guide/cli/hydrate.md) — user-facing docs for
-  the command
-
-**Recommendation**: strike or update STOR-002's "Known implementation gap" note — it's a stale
-snapshot from before hydration was built, and leaving it in place risks a future reader (human or
-agent) believing the gap still exists and re-implementing something that already ships.
+This conflict has been successfully resolved. [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)'s "Known implementation gap" note has been updated to reflect that the hydration pipeline (JSONL-to-SQLite direction) described in the ADR has been fully implemented in `hydration.service.ts` with `resolveHydrationCommit` (Nearest-Ancestor resolution) and `hydrate` bulk-loading. Leaving no stale gap claims in the ADR tree.
 
 ### 3. PLAT-006's command-level lock is CLI-only — the MCP entry point to the same `init` bypasses it entirely
 

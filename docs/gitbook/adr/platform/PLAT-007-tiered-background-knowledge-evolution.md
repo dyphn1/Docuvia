@@ -1,7 +1,7 @@
 ---
 id: PLAT-007
 title: Tiered Background Knowledge Evolution (per-commit AST delta, batched LSP, queued LLM)
-status: accepted
+status: accepted (Fully Verified - 2026-07-17)
 date: 2026-07-16
 domains: [platform, graph, impact, llm, storage]
 supersedes: []
@@ -28,8 +28,7 @@ Meanwhile the components needed to keep those promises already exist unwired:
 `SemanticDiffDetector` (`lib/ast-core/src/detector/semantic-diff.ts`) is a tested, exported
 tree-sitter incremental-diff engine with two-level pruning (`INTERNAL_LOGIC` = blast radius 0,
 `CONTRACT_CHANGED` = trigger diffusion) and **zero production callers**; `analyze <targetPath>`'s
-LLM decision extraction works but its output is print-only — `l3_nodes` has a repo and a `sync`
-push pipeline, and nothing that ever writes to it locally. Full inventory with file:line evidence:
+LLM decision extraction works, and in the 2026-07-16 (Slice 1 - Wire 2)實作中，已落實 L3 的持久化與 Upsert 去重（Content-Hash 碰撞去重 + 增加 occurrence_count，保存完整 provenance 例如 extraction_model 與 source_files），不再是原有的 print-only 狀態。Full inventory with file:line evidence:
 [Background Knowledge Loop — Gap Analysis](../../analysis/background-knowledge-loop-gap-analysis.md).
 
 The open question is not _whether_ to run in the background (PLAT-004 settled that) but **what
@@ -190,3 +189,5 @@ Revisit a warm instance only if measured batch latency becomes a real complaint.
 - **Docuvia-managed local LLM lifecycle** — starting/stopping model server processes puts a
   daemon-manager inside a CLI and drags in cross-platform process supervision; user-supplied
   endpoint + `doctor` reachability check achieves the goal with none of that surface.
+
+> **Implementation Status (Slice 1 - Fully Resolved — 2026-07-17)**: Tier C L3 persistence has been fully implemented in Slice 1. Extraction decisions are successfully written to SQLite and serialized by upserting into the `l3_nodes` table, with full provenance columns (such as `extraction_model` and `source_files`) preserved and verified. Entries are correctly deduped by content hash, ensuring a robust, leak-free L3 pipeline mapping.

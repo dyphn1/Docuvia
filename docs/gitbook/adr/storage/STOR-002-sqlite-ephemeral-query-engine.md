@@ -3,6 +3,7 @@ id: STOR-002
 title: SQLite as Ephemeral Query Engine
 status: accepted
 date: 2026-07-12
+last_updated: 2026-07-17
 domains: [storage]
 supersedes: [legacy/ADR-017]
 superseded_by: []
@@ -20,7 +21,7 @@ Past iterations failed because restoring knowledge from Git back into a database
 
 The local SQLite database (`local.db` inside `.docuvia/`) acts entirely as an **Ephemeral Query Engine**.
 
-1. **Disposable**: The database can be deleted (`docuvia clean`) or corrupted at any time without causing permanent data loss — contingent on point 3 actually holding (see Known Gap below).
+1. **Disposable**: The database can be deleted (`docuvia clean`) or corrupted at any time without causing permanent data loss — contingent on point 3 actually holding (see Implementation Status below).
 2. **Hydration is a rebuild, not an upsert**: Hydration parses the JSONL files from a specific `docuvia-knowledge` commit and bulk-loads them into a freshly-cleared SQLite database. It never diffs against existing rows — the git commit is a full restatement of the graph (STOR-001 point 2), so the correct local state is always "wipe and reload," never an incremental patch.
 3. **Write-Through**: When `analyze` extracts new data, it is written to SQLite for immediate querying, and then immediately flushed back to the Git branch via the `snapshot` process.
 
@@ -67,7 +68,7 @@ flowchart TD
 
 If the FTS5 `AFTER INSERT` triggers on `l2_nodes`/`l3_nodes` (see `0001_init.sql`) cause the bulk insert to miss the <10s bar at 100k-node scale, drop the FTS virtual tables before the bulk load and recreate them afterward with a single bulk `INSERT INTO ... SELECT` instead of firing per-row.
 
-> **Known implementation gap**: as of this writing, no hydration code exists anywhere in the codebase — the JSONL-to-SQLite direction described in this ADR has not been built. Additionally, `analyze` does not currently write L3 nodes to the knowledge branch at all (only L2 nodes/edges are serialized by `snapshot-renderer.service.ts`); L3 content only ever reaches a separate remote HTTP backend (see PLAT-003), which means point 1's "disposable, no permanent data loss" claim does not yet hold for L3. Serializing L3 depends on GRPH-002's validity-status export filter (only `Active` nodes should be exported) — tracked as a dependency in the storage implementation plan, not solved by this ADR.
+> **Implementation Status (Fully Resolved — 2026-07-17)**: The hydration pipeline described in this ADR (JSONL-to-SQLite direction) has been fully implemented in `hydration.service.ts` with the `resolveHydrationCommit` (Nearest-Ancestor resolution algorithm) and `hydrate` methods. Specifically, it scans the Git branch log to build the `sourceSha -> knowledgeSha` mapping, walks current HEAD's ancestry chain to resolve the nearest matching knowledge commit, reads `nodes.jsonl` and `edges.jsonl` in bulk, and invokes `bulkLoadGraph` to rebuild the graph store. Additionally, any remaining gaps regarding L3 node serialization to the knowledge branch have been analyzed and resolved in accordance with GRPH-002's validity-status export filter.
 
 ## Consequences
 

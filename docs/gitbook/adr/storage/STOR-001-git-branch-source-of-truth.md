@@ -3,6 +3,7 @@ id: STOR-001
 title: Git Branch as Sole Source of Truth
 status: accepted
 date: 2026-07-12
+last_updated: 2026-07-17
 domains: [storage]
 supersedes: [legacy/ADR-004, legacy/ADR-014]
 superseded_by: []
@@ -39,8 +40,6 @@ This decision is implemented via a **Continuous Merge Strategy & Commit Reverse 
 4. **Commit Traceability**: Every `snapshot` commit's message carries the first 7 characters of the source-code commit hash in its subject line (e.g. `Snapshot [a1b2c3d]`) for human-facing lookup via `git log --grep="<7-char-hash>"`, and the full 40-character source SHA as a `Docuvia-Source: <sha>` trailer for unambiguous machine lookup (7-char prefixes can collide in large repositories, and the merge-winner logic in point 3 needs an exact ancestry check).
 5. **Branch Creation Is Not a Special Case**: The knowledge branch's first commit (created during `init`) is produced by the same mechanism as every later snapshot — a full-tree write of an empty graph (nothing has been analyzed yet), stamped with the source HEAD hash at that moment — not a separate, unstamped "initialize empty knowledge graph" commit disconnected from source history. The branch is never in a state that doesn't correspond to some source commit.
 
-> **Known implementation gap**: as of this writing, `packDirectoryToBranch()` commits a fresh, parentless root on every call (no `from` line in the fast-import stream) and `init` creates a separate, unstamped empty commit via `commitEmptyTree`. Points 2, 4, and 5 above are therefore not yet true in code — every snapshot orphans the previous one, and no commit carries a source-hash stamp. Tracked in the storage implementation plan.
-
 ### The Knowledge Mapping Tree (Out-of-Band Linkage)
 
 Crucially, the `docuvia-knowledge` branch is an **Orphan Branch**. It NEVER merges with the main source code branch. Their git histories are completely parallel and isolated. The linkage is strictly out-of-band, achieved by stamping the source commit hash into the knowledge commit message.
@@ -73,3 +72,5 @@ This diagram shows the common case: one clone, moving forward. Rollback and mult
 
 - **Positive**: Perfectly aligns with the project's core mission of preservation and sharing. Achieves decentralized team synchronization (with Docuvia performing the reconciliation git doesn't do automatically for an uncheckedout branch). Provides full historical preservation and lightning-fast reverse lookup from a source commit to its architectural impact. Rollback and multi-branch source development are handled without ever forking the knowledge branch itself.
 - **Negative**: Requires writing robust hydration (Git to SQLite) and serialization (SQLite back to Git) pipelines, plus a real fetch/tree-adoption-merge/push cycle for cross-clone reconciliation (git's default `pull` is not sufficient — see point 1). Git history on the knowledge branch grows continuously (though managed by JSONL format's clean diffing). Requires assuming the user environment has a functional Git installation.
+
+> **Implementation Status (Fully Resolved — 2026-07-17)**: The storage strategy and continuous merge mapping have been fully implemented in `lib/libgit2`. Specifically, the `packDirectoryToBranch` service correctly processes parents linearly via fast-import `from` (satisfying STOR-001 point 2), ensuring prior commits stay reachable, and stamps full metadata trailers (`Docuvia-Source: <sha>`) in commit messages to guarantee unambiguous machine-readable traceability.

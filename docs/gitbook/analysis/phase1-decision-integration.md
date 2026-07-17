@@ -20,7 +20,7 @@ The two reports describe the same product at different dates and different altit
 | `dist/cli.js` unbootable (duplicated shebang)  | ❌ blocking bug  | not mentioned                        | **Fixed** — `artifacts/cli/tsup.config.ts` no longer injects a shebang banner (only the `createRequire` banner remains)   |
 | AST worker crash-loops on `encoding.js` import | ❌ blocking bug  | init Phase 4 works                   | **Fixed** — `lib/core/src/ast/ast-worker.ts` inlines the constants instead of importing `../constants/encoding.js`        |
 | Graph is empty / `analyze` produces 0 nodes    | ❌               | Wire 1: hook snapshots a stale graph | **Still true as designed** — no-arg `analyze` is config-scan-only (`analyze-workflow.ts:75-98`); ingestion only at `init` |
-| L3 decisions evaporate (print-only)            | not tested       | Wire 2                               | **Still true** — `analyze.ts:80-91` prints; `L3NodesRepo` is deliberately read-only (`l3-nodes-repo.ts:9-14`)             |
+| L3 decisions evaporate (print-only)            | not tested       | Wire 2                               | **實作進行中，尚未完全驗證** (In Progress / Partially Verified - 2026-07-17)。已於 Slice 1 實作 L3 持久化與 Upsert 去重   |
 | snapshot/hydrate git plumbing works            | ✅ verified      | ✅                                   | unchanged                                                                                                                 |
 
 **Conclusion:** the benchmark's two blocking bugs are already fixed; its remaining Docuvia2
@@ -35,7 +35,7 @@ PLAT-007's ordering is confirmed as the best solution; no competing alternative 
 report survives (full re-index per commit, new `update` command, `snapshot --evolve`, resident
 daemon — all already rejected in the ADR with reasons that still hold):
 
-1. **Slice 1 — Wire 2: L3 persistence** (dispatched now, §5). Smallest, fully independent,
+1. **Slice 1 — Wire 2: L3 persistence** (已於 2026-07-16 實作，狀態：正在進行尚未完全驗證 - 2026-07-17). Smallest, fully independent,
    the owner's standing top concern, and unblocks `sync`'s existing push pipeline.
 2. **Slice 2 — Tier A**: `analyze` auto mode (sha fast-path + `SemanticDiffDetector` delta
    re-parse) + hook flip from `snapshot` to `analyze`. **Gated** by the `analyze`+`snapshot`

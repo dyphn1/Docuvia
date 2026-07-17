@@ -10,7 +10,7 @@ This document adopts a **Top-Down** perspective. By starting from the CLI comman
 
 - **What it does**: Creates the `.docuvia/` directory and `local.db`, **proactively injects `.docuvia` into `.gitignore` as a safety guardrail**, downloads prompt templates, installs the `post-commit` git hook, and finally writes to `init.log`. It absolutely does not touch any machine-global configurations.
 - **Corresponding ADRs**:
-  - [IFCE-001] Wizard-Style Interactive CLI (Uses the `--interactive` flag to enter the guided wizard)
+  - [IFCE-001] Wizard-Style Interactive CLI (Triggers interactive wizard automatically on TTY if not in a CI/CD environment)
   - [IFCE-002] Strict Repo-Scoped Boundaries (Strictly prohibits writing to global configurations)
   - [IFCE-003] Persisted Structured Command Log (Writes to `init.log`)
   - [PLAT-004] Zero-Interruption Invisible Indexing (Installs the Git Hook to achieve invisible indexing)

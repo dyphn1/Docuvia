@@ -25,15 +25,15 @@ capture ──✂──> process ──> store ──> distribute ──> consum
 
 ## 2. What already works (source-verified)
 
-| Capability                                         | Where                                                                                                                            | Status                                                                    |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Post-commit hook, fire-and-forget, non-blocking    | `lib/core/src/git/git-constants.ts:8-14`, installed by `lib/core/src/git/knowledge-git.service.ts:78-126`                        | ✅ Installed by `init`; marker-guarded; lock-protected (PLAT-006 pattern) |
-| Git-native knowledge branch w/ source-sha stamping | `knowledge-git.service.ts:325-329` (`Docuvia-Source` trailer)                                                                    | ✅ Verified round-trip (see cross-product benchmark)                      |
-| Cross-clone reconciliation w/ tree-adoption merge  | `knowledge-git.service.ts:167-263`                                                                                               | ✅ Idempotent, offline-safe                                               |
-| Read-path self-healing hydration (STOR-002)        | `lib/ui-core/src/utils/ensure-hydrated.ts` — called by `query`/`impact`/`status`/`review`                                        | ✅ Clone → first read auto-hydrates                                       |
-| Semantic incremental-diff engine                   | `lib/ast-core/src/detector/semantic-diff.ts` (`SemanticDiffDetector`, two-level pruning: `INTERNAL_LOGIC` vs `CONTRACT_CHANGED`) | ⚠️ **Tested, exported, zero production callers (dead code)**              |
-| LLM decision extraction (`analyze <targetPath>`)   | `lib/ui-core/src/workflows/analyze/analyze-workflow.ts:100-212` via LLM-002 CLIProxyAPI bridge                                   | ⚠️ Works, but output is print-only                                        |
-| L3 storage + remote push                           | `lib/schema/src/sqlite/repos/l3-nodes-repo.ts`; `sync` reads L3 and pushes                                                       | ⚠️ Nothing ever writes L3 locally                                         |
+| Capability                                         | Where                                                                                                                            | Status                                                                                                                 |
+| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Post-commit hook, fire-and-forget, non-blocking    | `lib/core/src/git/git-constants.ts:8-14`, installed by `lib/core/src/git/knowledge-git.service.ts:78-126`                        | ✅ Installed by `init`; marker-guarded; lock-protected (PLAT-006 pattern)                                              |
+| Git-native knowledge branch w/ source-sha stamping | `knowledge-git.service.ts:325-329` (`Docuvia-Source` trailer)                                                                    | ✅ Verified round-trip (see cross-product benchmark)                                                                   |
+| Cross-clone reconciliation w/ tree-adoption merge  | `knowledge-git.service.ts:167-263`                                                                                               | ✅ Idempotent, offline-safe                                                                                            |
+| Read-path self-healing hydration (STOR-002)        | `lib/ui-core/src/utils/ensure-hydrated.ts` — called by `query`/`impact`/`status`/`review`                                        | ✅ Clone → first read auto-hydrates                                                                                    |
+| Semantic incremental-diff engine                   | `lib/ast-core/src/detector/semantic-diff.ts` (`SemanticDiffDetector`, two-level pruning: `INTERNAL_LOGIC` vs `CONTRACT_CHANGED`) | ⚠️ **Tested, exported, zero production callers (dead code)**                                                           |
+| LLM decision extraction (`analyze <targetPath>`)   | `lib/ui-core/src/workflows/analyze/analyze-workflow.ts:100-212` via LLM-002 CLIProxyAPI bridge                                   | ⚠️ 實作進行中，尚未完全驗證 (In Progress / Partially Verified - 2026-07-17)。已於 Slice 1 實作 L3 持久化與 Upsert 去重 |
+| L3 storage + remote push                           | `lib/schema/src/sqlite/repos/l3-nodes-repo.ts`; `sync` reads L3 and pushes                                                       | ⚠️ 實作進行中，尚未完全驗證 (In Progress / Partially Verified - 2026-07-17)。本地寫入與去重已由 `AnalyzeWorkflow` 落實 |
 
 ## 3. The three broken wires
 
@@ -51,11 +51,10 @@ The fix has its engine already written: wire `SemanticDiffDetector` into a delta
 files through the existing `AstProcessingService` + `GraphPersister`, then snapshot. The
 sha-comparison fast-path gives idempotency for free.
 
-### Wire 2 — L3 decisions evaporate
+### Wire 2 — L3 decisions evaporate (已於 2026-07-16 解決)
 
-`analyze <targetPath>` extraction results reach `ui.info()` only
-(`artifacts/cli/src/commands/analyze.ts:80-86`). `l3-nodes-repo.ts` exists; `sync`'s push pipeline
-exists; the persist step between them does not. Smallest of the three fixes.
+**狀態：正在進行尚未完全驗證 (In Progress / Partially Verified - 2026-07-17)**
+`analyze <targetPath>` 的決策提取在 2026-07-16 (Slice 1 - Wire 2) 中已完全實作了本地 L3 寫入、持久化與 Upsert 去重（以 Content-Hash 碰撞去重並累加 occurrence_count），擺脫了原本的 print-only 狀態，且保存了完整的 provenance（extraction_model 與 source_files）。
 
 ### Wire 3 — distribution is manual by explicit (and reasonable) design
 
@@ -96,7 +95,7 @@ Implications the owner wants factored into Phase 1:
      diffusion, triggered only when the delta contains `CONTRACT_CHANGED` nodes.
    - **Async queue with budget:** LLM L3 extraction (local model by default, remote opt-in),
      fed by commit messages + contract-changed symbols.
-3. **L3 not being recorded (Wire 2) is a standing top concern.**
+3. **L3 not being recorded (Wire 2) is a standing top concern.** (已於 2026-07-16 由 Slice 1 實作，狀態：正在進行尚未完全驗證 - 2026-07-17)
 
 ## 5. Phase 1 review — decisions (settled 2026-07-16, accepted in PLAT-007)
 

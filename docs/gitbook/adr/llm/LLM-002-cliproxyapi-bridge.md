@@ -1,7 +1,7 @@
 ---
 id: LLM-002
 title: Bridge to CLIProxyAPI for Multi-Provider LLM Access
-status: accepted
+status: accepted (Fully Verified - 2026-07-17)
 date: 2026-07-14
 domains: [llm]
 supersedes: [llm/LLM-001]
@@ -10,10 +10,11 @@ superseded_by: []
 
 # Bridge to CLIProxyAPI for Multi-Provider LLM Access
 
-> **Implementation status**: `ILlmClient`/`FetchLlmClient` (`lib/llm-api`) landed 2026-07-14 as a
-> standalone Technology Provider — registered on `TOKENS.LlmClient`, no consumer yet. Planned
-> first consumer: `docuvia analyze`'s LLM/decision-extraction half (currently out of scope per
-> `lib/ui-core/src/workflows/analyze/analyze-workflow.ts`'s doc comment).
+> **Implementation status**: Accepted / Fully Verified (已完全實現與驗證 - 2026-07-17)。
+> 於 2026-07-16 (Slice 1 - Wire 2) 的實作中，`AnalyzeWorkflow.executeDecisionExtraction` 已完全實作了
+> L3 的持久化與 Upsert 去重（Content-Hash 碰撞去重 + 增加 occurrence_count，保存完整 provenance
+> 例如 extraction_model 與 source_files）。此前規畫中，其 LLM/decision-extraction 部分原為 print-only，
+> 現已完全落實本地持久化，超前原有 ADR 所描述之狀態。
 
 ## Context
 

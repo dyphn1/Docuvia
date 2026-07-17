@@ -8,7 +8,7 @@ supersedes: [legacy/ADR-034]
 superseded_by: []
 ---
 
-# Wizard-Style Interactive CLI (Opt-In)
+# Wizard-Style Interactive CLI (Auto-Triggered TTY)
 
 ## Context
 
@@ -16,10 +16,10 @@ A horizontal analysis against workspace sibling projects highlighted a UX gap in
 
 ## Decision
 
-We refactored the Docuvia CLI to support a Wizard-style UX architecture, but **strictly as an opt-in behavior**.
+We refactored the Docuvia CLI to support a Wizard-style UX architecture, but **strictly as a TTY-bound, non-CI/CD fallback behavior**.
 
-1. **Default Non-Interactive**: By default, commands like `docuvia init` execute in a standard, headless CLI mode. If required arguments are missing, the command fails fast with a clear error message.
-2. **Opt-In Interactivity**: The interactive wizard must be explicitly triggered via an `--interactive` (or `-i`) flag. When this flag is provided, the CLI gracefully prompts the user for missing arguments.
+1. **Default Non-Interactive in headless/CI**: In non-TTY or CI/CD environments (detected via `!process.stdin.isTTY` or `process.env.CI`), the CLI runs in standard, headless mode. If required arguments or confirmations are missing, the command fails fast with usage instructions.
+2. **Automatic TTY-Bound Interactivity**: To optimize the developer experience, we abolished the complex `--interactive` (or `-i`) flag. Instead, we use a zero-argument invocation on a real local TTY (non-CI/CD) as a natural interactive trigger. If the user invokes the bare `docuvia` command with no subcommands on a local TTY, the interactive wizard launches automatically.
 3. **Dynamic Loading States**: Modern spinners/progress indicators are used for visual feedback during long-running tasks, but must gracefully degrade in non-TTY environments.
 4. **Structured Output**: Replace unstructured `console.log` dumps with formatted, color-coded blocks for humans, while preserving raw JSON/text output for piped commands.
 
@@ -27,13 +27,13 @@ We refactored the Docuvia CLI to support a Wizard-style UX architecture, but **s
 
 ```mermaid
 flowchart TD
-    Start([User runs docuvia command]) --> CheckFlag{Has --interactive flag?}
+    Start([User runs docuvia command]) --> CheckEnv{Is TTY & NOT CI/CD?}
 
-    CheckFlag -- Yes --> Wizard[Launch Wizard UX / Prompts]
+    CheckEnv -- Yes --> Wizard[Launch Wizard UX / Prompts]
     Wizard --> Collect[Collect Missing Args via UI]
     Collect --> Exec[Execute Command Core]
 
-    CheckFlag -- No --> CheckArgs{Missing Required Args?}
+    CheckEnv -- No --> CheckArgs{Missing Required Args?}
     CheckArgs -- Yes --> Fail[Fail Fast with Error & Usage Help]
     CheckArgs -- No --> Exec
 
@@ -44,5 +44,7 @@ flowchart TD
 
 ## Consequences
 
-- **Positive**: Preserves the strict, scriptable nature of the CLI. Prevents CI pipelines and AI agents from hanging indefinitely on hidden prompts. Still allows human developers to opt into a guided, polished experience via `--interactive`.
-- **Negative**: Humans who forget the `--interactive` flag will face strict validation errors, representing a slightly steeper learning curve than a default-interactive tool.
+- **Positive**: Preserves the strict, scriptable nature of the CLI. Prevents CI pipelines and AI agents from hanging indefinitely on hidden prompts. Human developers enjoy a guided, polished experience automatically on a standard TTY with zero configuration or flags, while retaining absolute headless safety.
+- **Negative**: Developers running scripts or custom aliases must pass subcommands explicitly, as calling the CLI bare in a standard local TTY will initiate the interactive menu rather than printing usage.
+
+> **Implementation Status (Fully Resolved — 2026-07-17)**: The wizard-style interactive CLI has been fully implemented. Specifically, it relies on a bare TTY fallback check (`process.stdout.isTTY`) instead of requiring an explicit `--interactive` command flag, triggering beautiful inquirer select options when called interactively, while gracefully failing fast in non-interactive CI environments to guarantee automation safety.

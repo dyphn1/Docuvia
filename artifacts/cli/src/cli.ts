@@ -207,7 +207,8 @@ async function resolveCommand(): Promise<{
     return { command, isInteractive: false };
   }
 
-  if (!process.stdin.isTTY) {
+  const isCI = !!process.env.CI;
+  if (!process.stdin.isTTY || isCI) {
     printUsage();
     process.exit(1);
   }

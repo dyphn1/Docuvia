@@ -1,7 +1,7 @@
 ---
 id: PLAT-007
 title: Tiered Background Knowledge Evolution (per-commit AST delta, batched LSP, queued LLM)
-status: accepted (Fully Verified - 2026-07-17)
+status: accepted (Slices 1–2 implemented & verified — 2026-07-17; Tiers B/C pending)
 date: 2026-07-16
 domains: [platform, graph, impact, llm, storage]
 supersedes: []
@@ -191,3 +191,29 @@ Revisit a warm instance only if measured batch latency becomes a real complaint.
   endpoint + `doctor` reachability check achieves the goal with none of that surface.
 
 > **Implementation Status (Slice 1 - Fully Resolved — 2026-07-17)**: Tier C L3 persistence has been fully implemented in Slice 1. Extraction decisions are successfully written to SQLite and serialized by upserting into the `l3_nodes` table, with full provenance columns (such as `extraction_model` and `source_files`) preserved and verified. Entries are correctly deduped by content hash, ensuring a robust, leak-free L3 pipeline mapping.
+
+> **Amendment (2026-07-17 — owner rulings for the Slice 3 / Tier B contract)**: recorded in
+> [Phase 1 — Decision Integration §8](../../analysis/phase1-decision-integration.md). Binding on
+> this ADR's wording:
+>
+> - The idle-timer sub-decision ("the one genuinely open sub-decision" above) was resolved
+>   2026-07-16: **pre-push + commit cap only; no idle timer in Phase 1** (integration report §2).
+> - Tier A is **structurally forbidden** from starting LSP or LLM work — the commit hook stays
+>   AST-only; LSP/LLM run only at push/batch/`init`/manual-`analyze` time, behind a pre-flight
+>   environment gate (integration report §8c).
+> - `escalateToLsp` lands behind an **edge-resolution provider seam**: spawn-per-batch
+>   `typescript-language-server` is the first provider; a small-model compensation provider may
+>   be added later (Slice 4+), running in parallel with provenance-tagged merge
+>   (`source='llm-inferred'` + confidence) where LSP edges win conflicts. LSP-unavailable
+>   degrades honestly (AST edges retained, JSONL-logged, `doctor` explains) — statically
+>   invented edges are prohibited.
+> - LSP scope is **TS/JS-first behind per-language dispatch** (plugin shape); other languages
+>   remain at AST precision until their plugin exists, and user-facing docs must say so.
+> - The pre-push batch runs **synchronously with a generous initial timeout** — explicitly
+>   tentative: measure via JSONL run logs first, optimize later; async execution is a later UX
+>   option, not a requirement.
+> - Tier C endpoint wording is narrowed: **all LLM traffic goes through the LLM-002 CLIProxyAPI
+>   bridge** — "a locally served model (Ollama / llama.cpp server) is just another base URL" is
+>   superseded; no other endpoint integrations are considered. The only open consideration is an
+>   **embedded in-process model**, deferred to the Slice 4 contract (per-batch in-process
+>   inference remains consistent with the no-daemon stance).

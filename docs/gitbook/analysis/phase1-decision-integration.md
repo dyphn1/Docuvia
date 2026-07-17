@@ -253,7 +253,7 @@ pre-push — future slices must budget for it. Next: §7.
 
 What remains of Phase 1, with everything the Slice 1/2 work established that feeds it. Slice 3
 needs a §6-style integration contract **before** dispatch; the open sub-decisions to settle are
-listed explicitly.
+listed explicitly. _(Update 2026-07-17: settled — §8 below is that contract.)_
 
 ### 7a. Slice 3 — Tier B: LSP escalation batch
 
@@ -271,7 +271,8 @@ listed explicitly.
 - Locking/logging discipline: knowledge-branch lock for writes, JSONL run logs, failures only
   to logs + exit code (same bar the 2b verifier enforced on Tier A).
 
-**Open sub-decisions for the Slice 3 contract** (settle first, §6-style):
+**Open sub-decisions for the Slice 3 contract** (settled 2026-07-17 — owner rulings in §8; the
+original list is preserved below as recorded):
 
 1. **LSP server choice + bootstrap**: which server (`typescript-language-server` vs raw
    `tsserver`), how it's resolved (user-supplied binary? npx? bundled?), and what `doctor`
@@ -300,6 +301,14 @@ manages the model process; persists via Slice 1's `upsertDecision` path (provena
 To settle at contract time: queue/budget storage shape, what triggers consumption without a
 daemon (fold into the Tier B batch?), and prompt shape for commit-message extraction.
 
+_Addendum (2026-07-17, owner rulings — see §8i):_ endpoints are settled — **all LLM traffic goes
+through the LLM-002 CLIProxyAPI bridge**, no other endpoint integrations are considered; the one
+open selection left for this contract is an **embedded in-process model**. Added to the
+to-settle list: the **commit semantic filter** (critique §4.4 — drop `wip`/`typo`-class messages
+before they reach the queue) and **request-side throttling** as the corrected form of critique
+§4.5 — concurrency 1, token budget, system-load check before dispatch; docuvia throttles its own
+requests and never manages the endpoint's process (PLAT-007 stance unchanged).
+
 ### 7c. Slice 5 — reliability (`doctor`)
 
 - "Hook present but docuvia not resolvable" (`npx --no-install` silently no-ops — the invisible
@@ -322,6 +331,149 @@ daemon (fold into the Tier B batch?), and prompt shape for commit-message extrac
 | L3 never reaches the knowledge branch    | 2a verifier learning     | Snapshot packs L2/links only and hydration restores L2 only — L3 durability rests entirely on `local.db` + remote `sync`. Whether L3 belongs in the snapshot is a **Phase 2 (distribute)** design question.                        |
 | Focused-path missing error-log line      | pre-merge analyze status | A `chatCompletion` throw in `analyze <targetPath>` logs `analyze.focused.error` only on some paths (the old analyze-status follow-up dropped in the upstream docs consolidation — re-verify and close or fix).                     |
 | `.gitignore` `graphify-out/` line        | outside agent flow       | Appeared in the working tree unowned; deliberately left uncommitted by Slices 1–2. Commit or drop explicitly.                                                                                                                      |
+| `impact --escalate-to-lsp` no-op flag    | §8 ruling (2026-07-17)   | `impact` benefits transparently from Tier B's better edges without the flag; wire-or-remove deferred to Slice 5.                                                                                                                   |
 
 Phase 2 (distribute) and Phase 3 (consume) remain as mapped in the gap analysis §6 — Phase 3's
 "verify reads serve a fresh graph" check becomes actionable now that Tier A ships.
+
+## 8. Slice 3 (Tier B) — integration contract (owner rulings, recorded 2026-07-17)
+
+> **Inputs:** §7a's open sub-decision list plus two 2026-07-17 reviews — the
+> [cross-tool benchmark](../../reports/competitor-analysis-gitnexus-graphify-crg.md)
+> (hermes-agent, live-verified) and the
+> [Slice 3–5 critique](../../reports/ongoing-phase1-critical-gap-analysis.md). All rulings below
+> are owner decisions (2026-07-17). This is the §6-style contract for the Slice 3 dispatch: the
+> implementer has latitude on code placement, none on the decisions.
+
+### 8a. Reconciliation of the 2026-07-17 critique
+
+The critique is a thought-evolution document: its §5 stance is authoritative wherever it
+conflicts with its own §§2–4 (§5a explicitly retracts the "developers won't compile" premise
+behind §2a/2b). Disposition of its action items:
+
+| Critique item                                     | Ruling (2026-07-17)                                                                                                                                                                                    |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| §4.2 self-built static scope-resolution pipeline  | **Overruled.** During active development the code is compiled hundreds of times; bypassing the real LSP to hand-guess cross-file calls is wasteful re-invention. LSP stays the precision engine (§8b). |
+| §4.3 tierBQueue LRU merge                         | **Already implemented** — `tier-b-queue.ts` dedupes by file (refreshing `commitSha`) since 2b; ten edits of one file cost one LSP pass over HEAD. Closed.                                              |
+| §5b LSP output serialized to contract files       | **Already satisfied** — Tier B edges flow through the existing graph-rows → snapshot-pack → knowledge-branch path; the LLM reads hydrated `local.db`, never the LSP. No new mechanism.                 |
+| §2c edge-vacuum window                            | **Accepted as designed** (PLAT-007: Tier B is the backstop). The `node_key` incoming-edge repair (§8d) shrinks the window.                                                                             |
+| §4.1 pre-flight gate                              | **Adopted** → §8c.                                                                                                                                                                                     |
+| §2d language boundary                             | **Adopted, with plugin architecture** → §8e.                                                                                                                                                           |
+| §4.4 commit semantic filter / §4.5 LLM throttling | **Adopted for Slice 4**, with §4.5 rewritten as request-side throttling → §7b addendum.                                                                                                                |
+
+### 8b. D1 — edge resolution: LSP primary; honest degradation now; LLM compensation later, behind a provider seam
+
+`escalateToLsp` is implemented for real behind an **edge-resolution provider seam** — an
+interface the Tier B batch consumes:
+
+- **Provider 1 (this slice): spawn-per-batch headless LSP** (PLAT-007). Server:
+  `typescript-language-server`, resolved project-locally (`node_modules/.bin`, then
+  `npx --no-install`), config-overridable; never bundled. This settles §7a-1's binary question;
+  what `doctor` says when it is absent stays in Slice 5 (§7c).
+- **Provider 2 (later, Slice 4+): small-model compensation** — documented in the seam, not
+  built. Owner measurement: a 1B-class model via the existing `AI_DOCUVIA_FAST_MODEL` surface
+  analyzes typical Docuvia files in 100–200 ms each; an embedded in-process model is the
+  candidate (§8i).
+- **Parallel semantics when both are enabled** (runtime, not just roadmap): providers run in
+  parallel and results merge by provenance — LSP edges are authoritative; LLM edges must carry
+  `source='llm-inferred'` plus a confidence value; LSP wins conflicts.
+- **Honest degradation:** LSP absent / unready / timed out → AST-level edges stay as they are,
+  a JSONL event records why, exit 0, `doctor` explains the reason. Statically inventing edges
+  is prohibited (§4.2 overruled).
+
+### 8c. D2 — pre-flight gate, tiered by trigger point
+
+- **Commit hook (Tier A): structurally never starts LSP or LLM.** A contract rule, not a gate
+  outcome — the gate does not even run there.
+- **Push stage (Tier B batch): heavy work is allowed.** The owner's own pre-push validation is
+  already heavier than this batch; the trigger point is what makes the cost acceptable.
+- **`init` / manual `analyze --escalate-to-lsp`: the gate is mandatory.** Detect environment
+  readiness (`node_modules` present, tsconfig resolvable, LSP binary resolvable) and give the
+  user the explicit choice (interactive prompt or flags, e.g. `--fallback-ast`), per the
+  critique's §5a. Background paths are never interactive — they degrade and log.
+
+### 8d. D3 — "corrected edges", concretely (settles §7a-2)
+
+- For each queued file (after language dispatch, §8e): run LSP references/definitions over its
+  symbols and write **cross-file symbol-level `calls` edges** between existing L2 nodes
+  (STOR-005 `node_key` identity).
+- **Repair incoming edges** dropped by Tier A's per-file replace: evaluate
+  re-attach-by-`node_key` (the deterministic identity survives the replace), so unchanged
+  callers re-link without re-parsing dependents.
+- This is the costed answer to the benchmark's edge-deficit finding (Docuvia 144,242 edges vs
+  GitNexus 283k / CRG 787k on hermes-agent): the gap is cross-file symbol calls, and it closes
+  incrementally for exactly the files that change.
+- **Implemented and verified in the same slice and the same verification pass as §8b** — the
+  degradation semantics define what happens when LSP cannot supply these edges, so they are one
+  acceptance surface.
+
+### 8e. D4 — TS/JS first, behind per-language dispatch
+
+- Queue consumption dispatches by language through a **dispatch table (per-language plugin
+  shape)**, never a hardcoded TS check. Slice 3 ships the TS/JS plugin only.
+- Non-TS/JS entries skip LSP with a JSONL log line and remain at AST precision — the natural
+  extension of §8b's honest degradation.
+- **Docs must state explicitly** (user guide and this contract) that LSP precision currently
+  covers TS/JS only; every other language stays AST-level until its plugin exists. (Owner:
+  without this note the natural reading is that all languages are already supported.)
+
+### 8f. D5 — commit cap: derived, no counter (settles §7a-4)
+
+New `GitConstants` meta key (`docuvia_meta`): `lastTierBBatchSha`, written only after a fully
+successful batch (post-snapshot). Cap check at hook time =
+`rev-list --count lastTierBBatchSha..HEAD` ≥ N (default 20, config-tunable per PLAT-007). Key
+absent (pre-Slice-3 workspace): the commit-cap trigger stays inactive; the first pre-push batch
+seeds the key. A lost queue (`local.db` destroyed) is rebuildable by re-classifying the diff
+from `lastTierBBatchSha` — possible by design, not automated in Slice 3.
+
+### 8g. D6 — queue consumption semantics (settles §7a-3)
+
+Drain-all per batch. The queue is cleared **only after a successful snapshot** — a batch
+interrupted mid-LSP leaves the queue intact and re-runnable (satisfies §7a-6's idempotency
+requirement). Entries whose file no longer exists at HEAD are dropped at consumption time with
+a log line. A per-file LSP failure keeps that entry for the next batch, logs it, and lets the
+rest of the batch proceed; the batch still snapshots what succeeded.
+
+### 8h. D7 — pre-push hook: synchronous first, explicitly tentative (settles §7a-5)
+
+**Owner ruling (2026-07-17): tentative — function first, measure, then optimize; do not
+hard-code aggressive limits up front.**
+
+- The pre-push hook runs the batch (`analyze --escalate-to-lsp && snapshot`) **synchronously**,
+  with a **generous initial timeout**; actual durations come from the JSONL run logs before any
+  tightening. Owner measurement: in most cases the cost is small (their own pre-push validation
+  is already heavier than this batch).
+- Async/detached execution is a later UX optimization, evaluated against measured timings — not
+  a Slice 3 requirement.
+- Mechanics reuse 2b's marker + lock + legacy-upgrade pattern. Interplay with Phase 2's
+  `sync-knowledge` pre-push scheduling must be designed together to avoid double-fetch (per
+  §7a-5); the hook content should leave room for that second step.
+
+### 8i. D8 — LLM endpoints: CLIProxyAPI only; embedded model deferred to Slice 4
+
+All LLM traffic goes through LLM-002's CLIProxyAPI bridge
+([router-for-me/CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)) — no other endpoint
+integrations are considered. The **only** open consideration is an embedded in-process model
+(weights distribution, loading cost); that ruling is deferred to the Slice 4 contract. Slice 3's
+sole obligation toward it is the §8b provider seam. Compatible with the no-daemon stance:
+per-batch in-process inference manages no server process. PLAT-007's Tier C wording is amended
+accordingly (see the ADR's 2026-07-17 amendment note).
+
+### 8j. Gating tests (settles §7a-6)
+
+1. Batch vs concurrent Tier A `analyze` (delta write), and batch vs `snapshot` — following the
+   existing concurrency-test pattern.
+2. Crash mid-LSP: queue intact and re-runnable; the re-run converges (idempotency).
+3. Degradation: LSP absent → AST edges untouched, JSONL event written, exit 0.
+4. Language dispatch: non-TS entry skipped with a log line; TS entry processed.
+
+**Acceptance for Slice 3:** build + full suite green (ESLint complexity budget ≤ 10 respected).
+On a real TS repo: accumulate `CONTRACT_CHANGED` commits → pre-push fires the batch →
+cross-file symbol-level `calls` edges appear and per-file-replace-dropped incoming edges are
+repaired → exactly one snapshot lands on the knowledge branch. In an LSP-less environment the
+same flow degrades honestly (exit 0, logged, `doctor` explains). An interrupted batch re-runs
+cleanly. The user guide states the TS/JS-only LSP scope.
+
+**Out of scope, recorded:** `impact --escalate-to-lsp` stays a documented no-op — `impact`
+benefits transparently from the better edges without the flag; wire-or-remove is deferred to
+Slice 5 (row added to §7d).

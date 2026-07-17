@@ -2,6 +2,7 @@
 export const INIT_MESSAGES = {
   INITIALIZING: (root: string) => `Initializing project in ${root}...`,
   INSTALLING_HOOK: "Installing post-commit hook...",
+  INSTALLING_PRE_PUSH_HOOK: "Installing pre-push hook...",
   SCANNING_WORKSPACE: "Scanning workspace files...",
   PARSING_AST: "Parsing source files via AST...",
   INITIALIZING_TEMP_FILES: "Initializing temp file manager...",

@@ -16,6 +16,7 @@ import {
 import { appendSnapshotLogLine } from "./snapshot-log-writer.js";
 import type { SnapshotResult } from "./snapshot-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { finalizePendingTierBBatch } from "./finalize-pending-tier-b-batch.js";
 
 /**
  * The `snapshot` workflow — bulk-reads the current knowledge graph from `IGraphStore` (the same
@@ -89,6 +90,11 @@ export class SnapshotWorkflow {
           workspaceRoot,
           tempDir,
         );
+
+        // §8g/§8f: this successful pack IS "a successful snapshot" -- finalize any Tier B batch
+        // an `analyze --escalate-to-lsp` run staged (queue drain + commit-cap seed). Cheap no-op
+        // when nothing is pending (the common case).
+        await finalizePendingTierBBatch(workspaceRoot, logger);
 
         await appendSnapshotLogLine(workspaceRoot, {
           event: SNAPSHOT_EVENTS.SUMMARY,

@@ -76,6 +76,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       bulkLoadGraph: vi
         .fn()
         .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
+      pruneOrphanedLinks: vi.fn().mockReturnValue(0),
     },
     l3: {
       getById: vi.fn(),
@@ -222,6 +223,7 @@ describe("HydrationService.hydrate()", () => {
         bulkLoadGraph: vi
           .fn()
           .mockReturnValue({ nodesLoaded: 2, edgesLoaded: 1, edgesDropped: 0 }),
+        pruneOrphanedLinks: vi.fn().mockReturnValue(0),
       },
     });
     const service = new HydrationService(git);

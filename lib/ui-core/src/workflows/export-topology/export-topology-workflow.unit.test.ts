@@ -40,6 +40,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllNodes: vi.fn().mockReturnValue([]),
       getAllLinks: vi.fn().mockReturnValue([]),
       bulkLoadGraph: vi.fn(),
+      pruneOrphanedLinks: vi.fn().mockReturnValue(0),
     },
     l3: {
       getById: vi.fn(),

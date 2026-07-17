@@ -41,6 +41,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllNodes: vi.fn().mockReturnValue([]),
       getAllLinks: vi.fn().mockReturnValue([]),
       bulkLoadGraph: vi.fn(),
+      pruneOrphanedLinks: vi.fn().mockReturnValue(0),
     },
     l3: {
       getById: vi.fn(),
@@ -82,6 +83,7 @@ describe("SnapshotWorkflow.execute()", () => {
         getAllNodes: vi.fn().mockReturnValue([{ id: 1 }]),
         getAllLinks: vi.fn().mockReturnValue([{ id: 1 }]),
         bulkLoadGraph: vi.fn(),
+        pruneOrphanedLinks: vi.fn().mockReturnValue(0),
       },
     });
     const openStoreSpy = vi
@@ -102,6 +104,7 @@ describe("SnapshotWorkflow.execute()", () => {
     const knowledgeGit: IKnowledgeGitService = {
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
       syncKnowledgeBranch: vi.fn(),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
@@ -125,7 +128,11 @@ describe("SnapshotWorkflow.execute()", () => {
       expect.any(String),
     );
     expect(result).toEqual(renderResult);
-    expect(store.close).toHaveBeenCalledTimes(1);
+    // 2, not 1: the main render/pack store open, plus finalizePendingTierBBatch's own separate
+    // open (§8g's post-pack finalize check, a no-op here since no Tier B batch is pending) --
+    // both closed via their own `finally`. This mock happens to resolve the same `store` object
+    // for both opens; a real GraphStoreOpener returns a fresh connection each call.
+    expect(store.close).toHaveBeenCalledTimes(2);
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
@@ -142,6 +149,7 @@ describe("SnapshotWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
       syncKnowledgeBranch: vi.fn(),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
@@ -172,6 +180,7 @@ describe("SnapshotWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi
         .fn()
         .mockRejectedValue(new Error("git fast-import failed")),

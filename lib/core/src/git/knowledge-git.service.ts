@@ -155,6 +155,56 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   }
 
   /**
+   * Installs the pre-push hook that fires the Tier B batch (`docuvia analyze --escalate-to-lsp
+   * && docuvia snapshot`, phase1-decision-integration.md §8h). Mirrors
+   * `installPostCommitHook`'s marker + lock shape exactly; there is no legacy pre-push hook to
+   * upgrade (this is a brand-new hook as of Slice 3), so only the fresh-install and
+   * already-installed branches exist. Non-fatal by design, same reasoning as
+   * `installPostCommitHook`.
+   */
+  public async installPrePushHook(
+    cwd: string,
+  ): Promise<{ installed: boolean }> {
+    const hookName = GitConstants.PRE_PUSH_HOOK_NAME;
+
+    if (!(await this.git.hooksDirExists(cwd))) {
+      this.logger.debug(GitMessages.NO_GIT_HOOKS_DIR);
+      return { installed: false };
+    }
+
+    const existingHook = await this.git.readHookFile(cwd, hookName);
+    if (existingHook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER)) {
+      this.logger.debug(GitMessages.PRE_PUSH_HOOK_ALREADY_INSTALLED);
+      return { installed: false };
+    }
+
+    return withKnowledgeBranchLock(this.git, cwd, async () => {
+      const recheckHook = await this.git.readHookFile(cwd, hookName);
+      if (recheckHook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER)) {
+        this.logger.warn(GitMessages.CONCURRENT_PRE_PUSH_HOOK_INSTALL_SKIPPED);
+        return { installed: false };
+      }
+
+      try {
+        await this.git.appendHookFile(
+          cwd,
+          hookName,
+          GitConstants.PRE_PUSH_HOOK_CONTENT,
+        );
+        await this.git.makeHookExecutable(cwd, hookName);
+      } catch (err) {
+        this.logger.warn(GitMessages.FAILED_TO_INSTALL_PRE_PUSH_HOOK, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return { installed: false };
+      }
+
+      this.logger.info(GitMessages.INSTALLED_PRE_PUSH_HOOK);
+      return { installed: true };
+    });
+  }
+
+  /**
    * Packs a rendered snapshot directory (see `ISnapshotRenderer`) onto the hidden knowledge
    * branch, wholesale replacing its tree (parented on the branch's current tip — see
    * `IGitProvider.packDirectoryToBranch`) — the `snapshot` command's git-write step. Holds the

@@ -36,6 +36,7 @@ Thumbs.db
 # AI Auto Generated Docs
 docs/ai_plans/
 .docuvia/
+graphify-out/
 
 # Compiled TypeScript js files in source folders
 lib/core/src/**/*.js

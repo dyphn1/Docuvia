@@ -21,6 +21,7 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
     const knowledgeGit: IKnowledgeGitService = {
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
       runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
@@ -46,6 +47,7 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
     const knowledgeGit: IKnowledgeGitService = {
       ensureKnowledgeBranch: vi.fn(),
       installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
       runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),

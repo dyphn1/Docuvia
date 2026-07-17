@@ -14,6 +14,10 @@ export const CLI_FLAGS = {
   SKIP_GIT: "--skip-git",
   SKIP_HOOKS: "--skip-hooks",
   SKIP_LOGS: "--skip-logs",
+  /** `analyze --escalate-to-lsp`'s D2 gate (phase1-decision-integration.md §8c): skips the
+   *  interactive "continue with AST-only fallback?" prompt when the LSP environment isn't ready
+   *  for a manual/interactive invocation -- proceeds straight to the degrade-and-log path. */
+  FALLBACK_AST: "--fallback-ast",
 } as const;
 
 /** Values accepted by `--format=` (`query` command) — shared between `cli.ts`'s flag cast and `query.ts`'s runtime dispatch. */

@@ -131,6 +131,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),
+      pruneOrphanedLinks: vi.fn().mockReturnValue(0),
     },
     l3: {
       getById: vi.fn(),
@@ -162,6 +163,7 @@ function makeMockKnowledgeGit(
   return {
     ensureKnowledgeBranch: vi.fn(),
     installPostCommitHook: vi.fn(),
+    installPrePushHook: vi.fn(),
     packSnapshotToKnowledgeBranch: vi.fn(),
     syncKnowledgeBranch: vi.fn(),
     resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),

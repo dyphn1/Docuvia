@@ -74,9 +74,17 @@ async function handleSync(ctx: CommandContext): Promise<void> {
 }
 
 async function handleAnalyze(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
+  ctx.parser.checkUnknownFlags([
+    CLI_FLAGS.ESCALATE_TO_LSP,
+    CLI_FLAGS.FALLBACK_AST,
+  ]);
   const targetPath = ctx.parser.getPositional(0);
-  await analyzeCommand(targetPath, ctx.workspaceRoot);
+  const escalateToLsp = ctx.parser.hasFlag(CLI_FLAGS.ESCALATE_TO_LSP);
+  const fallbackAst = ctx.parser.hasFlag(CLI_FLAGS.FALLBACK_AST);
+  await analyzeCommand(targetPath, ctx.workspaceRoot, {
+    escalateToLsp,
+    fallbackAst,
+  });
 }
 
 async function handleReview(ctx: CommandContext): Promise<void> {

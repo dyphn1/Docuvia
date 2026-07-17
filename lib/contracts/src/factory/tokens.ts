@@ -23,6 +23,7 @@ import type { ISnapshotRenderer } from "../interfaces/snapshot.interfaces.js";
 import type { IHydrationService } from "../interfaces/hydration.interfaces.js";
 import type { IDiagnosticRunner } from "../interfaces/diagnostic.interfaces.js";
 import type { ISemanticDiffAnalyzer } from "../interfaces/semantic-diff.interfaces.js";
+import type { IEdgeResolutionProvider } from "../interfaces/edge-resolution.interfaces.js";
 
 /**
  * A phantom-typed registration token — see
@@ -96,4 +97,11 @@ export const TOKENS = {
   SemanticDiffAnalyzer: createToken<ISemanticDiffAnalyzer, LoggerParams>(
     "ISemanticDiffAnalyzer",
   ),
+  /** A builder function, not a shared instance — mirrors `LlmClient`'s token shape (§8b's D1
+   *  provider seam): the Tier B batch resolves this once, then calls `.configure()` with any
+   *  overrides (binary path/args/timeout) before using it, exactly like `ILlmClient.initialize()`. */
+  EdgeResolutionProvider: createToken<
+    () => IEdgeResolutionProvider,
+    LoggerParams
+  >("IEdgeResolutionProvider"),
 } as const;

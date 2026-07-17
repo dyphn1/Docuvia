@@ -23,6 +23,7 @@ const GRAPH_REPO_ERROR_MESSAGES = {
   ALL_NODES_FAILED: "Failed to get all l2 nodes",
   ALL_LINKS_FAILED: "Failed to get all node links",
   BULK_LOAD_FAILED: "Failed to bulk-load graph",
+  PRUNE_ORPHANED_LINKS_FAILED: "Failed to prune orphaned node_links",
 } as const;
 
 /** FTS5 sync-trigger names on `l2_nodes_fts` (see `migrations/0001_init.sql`) — dropped/recreated around `bulkLoadGraph`'s bulk insert. */
@@ -402,6 +403,32 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         GRAPH_REPO_ERROR_MESSAGES.BULK_LOAD_FAILED,
+        err,
+      );
+    }
+  }
+
+  /**
+   * Deletes `node_links` rows whose source or target id no longer exists in `l2_nodes` — see the
+   * `IGraphNodesRepo.pruneOrphanedLinks` doc comment for why these accumulate (Tier B batch
+   * hygiene, PLAT-007/phase1-decision-integration.md §8d). `NOT IN` against a (typically small)
+   * `l2_nodes.id` set is simplest and matches this table's expected scale; no index tuning done
+   * beyond the existing primary keys.
+   */
+  pruneOrphanedLinks(): number {
+    try {
+      const result = this.db
+        .prepare(
+          `DELETE FROM ${SchemaTables.NODE_LINKS}
+           WHERE ${SchemaColumns.SOURCE_NODE_ID} NOT IN (SELECT id FROM ${SchemaTables.L2_NODES})
+              OR ${SchemaColumns.TARGET_NODE_ID} NOT IN (SELECT id FROM ${SchemaTables.L2_NODES})`,
+        )
+        .run();
+      return result.changes;
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        GRAPH_REPO_ERROR_MESSAGES.PRUNE_ORPHANED_LINKS_FAILED,
         err,
       );
     }

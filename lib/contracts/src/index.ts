@@ -42,6 +42,17 @@ export type {
   KnowledgeBranchSyncResult,
   KnowledgeBranchSyncStatus,
 } from "./interfaces/knowledge-git.interfaces.js";
+export type {
+  EdgeResolutionAvailability,
+  EdgeResolutionFileFailure,
+  EdgeResolutionOutcome,
+  EdgeResolutionProviderConfig,
+  EdgeResolutionRequest,
+  EdgeResolutionSource,
+  IEdgeResolutionProvider,
+  ResolvedCallEdge,
+} from "./interfaces/edge-resolution.interfaces.js";
+export { EdgeResolutionSources } from "./interfaces/edge-resolution.interfaces.js";
 export { KnowledgeBranchSyncStatuses } from "./interfaces/knowledge-git.interfaces.js";
 export type {
   DiscoveredFile,

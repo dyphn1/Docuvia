@@ -9,6 +9,7 @@ function makeMockKnowledgeGit(
   return {
     ensureKnowledgeBranch: vi.fn().mockResolvedValue({ created: true }),
     installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
+    installPrePushHook: vi.fn().mockResolvedValue({ installed: true }),
     packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
     syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
     resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
@@ -18,7 +19,7 @@ function makeMockKnowledgeGit(
 }
 
 describe("ensureGitBranchAndHooks", () => {
-  it("calls ensureKnowledgeBranch before installPostCommitHook", async () => {
+  it("calls ensureKnowledgeBranch, then installPostCommitHook, then installPrePushHook", async () => {
     const callOrder: string[] = [];
     const knowledgeGit = makeMockKnowledgeGit({
       ensureKnowledgeBranch: vi.fn().mockImplementation(async () => {
@@ -27,6 +28,10 @@ describe("ensureGitBranchAndHooks", () => {
       }),
       installPostCommitHook: vi.fn().mockImplementation(async () => {
         callOrder.push("installPostCommitHook");
+        return { installed: true };
+      }),
+      installPrePushHook: vi.fn().mockImplementation(async () => {
+        callOrder.push("installPrePushHook");
         return { installed: true };
       }),
     });
@@ -40,8 +45,13 @@ describe("ensureGitBranchAndHooks", () => {
     expect(callOrder).toEqual([
       "ensureKnowledgeBranch",
       "installPostCommitHook",
+      "installPrePushHook",
     ]);
-    expect(result).toEqual({ branchCreated: true, hookInstalled: true });
+    expect(result).toEqual({
+      branchCreated: true,
+      hookInstalled: true,
+      prePushHookInstalled: true,
+    });
   });
 
   it("propagates ensureKnowledgeBranch failures (fatal to init)", async () => {
@@ -69,7 +79,20 @@ describe("ensureGitBranchAndHooks", () => {
     expect(result.hookInstalled).toBe(false);
   });
 
-  it("logs progress before installing the hook", async () => {
+  it("does not throw when installPrePushHook reports installed:false (non-fatal, handled inside KnowledgeGitService)", async () => {
+    const knowledgeGit = makeMockKnowledgeGit({
+      installPrePushHook: vi.fn().mockResolvedValue({ installed: false }),
+    });
+
+    const result = await ensureGitBranchAndHooks(
+      knowledgeGit,
+      "/workspace",
+      createMockLogger(),
+    );
+    expect(result.prePushHookInstalled).toBe(false);
+  });
+
+  it("logs progress before installing each hook", async () => {
     const knowledgeGit = makeMockKnowledgeGit();
     const logger = createMockLogger();
 
@@ -77,6 +100,9 @@ describe("ensureGitBranchAndHooks", () => {
 
     expect(
       logger.events.some((e) => e.message === "Installing post-commit hook..."),
+    ).toBe(true);
+    expect(
+      logger.events.some((e) => e.message === "Installing pre-push hook..."),
     ).toBe(true);
   });
 });

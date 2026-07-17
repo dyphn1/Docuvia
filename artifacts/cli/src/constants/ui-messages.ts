@@ -117,6 +117,32 @@ export const UI_MESSAGES = {
   ANALYZE_DECISION_CONFIDENCE_SUFFIX: ")",
   ANALYZE_DECISION_CONTENT_PREFIX: "    ",
 
+  // --escalate-to-lsp (PLAT-007 Tier B; phase1-decision-integration.md §8)
+  ANALYZE_TIER_B_HEADER: "Analyze -- Tier B (LSP escalation)",
+  ANALYZE_TIER_B_START: "Running the Tier B LSP escalation batch...",
+  ANALYZE_TIER_B_SUCCESS: "Tier B batch complete.",
+  ANALYZE_TIER_B_FAIL: "Tier B batch failed: ",
+  ANALYZE_TIER_B_SUMMARY: (
+    filesProcessed: number,
+    edgesApplied: number,
+    filesFailed: number,
+  ) =>
+    `${filesProcessed} file(s) processed, ${edgesApplied} corrected edge(s) applied` +
+    (filesFailed > 0
+      ? `, ${filesFailed} file(s) left queued for the next batch.`
+      : "."),
+  ANALYZE_TIER_B_DEGRADED: (reason: string) =>
+    `LSP unavailable -- AST-level edges left untouched (${reason})`,
+  /** D2's mandatory pre-flight gate for an interactive/manual invocation
+   *  (phase1-decision-integration.md §8c) -- never shown for a non-interactive (pre-push hook)
+   *  invocation, which always degrades honestly without asking. */
+  ANALYZE_TIER_B_GATE_NOT_READY: (reason: string) =>
+    `LSP prerequisites are not ready: ${reason}`,
+  ANALYZE_TIER_B_GATE_PROMPT:
+    "Continue with AST-only precision (skip the LSP-corrected cross-file edges this batch)?",
+  ANALYZE_TIER_B_GATE_DECLINED:
+    "Aborted -- install typescript-language-server as a project devDependency (or pass --fallback-ast) and try again.",
+
   // Review Command
   REVIEW_HEADER: "Review Changes",
   REVIEW_START: "Analyzing changes...",

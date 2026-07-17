@@ -10,6 +10,7 @@ import {
   type IGraphStore,
   type IKnowledgeGitService,
   type ILogger,
+  type EdgeResolutionProviderConfig,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/core";
 import {
@@ -32,6 +33,7 @@ import {
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
+import { runTierBBatch } from "./run-tier-b-batch.js";
 
 const VALID_NODE_TYPES = Object.values(DecisionNodeType);
 const MARKDOWN_CODE_FENCE = "```";
@@ -84,6 +86,11 @@ export class AnalyzeWorkflow {
       llmBaseUrl?: string;
       llmApiKey?: string;
       llmModel?: string;
+      /** `analyze --escalate-to-lsp` (PLAT-007 Tier B; phase1-decision-integration.md §8) -- a
+       *  sibling mode to auto mode / focused extraction, mutually exclusive with `targetPath`. */
+      escalateToLsp?: boolean;
+      lspProviderConfig?: EdgeResolutionProviderConfig;
+      tierBCommitCap?: number;
     },
   ) {}
 
@@ -91,7 +98,50 @@ export class AnalyzeWorkflow {
     if (this.options?.targetPath) {
       return this.executeDecisionExtraction(this.options.targetPath);
     }
+    if (this.options?.escalateToLsp) {
+      return this.executeTierBBatch();
+    }
     return this.executeAutoMode();
+  }
+
+  /** `analyze --escalate-to-lsp`'s envelope: open the store, run the Tier B batch (§8), log a
+   *  run-level failure the same way `executeAutoMode` does, always close the store. Mirrors
+   *  `executeAutoMode`'s open/error/close shape exactly -- see its doc comment for why the store
+   *  open happens inside the try. */
+  private async executeTierBBatch(): Promise<AnalyzeResult> {
+    const { workspaceRoot, logger, options } = this;
+    let store: IGraphStore | undefined;
+
+    try {
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+        logger,
+      });
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(workspaceRoot),
+        readonly: false,
+      });
+
+      return await runTierBBatch({
+        workspaceRoot,
+        logger,
+        store,
+        git,
+        knowledgeGit,
+        providerConfig: options?.lspProviderConfig,
+        commitCap: options?.tierBCommitCap,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await appendAnalyzeLogLine(workspaceRoot, {
+        event: ANALYZE_EVENTS.TIER_B_ERROR,
+        message,
+      });
+      throw err;
+    } finally {
+      await store?.close();
+    }
   }
 
   /**

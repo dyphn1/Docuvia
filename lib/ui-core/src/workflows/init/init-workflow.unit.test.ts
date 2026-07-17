@@ -123,6 +123,7 @@ function makeMockStore(): IGraphStore {
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),
+      pruneOrphanedLinks: vi.fn().mockReturnValue(0),
     },
     l3: {
       getById: vi.fn(),
@@ -177,6 +178,7 @@ describe("InitWorkflow.execute()", () => {
         callOrder.push("installPostCommitHook");
         return { installed: true };
       }),
+      installPrePushHook: vi.fn().mockResolvedValue({ installed: true }),
       packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
       syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
@@ -269,6 +271,7 @@ describe("InitWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
       ensureKnowledgeBranch: vi.fn().mockRejectedValue(new Error("boom")),
       installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
       syncKnowledgeBranch: vi.fn(),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
@@ -356,6 +359,7 @@ describe("InitWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
       ensureKnowledgeBranch: vi.fn().mockResolvedValue({ created: true }),
       installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
+      installPrePushHook: vi.fn().mockResolvedValue({ installed: true }),
       packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
       syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),

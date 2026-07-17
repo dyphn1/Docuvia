@@ -7,7 +7,7 @@ import { ui } from "../../../src/ui/wizard.js";
 import { UI_MESSAGES } from "../../../src/constants/ui-messages.js";
 
 vi.mock("@workspace/ui-core", () => ({
-  docuviaApi: { analyze: vi.fn() },
+  docuviaApi: { analyze: vi.fn(), checkTierBGate: vi.fn() },
 }));
 
 const spinnerSucceed = vi.fn();
@@ -391,6 +391,143 @@ describe("analyzeCommand", () => {
         expect.stringContaining("LLM exploded"),
       );
       expect(process.exitCode).toBe(1);
+    });
+  });
+
+  describe("--escalate-to-lsp (Tier B batch, phase1-decision-integration.md §8)", () => {
+    const mockCheckTierBGate = vi.mocked(docuviaApi.checkTierBGate);
+
+    beforeEach(() => {
+      mockCheckTierBGate.mockReset();
+    });
+
+    // vitest's own process never runs with a TTY stdin, so every test below exercises the
+    // "background/non-interactive" path (§8c: never prompts) -- the interactive-prompt branch
+    // itself lives entirely behind a `process.stdin.isTTY` check this suite cannot flip.
+
+    it("sets escalateToLsp into docuviaMemory and calls docuviaApi.analyze() without prompting (non-interactive)", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "tierBBatch",
+        headSha: "abc123",
+        filesQueued: 1,
+        filesDroppedDeleted: 0,
+        filesSkippedLanguage: 0,
+        filesProcessed: 1,
+        filesFailed: 0,
+        edgesApplied: 2,
+        edgesPruned: 0,
+        degraded: false,
+        commitCapExceeded: false,
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand(undefined, "/workspace", { escalateToLsp: true });
+
+      expect(mockCheckTierBGate).not.toHaveBeenCalled();
+      expect(mockAnalyze).toHaveBeenCalled();
+      const scopeId = mockAnalyze.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "escalateToLsp", true);
+      expect(spinnerSucceed).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_TIER_B_SUCCESS,
+      );
+      expect(ui.info).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_TIER_B_SUMMARY(1, 2, 0),
+      );
+    });
+
+    it("prints the degraded message (not the success summary) when the batch degraded", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "tierBBatch",
+        headSha: "abc123",
+        filesQueued: 1,
+        filesDroppedDeleted: 0,
+        filesSkippedLanguage: 0,
+        filesProcessed: 0,
+        filesFailed: 0,
+        edgesApplied: 0,
+        edgesPruned: 0,
+        degraded: true,
+        degradedReason: "binary not resolvable",
+        commitCapExceeded: false,
+      });
+
+      await analyzeCommand(undefined, "/workspace", { escalateToLsp: true });
+
+      expect(spinnerSucceed).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_TIER_B_DEGRADED("binary not resolvable"),
+      );
+    });
+
+    it("reads DOCUVIA_LSP_BINARY/DOCUVIA_LSP_ARGS/DOCUVIA_LSP_TIMEOUT_MS/DOCUVIA_TIER_B_COMMIT_CAP into docuviaMemory", async () => {
+      process.env.DOCUVIA_LSP_BINARY = "/custom/lsp";
+      process.env.DOCUVIA_LSP_ARGS = "--stdio --verbose";
+      process.env.DOCUVIA_LSP_TIMEOUT_MS = "5000";
+      process.env.DOCUVIA_TIER_B_COMMIT_CAP = "5";
+      mockAnalyze.mockResolvedValue({
+        kind: "tierBBatch",
+        headSha: null,
+        filesQueued: 0,
+        filesDroppedDeleted: 0,
+        filesSkippedLanguage: 0,
+        filesProcessed: 0,
+        filesFailed: 0,
+        edgesApplied: 0,
+        edgesPruned: 0,
+        degraded: false,
+        commitCapExceeded: false,
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand(undefined, "/workspace", { escalateToLsp: true });
+
+      const scopeId = mockAnalyze.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(
+        scopeId,
+        "lspBinaryOverride",
+        "/custom/lsp",
+      );
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "lspArgsOverride", [
+        "--stdio",
+        "--verbose",
+      ]);
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "lspTimeoutMs", 5000);
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "tierBCommitCap", 5);
+
+      delete process.env.DOCUVIA_LSP_BINARY;
+      delete process.env.DOCUVIA_LSP_ARGS;
+      delete process.env.DOCUVIA_LSP_TIMEOUT_MS;
+      delete process.env.DOCUVIA_TIER_B_COMMIT_CAP;
+    });
+
+    it("uses the Tier B failure message prefix (not the generic one) when the batch throws", async () => {
+      mockAnalyze.mockRejectedValue(new Error("lock timeout"));
+
+      await analyzeCommand(undefined, "/workspace", { escalateToLsp: true });
+
+      expect(spinnerFail).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_TIER_B_FAIL + "lock timeout",
+      );
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("targetPath takes priority over --escalate-to-lsp when both are somehow given", async () => {
+      process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
+        "http://localhost:8317";
+      process.env.AI_DOCUVIA_MODEL = "big-model";
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [],
+        persisted: 0,
+        deduped: 0,
+      });
+
+      await analyzeCommand("src/foo.ts", "/workspace", { escalateToLsp: true });
+
+      expect(mockCheckTierBGate).not.toHaveBeenCalled();
+      expect(spinnerSucceed).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_FOCUSED_SUCCESS,
+      );
     });
   });
 });

@@ -22,6 +22,14 @@ export const ANALYZE_MESSAGES = {
   PATH_NOT_FOUND: (targetPath: string) => `Path does not exist: ${targetPath}`,
   LLM_NON_JSON_OUTPUT: "LLM returned non-JSON output for decision extraction",
   FILE_READ_FAILED: "Failed to read file for decision extraction",
+
+  /** `analyze --escalate-to-lsp` (Tier B batch, phase1-decision-integration.md §8). */
+  TIER_B_STARTING: "Running the Tier B LSP escalation batch...",
+  TIER_B_EMPTY_QUEUE: "Tier B queue is empty -- nothing to escalate.",
+  TIER_B_DEGRADED: (reason: string) =>
+    `LSP unavailable -- AST-level edges left untouched (${reason})`,
+  TIER_B_SUMMARY: (processed: number, edges: number) =>
+    `Tier B batch complete: ${processed} file(s) processed, ${edges} corrected edge(s) applied`,
 } as const;
 
 /** Structured-log event names appended to `analyze.log` by the `analyze` workflow. The old
@@ -38,6 +46,15 @@ export const ANALYZE_EVENTS = {
   FOCUSED_SUMMARY: "analyze.focused.summary",
   FOCUSED_PERSISTED: "analyze.focused.persisted",
   FOCUSED_PERSIST_SKIPPED: "analyze.focused.persist_skipped",
+
+  TIER_B_START: "analyze.tierB.start",
+  TIER_B_EMPTY_QUEUE: "analyze.tierB.empty_queue",
+  TIER_B_FILE_DROPPED_DELETED: "analyze.tierB.file_dropped_deleted",
+  TIER_B_FILE_SKIPPED_LANGUAGE: "analyze.tierB.file_skipped_language",
+  TIER_B_DEGRADED: "analyze.tierB.degraded",
+  TIER_B_FILE_FAILED: "analyze.tierB.file_failed",
+  TIER_B_SUMMARY: "analyze.tierB.summary",
+  TIER_B_ERROR: "analyze.tierB.error",
 } as const;
 
 /**

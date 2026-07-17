@@ -270,6 +270,17 @@ export interface IGraphNodesRepo {
     nodes: Array<{ nodeKey: string; name: string; filePath?: string }>;
     edges: Array<{ source: string; target: string; type: string }>;
   }): { nodesLoaded: number; edgesLoaded: number; edgesDropped: number };
+  /**
+   * Deletes `node_links` rows whose `source_node_id` or `target_node_id` no longer references an
+   * existing `l2_nodes` row — hygiene for the dangling rows `deleteNodesForPath` leaves behind
+   * (it only deletes a deleted node's *outgoing* links; a still-live node's *incoming* link into
+   * the now-gone id is left pointing nowhere). This is the "repair" half of the Tier B batch's
+   * incoming-edge fix (phase1-decision-integration.md §8d, PLAT-007 Tier B): stale rows are
+   * pruned here, and correct replacements are re-derived by the LSP reference pass, keyed fresh
+   * by `node_key` (`findNodeIdByNodeKey`) rather than recovered from the pruned rows themselves.
+   * Returns the number of rows removed.
+   */
+  pruneOrphanedLinks(): number;
 }
 
 export interface IL3NodesRepo {

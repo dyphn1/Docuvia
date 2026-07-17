@@ -70,6 +70,47 @@ export const GitConstants = {
   META_KEY_TIER_B_QUEUE: "tierBQueue",
   /** `os.tmpdir()` prefix for `ensureKnowledgeBranch`'s scratch dir used to pack the empty initial snapshot. */
   EMPTY_KNOWLEDGE_TEMP_DIR_PREFIX: "docuvia-empty-knowledge-",
+
+  /**
+   * `docuvia_meta` key storing the source commit sha the last *fully successful* Tier B batch
+   * (LSP escalation + snapshot) ran against — written only by `snapshot`'s post-pack finalize
+   * step, never by `analyze --escalate-to-lsp` itself (phase1-decision-integration.md §8f, D5).
+   * Absent on a pre-Slice-3 workspace: the commit-cap trigger stays inactive until the first
+   * batch seeds it.
+   */
+  META_KEY_LAST_TIER_B_BATCH_SHA: "lastTierBBatchSha",
+  /**
+   * `docuvia_meta` key holding a JSON `{ headSha, remainingQueue }` record staged by a successful
+   * `analyze --escalate-to-lsp` run, consumed by the next successful `snapshot` (§8g, D6: "the
+   * queue is cleared only after a successful snapshot"). An empty-string value is the sentinel
+   * for "no pending batch" (`IMetaRepo` has no delete — `set(key, "")` is the clear).
+   */
+  META_KEY_TIER_B_BATCH_PENDING: "tierBBatchPending",
+  /** Default Tier B commit-cap trigger threshold (§8f, D5) — config-tunable via
+   *  `DOCUVIA_TIER_B_COMMIT_CAP` (read by the Presentation layer only, per the `process.env` rule). */
+  DEFAULT_TIER_B_COMMIT_CAP: 20,
+
+  PRE_PUSH_HOOK_NAME: "pre-push",
+  /**
+   * Fires the Tier B batch on push (phase1-decision-integration.md §8h, D7) — synchronous, with
+   * a generous initial timeout (measure via JSONL logs before tightening, per the owner's
+   * "function first" ruling). `docuvia snapshot` only runs when `analyze --escalate-to-lsp`
+   * exits 0 (honest degradation exits 0 too, so a missing/unready LSP still lets the batch's
+   * snapshot land). The trailing comment marks where Phase 2's `sync-knowledge` pre-push step
+   * will be composed in, so the two don't double-fetch (§7a-5) — not wired in this slice.
+   */
+  PRE_PUSH_HOOK_MARKER: "docuvia analyze --escalate-to-lsp",
+  PRE_PUSH_HOOK_CONTENT:
+    `#!/bin/bash\n# Docuvia Tier B Batch Hook (LSP escalation + snapshot)\n` +
+    `# Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see\n` +
+    `# docs/gitbook/analysis/phase1-decision-integration.md §8h.\n` +
+    `if command -v npx &> /dev/null; then\n` +
+    `  npx --no-install docuvia analyze --escalate-to-lsp && npx --no-install docuvia snapshot\n` +
+    `  # Phase 2: a sync-knowledge step composes here -- must not double-fetch (see §7a-5).\n` +
+    `fi\n` +
+    `# Never blocks the push on a Tier B failure -- PLAT-007's reliability requirement (failures\n` +
+    `# only ever surface via JSONL logs / doctor, never to the pushing developer).\n` +
+    `exit 0\n`,
 } as const;
 
 /** Log messages and human-readable report text shared across the `git/` domain services. */
@@ -100,6 +141,11 @@ export const GitMessages = {
   INSTALLED_POST_COMMIT_HOOK: "Installed post-commit hook",
   UPGRADED_LEGACY_POST_COMMIT_HOOK:
     "Upgraded legacy post-commit hook (docuvia snapshot -> docuvia analyze)",
+  PRE_PUSH_HOOK_ALREADY_INSTALLED: "Pre-push hook already installed",
+  CONCURRENT_PRE_PUSH_HOOK_INSTALL_SKIPPED:
+    "Pre-push hook was installed by a concurrent process; skipping duplicate append",
+  FAILED_TO_INSTALL_PRE_PUSH_HOOK: "Failed to install pre-push hook",
+  INSTALLED_PRE_PUSH_HOOK: "Installed pre-push hook",
   PACKED_SNAPSHOT_ONTO_BRANCH: "Packed snapshot onto knowledge branch",
   NO_REMOTE_SKIP_RECONCILIATION:
     "No remote configured; skipping knowledge branch reconciliation",

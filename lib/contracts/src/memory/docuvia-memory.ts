@@ -20,6 +20,14 @@ export const MemoryKeys = {
   ESCALATE_TO_LSP: "escalateToLsp",
   LIMIT: "limit",
   COLLAPSE: "collapse",
+  /** §8b "config-overridable" LSP binary path — absolute path or bare command on PATH. */
+  LSP_BINARY_OVERRIDE: "lspBinaryOverride",
+  /** §8b "config-overridable" LSP binary args (space-separated in the env var, split by the CLI layer). */
+  LSP_ARGS_OVERRIDE: "lspArgsOverride",
+  /** §8h "generous initial timeout" override, in milliseconds. */
+  LSP_TIMEOUT_MS: "lspTimeoutMs",
+  /** §8f commit-cap override (default 20, config-tunable). */
+  TIER_B_COMMIT_CAP: "tierBCommitCap",
 } as const;
 
 export type MemoryKey = (typeof MemoryKeys)[keyof typeof MemoryKeys];

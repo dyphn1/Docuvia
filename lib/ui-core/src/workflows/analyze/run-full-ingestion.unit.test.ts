@@ -124,6 +124,7 @@ function makeMockStore(): IGraphStore {
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),
+      pruneOrphanedLinks: vi.fn().mockReturnValue(0),
     },
     l3: {
       getById: vi.fn(),

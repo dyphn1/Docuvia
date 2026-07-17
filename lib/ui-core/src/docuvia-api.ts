@@ -5,6 +5,8 @@ import {
   MemoryKeys,
   type ILogger,
   type MemoryKey,
+  type EdgeResolutionProviderConfig,
+  type EdgeResolutionAvailability,
 } from "@workspace/contracts";
 import { DOCUVIA_API_MESSAGES } from "./constants/docuvia-api-messages.js";
 import { InitWorkflow } from "./workflows/init/init-workflow.js";
@@ -38,6 +40,7 @@ import {
   DoctorWorkflow,
   type DoctorOptions,
 } from "./workflows/doctor/doctor-workflow.js";
+import { checkTierBGate } from "./workflows/analyze/tier-b-gate.js";
 import type { DoctorResult } from "./workflows/doctor/doctor-result.js";
 
 function requireMemory<T>(scopeId: string, key: MemoryKey): T {
@@ -49,6 +52,36 @@ function requireMemory<T>(scopeId: string, key: MemoryKey): T {
     );
   }
   return value;
+}
+
+/** `analyze --escalate-to-lsp`'s §8b "config-overridable" LSP binary/args/timeout, read from
+ *  `docuviaMemory` (never `process.env` directly -- the Presentation layer already did that
+ *  translation). `undefined` when none of the three were set, so
+ *  `TypescriptLspEdgeProvider.configure()` is skipped entirely and its own defaults apply. */
+function buildLspProviderConfig(
+  scopeId: string,
+): EdgeResolutionProviderConfig | undefined {
+  const binaryOverride = docuviaMemory.get<string>(
+    scopeId,
+    MemoryKeys.LSP_BINARY_OVERRIDE,
+  );
+  const argsOverride = docuviaMemory.get<string[]>(
+    scopeId,
+    MemoryKeys.LSP_ARGS_OVERRIDE,
+  );
+  const timeoutMs = docuviaMemory.get<number>(
+    scopeId,
+    MemoryKeys.LSP_TIMEOUT_MS,
+  );
+
+  if (
+    binaryOverride === undefined &&
+    argsOverride === undefined &&
+    timeoutMs === undefined
+  ) {
+    return undefined;
+  }
+  return { binaryOverride, argsOverride, timeoutMs };
 }
 
 /**
@@ -106,21 +139,40 @@ export const docuviaApi = {
       scopeId,
       MemoryKeys.TARGET_PATH,
     );
-    if (!targetPath) {
-      return new AnalyzeWorkflow(workspaceRoot, logger).execute();
+    if (targetPath) {
+      const llmBaseUrl = requireMemory<string>(
+        scopeId,
+        MemoryKeys.LLM_BASE_URL,
+      );
+      const llmModel = requireMemory<string>(scopeId, MemoryKeys.LLM_MODEL);
+      const llmApiKey = docuviaMemory.get<string>(
+        scopeId,
+        MemoryKeys.LLM_API_KEY,
+      );
+      return new AnalyzeWorkflow(workspaceRoot, logger, {
+        targetPath,
+        llmBaseUrl,
+        llmApiKey,
+        llmModel,
+      }).execute();
     }
-    const llmBaseUrl = requireMemory<string>(scopeId, MemoryKeys.LLM_BASE_URL);
-    const llmModel = requireMemory<string>(scopeId, MemoryKeys.LLM_MODEL);
-    const llmApiKey = docuviaMemory.get<string>(
+
+    const escalateToLsp = docuviaMemory.get<boolean>(
       scopeId,
-      MemoryKeys.LLM_API_KEY,
+      MemoryKeys.ESCALATE_TO_LSP,
     );
-    return new AnalyzeWorkflow(workspaceRoot, logger, {
-      targetPath,
-      llmBaseUrl,
-      llmApiKey,
-      llmModel,
-    }).execute();
+    if (escalateToLsp) {
+      return new AnalyzeWorkflow(workspaceRoot, logger, {
+        escalateToLsp: true,
+        lspProviderConfig: buildLspProviderConfig(scopeId),
+        tierBCommitCap: docuviaMemory.get<number>(
+          scopeId,
+          MemoryKeys.TIER_B_COMMIT_CAP,
+        ),
+      }).execute();
+    }
+
+    return new AnalyzeWorkflow(workspaceRoot, logger).execute();
   },
 
   async review(scopeId: string, logger: ILogger): Promise<ReviewResult> {
@@ -211,5 +263,24 @@ export const docuviaApi = {
       MemoryKeys.WORKSPACE_ROOT,
     );
     return new DoctorWorkflow(workspaceRoot, logger).execute(options);
+  },
+
+  /** D2's mandatory pre-flight gate for a manual/interactive `analyze --escalate-to-lsp`
+   *  invocation (phase1-decision-integration.md §8c) -- see `tier-b-gate.ts`. The CLI calls this
+   *  before running the batch itself, only when it intends to prompt the user on a not-ready
+   *  result (interactive terminal, no `--fallback-ast`). */
+  async checkTierBGate(
+    scopeId: string,
+    logger: ILogger,
+  ): Promise<EdgeResolutionAvailability> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    return checkTierBGate(
+      workspaceRoot,
+      logger,
+      buildLspProviderConfig(scopeId),
+    );
   },
 };

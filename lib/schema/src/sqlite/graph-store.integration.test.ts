@@ -469,6 +469,41 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(store.graph.findNodeIdByNodeKey("src/missing.ts")).toBeUndefined();
   });
 
+  it("graph repo: pruneOrphanedLinks() removes node_links rows left dangling by deleteNodesForPath's outgoing-only delete (§8d incoming-edge repair hygiene)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const callerId = store.graph.insertNode({
+      projectId: project.id,
+      name: "caller",
+      pathPatterns: ["src/caller.ts"],
+      nodeKey: "src/caller.ts#caller",
+    });
+    const calleeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "callee",
+      pathPatterns: ["src/callee.ts"],
+      nodeKey: "src/callee.ts#callee",
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: calleeId,
+      linkType: "calls",
+    });
+
+    // Simulates Tier A's per-file replace of src/callee.ts: deleteNodesForPath only removes
+    // *outgoing* links from the deleted node, leaving the caller's incoming link dangling
+    // (target_node_id now references a row that no longer exists).
+    store.graph.deleteNodesForPath("src/callee.ts");
+    expect(store.graph.getAllLinks()).toHaveLength(1);
+
+    const pruned = store.graph.pruneOrphanedLinks();
+
+    expect(pruned).toBe(1);
+    expect(store.graph.getAllLinks()).toHaveLength(0);
+  });
+
   it("l3 repo: upsertDecision() inserts a new row with full provenance on the first call", () => {
     const project = store.projects.insert({
       name: "demo",

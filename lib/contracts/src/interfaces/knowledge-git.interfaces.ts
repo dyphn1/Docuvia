@@ -34,6 +34,15 @@ export interface IKnowledgeGitService {
     branchName?: string,
   ): Promise<{ created: boolean }>;
   installPostCommitHook(cwd: string): Promise<{ installed: boolean }>;
+  /**
+   * Installs the pre-push hook that fires the Tier B batch (`docuvia analyze --escalate-to-lsp
+   * && docuvia snapshot`, phase1-decision-integration.md §8h) — the "share code, share knowledge"
+   * trigger PLAT-007 settles on for Phase 1 (no idle timer). Mirrors
+   * `installPostCommitHook`'s marker + lock + legacy-upgrade shape exactly (no legacy hook exists
+   * for `pre-push` yet, so there is no upgrade branch — only fresh-install and
+   * already-installed). Non-fatal by design, same reasoning as `installPostCommitHook`.
+   */
+  installPrePushHook(cwd: string): Promise<{ installed: boolean }>;
   /** Packs a rendered snapshot directory (see `ISnapshotRenderer`) onto the hidden knowledge branch, wholesale replacing its tree. */
   packSnapshotToKnowledgeBranch(
     cwd: string,

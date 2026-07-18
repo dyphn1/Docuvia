@@ -26,50 +26,22 @@ import {
 import { resolveAnchorL2NodeId, toNodeKey } from "./anchor-resolution.js";
 import {
   AnalyzeResultKind,
-  DecisionNodeType,
   type AnalyzeResult,
   type ExtractedDecision,
 } from "./analyze-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
-import { runTierBBatch } from "./run-tier-b-batch.js";
+import { runTierBBatch, type TierBBatchDeps } from "./run-tier-b-batch.js";
+import {
+  parseDecisionsFromLlmContent,
+  stripMarkdownCodeFence,
+} from "./decision-parsing.js";
 
-const VALID_NODE_TYPES = Object.values(DecisionNodeType);
-const MARKDOWN_CODE_FENCE = "```";
-
-/**
- * Strips a wrapping markdown code fence (```` ```json\n...\n``` ```` or bare ```` ```\n...\n``` ````)
- * from `raw`, tolerating leading/trailing whitespace around the fence. Many OpenAI-compatible LLM
- * backends (e.g. Mistral) wrap valid JSON responses in a markdown fence even when not asked to,
- * which breaks a direct `JSON.parse()`. If `raw` isn't fenced, it is returned unchanged.
- */
-export function stripMarkdownCodeFence(raw: string): string {
-  const trimmed = raw.trim();
-  if (
-    !trimmed.startsWith(MARKDOWN_CODE_FENCE) ||
-    !trimmed.endsWith(MARKDOWN_CODE_FENCE)
-  ) {
-    return raw;
-  }
-
-  const newlineIndex = trimmed.indexOf("\n");
-  if (newlineIndex === -1) {
-    // A single line of nothing but backticks (and maybe a language tag) — no body to extract.
-    return raw;
-  }
-
-  const firstLine = trimmed.slice(0, newlineIndex);
-  if (!/^```[A-Za-z0-9_-]*$/.test(firstLine)) {
-    // Opening "fence" line contains more than just ``` + an optional language tag — not a
-    // fence we recognize; leave the content untouched rather than risk mangling it.
-    return raw;
-  }
-
-  const withoutOpening = trimmed.slice(newlineIndex + 1);
-  const withoutClosing = withoutOpening.slice(0, withoutOpening.length - 3);
-  return withoutClosing.trim();
-}
+// Re-exported for the existing `stripMarkdownCodeFence()` test suite in
+// `analyze-workflow.unit.test.ts` -- the implementation itself now lives in
+// `decision-parsing.js`, shared with Tier C's extraction calls (`run-tier-c-drain.ts`).
+export { stripMarkdownCodeFence };
 
 /**
  * The `analyze` workflow — either a project-wide config scan (old Docuvia's
@@ -91,6 +63,16 @@ export class AnalyzeWorkflow {
       escalateToLsp?: boolean;
       lspProviderConfig?: EdgeResolutionProviderConfig;
       tierBCommitCap?: number;
+      /** Tier C's §9f throttling overrides -- folded into the same `--escalate-to-lsp` run
+       *  (phase1-decision-integration.md §9d). `llmBaseUrl`/`llmApiKey`/`llmModel` above double as
+       *  Tier C's LLM config when `escalateToLsp` is set; a missing `llmBaseUrl`/`llmModel` in
+       *  that mode degrades honestly (Tier C drain skipped, LSP escalation still runs) rather than
+       *  the hard failure `targetPath` mode uses. */
+      tierCDailyCallCap?: number;
+      tierCDailyTokenCap?: number;
+      tierCWallClockMs?: number;
+      tierCItemCap?: number;
+      tierCLoadThreshold?: number;
     },
   ) {}
 
@@ -123,15 +105,16 @@ export class AnalyzeWorkflow {
         readonly: false,
       });
 
-      return await runTierBBatch({
-        workspaceRoot,
-        logger,
-        store,
-        git,
-        knowledgeGit,
-        providerConfig: options?.lspProviderConfig,
-        commitCap: options?.tierBCommitCap,
-      });
+      return await runTierBBatch(
+        buildTierBBatchDeps(
+          workspaceRoot,
+          logger,
+          store,
+          git,
+          knowledgeGit,
+          options,
+        ),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await appendAnalyzeLogLine(workspaceRoot, {
@@ -342,8 +325,8 @@ export class AnalyzeWorkflow {
     });
 
     const rawContent = response.choices[0]?.message.content;
-    let parsed: unknown;
-    if (rawContent === null || rawContent === undefined) {
+    const decisions = parseDecisionsFromLlmContent(rawContent);
+    if (decisions === undefined) {
       const message = ANALYZE_MESSAGES.LLM_NON_JSON_OUTPUT;
       await appendAnalyzeLogLine(workspaceRoot, {
         event: ANALYZE_EVENTS.FOCUSED_ERROR,
@@ -352,36 +335,6 @@ export class AnalyzeWorkflow {
       });
       throw new DocuviaError(ErrorCodes.LLM_INVALID_RESPONSE, message);
     }
-    try {
-      parsed = JSON.parse(stripMarkdownCodeFence(rawContent));
-    } catch {
-      const message = ANALYZE_MESSAGES.LLM_NON_JSON_OUTPUT;
-      await appendAnalyzeLogLine(workspaceRoot, {
-        event: ANALYZE_EVENTS.FOCUSED_ERROR,
-        targetPath,
-        message,
-      });
-      throw new DocuviaError(ErrorCodes.LLM_INVALID_RESPONSE, message);
-    }
-
-    if (!Array.isArray(parsed)) {
-      const message = ANALYZE_MESSAGES.LLM_NON_JSON_OUTPUT;
-      await appendAnalyzeLogLine(workspaceRoot, {
-        event: ANALYZE_EVENTS.FOCUSED_ERROR,
-        targetPath,
-        message,
-      });
-      throw new DocuviaError(ErrorCodes.LLM_INVALID_RESPONSE, message);
-    }
-
-    const decisions: ExtractedDecision[] = parsed.map((item: any) => ({
-      title: String(item?.title ?? ""),
-      nodeType: (VALID_NODE_TYPES as readonly string[]).includes(item?.nodeType)
-        ? (item.nodeType as ExtractedDecision["nodeType"])
-        : DecisionNodeType.CONTEXT,
-      content: String(item?.content ?? ""),
-      confidence: typeof item?.confidence === "number" ? item.confidence : 0,
-    }));
 
     const { persisted, deduped } = await this.persistDecisions(
       resolvedPath,
@@ -526,4 +479,71 @@ export class AnalyzeWorkflow {
       message: ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH,
     });
   }
+}
+
+type AnalyzeWorkflowOptions = NonNullable<
+  ConstructorParameters<typeof AnalyzeWorkflow>[2]
+>;
+
+/** The Tier B-only slice of `runTierBBatch`'s deps -- split out of `buildTierBBatchDeps` to keep
+ *  each function's optional-chaining-driven complexity under the ESLint budget. */
+function buildTierBOnlyDeps(
+  options: AnalyzeWorkflowOptions | undefined,
+): Pick<
+  TierBBatchDeps,
+  "providerConfig" | "commitCap" | "llmBaseUrl" | "llmApiKey" | "llmModel"
+> {
+  return {
+    providerConfig: options?.lspProviderConfig,
+    commitCap: options?.tierBCommitCap,
+    llmBaseUrl: options?.llmBaseUrl,
+    llmApiKey: options?.llmApiKey,
+    llmModel: options?.llmModel,
+  };
+}
+
+/** The Tier C-only slice of `runTierBBatch`'s deps (§9d) -- split out of `buildTierBBatchDeps`
+ *  for the same reason as `buildTierBOnlyDeps`. */
+function buildTierCOnlyDeps(
+  options: AnalyzeWorkflowOptions | undefined,
+): Pick<
+  TierBBatchDeps,
+  | "tierCDailyCallCap"
+  | "tierCDailyTokenCap"
+  | "tierCWallClockMs"
+  | "tierCItemCap"
+  | "tierCLoadThreshold"
+> {
+  return {
+    tierCDailyCallCap: options?.tierCDailyCallCap,
+    tierCDailyTokenCap: options?.tierCDailyTokenCap,
+    tierCWallClockMs: options?.tierCWallClockMs,
+    tierCItemCap: options?.tierCItemCap,
+    tierCLoadThreshold: options?.tierCLoadThreshold,
+  };
+}
+
+/**
+ * Assembles `runTierBBatch`'s deps object from `AnalyzeWorkflow`'s constructor options -- pulled
+ * out of `executeTierBBatch` purely to keep that method's cyclomatic complexity under the
+ * project's ESLint budget (the Tier C option fields added in Slice 4 pushed the inline object
+ * literal's optional-chaining count over the limit).
+ */
+function buildTierBBatchDeps(
+  workspaceRoot: string,
+  logger: ILogger,
+  store: IGraphStore,
+  git: IGitProvider,
+  knowledgeGit: IKnowledgeGitService,
+  options: AnalyzeWorkflowOptions | undefined,
+): TierBBatchDeps {
+  return {
+    workspaceRoot,
+    logger,
+    store,
+    git,
+    knowledgeGit,
+    ...buildTierBOnlyDeps(options),
+    ...buildTierCOnlyDeps(options),
+  };
 }

@@ -169,6 +169,34 @@ export const docuviaApi = {
           scopeId,
           MemoryKeys.TIER_B_COMMIT_CAP,
         ),
+        // Tier C's LLM config doubles up on the same memory keys `targetPath` mode uses (§9,
+        // folded into the same `--escalate-to-lsp` run) -- optional here (unlike `targetPath`
+        // mode's hard-fail-on-missing-env): a missing bridge config degrades honestly (Tier C
+        // drain skipped, LSP escalation still runs), per `run-tier-c-drain.ts`'s honest-
+        // degradation contract.
+        llmBaseUrl: docuviaMemory.get<string>(scopeId, MemoryKeys.LLM_BASE_URL),
+        llmApiKey: docuviaMemory.get<string>(scopeId, MemoryKeys.LLM_API_KEY),
+        llmModel: docuviaMemory.get<string>(scopeId, MemoryKeys.LLM_MODEL),
+        tierCDailyCallCap: docuviaMemory.get<number>(
+          scopeId,
+          MemoryKeys.TIER_C_DAILY_CALL_CAP,
+        ),
+        tierCDailyTokenCap: docuviaMemory.get<number>(
+          scopeId,
+          MemoryKeys.TIER_C_DAILY_TOKEN_CAP,
+        ),
+        tierCWallClockMs: docuviaMemory.get<number>(
+          scopeId,
+          MemoryKeys.TIER_C_WALL_CLOCK_MS,
+        ),
+        tierCItemCap: docuviaMemory.get<number>(
+          scopeId,
+          MemoryKeys.TIER_C_ITEM_CAP,
+        ),
+        tierCLoadThreshold: docuviaMemory.get<number>(
+          scopeId,
+          MemoryKeys.TIER_C_LOAD_THRESHOLD,
+        ),
       }).execute();
     }
 

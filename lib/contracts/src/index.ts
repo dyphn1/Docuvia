@@ -204,6 +204,7 @@ export {
   LOCAL_DB_FILE_NAME,
   SYNC_STATE_FILE_NAME,
   INIT_COMMAND_LOCK_FILE_NAME,
+  TIER_C_LOCK_FILE_NAME,
 } from "./constants/paths.js";
 
 export { UTF8_ENCODING } from "./constants/encoding.js";

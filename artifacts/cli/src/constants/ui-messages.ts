@@ -143,6 +143,19 @@ export const UI_MESSAGES = {
   ANALYZE_TIER_B_GATE_DECLINED:
     "Aborted -- install typescript-language-server as a project devDependency (or pass --fallback-ast) and try again.",
 
+  // Tier C's budgeted async LLM decision-extraction drain, folded into --escalate-to-lsp
+  // (phase1-decision-integration.md §9) -- no separate header/spinner; its summary is appended
+  // after Tier B's own.
+  ANALYZE_TIER_C_SUMMARY: (
+    processed: number,
+    persisted: number,
+    failed: number,
+  ) =>
+    `Tier C: ${processed} candidate(s) processed, ${persisted} decision(s) persisted` +
+    (failed > 0 ? `, ${failed} left queued for the next run.` : "."),
+  ANALYZE_TIER_C_SKIPPED: (reason: string) =>
+    `Tier C: drain skipped this run (${reason}).`,
+
   // Review Command
   REVIEW_HEADER: "Review Changes",
   REVIEW_START: "Analyzing changes...",

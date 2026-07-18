@@ -111,6 +111,43 @@ export const GitConstants = {
     `# Never blocks the push on a Tier B failure -- PLAT-007's reliability requirement (failures\n` +
     `# only ever surface via JSONL logs / doctor, never to the pushing developer).\n` +
     `exit 0\n`,
+
+  /**
+   * `docuvia_meta` key holding a JSON array of Tier C candidates (phase1-decision-integration.md
+   * §9c, E2) -- deduped by `target` (a commit sha for commit-message candidates, a `node_key` for
+   * `CONTRACT_CHANGED` symbol candidates). Enqueued by Tier A's delta ingestion (the same
+   * `runDeltaIngestion` step that populates `tierBQueue`); drained by `analyze --escalate-to-lsp`
+   * (the same pre-push composition Tier B drains from), item-by-item, each item dequeued only
+   * once its extraction is durably persisted to `l3_nodes` (§9c's "same stage-then-finalize
+   * discipline as Tier B" -- adapted to Tier C's own unit of durability, since L3 rows are
+   * written immediately and don't wait on a snapshot the way Tier B's edges do).
+   */
+  META_KEY_TIER_C_QUEUE: "tierCQueue",
+  /**
+   * `docuvia_meta` key holding a JSON `{ date, calls, tokens }` record (phase1-decision-integration.md
+   * §9c, E2) -- `date` is a UTC `YYYY-MM-DD` stamp. Reset is lazy: on every read, if `date` is not
+   * today (UTC), the counters are treated as zero before any budget check, rather than a
+   * scheduled/timer-driven reset (this project has no resident process to run one).
+   */
+  META_KEY_TIER_C_BUDGET: "tierCBudget",
+  /** Default Tier C daily LLM call-budget cap (§9c/§9f) -- config-tunable via
+   *  `DOCUVIA_TIER_C_DAILY_CALL_CAP` (read by the Presentation layer only). */
+  DEFAULT_TIER_C_DAILY_CALL_CAP: 50,
+  /** Default Tier C daily estimated-token-budget cap (§9c/§9f) -- config-tunable via
+   *  `DOCUVIA_TIER_C_DAILY_TOKEN_CAP`. Tokens are estimated (the CLIProxyAPI bridge's wire format
+   *  carries no `usage` field today), not read back from the provider -- see
+   *  `tier-c-token-estimate.ts`'s doc comment. */
+  DEFAULT_TIER_C_DAILY_TOKEN_CAP: 100_000,
+  /** Default Tier C per-run wall-clock cap, in milliseconds (§9d) -- config-tunable via
+   *  `DOCUVIA_TIER_C_WALL_CLOCK_MS`. Whichever of this or `DEFAULT_TIER_C_ITEM_CAP` binds first
+   *  stops the drain; leftovers stay queued for the next run. */
+  DEFAULT_TIER_C_WALL_CLOCK_MS: 12_000,
+  /** Default Tier C per-run item-count cap (§9d) -- config-tunable via `DOCUVIA_TIER_C_ITEM_CAP`. */
+  DEFAULT_TIER_C_ITEM_CAP: 20,
+  /** Default Tier C system-load-check threshold (§9f) -- `os.loadavg()[0] / os.cpus().length`
+   *  above this skips the drain. Config-tunable via `DOCUVIA_TIER_C_LOAD_THRESHOLD`. A documented
+   *  no-op on Windows (`os.loadavg()` always returns zeros there) -- see `tier-c-throttle.ts`. */
+  DEFAULT_TIER_C_LOAD_THRESHOLD: 0.8,
 } as const;
 
 /** Log messages and human-readable report text shared across the `git/` domain services. */

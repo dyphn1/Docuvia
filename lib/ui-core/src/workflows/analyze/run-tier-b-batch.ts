@@ -18,11 +18,25 @@ import { AnalyzeResultKind, type TierBBatchResult } from "./analyze-result.js";
 import { readTierBQueue, type TierBQueueEntry } from "./tier-b-queue.js";
 import { partitionQueueByLanguage } from "./tier-b-language-dispatch.js";
 import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
+import { runTierCDrain } from "./run-tier-c-drain.js";
 
 interface PendingTierBBatch {
   headSha: string;
   remainingQueue: TierBQueueEntry[];
 }
+
+/** Tier B's own result shape, before the wrapper merges in Tier C's drain summary (§9d) --
+ *  `runTierBBatchCore`/`emptyResult`/`finalizeBatch` only ever know about Tier B's own fields. */
+type TierBOnlyResult = Omit<
+  TierBBatchResult,
+  | "tierCQueued"
+  | "tierCProcessed"
+  | "tierCPersisted"
+  | "tierCDeduped"
+  | "tierCFailed"
+  | "tierCSkipped"
+  | "tierCSkippedReason"
+>;
 
 export interface TierBBatchDeps {
   workspaceRoot: string;
@@ -32,20 +46,57 @@ export interface TierBBatchDeps {
   knowledgeGit: IKnowledgeGitService;
   providerConfig?: EdgeResolutionProviderConfig;
   commitCap?: number;
+  // --- Tier C's §9d "fold into the same pre-push composition" fields (phase1-decision-integration.md §9) ---
+  llmBaseUrl?: string;
+  llmApiKey?: string;
+  llmModel?: string;
+  tierCDailyCallCap?: number;
+  tierCDailyTokenCap?: number;
+  tierCWallClockMs?: number;
+  tierCItemCap?: number;
+  tierCLoadThreshold?: number;
 }
 
 /**
  * `analyze --escalate-to-lsp` -- the Tier B batch (phase1-decision-integration.md §8; PLAT-007
- * Tier B). Drains the whole `tierBQueue` (D6): drops entries whose file no longer exists at HEAD,
- * skips entries whose language has no plugin yet (D4), routes the rest through the D1
- * edge-resolution provider seam, applies any resolved cross-file `calls` edges plus the incoming-
- * edge repair prune (D3), and stages (never directly writes) the queue drain + commit-cap seed for
- * `SnapshotWorkflow`'s post-pack finalize step to commit (D5/D6: both only take effect after a
- * successful snapshot).
+ * Tier B), with Tier C's queue drain folded into the same run (§9d). A thin wrapper around
+ * `runTierBBatchCore` (Tier B's own logic, unchanged) that also drains `tierCQueue` and merges
+ * its summary into the same `TierBBatchResult` -- Tier C never gets its own CLI surface (§9d's
+ * "no new command" ruling).
  */
 export async function runTierBBatch(
   deps: TierBBatchDeps,
 ): Promise<TierBBatchResult> {
+  const tierBResult = await runTierBBatchCore(deps);
+  const tierC = await runTierCDrain({
+    workspaceRoot: deps.workspaceRoot,
+    logger: deps.logger,
+    store: deps.store,
+    git: deps.git,
+    llmBaseUrl: deps.llmBaseUrl,
+    llmApiKey: deps.llmApiKey,
+    llmModel: deps.llmModel,
+    dailyCallCap: deps.tierCDailyCallCap,
+    dailyTokenCap: deps.tierCDailyTokenCap,
+    wallClockMs: deps.tierCWallClockMs,
+    itemCap: deps.tierCItemCap,
+    loadThreshold: deps.tierCLoadThreshold,
+  });
+  return { ...tierBResult, ...tierC };
+}
+
+/**
+ * Tier B's own batch logic (D1-D6), unchanged by Slice 4 apart from its name and the one-line
+ * §9h queue-size addition in `finalizeBatch`. Drains the whole `tierBQueue` (D6): drops entries
+ * whose file no longer exists at HEAD, skips entries whose language has no plugin yet (D4),
+ * routes the rest through the D1 edge-resolution provider seam, applies any resolved cross-file
+ * `calls` edges plus the incoming-edge repair prune (D3), and stages (never directly writes) the
+ * queue drain + commit-cap seed for `SnapshotWorkflow`'s post-pack finalize step to commit (D5/D6:
+ * both only take effect after a successful snapshot).
+ */
+async function runTierBBatchCore(
+  deps: TierBBatchDeps,
+): Promise<TierBOnlyResult> {
   const { workspaceRoot, logger, store, git } = deps;
 
   logger.info(ANALYZE_MESSAGES.TIER_B_STARTING);
@@ -139,7 +190,7 @@ export async function runTierBBatch(
 function emptyResult(
   headSha: string | null,
   commitCapExceeded: boolean,
-): TierBBatchResult {
+): TierBOnlyResult {
   return {
     kind: AnalyzeResultKind.TIER_B_BATCH,
     headSha,
@@ -285,7 +336,7 @@ interface FinalizeArgs {
 async function finalizeBatch(
   deps: TierBBatchDeps,
   args: FinalizeArgs,
-): Promise<TierBBatchResult> {
+): Promise<TierBOnlyResult> {
   const { workspaceRoot, logger, store, knowledgeGit } = deps;
   const { headSha, outcome, failedEntries } = args;
 

@@ -471,4 +471,86 @@ describe("runDeltaIngestion()", () => {
     expect(lines.some((l) => l.event === "analyze.delta.start")).toBe(true);
     expect(lines.some((l) => l.event === "analyze.delta.summary")).toBe(true);
   });
+
+  it("enqueues a filtered commit message into the Tier C queue (§9b/§9e)", async () => {
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue([]),
+      getCommitLog: vi.fn().mockResolvedValue([
+        {
+          sha: HEAD_SHA,
+          message: "feat: add a substantive delta-ingestion change",
+        },
+        { sha: "middle-sha", message: "chore: bump a dependency" },
+        { sha: FROM_SHA, message: "feat: an older, already-ingested commit" },
+      ]),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    const { readTierCQueue } = await import("./tier-c-queue.js");
+    const queue = readTierCQueue(store);
+    expect(queue).toEqual([
+      {
+        kind: "commitMessage",
+        target: HEAD_SHA,
+        commitSha: HEAD_SHA,
+        message: "feat: add a substantive delta-ingestion change",
+      },
+    ]);
+  });
+
+  it("enqueues a CONTRACT_CHANGED symbol into the Tier C queue, keyed by node_key", async () => {
+    const entries: ChangedFileEntry[] = [
+      { file: "src/a.ts", status: "modified" },
+    ];
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue(entries),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation(async (_root, ref) =>
+          ref === HEAD_SHA ? "new content" : "old content",
+        ),
+      getChangedLineRanges: vi
+        .fn()
+        .mockResolvedValue([{ startRow: 0, endRow: 1 }]),
+    });
+    semanticDiffAnalyzer.analyzeFile = vi.fn().mockResolvedValue([
+      {
+        nodeId: "foo",
+        nodeType: "function_declaration",
+        pruningLevel: 1,
+        newRange: { startRow: 0, endRow: 1 },
+      },
+    ]);
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    const { readTierCQueue } = await import("./tier-c-queue.js");
+    expect(readTierCQueue(store)).toEqual([
+      {
+        kind: "contractSymbol",
+        target: "src/a.ts#foo",
+        commitSha: HEAD_SHA,
+        file: "src/a.ts",
+      },
+    ]);
+  });
 });

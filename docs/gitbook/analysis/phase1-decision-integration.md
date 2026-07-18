@@ -489,3 +489,200 @@ Slice 5 (row added to §7d).
 > `SnapshotWorkflow`'s post-pack finalize atomically drains the queue and seeds
 > `lastTierBBatchSha`) is the mechanism that satisfies "effects only after successful snapshot" —
 > Slice 4's budget/queue consumption should reuse it. Four verifier advisories recorded in §7d.
+>
+> **Status update (2026-07-18):** Slice 3 committed. Slice 4's integration-level contract is §9
+> below.
+
+## 9. Slice 4 (Tier C) — integration contract (Fable-rendered rulings, 2026-07-18)
+
+> **Inputs:** §7b's settled scope + §8i's addendum (the embedded-model decision, explicitly
+> deferred from Slice 3), and `docs/reports/slice4-next-steps-recommendations.md` (an
+> AI-generated recommendations doc, not an owner ruling — its proposals are dispositioned below).
+> Per owner instruction, the open questions carrying real architectural weight were routed to a
+> Fable-model consult rather than decided ad hoc; the rulings below are that consult's output,
+> recorded the same way owner rulings are recorded elsewhere in this document (D1–D8 precedent),
+> so implementation has a single settled contract to build against. **These are not yet
+> owner-ratified** — flag any E-ruling below that the owner wants overridden before or during
+> implementation.
+
+### 9a. Disposition of `slice4-next-steps-recommendations.md`'s proposals
+
+| Proposal                                                     | Disposition                                                                                                                        |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Commit semantic filter                                       | **Adopted** → §9e.                                                                                                                 |
+| Request-side throttling                                      | **Adopted** → §9f.                                                                                                                 |
+| Embedded in-process model                                    | **Deferred, not built** → §9b.                                                                                                     |
+| Semantic Drift Ratio (replaces shipped Tier B commit-cap D5) | **Rejected/parked** → §9g. Reopens an already-shipped, verified, config-tunable mechanism with zero reported real-world pain.      |
+| `tierBQueue` staleness/eviction policy                       | **Deferred to a later reliability slice** → §9h. Queue is already deduped-by-file and bounded by repo file count; not urgent.      |
+| Docker-compose historical-replay E2E harness                 | **Rejected as scoped; shrunk** → §9i. Validates Tier B, not Tier C; disproportionate to this slice. A worktree script substitutes. |
+| L3 distribution strategy (snapshot packing)                  | **Confirmed Phase 2, not blocking** → §9j. One guardrail noted for Slice 4's persistence shape.                                    |
+
+### 9b. E1 — Embedded in-process model: DEFER, do not build in Slice 4
+
+All Tier C LLM traffic routes through the CLIProxyAPI bridge only (§8i, unchanged). The
+Slice 3 provider seam's "Provider 2: small-model compensation" stays a documented seam, not
+code. Rationale: §8i only obligated Slice 4 to _decide_, not build; there is no measured
+evidence CLIProxyAPI is too slow/costly/unavailable for Tier C's workload, and an in-process
+model opens a second, uncontrolled inference path (weights distribution, loading cost,
+platform matrix) — the same class of speculative infrastructure this project has rejected
+before (idle timer, resident LSP daemon, self-built scope resolution). **Concrete re-entry
+trigger** (measured, not speculative): (a) Tier B degradation JSONL lines show LSP-absent/
+timeout on ≥25% of batches over a sustained real-usage window, or (b) Tier C's daily budget
+(§9c) is measurably exhausted by routine extraction volume such that per-file compensation
+through the bridge is demonstrably unaffordable. Until either number exists, this stays parked.
+
+### 9c. E2 — Queue/budget storage shape
+
+Follow the `docuvia_meta` precedent Tier B set (`tierBQueue`, `lastTierBBatchSha`) — no new
+table, no migration:
+
+- `tierCQueue`: JSON array, deduped by target (commit sha for commit-message extraction,
+  node_key for `CONTRACT_CHANGED` symbols), same stage-then-finalize discipline as Tier B
+  (cleared only after successful persistence).
+- `tierCBudget`: JSON object `{"date": "YYYY-MM-DD", "calls": N, "tokens": M}`. Reset is
+  **lazy**, not scheduled: on every dispatch, if the stored date ≠ today (UTC, documented),
+  zero the counters before checking against the configured daily caps. "Reset at midnight"
+  is a daemon-shaped requirement; lazy reset-on-first-read is the daemonless equivalent and
+  behaves identically for budgeting purposes.
+
+### 9d. E3 — Consumption trigger: fold into the existing pre-push composition, hard wall-clock cap
+
+No new command (owner convergence principle). Extend the Tier B pre-push composition —
+`analyze --escalate-to-lsp && snapshot` — so the same escalation pass also drains `tierCQueue`
+within budget (§9c) and within a strict per-run wall-clock cap (config-tunable; e.g. ~10–15s
+or N items, whichever binds first). Leftovers stay queued; cleared only after a successful
+persist/snapshot (stage-then-finalize, same as Tier B). Budget exhausted, system load high
+(§9f), or bridge unreachable → skip with a JSONL line, exit 0 — the honest-degradation contract
+already established for Tier B applies verbatim to Tier C.
+
+### 9e. E4 — Commit semantic filter: pure-function denylist + regex + length floor, applied at enqueue
+
+Applied where Tier A/B enqueue candidates (post-commit hook / Tier B queueing), not at
+consumption time, so junk never occupies queue space:
+
+- Drop if the parsed conventional-commit type ∈ `{chore, style, ci, build, docs, test}`
+  (config-overridable list).
+- Drop if the subject matches `/^(wip|fixup!|squash!|typo|lint|format|merge branch)/i`.
+- Drop if the subject (after stripping any type prefix) is under ~10 characters.
+
+Deliberately dumb and a pure function (unit-testable, no LLM pre-classification — spending
+budget to save budget is self-defeating). Per the project's measured-pain discipline,
+sophistication waits for evidence this misfilters in practice.
+
+### 9f. E5 — Request-side throttling
+
+- **Concurrency = 1**: reuse the PLAT-006 single-flight lock pattern (PID-stamped lockfile
+  with staleness takeover), held for the dispatch window — the same discipline `init` already
+  uses, extended to Tier C's drain step.
+- **Daily budget**: §9c's `tierCBudget`, checked before each dispatch.
+- **System-load check**: one-shot `os.loadavg()[0] / os.cpus().length > threshold` (default
+  0.8) sampled once before dispatch — no polling loop, no watcher. `os.loadavg()` returns
+  zeros on Windows; ship this as a **documented no-op on Windows** (log a JSONL note rather
+  than fabricating a signal) until real contention is reported on a platform where the primary
+  dev environment can observe it — itself a measured-pain call.
+
+### 9g. E6 — Semantic Drift Ratio proposal: REJECTED, park on watchlist
+
+Do not reopen Tier B's shipped, verified, owner-ruled commit-cap (§8f D5:
+`rev-list --count lastTierBBatchSha..HEAD >= 20`, config-tunable). The composite score (diff
+size excl. docs/binaries + impact-analysis blast radius + commit-count multiplier) adds
+computation to a hot path, introduces an arbitrary new tunable (15% threshold), and its core
+complaint — "20 doc-only commits ≠ drift" — is already answerable with a one-line cheap tweak
+_if pain ever materializes_ (exclude doc-only commits from the rev-list count), which is why
+the composite version is premature now. **Re-entry trigger**: JSONL evidence from real usage
+that batch timing (too eager or too late) is materially wrong.
+
+### 9h. E7 — `tierBQueue` staleness/eviction: deferred; log queue size only
+
+Not Slice 4 scope (it's a Tier B concern, and Slice 4 ships Tier C). The "infinitely growing
+backlog" premise is overstated — the queue is already deduped by file and bounded by repo file
+count. The one cheap addition worth making in Slice 4's own logging pass: include queue size
+in the existing Tier B JSONL batch-summary line, so a future eviction decision (if one is ever
+needed) is made from data rather than speculation.
+
+### 9i. E8 — Docker-compose historical-replay harness: rejected as scoped; substitute a worktree script
+
+Standing up a docker-compose replay environment validates Tier B's LSP edge-repair hit-rate,
+not anything Slice 4 ships — disproportionate infrastructure for this slice. Proportionate
+substitute (not a Slice 4 deliverable, but the recommended path when this question is picked
+up): a throwaway script against a `git worktree` clone (already provides the isolation the
+docker proposal was reaching for) that replays commits and reads the repair/degradation JSONL
+lines the system already emits. If that manual run shows surprising numbers, a repeatable
+harness earns its own slice then — not before.
+
+### 9j. E9 — L3 distribution strategy: confirmed Phase 2, one Slice 4 guardrail
+
+Confirmed out of Slice 4 scope — it touches `SnapshotWorkflow`, `HydrationService`, and
+merge/conflict semantics that Tier C's generation work does not depend on. Slice 4's only
+obligation: L3 rows persisted via `upsertDecision` (Slice 1) must carry no machine-local
+identity — repo-relative `source_files`, commit shas in `source_commits`, and the existing
+content-hash dedup key are already the right merge-ready shape. This is a "keep doing what
+`upsertDecision` already does" constraint, not new work.
+
+### 9k. Gating tests
+
+1. Semantic filter: unit tests for each denylist/regex/length-floor rule (drop and keep cases).
+2. Budget lazy-reset: crossing the UTC date boundary between two dispatches zeroes counters
+   before the next check; budget exhaustion mid-run skips remaining items with a JSONL line.
+3. Concurrency lock: a second concurrent dispatch attempt during an active Tier C drain is
+   rejected/deferred, following the existing PLAT-006 lock test pattern.
+4. Wall-clock cap: a drain that would exceed the per-run cap persists what completed and
+   re-queues the remainder (stage-then-finalize; idempotent re-run).
+5. Honest degradation: budget exhausted / system load high / bridge unreachable → queue
+   untouched except for completed items, JSONL event written, exit 0.
+6. Persistence: extracted decisions land as `l3_nodes` rows via the existing `upsertDecision`
+   path with full provenance (reuses Slice 1's acceptance tests, not re-derived here).
+
+**Acceptance for Slice 4:** build + full suite green (ESLint complexity budget ≤ 10 respected).
+On a real repo: qualifying commits (post-filter) and `CONTRACT_CHANGED` symbols accumulate in
+`tierCQueue` → pre-push batch drains within budget and wall-clock cap → `l3_nodes` rows appear
+with provenance → queue reflects only what wasn't processed. Budget exhaustion, load-check
+trip, or bridge unreachability degrade honestly (exit 0, logged, no partial/fake decisions).
+A concurrent second dispatch is safely rejected. No embedded model is built; the provider seam
+stays documented-only per §9b.
+
+> **Status update (2026-07-18):** Slice 4 implemented (build green; full suite 105 files / 680
+> tests green). The implementer flagged six judgment calls where §9 left a gap; owner rulings
+> below.
+
+### 9l. Dispatch implementer — post-implementation rulings (2026-07-18)
+
+1. **Token budget is char-estimated (4 chars/token), not provider-measured — accepted for
+   now.** `ILlmClient`/`FetchLlmClient` never surfaced a `usage` field from the CLIProxyAPI
+   response, so exact accounting would mean extending a Slice-3-shipped contract interface.
+   Ruling: ship the heuristic, documented as advisory not billing-grade (already done in code
+   comments). Revisit — thread real `usage` through `ChatCompletionResult` — only if the
+   estimate is ever observed materially over/under real spend (measured-pain rule, consistent
+   with §9b/§9g's re-entry-trigger discipline).
+2. **Commit-message anchor resolution (walk the commit's changed-file list for the first file
+   with an L2 node; no L2 node in any changed file → stays queued, never a synthetic anchor) —
+   accepted.** Correct extrapolation of §3b's own "directory target → first collected file with
+   a node, else persist nothing" rule to a commit's file list; no different rule is needed.
+3. **Prompt shape for both extraction kinds (new `TIER_C_COMMIT_MESSAGE_SYSTEM_PROMPT` /
+   `TIER_C_CONTRACT_SYMBOL_SYSTEM_PROMPT`, same JSON contract as the existing
+   `DECISION_EXTRACTION_SYSTEM_PROMPT`, parsing logic factored into shared
+   `decision-parsing.ts`) — accepted as shipped.** §7b explicitly left this open and §9 never
+   closed it, so there was no contract to deviate from. Not validated against a live model;
+   folded into the existing watchlist item for a live-model smoke test (§7d style) before this
+   sees real usage at volume — not blocking Slice 4 completion.
+4. **No `tierCBatchPending`-style staging key; per-item persist-then-dequeue instead — accepted,
+   confirmed as the correct reading.** §9j already establishes L3 rows never ride the snapshot,
+   so there is no later step for a pending record to wait on; the L3 write is the durable effect,
+   synchronous within the same run. Tier B's staging exists specifically because its queue-clear
+   depends on a _separate later command_ (`snapshot`) succeeding — Tier C has no equivalent
+   separation. If Phase 2 ever makes L3 ride the knowledge branch (§9j), reopen this then; not
+   before.
+5. **Redundant `tierBQueueLength` field — rejected, reverted.** Duplicated `filesQueued`'s value
+   under a second name in the same JSONL line; removed (`run-tier-b-batch.ts`). §9h's intent
+   (queue size visible in the batch-summary line for a future eviction decision) was already
+   satisfied by the pre-existing `filesQueued` field since Slice 3 — nothing further was needed.
+6. **"Bridge unreachable" detected via first failed `chatCompletion` call, not a pre-flight
+   `checkAvailability()`-style probe — accepted, gap noted for Slice 5.** `ILlmClient` has no
+   reachability-check method today (unlike Tier B's `IEdgeResolutionProvider.checkAvailability`),
+   so building parity would mean a new contracts-layer interface method — out of scope for a
+   dispatch that was told not to touch Slice-3-adjacent shipped interfaces. The shipped behavior
+   (stop draining on a bridge-unreachable failure classification, leave untried items queued,
+   log the reason) satisfies the honest-degradation _outcome_ even though the _detection timing_
+   is weaker than Tier B's pre-flight guarantee. Added to the §7d-style watchlist: a real
+   `ILlmClient.checkAvailability()` probe is Slice 5 (`doctor` reliability) scope — that's
+   already where LLM endpoint reachability was assigned (§7c).

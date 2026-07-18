@@ -61,6 +61,32 @@ interface TierBEnvConfig {
   tierBCommitCap: number | undefined;
 }
 
+interface TierCEnvConfig {
+  dailyCallCap: number | undefined;
+  dailyTokenCap: number | undefined;
+  wallClockMs: number | undefined;
+  itemCap: number | undefined;
+  loadThreshold: number | undefined;
+}
+
+/** §9c/§9d/§9f's config-tunable Tier C overrides, read once from `process.env` here
+ *  (Presentation layer only) and injected via `docuviaMemory` -- mirrors
+ *  `resolveTierBEnvConfig`'s shape. */
+function resolveTierCEnvConfig(): TierCEnvConfig {
+  const dailyCallCapRaw = process.env.DOCUVIA_TIER_C_DAILY_CALL_CAP;
+  const dailyTokenCapRaw = process.env.DOCUVIA_TIER_C_DAILY_TOKEN_CAP;
+  const wallClockMsRaw = process.env.DOCUVIA_TIER_C_WALL_CLOCK_MS;
+  const itemCapRaw = process.env.DOCUVIA_TIER_C_ITEM_CAP;
+  const loadThresholdRaw = process.env.DOCUVIA_TIER_C_LOAD_THRESHOLD;
+  return {
+    dailyCallCap: dailyCallCapRaw ? Number(dailyCallCapRaw) : undefined,
+    dailyTokenCap: dailyTokenCapRaw ? Number(dailyTokenCapRaw) : undefined,
+    wallClockMs: wallClockMsRaw ? Number(wallClockMsRaw) : undefined,
+    itemCap: itemCapRaw ? Number(itemCapRaw) : undefined,
+    loadThreshold: loadThresholdRaw ? Number(loadThresholdRaw) : undefined,
+  };
+}
+
 /** §8b "config-overridable" LSP binary/args/timeout, plus §8f's commit-cap override -- read once
  *  from `process.env` here (Presentation layer only, per
  *  docs/gitbook/architecture/application-lifecycle-and-state.md) and injected via
@@ -167,14 +193,38 @@ function printTierBBatchResult(
     spinner.succeed(
       UI_MESSAGES.ANALYZE_TIER_B_DEGRADED(result.degradedReason ?? ""),
     );
+  } else {
+    spinner.succeed(UI_MESSAGES.ANALYZE_TIER_B_SUCCESS);
+    ui.info(
+      UI_MESSAGES.ANALYZE_TIER_B_SUMMARY(
+        result.filesProcessed,
+        result.edgesApplied,
+        result.filesFailed,
+      ),
+    );
+  }
+  printTierCSummary(result);
+}
+
+/** Tier C's drain summary (§9), appended after Tier B's own -- no separate spinner/header. */
+function printTierCSummary(
+  result: Extract<
+    AnalyzeResult,
+    { kind: typeof ANALYZE_RESULT_KIND.TIER_B_BATCH }
+  >,
+): void {
+  if (result.tierCQueued === 0) return;
+  if (result.tierCSkipped) {
+    ui.info(
+      UI_MESSAGES.ANALYZE_TIER_C_SKIPPED(result.tierCSkippedReason ?? ""),
+    );
     return;
   }
-  spinner.succeed(UI_MESSAGES.ANALYZE_TIER_B_SUCCESS);
   ui.info(
-    UI_MESSAGES.ANALYZE_TIER_B_SUMMARY(
-      result.filesProcessed,
-      result.edgesApplied,
-      result.filesFailed,
+    UI_MESSAGES.ANALYZE_TIER_C_SUMMARY(
+      result.tierCProcessed,
+      result.tierCPersisted,
+      result.tierCFailed,
     ),
   );
 }
@@ -241,6 +291,52 @@ function setupAnalyzeMemory(
   } else if (escalateToLsp) {
     docuviaMemory.set(scopeId, MemoryKeys.ESCALATE_TO_LSP, true);
     setTierBEnvMemory(scopeId);
+    setTierCMemory(scopeId);
+  }
+}
+
+/** Tier C's LLM config (§9, folded into the same `--escalate-to-lsp` run) plus its own env
+ *  overrides (§9c/§9d/§9f) -- optional here, unlike `targetPath` mode's hard-fail-on-missing-env,
+ *  since a missing/incomplete bridge config just means Tier C's drain skips honestly this run. */
+function setTierCMemory(scopeId: string): void {
+  const llmConfig = resolveAnalyzeLlmConfig();
+  if (llmConfig) {
+    docuviaMemory.set(scopeId, MemoryKeys.LLM_BASE_URL, llmConfig.llmBaseUrl);
+    docuviaMemory.set(scopeId, MemoryKeys.LLM_API_KEY, llmConfig.llmApiKey);
+    docuviaMemory.set(scopeId, MemoryKeys.LLM_MODEL, llmConfig.llmModel);
+  }
+
+  const envConfig = resolveTierCEnvConfig();
+  if (envConfig.dailyCallCap !== undefined) {
+    docuviaMemory.set(
+      scopeId,
+      MemoryKeys.TIER_C_DAILY_CALL_CAP,
+      envConfig.dailyCallCap,
+    );
+  }
+  if (envConfig.dailyTokenCap !== undefined) {
+    docuviaMemory.set(
+      scopeId,
+      MemoryKeys.TIER_C_DAILY_TOKEN_CAP,
+      envConfig.dailyTokenCap,
+    );
+  }
+  if (envConfig.wallClockMs !== undefined) {
+    docuviaMemory.set(
+      scopeId,
+      MemoryKeys.TIER_C_WALL_CLOCK_MS,
+      envConfig.wallClockMs,
+    );
+  }
+  if (envConfig.itemCap !== undefined) {
+    docuviaMemory.set(scopeId, MemoryKeys.TIER_C_ITEM_CAP, envConfig.itemCap);
+  }
+  if (envConfig.loadThreshold !== undefined) {
+    docuviaMemory.set(
+      scopeId,
+      MemoryKeys.TIER_C_LOAD_THRESHOLD,
+      envConfig.loadThreshold,
+    );
   }
 }
 

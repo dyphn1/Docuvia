@@ -62,6 +62,10 @@ export type AutoModeResult =
       /** Count of distinct files newly enqueued (or re-enqueued with a newer commitSha) into the
        *  `tierBQueue` docuvia_meta key this run — not the queue's total size. */
       tierBQueued: number;
+      /** Count of Tier C candidates (commit messages + `CONTRACT_CHANGED` symbols) newly
+       *  enqueued into the `tierCQueue` docuvia_meta key this run (phase1-decision-integration.md
+       *  §9b/§9e) — not the queue's total size. */
+      tierCQueued: number;
     }
   | {
       /** `HEAD` already equals the last-ingested source sha — the idempotency fast-path (§6a),
@@ -100,6 +104,24 @@ export interface TierBBatchResult {
    *  observability only in this slice; does not gate anything (see the implementer's report on
    *  the commit-hook-cannot-start-LSP tension). */
   commitCapExceeded: boolean;
+
+  // --- Tier C drain summary (phase1-decision-integration.md §9, folded into the same
+  // `--escalate-to-lsp` composition per §9d's "no new command" ruling) ---
+
+  /** `tierCQueue` size at the start of this run's drain attempt. */
+  tierCQueued: number;
+  /** Tier C candidates whose extraction succeeded and were persisted (fresh row or dedup bump). */
+  tierCProcessed: number;
+  /** Of `tierCProcessed`, how many landed as a brand-new `l3_nodes` row (vs. a content-hash dedup bump). */
+  tierCPersisted: number;
+  tierCDeduped: number;
+  /** Candidates attempted but not successfully persisted this run (LLM/parse failure, or no
+   *  anchor resolvable) -- left in the queue for a future run. */
+  tierCFailed: number;
+  /** `true` when the whole drain was skipped this run (lock contended, budget exhausted, system
+   *  load high, or the LLM bridge isn't configured/reachable) -- honest degradation, §9d/§9f. */
+  tierCSkipped: boolean;
+  tierCSkippedReason?: string;
 }
 
 export type AnalyzeResult =

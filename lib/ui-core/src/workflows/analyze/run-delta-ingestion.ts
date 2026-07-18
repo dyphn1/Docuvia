@@ -10,6 +10,7 @@ import {
   type IKnowledgeGitService,
   type ILogger,
   type ISemanticDiffAnalyzer,
+  type SemanticDiffModifiedNode,
 } from "@workspace/contracts";
 import {
   GitConstants,
@@ -23,6 +24,14 @@ import {
   appendTierBQueueEntries,
   type TierBQueueEntry,
 } from "./tier-b-queue.js";
+import {
+  appendTierCQueueEntries,
+  type TierCQueueEntry,
+} from "./tier-c-queue.js";
+import {
+  collectCommitMessageCandidates,
+  collectContractSymbolCandidates,
+} from "./tier-c-candidates.js";
 import type { AutoModeResult } from "./analyze-result.js";
 
 /**
@@ -70,10 +79,22 @@ export async function runDeltaIngestion(deps: {
   );
   const { toDelete, toReparse } = partitionChangedEntries(changedEntries);
 
-  const { filesToParse, skippedOversized, tierBEntries } =
+  const { filesToParse, skippedOversized, tierBEntries, tierCSymbolEntries } =
     await collectFilesToParse(deps, toReparse);
+  // Tier C's commit-message candidate source (phase1-decision-integration.md §9b/§9e) — collected
+  // once per delta run (not per file), independent of which files changed.
+  const tierCCommitEntries = await collectCommitMessageCandidates(
+    git,
+    workspaceRoot,
+    fromSha,
+    headSha,
+  );
+  const tierCEntries: TierCQueueEntry[] = [
+    ...tierCCommitEntries,
+    ...tierCSymbolEntries,
+  ];
 
-  // §6b's locking requirement: the delta persist step (deletes + re-parse/persist + Tier B queue
+  // §6b's locking requirement: the delta persist step (deletes + re-parse/persist + Tier B/C queue
   // + last-ingested-sha meta write) runs under the knowledge-branch lock, the same discipline
   // `snapshot`'s git-write step uses — so a concurrent `snapshot` can't read a half-updated
   // local.db mid-delta.
@@ -84,6 +105,7 @@ export async function runDeltaIngestion(deps: {
       filesToParse,
       skippedOversized,
       tierBEntries,
+      tierCEntries,
     });
   });
 
@@ -98,6 +120,7 @@ export async function runDeltaIngestion(deps: {
     filesFailed: failures.length,
     filesSkippedOversized: skippedOversized.length,
     tierBQueued: tierBEntries.length,
+    tierCQueued: tierCEntries.length,
   });
 
   return {
@@ -109,6 +132,7 @@ export async function runDeltaIngestion(deps: {
     filesFailed: failures.length,
     filesSkippedOversized: skippedOversized.length,
     tierBQueued: tierBEntries.length,
+    tierCQueued: tierCEntries.length,
   };
 }
 
@@ -139,7 +163,8 @@ function partitionChangedEntries(changedEntries: ChangedFileEntry[]): {
 }
 
 /** Reads each re-parse candidate at `headSha`, applying the same oversize guard `init`'s
- *  discovery uses, and classifies modified files for the Tier B queue. */
+ *  discovery uses, and classifies modified files for the Tier B queue and Tier C's
+ *  `CONTRACT_CHANGED`-symbol candidates (phase1-decision-integration.md §9b). */
 async function collectFilesToParse(
   deps: DeltaDeps,
   toReparse: ChangedFileEntry[],
@@ -147,6 +172,7 @@ async function collectFilesToParse(
   filesToParse: DiscoveredFile[];
   skippedOversized: { file: string; sizeBytes: number }[];
   tierBEntries: TierBQueueEntry[];
+  tierCSymbolEntries: TierCQueueEntry[];
 }> {
   const { workspaceRoot, logger, git, headSha } = deps;
 
@@ -159,6 +185,7 @@ async function collectFilesToParse(
   const filesToParse: DiscoveredFile[] = [];
   const skippedOversized: { file: string; sizeBytes: number }[] = [];
   const tierBEntries: TierBQueueEntry[] = [];
+  const tierCSymbolEntries: TierCQueueEntry[] = [];
 
   for (const entry of toReparse) {
     const content = await git.readFileAtRef(workspaceRoot, headSha, entry.file);
@@ -183,32 +210,46 @@ async function collectFilesToParse(
       crypto.createHash("sha256").update(content).digest("hex");
     filesToParse.push({ file: entry.file, hash, code: content });
 
-    if (await isContractChanged(deps, semanticDiffAnalyzer, entry, content)) {
+    const { contractChanged, findings } = await classifyChangedFile(
+      deps,
+      semanticDiffAnalyzer,
+      entry,
+      content,
+    );
+    if (contractChanged) {
       tierBEntries.push({ file: entry.file, commitSha: headSha });
+      tierCSymbolEntries.push(
+        ...collectContractSymbolCandidates(entry.file, headSha, findings),
+      );
     }
   }
 
-  return { filesToParse, skippedOversized, tierBEntries };
+  return { filesToParse, skippedOversized, tierBEntries, tierCSymbolEntries };
 }
 
 /** Detector classification (§6b) — only a true in-place modification is classified (added/renamed
  *  files have no meaningful "old content" at this path to diff against); re-parsing is never
- *  gated on the outcome. */
-async function isContractChanged(
+ *  gated on the outcome. Also returns the raw `findings` so the caller can derive Tier C's
+ *  `CONTRACT_CHANGED`-symbol candidates (§9b) without re-running the detector. */
+async function classifyChangedFile(
   deps: DeltaDeps,
   semanticDiffAnalyzer: ISemanticDiffAnalyzer,
   entry: ChangedFileEntry,
   newContent: string,
-): Promise<boolean> {
+): Promise<{
+  contractChanged: boolean;
+  findings: SemanticDiffModifiedNode[];
+}> {
   const { workspaceRoot, git, fromSha, headSha } = deps;
-  if (entry.status !== "modified") return false;
+  if (entry.status !== "modified")
+    return { contractChanged: false, findings: [] };
 
   const oldContent = await git.readFileAtRef(
     workspaceRoot,
     fromSha,
     entry.file,
   );
-  if (oldContent === undefined) return false;
+  if (oldContent === undefined) return { contractChanged: false, findings: [] };
 
   const lineRanges = await git.getChangedLineRanges(
     workspaceRoot,
@@ -216,7 +257,7 @@ async function isContractChanged(
     headSha,
     entry.file,
   );
-  if (lineRanges.length === 0) return false;
+  if (lineRanges.length === 0) return { contractChanged: false, findings: [] };
 
   const findings = await semanticDiffAnalyzer.analyzeFile({
     filePath: entry.file,
@@ -224,11 +265,14 @@ async function isContractChanged(
     newContent,
     changedLineRanges: lineRanges,
   });
-  return findings.some((f) => f.pruningLevel === 1);
+  return {
+    contractChanged: findings.some((f) => f.pruningLevel === 1),
+    findings,
+  };
 }
 
 /** The lock-held persist step: drop L2 rows for deleted/renamed-old paths, re-parse + persist the
- *  changed files via the shared `runParseAndPersist` phase helper, append the Tier B queue, and
+ *  changed files via the shared `runParseAndPersist` phase helper, append the Tier B/C queues, and
  *  stamp the last-ingested source sha. Returns the parse failures. */
 async function persistDelta(
   deps: DeltaDeps,
@@ -237,10 +281,17 @@ async function persistDelta(
     filesToParse: DiscoveredFile[];
     skippedOversized: { file: string; sizeBytes: number }[];
     tierBEntries: TierBQueueEntry[];
+    tierCEntries: TierCQueueEntry[];
   },
 ): Promise<AstParseFailure[]> {
   const { workspaceRoot, logger, store, projectId, headSha } = deps;
-  const { toDelete, filesToParse, skippedOversized, tierBEntries } = work;
+  const {
+    toDelete,
+    filesToParse,
+    skippedOversized,
+    tierBEntries,
+    tierCEntries,
+  } = work;
 
   if (toDelete.size > 0) {
     await store.withWriteLock(() => {
@@ -271,6 +322,9 @@ async function persistDelta(
   await store.withWriteLock(() => {
     if (tierBEntries.length > 0) {
       appendTierBQueueEntries(store, tierBEntries);
+    }
+    if (tierCEntries.length > 0) {
+      appendTierCQueueEntries(store, tierCEntries);
     }
     store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
   });

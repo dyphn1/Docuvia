@@ -1,5 +1,13 @@
 # Slice 4 (Tier C) Next Steps & Recommendations
 
+> **Status (2026-07-18): dispositioned.** Every proposal below was routed through a Fable-model
+> consult and recorded as the settled Slice 4 contract in
+> [`phase1-decision-integration.md` §9](../gitbook/analysis/phase1-decision-integration.md#9-slice-4-tier-c--integration-contract-fable-rendered-rulings-2026-07-18)
+> (see §9a for the disposition table). Summary: commit filter and throttling adopted (§9e/§9f);
+> embedded model, semantic-drift-ratio commit-cap replacement, queue eviction, and the
+> docker-compose harness were deferred or rejected with reasons; L3 distribution confirmed as
+> Phase 2. Implementation proceeds from §9, not from this document directly.
+
 ## Overview
 
 Based on the successful implementation of Phase 1 - Slice 3 (Tier B) and the integration contract defined in `phase1-decision-integration.md`, here are the recommended next steps and architectural guidelines for Slice 4 (Tier C: budgeted async LLM queue).

@@ -8,9 +8,9 @@ This directory contains consolidated learnings, architectural decisions, and err
 
 ## Memory Categories
 
-- **[Architecture & Design](architecture.md)**: Docuvia2's verified package layout, the `GraphStore` memory layer, the composition-root DI convention, and the schema single source of truth.
+- **[Architecture & Design](architecture.md)**: Docuvia2's verified package layout, the `GraphStore` memory layer, the composition-root DI convention, the schema single source of truth, and the Phase 1 tiered background-knowledge-evolution rollout (Tier A/B/C, `docuvia_meta` state pattern, slice order).
 - **[Common Errors & Traps](common_errors.md)**: Recurring bugs, API gotchas, and specific coding anti-patterns to avoid.
-- **[Conventions & Best Practices](conventions.md)**: Project-specific standards for documentation, testing, and implementation.
+- **[Conventions & Best Practices](conventions.md)**: Project-specific standards for documentation, testing, implementation, and CLI-command convergence (no new commands when an existing one fits).
 - **[Development Guardrails](development_guardrails.md)**: Two-pass self-audit loop and positive reference patterns for virtual contracts, constants, database configuration, and quality gates.
-- **[Testing & Quality Gates](testing_and_quality.md)**: Test boundaries and observed test patterns.
-- **[Adversarial Workflow](workflow.md)**: Task classification, adversarial debate tiers, and multi-agent coordination rules.
+- **[Testing & Quality Gates](testing_and_quality.md)**: Test boundaries, observed test patterns, and coverage-verification technique (raw `coverage-final.json` inspection for narrow branch coverage).
+- **[Adversarial Workflow](workflow.md)**: Task classification, adversarial debate tiers, multi-agent coordination rules, and the decision-routing split between contract decisions (Fable-model consult) and post-contract implementer judgment calls (orchestrator ruling).

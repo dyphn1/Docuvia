@@ -16,6 +16,7 @@
 ## Adversarial Workflow & AI Verifiers
 
 - **Dirty Git Tree Trap for Verifiers**: When executing a long-running, multi-step AI refactoring plan, earlier valid steps will leave the Git working tree dirty. Task Verifier agents may incorrectly fail a later step if they run generic commands like `git diff` or `git status` and misinterpret the accumulated, uncommitted changes from earlier steps as unauthorized modifications. Verifiers should carefully scope their checks (e.g., specific file diffs, focused typechecks) or acknowledge accumulated state to avoid false-positive failures.
+- **Redundant Field Duplication**: When an implementer extends an existing JSONL/queue record shape to satisfy a new requirement, check whether a pre-existing field already carries the same semantic meaning before adding a new one (real case: a new `tierBQueueLength`-style field duplicating an already-shipped equivalent, added during Phase 1 Slice 4). Orchestrators/verifiers should revert such additions directly rather than treating them as a legitimate new decision.
 
 ## Memory Leaks & WASM
 

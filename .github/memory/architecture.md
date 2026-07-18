@@ -38,14 +38,32 @@ Docuvia2 is a from-scratch rebuild of only the local-SQLite-backed CLI and its e
   - `composition/` — composition-root functions (invariant 3).
 - `artifacts/cli` (`@workspace/cli`) — the CLI + its embedded MCP server, both genuinely thin: they call into `@workspace/core` via composition-root functions rather than containing business logic themselves (invariant 5).
 
-## ✅ Verified state (this session)
+## 🌊 Tiered Background Knowledge Evolution (Phase 1 rollout)
+
+`analyze` incrementally evolves the knowledge graph across three cost/latency tiers instead of always re-running full extraction (see the indexing-cost-benchmark reasoning: GitNexus ~5min / Graphify ~40min / LSP ~3min full-project cost):
+
+- **Tier A** — real-time, per-file delta ingestion (`run-delta-ingestion.ts`), cheap, always runs.
+- **Tier B** — batched LSP-escalation pass with a commit-cap throttle (`run-tier-b-batch.ts`), wired into `analyze --escalate-to-lsp`.
+- **Tier C** — budgeted, async LLM decision-extraction queue (`lib/ui-core/src/workflows/analyze/tier-c-*.ts`: `tier-c-queue`, `tier-c-budget`, `tier-c-throttle`, `tier-c-commit-filter`, `tier-c-candidates`, `run-tier-c-drain`, plus shared `decision-parsing.ts`), draining commit-message and contract-symbol decision rows into L3 persistence. Consumption is folded into the existing `analyze --escalate-to-lsp && snapshot` pre-push composition with a wall-clock cap — deliberately NO new CLI command or flag (see `conventions.md`).
+
+Key decisions, each recorded as a lettered section in `docs/gitbook/analysis/phase1-decision-integration.md` (§7/§8 = Tier B, §9 = Tier C):
+
+- **State persistence pattern**: tier queues/budgets (`tierBQueue`, `tierCQueue`, `tierCBudget`) live as JSON keys inside the existing `docuvia_meta` row — no new tables. Budget resets are lazy (checked/reset to a fresh UTC-date window on read), not cron-driven.
+- **Embedded in-process LLM model is deferred, not built.** Tier C calls whatever `ILlmClient` bridge is already configured; a local/embedded model is parked behind named measured-pain re-entry triggers rather than being spec'd speculatively.
+- **Crash-safety pattern legitimately differs by tier**: Tier B uses batch-level "stage-then-finalize" (a pending-batch marker so the queue only clears after the corresponding `snapshot` succeeds, since L2 rows ride the snapshot). Tier C uses per-item "persist-then-dequeue" instead, because its L3 decision rows never ride the snapshot (that's a Phase 2 concern) — there is no later step to stage against. When designing a future tier's persistence, check whether there's a genuinely separate later step the effect must wait for; if not, per-item persist-then-dequeue is simpler and correct.
+- Commit-message decision extraction resolves its anchor node by walking the commit's changed-file list for the first file with an existing L2 node (an extrapolation of the directory-target anchor rule used elsewhere).
+- Throttling follows the PLAT-006 pattern: single-flight lock + daily budget + a one-shot `os.loadavg()` check, with a documented Windows no-op (no `loadavg` support there).
+
+Phase 1 slice order: Slice 1 (L3 persistence) → Slice 2 (Tier A) → Slice 3 (Tier B) → Slice 4 (Tier C) → Slice 5 (`doctor` reliability — collects deferred items: LLM endpoint `checkAvailability()`/reachability, LSP binary presence, legacy-hook detection, `uninstall` hook removal, `impact --escalate-to-lsp` wire-or-remove decision).
+
+## ✅ Verified state (accumulated across sessions)
 
 - `docuvia init` works end-to-end — git branch creation, `.docuvia/local.db` with correct schema/rows, `.docuvia/logs/init.log` JSONL logging, agent-integration file writes for Cursor/Claude/generic-markdown platforms with `--global`-gated machine-global config write per the ported ADR-035 decision — via both the real CLI subprocess and the MCP tool.
-- `@workspace/core`: 116 tests, `@workspace/cli`: 14 tests, all passing.
+- `analyze` now exists and runs all three background-knowledge tiers described above. Snapshot as of the Phase 1 Slice 4 (Tier C) session: 115 test files / 747 tests repo-wide, all green (`lib/ui-core`: 37 files / 242 tests). Treat any specific test count as a point-in-time snapshot, not a ceiling — re-check rather than assume stale.
 
-## 🚧 Not yet built
+## 🚧 Not yet built (this section predates the tiered rollout — re-verify before trusting)
 
-Only `init` exists (plus the `mcp` server-launch command, with only the `init` tool registered on it so far). `analyze`, `status`, `clean`, `review`, `sync`, `snapshot`, `query`, `export --topology`, and `impact` are the next milestones, built one at a time and each reviewed before moving to the next, per the project's own established workflow. Do not assume any of these commands exist yet.
+The original milestone list here (`analyze`, `status`, `clean`, `review`, `sync`, `snapshot`, `query`, `export --topology`, `impact`) predates the Phase 1 background-knowledge rollout. `analyze` and `snapshot` now exist with substantial functionality (see above). Confirm current command surface via `artifacts/cli/src/commands/` before assuming a command doesn't exist.
 
 ## 🧭 Navigation
 

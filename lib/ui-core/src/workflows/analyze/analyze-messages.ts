@@ -30,6 +30,12 @@ export const ANALYZE_MESSAGES = {
     `LSP unavailable -- AST-level edges left untouched (${reason})`,
   TIER_B_SUMMARY: (processed: number, edges: number) =>
     `Tier B batch complete: ${processed} file(s) processed, ${edges} corrected edge(s) applied`,
+
+  /** Tier C's budgeted async LLM decision-extraction queue (phase1-decision-integration.md §9). */
+  TIER_C_SKIPPED: (reason: string) =>
+    `Tier C drain skipped this run (${reason})`,
+  TIER_C_SUMMARY: (processed: number, persisted: number) =>
+    `Tier C drain complete: ${processed} candidate(s) processed, ${persisted} decision(s) persisted`,
 } as const;
 
 /** Structured-log event names appended to `analyze.log` by the `analyze` workflow. The old
@@ -55,6 +61,15 @@ export const ANALYZE_EVENTS = {
   TIER_B_FILE_FAILED: "analyze.tierB.file_failed",
   TIER_B_SUMMARY: "analyze.tierB.summary",
   TIER_B_ERROR: "analyze.tierB.error",
+
+  /** Tier C's budgeted async LLM decision-extraction queue (phase1-decision-integration.md §9). */
+  TIER_C_START: "analyze.tierC.start",
+  TIER_C_EMPTY_QUEUE: "analyze.tierC.empty_queue",
+  TIER_C_SKIPPED: "analyze.tierC.skipped",
+  TIER_C_LOAD_NOTE: "analyze.tierC.load_note",
+  TIER_C_ITEM_SUCCESS: "analyze.tierC.item_success",
+  TIER_C_ITEM_FAILED: "analyze.tierC.item_failed",
+  TIER_C_SUMMARY: "analyze.tierC.summary",
 } as const;
 
 /**
@@ -63,6 +78,30 @@ export const ANALYZE_EVENTS = {
  */
 export const DECISION_EXTRACTION_SYSTEM_PROMPT = `You are an expert software architect reviewing source code directly (not commit history).
 Extract concrete implementation decisions, architectural rules, notable constraints, and rationale that are evident from the code itself — not speculative commentary.
+Return ONLY a valid JSON array. Each item:
+{ "title": "concise title", "nodeType": "change" | "rule" | "decision" | "context", "content": "detailed explanation grounded in what the code actually does", "confidence": 0.0 to 1.0 }
+If the code contains no decision-worthy content, return an empty array — do not fabricate entries.
+OUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json.`;
+
+/**
+ * Tier C's commit-message decision-extraction system prompt (phase1-decision-integration.md §9,
+ * PLAT-007 Tier C candidate source (a)). Same JSON contract as
+ * `DECISION_EXTRACTION_SYSTEM_PROMPT`, scoped down to a single (already filtered, §9e) commit
+ * message rather than a file's full source — a judgment call not fully specified by §9's contract
+ * (prompt shape was left open at contract time; flagged in the Slice 4 handover).
+ */
+export const TIER_C_COMMIT_MESSAGE_SYSTEM_PROMPT = `You are an expert software architect analyzing a single git commit message to extract at most one concrete implementation decision, architectural rule, or rationale evident from the message itself — not speculative commentary.
+Return ONLY a valid JSON array (zero or one items). Each item:
+{ "title": "concise title", "nodeType": "change" | "rule" | "decision" | "context", "content": "detailed explanation grounded in what the commit message actually says", "confidence": 0.0 to 1.0 }
+If the commit message contains no decision-worthy content, return an empty array — do not fabricate entries.
+OUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json.`;
+
+/**
+ * Tier C's `CONTRACT_CHANGED`-symbol decision-extraction system prompt (phase1-decision-integration.md
+ * §9, PLAT-007 Tier C candidate source (b)). Same JSON contract as
+ * `DECISION_EXTRACTION_SYSTEM_PROMPT`, scoped to a single named symbol within its file.
+ */
+export const TIER_C_CONTRACT_SYMBOL_SYSTEM_PROMPT = `You are an expert software architect reviewing a single symbol whose public contract changed in a recent commit. Extract concrete implementation decisions, architectural rules, or rationale evident from the symbol's current source — not speculative commentary.
 Return ONLY a valid JSON array. Each item:
 { "title": "concise title", "nodeType": "change" | "rule" | "decision" | "context", "content": "detailed explanation grounded in what the code actually does", "confidence": 0.0 to 1.0 }
 If the code contains no decision-worthy content, return an empty array — do not fabricate entries.

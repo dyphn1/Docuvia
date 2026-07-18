@@ -28,6 +28,16 @@ export const MemoryKeys = {
   LSP_TIMEOUT_MS: "lspTimeoutMs",
   /** §8f commit-cap override (default 20, config-tunable). */
   TIER_B_COMMIT_CAP: "tierBCommitCap",
+  /** §9f Tier C daily call-budget override. */
+  TIER_C_DAILY_CALL_CAP: "tierCDailyCallCap",
+  /** §9f Tier C daily token-budget override (estimated, per `estimateTokenCount`). */
+  TIER_C_DAILY_TOKEN_CAP: "tierCDailyTokenCap",
+  /** §9d Tier C per-run wall-clock cap override, in milliseconds. */
+  TIER_C_WALL_CLOCK_MS: "tierCWallClockMs",
+  /** §9d Tier C per-run item-count cap override (whichever of the two caps binds first). */
+  TIER_C_ITEM_CAP: "tierCItemCap",
+  /** §9f Tier C system-load-check threshold override (`loadavg[0] / cpus > threshold`). */
+  TIER_C_LOAD_THRESHOLD: "tierCLoadThreshold",
 } as const;
 
 export type MemoryKey = (typeof MemoryKeys)[keyof typeof MemoryKeys];

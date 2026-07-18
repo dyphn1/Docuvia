@@ -4,6 +4,11 @@ import os from "os";
 import path from "path";
 import { execFileSync } from "child_process";
 import DatabaseCtor from "better-sqlite3";
+import {
+  acquireProcessLock,
+  DOCUVIA_DIR_NAME,
+  INIT_COMMAND_LOCK_FILE_NAME,
+} from "@workspace/contracts";
 import { initCommand } from "../../src/commands/init.js";
 import { initTool } from "../../src/mcp/tools/init.js";
 
@@ -123,4 +128,69 @@ describe("CLI `docuvia init` and MCP `docuvia_init` produce equivalent local.db 
     expect(countsA.project_files).toBeGreaterThanOrEqual(2);
     expect(countsA.l2_nodes).toBeGreaterThanOrEqual(1);
   }, 60_000);
+
+  /**
+   * Regression test for a gap found 2026-07-18 (ADR audit against PLAT-006): the MCP `docuvia_init`
+   * tool called `docuviaApi.init()` directly, bypassing the `init`-command single-flight lock the
+   * CLI path acquires — so a CLI `docuvia init` racing a concurrent `docuvia_init` MCP call (an
+   * AI-agent/editor integration point invoking init while a developer also runs it manually, the
+   * exact scenario PLAT-006's own Advice section names as realistic) could hit the same
+   * `UNIQUE(filename)` migration-race crash `dist-build.test.ts` reproduces for CLI-vs-CLI.
+   *
+   * Both paths now go through `withInitCommandLock`
+   * (`artifacts/cli/src/utils/init-command-lock.ts`). This asserts the *mechanism* directly
+   * (does the MCP tool actually acquire the same lockfile?) rather than trying to reproduce a
+   * real OS-scheduling race in-process: unlike `dist-build.test.ts`'s CLI-vs-CLI regression test
+   * (which needs separate `node dist/cli.js` processes to line up inside the race window,
+   * because better-sqlite3's calls are synchronous and a single Node event loop can't interleave
+   * mid-critical-section), an in-process `Promise.allSettled([initCommand(...), initTool.handler(...)])`
+   * here was verified to pass even *without* the fix (confirmed by temporarily reverting it) — so
+   * it would silently stop guarding this regression. Manually holding the lock and observing that
+   * the MCP call blocks until it's released is deterministic and actually exercises the fix.
+   */
+  it("MCP docuvia_init waits for the init-command lock instead of bypassing it", async () => {
+    vi.spyOn(process, "cwd").mockReturnValue(workspaceA);
+
+    const lockPath = path.join(
+      workspaceA,
+      DOCUVIA_DIR_NAME,
+      INIT_COMMAND_LOCK_FILE_NAME,
+    );
+    fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+    const heldLock = await acquireProcessLock(lockPath, {
+      maxWaitMs: 5_000,
+      heartbeatIntervalMs: 500,
+      staleAfterMs: 60_000,
+    });
+
+    let mcpSettled = false;
+    const mcpPromise = initTool.handler({}).then((result) => {
+      mcpSettled = true;
+      return result;
+    });
+
+    // An *unwrapped* docuviaApi.init() on this fixture reliably finishes in well under 1s (a
+    // bare-minimum project, no LSP/LLM work) -- so a wait comfortably longer than that, still
+    // observing mcpSettled === false while the lock is held, can only mean the MCP call is
+    // actually blocked on the lock, not just "still doing real work." (A short ~300ms check was
+    // tried first and false-negatived: unwrapped init took long enough on its own to still be
+    // mid-flight at 300ms regardless of locking, making that window useless as a discriminator.)
+    await new Promise((resolve) => setTimeout(resolve, 1_500));
+    expect(
+      mcpSettled,
+      "MCP docuvia_init resolved while the init-command lock was still held by another " +
+        "caller -- it isn't actually waiting on the lock (the PLAT-006 gap this test guards).",
+    ).toBe(false);
+
+    await heldLock.release();
+
+    const mcpResult = await mcpPromise;
+    expect(mcpSettled).toBe(true);
+    expect(mcpResult.isError).toBeFalsy();
+
+    const dbPath = path.join(workspaceA, ".docuvia", "local.db");
+    expect(fs.existsSync(dbPath)).toBe(true);
+    const counts = tableRowCounts(dbPath);
+    expect(counts.projects).toBe(1);
+  }, 30_000);
 });

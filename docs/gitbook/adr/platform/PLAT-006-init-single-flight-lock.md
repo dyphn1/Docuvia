@@ -195,11 +195,16 @@ the proposal specifically:
 >   (`graph-store.ts`) and `acquireKnowledgeLock` (`libgit2-provider.ts`) remain separate,
 >   non-consolidated implementations — so this follow-up is no longer accurately described as
 >   "not yet scheduled," but it isn't finished either.
-> - **Known scope gap, not yet closed**: "one lockfile guards the entire `init` command" (Decision,
->   above) is true only for the CLI entry point. The MCP tool `docuvia_init`
->   (`artifacts/cli/src/mcp/tools/init.ts`) calls the underlying API directly and never acquires this
->   lock — so two concurrent MCP-triggered inits (or one MCP + one CLI) are **not** mutually
->   exclusive, despite this ADR naming AI-agent/editor integration points as the realistic
->   concurrent-trigger scenario in the Advice section above. Tracked on the Slice 5 watchlist in
->   [Phase 1 — Decision Integration §7d](../../analysis/phase1-decision-integration.md); not fixed
->   as of this reconciliation pass.
+> - **Scope gap found and closed same day (2026-07-18)**: "one lockfile guards the entire `init`
+>   command" (Decision, above) was true only for the CLI entry point until this fix — the MCP tool
+>   `docuvia_init` (`artifacts/cli/src/mcp/tools/init.ts`) called the underlying API directly and
+>   never acquired this lock, so two concurrent MCP-triggered inits (or one MCP + one CLI) weren't
+>   mutually exclusive, despite this ADR naming AI-agent/editor integration points as the realistic
+>   concurrent-trigger scenario in the Advice section above. Fixed by extracting the lock
+>   acquire/release into a shared `withInitCommandLock` helper
+>   (`artifacts/cli/src/utils/init-command-lock.ts`) used by both the CLI command and the MCP tool.
+>   Regression test: `init-cli-mcp-symmetry.test.ts`'s "MCP docuvia_init waits for the
+>   init-command lock instead of bypassing it" — deterministically holds the lock and asserts the
+>   MCP call blocks until release, rather than relying on an in-process race (verified not to
+>   reliably reproduce the original bug: same-process async calls around synchronous
+>   better-sqlite3 work don't interleave mid-critical-section the way separate OS processes do).

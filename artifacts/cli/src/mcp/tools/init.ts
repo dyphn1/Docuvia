@@ -8,6 +8,7 @@ import { withErrorHandling } from "./wrapper.js";
 import { MCP_TOOL_MESSAGES } from "./messages.js";
 import { MCP_CONTENT_TYPE_TEXT } from "../constants.js";
 import { createPinoBackedLogger } from "../../logging/create-logger.js";
+import { withInitCommandLock } from "../../utils/init-command-lock.js";
 
 /** Boundary validation (design-spirit.md #4) — `docuvia_init` takes no arguments today, but every MCP tool input is parsed regardless so a future field addition can't silently skip validation. */
 const InitToolInputSchema = z.object({}).strict();
@@ -37,7 +38,9 @@ export const initTool: McpTool = {
       docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, process.cwd());
 
       try {
-        const result = await docuviaApi.init(scopeId, logger);
+        const result = await withInitCommandLock(process.cwd(), () =>
+          docuviaApi.init(scopeId, logger),
+        );
         return {
           content: [{ type: MCP_CONTENT_TYPE_TEXT, text: result.message }],
         };

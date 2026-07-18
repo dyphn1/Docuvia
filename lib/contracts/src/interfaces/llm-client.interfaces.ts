@@ -101,10 +101,29 @@ export interface ChatCompletionChunk {
   choices: ChatCompletionChunkChoice[];
 }
 
+/** Result of `ILlmClient.checkAvailability()` (phase1-decision-integration.md §10e bullet 3;
+ *  decision 1e) -- mirrors `EdgeResolutionAvailability`'s exact shape. */
+export interface LlmClientAvailability {
+  available: boolean;
+  /** Human-readable reason when `available` is `false`. Always present when `available` is
+   *  `false`. */
+  reason?: string;
+}
+
 export interface ILlmClient {
   initialize(config: LlmClientConfig): void;
   chatCompletion(request: ChatCompletionRequest): Promise<ChatCompletionResult>;
   streamChatCompletion(
     request: ChatCompletionRequest,
   ): AsyncIterable<ChatCompletionChunk>;
+  /**
+   * Lightweight reachability probe against `config.baseUrl` (decision 1e) -- a check that a
+   * server is there and responding, never *does this exact route exist* (any received HTTP
+   * response, even a 4xx/5xx, counts as `available: true`; only a network-level failure --
+   * connection refused, DNS failure, timeout -- is `available: false`). Never throws -- a check
+   * that itself fails is reported as `available: false`, mirroring
+   * `IEdgeResolutionProvider.checkAvailability()`'s contract exactly. Unlike that method, this
+   * takes no argument: `ILlmClient` is configured via `initialize()` before use, not per-call.
+   */
+  checkAvailability(): Promise<LlmClientAvailability>;
 }

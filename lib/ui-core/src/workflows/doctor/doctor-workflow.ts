@@ -8,15 +8,20 @@ import {
   ErrorCodes,
   UTF8_ENCODING,
   type ILogger,
+  type IGraphStore,
   type DiagnosticResult,
   DiagnosticStatus,
 } from "@workspace/contracts";
+import { GitConstants } from "@workspace/core";
 import type { DoctorResult } from "./doctor-result.js";
 import {
   DOCTOR_DIAGNOSTIC_KEYS,
   DOCTOR_MESSAGES,
   LOG_FILE_EXTENSION,
 } from "./doctor-messages.js";
+import { isTierBCommitCapExceeded } from "../analyze/tier-b-commit-cap.js";
+import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { probeDocuviaResolvable } from "./git-hook-resolvability.js";
 import * as path from "path";
 import * as fs from "fs/promises";
 
@@ -24,6 +29,16 @@ export interface DoctorOptions {
   skipDb?: boolean;
   skipGit?: boolean;
   skipLogs?: boolean;
+  /** Opt-in repair of the legacy-hook duplicate-block case (§10d, T6) -- the only `doctor` flag
+   *  that mutates workspace files, and only for that one specific condition. Never mutates
+   *  anything when absent/false. */
+  fix?: boolean;
+  /** §10e bullet 3 (T7) -- the Tier C CLIProxyAPI endpoint's `baseUrl`/`apiKey`, read from
+   *  `process.env` by the Presentation layer (`doctor.ts`) and threaded through here. Absence is
+   *  a normal, non-error `doctor` state (Tier C inactive by choice) -- unlike `analyze
+   *  <targetPath>`'s hard requirement. */
+  llmBaseUrl?: string;
+  llmApiKey?: string;
 }
 
 export class DoctorWorkflow {
@@ -33,21 +48,289 @@ export class DoctorWorkflow {
   ) {}
 
   async execute(options: DoctorOptions = {}): Promise<DoctorResult> {
-    const { skipDb = false, skipGit = false, skipLogs = false } = options;
+    const {
+      skipDb = false,
+      skipGit = false,
+      skipLogs = false,
+      fix = false,
+      llmBaseUrl,
+      llmApiKey,
+    } = options;
     const diagnostics: Record<string, DiagnosticResult> = {};
 
-    const dbPassed = skipDb ? true : await this.runDbDiagnostics(diagnostics);
-    const gitPassed = skipGit
-      ? true
-      : await this.runGitDiagnostics(diagnostics);
-    const logsPassed = skipLogs
-      ? true
-      : await this.runLogsDiagnostics(diagnostics);
+    const results: boolean[] = [
+      await this.runOrSkip(skipDb, () => this.runDbDiagnostics(diagnostics)),
+      await this.runOrSkip(skipGit, () => this.runGitDiagnostics(diagnostics)),
+      await this.runOrSkip(skipLogs, () =>
+        this.runLogsDiagnostics(diagnostics),
+      ),
+      await this.runOrSkip(skipGit, () =>
+        this.runGitHookDiagnostic(diagnostics, fix),
+      ),
+      await this.runLlmReachabilityDiagnostic(
+        diagnostics,
+        llmBaseUrl,
+        llmApiKey,
+      ),
+    ];
+
+    // §10c's doctor-half backup (T4) needs both the db and git -- gated behind neither being
+    // skipped rather than a new dedicated flag (flag proliferation for something this granular
+    // isn't warranted). Always PASS (decision 1d) -- never affects allPassed.
+    await this.runOrSkip(skipDb || skipGit, () =>
+      this.runTierBCommitCapDiagnostic(diagnostics),
+    );
+    // §10e bullet 4 / §7a-1 (T8) -- always PASS (decision 1c); doesn't affect allPassed either.
+    await this.runLspBinaryDiagnostic(diagnostics);
 
     return {
-      allPassed: dbPassed && gitPassed && logsPassed,
+      allPassed: results.every(Boolean),
       diagnostics,
     };
+  }
+
+  /** `skip ? true (no-op) : run()` -- pulled out of `execute()` so each of its five checks is a
+   *  single, ternary-free statement there, keeping `execute()` itself well under the ESLint
+   *  complexity budget as the checks this slice adds accumulate. */
+  private async runOrSkip(
+    skip: boolean,
+    run: () => Promise<unknown>,
+  ): Promise<boolean> {
+    if (skip) return true;
+    const result = await run();
+    return result === undefined ? true : Boolean(result);
+  }
+
+  /**
+   * §10d/§7c (T5): detects the legacy-hook duplicate-block case and the "hook present but
+   * docuvia not resolvable" case; §10d (T6): when `fix` is true and the duplicate-block case is
+   * detected, performs the explicit, opt-in repair. Resolves `TOKENS.GitProvider` for the
+   * read-only inspection (no need for `TOKENS.KnowledgeGitService` for that half -- this is
+   * read-only, not a Docuvia-domain mutation). Never throws past this method -- a read failure
+   * degrades to a skipped check.
+   */
+  private async runGitHookDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+    fix: boolean,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GitProvider)) return true;
+
+    try {
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const hook = await git.readHookFile(
+        this.workspaceRoot,
+        GitConstants.POST_COMMIT_HOOK_NAME,
+      );
+      const hasCurrent = !!hook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER);
+      const hasLegacy = !!hook?.includes(
+        GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
+      );
+
+      let result = await this.classifyGitHookState(hasCurrent, hasLegacy);
+      if (fix && hasCurrent && hasLegacy) {
+        result = await this.repairDuplicateGitHookIfRequested(result);
+      }
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.GIT_HOOK] = result;
+      return result.status === DiagnosticStatus.PASS;
+    } catch {
+      return true;
+    }
+  }
+
+  /** The marker-based branches of `runGitHookDiagnostic`, plus (only for the healthy-shaped
+   *  case) the live resolvability probe -- split out to keep `runGitHookDiagnostic` itself under
+   *  the ESLint complexity budget. */
+  private async classifyGitHookState(
+    hasCurrent: boolean,
+    hasLegacy: boolean,
+  ): Promise<DiagnosticResult> {
+    if (!hasCurrent && !hasLegacy) {
+      return {
+        status: DiagnosticStatus.PASS,
+        message: DOCTOR_MESSAGES.GIT_HOOK_NOT_INSTALLED,
+      };
+    }
+    if (hasCurrent && hasLegacy) {
+      return {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.GIT_HOOK_DUPLICATE,
+        suggestion: DOCTOR_MESSAGES.GIT_HOOK_DUPLICATE_SUGGESTION,
+      };
+    }
+    if (hasLegacy) {
+      return {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.GIT_HOOK_LEGACY_ONLY,
+        suggestion: DOCTOR_MESSAGES.GIT_HOOK_LEGACY_ONLY_SUGGESTION,
+      };
+    }
+
+    const resolvable = await probeDocuviaResolvable(this.workspaceRoot);
+    return resolvable
+      ? {
+          status: DiagnosticStatus.PASS,
+          message: DOCTOR_MESSAGES.GIT_HOOK_RESOLVABLE,
+        }
+      : {
+          status: DiagnosticStatus.FAIL,
+          message: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE,
+          suggestion: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE_SUGGESTION,
+        };
+  }
+
+  /**
+   * `doctor --fix`'s repair call (T6) -- only reached when `fix` is true and the duplicate-block
+   * condition was just detected. Reports the outcome by appending a note to the existing FAIL
+   * result rather than silently claiming PASS for a condition that was true moments before
+   * checking (§10d: never silently mutate, and never silently claim fixed).
+   */
+  private async repairDuplicateGitHookIfRequested(
+    result: DiagnosticResult,
+  ): Promise<DiagnosticResult> {
+    if (!docuviaFactory.has(TOKENS.KnowledgeGitService)) return result;
+
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger: this.logger,
+    });
+    const { repaired } = await knowledgeGit.repairDuplicatePostCommitHook(
+      this.workspaceRoot,
+    );
+    if (!repaired) return result;
+
+    return {
+      ...result,
+      message: result.message + DOCTOR_MESSAGES.GIT_HOOK_REPAIRED_NOTE,
+    };
+  }
+
+  /**
+   * §10e bullet 3 (T7): a real reachability pre-flight probe for the Tier C CLIProxyAPI endpoint,
+   * via `ILlmClient.checkAvailability()` (decision 1e: reachability, not correctness). No base
+   * URL supplied is a normal, non-error `doctor` state (decision 1c) -- `PASS`, "not configured."
+   * Configured-but-unreachable is the one real defect this check reports -- `FAIL`. Never throws
+   * past this method.
+   */
+  private async runLlmReachabilityDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+    llmBaseUrl: string | undefined,
+    llmApiKey: string | undefined,
+  ): Promise<boolean> {
+    if (!llmBaseUrl) {
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LLM_REACHABILITY] = {
+        status: DiagnosticStatus.PASS,
+        message: DOCTOR_MESSAGES.LLM_NOT_CONFIGURED,
+      };
+      return true;
+    }
+    if (!docuviaFactory.has(TOKENS.LlmClient)) return true;
+
+    try {
+      const buildLlmClient = docuviaFactory.resolve(TOKENS.LlmClient);
+      const llmClient = buildLlmClient();
+      llmClient.initialize({ baseUrl: llmBaseUrl, apiKey: llmApiKey });
+      const availability = await llmClient.checkAvailability();
+
+      if (availability.available) {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LLM_REACHABILITY] = {
+          status: DiagnosticStatus.PASS,
+          message: DOCTOR_MESSAGES.LLM_REACHABLE,
+        };
+        return true;
+      }
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LLM_REACHABILITY] = {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.LLM_UNREACHABLE(availability.reason ?? ""),
+        suggestion: DOCTOR_MESSAGES.LLM_UNREACHABLE_SUGGESTION,
+      };
+      return false;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
+   * §10e bullet 4 / §7a-1 (T8): LSP binary presence, independent of whether a Tier B batch has
+   * ever run -- pure wiring, reusing Slice 3's shipped `IEdgeResolutionProvider.checkAvailability()`
+   * verbatim (the exact same token `checkTierBGate` resolves, `tier-b-gate.ts:23`), so this
+   * produces a result identical in substance to what `analyze --escalate-to-lsp`'s own gate would
+   * find on the same workspace. Always PASS (decision 1c) -- a `reason` from a not-available
+   * result becomes the informative message, not a failure. Never throws past this method.
+   */
+  private async runLspBinaryDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<void> {
+    if (!docuviaFactory.has(TOKENS.EdgeResolutionProvider)) return;
+
+    try {
+      const buildProvider = docuviaFactory.resolve(
+        TOKENS.EdgeResolutionProvider,
+        { logger: this.logger },
+      );
+      const provider = buildProvider();
+      const availability = await provider.checkAvailability(this.workspaceRoot);
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LSP_BINARY] = {
+        status: DiagnosticStatus.PASS,
+        message: availability.available
+          ? DOCTOR_MESSAGES.LSP_BINARY_AVAILABLE
+          : DOCTOR_MESSAGES.LSP_BINARY_UNAVAILABLE(availability.reason ?? ""),
+      };
+    } catch {
+      // Never crash doctor over this check.
+    }
+  }
+
+  /**
+   * §10c's doctor-half backup for the Tier B commit-cap nudge (T3 is Tier A's commit-time half):
+   * opens the local db read-only (mirrors `ImpactWorkflow`'s exact pattern) and, if it opens,
+   * reports the same `isTierBCommitCapExceeded` condition Tier A's nudge computes -- always
+   * `PASS` (decision 1c/1d), since neither "not yet exceeded" nor "exceeded" is itself a defect.
+   * A missing/unopenable db (never ran `init`) is *not* a failure of this specific check -- it's
+   * already covered by `db_found`'s own FAIL, so this silently skips rather than double-reporting
+   * the same root cause under two diagnostic keys. Never throws past this method.
+   */
+  private async runTierBCommitCapDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<void> {
+    if (
+      !docuviaFactory.has(TOKENS.GraphStoreOpener) ||
+      !docuviaFactory.has(TOKENS.GitProvider)
+    ) {
+      return;
+    }
+
+    let store: IGraphStore | undefined;
+    try {
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const lastTierBBatchSha = store.meta.get(
+        GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA,
+      );
+      const exceeded = await isTierBCommitCapExceeded(
+        git,
+        this.workspaceRoot,
+        lastTierBBatchSha,
+      );
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.TIER_B_COMMIT_CAP] = {
+        status: DiagnosticStatus.PASS,
+        message: exceeded
+          ? DOCTOR_MESSAGES.TIER_B_CAP_EXCEEDED
+          : DOCTOR_MESSAGES.TIER_B_CAP_OK,
+      };
+    } catch {
+      // db not found/unopenable (already covered by db_found's own FAIL) or a git-command
+      // failure -- either way this check degrades to silently skipped, never a doctor crash.
+    } finally {
+      await store?.close();
+    }
   }
 
   /** `!skipDb` branch of `execute` — checks the local db exists and (if so) delegates to the

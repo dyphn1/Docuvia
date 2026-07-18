@@ -6,10 +6,15 @@ import {
   DiagnosticStatus,
   DocuviaError,
 } from "@workspace/contracts";
+import { GitConstants } from "@workspace/core";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { probeDocuviaResolvable } from "../../src/workflows/doctor/git-hook-resolvability.js";
 
 vi.mock("fs/promises");
+vi.mock("../../src/workflows/doctor/git-hook-resolvability.js", () => ({
+  probeDocuviaResolvable: vi.fn(),
+}));
 
 describe("DoctorWorkflow", () => {
   const logger = {
@@ -25,7 +30,7 @@ describe("DoctorWorkflow", () => {
     docuviaFactory.reset();
   });
 
-  it("skips all checks when options are passed", async () => {
+  it("skips all skippable checks when options are passed -- the LLM reachability check (T7) has no skip flag and always evaluates, reporting 'not configured' PASS here since no llmBaseUrl is supplied", async () => {
     const wf = new DoctorWorkflow("/test", logger);
     const result = await wf.execute({
       skipDb: true,
@@ -33,7 +38,13 @@ describe("DoctorWorkflow", () => {
       skipLogs: true,
     });
     expect(result.allPassed).toBe(true);
-    expect(result.diagnostics).toEqual({});
+    expect(result.diagnostics).toEqual({
+      llm_reachability: {
+        status: DiagnosticStatus.PASS,
+        message:
+          "Not configured -- Tier C is inactive (AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL not set).",
+      },
+    });
   });
 
   describe("DB Check", () => {
@@ -217,6 +228,456 @@ describe("DoctorWorkflow", () => {
       expect(result.allPassed).toBe(false);
       expect(result.diagnostics["logs"].status).toBe(DiagnosticStatus.FAIL);
       expect(result.diagnostics["logs"].message).toContain("2 critical errors");
+    });
+  });
+
+  describe("Tier B Commit Cap Check (phase1-decision-integration.md §10c doctor-half)", () => {
+    function registerPassingDbAndGitRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function makeMockStore(metaValue: string | undefined) {
+      return {
+        meta: { get: vi.fn().mockReturnValue(metaValue), set: vi.fn() },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener/GitProvider aren't registered", async () => {
+      registerPassingDbAndGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["tier_b_commit_cap"]).toBeUndefined();
+    });
+
+    it("is not evaluated at all when skipDb or skipGit is set", async () => {
+      const store = makeMockStore("batch-sha");
+      const openStore = vi.fn().mockResolvedValue(store);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStore);
+      docuviaFactory.register(
+        TOKENS.GitProvider,
+        () => ({ getCommitAncestry: vi.fn() }) as any,
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(openStore).not.toHaveBeenCalled();
+    });
+
+    it("reports PASS with the exceeded message when the commit-cap is exceeded", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore("batch-sha");
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      docuviaFactory.register(
+        TOKENS.GitProvider,
+        () =>
+          ({
+            // "batch-sha" not found within the probed ancestry window -- treated as "at least
+            // cap+1", i.e. exceeded (isTierBCommitCapExceeded's documented safe-failure mode).
+            getCommitAncestry: vi
+              .fn()
+              .mockResolvedValue(
+                Array.from({ length: 21 }, (_, i) => `sha-${i}`),
+              ),
+          }) as any,
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["tier_b_commit_cap"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["tier_b_commit_cap"].message).toContain(
+        "exceeded the cap",
+      );
+      expect(result.allPassed).toBe(true);
+      expect(store.close).toHaveBeenCalled();
+    });
+
+    it("reports PASS with the not-yet-reached message when the commit-cap key is absent", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore(undefined);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      docuviaFactory.register(
+        TOKENS.GitProvider,
+        () => ({ getCommitAncestry: vi.fn() }) as any,
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["tier_b_commit_cap"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "Tier B commit-cap not yet reached.",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is skipped silently (no diagnostic key) when the db can't be opened -- already covered by db_found's own FAIL", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("not found"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockRejectedValue(new Error("ENOENT")),
+      );
+      docuviaFactory.register(
+        TOKENS.GitProvider,
+        () => ({ getCommitAncestry: vi.fn() }) as any,
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["tier_b_commit_cap"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
+    });
+  });
+
+  describe("Git Hook Check (phase1-decision-integration.md §10d/§7c, T5/T6)", () => {
+    beforeEach(() => {
+      vi.mocked(probeDocuviaResolvable).mockReset();
+    });
+
+    it("reports PASS when no Docuvia post-commit hook is installed", async () => {
+      const git = { readHookFile: vi.fn().mockResolvedValue(undefined) };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["git_hook"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "No Docuvia post-commit hook installed.",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports FAIL with the duplicate-block message and --fix suggestion when both markers are present", async () => {
+      const hook =
+        GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT +
+        GitConstants.POST_COMMIT_HOOK_CONTENT;
+      const git = { readHookFile: vi.fn().mockResolvedValue(hook) };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["git_hook"].status).toBe(DiagnosticStatus.FAIL);
+      expect(result.diagnostics["git_hook"].message).toContain(
+        "Duplicate hook blocks",
+      );
+      expect(result.diagnostics["git_hook"].suggestion).toContain(
+        "doctor --fix",
+      );
+      expect(result.allPassed).toBe(false);
+      expect(probeDocuviaResolvable).not.toHaveBeenCalled();
+    });
+
+    it("reports FAIL for a legacy-only hook (never upgraded)", async () => {
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["git_hook"].status).toBe(DiagnosticStatus.FAIL);
+      expect(result.diagnostics["git_hook"].message).toContain(
+        "legacy `docuvia snapshot`",
+      );
+      expect(result.diagnostics["git_hook"].suggestion).toContain(
+        "docuvia init",
+      );
+    });
+
+    it("reports PASS for a healthy hook when docuvia resolves", async () => {
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(GitConstants.POST_COMMIT_HOOK_CONTENT),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      vi.mocked(probeDocuviaResolvable).mockResolvedValue(true);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["git_hook"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "Post-commit hook is installed and `docuvia` resolves.",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports FAIL for a healthy-shaped hook when docuvia is not resolvable", async () => {
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(GitConstants.POST_COMMIT_HOOK_CONTENT),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+      vi.mocked(probeDocuviaResolvable).mockResolvedValue(false);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["git_hook"].status).toBe(DiagnosticStatus.FAIL);
+      expect(result.diagnostics["git_hook"].message).toContain(
+        "not resolvable",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("is skipped entirely when skipGit is set", async () => {
+      const git = { readHookFile: vi.fn() };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(git.readHookFile).not.toHaveBeenCalled();
+      expect(result.diagnostics["git_hook"]).toBeUndefined();
+    });
+
+    describe("--fix (T6)", () => {
+      it("does not call repairDuplicatePostCommitHook when fix is absent, even on a duplicate-block workspace", async () => {
+        const hook =
+          GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT +
+          GitConstants.POST_COMMIT_HOOK_CONTENT;
+        const git = { readHookFile: vi.fn().mockResolvedValue(hook) };
+        const knowledgeGit = {
+          repairDuplicatePostCommitHook: vi.fn(),
+        };
+        docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+        docuviaFactory.register(
+          TOKENS.KnowledgeGitService,
+          () => knowledgeGit as any,
+        );
+
+        const wf = new DoctorWorkflow("/test", logger);
+        await wf.execute({ skipDb: true, skipLogs: true });
+
+        expect(
+          knowledgeGit.repairDuplicatePostCommitHook,
+        ).not.toHaveBeenCalled();
+      });
+
+      it("calls repairDuplicatePostCommitHook and notes the repair when fix is true and the duplicate condition is present", async () => {
+        const hook =
+          GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT +
+          GitConstants.POST_COMMIT_HOOK_CONTENT;
+        const git = { readHookFile: vi.fn().mockResolvedValue(hook) };
+        const knowledgeGit = {
+          repairDuplicatePostCommitHook: vi
+            .fn()
+            .mockResolvedValue({ repaired: true }),
+        };
+        docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+        docuviaFactory.register(
+          TOKENS.KnowledgeGitService,
+          () => knowledgeGit as any,
+        );
+
+        const wf = new DoctorWorkflow("/test", logger);
+        const result = await wf.execute({
+          skipDb: true,
+          skipLogs: true,
+          fix: true,
+        });
+
+        expect(knowledgeGit.repairDuplicatePostCommitHook).toHaveBeenCalledWith(
+          "/test",
+        );
+        expect(result.diagnostics["git_hook"].message).toContain("Repaired");
+      });
+
+      it("never calls repairDuplicatePostCommitHook when fix is true but the hook is healthy (not duplicated)", async () => {
+        const git = {
+          readHookFile: vi
+            .fn()
+            .mockResolvedValue(GitConstants.POST_COMMIT_HOOK_CONTENT),
+        };
+        const knowledgeGit = {
+          repairDuplicatePostCommitHook: vi.fn(),
+        };
+        docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+        docuviaFactory.register(
+          TOKENS.KnowledgeGitService,
+          () => knowledgeGit as any,
+        );
+        vi.mocked(probeDocuviaResolvable).mockResolvedValue(true);
+
+        const wf = new DoctorWorkflow("/test", logger);
+        await wf.execute({ skipDb: true, skipLogs: true, fix: true });
+
+        expect(
+          knowledgeGit.repairDuplicatePostCommitHook,
+        ).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("LLM Reachability Check (phase1-decision-integration.md §10e bullet 3, T7)", () => {
+    it("reports PASS 'not configured' when no llmBaseUrl is supplied", async () => {
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["llm_reachability"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: expect.stringContaining("Not configured"),
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports PASS 'reachable' when configured and checkAvailability resolves available:true", async () => {
+      const llmClient = {
+        initialize: vi.fn(),
+        chatCompletion: vi.fn(),
+        streamChatCompletion: vi.fn(),
+        checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      };
+      docuviaFactory.register(TOKENS.LlmClient, () => () => llmClient as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+        llmBaseUrl: "http://127.0.0.1:8317",
+      });
+
+      expect(llmClient.initialize).toHaveBeenCalledWith({
+        baseUrl: "http://127.0.0.1:8317",
+        apiKey: undefined,
+      });
+      expect(result.diagnostics["llm_reachability"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports FAIL when configured but unreachable -- the one real defect this check reports", async () => {
+      const llmClient = {
+        initialize: vi.fn(),
+        chatCompletion: vi.fn(),
+        streamChatCompletion: vi.fn(),
+        checkAvailability: vi
+          .fn()
+          .mockResolvedValue({ available: false, reason: "ECONNREFUSED" }),
+      };
+      docuviaFactory.register(TOKENS.LlmClient, () => () => llmClient as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+        llmBaseUrl: "http://127.0.0.1:8317",
+      });
+
+      expect(result.diagnostics["llm_reachability"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["llm_reachability"].message).toContain(
+        "ECONNREFUSED",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+  });
+
+  describe("LSP Binary Check (phase1-decision-integration.md §10e bullet 4 / §7a-1, T8)", () => {
+    it("reports PASS with the positive message when the LSP provider reports available", async () => {
+      const provider = {
+        checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      };
+      docuviaFactory.register(
+        TOKENS.EdgeResolutionProvider,
+        () => () => provider as any,
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["lsp_binary"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: expect.stringContaining("LSP-precision edges available"),
+      });
+      expect(provider.checkAvailability).toHaveBeenCalledWith("/test");
+    });
+
+    it("reports PASS with the specific unavailable reason (not a generic message) when the provider reports unavailable", async () => {
+      const provider = {
+        checkAvailability: vi.fn().mockResolvedValue({
+          available: false,
+          reason: "node_modules not found",
+        }),
+      };
+      docuviaFactory.register(
+        TOKENS.EdgeResolutionProvider,
+        () => () => provider as any,
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["lsp_binary"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["lsp_binary"].message).toContain(
+        "node_modules not found",
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is skipped silently (no diagnostic key, no crash) when EdgeResolutionProvider isn't registered", async () => {
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["lsp_binary"]).toBeUndefined();
     });
   });
 });

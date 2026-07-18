@@ -22,7 +22,7 @@ This command gracefully undoes the integration steps performed by `docuvia init`
 
 - **Safe JSON Manipulation**: Removes the Docuvia MCP server entry from `claude_desktop_config.json` without destroying the user's manual formatting.
 - **Lossless Markdown Removal**: Safely slices out `<!-- docuvia:start -->` and `<!-- docuvia:end -->` blocks in `.cursorrules`, `CLAUDE.md`, etc., while creating `.bak` backup files to prevent accidental loss of user edits within those blocks.
-- **Full Cleanup**: Deletes Docuvia-specific `.claude/hooks` and drops the `local.db` database (sharing logic with the `clean` command), unless `--keep-db` is given.
+- **Full Cleanup**: Deletes Docuvia-specific `.claude/hooks`, removes both git hooks `init` installed (the post-commit and pre-push hooks — see `doctor`'s "hook present but docuvia not resolvable" check for why leaving them behind is a real footgun), and drops the `local.db` database (sharing logic with the `clean` command), unless `--keep-db` is given.
 
 ## Examples
 

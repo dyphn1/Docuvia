@@ -18,6 +18,33 @@ import { withKnowledgeBranchLock } from "./knowledge-branch-lock.js";
 /** Knowledge branch is a dedicated orphan branch of small, purpose-built commits — this comfortably bounds `resolveNewestSourceTrailerSha`'s log scan without truncating any real history (mirrors `HydrationService`'s identical scan-depth choice). */
 const KNOWLEDGE_LOG_SCAN_LIMIT = 5000;
 
+/** Escapes regex metacharacters in a literal string before embedding it in a `RegExp` — used by
+ *  `DOCUVIA_HOOK_BLOCK_PATTERN` below (defensive; `DOCUVIA_HOOK_HEADER_COMMENT` itself carries no
+ *  metacharacters today, but this keeps the pattern correct if that ever changes). */
+function escapeRegExpLiteral(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * `doctor --fix`'s marker-bounded extraction pattern (phase1-decision-integration.md §10d,
+ * decision 1f): matches an optional immediately-preceding `#!...` shebang line, then the shared
+ * `# Docuvia Knowledge Graph Evolver Hook` header comment, through the next standalone `fi` line,
+ * inclusive — a whole Docuvia-authored hook block (shebang included), regardless of minor
+ * hand-edits elsewhere in the block that would break `installPostCommitHook`'s exact-content-match
+ * technique. The leading shebang must be captured too: every Docuvia-authored block
+ * (`POST_COMMIT_HOOK_CONTENT`/`LEGACY_POST_COMMIT_HOOK_CONTENT`) carries its own `#!/bin/bash`
+ * line immediately above the header comment, so a hand-edited-legacy-block file with two
+ * un-merged blocks has two of them — stripping only the header-through-`fi` span (and not the
+ * shebang line above it) would leave both as orphaned comment lines, on top of the third shebang
+ * line the freshly-appended canonical block itself contributes. Reused (global-flagged) across
+ * `repairDuplicatePostCommitHook` calls; `String.prototype.replace` resets a global regex's
+ * `lastIndex` to 0 on every call, so this is safe to share.
+ */
+const DOCUVIA_HOOK_BLOCK_PATTERN = new RegExp(
+  `(?:^#!.*\\n)?${escapeRegExpLiteral(GitConstants.DOCUVIA_HOOK_HEADER_COMMENT)}[\\s\\S]*?^fi$\\n?`,
+  "gm",
+);
+
 /**
  * Docuvia's git-specific domain logic, built entirely on `IGitProvider`'s raw primitives — the
  * "generating knowledge branches" example named directly in
@@ -201,6 +228,143 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
       this.logger.info(GitMessages.INSTALLED_PRE_PUSH_HOOK);
       return { installed: true };
+    });
+  }
+
+  /**
+   * `uninstall`'s symmetric counterpart to `installPostCommitHook`
+   * (phase1-decision-integration.md §10a) — strips both the current and (if also present) legacy
+   * Docuvia block content via the same exact-content-match technique the install path's legacy
+   * upgrade already uses (decision 1f: this is the established, accepted, best-effort technique;
+   * `doctor`'s detection/repair is the safety net for whatever a hand-edited block causes it to
+   * miss). Preserves any non-Docuvia content in the file byte-for-byte; never deletes the file
+   * itself (`IGitProvider` has no delete primitive). Non-fatal by design.
+   */
+  public async removePostCommitHook(
+    cwd: string,
+  ): Promise<{ removed: boolean }> {
+    const hookName = GitConstants.POST_COMMIT_HOOK_NAME;
+
+    const existingHook = await this.git.readHookFile(cwd, hookName);
+    if (!this.hasAnyPostCommitMarker(existingHook)) {
+      this.logger.debug(GitMessages.NO_POST_COMMIT_HOOK_TO_REMOVE);
+      return { removed: false };
+    }
+
+    return withKnowledgeBranchLock(this.git, cwd, async () => {
+      const recheckHook = await this.git.readHookFile(cwd, hookName);
+      if (!this.hasAnyPostCommitMarker(recheckHook)) {
+        return { removed: false };
+      }
+
+      try {
+        let remainder = recheckHook!;
+        if (remainder.includes(GitConstants.POST_COMMIT_HOOK_CONTENT)) {
+          remainder = remainder
+            .split(GitConstants.POST_COMMIT_HOOK_CONTENT)
+            .join("");
+        }
+        if (remainder.includes(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT)) {
+          remainder = remainder
+            .split(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT)
+            .join("");
+        }
+        await this.git.writeHookFile(cwd, hookName, remainder);
+      } catch (err) {
+        this.logger.warn(GitMessages.FAILED_TO_REMOVE_POST_COMMIT_HOOK, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return { removed: false };
+      }
+
+      this.logger.info(GitMessages.REMOVED_POST_COMMIT_HOOK);
+      return { removed: true };
+    });
+  }
+
+  private hasAnyPostCommitMarker(hook: string | undefined): boolean {
+    return (
+      !!hook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER) ||
+      !!hook?.includes(GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER)
+    );
+  }
+
+  /**
+   * `uninstall`'s symmetric counterpart to `installPrePushHook`
+   * (phase1-decision-integration.md §10a, decision 1a) — mirrors `removePostCommitHook`'s shape
+   * exactly, minus the legacy-content branch (there is no legacy pre-push hook). Non-fatal by
+   * design.
+   */
+  public async removePrePushHook(cwd: string): Promise<{ removed: boolean }> {
+    const hookName = GitConstants.PRE_PUSH_HOOK_NAME;
+
+    const existingHook = await this.git.readHookFile(cwd, hookName);
+    if (!existingHook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER)) {
+      this.logger.debug(GitMessages.NO_PRE_PUSH_HOOK_TO_REMOVE);
+      return { removed: false };
+    }
+
+    return withKnowledgeBranchLock(this.git, cwd, async () => {
+      const recheckHook = await this.git.readHookFile(cwd, hookName);
+      if (!recheckHook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER)) {
+        return { removed: false };
+      }
+
+      try {
+        const remainder = recheckHook
+          .split(GitConstants.PRE_PUSH_HOOK_CONTENT)
+          .join("");
+        await this.git.writeHookFile(cwd, hookName, remainder);
+      } catch (err) {
+        this.logger.warn(GitMessages.FAILED_TO_REMOVE_PRE_PUSH_HOOK, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return { removed: false };
+      }
+
+      this.logger.info(GitMessages.REMOVED_PRE_PUSH_HOOK);
+      return { removed: true };
+    });
+  }
+
+  /**
+   * `doctor --fix`'s explicit, opt-in repair of the legacy-hook duplicate-block case
+   * (phase1-decision-integration.md §10d, decision 1f) — unlike `removePostCommitHook`'s
+   * exact-content-match technique, this uses a marker-bounded extraction
+   * (`DOCUVIA_HOOK_BLOCK_PATTERN`) anchored on the shared header comment through the matching
+   * standalone `fi` line, so it correctly strips every Docuvia-authored block even when one of
+   * them has been hand-edited (the exact scenario that created the duplicate in the first place).
+   * Re-checks (TOCTOU-safe) inside the lock that the duplicate condition still holds before
+   * writing anything — never silently mutates a healthy hook.
+   */
+  public async repairDuplicatePostCommitHook(
+    cwd: string,
+  ): Promise<{ repaired: boolean }> {
+    const hookName = GitConstants.POST_COMMIT_HOOK_NAME;
+
+    return withKnowledgeBranchLock(this.git, cwd, async () => {
+      const recheckHook = await this.git.readHookFile(cwd, hookName);
+      const hasBothMarkers =
+        recheckHook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER) &&
+        recheckHook?.includes(GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER);
+      if (!recheckHook || !hasBothMarkers) {
+        this.logger.debug(GitMessages.NOTHING_TO_REPAIR);
+        return { repaired: false };
+      }
+
+      try {
+        const stripped = recheckHook.replace(DOCUVIA_HOOK_BLOCK_PATTERN, "");
+        const repaired = stripped + GitConstants.POST_COMMIT_HOOK_CONTENT;
+        await this.git.writeHookFile(cwd, hookName, repaired);
+      } catch (err) {
+        this.logger.warn(GitMessages.FAILED_TO_INSTALL_HOOK, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return { repaired: false };
+      }
+
+      this.logger.info(GitMessages.REPAIRED_DUPLICATE_POST_COMMIT_HOOK);
+      return { repaired: true };
     });
   }
 

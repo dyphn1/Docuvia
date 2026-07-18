@@ -43,6 +43,32 @@ export interface IKnowledgeGitService {
    * already-installed). Non-fatal by design, same reasoning as `installPostCommitHook`.
    */
   installPrePushHook(cwd: string): Promise<{ installed: boolean }>;
+  /**
+   * Removes the Docuvia post-commit hook block (both the current and, if also present, the
+   * legacy pre-Slice-2b content) from `.git/hooks/post-commit`, preserving any non-Docuvia
+   * content in the same file byte-for-byte (phase1-decision-integration.md §10a) — `uninstall`'s
+   * symmetric counterpart to `installPostCommitHook`. A hook file that's absent or doesn't carry
+   * either marker is a clean no-op (`{ removed: false }`). Never throws — non-fatal by the same
+   * convention as the install methods.
+   */
+  removePostCommitHook(cwd: string): Promise<{ removed: boolean }>;
+  /**
+   * Removes the Docuvia pre-push hook block from `.git/hooks/pre-push`, preserving any
+   * non-Docuvia content in the same file byte-for-byte (phase1-decision-integration.md §10a) —
+   * `uninstall`'s symmetric counterpart to `installPrePushHook`. A hook file that's absent or
+   * doesn't carry the marker is a clean no-op (`{ removed: false }`). Never throws.
+   */
+  removePrePushHook(cwd: string): Promise<{ removed: boolean }>;
+  /**
+   * `doctor --fix`'s explicit, opt-in repair of the legacy-hook duplicate-block case
+   * (phase1-decision-integration.md §10d): re-checks (TOCTOU-safe) that `.git/hooks/post-commit`
+   * still carries both the current and legacy Docuvia blocks, strips every Docuvia-authored block
+   * via a marker-bounded extraction (robust to minor hand-edits, unlike `installPostCommitHook`'s
+   * exact-content-match upgrade path), and appends exactly one canonical
+   * `POST_COMMIT_HOOK_CONTENT` block. Never silently mutates a healthy hook — `{ repaired: false }`
+   * when the re-check finds nothing to repair. Never throws.
+   */
+  repairDuplicatePostCommitHook(cwd: string): Promise<{ repaired: boolean }>;
   /** Packs a rendered snapshot directory (see `ISnapshotRenderer`) onto the hidden knowledge branch, wholesale replacing its tree. */
   packSnapshotToKnowledgeBranch(
     cwd: string,

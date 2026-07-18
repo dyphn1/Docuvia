@@ -26,6 +26,23 @@ export interface DoctorOptions {
   skipGit?: boolean;
   skipHooks?: boolean;
   skipLogs?: boolean;
+  /** `--fix` (phase1-decision-integration.md §10d, T6) -- forwarded verbatim to
+   *  `docuviaApi.doctor()`; see `DoctorWorkflow`'s own doc comment for what it does. */
+  fix?: boolean;
+}
+
+/** Reads the Tier C LLM env vars (§10e bullet 3, T7) -- mirrors `analyze.ts`'s
+ *  `resolveAnalyzeLlmConfig`, Presentation-layer-only env read. Unlike `analyze <targetPath>`'s
+ *  hard requirement, absence here is a normal, non-error `doctor` state -- both fields are simply
+ *  `undefined`. */
+function resolveDoctorLlmConfig(): {
+  llmBaseUrl: string | undefined;
+  llmApiKey: string | undefined;
+} {
+  return {
+    llmBaseUrl: process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL,
+    llmApiKey: process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY,
+  };
 }
 
 function printDiagnosticResult(key: string, res: DiagnosticResult): void {
@@ -53,13 +70,16 @@ async function runDoctorDiagnostics(
   scopeId: string,
   logger: ReturnType<typeof createPinoBackedLogger>,
   workspaceRoot: string,
-  options: Pick<DoctorOptions, "skipDb" | "skipGit" | "skipLogs">,
+  options: Pick<DoctorOptions, "skipDb" | "skipGit" | "skipLogs" | "fix">,
 ): Promise<boolean> {
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
 
   try {
-    const result = await docuviaApi.doctor(scopeId, logger, options);
+    const result = await docuviaApi.doctor(scopeId, logger, {
+      ...options,
+      ...resolveDoctorLlmConfig(),
+    });
     for (const [key, res] of Object.entries(result.diagnostics)) {
       printDiagnosticResult(key, res);
     }
@@ -128,6 +148,7 @@ export async function doctorCommand(
     skipGit = false,
     skipHooks = false,
     skipLogs = false,
+    fix = false,
   } = options;
   try {
     ui.header(UI_MESSAGES.DOCTOR_HEADER);
@@ -140,7 +161,7 @@ export async function doctorCommand(
       scopeId,
       logger,
       workspaceRoot,
-      { skipDb, skipGit, skipLogs },
+      { skipDb, skipGit, skipLogs, fix },
     );
 
     await reportDoctorHooksStatus(workspaceRoot, skipHooks);

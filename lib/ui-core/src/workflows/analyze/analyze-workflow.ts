@@ -33,6 +33,7 @@ import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
 import { runTierBBatch, type TierBBatchDeps } from "./run-tier-b-batch.js";
+import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
 import {
   parseDecisionsFromLlmContent,
   stripMarkdownCodeFence,
@@ -199,6 +200,10 @@ export class AnalyzeWorkflow {
       GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
     );
 
+    // §10c's commit-time nudge — checked once, uniformly across the fast-path/full/delta
+    // branches below, before any of them run.
+    await this.maybeLogTierBCommitCapNudge(store, git);
+
     // 1. Sha fast-path — first check, regardless of graph state.
     if (headSha && lastIngestedSha && headSha === lastIngestedSha) {
       logger.info(ANALYZE_MESSAGES.AUTO_NOOP);
@@ -250,6 +255,35 @@ export class AnalyzeWorkflow {
       fromSha,
       headSha,
     });
+  }
+
+  /**
+   * §10c's commit-time half of the commit-cap trigger (`doctor`'s passive backup is T4, §10c's
+   * other half): a non-blocking, one-line nudge once `isTierBCommitCapExceeded` computes true —
+   * fires at the moment the user could act on it (mid-workflow, could push now). Never affects
+   * `dispatchAutoMode`'s return value/control flow; best-effort (a git-command failure here
+   * degrades to a skipped nudge, never a crashed `analyze` run).
+   */
+  private async maybeLogTierBCommitCapNudge(
+    store: IGraphStore,
+    git: IGitProvider,
+  ): Promise<void> {
+    const { workspaceRoot, logger } = this;
+    try {
+      const exceeded = await isTierBCommitCapExceeded(
+        git,
+        workspaceRoot,
+        store.meta.get(GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA),
+      );
+      if (!exceeded) return;
+
+      logger.info(ANALYZE_MESSAGES.TIER_B_CAP_NUDGE);
+      await appendAnalyzeLogLine(workspaceRoot, {
+        event: ANALYZE_EVENTS.TIER_B_COMMIT_CAP_NUDGE,
+      });
+    } catch {
+      // Best-effort — the nudge is advisory only; a git failure here must never crash the run.
+    }
   }
 
   private async executeDecisionExtraction(
@@ -312,17 +346,34 @@ export class AnalyzeWorkflow {
       apiKey: options!.llmApiKey,
     });
 
-    const response = await llmClient.chatCompletion({
-      model: options!.llmModel!,
-      temperature: 0.2,
-      messages: [
-        {
-          role: ChatMessageRoles.SYSTEM,
-          content: DECISION_EXTRACTION_SYSTEM_PROMPT,
-        },
-        { role: ChatMessageRoles.USER, content: userMessage },
-      ],
-    });
+    // §7d watchlist (T10): a `chatCompletion` rejection (network failure, auth failure,
+    // `LLM_CHAT_COMPLETION_FAILED`) previously propagated straight out with no
+    // `analyze.focused.error` JSONL line -- the CLI's own generic catch still reported it to the
+    // console, but a background/non-interactive caller watching only `analyze.log` never saw it.
+    // Mirrors the two existing explicit `FOCUSED_ERROR` sites in this method (kept as-is below,
+    // since they're more specific than this blanket wrapper).
+    let response;
+    try {
+      response = await llmClient.chatCompletion({
+        model: options!.llmModel!,
+        temperature: 0.2,
+        messages: [
+          {
+            role: ChatMessageRoles.SYSTEM,
+            content: DECISION_EXTRACTION_SYSTEM_PROMPT,
+          },
+          { role: ChatMessageRoles.USER, content: userMessage },
+        ],
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await appendAnalyzeLogLine(workspaceRoot, {
+        event: ANALYZE_EVENTS.FOCUSED_ERROR,
+        targetPath,
+        message,
+      });
+      throw err;
+    }
 
     const rawContent = response.choices[0]?.message.content;
     const decisions = parseDecisionsFromLlmContent(rawContent);

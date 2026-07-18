@@ -8,6 +8,7 @@ import {
   type ChatMessage,
   type ChatToolCall,
   type ILlmClient,
+  type LlmClientAvailability,
   type LlmClientConfig,
 } from "@workspace/contracts";
 import { LlmApiHttp } from "./constants/http.js";
@@ -15,6 +16,11 @@ import { LlmApiMessages } from "./constants/messages.js";
 import { LlmApiPaths } from "./constants/paths.js";
 
 const REQUEST_TIMEOUT_MS = 30000;
+/** Short timeout for `checkAvailability()`'s liveness probe (decision 1e) -- sized for "is a
+ *  server there and responding," not a real chat completion; do not reuse `REQUEST_TIMEOUT_MS`,
+ *  which is sized for that heavier call. Consistent with `NPX_PROBE_TIMEOUT_MS`/
+ *  `NETWORK_CHECK_TIMEOUT_MS` precedent elsewhere in this codebase. */
+const AVAILABILITY_PROBE_TIMEOUT_MS = 4000;
 
 /**
  * Native-`fetch`-backed CLIProxyAPI HTTP client — the Technology Provider wrapping CLIProxyAPI's
@@ -208,6 +214,30 @@ export class FetchLlmClient implements ILlmClient {
         finishReason: choice.finish_reason,
       })),
     };
+  }
+
+  /**
+   * `doctor`'s T7 reachability pre-flight (decision 1e): a lightweight `GET config.baseUrl` --
+   * not `chatCompletion`'s full request/response contract, since this is a reachability probe,
+   * not a functional check. Any received `Response` (regardless of status code) is
+   * `available: true`; any thrown error (network failure, timeout, DNS) is caught and reported as
+   * `available: false` rather than propagating. Never throws.
+   */
+  public async checkAvailability(): Promise<LlmClientAvailability> {
+    try {
+      const config = this.getConfig();
+      await fetch(config.baseUrl, {
+        method: LlmApiHttp.METHOD_GET,
+        signal: AbortSignal.timeout(AVAILABILITY_PROBE_TIMEOUT_MS),
+      });
+      return { available: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        available: false,
+        reason: LlmApiMessages.availabilityCheckFailedWithReason(message),
+      };
+    }
   }
 
   public async chatCompletion(

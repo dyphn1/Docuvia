@@ -391,6 +391,243 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
   });
 });
 
+describe("KnowledgeGitService.removePostCommitHook() (phase1-decision-integration.md §10a)", () => {
+  it("strips the current-marker block and preserves unrelated user content", async () => {
+    const existingHook =
+      `#!/bin/bash\necho "user content"\n` +
+      GitConstants.POST_COMMIT_HOOK_CONTENT;
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(existingHook),
+    });
+    const logger = createMockLogger();
+    const service = new KnowledgeGitService(git, logger);
+
+    const result = await service.removePostCommitHook("/workspace");
+
+    expect(result).toEqual({ removed: true });
+    expect(git.writeHookFile).toHaveBeenCalledTimes(1);
+    const [cwd, hookName, writtenContent] = (
+      git.writeHookFile as ReturnType<typeof vi.fn>
+    ).mock.calls[0];
+    expect(cwd).toBe("/workspace");
+    expect(hookName).toBe(GitConstants.POST_COMMIT_HOOK_NAME);
+    expect(writtenContent).not.toContain(GitConstants.POST_COMMIT_HOOK_MARKER);
+    expect(writtenContent).toContain('echo "user content"');
+  });
+
+  it("strips both current and legacy blocks when both are present", async () => {
+    const existingHook =
+      GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT +
+      GitConstants.POST_COMMIT_HOOK_CONTENT;
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(existingHook),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.removePostCommitHook("/workspace");
+
+    expect(result).toEqual({ removed: true });
+    const writtenContent = (git.writeHookFile as ReturnType<typeof vi.fn>).mock
+      .calls[0][2];
+    expect(writtenContent).not.toContain(
+      GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
+    );
+    expect(writtenContent).not.toContain(GitConstants.POST_COMMIT_HOOK_MARKER);
+  });
+
+  it("is a clean no-op when no Docuvia hook is present", async () => {
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.removePostCommitHook("/workspace");
+
+    expect(result).toEqual({ removed: false });
+    expect(git.writeHookFile).not.toHaveBeenCalled();
+  });
+
+  it("is a clean no-op when the hook file has no Docuvia marker at all", async () => {
+    const git = makeMockGitProvider({
+      readHookFile: vi
+        .fn()
+        .mockResolvedValue('#!/bin/bash\necho "unrelated"\n'),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.removePostCommitHook("/workspace");
+
+    expect(result).toEqual({ removed: false });
+    expect(git.writeHookFile).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when the write fails — logs a warning and reports removed:false instead", async () => {
+    const git = makeMockGitProvider({
+      readHookFile: vi
+        .fn()
+        .mockResolvedValue(GitConstants.POST_COMMIT_HOOK_CONTENT),
+      writeHookFile: vi.fn().mockRejectedValue(new Error("EACCES")),
+    });
+    const logger = createMockLogger();
+    const service = new KnowledgeGitService(git, logger);
+
+    const result = await service.removePostCommitHook("/workspace");
+
+    expect(result).toEqual({ removed: false });
+    expect(logger.events.some((e) => e.level === "warn")).toBe(true);
+  });
+
+  it("reuses the knowledge-branch lock", async () => {
+    const git = makeMockGitProvider({
+      readHookFile: vi
+        .fn()
+        .mockResolvedValue(GitConstants.POST_COMMIT_HOOK_CONTENT),
+    });
+    const service = new KnowledgeGitService(git);
+
+    await service.removePostCommitHook("/workspace");
+
+    expect(git.acquireKnowledgeLock).toHaveBeenCalledTimes(1);
+    expect(git.releaseKnowledgeLock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("KnowledgeGitService.removePrePushHook() (phase1-decision-integration.md §10a)", () => {
+  it("strips the pre-push block and preserves unrelated user content", async () => {
+    const existingHook =
+      `#!/bin/bash\necho "user content"\n` + GitConstants.PRE_PUSH_HOOK_CONTENT;
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(existingHook),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.removePrePushHook("/workspace");
+
+    expect(result).toEqual({ removed: true });
+    const writtenContent = (git.writeHookFile as ReturnType<typeof vi.fn>).mock
+      .calls[0][2];
+    expect(writtenContent).not.toContain(GitConstants.PRE_PUSH_HOOK_MARKER);
+    expect(writtenContent).toContain('echo "user content"');
+  });
+
+  it("is a clean no-op when no Docuvia pre-push hook is present", async () => {
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.removePrePushHook("/workspace");
+
+    expect(result).toEqual({ removed: false });
+    expect(git.writeHookFile).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when the write fails — logs a warning and reports removed:false instead", async () => {
+    const git = makeMockGitProvider({
+      readHookFile: vi
+        .fn()
+        .mockResolvedValue(GitConstants.PRE_PUSH_HOOK_CONTENT),
+      writeHookFile: vi.fn().mockRejectedValue(new Error("EACCES")),
+    });
+    const logger = createMockLogger();
+    const service = new KnowledgeGitService(git, logger);
+
+    const result = await service.removePrePushHook("/workspace");
+
+    expect(result).toEqual({ removed: false });
+    expect(logger.events.some((e) => e.level === "warn")).toBe(true);
+  });
+});
+
+describe("KnowledgeGitService.repairDuplicatePostCommitHook() (phase1-decision-integration.md §10d)", () => {
+  it("strips every Docuvia block (including a hand-edited legacy block that breaks exact-content matching) and appends exactly one canonical block", async () => {
+    const handEditedLegacy =
+      GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT.replace(
+        "Non-intrusively extracts",
+        "Non-intrusively HAND-EDITED extracts",
+      );
+    const existingHook =
+      `echo "before"\n` +
+      handEditedLegacy +
+      GitConstants.POST_COMMIT_HOOK_CONTENT +
+      `echo "after"\n`;
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(existingHook),
+    });
+    const logger = createMockLogger();
+    const service = new KnowledgeGitService(git, logger);
+
+    const result = await service.repairDuplicatePostCommitHook("/workspace");
+
+    expect(result).toEqual({ repaired: true });
+    const writtenContent = (git.writeHookFile as ReturnType<typeof vi.fn>).mock
+      .calls[0][2];
+    expect(writtenContent).not.toContain(
+      GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
+    );
+    // Exactly one canonical block present.
+    expect(
+      writtenContent.split(GitConstants.POST_COMMIT_HOOK_MARKER).length - 1,
+    ).toBe(1);
+    // Unrelated user content survives, in order.
+    expect(writtenContent).toContain('echo "before"');
+    expect(writtenContent).toContain('echo "after"');
+    // No orphaned shebang lines: each stripped block's own leading `#!/bin/bash` must be removed
+    // along with its header/body, leaving exactly the one shebang line the freshly-appended
+    // canonical block itself carries -- not three (one from each un-merged original block, plus
+    // one from the newly-appended block).
+    expect((writtenContent.match(/^#!.*$/gm) ?? []).length).toBe(1);
+    expect(
+      logger.events.some(
+        (e) => e.level === "info" && /Repaired duplicate/.test(e.message),
+      ),
+    ).toBe(true);
+  });
+
+  it("is a no-op (no write at all) when the hook is healthy — never mutates a file that isn't duplicated", async () => {
+    const git = makeMockGitProvider({
+      readHookFile: vi
+        .fn()
+        .mockResolvedValue(GitConstants.POST_COMMIT_HOOK_CONTENT),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.repairDuplicatePostCommitHook("/workspace");
+
+    expect(result).toEqual({ repaired: false });
+    expect(git.writeHookFile).not.toHaveBeenCalled();
+  });
+
+  it("is a no-op when there is no hook file at all", async () => {
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.repairDuplicatePostCommitHook("/workspace");
+
+    expect(result).toEqual({ repaired: false });
+    expect(git.writeHookFile).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when the write fails — logs a warning and reports repaired:false instead", async () => {
+    const existingHook =
+      GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT +
+      GitConstants.POST_COMMIT_HOOK_CONTENT;
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(existingHook),
+      writeHookFile: vi.fn().mockRejectedValue(new Error("EACCES")),
+    });
+    const logger = createMockLogger();
+    const service = new KnowledgeGitService(git, logger);
+
+    const result = await service.repairDuplicatePostCommitHook("/workspace");
+
+    expect(result).toEqual({ repaired: false });
+    expect(logger.events.some((e) => e.level === "warn")).toBe(true);
+  });
+});
+
 describe("KnowledgeGitService.packSnapshotToKnowledgeBranch()", () => {
   it("delegates to IGitProvider.packDirectoryToBranch with the default knowledge branch name and a source-hash-stamped commit message", async () => {
     const git = makeMockGitProvider();

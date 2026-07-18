@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TestSandbox } from "../../support/sandbox.js";
 import { resolve } from "path";
-import { existsSync, writeFileSync } from "fs";
+import { existsSync, writeFileSync, readFileSync } from "fs";
+import { GitConstants } from "@workspace/core";
 
 describe("Command: docuvia uninstall", () => {
   let sandbox: TestSandbox;
@@ -51,5 +52,49 @@ describe("Command: docuvia uninstall", () => {
     );
     expect(claudeMd).not.toContain("<!-- docuvia:start -->");
     expect(claudeMd).toContain("Other user content");
+  }, 25000);
+
+  /**
+   * Real end-to-end (real `IGitProvider`/`Libgit2Provider`, real filesystem -- no mocks) coverage
+   * for the plan's §3 "Gating tests" requirement for T1 (phase1-decision-integration.md §10a,
+   * `implement_slice5-doctor-reliability.md` §3): `uninstall` after a real `init` leaves zero
+   * Docuvia content in both the post-commit and pre-push hook files it installed.
+   */
+  it("leaves zero Docuvia-authored content in both the post-commit and pre-push hook files real init installed", async () => {
+    const postCommitPath = resolve(
+      sandbox.dir,
+      ".git",
+      "hooks",
+      GitConstants.POST_COMMIT_HOOK_NAME,
+    );
+    const prePushPath = resolve(
+      sandbox.dir,
+      ".git",
+      "hooks",
+      GitConstants.PRE_PUSH_HOOK_NAME,
+    );
+
+    // `init` (already run in beforeEach) really did install both hooks with Docuvia content --
+    // sanity-check the precondition before asserting uninstall removed it.
+    expect(readFileSync(postCommitPath, "utf8")).toContain(
+      GitConstants.POST_COMMIT_HOOK_MARKER,
+    );
+    expect(readFileSync(prePushPath, "utf8")).toContain(
+      GitConstants.PRE_PUSH_HOOK_MARKER,
+    );
+
+    const result = await sandbox.runCli(["uninstall"]);
+    expect(result.exitCode).toBe(0);
+
+    const postCommitContent = readFileSync(postCommitPath, "utf8");
+    expect(postCommitContent).not.toContain(
+      GitConstants.POST_COMMIT_HOOK_MARKER,
+    );
+    expect(postCommitContent).not.toContain(
+      GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
+    );
+
+    const prePushContent = readFileSync(prePushPath, "utf8");
+    expect(prePushContent).not.toContain(GitConstants.PRE_PUSH_HOOK_MARKER);
   }, 25000);
 });

@@ -1,6 +1,9 @@
 /** HTTP protocol vocabulary for the fetch-backed LLM client (method, headers, content types, SSE framing). */
 export const LlmApiHttp = {
   METHOD_POST: "POST",
+  /** `checkAvailability()`'s reachability probe (decision 1e) -- a lightweight `GET`, not the
+   *  full `chatCompletion` contract. */
+  METHOD_GET: "GET",
   HEADER_CONTENT_TYPE: "Content-Type",
   HEADER_AUTHORIZATION: "Authorization",
   CONTENT_TYPE_JSON: "application/json",

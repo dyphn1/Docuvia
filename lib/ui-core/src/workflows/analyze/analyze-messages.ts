@@ -7,6 +7,10 @@ export const ANALYZE_MESSAGES = {
     "No existing knowledge graph found — running full ingestion...",
   AUTO_DELTA_INGESTION: "Re-parsing changed files since the last analysis...",
   AUTO_NOOP: "Knowledge graph already up to date with HEAD.",
+  /** §10c's commit-time nudge — non-blocking, exit-0; `doctor` reports the same condition
+   *  passively as a backup (T4) for anyone who doesn't read console output or grep logs. */
+  TIER_B_CAP_NUDGE:
+    "Commits since the last Tier B batch have exceeded the cap -- push, or run `docuvia analyze --escalate-to-lsp && docuvia snapshot`, to trigger it.",
   EXTRACTING: (targetPath: string) =>
     `Extracting decisions from ${targetPath}...`,
   FILES_DROPPED: (count: number) =>
@@ -47,6 +51,8 @@ export const ANALYZE_EVENTS = {
   AUTO_ERROR: "analyze.auto.error",
   DELTA_NOOP: "analyze.delta.noop",
   DELTA_NO_HEAD: "analyze.delta.no_head",
+  /** §10c's commit-time nudge (Tier A half; `doctor`'s passive backup is a separate event). */
+  TIER_B_COMMIT_CAP_NUDGE: "analyze.auto.tier_b_cap_nudge",
   FOCUSED_START: "analyze.focused.start",
   FOCUSED_ERROR: "analyze.focused.error",
   FOCUSED_SUMMARY: "analyze.focused.summary",

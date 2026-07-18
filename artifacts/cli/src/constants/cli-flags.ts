@@ -18,6 +18,9 @@ export const CLI_FLAGS = {
    *  interactive "continue with AST-only fallback?" prompt when the LSP environment isn't ready
    *  for a manual/interactive invocation -- proceeds straight to the degrade-and-log path. */
   FALLBACK_AST: "--fallback-ast",
+  /** `doctor --fix` (phase1-decision-integration.md §10d, T6) -- the only `doctor` flag that
+   *  mutates workspace files, and only for the legacy-hook duplicate-block condition. */
+  FIX: "--fix",
 } as const;
 
 /** Values accepted by `--format=` (`query` command) — shared between `cli.ts`'s flag cast and `query.ts`'s runtime dispatch. */

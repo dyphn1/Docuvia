@@ -164,6 +164,9 @@ function makeMockKnowledgeGit(
     ensureKnowledgeBranch: vi.fn(),
     installPostCommitHook: vi.fn(),
     installPrePushHook: vi.fn(),
+    removePostCommitHook: vi.fn(),
+    removePrePushHook: vi.fn(),
+    repairDuplicatePostCommitHook: vi.fn(),
     packSnapshotToKnowledgeBranch: vi.fn(),
     syncKnowledgeBranch: vi.fn(),
     resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
@@ -239,6 +242,93 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
       .split("\n")
       .map((line) => JSON.parse(line));
     expect(lines.some((l) => l.event === "analyze.delta.noop")).toBe(true);
+    expect(lines.some((l) => l.event === "analyze.auto.tier_b_cap_nudge")).toBe(
+      false,
+    );
+  });
+
+  it("§10c commit-time nudge: logs a one-line nudge (once) when the Tier B commit-cap is exceeded, without affecting the dispatch result", async () => {
+    const store = makeMockStore({
+      meta: {
+        get: vi.fn().mockImplementation((key: string) => {
+          if (key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA)
+            return "same-sha";
+          if (key === GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA)
+            return "batch-sha";
+          return undefined;
+        }),
+        set: vi.fn(),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({
+        getHeadSha: vi.fn().mockResolvedValue("same-sha"),
+        // "batch-sha" not found within the probed ancestry window -- treated as "at least cap+1",
+        // i.e. exceeded (isTierBCommitCapExceeded's documented safe-failure mode).
+        getCommitAncestry: vi
+          .fn()
+          .mockResolvedValue(Array.from({ length: 21 }, (_, i) => `sha-${i}`)),
+      }),
+    );
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    const logger = createMockLogger();
+    const result = await new AnalyzeWorkflow(tmpDir, logger).execute();
+
+    expect(result).toEqual({ kind: "autoDeltaNoop", headSha: "same-sha" });
+    expect(
+      logger.events.filter(
+        (e) => e.message === ANALYZE_MESSAGES.TIER_B_CAP_NUDGE,
+      ).length,
+    ).toBe(1);
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    expect(
+      lines.filter((l) => l.event === "analyze.auto.tier_b_cap_nudge").length,
+    ).toBe(1);
+  });
+
+  it("§10c commit-time nudge: no nudge when the commit-cap key is absent (pre-Slice-3 workspace) -- matches isTierBCommitCapExceeded's inactive-when-absent contract", async () => {
+    const store = makeMockStore({
+      meta: {
+        get: vi
+          .fn()
+          .mockImplementation((key: string) =>
+            key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+              ? "same-sha"
+              : undefined,
+          ),
+        set: vi.fn(),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({
+        getHeadSha: vi.fn().mockResolvedValue("same-sha"),
+      }),
+    );
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    const logger = createMockLogger();
+    await new AnalyzeWorkflow(tmpDir, logger).execute();
+
+    expect(
+      logger.events.some(
+        (e) => e.message === ANALYZE_MESSAGES.TIER_B_CAP_NUDGE,
+      ),
+    ).toBe(false);
   });
 
   it("dispatches to runFullIngestion when the graph has no project row", async () => {
@@ -615,6 +705,7 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
         ],
       }),
       streamChatCompletion: vi.fn(),
+      checkAvailability: vi.fn().mockResolvedValue({ available: true }),
     };
     docuviaFactory.register(TOKENS.LlmClient, () => () => mockLlmClient);
     docuviaFactory.lock();
@@ -789,6 +880,7 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
         ],
       }),
       streamChatCompletion: vi.fn(),
+      checkAvailability: vi.fn().mockResolvedValue({ available: true }),
     };
     docuviaFactory.register(TOKENS.LlmClient, () => () => mockLlmClient);
   }
@@ -813,6 +905,43 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
 
     const lines = readAnalyzeLog();
     expect(lines.some((l) => l.event === "analyze.focused.error")).toBe(true);
+  });
+
+  it("§7d watchlist (T10): logs analyze.focused.error and rethrows when the chatCompletion call itself rejects (network/HTTP-level failure, not a parse failure)", async () => {
+    fs.writeFileSync(path.join(tmpDir, "sample.ts"), "export const x = 1;\n");
+    const mockLlmClient: ILlmClient = {
+      initialize: vi.fn(),
+      chatCompletion: vi
+        .fn()
+        .mockRejectedValue(
+          new DocuviaError(
+            ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
+            "connection refused",
+          ),
+        ),
+      streamChatCompletion: vi.fn(),
+      checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+    };
+    docuviaFactory.register(TOKENS.LlmClient, () => () => mockLlmClient);
+    docuviaFactory.lock();
+
+    let caught: unknown;
+    try {
+      await new AnalyzeWorkflow(tmpDir, createMockLogger(), {
+        targetPath: "sample.ts",
+        ...llmOptions,
+      }).execute();
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(DocuviaError);
+    expect((caught as DocuviaError).code).toBe("LLM_CHAT_COMPLETION_FAILED");
+
+    const lines = readAnalyzeLog();
+    const errorLine = lines.find((l) => l.event === "analyze.focused.error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine!.message).toBe("connection refused");
   });
 
   it("throws DocuviaError with code LLM_INVALID_RESPONSE when the response content is null", async () => {

@@ -96,6 +96,7 @@ function makeLlmClient(
       ],
     })),
     streamChatCompletion: vi.fn(),
+    checkAvailability: vi.fn().mockResolvedValue({ available: true }),
   };
 }
 
@@ -375,6 +376,7 @@ describe("runTierCDrain() -- persistence and honest degradation", () => {
           ),
         ),
       streamChatCompletion: vi.fn(),
+      checkAvailability: vi.fn().mockResolvedValue({ available: true }),
     });
 
     const result = await runTierCDrain(baseDeps({ workspaceRoot, store, git }));

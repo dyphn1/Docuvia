@@ -45,6 +45,39 @@ async function uninstallPlatformHooks(
   return failures;
 }
 
+/** Returns the git-hooks-removal failure name, or `null` when it succeeded (never throws itself —
+ *  `docuviaApi.uninstallGitHooks()` is already non-fatal per hook, this catch is a defensive
+ *  backstop matching `cleanupUninstallDatabase`'s own shape). */
+async function removeGitHooksStep(
+  workspaceRoot: string,
+  logger: UninstallLogger,
+): Promise<string | null> {
+  const scopeId = crypto.randomUUID();
+  docuviaMemory.createScope(scopeId);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
+
+  try {
+    const result = await docuviaApi.uninstallGitHooks(scopeId, logger);
+    ui.success(
+      UI_MESSAGES.UNINSTALL_GIT_HOOKS_SUCCESS(
+        result.postCommitRemoved,
+        result.prePushRemoved,
+      ),
+    );
+    return null;
+  } catch (error: unknown) {
+    const message =
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
+    logger.warn(UI_MESSAGES.UNINSTALL_GIT_HOOKS_FAIL_LOG, { error: message });
+    ui.warn(UI_MESSAGES.UNINSTALL_GIT_HOOKS_FAIL + message);
+    return UI_MESSAGES.UNINSTALL_GIT_HOOKS_FAILURE_NAME;
+  } finally {
+    docuviaMemory.deleteScope(scopeId);
+  }
+}
+
 /** Returns the DB-cleanup failure name, or `null` when skipped/succeeded. */
 async function cleanupUninstallDatabase(
   workspaceRoot: string,
@@ -117,6 +150,9 @@ export async function uninstallCommand(
       allowGlobalMcpConfig,
       logger,
     );
+
+    const gitHooksFailure = await removeGitHooksStep(workspaceRoot, logger);
+    if (gitHooksFailure) failures.push(gitHooksFailure);
 
     const dbFailure = await cleanupUninstallDatabase(
       workspaceRoot,

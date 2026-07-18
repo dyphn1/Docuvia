@@ -19,16 +19,13 @@ sequenceDiagram
     participant Svc as ImpactService
     participant Log as impact.log (JSONL)
 
-    User->>CLI: docuvia impact target, escalateToLsp flag
+    User->>CLI: docuvia impact target
     alt target missing
         CLI-->>User: error, exit 1
     end
 
-    CLI->>API: docuviaApi.impact scopeId logger, target, escalateToLsp
+    CLI->>API: docuviaApi.impact scopeId logger, target
     API->>WF: new ImpactWorkflow execute
-    opt escalateToLsp passed
-        WF->>WF: log warn, escalate to lsp not implemented
-    end
     WF->>Log: impact.start
 
     WF->>Hydr: ensureHydrated workspaceRoot logger
@@ -56,24 +53,23 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| Step                                                                       | Governing ADR(s)                                                          | Verdict                             |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ----------------------------------- |
-| Staleness-check auto-hydrate before read                                   | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)      | ✅ Match                            |
-| 1-hop SQL JOIN blast radius (exact-then-LIKE) as the fast heuristic filter | [IMPT-001](../adr/impact/IMPT-001-sql-single-hop-blast-radius.md)         | ✅ Match                            |
-| `escalateToLsp` accepted as a flag                                         | [IMPT-003](../adr/impact/IMPT-002-lsp-for-absolute-quality.md)            | ⚠️ **Documented no-op** — see below |
-| `impact.start` / `impact.summary` JSONL log                                | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md) | ✅ Match                            |
+| Step                                                                       | Governing ADR(s)                                                          | Verdict  |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------- |
+| Staleness-check auto-hydrate before read                                   | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)      | ✅ Match |
+| 1-hop SQL JOIN blast radius (exact-then-LIKE) as the fast heuristic filter | [IMPT-001](../adr/impact/IMPT-001-sql-single-hop-blast-radius.md)         | ✅ Match |
+| `impact.start` / `impact.summary` JSONL log                                | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md) | ✅ Match |
 
 ## Conflicts Found
 
-### `escalateToLsp` is accepted but does nothing — a known, self-documented gap against IMPT-003
+### `escalateToLsp` removed (Slice 5, §10b) — no longer a gap to document
 
-[IMPT-003](../adr/impact/IMPT-002-lsp-for-absolute-quality.md) mandates the LSP-escalation layer as
-the actual quality guarantee, explicitly calling the SQL single-hop pass (IMPT-001) an
-insufficient "first pass" filter that must not be trusted for automated refactoring decisions.
-`ImpactWorkflow`'s own doc comment (`impact-workflow.ts:19`) is upfront about the gap: _"`escalateToLsp`
-is accepted but treated as a documented no-op, matching old Docuvia — reserved for a future
-TypeScript-compiler-backed precise-reference pass."_ This isn't a silent conflict — the code
-self-discloses it — but it means `impact`'s blast radius is, today, always the IMPT-001 heuristic
-layer only, never the IMPT-003 LSP-verified layer the ADR treats as mandatory for trustworthy
-results. Flagged here because it's the same underlying gap [review](review-execution-flow.md) has,
-just already acknowledged in a code comment rather than silent.
+Prior revisions of this document flagged `escalateToLsp` as a self-disclosed no-op against
+[IMPT-003](../adr/impact/IMPT-002-lsp-for-absolute-quality.md) — the flag was accepted by `impact`
+but never implemented any LSP-escalation behavior. Per
+`docs/gitbook/analysis/phase1-decision-integration.md` §10b's owner ruling, the flag has been
+removed entirely (CLI wiring, `ImpactWorkflow` option, `MemoryKeys.ESCALATE_TO_LSP` usage in
+`impact.ts`/`impact-workflow.ts`) rather than given real behavior — a flag that visibly does
+nothing is exactly the "no invisible failure" footgun the project's stance argues against.
+`docuvia impact <target> --escalate-to-lsp` now reports an unknown-flag error like any other
+unrecognized flag. `impact`'s blast radius remains the IMPT-001 heuristic layer only; a future
+LSP-verified layer (if ever built) would need a new, real implementation, not this revived flag.

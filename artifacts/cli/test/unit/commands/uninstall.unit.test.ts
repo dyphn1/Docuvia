@@ -11,7 +11,12 @@ import {
 } from "../../../src/platforms/index.js";
 
 vi.mock("@workspace/ui-core", () => ({
-  docuviaApi: { clean: vi.fn() },
+  docuviaApi: {
+    clean: vi.fn(),
+    uninstallGitHooks: vi
+      .fn()
+      .mockResolvedValue({ postCommitRemoved: true, prePushRemoved: true }),
+  },
 }));
 
 const spinnerSucceed = vi.fn();
@@ -56,10 +61,16 @@ vi.mock("../../../src/platforms/index.js", () => {
 });
 
 const mockClean = vi.mocked(docuviaApi.clean);
+const mockUninstallGitHooks = vi.mocked(docuviaApi.uninstallGitHooks);
 
 describe("uninstallCommand", () => {
   beforeEach(() => {
     mockClean.mockReset();
+    mockUninstallGitHooks.mockReset();
+    mockUninstallGitHooks.mockResolvedValue({
+      postCommitRemoved: true,
+      prePushRemoved: true,
+    });
     spinnerSucceed.mockReset();
     spinnerWarn.mockReset();
     spinnerFail.mockReset();
@@ -86,7 +97,8 @@ describe("uninstallCommand", () => {
     await uninstallCommand(process.cwd(), false);
 
     expect(mockClean).toHaveBeenCalled();
-    expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
+    // 2, not 1: one scope for the new git-hooks-removal step, one for the db cleanup step.
+    expect(deleteScopeSpy).toHaveBeenCalledTimes(2);
 
     const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
     const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
@@ -105,6 +117,24 @@ describe("uninstallCommand", () => {
       process.cwd(),
       false,
     );
+    expect(mockUninstallGitHooks).toHaveBeenCalled();
+  });
+
+  it("surfaces a git-hooks-removal failure in the existing partial-failure path", async () => {
+    mockClean.mockResolvedValue({
+      success: true,
+      partialFailure: false,
+      message: "Cleaned",
+    } as any);
+    mockUninstallGitHooks.mockRejectedValue(new Error("EACCES"));
+
+    await uninstallCommand(process.cwd(), false);
+
+    expect(mockClean).toHaveBeenCalled();
+    expect(ui.warn).toHaveBeenCalledWith(
+      expect.stringContaining("git hooks removal"),
+    );
+    expect(process.exitCode).toBe(1);
   });
 
   it("sets exitCode to 1 on failure", async () => {
@@ -114,7 +144,9 @@ describe("uninstallCommand", () => {
     await uninstallCommand(process.cwd(), false);
 
     expect(ui.warn).toHaveBeenCalledWith(expect.stringContaining("boom"));
-    expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
+    // 2, not 1: one scope for the git-hooks-removal step, one for the db cleanup step (whose
+    // failure this test exercises).
+    expect(deleteScopeSpy).toHaveBeenCalledTimes(2);
     expect(process.exitCode).toBe(1);
   });
 

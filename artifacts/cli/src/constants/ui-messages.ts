@@ -198,6 +198,16 @@ export const UI_MESSAGES = {
   UNINSTALL_REMOVED_FILE_PREFIX: "Removed ",
   UNINSTALL_REMOVED_MCP_SERVER_PREFIX: "Removed MCP server from ",
 
+  // Uninstall Command -- git hooks removal (phase1-decision-integration.md §10a)
+  UNINSTALL_GIT_HOOKS_SUCCESS: (
+    postCommitRemoved: boolean,
+    prePushRemoved: boolean,
+  ) =>
+    `Removed git hooks (post-commit: ${postCommitRemoved ? "removed" : "not present"}, pre-push: ${prePushRemoved ? "removed" : "not present"}).`,
+  UNINSTALL_GIT_HOOKS_FAIL: "Failed to remove git hooks: ",
+  UNINSTALL_GIT_HOOKS_FAIL_LOG: "uninstall's git hooks removal failed",
+  UNINSTALL_GIT_HOOKS_FAILURE_NAME: "git hooks removal",
+
   // Doctor Command
   DOCTOR_HEADER: "Docuvia Doctor Diagnostics",
   DOCTOR_START: "Running diagnostics...",

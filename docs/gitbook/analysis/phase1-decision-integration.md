@@ -823,3 +823,122 @@ categorization only); the LSP-side `SymbolKind` distinction (`LspSymbolKinds.MET
 never persisted or logged per-kind. Getting that specific breakdown would need new
 instrumentation in the edge-resolution provider — not done here (out of scope for a validation
 run); the aggregate numbers above are the honest substitute and are unambiguously positive.
+
+## 10. Slice 5 (`doctor` reliability) — integration contract (owner rulings, 2026-07-18)
+
+> **Status update:** Slices 1-4 are committed and pushed (`871c961`..`6a51ead`), including the
+> §9n Windows LSP spawn fix and a bonus PLAT-006 MCP-lock fix pulled forward from this slice's
+> scope (`6a51ead`) after an ADR-vs-implementation audit found it was a real crash risk rather
+> than a doc-only drift. §9m-2's validation precondition is closed (§9n). This section settles
+> the four open sub-decisions §7c left unresolved, before implementation.
+
+### 10a. `uninstall` removes the git post-commit hook
+
+Ruling: **yes** — `uninstall` actively removes the hook it installed, rather than leaving it for
+`doctor` to report after the fact. An uninstalled Docuvia otherwise leaves a hook that still
+fires and fails to resolve (`npx --no-install` silent no-op) — the exact invisible failure
+PLAT-007 forbids, and one `uninstall` itself causes. `doctor`'s "hook present but docuvia not
+resolvable" check (§7c bullet 1) stays regardless — it also has to catch the general case (hook
+present for reasons other than a stale uninstall: pruned `node_modules`, a PATH change, a moved
+workspace).
+
+### 10b. `impact --escalate-to-lsp` flag: remove
+
+Ruling: **remove the flag**, including its CLI wiring and `MemoryKeys.ESCALATE_TO_LSP` plumbing
+in `impact.ts`/`impact-workflow.ts`, rather than give it real behavior. `impact` already reads
+whatever edges Tier B has resolved into the graph regardless of the flag — today only its own
+doc comment discloses that it's a no-op. A flag that visibly does nothing is exactly the kind of
+footgun the project's "no invisible failure" stance argues against.
+
+### 10c. Commit-cap: nudge at commit time, `doctor` as backup
+
+Ruling: **both** — Tier A logs a non-blocking, exit-0, one-line nudge once `commitCapExceeded`
+computes true (today it's only surfaced inside the JSONL summary, per §7d's "no firing point"
+watchlist row), and `doctor` reports the same condition passively as backup. The nudge fires at
+the moment the user could act on it (mid-workflow, could push now); `doctor` catches anyone who
+doesn't read console output or grep logs.
+
+### 10d. Legacy-hook duplicate block: report by default, explicit repair path
+
+Ruling: **both, not either/or** — `doctor` reports the duplicate-block condition by default
+(never silently mutates a file the user may have hand-edited), and a separate explicit
+invocation performs the rewrite only when asked. Converges into the existing `doctor` command
+(e.g. `doctor --fix`) rather than a new command, per the project's no-new-commands /
+same-essence-converges principle. Matches the general project stance against unattended
+mutation of user-edited files.
+
+### 10e. Scope carried into Slice 5 from §7c (unchanged by the above rulings)
+
+- `doctor` detects "hook present but docuvia not resolvable" (`npx --no-install` silent no-op).
+- `doctor` detects the legacy-hook / both-blocks-firing case (§10d settles the repair-path
+  decision; detection itself was always in scope).
+- A real reachability probe for the Tier C CLIProxyAPI endpoint. `ILlmClient` has no
+  `checkAvailability()`-equivalent today — the first failed `chatCompletion` call is the only
+  existing signal (Slice 4 judgment call, §9l item 6). Slice 5 adds a real pre-flight probe,
+  mirroring Tier B's `IEdgeResolutionProvider` pre-flight gate.
+- LSP binary presence check (§7a-1), independent of whether a Tier B batch has ever run.
+
+Two `§7d` watchlist rows are cheap enough to fold into this slice rather than stay open
+indefinitely: the unowned `.gitignore` `graphify-out/` line (commit or drop explicitly) and the
+focused-path `analyze.focused.error` logging gap (re-verify and close, or fix). Not required for
+Slice 5, but low-cost to close out while touching adjacent code.
+
+> **Status update (2026-07-18):** Slice 5 implemented per `docs/ai_plans/implement_slice5-doctor-reliability.md`
+> (T1-T10, dispatch order T2→T1→T9→T3→T4→T5→T6→T7→T8→T10). Build green; full monorepo suite green
+> (baseline 115 files / 747 tests at Slice 4 close-out, this slice adds new test files/cases on
+> top without removing any). ESLint's `complexity: 10` budget respected everywhere touched
+> (`DoctorWorkflow.execute()` was refactored to delegate its per-check skip/run ternaries to a
+> small `runOrSkip` helper once T4-T8's checks pushed it over budget).
+>
+> - **§10a (T1):** `uninstall` now actively removes both the post-commit hook (Tier A) and the
+>   pre-push hook (Tier B) via `IKnowledgeGitService.removePostCommitHook`/`removePrePushHook` ->
+>   `UninstallHooksWorkflow` -> `docuviaApi.uninstallGitHooks()`, reusing the same exact-content-
+>   match technique `installPostCommitHook`'s legacy upgrade already uses (decision 1f). Both
+>   hooks, not just post-commit, per decision 1a (`installPrePushHook` was shipped in Slice 3 and
+>   has the identical leave-a-dead-hook-behind risk).
+> - **§10b (T2):** `impact --escalate-to-lsp` removed entirely (CLI flag, `ImpactWorkflow` option,
+>   `impact.ts`'s `MemoryKeys.ESCALATE_TO_LSP` write). `analyze --escalate-to-lsp` untouched --
+>   confirmed via `grep -r escalateToLsp lib/ui-core/src/workflows/impact
+artifacts/cli/src/commands/impact.ts` returning nothing.
+> - **§10c (T3/T4):** Tier A's `dispatchAutoMode` logs a one-line, best-effort, exit-0 nudge
+>   (`ANALYZE_MESSAGES.TIER_B_CAP_NUDGE` / `analyze.auto.tier_b_cap_nudge`) once
+>   `isTierBCommitCapExceeded` computes true, reusing the helper verbatim. `doctor` reports the
+>   same condition passively as backup (`tier_b_commit_cap` diagnostic) -- always `PASS` per
+>   decision 1d, silently skipped (not double-reported) when no local db exists yet.
+> - **§10d (T5/T6):** `doctor`'s new `git_hook` diagnostic detects an absent hook (`PASS`), a
+>   both-markers duplicate block (`FAIL`, `--fix` suggestion), a legacy-only hook (`FAIL`, re-run
+>   `init` suggestion), and (for a healthy-shaped hook) probes whether `docuvia` itself actually
+>   resolves -- `node_modules/.bin` first, then a live short-timeout `npx --no-install docuvia`
+>   probe classified by inspecting captured output for a stable CLI marker rather than trusting
+>   the exit code alone (`git-hook-resolvability.ts`). `doctor --fix` performs the opt-in repair
+>   only when asked, via `IKnowledgeGitService.repairDuplicatePostCommitHook`'s marker-bounded
+>   extraction (decision 1f) -- verified never to write when `--fix` is absent or the hook is
+>   healthy.
+> - **§10e bullet 3 (T7):** `ILlmClient.checkAvailability()` added to the contract (decision 1e:
+>   reachability, not correctness -- any received HTTP response counts as available, only a
+>   network-level failure is not), implemented on `FetchLlmClient` as a short-timeout `GET
+config.baseUrl`. `doctor`'s `llm_reachability` diagnostic is `PASS` when not configured,
+>   `PASS` when reachable, `FAIL` when configured-but-unreachable.
+> - **§10e bullet 4 (T8):** `doctor`'s `lsp_binary` diagnostic reuses
+>   `IEdgeResolutionProvider.checkAvailability()` verbatim (the same token/method
+>   `checkTierBGate`/Tier B's own batch already resolve) -- always `PASS`, the `reason` from a
+>   not-available result becomes the informative message. TS/JS-scoped only, per Tier B's existing
+>   language boundary.
+> - **T9 (`.gitignore`):** investigated via `git log -S"graphify-out" -- .gitignore` -- the line
+>   was introduced intentionally in commit `0b7daf7` (Slice 3's own dispatch), already committed
+>   and pushed. Not the "appeared unowned" case §7d originally described. **Closed, no action
+>   taken.**
+> - **T10 (`analyze.focused.error` gap):** `executeDecisionExtraction`'s `chatCompletion` call is
+>   now wrapped in its own `try/catch` that appends `analyze.focused.error` (with the caught
+>   error's message) before re-throwing -- closes the one gap where a network/HTTP-level LLM
+>   failure previously propagated with no JSONL trace, matching the method's other two explicit
+>   `FOCUSED_ERROR` sites (left unchanged, as they're more specific than this blanket wrapper).
+>
+> **Deviations from the plan / notes for the verifier:** the live `npx --no-install docuvia`
+> resolvability probe (T5) was **not** timeboxed out -- it shipped in the same dispatch as the
+> marker-based checks, contrary to the plan's flagged fallback ("may ship first with the live
+> probe flagged as a fast-follow"). It classifies resolvability by scanning combined stdout+stderr
+> for the literal marker `"docuvia doctor"` (a `getUsageText()` line), not the exit code, per the
+> plan's own rationale. `doctor-execution-flow.md`'s pre-existing "asymmetry" observation
+> (Claude/Cursor hooks check still living in `doctor.ts` rather than `DoctorWorkflow`) was left
+> unresolved, as scoped -- Slice 5 closed the asymmetry only for the _new_ checks it added.

@@ -29,16 +29,34 @@ vi.mock("@workspace/ui-core", () => ({
   },
 }));
 
+const ENV_BASE_URL = "AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL";
+const ENV_API_KEY = "AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY";
+
 describe("doctorCommand", () => {
+  let originalBaseUrl: string | undefined;
+  let originalApiKey: string | undefined;
+
   beforeEach(() => {
     process.exitCode = undefined;
     vi.clearAllMocks();
 
     vi.mocked(fs.stat).mockResolvedValue({ size: 100 } as any);
+
+    // Isolate every test in this file from whatever the real ambient environment happens to have
+    // set for these vars (T7's env-var read-through would otherwise leak real values into
+    // unrelated tests' exact-object assertions).
+    originalBaseUrl = process.env[ENV_BASE_URL];
+    originalApiKey = process.env[ENV_API_KEY];
+    delete process.env[ENV_BASE_URL];
+    delete process.env[ENV_API_KEY];
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    if (originalBaseUrl === undefined) delete process.env[ENV_BASE_URL];
+    else process.env[ENV_BASE_URL] = originalBaseUrl;
+    if (originalApiKey === undefined) delete process.env[ENV_API_KEY];
+    else process.env[ENV_API_KEY] = originalApiKey;
   });
 
   it("should run diagnostics and succeed when all checks pass", async () => {
@@ -111,7 +129,7 @@ describe("doctorCommand", () => {
     expect(docuviaApi.doctor).toHaveBeenCalledWith(
       expect.any(String),
       expect.anything(),
-      { skipDb: false, skipGit: false, skipLogs: true },
+      { skipDb: false, skipGit: false, skipLogs: true, fix: false },
     );
     expect(fs.stat).not.toHaveBeenCalled();
     expect(ui.info).toHaveBeenCalledWith(
@@ -120,5 +138,77 @@ describe("doctorCommand", () => {
     expect(ui.success).toHaveBeenCalledWith(
       expect.stringContaining("All diagnostics passed."),
     );
+  });
+
+  it("passes fix through to docuviaApi.doctor when --fix is set", async () => {
+    vi.mocked(docuviaApi.doctor).mockResolvedValue({
+      allPassed: true,
+      diagnostics: {},
+    });
+
+    await doctorCommand(process.cwd(), { fix: true });
+
+    expect(docuviaApi.doctor).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.anything(),
+      { skipDb: false, skipGit: false, skipLogs: false, fix: true },
+    );
+  });
+
+  it("defaults fix to false when --fix is not given", async () => {
+    vi.mocked(docuviaApi.doctor).mockResolvedValue({
+      allPassed: true,
+      diagnostics: {},
+    });
+
+    await doctorCommand(process.cwd());
+
+    expect(docuviaApi.doctor).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.anything(),
+      { skipDb: false, skipGit: false, skipLogs: false, fix: false },
+    );
+  });
+
+  describe("Tier C LLM env-var read-through (§10e bullet 3, T7)", () => {
+    it("passes llmBaseUrl/llmApiKey through from process.env when set", async () => {
+      process.env[ENV_BASE_URL] = "http://127.0.0.1:8317";
+      process.env[ENV_API_KEY] = "secret-key";
+      vi.mocked(docuviaApi.doctor).mockResolvedValue({
+        allPassed: true,
+        diagnostics: {},
+      });
+
+      await doctorCommand(process.cwd());
+
+      expect(docuviaApi.doctor).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        expect.objectContaining({
+          llmBaseUrl: "http://127.0.0.1:8317",
+          llmApiKey: "secret-key",
+        }),
+      );
+    });
+
+    it("passes llmBaseUrl/llmApiKey through as undefined when the env vars aren't set", async () => {
+      delete process.env[ENV_BASE_URL];
+      delete process.env[ENV_API_KEY];
+      vi.mocked(docuviaApi.doctor).mockResolvedValue({
+        allPassed: true,
+        diagnostics: {},
+      });
+
+      await doctorCommand(process.cwd());
+
+      expect(docuviaApi.doctor).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        expect.objectContaining({
+          llmBaseUrl: undefined,
+          llmApiKey: undefined,
+        }),
+      );
+    });
   });
 });

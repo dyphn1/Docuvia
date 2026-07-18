@@ -15,8 +15,7 @@ import { ensureHydrated } from "../../utils/ensure-hydrated.js";
  * The `impact` workflow — 1-hop blast-radius lookup by target name (exact-then-LIKE), via the
  * Domain Core's `IImpactService` (mirrors old Docuvia's `QueryService.getImpact`, minus the
  * dead-code Postgres `ImpactAnalysisService`, which old Docuvia never wired to this command
- * either). `escalateToLsp` is accepted but treated as a documented no-op, matching old
- * Docuvia — reserved for a future TypeScript-compiler-backed precise-reference pass.
+ * either).
  */
 export class ImpactWorkflow {
   constructor(
@@ -24,21 +23,13 @@ export class ImpactWorkflow {
     private readonly logger: ILogger,
   ) {}
 
-  public async execute(
-    target: string,
-    options: { escalateToLsp?: boolean } = {},
-  ): Promise<ImpactResult | null> {
+  public async execute(target: string): Promise<ImpactResult | null> {
     const { workspaceRoot, logger } = this;
-
-    if (options.escalateToLsp) {
-      logger.warn(IMPACT_MESSAGES.ESCALATE_TO_LSP_NOT_IMPLEMENTED);
-    }
 
     logger.info(IMPACT_MESSAGES.RESOLVING);
     await appendImpactLogLine(workspaceRoot, {
       event: IMPACT_EVENTS.START,
       target,
-      escalateToLsp: options.escalateToLsp ?? false,
     });
 
     await ensureHydrated(workspaceRoot, logger);

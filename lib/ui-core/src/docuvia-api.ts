@@ -42,6 +42,7 @@ import {
 } from "./workflows/doctor/doctor-workflow.js";
 import { checkTierBGate } from "./workflows/analyze/tier-b-gate.js";
 import type { DoctorResult } from "./workflows/doctor/doctor-result.js";
+import { UninstallHooksWorkflow } from "./workflows/uninstall/uninstall-hooks-workflow.js";
 
 function requireMemory<T>(scopeId: string, key: MemoryKey): T {
   const value = docuviaMemory.get<T>(scopeId, key);
@@ -218,13 +219,7 @@ export const docuviaApi = {
       MemoryKeys.WORKSPACE_ROOT,
     );
     const target = requireMemory<string>(scopeId, MemoryKeys.TARGET);
-    const escalateToLsp = docuviaMemory.get<boolean>(
-      scopeId,
-      MemoryKeys.ESCALATE_TO_LSP,
-    );
-    return new ImpactWorkflow(workspaceRoot, logger).execute(target, {
-      escalateToLsp,
-    });
+    return new ImpactWorkflow(workspaceRoot, logger).execute(target);
   },
 
   async query(scopeId: string, logger: ILogger): Promise<QueryResult> {
@@ -291,6 +286,19 @@ export const docuviaApi = {
       MemoryKeys.WORKSPACE_ROOT,
     );
     return new DoctorWorkflow(workspaceRoot, logger).execute(options);
+  },
+
+  /** `uninstall`'s hooks-removal half (phase1-decision-integration.md §10a) — removes both git
+   *  hooks `init` installs. See `UninstallHooksWorkflow`'s doc comment. */
+  async uninstallGitHooks(
+    scopeId: string,
+    logger: ILogger,
+  ): Promise<{ postCommitRemoved: boolean; prePushRemoved: boolean }> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    return new UninstallHooksWorkflow(workspaceRoot, logger).execute();
   },
 
   /** D2's mandatory pre-flight gate for a manual/interactive `analyze --escalate-to-lsp`

@@ -94,15 +94,14 @@ async function handleReview(ctx: CommandContext): Promise<void> {
 }
 
 async function handleImpact(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([CLI_FLAGS.ESCALATE_TO_LSP]);
+  ctx.parser.checkUnknownFlags([]);
   const target = ctx.parser.getPositional(0);
   if (!target) {
     ui.error(UI_MESSAGES.IMPACT_MISSING_TARGET);
     process.exitCode = 1;
     return;
   }
-  const escalateToLsp = ctx.parser.hasFlag(CLI_FLAGS.ESCALATE_TO_LSP);
-  await impactCommand(target, { escalateToLsp }, ctx.workspaceRoot);
+  await impactCommand(target, ctx.workspaceRoot);
 }
 
 async function handleQuery(ctx: CommandContext): Promise<void> {
@@ -161,16 +160,19 @@ async function handleDoctor(ctx: CommandContext): Promise<void> {
     CLI_FLAGS.SKIP_GIT,
     CLI_FLAGS.SKIP_HOOKS,
     CLI_FLAGS.SKIP_LOGS,
+    CLI_FLAGS.FIX,
   ]);
   const skipDb = ctx.parser.hasFlag(CLI_FLAGS.SKIP_DB);
   const skipGit = ctx.parser.hasFlag(CLI_FLAGS.SKIP_GIT);
   const skipHooks = ctx.parser.hasFlag(CLI_FLAGS.SKIP_HOOKS);
   const skipLogs = ctx.parser.hasFlag(CLI_FLAGS.SKIP_LOGS);
+  const fix = ctx.parser.hasFlag(CLI_FLAGS.FIX);
   await doctorCommand(ctx.workspaceRoot, {
     skipDb,
     skipGit,
     skipHooks,
     skipLogs,
+    fix,
   });
 }
 

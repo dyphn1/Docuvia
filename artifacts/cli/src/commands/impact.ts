@@ -50,11 +50,9 @@ function printBlastRadius(
 
 /**
  * Thin caller of docuviaApi.impact() - mirrors init.ts's Presentation-layer responsibilities.
- * escalateToLsp is accepted but treated as a documented no-op (see ImpactWorkflow's doc comment).
  */
 export async function impactCommand(
   target: string,
-  options: { escalateToLsp?: boolean } = {},
   cwd: string = process.cwd(),
 ): Promise<void> {
   ui.header(UI_MESSAGES.IMPACT_HEADER);
@@ -83,8 +81,6 @@ export async function impactCommand(
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
   docuviaMemory.set(scopeId, MemoryKeys.TARGET, target);
-  if (options.escalateToLsp)
-    docuviaMemory.set(scopeId, MemoryKeys.ESCALATE_TO_LSP, true);
 
   try {
     const result = await docuviaApi.impact(scopeId, logger);

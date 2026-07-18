@@ -18,6 +18,11 @@ export const GitConstants = {
    * replaces in-place on an existing installation.
    */
   POST_COMMIT_HOOK_MARKER: "docuvia analyze",
+  /** Byte-identical header line shared by `POST_COMMIT_HOOK_CONTENT`/
+   *  `LEGACY_POST_COMMIT_HOOK_CONTENT` — the anchor `doctor --fix`'s marker-bounded repair (§10d,
+   *  decision 1f) uses to strip every Docuvia-authored block regardless of minor hand-edits that
+   *  would break exact-content matching. */
+  DOCUVIA_HOOK_HEADER_COMMENT: "# Docuvia Knowledge Graph Evolver Hook",
   POST_COMMIT_HOOK_CONTENT:
     `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n` +
     `# Non-intrusively extracts AST deltas in the background\n` +
@@ -183,6 +188,19 @@ export const GitMessages = {
     "Pre-push hook was installed by a concurrent process; skipping duplicate append",
   FAILED_TO_INSTALL_PRE_PUSH_HOOK: "Failed to install pre-push hook",
   INSTALLED_PRE_PUSH_HOOK: "Installed pre-push hook",
+
+  /** `uninstall`'s hook-removal messages (phase1-decision-integration.md §10a). */
+  REMOVED_POST_COMMIT_HOOK: "Removed post-commit hook",
+  REMOVED_PRE_PUSH_HOOK: "Removed pre-push hook",
+  NO_POST_COMMIT_HOOK_TO_REMOVE: "No Docuvia post-commit hook to remove",
+  NO_PRE_PUSH_HOOK_TO_REMOVE: "No Docuvia pre-push hook to remove",
+  FAILED_TO_REMOVE_POST_COMMIT_HOOK: "Failed to remove post-commit hook",
+  FAILED_TO_REMOVE_PRE_PUSH_HOOK: "Failed to remove pre-push hook",
+
+  /** `doctor --fix`'s repair messages (phase1-decision-integration.md §10d). */
+  REPAIRED_DUPLICATE_POST_COMMIT_HOOK:
+    "Repaired duplicate post-commit hook block",
+  NOTHING_TO_REPAIR: "Nothing to repair -- post-commit hook is not duplicated",
   PACKED_SNAPSHOT_ONTO_BRANCH: "Packed snapshot onto knowledge branch",
   NO_REMOTE_SKIP_RECONCILIATION:
     "No remote configured; skipping knowledge branch reconciliation",

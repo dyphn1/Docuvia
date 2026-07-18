@@ -131,6 +131,7 @@ export type {
   ChatCompletionChunkChoice,
   ChatCompletionChunk,
   ILlmClient,
+  LlmClientAvailability,
 } from "./interfaces/llm-client.interfaces.js";
 export {
   ChatMessageRoles,

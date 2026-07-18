@@ -1,4 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
@@ -125,5 +127,52 @@ describe("LspJsonRpcClient (real subprocess, Content-Length framing)", () => {
     });
     await client.stop();
     await expect(client.stop()).resolves.toBeUndefined();
+  });
+});
+
+/**
+ * Regression coverage for the Windows `node_modules/.bin` shim gap: `resolveLspBinary()` prefers
+ * a `.cmd` shim on Windows (that's what `npm`/`pnpm` produce for a pure-JS bin like
+ * `typescript-language-server` -- see `lsp-binary-resolver.ts`), and plain `node:child_process`
+ * cannot spawn a `.cmd`/`.bat` file directly there (throws `EINVAL` synchronously). The other
+ * tests in this file only ever spawn `process.execPath` (a real `.exe`), so they never exercised
+ * this path. Mirrors the inline `process.platform === "win32"` branching convention used in
+ * `lsp-binary-resolver.unit.test.ts` -- exercised, not skipped, on whichever OS actually runs it.
+ */
+describe("LspJsonRpcClient (spawning through an npm/pnpm-style node_modules/.bin shim)", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-lsp-cmdshim-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("starts and completes a request/response round trip through the platform's real bin shim", async () => {
+    const isWindows = process.platform === "win32";
+    const wrapperPath = path.join(
+      tmpDir,
+      isWindows ? "fake-lsp-server.cmd" : "fake-lsp-server",
+    );
+    const wrapperContents = isWindows
+      ? `@echo off\r\nnode "${FIXTURE_PATH}" %*\r\n`
+      : `#!/bin/sh\nexec node "${FIXTURE_PATH}" "$@"\n`;
+    fs.writeFileSync(wrapperPath, wrapperContents);
+    if (!isWindows) fs.chmodSync(wrapperPath, 0o755);
+
+    const client = new LspJsonRpcClient();
+    await client.start({
+      command: wrapperPath,
+      args: [],
+      cwd: __dirname,
+    });
+    try {
+      const result = await client.request("echo", { via: "shim" }, 5000);
+      expect(result).toEqual({ via: "shim" });
+    } finally {
+      await client.stop();
+    }
   });
 });

@@ -1,10 +1,34 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import path from "node:path";
 import { LspWireConstants, LSP_MESSAGES } from "./lsp-constants.js";
 
 export interface LspJsonRpcClientOptions {
   command: string;
   args: string[];
   cwd: string;
+}
+
+/** Extensions Windows can only execute through a shell (`cmd.exe`/PowerShell), never directly via
+ *  `CreateProcess` -- exactly the extensions `resolveLspBinary()` tries first for a `node_modules/
+ *  .bin` shim (`.cmd`, and `.bat`/`.ps1` for completeness). Anything else -- including a bare,
+ *  unresolvable command name -- is spawned exactly as before, so the ordinary Windows `ENOENT`
+ *  spawn-failure path (an immediate `error` event, no shell involved) is untouched. */
+const WINDOWS_SHELL_ONLY_EXTENSIONS = new Set([".cmd", ".bat", ".ps1"]);
+
+function needsWindowsShellWrapper(command: string): boolean {
+  return (
+    process.platform === "win32" &&
+    WINDOWS_SHELL_ONLY_EXTENSIONS.has(path.extname(command).toLowerCase())
+  );
+}
+
+/** Double-quotes a single `cmd.exe` command-line token, doubling any embedded `"` (cmd.exe's own
+ *  escaping convention) -- used only for the narrow `.cmd`/`.bat`/`.ps1` case below, each argument
+ *  individually, never a blanket unescaped `shell: true` + array-args (that pattern -- the one
+ *  Node's `DEP0190` deprecation warns about -- concatenates args into the shell string verbatim,
+ *  which is a real injection risk the moment any arg contains a shell metacharacter). */
+function quoteForWindowsShell(token: string): string {
+  return `"${token.replace(/"/g, '""')}"`;
 }
 
 interface PendingRequest {
@@ -38,10 +62,38 @@ export class LspJsonRpcClient {
   /** Spawns the server and resolves once the process has actually started (or rejects on a
    *  synchronous spawn failure, e.g. `ENOENT` for an unresolvable binary). */
   async start(options: LspJsonRpcClientOptions): Promise<void> {
-    const child = spawn(options.command, options.args, {
-      cwd: options.cwd,
-      stdio: ["pipe", "pipe", "pipe"],
-    });
+    // `resolveLspBinary()` prefers a Windows `.cmd` shim (that's how `npm`/`pnpm` install a
+    // pure-JS bin like `typescript-language-server` on Windows), and `node:child_process.spawn`
+    // cannot exec a `.cmd`/`.bat`/`.ps1` file directly there -- it throws `EINVAL` synchronously.
+    // We considered pulling in `cross-spawn` (the usual fix), but on Windows it unconditionally
+    // routes *any* command it can't prove is a bare `.exe`/`.com` through a `cmd.exe` wrapper --
+    // including a genuinely nonexistent binary name, which then reports `ENOENT` asynchronously
+    // via a later `exit`-code-1` re-interpretation instead of the immediate, synchronous-ish
+    // `error` event plain `spawn()` gives today (verified by direct comparison; this would have
+    // silently changed `start()`'s spawn-failure contract for every caller). So: a narrow,
+    // hand-rolled branch that *only* engages `shell: true` for the exact `.cmd`/`.bat`/`.ps1` case
+    // that needs it, leaving every other command (including unresolvable ones) spawned exactly as
+    // before. A blanket `shell: true` with the `args` array as-is would reintroduce
+    // shell-metacharacter injection (and trigger Node's `DEP0190` deprecation, which exists
+    // precisely because array args get concatenated into the shell string unescaped) -- so each
+    // token is quoted individually into a single command string instead.
+    const child = (
+      needsWindowsShellWrapper(options.command)
+        ? spawn(
+            [options.command, ...options.args]
+              .map(quoteForWindowsShell)
+              .join(" "),
+            {
+              cwd: options.cwd,
+              stdio: ["pipe", "pipe", "pipe"],
+              shell: true,
+            },
+          )
+        : spawn(options.command, options.args, {
+            cwd: options.cwd,
+            stdio: ["pipe", "pipe", "pipe"],
+          })
+    ) as ChildProcessWithoutNullStreams;
     this.child = child;
 
     child.stdout.on("data", (chunk: Buffer) => this.onData(chunk));

@@ -322,20 +322,22 @@ requests and never manages the endpoint's process (PLAT-007 stance unchanged).
 
 ### 7d. Watchlist accumulated from Slice 1/2 verifications (no slice owns these yet)
 
-| Item                                           | Source                           | Note                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| ---------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hydrate-then-delta optimization                | 2a ruling 1                      | Empty `local.db` + populated knowledge branch currently full re-parses; hydrating then delta-ing from the `Docuvia-Source` trailer would be cheaper on big repos. Correctness is fine as-is (`markSynced` prevents stale clobber).                                                                                                                                                                                                                                                                                  |
-| Delta log misattribution                       | 2a verifier                      | Delta's reuse of `runParseAndPersist` writes `init.parse_failure`/`init.file_skipped_oversized` events to `init.log` (oversize skips double-logged). Wants an event-name/log-target parameter on the shared helper.                                                                                                                                                                                                                                                                                                 |
-| Dirty-index hash edge                          | 2a verifier                      | Delta takes blob hashes from the index but content at `headSha`; a dirty index can mismatch the `files` dedup table. Harmless today; recheck in Tier B.                                                                                                                                                                                                                                                                                                                                                             |
-| `getChangedFilesSince` asymmetry footgun       | 2a test dispatch                 | No-arg merges untracked files; explicit `baseRef` (even `"HEAD"`) does not. Documented + pinned by integration tests, but easy to misuse in future call sites.                                                                                                                                                                                                                                                                                                                                                      |
-| L3 never reaches the knowledge branch          | 2a verifier learning             | Snapshot packs L2/links only and hydration restores L2 only — L3 durability rests entirely on `local.db` + remote `sync`. Whether L3 belongs in the snapshot is a **Phase 2 (distribute)** design question.                                                                                                                                                                                                                                                                                                         |
-| Focused-path missing error-log line            | pre-merge analyze status         | A `chatCompletion` throw in `analyze <targetPath>` logs `analyze.focused.error` only on some paths (the old analyze-status follow-up dropped in the upstream docs consolidation — re-verify and close or fix).                                                                                                                                                                                                                                                                                                      |
-| `.gitignore` `graphify-out/` line              | outside agent flow               | Appeared in the working tree unowned; deliberately left uncommitted by Slices 1–2. Commit or drop explicitly.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `impact --escalate-to-lsp` no-op flag          | §8 ruling (2026-07-17)           | `impact` benefits transparently from Tier B's better edges without the flag; wire-or-remove deferred to Slice 5.                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Commit-cap trigger has no firing point         | Slice 3 verifier (2026-07-17)    | §7a lists "pre-push + commit cap" as triggers, but §8c structurally forbids LSP at commit time and §8h's pre-push batch runs unconditionally — so the derived cap (`commitCapExceeded`) is computed and surfaced in the JSONL summary but fires nothing. A user who accumulates 20+ commits without pushing gets no batch. Needs an owner ruling (e.g. Tier A logs a nudge, or `doctor` reports it in Slice 5).                                                                                                     |
-| Real-LSP end-to-end acceptance run outstanding | Slice 3 verifier (2026-07-17)    | The sandbox could not install `typescript-language-server`; the JSON-RPC transport is proven against a real spawned subprocess and the edge pipeline at unit level with LSP-shaped payloads. Before Slice 5 closes, run `analyze --escalate-to-lsp && snapshot` once on a real TS repo with the server installed and check method-level edges' `node_key` hit-rate (provider emits METHOD/CONSTRUCTOR-keyed edges the parser may not have nodes for — they drop harmlessly, but the hit-rate is only visible live). |
-| Degraded batch advances `lastTierBBatchSha`    | Slice 3 verifier (2026-07-17)    | A fully-degraded batch (LSP absent) still seeds/advances the cap baseline at the next snapshot while its entries stay queued. Harmless today (pre-push runs regardless) but interacts with §8f's "rebuild queue from `lastTierBBatchSha`" recovery story.                                                                                                                                                                                                                                                           |
-| Tier B "exists at HEAD" ≈ working tree         | Slice 3 implementer (2026-07-17) | §8g's deleted-at-HEAD drop is implemented as an exists-in-working-tree check (documented in `run-tier-b-batch.ts`), since the LSP session reads live files off disk. Joins the dirty-index hash-edge family; the dirty-index item itself was rechecked in Slice 3: Tier B never calls `collectFilesToParse`, so it stays harmless and un-owned.                                                                                                                                                                     |
+| Item                                                                            | Source                                                                                        | Note                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hydrate-then-delta optimization                                                 | 2a ruling 1                                                                                   | Empty `local.db` + populated knowledge branch currently full re-parses; hydrating then delta-ing from the `Docuvia-Source` trailer would be cheaper on big repos. Correctness is fine as-is (`markSynced` prevents stale clobber).                                                                                                                                                                                                                                                                                                                         |
+| Delta log misattribution                                                        | 2a verifier                                                                                   | Delta's reuse of `runParseAndPersist` writes `init.parse_failure`/`init.file_skipped_oversized` events to `init.log` (oversize skips double-logged). Wants an event-name/log-target parameter on the shared helper.                                                                                                                                                                                                                                                                                                                                        |
+| Dirty-index hash edge                                                           | 2a verifier                                                                                   | Delta takes blob hashes from the index but content at `headSha`; a dirty index can mismatch the `files` dedup table. Harmless today; recheck in Tier B.                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `getChangedFilesSince` asymmetry footgun                                        | 2a test dispatch                                                                              | No-arg merges untracked files; explicit `baseRef` (even `"HEAD"`) does not. Documented + pinned by integration tests, but easy to misuse in future call sites.                                                                                                                                                                                                                                                                                                                                                                                             |
+| L3 never reaches the knowledge branch                                           | 2a verifier learning                                                                          | Snapshot packs L2/links only and hydration restores L2 only — L3 durability rests entirely on `local.db` + remote `sync`. Whether L3 belongs in the snapshot is a **Phase 2 (distribute)** design question.                                                                                                                                                                                                                                                                                                                                                |
+| Focused-path missing error-log line                                             | pre-merge analyze status                                                                      | A `chatCompletion` throw in `analyze <targetPath>` logs `analyze.focused.error` only on some paths (the old analyze-status follow-up dropped in the upstream docs consolidation — re-verify and close or fix).                                                                                                                                                                                                                                                                                                                                             |
+| `.gitignore` `graphify-out/` line                                               | outside agent flow                                                                            | Appeared in the working tree unowned; deliberately left uncommitted by Slices 1–2. Commit or drop explicitly.                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `impact --escalate-to-lsp` no-op flag                                           | §8 ruling (2026-07-17)                                                                        | `impact` benefits transparently from Tier B's better edges without the flag; wire-or-remove deferred to Slice 5.                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Commit-cap trigger has no firing point                                          | Slice 3 verifier (2026-07-17)                                                                 | §7a lists "pre-push + commit cap" as triggers, but §8c structurally forbids LSP at commit time and §8h's pre-push batch runs unconditionally — so the derived cap (`commitCapExceeded`) is computed and surfaced in the JSONL summary but fires nothing. A user who accumulates 20+ commits without pushing gets no batch. Needs an owner ruling (e.g. Tier A logs a nudge, or `doctor` reports it in Slice 5).                                                                                                                                            |
+| ~~Real-LSP end-to-end acceptance run outstanding~~ **CLOSED (§9n, 2026-07-18)** | Slice 3 verifier (2026-07-17)                                                                 | Run against Docuvia2's own history; found and fixed a real Windows spawn bug (`EINVAL` on `.cmd` shims — Tier B had never succeeded on Windows before this) rather than just measuring hit-rate. Post-fix: 135/135 files processed, 287 edges applied, 0 failed. Granular METHOD-vs-CONSTRUCTOR `node_key` hit-rate specifically remains unmeasured (not persisted/logged per-kind — would need new instrumentation); aggregate numbers are the honest substitute.                                                                                         |
+| Recursive contract-diffusion (considered, not built)                            | `gemini-3.5-flash/lsp-orchestration-and-escalation.md` (deleted 2026-07-18, superseded by §8) | That report's §3 proposed recursively re-seeding LSP escalation when a referencer of a changed contract is itself a contract, diffusing until fully converged. §8d shipped a simpler one-pass design instead (find references once per queued file, no recursive re-seeding) — cheaper, and no reported case where one pass under-repairs. Re-open only if a real cross-contract-chain drift case is observed.                                                                                                                                             |
+| MCP `init` bypasses PLAT-006's coarse lock                                      | ADR audit (2026-07-18)                                                                        | `artifacts/cli/src/mcp/tools/init.ts`'s `docuvia_init` calls `docuviaApi.init()` directly, never acquiring the `INIT_COMMAND_LOCK_FILE_NAME` lock the CLI's `initCommand()` takes — so two concurrent MCP-triggered inits (or one MCP + one CLI) aren't mutually exclusive, despite PLAT-006 explicitly naming AI-agent/editor integration points as the realistic concurrent-trigger scenario. Not fixed in this pass (doc/ADR reconciliation only, scope discipline); candidate for Slice 5 since it's a concurrency-reliability gap, not a doc problem. |
+| Degraded batch advances `lastTierBBatchSha`                                     | Slice 3 verifier (2026-07-17)                                                                 | A fully-degraded batch (LSP absent) still seeds/advances the cap baseline at the next snapshot while its entries stay queued. Harmless today (pre-push runs regardless) but interacts with §8f's "rebuild queue from `lastTierBBatchSha`" recovery story.                                                                                                                                                                                                                                                                                                  |
+| Tier B "exists at HEAD" ≈ working tree                                          | Slice 3 implementer (2026-07-17)                                                              | §8g's deleted-at-HEAD drop is implemented as an exists-in-working-tree check (documented in `run-tier-b-batch.ts`), since the LSP session reads live files off disk. Joins the dirty-index hash-edge family; the dirty-index item itself was rechecked in Slice 3: Tier B never calls `collectFilesToParse`, so it stays harmless and un-owned.                                                                                                                                                                                                            |
 
 Phase 2 (distribute) and Phase 3 (consume) remain as mapped in the gap analysis §6 — Phase 3's
 "verify reads serve a fresh graph" check becomes actionable now that Tier A ships.
@@ -496,8 +498,9 @@ Slice 5 (row added to §7d).
 ## 9. Slice 4 (Tier C) — integration contract (Fable-rendered rulings, 2026-07-18)
 
 > **Inputs:** §7b's settled scope + §8i's addendum (the embedded-model decision, explicitly
-> deferred from Slice 3), and `docs/reports/slice4-next-steps-recommendations.md` (an
-> AI-generated recommendations doc, not an owner ruling — its proposals are dispositioned below).
+> deferred from Slice 3), and an AI-generated recommendations doc (not an owner ruling — its
+> proposals are dispositioned below in §9a; the doc itself was fully dispositioned into this
+> section and removed 2026-07-18, see git history for its original text if ever needed).
 > Per owner instruction, the open questions carrying real architectural weight were routed to a
 > Fable-model consult rather than decided ad hoc; the rulings below are that consult's output,
 > recorded the same way owner rulings are recorded elsewhere in this document (D1–D8 precedent),
@@ -505,17 +508,17 @@ Slice 5 (row added to §7d).
 > owner-ratified** — flag any E-ruling below that the owner wants overridden before or during
 > implementation.
 
-### 9a. Disposition of `slice4-next-steps-recommendations.md`'s proposals
+### 9a. Disposition of the Slice 4 recommendations doc's proposals
 
-| Proposal                                                     | Disposition                                                                                                                        |
-| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Commit semantic filter                                       | **Adopted** → §9e.                                                                                                                 |
-| Request-side throttling                                      | **Adopted** → §9f.                                                                                                                 |
-| Embedded in-process model                                    | **Deferred, not built** → §9b.                                                                                                     |
-| Semantic Drift Ratio (replaces shipped Tier B commit-cap D5) | **Rejected/parked** → §9g. Reopens an already-shipped, verified, config-tunable mechanism with zero reported real-world pain.      |
-| `tierBQueue` staleness/eviction policy                       | **Deferred to a later reliability slice** → §9h. Queue is already deduped-by-file and bounded by repo file count; not urgent.      |
-| Docker-compose historical-replay E2E harness                 | **Rejected as scoped; shrunk** → §9i. Validates Tier B, not Tier C; disproportionate to this slice. A worktree script substitutes. |
-| L3 distribution strategy (snapshot packing)                  | **Confirmed Phase 2, not blocking** → §9j. One guardrail noted for Slice 4's persistence shape.                                    |
+| Proposal                                                     | Disposition                                                                                                                                                                                             |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Commit semantic filter                                       | **Adopted** → §9e.                                                                                                                                                                                      |
+| Request-side throttling                                      | **Adopted** → §9f.                                                                                                                                                                                      |
+| Embedded in-process model                                    | **Deferred, not built** → §9b.                                                                                                                                                                          |
+| Semantic Drift Ratio (replaces shipped Tier B commit-cap D5) | **Partially adopted (amended 2026-07-18)** → §9g, §9m-1. Blast-radius component rejected (expensive, new tunable); blob/diff-size component adopted (cheap — reuses data Tier A already computes).      |
+| `tierBQueue` staleness/eviction policy                       | **Deferred to a later reliability slice** → §9h. Queue is already deduped-by-file and bounded by repo file count; not urgent.                                                                           |
+| Docker-compose historical-replay E2E harness                 | **Rejected as scoped; shrunk, timing fixed (amended 2026-07-18)** → §9i, §9m-2. Validates Tier B, not Tier C; disproportionate to this slice. A worktree script substitutes, run before Slice 5 starts. |
+| L3 distribution strategy (snapshot packing)                  | **Confirmed Phase 2, not blocking** → §9j. One guardrail noted for Slice 4's persistence shape.                                                                                                         |
 
 ### 9b. E1 — Embedded in-process model: DEFER, do not build in Slice 4
 
@@ -583,6 +586,11 @@ sophistication waits for evidence this misfilters in practice.
 
 ### 9g. E6 — Semantic Drift Ratio proposal: REJECTED, park on watchlist
 
+> **Amended 2026-07-18 — see §9m-1.** This rejection's cost objection (adds computation to a
+> hot path, new arbitrary tunable) is valid against the proposal's blast-radius component but
+> was over-applied to its blob/diff-size component, which turns out to be effectively free.
+> Text below is the original reasoning, kept for the audit trail; §9m-1 is the amended ruling.
+
 Do not reopen Tier B's shipped, verified, owner-ruled commit-cap (§8f D5:
 `rev-list --count lastTierBBatchSha..HEAD >= 20`, config-tunable). The composite score (diff
 size excl. docs/binaries + impact-analysis blast radius + commit-count multiplier) adds
@@ -601,6 +609,10 @@ in the existing Tier B JSONL batch-summary line, so a future eviction decision (
 needed) is made from data rather than speculation.
 
 ### 9i. E8 — Docker-compose historical-replay harness: rejected as scoped; substitute a worktree script
+
+> **Amended 2026-07-18 — see §9m-2.** The scope rejection (docker-compose vs. worktree script)
+> stands. The timing this section originally gave the substitute ("if that manual run shows
+> surprising numbers") had no forcing function and is replaced with a fixed anchor.
 
 Standing up a docker-compose replay environment validates Tier B's LSP edge-repair hit-rate,
 not anything Slice 4 ships — disproportionate infrastructure for this slice. Proportionate
@@ -686,3 +698,128 @@ stays documented-only per §9b.
    is weaker than Tier B's pre-flight guarantee. Added to the §7d-style watchlist: a real
    `ILlmClient.checkAvailability()` probe is Slice 5 (`doctor` reliability) scope — that's
    already where LLM endpoint reachability was assigned (§7c).
+
+### 9m. Owner-requested amendments to §9g and §9i (2026-07-18, post-Slice-4 review)
+
+Raised in review of §9's rulings, after Slice 4 shipped. Both amendments below are owner-ruled
+(not routed to a Fable consult — narrow enough to decide directly), and both revise reasoning
+this same document rendered earlier in §9, so the original text is left in place with a pointer
+here rather than rewritten, matching this document's audit-trail convention (cf. §6d/§8/§9l).
+
+1. **§9g amended: commit-cap trigger switches from raw commit count to cumulative blob/diff
+   size (adopted); blast-radius component stays rejected.** §9g's original rejection bundled
+   two different signals from the recommendations doc's composite proposal — diff size and
+   impact-analysis blast radius — and rejected both on the same cost/complexity grounds. That
+   bundling doesn't hold: the two signals have very different cost profiles and the rejection's
+   own counter-example only defends against one of them.
+   - **Blast radius: rejection stands.** Running impact analysis per commit is genuinely
+     expensive and introduces a new tunable (the 15% threshold) with no measured need.
+   - **Blob/diff size: reopened, adopted.** §9g's stated cheap fix for the composite proposal's
+     complaint — "exclude doc-only commits from the rev-list count, if pain ever materializes" —
+     only addresses over-triggering (many trivial commits inflating the count). It does not
+     address the composite proposal's own motivating example, a **single** large refactor commit
+     causing severe drift, which raw commit count structurally cannot detect regardless of any
+     doc-exclusion tweak: one commit is one commit no matter how many lines it touches. That gap
+     in the original reasoning is why the raw-commit-count trigger (§8f D5) is not sound merely
+     because it's already shipped.
+   - **Why this is cheap, not speculative infrastructure**: `IGitProvider.getChangedFilesSince`
+     and `getChangedLineRanges` (`git.interfaces.ts`) are already called on every commit for Tier
+     A's AST delta processing (`SemanticDiffDetector`). A cumulative changed-lines/changed-files
+     counter (excluding `.md`/docs and binaries, same exclusion §9g's own counter-fix already
+     conceded was worth doing) can be accumulated from data Tier A computes anyway — this is not
+     new work on the hot path, unlike the blast-radius component.
+   - **Scope**: implementation (replacing `isTierBCommitCapExceeded`'s `rev-list --count`
+     comparison in `tier-b-commit-cap.ts` with a blob-size-based check, and picking the new
+     threshold) is deferred to whichever slice next touches Tier B's commit-cap — not a Slice 4
+     or Slice 5 deliverable by itself. This section settles the _design direction_ so the next
+     touch doesn't re-litigate it.
+2. **§9i amended: worktree-script validation gets a fixed timing anchor — before Slice 5
+   starts, not "if surprising numbers ever show up."** The scoped-down substitute (worktree
+   script instead of docker-compose) stands. Its original timing condition was reactive with no
+   forcing function — nothing would ever proactively trigger someone to check the JSONL
+   degradation lines it depends on, so "later" could mean "never." Tier B (the thing this
+   validates) shipped in Slice 3 (2026-07-17); Slice 4 is now verified (2026-07-18); Slice 5 is
+   next. Binding the run to "before Slice 5 starts" also merges it with the pre-existing,
+   previously separate outstanding item from Slice 3's report §7d row 2 ("real-LSP e2e
+   acceptance run outstanding ... run once on real TS repo before Slice 5, check
+   METHOD/CONSTRUCTOR node_key hit-rate") — that item is a single-point-in-time correctness
+   check, this one is a longitudinal hit-rate-over-commits check; both were waiting on the same
+   "real TS repo, before Slice 5" precondition and should run together rather than as two
+   separately-forgettable todos.
+
+### 9n. §9m-2's validation run — executed 2026-07-18, findings
+
+Run against Docuvia2's own history (dogfooding): a local clone (not a `git worktree` — see
+finding 1) seeded at `9f1b05f`, walking forward 24 commits to `daa7bfd` with plain `analyze` at
+each step and `analyze --escalate-to-lsp && snapshot` after `14c33ce` (the magic-strings sweep —
+a rename/dedupe-heavy commit), `056939a` (the complexity-budget method-split refactor), and at
+final HEAD. `typescript-language-server@5.3.0` installed into a throwaway `npm --prefix` outside
+the repo, pointed at via `DOCUVIA_LSP_BINARY` (no changes to Docuvia2's own devDependencies).
+
+**Finding 1 — `git worktree` is not a usable isolation substrate for Docuvia today.**
+`IGitProvider.acquireKnowledgeLock` (`libgit2-provider.ts`) does
+`path.join(cwd, ".git", "docuvia-knowledge.lock")`, assuming `<cwd>/.git` is always a real
+directory. In a secondary `git worktree`, `.git` is a **file** containing a `gitdir:` pointer,
+not a directory — so the join produces an unusable path and `init`/`analyze` fail immediately
+with `ENOENT`, before any real work happens. This invalidates §9i/§9m-2's own "worktree script"
+framing as literally stated — worked around here by using a plain local `git clone` instead
+(same isolation property, no `.git`-file complication). Not fixed as part of this validation
+(out of scope — validation, not implementation); worth a `doctor` check or a fix if Docuvia is
+ever expected to run from a worktree (CI matrices and some review-bot setups do this routinely).
+
+**Finding 2 — Tier B's LSP escalation cannot spawn `typescript-language-server` on Windows at
+all, in any configuration tested. This is the headline result — more consequential than a
+hit-rate number, because hit-rate was unmeasurable: 0 of 3 batch attempts got past spawning the
+server.** All three `--escalate-to-lsp` runs (after `14c33ce`, `056939a`, and final HEAD)
+degraded identically: `LSP unavailable ... Failed to spawn LSP server "...\typescript-language-
+server.cmd": spawn EINVAL`. Root cause isolated directly (not inferred): `LspJsonRpcClient.start`
+(`lsp-json-rpc-client.ts`) calls `spawn(options.command, options.args, { cwd, stdio })` with no
+`shell` option. On Windows, `child_process.spawn` cannot execute a `.cmd`/`.bat` file directly —
+Node throws `EINVAL` synchronously — and `resolveLspBinary`'s own
+`WINDOWS_BIN_EXTENSIONS = [".cmd", ".CMD", ".exe", ""]` tries `.cmd` **first**, which is exactly
+what any real `npm`/`pnpm` install of `typescript-language-server` produces in
+`node_modules/.bin` on Windows (confirmed: no `.exe` variant exists for this package — it's pure
+JS). So the _preferred_, documented-as-working resolution path is the one that's broken; a
+minimal reproduction (`spawn(cmdPath, ["--version"])` with vs. without `shell: true`) confirms
+`shell: true` alone fixes it (returns `5.3.0` instead of throwing). The existing real-subprocess
+test (`lsp-json-rpc-client.unit.test.ts`) never exercises this path — it spawns `process.execPath`
+(the `node` binary itself, a real `.exe`) against a fixture server, not a `.cmd`-shimmed binary,
+so this gap has no test coverage in either direction. **Practical implication**: on every Windows
+dev machine, Tier B has been silently degrading to AST-only on every batch since Slice 3 shipped,
+regardless of whether `typescript-language-server` is installed correctly — the honest-degradation
+contract (exit 0, log the reason) worked exactly as designed and is why nobody's push ever broke,
+but it also means the "core quality engine" (IMPT-003's own description) has not run successfully
+on Windows even once. `node_key`/METHOD/CONSTRUCTOR hit-rate remains unmeasured pending a fix —
+re-run this validation once a Windows-safe spawn path ships to get the real number the original
+watchlist item asked for.
+
+**Resolved same day (2026-07-18), owner chose "fix now."** `LspJsonRpcClient.start`
+(`lsp-json-rpc-client.ts`) now branches: `.cmd`/`.bat`/`.ps1` targets on `win32` spawn through a
+single individually-quoted command string with `shell: true`; every other command (including
+genuinely unresolvable binaries) spawns exactly as before, preserving the existing synchronous
+`ENOENT`-style failure contract `TypescriptLspEdgeProvider.runBatch()` relies on. `cross-spawn`
+was evaluated and rejected — direct comparison testing showed it silently defers a bad-binary
+failure from an immediate `error` event to an async `exit code 1` re-interpretation, which would
+have broken that contract. New regression coverage added: a real `.cmd`-wrapper spawn test
+(previously only `process.execPath`, a real `.exe`, was exercised — zero coverage of the shim
+path in either direction before this). `task-verifier` independently re-confirmed the quoting
+against embedded spaces/quotes/shell metacharacters (including a `&& calc.exe` injection probe)
+and re-ran the full build + `lib/core` suite (183/183) clean. One non-blocking note from
+verification: `.ps1` is listed in the shell-wrapper extension set per the original ask, but bare
+`cmd.exe` doesn't actually execute `.ps1` on this machine's default file association (inert, not
+an error) — moot today since `resolveLspBinary()` never emits a `.ps1` candidate, but worth
+remembering if that ever changes.
+
+**Re-ran §9n's validation batch (final HEAD checkpoint) against the fix — full success, closing
+the open item.** Same clone, same accumulated Tier B queue (nothing else changed): `filesQueued:
+135, filesProcessed: 135, filesFailed: 0, edgesApplied: 287, edgesPruned: 146, degraded: false`.
+100% of queued files processed, zero spawn/resolution failures. This is the first time Tier B has
+completed successfully against a real batch in this project's history. **Caveat on the original
+ask's framing**: a granular METHOD-vs-CONSTRUCTOR `node_key` hit-rate specifically (as opposed to
+the aggregate edges-applied/pruned counts above) is not extractable after the fact — `l2_nodes`
+persists a `type` column that's always `"module"` for every ingested symbol (file/function-level
+categorization only); the LSP-side `SymbolKind` distinction (`LspSymbolKinds.METHOD`/
+`CONSTRUCTOR`) is used transiently inside `typescript-lsp-edge-provider.ts`'s resolution pass and
+never persisted or logged per-kind. Getting that specific breakdown would need new
+instrumentation in the edge-resolution provider — not done here (out of scope for a validation
+run); the aggregate numbers above are the honest substitute and are unambiguously positive.

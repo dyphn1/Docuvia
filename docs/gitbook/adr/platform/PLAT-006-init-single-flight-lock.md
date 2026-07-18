@@ -176,3 +176,30 @@ the proposal specifically:
   being silent and permanent (a duplicated post-commit hook keeps firing twice per commit indefinitely,
   not just once), a lock reusing an existing pattern was judged to clear the cost/benefit bar; the
   leader/follower notification protocol was judged not to.
+
+> **Implementation Status (2026-07-18 reconciliation)**:
+>
+> - The **observability requirement** (lines 114-125 above) shipped: `KnowledgeGitService.ensureKnowledgeBranch()`
+>   and `installPostCommitHook()` both recheck inside their lock and log a `warn`
+>   (`GitMessages.CONCURRENT_INITIAL_COMMIT_SKIPPED` / `CONCURRENT_HOOK_INSTALL_SKIPPED`) when the
+>   recheck flips the outcome; `writeOrAppend()` (`artifacts/cli/src/utils/fs-utils.ts`) now
+>   distinguishes `ENOENT` from other read errors and warns before treating a non-`ENOENT` failure as
+>   "file doesn't exist," closing the clobbering bug flagged in the Follow-up paragraph above.
+> - The **consolidation follow-up** is partially done: a generalized shared lock utility now exists
+>   (`lib/contracts/src/utils/process-lock.ts` — wx-create, heartbeat, PID+mtime staleness, matching
+>   this ADR's design) and has **two** consumers: the CLI `init` command lock this ADR designed, and
+>   (undocumented here until now) Tier C's drain-step throttle
+>   (`tier-c-throttle.ts`'s `tryAcquireTierCLock()`, added in Slice 4 — see
+>   [Phase 1 — Decision Integration §9f](../../analysis/phase1-decision-integration.md)), which
+>   explicitly reused "the PLAT-006 single-flight lock pattern." `acquireInitLock`
+>   (`graph-store.ts`) and `acquireKnowledgeLock` (`libgit2-provider.ts`) remain separate,
+>   non-consolidated implementations — so this follow-up is no longer accurately described as
+>   "not yet scheduled," but it isn't finished either.
+> - **Known scope gap, not yet closed**: "one lockfile guards the entire `init` command" (Decision,
+>   above) is true only for the CLI entry point. The MCP tool `docuvia_init`
+>   (`artifacts/cli/src/mcp/tools/init.ts`) calls the underlying API directly and never acquires this
+>   lock — so two concurrent MCP-triggered inits (or one MCP + one CLI) are **not** mutually
+>   exclusive, despite this ADR naming AI-agent/editor integration points as the realistic
+>   concurrent-trigger scenario in the Advice section above. Tracked on the Slice 5 watchlist in
+>   [Phase 1 — Decision Integration §7d](../../analysis/phase1-decision-integration.md); not fixed
+>   as of this reconciliation pass.

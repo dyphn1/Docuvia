@@ -1,7 +1,7 @@
 ---
 id: PLAT-007
 title: Tiered Background Knowledge Evolution (per-commit AST delta, batched LSP, queued LLM)
-status: accepted (Slices 1–2 implemented & verified — 2026-07-17; Tiers B/C pending)
+status: accepted (Slices 1–4 implemented & verified — 2026-07-18; Slice 5 (`doctor` reliability) pending)
 date: 2026-07-16
 domains: [platform, graph, impact, llm, storage]
 supersedes: []
@@ -21,8 +21,12 @@ Two accepted ADRs make promises the code does not yet keep:
   re-parsing — AST ingestion happens exactly once, at `init`. Every commit re-publishes the
   day-one graph under a fresh `Docuvia-Source` stamp.
 - [IMPT-003](../impact/IMPT-002-lsp-for-absolute-quality.md) mandates the AST + LSP + LLM
-  tri-layer, with LSP escalation as "the core quality engine." `escalateToLsp` is a documented
-  no-op.
+  tri-layer, with LSP escalation as "the core quality engine." `escalateToLsp` **was** a
+  documented no-op when this ADR was written; it now really spawns
+  `typescript-language-server` per batch (Slice 3, see the amendment block below and
+  [Phase 1 — Decision Integration §9n](../../analysis/phase1-decision-integration.md) for a
+  2026-07-18 finding: it had never actually spawned successfully on Windows until a same-day
+  spawn-argument fix, due to an unrelated Node/Windows `.cmd`-shim incompatibility — now fixed).
 
 Meanwhile the components needed to keep those promises already exist unwired:
 `SemanticDiffDetector` (`lib/ast-core/src/detector/semantic-diff.ts`) is a tested, exported
@@ -34,11 +38,11 @@ LLM decision extraction works, and in the 2026-07-16 (Slice 1 - Wire 2)實作中
 The open question is not _whether_ to run in the background (PLAT-004 settled that) but **what
 runs at which trigger**, because the three layers have wildly different costs:
 
-| Layer                       | Cost shape                                              | Evidence (2026-07-16, ~450-file workspace)                                                                             |
-| --------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| AST delta re-parse          | ∝ diff size; sub-second for a typical 3–5-file commit   | Docuvia2 full-init AST pass is already competitive                                                                     |
-| LSP full-project escalation | minutes; ∝ project size                                 | ~3 min per IMPT-003's own estimate; competitor full indexes run 5 min (GitNexus incremental) to 40 min (Graphify full) |
-| LLM L3 extraction           | dollars (remote) or slow tokens (local); ∝ content sent | Graphify's semantic layer: ~$0.09/run on this repo                                                                     |
+| Layer                       | Cost shape                                              | Evidence (2026-07-16, ~450-file workspace)                                                                                                                                                                                                            |
+| --------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| AST delta re-parse          | ∝ diff size; sub-second for a typical 3–5-file commit   | Docuvia2 full-init AST pass is already competitive                                                                                                                                                                                                    |
+| LSP full-project escalation | seconds–minutes; ∝ project size                         | ~3 min was IMPT-003's own _unmeasured_ estimate; a real batch measured 2026-07-18 processed 135 files (30% of this ~450-file workspace) in 17.5s — see §9n — competitor full indexes still run 5 min (GitNexus incremental) to 40 min (Graphify full) |
+| LLM L3 extraction           | dollars (remote) or slow tokens (local); ∝ content sent | Graphify's semantic layer: ~$0.09/run on this repo                                                                                                                                                                                                    |
 
 Running all three on every commit is not economical and would violate PLAT-004's "feels like
 nothing happened" bar. Running none of them (the status quo) ships an empty promise.
@@ -217,3 +221,16 @@ Revisit a warm instance only if measured batch latency becomes a real complaint.
 >   superseded; no other endpoint integrations are considered. The only open consideration is an
 >   **embedded in-process model**, deferred to the Slice 4 contract (per-batch in-process
 >   inference remains consistent with the no-daemon stance).
+
+> **Implementation Status (Slices 2–4 — 2026-07-17/18)**: Tier A (AST delta on every commit, hook
+> flipped from `snapshot` to `analyze`), Tier B (spawn-per-batch LSP escalation via
+> `--escalate-to-lsp`), and Tier C (budgeted async LLM decision queue, folded into the same
+> pre-push composition per §9d) are all implemented, tested, and committed. Full contracts:
+> [§6](../../analysis/phase1-decision-integration.md) (Tier A),
+> [§8](../../analysis/phase1-decision-integration.md) (Tier B),
+> [§9](../../analysis/phase1-decision-integration.md) (Tier C). Only Slice 5 (`doctor`
+> reliability checks) remains unstarted. A same-day 2026-07-18 dogfooding validation run (§9n)
+> found and fixed a real bug: `LspJsonRpcClient`'s spawn call had no Windows-safe handling for
+> `.cmd`/`.bat` binaries, so Tier B had silently degraded to AST-only on every batch, on every
+> Windows machine, for the whole of Slice 3's life — fixed in `lsp-json-rpc-client.ts`; post-fix
+> a real batch processed 135/135 files with 287 edges applied, 0 failures.

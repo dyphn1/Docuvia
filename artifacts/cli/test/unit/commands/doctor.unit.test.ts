@@ -118,7 +118,7 @@ describe("doctorCommand", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it("skips the Hooks check and passes skipLogs to API when skipHooks and skipLogs are set", async () => {
+  it("passes skipHooks and skipLogs through to docuviaApi.doctor -- the agent-hooks check now lives entirely in DoctorWorkflow", async () => {
     vi.mocked(docuviaApi.doctor).mockResolvedValue({
       allPassed: true,
       diagnostics: {},
@@ -129,12 +129,17 @@ describe("doctorCommand", () => {
     expect(docuviaApi.doctor).toHaveBeenCalledWith(
       expect.any(String),
       expect.anything(),
-      { skipDb: false, skipGit: false, skipLogs: true, fix: false },
+      {
+        skipDb: false,
+        skipGit: false,
+        skipHooks: true,
+        skipLogs: true,
+        fix: false,
+      },
     );
+    // doctor.ts itself never touches fs.stat anymore -- that's DoctorWorkflow's job now, and it's
+    // mocked away here at the docuviaApi.doctor() boundary.
     expect(fs.stat).not.toHaveBeenCalled();
-    expect(ui.info).toHaveBeenCalledWith(
-      expect.stringContaining("--skip-hooks"),
-    );
     expect(ui.success).toHaveBeenCalledWith(
       expect.stringContaining("All diagnostics passed."),
     );
@@ -151,7 +156,13 @@ describe("doctorCommand", () => {
     expect(docuviaApi.doctor).toHaveBeenCalledWith(
       expect.any(String),
       expect.anything(),
-      { skipDb: false, skipGit: false, skipLogs: false, fix: true },
+      {
+        skipDb: false,
+        skipGit: false,
+        skipHooks: false,
+        skipLogs: false,
+        fix: true,
+      },
     );
   });
 
@@ -166,7 +177,13 @@ describe("doctorCommand", () => {
     expect(docuviaApi.doctor).toHaveBeenCalledWith(
       expect.any(String),
       expect.anything(),
-      { skipDb: false, skipGit: false, skipLogs: false, fix: false },
+      {
+        skipDb: false,
+        skipGit: false,
+        skipHooks: false,
+        skipLogs: false,
+        fix: false,
+      },
     );
   });
 

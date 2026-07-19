@@ -3,18 +3,30 @@
 > Method: ADR context from `docs/gitbook/adr/**`; call sequence traced from
 > `artifacts/cli/src/commands/doctor.ts` through `lib/ui-core/src/workflows/doctor/doctor-workflow.ts`.
 
-`docuvia doctor` runs a set of independent diagnostics. It's the one command whose CLI layer does
-real diagnostic work itself (the Claude/Cursor hooks check) rather than delegating everything to
-`docuviaApi`.
+`docuvia doctor` runs a set of independent diagnostics, every one of them through `DoctorWorkflow`
+in the Orchestration layer — the CLI layer only parses flags, calls `docuviaApi.doctor()`, and
+prints the result.
 
 > **Status update (Slice 5, §10c/§10d/§10e):** every new check this slice adds (the git
 > post-commit-hook health check, the Tier B commit-cap backup, the Tier C LLM endpoint
 > reachability probe, and the LSP binary presence check) goes through `DoctorWorkflow`, per
 > decision 1b below — closing the asymmetry gap for the _new_ checks. The pre-existing
-> Claude/Cursor hooks check in `doctor.ts` is left as-is (out of scope for this slice — see the
-> Conflicts section below, still accurate for that one check). `doctor --fix` (T6) is also new: an
-> opt-in, non-default flag that repairs the legacy-hook duplicate-block condition the git-hook
-> check can detect but never silently repairs on its own.
+> Claude/Cursor hooks check in `doctor.ts` was left as-is at the time (out of scope for that
+> slice). `doctor --fix` (T6) is also new: an opt-in, non-default flag that repairs the
+> legacy-hook duplicate-block condition the git-hook check can detect but never silently repairs
+> on its own.
+>
+> **Status update (2026-07-19):** the Claude/Cursor hooks check has now been folded into
+> `DoctorWorkflow` too (`runAgentHooksDiagnostic`, keys `agent_hooks_claude`/`agent_hooks_cursor`),
+> closing the one remaining asymmetry. It reuses `CLAUDE_HOOKS_DIR`/`CURSOR_HOOKS_DIR`/
+> `DOCUVIA_HOOK_JS_FILENAME`/`DOCUVIA_HOOK_CJS_FILENAME`, moved from `artifacts/cli`'s
+> `init-templates.ts` into `@workspace/core`'s `constants/paths.ts` so both the platform installers
+> and `DoctorWorkflow` read the same path without a `lib/ui-core` -> `artifacts/cli` dependency.
+> Always PASS regardless of presence/absence (owner-chosen, matching `LLM_NOT_CONFIGURED`'s "not
+> configured is PASS" precedent) — a platform never selected at `init` is a legitimate state, not a
+> defect; `DiagnosticStatus` has no severity between PASS and FAIL, so this never affects
+> `allPassed`/exit code. `skipHooks` moved from a `doctor.ts`-only option onto `DoctorWorkflow`'s
+> own `DoctorOptions`, closing the interface duplication this doc used to note.
 
 ## Sequence Diagram
 
@@ -33,7 +45,7 @@ sequenceDiagram
     participant Lsp as IEdgeResolutionProvider
 
     User->>CLI: docuvia doctor, skip flags, --fix
-    CLI->>API: docuviaApi.doctor scopeId logger, skipDb, skipGit, skipLogs, fix, llmBaseUrl, llmApiKey
+    CLI->>API: docuviaApi.doctor scopeId logger, skipDb, skipGit, skipHooks, skipLogs, fix, llmBaseUrl, llmApiKey
 
     API->>WF: new DoctorWorkflow execute
     opt not skipDb
@@ -70,47 +82,56 @@ sequenceDiagram
     end
     WF->>Lsp: checkAvailability workspaceRoot
     Note right of Lsp: same token/method analyze --escalate-to-lsp's own gate uses -- always PASS, reason surfaced as the message.
+    opt not skipHooks
+        WF->>FS: fs.stat claude hook file, cursor hook file
+        Note right of FS: folded into DoctorWorkflow -- closes the asymmetry this doc used to flag. Always PASS either way: not selecting a platform at init is a legitimate state, not a defect.
+        FS-->>WF: found or not found per platform
+    end
     WF-->>API: allPassed, diagnostics map
 
     API-->>CLI: result
     CLI->>CLI: print PASS or FAIL per diagnostic, with suggestion if any
-
-    opt not skipHooks
-        CLI->>FS: fs.stat claude hook file, cursor hook file directly
-        Note right of FS: doctor.ts, not the orchestration layer, does this check itself.
-        FS-->>CLI: found or not found per platform
-    end
     CLI-->>User: overall PASS or FAIL, exit 1 if any FAIL
 ```
 
 ## Step → ADR Mapping
 
-| Step                                                                                                                    | Governing ADR(s)                                                                  | Verdict                                             |
-| ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------- |
-| DB / git / logs diagnostics via `docuviaApi.doctor()`                                                                   | `architecture/virtual-contracts-architecture.md` (Orchestration Layer)            | ✅ Match                                            |
-| Git diagnostics map specific error codes to actionable suggestions                                                      | `architecture/error-handling-architecture.md`                                     | ✅ Match                                            |
-| Git-hook health / commit-cap / LLM reachability / LSP binary checks all go through `DoctorWorkflow`, resolving by token | `phase1-decision-integration.md` §10 (decision 1b)                                | ✅ Match                                            |
-| `doctor --fix`'s repair is opt-in only, never runs without the flag                                                     | `phase1-decision-integration.md` §10d                                             | ✅ Match                                            |
-| Claude/Cursor hooks check runs directly in `doctor.ts` via `fs.stat`, not through `docuviaApi`                          | `architecture/virtual-contracts-architecture.md` (Presentation Layer constraints) | ⚠️ **Asymmetric, not a hard violation** — see below |
+| Step                                                                                                                    | Governing ADR(s)                                                       | Verdict                        |
+| ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
+| DB / git / logs diagnostics via `docuviaApi.doctor()`                                                                   | `architecture/virtual-contracts-architecture.md` (Orchestration Layer) | ✅ Match                       |
+| Git diagnostics map specific error codes to actionable suggestions                                                      | `architecture/error-handling-architecture.md`                          | ✅ Match                       |
+| Git-hook health / commit-cap / LLM reachability / LSP binary checks all go through `DoctorWorkflow`, resolving by token | `phase1-decision-integration.md` §10 (decision 1b)                     | ✅ Match                       |
+| `doctor --fix`'s repair is opt-in only, never runs without the flag                                                     | `phase1-decision-integration.md` §10d                                  | ✅ Match                       |
+| Claude/Cursor hooks check goes through `DoctorWorkflow`, same as every other diagnostic                                 | `architecture/virtual-contracts-architecture.md` (Orchestration Layer) | ✅ Match (RESOLVED, see below) |
 
 ## Conflicts Found
 
 None rising to a hard ADR violation.
 
-### Observation: the Claude/Cursor hooks check is the one diagnostic the Presentation layer still runs itself
+### Observation: the Claude/Cursor hooks check is the one diagnostic the Presentation layer still runs itself (RESOLVED 2026-07-19)
 
 `virtual-contracts-architecture.md` scopes the Presentation layer's job as "parses user input, calls
 `docuviaApi`, and formats the output," and its only explicit constraint is being "strictly forbidden
 from accessing `lib/core`, `lib/schema`, or any underlying implementations directly." `doctor.ts`'s
-Claude/Cursor hooks check (`fs.stat` on the Claude/Cursor hook file paths) doesn't reach into
-`lib/core`/`lib/schema`, so it doesn't break that specific rule — but it does mean `doctor` still has
-two different shapes for what should be the same kind of check: seven diagnostics (`db_found`/
+former Claude/Cursor hooks check (`fs.stat` on the Claude/Cursor hook file paths) never reached into
+`lib/core`/`lib/schema`, so it never broke that specific rule — but it did mean `doctor` had two
+different shapes for what should be the same kind of check: seven diagnostics (`db_found`/
 `db_runner`, `git_reachability`/`git_runner`, `logs`, `tier_b_commit_cap`, `git_hook`,
-`llm_reachability`, `lsp_binary`) go through `DoctorWorkflow`/`docuviaApi.doctor()` in the
-Orchestration layer, while the Claude/Cursor hooks presence check is plain filesystem logic living
-directly in the CLI command. `DoctorOptions` is even duplicated as two separate interfaces
+`llm_reachability`, `lsp_binary`) went through `DoctorWorkflow`/`docuviaApi.doctor()` in the
+Orchestration layer, while the Claude/Cursor hooks presence check was plain filesystem logic living
+directly in the CLI command. `DoctorOptions` was even duplicated as two separate interfaces
 (`doctor-workflow.ts` and `doctor.ts`) with `skipHooks` only on the CLI-side one. Slice 5
 (phase1-decision-integration.md §10, decision 1b) deliberately closed this asymmetry for every _new_
-check it added, but left the pre-existing Claude/Cursor hooks check untouched — folding it in is a
-separate, independent cleanup not gated on this slice. Not a conflict against any stated rule, but
-an asymmetry still worth resolving for that one remaining check.
+check it added, but left the pre-existing Claude/Cursor hooks check untouched at the time.
+
+**Now resolved**: `runAgentHooksDiagnostic` in `doctor-workflow.ts` performs the same `fs.stat`
+check, reporting `agent_hooks_claude`/`agent_hooks_cursor` through the uniform diagnostic shape.
+`skipHooks` moved onto `DoctorWorkflow`'s own `DoctorOptions`, so the interface is no longer
+duplicated; `doctor.ts` no longer imports `fs/promises` or the hook-path constants at all. The
+constants themselves (`CLAUDE_HOOKS_DIR`, `CURSOR_HOOKS_DIR`, `DOCUVIA_HOOK_JS_FILENAME`,
+`DOCUVIA_HOOK_CJS_FILENAME`) moved from `artifacts/cli`'s `init-templates.ts` into
+`@workspace/core`'s `constants/paths.ts` (re-exported from `init-templates.ts` so every existing
+platform-installer import path is unchanged) — the dependency direction otherwise would have been
+backwards (`lib/ui-core` importing from `artifacts/cli`). Both PASS states are owner-chosen (not
+auto-derived): absence is a legitimate "didn't select this platform at `init`" state, never a
+defect, so this check can never FAIL and never affects `allPassed`/exit code.

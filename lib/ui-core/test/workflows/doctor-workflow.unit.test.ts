@@ -30,7 +30,9 @@ describe("DoctorWorkflow", () => {
     docuviaFactory.reset();
   });
 
-  it("skips all skippable checks when options are passed -- the LLM reachability check (T7) has no skip flag and always evaluates, reporting 'not configured' PASS here since no llmBaseUrl is supplied", async () => {
+  it("skips all skippable checks when options are passed -- the LLM reachability and agent-hooks checks have no bearing on skipDb/skipGit/skipLogs and always evaluate", async () => {
+    vi.mocked(fs.stat).mockRejectedValue(new Error("ENOENT"));
+
     const wf = new DoctorWorkflow("/test", logger);
     const result = await wf.execute({
       skipDb: true,
@@ -43,6 +45,14 @@ describe("DoctorWorkflow", () => {
         status: DiagnosticStatus.PASS,
         message:
           "Not configured -- Tier C is inactive (AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL not set).",
+      },
+      agent_hooks_claude: {
+        status: DiagnosticStatus.PASS,
+        message: "Claude hooks not found (run `docuvia init` to install).",
+      },
+      agent_hooks_cursor: {
+        status: DiagnosticStatus.PASS,
+        message: "Cursor hooks not found (run `docuvia init` to install).",
       },
     });
   });
@@ -339,6 +349,76 @@ describe("DoctorWorkflow", () => {
 
       expect(result.diagnostics["tier_b_commit_cap"]).toBeUndefined();
       expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
+    });
+  });
+
+  describe("Agent Hooks Check (workflows/doctor-execution-flow.md Presentation-layer asymmetry cleanup)", () => {
+    it("reports PASS for both platforms when both hook files exist", async () => {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["agent_hooks_claude"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "Claude hooks found.",
+      });
+      expect(result.diagnostics["agent_hooks_cursor"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "Cursor hooks found.",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports PASS (never FAIL) with a not-found message when a hook file is absent -- not selecting a platform at init is a legitimate state", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("ENOENT"));
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["agent_hooks_claude"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "Claude hooks not found (run `docuvia init` to install).",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("checks the expected repo-relative hook paths for each platform", async () => {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      await wf.execute({ skipDb: true, skipGit: true, skipLogs: true });
+
+      expect(fs.stat).toHaveBeenCalledWith(
+        path.join("/test", ".claude", "hooks", "docuvia-hook.js"),
+      );
+      expect(fs.stat).toHaveBeenCalledWith(
+        path.join("/test", ".cursor", "hooks", "docuvia-hook.cjs"),
+      );
+    });
+
+    it("is not evaluated and never touches fs.stat when skipHooks is set", async () => {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+        skipHooks: true,
+      });
+
+      expect(result.diagnostics["agent_hooks_claude"]).toBeUndefined();
+      expect(result.diagnostics["agent_hooks_cursor"]).toBeUndefined();
+      expect(fs.stat).not.toHaveBeenCalled();
     });
   });
 

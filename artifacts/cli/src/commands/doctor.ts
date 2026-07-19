@@ -11,14 +11,6 @@ import {
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
-import * as path from "path";
-import * as fs from "fs/promises";
-import {
-  DOCUVIA_HOOK_JS_FILENAME,
-  CLAUDE_HOOKS_DIR,
-  CURSOR_HOOKS_DIR,
-  DOCUVIA_HOOK_CJS_FILENAME,
-} from "../constants/init-templates.js";
 import "../registration.js";
 
 export interface DoctorOptions {
@@ -70,7 +62,10 @@ async function runDoctorDiagnostics(
   scopeId: string,
   logger: ReturnType<typeof createPinoBackedLogger>,
   workspaceRoot: string,
-  options: Pick<DoctorOptions, "skipDb" | "skipGit" | "skipLogs" | "fix">,
+  options: Pick<
+    DoctorOptions,
+    "skipDb" | "skipGit" | "skipHooks" | "skipLogs" | "fix"
+  >,
 ): Promise<boolean> {
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
@@ -96,49 +91,6 @@ async function runDoctorDiagnostics(
   }
 }
 
-function reportHookPresence(
-  found: boolean,
-  foundMessage: string,
-  notFoundMessage: string,
-): void {
-  if (found) ui.success(`${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${foundMessage}`);
-  else ui.warn(`${UI_MESSAGES.DOCTOR_HOOKS_PREFIX}${notFoundMessage}`);
-}
-
-async function reportDoctorHooksStatus(
-  workspaceRoot: string,
-  skipHooks: boolean,
-): Promise<void> {
-  if (skipHooks) {
-    ui.info(UI_MESSAGES.DOCTOR_HOOKS_SKIPPED);
-    return;
-  }
-
-  const claudeHooksPath = path.join(
-    workspaceRoot,
-    CLAUDE_HOOKS_DIR,
-    DOCUVIA_HOOK_JS_FILENAME,
-  );
-  const cursorHooksPath = path.join(
-    workspaceRoot,
-    CURSOR_HOOKS_DIR,
-    DOCUVIA_HOOK_CJS_FILENAME,
-  );
-  const hasClaude = await fs.stat(claudeHooksPath).catch(() => null);
-  const hasCursor = await fs.stat(cursorHooksPath).catch(() => null);
-
-  reportHookPresence(
-    !!hasClaude,
-    UI_MESSAGES.DOCTOR_CLAUDE_FOUND,
-    UI_MESSAGES.DOCTOR_CLAUDE_NOT_FOUND,
-  );
-  reportHookPresence(
-    !!hasCursor,
-    UI_MESSAGES.DOCTOR_CURSOR_FOUND,
-    UI_MESSAGES.DOCTOR_CURSOR_NOT_FOUND,
-  );
-}
-
 export async function doctorCommand(
   workspaceRoot: string,
   options: DoctorOptions = {},
@@ -161,10 +113,8 @@ export async function doctorCommand(
       scopeId,
       logger,
       workspaceRoot,
-      { skipDb, skipGit, skipLogs, fix },
+      { skipDb, skipGit, skipHooks, skipLogs, fix },
     );
-
-    await reportDoctorHooksStatus(workspaceRoot, skipHooks);
 
     if (allPassed) {
       ui.success(UI_MESSAGES.DOCTOR_ALL_PASSED);

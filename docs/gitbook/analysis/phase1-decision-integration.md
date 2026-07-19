@@ -957,3 +957,14 @@ config.baseUrl`. `doctor`'s `llm_reachability` diagnostic is `PASS` when not con
 > plan's own rationale. `doctor-execution-flow.md`'s pre-existing "asymmetry" observation
 > (Claude/Cursor hooks check still living in `doctor.ts` rather than `DoctorWorkflow`) was left
 > unresolved, as scoped -- Slice 5 closed the asymmetry only for the _new_ checks it added.
+>
+> **Status update (2026-07-19):** the remaining asymmetry closed too, as an independent
+> post-Slice-5 cleanup (owner-scoped question: soft-warning "always PASS" was chosen over a hard
+> FAIL for hook absence, since not selecting a platform at `init` is legitimate, not a defect).
+> `runAgentHooksDiagnostic` in `doctor-workflow.ts` now performs the `fs.stat` check
+> (`agent_hooks_claude`/`agent_hooks_cursor` keys), `skipHooks` moved onto `DoctorWorkflow`'s own
+> `DoctorOptions` (no longer duplicated across `doctor.ts`), and the hook-path constants moved from
+> `artifacts/cli`'s `init-templates.ts` into `@workspace/core`'s `constants/paths.ts` (re-exported
+> from `init-templates.ts` for backward-compatible imports) so `lib/ui-core` doesn't depend on
+> `artifacts/cli`. `doctor.ts` no longer imports `fs/promises` at all. Build, lint, and full suite
+> green.

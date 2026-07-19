@@ -13,6 +13,11 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
   LLM_REACHABILITY: "llm_reachability",
   /** §10e bullet 4 / §7a-1: LSP binary presence, independent of whether Tier B has ever run. */
   LSP_BINARY: "lsp_binary",
+  /** Claude/Cursor AI-agent hook presence -- folded in from `doctor.ts`'s plain `fs.stat` logic
+   *  to close the Presentation-layer asymmetry `doctor-execution-flow.md` flagged. Distinct from
+   *  `GIT_HOOK` above, which is the git post-commit hook, a different "hook" concept entirely. */
+  AGENT_HOOKS_CLAUDE: "agent_hooks_claude",
+  AGENT_HOOKS_CURSOR: "agent_hooks_cursor",
 } as const;
 
 /** Extension used to identify per-command run-log files under `.docuvia/logs/`. */
@@ -77,4 +82,10 @@ export const DOCTOR_MESSAGES = {
     "LSP-precision edges available (typescript-language-server resolved).",
   LSP_BINARY_UNAVAILABLE: (reason: string) =>
     `LSP-precision edges unavailable (${reason}) -- Tier B degrades to AST-level edges.`,
+
+  /** Claude/Cursor agent-hooks presence -- always PASS either way (matches `LLM_NOT_CONFIGURED`'s
+   *  precedent): a platform never selected at `init` is a legitimate state, not a defect. */
+  AGENT_HOOKS_FOUND: (platformName: string) => `${platformName} hooks found.`,
+  AGENT_HOOKS_NOT_FOUND: (platformName: string) =>
+    `${platformName} hooks not found (run \`docuvia init\` to install).`,
 } as const;

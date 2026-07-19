@@ -12,7 +12,13 @@ import {
   type DiagnosticResult,
   DiagnosticStatus,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import {
+  GitConstants,
+  CLAUDE_HOOKS_DIR,
+  CURSOR_HOOKS_DIR,
+  DOCUVIA_HOOK_JS_FILENAME,
+  DOCUVIA_HOOK_CJS_FILENAME,
+} from "@workspace/core";
 import type { DoctorResult } from "./doctor-result.js";
 import {
   DOCTOR_DIAGNOSTIC_KEYS,
@@ -29,6 +35,10 @@ export interface DoctorOptions {
   skipDb?: boolean;
   skipGit?: boolean;
   skipLogs?: boolean;
+  /** Skips the Claude/Cursor AI-agent hook presence check -- previously a CLI-only
+   *  (`doctor.ts`-side) option; folded in here alongside the check itself so `DoctorOptions` isn't
+   *  duplicated across layers. */
+  skipHooks?: boolean;
   /** Opt-in repair of the legacy-hook duplicate-block case (§10d, T6) -- the only `doctor` flag
    *  that mutates workspace files, and only for that one specific condition. Never mutates
    *  anything when absent/false. */
@@ -52,6 +62,7 @@ export class DoctorWorkflow {
       skipDb = false,
       skipGit = false,
       skipLogs = false,
+      skipHooks = false,
       fix = false,
       llmBaseUrl,
       llmApiKey,
@@ -82,6 +93,12 @@ export class DoctorWorkflow {
     );
     // §10e bullet 4 / §7a-1 (T8) -- always PASS (decision 1c); doesn't affect allPassed either.
     await this.runLspBinaryDiagnostic(diagnostics);
+    // Folded in from doctor.ts's plain fs.stat logic (workflows/doctor-execution-flow.md's
+    // Presentation-layer asymmetry cleanup) -- always PASS, same as above; a platform never
+    // selected at init is a legitimate state, not a defect, so this must never affect allPassed.
+    await this.runOrSkip(skipHooks, () =>
+      this.runAgentHooksDiagnostic(diagnostics),
+    );
 
     return {
       allPassed: results.every(Boolean),
@@ -279,6 +296,56 @@ export class DoctorWorkflow {
       };
     } catch {
       // Never crash doctor over this check.
+    }
+  }
+
+  /**
+   * Claude/Cursor AI-agent hook presence -- folded in from `doctor.ts`'s plain `fs.stat` logic to
+   * close the asymmetry `doctor-execution-flow.md` flagged (every other diagnostic already goes
+   * through `DoctorWorkflow`). Always PASS regardless of presence/absence: a platform never
+   * selected at `init` is a legitimate state, not a defect -- matches `LLM_NOT_CONFIGURED`'s
+   * "not configured is PASS" precedent. `DiagnosticStatus` has no severity between PASS and FAIL,
+   * so this deliberately never reports FAIL; never affects `allPassed`. Never throws.
+   */
+  private async runAgentHooksDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<void> {
+    const checks: {
+      key: string;
+      dir: string;
+      filename: string;
+      platformName: string;
+    }[] = [
+      {
+        key: DOCTOR_DIAGNOSTIC_KEYS.AGENT_HOOKS_CLAUDE,
+        dir: CLAUDE_HOOKS_DIR,
+        filename: DOCUVIA_HOOK_JS_FILENAME,
+        platformName: "Claude",
+      },
+      {
+        key: DOCTOR_DIAGNOSTIC_KEYS.AGENT_HOOKS_CURSOR,
+        dir: CURSOR_HOOKS_DIR,
+        filename: DOCUVIA_HOOK_CJS_FILENAME,
+        platformName: "Cursor",
+      },
+    ];
+
+    for (const { key, dir, filename, platformName } of checks) {
+      const hookPath = path.join(this.workspaceRoot, dir, filename);
+      let found: boolean;
+      try {
+        await fs.stat(hookPath);
+        found = true;
+      } catch {
+        found = false;
+      }
+
+      diagnostics[key] = {
+        status: DiagnosticStatus.PASS,
+        message: found
+          ? DOCTOR_MESSAGES.AGENT_HOOKS_FOUND(platformName)
+          : DOCTOR_MESSAGES.AGENT_HOOKS_NOT_FOUND(platformName),
+      };
     }
   }
 

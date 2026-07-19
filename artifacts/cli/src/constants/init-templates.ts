@@ -1,9 +1,15 @@
-export const CLAUDE_HOOKS_DIR = ".claude/hooks";
-export const CURSOR_HOOKS_DIR = ".cursor/hooks";
+// Shared with lib/ui-core's DoctorWorkflow agent-hooks diagnostic -- defined in @workspace/core so
+// neither side depends on the other; re-exported here so this file stays the single import path
+// every platform installer already uses.
+export {
+  CLAUDE_HOOKS_DIR,
+  CURSOR_HOOKS_DIR,
+  DOCUVIA_HOOK_JS_FILENAME,
+  DOCUVIA_HOOK_CJS_FILENAME,
+} from "@workspace/core";
+
 export const GITHUB_DIR = ".github";
 
-export const DOCUVIA_HOOK_JS_FILENAME = "docuvia-hook.js";
-export const DOCUVIA_HOOK_CJS_FILENAME = "docuvia-hook.cjs";
 export const HOOKS_CONFIG_FILENAME = "hooks.json";
 
 export const CURSOR_MCP_CONFIG_PATH = ".cursor/mcp.json";

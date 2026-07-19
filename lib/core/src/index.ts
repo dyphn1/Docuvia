@@ -19,5 +19,11 @@ export {
   isSupportedSourceFile,
   isDiscoverableSourceFile,
 } from "./utils/language-detection.js";
-export { MAX_FILE_SIZE_BYTES } from "./constants/paths.js";
+export {
+  MAX_FILE_SIZE_BYTES,
+  CLAUDE_HOOKS_DIR,
+  CURSOR_HOOKS_DIR,
+  DOCUVIA_HOOK_JS_FILENAME,
+  DOCUVIA_HOOK_CJS_FILENAME,
+} from "./constants/paths.js";
 export { GitConstants } from "./git/git-constants.js";

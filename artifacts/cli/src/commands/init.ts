@@ -19,7 +19,6 @@ import { withInitCommandLock } from "../utils/init-command-lock.js";
 /** Boundary validation (design-spirit.md #4) — the first thing that touches CLI-supplied input. */
 const InitInputSchema = z.object({
   cwd: z.string().min(1, CLI_ERROR_MESSAGES.WORKSPACE_ROOT_EMPTY),
-  allowGlobalMcpConfig: z.boolean(),
   platformFilter: z.string().optional(),
 });
 
@@ -63,7 +62,6 @@ async function runDatabaseInit(cwd: string): Promise<void> {
 
 async function configureAgentIntegrations(
   cwd: string,
-  allowGlobalMcpConfig: boolean,
   platformFilter: string | undefined,
 ): Promise<void> {
   ui.info(UI_MESSAGES.INIT_AGENT_HOOKS);
@@ -79,7 +77,7 @@ async function configureAgentIntegrations(
   }
 
   for (const platform of selectedPlatforms) {
-    await platform.installHooks(cwd, allowGlobalMcpConfig);
+    await platform.installHooks(cwd);
   }
 
   ui.success(UI_MESSAGES.INIT_HOOKS_SUCCESS);
@@ -88,12 +86,10 @@ async function configureAgentIntegrations(
 
 export async function initCommand(
   cwd: string = process.cwd(),
-  allowGlobalMcpConfig: boolean = false,
   platformFilter?: string,
 ) {
   const input = InitInputSchema.parse({
     cwd,
-    allowGlobalMcpConfig,
     platformFilter,
   });
 
@@ -123,11 +119,7 @@ export async function initCommand(
 
       if (!databaseInitFailed) {
         try {
-          await configureAgentIntegrations(
-            input.cwd,
-            input.allowGlobalMcpConfig,
-            input.platformFilter,
-          );
+          await configureAgentIntegrations(input.cwd, input.platformFilter);
         } catch (error) {
           hooksError = error;
         }

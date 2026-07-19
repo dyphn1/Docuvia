@@ -18,10 +18,7 @@ export class GenericMarkdownPlatform extends BasePlatform {
   readonly name = PLATFORM_NAME_MARKDOWN_AGENTS;
   readonly slug = PLATFORM_SLUG_MARKDOWN_AGENTS;
 
-  async installHooks(
-    cwd: string,
-    _allowGlobalMcpConfig?: boolean,
-  ): Promise<void> {
+  async installHooks(cwd: string): Promise<void> {
     const targetPaths = [
       path.join(cwd, GITHUB_DIR, COPILOT_INSTRUCTIONS_FILENAME),
       path.join(cwd, CLAUDE_MD_FILENAME),

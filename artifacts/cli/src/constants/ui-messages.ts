@@ -25,7 +25,6 @@ export const UI_MESSAGES = {
   INIT_HOOKS_CONFIG_MCP: "Configuring MCP Servers...",
   INIT_HOOKS_REGISTERED_MCP: "Registered MCP server in: ",
   INIT_HOOKS_FAIL_CURSOR_MCP: "Could not configure Cursor MCP: ",
-  INIT_HOOKS_FAIL_CLAUDE_MCP: "Could not configure Claude Desktop MCP: ",
   INIT_HOOKS_SUCCESS: "Docuvia Agent Integrations successfully installed!",
   INIT_HOOKS_SUPPORTED:
     "Supported platforms: Claude Code, Cursor, GitHub Copilot, Windsurf, Zed, Continue, OpenCode, Gemini CLI.",
@@ -33,10 +32,9 @@ export const UI_MESSAGES = {
   INIT_HOOKS_SELECT: "Which AI Agent integrations would you like to install?",
   INIT_HOOKS_NONE_SELECTED:
     "No platforms selected. Skipping agent integrations.",
-  INIT_GLOBAL_MCP_CONFIRM:
-    "Register Docuvia's MCP server in the machine-global Claude Desktop config (affects every project, not just this repo)?",
-  INIT_GLOBAL_MCP_SKIPPED:
-    "Skipped global Claude Desktop MCP registration. Re-run with --global to enable, or add it manually — see docs/gitbook/packages/cli.md.",
+  // IFCE-002: Docuvia never writes machine-global state — print the snippet, let the user paste it.
+  INIT_CLAUDE_MCP_MANUAL_SNIPPET:
+    "To use Docuvia from Claude Desktop, add this to your global MCP config",
 
   // Filesystem write helper (writeOrAppend)
   FS_APPENDED: "Appended instructions to: ",

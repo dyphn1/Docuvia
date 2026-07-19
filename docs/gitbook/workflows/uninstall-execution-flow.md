@@ -29,12 +29,12 @@ sequenceDiagram
     participant GitAPI as docuviaApi.uninstallGitHooks()
     participant API as docuviaApi.clean()
 
-    User->>CLI: docuvia uninstall, platform flag, global flag, keep db
+    User->>CLI: docuvia uninstall, platform flag, keep db
     CLI->>Wizard: selectPlatforms platformFilter
     Wizard-->>CLI: selectedPlatforms
 
     loop each selected platform, independently
-        CLI->>Plat: uninstallHooks workspaceRoot, allowGlobalMcpConfig
+        CLI->>Plat: uninstallHooks workspaceRoot
         alt platform uninstall throws
             Plat-->>CLI: error, logged and collected, not rethrown
             Note right of CLI: one platform's failure does not skip remaining platforms or db cleanup.
@@ -67,25 +67,20 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| Step                                                                                                     | Governing ADR(s)                                                       | Verdict                     |
-| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | --------------------------- |
-| Each platform uninstalled independently; one failure doesn't block the rest or DB cleanup                | `architecture/error-handling-architecture.md`                          | ✅ Match                    |
-| Git hooks removed via `UninstallHooksWorkflow`; one hook's failure doesn't block the other or DB cleanup | `phase1-decision-integration.md` §10a                                  | ✅ Match                    |
-| DB cleanup reuses `docuviaApi.clean()` rather than duplicating delete logic                              | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)   | ✅ Match                    |
-| `--global` / `allowGlobalMcpConfig` passed through to platform uninstall                                 | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md) | ⚠️ **Conflict** — see below |
+| Step                                                                                                     | Governing ADR(s)                                                       | Verdict                        |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
+| Each platform uninstalled independently; one failure doesn't block the rest or DB cleanup                | `architecture/error-handling-architecture.md`                          | ✅ Match                       |
+| Git hooks removed via `UninstallHooksWorkflow`; one hook's failure doesn't block the other or DB cleanup | `phase1-decision-integration.md` §10a                                  | ✅ Match                       |
+| DB cleanup reuses `docuviaApi.clean()` rather than duplicating delete logic                              | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)   | ✅ Match                       |
+| No `--global` flag; platform uninstall never takes one                                                   | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md) | ✅ Match (RESOLVED, see below) |
 
 ## Conflicts Found
 
-### Same IFCE-002 conflict as `init`, on the uninstall side
+### Same IFCE-002 conflict as `init`, on the uninstall side (RESOLVED)
 
-[init's Conflict #0](init-execution-flow.md#conflicts-found) documents that
-[IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md) supersedes ADR-035 and says
-the `--global` flag was **removed entirely** from all commands. `uninstall.ts` is the second half of
-that same live contradiction: `uninstallCommand()` still accepts `allowGlobalMcpConfig` and passes it
-straight through to `platform.uninstallHooks()`, which (per `claude.platform.ts`) still edits
-`claude_desktop_config.json` directly when the flag is set — exactly the "CLI edits AI client
-configs" behavior IFCE-002 prohibits. This isn't a second independent bug; it's the same
-un-migrated decision showing up on both ends of the same feature (`init` installs the global entry,
-`uninstall` removes it) — fixing IFCE-002's implementation gap on the `init` side necessarily means
-fixing it here too, since both call sites share `claude.platform.ts`'s `maybeConfigureMcpServer`
-family of methods.
+This conflict has been resolved — see [init's Conflict #0](init-execution-flow.md#conflicts-found)
+for the full fix. `uninstallCommand()` no longer accepts or threads `allowGlobalMcpConfig`; it calls
+`platform.uninstallHooks(workspaceRoot)` with no second argument, matching the now-single-parameter
+`IIntegrationManager` contract. `claude.platform.ts`'s `uninstallHooks` still best-effort removes a
+legacy global MCP entry if one exists (read-then-delete, never a write) — a deliberate exception to
+clean up repos set up under an older Docuvia version, not a re-introduction of the removed flag.

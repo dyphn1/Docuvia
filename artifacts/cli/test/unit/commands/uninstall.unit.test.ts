@@ -94,7 +94,7 @@ describe("uninstallCommand", () => {
     });
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await uninstallCommand(process.cwd(), false);
+    await uninstallCommand(process.cwd());
 
     expect(mockClean).toHaveBeenCalled();
     // 2, not 1: one scope for the new git-hooks-removal step, one for the db cleanup step.
@@ -105,18 +105,9 @@ describe("uninstallCommand", () => {
     const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock.results[0]
       .value;
 
-    expect(claudeInstance.uninstallHooks).toHaveBeenCalledWith(
-      process.cwd(),
-      false,
-    );
-    expect(cursorInstance.uninstallHooks).toHaveBeenCalledWith(
-      process.cwd(),
-      false,
-    );
-    expect(markdownInstance.uninstallHooks).toHaveBeenCalledWith(
-      process.cwd(),
-      false,
-    );
+    expect(claudeInstance.uninstallHooks).toHaveBeenCalledWith(process.cwd());
+    expect(cursorInstance.uninstallHooks).toHaveBeenCalledWith(process.cwd());
+    expect(markdownInstance.uninstallHooks).toHaveBeenCalledWith(process.cwd());
     expect(mockUninstallGitHooks).toHaveBeenCalled();
   });
 
@@ -128,7 +119,7 @@ describe("uninstallCommand", () => {
     } as any);
     mockUninstallGitHooks.mockRejectedValue(new Error("EACCES"));
 
-    await uninstallCommand(process.cwd(), false);
+    await uninstallCommand(process.cwd());
 
     expect(mockClean).toHaveBeenCalled();
     expect(ui.warn).toHaveBeenCalledWith(
@@ -141,7 +132,7 @@ describe("uninstallCommand", () => {
     mockClean.mockRejectedValue(new Error("boom"));
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await uninstallCommand(process.cwd(), false);
+    await uninstallCommand(process.cwd());
 
     expect(ui.warn).toHaveBeenCalledWith(expect.stringContaining("boom"));
     // 2, not 1: one scope for the git-hooks-removal step, one for the db cleanup step (whose
@@ -151,7 +142,7 @@ describe("uninstallCommand", () => {
   });
 
   it("rejects an empty workspaceRoot before touching any platform or docuviaApi.clean", async () => {
-    await uninstallCommand("", false);
+    await uninstallCommand("");
 
     expect(ui.error).toHaveBeenCalledWith(
       expect.stringContaining("must not be empty"),
@@ -178,7 +169,7 @@ describe("uninstallCommand", () => {
         }) as any,
     );
 
-    await uninstallCommand(process.cwd(), false);
+    await uninstallCommand(process.cwd());
 
     const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
     const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
@@ -204,7 +195,7 @@ describe("uninstallCommand", () => {
         message: "Cleaned",
       } as any);
 
-      await uninstallCommand(process.cwd(), false, "markdown");
+      await uninstallCommand(process.cwd(), "markdown");
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
       const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
@@ -215,12 +206,11 @@ describe("uninstallCommand", () => {
       expect(cursorInstance.uninstallHooks).not.toHaveBeenCalled();
       expect(markdownInstance.uninstallHooks).toHaveBeenCalledWith(
         process.cwd(),
-        false,
       );
     });
 
     it("reports an error and sets exitCode to 1 for an unknown platform slug", async () => {
-      await uninstallCommand(process.cwd(), false, "notaplatform");
+      await uninstallCommand(process.cwd(), "notaplatform");
 
       expect(ui.warn).toHaveBeenCalledWith(
         expect.stringContaining("Unknown --platform value"),
@@ -231,7 +221,7 @@ describe("uninstallCommand", () => {
 
   describe("--keep-db", () => {
     it("skips database cleanup when keepDb is true", async () => {
-      await uninstallCommand(process.cwd(), false, undefined, true);
+      await uninstallCommand(process.cwd(), undefined, true);
 
       expect(mockClean).not.toHaveBeenCalled();
       expect(ui.info).toHaveBeenCalledWith(
@@ -239,10 +229,7 @@ describe("uninstallCommand", () => {
       );
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
-      expect(claudeInstance.uninstallHooks).toHaveBeenCalledWith(
-        process.cwd(),
-        false,
-      );
+      expect(claudeInstance.uninstallHooks).toHaveBeenCalledWith(process.cwd());
     });
 
     it("still cleans the database by default (keepDb absent)", async () => {
@@ -252,7 +239,7 @@ describe("uninstallCommand", () => {
         message: "Cleaned",
       } as any);
 
-      await uninstallCommand(process.cwd(), false);
+      await uninstallCommand(process.cwd());
 
       expect(mockClean).toHaveBeenCalled();
     });

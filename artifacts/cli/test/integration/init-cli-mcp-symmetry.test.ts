@@ -100,8 +100,8 @@ describe("CLI `docuvia init` and MCP `docuvia_init` produce equivalent local.db 
   });
 
   it("populates the same tables with equal row counts via both paths", async () => {
-    // CLI path — non-interactive (isTTY=false), no --global.
-    await initCommand(workspaceA, false);
+    // CLI path — non-interactive (isTTY=false).
+    await initCommand(workspaceA);
 
     // MCP path — the tool handler resolves workspaceRoot from process.cwd() internally
     // (mirroring how the real MCP stdio server would run it). `process.chdir()` isn't

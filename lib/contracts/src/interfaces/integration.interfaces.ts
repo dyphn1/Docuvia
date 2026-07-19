@@ -1,4 +1,4 @@
 export interface IIntegrationManager {
-  installHooks(cwd: string, allowGlobalMcpConfig?: boolean): Promise<void>;
-  uninstallHooks(cwd: string, allowGlobalMcpConfig?: boolean): Promise<void>;
+  installHooks(cwd: string): Promise<void>;
+  uninstallHooks(cwd: string): Promise<void>;
 }

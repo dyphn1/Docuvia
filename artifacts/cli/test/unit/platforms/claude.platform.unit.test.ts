@@ -23,11 +23,13 @@ import { ClaudePlatform } from "../../../src/platforms/claude.platform.js";
 import { ui } from "../../../src/ui/wizard.js";
 import { CLAUDE_DESKTOP_CONFIG_FILENAME } from "../../../src/constants/init-templates.js";
 
-describe("ClaudePlatform.configure — global MCP config gating", () => {
+// IFCE-002: Docuvia never writes machine-global state. `installHooks` must only touch the
+// repo-scoped `.claude/hooks/` directory and print a copy-pasteable MCP snippet — it must never
+// write to Claude Desktop's own (machine-global) config file, regardless of TTY or flags.
+describe("ClaudePlatform.installHooks — no machine-global writes (IFCE-002)", () => {
   let repoDir: string;
   let globalConfigDir: string;
   let originalAppData: string | undefined;
-  let originalIsTTY: boolean | undefined;
 
   beforeEach(async () => {
     repoDir = await fs.mkdtemp(
@@ -38,17 +40,12 @@ describe("ClaudePlatform.configure — global MCP config gating", () => {
     );
     originalAppData = process.env.APPDATA;
     process.env.APPDATA = globalConfigDir;
-    originalIsTTY = process.stdin.isTTY;
     vi.clearAllMocks();
   });
 
   afterEach(async () => {
     if (originalAppData === undefined) delete process.env.APPDATA;
     else process.env.APPDATA = originalAppData;
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: originalIsTTY,
-      configurable: true,
-    });
     await fs.rm(repoDir, { recursive: true, force: true });
     await fs.rm(globalConfigDir, { recursive: true, force: true });
   });
@@ -68,17 +65,17 @@ describe("ClaudePlatform.configure — global MCP config gating", () => {
     }
   }
 
-  it("writes the global config when allowGlobalMcpConfig=true (--global passed)", async () => {
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: false,
-      configurable: true,
-    });
-
+  it("never writes Claude Desktop's global config file", async () => {
     const platform = new ClaudePlatform();
-    await platform.installHooks(repoDir, true);
+    await platform.installHooks(repoDir);
 
-    expect(await globalConfigExists()).toBe(true);
-    // Repo-scoped hooks are always written regardless of the global gate.
+    expect(await globalConfigExists()).toBe(false);
+  });
+
+  it("always configures the repo-scoped hooks", async () => {
+    const platform = new ClaudePlatform();
+    await platform.installHooks(repoDir);
+
     expect(
       await fs
         .access(path.join(repoDir, ".claude", "hooks", "docuvia-hook.js"))
@@ -89,56 +86,22 @@ describe("ClaudePlatform.configure — global MCP config gating", () => {
     ).toBe(true);
   });
 
-  it("skips the global write in non-TTY mode without --global, but still configures local hooks", async () => {
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: false,
-      configurable: true,
-    });
-
+  it("prints a copy-pasteable MCP snippet naming the global config path, instead of writing it", async () => {
     const platform = new ClaudePlatform();
-    await platform.installHooks(repoDir, false);
+    await platform.installHooks(repoDir);
 
-    expect(await globalConfigExists()).toBe(false);
     expect(ui.info).toHaveBeenCalledWith(
-      expect.stringContaining("Skipped global"),
+      expect.stringContaining(globalConfigPath()),
     );
-    expect(
-      await fs
-        .access(path.join(repoDir, ".claude", "hooks", "docuvia-hook.js"))
-        .then(
-          () => true,
-          () => false,
-        ),
-    ).toBe(true);
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining('"mcpServers"'),
+    );
   });
 
-  it("prompts for confirmation in TTY mode without --global, and skips the global write when declined", async () => {
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: true,
-      configurable: true,
-    });
-    vi.mocked(ui.askConfirm).mockResolvedValue(false);
-
+  it("never prompts for confirmation", async () => {
     const platform = new ClaudePlatform();
-    await platform.installHooks(repoDir, false);
+    await platform.installHooks(repoDir);
 
-    expect(ui.askConfirm).toHaveBeenCalledWith(
-      expect.stringContaining("machine-global"),
-      false,
-    );
-    expect(await globalConfigExists()).toBe(false);
-  });
-
-  it("writes the global config in TTY mode without --global when the confirmation is accepted", async () => {
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: true,
-      configurable: true,
-    });
-    vi.mocked(ui.askConfirm).mockResolvedValue(true);
-
-    const platform = new ClaudePlatform();
-    await platform.installHooks(repoDir, false);
-
-    expect(await globalConfigExists()).toBe(true);
+    expect(ui.askConfirm).not.toHaveBeenCalled();
   });
 });

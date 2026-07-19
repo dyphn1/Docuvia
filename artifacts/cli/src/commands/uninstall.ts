@@ -17,13 +17,12 @@ type UninstallLogger = ReturnType<typeof createPinoBackedLogger>;
 async function uninstallPlatformHooks(
   selectedPlatforms: Awaited<ReturnType<typeof selectPlatforms>>,
   workspaceRoot: string,
-  allowGlobalMcpConfig: boolean,
   logger: UninstallLogger,
 ): Promise<string[]> {
   const failures: string[] = [];
   for (const platform of selectedPlatforms) {
     try {
-      await platform.uninstallHooks(workspaceRoot, allowGlobalMcpConfig);
+      await platform.uninstallHooks(workspaceRoot);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       logger.warn(
@@ -123,7 +122,6 @@ function reportUninstallOutcome(failures: string[]): void {
 
 export async function uninstallCommand(
   workspaceRoot: string,
-  allowGlobalMcpConfig: boolean,
   platformFilter?: string,
   keepDb: boolean = false,
 ): Promise<void> {
@@ -147,7 +145,6 @@ export async function uninstallCommand(
     const failures = await uninstallPlatformHooks(
       selectedPlatforms,
       workspaceRoot,
-      allowGlobalMcpConfig,
       logger,
     );
 

@@ -27,7 +27,7 @@ sequenceDiagram
     participant Wizard as Wizard UI
     participant Lock as Command Lock (.docuvia/init.lock)
 
-    User->>CLI: docuvia init (platform flag, global flag)
+    User->>CLI: docuvia init (platform flag)
     CLI->>CLI: Step 1 Zod boundary validation of cwd and flags
 
     opt stdin is a TTY and NOT CI/CD
@@ -154,17 +154,13 @@ sequenceDiagram
         CLI->>Wizard: Step 12 selectPlatforms
         Note right of Wizard: MATCH IFCE-001 checkbox behavior for TTY.
         loop each selected platform
-            CLI->>Plat: installHooks cwd allowGlobalMcpConfig
-            alt global flag passed
-                Plat->>Plat: configureMcpServer unconditionally
-            else TTY, no global flag
-                Plat->>Wizard: askConfirm register global MCP, default no
-            else headless, no global flag
-                Plat->>Plat: skip and inform, never silent global write
-            end
+            CLI->>Plat: installHooks cwd
+            Plat->>Plat: repo-scoped hooks/rules only, never a global write
+            Note right of Plat: Claude platform additionally prints the mcpServers JSON snippet
+            Note right of Plat: and the Claude Desktop config path -- copy-paste, never written.
         end
-        Note right of Plat: CONFLICT: IFCE-002 says the global flag was removed entirely.
-        Note right of Plat: Code still implements superseded ADR-035 global flag behavior.
+        Note right of Plat: RESOLVED: IFCE-002's "no global flags, print-and-copy-paste" is now
+        Note right of Plat: what ships -- the --global flag and ADR-035 write path are gone.
     end
 
     CLI->>Lock: Step 13 lock.release
@@ -173,55 +169,42 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| #   | Step                                                        | Governing ADR(s)                                                                                                                                                    | Verdict                           |
-| --- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| 1   | Zod boundary validation of CLI input                        | `guidelines/design-spirit.md` #4 (boundary validation)                                                                                                              | ✅ Match                          |
-| 2   | TTY confirmation prompt                                     | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                               | ✅ Match                          |
-| 3   | Whole-command single-flight lock                            | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)                                                                                                     | ✅ Match                          |
-| 5   | `openStore()` — WAL + `IMMEDIATE` migration transaction     | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                               | ✅ Match                          |
-| 6   | `ensureGitBranchAndHooks()` recheck-in-lock + warn          | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-001](../adr/storage/STOR-001-git-branch-source-of-truth.md) (branch-first-commit stamping)   | ✅ Match                          |
-| 7   | `seedProjectRow()` atomic `getOrInsert`                     | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)                                                                                                     | ✅ Match                          |
-| 8   | Parallel discovery (config/VCS/file scan)                   | — (no ADR governs this directly; implementation detail)                                                                                                             | —                                 |
-| 9   | AST parse + persist                                         | [GRPH-003](../adr/graph/GRPH-003-unified-ast-microkernel.md)                                                                                                        | ✅ Match                          |
-| 10  | `hydrationService.markSynced()`                             | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                                                                                                | ⚠️ **ADR text stale** — see below |
-| 11  | Temp-file manager init (non-fatal)                          | `architecture/application-lifecycle-and-state.md`                                                                                                                   | ✅ Match                          |
-| 12  | Platform selection (checkbox / `--platform` / headless-all) | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                               | ✅ Match (this part of the ADR)   |
-| 12b | `--global` / confirm-default-no / skip-and-inform           | [ADR-035](../adr/legacy/ADR-035-opt-in-global-side-effect-gating.md) (superseded), [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md) (current) | ⚠️ **Conflict** — see below       |
-| —   | `init.start` / `init.summary` JSONL log                     | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)                                                                                           | ✅ Match                          |
-| —   | Hidden `docuvia-knowledge` branch + post-commit hook        | [PLAT-004](../adr/platform/PLAT-004-zero-interruption-invisible-indexing.md)                                                                                        | ✅ Match                          |
+| #   | Step                                                               | Governing ADR(s)                                                                                                                                                  | Verdict                           |
+| --- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| 1   | Zod boundary validation of CLI input                               | `guidelines/design-spirit.md` #4 (boundary validation)                                                                                                            | ✅ Match                          |
+| 2   | TTY confirmation prompt                                            | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                             | ✅ Match                          |
+| 3   | Whole-command single-flight lock                                   | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)                                                                                                   | ✅ Match                          |
+| 5   | `openStore()` — WAL + `IMMEDIATE` migration transaction            | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                             | ✅ Match                          |
+| 6   | `ensureGitBranchAndHooks()` recheck-in-lock + warn                 | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-001](../adr/storage/STOR-001-git-branch-source-of-truth.md) (branch-first-commit stamping) | ✅ Match                          |
+| 7   | `seedProjectRow()` atomic `getOrInsert`                            | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)                                                                                                   | ✅ Match                          |
+| 8   | Parallel discovery (config/VCS/file scan)                          | — (no ADR governs this directly; implementation detail)                                                                                                           | —                                 |
+| 9   | AST parse + persist                                                | [GRPH-003](../adr/graph/GRPH-003-unified-ast-microkernel.md)                                                                                                      | ✅ Match                          |
+| 10  | `hydrationService.markSynced()`                                    | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                                                                                              | ⚠️ **ADR text stale** — see below |
+| 11  | Temp-file manager init (non-fatal)                                 | `architecture/application-lifecycle-and-state.md`                                                                                                                 | ✅ Match                          |
+| 12  | Platform selection (checkbox / `--platform` / headless-all)        | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                             | ✅ Match (this part of the ADR)   |
+| 12b | Repo-scoped hooks only; Claude Desktop MCP is print-and-copy-paste | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)                                                                                            | ✅ Match (RESOLVED, see below)    |
+| —   | `init.start` / `init.summary` JSONL log                            | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)                                                                                         | ✅ Match                          |
+| —   | Hidden `docuvia-knowledge` branch + post-commit hook               | [PLAT-004](../adr/platform/PLAT-004-zero-interruption-invisible-indexing.md)                                                                                      | ✅ Match                          |
 
 ## Conflicts Found
 
-### 0. IFCE-002 says the `--global` flag was removed entirely; it's still live
+### 0. IFCE-002 says the `--global` flag was removed entirely; it was still live (RESOLVED)
 
-This is the most serious conflict found across the whole `docuvia` command surface, so it's listed
-first even though it sits late in `init`'s own flow (step 12b).
+This conflict has been resolved. [ADR-035](../adr/legacy/ADR-035-opt-in-global-side-effect-gating.md)
+(2026-07-11) introduced an opt-in `--global` flag so `init` could register Docuvia's MCP server into
+the machine-global Claude Desktop config; it was superseded a day later by
+[IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md), which reverses the decision
+outright — but the code kept implementing the superseded ADR-035 behavior until this fix.
 
-[ADR-035](../adr/legacy/ADR-035-opt-in-global-side-effect-gating.md) (2026-07-11) introduced an
-opt-in `--global` flag so `init` could register Docuvia's MCP server into the machine-global Claude
-Desktop config. That ADR was later explicitly superseded by
-[IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md) (2026-07-12, one day later),
-which reverses the decision outright:
-
-> **No Global Flags**: The `--global` flag is completely removed from all commands... **Manual MCP
-> Registration**: The CLI will not attempt to edit AI client configurations (like Claude Desktop or
-> Cursor). Instead, the CLI or documentation will simply print the necessary JSON snippet and
-> instruct the user to copy-paste it manually.
-
-But the code still implements the _superseded_ ADR-035 behavior, not IFCE-002's:
-
-- `artifacts/cli/src/cli.ts:48-51,135-144` still parses `CLI_FLAGS.GLOBAL` for both `init` and
-  `uninstall` and passes `allowGlobalMcpConfig` through.
-- `artifacts/cli/src/platforms/claude.platform.ts`'s `maybeConfigureMcpServer` still writes
-  directly to `claude_desktop_config.json` when the flag (or an interactive confirm) allows it —
-  exactly the "CLI edits AI client configs" behavior IFCE-002 says must not happen.
-
-This isn't a documentation nit: IFCE-002 was written specifically because the old behavior has real
-failure modes (multi-project key collisions, orphaned global config entries after `docuvia clean`
-deletes a project). Those failure modes are still live in the current code. **Recommendation**:
-either implement IFCE-002 (remove `--global`, print-and-copy-paste instead) or, if the team decided
-IFCE-002 was itself premature, write a new ADR un-superseding it — but the current state, where the
-latest-dated accepted ADR contradicts what ships, should not persist silently.
+`CLI_FLAGS.GLOBAL`/`allowGlobalMcpConfig` has been removed end-to-end (`cli.ts`, `init.ts`,
+`uninstall.ts`, `IIntegrationManager`, every platform). `claude.platform.ts`'s
+`maybeConfigureMcpServer`/`configureMcpServer` (the direct `claude_desktop_config.json` writer) is
+gone, replaced by `printMcpServerSnippet` — `installHooks` now only ever touches the repo-scoped
+`.claude/hooks/` directory and prints the `mcpServers` JSON snippet plus the resolved config path
+for the user to copy-paste, exactly matching IFCE-002 decision #3. `uninstall`'s best-effort removal
+of a legacy global MCP entry (if one exists from an older Docuvia version) was kept — it's a
+cleanup-only, read-then-delete operation that never writes, scoped to undoing what a prior version
+of `init` might have done.
 
 ### 1. IFCE-001 requires an `--interactive` flag; the code has none (RESOLVED)
 

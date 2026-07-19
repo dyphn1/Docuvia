@@ -45,10 +45,9 @@ interface CommandContext {
 }
 
 async function handleInit(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([CLI_FLAGS.GLOBAL, CLI_FLAGS.PLATFORM]);
-  const allowGlobalMcpConfig = ctx.parser.hasFlag(CLI_FLAGS.GLOBAL);
+  ctx.parser.checkUnknownFlags([CLI_FLAGS.PLATFORM]);
   const platform = ctx.parser.getFlagValue(CLI_FLAGS.PLATFORM);
-  await initCommand(ctx.workspaceRoot, allowGlobalMcpConfig, platform);
+  await initCommand(ctx.workspaceRoot, platform);
 }
 
 async function handleMcp(ctx: CommandContext): Promise<void> {
@@ -138,20 +137,10 @@ async function handleHydrate(ctx: CommandContext): Promise<void> {
 }
 
 async function handleUninstall(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([
-    CLI_FLAGS.GLOBAL,
-    CLI_FLAGS.PLATFORM,
-    CLI_FLAGS.KEEP_DB,
-  ]);
-  const allowGlobalMcpConfig = ctx.parser.hasFlag(CLI_FLAGS.GLOBAL);
+  ctx.parser.checkUnknownFlags([CLI_FLAGS.PLATFORM, CLI_FLAGS.KEEP_DB]);
   const platform = ctx.parser.getFlagValue(CLI_FLAGS.PLATFORM);
   const keepDb = ctx.parser.hasFlag(CLI_FLAGS.KEEP_DB);
-  await uninstallCommand(
-    ctx.workspaceRoot,
-    allowGlobalMcpConfig,
-    platform,
-    keepDb,
-  );
+  await uninstallCommand(ctx.workspaceRoot, platform, keepDb);
 }
 
 async function handleDoctor(ctx: CommandContext): Promise<void> {

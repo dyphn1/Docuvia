@@ -28,10 +28,7 @@ export class CursorPlatform extends BasePlatform {
   readonly name = PLATFORM_NAME_CURSOR;
   readonly slug = PLATFORM_SLUG_CURSOR;
 
-  async installHooks(
-    cwd: string,
-    _allowGlobalMcpConfig?: boolean,
-  ): Promise<void> {
+  async installHooks(cwd: string): Promise<void> {
     await this.configureHooks(cwd);
     await this.configureMcpServer(cwd);
   }

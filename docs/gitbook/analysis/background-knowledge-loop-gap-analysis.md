@@ -172,8 +172,10 @@ prerequisites for unattended concurrent processes. Residual open items live in
 
 From the workflows-vs-ADR audit (`docs/gitbook/workflows/README.md`) and this review:
 
-- `--global` flag still live in `init`/`uninstall` despite IFCE-002 saying it was removed.
-- MCP's `docuvia_init` tool bypasses PLAT-006's command lock.
+- ~~`--global` flag still live in `init`/`uninstall` despite IFCE-002 saying it was removed.~~
+  **CLOSED (2026-07-19)** — flag removed end-to-end; `claude.platform.ts` now prints the MCP
+  snippet instead of writing `claude_desktop_config.json`; see `init-execution-flow.md` Conflict #0.
+- ~~MCP's `docuvia_init` tool bypasses PLAT-006's command lock.~~ **CLOSED** (`6a51ead`).
 - `sync` vs `sync-knowledge` naming confusion — candidate for the owner's command-convergence
   principle (user-sentence test) in a future IFCE ADR.
 - STOR-002's "no hydration code exists" note is stale (hydration subsystem exists in full).

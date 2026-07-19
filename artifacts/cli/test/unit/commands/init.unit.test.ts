@@ -183,52 +183,6 @@ describe("initCommand", () => {
     expect(mockInit).not.toHaveBeenCalled();
   });
 
-  describe("--global threading to platform.installHooks", () => {
-    it("passes allowGlobalMcpConfig=true through to every platform's configure() when the --global flag was set", async () => {
-      mockInit.mockResolvedValue({
-        success: true,
-        partialFailure: false,
-        message: "Success",
-      } as any);
-
-      await initCommand(process.cwd(), true);
-
-      const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
-      const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
-      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock
-        .results[0].value;
-
-      expect(claudeInstance.installHooks).toHaveBeenCalledWith(
-        process.cwd(),
-        true,
-      );
-      expect(cursorInstance.installHooks).toHaveBeenCalledWith(
-        process.cwd(),
-        true,
-      );
-      expect(markdownInstance.installHooks).toHaveBeenCalledWith(
-        process.cwd(),
-        true,
-      );
-    });
-
-    it("passes allowGlobalMcpConfig=false through to platform.installHooks() by default (--global absent)", async () => {
-      mockInit.mockResolvedValue({
-        success: true,
-        partialFailure: false,
-        message: "Success",
-      } as any);
-
-      await initCommand(process.cwd());
-
-      const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
-      expect(claudeInstance.installHooks).toHaveBeenCalledWith(
-        process.cwd(),
-        false,
-      );
-    });
-  });
-
   describe("--platform selection", () => {
     it("installs only the platforms named in the --platform flag, skipping the interactive checkbox", async () => {
       mockInit.mockResolvedValue({
@@ -237,7 +191,7 @@ describe("initCommand", () => {
         message: "Success",
       } as any);
 
-      await initCommand(process.cwd(), false, "claude,cursor");
+      await initCommand(process.cwd(), "claude,cursor");
 
       expect(ui.askCheckbox).not.toHaveBeenCalled();
 
@@ -258,7 +212,7 @@ describe("initCommand", () => {
         message: "Success",
       } as any);
 
-      await initCommand(process.cwd(), false, " Claude , CURSOR ");
+      await initCommand(process.cwd(), " Claude , CURSOR ");
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
       const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
@@ -277,9 +231,9 @@ describe("initCommand", () => {
         message: "Success",
       } as any);
 
-      await expect(
-        initCommand(process.cwd(), false, "notaplatform"),
-      ).rejects.toThrow("Exit 1");
+      await expect(initCommand(process.cwd(), "notaplatform")).rejects.toThrow(
+        "Exit 1",
+      );
 
       expect(ui.error).toHaveBeenCalledWith(
         expect.stringContaining("Unknown --platform value"),

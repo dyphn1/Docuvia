@@ -1,5 +1,6 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
+import { LanguageNodeTypes } from "../constants/tree-sitter-node-types.js";
 
 const CPP_EXTENSIONS = [
   ".cpp",
@@ -16,20 +17,23 @@ const CPP_WASM_FILE = "tree-sitter-cpp.wasm";
 export const cppConfig: LanguageConfig = {
   extensions: CPP_EXTENSIONS,
   wasm_file: CPP_WASM_FILE,
-  imports: ["preproc_include", "using_declaration"],
-  classes: [
-    "class_specifier",
-    "struct_specifier",
-    "enum_specifier",
-    "union_specifier",
-    "type_definition",
+  imports: [
+    LanguageNodeTypes.PREPROC_INCLUDE,
+    LanguageNodeTypes.USING_DECLARATION,
   ],
-  functions: ["function_definition"],
-  calls: ["call_expression"],
+  classes: [
+    LanguageNodeTypes.CLASS_SPECIFIER,
+    LanguageNodeTypes.STRUCT_SPECIFIER,
+    LanguageNodeTypes.ENUM_SPECIFIER,
+    LanguageNodeTypes.UNION_SPECIFIER,
+    LanguageNodeTypes.TYPE_DEFINITION,
+  ],
+  functions: [LanguageNodeTypes.FUNCTION_DEFINITION],
+  calls: [LanguageNodeTypes.CALL_EXPRESSION],
   queries: {
-    classes: `(class_specifier name: (type_identifier) @${QueryCaptureName.CLASS}) (struct_specifier name: (type_identifier) @${QueryCaptureName.CLASS}) (enum_specifier name: (type_identifier) @${QueryCaptureName.CLASS}) (union_specifier name: (type_identifier) @${QueryCaptureName.CLASS}) (type_definition name: (type_identifier) @${QueryCaptureName.CLASS})`,
-    functions: `(function_definition declarator: (function_declarator declarator: (identifier) @${QueryCaptureName.FUNCTION}))`,
-    imports: `(preproc_include) @${QueryCaptureName.IMPORT} (using_declaration) @${QueryCaptureName.IMPORT}`,
-    calls: `(call_expression function: [(identifier) (field_expression)] @${QueryCaptureName.CALL})`,
+    classes: `(${LanguageNodeTypes.CLASS_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.STRUCT_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ENUM_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.UNION_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.TYPE_DEFINITION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS})`,
+    functions: `(${LanguageNodeTypes.FUNCTION_DEFINITION} declarator: (${LanguageNodeTypes.FUNCTION_DECLARATOR} declarator: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}))`,
+    imports: `(${LanguageNodeTypes.PREPROC_INCLUDE}) @${QueryCaptureName.IMPORT} (${LanguageNodeTypes.USING_DECLARATION}) @${QueryCaptureName.IMPORT}`,
+    calls: `(${LanguageNodeTypes.CALL_EXPRESSION} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.FIELD_EXPRESSION})] @${QueryCaptureName.CALL})`,
   },
 };

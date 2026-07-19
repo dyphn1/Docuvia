@@ -11,6 +11,7 @@ import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { OUTPUT_FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 
 /**
  * Mirrors `AnalyzeResultKind` from `lib/ui-core`'s `analyze-result.ts` — not re-exported
@@ -266,7 +267,9 @@ function startAnalyzeSpinner(
   return ui
     .spinner(
       targetPath
-        ? UI_MESSAGES.ANALYZE_FOCUSED_START + targetPath + "..."
+        ? UI_MESSAGES.ANALYZE_FOCUSED_START +
+            targetPath +
+            OUTPUT_FORMAT_MARKERS.ELLIPSIS
         : escalateToLsp
           ? UI_MESSAGES.ANALYZE_TIER_B_START
           : UI_MESSAGES.ANALYZE_START,

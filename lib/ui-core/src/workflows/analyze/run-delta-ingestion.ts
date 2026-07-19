@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import {
   docuviaFactory,
   TOKENS,
+  ChangedFileStatuses,
+  UTF8_ENCODING,
   type AstParseFailure,
   type ChangedFileEntry,
   type DiscoveredFile,
@@ -19,7 +21,7 @@ import {
 } from "@workspace/core";
 import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
-import { ANALYZE_MESSAGES } from "./analyze-messages.js";
+import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import {
   appendTierBQueueEntries,
   type TierBQueueEntry,
@@ -32,7 +34,12 @@ import {
   collectCommitMessageCandidates,
   collectContractSymbolCandidates,
 } from "./tier-c-candidates.js";
-import type { AutoModeResult } from "./analyze-result.js";
+import { AnalyzeResultKind, type AutoModeResult } from "./analyze-result.js";
+
+/** Content-hash fallback algorithm for a just-changed file not yet reflected in
+ *  `listTrackedFilesWithBlobHash` — mirrors `FileDiscoveryService`'s own manual-hash path. */
+const CONTENT_HASH_ALGORITHM = "sha256";
+const CONTENT_HASH_DIGEST_ENCODING = "hex";
 
 /**
  * `analyze` auto mode's delta-ingestion branch (§6b) — the graph already has data and `HEAD` has
@@ -67,7 +74,7 @@ export async function runDeltaIngestion(deps: {
 
   logger.info(ANALYZE_MESSAGES.AUTO_DELTA_INGESTION);
   await appendAnalyzeLogLine(workspaceRoot, {
-    event: "analyze.delta.start",
+    event: ANALYZE_EVENTS.DELTA_START,
     fromSha,
     headSha,
   });
@@ -118,7 +125,7 @@ export async function runDeltaIngestion(deps: {
   const filesReparsed = filesToParse.length - failures.length;
 
   await appendAnalyzeLogLine(workspaceRoot, {
-    event: "analyze.delta.summary",
+    event: ANALYZE_EVENTS.DELTA_SUMMARY,
     fromSha,
     headSha,
     filesReparsed,
@@ -130,7 +137,7 @@ export async function runDeltaIngestion(deps: {
   });
 
   return {
-    kind: "autoDelta",
+    kind: AnalyzeResultKind.AUTO_DELTA,
     fromSha,
     headSha,
     filesReparsed,
@@ -154,11 +161,11 @@ function partitionChangedEntries(changedEntries: ChangedFileEntry[]): {
   const toReparse: ChangedFileEntry[] = [];
 
   for (const entry of changedEntries) {
-    if (entry.status === "deleted") {
+    if (entry.status === ChangedFileStatuses.DELETED) {
       toDelete.add(entry.file);
       continue;
     }
-    if (entry.status === "renamed" && entry.oldFile) {
+    if (entry.status === ChangedFileStatuses.RENAMED && entry.oldFile) {
       toDelete.add(entry.oldFile);
     }
     if (!isDiscoverableSourceFile(entry.file)) continue;
@@ -201,11 +208,11 @@ async function collectFilesToParse(
     const content = await git.readFileAtRef(workspaceRoot, headSha, entry.file);
     if (content === undefined) continue; // gone by the time we read it (rare race) — skip, not fatal
 
-    const sizeBytes = Buffer.byteLength(content, "utf8");
+    const sizeBytes = Buffer.byteLength(content, UTF8_ENCODING);
     if (sizeBytes > MAX_FILE_SIZE_BYTES) {
       skippedOversized.push({ file: entry.file, sizeBytes });
       await appendAnalyzeLogLine(workspaceRoot, {
-        event: "analyze.delta.file_skipped_oversized",
+        event: ANALYZE_EVENTS.DELTA_FILE_SKIPPED_OVERSIZED,
         file: entry.file,
         sizeBytes,
       });
@@ -217,7 +224,10 @@ async function collectFilesToParse(
     // for the rare case a just-changed file isn't yet reflected in `listTrackedFilesWithBlobHash`.
     const hash =
       blobHashes.get(entry.file) ??
-      crypto.createHash("sha256").update(content).digest("hex");
+      crypto
+        .createHash(CONTENT_HASH_ALGORITHM)
+        .update(content)
+        .digest(CONTENT_HASH_DIGEST_ENCODING);
     filesToParse.push({ file: entry.file, hash, code: content });
     changedBytes += sizeBytes;
 
@@ -258,7 +268,7 @@ async function classifyChangedFile(
   findings: SemanticDiffModifiedNode[];
 }> {
   const { workspaceRoot, git, fromSha, headSha } = deps;
-  if (entry.status !== "modified")
+  if (entry.status !== ChangedFileStatuses.MODIFIED)
     return { contractChanged: false, findings: [] };
 
   const oldContent = await git.readFileAtRef(

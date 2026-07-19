@@ -7,12 +7,16 @@ import {
   type L3NodeRow,
   ValidityStatuses,
 } from "@workspace/contracts";
-import { SchemaTables } from "../constants.js";
+import { SchemaTables, SchemaColumns } from "../constants.js";
 
 const L3_NODES_ERROR_MESSAGES = {
   GET_BY_ID_FAILED: (id: number) => `Failed to get l3 node by id ${id}`,
   GET_ALL_EXPORTABLE_FAILED: "Failed to get all exportable l3 nodes",
+  UPSERT_DECISION_FAILED: "Failed to upsert l3 decision",
 } as const;
+
+/** `l3_nodes.source` value stamped by the `analyze <targetPath>` decision-extraction pipeline (see `IL3NodesRepo.upsertDecision`'s doc comment). */
+const L3_DECISION_SOURCE = "analyze" as const;
 
 /** `content_hash` = sha256 over `nodeType + "\n" + title + "\n" + content` (phase1-decision-integration.md §3c). */
 function computeContentHash(
@@ -87,9 +91,9 @@ export class L3NodesRepo implements IL3NodesRepo {
       const run = this.db.transaction(() => {
         const existing = this.db
           .prepare(
-            `SELECT l3.* FROM l3_nodes l3
-             JOIN l2_nodes l2 ON l2.id = l3.l2_node_id
-             WHERE l2.project_id = ? AND l3.content_hash = ?
+            `SELECT l3.* FROM ${SchemaTables.L3_NODES} l3
+             JOIN ${SchemaTables.L2_NODES} l2 ON l2.id = l3.${SchemaColumns.L2_NODE_ID}
+             WHERE l2.${SchemaColumns.PROJECT_ID} = ? AND l3.${SchemaColumns.CONTENT_HASH} = ?
              LIMIT 1`,
           )
           .get(input.projectId, contentHash) as L3NodeRow | undefined;
@@ -103,7 +107,7 @@ export class L3NodesRepo implements IL3NodesRepo {
           }
           this.db
             .prepare(
-              `UPDATE l3_nodes
+              `UPDATE ${SchemaTables.L3_NODES}
                SET occurrence_count = occurrence_count + 1,
                    last_verified_at = CURRENT_TIMESTAMP,
                    source_commits = ?
@@ -115,10 +119,10 @@ export class L3NodesRepo implements IL3NodesRepo {
 
         const result = this.db
           .prepare(
-            `INSERT INTO l3_nodes
-               (l2_node_id, title, content, node_type, source_commits, commit_hash,
-                ai_generated, confidence, source, content_hash, extraction_model, source_files)
-             VALUES (?, ?, ?, ?, ?, ?, 1, ?, 'analyze', ?, ?, ?)`,
+            `INSERT INTO ${SchemaTables.L3_NODES}
+               (${SchemaColumns.L2_NODE_ID}, title, content, node_type, source_commits, commit_hash,
+                ai_generated, confidence, source, ${SchemaColumns.CONTENT_HASH}, extraction_model, source_files)
+             VALUES (?, ?, ?, ?, ?, ?, 1, ?, '${L3_DECISION_SOURCE}', ?, ?, ?)`,
           )
           .run(
             input.l2NodeId,
@@ -139,7 +143,7 @@ export class L3NodesRepo implements IL3NodesRepo {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        "Failed to upsert l3 decision",
+        L3_NODES_ERROR_MESSAGES.UPSERT_DECISION_FAILED,
         err,
       );
     }

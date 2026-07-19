@@ -55,4 +55,6 @@ export const LSP_MESSAGES = {
   tsconfigMissing: "no tsconfig.json/jsconfig.json found at the workspace root",
   batchTimedOut: (timeoutMs: number) =>
     `Tier B LSP batch exceeded its ${timeoutMs}ms timeout and was aborted`,
+  resolutionFailedForFile: (file: string) =>
+    `Tier B LSP resolution failed for ${file}`,
 } as const;

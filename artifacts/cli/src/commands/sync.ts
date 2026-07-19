@@ -12,6 +12,7 @@ import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { OUTPUT_FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 
 function readStdin(): Promise<string> {
   return new Promise((resolve) => {
@@ -65,7 +66,9 @@ export async function syncCommand(
     options.commitSha ?? (process.stdin.isTTY ? undefined : await readStdin());
 
   const spinner = ui
-    .spinner(UI_MESSAGES.SYNC_START + projectId + "...")
+    .spinner(
+      UI_MESSAGES.SYNC_START + projectId + OUTPUT_FORMAT_MARKERS.ELLIPSIS,
+    )
     .start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();

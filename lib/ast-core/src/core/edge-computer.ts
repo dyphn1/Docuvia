@@ -1,6 +1,7 @@
 import { Node } from "web-tree-sitter";
 import { AstEvent } from "../sink.js";
 import { AstEventType } from "../constants/ast-event-constants.js";
+import { TreeSitterNodeTypes } from "../constants/tree-sitter-node-types.js";
 
 /**
  * Marks namespace/default/whole-module import bindings that don't resolve to a
@@ -102,14 +103,16 @@ const SINGLE_TYPE_IMPORT_HANDLERS: Record<
   string,
   (stmt: Node, descriptors: ParsedImportDescriptor[]) => void
 > = {
-  import_statement: collectTsJsImportDescriptors,
-  import_from_statement: collectPythonFromStatementDescriptors,
-  use_declaration: collectRustUseDescriptors,
-  import_declaration: collectGoImportDescriptors,
-  preproc_include: collectCIncludeDescriptors,
-  using_declaration: collectCppUsingDeclarationDescriptors,
-  call: collectRubyRequireDescriptors,
-  using_directive: collectCSharpUsingDescriptors,
+  [TreeSitterNodeTypes.IMPORT_STATEMENT]: collectTsJsImportDescriptors,
+  [TreeSitterNodeTypes.IMPORT_FROM_STATEMENT]:
+    collectPythonFromStatementDescriptors,
+  [TreeSitterNodeTypes.USE_DECLARATION]: collectRustUseDescriptors,
+  [TreeSitterNodeTypes.IMPORT_DECLARATION]: collectGoImportDescriptors,
+  [TreeSitterNodeTypes.PREPROC_INCLUDE]: collectCIncludeDescriptors,
+  [TreeSitterNodeTypes.USING_DECLARATION]:
+    collectCppUsingDeclarationDescriptors,
+  [TreeSitterNodeTypes.CALL]: collectRubyRequireDescriptors,
+  [TreeSitterNodeTypes.USING_DIRECTIVE]: collectCSharpUsingDescriptors,
 };
 
 // ── TypeScript / JavaScript ────────────────────────────────────────────
@@ -234,11 +237,11 @@ function collectRustScopedUseListChildDescriptor(
   prefix: string,
   descriptors: ParsedImportDescriptor[],
 ): void {
-  if (child.type === "use_as_clause") {
+  if (child.type === TreeSitterNodeTypes.USE_AS_CLAUSE) {
     collectRustScopedUseListAsClauseDescriptor(child, prefix, descriptors);
     return;
   }
-  if (child.type === "identifier") {
+  if (child.type === TreeSitterNodeTypes.IDENTIFIER) {
     descriptors.push({
       localName: child.text,
       originalName: WILDCARD_IMPORT_MARKER,
@@ -246,7 +249,7 @@ function collectRustScopedUseListChildDescriptor(
     });
     return;
   }
-  if (child.type === "scoped_identifier") {
+  if (child.type === TreeSitterNodeTypes.SCOPED_IDENTIFIER) {
     collectRustScopedUseListScopedIdentifierDescriptor(
       child,
       prefix,
@@ -291,7 +294,7 @@ function collectRustUseListDescriptors(
 ): void {
   for (const child of arg.namedChildren) {
     if (!child) continue;
-    if (child.type === "identifier") {
+    if (child.type === TreeSitterNodeTypes.IDENTIFIER) {
       descriptors.push({
         localName: child.text,
         originalName: WILDCARD_IMPORT_MARKER,
@@ -308,24 +311,27 @@ function collectRustUseDescriptors(
   const arg = stmt.childForFieldName("argument");
   if (!arg) return;
 
-  if (arg.type === "use_as_clause") {
+  if (arg.type === TreeSitterNodeTypes.USE_AS_CLAUSE) {
     collectRustUseAsClauseDescriptor(arg, descriptors);
     return;
   }
 
-  if (arg.type === "use_wildcard") return;
+  if (arg.type === TreeSitterNodeTypes.USE_WILDCARD) return;
 
-  if (arg.type === "scoped_use_list") {
+  if (arg.type === TreeSitterNodeTypes.SCOPED_USE_LIST) {
     collectRustScopedUseListDescriptors(arg, descriptors);
     return;
   }
 
-  if (arg.type === "scoped_identifier" || arg.type === "identifier") {
+  if (
+    arg.type === TreeSitterNodeTypes.SCOPED_IDENTIFIER ||
+    arg.type === TreeSitterNodeTypes.IDENTIFIER
+  ) {
     collectRustScopedOrPlainIdentifierDescriptor(arg, descriptors);
     return;
   }
 
-  if (arg.type === "use_list") {
+  if (arg.type === TreeSitterNodeTypes.USE_LIST) {
     collectRustUseListDescriptors(arg, descriptors);
   }
 }
@@ -341,8 +347,8 @@ function collectGoImportSpecDescriptor(
 
   const nameNode = spec.childForFieldName("name");
   if (nameNode) {
-    if (nameNode.type === "dot") return;
-    if (nameNode.type === "blank_identifier") return;
+    if (nameNode.type === TreeSitterNodeTypes.DOT) return;
+    if (nameNode.type === TreeSitterNodeTypes.BLANK_IDENTIFIER) return;
     descriptors.push({
       localName: nameNode.text,
       originalName: WILDCARD_IMPORT_MARKER,
@@ -395,7 +401,7 @@ function collectCppUsingDeclarationDescriptors(
   const children = stmt.namedChildren;
   for (const child of children) {
     if (!child) continue;
-    if (child.type === "qualified_identifier") {
+    if (child.type === TreeSitterNodeTypes.QUALIFIED_IDENTIFIER) {
       const ids = child.descendantsOfType("identifier");
       const lastId = ids[ids.length - 1];
       if (lastId) {
@@ -405,7 +411,7 @@ function collectCppUsingDeclarationDescriptors(
           modulePath: child.text,
         });
       }
-    } else if (child.type === "identifier") {
+    } else if (child.type === TreeSitterNodeTypes.IDENTIFIER) {
       descriptors.push({
         localName: child.text,
         originalName: WILDCARD_IMPORT_MARKER,
@@ -444,11 +450,11 @@ function collectRubyRequireDescriptors(
 // ── PHP ───────────────────────────────────────────────────────────────
 function isPhpImportStatement(stmtType: string): boolean {
   return (
-    stmtType === "namespace_use_declaration" ||
-    stmtType === "include_expression" ||
-    stmtType === "include_once_expression" ||
-    stmtType === "require_expression" ||
-    stmtType === "require_once_expression"
+    stmtType === TreeSitterNodeTypes.NAMESPACE_USE_DECLARATION ||
+    stmtType === TreeSitterNodeTypes.INCLUDE_EXPRESSION ||
+    stmtType === TreeSitterNodeTypes.INCLUDE_ONCE_EXPRESSION ||
+    stmtType === TreeSitterNodeTypes.REQUIRE_EXPRESSION ||
+    stmtType === TreeSitterNodeTypes.REQUIRE_ONCE_EXPRESSION
   );
 }
 
@@ -493,7 +499,7 @@ function collectPhpImportDescriptors(
   stmtType: string,
   descriptors: ParsedImportDescriptor[],
 ): void {
-  if (stmtType === "namespace_use_declaration") {
+  if (stmtType === TreeSitterNodeTypes.NAMESPACE_USE_DECLARATION) {
     collectPhpNamespaceUseDescriptor(stmt, descriptors);
   } else {
     collectPhpIncludeOrRequireDescriptor(stmt, descriptors);
@@ -575,7 +581,7 @@ function collectPythonFromImportDescriptors(
 
   for (const child of stmt.namedChildren) {
     if (!child) continue;
-    if (child.type === "aliased_import") {
+    if (child.type === TreeSitterNodeTypes.ALIASED_IMPORT) {
       const nameNode = child.childForFieldName("name");
       const aliasNode = child.childForFieldName("alias");
       if (nameNode && aliasNode) {
@@ -585,7 +591,7 @@ function collectPythonFromImportDescriptors(
           modulePath: sourceStr,
         });
       }
-    } else if (child.type === "dotted_name") {
+    } else if (child.type === TreeSitterNodeTypes.DOTTED_NAME) {
       const ids = child.descendantsOfType("identifier");
       const lastId = ids[ids.length - 1];
       if (lastId) {
@@ -595,7 +601,7 @@ function collectPythonFromImportDescriptors(
           modulePath: sourceStr,
         });
       }
-    } else if (child.type === "identifier") {
+    } else if (child.type === TreeSitterNodeTypes.IDENTIFIER) {
       descriptors.push({
         localName: child.text,
         originalName: child.text,
@@ -616,7 +622,7 @@ function classifyTsJsCall(callNode: Node): CallClassification {
   const fnNode = callNode.childForFieldName("function");
   if (!fnNode) return { isMethodCall: false, methodName: "" };
 
-  if (fnNode.type === "member_expression") {
+  if (fnNode.type === TreeSitterNodeTypes.MEMBER_EXPRESSION) {
     const propNode = fnNode.childForFieldName("property");
     const objNode = fnNode.childForFieldName("object");
     if (propNode) {
@@ -635,7 +641,7 @@ function classifyPythonCall(callNode: Node): CallClassification {
   const fnNode = callNode.childForFieldName("function");
   if (!fnNode) return { isMethodCall: false, methodName: "" };
 
-  if (fnNode.type === "attribute") {
+  if (fnNode.type === TreeSitterNodeTypes.ATTRIBUTE) {
     const attrNode = fnNode.childForFieldName("attribute");
     const objNode = fnNode.childForFieldName("object");
     if (attrNode) {
@@ -698,7 +704,7 @@ function classifyPhpCall(callNode: Node): CallClassification {
   const nameNode = callNode.childForFieldName("name");
   const methodName = nameNode?.text || "";
 
-  if (callType === "member_call_expression") {
+  if (callType === TreeSitterNodeTypes.MEMBER_CALL_EXPRESSION) {
     const objNode = callNode.childForFieldName("object");
     return {
       isMethodCall: true,
@@ -707,7 +713,7 @@ function classifyPhpCall(callNode: Node): CallClassification {
     };
   }
 
-  if (callType === "scoped_call_expression") {
+  if (callType === TreeSitterNodeTypes.SCOPED_CALL_EXPRESSION) {
     const classNode = callNode.childForFieldName("scope");
     return {
       isMethodCall: true,
@@ -724,7 +730,10 @@ function classifyCSharpInvocation(
 ): CallClassification | undefined {
   const exprNode =
     callNode.childForFieldName("function") || callNode.namedChildren[0];
-  if (exprNode && exprNode.type === "member_access_expression") {
+  if (
+    exprNode &&
+    exprNode.type === TreeSitterNodeTypes.MEMBER_ACCESS_EXPRESSION
+  ) {
     const nameNode = exprNode.childForFieldName("name");
     const objNode = exprNode.childForFieldName("expression");
     if (nameNode) {
@@ -771,16 +780,18 @@ const CALL_CLASSIFIERS: Record<
   string,
   (callNode: Node) => CallClassification | undefined
 > = {
-  call_expression: classifyTsJsCall,
-  call: classifyPythonCall,
-  method_invocation: classifyJavaMethodInvocation,
-  explicit_constructor_invocation: classifyJavaConstructorInvocation,
-  command_call: classifyRubyCommandCall,
-  function_call_expression: classifyPhpCall,
-  member_call_expression: classifyPhpCall,
-  scoped_call_expression: classifyPhpCall,
-  invocation_expression: classifyCSharpInvocation,
-  object_creation_expression: classifyCSharpObjectCreation,
+  [TreeSitterNodeTypes.CALL_EXPRESSION]: classifyTsJsCall,
+  [TreeSitterNodeTypes.CALL]: classifyPythonCall,
+  [TreeSitterNodeTypes.METHOD_INVOCATION]: classifyJavaMethodInvocation,
+  [TreeSitterNodeTypes.EXPLICIT_CONSTRUCTOR_INVOCATION]:
+    classifyJavaConstructorInvocation,
+  [TreeSitterNodeTypes.COMMAND_CALL]: classifyRubyCommandCall,
+  [TreeSitterNodeTypes.FUNCTION_CALL_EXPRESSION]: classifyPhpCall,
+  [TreeSitterNodeTypes.MEMBER_CALL_EXPRESSION]: classifyPhpCall,
+  [TreeSitterNodeTypes.SCOPED_CALL_EXPRESSION]: classifyPhpCall,
+  [TreeSitterNodeTypes.INVOCATION_EXPRESSION]: classifyCSharpInvocation,
+  [TreeSitterNodeTypes.OBJECT_CREATION_EXPRESSION]:
+    classifyCSharpObjectCreation,
 };
 
 export function classifyCall(callNode: Node): CallClassification {

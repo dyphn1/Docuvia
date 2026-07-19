@@ -11,6 +11,7 @@ import type {
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
 import { resolveWasmPath } from "../ast/resolve-wasm-path.js";
+import { SemanticDiffMessages } from "./semantic-diff-messages.js";
 
 /**
  * Classification-only wrapper around `lib/ast-core`'s `SemanticDiffDetector` — `analyze` auto
@@ -60,13 +61,10 @@ export class SemanticDiffAnalyzerService implements ISemanticDiffAnalyzer {
         newRange: r.newRange,
       }));
     } catch (err) {
-      this.logger.warn(
-        "SemanticDiffDetector failed; treating file as unclassified for Tier B",
-        {
-          filePath,
-          error: err instanceof Error ? err.message : String(err),
-        },
-      );
+      this.logger.warn(SemanticDiffMessages.DETECTOR_FAILED, {
+        filePath,
+        error: err instanceof Error ? err.message : String(err),
+      });
       return [];
     }
   }
@@ -87,10 +85,11 @@ export class SemanticDiffAnalyzerService implements ISemanticDiffAnalyzer {
 
     const { wasmPath, attemptedPaths } = resolveWasmPath(provider.wasm_file);
     if (!fs.existsSync(wasmPath)) {
-      this.logger.debug(
-        "No tree-sitter grammar available for semantic-diff classification; changed file will still be re-parsed",
-        { filePath, wasmFile: provider.wasm_file, attemptedPaths },
-      );
+      this.logger.debug(SemanticDiffMessages.NO_GRAMMAR_AVAILABLE, {
+        filePath,
+        wasmFile: provider.wasm_file,
+        attemptedPaths,
+      });
       this.detectors.set(provider.wasm_file, null);
       return undefined;
     }
@@ -102,14 +101,11 @@ export class SemanticDiffAnalyzerService implements ISemanticDiffAnalyzer {
       this.detectors.set(provider.wasm_file, detector);
       return detector;
     } catch (err) {
-      this.logger.warn(
-        "Failed to load tree-sitter grammar for semantic-diff classification",
-        {
-          filePath,
-          wasmFile: provider.wasm_file,
-          error: err instanceof Error ? err.message : String(err),
-        },
-      );
+      this.logger.warn(SemanticDiffMessages.GRAMMAR_LOAD_FAILED, {
+        filePath,
+        wasmFile: provider.wasm_file,
+        error: err instanceof Error ? err.message : String(err),
+      });
       this.detectors.set(provider.wasm_file, null);
       return undefined;
     }

@@ -53,6 +53,14 @@ export const ANALYZE_EVENTS = {
   DELTA_NO_HEAD: "analyze.delta.no_head",
   /** §10c's commit-time nudge (Tier A half; `doctor`'s passive backup is a separate event). */
   TIER_B_COMMIT_CAP_NUDGE: "analyze.auto.tier_b_cap_nudge",
+
+  /** `runFullIngestion`'s own start/summary lines (§6a). */
+  FULL_START: "analyze.full.start",
+  FULL_SUMMARY: "analyze.full.summary",
+  /** `runDeltaIngestion`'s own start/summary lines (§6b). */
+  DELTA_START: "analyze.delta.start",
+  DELTA_SUMMARY: "analyze.delta.summary",
+  DELTA_FILE_SKIPPED_OVERSIZED: "analyze.delta.file_skipped_oversized",
   FOCUSED_START: "analyze.focused.start",
   FOCUSED_ERROR: "analyze.focused.error",
   FOCUSED_SUMMARY: "analyze.focused.summary",
@@ -112,3 +120,13 @@ Return ONLY a valid JSON array. Each item:
 { "title": "concise title", "nodeType": "change" | "rule" | "decision" | "context", "content": "detailed explanation grounded in what the code actually does", "confidence": 0.0 to 1.0 }
 If the code contains no decision-worthy content, return an empty array — do not fabricate entries.
 OUTPUT MUST BE VALID JSON ONLY. NO MARKDOWN WRAPPERS. DO NOT OUTPUT \`\`\`json.`;
+
+/** User-message wrapper for `TIER_C_CONTRACT_SYMBOL_SYSTEM_PROMPT` — scopes the LLM's attention
+ *  to `symbolName` within `file`'s full source (`run-tier-c-drain.ts`'s
+ *  `processContractSymbolEntry`). */
+export const TIER_C_CONTRACT_SYMBOL_USER_MESSAGE = (
+  symbolName: string,
+  file: string,
+  content: string,
+) =>
+  `Focus on the symbol \`${symbolName}\` in the following file (\`${file}\`):\n\n${content}`;

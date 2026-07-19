@@ -5,6 +5,8 @@ import {
   type LanguageConfig,
   type SupportedLanguage,
 } from "@workspace/ast-core";
+import { DOCUVIA_DIR_NAME } from "@workspace/contracts";
+import { NODE_MODULES_DIR_NAME } from "../discovery/discovery-constants.js";
 
 const EXT_TO_LANGUAGE: Map<string, SupportedLanguage> = (() => {
   const map = new Map<string, SupportedLanguage>();
@@ -65,7 +67,7 @@ export function getSupportedGlobExtensions(): string[] {
 export function isDiscoverableSourceFile(filePath: string): boolean {
   return (
     isSupportedSourceFile(filePath) &&
-    !filePath.includes("node_modules/") &&
-    !filePath.includes(".docuvia/")
+    !filePath.includes(`${NODE_MODULES_DIR_NAME}/`) &&
+    !filePath.includes(`${DOCUVIA_DIR_NAME}/`)
   );
 }

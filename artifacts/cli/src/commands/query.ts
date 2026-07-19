@@ -205,7 +205,7 @@ function startQuerySpinner(
         FORMAT_MARKERS.DOUBLE_QUOTE +
         queryTarget +
         FORMAT_MARKERS.DOUBLE_QUOTE +
-        "...",
+        FORMAT_MARKERS.ELLIPSIS,
     )
     .start();
   logger.onLog((event) => {

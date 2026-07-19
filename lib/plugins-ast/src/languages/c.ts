@@ -1,5 +1,6 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
+import { LanguageNodeTypes } from "../constants/tree-sitter-node-types.js";
 
 const C_EXTENSIONS = [".c", ".h"];
 const C_WASM_FILE = "tree-sitter-c.wasm";
@@ -7,19 +8,19 @@ const C_WASM_FILE = "tree-sitter-c.wasm";
 export const cConfig: LanguageConfig = {
   extensions: C_EXTENSIONS,
   wasm_file: C_WASM_FILE,
-  imports: ["preproc_include"],
+  imports: [LanguageNodeTypes.PREPROC_INCLUDE],
   classes: [
-    "struct_specifier",
-    "enum_specifier",
-    "union_specifier",
-    "type_definition",
+    LanguageNodeTypes.STRUCT_SPECIFIER,
+    LanguageNodeTypes.ENUM_SPECIFIER,
+    LanguageNodeTypes.UNION_SPECIFIER,
+    LanguageNodeTypes.TYPE_DEFINITION,
   ],
-  functions: ["function_definition"],
-  calls: ["call_expression"],
+  functions: [LanguageNodeTypes.FUNCTION_DEFINITION],
+  calls: [LanguageNodeTypes.CALL_EXPRESSION],
   queries: {
-    classes: `(struct_specifier name: (type_identifier) @${QueryCaptureName.CLASS}) (enum_specifier name: (type_identifier) @${QueryCaptureName.CLASS}) (union_specifier name: (type_identifier) @${QueryCaptureName.CLASS}) (type_definition name: (type_identifier) @${QueryCaptureName.CLASS})`,
-    functions: `(function_definition declarator: (function_declarator declarator: (identifier) @${QueryCaptureName.FUNCTION}))`,
-    imports: `(preproc_include) @${QueryCaptureName.IMPORT}`,
-    calls: `(call_expression function: (identifier) @${QueryCaptureName.CALL})`,
+    classes: `(${LanguageNodeTypes.STRUCT_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ENUM_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.UNION_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.TYPE_DEFINITION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS})`,
+    functions: `(${LanguageNodeTypes.FUNCTION_DEFINITION} declarator: (${LanguageNodeTypes.FUNCTION_DECLARATOR} declarator: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}))`,
+    imports: `(${LanguageNodeTypes.PREPROC_INCLUDE}) @${QueryCaptureName.IMPORT}`,
+    calls: `(${LanguageNodeTypes.CALL_EXPRESSION} function: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CALL})`,
   },
 };

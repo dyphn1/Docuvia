@@ -23,6 +23,13 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
 /** Extension used to identify per-command run-log files under `.docuvia/logs/`. */
 export const LOG_FILE_EXTENSION = ".log";
 
+/** Human-readable AI-agent platform names interpolated into `DOCTOR_MESSAGES.AGENT_HOOKS_FOUND`/
+ *  `AGENT_HOOKS_NOT_FOUND`, paired with `DOCTOR_DIAGNOSTIC_KEYS.AGENT_HOOKS_CLAUDE`/`_CURSOR`. */
+export const DOCTOR_AGENT_PLATFORM_NAMES = {
+  CLAUDE: "Claude",
+  CURSOR: "Cursor",
+} as const;
+
 /** Diagnostic messages/suggestions for the `doctor` workflow. */
 export const DOCTOR_MESSAGES = {
   DB_RUNNER_NOT_REGISTERED: "DiagnosticRunnerDb not registered",

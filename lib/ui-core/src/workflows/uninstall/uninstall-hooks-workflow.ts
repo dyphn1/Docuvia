@@ -1,4 +1,5 @@
 import { docuviaFactory, TOKENS, type ILogger } from "@workspace/contracts";
+import { GitConstants } from "@workspace/core";
 
 /**
  * `uninstall`'s hooks-removal workflow (phase1-decision-integration.md §10a) — removes both git
@@ -26,11 +27,11 @@ export class UninstallHooksWorkflow {
 
     const postCommitRemoved = await this.removeHookSafely(
       () => knowledgeGit.removePostCommitHook(workspaceRoot),
-      "post-commit",
+      GitConstants.POST_COMMIT_HOOK_NAME,
     );
     const prePushRemoved = await this.removeHookSafely(
       () => knowledgeGit.removePrePushHook(workspaceRoot),
-      "pre-push",
+      GitConstants.PRE_PUSH_HOOK_NAME,
     );
 
     return { postCommitRemoved, prePushRemoved };

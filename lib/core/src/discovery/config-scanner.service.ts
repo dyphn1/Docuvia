@@ -13,6 +13,7 @@ import {
   ConfigRuleIds,
   ConfigFilenames,
   ConfigFilePrefixes,
+  ConfigMarkers,
 } from "./discovery-constants.js";
 
 export interface ConfigDetectionResult {
@@ -67,54 +68,71 @@ export const CONFIG_DETECTION_RULES: ConfigDetectionRule[] = [
   includesRule(
     ConfigRuleIds.PACKAGE_JSON_TYPESCRIPT,
     isPackageJson,
-    '"typescript"',
+    ConfigMarkers.PACKAGE_JSON_TYPESCRIPT,
     [ConfigTags.TYPESCRIPT],
   ),
-  includesRule(ConfigRuleIds.PACKAGE_JSON_REACT, isPackageJson, '"react"', [
-    ConfigTags.REACT,
-    ConfigDetectionTags.FRONTEND,
-  ]),
-  includesRule(ConfigRuleIds.PACKAGE_JSON_VUE, isPackageJson, '"vue"', [
-    ConfigTags.VUE,
-    ConfigDetectionTags.FRONTEND,
-  ]),
-  includesRule(ConfigRuleIds.PACKAGE_JSON_NEXT, isPackageJson, '"next"', [
-    ConfigDetectionTags.NEXTJS,
-    ConfigDetectionTags.FRONTEND,
-    ConfigDetectionTags.SSR,
-  ]),
-  includesRule(ConfigRuleIds.PACKAGE_JSON_EXPRESS, isPackageJson, '"express"', [
-    ConfigTags.EXPRESS,
-    ConfigDetectionTags.BACKEND,
-  ]),
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_REACT,
+    isPackageJson,
+    ConfigMarkers.PACKAGE_JSON_REACT,
+    [ConfigTags.REACT, ConfigDetectionTags.FRONTEND],
+  ),
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_VUE,
+    isPackageJson,
+    ConfigMarkers.PACKAGE_JSON_VUE,
+    [ConfigTags.VUE, ConfigDetectionTags.FRONTEND],
+  ),
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_NEXT,
+    isPackageJson,
+    ConfigMarkers.PACKAGE_JSON_NEXT,
+    [
+      ConfigDetectionTags.NEXTJS,
+      ConfigDetectionTags.FRONTEND,
+      ConfigDetectionTags.SSR,
+    ],
+  ),
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_EXPRESS,
+    isPackageJson,
+    ConfigMarkers.PACKAGE_JSON_EXPRESS,
+    [ConfigTags.EXPRESS, ConfigDetectionTags.BACKEND],
+  ),
   includesRule(
     ConfigRuleIds.PACKAGE_JSON_DRIZZLE_ORM,
     isPackageJson,
-    '"drizzle-orm"',
+    ConfigMarkers.PACKAGE_JSON_DRIZZLE_ORM,
     [ConfigDetectionTags.DRIZZLE, ConfigDetectionTags.DATABASE],
   ),
   includesRule(
     ConfigRuleIds.PACKAGE_JSON_TAILWINDCSS,
     isPackageJson,
-    '"tailwindcss"',
+    ConfigMarkers.PACKAGE_JSON_TAILWINDCSS,
     [ConfigDetectionTags.TAILWINDCSS, ConfigDetectionTags.CSS],
   ),
-  includesRule(ConfigRuleIds.PACKAGE_JSON_JEST, isPackageJson, '"jest"', [
-    ConfigDetectionTags.JEST,
-    ConfigDetectionTags.TESTING,
-  ]),
-  includesRule(ConfigRuleIds.PACKAGE_JSON_VITEST, isPackageJson, '"vitest"', [
-    ConfigDetectionTags.VITEST,
-    ConfigDetectionTags.TESTING,
-  ]),
-  includesRule(ConfigRuleIds.PACKAGE_JSON_PG, isPackageJson, '"pg"', [
-    ConfigDetectionTags.POSTGRES,
-    ConfigDetectionTags.DATABASE,
-  ]),
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_JEST,
+    isPackageJson,
+    ConfigMarkers.PACKAGE_JSON_JEST,
+    [ConfigDetectionTags.JEST, ConfigDetectionTags.TESTING],
+  ),
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_VITEST,
+    isPackageJson,
+    ConfigMarkers.PACKAGE_JSON_VITEST,
+    [ConfigDetectionTags.VITEST, ConfigDetectionTags.TESTING],
+  ),
+  includesRule(
+    ConfigRuleIds.PACKAGE_JSON_PG,
+    isPackageJson,
+    ConfigMarkers.PACKAGE_JSON_PG,
+    [ConfigDetectionTags.POSTGRES, ConfigDetectionTags.DATABASE],
+  ),
   includesRule(
     ConfigRuleIds.PACKAGE_JSON_WORKSPACES,
     isPackageJson,
-    '"workspaces"',
+    ConfigMarkers.PACKAGE_JSON_WORKSPACES,
     [ConfigDetectionTags.MONOREPO],
   ),
 
@@ -122,44 +140,59 @@ export const CONFIG_DETECTION_RULES: ConfigDetectionRule[] = [
     projectType: ProjectTypes.RUST,
     tags: [ProjectTypes.RUST],
   }),
-  includesRule(ConfigRuleIds.CARGO_TOKIO, isCargoToml, "tokio", [
-    ConfigDetectionTags.TOKIO,
-    ConfigDetectionTags.ASYNC,
-  ]),
-  includesRule(ConfigRuleIds.CARGO_ACTIX, isCargoToml, "actix", [
-    ConfigDetectionTags.ACTIX,
-    ConfigDetectionTags.BACKEND,
-  ]),
-  includesRule(ConfigRuleIds.CARGO_SERDE, isCargoToml, "serde", [
-    ConfigDetectionTags.SERDE,
-  ]),
-  includesRule(ConfigRuleIds.CARGO_TAURI, isCargoToml, "tauri", [
-    ConfigDetectionTags.TAURI,
-    ConfigDetectionTags.DESKTOP,
-  ]),
+  includesRule(
+    ConfigRuleIds.CARGO_TOKIO,
+    isCargoToml,
+    ConfigMarkers.CARGO_TOKIO,
+    [ConfigDetectionTags.TOKIO, ConfigDetectionTags.ASYNC],
+  ),
+  includesRule(
+    ConfigRuleIds.CARGO_ACTIX,
+    isCargoToml,
+    ConfigMarkers.CARGO_ACTIX,
+    [ConfigDetectionTags.ACTIX, ConfigDetectionTags.BACKEND],
+  ),
+  includesRule(
+    ConfigRuleIds.CARGO_SERDE,
+    isCargoToml,
+    ConfigMarkers.CARGO_SERDE,
+    [ConfigDetectionTags.SERDE],
+  ),
+  includesRule(
+    ConfigRuleIds.CARGO_TAURI,
+    isCargoToml,
+    ConfigMarkers.CARGO_TAURI,
+    [ConfigDetectionTags.TAURI, ConfigDetectionTags.DESKTOP],
+  ),
 
   presenceRule(ConfigRuleIds.PYTHON_BASE, isPythonMarker, {
     projectType: ProjectTypes.PYTHON,
     tags: [ProjectTypes.PYTHON],
   }),
-  includesRule(ConfigRuleIds.PYTHON_DJANGO, isPythonMarker, "django", [
-    ConfigDetectionTags.DJANGO,
-    ConfigDetectionTags.BACKEND,
-  ]),
-  includesRule(ConfigRuleIds.PYTHON_FASTAPI, isPythonMarker, "fastapi", [
-    ConfigDetectionTags.FASTAPI,
-    ConfigDetectionTags.BACKEND,
-  ]),
-  includesRule(ConfigRuleIds.PYTHON_PANDAS, isPythonMarker, "pandas", [
-    ConfigDetectionTags.PANDAS,
-    ConfigDetectionTags.DATA,
-  ]),
+  includesRule(
+    ConfigRuleIds.PYTHON_DJANGO,
+    isPythonMarker,
+    ConfigMarkers.PYTHON_DJANGO,
+    [ConfigDetectionTags.DJANGO, ConfigDetectionTags.BACKEND],
+  ),
+  includesRule(
+    ConfigRuleIds.PYTHON_FASTAPI,
+    isPythonMarker,
+    ConfigMarkers.PYTHON_FASTAPI,
+    [ConfigDetectionTags.FASTAPI, ConfigDetectionTags.BACKEND],
+  ),
+  includesRule(
+    ConfigRuleIds.PYTHON_PANDAS,
+    isPythonMarker,
+    ConfigMarkers.PYTHON_PANDAS,
+    [ConfigDetectionTags.PANDAS, ConfigDetectionTags.DATA],
+  ),
 
   presenceRule(ConfigRuleIds.GO_BASE, isGoMod, {
     projectType: ProjectTypes.GO,
     tags: [ProjectTypes.GO],
   }),
-  includesRule(ConfigRuleIds.GO_GIN, isGoMod, "gin-gonic", [
+  includesRule(ConfigRuleIds.GO_GIN, isGoMod, ConfigMarkers.GO_GIN, [
     ConfigDetectionTags.GIN,
     ConfigDetectionTags.BACKEND,
   ]),
@@ -199,7 +232,7 @@ const CONFIG_GLOB_PATTERNS = [
   `**/${ConfigFilenames.TSCONFIG_JSON}`,
   `**/${ConfigFilePrefixes.VITE_CONFIG}.*`,
   `**/${ConfigFilePrefixes.DRIZZLE_CONFIG}.*`,
-  "**/webpack.config.*",
+  `**/${ConfigFilePrefixes.WEBPACK_CONFIG}.*`,
   `**/${ConfigFilePrefixes.TAURI_CONF}.*`,
 ];
 

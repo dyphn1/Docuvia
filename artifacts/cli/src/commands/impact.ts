@@ -69,7 +69,7 @@ export async function impactCommand(
         FORMAT_MARKERS.DOUBLE_QUOTE +
         target +
         FORMAT_MARKERS.DOUBLE_QUOTE +
-        "...",
+        FORMAT_MARKERS.ELLIPSIS,
     )
     .start();
   const scopeId = crypto.randomUUID();

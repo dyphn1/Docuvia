@@ -1,4 +1,5 @@
 import { Parser, Language, Tree, Node } from "web-tree-sitter";
+import { TreeSitterNodeTypes } from "../constants/tree-sitter-node-types.js";
 
 export enum PruningLevel {
   INTERNAL_LOGIC = 0, // Level 0: Blast Radius = 0
@@ -17,16 +18,16 @@ export interface ModifiedNode {
   newRange: LineRange;
 }
 
-const SEMANTIC_TYPES = new Set([
-  "function_declaration",
-  "method_definition",
-  "arrow_function",
-  "class_declaration",
-  "interface_declaration",
-  "type_alias_declaration",
-  "export_statement",
-  "lexical_declaration",
-  "variable_declaration",
+const SEMANTIC_TYPES = new Set<string>([
+  TreeSitterNodeTypes.FUNCTION_DECLARATION,
+  TreeSitterNodeTypes.METHOD_DEFINITION,
+  TreeSitterNodeTypes.ARROW_FUNCTION,
+  TreeSitterNodeTypes.CLASS_DECLARATION,
+  TreeSitterNodeTypes.INTERFACE_DECLARATION,
+  TreeSitterNodeTypes.TYPE_ALIAS_DECLARATION,
+  TreeSitterNodeTypes.EXPORT_STATEMENT,
+  TreeSitterNodeTypes.LEXICAL_DECLARATION,
+  TreeSitterNodeTypes.VARIABLE_DECLARATION,
 ]);
 
 export class SemanticDiffDetector {
@@ -195,11 +196,11 @@ export class SemanticDiffDetector {
 
     // Handle variable declarations: variable_declaration -> variable_declarator -> name
     if (
-      node.type === "variable_declaration" ||
-      node.type === "lexical_declaration"
+      node.type === TreeSitterNodeTypes.VARIABLE_DECLARATION ||
+      node.type === TreeSitterNodeTypes.LEXICAL_DECLARATION
     ) {
       const decl = node.children.find(
-        (c: Node) => c.type === "variable_declarator",
+        (c: Node) => c.type === TreeSitterNodeTypes.VARIABLE_DECLARATOR,
       );
       if (decl) {
         const declName = decl.childForFieldName("name");
@@ -222,15 +223,15 @@ export class SemanticDiffDetector {
 
     // If the node is a variable_declaration, we want the signature to ignore the arrow function body.
     if (
-      node.type === "variable_declaration" ||
-      node.type === "lexical_declaration"
+      node.type === TreeSitterNodeTypes.VARIABLE_DECLARATION ||
+      node.type === TreeSitterNodeTypes.LEXICAL_DECLARATION
     ) {
       const decl = node.children.find(
-        (c: Node) => c.type === "variable_declarator",
+        (c: Node) => c.type === TreeSitterNodeTypes.VARIABLE_DECLARATOR,
       );
       if (decl) {
         const value = decl.childForFieldName("value");
-        if (value && value.type === "arrow_function") {
+        if (value && value.type === TreeSitterNodeTypes.ARROW_FUNCTION) {
           const arrowBody = value.childForFieldName("body");
           if (arrowBody) {
             // Collect text of variable_declaration but omit the arrow function's body

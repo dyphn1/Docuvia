@@ -309,9 +309,14 @@ export class FetchLlmClient implements ILlmClient {
         buffer += decoder.decode(value, { stream: true });
 
         let separatorIndex: number;
-        while ((separatorIndex = buffer.indexOf("\n\n")) !== -1) {
+        while (
+          (separatorIndex = buffer.indexOf(LlmApiHttp.SSE_BLOCK_SEPARATOR)) !==
+          -1
+        ) {
           const block = buffer.slice(0, separatorIndex);
-          buffer = buffer.slice(separatorIndex + 2);
+          buffer = buffer.slice(
+            separatorIndex + LlmApiHttp.SSE_BLOCK_SEPARATOR.length,
+          );
 
           const result = parseSseBlock(block, fromWireChunk);
           if (result.kind === "done") return;

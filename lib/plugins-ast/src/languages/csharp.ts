@@ -1,5 +1,6 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
+import { LanguageNodeTypes } from "../constants/tree-sitter-node-types.js";
 
 const CSHARP_EXTENSIONS = [".cs"];
 const CSHARP_WASM_FILE = "tree-sitter-c_sharp.wasm";
@@ -7,27 +8,30 @@ const CSHARP_WASM_FILE = "tree-sitter-c_sharp.wasm";
 export const csharpConfig: LanguageConfig = {
   extensions: CSHARP_EXTENSIONS,
   wasm_file: CSHARP_WASM_FILE,
-  imports: ["using_directive"],
+  imports: [LanguageNodeTypes.USING_DIRECTIVE],
   classes: [
-    "class_declaration",
-    "struct_declaration",
-    "interface_declaration",
-    "enum_declaration",
-    "record_declaration",
+    LanguageNodeTypes.CLASS_DECLARATION,
+    LanguageNodeTypes.STRUCT_DECLARATION,
+    LanguageNodeTypes.INTERFACE_DECLARATION,
+    LanguageNodeTypes.ENUM_DECLARATION,
+    LanguageNodeTypes.RECORD_DECLARATION,
   ],
   functions: [
-    "method_declaration",
-    "constructor_declaration",
-    "destructor_declaration",
-    "conversion_operator_declaration",
-    "operator_declaration",
-    "local_function_statement",
+    LanguageNodeTypes.METHOD_DECLARATION,
+    LanguageNodeTypes.CONSTRUCTOR_DECLARATION,
+    LanguageNodeTypes.DESTRUCTOR_DECLARATION,
+    LanguageNodeTypes.CONVERSION_OPERATOR_DECLARATION,
+    LanguageNodeTypes.OPERATOR_DECLARATION,
+    LanguageNodeTypes.LOCAL_FUNCTION_STATEMENT,
   ],
-  calls: ["invocation_expression", "object_creation_expression"],
+  calls: [
+    LanguageNodeTypes.INVOCATION_EXPRESSION,
+    LanguageNodeTypes.OBJECT_CREATION_EXPRESSION,
+  ],
   queries: {
-    classes: `(class_declaration name: (identifier) @${QueryCaptureName.CLASS}) (struct_declaration name: (identifier) @${QueryCaptureName.CLASS}) (interface_declaration name: (identifier) @${QueryCaptureName.CLASS}) (enum_declaration name: (identifier) @${QueryCaptureName.CLASS}) (record_declaration name: (identifier) @${QueryCaptureName.CLASS})`,
-    functions: `(method_declaration name: (identifier) @${QueryCaptureName.FUNCTION}) (constructor_declaration name: (identifier) @${QueryCaptureName.FUNCTION}) (destructor_declaration) @${QueryCaptureName.FUNCTION} (conversion_operator_declaration) @${QueryCaptureName.FUNCTION} (operator_declaration) @${QueryCaptureName.FUNCTION} (local_function_statement) @${QueryCaptureName.FUNCTION}`,
-    imports: `(using_directive) @${QueryCaptureName.IMPORT}`,
-    calls: `(invocation_expression) @${QueryCaptureName.CALL} (object_creation_expression) @${QueryCaptureName.CALL}`,
+    classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.STRUCT_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.INTERFACE_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ENUM_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.RECORD_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS})`,
+    functions: `(${LanguageNodeTypes.METHOD_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.CONSTRUCTOR_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.DESTRUCTOR_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.CONVERSION_OPERATOR_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.OPERATOR_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.LOCAL_FUNCTION_STATEMENT}) @${QueryCaptureName.FUNCTION}`,
+    imports: `(${LanguageNodeTypes.USING_DIRECTIVE}) @${QueryCaptureName.IMPORT}`,
+    calls: `(${LanguageNodeTypes.INVOCATION_EXPRESSION}) @${QueryCaptureName.CALL} (${LanguageNodeTypes.OBJECT_CREATION_EXPRESSION}) @${QueryCaptureName.CALL}`,
   },
 };

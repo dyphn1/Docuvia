@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { TsLspConstants } from "./lsp-constants.js";
+import { NODE_MODULES_DIR_NAME } from "../discovery/discovery-constants.js";
 
 export interface ResolvedLspBinary {
   command: string;
@@ -16,7 +17,7 @@ export interface ResolvedLspBinary {
 const WINDOWS_BIN_EXTENSIONS = [".cmd", ".CMD", ".exe", ""];
 
 function resolveLocalBinaryPath(workspaceRoot: string): string | undefined {
-  const binDir = path.join(workspaceRoot, "node_modules", ".bin");
+  const binDir = path.join(workspaceRoot, NODE_MODULES_DIR_NAME, ".bin");
   const candidates =
     process.platform === "win32"
       ? WINDOWS_BIN_EXTENSIONS.map(

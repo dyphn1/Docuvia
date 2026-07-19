@@ -4,6 +4,10 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { resolveLspBinary } from "./lsp-binary-resolver.js";
 import { TsLspConstants, LSP_MESSAGES } from "./lsp-constants.js";
+import {
+  ConfigFilenames,
+  NODE_MODULES_DIR_NAME,
+} from "../discovery/discovery-constants.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -20,10 +24,13 @@ export interface LspPreflightResult {
   reason?: string;
 }
 
-const TSCONFIG_CANDIDATES = ["tsconfig.json", "jsconfig.json"];
+const TSCONFIG_CANDIDATES = [
+  ConfigFilenames.TSCONFIG_JSON,
+  ConfigFilenames.JSCONFIG_JSON,
+];
 
 function checkNodeModulesPresent(workspaceRoot: string): boolean {
-  return fs.existsSync(path.join(workspaceRoot, "node_modules"));
+  return fs.existsSync(path.join(workspaceRoot, NODE_MODULES_DIR_NAME));
 }
 
 function checkTsconfigResolvable(workspaceRoot: string): boolean {

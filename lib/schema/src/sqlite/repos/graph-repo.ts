@@ -24,6 +24,8 @@ const GRAPH_REPO_ERROR_MESSAGES = {
   ALL_LINKS_FAILED: "Failed to get all node links",
   BULK_LOAD_FAILED: "Failed to bulk-load graph",
   PRUNE_ORPHANED_LINKS_FAILED: "Failed to prune orphaned node_links",
+  FIND_NODE_BY_NODE_KEY_FAILED: (nodeKey: string) =>
+    `Failed to find node by node_key: ${nodeKey}`,
 } as const;
 
 /** FTS5 sync-trigger names on `l2_nodes_fts` (see `migrations/0001_init.sql`) — dropped/recreated around `bulkLoadGraph`'s bulk insert. */
@@ -245,13 +247,15 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   findNodeIdByNodeKey(nodeKey: string): number | undefined {
     try {
       const row = this.db
-        .prepare("SELECT id FROM l2_nodes WHERE node_key = ?")
+        .prepare(
+          `SELECT id FROM ${SchemaTables.L2_NODES} WHERE ${SchemaColumns.NODE_KEY} = ?`,
+        )
         .get(nodeKey) as { id: number } | undefined;
       return row?.id;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
-        `Failed to find node by node_key: ${nodeKey}`,
+        GRAPH_REPO_ERROR_MESSAGES.FIND_NODE_BY_NODE_KEY_FAILED(nodeKey),
         err,
       );
     }

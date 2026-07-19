@@ -10,5 +10,8 @@ export const LlmApiHttp = {
   CONTENT_TYPE_EVENT_STREAM: "text/event-stream",
   SSE_DATA_PREFIX: "data: ",
   SSE_DONE_SENTINEL: "[DONE]",
+  /** SSE event block separator (blank line, per the SSE wire format) used to split `generate`'s
+   *  read buffer into individual blocks in `streamChatCompletion`. */
+  SSE_BLOCK_SEPARATOR: "\n\n",
   bearerAuth: (apiKey: string) => `Bearer ${apiKey}`,
 } as const;

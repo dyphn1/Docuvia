@@ -21,6 +21,7 @@ import {
 } from "@workspace/core";
 import type { DoctorResult } from "./doctor-result.js";
 import {
+  DOCTOR_AGENT_PLATFORM_NAMES,
   DOCTOR_DIAGNOSTIC_KEYS,
   DOCTOR_MESSAGES,
   LOG_FILE_EXTENSION,
@@ -320,13 +321,13 @@ export class DoctorWorkflow {
         key: DOCTOR_DIAGNOSTIC_KEYS.AGENT_HOOKS_CLAUDE,
         dir: CLAUDE_HOOKS_DIR,
         filename: DOCUVIA_HOOK_JS_FILENAME,
-        platformName: "Claude",
+        platformName: DOCTOR_AGENT_PLATFORM_NAMES.CLAUDE,
       },
       {
         key: DOCTOR_DIAGNOSTIC_KEYS.AGENT_HOOKS_CURSOR,
         dir: CURSOR_HOOKS_DIR,
         filename: DOCUVIA_HOOK_CJS_FILENAME,
-        platformName: "Cursor",
+        platformName: DOCTOR_AGENT_PLATFORM_NAMES.CURSOR,
       },
     ];
 

@@ -276,7 +276,7 @@ export class Libgit2Provider implements IGitProvider {
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
-        "Writing hook file failed",
+        GIT_PROVIDER_ERROR_MESSAGES.HOOK_FILE_WRITE_FAILED,
         err,
       );
     }

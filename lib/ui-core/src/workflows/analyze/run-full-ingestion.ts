@@ -10,8 +10,8 @@ import { seedProjectRow } from "../init/seed-project-row.js";
 import { runDiscoveryPipeline } from "../init/run-discovery-pipeline.js";
 import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
-import { ANALYZE_MESSAGES } from "./analyze-messages.js";
-import type { AutoModeResult } from "./analyze-result.js";
+import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
+import { AnalyzeResultKind, type AutoModeResult } from "./analyze-result.js";
 
 /**
  * `analyze` auto mode's full-ingestion branch (§6a) — the graph has no project row or no L2
@@ -31,7 +31,9 @@ export async function runFullIngestion(deps: {
   const { workspaceRoot, logger, store, git } = deps;
 
   logger.info(ANALYZE_MESSAGES.AUTO_FULL_INGESTION);
-  await appendAnalyzeLogLine(workspaceRoot, { event: "analyze.full.start" });
+  await appendAnalyzeLogLine(workspaceRoot, {
+    event: ANALYZE_EVENTS.FULL_START,
+  });
 
   const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, {
     logger,
@@ -88,7 +90,7 @@ export async function runFullIngestion(deps: {
   const filesSkippedOversized = discoveryResult.skippedOversized.length;
 
   await appendAnalyzeLogLine(workspaceRoot, {
-    event: "analyze.full.summary",
+    event: ANALYZE_EVENTS.FULL_SUMMARY,
     projectType: discoveryResult.projectType,
     filesRequested,
     filesParsed,
@@ -97,7 +99,7 @@ export async function runFullIngestion(deps: {
   });
 
   return {
-    kind: "autoFullIngestion",
+    kind: AnalyzeResultKind.AUTO_FULL_INGESTION,
     projectType: discoveryResult.projectType,
     suggestedTags: Array.from(discoveryResult.tags),
     filesRequested,

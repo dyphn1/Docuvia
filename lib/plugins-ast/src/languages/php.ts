@@ -1,5 +1,6 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
+import { LanguageNodeTypes } from "../constants/tree-sitter-node-types.js";
 
 const PHP_EXTENSIONS = [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"];
 const PHP_WASM_FILE = "tree-sitter-php.wasm";
@@ -8,28 +9,31 @@ export const phpConfig: LanguageConfig = {
   extensions: PHP_EXTENSIONS,
   wasm_file: PHP_WASM_FILE,
   imports: [
-    "namespace_use_declaration",
-    "include_expression",
-    "include_once_expression",
-    "require_expression",
-    "require_once_expression",
+    LanguageNodeTypes.NAMESPACE_USE_DECLARATION,
+    LanguageNodeTypes.INCLUDE_EXPRESSION,
+    LanguageNodeTypes.INCLUDE_ONCE_EXPRESSION,
+    LanguageNodeTypes.REQUIRE_EXPRESSION,
+    LanguageNodeTypes.REQUIRE_ONCE_EXPRESSION,
   ],
   classes: [
-    "class_declaration",
-    "interface_declaration",
-    "trait_declaration",
-    "enum_declaration",
+    LanguageNodeTypes.CLASS_DECLARATION,
+    LanguageNodeTypes.INTERFACE_DECLARATION,
+    LanguageNodeTypes.TRAIT_DECLARATION,
+    LanguageNodeTypes.ENUM_DECLARATION,
   ],
-  functions: ["function_definition", "method_declaration"],
+  functions: [
+    LanguageNodeTypes.FUNCTION_DEFINITION,
+    LanguageNodeTypes.METHOD_DECLARATION,
+  ],
   calls: [
-    "function_call_expression",
-    "member_call_expression",
-    "scoped_call_expression",
+    LanguageNodeTypes.FUNCTION_CALL_EXPRESSION,
+    LanguageNodeTypes.MEMBER_CALL_EXPRESSION,
+    LanguageNodeTypes.SCOPED_CALL_EXPRESSION,
   ],
   queries: {
-    classes: `(class_declaration name: (name) @${QueryCaptureName.CLASS}) (interface_declaration name: (name) @${QueryCaptureName.CLASS}) (trait_declaration name: (name) @${QueryCaptureName.CLASS}) (enum_declaration name: (name) @${QueryCaptureName.CLASS})`,
-    functions: `(function_definition name: (name) @${QueryCaptureName.FUNCTION}) (method_declaration name: (name) @${QueryCaptureName.FUNCTION})`,
-    imports: `(namespace_use_declaration) @${QueryCaptureName.IMPORT} (include_expression) @${QueryCaptureName.IMPORT} (include_once_expression) @${QueryCaptureName.IMPORT} (require_expression) @${QueryCaptureName.IMPORT} (require_once_expression) @${QueryCaptureName.IMPORT}`,
-    calls: `(function_call_expression function: (name) @${QueryCaptureName.CALL}) (member_call_expression name: (name) @${QueryCaptureName.CALL}) (scoped_call_expression name: (name) @${QueryCaptureName.CALL})`,
+    classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.NAME}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.INTERFACE_DECLARATION} name: (${LanguageNodeTypes.NAME}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.TRAIT_DECLARATION} name: (${LanguageNodeTypes.NAME}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ENUM_DECLARATION} name: (${LanguageNodeTypes.NAME}) @${QueryCaptureName.CLASS})`,
+    functions: `(${LanguageNodeTypes.FUNCTION_DEFINITION} name: (${LanguageNodeTypes.NAME}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.METHOD_DECLARATION} name: (${LanguageNodeTypes.NAME}) @${QueryCaptureName.FUNCTION})`,
+    imports: `(${LanguageNodeTypes.NAMESPACE_USE_DECLARATION}) @${QueryCaptureName.IMPORT} (${LanguageNodeTypes.INCLUDE_EXPRESSION}) @${QueryCaptureName.IMPORT} (${LanguageNodeTypes.INCLUDE_ONCE_EXPRESSION}) @${QueryCaptureName.IMPORT} (${LanguageNodeTypes.REQUIRE_EXPRESSION}) @${QueryCaptureName.IMPORT} (${LanguageNodeTypes.REQUIRE_ONCE_EXPRESSION}) @${QueryCaptureName.IMPORT}`,
+    calls: `(${LanguageNodeTypes.FUNCTION_CALL_EXPRESSION} function: (${LanguageNodeTypes.NAME}) @${QueryCaptureName.CALL}) (${LanguageNodeTypes.MEMBER_CALL_EXPRESSION} name: (${LanguageNodeTypes.NAME}) @${QueryCaptureName.CALL}) (${LanguageNodeTypes.SCOPED_CALL_EXPRESSION} name: (${LanguageNodeTypes.NAME}) @${QueryCaptureName.CALL})`,
   },
 };

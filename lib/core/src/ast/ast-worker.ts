@@ -12,7 +12,7 @@ import type {
 import { parseImportDescriptors } from "@workspace/ast-core";
 import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import { IpcLoggerClient, type AstExportKind } from "@workspace/contracts";
-import { AstMessages } from "./ast-constants.js";
+import { AstMessages, AstNodeTypes } from "./ast-constants.js";
 
 /**
  * Symbol-level feature hash (STOR-005): a hash of the AST node's own exact source span
@@ -148,11 +148,11 @@ export function resolveCallableName(node: Node): string {
   const ownName = node.childForFieldName("name");
   if (ownName) return ownName.text;
 
-  const NAME_BEARING_PARENTS = new Set([
-    "variable_declarator", // const foo = () => {}
-    "assignment_expression", // foo = () => {}
-    "pair", // { foo: () => {} }  (object literal property)
-    "public_field_definition", // class { foo = () => {} }
+  const NAME_BEARING_PARENTS = new Set<string>([
+    AstNodeTypes.VARIABLE_DECLARATOR,
+    AstNodeTypes.ASSIGNMENT_EXPRESSION,
+    AstNodeTypes.PAIR,
+    AstNodeTypes.PUBLIC_FIELD_DEFINITION,
   ]);
   let current = node.parent;
   while (current) {
@@ -161,7 +161,7 @@ export function resolveCallableName(node: Node): string {
     // assignment/property/field. Stop here — climbing further would misattribute the
     // name of the outer binding the call happens to live inside (e.g. `results` in
     // `const results = arr.map(x => x + 1)`) to this unrelated, unbound callback.
-    if (current.type === "arguments") break;
+    if (current.type === AstNodeTypes.ARGUMENTS) break;
     if (NAME_BEARING_PARENTS.has(current.type)) {
       const nameNode =
         current.childForFieldName("name") ||

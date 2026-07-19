@@ -16,6 +16,7 @@ import {
   ANALYZE_MESSAGES,
   TIER_C_COMMIT_MESSAGE_SYSTEM_PROMPT,
   TIER_C_CONTRACT_SYMBOL_SYSTEM_PROMPT,
+  TIER_C_CONTRACT_SYMBOL_USER_MESSAGE,
 } from "./analyze-messages.js";
 import { parseDecisionsFromLlmContent } from "./decision-parsing.js";
 import { toNodeKey } from "./anchor-resolution.js";
@@ -37,6 +38,24 @@ import {
   checkTierCSystemLoad,
   tryAcquireTierCLock,
 } from "./tier-c-throttle.js";
+
+/** §9f's whole-drain-skip reasons (`skipDrain`'s `reason` param) -- distinct from the
+ *  per-item `TierCFailReasons` below (an individual candidate's extraction failure). */
+const TierCSkipReasons = {
+  LLM_NOT_CONFIGURED: "llm-not-configured",
+  LOCK_CONTENDED: "lock-contended",
+  BUDGET_EXHAUSTED: "budget-exhausted",
+  LOAD_HIGH: "load-high",
+} as const;
+
+/** Per-item extraction failure reasons (`failOutcome`'s `reason` param, §9f). */
+const TierCFailReasons = {
+  NO_ANCHOR: "no-anchor",
+  BRIDGE_UNREACHABLE: "bridge-unreachable",
+  LLM_NON_JSON_OUTPUT: "llm-non-json-output",
+  MISSING_FILE: "missing-file",
+  FILE_UNREADABLE: "file-unreadable",
+} as const;
 
 export interface TierCDrainDeps {
   workspaceRoot: string;
@@ -145,11 +164,16 @@ export async function runTierCDrain(
   }
 
   if (!deps.llmBaseUrl || !deps.llmModel) {
-    return await skipDrain(deps, queue.length, "llm-not-configured");
+    return await skipDrain(
+      deps,
+      queue.length,
+      TierCSkipReasons.LLM_NOT_CONFIGURED,
+    );
   }
 
   const lock = await tryAcquireTierCLock(workspaceRoot);
-  if (!lock) return await skipDrain(deps, queue.length, "lock-contended");
+  if (!lock)
+    return await skipDrain(deps, queue.length, TierCSkipReasons.LOCK_CONTENDED);
 
   try {
     return await runGatedDrain(deps, queue);
@@ -173,7 +197,11 @@ async function runGatedDrain(
 
   const budget = readTierCBudget(store);
   if (isTierCBudgetExhausted(budget, dailyCallCap, dailyTokenCap)) {
-    return await skipDrain(deps, queue.length, "budget-exhausted");
+    return await skipDrain(
+      deps,
+      queue.length,
+      TierCSkipReasons.BUDGET_EXHAUSTED,
+    );
   }
 
   const loadCheck = checkTierCSystemLoad(deps.loadThreshold);
@@ -184,7 +212,7 @@ async function runGatedDrain(
     });
   }
   if (!loadCheck.ok) {
-    return await skipDrain(deps, queue.length, "load-high");
+    return await skipDrain(deps, queue.length, TierCSkipReasons.LOAD_HIGH);
   }
 
   return await drainQueue(deps, queue, budget, dailyCallCap, dailyTokenCap);
@@ -241,7 +269,7 @@ async function drainQueue(
     if (isTierCBudgetExhausted(budget, dailyCallCap, dailyTokenCap)) {
       await appendAnalyzeLogLine(workspaceRoot, {
         event: ANALYZE_EVENTS.TIER_C_SKIPPED,
-        reason: "budget-exhausted",
+        reason: TierCSkipReasons.BUDGET_EXHAUSTED,
         queued: queue.length,
         midRun: true,
       });
@@ -335,7 +363,7 @@ async function handleTierCItemOutcome(
     target: entry.target,
     reason: outcome.reason,
   });
-  return outcome.reason === "bridge-unreachable";
+  return outcome.reason === TierCFailReasons.BRIDGE_UNREACHABLE;
 }
 
 function isBridgeUnreachable(err: unknown): boolean {
@@ -444,7 +472,7 @@ async function processCommitMessageEntry(
     entry.commitSha,
   );
   const anchor = resolveAnchorForFiles(store, changedFiles);
-  if (anchor === undefined) return failOutcome("no-anchor");
+  if (anchor === undefined) return failOutcome(TierCFailReasons.NO_ANCHOR);
 
   let callResult: Awaited<ReturnType<typeof callTierCLlm>>;
   try {
@@ -457,7 +485,9 @@ async function processCommitMessageEntry(
   } catch (err) {
     return {
       ...failOutcome(
-        isBridgeUnreachable(err) ? "bridge-unreachable" : errMessage(err),
+        isBridgeUnreachable(err)
+          ? TierCFailReasons.BRIDGE_UNREACHABLE
+          : errMessage(err),
       ),
       callsUsed: 1,
     };
@@ -465,7 +495,7 @@ async function processCommitMessageEntry(
 
   if (callResult.decisions === undefined) {
     return {
-      ...failOutcome("llm-non-json-output"),
+      ...failOutcome(TierCFailReasons.LLM_NON_JSON_OUTPUT),
       tokensUsed: callResult.tokensUsed,
       callsUsed: 1,
     };
@@ -494,28 +524,27 @@ async function processContractSymbolEntry(
 ): Promise<TierCItemOutcome> {
   const { git, workspaceRoot, store, llmModel } = deps;
   const file = entry.file;
-  if (!file) return failOutcome("missing-file");
+  if (!file) return failOutcome(TierCFailReasons.MISSING_FILE);
 
   const anchor =
     store.graph.findNodeIdByNodeKey(entry.target) ??
     store.graph.findNodeIdByNodeKey(toNodeKey(file));
-  if (anchor === undefined) return failOutcome("no-anchor");
+  if (anchor === undefined) return failOutcome(TierCFailReasons.NO_ANCHOR);
 
   const content = await git.readFileAtRef(
     workspaceRoot,
     GitConstants.HEAD_REF,
     file,
   );
-  if (content === undefined) return failOutcome("file-unreadable");
+  if (content === undefined)
+    return failOutcome(TierCFailReasons.FILE_UNREADABLE);
 
   const symbolName = entry.target.slice(entry.target.indexOf("#") + 1);
-  const userMessage =
-    "Focus on the symbol `" +
-    symbolName +
-    "` in the following file (`" +
-    file +
-    "`):\n\n" +
-    content;
+  const userMessage = TIER_C_CONTRACT_SYMBOL_USER_MESSAGE(
+    symbolName,
+    file,
+    content,
+  );
 
   let callResult: Awaited<ReturnType<typeof callTierCLlm>>;
   try {
@@ -528,7 +557,9 @@ async function processContractSymbolEntry(
   } catch (err) {
     return {
       ...failOutcome(
-        isBridgeUnreachable(err) ? "bridge-unreachable" : errMessage(err),
+        isBridgeUnreachable(err)
+          ? TierCFailReasons.BRIDGE_UNREACHABLE
+          : errMessage(err),
       ),
       callsUsed: 1,
     };
@@ -536,7 +567,7 @@ async function processContractSymbolEntry(
 
   if (callResult.decisions === undefined) {
     return {
-      ...failOutcome("llm-non-json-output"),
+      ...failOutcome(TierCFailReasons.LLM_NON_JSON_OUTPUT),
       tokensUsed: callResult.tokensUsed,
       callsUsed: 1,
     };

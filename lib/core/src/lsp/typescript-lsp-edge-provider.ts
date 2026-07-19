@@ -10,11 +10,20 @@ import type {
   ResolvedCallEdge,
   ILogger,
 } from "@workspace/contracts";
-import { EdgeResolutionSources, createNoopLogger } from "@workspace/contracts";
+import {
+  EdgeResolutionSources,
+  createNoopLogger,
+  UTF8_ENCODING,
+} from "@workspace/contracts";
 import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { resolveLspBinary } from "./lsp-binary-resolver.js";
 import { checkLspPreflight } from "./lsp-preflight.js";
-import { LspMethods, LspSymbolKinds, LSP_MESSAGES } from "./lsp-constants.js";
+import {
+  LspMethods,
+  LspSymbolKinds,
+  LSP_MESSAGES,
+  TsLspConstants,
+} from "./lsp-constants.js";
 import type {
   LspDocumentSymbol,
   LspPosition,
@@ -32,10 +41,14 @@ const CALL_SITE_KINDS: ReadonlySet<number> = new Set([
   LspSymbolKinds.CLASS,
 ]);
 
+/** LSP `textDocument/didOpen`'s `languageId` values (LSP base spec's registered ids), keyed by
+ *  this provider's supported source extensions. */
+const DEFAULT_LANGUAGE_ID = "typescript";
+
 const LANGUAGE_ID_BY_EXTENSION: Record<string, string> = {
-  ".ts": "typescript",
-  ".mts": "typescript",
-  ".cts": "typescript",
+  ".ts": DEFAULT_LANGUAGE_ID,
+  ".mts": DEFAULT_LANGUAGE_ID,
+  ".cts": DEFAULT_LANGUAGE_ID,
   ".tsx": "typescriptreact",
   ".js": "javascript",
   ".mjs": "javascript",
@@ -44,7 +57,9 @@ const LANGUAGE_ID_BY_EXTENSION: Record<string, string> = {
 };
 
 function languageIdFor(filePath: string): string {
-  return LANGUAGE_ID_BY_EXTENSION[path.extname(filePath)] ?? "typescript";
+  return (
+    LANGUAGE_ID_BY_EXTENSION[path.extname(filePath)] ?? DEFAULT_LANGUAGE_ID
+  );
 }
 
 function toNodeKey(relativePath: string): string {
@@ -118,7 +133,7 @@ interface OpenFileHandle {
 }
 
 export class TypescriptLspEdgeProvider implements IEdgeResolutionProvider {
-  public readonly name = "typescript-language-server";
+  public readonly name = TsLspConstants.PACKAGE_NAME;
   private config: EdgeResolutionProviderConfig = {};
   private readonly logger: ILogger;
   private readonly createClient: () => LspJsonRpcClient;
@@ -288,7 +303,7 @@ export class TypescriptLspEdgeProvider implements IEdgeResolutionProvider {
           file,
           reason: err instanceof Error ? err.message : String(err),
         });
-        this.logger.warn(`Tier B LSP resolution failed for ${file}`, {
+        this.logger.warn(LSP_MESSAGES.resolutionFailedForFile(file), {
           error: err instanceof Error ? err.message : String(err),
         });
       }
@@ -384,7 +399,7 @@ export class TypescriptLspEdgeProvider implements IEdgeResolutionProvider {
     if (cached) return cached;
 
     const absolutePath = path.join(workspaceRoot, relativePath);
-    const content = await fs.readFile(absolutePath, "utf8");
+    const content = await fs.readFile(absolutePath, UTF8_ENCODING);
     const uri = pathToFileURL(absolutePath).toString();
 
     client.notify(LspMethods.DID_OPEN, {

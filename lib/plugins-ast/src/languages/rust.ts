@@ -1,5 +1,6 @@
 import type { LanguageConfig } from "@workspace/ast-core";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
+import { LanguageNodeTypes } from "../constants/tree-sitter-node-types.js";
 
 const RUST_EXTENSIONS = [".rs"];
 const RUST_WASM_FILE = "tree-sitter-rust.wasm";
@@ -7,14 +8,19 @@ const RUST_WASM_FILE = "tree-sitter-rust.wasm";
 export const rustConfig: LanguageConfig = {
   extensions: RUST_EXTENSIONS,
   wasm_file: RUST_WASM_FILE,
-  imports: ["use_declaration"],
-  classes: ["struct_item", "enum_item", "union_item", "trait_item"],
-  functions: ["function_item"],
-  calls: ["call_expression"],
+  imports: [LanguageNodeTypes.USE_DECLARATION],
+  classes: [
+    LanguageNodeTypes.STRUCT_ITEM,
+    LanguageNodeTypes.ENUM_ITEM,
+    LanguageNodeTypes.UNION_ITEM,
+    LanguageNodeTypes.TRAIT_ITEM,
+  ],
+  functions: [LanguageNodeTypes.FUNCTION_ITEM],
+  calls: [LanguageNodeTypes.CALL_EXPRESSION],
   queries: {
-    classes: `(struct_item name: (type_identifier) @${QueryCaptureName.CLASS}) (enum_item name: (type_identifier) @${QueryCaptureName.CLASS}) (union_item name: (type_identifier) @${QueryCaptureName.CLASS}) (trait_item name: (type_identifier) @${QueryCaptureName.CLASS})`,
-    functions: `(function_item name: (identifier) @${QueryCaptureName.FUNCTION})`,
-    imports: `(use_declaration) @${QueryCaptureName.IMPORT}`,
-    calls: `(call_expression function: [(identifier) (field_expression)] @${QueryCaptureName.CALL})`,
+    classes: `(${LanguageNodeTypes.STRUCT_ITEM} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ENUM_ITEM} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.UNION_ITEM} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.TRAIT_ITEM} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS})`,
+    functions: `(${LanguageNodeTypes.FUNCTION_ITEM} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION})`,
+    imports: `(${LanguageNodeTypes.USE_DECLARATION}) @${QueryCaptureName.IMPORT}`,
+    calls: `(${LanguageNodeTypes.CALL_EXPRESSION} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.FIELD_EXPRESSION})] @${QueryCaptureName.CALL})`,
   },
 };

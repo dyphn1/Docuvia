@@ -11,4 +11,5 @@ export const OUTPUT_FORMAT_MARKERS = {
   CLOSE_PAREN: ")",
   DOUBLE_QUOTE: '"',
   EMPTY: "",
+  ELLIPSIS: "...",
 } as const;

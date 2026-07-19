@@ -15,6 +15,13 @@ export interface LspJsonRpcClientOptions {
  *  spawn-failure path (an immediate `error` event, no shell involved) is untouched. */
 const WINDOWS_SHELL_ONLY_EXTENSIONS = new Set([".cmd", ".bat", ".ps1"]);
 
+/** Full stdio pipe wiring (stdin/stdout/stderr all piped) — shared by both `spawn()` branches
+ *  below. Returns a fresh array each call: `child_process.spawn()`'s `stdio` option type isn't
+ *  `readonly`, and a shared mutable array risks aliasing across concurrent spawns. */
+function stdioAllPiped(): ["pipe", "pipe", "pipe"] {
+  return ["pipe", "pipe", "pipe"];
+}
+
 function needsWindowsShellWrapper(command: string): boolean {
   return (
     process.platform === "win32" &&
@@ -85,13 +92,13 @@ export class LspJsonRpcClient {
               .join(" "),
             {
               cwd: options.cwd,
-              stdio: ["pipe", "pipe", "pipe"],
+              stdio: stdioAllPiped(),
               shell: true,
             },
           )
         : spawn(options.command, options.args, {
             cwd: options.cwd,
-            stdio: ["pipe", "pipe", "pipe"],
+            stdio: stdioAllPiped(),
           })
     ) as ChildProcessWithoutNullStreams;
     this.child = child;

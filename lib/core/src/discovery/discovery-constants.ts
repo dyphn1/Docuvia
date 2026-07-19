@@ -88,7 +88,9 @@ export const ConfigRuleIds = {
   TAURI_PRESENCE: "tauri:presence",
 } as const;
 
-/** Exact basenames `CONFIG_DETECTION_RULES` matches on (`exact(...)`/`isPythonMarker`). */
+/** Exact basenames `CONFIG_DETECTION_RULES` matches on (`exact(...)`/`isPythonMarker`), plus
+ *  `jsconfig.json` (`LspPreflight`'s tsconfig-resolvable check treats it as an alternative to
+ *  `tsconfig.json`, never matched by a `CONFIG_DETECTION_RULES` entry of its own). */
 export const ConfigFilenames = {
   PACKAGE_JSON: "package.json",
   CARGO_TOML: "Cargo.toml",
@@ -96,13 +98,41 @@ export const ConfigFilenames = {
   REQUIREMENTS_TXT: "requirements.txt",
   GO_MOD: "go.mod",
   TSCONFIG_JSON: "tsconfig.json",
+  JSCONFIG_JSON: "jsconfig.json",
 } as const;
 
-/** Basename prefixes `CONFIG_DETECTION_RULES` matches on (`prefix(...)`) for presence-only configs. */
+/** Basename prefixes `CONFIG_DETECTION_RULES` matches on (`prefix(...)`) for presence-only configs, plus `webpack.config` (glob-scanned only — no detection rule of its own). */
 export const ConfigFilePrefixes = {
   VITE_CONFIG: "vite.config",
   DRIZZLE_CONFIG: "drizzle.config",
   TAURI_CONF: "tauri.conf",
+  WEBPACK_CONFIG: "webpack.config",
+} as const;
+
+/** Substrings `CONFIG_DETECTION_RULES`'s `includesRule(...)` entries search for in a matched
+ *  config file's raw content — `package.json` markers are quoted (matching the JSON key
+ *  form), `Cargo.toml`/`go.mod`/python markers are bare (matching either a TOML key or a plain
+ *  import/dependency name). */
+export const ConfigMarkers = {
+  PACKAGE_JSON_TYPESCRIPT: '"typescript"',
+  PACKAGE_JSON_REACT: '"react"',
+  PACKAGE_JSON_VUE: '"vue"',
+  PACKAGE_JSON_NEXT: '"next"',
+  PACKAGE_JSON_EXPRESS: '"express"',
+  PACKAGE_JSON_DRIZZLE_ORM: '"drizzle-orm"',
+  PACKAGE_JSON_TAILWINDCSS: '"tailwindcss"',
+  PACKAGE_JSON_JEST: '"jest"',
+  PACKAGE_JSON_VITEST: '"vitest"',
+  PACKAGE_JSON_PG: '"pg"',
+  PACKAGE_JSON_WORKSPACES: '"workspaces"',
+  CARGO_TOKIO: "tokio",
+  CARGO_ACTIX: "actix",
+  CARGO_SERDE: "serde",
+  CARGO_TAURI: "tauri",
+  PYTHON_DJANGO: "django",
+  PYTHON_FASTAPI: "fastapi",
+  PYTHON_PANDAS: "pandas",
+  GO_GIN: "gin-gonic",
 } as const;
 
 export const DISCOVERY_MESSAGES = {

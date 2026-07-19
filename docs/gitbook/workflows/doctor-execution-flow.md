@@ -59,8 +59,9 @@ sequenceDiagram
             Note right of KGit: marker-bounded extraction, under the knowledge-branch lock -- never runs unless --fix was passed.
         end
     end
-    opt not skipDb and not skipGit
+    opt not skipDb
         WF->>WF: open local.db readonly, isTierBCommitCapExceeded
+        Note right of WF: reads a store-persisted cumulative-changed-bytes counter (section 9m item 1) -- no IGitProvider call, gated by skipDb alone.
         Note right of WF: always PASS (decision 1d) -- a normal, expected state either way.
     end
     opt llmBaseUrl supplied

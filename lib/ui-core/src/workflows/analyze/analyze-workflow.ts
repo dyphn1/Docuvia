@@ -202,7 +202,7 @@ export class AnalyzeWorkflow {
 
     // §10c's commit-time nudge — checked once, uniformly across the fast-path/full/delta
     // branches below, before any of them run.
-    await this.maybeLogTierBCommitCapNudge(store, git);
+    await this.maybeLogTierBCommitCapNudge(store);
 
     // 1. Sha fast-path — first check, regardless of graph state.
     if (headSha && lastIngestedSha && headSha === lastIngestedSha) {
@@ -261,20 +261,14 @@ export class AnalyzeWorkflow {
    * §10c's commit-time half of the commit-cap trigger (`doctor`'s passive backup is T4, §10c's
    * other half): a non-blocking, one-line nudge once `isTierBCommitCapExceeded` computes true —
    * fires at the moment the user could act on it (mid-workflow, could push now). Never affects
-   * `dispatchAutoMode`'s return value/control flow; best-effort (a git-command failure here
-   * degrades to a skipped nudge, never a crashed `analyze` run).
+   * `dispatchAutoMode`'s return value/control flow; best-effort (a meta-store read failure here
+   * degrades to a skipped nudge, never a crashed `analyze` run). No git call needed since §9m item
+   * 1 moved the cap's metric to a store-persisted cumulative-bytes counter.
    */
-  private async maybeLogTierBCommitCapNudge(
-    store: IGraphStore,
-    git: IGitProvider,
-  ): Promise<void> {
+  private async maybeLogTierBCommitCapNudge(store: IGraphStore): Promise<void> {
     const { workspaceRoot, logger } = this;
     try {
-      const exceeded = await isTierBCommitCapExceeded(
-        git,
-        workspaceRoot,
-        store.meta.get(GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA),
-      );
+      const exceeded = isTierBCommitCapExceeded(store);
       if (!exceeded) return;
 
       logger.info(ANALYZE_MESSAGES.TIER_B_CAP_NUDGE);
@@ -282,7 +276,8 @@ export class AnalyzeWorkflow {
         event: ANALYZE_EVENTS.TIER_B_COMMIT_CAP_NUDGE,
       });
     } catch {
-      // Best-effort — the nudge is advisory only; a git failure here must never crash the run.
+      // Best-effort — the nudge is advisory only; a meta-store read failure here must never crash
+      // the run.
     }
   }
 

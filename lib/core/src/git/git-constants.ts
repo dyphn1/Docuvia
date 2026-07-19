@@ -91,9 +91,30 @@ export const GitConstants = {
    * for "no pending batch" (`IMetaRepo` has no delete — `set(key, "")` is the clear).
    */
   META_KEY_TIER_B_BATCH_PENDING: "tierBBatchPending",
-  /** Default Tier B commit-cap trigger threshold (§8f, D5) — config-tunable via
-   *  `DOCUVIA_TIER_B_COMMIT_CAP` (read by the Presentation layer only, per the `process.env` rule). */
-  DEFAULT_TIER_B_COMMIT_CAP: 20,
+  /**
+   * `docuvia_meta` key holding the running total of changed-file bytes (blob size at `HEAD` of
+   * every file `analyze`'s delta ingestion re-parsed, summed across delta runs) since the last
+   * Tier B batch — the commit-cap trigger's metric as of §9m item 1
+   * (phase1-decision-integration.md), replacing the original raw-commit-count comparison. A
+   * single large refactor commit inflates this even though it's only one commit, which raw commit
+   * count structurally could never detect. Incremented by `run-delta-ingestion.ts`'s
+   * `persistDelta` (reusing `filesToParse`'s already-computed content-length data — no new git
+   * call); reset to `"0"` by `finalize-pending-tier-b-batch.ts` whenever a Tier B batch is
+   * finalized. Only counts files `isDiscoverableSourceFile` already lets through delta ingestion's
+   * `toReparse` filter, so docs/binaries are excluded for free.
+   */
+  META_KEY_TIER_B_CHANGED_BYTES: "tierBChangedBytes",
+  /**
+   * Default Tier B commit-cap trigger threshold, in cumulative changed-file bytes (§9m item 1) —
+   * config-tunable via `DOCUVIA_TIER_B_COMMIT_CAP` (read by the Presentation layer only, per the
+   * `process.env` rule; the env var name is unchanged even though its unit changed from a commit
+   * count to a byte count — phase1-decision-integration.md §9m frames this as "the commit-cap"
+   * throughout, just with a different metric). Unvalidated: no measured drift-vs-batch-value
+   * correlation exists yet. Picked to fire once a multi-file refactor's worth of source has
+   * changed (dozens of files at a few KB each) without tripping on a typical single/few-file
+   * commit; tune if real usage shows it's off.
+   */
+  DEFAULT_TIER_B_COMMIT_CAP_BYTES: 512_000,
 
   PRE_PUSH_HOOK_NAME: "pre-push",
   /**

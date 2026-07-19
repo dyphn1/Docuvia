@@ -449,6 +449,54 @@ describe("runDeltaIngestion()", () => {
     );
   });
 
+  it("§9m item 1: accumulates tierBChangedBytes by the re-parsed file's content byte length, adding to any prior total", async () => {
+    store.meta.set(GitConstants.META_KEY_TIER_B_CHANGED_BYTES, "100");
+    const content = "x".repeat(50);
+    const entries: ChangedFileEntry[] = [
+      { file: "src/a.ts", status: "modified" },
+    ];
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue(entries),
+      readFileAtRef: vi.fn().mockResolvedValue(content),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(store.meta.get(GitConstants.META_KEY_TIER_B_CHANGED_BYTES)).toBe(
+      String(100 + Buffer.byteLength(content, "utf8")),
+    );
+  });
+
+  it("§9m item 1: does not write tierBChangedBytes when nothing needed re-parsing", async () => {
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue([]),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(
+      store.meta.get(GitConstants.META_KEY_TIER_B_CHANGED_BYTES),
+    ).toBeUndefined();
+  });
+
   it("logs analyze.delta.start and analyze.delta.summary JSONL lines", async () => {
     const git = makeMockGitProvider({
       getChangedFilesSince: vi.fn().mockResolvedValue([]),

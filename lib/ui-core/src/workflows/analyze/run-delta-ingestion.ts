@@ -79,8 +79,13 @@ export async function runDeltaIngestion(deps: {
   );
   const { toDelete, toReparse } = partitionChangedEntries(changedEntries);
 
-  const { filesToParse, skippedOversized, tierBEntries, tierCSymbolEntries } =
-    await collectFilesToParse(deps, toReparse);
+  const {
+    filesToParse,
+    skippedOversized,
+    tierBEntries,
+    tierCSymbolEntries,
+    changedBytes,
+  } = await collectFilesToParse(deps, toReparse);
   // Tier C's commit-message candidate source (phase1-decision-integration.md §9b/§9e) — collected
   // once per delta run (not per file), independent of which files changed.
   const tierCCommitEntries = await collectCommitMessageCandidates(
@@ -106,6 +111,7 @@ export async function runDeltaIngestion(deps: {
       skippedOversized,
       tierBEntries,
       tierCEntries,
+      changedBytes,
     });
   });
 
@@ -164,7 +170,9 @@ function partitionChangedEntries(changedEntries: ChangedFileEntry[]): {
 
 /** Reads each re-parse candidate at `headSha`, applying the same oversize guard `init`'s
  *  discovery uses, and classifies modified files for the Tier B queue and Tier C's
- *  `CONTRACT_CHANGED`-symbol candidates (phase1-decision-integration.md §9b). */
+ *  `CONTRACT_CHANGED`-symbol candidates (phase1-decision-integration.md §9b). Also sums each
+ *  parsed file's byte size into `changedBytes` — §9m item 1's commit-cap trigger data, collected
+ *  here "for free" since `sizeBytes` is already computed for the oversize guard. */
 async function collectFilesToParse(
   deps: DeltaDeps,
   toReparse: ChangedFileEntry[],
@@ -173,6 +181,7 @@ async function collectFilesToParse(
   skippedOversized: { file: string; sizeBytes: number }[];
   tierBEntries: TierBQueueEntry[];
   tierCSymbolEntries: TierCQueueEntry[];
+  changedBytes: number;
 }> {
   const { workspaceRoot, logger, git, headSha } = deps;
 
@@ -186,6 +195,7 @@ async function collectFilesToParse(
   const skippedOversized: { file: string; sizeBytes: number }[] = [];
   const tierBEntries: TierBQueueEntry[] = [];
   const tierCSymbolEntries: TierCQueueEntry[] = [];
+  let changedBytes = 0;
 
   for (const entry of toReparse) {
     const content = await git.readFileAtRef(workspaceRoot, headSha, entry.file);
@@ -209,6 +219,7 @@ async function collectFilesToParse(
       blobHashes.get(entry.file) ??
       crypto.createHash("sha256").update(content).digest("hex");
     filesToParse.push({ file: entry.file, hash, code: content });
+    changedBytes += sizeBytes;
 
     const { contractChanged, findings } = await classifyChangedFile(
       deps,
@@ -224,7 +235,13 @@ async function collectFilesToParse(
     }
   }
 
-  return { filesToParse, skippedOversized, tierBEntries, tierCSymbolEntries };
+  return {
+    filesToParse,
+    skippedOversized,
+    tierBEntries,
+    tierCSymbolEntries,
+    changedBytes,
+  };
 }
 
 /** Detector classification (§6b) — only a true in-place modification is classified (added/renamed
@@ -272,8 +289,9 @@ async function classifyChangedFile(
 }
 
 /** The lock-held persist step: drop L2 rows for deleted/renamed-old paths, re-parse + persist the
- *  changed files via the shared `runParseAndPersist` phase helper, append the Tier B/C queues, and
- *  stamp the last-ingested source sha. Returns the parse failures. */
+ *  changed files via the shared `runParseAndPersist` phase helper, append the Tier B/C queues,
+ *  advance the Tier B commit-cap's cumulative-bytes accumulator (§9m item 1), and stamp the
+ *  last-ingested source sha. Returns the parse failures. */
 async function persistDelta(
   deps: DeltaDeps,
   work: {
@@ -282,6 +300,7 @@ async function persistDelta(
     skippedOversized: { file: string; sizeBytes: number }[];
     tierBEntries: TierBQueueEntry[];
     tierCEntries: TierCQueueEntry[];
+    changedBytes: number;
   },
 ): Promise<AstParseFailure[]> {
   const { workspaceRoot, logger, store, projectId, headSha } = deps;
@@ -291,6 +310,7 @@ async function persistDelta(
     skippedOversized,
     tierBEntries,
     tierCEntries,
+    changedBytes,
   } = work;
 
   if (toDelete.size > 0) {
@@ -325,6 +345,15 @@ async function persistDelta(
     }
     if (tierCEntries.length > 0) {
       appendTierCQueueEntries(store, tierCEntries);
+    }
+    if (changedBytes > 0) {
+      const priorBytes = Number(
+        store.meta.get(GitConstants.META_KEY_TIER_B_CHANGED_BYTES) ?? 0,
+      );
+      store.meta.set(
+        GitConstants.META_KEY_TIER_B_CHANGED_BYTES,
+        String(priorBytes + changedBytes),
+      );
     }
     store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
   });

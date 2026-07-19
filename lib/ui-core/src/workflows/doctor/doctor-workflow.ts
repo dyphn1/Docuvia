@@ -74,10 +74,10 @@ export class DoctorWorkflow {
       ),
     ];
 
-    // §10c's doctor-half backup (T4) needs both the db and git -- gated behind neither being
-    // skipped rather than a new dedicated flag (flag proliferation for something this granular
-    // isn't warranted). Always PASS (decision 1d) -- never affects allPassed.
-    await this.runOrSkip(skipDb || skipGit, () =>
+    // §10c's doctor-half backup (T4) only needs the db as of §9m item 1 (the commit-cap's metric
+    // moved to a store-persisted counter, no git call) -- gated behind skipDb alone now, not a new
+    // dedicated flag. Always PASS (decision 1d) -- never affects allPassed.
+    await this.runOrSkip(skipDb, () =>
       this.runTierBCommitCapDiagnostic(diagnostics),
     );
     // §10e bullet 4 / §7a-1 (T8) -- always PASS (decision 1c); doesn't affect allPassed either.
@@ -289,15 +289,13 @@ export class DoctorWorkflow {
    * `PASS` (decision 1c/1d), since neither "not yet exceeded" nor "exceeded" is itself a defect.
    * A missing/unopenable db (never ran `init`) is *not* a failure of this specific check -- it's
    * already covered by `db_found`'s own FAIL, so this silently skips rather than double-reporting
-   * the same root cause under two diagnostic keys. Never throws past this method.
+   * the same root cause under two diagnostic keys. Never throws past this method. No git provider
+   * needed as of §9m item 1 -- the commit-cap's metric is now a store-persisted counter.
    */
   private async runTierBCommitCapDiagnostic(
     diagnostics: Record<string, DiagnosticResult>,
   ): Promise<void> {
-    if (
-      !docuviaFactory.has(TOKENS.GraphStoreOpener) ||
-      !docuviaFactory.has(TOKENS.GitProvider)
-    ) {
+    if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) {
       return;
     }
 
@@ -309,15 +307,7 @@ export class DoctorWorkflow {
         readonly: true,
       });
 
-      const git = docuviaFactory.resolve(TOKENS.GitProvider);
-      const lastTierBBatchSha = store.meta.get(
-        GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA,
-      );
-      const exceeded = await isTierBCommitCapExceeded(
-        git,
-        this.workspaceRoot,
-        lastTierBBatchSha,
-      );
+      const exceeded = isTierBCommitCapExceeded(store);
 
       diagnostics[DOCTOR_DIAGNOSTIC_KEYS.TIER_B_COMMIT_CAP] = {
         status: DiagnosticStatus.PASS,

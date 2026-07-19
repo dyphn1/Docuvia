@@ -231,7 +231,7 @@ describe("DoctorWorkflow", () => {
     });
   });
 
-  describe("Tier B Commit Cap Check (phase1-decision-integration.md §10c doctor-half)", () => {
+  describe("Tier B Commit Cap Check (phase1-decision-integration.md §10c doctor-half, §9m item 1 metric)", () => {
     function registerPassingDbAndGitRunners() {
       vi.mocked(fs.stat).mockResolvedValue({} as any);
       docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
@@ -242,14 +242,14 @@ describe("DoctorWorkflow", () => {
       }));
     }
 
-    function makeMockStore(metaValue: string | undefined) {
+    function makeMockStore(changedBytes: string | undefined) {
       return {
-        meta: { get: vi.fn().mockReturnValue(metaValue), set: vi.fn() },
+        meta: { get: vi.fn().mockReturnValue(changedBytes), set: vi.fn() },
         close: vi.fn().mockResolvedValue(undefined),
       };
     }
 
-    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener/GitProvider aren't registered", async () => {
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener isn't registered", async () => {
       registerPassingDbAndGitRunners();
 
       const wf = new DoctorWorkflow("/test", logger);
@@ -258,14 +258,12 @@ describe("DoctorWorkflow", () => {
       expect(result.diagnostics["tier_b_commit_cap"]).toBeUndefined();
     });
 
-    it("is not evaluated at all when skipDb or skipGit is set", async () => {
-      const store = makeMockStore("batch-sha");
+    it("is not evaluated at all when skipDb is set", async () => {
+      const store = makeMockStore(
+        String(GitConstants.DEFAULT_TIER_B_COMMIT_CAP_BYTES),
+      );
       const openStore = vi.fn().mockResolvedValue(store);
       docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStore);
-      docuviaFactory.register(
-        TOKENS.GitProvider,
-        () => ({ getCommitAncestry: vi.fn() }) as any,
-      );
 
       const wf = new DoctorWorkflow("/test", logger);
       await wf.execute({ skipDb: true, skipLogs: true });
@@ -273,24 +271,28 @@ describe("DoctorWorkflow", () => {
       expect(openStore).not.toHaveBeenCalled();
     });
 
-    it("reports PASS with the exceeded message when the commit-cap is exceeded", async () => {
+    it("is still evaluated when only skipGit is set -- the check no longer needs IGitProvider", async () => {
       registerPassingDbAndGitRunners();
-      const store = makeMockStore("batch-sha");
+      const store = makeMockStore(
+        String(GitConstants.DEFAULT_TIER_B_COMMIT_CAP_BYTES),
+      );
+      const openStore = vi.fn().mockResolvedValue(store);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStore);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(openStore).toHaveBeenCalled();
+      expect(result.diagnostics["tier_b_commit_cap"]).toBeDefined();
+    });
+
+    it("reports PASS with the exceeded message when the accumulated changed-bytes counter is at or above the cap", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore(
+        String(GitConstants.DEFAULT_TIER_B_COMMIT_CAP_BYTES),
+      );
       docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
         vi.fn().mockResolvedValue(store),
-      );
-      docuviaFactory.register(
-        TOKENS.GitProvider,
-        () =>
-          ({
-            // "batch-sha" not found within the probed ancestry window -- treated as "at least
-            // cap+1", i.e. exceeded (isTierBCommitCapExceeded's documented safe-failure mode).
-            getCommitAncestry: vi
-              .fn()
-              .mockResolvedValue(
-                Array.from({ length: 21 }, (_, i) => `sha-${i}`),
-              ),
-          }) as any,
       );
 
       const wf = new DoctorWorkflow("/test", logger);
@@ -312,10 +314,6 @@ describe("DoctorWorkflow", () => {
       docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
         vi.fn().mockResolvedValue(store),
       );
-      docuviaFactory.register(
-        TOKENS.GitProvider,
-        () => ({ getCommitAncestry: vi.fn() }) as any,
-      );
 
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipLogs: true });
@@ -334,10 +332,6 @@ describe("DoctorWorkflow", () => {
       }));
       docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
         vi.fn().mockRejectedValue(new Error("ENOENT")),
-      );
-      docuviaFactory.register(
-        TOKENS.GitProvider,
-        () => ({ getCommitAncestry: vi.fn() }) as any,
       );
 
       const wf = new DoctorWorkflow("/test", logger);

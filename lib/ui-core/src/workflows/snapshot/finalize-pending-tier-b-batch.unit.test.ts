@@ -56,13 +56,14 @@ describe("finalizePendingTierBBatch() (§8f/§8g)", () => {
     expect(metaMap.has(GitConstants.META_KEY_TIER_B_QUEUE)).toBe(false);
   });
 
-  it("commits the staged queue drain and commit-cap seed, then clears the pending marker", async () => {
+  it("commits the staged queue drain and commit-cap seed, resets the changed-bytes accumulator, then clears the pending marker", async () => {
     const pending = JSON.stringify({
       headSha: "abc123",
       remainingQueue: [{ file: "still-failing.ts", commitSha: "abc123" }],
     });
     const { store, metaMap } = makeStore({
       [GitConstants.META_KEY_TIER_B_BATCH_PENDING]: pending,
+      [GitConstants.META_KEY_TIER_B_CHANGED_BYTES]: "999999",
     });
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
       vi
@@ -81,6 +82,7 @@ describe("finalizePendingTierBBatch() (§8f/§8g)", () => {
     expect(
       JSON.parse(metaMap.get(GitConstants.META_KEY_TIER_B_QUEUE)!),
     ).toEqual([{ file: "still-failing.ts", commitSha: "abc123" }]);
+    expect(metaMap.get(GitConstants.META_KEY_TIER_B_CHANGED_BYTES)).toBe("0");
     expect(metaMap.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)).toBe("");
   });
 

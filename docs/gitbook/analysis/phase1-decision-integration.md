@@ -515,7 +515,7 @@ Slice 5 (row added to §7d).
 | Commit semantic filter                                       | **Adopted** → §9e.                                                                                                                                                                                      |
 | Request-side throttling                                      | **Adopted** → §9f.                                                                                                                                                                                      |
 | Embedded in-process model                                    | **Deferred, not built** → §9b.                                                                                                                                                                          |
-| Semantic Drift Ratio (replaces shipped Tier B commit-cap D5) | **Partially adopted (amended 2026-07-18)** → §9g, §9m-1. Blast-radius component rejected (expensive, new tunable); blob/diff-size component adopted (cheap — reuses data Tier A already computes).      |
+| Semantic Drift Ratio (replaces shipped Tier B commit-cap D5) | **Partially adopted, blob/diff-size half implemented (2026-07-19)** → §9g, §9m-1. Blast-radius component rejected (expensive, new tunable); blob-size component shipped in `tier-b-commit-cap.ts`.      |
 | `tierBQueue` staleness/eviction policy                       | **Deferred to a later reliability slice** → §9h. Queue is already deduped-by-file and bounded by repo file count; not urgent.                                                                           |
 | Docker-compose historical-replay E2E harness                 | **Rejected as scoped; shrunk, timing fixed (amended 2026-07-18)** → §9i, §9m-2. Validates Tier B, not Tier C; disproportionate to this slice. A worktree script substitutes, run before Slice 5 starts. |
 | L3 distribution strategy (snapshot packing)                  | **Confirmed Phase 2, not blocking** → §9j. One guardrail noted for Slice 4's persistence shape.                                                                                                         |
@@ -733,6 +733,21 @@ here rather than rewritten, matching this document's audit-trail convention (cf.
      threshold) is deferred to whichever slice next touches Tier B's commit-cap — not a Slice 4
      or Slice 5 deliverable by itself. This section settles the _design direction_ so the next
      touch doesn't re-litigate it.
+   - **Status update (2026-07-19):** implemented, one release after Slice 5. `tier-b-commit-cap.ts`
+     is now a synchronous, git-free read of a new `docuvia_meta` key, `tierBChangedBytes` — a
+     running total of `Buffer.byteLength` for every file `run-delta-ingestion.ts`'s
+     `collectFilesToParse` puts into `filesToParse` (i.e. already past the
+     `isDiscoverableSourceFile`/oversize filters, so docs/binaries are excluded for free, exactly
+     as this item anticipated), summed in `persistDelta` under the existing delta write-lock.
+     Reset to `"0"` by `finalize-pending-tier-b-batch.ts` alongside the existing
+     `lastTierBBatchSha` stamp. `DEFAULT_TIER_B_COMMIT_CAP` (a commit count) became
+     `DEFAULT_TIER_B_COMMIT_CAP_BYTES = 512_000` (a byte count) — unvalidated, no measured
+     drift-vs-batch-value correlation exists yet; the `DOCUVIA_TIER_B_COMMIT_CAP` env var and
+     `MemoryKeys.TIER_B_COMMIT_CAP` plumbing keep their names unchanged (this doc already talks
+     about "the commit-cap" throughout despite the metric change, so renaming the public knob
+     would only add churn). `doctor`'s `tier_b_commit_cap` diagnostic no longer needs
+     `IGitProvider` and is now gated by `--skip-db` alone, not `--skip-db || --skip-git`. Build,
+     lint, and full suite green.
 2. **§9i amended: worktree-script validation gets a fixed timing anchor — before Slice 5
    starts, not "if surprising numbers ever show up."** The scoped-down substitute (worktree
    script instead of docker-compose) stands. Its original timing condition was reactive with no

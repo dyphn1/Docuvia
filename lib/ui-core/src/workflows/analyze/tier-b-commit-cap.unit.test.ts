@@ -1,79 +1,52 @@
 import { describe, it, expect, vi } from "vitest";
-import type { IGitProvider } from "@workspace/contracts";
+import type { IGraphStore } from "@workspace/contracts";
+import { GitConstants } from "@workspace/core";
 import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
 
-function makeGit(ancestry: string[]): IGitProvider {
+function makeStore(changedBytes: string | undefined): IGraphStore {
   return {
-    getCommitAncestry: vi.fn().mockResolvedValue(ancestry),
-  } as unknown as IGitProvider;
+    meta: {
+      get: vi.fn().mockImplementation((key: string) => {
+        if (key === GitConstants.META_KEY_TIER_B_CHANGED_BYTES) {
+          return changedBytes;
+        }
+        return undefined;
+      }),
+      set: vi.fn(),
+    },
+  } as unknown as IGraphStore;
 }
 
-describe("isTierBCommitCapExceeded() (§8f, D5)", () => {
-  it("is inactive (false) when lastTierBBatchSha is absent -- pre-Slice-3 workspace", async () => {
-    const git = makeGit([]);
-    const result = await isTierBCommitCapExceeded(
-      git,
-      "/workspace",
-      undefined,
-      20,
-    );
-    expect(result).toBe(false);
-    expect(git.getCommitAncestry).not.toHaveBeenCalled();
+describe("isTierBCommitCapExceeded() (§8f D5, redefined by §9m item 1)", () => {
+  it("is false when tierBChangedBytes is absent -- pre-metric-change workspace", () => {
+    const store = makeStore(undefined);
+    expect(isTierBCommitCapExceeded(store, 1000)).toBe(false);
   });
 
-  it("is false when fewer than cap commits separate HEAD from the last batch sha", async () => {
-    const ancestry = ["h5", "h4", "h3", "h2", "h1", "batch-sha"];
-    const git = makeGit(ancestry);
-    const result = await isTierBCommitCapExceeded(
-      git,
-      "/workspace",
-      "batch-sha",
-      20,
-    );
-    expect(result).toBe(false);
+  it("is false when the accumulated bytes are below the cap", () => {
+    const store = makeStore("999");
+    expect(isTierBCommitCapExceeded(store, 1000)).toBe(false);
   });
 
-  it("is true when exactly cap commits separate HEAD from the last batch sha", async () => {
-    const ancestry = Array.from({ length: 20 }, (_, i) => `h${i}`).concat(
-      "batch-sha",
-    );
-    const git = makeGit(ancestry);
-    const result = await isTierBCommitCapExceeded(
-      git,
-      "/workspace",
-      "batch-sha",
-      20,
-    );
-    expect(result).toBe(true);
-    expect(git.getCommitAncestry).toHaveBeenCalledWith(
-      "/workspace",
-      "HEAD",
-      21,
-    );
+  it("is true when the accumulated bytes exactly equal the cap", () => {
+    const store = makeStore("1000");
+    expect(isTierBCommitCapExceeded(store, 1000)).toBe(true);
   });
 
-  it("is true (safe fallback) when lastTierBBatchSha is not found within the probed depth", async () => {
-    const ancestry = Array.from({ length: 21 }, (_, i) => `h${i}`);
-    const git = makeGit(ancestry);
-    const result = await isTierBCommitCapExceeded(
-      git,
-      "/workspace",
-      "long-lost-sha",
-      20,
-    );
-    expect(result).toBe(true);
+  it("is true when the accumulated bytes exceed the cap", () => {
+    const store = makeStore("5000");
+    expect(isTierBCommitCapExceeded(store, 1000)).toBe(true);
   });
 
-  it("uses the default cap (20) when none is given", async () => {
-    const ancestry = Array.from({ length: 20 }, (_, i) => `h${i}`).concat(
-      "batch-sha",
+  it("uses GitConstants.DEFAULT_TIER_B_COMMIT_CAP_BYTES when no cap is given", () => {
+    const under = makeStore(
+      String(GitConstants.DEFAULT_TIER_B_COMMIT_CAP_BYTES - 1),
     );
-    const git = makeGit(ancestry);
-    const result = await isTierBCommitCapExceeded(
-      git,
-      "/workspace",
-      "batch-sha",
+    expect(isTierBCommitCapExceeded(under)).toBe(false);
+
+    const atCap = makeStore(
+      String(GitConstants.DEFAULT_TIER_B_COMMIT_CAP_BYTES),
     );
-    expect(result).toBe(true);
+    expect(isTierBCommitCapExceeded(atCap)).toBe(true);
   });
 });

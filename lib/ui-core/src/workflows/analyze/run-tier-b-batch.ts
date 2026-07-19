@@ -105,12 +105,7 @@ async function runTierBBatchCore(
   });
 
   const headSha = (await git.getHeadSha(workspaceRoot)) ?? null;
-  const commitCapExceeded = await isTierBCommitCapExceeded(
-    git,
-    workspaceRoot,
-    store.meta.get(GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA),
-    deps.commitCap,
-  );
+  const commitCapExceeded = isTierBCommitCapExceeded(store, deps.commitCap);
 
   const queue = readTierBQueue(store);
   if (queue.length === 0) {

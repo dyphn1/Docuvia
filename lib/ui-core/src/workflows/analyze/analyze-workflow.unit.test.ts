@@ -253,8 +253,8 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
         get: vi.fn().mockImplementation((key: string) => {
           if (key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA)
             return "same-sha";
-          if (key === GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA)
-            return "batch-sha";
+          if (key === GitConstants.META_KEY_TIER_B_CHANGED_BYTES)
+            return String(GitConstants.DEFAULT_TIER_B_COMMIT_CAP_BYTES);
           return undefined;
         }),
         set: vi.fn(),
@@ -264,11 +264,6 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
     docuviaFactory.register(TOKENS.GitProvider, () =>
       makeMockGitProvider({
         getHeadSha: vi.fn().mockResolvedValue("same-sha"),
-        // "batch-sha" not found within the probed ancestry window -- treated as "at least cap+1",
-        // i.e. exceeded (isTierBCommitCapExceeded's documented safe-failure mode).
-        getCommitAncestry: vi
-          .fn()
-          .mockResolvedValue(Array.from({ length: 21 }, (_, i) => `sha-${i}`)),
       }),
     );
     docuviaFactory.register(TOKENS.KnowledgeGitService, () =>

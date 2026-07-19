@@ -13,7 +13,7 @@ docuvia doctor
 All checks run by default. Skip the ones you don't need — useful when offline or when a check is known-flaky in your environment:
 
 - `--skip-db`: Skip the SQLite integrity check.
-- `--skip-git`: Skip the Git remote reachability check, the git-hook health check, and the Tier B commit-cap check (all three need `IGitProvider`).
+- `--skip-git`: Skip the Git remote reachability check and the git-hook health check (both need `IGitProvider`). The Tier B commit-cap check is gated by `--skip-db` instead — it reads a store-persisted counter, not git.
 - `--skip-hooks`: Skip the Claude/Cursor integration hook presence check.
 - `--skip-logs`: Skip the `.docuvia/logs/*.log` analysis.
 - `--fix`: Opt-in repair of the legacy-hook duplicate-block condition (see health check 6 below). This is the **only** `doctor` flag that mutates workspace files, and only for that one specific condition — it is not a general "fix everything" flag, and it never runs unless explicitly passed.

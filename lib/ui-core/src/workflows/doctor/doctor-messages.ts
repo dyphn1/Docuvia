@@ -45,7 +45,7 @@ export const DOCTOR_MESSAGES = {
    *  non-blocking state either way. */
   TIER_B_CAP_OK: "Tier B commit-cap not yet reached.",
   TIER_B_CAP_EXCEEDED:
-    "Commits since the last Tier B batch have exceeded the cap -- push, or run `docuvia analyze --escalate-to-lsp && docuvia snapshot`, to trigger it.",
+    "Changed code since the last Tier B batch has exceeded the cap -- push, or run `docuvia analyze --escalate-to-lsp && docuvia snapshot`, to trigger it.",
 
   /** §10d/§7c: legacy-hook duplicate-block / not-resolvable post-commit hook checks (T5). */
   GIT_HOOK_NOT_INSTALLED: "No Docuvia post-commit hook installed.",

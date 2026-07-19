@@ -10,7 +10,7 @@ export const ANALYZE_MESSAGES = {
   /** §10c's commit-time nudge — non-blocking, exit-0; `doctor` reports the same condition
    *  passively as a backup (T4) for anyone who doesn't read console output or grep logs. */
   TIER_B_CAP_NUDGE:
-    "Commits since the last Tier B batch have exceeded the cap -- push, or run `docuvia analyze --escalate-to-lsp && docuvia snapshot`, to trigger it.",
+    "Changed code since the last Tier B batch has exceeded the cap -- push, or run `docuvia analyze --escalate-to-lsp && docuvia snapshot`, to trigger it.",
   EXTRACTING: (targetPath: string) =>
     `Extracting decisions from ${targetPath}...`,
   FILES_DROPPED: (count: number) =>

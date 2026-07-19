@@ -39,6 +39,8 @@ function parsePending(raw: string | undefined): PendingTierBBatch | undefined {
  *   1. `tierBQueue` becomes the staged `remainingQueue` (failed entries only -- everything else
  *      the batch handled is drained).
  *   2. `lastTierBBatchSha` becomes the staged `headSha` (seeds/advances the commit-cap baseline).
+ *   3. `tierBChangedBytes` (§9m item 1's commit-cap accumulator) resets to `"0"` -- a finalized
+ *      batch is exactly the event that should zero the cumulative-changed-bytes trigger.
  * A no-op (cheap: one meta read) when no batch is pending -- the common case for most `snapshot`
  * runs, which have nothing to do with Tier B at all. Never throws -- a corrupt/malformed pending
  * record is treated the same as "nothing pending" rather than failing an otherwise-successful
@@ -74,6 +76,7 @@ export async function finalizePendingTierBBatch(
           GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA,
           pending.headSha,
         );
+        store.meta.set(GitConstants.META_KEY_TIER_B_CHANGED_BYTES, "0");
         // Sentinel clear -- IMetaRepo has no delete(); an empty string reads back falsy in
         // parsePending()/readTierBQueue()'s own "!raw" guards.
         store.meta.set(GitConstants.META_KEY_TIER_B_BATCH_PENDING, "");

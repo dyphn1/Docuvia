@@ -169,22 +169,22 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| #   | Step                                                               | Governing ADR(s)                                                                                                                                                  | Verdict                           |
-| --- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| 1   | Zod boundary validation of CLI input                               | `guidelines/design-spirit.md` #4 (boundary validation)                                                                                                            | ✅ Match                          |
-| 2   | TTY confirmation prompt                                            | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                             | ✅ Match                          |
-| 3   | Whole-command single-flight lock                                   | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)                                                                                                   | ✅ Match                          |
-| 5   | `openStore()` — WAL + `IMMEDIATE` migration transaction            | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                             | ✅ Match                          |
-| 6   | `ensureGitBranchAndHooks()` recheck-in-lock + warn                 | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-001](../adr/storage/STOR-001-git-branch-source-of-truth.md) (branch-first-commit stamping) | ✅ Match                          |
-| 7   | `seedProjectRow()` atomic `getOrInsert`                            | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)                                                                                                   | ✅ Match                          |
-| 8   | Parallel discovery (config/VCS/file scan)                          | — (no ADR governs this directly; implementation detail)                                                                                                           | —                                 |
-| 9   | AST parse + persist                                                | [GRPH-003](../adr/graph/GRPH-003-unified-ast-microkernel.md)                                                                                                      | ✅ Match                          |
-| 10  | `hydrationService.markSynced()`                                    | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                                                                                              | ⚠️ **ADR text stale** — see below |
-| 11  | Temp-file manager init (non-fatal)                                 | `architecture/application-lifecycle-and-state.md`                                                                                                                 | ✅ Match                          |
-| 12  | Platform selection (checkbox / `--platform` / headless-all)        | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                             | ✅ Match (this part of the ADR)   |
-| 12b | Repo-scoped hooks only; Claude Desktop MCP is print-and-copy-paste | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)                                                                                            | ✅ Match (RESOLVED, see below)    |
-| —   | `init.start` / `init.summary` JSONL log                            | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)                                                                                         | ✅ Match                          |
-| —   | Hidden `docuvia-knowledge` branch + post-commit hook               | [PLAT-004](../adr/platform/PLAT-004-zero-interruption-invisible-indexing.md)                                                                                      | ✅ Match                          |
+| #   | Step                                                               | Governing ADR(s)                                                                                                                                                  | Verdict                         |
+| --- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| 1   | Zod boundary validation of CLI input                               | `guidelines/design-spirit.md` #4 (boundary validation)                                                                                                            | ✅ Match                        |
+| 2   | TTY confirmation prompt                                            | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                             | ✅ Match                        |
+| 3   | Whole-command single-flight lock                                   | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)                                                                                                   | ✅ Match                        |
+| 5   | `openStore()` — WAL + `IMMEDIATE` migration transaction            | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                             | ✅ Match                        |
+| 6   | `ensureGitBranchAndHooks()` recheck-in-lock + warn                 | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md), [STOR-001](../adr/storage/STOR-001-git-branch-source-of-truth.md) (branch-first-commit stamping) | ✅ Match                        |
+| 7   | `seedProjectRow()` atomic `getOrInsert`                            | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)                                                                                                   | ✅ Match                        |
+| 8   | Parallel discovery (config/VCS/file scan)                          | — (no ADR governs this directly; implementation detail)                                                                                                           | —                               |
+| 9   | AST parse + persist                                                | [GRPH-003](../adr/graph/GRPH-003-unified-ast-microkernel.md)                                                                                                      | ✅ Match                        |
+| 10  | `hydrationService.markSynced()`                                    | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                                                                                              | ✅ Match (RESOLVED, see below)  |
+| 11  | Temp-file manager init (non-fatal)                                 | `architecture/application-lifecycle-and-state.md`                                                                                                                 | ✅ Match                        |
+| 12  | Platform selection (checkbox / `--platform` / headless-all)        | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                             | ✅ Match (this part of the ADR) |
+| 12b | Repo-scoped hooks only; Claude Desktop MCP is print-and-copy-paste | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)                                                                                            | ✅ Match (RESOLVED, see below)  |
+| —   | `init.start` / `init.summary` JSONL log                            | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)                                                                                         | ✅ Match                        |
+| —   | Hidden `docuvia-knowledge` branch + post-commit hook               | [PLAT-004](../adr/platform/PLAT-004-zero-interruption-invisible-indexing.md)                                                                                      | ✅ Match                        |
 
 ## Conflicts Found
 
@@ -214,23 +214,21 @@ This conflict has been successfully resolved. [IFCE-001](../adr/interface/IFCE-0
 
 This conflict has been successfully resolved. [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)'s "Known implementation gap" note has been updated to reflect that the hydration pipeline (JSONL-to-SQLite direction) described in the ADR has been fully implemented in `hydration.service.ts` with `resolveHydrationCommit` (Nearest-Ancestor resolution) and `hydrate` bulk-loading. Leaving no stale gap claims in the ADR tree.
 
-### 3. PLAT-006's command-level lock is CLI-only — the MCP entry point to the same `init` bypasses it entirely
+### 3. PLAT-006's command-level lock was CLI-only — the MCP entry point bypassed it entirely (RESOLVED 2026-07-18)
 
-Full detail lives in [mcp-execution-flow.md](mcp-execution-flow.md#conflicts-found), since it's the
-MCP tool's own code that skips the lock — but it belongs here too, because it means Phase 0's
-"MATCH PLAT-006" note above is only true for the CLI entry point. `artifacts/cli/src/mcp/tools/init.ts`'s
-`docuvia_init` tool calls `docuviaApi.init()` directly, never through `initCommand()`, so it never
-calls `acquireProcessLock` at all. PLAT-006 (2026-07-14) explicitly justifies the coarse lock by
-naming AI-agent/MCP-driven concurrent `init` invocations as the motivating scenario — which makes
-this the one entry point most in need of the lock being the one that doesn't have it.
+Full detail lives in [mcp-execution-flow.md](mcp-execution-flow.md#conflicts-found). `artifacts/cli/src/mcp/tools/init.ts`'s
+`docuvia_init` tool used to call `docuviaApi.init()` directly, never through `initCommand()`, so it
+never called `acquireProcessLock` at all — the one entry point PLAT-006 (2026-07-14) names as the
+motivating scenario for the coarse lock, and the one that didn't have it. **Resolved**: the lock
+acquire/release sequence is now a shared `withInitCommandLock` helper both `initCommand()` and the
+MCP tool call through; see the MCP doc for the fix and its regression test.
 
 ## Non-conflicts worth calling out
 
-Everything else PLAT-006 (2026-07-14, the newest and most detailed ADR touching `init`) describes
-as _already shipped_ — the migration `IMMEDIATE` transaction, the `ProjectsRepo.getOrInsert()`
-atomic insert, and the recheck-after-lock-plus-warn pattern on both the knowledge-branch creation
-and post-commit-hook install races — is faithfully implemented exactly as decided on the CLI path,
-including the `writeOrAppend()` fix (distinguishing `ENOENT` from other read errors before treating
-a file as absent) that the ADR flagged as a related-but-independent latent bug. The one piece that
-is _not_ uniformly implemented is the coarse command-level lock itself once the MCP entry point is
-in scope — see Conflict #3 above.
+Everything PLAT-006 (2026-07-14, the newest and most detailed ADR touching `init`) describes as
+_already shipped_ — the migration `IMMEDIATE` transaction, the `ProjectsRepo.getOrInsert()` atomic
+insert, and the recheck-after-lock-plus-warn pattern on both the knowledge-branch creation and
+post-commit-hook install races — is faithfully implemented exactly as decided, on both the CLI and
+MCP paths now (Conflict #3 above), including the `writeOrAppend()` fix (distinguishing `ENOENT`
+from other read errors before treating a file as absent) that the ADR flagged as a
+related-but-independent latent bug.

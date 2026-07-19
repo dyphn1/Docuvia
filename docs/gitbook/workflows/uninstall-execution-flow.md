@@ -67,12 +67,12 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| Step                                                                                                     | Governing ADR(s)                                                       | Verdict                        |
-| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
-| Each platform uninstalled independently; one failure doesn't block the rest or DB cleanup                | `architecture/error-handling-architecture.md`                          | ✅ Match                       |
-| Git hooks removed via `UninstallHooksWorkflow`; one hook's failure doesn't block the other or DB cleanup | `phase1-decision-integration.md` §10a                                  | ✅ Match                       |
-| DB cleanup reuses `docuviaApi.clean()` rather than duplicating delete logic                              | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)   | ✅ Match                       |
-| No `--global` flag; platform uninstall never takes one                                                   | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md) | ✅ Match (RESOLVED, see below) |
+| Step                                                                                                     | Governing ADR(s)                                                                                         | Verdict                        |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Each platform uninstalled independently; one failure doesn't block the rest or DB cleanup                | `architecture/error-handling-architecture.md`                                                            | ✅ Match                       |
+| Git hooks removed via `UninstallHooksWorkflow`; one hook's failure doesn't block the other or DB cleanup | [PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#reliability-slice-5-doctor) | ✅ Match                       |
+| DB cleanup reuses `docuviaApi.clean()` rather than duplicating delete logic                              | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                                     | ✅ Match                       |
+| No `--global` flag; platform uninstall never takes one                                                   | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)                                   | ✅ Match (RESOLVED, see below) |
 
 ## Conflicts Found
 

@@ -2,9 +2,9 @@
 
 `analyze` is Docuvia's ingestion command — it keeps the local knowledge graph (`local.db`) up to
 date with your source code. It has three modes, dispatched on whether a path argument or
-`--escalate-to-lsp` is given (PLAT-007 — see
+`--escalate-to-lsp` is given — see
 [Tiered Background Knowledge Evolution](../../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md)
-and [Phase 1 — Decision Integration §8](../../analysis/phase1-decision-integration.md)):
+(PLAT-007) for the full Tier A/B/C contract:
 
 ## Usage
 
@@ -21,7 +21,7 @@ docuvia analyze [path] [--escalate-to-lsp] [--fallback-ast]
 ### Flags
 
 - `--escalate-to-lsp`: Runs the Tier B batch — LSP-precision cross-file `calls` edges over the
-  files Tier A queued since the last batch (see Mode C below). This is the flag IMPT-003 names as
+  files Tier A queued since the last batch (see Mode C below). This is the flag IMPT-002 names as
   "the core quality engine"; it is now implemented for real (spawn-per-batch
   `typescript-language-server`), not a no-op.
 - `--fallback-ast`: Only relevant with `--escalate-to-lsp`, and only on an interactive terminal.

@@ -1,5 +1,5 @@
 ---
-id: IMPT-003
+id: IMPT-002
 title: LSP Escalation for Absolute Quality
 status: accepted
 date: 2026-07-12
@@ -36,12 +36,37 @@ We mandate the **AST + LSP + LLM Tri-Layer Architecture** for structural analysi
 > (the implementation-level ADR under this mandate) settled the real contract: LSP-unavailable
 > **degrades honestly** — AST-level edges are retained, the degradation is JSONL-logged and
 > `doctor`-explainable, and statically invented edges are prohibited. This is not a hypothetical
-> edge case — per
-> [Phase 1 — Decision Integration §9n](../../analysis/phase1-decision-integration.md), a real
-> Windows spawn bug meant this "100%" promise silently degraded to AST-only on _every_ batch, on
-> _every_ Windows machine, for the whole of Slice 3's life, until a same-day fix. **Scope note**
-> also missing from the original text: LSP-precision cross-file edges currently cover
-> **TypeScript/JavaScript only** (per-language dispatch table, PLAT-007 §8e/D4); every other
-> language stays at AST-level precision until its own plugin exists — this ADR's Decision section
-> reads as language-agnostic and should not be taken as a claim that Rust/Go/etc. already get the
-> same guarantee.
+> edge case — a real Windows spawn bug (see PLAT-007's Consequences section) meant this "100%"
+> promise silently degraded to AST-only on _every_ batch, on _every_ Windows machine, for the
+> whole of Slice 3's life, until a same-day fix. **Scope note** also missing from the original
+> text: LSP-precision cross-file edges currently cover **TypeScript/JavaScript only**
+> (per-language dispatch table, PLAT-007's Tier B section); every other language stays at
+> AST-level precision until its own plugin exists — this ADR's Decision section reads as
+> language-agnostic and should not be taken as a claim that Rust/Go/etc. already get the same
+> guarantee. See the Language Support Matrix below for the concrete per-language table.
+
+## Language Support Matrix (added 2026-07-19)
+
+Per-language status of the tri-layer architecture. AST parsing (`lib/plugins-ast`) covers all
+eleven languages below; LSP escalation (Tier B, `--escalate-to-lsp`) is implemented for exactly
+one provider today. A language with AST-only support still gets full L2 nodes/edges from static
+parsing — it is missing only the LSP-precision cross-file `calls` repair described in this ADR's
+Decision section.
+
+| Language   | File Extensions                                             | AST Parsing (Tier A) | LSP Escalation (Tier B)         |
+| ---------- | ----------------------------------------------------------- | :------------------: | ------------------------------- |
+| TypeScript | `.ts`, `.tsx`, `.mts`, `.cts`                               |          ✅          | ✅ `typescript-language-server` |
+| JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs`                               |          ✅          | ✅ `typescript-language-server` |
+| Python     | `.py`                                                       |          ✅          | ❌ AST-level only               |
+| Go         | `.go`                                                       |          ✅          | ❌ AST-level only               |
+| Rust       | `.rs`                                                       |          ✅          | ❌ AST-level only               |
+| Java       | `.java`                                                     |          ✅          | ❌ AST-level only               |
+| C          | `.c`, `.h`                                                  |          ✅          | ❌ AST-level only               |
+| C++        | `.cpp`, `.cxx`, `.cc`, `.hpp`, `.hxx`, `.hh`, `.cu`, `.cuh` |          ✅          | ❌ AST-level only               |
+| C#         | `.cs`                                                       |          ✅          | ❌ AST-level only               |
+| PHP        | `.php`, `.phtml`, `.php3`, `.php4`, `.php5`, `.phps`        |          ✅          | ❌ AST-level only               |
+| Ruby       | `.rb`, `.rake`, `.gemspec`                                  |          ✅          | ❌ AST-level only               |
+
+New languages gain LSP escalation by adding a provider behind the `IEdgeResolutionProvider` seam
+(PLAT-007 §8b) and a per-language dispatch entry (PLAT-007 §8e/D4) — never a hardcoded TS/JS
+check. No such provider is scheduled; add one here when a language plugin ships.

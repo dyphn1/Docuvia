@@ -190,8 +190,8 @@ the proposal specifically:
 >   this ADR's design) and has **two** consumers: the CLI `init` command lock this ADR designed, and
 >   (undocumented here until now) Tier C's drain-step throttle
 >   (`tier-c-throttle.ts`'s `tryAcquireTierCLock()`, added in Slice 4 — see
->   [Phase 1 — Decision Integration §9f](../../analysis/phase1-decision-integration.md)), which
->   explicitly reused "the PLAT-006 single-flight lock pattern." `acquireInitLock`
+>   [PLAT-007's Tier C section](PLAT-007-tiered-background-knowledge-evolution.md#tier-c--async-queue-with-budget-llm-l3-extraction)),
+>   which explicitly reused "the PLAT-006 single-flight lock pattern." `acquireInitLock`
 >   (`graph-store.ts`) and `acquireKnowledgeLock` (`libgit2-provider.ts`) remain separate,
 >   non-consolidated implementations — so this follow-up is no longer accurately described as
 >   "not yet scheduled," but it isn't finished either.

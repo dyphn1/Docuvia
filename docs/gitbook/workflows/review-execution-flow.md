@@ -49,28 +49,23 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| Step                                                                           | Governing ADR(s)                                                          | Verdict                                   |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ----------------------------------------- |
-| Staleness-check auto-hydrate before read                                       | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)      | ✅ Match                                  |
-| Blast-radius via single-hop SQL JOIN (`node_links`) as a fast heuristic filter | [IMPT-001](../adr/impact/IMPT-001-sql-single-hop-blast-radius.md)         | ✅ Match                                  |
-| LSP escalation for absolute-quality blast radius                               | [IMPT-003](../adr/impact/IMPT-002-lsp-for-absolute-quality.md)            | ⚠️ **Not wired for `review`** — see below |
-| `review.start` / `review.summary` JSONL log                                    | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md) | ✅ Match                                  |
+| Step                                                                           | Governing ADR(s)                                                          | Verdict                           |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | --------------------------------- |
+| Staleness-check auto-hydrate before read                                       | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)      | ✅ Match                          |
+| Blast-radius via single-hop SQL JOIN (`node_links`) as a fast heuristic filter | [IMPT-001](../adr/impact/IMPT-001-sql-single-hop-blast-radius.md)         | ✅ Match                          |
+| LSP escalation for absolute-quality blast radius                               | [IMPT-002](../adr/impact/IMPT-002-lsp-for-absolute-quality.md)            | ✅ Match (transparent, see below) |
+| `review.start` / `review.summary` JSONL log                                    | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md) | ✅ Match                          |
 
 ## Conflicts Found
 
-### IMPT-003 mandates LSP escalation; `review` has no such path at all
-
-[IMPT-003](../adr/impact/IMPT-002-lsp-for-absolute-quality.md) (filename says `IMPT-002`, front-matter
-`id` says `IMPT-003` — worth reconciling on its own) mandates an **AST + LSP + LLM tri-layer
-architecture**, explicitly naming the SQL single-hop pass as only the first, "Speed" layer that
-_must_ escalate to a headless LSP for "absolute quality" before results are trusted. `impact.ts`
-at least accepts an `escalateToLsp` option (currently a documented no-op — see the impact doc).
-`review.ts`/`ReviewWorkflow` has no `escalateToLsp` parameter or LSP path anywhere in its call
-chain — `detectChanges()` only ever runs the SQL single-hop filter IMPT-001 describes as the
-_preliminary_ pass. Since `review` is exactly the kind of "is this safe to merge" call IMPT-003
-says the SQL-only pass "must not be used as the final word" for, this is a real gap, not just an
-unimplemented flag: **`review`'s risk level is currently always IMPT-001-only, with no path to the
-LSP-verified accuracy IMPT-003 requires for it to be trustworthy for automated decisions.**
-**Recommendation**: either extend `review` with the same (currently no-op) `escalateToLsp` opt-in
-`impact` has, or scope IMPT-003 explicitly to `impact` only if `review` was never meant to be
-covered by it.
+None. Prior revisions of this doc flagged `review` as having no LSP-escalation path against
+[IMPT-002](../adr/impact/IMPT-002-lsp-for-absolute-quality.md)'s tri-layer mandate, on the
+assumption that `review` would need its own `escalateToLsp`-style flag the way `impact` does (or
+did — see the impact doc; that flag has since been removed). **Re-checked against the actual call
+chain**: `ChangeDetectionService.detectChanges()` (which backs `review`) calls
+`this.impactService.getBlastRadius(store, file)` — the exact same `ImpactService` method `impact`
+itself calls, reading the same `node_links` graph data. [PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#tier-b--lsp-escalation-batch---escalate-to-lsp)'s
+Tier B batch writes LSP-corrected edges directly into that graph data, not into a
+per-command code path — so `review`'s blast radius benefits from Tier B's LSP-precision edges
+transparently, exactly the way `impact`'s does, with no command-specific wiring needed on either
+side. No gap to close here.

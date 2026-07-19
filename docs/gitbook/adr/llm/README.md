@@ -1,11 +1,11 @@
 # LLM (LLM) — Provider Abstraction, Tokens, Extraction
 
 **Current Model**:
-Currently, there are **no LLM invocation paths** (including `analyze <path>`). This functionality has been marked as deferred pending further implementation.
-
-## Deferred / Unimplemented
-
-- Bridge to CLIProxyAPI for multi-provider LLM access (Task #7)
+All LLM traffic goes through the LLM-002 CLIProxyAPI bridge — no other endpoint integrations are
+considered. `analyze <targetPath>` (focused decision extraction, persisted to `l3_nodes`) and the
+Tier C budgeted async queue ([PLAT-007](../platform/PLAT-007-tiered-background-knowledge-evolution.md))
+both invoke it. An embedded in-process model remains a documented seam, not built — see
+[Roadmap & Open Items](../../analysis/roadmap-and-open-items.md).
 
 ## Decisions
 

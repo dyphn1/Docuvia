@@ -64,10 +64,11 @@ sequenceDiagram
 ### `escalateToLsp` removed (Slice 5, §10b) — no longer a gap to document
 
 Prior revisions of this document flagged `escalateToLsp` as a self-disclosed no-op against
-[IMPT-003](../adr/impact/IMPT-002-lsp-for-absolute-quality.md) — the flag was accepted by `impact`
+[IMPT-002](../adr/impact/IMPT-002-lsp-for-absolute-quality.md) — the flag was accepted by `impact`
 but never implemented any LSP-escalation behavior. Per
-`docs/gitbook/analysis/phase1-decision-integration.md` §10b's owner ruling, the flag has been
-removed entirely (CLI wiring, `ImpactWorkflow` option, `MemoryKeys.ESCALATE_TO_LSP` usage in
+[PLAT-007's reliability section](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#reliability-slice-5-doctor)'s
+owner ruling, the flag has been removed entirely (CLI wiring, `ImpactWorkflow` option,
+`MemoryKeys.ESCALATE_TO_LSP` usage in
 `impact.ts`/`impact-workflow.ts`) rather than given real behavior — a flag that visibly does
 nothing is exactly the "no invisible failure" footgun the project's stance argues against.
 `docuvia impact <target> --escalate-to-lsp` now reports an unknown-flag error like any other

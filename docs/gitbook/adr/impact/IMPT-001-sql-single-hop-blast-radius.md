@@ -12,7 +12,7 @@ superseded_by: []
 
 ## Context
 
-While the ultimate source of truth for dependencies must be driven by an LSP (see IMPT-003), spinning up an LSP for every minor keystroke or initial filtering step is unnecessarily heavy. We need a rapid "first pass" filter.
+While the ultimate source of truth for dependencies must be driven by an LSP (see IMPT-002), spinning up an LSP for every minor keystroke or initial filtering step is unnecessarily heavy. We need a rapid "first pass" filter.
 
 ## Decision
 

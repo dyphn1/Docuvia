@@ -64,4 +64,4 @@
 ## 📊 Analysis
 
 - [Cross-Product CLI Benchmark (2026-07-13)](analysis/cross-product-cli-benchmark.md)
-- [Background Knowledge Loop — Gap Analysis (2026-07-16)](analysis/background-knowledge-loop-gap-analysis.md)
+- [Roadmap & Open Items](analysis/roadmap-and-open-items.md)

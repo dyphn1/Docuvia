@@ -96,13 +96,13 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| Step                                                                                                                    | Governing ADR(s)                                                       | Verdict                        |
-| ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------ |
-| DB / git / logs diagnostics via `docuviaApi.doctor()`                                                                   | `architecture/virtual-contracts-architecture.md` (Orchestration Layer) | ✅ Match                       |
-| Git diagnostics map specific error codes to actionable suggestions                                                      | `architecture/error-handling-architecture.md`                          | ✅ Match                       |
-| Git-hook health / commit-cap / LLM reachability / LSP binary checks all go through `DoctorWorkflow`, resolving by token | `phase1-decision-integration.md` §10 (decision 1b)                     | ✅ Match                       |
-| `doctor --fix`'s repair is opt-in only, never runs without the flag                                                     | `phase1-decision-integration.md` §10d                                  | ✅ Match                       |
-| Claude/Cursor hooks check goes through `DoctorWorkflow`, same as every other diagnostic                                 | `architecture/virtual-contracts-architecture.md` (Orchestration Layer) | ✅ Match (RESOLVED, see below) |
+| Step                                                                                                                    | Governing ADR(s)                                                                                         | Verdict                        |
+| ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| DB / git / logs diagnostics via `docuviaApi.doctor()`                                                                   | `architecture/virtual-contracts-architecture.md` (Orchestration Layer)                                   | ✅ Match                       |
+| Git diagnostics map specific error codes to actionable suggestions                                                      | `architecture/error-handling-architecture.md`                                                            | ✅ Match                       |
+| Git-hook health / commit-cap / LLM reachability / LSP binary checks all go through `DoctorWorkflow`, resolving by token | [PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#reliability-slice-5-doctor) | ✅ Match                       |
+| `doctor --fix`'s repair is opt-in only, never runs without the flag                                                     | [PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#reliability-slice-5-doctor) | ✅ Match                       |
+| Claude/Cursor hooks check goes through `DoctorWorkflow`, same as every other diagnostic                                 | `architecture/virtual-contracts-architecture.md` (Orchestration Layer)                                   | ✅ Match (RESOLVED, see below) |
 
 ## Conflicts Found
 
@@ -121,8 +121,9 @@ different shapes for what should be the same kind of check: seven diagnostics (`
 Orchestration layer, while the Claude/Cursor hooks presence check was plain filesystem logic living
 directly in the CLI command. `DoctorOptions` was even duplicated as two separate interfaces
 (`doctor-workflow.ts` and `doctor.ts`) with `skipHooks` only on the CLI-side one. Slice 5
-(phase1-decision-integration.md §10, decision 1b) deliberately closed this asymmetry for every _new_
-check it added, but left the pre-existing Claude/Cursor hooks check untouched at the time.
+([PLAT-007's reliability section](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#reliability-slice-5-doctor))
+deliberately closed this asymmetry for every _new_ check it added, but left the pre-existing
+Claude/Cursor hooks check untouched at the time.
 
 **Now resolved**: `runAgentHooksDiagnostic` in `doctor-workflow.ts` performs the same `fs.stat`
 check, reporting `agent_hooks_claude`/`agent_hooks_cursor` through the uniform diagnostic shape.

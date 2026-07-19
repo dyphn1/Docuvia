@@ -4,7 +4,7 @@
 > `artifacts/cli/src/commands/analyze.ts` through `lib/ui-core/src/workflows/analyze/analyze-workflow.ts`.
 >
 > **Updated for PLAT-007 Tier A** (see
-> [phase1-decision-integration.md §6](../analysis/phase1-decision-integration.md#6-slice-2-tier-a--integration-level-design-decisions)):
+> [PLAT-007's Tier A section](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#tier-a--every-commit-ast-delta-only-deterministic-sub-second)):
 > no-arg `analyze` is no longer a read-only config scan — it is now **auto mode**, dispatching to
 > a sha fast-path no-op, full ingestion, or delta ingestion. The old config-scan-only diagram below
 > is superseded by Mode A's new dispatch.
@@ -104,33 +104,20 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| Step                                                                                            | Governing ADR(s)                                                                                                                                                                                                    | Verdict                                      |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| Auto mode (fast-path / full ingestion / delta ingestion)                                        | [PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md), [phase1-decision-integration.md §6](../analysis/phase1-decision-integration.md#6-slice-2-tier-a--integration-level-design-decisions) | ✅ Match                                     |
-| Config scan (project type + tags) — now a step of full ingestion, not the whole command         | — (no dedicated ADR; feeds `init`'s discovery pipeline)                                                                                                                                                             | —                                            |
-| `ILlmClient` over CLIProxyAPI's OpenAI-compatible endpoint, config injected via `docuviaMemory` | [LLM-002](../adr/llm/LLM-002-cliproxyapi-bridge.md)                                                                                                                                                                 | ⚠️ **ADR status note stale** — see below     |
-| Missing LLM env vars → hard failure (exit 1), not silent skip                                   | code comment in `analyze.ts` contrasting itself with `sync.ts`'s missing-env behavior                                                                                                                               | ✅ Match (internally consistent, deliberate) |
-| `analyze.start`/`analyze.focused.start`/`.summary` JSONL log                                    | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)                                                                                                                                           | ✅ Match                                     |
+| Step                                                                                            | Governing ADR(s)                                                                                                                           | Verdict                                      |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------- |
+| Auto mode (fast-path / full ingestion / delta ingestion)                                        | [PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#tier-a--every-commit-ast-delta-only-deterministic-sub-second) | ✅ Match                                     |
+| Config scan (project type + tags) — now a step of full ingestion, not the whole command         | — (no dedicated ADR; feeds `init`'s discovery pipeline)                                                                                    | —                                            |
+| `ILlmClient` over CLIProxyAPI's OpenAI-compatible endpoint, config injected via `docuviaMemory` | [LLM-002](../adr/llm/LLM-002-cliproxyapi-bridge.md)                                                                                        | ✅ Match                                     |
+| Missing LLM env vars → hard failure (exit 1), not silent skip                                   | code comment in `analyze.ts` contrasting itself with `sync.ts`'s missing-env behavior                                                      | ✅ Match (internally consistent, deliberate) |
+| `analyze.start`/`analyze.focused.start`/`.summary` JSONL log                                    | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)                                                                  | ✅ Match                                     |
 
 ## Conflicts Found
 
-### LLM-002 says `analyze`'s LLM half has "no consumer yet"; it's fully implemented
-
-[LLM-002](../adr/llm/LLM-002-cliproxyapi-bridge.md)'s implementation-status note (top of the file)
-says:
-
-> `ILlmClient`/`FetchLlmClient` (`lib/llm-api`) landed 2026-07-14 as a standalone Technology
-> Provider — registered on `TOKENS.LlmClient`, **no consumer yet**. Planned first consumer:
-> `docuvia analyze`'s LLM/decision-extraction half (**currently out of scope** per
-> `analyze-workflow.ts`'s doc comment).
-
-But `AnalyzeWorkflow.executeDecisionExtraction()` (`analyze-workflow.ts:100-212`) already resolves
-`TOKENS.LlmClient`, calls `chatCompletion()` with a real system prompt and file contents, and parses
-the response into `ExtractedDecision` records — this is a complete, working consumer, not a stub.
-This lines up with the repo's own recent commit history (`feat(contracts,core,ui-core,cli):
-implement analyze <targetPath> LLM decision extraction`), which post-dates LLM-002. The _shape_ of
-the implementation matches LLM-002's decision exactly (one thin client, OpenAI-compatible endpoint,
-config injected via `docuviaMemory`, env var names carried forward as prescribed) — only the ADR's
-own "not yet implemented" status note is stale. **Recommendation**: update LLM-002's implementation-status
-note now that analyze has a real consumer, so a future reader doesn't assume this integration is
-still pending.
+None. [LLM-002](../adr/llm/LLM-002-cliproxyapi-bridge.md) is marked "Accepted / Fully Verified"
+and `AnalyzeWorkflow.executeDecisionExtraction()` (`analyze-workflow.ts`) resolves `TOKENS.LlmClient`,
+calls `chatCompletion()`, and parses the response into `ExtractedDecision` records — a complete,
+working consumer, matching LLM-002's decision exactly (one thin client, OpenAI-compatible endpoint,
+config injected via `docuviaMemory`). Since Slice 4, the Tier C budgeted queue
+([PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#tier-c--async-queue-with-budget-llm-l3-extraction))
+is a second consumer of the same client.

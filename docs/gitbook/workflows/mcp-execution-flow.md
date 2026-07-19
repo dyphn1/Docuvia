@@ -15,6 +15,7 @@ sequenceDiagram
     actor Agent as AI Agent, MCP Client
     participant Server as MCP Server (stdio)
     participant Tool as docuvia_init tool handler
+    participant Lock as withInitCommandLock
     participant API as docuviaApi.init()
     participant WF as InitWorkflow
 
@@ -27,60 +28,43 @@ sequenceDiagram
     Tool->>Tool: InitToolInputSchema.parse args, strict empty object
     Tool->>Tool: create memory scope, set workspaceRoot to process.cwd
 
-    Tool->>API: docuviaApi.init scopeId, logger
-    Note right of API: No TTY confirm, no acquireProcessLock, no configureAgentIntegrations here.
+    Tool->>Lock: withInitCommandLock cwd, run
+    Note right of Lock: same PLAT-006 coarse lock initCommand() uses
+    Lock->>API: docuviaApi.init scopeId, logger
     API->>WF: new InitWorkflow execute
     WF-->>API: InitResult
-    API-->>Tool: result
+    API-->>Lock: result
+    Lock-->>Tool: result
     Tool-->>Server: content text, result.message
     Server-->>Agent: tool result
 ```
 
 ## Step → ADR Mapping
 
-| Step                                                                    | Governing ADR(s)                                                      | Verdict                                        |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
-| MCP tool boundary validation (`InitToolInputSchema.parse`)              | `guidelines/design-spirit.md` #4 (boundary validation)                | ✅ Match                                       |
-| One `docuviaMemory` scope per call, deleted in `finally`                | `architecture/application-lifecycle-and-state.md`                     | ✅ Match                                       |
-| Non-interactive by construction (no TTY concept over stdio)             | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md) | ✅ Match                                       |
-| `docuvia_init` tool skips `initCommand()`'s command-level lock entirely | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)       | ⚠️ **Conflict, and a serious one** — see below |
+| Step                                                            | Governing ADR(s)                                                      | Verdict                        |
+| --------------------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------ |
+| MCP tool boundary validation (`InitToolInputSchema.parse`)      | `guidelines/design-spirit.md` #4 (boundary validation)                | ✅ Match                       |
+| One `docuviaMemory` scope per call, deleted in `finally`        | `architecture/application-lifecycle-and-state.md`                     | ✅ Match                       |
+| Non-interactive by construction (no TTY concept over stdio)     | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md) | ✅ Match                       |
+| `docuvia_init` tool shares `initCommand()`'s command-level lock | [PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)       | ✅ Match (RESOLVED, see below) |
 
 ## Conflicts Found
 
-### The MCP `docuvia_init` tool has zero PLAT-006 lock protection — in exactly the scenario PLAT-006 names as the reason it exists
+### The MCP `docuvia_init` tool used to have zero PLAT-006 lock protection (RESOLVED 2026-07-18)
 
-This is the most concrete correctness gap found across this whole documentation pass.
-[Init's Phase 0](init-execution-flow.md#phase-0--cli-entry-confirmation--command-lock-steps-1-3)
-shows `initCommand()` (`artifacts/cli/src/commands/init.ts`) acquiring the coarse, whole-command
-`.docuvia/init.lock` **before** calling `docuviaApi.init()`. But `initTool.handler`
-(`artifacts/cli/src/mcp/tools/init.ts:24-43`) calls `docuviaApi.init(scopeId, logger)` **directly**
-— it never goes through `initCommand()`, so it never touches `acquireProcessLock` at all.
+Prior revisions of this doc flagged a real correctness gap: `initTool.handler`
+(`artifacts/cli/src/mcp/tools/init.ts`) called `docuviaApi.init(scopeId, logger)` directly, never
+going through `initCommand()`'s coarse `.docuvia/init.lock` — exactly the class of caller
+[PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)'s own "Advice" section names as the
+risk (Docuvia's own agent/editor integrations being "the class of tools most likely to invoke
+`init` programmatically and concurrently").
 
-[PLAT-006](../adr/platform/PLAT-006-init-single-flight-lock.md)'s own "Advice" section explicitly
-justifies the coarse lock by naming this exact class of caller as the risk:
-
-> concurrent `init` was judged not to be user error alone but a plausible product-shaped occurrence,
-> since Docuvia2's own `init` installs itself into multiple AI-agent/editor integration points
-> (`.claude/`, `.cursor/`, MCP config) — **the class of tools most likely to invoke `init`
-> programmatically and concurrently.**
-
-The MCP server is precisely that class of caller, and it is the one entry point with no lock at
-all. A concrete failure scenario: an AI agent connected over MCP calls `docuvia_init` at the same
-moment a human (or another agent) runs `docuvia init` from a terminal in the same workspace — the
-CLI path waits politely for the lock; the MCP path barrels straight into `InitWorkflow.execute()`
-concurrently, re-exposing the exact races PLAT-006 was written to close (duplicate knowledge-branch
-commits, duplicate post-commit hook installs — both still individually guarded by their own
-recheck-in-lock logic, so those two specific races are _not_ re-opened — but any future `init` phase
-that assumes the coarse lock's serialization, without its own bespoke lock, would be unprotected
-specifically on this path).
-
-**Why this matters more than a typical layering nit**: PLAT-006 is dated 2026-07-14, the newest ADR
-in the tree, written specifically to close this bug class. Its own justification section names MCP
-as the motivating caller. The fact that the one MCP tool that exists today is `docuvia_init` — the
-exact command PLAT-006 is about — and that tool doesn't route through the lock, means the ADR's
-stated goal is unmet for the caller it was most worried about.
-
-**Recommendation**: either move the `acquireProcessLock` call into `InitWorkflow`/`docuviaApi.init()`
-itself (so every Presentation-layer entry point gets it for free, which also simplifies
-`initCommand()`), or have `initTool.handler` call the same lock-acquire/release sequence
-`initCommand()` does before delegating to `docuviaApi.init()`.
+**Fixed**: the lock acquire/release sequence was extracted into a shared
+`withInitCommandLock(cwd, fn)` helper (`artifacts/cli/src/utils/init-command-lock.ts`), and both
+`initCommand()` (CLI) and `initTool.handler` (MCP) now call through it — the MCP path shown in the
+sequence diagram above. A deterministic regression test
+(`test/integration/init-cli-mcp-symmetry.test.ts`) holds the lock manually and asserts the MCP
+call blocks until release, using real subprocesses (an in-process `Promise.allSettled` race was
+tried first and found to pass even without the fix, since same-process async calls around
+synchronous `better-sqlite3` work don't interleave mid-critical-section the way separate OS
+processes do). No further action needed here.

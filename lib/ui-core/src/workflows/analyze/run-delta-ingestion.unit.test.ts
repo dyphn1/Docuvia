@@ -56,6 +56,7 @@ function makeMockGitProvider(
       .mockResolvedValue("deadbeefdeadbeefdeadbeefdeadbeefdeadbeef"),
     getBranchTipSha: vi.fn().mockResolvedValue(undefined),
     readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    listFilesAtRef: vi.fn().mockResolvedValue([]),
     getCommitLog: vi.fn().mockResolvedValue([]),
     getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
@@ -126,6 +127,7 @@ function makeMockStore(): IGraphStore {
       getById: vi.fn(),
       getAllExportable: vi.fn(),
       upsertDecision: vi.fn(),
+      importCard: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: {

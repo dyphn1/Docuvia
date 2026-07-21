@@ -45,6 +45,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getById: vi.fn(),
       getAllExportable: vi.fn(),
       upsertDecision: vi.fn(),
+      importCard: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },

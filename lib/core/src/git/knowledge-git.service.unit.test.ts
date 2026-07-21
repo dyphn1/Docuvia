@@ -32,6 +32,7 @@ function makeMockGitProvider(
       .mockResolvedValue("a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"),
     getBranchTipSha: vi.fn().mockResolvedValue(undefined),
     readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    listFilesAtRef: vi.fn().mockResolvedValue([]),
     getCommitLog: vi.fn().mockResolvedValue([]),
     getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),

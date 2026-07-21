@@ -29,6 +29,7 @@ function makeMockGitProvider(
     getHeadSha: vi.fn().mockResolvedValue(undefined),
     getBranchTipSha: vi.fn().mockResolvedValue("tip-sha"),
     readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    listFilesAtRef: vi.fn().mockResolvedValue([]),
     getCommitLog: vi.fn().mockResolvedValue([]),
     getCommitAncestry: vi.fn().mockResolvedValue([]),
     packDirectoryToBranch: vi.fn().mockResolvedValue(undefined),
@@ -82,6 +83,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getById: vi.fn(),
       getAllExportable: vi.fn(),
       upsertDecision: vi.fn(),
+      importCard: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
@@ -249,6 +251,91 @@ describe("HydrationService.hydrate()", () => {
       edgesLoaded: 1,
       edgesDropped: 0,
     });
+  });
+
+  it("also imports L3 cards from knowledge/_l3 at the resolved knowledge commit (L3DIST-007), inside the same write-locked bulk-load", async () => {
+    const nodesJsonl =
+      '{"id":"src/a.ts","type":"file","name":"src/a.ts","filePath":"src/a.ts"}\n';
+    const edgesJsonl = "";
+    const cardRaw =
+      "---\n" +
+      JSON.stringify(
+        {
+          content_hash: "card-hash",
+          node_type: "decision",
+          title: "A teammate's decision",
+          l2_path: "knowledge/src/a.ts.md",
+          source_commits: ["commit-1"],
+          extraction_model: null,
+          source_files: ["src/a.ts"],
+          created_at: "2024-01-01T00:00:00.000Z",
+        },
+        null,
+        2,
+      ) +
+      "\n---\n\nDecision content.\n";
+
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation((_cwd: string, _ref: string, filePath: string) => {
+          if (filePath === "graph/nodes.jsonl")
+            return Promise.resolve(nodesJsonl);
+          if (filePath === "graph/edges.jsonl")
+            return Promise.resolve(edgesJsonl);
+          if (filePath === "knowledge/_l3/card-hash.md")
+            return Promise.resolve(cardRaw);
+          return Promise.resolve(undefined);
+        }),
+      listFilesAtRef: vi.fn().mockResolvedValue(["knowledge/_l3/card-hash.md"]),
+    });
+    const findNodeIdByNodeKey = vi.fn().mockReturnValue(99);
+    const importCard = vi.fn().mockReturnValue({ id: 1, imported: true });
+    const store = makeMockGraphStore({
+      graph: {
+        deleteNodesForPath: vi.fn(),
+        insertNode: vi.fn(),
+        insertLink: vi.fn(),
+        findNodeIdByName: vi.fn(),
+        findNodeIdByNodeKey,
+        count: vi.fn(),
+        findNodesForChangedFiles: vi.fn(),
+        findNodeByName: vi.fn(),
+        getIncomingEdges: vi.fn(),
+        getOutgoingEdges: vi.fn(),
+        getAllNodes: vi.fn(),
+        getAllLinks: vi.fn(),
+        bulkLoadGraph: vi
+          .fn()
+          .mockReturnValue({ nodesLoaded: 1, edgesLoaded: 0, edgesDropped: 0 }),
+        pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      },
+      l3: {
+        getById: vi.fn(),
+        getAllExportable: vi.fn(),
+        upsertDecision: vi.fn(),
+        importCard,
+      },
+    });
+    const service = new HydrationService(git);
+
+    await service.hydrate("/workspace", store);
+
+    expect(git.listFilesAtRef).toHaveBeenCalledWith(
+      "/workspace",
+      "know-1",
+      "knowledge/_l3",
+    );
+    expect(findNodeIdByNodeKey).toHaveBeenCalledWith("src/a.ts");
+    expect(importCard).toHaveBeenCalledWith(
+      expect.objectContaining({
+        l2NodeId: 99,
+        contentHash: "card-hash",
+        title: "A teammate's decision",
+      }),
+    );
   });
 
   it("treats a missing graph/*.jsonl (nothing analyzed yet) as an empty graph rather than throwing", async () => {

@@ -215,6 +215,43 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
     ).toBeUndefined();
   });
 
+  it("listFilesAtRef lists the full repo-relative paths of files directly inside a directory at a ref, and [] for a missing ref or directory", async () => {
+    expect(
+      await provider.listFilesAtRef(tmpDir, "does-not-exist", "knowledge/_l3"),
+    ).toEqual([]);
+
+    fs.mkdirSync(path.join(tmpDir, "knowledge", "_l3"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, "knowledge", "_l3", "aaa111.md"),
+      "card a\n",
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, "knowledge", "_l3", "bbb222.md"),
+      "card b\n",
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, "knowledge", "readme.md"),
+      "not a card\n",
+    );
+    await git(tmpDir, ["add", "-A"]);
+    await git(tmpDir, ["commit", "-m", "seed cards"]);
+
+    const files = await provider.listFilesAtRef(
+      tmpDir,
+      "HEAD",
+      "knowledge/_l3",
+    );
+    expect(files.sort()).toEqual([
+      "knowledge/_l3/aaa111.md",
+      "knowledge/_l3/bbb222.md",
+    ]);
+
+    // A directory with no entries at this ref yet -- [] (empty), not a thrown error.
+    expect(
+      await provider.listFilesAtRef(tmpDir, "HEAD", "knowledge/_missing"),
+    ).toEqual([]);
+  });
+
   it("getCommitLog returns sha+message pairs (newest first), preserving a multi-line trailer body, and [] with no commits yet", async () => {
     expect(await provider.getCommitLog(tmpDir, "HEAD")).toEqual([]);
 

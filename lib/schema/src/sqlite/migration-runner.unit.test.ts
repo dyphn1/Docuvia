@@ -92,6 +92,7 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "content_hash",
     "extraction_model",
     "source_files",
+    "initial_source_commits",
   ],
   docuvia_meta: ["key", "value"],
 };
@@ -153,6 +154,7 @@ describe("applyMigrations", () => {
       "0002_l2_node_key.sql",
       "0003_docuvia_meta.sql",
       "0004_l3_provenance.sql",
+      "0005_l3_initial_source_commits.sql",
     ]);
   });
 
@@ -170,7 +172,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(4);
+    expect(migrationRows).toHaveLength(5);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

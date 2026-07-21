@@ -32,6 +32,7 @@ const GIT_SUBCOMMAND = {
   COMMIT_TREE: "commit-tree",
   UPDATE_REF: "update-ref",
   LS_FILES: "ls-files",
+  LS_TREE: "ls-tree",
   DIFF: "diff",
   DIFF_TREE: "diff-tree",
   CAT_FILE: "cat-file",
@@ -447,6 +448,42 @@ export class Libgit2Provider implements IGitProvider {
       // Ref or path doesn't exist — a normal, expected outcome (e.g. hydrating a knowledge
       // branch that hasn't been snapshotted yet), not a fatal error.
       return undefined;
+    }
+  }
+
+  public async listFilesAtRef(
+    cwd: string,
+    ref: string,
+    dirPath: string,
+  ): Promise<string[]> {
+    try {
+      // `git ls-tree <ref> -- <dirPath>` (no trailing slash) reports the directory's own tree
+      // entry as a single line, not its contents — a trailing `/` on the pathspec is what makes
+      // it list the directory's immediate children instead, which is the "list files in this
+      // dir" behavior this method promises.
+      const posixDirPath = dirPath.split(path.sep).join(path.posix.sep);
+      const dirPathspec = posixDirPath.endsWith("/")
+        ? posixDirPath
+        : `${posixDirPath}/`;
+      const { stdout } = await execFileAsync(
+        GIT_BIN,
+        [
+          GIT_SUBCOMMAND.LS_TREE,
+          GIT_ARG.NAME_ONLY,
+          ref,
+          GIT_ARG.PATHSPEC_SEPARATOR,
+          dirPathspec,
+        ],
+        { cwd },
+      );
+      return stdout
+        .split("\n")
+        .map((f) => f.trim())
+        .filter(Boolean);
+    } catch {
+      // Ref or dirPath doesn't exist — a normal, expected outcome (e.g. a knowledge branch with
+      // no L3 cards packed yet), not a fatal error.
+      return [];
     }
   }
 

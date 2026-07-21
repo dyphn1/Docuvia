@@ -681,6 +681,131 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(JSON.parse(row!.source_commits)).toEqual([]);
   });
 
+  it("l3 repo: upsertDecision() freezes initial_source_commits at the first-insert value even as source_commits keeps growing on later re-analysis", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+    const decision = {
+      title: "Uses async/await throughout",
+      content: "All I/O paths use async/await.",
+      nodeType: "decision",
+      confidence: 0.9,
+      extractionModel: "gpt-4o-mini",
+      sourceFiles: ["src/a.ts"],
+    };
+
+    const first = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      ...decision,
+      commitSha: "commit-1",
+    });
+    store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      ...decision,
+      commitSha: "commit-2",
+    });
+
+    const row = store.l3.getById(first.id);
+    expect(JSON.parse(row!.source_commits)).toEqual(["commit-1", "commit-2"]);
+    // Frozen at the first insert -- unaffected by the second call's occurrence-bump append.
+    expect(JSON.parse(row!.initial_source_commits!)).toEqual(["commit-1"]);
+  });
+
+  it("l3 repo: importCard() inserts a new row seeded from the card's fields, preserving createdAt and freezing both source_commits/initial_source_commits at the card's sourceCommits", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+
+    const result = store.l3.importCard({
+      l2NodeId: nodeId,
+      contentHash: "imported-hash",
+      title: "A teammate's decision",
+      content: "Some imported decision content.",
+      nodeType: "decision",
+      sourceCommits: ["teammate-commit-1"],
+      extractionModel: "gpt-4o-mini",
+      sourceFiles: ["src/a.ts"],
+      createdAt: "2024-05-01T00:00:00.000Z",
+    });
+
+    expect(result.imported).toBe(true);
+    const row = store.l3.getById(result.id);
+    expect(row).toMatchObject({
+      l2_node_id: nodeId,
+      title: "A teammate's decision",
+      content: "Some imported decision content.",
+      node_type: "decision",
+      content_hash: "imported-hash",
+      extraction_model: "gpt-4o-mini",
+      ai_generated: 1,
+      created_at: "2024-05-01T00:00:00.000Z",
+    });
+    expect(JSON.parse(row!.source_commits)).toEqual(["teammate-commit-1"]);
+    expect(JSON.parse(row!.initial_source_commits!)).toEqual([
+      "teammate-commit-1",
+    ]);
+    expect(JSON.parse(row!.source_files!)).toEqual(["src/a.ts"]);
+  });
+
+  it("l3 repo: importCard() is a no-op (imported: false) when a row with the same content_hash already exists locally, never overwriting it", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+
+    const existing = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      title: "Locally authored decision",
+      content: "Authored on this machine.",
+      nodeType: "decision",
+      confidence: 0.9,
+      commitSha: "local-commit",
+      extractionModel: null,
+      sourceFiles: ["src/a.ts"],
+    });
+    const existingRow = store.l3.getById(existing.id)!;
+
+    const result = store.l3.importCard({
+      l2NodeId: nodeId,
+      contentHash: existingRow.content_hash!,
+      title: "A different title from the card",
+      content: "Different content from the card",
+      nodeType: "decision",
+      sourceCommits: ["teammate-commit"],
+      extractionModel: "gpt-4o-mini",
+      sourceFiles: ["src/a.ts"],
+      createdAt: "2024-05-01T00:00:00.000Z",
+    });
+
+    expect(result).toEqual({ id: existing.id, imported: false });
+    expect(store.graph.count().l3Nodes).toBe(1);
+    // The existing local row is untouched -- not overwritten by the card's thinner fields.
+    expect(store.l3.getById(existing.id)).toEqual(existingRow);
+  });
+
   it("fts repo: searchL2Nodes()/searchL3Nodes() keyword-match against name/description and title/content", () => {
     const project = store.projects.insert({
       name: "demo",

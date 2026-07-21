@@ -9,6 +9,7 @@ import type {
 import { createNoopLogger } from "@workspace/contracts";
 import { GitConstants, GitMessages } from "./git-constants.js";
 import { parseSourceTrailer } from "./git-trailers.js";
+import { importL3CardsFromKnowledgeBranch } from "./l3-import.service.js";
 
 /** Knowledge branch is a dedicated orphan branch of small, purpose-built commits — this comfortably bounds it without truncating any real history. */
 const KNOWLEDGE_LOG_SCAN_LIMIT = 5000;
@@ -150,12 +151,21 @@ export class HydrationService implements IHydrationService {
     const nodes = parseNodesJsonl(nodesJsonl);
     const edges = parseEdgesJsonl(edgesJsonl);
 
-    const bulkResult = await store.withWriteLock(() => {
+    const bulkResult = await store.withWriteLock(async () => {
       const loaded = store.graph.bulkLoadGraph({
         projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
         nodes,
         edges,
       });
+      // L3DIST-007: the other half of the union (git -> local.db), absorbing any card this
+      // developer never authored locally (a teammate's decision, or their own on a fresh clone).
+      await importL3CardsFromKnowledgeBranch(
+        this.git,
+        cwd,
+        knowledgeSha,
+        store,
+        this.logger,
+      );
       store.meta.set(GitConstants.META_KEY_KNOWLEDGE_TIP_SHA, knowledgeSha);
       return loaded;
     });

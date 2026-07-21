@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import fs from "fs/promises";
+import path from "path";
 import {
   docuviaFactory,
   TOKENS,
@@ -9,6 +11,7 @@ import {
   type IGraphStore,
   type IKnowledgeGitService,
   type ISnapshotRenderer,
+  type L3NodeRow,
 } from "@workspace/contracts";
 import { SnapshotWorkflow } from "./snapshot-workflow.js";
 
@@ -45,8 +48,9 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     },
     l3: {
       getById: vi.fn(),
-      getAllExportable: vi.fn(),
+      getAllExportable: vi.fn().mockReturnValue([]),
       upsertDecision: vi.fn(),
+      importCard: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
@@ -203,5 +207,121 @@ describe("SnapshotWorkflow.execute()", () => {
       new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toThrow("git fast-import failed");
     expect(store.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders knowledge/_l3/<content_hash>.md cards for exportable L3 rows into tempDir before packing, with source_commits frozen at initial_source_commits", async () => {
+    const l2Rows = [
+      {
+        id: 1,
+        project_id: 1,
+        name: "src/a.ts",
+        type: "module",
+        is_system: 0,
+        description: null,
+        ai_generated: 1,
+        needs_review: 0,
+        created_at: "",
+        last_verified_at: null,
+        path_patterns: JSON.stringify(["src/a.ts"]),
+        reindex_required: 0,
+        is_bootstrap_confirmed: 0,
+        content_hash: null,
+        updated_at: "",
+        node_key: "src/a.ts",
+      },
+    ];
+    const l3Row: L3NodeRow = {
+      id: 1,
+      l2_node_id: 1,
+      title: "Uses async/await throughout",
+      content: "All I/O paths use async/await.",
+      node_type: "decision",
+      source_commits: JSON.stringify(["commit-1", "commit-2"]),
+      commit_hash: "commit-2",
+      ai_generated: 1,
+      confidence: 0.9,
+      noise_score: null,
+      created_at: "2024-01-01T00:00:00.000Z",
+      last_verified_at: null,
+      occurrence_count: 2,
+      introduced_in_commit: null,
+      verified_until_commit: null,
+      validity_status: "pending",
+      source: "analyze",
+      content_hash: "abc123hash",
+      extraction_model: "gpt-4o-mini",
+      source_files: JSON.stringify(["src/a.ts"]),
+      initial_source_commits: JSON.stringify(["commit-1"]),
+    };
+
+    const store = makeMockStore({
+      graph: {
+        deleteNodesForPath: vi.fn(),
+        insertNode: vi.fn(),
+        insertLink: vi.fn(),
+        findNodeIdByName: vi.fn(),
+        findNodeIdByNodeKey: vi.fn(),
+        count: vi.fn(),
+        findNodesForChangedFiles: vi.fn(),
+        findNodeByName: vi.fn(),
+        getIncomingEdges: vi.fn(),
+        getOutgoingEdges: vi.fn(),
+        getAllNodes: vi.fn().mockReturnValue(l2Rows),
+        getAllLinks: vi.fn().mockReturnValue([]),
+        bulkLoadGraph: vi.fn(),
+        pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      },
+      l3: {
+        getById: vi.fn(),
+        getAllExportable: vi.fn().mockReturnValue([l3Row]),
+        upsertDecision: vi.fn(),
+        importCard: vi.fn(),
+      },
+    });
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
+      render: vi.fn().mockResolvedValue({
+        nodesWritten: 1,
+        edgesWritten: 0,
+        markdownFilesWritten: 1,
+      }),
+    }));
+
+    let l3CardFileNames: string[] = [];
+    let l3CardContent = "";
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
+      ensureKnowledgeBranch: vi.fn(),
+      installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
+      removePostCommitHook: vi.fn(),
+      removePrePushHook: vi.fn(),
+      repairDuplicatePostCommitHook: vi.fn(),
+      packSnapshotToKnowledgeBranch: vi
+        .fn()
+        .mockImplementation(async (_cwd: string, tempDir: string) => {
+          const l3Dir = path.join(tempDir, "knowledge", "_l3");
+          l3CardFileNames = await fs.readdir(l3Dir);
+          l3CardContent = await fs.readFile(
+            path.join(l3Dir, l3CardFileNames[0]),
+            "utf8",
+          );
+        }),
+      syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+    }));
+    docuviaFactory.lock();
+
+    await new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute();
+
+    expect(l3CardFileNames).toEqual(["abc123hash.md"]);
+    expect(l3CardContent).toContain('"content_hash": "abc123hash"');
+    expect(l3CardContent).toContain('"l2_path": "knowledge/src/a.ts.md"');
+    // Frozen at initial_source_commits ("commit-1"), not the row's current, grown source_commits
+    // ("commit-1", "commit-2") -- L3DIST-002/003.
+    expect(l3CardContent).toContain('"source_commits": [\n    "commit-1"\n  ]');
+    expect(l3CardContent).toContain("All I/O paths use async/await.");
   });
 });

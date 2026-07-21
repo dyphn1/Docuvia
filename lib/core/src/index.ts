@@ -27,3 +27,15 @@ export {
   DOCUVIA_HOOK_CJS_FILENAME,
 } from "./constants/paths.js";
 export { GitConstants } from "./git/git-constants.js";
+// L3 distribution (phase2-l3-distribution.md): `renderL3Card`/`computeL2GitPathsByNodeId` are
+// pure, side-effect-free rendering helpers `SnapshotWorkflow` calls directly, the same "narrow
+// exception" precedent as `isSupportedSourceFile` above. `importL3CardsFromKnowledgeBranch` does
+// take `IGitProvider`/`IGraphStore` params, but — like those two — never resolves them itself
+// (the caller already has them via `docuviaFactory`); exporting it here is what lets
+// `sync-knowledge`'s workflow reuse `HydrationService.hydrate()`'s exact same L3-import logic
+// (L3DIST-007's §3 wiring) instead of duplicating it.
+export {
+  renderL3Card,
+  computeL2GitPathsByNodeId,
+} from "./git/l3-card-renderer.js";
+export { importL3CardsFromKnowledgeBranch } from "./git/l3-import.service.js";

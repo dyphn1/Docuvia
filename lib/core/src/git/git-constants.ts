@@ -5,6 +5,9 @@ export const GitConstants = {
   KNOWLEDGE_ROOT: "docuvia-knowledge",
   KNOWLEDGE_DIR_NAME: "knowledge",
   GRAPH_DIR_NAME: "graph",
+  /** Subdirectory of `KNOWLEDGE_DIR_NAME` holding L3 decision cards (phase2-l3-distribution.md
+   *  L3DIST-001): one file per `content_hash`, `knowledge/_l3/<content_hash>.md`. */
+  L3_DIR_NAME: "_l3",
   NODES_JSONL_NAME: "nodes.jsonl",
   EDGES_JSONL_NAME: "edges.jsonl",
   /** Commit-message trailer key (STOR-001 point 4) carrying the full 40-char source-commit sha, read back by Phase 2's nearest-ancestor hydration lookup. */
@@ -245,6 +248,9 @@ export const GitMessages = {
   NOTHING_TO_HYDRATE:
     "Nothing to hydrate from yet — knowledge branch doesn't exist",
   HYDRATED_KNOWLEDGE_GRAPH: "Hydrated knowledge graph from git",
+  /** `IMPORTED_L3_CARDS`'s `logger.info` call (phase2-l3-distribution.md L3DIST-007) — shared by
+   *  `HydrationService.hydrate()` and `sync-knowledge`'s post-reconcile import step. */
+  IMPORTED_L3_CARDS: "Imported L3 decision cards from knowledge branch",
 
   failedToWriteMarkdown: (id: string, name: string, errMessage: string) =>
     `Failed to write markdown for node ${id} (${name}): ${errMessage}`,

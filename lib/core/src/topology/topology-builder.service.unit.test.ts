@@ -59,6 +59,7 @@ function makeL3(overrides: Partial<L3NodeRow> = {}): L3NodeRow {
     content_hash: null,
     extraction_model: null,
     source_files: null,
+    initial_source_commits: null,
     ...overrides,
   };
 }

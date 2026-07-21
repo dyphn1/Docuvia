@@ -100,6 +100,14 @@ export interface IGitProvider {
     filePath: string,
   ): Promise<string | undefined>;
   /**
+   * Names of the files directly inside `dirPath` at `ref` (`git ls-tree --name-only <ref> --
+   * <dirPath>/`, full repo-relative posix paths, not basenames), or `[]` if `ref`/`dirPath`
+   * doesn't exist at that commit. Used by L3 card hydration (phase2-l3-distribution.md
+   * L3DIST-007) to list `knowledge/_l3/` without checking the knowledge branch out — the
+   * directory-listing counterpart to `readFileAtRef`'s single-file read.
+   */
+  listFilesAtRef(cwd: string, ref: string, dirPath: string): Promise<string[]>;
+  /**
    * `ref`'s commit history (newest first), each with its full commit message body — raw, no
    * Docuvia-specific trailer parsing (that's `lib/core`'s job). `[]` if `ref` doesn't exist or has
    * no commits. `maxCount` bounds the walk (default 1000).

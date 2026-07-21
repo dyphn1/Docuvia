@@ -143,6 +143,16 @@ export interface L3NodeRow {
   extraction_model: string | null;
   /** JSON array of workspace-relative source file paths the decision was extracted from — null on rows inserted before this column existed. */
   source_files: string | null;
+  /**
+   * JSON array snapshot of `source_commits` as it stood the moment this row was first inserted —
+   * frozen forever afterwards, never touched by `upsertDecision`'s later occurrence-bump path
+   * (L3DIST-002/003, phase2-l3-distribution). This is what `snapshot`'s L3 card renderer packs as
+   * the card's `source_commits` field, so a card's content stays byte-identical run-over-run even
+   * as the local row's own (mutable) `source_commits` keeps growing with every re-analysis —
+   * true git-object idempotency (L3DIST edge case 5b). Null on rows inserted before this column
+   * existed; callers fall back to `source_commits` in that case.
+   */
+  initial_source_commits: string | null;
 }
 
 /**
@@ -314,6 +324,32 @@ export interface IL3NodesRepo {
     /** Workspace-relative source file paths the decision was extracted from. */
     sourceFiles: string[];
   }): { id: number; deduped: boolean };
+  /**
+   * L3DIST-007's git-to-local.db import half of the union (phase2-l3-distribution.md): upserts a
+   * card read off `knowledge/_l3/<content_hash>.md` on the knowledge branch, for a developer who
+   * never authored it locally. Dedups by `content_hash` exactly like `upsertDecision` (joined
+   * through `l2NodeId`'s project) — a `content_hash` already present locally is left untouched
+   * (`imported: false`; that developer's own row is the source of truth, e.g. a richer
+   * `occurrence_count`), never overwritten by the card's necessarily-thinner git-portable fields.
+   * Otherwise inserts a new row seeded from the card's immutable fields, with both
+   * `source_commits` and `initial_source_commits` set to the card's (already-frozen)
+   * `sourceCommits`, and `created_at` preserved from the card rather than stamped "now" — the
+   * imported row's history should read as the original decision's, not this machine's import
+   * time. Fields the card deliberately never carries (L3DIST-003: `occurrence_count`,
+   * `last_verified_at`, `confidence`, `noise_score`, `validity_status`, `commit_hash`,
+   * `introduced_in_commit`, `verified_until_commit`) are left at their column defaults.
+   */
+  importCard(input: {
+    l2NodeId: number;
+    contentHash: string;
+    title: string;
+    content: string;
+    nodeType: string;
+    sourceCommits: string[];
+    extractionModel: string | null;
+    sourceFiles: string[];
+    createdAt: string;
+  }): { id: number; imported: boolean };
 }
 
 export interface IFtsRepo {

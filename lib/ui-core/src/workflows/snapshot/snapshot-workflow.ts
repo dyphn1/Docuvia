@@ -6,8 +6,14 @@ import {
   TOKENS,
   DocuviaError,
   ErrorCodes,
+  UTF8_ENCODING,
   type ILogger,
 } from "@workspace/contracts";
+import {
+  GitConstants,
+  computeL2GitPathsByNodeId,
+  renderL3Card,
+} from "@workspace/core";
 import {
   SNAPSHOT_EVENTS,
   SNAPSHOT_MESSAGES,
@@ -85,6 +91,33 @@ export class SnapshotWorkflow {
           l2Rows,
           linkRows,
         });
+
+        // §3 wiring (phase2-l3-distribution.md): render the current getAllExportable() set as
+        // one card per content_hash under knowledge/_l3/, in the same tempDir, before packing --
+        // this is also what L3DIST-006's self-healing relies on (a full re-render every run, not
+        // a diff, so a wiped card comes back on the very next snapshot without any extra logic).
+        const l3Rows = store.l3.getAllExportable();
+        if (l3Rows.length > 0) {
+          const l2GitPaths = computeL2GitPathsByNodeId(l2Rows, linkRows);
+          const l3Dir = path.join(
+            tempDir,
+            GitConstants.KNOWLEDGE_DIR_NAME,
+            GitConstants.L3_DIR_NAME,
+          );
+          await fs.mkdir(l3Dir, { recursive: true });
+          await Promise.all(
+            l3Rows.map(async (row) => {
+              if (!row.content_hash) return;
+              const l2Path = l2GitPaths.get(row.l2_node_id);
+              if (!l2Path) return;
+              await fs.writeFile(
+                path.join(l3Dir, `${row.content_hash}.md`),
+                renderL3Card(row, l2Path),
+                UTF8_ENCODING,
+              );
+            }),
+          );
+        }
 
         await knowledgeGit.packSnapshotToKnowledgeBranch(
           workspaceRoot,

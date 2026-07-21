@@ -821,6 +821,34 @@ describe("KnowledgeGitService.syncKnowledgeBranch()", () => {
     expect(result).toEqual({ status: "no-remote" });
   });
 
+  it("pushes the local branch (not status: no-remote) when the remote simply has no knowledge branch yet — a brand-new project's first sync-knowledge, not an offline/network failure (regression found via dogfooding Docuvia2 on itself, 2026-07-21)", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      fetchRef: vi
+        .fn()
+        .mockRejectedValue(
+          new Error(
+            "git fetch failed: Command failed: git fetch origin docuvia-knowledge\nfatal: couldn't find remote ref docuvia-knowledge\n",
+          ),
+        ),
+      getBranchTipSha: vi.fn().mockResolvedValue("local-sha"),
+      getRefSha: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.syncKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({
+      status: "pushed-local",
+      branchTipSha: "local-sha",
+    });
+    expect(git.pushRef).toHaveBeenCalledWith(
+      "/workspace",
+      "origin",
+      GitConstants.KNOWLEDGE_ROOT,
+    );
+  });
+
   it("is up-to-date when local and remote tips already match", async () => {
     const git = makeMockGitProvider({
       getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),

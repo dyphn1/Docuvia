@@ -487,7 +487,11 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
   /** Fetches the remote's copy of the knowledge branch, degrading gracefully (rather than
    *  throwing) on a transient network/remote failure so the caller (snapshot/hydrate) can keep
-   *  working offline. */
+   *  working offline. The remote simply not having this branch yet (a brand-new project's first
+   *  sync) is a distinct, expected outcome, not a failure -- reported as `true` so `reconcile()`
+   *  proceeds to `getRefSha`, which naturally returns `undefined` for a remote-tracking ref that
+   *  was never created, letting `resolveMissingShaOutcome`'s existing "no remote sha yet -> push
+   *  local" branch run instead of this being misreported as offline. */
   private async tryFetchRemoteBranch(
     cwd: string,
     branchName: string,
@@ -497,12 +501,27 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       await this.git.fetchRef(cwd, remote, branchName);
       return true;
     } catch (err) {
+      if (this.isRemoteRefMissingError(err)) {
+        this.logger.info(
+          GitMessages.REMOTE_KNOWLEDGE_BRANCH_NOT_YET_ON_REMOTE,
+          { branchName },
+        );
+        return true;
+      }
       this.logger.warn(GitMessages.FAILED_TO_FETCH_CONTINUING_OFFLINE, {
         branchName,
         error: err instanceof Error ? err.message : String(err),
       });
       return false;
     }
+  }
+
+  /** Distinguishes git's stable "ref doesn't exist on that remote" message from any other fetch
+   *  failure (network timeout, auth failure, DNS, ...) -- see `tryFetchRemoteBranch`'s doc
+   *  comment for why this distinction matters. */
+  private isRemoteRefMissingError(err: unknown): boolean {
+    const message = err instanceof Error ? err.message : String(err);
+    return message.includes(GitMessages.REMOTE_REF_NOT_FOUND_TEXT);
   }
 
   /** Decides the sync outcome once both `localSha`/`remoteSha` are known: missing-side adoption,

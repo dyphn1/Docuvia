@@ -265,6 +265,15 @@ export const GitMessages = {
     "No remote configured; skipping knowledge branch reconciliation",
   FAILED_TO_FETCH_CONTINUING_OFFLINE:
     "Failed to fetch knowledge branch from remote; continuing offline",
+  /** Git's own stable porcelain message for "the ref you asked to fetch doesn't exist on that
+   *  remote" (unchanged across git versions) -- distinguishes a brand-new, never-yet-pushed
+   *  knowledge branch (a normal, expected state on a fresh project) from a genuine network/auth
+   *  failure. Conflating the two used to mean a project's very first `sync-knowledge` could never
+   *  push its knowledge branch to origin at all: the first fetch always hits this exact error
+   *  (found via dogfooding Docuvia on Docuvia2 itself, 2026-07-21). */
+  REMOTE_REF_NOT_FOUND_TEXT: "couldn't find remote ref",
+  REMOTE_KNOWLEDGE_BRANCH_NOT_YET_ON_REMOTE:
+    "Knowledge branch does not exist on remote yet; treating as first-ever push",
   ADOPTED_REMOTE_BRANCH:
     "Adopted remote knowledge branch (no local copy existed)",
   FAST_FORWARDED_LOCAL_BRANCH:

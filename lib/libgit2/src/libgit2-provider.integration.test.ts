@@ -12,6 +12,26 @@ async function git(cwd: string, args: string[]) {
   return execFileAsync("git", args, { cwd });
 }
 
+/** Retries a flaky fs-touching operation with backoff — covers a known git-for-Windows race
+ *  (antivirus/real-time-protection lock contention on freshly-created files) that only surfaces
+ *  under heavy concurrent test-suite I/O, never when a suite runs in isolation. */
+async function retryTransientFsRace<T>(
+  fn: () => Promise<T>,
+  attempts = 8,
+  delayMs = 500,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 const KNOWLEDGE_BRANCH = "docuvia-knowledge";
 const HOOK_NAME = "post-commit";
 const HOOK_MARKER = "docuvia snapshot";
@@ -670,6 +690,92 @@ describe("Libgit2Provider — acquireKnowledgeLock / releaseKnowledgeLock", () =
     ).resolves.toBeUndefined();
 
     await provider.releaseKnowledgeLock(tmpDir);
+  });
+});
+
+describe("Libgit2Provider — git worktree support (roadmap item #10)", () => {
+  let mainDir: string;
+  let worktreeParent: string;
+  let worktreeDir: string;
+  let provider: Libgit2Provider;
+
+  beforeEach(async () => {
+    mainDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-libgit2-worktree-main-"),
+    );
+    provider = new Libgit2Provider();
+    await git(mainDir, ["init"]);
+    await git(mainDir, ["config", "user.name", "Test User"]);
+    await git(mainDir, ["config", "user.email", "test@example.com"]);
+    fs.writeFileSync(path.join(mainDir, "README.md"), "# test\n");
+    await git(mainDir, ["add", "."]);
+    await git(mainDir, ["commit", "-m", "chore: initial commit"]);
+
+    // `git worktree add` must create the target dir itself — pre-creating and removing it
+    // (e.g. via mkdtempSync + rmdirSync) races with Windows' deferred directory deletion under
+    // load. Instead, reserve a unique parent via mkdtempSync and point the worktree at a
+    // not-yet-existing child of it.
+    worktreeParent = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-libgit2-worktree-linked-"),
+    );
+    worktreeDir = path.join(worktreeParent, "wt");
+    // `git worktree add` tolerates an already-existing *empty* target dir (unlike `git clone`);
+    // pre-creating it synchronously removes one race. The remaining risk is a known git-for-
+    // Windows issue where antivirus/real-time-protection briefly locks files git itself just
+    // created, surfacing as a spurious ENOENT under heavy concurrent test-suite I/O — retried
+    // below. `--detach` (no branch) and `--no-checkout` (these tests never touch working-tree
+    // content) both keep retries idempotent and shrink the file-write surface that can race.
+    fs.mkdirSync(worktreeDir, { recursive: true });
+    await retryTransientFsRace(async () => {
+      await git(mainDir, ["worktree", "prune"]).catch(() => undefined);
+      return git(mainDir, [
+        "worktree",
+        "add",
+        "--detach",
+        "--no-checkout",
+        worktreeDir,
+      ]);
+    });
+  });
+
+  afterEach(async () => {
+    await git(mainDir, ["worktree", "remove", "--force", worktreeDir]).catch(
+      () => undefined,
+    );
+    fs.rmSync(mainDir, { recursive: true, force: true });
+    fs.rmSync(worktreeParent, { recursive: true, force: true });
+  });
+
+  it("a linked worktree's .git is a file, not a directory", () => {
+    const gitPath = path.join(worktreeDir, ".git");
+    expect(fs.statSync(gitPath).isFile()).toBe(true);
+  });
+
+  it("hooksDirExists / appendHookFile / readHookFile resolve through the main repo's common .git/hooks instead of failing on the worktree's .git file", async () => {
+    expect(await provider.hooksDirExists(worktreeDir)).toBe(true);
+
+    await provider.appendHookFile(
+      worktreeDir,
+      HOOK_NAME,
+      `#!/bin/bash\n# ${HOOK_MARKER}\n`,
+    );
+    expect(await provider.readHookFile(worktreeDir, HOOK_NAME)).toContain(
+      HOOK_MARKER,
+    );
+
+    // Hooks are shared across all worktrees — the file must land under the MAIN repo's real .git/hooks.
+    const mainHookPath = path.join(mainDir, ".git", "hooks", HOOK_NAME);
+    expect(fs.existsSync(mainHookPath)).toBe(true);
+    expect(fs.readFileSync(mainHookPath, "utf8")).toContain(HOOK_MARKER);
+  });
+
+  it("acquireKnowledgeLock / releaseKnowledgeLock work from inside a linked worktree instead of throwing ENOENT", async () => {
+    await expect(
+      provider.acquireKnowledgeLock(worktreeDir),
+    ).resolves.toBeUndefined();
+    await expect(
+      provider.releaseKnowledgeLock(worktreeDir),
+    ).resolves.toBeUndefined();
   });
 });
 

@@ -9,6 +9,7 @@ import {
   GIT_DEFAULT_REMOTE_NAME,
   UTF8_ENCODING,
   type ChangedFileEntry,
+  type ChangedFileStatus,
   type DiffLineRange,
   type IGitProvider,
 } from "@workspace/contracts";
@@ -82,6 +83,8 @@ const GIT_ARG = {
   NO_COLOR: "--no-color",
   /** Bare `--` separating refs from a trailing pathspec. */
   PATHSPEC_SEPARATOR: "--",
+  GIT_DIR_FLAG: "--git-dir",
+  GIT_COMMON_DIR_FLAG: "--git-common-dir",
 } as const;
 
 /** Raw control-character separators `getCommitLog`'s `%x01`/`%x00` `--format` placeholders
@@ -102,7 +105,8 @@ const GIT_DIFF_STATUS_CODE = {
 /** The well-known empty-tree SHA — identical in every git repository. */
 const EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 const GIT_DIR_NAME = ".git";
-const GIT_HOOKS_DIR = [GIT_DIR_NAME, "hooks"] as const;
+const GIT_HOOKS_DIR_NAME = "hooks";
+const GIT_HOOKS_DIR = [GIT_DIR_NAME, GIT_HOOKS_DIR_NAME] as const;
 
 const KNOWLEDGE_LOCK_FILE_NAME = "docuvia-knowledge.lock";
 const KNOWLEDGE_LOCK_MAX_WAIT_MS = 10_000;
@@ -114,6 +118,9 @@ const KNOWLEDGE_LOCK_STALE_MS = 60_000;
 const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
 /** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
 const ERRNO_EEXIST = "EEXIST" as const;
+
+const TYPE_OBJECT = "object";
+const ERR_PROP_CODE = "code";
 
 /** Failure messages for each raw git shell-out this provider wraps, passed to `DocuviaError.wrap`
  *  as the user-facing/log context (see the class doc comment on why every failure is wrapped). */
@@ -151,6 +158,32 @@ const GIT_PROVIDER_ERROR_MESSAGES = {
  * arrays (no shell string interpolation).
  */
 export class Libgit2Provider implements IGitProvider {
+  private async getGitDir(cwd: string): Promise<string> {
+    try {
+      const { stdout } = await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.GIT_DIR_FLAG],
+        { cwd },
+      );
+      return path.resolve(cwd, stdout.trim());
+    } catch {
+      return path.join(cwd, GIT_DIR_NAME);
+    }
+  }
+
+  private async getGitCommonDir(cwd: string): Promise<string> {
+    try {
+      const { stdout } = await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.GIT_COMMON_DIR_FLAG],
+        { cwd },
+      );
+      return path.resolve(cwd, stdout.trim());
+    } catch {
+      return path.join(cwd, GIT_DIR_NAME);
+    }
+  }
+
   public async isGitRepository(cwd: string): Promise<boolean> {
     try {
       await execFileAsync(
@@ -229,7 +262,8 @@ export class Libgit2Provider implements IGitProvider {
 
   public async hooksDirExists(cwd: string): Promise<boolean> {
     try {
-      await fs.access(path.join(cwd, ...GIT_HOOKS_DIR));
+      const commonDir = await this.getGitCommonDir(cwd);
+      await fs.access(path.join(commonDir, GIT_HOOKS_DIR_NAME));
       return true;
     } catch {
       return false;
@@ -241,8 +275,9 @@ export class Libgit2Provider implements IGitProvider {
     hookName: string,
   ): Promise<string | undefined> {
     try {
+      const commonDir = await this.getGitCommonDir(cwd);
       return await fs.readFile(
-        path.join(cwd, ...GIT_HOOKS_DIR, hookName),
+        path.join(commonDir, GIT_HOOKS_DIR_NAME, hookName),
         UTF8_ENCODING,
       );
     } catch {
@@ -256,7 +291,11 @@ export class Libgit2Provider implements IGitProvider {
     content: string,
   ): Promise<void> {
     try {
-      await fs.appendFile(path.join(cwd, ...GIT_HOOKS_DIR, hookName), content);
+      const commonDir = await this.getGitCommonDir(cwd);
+      await fs.appendFile(
+        path.join(commonDir, GIT_HOOKS_DIR_NAME, hookName),
+        content,
+      );
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
@@ -272,7 +311,11 @@ export class Libgit2Provider implements IGitProvider {
     content: string,
   ): Promise<void> {
     try {
-      await fs.writeFile(path.join(cwd, ...GIT_HOOKS_DIR, hookName), content);
+      const commonDir = await this.getGitCommonDir(cwd);
+      await fs.writeFile(
+        path.join(commonDir, GIT_HOOKS_DIR_NAME, hookName),
+        content,
+      );
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
@@ -287,7 +330,8 @@ export class Libgit2Provider implements IGitProvider {
     hookName: string,
   ): Promise<void> {
     try {
-      await fs.chmod(path.join(cwd, ...GIT_HOOKS_DIR, hookName), 0o755);
+      const commonDir = await this.getGitCommonDir(cwd);
+      await fs.chmod(path.join(commonDir, GIT_HOOKS_DIR_NAME, hookName), 0o755);
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
@@ -607,7 +651,7 @@ export class Libgit2Provider implements IGitProvider {
     parts: string[],
   ): {
     file: string | undefined;
-    status: ChangedFileEntry["status"];
+    status: ChangedFileStatus;
     oldFile?: string;
   } {
     if (statusCode.startsWith(GIT_DIFF_STATUS_CODE.RENAMED)) {
@@ -885,10 +929,10 @@ export class Libgit2Provider implements IGitProvider {
       // Exit code 1 means "not an ancestor" — a normal, expected outcome, not a failure. Any
       // other exit code (invalid sha, unrelated histories git can't even compare) is a real error.
       if (
-        typeof err === "object" &&
-        err !== null &&
-        "code" in err &&
-        (err as { code: unknown }).code === 1
+        err &&
+        typeof err === TYPE_OBJECT &&
+        ERR_PROP_CODE in (err as Record<string, unknown>) &&
+        (err as { [ERR_PROP_CODE]: unknown })[ERR_PROP_CODE] === 1
       ) {
         return false;
       }
@@ -981,7 +1025,8 @@ export class Libgit2Provider implements IGitProvider {
   }
 
   public async acquireKnowledgeLock(cwd: string): Promise<void> {
-    const lockPath = path.join(cwd, GIT_DIR_NAME, KNOWLEDGE_LOCK_FILE_NAME);
+    const gitDir = await this.getGitDir(cwd);
+    const lockPath = path.join(gitDir, KNOWLEDGE_LOCK_FILE_NAME);
     const deadline = Date.now() + KNOWLEDGE_LOCK_MAX_WAIT_MS;
 
     for (;;) {
@@ -1018,7 +1063,8 @@ export class Libgit2Provider implements IGitProvider {
   }
 
   public async releaseKnowledgeLock(cwd: string): Promise<void> {
-    const lockPath = path.join(cwd, GIT_DIR_NAME, KNOWLEDGE_LOCK_FILE_NAME);
+    const gitDir = await this.getGitDir(cwd);
+    const lockPath = path.join(gitDir, KNOWLEDGE_LOCK_FILE_NAME);
     await fs.rm(lockPath, { force: true });
   }
 }

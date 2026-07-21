@@ -261,9 +261,12 @@ UX optimization to evaluate against measured JSONL timings, not a Phase 1 requir
   on every Windows machine, for the whole of Slice 3's life — found via a dogfooding validation
   run 2026-07-18, fixed same day. Post-fix: a real batch processed 135/135 queued files, applied
   287 edges, 0 failures — the first time Tier B completed successfully in this project's history.
-- `git worktree` is not currently a usable environment for Docuvia (`IGitProvider.acquireKnowledgeLock`
-  assumes `<cwd>/.git` is a directory; in a worktree it's a file) — found during the same
-  validation run, not fixed (out of scope for a validation pass; tracked in the roadmap doc).
+- `git worktree` is now a usable environment for Docuvia. Found during the same validation run
+  (`IGitProvider.acquireKnowledgeLock` and the hook-file methods assumed `<cwd>/.git` was always a
+  directory; in a worktree it's a file), out of scope for that validation pass at the time — fixed
+  2026-07-21 by resolving the git-dir (per-worktree, for the knowledge lock) and git-common-dir
+  (shared across worktrees, for hooks) via `git rev-parse --git-dir`/`--git-common-dir` instead of
+  a hardcoded path join.
 
 ## Rejected alternatives
 
@@ -322,7 +325,6 @@ All five slices are implemented, tested, and committed (2026-07-16 through 2026-
   changed bytes (see Consequences).
 
 Full monorepo build and test suite green after every slice. Open follow-on items (perf
-optimizations, the embedded-LLM-model seam, the worktree incompatibility, Phase 2/3 design work)
-are tracked in
+optimizations, the embedded-LLM-model seam, Phase 2/3 design work) are tracked in
 [Roadmap & Open Items](../../analysis/roadmap-and-open-items.md), not in this ADR — this document
 describes what shipped, not what's still under discussion.

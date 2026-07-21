@@ -124,16 +124,7 @@ every workflow; treat as a design reference, not a test oracle):
 | `hydrate`          | 🔴 WriteLock (IMMEDIATE) | ❌ none                | batch L2 rebuild                  |
 | `doctor`           | 🟢 ReadLock (shared)     | ❌ none                | read-only                         |
 
-### 10. `git worktree` incompatibility
-
-`IGitProvider.acquireKnowledgeLock` assumes `<cwd>/.git` is always a directory; in a linked `git
-worktree`, `.git` is a **file** containing a `gitdir:` pointer, so the lock path resolves to
-garbage and `init`/`analyze` fail with `ENOENT` before any real work happens. Found during the
-2026-07-18 Tier B dogfooding validation run (a worktree was the original isolation plan and had to
-be swapped for a plain `git clone`). Not fixed — worth a `doctor` check or a real fix if Docuvia is
-ever expected to run from a worktree (some CI matrices and review-bot setups do this routinely).
-
-### 11. Embedded in-process LLM model
+### 10. Embedded in-process LLM model
 
 Deferred, not built. Both Tier B's edge-resolution provider seam and Tier C's endpoint decision
 (PLAT-007) name this as a future option, never scheduled. **Concrete, measured re-entry trigger**
@@ -142,50 +133,50 @@ over a sustained real-usage window, or (b) Tier C's daily budget is measurably e
 routine extraction volume such that per-file compensation through the CLIProxyAPI bridge is
 demonstrably unaffordable. Neither number exists yet — this stays parked until one does.
 
-### 12. `tierBQueue` staleness/eviction policy
+### 11. `tierBQueue` staleness/eviction policy
 
 Deferred — the "infinitely growing backlog" premise is overstated (the queue is already deduped by
 file and bounded by repo file count). The one cheap addition already shipped: queue size is logged
 in Tier B's JSONL batch-summary line, so a future eviction decision (if ever needed) will be
 data-driven rather than speculative.
 
-### 13. Hydrate-then-delta optimization
+### 12. Hydrate-then-delta optimization
 
 Correctness is fine as-is: an empty `local.db` next to a populated knowledge branch currently does
 a full re-parse of HEAD, and `markSynced` prevents a later `ensureHydrated` from clobbering it with
 a stale snapshot. On large repos, hydrating the snapshot first and then delta-ing from its
 `Docuvia-Source` trailer to HEAD would be cheaper. Pure performance, not correctness — no urgency.
 
-### 14. Delta log misattribution
+### 13. Delta log misattribution
 
 Delta ingestion's reuse of `runParseAndPersist` writes `init.parse_failure`/
 `init.file_skipped_oversized` events to `init.log` (so an oversize skip during delta ingestion
 gets logged under the `init` event stream, not a delta-specific one). Wants an
 event-name/log-target parameter threaded through the shared helper.
 
-### 15. Dirty-index hash edge
+### 14. Dirty-index hash edge
 
 Delta ingestion takes blob hashes from the git index but reads content at `headSha`; a dirty index
 can mismatch the `files` dedup table. Confirmed harmless today (Tier B never calls the same code
 path — `collectFilesToParse` is Tier A only), but worth rechecking if either tier's design changes.
 
-### 16. `getChangedFilesSince` asymmetry footgun
+### 15. `getChangedFilesSince` asymmetry footgun
 
 No-arg mode merges in untracked files; an explicit `baseRef` (even `"HEAD"`) does not. Documented
 and pinned by integration tests today, but an easy trap for a future call site that doesn't know
 the asymmetry exists.
 
-### 17. Degraded batch still advances `lastTierBBatchSha`
+### 16. Degraded batch still advances `lastTierBBatchSha`
 
 A fully-degraded Tier B batch (LSP absent) still seeds/advances the commit-cap baseline at the
 next snapshot, even though its queued entries stay unprocessed. Harmless today (pre-push runs
 regardless of the cap), but interacts with any future "rebuild the queue from `lastTierBBatchSha`"
 recovery story.
 
-### 18. Tier B "file exists" check is working-tree, not HEAD
+### 17. Tier B "file exists" check is working-tree, not HEAD
 
 Implemented as an exists-in-working-tree check rather than exists-at-HEAD, since the LSP session
-reads live files off disk. Consistent with item 15 above; not a bug, just worth remembering if
+reads live files off disk. Consistent with item 14 above; not a bug, just worth remembering if
 Tier B ever operates against something other than the live working tree.
 
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)

@@ -182,12 +182,13 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   }
 
   /**
-   * Installs the pre-push hook that fires the Tier B batch (`docuvia analyze --escalate-to-lsp
-   * && docuvia snapshot`, phase1-decision-integration.md §8h). Mirrors
-   * `installPostCommitHook`'s marker + lock shape exactly; there is no legacy pre-push hook to
-   * upgrade (this is a brand-new hook as of Slice 3), so only the fresh-install and
-   * already-installed branches exist. Non-fatal by design, same reasoning as
-   * `installPostCommitHook`.
+   * Installs the pre-push hook that fires the Tier B batch plus `sync-knowledge`
+   * (`docuvia analyze --escalate-to-lsp && docuvia snapshot && docuvia sync-knowledge`,
+   * phase1-decision-integration.md §8h; phase2-sync-knowledge-scheduling.md SKSCHED-001). Mirrors
+   * `installPostCommitHook`'s marker + lock shape; as of the `sync-knowledge` composition
+   * (SKSCHED-003) a legacy-upgrade branch exists too, for a hook installed before that step was
+   * added — same exact-content-match technique `installPostCommitHook` already uses. Non-fatal by
+   * design, same reasoning as `installPostCommitHook`.
    */
   public async installPrePushHook(
     cwd: string,
@@ -200,24 +201,39 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     }
 
     const existingHook = await this.git.readHookFile(cwd, hookName);
-    if (existingHook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER)) {
+    if (this.hasCurrentPrePushHook(existingHook)) {
       this.logger.debug(GitMessages.PRE_PUSH_HOOK_ALREADY_INSTALLED);
       return { installed: false };
     }
 
     return withKnowledgeBranchLock(this.git, cwd, async () => {
       const recheckHook = await this.git.readHookFile(cwd, hookName);
-      if (recheckHook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER)) {
+      if (this.hasCurrentPrePushHook(recheckHook)) {
         this.logger.warn(GitMessages.CONCURRENT_PRE_PUSH_HOOK_INSTALL_SKIPPED);
         return { installed: false };
       }
 
+      // SKSCHED-003: a hook carrying the pre-Phase-2 marker but not the sync-knowledge one is a
+      // legacy installation -- replace its exact block in place rather than appending a second,
+      // duplicate Docuvia block alongside it (mirrors installPostCommitHook's legacy upgrade).
+      const hasLegacyOnly = !!recheckHook?.includes(
+        GitConstants.PRE_PUSH_HOOK_MARKER,
+      );
+
       try {
-        await this.git.appendHookFile(
-          cwd,
-          hookName,
-          GitConstants.PRE_PUSH_HOOK_CONTENT,
-        );
+        if (hasLegacyOnly) {
+          const upgradedHook =
+            recheckHook!
+              .split(GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT)
+              .join("") + GitConstants.PRE_PUSH_HOOK_CONTENT;
+          await this.git.writeHookFile(cwd, hookName, upgradedHook);
+        } else {
+          await this.git.appendHookFile(
+            cwd,
+            hookName,
+            GitConstants.PRE_PUSH_HOOK_CONTENT,
+          );
+        }
         await this.git.makeHookExecutable(cwd, hookName);
       } catch (err) {
         this.logger.warn(GitMessages.FAILED_TO_INSTALL_PRE_PUSH_HOOK, {
@@ -226,9 +242,22 @@ export class KnowledgeGitService implements IKnowledgeGitService {
         return { installed: false };
       }
 
-      this.logger.info(GitMessages.INSTALLED_PRE_PUSH_HOOK);
+      this.logger.info(
+        hasLegacyOnly
+          ? GitMessages.UPGRADED_LEGACY_PRE_PUSH_HOOK
+          : GitMessages.INSTALLED_PRE_PUSH_HOOK,
+      );
       return { installed: true };
     });
+  }
+
+  /** True once the hook carries both the Tier B marker and the sync-knowledge marker -- i.e. is
+   *  fully up to date, not just "installed at some prior version" (SKSCHED-003). */
+  private hasCurrentPrePushHook(hook: string | undefined): boolean {
+    return (
+      !!hook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER) &&
+      !!hook?.includes(GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER)
+    );
   }
 
   /**
@@ -291,9 +320,9 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
   /**
    * `uninstall`'s symmetric counterpart to `installPrePushHook`
-   * (phase1-decision-integration.md §10a, decision 1a) — mirrors `removePostCommitHook`'s shape
-   * exactly, minus the legacy-content branch (there is no legacy pre-push hook). Non-fatal by
-   * design.
+   * (phase1-decision-integration.md §10a, decision 1a) — mirrors `removePostCommitHook`'s shape,
+   * including its two-content-variant strip now that `installPrePushHook` has a legacy (pre
+   * sync-knowledge) content variant of its own (SKSCHED-003). Non-fatal by design.
    */
   public async removePrePushHook(cwd: string): Promise<{ removed: boolean }> {
     const hookName = GitConstants.PRE_PUSH_HOOK_NAME;
@@ -311,9 +340,17 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       }
 
       try {
-        const remainder = recheckHook
-          .split(GitConstants.PRE_PUSH_HOOK_CONTENT)
-          .join("");
+        let remainder = recheckHook;
+        if (remainder.includes(GitConstants.PRE_PUSH_HOOK_CONTENT)) {
+          remainder = remainder
+            .split(GitConstants.PRE_PUSH_HOOK_CONTENT)
+            .join("");
+        }
+        if (remainder.includes(GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT)) {
+          remainder = remainder
+            .split(GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT)
+            .join("");
+        }
         await this.git.writeHookFile(cwd, hookName, remainder);
       } catch (err) {
         this.logger.warn(GitMessages.FAILED_TO_REMOVE_PRE_PUSH_HOOK, {

@@ -10,29 +10,23 @@
 > Items are ordered roughly by priority/dependency, not by date. When one of these gets decided,
 > move the decision into its governing ADR (or a new one) and delete the row here.
 
-## Phase 2 — Distribute (item 1 decided & shipped; items 2-3 not yet designed)
+## Phase 2 — Distribute (items 1-2 decided & shipped; item 3 not yet designed)
 
 L3 distribution (storage shape + merge strategy) is decided and shipped — see
 [Phase 2, Item 1 — L3 Distribution Strategy](phase2-l3-distribution.md) for the full contract
 (`L3DIST-001`..`008`) and implementation record (2026-07-21).
 
-### 1. `sync-knowledge` scheduling
-
-Its own code comment already blesses "a scheduled task or CI step" as the follow-up; nothing
-wires it up automatically today. Must be decided **together with** Tier B's pre-push batch
-(PLAT-007) so the two don't double-fetch on the same pre-push hook.
-
-### 2. Remote sync auto-push story
-
-`sync` today needs a manual `projectId`/PAT. Undecided: does the background loop ever push L3 to
-the remote API automatically, or does that stay an explicit, user-triggered step indefinitely?
+`sync-knowledge` scheduling and the remote-sync auto-push question are both resolved (one shipped,
+one explicitly parked) — see
+[Phase 2, Items 1-2 — sync-knowledge Scheduling & Remote-Sync Auto-Push](phase2-sync-knowledge-scheduling.md)
+for the full contract (`SKSCHED-001`..`006`) and implementation record (2026-07-21).
 
 ### 3. `sync` vs `sync-knowledge` naming
 
 Flagged repeatedly as a source of confusion (two similarly-named commands, different scopes).
 Candidate for the project's command-convergence principle (the "user-sentence test") — worth its
-own small IFCE ADR once Phase 2's shape (items 1–2) is settled, since the naming decision depends
-on what each command ends up doing.
+own small IFCE ADR now that Phase 2's shape (items 1–2) is settled, since the naming decision
+depended on what each command ended up doing and that's now known.
 
 ## Phase 3 — Consume (mostly working, minor follow-ups)
 

@@ -9,6 +9,9 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
   TIER_B_COMMIT_CAP: "tier_b_commit_cap",
   /** §10d/§7c: the legacy-hook duplicate-block / not-resolvable post-commit hook checks. */
   GIT_HOOK: "git_hook",
+  /** phase2-sync-knowledge-scheduling.md SKSCHED-005: pre-push hook staleness (installed before
+   *  the `sync-knowledge` step was composed in) -- a distinct hook file from `GIT_HOOK` above. */
+  PRE_PUSH_HOOK: "pre_push_hook",
   /** §10e bullet 3: the Tier C CLIProxyAPI endpoint reachability pre-flight. */
   LLM_REACHABILITY: "llm_reachability",
   /** §10e bullet 4 / §7a-1: LSP binary presence, independent of whether Tier B has ever run. */
@@ -74,6 +77,14 @@ export const DOCTOR_MESSAGES = {
   GIT_HOOK_RESOLVABLE: "Post-commit hook is installed and `docuvia` resolves.",
   GIT_HOOK_REPAIRED_NOTE:
     " Repaired via `doctor --fix` -- re-run `doctor` to confirm.",
+
+  /** phase2-sync-knowledge-scheduling.md SKSCHED-005: pre-push hook staleness check. */
+  PRE_PUSH_HOOK_NOT_INSTALLED: "No Docuvia pre-push hook installed.",
+  PRE_PUSH_HOOK_STALE:
+    "The pre-push hook predates the `sync-knowledge` step -- pushes no longer reconcile the knowledge branch with origin.",
+  PRE_PUSH_HOOK_STALE_SUGGESTION: "re-run `docuvia init` to upgrade the hook",
+  PRE_PUSH_HOOK_OK:
+    "Pre-push hook is installed and includes the sync-knowledge step.",
 
   /** §10e bullet 3: Tier C CLIProxyAPI endpoint reachability pre-flight (T7). */
   LLM_NOT_CONFIGURED:

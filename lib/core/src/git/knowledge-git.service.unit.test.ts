@@ -343,12 +343,12 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
     expect(git.appendHookFile).not.toHaveBeenCalled();
   });
 
-  it("is idempotent: does not duplicate the hook when the marker is already present", async () => {
+  it("is idempotent: does not duplicate the hook when both the Tier B and sync-knowledge markers are already present", async () => {
     const git = makeMockGitProvider({
       readHookFile: vi
         .fn()
         .mockResolvedValue(
-          `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER}\n`,
+          `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n`,
         ),
     });
     const service = new KnowledgeGitService(git);
@@ -357,6 +357,7 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
 
     expect(result).toEqual({ installed: false });
     expect(git.appendHookFile).not.toHaveBeenCalled();
+    expect(git.writeHookFile).not.toHaveBeenCalled();
   });
 
   it("does not throw when writing the hook fails — logs a warning and reports installed:false instead", async () => {
@@ -377,7 +378,7 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(
-        `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER}\n`,
+        `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n`,
       );
     const git = makeMockGitProvider({ readHookFile });
     const logger = createMockLogger();
@@ -389,6 +390,82 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
     expect(git.appendHookFile).not.toHaveBeenCalled();
     expect(git.acquireKnowledgeLock).toHaveBeenCalledTimes(1);
     expect(git.releaseKnowledgeLock).toHaveBeenCalledTimes(1);
+  });
+
+  describe("legacy hook upgrade (sync-knowledge composition, phase2-sync-knowledge-scheduling.md SKSCHED-003)", () => {
+    it("replaces the legacy block in place: old block gone, new block (with sync-knowledge) present, non-Docuvia user content preserved", async () => {
+      const existingHook =
+        `#!/bin/bash\necho "user pre-push content"\n` +
+        GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT;
+      const git = makeMockGitProvider({
+        readHookFile: vi.fn().mockResolvedValue(existingHook),
+      });
+      const logger = createMockLogger();
+      const service = new KnowledgeGitService(git, logger);
+
+      const result = await service.installPrePushHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.appendHookFile).not.toHaveBeenCalled();
+      expect(git.writeHookFile).toHaveBeenCalledTimes(1);
+      const [cwd, hookName, writtenContent] = (
+        git.writeHookFile as ReturnType<typeof vi.fn>
+      ).mock.calls[0];
+      expect(cwd).toBe("/workspace");
+      expect(hookName).toBe(GitConstants.PRE_PUSH_HOOK_NAME);
+
+      expect(writtenContent).not.toContain(
+        GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT,
+      );
+      expect(writtenContent).toContain(GitConstants.PRE_PUSH_HOOK_CONTENT);
+      expect(writtenContent).toContain(
+        GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER,
+      );
+      expect(writtenContent).toContain('echo "user pre-push content"');
+
+      expect(git.makeHookExecutable).toHaveBeenCalled();
+      expect(
+        logger.events.some(
+          (e) =>
+            e.level === "info" &&
+            /Upgraded legacy pre-push hook/.test(e.message),
+        ),
+      ).toBe(true);
+    });
+
+    it("upgrades a legacy hook with no other user content (old block was the entire file)", async () => {
+      const git = makeMockGitProvider({
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT),
+      });
+      const service = new KnowledgeGitService(git);
+
+      const result = await service.installPrePushHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.writeHookFile).toHaveBeenCalledWith(
+        "/workspace",
+        GitConstants.PRE_PUSH_HOOK_NAME,
+        GitConstants.PRE_PUSH_HOOK_CONTENT,
+      );
+    });
+
+    it("does not throw when the legacy-upgrade write fails — logs a warning and reports installed:false instead", async () => {
+      const git = makeMockGitProvider({
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT),
+        writeHookFile: vi.fn().mockRejectedValue(new Error("EACCES")),
+      });
+      const logger = createMockLogger();
+      const service = new KnowledgeGitService(git, logger);
+
+      const result = await service.installPrePushHook("/workspace");
+
+      expect(result).toEqual({ installed: false });
+      expect(logger.events.some((e) => e.level === "warn")).toBe(true);
+    });
   });
 });
 
@@ -497,6 +574,24 @@ describe("KnowledgeGitService.removePrePushHook() (phase1-decision-integration.m
   it("strips the pre-push block and preserves unrelated user content", async () => {
     const existingHook =
       `#!/bin/bash\necho "user content"\n` + GitConstants.PRE_PUSH_HOOK_CONTENT;
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(existingHook),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.removePrePushHook("/workspace");
+
+    expect(result).toEqual({ removed: true });
+    const writtenContent = (git.writeHookFile as ReturnType<typeof vi.fn>).mock
+      .calls[0][2];
+    expect(writtenContent).not.toContain(GitConstants.PRE_PUSH_HOOK_MARKER);
+    expect(writtenContent).toContain('echo "user content"');
+  });
+
+  it("strips a legacy (pre sync-knowledge) pre-push block and preserves unrelated user content", async () => {
+    const existingHook =
+      `#!/bin/bash\necho "user content"\n` +
+      GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT;
     const git = makeMockGitProvider({
       readHookFile: vi.fn().mockResolvedValue(existingHook),
     });

@@ -79,6 +79,9 @@ export class DoctorWorkflow {
       await this.runOrSkip(skipGit, () =>
         this.runGitHookDiagnostic(diagnostics, fix),
       ),
+      await this.runOrSkip(skipGit, () =>
+        this.runPrePushHookDiagnostic(diagnostics),
+      ),
       await this.runLlmReachabilityDiagnostic(
         diagnostics,
         llmBaseUrl,
@@ -220,6 +223,56 @@ export class DoctorWorkflow {
       ...result,
       message: result.message + DOCTOR_MESSAGES.GIT_HOOK_REPAIRED_NOTE,
     };
+  }
+
+  /**
+   * phase2-sync-knowledge-scheduling.md SKSCHED-005: flags a pre-push hook installed before the
+   * `sync-knowledge` step was composed into it (SKSCHED-001/003) -- distinct hook file, distinct
+   * diagnostic key from `runGitHookDiagnostic`'s post-commit checks. No duplicate-block case here
+   * (unlike post-commit's legacy upgrade): `installPrePushHook` upgrades a stale hook via an
+   * exact-content-match replace, not append, so re-running `docuvia init` is the fix -- no
+   * dedicated `--fix` repair method needed. Never throws past this method.
+   */
+  private async runPrePushHookDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GitProvider)) return true;
+
+    try {
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const hook = await git.readHookFile(
+        this.workspaceRoot,
+        GitConstants.PRE_PUSH_HOOK_NAME,
+      );
+      const hasCurrent = !!hook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER);
+      const hasSyncKnowledge = !!hook?.includes(
+        GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER,
+      );
+
+      let result: DiagnosticResult;
+      if (!hasCurrent) {
+        result = {
+          status: DiagnosticStatus.PASS,
+          message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_NOT_INSTALLED,
+        };
+      } else if (!hasSyncKnowledge) {
+        result = {
+          status: DiagnosticStatus.FAIL,
+          message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE,
+          suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
+        };
+      } else {
+        result = {
+          status: DiagnosticStatus.PASS,
+          message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_OK,
+        };
+      }
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.PRE_PUSH_HOOK] = result;
+      return result.status === DiagnosticStatus.PASS;
+    } catch {
+      return true;
+    }
   }
 
   /**

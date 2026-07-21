@@ -125,11 +125,44 @@ export const GitConstants = {
    * a generous initial timeout (measure via JSONL logs before tightening, per the owner's
    * "function first" ruling). `docuvia snapshot` only runs when `analyze --escalate-to-lsp`
    * exits 0 (honest degradation exits 0 too, so a missing/unready LSP still lets the batch's
-   * snapshot land). The trailing comment marks where Phase 2's `sync-knowledge` pre-push step
-   * will be composed in, so the two don't double-fetch (§7a-5) — not wired in this slice.
+   * snapshot land). Present in both `PRE_PUSH_HOOK_CONTENT` and `LEGACY_PRE_PUSH_HOOK_CONTENT`
+   * (below) — "installed at all" detection, not "which version" detection; use
+   * `PRE_PUSH_SYNC_KNOWLEDGE_MARKER` to tell the two apart.
    */
   PRE_PUSH_HOOK_MARKER: "docuvia analyze --escalate-to-lsp",
+  /**
+   * Phase 2 sync-knowledge-scheduling.md SKSCHED-001/003: present only in the current
+   * `PRE_PUSH_HOOK_CONTENT`, absent from `LEGACY_PRE_PUSH_HOOK_CONTENT` — the marker
+   * `installPrePushHook` uses to tell an up-to-date hook from a pre-Phase-2 one that still needs
+   * the in-place upgrade.
+   */
+  PRE_PUSH_SYNC_KNOWLEDGE_MARKER: "docuvia sync-knowledge",
+  /**
+   * Phase 2 sync-knowledge-scheduling.md SKSCHED-001: composes `sync-knowledge` onto the same
+   * pre-push batch Tier B already occupies, after `snapshot` — reconciliation only makes sense
+   * once a fresh local snapshot commit exists to reconcile. Wired here (not post-commit) so the
+   * knowledge branch is fetched once per push, never once per commit (SKSCHED-001's whole reason
+   * for picking this composition point over a second hook or a separate scheduler).
+   */
   PRE_PUSH_HOOK_CONTENT:
+    `#!/bin/bash\n# Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)\n` +
+    `# Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see\n` +
+    `# docs/gitbook/analysis/phase1-decision-integration.md §8h and\n` +
+    `# docs/gitbook/analysis/phase2-sync-knowledge-scheduling.md.\n` +
+    `if command -v npx &> /dev/null; then\n` +
+    `  npx --no-install docuvia analyze --escalate-to-lsp && npx --no-install docuvia snapshot && npx --no-install docuvia sync-knowledge\n` +
+    `fi\n` +
+    `# Never blocks the push on a Tier B/sync-knowledge failure -- PLAT-007's reliability\n` +
+    `# requirement (failures only ever surface via JSONL logs / doctor, never to the pushing\n` +
+    `# developer).\n` +
+    `exit 0\n`,
+  /**
+   * The pre-Phase-2 hook's exact content, retained verbatim so `installPrePushHook` can recognize
+   * a hook installed before the `sync-knowledge` step was composed in and replace it in place
+   * (phase2-sync-knowledge-scheduling.md SKSCHED-003) rather than appending a second, duplicate
+   * Docuvia block alongside the old one — mirrors `LEGACY_POST_COMMIT_HOOK_CONTENT`'s precedent.
+   */
+  LEGACY_PRE_PUSH_HOOK_CONTENT:
     `#!/bin/bash\n# Docuvia Tier B Batch Hook (LSP escalation + snapshot)\n` +
     `# Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see\n` +
     `# docs/gitbook/analysis/phase1-decision-integration.md §8h.\n` +
@@ -212,6 +245,8 @@ export const GitMessages = {
     "Pre-push hook was installed by a concurrent process; skipping duplicate append",
   FAILED_TO_INSTALL_PRE_PUSH_HOOK: "Failed to install pre-push hook",
   INSTALLED_PRE_PUSH_HOOK: "Installed pre-push hook",
+  UPGRADED_LEGACY_PRE_PUSH_HOOK:
+    "Upgraded legacy pre-push hook (added sync-knowledge step)",
 
   /** `uninstall`'s hook-removal messages (phase1-decision-integration.md §10a). */
   REMOVED_POST_COMMIT_HOOK: "Removed post-commit hook",

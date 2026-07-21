@@ -619,6 +619,100 @@ describe("DoctorWorkflow", () => {
     });
   });
 
+  describe("Pre-Push Hook Check (phase2-sync-knowledge-scheduling.md SKSCHED-005)", () => {
+    it("reports PASS when no Docuvia pre-push hook is installed", async () => {
+      const git = { readHookFile: vi.fn().mockResolvedValue(undefined) };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["pre_push_hook"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "No Docuvia pre-push hook installed.",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports FAIL for a pre-push hook installed before the sync-knowledge step was composed in", async () => {
+      // Post-commit hook left uninstalled (undefined) -- isolates this assertion to the pre-push
+      // check; the pre-push and post-commit marker strings overlap textually ("docuvia analyze"),
+      // so a shared mock return value for both hookName args would falsely trip the post-commit
+      // duplicate-block check too.
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockImplementation((_cwd: string, hookName: string) =>
+            Promise.resolve(
+              hookName === GitConstants.PRE_PUSH_HOOK_NAME
+                ? GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT
+                : undefined,
+            ),
+          ),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["pre_push_hook"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["pre_push_hook"].message).toContain(
+        "predates the `sync-knowledge` step",
+      );
+      expect(result.diagnostics["pre_push_hook"].suggestion).toContain(
+        "docuvia init",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("reports PASS when the pre-push hook includes the sync-knowledge step", async () => {
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockImplementation((_cwd: string, hookName: string) =>
+            Promise.resolve(
+              hookName === GitConstants.PRE_PUSH_HOOK_NAME
+                ? GitConstants.PRE_PUSH_HOOK_CONTENT
+                : undefined,
+            ),
+          ),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["pre_push_hook"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message:
+          "Pre-push hook is installed and includes the sync-knowledge step.",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is skipped entirely when skipGit is set", async () => {
+      const git = { readHookFile: vi.fn() };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["pre_push_hook"]).toBeUndefined();
+    });
+  });
+
   describe("LLM Reachability Check (phase1-decision-integration.md §10e bullet 3, T7)", () => {
     it("reports PASS 'not configured' when no llmBaseUrl is supplied", async () => {
       const wf = new DoctorWorkflow("/test", logger);

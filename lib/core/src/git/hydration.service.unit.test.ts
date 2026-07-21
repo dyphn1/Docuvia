@@ -12,6 +12,7 @@ function makeMockGitProvider(
     commitEmptyTree: vi.fn().mockResolvedValue("sha"),
     updateBranchRef: vi.fn().mockResolvedValue(undefined),
     hooksDirExists: vi.fn().mockResolvedValue(true),
+    resolveHooksDir: vi.fn().mockResolvedValue("/workspace/.git/hooks"),
     readHookFile: vi.fn().mockResolvedValue(undefined),
     appendHookFile: vi.fn().mockResolvedValue(undefined),
     writeHookFile: vi.fn().mockResolvedValue(undefined),

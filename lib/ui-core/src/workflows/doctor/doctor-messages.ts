@@ -74,7 +74,10 @@ export const DOCTOR_MESSAGES = {
     "The post-commit hook is installed but `docuvia` is not resolvable from this workspace (the `npx --no-install` invocation would silently no-op on every commit).",
   GIT_HOOK_NOT_RESOLVABLE_SUGGESTION:
     "reinstall Docuvia as a project dependency, or check PATH",
-  GIT_HOOK_RESOLVABLE: "Post-commit hook is installed and `docuvia` resolves.",
+  /** Includes the resolved hook file path (honors `core.hooksPath`/husky redirection, `IGitProvider.resolveHooksDir`) so a working
+   *  hook's actual location is never silently ambiguous — found needed via dogfooding, 2026-07-21. */
+  GIT_HOOK_RESOLVABLE: (hookPath: string) =>
+    `Post-commit hook is installed and \`docuvia\` resolves (${hookPath}).`,
   GIT_HOOK_REPAIRED_NOTE:
     " Repaired via `doctor --fix` -- re-run `doctor` to confirm.",
 
@@ -83,8 +86,9 @@ export const DOCTOR_MESSAGES = {
   PRE_PUSH_HOOK_STALE:
     "The pre-push hook predates the `sync-knowledge` step -- pushes no longer reconcile the knowledge branch with origin.",
   PRE_PUSH_HOOK_STALE_SUGGESTION: "re-run `docuvia init` to upgrade the hook",
-  PRE_PUSH_HOOK_OK:
-    "Pre-push hook is installed and includes the sync-knowledge step.",
+  /** Includes the resolved hook file path — same reasoning as `GIT_HOOK_RESOLVABLE`. */
+  PRE_PUSH_HOOK_OK: (hookPath: string) =>
+    `Pre-push hook is installed and includes the sync-knowledge step (${hookPath}).`,
   PRE_PUSH_HOOK_NOT_RESOLVABLE:
     "The pre-push hook is installed but `docuvia` is not resolvable from this workspace (the `npx --no-install` invocation would silently no-op on every push -- Tier B and sync-knowledge never actually run).",
 

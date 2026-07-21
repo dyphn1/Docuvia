@@ -86,6 +86,11 @@ const GIT_ARG = {
   PATHSPEC_SEPARATOR: "--",
   GIT_DIR_FLAG: "--git-dir",
   GIT_COMMON_DIR_FLAG: "--git-common-dir",
+  /** `git rev-parse --git-path <path>` resolves a path under the *effective* git directory for
+   *  this repo, honoring `core.hooksPath` when queried with `hooks` — unlike hardcoding
+   *  `<git-common-dir>/hooks`, which silently ignores that config entirely (see
+   *  `resolveHooksDir`'s doc comment for why this matters). */
+  GIT_PATH_FLAG: "--git-path",
 } as const;
 
 /** Raw control-character separators `getCommitLog`'s `%x01`/`%x00` `--format` placeholders
@@ -107,7 +112,16 @@ const GIT_DIFF_STATUS_CODE = {
 const EMPTY_TREE_SHA = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 const GIT_DIR_NAME = ".git";
 const GIT_HOOKS_DIR_NAME = "hooks";
-const GIT_HOOKS_DIR = [GIT_DIR_NAME, GIT_HOOKS_DIR_NAME] as const;
+
+/** husky v9's fixed, hardcoded `core.hooksPath` value's basename (`.husky/_`) — confirmed by
+ *  reading `.husky/_/h`'s own dispatch logic: it re-derives the *user-editable* hook file as
+ *  `dirname(dirname($0))/$(basename $0)`, i.e. one directory up from `_`, and silently no-ops
+ *  (`exit 0`) if that file doesn't exist. `.husky/_/<hookName>` itself is husky-owned plumbing —
+ *  writing there is invisible to husky's own dispatch and easily clobbered by husky's tooling.
+ *  Found via dogfooding: Docuvia's own post-commit/pre-push hooks were silently never invoked by
+ *  real `git commit`/`git push` on this repo (which uses husky) because nothing here ever
+ *  consulted `core.hooksPath` at all (2026-07-21). */
+const HUSKY_SHIM_DIR_NAME = "_";
 
 const KNOWLEDGE_LOCK_FILE_NAME = "docuvia-knowledge.lock";
 const KNOWLEDGE_LOCK_MAX_WAIT_MS = 10_000;
@@ -195,6 +209,35 @@ export class Libgit2Provider implements IGitProvider {
     }
   }
 
+  /**
+   * Resolves the directory hook files actually belong in — via `git rev-parse --git-path hooks`,
+   * which (unlike hardcoding `<git-common-dir>/hooks`) honors `core.hooksPath`. A repo managed by
+   * husky (or any tool that repoints `core.hooksPath`) would otherwise have every hook Docuvia
+   * installs silently ignored by real `git commit`/`git push`, with no error anywhere — exactly
+   * what dogfooding found on this repo itself (2026-07-21). When the resolved directory is
+   * husky's fixed `_` shim dir, redirects one level up to the sibling file husky's own shim
+   * actually dispatches to (`HUSKY_SHIM_DIR_NAME`'s doc comment) — writing into `_` itself would
+   * be invisible to husky's dispatch and liable to being clobbered by husky's own tooling.
+   */
+  public async resolveHooksDir(cwd: string): Promise<string> {
+    let resolved: string;
+    try {
+      const { stdout } = await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.REV_PARSE, GIT_ARG.GIT_PATH_FLAG, GIT_HOOKS_DIR_NAME],
+        { cwd },
+      );
+      resolved = path.resolve(cwd, stdout.trim());
+    } catch {
+      const commonDir = await this.getGitCommonDir(cwd);
+      resolved = path.join(commonDir, GIT_HOOKS_DIR_NAME);
+    }
+
+    return path.basename(resolved) === HUSKY_SHIM_DIR_NAME
+      ? path.dirname(resolved)
+      : resolved;
+  }
+
   public async isGitRepository(cwd: string): Promise<boolean> {
     try {
       await execFileAsync(
@@ -273,8 +316,8 @@ export class Libgit2Provider implements IGitProvider {
 
   public async hooksDirExists(cwd: string): Promise<boolean> {
     try {
-      const commonDir = await this.getGitCommonDir(cwd);
-      await fs.access(path.join(commonDir, GIT_HOOKS_DIR_NAME));
+      const hooksDir = await this.resolveHooksDir(cwd);
+      await fs.access(hooksDir);
       return true;
     } catch {
       return false;
@@ -286,11 +329,8 @@ export class Libgit2Provider implements IGitProvider {
     hookName: string,
   ): Promise<string | undefined> {
     try {
-      const commonDir = await this.getGitCommonDir(cwd);
-      return await fs.readFile(
-        path.join(commonDir, GIT_HOOKS_DIR_NAME, hookName),
-        UTF8_ENCODING,
-      );
+      const hooksDir = await this.resolveHooksDir(cwd);
+      return await fs.readFile(path.join(hooksDir, hookName), UTF8_ENCODING);
     } catch {
       return undefined;
     }
@@ -302,11 +342,8 @@ export class Libgit2Provider implements IGitProvider {
     content: string,
   ): Promise<void> {
     try {
-      const commonDir = await this.getGitCommonDir(cwd);
-      await fs.appendFile(
-        path.join(commonDir, GIT_HOOKS_DIR_NAME, hookName),
-        content,
-      );
+      const hooksDir = await this.resolveHooksDir(cwd);
+      await fs.appendFile(path.join(hooksDir, hookName), content);
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
@@ -322,11 +359,8 @@ export class Libgit2Provider implements IGitProvider {
     content: string,
   ): Promise<void> {
     try {
-      const commonDir = await this.getGitCommonDir(cwd);
-      await fs.writeFile(
-        path.join(commonDir, GIT_HOOKS_DIR_NAME, hookName),
-        content,
-      );
+      const hooksDir = await this.resolveHooksDir(cwd);
+      await fs.writeFile(path.join(hooksDir, hookName), content);
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,
@@ -341,8 +375,8 @@ export class Libgit2Provider implements IGitProvider {
     hookName: string,
   ): Promise<void> {
     try {
-      const commonDir = await this.getGitCommonDir(cwd);
-      await fs.chmod(path.join(commonDir, GIT_HOOKS_DIR_NAME, hookName), 0o755);
+      const hooksDir = await this.resolveHooksDir(cwd);
+      await fs.chmod(path.join(hooksDir, hookName), 0o755);
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_HOOK_INSTALL_FAILED,

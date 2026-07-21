@@ -123,6 +123,47 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
     expect(content).not.toContain(HOOK_MARKER);
   });
 
+  it("resolveHooksDir/appendHookFile honor a plain custom core.hooksPath (not the default .git/hooks)", async () => {
+    fs.mkdirSync(path.join(tmpDir, "customhooks"), { recursive: true });
+    await git(tmpDir, ["config", "core.hooksPath", "customhooks"]);
+
+    expect(await provider.resolveHooksDir(tmpDir)).toBe(
+      path.join(tmpDir, "customhooks"),
+    );
+
+    await provider.appendHookFile(
+      tmpDir,
+      HOOK_NAME,
+      `#!/bin/bash\n# ${HOOK_MARKER}\n`,
+    );
+
+    expect(
+      fs.readFileSync(path.join(tmpDir, "customhooks", HOOK_NAME), "utf8"),
+    ).toContain(HOOK_MARKER);
+  });
+
+  it("resolveHooksDir/appendHookFile redirect a husky-managed repo (core.hooksPath=.husky/_) to the sibling .husky/<hookName> file husky's own shim actually dispatches to, not the internal _ shim dir (regression: dogfooding found Docuvia's own hooks were silently never invoked by real git commit/push on a husky-managed repo, 2026-07-21)", async () => {
+    fs.mkdirSync(path.join(tmpDir, ".husky", "_"), { recursive: true });
+    await git(tmpDir, ["config", "core.hooksPath", ".husky/_"]);
+
+    expect(await provider.resolveHooksDir(tmpDir)).toBe(
+      path.join(tmpDir, ".husky"),
+    );
+
+    await provider.appendHookFile(
+      tmpDir,
+      HOOK_NAME,
+      `#!/bin/bash\n# ${HOOK_MARKER}\n`,
+    );
+
+    expect(
+      fs.readFileSync(path.join(tmpDir, ".husky", HOOK_NAME), "utf8"),
+    ).toContain(HOOK_MARKER);
+    expect(fs.existsSync(path.join(tmpDir, ".husky", "_", HOOK_NAME))).toBe(
+      false,
+    );
+  });
+
   it("getRemoteUrl returns undefined when no origin remote is configured, and the URL once one is added", async () => {
     expect(await provider.getRemoteUrl(tmpDir)).toBeUndefined();
 

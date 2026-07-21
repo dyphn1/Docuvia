@@ -26,10 +26,17 @@ export const GitConstants = {
    *  decision 1f) uses to strip every Docuvia-authored block regardless of minor hand-edits that
    *  would break exact-content matching. */
   DOCUVIA_HOOK_HEADER_COMMENT: "# Docuvia Knowledge Graph Evolver Hook",
+  /**
+   * `> /dev/null 2>&1` (not the bash-only `&>`) throughout this and `PRE_PUSH_HOOK_CONTENT` —
+   * husky's shim (`.husky/_/h`) invokes a hook file via `sh -e "$s"`, ignoring the file's own
+   * `#!/bin/bash` shebang entirely, so any bash-specific syntax silently breaks (or behaves
+   * differently) once a repo's `core.hooksPath` redirects Docuvia's hook there (found via
+   * dogfooding, 2026-07-21). The portable form works identically under bash and POSIX `sh`.
+   */
   POST_COMMIT_HOOK_CONTENT:
     `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n` +
     `# Non-intrusively extracts AST deltas in the background\n` +
-    `if command -v npx &> /dev/null; then\n` +
+    `if command -v npx > /dev/null 2>&1; then\n` +
     `  # Fire and forget (do not block commit)\n` +
     `  npx --no-install docuvia analyze > /dev/null 2>&1 &\n` +
     `fi\n`,
@@ -144,12 +151,14 @@ export const GitConstants = {
    * knowledge branch is fetched once per push, never once per commit (SKSCHED-001's whole reason
    * for picking this composition point over a second hook or a separate scheduler).
    */
+  /** `> /dev/null 2>&1` (portable), not `&>` (bash-only) — see `POST_COMMIT_HOOK_CONTENT`'s doc
+   *  comment on why: husky's shim runs a redirected hook via `sh -e`, not bash. */
   PRE_PUSH_HOOK_CONTENT:
     `#!/bin/bash\n# Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)\n` +
     `# Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see\n` +
     `# docs/gitbook/analysis/phase1-decision-integration.md §8h and\n` +
     `# docs/gitbook/analysis/phase2-sync-knowledge-scheduling.md.\n` +
-    `if command -v npx &> /dev/null; then\n` +
+    `if command -v npx > /dev/null 2>&1; then\n` +
     `  npx --no-install docuvia analyze --escalate-to-lsp && npx --no-install docuvia snapshot && npx --no-install docuvia sync-knowledge\n` +
     `fi\n` +
     `# Never blocks the push on a Tier B/sync-knowledge failure -- PLAT-007's reliability\n` +

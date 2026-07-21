@@ -490,6 +490,7 @@ describe("DoctorWorkflow", () => {
         readHookFile: vi
           .fn()
           .mockResolvedValue(GitConstants.POST_COMMIT_HOOK_CONTENT),
+        resolveHooksDir: vi.fn().mockResolvedValue("/test/.git/hooks"),
       };
       docuviaFactory.register(TOKENS.GitProvider, () => git as any);
       docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
@@ -502,7 +503,7 @@ describe("DoctorWorkflow", () => {
 
       expect(result.diagnostics["git_hook"]).toEqual({
         status: DiagnosticStatus.PASS,
-        message: "Post-commit hook is installed and `docuvia` resolves.",
+        message: `Post-commit hook is installed and \`docuvia\` resolves (${path.join("/test/.git/hooks", "post-commit")}).`,
       });
       expect(result.allPassed).toBe(true);
     });
@@ -598,6 +599,7 @@ describe("DoctorWorkflow", () => {
           readHookFile: vi
             .fn()
             .mockResolvedValue(GitConstants.POST_COMMIT_HOOK_CONTENT),
+          resolveHooksDir: vi.fn().mockResolvedValue("/test/.git/hooks"),
         };
         const knowledgeGit = {
           repairDuplicatePostCommitHook: vi.fn(),
@@ -681,6 +683,7 @@ describe("DoctorWorkflow", () => {
                 : undefined,
             ),
           ),
+        resolveHooksDir: vi.fn().mockResolvedValue("/test/.git/hooks"),
       };
       docuviaFactory.register(TOKENS.GitProvider, () => git as any);
       docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
@@ -693,8 +696,7 @@ describe("DoctorWorkflow", () => {
 
       expect(result.diagnostics["pre_push_hook"]).toEqual({
         status: DiagnosticStatus.PASS,
-        message:
-          "Pre-push hook is installed and includes the sync-knowledge step.",
+        message: `Pre-push hook is installed and includes the sync-knowledge step (${path.join("/test/.git/hooks", "pre-push")}).`,
       });
       expect(result.allPassed).toBe(true);
     });

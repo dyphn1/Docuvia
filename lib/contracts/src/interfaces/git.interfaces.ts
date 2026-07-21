@@ -41,6 +41,11 @@ export interface IGitProvider {
   ): Promise<void>;
 
   hooksDirExists(cwd: string): Promise<boolean>;
+  /** The directory hook files actually belong in for this repo — honors `core.hooksPath` (e.g.
+   *  a husky-managed repo), unlike assuming `<git-dir>/hooks`. Exposed so callers like `doctor`
+   *  can report exactly where a hook was checked/installed, rather than silently assuming a path
+   *  that might not be where git (or the repo's hook manager) actually looks. */
+  resolveHooksDir(cwd: string): Promise<string>;
   readHookFile(cwd: string, hookName: string): Promise<string | undefined>;
   appendHookFile(cwd: string, hookName: string, content: string): Promise<void>;
   /** Wholesale-overwrites the hook file's content (unlike `appendHookFile`) — used for an

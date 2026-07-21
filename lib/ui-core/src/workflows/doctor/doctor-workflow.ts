@@ -9,6 +9,7 @@ import {
   UTF8_ENCODING,
   type ILogger,
   type IGraphStore,
+  type IGitProvider,
   type DiagnosticResult,
   DiagnosticStatus,
 } from "@workspace/contracts";
@@ -147,7 +148,7 @@ export class DoctorWorkflow {
         GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
       );
 
-      let result = await this.classifyGitHookState(hasCurrent, hasLegacy);
+      let result = await this.classifyGitHookState(git, hasCurrent, hasLegacy);
       if (fix && hasCurrent && hasLegacy) {
         result = await this.repairDuplicateGitHookIfRequested(result);
       }
@@ -163,6 +164,7 @@ export class DoctorWorkflow {
    *  case) the live resolvability probe -- split out to keep `runGitHookDiagnostic` itself under
    *  the ESLint complexity budget. */
   private async classifyGitHookState(
+    git: IGitProvider,
     hasCurrent: boolean,
     hasLegacy: boolean,
   ): Promise<DiagnosticResult> {
@@ -188,16 +190,21 @@ export class DoctorWorkflow {
     }
 
     const resolvable = await probeDocuviaResolvable(this.workspaceRoot);
-    return resolvable
-      ? {
-          status: DiagnosticStatus.PASS,
-          message: DOCTOR_MESSAGES.GIT_HOOK_RESOLVABLE,
-        }
-      : {
-          status: DiagnosticStatus.FAIL,
-          message: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE,
-          suggestion: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE_SUGGESTION,
-        };
+    if (!resolvable) {
+      return {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE,
+        suggestion: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE_SUGGESTION,
+      };
+    }
+
+    const hooksDir = await git.resolveHooksDir(this.workspaceRoot);
+    return {
+      status: DiagnosticStatus.PASS,
+      message: DOCTOR_MESSAGES.GIT_HOOK_RESOLVABLE(
+        path.join(hooksDir, GitConstants.POST_COMMIT_HOOK_NAME),
+      ),
+    };
   }
 
   /**
@@ -268,16 +275,21 @@ export class DoctorWorkflow {
         };
       } else {
         const resolvable = await probeDocuviaResolvable(this.workspaceRoot);
-        result = resolvable
-          ? {
-              status: DiagnosticStatus.PASS,
-              message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_OK,
-            }
-          : {
-              status: DiagnosticStatus.FAIL,
-              message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_NOT_RESOLVABLE,
-              suggestion: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE_SUGGESTION,
-            };
+        if (resolvable) {
+          const hooksDir = await git.resolveHooksDir(this.workspaceRoot);
+          result = {
+            status: DiagnosticStatus.PASS,
+            message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_OK(
+              path.join(hooksDir, GitConstants.PRE_PUSH_HOOK_NAME),
+            ),
+          };
+        } else {
+          result = {
+            status: DiagnosticStatus.FAIL,
+            message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_NOT_RESOLVABLE,
+            suggestion: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE_SUGGESTION,
+          };
+        }
       }
 
       diagnostics[DOCTOR_DIAGNOSTIC_KEYS.PRE_PUSH_HOOK] = result;

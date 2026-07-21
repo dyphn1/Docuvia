@@ -670,7 +670,7 @@ describe("DoctorWorkflow", () => {
       expect(result.allPassed).toBe(false);
     });
 
-    it("reports PASS when the pre-push hook includes the sync-knowledge step", async () => {
+    it("reports PASS when the pre-push hook includes the sync-knowledge step and docuvia resolves", async () => {
       const git = {
         readHookFile: vi
           .fn()
@@ -686,6 +686,7 @@ describe("DoctorWorkflow", () => {
       docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
         checkHealth: vi.fn().mockResolvedValue({}),
       }));
+      vi.mocked(probeDocuviaResolvable).mockResolvedValue(true);
 
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({ skipDb: true, skipLogs: true });
@@ -696,6 +697,33 @@ describe("DoctorWorkflow", () => {
           "Pre-push hook is installed and includes the sync-knowledge step.",
       });
       expect(result.allPassed).toBe(true);
+    });
+
+    it("reports FAIL for a healthy-shaped pre-push hook when docuvia is not resolvable (regression: dogfooding Docuvia2 on itself found a hook that silently no-oped every push)", async () => {
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockImplementation((_cwd: string, hookName: string) =>
+            Promise.resolve(
+              hookName === GitConstants.PRE_PUSH_HOOK_NAME
+                ? GitConstants.PRE_PUSH_HOOK_CONTENT
+                : undefined,
+            ),
+          ),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+      vi.mocked(probeDocuviaResolvable).mockResolvedValue(false);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["pre_push_hook"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["pre_push_hook"].message).toContain(
+        "not resolvable",
+      );
+      expect(result.allPassed).toBe(false);
     });
 
     it("is skipped entirely when skipGit is set", async () => {

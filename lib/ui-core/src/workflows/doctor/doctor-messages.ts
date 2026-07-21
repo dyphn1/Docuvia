@@ -85,6 +85,8 @@ export const DOCTOR_MESSAGES = {
   PRE_PUSH_HOOK_STALE_SUGGESTION: "re-run `docuvia init` to upgrade the hook",
   PRE_PUSH_HOOK_OK:
     "Pre-push hook is installed and includes the sync-knowledge step.",
+  PRE_PUSH_HOOK_NOT_RESOLVABLE:
+    "The pre-push hook is installed but `docuvia` is not resolvable from this workspace (the `npx --no-install` invocation would silently no-op on every push -- Tier B and sync-knowledge never actually run).",
 
   /** §10e bullet 3: Tier C CLIProxyAPI endpoint reachability pre-flight (T7). */
   LLM_NOT_CONFIGURED:

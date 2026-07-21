@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^1.0.0",
+    "@workspace/cli": "workspace:^",
     "eslint": "^10.7.0",
     "husky": "^9.1.7",
     "js-yaml": "^5.2.1",

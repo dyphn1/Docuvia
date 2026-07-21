@@ -22,6 +22,9 @@ importers:
       "@vitest/coverage-v8":
         specifier: ^1.0.0
         version: 1.6.1(vitest@1.6.1(@types/node@25.9.5))
+      "@workspace/cli":
+        specifier: workspace:^
+        version: link:artifacts/cli
       eslint:
         specifier: ^10.7.0
         version: 10.7.0

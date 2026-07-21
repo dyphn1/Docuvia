@@ -231,7 +231,12 @@ export class DoctorWorkflow {
    * diagnostic key from `runGitHookDiagnostic`'s post-commit checks. No duplicate-block case here
    * (unlike post-commit's legacy upgrade): `installPrePushHook` upgrades a stale hook via an
    * exact-content-match replace, not append, so re-running `docuvia init` is the fix -- no
-   * dedicated `--fix` repair method needed. Never throws past this method.
+   * dedicated `--fix` repair method needed. A healthy-shaped hook still gets the same
+   * `probeDocuviaResolvable` live check `runGitHookDiagnostic`'s post-commit case already runs --
+   * found missing here via dogfooding this exact hook on Docuvia2 itself (2026-07-21): a pre-push
+   * hook can be perfectly up to date and still silently no-op every push if `docuvia` itself isn't
+   * `npx --no-install`-resolvable, and content-only marker checks can't see that. Never throws
+   * past this method.
    */
   private async runPrePushHookDiagnostic(
     diagnostics: Record<string, DiagnosticResult>,
@@ -262,10 +267,17 @@ export class DoctorWorkflow {
           suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
         };
       } else {
-        result = {
-          status: DiagnosticStatus.PASS,
-          message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_OK,
-        };
+        const resolvable = await probeDocuviaResolvable(this.workspaceRoot);
+        result = resolvable
+          ? {
+              status: DiagnosticStatus.PASS,
+              message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_OK,
+            }
+          : {
+              status: DiagnosticStatus.FAIL,
+              message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_NOT_RESOLVABLE,
+              suggestion: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE_SUGGESTION,
+            };
       }
 
       diagnostics[DOCTOR_DIAGNOSTIC_KEYS.PRE_PUSH_HOOK] = result;

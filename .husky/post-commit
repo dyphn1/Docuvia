@@ -1,0 +1,7 @@
+#!/bin/bash
+# Docuvia Knowledge Graph Evolver Hook
+# Non-intrusively extracts AST deltas in the background
+if command -v npx > /dev/null 2>&1; then
+  # Fire and forget (do not block commit)
+  npx --no-install docuvia analyze > /dev/null 2>&1 &
+fi

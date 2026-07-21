@@ -1,9 +1,9 @@
 ---
-id: lib/libgit2/src/libgit2-provider.ts#anonymous@L1156
+id: lib/libgit2/src/libgit2-provider.ts#resolveHooksDir
 type: symbol
-name: anonymous
+name: resolveHooksDir
 filePath: lib/libgit2/src/libgit2-provider.ts
 ---
-# Symbol: anonymous
+# Symbol: resolveHooksDir
 
 File: `lib/libgit2/src/libgit2-provider.ts`

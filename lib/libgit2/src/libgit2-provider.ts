@@ -114,6 +114,16 @@ const KNOWLEDGE_LOCK_MAX_WAIT_MS = 10_000;
 const KNOWLEDGE_LOCK_RETRY_INTERVAL_MS = 100;
 const KNOWLEDGE_LOCK_STALE_MS = 60_000;
 
+/** Bounds `fetchRef`/`pushRef` — the only two shell-outs in this provider that touch the network
+ *  rather than the local repo — so a stalled remote (unreachable host, or a credential prompt with
+ *  no TTY to answer it) fails fast instead of hanging the calling command (and, transitively, the
+ *  pre-push hook) indefinitely. Mirrors `GitDiagnosticRunner`'s `NETWORK_CHECK_TIMEOUT_MS` pattern
+ *  (`err.killed` on timeout), sized more generously than that 5s reachability probe since a real
+ *  fetch/push transfers actual objects, not just ref names (found via dogfooding sync-knowledge on
+ *  Docuvia2 itself, 2026-07-21 — a hung push here left an orphaned knowledge-branch lock file that
+ *  had to be cleaned up by hand). */
+const GIT_NETWORK_OPERATION_TIMEOUT_MS = 30_000;
+
 /** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists —
  *  the basis of `acquireKnowledgeLock`'s exclusive-create lock. */
 const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
@@ -891,12 +901,12 @@ export class Libgit2Provider implements IGitProvider {
     try {
       await execFileAsync(GIT_BIN, [GIT_SUBCOMMAND.FETCH, remote, ref], {
         cwd,
+        timeout: GIT_NETWORK_OPERATION_TIMEOUT_MS,
       });
     } catch (err) {
-      throw DocuviaError.wrap(
-        ErrorCodes.GIT_COMMAND_FAILED,
-        GIT_PROVIDER_ERROR_MESSAGES.FETCH_FAILED,
+      throw this.wrapNetworkOperationError(
         err,
+        GIT_PROVIDER_ERROR_MESSAGES.FETCH_FAILED,
       );
     }
   }
@@ -913,15 +923,33 @@ export class Libgit2Provider implements IGitProvider {
         [GIT_SUBCOMMAND.PUSH, remote, `${branchRef}:${branchRef}`],
         {
           cwd,
+          timeout: GIT_NETWORK_OPERATION_TIMEOUT_MS,
         },
       );
     } catch (err) {
-      throw DocuviaError.wrap(
-        ErrorCodes.GIT_COMMAND_FAILED,
-        GIT_PROVIDER_ERROR_MESSAGES.PUSH_FAILED,
+      throw this.wrapNetworkOperationError(
         err,
+        GIT_PROVIDER_ERROR_MESSAGES.PUSH_FAILED,
       );
     }
+  }
+
+  /** Shared classification for `fetchRef`/`pushRef` failures: `execFileAsync`'s `timeout` option
+   *  reports a killed-on-timeout child process via `err.killed` (mirrors `GitDiagnosticRunner`'s
+   *  identical `err.killed` check) -- surfaced as `ErrorCodes.GIT_NETWORK_TIMEOUT` so callers
+   *  (`KnowledgeGitService.tryFetchRemoteBranch`/`pushQuietly`, `doctor`'s reachability
+   *  diagnostic) can tell "the network hung" apart from any other git failure. */
+  private wrapNetworkOperationError(
+    err: unknown,
+    message: string,
+  ): DocuviaError {
+    const code =
+      typeof err === TYPE_OBJECT &&
+      err !== null &&
+      (err as { killed?: boolean }).killed
+        ? ErrorCodes.GIT_NETWORK_TIMEOUT
+        : ErrorCodes.GIT_COMMAND_FAILED;
+    return DocuviaError.wrap(code, message, err);
   }
 
   public async getRefSha(

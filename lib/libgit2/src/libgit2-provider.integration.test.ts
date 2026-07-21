@@ -550,6 +550,20 @@ describe("Libgit2Provider — cross-clone reconciliation primitives (STOR-001 po
     }
   });
 
+  it("fetchRef/pushRef fail fast as GIT_COMMAND_FAILED (not GIT_NETWORK_TIMEOUT) against a remote that simply doesn't resolve — the classification must not label every failure a timeout just because a timeout option is now set", async () => {
+    const nonexistentRemotePath = path.join(
+      os.tmpdir(),
+      "docuvia-libgit2-nonexistent-remote-",
+    );
+
+    await expect(
+      provider.pushRef(tmpDir, nonexistentRemotePath, KNOWLEDGE_BRANCH),
+    ).rejects.toMatchObject({ code: "GIT_COMMAND_FAILED" });
+    await expect(
+      provider.fetchRef(tmpDir, nonexistentRemotePath, KNOWLEDGE_BRANCH),
+    ).rejects.toMatchObject({ code: "GIT_COMMAND_FAILED" });
+  });
+
   it("getRefSha returns undefined for a ref that doesn't exist", async () => {
     expect(
       await provider.getRefSha(tmpDir, "refs/heads/does-not-exist"),

@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/mcp/server.ts#anonymous@L34
+id: artifacts/cli/src/mcp/server.ts#anonymous
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/mcp/server.ts

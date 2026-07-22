@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/test/detector/semantic-diff.test.ts#anonymous@L17
+id: lib/ast-core/test/detector/semantic-diff.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/ast-core/test/detector/semantic-diff.test.ts

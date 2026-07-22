@@ -28,6 +28,16 @@ export const TIER_B_LANGUAGE_ID_BY_EXTENSION: Readonly<
   ".py": TIER_B_LANGUAGE_IDS.PYTHON,
   ".go": TIER_B_LANGUAGE_IDS.GO,
   ".rs": TIER_B_LANGUAGE_IDS.RUST,
+  ".c": TIER_B_LANGUAGE_IDS.CPP,
+  ".h": TIER_B_LANGUAGE_IDS.CPP,
+  ".cpp": TIER_B_LANGUAGE_IDS.CPP,
+  ".cxx": TIER_B_LANGUAGE_IDS.CPP,
+  ".cc": TIER_B_LANGUAGE_IDS.CPP,
+  ".hpp": TIER_B_LANGUAGE_IDS.CPP,
+  ".hxx": TIER_B_LANGUAGE_IDS.CPP,
+  ".hh": TIER_B_LANGUAGE_IDS.CPP,
+  ".cu": TIER_B_LANGUAGE_IDS.CPP,
+  ".cuh": TIER_B_LANGUAGE_IDS.CPP,
 };
 
 /** `undefined` when `file`'s extension has no registered plugin (§8e: skip with a log line, stay

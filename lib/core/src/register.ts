@@ -18,6 +18,7 @@ import { TypescriptLspEdgeProvider } from "./lsp/typescript-lsp-edge-provider.js
 import { PythonLspEdgeProvider } from "./lsp/python-lsp-edge-provider.js";
 import { GoLspEdgeProvider } from "./lsp/go-lsp-edge-provider.js";
 import { RustLspEdgeProvider } from "./lsp/rust-lsp-edge-provider.js";
+import { CppLspEdgeProvider } from "./lsp/cpp-lsp-edge-provider.js";
 
 /**
  * Self-registration side effect (see
@@ -122,4 +123,5 @@ docuviaFactory.register(TOKENS.EdgeResolutionProviders, (_f, params) => ({
   python: () => new PythonLspEdgeProvider(params?.logger),
   go: () => new GoLspEdgeProvider(params?.logger),
   rust: () => new RustLspEdgeProvider(params?.logger),
+  cpp: () => new CppLspEdgeProvider(params?.logger),
 }));

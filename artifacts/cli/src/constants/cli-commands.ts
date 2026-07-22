@@ -30,7 +30,8 @@ export const CLI_COMMAND_DESCRIPTIONS: Record<CliCommand, string> = {
   [CLI_COMMANDS.CLEAN]: "Wipe the local Docuvia SQLite database",
   [CLI_COMMANDS.STATUS]: "Show local knowledge graph row counts",
   [CLI_COMMANDS.SYNC]: "Push locally-generated decisions to the remote backend",
-  [CLI_COMMANDS.ANALYZE]: "Detect project type/tags from config files",
+  [CLI_COMMANDS.ANALYZE]:
+    "Detect project type/tags and run full AST ingestion into the knowledge graph",
   [CLI_COMMANDS.REVIEW]: "Detect changed-file blast radius and risk level",
   [CLI_COMMANDS.IMPACT]:
     "Show the blast radius/risk level for a symbol or module",

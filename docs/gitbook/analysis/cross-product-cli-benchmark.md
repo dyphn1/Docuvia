@@ -8,15 +8,16 @@
 
 When an AI agent is instructed to "run the CLI benchmark", it MUST strictly adhere to the following steps:
 
+0. **Isolation (mandatory, added after the 2026-07-13 run below caused real data loss — see §2b/§3 "Note on GitNexus"):** NEVER run another product's CLI (`gitnexus`, `graphify`, `code-review-graph`, …) directly inside this repo's primary working tree. First create a disposable git worktree — e.g. `git worktree add ../docuvia2-benchmark HEAD` — and run every non-Docuvia2 tool from inside that worktree instead. Remove it afterward with `git worktree remove ../docuvia2-benchmark`. Docuvia2's own CLI may still be run in the primary tree as usual.
 1. **Environment Preparation**:
    - `Docuvia2`: `pnpm install && pnpm run build`. Run via `npx tsx artifacts/cli/src/cli.ts <cmd>` or `node artifacts/cli/dist/cli.js <cmd>`.
-   - `GitNexus`: `npx gitnexus@latest <cmd>` or `node .gitnexus/run.cjs`.
-   - `Graphify`: `python -m venv .venv && source .venv/Scripts/activate && pip install -e .` then `graphify <cmd>`.
-   - `Code-Review-Graph`: `python -m venv .venv && source .venv/Scripts/activate && pip install -e .` then `code-review-graph <cmd>`.
+   - `GitNexus`: from the isolated worktree (see §0), `npx gitnexus@latest <cmd>` or `node .gitnexus/run.cjs`.
+   - `Graphify`: from the isolated worktree, `python -m venv .venv && source .venv/Scripts/activate && pip install -e .` then `graphify <cmd>`.
+   - `Code-Review-Graph`: from the isolated worktree, `python -m venv .venv && source .venv/Scripts/activate && pip install -e .` then `code-review-graph <cmd>`.
 2. **Measurement**: Use the `time` command in Bash (e.g., `time npx gitnexus status`) to capture real-world wall-clock latency for the user.
 3. **Data Integrity**: The agent MUST NOT hallucinate capabilities. If a tool fails to build or a command is missing, log it as `N/A` or `Failed`. **A command that runs fast but returns empty/no-op results MUST be reported as such — speed alone does not indicate a functioning feature.**
 4. **Output Format**: Overwrite the "Latest Run Results" sections below while preserving this overarching template structure.
-5. **Safety**: Prefer running indexing/query/build commands against a real target repo (this benchmark uses Docuvia2's own working tree as the common target so all four tools are measured against identical input). Avoid running `install`/`uninstall`/`init` hook-registration commands live where they are known to mutate global, cross-project config (see §2a) — verify those via `--help`/source inspection instead and label the result "not executed live."
+5. **Safety**: Prefer running indexing/query/build commands against a real target repo (this benchmark uses Docuvia2's own working tree, copied into the §0 worktree, as the common target so all four tools are measured against identical input). Avoid running `install`/`uninstall`/`init` hook-registration commands live where they are known to mutate global, cross-project config (see §2a) — verify those via `--help`/source inspection instead and label the result "not executed live."
 
 ---
 

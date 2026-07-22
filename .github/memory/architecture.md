@@ -67,5 +67,5 @@ The original milestone list here (`analyze`, `status`, `clean`, `review`, `sync`
 
 ## 🧭 Navigation
 
-- Use **GitNexus** (`impact`, `query`, `context`) to locate modules, trace execution flows, and assess blast radius before editing.
-- GitNexus's own index needs to be rebuilt against Docuvia2's actual code (`node .gitnexus/run.cjs analyze`, or `npx gitnexus analyze` if not yet set up) — it is NOT inherited from old Docuvia's index. A stale, inherited index would describe an entirely different codebase (with the API server, VS Code client, and frontend that don't exist here).
+- Docuvia2 is now self-hosted: use **Docuvia2's own CLI** (`docuvia impact <target>`, `docuvia query`, `docuvia analyze`) against its own repo to locate modules, trace execution flows, and assess blast radius before editing — not GitNexus or another sibling product. GitNexus's integration (`CLAUDE.md`/`AGENTS.md` sections, `.claude/skills/gitnexus/`) was removed 2026-07-22 once Docuvia's own analyze/impact pipeline worked end-to-end on its own codebase.
+- Before trusting `impact`/`query` output, confirm the local graph is actually populated (`docuvia status` → `L2 Nodes` > 0) — an earlier benchmark run found the AST worker pipeline crash-looping and producing an empty graph; re-verify this isn't still the case rather than assuming it works.

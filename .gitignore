@@ -38,6 +38,11 @@ docs/ai_plans/
 .docuvia/
 graphify-out/
 
+# Sibling/competitor product indexes (only appear if their CLI is run
+# directly against this tree — should normally be run from a git worktree instead)
+.gitnexus/
+.code-review-graph/
+
 # Compiled TypeScript js files in source folders
 lib/core/src/**/*.js
 lib/schema/src/**/*.js

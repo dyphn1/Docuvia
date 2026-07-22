@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/commands/sync.ts#anonymous@L74
+id: artifacts/cli/src/commands/sync.ts#anonymous@L23
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/commands/sync.ts

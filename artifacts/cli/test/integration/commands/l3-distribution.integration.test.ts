@@ -199,8 +199,16 @@ describe("L3 distribution: two-diverged-branches merge (Tree-Adoption) survives 
     expect((await devA.runCli(["snapshot"], { reject: false })).exitCode).toBe(
       0,
     );
-    // Publish A's knowledge branch first -- the remote's only copy so far.
-    await devA.runGit(["push", "origin", "docuvia-knowledge"]);
+    // Publish A's knowledge branch first -- the remote's only copy so far. Push HEAD (the
+    // source branch), not `docuvia-knowledge` directly: `init` above installed a real pre-push
+    // hook (PRE_PUSH_HOOK_CONTENT) that fires `analyze && snapshot && sync-knowledge` on *any*
+    // push from this sandbox, and that hook's own `sync-knowledge` step races to push
+    // `docuvia-knowledge` to the same remote as a side effect. Pushing `docuvia-knowledge`
+    // directly makes the outer push and the hook's inner push both try to create the same new
+    // ref, and one loses with "remote rejected ... (reference already exists)". Pushing HEAD
+    // still triggers the hook (which publishes `docuvia-knowledge` for us, exactly like a real
+    // `git push` of a feature branch would) without a second, conflicting push of that same ref.
+    await devA.runGit(["push", "origin", "HEAD"]);
 
     // Developer B: a *separate* workspace that never fetched A's knowledge branch before its
     // own `init` -- genuinely independent root commits on `docuvia-knowledge`, the real

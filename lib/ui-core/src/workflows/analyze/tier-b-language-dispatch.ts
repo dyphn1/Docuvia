@@ -39,6 +39,7 @@ export const TIER_B_LANGUAGE_ID_BY_EXTENSION: Readonly<
   ".cu": TIER_B_LANGUAGE_IDS.CPP,
   ".cuh": TIER_B_LANGUAGE_IDS.CPP,
   ".java": TIER_B_LANGUAGE_IDS.JAVA,
+  ".cs": TIER_B_LANGUAGE_IDS.CSHARP,
 };
 
 /** `undefined` when `file`'s extension has no registered plugin (§8e: skip with a log line, stay

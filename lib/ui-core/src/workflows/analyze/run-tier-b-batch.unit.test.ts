@@ -138,12 +138,12 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
     const workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierb-test-"),
     );
-    fs.writeFileSync(path.join(workspaceRoot, "present.rs"), "fn main() {}\n");
+    fs.writeFileSync(path.join(workspaceRoot, "present.swift"), "import Foundation\n");
 
     const { store } = makeStore();
     appendTierBQueueEntries(store, [
       { file: "deleted.ts", commitSha: HEAD_SHA },
-      { file: "present.rs", commitSha: HEAD_SHA },
+      { file: "present.swift", commitSha: HEAD_SHA },
     ]);
 
     const providerFactory = vi.fn();
@@ -450,7 +450,7 @@ describe("runTierBBatch() -- multi-language registry dispatch (multi-language-ls
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
-  it("honestly skips an extension with no dispatch entry at all (e.g. Rust, still unshipped)", async () => {
+  it("honestly skips an extension with no dispatch entry at all (e.g. Swift, still unshipped)", async () => {
     const fs = await import("node:fs");
     const os = await import("node:os");
     const path = await import("node:path");
@@ -461,12 +461,12 @@ describe("runTierBBatch() -- multi-language registry dispatch (multi-language-ls
       path.join(workspaceRoot, "a.ts"),
       "export function foo() {}\n",
     );
-    fs.writeFileSync(path.join(workspaceRoot, "b.rs"), "fn main() {}\n");
+    fs.writeFileSync(path.join(workspaceRoot, "b.swift"), "import Foundation\n");
 
     const { store } = makeStore();
     appendTierBQueueEntries(store, [
       { file: "a.ts", commitSha: HEAD_SHA },
-      { file: "b.rs", commitSha: HEAD_SHA },
+      { file: "b.swift", commitSha: HEAD_SHA },
     ]);
 
     const tsResolveEdges = vi.fn().mockResolvedValue({

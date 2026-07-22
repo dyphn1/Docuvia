@@ -19,7 +19,7 @@ describe("dispatchTierBLanguage() (§8e, D4)", () => {
     expect(dispatchTierBLanguage(file)).toBe(expected);
   });
 
-  it.each(["src/a.go", "src/a.rs", "src/a.md", "src/a"])(
+  it.each(["src/a.swift", "src/a.kt", "src/a.md", "src/a"])(
     "has no plugin for %s -- undefined, stays AST-level",
     (file) => {
       expect(dispatchTierBLanguage(file)).toBeUndefined();
@@ -33,7 +33,7 @@ describe("partitionQueueByLanguage()", () => {
       { file: "src/a.ts", commitSha: "sha1" },
       { file: "src/b.py", commitSha: "sha2" },
       { file: "src/c.tsx", commitSha: "sha3" },
-      { file: "src/d.go", commitSha: "sha4" },
+      { file: "src/d.swift", commitSha: "sha4" },
     ];
 
     const { buckets, unsupported } = partitionQueueByLanguage(entries);
@@ -45,7 +45,7 @@ describe("partitionQueueByLanguage()", () => {
       ],
       python: [{ file: "src/b.py", commitSha: "sha2" }],
     });
-    expect(unsupported).toEqual([{ file: "src/d.go", commitSha: "sha4" }]);
+    expect(unsupported).toEqual([{ file: "src/d.swift", commitSha: "sha4" }]);
   });
 
   it("returns empty buckets/unsupported for an empty queue", () => {

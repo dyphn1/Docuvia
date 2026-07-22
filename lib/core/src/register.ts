@@ -22,6 +22,7 @@ import { CppLspEdgeProvider } from "./lsp/cpp-lsp-edge-provider.js";
 import { JavaLspEdgeProvider } from "./lsp/java-lsp-edge-provider.js";
 import { CsharpLspEdgeProvider } from "./lsp/csharp-lsp-edge-provider.js";
 import { PhpLspEdgeProvider } from "./lsp/php-lsp-edge-provider.js";
+import { RubyLspEdgeProvider } from "./lsp/ruby-lsp-edge-provider.js";
 
 /**
  * Self-registration side effect (see
@@ -130,4 +131,5 @@ docuviaFactory.register(TOKENS.EdgeResolutionProviders, (_f, params) => ({
   java: () => new JavaLspEdgeProvider(params?.logger),
   csharp: () => new CsharpLspEdgeProvider(params?.logger),
   php: () => new PhpLspEdgeProvider(params?.logger),
+  ruby: () => new RubyLspEdgeProvider(params?.logger),
 }));

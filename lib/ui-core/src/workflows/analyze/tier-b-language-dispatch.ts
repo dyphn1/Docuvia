@@ -46,6 +46,9 @@ export const TIER_B_LANGUAGE_ID_BY_EXTENSION: Readonly<
   ".php4": TIER_B_LANGUAGE_IDS.PHP,
   ".php5": TIER_B_LANGUAGE_IDS.PHP,
   ".phps": TIER_B_LANGUAGE_IDS.PHP,
+  ".rb": TIER_B_LANGUAGE_IDS.RUBY,
+  ".rake": TIER_B_LANGUAGE_IDS.RUBY,
+  ".gemspec": TIER_B_LANGUAGE_IDS.RUBY,
 };
 
 /** `undefined` when `file`'s extension has no registered plugin (§8e: skip with a log line, stay

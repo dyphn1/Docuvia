@@ -35,6 +35,14 @@ export async function syncKnowledgeCommand(cwd: string = process.cwd()) {
 
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  const timeoutRaw = process.env.DOCUVIA_PUSH_TIMEOUT_MS;
+  if (timeoutRaw) {
+    docuviaMemory.set(
+      scopeId,
+      MemoryKeys.GIT_NETWORK_TIMEOUT_MS,
+      Number(timeoutRaw),
+    );
+  }
 
   try {
     const result = await docuviaApi.syncKnowledge(scopeId, logger);

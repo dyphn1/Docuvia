@@ -142,10 +142,20 @@ export interface IGitProvider {
     commitMessage: string,
   ): Promise<void>;
 
-  /** `git fetch <remote> <ref>` — updates `refs/remotes/<remote>/<ref>` from the remote. Used for cross-clone reconciliation (STOR-001 point 3). Throws on network/remote failure — callers decide whether that's fatal. */
-  fetchRef(cwd: string, remote: string, ref: string): Promise<void>;
-  /** `git push <remote> refs/heads/<branchName>:refs/heads/<branchName>` — an explicit refspec, since the knowledge branch is normally never checked out. */
-  pushRef(cwd: string, remote: string, branchName: string): Promise<void>;
+  /** `git fetch <remote> <ref>` — updates `refs/remotes/<remote>/<ref>` from the remote. Used for cross-clone reconciliation (STOR-001 point 3). Throws on network/remote failure — callers decide whether that's fatal. `timeoutMs` bounds the shell-out (`undefined` — the default — waits for the transfer to finish, however long that takes; config-tunable, see `GitLocalProvider`'s doc comment on why the old hardcoded bound was removed). */
+  fetchRef(
+    cwd: string,
+    remote: string,
+    ref: string,
+    timeoutMs?: number,
+  ): Promise<void>;
+  /** `git push <remote> refs/heads/<branchName>:refs/heads/<branchName>` — an explicit refspec, since the knowledge branch is normally never checked out. `timeoutMs` bounds the shell-out (`undefined` — the default — waits for the push to finish, however long that takes; config-tunable, see `GitLocalProvider`'s doc comment). */
+  pushRef(
+    cwd: string,
+    remote: string,
+    branchName: string,
+    timeoutMs?: number,
+  ): Promise<void>;
   /** Full 40-char sha `ref` resolves to (`git rev-parse --verify --quiet <ref>`), or `undefined` if it doesn't exist. Unlike `getBranchTipSha`, `ref` may be any ref form (e.g. `refs/remotes/origin/docuvia-knowledge`), not just `refs/heads/<name>`. */
   getRefSha(cwd: string, ref: string): Promise<string | undefined>;
   /** `true` if `ancestorSha` is an ancestor of (or equal to) `descendantSha` (`git merge-base --is-ancestor`) — used to detect a plain fast-forward before falling back to a full merge. */

@@ -128,15 +128,17 @@ const KNOWLEDGE_LOCK_MAX_WAIT_MS = 10_000;
 const KNOWLEDGE_LOCK_RETRY_INTERVAL_MS = 100;
 const KNOWLEDGE_LOCK_STALE_MS = 60_000;
 
-/** Bounds `fetchRef`/`pushRef` — the only two shell-outs in this provider that touch the network
- *  rather than the local repo — so a stalled remote (unreachable host, or a credential prompt with
- *  no TTY to answer it) fails fast instead of hanging the calling command (and, transitively, the
- *  pre-push hook) indefinitely. Mirrors `GitDiagnosticRunner`'s `NETWORK_CHECK_TIMEOUT_MS` pattern
- *  (`err.killed` on timeout), sized more generously than that 5s reachability probe since a real
- *  fetch/push transfers actual objects, not just ref names (found via dogfooding sync-knowledge on
- *  Docuvia2 itself, 2026-07-21 — a hung push here left an orphaned knowledge-branch lock file that
- *  had to be cleaned up by hand). */
-const GIT_NETWORK_OPERATION_TIMEOUT_MS = 30_000;
+/** `fetchRef`/`pushRef` — the only two shell-outs in this provider that touch the network rather
+ *  than the local repo — used to hardcode a 30s bound here (mirroring `GitDiagnosticRunner`'s
+ *  `NETWORK_CHECK_TIMEOUT_MS` `err.killed`-on-timeout pattern) so a stalled remote failed fast
+ *  instead of hanging the calling command indefinitely. Dropped 2026-07-23: real-world
+ *  `sync-knowledge` pushes on Docuvia2 itself routinely exceed 60s (a real transfer of actual
+ *  objects, not just ref names), so a fixed bound was cutting off healthy pushes, not just hung
+ *  ones. `fetchRef`/`pushRef` now take an explicit optional `timeoutMs` (undefined = no `timeout`
+ *  option passed to `execFileAsync` at all, i.e. wait for the transfer to finish, however long
+ *  that takes); the caller (`KnowledgeGitService`, config-tunable via `docuviaMemory` /
+ *  `DOCUVIA_PUSH_TIMEOUT_MS` — see `docuvia-api.ts`'s `syncKnowledge()`) opts back into a bound if
+ *  it wants one. */
 
 /** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists —
  *  the basis of `acquireKnowledgeLock`'s exclusive-create lock. */
@@ -931,11 +933,12 @@ export class GitLocalProvider implements IGitProvider {
     cwd: string,
     remote: string,
     ref: string,
+    timeoutMs?: number,
   ): Promise<void> {
     try {
       await execFileAsync(GIT_BIN, [GIT_SUBCOMMAND.FETCH, remote, ref], {
         cwd,
-        timeout: GIT_NETWORK_OPERATION_TIMEOUT_MS,
+        ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
       });
     } catch (err) {
       throw this.wrapNetworkOperationError(
@@ -949,6 +952,7 @@ export class GitLocalProvider implements IGitProvider {
     cwd: string,
     remote: string,
     branchName: string,
+    timeoutMs?: number,
   ): Promise<void> {
     try {
       const branchRef = `${GIT_BRANCH_REF_PREFIX}${branchName}`;
@@ -957,7 +961,7 @@ export class GitLocalProvider implements IGitProvider {
         [GIT_SUBCOMMAND.PUSH, remote, `${branchRef}:${branchRef}`],
         {
           cwd,
-          timeout: GIT_NETWORK_OPERATION_TIMEOUT_MS,
+          ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),
         },
       );
     } catch (err) {

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import process from "process";
-import { docuviaMemory } from "@workspace/contracts";
+import { docuviaMemory, MemoryKeys } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { syncKnowledgeCommand } from "../../../src/commands/sync-knowledge.js";
 
@@ -102,6 +102,32 @@ describe("syncKnowledgeCommand", () => {
 
     expect(spinnerSucceed).toHaveBeenCalled();
     expect(spinnerFail).not.toHaveBeenCalled();
+  });
+
+  it("reads DOCUVIA_PUSH_TIMEOUT_MS into docuviaMemory so syncKnowledge can thread it down to the git push/fetch bound; leaves it unset (no timeout) when the env var isn't set", async () => {
+    let capturedWithEnvSet: number | undefined;
+    mockSyncKnowledge.mockImplementationOnce(async (scopeId: string) => {
+      capturedWithEnvSet = docuviaMemory.get<number>(
+        scopeId,
+        MemoryKeys.GIT_NETWORK_TIMEOUT_MS,
+      );
+      return { status: "no-remote" };
+    });
+    process.env.DOCUVIA_PUSH_TIMEOUT_MS = "120000";
+    await syncKnowledgeCommand();
+    delete process.env.DOCUVIA_PUSH_TIMEOUT_MS;
+    expect(capturedWithEnvSet).toBe(120000);
+
+    let capturedWithoutEnv: number | undefined;
+    mockSyncKnowledge.mockImplementationOnce(async (scopeId: string) => {
+      capturedWithoutEnv = docuviaMemory.get<number>(
+        scopeId,
+        MemoryKeys.GIT_NETWORK_TIMEOUT_MS,
+      );
+      return { status: "no-remote" };
+    });
+    await syncKnowledgeCommand();
+    expect(capturedWithoutEnv).toBeUndefined();
   });
 
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.syncKnowledge() throws", async () => {

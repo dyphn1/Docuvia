@@ -55,6 +55,12 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   constructor(
     private readonly git: IGitProvider,
     private readonly logger: ILogger = createNoopLogger(),
+    /** Config-tunable override for `fetchRef`/`pushRef`'s network timeout (`DOCUVIA_PUSH_TIMEOUT_MS`,
+     *  threaded down from `docuvia-api.ts`'s `syncKnowledge()` via `docuviaMemory`).
+     *  `undefined` — the default — passes no bound at all, so a slow-but-healthy transfer runs to
+     *  completion instead of being killed by an arbitrary cutoff (see `GitLocalProvider`'s doc
+     *  comment on why the old hardcoded 30s bound was removed). */
+    private readonly gitNetworkTimeoutMs: number | undefined = undefined,
   ) {}
 
   /**
@@ -498,7 +504,12 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     remote: string,
   ): Promise<boolean> {
     try {
-      await this.git.fetchRef(cwd, remote, branchName);
+      await this.git.fetchRef(
+        cwd,
+        remote,
+        branchName,
+        this.gitNetworkTimeoutMs,
+      );
       return true;
     } catch (err) {
       if (this.isRemoteRefMissingError(err)) {
@@ -675,7 +686,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     branchName: string,
   ): Promise<void> {
     try {
-      await this.git.pushRef(cwd, remote, branchName);
+      await this.git.pushRef(cwd, remote, branchName, this.gitNetworkTimeoutMs);
     } catch (err) {
       this.logger.warn(GitMessages.FAILED_TO_PUSH_WILL_RETRY, {
         branchName,

@@ -165,6 +165,34 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
+  it("threads the constructor's gitNetworkTimeoutMs through to TOKENS.KnowledgeGitService's resolve() params", async () => {
+    let capturedParams: { gitNetworkTimeoutMs?: number } | undefined;
+    docuviaFactory.register(TOKENS.KnowledgeGitService, (_f, params) => {
+      capturedParams = params;
+      return {
+        ensureKnowledgeBranch: vi.fn(),
+        installPostCommitHook: vi.fn(),
+        installPrePushHook: vi.fn(),
+        removePostCommitHook: vi.fn(),
+        removePrePushHook: vi.fn(),
+        repairDuplicatePostCommitHook: vi.fn(),
+        packSnapshotToKnowledgeBranch: vi.fn(),
+        resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+        runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+        syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
+      };
+    });
+    docuviaFactory.lock();
+
+    await new SyncKnowledgeWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+      5000,
+    ).execute();
+
+    expect(capturedParams?.gitNetworkTimeoutMs).toBe(5000);
+  });
+
   it("skips the L3-import step (no GitProvider/GraphStoreOpener resolve) when syncKnowledgeBranch resolves no branchTipSha (no-remote)", async () => {
     const knowledgeGit: IKnowledgeGitService = {
       ensureKnowledgeBranch: vi.fn(),

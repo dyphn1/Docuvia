@@ -49,6 +49,13 @@ export function createToken<T, P = void>(description: string): Token<T, P> {
 
 type LoggerParams = { logger?: ILogger };
 
+/** `KnowledgeGitService`'s params: the shared `logger` plus §"sync-knowledge push timeout"'s
+ *  config-tunable override for `fetchRef`/`pushRef`'s network bound (`undefined` — the default —
+ *  means "no timeout, wait for the transfer to finish"). */
+type KnowledgeGitServiceParams = LoggerParams & {
+  gitNetworkTimeoutMs?: number;
+};
+
 /**
  * Every registration token in the workspace. This is the single declaration point pairing a
  * token with its interface (and, where relevant, its per-call params shape) — the "register it
@@ -57,9 +64,10 @@ type LoggerParams = { logger?: ILogger };
  */
 export const TOKENS = {
   GitProvider: createToken<IGitProvider>("IGitProvider"),
-  KnowledgeGitService: createToken<IKnowledgeGitService, LoggerParams>(
-    "IKnowledgeGitService",
-  ),
+  KnowledgeGitService: createToken<
+    IKnowledgeGitService,
+    KnowledgeGitServiceParams
+  >("IKnowledgeGitService"),
   FileDiscovery: createToken<IFileDiscovery, LoggerParams>("IFileDiscovery"),
   ConfigScanner: createToken<IConfigScanner, LoggerParams>("IConfigScanner"),
   VcsScanner: createToken<IVcsScanner, LoggerParams>("IVcsScanner"),

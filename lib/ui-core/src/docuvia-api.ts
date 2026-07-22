@@ -273,7 +273,15 @@ export const docuviaApi = {
       scopeId,
       MemoryKeys.WORKSPACE_ROOT,
     );
-    return new SyncKnowledgeWorkflow(workspaceRoot, logger).execute();
+    const gitNetworkTimeoutMs = docuviaMemory.get<number>(
+      scopeId,
+      MemoryKeys.GIT_NETWORK_TIMEOUT_MS,
+    );
+    return new SyncKnowledgeWorkflow(
+      workspaceRoot,
+      logger,
+      gitNetworkTimeoutMs,
+    ).execute();
   },
 
   async doctor(

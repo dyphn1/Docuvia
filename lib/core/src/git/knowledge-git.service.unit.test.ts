@@ -847,6 +847,7 @@ describe("KnowledgeGitService.syncKnowledgeBranch()", () => {
       "/workspace",
       "origin",
       GitConstants.KNOWLEDGE_ROOT,
+      undefined,
     );
   });
 
@@ -904,6 +905,31 @@ describe("KnowledgeGitService.syncKnowledgeBranch()", () => {
       "/workspace",
       "origin",
       GitConstants.KNOWLEDGE_ROOT,
+      undefined,
+    );
+  });
+
+  it("threads the configured gitNetworkTimeoutMs override down into both fetchRef and pushRef (DOCUVIA_PUSH_TIMEOUT_MS — default is no timeout, but a caller can opt back in)", async () => {
+    const git = makeMockGitProvider({
+      getRemoteUrl: vi.fn().mockResolvedValue("https://example.com/repo.git"),
+      getBranchTipSha: vi.fn().mockResolvedValue("local-sha"),
+      getRefSha: vi.fn().mockResolvedValue(undefined),
+    });
+    const service = new KnowledgeGitService(git, undefined, 5000);
+
+    await service.syncKnowledgeBranch("/workspace");
+
+    expect(git.fetchRef).toHaveBeenCalledWith(
+      "/workspace",
+      "origin",
+      GitConstants.KNOWLEDGE_ROOT,
+      5000,
+    );
+    expect(git.pushRef).toHaveBeenCalledWith(
+      "/workspace",
+      "origin",
+      GitConstants.KNOWLEDGE_ROOT,
+      5000,
     );
   });
 
@@ -961,6 +987,7 @@ describe("KnowledgeGitService.syncKnowledgeBranch()", () => {
       "/workspace",
       "origin",
       GitConstants.KNOWLEDGE_ROOT,
+      undefined,
     );
     expect(git.createMergeCommit).not.toHaveBeenCalled();
   });
@@ -1024,6 +1051,7 @@ describe("KnowledgeGitService.syncKnowledgeBranch()", () => {
       "/workspace",
       "origin",
       GitConstants.KNOWLEDGE_ROOT,
+      undefined,
     );
   });
 

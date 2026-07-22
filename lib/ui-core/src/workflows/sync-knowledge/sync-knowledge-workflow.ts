@@ -36,10 +36,15 @@ export class SyncKnowledgeWorkflow {
   constructor(
     private readonly workspaceRoot: string,
     private readonly logger: ILogger,
+    /** `DOCUVIA_PUSH_TIMEOUT_MS` override, read from `docuviaMemory` by `docuvia-api.ts`'s
+     *  `syncKnowledge()` (Presentation layer already did the `process.env` translation) — passed
+     *  through to `KnowledgeGitService` so `fetchRef`/`pushRef` wait for the transfer to finish by
+     *  default instead of a hardcoded bound. */
+    private readonly gitNetworkTimeoutMs?: number,
   ) {}
 
   public async execute(): Promise<KnowledgeBranchSyncResult> {
-    const { workspaceRoot, logger } = this;
+    const { workspaceRoot, logger, gitNetworkTimeoutMs } = this;
 
     logger.info(SYNC_KNOWLEDGE_MESSAGES.SYNCING);
     await appendSyncKnowledgeLogLine(workspaceRoot, {
@@ -49,6 +54,7 @@ export class SyncKnowledgeWorkflow {
 
     const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
       logger,
+      gitNetworkTimeoutMs,
     });
     const result = await knowledgeGit.syncKnowledgeBranch(workspaceRoot);
 

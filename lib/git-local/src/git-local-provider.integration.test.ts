@@ -593,6 +593,27 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
     }
   });
 
+  it("pushRef honors an explicit timeoutMs override (config-tunable — defaults to no timeout, but a caller can still opt back into one)", async () => {
+    const sourceDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-git-local-timeout-src-"),
+    );
+    try {
+      fs.writeFileSync(path.join(sourceDir, "a.md"), "hi\n");
+      await provider.packDirectoryToBranch(
+        tmpDir,
+        sourceDir,
+        KNOWLEDGE_BRANCH,
+        "Snapshot [aaa]",
+      );
+
+      await expect(
+        provider.pushRef(tmpDir, "origin", KNOWLEDGE_BRANCH, 1),
+      ).rejects.toMatchObject({ code: "GIT_NETWORK_TIMEOUT" });
+    } finally {
+      fs.rmSync(sourceDir, { recursive: true, force: true });
+    }
+  });
+
   it("fetchRef/pushRef fail fast as GIT_COMMAND_FAILED (not GIT_NETWORK_TIMEOUT) against a remote that simply doesn't resolve — the classification must not label every failure a timeout just because a timeout option is now set", async () => {
     const nonexistentRemotePath = path.join(
       os.tmpdir(),

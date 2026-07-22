@@ -38,6 +38,12 @@ export const MemoryKeys = {
   TIER_C_ITEM_CAP: "tierCItemCap",
   /** §9f Tier C system-load-check threshold override (`loadavg[0] / cpus > threshold`). */
   TIER_C_LOAD_THRESHOLD: "tierCLoadThreshold",
+  /** `sync-knowledge`'s git fetch/push network timeout override, in milliseconds
+   *  (`DOCUVIA_PUSH_TIMEOUT_MS`). `undefined` (unset) is the default and means "no timeout — wait
+   *  for the transfer to finish, however long that takes" (found via dogfooding: a real
+   *  `sync-knowledge` push on Docuvia2 routinely exceeds 60s, so a fixed bound cut off healthy
+   *  pushes, not just hung ones). */
+  GIT_NETWORK_TIMEOUT_MS: "gitNetworkTimeoutMs",
 } as const;
 
 export type MemoryKey = (typeof MemoryKeys)[keyof typeof MemoryKeys];

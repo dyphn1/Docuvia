@@ -35,7 +35,11 @@ import { PythonLspEdgeProvider } from "./lsp/python-lsp-edge-provider.js";
 docuviaFactory.register(
   TOKENS.KnowledgeGitService,
   (f, params) =>
-    new KnowledgeGitService(f.resolve(TOKENS.GitProvider), params?.logger),
+    new KnowledgeGitService(
+      f.resolve(TOKENS.GitProvider),
+      params?.logger,
+      params?.gitNetworkTimeoutMs,
+    ),
 );
 
 docuviaFactory.register(

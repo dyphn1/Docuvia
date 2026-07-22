@@ -4,7 +4,7 @@
  * for their `docuviaFactory` self-registration side effect — it never instantiates them
  * directly. Import this module once, before calling anything on `docuviaApi`.
  */
-import "@workspace/libgit2";
+import "@workspace/git-local";
 import "@workspace/schema";
 import "@workspace/core";
 import "@workspace/remote-api";

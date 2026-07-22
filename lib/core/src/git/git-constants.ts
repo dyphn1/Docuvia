@@ -55,7 +55,7 @@ export const GitConstants = {
     `  npx --no-install docuvia snapshot > /dev/null 2>&1 &\n` +
     `fi\n`,
   LOCAL_REMOTE_URL_SCHEME: "file://",
-  /** Git's conventional name for the default/primary remote — shared with `lib/libgit2` via
+  /** Git's conventional name for the default/primary remote — shared with `lib/git-local` via
    *  `@workspace/contracts`'s `GIT_DEFAULT_REMOTE_NAME` per the Virtual Contracts rule that
    *  values needed by both a Domain Core and a Tech Provider package live in contracts. */
   DEFAULT_REMOTE_NAME: GIT_DEFAULT_REMOTE_NAME,

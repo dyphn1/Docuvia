@@ -35,7 +35,7 @@ flowchart TD
     end
 
     subgraph Tech ["5. Technology Providers (Wrappers)"]
-        LIBGIT2("lib/libgit2<br/>(Raw Git Ops)")
+        GIT_LOCAL("lib/git-local<br/>(Raw Git Ops)")
         SCHEMA("lib/schema<br/>(SQLite/ORM)")
         ASTCORE("lib/ast-core<br/>(Tree-Sitter)")
     end
@@ -64,14 +64,14 @@ flowchart TD
     class UICORE orch;
     class FACTORY,INTERFACES,MEMORY contract;
     class CORE_GIT,CORE_AST domain;
-    class LIBGIT2,SCHEMA,ASTCORE tech;
+    class GIT_LOCAL,SCHEMA,ASTCORE tech;
 ```
 
 ---
 
 ## 2. Roles & Folder Mapping
 
-The system is strictly divided into functional roles. Note the crucial distinction between the Domain Core (`lib/core`) and Technology Providers (e.g., `lib/libgit2`):
+The system is strictly divided into functional roles. Note the crucial distinction between the Domain Core (`lib/core`) and Technology Providers (e.g., `lib/git-local`):
 
 ### 🟨 The Virtual Layer (`lib/contracts`)
 
@@ -81,17 +81,17 @@ The system is strictly divided into functional roles. Note the crucial distincti
   - `docuviaFactory`: The only globally permitted registration factory. Matches interfaces to concrete implementations.
   - `docuviaMemory`: A global static object used _exclusively_ to hold essential, process-lifetime state (e.g., current workspace paths or contextual locks). It is **not** a dump for runtime memory.
 
-### 🟩 The Technology Providers (`lib/schema`, `lib/ast-core`, `lib/libgit2`)
+### 🟩 The Technology Providers (`lib/schema`, `lib/ast-core`, `lib/git-local`)
 
 - **Role**: The raw capability wrappers. They interact directly with third-party technologies or file systems.
-- **Rule**: If we decide to swap `libgit2` for `isomorphic-git`, or `SQLite` for `MySQL`, these are the _only_ folders that change.
+- **Rule**: If we decide to swap `git-local` for `isomorphic-git`, or `SQLite` for `MySQL`, these are the _only_ folders that change.
 - **Mandatory Mapping**: They must strictly conform to `lib/contracts`. If `lib/schema` queries a database, it must map the raw SQL row into a pure `lib/contracts` interface before returning it. The underlying schema must never leak.
 
 ### 🟦 The Domain Core Layer (`lib/core`)
 
 - **Role**: Provides project-specific domain capabilities. **It is not on the same level as the Technology Providers.**
-- **Distinction**: For example, `lib/libgit2` simply provides raw Git operations (commit, checkout). However, `lib/core/git` provides the complex logic required specifically by Docuvia (e.g., calculating blast radius, generating knowledge branches).
-- If `libgit2` is replaced in the future, `lib/core/git` remains completely untouched because it solely relies on the generic Git interfaces defined in `lib/contracts`.
+- **Distinction**: For example, `lib/git-local` simply provides raw Git operations (commit, checkout). However, `lib/core/git` provides the complex logic required specifically by Docuvia (e.g., calculating blast radius, generating knowledge branches).
+- If `git-local` is replaced in the future, `lib/core/git` remains completely untouched because it solely relies on the generic Git interfaces defined in `lib/contracts`.
 
 ### 🟪 The Orchestration Layer (`lib/ui-core`)
 

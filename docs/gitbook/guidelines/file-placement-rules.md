@@ -16,7 +16,7 @@ Ask yourself these questions when creating a new file:
 
 ### Q2: Am I wrapping a third-party technology? (e.g., a new database, a new git tool)
 
-- **Yes** ➔ `lib/<tech-name>/src/...` (e.g., `lib/schema`, `lib/libgit2`)
+- **Yes** ➔ `lib/<tech-name>/src/...` (e.g., `lib/schema`, `lib/git-local`)
 - **Rule**: This is a **Technology Provider**. It must self-register to `docuviaFactory`. It must not contain business logic like "How to calculate a blast radius." It only knows "How to run a SQL query" or "How to run `git diff`."
 
 ### Q3: Am I writing Docuvia's core business logic? (e.g., calculating blast radius, semantic diffing)

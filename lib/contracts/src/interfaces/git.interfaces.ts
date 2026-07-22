@@ -1,5 +1,5 @@
 /**
- * Raw Git technology surface — implemented by `lib/libgit2`. Contains no Docuvia-specific
+ * Raw Git technology surface — implemented by `lib/git-local`. Contains no Docuvia-specific
  * semantics (no "knowledge branch", no "post-commit hook" concept); see
  * `knowledge-git.interfaces.ts` for the Domain Core layer built on top of this.
  */

@@ -5,7 +5,7 @@
 
 ## 🏛️ Core Architectural Mandates
 
-1. **Virtual Contracts (`lib/contracts`)**: All implementations must map to interfaces defined here. Cross-importing between implementation libraries (`lib/schema`, `lib/ast-core`, `lib/libgit2`) is strictly forbidden.
+1. **Virtual Contracts (`lib/contracts`)**: All implementations must map to interfaces defined here. Cross-importing between implementation libraries (`lib/schema`, `lib/ast-core`, `lib/git-local`) is strictly forbidden.
 2. **Lifecycle & State**: Implementations do not manage their own lifecycles. They self-register to `docuviaFactory`, are instantiated transiently by the Orchestration layer (`lib/ui-core`), and rely on `docuviaMemory` with UUID scoping for configuration. Do not read `process.env` in implementation libraries.
 3. **Error Handling**: Do not swallow errors with empty `catch` blocks or use `console.error`. All errors must be wrapped in `DocuviaError` with a specific Error Code and thrown upwards. Only the Presentation layer (`artifacts/cli`, `mcp`) is allowed to log final unrecoverable errors.
 4. **Logging**: Do not use `console.log` or `console.error` (to prevent MCP stdout corruption). Use the event-driven `logger` injected by the Orchestrator. Tech Providers (like DB or Git wrappers) are "Silent Workers" and do not receive the logger at all.

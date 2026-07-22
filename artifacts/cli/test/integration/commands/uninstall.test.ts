@@ -55,7 +55,7 @@ describe("Command: docuvia uninstall", () => {
   }, 25000);
 
   /**
-   * Real end-to-end (real `IGitProvider`/`Libgit2Provider`, real filesystem -- no mocks) coverage
+   * Real end-to-end (real `IGitProvider`/`GitLocalProvider`, real filesystem -- no mocks) coverage
    * for the plan's §3 "Gating tests" requirement for T1 (phase1-decision-integration.md §10a,
    * `implement_slice5-doctor-reliability.md` §3): `uninstall` after a real `init` leaves zero
    * Docuvia content in both the post-commit and pre-push hook files it installed.

@@ -21,7 +21,7 @@ export default defineConfig({
   minify: true,
   sourcemap: true,
   outDir: "dist",
-  // Several @workspace/* libs (contracts, core, libgit2, remote-api, schema, ui-core) declare
+  // Several @workspace/* libs (contracts, core, git-local, remote-api, schema, ui-core) declare
   // "main": "./src/index.ts" with emitDeclarationOnly and ship no compiled .js — they're only
   // ever meant to be consumed by a bundler. tsup externalizes node_modules deps by default,
   // which leaves those raw .ts imports in dist/cli.js for plain `node` to choke on at runtime.

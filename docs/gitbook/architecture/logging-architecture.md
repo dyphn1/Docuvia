@@ -32,7 +32,7 @@ sequenceDiagram
     Orch->>Domain: execute(logger)
     Domain->>Contract: logger.debug('Calculated blast radius', { files })
 
-    Note over Domain: 🚫 Tech Providers (lib/schema, lib/libgit2)<br/>are NOT injected with the Logger.
+    Note over Domain: 🚫 Tech Providers (lib/schema, lib/git-local)<br/>are NOT injected with the Logger.
 
     Note over Contract, Pres: 4. Event Bubbles up to Callback
     Contract-->>Pres: trigger callback(LogEvent)

@@ -55,7 +55,7 @@ const FAST_IMPORT_EXIT_ERROR_MESSAGE = (code: number, stderr: string): string =>
 
 /**
  * Raw `git fast-import` mechanics — pure wire-format encoding and directory reading, no
- * Docuvia-specific semantics (see `Libgit2Provider.packDirectoryToBranch()`, the only caller).
+ * Docuvia-specific semantics (see `GitLocalProvider.packDirectoryToBranch()`, the only caller).
  */
 
 // Bounded concurrency for the per-file reads below, mirroring old Docuvia's

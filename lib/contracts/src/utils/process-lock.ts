@@ -84,7 +84,7 @@ async function removeStaleLockIfAbandoned(
 /**
  * Cross-process mutex backed by an exclusively-created (`wx`) lockfile containing the holder's
  * PID — the same shape as the ad hoc locks in `graph-store.ts`'s `acquireInitLock` and
- * `libgit2-provider.ts`'s `acquireKnowledgeLock` (see PLAT-006), generalized with a heartbeat so
+ * `git-local-provider.ts`'s `acquireKnowledgeLock` (see PLAT-006), generalized with a heartbeat so
  * it's safe to hold across a long-running operation (not just a sub-second DB bootstrap): the
  * holder periodically touches the lockfile's mtime, and waiters only reclaim it as abandoned once
  * both the mtime is stale *and* the recorded PID is confirmed dead.

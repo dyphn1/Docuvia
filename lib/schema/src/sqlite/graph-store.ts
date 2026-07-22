@@ -43,7 +43,7 @@ const GRAPH_STORE_ERROR_MESSAGES = {
 
 /**
  * Cross-process mutex around a fresh database's first bootstrap (WAL-mode switch + migrations)
- * — same shape as libgit2-provider.ts's `acquireKnowledgeLock`/`releaseKnowledgeLock`. Needed
+ * — same shape as git-local-provider.ts's `acquireKnowledgeLock`/`releaseKnowledgeLock`. Needed
  * because two `docuvia init` processes racing the same workspace both reach `GraphStore.open()`
  * before either has finished bootstrapping: SQLite's own `busy_timeout` only smooths out
  * SQLITE_BUSY on individual statements, not the "switch journal_mode to WAL" + "apply pending

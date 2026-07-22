@@ -182,7 +182,7 @@ const GIT_PROVIDER_ERROR_MESSAGES = {
  * failure is caught and wrapped as `DocuviaError`. All shell-outs use `execFile` with argument
  * arrays (no shell string interpolation).
  */
-export class Libgit2Provider implements IGitProvider {
+export class GitLocalProvider implements IGitProvider {
   private async getGitDir(cwd: string): Promise<string> {
     try {
       const { stdout } = await execFileAsync(

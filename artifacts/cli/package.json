@@ -28,7 +28,7 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@workspace/contracts": "workspace:^",
     "@workspace/core": "workspace:^",
-    "@workspace/libgit2": "workspace:^",
+    "@workspace/git-local": "workspace:^",
     "@workspace/llm-api": "workspace:^",
     "@workspace/remote-api": "workspace:^",
     "@workspace/schema": "workspace:^",

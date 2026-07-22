@@ -4,7 +4,7 @@
  * failure modes are discovered; never throw a raw third-party error across a layer boundary.
  */
 export const ErrorCodes = {
-  // Git (lib/libgit2 / lib/core/git)
+  // Git (lib/git-local / lib/core/git)
   GIT_COMMAND_FAILED: "GIT_COMMAND_FAILED",
   GIT_NETWORK_TIMEOUT: "GIT_NETWORK_TIMEOUT",
   GIT_NOT_A_REPOSITORY: "GIT_NOT_A_REPOSITORY",

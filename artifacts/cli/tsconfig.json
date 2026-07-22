@@ -10,7 +10,7 @@
   "references": [
     { "path": "../../lib/contracts" },
     { "path": "../../lib/core" },
-    { "path": "../../lib/libgit2" },
+    { "path": "../../lib/git-local" },
     { "path": "../../lib/llm-api" },
     { "path": "../../lib/remote-api" },
     { "path": "../../lib/schema" },

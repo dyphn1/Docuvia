@@ -9,7 +9,7 @@
 
 Thanks to the **Virtual Contracts Architecture**, Docuvia2 achieves the holy grail of software testing: perfect isolation.
 
-Because `ui-core` relies entirely on interfaces from `lib/contracts`, we can test complex business logic instantly by injecting Mock implementations into the `docuviaFactory`. Conversely, Implementation libraries (`lib/schema`, `lib/libgit2`) are tested in complete isolation against real local resources (like an in-memory SQLite database or a dummy `.git` folder) without needing to boot up the CLI or Orchestrator.
+Because `ui-core` relies entirely on interfaces from `lib/contracts`, we can test complex business logic instantly by injecting Mock implementations into the `docuviaFactory`. Conversely, Implementation libraries (`lib/schema`, `lib/git-local`) are tested in complete isolation against real local resources (like an in-memory SQLite database or a dummy `.git` folder) without needing to boot up the CLI or Orchestrator.
 
 ```mermaid
 flowchart TD
@@ -27,7 +27,7 @@ flowchart TD
     subgraph IntegrationImpl ["Implementation Layer (Integration Tests)"]
         direction LR
         DB_TEST("lib/schema Tests") -->|Queries| MEM_DB[("In-Memory SQLite")]
-        GIT_TEST("lib/libgit2 Tests") -->|Reads| DUMMY_GIT[("Dummy .git Folder")]
+        GIT_TEST("lib/git-local Tests") -->|Reads| DUMMY_GIT[("Dummy .git Folder")]
     end
 
     %% Test Isolation barrier

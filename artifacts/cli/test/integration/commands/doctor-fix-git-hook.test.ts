@@ -5,7 +5,7 @@ import { GitConstants } from "@workspace/core";
 import { TestSandbox } from "../../support/sandbox.js";
 
 /**
- * Real end-to-end (real `IGitProvider`/`Libgit2Provider`, real filesystem, real CLI subprocess --
+ * Real end-to-end (real `IGitProvider`/`GitLocalProvider`, real filesystem, real CLI subprocess --
  * no mocks) coverage for the plan's §3 "Gating tests" requirement for T5/T6
  * (phase1-decision-integration.md §10d, `implement_slice5-doctor-reliability.md` §3): a
  * hand-constructed duplicate-block `.git/hooks/post-commit` -> `docuvia doctor` reports it ->

@@ -50,7 +50,7 @@ The system strictly divides error handling responsibilities across the four arch
 
 ### � The "No Eager Logging" Rule
 
-A thrown error is **not** inherently a fatal system failure; often, it is just expected control-flow data. For example, a `GIT_UNINITIALIZED` error thrown by `lib/libgit2` might just mean the Orchestrator needs to decide whether to automatically download a submodule or ignore the folder.
+A thrown error is **not** inherently a fatal system failure; often, it is just expected control-flow data. For example, a `GIT_UNINITIALIZED` error thrown by `lib/git-local` might just mean the Orchestrator needs to decide whether to automatically download a submodule or ignore the folder.
 
 Therefore, **no layer other than the Presentation Layer is allowed to call `logger.error()`**. Logging an error prematurely creates "log spam" for conditions that the Orchestrator intentionally recovers from.
 

@@ -4,7 +4,7 @@ import * as os from "os";
 import * as path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { Libgit2Provider } from "./libgit2-provider.js";
+import { GitLocalProvider } from "./git-local-provider.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -36,13 +36,13 @@ const KNOWLEDGE_BRANCH = "docuvia-knowledge";
 const HOOK_NAME = "post-commit";
 const HOOK_MARKER = "docuvia snapshot";
 
-describe("Libgit2Provider (integration, real git shell-outs)", () => {
+describe("GitLocalProvider (integration, real git shell-outs)", () => {
   let tmpDir: string;
-  let provider: Libgit2Provider;
+  let provider: GitLocalProvider;
 
   beforeEach(async () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-test-"));
-    provider = new Libgit2Provider();
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-git-local-test-"));
+    provider = new GitLocalProvider();
     await git(tmpDir, ["init"]);
     await git(tmpDir, ["config", "user.name", "Test User"]);
     await git(tmpDir, ["config", "user.email", "test@example.com"]);
@@ -353,7 +353,7 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
 
   it("packDirectoryToBranch commits every file under sourceDir onto branchName as a root commit (first-ever call) with the given commit message", async () => {
     const sourceDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-pack-src-"),
+      path.join(os.tmpdir(), "docuvia-git-local-pack-src-"),
     );
     try {
       fs.mkdirSync(path.join(sourceDir, "graph"), { recursive: true });
@@ -456,10 +456,10 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
 
   it("packDirectoryToBranch wholesale replaces an existing branch's tree while parenting the new commit on the prior tip (continuous stacking, STOR-001 point 2)", async () => {
     const firstSourceDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-pack-src1-"),
+      path.join(os.tmpdir(), "docuvia-git-local-pack-src1-"),
     );
     const secondSourceDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-pack-src2-"),
+      path.join(os.tmpdir(), "docuvia-git-local-pack-src2-"),
     );
     try {
       fs.writeFileSync(path.join(firstSourceDir, "old.md"), "stale\n");
@@ -515,17 +515,19 @@ describe("Libgit2Provider (integration, real git shell-outs)", () => {
   });
 });
 
-describe("Libgit2Provider — cross-clone reconciliation primitives (STOR-001 point 3)", () => {
+describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 point 3)", () => {
   let tmpDir: string;
   let remoteDir: string;
-  let provider: Libgit2Provider;
+  let provider: GitLocalProvider;
 
   beforeEach(async () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-clone-a-"));
-    remoteDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-remote-"),
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-git-local-clone-a-"),
     );
-    provider = new Libgit2Provider();
+    remoteDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-git-local-remote-"),
+    );
+    provider = new GitLocalProvider();
 
     for (const dir of [tmpDir, remoteDir]) {
       await git(dir, ["init"]);
@@ -548,7 +550,7 @@ describe("Libgit2Provider — cross-clone reconciliation primitives (STOR-001 po
 
   it("pushRef publishes the branch, fetchRef + getRefSha read it back into refs/remotes/origin/*", async () => {
     const sourceDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-recon-src-"),
+      path.join(os.tmpdir(), "docuvia-git-local-recon-src-"),
     );
     try {
       fs.writeFileSync(path.join(sourceDir, "a.md"), "hi\n");
@@ -571,7 +573,7 @@ describe("Libgit2Provider — cross-clone reconciliation primitives (STOR-001 po
 
       // Verify from a second, independent clone that it actually landed on the "remote".
       const cloneDir = fs.mkdtempSync(
-        path.join(os.tmpdir(), "docuvia-libgit2-clone-b-"),
+        path.join(os.tmpdir(), "docuvia-git-local-clone-b-"),
       );
       try {
         await git(cloneDir, ["init"]);
@@ -594,7 +596,7 @@ describe("Libgit2Provider — cross-clone reconciliation primitives (STOR-001 po
   it("fetchRef/pushRef fail fast as GIT_COMMAND_FAILED (not GIT_NETWORK_TIMEOUT) against a remote that simply doesn't resolve — the classification must not label every failure a timeout just because a timeout option is now set", async () => {
     const nonexistentRemotePath = path.join(
       os.tmpdir(),
-      "docuvia-libgit2-nonexistent-remote-",
+      "docuvia-git-local-nonexistent-remote-",
     );
 
     await expect(
@@ -634,10 +636,10 @@ describe("Libgit2Provider — cross-clone reconciliation primitives (STOR-001 po
 
   it("getTreeSha / getCommitTimestamp / createMergeCommit build a valid 2-parent tree-adoption merge commit", async () => {
     const sourceDirA = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-recon-a-"),
+      path.join(os.tmpdir(), "docuvia-git-local-recon-a-"),
     );
     const sourceDirB = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-recon-b-"),
+      path.join(os.tmpdir(), "docuvia-git-local-recon-b-"),
     );
     try {
       fs.writeFileSync(path.join(sourceDirA, "a.md"), "from A\n");
@@ -719,13 +721,13 @@ describe("Libgit2Provider — cross-clone reconciliation primitives (STOR-001 po
   });
 });
 
-describe("Libgit2Provider — acquireKnowledgeLock / releaseKnowledgeLock", () => {
+describe("GitLocalProvider — acquireKnowledgeLock / releaseKnowledgeLock", () => {
   let tmpDir: string;
-  let provider: Libgit2Provider;
+  let provider: GitLocalProvider;
 
   beforeEach(async () => {
-    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-libgit2-lock-"));
-    provider = new Libgit2Provider();
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-git-local-lock-"));
+    provider = new GitLocalProvider();
     await git(tmpDir, ["init"]);
   });
 
@@ -785,17 +787,17 @@ describe("Libgit2Provider — acquireKnowledgeLock / releaseKnowledgeLock", () =
   });
 });
 
-describe("Libgit2Provider — git worktree support (roadmap item #10)", () => {
+describe("GitLocalProvider — git worktree support (roadmap item #10)", () => {
   let mainDir: string;
   let worktreeParent: string;
   let worktreeDir: string;
-  let provider: Libgit2Provider;
+  let provider: GitLocalProvider;
 
   beforeEach(async () => {
     mainDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-worktree-main-"),
+      path.join(os.tmpdir(), "docuvia-git-local-worktree-main-"),
     );
-    provider = new Libgit2Provider();
+    provider = new GitLocalProvider();
     await git(mainDir, ["init"]);
     await git(mainDir, ["config", "user.name", "Test User"]);
     await git(mainDir, ["config", "user.email", "test@example.com"]);
@@ -808,7 +810,7 @@ describe("Libgit2Provider — git worktree support (roadmap item #10)", () => {
     // load. Instead, reserve a unique parent via mkdtempSync and point the worktree at a
     // not-yet-existing child of it.
     worktreeParent = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-worktree-linked-"),
+      path.join(os.tmpdir(), "docuvia-git-local-worktree-linked-"),
     );
     worktreeDir = path.join(worktreeParent, "wt");
     // `git worktree add` tolerates an already-existing *empty* target dir (unlike `git clone`);
@@ -871,15 +873,15 @@ describe("Libgit2Provider — git worktree support (roadmap item #10)", () => {
   });
 });
 
-describe("Libgit2Provider — getChangedFilesSince two-ref mode (Slice 2a delta ingestion, phase1-decision-integration.md §6d ruling 2)", () => {
+describe("GitLocalProvider — getChangedFilesSince two-ref mode (Slice 2a delta ingestion, phase1-decision-integration.md §6d ruling 2)", () => {
   let tmpDir: string;
-  let provider: Libgit2Provider;
+  let provider: GitLocalProvider;
 
   beforeEach(async () => {
     tmpDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-tworef-test-"),
+      path.join(os.tmpdir(), "docuvia-git-local-tworef-test-"),
     );
-    provider = new Libgit2Provider();
+    provider = new GitLocalProvider();
     await git(tmpDir, ["init"]);
     await git(tmpDir, ["config", "user.name", "Test User"]);
     await git(tmpDir, ["config", "user.email", "test@example.com"]);
@@ -930,9 +932,11 @@ describe("Libgit2Provider — getChangedFilesSince two-ref mode (Slice 2a delta 
       ]),
     );
     // kept.ts was untouched between A and B — must not appear.
-    expect(entries.find((e) => e.file === "kept.ts")).toBeUndefined();
+    expect(entries.find((e: any) => e.file === "kept.ts")).toBeUndefined();
     // The old rename path must not additionally appear as its own "deleted" entry.
-    expect(entries.find((e) => e.file === "src/old-name.ts")).toBeUndefined();
+    expect(
+      entries.find((e: any) => e.file === "src/old-name.ts"),
+    ).toBeUndefined();
     expect(entries).toHaveLength(4);
   });
 
@@ -969,9 +973,9 @@ describe("Libgit2Provider — getChangedFilesSince two-ref mode (Slice 2a delta 
   });
 });
 
-describe("Libgit2Provider — getChangedLineRanges hunk-header parsing (Slice 2a delta ingestion, phase1-decision-integration.md §6d ruling 2)", () => {
+describe("GitLocalProvider — getChangedLineRanges hunk-header parsing (Slice 2a delta ingestion, phase1-decision-integration.md §6d ruling 2)", () => {
   let tmpDir: string;
-  let provider: Libgit2Provider;
+  let provider: GitLocalProvider;
   let baseSha: string;
 
   function lines(n: number): string {
@@ -990,9 +994,9 @@ describe("Libgit2Provider — getChangedLineRanges hunk-header parsing (Slice 2a
 
   beforeEach(async () => {
     tmpDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-libgit2-hunks-test-"),
+      path.join(os.tmpdir(), "docuvia-git-local-hunks-test-"),
     );
-    provider = new Libgit2Provider();
+    provider = new GitLocalProvider();
     await git(tmpDir, ["init"]);
     await git(tmpDir, ["config", "user.name", "Test User"]);
     await git(tmpDir, ["config", "user.email", "test@example.com"]);

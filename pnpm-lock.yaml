@@ -73,9 +73,9 @@ importers:
       "@workspace/core":
         specifier: workspace:^
         version: link:../../lib/core
-      "@workspace/libgit2":
+      "@workspace/git-local":
         specifier: workspace:^
-        version: link:../../lib/libgit2
+        version: link:../../lib/git-local
       "@workspace/llm-api":
         specifier: workspace:^
         version: link:../../lib/llm-api
@@ -218,7 +218,7 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1(@types/node@25.9.5)
 
-  lib/libgit2:
+  lib/git-local:
     dependencies:
       "@workspace/contracts":
         specifier: workspace:^

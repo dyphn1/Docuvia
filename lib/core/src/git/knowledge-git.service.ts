@@ -49,7 +49,7 @@ const DOCUVIA_HOOK_BLOCK_PATTERN = new RegExp(
  * Docuvia's git-specific domain logic, built entirely on `IGitProvider`'s raw primitives — the
  * "generating knowledge branches" example named directly in
  * docs/gitbook/architecture/virtual-contracts-architecture.md's Domain Core section. If
- * `lib/libgit2` is ever swapped for another git implementation, this class is untouched.
+ * `lib/git-local` is ever swapped for another git implementation, this class is untouched.
  */
 export class KnowledgeGitService implements IKnowledgeGitService {
   constructor(

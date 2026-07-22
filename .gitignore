@@ -35,6 +35,7 @@ Thumbs.db
 
 # AI Auto Generated Docs
 docs/ai_plans/
+.claude/harness-state/
 .docuvia/
 graphify-out/
 

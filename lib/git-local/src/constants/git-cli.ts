@@ -1,5 +1,5 @@
 /**
- * Git CLI conventions shared across every raw shell-out in this package — `Libgit2Provider`,
+ * Git CLI conventions shared across every raw shell-out in this package — `GitLocalProvider`,
  * `fast-import.ts`'s `runFastImport`, and `GitDiagnosticRunner`'s network reachability check.
  */
 

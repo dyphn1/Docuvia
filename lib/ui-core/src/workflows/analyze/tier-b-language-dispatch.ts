@@ -40,6 +40,12 @@ export const TIER_B_LANGUAGE_ID_BY_EXTENSION: Readonly<
   ".cuh": TIER_B_LANGUAGE_IDS.CPP,
   ".java": TIER_B_LANGUAGE_IDS.JAVA,
   ".cs": TIER_B_LANGUAGE_IDS.CSHARP,
+  ".php": TIER_B_LANGUAGE_IDS.PHP,
+  ".phtml": TIER_B_LANGUAGE_IDS.PHP,
+  ".php3": TIER_B_LANGUAGE_IDS.PHP,
+  ".php4": TIER_B_LANGUAGE_IDS.PHP,
+  ".php5": TIER_B_LANGUAGE_IDS.PHP,
+  ".phps": TIER_B_LANGUAGE_IDS.PHP,
 };
 
 /** `undefined` when `file`'s extension has no registered plugin (§8e: skip with a log line, stay

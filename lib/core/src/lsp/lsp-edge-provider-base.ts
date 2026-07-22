@@ -136,7 +136,7 @@ export interface LspLanguageConfig {
   resolveBinary: (
     workspaceRoot: string,
     override?: { binary?: string; args?: string[] },
-  ) => ResolvedLspBinary;
+  ) => ResolvedLspBinary | Promise<ResolvedLspBinary>;
   checkPreflight: (
     workspaceRoot: string,
     override?: { binary?: string; args?: string[] },
@@ -240,7 +240,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     request: EdgeResolutionRequest,
   ): Promise<EdgeResolutionOutcome> {
     const { workspaceRoot, files } = request;
-    const resolved = this.languageConfig.resolveBinary(workspaceRoot, {
+    const resolved = await this.languageConfig.resolveBinary(workspaceRoot, {
       binary: this.config.binaryOverride,
       args: this.config.argsOverride,
     });

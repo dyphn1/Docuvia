@@ -16,6 +16,7 @@ import { TopologyBuilderService } from "./topology/topology-builder.service.js";
 import { SemanticDiffAnalyzerService } from "./detector/semantic-diff-analyzer.service.js";
 import { TypescriptLspEdgeProvider } from "./lsp/typescript-lsp-edge-provider.js";
 import { PythonLspEdgeProvider } from "./lsp/python-lsp-edge-provider.js";
+import { GoLspEdgeProvider } from "./lsp/go-lsp-edge-provider.js";
 
 /**
  * Self-registration side effect (see
@@ -118,4 +119,5 @@ docuviaFactory.register(
 docuviaFactory.register(TOKENS.EdgeResolutionProviders, (_f, params) => ({
   typescript: () => new TypescriptLspEdgeProvider(params?.logger),
   python: () => new PythonLspEdgeProvider(params?.logger),
+  go: () => new GoLspEdgeProvider(params?.logger),
 }));

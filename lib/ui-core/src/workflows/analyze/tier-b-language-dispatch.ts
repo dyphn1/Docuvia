@@ -26,6 +26,7 @@ export const TIER_B_LANGUAGE_ID_BY_EXTENSION: Readonly<
   ".mjs": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
   ".cjs": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
   ".py": TIER_B_LANGUAGE_IDS.PYTHON,
+  ".go": TIER_B_LANGUAGE_IDS.GO,
 };
 
 /** `undefined` when `file`'s extension has no registered plugin (§8e: skip with a log line, stay

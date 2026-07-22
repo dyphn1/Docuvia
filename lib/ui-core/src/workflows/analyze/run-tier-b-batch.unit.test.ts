@@ -84,17 +84,23 @@ function makeStore(nodeKeys: string[] = []): {
 function makeProvider(
   checkAvailability: () => Promise<{ available: boolean; reason?: string }>,
   resolveEdges: (files: string[]) => Promise<EdgeResolutionOutcome>,
+  name = "fake-provider",
 ): IEdgeResolutionProvider {
   return {
-    name: "fake-provider",
+    name,
     configure: vi.fn(),
     checkAvailability,
     resolveEdges: (req) => resolveEdges(req.files),
   };
 }
 
+/** Registers `provider` as the sole `typescript` entry in the `EdgeResolutionProviders` registry
+ *  (multi-language-lsp-support plan, Finding A) -- the shape every other test in this file that
+ *  only cares about TS/JS's own behavior expects. */
 function registerProvider(provider: IEdgeResolutionProvider): void {
-  docuviaFactory.register(TOKENS.EdgeResolutionProvider, () => () => provider);
+  docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+    typescript: () => provider,
+  }));
 }
 
 beforeEach(() => {
@@ -104,10 +110,9 @@ beforeEach(() => {
 describe("runTierBBatch() (§8, D1-D6)", () => {
   it("no-ops on an empty queue without touching the provider", async () => {
     const providerFactory = vi.fn();
-    docuviaFactory.register(
-      TOKENS.EdgeResolutionProvider,
-      () => providerFactory,
-    );
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: providerFactory,
+    }));
     const { store } = makeStore();
     const git = makeGit();
 
@@ -133,19 +138,18 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
     const workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierb-test-"),
     );
-    fs.writeFileSync(path.join(workspaceRoot, "present.py"), "x = 1\n");
+    fs.writeFileSync(path.join(workspaceRoot, "present.go"), "package main\n");
 
     const { store } = makeStore();
     appendTierBQueueEntries(store, [
       { file: "deleted.ts", commitSha: HEAD_SHA },
-      { file: "present.py", commitSha: HEAD_SHA },
+      { file: "present.go", commitSha: HEAD_SHA },
     ]);
 
     const providerFactory = vi.fn();
-    docuviaFactory.register(
-      TOKENS.EdgeResolutionProvider,
-      () => providerFactory,
-    );
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: providerFactory,
+    }));
 
     const result = await runTierBBatch({
       workspaceRoot,
@@ -372,6 +376,129 @@ describe("runTierBBatch() -- edge application, pending finalize staging (§8d, �
     ).toBeUndefined();
 
     const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+});
+
+describe("runTierBBatch() -- multi-language registry dispatch (multi-language-lsp-support plan, Finding A)", () => {
+  it("dispatches a queued file to the provider registered for its language, never touching a different language's registered provider, and honestly skips an extension with no dispatch entry", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-multilang-test-"),
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "a.ts"),
+      "export function foo() {}\n",
+    );
+    fs.writeFileSync(path.join(workspaceRoot, "b.py"), "def foo(): pass\n");
+
+    const { store } = makeStore();
+    appendTierBQueueEntries(store, [
+      { file: "a.ts", commitSha: HEAD_SHA },
+      { file: "b.py", commitSha: HEAD_SHA },
+    ]);
+
+    const tsResolveEdges = vi.fn().mockResolvedValue({
+      edges: [],
+      filesProcessed: ["a.ts"],
+      filesFailed: [],
+    });
+    const tsProvider = makeProvider(
+      async () => ({ available: true }),
+      tsResolveEdges,
+      "typescript-language-server",
+    );
+
+    const pyResolveEdges = vi.fn().mockResolvedValue({
+      edges: [],
+      filesProcessed: ["b.py"],
+      filesFailed: [],
+    });
+    const pyProvider = makeProvider(
+      async () => ({ available: true }),
+      pyResolveEdges,
+      "pyright",
+    );
+
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () => tsProvider,
+      python: () => pyProvider,
+    }));
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(result.filesQueued).toBe(2);
+    // Slice 1 added a `.py` dispatch entry -- both files are now routed to their own registered
+    // provider (never the other language's), proving dispatch is by the language-dispatch table
+    // in combination with the registry, not a hardcoded single-language path.
+    expect(result.filesSkippedLanguage).toBe(0);
+    expect(result.filesProcessed).toBe(2);
+    expect(result.degraded).toBe(false);
+    expect(tsResolveEdges).toHaveBeenCalledTimes(1);
+    expect(tsResolveEdges.mock.calls[0][0]).toEqual(["a.ts"]);
+    expect(pyResolveEdges).toHaveBeenCalledTimes(1);
+    expect(pyResolveEdges.mock.calls[0][0]).toEqual(["b.py"]);
+
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("honestly skips an extension with no dispatch entry at all (e.g. Go, still unshipped)", async () => {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-multilang-test-"),
+    );
+    fs.writeFileSync(
+      path.join(workspaceRoot, "a.ts"),
+      "export function foo() {}\n",
+    );
+    fs.writeFileSync(path.join(workspaceRoot, "b.go"), "package main\n");
+
+    const { store } = makeStore();
+    appendTierBQueueEntries(store, [
+      { file: "a.ts", commitSha: HEAD_SHA },
+      { file: "b.go", commitSha: HEAD_SHA },
+    ]);
+
+    const tsResolveEdges = vi.fn().mockResolvedValue({
+      edges: [],
+      filesProcessed: ["a.ts"],
+      filesFailed: [],
+    });
+    const tsProvider = makeProvider(
+      async () => ({ available: true }),
+      tsResolveEdges,
+      "typescript-language-server",
+    );
+
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () => tsProvider,
+    }));
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(result.filesQueued).toBe(2);
+    expect(result.filesSkippedLanguage).toBe(1);
+    expect(result.filesProcessed).toBe(1);
+    expect(result.degraded).toBe(false);
+    expect(tsResolveEdges).toHaveBeenCalledTimes(1);
+    expect(tsResolveEdges.mock.calls[0][0]).toEqual(["a.ts"]);
+
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 });

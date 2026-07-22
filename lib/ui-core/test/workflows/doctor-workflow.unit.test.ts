@@ -815,15 +815,15 @@ describe("DoctorWorkflow", () => {
     });
   });
 
-  describe("LSP Binary Check (phase1-decision-integration.md §10e bullet 4 / §7a-1, T8)", () => {
-    it("reports PASS with the positive message when the LSP provider reports available", async () => {
+  describe("LSP Binary Check (phase1-decision-integration.md §10e bullet 4 / §7a-1, T8; multi-language-lsp-support plan, Finding A/G)", () => {
+    it("reports PASS with the positive message, keyed by language id, when the registered provider reports available", async () => {
       const provider = {
+        name: "typescript-language-server",
         checkAvailability: vi.fn().mockResolvedValue({ available: true }),
       };
-      docuviaFactory.register(
-        TOKENS.EdgeResolutionProvider,
-        () => () => provider as any,
-      );
+      docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+        typescript: () => provider as any,
+      }));
 
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({
@@ -832,7 +832,7 @@ describe("DoctorWorkflow", () => {
         skipLogs: true,
       });
 
-      expect(result.diagnostics["lsp_binary"]).toEqual({
+      expect(result.diagnostics["lsp_binary_typescript"]).toEqual({
         status: DiagnosticStatus.PASS,
         message: expect.stringContaining("LSP-precision edges available"),
       });
@@ -841,15 +841,15 @@ describe("DoctorWorkflow", () => {
 
     it("reports PASS with the specific unavailable reason (not a generic message) when the provider reports unavailable", async () => {
       const provider = {
+        name: "typescript-language-server",
         checkAvailability: vi.fn().mockResolvedValue({
           available: false,
           reason: "node_modules not found",
         }),
       };
-      docuviaFactory.register(
-        TOKENS.EdgeResolutionProvider,
-        () => () => provider as any,
-      );
+      docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+        typescript: () => provider as any,
+      }));
 
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({
@@ -858,16 +858,31 @@ describe("DoctorWorkflow", () => {
         skipLogs: true,
       });
 
-      expect(result.diagnostics["lsp_binary"].status).toBe(
+      expect(result.diagnostics["lsp_binary_typescript"].status).toBe(
         DiagnosticStatus.PASS,
       );
-      expect(result.diagnostics["lsp_binary"].message).toContain(
+      expect(result.diagnostics["lsp_binary_typescript"].message).toContain(
         "node_modules not found",
       );
       expect(result.allPassed).toBe(true);
     });
 
-    it("is skipped silently (no diagnostic key, no crash) when EdgeResolutionProvider isn't registered", async () => {
+    it("reports one diagnostic line per registered language when more than one provider is registered", async () => {
+      const tsProvider = {
+        name: "typescript-language-server",
+        checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      };
+      const pyProvider = {
+        name: "pyright",
+        checkAvailability: vi
+          .fn()
+          .mockResolvedValue({ available: false, reason: "not installed" }),
+      };
+      docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+        typescript: () => tsProvider as any,
+        python: () => pyProvider as any,
+      }));
+
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({
         skipDb: true,
@@ -875,7 +890,23 @@ describe("DoctorWorkflow", () => {
         skipLogs: true,
       });
 
-      expect(result.diagnostics["lsp_binary"]).toBeUndefined();
+      expect(result.diagnostics["lsp_binary_typescript"].message).toContain(
+        "LSP-precision edges available (typescript-language-server resolved)",
+      );
+      expect(result.diagnostics["lsp_binary_python"].message).toContain(
+        "not installed",
+      );
+    });
+
+    it("is skipped silently (no diagnostic key, no crash) when EdgeResolutionProviders isn't registered", async () => {
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["lsp_binary_typescript"]).toBeUndefined();
     });
   });
 });

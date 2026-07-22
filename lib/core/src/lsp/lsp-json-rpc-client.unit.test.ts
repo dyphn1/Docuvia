@@ -176,3 +176,59 @@ describe("LspJsonRpcClient (spawning through an npm/pnpm-style node_modules/.bin
     }
   });
 });
+
+/**
+ * Regression coverage for the bare-`npx`-command Windows spawn gap (multi-language-lsp-support
+ * plan, Slice 1): `resolveLspBinary()`/`resolveNpmNpxBinary()`'s `npx --no-install <package>`
+ * fallback spawns the literal bare command `"npx"` (no `.cmd` extension to trip the shim check
+ * above), which plain `child_process.spawn()` cannot exec directly on Windows either -- discovered
+ * via a real `pyright-langserver` spawn during this slice, confirmed to affect TypeScript's own
+ * `npx` fallback identically (pre-existing, just never exercised by a real spawn in this repo's
+ * test suite before). Exercised, not skipped, on whichever OS actually runs it -- POSIX's `npx`
+ * is a real shebang script `spawn()` already handles fine, so this only meaningfully asserts on
+ * Windows; on POSIX it's a no-op sanity check that the round trip still works via the ordinary
+ * non-wrapped path.
+ */
+describe("LspJsonRpcClient (spawning the bare npx command)", () => {
+  it("starts and completes a request/response round trip through a fake npx wrapper", async () => {
+    const isWindows = process.platform === "win32";
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-lsp-npx-"));
+    try {
+      const wrapperPath = path.join(tmpDir, isWindows ? "npx.cmd" : "npx");
+      const wrapperContents = isWindows
+        ? `@echo off\r\nnode "${FIXTURE_PATH}" %*\r\n`
+        : `#!/bin/sh\nexec node "${FIXTURE_PATH}" "$@"\n`;
+      fs.writeFileSync(wrapperPath, wrapperContents);
+      if (!isWindows) fs.chmodSync(wrapperPath, 0o755);
+
+      const client = new LspJsonRpcClient();
+      await client.start({
+        // The command string that actually matters is the bare "npx" name (matching what
+        // resolveLspBinary()/resolveNpmNpxBinary() literally pass), spawned with this fixture's
+        // dir prepended to PATH so it resolves to the fake wrapper above rather than any real npx.
+        command: "npx",
+        args: [],
+        cwd: __dirname,
+        env: {
+          ...process.env,
+          PATH: `${tmpDir}${path.delimiter}${process.env.PATH ?? ""}`,
+          PATHEXT: isWindows
+            ? `.CMD;${process.env.PATHEXT ?? ""}`
+            : process.env.PATHEXT,
+        },
+      });
+      try {
+        const result = await client.request(
+          "echo",
+          { via: "npx-wrapper" },
+          5000,
+        );
+        expect(result).toEqual({ via: "npx-wrapper" });
+      } finally {
+        await client.stop();
+      }
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});

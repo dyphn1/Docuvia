@@ -100,3 +100,25 @@ export interface IEdgeResolutionProvider {
    *  programming error should reject. */
   resolveEdges(request: EdgeResolutionRequest): Promise<EdgeResolutionOutcome>;
 }
+
+/**
+ * Tier B's per-language vocabulary (multi-language-lsp-support plan, Finding A) — the registry
+ * key type shared by `TOKENS.EdgeResolutionProviders` (`tokens.ts`) and the Tier B dispatch table
+ * (`lib/ui-core/src/workflows/analyze/tier-b-language-dispatch.ts`), so both sides speak the same
+ * vocabulary. Only `TYPESCRIPT` has a shipped provider as of this slice; the rest are reserved for
+ * their own later slices (see the plan's §3 language-by-language table) and are not yet wired to
+ * any dispatch entry or registry key.
+ */
+export const TIER_B_LANGUAGE_IDS = {
+  TYPESCRIPT: "typescript",
+  PYTHON: "python",
+  GO: "go",
+  RUST: "rust",
+  JAVA: "java",
+  CPP: "cpp",
+  CSHARP: "csharp",
+  PHP: "php",
+  RUBY: "ruby",
+} as const;
+export type TierBLanguageId =
+  (typeof TIER_B_LANGUAGE_IDS)[keyof typeof TIER_B_LANGUAGE_IDS];

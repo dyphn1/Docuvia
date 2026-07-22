@@ -51,8 +51,12 @@ export type {
   EdgeResolutionSource,
   IEdgeResolutionProvider,
   ResolvedCallEdge,
+  TierBLanguageId,
 } from "./interfaces/edge-resolution.interfaces.js";
-export { EdgeResolutionSources } from "./interfaces/edge-resolution.interfaces.js";
+export {
+  EdgeResolutionSources,
+  TIER_B_LANGUAGE_IDS,
+} from "./interfaces/edge-resolution.interfaces.js";
 export { KnowledgeBranchSyncStatuses } from "./interfaces/knowledge-git.interfaces.js";
 export type {
   DiscoveredFile,

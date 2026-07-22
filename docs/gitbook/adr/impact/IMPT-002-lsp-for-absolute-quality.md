@@ -53,20 +53,34 @@ one provider today. A language with AST-only support still gets full L2 nodes/ed
 parsing — it is missing only the LSP-precision cross-file `calls` repair described in this ADR's
 Decision section.
 
-| Language   | File Extensions                                             | AST Parsing (Tier A) | LSP Escalation (Tier B)         |
-| ---------- | ----------------------------------------------------------- | :------------------: | ------------------------------- |
-| TypeScript | `.ts`, `.tsx`, `.mts`, `.cts`                               |          ✅          | ✅ `typescript-language-server` |
-| JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs`                               |          ✅          | ✅ `typescript-language-server` |
-| Python     | `.py`                                                       |          ✅          | ❌ AST-level only               |
-| Go         | `.go`                                                       |          ✅          | ❌ AST-level only               |
-| Rust       | `.rs`                                                       |          ✅          | ❌ AST-level only               |
-| Java       | `.java`                                                     |          ✅          | ❌ AST-level only               |
-| C          | `.c`, `.h`                                                  |          ✅          | ❌ AST-level only               |
-| C++        | `.cpp`, `.cxx`, `.cc`, `.hpp`, `.hxx`, `.hh`, `.cu`, `.cuh` |          ✅          | ❌ AST-level only               |
-| C#         | `.cs`                                                       |          ✅          | ❌ AST-level only               |
-| PHP        | `.php`, `.phtml`, `.php3`, `.php4`, `.php5`, `.phps`        |          ✅          | ❌ AST-level only               |
-| Ruby       | `.rb`, `.rake`, `.gemspec`                                  |          ✅          | ❌ AST-level only               |
+| Language   | File Extensions                                             | AST Parsing (Tier A) | LSP Escalation (Tier B)             |
+| ---------- | ----------------------------------------------------------- | :------------------: | ----------------------------------- |
+| TypeScript | `.ts`, `.tsx`, `.mts`, `.cts`                               |          ✅          | ✅ `typescript-language-server`     |
+| JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs`                               |          ✅          | ✅ `typescript-language-server`     |
+| Python     | `.py`                                                       |          ✅          | ✅ `pyright` (`pyright-langserver`) |
+| Go         | `.go`                                                       |          ✅          | ❌ AST-level only                   |
+| Rust       | `.rs`                                                       |          ✅          | ❌ AST-level only                   |
+| Java       | `.java`                                                     |          ✅          | ❌ AST-level only                   |
+| C          | `.c`, `.h`                                                  |          ✅          | ❌ AST-level only                   |
+| C++        | `.cpp`, `.cxx`, `.cc`, `.hpp`, `.hxx`, `.hh`, `.cu`, `.cuh` |          ✅          | ❌ AST-level only                   |
+| C#         | `.cs`                                                       |          ✅          | ❌ AST-level only                   |
+| PHP        | `.php`, `.phtml`, `.php3`, `.php4`, `.php5`, `.phps`        |          ✅          | ❌ AST-level only                   |
+| Ruby       | `.rb`, `.rake`, `.gemspec`                                  |          ✅          | ❌ AST-level only                   |
 
 New languages gain LSP escalation by adding a provider behind the `IEdgeResolutionProvider` seam
 (PLAT-007 §8b) and a per-language dispatch entry (PLAT-007 §8e/D4) — never a hardcoded TS/JS
 check. No such provider is scheduled; add one here when a language plugin ships.
+
+**Update (2026-07-22, multi-language-lsp-support plan, Slice 0):** this matrix is now backed by a
+per-language provider _registry_ (`TOKENS.EdgeResolutionProviders`, keyed by `TierBLanguageId`),
+not a single provider bound to one token — Slice 0 was a pure foundation/refactor (extracted the
+generic LSP batch logic into a shared `BaseLspEdgeProvider`, generalized the registry/dispatch
+plumbing) with no new language shipped and no matrix row flipped. The registry resolves to just
+`{ typescript }` today, identical in substance to the single-provider shape this matrix already
+documented; each language slice below adds one more registry key and flips its own row.
+
+**Update (2026-07-22, multi-language-lsp-support plan, Slice 1):** Python is the first language to
+ship LSP escalation beyond TS/JS -- `pyright` (`pyright-langserver --stdio`), resolved via the same
+npm/npx binary-resolution strategy TS/JS already uses (`resolveNpmNpxBinary`), registered under
+`TOKENS.EdgeResolutionProviders`'s `python` key. The registry now resolves to
+`{ typescript, python }`.

@@ -42,7 +42,7 @@ sequenceDiagram
     participant Git as IGitProvider
     participant KGit as IKnowledgeGitService
     participant Llm as ILlmClient
-    participant Lsp as IEdgeResolutionProvider
+    participant Lsp as IEdgeResolutionProvider (per registered language)
 
     User->>CLI: docuvia doctor, skip flags, --fix
     CLI->>API: docuviaApi.doctor scopeId logger, skipDb, skipGit, skipHooks, skipLogs, fix, llmBaseUrl, llmApiKey
@@ -80,8 +80,8 @@ sequenceDiagram
         WF->>Llm: initialize baseUrl apiKey, checkAvailability
         Note right of Llm: not configured is PASS; configured-but-unreachable is the one real FAIL this check reports.
     end
-    WF->>Lsp: checkAvailability workspaceRoot
-    Note right of Lsp: same token/method analyze --escalate-to-lsp's own gate uses -- always PASS, reason surfaced as the message.
+    WF->>Lsp: checkAvailability workspaceRoot, once per provider in the TOKENS.EdgeResolutionProviders registry
+    Note right of Lsp: multi-language-lsp-support plan, Slice 0 -- iterates every registered language's provider (today just typescript), one diagnostic key per language (DOCTOR_DIAGNOSTIC_KEYS.LSP_BINARY(languageId)). Always PASS, reason surfaced as the message; same checkAvailability() method analyze --escalate-to-lsp's own gate uses.
     opt not skipHooks
         WF->>FS: fs.stat claude hook file, cursor hook file
         Note right of FS: folded into DoctorWorkflow -- closes the asymmetry this doc used to flag. Always PASS either way: not selecting a platform at init is a legitimate state, not a defect.

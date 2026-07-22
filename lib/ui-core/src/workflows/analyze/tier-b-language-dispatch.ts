@@ -1,56 +1,64 @@
 import path from "path";
+import {
+  TIER_B_LANGUAGE_IDS,
+  type TierBLanguageId,
+} from "@workspace/contracts";
 import type { TierBQueueEntry } from "./tier-b-queue.js";
 
 /**
- * D4's per-language dispatch table (phase1-decision-integration.md §8e): queue consumption
- * dispatches by language through this table, never a hardcoded TS check. Slice 3 ships the TS/JS
- * plugin only; every other extension has no entry and stays at AST precision (§8b's honest
- * degradation, extended to "never attempted" for a language with no plugin yet).
- *
- * A real per-language *plugin* would carry its own edge-resolution provider; Slice 3 only has one
- * provider (`TypescriptLspEdgeProvider`) so the "plugin" is simply "supported, route to the LSP
- * provider" vs "unsupported, skip with a log line" -- the shape still generalizes: adding a
- * second language later means adding an entry here and a second provider, not touching this
- * dispatch logic.
+ * D4's per-language dispatch table (phase1-decision-integration.md §8e; multi-language-lsp-support
+ * plan, Finding A/B): queue consumption dispatches by language through this table, never a
+ * hardcoded TS check. Slice 0 ships the TS/JS entries only; every other extension has no entry and
+ * stays at AST precision (§8b's honest degradation, extended to "never attempted" for a language
+ * with no plugin yet). Each later language slice adds its own extensions here, keyed by the same
+ * `TierBLanguageId` the `TOKENS.EdgeResolutionProviders` registry uses -- one shared vocabulary
+ * for both sides.
  */
-export const TIER_B_SUPPORTED_EXTENSIONS: ReadonlySet<string> = new Set([
-  ".ts",
-  ".tsx",
-  ".mts",
-  ".cts",
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".cjs",
-]);
-
-export const TIER_B_LANGUAGE_ID = "typescript" as const;
+export const TIER_B_LANGUAGE_ID_BY_EXTENSION: Readonly<
+  Record<string, TierBLanguageId>
+> = {
+  ".ts": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+  ".tsx": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+  ".mts": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+  ".cts": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+  ".js": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+  ".jsx": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+  ".mjs": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+  ".cjs": TIER_B_LANGUAGE_IDS.TYPESCRIPT,
+  ".py": TIER_B_LANGUAGE_IDS.PYTHON,
+};
 
 /** `undefined` when `file`'s extension has no registered plugin (§8e: skip with a log line, stay
  *  AST-level) -- the dispatch table is the single source of truth callers should consult rather
  *  than re-checking extensions inline. */
-export function dispatchTierBLanguage(file: string): string | undefined {
-  const extension = path.extname(file);
-  return TIER_B_SUPPORTED_EXTENSIONS.has(extension)
-    ? TIER_B_LANGUAGE_ID
-    : undefined;
+export function dispatchTierBLanguage(
+  file: string,
+): TierBLanguageId | undefined {
+  return TIER_B_LANGUAGE_ID_BY_EXTENSION[path.extname(file)];
 }
 
 export interface TierBLanguagePartition {
-  supported: TierBQueueEntry[];
+  /** Queued entries bucketed by language id (multi-language-lsp-support plan, Finding A) -- a
+   *  language with no queued files this run simply has no key here, rather than an empty array. */
+  buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>>;
+  /** Entries whose extension has no dispatch entry at all (§8e), skipped with a log line. */
   unsupported: TierBQueueEntry[];
 }
 
-/** Splits a Tier B queue into language-supported (routed to the LSP provider) and unsupported
- *  (skipped, §8e) entries. */
+/** Splits a Tier B queue into per-language buckets (each routed to that language's LSP provider,
+ *  Finding A) plus the entries with no dispatch entry at all (skipped, §8e). */
 export function partitionQueueByLanguage(
   entries: TierBQueueEntry[],
 ): TierBLanguagePartition {
-  const supported: TierBQueueEntry[] = [];
+  const buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>> = {};
   const unsupported: TierBQueueEntry[] = [];
   for (const entry of entries) {
-    if (dispatchTierBLanguage(entry.file)) supported.push(entry);
-    else unsupported.push(entry);
+    const languageId = dispatchTierBLanguage(entry.file);
+    if (!languageId) {
+      unsupported.push(entry);
+      continue;
+    }
+    (buckets[languageId] ??= []).push(entry);
   }
-  return { supported, unsupported };
+  return { buckets, unsupported };
 }

@@ -14,8 +14,10 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
   PRE_PUSH_HOOK: "pre_push_hook",
   /** §10e bullet 3: the Tier C CLIProxyAPI endpoint reachability pre-flight. */
   LLM_REACHABILITY: "llm_reachability",
-  /** §10e bullet 4 / §7a-1: LSP binary presence, independent of whether Tier B has ever run. */
-  LSP_BINARY: "lsp_binary",
+  /** §10e bullet 4 / §7a-1: LSP binary presence, independent of whether Tier B has ever run.
+   *  multi-language-lsp-support plan, Finding A/G: one diagnostic key per registered language --
+   *  Slice 0's registry only has `typescript`, so the produced key is `lsp_binary_typescript`. */
+  LSP_BINARY: (languageId: string) => `lsp_binary_${languageId}`,
   /** Claude/Cursor AI-agent hook presence -- folded in from `doctor.ts`'s plain `fs.stat` logic
    *  to close the Presentation-layer asymmetry `doctor-execution-flow.md` flagged. Distinct from
    *  `GIT_HOOK` above, which is the git post-commit hook, a different "hook" concept entirely. */
@@ -101,9 +103,12 @@ export const DOCTOR_MESSAGES = {
   LLM_UNREACHABLE_SUGGESTION:
     "Check that the CLIProxyAPI bridge is running and AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL points at it.",
 
-  /** §10e bullet 4 / §7a-1: LSP binary presence, independent of Tier B having run (T8). */
-  LSP_BINARY_AVAILABLE:
-    "LSP-precision edges available (typescript-language-server resolved).",
+  /** §10e bullet 4 / §7a-1: LSP binary presence, independent of Tier B having run (T8).
+   *  `providerName` (multi-language-lsp-support plan, Finding A/G) is that language's provider's
+   *  `IEdgeResolutionProvider.name` -- for TS/JS this is still `typescript-language-server`, so
+   *  the produced message is byte-identical to before. */
+  LSP_BINARY_AVAILABLE: (providerName: string) =>
+    `LSP-precision edges available (${providerName} resolved).`,
   LSP_BINARY_UNAVAILABLE: (reason: string) =>
     `LSP-precision edges unavailable (${reason}) -- Tier B degrades to AST-level edges.`,
 

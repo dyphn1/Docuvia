@@ -1,11 +1,22 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import {
+  spawn,
+  execFile,
+  type ChildProcessWithoutNullStreams,
+} from "node:child_process";
 import path from "node:path";
+import { promisify } from "node:util";
 import { LspWireConstants, LSP_MESSAGES } from "./lsp-constants.js";
+
+const execFileAsync = promisify(execFile);
 
 export interface LspJsonRpcClientOptions {
   command: string;
   args: string[];
   cwd: string;
+  /** Overrides the spawned process's environment (defaults to inheriting `process.env`, same as
+   *  a bare `spawn()` call with no `env` option -- only ever overridden by tests today, e.g. to
+   *  point `PATH` at a fixture wrapper instead of a real `npx`). */
+  env?: NodeJS.ProcessEnv;
 }
 
 /** Extensions Windows can only execute through a shell (`cmd.exe`/PowerShell), never directly via
@@ -15,6 +26,20 @@ export interface LspJsonRpcClientOptions {
  *  spawn-failure path (an immediate `error` event, no shell involved) is untouched. */
 const WINDOWS_SHELL_ONLY_EXTENSIONS = new Set([".cmd", ".bat", ".ps1"]);
 
+/** Bare command names this codebase spawns directly (never through a resolved `node_modules/.bin`
+ *  path, so they never carry a `.cmd`/`.ps1` extension for the check above to catch) that are
+ *  nonetheless *also* only ever installed as a `.cmd`/`.ps1` shim on Windows -- `npx` is the
+ *  `npx --no-install <package>` fallback every npm/npx-strategy language's binary resolver falls
+ *  back to (`lsp-binary-resolver.ts`/`resolveNpmNpxBinary()` in `lsp-binary-resolver-strategies.ts`)
+ *  when no local copy is found. Plain `child_process.spawn()` cannot exec these directly on
+ *  Windows, for the exact same reason as the resolved-shim-path case above -- confirmed by direct
+ *  testing during the multi-language-lsp-support plan's Slice 1 (Python): a real
+ *  `npx --no-install --package pyright pyright-langserver --stdio` spawn failed with a bare
+ *  `ENOENT` on Windows before this fix (this bug pre-dates Slice 1 -- it affects TypeScript's own
+ *  `npx` fallback identically, just never exercised by a real spawn in this repo's test suite
+ *  until now). */
+const WINDOWS_SHELL_ONLY_BARE_COMMANDS = new Set(["npx"]);
+
 /** Full stdio pipe wiring (stdin/stdout/stderr all piped) — shared by both `spawn()` branches
  *  below. Returns a fresh array each call: `child_process.spawn()`'s `stdio` option type isn't
  *  `readonly`, and a shared mutable array risks aliasing across concurrent spawns. */
@@ -23,9 +48,10 @@ function stdioAllPiped(): ["pipe", "pipe", "pipe"] {
 }
 
 function needsWindowsShellWrapper(command: string): boolean {
+  if (process.platform !== "win32") return false;
   return (
-    process.platform === "win32" &&
-    WINDOWS_SHELL_ONLY_EXTENSIONS.has(path.extname(command).toLowerCase())
+    WINDOWS_SHELL_ONLY_EXTENSIONS.has(path.extname(command).toLowerCase()) ||
+    WINDOWS_SHELL_ONLY_BARE_COMMANDS.has(command.toLowerCase())
   );
 }
 
@@ -36,6 +62,44 @@ function needsWindowsShellWrapper(command: string): boolean {
  *  which is a real injection risk the moment any arg contains a shell metacharacter). */
 function quoteForWindowsShell(token: string): string {
   return `"${token.replace(/"/g, '""')}"`;
+}
+
+/** Short timeout for the live `where` probe below -- a cheap PATH lookup, not the batch itself. */
+const WHERE_PROBE_TIMEOUT_MS = 5000;
+
+/**
+ * Resolves a bare command name (only ever `"npx"` today) to its actual full path via a live
+ * `where` probe on Windows -- necessary because invoking a bare-named `.cmd` shim (`npx`) through
+ * a `cmd.exe shell: true` wrapper (the fix above) triggers a real, separately-confirmed npm/npx
+ * bug: the shim's own internal bootstrapping re-resolves one of its own files
+ * (`node_modules/npm/bin/npm-prefix.js`) relative to the *spawned process's `cwd`* instead of
+ * its own install directory, when it was reached via a bare-name shell PATH search rather than
+ * its full path -- reproduced directly during the multi-language-lsp-support plan's Slice 1 (a
+ * real `pyright-langserver` spawn exited immediately with `MODULE_NOT_FOUND` for a path relative
+ * to `cwd`, every time `workspaceRoot` had no such `node_modules/npm/bin/...` file, i.e. always);
+ * invoking the shell wrapper with `npx`'s already-resolved full path sidesteps the bug entirely
+ * (confirmed fixed by the same direct reproduction). Falls back to the bare command name
+ * unresolved if the probe itself fails (e.g. `npx` genuinely isn't on `PATH` at all) -- preserves
+ * an honest spawn failure in that case, just surfaced via the shell's own "command not found"
+ * exit instead of a synchronous Node `ENOENT` `error` event.
+ */
+async function resolveWindowsBareCommandPath(
+  command: string,
+  env: NodeJS.ProcessEnv | undefined,
+): Promise<string> {
+  try {
+    const { stdout } = await execFileAsync("where", [command], {
+      timeout: WHERE_PROBE_TIMEOUT_MS,
+      env,
+    });
+    const first = stdout
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find((line) => line.length > 0);
+    return first ?? command;
+  } catch {
+    return command;
+  }
 }
 
 interface PendingRequest {
@@ -84,21 +148,29 @@ export class LspJsonRpcClient {
     // shell-metacharacter injection (and trigger Node's `DEP0190` deprecation, which exists
     // precisely because array args get concatenated into the shell string unescaped) -- so each
     // token is quoted individually into a single command string instead.
+    const useShellWrapper = needsWindowsShellWrapper(options.command);
+    // Bare commands (only `"npx"` today) need their own extra resolution step -- see
+    // `resolveWindowsBareCommandPath()`'s doc comment for the separate real bug this sidesteps.
+    const shellCommand =
+      useShellWrapper &&
+      WINDOWS_SHELL_ONLY_BARE_COMMANDS.has(options.command.toLowerCase())
+        ? await resolveWindowsBareCommandPath(options.command, options.env)
+        : options.command;
     const child = (
-      needsWindowsShellWrapper(options.command)
+      useShellWrapper
         ? spawn(
-            [options.command, ...options.args]
-              .map(quoteForWindowsShell)
-              .join(" "),
+            [shellCommand, ...options.args].map(quoteForWindowsShell).join(" "),
             {
               cwd: options.cwd,
               stdio: stdioAllPiped(),
               shell: true,
+              env: options.env,
             },
           )
         : spawn(options.command, options.args, {
             cwd: options.cwd,
             stdio: stdioAllPiped(),
+            env: options.env,
           })
     ) as ChildProcessWithoutNullStreams;
     this.child = child;

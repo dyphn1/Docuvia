@@ -23,7 +23,10 @@ import type { ISnapshotRenderer } from "../interfaces/snapshot.interfaces.js";
 import type { IHydrationService } from "../interfaces/hydration.interfaces.js";
 import type { IDiagnosticRunner } from "../interfaces/diagnostic.interfaces.js";
 import type { ISemanticDiffAnalyzer } from "../interfaces/semantic-diff.interfaces.js";
-import type { IEdgeResolutionProvider } from "../interfaces/edge-resolution.interfaces.js";
+import type {
+  IEdgeResolutionProvider,
+  TierBLanguageId,
+} from "../interfaces/edge-resolution.interfaces.js";
 
 /**
  * A phantom-typed registration token — see
@@ -97,11 +100,15 @@ export const TOKENS = {
   SemanticDiffAnalyzer: createToken<ISemanticDiffAnalyzer, LoggerParams>(
     "ISemanticDiffAnalyzer",
   ),
-  /** A builder function, not a shared instance — mirrors `LlmClient`'s token shape (§8b's D1
-   *  provider seam): the Tier B batch resolves this once, then calls `.configure()` with any
-   *  overrides (binary path/args/timeout) before using it, exactly like `ILlmClient.initialize()`. */
-  EdgeResolutionProvider: createToken<
-    () => IEdgeResolutionProvider,
+  /** A registry, not a single builder function (multi-language-lsp-support plan, Finding A) — the
+   *  `DocuviaFactory` itself stays single-value-per-token, so the *value* behind this one token is
+   *  a `Partial<Record<TierBLanguageId, ...>>` map of per-language provider builders. The Tier B
+   *  batch resolves this once, looks up the builder for each queued language, then calls
+   *  `.configure()` on the built provider with any overrides before using it — exactly like
+   *  `ILlmClient.initialize()`, just keyed by language now. Slice 0 registers just `{ typescript }`
+   *  (unchanged behavior); later language slices each add one more key. */
+  EdgeResolutionProviders: createToken<
+    Partial<Record<TierBLanguageId, () => IEdgeResolutionProvider>>,
     LoggerParams
-  >("IEdgeResolutionProvider"),
+  >("EdgeResolutionProviders"),
 } as const;

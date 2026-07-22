@@ -48,6 +48,8 @@ export const LSP_MESSAGES = {
     `LSP server process exited (code=${String(code)}) before responding`,
   spawnFailed: (command: string, message: string) =>
     `Failed to spawn LSP server "${command}": ${message}`,
+  initializeFailed: (message: string) =>
+    `LSP server exited before completing its initialize handshake: ${message}`,
   binaryUnresolvable:
     "typescript-language-server is not resolvable (no local node_modules/.bin copy and `npx --no-install` cannot find it) -- install it as a project devDependency to enable LSP-precision cross-file edges",
   nodeModulesMissing:

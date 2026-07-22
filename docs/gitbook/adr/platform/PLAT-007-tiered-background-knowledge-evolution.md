@@ -111,6 +111,14 @@ jitter without guaranteeing freshness; pre-push + commit-cap needs no scheduler 
   No resident daemon — consistent with this repo's repeated rejections of daemons (IFCE-002
   boundaries, PLAT-006's no-IPC stance, legacy ADR-027's hook-driven shape). Revisit a warm
   instance only if measured batch latency becomes a real complaint.
+  **Update (2026-07-22, multi-language-lsp-support plan, Slice 0):** "Provider 1" is no longer a
+  singular, hardcoded binding — `escalateToLsp` now resolves a per-language provider _registry_
+  (`TOKENS.EdgeResolutionProviders`, keyed by `TierBLanguageId`) rather than one fixed provider
+  per token. Slice 0 was a pure foundation/refactor: the registry resolves to just
+  `{ typescript: ... }` today, byte-identical in behavior to the single-provider shape described
+  above — no new language shipped yet. See
+  [IMPT-002's Language Support Matrix](../impact/IMPT-002-lsp-for-absolute-quality.md#language-support-matrix-added-2026-07-19)
+  for the per-language rollout as it happens.
 - **Provider 2 (documented seam, not built): small-model compensation.** A 1B-class local model
   could analyze files LSP can't reach in 100–200ms each. If both providers are ever enabled in
   parallel, results merge by provenance: LSP edges are authoritative, LLM edges carry
@@ -128,10 +136,19 @@ jitter without guaranteeing freshness; pre-push + commit-cap needs no scheduler 
 - `init` / manual `analyze --escalate-to-lsp`: the gate is mandatory and interactive — detect
   environment readiness (`node_modules`, tsconfig, LSP binary resolvable) and let the user choose
   (`--fallback-ast` skips the confirmation). Background paths never prompt; they degrade and log.
+  **Update (2026-07-22, Slice 0):** with the provider registry (above), this check now resolves
+  every _registered_ language's provider and checks each one's availability, aggregating into a
+  single yes/no plus a joined reason string if more than one is unavailable — not yet scoped down
+  to only the language(s) actually queued this run (that refinement is deferred to a later slice;
+  Slice 0 only ever has one registered language, so this is behaviorally identical to the
+  single-provider check it replaces).
 
-**Language scope: TS/JS first, behind per-language dispatch.** Queue consumption dispatches by
-language through a plugin-shaped dispatch table, never a hardcoded TS check. Non-TS/JS entries
-skip LSP with a JSONL log line and stay at AST precision. See
+**Language scope: TS/JS first, behind per-language dispatch and a per-language provider
+registry.** Queue consumption dispatches by language through a plugin-shaped dispatch table
+(`TIER_B_LANGUAGE_ID_BY_EXTENSION`), never a hardcoded TS check, and resolution runs through a
+per-language provider registry (`TOKENS.EdgeResolutionProviders`, Slice 0) rather than one
+hardcoded provider — today the registry and dispatch table both only know `typescript`. Non-TS/JS
+entries skip LSP with a JSONL log line and stay at AST precision. See
 [IMPT-002's Language Support Matrix](../impact/IMPT-002-lsp-for-absolute-quality.md#language-support-matrix-added-2026-07-19)
 for the full per-language table — this is the canonical source for language coverage, kept in
 one place rather than duplicated per-ADR.

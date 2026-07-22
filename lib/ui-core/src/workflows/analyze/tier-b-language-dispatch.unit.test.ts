@@ -14,11 +14,12 @@ describe("dispatchTierBLanguage() (§8e, D4)", () => {
     ["src/a.jsx", "typescript"],
     ["src/a.mjs", "typescript"],
     ["src/a.cjs", "typescript"],
+    ["src/a.py", "python"],
   ])("routes %s to the %s plugin", (file, expected) => {
     expect(dispatchTierBLanguage(file)).toBe(expected);
   });
 
-  it.each(["src/a.py", "src/a.go", "src/a.rs", "src/a.md", "src/a"])(
+  it.each(["src/a.go", "src/a.rs", "src/a.md", "src/a"])(
     "has no plugin for %s -- undefined, stays AST-level",
     (file) => {
       expect(dispatchTierBLanguage(file)).toBeUndefined();
@@ -27,25 +28,29 @@ describe("dispatchTierBLanguage() (§8e, D4)", () => {
 });
 
 describe("partitionQueueByLanguage()", () => {
-  it("splits entries into supported/unsupported by extension", () => {
+  it("buckets entries by language id, and separates out unsupported extensions", () => {
     const entries = [
       { file: "src/a.ts", commitSha: "sha1" },
       { file: "src/b.py", commitSha: "sha2" },
       { file: "src/c.tsx", commitSha: "sha3" },
+      { file: "src/d.go", commitSha: "sha4" },
     ];
 
-    const { supported, unsupported } = partitionQueueByLanguage(entries);
+    const { buckets, unsupported } = partitionQueueByLanguage(entries);
 
-    expect(supported).toEqual([
-      { file: "src/a.ts", commitSha: "sha1" },
-      { file: "src/c.tsx", commitSha: "sha3" },
-    ]);
-    expect(unsupported).toEqual([{ file: "src/b.py", commitSha: "sha2" }]);
+    expect(buckets).toEqual({
+      typescript: [
+        { file: "src/a.ts", commitSha: "sha1" },
+        { file: "src/c.tsx", commitSha: "sha3" },
+      ],
+      python: [{ file: "src/b.py", commitSha: "sha2" }],
+    });
+    expect(unsupported).toEqual([{ file: "src/d.go", commitSha: "sha4" }]);
   });
 
-  it("returns empty arrays for an empty queue", () => {
+  it("returns empty buckets/unsupported for an empty queue", () => {
     expect(partitionQueueByLanguage([])).toEqual({
-      supported: [],
+      buckets: {},
       unsupported: [],
     });
   });

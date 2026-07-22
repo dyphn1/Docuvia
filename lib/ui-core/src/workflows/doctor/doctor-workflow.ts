@@ -352,26 +352,36 @@ export class DoctorWorkflow {
    * produces a result identical in substance to what `analyze --escalate-to-lsp`'s own gate would
    * find on the same workspace. Always PASS (decision 1c) -- a `reason` from a not-available
    * result becomes the informative message, not a failure. Never throws past this method.
+   *
+   * multi-language-lsp-support plan, Finding A/G: iterates the full `TOKENS.EdgeResolutionProviders`
+   * registry, one diagnostic line per registered language (independent of what's currently queued
+   * -- doctor's job is "is my environment ready", not "is this run's queue ready"). Slice 0's
+   * registry only has `typescript`, so this produces exactly one line, same as before.
    */
   private async runLspBinaryDiagnostic(
     diagnostics: Record<string, DiagnosticResult>,
   ): Promise<void> {
-    if (!docuviaFactory.has(TOKENS.EdgeResolutionProvider)) return;
+    if (!docuviaFactory.has(TOKENS.EdgeResolutionProviders)) return;
 
     try {
-      const buildProvider = docuviaFactory.resolve(
-        TOKENS.EdgeResolutionProvider,
-        { logger: this.logger },
-      );
-      const provider = buildProvider();
-      const availability = await provider.checkAvailability(this.workspaceRoot);
+      const registry = docuviaFactory.resolve(TOKENS.EdgeResolutionProviders, {
+        logger: this.logger,
+      });
 
-      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LSP_BINARY] = {
-        status: DiagnosticStatus.PASS,
-        message: availability.available
-          ? DOCTOR_MESSAGES.LSP_BINARY_AVAILABLE
-          : DOCTOR_MESSAGES.LSP_BINARY_UNAVAILABLE(availability.reason ?? ""),
-      };
+      for (const [languageId, buildProvider] of Object.entries(registry)) {
+        if (!buildProvider) continue;
+        const provider = buildProvider();
+        const availability = await provider.checkAvailability(
+          this.workspaceRoot,
+        );
+
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LSP_BINARY(languageId)] = {
+          status: DiagnosticStatus.PASS,
+          message: availability.available
+            ? DOCTOR_MESSAGES.LSP_BINARY_AVAILABLE(provider.name)
+            : DOCTOR_MESSAGES.LSP_BINARY_UNAVAILABLE(availability.reason ?? ""),
+        };
+      }
     } catch {
       // Never crash doctor over this check.
     }

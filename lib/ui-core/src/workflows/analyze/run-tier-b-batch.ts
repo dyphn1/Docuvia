@@ -1,15 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import {
-  docuviaFactory,
-  TOKENS,
   LinkTypes,
   type IGitProvider,
   type IGraphStore,
   type IKnowledgeGitService,
   type ILogger,
-  type EdgeResolutionOutcome,
   type EdgeResolutionProviderConfig,
+  type TierBLanguageId,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/core";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
@@ -19,6 +17,10 @@ import { readTierBQueue, type TierBQueueEntry } from "./tier-b-queue.js";
 import { partitionQueueByLanguage } from "./tier-b-language-dispatch.js";
 import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
 import { runTierCDrain } from "./run-tier-c-drain.js";
+import {
+  resolveEdgesForLanguageBuckets,
+  type MergedEdgeResolutionOutcome,
+} from "./tier-b-edge-resolution-orchestrator.js";
 
 interface PendingTierBBatch {
   headSha: string;
@@ -116,10 +118,8 @@ async function runTierBBatchCore(
     return emptyResult(headSha, commitCapExceeded);
   }
 
-  const { toProcess, droppedDeleted, skippedLanguage } = await dispatchQueue(
-    deps,
-    queue,
-  );
+  const { buckets, toProcess, droppedDeleted, skippedLanguage } =
+    await dispatchQueue(deps, queue);
   await logDroppedAndSkipped(workspaceRoot, droppedDeleted, skippedLanguage);
 
   if (toProcess.length === 0) {
@@ -129,18 +129,24 @@ async function runTierBBatchCore(
       queued: queue.length,
       droppedDeleted: droppedDeleted.length,
       skippedLanguage: skippedLanguage.length,
-      outcome: { edges: [], filesProcessed: [], filesFailed: [] },
+      outcome: {
+        edges: [],
+        filesProcessed: [],
+        filesFailed: [],
+        degradedLanguages: [],
+      },
       failedEntries: [],
       edgesApplied: 0,
       edgesPruned: 0,
     });
   }
 
-  const outcome = await resolveEdgesForQueue(deps, toProcess);
+  const outcome = await resolveEdgesForQueue(deps, buckets);
   if (outcome.unavailableReason) {
     await appendAnalyzeLogLine(workspaceRoot, {
       event: ANALYZE_EVENTS.TIER_B_DEGRADED,
       reason: outcome.unavailableReason,
+      degradedLanguages: outcome.degradedLanguages,
     });
     logger.info(ANALYZE_MESSAGES.TIER_B_DEGRADED(outcome.unavailableReason));
     return await finalizeBatch(deps, {
@@ -201,15 +207,17 @@ function emptyResult(
   };
 }
 
-/** Splits the queue into: entries to attempt (`toProcess`), entries whose file no longer exists
- *  at HEAD (`droppedDeleted`, checked against the working tree -- Tier B reads live files off
- *  disk for the LSP session, so "exists at HEAD" is approximated by "exists in the working tree",
- *  a documented assumption), and entries whose language has no Tier B plugin yet
- *  (`skippedLanguage`, D4). */
+/** Splits the queue into: entries to attempt, bucketed per language (`buckets`/`toProcess` --
+ *  the flattened form of the same buckets, kept for callers that only care about the total),
+ *  entries whose file no longer exists at HEAD (`droppedDeleted`, checked against the working
+ *  tree -- Tier B reads live files off disk for the LSP session, so "exists at HEAD" is
+ *  approximated by "exists in the working tree", a documented assumption), and entries whose
+ *  language has no Tier B plugin yet (`skippedLanguage`, D4). */
 async function dispatchQueue(
   deps: TierBBatchDeps,
   queue: TierBQueueEntry[],
 ): Promise<{
+  buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>>;
   toProcess: TierBQueueEntry[];
   droppedDeleted: TierBQueueEntry[];
   skippedLanguage: TierBQueueEntry[];
@@ -224,8 +232,13 @@ async function dispatchQueue(
     else droppedDeleted.push(entry);
   }
 
-  const { supported, unsupported } = partitionQueueByLanguage(existing);
-  return { toProcess: supported, droppedDeleted, skippedLanguage: unsupported };
+  const { buckets, unsupported } = partitionQueueByLanguage(existing);
+  return {
+    buckets,
+    toProcess: Object.values(buckets).flatMap((entries) => entries ?? []),
+    droppedDeleted,
+    skippedLanguage: unsupported,
+  };
 }
 
 async function logDroppedAndSkipped(
@@ -247,22 +260,18 @@ async function logDroppedAndSkipped(
   }
 }
 
-/** Resolves the D1 provider from the factory, configures it (§8b's config-overridable binary/
- *  args/timeout), and runs it over `toProcess`. */
+/** Dispatches each language bucket to its registered provider and merges the outcomes (§8b/§8e;
+ *  multi-language-lsp-support plan, Finding A/B/F) -- the per-language dispatch/merge itself lives
+ *  in `tier-b-edge-resolution-orchestrator.ts`, this is just the Tier B batch's call site. */
 async function resolveEdgesForQueue(
   deps: TierBBatchDeps,
-  toProcess: TierBQueueEntry[],
-): Promise<EdgeResolutionOutcome> {
+  buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>>,
+): Promise<MergedEdgeResolutionOutcome> {
   const { workspaceRoot, logger, providerConfig } = deps;
-  const buildProvider = docuviaFactory.resolve(TOKENS.EdgeResolutionProvider, {
-    logger,
-  });
-  const provider = buildProvider();
-  if (providerConfig) provider.configure(providerConfig);
-
-  return provider.resolveEdges({
+  return resolveEdgesForLanguageBuckets(buckets, {
     workspaceRoot,
-    files: toProcess.map((e) => e.file),
+    logger,
+    providerConfig,
   });
 }
 
@@ -273,7 +282,7 @@ async function resolveEdgesForQueue(
  *  same discipline Tier A's delta persist step uses. */
 async function applyResolvedEdges(
   deps: TierBBatchDeps,
-  outcome: EdgeResolutionOutcome,
+  outcome: MergedEdgeResolutionOutcome,
 ): Promise<{ edgesApplied: number; edgesPruned: number }> {
   const { store, knowledgeGit, workspaceRoot } = deps;
   let edgesApplied = 0;
@@ -319,7 +328,7 @@ interface FinalizeArgs {
   queued: number;
   droppedDeleted: number;
   skippedLanguage: number;
-  outcome: EdgeResolutionOutcome;
+  outcome: MergedEdgeResolutionOutcome;
   failedEntries: TierBQueueEntry[];
   edgesApplied: number;
   edgesPruned: number;
@@ -365,6 +374,7 @@ async function finalizeBatch(
     edgesApplied: args.edgesApplied,
     edgesPruned: args.edgesPruned,
     degraded: Boolean(outcome.unavailableReason),
+    degradedLanguages: outcome.degradedLanguages,
     commitCapExceeded: args.commitCapExceeded,
   });
   logger.info(
@@ -383,6 +393,10 @@ async function finalizeBatch(
     edgesPruned: args.edgesPruned,
     degraded: Boolean(outcome.unavailableReason),
     degradedReason: args.degradedReason,
+    degradedLanguages:
+      outcome.degradedLanguages.length > 0
+        ? outcome.degradedLanguages
+        : undefined,
     commitCapExceeded: args.commitCapExceeded,
   };
 }

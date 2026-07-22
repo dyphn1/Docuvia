@@ -100,6 +100,10 @@ export interface TierBBatchResult {
    *  AST-level edges were left untouched, per §8b's honest-degradation rule. */
   degraded: boolean;
   degradedReason?: string;
+  /** Per-language fidelity behind `degraded`/`degradedReason` above (multi-language-lsp-support
+   *  plan, Finding F) -- additive, only set when at least one queued language's provider could not
+   *  run at all this batch. Consumed by JSONL logging and `doctor`'s per-language diagnostic. */
+  degradedLanguages?: { languageId: string; reason: string }[];
   /** `true` when `rev-list --count lastTierBBatchSha..HEAD >= cap` at batch time (§8f) --
    *  observability only in this slice; does not gate anything (see the implementer's report on
    *  the commit-hook-cannot-start-LSP tension). */

@@ -91,6 +91,13 @@ const GIT_ARG = {
    *  `<git-common-dir>/hooks`, which silently ignores that config entirely (see
    *  `resolveHooksDir`'s doc comment for why this matters). */
   GIT_PATH_FLAG: "--git-path",
+  /** `push --no-verify` — skips the local `pre-push` hook. `pushRef` is used by
+   *  `KnowledgeGitService.pushQuietly` to push the `knowledge` branch from *inside* a hook
+   *  invocation (`.husky/pre-push`'s Tier B batch runs `sync-knowledge`, which can call
+   *  `pushRef`); without this flag that nested push re-triggers `.husky/pre-push`, which runs
+   *  `sync-knowledge` again, which pushes again, recursing until the knowledge lock
+   *  (`KNOWLEDGE_LOCK_FILE_NAME`) deadlocks against itself. */
+  NO_VERIFY: "--no-verify",
 } as const;
 
 /** Raw control-character separators `getCommitLog`'s `%x01`/`%x00` `--format` placeholders
@@ -958,7 +965,12 @@ export class GitLocalProvider implements IGitProvider {
       const branchRef = `${GIT_BRANCH_REF_PREFIX}${branchName}`;
       await execFileAsync(
         GIT_BIN,
-        [GIT_SUBCOMMAND.PUSH, remote, `${branchRef}:${branchRef}`],
+        [
+          GIT_SUBCOMMAND.PUSH,
+          GIT_ARG.NO_VERIFY,
+          remote,
+          `${branchRef}:${branchRef}`,
+        ],
         {
           cwd,
           ...(timeoutMs !== undefined ? { timeout: timeoutMs } : {}),

@@ -9,6 +9,13 @@ import type {
   IGraphStore,
 } from "@workspace/contracts";
 import { runParseAndPersist } from "./run-parse-and-persist.js";
+import { appendInitLogLine } from "./init-log-writer.js";
+import { INIT_EVENTS } from "./init-messages.js";
+
+const initLogEvents = {
+  parseFailure: INIT_EVENTS.PARSE_FAILURE,
+  fileSkippedOversized: INIT_EVENTS.FILE_SKIPPED_OVERSIZED,
+};
 
 // `store` is opaque to `runParseAndPersist` — it's only forwarded, untouched, to the
 // (mocked) `graphPersister`. Actual persistence behavior is covered by
@@ -78,6 +85,8 @@ describe("runParseAndPersist", () => {
       filesToParse,
       skippedOversized: [],
       tags: new Set(["backend"]),
+      appendLogLine: appendInitLogLine,
+      logEvents: initLogEvents,
     });
 
     expect(Array.from(result.tags).sort()).toEqual(["backend", "typescript"]);
@@ -120,6 +129,8 @@ describe("runParseAndPersist", () => {
       filesToParse,
       skippedOversized: [],
       tags: callerTags,
+      appendLogLine: appendInitLogLine,
+      logEvents: initLogEvents,
     });
 
     expect(Array.from(callerTags)).toEqual(["backend"]);
@@ -146,6 +157,8 @@ describe("runParseAndPersist", () => {
       filesToParse,
       skippedOversized: [],
       tags: new Set(),
+      appendLogLine: appendInitLogLine,
+      logEvents: initLogEvents,
     });
 
     const logPath = path.join(tmpDir, ".docuvia", "logs", "init.log");
@@ -170,6 +183,8 @@ describe("runParseAndPersist", () => {
       filesToParse: [],
       skippedOversized: [{ file: "src/huge.ts", sizeBytes: 600_000 }],
       tags: new Set(),
+      appendLogLine: appendInitLogLine,
+      logEvents: initLogEvents,
     });
 
     const logPath = path.join(tmpDir, ".docuvia", "logs", "init.log");

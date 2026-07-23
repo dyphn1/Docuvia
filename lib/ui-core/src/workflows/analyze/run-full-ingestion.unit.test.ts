@@ -300,6 +300,72 @@ describe("runFullIngestion()", () => {
     });
   });
 
+  it("logs a full-ingestion parse failure to analyze.log as analyze.full.parse_failure, not init.log", async () => {
+    const git = makeMockGitProvider();
+    docuviaFactory.reset();
+    resetFactoryForTests();
+    const fileDiscovery: IFileDiscovery = {
+      discoverFiles: vi.fn().mockResolvedValue({
+        filesToParse,
+        existingHashes: new Map(),
+        skippedCount: 0,
+        skippedOversized: [],
+      }),
+    };
+    const astProcessor: IAstProcessor = {
+      processFiles: vi.fn().mockResolvedValue({
+        parsed: [],
+        failures: [
+          {
+            file: "src/broken.ts",
+            hash: "h",
+            error: "Worker exited with code 1",
+          },
+        ],
+      }),
+    };
+    const configScanner: IConfigScanner = {
+      scanConfigs: vi
+        .fn()
+        .mockResolvedValue({ projectType: "typescript", tags: ["typescript"] }),
+    };
+    const vcsScanner: IVcsScanner = {
+      extractHotspotTags: vi.fn().mockResolvedValue([]),
+    };
+    const graphPersister: IGraphPersister = {
+      persist: vi.fn().mockResolvedValue({ updatedCount: 0 }),
+    };
+    docuviaFactory.register(TOKENS.FileDiscovery, () => fileDiscovery);
+    docuviaFactory.register(TOKENS.ConfigScanner, () => configScanner);
+    docuviaFactory.register(TOKENS.VcsScanner, () => vcsScanner);
+    docuviaFactory.register(TOKENS.AstProcessor, () => astProcessor);
+    docuviaFactory.register(TOKENS.GraphPersister, () => graphPersister);
+    docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
+    docuviaFactory.lock();
+
+    await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+    });
+
+    const analyzeLogPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const analyzeLines = fs
+      .readFileSync(analyzeLogPath, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    const failureLine = analyzeLines.find(
+      (l) => l.event === "analyze.full.parse_failure",
+    );
+    expect(failureLine).toBeDefined();
+    expect(failureLine.file).toBe("src/broken.ts");
+
+    const initLogPath = path.join(tmpDir, ".docuvia", "logs", "init.log");
+    expect(fs.existsSync(initLogPath)).toBe(false);
+  });
+
   it("logs analyze.full.start and analyze.full.summary JSONL lines", async () => {
     const git = makeMockGitProvider();
 

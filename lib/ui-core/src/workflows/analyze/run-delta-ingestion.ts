@@ -115,7 +115,6 @@ export async function runDeltaIngestion(deps: {
     failures = await persistDelta(deps, {
       toDelete,
       filesToParse,
-      skippedOversized,
       tierBEntries,
       tierCEntries,
       changedBytes,
@@ -307,21 +306,14 @@ async function persistDelta(
   work: {
     toDelete: Set<string>;
     filesToParse: DiscoveredFile[];
-    skippedOversized: { file: string; sizeBytes: number }[];
     tierBEntries: TierBQueueEntry[];
     tierCEntries: TierCQueueEntry[];
     changedBytes: number;
   },
 ): Promise<AstParseFailure[]> {
   const { workspaceRoot, logger, store, projectId, headSha } = deps;
-  const {
-    toDelete,
-    filesToParse,
-    skippedOversized,
-    tierBEntries,
-    tierCEntries,
-    changedBytes,
-  } = work;
+  const { toDelete, filesToParse, tierBEntries, tierCEntries, changedBytes } =
+    work;
 
   if (toDelete.size > 0) {
     await store.withWriteLock(() => {
@@ -343,8 +335,15 @@ async function persistDelta(
       workspaceRoot,
       projectId,
       filesToParse,
-      skippedOversized,
+      // Already logged (analyze.delta.file_skipped_oversized) as each was found in
+      // collectFilesToParse -- passing them again here would double-log the same skip.
+      skippedOversized: [],
       tags: new Set(),
+      appendLogLine: appendAnalyzeLogLine,
+      logEvents: {
+        parseFailure: ANALYZE_EVENTS.DELTA_PARSE_FAILURE,
+        fileSkippedOversized: ANALYZE_EVENTS.DELTA_FILE_SKIPPED_OVERSIZED,
+      },
     });
     failures = result.failures;
   }

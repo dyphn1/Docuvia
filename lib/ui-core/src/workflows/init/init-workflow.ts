@@ -112,6 +112,11 @@ export class InitWorkflow {
         filesToParse: discoveryResult.filesToParse,
         skippedOversized: discoveryResult.skippedOversized,
         tags: discoveryResult.tags,
+        appendLogLine: appendInitLogLine,
+        logEvents: {
+          parseFailure: INIT_EVENTS.PARSE_FAILURE,
+          fileSkippedOversized: INIT_EVENTS.FILE_SKIPPED_OVERSIZED,
+        },
       });
       logger.info(INIT_MESSAGES.PERSISTING_GRAPH);
 

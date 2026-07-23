@@ -69,6 +69,11 @@ export async function runFullIngestion(deps: {
     filesToParse: discoveryResult.filesToParse,
     skippedOversized: discoveryResult.skippedOversized,
     tags: discoveryResult.tags,
+    appendLogLine: appendAnalyzeLogLine,
+    logEvents: {
+      parseFailure: ANALYZE_EVENTS.FULL_PARSE_FAILURE,
+      fileSkippedOversized: ANALYZE_EVENTS.FULL_FILE_SKIPPED_OVERSIZED,
+    },
   });
 
   // Mirrors init-workflow.ts's Phase 4b comment: this graph just came from a direct parse, not a

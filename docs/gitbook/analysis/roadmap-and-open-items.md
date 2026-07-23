@@ -115,13 +115,6 @@ a full re-parse of HEAD, and `markSynced` prevents a later `ensureHydrated` from
 a stale snapshot. On large repos, hydrating the snapshot first and then delta-ing from its
 `Docuvia-Source` trailer to HEAD would be cheaper. Pure performance, not correctness — no urgency.
 
-### 12. Delta log misattribution
-
-Delta ingestion's reuse of `runParseAndPersist` writes `init.parse_failure`/
-`init.file_skipped_oversized` events to `init.log` (so an oversize skip during delta ingestion
-gets logged under the `init` event stream, not a delta-specific one). Wants an
-event-name/log-target parameter threaded through the shared helper.
-
 ### 13. Dirty-index hash edge
 
 Delta ingestion takes blob hashes from the git index but reads content at `headSha`; a dirty index

@@ -57,10 +57,15 @@ export const ANALYZE_EVENTS = {
   /** `runFullIngestion`'s own start/summary lines (§6a). */
   FULL_START: "analyze.full.start",
   FULL_SUMMARY: "analyze.full.summary",
+  /** Per-file lines from `runParseAndPersist` (shared with `init`) attributed to full ingestion. */
+  FULL_PARSE_FAILURE: "analyze.full.parse_failure",
+  FULL_FILE_SKIPPED_OVERSIZED: "analyze.full.file_skipped_oversized",
   /** `runDeltaIngestion`'s own start/summary lines (§6b). */
   DELTA_START: "analyze.delta.start",
   DELTA_SUMMARY: "analyze.delta.summary",
   DELTA_FILE_SKIPPED_OVERSIZED: "analyze.delta.file_skipped_oversized",
+  /** Per-file line from `runParseAndPersist` attributed to delta ingestion. */
+  DELTA_PARSE_FAILURE: "analyze.delta.parse_failure",
   FOCUSED_START: "analyze.focused.start",
   FOCUSED_ERROR: "analyze.focused.error",
   FOCUSED_SUMMARY: "analyze.focused.summary",

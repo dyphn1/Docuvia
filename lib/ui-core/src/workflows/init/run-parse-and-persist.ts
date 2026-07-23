@@ -6,13 +6,19 @@ import type {
   IGraphStore,
   ParsedAstFileResult,
 } from "@workspace/contracts";
-import { appendInitLogLine } from "./init-log-writer.js";
-import { INIT_EVENTS } from "./init-messages.js";
 
 export interface RunParseAndPersistResult {
   parsedResults: ParsedAstFileResult[];
   failures: AstParseFailure[];
   tags: Set<string>;
+}
+
+/** Event names for the two per-file JSONL lines this phase emits, supplied by the caller so the
+ *  line lands in the calling workflow's own log file (`init.log` for `init`, `analyze.log` for
+ *  `analyze`'s full/delta ingestion) under that workflow's own event-naming scheme. */
+export interface RunParseAndPersistLogEvents {
+  parseFailure: string;
+  fileSkippedOversized: string;
 }
 
 /** Phase 4: AST parse, per-file language-tag merge, then hands off to `IGraphPersister` (the Domain Core service resolved from the factory) for graph persistence. */
@@ -26,6 +32,13 @@ export async function runParseAndPersist(deps: {
   skippedOversized: { file: string; sizeBytes: number }[];
   /** Config + hotspot tags from `runDiscoveryPipeline`; a fresh `Set` is returned with per-file language tags folded in — the input is never mutated. */
   tags: Set<string>;
+  /** Caller's own command-log writer (`appendInitLogLine`/`appendAnalyzeLogLine`) — keeps this
+   *  shared phase helper's JSONL output attributed to whichever workflow actually invoked it. */
+  appendLogLine: (
+    workspaceRoot: string,
+    event: Record<string, unknown>,
+  ) => Promise<void>;
+  logEvents: RunParseAndPersistLogEvents;
 }): Promise<RunParseAndPersistResult> {
   const {
     astProcessor,
@@ -35,6 +48,8 @@ export async function runParseAndPersist(deps: {
     projectId,
     filesToParse,
     skippedOversized,
+    appendLogLine,
+    logEvents,
   } = deps;
 
   const { parsed: parsedResults, failures } = await astProcessor.processFiles(
@@ -48,14 +63,14 @@ export async function runParseAndPersist(deps: {
   }
 
   for (const failure of failures) {
-    await appendInitLogLine(workspaceRoot, {
-      event: INIT_EVENTS.PARSE_FAILURE,
+    await appendLogLine(workspaceRoot, {
+      event: logEvents.parseFailure,
       ...failure,
     });
   }
   for (const skipped of skippedOversized) {
-    await appendInitLogLine(workspaceRoot, {
-      event: INIT_EVENTS.FILE_SKIPPED_OVERSIZED,
+    await appendLogLine(workspaceRoot, {
+      event: logEvents.fileSkippedOversized,
       ...skipped,
     });
   }

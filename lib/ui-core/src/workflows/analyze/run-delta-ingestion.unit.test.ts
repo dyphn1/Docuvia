@@ -562,6 +562,88 @@ describe("runDeltaIngestion()", () => {
     ]);
   });
 
+  it("logs an oversized skip exactly once, to analyze.log (never duplicated into init.log)", async () => {
+    const entries: ChangedFileEntry[] = [
+      { file: "src/huge.ts", status: "modified" },
+    ];
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue(entries),
+      readFileAtRef: vi.fn().mockResolvedValue("x".repeat(600_000)),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    const analyzeLogPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const analyzeLines = fs
+      .readFileSync(analyzeLogPath, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    const skippedLines = analyzeLines.filter(
+      (l) => l.event === "analyze.delta.file_skipped_oversized",
+    );
+    expect(skippedLines).toHaveLength(1);
+    expect(skippedLines[0].file).toBe("src/huge.ts");
+
+    const initLogPath = path.join(tmpDir, ".docuvia", "logs", "init.log");
+    expect(fs.existsSync(initLogPath)).toBe(false);
+  });
+
+  it("logs a delta parse failure to analyze.log as analyze.delta.parse_failure, not init.log", async () => {
+    astProcessor.processFiles = vi.fn().mockResolvedValue({
+      parsed: [],
+      failures: [
+        {
+          file: "src/broken.ts",
+          hash: "h",
+          error: "Worker exited with code 1",
+        },
+      ],
+    });
+    const entries: ChangedFileEntry[] = [
+      { file: "src/broken.ts", status: "modified" },
+    ];
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue(entries),
+      readFileAtRef: vi.fn().mockResolvedValue("content"),
+    });
+
+    await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    const analyzeLogPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const analyzeLines = fs
+      .readFileSync(analyzeLogPath, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    const failureLine = analyzeLines.find(
+      (l) => l.event === "analyze.delta.parse_failure",
+    );
+    expect(failureLine).toBeDefined();
+    expect(failureLine.file).toBe("src/broken.ts");
+
+    const initLogPath = path.join(tmpDir, ".docuvia", "logs", "init.log");
+    expect(fs.existsSync(initLogPath)).toBe(false);
+  });
+
   it("enqueues a CONTRACT_CHANGED symbol into the Tier C queue, keyed by node_key", async () => {
     const entries: ChangedFileEntry[] = [
       { file: "src/a.ts", status: "modified" },

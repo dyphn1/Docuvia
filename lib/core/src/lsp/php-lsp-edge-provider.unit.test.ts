@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
 import { PhpLspEdgeProvider } from "./php-lsp-edge-provider.js";
-import { LspMethods } from "./lsp-constants.js";
+import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 
 type RequestHandler = (method: string, params: any) => unknown;
@@ -48,6 +48,20 @@ function makeWorkspace(files: Record<string, string>): string {
   return dir;
 }
 
+function uriFor(workspaceRoot: string, relPath: string): string {
+  return pathToFileURL(path.join(workspaceRoot, relPath)).toString();
+}
+
+const range = (
+  startLine: number,
+  startChar: number,
+  endLine: number,
+  endChar: number,
+) => ({
+  start: { line: startLine, character: startChar },
+  end: { line: endLine, character: endChar },
+});
+
 describe("PhpLspEdgeProvider.resolveEdges()", () => {
   let workspaceRoot: string;
 
@@ -63,15 +77,121 @@ describe("PhpLspEdgeProvider.resolveEdges()", () => {
 
   it("returns an empty outcome without touching the client factory when files is empty", async () => {
     const clientFactory = vi.fn();
-    const provider = new PhpLspEdgeProvider(
-      createMockLogger(),
-      clientFactory,
-    );
+    const provider = new PhpLspEdgeProvider(createMockLogger(), clientFactory);
 
     const outcome = await provider.resolveEdges({ workspaceRoot, files: [] });
 
     expect(outcome).toEqual({ edges: [], filesProcessed: [], filesFailed: [] });
     expect(clientFactory).not.toHaveBeenCalled();
+  });
+
+  it("resolves a cross-file symbol-level calls edge via documentSymbol + references (PHP)", async () => {
+    const customWorkspace = makeWorkspace({
+      "a.php":
+        "<?php\nnamespace MyProject;\nclass A {\n    public function foo() {}\n}\n",
+      "b.php":
+        "<?php\nnamespace MyProject;\nclass B {\n    public function bar() {\n        $a = new A();\n        $a->foo();\n    }\n}\n",
+    });
+    const aUri = uriFor(customWorkspace, "a.php");
+    const bUri = uriFor(customWorkspace, "b.php");
+
+    const fooSelectionRange = range(3, 20, 3, 23);
+    const barSelectionRange = range(3, 20, 3, 23);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "MyProject",
+              kind: LspSymbolKinds.NAMESPACE,
+              range: range(1, 0, 5, 1),
+              selectionRange: range(1, 10, 1, 19),
+              children: [
+                {
+                  name: "A",
+                  kind: LspSymbolKinds.CLASS,
+                  range: range(2, 0, 4, 1),
+                  selectionRange: range(2, 6, 2, 7),
+                  children: [
+                    {
+                      name: "foo",
+                      kind: LspSymbolKinds.METHOD,
+                      range: range(3, 4, 3, 28),
+                      selectionRange: fooSelectionRange,
+                    },
+                  ],
+                },
+              ],
+            },
+          ];
+        }
+        if (params.textDocument.uri === bUri) {
+          return [
+            {
+              name: "MyProject",
+              kind: LspSymbolKinds.NAMESPACE,
+              range: range(1, 0, 9, 1),
+              selectionRange: range(1, 10, 1, 19),
+              children: [
+                {
+                  name: "B",
+                  kind: LspSymbolKinds.CLASS,
+                  range: range(2, 0, 8, 1),
+                  selectionRange: range(2, 6, 2, 7),
+                  children: [
+                    {
+                      name: "bar",
+                      kind: LspSymbolKinds.METHOD,
+                      range: range(3, 4, 7, 5),
+                      selectionRange: barSelectionRange,
+                    },
+                  ],
+                },
+              ],
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (
+          params.textDocument.uri === aUri &&
+          params.position.line === fooSelectionRange.start.line &&
+          params.position.character === fooSelectionRange.start.character
+        ) {
+          return [{ uri: bUri, range: range(5, 12, 5, 15) }];
+        }
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const fake = new FakeLspClient(handler);
+    const provider = new PhpLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    try {
+      const outcome = await provider.resolveEdges({
+        workspaceRoot: customWorkspace,
+        files: ["a.php", "b.php"],
+      });
+
+      expect(outcome.filesFailed).toEqual([]);
+      expect(outcome.filesProcessed).toEqual(["a.php", "b.php"]);
+      expect(outcome.edges).toEqual([
+        {
+          sourceNodeKey: "b.php#bar",
+          targetNodeKey: "a.php#foo",
+          source: "lsp",
+        },
+      ]);
+    } finally {
+      fs.rmSync(customWorkspace, { recursive: true, force: true });
+    }
   });
 
   it("opens each file with the correct languageId based on extension", async () => {

@@ -52,6 +52,16 @@ function uriFor(workspaceRoot: string, relPath: string): string {
   return pathToFileURL(path.join(workspaceRoot, relPath)).toString();
 }
 
+const range = (
+  startLine: number,
+  startChar: number,
+  endLine: number,
+  endChar: number,
+) => ({
+  start: { line: startLine, character: startChar },
+  end: { line: endLine, character: endChar },
+});
+
 describe("CppLspEdgeProvider.resolveEdges()", () => {
   let workspaceRoot: string;
 
@@ -67,15 +77,105 @@ describe("CppLspEdgeProvider.resolveEdges()", () => {
 
   it("returns an empty outcome without touching the client factory when files is empty", async () => {
     const clientFactory = vi.fn();
-    const provider = new CppLspEdgeProvider(
-      createMockLogger(),
-      clientFactory,
-    );
+    const provider = new CppLspEdgeProvider(createMockLogger(), clientFactory);
 
     const outcome = await provider.resolveEdges({ workspaceRoot, files: [] });
 
     expect(outcome).toEqual({ edges: [], filesProcessed: [], filesFailed: [] });
     expect(clientFactory).not.toHaveBeenCalled();
+  });
+
+  it("resolves a cross-file symbol-level calls edge via documentSymbol + references (C++)", async () => {
+    const customWorkspace = makeWorkspace({
+      "Greeter.hpp":
+        "namespace myproject {\n    class Greeter {\n    public:\n        void hello();\n    };\n}\n",
+      "main.cpp":
+        '#include "Greeter.hpp"\nint main() {\n    myproject::Greeter g;\n    g.hello();\n}\n',
+    });
+    const hppUri = uriFor(customWorkspace, "Greeter.hpp");
+    const cppUri = uriFor(customWorkspace, "main.cpp");
+
+    const helloSelectionRange = range(3, 13, 3, 18);
+    const mainSelectionRange = range(1, 4, 1, 8);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === hppUri) {
+          return [
+            {
+              name: "myproject",
+              kind: LspSymbolKinds.NAMESPACE,
+              range: range(0, 0, 5, 1),
+              selectionRange: range(0, 10, 0, 19),
+              children: [
+                {
+                  name: "Greeter",
+                  kind: LspSymbolKinds.CLASS,
+                  range: range(1, 4, 4, 6),
+                  selectionRange: range(1, 10, 1, 17),
+                  children: [
+                    {
+                      name: "hello",
+                      kind: LspSymbolKinds.METHOD,
+                      range: range(3, 8, 3, 21),
+                      selectionRange: helloSelectionRange,
+                    },
+                  ],
+                },
+              ],
+            },
+          ];
+        }
+        if (params.textDocument.uri === cppUri) {
+          return [
+            {
+              name: "main",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(1, 0, 4, 1),
+              selectionRange: mainSelectionRange,
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (
+          params.textDocument.uri === hppUri &&
+          params.position.line === helloSelectionRange.start.line &&
+          params.position.character === helloSelectionRange.start.character
+        ) {
+          return [{ uri: cppUri, range: range(3, 6, 3, 11) }];
+        }
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const fake = new FakeLspClient(handler);
+    const provider = new CppLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    try {
+      const outcome = await provider.resolveEdges({
+        workspaceRoot: customWorkspace,
+        files: ["Greeter.hpp", "main.cpp"],
+      });
+
+      expect(outcome.filesFailed).toEqual([]);
+      expect(outcome.filesProcessed).toEqual(["Greeter.hpp", "main.cpp"]);
+      expect(outcome.edges).toEqual([
+        {
+          sourceNodeKey: "main.cpp#main",
+          targetNodeKey: "Greeter.hpp#hello",
+          source: "lsp",
+        },
+      ]);
+    } finally {
+      fs.rmSync(customWorkspace, { recursive: true, force: true });
+    }
   });
 
   it("opens each file with the correct languageId based on extension", async () => {

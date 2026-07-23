@@ -77,15 +77,95 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
 
   it("returns an empty outcome without touching the client factory when files is empty", async () => {
     const clientFactory = vi.fn();
-    const provider = new RustLspEdgeProvider(
-      createMockLogger(),
-      clientFactory,
-    );
+    const provider = new RustLspEdgeProvider(createMockLogger(), clientFactory);
 
     const outcome = await provider.resolveEdges({ workspaceRoot, files: [] });
 
     expect(outcome).toEqual({ edges: [], filesProcessed: [], filesFailed: [] });
     expect(clientFactory).not.toHaveBeenCalled();
+  });
+
+  it("resolves a cross-file symbol-level calls edge via documentSymbol + references (Rust)", async () => {
+    const customWorkspace = makeWorkspace({
+      "a.rs": "pub struct Greeter;\nimpl Greeter {\n    pub fn hello() {}\n}\n",
+      "b.rs": "use crate::a::Greeter;\nfn run() {\n    Greeter::hello();\n}\n",
+    });
+    const aUri = uriFor(customWorkspace, "a.rs");
+    const bUri = uriFor(customWorkspace, "b.rs");
+
+    const helloSelectionRange = range(2, 11, 2, 16);
+    const runSelectionRange = range(1, 3, 1, 6);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "Greeter",
+              kind: LspSymbolKinds.CLASS,
+              range: range(0, 0, 3, 1),
+              selectionRange: range(0, 11, 0, 18),
+              children: [
+                {
+                  name: "hello",
+                  kind: LspSymbolKinds.METHOD,
+                  range: range(2, 4, 2, 21),
+                  selectionRange: helloSelectionRange,
+                },
+              ],
+            },
+          ];
+        }
+        if (params.textDocument.uri === bUri) {
+          return [
+            {
+              name: "run",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(1, 0, 3, 1),
+              selectionRange: runSelectionRange,
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (
+          params.textDocument.uri === aUri &&
+          params.position.line === helloSelectionRange.start.line &&
+          params.position.character === helloSelectionRange.start.character
+        ) {
+          return [{ uri: bUri, range: range(2, 13, 2, 18) }];
+        }
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const fake = new FakeLspClient(handler);
+    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    try {
+      const outcome = await provider.resolveEdges({
+        workspaceRoot: customWorkspace,
+        files: ["a.rs", "b.rs"],
+      });
+
+      expect(outcome.filesFailed).toEqual([]);
+      expect(outcome.filesProcessed).toEqual(["a.rs", "b.rs"]);
+      expect(outcome.edges).toEqual([
+        {
+          sourceNodeKey: "b.rs#run",
+          targetNodeKey: "a.rs#hello",
+          source: "lsp",
+        },
+      ]);
+    } finally {
+      fs.rmSync(customWorkspace, { recursive: true, force: true });
+    }
   });
 
   it("opens each file with the rust languageId", async () => {

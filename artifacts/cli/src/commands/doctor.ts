@@ -62,10 +62,7 @@ async function runDoctorDiagnostics(
   scopeId: string,
   logger: ReturnType<typeof createPinoBackedLogger>,
   workspaceRoot: string,
-  options: Pick<
-    DoctorOptions,
-    "skipDb" | "skipGit" | "skipHooks" | "skipLogs" | "fix"
-  >,
+  options: DoctorOptions,
 ): Promise<boolean> {
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);

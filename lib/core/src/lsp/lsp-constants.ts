@@ -33,6 +33,7 @@ export const TsLspConstants = {
  *  LSP spec's numeric enum, not something docuvia controls, hence not `as const`-typed like our
  *  own vocabularies; kept here so the containment/dispatch code never repeats the raw numbers. */
 export const LspSymbolKinds = {
+  NAMESPACE: 3,
   CLASS: 5,
   METHOD: 6,
   CONSTRUCTOR: 9,

@@ -51,3 +51,8 @@ lib/schema/src/**/*.js
 # Dev-mode-compiled AST worker (see ast-worker-pool.ts's compileWorkerForDevMode()) — a
 # still-being-written temp file, renamed atomically once complete.
 lib/core/src/**/*.js.*.tmp
+.agents/harness-state/
+.cursor/harness-state/
+.github/harness-state/
+.github/skills/
+.continue/harness-state/

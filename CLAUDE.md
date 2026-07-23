@@ -50,3 +50,15 @@ Each agent below is a thin adapter that loads the canonical spec from `.github/a
 - Note: `AskUserQuestion` is **not available** to subagents (Claude Code platform restriction)
 - Subagents cannot spawn further subagents — output a Handover Block instead
 - Save AI implementation plans at `docs/ai_plans/implement_<feature-name>.md`
+
+<!-- docuvia:start -->
+
+# Docuvia — Codebase Knowledge Evolver
+
+This project uses Docuvia to manage architectural context and prevent blast-radius regressions.
+Before you explore the codebase (using Grep/Glob/Read) or make structural changes, you MUST query the local knowledge graph:
+
+Run: `npx --no-install docuvia query "<concept_or_file>" --local --format=prompt`
+
+Use the results from this command to understand architectural boundaries, historical decisions, and potential blast radius before modifying code.
+<!-- docuvia:end -->

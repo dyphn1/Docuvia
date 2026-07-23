@@ -1,0 +1,15 @@
+{
+  "PreToolUse": [
+    {
+      "hooks": [
+        {
+          "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/docuvia-hook.js",
+          "statusMessage": "Enriching with Docuvia architectural context...",
+          "timeout": 5,
+          "type": "command"
+        }
+      ],
+      "matcher": "Grep|Glob|Bash|Read"
+    }
+  ]
+}

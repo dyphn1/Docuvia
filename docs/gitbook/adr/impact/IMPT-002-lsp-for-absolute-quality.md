@@ -48,24 +48,26 @@ We mandate the **AST + LSP + LLM Tri-Layer Architecture** for structural analysi
 ## Language Support Matrix (added 2026-07-19)
 
 Per-language status of the tri-layer architecture. AST parsing (`lib/plugins-ast`) covers all
-eleven languages below; LSP escalation (Tier B, `--escalate-to-lsp`) is implemented for exactly
-one provider today. A language with AST-only support still gets full L2 nodes/edges from static
-parsing — it is missing only the LSP-precision cross-file `calls` repair described in this ADR's
-Decision section.
+eleven languages below; LSP escalation (Tier B, `--escalate-to-lsp`) is implemented for all nine
+registry keys (`typescript`, `python`, `go`, `rust`, `cpp`, `java`, `csharp`, `php`, `ruby`),
+covering all eleven language/extension rows below (TypeScript and JavaScript share the
+`typescript` key; C and C++ share the `cpp` key). A language with AST-only support still gets full
+L2 nodes/edges from static parsing — it is missing only the LSP-precision cross-file `calls`
+repair described in this ADR's Decision section.
 
 | Language   | File Extensions                                             | AST Parsing (Tier A) | LSP Escalation (Tier B)             |
 | ---------- | ----------------------------------------------------------- | :------------------: | ----------------------------------- |
 | TypeScript | `.ts`, `.tsx`, `.mts`, `.cts`                               |          ✅          | ✅ `typescript-language-server`     |
 | JavaScript | `.js`, `.jsx`, `.mjs`, `.cjs`                               |          ✅          | ✅ `typescript-language-server`     |
 | Python     | `.py`                                                       |          ✅          | ✅ `pyright` (`pyright-langserver`) |
-| Go         | `.go`                                                       |          ✅          | ❌ AST-level only                   |
-| Rust       | `.rs`                                                       |          ✅          | ❌ AST-level only                   |
-| Java       | `.java`                                                     |          ✅          | ❌ AST-level only                   |
-| C          | `.c`, `.h`                                                  |          ✅          | ❌ AST-level only                   |
-| C++        | `.cpp`, `.cxx`, `.cc`, `.hpp`, `.hxx`, `.hh`, `.cu`, `.cuh` |          ✅          | ❌ AST-level only                   |
-| C#         | `.cs`                                                       |          ✅          | ❌ AST-level only                   |
-| PHP        | `.php`, `.phtml`, `.php3`, `.php4`, `.php5`, `.phps`        |          ✅          | ❌ AST-level only                   |
-| Ruby       | `.rb`, `.rake`, `.gemspec`                                  |          ✅          | ❌ AST-level only                   |
+| Go         | `.go`                                                       |          ✅          | ✅ `gopls`                          |
+| Rust       | `.rs`                                                       |          ✅          | ✅ `rust-analyzer`                  |
+| Java       | `.java`                                                     |          ✅          | ✅ `eclipse.jdt.ls` (`jdtls`)       |
+| C          | `.c`, `.h`                                                  |          ✅          | ✅ `clangd`                         |
+| C++        | `.cpp`, `.cxx`, `.cc`, `.hpp`, `.hxx`, `.hh`, `.cu`, `.cuh` |          ✅          | ✅ `clangd`                         |
+| C#         | `.cs`                                                       |          ✅          | ✅ `csharp-ls`                      |
+| PHP        | `.php`, `.phtml`, `.php3`, `.php4`, `.php5`, `.phps`        |          ✅          | ✅ `intelephense`                   |
+| Ruby       | `.rb`, `.rake`, `.gemspec`                                  |          ✅          | ✅ `ruby-lsp`                       |
 
 New languages gain LSP escalation by adding a provider behind the `IEdgeResolutionProvider` seam
 (PLAT-007 §8b) and a per-language dispatch entry (PLAT-007 §8e/D4) — never a hardcoded TS/JS
@@ -84,3 +86,10 @@ ship LSP escalation beyond TS/JS -- `pyright` (`pyright-langserver --stdio`), re
 npm/npx binary-resolution strategy TS/JS already uses (`resolveNpmNpxBinary`), registered under
 `TOKENS.EdgeResolutionProviders`'s `python` key. The registry now resolves to
 `{ typescript, python }`.
+
+**Update (2026-07-22, multi-language-lsp-support plan, Slices 2-8):** Go, Rust, PHP, C/C++, Ruby,
+C#, and Java shipped in the same session, each adding one more registry key behind
+`IEdgeResolutionProvider`. `TOKENS.EdgeResolutionProviders` now resolves all nine keys —
+`{ typescript, python, go, rust, cpp, java, csharp, php, ruby }` — and `register.ts` registers
+every one of them. The matrix above now reflects full LSP escalation coverage for all eleven
+language/extension rows.

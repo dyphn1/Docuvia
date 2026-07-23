@@ -543,9 +543,19 @@ describe("GitLocalProvider — cross-clone reconciliation primitives (STOR-001 p
     await git(tmpDir, ["remote", "add", "origin", remoteDir]);
   });
 
-  afterEach(() => {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
-    fs.rmSync(remoteDir, { recursive: true, force: true });
+  afterEach(async () => {
+    await fs.promises.rm(tmpDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+      retryDelay: 100,
+    });
+    await fs.promises.rm(remoteDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 3,
+      retryDelay: 100,
+    });
   });
 
   it("pushRef publishes the branch, fetchRef + getRefSha read it back into refs/remotes/origin/*", async () => {

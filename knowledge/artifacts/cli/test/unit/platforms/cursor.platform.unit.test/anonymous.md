@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/platforms/cursor.platform.unit.test.ts#anonymous@L143
+id: artifacts/cli/test/unit/platforms/cursor.platform.unit.test.ts#anonymous@L157
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/platforms/cursor.platform.unit.test.ts

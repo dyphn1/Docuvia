@@ -8,4 +8,3 @@ filePath: lib/ast-core/test/compression.unit.test.ts
 
 File: `lib/ast-core/test/compression.unit.test.ts`
 s`
-

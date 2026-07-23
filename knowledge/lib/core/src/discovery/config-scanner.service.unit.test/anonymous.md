@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/config-scanner.service.unit.test.ts#anonymous@L291
+id: lib/core/src/discovery/config-scanner.service.unit.test.ts#anonymous@L302
 type: symbol
 name: anonymous
 filePath: lib/core/src/discovery/config-scanner.service.unit.test.ts

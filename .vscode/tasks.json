@@ -38,21 +38,21 @@
     {
       "label": "Unregister CLI from Local (npm unlink)",
       "type": "shell",
-      "command": "cd artifacts/cli && npm unlink",
+      "command": "cd artifacts/cli && npm unlink --global @workspace/cli",
       "problemMatcher": [],
       "group": "none"
     },
     {
       "label": "Register CLI to Local (pnpm link)",
       "type": "shell",
-      "command": "pnpm --filter @workspace/cli run build && cd artifacts/cli && pnpm link --global",
+      "command": "pnpm --filter @workspace/cli run build && cd artifacts/cli && pnpm add --global .",
       "problemMatcher": [],
       "group": "none"
     },
     {
       "label": "Unregister CLI from Local (pnpm unlink)",
       "type": "shell",
-      "command": "cd artifacts/cli && pnpm unlink --global",
+      "command": "pnpm remove --global @workspace/cli",
       "problemMatcher": [],
       "group": "none"
     }

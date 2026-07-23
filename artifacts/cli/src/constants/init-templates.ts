@@ -18,20 +18,35 @@ export const MCP_SERVER_ALIAS = "docuvia-local";
 
 export const COPILOT_INSTRUCTIONS_FILENAME = "copilot-instructions.md";
 export const CLAUDE_MD_FILENAME = "CLAUDE.md";
-export const WINDSURF_RULES_FILENAME = ".windsurfrules";
 export const CURSOR_RULES_FILENAME = ".cursorrules";
-export const LLMS_TXT_FILENAME = "llms.txt";
 export const AGENT_INSTRUCTIONS_MARKER = "docuvia:start";
 export const AGENT_INSTRUCTIONS_END_MARKER = "docuvia:end";
 
+// PLAT-008 legacy-only: these two files were written by the retired "Markdown Agents" catch-all
+// and are never installed to anymore, but `uninstall` still best-effort cleans them up for repos
+// set up under an older Docuvia version.
+export const WINDSURF_RULES_FILENAME = ".windsurfrules";
+export const LLMS_TXT_FILENAME = "llms.txt";
+
+export const AGENTS_MD_FILENAME = "AGENTS.md";
+export const HERMES_MD_FILENAME = ".hermes.md";
+export const CONTINUE_RULES_DIR = ".continue/rules";
+export const CONTINUE_RULES_FILENAME = "docuvia.md";
+
 export const PLATFORM_NAME_CURSOR = "Cursor";
 export const PLATFORM_NAME_CLAUDE = "Claude";
-export const PLATFORM_NAME_MARKDOWN_AGENTS = "Markdown Agents";
+export const PLATFORM_NAME_COPILOT = "GitHub Copilot";
+export const PLATFORM_NAME_CODEX = "Codex";
+export const PLATFORM_NAME_CONTINUE = "Continue";
+export const PLATFORM_NAME_HERMES = "Hermes Agent";
 
 // Stable, CLI-facing identifiers for --platform= — PLATFORM_NAME_* above is the display name only.
 export const PLATFORM_SLUG_CURSOR = "cursor";
 export const PLATFORM_SLUG_CLAUDE = "claude";
-export const PLATFORM_SLUG_MARKDOWN_AGENTS = "markdown";
+export const PLATFORM_SLUG_COPILOT = "copilot";
+export const PLATFORM_SLUG_CODEX = "codex";
+export const PLATFORM_SLUG_CONTINUE = "continue";
+export const PLATFORM_SLUG_HERMES = "hermes";
 
 // Literal placeholder text written into each platform's hooks.json `${HOOKS_DIR}` substitution —
 // the platform itself expands these at runtime, so they must stay un-interpolated here.

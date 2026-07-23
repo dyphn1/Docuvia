@@ -7,7 +7,10 @@ import { ui } from "../../../src/ui/wizard.js";
 import {
   CursorPlatform,
   ClaudePlatform,
-  GenericMarkdownPlatform,
+  CopilotPlatform,
+  CodexPlatform,
+  ContinuePlatform,
+  HermesPlatform,
 } from "../../../src/platforms/index.js";
 
 vi.mock("@workspace/ui-core", () => ({
@@ -28,7 +31,14 @@ vi.mock("../../../src/ui/wizard.js", () => ({
     askConfirm: vi.fn(),
     askCheckbox: vi
       .fn()
-      .mockResolvedValue(["Cursor", "Claude", "Markdown Agents"]),
+      .mockResolvedValue([
+        "Cursor",
+        "Claude",
+        "GitHub Copilot",
+        "Codex",
+        "Continue",
+        "Hermes Agent",
+      ]),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -54,9 +64,27 @@ vi.mock("../../../src/platforms/index.js", () => {
       installHooks: vi.fn(),
       uninstallHooks: vi.fn(),
     })),
-    GenericMarkdownPlatform: vi.fn().mockImplementation(() => ({
-      name: "Markdown Agents",
-      slug: "markdown",
+    CopilotPlatform: vi.fn().mockImplementation(() => ({
+      name: "GitHub Copilot",
+      slug: "copilot",
+      installHooks: vi.fn(),
+      uninstallHooks: vi.fn(),
+    })),
+    CodexPlatform: vi.fn().mockImplementation(() => ({
+      name: "Codex",
+      slug: "codex",
+      installHooks: vi.fn(),
+      uninstallHooks: vi.fn(),
+    })),
+    ContinuePlatform: vi.fn().mockImplementation(() => ({
+      name: "Continue",
+      slug: "continue",
+      installHooks: vi.fn(),
+      uninstallHooks: vi.fn(),
+    })),
+    HermesPlatform: vi.fn().mockImplementation(() => ({
+      name: "Hermes Agent",
+      slug: "hermes",
       installHooks: vi.fn(),
       uninstallHooks: vi.fn(),
     })),
@@ -197,12 +225,11 @@ describe("initCommand", () => {
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
       const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
-      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock
-        .results[0].value;
+      const codexInstance = vi.mocked(CodexPlatform).mock.results[0].value;
 
       expect(claudeInstance.installHooks).toHaveBeenCalled();
       expect(cursorInstance.installHooks).toHaveBeenCalled();
-      expect(markdownInstance.installHooks).not.toHaveBeenCalled();
+      expect(codexInstance.installHooks).not.toHaveBeenCalled();
     });
 
     it("is case-insensitive and tolerates surrounding whitespace", async () => {
@@ -216,12 +243,11 @@ describe("initCommand", () => {
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
       const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
-      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock
-        .results[0].value;
+      const codexInstance = vi.mocked(CodexPlatform).mock.results[0].value;
 
       expect(claudeInstance.installHooks).toHaveBeenCalled();
       expect(cursorInstance.installHooks).toHaveBeenCalled();
-      expect(markdownInstance.installHooks).not.toHaveBeenCalled();
+      expect(codexInstance.installHooks).not.toHaveBeenCalled();
     });
 
     it("reports an error and exits when an unknown platform slug is given", async () => {
@@ -251,12 +277,18 @@ describe("initCommand", () => {
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
       const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
-      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock
-        .results[0].value;
+      const copilotInstance = vi.mocked(CopilotPlatform).mock.results[0].value;
+      const codexInstance = vi.mocked(CodexPlatform).mock.results[0].value;
+      const continueInstance =
+        vi.mocked(ContinuePlatform).mock.results[0].value;
+      const hermesInstance = vi.mocked(HermesPlatform).mock.results[0].value;
 
       expect(claudeInstance.installHooks).toHaveBeenCalled();
       expect(cursorInstance.installHooks).toHaveBeenCalled();
-      expect(markdownInstance.installHooks).toHaveBeenCalled();
+      expect(copilotInstance.installHooks).toHaveBeenCalled();
+      expect(codexInstance.installHooks).toHaveBeenCalled();
+      expect(continueInstance.installHooks).toHaveBeenCalled();
+      expect(hermesInstance.installHooks).toHaveBeenCalled();
     });
   });
 });

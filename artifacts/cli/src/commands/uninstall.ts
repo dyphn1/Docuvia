@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import * as path from "path";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { OUTPUT_FORMAT_MARKERS } from "../constants/cli-output-markers.js";
@@ -6,7 +7,41 @@ import { selectPlatforms } from "../utils/platform-selection.js";
 import { docuviaMemory, DocuviaError, MemoryKeys } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
+import { removeBlock } from "../utils/fs-utils.js";
+import {
+  AGENT_INSTRUCTIONS_MARKER,
+  AGENT_INSTRUCTIONS_END_MARKER,
+  CLAUDE_MD_FILENAME,
+  CURSOR_RULES_FILENAME,
+  WINDSURF_RULES_FILENAME,
+  LLMS_TXT_FILENAME,
+} from "../constants/init-templates.js";
 import "../registration.js";
+
+/** PLAT-008: the retired "Markdown Agents" catch-all used to write the same instructions block
+ *  into these four files. None of the current named platforms own `.windsurfrules`/`llms.txt` at
+ *  all, and `CLAUDE.md`/`.cursorrules` are only cleaned when their platform is explicitly
+ *  selected — so this best-effort sweep always runs, letting repos set up under an older Docuvia
+ *  version fully clean up via a plain `docuvia uninstall` regardless of `--platform=`. Each call
+ *  is scoped to the `docuvia:start`/`docuvia:end` marker block only (never the rest of the file),
+ *  and no-ops when the marker isn't present. */
+async function cleanupLegacyMarkdownAgentBlocks(
+  workspaceRoot: string,
+): Promise<void> {
+  const legacyTargets = [
+    CLAUDE_MD_FILENAME,
+    CURSOR_RULES_FILENAME,
+    WINDSURF_RULES_FILENAME,
+    LLMS_TXT_FILENAME,
+  ];
+  for (const filename of legacyTargets) {
+    await removeBlock(
+      path.join(workspaceRoot, filename),
+      `<!-- ${AGENT_INSTRUCTIONS_MARKER} -->`,
+      `<!-- ${AGENT_INSTRUCTIONS_END_MARKER} -->`,
+    );
+  }
+}
 
 type UninstallLogger = ReturnType<typeof createPinoBackedLogger>;
 
@@ -147,6 +182,8 @@ export async function uninstallCommand(
       workspaceRoot,
       logger,
     );
+
+    await cleanupLegacyMarkdownAgentBlocks(workspaceRoot);
 
     const gitHooksFailure = await removeGitHooksStep(workspaceRoot, logger);
     if (gitHooksFailure) failures.push(gitHooksFailure);

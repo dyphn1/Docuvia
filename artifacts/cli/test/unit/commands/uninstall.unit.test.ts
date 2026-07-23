@@ -7,8 +7,13 @@ import { ui } from "../../../src/ui/wizard.js";
 import {
   CursorPlatform,
   ClaudePlatform,
-  GenericMarkdownPlatform,
+  CopilotPlatform,
 } from "../../../src/platforms/index.js";
+import { removeBlock } from "../../../src/utils/fs-utils.js";
+
+vi.mock("../../../src/utils/fs-utils.js", () => ({
+  removeBlock: vi.fn().mockResolvedValue(false),
+}));
 
 vi.mock("@workspace/ui-core", () => ({
   docuviaApi: {
@@ -52,9 +57,24 @@ vi.mock("../../../src/platforms/index.js", () => {
       slug: "claude",
       uninstallHooks: vi.fn(),
     })),
-    GenericMarkdownPlatform: vi.fn().mockImplementation(() => ({
-      name: "Markdown Agents",
-      slug: "markdown",
+    CopilotPlatform: vi.fn().mockImplementation(() => ({
+      name: "GitHub Copilot",
+      slug: "copilot",
+      uninstallHooks: vi.fn(),
+    })),
+    CodexPlatform: vi.fn().mockImplementation(() => ({
+      name: "Codex",
+      slug: "codex",
+      uninstallHooks: vi.fn(),
+    })),
+    ContinuePlatform: vi.fn().mockImplementation(() => ({
+      name: "Continue",
+      slug: "continue",
+      uninstallHooks: vi.fn(),
+    })),
+    HermesPlatform: vi.fn().mockImplementation(() => ({
+      name: "Hermes Agent",
+      slug: "hermes",
       uninstallHooks: vi.fn(),
     })),
   };
@@ -102,13 +122,14 @@ describe("uninstallCommand", () => {
 
     const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
     const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
-    const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock.results[0]
-      .value;
+    const copilotInstance = vi.mocked(CopilotPlatform).mock.results[0].value;
 
     expect(claudeInstance.uninstallHooks).toHaveBeenCalledWith(process.cwd());
     expect(cursorInstance.uninstallHooks).toHaveBeenCalledWith(process.cwd());
-    expect(markdownInstance.uninstallHooks).toHaveBeenCalledWith(process.cwd());
+    expect(copilotInstance.uninstallHooks).toHaveBeenCalledWith(process.cwd());
     expect(mockUninstallGitHooks).toHaveBeenCalled();
+    // PLAT-008: legacy markdown-block cleanup always runs, independent of platform selection.
+    expect(removeBlock).toHaveBeenCalled();
   });
 
   it("surfaces a git-hooks-removal failure in the existing partial-failure path", async () => {
@@ -173,15 +194,14 @@ describe("uninstallCommand", () => {
 
     const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
     const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
-    const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock.results[0]
-      .value;
+    const copilotInstance = vi.mocked(CopilotPlatform).mock.results[0].value;
 
     // The throwing platform is still attempted, and so are the others after it — previously a
     // single platform's throw propagated straight to the outer catch, silently skipping both the
     // remaining platforms in the loop and the database cleanup step below.
     expect(claudeInstance.uninstallHooks).toHaveBeenCalled();
     expect(cursorInstance.uninstallHooks).toHaveBeenCalled();
-    expect(markdownInstance.uninstallHooks).toHaveBeenCalled();
+    expect(copilotInstance.uninstallHooks).toHaveBeenCalled();
     expect(mockClean).toHaveBeenCalled();
     expect(ui.warn).toHaveBeenCalledWith(expect.stringContaining("Claude"));
     expect(process.exitCode).toBe(1);
@@ -195,16 +215,15 @@ describe("uninstallCommand", () => {
         message: "Cleaned",
       } as any);
 
-      await uninstallCommand(process.cwd(), "markdown");
+      await uninstallCommand(process.cwd(), "copilot");
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
       const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
-      const markdownInstance = vi.mocked(GenericMarkdownPlatform).mock
-        .results[0].value;
+      const copilotInstance = vi.mocked(CopilotPlatform).mock.results[0].value;
 
       expect(claudeInstance.uninstallHooks).not.toHaveBeenCalled();
       expect(cursorInstance.uninstallHooks).not.toHaveBeenCalled();
-      expect(markdownInstance.uninstallHooks).toHaveBeenCalledWith(
+      expect(copilotInstance.uninstallHooks).toHaveBeenCalledWith(
         process.cwd(),
       );
     });

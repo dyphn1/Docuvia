@@ -27,7 +27,7 @@ export const UI_MESSAGES = {
   INIT_HOOKS_FAIL_CURSOR_MCP: "Could not configure Cursor MCP: ",
   INIT_HOOKS_SUCCESS: "Docuvia Agent Integrations successfully installed!",
   INIT_HOOKS_SUPPORTED:
-    "Supported platforms: Claude Code, Cursor, GitHub Copilot, Windsurf, Zed, Continue, OpenCode, Gemini CLI.",
+    "Supported platforms: Claude Code, Cursor, GitHub Copilot, Codex, Continue, Hermes Agent.",
   INIT_HOOKS_FAIL: "Failed to initialize agent integrations: ",
   INIT_HOOKS_SELECT: "Which AI Agent integrations would you like to install?",
   INIT_HOOKS_NONE_SELECTED:

@@ -10,7 +10,7 @@ docuvia init
 
 ### Flags
 
-- `--platform=<slug1,slug2,...>`: Non-interactively pick which AI agent integrations to install. Available slugs: `cursor`, `claude`, `markdown`. Omit this flag to get the old behavior — an interactive checkbox (all pre-checked) when run in a TTY, or every platform installed when run headless (CI, scripts, AI agents).
+- `--platform=<slug1,slug2,...>`: Non-interactively pick which AI agent integrations to install. Available slugs: `cursor`, `claude`, `copilot`, `codex`, `continue`, `hermes`. Omit this flag to get the old behavior — an interactive checkbox (all pre-checked) when run in a TTY, or every platform installed when run headless (CI, scripts, AI agents).
 
 ## Under the Hood
 
@@ -19,7 +19,7 @@ When you run `docuvia init`:
 1. **TTY-aware, not flag-gated**: There's no `--interactive` flag — `init` prompts for confirmation and platform selection when stdin is a TTY, and runs straight through with sensible defaults (confirm=yes, all platforms) when it isn't.
 2. **Workspace Scaffold**: Creates the `.docuvia/` directory and initializes `local.db`.
 3. **AST Indexing**: Parses the repository and populates the local knowledge graph, reporting any files that failed to parse.
-4. **Agent Integrations**: Installs hooks/rules/MCP config for the selected platforms (`--platform=`, or the checkbox/all-platforms default described above). Everything written is repo-scoped ([IFCE-002](../../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md) — no machine-global side effects). For Claude Desktop specifically, `init` prints the `mcpServers` JSON snippet and the machine-global config path instead of writing to it — copy-paste it yourself if you use Claude Desktop.
+4. **Agent Integrations**: Installs hooks/rules/MCP config for the selected platforms (`--platform=`, or the checkbox/all-platforms default described above). Each platform owns exactly one target — `cursor`/`claude` write a repo-scoped hooks dir plus MCP config, `copilot` writes `.github/copilot-instructions.md`, `codex` writes `AGENTS.md`, `continue` writes the dedicated `.continue/rules/docuvia.md`, `hermes` writes `.hermes.md` — see [PLAT-008](../../adr/platform/PLAT-008-retire-generic-markdown-for-named-platforms.md) for why the old single "Markdown Agents" bucket was split up. Everything written is repo-scoped ([IFCE-002](../../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md) — no machine-global side effects). For Claude Desktop specifically, `init` prints the `mcpServers` JSON snippet and the machine-global config path instead of writing to it — copy-paste it yourself if you use Claude Desktop.
 5. **Command Logging**: A structured JSONL log is written to `.docuvia/logs/init.log`.
 
 ## Examples
@@ -34,4 +34,10 @@ Headless initialization, only installing Claude integrations:
 
 ```bash
 docuvia init --platform=claude
+```
+
+Only installing Codex and Continue integrations:
+
+```bash
+docuvia init --platform=codex,continue
 ```

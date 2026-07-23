@@ -4,7 +4,10 @@ import { CLI_ERROR_MESSAGES } from "../constants/cli-errors.js";
 import {
   CursorPlatform,
   ClaudePlatform,
-  GenericMarkdownPlatform,
+  CopilotPlatform,
+  CodexPlatform,
+  ContinuePlatform,
+  HermesPlatform,
 } from "../platforms/index.js";
 import type { BasePlatform } from "../platforms/base.platform.js";
 
@@ -12,7 +15,10 @@ export function getAvailablePlatforms(): BasePlatform[] {
   return [
     new CursorPlatform(),
     new ClaudePlatform(),
-    new GenericMarkdownPlatform(),
+    new CopilotPlatform(),
+    new CodexPlatform(),
+    new ContinuePlatform(),
+    new HermesPlatform(),
   ];
 }
 

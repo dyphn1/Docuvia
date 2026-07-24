@@ -111,6 +111,36 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   }
 
   /**
+   * `uninstall`'s teardown counterpart to `ensureKnowledgeBranch` — deletes the hidden orphan
+   * branch outright (not merged, so a plain `git branch -d` would always refuse). Never throws:
+   * a missing branch is `{ deleted: false }`, same non-fatal shape as the hook-removal methods.
+   */
+  public async deleteKnowledgeBranch(
+    cwd: string,
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
+  ): Promise<{ deleted: boolean }> {
+    if (!(await this.git.branchExists(cwd, branchName))) {
+      this.logger.debug(GitMessages.NO_KNOWLEDGE_BRANCH_TO_DELETE, {
+        branchName,
+      });
+      return { deleted: false };
+    }
+
+    try {
+      await this.git.deleteBranch(cwd, branchName);
+    } catch (err) {
+      this.logger.warn(GitMessages.FAILED_TO_DELETE_KNOWLEDGE_BRANCH, {
+        branchName,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return { deleted: false };
+    }
+
+    this.logger.info(GitMessages.DELETED_KNOWLEDGE_BRANCH, { branchName });
+    return { deleted: true };
+  }
+
+  /**
    * Installs the post-commit hook that fires `docuvia analyze` after every commit (PLAT-007
    * Tier A; flipped from `docuvia snapshot` in Slice 2 dispatch 2b —
    * phase1-decision-integration.md §6c). A hook file still carrying the legacy `docuvia

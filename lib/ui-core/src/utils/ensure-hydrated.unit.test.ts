@@ -36,6 +36,8 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       findNodeByName: vi.fn(),
       getIncomingEdges: vi.fn(),
       getOutgoingEdges: vi.fn(),
+      getIncomingRelations: vi.fn(),
+      getOutgoingRelations: vi.fn(),
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),

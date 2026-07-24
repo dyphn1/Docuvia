@@ -37,19 +37,49 @@ const mockQuery = vi.mocked(docuviaApi.query);
 describe("formatPromptOutput()", () => {
   it("renders l2/l3/context into the docuvia_context XML block", () => {
     const output = formatPromptOutput({
-      l2: { name: "authService" },
+      l2: { name: "authService", type: "module" },
       l3: [{ title: "switched to JWT", content: "details" }],
       context: {
-        incoming: [{ name: "caller", type: "module" }],
-        outgoing: [{ name: "callee", type: "module" }],
+        incoming: [{ name: "caller", linkType: "calls" }],
+        outgoing: [{ name: "callee", linkType: "calls" }],
       },
     });
 
     expect(output).toContain("<docuvia_context>");
-    expect(output).toContain('<l2_module name="authService">');
+    expect(output).toContain('<l2_module name="authService" type="module">');
     expect(output).toContain('<l3_decision title="switched to JWT">');
-    expect(output).toContain('<caller name="caller" type="module" />');
-    expect(output).toContain('<callee name="callee" type="module" />');
+    expect(output).toContain('<caller name="caller" relation="calls" />');
+    expect(output).toContain('<callee name="callee" relation="calls" />');
+  });
+
+  it("includes the resolved file path on the l2_module tag when available", () => {
+    const output = formatPromptOutput({
+      l2: { name: "IGrain", type: "module", filePath: "src/IGrain.cs" },
+      l3: [],
+      context: null,
+    });
+
+    expect(output).toContain(
+      '<l2_module name="IGrain" type="module" file="src/IGrain.cs">',
+    );
+  });
+
+  it("labels incoming/outgoing edges by their actual relationship, not a generic type", () => {
+    const output = formatPromptOutput({
+      l2: { name: "IGrain", type: "module" },
+      l3: [],
+      context: {
+        incoming: [{ name: "GrainImpl", linkType: "implements" }],
+        outgoing: [{ name: "IGrainWithGuidKey", linkType: "extends" }],
+      },
+    });
+
+    expect(output).toContain(
+      '<caller name="GrainImpl" relation="implements" />',
+    );
+    expect(output).toContain(
+      '<callee name="IGrainWithGuidKey" relation="extends" />',
+    );
   });
 
   it("omits the l2/incoming/outgoing sections when there is nothing to report", () => {

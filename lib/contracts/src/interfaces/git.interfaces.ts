@@ -30,6 +30,11 @@ export interface IGitProvider {
 
   /** Lists local branches matching `namePattern` exactly (used to check existence). */
   branchExists(cwd: string, branchName: string): Promise<boolean>;
+  /** `git branch -D <branchName>` — force-deletes a local branch regardless of merge status (the
+   *  knowledge branch is an orphan, never merged into source history, so a plain `-d` would
+   *  always fail with "not fully merged"). Throws if the branch doesn't exist — callers that want
+   *  a no-op in that case should check `branchExists()` first (see `IKnowledgeGitService`). */
+  deleteBranch(cwd: string, branchName: string): Promise<void>;
   /** `git commit-tree <empty-tree-sha> -m <message>` — creates a rootless commit pointing at
    *  git's well-known empty tree, and returns the new commit sha. */
   commitEmptyTree(cwd: string, message: string): Promise<string>;

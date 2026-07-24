@@ -50,6 +50,8 @@ const GIT_SUBCOMMAND = {
 const GIT_ARG = {
   IS_INSIDE_WORK_TREE: "--is-inside-work-tree",
   LIST: "--list",
+  /** `-D` — force-delete, regardless of merge status (see `deleteBranch`'s doc comment). */
+  DELETE_FORCE: "-D",
   MESSAGE_FLAG: "-m",
   /** `ls-files -s` — list staged entries with their blob sha. */
   STAGED: "-s",
@@ -160,6 +162,7 @@ const ERR_PROP_CODE = "code";
  *  as the user-facing/log context (see the class doc comment on why every failure is wrapped). */
 const GIT_PROVIDER_ERROR_MESSAGES = {
   BRANCH_LIST_FAILED: "git branch --list failed",
+  BRANCH_DELETE_FAILED: "git branch -D failed",
   COMMIT_TREE_FAILED: "git commit-tree failed",
   UPDATE_REF_FAILED: "git update-ref failed",
   HOOK_FILE_WRITE_FAILED: "Writing hook file failed",
@@ -272,6 +275,22 @@ export class GitLocalProvider implements IGitProvider {
       throw DocuviaError.wrap(
         ErrorCodes.GIT_COMMAND_FAILED,
         GIT_PROVIDER_ERROR_MESSAGES.BRANCH_LIST_FAILED,
+        err,
+      );
+    }
+  }
+
+  public async deleteBranch(cwd: string, branchName: string): Promise<void> {
+    try {
+      await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.BRANCH, GIT_ARG.DELETE_FORCE, branchName],
+        { cwd },
+      );
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.GIT_COMMAND_FAILED,
+        GIT_PROVIDER_ERROR_MESSAGES.BRANCH_DELETE_FAILED,
         err,
       );
     }

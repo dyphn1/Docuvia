@@ -37,6 +37,8 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       findNodeByName: vi.fn(),
       getIncomingEdges: vi.fn(),
       getOutgoingEdges: vi.fn(),
+      getIncomingRelations: vi.fn(),
+      getOutgoingRelations: vi.fn(),
       getAllNodes: vi.fn().mockReturnValue([]),
       getAllLinks: vi.fn().mockReturnValue([]),
       bulkLoadGraph: vi.fn(),
@@ -82,7 +84,7 @@ describe("ExportTopologyWorkflow.execute()", () => {
       nodes: [],
       links: [],
       groups: [],
-      stats: { nodeCount: 0, linkCount: 0, groupCount: 0 },
+      stats: { nodeCount: 0, linkCount: 0, groupCount: 0, foldedLinkCount: 0 },
     };
     const topologyBuilder: ITopologyBuilder = {
       build: vi.fn().mockReturnValue(graph),

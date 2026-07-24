@@ -18,9 +18,12 @@ vi.mock("../../../src/utils/fs-utils.js", () => ({
 vi.mock("@workspace/ui-core", () => ({
   docuviaApi: {
     clean: vi.fn(),
-    uninstallGitHooks: vi
-      .fn()
-      .mockResolvedValue({ postCommitRemoved: true, prePushRemoved: true }),
+    uninstallGitHooks: vi.fn().mockResolvedValue({
+      postCommitRemoved: true,
+      prePushRemoved: true,
+      knowledgeBranchDeleted: true,
+    }),
+    removeDocuviaDir: vi.fn().mockResolvedValue({ removed: true }),
   },
 }));
 
@@ -82,6 +85,7 @@ vi.mock("../../../src/platforms/index.js", () => {
 
 const mockClean = vi.mocked(docuviaApi.clean);
 const mockUninstallGitHooks = vi.mocked(docuviaApi.uninstallGitHooks);
+const mockRemoveDocuviaDir = vi.mocked(docuviaApi.removeDocuviaDir);
 
 describe("uninstallCommand", () => {
   beforeEach(() => {
@@ -90,7 +94,10 @@ describe("uninstallCommand", () => {
     mockUninstallGitHooks.mockResolvedValue({
       postCommitRemoved: true,
       prePushRemoved: true,
+      knowledgeBranchDeleted: true,
     });
+    mockRemoveDocuviaDir.mockReset();
+    mockRemoveDocuviaDir.mockResolvedValue({ removed: true });
     spinnerSucceed.mockReset();
     spinnerWarn.mockReset();
     spinnerFail.mockReset();
@@ -117,8 +124,9 @@ describe("uninstallCommand", () => {
     await uninstallCommand(process.cwd());
 
     expect(mockClean).toHaveBeenCalled();
-    // 2, not 1: one scope for the new git-hooks-removal step, one for the db cleanup step.
-    expect(deleteScopeSpy).toHaveBeenCalledTimes(2);
+    // 3, not 1: one scope for the git-hooks-removal step, one for the db cleanup step, one for
+    // the .docuvia/ directory removal step.
+    expect(deleteScopeSpy).toHaveBeenCalledTimes(3);
 
     const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
     const cursorInstance = vi.mocked(CursorPlatform).mock.results[0].value;
@@ -130,6 +138,14 @@ describe("uninstallCommand", () => {
     expect(mockUninstallGitHooks).toHaveBeenCalled();
     // PLAT-008: legacy markdown-block cleanup always runs, independent of platform selection.
     expect(removeBlock).toHaveBeenCalled();
+    // Full uninstall (no --keep-db): both the knowledge branch and the .docuvia/ dir go too.
+    expect(ui.success).toHaveBeenCalledWith(
+      expect.stringContaining("docuvia-knowledge"),
+    );
+    expect(mockRemoveDocuviaDir).toHaveBeenCalled();
+    expect(ui.success).toHaveBeenCalledWith(
+      expect.stringContaining(".docuvia/"),
+    );
   });
 
   it("surfaces a git-hooks-removal failure in the existing partial-failure path", async () => {
@@ -156,9 +172,9 @@ describe("uninstallCommand", () => {
     await uninstallCommand(process.cwd());
 
     expect(ui.warn).toHaveBeenCalledWith(expect.stringContaining("boom"));
-    // 2, not 1: one scope for the git-hooks-removal step, one for the db cleanup step (whose
-    // failure this test exercises).
-    expect(deleteScopeSpy).toHaveBeenCalledTimes(2);
+    // 3, not 1: one scope for the git-hooks-removal step, one for the db cleanup step (whose
+    // failure this test exercises), one for the .docuvia/ directory removal step.
+    expect(deleteScopeSpy).toHaveBeenCalledTimes(3);
     expect(process.exitCode).toBe(1);
   });
 
@@ -249,6 +265,23 @@ describe("uninstallCommand", () => {
 
       const claudeInstance = vi.mocked(ClaudePlatform).mock.results[0].value;
       expect(claudeInstance.uninstallHooks).toHaveBeenCalledWith(process.cwd());
+    });
+
+    it("also keeps the .docuvia/ directory and the knowledge branch when keepDb is true", async () => {
+      let capturedKeepDb: boolean | undefined;
+      mockUninstallGitHooks.mockImplementation(async (scopeId) => {
+        capturedKeepDb = docuviaMemory.get(scopeId, "keepDb");
+        return {
+          postCommitRemoved: true,
+          prePushRemoved: true,
+          knowledgeBranchDeleted: false,
+        };
+      });
+
+      await uninstallCommand(process.cwd(), undefined, true);
+
+      expect(mockRemoveDocuviaDir).not.toHaveBeenCalled();
+      expect(capturedKeepDb).toBe(true);
     });
 
     it("still cleans the database by default (keepDb absent)", async () => {

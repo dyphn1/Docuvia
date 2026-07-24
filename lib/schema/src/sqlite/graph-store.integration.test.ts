@@ -294,13 +294,33 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
       id: nodeId,
       name: "doSomethingSpecific",
       type: "function",
+      filePath: "src/a.ts",
     });
     expect(store.graph.findNodeByName("Something")).toEqual({
       id: nodeId,
       name: "doSomethingSpecific",
       type: "function",
+      filePath: "src/a.ts",
     });
     expect(store.graph.findNodeByName("nope")).toBeUndefined();
+  });
+
+  it("graph repo: findNodeByName() omits filePath when the node has no path_patterns", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "orphanNode",
+      pathPatterns: [],
+    });
+
+    expect(store.graph.findNodeByName("orphanNode")).toEqual({
+      id: nodeId,
+      name: "orphanNode",
+      type: "module",
+    });
   });
 
   it("graph repo: getIncomingEdges()/getOutgoingEdges() report the 1-hop blast radius", () => {
@@ -366,6 +386,107 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     ]);
     expect(store.graph.getIncomingEdges(calleeId)).toEqual([
       { id: callerId, name: "caller", type: "module" },
+    ]);
+  });
+
+  it("graph repo: getIncomingRelations()/getOutgoingRelations() report linkType and do NOT collapse a neighbor connected by more than one relationship (unlike getIncomingEdges()/getOutgoingEdges(), which impact's blast-radius count relies on)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const callerId = store.graph.insertNode({
+      projectId: project.id,
+      name: "caller",
+      pathPatterns: ["src/a.ts"],
+    });
+    const calleeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "callee",
+      pathPatterns: ["src/b.ts"],
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: calleeId,
+      linkType: "calls",
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: calleeId,
+      linkType: "depends_on",
+    });
+
+    expect(
+      store.graph
+        .getOutgoingRelations(callerId)
+        .sort((a, b) => a.linkType.localeCompare(b.linkType)),
+    ).toEqual([
+      { id: calleeId, name: "callee", type: "module", linkType: "calls" },
+      { id: calleeId, name: "callee", type: "module", linkType: "depends_on" },
+    ]);
+    expect(
+      store.graph
+        .getIncomingRelations(calleeId)
+        .sort((a, b) => a.linkType.localeCompare(b.linkType)),
+    ).toEqual([
+      { id: callerId, name: "caller", type: "module", linkType: "calls" },
+      { id: callerId, name: "caller", type: "module", linkType: "depends_on" },
+    ]);
+  });
+
+  it("graph repo: getIncomingRelations()/getOutgoingRelations() still dedupe the exact same (neighbor, linkType) pair", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const callerId = store.graph.insertNode({
+      projectId: project.id,
+      name: "caller",
+      pathPatterns: ["src/a.ts"],
+    });
+    const calleeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "callee",
+      pathPatterns: ["src/b.ts"],
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: calleeId,
+      linkType: "calls",
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: calleeId,
+      linkType: "calls",
+    });
+
+    expect(store.graph.getOutgoingRelations(callerId)).toEqual([
+      { id: calleeId, name: "callee", type: "module", linkType: "calls" },
+    ]);
+  });
+
+  it("graph repo: getIncomingRelations()/getOutgoingRelations() include contains edges (raw, unfiltered) — QueryService.getContext() is what filters those out", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const fileId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+    });
+    const symbolId = store.graph.insertNode({
+      projectId: project.id,
+      name: "doThing",
+      pathPatterns: ["src/a.ts"],
+    });
+    store.graph.insertLink({
+      sourceNodeId: fileId,
+      targetNodeId: symbolId,
+      linkType: "contains",
+    });
+
+    expect(store.graph.getIncomingRelations(symbolId)).toEqual([
+      { id: fileId, name: "src/a.ts", type: "module", linkType: "contains" },
     ]);
   });
 

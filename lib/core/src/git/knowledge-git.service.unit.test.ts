@@ -10,6 +10,7 @@ function makeMockGitProvider(
   return {
     isGitRepository: vi.fn().mockResolvedValue(true),
     branchExists: vi.fn().mockResolvedValue(false),
+    deleteBranch: vi.fn().mockResolvedValue(undefined),
     commitEmptyTree: vi.fn().mockResolvedValue("deadbeef"),
     updateBranchRef: vi.fn().mockResolvedValue(undefined),
     hooksDirExists: vi.fn().mockResolvedValue(true),
@@ -568,6 +569,49 @@ describe("KnowledgeGitService.removePostCommitHook() (phase1-decision-integratio
 
     expect(git.acquireKnowledgeLock).toHaveBeenCalledTimes(1);
     expect(git.releaseKnowledgeLock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("KnowledgeGitService.deleteKnowledgeBranch() (uninstall's teardown of the hidden branch)", () => {
+  it("deletes the branch when it exists", async () => {
+    const git = makeMockGitProvider({
+      branchExists: vi.fn().mockResolvedValue(true),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.deleteKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ deleted: true });
+    expect(git.deleteBranch).toHaveBeenCalledWith(
+      "/workspace",
+      GitConstants.KNOWLEDGE_ROOT,
+    );
+  });
+
+  it("is a clean no-op when the branch doesn't exist", async () => {
+    const git = makeMockGitProvider({
+      branchExists: vi.fn().mockResolvedValue(false),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.deleteKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ deleted: false });
+    expect(git.deleteBranch).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when the delete fails — logs a warning and reports deleted:false instead", async () => {
+    const git = makeMockGitProvider({
+      branchExists: vi.fn().mockResolvedValue(true),
+      deleteBranch: vi.fn().mockRejectedValue(new Error("EACCES")),
+    });
+    const logger = createMockLogger();
+    const service = new KnowledgeGitService(git, logger);
+
+    const result = await service.deleteKnowledgeBranch("/workspace");
+
+    expect(result).toEqual({ deleted: false });
+    expect(logger.events.some((e) => e.level === "warn")).toBe(true);
   });
 });
 

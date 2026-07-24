@@ -68,6 +68,13 @@ export async function exportTopologyCommand(
       (graph.collapsed ? UI_MESSAGES.EXPORT_STATS_COLLAPSED : "") +
       UI_MESSAGES.EXPORT_STATS_SUFFIX;
 
+    if (graph.stats.foldedLinkCount > 0) {
+      successMessage +=
+        UI_MESSAGES.EXPORT_STATS_FOLDED_PREFIX +
+        graph.stats.foldedLinkCount +
+        UI_MESSAGES.EXPORT_STATS_FOLDED_SUFFIX;
+    }
+
     if (!options.jsonOnly) {
       const htmlPath = path.join(outDir, TOPOLOGY_HTML_FILENAME);
       fs.writeFileSync(htmlPath, renderTopologyHtml(graph));

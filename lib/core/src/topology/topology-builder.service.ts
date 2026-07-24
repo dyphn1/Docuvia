@@ -107,6 +107,7 @@ export class TopologyBuilderService implements ITopologyBuilder {
         nodeCount: nodes.length,
         linkCount: links.length,
         groupCount: groups.length,
+        foldedLinkCount: built.foldedLinkCount ?? 0,
       },
     };
   }
@@ -212,7 +213,7 @@ function buildSymbolLevel(
   l3Rows: NormalizedL3Row[],
   containingFileId: Map<string, string>,
   filePathById: Map<string, string | undefined>,
-): { nodes: TopologyNode[]; links: TopologyLink[] } {
+): { nodes: TopologyNode[]; links: TopologyLink[]; foldedLinkCount: number } {
   const nodes: TopologyNode[] = l2Rows.map((row) => ({
     id: toL2NodeId(row.id),
     label: row.name,
@@ -232,7 +233,7 @@ function buildSymbolLevel(
   }));
 
   appendDecisions(nodes, links, l3Rows, filePathById);
-  return { nodes, links };
+  return { nodes, links, foldedLinkCount: 0 };
 }
 
 function buildCollapsed(
@@ -241,7 +242,7 @@ function buildCollapsed(
   l3Rows: NormalizedL3Row[],
   containingFileId: Map<string, string>,
   filePathById: Map<string, string | undefined>,
-): { nodes: TopologyNode[]; links: TopologyLink[] } {
+): { nodes: TopologyNode[]; links: TopologyLink[]; foldedLinkCount: number } {
   const toFileId = (id: number | string) =>
     containingFileId.get(String(id)) ?? String(id);
 
@@ -258,11 +259,18 @@ function buildCollapsed(
 
   const links: TopologyLink[] = [];
   const seen = new Set<string>();
+  let foldedLinkCount = 0;
   for (const link of linkRows) {
     if (link.linkType === LinkTypes.CONTAINS) continue;
     const source = toFileId(link.sourceNodeId);
     const target = toFileId(link.targetNodeId);
-    if (source === target) continue;
+    if (source === target) {
+      // A relationship that only ever connected two symbols in the same file — folded away by
+      // file-granularity collapse. Counted (not just silently dropped) so the CLI can report the
+      // graph's real density even when the default view shows few/no cross-file links.
+      foldedLinkCount++;
+      continue;
+    }
     const key = source + "|" + target + "|" + link.linkType;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -275,7 +283,7 @@ function buildCollapsed(
   }
 
   appendDecisions(nodes, links, l3Rows, filePathById);
-  return { nodes, links };
+  return { nodes, links, foldedLinkCount };
 }
 
 function appendDecisions(

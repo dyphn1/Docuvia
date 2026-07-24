@@ -6,7 +6,11 @@ import type {
   LocalQueryResult,
   LocalSearchResult,
 } from "@workspace/contracts";
-import { createNoopLogger, QueryResultLayers } from "@workspace/contracts";
+import {
+  createNoopLogger,
+  LinkTypes,
+  QueryResultLayers,
+} from "@workspace/contracts";
 
 const QueryMessages = {
   INVALID_LIMIT_FALLBACK:
@@ -79,11 +83,13 @@ export class QueryService implements IQueryService {
 
     return {
       incoming: store.graph
-        .getIncomingEdges(node.id)
-        .map(({ name, type }) => ({ name, type })),
+        .getIncomingRelations(node.id)
+        .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
+        .map(({ name, linkType }) => ({ name, linkType })),
       outgoing: store.graph
-        .getOutgoingEdges(node.id)
-        .map(({ name, type }) => ({ name, type })),
+        .getOutgoingRelations(node.id)
+        .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
+        .map(({ name, linkType }) => ({ name, linkType })),
     };
   }
 
@@ -191,8 +197,21 @@ export class QueryService implements IQueryService {
       context = null;
     }
 
+    // Re-resolves the winning L2 result by its own (exact) name to attach `type`/`filePath` —
+    // `search()`'s FTS/neighbor rows don't carry either, and an `<l2_module>` block with no file
+    // or kind context read as empty even when it correctly named the right symbol.
+    const l2Node = l2Result
+      ? store.graph.findNodeByName(l2Result.title)
+      : undefined;
+
     return {
-      l2: l2Result ? { name: l2Result.title } : null,
+      l2: l2Result
+        ? {
+            name: l2Result.title,
+            type: l2Node?.type ?? "",
+            filePath: l2Node?.filePath,
+          }
+        : null,
       l3: l3Results.map((r) => ({ title: r.title, content: r.content })),
       context,
     };

@@ -46,7 +46,7 @@ describe("QueryService", () => {
       expect(queryService.getContext(store, "nope")).toBeNull();
     });
 
-    it("returns incoming/outgoing structural edges for a resolved node", () => {
+    it("returns incoming/outgoing structural edges for a resolved node, labeled by their actual relationship", () => {
       const targetId = store.graph.insertNode({
         projectId,
         name: "authService",
@@ -65,17 +65,40 @@ describe("QueryService", () => {
       store.graph.insertLink({
         sourceNodeId: callerId,
         targetNodeId: targetId,
-        linkType: "calls",
+        linkType: "implements",
       });
       store.graph.insertLink({
         sourceNodeId: targetId,
         targetNodeId: calleeId,
-        linkType: "calls",
+        linkType: "extends",
       });
 
       expect(queryService.getContext(store, "authService")).toEqual({
-        incoming: [{ name: "caller", type: "module" }],
-        outgoing: [{ name: "callee", type: "module" }],
+        incoming: [{ name: "caller", linkType: "implements" }],
+        outgoing: [{ name: "callee", linkType: "extends" }],
+      });
+    });
+
+    it("excludes contains edges — a symbol's own containing file is not a caller/callee", () => {
+      const fileId = store.graph.insertNode({
+        projectId,
+        name: "src/auth.ts",
+        pathPatterns: ["src/auth.ts"],
+      });
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "authService",
+        pathPatterns: ["src/auth.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: fileId,
+        targetNodeId: targetId,
+        linkType: "contains",
+      });
+
+      expect(queryService.getContext(store, "authService")).toEqual({
+        incoming: [],
+        outgoing: [],
       });
     });
   });
@@ -109,9 +132,13 @@ describe("QueryService", () => {
 
       const result = queryService.query(store, "authService");
 
-      expect(result.l2).toEqual({ name: "authService" });
+      expect(result.l2).toEqual({
+        name: "authService",
+        type: "module",
+        filePath: "src/auth.ts",
+      });
       expect(result.context).toEqual({
-        incoming: [{ name: "caller", type: "module" }],
+        incoming: [{ name: "caller", linkType: "calls" }],
         outgoing: [],
       });
     });
@@ -140,7 +167,11 @@ describe("QueryService", () => {
 
       const result = queryService.query(store, "authService");
 
-      expect(result.l2).toEqual({ name: "authService" });
+      expect(result.l2).toEqual({
+        name: "authService",
+        type: "module",
+        filePath: "src/auth.ts",
+      });
       expect(result.context).toBeNull();
     });
   });

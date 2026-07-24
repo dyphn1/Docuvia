@@ -210,6 +210,15 @@ export const UI_MESSAGES = {
   UNINSTALL_GIT_HOOKS_FAIL: "Failed to remove git hooks: ",
   UNINSTALL_GIT_HOOKS_FAIL_LOG: "uninstall's git hooks removal failed",
   UNINSTALL_GIT_HOOKS_FAILURE_NAME: "git hooks removal",
+  UNINSTALL_KNOWLEDGE_BRANCH_DELETED:
+    "Deleted the hidden docuvia-knowledge git branch.",
+
+  // Uninstall Command -- full .docuvia/ directory removal
+  UNINSTALL_DOCUVIA_DIR_REMOVED: "Removed the .docuvia/ directory.",
+  UNINSTALL_DOCUVIA_DIR_FAIL: "Failed to remove the .docuvia/ directory: ",
+  UNINSTALL_DOCUVIA_DIR_FAIL_LOG:
+    "uninstall's .docuvia/ directory removal failed",
+  UNINSTALL_DOCUVIA_DIR_FAILURE_NAME: ".docuvia/ directory removal",
 
   // Doctor Command
   DOCTOR_HEADER: "Docuvia Doctor Diagnostics",
@@ -259,6 +268,9 @@ export const UI_MESSAGES = {
   EXPORT_STATS_GROUPS: " groups",
   EXPORT_STATS_COLLAPSED: ", collapsed",
   EXPORT_STATS_SUFFIX: ")",
+  EXPORT_STATS_FOLDED_PREFIX: " — ",
+  EXPORT_STATS_FOLDED_SUFFIX:
+    " more relationship(s) folded within files at this granularity; pass --collapse=symbol for the full symbol-level view",
   EXPORT_HTML_SEPARATOR: " and ",
 
   // Snapshot Command

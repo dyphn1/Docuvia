@@ -31,6 +31,7 @@ function makeMockGitProvider(
   return {
     isGitRepository: vi.fn().mockResolvedValue(true),
     branchExists: vi.fn().mockResolvedValue(false),
+    deleteBranch: vi.fn().mockResolvedValue(undefined),
     commitEmptyTree: vi.fn().mockResolvedValue("sha"),
     updateBranchRef: vi.fn().mockResolvedValue(undefined),
     hooksDirExists: vi.fn().mockResolvedValue(false),
@@ -95,6 +96,8 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       findNodeByName: vi.fn(),
       getIncomingEdges: vi.fn(),
       getOutgoingEdges: vi.fn(),
+      getIncomingRelations: vi.fn(),
+      getOutgoingRelations: vi.fn(),
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),

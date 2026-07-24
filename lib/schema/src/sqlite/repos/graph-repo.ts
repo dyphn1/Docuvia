@@ -26,7 +26,46 @@ const GRAPH_REPO_ERROR_MESSAGES = {
   PRUNE_ORPHANED_LINKS_FAILED: "Failed to prune orphaned node_links",
   FIND_NODE_BY_NODE_KEY_FAILED: (nodeKey: string) =>
     `Failed to find node by node_key: ${nodeKey}`,
+  INCOMING_RELATIONS_FAILED: (nodeId: number) =>
+    `Failed to get incoming relations for node ${nodeId}`,
+  OUTGOING_RELATIONS_FAILED: (nodeId: number) =>
+    `Failed to get outgoing relations for node ${nodeId}`,
 } as const;
+
+interface FindNodeByNameRow {
+  id: number;
+  name: string;
+  type: string;
+  path_patterns: string | null;
+}
+
+/** First `path_patterns` entry, JSON-parsed the same way `topology-builder.service.ts`'s
+ *  `parseFilePath` does — used only by `findNodeByName`'s `filePath` field (`query`'s one
+ *  consumer of it). */
+function mapFindNodeByNameRow(row: FindNodeByNameRow): {
+  id: number;
+  name: string;
+  type: string;
+  filePath?: string;
+} {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    filePath: parseFirstPathPattern(row.path_patterns),
+  };
+}
+
+function parseFirstPathPattern(raw: string | null): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) return String(parsed[0]);
+  } catch {
+    // Malformed path_patterns JSON — treated the same as "no path" rather than throwing.
+  }
+  return undefined;
+}
 
 /** FTS5 sync-trigger names on `l2_nodes_fts` (see `migrations/0001_init.sql`) — dropped/recreated around `bulkLoadGraph`'s bulk insert. */
 const SchemaTriggers = {
@@ -215,22 +254,22 @@ export class GraphNodesRepo implements IGraphNodesRepo {
    */
   findNodeByName(
     target: string,
-  ): { id: number; name: string; type: string } | undefined {
+  ): { id: number; name: string; type: string; filePath?: string } | undefined {
     try {
       const exact = this.db
         .prepare(
-          `SELECT id, name, type FROM ${SchemaTables.L2_NODES} WHERE name = ? LIMIT 1`,
+          `SELECT id, name, type, path_patterns FROM ${SchemaTables.L2_NODES} WHERE name = ? LIMIT 1`,
         )
-        .get(target) as { id: number; name: string; type: string } | undefined;
-      if (exact) return exact;
+        .get(target) as FindNodeByNameRow | undefined;
+      if (exact) return mapFindNodeByNameRow(exact);
 
       const escaped = target.replace(/[\\%_]/g, (m) => `\\${m}`);
-      return this.db
+      const like = this.db
         .prepare(
-          `SELECT id, name, type FROM ${SchemaTables.L2_NODES} WHERE name LIKE ? ESCAPE '\\' LIMIT 1`,
+          `SELECT id, name, type, path_patterns FROM ${SchemaTables.L2_NODES} WHERE name LIKE ? ESCAPE '\\' LIMIT 1`,
         )
-        .get(`%${escaped}%`) as
-        { id: number; name: string; type: string } | undefined;
+        .get(`%${escaped}%`) as FindNodeByNameRow | undefined;
+      return like ? mapFindNodeByNameRow(like) : undefined;
     } catch (err) {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
@@ -304,6 +343,61 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         GRAPH_REPO_ERROR_MESSAGES.OUTGOING_EDGES_FAILED(nodeId),
+        err,
+      );
+    }
+  }
+
+  /** `query`'s incoming-relations lookup — see `IGraphNodesRepo.getIncomingRelations()`'s doc
+   *  comment on how this differs from `getIncomingEdges()`. */
+  getIncomingRelations(
+    nodeId: number,
+  ): Array<{ id: number; name: string; type: string; linkType: string }> {
+    try {
+      return this.db
+        .prepare(
+          `SELECT DISTINCT n.id as id, n.name as name, n.type as type, l.${SchemaColumns.LINK_TYPE} as linkType
+           FROM ${SchemaTables.NODE_LINKS} l
+           JOIN ${SchemaTables.L2_NODES} n ON n.id = l.${SchemaColumns.SOURCE_NODE_ID}
+           WHERE l.${SchemaColumns.TARGET_NODE_ID} = ?`,
+        )
+        .all(nodeId) as Array<{
+        id: number;
+        name: string;
+        type: string;
+        linkType: string;
+      }>;
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        GRAPH_REPO_ERROR_MESSAGES.INCOMING_RELATIONS_FAILED(nodeId),
+        err,
+      );
+    }
+  }
+
+  /** `query`'s outgoing-relations lookup. See `getIncomingRelations()`'s doc comment. */
+  getOutgoingRelations(
+    nodeId: number,
+  ): Array<{ id: number; name: string; type: string; linkType: string }> {
+    try {
+      return this.db
+        .prepare(
+          `SELECT DISTINCT n.id as id, n.name as name, n.type as type, l.${SchemaColumns.LINK_TYPE} as linkType
+           FROM ${SchemaTables.NODE_LINKS} l
+           JOIN ${SchemaTables.L2_NODES} n ON n.id = l.${SchemaColumns.TARGET_NODE_ID}
+           WHERE l.${SchemaColumns.SOURCE_NODE_ID} = ?`,
+        )
+        .all(nodeId) as Array<{
+        id: number;
+        name: string;
+        type: string;
+        linkType: string;
+      }>;
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        GRAPH_REPO_ERROR_MESSAGES.OUTGOING_RELATIONS_FAILED(nodeId),
         err,
       );
     }

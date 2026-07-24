@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { TestSandbox } from "../../support/sandbox.js";
 import { resolve } from "path";
+import { execFileSync } from "child_process";
 import { existsSync, writeFileSync, readFileSync } from "fs";
 import { GitConstants } from "@workspace/core";
 
@@ -96,5 +97,47 @@ describe("Command: docuvia uninstall", () => {
 
     const prePushContent = readFileSync(prePushPath, "utf8");
     expect(prePushContent).not.toContain(GitConstants.PRE_PUSH_HOOK_MARKER);
+  }, 25000);
+
+  it("removes the whole .docuvia/ directory and deletes the hidden docuvia-knowledge branch", async () => {
+    const docuviaDir = resolve(sandbox.dir, ".docuvia");
+    expect(existsSync(docuviaDir), "precondition: init created .docuvia/").toBe(
+      true,
+    );
+    const branchList = execFileSync(
+      "git",
+      ["branch", "--list", GitConstants.KNOWLEDGE_ROOT],
+      { cwd: sandbox.dir, encoding: "utf8" },
+    );
+    expect(
+      branchList,
+      "precondition: init created the docuvia-knowledge branch",
+    ).toContain(GitConstants.KNOWLEDGE_ROOT);
+
+    const result = await sandbox.runCli(["uninstall"]);
+    expect(result.exitCode).toBe(0);
+
+    expect(existsSync(docuviaDir)).toBe(false);
+    const branchListAfter = execFileSync(
+      "git",
+      ["branch", "--list", GitConstants.KNOWLEDGE_ROOT],
+      { cwd: sandbox.dir, encoding: "utf8" },
+    );
+    expect(branchListAfter.trim()).toBe("");
+  }, 25000);
+
+  it("keeps the .docuvia/ directory and the knowledge branch when --keep-db is given", async () => {
+    const docuviaDir = resolve(sandbox.dir, ".docuvia");
+
+    const result = await sandbox.runCli(["uninstall", "--keep-db"]);
+    expect(result.exitCode).toBe(0);
+
+    expect(existsSync(docuviaDir)).toBe(true);
+    const branchList = execFileSync(
+      "git",
+      ["branch", "--list", GitConstants.KNOWLEDGE_ROOT],
+      { cwd: sandbox.dir, encoding: "utf8" },
+    );
+    expect(branchList).toContain(GitConstants.KNOWLEDGE_ROOT);
   }, 25000);
 });

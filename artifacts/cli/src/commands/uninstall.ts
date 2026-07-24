@@ -81,14 +81,17 @@ async function uninstallPlatformHooks(
 
 /** Returns the git-hooks-removal failure name, or `null` when it succeeded (never throws itself —
  *  `docuviaApi.uninstallGitHooks()` is already non-fatal per hook, this catch is a defensive
- *  backstop matching `cleanupUninstallDatabase`'s own shape). */
+ *  backstop matching `cleanupUninstallDatabase`'s own shape). Also deletes the hidden
+ *  `docuvia-knowledge` branch unless `keepDb` is set. */
 async function removeGitHooksStep(
   workspaceRoot: string,
+  keepDb: boolean,
   logger: UninstallLogger,
 ): Promise<string | null> {
   const scopeId = crypto.randomUUID();
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
+  docuviaMemory.set(scopeId, MemoryKeys.KEEP_DB, keepDb);
 
   try {
     const result = await docuviaApi.uninstallGitHooks(scopeId, logger);
@@ -98,6 +101,9 @@ async function removeGitHooksStep(
         result.prePushRemoved,
       ),
     );
+    if (result.knowledgeBranchDeleted) {
+      ui.success(UI_MESSAGES.UNINSTALL_KNOWLEDGE_BRANCH_DELETED);
+    }
     return null;
   } catch (error: unknown) {
     const message =
@@ -107,6 +113,41 @@ async function removeGitHooksStep(
     logger.warn(UI_MESSAGES.UNINSTALL_GIT_HOOKS_FAIL_LOG, { error: message });
     ui.warn(UI_MESSAGES.UNINSTALL_GIT_HOOKS_FAIL + message);
     return UI_MESSAGES.UNINSTALL_GIT_HOOKS_FAILURE_NAME;
+  } finally {
+    docuviaMemory.deleteScope(scopeId);
+  }
+}
+
+/** Removes the whole `.docuvia/` directory (unless `keepDb`) — `clean`'s DB-only wipe
+ *  deliberately leaves the directory shell behind (logs, lockfiles, export artifacts); `uninstall`
+ *  is the "leave the repo pristine" command, so it finishes the job. Never throws. */
+async function removeDocuviaDirStep(
+  workspaceRoot: string,
+  keepDb: boolean,
+  logger: UninstallLogger,
+): Promise<string | null> {
+  if (keepDb) {
+    return null;
+  }
+
+  const scopeId = crypto.randomUUID();
+  docuviaMemory.createScope(scopeId);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, workspaceRoot);
+
+  try {
+    const result = await docuviaApi.removeDocuviaDir(scopeId, logger);
+    if (result.removed) ui.success(UI_MESSAGES.UNINSTALL_DOCUVIA_DIR_REMOVED);
+    return null;
+  } catch (error: unknown) {
+    const message =
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
+    logger.warn(UI_MESSAGES.UNINSTALL_DOCUVIA_DIR_FAIL_LOG, {
+      error: message,
+    });
+    ui.warn(UI_MESSAGES.UNINSTALL_DOCUVIA_DIR_FAIL + message);
+    return UI_MESSAGES.UNINSTALL_DOCUVIA_DIR_FAILURE_NAME;
   } finally {
     docuviaMemory.deleteScope(scopeId);
   }
@@ -185,7 +226,11 @@ export async function uninstallCommand(
 
     await cleanupLegacyMarkdownAgentBlocks(workspaceRoot);
 
-    const gitHooksFailure = await removeGitHooksStep(workspaceRoot, logger);
+    const gitHooksFailure = await removeGitHooksStep(
+      workspaceRoot,
+      keepDb,
+      logger,
+    );
     if (gitHooksFailure) failures.push(gitHooksFailure);
 
     const dbFailure = await cleanupUninstallDatabase(
@@ -194,6 +239,15 @@ export async function uninstallCommand(
       logger,
     );
     if (dbFailure) failures.push(dbFailure);
+
+    // Runs last: wholesale-removes whatever's left under .docuvia/ (logs, lockfiles, export
+    // artifacts) once the DB itself has already been dealt with above.
+    const dirFailure = await removeDocuviaDirStep(
+      workspaceRoot,
+      keepDb,
+      logger,
+    );
+    if (dirFailure) failures.push(dirFailure);
 
     reportUninstallOutcome(failures);
   } catch (e: unknown) {

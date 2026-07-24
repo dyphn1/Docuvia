@@ -68,20 +68,29 @@ The following items are confirmed test gaps or open issues verified by the team.
 
 ---
 
-## 3. Supported Language CLI Benchmark Reports (Pending)
+## 3. Supported Language CLI Benchmark Reports
 
-To perform AST / Parser benchmarking and stress tests across all 11 supported languages in `Docuvia2`, the following benchmark execution reports have been created. These sheets are currently empty (pending execution) and will be populated with actual test results against their respective target projects on GitHub:
+To perform AST / Parser benchmarking and stress tests across all 11 supported languages in `Docuvia2`, the following benchmark execution reports have been created, each comparing Docuvia2 against GitNexus, Graphify, and Code-Review-Graph (CRG) on two real-world target repositories. Reports not yet marked ✅ are still empty shells (pending execution):
 
-| Language       | Test Report File                                               | Target Project 1 (P1)              | Target Project 2 (P2)   |
-| :------------- | :------------------------------------------------------------- | :--------------------------------- | :---------------------- |
-| **C**          | [`c-cli-benchmark.md`](./c-cli-benchmark.md)                   | `redis/redis`                      | `git/git`               |
-| **C++**        | [`cpp-cli-benchmark.md`](./cpp-cli-benchmark.md)               | `llvm/llvm-project`                | `tensorflow/tensorflow` |
-| **C#**         | [`csharp-cli-benchmark.md`](./csharp-cli-benchmark.md)         | `PowerShell/PowerShell`            | `dotnet/orleans`        |
-| **Go**         | [`go-cli-benchmark.md`](./go-cli-benchmark.md)                 | `moby/moby`                        | `gin-gonic/gin`         |
-| **Java**       | [`java-cli-benchmark.md`](./java-cli-benchmark.md)             | `spring-projects/spring-framework` | `google/guava`          |
-| **JavaScript** | [`javascript-cli-benchmark.md`](./javascript-cli-benchmark.md) | `facebook/react`                   | `expressjs/express`     |
-| **PHP**        | [`php-cli-benchmark.md`](./php-cli-benchmark.md)               | `laravel/framework`                | `WordPress/WordPress`   |
-| **Python**     | [`python-cli-benchmark.md`](./python-cli-benchmark.md)         | `django/django`                    | `fastapi/fastapi`       |
-| **Ruby**       | [`ruby-cli-benchmark.md`](./ruby-cli-benchmark.md)             | `rails/rails`                      | `discourse/discourse`   |
-| **Rust**       | [`rust-cli-benchmark.md`](./rust-cli-benchmark.md)             | `BurntSushi/ripgrep`               | `tauri-apps/tauri`      |
-| **TypeScript** | [`typescript-cli-benchmark.md`](./typescript-cli-benchmark.md) | `microsoft/vscode`                 | `nestjs/nest`           |
+| Language       | Test Report File                                               | Target Project 1 (P1)              | Target Project 2 (P2)   | Status                                            |
+| :------------- | :------------------------------------------------------------- | :--------------------------------- | :---------------------- | :------------------------------------------------ |
+| **C**          | [`c-cli-benchmark.md`](./c-cli-benchmark.md)                   | `redis/redis`                      | `git/git`               | ⏳ Pending                                        |
+| **C++**        | [`cpp-cli-benchmark.md`](./cpp-cli-benchmark.md)               | `llvm/llvm-project`                | `tensorflow/tensorflow` | ⏳ Pending                                        |
+| **C#**         | [`csharp-cli-benchmark.md`](./csharp-cli-benchmark.md)         | `PowerShell/PowerShell`            | `dotnet/orleans`        | ✅ Completed (2026-07-24, no-LLM structural pass) |
+| **Go**         | [`go-cli-benchmark.md`](./go-cli-benchmark.md)                 | `moby/moby`                        | `gin-gonic/gin`         | ⏳ Pending                                        |
+| **Java**       | [`java-cli-benchmark.md`](./java-cli-benchmark.md)             | `spring-projects/spring-framework` | `google/guava`          | ⏳ Pending                                        |
+| **JavaScript** | [`javascript-cli-benchmark.md`](./javascript-cli-benchmark.md) | `facebook/react`                   | `expressjs/express`     | ⏳ Pending                                        |
+| **PHP**        | [`php-cli-benchmark.md`](./php-cli-benchmark.md)               | `laravel/framework`                | `WordPress/WordPress`   | ⏳ Pending                                        |
+| **Python**     | [`python-cli-benchmark.md`](./python-cli-benchmark.md)         | `django/django`                    | `fastapi/fastapi`       | ⏳ Pending                                        |
+| **Ruby**       | [`ruby-cli-benchmark.md`](./ruby-cli-benchmark.md)             | `rails/rails`                      | `discourse/discourse`   | ⏳ Pending                                        |
+| **Rust**       | [`rust-cli-benchmark.md`](./rust-cli-benchmark.md)             | `BurntSushi/ripgrep`               | `tauri-apps/tauri`      | ⏳ Pending                                        |
+| **TypeScript** | [`typescript-cli-benchmark.md`](./typescript-cli-benchmark.md) | `microsoft/vscode`                 | `nestjs/nest`           | ⏳ Pending                                        |
+
+### 3.1 C# Benchmark — Key Findings (2026-07-24)
+
+Full detail: [`csharp-cli-benchmark.md`](./csharp-cli-benchmark.md). The LLM-gated surface (Docuvia2 L3 extraction, GitNexus `wiki`, Graphify's semantic layer) was explicitly skipped this pass — see that report's §4 for what a follow-up session still owes. Two findings stand out as worth prioritizing:
+
+1. **`analyze`'s sha fast-path does not detect uncommitted working-tree edits.** A 1-line uncommitted change to a tracked file was invisible to `docuvia analyze` on both target repos ("already up to date with HEAD"), while GitNexus's mtime/hash-based check correctly detected the same edit. This matches the **documented** design in [PLAT-007](../gitbook/adr/platform/PLAT-007-tiered-background-knowledge-evolution.md) (Tier A's sha fast-path is intentional — it's what keeps the post-commit hook cheap), but the benchmark exposed a UX gap: when a human runs `docuvia analyze` manually (not via the git hook), there is no signal that uncommitted changes were skipped. Worth a follow-up: either a log/console note when the fast-path short-circuits with a dirty working tree, or explicit documentation in `analyze --help`.
+2. **`impact`/blast-radius returns only 1 file for foundational symbols** (`PSCmdlet`, `IGrain`) where CRG's traversal surfaces hundreds-to-thousands. This matches the **documented** single-hop design in [IMPT-001](../gitbook/adr/impact/IMPT-001-sql-single-hop-blast-radius.md) (a deliberate fast heuristic filter, not the final word — see [IMPT-002](../gitbook/adr/impact/IMPT-002-lsp-for-absolute-quality.md)'s LSP escalation tier for the multi-hop-quality path). Since `--escalate-to-lsp` / Tier B wasn't exercised in this no-LLM-adjacent session, the benchmark cannot yet confirm whether LSP escalation closes this gap in practice — flagged as the natural next benchmark slice.
+3. Minor: `docuvia uninstall` still leaves `.docuvia/` and the hidden `docuvia-knowledge` branch behind (manual `git branch -D` required); `export-topology`'s default `--collapse` setting undersells graph density (0 links shown until `--collapse=symbol` is passed).
+   > **Fixed (2026-07-24, same-day follow-up):** `uninstall` now deletes the `docuvia-knowledge` branch (`IGitProvider.deleteBranch` → `IKnowledgeGitService.deleteKnowledgeBranch`) and wholesale-removes `.docuvia/` (`removeDocuviaDataDir`), both gated by `--keep-db` alongside `local.db`'s own removal — see [`uninstall`'s execution-flow doc](../gitbook/workflows/uninstall-execution-flow.md). `export-topology`'s collapsed view now reports the folded-away relationship count (`stats.foldedLinkCount`) in the CLI success message instead of silently showing a low link count with no explanation — see `TopologyBuilderService`.

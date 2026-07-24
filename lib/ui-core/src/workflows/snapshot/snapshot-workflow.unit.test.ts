@@ -41,6 +41,8 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       findNodeByName: vi.fn(),
       getIncomingEdges: vi.fn(),
       getOutgoingEdges: vi.fn(),
+      getIncomingRelations: vi.fn(),
+      getOutgoingRelations: vi.fn(),
       getAllNodes: vi.fn().mockReturnValue([]),
       getAllLinks: vi.fn().mockReturnValue([]),
       bulkLoadGraph: vi.fn(),
@@ -84,6 +86,8 @@ describe("SnapshotWorkflow.execute()", () => {
         findNodeByName: vi.fn(),
         getIncomingEdges: vi.fn(),
         getOutgoingEdges: vi.fn(),
+        getIncomingRelations: vi.fn(),
+        getOutgoingRelations: vi.fn(),
         getAllNodes: vi.fn().mockReturnValue([{ id: 1 }]),
         getAllLinks: vi.fn().mockReturnValue([{ id: 1 }]),
         bulkLoadGraph: vi.fn(),
@@ -112,6 +116,7 @@ describe("SnapshotWorkflow.execute()", () => {
       removePostCommitHook: vi.fn(),
       removePrePushHook: vi.fn(),
       repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
       syncKnowledgeBranch: vi.fn(),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
@@ -160,6 +165,7 @@ describe("SnapshotWorkflow.execute()", () => {
       removePostCommitHook: vi.fn(),
       removePrePushHook: vi.fn(),
       repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
       packSnapshotToKnowledgeBranch: vi.fn(),
       syncKnowledgeBranch: vi.fn(),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
@@ -194,6 +200,7 @@ describe("SnapshotWorkflow.execute()", () => {
       removePostCommitHook: vi.fn(),
       removePrePushHook: vi.fn(),
       repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
       packSnapshotToKnowledgeBranch: vi
         .fn()
         .mockRejectedValue(new Error("git fast-import failed")),
@@ -266,6 +273,8 @@ describe("SnapshotWorkflow.execute()", () => {
         findNodeByName: vi.fn(),
         getIncomingEdges: vi.fn(),
         getOutgoingEdges: vi.fn(),
+        getIncomingRelations: vi.fn(),
+        getOutgoingRelations: vi.fn(),
         getAllNodes: vi.fn().mockReturnValue(l2Rows),
         getAllLinks: vi.fn().mockReturnValue([]),
         bulkLoadGraph: vi.fn(),
@@ -298,6 +307,7 @@ describe("SnapshotWorkflow.execute()", () => {
       removePostCommitHook: vi.fn(),
       removePrePushHook: vi.fn(),
       repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
       packSnapshotToKnowledgeBranch: vi
         .fn()
         .mockImplementation(async (_cwd: string, tempDir: string) => {

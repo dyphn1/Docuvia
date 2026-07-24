@@ -9,6 +9,7 @@ function makeMockGitProvider(
   return {
     isGitRepository: vi.fn().mockResolvedValue(true),
     branchExists: vi.fn().mockResolvedValue(true),
+    deleteBranch: vi.fn().mockResolvedValue(undefined),
     commitEmptyTree: vi.fn().mockResolvedValue("sha"),
     updateBranchRef: vi.fn().mockResolvedValue(undefined),
     hooksDirExists: vi.fn().mockResolvedValue(true),
@@ -73,6 +74,8 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       findNodeByName: vi.fn(),
       getIncomingEdges: vi.fn(),
       getOutgoingEdges: vi.fn(),
+      getIncomingRelations: vi.fn(),
+      getOutgoingRelations: vi.fn(),
       getAllNodes: vi.fn(),
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi
@@ -221,6 +224,8 @@ describe("HydrationService.hydrate()", () => {
         findNodeByName: vi.fn(),
         getIncomingEdges: vi.fn(),
         getOutgoingEdges: vi.fn(),
+        getIncomingRelations: vi.fn(),
+        getOutgoingRelations: vi.fn(),
         getAllNodes: vi.fn(),
         getAllLinks: vi.fn(),
         bulkLoadGraph: vi
@@ -306,6 +311,8 @@ describe("HydrationService.hydrate()", () => {
         findNodeByName: vi.fn(),
         getIncomingEdges: vi.fn(),
         getOutgoingEdges: vi.fn(),
+        getIncomingRelations: vi.fn(),
+        getOutgoingRelations: vi.fn(),
         getAllNodes: vi.fn(),
         getAllLinks: vi.fn(),
         bulkLoadGraph: vi

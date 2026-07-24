@@ -111,7 +111,12 @@ describe("TopologyBuilderService.build()", () => {
     expect(decisionNode?.kind).toBe("decision");
     expect(decisionNode?.parent).toBe("l2:1");
 
-    expect(graph.stats).toEqual({ nodeCount: 3, linkCount: 2, groupCount: 1 });
+    expect(graph.stats).toEqual({
+      nodeCount: 3,
+      linkCount: 2,
+      groupCount: 1,
+      foldedLinkCount: 0,
+    });
   });
 
   it("collapses symbols into their containing file when collapse: 'file'", () => {
@@ -162,6 +167,58 @@ describe("TopologyBuilderService.build()", () => {
     expect(graph.links).toEqual([
       { source: "l2:1", target: "l2:3", linkType: "calls", confidence: 1 },
     ]);
+    expect(graph.stats.foldedLinkCount).toBe(0);
+  });
+
+  it("counts same-file relationships folded away by collapse, instead of silently dropping them", () => {
+    const fileNode = makeL2({
+      id: 1,
+      name: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const fnA = makeL2({
+      id: 2,
+      name: "doThing",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const fnB = makeL2({
+      id: 3,
+      name: "helper",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const containsA = makeLink({
+      id: 1,
+      source_node_id: 1,
+      target_node_id: 2,
+      link_type: "contains",
+    });
+    const containsB = makeLink({
+      id: 2,
+      source_node_id: 1,
+      target_node_id: 3,
+      link_type: "contains",
+    });
+    // Both endpoints live in src/a.ts — collapses to a same-file self-loop, not a visible link.
+    const sameFileCall = makeLink({
+      id: 3,
+      source_node_id: 2,
+      target_node_id: 3,
+      link_type: "calls",
+    });
+
+    const graph = builder.build(
+      {
+        workspaceRoot: "/workspace",
+        l2Rows: [fileNode, fnA, fnB],
+        linkRows: [containsA, containsB, sameFileCall],
+        l3Rows: [],
+        tagRows: [],
+      },
+      { collapse: "file" },
+    );
+
+    expect(graph.links).toEqual([]);
+    expect(graph.stats.foldedLinkCount).toBe(1);
   });
 
   it("auto-collapses once the node count exceeds maxNodes", () => {

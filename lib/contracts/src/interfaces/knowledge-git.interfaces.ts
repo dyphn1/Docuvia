@@ -60,6 +60,15 @@ export interface IKnowledgeGitService {
    */
   removePrePushHook(cwd: string): Promise<{ removed: boolean }>;
   /**
+   * `uninstall`'s teardown of the hidden knowledge branch itself — the orphan branch
+   * `ensureKnowledgeBranch` creates. `{ deleted: false }` (never throws) when the branch doesn't
+   * exist, matching every other uninstall step's non-fatal, idempotent shape.
+   */
+  deleteKnowledgeBranch(
+    cwd: string,
+    branchName?: string,
+  ): Promise<{ deleted: boolean }>;
+  /**
    * `doctor --fix`'s explicit, opt-in repair of the legacy-hook duplicate-block case
    * (phase1-decision-integration.md §10d): re-checks (TOCTOU-safe) that `.git/hooks/post-commit`
    * still carries both the current and legacy Docuvia blocks, strips every Docuvia-authored block

@@ -20,6 +20,10 @@ export const MemoryKeys = {
   ESCALATE_TO_LSP: "escalateToLsp",
   LIMIT: "limit",
   COLLAPSE: "collapse",
+  /** `uninstall --keep-db` — when set, skips local.db deletion, whole-`.docuvia/`-dir removal,
+   *  and the `docuvia-knowledge` branch delete (all three are the same underlying graph, just in
+   *  three storage forms — STOR-001/STOR-002 — so "keep my data" means keeping all three). */
+  KEEP_DB: "keepDb",
   /** §8b "config-overridable" LSP binary path — absolute path or bare command on PATH. */
   LSP_BINARY_OVERRIDE: "lspBinaryOverride",
   /** §8b "config-overridable" LSP binary args (space-separated in the env var, split by the CLI layer). */

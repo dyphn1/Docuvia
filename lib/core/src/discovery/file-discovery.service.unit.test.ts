@@ -11,6 +11,7 @@ function makeMockGitProvider(
   return {
     isGitRepository: vi.fn().mockResolvedValue(false),
     branchExists: vi.fn().mockResolvedValue(false),
+    deleteBranch: vi.fn().mockResolvedValue(undefined),
     commitEmptyTree: vi.fn().mockResolvedValue("sha"),
     updateBranchRef: vi.fn().mockResolvedValue(undefined),
     hooksDirExists: vi.fn().mockResolvedValue(false),

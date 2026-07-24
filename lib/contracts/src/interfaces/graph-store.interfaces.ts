@@ -240,11 +240,14 @@ export interface IGraphNodesRepo {
   /**
    * Resolves a node by name for `query`/`impact`/`review`'s blast-radius lookups: exact match
    * first, falling back to a `LIKE %target%` match (mirrors old Docuvia's
-   * `QueryService.findNodeByName`). Undefined when nothing matches either way.
+   * `QueryService.findNodeByName`). Undefined when nothing matches either way. `filePath` is the
+   * first `path_patterns` entry (undefined for a row with none) — `query`'s only consumer of it,
+   * since an empty `<l2_module>` block with no file/kind context was otherwise indistinguishable
+   * from a genuinely-empty result.
    */
   findNodeByName(
     target: string,
-  ): { id: number; name: string; type: string } | undefined;
+  ): { id: number; name: string; type: string; filePath?: string } | undefined;
   /**
    * Resolves an l2_node's id by its exact STOR-005 `node_key` (deterministic `<file_path>` /
    * `<file_path>#<symbolName>` identity) — used by `analyze <targetPath>`'s decision-extraction
@@ -254,15 +257,36 @@ export interface IGraphNodesRepo {
   findNodeIdByNodeKey(nodeKey: string): number | undefined;
   /**
    * Nodes with an outgoing `node_links` edge INTO `nodeId` — i.e. things that depend on/call it
-   * (the 1-hop "blast radius"). Mirrors old Docuvia's `QueryService.queryIncomingEdges`.
+   * (the 1-hop "blast radius"). Mirrors old Docuvia's `QueryService.queryIncomingEdges`. `type` is
+   * the neighbor node's own kind (currently always `"module"` — every symbol/file row shares one
+   * `L2NodeType`, see `persist-ast-graph.ts`); `linkType` is the actual relationship
+   * (`calls`/`implements`/`extends`/`contains`/...) — the two are easy to conflate but distinct.
+   * `impact`'s blast radius intentionally includes every link type here, `contains` included
+   * (IMPT-001's documented single-hop heuristic); `query`'s `getContext()` is the one place that
+   * filters `contains` out, since a symbol's own containing file isn't a "caller".
    */
   getIncomingEdges(
     nodeId: number,
   ): Array<{ id: number; name: string; type: string }>;
-  /** Nodes `nodeId` links out to (used by `query`'s structural context). */
+  /** Nodes `nodeId` links out to. See `getIncomingEdges()`'s doc comment on the `DISTINCT`. */
   getOutgoingEdges(
     nodeId: number,
   ): Array<{ id: number; name: string; type: string }>;
+  /**
+   * `query`'s own incoming-edges lookup — same join as `getIncomingEdges()`, but per-relationship
+   * rather than per-neighbor: `linkType` (`calls`/`implements`/`extends`/`contains`/...) is
+   * included, and a neighbor connected by two different relationship types produces two rows
+   * instead of being collapsed into one (`getIncomingEdges()`'s `DISTINCT` behavior — relied on by
+   * `impact`'s blast-radius *count*, IMPT-001 — must not change). Still deduped on the full
+   * (neighbor, linkType) tuple, so the exact same edge row twice is one row, not two.
+   */
+  getIncomingRelations(
+    nodeId: number,
+  ): Array<{ id: number; name: string; type: string; linkType: string }>;
+  /** Nodes `nodeId` links out to, with `linkType`. See `getIncomingRelations()`'s doc comment. */
+  getOutgoingRelations(
+    nodeId: number,
+  ): Array<{ id: number; name: string; type: string; linkType: string }>;
   /** Every `l2_nodes` row — used by `export-topology`. */
   getAllNodes(): L2NodeRow[];
   /** Every `node_links` row — used by `export-topology`. */

@@ -8,7 +8,14 @@ import type { IGraphStore } from "./graph-store.interfaces.js";
  */
 export interface GraphEdgeRef {
   name: string;
-  type: string;
+  /** The relationship itself (`calls`/`implements`/`extends`/...) — previously this field held the
+   *  *neighbor node's* own kind instead, which is always `"module"` today (every symbol/file row
+   *  shares one `L2NodeType`, see `persist-ast-graph.ts`) and so never actually told a caller
+   *  anything. `getContext()` also excludes `contains` edges from both `incoming`/`outgoing`: a
+   *  symbol's own containing file isn't a "caller"/"callee", and leaving it in crowded out (or
+   *  masqueraded as) genuine relationships for foundational symbols with few resolved
+   *  calls/implements/extends edges. */
+  linkType: string;
 }
 
 export interface GraphContext {
@@ -31,7 +38,7 @@ export interface LocalSearchResult {
 }
 
 export interface LocalQueryResult {
-  l2: { name: string } | null;
+  l2: { name: string; type: string; filePath?: string } | null;
   l3: Array<{ title: string; content: string | null }>;
   context: GraphContext | null;
 }

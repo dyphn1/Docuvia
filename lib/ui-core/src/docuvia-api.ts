@@ -43,6 +43,7 @@ import {
 import { checkTierBGate } from "./workflows/analyze/tier-b-gate.js";
 import type { DoctorResult } from "./workflows/doctor/doctor-result.js";
 import { UninstallHooksWorkflow } from "./workflows/uninstall/uninstall-hooks-workflow.js";
+import { removeDocuviaDataDir } from "./workflows/uninstall/remove-docuvia-dir.js";
 
 function requireMemory<T>(scopeId: string, key: MemoryKey): T {
   const value = docuviaMemory.get<T>(scopeId, key);
@@ -296,17 +297,37 @@ export const docuviaApi = {
     return new DoctorWorkflow(workspaceRoot, logger).execute(options);
   },
 
-  /** `uninstall`'s hooks-removal half (phase1-decision-integration.md §10a) — removes both git
-   *  hooks `init` installs. See `UninstallHooksWorkflow`'s doc comment. */
+  /** `uninstall`'s git-artifact-removal half (phase1-decision-integration.md §10a) — removes both
+   *  git hooks `init` installs, plus the hidden `docuvia-knowledge` branch unless `--keep-db`. See
+   *  `UninstallHooksWorkflow`'s doc comment. */
   async uninstallGitHooks(
     scopeId: string,
     logger: ILogger,
-  ): Promise<{ postCommitRemoved: boolean; prePushRemoved: boolean }> {
+  ): Promise<{
+    postCommitRemoved: boolean;
+    prePushRemoved: boolean;
+    knowledgeBranchDeleted: boolean;
+  }> {
     const workspaceRoot = requireMemory<string>(
       scopeId,
       MemoryKeys.WORKSPACE_ROOT,
     );
-    return new UninstallHooksWorkflow(workspaceRoot, logger).execute();
+    const keepDb = docuviaMemory.get<boolean>(scopeId, MemoryKeys.KEEP_DB);
+    return new UninstallHooksWorkflow(workspaceRoot, logger).execute(keepDb);
+  },
+
+  /** `uninstall`'s wholesale `.docuvia/` directory removal (unless `--keep-db`) — the "leave the
+   *  repo pristine" step `docuvia clean` deliberately doesn't do on its own. See
+   *  `removeDocuviaDataDir`'s doc comment. */
+  async removeDocuviaDir(
+    scopeId: string,
+    logger: ILogger,
+  ): Promise<{ removed: boolean }> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    return removeDocuviaDataDir(workspaceRoot, logger);
   },
 
   /** D2's mandatory pre-flight gate for a manual/interactive `analyze --escalate-to-lsp`

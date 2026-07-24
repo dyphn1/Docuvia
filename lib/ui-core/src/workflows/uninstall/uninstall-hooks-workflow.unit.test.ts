@@ -18,6 +18,7 @@ function makeMockKnowledgeGitService(
     removePostCommitHook: vi.fn().mockResolvedValue({ removed: true }),
     removePrePushHook: vi.fn().mockResolvedValue({ removed: true }),
     repairDuplicatePostCommitHook: vi.fn(),
+    deleteKnowledgeBranch: vi.fn().mockResolvedValue({ deleted: true }),
     packSnapshotToKnowledgeBranch: vi.fn(),
     syncKnowledgeBranch: vi.fn(),
     resolveNewestSourceTrailerSha: vi.fn(),
@@ -45,11 +46,57 @@ describe("UninstallHooksWorkflow.execute()", () => {
       createMockLogger(),
     ).execute();
 
-    expect(result).toEqual({ postCommitRemoved: true, prePushRemoved: true });
+    expect(result).toEqual({
+      postCommitRemoved: true,
+      prePushRemoved: true,
+      knowledgeBranchDeleted: true,
+    });
     expect(knowledgeGit.removePostCommitHook).toHaveBeenCalledWith(
       "/workspace",
     );
     expect(knowledgeGit.removePrePushHook).toHaveBeenCalledWith("/workspace");
+    expect(knowledgeGit.deleteKnowledgeBranch).toHaveBeenCalledWith(
+      "/workspace",
+    );
+  });
+
+  it("skips deleting the knowledge branch when keepDb is true", async () => {
+    const knowledgeGit = makeMockKnowledgeGitService();
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
+    docuviaFactory.lock();
+
+    const result = await new UninstallHooksWorkflow(
+      "/workspace",
+      createMockLogger(),
+    ).execute(true);
+
+    expect(result).toEqual({
+      postCommitRemoved: true,
+      prePushRemoved: true,
+      knowledgeBranchDeleted: false,
+    });
+    expect(knowledgeGit.deleteKnowledgeBranch).not.toHaveBeenCalled();
+  });
+
+  it("catches a knowledge-branch-deletion failure and still reports the hook results", async () => {
+    const knowledgeGit = makeMockKnowledgeGitService({
+      deleteKnowledgeBranch: vi.fn().mockRejectedValue(new Error("EACCES")),
+    });
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
+    docuviaFactory.lock();
+    const logger = createMockLogger();
+
+    const result = await new UninstallHooksWorkflow(
+      "/workspace",
+      logger,
+    ).execute();
+
+    expect(result).toEqual({
+      postCommitRemoved: true,
+      prePushRemoved: true,
+      knowledgeBranchDeleted: false,
+    });
+    expect(logger.events.some((e) => e.level === "warn")).toBe(true);
   });
 
   it("is a clean no-op result when neither hook was present", async () => {
@@ -68,6 +115,7 @@ describe("UninstallHooksWorkflow.execute()", () => {
     expect(result).toEqual({
       postCommitRemoved: false,
       prePushRemoved: false,
+      knowledgeBranchDeleted: true,
     });
   });
 
@@ -84,7 +132,11 @@ describe("UninstallHooksWorkflow.execute()", () => {
       logger,
     ).execute();
 
-    expect(result).toEqual({ postCommitRemoved: false, prePushRemoved: true });
+    expect(result).toEqual({
+      postCommitRemoved: false,
+      prePushRemoved: true,
+      knowledgeBranchDeleted: true,
+    });
     expect(knowledgeGit.removePrePushHook).toHaveBeenCalled();
     expect(logger.events.some((e) => e.level === "warn")).toBe(true);
   });

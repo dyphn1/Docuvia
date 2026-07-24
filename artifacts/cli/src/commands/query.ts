@@ -23,6 +23,8 @@ const XML_TAGS = {
   CONTEXT_START: "<docuvia_context>",
   CONTEXT_END: "</docuvia_context>",
   L2_START_PREFIX: '  <l2_module name="',
+  L2_TYPE_MID: '" type="',
+  L2_FILE_MID: '" file="',
   L2_START_SUFFIX: '">',
   L2_END: "  </l2_module>",
   L3_START_PREFIX: '    <l3_decision title="',
@@ -32,21 +34,23 @@ const XML_TAGS = {
   INCOMING_START: "  <incoming>",
   INCOMING_END: "  </incoming>",
   CALLER_PREFIX: '    <caller name="',
-  CALLER_MID: '" type="',
+  CALLER_MID: '" relation="',
   CALLER_SUFFIX: '" />',
   OUTGOING_START: "  <outgoing>",
   OUTGOING_END: "  </outgoing>",
   CALLEE_PREFIX: '    <callee name="',
-  CALLEE_MID: '" type="',
+  CALLEE_MID: '" relation="',
   CALLEE_SUFFIX: '" />',
 } as const;
 
 function buildPromptL2Lines(result: LocalQueryResult): string[] {
   const lines: string[] = [];
   if (result.l2) {
-    lines.push(
-      XML_TAGS.L2_START_PREFIX + result.l2.name + XML_TAGS.L2_START_SUFFIX,
-    );
+    let openTag = XML_TAGS.L2_START_PREFIX + result.l2.name;
+    if (result.l2.type) openTag += XML_TAGS.L2_TYPE_MID + result.l2.type;
+    if (result.l2.filePath)
+      openTag += XML_TAGS.L2_FILE_MID + result.l2.filePath;
+    lines.push(openTag + XML_TAGS.L2_START_SUFFIX);
   }
   for (const l3 of result.l3) {
     lines.push(XML_TAGS.L3_START_PREFIX + l3.title + XML_TAGS.L3_START_SUFFIX);
@@ -69,7 +73,7 @@ function buildPromptIncomingLines(incoming: GraphEdgeRef[]): string[] {
       XML_TAGS.CALLER_PREFIX +
         i.name +
         XML_TAGS.CALLER_MID +
-        i.type +
+        i.linkType +
         XML_TAGS.CALLER_SUFFIX,
     );
   }
@@ -85,7 +89,7 @@ function buildPromptOutgoingLines(outgoing: GraphEdgeRef[]): string[] {
       XML_TAGS.CALLEE_PREFIX +
         o.name +
         XML_TAGS.CALLEE_MID +
-        o.type +
+        o.linkType +
         XML_TAGS.CALLEE_SUFFIX,
     );
   }
@@ -115,7 +119,14 @@ export function formatPromptOutput(result: LocalQueryResult): string {
 
 function printHumanL2Header(result: LocalQueryResult): void {
   if (result.l2) {
-    ui.info(UI_MESSAGES.QUERY_L2_PREFIX + result.l2.name);
+    let line = UI_MESSAGES.QUERY_L2_PREFIX + result.l2.name;
+    if (result.l2.filePath) {
+      line +=
+        FORMAT_MARKERS.OPEN_PAREN +
+        result.l2.filePath +
+        FORMAT_MARKERS.CLOSE_PAREN;
+    }
+    ui.info(line);
   } else {
     ui.warn(UI_MESSAGES.QUERY_NO_L2);
   }
@@ -144,7 +155,7 @@ function printHumanEdgeList(edges: GraphEdgeRef[], header: string): void {
       FORMAT_MARKERS.INDENT_TWO +
         edge.name +
         FORMAT_MARKERS.OPEN_PAREN +
-        edge.type +
+        edge.linkType +
         FORMAT_MARKERS.CLOSE_PAREN,
     );
   }

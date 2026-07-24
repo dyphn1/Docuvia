@@ -56,3 +56,9 @@ lib/core/src/**/*.js.*.tmp
 .github/harness-state/
 .github/skills/
 .continue/harness-state/
+.github/harness-everything/state/
+.claude/harness-everything/
+.cursor/harness-everything/
+.github/harness-everything/
+.codex/harness-everything/
+.continue/harness-everything/

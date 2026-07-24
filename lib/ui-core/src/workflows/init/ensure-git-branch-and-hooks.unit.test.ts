@@ -13,6 +13,7 @@ function makeMockKnowledgeGit(
     removePostCommitHook: vi.fn(),
     removePrePushHook: vi.fn(),
     repairDuplicatePostCommitHook: vi.fn(),
+    deleteKnowledgeBranch: vi.fn(),
     packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
     syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
     resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),

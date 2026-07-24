@@ -78,6 +78,30 @@ The post-commit hook calls `docuvia analyze` (auto mode) instead of `snapshot`:
    HEAD, exit immediately (`analyze.delta.noop` JSONL line) — this is the idempotency fast-path,
    checked first. Key absent (pre-existing workspace): fall back to the newest `Docuvia-Source`
    trailer on the knowledge branch, else full re-ingest once.
+
+   > **Empirical validation (2026-07-24, C# benchmark)**:
+   > [`docs/cli-test-analysis/csharp-cli-benchmark.md`](../../cli-test-analysis/csharp-cli-benchmark.md)
+   > confirmed this fast-path behaves exactly as designed when `docuvia analyze` is invoked
+   > manually, outside the git-hook flow this tier was built for: a 1-line uncommitted edit to a
+   > tracked file on both PowerShell/PowerShell and dotnet/orleans was reported as
+   > "already up to date with HEAD" — correct per the sha-equality check above, since an uncommitted
+   > edit does not change HEAD. GitNexus's competing mtime/hash-based check did detect the same
+   > uncommitted edit (at the cost of ~full-rebuild latency on its incremental path, so the
+   > comparison isn't a clean win either way). Design-wise this is not a defect — Tier A is
+   > explicitly commit-triggered, not filesystem-watch-triggered (see "Rejected alternatives" below
+   > on why a resident watcher/daemon was rejected). The gap the benchmark surfaces is UX, not
+   > correctness: a human running `analyze` interactively gets no signal that a dirty working tree
+   > was silently skipped. Worth a follow-up: a console/log note when the fast-path short-circuits
+   > with uncommitted changes present, or calling this out explicitly in `analyze --help`.
+   >
+   > **Fixed (2026-07-24, same day):** the fast-path now calls the pre-existing
+   > `IGitProvider.hasUncommittedChanges` purely to pick which noop message/JSONL line to emit —
+   > it still always returns the noop result (the design above is unchanged, dirty or not). A
+   > dirty tree logs `AUTO_NOOP_DIRTY_WORKTREE` (CLI: "uncommitted changes ... were not analyzed")
+   > instead of the plain `AUTO_NOOP` message, and `analyze.delta.noop` JSONL lines carry a new
+   > `dirtyWorktree` boolean. See `AnalyzeWorkflow.dispatchAutoMode`'s sha fast-path in
+   > `lib/ui-core/src/workflows/analyze/analyze-workflow.ts`.
+
 2. Diff `lastIngestedSourceSha → HEAD` (name-status), filtered by the same discovery
    ignore/oversize rules `init` uses. Added/modified files are re-parsed through the existing
    `AstProcessingService` + `GraphPersister` (per-file replace: delete the file's L2 rows, then

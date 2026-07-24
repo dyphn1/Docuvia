@@ -83,6 +83,24 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     expect(stdout).toContain(KNOWLEDGE_BRANCH);
   });
 
+  it("deleteBranch force-deletes an unmerged orphan branch", async () => {
+    const sha = await provider.commitEmptyTree(tmpDir, "chore: orphan commit");
+    await provider.updateBranchRef(tmpDir, KNOWLEDGE_BRANCH, sha);
+    expect(await provider.branchExists(tmpDir, KNOWLEDGE_BRANCH)).toBe(true);
+
+    // A plain `git branch -d` would refuse here (the branch is unrelated to HEAD's history) --
+    // deleteBranch must use `-D` to succeed regardless.
+    await provider.deleteBranch(tmpDir, KNOWLEDGE_BRANCH);
+
+    expect(await provider.branchExists(tmpDir, KNOWLEDGE_BRANCH)).toBe(false);
+  });
+
+  it("deleteBranch rejects when the branch doesn't exist", async () => {
+    await expect(
+      provider.deleteBranch(tmpDir, KNOWLEDGE_BRANCH),
+    ).rejects.toThrow();
+  });
+
   it("hooksDirExists / readHookFile / appendHookFile / makeHookExecutable install a working hook", async () => {
     expect(await provider.hooksDirExists(tmpDir)).toBe(true);
     expect(await provider.readHookFile(tmpDir, HOOK_NAME)).toBeUndefined();

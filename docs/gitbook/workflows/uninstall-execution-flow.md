@@ -12,11 +12,22 @@
 > still fired and silently no-op'd (`npx --no-install` unable to resolve) — the exact invisible
 > failure PLAT-007 forbids, and one `uninstall` itself caused.
 
+> **Status update (full-cleanup gap closed):** dogfooding on `Docuvia2` itself found that
+> `uninstall` still left two things behind after the update above: the hidden `docuvia-knowledge`
+> orphan branch, and the `.docuvia/` directory shell (`docuvia clean` deliberately only deletes
+> `local.db`, see [`docuvia clean`](../user-guide/cli/clean.md)). `UninstallHooksWorkflow.execute()`
+> now also calls `IKnowledgeGitService.deleteKnowledgeBranch()` (a plain `git branch -D`, since the
+> orphan branch is never "fully merged"), and a new `docuviaApi.removeDocuviaDir()` step
+> wholesale-removes `.docuvia/` afterwards — both gated by `--keep-db`, the same flag that already
+> gated `local.db`'s own removal, since all three are the same underlying graph in different
+> storage forms (STOR-001/STOR-002).
+
 `docuvia uninstall` reverses what `init` installed: per-platform hooks/rules/MCP config, the git
-hooks `init` installs, and (unless `--keep-db`) the local database. It has no dedicated
-Orchestration-layer workflow of its own for the per-platform hooks half — it calls each platform's
-`uninstallHooks()` directly — but the git hooks half goes through `UninstallHooksWorkflow`, per
-this slice's decision to fold every new hook-related check/mutation into the Orchestration layer.
+hooks `init` installs, and (unless `--keep-db`) the local database, the hidden knowledge branch,
+and the rest of the `.docuvia/` directory. It has no dedicated Orchestration-layer workflow of its
+own for the per-platform hooks half — it calls each platform's `uninstallHooks()` directly — but
+the git-artifact half goes through `UninstallHooksWorkflow`, per this slice's decision to fold
+every new hook-related check/mutation into the Orchestration layer.
 
 ## Sequence Diagram
 
@@ -28,6 +39,7 @@ sequenceDiagram
     participant Plat as Platform Installers
     participant GitAPI as docuviaApi.uninstallGitHooks()
     participant API as docuviaApi.clean()
+    participant DirAPI as docuviaApi.removeDocuviaDir()
 
     User->>CLI: docuvia uninstall, platform flag, keep db
     CLI->>Wizard: selectPlatforms platformFilter
@@ -43,12 +55,13 @@ sequenceDiagram
         end
     end
 
-    CLI->>GitAPI: docuviaApi.uninstallGitHooks scopeId logger
-    alt git hooks removal throws
+    CLI->>GitAPI: docuviaApi.uninstallGitHooks scopeId logger keepDb
+    alt git hooks / branch removal throws
         GitAPI-->>CLI: error, logged and collected, not rethrown
         Note right of CLI: same non-fatal, collected-failure treatment as a platform failure above.
     else success
-        GitAPI-->>CLI: postCommitRemoved, prePushRemoved
+        GitAPI-->>CLI: postCommitRemoved, prePushRemoved, knowledgeBranchDeleted
+        Note right of GitAPI: knowledgeBranchDeleted stays false without even trying when keepDb.
     end
 
     alt keepDb
@@ -56,6 +69,9 @@ sequenceDiagram
     else not keepDb
         CLI->>API: docuviaApi.clean scopeId logger
         API-->>CLI: deleted, message
+        CLI->>DirAPI: docuviaApi.removeDocuviaDir scopeId logger
+        DirAPI-->>CLI: removed
+        Note right of DirAPI: runs last -- wipes whatever's left under .docuvia/ (logs, lockfiles, export artifacts).
     end
 
     alt any failures collected
@@ -67,12 +83,13 @@ sequenceDiagram
 
 ## Step → ADR Mapping
 
-| Step                                                                                                     | Governing ADR(s)                                                                                         | Verdict                        |
-| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| Each platform uninstalled independently; one failure doesn't block the rest or DB cleanup                | `architecture/error-handling-architecture.md`                                                            | ✅ Match                       |
-| Git hooks removed via `UninstallHooksWorkflow`; one hook's failure doesn't block the other or DB cleanup | [PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#reliability-slice-5-doctor) | ✅ Match                       |
-| DB cleanup reuses `docuviaApi.clean()` rather than duplicating delete logic                              | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                                     | ✅ Match                       |
-| No `--global` flag; platform uninstall never takes one                                                   | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)                                   | ✅ Match (RESOLVED, see below) |
+| Step                                                                                                      | Governing ADR(s)                                                                                                                        | Verdict                        |
+| --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| Each platform uninstalled independently; one failure doesn't block the rest or DB cleanup                 | `architecture/error-handling-architecture.md`                                                                                           | ✅ Match                       |
+| Git hooks removed via `UninstallHooksWorkflow`; one hook's failure doesn't block the other or DB cleanup  | [PLAT-007](../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md#reliability-slice-5-doctor)                                | ✅ Match                       |
+| DB cleanup reuses `docuviaApi.clean()` rather than duplicating delete logic                               | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                                                                    | ✅ Match                       |
+| Knowledge branch delete and `.docuvia/` dir removal both gated by the same `--keep-db` flag as `local.db` | [STOR-001](../adr/storage/STOR-001-git-branch-source-of-truth.md), [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md) | ✅ Match                       |
+| No `--global` flag; platform uninstall never takes one                                                    | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)                                                                  | ✅ Match (RESOLVED, see below) |
 
 ## Conflicts Found
 

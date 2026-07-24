@@ -34,7 +34,7 @@ const sampleGraph = {
   nodes: [],
   links: [],
   groups: [],
-  stats: { nodeCount: 0, linkCount: 0, groupCount: 0 },
+  stats: { nodeCount: 0, linkCount: 0, groupCount: 0, foldedLinkCount: 0 },
 };
 
 describe("exportTopologyCommand", () => {

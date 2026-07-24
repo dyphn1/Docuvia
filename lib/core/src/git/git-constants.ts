@@ -264,6 +264,9 @@ export const GitMessages = {
   NO_PRE_PUSH_HOOK_TO_REMOVE: "No Docuvia pre-push hook to remove",
   FAILED_TO_REMOVE_POST_COMMIT_HOOK: "Failed to remove post-commit hook",
   FAILED_TO_REMOVE_PRE_PUSH_HOOK: "Failed to remove pre-push hook",
+  NO_KNOWLEDGE_BRANCH_TO_DELETE: "No knowledge branch to delete",
+  DELETED_KNOWLEDGE_BRANCH: "Deleted hidden knowledge branch",
+  FAILED_TO_DELETE_KNOWLEDGE_BRANCH: "Failed to delete knowledge branch",
 
   /** `doctor --fix`'s repair messages (phase1-decision-integration.md §10d). */
   REPAIRED_DUPLICATE_POST_COMMIT_HOOK:

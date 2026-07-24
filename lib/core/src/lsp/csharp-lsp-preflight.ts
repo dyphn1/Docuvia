@@ -1,7 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
-import { CsharpLspConstants, CSHARP_LSP_MESSAGES } from "./csharp-lsp-constants.js";
+import {
+  CsharpLspConstants,
+  CSHARP_LSP_MESSAGES,
+} from "./csharp-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
 
 export interface CsharpLspPreflightResult extends LspPreflightOutcome {
@@ -13,7 +16,10 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
   try {
     const files = fs.readdirSync(workspaceRoot);
     return files.some(
-      (file) => file.endsWith(".sln") || file.endsWith(".csproj"),
+      (file) =>
+        file.endsWith(".sln") ||
+        file.endsWith(".slnx") ||
+        file.endsWith(".csproj"),
     );
   } catch {
     return false;

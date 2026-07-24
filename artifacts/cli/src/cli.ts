@@ -32,7 +32,7 @@ import { CLI_FLAGS, type QueryOutputFormat } from "./constants/cli-flags.js";
 import { UI_MESSAGES } from "./constants/ui-messages.js";
 import { ArgParser } from "./utils/arg-parser.js";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 function printUsage() {
   ui.error(getUsageText());

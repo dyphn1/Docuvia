@@ -2,8 +2,19 @@ import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import child_process from "node:child_process";
 import { checkCsharpLspPreflight } from "./csharp-lsp-preflight.js";
+import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
+
+vi.mock("./lsp-binary-resolver-strategies.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("./lsp-binary-resolver-strategies.js")
+    >();
+  return {
+    ...actual,
+    resolvePathNativeBinary: vi.fn(actual.resolvePathNativeBinary),
+  };
+});
 
 describe("checkCsharpLspPreflight()", () => {
   let workspaceRoot: string;
@@ -28,20 +39,18 @@ describe("checkCsharpLspPreflight()", () => {
   });
 
   it("reports not ready when csproj is present but csharp-ls binary cannot be found", async () => {
-    fs.writeFileSync(path.join(workspaceRoot, "test.csproj"), "<Project></Project>\n");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "test.csproj"),
+      "<Project></Project>\n",
+    );
 
-    // Spy on execFile to simulate failing when trying to probe csharp-ls
-    vi.spyOn(child_process, "execFile").mockImplementation(((
-      _file: any,
-      _args: any,
-      _options: any,
-      callback: any,
-    ) => {
-      if (typeof callback === "function") {
-        callback(new Error("not found"), "", "");
-      }
-      return {} as any;
-    }) as any);
+    // Simulate csharp-ls not being resolvable on PATH, regardless of what's actually
+    // installed on the machine running this test.
+    vi.mocked(resolvePathNativeBinary).mockResolvedValueOnce({
+      command: "csharp-ls",
+      args: [],
+      locallyResolved: false,
+    });
 
     const result = await checkCsharpLspPreflight(workspaceRoot);
 
@@ -52,7 +61,10 @@ describe("checkCsharpLspPreflight()", () => {
   });
 
   it("is ready when test.csproj is present and binary override resolves successfully", async () => {
-    fs.writeFileSync(path.join(workspaceRoot, "test.csproj"), "<Project></Project>\n");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "test.csproj"),
+      "<Project></Project>\n",
+    );
 
     const result = await checkCsharpLspPreflight(workspaceRoot, {
       binary: "/fake/path/to/csharp-ls",
@@ -60,6 +72,20 @@ describe("checkCsharpLspPreflight()", () => {
 
     expect(result.markerFileResolvable).toBe(true);
     expect(result.lspBinaryResolvable).toBe(true);
+    expect(result.ready).toBe(true);
+  });
+
+  it("recognizes a .slnx solution file (newer XML solution format) as a marker file", async () => {
+    fs.writeFileSync(
+      path.join(workspaceRoot, "Orleans.slnx"),
+      "<Solution></Solution>\n",
+    );
+
+    const result = await checkCsharpLspPreflight(workspaceRoot, {
+      binary: "/fake/path/to/csharp-ls",
+    });
+
+    expect(result.markerFileResolvable).toBe(true);
     expect(result.ready).toBe(true);
   });
 });

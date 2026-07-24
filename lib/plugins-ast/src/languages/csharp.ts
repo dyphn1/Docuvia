@@ -28,10 +28,14 @@ export const csharpConfig: LanguageConfig = {
     LanguageNodeTypes.INVOCATION_EXPRESSION,
     LanguageNodeTypes.OBJECT_CREATION_EXPRESSION,
   ],
+  // C# has no separate "implements" syntax — interfaces share the same `base_list` slot
+  // as the base class (`class Derived : Base, IFoo`), so both surface as `extends` edges.
+  extends: [LanguageNodeTypes.BASE_LIST],
   queries: {
     classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.STRUCT_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.INTERFACE_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ENUM_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.RECORD_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS})`,
     functions: `(${LanguageNodeTypes.METHOD_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.CONSTRUCTOR_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.DESTRUCTOR_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.CONVERSION_OPERATOR_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.OPERATOR_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.LOCAL_FUNCTION_STATEMENT}) @${QueryCaptureName.FUNCTION}`,
     imports: `(${LanguageNodeTypes.USING_DIRECTIVE}) @${QueryCaptureName.IMPORT}`,
     calls: `(${LanguageNodeTypes.INVOCATION_EXPRESSION}) @${QueryCaptureName.CALL} (${LanguageNodeTypes.OBJECT_CREATION_EXPRESSION}) @${QueryCaptureName.CALL}`,
+    extends: `(${LanguageNodeTypes.BASE_LIST} (_) @${QueryCaptureName.EXTENDS})`,
   },
 };

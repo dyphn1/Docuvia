@@ -15,10 +15,16 @@ export const pythonConfig: LanguageConfig = {
   classes: [LanguageNodeTypes.CLASS_DEFINITION],
   functions: [LanguageNodeTypes.FUNCTION_DEFINITION],
   calls: [LanguageNodeTypes.CALL],
+  // Python has no `implements` keyword — base classes and mixins share the same
+  // parenthesized list (`class Derived(Base, Mixin):`), so both surface as `extends` edges.
+  // `keyword_argument` entries (e.g. `metaclass=ABCMeta`) are excluded by only matching
+  // bare identifiers/attributes, not the full argument_list.
+  extends: [LanguageNodeTypes.CLASS_DEFINITION],
   queries: {
     classes: `(${LanguageNodeTypes.CLASS_DEFINITION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS})`,
     functions: `(${LanguageNodeTypes.FUNCTION_DEFINITION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION})`,
     imports: `(${LanguageNodeTypes.IMPORT_STATEMENT}) @${QueryCaptureName.IMPORT} (${LanguageNodeTypes.IMPORT_FROM_STATEMENT}) @${QueryCaptureName.IMPORT}`,
     calls: `(${LanguageNodeTypes.CALL} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.ATTRIBUTE})] @${QueryCaptureName.CALL})`,
+    extends: `(${LanguageNodeTypes.CLASS_DEFINITION} (${LanguageNodeTypes.ARGUMENT_LIST} [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.ATTRIBUTE})] @${QueryCaptureName.EXTENDS}))`,
   },
 };

@@ -27,8 +27,15 @@ export const typescriptConfig: LanguageConfig = {
   implements: [LanguageNodeTypes.IMPLEMENTS_CLAUSE],
   extends: [LanguageNodeTypes.EXTENDS_CLAUSE],
   queries: {
-    classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.INTERFACE_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ENUM_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.TYPE_ALIAS_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS})`,
-    functions: `(${LanguageNodeTypes.FUNCTION_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.METHOD_DEFINITION} name: (${LanguageNodeTypes.PROPERTY_IDENTIFIER}) @${QueryCaptureName.FUNCTION})`, // arrow/expression forms handled outside queries — see resolveCallableName() in ast-worker.ts, they have no queryable "name" field
+    // `class_declaration`'s name field is a `type_identifier` in this grammar (unlike plain
+    // JS's `identifier`) — using `identifier` here made the whole pattern fail to compile.
+    classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.INTERFACE_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ENUM_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.TYPE_ALIAS_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS})`,
+    // No compiled `functions` query: arrow functions and function expressions (2 of the 6 kinds
+    // in the fallback array above) have no queryable "name" field of their own — their name comes
+    // from resolveCallableName() walking up to an enclosing binding after extraction, in
+    // ast-worker.ts. A query restricted to function_declaration/method_definition would silently
+    // drop every arrow/expression-form function, so this field stays on the descendantsOfType
+    // fallback (which already covers all 6 kinds) rather than compiling a narrower query.
     imports: `(${LanguageNodeTypes.IMPORT_STATEMENT}) @${QueryCaptureName.IMPORT}`,
     calls: `(${LanguageNodeTypes.CALL_EXPRESSION} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.MEMBER_EXPRESSION})] @${QueryCaptureName.CALL})`,
     implements: `(${LanguageNodeTypes.IMPLEMENTS_CLAUSE} (_) @${QueryCaptureName.IMPLEMENTS})`,

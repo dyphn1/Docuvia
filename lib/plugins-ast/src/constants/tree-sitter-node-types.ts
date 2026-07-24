@@ -47,8 +47,10 @@ export const LanguageNodeTypes = {
   USING_DIRECTIVE: "using_directive",
   INVOCATION_EXPRESSION: "invocation_expression",
   OBJECT_CREATION_EXPRESSION: "object_creation_expression",
+  BASE_LIST: "base_list",
   // Go
   TYPE_DECLARATION: "type_declaration",
+  TYPE_SPEC: "type_spec",
   FIELD_IDENTIFIER: "field_identifier",
   SELECTOR_EXPRESSION: "selector_expression",
   // Java
@@ -56,6 +58,9 @@ export const LanguageNodeTypes = {
   COMPACT_CONSTRUCTOR_DECLARATION: "compact_constructor_declaration",
   METHOD_INVOCATION: "method_invocation",
   EXPLICIT_CONSTRUCTOR_INVOCATION: "explicit_constructor_invocation",
+  SUPERCLASS: "superclass",
+  SUPER_INTERFACES: "super_interfaces",
+  TYPE_LIST: "type_list",
   // JavaScript / TypeScript
   GENERATOR_FUNCTION_DECLARATION: "generator_function_declaration",
   GENERATOR_FUNCTION: "generator_function",
@@ -64,6 +69,7 @@ export const LanguageNodeTypes = {
   IMPLEMENTS_CLAUSE: "implements_clause",
   EXTENDS_CLAUSE: "extends_clause",
   TYPE_ALIAS_DECLARATION: "type_alias_declaration",
+  CLASS_HERITAGE: "class_heritage",
   // PHP
   NAMESPACE_USE_DECLARATION: "namespace_use_declaration",
   INCLUDE_EXPRESSION: "include_expression",
@@ -75,18 +81,22 @@ export const LanguageNodeTypes = {
   MEMBER_CALL_EXPRESSION: "member_call_expression",
   SCOPED_CALL_EXPRESSION: "scoped_call_expression",
   NAME: "name",
+  BASE_CLAUSE: "base_clause",
+  CLASS_INTERFACE_CLAUSE: "class_interface_clause",
   // Python
   IMPORT_FROM_STATEMENT: "import_from_statement",
   CLASS_DEFINITION: "class_definition",
+  ARGUMENT_LIST: "argument_list",
   // Ruby
   CLASS: "class",
   MODULE: "module",
   SINGLETON_CLASS: "singleton_class",
   METHOD: "method",
   SINGLETON_METHOD: "singleton_method",
-  COMMAND_CALL: "command_call",
   CONSTANT: "constant",
-  SCOPE: "scope",
+  SCOPE_RESOLUTION: "scope_resolution",
+  // C++
+  BASE_CLASS_CLAUSE: "base_class_clause",
   // Rust
   STRUCT_ITEM: "struct_item",
   ENUM_ITEM: "enum_item",

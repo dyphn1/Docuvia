@@ -318,6 +318,7 @@ export class GraphPersisterService implements IGraphPersister {
         impl.sourceClass,
         impl.targetInterface,
         LinkTypes.IMPLEMENTS,
+        true,
       );
     }
     for (const ext of result.data.extends ?? []) {
@@ -332,12 +333,22 @@ export class GraphPersisterService implements IGraphPersister {
         ext.sourceClass,
         ext.targetClass,
         LinkTypes.EXTENDS,
+        true,
       );
     }
   }
 
   /** Resolves one call/implements/extends edge and, if the resolved target is a real (and
-   *  distinct) node, inserts the link. Mirrors old inline `processLink` closure 1:1. */
+   *  distinct) node, inserts the link. Mirrors old inline `processLink` closure 1:1.
+   *
+   *  `useNameFallback` (implements/extends only, not calls): `ScopeResolver.resolveCall()` only
+   *  resolves same-file locals and explicitly-imported names — a JS/TS-shaped model. Base
+   *  classes/interfaces are routinely visible without any import in C# (same namespace), Java/Go
+   *  (same package), etc., so falling back to a project-wide exact/LIKE name lookup
+   *  (`findNodeByName`, the same heuristic `docuvia impact`/`query` already use — see IMPT-001)
+   *  is what actually lets those languages' extends/implements edges resolve cross-file. Left off
+   *  calls, where a common short method name (`Add`, `Close`, ...) would false-match far more
+   *  often than a class/interface name would. */
   private linkSymbolReference(
     store: IGraphStore,
     resolver: ScopeResolver,
@@ -349,24 +360,29 @@ export class GraphPersisterService implements IGraphPersister {
     sourceSymbolName: string | undefined,
     targetFunctionOrClass: string,
     linkType: string,
+    useNameFallback = false,
   ): void {
     const resolved = resolver.resolveCall(sourceFile, targetFunctionOrClass);
-    if (!resolved) return;
+    const targetNodeId = resolved
+      ? this.resolveTargetNodeId(
+          store,
+          fileIdMap,
+          symbolIdMap,
+          resolved.targetFile,
+          resolved.targetSymbol,
+        )
+      : useNameFallback
+        ? store.graph.findNodeByName(targetFunctionOrClass)?.id
+        : undefined;
+    if (!targetNodeId) return;
 
-    const targetNodeId = this.resolveTargetNodeId(
-      store,
-      fileIdMap,
-      symbolIdMap,
-      resolved.targetFile,
-      resolved.targetSymbol,
-    );
     const sourceNodeId = this.resolveSourceNodeId(
       sourceSymbols,
       sourceSymbolName,
       sourceFileId,
     );
 
-    if (targetNodeId && targetNodeId !== sourceNodeId) {
+    if (targetNodeId !== sourceNodeId) {
       store.graph.insertLink({ sourceNodeId, targetNodeId, linkType });
     }
   }

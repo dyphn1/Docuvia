@@ -22,12 +22,16 @@ export interface LanguageProvider {
   extractCalls: (rootNode: Node) => Node[];
   extractImplements?: (rootNode: Node) => Node[];
   extractExtends?: (rootNode: Node) => Node[];
+  initQueries?: (language: Language) => void;
   deleteQueries?: () => void;
 }
 
 export interface LanguageQueryConfig {
   classes: string;
-  functions: string;
+  // Optional: a language may omit this when some of its function-kind nodes (e.g. arrow
+  // functions with no queryable "name" field) need the fuller descendantsOfType fallback
+  // instead of a query that would only capture a subset — see typescript.ts/javascript.ts.
+  functions?: string;
   imports: string;
   calls: string;
   implements?: string;
@@ -86,17 +90,35 @@ export class DefaultProvider implements LanguageProvider {
     this.wasm_file = config.wasm_file;
   }
 
+  /**
+   * Compiles each query field independently: one field's pattern failing to compile against the
+   * installed grammar (a real, observed failure mode across grammar-version bumps — see IMPT-001)
+   * degrades only that field to its `descendantsOfType` fallback rather than silently discarding
+   * every other field's precision for the whole language.
+   */
   initQueries(language: Language): void {
     if (this.compiledQueries || !this.config.queries) return;
     const q = this.config.queries;
     this.compiledQueries = {
-      classes: q.classes ? new Query(language, q.classes) : undefined,
-      functions: q.functions ? new Query(language, q.functions) : undefined,
-      imports: q.imports ? new Query(language, q.imports) : undefined,
-      calls: q.calls ? new Query(language, q.calls) : undefined,
-      implements: q.implements ? new Query(language, q.implements) : undefined,
-      extends: q.extends ? new Query(language, q.extends) : undefined,
+      classes: this.compileQuery(language, q.classes),
+      functions: this.compileQuery(language, q.functions),
+      imports: this.compileQuery(language, q.imports),
+      calls: this.compileQuery(language, q.calls),
+      implements: this.compileQuery(language, q.implements),
+      extends: this.compileQuery(language, q.extends),
     };
+  }
+
+  private compileQuery(
+    language: Language,
+    pattern: string | undefined,
+  ): Query | undefined {
+    if (!pattern) return undefined;
+    try {
+      return new Query(language, pattern);
+    } catch {
+      return undefined;
+    }
   }
 
   deleteQueries(): void {

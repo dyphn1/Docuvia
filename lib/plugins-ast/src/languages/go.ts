@@ -16,7 +16,9 @@ export const goConfig: LanguageConfig = {
   ],
   calls: [LanguageNodeTypes.CALL_EXPRESSION],
   queries: {
-    classes: `(${LanguageNodeTypes.TYPE_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS})`,
+    // The name field lives on the nested `type_spec`, not `type_declaration` itself — the
+    // latter has no `name:` field and made the whole pattern fail to compile.
+    classes: `(${LanguageNodeTypes.TYPE_SPEC} name: (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.CLASS})`,
     functions: `(${LanguageNodeTypes.FUNCTION_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.METHOD_DECLARATION} name: (${LanguageNodeTypes.FIELD_IDENTIFIER}) @${QueryCaptureName.FUNCTION})`,
     imports: `(${LanguageNodeTypes.IMPORT_DECLARATION}) @${QueryCaptureName.IMPORT}`,
     calls: `(${LanguageNodeTypes.CALL_EXPRESSION} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.SELECTOR_EXPRESSION})] @${QueryCaptureName.CALL})`,

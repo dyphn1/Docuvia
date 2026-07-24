@@ -25,10 +25,14 @@ export const javaConfig: LanguageConfig = {
     LanguageNodeTypes.METHOD_INVOCATION,
     LanguageNodeTypes.EXPLICIT_CONSTRUCTOR_INVOCATION,
   ],
+  extends: [LanguageNodeTypes.SUPERCLASS],
+  implements: [LanguageNodeTypes.SUPER_INTERFACES],
   queries: {
     classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.INTERFACE_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ENUM_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.ANNOTATION_TYPE_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.RECORD_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS})`,
     functions: `(${LanguageNodeTypes.METHOD_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.CONSTRUCTOR_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.COMPACT_CONSTRUCTOR_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION})`,
     imports: `(${LanguageNodeTypes.IMPORT_DECLARATION}) @${QueryCaptureName.IMPORT}`,
     calls: `(${LanguageNodeTypes.METHOD_INVOCATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CALL}) (${LanguageNodeTypes.EXPLICIT_CONSTRUCTOR_INVOCATION}) @${QueryCaptureName.CALL}`,
+    extends: `(${LanguageNodeTypes.SUPERCLASS} (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.EXTENDS})`,
+    implements: `(${LanguageNodeTypes.SUPER_INTERFACES} (${LanguageNodeTypes.TYPE_LIST} (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.IMPLEMENTS}))`,
   },
 };

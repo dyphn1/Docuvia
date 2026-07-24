@@ -18,6 +18,7 @@ describe("GraphPersisterService", () => {
         insertNode: vi.fn().mockReturnValue(1),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
+        findNodeByName: vi.fn(),
       },
       files: { upsertFile: vi.fn() },
     };

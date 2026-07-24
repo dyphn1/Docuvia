@@ -360,11 +360,12 @@ function parseAndExtract(
   const parser = new Parser();
   parser.setLanguage(langInstance);
 
-  // Note: intentionally not calling provider.initQueries() here — some compiled
-  // query strings in @workspace/plugins-ast currently fail to parse against the
-  // installed grammar (a pre-existing, separate issue). DefaultProvider falls
-  // back to its per-language node-type lists (descendantsOfType) when queries
-  // aren't compiled, which is what we rely on here.
+  // initQueries() is idempotent (DefaultProvider caches compiledQueries after the first call)
+  // and the provider instance is reused for every file of this language for the worker's whole
+  // lifetime (see getRegistry() above), so this only actually compiles once. A field whose
+  // pattern fails to compile against the installed grammar degrades to that field's
+  // descendantsOfType fallback (DefaultProvider.compileQuery) rather than throwing.
+  provider.initQueries?.(langInstance);
 
   const tree = parser.parse(code);
   const data = extractAstData(tree, provider);

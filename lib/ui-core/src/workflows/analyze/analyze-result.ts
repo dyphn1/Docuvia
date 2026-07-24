@@ -74,6 +74,14 @@ export type AutoModeResult =
        *  treated as a harmless no-op rather than an error. */
       kind: typeof AnalyzeResultKind.AUTO_DELTA_NOOP;
       headSha: string | null;
+      /** `true` when the working tree has uncommitted changes at the moment the sha fast-path
+       *  short-circuited (2026-07-24 C# benchmark finding: the fast-path is HEAD-sha-based, so an
+       *  uncommitted edit is invisible to it — this flag is what lets the CLI/log tell an
+       *  interactively-running human their dirty tree was silently skipped, instead of leaving
+       *  them thinking `analyze` inspected their pending edits). Always `false` on the
+       *  unborn/headless-HEAD branch (`headSha: null`) — that path returns before a working-tree
+       *  check would be meaningful. */
+      dirtyWorktree: boolean;
     };
 
 /** `analyze --escalate-to-lsp`'s result shape (§8, D1-D6). */

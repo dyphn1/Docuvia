@@ -242,7 +242,11 @@ function printAnalyzeResult(
       printAutoDeltaResult(result, spinner);
       break;
     case ANALYZE_RESULT_KIND.AUTO_DELTA_NOOP:
-      spinner.succeed(UI_MESSAGES.ANALYZE_AUTO_NOOP_SUCCESS);
+      spinner.succeed(
+        result.dirtyWorktree
+          ? UI_MESSAGES.ANALYZE_AUTO_NOOP_DIRTY_WORKTREE_SUCCESS
+          : UI_MESSAGES.ANALYZE_AUTO_NOOP_SUCCESS,
+      );
       break;
     case ANALYZE_RESULT_KIND.DECISION_EXTRACTION:
       printFocusedResult(result, spinner);

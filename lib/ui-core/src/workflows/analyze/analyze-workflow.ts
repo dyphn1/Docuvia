@@ -131,7 +131,9 @@ export class AnalyzeWorkflow {
   /**
    * No-arg `analyze` — auto mode (PLAT-007 Tier A; phase1-decision-integration.md §6). Order of
    * checks, all against one store open/close:
-   *   1. Sha fast-path (§6a, "must be the first check"): `HEAD === lastIngestedSourceSha` -> noop.
+   *   1. Sha fast-path (§6a, "must be the first check"): `HEAD === lastIngestedSourceSha` -> noop
+   *      (2026-07-24 benchmark follow-up: also checks `hasUncommittedChanges` purely to pick the
+   *      noop message/log line -- a dirty working tree never changes this being a noop).
    *   2. Empty-graph check (no project row or no L2 nodes) -> full ingestion.
    *   3. Otherwise delta: resolve the baseline sha (`lastIngestedSourceSha`, falling back to the
    *      newest `Docuvia-Source` trailer on the knowledge branch for pre-Slice-2 workspaces, else
@@ -204,14 +206,28 @@ export class AnalyzeWorkflow {
     // branches below, before any of them run.
     await this.maybeLogTierBCommitCapNudge(store);
 
-    // 1. Sha fast-path — first check, regardless of graph state.
+    // 1. Sha fast-path — first check, regardless of graph state. Deliberately HEAD-sha-based
+    // (§6a), not filesystem-watch-based, so it cannot see uncommitted edits by design (PLAT-007's
+    // "Rejected alternatives"). The 2026-07-24 C# benchmark found the resulting silence was a UX
+    // gap for a human running `analyze` interactively -- `hasUncommittedChanges` below only picks
+    // the message/log line, it never changes the noop outcome itself.
     if (headSha && lastIngestedSha && headSha === lastIngestedSha) {
-      logger.info(ANALYZE_MESSAGES.AUTO_NOOP);
+      const dirtyWorktree = await git.hasUncommittedChanges(workspaceRoot);
+      logger.info(
+        dirtyWorktree
+          ? ANALYZE_MESSAGES.AUTO_NOOP_DIRTY_WORKTREE
+          : ANALYZE_MESSAGES.AUTO_NOOP,
+      );
       await appendAnalyzeLogLine(workspaceRoot, {
         event: ANALYZE_EVENTS.DELTA_NOOP,
         headSha,
+        dirtyWorktree,
       });
-      return { kind: AnalyzeResultKind.AUTO_DELTA_NOOP, headSha };
+      return {
+        kind: AnalyzeResultKind.AUTO_DELTA_NOOP,
+        headSha,
+        dirtyWorktree,
+      };
     }
 
     // 2. Empty-graph check -> full ingestion.
@@ -229,7 +245,11 @@ export class AnalyzeWorkflow {
       await appendAnalyzeLogLine(workspaceRoot, {
         event: ANALYZE_EVENTS.DELTA_NO_HEAD,
       });
-      return { kind: AnalyzeResultKind.AUTO_DELTA_NOOP, headSha: null };
+      return {
+        kind: AnalyzeResultKind.AUTO_DELTA_NOOP,
+        headSha: null,
+        dirtyWorktree: false,
+      };
     }
 
     // 3. Delta — resolve the baseline sha.

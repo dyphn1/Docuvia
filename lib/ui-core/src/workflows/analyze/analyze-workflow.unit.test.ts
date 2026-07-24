@@ -230,7 +230,11 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
       createMockLogger(),
     ).execute();
 
-    expect(result).toEqual({ kind: "autoDeltaNoop", headSha: "same-sha" });
+    expect(result).toEqual({
+      kind: "autoDeltaNoop",
+      headSha: "same-sha",
+      dirtyWorktree: false,
+    });
     expect(runFullIngestion).not.toHaveBeenCalled();
     expect(runDeltaIngestion).not.toHaveBeenCalled();
     expect(openStoreSpy).toHaveBeenCalledWith({
@@ -248,6 +252,57 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
     expect(lines.some((l) => l.event === "analyze.auto.tier_b_cap_nudge")).toBe(
       false,
     );
+  });
+
+  it("fast-path noop with a dirty working tree: reports dirtyWorktree=true and logs the UX-gap message/line, without changing the noop outcome (2026-07-24 C# benchmark follow-up)", async () => {
+    const store = makeMockStore({
+      meta: {
+        get: vi
+          .fn()
+          .mockImplementation((key: string) =>
+            key === GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA
+              ? "same-sha"
+              : undefined,
+          ),
+        set: vi.fn(),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({
+        getHeadSha: vi.fn().mockResolvedValue("same-sha"),
+        hasUncommittedChanges: vi.fn().mockResolvedValue(true),
+      }),
+    );
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    const logger = createMockLogger();
+    const result = await new AnalyzeWorkflow(tmpDir, logger).execute();
+
+    expect(result).toEqual({
+      kind: "autoDeltaNoop",
+      headSha: "same-sha",
+      dirtyWorktree: true,
+    });
+    expect(runFullIngestion).not.toHaveBeenCalled();
+    expect(runDeltaIngestion).not.toHaveBeenCalled();
+    expect(
+      logger.events.some(
+        (e) => e.message === ANALYZE_MESSAGES.AUTO_NOOP_DIRTY_WORKTREE,
+      ),
+    ).toBe(true);
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    const noopLine = lines.find((l) => l.event === "analyze.delta.noop");
+    expect(noopLine?.dirtyWorktree).toBe(true);
   });
 
   it("§10c commit-time nudge: logs a one-line nudge (once) when the Tier B commit-cap is exceeded, without affecting the dispatch result", async () => {
@@ -277,7 +332,11 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
     const logger = createMockLogger();
     const result = await new AnalyzeWorkflow(tmpDir, logger).execute();
 
-    expect(result).toEqual({ kind: "autoDeltaNoop", headSha: "same-sha" });
+    expect(result).toEqual({
+      kind: "autoDeltaNoop",
+      headSha: "same-sha",
+      dirtyWorktree: false,
+    });
     expect(
       logger.events.filter(
         (e) => e.message === ANALYZE_MESSAGES.TIER_B_CAP_NUDGE,

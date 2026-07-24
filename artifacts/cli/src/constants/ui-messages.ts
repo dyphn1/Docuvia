@@ -100,6 +100,11 @@ export const UI_MESSAGES = {
     `Re-parsed ${filesReparsed} file(s), dropped ${filesDeleted} deleted file(s)` +
     (tierBQueued > 0 ? `, queued ${tierBQueued} file(s) for Tier B.` : "."),
   ANALYZE_AUTO_NOOP_SUCCESS: "Already up to date.",
+  /** 2026-07-24 C# benchmark follow-up: the fast-path is HEAD-sha-based and can't see uncommitted
+   *  edits by design (PLAT-007) -- this variant tells an interactive human that explicitly instead
+   *  of reporting the same "up to date" as a clean tree. */
+  ANALYZE_AUTO_NOOP_DIRTY_WORKTREE_SUCCESS:
+    "Already up to date with HEAD -- uncommitted changes in the working tree were not analyzed (commit them, then re-run).",
   ANALYZE_LLM_MISSING_ENV:
     "AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL and a model (AI_DOCUVIA_MODEL or AI_DOCUVIA_FAST_MODEL) must be set to analyze a specific path.",
   ANALYZE_FOCUSED_HEADER: "Analyze Path",

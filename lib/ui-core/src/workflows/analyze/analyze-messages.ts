@@ -7,6 +7,12 @@ export const ANALYZE_MESSAGES = {
     "No existing knowledge graph found — running full ingestion...",
   AUTO_DELTA_INGESTION: "Re-parsing changed files since the last analysis...",
   AUTO_NOOP: "Knowledge graph already up to date with HEAD.",
+  /** PLAT-007 Tier A's fast-path UX gap, found by the 2026-07-24 C# benchmark: the sha check is
+   *  intentionally commit-triggered, not filesystem-watch-triggered, so it can't see uncommitted
+   *  edits. Silently doing nothing left a human running `analyze` interactively with no signal
+   *  their dirty working tree was skipped -- this variant says so explicitly. */
+  AUTO_NOOP_DIRTY_WORKTREE:
+    "Knowledge graph already up to date with HEAD -- but the working tree has uncommitted changes that won't be reflected until they're committed (analyze's fast-path only tracks HEAD, not the filesystem).",
   /** §10c's commit-time nudge — non-blocking, exit-0; `doctor` reports the same condition
    *  passively as a backup (T4) for anyone who doesn't read console output or grep logs. */
   TIER_B_CAP_NUDGE:

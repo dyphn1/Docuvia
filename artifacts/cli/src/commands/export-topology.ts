@@ -7,6 +7,7 @@ import {
   DocuviaError,
   DOCUVIA_DIR_NAME,
   type TopologyCollapseMode,
+  type TopologyGraph,
   MemoryKeys,
   LogLevels,
 } from "@workspace/contracts";
@@ -27,6 +28,38 @@ export interface ExportTopologyOptions {
   /** Write topology.json only, skip the HTML viewer */
   jsonOnly?: boolean;
   collapse?: TopologyCollapseMode;
+}
+
+function formatExportSuccessMessage(
+  graph: TopologyGraph,
+  jsonPath: string,
+  htmlPath?: string,
+): string {
+  let message =
+    UI_MESSAGES.EXPORT_SUCCESS +
+    jsonPath +
+    UI_MESSAGES.EXPORT_STATS_PREFIX +
+    graph.stats.nodeCount +
+    UI_MESSAGES.EXPORT_STATS_NODES +
+    graph.stats.linkCount +
+    UI_MESSAGES.EXPORT_STATS_LINKS +
+    graph.stats.groupCount +
+    UI_MESSAGES.EXPORT_STATS_GROUPS +
+    (graph.collapsed ? UI_MESSAGES.EXPORT_STATS_COLLAPSED : "") +
+    UI_MESSAGES.EXPORT_STATS_SUFFIX;
+
+  if (graph.stats.foldedLinkCount > 0) {
+    message +=
+      UI_MESSAGES.EXPORT_STATS_FOLDED_PREFIX +
+      graph.stats.foldedLinkCount +
+      UI_MESSAGES.EXPORT_STATS_FOLDED_SUFFIX;
+  }
+
+  if (htmlPath) {
+    message += UI_MESSAGES.EXPORT_HTML_SEPARATOR + htmlPath;
+  }
+
+  return message;
 }
 
 /** Thin caller of docuviaApi.exportTopology() - mirrors init.ts's Presentation-layer responsibilities. */
@@ -55,32 +88,13 @@ export async function exportTopologyCommand(
     const jsonPath = path.join(outDir, TOPOLOGY_JSON_FILENAME);
     fs.writeFileSync(jsonPath, JSON.stringify(graph, null, 2));
 
-    let successMessage =
-      UI_MESSAGES.EXPORT_SUCCESS +
-      jsonPath +
-      UI_MESSAGES.EXPORT_STATS_PREFIX +
-      graph.stats.nodeCount +
-      UI_MESSAGES.EXPORT_STATS_NODES +
-      graph.stats.linkCount +
-      UI_MESSAGES.EXPORT_STATS_LINKS +
-      graph.stats.groupCount +
-      UI_MESSAGES.EXPORT_STATS_GROUPS +
-      (graph.collapsed ? UI_MESSAGES.EXPORT_STATS_COLLAPSED : "") +
-      UI_MESSAGES.EXPORT_STATS_SUFFIX;
-
-    if (graph.stats.foldedLinkCount > 0) {
-      successMessage +=
-        UI_MESSAGES.EXPORT_STATS_FOLDED_PREFIX +
-        graph.stats.foldedLinkCount +
-        UI_MESSAGES.EXPORT_STATS_FOLDED_SUFFIX;
-    }
-
+    let htmlPath: string | undefined;
     if (!options.jsonOnly) {
-      const htmlPath = path.join(outDir, TOPOLOGY_HTML_FILENAME);
+      htmlPath = path.join(outDir, TOPOLOGY_HTML_FILENAME);
       fs.writeFileSync(htmlPath, renderTopologyHtml(graph));
-      successMessage += UI_MESSAGES.EXPORT_HTML_SEPARATOR + htmlPath;
     }
-    spinner.succeed(successMessage);
+
+    spinner.succeed(formatExportSuccessMessage(graph, jsonPath, htmlPath));
   } catch (error: unknown) {
     const message =
       error instanceof DocuviaError || error instanceof Error

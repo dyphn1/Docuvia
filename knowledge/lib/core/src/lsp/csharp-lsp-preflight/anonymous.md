@@ -7,3 +7,4 @@ filePath: lib/core/src/lsp/csharp-lsp-preflight.ts
 # Symbol: anonymous
 
 File: `lib/core/src/lsp/csharp-lsp-preflight.ts`
+s`

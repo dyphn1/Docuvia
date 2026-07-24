@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-json-rpc-client.ts#anonymous@L206
+id: lib/core/src/lsp/lsp-json-rpc-client.ts#anonymous@L205
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/lsp-json-rpc-client.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/fast-import.ts#anonymous@L164
+id: lib/git-local/src/fast-import.ts#anonymous@L160
 type: symbol
 name: anonymous
 filePath: lib/git-local/src/fast-import.ts

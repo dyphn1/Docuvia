@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/src/commands/uninstall.ts#UninstallLogger
+id: artifacts/cli/src/commands/uninstall.ts#anonymous
 type: symbol
-name: UninstallLogger
+name: anonymous
 filePath: artifacts/cli/src/commands/uninstall.ts
 ---
-# Symbol: UninstallLogger
+# Symbol: anonymous
 
 File: `artifacts/cli/src/commands/uninstall.ts`

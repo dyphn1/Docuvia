@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/src/constants/cli-commands.ts#CliCommand
+id: artifacts/cli/src/constants/cli-commands.ts#getCommandUsageText
 type: symbol
-name: CliCommand
+name: getCommandUsageText
 filePath: artifacts/cli/src/constants/cli-commands.ts
 ---
-# Symbol: CliCommand
+# Symbol: getCommandUsageText
 
 File: `artifacts/cli/src/constants/cli-commands.ts`

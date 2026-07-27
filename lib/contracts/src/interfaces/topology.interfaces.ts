@@ -1,8 +1,11 @@
 import type {
   L2NodeRow,
+  L2NodeType,
   L3NodeRow,
+  L3NodeType,
   NodeLinkRow,
   LinkType,
+  ValidityStatus,
 } from "./graph-store.interfaces.js";
 
 /**
@@ -11,7 +14,7 @@ import type {
  * shape (zero logic), so it belongs here rather than in `lib/schema` or `lib/core`. Bump
  * `TOPOLOGY_VERSION` on any breaking change to this shape.
  */
-export const TOPOLOGY_VERSION = 1;
+export const TOPOLOGY_VERSION = 2;
 
 export const TopologyNodeKinds = {
   FILE: "file",
@@ -44,6 +47,18 @@ export interface TopologyNode {
   degree: number;
   /** L1 tag names attached to this node (file nodes only) */
   tags?: string[];
+  /** L2 node type ("module" | "package" | "pcd") — file/symbol nodes only. */
+  l2Type?: L2NodeType;
+  /** For decision nodes: the l3 row's content classification ("change" | "rule" | "decision" | "context") */
+  decisionType?: L3NodeType;
+  /** For decision nodes: the l3 row's body text */
+  content?: string;
+  /** For decision nodes: extraction confidence (0-1), absent when never scored */
+  confidence?: number;
+  /** For decision nodes: current lifecycle status */
+  validityStatus?: ValidityStatus;
+  /** For decision nodes: commit shas the decision was derived from */
+  sourceCommits?: string[];
 }
 
 export interface TopologyLink {
@@ -52,6 +67,10 @@ export interface TopologyLink {
   linkType: LinkType;
   /** 0-1; reserved for LSP-enriched / inferred edges. Static AST edges are 1. */
   confidence: number;
+  /** Commit sha the underlying edge was observed/updated in, when known */
+  commitSha?: string;
+  /** Short human-readable summary of the diff that produced/changed this edge, when known */
+  diffSummary?: string;
 }
 
 export const TopologyGroupSources = {

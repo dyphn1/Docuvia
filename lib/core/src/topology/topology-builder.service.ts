@@ -7,6 +7,9 @@ import type {
   TopologyLink,
   TopologyNode,
   LinkType,
+  L2NodeType,
+  L3NodeType,
+  ValidityStatus,
 } from "@workspace/contracts";
 import {
   TOPOLOGY_VERSION,
@@ -31,18 +34,26 @@ interface NormalizedL2Row {
   id: number;
   name: string;
   filePath?: string;
+  type: L2NodeType;
 }
 
 interface NormalizedLinkRow {
   sourceNodeId: number;
   targetNodeId: number;
   linkType: LinkType;
+  commitSha?: string;
+  diffSummary?: string;
 }
 
 interface NormalizedL3Row {
   id: number;
   l2NodeId: number;
   title: string;
+  content?: string;
+  nodeType: L3NodeType;
+  confidence?: number;
+  validityStatus: ValidityStatus;
+  sourceCommits?: string[];
 }
 
 export class TopologyBuilderService implements ITopologyBuilder {
@@ -54,16 +65,24 @@ export class TopologyBuilderService implements ITopologyBuilder {
       id: row.id,
       name: row.name,
       filePath: parseFilePath(row.path_patterns),
+      type: row.type,
     }));
     const linkRows = input.linkRows.map((row): NormalizedLinkRow => ({
       sourceNodeId: row.source_node_id,
       targetNodeId: row.target_node_id,
       linkType: row.link_type,
+      commitSha: row.commit_sha ?? undefined,
+      diffSummary: row.diff_summary ?? undefined,
     }));
     const l3Rows = input.l3Rows.map((row): NormalizedL3Row => ({
       id: row.id,
       l2NodeId: row.l2_node_id,
       title: row.title,
+      content: row.content ?? undefined,
+      nodeType: row.node_type,
+      confidence: row.confidence ?? undefined,
+      validityStatus: row.validity_status,
+      sourceCommits: parseJsonStringArray(row.source_commits),
     }));
     const tagRows = input.tagRows;
 
@@ -223,6 +242,7 @@ function buildSymbolLevel(
     group: 0,
     filePath: filePathById.get(String(row.id)),
     degree: 0,
+    l2Type: row.type,
   }));
 
   const links: TopologyLink[] = linkRows.map((link) => ({
@@ -230,6 +250,8 @@ function buildSymbolLevel(
     target: toL2NodeId(link.targetNodeId),
     linkType: link.linkType,
     confidence: 1,
+    commitSha: link.commitSha,
+    diffSummary: link.diffSummary,
   }));
 
   appendDecisions(nodes, links, l3Rows, filePathById);
@@ -255,6 +277,7 @@ function buildCollapsed(
       group: 0,
       filePath: filePathById.get(String(row.id)),
       degree: 0,
+      l2Type: row.type,
     }));
 
   const links: TopologyLink[] = [];
@@ -279,6 +302,8 @@ function buildCollapsed(
       target: toL2NodeId(target),
       linkType: link.linkType,
       confidence: 1,
+      commitSha: link.commitSha,
+      diffSummary: link.diffSummary,
     });
   }
 
@@ -304,6 +329,11 @@ function appendDecisions(
       filePath: filePathById.get(String(row.l2NodeId)),
       parent: parentId,
       degree: 0,
+      decisionType: row.nodeType,
+      content: row.content,
+      confidence: row.confidence,
+      validityStatus: row.validityStatus,
+      sourceCommits: row.sourceCommits,
     });
     links.push({
       source: toL3NodeId(row.id),
@@ -331,4 +361,19 @@ function parseFilePath(raw: string | null): string | undefined {
     void e;
   }
   return raw;
+}
+
+/** Parses `l3_nodes.source_commits`' JSON-array-of-shas storage shape; absent/empty/malformed
+ *  input yields `undefined` so the field is omitted from the export rather than emitting `[]`. */
+function parseJsonStringArray(
+  raw: string | null | undefined,
+): string[] | undefined {
+  if (typeof raw !== "string" || raw.length === 0) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed.map(String);
+  } catch (e) {
+    void e;
+  }
+  return undefined;
 }

@@ -526,6 +526,16 @@ function scriptPanels(): string {
   lines.push('  addField("group", (GRAPH.groups[n.group] || {}).label);');
   lines.push('  addField("degree", String(n.degree));');
   lines.push('  addField("tags", (n.tags || []).join(", "));');
+  lines.push('  addField("type", n.l2Type);');
+  lines.push('  addField("decision type", n.decisionType);');
+  lines.push(
+    '  addField("confidence", n.confidence != null ? String(n.confidence) : "");',
+  );
+  lines.push('  addField("validity", n.validityStatus);');
+  lines.push(
+    '  addField("source commits", (n.sourceCommits || []).join(", "));',
+  );
+  lines.push('  addField("content", n.content);');
   lines.push("  if (blast) {");
   lines.push("    var count = Object.keys(blast).length - 1;");
   lines.push('    var d = document.createElement("div");');

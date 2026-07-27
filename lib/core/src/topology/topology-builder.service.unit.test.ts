@@ -84,7 +84,16 @@ describe("TopologyBuilderService.build()", () => {
       target_node_id: 2,
       link_type: "contains",
     });
-    const l3 = makeL3({ id: 5, l2_node_id: 1, title: "decision on a.ts" });
+    const l3 = makeL3({
+      id: 5,
+      l2_node_id: 1,
+      title: "decision on a.ts",
+      content: "we chose X because Y",
+      node_type: "rule",
+      confidence: 0.8,
+      validity_status: "active",
+      source_commits: JSON.stringify(["abc123", "def456"]),
+    });
 
     const graph = builder.build({
       workspaceRoot: "/workspace",
@@ -94,7 +103,7 @@ describe("TopologyBuilderService.build()", () => {
       tagRows: [{ l2NodeId: 1, name: "typescript" }],
     });
 
-    expect(graph.topologyVersion).toBe(1);
+    expect(graph.topologyVersion).toBe(2);
     expect(graph.collapsed).toBe(false);
     expect(graph.nodes.map((n) => n.id).sort()).toEqual(
       ["l2:1", "l2:2", "l3:5"].sort(),
@@ -103,13 +112,20 @@ describe("TopologyBuilderService.build()", () => {
     const fileTopologyNode = graph.nodes.find((n) => n.id === "l2:1");
     expect(fileTopologyNode?.kind).toBe("file");
     expect(fileTopologyNode?.tags).toEqual(["typescript"]);
+    expect(fileTopologyNode?.l2Type).toBe("module");
 
     const fnTopologyNode = graph.nodes.find((n) => n.id === "l2:2");
     expect(fnTopologyNode?.kind).toBe("symbol");
+    expect(fnTopologyNode?.l2Type).toBe("module");
 
     const decisionNode = graph.nodes.find((n) => n.id === "l3:5");
     expect(decisionNode?.kind).toBe("decision");
     expect(decisionNode?.parent).toBe("l2:1");
+    expect(decisionNode?.content).toBe("we chose X because Y");
+    expect(decisionNode?.decisionType).toBe("rule");
+    expect(decisionNode?.confidence).toBe(0.8);
+    expect(decisionNode?.validityStatus).toBe("active");
+    expect(decisionNode?.sourceCommits).toEqual(["abc123", "def456"]);
 
     expect(graph.stats).toEqual({
       nodeCount: 3,
@@ -117,6 +133,55 @@ describe("TopologyBuilderService.build()", () => {
       groupCount: 1,
       foldedLinkCount: 0,
     });
+  });
+
+  it("omits decision enrichment fields that are null/empty on the l3 row", () => {
+    const fileNode = makeL2({ id: 1, path_patterns: JSON.stringify(["a.ts"]) });
+    const l3 = makeL3({
+      id: 5,
+      l2_node_id: 1,
+      content: null,
+      confidence: null,
+      source_commits: "[]",
+    });
+
+    const graph = builder.build({
+      workspaceRoot: "/workspace",
+      l2Rows: [fileNode],
+      linkRows: [],
+      l3Rows: [l3],
+      tagRows: [],
+    });
+
+    const decisionNode = graph.nodes.find((n) => n.id === "l3:5");
+    expect(decisionNode?.content).toBeUndefined();
+    expect(decisionNode?.confidence).toBeUndefined();
+    expect(decisionNode?.sourceCommits).toBeUndefined();
+  });
+
+  it("maps edge provenance (commit_sha/diff_summary) onto TopologyLink when present", () => {
+    const fileA = makeL2({ id: 1, path_patterns: JSON.stringify(["a.ts"]) });
+    const fileB = makeL2({ id: 2, path_patterns: JSON.stringify(["b.ts"]) });
+    const link = makeLink({
+      id: 1,
+      source_node_id: 1,
+      target_node_id: 2,
+      link_type: "calls",
+      commit_sha: "abc123",
+      diff_summary: "added a call to helper()",
+    });
+
+    const graph = builder.build({
+      workspaceRoot: "/workspace",
+      l2Rows: [fileA, fileB],
+      linkRows: [link],
+      l3Rows: [],
+      tagRows: [],
+    });
+
+    const topologyLink = graph.links.find((l) => l.linkType === "calls");
+    expect(topologyLink?.commitSha).toBe("abc123");
+    expect(topologyLink?.diffSummary).toBe("added a call to helper()");
   });
 
   it("collapses symbols into their containing file when collapse: 'file'", () => {

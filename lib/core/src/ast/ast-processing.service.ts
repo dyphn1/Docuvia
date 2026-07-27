@@ -40,7 +40,19 @@ export class AstProcessingService implements IAstProcessor {
     const batchSize = 50;
     for (let i = 0; i < filesToParse.length; i += batchSize) {
       const batch = filesToParse.slice(i, i + batchSize);
-      const promises = batch.map(async (item) => {
+      // Slots keyed by the batch's original index, not push-on-completion order: worker threads
+      // settle in whatever order the pool schedules them, and pushing directly from each promise
+      // as it resolves made `parsedResults`' row order (and therefore every downstream L2 rowid
+      // assigned by `persist-ast-graph.ts`'s sequential inserts) depend on that race -- the same
+      // source commit could persist a different node/edge order, and therefore a different
+      // `snapshot` tree hash, from one ingestion run to the next. Writing into a fixed slot per
+      // index and flattening only after the whole batch settles restores `filesToParse`'s own
+      // (git-diff-derived, deterministic) order regardless of parse completion timing.
+      const slots: Array<
+        | { outcome: "parsed"; result: ParsedAstFileResult }
+        | { outcome: "failed"; failure: AstParseFailure }
+      > = new Array(batch.length);
+      const promises = batch.map(async (item, idx) => {
         try {
           const res = await pool.parse({
             filePath: item.file,
@@ -48,19 +60,25 @@ export class AstProcessingService implements IAstProcessor {
             language: getLanguage(item.file),
           });
           if (res.success && res.data) {
-            parsedResults.push({
-              file: item.file,
-              hash: item.hash,
-              data: res.data,
-              language: detectLanguageForFile(item.file),
-            });
+            slots[idx] = {
+              outcome: "parsed",
+              result: {
+                file: item.file,
+                hash: item.hash,
+                data: res.data,
+                language: detectLanguageForFile(item.file),
+              },
+            };
           } else {
             const error = res.error ?? AstMessages.PARSE_FAILURE_NO_DETAIL;
             this.logger.warn(AstMessages.PARSE_FAILURE_RESULT, {
               file: item.file,
               error,
             });
-            failures.push({ file: item.file, hash: item.hash, error });
+            slots[idx] = {
+              outcome: "failed",
+              failure: { file: item.file, hash: item.hash, error },
+            };
           }
         } catch (e) {
           const error =
@@ -73,10 +91,17 @@ export class AstProcessingService implements IAstProcessor {
             file: item.file,
             error,
           });
-          failures.push({ file: item.file, hash: item.hash, error });
+          slots[idx] = {
+            outcome: "failed",
+            failure: { file: item.file, hash: item.hash, error },
+          };
         }
       });
       await Promise.all(promises);
+      for (const slot of slots) {
+        if (slot.outcome === "parsed") parsedResults.push(slot.result);
+        else failures.push(slot.failure);
+      }
     }
 
     await pool.terminate();

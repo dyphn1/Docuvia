@@ -149,6 +149,64 @@ describe("SnapshotRendererService.render()", () => {
     ]);
   });
 
+  it("sorts nodes/edges by id regardless of input row order (deterministic across ingestion runs)", async () => {
+    // `l2Rows`/`linkRows` reflect `SELECT * FROM l2_nodes`/`node_links` in raw rowid (insertion)
+    // order, which itself depends on AST-parse/worker-pool completion timing -- two ingestion
+    // runs of the identical source commit can hand this same content in a different row order.
+    // Sorting here is what makes the rendered nodes.jsonl/edges.jsonl (and therefore the packed
+    // git tree) a pure function of graph content, independent of that persistence-order race.
+    const nodeC = makeL2({
+      id: 1,
+      name: "src/c.ts",
+      node_key: "src/c.ts",
+      path_patterns: JSON.stringify(["src/c.ts"]),
+    });
+    const nodeA = makeL2({
+      id: 2,
+      name: "src/a.ts",
+      node_key: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const nodeB = makeL2({
+      id: 3,
+      name: "src/b.ts",
+      node_key: "src/b.ts",
+      path_patterns: JSON.stringify(["src/b.ts"]),
+    });
+    const linkCA = makeLink({
+      id: 1,
+      source_node_id: 1,
+      target_node_id: 2,
+      link_type: "calls",
+    });
+    const linkAB = makeLink({
+      id: 2,
+      source_node_id: 2,
+      target_node_id: 3,
+      link_type: "calls",
+    });
+
+    // Rows deliberately handed in insertion (rowid) order, not sorted-by-id order.
+    await renderer.render({
+      outDir,
+      l2Rows: [nodeC, nodeA, nodeB],
+      linkRows: [linkCA, linkAB],
+    });
+
+    const nodes = readJsonl(path.join(outDir, "graph", "nodes.jsonl"));
+    expect(nodes.map((n) => (n as { id: string }).id)).toEqual([
+      "src/a.ts",
+      "src/b.ts",
+      "src/c.ts",
+    ]);
+
+    const edges = readJsonl(path.join(outDir, "graph", "edges.jsonl"));
+    expect(edges).toEqual([
+      { source: "src/a.ts", target: "src/b.ts", type: "calls" },
+      { source: "src/c.ts", target: "src/a.ts", type: "calls" },
+    ]);
+  });
+
   it("writes one markdown file per file node at knowledge/<filePath>.md", async () => {
     const fileNode = makeL2({
       id: 1,

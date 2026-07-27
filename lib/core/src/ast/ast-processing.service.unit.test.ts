@@ -127,6 +127,29 @@ describe("AstProcessingService.processFiles()", () => {
     expect(failedFiles.length).toBe(new Set(failedFiles).size);
   });
 
+  it("preserves the input file order in 'parsed' even when later files resolve before earlier ones", async () => {
+    const files = [makeFile("a.ts"), makeFile("b.ts"), makeFile("c.ts")];
+    // "a.ts" resolves last, "c.ts" resolves first -- a worker-pool completion order that's the
+    // exact reverse of `files`. Previously `parsedResults` was populated via push-on-completion,
+    // so this would come back as [c, b, a] instead of [a, b, c]; the same source commit's L2 rows
+    // would then persist (and export) in a different order across runs purely due to this race.
+    const resolveOrder = { "a.ts": 30, "b.ts": 15, "c.ts": 0 };
+    const pool = makeFakePool(async (request) => {
+      await new Promise((resolve) =>
+        setTimeout(
+          resolve,
+          resolveOrder[request.filePath as keyof typeof resolveOrder],
+        ),
+      );
+      return { taskId: "t", success: true, data: emptyData };
+    });
+    const service = new AstProcessingService(pool);
+
+    const result = await service.processFiles("/workspace", files);
+
+    expect(result.parsed.map((r) => r.file)).toEqual(["a.ts", "b.ts", "c.ts"]);
+  });
+
   it("attaches the detected language to each parsed result", async () => {
     const pool = makeFakePool(async () => ({
       taskId: "t",

@@ -72,22 +72,31 @@ export class SnapshotRendererService implements ISnapshotRenderer {
     for (const row of l2Rows)
       nodeKeyById.set(row.id, row.node_key ?? toL2NodeId(row.id));
 
-    const nodes: RenderNode[] = l2Rows.map((row) => {
-      const containingFileId = containingFileIdByNodeId.get(row.id);
-      return {
-        id: nodeKeyById.get(row.id)!,
-        kind:
-          containingFileId !== undefined
-            ? TopologyNodeKinds.SYMBOL
-            : TopologyNodeKinds.FILE,
-        name: row.name,
-        type: row.type,
-        filePath:
-          containingFileId !== undefined
-            ? filePathById.get(containingFileId)
-            : filePathById.get(row.id),
-      };
-    });
+    // Sorted by the exported node_key/id, not left in `l2Rows`' raw SQL row order: that order
+    // tracks insertion (rowid) order, which in turn tracks AST-parse/worker-pool completion
+    // timing (see `AstProcessingService.processFiles()`) rather than anything about the source
+    // commit itself. Two ingestions of the identical commit that persisted nodes in a different
+    // order previously produced byte-different `nodes.jsonl`/`edges.jsonl` -- and therefore a
+    // different knowledge-branch tree hash -- for identical logical content. Sorting here makes
+    // the rendered snapshot a pure function of graph *content*, independent of persistence order.
+    const nodes: RenderNode[] = l2Rows
+      .map((row) => {
+        const containingFileId = containingFileIdByNodeId.get(row.id);
+        return {
+          id: nodeKeyById.get(row.id)!,
+          kind:
+            containingFileId !== undefined
+              ? TopologyNodeKinds.SYMBOL
+              : TopologyNodeKinds.FILE,
+          name: row.name,
+          type: row.type,
+          filePath:
+            containingFileId !== undefined
+              ? filePathById.get(containingFileId)
+              : filePathById.get(row.id),
+        };
+      })
+      .sort((a, b) => a.id.localeCompare(b.id));
 
     const nodesData = nodes.map((node) =>
       JSON.stringify({
@@ -97,8 +106,8 @@ export class SnapshotRendererService implements ISnapshotRenderer {
         filePath: node.filePath,
       }),
     );
-    const edgesData = linkRows.map((link) =>
-      JSON.stringify({
+    const edges = linkRows
+      .map((link) => ({
         source:
           nodeKeyById.get(link.source_node_id) ??
           toL2NodeId(link.source_node_id),
@@ -106,8 +115,14 @@ export class SnapshotRendererService implements ISnapshotRenderer {
           nodeKeyById.get(link.target_node_id) ??
           toL2NodeId(link.target_node_id),
         type: link.link_type,
-      }),
-    );
+      }))
+      .sort(
+        (a, b) =>
+          a.source.localeCompare(b.source) ||
+          a.target.localeCompare(b.target) ||
+          a.type.localeCompare(b.type),
+      );
+    const edgesData = edges.map((edge) => JSON.stringify(edge));
 
     if (nodesData.length > 0) {
       await fs.writeFile(

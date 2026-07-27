@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/read-write-lock.unit.test.ts#anonymous@L104
+id: lib/schema/src/sqlite/read-write-lock.unit.test.ts#anonymous@L98
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/read-write-lock.unit.test.ts

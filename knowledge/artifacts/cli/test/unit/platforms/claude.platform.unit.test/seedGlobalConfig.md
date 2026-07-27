@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts#globalConfigPath@L136
+id: artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts#seedGlobalConfig
 type: symbol
-name: globalConfigPath
+name: seedGlobalConfig
 filePath: artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts
 ---
-# Symbol: globalConfigPath
+# Symbol: seedGlobalConfig
 
 File: `artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts`

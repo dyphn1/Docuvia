@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/src/platforms/claude.platform.ts#ClaudePlatform
+id: artifacts/cli/src/platforms/claude.platform.ts#anonymous
 type: symbol
-name: ClaudePlatform
+name: anonymous
 filePath: artifacts/cli/src/platforms/claude.platform.ts
 ---
-# Symbol: ClaudePlatform
+# Symbol: anonymous
 
 File: `artifacts/cli/src/platforms/claude.platform.ts`

@@ -23,6 +23,8 @@ for the full contract (`SKSCHED-001`..`006`) and implementation record (2026-07-
 
 ### 3. `sync` vs `sync-knowledge` naming
 
+> **Needs human decision — skipped by automated roadmap sweep on 2026-07-28. Not implemented.**
+
 Flagged repeatedly as a source of confusion (two similarly-named commands, different scopes).
 Candidate for the project's command-convergence principle (the "user-sentence test") — worth its
 own small IFCE ADR now that Phase 2's shape (items 1–2) is settled, since the naming decision
@@ -32,11 +34,15 @@ depended on what each command ended up doing and that's now known.
 
 ### 4. Surface L3 "why" data in `review`/`impact` output
 
+> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28.**
+
 Read-path self-healing hydration already works end-to-end. Now that L3 distribution
 ([phase2-l3-distribution.md](phase2-l3-distribution.md)) is shipped, this is the next
 differentiator vs. GitNexus-class tools — showing _why_ a symbol changed alongside _what_ changed.
 
 ### 5. Richer `export-topology`
+
+> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28.**
 
 No design blockers now that the graph is non-empty on a fresh clone (Tier A ships real data). Just
 needs prioritization against the rest of this list.
@@ -44,6 +50,8 @@ needs prioritization against the rest of this list.
 ## Known open technical items (small, tracked, unowned)
 
 ### 8. Race C — `query` (foreground read) vs. `analyze` (background write)
+
+> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28.**
 
 Unlike the two already-closed concurrency races (`analyze`+`snapshot`, `doctor`+`hydrate`, both
 gated by regression tests since Slice 2), this one has **no gating test anywhere**. WAL mode's
@@ -80,6 +88,8 @@ in Tier B's JSONL batch-summary line, so a future eviction decision (if ever nee
 data-driven rather than speculative.
 
 ### 11. Hydrate-then-delta optimization
+
+> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28.**
 
 Correctness is fine as-is: an empty `local.db` next to a populated knowledge branch currently does
 a full re-parse of HEAD, and `markSynced` prevents a later `ensureHydrated` from clobbering it with

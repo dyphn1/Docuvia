@@ -98,6 +98,7 @@ sequenceDiagram
 This conflict has been resolved — see [init's Conflict #0](init-execution-flow.md#conflicts-found)
 for the full fix. `uninstallCommand()` no longer accepts or threads `allowGlobalMcpConfig`; it calls
 `platform.uninstallHooks(workspaceRoot)` with no second argument, matching the now-single-parameter
-`IIntegrationManager` contract. `claude.platform.ts`'s `uninstallHooks` still best-effort removes a
-legacy global MCP entry if one exists (read-then-delete, never a write) — a deliberate exception to
-clean up repos set up under an older Docuvia version, not a re-introduction of the removed flag.
+`IIntegrationManager` contract. The legacy read-then-delete exception for `claude.platform.ts`'s
+`uninstallHooks` has since been removed too: it now calls `printMcpServerRemovalReminder`, which only
+prints the resolved global config path and instructs the user to remove the entry manually, with zero
+fs access to the global file — making `uninstall` fully compliant with IFCE-002, no exception left.

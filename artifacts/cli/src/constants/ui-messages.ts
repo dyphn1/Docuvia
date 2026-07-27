@@ -205,6 +205,10 @@ export const UI_MESSAGES = {
   UNINSTALL_FAIL_LOG: "uninstall failed",
   UNINSTALL_REMOVED_FILE_PREFIX: "Removed ",
   UNINSTALL_REMOVED_MCP_SERVER_PREFIX: "Removed MCP server from ",
+  // IFCE-002: Docuvia never writes machine-global state — print a reminder instead of editing
+  // Claude Desktop's own (machine-global) config file.
+  UNINSTALL_CLAUDE_MCP_MANUAL_REMINDER:
+    "To finish uninstalling, manually remove the Docuvia MCP server entry from your global MCP config",
 
   // Uninstall Command -- git hooks removal (phase1-decision-integration.md §10a)
   UNINSTALL_GIT_HOOKS_SUCCESS: (

@@ -70,26 +70,16 @@ async function removeClaudeHooksDirIfEmpty(
   }
 }
 
-async function removeClaudeMcpServerEntry(
-  claudeConfigDir: string,
-): Promise<void> {
+/** IFCE-002: Docuvia never writes machine-global state. Print a reminder naming the path
+ *  instead of reading/editing Claude Desktop's own config file outside the repository. */
+function printMcpServerRemovalReminder(claudeConfigDir: string): void {
   const claudeMcpPath = path.join(
     claudeConfigDir,
     CLAUDE_DESKTOP_CONFIG_FILENAME,
   );
-  try {
-    const existing = await fs.readFile(claudeMcpPath, UTF8_ENCODING);
-    const claudeMcp = JSON.parse(existing);
-    if (claudeMcp?.mcpServers && claudeMcp.mcpServers[MCP_SERVER_ALIAS]) {
-      delete claudeMcp.mcpServers[MCP_SERVER_ALIAS];
-      await fs.writeFile(claudeMcpPath, JSON.stringify(claudeMcp, null, 2));
-      ui.success(
-        `${UI_MESSAGES.UNINSTALL_REMOVED_MCP_SERVER_PREFIX}${claudeMcpPath}`,
-      );
-    }
-  } catch {
-    // Best-effort removal — config file may not exist or be unreadable.
-  }
+  ui.info(
+    `${UI_MESSAGES.UNINSTALL_CLAUDE_MCP_MANUAL_REMINDER} (${claudeMcpPath}).`,
+  );
 }
 
 function resolveClaudeDesktopConfigDir(): string {
@@ -184,7 +174,7 @@ export class ClaudePlatform extends BasePlatform {
 
     const claudeConfigDir = resolveClaudeDesktopConfigDir();
     if (claudeConfigDir) {
-      await removeClaudeMcpServerEntry(claudeConfigDir);
+      printMcpServerRemovalReminder(claudeConfigDir);
     }
   }
 }

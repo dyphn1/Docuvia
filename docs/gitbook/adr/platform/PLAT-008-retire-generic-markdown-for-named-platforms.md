@@ -64,8 +64,8 @@ states it as a rule for future platforms too.
    `docuvia:start`/`docuvia:end` block from `.windsurfrules`, `llms.txt`, `CLAUDE.md`, and
    `.cursorrules` if present, so repositories set up under a pre-PLAT-008 Docuvia version can still
    fully clean up via a plain `docuvia uninstall` — mirroring how `ClaudePlatform.uninstallHooks`
-   already best-effort-cleans a legacy global `claude_desktop_config.json` entry left by pre-IFCE-002
-   versions. This is cleanup-only: it never runs on `init`.
+   used to best-effort-clean (now print-only, see IFCE-002) a legacy global `claude_desktop_config.json`
+   entry left by pre-IFCE-002 versions. This is cleanup-only: it never runs on `init`.
 
    `CLAUDE.md` and `.cursorrules` are included in that legacy sweep because "Markdown Agents" used
    to write to them too, even though `ClaudePlatform`/`CursorPlatform` never did — removing the

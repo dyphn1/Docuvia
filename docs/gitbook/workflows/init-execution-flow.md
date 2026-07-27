@@ -202,9 +202,10 @@ outright — but the code kept implementing the superseded ADR-035 behavior unti
 gone, replaced by `printMcpServerSnippet` — `installHooks` now only ever touches the repo-scoped
 `.claude/hooks/` directory and prints the `mcpServers` JSON snippet plus the resolved config path
 for the user to copy-paste, exactly matching IFCE-002 decision #3. `uninstall`'s best-effort removal
-of a legacy global MCP entry (if one exists from an older Docuvia version) was kept — it's a
+of a legacy global MCP entry (if one exists from an older Docuvia version) was kept at first — a
 cleanup-only, read-then-delete operation that never writes, scoped to undoing what a prior version
-of `init` might have done.
+of `init` might have done — but that exception has since been removed too: `uninstall` now only
+prints a reminder instead of touching the file, closing the gap fully.
 
 ### 1. IFCE-001 requires an `--interactive` flag; the code has none (RESOLVED)
 

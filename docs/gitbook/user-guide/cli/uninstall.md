@@ -24,7 +24,7 @@ This command gracefully undoes the integration steps performed by `docuvia init`
 
 ### Features
 
-- **Safe JSON Manipulation**: Best-effort removes the Docuvia MCP server entry from the machine-global `claude_desktop_config.json`, if one is present, without destroying the user's manual formatting — `init` no longer writes this entry ([IFCE-002](../../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)), but `uninstall` still cleans it up for repos set up under an older Docuvia version.
+- **Global Config Reminder**: Never reads or writes the machine-global `claude_desktop_config.json` — `init` no longer writes an entry there either ([IFCE-002](../../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)). Instead, `uninstall` prints an informational reminder pointing at the resolved global config path and instructing the user to remove the Docuvia MCP entry manually if one is present, matching `init`'s print-only behavior.
 - **Lossless Markdown Removal**: Safely slices out `<!-- docuvia:start -->` and `<!-- docuvia:end -->` blocks in `.cursorrules`, `CLAUDE.md`, `.github/copilot-instructions.md`, `AGENTS.md`, `.hermes.md`, etc., while creating `.bak` backup files to prevent accidental loss of user edits within those blocks. Docuvia never rewrites or deletes a shared file outside its own marker block, and never deletes a folder it doesn't exclusively own (see [PLAT-008](../../adr/platform/PLAT-008-retire-generic-markdown-for-named-platforms.md)) — the one exception is `.continue/rules/docuvia.md`, a file Docuvia alone creates, which is unlinked outright.
 - **Legacy Cleanup**: Always attempts to strip leftover Docuvia blocks from `.windsurfrules` and `llms.txt` too, even though `init` no longer writes them — best-effort, so repos set up under a pre-PLAT-008 Docuvia version can still fully clean up with a plain `docuvia uninstall`.
 - **Full Cleanup**: Deletes Docuvia-specific `.claude/hooks`, removes both git hooks `init` installed (the post-commit and pre-push hooks — see `doctor`'s "hook present but docuvia not resolvable" check for why leaving them behind is a real footgun), and — unless `--keep-db` is given — drops the `local.db` database (sharing logic with the `clean` command), force-deletes the hidden `docuvia-knowledge` orphan branch, and removes whatever else is left under `.docuvia/`.
@@ -32,16 +32,6 @@ This command gracefully undoes the integration steps performed by `docuvia init`
 ## Examples
 
 Remove everything `init` installed, including the local database:
-
-```bash
-docuvia uninstall
-```
-
-Only remove the Cursor integration, keep the local database:
-
-```bash
-docuvia uninstall --platform=cursor --keep-db
-```
 
 ```bash
 docuvia uninstall

@@ -105,3 +105,86 @@ describe("ClaudePlatform.installHooks — no machine-global writes (IFCE-002)", 
     expect(ui.askConfirm).not.toHaveBeenCalled();
   });
 });
+
+// IFCE-002: `uninstallHooks` must never read or write Claude Desktop's own (machine-global)
+// config file either — even when it already exists with a Docuvia entry present. It must only
+// clean up the repo-scoped `.claude/hooks/` directory and print an informational reminder
+// telling the user to remove the entry manually.
+describe("ClaudePlatform.uninstallHooks — no machine-global writes (IFCE-002)", () => {
+  let repoDir: string;
+  let globalConfigDir: string;
+  let originalAppData: string | undefined;
+
+  beforeEach(async () => {
+    repoDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "docuvia-claude-platform-repo-"),
+    );
+    globalConfigDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "docuvia-claude-platform-global-"),
+    );
+    originalAppData = process.env.APPDATA;
+    process.env.APPDATA = globalConfigDir;
+    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    if (originalAppData === undefined) delete process.env.APPDATA;
+    else process.env.APPDATA = originalAppData;
+    await fs.rm(repoDir, { recursive: true, force: true });
+    await fs.rm(globalConfigDir, { recursive: true, force: true });
+  });
+
+  function globalConfigPath(): string {
+    // resolveClaudeDesktopConfigDir() joins APPDATA with the platform name subfolder before
+    // the config filename — mirror that here for assertions.
+    return path.join(globalConfigDir, "Claude", CLAUDE_DESKTOP_CONFIG_FILENAME);
+  }
+
+  const fakeGlobalConfig = {
+    mcpServers: {
+      "docuvia-local": {
+        command: "npx",
+        args: ["-y", "docuvia", "mcp"],
+      },
+    },
+  };
+
+  async function seedGlobalConfig(): Promise<void> {
+    await fs.mkdir(path.dirname(globalConfigPath()), { recursive: true });
+    await fs.writeFile(
+      globalConfigPath(),
+      JSON.stringify(fakeGlobalConfig, null, 2),
+    );
+  }
+
+  it("never modifies Claude Desktop's global config file, even when a Docuvia entry pre-exists", async () => {
+    await seedGlobalConfig();
+    const before = await fs.readFile(globalConfigPath(), "utf-8");
+
+    const platform = new ClaudePlatform();
+    await platform.uninstallHooks(repoDir);
+
+    const after = await fs.readFile(globalConfigPath(), "utf-8");
+    expect(after).toBe(before);
+  });
+
+  it("prints an informational reminder naming the global config path instead of editing it", async () => {
+    await seedGlobalConfig();
+
+    const platform = new ClaudePlatform();
+    await platform.uninstallHooks(repoDir);
+
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining(globalConfigPath()),
+    );
+  });
+
+  it("never prompts for confirmation", async () => {
+    await seedGlobalConfig();
+
+    const platform = new ClaudePlatform();
+    await platform.uninstallHooks(repoDir);
+
+    expect(ui.askConfirm).not.toHaveBeenCalled();
+  });
+});

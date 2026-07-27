@@ -41,14 +41,6 @@ differentiator vs. GitNexus-class tools — showing _why_ a symbol changed along
 No design blockers now that the graph is non-empty on a fresh clone (Tier A ships real data). Just
 needs prioritization against the rest of this list.
 
-## Feature proposals — not yet decided
-
-### 7. `uninstall` global-config confirmation
-
-`uninstall` can touch global, cross-project config (e.g. removing Docuvia's MCP entry from a
-global `claude_desktop_config.json`). Flagged by the 2026-07-13 cross-product benchmark as a side
-effect users should be warned about before it happens; no confirmation step exists today.
-
 ## Known open technical items (small, tracked, unowned)
 
 ### 8. Race C — `query` (foreground read) vs. `analyze` (background write)

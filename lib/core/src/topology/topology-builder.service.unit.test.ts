@@ -67,7 +67,7 @@ function makeL3(overrides: Partial<L3NodeRow> = {}): L3NodeRow {
 describe("TopologyBuilderService.build()", () => {
   const builder = new TopologyBuilderService();
 
-  it("projects l2/link/l3/tag rows into a symbol-level TopologyGraph by default", () => {
+  function buildSampleGraph() {
     const fileNode = makeL2({
       id: 1,
       name: "src/a.ts",
@@ -95,30 +95,51 @@ describe("TopologyBuilderService.build()", () => {
       source_commits: JSON.stringify(["abc123", "def456"]),
     });
 
-    const graph = builder.build({
+    return builder.build({
       workspaceRoot: "/workspace",
       l2Rows: [fileNode, fnNode],
       linkRows: [containsLink],
       l3Rows: [l3],
       tagRows: [{ l2NodeId: 1, name: "typescript" }],
     });
+  }
+
+  it("projects l2/link/l3/tag rows into a symbol-level TopologyGraph by default", () => {
+    const graph = buildSampleGraph();
 
     expect(graph.topologyVersion).toBe(2);
     expect(graph.collapsed).toBe(false);
     expect(graph.nodes.map((n) => n.id).sort()).toEqual(
       ["l2:1", "l2:2", "l3:5"].sort(),
     );
+    expect(graph.stats).toEqual({
+      nodeCount: 3,
+      linkCount: 2,
+      groupCount: 1,
+      foldedLinkCount: 0,
+    });
+  });
+
+  it("surfaces l2Type and tags on file/symbol topology nodes", () => {
+    const graph = buildSampleGraph();
 
     const fileTopologyNode = graph.nodes.find((n) => n.id === "l2:1");
+    expect(fileTopologyNode).toBeDefined();
     expect(fileTopologyNode?.kind).toBe("file");
     expect(fileTopologyNode?.tags).toEqual(["typescript"]);
     expect(fileTopologyNode?.l2Type).toBe("module");
 
     const fnTopologyNode = graph.nodes.find((n) => n.id === "l2:2");
+    expect(fnTopologyNode).toBeDefined();
     expect(fnTopologyNode?.kind).toBe("symbol");
     expect(fnTopologyNode?.l2Type).toBe("module");
+  });
+
+  it("surfaces L3 decision enrichment fields on decision topology nodes", () => {
+    const graph = buildSampleGraph();
 
     const decisionNode = graph.nodes.find((n) => n.id === "l3:5");
+    expect(decisionNode).toBeDefined();
     expect(decisionNode?.kind).toBe("decision");
     expect(decisionNode?.parent).toBe("l2:1");
     expect(decisionNode?.content).toBe("we chose X because Y");
@@ -126,13 +147,6 @@ describe("TopologyBuilderService.build()", () => {
     expect(decisionNode?.confidence).toBe(0.8);
     expect(decisionNode?.validityStatus).toBe("active");
     expect(decisionNode?.sourceCommits).toEqual(["abc123", "def456"]);
-
-    expect(graph.stats).toEqual({
-      nodeCount: 3,
-      linkCount: 2,
-      groupCount: 1,
-      foldedLinkCount: 0,
-    });
   });
 
   it("omits decision enrichment fields that are null/empty on the l3 row", () => {

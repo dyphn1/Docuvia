@@ -8,6 +8,7 @@ import {
   ErrorCodes,
   UTF8_ENCODING,
   type ILogger,
+  type IGraphStore,
 } from "@workspace/contracts";
 import {
   GitConstants,
@@ -39,6 +40,91 @@ export class SnapshotWorkflow {
     private readonly logger: ILogger,
   ) {}
 
+  private async openReadOnlyStore(openStore: any): Promise<IGraphStore> {
+    try {
+      return await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+    } catch (err) {
+      if (
+        err instanceof DocuviaError &&
+        err.code === ErrorCodes.DB_OPEN_FAILED
+      ) {
+        await appendSnapshotLogLine(this.workspaceRoot, {
+          event: SNAPSHOT_EVENTS.ERROR,
+          message: SNAPSHOT_MESSAGES.DB_NOT_FOUND,
+        });
+        throw new DocuviaError(
+          ErrorCodes.DB_OPEN_FAILED,
+          SNAPSHOT_MESSAGES.DB_NOT_FOUND,
+          err,
+        );
+      }
+      throw err;
+    }
+  }
+
+  private async shouldSkipSnapshot(
+    knowledgeGit: any,
+    store: IGraphStore,
+  ): Promise<{ shouldSkip: boolean; headSha: string | null }> {
+    const git = docuviaFactory.resolve(TOKENS.GitProvider);
+    const headSha = (await git.getHeadSha(this.workspaceRoot)) ?? null;
+    const isAlreadySnapshotted =
+      headSha && typeof knowledgeGit.hasSourceCommitInHistory === "function"
+        ? await knowledgeGit.hasSourceCommitInHistory(
+            this.workspaceRoot,
+            headSha,
+          )
+        : false;
+    const pending = store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING);
+    const lastTierB = store.meta.get(
+      GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA,
+    );
+    const tierCProcessed = store.meta.get("tierCProcessedThisRun") === "true";
+
+    const shouldSkip = !!(
+      headSha &&
+      isAlreadySnapshotted &&
+      lastTierB === headSha &&
+      !pending &&
+      !tierCProcessed
+    );
+
+    return { shouldSkip, headSha };
+  }
+
+  private async writeL3Cards(
+    tempDir: string,
+    store: IGraphStore,
+    l2Rows: any[],
+    linkRows: any[],
+  ): Promise<void> {
+    const l3Rows = store.l3.getAllExportable();
+    if (l3Rows.length === 0) return;
+
+    const l2GitPaths = computeL2GitPathsByNodeId(l2Rows, linkRows);
+    const l3Dir = path.join(
+      tempDir,
+      GitConstants.KNOWLEDGE_DIR_NAME,
+      GitConstants.L3_DIR_NAME,
+    );
+    await fs.mkdir(l3Dir, { recursive: true });
+    await Promise.all(
+      l3Rows.map(async (row) => {
+        if (!row.content_hash) return;
+        const l2Path = l2GitPaths.get(row.l2_node_id);
+        if (!l2Path) return;
+        await fs.writeFile(
+          path.join(l3Dir, `${row.content_hash}.md`),
+          renderL3Card(row, l2Path),
+          UTF8_ENCODING,
+        );
+      }),
+    );
+  }
+
   public async execute(): Promise<SnapshotResult> {
     const { workspaceRoot, logger } = this;
 
@@ -54,57 +140,15 @@ export class SnapshotWorkflow {
     });
     const snapshotRenderer = docuviaFactory.resolve(TOKENS.SnapshotRenderer);
 
-    let store;
-    try {
-      store = await openStore({
-        dbPath: resolveDbPath(workspaceRoot),
-        readonly: true,
-      });
-    } catch (err) {
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_OPEN_FAILED
-      ) {
-        await appendSnapshotLogLine(workspaceRoot, {
-          event: SNAPSHOT_EVENTS.ERROR,
-          message: SNAPSHOT_MESSAGES.DB_NOT_FOUND,
-        });
-        throw new DocuviaError(
-          ErrorCodes.DB_OPEN_FAILED,
-          SNAPSHOT_MESSAGES.DB_NOT_FOUND,
-          err,
-        );
-      }
-      throw err;
-    }
+    const store = await this.openReadOnlyStore(openStore);
 
     try {
-      // Early-Exit Check (Determined and optimized to prevent redundant git churn):
-      // Skip snapshot generation entirely if:
-      //   1. The current source HEAD has already been snapshotted and exists in the history of the knowledge branch.
-      //   2. There are no pending Tier B batches staged in the local database.
-      //   3. There were no new Tier C decisions processed during this run.
-      const git = docuviaFactory.resolve(TOKENS.GitProvider);
-      const headSha = await git.getHeadSha(workspaceRoot);
-      const isAlreadySnapshotted =
-        headSha && typeof knowledgeGit.hasSourceCommitInHistory === "function"
-          ? await knowledgeGit.hasSourceCommitInHistory(workspaceRoot, headSha)
-          : false;
-      const pending = store.meta.get(
-        GitConstants.META_KEY_TIER_B_BATCH_PENDING,
+      const { shouldSkip, headSha } = await this.shouldSkipSnapshot(
+        knowledgeGit,
+        store,
       );
-      const lastTierB = store.meta.get(
-        GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA,
-      );
-      const tierCProcessed = store.meta.get("tierCProcessedThisRun") === "true";
 
-      if (
-        headSha &&
-        isAlreadySnapshotted &&
-        lastTierB === headSha &&
-        !pending &&
-        !tierCProcessed
-      ) {
+      if (shouldSkip) {
         logger.info(
           "Knowledge graph snapshot is already up to date with HEAD, skipping.",
         );
@@ -120,9 +164,6 @@ export class SnapshotWorkflow {
         };
       }
 
-      // Reset the transient Tier C run flag if we do proceed to snapshot (or skip)
-      // This is now cleaned up inside the read-write store in finalizePendingTierBBatch
-
       const l2Rows = store.graph.getAllNodes();
       const linkRows = store.graph.getAllLinks();
 
@@ -136,32 +177,7 @@ export class SnapshotWorkflow {
           linkRows,
         });
 
-        // §3 wiring (phase2-l3-distribution.md): render the current getAllExportable() set as
-        // one card per content_hash under knowledge/_l3/, in the same tempDir, before packing --
-        // this is also what L3DIST-006's self-healing relies on (a full re-render every run, not
-        // a diff, so a wiped card comes back on the very next snapshot without any extra logic).
-        const l3Rows = store.l3.getAllExportable();
-        if (l3Rows.length > 0) {
-          const l2GitPaths = computeL2GitPathsByNodeId(l2Rows, linkRows);
-          const l3Dir = path.join(
-            tempDir,
-            GitConstants.KNOWLEDGE_DIR_NAME,
-            GitConstants.L3_DIR_NAME,
-          );
-          await fs.mkdir(l3Dir, { recursive: true });
-          await Promise.all(
-            l3Rows.map(async (row) => {
-              if (!row.content_hash) return;
-              const l2Path = l2GitPaths.get(row.l2_node_id);
-              if (!l2Path) return;
-              await fs.writeFile(
-                path.join(l3Dir, `${row.content_hash}.md`),
-                renderL3Card(row, l2Path),
-                UTF8_ENCODING,
-              );
-            }),
-          );
-        }
+        await this.writeL3Cards(tempDir, store, l2Rows, linkRows);
 
         await knowledgeGit.packSnapshotToKnowledgeBranch(
           workspaceRoot,

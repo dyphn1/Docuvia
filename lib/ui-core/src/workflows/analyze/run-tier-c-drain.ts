@@ -125,6 +125,37 @@ async function skipDrain(
   });
 }
 
+async function checkAlreadySnapshotted(
+  deps: TierCDrainDeps,
+  store: IGraphStore,
+  workspaceRoot: string,
+): Promise<boolean> {
+  let isAlreadySnapshotted = false;
+  let headSha: string | null = null;
+  try {
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger: deps.logger,
+    });
+    headSha = (await deps.git.getHeadSha(workspaceRoot)) ?? null;
+    isAlreadySnapshotted = !!(headSha &&
+    typeof knowledgeGit.hasSourceCommitInHistory === "function"
+      ? await knowledgeGit.hasSourceCommitInHistory(workspaceRoot, headSha)
+      : false);
+  } catch {
+    // Graceful fallback when KnowledgeGitService is not registered (e.g. in thin unit tests)
+  }
+
+  if (isAlreadySnapshotted) {
+    const hasTierCDecisions = store.l3
+      .getAllExportable()
+      .some((row) => row.commit_hash === headSha);
+    if (hasTierCDecisions && !deps.force) {
+      return true;
+    }
+  }
+  return false;
+}
+
 /**
  * Tier C drain entry point (phase1-decision-integration.md section 9), folded into the same
  * analyze --escalate-to-lsp composition Tier B drains from (section 9d, "no new command").
@@ -164,33 +195,17 @@ export async function runTierCDrain(
     });
   }
 
-  // Early-Exit & Overwrite Protection for Tier C
-  let isAlreadySnapshotted = false;
-  let headSha: string | null = null;
-  try {
-    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
-      logger: deps.logger,
-    });
-    headSha = (await deps.git.getHeadSha(workspaceRoot)) ?? null;
-    isAlreadySnapshotted =
-      headSha && typeof knowledgeGit.hasSourceCommitInHistory === "function"
-        ? await knowledgeGit.hasSourceCommitInHistory(workspaceRoot, headSha)
-        : false;
-  } catch {
-    // Graceful fallback when KnowledgeGitService is not registered (e.g. in thin unit tests)
-  }
-
-  if (isAlreadySnapshotted) {
-    const hasTierCDecisions = store.l3
-      .getAllExportable()
-      .some((row) => row.commit_hash === headSha);
-    if (hasTierCDecisions && !deps.force) {
-      return await skipDrain(
-        deps,
-        queue.length,
-        "already-snapshotted-with-tier-c",
-      );
-    }
+  const isSnapshotted = await checkAlreadySnapshotted(
+    deps,
+    store,
+    workspaceRoot,
+  );
+  if (isSnapshotted) {
+    return await skipDrain(
+      deps,
+      queue.length,
+      "already-snapshotted-with-tier-c",
+    );
   }
 
   if (!deps.llmBaseUrl || !deps.llmModel) {

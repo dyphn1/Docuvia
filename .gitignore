@@ -35,7 +35,6 @@ Thumbs.db
 
 # AI Auto Generated Docs
 docs/ai_plans/
-.claude/harness-state/
 .docuvia/
 graphify-out/
 
@@ -51,14 +50,11 @@ lib/schema/src/**/*.js
 # Dev-mode-compiled AST worker (see ast-worker-pool.ts's compileWorkerForDevMode()) — a
 # still-being-written temp file, renamed atomically once complete.
 lib/core/src/**/*.js.*.tmp
-.agents/harness-state/
-.cursor/harness-state/
-.github/harness-state/
-.github/skills/
-.continue/harness-state/
-.github/harness-everything/state/
+
+# Harness Everything Skill output (only appears if the skill is installed and run directly against this tree — should normally be run from a git worktree instead)
+.github/harness-everything/
 .claude/harness-everything/
 .cursor/harness-everything/
-.github/harness-everything/
 .codex/harness-everything/
 .continue/harness-everything/
+.github/harness-everything/state/

@@ -40,7 +40,7 @@ _(from Karpathy: Surgical Changes + skill: diagnose)_
 You MUST use the `manage_todo_list` tool to structure your work before making any changes.
 
 1. **[ ] Gate 1: Check Requirements Document**: Read the AI implementation document at `docs/ai_plans/`.
-2. **[ ] Gate 2: Review Modifications**: Review the Handover Block and use `git diff HEAD` to identify changed files.
+2. **[ ] Gate 2: Review Modifications**: Review the Handover Block and use `git diff HEAD` to identify changed files. Query the local knowledge graph — `npx --no-install docuvia query "<concept_or_file>" --local --format=prompt` — for each changed file to confirm the diff's blast radius matches what the implementation document expected.
 3. **[ ] Gate 3: Run Typecheck**: Execute `pnpm run typecheck` to verify TypeScript compilation.
 4. **[ ] Gate 4: Verify Compliance**: Cross-check actual changes against the exact requirements. Check for extraneous code.
 5. **[ ] Gate 5: Handle Discrepancies**: Produce Pass/Fail and Handover Block.

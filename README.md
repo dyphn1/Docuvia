@@ -67,6 +67,19 @@ The complete documentation, including the critical system architecture and desig
   - [Event-Driven Logging Architecture](docs/gitbook/architecture/logging-architecture.md)
   - [Strict Testing & Quality Gates](docs/gitbook/architecture/testing-and-quality-architecture.md)
 
+## Self-Hosting: Docuvia Analyzes Docuvia
+
+Docuvia2 is self-hosted — it uses its own knowledge graph to develop and verify itself, rather than an external code-intelligence tool. Git hooks (installed via Husky) keep the local graph current as you work:
+
+- **`post-commit`**: fires `docuvia analyze` in the background (Tier A — deterministic AST delta, sub-second, never blocks the commit).
+- **`pre-push`**: runs `docuvia analyze --escalate-to-lsp && docuvia snapshot && docuvia sync-knowledge` synchronously (Tier B — LSP-precision cross-file edges), so pushed code always carries corrected knowledge. This never blocks the push on failure; see [PLAT-007: Tiered Background Knowledge Evolution](docs/gitbook/adr/platform/PLAT-007-tiered-background-knowledge-evolution.md).
+
+Before exploring the codebase or making structural changes (by hand or via an AI agent), query the local knowledge graph to understand architectural boundaries, historical decisions, and blast radius:
+
+```bash
+npx --no-install docuvia query "<concept_or_file>" --local --format=prompt
+```
+
 ## For AI Agents and Developers
 
-Before contributing, please read [AGENTS.md](AGENTS.md) carefully to understand the strict architectural constraints of this repository.
+Before contributing, please read [AGENTS.md](AGENTS.md) carefully to understand the strict architectural constraints of this repository. It also carries the same Docuvia query instructions above, so agent platforms that load `AGENTS.md` directly (e.g. Codex) pick them up automatically.

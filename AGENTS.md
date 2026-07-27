@@ -21,3 +21,15 @@ Before modifying or creating any core mechanism, you MUST read the corresponding
 - [Event-Driven Logging](docs/gitbook/architecture/logging-architecture.md)
 - [Testing & Quality Gates](docs/gitbook/architecture/testing-and-quality-architecture.md)
 - [IPC Logging Architecture](docs/gitbook/architecture/ipc-logging-architecture.md) — required before touching `worker_threads`/`child_process` code (e.g. `lib/core/src/ast/`)
+
+<!-- docuvia:start -->
+
+# Docuvia — Codebase Knowledge Evolver
+
+This project uses Docuvia to manage architectural context and prevent blast-radius regressions.
+Before you explore the codebase (using Grep/Glob/Read) or make structural changes, you MUST query the local knowledge graph:
+
+Run: `npx --no-install docuvia query "<concept_or_file>" --local --format=prompt`
+
+Use the results from this command to understand architectural boundaries, historical decisions, and potential blast radius before modifying code.
+<!-- docuvia:end -->

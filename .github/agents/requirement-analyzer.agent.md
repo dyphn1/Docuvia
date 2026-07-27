@@ -65,7 +65,7 @@ _(from skill: zoom-out + skill: grill-with-docs)_
 
 You MUST use the `manage_todo_list` tool to structure your work before making any changes.
 
-1. **[ ] Gate 1: Analyze Requirements**: Review the requirements using `search` and `read` tools. Pay attention to `docs/gitbook/roadmap/README.md`.
+1. **[ ] Gate 1: Analyze Requirements**: Query the local knowledge graph first — `npx --no-install docuvia query "<concept_or_file>" --local --format=prompt` — to understand architectural boundaries and blast radius, then review the requirements using `search` and `read` tools. Pay attention to `docs/gitbook/roadmap/README.md`.
 2. **[ ] Gate 2: Handle Ambiguities**: Note critical ambiguities for the user; ask questions if needed.
 3. **[ ] Gate 3: Document**: Write a detailed implementation document at `docs/ai_plans/`.
 4. **[ ] Gate 4: Output Handover Block**: Produce a structured Handover Block for the main Orchestrator.

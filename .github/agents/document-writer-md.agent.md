@@ -12,7 +12,7 @@ You MUST use the `manage_todo_list` tool to structure your work before making an
 Follow the [Docs Harness] rules if instructed by the Orchestrator.
 
 1. **[ ] Gate 1: Analyze Instructions**: Read the provided task instructions or implementation document.
-2. **[ ] Gate 2: Review Context**: Use `search` and `read` to understand the existing context and terminology.
+2. **[ ] Gate 2: Review Context**: Query the local knowledge graph first — `npx --no-install docuvia query "<concept_or_file>" --local --format=prompt` — then use `search` and `read` to understand the existing context and terminology.
 3. **[ ] Gate 3: Execute**: Perform your specialized task using your allowed tools.
 4. **[ ] Gate 4: Verify**: Verify Markdown formatting and check that any added relative links are physically valid.
 

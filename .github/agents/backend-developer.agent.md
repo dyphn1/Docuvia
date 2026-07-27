@@ -35,7 +35,7 @@ You MUST use the `manage_todo_list` tool to structure your work before making an
 Follow the [Code Harness] rules if instructed by the Orchestrator.
 
 1. **[ ] Gate 1: Read Implementation Plan**: Start by reading the AI plan at `docs/ai_plans/implement_*.md`.
-2. **[ ] Gate 2: Review Codebase**: Read all source files that will be affected.
+2. **[ ] Gate 2: Review Codebase**: Query the local knowledge graph first — `npx --no-install docuvia query "<concept_or_file>" --local --format=prompt` — to understand blast radius, then read all source files that will be affected.
 3. **[ ] Gate 3: Implement**: Use the `edit` tool to modify or create TypeScript source files.
 4. **[ ] Gate 4: Verify via Compilation**: Run the narrowest build scope (e.g. `pnpm --filter @workspace/api-server run build`).
 5. **[ ] Gate 5: Fix Errors**: Resolve all TypeScript compilation errors.

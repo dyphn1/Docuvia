@@ -1,39 +1,27 @@
 # `docuvia analyze`
 
-`analyze` is Docuvia's ingestion command — it keeps the local knowledge graph (`local.db`) up to
-date with your source code. It has three modes, dispatched on whether a path argument or
-`--escalate-to-lsp` is given — see
-[Tiered Background Knowledge Evolution](../../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md)
-(PLAT-007) for the full Tier A/B/C contract:
+`analyze` is Docuvia's ingestion command — it keeps the local knowledge graph (`local.db`) up to date with your source code. It has three modes, dispatched on whether a path argument or `--escalate-to-lsp` is given — see [Tiered Background Knowledge Evolution](../../adr/platform/PLAT-007-tiered-background-knowledge-evolution.md) (PLAT-007) for the full Tier A/B/C contract:
 
 ## Usage
 
 ```bash
-docuvia analyze [path] [--escalate-to-lsp] [--fallback-ast]
+docuvia analyze [path] [flags]
 ```
+
+## Options
 
 ### Arguments
 
-- `[path]` _(Optional)_: A specific file or directory to run focused LLM decision extraction
-  against. **Omit it** to run auto mode (see below) — this is the mode the post-commit hook and
-  most manual invocations use. Takes priority over `--escalate-to-lsp` if both are somehow given.
+- `[path]`: A specific file or directory to run focused LLM decision extraction against. Omit it to run auto mode — this is the mode the post-commit hook and most manual invocations use. Takes priority over `--escalate-to-lsp` if both are somehow given.
 
 ### Flags
 
-- `--escalate-to-lsp`: Runs the Tier B batch — LSP-precision cross-file `calls` edges over the
-  files Tier A queued since the last batch (see Mode C below). This is the flag IMPT-002 names as
-  "the core quality engine"; it is now implemented for real (spawn-per-batch
-  `typescript-language-server`), not a no-op.
-- `--fallback-ast`: Only relevant with `--escalate-to-lsp`, and only on an interactive terminal.
-  Skips the "LSP prerequisites aren't ready — continue with AST-only precision?" confirmation
-  prompt and proceeds straight to the batch (which degrades honestly if the LSP truly isn't
-  available). Background invocations (the pre-push hook, CI) never prompt in the first place.
+- `--escalate-to-lsp`: Runs the Tier B batch — LSP-precision cross-file `calls` edges over the files Tier A queued since the last batch (see Mode C below). This is the flag IMPT-002 names as "the core quality engine"; it is now implemented for real (spawn-per-batch `typescript-language-server`), not a no-op.
+- `--fallback-ast`: Only relevant with `--escalate-to-lsp`, and only on an interactive terminal. Skips the "LSP prerequisites aren't ready — continue with AST-only precision?" confirmation prompt and proceeds straight to the batch (which degrades honestly if the LSP truly isn't available). Background invocations (the pre-push hook, CI) never prompt in the first place.
+- `--force`, `-f`: Force re-running full AST ingestion even if HEAD matches the last-ingested source commit (bypassing the fast-path no-op check).
+- `--interactive`, `-i`: Opt-in to interactive prompts/confirmation dialogs. Without this flag, commands will fail-fast or degrade non-interactively.
 
-> **Language scope:** LSP-precision cross-file edges currently cover **TypeScript/JavaScript
-> only** (`.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`, `.cjs`). Every other language stays
-> at AST-level precision until its own Tier B plugin exists — this is a deliberate per-language
-> dispatch table (§8e), not an oversight; queued files in an unsupported language are skipped with
-> a log line each batch.
+> **Language scope:** LSP-precision cross-file edges currently cover **TypeScript/JavaScript only** (`.ts`, `.tsx`, `.mts`, `.cts`, `.js`, `.jsx`, `.mjs`, `.cjs`). Every other language stays at AST-level precision until its own Tier B plugin exists — this is a deliberate per-language dispatch table (§8e), not an oversight; queued files in an unsupported language are skipped with a log line each batch.
 
 ## Mode A — No path: auto mode (ingestion)
 

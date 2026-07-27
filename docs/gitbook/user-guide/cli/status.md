@@ -1,12 +1,16 @@
 # `docuvia status`
 
-The `status` command provides a health check and high-level statistics of the local SQLite knowledge graph.
+Show local knowledge graph database row counts and high-level statistics of the local SQLite index.
 
 ## Usage
 
 ```bash
 docuvia status
 ```
+
+## Options
+
+_(This command does not accept any options, arguments, or flags.)_
 
 ## Under the Hood
 

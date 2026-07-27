@@ -1,12 +1,16 @@
 # `docuvia mcp`
 
-The `mcp` command starts the Docuvia Model Context Protocol (MCP) server over standard input/output (`stdio`). This allows AI IDEs (like Cursor, Windsurf) and AI Desktop clients (like Claude Desktop) to natively interact with the Docuvia knowledge graph.
+Start the local MCP stdio server to allow AI IDEs (Cursor, Windsurf) or Desktop clients (Claude Desktop) to query the knowledge graph.
 
 ## Usage
 
 ```bash
 docuvia mcp
 ```
+
+## Options
+
+_(This command does not accept any options, arguments, or flags.)_
 
 ## Under the Hood
 
@@ -31,4 +35,21 @@ Typically, you do not run this command manually. It is configured as a command i
     }
   }
 }
+```
+
+## Examples
+
+Start the MCP server manually (for testing stdio):
+
+```bash
+docuvia mcp
+```
+
+    }
+
+}
+}
+
+```
+
 ```

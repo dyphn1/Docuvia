@@ -1,12 +1,16 @@
 # `docuvia snapshot`
 
-The `snapshot` command is responsible for persisting the state of the local SQLite knowledge graph to the git repository for versioning and distribution.
+Pack the local knowledge graph onto the hidden git knowledge branch (`docuvia-knowledge`) for versioning and distribution.
 
 ## Usage
 
 ```bash
 docuvia snapshot
 ```
+
+## Options
+
+_(This command does not accept any options, arguments, or flags.)_
 
 ## Under the Hood
 

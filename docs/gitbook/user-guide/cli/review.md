@@ -7,18 +7,24 @@ The `review` command analyzes a Git diff and evaluates the risk level of the str
 ## Usage
 
 ```bash
-docuvia review
+docuvia review [baseRef]
 ```
+
+## Options
+
+### Arguments
+
+- `[baseRef]`: Specify the base git ref to compare against (defaults to `main` or the default branch, such as `master` depending on repo setup).
 
 ### Flags
 
-- `--base`: Specify the base git ref to compare against (defaults to `main` or the default branch).
+_(This command does not accept any flags.)_
 
 ## Under the Hood
 
 When you run `docuvia review`:
 
-1. **Git Diff**: The command calculates the changed files against the `--base` branch.
+1. **Git Diff**: The command calculates the changed files against the `[baseRef]` branch.
 2. **Blast Radius Overlay**: For each changed file, it queries the SQLite `node_links` table to find incoming edges (dependents).
 3. **Risk Scoring**: It flags changes as `LOW`, `MEDIUM`, `HIGH`, or `CRITICAL` depending on how many core nodes (L1 tags) are affected by the changes.
 4. **Command Logging**: A structured JSONL log is written to `.docuvia/logs/review.log`.
@@ -28,5 +34,5 @@ When you run `docuvia review`:
 Review the current branch against `main`:
 
 ```bash
-docuvia review --base main
+docuvia review main
 ```

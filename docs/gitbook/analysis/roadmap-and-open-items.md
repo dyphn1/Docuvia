@@ -43,27 +43,6 @@ needs prioritization against the rest of this list.
 
 ## Feature proposals — not yet decided
 
-### 6. Non-interactive `init` (`--yes` / `--non-interactive`)
-
-**Problem:** `init`'s TTY-gated confirm prompt and the agent-integration multiselect both hang
-indefinitely under CI/CD or scripted invocation (e.g. another tool benchmarking `docuvia init`).
-Confirmed still true — `nonInteractive`/`--yes` do not exist anywhere in `init.ts` or the init
-workflow as of 2026-07-19.
-
-**Proposed shape** (design only, not owner-ruled):
-
-- Add `nonInteractive: z.boolean().default(false)` to `InitInputSchema`; `--yes` (or
-  `--non-interactive`) skips `askConfirm` and assumes consent.
-- If non-interactive and `--platform` is not given: **skip agent-hook installation silently**
-  (print "Skipped agent hook installation in non-interactive mode") rather than erroring —
-  background/CI callers care about the core engine starting, not about global editor hooks being
-  silently installed without authorization.
-- Unlocks adding `docuvia init --yes` as a real CI pipeline first-step, and genuine E2E coverage
-  of the AST-worker/DB-schema integration.
-- Security note carried from the original proposal: non-interactive mode must still forbid any
-  action touching global config (`~/.claude/`, etc.) unless explicitly flagged — same boundary
-  IFCE-002 already enforces for `--global`.
-
 ### 7. `uninstall` global-config confirmation
 
 `uninstall` can touch global, cross-project config (e.g. removing Docuvia's MCP entry from a

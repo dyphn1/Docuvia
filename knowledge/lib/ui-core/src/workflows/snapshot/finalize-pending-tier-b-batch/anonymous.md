@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/snapshot/finalize-pending-tier-b-batch.ts#anonymous
+id: lib/ui-core/src/workflows/snapshot/finalize-pending-tier-b-batch.ts#anonymous@L11
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/snapshot/finalize-pending-tier-b-batch.ts
@@ -7,4 +7,3 @@ filePath: lib/ui-core/src/workflows/snapshot/finalize-pending-tier-b-batch.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/snapshot/finalize-pending-tier-b-batch.ts`
-ts`

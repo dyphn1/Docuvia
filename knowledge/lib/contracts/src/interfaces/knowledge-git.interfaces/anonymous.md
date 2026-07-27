@@ -1,9 +1,9 @@
 ---
-id: lib/contracts/src/interfaces/knowledge-git.interfaces.ts#IKnowledgeGitService
+id: lib/contracts/src/interfaces/knowledge-git.interfaces.ts#anonymous@L11
 type: symbol
-name: IKnowledgeGitService
+name: anonymous
 filePath: lib/contracts/src/interfaces/knowledge-git.interfaces.ts
 ---
-# Symbol: IKnowledgeGitService
+# Symbol: anonymous
 
 File: `lib/contracts/src/interfaces/knowledge-git.interfaces.ts`

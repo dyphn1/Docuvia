@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/snapshot/snapshot-workflow.ts#anonymous@L36
+id: lib/ui-core/src/workflows/snapshot/snapshot-workflow.ts#shouldSkipSnapshot
 type: symbol
-name: anonymous
+name: shouldSkipSnapshot
 filePath: lib/ui-core/src/workflows/snapshot/snapshot-workflow.ts
 ---
-# Symbol: anonymous
+# Symbol: shouldSkipSnapshot
 
 File: `lib/ui-core/src/workflows/snapshot/snapshot-workflow.ts`

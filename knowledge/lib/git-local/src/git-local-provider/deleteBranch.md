@@ -1,9 +1,9 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#GitLocalProvider
+id: lib/git-local/src/git-local-provider.ts#deleteBranch
 type: symbol
-name: GitLocalProvider
+name: deleteBranch
 filePath: lib/git-local/src/git-local-provider.ts
 ---
-# Symbol: GitLocalProvider
+# Symbol: deleteBranch
 
 File: `lib/git-local/src/git-local-provider.ts`

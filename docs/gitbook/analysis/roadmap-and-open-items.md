@@ -119,18 +119,6 @@ Implemented as an exists-in-working-tree check rather than exists-at-HEAD, since
 reads live files off disk. Consistent with item 13 above; not a bug, just worth remembering if
 Tier B ever operates against something other than the live working tree.
 
-### 17. Tier B pre-flight gate checks every registered language, not just queued ones
-
-`checkTierBGate()` (`lib/ui-core/src/workflows/analyze/tier-b-gate.ts`) resolves the whole
-`TOKENS.EdgeResolutionProviders` registry and fails if _any_ registered language's LSP is
-unavailable — not scoped to the language(s) actually present in the current `tierBQueue`
-(multi-language-lsp-support plan's Finding G, deferred at the time only because the registry had
-one language). Now that the registry has nine, this is a real user-facing papercut, not a
-hypothetical: a TypeScript-only repo with no `jdtls`/`csharp-ls`/etc. installed locally gets
-gated on `init`/manual `analyze --escalate-to-lsp` for languages it doesn't even use. Fix is
-Finding G's original proposal — read the queue before gating and check availability only for
-languages with entries in it — not yet scheduled to a slice.
-
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 
 - **Self-built static scope-resolution pipeline** (bypass LSP with hand-guessed cross-file calls)

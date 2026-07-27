@@ -170,8 +170,11 @@ jitter without guaranteeing freshness; pre-push + commit-cap needs no scheduler 
   languages, not one, so this is no longer behaviorally identical to the old single-provider
   check — the gate fires if _any_ registered language's LSP is unavailable, even if the current
   `analyze --escalate-to-lsp` run has no files of that language queued (e.g. a repo with no Java
-  code still gets gated on Java's LSP if `jdtls` isn't resolvable). Finding G's queue-scoped
-  refinement would fix this; it remains an open item, not yet scheduled to a slice.
+  code still gets gated on Java's LSP if `jdtls` isn't resolvable).
+  **Update (2026-07-27):** Finding G's queue-scoped refinement shipped — `checkTierBGate()` now
+  reads `tierBQueue` and checks availability only for the language(s) actually queued, falling
+  back to the full registry check if the queue can't be read. See
+  `lib/ui-core/src/workflows/analyze/tier-b-gate.ts`.
 
 **Language scope: TS/JS first, behind per-language dispatch and a per-language provider
 registry.** Queue consumption dispatches by language through a plugin-shaped dispatch table

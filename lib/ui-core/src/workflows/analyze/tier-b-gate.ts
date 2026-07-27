@@ -3,8 +3,13 @@ import {
   TOKENS,
   type EdgeResolutionAvailability,
   type EdgeResolutionProviderConfig,
+  type IGraphStore,
   type ILogger,
+  type TierBLanguageId,
 } from "@workspace/contracts";
+import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { readTierBQueue } from "./tier-b-queue.js";
+import { dispatchTierBLanguage } from "./tier-b-language-dispatch.js";
 
 /**
  * D2's mandatory pre-flight gate for `init`/manual `analyze --escalate-to-lsp`
@@ -15,14 +20,11 @@ import {
  * `IEdgeResolutionProvider.checkAvailability()` the batch itself calls for honest degradation --
  * one readiness check, two callers.
  *
- * multi-language-lsp-support plan, Finding A/G: resolves the whole `TOKENS.EdgeResolutionProviders`
- * registry and checks every registered language's availability, not just one. Slice 0's registry
- * only ever has `typescript`, so this is byte-identical to the old single-provider check in
- * practice; the loop is what makes it correct once a second language's provider registers. Finding
- * G's fuller "only gate languages actually present in the current `tierBQueue`" refinement is
- * deferred to whichever slice first needs it -- doing it now would mean this gate reading the
- * queue (a `GraphStoreOpener` round trip this Slice 0 call site doesn't have plumbed in), which is
- * out of scope for a slice that must be a zero-behavior-change refactor.
+ * multi-language-lsp-support plan, Finding A/G, resolved by roadmap Item 17
+ * (`implement_tier-b-gate-scoped-to-queue.md`): scopes the availability check to only the
+ * language(s) actually present in the current `tierBQueue`, rather than every registered
+ * language in `TOKENS.EdgeResolutionProviders`. Falls back to checking the whole registry when
+ * the queue can't be determined (see `resolveQueuedLanguages()`).
  */
 export async function checkTierBGate(
   workspaceRoot: string,
@@ -33,8 +35,14 @@ export async function checkTierBGate(
     logger,
   });
 
+  const languagesToCheck = await resolveQueuedLanguages(
+    workspaceRoot,
+    registry,
+  );
+
   const unavailable: EdgeResolutionAvailability[] = [];
-  for (const buildProvider of Object.values(registry)) {
+  for (const languageId of languagesToCheck) {
+    const buildProvider = registry[languageId];
     if (!buildProvider) continue;
     const provider = buildProvider();
     if (providerConfig) provider.configure(providerConfig);
@@ -48,4 +56,42 @@ export async function checkTierBGate(
     available: false,
     reason: unavailable.map((a) => a.reason ?? "").join("; "),
   };
+}
+
+/**
+ * Finding G: scopes the gate to only the language(s) actually queued for the next Tier B batch,
+ * instead of every registered language. Falls back to the full registry (pre-Finding-G behavior)
+ * when the queue genuinely can't be determined (no `GraphStoreOpener` registered, or the store
+ * can't be opened) -- a deliberately conservative default, distinct from a real empty-queue
+ * result (which returns `[]` and correctly no-ops, mirroring `runTierBBatchCore`'s own
+ * empty-queue short-circuit).
+ */
+async function resolveQueuedLanguages(
+  workspaceRoot: string,
+  registry: Partial<Record<TierBLanguageId, () => unknown>>,
+): Promise<TierBLanguageId[]> {
+  if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) {
+    return Object.keys(registry) as TierBLanguageId[];
+  }
+
+  let store: IGraphStore | undefined;
+  try {
+    const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+    store = await openStore({
+      dbPath: resolveDbPath(workspaceRoot),
+      readonly: true,
+    });
+
+    const queue = readTierBQueue(store);
+    const queuedLanguages = new Set<TierBLanguageId>();
+    for (const entry of queue) {
+      const languageId = dispatchTierBLanguage(entry.file);
+      if (languageId) queuedLanguages.add(languageId);
+    }
+    return Array.from(queuedLanguages);
+  } catch {
+    return Object.keys(registry) as TierBLanguageId[];
+  } finally {
+    await store?.close();
+  }
 }

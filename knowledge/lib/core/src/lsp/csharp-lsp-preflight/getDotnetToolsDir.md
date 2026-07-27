@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/lsp/csharp-lsp-preflight.ts#anonymous@L10
+id: lib/core/src/lsp/csharp-lsp-preflight.ts#getDotnetToolsDir
 type: symbol
-name: anonymous
+name: getDotnetToolsDir
 filePath: lib/core/src/lsp/csharp-lsp-preflight.ts
 ---
-# Symbol: anonymous
+# Symbol: getDotnetToolsDir
 
 File: `lib/core/src/lsp/csharp-lsp-preflight.ts`

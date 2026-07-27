@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/topology/topology-builder.service.unit.test.ts#anonymous@L358
+id: lib/core/src/topology/topology-builder.service.unit.test.ts#buildSampleGraph
 type: symbol
-name: anonymous
+name: buildSampleGraph
 filePath: lib/core/src/topology/topology-builder.service.unit.test.ts
 ---
-# Symbol: anonymous
+# Symbol: buildSampleGraph
 
 File: `lib/core/src/topology/topology-builder.service.unit.test.ts`

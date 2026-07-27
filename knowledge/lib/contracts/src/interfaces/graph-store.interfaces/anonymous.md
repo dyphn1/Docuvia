@@ -1,9 +1,10 @@
 ---
-id: lib/contracts/src/interfaces/graph-store.interfaces.ts#ProjectStatus
+id: lib/contracts/src/interfaces/graph-store.interfaces.ts#anonymous@L99
 type: symbol
-name: ProjectStatus
+name: anonymous
 filePath: lib/contracts/src/interfaces/graph-store.interfaces.ts
 ---
-# Symbol: ProjectStatus
+# Symbol: anonymous
 
 File: `lib/contracts/src/interfaces/graph-store.interfaces.ts`
+

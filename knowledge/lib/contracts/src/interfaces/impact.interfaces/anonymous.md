@@ -1,9 +1,9 @@
 ---
-id: lib/contracts/src/interfaces/impact.interfaces.ts#BlastRadiusEntry
+id: lib/contracts/src/interfaces/impact.interfaces.ts#anonymous@L18
 type: symbol
-name: BlastRadiusEntry
+name: anonymous
 filePath: lib/contracts/src/interfaces/impact.interfaces.ts
 ---
-# Symbol: BlastRadiusEntry
+# Symbol: anonymous
 
 File: `lib/contracts/src/interfaces/impact.interfaces.ts`

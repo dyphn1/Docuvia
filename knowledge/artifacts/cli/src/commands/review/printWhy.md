@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/src/commands/review.ts#anonymous@L61
+id: artifacts/cli/src/commands/review.ts#printWhy
 type: symbol
-name: anonymous
+name: printWhy
 filePath: artifacts/cli/src/commands/review.ts
 ---
-# Symbol: anonymous
+# Symbol: printWhy
 
 File: `artifacts/cli/src/commands/review.ts`

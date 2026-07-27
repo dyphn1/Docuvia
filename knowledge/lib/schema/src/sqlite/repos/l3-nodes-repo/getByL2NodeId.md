@@ -1,9 +1,9 @@
 ---
-id: lib/schema/src/sqlite/repos/l3-nodes-repo.ts#L3NodesRepo
+id: lib/schema/src/sqlite/repos/l3-nodes-repo.ts#getByL2NodeId
 type: symbol
-name: L3NodesRepo
+name: getByL2NodeId
 filePath: lib/schema/src/sqlite/repos/l3-nodes-repo.ts
 ---
-# Symbol: L3NodesRepo
+# Symbol: getByL2NodeId
 
 File: `lib/schema/src/sqlite/repos/l3-nodes-repo.ts`

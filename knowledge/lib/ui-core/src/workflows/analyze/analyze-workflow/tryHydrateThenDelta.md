@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#AnalyzeWorkflowOptions
+id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#tryHydrateThenDelta
 type: symbol
-name: AnalyzeWorkflowOptions
+name: tryHydrateThenDelta
 filePath: lib/ui-core/src/workflows/analyze/analyze-workflow.ts
 ---
-# Symbol: AnalyzeWorkflowOptions
+# Symbol: tryHydrateThenDelta
 
 File: `lib/ui-core/src/workflows/analyze/analyze-workflow.ts`

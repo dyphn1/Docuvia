@@ -1,10 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-workflow.unit.test.ts#anonymous@L981
+id: lib/ui-core/src/workflows/analyze/analyze-workflow.unit.test.ts#makeMockHydrationService
 type: symbol
-name: anonymous
+name: makeMockHydrationService
 filePath: lib/ui-core/src/workflows/analyze/analyze-workflow.unit.test.ts
 ---
-# Symbol: anonymous
+# Symbol: makeMockHydrationService
 
 File: `lib/ui-core/src/workflows/analyze/analyze-workflow.unit.test.ts`
-`

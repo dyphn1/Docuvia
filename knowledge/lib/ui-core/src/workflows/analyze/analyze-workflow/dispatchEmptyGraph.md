@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#AnalyzeWorkflow
+id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#dispatchEmptyGraph
 type: symbol
-name: AnalyzeWorkflow
+name: dispatchEmptyGraph
 filePath: lib/ui-core/src/workflows/analyze/analyze-workflow.ts
 ---
-# Symbol: AnalyzeWorkflow
+# Symbol: dispatchEmptyGraph
 
 File: `lib/ui-core/src/workflows/analyze/analyze-workflow.ts`

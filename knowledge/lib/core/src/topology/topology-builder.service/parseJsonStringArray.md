@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/topology/topology-builder.service.ts#NormalizedL2Row
+id: lib/core/src/topology/topology-builder.service.ts#parseJsonStringArray
 type: symbol
-name: NormalizedL2Row
+name: parseJsonStringArray
 filePath: lib/core/src/topology/topology-builder.service.ts
 ---
-# Symbol: NormalizedL2Row
+# Symbol: parseJsonStringArray
 
 File: `lib/core/src/topology/topology-builder.service.ts`

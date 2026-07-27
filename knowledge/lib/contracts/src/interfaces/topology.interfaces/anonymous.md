@@ -1,9 +1,10 @@
 ---
-id: lib/contracts/src/interfaces/topology.interfaces.ts#ITopologyBuilder
+id: lib/contracts/src/interfaces/topology.interfaces.ts#anonymous@L82
 type: symbol
-name: ITopologyBuilder
+name: anonymous
 filePath: lib/contracts/src/interfaces/topology.interfaces.ts
 ---
-# Symbol: ITopologyBuilder
+# Symbol: anonymous
 
 File: `lib/contracts/src/interfaces/topology.interfaces.ts`
+

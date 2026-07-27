@@ -271,28 +271,72 @@ async function resolveCommand(
   return selected;
 }
 
-async function main() {
-  const firstArg = process.argv[2];
-
+/** Prints help/version output for the bare `--help`/`--version` invocations. Returns whether one was handled. */
+function handleGlobalFlags(firstArg: string | undefined): boolean {
   if (isHelpArg(firstArg)) {
     ui.log(getUsageText());
-    return;
+    return true;
   }
   if (isVersionArg(firstArg)) {
     ui.log(getVersion());
-    return;
+    return true;
   }
+  return false;
+}
 
-  const rawArgs = process.argv.slice(3);
-  const parser = new ArgParser(rawArgs);
-  const workspaceRoot = process.cwd();
-
+function computeInteractivity(firstArg: string | undefined, parser: ArgParser) {
   const wantsInteractive =
     isInteractiveArg(firstArg) ||
     parser.hasFlag(CLI_FLAGS.INTERACTIVE) ||
     parser.hasFlag(CLI_FLAGS.INTERACTIVE_SHORT);
   const interactiveEligible =
     wantsInteractive && !!process.stdin.isTTY && !process.env.CI;
+  return { wantsInteractive, interactiveEligible };
+}
+
+async function runCommand(
+  command: CliCommand | undefined,
+  handler: ((ctx: CommandContext) => Promise<void>) | undefined,
+  parser: ArgParser,
+  wantsInteractive: boolean,
+  interactiveEligible: boolean,
+  workspaceRoot: string,
+) {
+  if (!command || !handler) {
+    ui.error(UI_MESSAGES.CLI_UNKNOWN_COMMAND + command);
+    printUsage();
+    process.exit(1);
+    return;
+  }
+
+  if (parser.hasFlag(CLI_FLAGS.HELP) || parser.hasFlag(CLI_FLAGS.HELP_SHORT)) {
+    ui.log(getCommandUsageText(command));
+    return;
+  }
+
+  if (wantsInteractive && !interactiveEligible) {
+    ui.warn(UI_MESSAGES.CLI_INTERACTIVE_UNAVAILABLE);
+  }
+
+  await handler({
+    parser,
+    isInteractive: interactiveEligible,
+    workspaceRoot,
+  });
+}
+
+async function main() {
+  const firstArg = process.argv[2];
+  if (handleGlobalFlags(firstArg)) return;
+
+  const rawArgs = process.argv.slice(3);
+  const parser = new ArgParser(rawArgs);
+  const workspaceRoot = process.cwd();
+
+  const { wantsInteractive, interactiveEligible } = computeInteractivity(
+    firstArg,
+    parser,
+  );
 
   const command = await resolveCommand(
     firstArg,
@@ -302,30 +346,14 @@ async function main() {
   const handler = command ? COMMAND_HANDLERS[command] : undefined;
 
   try {
-    if (!command || !handler) {
-      ui.error(UI_MESSAGES.CLI_UNKNOWN_COMMAND + command);
-      printUsage();
-      process.exit(1);
-      return;
-    }
-
-    if (
-      parser.hasFlag(CLI_FLAGS.HELP) ||
-      parser.hasFlag(CLI_FLAGS.HELP_SHORT)
-    ) {
-      ui.log(getCommandUsageText(command));
-      return;
-    }
-
-    if (wantsInteractive && !interactiveEligible) {
-      ui.warn(UI_MESSAGES.CLI_INTERACTIVE_UNAVAILABLE);
-    }
-
-    await handler({
+    await runCommand(
+      command,
+      handler,
       parser,
-      isInteractive: interactiveEligible,
+      wantsInteractive,
+      interactiveEligible,
       workspaceRoot,
-    });
+    );
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
     ui.error(UI_MESSAGES.CLI_FATAL_ERROR + msg);

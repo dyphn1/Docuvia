@@ -48,6 +48,45 @@ async function resolveProjectId(
   return entered;
 }
 
+function hasRequiredSyncEnv(): boolean {
+  return !!process.env.DOCUVIA_API_URL && !!process.env.MCP_PAT;
+}
+
+// NOTE: deliberately still keyed on `process.stdin.isTTY` (not `isInteractive`) -- this isn't
+// a prompt-safety gate, it's "is there piped data (a commit sha) sitting on stdin to consume"
+// (the pre-push hook pipes one in). Swapping it for the opt-in `isInteractive` flag would make
+// a human at a real terminal, who never passes --interactive, hang here waiting on stdin to
+// close instead of skipping the read.
+async function resolveCommitSha(
+  commitSha: string | undefined,
+): Promise<string | undefined> {
+  if (commitSha) return commitSha;
+  return process.stdin.isTTY ? undefined : readStdin();
+}
+
+async function runSync(
+  scopeId: string,
+  logger: ReturnType<typeof createPinoBackedLogger>,
+  spinner: ReturnType<typeof ui.spinner>,
+) {
+  try {
+    const result = await docuviaApi.sync(scopeId, logger);
+    spinner.succeed(UI_MESSAGES.SYNC_SUCCESS + " " + result.message);
+  } catch (error: unknown) {
+    const message =
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
+    spinner.fail(UI_MESSAGES.SYNC_FAIL + message);
+    // process.exitCode (not process.exit()) — this path follows real network calls (GET
+    // l2-nodes / POST sync/push); forcing an immediate exit while fetch/undici handles are
+    // still closing crashes natively on Windows. See old Docuvia's sync.ts for the same fix.
+    process.exitCode = 1;
+  } finally {
+    docuviaMemory.deleteScope(scopeId);
+  }
+}
+
 /**
  * Thin caller of `docuviaApi.sync()` — mirrors `init.ts`'s Presentation-layer responsibilities.
  * `DOCUVIA_API_URL`/`MCP_PAT` are read from `process.env` here (only the Presentation layer may
@@ -61,19 +100,13 @@ export async function syncCommand(
 ) {
   const projectId = await resolveProjectId(options.projectId, isInteractive);
 
-  if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
+  if (!hasRequiredSyncEnv()) {
     ui.warn(UI_MESSAGES.SYNC_MISSING_ENV);
     ui.warn(UI_MESSAGES.SYNC_SKIP);
     return;
   }
 
-  // NOTE: deliberately still keyed on `process.stdin.isTTY` (not `isInteractive`) -- this isn't
-  // a prompt-safety gate, it's "is there piped data (a commit sha) sitting on stdin to consume"
-  // (the pre-push hook pipes one in). Swapping it for the opt-in `isInteractive` flag would make
-  // a human at a real terminal, who never passes --interactive, hang here waiting on stdin to
-  // close instead of skipping the read.
-  const commitSha =
-    options.commitSha ?? (process.stdin.isTTY ? undefined : await readStdin());
+  const commitSha = await resolveCommitSha(options.commitSha);
 
   const spinner = ui
     .spinner(
@@ -93,20 +126,5 @@ export async function syncCommand(
   docuviaMemory.set(scopeId, MemoryKeys.PROJECT_ID, projectId);
   docuviaMemory.set(scopeId, MemoryKeys.COMMIT_SHA, commitSha || undefined);
 
-  try {
-    const result = await docuviaApi.sync(scopeId, logger);
-    spinner.succeed(UI_MESSAGES.SYNC_SUCCESS + " " + result.message);
-  } catch (error: unknown) {
-    const message =
-      error instanceof DocuviaError || error instanceof Error
-        ? error.message
-        : String(error);
-    spinner.fail(UI_MESSAGES.SYNC_FAIL + message);
-    // process.exitCode (not process.exit()) — this path follows real network calls (GET
-    // l2-nodes / POST sync/push); forcing an immediate exit while fetch/undici handles are
-    // still closing crashes natively on Windows. See old Docuvia's sync.ts for the same fix.
-    process.exitCode = 1;
-  } finally {
-    docuviaMemory.deleteScope(scopeId);
-  }
+  await runSync(scopeId, logger, spinner);
 }

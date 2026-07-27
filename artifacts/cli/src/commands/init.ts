@@ -63,12 +63,14 @@ async function runDatabaseInit(cwd: string): Promise<void> {
 async function configureAgentIntegrations(
   cwd: string,
   platformFilter: string | undefined,
+  isInteractive: boolean,
 ): Promise<void> {
   ui.info(UI_MESSAGES.INIT_AGENT_HOOKS);
 
   const selectedPlatforms = await selectPlatforms(
     UI_MESSAGES.INIT_HOOKS_SELECT,
     platformFilter,
+    isInteractive,
   );
 
   if (selectedPlatforms.length === 0) {
@@ -87,6 +89,7 @@ async function configureAgentIntegrations(
 export async function initCommand(
   cwd: string = process.cwd(),
   platformFilter?: string,
+  isInteractive: boolean = false,
 ) {
   const input = InitInputSchema.parse({
     cwd,
@@ -95,8 +98,8 @@ export async function initCommand(
 
   ui.header(UI_MESSAGES.INIT_HEADER);
 
-  // Optional interactive confirmation if TTY
-  if (process.stdin.isTTY) {
+  // Confirmation prompt is opt-in (IFCE-004) -- only when --interactive/-i was passed.
+  if (isInteractive) {
     const proceed = await ui.askConfirm(UI_MESSAGES.INIT_CONFIRM, true);
     if (!proceed) {
       ui.warn(UI_MESSAGES.INIT_ABORTED);
@@ -119,7 +122,11 @@ export async function initCommand(
 
       if (!databaseInitFailed) {
         try {
-          await configureAgentIntegrations(input.cwd, input.platformFilter);
+          await configureAgentIntegrations(
+            input.cwd,
+            input.platformFilter,
+            isInteractive,
+          );
         } catch (error) {
           hooksError = error;
         }

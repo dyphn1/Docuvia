@@ -36,6 +36,9 @@ export interface AnalyzeCommandOptions {
   /** `--fallback-ast` -- skips D2's interactive gate prompt entirely (§8c), proceeding straight
    *  to the honest-degradation path if LSP isn't ready. */
   fallbackAst?: boolean;
+  /** `--interactive`/`-i` (IFCE-004) -- opt-in signal that D2's Tier B gate prompt (§8c) is
+   *  allowed to fire. Without it, an unready LSP always degrades honestly with no prompt. */
+  isInteractive?: boolean;
 }
 
 interface AnalyzeLlmConfig {
@@ -104,13 +107,6 @@ function resolveTierBEnvConfig(): TierBEnvConfig {
     lspTimeoutMs: timeoutRaw ? Number(timeoutRaw) : undefined,
     tierBCommitCap: capRaw ? Number(capRaw) : undefined,
   };
-}
-
-/** `true` when this process is running non-interactively (a background/hook invocation, or CI) --
- *  D2's "background paths are never interactive" rule (§8c). Mirrors `cli.ts`'s own
- *  `resolveCommand()` TTY/CI check. */
-function isNonInteractive(): boolean {
-  return !process.stdin.isTTY || !!process.env.CI;
 }
 
 function printAutoFullIngestionResult(
@@ -405,12 +401,16 @@ function handleAnalyzeError(
 
 /**
  * D2's mandatory pre-flight gate for a manual/interactive invocation
- * (phase1-decision-integration.md §8c). Non-interactive callers (the pre-push hook, CI) always
- * skip straight past this — they degrade honestly inside the workflow itself, no prompt. Returns
- * `false` when the user declined to continue (caller should abort without running anything).
+ * (phase1-decision-integration.md §8c). Non-interactive callers (the pre-push hook, CI, or a
+ * manual run without `--interactive`/`-i` -- IFCE-004) always skip straight past this — they
+ * degrade honestly inside the workflow itself, no prompt. Returns `false` when the user declined
+ * to continue (caller should abort without running anything).
  */
-async function confirmTierBGateOrAbort(cwd: string): Promise<boolean> {
-  if (isNonInteractive()) return true;
+async function confirmTierBGateOrAbort(
+  cwd: string,
+  isInteractive: boolean,
+): Promise<boolean> {
+  if (!isInteractive) return true;
 
   const scopeId = crypto.randomUUID();
   docuviaMemory.createScope(scopeId);
@@ -473,7 +473,10 @@ export async function analyzeCommand(
     }
     llmConfig = resolved;
   } else if (escalateToLsp && !options.fallbackAst) {
-    const proceed = await confirmTierBGateOrAbort(cwd);
+    const proceed = await confirmTierBGateOrAbort(
+      cwd,
+      Boolean(options.isInteractive),
+    );
     if (!proceed) return;
   }
 

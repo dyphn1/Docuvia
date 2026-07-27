@@ -1,4 +1,3 @@
-import process from "process";
 import { ui } from "../ui/wizard.js";
 import { CLI_ERROR_MESSAGES } from "../constants/cli-errors.js";
 import {
@@ -32,12 +31,14 @@ function parsePlatformSlugs(platformFlagValue: string): string[] {
 /**
  * Resolves which platforms a command should act on:
  * - `--platform=` present -> exact slugs requested (throws on unknown slugs), no prompt.
- * - absent + TTY -> interactive checkbox, defaulting every platform to checked.
- * - absent + non-TTY -> every available platform (today's unconditional default, preserved).
+ * - absent + isInteractive -> interactive checkbox, defaulting every platform to checked.
+ *   Opt-in via `--interactive`/`-i` (IFCE-004) -- no longer a bare `stdin.isTTY` auto-trigger.
+ * - absent + !isInteractive -> every available platform (today's unconditional default, preserved).
  */
 export async function selectPlatforms(
   promptMessage: string,
   platformFlagValue: string | undefined,
+  isInteractive: boolean,
   availablePlatforms: BasePlatform[] = getAvailablePlatforms(),
 ): Promise<BasePlatform[]> {
   if (platformFlagValue !== undefined) {
@@ -57,7 +58,7 @@ export async function selectPlatforms(
     return availablePlatforms.filter((p) => requestedSlugs.includes(p.slug));
   }
 
-  if (process.stdin.isTTY) {
+  if (isInteractive) {
     const choices = availablePlatforms.map((p) => ({
       name: p.name,
       value: p.name,

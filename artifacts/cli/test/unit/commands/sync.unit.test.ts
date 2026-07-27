@@ -99,7 +99,9 @@ describe("syncCommand", () => {
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("prompts for a project id via ui.askInput when omitted and stdin is a TTY", async () => {
+  it("prompts for a project id via ui.askInput when omitted and --interactive was passed", async () => {
+    // Still needs a real TTY here so the commitSha piped-stdin read (a separate, unrelated
+    // concern -- see sync.ts's NOTE) doesn't try to read from this test's stdin and hang.
     Object.defineProperty(process.stdin, "isTTY", {
       value: true,
       configurable: true,
@@ -111,10 +113,22 @@ describe("syncCommand", () => {
       message: "Nothing to sync",
     });
 
-    await syncCommand({});
+    await syncCommand({}, undefined, true);
 
     expect(ui.askInput).toHaveBeenCalled();
     expect(mockSync).toHaveBeenCalled();
+  });
+
+  it("exits 1 without prompting when no projectId is given and --interactive was not passed, even on a TTY", async () => {
+    Object.defineProperty(process.stdin, "isTTY", {
+      value: true,
+      configurable: true,
+    });
+
+    await expect(syncCommand({})).rejects.toThrow("Exit 1");
+
+    expect(ui.askInput).not.toHaveBeenCalled();
+    expect(mockSync).not.toHaveBeenCalled();
   });
 
   it("sets process.exitCode = 1 (not process.exit) and calls spinner.fail when docuviaApi.sync() throws", async () => {

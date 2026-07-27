@@ -13,10 +13,14 @@ import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 
 /** Thin caller of `docuviaApi.clean()` — mirrors `init.ts`'s Presentation-layer responsibilities (see `docs/gitbook/architecture/application-lifecycle-and-state.md`'s "Bootstrapper & Garbage Collector" role). */
-export async function cleanCommand(cwd: string = process.cwd()) {
+export async function cleanCommand(
+  cwd: string = process.cwd(),
+  isInteractive: boolean = false,
+) {
   ui.header(UI_MESSAGES.CLEAN_HEADER);
 
-  if (process.stdin.isTTY) {
+  // Confirmation prompt is opt-in (IFCE-004) -- only when --interactive/-i was passed.
+  if (isInteractive) {
     const proceed = await ui.askConfirm(UI_MESSAGES.CLEAN_CONFIRM, false);
     if (!proceed) {
       ui.warn(UI_MESSAGES.CLEAN_ABORTED);

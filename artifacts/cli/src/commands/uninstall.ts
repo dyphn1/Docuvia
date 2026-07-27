@@ -200,6 +200,7 @@ export async function uninstallCommand(
   workspaceRoot: string,
   platformFilter?: string,
   keepDb: boolean = false,
+  isInteractive: boolean = false,
 ): Promise<void> {
   if (!workspaceRoot) {
     ui.error(UI_MESSAGES.UNINSTALL_INVALID_WORKSPACE_ROOT);
@@ -216,6 +217,7 @@ export async function uninstallCommand(
     const selectedPlatforms = await selectPlatforms(
       UI_MESSAGES.UNINSTALL_HOOKS_SELECT,
       platformFilter,
+      isInteractive,
     );
 
     const failures = await uninstallPlatformHooks(

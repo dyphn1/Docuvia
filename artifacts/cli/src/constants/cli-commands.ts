@@ -1,3 +1,5 @@
+import { CLI_FLAGS } from "./cli-flags.js";
+
 /**
  * `init`/`mcp`/`clean`/`status`/`sync`/`analyze`/`review`/`impact`/`query`/`export-topology`/
  * `snapshot` are wired so far — the dispatch shape (`CLI_COMMANDS`/`CLI_COMMAND_DESCRIPTIONS`/
@@ -49,11 +51,89 @@ export const CLI_COMMAND_DESCRIPTIONS: Record<CliCommand, string> = {
   [CLI_COMMANDS.DOCTOR]: "Run diagnostic checks on Docuvia2 setup",
 };
 
+/**
+ * Single source of truth for each command's own flags — shared by `cli.ts`'s
+ * `checkUnknownFlags()` calls and `getCommandUsageText()` below, so the two can never drift
+ * apart the way a duplicated list would.
+ */
+export const CLI_COMMAND_FLAGS: Record<CliCommand, string[]> = {
+  [CLI_COMMANDS.INIT]: [
+    CLI_FLAGS.PLATFORM,
+    CLI_FLAGS.INTERACTIVE,
+    CLI_FLAGS.INTERACTIVE_SHORT,
+  ],
+  [CLI_COMMANDS.MCP]: [],
+  [CLI_COMMANDS.CLEAN]: [CLI_FLAGS.INTERACTIVE, CLI_FLAGS.INTERACTIVE_SHORT],
+  [CLI_COMMANDS.STATUS]: [],
+  [CLI_COMMANDS.SYNC]: [
+    CLI_FLAGS.COMMIT_SHA,
+    CLI_FLAGS.INTERACTIVE,
+    CLI_FLAGS.INTERACTIVE_SHORT,
+  ],
+  [CLI_COMMANDS.ANALYZE]: [
+    CLI_FLAGS.ESCALATE_TO_LSP,
+    CLI_FLAGS.FALLBACK_AST,
+    CLI_FLAGS.INTERACTIVE,
+    CLI_FLAGS.INTERACTIVE_SHORT,
+  ],
+  [CLI_COMMANDS.REVIEW]: [],
+  [CLI_COMMANDS.IMPACT]: [],
+  [CLI_COMMANDS.QUERY]: [
+    CLI_FLAGS.FORMAT,
+    CLI_FLAGS.LIMIT,
+    CLI_FLAGS.INTERACTIVE,
+    CLI_FLAGS.INTERACTIVE_SHORT,
+  ],
+  [CLI_COMMANDS.EXPORT_TOPOLOGY]: [
+    CLI_FLAGS.OUT,
+    CLI_FLAGS.JSON_ONLY,
+    CLI_FLAGS.COLLAPSE,
+  ],
+  [CLI_COMMANDS.SNAPSHOT]: [],
+  [CLI_COMMANDS.HYDRATE]: [],
+  [CLI_COMMANDS.SYNC_KNOWLEDGE]: [],
+  [CLI_COMMANDS.UNINSTALL]: [
+    CLI_FLAGS.PLATFORM,
+    CLI_FLAGS.KEEP_DB,
+    CLI_FLAGS.INTERACTIVE,
+    CLI_FLAGS.INTERACTIVE_SHORT,
+  ],
+  [CLI_COMMANDS.DOCTOR]: [
+    CLI_FLAGS.SKIP_DB,
+    CLI_FLAGS.SKIP_GIT,
+    CLI_FLAGS.SKIP_HOOKS,
+    CLI_FLAGS.SKIP_LOGS,
+    CLI_FLAGS.FIX,
+  ],
+};
+
 export function getUsageText(): string {
   return [
     "Usage:",
     ...Object.values(CLI_COMMANDS).map(
       (cmd) => `  docuvia ${cmd.padEnd(40)} # ${CLI_COMMAND_DESCRIPTIONS[cmd]}`,
     ),
+    "",
+    "Options:",
+    "  docuvia --help, -h                        # Show this help",
+    "  docuvia --version, -v                     # Show the installed version",
+    "  docuvia <command> --help, -h              # Show flags for a specific command",
+    "  docuvia -i, --interactive                 # Launch the wizard menu (requires a real terminal)",
+    "  docuvia <command> -i, --interactive       # Allow that command to prompt instead of using its non-interactive default",
   ].join("\n");
+}
+
+/** `docuvia <command> --help`/`-h` — short per-command help, sourced from the same
+ *  `CLI_COMMAND_DESCRIPTIONS`/`CLI_COMMAND_FLAGS` data `getUsageText()` and `checkUnknownFlags()`
+ *  already use, so it can never list a flag a command doesn't actually accept. */
+export function getCommandUsageText(command: CliCommand): string {
+  const flags = CLI_COMMAND_FLAGS[command];
+  const lines = [
+    `docuvia ${command}`,
+    `  ${CLI_COMMAND_DESCRIPTIONS[command]}`,
+  ];
+  if (flags.length > 0) {
+    lines.push("", "Flags:", ...flags.map((flag) => `  ${flag}`));
+  }
+  return lines.join("\n");
 }

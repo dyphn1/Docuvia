@@ -176,10 +176,14 @@ function printHumanResults(result: LocalQueryResult): void {
   ui.log(FORMAT_MARKERS.EMPTY);
 }
 
-async function resolveQueryTarget(target?: string): Promise<string> {
+async function resolveQueryTarget(
+  target: string | undefined,
+  isInteractive: boolean,
+): Promise<string> {
   if (target) return target;
 
-  if (!process.stdin.isTTY) {
+  // Prompt is opt-in (IFCE-004) -- only when --interactive/-i was passed.
+  if (!isInteractive) {
     ui.error(UI_MESSAGES.QUERY_MISSING_TARGET);
     process.exit(1);
   }
@@ -269,8 +273,9 @@ export async function queryCommand(
   target?: string,
   options: { format?: QueryOutputFormat; limit?: number } = {},
   cwd: string = process.cwd(),
+  isInteractive: boolean = false,
 ) {
-  const queryTarget = await resolveQueryTarget(target);
+  const queryTarget = await resolveQueryTarget(target, isInteractive);
   const isPromptFormat = options.format === QUERY_OUTPUT_FORMATS.PROMPT;
   const limit = resolveQueryLimit(options.limit);
 

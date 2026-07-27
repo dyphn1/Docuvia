@@ -10,6 +10,11 @@ export const UI_MESSAGES = {
   CLI_PROMPT_ACTION: "What would you like to do?",
   CLI_UNKNOWN_COMMAND: "Unknown command: ",
   CLI_FATAL_ERROR: "Fatal error: ",
+  // IFCE-004: interactive prompts are opt-in (--interactive/-i) only.
+  CLI_INTERACTIVE_NO_TTY:
+    "--interactive requires a real terminal and is disabled under CI -- cannot launch the wizard menu.",
+  CLI_INTERACTIVE_UNAVAILABLE:
+    "--interactive was requested, but this session has no usable TTY (or is running under CI) -- continuing non-interactively.",
 
   // Init Command
   INIT_HEADER: "Initialize Docuvia",

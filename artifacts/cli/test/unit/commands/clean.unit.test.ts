@@ -67,16 +67,24 @@ describe("cleanCommand", () => {
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("aborts without calling docuviaApi.clean when not confirmed in TTY", async () => {
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: true,
-      configurable: true,
-    });
+  it("aborts without calling docuviaApi.clean when not confirmed with --interactive", async () => {
     vi.mocked(ui.askConfirm).mockResolvedValue(false);
 
-    await expect(cleanCommand()).rejects.toThrow("Exit 0");
+    await expect(cleanCommand(process.cwd(), true)).rejects.toThrow("Exit 0");
 
     expect(mockClean).not.toHaveBeenCalled();
+  });
+
+  it("skips the confirmation prompt entirely without --interactive, even so", async () => {
+    mockClean.mockResolvedValue({
+      deleted: true,
+      message: "Cleaned .docuvia/local.db database.",
+    });
+
+    await cleanCommand();
+
+    expect(ui.askConfirm).not.toHaveBeenCalled();
+    expect(mockClean).toHaveBeenCalled();
   });
 
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.clean() throws", async () => {

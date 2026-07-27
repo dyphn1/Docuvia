@@ -2,6 +2,7 @@
 import * as dotenv from "dotenv";
 import process from "process";
 import pc from "picocolors";
+import { createRequire } from "node:module";
 
 import "./registration.js";
 import { initCommand } from "./commands/init.js";
@@ -25,8 +26,10 @@ import { ui } from "./ui/wizard.js";
 import {
   CLI_COMMANDS,
   CLI_COMMAND_DESCRIPTIONS,
+  CLI_COMMAND_FLAGS,
   CliCommand,
   getUsageText,
+  getCommandUsageText,
 } from "./constants/cli-commands.js";
 import { CLI_FLAGS, type QueryOutputFormat } from "./constants/cli-flags.js";
 import { UI_MESSAGES } from "./constants/ui-messages.js";
@@ -34,8 +37,29 @@ import { ArgParser } from "./utils/arg-parser.js";
 
 dotenv.config({ quiet: true });
 
+// Resolved via `require()` (not a static `import ... from "../package.json"`) so esbuild
+// inlines the parsed JSON at build time without needing `resolveJsonModule` in tsconfig.
+const require = createRequire(import.meta.url);
+const packageJson = require("../package.json") as { version: string };
+
 function printUsage() {
   ui.error(getUsageText());
+}
+
+function getVersion(): string {
+  return packageJson.version;
+}
+
+function isHelpArg(arg: string | undefined): boolean {
+  return arg === CLI_FLAGS.HELP || arg === CLI_FLAGS.HELP_SHORT;
+}
+
+function isVersionArg(arg: string | undefined): boolean {
+  return arg === CLI_FLAGS.VERSION || arg === CLI_FLAGS.VERSION_SHORT;
+}
+
+function isInteractiveArg(arg: string | undefined): boolean {
+  return arg === CLI_FLAGS.INTERACTIVE || arg === CLI_FLAGS.INTERACTIVE_SHORT;
 }
 
 interface CommandContext {
@@ -45,55 +69,57 @@ interface CommandContext {
 }
 
 async function handleInit(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([CLI_FLAGS.PLATFORM]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.INIT]);
   const platform = ctx.parser.getFlagValue(CLI_FLAGS.PLATFORM);
-  await initCommand(ctx.workspaceRoot, platform);
+  await initCommand(ctx.workspaceRoot, platform, ctx.isInteractive);
 }
 
 async function handleMcp(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.MCP]);
   await runMcpServer();
 }
 
 async function handleClean(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
-  await cleanCommand(ctx.workspaceRoot);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.CLEAN]);
+  await cleanCommand(ctx.workspaceRoot, ctx.isInteractive);
 }
 
 async function handleStatus(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.STATUS]);
   await statusCommand(ctx.workspaceRoot);
 }
 
 async function handleSync(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([CLI_FLAGS.COMMIT_SHA]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.SYNC]);
   const projectId = ctx.parser.getPositional(0);
   const commitSha = ctx.parser.getFlagValue(CLI_FLAGS.COMMIT_SHA);
-  await syncCommand({ projectId, commitSha }, ctx.workspaceRoot);
+  await syncCommand(
+    { projectId, commitSha },
+    ctx.workspaceRoot,
+    ctx.isInteractive,
+  );
 }
 
 async function handleAnalyze(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([
-    CLI_FLAGS.ESCALATE_TO_LSP,
-    CLI_FLAGS.FALLBACK_AST,
-  ]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.ANALYZE]);
   const targetPath = ctx.parser.getPositional(0);
   const escalateToLsp = ctx.parser.hasFlag(CLI_FLAGS.ESCALATE_TO_LSP);
   const fallbackAst = ctx.parser.hasFlag(CLI_FLAGS.FALLBACK_AST);
   await analyzeCommand(targetPath, ctx.workspaceRoot, {
     escalateToLsp,
     fallbackAst,
+    isInteractive: ctx.isInteractive,
   });
 }
 
 async function handleReview(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.REVIEW]);
   const baseRef = ctx.parser.getPositional(0);
   await reviewCommand(baseRef, ctx.workspaceRoot);
 }
 
 async function handleImpact(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.IMPACT]);
   const target = ctx.parser.getPositional(0);
   if (!target) {
     ui.error(UI_MESSAGES.IMPACT_MISSING_TARGET);
@@ -104,21 +130,22 @@ async function handleImpact(ctx: CommandContext): Promise<void> {
 }
 
 async function handleQuery(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([CLI_FLAGS.FORMAT, CLI_FLAGS.LIMIT]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.QUERY]);
   const target = ctx.parser.getPositional(0);
   const format = ctx.parser.getFlagValue(CLI_FLAGS.FORMAT) as
     QueryOutputFormat | undefined;
   const limitRaw = ctx.parser.getFlagValue(CLI_FLAGS.LIMIT);
   const limit = limitRaw ? Number(limitRaw) : undefined;
-  await queryCommand(target, { format, limit }, ctx.workspaceRoot);
+  await queryCommand(
+    target,
+    { format, limit },
+    ctx.workspaceRoot,
+    ctx.isInteractive,
+  );
 }
 
 async function handleExportTopology(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([
-    CLI_FLAGS.OUT,
-    CLI_FLAGS.JSON_ONLY,
-    CLI_FLAGS.COLLAPSE,
-  ]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.EXPORT_TOPOLOGY]);
   const out = ctx.parser.getFlagValue(CLI_FLAGS.OUT);
   const jsonOnly = ctx.parser.hasFlag(CLI_FLAGS.JSON_ONLY);
   const collapse = ctx.parser.getFlagValue(CLI_FLAGS.COLLAPSE) as
@@ -127,30 +154,29 @@ async function handleExportTopology(ctx: CommandContext): Promise<void> {
 }
 
 async function handleSnapshot(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.SNAPSHOT]);
   await snapshotCommand(ctx.workspaceRoot);
 }
 
 async function handleHydrate(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.HYDRATE]);
   await hydrateCommand(ctx.workspaceRoot);
 }
 
 async function handleUninstall(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([CLI_FLAGS.PLATFORM, CLI_FLAGS.KEEP_DB]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.UNINSTALL]);
   const platform = ctx.parser.getFlagValue(CLI_FLAGS.PLATFORM);
   const keepDb = ctx.parser.hasFlag(CLI_FLAGS.KEEP_DB);
-  await uninstallCommand(ctx.workspaceRoot, platform, keepDb);
+  await uninstallCommand(
+    ctx.workspaceRoot,
+    platform,
+    keepDb,
+    ctx.isInteractive,
+  );
 }
 
 async function handleDoctor(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([
-    CLI_FLAGS.SKIP_DB,
-    CLI_FLAGS.SKIP_GIT,
-    CLI_FLAGS.SKIP_HOOKS,
-    CLI_FLAGS.SKIP_LOGS,
-    CLI_FLAGS.FIX,
-  ]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.DOCTOR]);
   const skipDb = ctx.parser.hasFlag(CLI_FLAGS.SKIP_DB);
   const skipGit = ctx.parser.hasFlag(CLI_FLAGS.SKIP_GIT);
   const skipHooks = ctx.parser.hasFlag(CLI_FLAGS.SKIP_HOOKS);
@@ -166,7 +192,7 @@ async function handleDoctor(ctx: CommandContext): Promise<void> {
 }
 
 async function handleSyncKnowledge(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags([]);
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.SYNC_KNOWLEDGE]);
   await syncKnowledgeCommand(ctx.workspaceRoot);
 }
 
@@ -197,18 +223,34 @@ const COMMAND_HANDLERS: Record<
   [CLI_COMMANDS.DOCTOR]: handleDoctor,
 };
 
-async function resolveCommand(): Promise<{
-  command: CliCommand | undefined;
-  isInteractive: boolean;
-}> {
-  const command = process.argv[2] as CliCommand | undefined;
+/**
+ * IFCE-004: interactive prompts are opt-in (`--interactive`/`-i`) only — a bare `stdin.isTTY`
+ * auto-trigger (the prior IFCE-001 design) false-positives inside pty-wrapping agent/terminal
+ * integrations that never deliver real keypresses, hanging the process forever. `wantsInteractive`
+ * is "did the caller ask"; `interactiveEligible` additionally requires an actually-usable TTY and
+ * a non-CI run, same safety floor the old auto-trigger used, now gating the opt-in rather than
+ * triggering it.
+ */
+async function resolveCommand(
+  firstArg: string | undefined,
+  wantsInteractive: boolean,
+  interactiveEligible: boolean,
+): Promise<CliCommand | undefined> {
+  const command = isInteractiveArg(firstArg)
+    ? undefined
+    : (firstArg as CliCommand | undefined);
+
   if (command) {
-    return { command, isInteractive: false };
+    return command;
   }
 
-  const isCI = !!process.env.CI;
-  if (!process.stdin.isTTY || isCI) {
+  if (!wantsInteractive) {
     printUsage();
+    process.exit(1);
+  }
+
+  if (!interactiveEligible) {
+    ui.error(UI_MESSAGES.CLI_INTERACTIVE_NO_TTY);
     process.exit(1);
   }
 
@@ -226,25 +268,64 @@ async function resolveCommand(): Promise<{
     UI_MESSAGES.CLI_PROMPT_ACTION,
     choices,
   )) as CliCommand;
-  return { command: selected, isInteractive: true };
+  return selected;
 }
 
 async function main() {
+  const firstArg = process.argv[2];
+
+  if (isHelpArg(firstArg)) {
+    ui.log(getUsageText());
+    return;
+  }
+  if (isVersionArg(firstArg)) {
+    ui.log(getVersion());
+    return;
+  }
+
   const rawArgs = process.argv.slice(3);
   const parser = new ArgParser(rawArgs);
   const workspaceRoot = process.cwd();
-  const { command, isInteractive } = await resolveCommand();
+
+  const wantsInteractive =
+    isInteractiveArg(firstArg) ||
+    parser.hasFlag(CLI_FLAGS.INTERACTIVE) ||
+    parser.hasFlag(CLI_FLAGS.INTERACTIVE_SHORT);
+  const interactiveEligible =
+    wantsInteractive && !!process.stdin.isTTY && !process.env.CI;
+
+  const command = await resolveCommand(
+    firstArg,
+    wantsInteractive,
+    interactiveEligible,
+  );
   const handler = command ? COMMAND_HANDLERS[command] : undefined;
 
   try {
-    if (!handler) {
+    if (!command || !handler) {
       ui.error(UI_MESSAGES.CLI_UNKNOWN_COMMAND + command);
       printUsage();
       process.exit(1);
       return;
     }
 
-    await handler({ parser, isInteractive, workspaceRoot });
+    if (
+      parser.hasFlag(CLI_FLAGS.HELP) ||
+      parser.hasFlag(CLI_FLAGS.HELP_SHORT)
+    ) {
+      ui.log(getCommandUsageText(command));
+      return;
+    }
+
+    if (wantsInteractive && !interactiveEligible) {
+      ui.warn(UI_MESSAGES.CLI_INTERACTIVE_UNAVAILABLE);
+    }
+
+    await handler({
+      parser,
+      isInteractive: interactiveEligible,
+      workspaceRoot,
+    });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error);
     ui.error(UI_MESSAGES.CLI_FATAL_ERROR + msg);

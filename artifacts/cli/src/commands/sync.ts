@@ -25,10 +25,14 @@ function readStdin(): Promise<string> {
   });
 }
 
-async function resolveProjectId(projectId?: string): Promise<string> {
+async function resolveProjectId(
+  projectId: string | undefined,
+  isInteractive: boolean,
+): Promise<string> {
   if (projectId) return projectId;
 
-  if (!process.stdin.isTTY) {
+  // Prompt is opt-in (IFCE-004) -- only when --interactive/-i was passed.
+  if (!isInteractive) {
     ui.error(UI_MESSAGES.SYNC_MISSING_PROJECT_ID);
     process.exit(1);
   }
@@ -53,8 +57,9 @@ async function resolveProjectId(projectId?: string): Promise<string> {
 export async function syncCommand(
   options: { projectId?: string; commitSha?: string },
   cwd: string = process.cwd(),
+  isInteractive: boolean = false,
 ) {
-  const projectId = await resolveProjectId(options.projectId);
+  const projectId = await resolveProjectId(options.projectId, isInteractive);
 
   if (!process.env.DOCUVIA_API_URL || !process.env.MCP_PAT) {
     ui.warn(UI_MESSAGES.SYNC_MISSING_ENV);
@@ -62,6 +67,11 @@ export async function syncCommand(
     return;
   }
 
+  // NOTE: deliberately still keyed on `process.stdin.isTTY` (not `isInteractive`) -- this isn't
+  // a prompt-safety gate, it's "is there piped data (a commit sha) sitting on stdin to consume"
+  // (the pre-push hook pipes one in). Swapping it for the opt-in `isInteractive` flag would make
+  // a human at a real terminal, who never passes --interactive, hang here waiting on stdin to
+  // close instead of skipping the read.
   const commitSha =
     options.commitSha ?? (process.stdin.isTTY ? undefined : await readStdin());
 

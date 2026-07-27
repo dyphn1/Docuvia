@@ -135,12 +135,21 @@ describe("initCommand", () => {
     expect(deleteScopeSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("should proceed if confirmed in TTY", async () => {
-    Object.defineProperty(process.stdin, "isTTY", {
-      value: true,
-      configurable: true,
-    });
+  it("should proceed if confirmed with --interactive", async () => {
     vi.mocked(ui.askConfirm).mockResolvedValue(true);
+    mockInit.mockResolvedValue({
+      success: true,
+      partialFailure: false,
+      message: "Success",
+    } as any);
+
+    await initCommand(process.cwd(), undefined, true);
+
+    expect(ui.askConfirm).toHaveBeenCalled();
+    expect(mockInit).toHaveBeenCalled();
+  });
+
+  it("skips the confirmation prompt entirely without --interactive", async () => {
     mockInit.mockResolvedValue({
       success: true,
       partialFailure: false,
@@ -149,7 +158,7 @@ describe("initCommand", () => {
 
     await initCommand();
 
-    expect(ui.askConfirm).toHaveBeenCalled();
+    expect(ui.askConfirm).not.toHaveBeenCalled();
     expect(mockInit).toHaveBeenCalled();
   });
 

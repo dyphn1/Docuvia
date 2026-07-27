@@ -1,11 +1,11 @@
 ---
 id: IFCE-001
 title: Wizard-Style Interactive CLI
-status: accepted
+status: superseded
 date: 2026-07-07
 domains: [interface]
 supersedes: [legacy/ADR-034]
-superseded_by: []
+superseded_by: [IFCE-004]
 ---
 
 # Wizard-Style Interactive CLI (Auto-Triggered TTY)
@@ -48,3 +48,5 @@ flowchart TD
 - **Negative**: Developers running scripts or custom aliases must pass subcommands explicitly, as calling the CLI bare in a standard local TTY will initiate the interactive menu rather than printing usage.
 
 > **Implementation Status (Fully Resolved — 2026-07-17)**: The wizard-style interactive CLI has been fully implemented. Specifically, it relies on a bare TTY fallback check (`process.stdout.isTTY`) instead of requiring an explicit `--interactive` command flag, triggering beautiful inquirer select options when called interactively, while gracefully failing fast in non-interactive CI environments to guarantee automation safety.
+
+> **Superseded (2026-07-27) — see [IFCE-004](IFCE-004-explicit-interactive-opt-in.md)**: The `!process.stdin.isTTY`/`CI` auto-trigger this ADR specifies (point 2 above) turned out not to be the automation-safe check it was designed to be. Several agent/terminal integrations allocate a pty for the child process — `stdin.isTTY` reads `true` — without ever delivering a real keypress behind it, so the wizard/confirm/input prompts this ADR auto-launches would hang the process forever with no way out. IFCE-004 reinstates the `--interactive`/`-i` flag this ADR deliberately abolished (point 2), making every prompt opt-in rather than TTY-guessed.

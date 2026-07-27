@@ -20,6 +20,16 @@ export const CLI_FLAGS = {
   /** `doctor --fix` (phase1-decision-integration.md §10d, T6) -- the only `doctor` flag that
    *  mutates workspace files, and only for the legacy-hook duplicate-block condition. */
   FIX: "--fix",
+  HELP: "--help",
+  HELP_SHORT: "-h",
+  VERSION: "--version",
+  VERSION_SHORT: "-v",
+  /** IFCE-004: interactive prompts (wizard menu, confirmations, missing-arg input) are opt-in
+   *  only -- a bare `stdin.isTTY` check false-positives inside pty-wrapping agent/terminal
+   *  integrations that never deliver real keypresses, hanging the process forever. A command
+   *  only prompts when the caller explicitly passes this flag (and stdin is actually usable). */
+  INTERACTIVE: "--interactive",
+  INTERACTIVE_SHORT: "-i",
 } as const;
 
 /** Values accepted by `--format=` (`query` command) — shared between `cli.ts`'s flag cast and `query.ts`'s runtime dispatch. */

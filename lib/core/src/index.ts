@@ -27,6 +27,7 @@ export {
   DOCUVIA_HOOK_CJS_FILENAME,
 } from "./constants/paths.js";
 export { GitConstants } from "./git/git-constants.js";
+export { parseSourceTrailer } from "./git/git-trailers.js";
 // L3 distribution (phase2-l3-distribution.md): `renderL3Card`/`computeL2GitPathsByNodeId` are
 // pure, side-effect-free rendering helpers `SnapshotWorkflow` calls directly, the same "narrow
 // exception" precedent as `isSupportedSourceFile` above. `importL3CardsFromKnowledgeBranch` does

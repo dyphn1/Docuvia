@@ -24,6 +24,8 @@ export const CLI_FLAGS = {
   HELP_SHORT: "-h",
   VERSION: "--version",
   VERSION_SHORT: "-v",
+  FORCE: "--force",
+  FORCE_SHORT: "-f",
   /** IFCE-004: interactive prompts (wizard menu, confirmations, missing-arg input) are opt-in
    *  only -- a bare `stdin.isTTY` check false-positives inside pty-wrapping agent/terminal
    *  integrations that never deliver real keypresses, hanging the process forever. A command

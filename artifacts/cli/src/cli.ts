@@ -105,10 +105,14 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
   const targetPath = ctx.parser.getPositional(0);
   const escalateToLsp = ctx.parser.hasFlag(CLI_FLAGS.ESCALATE_TO_LSP);
   const fallbackAst = ctx.parser.hasFlag(CLI_FLAGS.FALLBACK_AST);
+  const force =
+    ctx.parser.hasFlag(CLI_FLAGS.FORCE) ||
+    ctx.parser.hasFlag(CLI_FLAGS.FORCE_SHORT);
   await analyzeCommand(targetPath, ctx.workspaceRoot, {
     escalateToLsp,
     fallbackAst,
     isInteractive: ctx.isInteractive,
+    force,
   });
 }
 

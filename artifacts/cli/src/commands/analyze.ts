@@ -39,6 +39,7 @@ export interface AnalyzeCommandOptions {
   /** `--interactive`/`-i` (IFCE-004) -- opt-in signal that D2's Tier B gate prompt (§8c) is
    *  allowed to fire. Without it, an unready LSP always degrades honestly with no prompt. */
   isInteractive?: boolean;
+  force?: boolean;
 }
 
 interface AnalyzeLlmConfig {
@@ -283,9 +284,13 @@ function setupAnalyzeMemory(
   targetPath: string | undefined,
   llmConfig: AnalyzeLlmConfig | undefined,
   escalateToLsp: boolean,
+  force?: boolean,
 ): void {
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  if (force) {
+    docuviaMemory.set(scopeId, MemoryKeys.FORCE, true);
+  }
   if (targetPath && llmConfig) {
     docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, targetPath);
     docuviaMemory.set(scopeId, MemoryKeys.LLM_BASE_URL, llmConfig.llmBaseUrl);
@@ -487,7 +492,14 @@ export async function analyzeCommand(
     if (event.level === LogLevels.INFO) spinner.text = event.message;
   });
 
-  setupAnalyzeMemory(scopeId, cwd, targetPath, llmConfig, escalateToLsp);
+  setupAnalyzeMemory(
+    scopeId,
+    cwd,
+    targetPath,
+    llmConfig,
+    escalateToLsp,
+    options.force,
+  );
 
   try {
     const result = await docuviaApi.analyze(scopeId, logger);

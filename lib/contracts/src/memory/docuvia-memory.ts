@@ -48,6 +48,8 @@ export const MemoryKeys = {
    *  `sync-knowledge` push on Docuvia2 routinely exceeds 60s, so a fixed bound cut off healthy
    *  pushes, not just hung ones). */
   GIT_NETWORK_TIMEOUT_MS: "gitNetworkTimeoutMs",
+  /** Manual force override. */
+  FORCE: "force",
 } as const;
 
 export type MemoryKey = (typeof MemoryKeys)[keyof typeof MemoryKeys];

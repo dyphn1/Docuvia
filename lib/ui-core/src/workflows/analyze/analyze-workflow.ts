@@ -64,6 +64,7 @@ export class AnalyzeWorkflow {
       escalateToLsp?: boolean;
       lspProviderConfig?: EdgeResolutionProviderConfig;
       tierBCommitCap?: number;
+      force?: boolean;
       /** Tier C's §9f throttling overrides -- folded into the same `--escalate-to-lsp` run
        *  (phase1-decision-integration.md §9d). `llmBaseUrl`/`llmApiKey`/`llmModel` above double as
        *  Tier C's LLM config when `escalateToLsp` is set; a missing `llmBaseUrl`/`llmModel` in
@@ -611,5 +612,6 @@ function buildTierBBatchDeps(
     knowledgeGit,
     ...buildTierBOnlyDeps(options),
     ...buildTierCOnlyDeps(options),
+    force: options?.force,
   };
 }

@@ -109,6 +109,15 @@ export interface IKnowledgeGitService {
     branchName?: string,
   ): Promise<string | undefined>;
   /**
+   * Scans the knowledge branch's history to check if a specific source commit sha has already
+   * been snapshotted (has a corresponding commit with a matching `Docuvia-Source` trailer).
+   */
+  hasSourceCommitInHistory?(
+    cwd: string,
+    sourceSha: string,
+    branchName?: string,
+  ): Promise<boolean>;
+  /**
    * Runs `fn` while holding the knowledge-branch lock (the same advisory
    * `.git/docuvia-knowledge.lock` `packSnapshotToKnowledgeBranch`/`syncKnowledgeBranch` use,
    * STOR-001/PLAT-006) — `analyze` auto mode's delta persist step takes this lock for its

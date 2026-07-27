@@ -70,6 +70,7 @@ export interface TierCDrainDeps {
   wallClockMs?: number;
   itemCap?: number;
   loadThreshold?: number;
+  force?: boolean;
 }
 
 export interface TierCDrainSummary {
@@ -161,6 +162,35 @@ export async function runTierCDrain(
       failed: 0,
       skipped: false,
     });
+  }
+
+  // Early-Exit & Overwrite Protection for Tier C
+  let isAlreadySnapshotted = false;
+  let headSha: string | null = null;
+  try {
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger: deps.logger,
+    });
+    headSha = (await deps.git.getHeadSha(workspaceRoot)) ?? null;
+    isAlreadySnapshotted =
+      headSha && typeof knowledgeGit.hasSourceCommitInHistory === "function"
+        ? await knowledgeGit.hasSourceCommitInHistory(workspaceRoot, headSha)
+        : false;
+  } catch {
+    // Graceful fallback when KnowledgeGitService is not registered (e.g. in thin unit tests)
+  }
+
+  if (isAlreadySnapshotted) {
+    const hasTierCDecisions = store.l3
+      .getAllExportable()
+      .some((row) => row.commit_hash === headSha);
+    if (hasTierCDecisions && !deps.force) {
+      return await skipDrain(
+        deps,
+        queue.length,
+        "already-snapshotted-with-tier-c",
+      );
+    }
   }
 
   if (!deps.llmBaseUrl || !deps.llmModel) {
@@ -296,6 +326,12 @@ async function drainQueue(
   logger.info(
     ANALYZE_MESSAGES.TIER_C_SUMMARY(counters.processed, counters.persisted),
   );
+
+  if (counters.processed > 0) {
+    await store.withWriteLock(() => {
+      store.meta.set("tierCProcessedThisRun", "true");
+    });
+  }
 
   return buildSummary({
     queued: queue.length,

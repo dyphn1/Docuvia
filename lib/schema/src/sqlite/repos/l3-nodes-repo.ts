@@ -117,6 +117,11 @@ export class L3NodesRepo implements IL3NodesRepo {
                WHERE id = ?`,
             )
             .run(JSON.stringify(sourceCommits), existing.id);
+          this.db
+            .prepare(
+              `INSERT INTO ${SchemaTables.DOCUVIA_META} (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+            )
+            .run("tierCProcessedThisRun", "true");
           return { id: existing.id, deduped: true };
         }
 
@@ -144,6 +149,11 @@ export class L3NodesRepo implements IL3NodesRepo {
             input.extractionModel,
             JSON.stringify(input.sourceFiles),
           );
+        this.db
+          .prepare(
+            `INSERT INTO ${SchemaTables.DOCUVIA_META} (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+          )
+          .run("tierCProcessedThisRun", "true");
         return { id: Number(result.lastInsertRowid), deduped: false };
       });
 

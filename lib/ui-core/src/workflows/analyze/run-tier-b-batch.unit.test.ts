@@ -28,6 +28,7 @@ function makeGit(overrides: Partial<IGitProvider> = {}): IGitProvider {
 function makeKnowledgeGit(): IKnowledgeGitService {
   return {
     runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+    hasSourceCommitInHistory: vi.fn().mockResolvedValue(false),
   } as unknown as IKnowledgeGitService;
 }
 
@@ -138,7 +139,10 @@ describe("runTierBBatch() -- language dispatch and deleted-file drop (§8e, §8g
     const workspaceRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-tierb-test-"),
     );
-    fs.writeFileSync(path.join(workspaceRoot, "present.swift"), "import Foundation\n");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "present.swift"),
+      "import Foundation\n",
+    );
 
     const { store } = makeStore();
     appendTierBQueueEntries(store, [
@@ -461,7 +465,10 @@ describe("runTierBBatch() -- multi-language registry dispatch (multi-language-ls
       path.join(workspaceRoot, "a.ts"),
       "export function foo() {}\n",
     );
-    fs.writeFileSync(path.join(workspaceRoot, "b.swift"), "import Foundation\n");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "b.swift"),
+      "import Foundation\n",
+    );
 
     const { store } = makeStore();
     appendTierBQueueEntries(store, [

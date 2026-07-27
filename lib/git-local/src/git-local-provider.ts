@@ -933,10 +933,12 @@ export class GitLocalProvider implements IGitProvider {
     sourceDir: string,
     branchName: string,
     commitMessage: string,
+    timestamp?: number,
   ): Promise<void> {
     try {
       const files = await collectDirectoryFiles(sourceDir);
-      const now = Math.floor(Date.now() / 1000);
+      const now =
+        timestamp !== undefined ? timestamp : Math.floor(Date.now() / 1000);
       const parentCommitSha = await this.getBranchTipSha(cwd, branchName);
       const fastImportData = buildFastImportData(
         branchName,

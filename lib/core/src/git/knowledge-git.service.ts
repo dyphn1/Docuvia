@@ -466,11 +466,21 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     branchName: string,
   ): Promise<void> {
     const commitMessage = await this.buildSnapshotCommitMessage(cwd);
+    const sourceSha = await this.git.getHeadSha(cwd);
+    let timestamp: number | undefined;
+    if (sourceSha) {
+      try {
+        timestamp = await this.git.getCommitTimestamp(cwd, sourceSha);
+      } catch {
+        // fallback quietly to current timestamp
+      }
+    }
     await this.git.packDirectoryToBranch(
       cwd,
       sourceDir,
       branchName,
       commitMessage,
+      timestamp,
     );
     this.logger.info(GitMessages.PACKED_SNAPSHOT_ONTO_BRANCH, { branchName });
   }
@@ -783,6 +793,23 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       if (sourceSha) return sourceSha;
     }
     return undefined;
+  }
+
+  public async hasSourceCommitInHistory(
+    cwd: string,
+    sourceSha: string,
+    branchName: string = GitConstants.KNOWLEDGE_ROOT,
+  ): Promise<boolean> {
+    const log = await this.git.getCommitLog(
+      cwd,
+      branchName,
+      KNOWLEDGE_LOG_SCAN_LIMIT,
+    );
+    for (const entry of log) {
+      const sSha = parseSourceTrailer(entry.message);
+      if (sSha === sourceSha) return true;
+    }
+    return false;
   }
 
   /** Thin pass-through to `withKnowledgeBranchLock` — see `IKnowledgeGitService`'s doc comment. */

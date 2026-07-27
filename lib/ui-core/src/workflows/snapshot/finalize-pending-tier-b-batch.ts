@@ -61,6 +61,13 @@ export async function finalizePendingTierBBatch(
     readonly: false,
   });
   try {
+    // Clear the Tier C processed flag if present (since this read-write store is opened after packing)
+    if (store.meta.get("tierCProcessedThisRun") === "true") {
+      await store.withWriteLock(() => {
+        store.meta.set("tierCProcessedThisRun", "");
+      });
+    }
+
     const pending = parsePending(
       store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING),
     );

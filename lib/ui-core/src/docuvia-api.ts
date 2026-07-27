@@ -199,6 +199,7 @@ export const docuviaApi = {
           scopeId,
           MemoryKeys.TIER_C_LOAD_THRESHOLD,
         ),
+        force: docuviaMemory.get<boolean>(scopeId, "force" as any),
       }).execute();
     }
 

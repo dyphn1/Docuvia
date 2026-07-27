@@ -79,6 +79,50 @@ export class SnapshotWorkflow {
     }
 
     try {
+      // Early-Exit Check (Determined and optimized to prevent redundant git churn):
+      // Skip snapshot generation entirely if:
+      //   1. The current source HEAD has already been snapshotted and exists in the history of the knowledge branch.
+      //   2. There are no pending Tier B batches staged in the local database.
+      //   3. There were no new Tier C decisions processed during this run.
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const headSha = await git.getHeadSha(workspaceRoot);
+      const isAlreadySnapshotted =
+        headSha && typeof knowledgeGit.hasSourceCommitInHistory === "function"
+          ? await knowledgeGit.hasSourceCommitInHistory(workspaceRoot, headSha)
+          : false;
+      const pending = store.meta.get(
+        GitConstants.META_KEY_TIER_B_BATCH_PENDING,
+      );
+      const lastTierB = store.meta.get(
+        GitConstants.META_KEY_LAST_TIER_B_BATCH_SHA,
+      );
+      const tierCProcessed = store.meta.get("tierCProcessedThisRun") === "true";
+
+      if (
+        headSha &&
+        isAlreadySnapshotted &&
+        lastTierB === headSha &&
+        !pending &&
+        !tierCProcessed
+      ) {
+        logger.info(
+          "Knowledge graph snapshot is already up to date with HEAD, skipping.",
+        );
+        await appendSnapshotLogLine(workspaceRoot, {
+          event: "snapshot.skipped",
+          reason: "already-up-to-date",
+          headSha,
+        });
+        return {
+          nodesWritten: 0,
+          edgesWritten: 0,
+          markdownFilesWritten: 0,
+        };
+      }
+
+      // Reset the transient Tier C run flag if we do proceed to snapshot (or skip)
+      // This is now cleaned up inside the read-write store in finalizePendingTierBBatch
+
       const l2Rows = store.graph.getAllNodes();
       const linkRows = store.graph.getAllLinks();
 

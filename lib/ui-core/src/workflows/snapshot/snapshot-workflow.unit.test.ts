@@ -67,6 +67,10 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
 describe("SnapshotWorkflow.execute()", () => {
   beforeEach(() => {
     resetFactoryForTests();
+    const git = {
+      getHeadSha: vi.fn().mockResolvedValue("mock-head-sha"),
+    };
+    docuviaFactory.register(TOKENS.GitProvider, () => git as any);
   });
 
   afterEach(() => {
@@ -333,5 +337,66 @@ describe("SnapshotWorkflow.execute()", () => {
     // ("commit-1", "commit-2") -- L3DIST-002/003.
     expect(l3CardContent).toContain('"source_commits": [\n    "commit-1"\n  ]');
     expect(l3CardContent).toContain("All I/O paths use async/await.");
+  });
+
+  it("skips snapshot generation entirely when the latest snapshot, last Tier B commit, and HEAD match, and no batch is pending", async () => {
+    const store = makeMockStore({
+      meta: {
+        get: vi.fn().mockImplementation((key) => {
+          if (key === "lastTierBBatchSha") return "matched-head-sha";
+          if (key === "tierBBatchPending") return "";
+          return undefined;
+        }),
+        set: vi.fn(),
+      },
+    });
+
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+
+    const git = {
+      getHeadSha: vi.fn().mockResolvedValue("matched-head-sha"),
+    };
+    docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+    const knowledgeGit: IKnowledgeGitService = {
+      ensureKnowledgeBranch: vi.fn(),
+      installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
+      removePostCommitHook: vi.fn(),
+      removePrePushHook: vi.fn(),
+      repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
+      packSnapshotToKnowledgeBranch: vi.fn(),
+      syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi
+        .fn()
+        .mockResolvedValue("matched-head-sha"),
+      hasSourceCommitInHistory: vi.fn().mockResolvedValue(true),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+    };
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
+
+    const renderer: ISnapshotRenderer = {
+      render: vi.fn(),
+    };
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => renderer);
+
+    docuviaFactory.lock();
+
+    const result = await new SnapshotWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
+
+    expect(result).toEqual({
+      nodesWritten: 0,
+      edgesWritten: 0,
+      markdownFilesWritten: 0,
+    });
+    expect(store.graph.getAllNodes).not.toHaveBeenCalled();
+    expect(renderer.render).not.toHaveBeenCalled();
+    expect(knowledgeGit.packSnapshotToKnowledgeBranch).not.toHaveBeenCalled();
   });
 });

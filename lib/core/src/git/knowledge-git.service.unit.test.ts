@@ -784,6 +784,7 @@ describe("KnowledgeGitService.packSnapshotToKnowledgeBranch()", () => {
       "/tmp/snapshot-render",
       GitConstants.KNOWLEDGE_ROOT,
       "Snapshot [a1b2c3d]\n\nDocuvia-Source: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      0,
     );
   });
 
@@ -802,6 +803,7 @@ describe("KnowledgeGitService.packSnapshotToKnowledgeBranch()", () => {
       "/tmp/snapshot-render",
       "custom-branch",
       "Snapshot [a1b2c3d]\n\nDocuvia-Source: a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
+      0,
     );
   });
 
@@ -821,6 +823,7 @@ describe("KnowledgeGitService.packSnapshotToKnowledgeBranch()", () => {
       "/tmp/snapshot-render",
       GitConstants.KNOWLEDGE_ROOT,
       "Snapshot [unknown]",
+      undefined,
     );
   });
 

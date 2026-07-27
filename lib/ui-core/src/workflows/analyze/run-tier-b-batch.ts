@@ -57,6 +57,7 @@ export interface TierBBatchDeps {
   tierCWallClockMs?: number;
   tierCItemCap?: number;
   tierCLoadThreshold?: number;
+  force?: boolean;
 }
 
 /**
@@ -83,6 +84,7 @@ export async function runTierBBatch(
     wallClockMs: deps.tierCWallClockMs,
     itemCap: deps.tierCItemCap,
     loadThreshold: deps.tierCLoadThreshold,
+    force: deps.force,
   });
   return { ...tierBResult, ...tierC };
 }
@@ -99,7 +101,7 @@ export async function runTierBBatch(
 async function runTierBBatchCore(
   deps: TierBBatchDeps,
 ): Promise<TierBOnlyResult> {
-  const { workspaceRoot, logger, store, git } = deps;
+  const { workspaceRoot, logger, store, git, knowledgeGit } = deps;
 
   logger.info(ANALYZE_MESSAGES.TIER_B_STARTING);
   await appendAnalyzeLogLine(workspaceRoot, {

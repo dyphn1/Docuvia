@@ -16,6 +16,23 @@ import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { OUTPUT_FORMAT_MARKERS as FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 
+function printEntryWhy(why: BlastRadiusEntry["why"]): void {
+  if (!why || why.length === 0) return;
+  const titleIndent = FORMAT_MARKERS.INDENT_TWO + FORMAT_MARKERS.INDENT_TWO;
+  const contentIndent = titleIndent + FORMAT_MARKERS.INDENT_TWO;
+  for (const w of why) {
+    ui.log(titleIndent + UI_MESSAGES.IMPACT_WHY_PREFIX + w.title);
+    if (w.content) {
+      ui.log(
+        contentIndent +
+          w.content
+            .split(FORMAT_MARKERS.NEWLINE)
+            .join(FORMAT_MARKERS.NEWLINE + contentIndent),
+      );
+    }
+  }
+}
+
 function printBlastRadius(
   blastRadius: BlastRadiusEntry[],
   riskLevel: RiskLevel,
@@ -33,6 +50,7 @@ function printBlastRadius(
           entry.type +
           FORMAT_MARKERS.CLOSE_PAREN,
       );
+      printEntryWhy(entry.why);
     }
   }
 

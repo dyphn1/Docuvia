@@ -172,6 +172,8 @@ export const UI_MESSAGES = {
   REVIEW_FAIL: "Review failed: ",
   REVIEW_FILES_CHANGED: "Files changed: ",
   REVIEW_RISK_PREFIX: "Risk level: ",
+  REVIEW_WHY_HEADER: "Why (L3 decisions/context)",
+  REVIEW_WHY_PREFIX: "Decision: ",
 
   // Impact Command
   IMPACT_HEADER: "Impact Analysis",
@@ -183,6 +185,7 @@ export const UI_MESSAGES = {
   IMPACT_BLAST_RADIUS_HEADER: "Blast Radius",
   IMPACT_NO_DEPENDENTS: "No dependents found.",
   IMPACT_RISK_PREFIX: "Risk level: ",
+  IMPACT_WHY_PREFIX: "Decision: ",
 
   // Uninstall Command
   UNINSTALL_HEADER: "Uninstall Docuvia2 Integrations",

@@ -86,6 +86,43 @@ describe("ImpactService", () => {
       ]);
     });
 
+    it("attaches L3 'why' data to a blast-radius entry when its node has l3 rows", () => {
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "sharedUtil",
+        pathPatterns: ["src/util.ts"],
+      });
+      const callerId = store.graph.insertNode({
+        projectId,
+        name: "caller",
+        pathPatterns: ["src/a.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: targetId,
+        linkType: "calls",
+      });
+      store.l3.upsertDecision({
+        projectId,
+        l2NodeId: callerId,
+        title: "why caller exists",
+        content: "because reasons",
+        nodeType: "decision",
+        confidence: 0.9,
+        commitSha: null,
+        extractionModel: null,
+        sourceFiles: [],
+      });
+
+      expect(impactService.getBlastRadius(store, "sharedUtil")).toEqual([
+        {
+          name: "caller",
+          type: "module",
+          why: [{ title: "why caller exists", content: "because reasons" }],
+        },
+      ]);
+    });
+
     it("resolves the target via LIKE fallback when there is no exact name match", () => {
       const targetId = store.graph.insertNode({
         projectId,

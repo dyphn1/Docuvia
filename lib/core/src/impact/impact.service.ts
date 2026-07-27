@@ -53,7 +53,14 @@ export class ImpactService implements IImpactService {
 
     const blastRadius = store.graph
       .getIncomingEdges(node.id)
-      .map(({ name, type }) => ({ name, type }));
+      .map(({ id, name, type }) => {
+        const l3Rows = store.l3.getByL2NodeId(id);
+        const why =
+          l3Rows.length > 0
+            ? l3Rows.map((row) => ({ title: row.title, content: row.content }))
+            : undefined;
+        return why ? { name, type, why } : { name, type };
+      });
     this.logger.debug(ImpactMessages.RESOLVED_BLAST_RADIUS, {
       target,
       count: blastRadius.length,

@@ -19,6 +19,13 @@ export type RiskLevel = (typeof RiskLevels)[keyof typeof RiskLevels];
 export interface BlastRadiusEntry {
   name: string;
   type: string;
+  /**
+   * L3 "why" data (decisions/context) attached to this node, when any exists — populated by
+   * `ImpactService.getBlastRadius` from `IL3NodesRepo.getByL2NodeId`. Omitted (not an empty
+   * array) when the node has no L3 rows, so existing `toEqual`-style assertions on a plain
+   * `{ name, type }` entry keep passing.
+   */
+  why?: Array<{ title: string; content: string | null }>;
 }
 
 export interface IImpactService {

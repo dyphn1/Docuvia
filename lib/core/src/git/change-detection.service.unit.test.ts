@@ -78,6 +78,54 @@ describe("ChangeDetectionService.detectChanges()", () => {
     );
   });
 
+  it("surfaces L3 'why' data on an impacted node via ImpactService.getBlastRadius", () => {
+    const targetId = store.graph.insertNode({
+      projectId,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+    });
+    const callerId = store.graph.insertNode({
+      projectId,
+      name: "caller",
+      pathPatterns: ["src/b.ts"],
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: targetId,
+      linkType: "calls",
+    });
+    store.l3.upsertDecision({
+      projectId,
+      l2NodeId: callerId,
+      title: "why caller exists",
+      content: "because reasons",
+      nodeType: "decision",
+      confidence: 0.9,
+      commitSha: null,
+      extractionModel: null,
+      sourceFiles: [],
+    });
+
+    const result = changeDetection.detectChanges({
+      store,
+      baseRef: "main",
+      filesChanged: [{ file: "src/a.ts", status: "modified" }],
+    });
+
+    expect(result.affectedNodes).toEqual([
+      {
+        file: "src/a.ts",
+        impactedBy: [
+          {
+            name: "caller",
+            type: "module",
+            why: [{ title: "why caller exists", content: "because reasons" }],
+          },
+        ],
+      },
+    ]);
+  });
+
   it("bumps LOW risk to MEDIUM for a large diff even with zero impacted nodes", () => {
     const filesChanged = Array.from({ length: 11 }, (_, i) => ({
       file: "src/file" + i + ".ts",

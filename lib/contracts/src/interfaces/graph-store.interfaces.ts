@@ -325,6 +325,12 @@ export interface IL3NodesRepo {
    */
   getAllExportable(): L3NodeRow[];
   /**
+   * `l3_nodes` rows for a single `l2_node_id` — the "why" data behind one blast-radius/changed-
+   * file node, used by `review`/`impact` to surface L3 decisions/context alongside the "what
+   * changed" node list (roadmap item "Surface L3 'why' data in review/impact output").
+   */
+  getByL2NodeId(l2NodeId: number): L3NodeRow[];
+  /**
    * Content-hash upsert for `analyze <targetPath>`'s LLM decision-extraction pipeline
    * (phase1-decision-integration.md §3c; PLAT-007 Tier C point 1). `content_hash` = sha256 over
    * `nodeType + "\n" + title + "\n" + content`. When a row with the same `content_hash` already

@@ -51,6 +51,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     l3: {
       getById: vi.fn(),
       getAllExportable: vi.fn().mockReturnValue([]),
+      getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
     },
@@ -287,6 +288,7 @@ describe("SnapshotWorkflow.execute()", () => {
       l3: {
         getById: vi.fn(),
         getAllExportable: vi.fn().mockReturnValue([l3Row]),
+        getByL2NodeId: vi.fn(),
         upsertDecision: vi.fn(),
         importCard: vi.fn(),
       },

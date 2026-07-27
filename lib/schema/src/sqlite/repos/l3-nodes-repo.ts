@@ -12,6 +12,8 @@ import { SchemaTables, SchemaColumns } from "../constants.js";
 const L3_NODES_ERROR_MESSAGES = {
   GET_BY_ID_FAILED: (id: number) => `Failed to get l3 node by id ${id}`,
   GET_ALL_EXPORTABLE_FAILED: "Failed to get all exportable l3 nodes",
+  GET_BY_L2_NODE_ID_FAILED: (l2NodeId: number) =>
+    `Failed to get l3 nodes for l2_node_id ${l2NodeId}`,
   UPSERT_DECISION_FAILED: "Failed to upsert l3 decision",
   IMPORT_CARD_FAILED: "Failed to import l3 card",
 } as const;
@@ -67,6 +69,23 @@ export class L3NodesRepo implements IL3NodesRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         L3_NODES_ERROR_MESSAGES.GET_ALL_EXPORTABLE_FAILED,
+        err,
+      );
+    }
+  }
+
+  /** See `IL3NodesRepo.getByL2NodeId`'s doc comment. */
+  getByL2NodeId(l2NodeId: number): L3NodeRow[] {
+    try {
+      return this.db
+        .prepare(
+          `SELECT * FROM ${SchemaTables.L3_NODES} WHERE ${SchemaColumns.L2_NODE_ID} = ?`,
+        )
+        .all(l2NodeId) as L3NodeRow[];
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        L3_NODES_ERROR_MESSAGES.GET_BY_L2_NODE_ID_FAILED(l2NodeId),
         err,
       );
     }

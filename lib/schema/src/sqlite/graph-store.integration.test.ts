@@ -574,6 +574,33 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(store.l3.getById(999999)).toBeUndefined();
   });
 
+  it("l3 repo: getByL2NodeId() returns only the rows for that l2_node_id", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+    });
+    const otherNodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/b.ts",
+      pathPatterns: ["src/b.ts"],
+    });
+    insertL3NodeFixture(dbPath, { l2NodeId: nodeId, title: "decision for a" });
+    insertL3NodeFixture(dbPath, {
+      l2NodeId: otherNodeId,
+      title: "decision for b",
+    });
+
+    const rows = store.l3.getByL2NodeId(nodeId);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].title).toBe("decision for a");
+    expect(store.l3.getByL2NodeId(999999)).toEqual([]);
+  });
+
   it("graph repo: findNodeIdByNodeKey() resolves the exact STOR-005 node_key, undefined otherwise", () => {
     const project = store.projects.insert({
       name: "demo",

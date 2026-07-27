@@ -62,6 +62,36 @@ describe("reviewCommand", () => {
     );
   });
 
+  it("prints L3 'why' data for an impacted node that carries it", async () => {
+    mockReview.mockResolvedValue({
+      baseRef: "main",
+      filesChanged: [{ file: "src/a.ts", status: "modified" }],
+      affectedNodes: [
+        {
+          file: "src/a.ts",
+          impactedBy: [
+            {
+              name: "caller",
+              type: "module",
+              why: [{ title: "why caller exists", content: "because reasons" }],
+            },
+          ],
+        },
+      ],
+      riskLevel: "MEDIUM",
+      analysis: "Base: main\nFiles changed: 1\nRisk level: MEDIUM",
+    });
+
+    await reviewCommand("main");
+
+    expect(ui.log).toHaveBeenCalledWith(
+      expect.stringContaining("why caller exists"),
+    );
+    expect(ui.log).toHaveBeenCalledWith(
+      expect.stringContaining("because reasons"),
+    );
+  });
+
   it("uses ui.error for a CRITICAL risk level and deletes the memory scope even on failure", async () => {
     mockReview.mockRejectedValue(
       new Error('Local database not found. Please run "docuvia init".'),

@@ -69,6 +69,28 @@ describe("impactCommand", () => {
     expect(ui.log).toHaveBeenCalledWith(expect.stringContaining("caller"));
   });
 
+  it("prints L3 'why' data for a blast-radius entry that carries it", async () => {
+    mockImpact.mockResolvedValue({
+      blastRadius: [
+        {
+          name: "caller",
+          type: "module",
+          why: [{ title: "why caller exists", content: "because reasons" }],
+        },
+      ],
+      riskLevel: "MEDIUM",
+    });
+
+    await impactCommand("target");
+
+    expect(ui.log).toHaveBeenCalledWith(
+      expect.stringContaining("why caller exists"),
+    );
+    expect(ui.log).toHaveBeenCalledWith(
+      expect.stringContaining("because reasons"),
+    );
+  });
+
   it("warns when no matching node is found (docuviaApi.impact() resolves null)", async () => {
     mockImpact.mockResolvedValue(null);
 

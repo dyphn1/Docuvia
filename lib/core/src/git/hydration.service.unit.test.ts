@@ -86,6 +86,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     l3: {
       getById: vi.fn(),
       getAllExportable: vi.fn(),
+      getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
     },
@@ -323,6 +324,7 @@ describe("HydrationService.hydrate()", () => {
       l3: {
         getById: vi.fn(),
         getAllExportable: vi.fn(),
+        getByL2NodeId: vi.fn(),
         upsertDecision: vi.fn(),
         importCard,
       },

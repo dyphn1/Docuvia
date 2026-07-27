@@ -12,6 +12,7 @@ import {
   type GraphStoreOpenOptions,
   type IGitProvider,
   type IGraphStore,
+  type IHydrationService,
   type IKnowledgeGitService,
   type ILlmClient,
 } from "@workspace/contracts";
@@ -154,12 +155,35 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   };
 }
 
+/** Default: nothing to hydrate from yet, matching every pre-existing empty-graph test's implicit
+ *  expectation (`tryHydrateThenDelta` short-circuits to `undefined` and the caller falls through
+ *  to `runFullIngestion`, exactly as before this token existed). */
+function makeMockHydrationService(
+  overrides: Partial<IHydrationService> = {},
+): IHydrationService {
+  return {
+    resolveHydrationCommit: vi.fn().mockResolvedValue(undefined),
+    hydrate: vi.fn().mockResolvedValue({
+      hydrated: false,
+      nodesLoaded: 0,
+      edgesLoaded: 0,
+      edgesDropped: 0,
+    }),
+    isStale: vi.fn().mockResolvedValue(false),
+    markSynced: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
+  };
+}
+
 function registerDefaultPersistenceMocks(store: IGraphStore = makeMockStore()) {
   const openStoreSpy = vi
     .fn<[GraphStoreOpenOptions], Promise<IGraphStore>>()
     .mockResolvedValue(store);
   docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
   docuviaFactory.register(TOKENS.GitProvider, () => makeMockGitProvider());
+  docuviaFactory.register(TOKENS.HydrationService, () =>
+    makeMockHydrationService(),
+  );
   return { store, openStoreSpy };
 }
 
@@ -444,6 +468,144 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
 
     expect(runFullIngestion).toHaveBeenCalledTimes(1);
     expect(runDeltaIngestion).not.toHaveBeenCalled();
+  });
+
+  it("roadmap item #11 (hydrate-then-delta): hydrates from the already-populated knowledge branch and delta-ingests from its paired Docuvia-Source sha, instead of a full re-parse, when local.db's graph is empty", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue(undefined),
+        insert: vi.fn(),
+        getOrInsert: vi.fn().mockReturnValue({ id: 1 } as any),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({
+        getHeadSha: vi.fn().mockResolvedValue("new-sha"),
+        getCommitLog: vi.fn().mockResolvedValue([
+          {
+            sha: "knowledge-sha-1",
+            message: `Snapshot [old-sha]\n\n${GitConstants.SOURCE_COMMIT_TRAILER_KEY}: old-sha`,
+          },
+        ]),
+      }),
+    );
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    const hydrationService = makeMockHydrationService({
+      resolveHydrationCommit: vi.fn().mockResolvedValue("knowledge-sha-1"),
+      hydrate: vi.fn().mockResolvedValue({
+        hydrated: true,
+        knowledgeSha: "knowledge-sha-1",
+        nodesLoaded: 10,
+        edgesLoaded: 4,
+        edgesDropped: 0,
+      }),
+    });
+    docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
+    docuviaFactory.lock();
+
+    const result = await new AnalyzeWorkflow(
+      tmpDir,
+      createMockLogger(),
+    ).execute();
+
+    expect(hydrationService.hydrate).toHaveBeenCalledWith(tmpDir, store);
+    expect(runFullIngestion).not.toHaveBeenCalled();
+    expect(runDeltaIngestion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromSha: "old-sha",
+        headSha: "new-sha",
+        projectId: 1,
+      }),
+    );
+    expect(result.kind).toBe("autoDelta");
+  });
+
+  it("roadmap item #11 (hydrate-then-delta): falls back to runFullIngestion unchanged when the knowledge branch has nothing to hydrate from yet", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue(undefined),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({ getHeadSha: vi.fn().mockResolvedValue("new-sha") }),
+    );
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    const hydrationService = makeMockHydrationService({
+      resolveHydrationCommit: vi.fn().mockResolvedValue(undefined),
+    });
+    docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
+    docuviaFactory.lock();
+
+    const result = await new AnalyzeWorkflow(
+      tmpDir,
+      createMockLogger(),
+    ).execute();
+
+    expect(hydrationService.resolveHydrationCommit).toHaveBeenCalled();
+    expect(hydrationService.hydrate).not.toHaveBeenCalled();
+    expect(runFullIngestion).toHaveBeenCalledTimes(1);
+    expect(runDeltaIngestion).not.toHaveBeenCalled();
+    expect(result.kind).toBe("autoFullIngestion");
+  });
+
+  it("roadmap item #11 (hydrate-then-delta): falls back to runFullIngestion unchanged when the resolved knowledge commit carries no Docuvia-Source trailer to pair it with", async () => {
+    const store = makeMockStore({
+      projects: {
+        getFirst: vi.fn().mockReturnValue(undefined),
+        insert: vi.fn(),
+        getOrInsert: vi.fn(),
+        count: vi.fn(),
+      },
+      graph: {
+        ...makeMockStore().graph,
+        count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
+      },
+    });
+    registerDefaultPersistenceMocks(store);
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider({
+        getHeadSha: vi.fn().mockResolvedValue("new-sha"),
+        getCommitLog: vi.fn().mockResolvedValue([]),
+      }),
+    );
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    const hydrationService = makeMockHydrationService({
+      resolveHydrationCommit: vi
+        .fn()
+        .mockResolvedValue("knowledge-sha-unstamped"),
+    });
+    docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
+    docuviaFactory.lock();
+
+    const result = await new AnalyzeWorkflow(
+      tmpDir,
+      createMockLogger(),
+    ).execute();
+
+    expect(hydrationService.hydrate).not.toHaveBeenCalled();
+    expect(runFullIngestion).toHaveBeenCalledTimes(1);
+    expect(runDeltaIngestion).not.toHaveBeenCalled();
+    expect(result.kind).toBe("autoFullIngestion");
   });
 
   it("dispatches to runDeltaIngestion with the meta-key sha as the baseline when the graph is non-empty and HEAD has moved", async () => {

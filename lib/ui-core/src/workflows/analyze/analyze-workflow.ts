@@ -12,7 +12,7 @@ import {
   type ILogger,
   type EdgeResolutionProviderConfig,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants, parseSourceTrailer } from "@workspace/core";
 import {
   ANALYZE_EVENTS,
   ANALYZE_MESSAGES,
@@ -30,6 +30,7 @@ import {
   type ExtractedDecision,
 } from "./analyze-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { seedProjectRow } from "../init/seed-project-row.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
 import { runTierBBatch, type TierBBatchDeps } from "./run-tier-b-batch.js";
@@ -231,11 +232,13 @@ export class AnalyzeWorkflow {
       };
     }
 
-    // 2. Empty-graph check -> full ingestion.
+    // 2. Empty-graph check -> hydrate-then-delta (roadmap item #11) when the knowledge branch
+    // already has a hydratable snapshot paired with a stamped source sha, else the original full
+    // re-parse of HEAD.
     const project = store.projects.getFirst();
     const { l2Nodes } = store.graph.count();
     if (!project || l2Nodes === 0) {
-      return await runFullIngestion({ workspaceRoot, logger, store, git });
+      return await this.dispatchEmptyGraph(store, git, knowledgeGit, headSha);
     }
 
     // Non-empty graph but nothing to diff against (unborn/headless HEAD, no commits yet) —
@@ -265,6 +268,80 @@ export class AnalyzeWorkflow {
       // full re-ingest, per §6a's fallback order.
       return await runFullIngestion({ workspaceRoot, logger, store, git });
     }
+
+    return await runDeltaIngestion({
+      workspaceRoot,
+      logger,
+      store,
+      git,
+      knowledgeGit,
+      projectId: project.id,
+      fromSha,
+      headSha,
+    });
+  }
+
+  /**
+   * Step 2 of `dispatchAutoMode`'s decision tree (the empty-graph branch) -- split out purely to
+   * keep that method's cyclomatic complexity under the project's ESLint budget (roadmap item
+   * #11's hydrate-then-delta branch pushed it over the limit; mirrors `buildTierBBatchDeps`'s
+   * precedent for the same reason). `headSha` is required for both `tryHydrateThenDelta`'s
+   * pairing lookup and the delta ingestion itself, so it's skipped outright on an unborn/headless
+   * HEAD (falls straight through to `runFullIngestion`, matching that state's pre-existing
+   * behavior exactly).
+   */
+  private async dispatchEmptyGraph(
+    store: IGraphStore,
+    git: IGitProvider,
+    knowledgeGit: IKnowledgeGitService,
+    headSha: string | undefined,
+  ): Promise<AnalyzeResult> {
+    const { workspaceRoot, logger } = this;
+
+    const hydrateThenDeltaResult = headSha
+      ? await this.tryHydrateThenDelta(store, git, knowledgeGit, headSha)
+      : undefined;
+    if (hydrateThenDeltaResult) return hydrateThenDeltaResult;
+    return await runFullIngestion({ workspaceRoot, logger, store, git });
+  }
+
+  /**
+   * Roadmap item #11's hydrate-then-delta optimization: an empty `local.db` next to a knowledge
+   * branch that already has data would otherwise trigger a full re-parse of HEAD
+   * (`runFullIngestion`) even though the knowledge branch's own snapshot can be bulk-loaded
+   * instead (`HydrationService.hydrate()` -- cheap, no re-parse) and then delta-ingested up to
+   * HEAD. Resolves both halves of the pairing (the hydration commit *and* its stamped
+   * `Docuvia-Source` sha) before touching `store` at all, so a resolution failure falls straight
+   * through to `runFullIngestion`'s untouched, pre-existing behavior -- returns `undefined` in
+   * that case (nothing hydratable yet, or the resolved commit carries no trailer to pair it
+   * with).
+   */
+  private async tryHydrateThenDelta(
+    store: IGraphStore,
+    git: IGitProvider,
+    knowledgeGit: IKnowledgeGitService,
+    headSha: string,
+  ): Promise<AnalyzeResult | undefined> {
+    const { workspaceRoot, logger } = this;
+
+    const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
+      logger,
+    });
+    const knowledgeSha =
+      await hydrationService.resolveHydrationCommit(workspaceRoot);
+    if (!knowledgeSha) return undefined;
+
+    const fromSha = await resolveSourceShaForKnowledgeCommit(
+      git,
+      workspaceRoot,
+      knowledgeSha,
+    );
+    if (!fromSha) return undefined;
+
+    const hydrateResult = await hydrationService.hydrate(workspaceRoot, store);
+    if (!hydrateResult.hydrated) return undefined;
+
+    const project = await seedProjectRow(store.projects, git, workspaceRoot);
 
     return await runDeltaIngestion({
       workspaceRoot,
@@ -551,6 +628,30 @@ export class AnalyzeWorkflow {
 type AnalyzeWorkflowOptions = NonNullable<
   ConstructorParameters<typeof AnalyzeWorkflow>[2]
 >;
+
+/** Knowledge branch is a dedicated orphan branch of small, purpose-built commits -- mirrors
+ *  `HydrationService`'s identical scan-depth choice (see its own `KNOWLEDGE_LOG_SCAN_LIMIT`). */
+const KNOWLEDGE_LOG_SCAN_LIMIT = 5000;
+
+/**
+ * Reads the `Docuvia-Source` trailer off the specific knowledge-branch commit
+ * `tryHydrateThenDelta` resolved via `IHydrationService.resolveHydrationCommit` -- that method
+ * only returns the knowledge-branch sha, not its paired source sha, so this is a second, small
+ * log scan (roadmap item #11) rather than a `IHydrationService` interface change.
+ */
+async function resolveSourceShaForKnowledgeCommit(
+  git: IGitProvider,
+  workspaceRoot: string,
+  knowledgeSha: string,
+): Promise<string | undefined> {
+  const log = await git.getCommitLog(
+    workspaceRoot,
+    GitConstants.KNOWLEDGE_ROOT,
+    KNOWLEDGE_LOG_SCAN_LIMIT,
+  );
+  const entry = log.find((e) => e.sha === knowledgeSha);
+  return entry ? parseSourceTrailer(entry.message) : undefined;
+}
 
 /** The Tier B-only slice of `runTierBBatch`'s deps -- split out of `buildTierBBatchDeps` to keep
  *  each function's optional-chaining-driven complexity under the ESLint budget. */

@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import {
   CsharpLspConstants,
@@ -10,6 +11,14 @@ import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
 export interface CsharpLspPreflightResult extends LspPreflightOutcome {
   markerFileResolvable: boolean;
   lspBinaryResolvable: boolean;
+}
+
+/** `dotnet tool install --global` always installs into `~/.dotnet/tools` (documented .NET SDK
+ *  behavior) -- a location the SDK installer adds to `PATH` on first run, but that many CI
+ *  containers and freshly-opened shells never pick up, leaving a genuinely installed
+ *  `csharp-ls` invisible to a bare PATH probe. */
+function getDotnetToolsDir(): string {
+  return path.join(os.homedir(), ".dotnet", "tools");
 }
 
 function checkMarkerFileResolvable(workspaceRoot: string): boolean {
@@ -39,6 +48,7 @@ export async function checkCsharpLspPreflight(
     {
       binaryName: CsharpLspConstants.BINARY_NAME,
       defaultArgs: CsharpLspConstants.DEFAULT_ARGS as unknown as string[],
+      extraCandidateDirs: [getDotnetToolsDir()],
     },
     override,
   );

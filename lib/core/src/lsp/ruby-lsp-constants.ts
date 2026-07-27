@@ -10,7 +10,6 @@ export const RubyLspConstants = {
 
 export const RUBY_LSP_MESSAGES = {
   binaryUnresolvable:
-    "ruby-lsp is not resolvable (not found on PATH) -- install ruby-lsp to enable LSP-precision cross-file edges for Ruby",
-  markerFileMissing:
-    "no Gemfile or Gemfile.lock found at the workspace root",
+    "ruby-lsp is not resolvable (not found on PATH, ~/.rbenv/shims, or ~/.rvm/bin) -- install ruby-lsp to enable LSP-precision cross-file edges for Ruby",
+  markerFileMissing: "no Gemfile or Gemfile.lock found at the workspace root",
 } as const;

@@ -10,7 +10,7 @@ export const CsharpLspConstants = {
 
 export const CSHARP_LSP_MESSAGES = {
   binaryUnresolvable:
-    "csharp-ls is not resolvable (not found on PATH) -- install it with `dotnet tool install --global csharp-ls` to enable LSP-precision cross-file edges for C#",
+    "csharp-ls is not resolvable (not found on PATH or ~/.dotnet/tools) -- install it with `dotnet tool install --global csharp-ls` to enable LSP-precision cross-file edges for C#",
   markerFileMissing:
     "no solution (.sln/.slnx) or project file (*.csproj) found at the workspace root",
 } as const;

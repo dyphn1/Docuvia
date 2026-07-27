@@ -10,7 +10,6 @@ export const JavaLspConstants = {
 
 export const JAVA_LSP_MESSAGES = {
   binaryUnresolvable:
-    "jdtls is not resolvable (not found on PATH) -- install jdtls to enable LSP-precision cross-file edges for Java",
-  markerFileMissing:
-    "no pom.xml/build.gradle found at the workspace root",
+    "jdtls is not resolvable (not found on PATH or common install locations) -- install jdtls to enable LSP-precision cross-file edges for Java",
+  markerFileMissing: "no pom.xml/build.gradle found at the workspace root",
 } as const;

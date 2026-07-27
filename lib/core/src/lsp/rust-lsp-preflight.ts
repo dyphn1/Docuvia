@@ -22,7 +22,10 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
 }
 
 function getCargoBinDir(): string {
-  return path.join(os.homedir(), ".cargo", "bin");
+  return path.join(
+    process.env.CARGO_HOME ?? path.join(os.homedir(), ".cargo"),
+    "bin",
+  );
 }
 
 async function probeRustAnalyzerPathResolvable(

@@ -10,7 +10,6 @@ export const RustLspConstants = {
 
 export const RUST_LSP_MESSAGES = {
   binaryUnresolvable:
-    "rust-analyzer is not resolvable (not found on PATH or ~/.cargo/bin) -- install rust-analyzer to enable LSP-precision cross-file edges for Rust",
-  markerFileMissing:
-    "no Cargo.toml found at the workspace root",
+    "rust-analyzer is not resolvable (not found on PATH, $CARGO_HOME/bin, or ~/.cargo/bin) -- install rust-analyzer to enable LSP-precision cross-file edges for Rust",
+  markerFileMissing: "no Cargo.toml found at the workspace root",
 } as const;

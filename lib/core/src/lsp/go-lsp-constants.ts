@@ -10,7 +10,6 @@ export const GoLspConstants = {
 
 export const GO_LSP_MESSAGES = {
   binaryUnresolvable:
-    "gopls is not resolvable (not found on PATH) -- install gopls to enable LSP-precision cross-file edges for Go",
-  markerFileMissing:
-    "no go.mod found at the workspace root",
+    "gopls is not resolvable (not found on PATH, $GOBIN, $GOPATH/bin, or ~/go/bin) -- install gopls to enable LSP-precision cross-file edges for Go",
+  markerFileMissing: "no go.mod found at the workspace root",
 } as const;

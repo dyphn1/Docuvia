@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { ConfigFilenames } from "../discovery/discovery-constants.js";
@@ -18,6 +19,18 @@ export interface GoLspPreflightResult extends LspPreflightOutcome {
 
 function checkMarkerFileResolvable(workspaceRoot: string): boolean {
   return fs.existsSync(path.join(workspaceRoot, ConfigFilenames.GO_MOD));
+}
+
+/** Well-known `gopls` install locations beyond `PATH`: `go install` puts the binary under
+ *  `$GOBIN` when set, else `$GOPATH/bin`, else Go's default `~/go/bin` -- a fresh shell (or an
+ *  editor/agent spawned before `.profile` re-sourced) frequently doesn't have any of these on
+ *  `PATH` yet even though the binary is present. */
+function getGoBinDirs(): string[] {
+  const dirs: string[] = [];
+  if (process.env.GOBIN) dirs.push(process.env.GOBIN);
+  if (process.env.GOPATH) dirs.push(path.join(process.env.GOPATH, "bin"));
+  dirs.push(path.join(os.homedir(), "go", "bin"));
+  return dirs;
 }
 
 /** Live probe to verify the gopls binary can actually execute -- runs `gopls version`. */
@@ -49,6 +62,7 @@ export async function checkGoLspPreflight(
     {
       binaryName: GoLspConstants.BINARY_NAME,
       defaultArgs: GoLspConstants.DEFAULT_ARGS as unknown as string[],
+      extraCandidateDirs: getGoBinDirs(),
     },
     override,
   );

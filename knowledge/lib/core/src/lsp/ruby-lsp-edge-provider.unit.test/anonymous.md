@@ -7,4 +7,3 @@ filePath: lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts`
-

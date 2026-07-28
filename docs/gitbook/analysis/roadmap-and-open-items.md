@@ -84,6 +84,10 @@ file and bounded by repo file count). The one cheap addition already shipped: qu
 in Tier B's JSONL batch-summary line, so a future eviction decision (if ever needed) will be
 data-driven rather than speculative.
 
+> **Rechecked 2026-07-28** — `filesQueued` is still emitted on every `analyze.tier_b.summary` JSONL
+> line (`run-tier-b-batch.ts`'s `finalizeBatch`). No growth signal has shown up in it; policy stays
+> deferred, no code change warranted.
+
 ### 11. Hydrate-then-delta optimization
 
 > **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28.**
@@ -99,11 +103,23 @@ Delta ingestion takes blob hashes from the git index but reads content at `headS
 can mismatch the `files` dedup table. Confirmed harmless today (Tier B never calls the same code
 path — `collectFilesToParse` is Tier A only), but worth rechecking if either tier's design changes.
 
+> **Rechecked 2026-07-28** — `collectFilesToParse` (`run-delta-ingestion.ts`) still has exactly one
+> call site (Tier A's delta ingestion); `listTrackedFilesWithBlobHash` still reads `git ls-files
+--staged` (the index) while content comes from `headSha`, so the mismatch is real but still
+> unreachable from Tier B. Neither tier's design has changed since the original note — still
+> harmless, no code change.
+
 ### 14. `getChangedFilesSince` asymmetry footgun
 
 No-arg mode merges in untracked files; an explicit `baseRef` (even `"HEAD"`) does not. Documented
 and pinned by integration tests today, but an easy trap for a future call site that doesn't know
 the asymmetry exists.
+
+> **Rechecked 2026-07-28** — the `if (!baseRef && !toRef)` branch in `getChangedFilesSince`
+> (`git-local-provider.ts`) and its regression test ("single-ref legacy mode ... regression guard"
+> in `git-local-provider.integration.test.ts`) are both still in place, and no new call sites have
+> been added since. The asymmetry is intentional design, not a bug — documented + tested is its
+> correct terminal state, nothing to fix.
 
 ### 15. Degraded batch still advances `lastTierBBatchSha`
 
@@ -112,11 +128,22 @@ next snapshot, even though its queued entries stay unprocessed. Harmless today (
 regardless of the cap), but interacts with any future "rebuild the queue from `lastTierBBatchSha`"
 recovery story.
 
+> **Rechecked 2026-07-28** — confirmed still true and still harmless: `isTierBCommitCapExceeded`
+> (now driven by the `tierBChangedBytes` accumulator, §9m item 1) only feeds two advisory surfaces
+> — `analyze`'s one-line nudge and `doctor`'s always-`PASS` diagnostic message — neither `publish`
+> nor any other workflow gates on it. A degraded batch's `finalizePendingTierBBatch` still
+> unconditionally zeroes the accumulator, but with nothing blocking on the cap this stays
+> informational-only drift, no code change.
+
 ### 16. Tier B "file exists" check is working-tree, not HEAD
 
 Implemented as an exists-in-working-tree check rather than exists-at-HEAD, since the LSP session
 reads live files off disk. Consistent with item 13 above; not a bug, just worth remembering if
 Tier B ever operates against something other than the live working tree.
+
+> **Rechecked 2026-07-28** — still exactly as documented: `dispatchQueue` in `run-tier-b-batch.ts`
+> checks `fs.existsSync` against the working tree, with the assumption already spelled out in its
+> own doc comment. No change needed.
 
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts#anonymous@L91
+id: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts#anonymous@L78
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts

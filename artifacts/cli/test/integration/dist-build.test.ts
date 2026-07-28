@@ -111,7 +111,11 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
       }
     ).count;
     expect(nodeCountAfterStatus).toBe(nodeCountBeforeStatus);
-    expect(statusResult.stdout).toContain(`L2 Nodes: ${nodeCountBeforeStatus}`);
+    // Status now renders a bordered "Metric | Value" table (not a "Metric: value" line), so match
+    // the row tolerant of column padding rather than an exact substring.
+    expect(statusResult.stdout).toMatch(
+      new RegExp(`L2 Nodes\\s*\\│\\s*${nodeCountBeforeStatus}\\s*\\│`),
+    );
   }, 30000);
 
   it("query and impact return real results against the compiled build's graph, not just an empty-graph no-op", async () => {

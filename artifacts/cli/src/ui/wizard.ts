@@ -12,6 +12,15 @@ const UI_ICONS = {
   ERROR: "✖",
 } as const;
 
+/** picocolors' default export forces color on unconditionally on win32 and honors ambient
+ *  `FORCE_COLOR`, regardless of whether stdout is actually a terminal -- both wrong for this
+ *  CLI's "stays plain-text/parseable when piped to a non-TTY reader" contract (box-drawing.ts,
+ *  table.ts). Gate on a real TTY so redirected/piped output (tests, log files, AI agents) never
+ *  carries ANSI escape codes. */
+const color = pc.createColors(
+  Boolean(process.stdout.isTTY) && !process.env.NO_COLOR,
+);
+
 export const ui = {
   spinner: (text: string) => {
     return ora({
@@ -20,10 +29,11 @@ export const ui = {
     });
   },
 
-  info: (msg: string) => console.log(pc.cyan(`${UI_ICONS.INFO} ${msg}`)),
-  success: (msg: string) => console.log(pc.green(`${UI_ICONS.SUCCESS} ${msg}`)),
-  warn: (msg: string) => console.warn(pc.yellow(`${UI_ICONS.WARN} ${msg}`)),
-  error: (msg: string) => console.error(pc.red(`${UI_ICONS.ERROR} ${msg}`)),
+  info: (msg: string) => console.log(color.cyan(`${UI_ICONS.INFO} ${msg}`)),
+  success: (msg: string) =>
+    console.log(color.green(`${UI_ICONS.SUCCESS} ${msg}`)),
+  warn: (msg: string) => console.warn(color.yellow(`${UI_ICONS.WARN} ${msg}`)),
+  error: (msg: string) => console.error(color.red(`${UI_ICONS.ERROR} ${msg}`)),
   log: (msg?: string) => console.log(msg ?? ""),
 
   /** Every command's top-of-run banner -- one shared box-drawn style (IFCE CLI output-style
@@ -31,7 +41,7 @@ export const ui = {
    *  stays plain-text/parseable when piped to a non-TTY reader (an AI agent, a log file). */
   header: (title: string) => {
     console.log();
-    for (const line of renderBanner(title)) console.log(pc.cyan(line));
+    for (const line of renderBanner(title)) console.log(color.cyan(line));
     console.log();
   },
 
@@ -39,7 +49,7 @@ export const ui = {
    *  category ahead of each `ui.table()` call. */
   section: (title: string) => {
     console.log();
-    console.log(pc.bold(pc.cyan(`${SECTION_ICON} ${title}`)));
+    console.log(color.bold(color.cyan(`${SECTION_ICON} ${title}`)));
   },
 
   /** Renders a bordered table -- see `renderTable` (`./table.js`) for the layout/wrapping rules. */

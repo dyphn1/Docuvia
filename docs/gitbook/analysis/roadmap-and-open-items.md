@@ -104,10 +104,10 @@ can mismatch the `files` dedup table. Confirmed harmless today (Tier B never cal
 path — `collectFilesToParse` is Tier A only), but worth rechecking if either tier's design changes.
 
 > **Rechecked 2026-07-28** — `collectFilesToParse` (`run-delta-ingestion.ts`) still has exactly one
-> call site (Tier A's delta ingestion); `listTrackedFilesWithBlobHash` still reads `git ls-files
---staged` (the index) while content comes from `headSha`, so the mismatch is real but still
-> unreachable from Tier B. Neither tier's design has changed since the original note — still
-> harmless, no code change.
+> call site (Tier A's delta ingestion); `listTrackedFilesWithBlobHash` still hashes off the git
+> index while content comes from `headSha`, so the mismatch is real but still unreachable from
+> Tier B. Neither tier's design has changed since the original note — still harmless, no code
+> change.
 
 ### 14. `getChangedFilesSince` asymmetry footgun
 

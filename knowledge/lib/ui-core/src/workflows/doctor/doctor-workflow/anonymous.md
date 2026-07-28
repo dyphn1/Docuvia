@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#anonymous@L490
+id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#anonymous@L95
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/doctor/doctor-workflow.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/doctor/doctor-workflow.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/doctor/doctor-workflow.ts`
+

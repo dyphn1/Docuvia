@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/topology/topology-builder.service.ts#anonymous@L286
+id: lib/core/src/topology/topology-builder.service.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/topology/topology-builder.service.ts

@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/src/cli.ts#handleSync
+id: artifacts/cli/src/cli.ts#CommandContext
 type: symbol
-name: handleSync
+name: CommandContext
 filePath: artifacts/cli/src/cli.ts
 ---
-# Symbol: handleSync
+# Symbol: CommandContext
 
 File: `artifacts/cli/src/cli.ts`

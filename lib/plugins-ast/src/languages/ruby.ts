@@ -23,8 +23,8 @@ export const rubyConfig: LanguageConfig = {
   // fall through as generic `calls` edges rather than `extends`.
   extends: [LanguageNodeTypes.SUPERCLASS],
   queries: {
-    classes: `(${LanguageNodeTypes.CLASS} name: [(${LanguageNodeTypes.CONSTANT}) (${LanguageNodeTypes.SCOPE_RESOLUTION})] @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.MODULE} name: (${LanguageNodeTypes.CONSTANT}) @${QueryCaptureName.CLASS}) (${LanguageNodeTypes.SINGLETON_CLASS}) @${QueryCaptureName.CLASS}`,
-    functions: `(${LanguageNodeTypes.METHOD} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION}) (${LanguageNodeTypes.SINGLETON_METHOD} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION})`,
+    classes: `(${LanguageNodeTypes.CLASS} name: [(${LanguageNodeTypes.CONSTANT}) (${LanguageNodeTypes.SCOPE_RESOLUTION})]) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.MODULE} name: (${LanguageNodeTypes.CONSTANT})) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.SINGLETON_CLASS}) @${QueryCaptureName.CLASS}`,
+    functions: `(${LanguageNodeTypes.METHOD} name: (${LanguageNodeTypes.IDENTIFIER})) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.SINGLETON_METHOD} name: (${LanguageNodeTypes.IDENTIFIER})) @${QueryCaptureName.FUNCTION}`,
     // Predicates must live inside the same top-level pattern group as the capture they
     // filter (`(#match? @_method ...)` as a trailing sibling of the pattern, not a chained
     // JS-style method call) — the old `@_method.match?(...)` syntax was never valid tree-sitter

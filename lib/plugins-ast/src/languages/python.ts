@@ -21,8 +21,8 @@ export const pythonConfig: LanguageConfig = {
   // bare identifiers/attributes, not the full argument_list.
   extends: [LanguageNodeTypes.CLASS_DEFINITION],
   queries: {
-    classes: `(${LanguageNodeTypes.CLASS_DEFINITION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS})`,
-    functions: `(${LanguageNodeTypes.FUNCTION_DEFINITION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.FUNCTION})`,
+    classes: `(${LanguageNodeTypes.CLASS_DEFINITION} name: (${LanguageNodeTypes.IDENTIFIER})) @${QueryCaptureName.CLASS}`,
+    functions: `(${LanguageNodeTypes.FUNCTION_DEFINITION} name: (${LanguageNodeTypes.IDENTIFIER})) @${QueryCaptureName.FUNCTION}`,
     imports: `(${LanguageNodeTypes.IMPORT_STATEMENT}) @${QueryCaptureName.IMPORT} (${LanguageNodeTypes.IMPORT_FROM_STATEMENT}) @${QueryCaptureName.IMPORT}`,
     calls: `(${LanguageNodeTypes.CALL} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.ATTRIBUTE})] @${QueryCaptureName.CALL})`,
     extends: `(${LanguageNodeTypes.CLASS_DEFINITION} (${LanguageNodeTypes.ARGUMENT_LIST} [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.ATTRIBUTE})] @${QueryCaptureName.EXTENDS}))`,

@@ -23,7 +23,7 @@ export const javascriptConfig: LanguageConfig = {
   // grammar) — it directly wraps the anonymous "extends" token and the value expression.
   extends: [LanguageNodeTypes.CLASS_HERITAGE],
   queries: {
-    classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER}) @${QueryCaptureName.CLASS})`,
+    classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER})) @${QueryCaptureName.CLASS}`,
     // No compiled `functions` query — same reasoning as typescript.ts: arrow functions and
     // function expressions have no queryable "name" field, so this field stays on the
     // fallback (which covers all 6 kinds in the array above) rather than compiling a query

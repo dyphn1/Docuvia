@@ -169,23 +169,10 @@ export class InitWorkflow {
         logger,
       );
 
-      let cleanupHandler: (() => void) | undefined;
-      if (tempLifecycle) {
-        cleanupHandler = () => {
-          logger.info(INIT_MESSAGES.CLEANING_UP_TEMP_FILES);
-          tempLifecycle.tempFileManager
-            .cleanup()
-            .catch((err) =>
-              logger.error(INIT_MESSAGES.TEMP_FILE_CLEANUP_FAILED, {
-                error: String(err),
-              }),
-            )
-            .finally(() => tempLifecycle.stop());
-        };
-        for (const signal of INIT_SHUTDOWN_SIGNALS) {
-          process.on(signal, cleanupHandler);
-        }
-      }
+      const disposeShutdownHandlers = registerTempLifecycleShutdownHandlers(
+        tempLifecycle,
+        logger,
+      );
 
       try {
         const filesRequested = discoveryResult.filesToParse.length;
@@ -220,15 +207,45 @@ export class InitWorkflow {
 
         return result;
       } finally {
-        // Deregister so this invocation never leaves a dangling process-level listener.
-        if (cleanupHandler) {
-          for (const signal of INIT_SHUTDOWN_SIGNALS) {
-            process.removeListener(signal, cleanupHandler);
-          }
-        }
+        disposeShutdownHandlers();
       }
     } finally {
       await store.close();
     }
   }
+}
+
+/**
+ * Registers this invocation's SIGTERM/SIGINT cleanup handler for the temp-file manager (extracted
+ * from `execute()` solely to keep its own cyclomatic complexity within budget) and returns a
+ * disposer that deregisters it — callers must invoke the disposer exactly once, in a `finally`,
+ * so no invocation ever leaves a dangling process-level listener. A no-op tempLifecycle (nothing
+ * to clean up) yields a no-op disposer.
+ */
+function registerTempLifecycleShutdownHandlers(
+  tempLifecycle: Awaited<ReturnType<typeof initTempLifecycle>>,
+  logger: ILogger,
+): () => void {
+  if (!tempLifecycle) return () => {};
+
+  const cleanupHandler = () => {
+    logger.info(INIT_MESSAGES.CLEANING_UP_TEMP_FILES);
+    tempLifecycle.tempFileManager
+      .cleanup()
+      .catch((err) =>
+        logger.error(INIT_MESSAGES.TEMP_FILE_CLEANUP_FAILED, {
+          error: String(err),
+        }),
+      )
+      .finally(() => tempLifecycle.stop());
+  };
+  for (const signal of INIT_SHUTDOWN_SIGNALS) {
+    process.on(signal, cleanupHandler);
+  }
+
+  return () => {
+    for (const signal of INIT_SHUTDOWN_SIGNALS) {
+      process.removeListener(signal, cleanupHandler);
+    }
+  };
 }

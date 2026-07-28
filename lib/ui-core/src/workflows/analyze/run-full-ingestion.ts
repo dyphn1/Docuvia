@@ -12,6 +12,10 @@ import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { packCurrentGraphOntoKnowledgeBranch } from "../snapshot/pack-current-graph.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
+import {
+  appendTierBQueueEntries,
+  type TierBQueueEntry,
+} from "./tier-b-queue.js";
 import { AnalyzeResultKind, type AutoModeResult } from "./analyze-result.js";
 
 /**
@@ -88,8 +92,18 @@ export async function runFullIngestion(deps: {
 
   const headSha = await git.getHeadSha(workspaceRoot);
   if (headSha) {
+    // First-ever ingestion has no prior commit to diff against -- mirrors semantic-diff.ts's
+    // resolvePruningLevel's "no matching old node" -> CONTRACT_CHANGED treatment, extended to
+    // whole-file granularity since there's nothing to diff per-node yet.
+    const tierBEntries: TierBQueueEntry[] = parsedResults.map((r) => ({
+      file: r.file,
+      commitSha: headSha,
+    }));
     await store.withWriteLock(() => {
       store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
+      if (tierBEntries.length > 0) {
+        appendTierBQueueEntries(store, tierBEntries);
+      }
     });
   }
 

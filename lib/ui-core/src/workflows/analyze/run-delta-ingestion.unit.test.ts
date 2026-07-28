@@ -370,6 +370,57 @@ describe("runDeltaIngestion()", () => {
     if (result.kind === "autoDelta") expect(result.tierBQueued).toBe(1);
   });
 
+  it("classifies and enqueues an added file into the Tier B queue without reading its old content from git", async () => {
+    const entries: ChangedFileEntry[] = [
+      { file: "src/new.ts", status: "added" },
+    ];
+    const readFileAtRef = vi
+      .fn()
+      .mockImplementation(async (_root, ref) =>
+        ref === HEAD_SHA ? "new content" : undefined,
+      );
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue(entries),
+      readFileAtRef,
+      getChangedLineRanges: vi
+        .fn()
+        .mockResolvedValue([{ startRow: 0, endRow: 1 }]),
+    });
+    semanticDiffAnalyzer.analyzeFile = vi.fn().mockResolvedValue([
+      {
+        nodeId: "foo",
+        nodeType: "function_declaration",
+        pruningLevel: 1,
+        newRange: { startRow: 0, endRow: 1 },
+      },
+    ]);
+
+    const result = await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(readTierBQueue(store)).toEqual([
+      { file: "src/new.ts", commitSha: HEAD_SHA },
+    ]);
+    expect(result.kind).toBe("autoDelta");
+    if (result.kind === "autoDelta") expect(result.tierBQueued).toBe(1);
+    expect(semanticDiffAnalyzer.analyzeFile).toHaveBeenCalledWith(
+      expect.objectContaining({ oldContent: "" }),
+    );
+    expect(readFileAtRef).not.toHaveBeenCalledWith(
+      tmpDir,
+      FROM_SHA,
+      "src/new.ts",
+    );
+  });
+
   it("does not enqueue a modified file classified as INTERNAL_LOGIC only", async () => {
     const entries: ChangedFileEntry[] = [
       { file: "src/a.ts", status: "modified" },

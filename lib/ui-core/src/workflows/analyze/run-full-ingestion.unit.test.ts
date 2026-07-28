@@ -21,6 +21,7 @@ import {
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/core";
 import { runFullIngestion } from "./run-full-ingestion.js";
+import { readTierBQueue } from "./tier-b-queue.js";
 
 // Mirrors init-workflow.unit.test.ts's mocking pattern (Factory Lock, pure orchestration unit
 // test) -- runFullIngestion reuses init's own seedProjectRow/runDiscoveryPipeline/
@@ -314,6 +315,28 @@ describe("runFullIngestion()", () => {
       GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
       "cafebabecafebabecafebabecafebabecafebabe",
     );
+  });
+
+  it("queues every successfully-parsed file into the Tier B queue on first ingestion", async () => {
+    const git = makeMockGitProvider({
+      getHeadSha: vi
+        .fn()
+        .mockResolvedValue("cafebabecafebabecafebabecafebabecafebabe"),
+    });
+
+    await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+    });
+
+    expect(readTierBQueue(store)).toEqual([
+      {
+        file: "src/a.ts",
+        commitSha: "cafebabecafebabecafebabecafebabecafebabe",
+      },
+    ]);
   });
 
   it("does not write the meta key when there is no HEAD (unborn or no git repo)", async () => {

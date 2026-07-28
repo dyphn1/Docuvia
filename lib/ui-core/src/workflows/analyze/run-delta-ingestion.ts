@@ -253,10 +253,11 @@ async function collectFilesToParse(
   };
 }
 
-/** Detector classification (§6b) — only a true in-place modification is classified (added/renamed
- *  files have no meaningful "old content" at this path to diff against); re-parsing is never
- *  gated on the outcome. Also returns the raw `findings` so the caller can derive Tier C's
- *  `CONTRACT_CHANGED`-symbol candidates (§9b) without re-running the detector. */
+/** Detector classification (§6b) — modified and added files are classified (added files are
+ *  diffed against an empty old-content baseline; renamed files have no meaningful "old content"
+ *  at this path to diff against, so they're excluded); re-parsing is never gated on the outcome.
+ *  Also returns the raw `findings` so the caller can derive Tier C's `CONTRACT_CHANGED`-symbol
+ *  candidates (§9b) without re-running the detector. */
 async function classifyChangedFile(
   deps: DeltaDeps,
   semanticDiffAnalyzer: ISemanticDiffAnalyzer,
@@ -267,14 +268,19 @@ async function classifyChangedFile(
   findings: SemanticDiffModifiedNode[];
 }> {
   const { workspaceRoot, git, fromSha, headSha } = deps;
-  if (entry.status !== ChangedFileStatuses.MODIFIED)
+  if (
+    entry.status !== ChangedFileStatuses.MODIFIED &&
+    entry.status !== ChangedFileStatuses.ADDED
+  )
     return { contractChanged: false, findings: [] };
 
-  const oldContent = await git.readFileAtRef(
-    workspaceRoot,
-    fromSha,
-    entry.file,
-  );
+  // A brand-new file has no prior commit to diff against -- diff it against an empty baseline so
+  // every top-level export falls into resolvePruningLevel()'s existing "no matching old node" ->
+  // CONTRACT_CHANGED branch, instead of the file being silently excluded from Tier B forever.
+  const oldContent =
+    entry.status === ChangedFileStatuses.ADDED
+      ? ""
+      : await git.readFileAtRef(workspaceRoot, fromSha, entry.file);
   if (oldContent === undefined) return { contractChanged: false, findings: [] };
 
   const lineRanges = await git.getChangedLineRanges(

@@ -33,22 +33,22 @@ async function resolveProjectId(
 
   // Prompt is opt-in (IFCE-004) -- only when --interactive/-i was passed.
   if (!isInteractive) {
-    ui.error(UI_MESSAGES.SYNC_MISSING_PROJECT_ID);
+    ui.error(UI_MESSAGES.PUBLISH_MISSING_PROJECT_ID);
     process.exit(1);
   }
 
-  ui.info(UI_MESSAGES.SYNC_NO_PROJECT_ID_PROVIDED);
-  const entered = await ui.askInput(UI_MESSAGES.SYNC_PROMPT_PROJECT_ID);
+  ui.info(UI_MESSAGES.PUBLISH_NO_PROJECT_ID_PROVIDED);
+  const entered = await ui.askInput(UI_MESSAGES.PUBLISH_PROMPT_PROJECT_ID);
 
   if (!entered) {
-    ui.error(UI_MESSAGES.SYNC_PROJECT_ID_REQUIRED);
+    ui.error(UI_MESSAGES.PUBLISH_PROJECT_ID_REQUIRED);
     process.exit(1);
   }
 
   return entered;
 }
 
-function hasRequiredSyncEnv(): boolean {
+function hasRequiredPublishEnv(): boolean {
   return !!process.env.DOCUVIA_API_URL && !!process.env.MCP_PAT;
 }
 
@@ -64,20 +64,22 @@ async function resolveCommitSha(
   return process.stdin.isTTY ? undefined : readStdin();
 }
 
-async function runSync(
+async function runPublish(
   scopeId: string,
   logger: ReturnType<typeof createPinoBackedLogger>,
   spinner: ReturnType<typeof ui.spinner>,
 ) {
   try {
+    // docuviaApi.sync() -- the Orchestration-layer method name is unchanged (IFCE-005 renamed
+    // the CLI verb, not this internal call); see SyncWorkflow's own doc comment for why.
     const result = await docuviaApi.sync(scopeId, logger);
-    spinner.succeed(UI_MESSAGES.SYNC_SUCCESS + " " + result.message);
+    spinner.succeed(UI_MESSAGES.PUBLISH_SUCCESS + " " + result.message);
   } catch (error: unknown) {
     const message =
       error instanceof DocuviaError || error instanceof Error
         ? error.message
         : String(error);
-    spinner.fail(UI_MESSAGES.SYNC_FAIL + message);
+    spinner.fail(UI_MESSAGES.PUBLISH_FAIL + message);
     // process.exitCode (not process.exit()) — this path follows real network calls (GET
     // l2-nodes / POST sync/push); forcing an immediate exit while fetch/undici handles are
     // still closing crashes natively on Windows. See old Docuvia's sync.ts for the same fix.
@@ -93,16 +95,16 @@ async function runSync(
  * touch `process.env` — see docs/gitbook/architecture/application-lifecycle-and-state.md) and
  * injected into `docuviaMemory` for the Orchestration layer to read.
  */
-export async function syncCommand(
+export async function publishCommand(
   options: { projectId?: string; commitSha?: string },
   cwd: string = process.cwd(),
   isInteractive: boolean = false,
 ) {
   const projectId = await resolveProjectId(options.projectId, isInteractive);
 
-  if (!hasRequiredSyncEnv()) {
-    ui.warn(UI_MESSAGES.SYNC_MISSING_ENV);
-    ui.warn(UI_MESSAGES.SYNC_SKIP);
+  if (!hasRequiredPublishEnv()) {
+    ui.warn(UI_MESSAGES.PUBLISH_MISSING_ENV);
+    ui.warn(UI_MESSAGES.PUBLISH_SKIP);
     return;
   }
 
@@ -110,7 +112,7 @@ export async function syncCommand(
 
   const spinner = ui
     .spinner(
-      UI_MESSAGES.SYNC_START + projectId + OUTPUT_FORMAT_MARKERS.ELLIPSIS,
+      UI_MESSAGES.PUBLISH_START + projectId + OUTPUT_FORMAT_MARKERS.ELLIPSIS,
     )
     .start();
   const scopeId = crypto.randomUUID();
@@ -126,5 +128,5 @@ export async function syncCommand(
   docuviaMemory.set(scopeId, MemoryKeys.PROJECT_ID, projectId);
   docuviaMemory.set(scopeId, MemoryKeys.COMMIT_SHA, commitSha || undefined);
 
-  await runSync(scopeId, logger, spinner);
+  await runPublish(scopeId, logger, spinner);
 }

@@ -1,5 +1,5 @@
 /**
- * `INIT_*`/general-CLI/filesystem-helper messages, plus `CLEAN_*`/`STATUS_*`/`SYNC_*`/`ANALYZE_*`
+ * `INIT_*`/general-CLI/filesystem-helper messages, plus `CLEAN_*`/`STATUS_*`/`PUBLISH_*`/`ANALYZE_*`
  * for the commands rebuilt so far — old Docuvia's ~100+ message file also carried `QUERY_*`/
  * `IMPACT_*`/`REVIEW_*`/`SNAPSHOT_*`/`EXPORT_*` for commands that don't exist in this milestone.
  * Port the rest in alongside each command as it's rebuilt.
@@ -68,17 +68,17 @@ export const UI_MESSAGES = {
   STATUS_L2_NODES: "L2 Nodes: ",
   STATUS_L3_DECISIONS: "L3 Decisions: ",
 
-  // Sync Command
-  SYNC_MISSING_PROJECT_ID:
+  // Publish Command (IFCE-005: renamed from `sync`)
+  PUBLISH_MISSING_PROJECT_ID:
     "Project ID is required when not running interactively.",
-  SYNC_NO_PROJECT_ID_PROVIDED: "No project ID provided.",
-  SYNC_PROMPT_PROJECT_ID: "Enter the project ID to sync to: ",
-  SYNC_PROJECT_ID_REQUIRED: "Project ID is required.",
-  SYNC_MISSING_ENV: "DOCUVIA_API_URL and/or MCP_PAT are not set.",
-  SYNC_SKIP: "Skipping sync.",
-  SYNC_START: "Starting sync for project ",
-  SYNC_SUCCESS: "Sync complete.",
-  SYNC_FAIL: "Sync failed: ",
+  PUBLISH_NO_PROJECT_ID_PROVIDED: "No project ID provided.",
+  PUBLISH_PROMPT_PROJECT_ID: "Enter the project ID to publish to: ",
+  PUBLISH_PROJECT_ID_REQUIRED: "Project ID is required.",
+  PUBLISH_MISSING_ENV: "DOCUVIA_API_URL and/or MCP_PAT are not set.",
+  PUBLISH_SKIP: "Skipping publish.",
+  PUBLISH_START: "Starting publish for project ",
+  PUBLISH_SUCCESS: "Publish complete.",
+  PUBLISH_FAIL: "Publish failed: ",
 
   // Analyze Command
   ANALYZE_HEADER: "Analyze Project",

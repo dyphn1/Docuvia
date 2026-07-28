@@ -34,13 +34,13 @@ const ERRNO_EEXIST = "EEXIST" as const;
 
 const SYNC_STATE_LOCK_MESSAGES = {
   TIMED_OUT_WAITING: (lockPath: string) =>
-    `Timed out waiting for the sync-state lock at ${lockPath} — another docuvia sync may be stuck`,
+    `Timed out waiting for the sync-state lock at ${lockPath} — another docuvia publish may be stuck`,
 } as const;
 
 /**
  * Cross-process mutex around a load→mutate→save cycle of `sync-state.json` — same shape as
  * `graph-store.ts`'s `acquireInitLock`/`releaseInitLock`. Needed because `loadSyncState()` and
- * `saveSyncState()` are a plain, unguarded read-modify-write: two concurrent `docuvia sync` runs
+ * `saveSyncState()` are a plain, unguarded read-modify-write: two concurrent `docuvia publish` runs
  * can both load the same dedup state and the second writer's save silently clobbers the first's
  * update, losing a `syncedContentHashes` entry with no error at all.
  */

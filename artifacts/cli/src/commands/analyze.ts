@@ -400,7 +400,7 @@ function handleAnalyzeError(
   spinner.fail(prefix + message);
   // process.exitCode (not process.exit()) for both branches — the targetPath branch follows
   // a real network call (LLM chat completion); forcing an immediate exit while fetch/undici
-  // handles are still closing crashes natively on Windows. See sync.ts's identical fix.
+  // handles are still closing crashes natively on Windows. See publish.ts's identical fix.
   process.exitCode = 1;
 }
 
@@ -452,7 +452,7 @@ async function confirmTierBGateOrAbort(
  *   `runFocusedExtraction`/the old `extract` command). Requires
  *   `AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL` and a model
  *   (`AI_DOCUVIA_MODEL`/`AI_DOCUVIA_FAST_MODEL`) to be set; missing env vars are a hard failure
- *   (exit 1) rather than a silent skip — unlike `sync.ts`'s missing-env behavior — because a
+ *   (exit 1) rather than a silent skip — unlike `publish.ts`'s missing-env behavior — because a
  *   user who explicitly asked to analyze a path expects LLM extraction to actually run.
  * - `--escalate-to-lsp`: the Tier B batch (PLAT-007 Tier B; phase1-decision-integration.md §8) —
  *   a sibling mode, never combined with auto mode's own dispatch (it consumes the queue Tier A

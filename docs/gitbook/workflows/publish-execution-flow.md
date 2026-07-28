@@ -1,10 +1,15 @@
-# `sync` — Execution Flow vs. Architecture Decisions
+# `publish` (internally `SyncWorkflow`) — Execution Flow vs. Architecture Decisions
 
 > Method: ADR context from `docs/gitbook/adr/**`; call sequence traced from
-> `artifacts/cli/src/commands/sync.ts` through `lib/ui-core/src/workflows/sync/sync-workflow.ts`
+> `artifacts/cli/src/commands/publish.ts` through `lib/ui-core/src/workflows/sync/sync-workflow.ts`
 > and `lib/remote-api/src/fetch-remote-sync-client.ts`.
+>
+> **Naming note** ([IFCE-005](../adr/interface/IFCE-005-rename-sync-to-publish.md)): the CLI verb
+> was renamed from `sync` to `publish`; the orchestration method (`docuviaApi.sync()`), its
+> workflow class (`SyncWorkflow`), its lock file (`sync-state.json`), and its log file (`sync.log`)
+> deliberately kept the original name — this trace still calls them that below.
 
-`docuvia sync` pushes locally-generated L3 decisions for a set of changed files to the remote
+`docuvia publish` pushes locally-generated L3 decisions for a set of changed files to the remote
 Docuvia backend. It's split into two panels: resolving inputs at the CLI boundary, then the
 transactional push itself.
 
@@ -13,11 +18,11 @@ transactional push itself.
 ```mermaid
 sequenceDiagram
     actor User as User / AI Agent
-    participant CLI as CLI (commands/sync.ts)
+    participant CLI as CLI (commands/publish.ts)
     participant Wizard as Wizard UI
     participant Env as process.env
 
-    User->>CLI: docuvia sync, project id, commit sha
+    User->>CLI: docuvia publish, project id, commit sha
     alt project id missing and stdin is a TTY
         CLI->>Wizard: askInput for project id
     else project id missing, non TTY
@@ -26,7 +31,7 @@ sequenceDiagram
 
     CLI->>Env: read DOCUVIA_API_URL and MCP_PAT
     alt either env var missing
-        CLI-->>User: warn and skip sync, exit 0
+        CLI-->>User: warn and skip publish, exit 0
     end
     Note right of Env: MATCH PLAT-003, presentation layer reads env, not the provider itself.
 
@@ -39,7 +44,7 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant CLI as CLI (commands/sync.ts)
+    participant CLI as CLI (commands/publish.ts)
     participant API as docuviaApi.sync()
     participant WF as SyncWorkflow
     participant Git as GitProvider
@@ -92,8 +97,9 @@ sequenceDiagram
 | CLI (presentation layer) reads `DOCUVIA_API_URL`/`MCP_PAT` from `process.env`            | `architecture/application-lifecycle-and-state.md` ("only the Presentation layer may touch `process.env`") | ✅ Match                                                                                                          |
 | Content-hash dedup against `sync-state.json` under a lock                                | — (no dedicated ADR; local implementation detail)                                                         | —                                                                                                                 |
 | `sync.start` / `sync.summary` JSONL log                                                  | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)                                 | ✅ Match                                                                                                          |
+| CLI verb `sync` → `publish` (internals unchanged)                                        | [IFCE-005](../adr/interface/IFCE-005-rename-sync-to-publish.md)                                           | ✅ Match                                                                                                          |
 
 ## Conflicts Found
 
-None found. `sync` is the one command that talks to an external service, and it matches PLAT-003's
-template exactly, including the specific 30-second timeout value the ADR prescribes.
+None found. `publish` is the one command that talks to an external service, and it matches
+PLAT-003's template exactly, including the specific 30-second timeout value the ADR prescribes.

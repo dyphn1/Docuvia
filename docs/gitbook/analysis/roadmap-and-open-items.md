@@ -10,7 +10,7 @@
 > Items are ordered roughly by priority/dependency, not by date. When one of these gets decided,
 > move the decision into its governing ADR (or a new one) and delete the row here.
 
-## Phase 2 — Distribute (items 1-2 decided & shipped; item 3 decided, rename not yet implemented)
+## Phase 2 — Distribute (items 1-3 decided & shipped)
 
 L3 distribution (storage shape + merge strategy) is decided and shipped — see
 [Phase 2, Item 1 — L3 Distribution Strategy](phase2-l3-distribution.md) for the full contract
@@ -23,9 +23,9 @@ for the full contract (`SKSCHED-001`..`006`) and implementation record (2026-07-
 
 ### 3. `sync` vs `sync-knowledge` naming
 
-> **Decided — 2026-07-28. Rename `sync` to `publish`; `sync-knowledge` stays as-is. See
-> [IFCE-005](../adr/interface/IFCE-005-rename-sync-to-publish.md). Rename itself not yet
-> implemented — tracked as a follow-up task.**
+> **Shipped — decided and implemented 2026-07-28. `sync` renamed to `publish`;
+> `sync-knowledge` unchanged. See [IFCE-005](../adr/interface/IFCE-005-rename-sync-to-publish.md)
+> for the decision and the (deliberately narrow) scope boundary.**
 
 ## Phase 3 — Consume (mostly working, minor follow-ups)
 

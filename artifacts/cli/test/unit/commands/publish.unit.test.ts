@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import process from "process";
 import { docuviaMemory } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
-import { syncCommand } from "../../../src/commands/sync.js";
+import { publishCommand } from "../../../src/commands/publish.js";
 import { ui } from "../../../src/ui/wizard.js";
 
 vi.mock("@workspace/ui-core", () => ({
@@ -30,7 +30,7 @@ vi.mock("../../../src/ui/wizard.js", () => ({
 
 const mockSync = vi.mocked(docuviaApi.sync);
 
-describe("syncCommand", () => {
+describe("publishCommand", () => {
   let exitSpy: any;
   const originalEnv = { ...process.env };
 
@@ -59,14 +59,14 @@ describe("syncCommand", () => {
     delete process.env.DOCUVIA_API_URL;
     delete process.env.MCP_PAT;
 
-    await syncCommand({ projectId: "1" });
+    await publishCommand({ projectId: "1" });
 
     expect(mockSync).not.toHaveBeenCalled();
     expect(ui.warn).toHaveBeenCalled();
   });
 
   it("exits 1 without calling docuviaApi.sync when no projectId is given and stdin is not a TTY", async () => {
-    await expect(syncCommand({})).rejects.toThrow("Exit 1");
+    await expect(publishCommand({})).rejects.toThrow("Exit 1");
 
     expect(mockSync).not.toHaveBeenCalled();
   });
@@ -90,7 +90,7 @@ describe("syncCommand", () => {
     });
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");
 
-    await syncCommand({ projectId: "42", commitSha: "abc123" });
+    await publishCommand({ projectId: "42", commitSha: "abc123" });
 
     expect(mockSync).toHaveBeenCalled();
     expect(spinnerSucceed).toHaveBeenCalledWith(
@@ -101,7 +101,7 @@ describe("syncCommand", () => {
 
   it("prompts for a project id via ui.askInput when omitted and --interactive was passed", async () => {
     // Still needs a real TTY here so the commitSha piped-stdin read (a separate, unrelated
-    // concern -- see sync.ts's NOTE) doesn't try to read from this test's stdin and hang.
+    // concern -- see publish.ts's NOTE) doesn't try to read from this test's stdin and hang.
     Object.defineProperty(process.stdin, "isTTY", {
       value: true,
       configurable: true,
@@ -113,7 +113,7 @@ describe("syncCommand", () => {
       message: "Nothing to sync",
     });
 
-    await syncCommand({}, undefined, true);
+    await publishCommand({}, undefined, true);
 
     expect(ui.askInput).toHaveBeenCalled();
     expect(mockSync).toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe("syncCommand", () => {
       configurable: true,
     });
 
-    await expect(syncCommand({})).rejects.toThrow("Exit 1");
+    await expect(publishCommand({})).rejects.toThrow("Exit 1");
 
     expect(ui.askInput).not.toHaveBeenCalled();
     expect(mockSync).not.toHaveBeenCalled();
@@ -134,7 +134,7 @@ describe("syncCommand", () => {
   it("sets process.exitCode = 1 (not process.exit) and calls spinner.fail when docuviaApi.sync() throws", async () => {
     mockSync.mockRejectedValue(new Error("network down"));
 
-    await syncCommand({ projectId: "1", commitSha: "abc" });
+    await publishCommand({ projectId: "1", commitSha: "abc" });
 
     expect(spinnerFail).toHaveBeenCalledWith(
       expect.stringContaining("network down"),

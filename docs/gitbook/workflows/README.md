@@ -16,7 +16,7 @@ diagrams instead of one large one, so each stays legible), a Step → ADR mappin
 | [init](init-execution-flow.md)                       | Workspace bootstrap: DB, knowledge branch, AST indexing, agent integrations             | None (2 historical conflicts resolved — see below) |
 | [clean](clean-execution-flow.md)                     | Wholesale-deletes `local.db`                                                            | None                                               |
 | [status](status-execution-flow.md)                   | Row-count health check                                                                  | None                                               |
-| [sync](sync-execution-flow.md)                       | Pushes local L3 decisions to the remote backend                                         | None                                               |
+| [publish](publish-execution-flow.md)                 | Pushes local L3 decisions to the remote backend                                         | None                                               |
 | [analyze](analyze-execution-flow.md)                 | Auto-mode ingestion (Tier A), focused LLM decision extraction, or Tier B LSP escalation | None                                               |
 | [review](review-execution-flow.md)                   | Change-detection + blast-radius risk aggregation since a base ref                       | None (resolved — see below)                        |
 | [impact](impact-execution-flow.md)                   | 1-hop blast-radius lookup by target name                                                | None (resolved — see below)                        |

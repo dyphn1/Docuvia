@@ -8,7 +8,7 @@ import "./registration.js";
 import { initCommand } from "./commands/init.js";
 import { cleanCommand } from "./commands/clean.js";
 import { statusCommand } from "./commands/status.js";
-import { syncCommand } from "./commands/sync.js";
+import { publishCommand } from "./commands/publish.js";
 import { analyzeCommand } from "./commands/analyze.js";
 import { reviewCommand } from "./commands/review.js";
 import { impactCommand } from "./commands/impact.js";
@@ -89,11 +89,11 @@ async function handleStatus(ctx: CommandContext): Promise<void> {
   await statusCommand(ctx.workspaceRoot);
 }
 
-async function handleSync(ctx: CommandContext): Promise<void> {
-  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.SYNC]);
+async function handlePublish(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.PUBLISH]);
   const projectId = ctx.parser.getPositional(0);
   const commitSha = ctx.parser.getFlagValue(CLI_FLAGS.COMMIT_SHA);
-  await syncCommand(
+  await publishCommand(
     { projectId, commitSha },
     ctx.workspaceRoot,
     ctx.isInteractive,
@@ -201,7 +201,7 @@ async function handleSyncKnowledge(ctx: CommandContext): Promise<void> {
 }
 
 /**
- * `init`/`mcp`/`clean`/`status`/`sync`/`analyze`/`review`/`impact`/`query`/`export-topology`/
+ * `init`/`mcp`/`clean`/`status`/`publish`/`analyze`/`review`/`impact`/`query`/`export-topology`/
  * `snapshot`/`hydrate`/`sync-knowledge` are wired so far. Structured so each later command is
  * added as one more `handleX` function + one more `COMMAND_HANDLERS` entry, without restructuring
  * dispatch.
@@ -214,7 +214,7 @@ const COMMAND_HANDLERS: Record<
   [CLI_COMMANDS.MCP]: handleMcp,
   [CLI_COMMANDS.CLEAN]: handleClean,
   [CLI_COMMANDS.STATUS]: handleStatus,
-  [CLI_COMMANDS.SYNC]: handleSync,
+  [CLI_COMMANDS.PUBLISH]: handlePublish,
   [CLI_COMMANDS.ANALYZE]: handleAnalyze,
   [CLI_COMMANDS.REVIEW]: handleReview,
   [CLI_COMMANDS.IMPACT]: handleImpact,

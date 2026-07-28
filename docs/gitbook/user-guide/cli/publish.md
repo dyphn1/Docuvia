@@ -1,13 +1,15 @@
-# `docuvia sync`
+# `docuvia publish`
 
-The `sync` command synchronizes the local Docuvia state with the remote Cloud API Server.
+The `publish` command synchronizes the local Docuvia state with the remote Cloud API Server.
 
-> **Note on Docuvia2:** Currently, `sync` only implements the client-side stub to fetch updates from the server. Advanced server-side multi-tenant handshakes are deferred.
+> **Note on Docuvia2:** Currently, `publish` only implements the client-side stub to fetch updates from the server. Advanced server-side multi-tenant handshakes are deferred.
+>
+> **Renamed from `sync`** — see [IFCE-005](../../adr/interface/IFCE-005-rename-sync-to-publish.md). Internally the orchestration-layer method (`docuviaApi.sync()`), its workflow class (`SyncWorkflow`), and its log file (`.docuvia/logs/sync.log`) keep the original name; only the CLI-facing verb changed.
 
 ## Usage
 
 ```bash
-docuvia sync [projectId] [flags]
+docuvia publish [projectId] [flags]
 ```
 
 ## Options
@@ -23,7 +25,7 @@ docuvia sync [projectId] [flags]
 
 ## Under the Hood
 
-When you run `docuvia sync`:
+When you run `docuvia publish`:
 
 1. **Remote API Provider**: The `FetchRemoteSyncClient` (`lib/remote-api`) establishes a connection to the configured Docuvia server.
 2. **Environment Configuration**: Requires `DOCUVIA_API_URL` and `MCP_PAT` environment variables to be set.
@@ -35,11 +37,11 @@ When you run `docuvia sync`:
 Run synchronization with a specific project ID:
 
 ```bash
-docuvia sync my-project-123
+docuvia publish my-project-123
 ```
 
 Interactive synchronization:
 
 ```bash
-docuvia sync --interactive
+docuvia publish --interactive
 ```

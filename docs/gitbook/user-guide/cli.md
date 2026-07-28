@@ -13,7 +13,7 @@ In Docuvia2, the CLI is built with a script-first philosophy. Commands execute n
 | **[`docuvia snapshot`](cli/snapshot.md)**               | Commit the graph into git itself (local `docuvia-knowledge` branch).     |
 | **[`docuvia hydrate`](cli/hydrate.md)**                 | Rebuild `local.db` from the knowledge branch.                            |
 | **[`docuvia sync-knowledge`](cli/sync-knowledge.md)**   | Fetch, merge, and push the knowledge branch across clones.               |
-| **[`docuvia sync`](cli/sync.md)**                       | Sync L3 decisions to the remote server.                                  |
+| **[`docuvia publish`](cli/publish.md)**                 | Publish L3 decisions to the remote server.                               |
 | **[`docuvia review [baseRef]`](cli/review.md)**         | Detect structural changes and compute risk scores against a base branch. |
 | **[`docuvia query [search_query]`](cli/query.md)**      | Query the local knowledge graph via the terminal (FTS Keyword Search).   |
 | **[`docuvia impact <target>`](cli/impact.md)**          | Compute blast radius and risk level for a symbol.                        |

@@ -43,7 +43,7 @@ export async function hydrateCommand(cwd: string = process.cwd()) {
         : String(error);
     spinner.fail(UI_MESSAGES.HYDRATE_FAIL + message);
     // process.exitCode (not process.exit()) — process.exit() terminates before the `finally`
-    // below runs, silently skipping the memory-scope cleanup. See sync.ts's comment for the
+    // below runs, silently skipping the memory-scope cleanup. See publish.ts's comment for the
     // matching reason this pattern is required everywhere in this file's family of commands.
     process.exitCode = 1;
   } finally {

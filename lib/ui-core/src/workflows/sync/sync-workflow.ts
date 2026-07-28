@@ -122,7 +122,7 @@ export class SyncWorkflow {
         Array.from(changedFilesSet),
       );
 
-      // The load→mutate→save cycle below races against any other `docuvia sync` process
+      // The load→mutate→save cycle below races against any other `docuvia publish` process
       // touching the same workspace's sync-state.json — held for the push call too, since the
       // decision of what's "newly synced" is only valid under the lock that guards the save.
       const result = await withSyncStateLock(

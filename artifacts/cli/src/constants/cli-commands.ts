@@ -1,7 +1,7 @@
 import { CLI_FLAGS } from "./cli-flags.js";
 
 /**
- * `init`/`mcp`/`clean`/`status`/`sync`/`analyze`/`review`/`impact`/`query`/`export-topology`/
+ * `init`/`mcp`/`clean`/`status`/`publish`/`analyze`/`review`/`impact`/`query`/`export-topology`/
  * `snapshot` are wired so far — the dispatch shape (`CLI_COMMANDS`/`CLI_COMMAND_DESCRIPTIONS`/
  * `getUsageText`/`COMMAND_HANDLERS` in `cli.ts`) is intentionally kept general so future
  * commands can be added as one more entry in a later pass, without restructuring dispatch.
@@ -11,7 +11,7 @@ export const CLI_COMMANDS = {
   MCP: "mcp",
   CLEAN: "clean",
   STATUS: "status",
-  SYNC: "sync",
+  PUBLISH: "publish",
   ANALYZE: "analyze",
   REVIEW: "review",
   IMPACT: "impact",
@@ -31,7 +31,8 @@ export const CLI_COMMAND_DESCRIPTIONS: Record<CliCommand, string> = {
   [CLI_COMMANDS.MCP]: "Start the local MCP stdio server",
   [CLI_COMMANDS.CLEAN]: "Wipe the local Docuvia SQLite database",
   [CLI_COMMANDS.STATUS]: "Show local knowledge graph row counts",
-  [CLI_COMMANDS.SYNC]: "Push locally-generated decisions to the remote backend",
+  [CLI_COMMANDS.PUBLISH]:
+    "Push locally-generated decisions to the remote backend",
   [CLI_COMMANDS.ANALYZE]:
     "Detect project type/tags and run full AST ingestion into the knowledge graph",
   [CLI_COMMANDS.REVIEW]: "Detect changed-file blast radius and risk level",
@@ -65,7 +66,7 @@ export const CLI_COMMAND_FLAGS: Record<CliCommand, string[]> = {
   [CLI_COMMANDS.MCP]: [],
   [CLI_COMMANDS.CLEAN]: [CLI_FLAGS.INTERACTIVE, CLI_FLAGS.INTERACTIVE_SHORT],
   [CLI_COMMANDS.STATUS]: [],
-  [CLI_COMMANDS.SYNC]: [
+  [CLI_COMMANDS.PUBLISH]: [
     CLI_FLAGS.COMMIT_SHA,
     CLI_FLAGS.INTERACTIVE,
     CLI_FLAGS.INTERACTIVE_SHORT,

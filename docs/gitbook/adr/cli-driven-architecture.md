@@ -76,11 +76,12 @@ This document adopts a **Top-Down** perspective. By starting from the CLI comman
 
 ## 4. External Integration
 
-### `docuvia sync`
+### `docuvia publish`
 
 - **What it does**: Initiates an HTTP request via the `FetchRemoteSyncClient`, enforcing a 30-second timeout and strictly wrapping failures in `DocuviaError`.
 - **Corresponding ADRs**:
   - [PLAT-003] Remote Sync Technology Provider (Establishes the template for outbound connections)
+  - [IFCE-005] Rename `sync` to `publish` (CLI verb only — the orchestration method, workflow class, and log file stay named `sync`)
 
 ### `docuvia mcp`
 

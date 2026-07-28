@@ -27,7 +27,7 @@ function printWhy(affectedNodes: ChangeDetectionResult["affectedNodes"]): void {
   if (entriesWithWhy.length === 0) return;
 
   ui.log("");
-  ui.header(UI_MESSAGES.REVIEW_WHY_HEADER);
+  ui.section(UI_MESSAGES.REVIEW_WHY_HEADER);
   for (const { file, entry } of entriesWithWhy) {
     ui.log(
       FORMAT_MARKERS.INDENT_TWO +

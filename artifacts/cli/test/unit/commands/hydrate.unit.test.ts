@@ -15,6 +15,8 @@ const spinnerWarn = vi.fn();
 
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
+    header: vi.fn(),
+    info: vi.fn(),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -45,7 +47,7 @@ describe("hydrateCommand", () => {
     vi.clearAllMocks();
   });
 
-  it("reports node/edge counts on success", async () => {
+  it("reports node/edge counts as separate info lines on success", async () => {
     mockHydrate.mockResolvedValue({
       hydrated: true,
       knowledgeSha: "abc1234",
@@ -57,11 +59,13 @@ describe("hydrateCommand", () => {
     await hydrateCommand();
 
     expect(mockHydrate).toHaveBeenCalled();
-    expect(spinnerSucceed).toHaveBeenCalledWith(
-      expect.stringContaining("3 nodes"),
+    expect(ui.header).toHaveBeenCalled();
+    expect(spinnerSucceed).toHaveBeenCalled();
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("Nodes loaded: 3"),
     );
-    expect(spinnerSucceed).toHaveBeenCalledWith(
-      expect.stringContaining("2 edges"),
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("Edges loaded: 2"),
     );
   });
 
@@ -76,8 +80,24 @@ describe("hydrateCommand", () => {
 
     await hydrateCommand();
 
-    expect(spinnerSucceed).toHaveBeenCalledWith(
-      expect.stringContaining("1 dangling edge"),
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("Dangling edges dropped: 1"),
+    );
+  });
+
+  it("does not print a dangling-edges line when none were dropped", async () => {
+    mockHydrate.mockResolvedValue({
+      hydrated: true,
+      knowledgeSha: "abc1234",
+      nodesLoaded: 3,
+      edgesLoaded: 2,
+      edgesDropped: 0,
+    });
+
+    await hydrateCommand();
+
+    expect(ui.info).not.toHaveBeenCalledWith(
+      expect.stringContaining("Dangling edges dropped"),
     );
   });
 

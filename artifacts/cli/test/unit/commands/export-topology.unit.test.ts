@@ -15,6 +15,8 @@ const spinnerFail = vi.fn();
 
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
+    header: vi.fn(),
+    info: vi.fn(),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -65,7 +67,14 @@ describe("exportTopologyCommand", () => {
     expect(fs.existsSync(htmlPath)).toBe(true);
     expect(JSON.parse(fs.readFileSync(jsonPath, "utf8"))).toEqual(sampleGraph);
     expect(fs.readFileSync(htmlPath, "utf8")).toContain("<!DOCTYPE html>");
+    expect(ui.header).toHaveBeenCalled();
     expect(spinnerSucceed).toHaveBeenCalled();
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("Nodes: 0, Links: 0, Groups: 0"),
+    );
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("HTML viewer"),
+    );
   });
 
   it("skips topology.html when jsonOnly is set", async () => {

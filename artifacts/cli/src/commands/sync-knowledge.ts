@@ -26,6 +26,7 @@ const STATUS_MESSAGES: Record<KnowledgeBranchSyncResult["status"], string> = {
 
 /** Thin caller of `docuviaApi.syncKnowledge()` — mirrors `hydrate.ts`'s Presentation-layer responsibilities. */
 export async function syncKnowledgeCommand(cwd: string = process.cwd()) {
+  ui.header(UI_MESSAGES.SYNC_KNOWLEDGE_HEADER);
   const spinner = ui.spinner(UI_MESSAGES.SYNC_KNOWLEDGE_START).start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();

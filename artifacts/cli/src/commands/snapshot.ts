@@ -14,6 +14,7 @@ import { UI_MESSAGES } from "../constants/ui-messages.js";
 
 /** Thin caller of `docuviaApi.snapshot()` — mirrors `status.ts`'s Presentation-layer responsibilities. */
 export async function snapshotCommand(cwd: string = process.cwd()) {
+  ui.header(UI_MESSAGES.SNAPSHOT_HEADER);
   const spinner = ui.spinner(UI_MESSAGES.SNAPSHOT_START).start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
@@ -26,8 +27,11 @@ export async function snapshotCommand(cwd: string = process.cwd()) {
 
   try {
     const result = await docuviaApi.snapshot(scopeId, logger);
-    spinner.succeed(
-      `${UI_MESSAGES.SNAPSHOT_SUCCESS}${result.nodesWritten}${UI_MESSAGES.SNAPSHOT_NODES_WRITTEN}${result.edgesWritten}${UI_MESSAGES.SNAPSHOT_EDGES_WRITTEN}${result.markdownFilesWritten}${UI_MESSAGES.SNAPSHOT_MARKDOWN_WRITTEN}`,
+    spinner.succeed(UI_MESSAGES.SNAPSHOT_SUCCESS);
+    ui.info(UI_MESSAGES.SNAPSHOT_NODES_WRITTEN_LINE(result.nodesWritten));
+    ui.info(UI_MESSAGES.SNAPSHOT_EDGES_WRITTEN_LINE(result.edgesWritten));
+    ui.info(
+      UI_MESSAGES.SNAPSHOT_MARKDOWN_WRITTEN_LINE(result.markdownFilesWritten),
     );
   } catch (error: unknown) {
     const message =

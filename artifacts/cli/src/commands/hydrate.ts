@@ -14,6 +14,7 @@ import { UI_MESSAGES } from "../constants/ui-messages.js";
 
 /** Thin caller of `docuviaApi.hydrate()` — mirrors `snapshot.ts`'s Presentation-layer responsibilities. */
 export async function hydrateCommand(cwd: string = process.cwd()) {
+  ui.header(UI_MESSAGES.HYDRATE_HEADER);
   const spinner = ui.spinner(UI_MESSAGES.HYDRATE_START).start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
@@ -30,12 +31,12 @@ export async function hydrateCommand(cwd: string = process.cwd()) {
       spinner.warn(UI_MESSAGES.HYDRATE_NOTHING);
       return;
     }
-    spinner.succeed(
-      `${UI_MESSAGES.HYDRATE_SUCCESS}${result.nodesLoaded}${UI_MESSAGES.HYDRATE_NODES_LOADED}${result.edgesLoaded}${UI_MESSAGES.HYDRATE_EDGES_LOADED}` +
-        (result.edgesDropped > 0
-          ? `${UI_MESSAGES.HYDRATE_EDGES_DROPPED_PREFIX}${result.edgesDropped}${UI_MESSAGES.HYDRATE_EDGES_DROPPED_SUFFIX}`
-          : ""),
-    );
+    spinner.succeed(UI_MESSAGES.HYDRATE_SUCCESS);
+    ui.info(UI_MESSAGES.HYDRATE_NODES_LOADED_LINE(result.nodesLoaded));
+    ui.info(UI_MESSAGES.HYDRATE_EDGES_LOADED_LINE(result.edgesLoaded));
+    if (result.edgesDropped > 0) {
+      ui.info(UI_MESSAGES.HYDRATE_EDGES_DROPPED_LINE(result.edgesDropped));
+    }
   } catch (error: unknown) {
     const message =
       error instanceof DocuviaError || error instanceof Error

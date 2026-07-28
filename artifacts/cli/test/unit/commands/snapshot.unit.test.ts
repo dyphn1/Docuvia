@@ -14,6 +14,8 @@ const spinnerFail = vi.fn();
 
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
+    header: vi.fn(),
+    info: vi.fn(),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -42,7 +44,7 @@ describe("snapshotCommand", () => {
     vi.clearAllMocks();
   });
 
-  it("reports node/edge/markdown counts on success", async () => {
+  it("reports node/edge/markdown counts as separate info lines on success", async () => {
     mockSnapshot.mockResolvedValue({
       nodesWritten: 3,
       edgesWritten: 2,
@@ -52,11 +54,16 @@ describe("snapshotCommand", () => {
     await snapshotCommand();
 
     expect(mockSnapshot).toHaveBeenCalled();
-    expect(spinnerSucceed).toHaveBeenCalledWith(
-      expect.stringContaining("3 nodes"),
+    expect(ui.header).toHaveBeenCalled();
+    expect(spinnerSucceed).toHaveBeenCalled();
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("Nodes written: 3"),
     );
-    expect(spinnerSucceed).toHaveBeenCalledWith(
-      expect.stringContaining("2 edges"),
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("Edges written: 2"),
+    );
+    expect(ui.info).toHaveBeenCalledWith(
+      expect.stringContaining("Markdown files written: 3"),
     );
   });
 

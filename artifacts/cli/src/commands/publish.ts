@@ -100,6 +100,8 @@ export async function publishCommand(
   cwd: string = process.cwd(),
   isInteractive: boolean = false,
 ) {
+  ui.header(UI_MESSAGES.PUBLISH_HEADER);
+
   const projectId = await resolveProjectId(options.projectId, isInteractive);
 
   if (!hasRequiredPublishEnv()) {

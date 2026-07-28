@@ -30,36 +30,21 @@ export interface ExportTopologyOptions {
   collapse?: TopologyCollapseMode;
 }
 
-function formatExportSuccessMessage(
-  graph: TopologyGraph,
-  jsonPath: string,
-  htmlPath?: string,
-): string {
-  let message =
-    UI_MESSAGES.EXPORT_SUCCESS +
-    jsonPath +
-    UI_MESSAGES.EXPORT_STATS_PREFIX +
-    graph.stats.nodeCount +
-    UI_MESSAGES.EXPORT_STATS_NODES +
-    graph.stats.linkCount +
-    UI_MESSAGES.EXPORT_STATS_LINKS +
-    graph.stats.groupCount +
-    UI_MESSAGES.EXPORT_STATS_GROUPS +
-    (graph.collapsed ? UI_MESSAGES.EXPORT_STATS_COLLAPSED : "") +
-    UI_MESSAGES.EXPORT_STATS_SUFFIX;
-
+/** Prints the export's stats/paths as separate lines instead of one run-on sentence -- mirrors
+ *  hydrate/snapshot's spinner-succeeds-with-a-short-message-then-details-below convention. */
+function printExportDetails(graph: TopologyGraph, htmlPath?: string): void {
+  ui.info(
+    UI_MESSAGES.EXPORT_STATS_LINE(
+      graph.stats.nodeCount,
+      graph.stats.linkCount,
+      graph.stats.groupCount,
+    ),
+  );
+  if (graph.collapsed) ui.info(UI_MESSAGES.EXPORT_COLLAPSED_LINE);
   if (graph.stats.foldedLinkCount > 0) {
-    message +=
-      UI_MESSAGES.EXPORT_STATS_FOLDED_PREFIX +
-      graph.stats.foldedLinkCount +
-      UI_MESSAGES.EXPORT_STATS_FOLDED_SUFFIX;
+    ui.info(UI_MESSAGES.EXPORT_FOLDED_LINE(graph.stats.foldedLinkCount));
   }
-
-  if (htmlPath) {
-    message += UI_MESSAGES.EXPORT_HTML_SEPARATOR + htmlPath;
-  }
-
-  return message;
+  if (htmlPath) ui.info(UI_MESSAGES.EXPORT_HTML_PATH_LINE(htmlPath));
 }
 
 /** Thin caller of docuviaApi.exportTopology() - mirrors init.ts's Presentation-layer responsibilities. */
@@ -67,6 +52,7 @@ export async function exportTopologyCommand(
   options: ExportTopologyOptions = {},
   cwd: string = process.cwd(),
 ): Promise<void> {
+  ui.header(UI_MESSAGES.EXPORT_HEADER);
   const spinner = ui.spinner(UI_MESSAGES.EXPORT_START).start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
@@ -94,7 +80,8 @@ export async function exportTopologyCommand(
       fs.writeFileSync(htmlPath, renderTopologyHtml(graph));
     }
 
-    spinner.succeed(formatExportSuccessMessage(graph, jsonPath, htmlPath));
+    spinner.succeed(UI_MESSAGES.EXPORT_SUCCESS + jsonPath);
+    printExportDetails(graph, htmlPath);
   } catch (error: unknown) {
     const message =
       error instanceof DocuviaError || error instanceof Error

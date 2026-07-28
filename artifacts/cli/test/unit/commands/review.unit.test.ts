@@ -14,6 +14,7 @@ const spinnerFail = vi.fn();
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
     header: vi.fn(),
+    section: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     log: vi.fn(),

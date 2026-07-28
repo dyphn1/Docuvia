@@ -163,13 +163,11 @@ function printFocusedResult(
   }
   for (const decision of result.decisions) {
     ui.info(
-      UI_MESSAGES.ANALYZE_DECISION_PREFIX +
-        decision.nodeType +
-        UI_MESSAGES.ANALYZE_DECISION_MID +
-        decision.title +
-        UI_MESSAGES.ANALYZE_DECISION_CONFIDENCE_PREFIX +
-        decision.confidence +
-        UI_MESSAGES.ANALYZE_DECISION_CONFIDENCE_SUFFIX,
+      UI_MESSAGES.ANALYZE_DECISION_LINE(
+        decision.nodeType,
+        decision.title,
+        decision.confidence,
+      ),
     );
     if (decision.content) {
       ui.log(UI_MESSAGES.ANALYZE_DECISION_CONTENT_PREFIX + decision.content);

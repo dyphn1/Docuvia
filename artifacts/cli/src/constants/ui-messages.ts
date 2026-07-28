@@ -71,6 +71,7 @@ export const UI_MESSAGES = {
   STATUS_METRIC_L3_DECISIONS: "L3 Decisions",
 
   // Publish Command (IFCE-005: renamed from `sync`)
+  PUBLISH_HEADER: "Publish to Docuvia",
   PUBLISH_MISSING_PROJECT_ID:
     "Project ID is required when not running interactively.",
   PUBLISH_NO_PROJECT_ID_PROVIDED: "No project ID provided.",
@@ -121,10 +122,13 @@ export const UI_MESSAGES = {
   ANALYZE_FOCUSED_NONE: "No decision-worthy content found.",
   ANALYZE_FOCUSED_PERSISTED: (persisted: number, deduped: number) =>
     `${persisted} persisted, ${deduped} deduplicated`,
-  ANALYZE_DECISION_PREFIX: "[",
-  ANALYZE_DECISION_MID: "] ",
-  ANALYZE_DECISION_CONFIDENCE_PREFIX: " (confidence: ",
-  ANALYZE_DECISION_CONFIDENCE_SUFFIX: ")",
+  /** One decision line, e.g. "Use exitCode not exit() (rule, confidence: 0.85)" -- matches the
+   *  "primary fact (parenthetical detail)" convention used by doctor/impact's table+prose output. */
+  ANALYZE_DECISION_LINE: (
+    nodeType: string,
+    title: string,
+    confidence: number,
+  ) => `${title} (${nodeType}, confidence: ${confidence})`,
   ANALYZE_DECISION_CONTENT_PREFIX: "    ",
 
   // --escalate-to-lsp (PLAT-007 Tier B; phase1-decision-integration.md §8)
@@ -290,39 +294,39 @@ export const UI_MESSAGES = {
     "Ignoring invalid --limit value (must be a positive integer): ",
 
   // Export Topology Command
+  EXPORT_HEADER: "Export Topology",
   EXPORT_START: "Exporting topology...",
   EXPORT_SUCCESS: "Exported topology to ",
   EXPORT_FAIL: "Export failed: ",
-  EXPORT_STATS_PREFIX: " (",
-  EXPORT_STATS_NODES: " nodes, ",
-  EXPORT_STATS_LINKS: " links, ",
-  EXPORT_STATS_GROUPS: " groups",
-  EXPORT_STATS_COLLAPSED: ", collapsed",
-  EXPORT_STATS_SUFFIX: ")",
-  EXPORT_STATS_FOLDED_PREFIX: " — ",
-  EXPORT_STATS_FOLDED_SUFFIX:
-    " more relationship(s) folded within files at this granularity; pass --collapse=symbol for the full symbol-level view",
-  EXPORT_HTML_SEPARATOR: " and ",
+  EXPORT_STATS_LINE: (nodes: number, links: number, groups: number) =>
+    `Nodes: ${nodes}, Links: ${links}, Groups: ${groups}`,
+  EXPORT_COLLAPSED_LINE: "Collapsed: yes (fewer nodes than the raw graph).",
+  EXPORT_FOLDED_LINE: (foldedLinkCount: number) =>
+    `Folded links: ${foldedLinkCount} more relationship(s) folded within files at this ` +
+    "granularity; pass --collapse=symbol for the full symbol-level view.",
+  EXPORT_HTML_PATH_LINE: (htmlPath: string) => `HTML viewer: ${htmlPath}`,
 
   // Snapshot Command
+  SNAPSHOT_HEADER: "Snapshot Knowledge Graph",
   SNAPSHOT_START: "Packing knowledge graph snapshot...",
-  SNAPSHOT_SUCCESS: "Snapshot packed onto the knowledge branch. ",
+  SNAPSHOT_SUCCESS: "Snapshot packed onto the knowledge branch.",
   SNAPSHOT_FAIL: "Snapshot failed: ",
-  SNAPSHOT_NODES_WRITTEN: " nodes, ",
-  SNAPSHOT_EDGES_WRITTEN: " edges, ",
-  SNAPSHOT_MARKDOWN_WRITTEN: " markdown files",
+  SNAPSHOT_NODES_WRITTEN_LINE: (n: number) => `Nodes written: ${n}`,
+  SNAPSHOT_EDGES_WRITTEN_LINE: (n: number) => `Edges written: ${n}`,
+  SNAPSHOT_MARKDOWN_WRITTEN_LINE: (n: number) => `Markdown files written: ${n}`,
 
   // Hydrate Command
+  HYDRATE_HEADER: "Hydrate Local Database",
   HYDRATE_START: "Hydrating local database from the knowledge branch...",
-  HYDRATE_SUCCESS: "Hydrated local database. ",
+  HYDRATE_SUCCESS: "Hydrated local database.",
   HYDRATE_NOTHING: 'Nothing to hydrate from yet — run "docuvia init" first.',
   HYDRATE_FAIL: "Hydrate failed: ",
-  HYDRATE_NODES_LOADED: " nodes, ",
-  HYDRATE_EDGES_LOADED: " edges",
-  HYDRATE_EDGES_DROPPED_PREFIX: ", ",
-  HYDRATE_EDGES_DROPPED_SUFFIX: " dangling edge(s) dropped",
+  HYDRATE_NODES_LOADED_LINE: (n: number) => `Nodes loaded: ${n}`,
+  HYDRATE_EDGES_LOADED_LINE: (n: number) => `Edges loaded: ${n}`,
+  HYDRATE_EDGES_DROPPED_LINE: (n: number) => `Dangling edges dropped: ${n}`,
 
   // Sync Knowledge Command
+  SYNC_KNOWLEDGE_HEADER: "Sync Knowledge Branch",
   SYNC_KNOWLEDGE_START: "Reconciling the knowledge branch with the remote...",
   SYNC_KNOWLEDGE_NO_REMOTE:
     "No remote reachable — nothing to reconcile (offline or no origin configured).",

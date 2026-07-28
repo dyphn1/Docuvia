@@ -3,6 +3,7 @@ import process from "process";
 import { docuviaMemory, MemoryKeys } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { syncKnowledgeCommand } from "../../../src/commands/sync-knowledge.js";
+import { ui } from "../../../src/ui/wizard.js";
 
 vi.mock("@workspace/ui-core", () => ({
   docuviaApi: { syncKnowledge: vi.fn() },
@@ -14,6 +15,7 @@ const spinnerWarn = vi.fn();
 
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
+    header: vi.fn(),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -62,6 +64,7 @@ describe("syncKnowledgeCommand", () => {
     await syncKnowledgeCommand();
 
     expect(mockSyncKnowledge).toHaveBeenCalled();
+    expect(ui.header).toHaveBeenCalled();
     expect(spinnerSucceed).toHaveBeenCalledWith(
       expect.stringContaining("Merged"),
     );

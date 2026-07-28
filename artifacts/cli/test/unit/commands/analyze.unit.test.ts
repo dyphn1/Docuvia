@@ -279,7 +279,7 @@ describe("analyzeCommand", () => {
       expect(setSpy).toHaveBeenCalledWith(scopeId, "llmModel", "big-model");
     });
 
-    it("prints [nodeType] title (confidence: N) plus content lines for each decision on success", async () => {
+    it("prints 'title (nodeType, confidence: N)' plus content lines for each decision on success", async () => {
       process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
         "http://localhost:8317";
       process.env.AI_DOCUVIA_MODEL = "big-model";
@@ -303,7 +303,7 @@ describe("analyzeCommand", () => {
         UI_MESSAGES.ANALYZE_FOCUSED_SUCCESS,
       );
       expect(ui.info).toHaveBeenCalledWith(
-        "[rule] Use exitCode not exit() (confidence: 0.85)",
+        "Use exitCode not exit() (rule, confidence: 0.85)",
       );
       expect(ui.log).toHaveBeenCalledWith(
         "    Avoids a Windows crash while fetch handles close.",

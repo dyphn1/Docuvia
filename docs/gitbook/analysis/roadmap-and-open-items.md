@@ -10,7 +10,7 @@
 > Items are ordered roughly by priority/dependency, not by date. When one of these gets decided,
 > move the decision into its governing ADR (or a new one) and delete the row here.
 
-## Phase 2 — Distribute (items 1-2 decided & shipped; item 3 not yet designed)
+## Phase 2 — Distribute (items 1-2 decided & shipped; item 3 decided, rename not yet implemented)
 
 L3 distribution (storage shape + merge strategy) is decided and shipped — see
 [Phase 2, Item 1 — L3 Distribution Strategy](phase2-l3-distribution.md) for the full contract
@@ -23,12 +23,9 @@ for the full contract (`SKSCHED-001`..`006`) and implementation record (2026-07-
 
 ### 3. `sync` vs `sync-knowledge` naming
 
-> **Needs human decision — skipped by automated roadmap sweep on 2026-07-28. Not implemented.**
-
-Flagged repeatedly as a source of confusion (two similarly-named commands, different scopes).
-Candidate for the project's command-convergence principle (the "user-sentence test") — worth its
-own small IFCE ADR now that Phase 2's shape (items 1–2) is settled, since the naming decision
-depended on what each command ended up doing and that's now known.
+> **Decided — 2026-07-28. Rename `sync` to `publish`; `sync-knowledge` stays as-is. See
+> [IFCE-005](../adr/interface/IFCE-005-rename-sync-to-publish.md). Rename itself not yet
+> implemented — tracked as a follow-up task.**
 
 ## Phase 3 — Consume (mostly working, minor follow-ups)
 

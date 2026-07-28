@@ -5,9 +5,10 @@ The Docuvia2 CLI (Command Line Interface) is a transactional shell (`docuvia-cli
 
 ## Decisions
 
-| ID                                                       | Decision                                           | Status     | Notes                                                                                                    |
-| -------------------------------------------------------- | -------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
-| [IFCE-001](IFCE-001-wizard-style-interactive-cli.md)     | Wizard-Style Interactive CLI                       | superseded | Carried forward legacy ADR-034; superseded by IFCE-004                                                   |
-| [IFCE-002](IFCE-002-strict-repo-scoped-boundaries.md)    | Strict Repo-Scoped Boundaries                      | accepted   | Cancels global writes, strictly confining state to the project                                           |
-| [IFCE-003](IFCE-003-persisted-structured-command-log.md) | Persisted Structured Command Log                   | accepted   | Carries forward legacy ADR-036                                                                           |
-| [IFCE-004](IFCE-004-explicit-interactive-opt-in.md)      | Explicit Interactive Opt-In (`--interactive`/`-i`) | accepted   | Prompts fire only when explicitly requested — closes the agent/pty hang risk IFCE-001 didn't fully close |
+| ID                                                       | Decision                                           | Status                            | Notes                                                                                                    |
+| -------------------------------------------------------- | -------------------------------------------------- | --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| [IFCE-001](IFCE-001-wizard-style-interactive-cli.md)     | Wizard-Style Interactive CLI                       | superseded                        | Carried forward legacy ADR-034; superseded by IFCE-004                                                   |
+| [IFCE-002](IFCE-002-strict-repo-scoped-boundaries.md)    | Strict Repo-Scoped Boundaries                      | accepted                          | Cancels global writes, strictly confining state to the project                                           |
+| [IFCE-003](IFCE-003-persisted-structured-command-log.md) | Persisted Structured Command Log                   | accepted                          | Carries forward legacy ADR-036                                                                           |
+| [IFCE-004](IFCE-004-explicit-interactive-opt-in.md)      | Explicit Interactive Opt-In (`--interactive`/`-i`) | accepted                          | Prompts fire only when explicitly requested — closes the agent/pty hang risk IFCE-001 didn't fully close |
+| [IFCE-005](IFCE-005-rename-sync-to-publish.md)           | Rename `sync` to `publish`                         | accepted — pending implementation | `sync-knowledge` stays as-is; rejected merging both under one flag/subcommand (`git checkout`-style)     |

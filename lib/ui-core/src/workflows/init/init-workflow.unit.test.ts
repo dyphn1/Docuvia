@@ -125,14 +125,14 @@ function makeMockStore(): IGraphStore {
       getOutgoingEdges: vi.fn(),
       getIncomingRelations: vi.fn(),
       getOutgoingRelations: vi.fn(),
-      getAllNodes: vi.fn(),
-      getAllLinks: vi.fn(),
+      getAllNodes: vi.fn().mockReturnValue([]),
+      getAllLinks: vi.fn().mockReturnValue([]),
       bulkLoadGraph: vi.fn(),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
     },
     l3: {
       getById: vi.fn(),
-      getAllExportable: vi.fn(),
+      getAllExportable: vi.fn().mockReturnValue([]),
       getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
@@ -190,7 +190,9 @@ describe("InitWorkflow.execute()", () => {
       removePrePushHook: vi.fn(),
       repairDuplicatePostCommitHook: vi.fn(),
       deleteKnowledgeBranch: vi.fn(),
-      packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
+      packSnapshotToKnowledgeBranch: vi.fn().mockImplementation(async () => {
+        callOrder.push("packSnapshotToKnowledgeBranch");
+      }),
       syncKnowledgeBranch: vi.fn().mockResolvedValue({ status: "no-remote" }),
       resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
       runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
@@ -241,6 +243,13 @@ describe("InitWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.VcsScanner, () => vcsScanner);
     docuviaFactory.register(TOKENS.AstProcessor, () => astProcessor);
     docuviaFactory.register(TOKENS.GraphPersister, () => graphPersister);
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
+      render: vi.fn().mockResolvedValue({
+        nodesWritten: 0,
+        edgesWritten: 0,
+        markdownFilesWritten: 0,
+      }),
+    }));
     docuviaFactory.register(
       TOKENS.TempFileManager,
       () => () => tempFileManager,
@@ -328,7 +337,7 @@ describe("InitWorkflow.execute()", () => {
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
-  it("wires branch -> hook -> discovery -> AST parse -> markSynced in order", async () => {
+  it("wires branch -> hook -> discovery -> AST parse -> markSynced -> knowledge-branch pack in order", async () => {
     const result = await new InitWorkflow(tmpDir, createMockLogger()).execute();
 
     expect(result.success).toBe(true);
@@ -338,7 +347,22 @@ describe("InitWorkflow.execute()", () => {
       "discoverFiles",
       "processFiles",
       "markSynced",
+      "packSnapshotToKnowledgeBranch",
     ]);
+  });
+
+  it("still reports success when packing the knowledge-graph snapshot fails (non-fatal)", async () => {
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger: createMockLogger(),
+    });
+    (knowledgeGit.packSnapshotToKnowledgeBranch as any).mockRejectedValueOnce(
+      new Error("git fast-import failed"),
+    );
+
+    const result = await new InitWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(result.success).toBe(true);
+    expect(store.close).toHaveBeenCalledTimes(1);
   });
 
   it("regression: calls hydrationService.markSynced() after persisting so the next read-path command's ensureHydrated() doesn't immediately overwrite the graph just built (see HydrationService.markSynced() docs)", async () => {
@@ -414,6 +438,13 @@ describe("InitWorkflow.execute()", () => {
     }));
     docuviaFactory.register(TOKENS.GraphPersister, () => ({
       persist: vi.fn().mockResolvedValue({ updatedCount: 0 }),
+    }));
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
+      render: vi.fn().mockResolvedValue({
+        nodesWritten: 0,
+        edgesWritten: 0,
+        markdownFilesWritten: 0,
+      }),
     }));
     docuviaFactory.register(TOKENS.TempFileManager, () => () => ({
       initialize: vi.fn().mockResolvedValue(undefined),

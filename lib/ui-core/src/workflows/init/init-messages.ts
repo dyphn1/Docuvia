@@ -7,6 +7,10 @@ export const INIT_MESSAGES = {
   PARSING_AST: "Parsing source files via AST...",
   INITIALIZING_TEMP_FILES: "Initializing temp file manager...",
   PERSISTING_GRAPH: "Persisting knowledge graph...",
+  SNAPSHOTTING_KNOWLEDGE_BRANCH:
+    "Packing initial knowledge graph onto the knowledge branch...",
+  SNAPSHOT_AFTER_INIT_FAILED:
+    "Failed to pack the knowledge graph onto the knowledge branch (non-fatal -- the local graph is intact; run `docuvia snapshot` manually or push to retry)",
   SUCCESS: "Project initialized successfully",
   PARTIAL_SUCCESS: (failed: number, requested: number) =>
     `Project initialized — ${failed} of ${requested} files failed to parse (see .docuvia/logs/init.log)`,
@@ -28,4 +32,5 @@ export const INIT_EVENTS = {
   SUMMARY: "init.summary",
   PARSE_FAILURE: "init.parse_failure",
   FILE_SKIPPED_OVERSIZED: "init.file_skipped_oversized",
+  SNAPSHOT_AFTER_INIT_FAILED: "init.snapshot_after_init_failed",
 } as const;

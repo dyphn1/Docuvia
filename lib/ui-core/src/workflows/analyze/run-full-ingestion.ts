@@ -9,6 +9,7 @@ import { GitConstants } from "@workspace/core";
 import { seedProjectRow } from "../init/seed-project-row.js";
 import { runDiscoveryPipeline } from "../init/run-discovery-pipeline.js";
 import { runParseAndPersist } from "../init/run-parse-and-persist.js";
+import { packCurrentGraphOntoKnowledgeBranch } from "../snapshot/pack-current-graph.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { AnalyzeResultKind, type AutoModeResult } from "./analyze-result.js";
@@ -49,6 +50,9 @@ export async function runFullIngestion(deps: {
   const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
     logger,
   });
+  const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+    logger,
+  });
 
   const project = await seedProjectRow(store.projects, git, workspaceRoot);
 
@@ -86,6 +90,28 @@ export async function runFullIngestion(deps: {
   if (headSha) {
     await store.withWriteLock(() => {
       store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
+    });
+  }
+
+  // Mirrors init-workflow.ts's step 4c: a full re-ingestion means the knowledge branch had
+  // nothing hydratable (dispatchEmptyGraph's tryHydrateThenDelta already came up empty), so its
+  // tip is exactly as empty as `init`'s own initial commit -- pack this graph onto it now rather
+  // than leaving it empty until the next manual `docuvia snapshot` or `git push`. Non-fatal: the
+  // local graph above is already intact and reportable as a successful analyze either way.
+  try {
+    await packCurrentGraphOntoKnowledgeBranch(
+      workspaceRoot,
+      store,
+      knowledgeGit,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.warn(ANALYZE_MESSAGES.SNAPSHOT_AFTER_FULL_INGESTION_FAILED, {
+      error: message,
+    });
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.FULL_SNAPSHOT_FAILED,
+      message,
     });
   }
 

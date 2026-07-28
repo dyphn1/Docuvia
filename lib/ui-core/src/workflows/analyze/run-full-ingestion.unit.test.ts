@@ -15,6 +15,7 @@ import {
   type IGraphPersister,
   type IGraphStore,
   type IHydrationService,
+  type IKnowledgeGitService,
   type IVcsScanner,
   type ProjectRow,
 } from "@workspace/contracts";
@@ -126,14 +127,14 @@ function makeMockStore(): IGraphStore {
       getOutgoingEdges: vi.fn(),
       getIncomingRelations: vi.fn(),
       getOutgoingRelations: vi.fn(),
-      getAllNodes: vi.fn(),
-      getAllLinks: vi.fn(),
+      getAllNodes: vi.fn().mockReturnValue([]),
+      getAllLinks: vi.fn().mockReturnValue([]),
       bulkLoadGraph: vi.fn(),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
     },
     l3: {
       getById: vi.fn(),
-      getAllExportable: vi.fn(),
+      getAllExportable: vi.fn().mockReturnValue([]),
       getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
@@ -219,6 +220,21 @@ describe("runFullIngestion()", () => {
       }),
       hydrate: vi.fn(),
     };
+    const knowledgeGit: IKnowledgeGitService = {
+      ensureKnowledgeBranch: vi.fn(),
+      installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
+      removePostCommitHook: vi.fn(),
+      removePrePushHook: vi.fn(),
+      repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
+      packSnapshotToKnowledgeBranch: vi.fn().mockImplementation(async () => {
+        callOrder.push("packSnapshotToKnowledgeBranch");
+      }),
+      syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+    };
 
     docuviaFactory.register(TOKENS.FileDiscovery, () => fileDiscovery);
     docuviaFactory.register(TOKENS.ConfigScanner, () => configScanner);
@@ -226,6 +242,14 @@ describe("runFullIngestion()", () => {
     docuviaFactory.register(TOKENS.AstProcessor, () => astProcessor);
     docuviaFactory.register(TOKENS.GraphPersister, () => graphPersister);
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
+      render: vi.fn().mockResolvedValue({
+        nodesWritten: 0,
+        edgesWritten: 0,
+        markdownFilesWritten: 0,
+      }),
+    }));
     docuviaFactory.lock();
   });
 
@@ -234,7 +258,7 @@ describe("runFullIngestion()", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("seeds a project row, runs discovery -> parse -> persist, then markSynced in that order", async () => {
+  it("seeds a project row, runs discovery -> parse -> persist -> markSynced -> knowledge-branch pack in that order", async () => {
     const git = makeMockGitProvider();
 
     await runFullIngestion({
@@ -244,8 +268,32 @@ describe("runFullIngestion()", () => {
       git,
     });
 
-    expect(callOrder).toEqual(["discoverFiles", "processFiles", "markSynced"]);
+    expect(callOrder).toEqual([
+      "discoverFiles",
+      "processFiles",
+      "markSynced",
+      "packSnapshotToKnowledgeBranch",
+    ]);
     expect(store.projects.getOrInsert).toHaveBeenCalled();
+  });
+
+  it("still returns a successful result when packing the knowledge-graph snapshot fails (non-fatal)", async () => {
+    const git = makeMockGitProvider();
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger: createMockLogger(),
+    });
+    (knowledgeGit.packSnapshotToKnowledgeBranch as any).mockRejectedValueOnce(
+      new Error("git fast-import failed"),
+    );
+
+    const result = await runFullIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+    });
+
+    expect(result).toMatchObject({ kind: "autoFullIngestion", filesParsed: 1 });
   });
 
   it("writes the last-ingested-source-sha meta key to headSha on success", async () => {
@@ -345,6 +393,26 @@ describe("runFullIngestion()", () => {
     docuviaFactory.register(TOKENS.AstProcessor, () => astProcessor);
     docuviaFactory.register(TOKENS.GraphPersister, () => graphPersister);
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
+      ensureKnowledgeBranch: vi.fn(),
+      installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
+      removePostCommitHook: vi.fn(),
+      removePrePushHook: vi.fn(),
+      repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
+      packSnapshotToKnowledgeBranch: vi.fn().mockResolvedValue(undefined),
+      syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+    }));
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
+      render: vi.fn().mockResolvedValue({
+        nodesWritten: 0,
+        edgesWritten: 0,
+        markdownFilesWritten: 0,
+      }),
+    }));
     docuviaFactory.lock();
 
     await runFullIngestion({

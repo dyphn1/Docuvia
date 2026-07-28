@@ -1,29 +1,18 @@
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import {
   docuviaFactory,
   TOKENS,
   DocuviaError,
   ErrorCodes,
-  UTF8_ENCODING,
   type ILogger,
   type IGraphStore,
 } from "@workspace/contracts";
-import {
-  GitConstants,
-  computeL2GitPathsByNodeId,
-  renderL3Card,
-} from "@workspace/core";
-import {
-  SNAPSHOT_EVENTS,
-  SNAPSHOT_MESSAGES,
-  SNAPSHOT_TEMP_DIR_PREFIX,
-} from "./snapshot-messages.js";
+import { GitConstants } from "@workspace/core";
+import { SNAPSHOT_EVENTS, SNAPSHOT_MESSAGES } from "./snapshot-messages.js";
 import { appendSnapshotLogLine } from "./snapshot-log-writer.js";
 import type { SnapshotResult } from "./snapshot-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { finalizePendingTierBBatch } from "./finalize-pending-tier-b-batch.js";
+import { packCurrentGraphOntoKnowledgeBranch } from "./pack-current-graph.js";
 
 /**
  * The `snapshot` workflow — bulk-reads the current knowledge graph from `IGraphStore` (the same
@@ -95,36 +84,6 @@ export class SnapshotWorkflow {
     return { shouldSkip, headSha };
   }
 
-  private async writeL3Cards(
-    tempDir: string,
-    store: IGraphStore,
-    l2Rows: any[],
-    linkRows: any[],
-  ): Promise<void> {
-    const l3Rows = store.l3.getAllExportable();
-    if (l3Rows.length === 0) return;
-
-    const l2GitPaths = computeL2GitPathsByNodeId(l2Rows, linkRows);
-    const l3Dir = path.join(
-      tempDir,
-      GitConstants.KNOWLEDGE_DIR_NAME,
-      GitConstants.L3_DIR_NAME,
-    );
-    await fs.mkdir(l3Dir, { recursive: true });
-    await Promise.all(
-      l3Rows.map(async (row) => {
-        if (!row.content_hash) return;
-        const l2Path = l2GitPaths.get(row.l2_node_id);
-        if (!l2Path) return;
-        await fs.writeFile(
-          path.join(l3Dir, `${row.content_hash}.md`),
-          renderL3Card(row, l2Path),
-          UTF8_ENCODING,
-        );
-      }),
-    );
-  }
-
   public async execute(): Promise<SnapshotResult> {
     const { workspaceRoot, logger } = this;
 
@@ -138,7 +97,6 @@ export class SnapshotWorkflow {
     const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
       logger,
     });
-    const snapshotRenderer = docuviaFactory.resolve(TOKENS.SnapshotRenderer);
 
     const store = await this.openReadOnlyStore(openStore);
 
@@ -164,42 +122,25 @@ export class SnapshotWorkflow {
         };
       }
 
-      const l2Rows = store.graph.getAllNodes();
-      const linkRows = store.graph.getAllLinks();
-
-      const tempDir = await fs.mkdtemp(
-        path.join(os.tmpdir(), SNAPSHOT_TEMP_DIR_PREFIX),
+      const renderResult = await packCurrentGraphOntoKnowledgeBranch(
+        workspaceRoot,
+        store,
+        knowledgeGit,
       );
-      try {
-        const renderResult = await snapshotRenderer.render({
-          outDir: tempDir,
-          l2Rows,
-          linkRows,
-        });
 
-        await this.writeL3Cards(tempDir, store, l2Rows, linkRows);
+      // §8g/§8f: this successful pack IS "a successful snapshot" -- finalize any Tier B batch
+      // an `analyze --escalate-to-lsp` run staged (queue drain + commit-cap seed). Cheap no-op
+      // when nothing is pending (the common case).
+      await finalizePendingTierBBatch(workspaceRoot, logger);
 
-        await knowledgeGit.packSnapshotToKnowledgeBranch(
-          workspaceRoot,
-          tempDir,
-        );
+      await appendSnapshotLogLine(workspaceRoot, {
+        event: SNAPSHOT_EVENTS.SUMMARY,
+        nodesWritten: renderResult.nodesWritten,
+        edgesWritten: renderResult.edgesWritten,
+        markdownFilesWritten: renderResult.markdownFilesWritten,
+      });
 
-        // §8g/§8f: this successful pack IS "a successful snapshot" -- finalize any Tier B batch
-        // an `analyze --escalate-to-lsp` run staged (queue drain + commit-cap seed). Cheap no-op
-        // when nothing is pending (the common case).
-        await finalizePendingTierBBatch(workspaceRoot, logger);
-
-        await appendSnapshotLogLine(workspaceRoot, {
-          event: SNAPSHOT_EVENTS.SUMMARY,
-          nodesWritten: renderResult.nodesWritten,
-          edgesWritten: renderResult.edgesWritten,
-          markdownFilesWritten: renderResult.markdownFilesWritten,
-        });
-
-        return renderResult;
-      } finally {
-        await fs.rm(tempDir, { recursive: true, force: true });
-      }
+      return renderResult;
     } finally {
       await store.close();
     }

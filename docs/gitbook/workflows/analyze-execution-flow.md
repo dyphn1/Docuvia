@@ -37,6 +37,8 @@ sequenceDiagram
         WF->>Full: runFullIngestion
         Note right of Full: seedProjectRow -> runDiscoveryPipeline -> runParseAndPersist -> markSynced (init's own Phase 2-4 helpers, reused verbatim)
         Full->>Store: meta.set lastIngestedSourceSha = HEAD
+        Full->>Full: packCurrentGraphOntoKnowledgeBranch, non-fatal
+        Note right of Full: A full re-ingestion means the knowledge branch had nothing hydratable, so its tip is as empty as init's own first commit -- pack it now instead of leaving it empty until the next push/manual snapshot (shares init's Phase 4c helper; see init-execution-flow.md).
         Full-->>WF: kind autoFullIngestion
         WF-->>API: result
     else non-empty graph, HEAD moved

@@ -15,6 +15,7 @@ import { runParseAndPersist } from "./run-parse-and-persist.js";
 import { initTempLifecycle } from "./init-temp-lifecycle.js";
 import { buildInitResult, type InitResult } from "./init-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
+import { packCurrentGraphOntoKnowledgeBranch } from "../snapshot/pack-current-graph.js";
 
 export { resolveDbPath };
 
@@ -33,6 +34,11 @@ const INIT_SHUTDOWN_SIGNALS = ["SIGTERM", "SIGINT"] as const;
  *   2. `seedProjectRow` (idempotency check + insert against `store.projects`)
  *   3. `runDiscoveryPipeline` (parallel config/vcs/file discovery + tag merge)
  *   4. `runParseAndPersist` (AST parse + persist to the knowledge graph)
+ *   4b. `packCurrentGraphOntoKnowledgeBranch` (non-fatal) -- the branch `ensureGitBranchAndHooks`
+ *       just created carries an empty tree (`KnowledgeGitService.ensureKnowledgeBranch`'s doc
+ *       comment); without this, it would stay empty until the next manual `docuvia snapshot` or
+ *       `git push`, so a fresh clone/CI checkout or `docuvia hydrate` elsewhere would see nothing
+ *       even though this workspace's `local.db` is fully populated.
  *   5. `initTempLifecycle` (temp-file manager construct + initialize)
  *   6. `buildInitResult` (success/partial-failure message selection)
  * bracketed by `init.start`/`init.summary` JSONL logging.
@@ -130,6 +136,27 @@ export class InitWorkflow {
         logger,
       });
       await hydrationService.markSynced(workspaceRoot, store);
+
+      // 4c. Pack this graph onto the knowledge branch now, rather than leaving its
+      // `ensureGitBranchAndHooks`-created initial commit empty until the next manual `docuvia
+      // snapshot` or `git push` (pre-push hook). Non-fatal: the local graph above is already
+      // intact and reportable as a successful init either way.
+      logger.info(INIT_MESSAGES.SNAPSHOTTING_KNOWLEDGE_BRANCH);
+      try {
+        await packCurrentGraphOntoKnowledgeBranch(
+          workspaceRoot,
+          store,
+          knowledgeGit,
+        );
+      } catch (err) {
+        logger.warn(INIT_MESSAGES.SNAPSHOT_AFTER_INIT_FAILED, {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        await appendInitLogLine(workspaceRoot, {
+          event: INIT_EVENTS.SNAPSHOT_AFTER_INIT_FAILED,
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
 
       // 5. Temp file manager for LSP/incremental updates (non-fatal on failure). Registers
       // exactly one SIGTERM/SIGINT pair for this invocation, removed in `finally` below — a

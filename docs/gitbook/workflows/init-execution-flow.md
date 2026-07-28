@@ -12,7 +12,7 @@ are numbered to match the sequence diagram below.
 
 ## Sequence Diagram, by Phase
 
-The full flow is one 13-step sequence across 15 collaborators — as a single diagram it renders
+The full flow is one 14-step sequence across many collaborators — as a single diagram it renders
 too wide to read. It's split below into six panels along `InitWorkflow`'s own phase boundaries
 (the numbered phases in its doc comment), each keeping only the participants active in that phase.
 Step numbers carry over unchanged, so they still line up with the mapping table and the conflicts
@@ -41,7 +41,7 @@ sequenceDiagram
     Note right of Lock: MATCH PLAT-006 coarse whole command single flight lock.
     Note right of Lock: Heartbeat 10s, stale after 30s, max wait 30 min.
     Lock-->>CLI: lock held, waiters block here
-    Note over CLI: Lock stays held across every phase below, until release in Phase 5 (step 13).
+    Note over CLI: Lock stays held across every phase below, until release in Phase 5 (step 14).
     Note over CLI: CONFLICT: this lock is CLI only, see mcp-execution-flow.md conflict.
 ```
 
@@ -92,7 +92,7 @@ sequenceDiagram
     Note right of Proj: MATCH PLAT-006 fix 2, atomic check and insert.
 ```
 
-### Phase 3 — Discovery, Parse, Persist & Hydration Mark (steps 8-10)
+### Phase 3 — Discovery, Parse, Persist, Hydration Mark & Knowledge-Branch Pack (steps 8-11)
 
 ```mermaid
 sequenceDiagram
@@ -101,6 +101,8 @@ sequenceDiagram
     participant Parse as AstProcessor + GraphPersister
     participant Store as GraphStore (local.db)
     participant Hydr as HydrationService
+    participant Renderer as SnapshotRenderer
+    participant KG as KnowledgeGitService
     participant Log as init.log (JSONL)
 
     WF->>Disc: Step 8 runDiscoveryPipeline
@@ -122,9 +124,17 @@ sequenceDiagram
     WF->>Hydr: Step 10 hydrationService markSynced
     Note right of Hydr: STALE ADR, STOR-002 says no hydration code exists.
     Note right of Hydr: hydration.service.ts and hydrate-workflow.ts are fully implemented.
+
+    WF->>Renderer: Step 11 packCurrentGraphOntoKnowledgeBranch, non fatal
+    Renderer-->>WF: render outDir, l2Rows, linkRows
+    WF->>KG: packSnapshotToKnowledgeBranch workspaceRoot, tempDir
+    Note right of KG: The branch Step 6 created carries an empty tree (STOR-001 point 5).
+    Note right of KG: Without this it would stay empty until the next push or manual snapshot.
+    Note right of KG: A failure here is logged (init.snapshot_after_init_failed) and swallowed --
+    Note right of KG: local.db above is already complete, so init still reports success.
 ```
 
-### Phase 4 — Temp Lifecycle, Summary & Return (step 11)
+### Phase 4 — Temp Lifecycle, Summary & Return (step 12)
 
 ```mermaid
 sequenceDiagram
@@ -134,13 +144,13 @@ sequenceDiagram
     participant API as docuviaApi.init()
     participant CLI as CLI (commands/init.ts)
 
-    WF->>Temp: Step 11 initTempLifecycle, non fatal
+    WF->>Temp: Step 12 initTempLifecycle, non fatal
     WF->>Log: init.summary with file counts
     WF-->>API: InitResult
     API-->>CLI: result, success or partial failure
 ```
 
-### Phase 5 — Agent Integrations & Lock Release (steps 12-13)
+### Phase 5 — Agent Integrations & Lock Release (steps 13-14)
 
 ```mermaid
 sequenceDiagram
@@ -151,7 +161,7 @@ sequenceDiagram
     participant Lock as Command Lock (.docuvia/init.lock)
 
     opt database init succeeded
-        CLI->>Wizard: Step 12 selectPlatforms
+        CLI->>Wizard: Step 13 selectPlatforms
         Note right of Wizard: MATCH IFCE-001 checkbox behavior for TTY.
         loop each selected platform
             CLI->>Plat: installHooks cwd
@@ -163,7 +173,7 @@ sequenceDiagram
         Note right of Plat: what ships -- the --global flag and ADR-035 write path are gone.
     end
 
-    CLI->>Lock: Step 13 lock.release
+    CLI->>Lock: Step 14 lock.release
     CLI-->>User: success, partial failure, or exit 1
 ```
 
@@ -180,9 +190,10 @@ sequenceDiagram
 | 8   | Parallel discovery (config/VCS/file scan)                          | — (no ADR governs this directly; implementation detail)                                                                                                           | —                               |
 | 9   | AST parse + persist                                                | [GRPH-003](../adr/graph/GRPH-003-unified-ast-microkernel.md)                                                                                                      | ✅ Match                        |
 | 10  | `hydrationService.markSynced()`                                    | [STOR-002](../adr/storage/STOR-002-sqlite-ephemeral-query-engine.md)                                                                                              | ✅ Match (RESOLVED, see below)  |
-| 11  | Temp-file manager init (non-fatal)                                 | `architecture/application-lifecycle-and-state.md`                                                                                                                 | ✅ Match                        |
-| 12  | Platform selection (checkbox / `--platform` / headless-all)        | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                             | ✅ Match (this part of the ADR) |
-| 12b | Repo-scoped hooks only; Claude Desktop MCP is print-and-copy-paste | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)                                                                                            | ✅ Match (RESOLVED, see below)  |
+| 11  | `packCurrentGraphOntoKnowledgeBranch()` (non-fatal)                | [STOR-001](../adr/storage/STOR-001-git-branch-source-of-truth.md) point 5 (branch-first-commit is otherwise empty)                                                | ✅ Match                        |
+| 12  | Temp-file manager init (non-fatal)                                 | `architecture/application-lifecycle-and-state.md`                                                                                                                 | ✅ Match                        |
+| 13  | Platform selection (checkbox / `--platform` / headless-all)        | [IFCE-001](../adr/interface/IFCE-001-wizard-style-interactive-cli.md)                                                                                             | ✅ Match (this part of the ADR) |
+| 13b | Repo-scoped hooks only; Claude Desktop MCP is print-and-copy-paste | [IFCE-002](../adr/interface/IFCE-002-strict-repo-scoped-boundaries.md)                                                                                            | ✅ Match (RESOLVED, see below)  |
 | —   | `init.start` / `init.summary` JSONL log                            | [IFCE-003](../adr/interface/IFCE-003-persisted-structured-command-log.md)                                                                                         | ✅ Match                        |
 | —   | Hidden `docuvia-knowledge` branch + post-commit hook               | [PLAT-004](../adr/platform/PLAT-004-zero-interruption-invisible-indexing.md)                                                                                      | ✅ Match                        |
 

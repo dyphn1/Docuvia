@@ -5,6 +5,12 @@ export const ANALYZE_MESSAGES = {
   AUTO_ANALYZING: "Checking knowledge graph freshness...",
   AUTO_FULL_INGESTION:
     "No existing knowledge graph found — running full ingestion...",
+  /** Mirrors `init`'s own step 4c -- a full re-ingestion (empty local graph, no hydratable
+   *  knowledge-branch snapshot) leaves the branch exactly as empty as `init`'s own initial commit
+   *  would, so it gets the same immediate pack rather than waiting for the next push/manual
+   *  `docuvia snapshot`. */
+  SNAPSHOT_AFTER_FULL_INGESTION_FAILED:
+    "Failed to pack the knowledge graph onto the knowledge branch (non-fatal -- the local graph is intact; run `docuvia snapshot` manually or push to retry)",
   AUTO_DELTA_INGESTION: "Re-parsing changed files since the last analysis...",
   AUTO_NOOP: "Knowledge graph already up to date with HEAD.",
   /** PLAT-007 Tier A's fast-path UX gap, found by the 2026-07-24 C# benchmark: the sha check is
@@ -66,6 +72,7 @@ export const ANALYZE_EVENTS = {
   /** Per-file lines from `runParseAndPersist` (shared with `init`) attributed to full ingestion. */
   FULL_PARSE_FAILURE: "analyze.full.parse_failure",
   FULL_FILE_SKIPPED_OVERSIZED: "analyze.full.file_skipped_oversized",
+  FULL_SNAPSHOT_FAILED: "analyze.full.snapshot_failed",
   /** `runDeltaIngestion`'s own start/summary lines (§6b). */
   DELTA_START: "analyze.delta.start",
   DELTA_SUMMARY: "analyze.delta.summary",

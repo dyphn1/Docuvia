@@ -64,9 +64,11 @@ export const UI_MESSAGES = {
   STATUS_SUCCESS: "Status retrieved.",
   STATUS_FAIL: "Failed to get status: ",
   STATUS_HEADER: "Docuvia Status",
-  STATUS_PROJECTS: "Projects: ",
-  STATUS_L2_NODES: "L2 Nodes: ",
-  STATUS_L3_DECISIONS: "L3 Decisions: ",
+  STATUS_COL_METRIC: "Metric",
+  STATUS_COL_VALUE: "Value",
+  STATUS_METRIC_PROJECTS: "Projects",
+  STATUS_METRIC_L2_NODES: "L2 Nodes",
+  STATUS_METRIC_L3_DECISIONS: "L3 Decisions",
 
   // Publish Command (IFCE-005: renamed from `sync`)
   PUBLISH_MISSING_PROJECT_ID:
@@ -186,6 +188,11 @@ export const UI_MESSAGES = {
   IMPACT_NO_DEPENDENTS: "No dependents found.",
   IMPACT_RISK_PREFIX: "Risk level: ",
   IMPACT_WHY_PREFIX: "Decision: ",
+  IMPACT_COL_NAME: "Name",
+  IMPACT_COL_TYPE: "Type",
+  /** Labels the "why" block for one blast-radius entry -- printed below the Name/Type table
+   *  (`ui.table`), since a table row can't hold prose-length L3 decision content. */
+  IMPACT_ENTRY_WHY_LABEL: (name: string) => `${name}:`,
 
   // Uninstall Command
   UNINSTALL_HEADER: "Uninstall Docuvia2 Integrations",
@@ -277,6 +284,8 @@ export const UI_MESSAGES = {
   QUERY_UNKNOWN_STATUS: "unknown",
   QUERY_INCOMING_HEADER: "Incoming (callers/dependents)",
   QUERY_OUTGOING_HEADER: "Outgoing (dependencies)",
+  QUERY_COL_NAME: "Name",
+  QUERY_COL_RELATION: "Relation",
   QUERY_INVALID_LIMIT:
     "Ignoring invalid --limit value (must be a positive integer): ",
 

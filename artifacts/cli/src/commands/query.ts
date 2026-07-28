@@ -149,16 +149,14 @@ function printHumanL3Entries(l3s: LocalQueryResult["l3"]): void {
 
 function printHumanEdgeList(edges: GraphEdgeRef[], header: string): void {
   if (edges.length === 0) return;
-  ui.header(header);
-  for (const edge of edges) {
-    ui.log(
-      FORMAT_MARKERS.INDENT_TWO +
-        edge.name +
-        FORMAT_MARKERS.OPEN_PAREN +
-        edge.linkType +
-        FORMAT_MARKERS.CLOSE_PAREN,
-    );
-  }
+  ui.section(header);
+  ui.table(
+    [
+      { header: UI_MESSAGES.QUERY_COL_NAME },
+      { header: UI_MESSAGES.QUERY_COL_RELATION },
+    ],
+    edges.map((edge) => [edge.name, edge.linkType]),
+  );
   ui.log(FORMAT_MARKERS.EMPTY);
 }
 

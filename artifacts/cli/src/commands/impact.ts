@@ -16,10 +16,14 @@ import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { OUTPUT_FORMAT_MARKERS as FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 
-function printEntryWhy(why: BlastRadiusEntry["why"]): void {
+/** Prints one blast-radius entry's L3 "why" data, labeled by name -- separated from the Name/Type
+ *  table above it (`ui.table`), since decision content is prose-length and doesn't fit a cell. */
+function printEntryWhy(entryName: string, why: BlastRadiusEntry["why"]): void {
   if (!why || why.length === 0) return;
-  const titleIndent = FORMAT_MARKERS.INDENT_TWO + FORMAT_MARKERS.INDENT_TWO;
+  const nameIndent = FORMAT_MARKERS.INDENT_TWO;
+  const titleIndent = nameIndent + FORMAT_MARKERS.INDENT_TWO;
   const contentIndent = titleIndent + FORMAT_MARKERS.INDENT_TWO;
+  ui.log(nameIndent + UI_MESSAGES.IMPACT_ENTRY_WHY_LABEL(entryName));
   for (const w of why) {
     ui.log(titleIndent + UI_MESSAGES.IMPACT_WHY_PREFIX + w.title);
     if (w.content) {
@@ -42,15 +46,16 @@ function printBlastRadius(
   if (blastRadius.length === 0) {
     ui.warn(UI_MESSAGES.IMPACT_NO_DEPENDENTS);
   } else {
+    ui.table(
+      [
+        { header: UI_MESSAGES.IMPACT_COL_NAME },
+        { header: UI_MESSAGES.IMPACT_COL_TYPE },
+      ],
+      blastRadius.map((entry) => [entry.name, entry.type]),
+    );
+    ui.log(FORMAT_MARKERS.EMPTY);
     for (const entry of blastRadius) {
-      ui.log(
-        FORMAT_MARKERS.INDENT_TWO +
-          entry.name +
-          FORMAT_MARKERS.OPEN_PAREN +
-          entry.type +
-          FORMAT_MARKERS.CLOSE_PAREN,
-      );
-      printEntryWhy(entry.why);
+      printEntryWhy(entry.name, entry.why);
     }
   }
 

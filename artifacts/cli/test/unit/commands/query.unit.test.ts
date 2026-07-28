@@ -18,6 +18,8 @@ const spinnerFail = vi.fn();
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
     header: vi.fn(),
+    section: vi.fn(),
+    table: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
@@ -123,6 +125,32 @@ describe("queryCommand", () => {
     expect(ui.info).toHaveBeenCalledWith(
       expect.stringContaining("authService"),
     );
+  });
+
+  it("renders incoming/outgoing edges as Name/Relation tables under a section label", async () => {
+    mockQuery.mockResolvedValue({
+      l2: { name: "authService" },
+      l3: [],
+      context: {
+        incoming: [{ name: "caller", linkType: "calls" }],
+        outgoing: [{ name: "callee", linkType: "implements" }],
+      },
+    });
+
+    await queryCommand("authService");
+
+    expect(ui.section).toHaveBeenCalledWith(
+      expect.stringContaining("Incoming"),
+    );
+    expect(ui.section).toHaveBeenCalledWith(
+      expect.stringContaining("Outgoing"),
+    );
+    expect(ui.table).toHaveBeenCalledWith(expect.anything(), [
+      ["caller", "calls"],
+    ]);
+    expect(ui.table).toHaveBeenCalledWith(expect.anything(), [
+      ["callee", "implements"],
+    ]);
   });
 
   it("prints the prompt XML block and skips the spinner when format is 'prompt'", async () => {

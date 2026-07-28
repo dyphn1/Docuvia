@@ -28,9 +28,17 @@ export async function statusCommand(cwd: string = process.cwd()) {
     const status = await docuviaApi.status(scopeId, logger);
     spinner.succeed(UI_MESSAGES.STATUS_SUCCESS);
     ui.header(UI_MESSAGES.STATUS_HEADER);
-    ui.info(`${UI_MESSAGES.STATUS_PROJECTS}${status.projects}`);
-    ui.info(`${UI_MESSAGES.STATUS_L2_NODES}${status.l2Nodes}`);
-    ui.info(`${UI_MESSAGES.STATUS_L3_DECISIONS}${status.l3Nodes}`);
+    ui.table(
+      [
+        { header: UI_MESSAGES.STATUS_COL_METRIC },
+        { header: UI_MESSAGES.STATUS_COL_VALUE },
+      ],
+      [
+        [UI_MESSAGES.STATUS_METRIC_PROJECTS, String(status.projects)],
+        [UI_MESSAGES.STATUS_METRIC_L2_NODES, String(status.l2Nodes)],
+        [UI_MESSAGES.STATUS_METRIC_L3_DECISIONS, String(status.l3Nodes)],
+      ],
+    );
   } catch (error: unknown) {
     const message =
       error instanceof DocuviaError || error instanceof Error

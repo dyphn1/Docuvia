@@ -15,6 +15,7 @@ const spinnerWarn = vi.fn();
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
     header: vi.fn(),
+    table: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     log: vi.fn(),
@@ -54,7 +55,7 @@ describe("impactCommand", () => {
     expect(process.exitCode).toBe(1);
   });
 
-  it("prints the blast radius and risk level on success", async () => {
+  it("prints the blast radius as a Name/Type table and the risk level on success", async () => {
     mockImpact.mockResolvedValue({
       blastRadius: [{ name: "caller", type: "module" }],
       riskLevel: "MEDIUM",
@@ -64,9 +65,11 @@ describe("impactCommand", () => {
 
     expect(mockImpact).toHaveBeenCalled();
     expect(spinnerSucceed).toHaveBeenCalled();
-    // Closes docs/cli-test-analysis/impact.md #1 — the blast-radius print loop was previously
-    // unasserted, so a broken console.log() there would have gone unnoticed.
-    expect(ui.log).toHaveBeenCalledWith(expect.stringContaining("caller"));
+    // Closes docs/cli-test-analysis/impact.md #1 — the blast-radius rendering was previously
+    // unasserted, so a broken table call here would have gone unnoticed.
+    expect(ui.table).toHaveBeenCalledWith(expect.anything(), [
+      ["caller", "module"],
+    ]);
   });
 
   it("prints L3 'why' data for a blast-radius entry that carries it", async () => {

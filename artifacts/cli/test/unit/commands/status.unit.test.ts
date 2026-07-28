@@ -21,6 +21,7 @@ vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
     header: vi.fn(),
     info: vi.fn(),
+    table: vi.fn(),
     spinner: vi.fn(() => ({
       text: "",
       start: vi.fn().mockReturnThis(),
@@ -50,16 +51,21 @@ describe("statusCommand", () => {
     vi.clearAllMocks();
   });
 
-  it("prints project/l2/l3 counts on success", async () => {
+  it("prints project/l2/l3 counts as a Metric/Value table on success", async () => {
     mockStatus.mockResolvedValue({ projects: 1, l2Nodes: 5, l3Nodes: 12 });
 
     await statusCommand();
 
     expect(spinnerSucceed).toHaveBeenCalled();
     expect(ui.header).toHaveBeenCalled();
-    expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("1"));
-    expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("5"));
-    expect(ui.info).toHaveBeenCalledWith(expect.stringContaining("12"));
+    expect(ui.table).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([
+        ["Projects", "1"],
+        ["L2 Nodes", "5"],
+        ["L3 Decisions", "12"],
+      ]),
+    );
   });
 
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.status() throws", async () => {

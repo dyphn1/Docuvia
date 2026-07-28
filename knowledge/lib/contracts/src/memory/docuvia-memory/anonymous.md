@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/memory/docuvia-memory.ts#anonymous@L69
+id: lib/contracts/src/memory/docuvia-memory.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/contracts/src/memory/docuvia-memory.ts

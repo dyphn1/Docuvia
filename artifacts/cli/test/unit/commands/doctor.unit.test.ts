@@ -4,6 +4,7 @@ import { ui } from "../../../src/ui/wizard.js";
 import { doctorCommand } from "../../../src/commands/doctor.js";
 import { docuviaApi } from "@workspace/ui-core";
 import * as fs from "fs/promises";
+import { UI_MESSAGES } from "../../../src/constants/ui-messages.js";
 
 vi.mock("fs/promises", async (importOriginal) => {
   const actual = await importOriginal<typeof import("fs/promises")>();
@@ -16,10 +17,13 @@ vi.mock("fs/promises", async (importOriginal) => {
 vi.mock("../../../src/ui/wizard.js", () => ({
   ui: {
     header: vi.fn(),
+    section: vi.fn(),
+    table: vi.fn(),
     info: vi.fn(),
     success: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
+    log: vi.fn(),
   },
 }));
 
@@ -72,11 +76,22 @@ describe("doctorCommand", () => {
     await doctorCommand(process.cwd());
 
     expect(docuviaApi.doctor).toHaveBeenCalled();
-    expect(ui.success).toHaveBeenCalledWith("[sqlite_integrity] DB pass");
-    expect(ui.success).toHaveBeenCalledWith("[git_reachability] Git pass");
-    expect(ui.success).toHaveBeenCalledWith("[logs] Logs pass");
+    // One section + table per category the diagnostics fall into.
+    expect(ui.section).toHaveBeenCalledWith(
+      UI_MESSAGES.DOCTOR_CATEGORY_DATABASE,
+    );
+    expect(ui.section).toHaveBeenCalledWith(UI_MESSAGES.DOCTOR_CATEGORY_GIT);
+    expect(ui.section).toHaveBeenCalledWith(UI_MESSAGES.DOCTOR_CATEGORY_LOGS);
+    expect(ui.table).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([["sqlite_integrity", "✓ PASS", "DB pass", ""]]),
+    );
+    expect(ui.table).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([["git_reachability", "✓ PASS", "Git pass", ""]]),
+    );
     expect(ui.success).toHaveBeenCalledWith(
-      expect.stringContaining("All diagnostics passed."),
+      expect.stringContaining("3/3 checks passed"),
     );
     expect(process.exitCode).toBeUndefined();
   });
@@ -97,11 +112,16 @@ describe("doctorCommand", () => {
 
     await doctorCommand(process.cwd());
 
-    expect(ui.error).toHaveBeenCalledWith("[git_reachability] Git timeout");
-    expect(ui.info).toHaveBeenCalledWith("    💡 Fix: Check DNS");
-    expect(ui.error).toHaveBeenCalledWith(
-      expect.stringContaining("Some diagnostics failed."),
+    expect(ui.table).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([
+        ["git_reachability", "✗ FAIL", "Git timeout", "Check DNS"],
+      ]),
     );
+    expect(ui.error).toHaveBeenCalledWith(
+      expect.stringContaining("2/3 checks passed"),
+    );
+    expect(ui.info).toHaveBeenCalledWith(UI_MESSAGES.DOCTOR_FIX_HINT);
     expect(process.exitCode).toBe(1);
   });
 
@@ -141,7 +161,7 @@ describe("doctorCommand", () => {
     // mocked away here at the docuviaApi.doctor() boundary.
     expect(fs.stat).not.toHaveBeenCalled();
     expect(ui.success).toHaveBeenCalledWith(
-      expect.stringContaining("All diagnostics passed."),
+      expect.stringContaining("0/0 checks passed"),
     );
   });
 

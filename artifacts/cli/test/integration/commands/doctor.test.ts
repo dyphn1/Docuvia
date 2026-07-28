@@ -26,10 +26,13 @@ describe("Command: docuvia doctor", () => {
     const result = await sandbox.runCli(["doctor"], { reject: false });
 
     // Might fail depending on git remote availability in sandbox, but should not crash
-    expect(result.stdout || result.stderr).toContain("Running diagnostics...");
-    expect(result.stdout || result.stderr).toContain(
-      "[sqlite_integrity] Database integrity check passed",
-    );
+    const output = result.stdout || result.stderr;
+    expect(output).toContain("Running diagnostics...");
+    // Sectioned-table report (IFCE CLI output-style pass): a "Database" section header, and a
+    // table row carrying the sqlite_integrity check's id + message.
+    expect(output).toContain("Database");
+    expect(output).toContain("sqlite_integrity");
+    expect(output).toContain("Database integrity check passed");
     // Since there's no remote in sandbox, Git might fail, which is expected behavior
     // But it should not hang
   }, 25000);

@@ -2,16 +2,27 @@ import process from "process";
 import crypto from "node:crypto";
 import { ui } from "../ui/wizard.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import { BOX_CHARS } from "../constants/box-drawing.js";
 import {
   docuviaMemory,
   DocuviaError,
-  DiagnosticStatus,
   type DiagnosticResult,
   MemoryKeys,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import "../registration.js";
+import {
+  DOCTOR_CATEGORY_ORDER,
+  DOCTOR_TABLE_COLUMNS,
+  buildDiagnosticRow,
+  groupDiagnosticsByCategory,
+  summarizeDiagnostics,
+} from "./doctor-report.js";
+
+/** Width of the plain horizontal rule that separates the per-category tables from the final
+ *  pass/fail summary line -- a visual break, not a table border, so it isn't sized by content. */
+const SUMMARY_RULE_WIDTH = 60;
 
 export interface DoctorOptions {
   skipDb?: boolean;
@@ -37,25 +48,39 @@ function resolveDoctorLlmConfig(): {
   };
 }
 
-function printDiagnosticResult(key: string, res: DiagnosticResult): void {
-  if (res.status === DiagnosticStatus.PASS) {
-    ui.success(
-      UI_MESSAGES.DOCTOR_DIAGNOSTIC_PREFIX +
-        key +
-        UI_MESSAGES.DOCTOR_DIAGNOSTIC_SUFFIX +
-        res.message,
+/** Renders one `ui.section()` + `ui.table()` per non-empty diagnostic category, in
+ *  `DOCTOR_CATEGORY_ORDER`. */
+function printDiagnosticsReport(
+  diagnostics: Record<string, DiagnosticResult>,
+): void {
+  const groups = groupDiagnosticsByCategory(diagnostics);
+  for (const category of DOCTOR_CATEGORY_ORDER) {
+    const entries = groups.get(category);
+    if (!entries || entries.length === 0) continue;
+    ui.section(category);
+    ui.table(
+      DOCTOR_TABLE_COLUMNS,
+      entries.map(([key, result]) => buildDiagnosticRow(key, result)),
     );
+  }
+}
+
+/** Final pass/fail rollup printed after every category table -- per-row suggestions already live
+ *  in the "Suggested Fix" column, so this stays a one-line verdict plus the `--fix` hint. */
+function printDoctorSummary(
+  diagnostics: Record<string, DiagnosticResult>,
+  allPassed: boolean,
+): void {
+  const { passed, total } = summarizeDiagnostics(diagnostics);
+  ui.log("");
+  ui.log(BOX_CHARS.HORIZONTAL.repeat(SUMMARY_RULE_WIDTH));
+  const summaryLine = UI_MESSAGES.DOCTOR_SUMMARY_PASSED(passed, total);
+  if (allPassed) {
+    ui.success(summaryLine);
     return;
   }
-  ui.error(
-    UI_MESSAGES.DOCTOR_DIAGNOSTIC_PREFIX +
-      key +
-      UI_MESSAGES.DOCTOR_DIAGNOSTIC_SUFFIX +
-      res.message,
-  );
-  if (res.details) ui.warn(UI_MESSAGES.DOCTOR_DETAILS_PREFIX + res.details);
-  if (res.suggestion)
-    ui.info(UI_MESSAGES.DOCTOR_SUGGESTION_PREFIX + res.suggestion);
+  ui.error(summaryLine);
+  ui.info(UI_MESSAGES.DOCTOR_FIX_HINT);
 }
 
 async function runDoctorDiagnostics(
@@ -72,9 +97,8 @@ async function runDoctorDiagnostics(
       ...options,
       ...resolveDoctorLlmConfig(),
     });
-    for (const [key, res] of Object.entries(result.diagnostics)) {
-      printDiagnosticResult(key, res);
-    }
+    printDiagnosticsReport(result.diagnostics);
+    printDoctorSummary(result.diagnostics, result.allPassed);
     return result.allPassed;
   } catch (error: unknown) {
     const message =
@@ -113,12 +137,7 @@ export async function doctorCommand(
       { skipDb, skipGit, skipHooks, skipLogs, fix },
     );
 
-    if (allPassed) {
-      ui.success(UI_MESSAGES.DOCTOR_ALL_PASSED);
-    } else {
-      ui.error(UI_MESSAGES.DOCTOR_SOME_FAILED);
-      process.exitCode = 1;
-    }
+    if (!allPassed) process.exitCode = 1;
   } catch (e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     ui.error(UI_MESSAGES.DOCTOR_FAIL + errorMessage);

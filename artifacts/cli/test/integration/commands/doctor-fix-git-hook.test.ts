@@ -76,7 +76,10 @@ describe("Command: docuvia doctor --fix repairs a duplicate-block post-commit ho
     const beforeContent = readFileSync(hookPath, "utf8");
     const doctorBefore = await sandbox.runCli(["doctor"], { reject: false });
     const doctorBeforeOutput = doctorBefore.stdout + doctorBefore.stderr;
-    expect(doctorBeforeOutput).toContain("[git_hook]");
+    // Sectioned-table report (IFCE CLI output-style pass): a "Git Hooks" section header, and a
+    // table row carrying the git_hook check's id + message + suggested fix.
+    expect(doctorBeforeOutput).toContain("Git Hooks");
+    expect(doctorBeforeOutput).toContain("git_hook");
     expect(doctorBeforeOutput).toContain("Duplicate hook blocks detected");
     expect(doctorBeforeOutput).toContain("doctor --fix");
     expect(readFileSync(hookPath, "utf8")).toBe(beforeContent);
@@ -86,7 +89,7 @@ describe("Command: docuvia doctor --fix repairs a duplicate-block post-commit ho
     const doctorFix = await sandbox.runCli(["doctor", "--fix"], {
       reject: false,
     });
-    expect(doctorFix.stdout + doctorFix.stderr).toContain("[git_hook]");
+    expect(doctorFix.stdout + doctorFix.stderr).toContain("git_hook");
 
     const repairedContent = readFileSync(hookPath, "utf8");
     expect(repairedContent).not.toContain(

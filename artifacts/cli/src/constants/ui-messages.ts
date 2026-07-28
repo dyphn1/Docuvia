@@ -235,22 +235,32 @@ export const UI_MESSAGES = {
   // Doctor Command
   DOCTOR_HEADER: "Docuvia Doctor Diagnostics",
   DOCTOR_START: "Running diagnostics...",
-  DOCTOR_DB_NOT_FOUND: "Local database not found at ",
-  DOCTOR_DB_NO_RUNNER: "DiagnosticRunnerDb not registered",
-  DOCTOR_GIT_NO_RUNNER: "DiagnosticRunnerGit not registered",
-  DOCTOR_GIT_FAIL: "Git remote reachability check failed: ",
-  DOCTOR_ALL_PASSED: "\nAll diagnostics passed.",
-  DOCTOR_SOME_FAILED: "\nSome diagnostics failed.",
   DOCTOR_FAIL: "Doctor failed: ",
-  DOCTOR_DIAGNOSTIC_PREFIX: "[",
-  DOCTOR_DIAGNOSTIC_SUFFIX: "] ",
-  DOCTOR_DETAILS_PREFIX: "    ",
-  DOCTOR_SUGGESTION_PREFIX: "    💡 Fix: ",
+  DOCTOR_SUMMARY_PASSED: (passed: number, total: number) =>
+    `Summary: ${passed}/${total} checks passed.`,
+  DOCTOR_FIX_HINT:
+    "Tip: run `docuvia doctor --fix` to attempt automatic repair.",
 
-  // Doctor Log Analysis
-  DOCTOR_LOGS_HEADER: "Checking Log Files...",
-  DOCTOR_LOGS_ERRORS_FOUND: "Errors found in logs:",
-  DOCTOR_LOGS_NO_ERRORS: "No critical errors found in recent logs.",
+  // Doctor Report -- table column headers (`ui.table`, `doctor-report.ts`)
+  DOCTOR_COL_CHECK: "Check",
+  DOCTOR_COL_STATUS: "Status",
+  DOCTOR_COL_MESSAGE: "Message",
+  DOCTOR_COL_FIX: "Suggested Fix",
+
+  // Doctor Report -- Status column cell labels
+  DOCTOR_STATUS_PASS: "PASS",
+  DOCTOR_STATUS_FAIL: "FAIL",
+
+  // Doctor Report -- diagnostic category section headers (`ui.section`)
+  DOCTOR_CATEGORY_DATABASE: "Database",
+  DOCTOR_CATEGORY_GIT: "Git",
+  DOCTOR_CATEGORY_GIT_HOOKS: "Git Hooks",
+  DOCTOR_CATEGORY_LOGS: "Logs",
+  DOCTOR_CATEGORY_TIER_B: "Tier B Batch",
+  DOCTOR_CATEGORY_LLM: "LLM Integration",
+  DOCTOR_CATEGORY_LSP: "LSP Providers",
+  DOCTOR_CATEGORY_AGENT_HOOKS: "AI Agent Hooks",
+  DOCTOR_CATEGORY_OTHER: "Other",
 
   // Query Command
   QUERY_HEADER: "Query Knowledge Graph",

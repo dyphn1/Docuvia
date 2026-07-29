@@ -14,6 +14,8 @@
 > - The "Remote Sync & Git Integration" category remains **not tested** for any of the four tools, on either project — no usable credentials configured in this environment — those rows stay N/A.
 > - **§4 (vscode observations) was cut short by the session owner (end of day) and is abbreviated** — all table data in §1 is real/verified, but the deeper root-causing that §3 has for nest (file:line citations, reproduction detail) was not completed for several vscode findings. See §4's queued follow-up list.
 
+- **§5 (added 2026-07-30) root-causes a fifth, more fundamental Tier B gap found while dogfooding Docuvia2 on itself**, beyond the four bugs already covered by §3.3/§3.7/§4's environment gate: even with every known Tier B execution bug fixed, edge resolution is strictly commit/delta-scoped, so a symbol's `query` context stays empty until one of its _caller_ files is actually reprocessed by a Tier B batch — there is no user-facing way to force a full resweep of an existing graph. Live-reproduced side-by-side on the same repo in the same session (§5.2).
+
 ---
 
 ## 🔍 Target Projects
@@ -185,3 +187,74 @@ Re-ran the Docuvia2 rows against the same `nest` clone (`dfaa3761`) to validate 
 - **CRG succeeded on vscode**, in contrast to failing on the smaller `nest` repo in §3.6 — **Exit 0**, **231,462 nodes / 1,593,664 edges, 3,786 communities**, full postprocess (signatures + FTS 202,126 rows + flows + Leiden communities) in ~440s (~7.33min), well inside the 30-minute cap. Why it succeeded here after 5 straight failures on a smaller repo was not investigated this pass — worth a follow-up rather than assuming it's simply fixed.
 - **Symbol ambiguity is a recurring theme on a codebase this large**: for the chosen symbol `Disposable` (1,978 files reference the name), Docuvia2's `query`/`impact` resolved to an ambiguous/wrong node (a test file, not the real class) without surfacing the ambiguity to the caller; CRG's `query`/`impact` never surfaced the real class in its candidate list at all in either code path tried; only GitNexus explicitly surfaced ambiguity (9 candidates) and let it be resolved correctly. This is a genuine cross-tool UX/correctness gap worth a dedicated follow-up pass, not a vscode-specific artifact.
 - **Follow-up work queued by this abbreviated pass**: (1) root-cause the Tier A git-knowledge-branch pack-step crash with file:line citations; (2) root-cause the Tier B root-marker gate's exact failure path on polyglot monorepos; (3) re-verify what the nest pass actually observed for `graphify tree`, since no such code path was found this pass; (4) investigate why CRG succeeded on vscode after failing 5/5 on nest; (5) a dedicated symbol-disambiguation comparison across all tools, given how consistently `Disposable` triggered wrong/ambiguous resolutions.
+
+---
+
+## 5. Dogfooding follow-up (2026-07-29/30, later session): root-causing the "usable but thin" query finding
+
+A separate same-day session (`b8a575bf`, evening of 2026-07-29) used Docuvia2's own CLI (`query`/`status`) to navigate **Docuvia2's own repo** while fixing two Tier B bugs found via an isolated nest worktree. That session's own summary called the query experience "usable but thin" (Traditional Chinese original: 「結果堪用但偏薄」) — an `<l2_module>` result with no `<incoming>`/`<outgoing>` edges. This section root-causes that finding precisely and re-tests it live against current `main`.
+
+### 5.1 It is not a `query` formatting bug
+
+`getContext()` ([`query.service.ts:80-94`](../../lib/core/src/query/query.service.ts)) and the CLI's `<incoming>`/`<outgoing>` XML rendering ([`query.ts:68-108`](../../artifacts/cli/src/commands/query.ts)) are both already fully wired — confirmed by direct code read. "Thin" output means the underlying edge rows are genuinely absent for that node, not that `query` is failing to display edges that exist.
+
+### 5.2 Root cause A (fixed): five Tier B execution bugs found and fixed across 2026-07-29
+
+The `b8a575bf` session itself found and fixed two of these; three more were found and fixed later the same evening. Any one of the five would independently produce a populated node count with sparse/wrong edges:
+
+1. Tier B runtime degradation never flipped `process.exitCode` — fixed same session (`c507a270`).
+2. JSONL logs never wrote a `level` field, so `doctor`'s log-scan safety net could never fire — fixed same session (part of `c507a270`'s changes).
+3. Windows `npx` preflight probed with no shell wrapper, false-negatively hard-failing the whole Tier B gate on any project relying on the npx fallback — fixed (`18640d71`).
+4. `runWithTimeout()` raced the _whole batch_ against a timer and discarded all completed progress (edges, `filesProcessed`) on timeout, even at 999/1000 files done — fixed via a cooperative per-file deadline (`edc60238`).
+5. `node_key` for LSP-derived edges had no disambiguation at all (`file#symbolName` collided for any two same-named symbols in one file — overloads, same-named methods on different classes) — fixed by sharing Tier A's `buildUniqueNodeKey` disambiguation logic and pre-assigning keys by line position so Tier B's ordering converges onto Tier A's (`2e4176d1`, `c04f0770`). A fuller, order-independent fix (structurally-qualified keys, e.g. `file#ClassName.methodName`) is proposed but **not implemented** — [`GRPH-006-qualified-symbol-table-node-key.md`](../gitbook/adr/graph/GRPH-006-qualified-symbol-table-node-key.md) (`5cb889e4`).
+
+**Live re-verification (2026-07-30, this session):** rebuilt from current `main` (`pnpm run build`), ran `docuvia analyze --escalate-to-lsp` against Docuvia2's own repo — `doctor` reported 11/11 checks passing first. Result: **151 files processed, 451 corrected edges applied, exit 0**, no degradation. `query "buildUniqueNodeKey" --format=prompt` — a symbol touched by today's fix commits, so its callers were part of this batch — now returns **5 real `<incoming>` edges** (`persist-ast-graph.ts`, `GraphPersisterService`, `lsp-edge-provider-base.ts`, `BaseLspEdgeProvider`, `node-key.unit.test.ts`). Confirms the five fixes above are real and effective for symbols whose callers get reprocessed.
+
+### 5.3 Root cause B (not fixed, more fundamental than any single bug): Tier B is strictly commit/delta-scoped, with no full-resync path
+
+Querying two other real, heavily-called symbols in the same repo, same session, **immediately after** the clean 451-edge Tier B batch above:
+
+```
+$ docuvia query "QueryService" --format=prompt
+<docuvia_context>
+  <l2_module name="QueryService" type="module" file="lib/core/src/query/query.service.ts">
+  </l2_module>
+</docuvia_context>
+
+$ docuvia query "findNodeByName" --format=prompt
+<docuvia_context>
+  <l2_module name="findNodeByName" type="module" file="lib/schema/src/sqlite/repos/graph-repo.ts">
+  </l2_module>
+</docuvia_context>
+```
+
+Both come back with **zero edges**, despite `findNodeByName` having real, greppable callers (`query.service.ts:81,143`, `impact.service.ts:48`, `persist-ast-graph.ts:361`) and `QueryService` being instantiated/used across the CLI. This is the exact "thin" symptom from the `b8a575bf` session — reproduced live, _after_ every bug in §5.2 was fixed.
+
+**Root cause, confirmed by direct inspection:** `git log -1 -- lib/core/src/query/query.service.ts lib/schema/src/sqlite/repos/graph-repo.ts` shows both files last changed **2026-07-24** (`e1a07c3b`) — six days before this batch, and before every fix in §5.2 existed. Tier B only (re)computes a symbol's incoming "calls" edges when one of its _caller_ files is itself part of a processed Tier B batch (`tierBQueue`, populated by full-ingestion-time queueing or per-commit `CONTRACT_CHANGED` delta detection — [`run-delta-ingestion.ts:51`](../../lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts)). Neither `query.service.ts` nor any of `findNodeByName`'s callers has been touched by a commit since 2026-07-24, so none of them has ever been queued into `tierBQueue` under _any_ version of the code — the edges were never computed, correctly or incorrectly; there is nothing to have been dropped by the §5.2 bugs.
+
+This means: **Docuvia2's own knowledge graph — built up continuously over weeks of real commits, long before today's fixes existed — has a large backlog of files that Tier B has never reprocessed under the current, fixed code**, and will not until each one happens to be touched by a future commit. Two compounding structural gaps make this worse, both confirmed by direct code/CLI inspection:
+
+- `docuvia init` only started queueing a **fresh** workspace's full initial parse into `tierBQueue` as of `4232439f` (2026-07-29, "queue init's initial parse for Tier B, matching analyze's full ingestion") — Docuvia2's own graph predates that fix, so was never queued in full even once, on any version of the code.
+- There is **no user-facing way to force a full Tier B resync of an existing graph**. `docuvia analyze --help` exposes only `--escalate-to-lsp`/`--fallback-ast`/`--lsp-timeout`/`--interactive`/`--force`; `--force` is scoped entirely to Tier C decision extraction ([`run-tier-c-drain.ts:152`](../../lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts)), not Tier B's queue. The only way to force a full resweep today is `clean` (wipe `local.db`) + re-`init` — untested this session against a graph this size for side effects on already-persisted L3 decisions.
+
+**Practical implication:** `docuvia query`/`impact` cannot currently distinguish "this symbol genuinely has no callers" from "this symbol's callers were never processed by Tier B" — both render as an identical empty `<incoming>`/`<outgoing>` block. On a codebase with real dogfooding history (not a fresh `init`), most queries will hit the second case for a long time, which is what actually produced the "usable but thin" impression — a structural gap, not a leftover bug from §5.2's list.
+
+### 5.4 Root cause C (independent, already tracked): `findNodeByName` has no ranking
+
+Unrelated to §5.2/§5.3 — `findNodeByName()` ([`graph-repo.ts:255-280`](../../lib/schema/src/sqlite/repos/graph-repo.ts)) resolves an exact-name match with a bare `SELECT ... LIMIT 1`, no `ORDER BY`, no disambiguation between multiple same-named nodes. §4 already caught this independently on `vscode`: querying `Disposable` (1,978 files reference the name) resolved to "a test file, not the real class," and is listed in §4's own follow-up queue (item 5, "a dedicated symbol-disambiguation comparison across all tools"). Doesn't explain §5.3's two zero-edge results above (those are confirmed-correct exact-name matches on the intended file, not a wrong-node mismatch) — a separate, compounding cause of the same "thin" symptom on large or ambiguously-named codebases.
+
+### 5.5 Side finding, not pursued: nest's Tier B now hard-fails on missing `node_modules`
+
+Attempting to re-run this section's test against the `nest` clone (`D:\GitHub\nest`, same clone used throughout §2/§3) instead of Docuvia2 itself: `docuvia analyze --escalate-to-lsp` failed fast with `LSP prerequisites are not ready: node_modules is missing`. This is `548eb2b8`'s environment-readiness gate (already documented in §4 for vscode's _root-marker_ case) firing for a _different_ reason here — nest's own dependencies were never installed in this benchmark clone. Not pursued further this session (installing a monorepo of nest's size was judged disproportionate to what this section needed to confirm, given Docuvia2-on-itself already gave a clean, directly comparable before/after). Flagged as a real precondition that didn't exist as of §3.7's successful nest run (predates `548eb2b8`), worth remembering before reusing this clone for a future Tier B pass.
+
+### 5.6 Unrelated, re-confirmed still open: L3 content-hash integration test
+
+The pre-existing failure the `b8a575bf` session flagged (`git stash`-verified as pre-existing there, unrelated to that session's changes) was re-run directly against current `main` on 2026-07-30: `artifacts/cli/test/integration/commands/l3-distribution.integration.test.ts` — **still fails**, identical assertion (`L3DIST-005/006/007's self-healing dance ... recovers the merge-losing side's card, not just the newest-commit-wins side`, [`l3-distribution.integration.test.ts:279`](../../artifacts/cli/test/integration/commands/l3-distribution.integration.test.ts)): only 1 of 2 expected L3 cards survives the two-diverged-branches merge/self-heal path. Not investigated further this session — a real, reproducing gap, unrelated to §5.2/§5.3, still needing a dedicated pass.
+
+### 5.7 Recommendations
+
+1. **Give `analyze --escalate-to-lsp` a full-resync mode** (e.g. `--full`, or auto-triggered once by `doctor` when it detects the graph predates a Tier B-affecting fix) — the single highest-leverage fix for §5.3, since every other fix in §5.2 is already-shipped and correct but structurally can't reach a file nobody has committed to recently.
+2. **Distinguish "no callers" from "not yet processed" in `query`/`impact` output** — even a one-line hint (e.g. "this file hasn't been reprocessed by Tier B since <date>") would have prevented the "thin" read entirely, independent of fixing §5.3 itself.
+3. **Add ranking/disambiguation to `findNodeByName`** (§5.4) — at minimum prefer non-test-file paths and higher-connectivity nodes among multiple exact-name matches, rather than an unordered `LIMIT 1`.
+4. **GRPH-006** (qualified, order-independent `node_key`) is proposed but unimplemented — still the right long-term fix for the collision class §5.2 item 5 only partially closed.
+5. **L3 content-hash self-healing test failure (§5.6)** — still open, needs its own root-causing session.

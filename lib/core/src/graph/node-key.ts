@@ -20,6 +20,15 @@
  * confirmed 0-based, not 1-based, by reading that code directly rather than assuming) -- LSP's own
  * `Position.line` (`textDocument/documentSymbol`'s `selectionRange.start.line`) is 0-based too, so
  * a Tier B caller can pass it straight through with no conversion.
+ *
+ * This whole collision-then-disambiguate scheme is order-dependent by construction -- tolerable
+ * with one key-assigning path, a recurring source of drift now that a second (Tier B's LSP path)
+ * has to predict the same key without seeing Tier A's own insertion order (see
+ * `lsp-edge-provider-base.ts`'s `resolveNodeKeyForFile` for how far line/kind-sorting closes that
+ * gap, and where it still can't). [GRPH-006](../../../../docs/gitbook/adr/graph/GRPH-006-qualified-symbol-table-node-key.md)
+ * proposes replacing this with structurally-qualified keys that remove the order-dependency
+ * entirely -- not yet implemented; a materially larger change (AST-plugin containment tracking +
+ * a persisted-graph migration + every other `node_key` consumer), not folded into this fix.
  */
 export function buildUniqueNodeKey(
   usedNodeKeys: Set<string>,

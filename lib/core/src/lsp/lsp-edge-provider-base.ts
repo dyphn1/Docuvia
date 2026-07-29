@@ -41,9 +41,9 @@ function toNodeKey(relativePath: string): string {
 }
 
 /** Distinguishes "the whole-batch deadline ran out mid-file" (`raceAgainstDeadline`) from an
- *  ordinary per-file processing error inside `processAllFiles`'s catch block -- both currently
- *  land in the same `filesFailed` channel, but only the former should also flip the batch-level
- *  `deadlineExceeded`/`unavailableReason` flag. */
+ *  ordinary per-file processing error inside `processOneFileIntoBatch`'s catch block -- both
+ *  currently land in the same `filesFailed` channel, but only the former should also flip the
+ *  batch-level `deadlineExceeded`/`unavailableReason` flag. */
 class DeadlineExceededError extends Error {}
 
 function isSymbolInformation(
@@ -371,65 +371,32 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         break;
       }
 
-      try {
-        const fileEdges =
-          remainingMs !== undefined
-            ? await this.raceAgainstDeadline(
-                this.processOneFile(
-                  client,
-                  workspaceRoot,
-                  file,
-                  openFileCache,
-                  usedNodeKeysByFile,
-                ),
-                remainingMs,
-              )
-            : await this.processOneFile(
-                client,
-                workspaceRoot,
-                file,
-                openFileCache,
-                usedNodeKeysByFile,
-              );
-        for (const edge of fileEdges) {
-          const key = `${edge.sourceNodeKey}->${edge.targetNodeKey}`;
-          if (edgeKeys.has(key)) continue;
-          edgeKeys.add(key);
-          edges.push(edge);
-        }
-        filesProcessed.push(file);
-      } catch (err) {
-        if (err instanceof DeadlineExceededError) {
-          deadlineExceeded = true;
-          filesFailed.push({
-            file,
-            reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
-          });
-          break;
-        }
-        filesFailed.push({
-          file,
-          reason: err instanceof Error ? err.message : String(err),
-        });
-        this.logger.warn(LSP_MESSAGES.resolutionFailedForFile(file), {
-          error: err instanceof Error ? err.message : String(err),
-        });
+      const result = await this.processOneFileIntoBatch(
+        client,
+        workspaceRoot,
+        file,
+        openFileCache,
+        usedNodeKeysByFile,
+        edges,
+        edgeKeys,
+        filesProcessed,
+        filesFailed,
+        remainingMs,
+        timeoutMs,
+      );
+      if (!result.ok && result.deadlineExceeded) {
+        deadlineExceeded = true;
+        break;
       }
     }
 
     if (deadlineExceeded) {
-      const reached = new Set([
-        ...filesProcessed,
-        ...filesFailed.map((f) => f.file),
-      ]);
-      for (const file of files) {
-        if (!reached.has(file)) {
-          filesFailed.push({
-            file,
-            reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
-          });
-        }
-      }
+      this.markUnreachedFilesFailed(
+        files,
+        filesProcessed,
+        filesFailed,
+        timeoutMs,
+      );
     }
 
     return {
@@ -469,6 +436,96 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         },
       );
     });
+  }
+
+  /** One iteration of `processAllFiles`'s per-file loop body, pulled out purely to keep
+   *  `processAllFiles`'s own cyclomatic complexity down -- the race-against-deadline/no-race
+   *  ternary, the catch's deadline-vs-ordinary-failure split, and the edge dedup loop all still
+   *  behave exactly as before, just under this name. Pushes onto `filesProcessed`/`filesFailed`/
+   *  `edges` in place (same batch-scoped accumulators `processAllFiles` owns) since the caller only
+   *  needs to know whether to `break` and flip `deadlineExceeded` -- not re-derive what happened. */
+  private async processOneFileIntoBatch(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    file: string,
+    openFileCache: Map<string, OpenFileHandle>,
+    usedNodeKeysByFile: UsedNodeKeysByFile,
+    edges: ResolvedCallEdge[],
+    edgeKeys: Set<string>,
+    filesProcessed: string[],
+    filesFailed: EdgeResolutionOutcome["filesFailed"],
+    remainingMs: number | undefined,
+    timeoutMs: number,
+  ): Promise<{ ok: true } | { ok: false; deadlineExceeded: boolean }> {
+    try {
+      const fileEdges =
+        remainingMs !== undefined
+          ? await this.raceAgainstDeadline(
+              this.processOneFile(
+                client,
+                workspaceRoot,
+                file,
+                openFileCache,
+                usedNodeKeysByFile,
+              ),
+              remainingMs,
+            )
+          : await this.processOneFile(
+              client,
+              workspaceRoot,
+              file,
+              openFileCache,
+              usedNodeKeysByFile,
+            );
+      for (const edge of fileEdges) {
+        const key = `${edge.sourceNodeKey}->${edge.targetNodeKey}`;
+        if (edgeKeys.has(key)) continue;
+        edgeKeys.add(key);
+        edges.push(edge);
+      }
+      filesProcessed.push(file);
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof DeadlineExceededError) {
+        filesFailed.push({
+          file,
+          reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
+        });
+        return { ok: false, deadlineExceeded: true };
+      }
+      filesFailed.push({
+        file,
+        reason: err instanceof Error ? err.message : String(err),
+      });
+      this.logger.warn(LSP_MESSAGES.resolutionFailedForFile(file), {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return { ok: false, deadlineExceeded: false };
+    }
+  }
+
+  /** Post-loop reconciliation for `processAllFiles`: once the batch deadline has tripped, every
+   *  file in `files` that never got a `filesProcessed`/`filesFailed` entry (never reached, or
+   *  in flight when the deadline hit -- see `processAllFiles`'s own doc comment) is reported
+   *  through the same `filesFailed` channel so callers can restage exactly the unreached files. */
+  private markUnreachedFilesFailed(
+    files: string[],
+    filesProcessed: string[],
+    filesFailed: EdgeResolutionOutcome["filesFailed"],
+    timeoutMs: number,
+  ): void {
+    const reached = new Set([
+      ...filesProcessed,
+      ...filesFailed.map((f) => f.file),
+    ]);
+    for (const file of files) {
+      if (!reached.has(file)) {
+        filesFailed.push({
+          file,
+          reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
+        });
+      }
+    }
   }
 
   /** Looks up `file`'s disambiguation state, pre-assigning a key for *every* call-site symbol in

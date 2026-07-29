@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts#anonymous@L356
+id: lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts#anonymous@L324
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts

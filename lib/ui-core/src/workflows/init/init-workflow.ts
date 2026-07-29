@@ -12,6 +12,7 @@ import { ensureGitBranchAndHooks } from "./ensure-git-branch-and-hooks.js";
 import { seedProjectRow } from "./seed-project-row.js";
 import { runDiscoveryPipeline } from "./run-discovery-pipeline.js";
 import { runParseAndPersist } from "./run-parse-and-persist.js";
+import { stampFullIngestionForTierB } from "./stamp-full-ingestion-for-tier-b.js";
 import { initTempLifecycle } from "./init-temp-lifecycle.js";
 import { buildInitResult, type InitResult } from "./init-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
@@ -34,7 +35,13 @@ const INIT_SHUTDOWN_SIGNALS = ["SIGTERM", "SIGINT"] as const;
  *   2. `seedProjectRow` (idempotency check + insert against `store.projects`)
  *   3. `runDiscoveryPipeline` (parallel config/vcs/file discovery + tag merge)
  *   4. `runParseAndPersist` (AST parse + persist to the knowledge graph)
- *   4b. `packCurrentGraphOntoKnowledgeBranch` (non-fatal) -- the branch `ensureGitBranchAndHooks`
+ *   4b. `hydrationService.markSynced` -- records the knowledge-tip sha so the very next read-path
+ *       command's `ensureHydrated()` doesn't overwrite the graph just persisted above.
+ *   4b2. `stampFullIngestionForTierB` -- stamps `lastIngestedSourceSha` and queues every just-
+ *        parsed file for Tier B, so `init` stays behaviorally identical to `analyze`'s own
+ *        empty-graph full-ingestion branch (`run-full-ingestion.ts`) rather than silently leaving
+ *        the initial parse un-queued.
+ *   4c. `packCurrentGraphOntoKnowledgeBranch` (non-fatal) -- the branch `ensureGitBranchAndHooks`
  *       just created carries an empty tree (`KnowledgeGitService.ensureKnowledgeBranch`'s doc
  *       comment); without this, it would stay empty until the next manual `docuvia snapshot` or
  *       `git push`, so a fresh clone/CI checkout or `docuvia hydrate` elsewhere would see nothing
@@ -136,6 +143,20 @@ export class InitWorkflow {
         logger,
       });
       await hydrationService.markSynced(workspaceRoot, store);
+
+      // 4b2. Stamp `lastIngestedSourceSha` and queue every just-parsed file for Tier B (LSP
+      // cross-file edge resolution) -- the same step `analyze`'s own empty-graph full-ingestion
+      // branch runs after its parse+persist (see stamp-full-ingestion-for-tier-b.ts's doc
+      // comment). Without this, a workspace populated via `docuvia init` would never have its
+      // initial files queued for Tier B at all, since only a file touched by a later commit would
+      // enter the queue via `analyze`'s delta path -- `init` must stay behaviorally identical to
+      // analyze's own first-run ingestion here.
+      await stampFullIngestionForTierB({
+        store,
+        git,
+        workspaceRoot,
+        parsedResults,
+      });
 
       // 4c. Pack this graph onto the knowledge branch now, rather than leaving its
       // `ensureGitBranchAndHooks`-created initial commit empty until the next manual `docuvia

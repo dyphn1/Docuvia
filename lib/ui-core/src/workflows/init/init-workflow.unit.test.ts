@@ -21,7 +21,9 @@ import {
   type IVcsScanner,
   type ProjectRow,
 } from "@workspace/contracts";
+import { GitConstants } from "@workspace/core";
 import { InitWorkflow, resolveDbPath } from "./init-workflow.js";
+import { readTierBQueue } from "../analyze/tier-b-queue.js";
 
 /**
  * Pure orchestration unit test — see
@@ -32,7 +34,9 @@ import { InitWorkflow, resolveDbPath } from "./init-workflow.js";
  * always-on side effect — see `init-log-writer.ts`).
  */
 
-function makeMockGitProvider(): IGitProvider {
+function makeMockGitProvider(
+  overrides: Partial<IGitProvider> = {},
+): IGitProvider {
   return {
     isGitRepository: vi.fn().mockResolvedValue(true),
     branchExists: vi.fn().mockResolvedValue(false),
@@ -71,11 +75,13 @@ function makeMockGitProvider(): IGitProvider {
     createMergeCommit: vi.fn().mockResolvedValue("merge-sha"),
     acquireKnowledgeLock: vi.fn().mockResolvedValue(undefined),
     releaseKnowledgeLock: vi.fn().mockResolvedValue(undefined),
+    ...overrides,
   };
 }
 
 function makeMockStore(): IGraphStore {
   let projectRow: ProjectRow | undefined;
+  const meta = new Map<string, string>();
   const doInsert = (input: { name: string; repoUrl: string }) => {
     projectRow = {
       id: 1,
@@ -138,7 +144,12 @@ function makeMockStore(): IGraphStore {
       importCard: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
-    meta: { get: vi.fn(), set: vi.fn() },
+    meta: {
+      get: vi.fn((key: string) => meta.get(key)),
+      set: vi.fn((key: string, value: string) => {
+        meta.set(key, value);
+      }),
+    },
     withWriteLock: async (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
@@ -152,6 +163,7 @@ describe("InitWorkflow.execute()", () => {
   let tmpDir: string;
   let callOrder: string[];
   let store: IGraphStore;
+  let gitOverrides: Partial<IGitProvider>;
   let openStoreSpy: ReturnType<
     typeof vi.fn<[GraphStoreOpenOptions], Promise<IGraphStore>>
   >;
@@ -176,6 +188,7 @@ describe("InitWorkflow.execute()", () => {
 
     resetFactoryForTests();
 
+    gitOverrides = {};
     const knowledgeGit: IKnowledgeGitService = {
       ensureKnowledgeBranch: vi.fn().mockImplementation(async () => {
         callOrder.push("ensureKnowledgeBranch");
@@ -236,7 +249,9 @@ describe("InitWorkflow.execute()", () => {
         .mockReturnValue(path.join(tmpDir, ".docuvia", "tmp")),
     };
 
-    docuviaFactory.register(TOKENS.GitProvider, () => makeMockGitProvider());
+    docuviaFactory.register(TOKENS.GitProvider, () =>
+      makeMockGitProvider(gitOverrides),
+    );
     docuviaFactory.register(TOKENS.KnowledgeGitService, () => knowledgeGit);
     docuviaFactory.register(TOKENS.FileDiscovery, () => fileDiscovery);
     docuviaFactory.register(TOKENS.ConfigScanner, () => configScanner);
@@ -372,6 +387,45 @@ describe("InitWorkflow.execute()", () => {
       logger: createMockLogger(),
     });
     expect(hydrationService.markSynced).toHaveBeenCalledWith(tmpDir, store);
+  });
+
+  it("regression: writes the last-ingested-source-sha meta key to headSha on success, mirroring analyze's own full ingestion (run-full-ingestion.ts)", async () => {
+    gitOverrides.getHeadSha = vi
+      .fn()
+      .mockResolvedValue("cafebabecafebabecafebabecafebabecafebabe");
+
+    await new InitWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(store.meta.set).toHaveBeenCalledWith(
+      GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+      "cafebabecafebabecafebabecafebabecafebabe",
+    );
+  });
+
+  it("regression: queues every successfully-parsed file into the Tier B queue, so a fresh `init` is resolvable by a later `analyze --escalate-to-lsp` without needing a follow-up commit", async () => {
+    gitOverrides.getHeadSha = vi
+      .fn()
+      .mockResolvedValue("cafebabecafebabecafebabecafebabecafebabe");
+
+    await new InitWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(readTierBQueue(store)).toEqual([
+      {
+        file: "src/a.ts",
+        commitSha: "cafebabecafebabecafebabecafebabecafebabe",
+      },
+    ]);
+  });
+
+  it("does not write the last-ingested-source-sha meta key when there is no HEAD (unborn or no git repo)", async () => {
+    gitOverrides.getHeadSha = vi.fn().mockResolvedValue(undefined);
+
+    await new InitWorkflow(tmpDir, createMockLogger()).execute();
+
+    expect(store.meta.set).not.toHaveBeenCalledWith(
+      GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+      expect.anything(),
+    );
   });
 
   it("is idempotent: a second execute() run does not duplicate the projects row", async () => {

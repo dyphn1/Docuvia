@@ -190,11 +190,21 @@ function printTierBBatchResult(
     { kind: typeof ANALYZE_RESULT_KIND.TIER_B_BATCH }
   >,
   spinner: AnalyzeSpinner,
+  fallbackAst: boolean,
 ): void {
   if (result.degraded) {
     spinner.succeed(
       UI_MESSAGES.ANALYZE_TIER_B_DEGRADED(result.degradedReason ?? ""),
     );
+    // Runtime degradation (gate passed, then the LSP crashed/timed out mid-batch) must be as
+    // visible to the exit code as a gate-time failure is (process.exitCode = 1 at
+    // ANALYZE_TIER_B_GATE_FAILED above) -- otherwise a direct, non-hook `analyze --escalate-to-lsp`
+    // whose LSP dies mid-run exits 0, indistinguishable from a real success at the shell level
+    // (2026-07 CLI benchmark finding, live-reproduced against nestjs/nest). `--fallback-ast` is
+    // excluded: it's the pre-push hook's own invocation, whose entire contract is "git push must
+    // never be blocked by an unready LSP environment" -- that flag skips the gate specifically so
+    // the batch can degrade honestly without failing the caller, so it must keep exiting 0 here too.
+    if (!fallbackAst) process.exitCode = 1;
   } else {
     spinner.succeed(UI_MESSAGES.ANALYZE_TIER_B_SUCCESS);
     ui.info(
@@ -234,6 +244,7 @@ function printTierCSummary(
 function printAnalyzeResult(
   result: AnalyzeResult,
   spinner: AnalyzeSpinner,
+  fallbackAst: boolean,
 ): void {
   switch (result.kind) {
     case ANALYZE_RESULT_KIND.AUTO_FULL_INGESTION:
@@ -253,7 +264,7 @@ function printAnalyzeResult(
       printFocusedResult(result, spinner);
       break;
     case ANALYZE_RESULT_KIND.TIER_B_BATCH:
-      printTierBBatchResult(result, spinner);
+      printTierBBatchResult(result, spinner, fallbackAst);
       break;
   }
 }
@@ -525,7 +536,7 @@ export async function analyzeCommand(
 
   try {
     const result = await docuviaApi.analyze(scopeId, logger);
-    printAnalyzeResult(result, spinner);
+    printAnalyzeResult(result, spinner, Boolean(options.fallbackAst));
   } catch (error: unknown) {
     handleAnalyzeError(error, targetPath, escalateToLsp, spinner);
   } finally {

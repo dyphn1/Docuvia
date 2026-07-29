@@ -27,6 +27,15 @@ interface PendingTierBBatch {
   remainingQueue: TierBQueueEntry[];
 }
 
+/** Pino's numeric "error" level -- `doctor`'s `runLogsDiagnostics`/`scanLogFiles` scans every
+ *  `.docuvia/logs/*.log` line for `entry.level >= 50` to decide whether a past run had a real
+ *  failure worth surfacing. Every event this file writes via `appendAnalyzeLogLine` was missing
+ *  `level` entirely (`entry.level && ...` short-circuits `undefined` to false), so a degraded
+ *  Tier B batch could never trip that check -- doctor kept reporting the LOGS category healthy
+ *  right after a run that produced zero edges. Tagged only on the genuinely bad outcomes below
+ *  (degraded / per-file failure), not the routine start/empty-queue/summary-of-a-clean-run lines. */
+const JSONL_LOG_LEVEL_ERROR = 50;
+
 /** Tier B's own result shape, before the wrapper merges in Tier C's drain summary (§9d) --
  *  `runTierBBatchCore`/`emptyResult`/`finalizeBatch` only ever know about Tier B's own fields. */
 type TierBOnlyResult = Omit<
@@ -147,6 +156,7 @@ async function runTierBBatchCore(
   if (outcome.unavailableReason) {
     await appendAnalyzeLogLine(workspaceRoot, {
       event: ANALYZE_EVENTS.TIER_B_DEGRADED,
+      level: JSONL_LOG_LEVEL_ERROR,
       reason: outcome.unavailableReason,
       degradedLanguages: outcome.degradedLanguages,
     });
@@ -168,6 +178,7 @@ async function runTierBBatchCore(
   for (const failure of outcome.filesFailed) {
     await appendAnalyzeLogLine(workspaceRoot, {
       event: ANALYZE_EVENTS.TIER_B_FILE_FAILED,
+      level: JSONL_LOG_LEVEL_ERROR,
       file: failure.file,
       reason: failure.reason,
     });
@@ -367,6 +378,7 @@ async function finalizeBatch(
 
   await appendAnalyzeLogLine(workspaceRoot, {
     event: ANALYZE_EVENTS.TIER_B_SUMMARY,
+    ...(outcome.unavailableReason ? { level: JSONL_LOG_LEVEL_ERROR } : {}),
     headSha,
     filesQueued: args.queued,
     filesDroppedDeleted: args.droppedDeleted,

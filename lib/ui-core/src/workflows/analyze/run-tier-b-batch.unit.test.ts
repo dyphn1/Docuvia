@@ -345,7 +345,31 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
       { file: "a.ts", commitSha: HEAD_SHA },
     ]);
 
+    // Regression: `doctor`'s LOGS diagnostic scans `.docuvia/logs/*.log` for `entry.level >= 50`
+    // to decide whether a past run had a real failure -- every event this workflow wrote was
+    // missing `level` entirely, so a degraded batch could never trip that check (doctor kept
+    // reporting the LOGS category healthy right after a run that produced zero edges; live-
+    // reproduced against nestjs/nest in the 2026-07 CLI benchmark). Assert the actual JSONL file
+    // on disk, not just the in-memory `result` -- that's what doctor reads.
     const fs = await import("node:fs");
+    const path = await import("node:path");
+    const logLines = fs
+      .readFileSync(
+        path.join(workspaceRoot, ".docuvia", "logs", "analyze.log"),
+        "utf8",
+      )
+      .split("\n")
+      .filter((line) => line.trim().length > 0)
+      .map((line) => JSON.parse(line));
+    const degradedLine = logLines.find(
+      (line) => line.event === "analyze.tierB.degraded",
+    );
+    expect(degradedLine?.level).toBeGreaterThanOrEqual(50);
+    const summaryLine = logLines.find(
+      (line) => line.event === "analyze.tierB.summary",
+    );
+    expect(summaryLine?.level).toBeGreaterThanOrEqual(50);
+
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 

@@ -486,6 +486,33 @@ describe("analyzeCommand", () => {
       expect(process.exitCode).not.toBe(1);
     });
 
+    it("regression: sets process.exitCode = 1 when the batch degrades at runtime after the gate passed (no --fallback-ast) -- previously this exited 0, indistinguishable from a real success at the shell level (2026-07 CLI benchmark finding, live-reproduced against nestjs/nest)", async () => {
+      mockCheckTierBGate.mockResolvedValue({ available: true });
+      mockAnalyze.mockResolvedValue({
+        kind: "tierBBatch",
+        headSha: "abc123",
+        filesQueued: 5,
+        filesDroppedDeleted: 0,
+        filesSkippedLanguage: 0,
+        filesProcessed: 0,
+        filesFailed: 5,
+        edgesApplied: 0,
+        edgesPruned: 0,
+        degraded: true,
+        degradedReason:
+          "LSP server exited before completing its initialize handshake",
+        commitCapExceeded: false,
+      });
+
+      await analyzeCommand(undefined, "/workspace", {
+        escalateToLsp: true,
+        isInteractive: false,
+      });
+
+      expect(mockAnalyze).toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
+    });
+
     it("prints the degraded message (not the success summary) when the batch degraded", async () => {
       mockAnalyze.mockResolvedValue({
         kind: "tierBBatch",

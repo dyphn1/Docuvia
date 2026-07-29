@@ -58,13 +58,14 @@ export class SemanticDiffDetector {
       const processedNodes = new Set<number>();
 
       for (const range of changedLineRanges) {
-        const modified = this.processChangedRange(
-          range,
-          newTree.rootNode,
-          oldNodeIndex,
-          processedNodes,
+        results.push(
+          ...this.processChangedRange(
+            range,
+            newTree.rootNode,
+            oldNodeIndex,
+            processedNodes,
+          ),
         );
-        if (modified) results.push(modified);
       }
     } finally {
       if (oldTree) oldTree.delete();
@@ -76,22 +77,100 @@ export class SemanticDiffDetector {
 
   /**
    * Resolves a single changed line range against the new tree's smallest containing
-   * semantic boundary, dedupes against already-processed boundaries, and builds the
-   * corresponding {@link ModifiedNode} — or returns `null` when the range yields nothing
-   * new to report.
+   * semantic boundary and builds the corresponding {@link ModifiedNode}(s), deduped against
+   * already-processed boundaries. Normally yields at most one result. Falls back to
+   * {@link resolveSpanningBoundaries} (zero or more results) when the range straddles multiple
+   * top-level siblings with no common semantic ancestor -- e.g. a new function's own leading
+   * blank line/doc comment plus its declaration, which `getSmallestContainingNode` can only
+   * match by bubbling all the way up to the un-typed tree root, where `findSemanticBoundary`
+   * dead-ends. Without this fallback such a range is silently dropped: `contractChanged` would
+   * come back `false` for essentially any documented new symbol (2026-07-29 finding).
    */
   private processChangedRange(
     range: LineRange,
     newRoot: Node,
     oldNodeIndex: Map<string, Node>,
     processedNodes: Set<number>,
-  ): ModifiedNode | null {
+  ): ModifiedNode[] {
     const smallestNode = this.getSmallestContainingNode(newRoot, range);
-    if (!smallestNode) return null;
+    if (!smallestNode) return [];
 
     const semanticBoundary = this.findSemanticBoundary(smallestNode);
-    if (!semanticBoundary) return null;
+    if (!semanticBoundary) {
+      return this.resolveSpanningBoundaries(
+        smallestNode,
+        range,
+        oldNodeIndex,
+        processedNodes,
+      );
+    }
 
+    const built = this.buildModifiedNode(
+      semanticBoundary,
+      oldNodeIndex,
+      processedNodes,
+    );
+    return built ? [built] : [];
+  }
+
+  /**
+   * The straddling-siblings fallback (see {@link processChangedRange}'s doc comment): re-matches
+   * each direct child of `deadEndNode` that overlaps `range` at all (not requiring full
+   * containment, unlike the primary algorithm) against a sub-range clamped to that child's own
+   * span, so `getSmallestContainingNode` can resolve a real semantic boundary from within just
+   * that child instead of the whole un-typed span. Deliberately does not touch the primary
+   * full-containment algorithm at all: a range that stays within one semantic container (e.g. two
+   * statements inside the same function body) already bubbles up to that container correctly
+   * today, and must keep doing so -- only a range that reaches a dead end (no semantic ancestor
+   * anywhere above `deadEndNode`, in practice the un-typed `program` root) should ever reach here.
+   */
+  private resolveSpanningBoundaries(
+    deadEndNode: Node,
+    range: LineRange,
+    oldNodeIndex: Map<string, Node>,
+    processedNodes: Set<number>,
+  ): ModifiedNode[] {
+    const results: ModifiedNode[] = [];
+
+    for (const child of deadEndNode.children) {
+      if (!child) continue;
+      if (
+        child.endPosition.row < range.startRow ||
+        child.startPosition.row > range.endRow
+      ) {
+        continue; // no overlap with the changed range at all
+      }
+
+      const clampedRange: LineRange = {
+        startRow: Math.max(range.startRow, child.startPosition.row),
+        endRow: Math.min(range.endRow, child.endPosition.row),
+      };
+      const smallest = this.getSmallestContainingNode(child, clampedRange);
+      if (!smallest) continue;
+
+      const semanticBoundary = this.findSemanticBoundary(smallest);
+      if (!semanticBoundary) continue; // e.g. a bare comment sibling -- nothing to report
+
+      const built = this.buildModifiedNode(
+        semanticBoundary,
+        oldNodeIndex,
+        processedNodes,
+      );
+      if (built) results.push(built);
+    }
+
+    return results;
+  }
+
+  /** Dedupes `semanticBoundary` against `processedNodes` and builds its {@link ModifiedNode},
+   *  comparing old vs. new signatures via `resolvePruningLevel` -- shared by both the primary
+   *  match and the {@link resolveSpanningBoundaries} fallback so a boundary is never reported
+   *  twice regardless of which path found it. */
+  private buildModifiedNode(
+    semanticBoundary: Node,
+    oldNodeIndex: Map<string, Node>,
+    processedNodes: Set<number>,
+  ): ModifiedNode | null {
     if (processedNodes.has(semanticBoundary.id)) {
       return null; // Already processed this boundary for another line range
     }

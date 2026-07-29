@@ -7,6 +7,7 @@ import {
 } from "@workspace/contracts";
 import { ScopeResolver } from "./scope-resolver.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
+import { buildUniqueNodeKey } from "./node-key.js";
 
 /**
  * Redistributes old `SqliteGraphRepository.persistAstGraph()`'s logic onto `IGraphStore`'s
@@ -165,21 +166,6 @@ export class GraphPersisterService implements IGraphPersister {
     }
   }
 
-  /** Disambiguates a candidate `node_key`, per the collision-handling rules described where this
-   *  is called from (`persistFileAndSymbolNodes`). */
-  private buildUniqueNodeKey(
-    usedNodeKeys: Set<string>,
-    baseKey: string,
-    startLine: number,
-  ): string {
-    if (!usedNodeKeys.has(baseKey)) return baseKey;
-    const lineKey = `${baseKey}@L${startLine}`;
-    if (!usedNodeKeys.has(lineKey)) return lineKey;
-    let n = 2;
-    while (usedNodeKeys.has(`${lineKey}#${n}`)) n++;
-    return `${lineKey}#${n}`;
-  }
-
   private insertFunctionNodes(
     store: IGraphStore,
     projectId: number,
@@ -189,7 +175,7 @@ export class GraphPersisterService implements IGraphPersister {
     usedNodeKeys: Set<string>,
   ): void {
     for (const fn of result.data.functions ?? []) {
-      const nodeKey = this.buildUniqueNodeKey(
+      const nodeKey = buildUniqueNodeKey(
         usedNodeKeys,
         `${result.file}#${fn.name}`,
         fn.startLine,
@@ -222,7 +208,7 @@ export class GraphPersisterService implements IGraphPersister {
     usedNodeKeys: Set<string>,
   ): void {
     for (const cls of result.data.classes ?? []) {
-      const nodeKey = this.buildUniqueNodeKey(
+      const nodeKey = buildUniqueNodeKey(
         usedNodeKeys,
         `${result.file}#${cls.name}`,
         cls.startLine,

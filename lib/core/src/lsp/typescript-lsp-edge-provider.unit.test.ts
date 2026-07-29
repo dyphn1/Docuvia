@@ -285,6 +285,102 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     });
   });
 
+  it("disambiguates two same-named methods on different classes in one file, using Tier A's exact node_key scheme (bare key first, @Lline on collision)", async () => {
+    // ClassA.handle (line 1) and ClassB.handle (line 4) in a.ts -- same method name, same file,
+    // different classes. Without disambiguation both would silently collapse onto the bare
+    // "a.ts#handle" key (2026-07 CLI benchmark finding: an edge attaches to the wrong symbol, or
+    // gets dropped as a false "duplicate"). Also proves the memoization fix: "caller" in b.ts is
+    // looked up twice (once per reference) and must resolve to the *same* key both times, not
+    // drift onto "b.ts#caller@L0" the second time around.
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    const classAHandleSelection = range(1, 4, 1, 10);
+    const classBHandleSelection = range(4, 4, 4, 10);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "ClassA",
+              kind: LspSymbolKinds.CLASS,
+              range: range(0, 0, 2, 1),
+              selectionRange: range(0, 6, 0, 12),
+              children: [
+                {
+                  name: "handle",
+                  kind: LspSymbolKinds.METHOD,
+                  range: range(1, 2, 1, 20),
+                  selectionRange: classAHandleSelection,
+                },
+              ],
+            },
+            {
+              name: "ClassB",
+              kind: LspSymbolKinds.CLASS,
+              range: range(3, 0, 5, 1),
+              selectionRange: range(3, 6, 3, 12),
+              children: [
+                {
+                  name: "handle",
+                  kind: LspSymbolKinds.METHOD,
+                  range: range(4, 2, 4, 20),
+                  selectionRange: classBHandleSelection,
+                },
+              ],
+            },
+          ];
+        }
+        return [
+          {
+            name: "caller",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 3, 1),
+            selectionRange: range(0, 9, 0, 15),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (params.textDocument.uri === aUri) {
+          if (params.position.line === classAHandleSelection.start.line) {
+            return [{ uri: bUri, range: range(1, 2, 1, 8) }];
+          }
+          if (params.position.line === classBHandleSelection.start.line) {
+            return [{ uri: bUri, range: range(2, 2, 2, 8) }];
+          }
+          return [];
+        }
+        return [];
+      }
+      return undefined;
+    };
+
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts", "b.ts"],
+    });
+
+    expect(outcome.edges).toEqual(
+      expect.arrayContaining([
+        {
+          sourceNodeKey: "b.ts#caller",
+          targetNodeKey: "a.ts#handle",
+          source: "lsp",
+        },
+        {
+          sourceNodeKey: "b.ts#caller",
+          targetNodeKey: "a.ts#handle@L4",
+          source: "lsp",
+        },
+      ]),
+    );
+    expect(outcome.edges).toHaveLength(2);
+  });
+
   it("keeps a per-file failure isolated -- other files still succeed (§8g)", async () => {
     const handler: RequestHandler = (method, params) => {
       if (method === LspMethods.DOCUMENT_SYMBOL) {

@@ -18,6 +18,7 @@ import {
 import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import type { ResolvedLspBinary } from "./lsp-binary-resolver.js";
 import { LspMethods, LspSymbolKinds, LSP_MESSAGES } from "./lsp-constants.js";
+import { buildUniqueNodeKey } from "../graph/node-key.js";
 import type {
   LspDocumentSymbol,
   LspPosition,
@@ -110,6 +111,12 @@ interface OpenFileHandle {
   uri: string;
   symbols: LspDocumentSymbol[];
 }
+
+/** Per-file node_key disambiguation state, batch-scoped -- see `resolveNodeKeyForFile`. */
+type UsedNodeKeysByFile = Map<
+  string,
+  { used: Set<string>; resolved: Map<string, string> }
+>;
 
 /**
  * Minimal preflight outcome shape `BaseLspEdgeProvider` actually needs (`ready`/`reason`) --
@@ -349,6 +356,11 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     const filesProcessed: string[] = [];
     const filesFailed: EdgeResolutionOutcome["filesFailed"] = [];
     const openFileCache = new Map<string, OpenFileHandle>();
+    // Batch-scoped (not per-`processOneFile`-call): a symbol's file can be touched both as a
+    // callee (this loop) and as some other callee's caller file (`resolveReferenceEdge`), so
+    // disambiguation state for a given file must stay consistent across both paths, not reset
+    // per call -- see `resolveNodeKeyForFile`.
+    const usedNodeKeysByFile: UsedNodeKeysByFile = new Map();
     let deadlineExceeded = false;
 
     for (const file of files) {
@@ -363,7 +375,13 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         const fileEdges =
           remainingMs !== undefined
             ? await this.raceAgainstDeadline(
-                this.processOneFile(client, workspaceRoot, file, openFileCache),
+                this.processOneFile(
+                  client,
+                  workspaceRoot,
+                  file,
+                  openFileCache,
+                  usedNodeKeysByFile,
+                ),
                 remainingMs,
               )
             : await this.processOneFile(
@@ -371,6 +389,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
                 workspaceRoot,
                 file,
                 openFileCache,
+                usedNodeKeysByFile,
               );
         for (const edge of fileEdges) {
           const key = `${edge.sourceNodeKey}->${edge.targetNodeKey}`;
@@ -452,11 +471,50 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     });
   }
 
+  /** Looks up (lazily seeding, matching Tier A's `new Set([file])` convention --
+   *  `persist-ast-graph.ts`'s `persistFileAndSymbolNodes`) `file`'s disambiguation state and
+   *  resolves+records a unique key for `name`/`startLine` via the same shared
+   *  `buildUniqueNodeKey()` Tier A itself uses, so a real collision (two same-named symbols in
+   *  one file) gets the identical `file#name` / `file#name@Lline` / `file#name@Lline#n` shape
+   *  instead of both silently sharing the bare key. `startLine` must already be 0-based (LSP's
+   *  own `Position.line` is; passed straight through -- see `node-key.ts`'s doc comment).
+   *
+   *  Memoized per `name`+`startLine` (not just called once per symbol like Tier A's own single
+   *  pass): the *same* enclosing caller symbol can be looked up again across multiple different
+   *  references it makes (`resolveReferenceEdge`, one call per reference) -- without memoizing,
+   *  the second lookup would see its own already-recorded key in `used` and wrongly disambiguate
+   *  against itself, drifting the same physical symbol onto a different key each time. */
+  private resolveNodeKeyForFile(
+    usedNodeKeysByFile: UsedNodeKeysByFile,
+    file: string,
+    name: string,
+    startLine: number,
+  ): string {
+    let state = usedNodeKeysByFile.get(file);
+    if (!state) {
+      state = { used: new Set<string>([file]), resolved: new Map() };
+      usedNodeKeysByFile.set(file, state);
+    }
+    const symbolIdentity = `${name}@${startLine}`;
+    const cached = state.resolved.get(symbolIdentity);
+    if (cached) return cached;
+
+    const nodeKey = buildUniqueNodeKey(
+      state.used,
+      `${file}#${name}`,
+      startLine,
+    );
+    state.used.add(nodeKey);
+    state.resolved.set(symbolIdentity, nodeKey);
+    return nodeKey;
+  }
+
   private async processOneFile(
     client: LspJsonRpcClient,
     workspaceRoot: string,
     relativePath: string,
     openFileCache: Map<string, OpenFileHandle>,
+    usedNodeKeysByFile: UsedNodeKeysByFile,
   ): Promise<ResolvedCallEdge[]> {
     const callee = await this.openAndGetSymbols(
       client,
@@ -479,7 +537,14 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         },
         this.requestTimeoutMs,
       );
-      const calleeNodeKey = toNodeKey(`${relativePath}#${symbol.name}`);
+      const calleeNodeKey = toNodeKey(
+        this.resolveNodeKeyForFile(
+          usedNodeKeysByFile,
+          relativePath,
+          symbol.name,
+          symbol.selectionRange.start.line,
+        ),
+      );
       for (const ref of references ?? []) {
         const edge = await this.resolveReferenceEdge(
           client,
@@ -488,6 +553,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           calleeNodeKey,
           relativePath,
           openFileCache,
+          usedNodeKeysByFile,
         );
         if (edge) edges.push(edge);
       }
@@ -502,6 +568,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     calleeNodeKey: string,
     calleeFile: string,
     openFileCache: Map<string, OpenFileHandle>,
+    usedNodeKeysByFile: UsedNodeKeysByFile,
   ): Promise<ResolvedCallEdge | undefined> {
     const refPath = path.relative(workspaceRoot, fileURLToPath(ref.uri));
     const refRelative = toNodeKey(refPath);
@@ -519,7 +586,14 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     );
     const sourceNodeKey =
       enclosing && CALL_SITE_KINDS.has(enclosing.kind)
-        ? toNodeKey(`${refRelative}#${enclosing.name}`)
+        ? toNodeKey(
+            this.resolveNodeKeyForFile(
+              usedNodeKeysByFile,
+              refRelative,
+              enclosing.name,
+              enclosing.selectionRange.start.line,
+            ),
+          )
         : refRelative;
 
     return {

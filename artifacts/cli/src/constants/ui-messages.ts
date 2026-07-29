@@ -147,15 +147,26 @@ export const UI_MESSAGES = {
       : "."),
   ANALYZE_TIER_B_DEGRADED: (reason: string) =>
     `LSP unavailable -- AST-level edges left untouched (${reason})`,
-  /** D2's mandatory pre-flight gate for an interactive/manual invocation
-   *  (phase1-decision-integration.md §8c) -- never shown for a non-interactive (pre-push hook)
-   *  invocation, which always degrades honestly without asking. */
+  /** D2's mandatory pre-flight gate (phase1-decision-integration.md §8c). Shown only on an
+   *  interactive terminal (`-i`/`--interactive`); a non-interactive invocation gets
+   *  `ANALYZE_TIER_B_GATE_FAILED` instead (hard failure, no prompt). */
   ANALYZE_TIER_B_GATE_NOT_READY: (reason: string) =>
     `LSP prerequisites are not ready: ${reason}`,
   ANALYZE_TIER_B_GATE_PROMPT:
     "Continue with AST-only precision (skip the LSP-corrected cross-file edges this batch)?",
   ANALYZE_TIER_B_GATE_DECLINED:
     "Aborted -- install typescript-language-server as a project devDependency (or pass --fallback-ast) and try again.",
+  /** Non-interactive equivalent of `ANALYZE_TIER_B_GATE_NOT_READY` -- a bare `analyze
+   *  --escalate-to-lsp` (no `-i`, no `--fallback-ast`) with an unready environment now fails
+   *  outright rather than silently degrading and reporting success (2026-07 C#/TS benchmark
+   *  finding: a target project that was never built produced wasted, inaccurate runs because
+   *  nothing surfaced this before the batch ran). The pre-push hook opts out via
+   *  `--fallback-ast` and never reaches this message. */
+  ANALYZE_TIER_B_GATE_FAILED: (reason: string) =>
+    `LSP prerequisites are not ready: ${reason}\n` +
+    `Build/compile the target project (Docuvia's Tier B relies on a working language server), ` +
+    `then run 'docuvia doctor' to confirm. Pass --fallback-ast to proceed with AST-only ` +
+    `precision instead.`,
 
   // Tier C's budgeted async LLM decision-extraction drain, folded into --escalate-to-lsp
   // (phase1-decision-integration.md §9) -- no separate header/spinner; its summary is appended

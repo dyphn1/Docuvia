@@ -13,8 +13,9 @@ const SNAPSHOT_RUNS = 2;
  * Gating test 1 (docs/gitbook/analysis/phase1-decision-integration.md §8j): "batch vs concurrent
  * Tier A `analyze` (delta write), and batch vs `snapshot`". Follows
  * analyze-snapshot-concurrency.test.ts's real-CLI-process pattern. No `typescript-language-server`
- * is installed in this sandbox, so every `analyze --escalate-to-lsp` run takes the real
- * honest-degradation path (§8b) -- which is exactly what exercises the concurrency-relevant
+ * is installed in this sandbox, so every `analyze --escalate-to-lsp` run passes `--fallback-ast`
+ * (skipping the non-interactive hard-fail gate) and takes the real honest-degradation path (§8b)
+ * -- which is exactly what exercises the concurrency-relevant
  * writes this test cares about: the `tierBBatchPending` meta write (under the knowledge-branch
  * lock) and `snapshot`'s post-pack finalize read/maybe-write of the same key. The queue is seeded
  * directly (a small raw SQLite write) so every batch run has real work to stage, rather than
@@ -68,7 +69,9 @@ describe("Command: docuvia analyze --escalate-to-lsp (batch) concurrent with ana
   it(`resolves ${BATCH_RUNS} concurrent Tier B batch runs, ${ANALYZE_RUNS} concurrent delta analyze runs, and ${SNAPSHOT_RUNS} concurrent snapshot runs without corrupting local.db or the knowledge branch, all with sane exit codes`, async () => {
     const runs = [
       ...Array.from({ length: BATCH_RUNS }, () =>
-        sandbox.runCli(["analyze", "--escalate-to-lsp"], { reject: false }),
+        sandbox.runCli(["analyze", "--escalate-to-lsp", "--fallback-ast"], {
+          reject: false,
+        }),
       ),
       ...Array.from({ length: ANALYZE_RUNS }, () =>
         sandbox.runCli(["analyze"], { reject: false }),

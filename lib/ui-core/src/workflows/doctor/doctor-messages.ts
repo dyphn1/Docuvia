@@ -88,6 +88,11 @@ export const DOCTOR_MESSAGES = {
   PRE_PUSH_HOOK_STALE:
     "The pre-push hook predates the `sync-knowledge` step -- pushes no longer reconcile the knowledge branch with origin.",
   PRE_PUSH_HOOK_STALE_SUGGESTION: "re-run `docuvia init` to upgrade the hook",
+  /** 2026-07 C#/TS benchmark environment-detection follow-up: a hook that already has the
+   *  sync-knowledge step but predates `--fallback-ast` would start failing its own Tier B step
+   *  (and so skip `snapshot`/`sync-knowledge`) the moment the LSP environment isn't ready. */
+  PRE_PUSH_HOOK_ENV_GATE_STALE:
+    "The pre-push hook predates the --fallback-ast env-gate flag -- its Tier B step will fail (skipping snapshot/sync-knowledge for that push) whenever the LSP environment isn't ready.",
   /** Includes the resolved hook file path — same reasoning as `GIT_HOOK_RESOLVABLE`. */
   PRE_PUSH_HOOK_OK: (hookPath: string) =>
     `Pre-push hook is installed and includes the sync-knowledge step (${hookPath}).`,
@@ -110,7 +115,9 @@ export const DOCTOR_MESSAGES = {
   LSP_BINARY_AVAILABLE: (providerName: string) =>
     `LSP-precision edges available (${providerName} resolved).`,
   LSP_BINARY_UNAVAILABLE: (reason: string) =>
-    `LSP-precision edges unavailable (${reason}) -- Tier B degrades to AST-level edges.`,
+    `LSP-precision edges unavailable (${reason}).`,
+  LSP_BINARY_UNAVAILABLE_SUGGESTION:
+    "Build/compile the project so the language server can resolve it (install dependencies, restore/build for compiled languages), then re-run `docuvia doctor`.",
 
   /** Claude/Cursor agent-hooks presence -- always PASS either way (matches `LLM_NOT_CONFIGURED`'s
    *  precedent): a platform never selected at `init` is a legitimate state, not a defect. */

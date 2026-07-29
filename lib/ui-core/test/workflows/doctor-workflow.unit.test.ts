@@ -10,6 +10,8 @@ import { GitConstants } from "@workspace/core";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { probeDocuviaResolvable } from "../../src/workflows/doctor/git-hook-resolvability.js";
+import { DOCTOR_MESSAGES } from "../../src/workflows/doctor/doctor-messages.js";
+import { appendTierBQueueEntries } from "../../src/workflows/analyze/tier-b-queue.js";
 
 vi.mock("fs/promises");
 vi.mock("../../src/workflows/doctor/git-hook-resolvability.js", () => ({
@@ -672,6 +674,35 @@ describe("DoctorWorkflow", () => {
       expect(result.allPassed).toBe(false);
     });
 
+    it("reports FAIL for a sync-knowledge-era pre-push hook that predates the --fallback-ast env-gate (2026-07 C#/TS benchmark environment-detection follow-up)", async () => {
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockImplementation((_cwd: string, hookName: string) =>
+            Promise.resolve(
+              hookName === GitConstants.PRE_PUSH_HOOK_NAME
+                ? GitConstants.SYNC_KNOWLEDGE_PRE_PUSH_HOOK_CONTENT
+                : undefined,
+            ),
+          ),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["pre_push_hook"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["pre_push_hook"].message).toContain(
+        "predates the --fallback-ast env-gate flag",
+      );
+      expect(result.diagnostics["pre_push_hook"].suggestion).toContain(
+        "docuvia init",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
     it("reports PASS when the pre-push hook includes the sync-knowledge step and docuvia resolves", async () => {
       const git = {
         readHookFile: vi
@@ -839,7 +870,7 @@ describe("DoctorWorkflow", () => {
       expect(provider.checkAvailability).toHaveBeenCalledWith("/test");
     });
 
-    it("reports PASS with the specific unavailable reason (not a generic message) when the provider reports unavailable", async () => {
+    it("regression: reports FAIL (not PASS) with the specific unavailable reason when the provider reports unavailable -- an unready LSP environment must fail doctor, not just inform, so a bad environment is caught before a wasted/inaccurate analyze --escalate-to-lsp run", async () => {
       const provider = {
         name: "typescript-language-server",
         checkAvailability: vi.fn().mockResolvedValue({
@@ -859,12 +890,15 @@ describe("DoctorWorkflow", () => {
       });
 
       expect(result.diagnostics["lsp_binary_typescript"].status).toBe(
-        DiagnosticStatus.PASS,
+        DiagnosticStatus.FAIL,
       );
       expect(result.diagnostics["lsp_binary_typescript"].message).toContain(
         "node_modules not found",
       );
-      expect(result.allPassed).toBe(true);
+      expect(result.diagnostics["lsp_binary_typescript"].suggestion).toBe(
+        DOCTOR_MESSAGES.LSP_BINARY_UNAVAILABLE_SUGGESTION,
+      );
+      expect(result.allPassed).toBe(false);
     });
 
     it("reports one diagnostic line per registered language when more than one provider is registered", async () => {
@@ -898,6 +932,52 @@ describe("DoctorWorkflow", () => {
       );
     });
 
+    it("regression: doesn't fail (or even check) a registered language that isn't actually queued, so a TypeScript-only project never fails doctor over an unrelated language's missing LSP binary (Finding G scoping, shared with checkTierBGate)", async () => {
+      const metaMap = new Map<string, string>();
+      const store = {
+        meta: {
+          get: (key: string) => metaMap.get(key),
+          set: (key: string, value: string) => {
+            metaMap.set(key, value);
+          },
+        },
+        close: vi.fn().mockResolvedValue(undefined),
+      } as any;
+      appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: "sha1" }]);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const tsCheck = vi.fn().mockResolvedValue({ available: true });
+      const pyCheck = vi
+        .fn()
+        .mockResolvedValue({
+          available: false,
+          reason: "pyright not installed",
+        });
+      docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+        typescript: () =>
+          ({
+            name: "typescript-language-server",
+            checkAvailability: tsCheck,
+          }) as any,
+        python: () => ({ name: "pyright", checkAvailability: pyCheck }) as any,
+      }));
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+      });
+
+      expect(result.diagnostics["lsp_binary_typescript"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["lsp_binary_python"]).toBeUndefined();
+      expect(pyCheck).not.toHaveBeenCalled();
+    });
+
     it("is skipped silently (no diagnostic key, no crash) when EdgeResolutionProviders isn't registered", async () => {
       const wf = new DoctorWorkflow("/test", logger);
       const result = await wf.execute({
@@ -907,6 +987,32 @@ describe("DoctorWorkflow", () => {
       });
 
       expect(result.diagnostics["lsp_binary_typescript"]).toBeUndefined();
+    });
+
+    it("skips the check entirely (no diagnostic key, provider never called) when skipLsp is set -- escape hatch for fixtures that deliberately have no LSP environment (e.g. SQLite concurrency tests)", async () => {
+      const tsCheck = vi.fn().mockResolvedValue({
+        available: false,
+        reason: "node_modules not found",
+      });
+      docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+        typescript: () =>
+          ({
+            name: "typescript-language-server",
+            checkAvailability: tsCheck,
+          }) as any,
+      }));
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+        skipLsp: true,
+      });
+
+      expect(result.diagnostics["lsp_binary_typescript"]).toBeUndefined();
+      expect(tsCheck).not.toHaveBeenCalled();
+      expect(result.allPassed).toBe(true);
     });
   });
 });

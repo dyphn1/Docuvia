@@ -13,9 +13,16 @@ export const CLI_FLAGS = {
   SKIP_GIT: "--skip-git",
   SKIP_HOOKS: "--skip-hooks",
   SKIP_LOGS: "--skip-logs",
-  /** `analyze --escalate-to-lsp`'s D2 gate (phase1-decision-integration.md §8c): skips the
-   *  interactive "continue with AST-only fallback?" prompt when the LSP environment isn't ready
-   *  for a manual/interactive invocation -- proceeds straight to the degrade-and-log path. */
+  /** `doctor`'s LSP-binary-readiness check (§10e bullet 4 / §7a-1, T8) -- skips it entirely,
+   *  mirroring `SKIP_GIT`'s existing precedent for a fixture that deliberately has no LSP
+   *  environment set up (e.g. a concurrency test only interested in SQLite behavior). */
+  SKIP_LSP: "--skip-lsp",
+  /** `analyze --escalate-to-lsp`'s D2 gate (phase1-decision-integration.md §8c): skips the gate
+   *  entirely when the LSP environment isn't ready -- interactive, this skips the "continue with
+   *  AST-only fallback?" prompt; non-interactive, this skips the hard failure -- and proceeds
+   *  straight to the degrade-and-log path either way. The pre-push hook always passes this (see
+   *  `PRE_PUSH_HOOK_CONTENT` in git-constants.ts) so a push is never blocked by an unready LSP
+   *  environment. */
   FALLBACK_AST: "--fallback-ast",
   /** `analyze --escalate-to-lsp`'s §8b/§8h LSP timeout override, in milliseconds -- takes
    *  precedence over the `DOCUVIA_LSP_TIMEOUT_MS` env var. `0` means "never time out" (some

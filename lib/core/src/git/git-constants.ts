@@ -145,6 +145,17 @@ export const GitConstants = {
    */
   PRE_PUSH_SYNC_KNOWLEDGE_MARKER: "docuvia sync-knowledge",
   /**
+   * Present only in the current `PRE_PUSH_HOOK_CONTENT`, absent from
+   * `SYNC_KNOWLEDGE_PRE_PUSH_HOOK_CONTENT`/`LEGACY_PRE_PUSH_HOOK_CONTENT` — the marker
+   * `installPrePushHook` uses to tell a hook that already opts `analyze --escalate-to-lsp` out of
+   * D2's non-interactive hard-fail gate (`--fallback-ast` — phase1-decision-integration.md §8c,
+   * the 2026-07 C#/TS benchmark environment-detection follow-up) from one still missing it.
+   * Without this flag the pre-push hook's own Tier B step would start failing the moment the
+   * LSP environment isn't ready, which would skip `snapshot`/`sync-knowledge` for that push (the
+   * hook's own trailing `exit 0` still keeps `git push` itself from being blocked either way).
+   */
+  PRE_PUSH_ENV_GATE_MARKER: "--fallback-ast",
+  /**
    * Phase 2 sync-knowledge-scheduling.md SKSCHED-001: composes `sync-knowledge` onto the same
    * pre-push batch Tier B already occupies, after `snapshot` — reconciliation only makes sense
    * once a fresh local snapshot commit exists to reconcile. Wired here (not post-commit) so the
@@ -154,6 +165,24 @@ export const GitConstants = {
   /** `> /dev/null 2>&1` (portable), not `&>` (bash-only) — see `POST_COMMIT_HOOK_CONTENT`'s doc
    *  comment on why: husky's shim runs a redirected hook via `sh -e`, not bash. */
   PRE_PUSH_HOOK_CONTENT:
+    `#!/bin/bash\n# Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)\n` +
+    `# Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see\n` +
+    `# docs/gitbook/analysis/phase1-decision-integration.md §8h and\n` +
+    `# docs/gitbook/analysis/phase2-sync-knowledge-scheduling.md.\n` +
+    `if command -v npx > /dev/null 2>&1; then\n` +
+    `  npx --no-install docuvia analyze --escalate-to-lsp --fallback-ast && npx --no-install docuvia snapshot && npx --no-install docuvia sync-knowledge\n` +
+    `fi\n` +
+    `# Never blocks the push on a Tier B/sync-knowledge failure -- PLAT-007's reliability\n` +
+    `# requirement (failures only ever surface via JSONL logs / doctor, never to the pushing\n` +
+    `# developer).\n` +
+    `exit 0\n`,
+  /**
+   * The sync-knowledge-era hook's exact content (SKSCHED-003), before `--fallback-ast` was added
+   * to its `analyze --escalate-to-lsp` invocation -- retained verbatim so `installPrePushHook` can
+   * recognize a hook installed before that flag was composed in and replace it in place, same
+   * technique as the `LEGACY_PRE_PUSH_HOOK_CONTENT` upgrade below.
+   */
+  SYNC_KNOWLEDGE_PRE_PUSH_HOOK_CONTENT:
     `#!/bin/bash\n# Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)\n` +
     `# Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see\n` +
     `# docs/gitbook/analysis/phase1-decision-integration.md §8h and\n` +

@@ -65,8 +65,13 @@ export async function checkTierBGate(
  * can't be opened) -- a deliberately conservative default, distinct from a real empty-queue
  * result (which returns `[]` and correctly no-ops, mirroring `runTierBBatchCore`'s own
  * empty-queue short-circuit).
+ *
+ * Exported for `doctor-workflow.ts`'s LSP-binary diagnostic (§10e bullet 4 / §7a-1, T8), which
+ * reuses this exact scoping so a project with several registered language providers isn't failed
+ * over a language it doesn't actually use (e.g. a TypeScript-only repo failing doctor because
+ * csharp-ls isn't installed) -- same reasoning as this gate's own Finding G.
  */
-async function resolveQueuedLanguages(
+export async function resolveQueuedLanguages(
   workspaceRoot: string,
   registry: Partial<Record<TierBLanguageId, () => unknown>>,
 ): Promise<TierBLanguageId[]> {

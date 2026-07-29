@@ -49,10 +49,15 @@ describe("Command: docuvia doctor concurrent with docuvia hydrate (real filesyst
     const runs = [
       // `--skip-git` avoids `doctor`'s git-remote-reachability check, which fails in any sandbox
       // without a configured remote (the same pre-existing flakiness `doctor.test.ts` documents)
-      // and is orthogonal to the db-concurrency behavior this test targets; `sqlite_integrity`
-      // (the check that matters here) still runs.
+      // and is orthogonal to the db-concurrency behavior this test targets; `--skip-lsp` avoids
+      // `doctor`'s LSP-binary-readiness check (now FAIL-capable) for the same reason -- this
+      // fixture never installs `typescript-language-server` on purpose, since it's irrelevant to
+      // the SQLite WAL/busy_timeout behavior under test. `sqlite_integrity` (the check that
+      // matters here) still runs.
       ...Array.from({ length: DOCTOR_RUNS }, () =>
-        sandbox.runCli(["doctor", "--skip-git"], { reject: false }),
+        sandbox.runCli(["doctor", "--skip-git", "--skip-lsp"], {
+          reject: false,
+        }),
       ),
       ...Array.from({ length: HYDRATE_RUNS }, () =>
         sandbox.runCli(["hydrate"], { reject: false }),

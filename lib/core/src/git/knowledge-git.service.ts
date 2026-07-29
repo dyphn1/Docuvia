@@ -219,11 +219,12 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
   /**
    * Installs the pre-push hook that fires the Tier B batch plus `sync-knowledge`
-   * (`docuvia analyze --escalate-to-lsp && docuvia snapshot && docuvia sync-knowledge`,
-   * phase1-decision-integration.md §8h; phase2-sync-knowledge-scheduling.md SKSCHED-001). Mirrors
-   * `installPostCommitHook`'s marker + lock shape; as of the `sync-knowledge` composition
-   * (SKSCHED-003) a legacy-upgrade branch exists too, for a hook installed before that step was
-   * added — same exact-content-match technique `installPostCommitHook` already uses. Non-fatal by
+   * (`docuvia analyze --escalate-to-lsp --fallback-ast && docuvia snapshot && docuvia
+   * sync-knowledge`, phase1-decision-integration.md §8h; phase2-sync-knowledge-scheduling.md
+   * SKSCHED-001). Mirrors `installPostCommitHook`'s marker + lock shape; two legacy-upgrade tiers
+   * exist -- a hook installed before `sync-knowledge` was composed in (SKSCHED-003), and one
+   * installed before `--fallback-ast` was added (D2's non-interactive hard-fail gate) -- both via
+   * the same exact-content-match technique `installPostCommitHook` already uses. Non-fatal by
    * design, same reasoning as `installPostCommitHook`.
    */
   public async installPrePushHook(
@@ -249,19 +250,13 @@ export class KnowledgeGitService implements IKnowledgeGitService {
         return { installed: false };
       }
 
-      // SKSCHED-003: a hook carrying the pre-Phase-2 marker but not the sync-knowledge one is a
-      // legacy installation -- replace its exact block in place rather than appending a second,
-      // duplicate Docuvia block alongside it (mirrors installPostCommitHook's legacy upgrade).
-      const hasLegacyOnly = !!recheckHook?.includes(
-        GitConstants.PRE_PUSH_HOOK_MARKER,
-      );
+      const upgradeFrom = this.resolvePrePushUpgradeSource(recheckHook);
 
       try {
-        if (hasLegacyOnly) {
+        if (upgradeFrom) {
           const upgradedHook =
-            recheckHook!
-              .split(GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT)
-              .join("") + GitConstants.PRE_PUSH_HOOK_CONTENT;
+            recheckHook!.split(upgradeFrom).join("") +
+            GitConstants.PRE_PUSH_HOOK_CONTENT;
           await this.git.writeHookFile(cwd, hookName, upgradedHook);
         } else {
           await this.git.appendHookFile(
@@ -279,7 +274,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       }
 
       this.logger.info(
-        hasLegacyOnly
+        upgradeFrom
           ? GitMessages.UPGRADED_LEGACY_PRE_PUSH_HOOK
           : GitMessages.INSTALLED_PRE_PUSH_HOOK,
       );
@@ -287,13 +282,33 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     });
   }
 
-  /** True once the hook carries both the Tier B marker and the sync-knowledge marker -- i.e. is
-   *  fully up to date, not just "installed at some prior version" (SKSCHED-003). */
+  /** True once the hook carries the Tier B marker, the sync-knowledge marker, and the
+   *  `--fallback-ast` env-gate marker -- i.e. is fully up to date, not just "installed at some
+   *  prior version" (SKSCHED-003; the 2026-07 C#/TS benchmark environment-detection follow-up). */
   private hasCurrentPrePushHook(hook: string | undefined): boolean {
     return (
       !!hook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER) &&
-      !!hook?.includes(GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER)
+      !!hook?.includes(GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER) &&
+      !!hook?.includes(GitConstants.PRE_PUSH_ENV_GATE_MARKER)
     );
+  }
+
+  /**
+   * Which frozen legacy-content constant `installPrePushHook`'s exact-content-match upgrade
+   * should replace, given `hasCurrentPrePushHook` already returned `false` for this hook —
+   * `undefined` means "no Docuvia block at all yet" (fresh append, not an upgrade). Checked
+   * oldest-tier-first: a hook missing the sync-knowledge marker predates that step entirely, so
+   * it's matched against `LEGACY_PRE_PUSH_HOOK_CONTENT` regardless of whether it happens to also
+   * lack the env-gate marker (it always does, by construction).
+   */
+  private resolvePrePushUpgradeSource(
+    hook: string | undefined,
+  ): string | undefined {
+    if (!hook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER)) return undefined;
+    if (!hook.includes(GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER)) {
+      return GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT;
+    }
+    return GitConstants.SYNC_KNOWLEDGE_PRE_PUSH_HOOK_CONTENT;
   }
 
   /**
@@ -357,8 +372,9 @@ export class KnowledgeGitService implements IKnowledgeGitService {
   /**
    * `uninstall`'s symmetric counterpart to `installPrePushHook`
    * (phase1-decision-integration.md §10a, decision 1a) — mirrors `removePostCommitHook`'s shape,
-   * including its two-content-variant strip now that `installPrePushHook` has a legacy (pre
-   * sync-knowledge) content variant of its own (SKSCHED-003). Non-fatal by design.
+   * including its content-variant strip now that `installPrePushHook` has legacy (pre
+   * sync-knowledge, and pre `--fallback-ast` env-gate) content variants of its own (SKSCHED-003;
+   * the 2026-07 C#/TS benchmark environment-detection follow-up). Non-fatal by design.
    */
   public async removePrePushHook(cwd: string): Promise<{ removed: boolean }> {
     const hookName = GitConstants.PRE_PUSH_HOOK_NAME;
@@ -377,15 +393,14 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
       try {
         let remainder = recheckHook;
-        if (remainder.includes(GitConstants.PRE_PUSH_HOOK_CONTENT)) {
-          remainder = remainder
-            .split(GitConstants.PRE_PUSH_HOOK_CONTENT)
-            .join("");
-        }
-        if (remainder.includes(GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT)) {
-          remainder = remainder
-            .split(GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT)
-            .join("");
+        for (const content of [
+          GitConstants.PRE_PUSH_HOOK_CONTENT,
+          GitConstants.SYNC_KNOWLEDGE_PRE_PUSH_HOOK_CONTENT,
+          GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT,
+        ]) {
+          if (remainder.includes(content)) {
+            remainder = remainder.split(content).join("");
+          }
         }
         await this.git.writeHookFile(cwd, hookName, remainder);
       } catch (err) {

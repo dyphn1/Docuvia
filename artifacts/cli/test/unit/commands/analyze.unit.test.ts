@@ -399,13 +399,18 @@ describe("analyzeCommand", () => {
 
     beforeEach(() => {
       mockCheckTierBGate.mockReset();
+      // Default to "environment ready" so tests below that aren't about the gate itself don't
+      // have to stub it individually -- `confirmTierBGateOrAbort` now calls this unconditionally
+      // (regression: it used to short-circuit past this call entirely for non-interactive
+      // invocations, see the "hard-fails" tests below for the behavior that fixed).
+      mockCheckTierBGate.mockResolvedValue({ available: true });
     });
 
     // vitest's own process never runs with a TTY stdin, so every test below exercises the
     // "background/non-interactive" path (§8c: never prompts) -- the interactive-prompt branch
     // itself lives entirely behind a `process.stdin.isTTY` check this suite cannot flip.
 
-    it("sets escalateToLsp into docuviaMemory and calls docuviaApi.analyze() without prompting (non-interactive)", async () => {
+    it("checks the Tier B gate and calls docuviaApi.analyze() without prompting when the environment is ready (non-interactive)", async () => {
       mockAnalyze.mockResolvedValue({
         kind: "tierBBatch",
         headSha: "abc123",
@@ -423,7 +428,7 @@ describe("analyzeCommand", () => {
 
       await analyzeCommand(undefined, "/workspace", { escalateToLsp: true });
 
-      expect(mockCheckTierBGate).not.toHaveBeenCalled();
+      expect(mockCheckTierBGate).toHaveBeenCalled();
       expect(mockAnalyze).toHaveBeenCalled();
       const scopeId = mockAnalyze.mock.calls[0][0];
       expect(setSpy).toHaveBeenCalledWith(scopeId, "escalateToLsp", true);
@@ -433,6 +438,52 @@ describe("analyzeCommand", () => {
       expect(ui.info).toHaveBeenCalledWith(
         UI_MESSAGES.ANALYZE_TIER_B_SUMMARY(1, 2, 0),
       );
+    });
+
+    it("regression: hard-fails (process.exitCode=1) and never calls docuviaApi.analyze() when the environment isn't ready, non-interactive, no --fallback-ast -- previously this silently degraded and reported success, wasting a full batch's wall-clock time on an unbuilt target project", async () => {
+      mockCheckTierBGate.mockResolvedValue({
+        available: false,
+        reason: "node_modules not found",
+      });
+
+      await analyzeCommand(undefined, "/workspace", { escalateToLsp: true });
+
+      expect(mockCheckTierBGate).toHaveBeenCalled();
+      expect(mockAnalyze).not.toHaveBeenCalled();
+      expect(ui.error).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_TIER_B_GATE_FAILED("node_modules not found"),
+      );
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("skips the gate entirely and still calls docuviaApi.analyze() when --fallback-ast is passed, even if the environment isn't ready -- the pre-push hook's own escape hatch", async () => {
+      mockCheckTierBGate.mockResolvedValue({
+        available: false,
+        reason: "node_modules not found",
+      });
+      mockAnalyze.mockResolvedValue({
+        kind: "tierBBatch",
+        headSha: "abc123",
+        filesQueued: 0,
+        filesDroppedDeleted: 0,
+        filesSkippedLanguage: 0,
+        filesProcessed: 0,
+        filesFailed: 0,
+        edgesApplied: 0,
+        edgesPruned: 0,
+        degraded: true,
+        degradedReason: "node_modules not found",
+        commitCapExceeded: false,
+      });
+
+      await analyzeCommand(undefined, "/workspace", {
+        escalateToLsp: true,
+        fallbackAst: true,
+      });
+
+      expect(mockCheckTierBGate).not.toHaveBeenCalled();
+      expect(mockAnalyze).toHaveBeenCalled();
+      expect(process.exitCode).not.toBe(1);
     });
 
     it("prints the degraded message (not the success summary) when the batch degraded", async () => {

@@ -17,7 +17,7 @@ docuvia analyze [path] [flags]
 ### Flags
 
 - `--escalate-to-lsp`: Runs the Tier B batch — LSP-precision cross-file `calls` edges over the files Tier A queued since the last batch (see Mode C below). This is the flag IMPT-002 names as "the core quality engine"; it is now implemented for real (spawn-per-batch `typescript-language-server`), not a no-op.
-- `--fallback-ast`: Only relevant with `--escalate-to-lsp`, and only on an interactive terminal. Skips the "LSP prerequisites aren't ready — continue with AST-only precision?" confirmation prompt and proceeds straight to the batch (which degrades honestly if the LSP truly isn't available). Background invocations (the pre-push hook, CI) never prompt in the first place.
+- `--fallback-ast`: Only relevant with `--escalate-to-lsp`. Skips the environment-readiness gate entirely and proceeds straight to the batch (which degrades honestly if the LSP truly isn't available). On an interactive terminal this skips the "LSP prerequisites aren't ready — continue with AST-only precision?" prompt; non-interactively it skips the hard failure the gate would otherwise raise. The pre-push hook always passes this flag so a push is never blocked by an unready LSP environment.
 - `--force`, `-f`: Force re-running full AST ingestion even if HEAD matches the last-ingested source commit (bypassing the fast-path no-op check).
 - `--interactive`, `-i`: Opt-in to interactive prompts/confirmation dialogs. Without this flag, commands will fail-fast or degrade non-interactively.
 
@@ -63,15 +63,19 @@ resolves cross-file `calls` edges via `textDocument/documentSymbol` +
 `textDocument/references`, writes them to the graph, and repairs incoming edges that Tier A's
 per-file replace can drop (re-attached by the deterministic `node_key` identity, not by re-parsing
 the caller). This is normally composed with `snapshot` by the pre-push hook
-(`analyze --escalate-to-lsp && snapshot`) — exactly one snapshot lands on the knowledge branch per
-batch, not per commit.
+(`analyze --escalate-to-lsp --fallback-ast && snapshot`) — exactly one snapshot lands on the
+knowledge branch per batch, not per commit.
 
-**Honest degradation:** if `typescript-language-server` isn't resolvable (not installed as a
-project devDependency, and `npx --no-install` can't find it either), the batch leaves AST-level
-edges untouched, logs why, and exits `0` — it never fails the push and never invents edges
-statically. `--escalate-to-lsp` on a manual/interactive run additionally gates on this up front
-(prompting before doing any work); the pre-push hook and other background invocations skip the
-prompt and just degrade.
+**Environment-readiness gate:** before running the batch, `--escalate-to-lsp` checks whether the
+LSP environment is actually ready (binary resolvable, project dependencies installed/built) for
+every language queued. On an interactive terminal this prompts ("LSP prerequisites aren't ready —
+continue with AST-only precision?"). Otherwise it **fails outright** (exit `1`, no batch run) —
+running an unready environment silently wastes a full batch's wall-clock time and produces results
+indistinguishable from a healthy run unless you read the JSONL log line-by-line. Pass
+`--fallback-ast` to skip the gate and get the old **honest degradation** behavior instead: the
+batch leaves AST-level edges untouched, logs why, and exits `0`. The pre-push hook always passes
+`--fallback-ast` — a push must never be blocked by an unready LSP environment. Run `docuvia doctor`
+to check readiness ahead of time.
 
 **Binary resolution** (never bundled with docuvia): `<project>/node_modules/.bin` first, then
 `npx --no-install typescript-language-server`. Config-overridable via environment variables read
@@ -97,4 +101,12 @@ Run the Tier B LSP-escalation batch manually (what the pre-push hook does automa
 
 ```bash
 docuvia analyze --escalate-to-lsp && docuvia snapshot
+```
+
+If your environment isn't ready yet, this fails with a message telling you to build the project
+and run `docuvia doctor`. To get the old degrade-instead-of-fail behavior (e.g. for a CI script
+that shouldn't hard-fail on a missing language server), pass `--fallback-ast`:
+
+```bash
+docuvia analyze --escalate-to-lsp --fallback-ast && docuvia snapshot
 ```

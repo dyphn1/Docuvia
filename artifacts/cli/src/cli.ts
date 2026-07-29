@@ -189,12 +189,14 @@ async function handleDoctor(ctx: CommandContext): Promise<void> {
   const skipGit = ctx.parser.hasFlag(CLI_FLAGS.SKIP_GIT);
   const skipHooks = ctx.parser.hasFlag(CLI_FLAGS.SKIP_HOOKS);
   const skipLogs = ctx.parser.hasFlag(CLI_FLAGS.SKIP_LOGS);
+  const skipLsp = ctx.parser.hasFlag(CLI_FLAGS.SKIP_LSP);
   const fix = ctx.parser.hasFlag(CLI_FLAGS.FIX);
   await doctorCommand(ctx.workspaceRoot, {
     skipDb,
     skipGit,
     skipHooks,
     skipLogs,
+    skipLsp,
     fix,
   });
 }

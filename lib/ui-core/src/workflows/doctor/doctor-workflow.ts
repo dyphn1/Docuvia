@@ -28,6 +28,7 @@ import {
   LOG_FILE_EXTENSION,
 } from "./doctor-messages.js";
 import { isTierBCommitCapExceeded } from "../analyze/tier-b-commit-cap.js";
+import { resolveQueuedLanguages } from "../analyze/tier-b-gate.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { probeDocuviaResolvable } from "./git-hook-resolvability.js";
 import * as path from "path";
@@ -41,6 +42,11 @@ export interface DoctorOptions {
    *  (`doctor.ts`-side) option; folded in here alongside the check itself so `DoctorOptions` isn't
    *  duplicated across layers. */
   skipHooks?: boolean;
+  /** Skips the LSP-binary-readiness check (§10e bullet 4 / §7a-1, T8) -- an escape hatch for
+   *  callers that care about `doctor`'s other diagnostics (e.g. SQLite concurrency tests) but
+   *  whose fixture project has no LSP environment set up on purpose, mirroring `skipGit`'s
+   *  existing precedent for sidestepping an orthogonal check. */
+  skipLsp?: boolean;
   /** Opt-in repair of the legacy-hook duplicate-block case (§10d, T6) -- the only `doctor` flag
    *  that mutates workspace files, and only for that one specific condition. Never mutates
    *  anything when absent/false. */
@@ -65,6 +71,7 @@ export class DoctorWorkflow {
       skipGit = false,
       skipLogs = false,
       skipHooks = false,
+      skipLsp = false,
       fix = false,
       llmBaseUrl,
       llmApiKey,
@@ -88,6 +95,9 @@ export class DoctorWorkflow {
         llmBaseUrl,
         llmApiKey,
       ),
+      await this.runOrSkip(skipLsp, () =>
+        this.runLspBinaryDiagnostic(diagnostics),
+      ),
     ];
 
     // §10c's doctor-half backup (T4) only needs the db as of §9m item 1 (the commit-cap's metric
@@ -96,8 +106,6 @@ export class DoctorWorkflow {
     await this.runOrSkip(skipDb, () =>
       this.runTierBCommitCapDiagnostic(diagnostics),
     );
-    // §10e bullet 4 / §7a-1 (T8) -- always PASS (decision 1c); doesn't affect allPassed either.
-    await this.runLspBinaryDiagnostic(diagnostics);
     // Folded in from doctor.ts's plain fs.stat logic (workflows/doctor-execution-flow.md's
     // Presentation-layer asymmetry cleanup) -- always PASS, same as above; a platform never
     // selected at init is a legitimate state, not a defect, so this must never affect allPassed.
@@ -260,6 +268,9 @@ export class DoctorWorkflow {
       const hasSyncKnowledge = !!hook?.includes(
         GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER,
       );
+      const hasEnvGate = !!hook?.includes(
+        GitConstants.PRE_PUSH_ENV_GATE_MARKER,
+      );
 
       let result: DiagnosticResult;
       if (!hasCurrent) {
@@ -271,6 +282,12 @@ export class DoctorWorkflow {
         result = {
           status: DiagnosticStatus.FAIL,
           message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE,
+          suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
+        };
+      } else if (!hasEnvGate) {
+        result = {
+          status: DiagnosticStatus.FAIL,
+          message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_ENV_GATE_STALE,
           suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
         };
       } else {
@@ -348,42 +365,59 @@ export class DoctorWorkflow {
   /**
    * §10e bullet 4 / §7a-1 (T8): LSP binary presence, independent of whether a Tier B batch has
    * ever run -- pure wiring, reusing Slice 3's shipped `IEdgeResolutionProvider.checkAvailability()`
-   * verbatim (the exact same token `checkTierBGate` resolves, `tier-b-gate.ts:23`), so this
-   * produces a result identical in substance to what `analyze --escalate-to-lsp`'s own gate would
-   * find on the same workspace. Always PASS (decision 1c) -- a `reason` from a not-available
-   * result becomes the informative message, not a failure. Never throws past this method.
+   * verbatim (the exact same token `checkTierBGate` resolves, `tier-b-gate.ts:23`). Reports FAIL
+   * when a queued language's provider is unavailable -- environment readiness for Tier B is a real
+   * defect, not merely informative (2026-07 C#/TS benchmark finding: a target project that was
+   * never built silently produced wasted, inaccurate `analyze --escalate-to-lsp` runs because
+   * nothing surfaced this as a failure beforehand). Never throws past this method.
    *
-   * multi-language-lsp-support plan, Finding A/G: iterates the full `TOKENS.EdgeResolutionProviders`
-   * registry, one diagnostic line per registered language (independent of what's currently queued
-   * -- doctor's job is "is my environment ready", not "is this run's queue ready"). Slice 0's
-   * registry only has `typescript`, so this produces exactly one line, same as before.
+   * multi-language-lsp-support plan, Finding G: reuses `resolveQueuedLanguages` (the same scoping
+   * `checkTierBGate` applies) rather than iterating the full `TOKENS.EdgeResolutionProviders`
+   * registry, so a project that only uses one language never fails doctor over an unrelated
+   * language's LSP binary being absent.
    */
   private async runLspBinaryDiagnostic(
     diagnostics: Record<string, DiagnosticResult>,
-  ): Promise<void> {
-    if (!docuviaFactory.has(TOKENS.EdgeResolutionProviders)) return;
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.EdgeResolutionProviders)) return true;
 
     try {
       const registry = docuviaFactory.resolve(TOKENS.EdgeResolutionProviders, {
         logger: this.logger,
       });
+      const languagesToCheck = await resolveQueuedLanguages(
+        this.workspaceRoot,
+        registry,
+      );
 
-      for (const [languageId, buildProvider] of Object.entries(registry)) {
+      let allAvailable = true;
+      for (const languageId of languagesToCheck) {
+        const buildProvider = registry[languageId];
         if (!buildProvider) continue;
         const provider = buildProvider();
         const availability = await provider.checkAvailability(
           this.workspaceRoot,
         );
 
-        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LSP_BINARY(languageId)] = {
-          status: DiagnosticStatus.PASS,
-          message: availability.available
-            ? DOCTOR_MESSAGES.LSP_BINARY_AVAILABLE(provider.name)
-            : DOCTOR_MESSAGES.LSP_BINARY_UNAVAILABLE(availability.reason ?? ""),
-        };
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LSP_BINARY(languageId)] =
+          availability.available
+            ? {
+                status: DiagnosticStatus.PASS,
+                message: DOCTOR_MESSAGES.LSP_BINARY_AVAILABLE(provider.name),
+              }
+            : {
+                status: DiagnosticStatus.FAIL,
+                message: DOCTOR_MESSAGES.LSP_BINARY_UNAVAILABLE(
+                  availability.reason ?? "",
+                ),
+                suggestion: DOCTOR_MESSAGES.LSP_BINARY_UNAVAILABLE_SUGGESTION,
+              };
+        if (!availability.available) allAvailable = false;
       }
+      return allAvailable;
     } catch {
       // Never crash doctor over this check.
+      return true;
     }
   }
 

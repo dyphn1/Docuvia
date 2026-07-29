@@ -29,6 +29,7 @@ export interface DoctorOptions {
   skipGit?: boolean;
   skipHooks?: boolean;
   skipLogs?: boolean;
+  skipLsp?: boolean;
   /** `--fix` (phase1-decision-integration.md §10d, T6) -- forwarded verbatim to
    *  `docuviaApi.doctor()`; see `DoctorWorkflow`'s own doc comment for what it does. */
   fix?: boolean;
@@ -112,17 +113,31 @@ async function runDoctorDiagnostics(
   }
 }
 
-export async function doctorCommand(
-  workspaceRoot: string,
-  options: DoctorOptions = {},
-): Promise<void> {
+/** Applies every `DoctorOptions` skip flag's default -- pulled out of `doctorCommand` solely to
+ *  keep its own cyclomatic complexity under the project's ESLint budget as skip flags accumulate. */
+function resolveDoctorOptions(
+  options: DoctorOptions,
+): Required<
+  Pick<
+    DoctorOptions,
+    "skipDb" | "skipGit" | "skipHooks" | "skipLogs" | "skipLsp" | "fix"
+  >
+> {
   const {
     skipDb = false,
     skipGit = false,
     skipHooks = false,
     skipLogs = false,
+    skipLsp = false,
     fix = false,
   } = options;
+  return { skipDb, skipGit, skipHooks, skipLogs, skipLsp, fix };
+}
+
+export async function doctorCommand(
+  workspaceRoot: string,
+  options: DoctorOptions = {},
+): Promise<void> {
   try {
     ui.header(UI_MESSAGES.DOCTOR_HEADER);
     ui.info(UI_MESSAGES.DOCTOR_START);
@@ -134,7 +149,7 @@ export async function doctorCommand(
       scopeId,
       logger,
       workspaceRoot,
-      { skipDb, skipGit, skipHooks, skipLogs, fix },
+      resolveDoctorOptions(options),
     );
 
     if (!allPassed) process.exitCode = 1;

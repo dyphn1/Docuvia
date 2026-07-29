@@ -410,19 +410,24 @@ function handleAnalyzeError(
 }
 
 /**
- * D2's mandatory pre-flight gate for a manual/interactive invocation
- * (phase1-decision-integration.md §8c). Non-interactive callers (the pre-push hook, CI, or a
- * manual run without `--interactive`/`-i` -- IFCE-004) always skip straight past this — they
- * degrade honestly inside the workflow itself, no prompt. Returns `false` when the user declined
- * to continue (caller should abort without running anything).
+ * D2's pre-flight gate for `analyze --escalate-to-lsp` (phase1-decision-integration.md §8c) --
+ * called for every invocation that didn't opt out via `--fallback-ast` (see `analyzeCommand`'s
+ * `!options.fallbackAst` guard), interactive or not. An interactive terminal (`-i`) gets the
+ * original prompt (continue with AST-only precision?). A non-interactive one -- a human running
+ * the bare command, or a benchmark/CI script -- now fails outright instead of silently degrading:
+ * a silent degrade wastes a full batch's wall-clock time and produces a result indistinguishable
+ * from a healthy run unless the caller reads the JSONL log line-by-line (2026-07 C#/TS benchmark
+ * finding). The pre-push hook is the one caller that must never fail here -- it passes
+ * `--fallback-ast` (see `PRE_PUSH_HOOK_CONTENT` in git-constants.ts), which skips this function
+ * entirely and goes straight to the workflow's own honest-degradation path, unchanged from
+ * before. Returns `false` when the batch should not run (interactive decline, or a non-interactive
+ * hard failure -- the caller sets `process.exitCode` only for the latter).
  */
 async function confirmTierBGateOrAbort(
   cwd: string,
   isInteractive: boolean,
   lspTimeoutMs?: number,
 ): Promise<boolean> {
-  if (!isInteractive) return true;
-
   const scopeId = crypto.randomUUID();
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
@@ -432,6 +437,14 @@ async function confirmTierBGateOrAbort(
     const logger = createPinoBackedLogger();
     const availability = await docuviaApi.checkTierBGate(scopeId, logger);
     if (availability.available) return true;
+
+    if (!isInteractive) {
+      ui.error(
+        UI_MESSAGES.ANALYZE_TIER_B_GATE_FAILED(availability.reason ?? ""),
+      );
+      process.exitCode = 1;
+      return false;
+    }
 
     ui.warn(
       UI_MESSAGES.ANALYZE_TIER_B_GATE_NOT_READY(availability.reason ?? ""),
@@ -462,10 +475,11 @@ async function confirmTierBGateOrAbort(
  *   user who explicitly asked to analyze a path expects LLM extraction to actually run.
  * - `--escalate-to-lsp`: the Tier B batch (PLAT-007 Tier B; phase1-decision-integration.md §8) —
  *   a sibling mode, never combined with auto mode's own dispatch (it consumes the queue Tier A
- *   already accumulated, never re-runs Tier A itself). D2's mandatory gate
- *   (`confirmTierBGateOrAbort`) only prompts on an interactive terminal without
- *   `--fallback-ast`; background/CI invocations (the pre-push hook) skip straight to the
- *   workflow's own honest-degradation path.
+ *   already accumulated, never re-runs Tier A itself). D2's gate (`confirmTierBGateOrAbort`) runs
+ *   for every invocation without `--fallback-ast`: interactive gets a prompt, non-interactive now
+ *   hard-fails on an unready environment instead of silently degrading. Only `--fallback-ast`
+ *   (the pre-push hook's own invocation) skips the gate entirely, straight to the workflow's own
+ *   honest-degradation path.
  */
 export async function analyzeCommand(
   targetPath?: string,

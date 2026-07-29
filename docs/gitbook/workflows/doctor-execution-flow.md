@@ -27,6 +27,17 @@ prints the result.
 > defect; `DiagnosticStatus` has no severity between PASS and FAIL, so this never affects
 > `allPassed`/exit code. `skipHooks` moved from a `doctor.ts`-only option onto `DoctorWorkflow`'s
 > own `DoctorOptions`, closing the interface duplication this doc used to note.
+>
+> **Status update (2026-07-29, 2026-07 C#/TS benchmark environment-detection follow-up):** the LSP
+> binary check (`lsp_binary_<language>`) is no longer always-PASS -- it now reports `FAIL` when a
+> queued language's provider is unavailable, since a wasted/inaccurate `analyze --escalate-to-lsp`
+> run over an unbuilt target is a real defect, not merely informative. It's also no longer scoped
+> to every registered language's provider; it reuses `checkTierBGate`'s own
+> `resolveQueuedLanguages` scoping (falling back to the full registry only when the queue can't be
+> determined), so a project using a single language never fails doctor over an unrelated language's
+> missing binary. New `skipLsp`/`--skip-lsp` option, mirroring `skipGit`'s existing precedent, for
+> callers that care about `doctor`'s other diagnostics but whose fixture deliberately has no LSP
+> environment set up.
 
 ## Sequence Diagram
 
@@ -45,7 +56,7 @@ sequenceDiagram
     participant Lsp as IEdgeResolutionProvider (per registered language)
 
     User->>CLI: docuvia doctor, skip flags, --fix
-    CLI->>API: docuviaApi.doctor scopeId logger, skipDb, skipGit, skipHooks, skipLogs, fix, llmBaseUrl, llmApiKey
+    CLI->>API: docuviaApi.doctor scopeId logger, skipDb, skipGit, skipHooks, skipLogs, skipLsp, fix, llmBaseUrl, llmApiKey
 
     API->>WF: new DoctorWorkflow execute
     opt not skipDb
@@ -80,8 +91,10 @@ sequenceDiagram
         WF->>Llm: initialize baseUrl apiKey, checkAvailability
         Note right of Llm: not configured is PASS; configured-but-unreachable is the one real FAIL this check reports.
     end
-    WF->>Lsp: checkAvailability workspaceRoot, once per provider in the TOKENS.EdgeResolutionProviders registry
-    Note right of Lsp: multi-language-lsp-support plan, Slice 0 -- iterates every registered language's provider (today just typescript), one diagnostic key per language (DOCTOR_DIAGNOSTIC_KEYS.LSP_BINARY(languageId)). Always PASS, reason surfaced as the message; same checkAvailability() method analyze --escalate-to-lsp's own gate uses.
+    opt not skipLsp
+        WF->>Lsp: checkAvailability workspaceRoot, once per language actually queued in tierBQueue
+        Note right of Lsp: resolveQueuedLanguages scoping (shared with checkTierBGate) -- falls back to every registered provider only when the queue can't be determined. One diagnostic key per checked language (DOCTOR_DIAGNOSTIC_KEYS.LSP_BINARY(languageId)). FAIL (not PASS) when unavailable, as of 2026-07-29; same checkAvailability() method analyze --escalate-to-lsp's own gate uses.
+    end
     opt not skipHooks
         WF->>FS: fs.stat claude hook file, cursor hook file
         Note right of FS: folded into DoctorWorkflow -- closes the asymmetry this doc used to flag. Always PASS either way: not selecting a platform at init is a legitimate state, not a defect.

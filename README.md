@@ -53,7 +53,7 @@ AST parsing (Tier A) covers every language below out of the box. LSP escalation 
    npx docuvia doctor
    ```
 
-   `doctor` reports whether each installed language server actually resolves, without requiring a full `analyze --escalate-to-lsp` run first.
+   `doctor` reports whether each installed language server actually resolves, without requiring a full `analyze --escalate-to-lsp` run first — it now fails (not just informs) when a language you've actually got queued for Tier B isn't ready, so fix that before running `analyze --escalate-to-lsp` for real (or pass `--fallback-ast` to degrade to AST-only precision instead of failing).
 
 ## Documentation
 
@@ -72,7 +72,7 @@ The complete documentation, including the critical system architecture and desig
 Docuvia2 is self-hosted — it uses its own knowledge graph to develop and verify itself, rather than an external code-intelligence tool. Git hooks (installed via Husky) keep the local graph current as you work:
 
 - **`post-commit`**: fires `docuvia analyze` in the background (Tier A — deterministic AST delta, sub-second, never blocks the commit).
-- **`pre-push`**: runs `docuvia analyze --escalate-to-lsp && docuvia snapshot && docuvia sync-knowledge` synchronously (Tier B — LSP-precision cross-file edges), so pushed code always carries corrected knowledge. This never blocks the push on failure; see [PLAT-007: Tiered Background Knowledge Evolution](docs/gitbook/adr/platform/PLAT-007-tiered-background-knowledge-evolution.md).
+- **`pre-push`**: runs `docuvia analyze --escalate-to-lsp --fallback-ast && docuvia snapshot && docuvia sync-knowledge` synchronously (Tier B — LSP-precision cross-file edges), so pushed code always carries corrected knowledge. `--fallback-ast` degrades to AST-only precision instead of failing when the LSP environment isn't ready — a manual `analyze --escalate-to-lsp` (without that flag) fails outright instead, so run `doctor` first. This never blocks the push on failure; see [PLAT-007: Tiered Background Knowledge Evolution](docs/gitbook/adr/platform/PLAT-007-tiered-background-knowledge-evolution.md).
 
 Before exploring the codebase or making structural changes (by hand or via an AI agent), query the local knowledge graph to understand architectural boundaries, historical decisions, and blast radius:
 

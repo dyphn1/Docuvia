@@ -150,18 +150,32 @@ jitter without guaranteeing freshness; pre-push + commit-cap needs no scheduler 
   parallel, results merge by provenance: LSP edges are authoritative, LLM edges carry
   `source='llm-inferred'` + confidence, LSP wins conflicts. No re-entry has been triggered yet
   (see the roadmap doc for the measured re-entry condition).
-- **Honest degradation, always:** LSP absent / unready / timed out → AST-level edges stay as they
-  are, a JSONL event records why, exit 0, `doctor` explains the reason. Statically inventing edges
-  to paper over the gap is prohibited.
+- **Honest degradation, opt-in as of 2026-07-29:** LSP absent / unready / timed out → AST-level
+  edges stay as they are, a JSONL event records why, exit 0. Statically inventing edges to paper
+  over the gap remains prohibited either way. **Update (2026-07-29):** this used to be unconditional
+  for every non-interactive caller; see the pre-flight gate update below — degradation now requires
+  `--fallback-ast` outside the pre-push hook, and `doctor` reports the unready environment as a
+  `FAIL`, not just an explanatory message.
 
 **Pre-flight gate, tiered by trigger point:**
 
 - Commit hook (Tier A): never starts LSP — the gate doesn't even run there (see above).
 - Push stage (Tier B batch): heavy work is allowed; the trigger point is what makes the cost
   acceptable (the user's own pre-push validation is typically already heavier than this batch).
-- `init` / manual `analyze --escalate-to-lsp`: the gate is mandatory and interactive — detect
-  environment readiness (`node_modules`, tsconfig, LSP binary resolvable) and let the user choose
-  (`--fallback-ast` skips the confirmation). Background paths never prompt; they degrade and log.
+- `init` / manual `analyze --escalate-to-lsp`: the gate is mandatory — detect environment readiness
+  (`node_modules`, tsconfig, LSP binary resolvable) and either let the user choose (interactive:
+  confirm before degrading) or fail outright (non-interactive, as of 2026-07-29 below).
+  `--fallback-ast` skips the gate entirely either way.
+  **Update (2026-07-29, 2026-07 C#/TS benchmark environment-detection follow-up):** the gate used
+  to be skipped entirely for non-interactive callers (they "just degraded"), which meant a bare
+  `analyze --escalate-to-lsp` against an unbuilt target silently wasted a full batch's wall-clock
+  time and reported success. It now runs unconditionally for every invocation that doesn't pass
+  `--fallback-ast`: interactive gets the original confirm prompt, non-interactive fails outright
+  (exit 1, message points at building the project + `docuvia doctor`). The pre-push hook is the
+  one caller that must never fail here, so it now always passes `--fallback-ast` (a hook-content
+  upgrade — see `PRE_PUSH_ENV_GATE_MARKER` in `lib/core/src/git/git-constants.ts`). `doctor`'s
+  `lsp_binary_<language>` diagnostic changed the same way: FAIL (not PASS) when a queued language's
+  provider is unavailable, so `docuvia doctor` catches this ahead of time too.
   **Update (2026-07-22, Slice 0):** with the provider registry (above), this check now resolves
   every _registered_ language's provider and checks each one's availability, aggregating into a
   single yes/no plus a joined reason string if more than one is unavailable — not yet scoped down

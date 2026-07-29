@@ -40,6 +40,9 @@ export interface AnalyzeCommandOptions {
    *  allowed to fire. Without it, an unready LSP always degrades honestly with no prompt. */
   isInteractive?: boolean;
   force?: boolean;
+  /** `--lsp-timeout=` -- takes precedence over `DOCUVIA_LSP_TIMEOUT_MS` (see
+   *  `resolveTierBEnvConfig`). `0` means "never time out". */
+  lspTimeoutMs?: number;
 }
 
 interface AnalyzeLlmConfig {
@@ -95,8 +98,10 @@ function resolveTierCEnvConfig(): TierCEnvConfig {
 /** §8b "config-overridable" LSP binary/args/timeout, plus §8f's commit-cap override -- read once
  *  from `process.env` here (Presentation layer only, per
  *  docs/gitbook/architecture/application-lifecycle-and-state.md) and injected via
- *  `docuviaMemory`. */
-function resolveTierBEnvConfig(): TierBEnvConfig {
+ *  `docuviaMemory`. `cliLspTimeoutMs` (from `--lsp-timeout=`) takes precedence over
+ *  `DOCUVIA_LSP_TIMEOUT_MS` when both are given -- an explicit flag on this invocation should win
+ *  over an ambient env var. */
+function resolveTierBEnvConfig(cliLspTimeoutMs?: number): TierBEnvConfig {
   const lspArgsRaw = process.env.DOCUVIA_LSP_ARGS;
   const timeoutRaw = process.env.DOCUVIA_LSP_TIMEOUT_MS;
   const capRaw = process.env.DOCUVIA_TIER_B_COMMIT_CAP;
@@ -105,7 +110,8 @@ function resolveTierBEnvConfig(): TierBEnvConfig {
     lspArgsOverride: lspArgsRaw
       ? lspArgsRaw.split(" ").filter(Boolean)
       : undefined,
-    lspTimeoutMs: timeoutRaw ? Number(timeoutRaw) : undefined,
+    lspTimeoutMs:
+      cliLspTimeoutMs ?? (timeoutRaw ? Number(timeoutRaw) : undefined),
     tierBCommitCap: capRaw ? Number(capRaw) : undefined,
   };
 }
@@ -283,6 +289,7 @@ function setupAnalyzeMemory(
   llmConfig: AnalyzeLlmConfig | undefined,
   escalateToLsp: boolean,
   force?: boolean,
+  lspTimeoutMs?: number,
 ): void {
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
@@ -296,7 +303,7 @@ function setupAnalyzeMemory(
     docuviaMemory.set(scopeId, MemoryKeys.LLM_MODEL, llmConfig.llmModel);
   } else if (escalateToLsp) {
     docuviaMemory.set(scopeId, MemoryKeys.ESCALATE_TO_LSP, true);
-    setTierBEnvMemory(scopeId);
+    setTierBEnvMemory(scopeId, lspTimeoutMs);
     setTierCMemory(scopeId);
   }
 }
@@ -346,10 +353,10 @@ function setTierCMemory(scopeId: string): void {
   }
 }
 
-/** Injects §8b/§8f's env-var overrides into `scopeId` -- shared by `setupAnalyzeMemory` and the
- *  gate-check scope in `analyzeCommand`. */
-function setTierBEnvMemory(scopeId: string): void {
-  const envConfig = resolveTierBEnvConfig();
+/** Injects §8b/§8f's env-var/CLI-flag overrides into `scopeId` -- shared by `setupAnalyzeMemory`
+ *  and the gate-check scope in `analyzeCommand`. */
+function setTierBEnvMemory(scopeId: string, cliLspTimeoutMs?: number): void {
+  const envConfig = resolveTierBEnvConfig(cliLspTimeoutMs);
   if (envConfig.lspBinaryOverride !== undefined) {
     docuviaMemory.set(
       scopeId,
@@ -412,13 +419,14 @@ function handleAnalyzeError(
 async function confirmTierBGateOrAbort(
   cwd: string,
   isInteractive: boolean,
+  lspTimeoutMs?: number,
 ): Promise<boolean> {
   if (!isInteractive) return true;
 
   const scopeId = crypto.randomUUID();
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
-  setTierBEnvMemory(scopeId);
+  setTierBEnvMemory(scopeId, lspTimeoutMs);
 
   try {
     const logger = createPinoBackedLogger();
@@ -479,6 +487,7 @@ export async function analyzeCommand(
     const proceed = await confirmTierBGateOrAbort(
       cwd,
       Boolean(options.isInteractive),
+      options.lspTimeoutMs,
     );
     if (!proceed) return;
   }
@@ -497,6 +506,7 @@ export async function analyzeCommand(
     llmConfig,
     escalateToLsp,
     options.force,
+    options.lspTimeoutMs,
   );
 
   try {

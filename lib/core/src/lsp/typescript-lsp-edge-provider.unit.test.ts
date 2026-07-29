@@ -353,6 +353,75 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     expect(outcome.unavailableReason).toMatch(/exceeded its 20ms timeout/);
     expect(stopped).toBe(true);
   });
+
+  it("never enforces a whole-batch timeout when configured with timeoutMs: 0", async () => {
+    // initialize() resolves after a short delay -- long enough that the "20ms timeout" test
+    // above would have degraded, proving that timeoutMs: 0 really disables the race rather than
+    // just using a very large number.
+    const delayedClient: LspJsonRpcClient = {
+      start: vi.fn().mockResolvedValue(undefined),
+      request: vi.fn().mockImplementation((method: string) => {
+        if (method === LspMethods.INITIALIZE) {
+          return new Promise((resolve) =>
+            setTimeout(() => resolve({ capabilities: {} }), 30),
+          );
+        }
+        if (method === LspMethods.DOCUMENT_SYMBOL) return Promise.resolve([]);
+        return Promise.resolve(null);
+      }),
+      notify: vi.fn(),
+      stop: vi.fn().mockResolvedValue(undefined),
+    } as unknown as LspJsonRpcClient;
+
+    const provider = new TypescriptLspEdgeProvider(
+      createMockLogger(),
+      () => delayedClient,
+    );
+    provider.configure({ timeoutMs: 0 });
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts"],
+    });
+
+    expect(outcome.unavailableReason).toBeUndefined();
+    expect(outcome.filesProcessed).toEqual(["a.ts"]);
+  });
+
+  it("passes the configured timeoutMs (not the 30s default) as every per-request timeout", async () => {
+    const requestSpy = vi.fn().mockImplementation((method: string) => {
+      if (method === LspMethods.INITIALIZE)
+        return Promise.resolve({ capabilities: {} });
+      if (method === LspMethods.DOCUMENT_SYMBOL) return Promise.resolve([]);
+      return Promise.resolve(null);
+    });
+    const client: LspJsonRpcClient = {
+      start: vi.fn().mockResolvedValue(undefined),
+      request: requestSpy,
+      notify: vi.fn(),
+      stop: vi.fn().mockResolvedValue(undefined),
+    } as unknown as LspJsonRpcClient;
+
+    const provider = new TypescriptLspEdgeProvider(
+      createMockLogger(),
+      () => client,
+    );
+    provider.configure({ timeoutMs: 999_999 });
+
+    await provider.resolveEdges({ workspaceRoot, files: ["a.ts"] });
+
+    expect(requestSpy).toHaveBeenCalledWith(
+      LspMethods.INITIALIZE,
+      expect.anything(),
+      999_999,
+    );
+    expect(requestSpy).toHaveBeenCalledWith(
+      LspMethods.DOCUMENT_SYMBOL,
+      expect.anything(),
+      999_999,
+    );
+    expect(requestSpy).toHaveBeenCalledWith(LspMethods.SHUTDOWN, null, 999_999);
+  });
 });
 
 describe("TypescriptLspEdgeProvider.checkAvailability()", () => {

@@ -79,8 +79,11 @@ export interface EdgeResolutionProviderConfig {
   binaryOverride?: string;
   /** Args passed to `binaryOverride`/the resolved binary (e.g. `["--stdio"]`). */
   argsOverride?: string[];
-  /** Whole-batch timeout in milliseconds (spawn through shutdown) — generous by default per §8h's
-   *  "tentative, function first" ruling. */
+  /** Whole-batch timeout in milliseconds (spawn through shutdown), and — `BaseLspEdgeProvider`
+   *  specifically — the per-request timeout too (same knob, not two independent ones; see
+   *  `BaseLspEdgeProvider.requestTimeoutMs`). Generous by default per §8h's "tentative, function
+   *  first" ruling. `0` means "never time out": some servers (csharp-ls on a large Roslyn/MSBuild
+   *  solution) have no known upper bound on how long a first response can take. */
   timeoutMs?: number;
 }
 

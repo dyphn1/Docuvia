@@ -26,7 +26,7 @@ import type {
 } from "./lsp-protocol-types.js";
 
 const DEFAULT_TIMEOUT_MS = 120_000;
-const REQUEST_TIMEOUT_MS = 30_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
 const CALL_SITE_KINDS: ReadonlySet<number> = new Set([
   LspSymbolKinds.FUNCTION,
@@ -176,6 +176,16 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     this.config = config;
   }
 
+  /** Per-LSP-request timeout (`initialize`/`documentSymbol`/`references`/`shutdown`) — shares
+   *  `config.timeoutMs` with the whole-batch cap below rather than a second config field, since
+   *  the caller-facing knob is "how long am I willing to wait for this LSP server", not two
+   *  independently-tunable numbers. `0` means "never time out" (csharp-ls on a large
+   *  Roslyn/MSBuild solution can take longer than any fixed guess to answer even one request —
+   *  see csharp-cli-benchmark.md §4). */
+  private get requestTimeoutMs(): number {
+    return this.config.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+  }
+
   async checkAvailability(
     workspaceRoot: string,
   ): Promise<EdgeResolutionAvailability> {
@@ -211,6 +221,12 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     timeoutMs: number,
   ): Promise<EdgeResolutionOutcome> {
     const client = this.createClient();
+
+    // `0` means "always wait" -- e.g. csharp-ls on a large Roslyn/MSBuild solution has no known
+    // upper bound on workspace-load time. `setTimeout(fn, 0)` would fire on the next tick, the
+    // opposite of what's wanted, so skip the race entirely rather than special-casing the value.
+    if (timeoutMs === 0) return this.runBatch(client, request);
+
     let timedOut = false;
     const timeoutPromise = new Promise<EdgeResolutionOutcome>((resolve) => {
       const timer = setTimeout(() => {
@@ -306,14 +322,14 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           { uri: rootUri, name: path.basename(workspaceRoot) },
         ],
       },
-      REQUEST_TIMEOUT_MS,
+      this.requestTimeoutMs,
     );
     client.notify(LspMethods.INITIALIZED, {});
   }
 
   private async shutdownSession(client: LspJsonRpcClient): Promise<void> {
     try {
-      await client.request(LspMethods.SHUTDOWN, null, REQUEST_TIMEOUT_MS);
+      await client.request(LspMethods.SHUTDOWN, null, this.requestTimeoutMs);
       client.notify(LspMethods.EXIT, {});
     } catch {
       // best-effort teardown
@@ -387,7 +403,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           position: symbol.selectionRange.start,
           context: { includeDeclaration: false },
         },
-        REQUEST_TIMEOUT_MS,
+        this.requestTimeoutMs,
       );
       const calleeNodeKey = toNodeKey(`${relativePath}#${symbol.name}`);
       for (const ref of references ?? []) {
@@ -466,7 +482,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     >(
       LspMethods.DOCUMENT_SYMBOL,
       { textDocument: { uri } },
-      REQUEST_TIMEOUT_MS,
+      this.requestTimeoutMs,
     );
     const symbols = normalizeDocumentSymbols(raw);
 

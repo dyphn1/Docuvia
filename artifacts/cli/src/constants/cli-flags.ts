@@ -17,6 +17,11 @@ export const CLI_FLAGS = {
    *  interactive "continue with AST-only fallback?" prompt when the LSP environment isn't ready
    *  for a manual/interactive invocation -- proceeds straight to the degrade-and-log path. */
   FALLBACK_AST: "--fallback-ast",
+  /** `analyze --escalate-to-lsp`'s §8b/§8h LSP timeout override, in milliseconds -- takes
+   *  precedence over the `DOCUVIA_LSP_TIMEOUT_MS` env var. `0` means "never time out" (some
+   *  servers, e.g. csharp-ls on a large Roslyn/MSBuild solution, have no known upper bound on how
+   *  long a first response can take). */
+  LSP_TIMEOUT: "--lsp-timeout=",
   /** `doctor --fix` (phase1-decision-integration.md §10d, T6) -- the only `doctor` flag that
    *  mutates workspace files, and only for the legacy-hook duplicate-block condition. */
   FIX: "--fix",

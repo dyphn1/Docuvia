@@ -108,11 +108,15 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
   const force =
     ctx.parser.hasFlag(CLI_FLAGS.FORCE) ||
     ctx.parser.hasFlag(CLI_FLAGS.FORCE_SHORT);
+  const lspTimeoutRaw = ctx.parser.getFlagValue(CLI_FLAGS.LSP_TIMEOUT);
+  const lspTimeoutMs =
+    lspTimeoutRaw !== undefined ? Number(lspTimeoutRaw) : undefined;
   await analyzeCommand(targetPath, ctx.workspaceRoot, {
     escalateToLsp,
     fallbackAst,
     isInteractive: ctx.isInteractive,
     force,
+    lspTimeoutMs,
   });
 }
 

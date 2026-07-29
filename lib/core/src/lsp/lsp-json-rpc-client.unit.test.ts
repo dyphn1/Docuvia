@@ -89,6 +89,23 @@ describe("LspJsonRpcClient (real subprocess, Content-Length framing)", () => {
     }
   });
 
+  it("never times out when timeoutMs is 0 -- waits for a response slower than a typical timeout", async () => {
+    const client = new LspJsonRpcClient();
+    await client.start({
+      command: process.execPath,
+      args: [FIXTURE_PATH],
+      cwd: __dirname,
+    });
+    try {
+      // The fixture's "delay" method responds after 150ms -- longer than the 50ms timeout the
+      // test above proves *does* reject. timeoutMs: 0 must still resolve instead of rejecting.
+      const result = await client.request("delay", { ok: true }, 0);
+      expect(result).toEqual({ ok: true });
+    } finally {
+      await client.stop();
+    }
+  });
+
   it("rejects request() with a clear error when the binary does not resolve (spawn failure)", async () => {
     const client = new LspJsonRpcClient();
     await expect(

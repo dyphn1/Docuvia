@@ -499,6 +499,59 @@ describe("analyzeCommand", () => {
       delete process.env.DOCUVIA_TIER_B_COMMIT_CAP;
     });
 
+    it("prefers options.lspTimeoutMs (--lsp-timeout) over DOCUVIA_LSP_TIMEOUT_MS when both are set", async () => {
+      process.env.DOCUVIA_LSP_TIMEOUT_MS = "5000";
+      mockAnalyze.mockResolvedValue({
+        kind: "tierBBatch",
+        headSha: null,
+        filesQueued: 0,
+        filesDroppedDeleted: 0,
+        filesSkippedLanguage: 0,
+        filesProcessed: 0,
+        filesFailed: 0,
+        edgesApplied: 0,
+        edgesPruned: 0,
+        degraded: false,
+        commitCapExceeded: false,
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand(undefined, "/workspace", {
+        escalateToLsp: true,
+        lspTimeoutMs: 300_000,
+      });
+
+      const scopeId = mockAnalyze.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "lspTimeoutMs", 300_000);
+
+      delete process.env.DOCUVIA_LSP_TIMEOUT_MS;
+    });
+
+    it("treats options.lspTimeoutMs: 0 as an explicit override, not 'unset' (0 <= always wait)", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "tierBBatch",
+        headSha: null,
+        filesQueued: 0,
+        filesDroppedDeleted: 0,
+        filesSkippedLanguage: 0,
+        filesProcessed: 0,
+        filesFailed: 0,
+        edgesApplied: 0,
+        edgesPruned: 0,
+        degraded: false,
+        commitCapExceeded: false,
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand(undefined, "/workspace", {
+        escalateToLsp: true,
+        lspTimeoutMs: 0,
+      });
+
+      const scopeId = mockAnalyze.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "lspTimeoutMs", 0);
+    });
+
     it("uses the Tier B failure message prefix (not the generic one) when the batch throws", async () => {
       mockAnalyze.mockRejectedValue(new Error("lock timeout"));
 

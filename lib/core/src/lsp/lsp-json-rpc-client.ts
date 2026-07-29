@@ -193,7 +193,9 @@ export class LspJsonRpcClient {
     });
   }
 
-  /** Sends a request and resolves/rejects with the server's response, or rejects on `timeoutMs`. */
+  /** Sends a request and resolves/rejects with the server's response, or rejects on `timeoutMs`.
+   *  `timeoutMs === 0` means "never time out" -- no timer is set at all, so the request only ever
+   *  settles via a real response or the process exiting/erroring (`rejectAllPending`). */
   request<T = unknown>(
     method: string,
     params: unknown,
@@ -204,17 +206,22 @@ export class LspJsonRpcClient {
     }
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pending.delete(id);
-        reject(new Error(LSP_MESSAGES.requestTimedOut(method, timeoutMs)));
-      }, timeoutMs);
+      const timer =
+        timeoutMs > 0
+          ? setTimeout(() => {
+              this.pending.delete(id);
+              reject(
+                new Error(LSP_MESSAGES.requestTimedOut(method, timeoutMs)),
+              );
+            }, timeoutMs)
+          : undefined;
       this.pending.set(id, {
         resolve: (value) => {
-          clearTimeout(timer);
+          if (timer) clearTimeout(timer);
           resolve(value as T);
         },
         reject: (err) => {
-          clearTimeout(timer);
+          if (timer) clearTimeout(timer);
           reject(err);
         },
       });

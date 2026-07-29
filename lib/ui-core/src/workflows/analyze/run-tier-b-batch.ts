@@ -153,27 +153,6 @@ async function runTierBBatchCore(
   }
 
   const outcome = await resolveEdgesForQueue(deps, buckets);
-  if (outcome.unavailableReason) {
-    await appendAnalyzeLogLine(workspaceRoot, {
-      event: ANALYZE_EVENTS.TIER_B_DEGRADED,
-      level: JSONL_LOG_LEVEL_ERROR,
-      reason: outcome.unavailableReason,
-      degradedLanguages: outcome.degradedLanguages,
-    });
-    logger.info(ANALYZE_MESSAGES.TIER_B_DEGRADED(outcome.unavailableReason));
-    return await finalizeBatch(deps, {
-      headSha,
-      commitCapExceeded,
-      queued: queue.length,
-      droppedDeleted: droppedDeleted.length,
-      skippedLanguage: skippedLanguage.length,
-      outcome,
-      failedEntries: toProcess,
-      edgesApplied: 0,
-      edgesPruned: 0,
-      degradedReason: outcome.unavailableReason,
-    });
-  }
 
   for (const failure of outcome.filesFailed) {
     await appendAnalyzeLogLine(workspaceRoot, {
@@ -184,6 +163,23 @@ async function runTierBBatchCore(
     });
   }
 
+  if (outcome.unavailableReason) {
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.TIER_B_DEGRADED,
+      level: JSONL_LOG_LEVEL_ERROR,
+      reason: outcome.unavailableReason,
+      degradedLanguages: outcome.degradedLanguages,
+    });
+    logger.info(ANALYZE_MESSAGES.TIER_B_DEGRADED(outcome.unavailableReason));
+  }
+
+  // Apply whatever edges were genuinely resolved before the batch stopped -- whether it finished
+  // cleanly or ended with `unavailableReason` set after real partial progress (e.g. a whole-batch
+  // timeout that completed some files first, lsp-edge-provider-base.ts's `processAllFiles`). A
+  // spawn/initialize failure has nothing to apply (`outcome.filesProcessed` is empty in that case,
+  // same as before), but a partial timeout no longer discards edges that were already correctly
+  // resolved just because the run also ended up `degraded` overall (2026-07 CLI benchmark
+  // finding -- see run-tier-b-batch.unit.test.ts's timeout-preserves-partial-progress case).
   const { edgesApplied, edgesPruned } = await applyResolvedEdges(deps, outcome);
   const processedFiles = new Set(outcome.filesProcessed);
   const failedEntries = toProcess.filter((e) => !processedFiles.has(e.file));
@@ -198,6 +194,7 @@ async function runTierBBatchCore(
     failedEntries,
     edgesApplied,
     edgesPruned,
+    degradedReason: outcome.unavailableReason,
   });
 }
 
@@ -372,9 +369,10 @@ async function finalizeBatch(
     });
   }
 
-  const filesProcessed = outcome.unavailableReason
-    ? 0
-    : outcome.filesProcessed.length;
+  // Not gated on `outcome.unavailableReason` -- a partial timeout can still have genuinely
+  // processed files before it tripped (`processAllFiles`'s deadline handling), and those files'
+  // edges were just applied above by `applyResolvedEdges`, so the reported count must match.
+  const filesProcessed = outcome.filesProcessed.length;
 
   await appendAnalyzeLogLine(workspaceRoot, {
     event: ANALYZE_EVENTS.TIER_B_SUMMARY,

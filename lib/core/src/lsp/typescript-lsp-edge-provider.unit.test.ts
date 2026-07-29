@@ -328,11 +328,24 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     expect(outcome.unavailableReason).toMatch(/Failed to spawn LSP server/);
   });
 
-  it("degrades honestly on a whole-batch timeout and stops the client", async () => {
+  it("degrades honestly on a whole-batch timeout, stops the client, and reports the file that was in flight as failed", async () => {
     let stopped = false;
     const hangingClient: LspJsonRpcClient = {
       start: vi.fn().mockResolvedValue(undefined),
-      request: vi.fn().mockImplementation(() => new Promise(() => {})),
+      // initialize() and shutdown() resolve immediately (a real server that's wedged on one
+      // request still typically answers control messages like shutdown); documentSymbol/
+      // references hang forever -- only `raceAgainstDeadline`'s own per-file timer can ever
+      // settle those, so this deterministically exercises that logic rather than racing it
+      // against some other timeout the mock might also simulate.
+      request: vi.fn().mockImplementation((method: string) => {
+        if (
+          method === LspMethods.INITIALIZE ||
+          method === LspMethods.SHUTDOWN
+        ) {
+          return Promise.resolve({});
+        }
+        return new Promise(() => {});
+      }),
       notify: vi.fn(),
       stop: vi.fn().mockImplementation(async () => {
         stopped = true;
@@ -351,7 +364,79 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     });
 
     expect(outcome.edges).toEqual([]);
+    expect(outcome.filesProcessed).toEqual([]);
+    expect(outcome.filesFailed).toEqual([
+      {
+        file: "a.ts",
+        reason: expect.stringMatching(/exceeded its 20ms timeout/),
+      },
+    ]);
     expect(outcome.unavailableReason).toMatch(/exceeded its 20ms timeout/);
+    expect(stopped).toBe(true);
+  });
+
+  it("preserves edges and filesProcessed from files completed before a whole-batch timeout, only reporting the unreached file as failed", async () => {
+    let stopped = false;
+    const client: LspJsonRpcClient = {
+      start: vi.fn().mockResolvedValue(undefined),
+      request: vi.fn().mockImplementation((method: string, params: any) => {
+        if (
+          method === LspMethods.INITIALIZE ||
+          method === LspMethods.SHUTDOWN
+        ) {
+          return Promise.resolve({});
+        }
+        if (method === LspMethods.DOCUMENT_SYMBOL) {
+          // "a.ts" resolves fast (genuinely completes before the deadline); "b.ts" never
+          // resolves (still in flight when the deadline trips -- caught by
+          // raceAgainstDeadline, not this mock).
+          const uri = params?.textDocument?.uri as string;
+          if (uri?.endsWith("a.ts")) {
+            return Promise.resolve([
+              {
+                name: "foo",
+                kind: LspSymbolKinds.FUNCTION,
+                range: {
+                  start: { line: 0, character: 0 },
+                  end: { line: 0, character: 20 },
+                },
+                selectionRange: {
+                  start: { line: 0, character: 9 },
+                  end: { line: 0, character: 12 },
+                },
+              },
+            ]);
+          }
+          return new Promise(() => {});
+        }
+        if (method === LspMethods.REFERENCES) return Promise.resolve([]);
+        return Promise.resolve(null);
+      }),
+      notify: vi.fn(),
+      stop: vi.fn().mockImplementation(async () => {
+        stopped = true;
+      }),
+    } as unknown as LspJsonRpcClient;
+
+    const provider = new TypescriptLspEdgeProvider(
+      createMockLogger(),
+      () => client,
+    );
+    provider.configure({ timeoutMs: 150 });
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts", "b.ts"],
+    });
+
+    expect(outcome.filesProcessed).toEqual(["a.ts"]);
+    expect(outcome.filesFailed).toEqual([
+      {
+        file: "b.ts",
+        reason: expect.stringMatching(/exceeded its 150ms timeout/),
+      },
+    ]);
+    expect(outcome.unavailableReason).toMatch(/exceeded its 150ms timeout/);
     expect(stopped).toBe(true);
   });
 

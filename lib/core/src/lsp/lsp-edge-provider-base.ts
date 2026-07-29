@@ -39,6 +39,12 @@ function toNodeKey(relativePath: string): string {
   return relativePath.split("\\").join("/");
 }
 
+/** Distinguishes "the whole-batch deadline ran out mid-file" (`raceAgainstDeadline`) from an
+ *  ordinary per-file processing error inside `processAllFiles`'s catch block -- both currently
+ *  land in the same `filesFailed` channel, but only the former should also flip the batch-level
+ *  `deadlineExceeded`/`unavailableReason` flag. */
+class DeadlineExceededError extends Error {}
+
 function isSymbolInformation(
   symbol: LspDocumentSymbol | LspSymbolInformation,
 ): symbol is LspSymbolInformation {
@@ -206,7 +212,8 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     }
 
     const timeoutMs = this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    return this.runWithTimeout(request, timeoutMs);
+    const client = this.createClient();
+    return this.runBatch(client, request, timeoutMs);
   }
 
   private languageIdFor(filePath: string): string {
@@ -216,44 +223,10 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     );
   }
 
-  private async runWithTimeout(
-    request: EdgeResolutionRequest,
-    timeoutMs: number,
-  ): Promise<EdgeResolutionOutcome> {
-    const client = this.createClient();
-
-    // `0` means "always wait" -- e.g. csharp-ls on a large Roslyn/MSBuild solution has no known
-    // upper bound on workspace-load time. `setTimeout(fn, 0)` would fire on the next tick, the
-    // opposite of what's wanted, so skip the race entirely rather than special-casing the value.
-    if (timeoutMs === 0) return this.runBatch(client, request);
-
-    let timedOut = false;
-    const timeoutPromise = new Promise<EdgeResolutionOutcome>((resolve) => {
-      const timer = setTimeout(() => {
-        timedOut = true;
-        resolve({
-          edges: [],
-          filesProcessed: [],
-          filesFailed: [],
-          unavailableReason: LSP_MESSAGES.batchTimedOut(timeoutMs),
-        });
-      }, timeoutMs);
-      timer.unref?.();
-    });
-
-    try {
-      return await Promise.race([
-        this.runBatch(client, request),
-        timeoutPromise,
-      ]);
-    } finally {
-      if (timedOut) await client.stop().catch(() => undefined);
-    }
-  }
-
   private async runBatch(
     client: LspJsonRpcClient,
     request: EdgeResolutionRequest,
+    timeoutMs: number,
   ): Promise<EdgeResolutionOutcome> {
     const { workspaceRoot, files } = request;
     const resolved = await this.languageConfig.resolveBinary(workspaceRoot, {
@@ -300,8 +273,20 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       };
     }
 
+    // `0` means "always wait" -- e.g. csharp-ls on a large Roslyn/MSBuild solution has no known
+    // upper bound on workspace-load time. A deadline of `Date.now() + 0` would immediately trip,
+    // the opposite of what's wanted, so skip deadline-tracking entirely rather than special-casing
+    // the value.
+    const deadlineAt = timeoutMs > 0 ? Date.now() + timeoutMs : undefined;
+
     try {
-      return await this.processAllFiles(client, workspaceRoot, files);
+      return await this.processAllFiles(
+        client,
+        workspaceRoot,
+        files,
+        deadlineAt,
+        timeoutMs,
+      );
     } finally {
       await this.shutdownSession(client);
     }
@@ -338,25 +323,55 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     }
   }
 
+  /**
+   * Drains `files` one at a time, stopping cooperatively once `deadlineAt` passes -- rather than
+   * `Promise.race`-ing the *whole batch* against a single timer (the pre-fix design), which threw
+   * away every file already successfully processed the instant the timer won, even if 999/1000
+   * files had real edges resolved (2026-07 CLI benchmark finding, C# Tier B against a large
+   * Orleans solution). Files never reached before the deadline, and the one in flight when it
+   * trips (via `raceAgainstDeadline` below -- a per-file guard, since a single hung
+   * `processOneFile` would otherwise blow the whole remaining budget), are reported through the
+   * same `filesFailed` channel an ordinary per-file error already uses, so
+   * `finalizeBatch`/`applyResolvedEdges` (`run-tier-b-batch.ts`) can restage exactly the unreached
+   * files instead of the entire original batch. `unavailableReason` is still set when the deadline
+   * actually tripped -- distinct from an ordinary per-file failure -- so callers keep treating a
+   * timed-out run as degraded (exit code, doctor's log scan) even though some real work survived.
+   */
   private async processAllFiles(
     client: LspJsonRpcClient,
     workspaceRoot: string,
     files: string[],
+    deadlineAt: number | undefined,
+    timeoutMs: number,
   ): Promise<EdgeResolutionOutcome> {
     const edges: ResolvedCallEdge[] = [];
     const edgeKeys = new Set<string>();
     const filesProcessed: string[] = [];
     const filesFailed: EdgeResolutionOutcome["filesFailed"] = [];
     const openFileCache = new Map<string, OpenFileHandle>();
+    let deadlineExceeded = false;
 
     for (const file of files) {
+      const remainingMs =
+        deadlineAt !== undefined ? deadlineAt - Date.now() : undefined;
+      if (remainingMs !== undefined && remainingMs <= 0) {
+        deadlineExceeded = true;
+        break;
+      }
+
       try {
-        const fileEdges = await this.processOneFile(
-          client,
-          workspaceRoot,
-          file,
-          openFileCache,
-        );
+        const fileEdges =
+          remainingMs !== undefined
+            ? await this.raceAgainstDeadline(
+                this.processOneFile(client, workspaceRoot, file, openFileCache),
+                remainingMs,
+              )
+            : await this.processOneFile(
+                client,
+                workspaceRoot,
+                file,
+                openFileCache,
+              );
         for (const edge of fileEdges) {
           const key = `${edge.sourceNodeKey}->${edge.targetNodeKey}`;
           if (edgeKeys.has(key)) continue;
@@ -365,6 +380,14 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         }
         filesProcessed.push(file);
       } catch (err) {
+        if (err instanceof DeadlineExceededError) {
+          deadlineExceeded = true;
+          filesFailed.push({
+            file,
+            reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
+          });
+          break;
+        }
         filesFailed.push({
           file,
           reason: err instanceof Error ? err.message : String(err),
@@ -375,7 +398,58 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       }
     }
 
-    return { edges, filesProcessed, filesFailed };
+    if (deadlineExceeded) {
+      const reached = new Set([
+        ...filesProcessed,
+        ...filesFailed.map((f) => f.file),
+      ]);
+      for (const file of files) {
+        if (!reached.has(file)) {
+          filesFailed.push({
+            file,
+            reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
+          });
+        }
+      }
+    }
+
+    return {
+      edges,
+      filesProcessed,
+      filesFailed,
+      ...(deadlineExceeded
+        ? { unavailableReason: LSP_MESSAGES.batchTimedOut(timeoutMs) }
+        : {}),
+    };
+  }
+
+  /** Races a single file's processing against however much of the whole-batch deadline is left,
+   *  rejecting with `DeadlineExceededError` (never resolving the underlying promise itself -- the
+   *  file's in-flight LSP requests are abandoned, matching the pre-fix behavior of stopping the
+   *  client out from under them, just now scoped to one file instead of the whole batch) so
+   *  `processAllFiles` can tell "this file itself failed" apart from "the budget ran out mid-file"
+   *  and stop cleanly rather than start a doomed next file. */
+  private raceAgainstDeadline<T>(
+    promise: Promise<T>,
+    remainingMs: number,
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new DeadlineExceededError()),
+        remainingMs,
+      );
+      timer.unref?.();
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (err) => {
+          clearTimeout(timer);
+          reject(err);
+        },
+      );
+    });
   }
 
   private async processOneFile(

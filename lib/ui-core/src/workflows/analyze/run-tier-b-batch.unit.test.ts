@@ -373,6 +373,79 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
+  it("preserves partial progress on a whole-batch timeout: applies edges/counts filesProcessed for files completed before the deadline, only restages the unreached file", async () => {
+    // Models what lsp-edge-provider-base.ts's processAllFiles now actually returns on a timeout
+    // that hit partway through: unavailableReason set (still degraded overall -- exit code/log
+    // level), but filesProcessed/edges reflect real completed work, and only the unreached file
+    // lands in filesFailed. Before the run-tier-b-batch.ts fix, any unavailableReason at all threw
+    // away edges/filesProcessed and restaged the WHOLE original toProcess set, not just what
+    // never got reached (2026-07 CLI benchmark finding, C# Tier B against a large Orleans
+    // solution -- "do first, regardless of direction").
+    const workspaceRoot = await makeWorkspace();
+    const { store, fake } = makeStore(["b.ts#bar", "a.ts#foo"]);
+    appendTierBQueueEntries(store, [
+      { file: "a.ts", commitSha: HEAD_SHA },
+      { file: "c.ts", commitSha: HEAD_SHA },
+    ]);
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "c.ts"),
+      "export function baz() {}\n",
+    );
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [
+            {
+              sourceNodeKey: "b.ts#bar",
+              targetNodeKey: "a.ts#foo",
+              source: "lsp",
+            },
+          ],
+          filesProcessed: ["a.ts"],
+          filesFailed: [
+            {
+              file: "c.ts",
+              reason:
+                "Tier B LSP batch exceeded its 100ms timeout and was aborted",
+            },
+          ],
+          unavailableReason:
+            "Tier B LSP batch exceeded its 100ms timeout and was aborted",
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(result.degraded).toBe(true);
+    expect(result.degradedReason).toMatch(/exceeded its 100ms timeout/);
+    expect(result.filesProcessed).toBe(1);
+    expect(result.filesFailed).toBe(1);
+    expect(result.edgesApplied).toBe(1);
+    expect(fake.links).toHaveLength(1);
+
+    const pending = JSON.parse(
+      fake.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
+    );
+    // Only the unreached file gets restaged -- "a.ts" already succeeded and must not be
+    // re-processed on the next run.
+    expect(pending.remainingQueue).toEqual([
+      { file: "c.ts", commitSha: HEAD_SHA },
+    ]);
+
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
   it("idempotency (gating test 2): a crash mid-LSP never touches tierBQueue -- a re-run converges", async () => {
     const workspaceRoot = await makeWorkspace();
     const { store, fake } = makeStore([]);

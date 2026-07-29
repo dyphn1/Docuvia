@@ -471,22 +471,27 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     });
   }
 
-  /** Looks up (lazily seeding, matching Tier A's `new Set([file])` convention --
-   *  `persist-ast-graph.ts`'s `persistFileAndSymbolNodes`) `file`'s disambiguation state and
-   *  resolves+records a unique key for `name`/`startLine` via the same shared
-   *  `buildUniqueNodeKey()` Tier A itself uses, so a real collision (two same-named symbols in
-   *  one file) gets the identical `file#name` / `file#name@Lline` / `file#name@Lline#n` shape
-   *  instead of both silently sharing the bare key. `startLine` must already be 0-based (LSP's
-   *  own `Position.line` is; passed straight through -- see `node-key.ts`'s doc comment).
-   *
-   *  Memoized per `name`+`startLine` (not just called once per symbol like Tier A's own single
-   *  pass): the *same* enclosing caller symbol can be looked up again across multiple different
-   *  references it makes (`resolveReferenceEdge`, one call per reference) -- without memoizing,
-   *  the second lookup would see its own already-recorded key in `used` and wrongly disambiguate
-   *  against itself, drifting the same physical symbol onto a different key each time. */
+  /** Looks up `file`'s disambiguation state, pre-assigning a key for *every* call-site symbol in
+   *  `fileSymbols` (line-sorted) the first time this file is touched, then returns the one for
+   *  `name`/`startLine`. Matters because this class discovers a file's symbols on demand (as
+   *  callee, in `processOneFile`'s own loop; as caller, wherever `resolveReferenceEdge` first
+   *  happens to find a reference landing in it) -- whichever symbol happened to be asked about
+   *  *first* would otherwise win the bare key regardless of where it actually sits in the file,
+   *  which usually won't match Tier A's own assignment (`persist-ast-graph.ts`'s
+   *  `persistFileAndSymbolNodes`, which processes a file's parsed symbols as one coherent pass,
+   *  not driven by which caller happens to reference which callee first). Pre-sorting by line
+   *  before assigning keys converges Tier B's ordering onto Tier A's own within-list order for
+   *  the common collision shape (two same-named functions/methods in one file) -- `extractFunctions`
+   *  IS itself a source-order tree walk, so Tier A's `functions[]` is naturally line-sorted too.
+   *  Line order between an item that's a *class as a whole* and a function/method sharing its name
+   *  still isn't guaranteed to match Tier A's own functions-array-then-classes-array grouping (a
+   *  rarer collision shape -- see `node-key.ts`'s doc comment for the still-residual gap this
+   *  doesn't close). `startLine`s must already be 0-based (LSP's own `Position.line` is, matching
+   *  Tier A's own `startLine` -- see `node-key.ts`). */
   private resolveNodeKeyForFile(
     usedNodeKeysByFile: UsedNodeKeysByFile,
     file: string,
+    fileSymbols: LspDocumentSymbol[],
     name: string,
     startLine: number,
   ): string {
@@ -494,11 +499,29 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     if (!state) {
       state = { used: new Set<string>([file]), resolved: new Map() };
       usedNodeKeysByFile.set(file, state);
+
+      const sorted = [...flattenCallSiteSymbols(fileSymbols)].sort(
+        (a, b) => a.selectionRange.start.line - b.selectionRange.start.line,
+      );
+      for (const symbol of sorted) {
+        const identity = `${symbol.name}@${symbol.selectionRange.start.line}`;
+        if (state.resolved.has(identity)) continue;
+        const nodeKey = buildUniqueNodeKey(
+          state.used,
+          `${file}#${symbol.name}`,
+          symbol.selectionRange.start.line,
+        );
+        state.used.add(nodeKey);
+        state.resolved.set(identity, nodeKey);
+      }
     }
+
     const symbolIdentity = `${name}@${startLine}`;
     const cached = state.resolved.get(symbolIdentity);
     if (cached) return cached;
 
+    // Not found in the pre-pass (e.g. the CLASS_SITE_KINDS filter excluded it, or it's a
+    // synthetic lookup) -- fall back to resolving it directly against whatever state exists.
     const nodeKey = buildUniqueNodeKey(
       state.used,
       `${file}#${name}`,
@@ -541,6 +564,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         this.resolveNodeKeyForFile(
           usedNodeKeysByFile,
           relativePath,
+          callee.symbols,
           symbol.name,
           symbol.selectionRange.start.line,
         ),
@@ -590,6 +614,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
             this.resolveNodeKeyForFile(
               usedNodeKeysByFile,
               refRelative,
+              caller.symbols,
               enclosing.name,
               enclosing.selectionRange.start.line,
             ),

@@ -381,6 +381,103 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     expect(outcome.edges).toHaveLength(2);
   });
 
+  it("assigns the bare key by line position, not by which symbol the documentSymbol response happens to list first", async () => {
+    // ClassLater (line 5) is listed BEFORE ClassEarlier (line 1) in documentSymbol's own array --
+    // an LSP server isn't spec-required to return top-level symbols in source order, and even if
+    // it usually does, this shouldn't matter: Tier A's own functions[] is genuinely line-ordered
+    // (a tree-sitter source-order walk), so the bare key must go to whichever "run" sits at the
+    // *lower* line number, regardless of the documentSymbol array's own order -- that's what the
+    // line-sorted pre-pass in resolveNodeKeyForFile exists for.
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    const laterRunSelection = range(5, 4, 5, 7);
+    const earlierRunSelection = range(1, 4, 1, 7);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "ClassLater",
+              kind: LspSymbolKinds.CLASS,
+              range: range(4, 0, 6, 1),
+              selectionRange: range(4, 6, 4, 16),
+              children: [
+                {
+                  name: "run",
+                  kind: LspSymbolKinds.METHOD,
+                  range: range(5, 2, 5, 20),
+                  selectionRange: laterRunSelection,
+                },
+              ],
+            },
+            {
+              name: "ClassEarlier",
+              kind: LspSymbolKinds.CLASS,
+              range: range(0, 0, 2, 1),
+              selectionRange: range(0, 6, 0, 18),
+              children: [
+                {
+                  name: "run",
+                  kind: LspSymbolKinds.METHOD,
+                  range: range(1, 2, 1, 20),
+                  selectionRange: earlierRunSelection,
+                },
+              ],
+            },
+          ];
+        }
+        return [
+          {
+            name: "caller",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 3, 1),
+            selectionRange: range(0, 9, 0, 15),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (params.textDocument.uri === aUri) {
+          if (params.position.line === laterRunSelection.start.line) {
+            return [{ uri: bUri, range: range(1, 2, 1, 8) }];
+          }
+          if (params.position.line === earlierRunSelection.start.line) {
+            return [{ uri: bUri, range: range(2, 2, 2, 8) }];
+          }
+        }
+        return [];
+      }
+      return undefined;
+    };
+
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts", "b.ts"],
+    });
+
+    expect(outcome.edges).toEqual(
+      expect.arrayContaining([
+        // ClassEarlier.run sits at line 1 -- the lower line -- so it gets the bare key even
+        // though ClassLater.run was listed first in documentSymbol's own array.
+        {
+          sourceNodeKey: "b.ts#caller",
+          targetNodeKey: "a.ts#run",
+          source: "lsp",
+        },
+        {
+          sourceNodeKey: "b.ts#caller",
+          targetNodeKey: "a.ts#run@L5",
+          source: "lsp",
+        },
+      ]),
+    );
+    expect(outcome.edges).toHaveLength(2);
+  });
+
   it("keeps a per-file failure isolated -- other files still succeed (§8g)", async () => {
     const handler: RequestHandler = (method, params) => {
       if (method === LspMethods.DOCUMENT_SYMBOL) {

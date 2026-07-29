@@ -8,6 +8,10 @@ import {
   ConfigFilenames,
   NODE_MODULES_DIR_NAME,
 } from "../discovery/discovery-constants.js";
+import {
+  needsWindowsShellWrapper,
+  buildWindowsShellCommandLine,
+} from "./windows-shell-spawn.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -40,18 +44,37 @@ function checkTsconfigResolvable(workspaceRoot: string): boolean {
 }
 
 /** Live probe for the `npx --no-install` fallback case (a local `node_modules/.bin` copy is
- *  already provably present via `fs.existsSync`, so only the npx path needs an actual attempt). */
+ *  already provably present via `fs.existsSync`, so only the npx path needs an actual attempt).
+ *  `npx` is a `.cmd` shim on Windows -- a bare `execFileAsync("npx", ...)` fails with a synchronous
+ *  `ENOENT` there regardless of whether npx/the package are genuinely resolvable (live-reproduced
+ *  2026-07-29: this exact call reported unresolvable on a machine where a manual `npx --no-install
+ *  typescript-language-server --version` from the same cwd succeeded). `windows-shell-spawn.ts`
+ *  carries the same `.cmd`-shim workaround `LspJsonRpcClient.start()` already uses for the real
+ *  runtime spawn -- shared here instead of this probe drifting further from that fix. */
 async function probeNpxResolvable(workspaceRoot: string): Promise<boolean> {
+  const args = [
+    TsLspConstants.NPX_NO_INSTALL_FLAG,
+    TsLspConstants.PACKAGE_NAME,
+    TsLspConstants.VERSION_FLAG,
+  ];
   try {
-    await execFileAsync(
-      TsLspConstants.NPX_COMMAND,
-      [
-        TsLspConstants.NPX_NO_INSTALL_FLAG,
-        TsLspConstants.PACKAGE_NAME,
-        TsLspConstants.VERSION_FLAG,
-      ],
-      { cwd: workspaceRoot, timeout: NPX_PROBE_TIMEOUT_MS },
-    );
+    if (needsWindowsShellWrapper(TsLspConstants.NPX_COMMAND)) {
+      const commandLine = await buildWindowsShellCommandLine(
+        TsLspConstants.NPX_COMMAND,
+        args,
+        undefined,
+      );
+      await execFileAsync(commandLine, [], {
+        cwd: workspaceRoot,
+        timeout: NPX_PROBE_TIMEOUT_MS,
+        shell: true,
+      });
+    } else {
+      await execFileAsync(TsLspConstants.NPX_COMMAND, args, {
+        cwd: workspaceRoot,
+        timeout: NPX_PROBE_TIMEOUT_MS,
+      });
+    }
     return true;
   } catch {
     return false;

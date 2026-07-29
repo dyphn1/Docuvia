@@ -7,6 +7,7 @@ import fs from "node:fs";
 import { TypescriptLspEdgeProvider } from "./typescript-lsp-edge-provider.js";
 import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
+import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 
 type RequestHandler = (method: string, params: any) => unknown;
 
@@ -436,7 +437,7 @@ describe("TypescriptLspEdgeProvider.checkAvailability()", () => {
       expect(availability.available).toBe(false);
       expect(availability.reason).toBeTruthy();
     } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
+      await rmSyncRetrying(dir);
     }
-  });
+  }, 15000);
 });

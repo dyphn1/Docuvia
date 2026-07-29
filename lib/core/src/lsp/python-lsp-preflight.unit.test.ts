@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { checkPythonLspPreflight } from "./python-lsp-preflight.js";
+import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 
 /**
  * Mirrors `lsp-preflight.unit.test.ts`'s shape for TS -- the `npx --no-install pyright --version`
@@ -19,8 +20,8 @@ describe("checkPythonLspPreflight()", () => {
     );
   });
 
-  afterEach(() => {
-    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  afterEach(async () => {
+    await rmSyncRetrying(workspaceRoot);
   });
 
   it("reports not ready with a reason when no pyproject.toml/requirements.txt is present", async () => {

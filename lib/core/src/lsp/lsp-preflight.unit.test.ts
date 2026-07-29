@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { checkLspPreflight } from "./lsp-preflight.js";
+import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 
 /**
  * The `npx --no-install typescript-language-server --version` probe path is real (no network
@@ -19,8 +20,8 @@ describe("checkLspPreflight()", () => {
     );
   });
 
-  afterEach(() => {
-    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  afterEach(async () => {
+    await rmSyncRetrying(workspaceRoot);
   });
 
   it("reports not ready with a reason when node_modules is missing", async () => {

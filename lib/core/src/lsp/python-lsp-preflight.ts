@@ -6,6 +6,10 @@ import { ConfigFilenames } from "../discovery/discovery-constants.js";
 import { resolveNpmNpxBinary } from "./lsp-binary-resolver-strategies.js";
 import { PyLspConstants, PY_LSP_MESSAGES } from "./python-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
+import {
+  needsWindowsShellWrapper,
+  buildWindowsShellCommandLine,
+} from "./windows-shell-spawn.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -44,16 +48,29 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
 async function probePyrightNpxResolvable(
   workspaceRoot: string,
 ): Promise<boolean> {
+  const args = [
+    PyLspConstants.NPX_NO_INSTALL_FLAG,
+    PyLspConstants.PACKAGE_NAME,
+    PyLspConstants.VERSION_FLAG,
+  ];
   try {
-    await execFileAsync(
-      PyLspConstants.NPX_COMMAND,
-      [
-        PyLspConstants.NPX_NO_INSTALL_FLAG,
-        PyLspConstants.PACKAGE_NAME,
-        PyLspConstants.VERSION_FLAG,
-      ],
-      { cwd: workspaceRoot, timeout: NPX_PROBE_TIMEOUT_MS },
-    );
+    if (needsWindowsShellWrapper(PyLspConstants.NPX_COMMAND)) {
+      const commandLine = await buildWindowsShellCommandLine(
+        PyLspConstants.NPX_COMMAND,
+        args,
+        undefined,
+      );
+      await execFileAsync(commandLine, [], {
+        cwd: workspaceRoot,
+        timeout: NPX_PROBE_TIMEOUT_MS,
+        shell: true,
+      });
+    } else {
+      await execFileAsync(PyLspConstants.NPX_COMMAND, args, {
+        cwd: workspaceRoot,
+        timeout: NPX_PROBE_TIMEOUT_MS,
+      });
+    }
     return true;
   } catch {
     return false;

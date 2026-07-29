@@ -7,6 +7,7 @@ import fs from "node:fs";
 import { PythonLspEdgeProvider } from "./python-lsp-edge-provider.js";
 import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
+import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 
 /**
  * Mirrors `typescript-lsp-edge-provider.unit.test.ts`'s shape exactly (fake `LspJsonRpcClient`,
@@ -244,9 +245,9 @@ describe("PythonLspEdgeProvider.checkAvailability()", () => {
       expect(availability.available).toBe(false);
       expect(availability.reason).toBeTruthy();
     } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
+      await rmSyncRetrying(dir);
     }
-  });
+  }, 15000);
 
   it("reports the pyright binary as unresolvable once a marker file is present but pyright is not", async () => {
     const dir = fs.mkdtempSync(
@@ -260,7 +261,7 @@ describe("PythonLspEdgeProvider.checkAvailability()", () => {
       expect(availability.available).toBe(false);
       expect(availability.reason).toMatch(/not resolvable/);
     } finally {
-      fs.rmSync(dir, { recursive: true, force: true });
+      await rmSyncRetrying(dir);
     }
   }, 15000);
 });

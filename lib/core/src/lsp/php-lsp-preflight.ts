@@ -5,6 +5,10 @@ import { promisify } from "node:util";
 import { resolveNpmNpxBinary } from "./lsp-binary-resolver-strategies.js";
 import { PhpLspConstants, PHP_LSP_MESSAGES } from "./php-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
+import {
+  needsWindowsShellWrapper,
+  buildWindowsShellCommandLine,
+} from "./windows-shell-spawn.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -22,16 +26,29 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
 async function probeIntelephenseNpxResolvable(
   workspaceRoot: string,
 ): Promise<boolean> {
+  const args = [
+    PhpLspConstants.NPX_NO_INSTALL_FLAG,
+    PhpLspConstants.PACKAGE_NAME,
+    PhpLspConstants.VERSION_FLAG,
+  ];
   try {
-    await execFileAsync(
-      PhpLspConstants.NPX_COMMAND,
-      [
-        PhpLspConstants.NPX_NO_INSTALL_FLAG,
-        PhpLspConstants.PACKAGE_NAME,
-        PhpLspConstants.VERSION_FLAG,
-      ],
-      { cwd: workspaceRoot, timeout: NPX_PROBE_TIMEOUT_MS },
-    );
+    if (needsWindowsShellWrapper(PhpLspConstants.NPX_COMMAND)) {
+      const commandLine = await buildWindowsShellCommandLine(
+        PhpLspConstants.NPX_COMMAND,
+        args,
+        undefined,
+      );
+      await execFileAsync(commandLine, [], {
+        cwd: workspaceRoot,
+        timeout: NPX_PROBE_TIMEOUT_MS,
+        shell: true,
+      });
+    } else {
+      await execFileAsync(PhpLspConstants.NPX_COMMAND, args, {
+        cwd: workspaceRoot,
+        timeout: NPX_PROBE_TIMEOUT_MS,
+      });
+    }
     return true;
   } catch {
     return false;

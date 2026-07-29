@@ -143,3 +143,13 @@ General product/tool behaviors discovered while running per-language benchmarks 
 ### 4.4 Code-Review-Graph (CRG)
 
 - No new findings in the C# pass (unchanged from the 2026-07-23 baseline): zero crashes, well-formed JSON envelopes, sub-linear build scaling, graceful `igraph`-missing degradation, `update`'s base-diff incremental semantics, `query`'s ambiguous-name fallback vs. `search`'s reliable FTS ranking.
+
+### 4.5 Cross-Language Symbol Resolution: Is a Full LSP (or Any Off-the-Shelf System) the Right Approach? (2026-07-29)
+
+Not language-specific — surfaced while root-causing C#'s Tier B (full detail: [`csharp-cli-benchmark.md`](./csharp-cli-benchmark.md) §3), but the conclusion applies to any heavyweight-workspace language (Java/Rust/C++ predicted to hit the same wall).
+
+- **Full LSP is the wrong architecture for heavyweight-workspace languages.** `textDocument/references` forces a whole-solution semantic load regardless of whether the server process is spawned fresh or kept warm — a persistent/session-long server fixes the fixed cold-start cost, not the per-query cost.
+- **No off-the-shelf system solves this better — checked, not assumed.** GitNexus (`gitnexus/src/core/ingestion/{call,import,class}-extractors/configs/csharp.ts`) and CRG (`code_review_graph/parser.py`: generic `tree-sitter`/`tree-sitter-language-pack` + hand-written C# node-type rules) both independently hand-roll their own per-language resolver — neither uses an off-the-shelf semantic-resolution library either.
+- **Closest real candidate: [Joern](https://github.com/joernio/joern)** (3k stars, actively maintained, "fuzzy" parsing that doesn't need a working build). But its C# frontend (`csharpsrc2cpg`) isn't in the "Very High" maturity tier C/C++/Java get, has an open issue on exactly the calls/fields-chain problem ([#4375](https://github.com/joernio/joern/issues/4375)), and adopting it means a JVM/Scala runtime dependency Docuvia doesn't currently carry.
+- **Best verified prior art for in-process, no-build resolution**: [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) — verified by reading `internal/cbm/lsp/cs_lsp.c` (3,045 lines), not its README: zero references to csproj/sln/msbuild/dotnet, zero subprocess spawns. Two-phase design (build a read-only project-wide symbol registry once, then per-file forward resolution), graded confidence per resolution strategy.
+- **Conclusion**: build a native, in-process, per-language resolver (same shape GitNexus/CRG already converged on independently) rather than a full LSP or an external system.

@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -6,11 +6,42 @@ import { checkLspPreflight } from "./lsp-preflight.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 
 /**
- * The `npx --no-install typescript-language-server --version` probe path is real (no network
- * dependency -- `--no-install` refuses to hit the registry), so these tests are slower than pure
- * unit tests but not flaky; they mirror this workspace's own confirmed behavior (the package is
- * not installed anywhere docuvia bundles, so the probe reliably reports unavailable).
+ * `checkLspPreflight()`'s `npx --no-install typescript-language-server --version` probe
+ * (`probeNpxResolvable()` in `lsp-preflight.ts`) goes through `node:child_process`'s `execFile` --
+ * mocked here to always report "not found" so these tests are deterministic regardless of this
+ * machine's actual npx cache/install state, rather than depending on a real subprocess round-trip
+ * the way this file originally did. That real-probe approach turned out not to be the "not flaky"
+ * bet it was assumed to be: confirmed 2026-07-30, a real npx cache populated by unrelated same-day
+ * LSP testing made "reports the LSP binary as unresolvable..." below fail, because the real `npx
+ * --no-install typescript-language-server --version` subprocess it exercised genuinely started
+ * succeeding on this machine. (Note for anyone tempted to copy the `vi.spyOn(child_process,
+ * "execFile")` pattern used by some sibling `*-lsp-preflight.unit.test.ts` files instead: that
+ * does NOT actually intercept anything here, confirmed by direct testing -- `lsp-preflight.ts` and
+ * `windows-shell-spawn.ts` each capture `promisify(execFile)` once at their own module-load time,
+ * before any spy is installed, so a later `vi.spyOn` on the property never reaches those
+ * already-closed-over references. `vi.mock` below replaces the module's export before those
+ * modules import it, which does work.) None of the assertions in this file depend on the probe
+ * ever genuinely succeeding -- the one test below that would (binary-override) never reaches the
+ * probe at all, since an explicit override short-circuits `resolveLspBinary()` first.
  */
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    execFile: vi.fn((...args: unknown[]) => {
+      const callback = args[args.length - 1];
+      if (typeof callback === "function") {
+        (callback as (...cbArgs: unknown[]) => void)(
+          new Error("simulated: npx cannot resolve the LSP binary"),
+          "",
+          "",
+        );
+      }
+      return {} as ReturnType<typeof actual.execFile>;
+    }),
+  };
+});
+
 describe("checkLspPreflight()", () => {
   let workspaceRoot: string;
 

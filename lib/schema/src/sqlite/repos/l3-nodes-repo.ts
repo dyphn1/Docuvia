@@ -236,6 +236,17 @@ export class L3NodesRepo implements IL3NodesRepo {
             JSON.stringify(input.sourceFiles),
             input.createdAt,
           );
+        // Mirrors `upsertDecision`'s identical write: signals `snapshot`'s `shouldSkipSnapshot`
+        // (SnapshotWorkflow) that `l3_nodes` gained content this run, so a subsequent snapshot
+        // isn't wrongly skipped by its headSha-already-stamped heuristic -- `hasSourceCommitInHistory`
+        // scans the *whole* knowledge-branch ancestry, so it can find this developer's own older
+        // stamped commit even when the current tip (e.g. after a tree-adoption merge) doesn't yet
+        // reflect a just-imported teammate's card (L3DIST-005/006/007's self-healing dance).
+        this.db
+          .prepare(
+            `INSERT INTO ${SchemaTables.DOCUVIA_META} (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+          )
+          .run("tierCProcessedThisRun", "true");
         return { id: Number(result.lastInsertRowid), imported: true };
       });
 

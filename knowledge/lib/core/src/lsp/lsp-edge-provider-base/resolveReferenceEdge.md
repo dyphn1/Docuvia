@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.ts#resolveReferenceEdge
+id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.resolveReferenceEdge
 type: symbol
 name: resolveReferenceEdge
 filePath: lib/core/src/lsp/lsp-edge-provider-base.ts

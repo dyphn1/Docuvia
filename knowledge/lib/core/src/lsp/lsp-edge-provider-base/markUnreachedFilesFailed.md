@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.ts#markUnreachedFilesFailed
+id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.markUnreachedFilesFailed
 type: symbol
 name: markUnreachedFilesFailed
 filePath: lib/core/src/lsp/lsp-edge-provider-base.ts

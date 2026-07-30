@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/persist-ast-graph.ts#linkSymbolReference
+id: lib/core/src/graph/persist-ast-graph.ts#GraphPersisterService.linkSymbolReference
 type: symbol
 name: linkSymbolReference
 filePath: lib/core/src/graph/persist-ast-graph.ts

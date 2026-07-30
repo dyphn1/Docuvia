@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/typescript-lsp-edge-provider.ts#constructor
+id: lib/core/src/lsp/typescript-lsp-edge-provider.ts#TypescriptLspEdgeProvider.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/lsp/typescript-lsp-edge-provider.ts

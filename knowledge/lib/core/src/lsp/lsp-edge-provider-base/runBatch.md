@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.ts#runBatch
+id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.runBatch
 type: symbol
 name: runBatch
 filePath: lib/core/src/lsp/lsp-edge-provider-base.ts

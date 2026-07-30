@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/integration/commands/analyze-escalate-lsp-python-de
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/analyze-escalate-lsp-python-degradation.test.ts`
-

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.ts#requestTimeoutMs
+id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.requestTimeoutMs
 type: symbol
 name: requestTimeoutMs
 filePath: lib/core/src/lsp/lsp-edge-provider-base.ts

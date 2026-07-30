@@ -34,6 +34,13 @@ const RUST_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkRustLspPreflight,
+  // GRPH-006 follow-up: Tier A now resolves Rust containment (`ast-worker.ts`'s
+  // `resolveRustImplContainerName` reads an impl block's own `type` field directly -- `impl_item`
+  // is still deliberately excluded from `rustConfig.classes`, so this isn't the ancestor-walk
+  // mechanism other languages use). This flag stays `false` regardless: flipping it requires
+  // verifying rust-analyzer's real `documentSymbol` nesting shape (does it nest a method under a
+  // parent symbol whose kind/name actually match "the impl's target struct"?) against a live
+  // server, which this codebase has not done -- not a claim that Tier A can't do this anymore.
   supportsQualifiedContainment: false,
 };
 

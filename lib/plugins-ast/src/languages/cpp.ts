@@ -35,7 +35,11 @@ export const cppConfig: LanguageConfig = {
   extends: [LanguageNodeTypes.BASE_CLASS_CLAUSE],
   queries: {
     classes: `(${LanguageNodeTypes.CLASS_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER})) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.STRUCT_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER})) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.ENUM_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER})) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.UNION_SPECIFIER} name: (${LanguageNodeTypes.TYPE_IDENTIFIER})) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.TYPE_DEFINITION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER})) @${QueryCaptureName.CLASS}`,
-    functions: `(${LanguageNodeTypes.FUNCTION_DEFINITION} declarator: (${LanguageNodeTypes.FUNCTION_DECLARATOR} declarator: (${LanguageNodeTypes.IDENTIFIER}))) @${QueryCaptureName.FUNCTION}`,
+    // declarator must accept `identifier` (free functions), `field_identifier` (inline class
+    // methods), and `qualified_identifier` (out-of-line `Ret Class::method(){}` definitions) --
+    // matching only `identifier` silently excluded every class method, inline or out-of-line
+    // (GRPH-006 follow-up).
+    functions: `(${LanguageNodeTypes.FUNCTION_DEFINITION} declarator: (${LanguageNodeTypes.FUNCTION_DECLARATOR} declarator: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.FIELD_IDENTIFIER}) (${LanguageNodeTypes.QUALIFIED_IDENTIFIER})])) @${QueryCaptureName.FUNCTION}`,
     imports: `(${LanguageNodeTypes.PREPROC_INCLUDE}) @${QueryCaptureName.IMPORT} (${LanguageNodeTypes.USING_DECLARATION}) @${QueryCaptureName.IMPORT}`,
     calls: `(${LanguageNodeTypes.CALL_EXPRESSION} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.FIELD_EXPRESSION})] @${QueryCaptureName.CALL})`,
     extends: `(${LanguageNodeTypes.BASE_CLASS_CLAUSE} (${LanguageNodeTypes.TYPE_IDENTIFIER}) @${QueryCaptureName.EXTENDS})`,

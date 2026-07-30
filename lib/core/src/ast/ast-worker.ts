@@ -144,10 +144,28 @@ function getNodeName(node: Node): string {
  * Named nodes (function_declaration, method_definition) already have a "name" field, so the
  * fast path below returns the same result getNodeName() would — safe to use uniformly for
  * every function-kind node, not just anonymous ones.
+ *
+ * GRPH-006 follow-up: C/C++'s `function_definition` has no direct "name" field at all — the name
+ * sits two levels down, inside `function_declarator`'s own "declarator" field (`identifier` for a
+ * free function, `field_identifier` for an inline method, `qualified_identifier` -- scope::name --
+ * for an out-of-line one). Verified this was silently returning "anonymous" for every C/C++
+ * function before this fix (never previously observed for C++ specifically because
+ * `cppConfig`'s functions query didn't even extract methods until the GRPH-006 follow-up fix to
+ * `cpp.ts` — this pass surfaced both bugs together).
  */
 export function resolveCallableName(node: Node): string {
   const ownName = node.childForFieldName("name");
   if (ownName) return ownName.text;
+
+  const declaratorName = node
+    .childForFieldName("declarator")
+    ?.childForFieldName("declarator");
+  if (declaratorName) {
+    return declaratorName.type === AstNodeTypes.QUALIFIED_IDENTIFIER
+      ? (declaratorName.childForFieldName("name")?.text ??
+          AstMessages.ANONYMOUS_NAME)
+      : declaratorName.text;
+  }
 
   const NAME_BEARING_PARENTS = new Set<string>([
     AstNodeTypes.VARIABLE_DECLARATOR,
@@ -205,6 +223,75 @@ function findEnclosingContainerName(
   return AstMessages.ANONYMOUS_NAME;
 }
 
+/** Resolves the base type name whether `node` is itself a `type_identifier` or wraps one one level
+ *  deep -- Rust generic impls (`impl<T> Wrapper<T>` -- field is `generic_type`) and Go pointer
+ *  receivers (`*Receiver` -- field is `pointer_type`) both need the unwrap; a plain `type_identifier`
+ *  field (the common case) is returned as-is. */
+function firstTypeIdentifierText(node: Node): string | undefined {
+  return node.type === AstNodeTypes.TYPE_IDENTIFIER
+    ? node.text
+    : node.descendantsOfType(AstNodeTypes.TYPE_IDENTIFIER)[0]?.text;
+}
+
+/** GRPH-006 follow-up (Rust): a method's lexical parent is `impl_item`, which `rustConfig.classes`
+ *  deliberately excludes (so `findEnclosingContainerName` over `classIds` always returns
+ *  "anonymous" for a Rust method) -- the target struct/enum's name lives on the impl block's own
+ *  `type` field instead (the Self type, not `trait` -- `impl Trait for Type` still qualifies by
+ *  `Type`, the concrete struct, not whichever trait it happens to implement). */
+function resolveRustImplContainerName(node: Node): string | undefined {
+  let current = node.parent;
+  while (current) {
+    if (current.type === AstNodeTypes.IMPL_ITEM) {
+      const typeField = current.childForFieldName("type");
+      return typeField ? firstTypeIdentifierText(typeField) : undefined;
+    }
+    current = current.parent;
+  }
+  return undefined;
+}
+
+/** GRPH-006 follow-up (Go): a method's receiver type is referenced through its own `receiver:`
+ *  field, never as an AST ancestor (`type_declaration` never encloses a `method_declaration`), so
+ *  `findEnclosingContainerName` over `classIds` always returns "anonymous" here too -- resolve the
+ *  receiver parameter's type directly instead. */
+function resolveGoReceiverContainerName(node: Node): string | undefined {
+  const receiver = node.childForFieldName("receiver");
+  const paramType = receiver?.namedChild(0)?.childForFieldName("type");
+  return paramType ? firstTypeIdentifierText(paramType) : undefined;
+}
+
+/** GRPH-006 follow-up (C++): an out-of-line `Ret Class::method(){}` definition is never lexically
+ *  nested inside its class (inline methods already resolve via the generic ancestor walk once
+ *  they're extracted at all -- see `cpp.ts`'s functions-query fix), so its declarator is a
+ *  `qualified_identifier` carrying the class name in its own `scope` field instead. Recurses one
+ *  level for a nested qualifier (`A::B::method`), taking the innermost (`B`) as the immediate
+ *  container -- this scheme only ever tracks one level of containment, matching every other
+ *  language here. */
+function resolveCppQualifiedContainerName(node: Node): string | undefined {
+  const declarator = node.childForFieldName("declarator");
+  const inner = declarator?.childForFieldName("declarator");
+  if (inner?.type !== AstNodeTypes.QUALIFIED_IDENTIFIER) return undefined;
+  const scope = inner.childForFieldName("scope");
+  if (!scope) return undefined;
+  return scope.type === AstNodeTypes.QUALIFIED_IDENTIFIER
+    ? scope.childForFieldName("name")?.text
+    : scope.text;
+}
+
+/** GRPH-006 follow-up: for a function whose enclosing container the generic ancestor walk
+ *  couldn't find (Rust/Go/C++'s deferred gaps -- see the ADR), try each language-specific
+ *  resolver in turn. Mutually exclusive by construction (each checks for a node shape only its own
+ *  grammar produces -- e.g. only Rust ever has an `impl_item` ancestor), so no explicit language
+ *  tag is needed; a language not covered here (or a function with no enclosing container at all)
+ *  falls through to `undefined`, unchanged from before this follow-up. */
+function resolveDeferredLanguageContainerName(node: Node): string | undefined {
+  return (
+    resolveRustImplContainerName(node) ??
+    resolveGoReceiverContainerName(node) ??
+    resolveCppQualifiedContainerName(node)
+  );
+}
+
 /** Shape of a fully-populated `AstParseResponse["data"]` (i.e. the non-optional variant produced once parsing has actually run). */
 type AstExtractionResult = NonNullable<AstParseResponse["data"]>;
 
@@ -236,7 +323,11 @@ function collectClassNodes(
  *  "nothing found" sentinel is the literal string `AstMessages.ANONYMOUS_NAME` ("anonymous") --
  *  that means "top-level, outside any class" here, a different meaning than its existing use in
  *  `collectCallEdges` ("outside any function"), so it must be converted to `undefined` rather than
- *  stored as-is (storing it as-is would qualify every top-level function as `file#anonymous.name`). */
+ *  stored as-is (storing it as-is would qualify every top-level function as `file#anonymous.name`).
+ *
+ *  When the ancestor walk finds nothing, `resolveDeferredLanguageContainerName` (GRPH-006
+ *  follow-up) tries Rust/Go/C++'s own non-lexical containment shapes before giving up to
+ *  `undefined` -- see that function's own doc comment for why each needs a different mechanism. */
 export function collectFunctionNodes(
   tree: Tree,
   provider: LanguageProvider,
@@ -247,13 +338,16 @@ export function collectFunctionNodes(
   const functionNodes = provider.extractFunctions(tree.rootNode);
   for (const node of functionNodes) {
     const container = findEnclosingContainerName(node, classIds);
+    const containerName =
+      container === AstMessages.ANONYMOUS_NAME
+        ? resolveDeferredLanguageContainerName(node)
+        : container;
     functions.push({
       name: resolveCallableName(node),
       startLine: node.startPosition.row,
       endLine: node.endPosition.row,
       contentHash: symbolContentHash(node),
-      containerName:
-        container === AstMessages.ANONYMOUS_NAME ? undefined : container,
+      containerName,
     });
   }
   return functionNodes;

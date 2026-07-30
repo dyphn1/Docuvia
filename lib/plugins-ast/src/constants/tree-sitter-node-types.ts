@@ -97,6 +97,7 @@ export const LanguageNodeTypes = {
   SCOPE_RESOLUTION: "scope_resolution",
   // C++
   BASE_CLASS_CLAUSE: "base_class_clause",
+  QUALIFIED_IDENTIFIER: "qualified_identifier",
   // Rust
   STRUCT_ITEM: "struct_item",
   ENUM_ITEM: "enum_item",

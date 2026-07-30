@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Parser, Language, type Node, type Tree } from "web-tree-sitter";
 import { DefaultProvider, parseImportDescriptors } from "@workspace/ast-core";
-import { typescriptConfig } from "@workspace/plugins-ast";
+import {
+  typescriptConfig,
+  rustConfig,
+  goConfig,
+  cppConfig,
+} from "@workspace/plugins-ast";
 import {
   resolveWasmPath,
   resolveCallableName,
@@ -209,6 +214,177 @@ describe("typescript fixture: containerName (GRPH-006 Step 2)", () => {
     );
     expect(
       functions.find((f) => f.name === "topLevel")?.containerName,
+    ).toBeUndefined();
+  });
+});
+
+/**
+ * GRPH-006 follow-up (Rust): `impl_item` is deliberately excluded from `rustConfig.classes`
+ * (see rust-lsp-edge-provider.unit.test.ts), so the generic ancestor walk always returns
+ * "anonymous" for a Rust method -- `resolveRustImplContainerName` reads the impl block's own
+ * `type` field instead. Asserts both a plain `impl Struct` and confirms a top-level `fn` is
+ * unaffected.
+ */
+const RUST_CONTAINER_SRC = `
+struct Greeter;
+
+impl Greeter {
+    fn hello(&self) {}
+}
+
+fn topLevel() {}
+`;
+
+describe("rust fixture: containerName (GRPH-006 follow-up)", () => {
+  let tree: Tree;
+
+  beforeAll(async () => {
+    await Parser.init();
+    const { wasmPath, attemptedPaths } = resolveWasmPath(rustConfig.wasm_file);
+    if (!wasmPath) {
+      throw new Error(
+        `tree-sitter-rust.wasm not found. Tried: ${attemptedPaths.join(", ")}`,
+      );
+    }
+    const lang = await Language.load(wasmPath);
+    const parser = new Parser();
+    parser.setLanguage(lang);
+    const parsed = parser.parse(RUST_CONTAINER_SRC);
+    if (!parsed) throw new Error("Failed to parse fixture source");
+    tree = parsed;
+  });
+
+  it("qualifies an impl-block method's containerName with the impl's target type, and leaves a top-level fn's containerName undefined", () => {
+    const provider = new DefaultProvider(rustConfig);
+    const classNodes = provider.extractClasses(tree.rootNode);
+    const functions: Parameters<typeof collectFunctionNodes>[2] = [];
+
+    collectFunctionNodes(tree, provider, functions, classNodes);
+
+    expect(functions.find((f) => f.name === "hello")?.containerName).toBe(
+      "Greeter",
+    );
+    expect(
+      functions.find((f) => f.name === "topLevel")?.containerName,
+    ).toBeUndefined();
+  });
+});
+
+/**
+ * GRPH-006 follow-up (Go): a `method_declaration`'s receiver type is never an AST ancestor
+ * (`type_declaration` never encloses it), so the generic ancestor walk always returns "anonymous"
+ * here too -- `resolveGoReceiverContainerName` reads the receiver parameter's own `type` field
+ * instead, unwrapping `pointer_type` for a pointer receiver.
+ */
+const GO_CONTAINER_SRC = `
+package main
+
+type Receiver struct{}
+
+func (r Receiver) ValueMethod() {}
+
+func (r *Receiver) PointerMethod() {}
+
+func topLevel() {}
+`;
+
+describe("go fixture: containerName (GRPH-006 follow-up)", () => {
+  let tree: Tree;
+
+  beforeAll(async () => {
+    await Parser.init();
+    const { wasmPath, attemptedPaths } = resolveWasmPath(goConfig.wasm_file);
+    if (!wasmPath) {
+      throw new Error(
+        `tree-sitter-go.wasm not found. Tried: ${attemptedPaths.join(", ")}`,
+      );
+    }
+    const lang = await Language.load(wasmPath);
+    const parser = new Parser();
+    parser.setLanguage(lang);
+    const parsed = parser.parse(GO_CONTAINER_SRC);
+    if (!parsed) throw new Error("Failed to parse fixture source");
+    tree = parsed;
+  });
+
+  it("qualifies both a value-receiver and a pointer-receiver method with the receiver's type name, and leaves a plain func's containerName undefined", () => {
+    const provider = new DefaultProvider(goConfig);
+    const classNodes = provider.extractClasses(tree.rootNode);
+    const functions: Parameters<typeof collectFunctionNodes>[2] = [];
+
+    collectFunctionNodes(tree, provider, functions, classNodes);
+
+    expect(functions.find((f) => f.name === "ValueMethod")?.containerName).toBe(
+      "Receiver",
+    );
+    expect(
+      functions.find((f) => f.name === "PointerMethod")?.containerName,
+    ).toBe("Receiver");
+    expect(
+      functions.find((f) => f.name === "topLevel")?.containerName,
+    ).toBeUndefined();
+  });
+});
+
+/**
+ * GRPH-006 follow-up (C++): inline methods are lexically nested in `class_specifier` and now
+ * resolve via the generic ancestor walk once they're actually extracted as functions (see
+ * `cpp.ts`'s functions-query fix -- previously `field_identifier`/`qualified_identifier`
+ * declarators weren't captured at all). Out-of-line `Ret Class::method(){}` definitions are never
+ * nested, so `resolveCppQualifiedContainerName` reads the qualified declarator's own `scope`
+ * field instead.
+ */
+const CPP_CONTAINER_SRC = `
+class Foo {
+  void inlineMethod() {}
+  void outOfLineMethod();
+};
+
+void Foo::outOfLineMethod() {}
+
+void freeFunction() {}
+`;
+
+describe("cpp fixture: containerName (GRPH-006 follow-up)", () => {
+  let tree: Tree;
+  let lang: Language;
+
+  beforeAll(async () => {
+    await Parser.init();
+    const { wasmPath, attemptedPaths } = resolveWasmPath(cppConfig.wasm_file);
+    if (!wasmPath) {
+      throw new Error(
+        `tree-sitter-cpp.wasm not found. Tried: ${attemptedPaths.join(", ")}`,
+      );
+    }
+    lang = await Language.load(wasmPath);
+    const parser = new Parser();
+    parser.setLanguage(lang);
+    const parsed = parser.parse(CPP_CONTAINER_SRC);
+    if (!parsed) throw new Error("Failed to parse fixture source");
+    tree = parsed;
+  });
+
+  it("qualifies both an inline method and an out-of-line qualified definition with the class name, and leaves a free function's containerName undefined", () => {
+    const provider = new DefaultProvider(cppConfig);
+    // The functions-query fix (identifier | field_identifier | qualified_identifier) only takes
+    // effect once queries are compiled -- extractFunctions falls back to an uncompiled
+    // descendantsOfType(FUNCTION_DEFINITION) otherwise, which would also work here but wouldn't
+    // exercise the actual fixed query this test is meant to cover.
+    provider.initQueries?.(lang);
+    const classNodes = provider.extractClasses(tree.rootNode);
+    const functions: Parameters<typeof collectFunctionNodes>[2] = [];
+
+    collectFunctionNodes(tree, provider, functions, classNodes);
+
+    expect(
+      functions.find((f) => f.name === "inlineMethod")?.containerName,
+    ).toBe("Foo");
+    expect(
+      functions.find((f) => f.name === "outOfLineMethod")?.containerName,
+    ).toBe("Foo");
+    expect(
+      functions.find((f) => f.name === "freeFunction")?.containerName,
     ).toBeUndefined();
   });
 });

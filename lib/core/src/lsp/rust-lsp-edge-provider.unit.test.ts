@@ -170,13 +170,16 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
 
   it("keeps flat file#name node_keys even when documentSymbol nests same-named methods under distinct classes (GRPH-006: supportsQualifiedContainment: false gates this, not the LSP tree shape)", async () => {
     // Same two-same-named-methods-on-different-classes shape as TypescriptLspEdgeProvider's
-    // qualified-containment test, but Rust's LspLanguageConfig sets supportsQualifiedContainment:
-    // false (locked decision §0.1/§0.2 -- rust-analyzer's own documentSymbol nests a method under
-    // its `impl` block semantically, but Tier A's tree-sitter-ancestry rule for Rust deliberately
-    // does NOT treat `impl_item` as a tracked class-like node, so containment must stay flat here
-    // too). Proves the capability flag -- not what the fake LSP server's own symbol tree happens to
-    // nest -- controls the outcome: both "handle" methods still collide on the bare "a.rs#handle"
-    // key and need buildUniqueNodeKey's ordinary line-suffix disambiguation.
+    // qualified-containment test. GRPH-006 follow-up: Tier A *does* now resolve Rust containment
+    // (`ast-worker.ts`'s `resolveRustImplContainerName` reads an impl block's own `type` field --
+    // `impl_item` is still deliberately excluded from `rustConfig.classes`, so this isn't the
+    // ancestor-walk mechanism other languages use). Rust's LspLanguageConfig still sets
+    // supportsQualifiedContainment: false regardless, because flipping it requires verifying
+    // rust-analyzer's real documentSymbol nesting shape (parent symbol kind/name for an impl-block
+    // method) against a live server -- not yet done, and not something to assume from the fake
+    // client here. Proves the capability flag -- not what the fake LSP server's own symbol tree
+    // happens to nest -- controls the outcome: both "handle" methods still collide on the bare
+    // "a.rs#handle" key and need buildUniqueNodeKey's ordinary line-suffix disambiguation.
     const customWorkspace = makeWorkspace({
       "a.rs": "struct ClassA;\nstruct ClassB;\n",
       "b.rs": "fn caller() {}\n",

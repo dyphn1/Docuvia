@@ -36,6 +36,17 @@ const CPP_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkCppLspPreflight,
+  // GRPH-006 follow-up: Tier A now resolves BOTH inline methods (unchanged -- the generic
+  // ancestor walk already worked once `cpp.ts`'s functions query was fixed to actually extract
+  // them) AND out-of-line `Ret Class::method(){}` definitions (`ast-worker.ts`'s
+  // `resolveCppQualifiedContainerName` reads the qualified declarator's own `scope` field). This
+  // flag still stays `false`: the original caution here was specifically that clangd's
+  // `documentSymbol` tree may nest an out-of-line method under its class *semantically* even
+  // though it isn't textually nested -- now that Tier A also covers that case, the risk shifts
+  // from "Tier A can't do this" to "has anyone verified clangd's real nesting shape agrees with
+  // Tier A's rule for every case (multi-level qualifiers, templates, etc.)", which this codebase
+  // has not done against a live server. `CPP_LANGUAGE_CONFIG` is also shared across `.c`/`.h`
+  // files, which have no containment concept at all (permanently N/A, not a regression).
   supportsQualifiedContainment: false,
 };
 

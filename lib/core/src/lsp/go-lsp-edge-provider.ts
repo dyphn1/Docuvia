@@ -27,6 +27,12 @@ const GO_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkGoLspPreflight,
+  // GRPH-006 follow-up: Tier A now resolves Go containment (`ast-worker.ts`'s
+  // `resolveGoReceiverContainerName` reads a method_declaration's own `receiver` field directly --
+  // `type_declaration` never lexically encloses a `method_declaration`, so this isn't the
+  // ancestor-walk mechanism other languages use). This flag stays `false` regardless: flipping it
+  // requires verifying gopls's real `documentSymbol` nesting shape for a receiver method against a
+  // live server, which this codebase has not done -- not a claim that Tier A can't do this anymore.
   supportsQualifiedContainment: false,
 };
 

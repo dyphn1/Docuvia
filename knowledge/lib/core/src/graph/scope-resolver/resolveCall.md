@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#resolveCall
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.resolveCall
 type: symbol
 name: resolveCall
 filePath: lib/core/src/graph/scope-resolver.ts

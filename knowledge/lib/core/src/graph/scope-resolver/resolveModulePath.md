@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#resolveModulePath
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.resolveModulePath
 type: symbol
 name: resolveModulePath
 filePath: lib/core/src/graph/scope-resolver.ts

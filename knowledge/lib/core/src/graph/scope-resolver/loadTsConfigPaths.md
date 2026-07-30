@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#loadTsConfigPaths
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.loadTsConfigPaths
 type: symbol
 name: loadTsConfigPaths
 filePath: lib/core/src/graph/scope-resolver.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#findFileWithExtension
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.findFileWithExtension
 type: symbol
 name: findFileWithExtension
 filePath: lib/core/src/graph/scope-resolver.ts

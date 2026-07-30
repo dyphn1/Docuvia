@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#getWorkspacePackageDirs
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.getWorkspacePackageDirs
 type: symbol
 name: getWorkspacePackageDirs
 filePath: lib/core/src/graph/scope-resolver.ts

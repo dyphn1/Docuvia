@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#resolveNodeModulesImport
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.resolveNodeModulesImport
 type: symbol
 name: resolveNodeModulesImport
 filePath: lib/core/src/graph/scope-resolver.ts

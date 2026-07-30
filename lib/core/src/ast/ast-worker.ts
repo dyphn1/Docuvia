@@ -153,19 +153,28 @@ function getNodeName(node: Node): string {
  * `cppConfig`'s functions query didn't even extract methods until the GRPH-006 follow-up fix to
  * `cpp.ts` — this pass surfaced both bugs together).
  */
+/** GRPH-006 follow-up: resolves a C/C++ `function_definition`'s name from its declarator-nested
+ *  shape (see `resolveCallableName`'s own doc comment) -- `identifier`/`field_identifier` return
+ *  their own text directly, `qualified_identifier` (an out-of-line `Class::method`) returns just
+ *  its `name` field, not the qualifier. Extracted purely to keep `resolveCallableName`'s own
+ *  complexity within budget. */
+function resolveDeclaratorNestedName(node: Node): string | undefined {
+  const declaratorName = node
+    .childForFieldName("declarator")
+    ?.childForFieldName("declarator");
+  if (!declaratorName) return undefined;
+  return declaratorName.type === AstNodeTypes.QUALIFIED_IDENTIFIER
+    ? (declaratorName.childForFieldName("name")?.text ??
+        AstMessages.ANONYMOUS_NAME)
+    : declaratorName.text;
+}
+
 export function resolveCallableName(node: Node): string {
   const ownName = node.childForFieldName("name");
   if (ownName) return ownName.text;
 
-  const declaratorName = node
-    .childForFieldName("declarator")
-    ?.childForFieldName("declarator");
-  if (declaratorName) {
-    return declaratorName.type === AstNodeTypes.QUALIFIED_IDENTIFIER
-      ? (declaratorName.childForFieldName("name")?.text ??
-          AstMessages.ANONYMOUS_NAME)
-      : declaratorName.text;
-  }
+  const declaratorName = resolveDeclaratorNestedName(node);
+  if (declaratorName) return declaratorName;
 
   const NAME_BEARING_PARENTS = new Set<string>([
     AstNodeTypes.VARIABLE_DECLARATOR,

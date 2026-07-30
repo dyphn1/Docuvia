@@ -32,6 +32,7 @@ const PYTHON_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkPythonLspPreflight,
+  supportsQualifiedContainment: true,
 };
 
 /**

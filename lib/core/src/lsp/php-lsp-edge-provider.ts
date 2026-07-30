@@ -33,6 +33,7 @@ const PHP_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkPhpLspPreflight,
+  supportsQualifiedContainment: true,
 };
 
 /**

@@ -29,6 +29,7 @@ const RUBY_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkRubyLspPreflight,
+  supportsQualifiedContainment: true,
 };
 
 /**

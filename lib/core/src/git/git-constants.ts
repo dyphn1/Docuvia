@@ -77,6 +77,13 @@ export const GitConstants = {
    * value → no-op) and as the delta baseline (`this value -> HEAD`).
    */
   META_KEY_LAST_INGESTED_SOURCE_SHA: "lastIngestedSourceSha",
+  /** `docuvia_meta` key storing the `node_key` format version (GRPH-006) the graph was last fully
+   *  ingested with -- `"2"` once qualified/structural keys are in use, absent/older on a
+   *  pre-qualified-key graph. Written only on a full ingestion (`stampFullIngestionForTierB`,
+   *  shared by `init` and `analyze`'s empty-graph branch); read by `runDeltaIngestion`'s guard to
+   *  refuse an incremental re-parse that would otherwise silently mix old-flat and new-qualified
+   *  keys in the same graph. */
+  META_KEY_NODE_KEY_FORMAT_VERSION: "nodeKeyFormatVersion",
   /**
    * `docuvia_meta` key holding a JSON array of `{file, commitSha}` entries, deduped by `file` —
    * the Tier B queue `analyze` auto mode's delta ingestion enqueues `CONTRACT_CHANGED` files into

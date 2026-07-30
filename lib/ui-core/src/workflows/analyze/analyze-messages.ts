@@ -12,6 +12,12 @@ export const ANALYZE_MESSAGES = {
   SNAPSHOT_AFTER_FULL_INGESTION_FAILED:
     "Failed to pack the knowledge graph onto the knowledge branch (non-fatal -- the local graph is intact; run `docuvia snapshot` manually or push to retry)",
   AUTO_DELTA_INGESTION: "Re-parsing changed files since the last analysis...",
+  /** GRPH-006's delta-ingestion guard: printed instead of `AUTO_DELTA_INGESTION` when the graph's
+   *  stamped `node_key` format version is missing/stale -- an incremental re-parse on top of it
+   *  would silently mix old-flat and new-qualified `node_key` formats, so a full re-ingestion runs
+   *  instead (`isNodeKeyFormatStale`). */
+  NODE_KEY_FORMAT_STALE:
+    "Knowledge graph predates the current node_key format -- running a full re-ingestion instead of a delta to avoid mixing old and new formats...",
   AUTO_NOOP: "Knowledge graph already up to date with HEAD.",
   /** PLAT-007 Tier A's fast-path UX gap, found by the 2026-07-24 C# benchmark: the sha check is
    *  intentionally commit-triggered, not filesystem-watch-triggered, so it can't see uncommitted
@@ -75,6 +81,10 @@ export const ANALYZE_EVENTS = {
   FULL_SNAPSHOT_FAILED: "analyze.full.snapshot_failed",
   /** `runDeltaIngestion`'s own start/summary lines (§6b). */
   DELTA_START: "analyze.delta.start",
+  /** GRPH-006's delta-ingestion guard (`isNodeKeyFormatStale`) -- logged instead of `DELTA_START`
+   *  when a stale/missing `node_key` format stamp forces a full re-ingestion in place of the
+   *  delta this run would otherwise have performed. */
+  DELTA_NODE_KEY_FORMAT_STALE: "analyze.delta.node_key_format_stale",
   DELTA_SUMMARY: "analyze.delta.summary",
   DELTA_FILE_SKIPPED_OVERSIZED: "analyze.delta.file_skipped_oversized",
   /** Per-file line from `runParseAndPersist` attributed to delta ingestion. */

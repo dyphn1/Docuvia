@@ -42,3 +42,26 @@ export function buildUniqueNodeKey(
   while (usedNodeKeys.has(`${lineKey}#${n}`)) n++;
   return `${lineKey}#${n}`;
 }
+
+/** Format-version stamp this codebase currently produces (GRPH-006) — read/written by the
+ *  `analyze` ingestion guard (`node-key-format-guard.ts`) to detect a pre-qualified-key graph
+ *  before an incremental delta re-parse would otherwise silently mix the two formats. */
+export const CURRENT_NODE_KEY_FORMAT_VERSION = "2";
+
+/**
+ * Qualified base key (GRPH-006): `${file}#${containerName}.${name}` when the symbol has an
+ * enclosing class/struct, else `${file}#${name}` unchanged (today's flat shape — the common case
+ * for top-level functions and for every symbol in a language this pass doesn't add containment
+ * for, per the ADR's Option-B scope). Two symbols with the same `name` in different containers now
+ * get structurally different base keys by construction — no collision to disambiguate, no
+ * insertion-order dependency for that shape. `buildUniqueNodeKey` is still layered on top of
+ * whichever base key this returns: two identically-named methods *on the same class* (overloads)
+ * still collide on the qualified base key and still need line/counter disambiguation.
+ */
+export function buildQualifiedBaseKey(
+  file: string,
+  name: string,
+  containerName?: string,
+): string {
+  return containerName ? `${file}#${containerName}.${name}` : `${file}#${name}`;
+}

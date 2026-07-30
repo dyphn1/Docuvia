@@ -27,6 +27,7 @@ const JAVA_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkJavaLspPreflight,
+  supportsQualifiedContainment: true,
 };
 
 /**

@@ -167,8 +167,9 @@ describe("RubyLspEdgeProvider.resolveEdges()", () => {
       expect(outcome.filesProcessed).toEqual(["a.rb", "b.rb"]);
       expect(outcome.edges).toEqual([
         {
-          sourceNodeKey: "b.rb#bar",
-          targetNodeKey: "a.rb#foo",
+          // Qualified with the enclosing class (GRPH-006): Ruby's supportsQualifiedContainment: true.
+          sourceNodeKey: "b.rb#B.bar",
+          targetNodeKey: "a.rb#A.foo",
           source: "lsp",
         },
       ]);

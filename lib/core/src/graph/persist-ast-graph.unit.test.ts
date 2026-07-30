@@ -196,6 +196,62 @@ describe("GraphPersisterService.persist()", () => {
     }
   });
 
+  it("disambiguates two same-named methods on different classes via qualified node_keys, with no @Lline suffix needed (GRPH-006)", async () => {
+    // ClassA.handle and ClassB.handle share a bare name but now get structurally different
+    // qualified base keys (file#ClassA.handle / file#ClassB.handle) by construction -- the
+    // collision this ADR exists to close no longer needs buildUniqueNodeKey's line-suffix
+    // fallback for this shape at all.
+    const parsedResults: ParsedAstFileResult[] = [
+      {
+        file: "src/a.ts",
+        hash: "hash-a",
+        data: {
+          imports: [],
+          exports: [],
+          functions: [
+            {
+              name: "handle",
+              startLine: 1,
+              endLine: 2,
+              containerName: "ClassA",
+            },
+            {
+              name: "handle",
+              startLine: 5,
+              endLine: 6,
+              containerName: "ClassB",
+            },
+          ],
+          classes: [],
+          calls: [],
+        },
+      },
+    ];
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults,
+      tags: [],
+    });
+
+    const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+    const raw = new DatabaseCtor(dbPath, { readonly: true });
+    try {
+      const rows = raw
+        .prepare("SELECT node_key FROM l2_nodes WHERE name = 'handle'")
+        .all() as { node_key: string }[];
+      const nodeKeys = rows.map((r) => r.node_key).sort();
+      expect(nodeKeys).toEqual([
+        "src/a.ts#ClassA.handle",
+        "src/a.ts#ClassB.handle",
+      ]);
+    } finally {
+      raw.close();
+    }
+  });
+
   it("re-persisting the same file deletes its stale nodes first (no duplicate function nodes)", async () => {
     const makeParsedResults = (): ParsedAstFileResult[] => [
       {

@@ -78,6 +78,7 @@ export interface AstParseResponse {
       startLine: number;
       endLine: number;
       contentHash?: string;
+      containerName?: string; // NEW — the enclosing class/struct name, or undefined for a top-level function
     }>;
     classes: Array<{
       name: string;
@@ -226,19 +227,33 @@ function collectClassNodes(
   return classNodes;
 }
 
-/** Extracts function/method declaration nodes via the provider and appends their summaries to `functions`. Returns the raw nodes so callers can derive id sets for edge extraction. */
-function collectFunctionNodes(
+/** Extracts function/method declaration nodes via the provider and appends their summaries to `functions`. Returns the raw nodes so callers can derive id sets for edge extraction.
+ *
+ *  `classNodes` (GRPH-006) lets each function's enclosing class/struct be resolved via the same
+ *  `findEnclosingContainerName` ancestor walk `collectCallEdges`/`collectImplementsEdges`/
+ *  `collectExtendsEdges` already use -- `containerName` is what qualifies this symbol's `node_key`
+ *  down the line (`persist-ast-graph.ts`'s `buildQualifiedBaseKey`). `findEnclosingContainerName`'s
+ *  "nothing found" sentinel is the literal string `AstMessages.ANONYMOUS_NAME` ("anonymous") --
+ *  that means "top-level, outside any class" here, a different meaning than its existing use in
+ *  `collectCallEdges` ("outside any function"), so it must be converted to `undefined` rather than
+ *  stored as-is (storing it as-is would qualify every top-level function as `file#anonymous.name`). */
+export function collectFunctionNodes(
   tree: Tree,
   provider: LanguageProvider,
   functions: AstExtractionResult["functions"],
+  classNodes: Node[],
 ): Node[] {
+  const classIds = new Set(classNodes.map((n) => n.id));
   const functionNodes = provider.extractFunctions(tree.rootNode);
   for (const node of functionNodes) {
+    const container = findEnclosingContainerName(node, classIds);
     functions.push({
       name: resolveCallableName(node),
       startLine: node.startPosition.row,
       endLine: node.endPosition.row,
       contentHash: symbolContentHash(node),
+      containerName:
+        container === AstMessages.ANONYMOUS_NAME ? undefined : container,
     });
   }
   return functionNodes;
@@ -320,7 +335,12 @@ function extractAstData(
 
     try {
       const classNodes = collectClassNodes(tree, provider, classes);
-      const functionNodes = collectFunctionNodes(tree, provider, functions);
+      const functionNodes = collectFunctionNodes(
+        tree,
+        provider,
+        functions,
+        classNodes,
+      );
 
       const importNodes = provider.extractImports(tree.rootNode);
       imports.push(...parseImportDescriptors(importNodes));

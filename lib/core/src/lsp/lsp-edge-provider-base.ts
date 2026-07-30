@@ -18,7 +18,10 @@ import {
 import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import type { ResolvedLspBinary } from "./lsp-binary-resolver.js";
 import { LspMethods, LspSymbolKinds, LSP_MESSAGES } from "./lsp-constants.js";
-import { buildUniqueNodeKey } from "../graph/node-key.js";
+import {
+  buildUniqueNodeKey,
+  buildQualifiedBaseKey,
+} from "../graph/node-key.js";
 import type {
   LspDocumentSymbol,
   LspPosition,
@@ -80,28 +83,53 @@ function containsPosition(range: LspRange, position: LspPosition): boolean {
   return afterStart && beforeEnd;
 }
 
+/** A symbol found by `findDeepestContainingSymbol`/`flattenCallSiteSymbols`, alongside the name of
+ *  the nearest enclosing `CLASS`-kind ancestor symbol (GRPH-006) -- `undefined` when the symbol
+ *  sits at file scope (or its nearest ancestor isn't class-kind). This is Tier B's own containment
+ *  read, structurally independent of Tier A's `ast-worker.ts` containerName (both are gated behind
+ *  `LspLanguageConfig.supportsQualifiedContainment` before ever reaching a `node_key` -- see
+ *  `resolveNodeKeyForFile`). */
+interface EnclosedSymbol {
+  symbol: LspDocumentSymbol;
+  containerName?: string;
+}
+
 function findDeepestContainingSymbol(
   symbols: LspDocumentSymbol[],
   position: LspPosition,
-): LspDocumentSymbol | undefined {
+  enclosingClassName?: string,
+): EnclosedSymbol | undefined {
   for (const symbol of symbols) {
     if (!containsPosition(symbol.range, position)) continue;
+    const childEnclosingClassName =
+      symbol.kind === LspSymbolKinds.CLASS ? symbol.name : enclosingClassName;
     const child = symbol.children
-      ? findDeepestContainingSymbol(symbol.children, position)
+      ? findDeepestContainingSymbol(
+          symbol.children,
+          position,
+          childEnclosingClassName,
+        )
       : undefined;
-    return child ?? symbol;
+    return child ?? { symbol, containerName: enclosingClassName };
   }
   return undefined;
 }
 
 function flattenCallSiteSymbols(
   symbols: LspDocumentSymbol[],
-): LspDocumentSymbol[] {
-  const result: LspDocumentSymbol[] = [];
+  enclosingClassName?: string,
+): EnclosedSymbol[] {
+  const result: EnclosedSymbol[] = [];
   for (const symbol of symbols) {
-    if (CALL_SITE_KINDS.has(symbol.kind)) result.push(symbol);
-    if (symbol.children)
-      result.push(...flattenCallSiteSymbols(symbol.children));
+    if (CALL_SITE_KINDS.has(symbol.kind))
+      result.push({ symbol, containerName: enclosingClassName });
+    if (symbol.children) {
+      const childEnclosingClassName =
+        symbol.kind === LspSymbolKinds.CLASS ? symbol.name : enclosingClassName;
+      result.push(
+        ...flattenCallSiteSymbols(symbol.children, childEnclosingClassName),
+      );
+    }
   }
   return result;
 }
@@ -154,6 +182,11 @@ export interface LspLanguageConfig {
     workspaceRoot: string,
     override?: { binary?: string; args?: string[] },
   ) => Promise<LspPreflightOutcome>;
+  /** GRPH-006: whether this language's Tier A extraction resolves method-in-class containment
+   *  (mirrors `ast-worker.ts`'s actual per-language capability — see the plan's capability table.
+   *  Deliberately explicit, never inferred from the LSP server's own `documentSymbol` nesting,
+   *  which is semantic and may disagree with Tier A's tree-sitter-ancestry rule per language. */
+  supportsQualifiedContainment: boolean;
 }
 
 /**
@@ -544,13 +577,20 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
    *  still isn't guaranteed to match Tier A's own functions-array-then-classes-array grouping (a
    *  rarer collision shape -- see `node-key.ts`'s doc comment for the still-residual gap this
    *  doesn't close). `startLine`s must already be 0-based (LSP's own `Position.line` is, matching
-   *  Tier A's own `startLine` -- see `node-key.ts`). */
+   *  Tier A's own `startLine` -- see `node-key.ts`).
+   *
+   *  `containerName` (GRPH-006) is the caller's own enclosing-class read (from
+   *  `flattenCallSiteSymbols`/`findDeepestContainingSymbol`); it's only ever folded into the base
+   *  key here, behind `this.languageConfig.supportsQualifiedContainment`, so a non-capable
+   *  language's containment data -- if it ever leaked through -- can never produce a qualified key
+   *  (locked decision: the gate must live here, not upstream). */
   private resolveNodeKeyForFile(
     usedNodeKeysByFile: UsedNodeKeysByFile,
     file: string,
     fileSymbols: LspDocumentSymbol[],
     name: string,
     startLine: number,
+    containerName?: string,
   ): string {
     let state = usedNodeKeysByFile.get(file);
     if (!state) {
@@ -558,14 +598,22 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       usedNodeKeysByFile.set(file, state);
 
       const sorted = [...flattenCallSiteSymbols(fileSymbols)].sort(
-        (a, b) => a.selectionRange.start.line - b.selectionRange.start.line,
+        (a, b) =>
+          a.symbol.selectionRange.start.line -
+          b.symbol.selectionRange.start.line,
       );
-      for (const symbol of sorted) {
+      for (const { symbol, containerName: enclosed } of sorted) {
         const identity = `${symbol.name}@${symbol.selectionRange.start.line}`;
         if (state.resolved.has(identity)) continue;
         const nodeKey = buildUniqueNodeKey(
           state.used,
-          `${file}#${symbol.name}`,
+          buildQualifiedBaseKey(
+            file,
+            symbol.name,
+            this.languageConfig.supportsQualifiedContainment
+              ? enclosed
+              : undefined,
+          ),
           symbol.selectionRange.start.line,
         );
         state.used.add(nodeKey);
@@ -581,7 +629,13 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     // synthetic lookup) -- fall back to resolving it directly against whatever state exists.
     const nodeKey = buildUniqueNodeKey(
       state.used,
-      `${file}#${name}`,
+      buildQualifiedBaseKey(
+        file,
+        name,
+        this.languageConfig.supportsQualifiedContainment
+          ? containerName
+          : undefined,
+      ),
       startLine,
     );
     state.used.add(nodeKey);
@@ -605,7 +659,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     const callSiteSymbols = flattenCallSiteSymbols(callee.symbols);
 
     const edges: ResolvedCallEdge[] = [];
-    for (const symbol of callSiteSymbols) {
+    for (const { symbol, containerName } of callSiteSymbols) {
       const references = await client.request<
         { uri: string; range: LspRange }[]
       >(
@@ -624,6 +678,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           callee.symbols,
           symbol.name,
           symbol.selectionRange.start.line,
+          containerName,
         ),
       );
       for (const ref of references ?? []) {
@@ -666,14 +721,15 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       ref.range.start,
     );
     const sourceNodeKey =
-      enclosing && CALL_SITE_KINDS.has(enclosing.kind)
+      enclosing && CALL_SITE_KINDS.has(enclosing.symbol.kind)
         ? toNodeKey(
             this.resolveNodeKeyForFile(
               usedNodeKeysByFile,
               refRelative,
               caller.symbols,
-              enclosing.name,
-              enclosing.selectionRange.start.line,
+              enclosing.symbol.name,
+              enclosing.symbol.selectionRange.start.line,
+              enclosing.containerName,
             ),
           )
         : refRelative;

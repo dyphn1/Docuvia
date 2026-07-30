@@ -22,6 +22,8 @@ import {
 import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
+import { isNodeKeyFormatStale } from "./node-key-format-guard.js";
+import { runFullIngestion } from "./run-full-ingestion.js";
 import {
   appendTierBQueueEntries,
   type TierBQueueEntry,
@@ -71,6 +73,19 @@ export async function runDeltaIngestion(deps: {
     fromSha,
     headSha,
   } = deps;
+
+  // GRPH-006's migration guard: a stale/missing `node_key` format stamp means the graph predates
+  // qualified/structural keys -- an incremental re-parse of only the changed files below would
+  // leave untouched files' old-flat-format keys mixed with the just-reparsed files' new-qualified
+  // ones in the same graph, which `findNodeIdByNodeKey` cross-file resolution can't tell apart.
+  // Force a full re-ingestion instead, exactly once, until the stamp is current again.
+  if (isNodeKeyFormatStale(store)) {
+    logger.info(ANALYZE_MESSAGES.NODE_KEY_FORMAT_STALE);
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.DELTA_NODE_KEY_FORMAT_STALE,
+    });
+    return runFullIngestion({ workspaceRoot, logger, store, git });
+  }
 
   logger.info(ANALYZE_MESSAGES.AUTO_DELTA_INGESTION);
   await appendAnalyzeLogLine(workspaceRoot, {

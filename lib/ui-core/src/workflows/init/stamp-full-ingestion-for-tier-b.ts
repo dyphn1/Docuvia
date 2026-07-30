@@ -1,4 +1,4 @@
-import { GitConstants } from "@workspace/core";
+import { CURRENT_NODE_KEY_FORMAT_VERSION, GitConstants } from "@workspace/core";
 import type {
   IGitProvider,
   IGraphStore,
@@ -17,6 +17,11 @@ import {
  * drift again: they used to duplicate this block, and `init` silently lacked it, leaving files
  * parsed by `docuvia init` permanently un-queued for Tier B unless they were touched again by a
  * later commit. No-op on an unborn/headless HEAD (no commit to stamp against yet).
+ *
+ * Also stamps `META_KEY_NODE_KEY_FORMAT_VERSION` (GRPH-006) to `CURRENT_NODE_KEY_FORMAT_VERSION`
+ * -- every full ingestion (this is the only place `node_key`s are freshly assigned from scratch)
+ * produces the current, qualified `node_key` format, so this is the single choke point where that
+ * fact is recorded for `runDeltaIngestion`'s later staleness guard to read back.
  */
 export async function stampFullIngestionForTierB(deps: {
   store: IGraphStore;
@@ -35,6 +40,10 @@ export async function stampFullIngestionForTierB(deps: {
   }));
   await store.withWriteLock(() => {
     store.meta.set(GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA, headSha);
+    store.meta.set(
+      GitConstants.META_KEY_NODE_KEY_FORMAT_VERSION,
+      CURRENT_NODE_KEY_FORMAT_VERSION,
+    );
     if (tierBEntries.length > 0) {
       appendTierBQueueEntries(store, tierBEntries);
     }

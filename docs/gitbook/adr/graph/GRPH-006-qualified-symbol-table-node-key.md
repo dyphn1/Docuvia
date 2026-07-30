@@ -1,7 +1,7 @@
 ---
 id: GRPH-006
 title: Qualified (Symbol-Table-Style) node_key
-status: proposed
+status: accepted
 date: 2026-07-29
 domains: [graph]
 supersedes: []
@@ -81,3 +81,58 @@ This is not a Tier B-only change. It requires:
   function/method colliding by name with a class-as-a-whole in the same file is not guaranteed to
   resolve to the same node Tier A assigned it. Narrow and rare relative to the common case (already
   fixed), not a regression against anything that worked before Tier B's LSP path existed.
+
+- **Scope shipped (Option B, phased)**: qualified containment now resolves correctly for TS/JS,
+  Python, Java, PHP, C#, and Ruby via one generic, language-agnostic mechanism in
+  `lib/core/src/ast/ast-worker.ts` — `collectFunctionNodes` resolves each function's enclosing
+  container through the pre-existing `findEnclosingContainerName` ancestor-walk helper (the same one
+  `calls`/`implements`/`extends` attribution already used) against each language's already-declared
+  `classes` node-type list, then `node-key.ts`'s new `buildQualifiedBaseKey` folds that into
+  `${file}#${containerName}.${name}` (or `${file}#${name}` unchanged when there is none). No
+  per-language plugin changes were needed (`lib/plugins-ast/src/languages/*.ts` is untouched) —
+  extraction is centralized, and each of these six languages' grammars happen to lexically nest
+  methods inside a tracked class-like node, so containment resolution fell out of the existing
+  mechanism for free. C has no member functions and stays permanently N/A (no class-like node type
+  is declared for it at all). Go (receiver-based `method_declaration`, never lexically nested inside
+  its receiver's `type_declaration`), Rust (methods live in `impl_item`, deliberately excluded from
+  `classes: [...]`), and C++ (out-of-line `Ret Class::method(){}` definitions, qualified rather than
+  nested) do **not** get containment in this pass — they remain on today's flat/collision-
+  disambiguated key scheme, identical to pre-GRPH-006 behavior and therefore not a regression, just
+  a documented residual gap. Follow-up order for closing it, nearest-to-existing-mechanism first:
+  **Rust** (reading an `impl` block's target-type field is closest to the ancestor-walk this pass
+  already builds) → **Go** (needs receiver-parameter resolution) → **C++** (needs declarator-
+  qualifier parsing across a different node shape entirely — furthest from today's mechanism).
+
+- **Tier B hardening that shipped**: `lib/core/src/lsp/lsp-edge-provider-base.ts`'s
+  `BaseLspEdgeProvider` gates qualified-key construction behind an explicit
+  `supportsQualifiedContainment` flag on `LspLanguageConfig`, set per-language to mirror Tier A's
+  actual capability — `true` for TS/JS, Python, Java, PHP, C#, and Ruby; `false` for Go, Rust, and
+  C++ (the last of these despite Tier A resolving inline C++ methods correctly, because
+  `CPP_LANGUAGE_CONFIG` is shared across both `.c`/`.h` and `.cpp` files and clangd's
+  `documentSymbol` tree may nest an out-of-line method under its class semantically even though it
+  isn't textually nested there). The flag is deliberately never inferred from what a given LSP
+  server's own `documentSymbol` hierarchy happens to nest, since that nesting is semantic and can
+  disagree with Tier A's tree-sitter-ancestry rule — verified in review by a test asserting that
+  Rust's flag being `false` still produces flat `file#name` keys even when the fake LSP response
+  nests same-named methods under distinct class symbols.
+
+- **Migration mechanism that shipped**: no schema migration was needed. A `docuvia_meta` key
+  (`GitConstants.META_KEY_NODE_KEY_FORMAT_VERSION`, value `CURRENT_NODE_KEY_FORMAT_VERSION = "2"`,
+  both in `lib/core/src/graph/node-key.ts`/`lib/core/src/git/git-constants.ts`) is stamped on every
+  full ingestion (`stamp-full-ingestion-for-tier-b.ts`, the single choke point shared by `init` and
+  `analyze`'s full-ingestion path) and checked by
+  `lib/ui-core/src/workflows/analyze/node-key-format-guard.ts`'s `isNodeKeyFormatStale()` at the top
+  of `runDeltaIngestion` — an incremental delta re-parse on top of a pre-qualified-key graph is
+  refused and silently upgraded to a full re-ingestion instead, preventing exactly the mixed-format
+  graph (old flat keys on untouched files, new qualified keys on reparsed files) that would
+  otherwise make `findNodeIdByNodeKey` cross-file resolution silently miss matches. Git-committed
+  knowledge-branch snapshots (`graph/nodes.jsonl`/`edges.jsonl`) stay frozen in whatever format they
+  were last written in until a fresh `docuvia snapshot` runs post-upgrade — accepted behavior, not
+  automatically rewritten.
+
+- **Known gap, explicitly deferred, not fixed by this ADR**:
+  `lib/ui-core/src/workflows/analyze/tier-c-candidates.ts` builds Tier C semantic-diff node keys
+  directly from `SemanticDiffDetector` findings (`lib/ast-core`) — a separate, non-shared
+  AST-diffing implementation with no containment plumbed into it at all. Those keys remain flat and
+  undisambiguated. Closing this needs containment added to that separate detector too — a distinct
+  unit of work, not part of this ADR's scope.

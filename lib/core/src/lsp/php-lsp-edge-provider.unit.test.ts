@@ -184,8 +184,11 @@ describe("PhpLspEdgeProvider.resolveEdges()", () => {
       expect(outcome.filesProcessed).toEqual(["a.php", "b.php"]);
       expect(outcome.edges).toEqual([
         {
-          sourceNodeKey: "b.php#bar",
-          targetNodeKey: "a.php#foo",
+          // Qualified with the enclosing class (GRPH-006): PHP's supportsQualifiedContainment:
+          // true, and the namespace-kind ancestor doesn't count as a container (only the nearest
+          // CLASS-kind one does), so this is "B.bar", not "MyProject.bar".
+          sourceNodeKey: "b.php#B.bar",
+          targetNodeKey: "a.php#A.foo",
           source: "lsp",
         },
       ]);

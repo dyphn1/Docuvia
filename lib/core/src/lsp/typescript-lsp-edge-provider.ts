@@ -29,6 +29,7 @@ const TYPESCRIPT_LANGUAGE_CONFIG: LspLanguageConfig = {
   defaultLanguageId: DEFAULT_LANGUAGE_ID,
   resolveBinary: resolveLspBinary,
   checkPreflight: checkLspPreflight,
+  supportsQualifiedContainment: true,
 };
 
 /**

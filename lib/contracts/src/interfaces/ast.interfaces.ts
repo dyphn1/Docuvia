@@ -22,6 +22,7 @@ export interface ParsedAstFileData {
     startLine: number;
     endLine: number;
     contentHash?: string;
+    containerName?: string; // NEW — the enclosing class/struct name, or undefined for a top-level function
   }>;
   classes: Array<{
     name: string;

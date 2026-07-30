@@ -168,6 +168,112 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
     }
   });
 
+  it("keeps flat file#name node_keys even when documentSymbol nests same-named methods under distinct classes (GRPH-006: supportsQualifiedContainment: false gates this, not the LSP tree shape)", async () => {
+    // Same two-same-named-methods-on-different-classes shape as TypescriptLspEdgeProvider's
+    // qualified-containment test, but Rust's LspLanguageConfig sets supportsQualifiedContainment:
+    // false (locked decision §0.1/§0.2 -- rust-analyzer's own documentSymbol nests a method under
+    // its `impl` block semantically, but Tier A's tree-sitter-ancestry rule for Rust deliberately
+    // does NOT treat `impl_item` as a tracked class-like node, so containment must stay flat here
+    // too). Proves the capability flag -- not what the fake LSP server's own symbol tree happens to
+    // nest -- controls the outcome: both "handle" methods still collide on the bare "a.rs#handle"
+    // key and need buildUniqueNodeKey's ordinary line-suffix disambiguation.
+    const customWorkspace = makeWorkspace({
+      "a.rs": "struct ClassA;\nstruct ClassB;\n",
+      "b.rs": "fn caller() {}\n",
+    });
+    const aUri = uriFor(customWorkspace, "a.rs");
+    const bUri = uriFor(customWorkspace, "b.rs");
+    const classAHandleSelection = range(1, 4, 1, 10);
+    const classBHandleSelection = range(4, 4, 4, 10);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "ClassA",
+              kind: LspSymbolKinds.CLASS,
+              range: range(0, 0, 2, 1),
+              selectionRange: range(0, 6, 0, 12),
+              children: [
+                {
+                  name: "handle",
+                  kind: LspSymbolKinds.METHOD,
+                  range: range(1, 2, 1, 20),
+                  selectionRange: classAHandleSelection,
+                },
+              ],
+            },
+            {
+              name: "ClassB",
+              kind: LspSymbolKinds.CLASS,
+              range: range(3, 0, 5, 1),
+              selectionRange: range(3, 6, 3, 12),
+              children: [
+                {
+                  name: "handle",
+                  kind: LspSymbolKinds.METHOD,
+                  range: range(4, 2, 4, 20),
+                  selectionRange: classBHandleSelection,
+                },
+              ],
+            },
+          ];
+        }
+        return [
+          {
+            name: "caller",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 3, 1),
+            selectionRange: range(0, 9, 0, 15),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (params.textDocument.uri === aUri) {
+          if (params.position.line === classAHandleSelection.start.line) {
+            return [{ uri: bUri, range: range(1, 2, 1, 8) }];
+          }
+          if (params.position.line === classBHandleSelection.start.line) {
+            return [{ uri: bUri, range: range(2, 2, 2, 8) }];
+          }
+          return [];
+        }
+        return [];
+      }
+      return undefined;
+    };
+
+    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+
+    try {
+      const outcome = await provider.resolveEdges({
+        workspaceRoot: customWorkspace,
+        files: ["a.rs", "b.rs"],
+      });
+
+      expect(outcome.edges).toEqual(
+        expect.arrayContaining([
+          {
+            sourceNodeKey: "b.rs#caller",
+            targetNodeKey: "a.rs#handle",
+            source: "lsp",
+          },
+          {
+            sourceNodeKey: "b.rs#caller",
+            targetNodeKey: "a.rs#handle@L4",
+            source: "lsp",
+          },
+        ]),
+      );
+      expect(outcome.edges).toHaveLength(2);
+    } finally {
+      fs.rmSync(customWorkspace, { recursive: true, force: true });
+    }
+  });
+
   it("opens each file with the rust languageId", async () => {
     const handler: RequestHandler = (method) => {
       if (method === LspMethods.DOCUMENT_SYMBOL) return [];

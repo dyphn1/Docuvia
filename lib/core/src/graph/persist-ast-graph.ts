@@ -7,7 +7,7 @@ import {
 } from "@workspace/contracts";
 import { ScopeResolver } from "./scope-resolver.js";
 import { ANONYMOUS_SYMBOL_NAME } from "../constants/symbols.js";
-import { buildUniqueNodeKey } from "./node-key.js";
+import { buildUniqueNodeKey, buildQualifiedBaseKey } from "./node-key.js";
 
 /**
  * Redistributes old `SqliteGraphRepository.persistAstGraph()`'s logic onto `IGraphStore`'s
@@ -177,7 +177,7 @@ export class GraphPersisterService implements IGraphPersister {
     for (const fn of result.data.functions ?? []) {
       const nodeKey = buildUniqueNodeKey(
         usedNodeKeys,
-        `${result.file}#${fn.name}`,
+        buildQualifiedBaseKey(result.file, fn.name, fn.containerName),
         fn.startLine,
       );
       usedNodeKeys.add(nodeKey);

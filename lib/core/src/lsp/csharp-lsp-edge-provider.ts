@@ -27,6 +27,7 @@ const CSHARP_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkCsharpLspPreflight,
+  supportsQualifiedContainment: true,
 };
 
 /**

@@ -36,6 +36,7 @@ const CPP_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkCppLspPreflight,
+  supportsQualifiedContainment: false,
 };
 
 /**

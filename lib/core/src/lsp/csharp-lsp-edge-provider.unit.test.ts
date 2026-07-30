@@ -187,8 +187,12 @@ describe("CsharpLspEdgeProvider.resolveEdges()", () => {
       expect(outcome.filesProcessed).toEqual(["A.cs", "B.cs"]);
       expect(outcome.edges).toEqual([
         {
-          sourceNodeKey: "B.cs#Bar",
-          targetNodeKey: "A.cs#Foo",
+          // Qualified with the enclosing class (GRPH-006): C#'s
+          // supportsQualifiedContainment: true, and the namespace-kind ancestor doesn't count as
+          // a container (only the nearest CLASS-kind one does), so this is "B.Bar", not
+          // "MyProject.Bar".
+          sourceNodeKey: "B.cs#B.Bar",
+          targetNodeKey: "A.cs#A.Foo",
           source: "lsp",
         },
       ]);

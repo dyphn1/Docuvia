@@ -1,8 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { Parser, Language, type Node } from "web-tree-sitter";
+import { Parser, Language, type Node, type Tree } from "web-tree-sitter";
 import { DefaultProvider, parseImportDescriptors } from "@workspace/ast-core";
 import { typescriptConfig } from "@workspace/plugins-ast";
-import { resolveWasmPath, resolveCallableName } from "./ast-worker.js";
+import {
+  resolveWasmPath,
+  resolveCallableName,
+  collectFunctionNodes,
+} from "./ast-worker.js";
 
 /**
  * Real tree-sitter WASM fixture test (not mocked) proving Steps 4-6 of
@@ -156,5 +160,55 @@ describe("typescript fixture: import resolution regression (cross-file calls)", 
       expect(d.localName).not.toContain("import");
       expect(d.localName).not.toContain(";");
     }
+  });
+});
+
+/**
+ * GRPH-006 (Step 2): `collectFunctionNodes` must resolve each function's enclosing class via
+ * `classNodes`, and must convert `findEnclosingContainerName`'s "anonymous" sentinel to `undefined`
+ * for a top-level function rather than storing the literal string (which would otherwise qualify
+ * every top-level function's node_key as `file#anonymous.name` -- a regression, not a fix).
+ */
+const CONTAINER_SRC = `
+class Widget {
+  bar() { doStuff(); }
+}
+function topLevel() {}
+`;
+
+describe("typescript fixture: containerName (GRPH-006 Step 2)", () => {
+  let tree: Tree;
+
+  beforeAll(async () => {
+    await Parser.init();
+    const { wasmPath, attemptedPaths } = resolveWasmPath(
+      typescriptConfig.wasm_file,
+    );
+    if (!wasmPath) {
+      throw new Error(
+        `tree-sitter-typescript.wasm not found. Tried: ${attemptedPaths.join(", ")}`,
+      );
+    }
+    const lang = await Language.load(wasmPath);
+    const parser = new Parser();
+    parser.setLanguage(lang);
+    const parsed = parser.parse(CONTAINER_SRC);
+    if (!parsed) throw new Error("Failed to parse fixture source");
+    tree = parsed;
+  });
+
+  it("qualifies a method's containerName with its enclosing class, and leaves a top-level function's containerName undefined", () => {
+    const provider = new DefaultProvider(typescriptConfig);
+    const classNodes = provider.extractClasses(tree.rootNode);
+    const functions: Parameters<typeof collectFunctionNodes>[2] = [];
+
+    collectFunctionNodes(tree, provider, functions, classNodes);
+
+    expect(functions.find((f) => f.name === "bar")?.containerName).toBe(
+      "Widget",
+    );
+    expect(
+      functions.find((f) => f.name === "topLevel")?.containerName,
+    ).toBeUndefined();
   });
 });

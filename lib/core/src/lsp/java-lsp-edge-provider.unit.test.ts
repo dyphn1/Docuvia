@@ -168,8 +168,9 @@ describe("JavaLspEdgeProvider.resolveEdges()", () => {
       expect(outcome.filesProcessed).toEqual(["A.java", "B.java"]);
       expect(outcome.edges).toEqual([
         {
-          sourceNodeKey: "B.java#bar",
-          targetNodeKey: "A.java#foo",
+          // Qualified with the enclosing class (GRPH-006): Java's supportsQualifiedContainment: true.
+          sourceNodeKey: "B.java#B.bar",
+          targetNodeKey: "A.java#A.foo",
           source: "lsp",
         },
       ]);

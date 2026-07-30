@@ -34,6 +34,7 @@ const RUST_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkRustLspPreflight,
+  supportsQualifiedContainment: false,
 };
 
 /**

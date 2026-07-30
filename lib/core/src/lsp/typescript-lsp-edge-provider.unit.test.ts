@@ -285,13 +285,15 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     });
   });
 
-  it("disambiguates two same-named methods on different classes in one file, using Tier A's exact node_key scheme (bare key first, @Lline on collision)", async () => {
+  it("disambiguates two same-named methods on different classes in one file via qualified node_keys, with no @Lline suffix needed (GRPH-006)", async () => {
     // ClassA.handle (line 1) and ClassB.handle (line 4) in a.ts -- same method name, same file,
-    // different classes. Without disambiguation both would silently collapse onto the bare
-    // "a.ts#handle" key (2026-07 CLI benchmark finding: an edge attaches to the wrong symbol, or
-    // gets dropped as a false "duplicate"). Also proves the memoization fix: "caller" in b.ts is
-    // looked up twice (once per reference) and must resolve to the *same* key both times, not
-    // drift onto "b.ts#caller@L0" the second time around.
+    // different classes. Before GRPH-006 both would silently collapse onto the bare "a.ts#handle"
+    // key and need line-suffix disambiguation (2026-07 CLI benchmark finding: an edge attaches to
+    // the wrong symbol, or gets dropped as a false "duplicate"). TS's `supportsQualifiedContainment:
+    // true` now qualifies each method's node_key with its enclosing class, so the two no longer
+    // collide at all -- proving this ADR's exact fix end-to-end on the LSP side. Also proves the
+    // memoization fix: "caller" in b.ts is looked up twice (once per reference) and must resolve to
+    // the *same* key both times, not drift onto "b.ts#caller@L0" the second time around.
     const aUri = uriFor(workspaceRoot, "a.ts");
     const bUri = uriFor(workspaceRoot, "b.ts");
     const classAHandleSelection = range(1, 4, 1, 10);
@@ -368,12 +370,12 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       expect.arrayContaining([
         {
           sourceNodeKey: "b.ts#caller",
-          targetNodeKey: "a.ts#handle",
+          targetNodeKey: "a.ts#ClassA.handle",
           source: "lsp",
         },
         {
           sourceNodeKey: "b.ts#caller",
-          targetNodeKey: "a.ts#handle@L4",
+          targetNodeKey: "a.ts#ClassB.handle",
           source: "lsp",
         },
       ]),
@@ -382,7 +384,10 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
   });
 
   it("assigns the bare key by line position, not by which symbol the documentSymbol response happens to list first", async () => {
-    // ClassLater (line 5) is listed BEFORE ClassEarlier (line 1) in documentSymbol's own array --
+    // Two top-level (no enclosing class) "run" functions -- deliberately NOT methods on two
+    // different classes (GRPH-006 qualifies those with their container name, so they'd no longer
+    // collide at all and this test's own premise, a still-colliding bare name, would be moot). The
+    // later one (line 5) is listed BEFORE the earlier one (line 1) in documentSymbol's own array --
     // an LSP server isn't spec-required to return top-level symbols in source order, and even if
     // it usually does, this shouldn't matter: Tier A's own functions[] is genuinely line-ordered
     // (a tree-sitter source-order walk), so the bare key must go to whichever "run" sits at the
@@ -398,32 +403,16 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
         if (params.textDocument.uri === aUri) {
           return [
             {
-              name: "ClassLater",
-              kind: LspSymbolKinds.CLASS,
+              name: "run",
+              kind: LspSymbolKinds.FUNCTION,
               range: range(4, 0, 6, 1),
-              selectionRange: range(4, 6, 4, 16),
-              children: [
-                {
-                  name: "run",
-                  kind: LspSymbolKinds.METHOD,
-                  range: range(5, 2, 5, 20),
-                  selectionRange: laterRunSelection,
-                },
-              ],
+              selectionRange: laterRunSelection,
             },
             {
-              name: "ClassEarlier",
-              kind: LspSymbolKinds.CLASS,
+              name: "run",
+              kind: LspSymbolKinds.FUNCTION,
               range: range(0, 0, 2, 1),
-              selectionRange: range(0, 6, 0, 18),
-              children: [
-                {
-                  name: "run",
-                  kind: LspSymbolKinds.METHOD,
-                  range: range(1, 2, 1, 20),
-                  selectionRange: earlierRunSelection,
-                },
-              ],
+              selectionRange: earlierRunSelection,
             },
           ];
         }

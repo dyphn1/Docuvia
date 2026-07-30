@@ -27,6 +27,7 @@ const GO_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkGoLspPreflight,
+  supportsQualifiedContainment: false,
 };
 
 /**

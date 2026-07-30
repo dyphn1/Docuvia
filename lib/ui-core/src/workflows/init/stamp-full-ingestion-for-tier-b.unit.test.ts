@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { GitConstants } from "@workspace/core";
+import { CURRENT_NODE_KEY_FORMAT_VERSION, GitConstants } from "@workspace/core";
 import type { IGitProvider, IGraphStore } from "@workspace/contracts";
 import { stampFullIngestionForTierB } from "./stamp-full-ingestion-for-tier-b.js";
 import { readTierBQueue } from "../analyze/tier-b-queue.js";
@@ -91,6 +91,23 @@ describe("stampFullIngestionForTierB()", () => {
     expect(store.meta.set).toHaveBeenCalledWith(
       GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
       "cafebabecafebabecafebabecafebabecafebabe",
+    );
+  });
+
+  it("stamps the node_key format version to CURRENT_NODE_KEY_FORMAT_VERSION (GRPH-006)", async () => {
+    const store = makeMockStore();
+    const git = makeMockGitProvider("cafebabecafebabecafebabecafebabecafebabe");
+
+    await stampFullIngestionForTierB({
+      store,
+      git,
+      workspaceRoot: "/workspace",
+      parsedResults,
+    });
+
+    expect(store.meta.set).toHaveBeenCalledWith(
+      GitConstants.META_KEY_NODE_KEY_FORMAT_VERSION,
+      CURRENT_NODE_KEY_FORMAT_VERSION,
     );
   });
 

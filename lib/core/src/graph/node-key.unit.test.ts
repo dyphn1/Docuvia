@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildUniqueNodeKey } from "./node-key.js";
+import { buildUniqueNodeKey, buildQualifiedBaseKey } from "./node-key.js";
 
 describe("buildUniqueNodeKey()", () => {
   it("returns the bare key unchanged when there is no collision -- the common case", () => {
@@ -32,5 +32,34 @@ describe("buildUniqueNodeKey()", () => {
     const used = new Set<string>(["a.ts", "a.ts#handle"]);
     buildUniqueNodeKey(used, "a.ts#handle", 12);
     expect(used.has("a.ts#handle@L12")).toBe(false);
+  });
+});
+
+describe("buildQualifiedBaseKey() (GRPH-006)", () => {
+  it("qualifies the base key with the container name when one is given", () => {
+    expect(buildQualifiedBaseKey("a.ts", "handle", "ClassA")).toBe(
+      "a.ts#ClassA.handle",
+    );
+  });
+
+  it("falls back to today's flat shape when there is no container (top-level function)", () => {
+    expect(buildQualifiedBaseKey("a.ts", "handle", undefined)).toBe(
+      "a.ts#handle",
+    );
+    expect(buildQualifiedBaseKey("a.ts", "handle")).toBe("a.ts#handle");
+  });
+
+  it("gives two identically-named methods on different classes structurally different base keys -- no collision to disambiguate", () => {
+    const keyA = buildQualifiedBaseKey("a.ts", "handle", "ClassA");
+    const keyB = buildQualifiedBaseKey("a.ts", "handle", "ClassB");
+    expect(keyA).not.toBe(keyB);
+  });
+
+  it("still collides -- and still needs buildUniqueNodeKey's line/counter disambiguation -- for two identically-named methods on the SAME class (overloads)", () => {
+    const baseKey = buildQualifiedBaseKey("a.ts", "handle", "ClassA");
+    const used = new Set<string>(["a.ts", baseKey]);
+    expect(buildUniqueNodeKey(used, baseKey, 12)).toBe(
+      "a.ts#ClassA.handle@L12",
+    );
   });
 });

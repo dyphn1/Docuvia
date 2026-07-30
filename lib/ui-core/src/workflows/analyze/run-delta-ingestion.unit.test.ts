@@ -16,8 +16,9 @@ import {
   type IKnowledgeGitService,
   type ISemanticDiffAnalyzer,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { CURRENT_NODE_KEY_FORMAT_VERSION, GitConstants } from "@workspace/core";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
+import { runFullIngestion } from "./run-full-ingestion.js";
 import { readTierBQueue } from "./tier-b-queue.js";
 
 // Mirrors run-full-ingestion.unit.test.ts / init-workflow.unit.test.ts's mocking pattern
@@ -27,6 +28,23 @@ import { readTierBQueue } from "./tier-b-queue.js";
 // lives inside GraphPersisterService.persist() itself (already covered by
 // lib/core/src/graph/persist-ast-graph.unit.test.ts) -- here we assert the delta wiring feeds
 // the right file list into that persist step.
+
+// GRPH-006's node-key-format-stale delegation (§Step 7) is a dispatch decision, not
+// runFullIngestion's own behavior -- that's covered by run-full-ingestion.unit.test.ts. Mocking
+// the module here isolates runDeltaIngestion's guard from runFullIngestion's real (heavier)
+// implementation, mirroring analyze-workflow.unit.test.ts's identical precedent for the same
+// two modules.
+vi.mock("./run-full-ingestion.js", () => ({
+  runFullIngestion: vi.fn().mockResolvedValue({
+    kind: "autoFullIngestion",
+    projectType: "typescript",
+    suggestedTags: [],
+    filesRequested: 0,
+    filesParsed: 0,
+    filesFailed: 0,
+    filesSkippedOversized: 0,
+  }),
+}));
 
 function makeMockGitProvider(
   overrides: Partial<IGitProvider> = {},
@@ -95,7 +113,16 @@ function makeMockKnowledgeGit(
 }
 
 function makeMockStore(): IGraphStore {
-  const meta = new Map<string, string>();
+  // GRPH-006: seeded to the current format version by default, matching a graph produced by a
+  // full ingestion that already ran under this codebase -- keeps every pre-existing test below
+  // exercising the ordinary delta path rather than the new stale-format guard (§Step 7's own
+  // tests seed this key explicitly to cover the guard itself).
+  const meta = new Map<string, string>([
+    [
+      GitConstants.META_KEY_NODE_KEY_FORMAT_VERSION,
+      CURRENT_NODE_KEY_FORMAT_VERSION,
+    ],
+  ]);
   return {
     projects: {
       getFirst: vi.fn(),
@@ -166,6 +193,7 @@ describe("runDeltaIngestion()", () => {
       path.join(os.tmpdir(), "docuvia-run-delta-ingestion-"),
     );
     store = makeMockStore();
+    vi.mocked(runFullIngestion).mockClear();
 
     resetFactoryForTests();
 
@@ -744,5 +772,42 @@ describe("runDeltaIngestion()", () => {
         file: "src/a.ts",
       },
     ]);
+  });
+
+  it("GRPH-006: delegates to runFullIngestion instead of delta-ingesting when the node_key format stamp is stale/missing", async () => {
+    store.meta.set(GitConstants.META_KEY_NODE_KEY_FORMAT_VERSION, "1");
+    const git = makeMockGitProvider({
+      getChangedFilesSince: vi.fn().mockResolvedValue([]),
+    });
+
+    const result = await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(runFullIngestion).toHaveBeenCalledWith({
+      workspaceRoot: tmpDir,
+      logger: expect.anything(),
+      store,
+      git,
+    });
+    expect(astProcessor.processFiles).not.toHaveBeenCalled();
+    expect(result.kind).toBe("autoFullIngestion");
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    expect(
+      lines.some((l) => l.event === "analyze.delta.node_key_format_stale"),
+    ).toBe(true);
   });
 });

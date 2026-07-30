@@ -28,6 +28,11 @@ export {
 } from "./constants/paths.js";
 export { GitConstants } from "./git/git-constants.js";
 export { parseSourceTrailer } from "./git/git-trailers.js";
+// GRPH-006's format-version stamp: pure, side-effect-free domain knowledge (same "narrow
+// exception" precedent as `isSupportedSourceFile` above) that `lib/ui-core`'s
+// `stamp-full-ingestion-for-tier-b.ts`/`node-key-format-guard.ts` need to read/write the
+// `docuvia_meta` stamp -- not DI-registered behind a token, so it's exported here directly.
+export { CURRENT_NODE_KEY_FORMAT_VERSION } from "./graph/node-key.js";
 // L3 distribution (phase2-l3-distribution.md): `renderL3Card`/`computeL2GitPathsByNodeId` are
 // pure, side-effect-free rendering helpers `SnapshotWorkflow` calls directly, the same "narrow
 // exception" precedent as `isSupportedSourceFile` above. `importL3CardsFromKnowledgeBranch` does

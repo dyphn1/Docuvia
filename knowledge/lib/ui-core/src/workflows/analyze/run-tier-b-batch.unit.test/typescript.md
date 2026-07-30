@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#typescript@L526
+id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#typescript@L587
 type: symbol
 name: typescript
 filePath: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts

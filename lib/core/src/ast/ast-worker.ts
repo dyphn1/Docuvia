@@ -9,7 +9,10 @@ import type {
   LanguageProvider,
   LanguageRegistry,
 } from "@workspace/ast-core";
-import { parseImportDescriptors } from "@workspace/ast-core";
+import {
+  parseImportDescriptors,
+  SUPPORTED_LANGUAGES,
+} from "@workspace/ast-core";
 import { loadDefaultRegistry } from "@workspace/plugins-ast";
 import { IpcLoggerClient, type AstExportKind } from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
@@ -90,6 +93,16 @@ export interface AstParseResponse {
     calls: Array<{ sourceFunction: string; targetFunction: string }>;
     implements?: Array<{ sourceClass: string; targetInterface: string }>;
     extends?: Array<{ sourceClass: string; targetClass: string }>;
+    /**
+     * `new Worker(<path>)` spawn sites (TS/JS only — see `WORKER_SPAWN_LANGUAGES`), one per
+     * resolved spawn call, attributing it to its enclosing function like `calls` does.
+     * `persist-ast-graph.ts` resolves `targetPath` to a real file and inserts a `DEPENDS_ON`
+     * edge from it — the fix for the `ast-worker-pool.ts` -> `ast-worker.ts` false-negative
+     * blast-radius gap (dynamic `worker_threads` spawns are invisible to the static
+     * imports/calls pipeline, since the target script is a runtime path string, not a static
+     * `import`).
+     */
+    workerSpawns?: Array<{ sourceFunction: string; targetPath: string }>;
     decisions?: string[];
   };
 }
@@ -414,6 +427,121 @@ function collectExtendsEdges(
   }
 }
 
+/** Languages `collectWorkerSpawns` runs against — the reported gap (a `new Worker(...)` spawn
+ *  invisible to the static imports/calls pipeline) is TS/JS-specific: `new_expression` is also a
+ *  real C++ grammar node (the `new` operator), so gating by language avoids misinterpreting an
+ *  unrelated `new Worker(...)` construction in another language as a worker_threads spawn. */
+const WORKER_SPAWN_LANGUAGES: ReadonlySet<SupportedLanguage> = new Set([
+  SUPPORTED_LANGUAGES.TYPESCRIPT,
+  SUPPORTED_LANGUAGES.JAVASCRIPT,
+]);
+
+const WORKER_CONSTRUCTOR_NAME = "Worker";
+const PATH_MODULE_OBJECT_NAME = "path";
+const PATH_RESOLVE_METHOD_NAME = "resolve";
+const PATH_JOIN_METHOD_NAME = "join";
+const DIRNAME_IDENTIFIER_NAME = "__dirname";
+
+/** True when `node` is a `path.resolve(...)`/`path.join(...)` call expression — the exact idiom
+ *  `ast-worker-pool.ts` uses to build a worker script's path from `__dirname`. */
+function isPathJoinOrResolveCall(node: Node): boolean {
+  if (node.type !== "call_expression") return false;
+  const fn = node.childForFieldName("function");
+  if (!fn || fn.type !== "member_expression") return false;
+  const object = fn.childForFieldName("object")?.text;
+  const property = fn.childForFieldName("property")?.text;
+  return (
+    object === PATH_MODULE_OBJECT_NAME &&
+    (property === PATH_RESOLVE_METHOD_NAME ||
+      property === PATH_JOIN_METHOD_NAME)
+  );
+}
+
+/** Extracts the string-literal path segment from a `path.resolve(__dirname, "<literal>")` /
+ *  `path.join(__dirname, "<literal>")` call, or undefined if it doesn't reference `__dirname` or
+ *  carries no string-literal argument. */
+function extractDirnameJoinedLiteral(callNode: Node): string | undefined {
+  const args = callNode.childForFieldName("arguments");
+  if (!args) return undefined;
+  const hasDirname = args.namedChildren.some(
+    (n) => n?.type === "identifier" && n.text === DIRNAME_IDENTIFIER_NAME,
+  );
+  if (!hasDirname) return undefined;
+  const literal = args.descendantsOfType("string")[0];
+  return literal?.text.replace(/['"]/g, "");
+}
+
+/** Bounded same-file scan for `<argText> = path.resolve/join(__dirname, "<literal>")` — the
+ *  exact idiom `ast-worker-pool.ts` uses for `this.wPath = path.resolve(__dirname, "./ast-worker.js")`,
+ *  needed because the `new Worker(...)` call site references the field/variable, not the literal,
+ *  directly. Matches by comparing the assignment's own left-hand-side text against `argText`
+ *  verbatim (e.g. both "this.wPath"), so it works uniformly whether the argument is a bare
+ *  identifier or a member expression. */
+function findDirnameJoinedAssignment(
+  tree: Tree,
+  argText: string,
+): string | undefined {
+  for (const assignment of tree.rootNode.descendantsOfType(
+    AstNodeTypes.ASSIGNMENT_EXPRESSION,
+  )) {
+    if (!assignment) continue;
+    const left = assignment.childForFieldName("left");
+    const right = assignment.childForFieldName("right");
+    if (left?.text !== argText || !right || !isPathJoinOrResolveCall(right)) {
+      continue;
+    }
+    const literal = extractDirnameJoinedLiteral(right);
+    if (literal) return literal;
+  }
+  return undefined;
+}
+
+/** Resolves `new Worker(<arg>)`'s first argument to a literal relative path: a direct string
+ *  literal, or a same-file `path.resolve/join(__dirname, "<literal>")`-assigned field/variable
+ *  (the `ast-worker-pool.ts` idiom, via `findDirnameJoinedAssignment`). Returns undefined —
+ *  skip silently, no guessing — when neither shape matches. */
+function resolveWorkerArgumentPath(
+  tree: Tree,
+  argNode: Node,
+): string | undefined {
+  if (argNode.type === "string") {
+    return argNode.text.replace(/['"]/g, "");
+  }
+  if (argNode.type === "identifier" || argNode.type === "member_expression") {
+    return findDirnameJoinedAssignment(tree, argNode.text);
+  }
+  return undefined;
+}
+
+/** Extracts `new Worker(<arg>)` spawn sites (TS/JS only, see `WORKER_SPAWN_LANGUAGES`) and
+ *  appends a `{sourceFunction, targetPath}` descriptor for each one whose argument resolves to a
+ *  literal relative path (`resolveWorkerArgumentPath`), attributing it to its enclosing function
+ *  like `collectCallEdges` does. `persist-ast-graph.ts` resolves `targetPath` to a real file and
+ *  inserts the corresponding `DEPENDS_ON` edge. */
+export function collectWorkerSpawns(
+  tree: Tree,
+  language: SupportedLanguage,
+  functionNodes: Node[],
+  workerSpawns: NonNullable<AstExtractionResult["workerSpawns"]>,
+): void {
+  if (!WORKER_SPAWN_LANGUAGES.has(language)) return;
+  const functionIds = new Set(functionNodes.map((n) => n.id));
+  for (const node of tree.rootNode.descendantsOfType("new_expression")) {
+    if (!node) continue;
+    const ctor = node.childForFieldName("constructor");
+    if (ctor?.text !== WORKER_CONSTRUCTOR_NAME) continue;
+    const args = node.childForFieldName("arguments");
+    const firstArg = args?.namedChildren.find((n): n is Node => n !== null);
+    if (!firstArg) continue;
+    const targetPath = resolveWorkerArgumentPath(tree, firstArg);
+    if (!targetPath) continue;
+    workerSpawns.push({
+      sourceFunction: findEnclosingContainerName(node, functionIds),
+      targetPath,
+    });
+  }
+}
+
 /**
  * Runs every provider-driven extraction against a parsed tree (or returns empty results plus a
  * decision note if parsing produced no tree). A single try/catch wraps the whole pass, matching
@@ -423,6 +551,7 @@ function collectExtendsEdges(
 function extractAstData(
   tree: Tree | null,
   provider: LanguageProvider,
+  language: SupportedLanguage,
 ): AstExtractionResult {
   const decisions: string[] = [];
   const imports: ImportDescriptor[] = [];
@@ -432,6 +561,7 @@ function extractAstData(
   const calls: AstExtractionResult["calls"] = [];
   const implementsList: NonNullable<AstExtractionResult["implements"]> = [];
   const extendsList: NonNullable<AstExtractionResult["extends"]> = [];
+  const workerSpawns: NonNullable<AstExtractionResult["workerSpawns"]> = [];
 
   if (tree) {
     decisions.push(AstMessages.parsedViaTreeSitter(tree.rootNode.childCount));
@@ -451,6 +581,7 @@ function extractAstData(
       collectCallEdges(tree, provider, functionNodes, calls);
       collectImplementsEdges(tree, provider, classNodes, implementsList);
       collectExtendsEdges(tree, provider, classNodes, extendsList);
+      collectWorkerSpawns(tree, language, functionNodes, workerSpawns);
 
       decisions.push(AstMessages.QUERIED_VIA_LANGUAGE_PROVIDER);
     } catch (e) {
@@ -470,6 +601,7 @@ function extractAstData(
     calls,
     implements: implementsList,
     extends: extendsList,
+    workerSpawns,
     decisions,
   };
 }
@@ -479,6 +611,7 @@ function parseAndExtract(
   code: string,
   provider: LanguageProvider,
   langInstance: Language,
+  language: SupportedLanguage,
 ): AstExtractionResult {
   const parser = new Parser();
   parser.setLanguage(langInstance);
@@ -491,7 +624,7 @@ function parseAndExtract(
   provider.initQueries?.(langInstance);
 
   const tree = parser.parse(code);
-  const data = extractAstData(tree, provider);
+  const data = extractAstData(tree, provider, language);
 
   if (tree) tree.delete();
   parser.delete();
@@ -552,7 +685,12 @@ async function buildParseResponse(
   }
 
   const langInstance = await Language.load(wasmPath);
-  const data = parseAndExtract(request.code, provider, langInstance);
+  const data = parseAndExtract(
+    request.code,
+    provider,
+    langInstance,
+    request.language,
+  );
 
   return {
     taskId: request.taskId,

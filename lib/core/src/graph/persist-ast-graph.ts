@@ -322,6 +322,65 @@ export class GraphPersisterService implements IGraphPersister {
         true,
       );
     }
+    for (const spawn of result.data.workerSpawns ?? []) {
+      this.linkWorkerSpawn(
+        store,
+        resolver,
+        result.file,
+        sourceFileId,
+        sourceSymbols,
+        fileIdMap,
+        symbolIdMap,
+        spawn.sourceFunction,
+        spawn.targetPath,
+      );
+    }
+  }
+
+  /** Resolves one `new Worker(<path>)` spawn site (TS/JS only — see `ast-worker.ts`'s
+   *  `collectWorkerSpawns`) to its target file and, if resolved, inserts a `DEPENDS_ON` edge from
+   *  the spawning function/file to the spawned worker script's file node. Mirrors
+   *  `linkSymbolReference`'s shape, but resolves by relative file path
+   *  (`ScopeResolver.resolveWorkerSpawnPath`) rather than by imported symbol name — a
+   *  `new Worker(...)` call names a script file to run in a new thread, not an imported
+   *  binding, so the target is always the whole file node (`targetFile` doubles as the
+   *  `targetSymbol` argument to `resolveTargetNodeId`, hitting its file-node fallback). */
+  private linkWorkerSpawn(
+    store: IGraphStore,
+    resolver: ScopeResolver,
+    sourceFile: string,
+    sourceFileId: number,
+    sourceSymbols: Map<string, number> | undefined,
+    fileIdMap: Map<string, number>,
+    symbolIdMap: Map<string, Map<string, number>>,
+    sourceFunctionName: string | undefined,
+    targetPath: string,
+  ): void {
+    const targetFile = resolver.resolveWorkerSpawnPath(sourceFile, targetPath);
+    if (!targetFile) return;
+
+    const targetNodeId = this.resolveTargetNodeId(
+      store,
+      fileIdMap,
+      symbolIdMap,
+      targetFile,
+      targetFile,
+    );
+    if (!targetNodeId) return;
+
+    const sourceNodeId = this.resolveSourceNodeId(
+      sourceSymbols,
+      sourceFunctionName,
+      sourceFileId,
+    );
+
+    if (targetNodeId !== sourceNodeId) {
+      store.graph.insertLink({
+        sourceNodeId,
+        targetNodeId,
+        linkType: LinkTypes.DEPENDS_ON,
+      });
+    }
   }
 
   /** Resolves one call/implements/extends edge and, if the resolved target is a real (and

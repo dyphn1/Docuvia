@@ -34,6 +34,8 @@ export interface ParsedAstFileData {
   calls: Array<{ sourceFunction: string; targetFunction: string }>;
   implements?: Array<{ sourceClass: string; targetInterface: string }>;
   extends?: Array<{ sourceClass: string; targetClass: string }>;
+  /** `new Worker(<path>)` spawn sites (TS/JS only) — see `ast-worker.ts`'s `collectWorkerSpawns`. */
+  workerSpawns?: Array<{ sourceFunction: string; targetPath: string }>;
   decisions?: string[];
 }
 

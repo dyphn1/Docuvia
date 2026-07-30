@@ -196,6 +196,31 @@ export class ScopeResolver {
     return null;
   }
 
+  /**
+   * (Worker-spawn edge resolution, TS/JS only — see `ast-worker.ts`'s `collectWorkerSpawns`.)
+   * Resolves a `new Worker(<path>)` spawn's literal relative-path argument — already known to be
+   * directory-relative (e.g. from `path.resolve(__dirname, "./ast-worker.js")`) — to a real
+   * workspace file, reusing `findFileWithExtension`'s extension-probing rather than duplicating
+   * it (mirrors `resolveModulePath`'s own relative-path branch below).
+   *
+   * Strips a literal trailing `.js`/`.jsx` extension before probing: this codebase's own ESM
+   * convention (relative specifiers written as `./foo.js` that really resolve to `./foo.ts`
+   * source — matching `ast-worker-pool.ts`'s real `"./ast-worker.js"` literal) means
+   * `findFileWithExtension`'s append-only extension loop would otherwise never match — it tries
+   * `foo.js.ts`, `foo.js.js`, ..., never the intended `foo.ts`. (This append-vs-swap gap also
+   * affects ordinary relative `import` resolution via `resolveModulePath`, but fixing that
+   * shared, higher-blast-radius behavior is out of scope here; this strip-before-probe keeps the
+   * fix scoped to worker-spawn resolution only.)
+   */
+  public resolveWorkerSpawnPath(
+    sourceFile: string,
+    relativePath: string,
+  ): string | null {
+    const dir = path.posix.dirname(sourceFile.replace(/\\/g, "/"));
+    const target = path.posix.join(dir, relativePath.replace(/\.jsx?$/, ""));
+    return this.findFileWithExtension(target);
+  }
+
   private resolveModulePath(
     sourceFile: string,
     modulePath: string,

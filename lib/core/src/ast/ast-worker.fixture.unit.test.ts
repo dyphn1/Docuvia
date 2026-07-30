@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Parser, Language, type Node, type Tree } from "web-tree-sitter";
-import { DefaultProvider, parseImportDescriptors } from "@workspace/ast-core";
+import {
+  DefaultProvider,
+  parseImportDescriptors,
+  SUPPORTED_LANGUAGES,
+} from "@workspace/ast-core";
 import {
   typescriptConfig,
   rustConfig,
@@ -11,6 +15,7 @@ import {
   resolveWasmPath,
   resolveCallableName,
   collectFunctionNodes,
+  collectWorkerSpawns,
 } from "./ast-worker.js";
 
 /**
@@ -386,5 +391,93 @@ describe("cpp fixture: containerName (GRPH-006 follow-up)", () => {
     expect(
       functions.find((f) => f.name === "freeFunction")?.containerName,
     ).toBeUndefined();
+  });
+});
+
+/**
+ * Regression test for the `new Worker(...)` worker_threads dependency-edge false negative
+ * (docuvia-self dogfooding bug: `docuvia impact "lib/core/src/ast/ast-worker.ts"` reported "No
+ * dependents found" even though `ast-worker-pool.ts` genuinely spawns it via
+ * `new Worker(this.wPath, this.workerOptions)`, with `this.wPath` set earlier by
+ * `this.wPath = path.resolve(__dirname, "./ast-worker.js")`). Mimics that exact real-world shape.
+ */
+const WORKER_SPAWN_SRC = `
+class AstWorkerPool {
+  wPath = "";
+  initialize() {
+    this.wPath = path.resolve(__dirname, "./ast-worker.js");
+  }
+  spawnWorker() {
+    const worker = new Worker(this.wPath, this.workerOptions);
+  }
+}
+`;
+
+describe("typescript fixture: new Worker(...) spawn detection (worker_threads dependency edge)", () => {
+  let tree: Tree;
+
+  beforeAll(async () => {
+    await Parser.init();
+    const { wasmPath, attemptedPaths } = resolveWasmPath(
+      typescriptConfig.wasm_file,
+    );
+    if (!wasmPath) {
+      throw new Error(
+        `tree-sitter-typescript.wasm not found. Tried: ${attemptedPaths.join(", ")}`,
+      );
+    }
+    const lang = await Language.load(wasmPath);
+    const parser = new Parser();
+    parser.setLanguage(lang);
+    const parsed = parser.parse(WORKER_SPAWN_SRC);
+    if (!parsed) throw new Error("Failed to parse fixture source");
+    tree = parsed;
+  });
+
+  it('resolves `this.wPath = path.resolve(__dirname, "./ast-worker.js")` through to the `new Worker(this.wPath, ...)` call site, attributed to its enclosing function', () => {
+    const provider = new DefaultProvider(typescriptConfig);
+    const classNodes = provider.extractClasses(tree.rootNode);
+    const functions: Parameters<typeof collectFunctionNodes>[2] = [];
+    const functionNodes = collectFunctionNodes(
+      tree,
+      provider,
+      functions,
+      classNodes,
+    );
+
+    const workerSpawns: Parameters<typeof collectWorkerSpawns>[3] = [];
+    collectWorkerSpawns(
+      tree,
+      SUPPORTED_LANGUAGES.TYPESCRIPT,
+      functionNodes,
+      workerSpawns,
+    );
+
+    expect(workerSpawns).toContainEqual({
+      sourceFunction: "spawnWorker",
+      targetPath: "./ast-worker.js",
+    });
+  });
+
+  it("does not detect a spawn for a non-TS/JS language, even given the identical grammar shape", () => {
+    const provider = new DefaultProvider(typescriptConfig);
+    const classNodes = provider.extractClasses(tree.rootNode);
+    const functions: Parameters<typeof collectFunctionNodes>[2] = [];
+    const functionNodes = collectFunctionNodes(
+      tree,
+      provider,
+      functions,
+      classNodes,
+    );
+
+    const workerSpawns: Parameters<typeof collectWorkerSpawns>[3] = [];
+    collectWorkerSpawns(
+      tree,
+      SUPPORTED_LANGUAGES.CSHARP,
+      functionNodes,
+      workerSpawns,
+    );
+
+    expect(workerSpawns).toEqual([]);
   });
 });

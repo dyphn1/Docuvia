@@ -40,7 +40,7 @@ _(from Karpathy: Surgical Changes + skill: diagnose)_
 You MUST use the `manage_todo_list` tool to structure your work before making any changes.
 
 1. **[ ] Gate 1: Check Requirements Document**: Read the AI implementation document at `docs/ai_plans/`.
-2. **[ ] Gate 2: Review Modifications**: Review the Handover Block and use `git diff HEAD` to identify changed files. Query the local knowledge graph — `npx --no-install docuvia query "<concept_or_file>" --local --format=prompt` — for each changed file to confirm the diff's blast radius matches what the implementation document expected.
+2. **[ ] Gate 2: Review Modifications**: Review the Handover Block and use `git diff HEAD` to identify changed files. Query the local knowledge graph — `npx --no-install docuvia query "<concept_or_file>" --format=prompt` — for each changed file to confirm the diff's blast radius matches what the implementation document expected.
 3. **[ ] Gate 3: Run Typecheck**: Execute `pnpm run typecheck` to verify TypeScript compilation.
 4. **[ ] Gate 4: Verify Compliance**: Cross-check actual changes against the exact requirements. Check for extraneous code.
 5. **[ ] Gate 5: Handle Discrepancies**: Produce Pass/Fail and Handover Block.
@@ -56,12 +56,14 @@ If verification fails, you MUST categorize the root cause of the failure:
 
 ## Agent Selection for Re-dispatch
 
-| Error Type                                   | Recommended Agent        |
-| -------------------------------------------- | ------------------------ |
-| TypeScript errors in `artifacts/api-server/` | `Backend Developer`      |
-| TypeScript errors in `artifacts/kg-engine/`  | `Frontend Developer`     |
-| Schema / migration issues in `lib/db/`       | `Database Schema Expert` |
-| OpenAPI spec / Orval codegen issues          | `API Architect`          |
+| Error Type                                          | Recommended Agent        |
+| --------------------------------------------------- | ------------------------ |
+| TypeScript errors in `artifacts/cli/` or `lib/*`    | `Backend Developer`      |
+| Migration / repo issues in `lib/schema/src/sqlite/` | `Database Schema Expert` |
+| Markdown/doc errors                                 | `Document Writer (MD)`   |
+| Shell/CI script errors                              | `Shell Script Expert`    |
+
+Note: this repo has no separate frontend or API-server layer — do not re-dispatch to a "Frontend Developer" or "API Architect"; neither exists in `.claude/agents/` or `.github/agents/` for this project.
 
 ## Output Format
 

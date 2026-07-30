@@ -33,14 +33,14 @@ Each agent below is a thin adapter that loads the canonical spec from `.github/a
 | ---------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
 | requirement-analyzer   | [`.claude/agents/requirement-analyzer.md`](.claude/agents/requirement-analyzer.md)     | [`.github/agents/requirement-analyzer.agent.md`](.github/agents/requirement-analyzer.agent.md)     |
 | backend-developer      | [`.claude/agents/backend-developer.md`](.claude/agents/backend-developer.md)           | [`.github/agents/backend-developer.agent.md`](.github/agents/backend-developer.agent.md)           |
-| frontend-developer     | [`.claude/agents/frontend-developer.md`](.claude/agents/frontend-developer.md)         | [`.github/agents/frontend-developer.agent.md`](.github/agents/frontend-developer.agent.md)         |
 | database-schema-expert | [`.claude/agents/database-schema-expert.md`](.claude/agents/database-schema-expert.md) | [`.github/agents/database-schema-expert.agent.md`](.github/agents/database-schema-expert.agent.md) |
-| api-architect          | [`.claude/agents/api-architect.md`](.claude/agents/api-architect.md)                   | [`.github/agents/api-architect.agent.md`](.github/agents/api-architect.agent.md)                   |
 | task-verifier          | [`.claude/agents/task-verifier.md`](.claude/agents/task-verifier.md)                   | [`.github/agents/task-verifier.agent.md`](.github/agents/task-verifier.agent.md)                   |
 | document-writer-md     | [`.claude/agents/document-writer-md.md`](.claude/agents/document-writer-md.md)         | [`.github/agents/document-writer-md.agent.md`](.github/agents/document-writer-md.agent.md)         |
 | memory-keeper          | [`.claude/agents/memory-keeper.md`](.claude/agents/memory-keeper.md)                   | [`.github/agents/memory-keeper.agent.md`](.github/agents/memory-keeper.agent.md)                   |
 | shell-script-expert    | [`.claude/agents/shell-script-expert.md`](.claude/agents/shell-script-expert.md)       | [`.github/agents/shell-script-expert.agent.md`](.github/agents/shell-script-expert.agent.md)       |
 | tool-maker             | [`.claude/agents/tool-maker.md`](.claude/agents/tool-maker.md)                         | [`.github/agents/tool-maker.agent.md`](.github/agents/tool-maker.agent.md)                         |
+
+> `frontend-developer` and `api-architect` were removed from this table (2026-07-30): neither has an adapter file in `.claude/agents/` or a canonical spec in `.github/agents/`, and this project has no web frontend or separate API server for them to own (see AGENTS.md / `.github/memory/architecture.md`). Those two roles were leftover boilerplate from a generic template, never real for Docuvia2.
 
 ---
 
@@ -58,7 +58,7 @@ Each agent below is a thin adapter that loads the canonical spec from `.github/a
 This project uses Docuvia to manage architectural context and prevent blast-radius regressions.
 Before you explore the codebase (using Grep/Glob/Read) or make structural changes, you MUST query the local knowledge graph:
 
-Run: `npx --no-install docuvia query "<concept_or_file>" --local --format=prompt`
+Run: `npx --no-install docuvia query "<concept_or_file>" --format=prompt`
 
 Use the results from this command to understand architectural boundaries, historical decisions, and potential blast radius before modifying code.
 <!-- docuvia:end -->

@@ -11,7 +11,7 @@ You are an expert Shell Script Developer working in the **Docuvia** project. You
 You MUST use the `manage_todo_list` tool to structure your work before making any changes.
 
 1. **[ ] Gate 1: Analyze Instructions**: Read the provided task instructions or implementation document.
-2. **[ ] Gate 2: Review Context**: Query the local knowledge graph first — `npx --no-install docuvia query "<concept_or_file>" --local --format=prompt` — then use `search` and `read` to understand the existing context in your domain.
+2. **[ ] Gate 2: Review Context**: Query the local knowledge graph first — `npx --no-install docuvia query "<concept_or_file>" --format=prompt` — then use `search` and `read` to understand the existing context in your domain.
 3. **[ ] Gate 3: Execute**: Write the shell scripts using your allowed tools.
 4. **[ ] Gate 4: Verify**: Check script syntax and run it to verify logic.
 

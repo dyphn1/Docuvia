@@ -22,7 +22,7 @@ if (target) {
   try {
     // Call the local Docuvia CLI to retrieve exact L2/L3 structural context
     const context = execSync(
-      `npx --no-install docuvia query "${target}" --local --format=prompt`,
+      `npx --no-install docuvia query "${target}" --format=prompt`,
       { encoding: "utf-8", stdio: ["pipe", "pipe", "ignore"] },
     );
     if (context && context.trim().length > 0) {

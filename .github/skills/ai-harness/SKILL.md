@@ -19,32 +19,24 @@ Before starting work, identify your domain and apply the corresponding Harness.
 
 ## 🛠️ Domain-Specific Harnesses (Todo Templates)
 
-### 1. [Code Harness] — For Backend/Frontend Developers
+### 1. [Code Harness] — For Backend Developers
 
-_Applies to: TypeScript, React, Node.js logic._
+_Applies to: TypeScript/Node.js logic in `artifacts/cli/` (CLI + embedded MCP server) and `lib/*` packages. This project has no web frontend — do not apply this harness to React work._
 
-- **[ ] Gate 1: Impact Analysis**: Run GitNexus `impact()` on the target. If blast radius > 15 files, stop and ask user.
+- **[ ] Gate 1: Impact Analysis**: Run `npx --no-install docuvia impact <target>` on the target (this project's own knowledge graph — do NOT use GitNexus here, see [[user-prefers-docuvia-over-gitnexus]] / `.github/memory/architecture.md`'s Navigation section). If blast radius > 15 files, stop and ask user. Note: `impact` currently only tracks `calls`/`implements`/`extends` edges (not raw imports or dynamically-loaded paths like `worker_threads`) — cross-check dynamically-loaded files by symbol name or manual grep if the target is one.
 - **[ ] Gate 2: Contract**: Write TS Interfaces first. Run `pnpm run typecheck`. It MUST pass before writing logic.
 - **[ ] Gate 3: Red Test**: Write a failing test. Prove it fails with real terminal output.
 - **[ ] Gate 4: Green Implementation**: Write the logic. Prove the test passes.
 
 ### 2. [Database Harness] — For Database Schema Experts
 
-_Applies to: Drizzle ORM, PostgreSQL schema changes._
+_Applies to: hand-written SQLite migrations (no ORM — see `.github/agents/database-schema-expert.agent.md`)._
 
-- **[ ] Gate 1: State Review**: Read the current schema in `lib/db/src/schema/`. Do not guess relationships.
-- **[ ] Gate 2: Dry-Run**: Make the schema changes and run the Drizzle generation commands to ensure the ORM compiler accepts the syntax.
-- **[ ] Gate 3: Apply & Verify**: If generation fails, stop and fix. Do not proceed until physical schema compilation passes.
+- **[ ] Gate 1: State Review**: Read the current migrations in `lib/schema/src/sqlite/migrations/` and repos in `lib/schema/src/sqlite/repos/`. Do not guess relationships.
+- **[ ] Gate 2: Dry-Run**: Add a new numbered `.sql` migration file (never edit an already-applied one) and run `pnpm run typecheck` plus the `lib/schema` test suite to confirm it applies cleanly against a fresh DB.
+- **[ ] Gate 3: Apply & Verify**: If a test fails, stop and fix. Do not proceed until the migration applies and tests pass.
 
-### 3. [API Harness] — For API Architects
-
-_Applies to: OpenAPI spec, Orval codegen, React Query hooks, Zod validators._
-
-- **[ ] Gate 1: Single Source Edit**: Edit `lib/api-spec/openapi.yaml`. NEVER manually edit Zod validators or React Query hooks.
-- **[ ] Gate 2: Codegen**: Run `pnpm --filter @workspace/api-spec run codegen`.
-- **[ ] Gate 3: Typecheck**: Run `pnpm run typecheck` to prove the newly generated APIs didn't break consuming packages.
-
-### 4. [Docs Harness] — For Document Writers (MD)
+### 3. [Docs Harness] — For Document Writers (MD)
 
 _Applies to: README, GitBook, ADRs, Architectural docs._
 

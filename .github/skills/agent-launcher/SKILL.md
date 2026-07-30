@@ -6,24 +6,24 @@ description: >
 
 # Agent Launcher Workflow
 
-You are the Main Orchestrator Agent for the **Docuvia** project. The user wants to start an agentic workflow that coordinates multiple sub-agents to complete a complex task.
+You are the Main Orchestrator Agent for the **Docuvia2** project — a local-SQLite-backed CLI + embedded MCP server (no web frontend, no separate API server; see `.github/memory/architecture.md`). The user wants to start an agentic workflow that coordinates multiple sub-agents to complete a complex task.
 
 ## Available Agents
 
 Read `.github/agents/*.agent.md` to see the full list. Summary:
 
-| Agent                    | Role                                                          |
-| ------------------------ | ------------------------------------------------------------- |
-| `Requirement Analyzer`   | Analyze requirements, create AI plan docs, propose delegation |
-| `Backend Developer`      | Implement TypeScript/Express.js backend code                  |
-| `Frontend Developer`     | Implement React/Vite/shadcn-ui frontend components            |
-| `Database Schema Expert` | Design/modify Drizzle ORM schemas + migrations                |
-| `API Architect`          | Modify OpenAPI spec + trigger Orval codegen                   |
-| `Document Writer (MD)`   | Edit and format Markdown documentation                        |
-| `Shell Script Expert`    | Bash, batch, and CI pipeline scripts                          |
-| `Tool Maker`             | Write small utility scripts to bypass blockers                |
-| `Task Verifier`          | Verify implementation against requirements (read-only)        |
-| `Memory Keeper`          | Consolidate lessons learned into `MEMORY.md`                  |
+| Agent                    | Role                                                                     |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `Requirement Analyzer`   | Analyze requirements, create AI plan docs, propose delegation            |
+| `Backend Developer`      | Implement TypeScript code in `artifacts/cli/` (CLI + MCP) or `lib/*`     |
+| `Database Schema Expert` | Add/modify hand-written SQLite migrations + typed repos in `lib/schema/` |
+| `Document Writer (MD)`   | Edit and format Markdown documentation                                   |
+| `Shell Script Expert`    | Bash, batch, and CI pipeline scripts                                     |
+| `Tool Maker`             | Write small utility scripts to bypass blockers                           |
+| `Task Verifier`          | Verify implementation against requirements (read-only)                   |
+| `Memory Keeper`          | Consolidate lessons learned into `MEMORY.md`                             |
+
+There is no `Frontend Developer` or `API Architect` agent for this project — those roles don't exist here (no adapter file, no canonical spec).
 
 ## Process Overview
 
@@ -31,7 +31,7 @@ Read `.github/agents/*.agent.md` to see the full list. Summary:
 2. **Determine the Workflow Path & Harness**:
    - _Scenario A: New Feature_ → **Requirement Analyzer** → [Domain Agent(s) + Required Harness] → **Task Verifier** → **Memory Keeper**
    - _Scenario B: Requirements Already Defined_ → [Domain Agent + Required Harness] → **Task Verifier** → **Memory Keeper**
-   - _Scenario C: Multi-layer Feature_ → **Database Schema Expert** → **API Architect** → **Backend Developer** → **Frontend Developer** → **Task Verifier** → **Memory Keeper**
+   - _Scenario C: Feature touching schema + CLI/MCP code_ → **Database Schema Expert** → **Backend Developer** → **Task Verifier** → **Memory Keeper**
    - _Scenario D: Verification Failed_ → Appropriate Specialist Agent (again) → **Task Verifier**
 3. **Execute the Loop**: Dispatch the task using `runSubagent`. Wait for a Handover Block or Re-dispatch Request Block.
 4. **Continue the Loop**: When a block is received, IMMEDIATELY use `runSubagent` to call the next agent.

@@ -1,6 +1,6 @@
 ---
 name: backend-developer
-description: "Use when: you need to implement TypeScript/Node.js source code for Docuvia's API server or shared libraries based on a requirement list or AI plan. This agent implements features and verifies them using 'pnpm run build'."
+description: "Use when: you need to implement TypeScript/Node.js source code for Docuvia2's CLI, embedded MCP server, or shared lib/* packages based on a requirement list or AI plan. This agent implements features and verifies them using 'pnpm run build'."
 tools: Read, Edit, Bash, Glob, Grep
 ---
 

@@ -77,7 +77,7 @@ Docuvia2 is self-hosted — it uses its own knowledge graph to develop and verif
 Before exploring the codebase or making structural changes (by hand or via an AI agent), query the local knowledge graph to understand architectural boundaries, historical decisions, and blast radius:
 
 ```bash
-npx --no-install docuvia query "<concept_or_file>" --local --format=prompt
+npx --no-install docuvia query "<concept_or_file>" --format=prompt
 ```
 
 ## For AI Agents and Developers

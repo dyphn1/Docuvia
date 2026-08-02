@@ -31,30 +31,32 @@ for the full contract (`SKSCHED-001`..`006`) and implementation record (2026-07-
 
 ### 4. Surface L3 "why" data in `review`/`impact` output
 
-> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28.**
+> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28 (`492e93ba`).**
 
-Read-path self-healing hydration already works end-to-end. Now that L3 distribution
-([phase2-l3-distribution.md](phase2-l3-distribution.md)) is shipped, this is the next
-differentiator vs. GitNexus-class tools — showing _why_ a symbol changed alongside _what_ changed.
+`review`/`impact` now attach each impacted node's L3 decisions/context to its blast-radius
+results, showing _why_ a symbol changed alongside _what_ changed — the differentiator vs.
+GitNexus-class tools this item was tracking.
 
 ### 5. Richer `export-topology`
 
-> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28.**
+> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28 (`949a65d8`).**
 
-No design blockers now that the graph is non-empty on a fresh clone (Tier A ships real data). Just
-needs prioritization against the rest of this list.
+Node/link JSON now carries L2 type, decision content/confidence/validity/source commits, and edge
+commit-sha/diff-summary, so `export-topology`'s existing interactive HTML viewer (in place since
+2026-07-12, see [`cross-product-cli-benchmark.md`](cross-product-cli-benchmark.md) action item 5's
+correction) can render a richer topology without a second query round-trip.
 
 ## Known open technical items (small, tracked, unowned)
 
 ### 8. Race C — `query` (foreground read) vs. `analyze` (background write)
 
-> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28.**
+> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28 (`23aebb42`).**
 
-Unlike the two already-closed concurrency races (`analyze`+`snapshot`, `doctor`+`hydrate`, both
-gated by regression tests since Slice 2), this one has **no gating test anywhere**. WAL mode's
-non-blocking read/write property likely makes it benign (a stale-but-consistent snapshot, not
-corruption) — but that's an inference, not a verified claim. Worth a reliability-pass item if it's
-ever worth confirming.
+This was the one scenario in the concurrency lock matrix below without a gating test (unlike
+`analyze`+`snapshot`/`doctor`+`hydrate`, gated since Slice 2). `query-analyze-concurrency.test.ts`
+now closes that gap directly — exercising real concurrent CLI processes and asserting well-formed,
+non-torn output plus `local.db` integrity, rather than relying on WAL's non-blocking behavior as an
+unverified given.
 
 Reference — core workflow lock matrix (kept for context, not re-verified line-by-line against
 every workflow; treat as a design reference, not a test oracle):
@@ -90,12 +92,12 @@ data-driven rather than speculative.
 
 ### 11. Hydrate-then-delta optimization
 
-> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28.**
+> **Shipped — implemented and committed by automated roadmap sweep on 2026-07-28 (`f2f44d30`).**
 
-Correctness is fine as-is: an empty `local.db` next to a populated knowledge branch currently does
-a full re-parse of HEAD, and `markSynced` prevents a later `ensureHydrated` from clobbering it with
-a stale snapshot. On large repos, hydrating the snapshot first and then delta-ing from its
-`Docuvia-Source` trailer to HEAD would be cheaper. Pure performance, not correctness — no urgency.
+An empty `local.db` next to an already-populated knowledge branch no longer triggers a full
+re-parse of HEAD. It now resolves the hydration commit and its paired `Docuvia-Source` sha first
+and delta-ingests from there, falling back to the original full-ingestion path whenever either half
+of that pairing can't be resolved.
 
 ### 13. Dirty-index hash edge
 

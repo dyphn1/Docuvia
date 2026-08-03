@@ -422,7 +422,7 @@ export class GitLocalProvider implements IGitProvider {
       const { stdout } = await execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.LS_FILES, GIT_ARG.STAGED],
-        { cwd },
+        { cwd, maxBuffer: 64 * 1024 * 1024 },
       );
       for (const line of stdout.split("\n")) {
         if (!line.trim()) continue;
@@ -445,7 +445,7 @@ export class GitLocalProvider implements IGitProvider {
       const { stdout } = await execFileAsync(
         GIT_BIN,
         [GIT_SUBCOMMAND.LS_FILES, GIT_ARG.OTHERS, GIT_ARG.EXCLUDE_STANDARD],
-        { cwd },
+        { cwd, maxBuffer: 64 * 1024 * 1024 },
       );
       return stdout
         .split("\n")

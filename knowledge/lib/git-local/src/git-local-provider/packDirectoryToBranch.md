@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#packDirectoryToBranch
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.packDirectoryToBranch
 type: symbol
 name: packDirectoryToBranch
 filePath: lib/git-local/src/git-local-provider.ts

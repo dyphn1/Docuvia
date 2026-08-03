@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#releaseKnowledgeLock
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.releaseKnowledgeLock
 type: symbol
 name: releaseKnowledgeLock
 filePath: lib/git-local/src/git-local-provider.ts

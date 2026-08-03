@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#parseNameStatusLine
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.parseNameStatusLine
 type: symbol
 name: parseNameStatusLine
 filePath: lib/git-local/src/git-local-provider.ts

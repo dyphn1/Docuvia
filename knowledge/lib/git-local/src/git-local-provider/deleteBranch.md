@@ -1,9 +1,9 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.writeHookFile
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.deleteBranch
 type: symbol
-name: writeHookFile
+name: deleteBranch
 filePath: lib/git-local/src/git-local-provider.ts
 ---
-# Symbol: writeHookFile
+# Symbol: deleteBranch
 
 File: `lib/git-local/src/git-local-provider.ts`

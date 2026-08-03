@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#appendHookFile
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.appendHookFile
 type: symbol
 name: appendHookFile
 filePath: lib/git-local/src/git-local-provider.ts

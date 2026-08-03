@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#listModifiedFiles
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.listModifiedFiles
 type: symbol
 name: listModifiedFiles
 filePath: lib/git-local/src/git-local-provider.ts

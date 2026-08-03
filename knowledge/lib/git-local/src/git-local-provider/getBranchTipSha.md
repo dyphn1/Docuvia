@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#getBranchTipSha
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.getBranchTipSha
 type: symbol
 name: getBranchTipSha
 filePath: lib/git-local/src/git-local-provider.ts

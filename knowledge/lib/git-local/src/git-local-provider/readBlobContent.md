@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#readBlobContent
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.readBlobContent
 type: symbol
 name: readBlobContent
 filePath: lib/git-local/src/git-local-provider.ts

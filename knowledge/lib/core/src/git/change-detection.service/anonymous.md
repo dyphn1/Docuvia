@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/change-detection.service.ts#anonymous@L95
+id: lib/core/src/git/change-detection.service.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/git/change-detection.service.ts

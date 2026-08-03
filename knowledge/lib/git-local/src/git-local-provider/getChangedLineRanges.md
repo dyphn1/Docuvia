@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#getChangedLineRanges
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.getChangedLineRanges
 type: symbol
 name: getChangedLineRanges
 filePath: lib/git-local/src/git-local-provider.ts

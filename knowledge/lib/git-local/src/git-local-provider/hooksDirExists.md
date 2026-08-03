@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#hooksDirExists
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.hooksDirExists
 type: symbol
 name: hooksDirExists
 filePath: lib/git-local/src/git-local-provider.ts

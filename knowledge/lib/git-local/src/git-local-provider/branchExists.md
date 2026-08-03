@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#branchExists
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.branchExists
 type: symbol
 name: branchExists
 filePath: lib/git-local/src/git-local-provider.ts

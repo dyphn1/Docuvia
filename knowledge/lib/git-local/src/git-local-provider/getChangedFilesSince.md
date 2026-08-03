@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#getChangedFilesSince
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.getChangedFilesSince
 type: symbol
 name: getChangedFilesSince
 filePath: lib/git-local/src/git-local-provider.ts

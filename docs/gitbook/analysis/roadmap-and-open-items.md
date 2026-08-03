@@ -147,6 +147,37 @@ Tier B ever operates against something other than the live working tree.
 > checks `fs.existsSync` against the working tree, with the assumption already spelled out in its
 > own doc comment. No change needed.
 
+### 17. Go Tier B (LSP escalation) is effectively non-functional — `references` resolution fails near-universally against gopls
+
+Found 2026-08-03 during the Go CLI benchmark pass (full detail:
+[`go-cli-benchmark.md`](../../cli-test-analysis/go-cli-benchmark.md) §3.1/§1.2, summary in
+[`README.md`](../../cli-test-analysis/README.md) §3.3 item 1). `docuvia analyze --escalate-to-lsp`
+against `gin-gonic/gin` — with `doctor` confirming `lsp_binary_go: PASS` (gopls resolved and
+reachable) — processed its 98-file Tier B queue and failed **95 of them**: 2 timed out during
+gopls's initial workspace load, and ~93 returned gopls's own `"no identifier found"` error within
+milliseconds of each other. Only 3/98 files processed, 0 corrected edges applied — the batch ran
+for ~128s and produced strictly nothing.
+
+**Traced to** [`lsp-edge-provider-base.ts:663-669`](../../../lib/core/src/lsp/lsp-edge-provider-base.ts):
+`textDocument/references` is requested at `symbol.selectionRange.start`, where `symbol` comes from
+`textDocument/documentSymbol`'s response for the file. The near-universal, near-instant, identical
+error text across almost every symbol in almost every file (not a handful of edge cases) points at
+a systemic position/response-shape mismatch specific to how gopls's Go `documentSymbol` responses
+are structured or interpreted here — **not yet root-caused past this point.** Next step: log gopls's
+raw `documentSymbol` response for one real `gin` file and diff it against what
+`containsPosition`/`symbol.selectionRange` in the base provider expect.
+
+Distinct from item 16 above and from the pre-existing `GRPH-006` `supportsQualifiedContainment`
+gap on `GoLspEdgeProvider` (which never even became observable in this run — this bug sits upstream
+of it, since `references` fails before containment shape would matter). Every other language's Tier
+B provider shares the same `lsp-edge-provider-base.ts` code path, so this may be Go-specific (gopls
+response shape) or may be a latent bug other languages happen not to trigger — not yet determined
+which.
+
+**Status: not fixed.** Flagged for a dedicated follow-up session — do not treat Go Tier B results as
+meaningful until this is resolved; today it silently returns a 0-edge "success" rather than
+surfacing that nothing usable was extracted.
+
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 
 - **Self-built static scope-resolution pipeline** (bypass LSP with hand-guessed cross-file calls)

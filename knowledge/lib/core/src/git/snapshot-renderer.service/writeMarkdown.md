@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/snapshot-renderer.service.ts#writeMarkdown
+id: lib/core/src/git/snapshot-renderer.service.ts#SnapshotRendererService.writeMarkdown
 type: symbol
 name: writeMarkdown
 filePath: lib/core/src/git/snapshot-renderer.service.ts

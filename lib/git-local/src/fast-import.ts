@@ -139,6 +139,16 @@ export function buildFastImportData(
  * current tip (see its `from` line), so every import is a fast-forward. If the caller ever
  * computes a stale parent, fast-import failing loudly here is correct — silently forcing past it
  * would orphan history (STOR-001 point 2).
+ *
+ * `child.stdin` gets its own `"error"` listener, separate from `child`'s: when git rejects the
+ * stream and exits early (e.g. `fatal: invalid path` on a still-in-flight commit — see
+ * `snapshot-renderer.service.ts`'s Windows-reserved-device-name comment for a real one this
+ * surfaced, go-cli-benchmark.md §1.1), the still-writing `.end()` call fails with `write EOF`
+ * (Windows) / `EPIPE` (POSIX) on `child.stdin` -- a *distinct* `EventEmitter` from `child` itself.
+ * An unhandled `"error"` event throws and crashes the whole process (this is what actually
+ * happened: a hard, stack-trace crash, not a caught rejection) — swallowed here because the
+ * `"close"` handler below already turns the same failure into a proper rejection carrying git's
+ * real stderr message, which is the one callers should see.
  */
 export function runFastImport(
   cwd: string,
@@ -167,6 +177,9 @@ export function runFastImport(
       const stderr = Buffer.concat(stderrChunks).toString(UTF8_ENCODING).trim();
       reject(new Error(FAST_IMPORT_EXIT_ERROR_MESSAGE(code, stderr)));
     });
+    // Best-effort: the real failure reason surfaces through "close" above. Without this listener,
+    // a write failure here is an unhandled error event -- and Node throws those, uncaught.
+    child.stdin.on(CHILD_PROCESS_EVENT.ERROR, () => {});
     child.stdin.end(fastImportData, UTF8_ENCODING);
   });
 }

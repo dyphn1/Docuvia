@@ -10,8 +10,48 @@ const ILLEGAL_FILENAME_CHARS = /[<>:"|?*\x00-\x1f]/g;
 const CURRENT_DIR_SEGMENT = ".";
 const PARENT_DIR_SEGMENT = "..";
 
+/** Windows/DOS reserved device names — mirrors `snapshot-renderer.service.ts`'s identically-named
+ *  constant (see its doc comment for why: git's `core.protectNTFS` rejects a tree path built from
+ *  one of these on every platform, not just Windows). Must stay in lockstep with that file's
+ *  `sanitizeSegment` so an L3 card's `l2_path` frontmatter field always matches the real rendered
+ *  path of the L2 node it references (L3DIST-007 resolves `l2_path` back to a node by exact match). */
+const WINDOWS_RESERVED_DEVICE_NAMES = new Set([
+  "con",
+  "prn",
+  "aux",
+  "nul",
+  "com0",
+  "com1",
+  "com2",
+  "com3",
+  "com4",
+  "com5",
+  "com6",
+  "com7",
+  "com8",
+  "com9",
+  "lpt0",
+  "lpt1",
+  "lpt2",
+  "lpt3",
+  "lpt4",
+  "lpt5",
+  "lpt6",
+  "lpt7",
+  "lpt8",
+  "lpt9",
+]);
+const RESERVED_NAME_MANGLE_SUFFIX = "_" as const;
+
 function sanitizeSegment(segment: string): string {
-  return segment.replace(ILLEGAL_FILENAME_CHARS, "_");
+  const replaced = segment.replace(ILLEGAL_FILENAME_CHARS, "_");
+  const dotIndex = replaced.indexOf(".");
+  const namePart = dotIndex === -1 ? replaced : replaced.slice(0, dotIndex);
+  if (!WINDOWS_RESERVED_DEVICE_NAMES.has(namePart.toLowerCase()))
+    return replaced;
+  return dotIndex === -1
+    ? `${namePart}${RESERVED_NAME_MANGLE_SUFFIX}`
+    : `${namePart}${RESERVED_NAME_MANGLE_SUFFIX}${replaced.slice(dotIndex)}`;
 }
 
 /** Posix (`/`-joined) counterpart of `snapshot-renderer.service.ts`'s `sanitizeRelativePath` —

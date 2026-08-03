@@ -690,6 +690,42 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     );
     expect(requestSpy).toHaveBeenCalledWith(LspMethods.SHUTDOWN, null, 999_999);
   });
+
+  it("declares hierarchicalDocumentSymbolSupport on initialize (base-class behavior, BaseLspEdgeProvider.initializeSession) -- without it, a spec-compliant server like gopls answers documentSymbol with the flat SymbolInformation shape and every references lookup at that position fails (go-cli-benchmark.md §3.1)", async () => {
+    const requestSpy = vi.fn().mockImplementation((method: string) => {
+      if (method === LspMethods.INITIALIZE)
+        return Promise.resolve({ capabilities: {} });
+      if (method === LspMethods.DOCUMENT_SYMBOL) return Promise.resolve([]);
+      return Promise.resolve(null);
+    });
+    const client: LspJsonRpcClient = {
+      start: vi.fn().mockResolvedValue(undefined),
+      request: requestSpy,
+      notify: vi.fn(),
+      stop: vi.fn().mockResolvedValue(undefined),
+    } as unknown as LspJsonRpcClient;
+
+    const provider = new TypescriptLspEdgeProvider(
+      createMockLogger(),
+      () => client,
+    );
+
+    await provider.resolveEdges({ workspaceRoot, files: ["a.ts"] });
+
+    expect(requestSpy).toHaveBeenCalledWith(
+      LspMethods.INITIALIZE,
+      expect.objectContaining({
+        capabilities: expect.objectContaining({
+          textDocument: expect.objectContaining({
+            documentSymbol: expect.objectContaining({
+              hierarchicalDocumentSymbolSupport: true,
+            }),
+          }),
+        }),
+      }),
+      expect.anything(),
+    );
+  });
 });
 
 describe("TypescriptLspEdgeProvider.checkAvailability()", () => {

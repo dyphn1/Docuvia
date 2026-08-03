@@ -94,6 +94,32 @@ describe("computeL2GitPathsByNodeId", () => {
     const paths = computeL2GitPathsByNodeId(l2Rows, []);
     expect(paths.has(1)).toBe(false);
   });
+
+  it("mangles a symbol name colliding with a Windows-reserved device name, matching snapshot-renderer.service.ts's own rendered path (L3DIST-007 needs these to stay in lockstep)", () => {
+    const l2Rows = [
+      makeL2({
+        id: 1,
+        name: "pkg/progress/progress.go",
+        path_patterns: JSON.stringify(["pkg/progress/progress.go"]),
+      }),
+      makeL2({ id: 2, name: "Aux", node_key: "pkg/progress/progress.go#Aux" }),
+    ];
+    const linkRows: NodeLinkRow[] = [
+      {
+        id: 1,
+        source_node_id: 1,
+        target_node_id: 2,
+        link_type: "contains",
+        commit_sha: null,
+        diff_summary: null,
+        created_at: "",
+      },
+    ];
+
+    const paths = computeL2GitPathsByNodeId(l2Rows, linkRows);
+
+    expect(paths.get(2)).toBe("knowledge/pkg/progress/progress/Aux_.md");
+  });
 });
 
 describe("computeL2GitPathsByNodeKey", () => {

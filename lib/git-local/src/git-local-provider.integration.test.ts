@@ -427,6 +427,32 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     }
   });
 
+  it("packDirectoryToBranch rejects cleanly (not an unhandled process crash) when a source file's path is one git itself refuses (e.g. a Windows-reserved device name) -- real repro: moby's pkg/progress.Aux rendered to knowledge/.../Aux.md and crashed the whole docuvia process with an unhandled 'write EOF' on child.stdin instead of surfacing git's own 'fatal: invalid path' (go-cli-benchmark.md §1.1); runFastImport's child.stdin now has its own error listener so this always surfaces as a normal rejected DocuviaError", async () => {
+    const sourceDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-git-local-pack-reserved-name-"),
+    );
+    try {
+      // Reserved on every platform via git's own core.protectNTFS cross-platform path guard, not
+      // just when actually running on Windows -- see snapshot-renderer.service.ts's doc comment.
+      fs.writeFileSync(path.join(sourceDir, "aux.md"), "should be rejected\n");
+
+      await expect(
+        provider.packDirectoryToBranch(
+          tmpDir,
+          sourceDir,
+          KNOWLEDGE_BRANCH,
+          "Snapshot [0000000]",
+        ),
+      ).rejects.toMatchObject({ code: "GIT_FAST_IMPORT_FAILED" });
+
+      // The branch must not have been created/updated by a failed import (fast-import is
+      // all-or-nothing: no ref update ever happens for a commit that fails mid-stream).
+      expect(await provider.branchExists(tmpDir, KNOWLEDGE_BRANCH)).toBe(false);
+    } finally {
+      fs.rmSync(sourceDir, { recursive: true, force: true });
+    }
+  });
+
   it("getChangedFilesSince treats a flag-like baseRef as a literal ref (errors) instead of parsing it as a git option", async () => {
     fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 1;\n");
     await git(tmpDir, ["add", "tracked.ts"]);

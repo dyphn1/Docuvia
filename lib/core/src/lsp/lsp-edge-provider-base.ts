@@ -342,7 +342,24 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       {
         processId: process.pid,
         rootUri,
-        capabilities: {},
+        // `hierarchicalDocumentSymbolSupport` MUST be declared true here, or a spec-compliant
+        // server (confirmed live against gopls v0.23.0 -- go-cli-benchmark.md §3.1) answers
+        // `textDocument/documentSymbol` with the flat, older `SymbolInformation[]` shape instead
+        // of `DocumentSymbol[]`. `normalizeDocumentSymbols` then aliases `selectionRange` to
+        // `location.range`, whose `start` is the *declaration's* start (e.g. a function's `func`
+        // keyword) rather than its identifier's -- `textDocument/references` at that position
+        // fails outright (gopls: "no identifier found") for every symbol whose declaration
+        // doesn't happen to start exactly on its name (structs/types often do by coincidence,
+        // which is why 3/98 files "worked" in the gin benchmark run while every function/method
+        // failed). Not Go-specific in principle -- every language here shares this same empty
+        // `capabilities: {}`, and only gopls's stricter spec adherence made the gap observable.
+        capabilities: {
+          textDocument: {
+            documentSymbol: {
+              hierarchicalDocumentSymbolSupport: true,
+            },
+          },
+        },
         workspaceFolders: [
           { uri: rootUri, name: path.basename(workspaceRoot) },
         ],

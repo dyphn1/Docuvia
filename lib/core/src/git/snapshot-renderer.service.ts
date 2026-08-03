@@ -209,13 +209,63 @@ const PARENT_DIR_SEGMENT = "..";
 /** Extension applied to every rendered knowledge-branch markdown file (`{name}.md`). */
 const MARKDOWN_FILE_EXTENSION = ".md";
 
+/** Windows/DOS reserved device names, matched case-insensitively against a segment's name *before*
+ *  its first `.` — git's own cross-platform path protection (`core.protectNTFS`) rejects any tree
+ *  path built from one of these outright, regardless of the host OS actually running git (it's a
+ *  portability guard, not a Windows-only check). Confirmed live: a Go symbol literally named `Aux`
+ *  (moby's real `pkg/progress.Aux` / Docker's `JSONMessage.Aux` field) rendered to
+ *  `knowledge/.../Aux.md` and `git fast-import` aborted the entire ~136K-node commit with
+ *  `fatal: invalid path` (go-cli-benchmark.md §1.1) — the knowledge-branch pack-step crash
+ *  ultimately traced back to this, not to the pipe write itself (see `runFastImport`'s own doc
+ *  comment on the missing `child.stdin` error handler that turned this into an unhandled crash
+ *  instead of a clean failure). */
+const WINDOWS_RESERVED_DEVICE_NAMES = new Set([
+  "con",
+  "prn",
+  "aux",
+  "nul",
+  "com0",
+  "com1",
+  "com2",
+  "com3",
+  "com4",
+  "com5",
+  "com6",
+  "com7",
+  "com8",
+  "com9",
+  "lpt0",
+  "lpt1",
+  "lpt2",
+  "lpt3",
+  "lpt4",
+  "lpt5",
+  "lpt6",
+  "lpt7",
+  "lpt8",
+  "lpt9",
+]);
+
+/** Appended after a reserved-device-name segment (before any extension) so the mangled form can
+ *  never collide back onto a real reserved name. */
+const RESERVED_NAME_MANGLE_SUFFIX = "_" as const;
+
 /**
  * Sanitizes a single path segment (a directory or file name, never a full path) for safe use on
- * disk: illegal/control characters are replaced with `_`. Does not handle `..`/`.` traversal —
- * callers filter those out at the segment-splitting stage in `sanitizeRelativePath`.
+ * disk: illegal/control characters are replaced with `_`, then a Windows-reserved device name
+ * (`aux`, `com1`, ...) is mangled so the tree still round-trips through `git fast-import` on every
+ * platform. Does not handle `..`/`.` traversal — callers filter those out at the segment-splitting
+ * stage in `sanitizeRelativePath`.
  */
 function sanitizeSegment(segment: string): string {
-  return segment.replace(ILLEGAL_FILENAME_CHARS, "_");
+  const replaced = segment.replace(ILLEGAL_FILENAME_CHARS, "_");
+  const dotIndex = replaced.indexOf(".");
+  const namePart = dotIndex === -1 ? replaced : replaced.slice(0, dotIndex);
+  if (!WINDOWS_RESERVED_DEVICE_NAMES.has(namePart.toLowerCase()))
+    return replaced;
+  return dotIndex === -1
+    ? `${namePart}${RESERVED_NAME_MANGLE_SUFFIX}`
+    : `${namePart}${RESERVED_NAME_MANGLE_SUFFIX}${replaced.slice(dotIndex)}`;
 }
 
 /**

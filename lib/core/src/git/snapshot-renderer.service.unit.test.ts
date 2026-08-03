@@ -336,4 +336,45 @@ describe("SnapshotRendererService.render()", () => {
     const content = fs.readFileSync(path.join(symbolDir, written[0]), "utf8");
     expect(content).toContain('do:this<>"|?*');
   });
+
+  it("mangles a symbol name that collides with a Windows-reserved device name instead of letting git reject the whole commit", async () => {
+    // Real repro: moby's `pkg/progress.Aux` (Docker's `JSONMessage.Aux` field) rendered to
+    // `knowledge/.../Aux.md`, and `git fast-import` aborted the entire ~136K-node commit with
+    // `fatal: invalid path` (core.protectNTFS) -- go-cli-benchmark.md §1.1.
+    const fileNode = makeL2({
+      id: 1,
+      name: "pkg/progress/progress.go",
+      path_patterns: JSON.stringify(["pkg/progress/progress.go"]),
+    });
+    const fnNode = makeL2({
+      id: 2,
+      name: "Aux",
+      path_patterns: JSON.stringify(["pkg/progress/progress.go"]),
+    });
+    const containsLink = makeLink({
+      source_node_id: 1,
+      target_node_id: 2,
+      link_type: "contains",
+    });
+
+    const result = await renderer.render({
+      outDir,
+      l2Rows: [fileNode, fnNode],
+      linkRows: [containsLink],
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.markdownFilesWritten).toBe(2);
+
+    const symbolDir = path.join(
+      outDir,
+      "knowledge",
+      "pkg",
+      "progress",
+      "progress",
+    );
+    const written = fs.readdirSync(symbolDir);
+    expect(written).toContain("Aux_.md");
+    expect(written).not.toContain("Aux.md");
+  });
 });

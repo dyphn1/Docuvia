@@ -149,6 +149,18 @@ Tier B ever operates against something other than the live working tree.
 
 ### 17. Go Tier B (LSP escalation) is effectively non-functional — `references` resolution fails near-universally against gopls
 
+> **Fixed 2026-08-04.** `initializeSession` (`lsp-edge-provider-base.ts`) sent a completely empty
+> `capabilities: {}` on `initialize` — confirmed live against a real gopls v0.23.0 that without
+> `textDocument.documentSymbol.hierarchicalDocumentSymbolSupport: true` declared, it answers
+> `documentSymbol` with the flat `SymbolInformation` shape, whose `location.range.start` is a
+> declaration's start (e.g. the `func` keyword) rather than its identifier's — every `references`
+> lookup at that position fails with gopls's own `"no identifier found"`. Fixed by declaring the
+> capability (base-class-level, one line, every language benefits). Reverified against the exact
+> `gin` batch this item describes: **92/98 files processed, 804 corrected edges applied** (was
+> 3/98, 0 edges) — the remaining 6 are the separate, already-documented build-tag/timeout gaps
+> below, not this bug. `GRPH-006`'s `supportsQualifiedContainment` question (last paragraph below)
+> is still open and unaffected by this fix.
+
 Found 2026-08-03 during the Go CLI benchmark pass (full detail:
 [`go-cli-benchmark.md`](../../cli-test-analysis/go-cli-benchmark.md) §3.1/§1.2, summary in
 [`README.md`](../../cli-test-analysis/README.md) §3.3 item 1). `docuvia analyze --escalate-to-lsp`
@@ -174,9 +186,31 @@ B provider shares the same `lsp-edge-provider-base.ts` code path, so this may be
 response shape) or may be a latent bug other languages happen not to trigger — not yet determined
 which.
 
-**Status: not fixed.** Flagged for a dedicated follow-up session — do not treat Go Tier B results as
-meaningful until this is resolved; today it silently returns a 0-edge "success" rather than
-surfacing that nothing usable was extracted.
+**Status: fixed 2026-08-04** (see the note at the top of this item) — was: not fixed, silently
+returning a 0-edge "success" rather than surfacing that nothing usable was extracted.
+
+### 18. Git-knowledge-branch pack-step crash (`Error: write EOF`) on large repos
+
+> **Fixed 2026-08-04.** Two independent bugs, one masking the other — full detail in
+> [`go-cli-benchmark.md`](../../cli-test-analysis/go-cli-benchmark.md) §1.1's addendum. (1) The
+> real failure: a symbol/file name colliding with a Windows-reserved device name (`Aux`, `con`,
+> `nul`, ...) renders to a git tree path (`knowledge/.../Aux.md`) that `git fast-import` itself
+> refuses (`fatal: invalid path`, git's own cross-platform `core.protectNTFS` guard, on by default
+> on every OS) — real repro was moby's `pkg/progress.Aux` (Docker's `JSONMessage.Aux` field). (2)
+> Why it crashed instead of failing cleanly: `runFastImport` (`fast-import.ts`) had an `"error"`
+> listener on `child` but never on `child.stdin` — a distinct `EventEmitter`. When git aborted
+> mid-stream, the in-flight stdin write failed and, unhandled, threw as an uncaught exception,
+> crashing the whole process before git's real stderr message ever surfaced — which is why two
+> separate benchmark passes (`vscode` and `moby`) saw only a bare pipe error with no visible cause.
+> Fixed: `sanitizeSegment` (`snapshot-renderer.service.ts` + its mirrored copy in
+> `l3-card-renderer.ts`) now mangles reserved-device-name segments; `runFastImport` now handles the
+> `child.stdin` error gracefully so any future fast-import rejection surfaces as a normal
+> `DocuviaError` instead of crashing. Reverified against this session's own leftover `moby`
+> database (136,329 nodes / 157,139 edges) — packs successfully, no crash.
+>
+> First seen 2026-07-29 (TypeScript pass, `vscode`, 288,726 nodes) as follow-up work item 1; second
+> reproduction 2026-08-03 (Go pass, `moby`, 136,329 nodes) is what finally supplied the real,
+> reproducible trigger.
 
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 

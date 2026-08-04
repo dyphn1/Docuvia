@@ -133,10 +133,22 @@ This is not a Tier B-only change. It requires:
   as before this follow-up — this is a separate decision from the Tier A work above, not a
   consequence of it. Flipping it requires verifying each LSP server's real `documentSymbol` nesting
   shape (does the parent symbol's kind/name for an impl-block/receiver/out-of-line method actually
-  match what Tier A now resolves?) against a live rust-analyzer/gopls/clangd — unverifiable in the
-  environment this follow-up was implemented in, so left as an explicit, separately-gated future
-  step rather than guessed at. `rust-lsp-edge-provider.ts`/`go-lsp-edge-provider.ts`/
-  `cpp-lsp-edge-provider.ts` each carry an updated comment recording this.
+  match what Tier A now resolves?) against a live rust-analyzer/gopls/clangd. Rust and C++ remain
+  unverified. `rust-lsp-edge-provider.ts`/`go-lsp-edge-provider.ts`/`cpp-lsp-edge-provider.ts` each
+  carry an updated comment recording this.
+
+  **Go: verified 2026-08-04, live against `gopls` v0.23.0** (`go-cli-benchmark.md` §3.6's follow-up)
+  — spawned a real `gopls` against a minimal two-struct fixture (`type A struct{}; func (a A)
+Handle() {}` / `type B struct{}; func (b B) Handle() {}`) and called `textDocument/documentSymbol`
+  directly with `hierarchicalDocumentSymbolSupport: true` declared (the same capability
+  `BaseLspEdgeProvider` sends). The response is a **flat** four-entry list — `A`, `(A).Handle`, `B`,
+  `(B).Handle` — with no `children` array anywhere; gopls does not nest a receiver method under its
+  struct's symbol. It also reports the struct's own kind as LSP `Struct` (23), not `Class` (5), so
+  even if nesting existed, `findDeepestContainingSymbol`/`flattenCallSiteSymbols`'s
+  `symbol.kind === LspSymbolKinds.CLASS` check would not recognize a Go receiver struct as a
+  container boundary anyway — two independent reasons the existing generic mechanism does not
+  generalize to Go as-is. `supportsQualifiedContainment` stays `false` for Go, now for a verified
+  reason instead of an unverified one; no code change follows from this.
 
 - **Tier B hardening that shipped**: `lib/core/src/lsp/lsp-edge-provider-base.ts`'s
   `BaseLspEdgeProvider` gates qualified-key construction behind an explicit

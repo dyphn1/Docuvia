@@ -84,6 +84,10 @@ CRG's `build --repo .` log reported `"2340/2340 files parsed"` against a repo `g
 
 Default `--collapse=auto` produced `"Nodes: 10562, Links: 1"` for a graph with 157,139 real edges — not the "0 links" bug already fixed in the 2026-07-24 C# pass (`stats.foldedLinkCount` now correctly reports 31,371 folded links, so the fix from that pass still holds), but a new, much larger-repo-specific degenerate case: collapsing to file-level granularity across `moby`'s 97 groups apparently leaves only **one** visible cross-group edge. `gin` (§2, `Nodes: 1609, Links: 2246`) didn't trigger auto-collapse at all — small enough that "auto" stayed at full granularity. `--collapse=symbol` immediately produces the correct full **136,329/157,139** counts, so this is purely a default-heuristic edge case on a repo this large, not a data-loss bug — but the default view is close to useless at this scale without knowing to pass `--collapse=symbol`. Not root-caused to the folding algorithm's file:line this pass — flagged as a follow-up.
 
+**Addendum (2026-08-04): one real bug hardened here, but it is _not_ the root cause of the `moby` symptom above — that's found separately, downstream, and remains unfixed.** [`TopologyBuilderService`](../../lib/core/src/topology/topology-builder.service.ts)'s `buildCollapsed` resolved each link endpoint's owning file via a single-hop `containingFileId` lookup (`toFileId`) — correct for a direct file→symbol `CONTAINS` edge, silently wrong (the link dropped entirely, not misattributed) for a 2+-level chain (e.g. `file → class → method`). Fixed: `toFileId` now walks the full `CONTAINS` ancestor chain to its root, with a cycle guard against a malformed/circular containment graph. Verified by a real regression test (`topology-builder.service.unit.test.ts`, `"resolves a 2+ level CONTAINS chain to its root file when folded, not to an intermediate non-file symbol"`), confirmed by manual trace to fail against the old single-hop code and pass against the new code — a genuine, defensive correctness fix, but not the cause of `moby`'s `Links: 1`.
+
+The actual driver, found while investigating this symptom: [`ScopeResolver.resolveCall()`](../../lib/core/src/graph/scope-resolver.ts) has no Go-package-aware branch at all — only same-file locals or explicitly-`import`ed names, a JS/TS-shaped module-resolution model (see `resolveModulePath`). Live-verified via real AST parsing + persistence against a synthetic 2-file Go fixture (`a.go: func Foo(){}` / `b.go: func Bar(){ Foo() }`, no import — idiomatic same-package Go): the AST layer correctly _extracts_ the `Bar → Foo` call site, but `resolveCall` returns `null` (no local match, no import to resolve) so `linkSymbolReference()` never persists a `calls` row to `node_links` at all. Now locked in as a permanent regression-documenting test, `persist-ast-graph.unit.test.ts`'s `"KNOWN GAP: a same-package, no-import Go cross-file call is never persisted as a 'calls' link"`. Since these edges are never written to the graph in the first place — not folded away by the collapse heuristic, never persisted at all — `moby`'s `Links: 1` is expected to still reproduce essentially unchanged post-fix; **not re-tested this pass, no updated number is claimed**. This is a materially bigger, higher-blast-radius gap than the topology view alone (it would also thin out `query`/`impact` results for Go same-package calls) — tracked as a new open item, [`roadmap-and-open-items.md` item 19](../gitbook/analysis/roadmap-and-open-items.md), not fixed by this session's work.
+
 ---
 
 ## 2. Project 2: `gin-gonic/gin` Benchmark
@@ -153,7 +157,7 @@ Unlike the TypeScript pass's `nest` run (`typescript-cli-benchmark.md` §3.6, wh
 
 Because `docuvia init` ran first and left `.claude/hooks/hooks.json`, `.docuvia/`, and git hooks in `gin`'s working tree, `graphify extract` (which ran third) logged `"warning: 1 source file(s) produced zero nodes… hooks.json"` — it scanned Docuvia2's own generated artifact as source. Matches the same tool-artifact-cross-talk already noted as expected/accepted in prior passes' methodology (no cleanup between tools, same as the TS/C# sessions) — noted here only for completeness, not a new issue.
 
-### 3.6 Pending Verification — GRPH-006 Tier B `supportsQualifiedContainment` (flagged 2026-07-30, still not directly verified)
+### 3.6 GRPH-006 Tier B `supportsQualifiedContainment` for Go — verified 2026-08-04, stays `false`
 
 Tier A (`ast-worker.ts`) now resolves Go containment for both value- and pointer-receiver methods
 (read directly from the `method_declaration`'s own `receiver` field — see
@@ -163,12 +167,26 @@ gopls's real `textDocument/documentSymbol` nesting shape for a receiver method (
 symbol's kind/name actually match the receiver type?) against a _live_ gopls — not something that
 can be confirmed from source reading alone.
 
-This pass **did** run a live `gopls` against real Go code (§3.1), but Tier B failed too early
+§3.1's run **did** spawn a live `gopls` against real Go code, but Tier B failed too early
 (`"no identifier found"` on the `references` call) to observe `documentSymbol`'s nesting shape for
-a receiver method either way — §3.1's bug sits upstream of where this question would even become
-observable. Still needs its own dedicated test: spawn `gopls` against a small fixture module with
-two same-named methods on different receiver types, call `documentSymbol` directly (bypassing the
-broken `references` step), and confirm whether/how each method's parent symbol carries the receiver
-type's identity before flipping the flag. Until both this and §3.1 are fixed, Go's Tier B path
-stays on the pre-GRPH-006 flat/collision-disambiguated key scheme even though Tier A itself is now
-qualified.
+a receiver method either way — that bug sat upstream of where this question would even become
+observable, so this item stayed genuinely unverified (flagged 2026-07-30) through that pass.
+
+**Verified 2026-08-04, live against gopls v0.23.0** (full detail in the GRPH-006 ADR's own "Go:
+verified 2026-08-04" note): spawned a real `gopls` against a minimal two-struct fixture (`type A
+struct{}; func (a A) Handle() {}` / `type B struct{}; func (b B) Handle() {}`) and called
+`textDocument/documentSymbol` directly with `hierarchicalDocumentSymbolSupport: true` declared (the
+same capability `BaseLspEdgeProvider` sends) — bypassing the broken `references` step entirely, per
+the dedicated-test plan this section previously called for. The response is a **flat**, four-entry
+list (`A`, `(A).Handle`, `B`, `(B).Handle`) with no `children` array anywhere — gopls does not nest
+a receiver method under its struct's own symbol. Separately, the struct itself reports LSP kind
+`Struct` (23), not `Class` (5), so even if nesting existed, this codebase's ancestor-walk
+containment check (`symbol.kind === LspSymbolKinds.CLASS`) would not recognize a Go receiver struct
+as a container boundary either — two independent reasons the flag cannot safely flip.
+[`go-lsp-edge-provider.ts`](../../lib/core/src/lsp/go-lsp-edge-provider.ts)'s own comment now
+records both reasons directly. `GoLspEdgeProvider` keeps `supportsQualifiedContainment: false` —
+same value as before, now for a verified reason rather than an unverified one; no code change
+follows from this. Go's Tier B path stays on the pre-GRPH-006 flat/collision-disambiguated key
+scheme even though Tier A itself is qualified — §3.1's `references`-resolution bug is fixed (see
+that section's addendum), but this containment-nesting question is independent of it and was always
+going to require this dedicated live probe regardless.

@@ -30,9 +30,12 @@ const GO_LANGUAGE_CONFIG: LspLanguageConfig = {
   // GRPH-006 follow-up: Tier A now resolves Go containment (`ast-worker.ts`'s
   // `resolveGoReceiverContainerName` reads a method_declaration's own `receiver` field directly --
   // `type_declaration` never lexically encloses a `method_declaration`, so this isn't the
-  // ancestor-walk mechanism other languages use). This flag stays `false` regardless: flipping it
-  // requires verifying gopls's real `documentSymbol` nesting shape for a receiver method against a
-  // live server, which this codebase has not done -- not a claim that Tier A can't do this anymore.
+  // ancestor-walk mechanism other languages use). This flag stays `false` regardless -- confirmed
+  // via a live `gopls` v0.23.0 probe on 2026-08-04 (see GRPH-006 ADR): `textDocument/documentSymbol`
+  // for a receiver method returns a flat top-level entry (e.g. name "(A).Handle"), never nested
+  // under its receiver struct's own symbol, and the struct itself reports LSP kind `Struct` (23),
+  // not `Class` (5) -- so even if it were nested, this codebase's ancestor-walk containment read
+  // (`symbol.kind === LspSymbolKinds.CLASS`) would not recognize it as a container boundary either.
   supportsQualifiedContainment: false,
 };
 

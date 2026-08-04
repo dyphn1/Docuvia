@@ -6,6 +6,7 @@ import DatabaseCtor from "better-sqlite3";
 import { GraphStore } from "@workspace/schema";
 import type { ParsedAstFileResult } from "@workspace/contracts";
 import { GraphPersisterService } from "./persist-ast-graph.js";
+import { buildParseResponse } from "../ast/ast-worker.js";
 
 /**
  * Uses a real temp `GraphStore` (from `@workspace/schema`, a test-only dependency — production
@@ -289,5 +290,61 @@ describe("GraphPersisterService.persist()", () => {
     expect(store.files.getAllHashes()).toEqual([
       { filePath: "src/a.ts", contentHash: "hash-a" },
     ]);
+  });
+
+  it("KNOWN GAP: a same-package, no-import Go cross-file call is never persisted as a 'calls' link (export-topology-followups plan §1.3 — ScopeResolver.resolveCall() has no Go-package-aware branch, flagged as a candidate follow-up issue, not fixed here)", async () => {
+    const fooResponse = await buildParseResponse({
+      taskId: "go-a",
+      filePath: "a.go",
+      code: "package main\nfunc Foo() {}\n",
+      language: "go",
+    });
+    const barResponse = await buildParseResponse({
+      taskId: "go-b",
+      filePath: "b.go",
+      code: "package main\nfunc Bar() { Foo() }\n",
+      language: "go",
+    });
+
+    const parsedResults: ParsedAstFileResult[] = [
+      { file: "a.go", hash: "hash-a", data: fooResponse.data! },
+      { file: "b.go", hash: "hash-b", data: barResponse.data! },
+    ];
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults,
+      tags: [],
+    });
+
+    // The real Go parse does extract the call site correctly (sourceFunction: "Bar",
+    // targetFunction: "Foo") -- this isn't an extraction gap.
+    expect(barResponse.data!.calls).toContainEqual({
+      sourceFunction: "Bar",
+      targetFunction: "Foo",
+    });
+
+    const fooId = store.graph.findNodeIdByName("a.go", "Foo");
+    const barId = store.graph.findNodeIdByName("b.go", "Bar");
+    expect(fooId).toBeDefined();
+    expect(barId).toBeDefined();
+
+    const dbPath = path.join(tmpDir, ".docuvia", "local.db");
+    const raw = new DatabaseCtor(dbPath, { readonly: true });
+    try {
+      const link = raw
+        .prepare(
+          "SELECT * FROM node_links WHERE source_node_id = ? AND target_node_id = ? AND link_type = 'calls'",
+        )
+        .get(barId, fooId);
+      // No import ties b.go to a.go (idiomatic same-package Go) -- ScopeResolver.resolveCall()
+      // only resolves same-file locals or explicitly-imported names, so this returns null and
+      // linkSymbolReference() never inserts the edge.
+      expect(link).toBeUndefined();
+    } finally {
+      raw.close();
+    }
   });
 });

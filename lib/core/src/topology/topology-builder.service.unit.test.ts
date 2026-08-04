@@ -300,6 +300,218 @@ describe("TopologyBuilderService.build()", () => {
     expect(graph.stats.foldedLinkCount).toBe(1);
   });
 
+  it("resolves a 2+ level CONTAINS chain to its root file when folded, not to an intermediate non-file symbol (regression: single-hop toFileId used to drop this link entirely)", () => {
+    const file1 = makeL2({
+      id: 1,
+      name: "src/a.ts",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const class1 = makeL2({
+      id: 2,
+      name: "Class1",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const method1 = makeL2({
+      id: 3,
+      name: "method1",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const file2 = makeL2({
+      id: 4,
+      name: "src/b.ts",
+      path_patterns: JSON.stringify(["src/b.ts"]),
+    });
+    const method2 = makeL2({
+      id: 5,
+      name: "method2",
+      path_patterns: JSON.stringify(["src/b.ts"]),
+    });
+    const containsFile1Class1 = makeLink({
+      id: 1,
+      source_node_id: 1,
+      target_node_id: 2,
+      link_type: "contains",
+    });
+    const containsClass1Method1 = makeLink({
+      id: 2,
+      source_node_id: 2,
+      target_node_id: 3,
+      link_type: "contains",
+    });
+    const containsFile2Method2 = makeLink({
+      id: 3,
+      source_node_id: 4,
+      target_node_id: 5,
+      link_type: "contains",
+    });
+    const callsLink = makeLink({
+      id: 4,
+      source_node_id: 3,
+      target_node_id: 5,
+      link_type: "calls",
+    });
+
+    const graph = builder.build(
+      {
+        workspaceRoot: "/workspace",
+        l2Rows: [file1, class1, method1, file2, method2],
+        linkRows: [
+          containsFile1Class1,
+          containsClass1Method1,
+          containsFile2Method2,
+          callsLink,
+        ],
+        l3Rows: [],
+        tagRows: [],
+      },
+      { collapse: "file" },
+    );
+
+    expect(graph.nodes.map((n) => n.id).sort()).toEqual(
+      ["l2:1", "l2:4"].sort(),
+    );
+    expect(graph.links).toEqual([
+      { source: "l2:1", target: "l2:4", linkType: "calls", confidence: 1 },
+    ]);
+  });
+
+  it("folds a graph down to a small surviving cross-file link set, matching the fold arithmetic exactly (links.length + foldedLinkCount === total non-CONTAINS edges fed in)", () => {
+    const file1 = makeL2({
+      id: 1,
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const a = makeL2({
+      id: 2,
+      name: "a",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const b = makeL2({
+      id: 3,
+      name: "b",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const c = makeL2({
+      id: 4,
+      name: "c",
+      path_patterns: JSON.stringify(["src/a.ts"]),
+    });
+    const file2 = makeL2({
+      id: 5,
+      path_patterns: JSON.stringify(["src/b.ts"]),
+    });
+    const d = makeL2({
+      id: 6,
+      name: "d",
+      path_patterns: JSON.stringify(["src/b.ts"]),
+    });
+    const e = makeL2({
+      id: 7,
+      name: "e",
+      path_patterns: JSON.stringify(["src/b.ts"]),
+    });
+    const file3 = makeL2({
+      id: 8,
+      path_patterns: JSON.stringify(["src/c.ts"]),
+    });
+    const f = makeL2({
+      id: 9,
+      name: "f",
+      path_patterns: JSON.stringify(["src/c.ts"]),
+    });
+
+    const containsLinks = [
+      makeLink({
+        id: 1,
+        source_node_id: 1,
+        target_node_id: 2,
+        link_type: "contains",
+      }),
+      makeLink({
+        id: 2,
+        source_node_id: 1,
+        target_node_id: 3,
+        link_type: "contains",
+      }),
+      makeLink({
+        id: 3,
+        source_node_id: 1,
+        target_node_id: 4,
+        link_type: "contains",
+      }),
+      makeLink({
+        id: 4,
+        source_node_id: 5,
+        target_node_id: 6,
+        link_type: "contains",
+      }),
+      makeLink({
+        id: 5,
+        source_node_id: 5,
+        target_node_id: 7,
+        link_type: "contains",
+      }),
+      makeLink({
+        id: 6,
+        source_node_id: 8,
+        target_node_id: 9,
+        link_type: "contains",
+      }),
+    ];
+    // Same-file (fold away): a->b, b->c, d->e. Cross-file (survive): a->d, c->f.
+    const relationLinks = [
+      makeLink({
+        id: 7,
+        source_node_id: 2,
+        target_node_id: 3,
+        link_type: "calls",
+      }),
+      makeLink({
+        id: 8,
+        source_node_id: 3,
+        target_node_id: 4,
+        link_type: "calls",
+      }),
+      makeLink({
+        id: 9,
+        source_node_id: 6,
+        target_node_id: 7,
+        link_type: "calls",
+      }),
+      makeLink({
+        id: 10,
+        source_node_id: 2,
+        target_node_id: 6,
+        link_type: "calls",
+      }),
+      makeLink({
+        id: 11,
+        source_node_id: 4,
+        target_node_id: 9,
+        link_type: "implements",
+      }),
+    ];
+
+    const graph = builder.build(
+      {
+        workspaceRoot: "/workspace",
+        l2Rows: [file1, a, b, c, file2, d, e, file3, f],
+        linkRows: [...containsLinks, ...relationLinks],
+        l3Rows: [],
+        tagRows: [],
+      },
+      { collapse: "file" },
+    );
+
+    expect(graph.links.length + graph.stats.foldedLinkCount).toBe(
+      relationLinks.length,
+    );
+    expect(graph.stats.foldedLinkCount).toBe(3);
+    expect(graph.links).toEqual([
+      { source: "l2:1", target: "l2:5", linkType: "calls", confidence: 1 },
+      { source: "l2:1", target: "l2:8", linkType: "implements", confidence: 1 },
+    ]);
+  });
+
   it("auto-collapses once the node count exceeds maxNodes", () => {
     const nodes = [makeL2({ id: 1 }), makeL2({ id: 2 })];
     const graph = builder.build(

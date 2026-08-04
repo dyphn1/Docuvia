@@ -265,8 +265,16 @@ function buildCollapsed(
   containingFileId: Map<string, string>,
   filePathById: Map<string, string | undefined>,
 ): { nodes: TopologyNode[]; links: TopologyLink[]; foldedLinkCount: number } {
-  const toFileId = (id: number | string) =>
-    containingFileId.get(String(id)) ?? String(id);
+  const toFileId = (id: number | string) => {
+    let current = String(id);
+    const visited = new Set<string>([current]);
+    for (;;) {
+      const parent = containingFileId.get(current);
+      if (parent === undefined || visited.has(parent)) return current;
+      visited.add(parent);
+      current = parent;
+    }
+  };
 
   const nodes: TopologyNode[] = l2Rows
     .filter((row) => !containingFileId.has(String(row.id)))

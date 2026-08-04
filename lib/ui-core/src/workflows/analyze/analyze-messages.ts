@@ -18,6 +18,15 @@ export const ANALYZE_MESSAGES = {
    *  instead (`isNodeKeyFormatStale`). */
   NODE_KEY_FORMAT_STALE:
     "Knowledge graph predates the current node_key format -- running a full re-ingestion instead of a delta to avoid mixing old and new formats...",
+  /** Delta-ingestion's ancestry guard: printed instead of `AUTO_DELTA_INGESTION` when `headSha` is
+   *  not a descendant of (nor equal to) `fromSha` in the commit graph -- e.g. `git reset --soft`,
+   *  an undone `commit --amend`, or a rebase aborted after `analyze` already ran mid-rebase. Trusting
+   *  the `fromSha -> headSha` diff in that state runs it backward: real, still-on-disk files/symbols
+   *  get silently misclassified as deleted or re-parsed from stale git-blob content
+   *  (typescript-cli-benchmark.md §6.3). A full re-ingestion re-discovers everything from the actual
+   *  working tree instead. */
+  HEAD_NOT_DESCENDANT_OF_LAST_INGESTED:
+    "HEAD has moved backward relative to the last-ingested commit (e.g. a soft reset, undone amend, or aborted rebase) -- running a full re-ingestion instead of a delta to avoid misclassifying still-present files as deleted...",
   AUTO_NOOP: "Knowledge graph already up to date with HEAD.",
   /** PLAT-007 Tier A's fast-path UX gap, found by the 2026-07-24 C# benchmark: the sha check is
    *  intentionally commit-triggered, not filesystem-watch-triggered, so it can't see uncommitted
@@ -85,6 +94,10 @@ export const ANALYZE_EVENTS = {
    *  when a stale/missing `node_key` format stamp forces a full re-ingestion in place of the
    *  delta this run would otherwise have performed. */
   DELTA_NODE_KEY_FORMAT_STALE: "analyze.delta.node_key_format_stale",
+  /** Delta-ingestion's ancestry guard (`isAncestor`) -- logged instead of `DELTA_START` when
+   *  `headSha` is not a descendant of `fromSha`, forcing a full re-ingestion in place of the delta
+   *  this run would otherwise have performed (see `ANALYZE_MESSAGES.HEAD_NOT_DESCENDANT_OF_LAST_INGESTED`). */
+  DELTA_HEAD_NOT_DESCENDANT: "analyze.delta.head_not_descendant",
   DELTA_SUMMARY: "analyze.delta.summary",
   DELTA_FILE_SKIPPED_OVERSIZED: "analyze.delta.file_skipped_oversized",
   /** Per-file line from `runParseAndPersist` attributed to delta ingestion. */

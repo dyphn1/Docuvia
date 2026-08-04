@@ -83,7 +83,7 @@ function makeMockGitProvider(
     fetchRef: vi.fn().mockResolvedValue(undefined),
     pushRef: vi.fn().mockResolvedValue(undefined),
     getRefSha: vi.fn().mockResolvedValue(undefined),
-    isAncestor: vi.fn().mockResolvedValue(false),
+    isAncestor: vi.fn().mockResolvedValue(true),
     getTreeSha: vi.fn().mockResolvedValue("tree-sha"),
     getCommitTimestamp: vi.fn().mockResolvedValue(0),
     createMergeCommit: vi.fn().mockResolvedValue("merge-sha"),
@@ -809,5 +809,50 @@ describe("runDeltaIngestion()", () => {
     expect(
       lines.some((l) => l.event === "analyze.delta.node_key_format_stale"),
     ).toBe(true);
+  });
+
+  it("falls back to runFullIngestion instead of delta-ingesting when headSha is not a descendant of fromSha (e.g. git reset --soft)", async () => {
+    const git = makeMockGitProvider({
+      isAncestor: vi.fn().mockResolvedValue(false),
+      getChangedFilesSince: vi.fn().mockResolvedValue([
+        // Even if the diff/read primitives were called, this scenario should never reach them --
+        // a non-empty return here proves the guard short-circuits before any diff work happens.
+        { file: "src/still-here.ts", status: "deleted" },
+      ]),
+    });
+
+    const result = await runDeltaIngestion({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+      store,
+      git,
+      knowledgeGit: makeMockKnowledgeGit(),
+      projectId: 1,
+      fromSha: FROM_SHA,
+      headSha: HEAD_SHA,
+    });
+
+    expect(runFullIngestion).toHaveBeenCalledWith({
+      workspaceRoot: tmpDir,
+      logger: expect.anything(),
+      store,
+      git,
+    });
+    expect(store.graph.deleteNodesForPath).not.toHaveBeenCalled();
+    expect(git.getChangedFilesSince).not.toHaveBeenCalled();
+    expect(result.kind).toBe("autoFullIngestion");
+
+    const logPath = path.join(tmpDir, ".docuvia", "logs", "analyze.log");
+    const lines = fs
+      .readFileSync(logPath, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    const guardLine = lines.find(
+      (l) => l.event === "analyze.delta.head_not_descendant",
+    );
+    expect(guardLine).toBeDefined();
+    expect(guardLine.fromSha).toBe(FROM_SHA);
+    expect(guardLine.headSha).toBe(HEAD_SHA);
   });
 });

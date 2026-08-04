@@ -87,6 +87,23 @@ export async function runDeltaIngestion(deps: {
     return runFullIngestion({ workspaceRoot, logger, store, git });
   }
 
+  // §6.3's backward-HEAD guard: `getChangedFilesSince(fromSha, headSha)` and readFileAtRef(headSha,
+  // ...)` below both assume headSha descends from fromSha. When something moves HEAD backward while
+  // the working tree/index stays at the newer state (git reset --soft, an undone amend, an aborted
+  // mid-rebase), that assumption is false: the diff runs backward (real additions read as deletions)
+  // and re-parsed content comes from stale git-blob history instead of what's actually on disk.
+  // Bail to a full re-ingestion, which re-discovers everything from the real working tree instead of
+  // trusting commit-graph position.
+  if (!(await git.isAncestor(workspaceRoot, fromSha, headSha))) {
+    logger.info(ANALYZE_MESSAGES.HEAD_NOT_DESCENDANT_OF_LAST_INGESTED);
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.DELTA_HEAD_NOT_DESCENDANT,
+      fromSha,
+      headSha,
+    });
+    return runFullIngestion({ workspaceRoot, logger, store, git });
+  }
+
   logger.info(ANALYZE_MESSAGES.AUTO_DELTA_INGESTION);
   await appendAnalyzeLogLine(workspaceRoot, {
     event: ANALYZE_EVENTS.DELTA_START,

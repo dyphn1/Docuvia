@@ -114,6 +114,38 @@ describe("AstWorkerPool CALL edge extraction", () => {
     expect(response.success).toBe(true);
   }, 15000);
 
+  it("still dispatches a task queued behind a crashing one to the respawned worker", async () => {
+    // Regression guard: processQueue() used to shift only one task/worker pair per call, and
+    // spawnWorker() never called it after pushing a freshly (re)spawned worker into
+    // workerQueue. With workerCount 1, queuing a second task in the same tick as a crashing
+    // one -- before the crash's respawn has run -- left that second task in taskQueue and the
+    // respawned worker idle in workerQueue with nothing left to pair them: no further
+    // "message" event was ever going to fire to trigger another processQueue() call.
+    pool = new AstWorkerPool(
+      undefined,
+      30_000,
+      undefined,
+      CRASH_FIXTURE_WORKER_PATH,
+    );
+    await pool.initialize(1);
+
+    const crashPromise = pool.parse({
+      filePath: CRASH_SENTINEL_FILE_PATH,
+      code: "",
+      language: "typescript",
+    });
+    // Queued in the same tick, before the crash's respawn has had a chance to run.
+    const healthyPromise = pool.parse({
+      filePath: "healthy-file.ts",
+      code: "",
+      language: "typescript",
+    });
+
+    await expect(crashPromise).rejects.toBeInstanceOf(AstWorkerCrashError);
+    const response = await healthyPromise;
+    expect(response.success).toBe(true);
+  }, 5000);
+
   it("does not leak taskFilePaths entries across successful parses", async () => {
     pool = new AstWorkerPool(
       undefined,

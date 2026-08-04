@@ -114,8 +114,35 @@ describe("checkTierBGate() (roadmap Item 17: scoped to tierBQueue)", () => {
     expect(tsCheck).toHaveBeenCalledTimes(1);
     expect(pyCheck).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
+      available: true,
+    });
+  });
+
+  it("fails the gate only if ALL queued languages are unavailable", async () => {
+    const { store } = makeStore();
+    appendTierBQueueEntries(store, [
+      { file: "a.ts", commitSha: "sha1" },
+      { file: "b.py", commitSha: "sha1" },
+    ]);
+    registerGraphStoreOpener(store);
+
+    const tsCheck = vi.fn().mockResolvedValue({ available: false, reason: "ts missing" });
+    const pyCheck = vi.fn().mockResolvedValue({
       available: false,
       reason: "pyright not installed",
+    });
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () => makeProvider(tsCheck, "typescript-language-server"),
+      python: () => makeProvider(pyCheck, "pyright"),
+    }));
+
+    const result = await checkTierBGate("/workspace", createMockLogger());
+
+    expect(tsCheck).toHaveBeenCalledTimes(1);
+    expect(pyCheck).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      available: false,
+      reason: "ts missing; pyright not installed",
     });
   });
 

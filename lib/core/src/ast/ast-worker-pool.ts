@@ -259,6 +259,7 @@ export class AstWorkerPool implements IASTWorkerPool {
 
     this.workers.push(worker);
     this.workerQueue.push(worker);
+    this.processQueue();
 
     return worker;
   }
@@ -308,14 +309,18 @@ export class AstWorkerPool implements IASTWorkerPool {
 
   parse(request: Omit<AstParseRequest, "taskId">): Promise<AstParseResponse> {
     return new Promise((resolve, reject) => {
-      // Compute content hash for cache lookup
-      const contentHash = crypto
-        .createHash(HASH_ALGO_SHA256)
-        .update(request.code)
-        .digest(ENCODING_HEX);
+      // Content hash is only ever needed to key the optional cache -- compute it lazily so
+      // callers without a cache configured (the only production wiring today, see
+      // register.ts) don't pay a SHA-256 pass over every file's full text for nothing.
+      let contentHash: string | undefined;
 
       // Check cache first with timing instrumentation
       if (this.cache) {
+        contentHash = crypto
+          .createHash(HASH_ALGO_SHA256)
+          .update(request.code)
+          .digest(ENCODING_HEX);
+
         const cacheStartTime = performance.now();
         const cachedResult = this.cache.get(contentHash);
         const cacheLookupTime = performance.now() - cacheStartTime;
@@ -335,9 +340,10 @@ export class AstWorkerPool implements IASTWorkerPool {
       this.taskQueue.push({
         request,
         resolve: (result: AstParseResponse) => {
-          // Cache the result before resolving
+          // Cache the result before resolving. contentHash is always set together with
+          // this.cache above, in the same parse() call.
           if (this.cache) {
-            this.cache.set(contentHash, result);
+            this.cache.set(contentHash!, result);
             const metrics = this.cache.metrics;
             if (
               metrics.hits + metrics.misses > 0 &&
@@ -364,37 +370,39 @@ export class AstWorkerPool implements IASTWorkerPool {
     });
   }
 
+  // Drains as many task/worker pairs as are currently available, not just one -- a
+  // single-shift version left later-queued tasks stranded whenever a worker was pushed
+  // into workerQueue (e.g. spawnWorker() after a crash respawn) without a task already
+  // waiting to catch it on that same call; nothing else was guaranteed to call this again.
   private processQueue() {
-    if (this.taskQueue.length === 0 || this.workerQueue.length === 0) {
-      return;
-    }
+    while (this.taskQueue.length > 0 && this.workerQueue.length > 0) {
+      const task = this.taskQueue.shift()!;
+      const worker = this.workerQueue.shift()!;
 
-    const task = this.taskQueue.shift()!;
-    const worker = this.workerQueue.shift()!;
-
-    const taskId = String(++this.taskCounter);
-    this.pendingTasks.set(taskId, {
-      resolve: task.resolve,
-      reject: task.reject,
-    });
-    this.workerTasks.set(worker, taskId);
-    this.taskFilePaths.set(taskId, task.request.filePath);
-
-    const timeout = setTimeout(() => {
-      this.taskTimeouts.delete(taskId);
-      this.timedOutWorkers.add(worker);
-      this.logger.error(AstMessages.TASK_TIMED_OUT_TERMINATING, {
-        taskId,
-        filePath: this.taskFilePaths.get(taskId),
-        taskTimeoutMs: this.taskTimeoutMs,
+      const taskId = String(++this.taskCounter);
+      this.pendingTasks.set(taskId, {
+        resolve: task.resolve,
+        reject: task.reject,
       });
-      // Deliberate termination; the worker's own "exit" handler rejects the pending task,
-      // removes it from the pool, and respawns a replacement.
-      worker.terminate().catch(() => {});
-    }, this.taskTimeoutMs);
-    this.taskTimeouts.set(taskId, timeout);
+      this.workerTasks.set(worker, taskId);
+      this.taskFilePaths.set(taskId, task.request.filePath);
 
-    worker.postMessage({ ...task.request, taskId });
+      const timeout = setTimeout(() => {
+        this.taskTimeouts.delete(taskId);
+        this.timedOutWorkers.add(worker);
+        this.logger.error(AstMessages.TASK_TIMED_OUT_TERMINATING, {
+          taskId,
+          filePath: this.taskFilePaths.get(taskId),
+          taskTimeoutMs: this.taskTimeoutMs,
+        });
+        // Deliberate termination; the worker's own "exit" handler rejects the pending task,
+        // removes it from the pool, and respawns a replacement.
+        worker.terminate().catch(() => {});
+      }, this.taskTimeoutMs);
+      this.taskTimeouts.set(taskId, timeout);
+
+      worker.postMessage({ ...task.request, taskId });
+    }
   }
 
   async terminate(): Promise<void> {

@@ -38,9 +38,17 @@ function checkNodeModulesPresent(workspaceRoot: string): boolean {
 }
 
 function checkTsconfigResolvable(workspaceRoot: string): boolean {
-  return TSCONFIG_CANDIDATES.some((name) =>
+  // Check root first
+  const hasRootConfig = TSCONFIG_CANDIDATES.some((name) =>
     fs.existsSync(path.join(workspaceRoot, name)),
   );
+  if (hasRootConfig) return true;
+
+  // Fallback to checking for tsconfig.base.json or src/tsconfig.json for large polyglot repos (like vscode)
+  if (fs.existsSync(path.join(workspaceRoot, "tsconfig.base.json"))) return true;
+  if (fs.existsSync(path.join(workspaceRoot, "src", ConfigFilenames.TSCONFIG_JSON))) return true;
+  
+  return false;
 }
 
 /** Live probe for the `npx --no-install` fallback case (a local `node_modules/.bin` copy is

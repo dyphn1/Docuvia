@@ -6,7 +6,7 @@ import { GitConstants } from "./git-constants.js";
 const MARKDOWN_FILE_EXTENSION = ".md";
 
 /** Characters illegal (or reserved) in filenames on common filesystems, plus ASCII control chars — mirrors `snapshot-renderer.service.ts`'s identically-named constant. */
-const ILLEGAL_FILENAME_CHARS = /[<>:"|?*\x00-\x1f]/g;
+const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\x00-\x1f\s]/g;
 const CURRENT_DIR_SEGMENT = ".";
 const PARENT_DIR_SEGMENT = "..";
 
@@ -44,7 +44,8 @@ const WINDOWS_RESERVED_DEVICE_NAMES = new Set([
 const RESERVED_NAME_MANGLE_SUFFIX = "_" as const;
 
 function sanitizeSegment(segment: string): string {
-  const replaced = segment.replace(ILLEGAL_FILENAME_CHARS, "_");
+  let replaced = segment.replace(ILLEGAL_FILENAME_CHARS, "_");
+  if (replaced.length > 100) replaced = replaced.slice(0, 100);
   const dotIndex = replaced.indexOf(".");
   const namePart = dotIndex === -1 ? replaced : replaced.slice(0, dotIndex);
   if (!WINDOWS_RESERVED_DEVICE_NAMES.has(namePart.toLowerCase()))

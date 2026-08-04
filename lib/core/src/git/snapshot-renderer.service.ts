@@ -198,7 +198,7 @@ export class SnapshotRendererService implements ISnapshotRenderer {
 }
 
 // Characters illegal (or reserved) in filenames on common filesystems, plus ASCII control chars.
-const ILLEGAL_FILENAME_CHARS = /[<>:"|?*\x00-\x1f]/g;
+const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*\x00-\x1f\s]/g;
 
 /** Path segments meaning "current directory" / "parent directory" — rejected outright by
  *  `sanitizeRelativePath` rather than sanitized, since they carry traversal semantics no
@@ -258,7 +258,8 @@ const RESERVED_NAME_MANGLE_SUFFIX = "_" as const;
  * stage in `sanitizeRelativePath`.
  */
 function sanitizeSegment(segment: string): string {
-  const replaced = segment.replace(ILLEGAL_FILENAME_CHARS, "_");
+  let replaced = segment.replace(ILLEGAL_FILENAME_CHARS, "_");
+  if (replaced.length > 100) replaced = replaced.slice(0, 100);
   const dotIndex = replaced.indexOf(".");
   const namePart = dotIndex === -1 ? replaced : replaced.slice(0, dotIndex);
   if (!WINDOWS_RESERVED_DEVICE_NAMES.has(namePart.toLowerCase()))

@@ -51,11 +51,14 @@ export async function checkTierBGate(
   }
 
   if (unavailable.length === 0) return { available: true };
-  if (unavailable.length === 1) return unavailable[0];
-  return {
-    available: false,
-    reason: unavailable.map((a) => a.reason ?? "").join("; "),
-  };
+  if (languagesToCheck.length > 0 && unavailable.length === languagesToCheck.length) {
+    if (unavailable.length === 1) return unavailable[0];
+    return {
+      available: false,
+      reason: unavailable.map((a) => a.reason ?? "").join("; "),
+    };
+  }
+  return { available: true };
 }
 
 /**
@@ -94,7 +97,8 @@ export async function resolveQueuedLanguages(
       if (languageId) queuedLanguages.add(languageId);
     }
     return Array.from(queuedLanguages);
-  } catch {
+  } catch (err) {
+    console.error("resolveQueuedLanguages error:", err);
     return Object.keys(registry) as TierBLanguageId[];
   } finally {
     await store?.close();

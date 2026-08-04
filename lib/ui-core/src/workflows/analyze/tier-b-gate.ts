@@ -51,7 +51,10 @@ export async function checkTierBGate(
   }
 
   if (unavailable.length === 0) return { available: true };
-  if (languagesToCheck.length > 0 && unavailable.length === languagesToCheck.length) {
+  if (
+    languagesToCheck.length > 0 &&
+    unavailable.length === languagesToCheck.length
+  ) {
     if (unavailable.length === 1) return unavailable[0];
     return {
       available: false,
@@ -97,8 +100,10 @@ export async function resolveQueuedLanguages(
       if (languageId) queuedLanguages.add(languageId);
     }
     return Array.from(queuedLanguages);
-  } catch (err) {
-    console.error("resolveQueuedLanguages error:", err);
+  } catch {
+    // Expected on a fresh workspace (no local db yet) as well as genuine open failures --
+    // see this function's own docstring: "a deliberately conservative default," not an error
+    // worth surfacing. A raw console.error here would print on every first-ever `docuvia init`.
     return Object.keys(registry) as TierBLanguageId[];
   } finally {
     await store?.close();

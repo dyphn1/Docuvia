@@ -258,7 +258,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
     try {
       const exact = this.db
         .prepare(
-          `SELECT id, name, type, path_patterns FROM ${SchemaTables.L2_NODES} WHERE name = ? ORDER BY (path_patterns LIKE '%test%' OR path_patterns LIKE '%spec%') ASC, (SELECT COUNT(*) FROM ${SchemaTables.NODE_LINKS} WHERE source_node_id = ${SchemaTables.L2_NODES}.id OR target_node_id = ${SchemaTables.L2_NODES}.id) DESC LIMIT 1`,
+          `SELECT id, name, type, ${SchemaColumns.PATH_PATTERNS} FROM ${SchemaTables.L2_NODES} WHERE name = ? ORDER BY (${SchemaColumns.PATH_PATTERNS} LIKE '%test%' OR ${SchemaColumns.PATH_PATTERNS} LIKE '%spec%') ASC, (SELECT COUNT(*) FROM ${SchemaTables.NODE_LINKS} WHERE ${SchemaColumns.SOURCE_NODE_ID} = ${SchemaTables.L2_NODES}.id OR ${SchemaColumns.TARGET_NODE_ID} = ${SchemaTables.L2_NODES}.id) DESC LIMIT 1`,
         )
         .get(target) as FindNodeByNameRow | undefined;
       if (exact) return mapFindNodeByNameRow(exact);
@@ -266,7 +266,7 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       const escaped = target.replace(/[\\%_]/g, (m) => `\\${m}`);
       const like = this.db
         .prepare(
-          `SELECT id, name, type, path_patterns FROM ${SchemaTables.L2_NODES} WHERE name LIKE ? ESCAPE '\\' ORDER BY (path_patterns LIKE '%test%' OR path_patterns LIKE '%spec%') ASC, (SELECT COUNT(*) FROM ${SchemaTables.NODE_LINKS} WHERE source_node_id = ${SchemaTables.L2_NODES}.id OR target_node_id = ${SchemaTables.L2_NODES}.id) DESC LIMIT 1`,
+          `SELECT id, name, type, ${SchemaColumns.PATH_PATTERNS} FROM ${SchemaTables.L2_NODES} WHERE name LIKE ? ESCAPE '\\' ORDER BY (${SchemaColumns.PATH_PATTERNS} LIKE '%test%' OR ${SchemaColumns.PATH_PATTERNS} LIKE '%spec%') ASC, (SELECT COUNT(*) FROM ${SchemaTables.NODE_LINKS} WHERE ${SchemaColumns.SOURCE_NODE_ID} = ${SchemaTables.L2_NODES}.id OR ${SchemaColumns.TARGET_NODE_ID} = ${SchemaTables.L2_NODES}.id) DESC LIMIT 1`,
         )
         .get(`%${escaped}%`) as FindNodeByNameRow | undefined;
       return like ? mapFindNodeByNameRow(like) : undefined;

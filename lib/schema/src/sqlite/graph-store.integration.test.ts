@@ -305,6 +305,74 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(store.graph.findNodeByName("nope")).toBeUndefined();
   });
 
+  it("graph repo: findNodeByName() prefers a non-test/spec node over a same-named test/spec node", () => {
+    // Regression guard for the vscode benchmark's "Disposable" mis-resolution
+    // (docs/cli-test-analysis/typescript-cli-benchmark.md §5.4): a bare `LIMIT 1` with no
+    // ordering could return either row non-deterministically; this asserts the real class wins
+    // even when it's inserted *after* the test fixture (SQLite would otherwise favor rowid order).
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    store.graph.insertNode({
+      projectId: project.id,
+      name: "Disposable",
+      type: "class",
+      pathPatterns: ["src/test/fixtures/disposable.ts"],
+    });
+    const realClassId = store.graph.insertNode({
+      projectId: project.id,
+      name: "Disposable",
+      type: "class",
+      pathPatterns: ["src/base/common/lifecycle.ts"],
+    });
+
+    expect(store.graph.findNodeByName("Disposable")).toEqual({
+      id: realClassId,
+      name: "Disposable",
+      type: "class",
+      filePath: "src/base/common/lifecycle.ts",
+    });
+  });
+
+  it("graph repo: findNodeByName() prefers the more-connected node among same-named non-test nodes", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const quietNodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "Widget",
+      type: "class",
+      pathPatterns: ["src/rare/widget.ts"],
+    });
+    const popularNodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "Widget",
+      type: "class",
+      pathPatterns: ["src/core/widget.ts"],
+    });
+    const callerId = store.graph.insertNode({
+      projectId: project.id,
+      name: "caller",
+      type: "function",
+      pathPatterns: ["src/core/caller.ts"],
+    });
+    store.graph.insertLink({
+      sourceNodeId: callerId,
+      targetNodeId: popularNodeId,
+      linkType: "depends_on",
+    });
+
+    expect(store.graph.findNodeByName("Widget")).toEqual({
+      id: popularNodeId,
+      name: "Widget",
+      type: "class",
+      filePath: "src/core/widget.ts",
+    });
+    expect(quietNodeId).not.toBe(popularNodeId);
+  });
+
   it("graph repo: findNodeByName() omits filePath when the node has no path_patterns", () => {
     const project = store.projects.insert({
       name: "demo",

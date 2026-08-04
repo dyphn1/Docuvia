@@ -42,7 +42,7 @@ Docuvia2 is a from-scratch rebuild of only the local-SQLite-backed CLI and its e
 
 `analyze` incrementally evolves the knowledge graph across three cost/latency tiers instead of always re-running full extraction (see the indexing-cost-benchmark reasoning: GitNexus ~5min / Graphify ~40min / LSP ~3min full-project cost):
 
-- **Tier A** — real-time, per-file delta ingestion (`run-delta-ingestion.ts`), cheap, always runs.
+- **Tier A** — real-time, per-file delta ingestion (`run-delta-ingestion.ts`), cheap, always runs. Guarded by two invariant checks that each fall back to `runFullIngestion()` (the "detect → log → fall back" idiom — see `conventions.md`): a stale node-key format stamp (`isNodeKeyFormatStale`), and — since a 2026-08-04 fix — `headSha` not being a descendant of `fromSha` via `IGitProvider.isAncestor()` (catches `git reset --soft`/undone-amend/aborted-rebase cases that previously corrupted the graph by silently misclassifying real files as deleted; see `common_errors.md`).
 - **Tier B** — batched LSP-escalation pass with a commit-cap throttle (`run-tier-b-batch.ts`), wired into `analyze --escalate-to-lsp`.
 - **Tier C** — budgeted, async LLM decision-extraction queue (`lib/ui-core/src/workflows/analyze/tier-c-*.ts`: `tier-c-queue`, `tier-c-budget`, `tier-c-throttle`, `tier-c-commit-filter`, `tier-c-candidates`, `run-tier-c-drain`, plus shared `decision-parsing.ts`), draining commit-message and contract-symbol decision rows into L3 persistence. Consumption is folded into the existing `analyze --escalate-to-lsp && snapshot` pre-push composition with a wall-clock cap — deliberately NO new CLI command or flag (see `conventions.md`).
 

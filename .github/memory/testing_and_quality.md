@@ -13,6 +13,10 @@
 - **Individual services are unit-tested with mocked interfaces**, following the constructor-injection convention in `lib/core/src/interfaces/` — a service under test is constructed with hand-written fakes/mocks for its required dependencies rather than a real `GraphStore` or subprocess.
 - **Verifying narrow coverage fixes**: when the terminal `--coverage` reporter truncates the "Uncovered Line #s" column, don't trust the truncated summary table. Read the raw `coverage/coverage-final.json` statement/branch maps directly to confirm a specific line range is actually hit. This technique caught a real gap during Phase 1 Slice 4 (Tier C) verification: two of six required gating tests (a mid-run budget-exhaustion branch and a system-load-high skip path) were missing despite the underlying feature code working correctly — the fix was two added tests, confirmed via the raw coverage JSON, not the terminal table.
 
+## Verification Process
+
+- **Don't trust an implementer's self-reported full-suite pass/fail count — re-run it independently.** During the 2026-08-04 delta-ingestion-fix verification, the Backend Developer's own `pnpm run test` report undercounted failures by one (reported 6, actual 7 on `task-verifier`'s independent re-run). The extra failure (`doctor-hydrate-concurrency.test.ts`) was confirmed flaky under full-suite parallel load (passed 3/3 when run in isolation), not a real regression — but that distinction was only caught because the verifier re-ran the suite itself instead of accepting the implementer's summary. `task-verifier` should always independently re-run the full test suite rather than trusting a self-reported count, and should re-run any single failure in isolation before deciding whether it's a real regression or parallel-load flake.
+
 ## Verified totals (point-in-time snapshots — re-check, don't assume current)
 
 - Early `init`-only session: `@workspace/core` 116 tests, `@workspace/cli` 14 tests.

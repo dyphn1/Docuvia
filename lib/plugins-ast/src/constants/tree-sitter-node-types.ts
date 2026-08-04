@@ -14,6 +14,7 @@ export const LanguageNodeTypes = {
   CALL: "call",
   CALL_EXPRESSION: "call_expression",
   CLASS_DECLARATION: "class_declaration",
+  ABSTRACT_CLASS_DECLARATION: "abstract_class_declaration",
   INTERFACE_DECLARATION: "interface_declaration",
   ENUM_DECLARATION: "enum_declaration",
   METHOD_DECLARATION: "method_declaration",

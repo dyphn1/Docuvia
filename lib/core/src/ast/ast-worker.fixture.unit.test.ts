@@ -481,3 +481,59 @@ describe("typescript fixture: new Worker(...) spawn detection (worker_threads de
     expect(workerSpawns).toEqual([]);
   });
 });
+
+/**
+ * Regression test for docs/ai_plans/implement_typescript-abstract-class-extraction.md:
+ * `abstract class` parses as its own distinct `abstract_class_declaration` grammar node (not a
+ * modifier flag on `class_declaration`), so it was never enumerated in either `typescriptConfig`'s
+ * `classes` fallback array or its compiled `queries.classes` string -- every `export abstract
+ * class Foo { ... }` in any TS/TSX file was silently missing from the knowledge graph entirely.
+ * Calls `provider.initQueries(lang)` (mirroring ast-worker.ts's real parseAndExtract() path) so
+ * this exercises the compiled query, not just the descendantsOfType fallback.
+ */
+const ABSTRACT_CLASS_SRC = `
+export abstract class Foo implements Bar { baz() {} }
+export class Plain {}
+`;
+
+describe("typescript fixture: abstract class declaration extraction", () => {
+  let root: Node;
+  let provider: DefaultProvider;
+
+  beforeAll(async () => {
+    await Parser.init();
+    const { wasmPath, attemptedPaths } = resolveWasmPath(
+      typescriptConfig.wasm_file,
+    );
+    if (!wasmPath) {
+      throw new Error(
+        `tree-sitter-typescript.wasm not found. Tried: ${attemptedPaths.join(", ")}`,
+      );
+    }
+    const lang = await Language.load(wasmPath);
+    provider = new DefaultProvider(typescriptConfig);
+    provider.initQueries(lang);
+    const parser = new Parser();
+    parser.setLanguage(lang);
+    const tree = parser.parse(ABSTRACT_CLASS_SRC);
+    if (!tree) throw new Error("Failed to parse fixture source");
+    root = tree.rootNode;
+  });
+
+  it("extracts `export abstract class Foo` as a class-kind node named Foo, not just its method", () => {
+    const classNames = provider
+      .extractClasses(root)
+      .map((n) => n.childForFieldName("name")?.text);
+
+    expect(classNames).toContain("Foo");
+    expect(classNames).not.toContain("baz");
+  });
+
+  it("still extracts a plain `export class` alongside the abstract one (no regression)", () => {
+    const classNames = provider
+      .extractClasses(root)
+      .map((n) => n.childForFieldName("name")?.text);
+
+    expect(classNames).toContain("Plain");
+  });
+});

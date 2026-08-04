@@ -14,6 +14,7 @@ import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { AnalyzeResultKind, type TierBBatchResult } from "./analyze-result.js";
 import { readTierBQueue, type TierBQueueEntry } from "./tier-b-queue.js";
+import { queueFullTierBResync } from "./queue-full-tier-b-resync.js";
 import { partitionQueueByLanguage } from "./tier-b-language-dispatch.js";
 import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
 import { runTierCDrain } from "./run-tier-c-drain.js";
@@ -67,6 +68,9 @@ export interface TierBBatchDeps {
   tierCItemCap?: number;
   tierCLoadThreshold?: number;
   force?: boolean;
+  /** `analyze --escalate-to-lsp --full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) --
+   *  pre-populates `tierBQueue` with every currently-tracked file before the batch drains it. */
+  full?: boolean;
 }
 
 /**
@@ -119,6 +123,19 @@ async function runTierBBatchCore(
 
   const headSha = (await git.getHeadSha(workspaceRoot)) ?? null;
   const commitCapExceeded = isTierBCommitCapExceeded(store, deps.commitCap);
+
+  if (deps.full) {
+    const { filesQueued } = await queueFullTierBResync({
+      workspaceRoot,
+      store,
+      git,
+    });
+    logger.info(ANALYZE_MESSAGES.TIER_B_FULL_RESYNC_QUEUED(filesQueued));
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.TIER_B_FULL_RESYNC_QUEUED,
+      filesQueued,
+    });
+  }
 
   const queue = readTierBQueue(store);
   if (queue.length === 0) {
@@ -180,7 +197,11 @@ async function runTierBBatchCore(
   // same as before), but a partial timeout no longer discards edges that were already correctly
   // resolved just because the run also ended up `degraded` overall (2026-07 CLI benchmark
   // finding -- see run-tier-b-batch.unit.test.ts's timeout-preserves-partial-progress case).
-  const { edgesApplied, edgesPruned } = await applyResolvedEdges(deps, outcome);
+  const { edgesApplied, edgesPruned } = await applyResolvedEdges(
+    deps,
+    outcome,
+    headSha,
+  );
   const processedFiles = new Set(outcome.filesProcessed);
   const failedEntries = toProcess.filter((e) => !processedFiles.has(e.file));
 
@@ -289,10 +310,15 @@ async function resolveEdgesForQueue(
  *  (never invented, never recovered from a stale row) and deduped against the batch's own
  *  pre-existing `node_links` snapshot so a re-run after a crash never double-inserts. Also runs
  *  the incoming-edge repair prune. All under the knowledge-branch lock + store write lock, the
- *  same discipline Tier A's delta persist step uses. */
+ *  same discipline Tier A's delta persist step uses. Also stamps `project_files`' Tier B tracking
+ *  columns (typescript-cli-benchmark.md §5.3/§5.7 item 2) for every file this batch actually
+ *  resolved edges for (`outcome.filesProcessed` -- never a failed/timed-out file) -- deliberately
+ *  not staged behind `snapshot` (see this file's own D5/D6 doc comments), since the edges
+ *  themselves already aren't staged either. */
 async function applyResolvedEdges(
   deps: TierBBatchDeps,
   outcome: MergedEdgeResolutionOutcome,
+  headSha: string | null,
 ): Promise<{ edgesApplied: number; edgesPruned: number }> {
   const { store, knowledgeGit, workspaceRoot } = deps;
   let edgesApplied = 0;
@@ -326,6 +352,17 @@ async function applyResolvedEdges(
       }
 
       edgesPruned = store.graph.pruneOrphanedLinks();
+
+      const project = store.projects.getFirst();
+      if (project) {
+        for (const file of outcome.filesProcessed) {
+          store.files.markTierBProcessed({
+            projectId: project.id,
+            filePath: file,
+            commitSha: headSha,
+          });
+        }
+      }
     });
   });
 

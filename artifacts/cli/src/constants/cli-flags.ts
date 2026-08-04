@@ -29,6 +29,14 @@ export const CLI_FLAGS = {
    *  servers, e.g. csharp-ls on a large Roslyn/MSBuild solution, have no known upper bound on how
    *  long a first response can take). */
   LSP_TIMEOUT: "--lsp-timeout=",
+  /** `analyze --escalate-to-lsp --full`'s full-resync trigger (typescript-cli-benchmark.md
+   *  §5.3/§5.7 item 1): queues every currently-tracked file into `tierBQueue` before draining it,
+   *  instead of just whatever a delta/full ingestion already queued -- the only way to force Tier
+   *  B to (re-)compute a symbol's incoming `calls` edges for callers that haven't been touched by
+   *  a commit since Tier B started working (or since the graph predates commit `4232439f`).
+   *  Ignored outside `--escalate-to-lsp`. Can be slow/expensive on a large repo -- an explicit,
+   *  occasional operator action, not part of the default per-commit path. */
+  FULL: "--full",
   /** `doctor --fix` (phase1-decision-integration.md §10d, T6) -- the only `doctor` flag that
    *  mutates workspace files, and only for the legacy-hook duplicate-block condition. */
   FIX: "--fix",

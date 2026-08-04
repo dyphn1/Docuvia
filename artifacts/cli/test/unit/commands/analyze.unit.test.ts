@@ -641,6 +641,56 @@ describe("analyzeCommand", () => {
       expect(process.exitCode).toBe(1);
     });
 
+    it("sets MemoryKeys.TIER_B_FULL_RESYNC when --full is passed alongside --escalate-to-lsp (typescript-cli-benchmark.md §5.3/§5.7 item 1)", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "tierBBatch",
+        headSha: "abc123",
+        filesQueued: 3,
+        filesDroppedDeleted: 0,
+        filesSkippedLanguage: 0,
+        filesProcessed: 3,
+        filesFailed: 0,
+        edgesApplied: 0,
+        edgesPruned: 0,
+        degraded: false,
+        commitCapExceeded: false,
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand(undefined, "/workspace", {
+        escalateToLsp: true,
+        full: true,
+      });
+
+      const scopeId = mockAnalyze.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "tierBFullResync", true);
+    });
+
+    it("does not set MemoryKeys.TIER_B_FULL_RESYNC when --full is omitted (regression guard)", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "tierBBatch",
+        headSha: "abc123",
+        filesQueued: 1,
+        filesDroppedDeleted: 0,
+        filesSkippedLanguage: 0,
+        filesProcessed: 1,
+        filesFailed: 0,
+        edgesApplied: 0,
+        edgesPruned: 0,
+        degraded: false,
+        commitCapExceeded: false,
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand(undefined, "/workspace", { escalateToLsp: true });
+
+      expect(setSpy).not.toHaveBeenCalledWith(
+        expect.any(String),
+        "tierBFullResync",
+        true,
+      );
+    });
+
     it("targetPath takes priority over --escalate-to-lsp when both are somehow given", async () => {
       process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
         "http://localhost:8317";

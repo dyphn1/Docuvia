@@ -18,6 +18,10 @@ export const MemoryKeys = {
   BASE_REF: "baseRef",
   TARGET: "target",
   ESCALATE_TO_LSP: "escalateToLsp",
+  /** `analyze --escalate-to-lsp --full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) -- pre-
+   *  populates `tierBQueue` with every currently-tracked file before the batch drains it. Ignored
+   *  outside `ESCALATE_TO_LSP`. */
+  TIER_B_FULL_RESYNC: "tierBFullResync",
   LIMIT: "limit",
   COLLAPSE: "collapse",
   /** `uninstall --keep-db` — when set, skips local.db deletion, whole-`.docuvia/`-dir removal,

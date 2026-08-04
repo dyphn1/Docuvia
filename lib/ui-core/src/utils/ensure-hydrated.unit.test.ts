@@ -18,7 +18,13 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getOrInsert: vi.fn(),
       count: vi.fn(),
     },
-    files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
+    files: {
+      getAllHashes: vi.fn(),
+      upsertFile: vi.fn(),
+      markTierBProcessed: vi.fn(),
+      getTierBFileStatus: vi.fn(),
+      getTierBCoverage: vi.fn(),
+    },
     tags: {
       upsertTag: vi.fn(),
       getIdByName: vi.fn(),

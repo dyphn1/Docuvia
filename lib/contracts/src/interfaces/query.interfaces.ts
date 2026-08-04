@@ -21,6 +21,28 @@ export interface GraphEdgeRef {
 export interface GraphContext {
   incoming: GraphEdgeRef[];
   outgoing: GraphEdgeRef[];
+  /** Additive, omit-when-confident "not yet Tier B-processed" signal -- see `TierBCoverageHint`'s
+   *  own doc comment below. Attached by `QueryService.getContext()` only when it would actually
+   *  change how a caller should read an empty `incoming`/`outgoing` list. */
+  tierBCoverage?: TierBCoverageHint;
+}
+
+/**
+ * Additive, omit-when-confident "not yet Tier B-processed" signal (typescript-cli-benchmark.md
+ * §5.3/§5.7 item 2) — attached to a query/impact result only when an empty edge list might mean
+ * "never looked at" rather than "confirmed zero". Shared by `query`'s `GraphContext` and
+ * `impact`'s `ImpactResult`, both in `lib/core`/`lib/ui-core` — computed via
+ * `resolveTierBCoverageHint()` (`lib/core`), never present-with-nulls: consumers must treat a
+ * missing field as "nothing ambiguous to report," not as an empty object.
+ */
+export interface TierBCoverageHint {
+  /** Governs how much to trust an empty `outgoing` list — this node's own file's last Tier B
+   *  pass. `null` = never processed. */
+  ownFileLastProcessedAt: string | null;
+  /** Governs how much to trust an empty `incoming`/blast-radius list — workspace-wide, has every
+   *  currently-tracked file been Tier B processed at least once? */
+  workspaceFilesProcessed: number;
+  workspaceFilesTotal: number;
 }
 
 export const QueryResultLayers = {

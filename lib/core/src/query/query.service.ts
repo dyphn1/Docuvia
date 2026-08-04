@@ -11,6 +11,7 @@ import {
   LinkTypes,
   QueryResultLayers,
 } from "@workspace/contracts";
+import { resolveTierBCoverageHint } from "../graph/tier-b-coverage.js";
 
 const QueryMessages = {
   INVALID_LIMIT_FALLBACK:
@@ -81,15 +82,26 @@ export class QueryService implements IQueryService {
     const node = store.graph.findNodeByName(target);
     if (!node) return null;
 
+    const incoming = store.graph
+      .getIncomingRelations(node.id)
+      .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
+      .map(({ name, linkType }) => ({ name, linkType }));
+    const outgoing = store.graph
+      .getOutgoingRelations(node.id)
+      .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
+      .map(({ name, linkType }) => ({ name, linkType }));
+
+    const tierBCoverage = resolveTierBCoverageHint(
+      store,
+      node.filePath,
+      incoming.length === 0,
+      outgoing.length === 0,
+    );
+
     return {
-      incoming: store.graph
-        .getIncomingRelations(node.id)
-        .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
-        .map(({ name, linkType }) => ({ name, linkType })),
-      outgoing: store.graph
-        .getOutgoingRelations(node.id)
-        .filter((edge) => edge.linkType !== LinkTypes.CONTAINS)
-        .map(({ name, linkType }) => ({ name, linkType })),
+      incoming,
+      outgoing,
+      ...(tierBCoverage ? { tierBCoverage } : {}),
     };
   }
 

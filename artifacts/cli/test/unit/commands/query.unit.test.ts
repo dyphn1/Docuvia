@@ -90,6 +90,42 @@ describe("formatPromptOutput()", () => {
     expect(output).not.toContain("<incoming>");
     expect(output).not.toContain("<outgoing>");
   });
+
+  it("renders the unprocessed tier_b_status tag on both empty edge lists when tierBCoverage is present (typescript-cli-benchmark.md §5.3/§5.7 item 2)", () => {
+    const output = formatPromptOutput({
+      l2: { name: "authService", type: "module" },
+      l3: [],
+      context: {
+        incoming: [],
+        outgoing: [],
+        tierBCoverage: {
+          ownFileLastProcessedAt: null,
+          workspaceFilesProcessed: 3,
+          workspaceFilesTotal: 10,
+        },
+      },
+    });
+
+    expect(output).toContain('tier_b_status="unprocessed"');
+    expect(output).toContain("<incoming");
+    expect(output).toContain("<outgoing");
+    expect(output).toContain("--escalate-to-lsp --full");
+    // Never reuses the existing <caller>/<callee> shape.
+    expect(output).not.toContain("<caller");
+    expect(output).not.toContain("<callee");
+  });
+
+  it("renders nothing for incoming/outgoing when both lists are empty and tierBCoverage is undefined -- today's exact behavior, unchanged (regression guard)", () => {
+    const output = formatPromptOutput({
+      l2: { name: "authService", type: "module" },
+      l3: [],
+      context: { incoming: [], outgoing: [] },
+    });
+
+    expect(output).not.toContain("<incoming");
+    expect(output).not.toContain("<outgoing");
+    expect(output).not.toContain("tier_b_status");
+  });
 });
 
 describe("queryCommand", () => {
@@ -151,6 +187,55 @@ describe("queryCommand", () => {
     expect(ui.table).toHaveBeenCalledWith(expect.anything(), [
       ["callee", "implements"],
     ]);
+  });
+
+  it("prints the Tier B unprocessed warning under each empty section header when tierBCoverage is present (human-readable format)", async () => {
+    mockQuery.mockResolvedValue({
+      l2: { name: "authService" },
+      l3: [],
+      context: {
+        incoming: [],
+        outgoing: [],
+        tierBCoverage: {
+          ownFileLastProcessedAt: null,
+          workspaceFilesProcessed: 3,
+          workspaceFilesTotal: 10,
+        },
+      },
+    });
+
+    await queryCommand("authService");
+
+    expect(ui.section).toHaveBeenCalledWith(
+      expect.stringContaining("Incoming"),
+    );
+    expect(ui.section).toHaveBeenCalledWith(
+      expect.stringContaining("Outgoing"),
+    );
+    expect(ui.warn).toHaveBeenCalledWith(
+      expect.stringContaining("7 of 10 tracked file(s)"),
+    );
+    expect(ui.warn).toHaveBeenCalledWith(
+      expect.stringContaining("No callees found"),
+    );
+  });
+
+  it("prints nothing extra when both edge lists are empty and tierBCoverage is undefined -- today's exact output, unchanged (regression guard)", async () => {
+    mockQuery.mockResolvedValue({
+      l2: { name: "authService" },
+      l3: [],
+      context: { incoming: [], outgoing: [] },
+    });
+
+    await queryCommand("authService");
+
+    expect(ui.section).not.toHaveBeenCalledWith(
+      expect.stringContaining("Incoming"),
+    );
+    expect(ui.section).not.toHaveBeenCalledWith(
+      expect.stringContaining("Outgoing"),
+    );
+    expect(ui.warn).not.toHaveBeenCalled();
   });
 
   it("prints the prompt XML block and skips the spinner when format is 'prompt'", async () => {

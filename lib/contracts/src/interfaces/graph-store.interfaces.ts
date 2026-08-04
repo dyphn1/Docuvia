@@ -36,6 +36,12 @@ export interface ProjectFileRow {
   content_hash: string | null;
   last_parsed_at: string | null;
   created_at: string;
+  /** Tier B analogue of `last_parsed_at` (Tier A) — null means this file has never had its
+   *  outgoing `calls` edges (re)computed by a Tier B batch. See `0006_tier_b_file_status.sql`. */
+  last_tier_b_processed_at: string | null;
+  /** HEAD sha at the time this file was last Tier B-processed — null when
+   *  `last_tier_b_processed_at` is also null, or when the batch ran on an unborn/headless HEAD. */
+  last_tier_b_commit_sha: string | null;
 }
 
 export interface L1TagRow {
@@ -186,6 +192,35 @@ export interface IProjectFilesRepo {
     filePath: string;
     contentHash: string | null;
   }): void;
+  /**
+   * Stamps `last_tier_b_processed_at`/`last_tier_b_commit_sha` for a file whose calls-edges Tier
+   * B just (re)computed — called once per file in `outcome.filesProcessed` right after
+   * `applyResolvedEdges` durably inserts that batch's edges (not staged/gated on a later
+   * `snapshot`, since the edges themselves already aren't staged either). Upserts defensively (a
+   * matching `project_files` row should already exist from Tier A parsing every file Tier B ever
+   * queues, but this must not silently no-op if one is somehow missing).
+   */
+  markTierBProcessed(input: {
+    projectId: number;
+    filePath: string;
+    commitSha: string | null;
+  }): void;
+  /**
+   * Tier B coverage for a single file — `query`/`impact`'s "does this node's own file's
+   * outgoing-edge set look complete" check. `undefined` when the file has no `project_files` row
+   * at all (never parsed by Tier A, so Tier B could never have queued it either).
+   */
+  getTierBFileStatus(
+    filePath: string,
+  ):
+    | { lastProcessedAt: string | null; lastProcessedCommitSha: string | null }
+    | undefined;
+  /**
+   * Workspace-wide Tier B coverage — `query`/`impact`'s "could an unqueued file still turn out to
+   * be a caller" check. Cheap aggregate (two `COUNT(*)`-shaped reads), no row materialization —
+   * safe to call on every `query`/`impact` invocation, even against a 100k+-file graph.
+   */
+  getTierBCoverage(): { totalFiles: number; processedFiles: number };
 }
 
 export interface ITagsRepo {

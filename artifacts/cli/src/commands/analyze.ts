@@ -43,6 +43,10 @@ export interface AnalyzeCommandOptions {
   /** `--lsp-timeout=` -- takes precedence over `DOCUVIA_LSP_TIMEOUT_MS` (see
    *  `resolveTierBEnvConfig`). `0` means "never time out". */
   lspTimeoutMs?: number;
+  /** `--full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) -- pre-populates `tierBQueue` with
+   *  every currently-tracked file before the batch drains it. Ignored when `escalateToLsp` is not
+   *  also set. */
+  full?: boolean;
 }
 
 interface AnalyzeLlmConfig {
@@ -301,6 +305,7 @@ function setupAnalyzeMemory(
   escalateToLsp: boolean,
   force?: boolean,
   lspTimeoutMs?: number,
+  full?: boolean,
 ): void {
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
@@ -314,6 +319,9 @@ function setupAnalyzeMemory(
     docuviaMemory.set(scopeId, MemoryKeys.LLM_MODEL, llmConfig.llmModel);
   } else if (escalateToLsp) {
     docuviaMemory.set(scopeId, MemoryKeys.ESCALATE_TO_LSP, true);
+    if (full) {
+      docuviaMemory.set(scopeId, MemoryKeys.TIER_B_FULL_RESYNC, true);
+    }
     setTierBEnvMemory(scopeId, lspTimeoutMs);
     setTierCMemory(scopeId);
   }
@@ -532,6 +540,7 @@ export async function analyzeCommand(
     escalateToLsp,
     options.force,
     options.lspTimeoutMs,
+    options.full,
   );
 
   try {

@@ -208,6 +208,11 @@ export const UI_MESSAGES = {
   /** Labels the "why" block for one blast-radius entry -- printed below the Name/Type table
    *  (`ui.table`), since a table row can't hold prose-length L3 decision content. */
   IMPACT_ENTRY_WHY_LABEL: (name: string) => `${name}:`,
+  /** typescript-cli-benchmark.md §5.3/§5.7 item 2 -- printed alongside `IMPACT_NO_DEPENDENTS` when
+   *  an empty blast radius might mean "never looked at" rather than "confirmed zero" (some
+   *  tracked file hasn't been Tier B-processed yet). */
+  IMPACT_TIER_B_INCOMPLETE: (unprocessed: number, total: number) =>
+    `${unprocessed} of ${total} tracked file(s) have never been Tier B-processed -- this may be incomplete, not confirmed zero. Run \`docuvia analyze --escalate-to-lsp --full\` to resync.`,
 
   // Uninstall Command
   UNINSTALL_HEADER: "Uninstall Docuvia2 Integrations",
@@ -303,6 +308,14 @@ export const UI_MESSAGES = {
   QUERY_COL_RELATION: "Relation",
   QUERY_INVALID_LIMIT:
     "Ignoring invalid --limit value (must be a positive integer): ",
+  /** typescript-cli-benchmark.md §5.3/§5.7 item 2 -- printed under the Incoming/Outgoing section
+   *  header when the corresponding edge list is empty but might mean "never looked at" rather
+   *  than "confirmed zero" (human-readable mirror of `formatPromptOutput`'s `tier_b_status`
+   *  attribute). */
+  QUERY_TIER_B_INCOMING_UNPROCESSED: (unprocessed: number, total: number) =>
+    `No callers found, but ${unprocessed} of ${total} tracked file(s) have never been Tier B-processed -- this may be incomplete, not confirmed zero. Run \`docuvia analyze --escalate-to-lsp --full\` to resync.`,
+  QUERY_TIER_B_OUTGOING_UNPROCESSED:
+    "No callees found, but this symbol's own file has never been Tier B-processed -- this may be incomplete, not confirmed zero. Run `docuvia analyze --escalate-to-lsp --full` to resync.",
 
   // Export Topology Command
   EXPORT_HEADER: "Export Topology",

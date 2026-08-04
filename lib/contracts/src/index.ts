@@ -155,6 +155,7 @@ export type {
 export type {
   GraphEdgeRef,
   GraphContext,
+  TierBCoverageHint,
   LocalSearchResult,
   LocalQueryResult,
   QueryResultLayer,

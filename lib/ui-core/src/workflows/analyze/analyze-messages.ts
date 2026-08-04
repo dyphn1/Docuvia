@@ -56,6 +56,11 @@ export const ANALYZE_MESSAGES = {
 
   /** `analyze --escalate-to-lsp` (Tier B batch, phase1-decision-integration.md §8). */
   TIER_B_STARTING: "Running the Tier B LSP escalation batch...",
+  /** `analyze --escalate-to-lsp --full`'s queue-population step (typescript-cli-benchmark.md
+   *  §5.3/§5.7 item 1) -- printed once the full-resync queueing itself completes, before the
+   *  (now larger) queue is drained. */
+  TIER_B_FULL_RESYNC_QUEUED: (filesQueued: number) =>
+    `Full resync (--full): queued ${filesQueued} tracked file(s) for Tier B re-processing`,
   TIER_B_EMPTY_QUEUE: "Tier B queue is empty -- nothing to escalate.",
   TIER_B_DEGRADED: (reason: string) =>
     `LSP unavailable -- AST-level edges left untouched (${reason})`,
@@ -109,6 +114,8 @@ export const ANALYZE_EVENTS = {
   FOCUSED_PERSIST_SKIPPED: "analyze.focused.persist_skipped",
 
   TIER_B_START: "analyze.tierB.start",
+  /** `--full`'s queue-population step -- logged once, before `TIER_B_EMPTY_QUEUE`/the queue drain. */
+  TIER_B_FULL_RESYNC_QUEUED: "analyze.tierB.full_resync_queued",
   TIER_B_EMPTY_QUEUE: "analyze.tierB.empty_queue",
   TIER_B_FILE_DROPPED_DELETED: "analyze.tierB.file_dropped_deleted",
   TIER_B_FILE_SKIPPED_LANGUAGE: "analyze.tierB.file_skipped_language",

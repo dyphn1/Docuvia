@@ -171,6 +171,10 @@ export const docuviaApi = {
           scopeId,
           MemoryKeys.TIER_B_COMMIT_CAP,
         ),
+        full: docuviaMemory.get<boolean>(
+          scopeId,
+          MemoryKeys.TIER_B_FULL_RESYNC,
+        ),
         // Tier C's LLM config doubles up on the same memory keys `targetPath` mode uses (§9,
         // folded into the same `--escalate-to-lsp` run) -- optional here (unlike `targetPath`
         // mode's hard-fail-on-missing-env): a missing bridge config degrades honestly (Tier C

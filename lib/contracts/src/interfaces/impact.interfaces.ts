@@ -29,8 +29,15 @@ export interface BlastRadiusEntry {
 }
 
 export interface IImpactService {
-  /** LOW/MEDIUM/HIGH/CRITICAL derivation from a raw impacted-node count. */
-  computeRiskLevel(impactedCount: number): RiskLevel;
+  /**
+   * LOW/MEDIUM/HIGH/CRITICAL derivation from a raw impacted-node count, scaled against `store`'s
+   * current total `l2_nodes` count (typescript-cli-benchmark.md's
+   * impact-risk-thresholds-not-scaled-to-repo-size fix) -- `store` is required, not optional,
+   * matching `getBlastRadius`'s own store-first convention on this interface: a caller silently
+   * omitting the denominator would just as silently reintroduce the unscaled-absolute-count bug
+   * this fixes.
+   */
+  computeRiskLevel(store: IGraphStore, impactedCount: number): RiskLevel;
   /**
    * 1-hop blast radius (direct callers/dependents) for `target`, resolved exact-then-LIKE.
    * Undefined when `target` doesn't resolve to any node.

@@ -32,7 +32,13 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getOrInsert: vi.fn(),
       count: vi.fn(),
     },
-    files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
+    files: {
+      getAllHashes: vi.fn(),
+      upsertFile: vi.fn(),
+      markTierBProcessed: vi.fn(),
+      getTierBFileStatus: vi.fn(),
+      getTierBCoverage: vi.fn(),
+    },
     tags: {
       upsertTag: vi.fn(),
       getIdByName: vi.fn(),
@@ -111,7 +117,7 @@ describe("ImpactWorkflow.execute()", () => {
       blastRadius: [{ name: "caller", type: "module" }],
       riskLevel: "MEDIUM",
     });
-    expect(impactService.computeRiskLevel).toHaveBeenCalledWith(1);
+    expect(impactService.computeRiskLevel).toHaveBeenCalledWith(store, 1);
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
   });
@@ -138,6 +144,104 @@ describe("ImpactWorkflow.execute()", () => {
 
     expect(result).toBeNull();
     expect(store.close).toHaveBeenCalledTimes(2);
+  });
+
+  it("attaches tierBCoverage when the blast radius is empty and workspace Tier B coverage is incomplete (typescript-cli-benchmark.md §5.3/§5.7 item 2)", async () => {
+    const store = makeMockStore({
+      graph: {
+        ...makeMockStore().graph,
+        findNodeByName: vi.fn().mockReturnValue({
+          id: 1,
+          name: "target",
+          type: "module",
+          filePath: "src/target.ts",
+        }),
+      },
+      files: {
+        ...makeMockStore().files,
+        getTierBFileStatus: vi.fn().mockReturnValue({
+          lastProcessedAt: "2026-01-01",
+          lastProcessedCommitSha: "abc",
+        }),
+        getTierBCoverage: vi
+          .fn()
+          .mockReturnValue({ totalFiles: 10, processedFiles: 3 }),
+      },
+    });
+    const openStoreSpy = vi
+      .fn<[GraphStoreOpenOptions], Promise<IGraphStore>>()
+      .mockResolvedValue(store);
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
+
+    const impactService: IImpactService = {
+      getBlastRadius: vi.fn().mockReturnValue([]),
+      computeRiskLevel: vi.fn().mockReturnValue("LOW"),
+    };
+    docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new ImpactWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("target");
+
+    expect(result).toEqual({
+      blastRadius: [],
+      riskLevel: "LOW",
+      tierBCoverage: {
+        ownFileLastProcessedAt: "2026-01-01",
+        workspaceFilesProcessed: 3,
+        workspaceFilesTotal: 10,
+      },
+    });
+  });
+
+  it("omits tierBCoverage when the blast radius is empty but workspace Tier B coverage is complete (confirmed zero, matches today's ImpactResult shape exactly)", async () => {
+    const store = makeMockStore({
+      graph: {
+        ...makeMockStore().graph,
+        findNodeByName: vi.fn().mockReturnValue({
+          id: 1,
+          name: "target",
+          type: "module",
+          filePath: "src/target.ts",
+        }),
+      },
+      files: {
+        ...makeMockStore().files,
+        getTierBFileStatus: vi.fn().mockReturnValue({
+          lastProcessedAt: "2026-01-01",
+          lastProcessedCommitSha: "abc",
+        }),
+        getTierBCoverage: vi
+          .fn()
+          .mockReturnValue({ totalFiles: 10, processedFiles: 10 }),
+      },
+    });
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+
+    const impactService: IImpactService = {
+      getBlastRadius: vi.fn().mockReturnValue([]),
+      computeRiskLevel: vi.fn().mockReturnValue("LOW"),
+    };
+    docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new ImpactWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute("target");
+
+    expect(result).toEqual({ blastRadius: [], riskLevel: "LOW" });
+    expect(result && "tierBCoverage" in result).toBe(false);
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {

@@ -119,6 +119,79 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     );
   });
 
+  it("files repo: markTierBProcessed()/getTierBFileStatus()/getTierBCoverage() round-trip", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+
+    // No `project_files` row at all yet -- undefined, not a zeroed-out status object.
+    expect(store.files.getTierBFileStatus("src/a.ts")).toBeUndefined();
+
+    // Coverage over an empty table.
+    expect(store.files.getTierBCoverage()).toEqual({
+      totalFiles: 0,
+      processedFiles: 0,
+    });
+
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/a.ts",
+      contentHash: "hash1",
+    });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/b.ts",
+      contentHash: "hash2",
+    });
+    store.files.upsertFile({
+      projectId: project.id,
+      filePath: "src/c.ts",
+      contentHash: "hash3",
+    });
+
+    // Tier A parsed the file (upsertFile), but Tier B has never touched it yet -- explicit
+    // "never processed" status, not undefined (the row exists) and not a fabricated timestamp.
+    expect(store.files.getTierBFileStatus("src/a.ts")).toEqual({
+      lastProcessedAt: null,
+      lastProcessedCommitSha: null,
+    });
+    expect(store.files.getTierBCoverage()).toEqual({
+      totalFiles: 3,
+      processedFiles: 0,
+    });
+
+    store.files.markTierBProcessed({
+      projectId: project.id,
+      filePath: "src/a.ts",
+      commitSha: "abc123",
+    });
+
+    const status = store.files.getTierBFileStatus("src/a.ts");
+    expect(status?.lastProcessedAt).not.toBeNull();
+    expect(status?.lastProcessedCommitSha).toBe("abc123");
+
+    expect(store.files.getTierBCoverage()).toEqual({
+      totalFiles: 3,
+      processedFiles: 1,
+    });
+
+    // Re-marking the same file updates rather than duplicates its row.
+    store.files.markTierBProcessed({
+      projectId: project.id,
+      filePath: "src/a.ts",
+      commitSha: "def456",
+    });
+    expect(store.files.getAllHashes()).toHaveLength(3);
+    expect(
+      store.files.getTierBFileStatus("src/a.ts")?.lastProcessedCommitSha,
+    ).toBe("def456");
+    expect(store.files.getTierBCoverage()).toEqual({
+      totalFiles: 3,
+      processedFiles: 1,
+    });
+  });
+
   it("tags repo: upsertTag()/getIdByName()/linkNodeToTag()", () => {
     const project = store.projects.insert({
       name: "demo",

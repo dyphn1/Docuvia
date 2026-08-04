@@ -94,6 +94,39 @@ describe("impactCommand", () => {
     );
   });
 
+  it("prints the Tier B incomplete-coverage warning under IMPACT_NO_DEPENDENTS when tierBCoverage is present and coverage is incomplete", async () => {
+    mockImpact.mockResolvedValue({
+      blastRadius: [],
+      riskLevel: "LOW",
+      tierBCoverage: {
+        ownFileLastProcessedAt: "2026-01-01",
+        workspaceFilesProcessed: 3,
+        workspaceFilesTotal: 10,
+      },
+    });
+
+    await impactCommand("target");
+
+    expect(ui.warn).toHaveBeenCalledWith(
+      expect.stringContaining("7 of 10 tracked file(s)"),
+    );
+    expect(ui.warn).toHaveBeenCalledWith(
+      expect.stringContaining("--escalate-to-lsp --full"),
+    );
+  });
+
+  it("does not print the Tier B incomplete-coverage warning when tierBCoverage is absent (today's exact output, regression guard)", async () => {
+    mockImpact.mockResolvedValue({
+      blastRadius: [],
+      riskLevel: "LOW",
+    });
+
+    await impactCommand("target");
+
+    expect(ui.warn).toHaveBeenCalledTimes(1);
+    expect(ui.warn).toHaveBeenCalledWith(expect.not.stringContaining("Tier B"));
+  });
+
   it("warns when no matching node is found (docuviaApi.impact() resolves null)", async () => {
     mockImpact.mockResolvedValue(null);
 

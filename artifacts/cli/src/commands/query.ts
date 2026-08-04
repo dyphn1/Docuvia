@@ -5,6 +5,7 @@ import {
   DocuviaError,
   type LocalQueryResult,
   type GraphEdgeRef,
+  type TierBCoverageHint,
   MemoryKeys,
   LogLevels,
 } from "@workspace/contracts";
@@ -41,6 +42,13 @@ const XML_TAGS = {
   CALLEE_PREFIX: '    <callee name="',
   CALLEE_MID: '" relation="',
   CALLEE_SUFFIX: '" />',
+  /** typescript-cli-benchmark.md §5.3/§5.7 item 2 -- additive "not yet Tier B-processed" hint,
+   *  only rendered where nothing would otherwise appear (empty edge list + an unconfirmed-zero
+   *  coverage hint). Deliberately a distinct, self-closing shape from `<caller>`/`<callee>` so
+   *  nothing that parses those specifically is affected. */
+  INCOMING_UNPROCESSED_PREFIX: '  <incoming tier_b_status="unprocessed" note="',
+  OUTGOING_UNPROCESSED_PREFIX: '  <outgoing tier_b_status="unprocessed" note="',
+  UNPROCESSED_SUFFIX: '" />',
 } as const;
 
 function buildPromptL2Lines(result: LocalQueryResult): string[] {
@@ -65,45 +73,76 @@ function buildPromptL2Lines(result: LocalQueryResult): string[] {
   return lines;
 }
 
-function buildPromptIncomingLines(incoming: GraphEdgeRef[]): string[] {
-  if (incoming.length === 0) return [];
-  const lines: string[] = [XML_TAGS.INCOMING_START];
-  for (const i of incoming) {
-    lines.push(
-      XML_TAGS.CALLER_PREFIX +
-        i.name +
-        XML_TAGS.CALLER_MID +
-        i.linkType +
-        XML_TAGS.CALLER_SUFFIX,
-    );
+function buildPromptIncomingLines(
+  incoming: GraphEdgeRef[],
+  coverage?: TierBCoverageHint,
+): string[] {
+  if (incoming.length > 0) {
+    const lines: string[] = [XML_TAGS.INCOMING_START];
+    for (const i of incoming) {
+      lines.push(
+        XML_TAGS.CALLER_PREFIX +
+          i.name +
+          XML_TAGS.CALLER_MID +
+          i.linkType +
+          XML_TAGS.CALLER_SUFFIX,
+      );
+    }
+    lines.push(XML_TAGS.INCOMING_END);
+    return lines;
   }
-  lines.push(XML_TAGS.INCOMING_END);
-  return lines;
+  if (
+    coverage &&
+    coverage.workspaceFilesProcessed < coverage.workspaceFilesTotal
+  ) {
+    return [
+      XML_TAGS.INCOMING_UNPROCESSED_PREFIX +
+        UI_MESSAGES.QUERY_TIER_B_INCOMING_UNPROCESSED(
+          coverage.workspaceFilesTotal - coverage.workspaceFilesProcessed,
+          coverage.workspaceFilesTotal,
+        ) +
+        XML_TAGS.UNPROCESSED_SUFFIX,
+    ];
+  }
+  return [];
 }
 
-function buildPromptOutgoingLines(outgoing: GraphEdgeRef[]): string[] {
-  if (outgoing.length === 0) return [];
-  const lines: string[] = [XML_TAGS.OUTGOING_START];
-  for (const o of outgoing) {
-    lines.push(
-      XML_TAGS.CALLEE_PREFIX +
-        o.name +
-        XML_TAGS.CALLEE_MID +
-        o.linkType +
-        XML_TAGS.CALLEE_SUFFIX,
-    );
+function buildPromptOutgoingLines(
+  outgoing: GraphEdgeRef[],
+  coverage?: TierBCoverageHint,
+): string[] {
+  if (outgoing.length > 0) {
+    const lines: string[] = [XML_TAGS.OUTGOING_START];
+    for (const o of outgoing) {
+      lines.push(
+        XML_TAGS.CALLEE_PREFIX +
+          o.name +
+          XML_TAGS.CALLEE_MID +
+          o.linkType +
+          XML_TAGS.CALLEE_SUFFIX,
+      );
+    }
+    lines.push(XML_TAGS.OUTGOING_END);
+    return lines;
   }
-  lines.push(XML_TAGS.OUTGOING_END);
-  return lines;
+  if (coverage && coverage.ownFileLastProcessedAt === null) {
+    return [
+      XML_TAGS.OUTGOING_UNPROCESSED_PREFIX +
+        UI_MESSAGES.QUERY_TIER_B_OUTGOING_UNPROCESSED +
+        XML_TAGS.UNPROCESSED_SUFFIX,
+    ];
+  }
+  return [];
 }
 
 function buildPromptContextLines(result: LocalQueryResult): string[] {
   const incoming = result.context?.incoming ?? [];
   const outgoing = result.context?.outgoing ?? [];
-  if (incoming.length === 0 && outgoing.length === 0) return [];
+  const coverage = result.context?.tierBCoverage;
+  if (incoming.length === 0 && outgoing.length === 0 && !coverage) return [];
   return [
-    ...buildPromptIncomingLines(incoming),
-    ...buildPromptOutgoingLines(outgoing),
+    ...buildPromptIncomingLines(incoming, coverage),
+    ...buildPromptOutgoingLines(outgoing, coverage),
   ];
 }
 
@@ -147,8 +186,18 @@ function printHumanL3Entries(l3s: LocalQueryResult["l3"]): void {
   }
 }
 
-function printHumanEdgeList(edges: GraphEdgeRef[], header: string): void {
-  if (edges.length === 0) return;
+function printHumanEdgeList(
+  edges: GraphEdgeRef[],
+  header: string,
+  unprocessedWarning?: string,
+): void {
+  if (edges.length === 0) {
+    if (!unprocessedWarning) return;
+    ui.section(header);
+    ui.warn(unprocessedWarning);
+    ui.log(FORMAT_MARKERS.EMPTY);
+    return;
+  }
   ui.section(header);
   ui.table(
     [
@@ -160,6 +209,37 @@ function printHumanEdgeList(edges: GraphEdgeRef[], header: string): void {
   ui.log(FORMAT_MARKERS.EMPTY);
 }
 
+/** `printHumanResults`'s incoming-direction unprocessed-warning text, split out purely to keep
+ *  that function's cyclomatic complexity under the project's ESLint budget. */
+function resolveIncomingUnprocessedWarning(
+  incomingEmpty: boolean,
+  coverage: TierBCoverageHint | undefined,
+): string | undefined {
+  if (
+    !incomingEmpty ||
+    !coverage ||
+    coverage.workspaceFilesProcessed >= coverage.workspaceFilesTotal
+  ) {
+    return undefined;
+  }
+  return UI_MESSAGES.QUERY_TIER_B_INCOMING_UNPROCESSED(
+    coverage.workspaceFilesTotal - coverage.workspaceFilesProcessed,
+    coverage.workspaceFilesTotal,
+  );
+}
+
+/** `printHumanResults`'s outgoing-direction unprocessed-warning text -- see
+ *  `resolveIncomingUnprocessedWarning`'s doc comment. */
+function resolveOutgoingUnprocessedWarning(
+  outgoingEmpty: boolean,
+  coverage: TierBCoverageHint | undefined,
+): string | undefined {
+  if (!outgoingEmpty || !coverage || coverage.ownFileLastProcessedAt !== null) {
+    return undefined;
+  }
+  return UI_MESSAGES.QUERY_TIER_B_OUTGOING_UNPROCESSED;
+}
+
 function printHumanResults(result: LocalQueryResult): void {
   ui.header(UI_MESSAGES.QUERY_CONTEXT_HEADER);
   printHumanL2Header(result);
@@ -168,8 +248,25 @@ function printHumanResults(result: LocalQueryResult): void {
 
   const incoming = result.context?.incoming ?? [];
   const outgoing = result.context?.outgoing ?? [];
-  printHumanEdgeList(incoming, UI_MESSAGES.QUERY_INCOMING_HEADER);
-  printHumanEdgeList(outgoing, UI_MESSAGES.QUERY_OUTGOING_HEADER);
+  const coverage = result.context?.tierBCoverage;
+  const incomingWarning = resolveIncomingUnprocessedWarning(
+    incoming.length === 0,
+    coverage,
+  );
+  const outgoingWarning = resolveOutgoingUnprocessedWarning(
+    outgoing.length === 0,
+    coverage,
+  );
+  printHumanEdgeList(
+    incoming,
+    UI_MESSAGES.QUERY_INCOMING_HEADER,
+    incomingWarning,
+  );
+  printHumanEdgeList(
+    outgoing,
+    UI_MESSAGES.QUERY_OUTGOING_HEADER,
+    outgoingWarning,
+  );
 
   ui.log(FORMAT_MARKERS.EMPTY);
 }

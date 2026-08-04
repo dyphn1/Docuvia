@@ -5,6 +5,7 @@ import {
   ErrorCodes,
   type ILogger,
 } from "@workspace/contracts";
+import { resolveTierBCoverageHint } from "@workspace/core";
 import { IMPACT_EVENTS, IMPACT_MESSAGES } from "./impact-messages.js";
 import { appendImpactLogLine } from "./impact-log-writer.js";
 import type { ImpactResult } from "./impact-result.js";
@@ -77,7 +78,10 @@ export class ImpactWorkflow {
         return null;
       }
 
-      const riskLevel = impactService.computeRiskLevel(blastRadius.length);
+      const riskLevel = impactService.computeRiskLevel(
+        store,
+        blastRadius.length,
+      );
       await appendImpactLogLine(workspaceRoot, {
         event: IMPACT_EVENTS.SUMMARY,
         target,
@@ -86,7 +90,24 @@ export class ImpactWorkflow {
         riskLevel,
       });
 
-      return { blastRadius, riskLevel };
+      // `impact` only ever reports the incoming/blast-radius direction -- `outgoingEmpty` is
+      // hardcoded `false` so the "own file's outgoing calls" half of the hint never applies here
+      // (see `resolveTierBCoverageHint`'s doc comment). Re-resolves the node by name (mirrors
+      // `query.service.ts`'s own "re-resolve for metadata" precedent) since `IImpactService`
+      // doesn't expose the resolved node's `filePath` today.
+      const node = store.graph.findNodeByName(target);
+      const tierBCoverage = resolveTierBCoverageHint(
+        store,
+        node?.filePath,
+        blastRadius.length === 0,
+        false,
+      );
+
+      return {
+        blastRadius,
+        riskLevel,
+        ...(tierBCoverage ? { tierBCoverage } : {}),
+      };
     } finally {
       await store.close();
     }

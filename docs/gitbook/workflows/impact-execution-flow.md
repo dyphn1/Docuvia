@@ -43,7 +43,7 @@ sequenceDiagram
         WF-->>API: null
     else found
         Svc-->>WF: blastRadius entries
-        WF->>Svc: computeRiskLevel blastRadius.length
+        WF->>Svc: computeRiskLevel store, blastRadius.length
         WF->>Log: impact.summary found true
         WF-->>API: blastRadius, riskLevel
     end

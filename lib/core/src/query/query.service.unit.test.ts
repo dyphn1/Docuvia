@@ -95,10 +95,49 @@ describe("QueryService", () => {
         targetNodeId: targetId,
         linkType: "contains",
       });
+      // Registers + marks "src/auth.ts" as Tier B-processed so both directions read as
+      // "confirmed zero" rather than "not yet processed" -- this test is about `contains`-edge
+      // filtering, not Tier B coverage (see tier-b-coverage.unit.test.ts for that).
+      store.files.upsertFile({
+        projectId,
+        filePath: "src/auth.ts",
+        contentHash: null,
+      });
+      store.files.markTierBProcessed({
+        projectId,
+        filePath: "src/auth.ts",
+        commitSha: "test-sha",
+      });
 
       expect(queryService.getContext(store, "authService")).toEqual({
         incoming: [],
         outgoing: [],
+      });
+    });
+
+    it("attaches tierBCoverage when the resolved node's own file was never Tier B-processed and workspace coverage is incomplete (typescript-cli-benchmark.md §5.3/§5.7 item 2)", () => {
+      store.graph.insertNode({
+        projectId,
+        name: "authService",
+        pathPatterns: ["src/auth.ts"],
+      });
+      // "src/auth.ts" itself has no project_files row at all (never Tier B-processed), and a
+      // second tracked file ("src/other.ts") is registered but also never processed -- so
+      // workspace-wide coverage is incomplete too.
+      store.files.upsertFile({
+        projectId,
+        filePath: "src/other.ts",
+        contentHash: null,
+      });
+
+      expect(queryService.getContext(store, "authService")).toEqual({
+        incoming: [],
+        outgoing: [],
+        tierBCoverage: {
+          ownFileLastProcessedAt: null,
+          workspaceFilesProcessed: 0,
+          workspaceFilesTotal: 1,
+        },
       });
     });
   });
@@ -128,6 +167,19 @@ describe("QueryService", () => {
         sourceNodeId: callerId,
         targetNodeId: targetId,
         linkType: "calls",
+      });
+      // "src/auth.ts" (the target's own file) must be registered + marked Tier B-processed so
+      // the empty `outgoing` list below reads as "confirmed zero" rather than "not yet
+      // processed" -- this test is about node-ref resolution, not Tier B coverage.
+      store.files.upsertFile({
+        projectId,
+        filePath: "src/auth.ts",
+        contentHash: null,
+      });
+      store.files.markTierBProcessed({
+        projectId,
+        filePath: "src/auth.ts",
+        commitSha: "test-sha",
       });
 
       const result = queryService.query(store, "authService");

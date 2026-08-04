@@ -108,7 +108,13 @@ function makeMockStore(): IGraphStore {
         ),
       count: vi.fn().mockImplementation(() => (projectRow ? 1 : 0)),
     },
-    files: { getAllHashes: vi.fn().mockReturnValue([]), upsertFile: vi.fn() },
+    files: {
+      getAllHashes: vi.fn().mockReturnValue([]),
+      upsertFile: vi.fn(),
+      markTierBProcessed: vi.fn(),
+      getTierBFileStatus: vi.fn(),
+      getTierBCoverage: vi.fn(),
+    },
     tags: {
       upsertTag: vi.fn(),
       getIdByName: vi.fn(),

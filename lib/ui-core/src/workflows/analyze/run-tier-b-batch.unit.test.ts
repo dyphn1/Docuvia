@@ -36,9 +36,21 @@ interface FakeStore {
   meta: Map<string, string>;
   links: NodeLinkRow[];
   nodeKeyToId: Map<string, number>;
+  projectFileHashes: Array<{ filePath: string; contentHash: string | null }>;
+  tierBProcessed: Array<{
+    projectId: number;
+    filePath: string;
+    commitSha: string | null;
+  }>;
 }
 
-function makeStore(nodeKeys: string[] = []): {
+function makeStore(
+  nodeKeys: string[] = [],
+  projectFileHashes: Array<{
+    filePath: string;
+    contentHash: string | null;
+  }> = [],
+): {
   store: IGraphStore;
   fake: FakeStore;
 } {
@@ -46,10 +58,25 @@ function makeStore(nodeKeys: string[] = []): {
     meta: new Map(),
     links: [],
     nodeKeyToId: new Map(nodeKeys.map((key, i) => [key, i + 1])),
+    projectFileHashes,
+    tierBProcessed: [],
   };
   let nextLinkId = 1;
 
   const store = {
+    projects: {
+      getFirst: () => ({ id: 1 }),
+    },
+    files: {
+      getAllHashes: () => fake.projectFileHashes,
+      markTierBProcessed: (input: {
+        projectId: number;
+        filePath: string;
+        commitSha: string | null;
+      }) => {
+        fake.tierBProcessed.push(input);
+      },
+    },
     meta: {
       get: (key: string) => fake.meta.get(key),
       set: (key: string, value: string) => {
@@ -478,6 +505,150 @@ describe("runTierBBatch() -- edge application, pending finalize staging (§8d, �
 
     const fs = await import("node:fs");
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+});
+
+describe("runTierBBatch() -- full-resync flag and Tier B processed-at stamping (typescript-cli-benchmark.md §5.3/§5.7 items 1-2)", () => {
+  async function makeWorkspace(): Promise<string> {
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const dir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-full-test-"),
+    );
+    fs.writeFileSync(path.join(dir, "a.ts"), "export function foo() {}\n");
+    fs.writeFileSync(path.join(dir, "b.ts"), "export function bar() {}\n");
+    fs.writeFileSync(path.join(dir, "c.ts"), "export function baz() {}\n");
+    return dir;
+  }
+
+  it("full: true dispatches every store.files.getAllHashes() file, not just the pre-queued ones", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store } = makeStore(
+      [],
+      [
+        { filePath: "a.ts", contentHash: "hash-a" },
+        { filePath: "b.ts", contentHash: "hash-b" },
+        { filePath: "c.ts", contentHash: "hash-c" },
+      ],
+    );
+    // Only "a.ts" is pre-queued -- "full: true" must still dispatch "b.ts"/"c.ts" too.
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    const resolveEdges = vi.fn().mockResolvedValue({
+      edges: [],
+      filesProcessed: ["a.ts", "b.ts", "c.ts"],
+      filesFailed: [],
+    });
+    registerProvider(
+      makeProvider(async () => ({ available: true }), resolveEdges),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+      full: true,
+    });
+
+    expect(result.filesQueued).toBe(3);
+    expect(resolveEdges).toHaveBeenCalledTimes(1);
+    expect(resolveEdges.mock.calls[0][0].sort()).toEqual([
+      "a.ts",
+      "b.ts",
+      "c.ts",
+    ]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("full: false/undefined is byte-identical to today's behavior -- only pre-queued files are dispatched (regression guard)", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store } = makeStore(
+      [],
+      [
+        { filePath: "a.ts", contentHash: "hash-a" },
+        { filePath: "b.ts", contentHash: "hash-b" },
+        { filePath: "c.ts", contentHash: "hash-c" },
+      ],
+    );
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    const resolveEdges = vi.fn().mockResolvedValue({
+      edges: [],
+      filesProcessed: ["a.ts"],
+      filesFailed: [],
+    });
+    registerProvider(
+      makeProvider(async () => ({ available: true }), resolveEdges),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(result.filesQueued).toBe(1);
+    expect(resolveEdges).toHaveBeenCalledTimes(1);
+    expect(resolveEdges.mock.calls[0][0]).toEqual(["a.ts"]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("markTierBProcessed is called once per outcome.filesProcessed entry, with the batch's resolved headSha -- never for a failed/timed-out file", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store, fake } = makeStore(["a.ts#foo", "b.ts#bar"], []);
+    appendTierBQueueEntries(store, [
+      { file: "a.ts", commitSha: HEAD_SHA },
+      { file: "b.ts", commitSha: HEAD_SHA },
+    ]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [],
+          filesProcessed: ["a.ts"],
+          filesFailed: [{ file: "b.ts", reason: "server choked" }],
+        }),
+      ),
+    );
+
+    await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(fake.tierBProcessed).toEqual([
+      { projectId: 1, filePath: "a.ts", commitSha: HEAD_SHA },
+    ]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("does not call markTierBProcessed for any file when nothing was actually processed (e.g. the empty-queue no-op path)", async () => {
+    const { store, fake } = makeStore([], []);
+
+    await runTierBBatch({
+      workspaceRoot: "/workspace",
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(fake.tierBProcessed).toEqual([]);
   });
 });
 

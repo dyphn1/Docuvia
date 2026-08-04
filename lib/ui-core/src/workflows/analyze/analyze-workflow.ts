@@ -65,6 +65,10 @@ export class AnalyzeWorkflow {
       escalateToLsp?: boolean;
       lspProviderConfig?: EdgeResolutionProviderConfig;
       tierBCommitCap?: number;
+      /** `analyze --escalate-to-lsp --full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) --
+       *  pre-populates `tierBQueue` with every currently-tracked file before the batch drains it.
+       *  Ignored outside `escalateToLsp`. */
+      full?: boolean;
       force?: boolean;
       /** Tier C's §9f throttling overrides -- folded into the same `--escalate-to-lsp` run
        *  (phase1-decision-integration.md §9d). `llmBaseUrl`/`llmApiKey`/`llmModel` above double as
@@ -659,7 +663,12 @@ function buildTierBOnlyDeps(
   options: AnalyzeWorkflowOptions | undefined,
 ): Pick<
   TierBBatchDeps,
-  "providerConfig" | "commitCap" | "llmBaseUrl" | "llmApiKey" | "llmModel"
+  | "providerConfig"
+  | "commitCap"
+  | "llmBaseUrl"
+  | "llmApiKey"
+  | "llmModel"
+  | "full"
 > {
   return {
     providerConfig: options?.lspProviderConfig,
@@ -667,6 +676,7 @@ function buildTierBOnlyDeps(
     llmBaseUrl: options?.llmBaseUrl,
     llmApiKey: options?.llmApiKey,
     llmModel: options?.llmModel,
+    full: options?.full,
   };
 }
 

@@ -105,6 +105,7 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
   const targetPath = ctx.parser.getPositional(0);
   const escalateToLsp = ctx.parser.hasFlag(CLI_FLAGS.ESCALATE_TO_LSP);
   const fallbackAst = ctx.parser.hasFlag(CLI_FLAGS.FALLBACK_AST);
+  const full = ctx.parser.hasFlag(CLI_FLAGS.FULL);
   const force =
     ctx.parser.hasFlag(CLI_FLAGS.FORCE) ||
     ctx.parser.hasFlag(CLI_FLAGS.FORCE_SHORT);
@@ -117,6 +118,7 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
     isInteractive: ctx.isInteractive,
     force,
     lspTimeoutMs,
+    full,
   });
 }
 

@@ -6,6 +6,7 @@ import {
   RiskLevels,
   type BlastRadiusEntry,
   type RiskLevel,
+  type TierBCoverageHint,
   MemoryKeys,
   LogLevels,
 } from "@workspace/contracts";
@@ -40,11 +41,24 @@ function printEntryWhy(entryName: string, why: BlastRadiusEntry["why"]): void {
 function printBlastRadius(
   blastRadius: BlastRadiusEntry[],
   riskLevel: RiskLevel,
+  tierBCoverage?: TierBCoverageHint,
 ): void {
   ui.header(UI_MESSAGES.IMPACT_BLAST_RADIUS_HEADER);
 
   if (blastRadius.length === 0) {
     ui.warn(UI_MESSAGES.IMPACT_NO_DEPENDENTS);
+    if (
+      tierBCoverage &&
+      tierBCoverage.workspaceFilesProcessed < tierBCoverage.workspaceFilesTotal
+    ) {
+      ui.warn(
+        UI_MESSAGES.IMPACT_TIER_B_INCOMPLETE(
+          tierBCoverage.workspaceFilesTotal -
+            tierBCoverage.workspaceFilesProcessed,
+          tierBCoverage.workspaceFilesTotal,
+        ),
+      );
+    }
   } else {
     ui.table(
       [
@@ -125,7 +139,11 @@ export async function impactCommand(
         FORMAT_MARKERS.DOUBLE_QUOTE,
     );
     ui.log("");
-    printBlastRadius(result.blastRadius, result.riskLevel);
+    printBlastRadius(
+      result.blastRadius,
+      result.riskLevel,
+      result.tierBCoverage,
+    );
   } catch (error: unknown) {
     const message =
       error instanceof DocuviaError || error instanceof Error

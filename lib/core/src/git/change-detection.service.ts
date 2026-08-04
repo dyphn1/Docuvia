@@ -39,7 +39,7 @@ export class ChangeDetectionService implements IChangeDetectionService {
       }
     }
 
-    let riskLevel = this.impactService.computeRiskLevel(totalImpacted);
+    let riskLevel = this.impactService.computeRiskLevel(store, totalImpacted);
 
     // A huge diff is inherently riskier to review even if individually low-impact.
     if (

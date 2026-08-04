@@ -25,6 +25,7 @@ import {
 import { MAX_ANALYZE_FILES } from "./decision-extraction.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
+import { runTierBBatch } from "./run-tier-b-batch.js";
 
 // The dispatcher logic (fast-path / empty-graph / fallback-resolution-order) is
 // AnalyzeWorkflow.executeAutoMode()'s own responsibility; runFullIngestion/runDeltaIngestion's
@@ -52,6 +53,25 @@ vi.mock("./run-delta-ingestion.js", () => ({
     filesFailed: 0,
     filesSkippedOversized: 0,
     tierBQueued: 0,
+  }),
+}));
+// `full: true`'s threading into runTierBBatch's deps is a dispatch-level concern
+// (executeTierBBatch()'s own responsibility); runTierBBatch's internal behavior is covered by
+// its own dedicated unit tests (run-tier-b-batch.unit.test.ts). Mocking it here isolates the
+// threading assertion from the real (heavier) implementation.
+vi.mock("./run-tier-b-batch.js", () => ({
+  runTierBBatch: vi.fn().mockResolvedValue({
+    kind: "tierBBatch",
+    headSha: "head",
+    filesQueued: 0,
+    filesDroppedDeleted: 0,
+    filesSkippedLanguage: 0,
+    filesProcessed: 0,
+    filesFailed: 0,
+    edgesApplied: 0,
+    edgesPruned: 0,
+    degraded: false,
+    commitCapExceeded: false,
   }),
 }));
 
@@ -114,7 +134,13 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getOrInsert: vi.fn(),
       count: vi.fn(),
     },
-    files: { getAllHashes: vi.fn(), upsertFile: vi.fn() },
+    files: {
+      getAllHashes: vi.fn(),
+      upsertFile: vi.fn(),
+      markTierBProcessed: vi.fn(),
+      getTierBFileStatus: vi.fn(),
+      getTierBCoverage: vi.fn(),
+    },
     tags: {
       upsertTag: vi.fn(),
       getIdByName: vi.fn(),
@@ -824,6 +850,56 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
     const errorLine = lines.find((l) => l.event === "analyze.auto.error");
     expect(errorLine).toBeDefined();
     expect(errorLine!.message).toBe("Failed to open the local database");
+  });
+});
+
+describe("AnalyzeWorkflow.execute() — Tier B batch (escalateToLsp)", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-analyze-workflow-tierb-test-"),
+    );
+    resetFactoryForTests();
+    vi.mocked(runTierBBatch).mockClear();
+  });
+
+  afterEach(() => {
+    docuviaFactory.reset();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("threads options.full: true through to runTierBBatch's deps (typescript-cli-benchmark.md §5.3/§5.7 item 1)", async () => {
+    registerDefaultPersistenceMocks();
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    await new AnalyzeWorkflow(tmpDir, createMockLogger(), {
+      escalateToLsp: true,
+      full: true,
+    }).execute();
+
+    expect(runTierBBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ full: true }),
+    );
+  });
+
+  it("options.full omitted threads through as undefined -- byte-identical to today's behavior (regression guard)", async () => {
+    registerDefaultPersistenceMocks();
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () =>
+      makeMockKnowledgeGit(),
+    );
+    docuviaFactory.lock();
+
+    await new AnalyzeWorkflow(tmpDir, createMockLogger(), {
+      escalateToLsp: true,
+    }).execute();
+
+    expect(runTierBBatch).toHaveBeenCalledWith(
+      expect.objectContaining({ full: undefined }),
+    );
   });
 });
 

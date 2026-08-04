@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/hydration.service.ts#isStale
+id: lib/core/src/git/hydration.service.ts#HydrationService.isStale
 type: symbol
 name: isStale
 filePath: lib/core/src/git/hydration.service.ts

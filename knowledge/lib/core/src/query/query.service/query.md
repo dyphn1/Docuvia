@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/query/query.service.ts#query
+id: lib/core/src/query/query.service.ts#QueryService.query
 type: symbol
 name: query
 filePath: lib/core/src/query/query.service.ts

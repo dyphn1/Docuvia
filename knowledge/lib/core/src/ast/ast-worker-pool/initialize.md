@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker-pool.ts#initialize
+id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerPool.initialize
 type: symbol
 name: initialize
 filePath: lib/core/src/ast/ast-worker-pool.ts

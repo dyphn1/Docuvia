@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/impact/impact.service.ts#getBlastRadius
+id: lib/core/src/impact/impact.service.ts#ImpactService.getBlastRadius
 type: symbol
 name: getBlastRadius
 filePath: lib/core/src/impact/impact.service.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker-pool.ts#constructor@L146
+id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerPool.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/ast/ast-worker-pool.ts

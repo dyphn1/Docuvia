@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker-pool.ts#parse
+id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerPool.parse
 type: symbol
 name: parse
 filePath: lib/core/src/ast/ast-worker-pool.ts

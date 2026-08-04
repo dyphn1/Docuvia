@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#executeAutoMode
+id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#AnalyzeWorkflow.executeAutoMode
 type: symbol
 name: executeAutoMode
 filePath: lib/ui-core/src/workflows/analyze/analyze-workflow.ts

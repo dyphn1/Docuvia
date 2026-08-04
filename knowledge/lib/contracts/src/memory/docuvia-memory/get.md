@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/memory/docuvia-memory.ts#get
+id: lib/contracts/src/memory/docuvia-memory.ts#DocuviaMemory.get
 type: symbol
 name: get
 filePath: lib/contracts/src/memory/docuvia-memory.ts

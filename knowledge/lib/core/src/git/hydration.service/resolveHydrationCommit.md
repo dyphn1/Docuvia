@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/hydration.service.ts#resolveHydrationCommit
+id: lib/core/src/git/hydration.service.ts#HydrationService.resolveHydrationCommit
 type: symbol
 name: resolveHydrationCommit
 filePath: lib/core/src/git/hydration.service.ts

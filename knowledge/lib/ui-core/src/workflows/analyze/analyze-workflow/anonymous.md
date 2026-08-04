@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#anonymous@L651
+id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/analyze-workflow.ts

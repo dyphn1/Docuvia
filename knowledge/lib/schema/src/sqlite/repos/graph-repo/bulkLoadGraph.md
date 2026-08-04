@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/graph-repo.ts#bulkLoadGraph
+id: lib/schema/src/sqlite/repos/graph-repo.ts#GraphNodesRepo.bulkLoadGraph
 type: symbol
 name: bulkLoadGraph
 filePath: lib/schema/src/sqlite/repos/graph-repo.ts

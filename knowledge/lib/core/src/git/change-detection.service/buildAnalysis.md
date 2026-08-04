@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/change-detection.service.ts#buildAnalysis
+id: lib/core/src/git/change-detection.service.ts#ChangeDetectionService.buildAnalysis
 type: symbol
 name: buildAnalysis
 filePath: lib/core/src/git/change-detection.service.ts

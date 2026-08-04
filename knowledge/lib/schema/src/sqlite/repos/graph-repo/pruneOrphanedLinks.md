@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/graph-repo.ts#pruneOrphanedLinks
+id: lib/schema/src/sqlite/repos/graph-repo.ts#GraphNodesRepo.pruneOrphanedLinks
 type: symbol
 name: pruneOrphanedLinks
 filePath: lib/schema/src/sqlite/repos/graph-repo.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/graph-repo.ts#findNodesForChangedFiles
+id: lib/schema/src/sqlite/repos/graph-repo.ts#GraphNodesRepo.findNodesForChangedFiles
 type: symbol
 name: findNodesForChangedFiles
 filePath: lib/schema/src/sqlite/repos/graph-repo.ts

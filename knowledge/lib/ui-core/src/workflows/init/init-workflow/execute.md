@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/init/init-workflow.ts#execute
+id: lib/ui-core/src/workflows/init/init-workflow.ts#InitWorkflow.execute
 type: symbol
 name: execute
 filePath: lib/ui-core/src/workflows/init/init-workflow.ts

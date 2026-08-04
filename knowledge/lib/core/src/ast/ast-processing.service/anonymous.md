@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-processing.service.ts#anonymous
+id: lib/core/src/ast/ast-processing.service.ts#AstProcessingService.anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/ast/ast-processing.service.ts

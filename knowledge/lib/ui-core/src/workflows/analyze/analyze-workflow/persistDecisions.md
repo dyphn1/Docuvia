@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#persistDecisions
+id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#AnalyzeWorkflow.persistDecisions
 type: symbol
 name: persistDecisions
 filePath: lib/ui-core/src/workflows/analyze/analyze-workflow.ts

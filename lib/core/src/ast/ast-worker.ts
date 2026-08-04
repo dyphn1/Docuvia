@@ -115,6 +115,26 @@ function getRegistry(): Promise<LanguageRegistry> {
   return registryPromise;
 }
 
+// Worker-lifetime cache for loaded tree-sitter grammars, keyed by the resolved wasmPath
+// (deterministic per language -- see resolveWasmPath()). Language.load() is a real WASM
+// dynamic-library load (WebAssembly.instantiate + relocation into the shared runtime's
+// Table/Memory), not a cheap call -- reloading the same grammar per file (the pre-existing
+// behavior) is pure waste once a worker has already loaded it once. Mirrors registryPromise's
+// own memoization shape immediately above. web-tree-sitter's Language class has no
+// delete()/dispose method (verified against the installed 0.25.10 type defs), so there is
+// nothing to release even if this cache were bounded -- see
+// docs/ai_plans/implement_wasm-language-load-cache.md §2.1 for the full check.
+const languageCache = new Map<string, Promise<Language>>();
+
+function getLanguage(wasmPath: string): Promise<Language> {
+  let cached = languageCache.get(wasmPath);
+  if (!cached) {
+    cached = Language.load(wasmPath);
+    languageCache.set(wasmPath, cached);
+  }
+  return cached;
+}
+
 /**
  * Re-exported for backward compatibility (existing importer: `ast-worker.fixture.unit.test.ts`)
  * — the real implementation moved to `resolve-wasm-path.ts` so it can also be imported from the
@@ -637,7 +657,7 @@ function parseAndExtract(
  * short-circuiting with an empty-but-successful result (plus an explanatory decision note) when
  * no provider is registered for the extension or its wasm grammar can't be located on disk.
  */
-async function buildParseResponse(
+export async function buildParseResponse(
   request: AstParseRequest,
 ): Promise<AstParseResponse> {
   if (!parserInitialized) {
@@ -684,7 +704,7 @@ async function buildParseResponse(
     };
   }
 
-  const langInstance = await Language.load(wasmPath);
+  const langInstance = await getLanguage(wasmPath);
   const data = parseAndExtract(
     request.code,
     provider,

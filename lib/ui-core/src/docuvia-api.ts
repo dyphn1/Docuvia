@@ -263,12 +263,16 @@ export const docuviaApi = {
     return new SnapshotWorkflow(workspaceRoot, logger).execute();
   },
 
-  async hydrate(scopeId: string, logger: ILogger): Promise<HydrateResult> {
+  async hydrate(
+    scopeId: string,
+    logger: ILogger,
+    options?: { force?: boolean },
+  ): Promise<HydrateResult> {
     const workspaceRoot = requireMemory<string>(
       scopeId,
       MemoryKeys.WORKSPACE_ROOT,
     );
-    return new HydrateWorkflow(workspaceRoot, logger).execute();
+    return new HydrateWorkflow(workspaceRoot, logger).execute(options);
   },
 
   async syncKnowledge(

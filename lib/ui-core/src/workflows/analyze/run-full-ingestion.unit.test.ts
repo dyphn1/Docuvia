@@ -265,7 +265,7 @@ describe("runFullIngestion()", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("seeds a project row, runs discovery -> parse -> persist -> markSynced -> knowledge-branch pack in that order", async () => {
+  it("seeds a project row, runs discovery -> parse -> persist -> knowledge-branch pack -> markSynced in that order", async () => {
     const git = makeMockGitProvider();
 
     await runFullIngestion({
@@ -278,8 +278,8 @@ describe("runFullIngestion()", () => {
     expect(callOrder).toEqual([
       "discoverFiles",
       "processFiles",
-      "markSynced",
       "packSnapshotToKnowledgeBranch",
+      "markSynced",
     ]);
     expect(store.projects.getOrInsert).toHaveBeenCalled();
   });
@@ -357,7 +357,10 @@ describe("runFullIngestion()", () => {
       git,
     });
 
-    expect(store.meta.set).not.toHaveBeenCalled();
+    expect(store.meta.set).not.toHaveBeenCalledWith(
+      GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+      expect.anything(),
+    );
   });
 
   it("reports projectType/suggestedTags (the old config-scan output) plus file counts", async () => {

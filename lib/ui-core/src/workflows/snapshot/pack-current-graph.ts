@@ -48,7 +48,15 @@ export async function packCurrentGraphOntoKnowledgeBranch(
 
     await writeL3Cards(tempDir, store, l2Rows, linkRows);
 
+    await store.withWriteLock(() => {
+      store.meta.set(GitConstants.META_KEY_KNOWLEDGE_PACK_PENDING, "true");
+    });
+
     await knowledgeGit.packSnapshotToKnowledgeBranch(workspaceRoot, tempDir);
+
+    await store.withWriteLock(() => {
+      store.meta.set(GitConstants.META_KEY_KNOWLEDGE_PACK_PENDING, "");
+    });
 
     return renderResult;
   } finally {

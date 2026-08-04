@@ -15,6 +15,15 @@ import { importL3CardsFromKnowledgeBranch } from "./l3-import.service.js";
 const KNOWLEDGE_LOG_SCAN_LIMIT = 5000;
 /** Bounds the source-HEAD ancestry walk during nearest-ancestor resolution. */
 const SOURCE_ANCESTRY_WALK_LIMIT = 2000;
+/** Below this many current nodes, the shrink guard never triggers -- a tiny/test-scale graph
+ *  swinging in size between hydrations is normal and low-stakes. Unvalidated; tune if real
+ *  usage shows it's off (matches this file's own DEFAULT_TIER_B_COMMIT_CAP_BYTES precedent for
+ *  an honestly-unvalidated heuristic constant). */
+const MIN_NODES_FOR_SHRINK_GUARD = 50;
+/** Refuses an automatic (non-force) hydrate that would drop total node count below this
+ *  fraction of what's already in local.db. Unvalidated; a >90% reduction (this session's
+ *  reported case) is nowhere near this threshold either way. */
+const SHRINK_GUARD_MAX_RATIO = 0.5;
 
 interface RenderedNode {
   id: string;
@@ -115,6 +124,7 @@ export class HydrationService implements IHydrationService {
     cwd: string,
     store: IGraphStore,
     branchName: string = GitConstants.KNOWLEDGE_ROOT,
+    options?: { force?: boolean },
   ): Promise<HydrationResult> {
     const knowledgeSha = await this.resolveHydrationCommit(cwd, branchName);
     if (!knowledgeSha) {
@@ -151,6 +161,25 @@ export class HydrationService implements IHydrationService {
     const nodes = parseNodesJsonl(nodesJsonl);
     const edges = parseEdgesJsonl(edgesJsonl);
 
+    const force = options?.force ?? false;
+    if (!force) {
+      const refusal = this.checkDestructiveRebuildGuard(store, nodes.length);
+      if (refusal) {
+        this.logger.warn(refusal.message, {
+          knowledgeSha,
+          incomingNodes: nodes.length,
+        });
+        return {
+          hydrated: false,
+          refused: true,
+          refusalReason: refusal.reason,
+          nodesLoaded: 0,
+          edgesLoaded: 0,
+          edgesDropped: 0,
+        };
+      }
+    }
+
     const bulkResult = await store.withWriteLock(async () => {
       const loaded = store.graph.bulkLoadGraph({
         projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
@@ -175,6 +204,43 @@ export class HydrationService implements IHydrationService {
       ...bulkResult,
     });
     return { hydrated: true, knowledgeSha, ...bulkResult };
+  }
+
+  /**
+   * Same-workspace destructive-rebuild guard (2026-08 vscode-scale data-loss finding): `hydrate()`
+   * is a rebuild-not-upsert per STOR-002, which is safe for cross-clone staleness (a different
+   * clone's local.db legitimately catching up to a git branch someone else advanced) but unsafe
+   * when *this* local.db's own most recent knowledge-branch write attempt hasn't been confirmed,
+   * or when the incoming graph is a catastrophic reduction from what's already here -- either can
+   * mean the resolved git commit is stale/corrupt/incomplete relative to strictly-newer local
+   * data, not genuinely newer. Returns `undefined` (safe to proceed) unless a guard trips.
+   */
+  private checkDestructiveRebuildGuard(
+    store: IGraphStore,
+    incomingNodeCount: number,
+  ):
+    | { reason: "pending-local-write" | "catastrophic-shrink"; message: string }
+    | undefined {
+    if (store.meta.get(GitConstants.META_KEY_KNOWLEDGE_PACK_PENDING)) {
+      return {
+        reason: "pending-local-write",
+        message: GitMessages.HYDRATE_REFUSED_PENDING_WRITE,
+      };
+    }
+    const currentNodes = store.graph.count().l2Nodes;
+    if (
+      currentNodes >= MIN_NODES_FOR_SHRINK_GUARD &&
+      incomingNodeCount < currentNodes * SHRINK_GUARD_MAX_RATIO
+    ) {
+      return {
+        reason: "catastrophic-shrink",
+        message: GitMessages.hydrateRefusedCatastrophicShrink(
+          currentNodes,
+          incomingNodeCount,
+        ),
+      };
+    }
+    return undefined;
   }
 
   public async isStale(

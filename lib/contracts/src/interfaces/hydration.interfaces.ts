@@ -9,6 +9,11 @@ export interface HydrationResult {
   nodesLoaded: number;
   edgesLoaded: number;
   edgesDropped: number;
+  /** Set only when hydrate() deliberately declined to run its normal destructive rebuild-not-upsert
+   *  bulk load — see HydrationService.hydrate()'s guard doc comment. Absent (not `false`) in the
+   *  normal case. */
+  refused?: boolean;
+  refusalReason?: "pending-local-write" | "catastrophic-shrink";
 }
 
 /**
@@ -33,6 +38,7 @@ export interface IHydrationService {
     cwd: string,
     store: IGraphStore,
     branchName?: string,
+    options?: { force?: boolean },
   ): Promise<HydrationResult>;
   /**
    * `true` when `store`'s recorded tip sha (`store.meta`) no longer matches what

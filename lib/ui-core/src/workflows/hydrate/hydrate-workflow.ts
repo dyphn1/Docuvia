@@ -19,7 +19,7 @@ export class HydrateWorkflow {
     private readonly logger: ILogger,
   ) {}
 
-  public async execute(): Promise<HydrateResult> {
+  public async execute(options?: { force?: boolean }): Promise<HydrateResult> {
     const { workspaceRoot, logger } = this;
 
     logger.info(HYDRATE_MESSAGES.HYDRATING);
@@ -38,7 +38,12 @@ export class HydrateWorkflow {
       const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
         logger,
       });
-      const result = await hydrationService.hydrate(workspaceRoot, store);
+      const result = await hydrationService.hydrate(
+        workspaceRoot,
+        store,
+        undefined,
+        options,
+      );
 
       if (!result.hydrated) {
         await appendHydrateLogLine(workspaceRoot, {

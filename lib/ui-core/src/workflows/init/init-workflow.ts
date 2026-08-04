@@ -35,17 +35,19 @@ const INIT_SHUTDOWN_SIGNALS = ["SIGTERM", "SIGINT"] as const;
  *   2. `seedProjectRow` (idempotency check + insert against `store.projects`)
  *   3. `runDiscoveryPipeline` (parallel config/vcs/file discovery + tag merge)
  *   4. `runParseAndPersist` (AST parse + persist to the knowledge graph)
- *   4b. `hydrationService.markSynced` -- records the knowledge-tip sha so the very next read-path
- *       command's `ensureHydrated()` doesn't overwrite the graph just persisted above.
  *   4b2. `stampFullIngestionForTierB` -- stamps `lastIngestedSourceSha` and queues every just-
  *        parsed file for Tier B, so `init` stays behaviorally identical to `analyze`'s own
  *        empty-graph full-ingestion branch (`run-full-ingestion.ts`) rather than silently leaving
  *        the initial parse un-queued.
- *   4c. `packCurrentGraphOntoKnowledgeBranch` (non-fatal) -- the branch `ensureGitBranchAndHooks`
- *       just created carries an empty tree (`KnowledgeGitService.ensureKnowledgeBranch`'s doc
- *       comment); without this, it would stay empty until the next manual `docuvia snapshot` or
- *       `git push`, so a fresh clone/CI checkout or `docuvia hydrate` elsewhere would see nothing
- *       even though this workspace's `local.db` is fully populated.
+ *   4c. `packCurrentGraphOntoKnowledgeBranch` (non-fatal), then -- only once it succeeds --
+ *       `hydrationService.markSynced` (records the knowledge-tip sha so the very next read-path
+ *       command's `ensureHydrated()` doesn't overwrite the graph just persisted above; deferred
+ *       until after a successful pack so a failed pack instead leaves `HydrationService.hydrate()`'s
+ *       pending-write guard able to do its job). The branch `ensureGitBranchAndHooks` just created
+ *       carries an empty tree (`KnowledgeGitService.ensureKnowledgeBranch`'s doc comment); without
+ *       packing, it would stay empty until the next manual `docuvia snapshot` or `git push`, so a
+ *       fresh clone/CI checkout or `docuvia hydrate` elsewhere would see nothing even though this
+ *       workspace's `local.db` is fully populated.
  *   5. `initTempLifecycle` (temp-file manager construct + initialize)
  *   6. `buildInitResult` (success/partial-failure message selection)
  * bracketed by `init.start`/`init.summary` JSONL logging.
@@ -133,17 +135,6 @@ export class InitWorkflow {
       });
       logger.info(INIT_MESSAGES.PERSISTING_GRAPH);
 
-      // 4b. The graph this just built came from a direct parse, not a git hydration, so
-      // `store.meta`'s recorded knowledge-tip sha is still unset. Without this, the very next
-      // read-path command's `ensureHydrated()` would see `isStale() === true` (nothing recorded
-      // != the branch's — possibly still-empty — initial commit from step 1) and immediately
-      // overwrite the graph just persisted above with that stale/empty git snapshot. Record the
-      // current tip now so it isn't touched until an explicit `snapshot`/`hydrate` moves it.
-      const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
-        logger,
-      });
-      await hydrationService.markSynced(workspaceRoot, store);
-
       // 4b2. Stamp `lastIngestedSourceSha` and queue every just-parsed file for Tier B (LSP
       // cross-file edge resolution) -- the same step `analyze`'s own empty-graph full-ingestion
       // branch runs after its parse+persist (see stamp-full-ingestion-for-tier-b.ts's doc
@@ -163,12 +154,24 @@ export class InitWorkflow {
       // snapshot` or `git push` (pre-push hook). Non-fatal: the local graph above is already
       // intact and reportable as a successful init either way.
       logger.info(INIT_MESSAGES.SNAPSHOTTING_KNOWLEDGE_BRANCH);
+      const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
+        logger,
+      });
       try {
         await packCurrentGraphOntoKnowledgeBranch(
           workspaceRoot,
           store,
           knowledgeGit,
         );
+        // Record the post-pack resolved tip only once the pack actually landed -- recording it
+        // beforehand (this file's prior behavior) raced the pack itself: resolveHydrationCommit()
+        // resolves to a *different*, newer commit the instant a same-source-sha pack succeeds
+        // (STOR-001 point 2's "newest entry per source sha wins"), which made the very next
+        // read-path command's isStale() spuriously true even after a fully successful init. Just as
+        // importantly, *not* calling this when the pack fails leaves HydrationService.hydrate()'s
+        // pending-write guard (pack-current-graph.ts) able to do its job on the next read-path
+        // command, instead of a stale-but-present meta value doing so by accident.
+        await hydrationService.markSynced(workspaceRoot, store);
       } catch (err) {
         logger.warn(INIT_MESSAGES.SNAPSHOT_AFTER_INIT_FAILED, {
           error: err instanceof Error ? err.message : String(err),

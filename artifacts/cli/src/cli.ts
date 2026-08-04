@@ -170,7 +170,10 @@ async function handleSnapshot(ctx: CommandContext): Promise<void> {
 
 async function handleHydrate(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.HYDRATE]);
-  await hydrateCommand(ctx.workspaceRoot);
+  const force =
+    ctx.parser.hasFlag(CLI_FLAGS.FORCE) ||
+    ctx.parser.hasFlag(CLI_FLAGS.FORCE_SHORT);
+  await hydrateCommand(ctx.workspaceRoot, { force });
 }
 
 async function handleUninstall(ctx: CommandContext): Promise<void> {

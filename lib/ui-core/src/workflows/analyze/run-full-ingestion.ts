@@ -80,12 +80,6 @@ export async function runFullIngestion(deps: {
     },
   });
 
-  // Mirrors init-workflow.ts's Phase 4b comment: this graph just came from a direct parse, not a
-  // git hydration, so `store.meta`'s recorded knowledge-tip sha is still unset (or stale) —
-  // without this, the next read-path command's `ensureHydrated()` could overwrite the graph just
-  // persisted above with a stale/empty git snapshot.
-  await hydrationService.markSynced(workspaceRoot, store);
-
   // First-ever ingestion has no prior commit to diff against -- mirrors semantic-diff.ts's
   // resolvePruningLevel's "no matching old node" -> CONTRACT_CHANGED treatment, extended to
   // whole-file granularity since there's nothing to diff per-node yet. Shared with `init`'s own
@@ -109,6 +103,13 @@ export async function runFullIngestion(deps: {
       store,
       knowledgeGit,
     );
+    // Record the post-pack resolved tip only once the pack actually landed -- mirrors
+    // init-workflow.ts's step 4c reordering: recording it beforehand raced the pack itself
+    // (resolveHydrationCommit() resolves to a different, newer commit the instant a
+    // same-source-sha pack succeeds), and not calling this when the pack fails leaves
+    // HydrationService.hydrate()'s pending-write guard (pack-current-graph.ts) able to do its job
+    // on the next read-path command.
+    await hydrationService.markSynced(workspaceRoot, store);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     logger.warn(ANALYZE_MESSAGES.SNAPSHOT_AFTER_FULL_INGESTION_FAILED, {

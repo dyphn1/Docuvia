@@ -348,6 +348,12 @@ export const UI_MESSAGES = {
   HYDRATE_NODES_LOADED_LINE: (n: number) => `Nodes loaded: ${n}`,
   HYDRATE_EDGES_LOADED_LINE: (n: number) => `Edges loaded: ${n}`,
   HYDRATE_EDGES_DROPPED_LINE: (n: number) => `Dangling edges dropped: ${n}`,
+  HYDRATE_REFUSED: (reason?: string) =>
+    `Refused to hydrate: ${
+      reason === "pending-local-write"
+        ? "a knowledge-branch write from this workspace hasn't been confirmed yet"
+        : "this would replace local.db's graph with a drastically smaller one"
+    }. Local data was left untouched. Re-run with --force if you're sure.`,
 
   // Sync Knowledge Command
   SYNC_KNOWLEDGE_HEADER: "Sync Knowledge Branch",

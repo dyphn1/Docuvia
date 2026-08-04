@@ -29,11 +29,18 @@ export class SnapshotWorkflow {
     private readonly logger: ILogger,
   ) {}
 
-  private async openReadOnlyStore(openStore: any): Promise<IGraphStore> {
+  /**
+   * Opens read-write (not `readonly: true`, despite this workflow otherwise only *reading* graph
+   * rows to render): `packCurrentGraphOntoKnowledgeBranch`'s pending-write guard flag
+   * (`META_KEY_KNOWLEDGE_PACK_PENDING`, 2026-08 vscode data-loss finding) writes to this same
+   * store via `store.withWriteLock`/`store.meta.set` around the pack call, which throws "attempt
+   * to write a readonly database" against a genuinely readonly better-sqlite3 connection.
+   */
+  private async openStoreForSnapshot(openStore: any): Promise<IGraphStore> {
     try {
       return await openStore({
         dbPath: resolveDbPath(this.workspaceRoot),
-        readonly: true,
+        readonly: false,
       });
     } catch (err) {
       if (
@@ -98,7 +105,7 @@ export class SnapshotWorkflow {
       logger,
     });
 
-    const store = await this.openReadOnlyStore(openStore);
+    const store = await this.openStoreForSnapshot(openStore);
 
     try {
       const { shouldSkip, headSha } = await this.shouldSkipSnapshot(

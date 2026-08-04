@@ -358,7 +358,7 @@ describe("InitWorkflow.execute()", () => {
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
-  it("wires branch -> hook -> discovery -> AST parse -> markSynced -> knowledge-branch pack in order", async () => {
+  it("wires branch -> hook -> discovery -> AST parse -> knowledge-branch pack -> markSynced in order", async () => {
     const result = await new InitWorkflow(tmpDir, createMockLogger()).execute();
 
     expect(result.success).toBe(true);
@@ -367,8 +367,8 @@ describe("InitWorkflow.execute()", () => {
       "installPostCommitHook",
       "discoverFiles",
       "processFiles",
-      "markSynced",
       "packSnapshotToKnowledgeBranch",
+      "markSynced",
     ]);
   });
 

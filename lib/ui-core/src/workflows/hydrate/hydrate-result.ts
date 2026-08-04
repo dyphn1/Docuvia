@@ -5,4 +5,6 @@ export interface HydrateResult {
   nodesLoaded: number;
   edgesLoaded: number;
   edgesDropped: number;
+  refused?: boolean;
+  refusalReason?: "pending-local-write" | "catastrophic-shrink";
 }

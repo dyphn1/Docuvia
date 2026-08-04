@@ -125,6 +125,43 @@ describe("ensureHydrated()", () => {
     expect(store.close).toHaveBeenCalledTimes(1);
   });
 
+  it("logs a warning and does not throw when hydrate() refuses (destructive-rebuild guard tripped); store.close() still runs exactly once", async () => {
+    const store = makeMockStore();
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    const logger = createMockLogger();
+    const hydrationService: IHydrationService = {
+      resolveHydrationCommit: vi.fn(),
+      isStale: vi.fn().mockResolvedValue(true),
+      markSynced: vi.fn(),
+      hydrate: vi.fn().mockResolvedValue({
+        hydrated: false,
+        refused: true,
+        refusalReason: "catastrophic-shrink",
+        nodesLoaded: 0,
+        edgesLoaded: 0,
+        edgesDropped: 0,
+      }),
+    };
+    docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
+    docuviaFactory.lock();
+
+    await expect(
+      ensureHydrated("/workspace/demo", logger),
+    ).resolves.toBeUndefined();
+
+    expect(logger.events).toContainEqual(
+      expect.objectContaining({
+        level: "warn",
+        context: expect.objectContaining({
+          refusalReason: "catastrophic-shrink",
+        }),
+      }),
+    );
+    expect(store.close).toHaveBeenCalledTimes(1);
+  });
+
   it("silently returns (does not throw) when the store can't be opened, leaving the caller's own openStore() to surface the error", async () => {
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
       vi.fn().mockRejectedValue(new Error("ENOENT")),

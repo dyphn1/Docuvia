@@ -109,6 +109,8 @@ describe("HydrateWorkflow.execute()", () => {
     expect(hydrationService.hydrate).toHaveBeenCalledWith(
       "/workspace/demo",
       store,
+      undefined,
+      undefined,
     );
     expect(result).toEqual(hydrationResult);
     expect(store.close).toHaveBeenCalledTimes(1);

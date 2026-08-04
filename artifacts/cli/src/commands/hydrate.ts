@@ -13,7 +13,10 @@ import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 
 /** Thin caller of `docuviaApi.hydrate()` — mirrors `snapshot.ts`'s Presentation-layer responsibilities. */
-export async function hydrateCommand(cwd: string = process.cwd()) {
+export async function hydrateCommand(
+  cwd: string = process.cwd(),
+  options?: { force?: boolean },
+) {
   ui.header(UI_MESSAGES.HYDRATE_HEADER);
   const spinner = ui.spinner(UI_MESSAGES.HYDRATE_START).start();
   const scopeId = crypto.randomUUID();
@@ -26,7 +29,11 @@ export async function hydrateCommand(cwd: string = process.cwd()) {
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
 
   try {
-    const result = await docuviaApi.hydrate(scopeId, logger);
+    const result = await docuviaApi.hydrate(scopeId, logger, options);
+    if (result.refused) {
+      spinner.warn(UI_MESSAGES.HYDRATE_REFUSED(result.refusalReason));
+      return;
+    }
     if (!result.hydrated) {
       spinner.warn(UI_MESSAGES.HYDRATE_NOTHING);
       return;

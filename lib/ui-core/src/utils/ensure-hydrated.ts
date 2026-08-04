@@ -1,6 +1,9 @@
 import { docuviaFactory, TOKENS, type ILogger } from "@workspace/contracts";
 import { resolveDbPath } from "./resolve-db-path.js";
 
+const ENSURE_HYDRATED_REFUSED_MESSAGE =
+  "ensureHydrated: automatic hydration refused; local.db left untouched (see reason)";
+
 /**
  * Staleness-check auto-trigger (STOR-002) — called by every read-path workflow (`query`,
  * `impact`, `status`, `review`) before it opens its own readonly store, so a stale or missing
@@ -35,7 +38,12 @@ export async function ensureHydrated(
       logger,
     });
     if (await hydrationService.isStale(workspaceRoot, store)) {
-      await hydrationService.hydrate(workspaceRoot, store);
+      const result = await hydrationService.hydrate(workspaceRoot, store);
+      if (result.refused) {
+        logger.warn(ENSURE_HYDRATED_REFUSED_MESSAGE, {
+          refusalReason: result.refusalReason,
+        });
+      }
     }
   } finally {
     await store.close();

@@ -75,7 +75,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),
       findNodeIdByNodeKey: vi.fn(),
-      count: vi.fn(),
+      count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
       findNodesForChangedFiles: vi.fn(),
       findNodeByName: vi.fn(),
       getIncomingEdges: vi.fn(),
@@ -226,7 +226,7 @@ describe("HydrationService.hydrate()", () => {
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
         findNodeIdByNodeKey: vi.fn(),
-        count: vi.fn(),
+        count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
         findNodesForChangedFiles: vi.fn(),
         findNodeByName: vi.fn(),
         getIncomingEdges: vi.fn(),
@@ -313,7 +313,7 @@ describe("HydrationService.hydrate()", () => {
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
         findNodeIdByNodeKey,
-        count: vi.fn(),
+        count: vi.fn().mockReturnValue({ l2Nodes: 0, l3Nodes: 0 }),
         findNodesForChangedFiles: vi.fn(),
         findNodeByName: vi.fn(),
         getIncomingEdges: vi.fn(),
@@ -368,6 +368,225 @@ describe("HydrationService.hydrate()", () => {
     expect(store.graph.bulkLoadGraph).toHaveBeenCalledWith({
       projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
       nodes: [],
+      edges: [],
+    });
+  });
+});
+
+describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vscode data-loss finding)", () => {
+  it("refuses and does not call bulkLoadGraph when a knowledge-branch pack from this workspace is pending (the exact sequence left behind by a thrown pack error), even when git resolves to an empty-tree commit", async () => {
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    });
+    const store = makeMockGraphStore({
+      meta: {
+        get: vi.fn((key: string) =>
+          key === GitConstants.META_KEY_KNOWLEDGE_PACK_PENDING
+            ? "true"
+            : undefined,
+        ),
+        set: vi.fn(),
+      },
+    });
+    const service = new HydrationService(git);
+
+    const result = await service.hydrate("/workspace", store);
+
+    expect(result).toEqual({
+      hydrated: false,
+      refused: true,
+      refusalReason: "pending-local-write",
+      nodesLoaded: 0,
+      edgesLoaded: 0,
+      edgesDropped: 0,
+    });
+    expect(store.graph.bulkLoadGraph).not.toHaveBeenCalled();
+  });
+
+  it("refuses and does not call bulkLoadGraph when the incoming graph is a catastrophic reduction from local.db's current node count", async () => {
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    });
+    const store = makeMockGraphStore({
+      graph: {
+        deleteNodesForPath: vi.fn(),
+        insertNode: vi.fn(),
+        insertLink: vi.fn(),
+        findNodeIdByName: vi.fn(),
+        findNodeIdByNodeKey: vi.fn(),
+        count: vi.fn().mockReturnValue({ l2Nodes: 292770, l3Nodes: 0 }),
+        findNodesForChangedFiles: vi.fn(),
+        findNodeByName: vi.fn(),
+        getIncomingEdges: vi.fn(),
+        getOutgoingEdges: vi.fn(),
+        getIncomingRelations: vi.fn(),
+        getOutgoingRelations: vi.fn(),
+        getAllNodes: vi.fn(),
+        getAllLinks: vi.fn(),
+        bulkLoadGraph: vi
+          .fn()
+          .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
+        pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      },
+    });
+    const service = new HydrationService(git);
+
+    const result = await service.hydrate("/workspace", store);
+
+    expect(result).toEqual({
+      hydrated: false,
+      refused: true,
+      refusalReason: "catastrophic-shrink",
+      nodesLoaded: 0,
+      edgesLoaded: 0,
+      edgesDropped: 0,
+    });
+    expect(store.graph.bulkLoadGraph).not.toHaveBeenCalled();
+  });
+
+  it("does not refuse a moderate, legitimate reduction (above the shrink-guard ratio) — bulkLoadGraph is called normally", async () => {
+    const nodesJsonl = Array.from(
+      { length: 60 },
+      (_, i) =>
+        `{"id":"src/file${i}.ts","type":"file","name":"src/file${i}.ts","filePath":"src/file${i}.ts"}`,
+    ).join("\n");
+
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation((_cwd: string, _ref: string, filePath: string) =>
+          Promise.resolve(filePath === "graph/nodes.jsonl" ? nodesJsonl : ""),
+        ),
+    });
+    const store = makeMockGraphStore({
+      graph: {
+        deleteNodesForPath: vi.fn(),
+        insertNode: vi.fn(),
+        insertLink: vi.fn(),
+        findNodeIdByName: vi.fn(),
+        findNodeIdByNodeKey: vi.fn(),
+        count: vi.fn().mockReturnValue({ l2Nodes: 100, l3Nodes: 0 }),
+        findNodesForChangedFiles: vi.fn(),
+        findNodeByName: vi.fn(),
+        getIncomingEdges: vi.fn(),
+        getOutgoingEdges: vi.fn(),
+        getIncomingRelations: vi.fn(),
+        getOutgoingRelations: vi.fn(),
+        getAllNodes: vi.fn(),
+        getAllLinks: vi.fn(),
+        bulkLoadGraph: vi
+          .fn()
+          .mockReturnValue({
+            nodesLoaded: 60,
+            edgesLoaded: 0,
+            edgesDropped: 0,
+          }),
+        pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      },
+    });
+    const service = new HydrationService(git);
+
+    const result = await service.hydrate("/workspace", store);
+
+    expect(result.refused).toBeUndefined();
+    expect(store.graph.bulkLoadGraph).toHaveBeenCalled();
+  });
+
+  it("does not refuse when the current count is below MIN_NODES_FOR_SHRINK_GUARD even if incoming is 0 (small/test-scale graphs stay exempt)", async () => {
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi.fn().mockResolvedValue(undefined),
+    });
+    const store = makeMockGraphStore({
+      graph: {
+        deleteNodesForPath: vi.fn(),
+        insertNode: vi.fn(),
+        insertLink: vi.fn(),
+        findNodeIdByName: vi.fn(),
+        findNodeIdByNodeKey: vi.fn(),
+        count: vi.fn().mockReturnValue({ l2Nodes: 10, l3Nodes: 0 }),
+        findNodesForChangedFiles: vi.fn(),
+        findNodeByName: vi.fn(),
+        getIncomingEdges: vi.fn(),
+        getOutgoingEdges: vi.fn(),
+        getIncomingRelations: vi.fn(),
+        getOutgoingRelations: vi.fn(),
+        getAllNodes: vi.fn(),
+        getAllLinks: vi.fn(),
+        bulkLoadGraph: vi
+          .fn()
+          .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
+        pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      },
+    });
+    const service = new HydrationService(git);
+
+    const result = await service.hydrate("/workspace", store);
+
+    expect(result.refused).toBeUndefined();
+    expect(store.graph.bulkLoadGraph).toHaveBeenCalled();
+  });
+
+  it("options: { force: true } bypasses both the pending flag and the shrink guard — bulkLoadGraph is called and the real data loads", async () => {
+    const nodesJsonl =
+      '{"id":"src/a.ts","type":"file","name":"src/a.ts","filePath":"src/a.ts"}\n';
+
+    const git = makeMockGitProvider({
+      getBranchTipSha: vi.fn().mockResolvedValue("know-1"),
+      getCommitLog: vi.fn().mockResolvedValue([]),
+      readFileAtRef: vi
+        .fn()
+        .mockImplementation((_cwd: string, _ref: string, filePath: string) =>
+          Promise.resolve(filePath === "graph/nodes.jsonl" ? nodesJsonl : ""),
+        ),
+    });
+    const store = makeMockGraphStore({
+      meta: {
+        get: vi.fn((key: string) =>
+          key === GitConstants.META_KEY_KNOWLEDGE_PACK_PENDING
+            ? "true"
+            : undefined,
+        ),
+        set: vi.fn(),
+      },
+      graph: {
+        deleteNodesForPath: vi.fn(),
+        insertNode: vi.fn(),
+        insertLink: vi.fn(),
+        findNodeIdByName: vi.fn(),
+        findNodeIdByNodeKey: vi.fn(),
+        count: vi.fn().mockReturnValue({ l2Nodes: 292770, l3Nodes: 0 }),
+        findNodesForChangedFiles: vi.fn(),
+        findNodeByName: vi.fn(),
+        getIncomingEdges: vi.fn(),
+        getOutgoingEdges: vi.fn(),
+        getIncomingRelations: vi.fn(),
+        getOutgoingRelations: vi.fn(),
+        getAllNodes: vi.fn(),
+        getAllLinks: vi.fn(),
+        bulkLoadGraph: vi
+          .fn()
+          .mockReturnValue({ nodesLoaded: 1, edgesLoaded: 0, edgesDropped: 0 }),
+        pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      },
+    });
+    const service = new HydrationService(git);
+
+    const result = await service.hydrate("/workspace", store, undefined, {
+      force: true,
+    });
+
+    expect(result.refused).toBeUndefined();
+    expect(store.graph.bulkLoadGraph).toHaveBeenCalledWith({
+      projectId: GitConstants.DEFAULT_LOCAL_PROJECT_ID,
+      nodes: [{ nodeKey: "src/a.ts", name: "src/a.ts", filePath: "src/a.ts" }],
       edges: [],
     });
   });

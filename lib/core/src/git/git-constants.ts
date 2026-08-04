@@ -108,6 +108,14 @@ export const GitConstants = {
    * for "no pending batch" (`IMetaRepo` has no delete — `set(key, "")` is the clear).
    */
   META_KEY_TIER_B_BATCH_PENDING: "tierBBatchPending",
+  /** `docuvia_meta` key marking "a knowledge-branch pack attempt from *this* local.db is in
+   *  flight or last failed to land" — set immediately before `packSnapshotToKnowledgeBranch` is
+   *  attempted (`pack-current-graph.ts`) and cleared only once it succeeds. Read by
+   *  `HydrationService.hydrate()`'s safety guard so a same-workspace pack failure can never be
+   *  mistaken for "git has newer data I should pull" (2026-08 vscode-scale data-loss finding).
+   *  Empty-string sentinel for "not pending" — mirrors `META_KEY_TIER_B_BATCH_PENDING`'s
+   *  existing convention (`IMetaRepo` has no delete()). */
+  META_KEY_KNOWLEDGE_PACK_PENDING: "knowledgePackPending",
   /**
    * `docuvia_meta` key holding the running total of changed-file bytes (blob size at `HEAD` of
    * every file `analyze`'s delta ingestion re-parsed, summed across delta runs) since the last
@@ -340,6 +348,15 @@ export const GitMessages = {
   NOTHING_TO_HYDRATE:
     "Nothing to hydrate from yet — knowledge branch doesn't exist",
   HYDRATED_KNOWLEDGE_GRAPH: "Hydrated knowledge graph from git",
+  HYDRATE_REFUSED_PENDING_WRITE:
+    "Refused automatic hydration: a knowledge-branch write from this workspace has not been " +
+    "confirmed yet (its pack attempt is pending or failed); local.db was left untouched",
+  hydrateRefusedCatastrophicShrink: (
+    currentNodes: number,
+    incomingNodes: number,
+  ) =>
+    `Refused automatic hydration: the resolved knowledge commit has ${incomingNodes} node(s), ` +
+    `a catastrophic reduction from local.db's current ${currentNodes}; local.db was left untouched`,
   /** `IMPORTED_L3_CARDS`'s `logger.info` call (phase2-l3-distribution.md L3DIST-007) — shared by
    *  `HydrationService.hydrate()` and `sync-knowledge`'s post-reconcile import step. */
   IMPORTED_L3_CARDS: "Imported L3 decision cards from knowledge branch",

@@ -56,6 +56,22 @@ export class FetchLlmClient implements ILlmClient {
     }
   }
 
+  /**
+   * Normalizes `baseUrl` before appending `LlmApiPaths.CHAT_COMPLETIONS`, so a `baseUrl` that
+   * already ends in a trailing `/v1` (e.g. OpenRouter's documented OpenAI-SDK-compatible
+   * convention, `https://openrouter.ai/api/v1`) doesn't produce a doubled `/v1/v1/...` path.
+   * CLIProxyAPI's own convention has no `/v1` in `baseUrl` at all (see
+   * docs/gitbook/adr/llm/LLM-002-cliproxyapi-bridge.md), so this makes the client tolerate both
+   * without the caller needing to know which. Only a trailing `/v1` *segment* (the literal final
+   * path segment, not a substring anywhere else) is stripped -- `https://host/v1beta` and
+   * `https://host/apiv1` are left untouched.
+   */
+  private buildCompletionsUrl(baseUrl: string): string {
+    const trimmed = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+    const normalized = trimmed.endsWith("/v1") ? trimmed.slice(0, -3) : trimmed;
+    return `${normalized}${LlmApiPaths.CHAT_COMPLETIONS}`;
+  }
+
   private buildHeaders(
     config: LlmClientConfig,
     accept?: string,
@@ -246,7 +262,7 @@ export class FetchLlmClient implements ILlmClient {
     const config = this.getConfig();
     let res: Response;
     try {
-      res = await fetch(`${config.baseUrl}${LlmApiPaths.CHAT_COMPLETIONS}`, {
+      res = await fetch(this.buildCompletionsUrl(config.baseUrl), {
         method: LlmApiHttp.METHOD_POST,
         headers: this.buildHeaders(config),
         body: JSON.stringify(this.buildRequestBody(request, false)),
@@ -291,7 +307,7 @@ export class FetchLlmClient implements ILlmClient {
       LlmApiHttp.CONTENT_TYPE_EVENT_STREAM,
     );
     const body = JSON.stringify(this.buildRequestBody(request, true));
-    const url = `${config.baseUrl}${LlmApiPaths.CHAT_COMPLETIONS}`;
+    const url = this.buildCompletionsUrl(config.baseUrl);
     const parseErrorBody = this.parseErrorBody.bind(this);
     const fromWireChunk = this.fromWireChunk.bind(this);
 

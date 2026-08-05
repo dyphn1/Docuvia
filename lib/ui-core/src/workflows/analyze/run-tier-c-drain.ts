@@ -24,6 +24,7 @@ import type { ExtractedDecision } from "./analyze-result.js";
 import {
   TierCCandidateKinds,
   readTierCQueue,
+  recordTierCQueueFailure,
   removeTierCQueueEntries,
   type TierCQueueEntry,
 } from "./tier-c-queue.js";
@@ -69,6 +70,10 @@ export interface TierCDrainDeps {
   dailyTokenCap?: number;
   wallClockMs?: number;
   itemCap?: number;
+  /** Retry budget (consecutive per-item failures) before a poison-pill queue entry is evicted --
+   *  defaults to `GitConstants.DEFAULT_TIER_C_MAX_ITEM_FAILURES`; threaded through the same way
+   *  as `itemCap`/`wallClockMs` so tests can inject a small cap without waiting for real runs. */
+  itemFailureCap?: number;
   loadThreshold?: number;
   force?: boolean;
 }
@@ -414,6 +419,25 @@ async function handleTierCItemOutcome(
     target: entry.target,
     reason: outcome.reason,
   });
+
+  const itemFailureCap =
+    deps.itemFailureCap ?? GitConstants.DEFAULT_TIER_C_MAX_ITEM_FAILURES;
+  const { evicted, failCount } = await store.withWriteLock(() =>
+    recordTierCQueueFailure(store, entry.target, itemFailureCap),
+  );
+  if (evicted) {
+    deps.logger.warn(
+      ANALYZE_MESSAGES.TIER_C_ITEM_EVICTED(entry.kind, entry.target, failCount),
+    );
+    await appendAnalyzeLogLine(workspaceRoot, {
+      event: ANALYZE_EVENTS.TIER_C_ITEM_EVICTED,
+      kind: entry.kind,
+      target: entry.target,
+      failCount,
+      reason: outcome.reason,
+    });
+  }
+
   return outcome.reason === TierCFailReasons.BRIDGE_UNREACHABLE;
 }
 

@@ -12,6 +12,7 @@ import {
   ANALYZE_LOG_FILE_NAME,
   DOCUVIA_DIR_NAME,
   DOCUVIA_LOGS_DIR_NAME,
+  type ChatCompletionRequest,
   type IGitProvider,
   type IGraphStore,
   type ILlmClient,
@@ -22,6 +23,7 @@ import {
   readTierCQueue,
   TierCCandidateKinds,
 } from "./tier-c-queue.js";
+import { ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { writeTierCBudget } from "./tier-c-budget.js";
 import { tryAcquireTierCLock } from "./tier-c-throttle.js";
 
@@ -637,5 +639,142 @@ describe("runTierCDrain() -- system-load-high skip path (gating test 5, third na
         (l) => l.event === "analyze.tierC.skipped" && l.reason === "load-high",
       ),
     ).toBe(true);
+  });
+});
+
+describe("runTierCDrain() -- poison-pill eviction of a permanently-failing head-of-line item", () => {
+  let workspaceRoot: string;
+
+  beforeEach(() => {
+    resetFactoryForTests();
+    workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("evicts a bridge-unreachable head-of-line item after 3 runs, then makes forward progress on the next entry", async () => {
+    const { store } = makeStore(["src/a.ts", "src/b.ts"]);
+    const entryA = {
+      kind: TierCCandidateKinds.COMMIT_MESSAGE,
+      target: "sha-a",
+      commitSha: "sha-a",
+      message: "feat: always fails, always the same reason",
+    };
+    const entryB = {
+      kind: TierCCandidateKinds.COMMIT_MESSAGE,
+      target: "sha-b",
+      commitSha: "sha-b",
+      message: "feat: should eventually be reached and processed",
+    };
+    appendTierCQueueEntries(store, [entryA, entryB]);
+    const git = makeGit({
+      getFilesChangedByCommit: vi
+        .fn()
+        .mockImplementation(async (_root: string, sha: string) =>
+          sha === "sha-a" ? ["src/a.ts"] : ["src/b.ts"],
+        ),
+    });
+    registerLlmClient({
+      initialize: vi.fn(),
+      chatCompletion: vi
+        .fn()
+        .mockImplementation(async (req: ChatCompletionRequest) => {
+          const userMessage = req.messages[1].content ?? "";
+          if (userMessage.includes(entryA.message)) {
+            throw new DocuviaError(
+              ErrorCodes.LLM_CHAT_COMPLETION_FAILED,
+              "connection refused",
+            );
+          }
+          return {
+            id: "chatcmpl-1",
+            model: "test-model",
+            choices: [
+              {
+                index: 0,
+                finishReason: "stop",
+                message: {
+                  role: "assistant",
+                  content: JSON.stringify([
+                    {
+                      title: "Decision",
+                      nodeType: "decision",
+                      content: "Because reasons.",
+                      confidence: 0.8,
+                    },
+                  ]),
+                },
+              },
+            ],
+          };
+        }),
+      streamChatCompletion: vi.fn(),
+      checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+    });
+
+    const runDeps = () =>
+      baseDeps({ workspaceRoot, store, git, logger: createMockLogger() });
+
+    // Run 1: entry A fails (bridge-unreachable), stops the loop before entry B is ever attempted --
+    // this is the exact head-of-line block the fix targets. failCount is now 1, still queued.
+    const run1Deps = runDeps();
+    const result1 = await runTierCDrain(run1Deps);
+    expect(result1.tierCFailed).toBe(1);
+    expect(result1.tierCProcessed).toBe(0);
+    expect(readTierCQueue(store)).toEqual([
+      { ...entryA, failCount: 1 },
+      entryB,
+    ]);
+
+    // Run 2: same failure, failCount now 2, still below the default cap of 3 -- still queued.
+    const run2Deps = runDeps();
+    const result2 = await runTierCDrain(run2Deps);
+    expect(result2.tierCFailed).toBe(1);
+    expect(readTierCQueue(store)).toEqual([
+      { ...entryA, failCount: 2 },
+      entryB,
+    ]);
+
+    // Run 3: failCount reaches 3 (the default DEFAULT_TIER_C_MAX_ITEM_FAILURES) -- entry A is
+    // evicted, logged both to the console logger and the JSONL log. Entry B is still untouched
+    // (the loop still stops on the bridge-unreachable outcome, regardless of eviction).
+    const run3Logger = createMockLogger();
+    const run3Deps = baseDeps({
+      workspaceRoot,
+      store,
+      git,
+      logger: run3Logger,
+    });
+    const result3 = await runTierCDrain(run3Deps);
+    expect(result3.tierCFailed).toBe(1);
+    expect(readTierCQueue(store)).toEqual([entryB]);
+    expect(
+      run3Logger.events.some(
+        (e) =>
+          e.message ===
+          ANALYZE_MESSAGES.TIER_C_ITEM_EVICTED(entryA.kind, entryA.target, 3),
+      ),
+    ).toBe(true);
+    const run3Lines = readAnalyzeLogLines(workspaceRoot);
+    expect(
+      run3Lines.some(
+        (l) =>
+          l.event === "analyze.tierC.item_evicted" &&
+          l.target === entryA.target &&
+          l.failCount === 3,
+      ),
+    ).toBe(true);
+
+    // Run 4: with the poison-pill gone, the drain reaches entry B for the first time and
+    // successfully processes it -- forward progress through the queue for the first time.
+    const run4Deps = runDeps();
+    const result4 = await runTierCDrain(run4Deps);
+    expect(result4.tierCProcessed).toBe(1);
+    expect(result4.tierCFailed).toBe(0);
+    expect(readTierCQueue(store)).toEqual([]);
   });
 });

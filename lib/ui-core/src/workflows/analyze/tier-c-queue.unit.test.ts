@@ -4,6 +4,7 @@ import { GitConstants } from "@workspace/core";
 import {
   appendTierCQueueEntries,
   readTierCQueue,
+  recordTierCQueueFailure,
   removeTierCQueueEntries,
   TierCCandidateKinds,
 } from "./tier-c-queue.js";
@@ -158,6 +159,82 @@ describe("removeTierCQueueEntries()", () => {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
         target: "sha2",
         commitSha: "sha2",
+      },
+    ]);
+  });
+});
+
+describe("recordTierCQueueFailure()", () => {
+  it("increments failCount without eviction below the cap, leaving the entry queued", () => {
+    const store = makeMockStore();
+    appendTierCQueueEntries(store, [
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha1",
+        commitSha: "sha1",
+      },
+    ]);
+
+    const result = recordTierCQueueFailure(store, "sha1", 3);
+
+    expect(result).toEqual({ evicted: false, failCount: 1 });
+    expect(readTierCQueue(store)).toEqual([
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha1",
+        commitSha: "sha1",
+        failCount: 1,
+      },
+    ]);
+  });
+
+  it("evicts the entry once failCount reaches maxFailures", () => {
+    const store = makeMockStore();
+    appendTierCQueueEntries(store, [
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha1",
+        commitSha: "sha1",
+      },
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha2",
+        commitSha: "sha2",
+      },
+    ]);
+
+    recordTierCQueueFailure(store, "sha1", 3);
+    recordTierCQueueFailure(store, "sha1", 3);
+    const result = recordTierCQueueFailure(store, "sha1", 3);
+
+    expect(result).toEqual({ evicted: true, failCount: 3 });
+    expect(readTierCQueue(store)).toEqual([
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha2",
+        commitSha: "sha2",
+      },
+    ]);
+  });
+
+  it("is a no-op on an unknown target", () => {
+    const store = makeMockStore();
+    appendTierCQueueEntries(store, [
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha1",
+        commitSha: "sha1",
+      },
+    ]);
+
+    const result = recordTierCQueueFailure(store, "does-not-exist", 3);
+
+    expect(result).toEqual({ evicted: false, failCount: 0 });
+    expect(readTierCQueue(store)).toEqual([
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha1",
+        commitSha: "sha1",
       },
     ]);
   });

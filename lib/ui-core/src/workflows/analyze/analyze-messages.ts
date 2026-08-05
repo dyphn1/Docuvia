@@ -70,6 +70,11 @@ export const ANALYZE_MESSAGES = {
   /** Tier C's budgeted async LLM decision-extraction queue (phase1-decision-integration.md §9). */
   TIER_C_SKIPPED: (reason: string) =>
     `Tier C drain skipped this run (${reason})`,
+  /** Poison-pill eviction (§9d follow-up): a Tier C candidate that has now failed extraction
+   *  `failCount` times in a row is removed from the queue rather than blocking every item behind
+   *  it forever -- must be visible, not just JSONL, mirroring `TIER_B_CAP_NUDGE`. */
+  TIER_C_ITEM_EVICTED: (kind: string, target: string, failCount: number) =>
+    `Tier C candidate permanently failed after ${failCount} attempt(s), evicted from queue (${kind}: ${target})`,
   TIER_C_SUMMARY: (processed: number, persisted: number) =>
     `Tier C drain complete: ${processed} candidate(s) processed, ${persisted} decision(s) persisted`,
 } as const;
@@ -131,6 +136,10 @@ export const ANALYZE_EVENTS = {
   TIER_C_LOAD_NOTE: "analyze.tierC.load_note",
   TIER_C_ITEM_SUCCESS: "analyze.tierC.item_success",
   TIER_C_ITEM_FAILED: "analyze.tierC.item_failed",
+  /** Poison-pill eviction (§9d follow-up) -- logged alongside `TIER_C_ITEM_FAILED` only on the
+   *  run whose failure crosses `DEFAULT_TIER_C_MAX_ITEM_FAILURES`, once the entry has actually
+   *  been removed from the queue. */
+  TIER_C_ITEM_EVICTED: "analyze.tierC.item_evicted",
   TIER_C_SUMMARY: "analyze.tierC.summary",
 } as const;
 

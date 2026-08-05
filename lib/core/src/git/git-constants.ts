@@ -140,6 +140,13 @@ export const GitConstants = {
    * commit; tune if real usage shows it's off.
    */
   DEFAULT_TIER_B_COMMIT_CAP_BYTES: 512_000,
+  /**
+   * Default Tier B workspace-wide coverage-fail threshold (dogfooding-findings-fixes.md Phase 2,
+   * roadmap item 23) -- a fraction (not a percentage): `doctor`'s `tier_b_coverage` diagnostic
+   * FAILs when `processedFiles / totalFiles` (`IFilesRepo.getTierBCoverage()`) falls below this.
+   * Placeholder value, not derived from any prior measurement -- tune if real usage shows it's off.
+   */
+  DEFAULT_TIER_B_COVERAGE_FAIL_THRESHOLD: 0.5,
 
   PRE_PUSH_HOOK_NAME: "pre-push",
   /**
@@ -263,6 +270,10 @@ export const GitConstants = {
    *  above this skips the drain. Config-tunable via `DOCUVIA_TIER_C_LOAD_THRESHOLD`. A documented
    *  no-op on Windows (`os.loadavg()` always returns zeros there) -- see `tier-c-throttle.ts`. */
   DEFAULT_TIER_C_LOAD_THRESHOLD: 0.8,
+  /** Default retry budget (consecutive per-item extraction failures, across `analyze` runs)
+   *  before a permanently-failing Tier C queue entry is evicted instead of blocking every item
+   *  behind it forever -- `recordTierCQueueFailure`'s poison-pill cap. */
+  DEFAULT_TIER_C_MAX_ITEM_FAILURES: 3,
 } as const;
 
 /** Log messages and human-readable report text shared across the `git/` domain services. */

@@ -20,6 +20,10 @@ export interface TierCQueueEntry {
   file?: string;
   /** Full commit message text, captured at enqueue time -- `commitMessage` candidates only. */
   message?: string;
+  /** Count of consecutive per-item extraction failures for this entry across `analyze` runs --
+   *  the poison-pill counter `recordTierCQueueFailure` increments, absent/0 until the first
+   *  failure. */
+  failCount?: number;
 }
 
 /** Parses the `tierCQueue` docuvia_meta key (JSON array of `TierCQueueEntry`, §9c). Tolerates a
@@ -85,4 +89,38 @@ export function removeTierCQueueEntries(
     (e) => !toRemove.has(e.target),
   );
   store.meta.set(GitConstants.META_KEY_TIER_C_QUEUE, JSON.stringify(remaining));
+}
+
+/**
+ * Read-modify-write bump of `target`'s `failCount` in the `tierCQueue` docuvia_meta key -- the
+ * poison-pill mechanism that stops a deterministically-failing entry from blocking every item
+ * behind it forever: once `failCount` reaches `maxFailures`, the entry is evicted (same removal
+ * semantics as `removeTierCQueueEntries`) instead of staying at the front of the queue. Caller is
+ * responsible for wrapping this in `store.withWriteLock()`, matching the existing convention in
+ * this file. A `target` that can't be found (already evicted/removed by a concurrent path) is a
+ * no-op, not an error.
+ */
+export function recordTierCQueueFailure(
+  store: IGraphStore,
+  target: string,
+  maxFailures: number,
+): { evicted: boolean; failCount: number } {
+  const existing = readTierCQueue(store);
+  const index = existing.findIndex((e) => e.target === target);
+  if (index === -1) return { evicted: false, failCount: 0 };
+
+  const failCount = (existing[index].failCount ?? 0) + 1;
+  if (failCount >= maxFailures) {
+    const remaining = existing.filter((_, i) => i !== index);
+    store.meta.set(
+      GitConstants.META_KEY_TIER_C_QUEUE,
+      JSON.stringify(remaining),
+    );
+    return { evicted: true, failCount };
+  }
+
+  const updated = existing.slice();
+  updated[index] = { ...updated[index], failCount };
+  store.meta.set(GitConstants.META_KEY_TIER_C_QUEUE, JSON.stringify(updated));
+  return { evicted: false, failCount };
 }

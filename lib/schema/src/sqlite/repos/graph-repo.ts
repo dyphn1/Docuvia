@@ -251,6 +251,19 @@ export class GraphNodesRepo implements IGraphNodesRepo {
   /**
    * Resolves a node by name: exact match first, falling back to a `LIKE %target%` match
    * (mirrors old Docuvia's `QueryService.findNodeByName`).
+   *
+   * Tie-break order among same-named candidates: non-test/spec path, then most-connected.
+   * A path-depth tiebreaker (prefer the shallower file) was tried here as a workaround for the
+   * vscode benchmark's `Disposable` mis-resolution (docs/cli-test-analysis/typescript-cli-benchmark.md,
+   * Open Findings §1) and then reverted: that finding's real cause was `ScopeResolver` never
+   * resolving relative imports whose specifier names a compiled `.js` extension (fixed in
+   * `scope-resolver.ts`), which silently misattributed most `extends`/`implements` edges via
+   * persist-ast-graph.ts's name-based fallback. Once that root cause was fixed, live-verified
+   * against a real vscode ingestion, connectivity alone resolved `Disposable` correctly (2,316
+   * incoming edges for the canonical `src/vs/base/common/lifecycle.ts` vs. 63 for the
+   * next-most-connected same-named file) — a depth tiebreaker ahead of connectivity would have
+   * picked the shallower-but-far-less-connected file instead, actively wrong once edges resolve
+   * correctly.
    */
   findNodeByName(
     target: string,
@@ -431,6 +444,32 @@ export class GraphNodesRepo implements IGraphNodesRepo {
         err,
       );
     }
+  }
+
+  /**
+   * Drops `l2_nodes_fts`'s AFTER-INSERT/DELETE/UPDATE triggers, runs `fn`, then rebuilds the
+   * FTS5 index in one pass and recreates the triggers — the same technique `bulkLoadGraph`
+   * already uses internally (see its own doc comment), exposed here for callers that insert/
+   * delete many `l2_nodes` rows one at a time across several repo calls instead of in one bulk
+   * array (`persist-ast-graph.ts`'s `persistFileAndSymbolNodes`, called once per parsed file).
+   * Per-row FTS5 tokenization is the dominant cost at 100k+ nodes; at vscode-repo scale
+   * (293k+ nodes) leaving it on turned a `store.withTransaction()`-wrapped persist's WAL into
+   * unboundedly large and eventually failing with SQLite's own "disk I/O error" (Windows-side
+   * WAL/shm growth, not the transaction wrapping itself, which was independently verified
+   * atomic) — see docs/cli-test-analysis/typescript-cli-benchmark.md's Tier B re-verification
+   * session. Not itself a transaction: DROP/CREATE TRIGGER are DDL, so if `fn` throws inside a
+   * caller's own `withTransaction()`, the whole transaction (including these DDL statements)
+   * rolls back together and the original triggers come back intact — no separate try/finally
+   * needed here.
+   */
+  withFtsSyncSuspended<T>(fn: () => T): T {
+    this.db.exec(FTS_TRIGGER_DROP_SQL);
+    const result = fn();
+    this.db.exec(
+      `INSERT INTO ${SchemaTables.L2_NODES_FTS}(${SchemaTables.L2_NODES_FTS}) VALUES('rebuild')`,
+    );
+    this.db.exec(FTS_TRIGGER_RECREATE_SQL);
+    return result;
   }
 
   /**

@@ -8,6 +8,7 @@ describe("GraphPersisterService", () => {
   beforeEach(() => {
     store = {
       withWriteLock: vi.fn().mockImplementation((fn: any) => fn()),
+      withTransaction: vi.fn().mockImplementation((fn: any) => fn()),
       tags: {
         upsertTag: vi.fn(),
         getIdByName: vi.fn().mockReturnValue(99),
@@ -19,6 +20,7 @@ describe("GraphPersisterService", () => {
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
         findNodeByName: vi.fn(),
+        withFtsSyncSuspended: vi.fn().mockImplementation((fn: any) => fn()),
       },
       files: { upsertFile: vi.fn() },
     };

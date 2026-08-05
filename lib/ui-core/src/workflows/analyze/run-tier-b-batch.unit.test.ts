@@ -104,6 +104,7 @@ function makeStore(
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
     },
     withWriteLock: async (fn: () => unknown) => fn(),
+    withTransaction: (fn: () => unknown) => fn(),
   } as unknown as IGraphStore;
 
   return { store, fake };

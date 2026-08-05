@@ -88,6 +88,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
         .fn()
         .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      withFtsSyncSuspended: (fn: any) => fn(),
     },
     l3: {
       getById: vi.fn(),
@@ -99,6 +100,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
+    withTransaction: (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
     pruneMissingFiles: vi.fn(),
@@ -239,6 +241,7 @@ describe("HydrationService.hydrate()", () => {
           .fn()
           .mockReturnValue({ nodesLoaded: 2, edgesLoaded: 1, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
     const service = new HydrationService(git);
@@ -326,6 +329,7 @@ describe("HydrationService.hydrate()", () => {
           .fn()
           .mockReturnValue({ nodesLoaded: 1, edgesLoaded: 0, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        withFtsSyncSuspended: (fn: any) => fn(),
       },
       l3: {
         getById: vi.fn(),
@@ -431,6 +435,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
           .fn()
           .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
     const service = new HydrationService(git);
@@ -480,14 +485,13 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
         getOutgoingRelations: vi.fn(),
         getAllNodes: vi.fn(),
         getAllLinks: vi.fn(),
-        bulkLoadGraph: vi
-          .fn()
-          .mockReturnValue({
-            nodesLoaded: 60,
-            edgesLoaded: 0,
-            edgesDropped: 0,
-          }),
+        bulkLoadGraph: vi.fn().mockReturnValue({
+          nodesLoaded: 60,
+          edgesLoaded: 0,
+          edgesDropped: 0,
+        }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
     const service = new HydrationService(git);
@@ -524,6 +528,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
           .fn()
           .mockReturnValue({ nodesLoaded: 0, edgesLoaded: 0, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
     const service = new HydrationService(git);
@@ -575,6 +580,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
           .fn()
           .mockReturnValue({ nodesLoaded: 1, edgesLoaded: 0, edgesDropped: 0 }),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        withFtsSyncSuspended: (fn: any) => fn(),
       },
     });
     const service = new HydrationService(git);

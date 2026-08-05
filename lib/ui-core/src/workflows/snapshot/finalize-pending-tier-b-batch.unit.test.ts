@@ -24,6 +24,7 @@ function makeStore(meta: Record<string, string> = {}): {
       },
     },
     withWriteLock: async (fn: () => unknown) => fn(),
+    withTransaction: (fn: () => unknown) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
   } as unknown as IGraphStore;
   return { store, metaMap };

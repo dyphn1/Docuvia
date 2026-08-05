@@ -44,6 +44,7 @@ function makeMockStore(
       getAllLinks: vi.fn().mockReturnValue([]),
       bulkLoadGraph: vi.fn(),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      withFtsSyncSuspended: (fn: any) => fn(),
     },
     l3: {
       getById: vi.fn(),
@@ -60,6 +61,7 @@ function makeMockStore(
       }),
     },
     withWriteLock: async (fn) => fn(),
+    withTransaction: (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
     pruneMissingFiles: vi

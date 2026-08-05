@@ -71,6 +71,7 @@ function makeStore(nodeKeys: string[] = []): {
       }),
     },
     withWriteLock: async (fn: () => unknown) => fn(),
+    withTransaction: (fn: () => unknown) => fn(),
   } as unknown as IGraphStore;
 
   return { store, fake };

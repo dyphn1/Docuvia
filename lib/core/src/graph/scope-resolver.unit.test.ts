@@ -64,6 +64,53 @@ describe("ScopeResolver", () => {
     });
   });
 
+  it("resolves a relative import whose specifier names a compiled .js extension to its real .ts source (TS NodeNext/ESM convention)", () => {
+    // Regression guard for the vscode benchmark's "Disposable" edge-collapse bug
+    // (docs/cli-test-analysis/typescript-cli-benchmark.md, Open Findings §1): vscode's own
+    // source writes `import { Disposable } from "../../base/common/lifecycle.js"` even though
+    // only `lifecycle.ts` exists on disk. The old append-only extension loop tried
+    // `lifecycle.js.ts`/`lifecycle.js.js`/... and never the real `lifecycle.ts`, so every such
+    // import failed to resolve and `persist-ast-graph.ts` fell back to a project-wide
+    // name-based guess for the extends/implements edge instead of the real imported file.
+    vi.spyOn(fs, "existsSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("tsconfig.json") || sp.endsWith("tsconfig.base.json"))
+        return false;
+      if (sp.endsWith("src/base/common/lifecycle.ts")) return true;
+      return false;
+    });
+    vi.spyOn(fs, "statSync").mockImplementation((p: any) => {
+      const sp = String(p).replace(/\\/g, "/");
+      if (sp.endsWith("src/base/common/lifecycle.ts")) {
+        return { isFile: () => true } as any;
+      }
+      throw new Error(`File not found: ${p}`);
+    });
+
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile(
+      "src/editor/codeEditorWidget.ts",
+      [
+        {
+          localName: "Disposable",
+          originalName: "Disposable",
+          modulePath: "../base/common/lifecycle.js",
+        },
+      ],
+      [],
+      [],
+    );
+
+    const result = resolver.resolveCall(
+      "src/editor/codeEditorWidget.ts",
+      "Disposable",
+    );
+    expect(result).toEqual({
+      targetFile: "src/base/common/lifecycle.ts",
+      targetSymbol: "Disposable",
+    });
+  });
+
   it("resolves a bare workspace-monorepo package import via pnpm-workspace.yaml + package.json name", () => {
     vi.spyOn(fs, "existsSync").mockImplementation((p: any) => {
       const sp = String(p).replace(/\\/g, "/");

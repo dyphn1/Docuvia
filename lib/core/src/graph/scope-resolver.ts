@@ -201,16 +201,9 @@ export class ScopeResolver {
    * Resolves a `new Worker(<path>)` spawn's literal relative-path argument — already known to be
    * directory-relative (e.g. from `path.resolve(__dirname, "./ast-worker.js")`) — to a real
    * workspace file, reusing `findFileWithExtension`'s extension-probing rather than duplicating
-   * it (mirrors `resolveModulePath`'s own relative-path branch below).
-   *
-   * Strips a literal trailing `.js`/`.jsx` extension before probing: this codebase's own ESM
-   * convention (relative specifiers written as `./foo.js` that really resolve to `./foo.ts`
-   * source — matching `ast-worker-pool.ts`'s real `"./ast-worker.js"` literal) means
-   * `findFileWithExtension`'s append-only extension loop would otherwise never match — it tries
-   * `foo.js.ts`, `foo.js.js`, ..., never the intended `foo.ts`. (This append-vs-swap gap also
-   * affects ordinary relative `import` resolution via `resolveModulePath`, but fixing that
-   * shared, higher-blast-radius behavior is out of scope here; this strip-before-probe keeps the
-   * fix scoped to worker-spawn resolution only.)
+   * it (mirrors `resolveModulePath`'s own relative-path branch below). The pre-strip below is now
+   * redundant with `findFileWithExtension`'s own compiled-`.js`-extension swap (see that method's
+   * doc comment) but left in place since it's harmless and pre-dates that fix.
    */
   public resolveWorkerSpawnPath(
     sourceFile: string,
@@ -407,6 +400,23 @@ export class ScopeResolver {
     }
   }
 
+  /**
+   * `basePath` may already end in `.js`/`.jsx`/`.mjs`/`.cjs`: TS's NodeNext/ESM module
+   * resolution requires relative specifiers to name the *compiled* extension even when the
+   * real source is `.ts`/`.tsx` (e.g. `import { Disposable } from "./lifecycle.js"` resolving
+   * to `lifecycle.ts` on disk) — a real, common convention (vscode's own source uses it
+   * throughout), not an edge case. The plain append loop below never matches that shape (it
+   * only ever adds extensions, producing `lifecycle.js.ts`), so every such import silently
+   * failed to resolve and fell through to `persist-ast-graph.ts`'s project-wide name-based
+   * fallback for implements/extends — collapsing every same-named class across the whole
+   * codebase onto whichever node that fallback happened to rank first (confirmed against
+   * `microsoft/vscode`: all `extends Disposable` edges pointed at one unrelated node instead of
+   * splitting across each file's real imported `Disposable`). Previously worked around only for
+   * worker-spawn resolution (`resolveWorkerSpawnPath`); fixed here at the shared root so every
+   * relative-import caller benefits.
+   */
+  private static readonly COMPILED_JS_EXTENSION_PATTERN = /\.(m|c)?jsx?$/;
+
   private findFileWithExtension(basePath: string): string | null {
     const fullBasePath = path.join(this.workspaceRoot, basePath);
     if (fs.existsSync(fullBasePath) && fs.statSync(fullBasePath).isFile())
@@ -415,6 +425,18 @@ export class ScopeResolver {
     for (const ext of RESOLVABLE_FILE_EXTENSIONS) {
       if (fs.existsSync(fullBasePath + ext)) return basePath + ext;
     }
+
+    if (ScopeResolver.COMPILED_JS_EXTENSION_PATTERN.test(basePath)) {
+      const stem = basePath.replace(
+        ScopeResolver.COMPILED_JS_EXTENSION_PATTERN,
+        "",
+      );
+      const fullStem = path.join(this.workspaceRoot, stem);
+      for (const ext of RESOLVABLE_FILE_EXTENSIONS) {
+        if (fs.existsSync(fullStem + ext)) return stem + ext;
+      }
+    }
+
     for (const ext of RESOLVABLE_INDEX_SUFFIXES) {
       if (fs.existsSync(fullBasePath + ext)) return basePath + ext;
     }

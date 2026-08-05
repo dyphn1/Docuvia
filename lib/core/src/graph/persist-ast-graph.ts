@@ -13,14 +13,13 @@ import { buildUniqueNodeKey, buildQualifiedBaseKey } from "./node-key.js";
  * Redistributes old `SqliteGraphRepository.persistAstGraph()`'s logic onto `IGraphStore`'s
  * named repo primitives.
  *
- * KNOWN DEVIATION FROM OLD BEHAVIOR: old `persistAstGraphUnlocked` ran this whole block inside
- * a single `drizzle` `db.transaction()`, giving it all-or-nothing atomicity on top of the
- * write-lock's serialization. `IGraphStore`'s public surface deliberately exposes no generic
- * raw-SQL/transaction escape hatch (only named repo methods, per the Virtual Contracts
- * "mandatory mapping" rule), so this only gets the write-lock's serialization guarantee (no
- * concurrent writer interleaving), not full transactional atomicity (a mid-loop throw can
- * leave a partially-persisted file) — a scoped, documented gap rather than a regression against
- * anything actually tested. Revisit if `IGraphStore` grows a `withTransaction()` primitive.
+ * `persistLocked` runs its whole body inside `store.withTransaction()` (added specifically for
+ * this class — see that method's doc comment), restoring old `persistAstGraphUnlocked`'s
+ * single-`db.transaction()` all-or-nothing atomicity on top of the write-lock's serialization.
+ * Previously each named repo call auto-committed on its own; at vscode-repo scale, once
+ * `ScopeResolver` correctly resolved hundreds of thousands of `calls`/`extends`/`implements`
+ * edges instead of silently dropping most of them, one fsync per row turned persist into a
+ * practically-infinite operation (docs/cli-test-analysis/typescript-cli-benchmark.md).
  */
 export class GraphPersisterService implements IGraphPersister {
   public async persist(input: {
@@ -37,7 +36,14 @@ export class GraphPersisterService implements IGraphPersister {
     );
   }
 
-  /** Core of `persist()`, run inside `store.withWriteLock()`. */
+  /**
+   * Core of `persist()`, run inside `store.withWriteLock()`. The whole body runs inside
+   * `store.withTransaction()` (one BEGIN/COMMIT instead of one autocommit per `insertNode`/
+   * `insertLink` call) — restores the old `db.transaction()`-wrapped behavior this class's own
+   * class-level doc comment flags as a known gap, now load-bearing: at vscode-repo scale, one
+   * fsync per row made a full persist practically never finish (see `IGraphStore.withTransaction`'s
+   * doc comment).
+   */
   private persistLocked(
     store: IGraphStore,
     workspaceRoot: string,
@@ -45,33 +51,42 @@ export class GraphPersisterService implements IGraphPersister {
     parsedResults: ParsedAstFileResult[],
     tags: string[],
   ): { updatedCount: number } {
-    const resolver = new ScopeResolver(workspaceRoot);
-    this.registerResolverFiles(resolver, parsedResults);
+    return store.withTransaction(() => {
+      const resolver = new ScopeResolver(workspaceRoot);
+      this.registerResolverFiles(resolver, parsedResults);
 
-    const fileIdMap = new Map<string, number>();
-    // Per-file map of symbol name -> l2_nodes.id, so calls/implements/extends can link to the
-    // actual function/class node instead of collapsing to a file-to-file edge.
-    const symbolIdMap = new Map<string, Map<string, number>>();
+      const fileIdMap = new Map<string, number>();
+      // Per-file map of symbol name -> l2_nodes.id, so calls/implements/extends can link to the
+      // actual function/class node instead of collapsing to a file-to-file edge.
+      const symbolIdMap = new Map<string, Map<string, number>>();
 
-    this.upsertTags(store, tags);
-    this.persistFileAndSymbolNodes(
-      store,
-      projectId,
-      parsedResults,
-      tags,
-      fileIdMap,
-      symbolIdMap,
-    );
-    const updatedCount = this.linkParsedResults(
-      store,
-      resolver,
-      projectId,
-      parsedResults,
-      fileIdMap,
-      symbolIdMap,
-    );
+      this.upsertTags(store, tags);
+      // Suspends l2_nodes_fts's sync triggers for the duration of this per-file insert/delete
+      // loop (see `IGraphStore.withFtsSyncSuspended`'s doc comment) -- without it, per-row FTS5
+      // tokenization across 293k+ nodes was the other half (alongside the missing transaction
+      // wrap) of why a vscode-scale persist's WAL grew unboundedly and eventually failed with
+      // SQLite's own "disk I/O error".
+      store.graph.withFtsSyncSuspended(() => {
+        this.persistFileAndSymbolNodes(
+          store,
+          projectId,
+          parsedResults,
+          tags,
+          fileIdMap,
+          symbolIdMap,
+        );
+      });
+      const updatedCount = this.linkParsedResults(
+        store,
+        resolver,
+        projectId,
+        parsedResults,
+        fileIdMap,
+        symbolIdMap,
+      );
 
-    return { updatedCount };
+      return { updatedCount };
+    });
   }
 
   /** Registers every parsed file's imports/locals with the resolver up front, so cross-file

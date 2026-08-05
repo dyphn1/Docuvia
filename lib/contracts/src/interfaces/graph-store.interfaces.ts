@@ -350,6 +350,14 @@ export interface IGraphNodesRepo {
    * Returns the number of rows removed.
    */
   pruneOrphanedLinks(): number;
+  /**
+   * Drops `l2_nodes_fts`'s sync triggers, runs `fn`, rebuilds the FTS5 index once, and recreates
+   * the triggers — see `GraphNodesRepo`'s implementation doc comment. Callers that call
+   * `insertNode`/`deleteNodesForPath` many times in a loop (rather than as one bulk array, which
+   * `bulkLoadGraph` already handles internally) MUST wrap that loop in this, or per-row FTS5
+   * tokenization dominates cost at 100k+ nodes.
+   */
+  withFtsSyncSuspended<T>(fn: () => T): T;
 }
 
 export interface IL3NodesRepo {
@@ -442,6 +450,20 @@ export interface IGraphStore {
   readonly meta: IMetaRepo;
   withWriteLock<T>(fn: () => Promise<T> | T): Promise<T>;
   withReadLock<T>(fn: () => Promise<T> | T): Promise<T>;
+  /**
+   * Runs `fn` inside a single `better-sqlite3` transaction (one BEGIN/COMMIT, rolled back on
+   * throw) instead of each repo call inside it auto-committing on its own. `fn` must be fully
+   * synchronous — SQLite transactions can't span an event-loop turn — matching every existing
+   * `IGraphNodesRepo`/`IProjectFilesRepo`/etc. method, which are already sync. Callers writing
+   * many rows in one logical operation (e.g. `GraphPersisterService.persistLocked`) MUST use this
+   * instead of relying on default autocommit: at vscode-repo scale (12k+ files, hundreds of
+   * thousands of `calls`/`extends`/`implements` edges once `ScopeResolver` actually resolves
+   * them), one fsync per row turned a multi-minute persist into a practically-infinite one — see
+   * docs/cli-test-analysis/typescript-cli-benchmark.md's Tier B re-verification session. Does not
+   * replace `withWriteLock` — callers still need that for cross-process/cross-call serialization;
+   * this only removes the per-statement autocommit cost inside one already-locked call.
+   */
+  withTransaction<T>(fn: () => T): T;
   close(): Promise<void>;
   /**
    * Surgically removes `project_files`/`l2_nodes` (and their `node_links`/`l2_node_l1_tags`) for

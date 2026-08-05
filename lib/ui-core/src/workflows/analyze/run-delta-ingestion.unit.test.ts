@@ -160,6 +160,7 @@ function makeMockStore(): IGraphStore {
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      withFtsSyncSuspended: (fn: any) => fn(),
     },
     l3: {
       getById: vi.fn(),
@@ -176,6 +177,7 @@ function makeMockStore(): IGraphStore {
       }),
     },
     withWriteLock: async (fn) => fn(),
+    withTransaction: (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
     pruneMissingFiles: vi

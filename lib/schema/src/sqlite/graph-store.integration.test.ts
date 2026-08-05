@@ -446,6 +446,57 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(quietNodeId).not.toBe(popularNodeId);
   });
 
+  it("graph repo: findNodeByName() prefers the more-connected node even when it sits at a deeper path than a same-named, less-connected file", () => {
+    // Regression guard for the vscode benchmark's "Disposable" mis-resolution
+    // (docs/cli-test-analysis/typescript-cli-benchmark.md, Open Findings §1) — and for a
+    // wrong-direction fix tried while chasing it. The real cause was `ScopeResolver` never
+    // resolving relative imports whose specifier names a compiled `.js` extension (fixed in
+    // scope-resolver.ts), which misattributed most `extends`/`implements` edges through
+    // persist-ast-graph.ts's name-based fallback. A path-depth tiebreaker was tried here as a
+    // workaround before that root cause was found, then reverted once a real vscode ingestion
+    // (post-fix) showed connectivity alone resolving `Disposable` correctly: the canonical,
+    // deeper `src/vs/base/common/lifecycle.ts` (2,317 real incoming edges) must outrank a
+    // shallower, far-less-connected same-named file (63 edges) — depth must never override a
+    // clear connectivity signal.
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const shallowQuietId = store.graph.insertNode({
+      projectId: project.id,
+      name: "Disposable",
+      type: "class",
+      pathPatterns: ["extensions/simple-browser/src/dispose.ts"],
+    });
+    const deepPopularId = store.graph.insertNode({
+      projectId: project.id,
+      name: "Disposable",
+      type: "class",
+      pathPatterns: ["src/vs/base/common/lifecycle.ts"],
+    });
+    for (let i = 0; i < 3; i++) {
+      const callerId = store.graph.insertNode({
+        projectId: project.id,
+        name: `caller${i}`,
+        type: "class",
+        pathPatterns: [`src/vs/base/${i}.ts`],
+      });
+      store.graph.insertLink({
+        sourceNodeId: callerId,
+        targetNodeId: deepPopularId,
+        linkType: "extends",
+      });
+    }
+
+    expect(store.graph.findNodeByName("Disposable")).toEqual({
+      id: deepPopularId,
+      name: "Disposable",
+      type: "class",
+      filePath: "src/vs/base/common/lifecycle.ts",
+    });
+    expect(shallowQuietId).not.toBe(deepPopularId);
+  });
+
   it("graph repo: findNodeByName() omits filePath when the node has no path_patterns", () => {
     const project = store.projects.insert({
       name: "demo",

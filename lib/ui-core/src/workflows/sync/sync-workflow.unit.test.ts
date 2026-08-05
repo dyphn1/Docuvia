@@ -148,6 +148,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getAllLinks: vi.fn(),
       bulkLoadGraph: vi.fn(),
       pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+      withFtsSyncSuspended: (fn: any) => fn(),
     },
     l3: {
       getById: vi.fn(),
@@ -159,6 +160,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
     withWriteLock: async (fn) => fn(),
+    withTransaction: (fn) => fn(),
     withReadLock: async (fn) => fn(),
     close: vi.fn().mockResolvedValue(undefined),
     pruneMissingFiles: vi.fn(),
@@ -267,6 +269,7 @@ describe("SyncWorkflow.execute()", () => {
         getAllLinks: vi.fn(),
         bulkLoadGraph: vi.fn(),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        withFtsSyncSuspended: (fn: any) => fn(),
         findNodesForChangedFiles: vi.fn().mockReturnValue([
           {
             l2Node: makeL2({ id: 10, name: "src/a.ts" }),
@@ -360,6 +363,7 @@ describe("SyncWorkflow.execute()", () => {
         getAllLinks: vi.fn(),
         bulkLoadGraph: vi.fn(),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        withFtsSyncSuspended: (fn: any) => fn(),
         findNodesForChangedFiles: vi.fn().mockReturnValue([
           {
             l2Node: makeL2({ id: 10, name: "src/a.ts" }),
@@ -426,6 +430,7 @@ describe("SyncWorkflow.execute()", () => {
         getAllLinks: vi.fn(),
         bulkLoadGraph: vi.fn(),
         pruneOrphanedLinks: vi.fn().mockReturnValue(0),
+        withFtsSyncSuspended: (fn: any) => fn(),
         findNodesForChangedFiles: vi.fn().mockReturnValue([
           {
             l2Node: makeL2({ id: 10, name: "src/a.ts" }),

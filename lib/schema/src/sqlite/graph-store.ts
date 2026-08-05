@@ -225,6 +225,13 @@ export class GraphStore implements IGraphStore {
     return this.lock.runRead(fn);
   }
 
+  /** See `IGraphStore.withTransaction`'s doc comment. `better-sqlite3`'s `db.transaction(fn)`
+   *  returns a wrapped function that runs `fn` inside BEGIN/COMMIT (ROLLBACK on throw) — call it
+   *  immediately rather than handing the wrapper back to the caller. */
+  withTransaction<T>(fn: () => T): T {
+    return this.db.transaction(fn)();
+  }
+
   /**
    * Surgically removes `project_files`/`l2_nodes` (and their `node_links`/`l2_node_l1_tags`) for
    * files no longer present in `activeFiles`, in a single transaction (see `IGraphStore`'s doc

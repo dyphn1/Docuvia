@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#resolveWorkspaceSiblingImport
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.resolveWorkspaceSiblingImport
 type: symbol
 name: resolveWorkspaceSiblingImport
 filePath: lib/core/src/graph/scope-resolver.ts

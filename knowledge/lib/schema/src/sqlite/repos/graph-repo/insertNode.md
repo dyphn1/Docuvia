@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/graph-repo.ts#insertNode
+id: lib/schema/src/sqlite/repos/graph-repo.ts#GraphNodesRepo.insertNode
 type: symbol
 name: insertNode
 filePath: lib/schema/src/sqlite/repos/graph-repo.ts

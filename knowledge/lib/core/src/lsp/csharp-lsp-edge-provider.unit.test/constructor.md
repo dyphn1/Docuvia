@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/csharp-lsp-edge-provider.unit.test.ts#constructor
+id: lib/core/src/lsp/csharp-lsp-edge-provider.unit.test.ts#FakeLspClient.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/lsp/csharp-lsp-edge-provider.unit.test.ts

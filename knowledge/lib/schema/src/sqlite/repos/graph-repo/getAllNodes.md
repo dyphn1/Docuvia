@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/graph-repo.ts#getAllNodes
+id: lib/schema/src/sqlite/repos/graph-repo.ts#GraphNodesRepo.getAllNodes
 type: symbol
 name: getAllNodes
 filePath: lib/schema/src/sqlite/repos/graph-repo.ts

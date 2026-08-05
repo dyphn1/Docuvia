@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/files-repo.ts#getAllHashes
+id: lib/schema/src/sqlite/repos/files-repo.ts#ProjectFilesRepo.getAllHashes
 type: symbol
 name: getAllHashes
 filePath: lib/schema/src/sqlite/repos/files-repo.ts

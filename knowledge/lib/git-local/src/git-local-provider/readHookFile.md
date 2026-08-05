@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#readHookFile
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.readHookFile
 type: symbol
 name: readHookFile
 filePath: lib/git-local/src/git-local-provider.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/hydration.service.ts#constructor
+id: lib/core/src/git/hydration.service.ts#HydrationService.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/git/hydration.service.ts

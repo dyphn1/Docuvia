@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/query/query.service.ts#constructor
+id: lib/core/src/query/query.service.ts#QueryService.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/query/query.service.ts

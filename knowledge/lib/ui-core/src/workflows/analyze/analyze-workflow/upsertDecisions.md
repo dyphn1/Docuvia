@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#upsertDecisions
+id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#AnalyzeWorkflow.upsertDecisions
 type: symbol
 name: upsertDecisions
 filePath: lib/ui-core/src/workflows/analyze/analyze-workflow.ts

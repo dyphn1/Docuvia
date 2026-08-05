@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.ts#configure
+id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.configure
 type: symbol
 name: configure
 filePath: lib/core/src/lsp/lsp-edge-provider-base.ts

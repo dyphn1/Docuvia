@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#runLlmReachabilityDiagnostic
+id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#DoctorWorkflow.runLlmReachabilityDiagnostic
 type: symbol
 name: runLlmReachabilityDiagnostic
 filePath: lib/ui-core/src/workflows/doctor/doctor-workflow.ts

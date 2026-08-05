@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker-pool.ts#spawnWorker
+id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerPool.spawnWorker
 type: symbol
 name: spawnWorker
 filePath: lib/core/src/ast/ast-worker-pool.ts

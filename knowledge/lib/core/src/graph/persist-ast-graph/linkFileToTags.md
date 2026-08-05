@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/persist-ast-graph.ts#linkFileToTags
+id: lib/core/src/graph/persist-ast-graph.ts#GraphPersisterService.linkFileToTags
 type: symbol
 name: linkFileToTags
 filePath: lib/core/src/graph/persist-ast-graph.ts

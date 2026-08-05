@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/change-detection.service.ts#detectChanges
+id: lib/core/src/git/change-detection.service.ts#ChangeDetectionService.detectChanges
 type: symbol
 name: detectChanges
 filePath: lib/core/src/git/change-detection.service.ts

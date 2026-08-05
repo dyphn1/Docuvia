@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/files-repo.ts#upsertFile
+id: lib/schema/src/sqlite/repos/files-repo.ts#ProjectFilesRepo.upsertFile
 type: symbol
 name: upsertFile
 filePath: lib/schema/src/sqlite/repos/files-repo.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/java-lsp-edge-provider.ts#constructor
+id: lib/core/src/lsp/java-lsp-edge-provider.ts#JavaLspEdgeProvider.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/lsp/java-lsp-edge-provider.ts

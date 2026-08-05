@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#updateBranchRef
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.updateBranchRef
 type: symbol
 name: updateBranchRef
 filePath: lib/git-local/src/git-local-provider.ts

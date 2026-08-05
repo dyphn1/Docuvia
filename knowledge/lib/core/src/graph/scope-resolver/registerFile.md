@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#registerFile
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.registerFile
 type: symbol
 name: registerFile
 filePath: lib/core/src/graph/scope-resolver.ts

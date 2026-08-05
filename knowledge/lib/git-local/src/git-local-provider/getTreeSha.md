@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#getTreeSha
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.getTreeSha
 type: symbol
 name: getTreeSha
 filePath: lib/git-local/src/git-local-provider.ts

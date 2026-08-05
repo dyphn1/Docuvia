@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#listFilesAtRef
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.listFilesAtRef
 type: symbol
 name: listFilesAtRef
 filePath: lib/git-local/src/git-local-provider.ts

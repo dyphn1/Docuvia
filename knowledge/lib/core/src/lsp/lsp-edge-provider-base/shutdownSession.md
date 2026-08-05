@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.ts#shutdownSession
+id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.shutdownSession
 type: symbol
 name: shutdownSession
 filePath: lib/core/src/lsp/lsp-edge-provider-base.ts

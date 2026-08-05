@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-logger-client.ts#constructor
+id: lib/contracts/src/logging/ipc-logger-client.ts#IpcLoggerClient.constructor
 type: symbol
 name: constructor
 filePath: lib/contracts/src/logging/ipc-logger-client.ts

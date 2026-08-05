@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#getHeadSha
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.getHeadSha
 type: symbol
 name: getHeadSha
 filePath: lib/git-local/src/git-local-provider.ts

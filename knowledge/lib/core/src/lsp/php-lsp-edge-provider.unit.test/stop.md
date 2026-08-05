@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts#stop
+id: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts#FakeLspClient.stop
 type: symbol
 name: stop
 filePath: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts

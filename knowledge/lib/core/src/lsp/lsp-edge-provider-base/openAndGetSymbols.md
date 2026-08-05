@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.ts#openAndGetSymbols
+id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.openAndGetSymbols
 type: symbol
 name: openAndGetSymbols
 filePath: lib/core/src/lsp/lsp-edge-provider-base.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/persist-ast-graph.ts#linkParsedResultRelations
+id: lib/core/src/graph/persist-ast-graph.ts#GraphPersisterService.linkParsedResultRelations
 type: symbol
 name: linkParsedResultRelations
 filePath: lib/core/src/graph/persist-ast-graph.ts

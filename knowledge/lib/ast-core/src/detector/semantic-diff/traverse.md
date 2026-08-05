@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/detector/semantic-diff.ts#traverse
+id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.traverse
 type: symbol
 name: traverse
 filePath: lib/ast-core/src/detector/semantic-diff.ts

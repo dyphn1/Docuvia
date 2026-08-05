@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/impact/impact.service.ts#constructor
+id: lib/core/src/impact/impact.service.ts#ImpactService.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/impact/impact.service.ts

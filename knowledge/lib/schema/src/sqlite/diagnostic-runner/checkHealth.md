@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/diagnostic-runner.ts#checkHealth
+id: lib/schema/src/sqlite/diagnostic-runner.ts#SqliteDiagnosticRunner.checkHealth
 type: symbol
 name: checkHealth
 filePath: lib/schema/src/sqlite/diagnostic-runner.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#getFilesChangedByCommit
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.getFilesChangedByCommit
 type: symbol
 name: getFilesChangedByCommit
 filePath: lib/git-local/src/git-local-provider.ts

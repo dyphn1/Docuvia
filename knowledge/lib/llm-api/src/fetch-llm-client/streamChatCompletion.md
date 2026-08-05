@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/fetch-llm-client.ts#streamChatCompletion
+id: lib/llm-api/src/fetch-llm-client.ts#FetchLlmClient.streamChatCompletion
 type: symbol
 name: streamChatCompletion
 filePath: lib/llm-api/src/fetch-llm-client.ts

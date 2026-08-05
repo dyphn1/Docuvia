@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#hasUncommittedChanges
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.hasUncommittedChanges
 type: symbol
 name: hasUncommittedChanges
 filePath: lib/git-local/src/git-local-provider.ts

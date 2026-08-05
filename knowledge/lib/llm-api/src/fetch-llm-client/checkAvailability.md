@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/fetch-llm-client.ts#checkAvailability
+id: lib/llm-api/src/fetch-llm-client.ts#FetchLlmClient.checkAvailability
 type: symbol
 name: checkAvailability
 filePath: lib/llm-api/src/fetch-llm-client.ts

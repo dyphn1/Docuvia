@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/snapshot/snapshot-workflow.ts#shouldSkipSnapshot
+id: lib/ui-core/src/workflows/snapshot/snapshot-workflow.ts#SnapshotWorkflow.shouldSkipSnapshot
 type: symbol
 name: shouldSkipSnapshot
 filePath: lib/ui-core/src/workflows/snapshot/snapshot-workflow.ts

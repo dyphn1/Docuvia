@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/fts-repo.ts#searchL3Nodes
+id: lib/schema/src/sqlite/repos/fts-repo.ts#FtsRepo.searchL3Nodes
 type: symbol
 name: searchL3Nodes
 filePath: lib/schema/src/sqlite/repos/fts-repo.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/graph-repo.ts#constructor
+id: lib/schema/src/sqlite/repos/graph-repo.ts#GraphNodesRepo.constructor
 type: symbol
 name: constructor
 filePath: lib/schema/src/sqlite/repos/graph-repo.ts

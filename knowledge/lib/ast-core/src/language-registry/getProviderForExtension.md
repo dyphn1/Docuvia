@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-registry.ts#getProviderForExtension
+id: lib/ast-core/src/language-registry.ts#LanguageRegistry.getProviderForExtension
 type: symbol
 name: getProviderForExtension
 filePath: lib/ast-core/src/language-registry.ts

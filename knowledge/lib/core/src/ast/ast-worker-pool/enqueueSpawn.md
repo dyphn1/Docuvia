@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker-pool.ts#enqueueSpawn
+id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerPool.enqueueSpawn
 type: symbol
 name: enqueueSpawn
 filePath: lib/core/src/ast/ast-worker-pool.ts

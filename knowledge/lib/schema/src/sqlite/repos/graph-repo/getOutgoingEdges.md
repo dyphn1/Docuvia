@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/graph-repo.ts#getOutgoingEdges
+id: lib/schema/src/sqlite/repos/graph-repo.ts#GraphNodesRepo.getOutgoingEdges
 type: symbol
 name: getOutgoingEdges
 filePath: lib/schema/src/sqlite/repos/graph-repo.ts

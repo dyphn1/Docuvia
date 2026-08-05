@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#getRefSha
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.getRefSha
 type: symbol
 name: getRefSha
 filePath: lib/git-local/src/git-local-provider.ts

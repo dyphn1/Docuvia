@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#collectPackageDirsForGlob
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.collectPackageDirsForGlob
 type: symbol
 name: collectPackageDirsForGlob
 filePath: lib/core/src/graph/scope-resolver.ts

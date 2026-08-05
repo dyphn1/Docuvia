@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-processing.service.ts#constructor
+id: lib/core/src/ast/ast-processing.service.ts#AstProcessingService.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/ast/ast-processing.service.ts

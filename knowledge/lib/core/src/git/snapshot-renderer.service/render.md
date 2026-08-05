@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/snapshot-renderer.service.ts#render
+id: lib/core/src/git/snapshot-renderer.service.ts#SnapshotRendererService.render
 type: symbol
 name: render
 filePath: lib/core/src/git/snapshot-renderer.service.ts

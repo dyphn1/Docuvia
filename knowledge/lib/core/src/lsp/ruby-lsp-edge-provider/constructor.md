@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/ruby-lsp-edge-provider.ts#constructor
+id: lib/core/src/lsp/ruby-lsp-edge-provider.ts#RubyLspEdgeProvider.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/lsp/ruby-lsp-edge-provider.ts

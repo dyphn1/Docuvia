@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#resolveNewestSourceTrailerSha
+id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.resolveNewestSourceTrailerSha
 type: symbol
 name: resolveNewestSourceTrailerSha
 filePath: lib/core/src/git/knowledge-git.service.ts

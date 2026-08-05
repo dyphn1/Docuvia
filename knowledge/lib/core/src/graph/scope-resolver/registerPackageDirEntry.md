@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/scope-resolver.ts#registerPackageDirEntry
+id: lib/core/src/graph/scope-resolver.ts#ScopeResolver.registerPackageDirEntry
 type: symbol
 name: registerPackageDirEntry
 filePath: lib/core/src/graph/scope-resolver.ts

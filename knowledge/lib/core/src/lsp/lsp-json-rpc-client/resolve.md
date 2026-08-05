@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-json-rpc-client.ts#resolve
+id: lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.resolve
 type: symbol
 name: resolve
 filePath: lib/core/src/lsp/lsp-json-rpc-client.ts

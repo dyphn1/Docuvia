@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#installPrePushHook
+id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.installPrePushHook
 type: symbol
 name: installPrePushHook
 filePath: lib/core/src/git/knowledge-git.service.ts

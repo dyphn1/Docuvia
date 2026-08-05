@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/memory/docuvia-memory.ts#hasScope
+id: lib/contracts/src/memory/docuvia-memory.ts#DocuviaMemory.hasScope
 type: symbol
 name: hasScope
 filePath: lib/contracts/src/memory/docuvia-memory.ts

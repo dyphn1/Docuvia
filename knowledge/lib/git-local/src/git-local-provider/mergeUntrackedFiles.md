@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#mergeUntrackedFiles
+id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.mergeUntrackedFiles
 type: symbol
 name: mergeUntrackedFiles
 filePath: lib/git-local/src/git-local-provider.ts

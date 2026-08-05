@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-logger-client.ts#send
+id: lib/contracts/src/logging/ipc-logger-client.ts#IpcLoggerClient.send
 type: symbol
 name: send
 filePath: lib/contracts/src/logging/ipc-logger-client.ts

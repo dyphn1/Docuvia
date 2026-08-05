@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/graph-store.ts#tags
+id: lib/schema/src/sqlite/graph-store.ts#GraphStore.tags
 type: symbol
 name: tags
 filePath: lib/schema/src/sqlite/graph-store.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/ast/ast-worker-pool.ts#terminate
+id: lib/core/src/ast/ast-worker-pool.ts#AstWorkerPool.terminate
 type: symbol
 name: terminate
 filePath: lib/core/src/ast/ast-worker-pool.ts

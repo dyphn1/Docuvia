@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/sync/sync-workflow.ts#buildSyncPushEvents
+id: lib/ui-core/src/workflows/sync/sync-workflow.ts#SyncWorkflow.buildSyncPushEvents
 type: symbol
 name: buildSyncPushEvents
 filePath: lib/ui-core/src/workflows/sync/sync-workflow.ts

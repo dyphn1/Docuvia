@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/graph/persist-ast-graph.ts#registerResolverFiles
+id: lib/core/src/graph/persist-ast-graph.ts#GraphPersisterService.registerResolverFiles
 type: symbol
 name: registerResolverFiles
 filePath: lib/core/src/graph/persist-ast-graph.ts

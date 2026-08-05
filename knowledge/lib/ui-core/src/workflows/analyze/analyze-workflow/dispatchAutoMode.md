@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#dispatchAutoMode
+id: lib/ui-core/src/workflows/analyze/analyze-workflow.ts#AnalyzeWorkflow.dispatchAutoMode
 type: symbol
 name: dispatchAutoMode
 filePath: lib/ui-core/src/workflows/analyze/analyze-workflow.ts

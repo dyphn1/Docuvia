@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/hydrate/hydrate-workflow.ts#constructor
+id: lib/ui-core/src/workflows/hydrate/hydrate-workflow.ts#HydrateWorkflow.constructor
 type: symbol
 name: constructor
 filePath: lib/ui-core/src/workflows/hydrate/hydrate-workflow.ts

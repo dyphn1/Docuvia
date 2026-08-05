@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/fetch-llm-client.ts#anonymous@L200
+id: lib/llm-api/src/fetch-llm-client.ts#FetchLlmClient.anonymous@L200
 type: symbol
 name: anonymous
 filePath: lib/llm-api/src/fetch-llm-client.ts

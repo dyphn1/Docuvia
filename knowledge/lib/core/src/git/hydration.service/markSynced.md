@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/hydration.service.ts#markSynced
+id: lib/core/src/git/hydration.service.ts#HydrationService.markSynced
 type: symbol
 name: markSynced
 filePath: lib/core/src/git/hydration.service.ts

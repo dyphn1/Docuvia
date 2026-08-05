@@ -14,6 +14,7 @@ export const LspMethods = {
   SHUTDOWN: "shutdown",
   EXIT: "exit",
   DID_OPEN: "textDocument/didOpen",
+  DID_CLOSE: "textDocument/didClose",
   DOCUMENT_SYMBOL: "textDocument/documentSymbol",
   REFERENCES: "textDocument/references",
 } as const;

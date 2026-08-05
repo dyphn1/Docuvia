@@ -534,6 +534,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         edges.push(edge);
       }
       filesProcessed.push(file);
+      this.closeAndEvict(client, file, openFileCache);
       return { ok: true };
     } catch (err) {
       if (err instanceof DeadlineExceededError) {
@@ -541,6 +542,10 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           file,
           reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
         });
+        // The underlying `processOneFile` promise was abandoned, not settled (see
+        // `raceAgainstDeadline`'s doc comment) -- it may still be reading/writing
+        // `openFileCache` for this file, so touching it here would race. The whole client is
+        // about to be torn down by the caller's `shutdownSession` anyway.
         return { ok: false, deadlineExceeded: true };
       }
       filesFailed.push({
@@ -550,8 +555,30 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       this.logger.warn(LSP_MESSAGES.resolutionFailedForFile(file), {
         error: err instanceof Error ? err.message : String(err),
       });
+      this.closeAndEvict(client, file, openFileCache);
       return { ok: false, deadlineExceeded: false };
     }
+  }
+
+  /** Tells the LSP server we're done with `file` for now and drops its cached symbols, so a
+   *  large batch's per-server memory stays bounded by "files touched since their own queue
+   *  turn" instead of growing to every file the whole batch ever opened (`openFileCache` is
+   *  batch-scoped -- see `processAllFiles`'s doc comment). A file opened transitively as some
+   *  other callee's caller (`resolveReferenceEdge`) is left alone here and closed later, when
+   *  its own turn in `files` reaches this same method -- every queued file gets exactly one
+   *  turn, so this is still a real bound, just not an immediate one. No-op if `file` was never
+   *  actually opened (e.g. it failed before `openAndGetSymbols` ran). */
+  private closeAndEvict(
+    client: LspJsonRpcClient,
+    file: string,
+    openFileCache: Map<string, OpenFileHandle>,
+  ): void {
+    const handle = openFileCache.get(file);
+    if (!handle) return;
+    openFileCache.delete(file);
+    client.notify(LspMethods.DID_CLOSE, {
+      textDocument: { uri: handle.uri },
+    });
   }
 
   /** Post-loop reconciliation for `processAllFiles`: once the batch deadline has tripped, every
@@ -724,6 +751,19 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     usedNodeKeysByFile: UsedNodeKeysByFile,
   ): Promise<ResolvedCallEdge | undefined> {
     const refPath = path.relative(workspaceRoot, fileURLToPath(ref.uri));
+    // A reference outside the workspace (e.g. TypeScript's global Automatic Type Acquisition
+    // cache under %LOCALAPPDATA%, a vendored @types package, or any file the LSP resolved from
+    // outside this project) has no corresponding graph node to attribute an edge to. On Windows,
+    // `path.relative()` can't express a path across drive letters (D:\...\repo vs
+    // C:\Users\...\AppData\...) and returns the target's own absolute path unchanged instead of
+    // a `..`-relative one — silently feeding an absolute path into `openAndGetSymbols`'s
+    // `path.join(workspaceRoot, relativePath)` below (via the recursive call this method makes),
+    // producing an unopenable `D:\...\repo\C:\Users\...` path and failing the whole file's batch.
+    // `startsWith("..")` catches the same-drive case (a reference above workspaceRoot);
+    // `isAbsolute` catches the cross-drive one.
+    if (path.isAbsolute(refPath) || refPath.startsWith("..")) {
+      return undefined;
+    }
     const refRelative = toNodeKey(refPath);
     if (refRelative === calleeFile) return undefined;
 

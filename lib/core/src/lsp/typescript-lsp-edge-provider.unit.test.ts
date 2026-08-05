@@ -154,6 +154,99 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     expect(fake.stopped).toBe(true);
   });
 
+  it("closes each file's document once its own batch turn finishes, so a large batch doesn't accumulate every touched file's document in the server's memory for the whole run (vscode-scale Tier B crash fix)", async () => {
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    const fooSelectionRange = range(0, 16, 0, 19);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "foo",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 0, 25),
+              selectionRange: fooSelectionRange,
+            },
+          ];
+        }
+        if (params.textDocument.uri === bUri) {
+          return [
+            {
+              name: "bar",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 2, 1),
+              selectionRange: range(0, 16, 0, 19),
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.REFERENCES) {
+        // a.ts's `foo` is referenced from b.ts -- resolving that reference opens b.ts as a
+        // *caller* file mid-way through a.ts's own turn, before b.ts ever reaches its own turn
+        // in `files` below.
+        if (
+          params.textDocument.uri === aUri &&
+          params.position.character === fooSelectionRange.start.character
+        ) {
+          return [{ uri: bUri, range: range(1, 2, 1, 5) }];
+        }
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const fake = new FakeLspClient(handler);
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts", "b.ts"],
+    });
+
+    expect(outcome.filesFailed).toEqual([]);
+
+    const opens = fake.notifications.filter(
+      (n) => n.method === LspMethods.DID_OPEN,
+    );
+    const closes = fake.notifications.filter(
+      (n) => n.method === LspMethods.DID_CLOSE,
+    );
+
+    // b.ts is opened exactly once even though it's touched twice (as a.ts's caller, then again
+    // on its own turn) -- the batch-scoped cache still dedupes opens; only closing changed.
+    expect(opens.map((n: any) => n.params.textDocument.uri).sort()).toEqual(
+      [aUri, bUri].sort(),
+    );
+    // Every file opened during the batch is closed exactly once by the time it ends -- nothing
+    // is left dangling open in the server.
+    expect(closes.map((n: any) => n.params.textDocument.uri).sort()).toEqual(
+      [aUri, bUri].sort(),
+    );
+
+    // a.ts is closed right after its own turn -- specifically, before b.ts's turn even starts
+    // re-requesting its (already-cached) documentSymbol -- proving the cache entry was evicted
+    // per-file, not held onto for the rest of the batch.
+    const aCloseIndex = fake.notifications.findIndex(
+      (n) =>
+        n.method === LspMethods.DID_CLOSE &&
+        (n.params as any).textDocument.uri === aUri,
+    );
+    const bCloseIndex = fake.notifications.findIndex(
+      (n) =>
+        n.method === LspMethods.DID_CLOSE &&
+        (n.params as any).textDocument.uri === bUri,
+    );
+    expect(aCloseIndex).toBeGreaterThanOrEqual(0);
+    expect(bCloseIndex).toBeGreaterThan(aCloseIndex);
+  });
+
   it("falls back to the file-level node_key when the reference has no enclosing call-site symbol", async () => {
     const aUri = uriFor(workspaceRoot, "a.ts");
     const bUri = uriFor(workspaceRoot, "b.ts");
@@ -227,6 +320,84 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     });
 
     expect(outcome.edges).toEqual([]);
+  });
+
+  it("skips a reference that resolves outside the workspace instead of crashing on it (e.g. TypeScript's global Automatic Type Acquisition cache)", async () => {
+    // Regression guard: `resolveReferenceEdge` used to join whatever `path.relative()` produced
+    // straight onto workspaceRoot with no "is this actually inside the workspace" check. On
+    // Windows, `path.relative()` across drive letters (a real, common shape for a reference into
+    // %LOCALAPPDATA%\Microsoft\TypeScript\...\node_modules\csstype while the project lives on a
+    // different drive) returns the target's own absolute path unchanged instead of a
+    // `..`-relative one, so the downstream `path.join(workspaceRoot, thatAbsolutePath)` produced
+    // an unopenable path and failed the whole file's Tier B batch. This test exercises the
+    // portable, same-drive version of the same gap (a reference above workspaceRoot, so
+    // `path.relative()` returns a `..`-prefixed path) since it doesn't depend on a second drive
+    // letter being available in CI.
+    const outsideDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-lsp-outside-"),
+    );
+    const outsideFile = path.join(outsideDir, "external.ts");
+    fs.writeFileSync(outsideFile, "// not part of the workspace\n", "utf8");
+    const outsideUri = pathToFileURL(outsideFile).toString();
+
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    const fooSelectionRange = range(0, 16, 0, 19);
+    const barSelectionRange = range(0, 16, 0, 19);
+
+    try {
+      const handler: RequestHandler = (method, params) => {
+        if (method === LspMethods.DOCUMENT_SYMBOL) {
+          if (params.textDocument.uri === aUri) {
+            return [
+              {
+                name: "foo",
+                kind: LspSymbolKinds.FUNCTION,
+                range: range(0, 0, 0, 25),
+                selectionRange: fooSelectionRange,
+              },
+            ];
+          }
+          if (params.textDocument.uri === bUri) {
+            return [
+              {
+                name: "bar",
+                kind: LspSymbolKinds.FUNCTION,
+                range: range(0, 0, 0, 25),
+                selectionRange: barSelectionRange,
+              },
+            ];
+          }
+          return [];
+        }
+        if (method === LspMethods.REFERENCES) {
+          if (params.textDocument.uri === aUri) {
+            return [
+              { uri: outsideUri, range: range(0, 0, 0, 3) },
+              { uri: bUri, range: range(0, 2, 0, 5) },
+            ];
+          }
+          return [];
+        }
+        return undefined;
+      };
+
+      const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+        asClient(new FakeLspClient(handler)),
+      );
+
+      const outcome = await provider.resolveEdges({
+        workspaceRoot,
+        files: ["a.ts", "b.ts"],
+      });
+
+      expect(outcome.filesFailed).toEqual([]);
+      expect(outcome.edges).toEqual([
+        { sourceNodeKey: "b.ts#bar", targetNodeKey: "a.ts#foo", source: "lsp" },
+      ]);
+    } finally {
+      fs.rmSync(outsideDir, { recursive: true, force: true });
+    }
   });
 
   it("dedupes multiple call sites in the same caller symbol into a single edge", async () => {

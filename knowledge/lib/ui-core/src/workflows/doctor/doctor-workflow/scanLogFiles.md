@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#scanLogFiles
+id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#DoctorWorkflow.scanLogFiles
 type: symbol
 name: scanLogFiles
 filePath: lib/ui-core/src/workflows/doctor/doctor-workflow.ts

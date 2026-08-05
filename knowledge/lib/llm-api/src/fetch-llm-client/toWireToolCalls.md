@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/fetch-llm-client.ts#toWireToolCalls
+id: lib/llm-api/src/fetch-llm-client.ts#FetchLlmClient.toWireToolCalls
 type: symbol
 name: toWireToolCalls
 filePath: lib/llm-api/src/fetch-llm-client.ts

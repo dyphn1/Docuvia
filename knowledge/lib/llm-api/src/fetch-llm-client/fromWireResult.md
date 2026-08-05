@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/fetch-llm-client.ts#fromWireResult
+id: lib/llm-api/src/fetch-llm-client.ts#FetchLlmClient.fromWireResult
 type: symbol
 name: fromWireResult
 filePath: lib/llm-api/src/fetch-llm-client.ts

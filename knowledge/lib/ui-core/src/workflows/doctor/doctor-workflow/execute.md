@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#execute
+id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#DoctorWorkflow.execute
 type: symbol
 name: execute
 filePath: lib/ui-core/src/workflows/doctor/doctor-workflow.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#runDbDiagnostics
+id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#DoctorWorkflow.runDbDiagnostics
 type: symbol
 name: runDbDiagnostics
 filePath: lib/ui-core/src/workflows/doctor/doctor-workflow.ts

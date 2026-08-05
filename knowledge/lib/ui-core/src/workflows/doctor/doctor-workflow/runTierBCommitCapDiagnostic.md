@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#runTierBCommitCapDiagnostic
+id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#DoctorWorkflow.runTierBCommitCapDiagnostic
 type: symbol
 name: runTierBCommitCapDiagnostic
 filePath: lib/ui-core/src/workflows/doctor/doctor-workflow.ts

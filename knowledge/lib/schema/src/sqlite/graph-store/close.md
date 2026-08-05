@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/graph-store.ts#close
+id: lib/schema/src/sqlite/graph-store.ts#GraphStore.close
 type: symbol
 name: close
 filePath: lib/schema/src/sqlite/graph-store.ts

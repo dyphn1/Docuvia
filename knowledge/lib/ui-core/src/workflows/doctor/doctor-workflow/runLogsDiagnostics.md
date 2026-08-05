@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#runLogsDiagnostics
+id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#DoctorWorkflow.runLogsDiagnostics
 type: symbol
 name: runLogsDiagnostics
 filePath: lib/ui-core/src/workflows/doctor/doctor-workflow.ts

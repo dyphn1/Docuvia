@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/graph-store.ts#fts
+id: lib/schema/src/sqlite/graph-store.ts#GraphStore.fts
 type: symbol
 name: fts
 filePath: lib/schema/src/sqlite/graph-store.ts

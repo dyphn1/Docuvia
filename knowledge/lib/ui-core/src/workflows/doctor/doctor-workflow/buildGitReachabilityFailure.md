@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#buildGitReachabilityFailure
+id: lib/ui-core/src/workflows/doctor/doctor-workflow.ts#DoctorWorkflow.buildGitReachabilityFailure
 type: symbol
 name: buildGitReachabilityFailure
 filePath: lib/ui-core/src/workflows/doctor/doctor-workflow.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/fetch-llm-client.ts#buildHeaders
+id: lib/llm-api/src/fetch-llm-client.ts#FetchLlmClient.buildHeaders
 type: symbol
 name: buildHeaders
 filePath: lib/llm-api/src/fetch-llm-client.ts

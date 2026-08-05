@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/fetch-llm-client.ts#initialize
+id: lib/llm-api/src/fetch-llm-client.ts#FetchLlmClient.initialize
 type: symbol
 name: initialize
 filePath: lib/llm-api/src/fetch-llm-client.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/llm-api/src/fetch-llm-client.ts#fromWireChunk
+id: lib/llm-api/src/fetch-llm-client.ts#FetchLlmClient.fromWireChunk
 type: symbol
 name: fromWireChunk
 filePath: lib/llm-api/src/fetch-llm-client.ts

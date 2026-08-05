@@ -24,10 +24,11 @@ export const javascriptConfig: LanguageConfig = {
   extends: [LanguageNodeTypes.CLASS_HERITAGE],
   queries: {
     classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER})) @${QueryCaptureName.CLASS}`,
-    // No compiled `functions` query — same reasoning as typescript.ts: arrow functions and
-    // function expressions have no queryable "name" field, so this field stays on the
-    // fallback (which covers all 6 kinds in the array above) rather than compiling a query
-    // restricted to function_declaration/method_definition that would silently drop them.
+    // Same reasoning as typescript.ts: none of these 6 alternatives need a `name:` field (binding
+    // names are resolved after extraction by resolveCallableName()), so a bare node-type capture
+    // is equivalent to the old per-type descendantsOfType fallback while running one native query
+    // pass instead of 6 JS-side tree walks.
+    functions: `(${LanguageNodeTypes.FUNCTION_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.METHOD_DEFINITION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.ARROW_FUNCTION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.FUNCTION_EXPRESSION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.GENERATOR_FUNCTION_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.GENERATOR_FUNCTION}) @${QueryCaptureName.FUNCTION}`,
     imports: `(${LanguageNodeTypes.IMPORT_STATEMENT}) @${QueryCaptureName.IMPORT}`,
     calls: `(${LanguageNodeTypes.CALL_EXPRESSION} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.MEMBER_EXPRESSION})] @${QueryCaptureName.CALL})`,
     extends: `(${LanguageNodeTypes.CLASS_HERITAGE} "extends" (_) @${QueryCaptureName.EXTENDS})`,

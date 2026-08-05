@@ -31,12 +31,14 @@ export const typescriptConfig: LanguageConfig = {
     // `class_declaration`'s name field is a `type_identifier` in this grammar (unlike plain
     // JS's `identifier`) — using `identifier` here made the whole pattern fail to compile.
     classes: `(${LanguageNodeTypes.CLASS_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER})) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.ABSTRACT_CLASS_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER})) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.INTERFACE_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER})) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.ENUM_DECLARATION} name: (${LanguageNodeTypes.IDENTIFIER})) @${QueryCaptureName.CLASS} (${LanguageNodeTypes.TYPE_ALIAS_DECLARATION} name: (${LanguageNodeTypes.TYPE_IDENTIFIER})) @${QueryCaptureName.CLASS}`,
-    // No compiled `functions` query: arrow functions and function expressions (2 of the 6 kinds
-    // in the fallback array above) have no queryable "name" field of their own — their name comes
-    // from resolveCallableName() walking up to an enclosing binding after extraction, in
-    // ast-worker.ts. A query restricted to function_declaration/method_definition would silently
-    // drop every arrow/expression-form function, so this field stays on the descendantsOfType
-    // fallback (which already covers all 6 kinds) rather than compiling a narrower query.
+    // Unlike `classes` above, none of these 6 alternatives require a `name:` field — arrow
+    // functions and function expressions have no queryable name of their own, and their binding
+    // name is resolved separately by resolveCallableName() walking up to an enclosing declarator
+    // *after* extraction either way (ast-worker.ts), so a bare node-type capture loses nothing
+    // versus the old per-type descendantsOfType fallback while replacing 6 full JS-side tree
+    // walks with a single native query pass (docs/cli-test-analysis/typescript-cli-benchmark.md,
+    // Open Findings §3).
+    functions: `(${LanguageNodeTypes.FUNCTION_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.METHOD_DEFINITION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.ARROW_FUNCTION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.FUNCTION_EXPRESSION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.GENERATOR_FUNCTION_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.GENERATOR_FUNCTION}) @${QueryCaptureName.FUNCTION}`,
     imports: `(${LanguageNodeTypes.IMPORT_STATEMENT}) @${QueryCaptureName.IMPORT}`,
     calls: `(${LanguageNodeTypes.CALL_EXPRESSION} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.MEMBER_EXPRESSION})] @${QueryCaptureName.CALL})`,
     implements: `(${LanguageNodeTypes.IMPLEMENTS_CLAUSE} (_) @${QueryCaptureName.IMPLEMENTS})`,

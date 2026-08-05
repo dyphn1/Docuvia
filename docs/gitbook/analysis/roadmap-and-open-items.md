@@ -349,6 +349,105 @@ down) — worth a follow-up.
 `init` + one background-step environmental hiccup + one ordinary read command could silently
 destroy an entire local knowledge graph with no warning surfaced to the user.
 
+### 22. `docuvia query`'s keyword search can't substitute for Read/Grep/Glob during exploratory work
+
+> **Shipped — 2026-08-05.** `query`/`impact` results now carry a `matchType: "exact" | "keyword" |
+"neighbor"` field, surfaced as `match_type="..."` in `--format=prompt` XML and a human-readable
+> hint in CLI output (`lib/contracts/src/interfaces/query.interfaces.ts`,
+> `lib/core/src/query/query.service.ts`, `artifacts/cli/src/commands/query.ts`). AGENTS.md/CLAUDE.md/
+> `.github/copilot-instructions.md` (and their shared `docuvia init` template,
+> `artifacts/cli/src/constants/init-templates.ts`) gained a 4th fallback trigger: a non-`exact`
+> match_type on what should be a well-known symbol/file. Live-reconfirmed against the original 5
+> comparison-table cases: `queryCommand` → `match_type="exact"`; `"query command"` → still the same
+> wrong single hit, now visibly `match_type="keyword"`; `"cli commands list"` → `match_type="keyword"`;
+> `docuvia-api` → `match_type="exact"`. The underlying matching algorithm itself is unchanged (still
+> can't find `query.ts` from a concept phrase) — the fix makes the _confidence_ of a wrong/incomplete
+> result visible so the fallback policy can catch it, not the matching itself smarter.
+
+Exact symbol name lookups work well (return a real call graph, better than grep for that case).
+AGENTS.md's "Docuvia-First Development Workflow (Mandatory)" section already documents three
+fallback-to-Grep/Glob/Read triggers (empty or `tier_b_status="unprocessed"` result; exact source
+text/formatting/diff needed; a dependency `impact` can't detect), and an empty-result failure mode
+(free-text/comment search, a naming-style mismatch) correctly trips that policy. The surviving gap
+is narrower: a concept-phrase query and a directory-style enumeration request each return a
+non-empty, not-flagged-unprocessed result that is nonetheless wrong or incomplete — neither
+condition trips any of the three documented triggers, so an agent following the current policy to
+the letter would trust a wrong/incomplete answer as final rather than falling back. Full detail:
+`docs/cli-test-analysis/docuvia-self-verification-2026-08-05.md`.
+
+### 23. No first-class visibility into Tier B coverage breadth — `doctor` gives false confidence
+
+> **Shipped — 2026-08-05.** `docuvia status` and `docuvia doctor` both now report Tier B coverage as
+> a first-class metric (`lib/ui-core/src/workflows/status/status-workflow.ts`,
+> `lib/ui-core/src/workflows/doctor/doctor-workflow.ts`'s new `tier_b_coverage` diagnostic, `FAIL`
+> below a 50% threshold via `DEFAULT_TIER_B_COVERAGE_FAIL_THRESHOLD`). Live-verified against this
+> repo's real database: `status`/`doctor`/`query`'s independent unprocessed-note all agreed exactly
+> (74/484 processed, 15.3%) at verification time — `doctor`'s overall pass count correctly dropped to
+> reflect the real gap instead of staying all-green. The underlying backlog itself is unchanged
+> (still gated by the existing, correct-as-documented commit-cap throttle, item 15) — this fix is
+> visibility only, not a change to how fast Tier B actually drains.
+
+410 of 484 tracked files (84.7%) in Docuvia2's own repo have never been Tier B-processed (confirmed
+via a note embedded in `query` output, reproduced across two unrelated queries) — down from 422/484
+at initial test time, confirmed to move after a real `docuvia analyze --escalate-to-lsp` batch run
+in the same session, i.e. a real, large, moving-but-slow backlog, not a stuck counter. `doctor`'s
+`tier_b_commit_cap` check is hardcoded to always report `PASS` (see item 15 — that design decision
+is correct on its own terms) but neither it nor anything else surfaces the actual "% of repo ever
+Tier-B processed" figure as a first-class metric; it's only discoverable as an incidental note
+inside individual `query` responses with zero incoming edges. Full detail:
+`docs/cli-test-analysis/docuvia-self-verification-2026-08-05.md`.
+
+### 24. Tier C's queue is permanently head-of-line-blocked by two always-first, always-failing items
+
+> **Shipped — 2026-08-05, two fixes.** (1) `lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts`/
+> `tier-c-queue.ts`: a permanently-failing queue item is now evicted after
+> `DEFAULT_TIER_C_MAX_ITEM_FAILURES` (3) consecutive failures instead of blocking every item behind
+> it forever. (2) The actual root cause of every prior failure, found live-verifying fix (1):
+> `lib/llm-api/src/fetch-llm-client.ts` built the chat-completions URL as
+> `baseUrl + "/v1/chat/completions"` unconditionally, doubling to `.../v1/v1/chat/completions` (404)
+> whenever `baseUrl` already ended in `/v1` — this environment's real
+> `AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL=https://openrouter.ai/api/v1` always did, so 100% of Tier
+> C LLM calls had failed since this repo's inception, misclassified as `bridge-unreachable`. New
+> `buildCompletionsUrl()` strips a trailing `/v1` before appending the path. Live-verified: `docuvia
+status`'s `L3 Decisions` moved from 0 (this repo's entire history) to a real positive count for the
+> first time, confirmed via `.docuvia/logs/analyze.log`'s `analyze.tierC.item_success` events, across
+> multiple real `docuvia analyze --escalate-to-lsp` runs.
+
+Root-caused via `.docuvia/logs/analyze.log`, not yet fixed: Tier C's queue holds 673 real candidates
+(growing from 662 the previous day), but every `analyze --escalate-to-lsp` run attempts the queue in
+a fixed order and the same two items are always first — one fails `no-anchor` (target
+`a489345b87c15611bfbe8062d0f74d35b6dc6753`, its changed files have no matching L2 node), the other
+fails `bridge-unreachable` (target `240f96ee1648e2b81033951f149b77920faaf5ce`) — reproduced
+identically across two `analyze` runs 18 hours apart, so deterministic, not a transient outage. In
+[`run-tier-c-drain.ts`](../../../lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts), a
+`bridge-unreachable` outcome makes `handleTierCItemOutcome` stop the whole drain loop (`return
+outcome.reason === TierCFailReasons.BRIDGE_UNREACHABLE`), and `removeTierCQueueEntries` (dequeue)
+only ever runs on the `outcome.success` branch — a failed item is never removed from the queue. The
+combination is a permanent head-of-line block: the loop stops at 2/20 items attempted, the failing
+item is never dequeued, so it re-fails identically and blocks the same way on every future run, and
+the other 671+ queued candidates behind it can never be reached regardless of queue growth or run
+count — fully explaining `docuvia status`'s 0 L3 decisions despite a reachable, correctly-configured
+LLM endpoint. Full detail: `docs/cli-test-analysis/docuvia-self-verification-2026-08-05.md`.
+
+### 25. Follow-up from item 22: `query`'s actual keyword/FTS matching quality is still unimproved
+
+Item 22's fix (`matchType`) only makes an agent able to _tell_ a match is low-confidence — it does
+not make the match itself better. `docuvia query "query command"` still resolves to the wrong file
+(`artifacts/cli/src/utils/init-command-lock.ts` instead of `artifacts/cli/src/commands/query.ts`),
+now correctly labeled `match_type="keyword"` instead of looking as confident as an exact hit, but
+still wrong. `lib/core/src/query/query.service.ts`'s FTS ranking (`store.fts.searchL2Nodes`/
+`searchL3Nodes`) has no synonym/token-expansion step and no fallback strategy when the top FTS hit
+scores far below an exact match would — a concept phrase composed of common words (e.g. "query",
+"command") can outrank the actual target file if the target's own indexed name/description happens
+to share fewer of those tokens than an unrelated file does. Two other numeric thresholds introduced
+alongside items 23/24 are similarly unvalidated placeholders, each already flagged inline where they
+live rather than needing a separate item here:
+`DEFAULT_TIER_B_COVERAGE_FAIL_THRESHOLD` (`git-constants.ts`, 0.5) and
+`DEFAULT_TIER_C_MAX_ITEM_FAILURES` (`git-constants.ts`, 3) — both have a doc comment noting they're
+untuned, re-tune if real usage shows either is off. Not scheduled; no measured pain trigger exists
+yet for any of the three (the concrete re-entry-trigger pattern items 9/17 already use) — parking
+here rather than speculatively redesigning the ranking algorithm now.
+
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 
 - **Self-built static scope-resolution pipeline** (bypass LSP with hand-guessed cross-file calls)

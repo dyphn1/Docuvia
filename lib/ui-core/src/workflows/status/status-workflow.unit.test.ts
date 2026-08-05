@@ -37,7 +37,9 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       upsertFile: vi.fn(),
       markTierBProcessed: vi.fn(),
       getTierBFileStatus: vi.fn(),
-      getTierBCoverage: vi.fn(),
+      getTierBCoverage: vi
+        .fn()
+        .mockReturnValue({ totalFiles: 10, processedFiles: 8 }),
     },
     tags: {
       upsertTag: vi.fn(),
@@ -110,7 +112,13 @@ describe("StatusWorkflow.execute()", () => {
     expect(openStoreSpy).toHaveBeenCalledWith(
       expect.objectContaining({ readonly: true }),
     );
-    expect(result).toEqual({ projects: 1, l2Nodes: 4, l3Nodes: 9 });
+    expect(result).toEqual({
+      projects: 1,
+      l2Nodes: 4,
+      l3Nodes: 9,
+      tierBFilesProcessed: 8,
+      tierBFilesTotal: 10,
+    });
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
   });

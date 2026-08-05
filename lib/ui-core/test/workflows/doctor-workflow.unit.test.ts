@@ -354,6 +354,102 @@ describe("DoctorWorkflow", () => {
     });
   });
 
+  describe("Tier B Coverage Check (dogfooding-findings-fixes.md Phase 2, roadmap item 23)", () => {
+    function registerPassingDbAndGitRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function makeMockStore(coverage: {
+      totalFiles: number;
+      processedFiles: number;
+    }) {
+      return {
+        files: { getTierBCoverage: vi.fn().mockReturnValue(coverage) },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["tier_b_coverage"]).toBeUndefined();
+    });
+
+    it("is not evaluated at all when skipDb is set", async () => {
+      const store = makeMockStore({ totalFiles: 100, processedFiles: 90 });
+      const openStore = vi.fn().mockResolvedValue(store);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStore);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(store.files.getTierBCoverage).not.toHaveBeenCalled();
+    });
+
+    it("reports PASS when coverage is at or above the threshold", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({ totalFiles: 100, processedFiles: 90 });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["tier_b_coverage"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["tier_b_coverage"].message).toContain("90/100");
+      expect(result.allPassed).toBe(true);
+      expect(store.close).toHaveBeenCalled();
+    });
+
+    it("reports FAIL with an actionable message/suggestion when coverage is below the threshold", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({ totalFiles: 484, processedFiles: 74 });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["tier_b_coverage"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["tier_b_coverage"].message).toContain("74/484");
+      expect(result.diagnostics["tier_b_coverage"].suggestion).toContain(
+        "docuvia analyze --escalate-to-lsp --full",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("is skipped silently (no diagnostic key) when the db can't be opened -- already covered by db_found's own FAIL", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("not found"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockRejectedValue(new Error("ENOENT")),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["tier_b_coverage"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
+    });
+  });
+
   describe("Agent Hooks Check (workflows/doctor-execution-flow.md Presentation-layer asymmetry cleanup)", () => {
     it("reports PASS for both platforms when both hook files exist", async () => {
       vi.mocked(fs.stat).mockResolvedValue({} as any);
@@ -844,6 +940,31 @@ describe("DoctorWorkflow", () => {
       );
       expect(result.allPassed).toBe(false);
     });
+
+    it("skips the check entirely (no diagnostic key, checkAvailability never called) when skipLlm is set -- escape hatch for callers spawning several doctor processes at once (e.g. SQLite concurrency tests), where simultaneous real network probes can time out under contention", async () => {
+      const llmClient = {
+        initialize: vi.fn(),
+        chatCompletion: vi.fn(),
+        streamChatCompletion: vi.fn(),
+        checkAvailability: vi
+          .fn()
+          .mockResolvedValue({ available: false, reason: "timeout" }),
+      };
+      docuviaFactory.register(TOKENS.LlmClient, () => () => llmClient as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+        skipLlm: true,
+        llmBaseUrl: "http://127.0.0.1:8317",
+      });
+
+      expect(result.diagnostics["llm_reachability"]).toBeUndefined();
+      expect(llmClient.checkAvailability).not.toHaveBeenCalled();
+      expect(result.allPassed).toBe(true);
+    });
   });
 
   describe("LSP Binary Check (phase1-decision-integration.md §10e bullet 4 / §7a-1, T8; multi-language-lsp-support plan, Finding A/G)", () => {
@@ -949,12 +1070,10 @@ describe("DoctorWorkflow", () => {
       );
 
       const tsCheck = vi.fn().mockResolvedValue({ available: true });
-      const pyCheck = vi
-        .fn()
-        .mockResolvedValue({
-          available: false,
-          reason: "pyright not installed",
-        });
+      const pyCheck = vi.fn().mockResolvedValue({
+        available: false,
+        reason: "pyright not installed",
+      });
       docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
         typescript: () =>
           ({

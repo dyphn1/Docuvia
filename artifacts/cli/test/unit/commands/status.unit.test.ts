@@ -52,7 +52,13 @@ describe("statusCommand", () => {
   });
 
   it("prints project/l2/l3 counts as a Metric/Value table on success", async () => {
-    mockStatus.mockResolvedValue({ projects: 1, l2Nodes: 5, l3Nodes: 12 });
+    mockStatus.mockResolvedValue({
+      projects: 1,
+      l2Nodes: 5,
+      l3Nodes: 12,
+      tierBFilesProcessed: 8,
+      tierBFilesTotal: 10,
+    });
 
     await statusCommand();
 
@@ -64,6 +70,7 @@ describe("statusCommand", () => {
         ["Projects", "1"],
         ["L2 Nodes", "5"],
         ["L3 Decisions", "12"],
+        ["Tier B Coverage", "8 / 10 (80.0%)"],
       ]),
     );
   });

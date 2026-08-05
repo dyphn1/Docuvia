@@ -30,6 +30,7 @@ export interface DoctorOptions {
   skipHooks?: boolean;
   skipLogs?: boolean;
   skipLsp?: boolean;
+  skipLlm?: boolean;
   /** `--fix` (phase1-decision-integration.md §10d, T6) -- forwarded verbatim to
    *  `docuviaApi.doctor()`; see `DoctorWorkflow`'s own doc comment for what it does. */
   fix?: boolean;
@@ -120,7 +121,13 @@ function resolveDoctorOptions(
 ): Required<
   Pick<
     DoctorOptions,
-    "skipDb" | "skipGit" | "skipHooks" | "skipLogs" | "skipLsp" | "fix"
+    | "skipDb"
+    | "skipGit"
+    | "skipHooks"
+    | "skipLogs"
+    | "skipLsp"
+    | "skipLlm"
+    | "fix"
   >
 > {
   const {
@@ -129,9 +136,10 @@ function resolveDoctorOptions(
     skipHooks = false,
     skipLogs = false,
     skipLsp = false,
+    skipLlm = false,
     fix = false,
   } = options;
-  return { skipDb, skipGit, skipHooks, skipLogs, skipLsp, fix };
+  return { skipDb, skipGit, skipHooks, skipLogs, skipLsp, skipLlm, fix };
 }
 
 export async function doctorCommand(

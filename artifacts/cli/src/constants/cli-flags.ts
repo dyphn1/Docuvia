@@ -17,6 +17,12 @@ export const CLI_FLAGS = {
    *  mirroring `SKIP_GIT`'s existing precedent for a fixture that deliberately has no LSP
    *  environment set up (e.g. a concurrency test only interested in SQLite behavior). */
   SKIP_LSP: "--skip-lsp",
+  /** `doctor`'s Tier C LLM endpoint reachability probe -- a real network call with its own
+   *  timeout, so this skips it entirely, mirroring `SKIP_GIT`/`SKIP_LSP`'s existing precedent for
+   *  a fixture/test that isn't exercising LLM connectivity (e.g. a concurrency test spawning
+   *  several `doctor` processes at once, where several simultaneous network probes can time out
+   *  under real contention). */
+  SKIP_LLM: "--skip-llm",
   /** `analyze --escalate-to-lsp`'s D2 gate (phase1-decision-integration.md §8c): skips the gate
    *  entirely when the LSP environment isn't ready -- interactive, this skips the "continue with
    *  AST-only fallback?" prompt; non-interactive, this skips the hard failure -- and proceeds

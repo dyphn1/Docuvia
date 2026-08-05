@@ -39,6 +39,23 @@ describe("Command: docuvia doctor concurrent with docuvia hydrate (real filesyst
     // `doctor`'s db-found precondition both need `local.db` and the branch to already exist.
     const initResult = await sandbox.runCli(["init"], { reject: false });
     expect(initResult.exitCode).toBe(0);
+
+    // `init` only queues files for Tier B (never runs it -- that's `analyze --escalate-to-lsp`),
+    // so this fixture's one file would otherwise show 0% Tier B coverage and legitimately FAIL
+    // `doctor`'s `tier_b_coverage` diagnostic (dogfooding-findings-fixes.md Phase 2, roadmap item
+    // 23) -- orthogonal to the SQLite WAL/busy_timeout concurrency behavior this test targets.
+    // Stamp it as already processed so `doctor`'s exit code stays a clean concurrency signal.
+    const setupDbPath = resolve(sandbox.dir, ".docuvia/local.db");
+    const setupDb = new Database(setupDbPath);
+    try {
+      setupDb
+        .prepare(
+          "UPDATE project_files SET last_tier_b_processed_at = CURRENT_TIMESTAMP",
+        )
+        .run();
+    } finally {
+      setupDb.close();
+    }
   }, 30000);
 
   afterEach(async () => {
@@ -52,10 +69,13 @@ describe("Command: docuvia doctor concurrent with docuvia hydrate (real filesyst
       // and is orthogonal to the db-concurrency behavior this test targets; `--skip-lsp` avoids
       // `doctor`'s LSP-binary-readiness check (now FAIL-capable) for the same reason -- this
       // fixture never installs `typescript-language-server` on purpose, since it's irrelevant to
-      // the SQLite WAL/busy_timeout behavior under test. `sqlite_integrity` (the check that
-      // matters here) still runs.
+      // the SQLite WAL/busy_timeout behavior under test. `--skip-llm` avoids the Tier C LLM
+      // reachability probe -- a real network call that timed out when DOCTOR_RUNS processes fired
+      // it simultaneously against this environment's real endpoint (dogfooding-findings-fixes.md
+      // follow-up: live-reproduced, unrelated to the tier_b_coverage diagnostic added alongside
+      // it). `sqlite_integrity` (the check that matters here) still runs.
       ...Array.from({ length: DOCTOR_RUNS }, () =>
-        sandbox.runCli(["doctor", "--skip-git", "--skip-lsp"], {
+        sandbox.runCli(["doctor", "--skip-git", "--skip-lsp", "--skip-llm"], {
           reject: false,
         }),
       ),

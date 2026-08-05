@@ -28,6 +28,12 @@ export async function statusCommand(cwd: string = process.cwd()) {
     const status = await docuviaApi.status(scopeId, logger);
     spinner.succeed(UI_MESSAGES.STATUS_SUCCESS);
     ui.header(UI_MESSAGES.STATUS_HEADER);
+    const tierBCoveragePct =
+      status.tierBFilesTotal > 0
+        ? ((status.tierBFilesProcessed / status.tierBFilesTotal) * 100).toFixed(
+            1,
+          )
+        : "0.0";
     ui.table(
       [
         { header: UI_MESSAGES.STATUS_COL_METRIC },
@@ -37,6 +43,10 @@ export async function statusCommand(cwd: string = process.cwd()) {
         [UI_MESSAGES.STATUS_METRIC_PROJECTS, String(status.projects)],
         [UI_MESSAGES.STATUS_METRIC_L2_NODES, String(status.l2Nodes)],
         [UI_MESSAGES.STATUS_METRIC_L3_DECISIONS, String(status.l3Nodes)],
+        [
+          UI_MESSAGES.STATUS_METRIC_TIER_B_COVERAGE,
+          `${status.tierBFilesProcessed} / ${status.tierBFilesTotal} (${tierBCoveragePct}%)`,
+        ],
       ],
     );
   } catch (error: unknown) {

@@ -34,6 +34,10 @@ const CATEGORY_RULES: CategoryRule[] = [
     test: (k) => k === "tier_b_commit_cap",
   },
   {
+    category: UI_MESSAGES.DOCTOR_CATEGORY_TIER_B_COVERAGE,
+    test: (k) => k === "tier_b_coverage",
+  },
+  {
     category: UI_MESSAGES.DOCTOR_CATEGORY_LLM,
     test: (k) => k === "llm_reachability",
   },
@@ -55,6 +59,7 @@ export const DOCTOR_CATEGORY_ORDER: readonly string[] = [
   UI_MESSAGES.DOCTOR_CATEGORY_GIT_HOOKS,
   UI_MESSAGES.DOCTOR_CATEGORY_LOGS,
   UI_MESSAGES.DOCTOR_CATEGORY_TIER_B,
+  UI_MESSAGES.DOCTOR_CATEGORY_TIER_B_COVERAGE,
   UI_MESSAGES.DOCTOR_CATEGORY_LLM,
   UI_MESSAGES.DOCTOR_CATEGORY_LSP,
   UI_MESSAGES.DOCTOR_CATEGORY_AGENT_HOOKS,

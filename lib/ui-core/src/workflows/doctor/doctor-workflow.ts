@@ -47,6 +47,12 @@ export interface DoctorOptions {
    *  whose fixture project has no LSP environment set up on purpose, mirroring `skipGit`'s
    *  existing precedent for sidestepping an orthogonal check. */
   skipLsp?: boolean;
+  /** Skips the Tier C LLM endpoint reachability probe (§10e bullet 3, T7) -- a real network call
+   *  with its own timeout, so it's an escape hatch for callers that care about `doctor`'s other
+   *  diagnostics (e.g. SQLite concurrency tests spawning several `doctor` processes at once) but
+   *  aren't testing LLM connectivity, mirroring `skipGit`/`skipLsp`'s existing precedent for
+   *  sidestepping an orthogonal, environment-dependent check. */
+  skipLlm?: boolean;
   /** Opt-in repair of the legacy-hook duplicate-block case (§10d, T6) -- the only `doctor` flag
    *  that mutates workspace files, and only for that one specific condition. Never mutates
    *  anything when absent/false. */
@@ -72,6 +78,7 @@ export class DoctorWorkflow {
       skipLogs = false,
       skipHooks = false,
       skipLsp = false,
+      skipLlm = false,
       fix = false,
       llmBaseUrl,
       llmApiKey,
@@ -90,13 +97,14 @@ export class DoctorWorkflow {
       await this.runOrSkip(skipGit, () =>
         this.runPrePushHookDiagnostic(diagnostics),
       ),
-      await this.runLlmReachabilityDiagnostic(
-        diagnostics,
-        llmBaseUrl,
-        llmApiKey,
+      await this.runOrSkip(skipLlm, () =>
+        this.runLlmReachabilityDiagnostic(diagnostics, llmBaseUrl, llmApiKey),
       ),
       await this.runOrSkip(skipLsp, () =>
         this.runLspBinaryDiagnostic(diagnostics),
+      ),
+      await this.runOrSkip(skipDb, () =>
+        this.runTierBCoverageDiagnostic(diagnostics),
       ),
     ];
 
@@ -507,6 +515,64 @@ export class DoctorWorkflow {
     } catch {
       // db not found/unopenable (already covered by db_found's own FAIL) or a git-command
       // failure -- either way this check degrades to silently skipped, never a doctor crash.
+    } finally {
+      await store?.close();
+    }
+  }
+
+  /**
+   * dogfooding-findings-fixes.md Phase 2 (roadmap item 23): workspace-wide Tier B coverage
+   * (`store.files.getTierBCoverage()`) as a first-class diagnostic -- previously only surfaced as
+   * an incidental note buried inside individual `query`/`impact` responses. Unlike
+   * `runTierBCommitCapDiagnostic` above (a different question -- per-commit budget, always PASS),
+   * low coverage is a real, actionable gap here: an agent trusting an unprocessed file's empty
+   * edges as "no relationships" (rather than "unprocessed") is a correctness risk -- FAIL below
+   * `DEFAULT_TIER_B_COVERAGE_FAIL_THRESHOLD`, PASS otherwise. Opens the local db read-only, same
+   * pattern as `runTierBCommitCapDiagnostic`; a missing/unopenable db degrades to silently skipped
+   * (already covered by `db_found`'s own FAIL), never a doctor crash.
+   */
+  private async runTierBCoverageDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) {
+      return true;
+    }
+
+    let store: IGraphStore | undefined;
+    try {
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+
+      const { totalFiles, processedFiles } = store.files.getTierBCoverage();
+      const coverage = totalFiles > 0 ? processedFiles / totalFiles : 1;
+      const belowThreshold =
+        coverage < GitConstants.DEFAULT_TIER_B_COVERAGE_FAIL_THRESHOLD;
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.TIER_B_COVERAGE] = belowThreshold
+        ? {
+            status: DiagnosticStatus.FAIL,
+            message: DOCTOR_MESSAGES.TIER_B_COVERAGE_LOW(
+              processedFiles,
+              totalFiles,
+              coverage * 100,
+            ),
+            suggestion: DOCTOR_MESSAGES.TIER_B_COVERAGE_LOW_SUGGESTION,
+          }
+        : {
+            status: DiagnosticStatus.PASS,
+            message: DOCTOR_MESSAGES.TIER_B_COVERAGE_OK(
+              processedFiles,
+              totalFiles,
+            ),
+          };
+      return !belowThreshold;
+    } catch {
+      // db not found/unopenable (already covered by db_found's own FAIL) -- degrades to silently
+      // skipped, never a doctor crash.
+      return true;
     } finally {
       await store?.close();
     }

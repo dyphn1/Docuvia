@@ -7,6 +7,10 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
   LOGS: "logs",
   /** §10c's doctor-half backup for the Tier B commit-cap nudge (T3 is the Tier-A/commit-time half). */
   TIER_B_COMMIT_CAP: "tier_b_commit_cap",
+  /** dogfooding-findings-fixes.md Phase 2 (roadmap item 23): workspace-wide Tier B coverage --
+   *  distinct question from `TIER_B_COMMIT_CAP` above (per-commit budget vs. "% of repo ever
+   *  processed"). */
+  TIER_B_COVERAGE: "tier_b_coverage",
   /** §10d/§7c: the legacy-hook duplicate-block / not-resolvable post-commit hook checks. */
   GIT_HOOK: "git_hook",
   /** phase2-sync-knowledge-scheduling.md SKSCHED-005: pre-push hook staleness (installed before
@@ -63,6 +67,16 @@ export const DOCTOR_MESSAGES = {
   TIER_B_CAP_OK: "Tier B commit-cap not yet reached.",
   TIER_B_CAP_EXCEEDED:
     "Changed code since the last Tier B batch has exceeded the cap -- push, or run `docuvia analyze --escalate-to-lsp && docuvia snapshot`, to trigger it.",
+
+  /** dogfooding-findings-fixes.md Phase 2 (roadmap item 23): workspace-wide Tier B coverage --
+   *  a real, actionable gap when below `DEFAULT_TIER_B_COVERAGE_FAIL_THRESHOLD` (FAIL), unlike
+   *  the always-PASS commit-cap check above. */
+  TIER_B_COVERAGE_OK: (processed: number, total: number) =>
+    `Tier B coverage: ${processed}/${total} files processed.`,
+  TIER_B_COVERAGE_LOW: (processed: number, total: number, pct: number) =>
+    `Only ${pct.toFixed(1)}% of tracked files have ever been Tier B-processed (${processed}/${total}) -- query results for the rest may show empty edges that mean "unprocessed", not "no relationships".`,
+  TIER_B_COVERAGE_LOW_SUGGESTION:
+    "Run `docuvia analyze --escalate-to-lsp --full` to resync.",
 
   /** §10d/§7c: legacy-hook duplicate-block / not-resolvable post-commit hook checks (T5). */
   GIT_HOOK_NOT_INSTALLED: "No Docuvia post-commit hook installed.",

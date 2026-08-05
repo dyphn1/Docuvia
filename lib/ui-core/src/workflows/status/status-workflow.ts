@@ -61,10 +61,13 @@ export class StatusWorkflow {
 
     try {
       const { l2Nodes, l3Nodes } = store.graph.count();
+      const { totalFiles, processedFiles } = store.files.getTierBCoverage();
       const result: StatusResult = {
         projects: store.projects.count(),
         l2Nodes,
         l3Nodes,
+        tierBFilesProcessed: processedFiles,
+        tierBFilesTotal: totalFiles,
       };
       await appendStatusLogLine(workspaceRoot, {
         event: STATUS_EVENTS.SUMMARY,

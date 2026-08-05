@@ -69,6 +69,7 @@ export const UI_MESSAGES = {
   STATUS_METRIC_PROJECTS: "Projects",
   STATUS_METRIC_L2_NODES: "L2 Nodes",
   STATUS_METRIC_L3_DECISIONS: "L3 Decisions",
+  STATUS_METRIC_TIER_B_COVERAGE: "Tier B Coverage",
 
   // Publish Command (IFCE-005: renamed from `sync`)
   PUBLISH_HEADER: "Publish to Docuvia",
@@ -284,6 +285,7 @@ export const UI_MESSAGES = {
   DOCTOR_CATEGORY_GIT_HOOKS: "Git Hooks",
   DOCTOR_CATEGORY_LOGS: "Logs",
   DOCTOR_CATEGORY_TIER_B: "Tier B Batch",
+  DOCTOR_CATEGORY_TIER_B_COVERAGE: "Tier B Coverage",
   DOCTOR_CATEGORY_LLM: "LLM Integration",
   DOCTOR_CATEGORY_LSP: "LSP Providers",
   DOCTOR_CATEGORY_AGENT_HOOKS: "AI Agent Hooks",
@@ -316,6 +318,13 @@ export const UI_MESSAGES = {
     `No callers found, but ${unprocessed} of ${total} tracked file(s) have never been Tier B-processed -- this may be incomplete, not confirmed zero. Run \`docuvia analyze --escalate-to-lsp --full\` to resync.`,
   QUERY_TIER_B_OUTGOING_UNPROCESSED:
     "No callees found, but this symbol's own file has never been Tier B-processed -- this may be incomplete, not confirmed zero. Run `docuvia analyze --escalate-to-lsp --full` to resync.",
+  /** Human-readable mirror of the prompt-format `match_type` attribute -- tells an agent/human
+   *  reading the CLI output directly whether the returned module is a confident exact match or a
+   *  lower-confidence keyword/neighbor guess that should be cross-checked with Grep/Glob. */
+  QUERY_MATCH_TYPE_EXACT: " (exact match)",
+  QUERY_MATCH_TYPE_KEYWORD:
+    " (keyword match -- verify with Grep/Glob if unsure)",
+  QUERY_MATCH_TYPE_NEIGHBOR: " (neighbor match)",
 
   // Export Topology Command
   EXPORT_HEADER: "Export Topology",

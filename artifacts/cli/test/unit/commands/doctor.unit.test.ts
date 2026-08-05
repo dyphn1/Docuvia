@@ -155,6 +155,7 @@ describe("doctorCommand", () => {
         skipHooks: true,
         skipLogs: true,
         skipLsp: false,
+        skipLlm: false,
         fix: false,
       },
     );
@@ -183,6 +184,7 @@ describe("doctorCommand", () => {
         skipHooks: false,
         skipLogs: false,
         skipLsp: false,
+        skipLlm: false,
         fix: true,
       },
     );
@@ -205,6 +207,7 @@ describe("doctorCommand", () => {
         skipHooks: false,
         skipLogs: false,
         skipLsp: false,
+        skipLlm: false,
         fix: false,
       },
     );

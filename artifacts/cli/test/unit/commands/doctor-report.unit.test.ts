@@ -21,6 +21,7 @@ describe("categorizeDiagnosticKey", () => {
     ["git_runner", UI_MESSAGES.DOCTOR_CATEGORY_GIT],
     ["logs", UI_MESSAGES.DOCTOR_CATEGORY_LOGS],
     ["tier_b_commit_cap", UI_MESSAGES.DOCTOR_CATEGORY_TIER_B],
+    ["tier_b_coverage", UI_MESSAGES.DOCTOR_CATEGORY_TIER_B_COVERAGE],
     ["llm_reachability", UI_MESSAGES.DOCTOR_CATEGORY_LLM],
     ["lsp_binary_typescript", UI_MESSAGES.DOCTOR_CATEGORY_LSP],
     ["agent_hooks_claude", UI_MESSAGES.DOCTOR_CATEGORY_AGENT_HOOKS],

@@ -109,6 +109,7 @@ export const CLI_COMMAND_FLAGS: Record<CliCommand, string[]> = {
     CLI_FLAGS.SKIP_HOOKS,
     CLI_FLAGS.SKIP_LOGS,
     CLI_FLAGS.SKIP_LSP,
+    CLI_FLAGS.SKIP_LLM,
     CLI_FLAGS.FIX,
   ],
 };

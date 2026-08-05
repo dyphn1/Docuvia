@@ -46,3 +46,43 @@ jobs:
 
       - name: Run tests
         run: pnpm run test
+
+  ocr-review:
+    name: OpenCodeReview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install OpenCodeReview
+        run: npm install -g @alibaba-group/open-code-review
+
+      - name: Configure OCR (using secrets)
+        env:
+          OCR_PROVIDER: openrouter
+          OCR_MODEL: openrouter/free
+          OCR_CUSTOM_PROVIDERS_OPENROUTER_URL: https://openrouter.ai/api/v1
+          OCR_CUSTOM_PROVIDERS_OPENROUTER_PROTOCOL: openai
+          OCR_CUSTOM_PROVIDERS_OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          ocr config set provider $OCR_PROVIDER
+          ocr config set model $OCR_MODEL
+          ocr config set custom_providers.openrouter.url $OCR_CUSTOM_PROVIDERS_OPENROUTER_URL
+          ocr config set custom_providers.openrouter.protocol $OCR_CUSTOM_PROVIDERS_OPENROUTER_PROTOCOL
+          ocr config set custom_providers.openrouter.api_key $OCR_CUSTOM_PROVIDERS_OPENROUTER_API_KEY
+          ocr llm test  # 驗證連線
+
+      - name: Run OCR Review
+        run: ocr review --format github # GitHub 格式會自動註釋 PR

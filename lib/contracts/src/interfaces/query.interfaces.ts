@@ -52,15 +52,27 @@ export const QueryResultLayers = {
 export type QueryResultLayer =
   (typeof QueryResultLayers)[keyof typeof QueryResultLayers];
 
+/** How a `search()`/`query()` result was found -- `"exact"` came from an exact `findNodeByName`
+ *  match, `"keyword"` from an FTS keyword hit, `"neighbor"` from a resolved node's own edge (not
+ *  a direct hit on the query itself). Surfaced to callers so a non-exact match can be treated as
+ *  lower-confidence rather than indistinguishable from an exact one. */
+export type QueryMatchType = "exact" | "keyword" | "neighbor";
+
 export interface LocalSearchResult {
   layer: QueryResultLayer;
   id: number;
   title: string;
   content: string | null;
+  matchType: QueryMatchType;
 }
 
 export interface LocalQueryResult {
-  l2: { name: string; type: string; filePath?: string } | null;
+  l2: {
+    name: string;
+    type: string;
+    filePath?: string;
+    matchType: QueryMatchType;
+  } | null;
   l3: Array<{ title: string; content: string | null }>;
   context: GraphContext | null;
 }

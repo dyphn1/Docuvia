@@ -137,6 +137,7 @@ export class QueryService implements IQueryService {
           title: row.name,
           content: row.description,
           score: 0.9 - i * 0.01,
+          matchType: "keyword",
         }),
       );
       store.fts.searchL3Nodes(keywords, limit).forEach((row, i) =>
@@ -146,6 +147,7 @@ export class QueryService implements IQueryService {
           title: row.title,
           content: row.content,
           score: 0.85 - i * 0.01,
+          matchType: "keyword",
         }),
       );
     }
@@ -160,6 +162,7 @@ export class QueryService implements IQueryService {
           title: resolved.name,
           content: null,
           score: 0.95,
+          matchType: "exact",
         });
 
         const neighbors = [
@@ -173,6 +176,7 @@ export class QueryService implements IQueryService {
             title: neighbor.name,
             content: QueryMessages.linkedTo(resolved.name),
             score: 0.7 - i * 0.01,
+            matchType: "neighbor",
           }),
         );
       }
@@ -222,6 +226,7 @@ export class QueryService implements IQueryService {
             name: l2Result.title,
             type: l2Node?.type ?? "",
             filePath: l2Node?.filePath,
+            matchType: l2Result.matchType,
           }
         : null,
       l3: l3Results.map((r) => ({ title: r.title, content: r.content })),

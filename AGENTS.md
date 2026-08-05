@@ -118,6 +118,7 @@ Only fall back to `Grep`/`Glob`/`Read` when:
 - `query`/`impact` returns empty, or the target is flagged `tier_b_status="unprocessed"` — the graph hasn't seen it yet, which means _unknown_, not _zero_. Run `docuvia analyze --escalate-to-lsp --full` (or check `docuvia doctor`) before trusting an empty result.
 - you need exact source text, formatting, or a diff — the graph indexes structure (nodes/edges), not literal file contents.
 - the dependency is one `impact` doesn't detect: a plugin path built from a runtime variable, `import()` with a computed specifier, or `child_process` spawning another project file. See [`impact`'s "What counts as a dependency edge"](docs/gitbook/user-guide/cli/impact.md#what-counts-as-a-dependency-edge).
+- `query` returns a non-empty result whose `match_type` is `"keyword"` or `"neighbor"` rather than `"exact"` for what should be a well-known symbol or file — treat it as a lower-confidence hit and cross-check with Grep/Glob before relying on it as complete, the same way an `"unprocessed"` flag is treated as unknown, not zero.
 
 The block below is the platform-agnostic version of this mandate, kept in sync across `AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md` by `docuvia init`'s template (`artifacts/cli/src/constants/init-templates.ts`) — edit the template, not just one copy, if you change the wording.
 
@@ -131,5 +132,5 @@ Grep/Glob/Read are the most expensive tools available to you — before reaching
 Run: `npx --no-install docuvia query "<concept_or_file>" --format=prompt`
 Run: `npx --no-install docuvia impact <symbolOrFile>`
 
-Use the results to understand architectural boundaries, historical decisions, and potential blast radius before modifying code. Only fall back to Grep/Glob/Read when the graph returns nothing, the target is flagged `tier_b_status="unprocessed"` (unknown, not zero), or you need exact source text/formatting a structural query can't capture.
+Use the results to understand architectural boundaries, historical decisions, and potential blast radius before modifying code. Only fall back to Grep/Glob/Read when the graph returns nothing, the target is flagged `tier_b_status="unprocessed"` (unknown, not zero), you need exact source text/formatting a structural query can't capture, or `query` returns a non-`exact` `match_type` (keyword/neighbor) for what should be a well-known symbol or file.
 <!-- docuvia:end -->

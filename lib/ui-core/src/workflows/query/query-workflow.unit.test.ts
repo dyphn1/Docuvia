@@ -98,7 +98,11 @@ describe("QueryWorkflow.execute()", () => {
       .mockResolvedValue(store);
     docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStoreSpy);
 
-    const queryResult = { l2: { name: "authService" }, l3: [], context: null };
+    const queryResult = {
+      l2: { name: "authService", matchType: "exact" as const },
+      l3: [],
+      context: null,
+    };
     const queryService: IQueryService = {
       extractKeywords: vi.fn(),
       getContext: vi.fn(),

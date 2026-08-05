@@ -159,6 +159,7 @@ export type {
   LocalSearchResult,
   LocalQueryResult,
   QueryResultLayer,
+  QueryMatchType,
   IQueryService,
 } from "./interfaces/query.interfaces.js";
 export { QueryResultLayers } from "./interfaces/query.interfaces.js";

@@ -188,6 +188,7 @@ describe("QueryService", () => {
         name: "authService",
         type: "module",
         filePath: "src/auth.ts",
+        matchType: "exact",
       });
       expect(result.context).toEqual({
         incoming: [{ name: "caller", linkType: "calls" }],
@@ -223,8 +224,67 @@ describe("QueryService", () => {
         name: "authService",
         type: "module",
         filePath: "src/auth.ts",
+        matchType: "exact",
       });
       expect(result.context).toBeNull();
+    });
+  });
+
+  describe("search() matchType provenance", () => {
+    it('tags an exact findNodeByName hit as matchType: "exact"', () => {
+      store.graph.insertNode({
+        projectId,
+        name: "authService",
+        pathPatterns: ["src/auth.ts"],
+      });
+
+      const results = queryService.search(store, "authService");
+
+      expect(results).toContainEqual(
+        expect.objectContaining({ title: "authService", matchType: "exact" }),
+      );
+    });
+
+    it('tags an FTS-only keyword hit as matchType: "keyword"', () => {
+      store.graph.insertNode({
+        projectId,
+        name: "authService",
+        description: "handles authentication",
+        pathPatterns: ["src/auth.ts"],
+      });
+
+      const results = queryService.search(store, "authentication");
+
+      expect(results).toEqual([
+        expect.objectContaining({
+          title: "authService",
+          matchType: "keyword",
+        }),
+      ]);
+    });
+
+    it('tags a resolved node\'s neighbor as matchType: "neighbor"', () => {
+      const hubId = store.graph.insertNode({
+        projectId,
+        name: "hub",
+        pathPatterns: ["src/hub.ts"],
+      });
+      const spokeId = store.graph.insertNode({
+        projectId,
+        name: "spoke",
+        pathPatterns: ["src/spoke.ts"],
+      });
+      store.graph.insertLink({
+        sourceNodeId: hubId,
+        targetNodeId: spokeId,
+        linkType: "calls",
+      });
+
+      const results = queryService.search(store, "hub");
+
+      expect(results).toContainEqual(
+        expect.objectContaining({ title: "spoke", matchType: "neighbor" }),
+      );
     });
   });
 

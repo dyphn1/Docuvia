@@ -6,6 +6,7 @@ import {
   type LocalQueryResult,
   type GraphEdgeRef,
   type TierBCoverageHint,
+  type QueryMatchType,
   MemoryKeys,
   LogLevels,
 } from "@workspace/contracts";
@@ -26,6 +27,7 @@ const XML_TAGS = {
   L2_START_PREFIX: '  <l2_module name="',
   L2_TYPE_MID: '" type="',
   L2_FILE_MID: '" file="',
+  L2_MATCH_TYPE_MID: '" match_type="',
   L2_START_SUFFIX: '">',
   L2_END: "  </l2_module>",
   L3_START_PREFIX: '    <l3_decision title="',
@@ -58,6 +60,7 @@ function buildPromptL2Lines(result: LocalQueryResult): string[] {
     if (result.l2.type) openTag += XML_TAGS.L2_TYPE_MID + result.l2.type;
     if (result.l2.filePath)
       openTag += XML_TAGS.L2_FILE_MID + result.l2.filePath;
+    openTag += XML_TAGS.L2_MATCH_TYPE_MID + result.l2.matchType;
     lines.push(openTag + XML_TAGS.L2_START_SUFFIX);
   }
   for (const l3 of result.l3) {
@@ -156,6 +159,14 @@ export function formatPromptOutput(result: LocalQueryResult): string {
   return lines.join(FORMAT_MARKERS.NEWLINE);
 }
 
+/** Human-readable mirror of the prompt-format `match_type` attribute -- see
+ *  `UI_MESSAGES.QUERY_MATCH_TYPE_EXACT`'s doc comment. */
+const QUERY_MATCH_TYPE_HINTS: Record<QueryMatchType, string> = {
+  exact: UI_MESSAGES.QUERY_MATCH_TYPE_EXACT,
+  keyword: UI_MESSAGES.QUERY_MATCH_TYPE_KEYWORD,
+  neighbor: UI_MESSAGES.QUERY_MATCH_TYPE_NEIGHBOR,
+};
+
 function printHumanL2Header(result: LocalQueryResult): void {
   if (result.l2) {
     let line = UI_MESSAGES.QUERY_L2_PREFIX + result.l2.name;
@@ -165,6 +176,7 @@ function printHumanL2Header(result: LocalQueryResult): void {
         result.l2.filePath +
         FORMAT_MARKERS.CLOSE_PAREN;
     }
+    line += QUERY_MATCH_TYPE_HINTS[result.l2.matchType];
     ui.info(line);
   } else {
     ui.warn(UI_MESSAGES.QUERY_NO_L2);

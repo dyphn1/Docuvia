@@ -125,6 +125,6 @@ Grep/Glob/Read are the most expensive tools available to you — before reaching
 Run: \`npx --no-install docuvia query "<concept_or_file>" --format=prompt\`
 Run: \`npx --no-install docuvia impact <symbolOrFile>\`
 
-Use the results to understand architectural boundaries, historical decisions, and potential blast radius before modifying code. Only fall back to Grep/Glob/Read when the graph returns nothing, the target is flagged \`tier_b_status="unprocessed"\` (unknown, not zero), or you need exact source text/formatting a structural query can't capture.
+Use the results to understand architectural boundaries, historical decisions, and potential blast radius before modifying code. Only fall back to Grep/Glob/Read when the graph returns nothing, the target is flagged \`tier_b_status="unprocessed"\` (unknown, not zero), you need exact source text/formatting a structural query can't capture, or \`query\` returns a non-\`exact\` \`match_type\` (keyword/neighbor) for what should be a well-known symbol or file.
 <!-- docuvia:end -->
 `;

@@ -644,6 +644,24 @@ tracks the separate, new crash it surfaced.
 
 ### 28. `tsserver` OOM-aborts partway through a large vscode Tier B batch (exit code 134/SIGABRT)
 
+> **Fixed 2026-08-06.** The user's chosen remedy was "raise tsserver's heap ceiling," but the
+> first implementation of that (a `NODE_OPTIONS=--max-old-space-size=4096` env override on the
+> spawn, `lib/core/src/lsp/lsp-binary-resolver.ts`) was live-verified insufficient: a follow-up run
+> against the same vscode checkout reproduced the identical exit-134 crash, on a third different
+> file this time. Reading `typescript-language-server`'s own source explained why: it reads
+> `initializationOptions.maxTsServerMemory` directly off the `initialize` request and pushes that
+> as tsserver's own `--max-old-space-size` argument, independent of `NODE_OPTIONS` — the real
+> mechanism, not the one first tried. Added an optional `initializationOptions` field to
+> `LspLanguageConfig` (`lib/core/src/lsp/lsp-edge-provider-base.ts`; `BaseLspEdgeProvider` forwards
+> it verbatim on `initialize`, a no-op for every other language) and wired TS's config to supply
+> `{ maxTsServerMemory: 8192 }` (bumped from the empirically-insufficient 4096; the `NODE_OPTIONS`
+> override stays as a harmless secondary fallback). Live-reverified against the same vscode
+> checkout: zero exit-134 crashes, Tier B coverage advanced 778/12,339 → 1,090/12,339 (312 files,
+> its best single-run progress across this whole investigation), **1,184 edges applied** (every
+> prior vscode Tier B run, crashing or not, had reported exactly 0), and the run now ends the same
+> way C# already does on a large solution — `"Tier B LSP batch exceeded its 120000ms timeout and
+was aborted"`, an ordinary, expected degradation, not a crash cascade.
+
 Found 2026-08-06, immediately after item 27's bounded-LRU fix let a Tier B batch against vscode make
 real progress (558/12,339 → 707/12,339 files) for the first time without collapsing to near-universal
 timeouts. Initially opaque: the `typescript-language-server` process exited (code=1) while processing
@@ -668,19 +686,11 @@ multi-project-reference graph, within one long-lived session, to eventually exha
 — a real, separate scale ceiling that the earlier throughput-collapse bug was likely masking by
 failing everything before this ever became reachable.
 
-**Status: root-caused 2026-08-06 (V8 OOM abort, exit 134), not yet fixed.** Candidate remedies, not
-yet decided or built: (a) raise the spawned `typescript-language-server`/`tsserver` process's heap
-ceiling (e.g. via a `NODE_OPTIONS=--max-old-space-size=...` override on the already-overridable
-`LspJsonRpcClientOptions.env`), a real, well-known remedy for TS language-service OOM on large
-codebases, but the right default size is a genuine tradeoff (memory availability varies by machine) —
-not something to pick unilaterally; (b) detect a genuine process-death mid-batch (vs. an ordinary
-per-file timeout) and restart the LSP session to keep draining the rest of the current run's files
-instead of cascading every remaining queued file to instant failure the moment the client dies (this
-run alone lost ~11,349 files to that cascade in a few milliseconds once the abort happened). Either
-way, this is NOT a permanent block like item 24 was: Tier B coverage is a persistent, monotonic
-counter and each run makes real forward progress (149 files, then 71 more) before hitting the ceiling
-again, so repeated `analyze --escalate-to-lsp` runs will eventually drain the whole queue on their
-own, just inefficiently.
+**Status: fixed 2026-08-06** (see the note at top of this item) — was: root-caused (V8 OOM abort,
+exit 134) but not yet fixed. The other candidate remedy considered but not needed — restarting the
+LSP session on a genuine process-death instead of cascading every remaining queued file to instant
+failure — stays parked; not chased since raising the real ceiling made the crash stop happening at
+this scale. Revisit only if a future, even-larger repo reproduces exit 134 again despite 8192MB.
 
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 

@@ -642,22 +642,45 @@ logic described above stays parked until that closes.**
 unbounded-open-files collapse mechanism is fixed and live-verified against vscode; item 28 below
 tracks the separate, new crash it surfaced.
 
-### 28. `typescript-language-server` process crash on a specific vscode file during Tier B, cause not yet identified
+### 28. `tsserver` OOM-aborts partway through a large vscode Tier B batch (exit code 134/SIGABRT)
 
 Found 2026-08-06, immediately after item 27's bounded-LRU fix let a Tier B batch against vscode make
 real progress (558/12,339 → 707/12,339 files) for the first time without collapsing to near-universal
-timeouts: partway through the run, the `typescript-language-server` process itself exited (code=1)
-while processing
-`extensions/copilot/src/extension/codeBlocks/node/test/codeBlockProcessor.spec.ts`. Not yet
-root-caused past "the process exited code=1 on this one file" — no stderr was captured or logged
-anywhere accessible this session. Since Tier B coverage is a persistent, monotonic counter and this
-file was never dequeued as failed-and-skipped, it will likely re-crash at roughly the same point on
-the next run against the same checkout — a potential new head-of-line block, similar in shape to
-item 24's already-fixed Tier C queue-blocking bug, though not yet confirmed to actually block the
-rest of the queue the same way.
+timeouts. Initially opaque: the `typescript-language-server` process exited (code=1) while processing
+`extensions/copilot/src/extension/codeBlocks/node/test/codeBlockProcessor.spec.ts`, with no visible
+reason (`LspJsonRpcClient` piped the child's stderr but never listened on it — fixed same-day as its
+own small diagnostic-infrastructure commit, `fix(core): capture LSP child-process stderr instead of
+discarding it`).
 
-**Status: not yet root-caused, flagged 2026-08-06.** See item 27 above for the fix that surfaced
-this and the file path.
+**Root-caused with that fix, same session.** Re-running the identical batch with stderr capture in
+place (707/12,339 → 778/12,339 files, no code change to the LSP logic itself between the two runs)
+reproduced the crash again — on a **different** file this time
+(`extensions/copilot/src/extension/completions-core/vscode-node/extension/src/textDocumentManager.ts`,
+not `codeBlockProcessor.spec.ts`) — and this time the captured stderr showed the real cause directly
+from `typescript-language-server`'s own output: `"tsserver process has exited (exit code: 134, signal:
+null). Stopping the server."` Exit code 134 is `128 + SIGABRT` — the classic signature of a V8 fatal
+error aborting the process after failing to allocate more heap ("out of memory"), not a Docuvia2
+logic bug and not tied to any one specific file's content (confirmed by it moving to a different file
+on the second run). Plausible mechanism: item 27's fix lets Tier B do far more _real_ work per run now
+(hundreds of genuine documentSymbol/references round-trips instead of stalling on mass timeouts),
+which means `tsserver` now actually accumulates enough type-checking state across vscode's huge
+multi-project-reference graph, within one long-lived session, to eventually exhaust its default heap
+— a real, separate scale ceiling that the earlier throughput-collapse bug was likely masking by
+failing everything before this ever became reachable.
+
+**Status: root-caused 2026-08-06 (V8 OOM abort, exit 134), not yet fixed.** Candidate remedies, not
+yet decided or built: (a) raise the spawned `typescript-language-server`/`tsserver` process's heap
+ceiling (e.g. via a `NODE_OPTIONS=--max-old-space-size=...` override on the already-overridable
+`LspJsonRpcClientOptions.env`), a real, well-known remedy for TS language-service OOM on large
+codebases, but the right default size is a genuine tradeoff (memory availability varies by machine) —
+not something to pick unilaterally; (b) detect a genuine process-death mid-batch (vs. an ordinary
+per-file timeout) and restart the LSP session to keep draining the rest of the current run's files
+instead of cascading every remaining queued file to instant failure the moment the client dies (this
+run alone lost ~11,349 files to that cascade in a few milliseconds once the abort happened). Either
+way, this is NOT a permanent block like item 24 was: Tier B coverage is a persistent, monotonic
+counter and each run makes real forward progress (149 files, then 71 more) before hitting the ceiling
+again, so repeated `analyze --escalate-to-lsp` runs will eventually drain the whole queue on their
+own, just inefficiently.
 
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 

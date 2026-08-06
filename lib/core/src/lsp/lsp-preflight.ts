@@ -45,9 +45,15 @@ function checkTsconfigResolvable(workspaceRoot: string): boolean {
   if (hasRootConfig) return true;
 
   // Fallback to checking for tsconfig.base.json or src/tsconfig.json for large polyglot repos (like vscode)
-  if (fs.existsSync(path.join(workspaceRoot, "tsconfig.base.json"))) return true;
-  if (fs.existsSync(path.join(workspaceRoot, "src", ConfigFilenames.TSCONFIG_JSON))) return true;
-  
+  if (fs.existsSync(path.join(workspaceRoot, "tsconfig.base.json")))
+    return true;
+  if (
+    fs.existsSync(
+      path.join(workspaceRoot, "src", ConfigFilenames.TSCONFIG_JSON),
+    )
+  )
+    return true;
+
   return false;
 }
 

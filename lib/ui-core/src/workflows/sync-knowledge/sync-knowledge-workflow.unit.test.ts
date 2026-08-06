@@ -11,6 +11,10 @@ import {
 } from "@workspace/contracts";
 import { SyncKnowledgeWorkflow } from "./sync-knowledge-workflow.js";
 
+vi.mock("../../utils/command-log-writer.js", () => ({
+  appendCommandLogLine: vi.fn(),
+}));
+
 function makeMockGitProvider(
   overrides: Partial<IGitProvider> = {},
 ): IGitProvider {

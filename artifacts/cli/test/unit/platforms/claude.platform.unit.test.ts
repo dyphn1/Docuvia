@@ -23,6 +23,29 @@ import { ClaudePlatform } from "../../../src/platforms/claude.platform.js";
 import { ui } from "../../../src/ui/wizard.js";
 import { CLAUDE_DESKTOP_CONFIG_FILENAME } from "../../../src/constants/init-templates.js";
 
+// `resolveClaudeDesktopConfigDir()` reads `APPDATA` on win32 but `HOME` on darwin/linux, so the
+// temp-dir redirect below must target whichever env var the current platform actually reads —
+// mocking only `APPDATA` silently fails every global-path assertion off Windows.
+function redirectGlobalConfigEnv(dir: string): () => void {
+  const key = process.platform === "win32" ? "APPDATA" : "HOME";
+  const previous = process.env[key];
+  process.env[key] = dir;
+  return () => {
+    if (previous === undefined) delete process.env[key];
+    else process.env[key] = previous;
+  };
+}
+
+function globalConfigPathFor(globalConfigDir: string): string {
+  const subdir =
+    process.platform === "win32"
+      ? "Claude"
+      : process.platform === "darwin"
+        ? path.join("Library", "Application Support", "Claude")
+        : path.join(".config", "Claude");
+  return path.join(globalConfigDir, subdir, CLAUDE_DESKTOP_CONFIG_FILENAME);
+}
+
 // Roadmap item 26 — project-level `.claude/settings.json` PreToolUse hook (the `${CLAUDE_PLUGIN_ROOT}`
 // hooks.json path above is inert outside formal plugin packaging; `${CLAUDE_PROJECT_DIR}` resolves
 // in a plain checkout today).
@@ -220,7 +243,7 @@ describe("ClaudePlatform — project-level .claude/settings.json hook (roadmap i
 describe("ClaudePlatform.installHooks — no machine-global writes (IFCE-002)", () => {
   let repoDir: string;
   let globalConfigDir: string;
-  let originalAppData: string | undefined;
+  let restoreGlobalConfigEnv: () => void;
 
   beforeEach(async () => {
     repoDir = await fs.mkdtemp(
@@ -229,22 +252,19 @@ describe("ClaudePlatform.installHooks — no machine-global writes (IFCE-002)", 
     globalConfigDir = await fs.mkdtemp(
       path.join(os.tmpdir(), "docuvia-claude-platform-global-"),
     );
-    originalAppData = process.env.APPDATA;
-    process.env.APPDATA = globalConfigDir;
+    restoreGlobalConfigEnv = redirectGlobalConfigEnv(globalConfigDir);
     vi.clearAllMocks();
   });
 
   afterEach(async () => {
-    if (originalAppData === undefined) delete process.env.APPDATA;
-    else process.env.APPDATA = originalAppData;
+    restoreGlobalConfigEnv();
     await fs.rm(repoDir, { recursive: true, force: true });
     await fs.rm(globalConfigDir, { recursive: true, force: true });
   });
 
   function globalConfigPath(): string {
-    // resolveClaudeDesktopConfigDir() joins APPDATA with the platform name subfolder before
-    // the config filename — mirror that here for assertions.
-    return path.join(globalConfigDir, "Claude", CLAUDE_DESKTOP_CONFIG_FILENAME);
+    // Mirror resolveClaudeDesktopConfigDir()'s platform subdir before the config filename.
+    return globalConfigPathFor(globalConfigDir);
   }
 
   async function globalConfigExists(): Promise<boolean> {
@@ -304,7 +324,7 @@ describe("ClaudePlatform.installHooks — no machine-global writes (IFCE-002)", 
 describe("ClaudePlatform.uninstallHooks — no machine-global writes (IFCE-002)", () => {
   let repoDir: string;
   let globalConfigDir: string;
-  let originalAppData: string | undefined;
+  let restoreGlobalConfigEnv: () => void;
 
   beforeEach(async () => {
     repoDir = await fs.mkdtemp(
@@ -313,22 +333,19 @@ describe("ClaudePlatform.uninstallHooks — no machine-global writes (IFCE-002)"
     globalConfigDir = await fs.mkdtemp(
       path.join(os.tmpdir(), "docuvia-claude-platform-global-"),
     );
-    originalAppData = process.env.APPDATA;
-    process.env.APPDATA = globalConfigDir;
+    restoreGlobalConfigEnv = redirectGlobalConfigEnv(globalConfigDir);
     vi.clearAllMocks();
   });
 
   afterEach(async () => {
-    if (originalAppData === undefined) delete process.env.APPDATA;
-    else process.env.APPDATA = originalAppData;
+    restoreGlobalConfigEnv();
     await fs.rm(repoDir, { recursive: true, force: true });
     await fs.rm(globalConfigDir, { recursive: true, force: true });
   });
 
   function globalConfigPath(): string {
-    // resolveClaudeDesktopConfigDir() joins APPDATA with the platform name subfolder before
-    // the config filename — mirror that here for assertions.
-    return path.join(globalConfigDir, "Claude", CLAUDE_DESKTOP_CONFIG_FILENAME);
+    // Mirror resolveClaudeDesktopConfigDir()'s platform subdir before the config filename.
+    return globalConfigPathFor(globalConfigDir);
   }
 
   const fakeGlobalConfig = {

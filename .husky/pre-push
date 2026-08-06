@@ -1,3 +1,9 @@
+# Unset the git env vars git exports into this hook so spawned `git`/test processes operate on
+# their own cwd rather than inheriting the parent repo's GIT_DIR / GIT_INDEX_FILE. Otherwise the
+# full test suite run here fails on the git-spawning integration tests (init / uninstall /
+# doctor). Let git rediscover the repo from cwd via core.hooksPath discovery.
+unset GIT_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_WORK_TREE GIT_QUARANTINE_PATH 2>/dev/null || true
+
 echo "Running full typecheck..."
 pnpm run typecheck
 
@@ -9,15 +15,3 @@ pnpm run build
 
 echo "Running full test suite and global coverage..."
 pnpm run test
-#!/bin/bash
-# Docuvia Tier B Batch Hook (LSP escalation + snapshot + knowledge sync)
-# Runs synchronously (generous timeout) so pushed code carries corrected knowledge -- see
-# docs/gitbook/analysis/phase1-decision-integration.md §8h and
-# docs/gitbook/analysis/phase2-sync-knowledge-scheduling.md.
-if command -v npx > /dev/null 2>&1; then
-  npx --no-install docuvia analyze --escalate-to-lsp --fallback-ast && npx --no-install docuvia snapshot && npx --no-install docuvia sync-knowledge
-fi
-# Never blocks the push on a Tier B/sync-knowledge failure -- PLAT-007's reliability
-# requirement (failures only ever surface via JSONL logs / doctor, never to the pushing
-# developer).
-exit 0

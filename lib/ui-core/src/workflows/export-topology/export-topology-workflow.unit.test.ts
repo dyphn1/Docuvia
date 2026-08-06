@@ -11,6 +11,10 @@ import {
 } from "@workspace/contracts";
 import { ExportTopologyWorkflow } from "./export-topology-workflow.js";
 
+vi.mock("../../utils/command-log-writer.js", () => ({
+  appendCommandLogLine: vi.fn(),
+}));
+
 function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
     projects: {

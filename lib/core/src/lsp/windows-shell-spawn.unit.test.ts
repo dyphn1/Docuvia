@@ -61,22 +61,28 @@ describe("quoteForWindowsShell()", () => {
 });
 
 describe("buildWindowsShellCommandLine()", () => {
-  it("resolves a bare 'npx' to its full path via the where probe before quoting", async () => {
-    const args = ["--no-install", "typescript-language-server", "--version"];
-    const commandLine = await buildWindowsShellCommandLine(
-      "npx",
-      args,
-      undefined,
-    );
+  // The `where` probe this exercises is Windows-only (`where` doesn't exist on macOS/Linux), and
+  // the module's `promisify`ed `execFile` can't be mocked from a test (it closes over the original
+  // Node builtin at import time), so this genuinely can only run where `where` is real.
+  it.skipIf(process.platform !== "win32")(
+    "resolves a bare 'npx' to its full path via the where probe before quoting",
+    async () => {
+      const args = ["--no-install", "typescript-language-server", "--version"];
+      const commandLine = await buildWindowsShellCommandLine(
+        "npx",
+        args,
+        undefined,
+      );
 
-    // The resolved path is platform/PATH-dependent, but it must never be the bare, unresolved
-    // "npx" token -- that's exactly the bug this function exists to avoid (a bare-name shell PATH
-    // search re-triggers the npm-prefix.js-relative-to-cwd bug documented in this module).
-    expect(commandLine).not.toMatch(/^"npx"/i);
-    expect(commandLine).toContain('"--no-install"');
-    expect(commandLine).toContain('"typescript-language-server"');
-    expect(commandLine).toContain('"--version"');
-  });
+      // The resolved path is platform/PATH-dependent, but it must never be the bare, unresolved
+      // "npx" token -- that's exactly the bug this function exists to avoid (a bare-name shell PATH
+      // search re-triggers the npm-prefix.js-relative-to-cwd bug documented in this module).
+      expect(commandLine).not.toMatch(/^"npx"/i);
+      expect(commandLine).toContain('"--no-install"');
+      expect(commandLine).toContain('"typescript-language-server"');
+      expect(commandLine).toContain('"--version"');
+    },
+  );
 
   it("leaves a non-bare-command's own name untouched (only quotes it), since only npx needs the extra where-resolution step", async () => {
     const commandLine = await buildWindowsShellCommandLine(

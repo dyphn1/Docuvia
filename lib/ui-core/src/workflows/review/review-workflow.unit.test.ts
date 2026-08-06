@@ -13,6 +13,10 @@ import {
 } from "@workspace/contracts";
 import { ReviewWorkflow } from "./review-workflow.js";
 
+vi.mock("../../utils/command-log-writer.js", () => ({
+  appendCommandLogLine: vi.fn(),
+}));
+
 function makeMockHydrationService(
   overrides: Partial<IHydrationService> = {},
 ): IHydrationService {

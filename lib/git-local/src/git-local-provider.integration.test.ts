@@ -35,6 +35,38 @@ async function retryTransientFsRace<T>(
 const KNOWLEDGE_BRANCH = "docuvia-knowledge";
 const HOOK_NAME = "post-commit";
 const HOOK_MARKER = "docuvia snapshot";
+const GIT_ENV_VAR_PREFIX = "GIT_" as const;
+
+/** An outer `git` driver leaks git env vars into this suite when it runs inside a hook — e.g. the
+ *  pre-commit hook sets `GIT_INDEX_FILE`, and child `git` processes spawned here then target the
+ *  parent repo instead of the temp one (`error: invalid object ... for '<file>'`). The provider and
+ *  the raw `git()` helper both inherit `process.env`, so scrub these for the duration of each test
+ *  and restore them afterwards. */
+const inheritedGitEnv = new Map<string, string>();
+
+function scrubInheritedGitEnv(): void {
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith(GIT_ENV_VAR_PREFIX)) {
+      inheritedGitEnv.set(key, process.env[key] as string);
+      delete process.env[key];
+    }
+  }
+}
+
+function restoreInheritedGitEnv(): void {
+  for (const [key, value] of inheritedGitEnv) {
+    process.env[key] = value;
+  }
+  inheritedGitEnv.clear();
+}
+
+beforeEach(() => {
+  scrubInheritedGitEnv();
+});
+
+afterEach(() => {
+  restoreInheritedGitEnv();
+});
 
 describe("GitLocalProvider (integration, real git shell-outs)", () => {
   let tmpDir: string;
@@ -427,14 +459,19 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     }
   });
 
-  it("packDirectoryToBranch rejects cleanly (not an unhandled process crash) when a source file's path is one git itself refuses (e.g. a Windows-reserved device name) -- real repro: moby's pkg/progress.Aux rendered to knowledge/.../Aux.md and crashed the whole docuvia process with an unhandled 'write EOF' on child.stdin instead of surfacing git's own 'fatal: invalid path' (go-cli-benchmark.md §1.1); runFastImport's child.stdin now has its own error listener so this always surfaces as a normal rejected DocuviaError", async () => {
+  it("packDirectoryToBranch rejects cleanly (not an unhandled process crash) when a source file's path is one git itself refuses (e.g. a `.git/`-prefixed path) -- real repro: moby's pkg/progress.Aux rendered to knowledge/.../Aux.md (a Windows-reserved device name git refuses only on Windows) and crashed the whole docuvia process with an unhandled 'write EOF' on child.stdin instead of surfacing git's own 'fatal: invalid path' (go-cli-benchmark.md §1.1); runFastImport's child.stdin now has its own error listener so this always surfaces as a normal rejected DocuviaError", async () => {
     const sourceDir = fs.mkdtempSync(
       path.join(os.tmpdir(), "docuvia-git-local-pack-reserved-name-"),
     );
     try {
-      // Reserved on every platform via git's own core.protectNTFS cross-platform path guard, not
-      // just when actually running on Windows -- see snapshot-renderer.service.ts's doc comment.
-      fs.writeFileSync(path.join(sourceDir, "aux.md"), "should be rejected\n");
+      // `.git/`-prefixed paths are refused by `git fast-import` on every platform, unlike
+      // Windows-reserved device names (`Aux.md`, ...) which only git-on-Windows rejects -- this
+      // fixture lets the crash-guard above be exercised deterministically on any host OS.
+      fs.mkdirSync(path.join(sourceDir, ".git"), { recursive: true });
+      fs.writeFileSync(
+        path.join(sourceDir, ".git", "reserved"),
+        "should be rejected\n",
+      );
 
       await expect(
         provider.packDirectoryToBranch(

@@ -117,6 +117,26 @@ function preToolUseEntryHasCommand(
   );
 }
 
+/** Reads/parses `.claude/settings.json` for the merge/prune helpers. A missing file yields `{}`
+ *  (nothing installed yet, safe to build up); an unparseable/unreadable file yields `null` (already
+ *  warned) so callers never overwrite a file they can't trust. */
+async function readProjectSettings(
+  settingsPath: string,
+): Promise<Record<string, any> | null> {
+  try {
+    const content = await fs.readFile(settingsPath, UTF8_ENCODING);
+    return JSON.parse(content) as Record<string, any>;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code === ERRNO_ENOENT) {
+      return {};
+    }
+    ui.warn(
+      `${UI_MESSAGES.FS_READ_ERROR}${settingsPath} (${(err as NodeJS.ErrnoException)?.code ?? UI_MESSAGES.FS_READ_ERROR_UNKNOWN_CODE}); leaving it untouched`,
+    );
+    return null;
+  }
+}
+
 /** Merges Docuvia's PreToolUse hook entry into Claude Code's project-level `.claude/settings.json`
  *  (roadmap item 26 — `${CLAUDE_PROJECT_DIR}` resolves here today, unlike the plugin-only
  *  `${CLAUDE_PLUGIN_ROOT}` in hooks.json). Unlike our own dedicated hooks.json, this file is
@@ -127,41 +147,27 @@ async function mergeDocuviaHookIntoProjectSettings(
   settingsPath: string,
   hookEntry: Record<string, unknown>,
 ): Promise<void> {
-  let settings: any = {};
-  try {
-    const content = await fs.readFile(settingsPath, UTF8_ENCODING);
-    settings = JSON.parse(content);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code !== ERRNO_ENOENT) {
-      ui.warn(
-        `${UI_MESSAGES.FS_READ_ERROR}${settingsPath} (${(err as NodeJS.ErrnoException)?.code ?? UI_MESSAGES.FS_READ_ERROR_UNKNOWN_CODE}); leaving it untouched`,
-      );
-      return;
-    }
-  }
+  const settings = await readProjectSettings(settingsPath);
+  if (settings === null) return;
 
   settings.hooks = settings.hooks ?? {};
-  if (
-    settings.hooks[HOOK_EVENT_PRE_TOOL_USE] !== undefined &&
-    !Array.isArray(settings.hooks[HOOK_EVENT_PRE_TOOL_USE])
-  ) {
+  const preToolUse = settings.hooks[HOOK_EVENT_PRE_TOOL_USE];
+  if (preToolUse !== undefined && !Array.isArray(preToolUse)) {
     ui.warn(
       UI_MESSAGES.FS_UNEXPECTED_SHAPE(HOOK_EVENT_PRE_TOOL_USE, settingsPath),
     );
     return;
   }
-  settings.hooks[HOOK_EVENT_PRE_TOOL_USE] =
-    settings.hooks[HOOK_EVENT_PRE_TOOL_USE] ?? [];
-  const preToolUse: Record<string, unknown>[] =
-    settings.hooks[HOOK_EVENT_PRE_TOOL_USE];
+  const preToolUseEntries = (preToolUse ?? []) as Record<string, unknown>[];
 
   const command = docuviaProjectHookCommand(hookEntry);
-  const alreadyPresent = preToolUse.some((entry) =>
+  const alreadyPresent = preToolUseEntries.some((entry) =>
     preToolUseEntryHasCommand(entry, command),
   );
   if (alreadyPresent) return;
 
-  preToolUse.push(hookEntry);
+  preToolUseEntries.push(hookEntry);
+  settings.hooks[HOOK_EVENT_PRE_TOOL_USE] = preToolUseEntries;
 
   await fs.mkdir(path.dirname(settingsPath), { recursive: true });
   await fs.writeFile(

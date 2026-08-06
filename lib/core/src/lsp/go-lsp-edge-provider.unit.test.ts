@@ -78,10 +78,7 @@ describe("GoLspEdgeProvider.resolveEdges()", () => {
 
   it("returns an empty outcome without touching the client factory when files is empty", async () => {
     const clientFactory = vi.fn();
-    const provider = new GoLspEdgeProvider(
-      createMockLogger(),
-      clientFactory,
-    );
+    const provider = new GoLspEdgeProvider(createMockLogger(), clientFactory);
 
     const outcome = await provider.resolveEdges({ workspaceRoot, files: [] });
 

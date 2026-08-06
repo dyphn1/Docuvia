@@ -144,18 +144,27 @@ describe("runTierBBatch() (§8, D1-D6)", () => {
     }));
     const { store } = makeStore();
     const git = makeGit();
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-test-"),
+    );
+    try {
+      const result = await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git,
+        knowledgeGit: makeKnowledgeGit(),
+      });
 
-    const result = await runTierBBatch({
-      workspaceRoot: "/workspace",
-      logger: createMockLogger(),
-      store,
-      git,
-      knowledgeGit: makeKnowledgeGit(),
-    });
-
-    expect(result.kind).toBe("tierBBatch");
-    expect(result.filesQueued).toBe(0);
-    expect(providerFactory).not.toHaveBeenCalled();
+      expect(result.kind).toBe("tierBBatch");
+      expect(result.filesQueued).toBe(0);
+      expect(providerFactory).not.toHaveBeenCalled();
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
   });
 });
 
@@ -640,16 +649,25 @@ describe("runTierBBatch() -- full-resync flag and Tier B processed-at stamping (
 
   it("does not call markTierBProcessed for any file when nothing was actually processed (e.g. the empty-queue no-op path)", async () => {
     const { store, fake } = makeStore([], []);
+    const fs = await import("node:fs");
+    const os = await import("node:os");
+    const path = await import("node:path");
+    const workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierb-test-"),
+    );
+    try {
+      await runTierBBatch({
+        workspaceRoot,
+        logger: createMockLogger(),
+        store,
+        git: makeGit(),
+        knowledgeGit: makeKnowledgeGit(),
+      });
 
-    await runTierBBatch({
-      workspaceRoot: "/workspace",
-      logger: createMockLogger(),
-      store,
-      git: makeGit(),
-      knowledgeGit: makeKnowledgeGit(),
-    });
-
-    expect(fake.tierBProcessed).toEqual([]);
+      expect(fake.tierBProcessed).toEqual([]);
+    } finally {
+      fs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
   });
 });
 

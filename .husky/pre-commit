@@ -1,3 +1,10 @@
+# Unset the git env vars git exports into this hook (GIT_DIR, GIT_INDEX_FILE and, while a commit is
+# in flight, GIT_OBJECT_DIRECTORY pointing at the quarantine object db). Spawned `git`/test
+# processes would otherwise inherit them and operate on the parent repo instead of their own cwd --
+# and when the commit aborts, git deletes the quarantine objects, leaving the worktree index
+# pointing at missing blobs (git "invalid object" corruption). Let git rediscover the repo from cwd.
+unset GIT_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_WORK_TREE GIT_QUARANTINE_PATH 2>/dev/null || true
+
 echo "Running typecheck..."
 pnpm run typecheck
 

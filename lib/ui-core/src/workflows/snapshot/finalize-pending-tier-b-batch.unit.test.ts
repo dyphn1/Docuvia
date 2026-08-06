@@ -11,6 +11,10 @@ import {
 import { GitConstants } from "@workspace/core";
 import { finalizePendingTierBBatch } from "./finalize-pending-tier-b-batch.js";
 
+vi.mock("../../utils/command-log-writer.js", () => ({
+  appendCommandLogLine: vi.fn(),
+}));
+
 function makeStore(meta: Record<string, string> = {}): {
   store: IGraphStore;
   metaMap: Map<string, string>;

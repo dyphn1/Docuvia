@@ -10,6 +10,10 @@ import {
 } from "@workspace/contracts";
 import { HydrateWorkflow } from "./hydrate-workflow.js";
 
+vi.mock("../../utils/command-log-writer.js", () => ({
+  appendCommandLogLine: vi.fn(),
+}));
+
 function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
   return {
     projects: {

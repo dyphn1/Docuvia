@@ -13,6 +13,5 @@ export const PhpLspConstants = {
 export const PHP_LSP_MESSAGES = {
   binaryUnresolvable:
     "intelephense is not resolvable (no local node_modules/.bin copy and `npx --no-install` cannot find intelephense) -- install intelephense as a project devDependency (`npm install -D intelephense`) to enable LSP-precision cross-file edges for PHP",
-  markerFileMissing:
-    "no composer.json found at the workspace root",
+  markerFileMissing: "no composer.json found at the workspace root",
 } as const;

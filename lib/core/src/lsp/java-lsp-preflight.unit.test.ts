@@ -28,7 +28,10 @@ describe("checkJavaLspPreflight()", () => {
   });
 
   it("reports not ready when markers are present but jdtls binary cannot be found", async () => {
-    fs.writeFileSync(path.join(workspaceRoot, "pom.xml"), "<project></project>\n");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "pom.xml"),
+      "<project></project>\n",
+    );
 
     // Spy on execFile to simulate failing when trying to probe jdtls
     vi.spyOn(child_process, "execFile").mockImplementation(((
@@ -52,7 +55,10 @@ describe("checkJavaLspPreflight()", () => {
   });
 
   it("is ready when pom.xml is present and binary override resolves successfully", async () => {
-    fs.writeFileSync(path.join(workspaceRoot, "pom.xml"), "<project></project>\n");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "pom.xml"),
+      "<project></project>\n",
+    );
 
     const result = await checkJavaLspPreflight(workspaceRoot, {
       binary: "/fake/path/to/jdtls",

@@ -532,6 +532,71 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     });
   });
 
+  it("issues every references request for a file's call-site symbols up front, before any of them resolves (pipelines the reverse-reference fan-out -- issue #11 throughput fix)", async () => {
+    let requestsIssued = 0;
+    let firstResolutionSaw = 0;
+    let capturedFirstResolution = false;
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        // a.ts declares three call-site symbols: foo (L0), bar (L1), baz (L2).
+        return [
+          {
+            name: "foo",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 0, 25),
+            selectionRange: range(0, 16, 0, 19),
+          },
+          {
+            name: "bar",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(1, 0, 1, 25),
+            selectionRange: range(1, 16, 1, 19),
+          },
+          {
+            name: "baz",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(2, 0, 2, 25),
+            selectionRange: range(2, 16, 2, 19),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) {
+        requestsIssued++;
+        // Resolve after a tick so the pipelined burst has time to issue every request before the
+        // first one settles. Resolves to nothing -- this test only proves *when* the requests are
+        // issued relative to each other, not what they resolve to.
+        return new Promise((resolve) =>
+          setTimeout(() => {
+            if (!capturedFirstResolution) {
+              capturedFirstResolution = true;
+              firstResolutionSaw = requestsIssued;
+            }
+            resolve([]);
+          }, 10),
+        );
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts"],
+    });
+
+    expect(outcome.filesProcessed).toEqual(["a.ts"]);
+    expect(outcome.filesFailed).toEqual([]);
+    // If the provider awaited each references before issuing the next, the first resolution would
+    // observe exactly 1 request in flight. All three must already be issued by then.
+    expect(firstResolutionSaw).toBe(3);
+  });
+
   it("disambiguates two same-named methods on different classes in one file via qualified node_keys, with no @Lline suffix needed (GRPH-006)", async () => {
     // ClassA.handle (line 1) and ClassB.handle (line 4) in a.ts -- same method name, same file,
     // different classes. Before GRPH-006 both would silently collapse onto the bare "a.ts#handle"

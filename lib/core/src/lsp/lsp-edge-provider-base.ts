@@ -36,9 +36,12 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
  *  a file opened transitively as some other file's caller stayed open until then -- for a huge
  *  batch (vscode's 12,339-file Tier B queue) that meant the number of simultaneously-open
  *  documents in the LSP server was bounded only by the whole batch size, the suspected cause of
- *  the documented throughput collapse against vscode. Untuned -- a round number picked to cover
- *  normal reference fan-out; re-tune if a real workload shows it's off. */
-const DEFAULT_MAX_OPEN_FILES = 50;
+ *  the documented throughput collapse against vscode. Raised 50 → 200 alongside the issue #11
+ *  pipelining fix: the original cap predates `maxTsServerMemory`'s 8GB heap bound (which now
+ *  contains tsserver's memory regardless of open-document count), and a larger cache keeps files
+ *  opened transitively as callers alive across more of the queue, cutting reopen/re-parse churn
+ *  for the same re-tune-if-it's-off caveat as before. */
+const DEFAULT_MAX_OPEN_FILES = 200;
 
 const CALL_SITE_KINDS: ReadonlySet<number> = new Set([
   LspSymbolKinds.FUNCTION,
@@ -741,19 +744,33 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     );
     const callSiteSymbols = flattenCallSiteSymbols(callee.symbols);
 
+    // Issue every symbol's `textDocument/references` in one burst before awaiting any of them
+    // (issue #11 throughput fix). The client correlates requests by id and resolves each
+    // independently, so `Promise.all` keeps the results zipped to `callSiteSymbols`' order while
+    // overlapping the per-request round-trips the previous sequential `await` of each one left
+    // fully serialized -- the dominant per-file cost at repo scale (vscode's ~24 symbols/file →
+    // ~24 sequential round-trips/file). A rejected request still rejects the whole `Promise.all`,
+    // so a hung `references` behaves exactly as it did when awaited inline. Edge resolution below
+    // stays serial (one reference at a time), so `resolveReferenceEdge`'s shared-state mutations
+    // to `openFileCache`/`usedNodeKeysByFile` remain serialized exactly as before.
+    const referenceResults = await Promise.all(
+      callSiteSymbols.map(({ symbol }) =>
+        client.request<{ uri: string; range: LspRange }[]>(
+          LspMethods.REFERENCES,
+          {
+            textDocument: { uri: callee.uri },
+            position: symbol.selectionRange.start,
+            context: { includeDeclaration: false },
+          },
+          this.requestTimeoutMs,
+        ),
+      ),
+    );
+
     const edges: ResolvedCallEdge[] = [];
-    for (const { symbol, containerName } of callSiteSymbols) {
-      const references = await client.request<
-        { uri: string; range: LspRange }[]
-      >(
-        LspMethods.REFERENCES,
-        {
-          textDocument: { uri: callee.uri },
-          position: symbol.selectionRange.start,
-          context: { includeDeclaration: false },
-        },
-        this.requestTimeoutMs,
-      );
+    for (let i = 0; i < callSiteSymbols.length; i++) {
+      const { symbol, containerName } = callSiteSymbols[i];
+      const references = referenceResults[i] ?? [];
       const calleeNodeKey = toNodeKey(
         this.resolveNodeKeyForFile(
           usedNodeKeysByFile,
@@ -764,7 +781,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           containerName,
         ),
       );
-      for (const ref of references ?? []) {
+      for (const ref of references) {
         const edge = await this.resolveReferenceEdge(
           client,
           workspaceRoot,

@@ -1,1 +1,1 @@
-{"source":"src/main.py","target":"src/main.py#hello","type":"contains"}
+{"source":"src/index.ts","target":"src/index.ts#hello","type":"contains"}

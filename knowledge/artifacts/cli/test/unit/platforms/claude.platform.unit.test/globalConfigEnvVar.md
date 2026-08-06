@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts#globalConfigPath@L357
+id: artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts#globalConfigEnvVar
 type: symbol
-name: globalConfigPath
+name: globalConfigEnvVar
 filePath: artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts
 ---
-# Symbol: globalConfigPath
+# Symbol: globalConfigEnvVar
 
 File: `artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts`

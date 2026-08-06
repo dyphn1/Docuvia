@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-registry.unit.test.ts#anonymous@L21
+id: lib/ast-core/src/language-registry.unit.test.ts#anonymous@L16
 type: symbol
 name: anonymous
 filePath: lib/ast-core/src/language-registry.unit.test.ts

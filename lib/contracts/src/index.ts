@@ -44,6 +44,7 @@ export type {
 } from "./interfaces/knowledge-git.interfaces.js";
 export type {
   EdgeResolutionAvailability,
+  EdgeResolutionCallSite,
   EdgeResolutionFileFailure,
   EdgeResolutionOutcome,
   EdgeResolutionProviderConfig,

@@ -94,6 +94,12 @@ and reversible independently.
 
 ### Slice 2 — Forward resolver core (lib/core/src/lsp)
 
+> **Status: applied.** Forward pass lives as `processOneFileForward` /
+> `resolveFirstDefinitionTarget` / `resolveTargetNodeKey` in `BaseLspEdgeProvider`, switched per file by
+> the presence of Tier A call sites in `EdgeResolutionRequest.callsByFile` (unit-tested seam — no
+> orchestrator producer wires it in yet, so production still runs reverse). Reverse remains the
+> default/fallback (FWD-01).
+
 - Add `DEFINITION: "textDocument/definition"` to `LspMethods` (constants, not magic strings).
 - New `resolveCalleeByDefinition(client, workspaceRoot, calleeUri, callPosition, ...)`:
   `definition` → `Location | Location[]` → for each result in-workspace: open target file

@@ -214,6 +214,29 @@ returning a 0-edge "success" rather than surfacing that nothing usable was extra
 
 ### 19. Go same-package, no-import cross-file `calls` edges are never persisted — `ScopeResolver.resolveCall()` has no Go-package-aware branch
 
+> **Fixed 2026-08-06.** Added a directory-scoped fallback branch to `ScopeResolver.resolveCall()`
+> ([`scope-resolver.ts`](../../../lib/core/src/graph/scope-resolver.ts)): a new
+> `goFilesByDirectory` index (populated in `registerFile`) lets an unresolved call from a `.go`
+> source fall back to checking same-directory sibling `.go` files' locals, mirroring Go's real
+> directory-scoped package visibility (no import needed). Deliberate approximation: directory
+> equality stands in for "same package," not a real `package`-declaration comparison — an external
+> test package (`package foo_test` in a `_test.go` file sharing the directory) would be mismatched,
+> but internal test packages (`package foo`) are the overwhelmingly common convention, and
+> Docuvia2 doesn't persist per-file package names today; recorded as an accepted imprecision, not
+> chased further. Verified: the previously-pinned regression test in
+> `persist-ast-graph.unit.test.ts` (was titled `"KNOWN GAP: a same-package, no-import Go cross-file
+call is never persisted as a 'calls' link"`) now asserts the `calls` link IS persisted, and
+> passes. Two new unit tests in `scope-resolver.unit.test.ts` cover the positive Go case and a
+> negative TS/JS case proving the fallback is strictly gated on the `.go` extension — no behavior
+> change for other languages. Full `lib/core` suite: 389/389 passing, independently re-verified by
+> `task-verifier`. Known minor gap, non-blocking: if two sibling `.go` files declare the
+> same-named symbol (e.g. two build-tag-gated variants — legal Go), resolution is deterministic
+> (first-registered wins) but arbitrary (no build-tag/GOOS/GOARCH awareness); unlike the
+> `_test`-package caveat above, this one isn't yet noted inline in the new code — flagged here as a
+> candidate follow-up, not fixed. Aside: `docuvia impact` on `scope-resolver.ts` returned "No
+> dependents found" this session despite the file clearly being used elsewhere — a known gap in the
+> impact tool's own dependency tracking, not evidence this file is dead code.
+
 Found 2026-08-04 while investigating a topology-collapse symptom flagged in the Go benchmark pass
 (full detail: [`go-cli-benchmark.md`](../../cli-test-analysis/go-cli-benchmark.md) §1.5, summary in
 [`README.md`](../../cli-test-analysis/README.md) §3.3 item 7): `moby`'s `export-topology
@@ -243,8 +266,7 @@ calls a sibling-file, same-package function/method without an explicit import. `
 `export-topology --collapse=auto` `"Links: 1"` symptom is expected to still reproduce essentially
 unchanged for this reason — not re-tested this pass, no updated number claimed.
 
-**Status: not fixed.** Needs a Go-package-aware resolution branch in `ScopeResolver` (e.g.
-same-directory/same-`package`-declaration siblings) — its own future pass, not scoped here.
+**Status: fixed 2026-08-06** (see the note at the top of this item).
 
 ### 20. TypeScript `abstract class` declarations were never extracted into the knowledge graph
 
@@ -565,6 +587,77 @@ rather than assuming the same fix (or the same bug) generalizes.
 **Status: path (a) shipped 2026-08-06 (see top of item). Path (b) stays blocked upstream by
 anthropics/claude-code#24529, not by anything decidable in this repo — the packaging-time exclusion
 logic described above stays parked until that closes.**
+
+### 27. Tier B LSP batches held an unbounded number of documents open at once — a bounded-LRU cache fix, live-verified against vscode
+
+> **Fixed 2026-08-06.** `BaseLspEdgeProvider`
+> ([`lsp-edge-provider-base.ts`](../../../lib/core/src/lsp/lsp-edge-provider-base.ts), shared by all
+> 9 language Tier B providers) only closed a file once its own turn in the batch queue finished — a
+> file opened transitively as another file's caller (via `resolveReferenceEdge`) stayed open until
+> ITS OWN turn arrived, which for a huge, densely cross-referenced batch (vscode's 12,339-file
+> queue) meant the LSP server could accumulate a number of simultaneously-open documents bounded
+> only by the whole batch size, not by any deliberate cap. This was the previously-documented,
+> previously-parked suspected cause of `typescript-cli-benchmark.md`'s "throughput collapse" finding
+> (§3.2 finding 7, summarized in this file's own §3.2 item 7 above) — left open there as "a bounded-
+> LRU close policy is the likely real fix" rather than chased further at the time. Trigger to act
+> now: a manual standalone LSP probe against the same vscode checkout completed in ~6-7 minutes,
+> faster than CRG's own comparison run against the same repo — evidence the bottleneck was
+> Docuvia2's own open/close orchestration, not `tsserver`/`gopls` themselves being slow at vscode's
+> scale. Fixed with a new `maxOpenFiles` config field (`EdgeResolutionProviderConfig`, default 50 via
+> `DEFAULT_MAX_OPEN_FILES`) plus a genuine LRU eviction loop in `openAndGetSymbols`: cache hits bump
+> recency, cache misses evict the least-recently-used entries _before_ the new file's own `didOpen`
+> is sent, so the real LSP server itself never transiently exceeds the cap — not just the cache's
+> own bookkeeping. Verified via a new unit test with a fake LSP client (4 files, cap of 2, replays
+> real `DID_OPEN`/`DID_CLOSE` notification order, asserts concurrently-open count never exceeds the
+> cap). Full `lib/core` + `lib/contracts` suites: 423 tests passing, zero regressions across all 9
+> language provider test files. Independently re-verified by `task-verifier`, including confirming
+> the eviction-before-open ordering by reading the code directly.
+>
+> **Live re-verification against the real vscode checkout** (`D:\GitHub\vscode`, existing Tier A
+> already ingested — 293,309 L2 nodes): a scoped `docuvia analyze --escalate-to-lsp` run needed one
+> unrelated environment fix first — this same clone's `typescript` devDependency had reverted to
+> being aliased to the `@typescript/typescript6` preview package (no classic `lib/tsserver.js`), the
+> exact environment gap `typescript-cli-benchmark.md` had already documented and fixed once before
+> in this same clone; reinstalled a real standard `typescript@5.6.3` into `node_modules`
+> (devDependency only, `--no-save`, no `package.json`/lockfile change kept). With that in place, one
+> run of `analyze --escalate-to-lsp` advanced Tier B coverage from 558/12,339 to 707/12,339 (149 new
+> files, real `documentSymbol`+`references` round-trips) within its normal per-language time budget
+> — no mass-timeout collapse — before hitting a new, unrelated failure: the
+> `typescript-language-server` process itself exited (code=1) partway through, on
+> `extensions/copilot/src/extension/codeBlocks/node/test/codeBlockProcessor.spec.ts`. Zero edges
+> were applied this run, plausibly because the files successfully processed before the crash — mostly
+> `.d.ts` declaration files and test files early in the queue — had no in-batch cross-file callers
+> yet; not confirmed further.
+>
+> **Conclusion**: real, if partial, live evidence the bounded-LRU fix resolves the specific
+> "reopening files causes near-universal timeouts" collapse mechanism — the batch made substantial
+> real progress instead of collapsing outright. It surfaced a separate, not-yet-root-caused new
+> blocker (see item 28 below): since Tier B coverage is a persistent, monotonic counter and the
+> crashing file was never dequeued as failed-and-skipped, it will likely re-crash at roughly the
+> same point on the next run — a potential new head-of-line block, similar in shape to the
+> already-fixed Tier C bug (item 24). stderr wasn't captured or logged anywhere accessible this
+> session, so the crash's actual cause is still unknown.
+
+**Status: fixed 2026-08-06** (see the note at the top of this item) — the specific
+unbounded-open-files collapse mechanism is fixed and live-verified against vscode; item 28 below
+tracks the separate, new crash it surfaced.
+
+### 28. `typescript-language-server` process crash on a specific vscode file during Tier B, cause not yet identified
+
+Found 2026-08-06, immediately after item 27's bounded-LRU fix let a Tier B batch against vscode make
+real progress (558/12,339 → 707/12,339 files) for the first time without collapsing to near-universal
+timeouts: partway through the run, the `typescript-language-server` process itself exited (code=1)
+while processing
+`extensions/copilot/src/extension/codeBlocks/node/test/codeBlockProcessor.spec.ts`. Not yet
+root-caused past "the process exited code=1 on this one file" — no stderr was captured or logged
+anywhere accessible this session. Since Tier B coverage is a persistent, monotonic counter and this
+file was never dequeued as failed-and-skipped, it will likely re-crash at roughly the same point on
+the next run against the same checkout — a potential new head-of-line block, similar in shape to
+item 24's already-fixed Tier C queue-blocking bug, though not yet confirmed to actually block the
+rest of the queue the same way.
+
+**Status: not yet root-caused, flagged 2026-08-06.** See item 27 above for the fix that surfaced
+this and the file path.
 
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 

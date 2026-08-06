@@ -39,6 +39,18 @@ describe("QueryService", () => {
         "src/auth-service.ts",
       ]);
     });
+
+    it("keeps a meaningful single-character token instead of dropping it as noise (roadmap-and-open-items.md item 25 — 'tier c queue' must not collapse to the same keywords as 'tier b queue')", () => {
+      expect(queryService.extractKeywords("tier c queue")).toEqual([
+        "tier",
+        "c",
+        "queue",
+      ]);
+    });
+
+    it("still drops the single-letter stop words 'a' and 'i'", () => {
+      expect(queryService.extractKeywords("a i test")).toEqual(["test"]);
+    });
   });
 
   describe("getContext()", () => {
@@ -285,6 +297,51 @@ describe("QueryService", () => {
       expect(results).toContainEqual(
         expect.objectContaining({ title: "spoke", matchType: "neighbor" }),
       );
+    });
+  });
+
+  describe("search() keyword-coverage re-rank (roadmap-and-open-items.md item 25)", () => {
+    it("prefers a partial match covering more of the query's keywords over a single-keyword match that BM25 alone would rank first on rarity", () => {
+      // Mirrors the real production bug live-verified against this repo: "query command" used to
+      // resolve to init-command-lock.ts (matches only the rare token "command") instead of
+      // query.ts (matches both "query" and "command"). Reproduced here at small scale: a 3-keyword
+      // query with no single row matching all three (so AND-first can't isolate a winner and the
+      // OR-fallback + coverage re-rank path is what's under test), a "widget"-only distractor that
+      // BM25's rarity weighting favors, diluted-common-term noise rows, and the actual 2-of-3
+      // target. Path segments (not names) carry the matchable words — FTS tokenizes on the "-"
+      // path separator, so each word must be its own path segment to be a distinct token.
+      for (let i = 0; i < 20; i++) {
+        store.graph.insertNode({
+          projectId,
+          name: `alphaNoise${i}`,
+          pathPatterns: [`src/noise/alpha-${i}.ts`],
+        });
+      }
+      for (let i = 0; i < 20; i++) {
+        store.graph.insertNode({
+          projectId,
+          name: `betaNoise${i}`,
+          pathPatterns: [`src/noise/beta-${i}.ts`],
+        });
+      }
+      const distractorId = store.graph.insertNode({
+        projectId,
+        name: "widgetOnly",
+        pathPatterns: ["src/widget-only.ts"],
+      });
+      const targetId = store.graph.insertNode({
+        projectId,
+        name: "alphaBetaTarget",
+        pathPatterns: ["src/alpha-beta-target.ts"],
+      });
+
+      const results = queryService.search(store, "alpha beta widget", 5);
+      const targetRank = results.findIndex((r) => r.id === targetId);
+      const distractorRank = results.findIndex((r) => r.id === distractorId);
+
+      expect(targetRank).toBeGreaterThanOrEqual(0);
+      expect(distractorRank).toBeGreaterThanOrEqual(0);
+      expect(targetRank).toBeLessThan(distractorRank);
     });
   });
 

@@ -431,6 +431,41 @@ LLM endpoint. Full detail: `docs/cli-test-analysis/docuvia-self-verification-202
 
 ### 25. Follow-up from item 22: `query`'s actual keyword/FTS matching quality is still unimproved
 
+> **Shipped — 2026-08-06.** Root-caused with direct SQL inspection against this repo's own
+> `.docuvia/local.db`, not guesswork: `"query" AND "command"` matched **0** `l2_nodes` rows even
+> though `artifacts/cli/src/commands/query.ts` obviously matches both concepts — the default FTS5
+> tokenizer (`unicode61`) does exact token matching with no stemming, so the plural directory
+> segment `"commands"` and the singular query keyword `"command"` are two different tokens that
+> never match each other. A self-test harness
+> (`docs/cli-test-analysis/docuvia-self-verification-2026-08-06.md`) of 27 realistic concept-phrase/
+> exact-symbol queries against this repo, run through the real CLI end-to-end, measured a **51.9%
+> (14/27)** baseline — far worse than the single documented case suggested, confirming this was a
+> systemic ranking bug, not a one-off. Three layered fixes closed it:
+>
+> 1. **`lib/schema/src/sqlite/migrations/0007_fts_porter_stemming.sql`** — rebuilds
+>    `l2_nodes_fts`/`l3_nodes_fts` with `tokenize='porter unicode61'`, folding plurals/suffixes to a
+>    shared stem (`"commands"`/`"command"` → `"command"`) at both index and query time. Verified
+>    directly against a scratch copy of this repo's real database before committing to the
+>    migration: `"query" AND "command"` went from 0 matches to exactly the query.ts symbol rows.
+> 2. **`lib/schema/src/sqlite/repos/fts-repo.ts`** — `searchL2Nodes`/`searchL3Nodes` now try an
+>    AND match (every keyword must match the same row) first, falling back to the previous OR
+>    match only when AND finds nothing — closing item 25's originally-diagnosed "no fallback
+>    strategy when the top FTS hit scores far below what an exact match would" gap.
+> 3. **`lib/core/src/query/query.service.ts`** — the OR-fallback path re-ranks candidates by how
+>    many distinct query keywords they cover (stable sort, BM25 rank as tiebreaker) before the
+>    existing score bands are assigned, and `extractKeywords()` no longer drops meaningful
+>    single-character tokens (this codebase's own Tier A/B/C vocabulary means `"tier c queue"` must
+>    keep `"c"` or it becomes indistinguishable from `"tier b queue"` — the self-test harness
+>    caught this as the one resolvable case still failing after fixes 1-2).
+>
+> Re-running the same 27-case harness after all three fixes: **100% (27/27)**. Also fixed the
+> originally-diagnosed case verbatim: `docuvia query "query command"` now resolves to
+> `artifacts/cli/src/commands/query.ts`. New/updated tests: `query.service.unit.test.ts` (keyword-
+> coverage re-rank, single-char token retention), `graph-store.integration.test.ts` (AND-first/
+> OR-fallback, porter stemming), `migration-runner.unit.test.ts` (migration 0007 schema + stemming
+> behavior). Full session detail:
+> `docs/cli-test-analysis/docuvia-self-verification-2026-08-06.md`.
+
 Item 22's fix (`matchType`) only makes an agent able to _tell_ a match is low-confidence — it does
 not make the match itself better. `docuvia query "query command"` still resolves to the wrong file
 (`artifacts/cli/src/utils/init-command-lock.ts` instead of `artifacts/cli/src/commands/query.ts`),

@@ -64,6 +64,60 @@ const STOP_WORDS = new Set([
 type ScoredResult = LocalSearchResult & { score: number };
 
 /**
+ * How many FTS candidates to pull per layer before re-ranking by keyword coverage (roadmap item
+ * 25) — wider than the caller's requested `limit` so a correct match that BM25 alone would rank
+ * below `limit` (because it only wins on one common term while a wrong doc wins on IDF rarity for
+ * another) still has a chance to surface. The caller-facing `limit` is unchanged; this only widens
+ * the internal candidate pool searched before the final coverage re-rank + score-sort + slice.
+ */
+const FTS_CANDIDATE_POOL_MULTIPLIER = 5;
+const FTS_CANDIDATE_POOL_MIN = 25;
+
+function resolveFtsCandidateLimit(limit: number): number {
+  return Math.max(
+    limit * FTS_CANDIDATE_POOL_MULTIPLIER,
+    FTS_CANDIDATE_POOL_MIN,
+  );
+}
+
+/**
+ * Stable-sorts FTS rows by keyword coverage (desc), falling back to each row's original BM25 rank
+ * order as a tiebreaker (`Array.prototype.sort` is spec-guaranteed stable as of ES2019, and this
+ * package targets Node 20 — see `artifacts/cli/tsup.config.ts`). Plain BM25 rank alone lets a
+ * document matching one *rare* keyword (e.g. "command", if few files mention it) outrank a document
+ * matching a *common* one (e.g. "query", mentioned everywhere) even when the second document is the
+ * actual target and the first is unrelated — the failure
+ * docs/gitbook/analysis/roadmap-and-open-items.md item 25 tracks ("query command" resolving to
+ * init-command-lock.ts instead of query.ts, live-verified against this repo at 51.9% baseline
+ * accuracy on concept-phrase queries).
+ *
+ * `membershipSets[i]` is the set of row ids that matched keyword `i`, sourced from the FTS index
+ * itself (one single-keyword search per keyword) rather than a raw JS substring check — substring
+ * matching on `name`/`description`/`path_patterns` would silently disagree with what the index
+ * actually matched once porter stemming (migration 0007) folds a query keyword and an indexed word
+ * to the same token but their raw spellings differ (e.g. keyword "queries" vs. indexed "query").
+ * A single-keyword query never has a meaningful coverage difference between matched rows (FTS only
+ * returns rows matching at least one OR'd term), so an empty `membershipSets` is a no-op for the
+ * case that already worked well (exact-symbol lookups, single-word queries).
+ */
+function rerankByKeywordCoverage<T extends { id: number }>(
+  rows: T[],
+  membershipSets: Set<number>[],
+): T[] {
+  if (membershipSets.length <= 1) return rows;
+  return rows
+    .map((row) => ({
+      row,
+      coverage: membershipSets.reduce(
+        (count, set) => (set.has(row.id) ? count + 1 : count),
+        0,
+      ),
+    }))
+    .sort((a, b) => b.coverage - a.coverage)
+    .map(({ row }) => row);
+}
+
+/**
  * Local-first (no-LLM) natural-language + structural query surface (Domain Core logic) — mirrors
  * old Docuvia's `QueryService`. Built entirely on `IGraphStore`'s repo interfaces.
  */
@@ -71,10 +125,17 @@ export class QueryService implements IQueryService {
   constructor(private readonly logger: ILogger = createNoopLogger()) {}
 
   extractKeywords(query: string): string[] {
+    // A single-character token is dropped only when it's punctuation-split noise (an empty
+    // string after trimming) or a genuine stop word ("a"/"i" — the only single-letter entries in
+    // STOP_WORDS). A *meaningful* single-character token is kept: this codebase's own Tier
+    // A/B/C vocabulary means "tier c queue" must keep "c" as a keyword, or it becomes
+    // indistinguishable from "tier b queue" (roadmap-and-open-items.md item 25's self-test
+    // harness caught this — dropping single-char tokens unconditionally was the one resolvable
+    // case left failing after the FTS/ranking fixes).
     const tokens = query
       .split(/[^\w./-]+/)
       .map((t) => t.trim())
-      .filter((t) => t.length > 1 && !STOP_WORDS.has(t.toLowerCase()));
+      .filter((t) => t.length > 0 && !STOP_WORDS.has(t.toLowerCase()));
     return Array.from(new Set(tokens));
   }
 
@@ -130,7 +191,29 @@ export class QueryService implements IQueryService {
 
     const keywords = this.extractKeywords(target);
     if (keywords.length > 0) {
-      store.fts.searchL2Nodes(keywords, limit).forEach((row, i) =>
+      const candidateLimit = resolveFtsCandidateLimit(limit);
+      // Only worth the extra per-keyword FTS round-trips when there's more than one keyword to
+      // tell apart — rerankByKeywordCoverage() no-ops on an empty set anyway (see its doc comment).
+      const buildL2MembershipSets = (): Set<number>[] =>
+        keywords.map(
+          (kw) =>
+            new Set(
+              store.fts.searchL2Nodes([kw], candidateLimit).map((r) => r.id),
+            ),
+        );
+      const buildL3MembershipSets = (): Set<number>[] =>
+        keywords.map(
+          (kw) =>
+            new Set(
+              store.fts.searchL3Nodes([kw], candidateLimit).map((r) => r.id),
+            ),
+        );
+
+      const l2Rows = rerankByKeywordCoverage(
+        store.fts.searchL2Nodes(keywords, candidateLimit),
+        keywords.length > 1 ? buildL2MembershipSets() : [],
+      );
+      l2Rows.slice(0, limit).forEach((row, i) =>
         put({
           layer: QueryResultLayers.L2,
           id: row.id,
@@ -140,7 +223,12 @@ export class QueryService implements IQueryService {
           matchType: "keyword",
         }),
       );
-      store.fts.searchL3Nodes(keywords, limit).forEach((row, i) =>
+
+      const l3Rows = rerankByKeywordCoverage(
+        store.fts.searchL3Nodes(keywords, candidateLimit),
+        keywords.length > 1 ? buildL3MembershipSets() : [],
+      );
+      l3Rows.slice(0, limit).forEach((row, i) =>
         put({
           layer: QueryResultLayers.L3,
           id: row.id,

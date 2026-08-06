@@ -158,7 +158,30 @@ describe("applyMigrations", () => {
       "0004_l3_provenance.sql",
       "0005_l3_initial_source_commits.sql",
       "0006_tier_b_file_status.sql",
+      "0007_fts_porter_stemming.sql",
     ]);
+  });
+
+  it("0007: rebuilds l2_nodes_fts/l3_nodes_fts with a porter stemmer, closing the singular/plural token gap (roadmap-and-open-items.md item 25)", () => {
+    applyMigrations(db, MIGRATIONS_DIR);
+
+    db.prepare("INSERT INTO projects (name, repo_url) VALUES (?, ?)").run(
+      "demo",
+      "file:///demo",
+    );
+    db.prepare(
+      "INSERT INTO l2_nodes (project_id, name, type, description, path_patterns) VALUES (1, 'queryCommand', 'module', '', '[\"artifacts/cli/src/commands/query.ts\"]')",
+    ).run();
+
+    // "commands" (plural, from the path) and "command" (singular, the query keyword) must be
+    // treated as the same stem — the whole point of switching tokenizers.
+    const rows = db
+      .prepare(
+        `SELECT n.name FROM l2_nodes_fts f JOIN l2_nodes n ON n.id = f.rowid
+         WHERE l2_nodes_fts MATCH '"query" AND "command"'`,
+      )
+      .all() as { name: string }[];
+    expect(rows.map((r) => r.name)).toEqual(["queryCommand"]);
   });
 
   it("is a no-op on a second run: does not re-apply and does not error", () => {
@@ -175,7 +198,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(6);
+    expect(migrationRows).toHaveLength(7);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

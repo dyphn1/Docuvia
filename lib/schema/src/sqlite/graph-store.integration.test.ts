@@ -1171,6 +1171,60 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     ]);
   });
 
+  it("fts repo: searchL2Nodes() is AND-first, only widening to OR when nothing matches every keyword (roadmap-and-open-items.md item 25)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    // Matches both keywords -- the AND-first case should isolate this one alone, ignoring the
+    // two single-keyword-only distractors below even though they'd also match under plain OR.
+    const bothId = store.graph.insertNode({
+      projectId: project.id,
+      name: "queryCommand",
+      pathPatterns: ["artifacts/cli/src/commands/query.ts"],
+    });
+    store.graph.insertNode({
+      projectId: project.id,
+      name: "unrelatedQueryHelper",
+      pathPatterns: ["src/query-only.ts"],
+    });
+    store.graph.insertNode({
+      projectId: project.id,
+      name: "initCommandLock",
+      pathPatterns: ["src/init-command-lock.ts"],
+    });
+
+    expect(
+      store.fts.searchL2Nodes(["query", "command"], 10).map((n) => n.id),
+    ).toEqual([bothId]);
+
+    // No row matches both "query" and "nonexistentxyz" -- AND-first must fall back to OR instead
+    // of returning nothing.
+    const orFallback = store.fts
+      .searchL2Nodes(["query", "nonexistentxyz"], 10)
+      .map((n) => n.id);
+    expect(orFallback).toContain(bothId);
+    expect(orFallback.length).toBeGreaterThan(0);
+  });
+
+  it("fts repo: singular/plural variants stem to the same token (porter tokenizer, migration 0007)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "artifacts/cli/src/commands/query.ts",
+      pathPatterns: ["artifacts/cli/src/commands/query.ts"],
+    });
+
+    // "commands" (plural, only present via the path) must still satisfy an AND match against the
+    // singular query keyword "command" -- this is exactly what broke before migration 0007.
+    expect(
+      store.fts.searchL2Nodes(["query", "command"], 10).map((n) => n.id),
+    ).toEqual([nodeId]);
+  });
+
   it("withWriteLock() serializes concurrent writers", async () => {
     const events: string[] = [];
 

@@ -46,8 +46,9 @@ export const LSP_MESSAGES = {
     `LSP request "${method}" attempted after the client stopped running`,
   requestTimedOut: (method: string, timeoutMs: number) =>
     `LSP request "${method}" timed out after ${timeoutMs}ms`,
-  serverExited: (code: number | null) =>
-    `LSP server process exited (code=${String(code)}) before responding`,
+  serverExited: (code: number | null, stderrTail?: string) =>
+    `LSP server process exited (code=${String(code)}) before responding` +
+    (stderrTail ? ` -- stderr: ${stderrTail}` : ""),
   spawnFailed: (command: string, message: string) =>
     `Failed to spawn LSP server "${command}": ${message}`,
   initializeFailed: (message: string) =>

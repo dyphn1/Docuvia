@@ -35,6 +35,10 @@ interface JsonRpcResponse {
   error?: { code: number; message: string };
 }
 
+/** Cap on how much of the child process's stderr `onStderr` keeps around -- a bounded tail, not
+ *  the full stream, so a chatty/looping server crashing mid-batch can't grow this unboundedly. */
+const STDERR_TAIL_MAX_CHARS = 4000;
+
 /**
  * A minimal LSP transport client: `Content-Length`-framed JSON-RPC 2.0 over a spawned process's
  * stdio (Language Server Protocol base spec) — request/response correlation by numeric id, plus
@@ -51,6 +55,7 @@ export class LspJsonRpcClient {
   private nextId = 1;
   private readonly pending = new Map<number, PendingRequest>();
   private stopped = false;
+  private stderrTail = "";
 
   /** Spawns the server and resolves once the process has actually started (or rejects on a
    *  synchronous spawn failure, e.g. `ENOENT` for an unresolvable binary). */
@@ -97,6 +102,7 @@ export class LspJsonRpcClient {
     this.child = child;
 
     child.stdout.on("data", (chunk: Buffer) => this.onData(chunk));
+    child.stderr.on("data", (chunk: Buffer) => this.onStderr(chunk));
     child.on("exit", (code) => this.onExit(code));
     child.on("error", (err) => this.onError(err));
 
@@ -241,9 +247,19 @@ export class LspJsonRpcClient {
     else pending.resolve(msg.result);
   }
 
+  /** Keeps only the last `STDERR_TAIL_MAX_CHARS` characters seen so far -- see that constant's
+   *  doc comment for why this doesn't just keep everything. */
+  private onStderr(chunk: Buffer): void {
+    this.stderrTail = (
+      this.stderrTail + chunk.toString(LspWireConstants.ENCODING)
+    ).slice(-STDERR_TAIL_MAX_CHARS);
+  }
+
   private onExit(code: number | null): void {
     this.stopped = true;
-    this.rejectAllPending(new Error(LSP_MESSAGES.serverExited(code)));
+    this.rejectAllPending(
+      new Error(LSP_MESSAGES.serverExited(code, this.stderrTail || undefined)),
+    );
   }
 
   private onError(err: Error): void {

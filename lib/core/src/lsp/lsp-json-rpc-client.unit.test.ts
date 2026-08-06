@@ -145,6 +145,26 @@ describe("LspJsonRpcClient (real subprocess, Content-Length framing)", () => {
     await client.stop();
     await expect(client.stop()).resolves.toBeUndefined();
   });
+
+  it("captures the child process's stderr tail and folds it into a pending request's rejection when the process exits unexpectedly", async () => {
+    // Real crash diagnostics (roadmap item 28): a Node one-liner that writes to stderr, then
+    // exits non-zero shortly after -- long enough for a request to already be pending -- stands
+    // in for a language server crashing mid-batch, which a fake/in-memory client can't exercise
+    // since there's no real process boundary to pipe stderr across.
+    const client = new LspJsonRpcClient();
+    await client.start({
+      command: process.execPath,
+      args: [
+        "-e",
+        "process.stderr.write('simulated crash diagnostic output');" +
+          "setTimeout(() => process.exit(1), 50);",
+      ],
+      cwd: __dirname,
+    });
+    await expect(client.request("echo", {}, 5000)).rejects.toThrow(
+      /code=1.*simulated crash diagnostic output/s,
+    );
+  });
 });
 
 /**

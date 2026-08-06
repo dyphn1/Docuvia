@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#makeMockStore
+id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#makeMockStore@L367
 type: symbol
 name: makeMockStore
 filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts

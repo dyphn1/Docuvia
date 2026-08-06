@@ -1,6 +1,8 @@
 // Shared with lib/ui-core's DoctorWorkflow agent-hooks diagnostic -- defined in @workspace/core so
 // neither side depends on the other; re-exported here so this file stays the single import path
-// every platform installer already uses.
+// every platform installer already uses. Also imported (not just re-exported) below so
+// CLAUDE_PROJECT_HOOKS_DIR can build off the same value instead of re-typing it.
+import { CLAUDE_HOOKS_DIR } from "@workspace/core";
 export {
   CLAUDE_HOOKS_DIR,
   CURSOR_HOOKS_DIR,
@@ -9,8 +11,10 @@ export {
 } from "@workspace/core";
 
 export const GITHUB_DIR = ".github";
+export const CLAUDE_DIR = ".claude";
 
 export const HOOKS_CONFIG_FILENAME = "hooks.json";
+export const SETTINGS_JSON_FILENAME = "settings.json";
 
 export const CURSOR_MCP_CONFIG_PATH = ".cursor/mcp.json";
 export const CLAUDE_DESKTOP_CONFIG_FILENAME = "claude_desktop_config.json";
@@ -52,6 +56,15 @@ export const PLATFORM_SLUG_HERMES = "hermes";
 // the platform itself expands these at runtime, so they must stay un-interpolated here.
 export const CLAUDE_PLUGIN_HOOKS_DIR = "${CLAUDE_PLUGIN_ROOT}/hooks";
 export const CURSOR_PLUGIN_HOOKS_DIR = "${CURSOR_PLUGIN_ROOT}/hooks";
+
+// Project-level equivalent of CLAUDE_PLUGIN_HOOKS_DIR above. `${CLAUDE_PLUGIN_ROOT}` only resolves
+// inside a formal Claude Code plugin install (and is currently broken there too --
+// anthropics/claude-code#24529); `${CLAUDE_PROJECT_DIR}` resolves correctly today in a project-level
+// `.claude/settings.json` hook, so ClaudePlatform also writes a hook entry through this path,
+// pointing at the same `.claude/hooks` dir `configureHooks` already writes `docuvia-hook.js` into
+// (roadmap-and-open-items.md item 26).
+export const CLAUDE_PROJECT_HOOKS_DIR =
+  "${CLAUDE_PROJECT_DIR}/" + CLAUDE_HOOKS_DIR;
 
 export const NPX_COMMAND = "npx";
 export const NPX_YES_FLAG = "-y";
@@ -95,9 +108,14 @@ if (target) {
 }
 `;
 
+// Named so the merge/prune logic in claude.platform.ts's project-level `.claude/settings.json`
+// support reuses this exact key instead of re-typing the literal (a typo there would silently
+// desync the two).
+export const HOOK_EVENT_PRE_TOOL_USE = "PreToolUse";
+
 export const HOOKS_JSON = JSON.stringify(
   {
-    PreToolUse: [
+    [HOOK_EVENT_PRE_TOOL_USE]: [
       {
         hooks: [
           {

@@ -485,6 +485,27 @@ here rather than speculatively redesigning the ranking algorithm now.
 
 ### 26. Claude Code `PreToolUse` hook is inert outside formal plugin packaging
 
+> **Path (a) shipped — 2026-08-06.** `ClaudePlatform.configureHooks()`
+> ([`claude.platform.ts`](../../../artifacts/cli/src/platforms/claude.platform.ts)) now additionally
+> merges a project-level hook entry into `.claude/settings.json`, using
+> `CLAUDE_PROJECT_HOOKS_DIR = "${CLAUDE_PROJECT_DIR}/" + CLAUDE_HOOKS_DIR`
+> ([`init-templates.ts`](../../../artifacts/cli/src/constants/init-templates.ts)) instead of the
+> plugin-only `${CLAUDE_PLUGIN_ROOT}`. The existing plugin-style `.claude/hooks/hooks.json` write is
+> completely unchanged (kept for a future real plugin distribution) — this is purely additive. The
+> merge/prune logic (`mergeDocuviaHookIntoProjectSettings`/`pruneDocuviaHookFromProjectSettings`)
+> never touches unrelated content already in `.claude/settings.json` (other top-level keys like
+> `permissions`, other `PreToolUse` matchers), is idempotent across repeated `docuvia init` runs,
+> and never overwrites a settings file it can't safely parse or whose `PreToolUse` field has an
+> unexpected (non-array) shape — that last case was caught by independent `task-verifier` review via
+> a live repro (not just code inspection), which found the initial implementation threw an uncaught
+> `TypeError` on a malformed-but-valid-JSON `PreToolUse` value and would have hard-failed `docuvia
+init` (aborting hook setup for every platform selected after Claude in that run); fixed with an
+> explicit `Array.isArray` guard mirroring the prune side's existing one, plus a regression test.
+> Verified: 16/16 tests passing in
+> [`claude.platform.unit.test.ts`](../../../artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts)
+> (6 pre-existing + 10 new), clean typecheck. Path (b) stays exactly as documented below — blocked
+> upstream by anthropics/claude-code#24529, not attempted.
+
 Found 2026-08-05 (`docs_overhaul` session), reconfirmed live 2026-08-06. `docuvia init`'s
 `ClaudePlatform.configureHooks()`
 ([`claude.platform.ts:143-163`](../../../artifacts/cli/src/platforms/claude.platform.ts)) writes
@@ -533,16 +554,17 @@ project-level (a) hook registration from what it ships, so a plugin install and 
 this exclusion logic now — it has nothing to guard against yet, since (b) is inert until Anthropic
 fixes #24529. Revisit once that issue closes.
 
-**Immediate next step:** ship (a) only — `${CLAUDE_PROJECT_DIR}`-based `.claude/settings.json` — since
-it's confirmed working today and nothing conflicts with it while (b) stays non-functional.
+**Immediate next step:** ~~ship (a) only~~ — done, see the "Path (a) shipped" note at the top of this
+item.
 
 **Deliberately out of scope here:** whether Cursor (`${CURSOR_PLUGIN_ROOT}`, same pattern in
 `init-templates.ts`) or any other platform adapter has the identical gap, or the identical
 upstream-bug situation. Re-check each platform separately once the Claude decision above lands,
 rather than assuming the same fix (or the same bug) generalizes.
 
-**Status: open, not fixed. Path (a) is the only currently-viable option; path (b) is blocked
-upstream by anthropics/claude-code#24529, not by anything decidable in this repo.**
+**Status: path (a) shipped 2026-08-06 (see top of item). Path (b) stays blocked upstream by
+anthropics/claude-code#24529, not by anything decidable in this repo — the packaging-time exclusion
+logic described above stays parked until that closes.**
 
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 

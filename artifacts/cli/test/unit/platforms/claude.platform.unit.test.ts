@@ -23,6 +23,197 @@ import { ClaudePlatform } from "../../../src/platforms/claude.platform.js";
 import { ui } from "../../../src/ui/wizard.js";
 import { CLAUDE_DESKTOP_CONFIG_FILENAME } from "../../../src/constants/init-templates.js";
 
+// Roadmap item 26 — project-level `.claude/settings.json` PreToolUse hook (the `${CLAUDE_PLUGIN_ROOT}`
+// hooks.json path above is inert outside formal plugin packaging; `${CLAUDE_PROJECT_DIR}` resolves
+// in a plain checkout today).
+describe("ClaudePlatform — project-level .claude/settings.json hook (roadmap item 26)", () => {
+  let repoDir: string;
+  let globalConfigDir: string;
+  let originalAppData: string | undefined;
+
+  beforeEach(async () => {
+    repoDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "docuvia-claude-platform-settings-"),
+    );
+    globalConfigDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "docuvia-claude-platform-settings-global-"),
+    );
+    originalAppData = process.env.APPDATA;
+    process.env.APPDATA = globalConfigDir;
+    vi.clearAllMocks();
+  });
+
+  afterEach(async () => {
+    if (originalAppData === undefined) delete process.env.APPDATA;
+    else process.env.APPDATA = originalAppData;
+    await fs.rm(repoDir, { recursive: true, force: true });
+    await fs.rm(globalConfigDir, { recursive: true, force: true });
+  });
+
+  function settingsPath(): string {
+    return path.join(repoDir, ".claude", "settings.json");
+  }
+
+  async function readSettings(): Promise<any> {
+    return JSON.parse(await fs.readFile(settingsPath(), "utf-8"));
+  }
+
+  it("installHooks writes .claude/settings.json with a PreToolUse entry referencing ${CLAUDE_PROJECT_DIR}/.claude/hooks/docuvia-hook.js", async () => {
+    const platform = new ClaudePlatform();
+    await platform.installHooks(repoDir);
+
+    const settings = await readSettings();
+    const preToolUse = settings.hooks.PreToolUse;
+    expect(Array.isArray(preToolUse)).toBe(true);
+    const docuviaEntry = preToolUse.find((entry: any) =>
+      entry.hooks?.some((h: any) =>
+        h.command?.includes("${CLAUDE_PROJECT_DIR}"),
+      ),
+    );
+    expect(docuviaEntry).toBeDefined();
+    const command = docuviaEntry.hooks[0].command as string;
+    expect(command).toContain("${CLAUDE_PROJECT_DIR}");
+    expect(command).toContain(".claude/hooks/docuvia-hook.js");
+  });
+
+  it("is idempotent — calling installHooks twice does not duplicate the PreToolUse entry", async () => {
+    const platform = new ClaudePlatform();
+    await platform.installHooks(repoDir);
+    await platform.installHooks(repoDir);
+
+    const settings = await readSettings();
+    const preToolUse = settings.hooks.PreToolUse;
+    const docuviaEntries = preToolUse.filter((entry: any) =>
+      entry.hooks?.some((h: any) =>
+        h.command?.includes("${CLAUDE_PROJECT_DIR}"),
+      ),
+    );
+    expect(docuviaEntries).toHaveLength(1);
+  });
+
+  const seedContent = {
+    permissions: { allow: ["Bash(git *)"] },
+    hooks: {
+      PreToolUse: [
+        {
+          matcher: "SomeOtherTool",
+          hooks: [{ type: "command", command: "echo hi" }],
+        },
+      ],
+    },
+  };
+
+  async function seedSettings(): Promise<void> {
+    await fs.mkdir(path.dirname(settingsPath()), { recursive: true });
+    await fs.writeFile(settingsPath(), JSON.stringify(seedContent, null, 2));
+  }
+
+  it("installHooks preserves pre-existing unrelated content in .claude/settings.json", async () => {
+    await seedSettings();
+
+    const platform = new ClaudePlatform();
+    await platform.installHooks(repoDir);
+
+    const settings = await readSettings();
+    expect(settings.permissions).toEqual({ allow: ["Bash(git *)"] });
+    const preToolUse = settings.hooks.PreToolUse;
+    expect(
+      preToolUse.some((entry: any) => entry.matcher === "SomeOtherTool"),
+    ).toBe(true);
+    expect(
+      preToolUse.some((entry: any) =>
+        entry.hooks?.some((h: any) =>
+          h.command?.includes("${CLAUDE_PROJECT_DIR}"),
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it("uninstallHooks removes only Docuvia's entry from .claude/settings.json, leaving other pre-existing content intact", async () => {
+    await seedSettings();
+
+    const platform = new ClaudePlatform();
+    await platform.installHooks(repoDir);
+    await platform.uninstallHooks(repoDir);
+
+    const settings = await readSettings();
+    expect(settings.permissions).toEqual({ allow: ["Bash(git *)"] });
+    const preToolUse = settings.hooks.PreToolUse;
+    expect(
+      preToolUse.some((entry: any) => entry.matcher === "SomeOtherTool"),
+    ).toBe(true);
+    expect(
+      preToolUse.some((entry: any) =>
+        entry.hooks?.some((h: any) =>
+          h.command?.includes("${CLAUDE_PROJECT_DIR}"),
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("uninstallHooks deletes .claude/settings.json entirely when Docuvia's entry was the only content", async () => {
+    const platform = new ClaudePlatform();
+    await platform.installHooks(repoDir);
+    await platform.uninstallHooks(repoDir);
+
+    const exists = await fs.access(settingsPath()).then(
+      () => true,
+      () => false,
+    );
+    expect(exists).toBe(false);
+  });
+
+  it("uninstallHooks is a safe no-op when .claude/settings.json does not exist", async () => {
+    const platform = new ClaudePlatform();
+    await expect(platform.uninstallHooks(repoDir)).resolves.not.toThrow();
+
+    const exists = await fs.access(settingsPath()).then(
+      () => true,
+      () => false,
+    );
+    expect(exists).toBe(false);
+  });
+
+  it("uninstallHooks is a safe no-op when .claude/settings.json contains invalid JSON, and never overwrites it", async () => {
+    await fs.mkdir(path.dirname(settingsPath()), { recursive: true });
+    await fs.writeFile(settingsPath(), "{ not valid json");
+
+    const platform = new ClaudePlatform();
+    await expect(platform.uninstallHooks(repoDir)).resolves.not.toThrow();
+
+    const after = await fs.readFile(settingsPath(), "utf-8");
+    expect(after).toBe("{ not valid json");
+  });
+
+  it("installHooks warns and does not overwrite .claude/settings.json when it contains invalid JSON", async () => {
+    await fs.mkdir(path.dirname(settingsPath()), { recursive: true });
+    await fs.writeFile(settingsPath(), "{ not valid json");
+
+    const platform = new ClaudePlatform();
+    await platform.installHooks(repoDir);
+
+    const after = await fs.readFile(settingsPath(), "utf-8");
+    expect(after).toBe("{ not valid json");
+    expect(ui.warn).toHaveBeenCalled();
+  });
+
+  it("installHooks warns and does not overwrite .claude/settings.json when PreToolUse is present but not an array", async () => {
+    const malformedContent = { hooks: { PreToolUse: {} } };
+    await fs.mkdir(path.dirname(settingsPath()), { recursive: true });
+    await fs.writeFile(
+      settingsPath(),
+      JSON.stringify(malformedContent, null, 2),
+    );
+
+    const platform = new ClaudePlatform();
+    await expect(platform.installHooks(repoDir)).resolves.not.toThrow();
+
+    const after = await readSettings();
+    expect(after.hooks.PreToolUse).toEqual({});
+    expect(ui.warn).toHaveBeenCalled();
+  });
+});
+
 // IFCE-002: Docuvia never writes machine-global state. `installHooks` must only touch the
 // repo-scoped `.claude/hooks/` directory and print a copy-pasteable MCP snippet — it must never
 // write to Claude Desktop's own (machine-global) config file, regardless of TTY or flags.

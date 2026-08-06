@@ -49,6 +49,11 @@ export const UI_MESSAGES = {
   FS_READ_ERROR_UNKNOWN_CODE: "unknown error",
   FS_BLOCK_REMOVED_PREFIX: "Removed block from ",
   FS_BLOCK_REMOVED_SUFFIX: " (backup created)",
+  /** Guards a write path (e.g. mergeDocuviaHookIntoProjectSettings) that finds a key already
+   *  present with an unexpected (non-array) shape it can't safely merge into -- never coerce or
+   *  overwrite a shape it can't trust, just warn and leave the file untouched. */
+  FS_UNEXPECTED_SHAPE: (key: string, settingsPath: string) =>
+    `Unexpected shape for "${key}" in ${settingsPath} (expected an array); leaving it untouched`,
 
   // Clean Command
   CLEAN_HEADER: "Clean Docuvia Database",
@@ -236,6 +241,8 @@ export const UI_MESSAGES = {
   UNINSTALL_FAIL_LOG: "uninstall failed",
   UNINSTALL_REMOVED_FILE_PREFIX: "Removed ",
   UNINSTALL_REMOVED_MCP_SERVER_PREFIX: "Removed MCP server from ",
+  UNINSTALL_REMOVED_HOOK_FROM_SETTINGS_PREFIX:
+    "Removed the Docuvia hook entry from ",
   // IFCE-002: Docuvia never writes machine-global state — print a reminder instead of editing
   // Claude Desktop's own (machine-global) config file.
   UNINSTALL_CLAUDE_MCP_MANUAL_REMINDER:

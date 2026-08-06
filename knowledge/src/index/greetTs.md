@@ -1,9 +1,9 @@
 ---
-id: src/index.ts#hello
+id: src/index.ts#greetTs
 type: symbol
-name: hello
+name: greetTs
 filePath: src/index.ts
 ---
-# Symbol: hello
+# Symbol: greetTs
 
 File: `src/index.ts`

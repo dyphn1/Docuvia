@@ -1,1 +1,5 @@
-{"source":"src/index.ts","target":"src/index.ts#hello","type":"contains"}
+{"source":"src/index.ts","target":"src/index.ts#greetTs","type":"contains"}
+{"source":"src/main.go","target":"src/main.go#GreetGo","type":"contains"}
+{"source":"src/Main.java","target":"src/Main.java#Main","type":"contains"}
+{"source":"src/Main.java","target":"src/Main.java#Main.greetJava","type":"contains"}
+{"source":"src/main.py","target":"src/main.py#greet_py","type":"contains"}

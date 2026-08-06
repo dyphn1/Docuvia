@@ -973,6 +973,36 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       expect.anything(),
     );
   });
+
+  it("sends maxTsServerMemory via initializationOptions on initialize (roadmap item 28) -- the mechanism typescript-language-server actually reads to raise tsserver's own --max-old-space-size, confirmed against a real tsserver OOM abort (exit 134) on a vscode-scale batch", async () => {
+    const requestSpy = vi.fn().mockImplementation((method: string) => {
+      if (method === LspMethods.INITIALIZE)
+        return Promise.resolve({ capabilities: {} });
+      if (method === LspMethods.DOCUMENT_SYMBOL) return Promise.resolve([]);
+      return Promise.resolve(null);
+    });
+    const client: LspJsonRpcClient = {
+      start: vi.fn().mockResolvedValue(undefined),
+      request: requestSpy,
+      notify: vi.fn(),
+      stop: vi.fn().mockResolvedValue(undefined),
+    } as unknown as LspJsonRpcClient;
+
+    const provider = new TypescriptLspEdgeProvider(
+      createMockLogger(),
+      () => client,
+    );
+
+    await provider.resolveEdges({ workspaceRoot, files: ["a.ts"] });
+
+    expect(requestSpy).toHaveBeenCalledWith(
+      LspMethods.INITIALIZE,
+      expect.objectContaining({
+        initializationOptions: { maxTsServerMemory: 8192 },
+      }),
+      expect.anything(),
+    );
+  });
 });
 
 describe("TypescriptLspEdgeProvider.checkAvailability()", () => {

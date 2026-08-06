@@ -18,12 +18,18 @@ export interface ResolvedLspBinary {
 const WINDOWS_BIN_EXTENSIONS = [".cmd", ".CMD", ".exe", ""];
 
 /** Default `--max-old-space-size` (MB) for the spawned typescript-language-server/tsserver
- *  process, only applied when the caller's own environment doesn't already set one. Untuned --
- *  a generous round number well above Node's own auto-computed default, not measured against a
- *  specific vscode-scale ceiling; re-tune (or make config-overridable) if real usage shows it's
- *  insufficient or wasteful. Root cause: tsserver OOM-aborting (exit 134/SIGABRT) partway
- *  through a large Tier B batch against a real vscode checkout (roadmap item 28). */
-const DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB = 4096;
+ *  process. Exported so `typescript-lsp-edge-provider.ts` can pass the same number through
+ *  `initializationOptions.maxTsServerMemory` -- the mechanism that actually reaches tsserver's
+ *  own heap flag (confirmed by reading `typescript-language-server`'s own source: it explicitly
+ *  pushes `--max-old-space-size=${configuration.maxTsServerMemory}` onto the forked tsserver
+ *  process's own args, which wins over/coexists redundantly with any NODE_OPTIONS-supplied value
+ *  -- so `buildHeapSizeEnvOverride` below is a secondary belt-and-suspenders path, not the primary
+ *  fix). Bumped from an initial 4096 to 8192 after live-verifying against a real vscode checkout
+ *  that 4096 (env-only, no `initializationOptions`) still let tsserver OOM-abort (exit 134/
+ *  SIGABRT) partway through a large Tier B batch -- still untuned/a round number, not a measured
+ *  vscode-specific ceiling; re-tune (or make config-overridable) if real usage shows it's still
+ *  insufficient or now wasteful. Root cause: roadmap item 28. */
+export const DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB = 8192;
 
 /** Builds an env override that raises tsserver's heap ceiling via NODE_OPTIONS -- unless the
  *  caller's own environment already sets --max-old-space-size itself, in which case this

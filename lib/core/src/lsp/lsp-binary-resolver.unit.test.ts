@@ -37,7 +37,7 @@ describe("resolveLspBinary()", () => {
     expect(resolved.command).toBe("/custom/path/to/server");
     expect(resolved.args).toEqual(["--custom-flag"]);
     expect(resolved.locallyResolved).toBe(true);
-    expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=4096");
+    expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=8192");
   });
 
   it("defaults an override's args to --stdio when none are given", () => {
@@ -45,7 +45,7 @@ describe("resolveLspBinary()", () => {
       binary: "/custom/server",
     });
     expect(resolved.args).toEqual(["--stdio"]);
-    expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=4096");
+    expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=8192");
   });
 
   it("resolves a project-local node_modules/.bin copy when present", () => {
@@ -62,7 +62,7 @@ describe("resolveLspBinary()", () => {
     expect(resolved.locallyResolved).toBe(true);
     expect(resolved.command).toBe(path.join(binDir, binName));
     expect(resolved.args).toEqual(["--stdio"]);
-    expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=4096");
+    expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=8192");
   });
 
   it("falls back to npx --no-install when no local copy is resolvable", () => {
@@ -75,13 +75,13 @@ describe("resolveLspBinary()", () => {
       "typescript-language-server",
       "--stdio",
     ]);
-    expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=4096");
+    expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=8192");
   });
 
   describe("heap size env override", () => {
-    it("sets NODE_OPTIONS to --max-old-space-size=4096 when unset", () => {
+    it("sets NODE_OPTIONS to --max-old-space-size=8192 when unset", () => {
       const resolved = resolveLspBinary(workspaceRoot);
-      expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=4096");
+      expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=8192");
     });
 
     it("appends the flag rather than replacing an unrelated existing NODE_OPTIONS", () => {
@@ -90,7 +90,7 @@ describe("resolveLspBinary()", () => {
       const resolved = resolveLspBinary(workspaceRoot);
 
       expect(resolved.env?.NODE_OPTIONS).toBe(
-        "--stack-trace-limit=100 --max-old-space-size=4096",
+        "--stack-trace-limit=100 --max-old-space-size=8192",
       );
     });
 

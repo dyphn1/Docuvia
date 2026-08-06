@@ -1,6 +1,9 @@
 import type { ILogger } from "@workspace/contracts";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
-import { resolveLspBinary } from "./lsp-binary-resolver.js";
+import {
+  resolveLspBinary,
+  DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB,
+} from "./lsp-binary-resolver.js";
 import { checkLspPreflight } from "./lsp-preflight.js";
 import { TsLspConstants } from "./lsp-constants.js";
 import {
@@ -30,6 +33,12 @@ const TYPESCRIPT_LANGUAGE_CONFIG: LspLanguageConfig = {
   resolveBinary: resolveLspBinary,
   checkPreflight: checkLspPreflight,
   supportsQualifiedContainment: true,
+  // roadmap item 28: typescript-language-server reads this key directly off the initialize
+  // request and forwards it as tsserver's own --max-old-space-size arg -- the mechanism that
+  // actually reaches tsserver's heap ceiling (see DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB's doc comment).
+  initializationOptions: {
+    maxTsServerMemory: DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB,
+  },
 };
 
 /**

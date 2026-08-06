@@ -195,6 +195,14 @@ export interface LspLanguageConfig {
    *  Deliberately explicit, never inferred from the LSP server's own `documentSymbol` nesting,
    *  which is semantic and may disagree with Tier A's tree-sitter-ancestry rule per language. */
   supportsQualifiedContainment: boolean;
+  /** Sent verbatim as the `initialize` request's `initializationOptions` param (LSP spec: an
+   *  opaque, server-defined bag -- most servers ignore fields they don't recognize, so this is
+   *  safe to leave unset for any language with nothing to configure here). TS/JS uses this to set
+   *  `maxTsServerMemory` (roadmap item 28) -- `typescript-language-server` reads it directly off
+   *  `params.initializationOptions.maxTsServerMemory` and forwards it as tsserver's own
+   *  `--max-old-space-size` arg (confirmed by reading that package's own source,
+   *  `lib/cli.mjs`'s `TsServerProcessFactory.fork`/`createTsServerRequestExecutor`). */
+  initializationOptions?: Record<string, unknown>;
 }
 
 /**
@@ -377,6 +385,9 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         workspaceFolders: [
           { uri: rootUri, name: path.basename(workspaceRoot) },
         ],
+        ...(this.languageConfig.initializationOptions
+          ? { initializationOptions: this.languageConfig.initializationOptions }
+          : {}),
       },
       this.requestTimeoutMs,
     );

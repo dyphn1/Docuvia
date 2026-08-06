@@ -1,9 +1,2 @@
 {"id":"src/index.ts","type":"file","name":"src/index.ts","filePath":"src/index.ts"}
-{"id":"src/index.ts#greetTs","type":"symbol","name":"greetTs","filePath":"src/index.ts"}
-{"id":"src/main.go","type":"file","name":"src/main.go","filePath":"src/main.go"}
-{"id":"src/main.go#GreetGo","type":"symbol","name":"GreetGo","filePath":"src/main.go"}
-{"id":"src/Main.java","type":"file","name":"src/Main.java","filePath":"src/Main.java"}
-{"id":"src/Main.java#Main","type":"symbol","name":"Main","filePath":"src/Main.java"}
-{"id":"src/Main.java#Main.greetJava","type":"symbol","name":"greetJava","filePath":"src/Main.java"}
-{"id":"src/main.py","type":"file","name":"src/main.py","filePath":"src/main.py"}
-{"id":"src/main.py#greet_py","type":"symbol","name":"greet_py","filePath":"src/main.py"}
+{"id":"src/index.ts#hello","type":"symbol","name":"hello","filePath":"src/index.ts"}

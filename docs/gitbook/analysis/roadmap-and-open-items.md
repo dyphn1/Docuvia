@@ -483,6 +483,67 @@ untuned, re-tune if real usage shows either is off. Not scheduled; no measured p
 yet for any of the three (the concrete re-entry-trigger pattern items 9/17 already use) — parking
 here rather than speculatively redesigning the ranking algorithm now.
 
+### 26. Claude Code `PreToolUse` hook is inert outside formal plugin packaging
+
+Found 2026-08-05 (`docs_overhaul` session), reconfirmed live 2026-08-06. `docuvia init`'s
+`ClaudePlatform.configureHooks()`
+([`claude.platform.ts:143-163`](../../../artifacts/cli/src/platforms/claude.platform.ts)) writes
+`.claude/hooks/docuvia-hook.js` plus a `.claude/hooks/hooks.json` whose `PreToolUse` command is
+templated as `node ${CLAUDE_PLUGIN_ROOT}/hooks/docuvia-hook.js`
+([`CLAUDE_PLUGIN_HOOKS_DIR`](../../../artifacts/cli/src/constants/init-templates.ts)). That
+`${CLAUDE_PLUGIN_ROOT}` placeholder only resolves when the repo is loaded as a formal Claude Code
+_plugin_ — there is no code path in `ClaudePlatform` that ever writes a plain-project
+`.claude/settings.json` hook entry. Reconfirmed against this exact checkout: no
+`.claude/settings.json` exists, `.claude/hooks/hooks.json` still contains the unresolved
+`${CLAUDE_PLUGIN_ROOT}` command, and the automatic "inject `docuvia query`/`impact` context before
+`Grep`/`Glob`/`Bash`/`Read`" hook has never actually fired here. `uninstallHooks()` is symmetric and
+correctly cleans up whatever `installHooks()` wrote — not a bug in itself, just uninstalling
+something that was never functionally wired up in this mode. The only thing currently making
+Docuvia's docuvia-first mandate happen at all is the prose instruction baked into
+AGENTS.md/CLAUDE.md — no technical enforcement layer backs it for a plain (non-plugin) checkout.
+
+**Next step (scoped to Claude only for now):** decide between (a) `ClaudePlatform` additionally
+writing a plain-project `.claude/settings.json` hooks entry with a resolvable absolute path instead
+of `${CLAUDE_PLUGIN_ROOT}`, so the hook works the moment `docuvia init` runs in any checkout, or (b)
+packaging Docuvia2 itself as a real, installable Claude Code plugin so the existing
+`hooks.json`/`${CLAUDE_PLUGIN_ROOT}` path resolves as designed.
+
+**2026-08-06 research, changes the picture:** verified against Claude Code's own docs/issue tracker
+(via the `claude-code-guide` subagent, WebFetch-sourced, not from training memory) —
+
+1. `${CLAUDE_PLUGIN_ROOT}` is not just "unresolved outside plugin context," it is a **currently-broken
+   Claude Code platform bug**: the hook executor never sets it, even inside real plugin hooks —
+   [anthropics/claude-code#24529](https://github.com/anthropics/claude-code/issues/24529). So path
+   (b) cannot work today regardless of how well Docuvia2 packages itself as a plugin; it's blocked
+   upstream, not by anything in this repo.
+2. `${CLAUDE_PROJECT_DIR}` **does** resolve correctly in a project-level `.claude/settings.json`
+   hook today — path (a) is technically buildable right now.
+3. Plugin-scope hooks and project-scope hooks are **not deduplicated against each other** — per
+   Claude Code's `hooks.md`, same-handler dedup only applies within one settings layer; a plugin
+   hook and a project hook with the same `PreToolUse` matcher both fire, in parallel, every time. So
+   if (a) and (b) were both active at once for the same user/repo, `docuvia-hook.js` would run twice
+   per `Grep`/`Glob`/`Bash`/`Read` call (doubled latency against each side's own timeout budget,
+   duplicate context injection) — a real conflict, not a hypothetical one.
+
+**Decided direction for when both paths eventually coexist** (not built yet, parked until (b)
+becomes viable): switch between them via a parameter/env var at _packaging_ time, not runtime — when
+a future plugin-packaging step produces the plugin distribution, that step excludes/disables the
+project-level (a) hook registration from what it ships, so a plugin install and a project-level
+`docuvia init` never both register the same hook for the same user. Deliberately not implementing
+this exclusion logic now — it has nothing to guard against yet, since (b) is inert until Anthropic
+fixes #24529. Revisit once that issue closes.
+
+**Immediate next step:** ship (a) only — `${CLAUDE_PROJECT_DIR}`-based `.claude/settings.json` — since
+it's confirmed working today and nothing conflicts with it while (b) stays non-functional.
+
+**Deliberately out of scope here:** whether Cursor (`${CURSOR_PLUGIN_ROOT}`, same pattern in
+`init-templates.ts`) or any other platform adapter has the identical gap, or the identical
+upstream-bug situation. Re-check each platform separately once the Claude decision above lands,
+rather than assuming the same fix (or the same bug) generalizes.
+
+**Status: open, not fixed. Path (a) is the only currently-viable option; path (b) is blocked
+upstream by anthropics/claude-code#24529, not by anything decidable in this repo.**
+
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 
 - **Self-built static scope-resolution pipeline** (bypass LSP with hand-guessed cross-file calls)

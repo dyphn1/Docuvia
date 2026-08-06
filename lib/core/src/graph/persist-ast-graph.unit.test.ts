@@ -292,7 +292,7 @@ describe("GraphPersisterService.persist()", () => {
     ]);
   });
 
-  it("KNOWN GAP: a same-package, no-import Go cross-file call is never persisted as a 'calls' link (export-topology-followups plan §1.3 — ScopeResolver.resolveCall() has no Go-package-aware branch, flagged as a candidate follow-up issue, not fixed here)", async () => {
+  it("resolves a same-package, no-import Go cross-file call into a persisted 'calls' link (roadmap item 19, fixed)", async () => {
     const fooResponse = await buildParseResponse({
       taskId: "go-a",
       filePath: "a.go",
@@ -339,10 +339,11 @@ describe("GraphPersisterService.persist()", () => {
           "SELECT * FROM node_links WHERE source_node_id = ? AND target_node_id = ? AND link_type = 'calls'",
         )
         .get(barId, fooId);
-      // No import ties b.go to a.go (idiomatic same-package Go) -- ScopeResolver.resolveCall()
-      // only resolves same-file locals or explicitly-imported names, so this returns null and
-      // linkSymbolReference() never inserts the edge.
-      expect(link).toBeUndefined();
+      // No import ties b.go to a.go, but ScopeResolver.resolveCall() now falls back to a
+      // directory-scoped Go same-package lookup: since a.go and b.go share a directory and a.go
+      // declares "Foo" as a local, the call resolves and linkSymbolReference() inserts the edge.
+      expect(link).toBeDefined();
+      expect((link as any).link_type).toBe("calls");
     } finally {
       raw.close();
     }

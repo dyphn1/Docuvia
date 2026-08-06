@@ -62,6 +62,10 @@ const RESOLVABLE_FILE_EXTENSIONS = [
 /** Index-file suffixes tried when a bare directory import resolves to a package/folder. */
 const RESOLVABLE_INDEX_SUFFIXES = ["/index.ts", "/index.js"];
 
+/** Go source file extension — used to gate the directory-scoped same-package fallback in
+ *  `resolveCall`/`resolveGoSamePackageCall` below (roadmap item 19). */
+const GO_FILE_EXTENSION = ".go";
+
 const ScopeResolverMessages = {
   TSCONFIG_PARSE_FAILED: "Failed to JSON-parse tsconfig.json",
   TSCONFIG_FILES_READ_FAILED: "Failed to read or parse tsconfig files",
@@ -80,6 +84,7 @@ export class ScopeResolver {
   private importsByFile: Map<string, ImportDescriptor[]> = new Map();
   private localsByFile: Map<string, Set<string>> = new Map();
   private tsConfigPaths: Record<string, string[]> = {};
+  private goFilesByDirectory: Map<string, Set<string>> = new Map();
 
   constructor(
     private workspaceRoot: string,
@@ -159,6 +164,16 @@ export class ScopeResolver {
     this.importsByFile.set(normalizedPath, imports);
     this.exportsByFile.set(normalizedPath, new Set(exports));
     this.localsByFile.set(normalizedPath, new Set(locals));
+
+    if (normalizedPath.endsWith(GO_FILE_EXTENSION)) {
+      const dir = path.posix.dirname(normalizedPath);
+      let siblings = this.goFilesByDirectory.get(dir);
+      if (!siblings) {
+        siblings = new Set();
+        this.goFilesByDirectory.set(dir, siblings);
+      }
+      siblings.add(normalizedPath);
+    }
   }
 
   public resolveCall(
@@ -193,6 +208,42 @@ export class ScopeResolver {
       }
     }
 
+    // 3. Go packages are directory-scoped: check for a same-directory sibling `.go` file that
+    // declares this symbol with no explicit import (see resolveGoSamePackageCall's doc comment).
+    if (normalizedSource.endsWith(GO_FILE_EXTENSION)) {
+      const goResult = this.resolveGoSamePackageCall(
+        normalizedSource,
+        callName,
+      );
+      if (goResult) return goResult;
+    }
+
+    return null;
+  }
+
+  /** Go packages are directory-scoped: any function/type declared in *any* `.go` file in the
+   *  same directory is callable from every other file in that directory with no `import`
+   *  statement at all — the one cross-file call convention `resolveModulePath`'s import-based
+   *  resolution structurally cannot see (roadmap item 19). Directory equality is a deliberate
+   *  approximation of "same package," not a real `package` declaration comparison: an external
+   *  test package (`package foo_test` in a `_test.go` file sharing `foo`'s directory) would be
+   *  mismatched by this check, but Docuvia2 doesn't persist each file's actual package name
+   *  anywhere today, and internal test packages (`package foo`, sharing the main package) are
+   *  the overwhelmingly common convention — treated as an accepted imprecision, not chased
+   *  further here. */
+  private resolveGoSamePackageCall(
+    normalizedSource: string,
+    callName: string,
+  ): { targetFile: string; targetSymbol: string } | null {
+    const dir = path.posix.dirname(normalizedSource);
+    const siblings = this.goFilesByDirectory.get(dir);
+    if (!siblings) return null;
+    for (const file of siblings) {
+      if (file === normalizedSource) continue;
+      if (this.localsByFile.get(file)?.has(callName)) {
+        return { targetFile: file, targetSymbol: callName };
+      }
+    }
     return null;
   }
 

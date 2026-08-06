@@ -169,4 +169,22 @@ describe("ScopeResolver", () => {
       targetSymbol: "dbClient",
     });
   });
+
+  it("resolves a same-package, no-import Go cross-file call via directory-scoped locals (roadmap item 19)", () => {
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile("a.go", [], [], ["Foo"]);
+    resolver.registerFile("b.go", [], [], ["Bar"]);
+
+    const result = resolver.resolveCall("b.go", "Foo");
+    expect(result).toEqual({ targetFile: "a.go", targetSymbol: "Foo" });
+  });
+
+  it("does not resolve a same-directory, no-import cross-file call for non-Go files (TS/JS still require an explicit import)", () => {
+    const resolver = new ScopeResolver(workspaceRoot);
+    resolver.registerFile("a.ts", [], [], ["foo"]);
+    resolver.registerFile("b.ts", [], [], ["bar"]);
+
+    const result = resolver.resolveCall("b.ts", "foo");
+    expect(result).toBeNull();
+  });
 });

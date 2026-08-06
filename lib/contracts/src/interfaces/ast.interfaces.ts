@@ -31,7 +31,16 @@ export interface ParsedAstFileData {
     methods: string[];
     contentHash?: string;
   }>;
-  calls: Array<{ sourceFunction: string; targetFunction: string }>;
+  /** One static call site. `startLine`/`startColumn` are the 0-based source position of the
+   *  callee expression's start (Tier A's own `startPosition` convention) -- the seed Tier B
+   *  forward resolution (issue #11 plan A) issues `textDocument/definition` at this position per
+   *  call site, see forward-tier-b-edge-resolution-plan.md Slice 1. */
+  calls: Array<{
+    sourceFunction: string;
+    targetFunction: string;
+    startLine: number;
+    startColumn: number;
+  }>;
   implements?: Array<{ sourceClass: string; targetInterface: string }>;
   extends?: Array<{ sourceClass: string; targetClass: string }>;
   /** `new Worker(<path>)` spawn sites (TS/JS only) — see `ast-worker.ts`'s `collectWorkerSpawns`. */

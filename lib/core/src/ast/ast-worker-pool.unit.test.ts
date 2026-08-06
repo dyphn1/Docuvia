@@ -45,10 +45,12 @@ describe("AstWorkerPool CALL edge extraction", () => {
     // capture switch previously had no "call" case, so calls[] was always empty and zero
     // CALL edges were ever created project-wide. Fixed in commit 1c92234.
     expect(response.data!.calls.length).toBeGreaterThan(0);
-    expect(response.data!.calls).toContainEqual({
-      sourceFunction: "caller",
-      targetFunction: "helper",
-    });
+    expect(response.data!.calls).toContainEqual(
+      expect.objectContaining({
+        sourceFunction: "caller",
+        targetFunction: "helper",
+      }),
+    );
   }, 15000);
 
   it("terminate() does not respawn replacement workers", async () => {

@@ -112,7 +112,14 @@ describe("GraphPersisterService.persist()", () => {
             { name: "bar", startLine: 2, endLine: 3 },
           ],
           classes: [],
-          calls: [{ sourceFunction: "foo", targetFunction: "bar" }],
+          calls: [
+            {
+              sourceFunction: "foo",
+              targetFunction: "bar",
+              startLine: 1,
+              startColumn: 2,
+            },
+          ],
         },
       },
     ];
@@ -320,11 +327,16 @@ describe("GraphPersisterService.persist()", () => {
     });
 
     // The real Go parse does extract the call site correctly (sourceFunction: "Bar",
-    // targetFunction: "Foo") -- this isn't an extraction gap.
-    expect(barResponse.data!.calls).toContainEqual({
-      sourceFunction: "Bar",
-      targetFunction: "Foo",
-    });
+    // targetFunction: "Foo"), and now carries the call's 0-based source position as the seed for
+    // Tier B forward resolution (issue #11 plan A, Slice 1) -- this isn't an extraction gap.
+    expect(barResponse.data!.calls[0]).toEqual(
+      expect.objectContaining({
+        sourceFunction: "Bar",
+        targetFunction: "Foo",
+        startLine: expect.any(Number),
+        startColumn: expect.any(Number),
+      }),
+    );
 
     const fooId = store.graph.findNodeIdByName("a.go", "Foo");
     const barId = store.graph.findNodeIdByName("b.go", "Bar");

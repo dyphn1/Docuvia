@@ -90,7 +90,17 @@ export interface AstParseResponse {
       methods: string[];
       contentHash?: string;
     }>;
-    calls: Array<{ sourceFunction: string; targetFunction: string }>;
+    calls: Array<{
+      sourceFunction: string;
+      targetFunction: string;
+      /** 0-based source position of the call-site's callee expression start (matches Tier A's own
+       *  `startLine`/`startPosition` convention). The seed Tier B forward resolution (issue #11
+       *  plan A, Slice 2) issues `textDocument/definition` at this position per call site to
+       *  resolve the callee precisely -- see
+       *  forward-tier-b-edge-resolution-plan.md Slice 1. */
+      startLine: number;
+      startColumn: number;
+    }>;
     implements?: Array<{ sourceClass: string; targetInterface: string }>;
     extends?: Array<{ sourceClass: string; targetClass: string }>;
     /**
@@ -409,6 +419,8 @@ function collectCallEdges(
     calls.push({
       sourceFunction: findEnclosingContainerName(node, functionIds),
       targetFunction: getCallTargetText(node),
+      startLine: node.startPosition.row,
+      startColumn: node.startPosition.column,
     });
   }
 }

@@ -1,5 +1,1 @@
-{"source":".claude/hooks/docuvia-hook.js","target":".claude/hooks/docuvia-hook.js#readInput","type":"calls"}
-{"source":".claude/hooks/docuvia-hook.js","target":".claude/hooks/docuvia-hook.js#readInput","type":"contains"}
-{"source":".cursor/hooks/docuvia-hook.cjs","target":".cursor/hooks/docuvia-hook.cjs#readInput","type":"calls"}
-{"source":".cursor/hooks/docuvia-hook.cjs","target":".cursor/hooks/docuvia-hook.cjs#readInput","type":"contains"}
-{"source":"src/index.ts","target":"src/index.ts#hello","type":"contains"}
+{"source":"src/main.py","target":"src/main.py#hello","type":"contains"}

@@ -292,6 +292,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         command: resolved.command,
         args: resolved.args,
         cwd: workspaceRoot,
+        env: resolved.env,
       });
     } catch (err) {
       return {

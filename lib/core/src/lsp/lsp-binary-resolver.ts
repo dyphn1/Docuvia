@@ -10,11 +10,36 @@ export interface ResolvedLspBinary {
    *  needed); `false` for the `npx --no-install` fallback, whose actual resolvability can only be
    *  known by attempting it (§8c's gate probes it live in that case). */
   locallyResolved: boolean;
+  env?: NodeJS.ProcessEnv;
 }
 
 /** Windows npm-generated shim extensions for a `node_modules/.bin` entry, tried in order; POSIX
  *  systems only ever produce the extension-less shell shim. */
 const WINDOWS_BIN_EXTENSIONS = [".cmd", ".CMD", ".exe", ""];
+
+/** Default `--max-old-space-size` (MB) for the spawned typescript-language-server/tsserver
+ *  process, only applied when the caller's own environment doesn't already set one. Untuned --
+ *  a generous round number well above Node's own auto-computed default, not measured against a
+ *  specific vscode-scale ceiling; re-tune (or make config-overridable) if real usage shows it's
+ *  insufficient or wasteful. Root cause: tsserver OOM-aborting (exit 134/SIGABRT) partway
+ *  through a large Tier B batch against a real vscode checkout (roadmap item 28). */
+const DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB = 4096;
+
+/** Builds an env override that raises tsserver's heap ceiling via NODE_OPTIONS -- unless the
+ *  caller's own environment already sets --max-old-space-size itself, in which case this
+ *  returns undefined and leaves the caller's env untouched entirely (respecting an explicit
+ *  user choice, same "config-overridable" spirit as binaryOverride/argsOverride elsewhere in
+ *  this file). When NODE_OPTIONS is already set to something else (e.g. --stack-trace-limit),
+ *  the new flag is appended, not a replacement. */
+function buildHeapSizeEnvOverride(): NodeJS.ProcessEnv | undefined {
+  const existing = process.env.NODE_OPTIONS ?? "";
+  if (existing.includes("--max-old-space-size")) return undefined;
+  const flag = `--max-old-space-size=${DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB}`;
+  return {
+    ...process.env,
+    NODE_OPTIONS: existing ? `${existing} ${flag}` : flag,
+  };
+}
 
 function resolveLocalBinaryPath(workspaceRoot: string): string | undefined {
   const binDir = path.join(workspaceRoot, NODE_MODULES_DIR_NAME, ".bin");
@@ -48,6 +73,7 @@ export function resolveLspBinary(
       command: override.binary,
       args: override.args ?? [TsLspConstants.STDIO_ARG],
       locallyResolved: true,
+      env: buildHeapSizeEnvOverride(),
     };
   }
 
@@ -57,6 +83,7 @@ export function resolveLspBinary(
       command: local,
       args: [TsLspConstants.STDIO_ARG],
       locallyResolved: true,
+      env: buildHeapSizeEnvOverride(),
     };
   }
 
@@ -68,5 +95,6 @@ export function resolveLspBinary(
       TsLspConstants.STDIO_ARG,
     ],
     locallyResolved: false,
+    env: buildHeapSizeEnvOverride(),
   };
 }

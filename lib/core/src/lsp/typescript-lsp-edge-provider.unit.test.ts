@@ -247,6 +247,82 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     expect(bCloseIndex).toBeGreaterThan(aCloseIndex);
   });
 
+  it("never holds more than the configured maxOpenFiles documents open at once, even when a file's references open several callers as a side effect before their own queue turn (bounded-LRU open-file cache)", async () => {
+    fs.writeFileSync(path.join(workspaceRoot, "c.ts"), "foo();\n", "utf8");
+    fs.writeFileSync(path.join(workspaceRoot, "d.ts"), "foo();\n", "utf8");
+
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    const cUri = uriFor(workspaceRoot, "c.ts");
+    const dUri = uriFor(workspaceRoot, "d.ts");
+    const fooSelectionRange = range(0, 16, 0, 19);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "foo",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 0, 25),
+              selectionRange: fooSelectionRange,
+            },
+          ];
+        }
+        // b.ts/c.ts/d.ts have no symbols of their own -- only their open/close accounting
+        // matters for this test, not the edges they'd otherwise produce.
+        return [];
+      }
+      if (method === LspMethods.REFERENCES) {
+        // a.ts's `foo` is referenced from b.ts, c.ts, and d.ts -- resolving these opens all
+        // three as *caller* files mid-way through a.ts's own turn, well before any of them
+        // reaches its own turn in `files` below.
+        if (
+          params.textDocument.uri === aUri &&
+          params.position.character === fooSelectionRange.start.character
+        ) {
+          return [
+            { uri: bUri, range: range(0, 0, 0, 3) },
+            { uri: cUri, range: range(0, 0, 0, 3) },
+            { uri: dUri, range: range(0, 0, 0, 3) },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const fake = new FakeLspClient(handler);
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+    provider.configure({ maxOpenFiles: 2 });
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts", "b.ts", "c.ts", "d.ts"],
+    });
+
+    expect(outcome.filesFailed).toEqual([]);
+
+    // Replay DID_OPEN/DID_CLOSE in order, tracking which files are currently open, and assert
+    // the open set never exceeds the configured cap at any point -- not just on average.
+    const openSet = new Set<string>();
+    let maxConcurrentlyOpen = 0;
+    for (const n of fake.notifications) {
+      if (n.method === LspMethods.DID_OPEN) {
+        openSet.add((n.params as any).textDocument.uri);
+      } else if (n.method === LspMethods.DID_CLOSE) {
+        openSet.delete((n.params as any).textDocument.uri);
+      }
+      maxConcurrentlyOpen = Math.max(maxConcurrentlyOpen, openSet.size);
+    }
+
+    expect(maxConcurrentlyOpen).toBeLessThanOrEqual(2);
+  });
+
   it("falls back to the file-level node_key when the reference has no enclosing call-site symbol", async () => {
     const aUri = uriFor(workspaceRoot, "a.ts");
     const bUri = uriFor(workspaceRoot, "b.ts");

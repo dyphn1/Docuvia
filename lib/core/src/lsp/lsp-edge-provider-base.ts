@@ -31,6 +31,14 @@ import type {
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+/** Default `maxOpenFiles` cap (see `EdgeResolutionProviderConfig.maxOpenFiles`). Before this cap
+ *  existed, `openFileCache` closed a file only once its own turn in the batch queue finished, so
+ *  a file opened transitively as some other file's caller stayed open until then -- for a huge
+ *  batch (vscode's 12,339-file Tier B queue) that meant the number of simultaneously-open
+ *  documents in the LSP server was bounded only by the whole batch size, the suspected cause of
+ *  the documented throughput collapse against vscode. Untuned -- a round number picked to cover
+ *  normal reference fan-out; re-tune if a real workload shows it's off. */
+const DEFAULT_MAX_OPEN_FILES = 50;
 
 const CALL_SITE_KINDS: ReadonlySet<number> = new Set([
   LspSymbolKinds.FUNCTION,
@@ -230,6 +238,11 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
    *  see csharp-cli-benchmark.md §4). */
   private get requestTimeoutMs(): number {
     return this.config.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+  }
+
+  /** See `DEFAULT_MAX_OPEN_FILES`/`EdgeResolutionProviderConfig.maxOpenFiles`. */
+  private get maxOpenFiles(): number {
+    return this.config.maxOpenFiles ?? DEFAULT_MAX_OPEN_FILES;
   }
 
   async checkAvailability(
@@ -560,14 +573,31 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     }
   }
 
-  /** Tells the LSP server we're done with `file` for now and drops its cached symbols, so a
-   *  large batch's per-server memory stays bounded by "files touched since their own queue
-   *  turn" instead of growing to every file the whole batch ever opened (`openFileCache` is
-   *  batch-scoped -- see `processAllFiles`'s doc comment). A file opened transitively as some
-   *  other callee's caller (`resolveReferenceEdge`) is left alone here and closed later, when
-   *  its own turn in `files` reaches this same method -- every queued file gets exactly one
-   *  turn, so this is still a real bound, just not an immediate one. No-op if `file` was never
-   *  actually opened (e.g. it failed before `openAndGetSymbols` ran). */
+  /** Tells the LSP server we're done with `handle`'s file for now and drops its cached symbols.
+   *  Shared by the post-turn `closeAndEvict` call in `processOneFileIntoBatch` and the LRU
+   *  eviction path in `openAndGetSymbols` -- both need the same delete-from-cache + `DID_CLOSE`
+   *  notify, just triggered by a different event (a file's own queue turn ending vs. the cache
+   *  hitting its size cap). */
+  private closeOpenFile(
+    client: LspJsonRpcClient,
+    handle: OpenFileHandle,
+    cache: Map<string, OpenFileHandle>,
+  ): void {
+    cache.delete(handle.relativePath);
+    client.notify(LspMethods.DID_CLOSE, {
+      textDocument: { uri: handle.uri },
+    });
+  }
+
+  /** Tells the LSP server we're done with `file` for now and drops its cached symbols, as a
+   *  cheap proactive shrink once a file's own queue turn finishes (`openFileCache` is
+   *  batch-scoped -- see `processAllFiles`'s doc comment). This is complementary to, not a
+   *  substitute for, `openAndGetSymbols`'s own `maxOpenFiles` LRU cap: a file opened
+   *  transitively as some other callee's caller (`resolveReferenceEdge`) may already have been
+   *  evicted by that cap before its own turn ever comes up in `files` -- this call is then a
+   *  no-op, which is fine, since the cap is the real bound and this just keeps the cache smaller
+   *  sooner. No-op if `file` was never actually opened (e.g. it failed before
+   *  `openAndGetSymbols` ran) or was already evicted. */
   private closeAndEvict(
     client: LspJsonRpcClient,
     file: string,
@@ -575,10 +605,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
   ): void {
     const handle = openFileCache.get(file);
     if (!handle) return;
-    openFileCache.delete(file);
-    client.notify(LspMethods.DID_CLOSE, {
-      textDocument: { uri: handle.uri },
-    });
+    this.closeOpenFile(client, handle, openFileCache);
   }
 
   /** Post-loop reconciliation for `processAllFiles`: once the batch deadline has tripped, every
@@ -805,11 +832,31 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     cache: Map<string, OpenFileHandle>,
   ): Promise<OpenFileHandle> {
     const cached = cache.get(relativePath);
-    if (cached) return cached;
+    if (cached) {
+      // Bump recency: `Map` iteration order is insertion order, so deleting then re-setting the
+      // same key moves it to the end -- making the cache's first key always the
+      // least-recently-used entry for the eviction loop below.
+      cache.delete(relativePath);
+      cache.set(relativePath, cached);
+      return cached;
+    }
 
     const absolutePath = path.join(workspaceRoot, relativePath);
     const content = await fs.readFile(absolutePath, UTF8_ENCODING);
     const uri = pathToFileURL(absolutePath).toString();
+
+    // Evict the least-recently-used entries (the cache's own first keys, per the recency bump
+    // above) until there's room for the file we're about to open -- done *before* opening it, so
+    // the LSP server never holds more than `maxOpenFiles` documents open at once, not even
+    // transiently. This is the actual bound on simultaneously-open documents, independent of
+    // where either file sits in the batch queue (see `DEFAULT_MAX_OPEN_FILES`'s doc comment for
+    // why queue-position alone wasn't enough).
+    while (cache.size >= this.maxOpenFiles) {
+      const oldestKey = cache.keys().next().value;
+      if (oldestKey === undefined) break;
+      const oldestHandle = cache.get(oldestKey);
+      if (oldestHandle) this.closeOpenFile(client, oldestHandle, cache);
+    }
 
     client.notify(LspMethods.DID_OPEN, {
       textDocument: {

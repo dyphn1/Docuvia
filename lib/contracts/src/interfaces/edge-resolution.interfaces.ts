@@ -85,6 +85,13 @@ export interface EdgeResolutionProviderConfig {
    *  first" ruling. `0` means "never time out": some servers (csharp-ls on a large Roslyn/MSBuild
    *  solution) have no known upper bound on how long a first response can take. */
   timeoutMs?: number;
+  /** Hard cap on how many files' documents `BaseLspEdgeProvider` will hold open in the LSP
+   *  server at once during a batch (LRU-evicted beyond this). Untuned — a round number chosen to
+   *  comfortably cover normal reference fan-out without ever handing a huge multi-project-
+   *  reference workspace (e.g. vscode-scale) an unbounded number of simultaneously-open
+   *  documents; re-tune if a real workload shows it's off. See `BaseLspEdgeProvider`'s
+   *  `openAndGetSymbols` for the eviction mechanics. */
+  maxOpenFiles?: number;
 }
 
 export interface IEdgeResolutionProvider {

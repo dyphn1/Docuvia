@@ -1,2 +1,6 @@
+{"id":".claude/hooks/docuvia-hook.js","type":"file","name":".claude/hooks/docuvia-hook.js","filePath":".claude/hooks/docuvia-hook.js"}
+{"id":".claude/hooks/docuvia-hook.js#readInput","type":"symbol","name":"readInput","filePath":".claude/hooks/docuvia-hook.js"}
+{"id":".cursor/hooks/docuvia-hook.cjs","type":"file","name":".cursor/hooks/docuvia-hook.cjs","filePath":".cursor/hooks/docuvia-hook.cjs"}
+{"id":".cursor/hooks/docuvia-hook.cjs#readInput","type":"symbol","name":"readInput","filePath":".cursor/hooks/docuvia-hook.cjs"}
 {"id":"src/index.ts","type":"file","name":"src/index.ts","filePath":"src/index.ts"}
 {"id":"src/index.ts#hello","type":"symbol","name":"hello","filePath":"src/index.ts"}

@@ -44,7 +44,7 @@ export class AstProcessingService implements IAstProcessor {
     // assigned by `persist-ast-graph.ts`'s sequential inserts) depend on that race. Writing
     // into a fixed slot per index and flattening after the whole run settles restores
     // `filesToParse`'s own (git-diff-derived, deterministic) order regardless of completion timing.
-    // 
+    //
     // We submit ALL tasks to the pool at once rather than chunking into Promise.all() batches.
     // Fixed batching creates a synchronization barrier at every batch boundary: workers sit
     // idle once they've drained their share of the batch, waiting for the batch's single

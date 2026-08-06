@@ -126,7 +126,9 @@ describe("checkTierBGate() (roadmap Item 17: scoped to tierBQueue)", () => {
     ]);
     registerGraphStoreOpener(store);
 
-    const tsCheck = vi.fn().mockResolvedValue({ available: false, reason: "ts missing" });
+    const tsCheck = vi
+      .fn()
+      .mockResolvedValue({ available: false, reason: "ts missing" });
     const pyCheck = vi.fn().mockResolvedValue({
       available: false,
       reason: "pyright not installed",

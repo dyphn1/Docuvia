@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts#withFtsSyncSuspended@L271
+id: lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts#withFtsSyncSuspended@L365
 type: symbol
 name: withFtsSyncSuspended
 filePath: lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts

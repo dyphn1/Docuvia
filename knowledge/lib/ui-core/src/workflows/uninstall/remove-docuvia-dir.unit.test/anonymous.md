@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts#anonymous@L18
+id: lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts

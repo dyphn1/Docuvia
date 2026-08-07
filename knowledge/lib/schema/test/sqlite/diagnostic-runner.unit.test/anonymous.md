@@ -1,5 +1,5 @@
 ---
-id: lib/schema/test/sqlite/diagnostic-runner.unit.test.ts#anonymous@L88
+id: lib/schema/test/sqlite/diagnostic-runner.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/schema/test/sqlite/diagnostic-runner.unit.test.ts

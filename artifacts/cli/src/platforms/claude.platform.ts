@@ -117,6 +117,26 @@ function preToolUseEntryHasCommand(
   );
 }
 
+/** Reads `.claude/settings.json` best-effort. ENOENT yields a fresh `{}` (proceed). Any other
+ *  read/parse failure warns and yields `aborted: true` — a file we can't safely parse is never
+ *  overwritten. */
+async function readProjectSettingsFile(
+  settingsPath: string,
+): Promise<{ settings: any; aborted: boolean }> {
+  try {
+    const content = await fs.readFile(settingsPath, UTF8_ENCODING);
+    return { settings: JSON.parse(content), aborted: false };
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException)?.code !== ERRNO_ENOENT) {
+      ui.warn(
+        `${UI_MESSAGES.FS_READ_ERROR}${settingsPath} (${(err as NodeJS.ErrnoException)?.code ?? UI_MESSAGES.FS_READ_ERROR_UNKNOWN_CODE}); leaving it untouched`,
+      );
+      return { settings: {}, aborted: true };
+    }
+    return { settings: {}, aborted: false };
+  }
+}
+
 /** Merges Docuvia's PreToolUse hook entry into Claude Code's project-level `.claude/settings.json`
  *  (roadmap item 26 — `${CLAUDE_PROJECT_DIR}` resolves here today, unlike the plugin-only
  *  `${CLAUDE_PLUGIN_ROOT}` in hooks.json). Unlike our own dedicated hooks.json, this file is
@@ -127,18 +147,8 @@ async function mergeDocuviaHookIntoProjectSettings(
   settingsPath: string,
   hookEntry: Record<string, unknown>,
 ): Promise<void> {
-  let settings: any = {};
-  try {
-    const content = await fs.readFile(settingsPath, UTF8_ENCODING);
-    settings = JSON.parse(content);
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException)?.code !== ERRNO_ENOENT) {
-      ui.warn(
-        `${UI_MESSAGES.FS_READ_ERROR}${settingsPath} (${(err as NodeJS.ErrnoException)?.code ?? UI_MESSAGES.FS_READ_ERROR_UNKNOWN_CODE}); leaving it untouched`,
-      );
-      return;
-    }
-  }
+  const { settings, aborted } = await readProjectSettingsFile(settingsPath);
+  if (aborted) return;
 
   settings.hooks = settings.hooks ?? {};
   if (
@@ -156,10 +166,9 @@ async function mergeDocuviaHookIntoProjectSettings(
     settings.hooks[HOOK_EVENT_PRE_TOOL_USE];
 
   const command = docuviaProjectHookCommand(hookEntry);
-  const alreadyPresent = preToolUse.some((entry) =>
-    preToolUseEntryHasCommand(entry, command),
-  );
-  if (alreadyPresent) return;
+  if (preToolUse.some((entry) => preToolUseEntryHasCommand(entry, command))) {
+    return;
+  }
 
   preToolUse.push(hookEntry);
 

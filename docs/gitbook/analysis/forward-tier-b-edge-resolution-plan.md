@@ -36,10 +36,10 @@ and is usually itself a queue file, so it is cached.
 
 Per-file request count (vscode ~24 symbols, ~equal call sites):
 
-| | documentSymbol | reverse `references` | caller opens | definition | target opens |
-|---|---|---|---|---|---|
-| today (reverse) | 1 | ~24 (project-wide each) | ~fan-out (LRU-thrash) | — | — |
-| forward | 1 | — | — | ~call-site-count (cheap) | ~distinct targets (≤ files) |
+|                 | documentSymbol | reverse `references`    | caller opens          | definition               | target opens                |
+| --------------- | -------------- | ----------------------- | --------------------- | ------------------------ | --------------------------- |
+| today (reverse) | 1              | ~24 (project-wide each) | ~fan-out (LRU-thrash) | —                        | —                           |
+| forward         | 1              | —                       | —                     | ~call-site-count (cheap) | ~distinct targets (≤ files) |
 
 The reverse-to-forward flip turns ~296k expensive project-wide scans into ~296k cheap
 module-resolutions, and removes the dynamic caller-open amplification entirely.
@@ -122,17 +122,17 @@ and reversible independently.
 For each of `python/go/rust/java/cpp/csharp/php/ruby`: run a calibration fixture (a known
 call chain), record `definition` behavior, flip `definitionResolution` per language only when green.
 
-| Language | server | `definition` baseline expectation | notes |
-|---|---|---|---|
-| TypeScript/JS | `typescript-language-server` | reliable (module-resolution) | flipped in Slice 3 |
-| Python | `pyright` | reliable | dynamic dispatch caveat |
-| Go | `gopls` | reliable | `definition` returns decl for method values |
-| Rust | `rust-analyzer` | reliable | traits/generics may return impl, not trait decl |
-| Java | `jdtls` | reliable | overloads → multiple results |
-| C/C++ | `clangd` | reliable | macros → decl-site not call-site |
-| C# | `csharp-ls` | **calibrate hard** | the 0-edges-in-30min language; may stay reverse or degrade to AST |
-| PHP | `intelephense` | reliable | magic methods caveat |
-| Ruby | `ruby-lsp` | reliable | metaprogramming caveat |
+| Language      | server                       | `definition` baseline expectation | notes                                                             |
+| ------------- | ---------------------------- | --------------------------------- | ----------------------------------------------------------------- |
+| TypeScript/JS | `typescript-language-server` | reliable (module-resolution)      | flipped in Slice 3                                                |
+| Python        | `pyright`                    | reliable                          | dynamic dispatch caveat                                           |
+| Go            | `gopls`                      | reliable                          | `definition` returns decl for method values                       |
+| Rust          | `rust-analyzer`              | reliable                          | traits/generics may return impl, not trait decl                   |
+| Java          | `jdtls`                      | reliable                          | overloads → multiple results                                      |
+| C/C++         | `clangd`                     | reliable                          | macros → decl-site not call-site                                  |
+| C#            | `csharp-ls`                  | **calibrate hard**                | the 0-edges-in-30min language; may stay reverse or degrade to AST |
+| PHP           | `intelephense`               | reliable                          | magic methods caveat                                              |
+| Ruby          | `ruby-lsp`                   | reliable                          | metaprogramming caveat                                            |
 
 Each language ships as its own small slice: fixture + flip + its own unit test, then a real-repo spot
 check. Any language whose `definition` fails calibration stays on reverse (FWD-001 fallback) — no

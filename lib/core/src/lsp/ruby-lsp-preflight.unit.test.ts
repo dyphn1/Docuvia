@@ -28,7 +28,10 @@ describe("checkRubyLspPreflight()", () => {
   });
 
   it("reports not ready when Gemfile is present but ruby-lsp binary cannot be found", async () => {
-    fs.writeFileSync(path.join(workspaceRoot, "Gemfile"), "source 'https://rubygems.org'\n");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "Gemfile"),
+      "source 'https://rubygems.org'\n",
+    );
 
     // Spy on execFile to simulate failing when trying to probe ruby-lsp
     vi.spyOn(child_process, "execFile").mockImplementation(((
@@ -52,7 +55,10 @@ describe("checkRubyLspPreflight()", () => {
   });
 
   it("is ready when Gemfile is present and binary override resolves successfully", async () => {
-    fs.writeFileSync(path.join(workspaceRoot, "Gemfile"), "source 'https://rubygems.org'\n");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "Gemfile"),
+      "source 'https://rubygems.org'\n",
+    );
 
     const result = await checkRubyLspPreflight(workspaceRoot, {
       binary: "/fake/path/to/ruby-lsp",

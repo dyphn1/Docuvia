@@ -429,12 +429,18 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
 
   it("packDirectoryToBranch rejects cleanly (not an unhandled process crash) when a source file's path is one git itself refuses (e.g. a Windows-reserved device name) -- real repro: moby's pkg/progress.Aux rendered to knowledge/.../Aux.md and crashed the whole docuvia process with an unhandled 'write EOF' on child.stdin instead of surfacing git's own 'fatal: invalid path' (go-cli-benchmark.md §1.1); runFastImport's child.stdin now has its own error listener so this always surfaces as a normal rejected DocuviaError", async () => {
     const sourceDir = fs.mkdtempSync(
-      path.join(os.tmpdir(), "docuvia-git-local-pack-reserved-name-"),
+      path.join(os.tmpdir(), "docuvia-git-local-pack-reserved-"),
     );
     try {
-      // Reserved on every platform via git's own core.protectNTFS cross-platform path guard, not
-      // just when actually running on Windows -- see snapshot-renderer.service.ts's doc comment.
-      fs.writeFileSync(path.join(sourceDir, "aux.md"), "should be rejected\n");
+      // A path under `.git/` is refused by fast-import on *every* platform via git's own path
+      // guard (unlike a Windows-reserved device name like `aux.md`, which git only rejects when
+      // the repository/binary actually carries NTFS semantics -- so the test stays green on
+      // macOS/Linux too).
+      fs.mkdirSync(path.join(sourceDir, ".git"), { recursive: true });
+      fs.writeFileSync(
+        path.join(sourceDir, ".git", "internal.md"),
+        "should be rejected\n",
+      );
 
       await expect(
         provider.packDirectoryToBranch(

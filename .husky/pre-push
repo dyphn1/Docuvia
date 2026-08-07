@@ -1,3 +1,9 @@
+# Unset the git env vars git exports into this hook so spawned `git`/test processes operate on
+# their own cwd rather than inheriting the parent repo's GIT_DIR / GIT_INDEX_FILE. Otherwise the
+# full test suite run here fails on the git-spawning integration tests (init / uninstall /
+# doctor). Let git rediscover the repo from cwd via core.hooksPath discovery.
+unset GIT_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_WORK_TREE GIT_QUARANTINE_PATH 2>/dev/null || true
+
 echo "Running full typecheck..."
 pnpm run typecheck
 

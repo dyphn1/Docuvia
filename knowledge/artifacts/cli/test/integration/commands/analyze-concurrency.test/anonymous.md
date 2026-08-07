@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/analyze-concurrency.test.ts#anonymous@L23
+id: artifacts/cli/test/integration/commands/analyze-concurrency.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/analyze-concurrency.test.ts

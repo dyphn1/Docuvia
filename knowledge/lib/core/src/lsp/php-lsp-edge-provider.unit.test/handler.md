@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts#handler@L200
+id: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts#handler@L142
 type: symbol
 name: handler
 filePath: lib/core/src/lsp/php-lsp-edge-provider.unit.test.ts

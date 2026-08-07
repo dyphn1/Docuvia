@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.anonymous@L793
+id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.anonymous@L885
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/lsp-edge-provider-base.ts

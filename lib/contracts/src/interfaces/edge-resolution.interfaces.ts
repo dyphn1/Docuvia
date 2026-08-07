@@ -62,11 +62,34 @@ export interface EdgeResolutionOutcome {
   unavailableReason?: string;
 }
 
+/**
+ * One Tier A AST call-site seed handed to the provider's forward pass (FWD-002). The resolver only
+ * needs the call's *position* to issue `textDocument/definition` against the caller file; the callee
+ * token text (`targetFunction`) is carried for logging/calibration but is never itself used to
+ * resolve the target (that is LSP's job). The source symbol is *derived*, not carried, via
+ * `findDeepestContainingSymbol` at the call position — the same containment gate the reverse pass
+ * uses. Line/column are 0-based, matching both `LspPosition.line`/`character` and Tier A's
+ * `node.startPosition`/`startColumn` seed (Slice 1).
+ */
+export interface EdgeResolutionCallSite {
+  targetFunction: string;
+  startLine: number;
+  startColumn: number;
+}
+
 export interface EdgeResolutionRequest {
   workspaceRoot: string;
   /** Workspace-relative paths, already language-dispatched (§8e) to this provider's supported
    *  language(s) — the provider itself never re-checks language support. */
   files: string[];
+  /** Optional per-file Tier A AST call-site seeds that switch the provider onto the *forward*
+   *  resolution path for the files they cover (FWD-01/002): each call site's callee is resolved
+   *  directly with `textDocument/definition` instead of a project-wide reverse-`references` scan.
+   *  Files absent from this map — and files mapped to an empty array — keep the reverse path as
+   *  today (FWD-01: reverse stays as the fallback). As of Slice 2 no orchestrator producer wires
+   *  this in, so production behavior is unchanged; it is the unit-tested seam the Flip (Slice 3)
+   *  feeds call sites through. */
+  callsByFile?: Record<string, EdgeResolutionCallSite[]>;
 }
 
 /** Construction-time overrides (phase1-decision-integration.md §8b: "config-overridable; never

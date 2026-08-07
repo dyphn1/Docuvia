@@ -3,6 +3,7 @@ import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import type {
   EdgeResolutionAvailability,
+  EdgeResolutionCallSite,
   EdgeResolutionOutcome,
   EdgeResolutionProviderConfig,
   EdgeResolutionRequest,
@@ -279,7 +280,6 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     const client = this.createClient();
     return this.runBatch(client, request, timeoutMs);
   }
-
   private languageIdFor(filePath: string): string {
     return (
       this.languageConfig.languageIdByExtension[path.extname(filePath)] ??
@@ -292,7 +292,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     request: EdgeResolutionRequest,
     timeoutMs: number,
   ): Promise<EdgeResolutionOutcome> {
-    const { workspaceRoot, files } = request;
+    const { workspaceRoot, files, callsByFile } = request;
     const resolved = await this.languageConfig.resolveBinary(workspaceRoot, {
       binary: this.config.binaryOverride,
       args: this.config.argsOverride,
@@ -349,6 +349,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         client,
         workspaceRoot,
         files,
+        callsByFile,
         deadlineAt,
         timeoutMs,
       );
@@ -426,6 +427,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     client: LspJsonRpcClient,
     workspaceRoot: string,
     files: string[],
+    callsByFile: EdgeResolutionRequest["callsByFile"],
     deadlineAt: number | undefined,
     timeoutMs: number,
   ): Promise<EdgeResolutionOutcome> {
@@ -453,6 +455,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         client,
         workspaceRoot,
         file,
+        callsByFile,
         openFileCache,
         usedNodeKeysByFile,
         edges,
@@ -526,6 +529,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     client: LspJsonRpcClient,
     workspaceRoot: string,
     file: string,
+    callsByFile: EdgeResolutionRequest["callsByFile"],
     openFileCache: Map<string, OpenFileHandle>,
     usedNodeKeysByFile: UsedNodeKeysByFile,
     edges: ResolvedCallEdge[],
@@ -543,6 +547,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
                 client,
                 workspaceRoot,
                 file,
+                callsByFile,
                 openFileCache,
                 usedNodeKeysByFile,
               ),
@@ -552,6 +557,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
               client,
               workspaceRoot,
               file,
+              callsByFile,
               openFileCache,
               usedNodeKeysByFile,
             );
@@ -733,6 +739,37 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     client: LspJsonRpcClient,
     workspaceRoot: string,
     relativePath: string,
+    callsByFile: EdgeResolutionRequest["callsByFile"],
+    openFileCache: Map<string, OpenFileHandle>,
+    usedNodeKeysByFile: UsedNodeKeysByFile,
+  ): Promise<ResolvedCallEdge[]> {
+    const callSites = callsByFile?.[relativePath];
+    // Forward when Tier A seeded this file's call sites (FWD-01/002), reverse otherwise — the
+    // reverse pipeline stays the default/fallback and is never count on to be replaced until a
+    // language's calibration slice proves `definition` resolves its known call chains (FWD-04).
+    if (callSites && callSites.length > 0) {
+      return this.processOneFileForward(
+        client,
+        workspaceRoot,
+        relativePath,
+        callSites,
+        openFileCache,
+        usedNodeKeysByFile,
+      );
+    }
+    return this.processOneFileReverse(
+      client,
+      workspaceRoot,
+      relativePath,
+      openFileCache,
+      usedNodeKeysByFile,
+    );
+  }
+
+  private async processOneFileReverse(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    relativePath: string,
     openFileCache: Map<string, OpenFileHandle>,
     usedNodeKeysByFile: UsedNodeKeysByFile,
   ): Promise<ResolvedCallEdge[]> {
@@ -795,6 +832,187 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       }
     }
     return edges;
+  }
+
+  /**
+   * Forward Tier B pass for one file (FWD-01/002): this file is a *caller*, seeded with Tier A AST
+   * call-site positions (`callsByFile`). Each call site's callee is resolved directly with
+   * `textDocument/definition` — module resolution + symbol locate, not a project-wide reverse scan —
+   * so a hub callee's many callers never each trigger an on-the-fly caller open (issue #11's
+   * amplification). The caller file is already open here; each distinct target file is opened once
+   * via the shared batch `openFileCache` (it is usually itself a queue file, so it is already
+   * cached). Edge shape/node_keys are identical to the reverse path (FWD-03): source = the enclosing
+   * call-site symbol of the call position; target = the enclosing symbol of the definition's
+   * resolved position.
+   */
+  private async processOneFileForward(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    relativePath: string,
+    callSites: EdgeResolutionCallSite[],
+    openFileCache: Map<string, OpenFileHandle>,
+    usedNodeKeysByFile: UsedNodeKeysByFile,
+  ): Promise<ResolvedCallEdge[]> {
+    const caller = await this.openAndGetSymbols(
+      client,
+      workspaceRoot,
+      relativePath,
+      openFileCache,
+    );
+    const edges: ResolvedCallEdge[] = [];
+
+    // Issue every call site's `definition` in one pipelined burst — the same ordering-preserving
+    // `Promise.all` as the reverse pass (issue #11 fix), so per-call-site module-resolution
+    // round-trips overlap instead of serializing. The client correlates by id, so each result stays
+    // zipped to its call site.
+    const definitions = await Promise.all(
+      callSites.map(({ startLine, startColumn }) =>
+        client.request<
+          | { uri: string; range: LspRange }[]
+          | { uri: string; range: LspRange }
+          | null
+        >(
+          LspMethods.DEFINITION,
+          {
+            textDocument: { uri: caller.uri },
+            position: { line: startLine, character: startColumn },
+          },
+          this.requestTimeoutMs,
+        ),
+      ),
+    );
+
+    for (let i = 0; i < callSites.length; i++) {
+      const { startLine, startColumn } = callSites[i];
+      const targetNodeKey = await this.resolveFirstDefinitionTarget(
+        client,
+        workspaceRoot,
+        relativePath,
+        definitions[i],
+        openFileCache,
+        usedNodeKeysByFile,
+      );
+      if (targetNodeKey === undefined) continue;
+
+      const source = findDeepestContainingSymbol(caller.symbols, {
+        line: startLine,
+        character: startColumn,
+      });
+      const sourceNodeKey =
+        source && CALL_SITE_KINDS.has(source.symbol.kind)
+          ? toNodeKey(
+              this.resolveNodeKeyForFile(
+                usedNodeKeysByFile,
+                relativePath,
+                caller.symbols,
+                source.symbol.name,
+                source.symbol.selectionRange.start.line,
+                source.containerName,
+              ),
+            )
+          : relativePath;
+
+      if (sourceNodeKey !== targetNodeKey) {
+        edges.push({
+          sourceNodeKey,
+          targetNodeKey,
+          source: EdgeResolutionSources.LSP,
+        });
+      }
+    }
+    return edges;
+  }
+
+  /** Normalizes a `textDocument/definition` answer (null, a single Location, or a Location[] — e.g.
+   *  overloads / multi-module results) down to the first target attributable to an in-workspace edge
+   *  (slice-2 spec: "first in-workspace wins, logged"). Candidates that `resolveTargetNodeKey`
+   *  declines (out-of-workspace, same-file, or unresolvable) are skipped; if the call site's first
+   *  result is rejected and a later one is used, the jump is logged at debug so the pick is
+   *  observable. Returns `undefined` when no candidate yields an edge (IMPT-002: never invent one). */
+  private async resolveFirstDefinitionTarget(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    sourceRelative: string,
+    result:
+      | { uri: string; range: LspRange }[]
+      | { uri: string; range: LspRange }
+      | null,
+    openFileCache: Map<string, OpenFileHandle>,
+    usedNodeKeysByFile: UsedNodeKeysByFile,
+  ): Promise<string | undefined> {
+    if (!result) return undefined;
+    const locations = Array.isArray(result) ? result : [result];
+    for (let i = 0; i < locations.length; i++) {
+      const targetNodeKey = await this.resolveTargetNodeKey(
+        client,
+        workspaceRoot,
+        sourceRelative,
+        locations[i],
+        openFileCache,
+        usedNodeKeysByFile,
+      );
+      if (targetNodeKey !== undefined) {
+        if (i > 0) {
+          this.logger.debug(
+            LSP_MESSAGES.skippedMultiLocationDefinition(sourceRelative),
+          );
+        }
+        return targetNodeKey;
+      }
+    }
+    return undefined;
+  }
+
+  /** Resolves a `textDocument/definition` result location to the callee's workspace node_key, or
+   *  `undefined` when the target can't be attributed an edge honestly (IMPT-002). Mirrors
+   *  `resolveReferenceEdge`'s guards exactly: a definition outside the workspace (TypeScript's
+   *  %LOCALAPPDATA% ATA cache, a vendored @types dir, or — on Windows — a cross-drive location where
+   *  `path.relative` returns the target's own absolute path) has no graph node to key; a
+   *  same-file definition is already covered by Tier A's own AST `calls` edges and is dropped. The
+   *  target symbol is the enclosing call-site-kind symbol at the definition position
+   *  (GRPH-006 containment via `findDeepestContainingSymbol`); a definition landing outside any
+   *  call-site symbol falls back to the file-level key, exactly as the reverse pass does for a
+   *  caller whose reference sits outside a call-site symbol. */
+  private async resolveTargetNodeKey(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    sourceRelative: string,
+    location: { uri: string; range: LspRange },
+    openFileCache: Map<string, OpenFileHandle>,
+    usedNodeKeysByFile: UsedNodeKeysByFile,
+  ): Promise<string | undefined> {
+    const targetPath = path.relative(
+      workspaceRoot,
+      fileURLToPath(location.uri),
+    );
+    if (path.isAbsolute(targetPath) || targetPath.startsWith("..")) {
+      return undefined;
+    }
+    const targetRelative = toNodeKey(targetPath);
+    if (targetRelative === sourceRelative) return undefined;
+
+    const targetFile = await this.openAndGetSymbols(
+      client,
+      workspaceRoot,
+      targetRelative,
+      openFileCache,
+    );
+    const enclosing = findDeepestContainingSymbol(
+      targetFile.symbols,
+      location.range.start,
+    );
+    return enclosing && CALL_SITE_KINDS.has(enclosing.symbol.kind)
+      ? toNodeKey(
+          this.resolveNodeKeyForFile(
+            usedNodeKeysByFile,
+            targetRelative,
+            targetFile.symbols,
+            enclosing.symbol.name,
+            enclosing.symbol.selectionRange.start.line,
+            enclosing.containerName,
+          ),
+        )
+      : targetRelative;
   }
 
   private async resolveReferenceEdge(

@@ -1070,6 +1070,289 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
   });
 });
 
+describe("TypescriptLspEdgeProvider.resolveEdges() forward path (FWD-002, issue #11 plan A)", () => {
+  let workspaceRoot: string;
+
+  beforeEach(() => {
+    workspaceRoot = makeWorkspace({
+      "a.ts": "export function main() {\n  bar();\n}\n",
+      "b.ts": "export function bar() {}\n",
+    });
+  });
+
+  afterEach(() => {
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("resolves a cross-file symbol-level calls edge from an AST-seeded call site via textDocument/definition, and does not run the reverse references scan on the forward-seeded file", async () => {
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    let reverseReferencesForA = 0;
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "main",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 2, 1),
+              selectionRange: range(0, 16, 0, 20),
+            },
+          ];
+        }
+        if (params.textDocument.uri === bUri) {
+          return [
+            {
+              name: "bar",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 0, 25),
+              selectionRange: range(0, 16, 0, 19),
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.DEFINITION) {
+        if (params.textDocument.uri === aUri) {
+          return [{ uri: bUri, range: range(0, 16, 0, 19) }];
+        }
+        return null;
+      }
+      if (method === LspMethods.REFERENCES) {
+        // b.ts is not forward-seeded, so it legitimately runs the reverse path -- but a.ts must
+        // never be reverse-scanned once forward-seeded.
+        if (params.textDocument.uri === aUri) reverseReferencesForA++;
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts", "b.ts"],
+      callsByFile: {
+        "a.ts": [{ targetFunction: "bar", startLine: 1, startColumn: 2 }],
+      },
+    });
+
+    expect(outcome.filesFailed).toEqual([]);
+    expect(outcome.edges).toEqual([
+      { sourceNodeKey: "a.ts#main", targetNodeKey: "b.ts#bar", source: "lsp" },
+    ]);
+    // The whole point of forward: a.ts resolved its callee without any project-wide reverse scan.
+    expect(reverseReferencesForA).toBe(0);
+  });
+
+  it("keys a definition target nested inside a class with its qualified container name (GRPH-006), reusing the reverse path's exact node_key math", async () => {
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "main",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 2, 1),
+              selectionRange: range(0, 16, 0, 20),
+            },
+          ];
+        }
+        if (params.textDocument.uri === bUri) {
+          return [
+            {
+              name: "Greeter",
+              kind: LspSymbolKinds.CLASS,
+              range: range(0, 0, 2, 1),
+              selectionRange: range(0, 9, 0, 16),
+              children: [
+                {
+                  name: "greet",
+                  kind: LspSymbolKinds.METHOD,
+                  range: range(1, 2, 1, 20),
+                  selectionRange: range(1, 4, 1, 9),
+                },
+              ],
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.DEFINITION) {
+        return [{ uri: bUri, range: range(1, 4, 1, 9) }];
+      }
+      if (method === LspMethods.REFERENCES) return [];
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(new FakeLspClient(handler)),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts", "b.ts"],
+      callsByFile: {
+        "a.ts": [{ targetFunction: "greet", startLine: 1, startColumn: 2 }],
+      },
+    });
+
+    expect(outcome.filesFailed).toEqual([]);
+    expect(outcome.edges).toEqual([
+      {
+        sourceNodeKey: "a.ts#main",
+        targetNodeKey: "b.ts#Greeter.greet",
+        source: "lsp",
+      },
+    ]);
+  });
+
+  it("emits no edge when definition is empty or resolves outside the workspace (IMPT-002 honest degradation)", async () => {
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const outsideDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-lsp-forward-outside-"),
+    );
+    const outsideFile = path.join(outsideDir, "external.ts");
+    fs.writeFileSync(outsideFile, "// not part of the workspace\n", "utf8");
+    const outsideUri = pathToFileURL(outsideFile).toString();
+
+    try {
+      const handler: RequestHandler = (method, params) => {
+        if (method === LspMethods.INITIALIZE) return {};
+        if (method === LspMethods.DOCUMENT_SYMBOL) {
+          if (params.textDocument.uri === aUri) {
+            return [
+              {
+                name: "main",
+                kind: LspSymbolKinds.FUNCTION,
+                range: range(0, 0, 3, 1),
+                selectionRange: range(0, 16, 0, 20),
+              },
+            ];
+          }
+          return [];
+        }
+        if (method === LspMethods.DEFINITION) {
+          // Line 1 call site resolves to nothing; line 2 call site resolves outside the workspace.
+          if (params.position.line === 1) return null;
+          if (params.position.line === 2) {
+            return [{ uri: outsideUri, range: range(0, 0, 0, 3) }];
+          }
+          return null;
+        }
+        if (method === LspMethods.REFERENCES) return [];
+        if (method === LspMethods.SHUTDOWN) return null;
+        return undefined;
+      };
+
+      const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+        asClient(new FakeLspClient(handler)),
+      );
+
+      const outcome = await provider.resolveEdges({
+        workspaceRoot,
+        files: ["a.ts"],
+        callsByFile: {
+          "a.ts": [
+            { targetFunction: "nothing", startLine: 1, startColumn: 2 },
+            { targetFunction: "outside", startLine: 2, startColumn: 2 },
+          ],
+        },
+      });
+
+      expect(outcome.edges).toEqual([]);
+      expect(outcome.filesProcessed).toEqual(["a.ts"]);
+    } finally {
+      fs.rmSync(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  it("picks the first in-workspace target when definition returns multiple locations (overload / multi-module case)", async () => {
+    const aUri = uriFor(workspaceRoot, "a.ts");
+    const bUri = uriFor(workspaceRoot, "b.ts");
+    const outsideDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-lsp-forward-multi-outside-"),
+    );
+    const outsideFile = path.join(outsideDir, "external.ts");
+    fs.writeFileSync(outsideFile, "// not part of the workspace\n", "utf8");
+    const outsideUri = pathToFileURL(outsideFile).toString();
+
+    try {
+      const handler: RequestHandler = (method, params) => {
+        if (method === LspMethods.INITIALIZE) return {};
+        if (method === LspMethods.DOCUMENT_SYMBOL) {
+          if (params.textDocument.uri === aUri) {
+            return [
+              {
+                name: "main",
+                kind: LspSymbolKinds.FUNCTION,
+                range: range(0, 0, 2, 1),
+                selectionRange: range(0, 16, 0, 20),
+              },
+            ];
+          }
+          if (params.textDocument.uri === bUri) {
+            return [
+              {
+                name: "bar",
+                kind: LspSymbolKinds.FUNCTION,
+                range: range(0, 0, 0, 25),
+                selectionRange: range(0, 16, 0, 19),
+              },
+            ];
+          }
+          return [];
+        }
+        if (method === LspMethods.DEFINITION) {
+          if (params.textDocument.uri === aUri) {
+            // First result points outside the workspace; the in-workspace one is second.
+            return [
+              { uri: outsideUri, range: range(0, 0, 0, 3) },
+              { uri: bUri, range: range(0, 16, 0, 19) },
+            ];
+          }
+          return null;
+        }
+        if (method === LspMethods.REFERENCES) return [];
+        if (method === LspMethods.SHUTDOWN) return null;
+        return undefined;
+      };
+
+      const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+        asClient(new FakeLspClient(handler)),
+      );
+
+      const outcome = await provider.resolveEdges({
+        workspaceRoot,
+        files: ["a.ts", "b.ts"],
+        callsByFile: {
+          "a.ts": [{ targetFunction: "bar", startLine: 1, startColumn: 2 }],
+        },
+      });
+
+      expect(outcome.edges).toEqual([
+        {
+          sourceNodeKey: "a.ts#main",
+          targetNodeKey: "b.ts#bar",
+          source: "lsp",
+        },
+      ]);
+    } finally {
+      fs.rmSync(outsideDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("TypescriptLspEdgeProvider.checkAvailability()", () => {
   it("reports unavailable with a reason when node_modules is missing", async () => {
     const dir = fs.mkdtempSync(

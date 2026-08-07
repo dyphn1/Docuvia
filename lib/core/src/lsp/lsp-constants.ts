@@ -17,6 +17,7 @@ export const LspMethods = {
   DID_CLOSE: "textDocument/didClose",
   DOCUMENT_SYMBOL: "textDocument/documentSymbol",
   REFERENCES: "textDocument/references",
+  DEFINITION: "textDocument/definition",
 } as const;
 
 /** `typescript-language-server` — the D1 Provider 1 binary (phase1-decision-integration.md §8b).
@@ -62,4 +63,6 @@ export const LSP_MESSAGES = {
     `Tier B LSP batch exceeded its ${timeoutMs}ms timeout and was aborted`,
   resolutionFailedForFile: (file: string) =>
     `Tier B LSP resolution failed for ${file}`,
+  skippedMultiLocationDefinition: (file: string) =>
+    `Tier B forward resolution: first definition result for ${file} resolved outside the workspace; falling through to the next in-workspace result`,
 } as const;

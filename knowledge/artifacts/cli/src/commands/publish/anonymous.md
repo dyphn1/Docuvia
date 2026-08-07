@@ -7,4 +7,3 @@ filePath: artifacts/cli/src/commands/publish.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/src/commands/publish.ts`
-

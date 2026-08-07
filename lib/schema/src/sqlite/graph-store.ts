@@ -21,6 +21,7 @@ import { GraphNodesRepo } from "./repos/graph-repo.js";
 import { L3NodesRepo } from "./repos/l3-nodes-repo.js";
 import { FtsRepo } from "./repos/fts-repo.js";
 import { MetaRepo } from "./repos/meta-repo.js";
+import { CallSitesRepo } from "./repos/call-sites-repo.js";
 
 const INIT_LOCK_MAX_WAIT_MS = 10_000;
 const INIT_LOCK_RETRY_INTERVAL_MS = 100;
@@ -110,6 +111,7 @@ export class GraphStore implements IGraphStore {
   private readonly l3Repo: L3NodesRepo;
   private readonly ftsRepo: FtsRepo;
   private readonly metaRepo: MetaRepo;
+  private readonly callSitesRepo: CallSitesRepo;
 
   private constructor(private readonly db: Database.Database) {
     this.projectsRepo = new ProjectsRepo(db);
@@ -119,6 +121,7 @@ export class GraphStore implements IGraphStore {
     this.l3Repo = new L3NodesRepo(db);
     this.ftsRepo = new FtsRepo(db);
     this.metaRepo = new MetaRepo(db);
+    this.callSitesRepo = new CallSitesRepo(db);
   }
 
   static async open(opts: GraphStoreOpenOptions): Promise<GraphStore> {
@@ -213,6 +216,10 @@ export class GraphStore implements IGraphStore {
 
   get meta(): MetaRepo {
     return this.metaRepo;
+  }
+
+  get callSites(): CallSitesRepo {
+    return this.callSitesRepo;
   }
 
   /** Runs `fn` while holding the exclusive write lock (ADR-032) — serializes writers so parallel callers never race the single WAL writer slot. */

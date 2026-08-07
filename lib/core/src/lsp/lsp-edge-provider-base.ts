@@ -207,6 +207,15 @@ export interface LspLanguageConfig {
    *  `--max-old-space-size` arg (confirmed by reading that package's own source,
    *  `lib/cli.mjs`'s `TsServerProcessFactory.fork`/`createTsServerRequestExecutor`). */
   initializationOptions?: Record<string, unknown>;
+  /** FWD-004 (issue #11 plan A): per-language authoritative switch for Tier B's forward
+   *  resolution pass. "forward" only after that language's own calibration slice (fixture +
+   *  real-repo spot check) proves textDocument/definition resolves its known call chains
+   *  correctly -- this is the single flag Slice 4 flips per language; it is independent of
+   *  whether callsByFile happens to carry data for a file (Tier A's ast_call_sites persistence
+   *  is language-agnostic, so data existing is not by itself safe-to-use -- see Slice 3's plan,
+   *  Finding A). Every provider must set this explicitly (no default) so a newly-added language
+   *  can't silently inherit "forward" by omission. */
+  definitionResolution: "forward" | "reverse";
 }
 
 /**
@@ -744,10 +753,18 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     usedNodeKeysByFile: UsedNodeKeysByFile,
   ): Promise<ResolvedCallEdge[]> {
     const callSites = callsByFile?.[relativePath];
-    // Forward when Tier A seeded this file's call sites (FWD-01/002), reverse otherwise — the
-    // reverse pipeline stays the default/fallback and is never count on to be replaced until a
-    // language's calibration slice proves `definition` resolves its known call chains (FWD-04).
-    if (callSites && callSites.length > 0) {
+    // Forward only when this language's own config has been explicitly flipped to "forward"
+    // (FWD-004/D2) AND Tier A seeded this file's call sites (FWD-01/002) -- the provider config
+    // is the single authoritative safety gate, independent of whether callsByFile happens to
+    // carry data (Tier A's ast_call_sites persistence is language-agnostic, so data existing
+    // alone is not safe-to-use — issue #11 plan A Slice 3, Finding A). The reverse pipeline
+    // stays the default/fallback until a language's calibration slice proves `definition`
+    // resolves its known call chains (FWD-04).
+    if (
+      this.languageConfig.definitionResolution === "forward" &&
+      callSites &&
+      callSites.length > 0
+    ) {
       return this.processOneFileForward(
         client,
         workspaceRoot,

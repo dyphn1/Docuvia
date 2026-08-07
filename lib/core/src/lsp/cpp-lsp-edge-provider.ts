@@ -48,6 +48,9 @@ const CPP_LANGUAGE_CONFIG: LspLanguageConfig = {
   // has not done against a live server. `CPP_LANGUAGE_CONFIG` is also shared across `.c`/`.h`
   // files, which have no containment concept at all (permanently N/A, not a regression).
   supportsQualifiedContainment: false,
+  // issue #11 plan A: C++'s own forward-resolution calibration slice hasn't run yet (Slice 4) --
+  // stays on the reverse pipeline until it does (FWD-004/D2, single per-language safety gate).
+  definitionResolution: "reverse",
 };
 
 /**

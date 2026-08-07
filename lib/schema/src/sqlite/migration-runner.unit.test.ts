@@ -97,6 +97,15 @@ const EXPECTED_TABLES: Record<string, string[]> = {
     "initial_source_commits",
   ],
   docuvia_meta: ["key", "value"],
+  ast_call_sites: [
+    "id",
+    "project_id",
+    "file_path",
+    "target_function",
+    "start_line",
+    "start_column",
+    "created_at",
+  ],
 };
 
 const EXPECTED_FTS_TABLES = ["l2_nodes_fts", "l3_nodes_fts"];
@@ -159,6 +168,7 @@ describe("applyMigrations", () => {
       "0005_l3_initial_source_commits.sql",
       "0006_tier_b_file_status.sql",
       "0007_fts_porter_stemming.sql",
+      "0008_ast_call_sites.sql",
     ]);
   });
 
@@ -198,7 +208,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(7);
+    expect(migrationRows).toHaveLength(8);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

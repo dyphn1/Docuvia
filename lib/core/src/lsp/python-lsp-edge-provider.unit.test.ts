@@ -96,6 +96,43 @@ describe("PythonLspEdgeProvider.resolveEdges()", () => {
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
+  it("stays on the reverse path (references) even when handed a populated callsByFile -- the provider's own definitionResolution config gates the branch, not data presence (issue #11 plan A, FWD-004/D2)", async () => {
+    const methodsCalled: string[] = [];
+    const handler: RequestHandler = (method) => {
+      methodsCalled.push(method);
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        return [
+          {
+            name: "foo",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(0, 0, 1, 8),
+            selectionRange: range(0, 4, 0, 7),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) return [];
+      if (method === LspMethods.DEFINITION) {
+        return { uri: uriFor(workspaceRoot, "a.py"), range: range(0, 4, 0, 7) };
+      }
+      return undefined;
+    };
+    const fake = new FakeLspClient(handler);
+    const provider = new PythonLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.py"],
+      callsByFile: {
+        "a.py": [{ targetFunction: "foo", startLine: 0, startColumn: 4 }],
+      },
+    });
+
+    expect(methodsCalled).toContain(LspMethods.REFERENCES);
+    expect(methodsCalled).not.toContain(LspMethods.DEFINITION);
+  });
+
   it("resolves a cross-file symbol-level calls edge via documentSymbol + references", async () => {
     const aUri = uriFor(workspaceRoot, "a.py");
     const bUri = uriFor(workspaceRoot, "b.py");

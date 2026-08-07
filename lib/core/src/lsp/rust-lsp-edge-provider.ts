@@ -42,6 +42,9 @@ const RUST_LANGUAGE_CONFIG: LspLanguageConfig = {
   // parent symbol whose kind/name actually match "the impl's target struct"?) against a live
   // server, which this codebase has not done -- not a claim that Tier A can't do this anymore.
   supportsQualifiedContainment: false,
+  // issue #11 plan A: Rust's own forward-resolution calibration slice hasn't run yet (Slice 4) --
+  // stays on the reverse pipeline until it does (FWD-004/D2, single per-language safety gate).
+  definitionResolution: "reverse",
 };
 
 /**

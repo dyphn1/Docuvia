@@ -1256,6 +1256,100 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(store.projects.getFirst()?.name).toBe("demo");
   });
 
+  it("callSites repo: insertMany()/getForFiles() round-trip, keyed by the exact file path passed in", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+
+    // No rows yet -- absent from the map, not present with an empty array (per the
+    // ICallSitesRepo.getForFiles doc comment).
+    expect(
+      store.callSites.getForFiles(project.id, ["src/a.ts", "src/b.ts"]),
+    ).toEqual(new Map());
+
+    store.callSites.insertMany(project.id, "src/a.ts", [
+      { targetFunction: "foo", startLine: 1, startColumn: 2 },
+      { targetFunction: "bar", startLine: 3, startColumn: 4 },
+    ]);
+    store.callSites.insertMany(project.id, "src/b.ts", [
+      { targetFunction: "baz", startLine: 5, startColumn: 6 },
+    ]);
+    // Zero call sites for a queued file must not insert (or leave behind) any rows.
+    store.callSites.insertMany(project.id, "src/c.ts", []);
+
+    const result = store.callSites.getForFiles(project.id, [
+      "src/a.ts",
+      "src/b.ts",
+      "src/c.ts",
+      "src/never-queued.ts",
+    ]);
+
+    expect(result.has("src/c.ts")).toBe(false);
+    expect(result.has("src/never-queued.ts")).toBe(false);
+    expect(result.get("src/a.ts")).toEqual([
+      { targetFunction: "foo", startLine: 1, startColumn: 2 },
+      { targetFunction: "bar", startLine: 3, startColumn: 4 },
+    ]);
+    expect(result.get("src/b.ts")).toEqual([
+      { targetFunction: "baz", startLine: 5, startColumn: 6 },
+    ]);
+  });
+
+  it("callSites repo: getForFiles() scopes by projectId -- a call site inserted for one project is invisible to another", () => {
+    const projectA = store.projects.insert({
+      name: "a",
+      repoUrl: "file:///a",
+    });
+    const projectB = store.projects.insert({
+      name: "b",
+      repoUrl: "file:///b",
+    });
+
+    store.callSites.insertMany(projectA.id, "src/shared.ts", [
+      { targetFunction: "foo", startLine: 0, startColumn: 0 },
+    ]);
+
+    expect(store.callSites.getForFiles(projectB.id, ["src/shared.ts"])).toEqual(
+      new Map(),
+    );
+    expect(
+      store.callSites
+        .getForFiles(projectA.id, ["src/shared.ts"])
+        .get("src/shared.ts"),
+    ).toEqual([{ targetFunction: "foo", startLine: 0, startColumn: 0 }]);
+  });
+
+  it("callSites repo: deleteForFile() removes only that (project, file)'s rows, leaving other files' rows intact (delete-then-reinsert-on-reparse symmetry)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+
+    store.callSites.insertMany(project.id, "src/a.ts", [
+      { targetFunction: "foo", startLine: 1, startColumn: 2 },
+    ]);
+    store.callSites.insertMany(project.id, "src/b.ts", [
+      { targetFunction: "bar", startLine: 3, startColumn: 4 },
+    ]);
+
+    store.callSites.deleteForFile(project.id, "src/a.ts");
+
+    const result = store.callSites.getForFiles(project.id, [
+      "src/a.ts",
+      "src/b.ts",
+    ]);
+    expect(result.has("src/a.ts")).toBe(false);
+    expect(result.get("src/b.ts")).toEqual([
+      { targetFunction: "bar", startLine: 3, startColumn: 4 },
+    ]);
+
+    // deleteForFile on a file with no rows is a safe no-op, not an error.
+    expect(() =>
+      store.callSites.deleteForFile(project.id, "src/never-inserted.ts"),
+    ).not.toThrow();
+  });
+
   it("meta repo: get()/set() round-trip, and upserts an existing key rather than erroring", () => {
     expect(store.meta.get("knowledgeTipSha")).toBeUndefined();
 

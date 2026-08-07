@@ -23,6 +23,13 @@ describe("GraphPersisterService", () => {
         withFtsSyncSuspended: vi.fn().mockImplementation((fn: any) => fn()),
       },
       files: { upsertFile: vi.fn() },
+      // Issue #11 plan A, Slice 3: persistFileAndSymbolNodes' delete-then-reinsert step for
+      // ast_call_sites now runs alongside deleteNodesForPath for every persisted file.
+      callSites: {
+        deleteForFile: vi.fn(),
+        insertMany: vi.fn(),
+        getForFiles: vi.fn().mockReturnValue(new Map()),
+      },
     };
     persister = new GraphPersisterService();
   });

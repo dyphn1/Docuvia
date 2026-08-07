@@ -28,6 +28,11 @@ const CSHARP_LANGUAGE_CONFIG: LspLanguageConfig = {
     ),
   checkPreflight: checkCsharpLspPreflight,
   supportsQualifiedContainment: true,
+  // issue #11 plan A: C#'s own forward-resolution calibration slice hasn't run yet (Slice 4) --
+  // stays on the reverse pipeline until it does (FWD-004/D2, single per-language safety gate).
+  // C# is explicitly flagged in the plan doc as possibly staying reverse permanently even after
+  // calibration (see docuvia2's own native-resolver architecture decision for csharp).
+  definitionResolution: "reverse",
 };
 
 /**

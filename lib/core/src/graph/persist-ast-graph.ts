@@ -127,6 +127,21 @@ export class GraphPersisterService implements IGraphPersister {
       // re-parsed file's old graph state doesn't linger.
       store.graph.deleteNodesForPath(result.file);
 
+      // Same delete-then-reinsert-on-reparse symmetry as l2_nodes above, for the raw call-site
+      // positions Tier B's forward resolution pass (issue #11 plan A, Slice 3) seeds itself
+      // from -- ast_call_sites holds one row per call site regardless of whether ScopeResolver
+      // below manages to resolve it locally (see 0008_ast_call_sites.sql's header comment).
+      store.callSites.deleteForFile(projectId, result.file);
+      store.callSites.insertMany(
+        projectId,
+        result.file,
+        (result.data.calls ?? []).map((c) => ({
+          targetFunction: c.targetFunction,
+          startLine: c.startLine,
+          startColumn: c.startColumn,
+        })),
+      );
+
       const fileId = store.graph.insertNode({
         projectId,
         name: result.file,

@@ -435,6 +435,48 @@ export interface IFtsRepo {
   searchL3Nodes(keywords: string[], limit: number): L3NodeRow[];
 }
 
+export interface AstCallSiteRow {
+  id: number;
+  project_id: number;
+  file_path: string;
+  target_function: string;
+  start_line: number;
+  start_column: number;
+  created_at: string;
+}
+
+export interface ICallSitesRepo {
+  /** Deletes all call-site rows for one file (mirrors IGraphNodesRepo.deleteNodesForPath's
+   *  delete-then-reinsert-on-reparse pattern) -- called by GraphPersisterService before
+   *  re-inserting a re-parsed file's fresh call sites. */
+  deleteForFile(projectId: number, filePath: string): void;
+  /** Bulk-inserts one file's call sites in one prepared-statement loop (same rationale as
+   *  GraphPersisterService's insertFunctionNodes/insertClassNodes -- avoid per-row overhead
+   *  at vscode/nest scale). No-op on an empty array. */
+  insertMany(
+    projectId: number,
+    filePath: string,
+    callSites: Array<{
+      targetFunction: string;
+      startLine: number;
+      startColumn: number;
+    }>,
+  ): void;
+  /** Tier B's read-back (issue #11 plan A, Slice 3): every persisted call site for the given
+   *  files, keyed by the *exact* relativePath string passed in (D4) -- callers must not expect
+   *  path normalization here. Files with no rows (never parsed, or parsed with zero calls) are
+   *  simply absent from the returned map, not present with an empty array, so callers can use
+   *  Map.has()/`in` to distinguish "no data" from "confirmed zero calls" if that distinction
+   *  ever matters later. */
+  getForFiles(
+    projectId: number,
+    filePaths: string[],
+  ): Map<
+    string,
+    Array<{ targetFunction: string; startLine: number; startColumn: number }>
+  >;
+}
+
 /**
  * The shared memory/state layer surface — implemented by `lib/schema`'s `GraphStore`. One
  * instance per `dbPath` per process, opened and closed exclusively by the Orchestration layer
@@ -448,6 +490,7 @@ export interface IGraphStore {
   readonly l3: IL3NodesRepo;
   readonly fts: IFtsRepo;
   readonly meta: IMetaRepo;
+  readonly callSites: ICallSitesRepo;
   withWriteLock<T>(fn: () => Promise<T> | T): Promise<T>;
   withReadLock<T>(fn: () => Promise<T> | T): Promise<T>;
   /**

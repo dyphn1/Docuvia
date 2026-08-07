@@ -154,6 +154,11 @@ function makeMockStore(): IGraphStore {
         meta.set(key, value);
       }),
     },
+    callSites: {
+      deleteForFile: vi.fn(),
+      insertMany: vi.fn(),
+      getForFiles: vi.fn().mockReturnValue(new Map()),
+    },
     withWriteLock: async (fn) => fn(),
     withTransaction: (fn) => fn(),
     withReadLock: async (fn) => fn(),

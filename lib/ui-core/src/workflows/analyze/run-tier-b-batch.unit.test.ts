@@ -67,6 +67,14 @@ function makeStore(
     projects: {
       getFirst: () => ({ id: 1 }),
     },
+    // Issue #11 plan A, Slice 3: `buildCallsByFileForTypescript`'s first call on every TS-bucket
+    // batch, before any of this file's own edge-application assertions are reached -- empty by
+    // default so it short-circuits to `undefined` (no forward-seeding, no git calls), keeping
+    // this file's existing tests scoped to the reverse-path behavior they were written to cover.
+    // See `tier-b-edge-resolution-orchestrator.unit.test.ts` for the forward-seeding tests proper.
+    callSites: {
+      getForFiles: () => new Map(),
+    },
     files: {
       getAllHashes: () => fake.projectFileHashes,
       markTierBProcessed: (input: {

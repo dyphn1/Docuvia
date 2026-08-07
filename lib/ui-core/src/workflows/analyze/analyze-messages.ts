@@ -66,6 +66,17 @@ export const ANALYZE_MESSAGES = {
     `LSP unavailable -- AST-level edges left untouched (${reason})`,
   TIER_B_SUMMARY: (processed: number, edges: number) =>
     `Tier B batch complete: ${processed} file(s) processed, ${edges} corrected edge(s) applied`,
+  /** D6 (issue #11 plan A, Slice 3) -- the only way to tell "forward path engaged and matched
+   *  reverse" apart from "callsByFile came back empty and the run silently measured
+   *  reverse-vs-reverse" (false parity, see this event's own doc comment on `ANALYZE_EVENTS`).
+   *  `staleSkipped` is the D5 guard's own count, folded in here rather than a separate line. */
+  TIER_B_FORWARD_SEEDED: (
+    languageId: string,
+    seeded: number,
+    total: number,
+    staleSkipped: number,
+  ) =>
+    `Tier B forward resolution seeded ${seeded}/${total} ${languageId} file(s) (staleness-skipped: ${staleSkipped})`,
 
   /** Tier C's budgeted async LLM decision-extraction queue (phase1-decision-integration.md §9). */
   TIER_C_SKIPPED: (reason: string) =>
@@ -128,6 +139,12 @@ export const ANALYZE_EVENTS = {
   TIER_B_FILE_FAILED: "analyze.tierB.file_failed",
   TIER_B_SUMMARY: "analyze.tierB.summary",
   TIER_B_ERROR: "analyze.tierB.error",
+  /** D6 (issue #11 plan A, Slice 3): logged once per forward-eligible language bucket (currently
+   *  only typescript), before that bucket's `resolveEdges()` call -- Phase 4's calibration runbook
+   *  checks this line before trusting any edge-count "parity" number, since an empty
+   *  `ast_call_sites` table (stale `local.db` from before Phase 0's migration) makes forward
+   *  silently degrade to reverse-via-fallback with no other visible error. */
+  TIER_B_FORWARD_SEEDED: "analyze.tierB.forward_seeded",
 
   /** Tier C's budgeted async LLM decision-extraction queue (phase1-decision-integration.md §9). */
   TIER_C_START: "analyze.tierC.start",

@@ -33,6 +33,7 @@ export const SchemaTables = {
   L3_NODES_FTS: "l3_nodes_fts",
   DOCUVIA_META: "docuvia_meta",
   SCHEMA_MIGRATIONS: "schema_migrations",
+  AST_CALL_SITES: "ast_call_sites",
 } as const;
 
 /**
@@ -53,4 +54,7 @@ export const SchemaColumns = {
   L2_NODE_ID: "l2_node_id",
   L1_TAG_ID: "l1_tag_id",
   FILENAME: "filename",
+  TARGET_FUNCTION: "target_function",
+  START_LINE: "start_line",
+  START_COLUMN: "start_column",
 } as const;

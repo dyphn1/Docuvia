@@ -260,6 +260,31 @@ function getCallTargetText(node: Node): string {
   return callee?.text ?? node.text;
 }
 
+/** Resolves a call-site's *seed position* for Tier B forward resolution (issue #11 plan A,
+ *  Finding C): for a bare identifier call (`foo()`), `node` already *is* the identifier and its
+ *  own `startPosition` is correct. But for a compound callee -- JS/TS `member_expression`
+ *  (`service.doSomething()`), Go `selector_expression`, C++/Rust `field_expression` -- the
+ *  `calls` tree-sitter query (see `lib/plugins-ast/src/languages/*.ts`) captures the *whole*
+ *  expression, whose own `startPosition` sits on the receiver (`service`), not the callee
+ *  (`doSomething`). `textDocument/definition` must be issued at the callee's own position, or it
+ *  resolves the receiver's declaration instead -- an invented edge (IMPT-002). Verified against
+ *  real tree-sitter-typescript output (`property` is the correct field name for
+ *  `member_expression`, confirmed via a real parse, not assumed) -- see this plan's own
+ *  instruction not to copy field names blind.
+ *
+ *  No-op (falls through to `node.startPosition`, i.e. itself) for languages whose query already
+ *  captures the callee identifier directly (Java `name:`, PHP `name:`, Ruby `method:`) or for a
+ *  bare identifier call. */
+function getCallSitePosition(node: Node): { row: number; column: number } {
+  const calleeIdentifier =
+    node.childForFieldName("property") || // JS/TS member_expression
+    node.childForFieldName("field") || // Go selector_expression / C++/Rust field_expression
+    node.childForFieldName("attribute") || // Python attribute
+    node.childForFieldName("name") || // defensive; Java/PHP already capture this directly
+    node.childForFieldName("method"); // defensive; Ruby already captures this directly
+  return (calleeIdentifier ?? node).startPosition;
+}
+
 /** Walks up from `node` to find the nearest ancestor present in `containerIds` (function/class nodes already extracted for this file), returning its name, or "anonymous" for top-level (file-scoped) call/implements/extends sites. */
 function findEnclosingContainerName(
   node: Node,
@@ -416,11 +441,12 @@ function collectCallEdges(
   const callNodes = provider.extractCalls(tree.rootNode);
   for (const node of callNodes) {
     if (calls.length >= 1000) break; // Circuit breaker limit
+    const position = getCallSitePosition(node);
     calls.push({
       sourceFunction: findEnclosingContainerName(node, functionIds),
       targetFunction: getCallTargetText(node),
-      startLine: node.startPosition.row,
-      startColumn: node.startPosition.column,
+      startLine: position.row,
+      startColumn: position.column,
     });
   }
 }

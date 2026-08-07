@@ -88,6 +88,48 @@ describe("CsharpLspEdgeProvider.resolveEdges()", () => {
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
+  it("stays on the reverse path (references) even when handed a populated callsByFile -- the provider's own definitionResolution config gates the branch, not data presence (issue #11 plan A, FWD-004/D2)", async () => {
+    const methodsCalled: string[] = [];
+    const handler: RequestHandler = (method) => {
+      methodsCalled.push(method);
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        return [
+          {
+            name: "Program",
+            kind: LspSymbolKinds.CLASS,
+            range: range(0, 0, 0, 17),
+            selectionRange: range(0, 6, 0, 13),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) return [];
+      if (method === LspMethods.DEFINITION) {
+        return {
+          uri: uriFor(workspaceRoot, "Program.cs"),
+          range: range(0, 6, 0, 13),
+        };
+      }
+      return undefined;
+    };
+    const fake = new FakeLspClient(handler);
+    const provider = new CsharpLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    await provider.resolveEdges({
+      workspaceRoot,
+      files: ["Program.cs"],
+      callsByFile: {
+        "Program.cs": [
+          { targetFunction: "Program", startLine: 0, startColumn: 6 },
+        ],
+      },
+    });
+
+    expect(methodsCalled).toContain(LspMethods.REFERENCES);
+    expect(methodsCalled).not.toContain(LspMethods.DEFINITION);
+  });
+
   it("resolves a cross-file symbol-level calls edge via documentSymbol + references (C#)", async () => {
     const customWorkspace = makeWorkspace({
       "A.cs":

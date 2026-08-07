@@ -39,6 +39,11 @@ const TYPESCRIPT_LANGUAGE_CONFIG: LspLanguageConfig = {
   initializationOptions: {
     maxTsServerMemory: DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB,
   },
+  // issue #11 plan A, Slice 3: TS/JS is the first language calibrated for forward resolution --
+  // Tier A's ast_call_sites positions are seeded correctly (Finding C fix) and Phase 3's
+  // real-typescript-language-server parity test proves `textDocument/definition` resolves both
+  // plain and member calls against this provider.
+  definitionResolution: "forward",
 };
 
 /**

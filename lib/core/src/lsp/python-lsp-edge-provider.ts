@@ -33,6 +33,9 @@ const PYTHON_LANGUAGE_CONFIG: LspLanguageConfig = {
     ),
   checkPreflight: checkPythonLspPreflight,
   supportsQualifiedContainment: true,
+  // issue #11 plan A: Python's own forward-resolution calibration slice hasn't run yet (Slice 4) --
+  // stays on the reverse pipeline until it does (FWD-004/D2, single per-language safety gate).
+  definitionResolution: "reverse",
 };
 
 /**

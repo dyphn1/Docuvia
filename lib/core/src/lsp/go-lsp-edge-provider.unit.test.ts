@@ -86,6 +86,43 @@ describe("GoLspEdgeProvider.resolveEdges()", () => {
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
+  it("stays on the reverse path (references) even when handed a populated callsByFile -- the provider's own definitionResolution config gates the branch, not data presence (issue #11 plan A, FWD-004/D2)", async () => {
+    const methodsCalled: string[] = [];
+    const handler: RequestHandler = (method) => {
+      methodsCalled.push(method);
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        return [
+          {
+            name: "Foo",
+            kind: LspSymbolKinds.FUNCTION,
+            range: range(2, 0, 2, 14),
+            selectionRange: range(2, 5, 2, 8),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) return [];
+      if (method === LspMethods.DEFINITION) {
+        return { uri: uriFor(workspaceRoot, "a.go"), range: range(2, 5, 2, 8) };
+      }
+      return undefined;
+    };
+    const fake = new FakeLspClient(handler);
+    const provider = new GoLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.go"],
+      callsByFile: {
+        "a.go": [{ targetFunction: "Foo", startLine: 2, startColumn: 5 }],
+      },
+    });
+
+    expect(methodsCalled).toContain(LspMethods.REFERENCES);
+    expect(methodsCalled).not.toContain(LspMethods.DEFINITION);
+  });
+
   it("resolves a cross-file symbol-level calls edge via documentSymbol + references", async () => {
     const aUri = uriFor(workspaceRoot, "a.go");
     const bUri = uriFor(workspaceRoot, "b.go");

@@ -85,6 +85,48 @@ describe("JavaLspEdgeProvider.resolveEdges()", () => {
     expect(clientFactory).not.toHaveBeenCalled();
   });
 
+  it("stays on the reverse path (references) even when handed a populated callsByFile -- the provider's own definitionResolution config gates the branch, not data presence (issue #11 plan A, FWD-004/D2)", async () => {
+    const methodsCalled: string[] = [];
+    const handler: RequestHandler = (method) => {
+      methodsCalled.push(method);
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        return [
+          {
+            name: "Main",
+            kind: LspSymbolKinds.CLASS,
+            range: range(0, 0, 0, 21),
+            selectionRange: range(0, 13, 0, 17),
+          },
+        ];
+      }
+      if (method === LspMethods.REFERENCES) return [];
+      if (method === LspMethods.DEFINITION) {
+        return {
+          uri: uriFor(workspaceRoot, "Main.java"),
+          range: range(0, 13, 0, 17),
+        };
+      }
+      return undefined;
+    };
+    const fake = new FakeLspClient(handler);
+    const provider = new JavaLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    await provider.resolveEdges({
+      workspaceRoot,
+      files: ["Main.java"],
+      callsByFile: {
+        "Main.java": [
+          { targetFunction: "Main", startLine: 0, startColumn: 13 },
+        ],
+      },
+    });
+
+    expect(methodsCalled).toContain(LspMethods.REFERENCES);
+    expect(methodsCalled).not.toContain(LspMethods.DEFINITION);
+  });
+
   it("resolves a cross-file symbol-level calls edge via documentSymbol + references (Java)", async () => {
     const customWorkspace = makeWorkspace({
       "A.java":

@@ -359,5 +359,76 @@ describe("GraphPersisterService.persist()", () => {
     } finally {
       raw.close();
     }
+
+    // Phase 0.5 (issue #11 plan A, Slice 3): the call's source position is now durably persisted
+    // to ast_call_sites too, read back via store.callSites -- not just the resolved node_links
+    // edge above. Matches barResponse.data!.calls[0]'s own startLine/startColumn exactly (same
+    // in-memory values, now round-tripped through a persist/reload cycle).
+    const persistedCallSites = store.callSites.getForFiles(projectId, ["b.go"]);
+    expect(persistedCallSites.get("b.go")).toEqual([
+      {
+        targetFunction: barResponse.data!.calls[0].targetFunction,
+        startLine: barResponse.data!.calls[0].startLine,
+        startColumn: barResponse.data!.calls[0].startColumn,
+      },
+    ]);
+  });
+
+  it("re-persisting the same file deletes its stale call sites first (delete-then-reinsert, mirrors l2_nodes)", async () => {
+    const makeParsedResults = (
+      calls: ParsedAstFileResult["data"]["calls"],
+    ): ParsedAstFileResult[] => [
+      {
+        file: "src/a.ts",
+        hash: "hash-a",
+        data: {
+          imports: [],
+          exports: [],
+          functions: [{ name: "foo", startLine: 0, endLine: 5 }],
+          classes: [],
+          calls,
+        },
+      },
+    ];
+
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: makeParsedResults([
+        {
+          sourceFunction: "foo",
+          targetFunction: "a",
+          startLine: 1,
+          startColumn: 1,
+        },
+        {
+          sourceFunction: "foo",
+          targetFunction: "b",
+          startLine: 2,
+          startColumn: 2,
+        },
+      ]),
+      tags: [],
+    });
+    await persister.persist({
+      store,
+      workspaceRoot: tmpDir,
+      projectId,
+      parsedResults: makeParsedResults([
+        {
+          sourceFunction: "foo",
+          targetFunction: "c",
+          startLine: 3,
+          startColumn: 3,
+        },
+      ]),
+      tags: [],
+    });
+
+    const callSites = store.callSites.getForFiles(projectId, ["src/a.ts"]);
+    expect(callSites.get("src/a.ts")).toEqual([
+      { targetFunction: "c", startLine: 3, startColumn: 3 },
+    ]);
   });
 });

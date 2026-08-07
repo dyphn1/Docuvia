@@ -16,6 +16,7 @@ import {
   resolveCallableName,
   collectFunctionNodes,
   collectWorkerSpawns,
+  buildParseResponse,
 } from "./ast-worker.js";
 
 /**
@@ -535,5 +536,56 @@ describe("typescript fixture: abstract class declaration extraction", () => {
       .map((n) => n.childForFieldName("name")?.text);
 
     expect(classNames).toContain("Plain");
+  });
+});
+
+/**
+ * Regression test for Finding C (issue #11 plan A, Slice 3): a member/field call's seeded
+ * `startLine`/`startColumn` must land on the callee identifier (`doSomething`), not the
+ * receiver (`service`) -- the `calls` tree-sitter query captures the whole `member_expression`,
+ * whose own `startPosition` is the receiver's. Uses a real `buildParseResponse()` call (same
+ * pattern as `persist-ast-graph.unit.test.ts`'s Go fixture), not a hand-built tree-sitter node.
+ */
+const CALL_POSITION_SRC = `function main() {
+  foo();
+  service.doSomething();
+}
+`;
+
+describe("typescript fixture: call-site position (issue #11 plan A, Finding C)", () => {
+  it("seeds a bare call's position on the callee identifier itself", async () => {
+    const response = await buildParseResponse({
+      taskId: "call-position-bare",
+      filePath: "call-position.ts",
+      code: CALL_POSITION_SRC,
+      language: "typescript",
+    });
+
+    const bareCall = response.data!.calls.find(
+      (c) => c.targetFunction === "foo",
+    );
+    expect(bareCall).toBeDefined();
+    // `foo()` is on line 1 (0-based) -- "  foo();" -- callee starts at column 2.
+    expect(bareCall!.startLine).toBe(1);
+    expect(bareCall!.startColumn).toBe(2);
+  });
+
+  it("seeds a member call's position on the callee (doSomething), not the receiver (service)", async () => {
+    const response = await buildParseResponse({
+      taskId: "call-position-member",
+      filePath: "call-position.ts",
+      code: CALL_POSITION_SRC,
+      language: "typescript",
+    });
+
+    const memberCall = response.data!.calls.find((c) =>
+      c.targetFunction.includes("doSomething"),
+    );
+    expect(memberCall).toBeDefined();
+    // "  service.doSomething();" -- "service." is 8 chars, so the callee ("doSomething")
+    // starts at column 10 on line 2 (0-based). The receiver ("service") starts at column 2 --
+    // asserting column 10 (not 2) is the actual regression check.
+    expect(memberCall!.startLine).toBe(2);
+    expect(memberCall!.startColumn).toBe(10);
   });
 });

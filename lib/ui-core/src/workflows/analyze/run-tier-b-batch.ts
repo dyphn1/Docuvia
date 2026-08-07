@@ -298,11 +298,13 @@ async function resolveEdgesForQueue(
   deps: TierBBatchDeps,
   buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>>,
 ): Promise<MergedEdgeResolutionOutcome> {
-  const { workspaceRoot, logger, providerConfig } = deps;
+  const { workspaceRoot, logger, providerConfig, store, git } = deps;
   return resolveEdgesForLanguageBuckets(buckets, {
     workspaceRoot,
     logger,
     providerConfig,
+    store,
+    git,
   });
 }
 

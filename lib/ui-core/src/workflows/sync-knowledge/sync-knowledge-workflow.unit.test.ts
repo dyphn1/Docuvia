@@ -109,6 +109,11 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
+    callSites: {
+      deleteForFile: vi.fn(),
+      insertMany: vi.fn(),
+      getForFiles: vi.fn().mockReturnValue(new Map()),
+    },
     withWriteLock: async (fn) => fn(),
     withTransaction: (fn) => fn(),
     withReadLock: async (fn) => fn(),

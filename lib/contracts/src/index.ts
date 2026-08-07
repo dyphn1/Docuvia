@@ -100,6 +100,8 @@ export type {
   LinkType,
   L3NodeType,
   ValidityStatus,
+  AstCallSiteRow,
+  ICallSitesRepo,
 } from "./interfaces/graph-store.interfaces.js";
 export {
   ProjectStatuses,

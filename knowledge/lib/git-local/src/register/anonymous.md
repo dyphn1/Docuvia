@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/register.ts#anonymous@L13
+id: lib/git-local/src/register.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/git-local/src/register.ts

@@ -9,13 +9,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@workspace/contracts": "workspace:^"
+    "@workspace/contracts": "workspace:^",
+    "js-yaml": "^5.2.1",
+    "smol-toml": "^1.6.1",
+    "web-tree-sitter": "^0.25.9"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.0.0",
-    "smol-toml": "^1.6.1",
-    "typescript": "^5.5.4",
-    "web-tree-sitter": "^0.25.9"
+    "@types/node": "catalog:",
+    "typescript": "catalog:"
   }
 }

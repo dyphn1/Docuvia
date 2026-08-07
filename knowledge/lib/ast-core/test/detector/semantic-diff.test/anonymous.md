@@ -7,4 +7,5 @@ filePath: lib/ast-core/test/detector/semantic-diff.test.ts
 # Symbol: anonymous
 
 File: `lib/ast-core/test/detector/semantic-diff.test.ts`
-.ts`
+ts`
+

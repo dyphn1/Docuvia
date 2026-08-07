@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts#typescript@L280
+id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts#typescript
 type: symbol
 name: typescript
 filePath: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.
 # Symbol: typescript
 
 File: `lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts`
+.ts`

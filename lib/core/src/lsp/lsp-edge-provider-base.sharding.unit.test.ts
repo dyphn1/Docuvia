@@ -356,5 +356,84 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
         fs.rmSync(workspaceRoot, { recursive: true, force: true });
       }
     });
+
+    it("clamps maxProcesses by the memory budget (not just file count) and logs a memory-clamp line", async () => {
+      const workspaceRoot = makeWorkspace({
+        "a.ts": "export function a() {}\n",
+        "b.ts": "export function b() {}\n",
+        "c.ts": "export function c() {}\n",
+        "d.ts": "export function d() {}\n",
+        "e.ts": "export function e() {}\n",
+      });
+      try {
+        const handler: RequestHandler = (method) => {
+          if (method === LspMethods.INITIALIZE) return {};
+          if (method === LspMethods.DOCUMENT_SYMBOL) return [];
+          if (method === LspMethods.SHUTDOWN) return null;
+          return undefined;
+        };
+        const logger = createMockLogger();
+        let clientSeq = 0;
+        const provider = new TypescriptLspEdgeProvider(logger, () =>
+          asClient(new FakeLspClient(handler, clientSeq++)),
+        );
+
+        // 5 files, budget 1200MiB / estimate 512MiB => floor(1200/512) = 2 shards at most.
+        provider.configure({
+          maxProcesses: 5,
+          maxProcessMemoryMb: 1200,
+          processMemoryEstimateMb: 512,
+        });
+
+        await provider.resolveEdges({
+          workspaceRoot,
+          files: ["a.ts", "b.ts", "c.ts", "d.ts", "e.ts"],
+        });
+
+        // File count says 5, but memory bounds it to 2.
+        expect(clientSeq).toBeLessThanOrEqual(2);
+        expect(
+          logger.events.some(
+            (e) =>
+              e.level === "debug" &&
+              e.message.includes("clamped to 2 by memory"),
+          ),
+        ).toBe(true);
+      } finally {
+        fs.rmSync(workspaceRoot, { recursive: true, force: true });
+      }
+    });
+
+    it("respects the memory budget and never spawns below one shard", async () => {
+      const workspaceRoot = makeWorkspace({
+        "a.ts": "export function a() {}\n",
+      });
+      try {
+        const handler: RequestHandler = (method) => {
+          if (method === LspMethods.INITIALIZE) return {};
+          if (method === LspMethods.DOCUMENT_SYMBOL) return [];
+          if (method === LspMethods.SHUTDOWN) return null;
+          return undefined;
+        };
+        const logger = createMockLogger();
+        let clientSeq = 0;
+        const provider = new TypescriptLspEdgeProvider(logger, () =>
+          asClient(new FakeLspClient(handler, clientSeq++)),
+        );
+
+        // Budget far smaller than one shard's estimate -- must still spawn exactly one.
+        provider.configure({
+          maxProcesses: 4,
+          maxProcessMemoryMb: 1,
+          processMemoryEstimateMb: 512,
+        });
+
+        await provider.resolveEdges({ workspaceRoot, files: ["a.ts"] });
+
+        expect(clientSeq).toBe(1);
+      } finally {
+        fs.rmSync(workspaceRoot, { recursive: true, force: true });
+      }
+    });
   });
 });

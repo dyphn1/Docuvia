@@ -69,4 +69,11 @@ export const LSP_MESSAGES = {
     `Tier B LSP batch: maxConcurrentFiles=${requested} clamped to ${effective} (bounded by file count and maxOpenFiles)`,
   processShardsClamped: (requested: number, effective: number) =>
     `Tier B LSP batch: maxProcesses=${requested} clamped to ${effective} (bounded by file count)`,
+  processShardsMemoryClamped: (
+    requested: number,
+    effective: number,
+    budgetMb: number,
+    estimateMb: number,
+  ) =>
+    `Tier B LSP batch: maxProcesses=${requested} clamped to ${effective} by memory (${budgetMb}MiB budget / ${estimateMb}MiB per shard)`,
 } as const;

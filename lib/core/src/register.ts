@@ -66,10 +66,19 @@ docuviaFactory.register(
     new VcsScannerService(f.resolve(TOKENS.GitProvider), params?.logger),
 );
 
+// One shared worker pool for the whole process: every workflow that resolves AstProcessor must
+// run its batches through the SAME AstWorkerPool, so their spawn/concurrency is governed by the
+// pool's single `serializeBatch` lock rather than each building its own (cpus-1)-sized cohort.
+// A transient pool per resolve() is exactly the worker-count multiplication behind the "many
+// processes on a large project" memory blowup -- see ast-worker-pool.ts's serializeBatch.
+// The per-request logger is injected into the AstProcessingService instead (whose parse results
+// are logged on the presenting workflow's own logger), so the shared pool keeps only a
+// noop/fallback logger for its own internal crash diagnostics.
+const sharedAstWorkerPool = new AstWorkerPool();
+
 docuviaFactory.register(
   TOKENS.AstProcessor,
-  (_f, params) =>
-    new AstProcessingService(new AstWorkerPool(params?.logger), params?.logger),
+  (_f, params) => new AstProcessingService(sharedAstWorkerPool, params?.logger),
 );
 
 docuviaFactory.register(

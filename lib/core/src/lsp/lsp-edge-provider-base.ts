@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import type {
@@ -43,6 +44,19 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
  *  opened transitively as callers alive across more of the queue, cutting reopen/re-parse churn
  *  for the same re-tune-if-it's-off caveat as before. */
 const DEFAULT_MAX_OPEN_FILES = 200;
+
+/** Default `EdgeResolutionProviderConfig.processMemoryEstimateMb` -- a conservative estimate of one
+ *  shard process's steady-state memory (the LSP server binary + its language server child, e.g.
+ *  typescript-language-server forking tsserver). Used to bound effective shard count against the
+ *  batch's memory budget (see `maxProcessMemoryMb`). Untuned; a round number chosen so that a
+ *  default budget (below) still allows several shards even on a modest machine. */
+const DEFAULT_PROCESS_MEMORY_ESTIMATE_MB = 512;
+/** Default `EdgeResolutionProviderConfig.maxProcessMemoryMb` (in MiB): the portion of the current
+ *  machine's memory a whole batch's shards may occupy at once, when the caller sets no explicit
+ *  budget. Defaults to 25% of total system memory (rounded up to at least one shard's worth) so a
+ *  single batch can never consume the whole machine regardless of `maxProcesses`, even before
+ *  TypeScript's own `--max-old-space-size` heap cap is hit. */
+const DEFAULT_PROCESS_MEMORY_BUDGET_RATIO = 0.25;
 
 const CALL_SITE_KINDS: ReadonlySet<number> = new Set([
   LspSymbolKinds.FUNCTION,
@@ -304,6 +318,29 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     return this.config.maxProcesses ?? 1;
   }
 
+  /** Per-shard steady-state memory estimate (MiB) used to bound `maxProcesses` against memory. */
+  private processMemoryEstimateMb(): number {
+    return (
+      this.config.processMemoryEstimateMb ?? DEFAULT_PROCESS_MEMORY_ESTIMATE_MB
+    );
+  }
+
+  /** The batch's total memory budget (MiB) for all shard processes at once. When the caller sets
+   *  an explicit `maxProcessMemoryMb`, it wins; otherwise the provider derives a bound from the
+   *  current machine's total memory (`DEFAULT_PROCESS_MEMORY_BUDGET_RATIO`) so an unscoped
+   *  `maxProcesses` can never consume the whole machine. */
+  private maxProcessMemoryMb(): number {
+    if (this.config.maxProcessMemoryMb !== undefined) {
+      return this.config.maxProcessMemoryMb;
+    }
+    return Math.max(
+      Math.round(
+        (os.totalmem() / 1024 / 1024) * DEFAULT_PROCESS_MEMORY_BUDGET_RATIO,
+      ),
+      this.processMemoryEstimateMb(),
+    );
+  }
+
   /** Clamps the configured file-concurrency to something the batch can safely run: never more
    *  than there are files to process, and never so high that K in-flight turns' own pinned files
    *  (D7) alone could approach `maxOpenFiles` and starve the LRU cache for every target open (D4).
@@ -323,13 +360,32 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
   /** Clamps the configured process-shard count to what the batch can safely have at once: never
    *  more than there are files to process, and never zero (an empty `files` batch short-circuits
    *  before this is reached). `maxProcesses` is a *per-core/client* knob, so it is not bound by
-   *  `maxOpenFiles` the way `effectiveConcurrency` is -- memory scales with process count (each
-   *  server holds its own program), which the caller is expected to bound by repo size. */
+   *  `maxOpenFiles` the way `effectiveConcurrency` is -- but memory scales with process count
+   *  (each server holds its own process program), so the count is additionally bounded by the
+   *  batch's memory budget (`maxProcessMemoryMb / processMemoryEstimateMb`) -- the fix for the
+   *  multi-process-sharding memory crash. Logs once per batch when clamping actually changes the
+   *  requested value. */
   private effectiveProcesses(fileCount: number): number {
     const requested = this.maxProcesses;
-    const clamped = Math.max(1, Math.min(requested, fileCount));
+    const memoryBounded = Math.floor(
+      this.maxProcessMemoryMb() / this.processMemoryEstimateMb(),
+    );
+    const clamped = Math.max(1, Math.min(requested, fileCount, memoryBounded));
     if (clamped !== requested) {
       this.logger.debug(LSP_MESSAGES.processShardsClamped(requested, clamped));
+      if (
+        clamped < requested &&
+        memoryBounded < Math.min(requested, fileCount)
+      ) {
+        this.logger.debug(
+          LSP_MESSAGES.processShardsMemoryClamped(
+            requested,
+            clamped,
+            this.maxProcessMemoryMb(),
+            this.processMemoryEstimateMb(),
+          ),
+        );
+      }
     }
     return clamped;
   }

@@ -132,9 +132,23 @@ export interface EdgeResolutionProviderConfig {
    *  A pure throughput knob, never a correctness one -- sharding must yield identical
    *  edges/filesProcessed/filesFailed as a single process (see BaseLspEdgeProvider's
    *  process-invariance test). Memory scales linearly with `maxProcesses` (each server holds its
-   *  own process program), so it must be bounded by repo size, not just cores. Clamped at runtime
-   *  to `min(configured, files.length)`. */
+   *    own process program), so it must be bounded by repo size, not just cores. Clamped at runtime
+   *    to `min(configured, files.length, floor(maxProcessesMemoryMb / processMemoryEstimateMb))`. */
   maxProcesses?: number;
+  /** Total memory budget (in MiB) the entire batch's LSP server processes may occupy at once,
+   *  across all `maxProcesses` shards. Used to bound `maxProcesses` against memory, not just cores
+   *  and file count -- the crash the issue #11 multi-process sharding addressed was oversized
+   *  shard counts (each server holds its own full process program up to the language's heap cap,
+   *  `DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB`), so "more processes" is not free: it compounds as the
+   *  configured heap ceiling per process. When unset, the provider falls back to the current
+   *  machine's free memory. Effective process count is clamped additionally to
+   *  `floor(maxProcessesMemoryMb / processMemoryEstimateMb)`. */
+  maxProcessMemoryMb?: number;
+  /** Estimate of one shard process's steady-state memory footprint (MiB), used only to derive
+   *  `maxProcesses`'s memory upper bound (`floor(maxProcessMemoryMb / this)` when the caller
+   *  sets a memory budget; otherwise a sane default). A pure throughput-guard heuristic, never a
+   *  correctness input. */
+  processMemoryEstimateMb?: number;
 }
 
 export interface IEdgeResolutionProvider {

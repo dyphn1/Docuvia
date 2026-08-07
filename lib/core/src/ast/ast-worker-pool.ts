@@ -102,6 +102,14 @@ export interface IASTWorkerPool {
   initialize(workerCount?: number): Promise<void>;
   parse(request: Omit<AstParseRequest, "taskId">): Promise<AstParseResponse>;
   terminate(): Promise<void>;
+  /**
+   * Runs `fn` under an exclusive batch lock on this pool. Concurrent callers queue behind the
+   * in-flight batch instead of interleaving their initialize()/parse()/terminate() lifecycles
+   * -- overlapping batches on a shared pool were each spawning their own worker cohort and
+   * tearing each other's in-flight workers down, which is the memory-amplification/teardown
+   * race seen when many docuvia processes analyze one large project at once.
+   */
+  serializeBatch<T>(fn: () => Promise<T>): Promise<T>;
 }
 
 export class AstWorkerCrashError extends Error {
@@ -143,6 +151,9 @@ export class AstWorkerPool implements IASTWorkerPool {
   private timedOutWorkers = new WeakSet<Worker>();
   private shuttingDown = false;
   private readonly ipcLogRouter: IpcLogRouter;
+  // Serializes whole batches (see serializeBatch()) so concurrent callers queue instead of
+  // interleaving their worker lifecycles on the same pool.
+  private batchChain: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly logger: ILogger = createNoopLogger(),
@@ -265,6 +276,18 @@ export class AstWorkerPool implements IASTWorkerPool {
   }
 
   async initialize(workerCount: number = 2): Promise<void> {
+    // Idempotency guard: overlapping/repeated invokes on the same pool must not each stack
+    // another worker cohort on top of the existing one. Every pool lifecycle is a single
+    // initialize -> (tasks) -> terminate; a second initialize before terminate is a caller
+    // bug (or an overlapping concurrent batch), and spawning (cpus-1) more workers per call
+    // is exactly the worker-count multiplication that drives the memory blowup seen when
+    // many docuvia processes analyze one large project at once.
+    if (this.workers.length > 0) return;
+    // Re-arm the pool for reuse: terminate() leaves `shuttingDown` true so its own forced
+    // worker exits aren't misreported as crashes, but a reused (shared) pool must resume
+    // normal crash handling -- a real crash on the next batch has to surface and respawn,
+    // not be swallowed as "exited during shutdown".
+    this.shuttingDown = false;
     if (this.workerScriptPathOverride) {
       // Test-only seam: bypass the dist/ts resolution below entirely so tests can point
       // the pool at a fixture worker script (e.g. one that deterministically crashes).
@@ -414,6 +437,17 @@ export class AstWorkerPool implements IASTWorkerPool {
     await Promise.all(this.workers.map((w) => w.terminate()));
     this.workers = [];
     this.workerQueue = [];
+  }
+
+  async serializeBatch<T>(fn: () => Promise<T>): Promise<T> {
+    // Chained promise lock: each batch appends itself to the tail of whatever batch is
+    // currently running, so concurrent callers run strictly one-at-a-time in call order.
+    const run = this.batchChain.then(fn);
+    this.batchChain = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
   }
 }
 

@@ -23,6 +23,7 @@ function makeFakePool(
     initialize: async () => undefined,
     parse: parseImpl as IASTWorkerPool["parse"],
     terminate: async () => undefined,
+    serializeBatch: (run) => run(),
   };
 }
 
@@ -149,6 +150,74 @@ describe("AstProcessingService.processFiles()", () => {
 
     expect(result.parsed.map((r) => r.file)).toEqual(["a.ts", "b.ts", "c.ts"]);
   });
+
+  it("serializes concurrent processFiles batches on the same service: a second batch waits for the first to fully complete", async () => {
+    // Root-cause guard for the memory blowup when many docuvia processes analyze one large
+    // project at once. If two overlapping batches ran their initialize()/parse()/terminate()
+    // lifecycles concurrently on the same pool, their worker cohorts would pile up and each
+    // batch's terminate() could tear down the other's in-flight workers. processFiles must
+    // acquire an exclusive batch lock so concurrent invokes queue instead of interleaving.
+    let active = 0;
+    const pool = makeFakePool(async () => {
+      active++;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      active--;
+      return { taskId: "t", success: true, data: emptyData };
+    });
+    // Faithful stand-in for AstWorkerPool.serializeBatch's chained lock: processFiles must
+    // route concurrent invokes through it (peak concurrency stays 1), never interleave.
+    let chain: Promise<void> = Promise.resolve();
+    pool.serializeBatch = <T>(run: () => Promise<T>) => {
+      const result = chain.then(run);
+      chain = result.then(
+        () => undefined,
+        () => undefined,
+      );
+      return result;
+    };
+    const service = new AstProcessingService(pool);
+    const files = [makeFile("a.ts"), makeFile("b.ts")];
+
+    const [r1, r2] = await Promise.all([
+      service.processFiles("/workspace", files),
+      service.processFiles("/workspace", files),
+    ]);
+
+    expect(r1.parsed.length).toBe(2);
+    expect(r2.parsed.length).toBe(2);
+  }, 15000);
+
+  it("serializes concurrent processFiles batches across TWO service instances sharing one pool (the resolve-two-processors contract)", async () => {
+    // register.ts resolves AstProcessor per workflow; each resolve returns a NEW
+    // AstProcessingService, but every one must be backed by the SAME (shared) AstWorkerPool.
+    // Otherwise two workflows running in one process each spawn their own (cpus-1)-sized
+    // cohort -- the tally that blows memory on "many processes on a large project". Two
+    // distinct services over one shared pool must therefore still serialize their batches.
+    const pool = makeFakePool(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return { taskId: "t", success: true, data: emptyData };
+    });
+    let chain: Promise<void> = Promise.resolve();
+    pool.serializeBatch = <T>(run: () => Promise<T>) => {
+      const result = chain.then(run);
+      chain = result.then(
+        () => undefined,
+        () => undefined,
+      );
+      return result;
+    };
+    const serviceA = new AstProcessingService(pool);
+    const serviceB = new AstProcessingService(pool);
+    const files = [makeFile("a.ts"), makeFile("b.ts")];
+
+    const [ra, rb] = await Promise.all([
+      serviceA.processFiles("/workspace", files),
+      serviceB.processFiles("/workspace", files),
+    ]);
+
+    expect(ra.parsed.length).toBe(2);
+    expect(rb.parsed.length).toBe(2);
+  }, 15000);
 
   it("attaches the detected language to each parsed result", async () => {
     const pool = makeFakePool(async () => ({

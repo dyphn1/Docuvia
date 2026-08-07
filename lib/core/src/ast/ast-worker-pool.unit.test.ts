@@ -164,6 +164,74 @@ describe("AstWorkerPool CALL edge extraction", () => {
     expect((pool as any).taskFilePaths.size).toBe(0);
   }, 15000);
 
+  it("initialize() is idempotent: a second call does not stack another worker cohort", async () => {
+    pool = new AstWorkerPool();
+    await pool.initialize(2);
+    expect((pool as any).workers.length).toBe(2);
+
+    // Overlapping/repeated invokes on the same pool must not each spawn their own
+    // (cpus-1)-sized cohort on top of the existing one -- that worker multiplication is
+    // the memory-amplification root cause for "many processes on a large project".
+    await pool.initialize(4);
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect((pool as any).workers.length).toBe(2);
+  }, 15000);
+
+  it("serializeBatch() runs concurrent batches strictly one-at-a-time", async () => {
+    pool = new AstWorkerPool();
+    await pool.initialize(2);
+
+    let active = 0;
+    let maxActive = 0;
+    const batch = () => {
+      return pool!.serializeBatch(async () => {
+        active++;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        active--;
+      });
+    };
+
+    // Fire three batches in the same tick, exactly like overlapping docuvia processes would.
+    await Promise.all([batch(), batch(), batch()]);
+
+    // The chained lock must keep the worker lifecycle of all three batches serialized —
+    // never more than one batch's parse/terminate round running at once.
+    expect(maxActive).toBe(1);
+  }, 15000);
+
+  it("re-arms crash handling after terminate(): a reused pool still respawns after a crash", async () => {
+    // Shared-pool reuse contract (register.ts now hands every AstProcessor the same pool):
+    // batch 1 runs initialize->terminate, then batch 2 re-initializes the SAME pool. If
+    // terminate() left `shuttingDown` permanently true, batch 2 would treat a real worker
+    // crash as "exited during shutdown" and never respawn -- the next task would hang until
+    // timeout. The crash must still surface AND the respawn must still happen.
+    pool = new AstWorkerPool(
+      undefined,
+      30_000,
+      undefined,
+      CRASH_FIXTURE_WORKER_PATH,
+    );
+    await pool.initialize(1);
+    await pool.terminate();
+
+    await pool.initialize(1);
+    await expect(
+      pool.parse({
+        filePath: CRASH_SENTINEL_FILE_PATH,
+        code: "",
+        language: "typescript",
+      }),
+    ).rejects.toBeInstanceOf(AstWorkerCrashError);
+
+    const response = await pool.parse({
+      filePath: "healthy-after-reuse.ts",
+      code: "",
+      language: "typescript",
+    });
+    expect(response.success).toBe(true);
+  }, 15000);
+
   it("does not log idle workers stopped by terminate() as crashes", async () => {
     // Regression guard for the real root cause behind the "13 AstWorkerPool crashes"
     // documented in docs/analysis/docuvia-cli-vs-gitnexus-2026-07-10.md: verified directly

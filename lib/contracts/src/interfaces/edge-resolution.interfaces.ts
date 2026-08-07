@@ -115,6 +115,14 @@ export interface EdgeResolutionProviderConfig {
    *  documents; re-tune if a real workload shows it's off. See `BaseLspEdgeProvider`'s
    *  `openAndGetSymbols` for the eviction mechanics. */
   maxOpenFiles?: number;
+  /** Bounded cross-file concurrency for BaseLspEdgeProvider's batch loop (Tier B K-way
+   *  concurrency plan): how many files' own processing turns run in flight at once. `1`
+   *  (default) reproduces today's strictly-serial behavior exactly -- this field is a pure
+   *  throughput knob, never a correctness one (every K must produce identical edges/node_keys;
+   *  see BaseLspEdgeProvider's own K-invariance test). Clamped at runtime to
+   *  `min(configured, files.length, maxOpenFiles - 1)` -- see BaseLspEdgeProvider's
+   *  effectiveConcurrency(). */
+  maxConcurrentFiles?: number;
 }
 
 export interface IEdgeResolutionProvider {

@@ -197,6 +197,71 @@ describe("PythonLspEdgeProvider.resolveEdges()", () => {
     expect(fake.stopped).toBe(true);
   });
 
+  it("resolves the same cross-file edge at maxConcurrentFiles: 4 as at the K=1 default (Tier B K-way concurrency plan, reverse-path parity -- proves the worker pool isn't TS/forward-only)", async () => {
+    const aUri = uriFor(workspaceRoot, "a.py");
+    const bUri = uriFor(workspaceRoot, "b.py");
+
+    const fooSelectionRange = range(0, 4, 0, 7);
+    const barSelectionRange = range(2, 4, 2, 7);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "foo",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 1, 8),
+              selectionRange: fooSelectionRange,
+            },
+          ];
+        }
+        if (params.textDocument.uri === bUri) {
+          return [
+            {
+              name: "bar",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(2, 0, 3, 9),
+              selectionRange: barSelectionRange,
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (
+          params.textDocument.uri === aUri &&
+          params.position.character === fooSelectionRange.start.character
+        ) {
+          return [{ uri: bUri, range: range(3, 4, 3, 7) }];
+        }
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const fake = new FakeLspClient(handler);
+    const provider = new PythonLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+    provider.configure({ maxConcurrentFiles: 4 });
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.py", "b.py"],
+    });
+
+    expect(outcome.filesFailed).toEqual([]);
+    expect(outcome.filesProcessed).toEqual(["a.py", "b.py"]);
+    expect(outcome.edges).toEqual([
+      { sourceNodeKey: "b.py#bar", targetNodeKey: "a.py#foo", source: "lsp" },
+    ]);
+    expect(fake.started).toBe(true);
+    expect(fake.stopped).toBe(true);
+  });
+
   it("opens each file with the python languageId", async () => {
     const handler: RequestHandler = (method) => {
       if (method === LspMethods.DOCUMENT_SYMBOL) return [];

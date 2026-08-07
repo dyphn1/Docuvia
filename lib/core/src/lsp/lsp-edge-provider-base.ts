@@ -56,9 +56,9 @@ function toNodeKey(relativePath: string): string {
 }
 
 /** Distinguishes "the whole-batch deadline ran out mid-file" (`raceAgainstDeadline`) from an
- *  ordinary per-file processing error inside `processOneFileIntoBatch`'s catch block -- both
- *  currently land in the same `filesFailed` channel, but only the former should also flip the
- *  batch-level `deadlineExceeded`/`unavailableReason` flag. */
+ *  ordinary per-file processing error inside `runOneSlot`'s catch block -- both currently land
+ *  in the same `filesFailed` channel, but only the former should also flip the batch-level
+ *  `deadlineExceeded`/`unavailableReason` flag. */
 class DeadlineExceededError extends Error {}
 
 function isSymbolInformation(
@@ -157,6 +157,32 @@ type UsedNodeKeysByFile = Map<
   string,
   { used: Set<string>; resolved: Map<string, string> }
 >;
+
+/** Batch-scoped shared mutable state (Tier B K-way concurrency plan). Every field here is
+ *  written from multiple files' processing turns and must only ever be mutated inside a
+ *  synchronous critical section (no `await` between reading and writing) -- see the plan's
+ *  Finding E. Constructed once per `processAllFiles` call, discarded at the end of the batch. */
+interface SharedBatchState {
+  openFileCache: Map<string, OpenFileHandle>;
+  /** In-flight `openAndGetSymbols` calls, keyed by relativePath -- request-coalescing so two
+   *  concurrent turns wanting the same not-yet-cached file await the same open instead of each
+   *  issuing their own `DID_OPEN`/`documentSymbol` (a stampede; also an LSP protocol violation
+   *  -- see Phase 3). Empty outside of Phase 3+. */
+  inFlightOpens: Map<string, Promise<OpenFileHandle>>;
+  /** relativePaths currently "owned" by an in-flight worker turn as that turn's own file (see
+   *  D7) -- eviction in `openAndGetSymbols` must never pick a pinned path. Empty outside of
+   *  Phase 4+. */
+  pinnedPaths: Set<string>;
+  usedNodeKeysByFile: UsedNodeKeysByFile;
+}
+
+/** One file's outcome from `runOneSlot`, written into `processAllFiles`'s index-ordered `slots`
+ *  array (D2) instead of being pushed onto shared accumulators directly -- keeps every worker's
+ *  writes confined to its own slot, so the post-loop flatten pass is the only place that mutates
+ *  the batch-level `edges`/`filesProcessed`/`filesFailed` arrays. */
+type RunOneSlotResult =
+  | { ok: true; edges: ResolvedCallEdge[] }
+  | { ok: false; deadlineExceeded: boolean; reason: string };
 
 /**
  * Minimal preflight outcome shape `BaseLspEdgeProvider` actually needs (`ready`/`reason`) --
@@ -264,6 +290,28 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
   /** See `DEFAULT_MAX_OPEN_FILES`/`EdgeResolutionProviderConfig.maxOpenFiles`. */
   private get maxOpenFiles(): number {
     return this.config.maxOpenFiles ?? DEFAULT_MAX_OPEN_FILES;
+  }
+
+  /** See `EdgeResolutionProviderConfig.maxConcurrentFiles` (Tier B K-way concurrency plan). `1`
+   *  reproduces today's strictly-serial `processAllFiles` behavior exactly. */
+  private get maxConcurrentFiles(): number {
+    return this.config.maxConcurrentFiles ?? 1;
+  }
+
+  /** Clamps the configured file-concurrency to something the batch can safely run: never more
+   *  than there are files to process, and never so high that K in-flight turns' own pinned files
+   *  (D7) alone could approach `maxOpenFiles` and starve the LRU cache for every target open (D4).
+   *  Logs once per batch when clamping actually changes the requested value. */
+  private effectiveConcurrency(fileCount: number): number {
+    const requested = this.maxConcurrentFiles;
+    const clamped = Math.max(
+      1,
+      Math.min(requested, fileCount, this.maxOpenFiles - 1),
+    );
+    if (clamped !== requested) {
+      this.logger.debug(LSP_MESSAGES.concurrencyClamped(requested, clamped));
+    }
+    return clamped;
   }
 
   async checkAvailability(
@@ -440,43 +488,89 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     deadlineAt: number | undefined,
     timeoutMs: number,
   ): Promise<EdgeResolutionOutcome> {
-    const edges: ResolvedCallEdge[] = [];
-    const edgeKeys = new Set<string>();
-    const filesProcessed: string[] = [];
-    const filesFailed: EdgeResolutionOutcome["filesFailed"] = [];
-    const openFileCache = new Map<string, OpenFileHandle>();
     // Batch-scoped (not per-`processOneFile`-call): a symbol's file can be touched both as a
     // callee (this loop) and as some other callee's caller file (`resolveReferenceEdge`), so
     // disambiguation state for a given file must stay consistent across both paths, not reset
     // per call -- see `resolveNodeKeyForFile`.
-    const usedNodeKeysByFile: UsedNodeKeysByFile = new Map();
+    const state: SharedBatchState = {
+      openFileCache: new Map(),
+      inFlightOpens: new Map(),
+      pinnedPaths: new Set(),
+      usedNodeKeysByFile: new Map(),
+    };
+
+    const slots: (RunOneSlotResult | undefined)[] = new Array(files.length);
+
+    let cursor = 0;
     let deadlineExceeded = false;
 
-    for (const file of files) {
-      const remainingMs =
-        deadlineAt !== undefined ? deadlineAt - Date.now() : undefined;
-      if (remainingMs !== undefined && remainingMs <= 0) {
-        deadlineExceeded = true;
-        break;
-      }
+    // Tier B K-way concurrency plan (D1): a bounded worker pool over a shared monotonic index
+    // cursor -- each worker's synchronous claim (`cursor++`, no `await` between the deadline
+    // check and the claim) is race-free per the plan's Finding E, requires no dependency, and
+    // preserves `files`' claim order even though completion order is unconstrained. At the
+    // default `maxConcurrentFiles: 1` (`effectiveConcurrency` below), exactly one worker ever
+    // runs, so claim order == completion order == today's strictly-serial order.
+    const worker = async (): Promise<void> => {
+      for (;;) {
+        if (deadlineExceeded) return;
+        const remainingMs =
+          deadlineAt !== undefined ? deadlineAt - Date.now() : undefined;
+        if (remainingMs !== undefined && remainingMs <= 0) {
+          deadlineExceeded = true;
+          return;
+        }
+        // Synchronous claim -- no `await` between the checks above and this line, so no two
+        // workers can ever read/claim the same `cursor` value.
+        const index = cursor++;
+        if (index >= files.length) return;
+        const file = files[index];
 
-      const result = await this.processOneFileIntoBatch(
-        client,
-        workspaceRoot,
-        file,
-        callsByFile,
-        openFileCache,
-        usedNodeKeysByFile,
-        edges,
-        edgeKeys,
-        filesProcessed,
-        filesFailed,
-        remainingMs,
-        timeoutMs,
-      );
-      if (!result.ok && result.deadlineExceeded) {
-        deadlineExceeded = true;
-        break;
+        state.pinnedPaths.add(file); // D7 -- protect this worker's own file from eviction
+        try {
+          const slot = await this.runOneSlot(
+            client,
+            workspaceRoot,
+            file,
+            callsByFile,
+            state,
+            remainingMs,
+            timeoutMs,
+          );
+          slots[index] = slot;
+          if (!slot.ok && slot.deadlineExceeded) {
+            deadlineExceeded = true;
+          }
+        } finally {
+          state.pinnedPaths.delete(file); // D7
+        }
+      }
+    };
+
+    const k = this.effectiveConcurrency(files.length);
+    // D9: wait for every worker to fully exit before reconciling -- each in-flight file races its
+    // own deadline independently, so a naive "stop as soon as one flag flips" would read `slots`
+    // before every worker has written its own outcome.
+    await Promise.allSettled(Array.from({ length: k }, () => worker()));
+
+    // D2: output order is always `files`-input-order -- a single synchronous post-pass flattens
+    // `slots` in index order into the final accumulators, regardless of completion order.
+    const edges: ResolvedCallEdge[] = [];
+    const edgeKeys = new Set<string>();
+    const filesProcessed: string[] = [];
+    const filesFailed: EdgeResolutionOutcome["filesFailed"] = [];
+    for (let i = 0; i < files.length; i++) {
+      const slot = slots[i];
+      if (!slot) continue; // never claimed -- folded into markUnreachedFilesFailed below
+      if (slot.ok) {
+        filesProcessed.push(files[i]);
+        for (const edge of slot.edges) {
+          const key = `${edge.sourceNodeKey}->${edge.targetNodeKey}`;
+          if (edgeKeys.has(key)) continue;
+          edgeKeys.add(key);
+          edges.push(edge);
+        }
+      } else {
+        filesFailed.push({ file: files[i], reason: slot.reason });
       }
     }
 
@@ -528,26 +622,22 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     });
   }
 
-  /** One iteration of `processAllFiles`'s per-file loop body, pulled out purely to keep
-   *  `processAllFiles`'s own cyclomatic complexity down -- the race-against-deadline/no-race
+  /** One file's own turn in `processAllFiles`'s worker pool (Tier B K-way concurrency plan,
+   *  renamed/reshaped from `processOneFileIntoBatch`) -- the race-against-deadline/no-race
    *  ternary, the catch's deadline-vs-ordinary-failure split, and the edge dedup loop all still
-   *  behave exactly as before, just under this name. Pushes onto `filesProcessed`/`filesFailed`/
-   *  `edges` in place (same batch-scoped accumulators `processAllFiles` owns) since the caller only
-   *  needs to know whether to `break` and flip `deadlineExceeded` -- not re-derive what happened. */
-  private async processOneFileIntoBatch(
+   *  behave exactly as before; the only change is that this now *returns* a `RunOneSlotResult`
+   *  (D2) instead of pushing onto shared `edges`/`filesProcessed`/`filesFailed` accumulators in
+   *  place, since concurrent workers can no longer safely share those arrays mid-batch -- the
+   *  caller writes the result into its own index-ordered slot. */
+  private async runOneSlot(
     client: LspJsonRpcClient,
     workspaceRoot: string,
     file: string,
     callsByFile: EdgeResolutionRequest["callsByFile"],
-    openFileCache: Map<string, OpenFileHandle>,
-    usedNodeKeysByFile: UsedNodeKeysByFile,
-    edges: ResolvedCallEdge[],
-    edgeKeys: Set<string>,
-    filesProcessed: string[],
-    filesFailed: EdgeResolutionOutcome["filesFailed"],
+    state: SharedBatchState,
     remainingMs: number | undefined,
     timeoutMs: number,
-  ): Promise<{ ok: true } | { ok: false; deadlineExceeded: boolean }> {
+  ): Promise<RunOneSlotResult> {
     try {
       const fileEdges =
         remainingMs !== undefined
@@ -557,8 +647,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
                 workspaceRoot,
                 file,
                 callsByFile,
-                openFileCache,
-                usedNodeKeysByFile,
+                state,
               ),
               remainingMs,
             )
@@ -567,47 +656,37 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
               workspaceRoot,
               file,
               callsByFile,
-              openFileCache,
-              usedNodeKeysByFile,
+              state,
             );
-      for (const edge of fileEdges) {
-        const key = `${edge.sourceNodeKey}->${edge.targetNodeKey}`;
-        if (edgeKeys.has(key)) continue;
-        edgeKeys.add(key);
-        edges.push(edge);
-      }
-      filesProcessed.push(file);
-      this.closeAndEvict(client, file, openFileCache);
-      return { ok: true };
+      this.closeAndEvict(client, file, state);
+      return { ok: true, edges: fileEdges };
     } catch (err) {
       if (err instanceof DeadlineExceededError) {
-        filesFailed.push({
-          file,
-          reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
-        });
         // The underlying `processOneFile` promise was abandoned, not settled (see
         // `raceAgainstDeadline`'s doc comment) -- it may still be reading/writing
         // `openFileCache` for this file, so touching it here would race. The whole client is
-        // about to be torn down by the caller's `shutdownSession` anyway.
-        return { ok: false, deadlineExceeded: true };
+        // about to be torn down by the caller's `shutdownSession` anyway. Deliberately no
+        // `closeAndEvict` call on this path, matching today's behavior.
+        return {
+          ok: false,
+          deadlineExceeded: true,
+          reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
+        };
       }
-      filesFailed.push({
-        file,
-        reason: err instanceof Error ? err.message : String(err),
-      });
+      const reason = err instanceof Error ? err.message : String(err);
       this.logger.warn(LSP_MESSAGES.resolutionFailedForFile(file), {
-        error: err instanceof Error ? err.message : String(err),
+        error: reason,
       });
-      this.closeAndEvict(client, file, openFileCache);
-      return { ok: false, deadlineExceeded: false };
+      this.closeAndEvict(client, file, state);
+      return { ok: false, deadlineExceeded: false, reason };
     }
   }
 
   /** Tells the LSP server we're done with `handle`'s file for now and drops its cached symbols.
-   *  Shared by the post-turn `closeAndEvict` call in `processOneFileIntoBatch` and the LRU
-   *  eviction path in `openAndGetSymbols` -- both need the same delete-from-cache + `DID_CLOSE`
-   *  notify, just triggered by a different event (a file's own queue turn ending vs. the cache
-   *  hitting its size cap). */
+   *  Shared by the post-turn `closeAndEvict` call in `runOneSlot` and the LRU eviction path in
+   *  `doOpenAndGetSymbols` -- both need the same delete-from-cache + `DID_CLOSE` notify, just
+   *  triggered by a different event (a file's own queue turn ending vs. the cache hitting its
+   *  size cap). */
   private closeOpenFile(
     client: LspJsonRpcClient,
     handle: OpenFileHandle,
@@ -631,11 +710,11 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
   private closeAndEvict(
     client: LspJsonRpcClient,
     file: string,
-    openFileCache: Map<string, OpenFileHandle>,
+    state: SharedBatchState,
   ): void {
-    const handle = openFileCache.get(file);
+    const handle = state.openFileCache.get(file);
     if (!handle) return;
-    this.closeOpenFile(client, handle, openFileCache);
+    this.closeOpenFile(client, handle, state.openFileCache);
   }
 
   /** Post-loop reconciliation for `processAllFiles`: once the batch deadline has tripped, every
@@ -662,7 +741,17 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     }
   }
 
-  /** Looks up `file`'s disambiguation state, pre-assigning a key for *every* call-site symbol in
+  /** CONCURRENCY INVARIANT (Tier B K-way concurrency plan, D8): this function must never contain
+   *  an `await`. Its lazy first-touch initialization (the `if (!fileState) { ... }` block below)
+   *  is only race-free under K-way concurrency because it runs synchronously to completion once
+   *  called -- adding an `await` anywhere in this function would split that critical section
+   *  across an event-loop turn and reopen exactly the "two workers both initialize the same
+   *  file's state" race this class is otherwise free of. If this function ever needs to await
+   *  something, revisit this plan's Finding E and add real synchronization (a per-file async
+   *  mutex keyed by `state.usedNodeKeysByFile`'s own key), do not assume the existing shape is
+   *  still safe.
+   *
+   *  Looks up `file`'s disambiguation state, pre-assigning a key for *every* call-site symbol in
    *  `fileSymbols` (line-sorted) the first time this file is touched, then returns the one for
    *  `name`/`startLine`. Matters because this class discovers a file's symbols on demand (as
    *  callee, in `processOneFile`'s own loop; as caller, wherever `resolveReferenceEdge` first
@@ -686,17 +775,17 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
    *  language's containment data -- if it ever leaked through -- can never produce a qualified key
    *  (locked decision: the gate must live here, not upstream). */
   private resolveNodeKeyForFile(
-    usedNodeKeysByFile: UsedNodeKeysByFile,
+    state: SharedBatchState,
     file: string,
     fileSymbols: LspDocumentSymbol[],
     name: string,
     startLine: number,
     containerName?: string,
   ): string {
-    let state = usedNodeKeysByFile.get(file);
-    if (!state) {
-      state = { used: new Set<string>([file]), resolved: new Map() };
-      usedNodeKeysByFile.set(file, state);
+    let fileState = state.usedNodeKeysByFile.get(file);
+    if (!fileState) {
+      fileState = { used: new Set<string>([file]), resolved: new Map() };
+      state.usedNodeKeysByFile.set(file, fileState);
 
       const sorted = [...flattenCallSiteSymbols(fileSymbols)].sort(
         (a, b) =>
@@ -705,9 +794,9 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       );
       for (const { symbol, containerName: enclosed } of sorted) {
         const identity = `${symbol.name}@${symbol.selectionRange.start.line}`;
-        if (state.resolved.has(identity)) continue;
+        if (fileState.resolved.has(identity)) continue;
         const nodeKey = buildUniqueNodeKey(
-          state.used,
+          fileState.used,
           buildQualifiedBaseKey(
             file,
             symbol.name,
@@ -717,19 +806,19 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           ),
           symbol.selectionRange.start.line,
         );
-        state.used.add(nodeKey);
-        state.resolved.set(identity, nodeKey);
+        fileState.used.add(nodeKey);
+        fileState.resolved.set(identity, nodeKey);
       }
     }
 
     const symbolIdentity = `${name}@${startLine}`;
-    const cached = state.resolved.get(symbolIdentity);
+    const cached = fileState.resolved.get(symbolIdentity);
     if (cached) return cached;
 
     // Not found in the pre-pass (e.g. the CLASS_SITE_KINDS filter excluded it, or it's a
     // synthetic lookup) -- fall back to resolving it directly against whatever state exists.
     const nodeKey = buildUniqueNodeKey(
-      state.used,
+      fileState.used,
       buildQualifiedBaseKey(
         file,
         name,
@@ -739,8 +828,8 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       ),
       startLine,
     );
-    state.used.add(nodeKey);
-    state.resolved.set(symbolIdentity, nodeKey);
+    fileState.used.add(nodeKey);
+    fileState.resolved.set(symbolIdentity, nodeKey);
     return nodeKey;
   }
 
@@ -749,8 +838,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     workspaceRoot: string,
     relativePath: string,
     callsByFile: EdgeResolutionRequest["callsByFile"],
-    openFileCache: Map<string, OpenFileHandle>,
-    usedNodeKeysByFile: UsedNodeKeysByFile,
+    state: SharedBatchState,
   ): Promise<ResolvedCallEdge[]> {
     const callSites = callsByFile?.[relativePath];
     // Forward only when this language's own config has been explicitly flipped to "forward"
@@ -770,16 +858,14 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         workspaceRoot,
         relativePath,
         callSites,
-        openFileCache,
-        usedNodeKeysByFile,
+        state,
       );
     }
     return this.processOneFileReverse(
       client,
       workspaceRoot,
       relativePath,
-      openFileCache,
-      usedNodeKeysByFile,
+      state,
     );
   }
 
@@ -787,14 +873,13 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     client: LspJsonRpcClient,
     workspaceRoot: string,
     relativePath: string,
-    openFileCache: Map<string, OpenFileHandle>,
-    usedNodeKeysByFile: UsedNodeKeysByFile,
+    state: SharedBatchState,
   ): Promise<ResolvedCallEdge[]> {
     const callee = await this.openAndGetSymbols(
       client,
       workspaceRoot,
       relativePath,
-      openFileCache,
+      state,
     );
     const callSiteSymbols = flattenCallSiteSymbols(callee.symbols);
 
@@ -827,7 +912,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       const references = referenceResults[i] ?? [];
       const calleeNodeKey = toNodeKey(
         this.resolveNodeKeyForFile(
-          usedNodeKeysByFile,
+          state,
           relativePath,
           callee.symbols,
           symbol.name,
@@ -842,8 +927,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           ref,
           calleeNodeKey,
           relativePath,
-          openFileCache,
-          usedNodeKeysByFile,
+          state,
         );
         if (edge) edges.push(edge);
       }
@@ -867,14 +951,13 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     workspaceRoot: string,
     relativePath: string,
     callSites: EdgeResolutionCallSite[],
-    openFileCache: Map<string, OpenFileHandle>,
-    usedNodeKeysByFile: UsedNodeKeysByFile,
+    state: SharedBatchState,
   ): Promise<ResolvedCallEdge[]> {
     const caller = await this.openAndGetSymbols(
       client,
       workspaceRoot,
       relativePath,
-      openFileCache,
+      state,
     );
     const edges: ResolvedCallEdge[] = [];
 
@@ -906,8 +989,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         workspaceRoot,
         relativePath,
         definitions[i],
-        openFileCache,
-        usedNodeKeysByFile,
+        state,
       );
       if (targetNodeKey === undefined) continue;
 
@@ -919,7 +1001,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         source && CALL_SITE_KINDS.has(source.symbol.kind)
           ? toNodeKey(
               this.resolveNodeKeyForFile(
-                usedNodeKeysByFile,
+                state,
                 relativePath,
                 caller.symbols,
                 source.symbol.name,
@@ -954,8 +1036,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       | { uri: string; range: LspRange }[]
       | { uri: string; range: LspRange }
       | null,
-    openFileCache: Map<string, OpenFileHandle>,
-    usedNodeKeysByFile: UsedNodeKeysByFile,
+    state: SharedBatchState,
   ): Promise<string | undefined> {
     if (!result) return undefined;
     const locations = Array.isArray(result) ? result : [result];
@@ -965,8 +1046,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         workspaceRoot,
         sourceRelative,
         locations[i],
-        openFileCache,
-        usedNodeKeysByFile,
+        state,
       );
       if (targetNodeKey !== undefined) {
         if (i > 0) {
@@ -995,8 +1075,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     workspaceRoot: string,
     sourceRelative: string,
     location: { uri: string; range: LspRange },
-    openFileCache: Map<string, OpenFileHandle>,
-    usedNodeKeysByFile: UsedNodeKeysByFile,
+    state: SharedBatchState,
   ): Promise<string | undefined> {
     const targetPath = path.relative(
       workspaceRoot,
@@ -1012,7 +1091,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       client,
       workspaceRoot,
       targetRelative,
-      openFileCache,
+      state,
     );
     const enclosing = findDeepestContainingSymbol(
       targetFile.symbols,
@@ -1021,7 +1100,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     return enclosing && CALL_SITE_KINDS.has(enclosing.symbol.kind)
       ? toNodeKey(
           this.resolveNodeKeyForFile(
-            usedNodeKeysByFile,
+            state,
             targetRelative,
             targetFile.symbols,
             enclosing.symbol.name,
@@ -1038,8 +1117,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     ref: { uri: string; range: LspRange },
     calleeNodeKey: string,
     calleeFile: string,
-    openFileCache: Map<string, OpenFileHandle>,
-    usedNodeKeysByFile: UsedNodeKeysByFile,
+    state: SharedBatchState,
   ): Promise<ResolvedCallEdge | undefined> {
     const refPath = path.relative(workspaceRoot, fileURLToPath(ref.uri));
     // A reference outside the workspace (e.g. TypeScript's global Automatic Type Acquisition
@@ -1062,7 +1140,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       client,
       workspaceRoot,
       refRelative,
-      openFileCache,
+      state,
     );
     const enclosing = findDeepestContainingSymbol(
       caller.symbols,
@@ -1072,7 +1150,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       enclosing && CALL_SITE_KINDS.has(enclosing.symbol.kind)
         ? toNodeKey(
             this.resolveNodeKeyForFile(
-              usedNodeKeysByFile,
+              state,
               refRelative,
               caller.symbols,
               enclosing.symbol.name,
@@ -1093,8 +1171,14 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     client: LspJsonRpcClient,
     workspaceRoot: string,
     relativePath: string,
-    cache: Map<string, OpenFileHandle>,
+    state: SharedBatchState,
   ): Promise<OpenFileHandle> {
+    // Synchronous critical section (D5/Finding E) -- cache check, in-flight check, and in-flight
+    // registration must complete with zero `await`s between them, or two concurrent callers can
+    // both decide "not cached, not in flight" for the same path and each issue their own
+    // DID_OPEN/documentSymbol (a stampede -- also an LSP protocol violation: didOpen twice for one
+    // URI without an intervening didClose).
+    const cache = state.openFileCache;
     const cached = cache.get(relativePath);
     if (cached) {
       // Bump recency: `Map` iteration order is insertion order, so deleting then re-setting the
@@ -1104,23 +1188,68 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       cache.set(relativePath, cached);
       return cached;
     }
+    const inFlight = state.inFlightOpens.get(relativePath);
+    if (inFlight) return inFlight;
+
+    const openPromise = this.doOpenAndGetSymbols(
+      client,
+      workspaceRoot,
+      relativePath,
+      state,
+    ).finally(() => state.inFlightOpens.delete(relativePath));
+    state.inFlightOpens.set(relativePath, openPromise); // registration, still synchronous
+    return openPromise;
+  }
+
+  /** Selects the least-recently-used *unpinned* entry to evict (D7) -- `Map` iteration order is
+   *  insertion order, and `openAndGetSymbols`'s recency bump (delete+re-set on cache hit) keeps
+   *  the least-recently-used entry first, exactly as today's single-threaded LRU relied on.
+   *  Skips any path in `state.pinnedPaths` -- a file currently owned by another in-flight
+   *  worker's own turn (see D7's rationale: only the *own*-file case needs protection, since every
+   *  other opened file's `.symbols` are read synchronously into a local variable once and never
+   *  referenced again by URI). Returns `undefined` when every cached entry is pinned -- the caller
+   *  (`doOpenAndGetSymbols`'s while-loop) then breaks and accepts bounded overshoot (at most `K-1`
+   *  documents over `maxOpenFiles`, since at most `K` files can ever be pinned at once) rather
+   *  than spin forever waiting for a pin that won't release until some other worker's turn ends.
+   *  This also closes a pre-existing latent bug at K=1: a file with more distinct call-site
+   *  targets than `maxOpenFiles` could already, today, evict its own just-opened self if
+   *  `relativePath` happened to be the oldest entry at the moment of its own re-lookup -- pinning
+   *  closes this for good, at every K including `1`. */
+  private pickEvictionVictim(
+    state: SharedBatchState,
+  ): OpenFileHandle | undefined {
+    for (const [key, handle] of state.openFileCache) {
+      if (!state.pinnedPaths.has(key)) return handle;
+    }
+    return undefined;
+  }
+
+  private async doOpenAndGetSymbols(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    relativePath: string,
+    state: SharedBatchState,
+  ): Promise<OpenFileHandle> {
+    // D6: count in-flight opens against the cap, not just settled cache entries -- otherwise K
+    // concurrent opens can each independently see room under `maxOpenFiles` and the server
+    // transiently holds more than `maxOpenFiles` documents open at once. NOTE: this call's own
+    // slot is deliberately NOT yet in `state.inFlightOpens` while this loop runs --
+    // `openAndGetSymbols` evaluates this whole function body synchronously up to the first
+    // `await` below *before* it registers the returned promise in `inFlightOpens` -- so `>=`
+    // (evict until the total, once this call's own about-to-be-registered slot is added, is at
+    // most `maxOpenFiles`) is correct here, not `>`.
+    while (
+      state.openFileCache.size + state.inFlightOpens.size >=
+      this.maxOpenFiles
+    ) {
+      const victim = this.pickEvictionVictim(state);
+      if (!victim) break; // every open entry is pinned (Phase 4+); accept bounded overshoot
+      this.closeOpenFile(client, victim, state.openFileCache);
+    }
 
     const absolutePath = path.join(workspaceRoot, relativePath);
     const content = await fs.readFile(absolutePath, UTF8_ENCODING);
     const uri = pathToFileURL(absolutePath).toString();
-
-    // Evict the least-recently-used entries (the cache's own first keys, per the recency bump
-    // above) until there's room for the file we're about to open -- done *before* opening it, so
-    // the LSP server never holds more than `maxOpenFiles` documents open at once, not even
-    // transiently. This is the actual bound on simultaneously-open documents, independent of
-    // where either file sits in the batch queue (see `DEFAULT_MAX_OPEN_FILES`'s doc comment for
-    // why queue-position alone wasn't enough).
-    while (cache.size >= this.maxOpenFiles) {
-      const oldestKey = cache.keys().next().value;
-      if (oldestKey === undefined) break;
-      const oldestHandle = cache.get(oldestKey);
-      if (oldestHandle) this.closeOpenFile(client, oldestHandle, cache);
-    }
 
     client.notify(LspMethods.DID_OPEN, {
       textDocument: {
@@ -1141,7 +1270,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     const symbols = normalizeDocumentSymbols(raw);
 
     const handle: OpenFileHandle = { relativePath, uri, symbols };
-    cache.set(relativePath, handle);
+    state.openFileCache.set(relativePath, handle);
     return handle;
   }
 }

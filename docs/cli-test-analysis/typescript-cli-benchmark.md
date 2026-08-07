@@ -7,7 +7,7 @@
 
 **Subject under test:** Docuvia2 (Tier A local ingestion + Tier B LSP escalation) vs. GitNexus, Graphify, and Code-Review-Graph (CRG) on the same two repos.
 
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-07
 
 ---
 
@@ -87,6 +87,50 @@
 
 ---
 
+## 3. Phase 4 — Forward Tier B Edge Resolution Calibration (issue #11 plan A, Slice 3)
+
+Live-verified against the same two repos at the same commits (`nestjs/nest`@`dfaa3761`, `microsoft/vscode`@`1b6a1881`), per `docs/gitbook/analysis/forward-tier-b-edge-resolution-plan.md`'s Slice 3 methodology: `definitionResolution: "forward"` (TypeScript only) resolves each AST-seeded call site directly via `textDocument/definition`, instead of reverse's project-wide `textDocument/references` per symbol. AST call-site persistence (Slice 1, `ast_call_sites` table) was confirmed populated before each run: nest 35,434 rows, vscode 882,793 rows.
+
+Two runs per repo: first replicating the original 120s-cap methodology (apples-to-apples against the reverse baselines above), then a `--lsp-timeout=0` run to completion — a 120s-capped run alone can't distinguish "forward is faster" from "forward also just gets cut off," since both would hit the same wall.
+
+### nest
+
+| Metric                 | Reverse (baseline, 120s cap, never completed) | Forward, 120s cap | Forward, uncapped (completed) |
+| :--------------------- | --------------------------------------------: | ----------------: | ----------------------------: |
+| Files processed        |                                  not reported |  1235/1365 seeded |   **1726/1726** (full resync) |
+| Edges applied this run |                                        ~1,575 |             1,619 |                         2,024 |
+| Total edges            |                                        17,811 |            17,855 |                    **18,260** |
+| Wall clock             |                                120s (timeout) |    120s (timeout) |                  **8m5.345s** |
+
+Forward reaches full completion for nest — something the reverse pipeline never did in any prior benchmark session recorded in this doc (every reverse run hit the same 120s wall without finishing). Parity holds (18,260 > 17,811) and, unlike reverse's number, this total is a real completed count rather than a timeout-truncated partial.
+
+### vscode
+
+Tier A re-ingestion this session: 293,309 nodes / 458,612 edges — parity with the 293,309/458,614 baseline — completing in ~25 min vs. the original run's 96m1.450s. Not a controlled re-measurement (different session/day/OS cache state), so noted as an observation, not claimed as a confirmed fix to finding #3 below.
+
+Tier B forward run (`--escalate-to-lsp --full --lsp-timeout=0`, uncapped, full completion): **paused before completion, not yet re-attempted.** The nest run above (8m5.345s for a ~1,365-file repo) prompted a closer look at the batch loop's architecture before spending vscode-scale wall-clock on it — see §4 below. Once §4's open question is resolved, this run should be repeated at whatever `maxConcurrentFiles` calibration lands on. This is the case that actually tests the forward-resolution plan's central claim — reverse's `Disposable` hub-symbol amplification (1,978 callers → 1,978 project-wide scans per that one symbol) is what capped reverse at 1,090/12,339 files in 120s; forward removes that amplification entirely by resolving each call site's callee directly instead of scanning the whole program per symbol. Results to follow in this doc once a full run lands.
+
+---
+
+## 4. K-way Cross-File Concurrency Follow-up (post-Slice-3, uncommitted-to-conclusions)
+
+nest's 8m5.345s full-completion Tier B run (§3 above) prompted a review of `BaseLspEdgeProvider`'s batch loop: `processAllFiles` processes files **strictly serially** (`for (const file of files) { await ... }`), with zero cross-file concurrency — confirmed by direct code read, not speculation. Both the forward-resolution plan doc and its Slice 3 implementation plan explicitly deferred fixing this "K-way cross-file concurrency" question until after Slice 3's own live measurement — this is that follow-up.
+
+**What shipped** (plan: `docs/ai_plans/implement_tier-b-k-way-concurrency.md`; implemented via `requirement-analyzer` → `backend-developer` → `task-verifier`, one FAIL-then-fix cycle — the first pass's "pinning" test didn't actually assert the invariant it claimed to, caught by `task-verifier` and independently re-confirmed via live red/green testing before the fix was accepted): a bounded worker pool (`maxConcurrentFiles` config field, default `1` — byte-identical to today's serial behavior), single-flight request coalescing + in-flight-aware capacity accounting on the shared `openFileCache`, and pinning to protect an in-flight worker's own file from a concurrent worker's LRU eviction. Full `lib/core` suite: 48 files / 419 tests green, zero modifications to any pre-existing test file. No CLI flag yet — ships mechanism-only, default off, per the plan's own rollout phasing.
+
+**Live calibration against nest** (same commit, same repo, back-to-back same-session runs):
+
+| Run                                                                         | Wall clock | Files processed | Edges applied this run | Total edges |
+| :-------------------------------------------------------------------------- | ---------: | --------------: | ---------------------: | ----------: |
+| K=1 (baseline, §3 above)                                                    |   8m5.345s |       1726/1726 |                  2,024 |      18,260 |
+| K=4 (temp calibration override in `buildLspProviderConfig`, reverted after) |   7m5.954s |       1726/1726 |                    396 |  **18,656** |
+
+Throughput: ~12% faster wall-clock at K=4 — real, but far short of the dramatic win the file-level-serial-loop finding suggested was possible. Plausible explanation (flagged in the plan's own risk section, not yet confirmed): `typescript-language-server`'s `tsserver` backend processes requests largely serially internally, so client-side concurrency only overlaps IPC round-trip latency, not the server's own compute — the same ceiling reverse's `3bc58cba` pipelining fix ran into.
+
+**Open question, unresolved — do not treat K=4's total as confirmed parity:** K=4's run started from the K=1 run's already-corrected 18,260-edge graph (not a fresh Tier-A-only baseline), and applied 396 _more_ corrected edges on top, landing at 18,656 — not the exact-equality parity the plan's K-invariance unit test (which passed, and was independently re-verified via live red/green testing against the real code) predicts for two runs from the same starting state. A diagnostic re-run (default K=1, on top of the K=4-corrected state) was started to determine whether this 396-edge gap is a real K-dependent effect or just an unrelated repeated-full-resync convergence property (i.e., would a second K=1 pass _also_ find ~396 more edges, independent of concurrency?) — **stopped before completion due to time constraints, not yet answered.** Next session: re-run that diagnostic before trusting K=4's edge count as validated, and before resuming the paused vscode run at any K>1.
+
+---
+
 ## Open TypeScript-Specific Findings
 
 1. **Symbol disambiguation: vscode ships two real `Disposable` classes — FIXED 2026-08-05, root cause was elsewhere.** The canonical `src/vs/base/common/lifecycle.ts:526` and a vendored copy in `extensions/copilot/src/util/vs/base/common/lifecycle.ts` are both legitimate, identically-shaped `abstract class Disposable` declarations. The earlier hypothesis (`findNodeByName`'s connection-count ranking itself was wrong) was a dead end — a path-depth tiebreak was tried and reverted. The real root cause: [`ScopeResolver.findFileWithExtension()`](../../lib/core/src/graph/scope-resolver.ts) only ever _appended_ extensions when resolving a relative import, never _swapped_ an existing one — so vscode's own TS-ESM-style imports (`from "./lifecycle.js"` resolving to the real `lifecycle.ts`, TypeScript's NodeNext convention) silently failed to resolve almost everywhere, corrupting `extends`/`implements` edge attribution wholesale. Fixed by adding a swap-based retry branch. Live-verified: the canonical file's incoming edges went from 2 (broken) to 2,316 (correct) after the fix; `findNodeByName`'s original connectivity-only ranking (no depth tiebreak) was correct all along once given correct input data.
@@ -107,5 +151,6 @@ Findings that turned out **not** to be TypeScript-specific (general Docuvia2/Git
 - **2026-08-05**: fresh vscode re-verification — found and fixed TypeScript `abstract class` extraction (grammar node type was never wired in, `99934dd9`) and a failed-pack-then-silent-graph-wipe bug, the most severe found across this benchmark series (`3cd9401f`).
 - **2026-08-05 (continued, same-day)**: root-caused and fixed the actual `Disposable` disambiguation bug (`ScopeResolver`'s `.js`→`.ts` extension-swap gap, finding #1), added `IGraphStore.withTransaction()` + `IGraphNodesRepo.withFtsSyncSuspended()` to make vscode-scale persistence atomic and FTS-cheap (finding #4) — verified via a full successful 96m1.450s ingestion (293,309 nodes / 458,614 edges, `PRAGMA integrity_check = 'ok'`). Fixed an unrelated LSP out-of-workspace-reference crash (`path.relative()` across Windows drive letters) found while diagnosing Docuvia2's own repo showing 0 Tier-B-processed files.
 - **2026-08-06**: Live re-verification against vscode root-caused the Tier B crash as an OOM abort (exit 134) in `tsserver`. Fixed by setting `initializationOptions.maxTsServerMemory` to 8192MB and capturing stderr for diagnostics. The Tier B batch now successfully processes 1,090 files and applies 1,184 edges before ending gracefully via the 120s-timeout path. Also re-measured GitNexus and Docuvia2 on the `nest` repo, noting massive speed improvements in GitNexus (173s -> 25s build time).
+- **2026-08-07**: Phase 4 forward-resolution calibration (issue #11 Slice 3, see §3 above). nest: forward Tier B ran to full completion in 8m5.345s (1726/1726 files, 18,260 total edges) — reverse never reached completion for this repo in any recorded session. vscode: Tier A re-verified at parity (293,309 nodes / 458,612 edges); forward Tier B run paused before completion (see below). Same-day follow-up (see §4 above): nest's 8m5.345s prompted a code read that found `BaseLspEdgeProvider.processAllFiles` has zero cross-file concurrency by design (explicitly deferred past Slice 3 in both planning docs) — implemented K-way concurrency (`requirement-analyzer` → `backend-developer` → `task-verifier`, one FAIL/fix/PASS cycle) behind a default-off `maxConcurrentFiles` config field, 48/419 `lib/core` tests green with zero pre-existing test changes. Live K=4 calibration against nest: 7m5.954s (~12% faster than K=1's 8m5.345s), but landed at 18,656 total edges vs. K=1's 18,260 — not exact parity, and the run wasn't from a matched starting state (K=4 ran on top of K=1's already-corrected graph), so this gap is **not yet root-caused**. A diagnostic re-run to isolate whether it's K-dependent or ordinary repeated-full-resync convergence was started and stopped incomplete (time-boxed session end) — first task next session, before resuming vscode at any K>1.
 
 For full per-session detail beyond this summary, see this file's git history (`git log -- docs/cli-test-analysis/typescript-cli-benchmark.md`) and [`README.md`](./README.md) §3.2/§4 for the cross-tool findings extracted from these sessions.

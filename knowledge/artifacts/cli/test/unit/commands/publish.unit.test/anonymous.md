@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/commands/publish.unit.test.ts#anonymous@L73
+id: artifacts/cli/test/unit/commands/publish.unit.test.ts#anonymous@L67
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/commands/publish.unit.test.ts
@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/unit/commands/publish.unit.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/unit/commands/publish.unit.test.ts`
-

@@ -112,12 +112,16 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
   const lspTimeoutRaw = ctx.parser.getFlagValue(CLI_FLAGS.LSP_TIMEOUT);
   const lspTimeoutMs =
     lspTimeoutRaw !== undefined ? Number(lspTimeoutRaw) : undefined;
+  const lspProcessesRaw = ctx.parser.getFlagValue(CLI_FLAGS.LSP_PROCESSES);
+  const lspProcesses =
+    lspProcessesRaw !== undefined ? Number(lspProcessesRaw) : undefined;
   await analyzeCommand(targetPath, ctx.workspaceRoot, {
     escalateToLsp,
     fallbackAst,
     isInteractive: ctx.isInteractive,
     force,
     lspTimeoutMs,
+    lspProcesses,
     full,
   });
 }

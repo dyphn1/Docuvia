@@ -67,4 +67,6 @@ export const LSP_MESSAGES = {
     `Tier B forward resolution: first definition result for ${file} resolved outside the workspace; falling through to the next in-workspace result`,
   concurrencyClamped: (requested: number, effective: number) =>
     `Tier B LSP batch: maxConcurrentFiles=${requested} clamped to ${effective} (bounded by file count and maxOpenFiles)`,
+  processShardsClamped: (requested: number, effective: number) =>
+    `Tier B LSP batch: maxProcesses=${requested} clamped to ${effective} (bounded by file count)`,
 } as const;

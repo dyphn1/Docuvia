@@ -115,14 +115,26 @@ export interface EdgeResolutionProviderConfig {
    *  documents; re-tune if a real workload shows it's off. See `BaseLspEdgeProvider`'s
    *  `openAndGetSymbols` for the eviction mechanics. */
   maxOpenFiles?: number;
-  /** Bounded cross-file concurrency for BaseLspEdgeProvider's batch loop (Tier B K-way
+  /** Bounded cross-file worker in BaseLspEdgeProvider's batch pipeline (Tier B K-way
    *  concurrency plan): how many files' own processing turns run in flight at once. `1`
    *  (default) reproduces today's strictly-serial behavior exactly -- this field is a pure
    *  throughput knob, never a correctness one (every K must produce identical edges/node_keys;
-   *  see BaseLspEdgeProvider's own K-invariance test). Clamped at runtime to
+   *  see BaseLspEdgeProvider's K-invariance test). Clamped at runtime to
    *  `min(configured, files.length, maxOpenFiles - 1)` -- see BaseLspEdgeProvider's
    *  effectiveConcurrency(). */
   maxConcurrentFiles?: number;
+  /** How many *independent LSP server processes* to shard the batch across (Tier B multi-process
+   *  sharding plan). Each shard spawns its own `LspJsonRpcClient`/server process and resolves a
+   *  disjoint slice of `request.files`; outcomes are merged back into one `EdgeResolutionOutcome`.
+   *  This is the throughput lever that actually sidesteps a single server process's internal
+   *  serial compute (e.g. tsserver), which client-side K-way concurrency (`maxConcurrentFiles`)
+   *  only overlaps IPC latency for. `1` (default) reproduces today's single-process batch exactly.
+   *  A pure throughput knob, never a correctness one -- sharding must yield identical
+   *  edges/filesProcessed/filesFailed as a single process (see BaseLspEdgeProvider's
+   *  process-invariance test). Memory scales linearly with `maxProcesses` (each server holds its
+   *  own process program), so it must be bounded by repo size, not just cores. Clamped at runtime
+   *  to `min(configured, files.length)`. */
+  maxProcesses?: number;
 }
 
 export interface IEdgeResolutionProvider {

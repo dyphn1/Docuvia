@@ -298,6 +298,12 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     return this.config.maxConcurrentFiles ?? 1;
   }
 
+  /** See `EdgeResolutionProviderConfig.maxProcesses` (Tier B multi-process sharding plan). `1`
+   *  reproduces today's single-spawn-per-batch behavior exactly. */
+  private get maxProcesses(): number {
+    return this.config.maxProcesses ?? 1;
+  }
+
   /** Clamps the configured file-concurrency to something the batch can safely run: never more
    *  than there are files to process, and never so high that K in-flight turns' own pinned files
    *  (D7) alone could approach `maxOpenFiles` and starve the LRU cache for every target open (D4).
@@ -310,6 +316,20 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     );
     if (clamped !== requested) {
       this.logger.debug(LSP_MESSAGES.concurrencyClamped(requested, clamped));
+    }
+    return clamped;
+  }
+
+  /** Clamps the configured process-shard count to what the batch can safely have at once: never
+   *  more than there are files to process, and never zero (an empty `files` batch short-circuits
+   *  before this is reached). `maxProcesses` is a *per-core/client* knob, so it is not bound by
+   *  `maxOpenFiles` the way `effectiveConcurrency` is -- memory scales with process count (each
+   *  server holds its own program), which the caller is expected to bound by repo size. */
+  private effectiveProcesses(fileCount: number): number {
+    const requested = this.maxProcesses;
+    const clamped = Math.max(1, Math.min(requested, fileCount));
+    if (clamped !== requested) {
+      this.logger.debug(LSP_MESSAGES.processShardsClamped(requested, clamped));
     }
     return clamped;
   }
@@ -334,14 +354,134 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     }
 
     const timeoutMs = this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const client = this.createClient();
-    return this.runBatch(client, request, timeoutMs);
+    const processCount = this.effectiveProcesses(request.files.length);
+    if (processCount <= 1) {
+      const client = this.createClient();
+      return this.runBatch(client, request, timeoutMs);
+    }
+
+    // Tier B multi-process sharding plan: split the batch across `processCount` independent LSP
+    // server processes (each its own `LspJsonRpcClient`). Unlike `maxConcurrentFiles` (which
+    // only overlaps IPC round-trips over ONE server's serial compute -- the K=4 ~12% ceiling),
+    // sharding gives each server its own process/program so per-request *compute* actually
+    // parallelizes across cores. `edge set parity` is preserved by construction: each file is in
+    // exactly one shard, and node_keys/file outcomes are per-file deterministic, so merging the
+    // shards' outcomes (files-augmented merge) reproduces a single-process batch exactly.
+    const shards = this.partitionRequest(request, processCount);
+    const outcomes = await Promise.all(
+      shards.map((shard) => {
+        const client = this.createClient();
+        return this.runBatch(client, shard, timeoutMs);
+      }),
+    );
+    return this.mergeShardOutcomes(outcomes, request.files);
   }
   private languageIdFor(filePath: string): string {
     return (
       this.languageConfig.languageIdByExtension[path.extname(filePath)] ??
       this.languageConfig.defaultLanguageId
     );
+  }
+
+  /** Splits a request across `processCount` shards for the multi-process sharding driver — a
+   *  contiguous, round-robin-ish partition of `request.files`, with `callsByFile` (the AST
+   *  call-site seeds, forward path only) kept per-file so each shard only carries the seeds for
+   *  the files IT owns. Each file lands in exactly one shard; outer order is preserved per shard
+   *  (shard i = files[i], files[i+P], ...). */
+  private partitionRequest(
+    request: EdgeResolutionRequest,
+    processCount: number,
+  ): EdgeResolutionRequest[] {
+    const shards: EdgeResolutionRequest[] = Array.from(
+      { length: processCount },
+      () => ({
+        workspaceRoot: request.workspaceRoot,
+        files: [],
+        callsByFile: {},
+      }),
+    );
+    for (let i = 0; i < request.files.length; i++) {
+      const file = request.files[i];
+      const shard = shards[i % processCount];
+      shard.files.push(file);
+      const seeds = request.callsByFile?.[file];
+      if (seeds) shard.callsByFile![file] = seeds;
+    }
+    return shards;
+  }
+
+  /** Merges per-shard `EdgeResolutionOutcome`s back into one batch-level outcome for the
+   *  multi-process sharding driver. Edge sets are unioned across shards; `filesProcessed` /
+   *  `filesFailed` are re-ordered to the original `request.files` order (each file is owned by
+   *  exactly one shard, so a shard-completion-order union would otherwise be non-deterministic
+   *  across runs -- byte-identical output to a single-process batch is the keystone invariant).
+   *  `unavailableReason` is dropped unless EVERY shard failed to run, in which case the shards
+   *  are guaranteed to have the same root cause and the first is kept. A shard that resolved the
+   *  whole batch fine never contributes `unavailableReason`, so a single shard that hit a
+   *  per-shard timeout degrades only that shard's files via `filesFailed`, not the whole batch. */
+  private mergeShardOutcomes(
+    outcomes: EdgeResolutionOutcome[],
+    files: string[],
+  ): EdgeResolutionOutcome {
+    const edges: ResolvedCallEdge[] = [];
+    const filesProcessedSet = new Set<string>();
+    const filesFailedByFile = new Map<string, string>();
+    let unavailableReasons = 0;
+
+    for (let i = 0; i < outcomes.length; i++) {
+      const outcome = outcomes[i];
+      edges.push(...outcome.edges);
+      for (const file of outcome.filesProcessed) filesProcessedSet.add(file);
+      for (const failure of outcome.filesFailed)
+        filesFailedByFile.set(failure.file, failure.reason);
+      if (outcome.unavailableReason) unavailableReasons++;
+    }
+
+    edges.sort((a, b) =>
+      (a.sourceNodeKey + "->" + a.targetNodeKey).localeCompare(
+        b.sourceNodeKey + "->" + b.targetNodeKey,
+      ),
+    );
+
+    const { filesProcessed, filesFailed } = this.reorderFiles(
+      files,
+      filesProcessedSet,
+      filesFailedByFile,
+    );
+
+    const merged: EdgeResolutionOutcome = {
+      edges,
+      filesProcessed,
+      filesFailed,
+    };
+    if (unavailableReasons === outcomes.length && outcomes.length > 0)
+      merged.unavailableReason = outcomes.find(
+        (o) => o.unavailableReason,
+      )?.unavailableReason;
+    return merged;
+  }
+
+  /** Rolls per-shard `filesProcessed`/`filesFailed` back into the original `request.files` order
+   *  so sharding's completion order can't leak into the merged outcome (determinism / byte-parity
+   *  with single-process). A file is either processed, failed, or neither (an unreached file --
+   *  excluded from the merged outcome, matching `markUnreachedFilesFailed`'s caller-side restaging
+   *  semantics). */
+  private reorderFiles(
+    files: string[],
+    filesProcessedSet: Set<string>,
+    filesFailedByFile: Map<string, string>,
+  ): {
+    filesProcessed: string[];
+    filesFailed: EdgeResolutionOutcome["filesFailed"];
+  } {
+    const filesProcessed: string[] = [];
+    const filesFailed: EdgeResolutionOutcome["filesFailed"] = [];
+    for (const file of files) {
+      if (filesProcessedSet.has(file)) filesProcessed.push(file);
+      else if (filesFailedByFile.has(file))
+        filesFailed.push({ file, reason: filesFailedByFile.get(file)! });
+    }
+    return { filesProcessed, filesFailed };
   }
 
   private async runBatch(

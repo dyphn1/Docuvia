@@ -35,6 +35,12 @@ export const CLI_FLAGS = {
    *  servers, e.g. csharp-ls on a large Roslyn/MSBuild solution, have no known upper bound on how
    *  long a first response can take). */
   LSP_TIMEOUT: "--lsp-timeout=",
+  /** `analyze --escalate-to-lsp`'s Tier B multi-process sharding override -- how many independent
+   *  LSP server processes to shard the Tier B batch across (`--lsp-processes=N`, default `1` =
+   *  single-process). The throughput lever that sidesteps a single server process's serial
+   *  compute; memory scales linearly with the count. Takes precedence over the
+   *  `DOCUVIA_LSP_MAX_PROCESSES` env var. */
+  LSP_PROCESSES: "--lsp-processes=",
   /** `analyze --escalate-to-lsp --full`'s full-resync trigger (typescript-cli-benchmark.md
    *  §5.3/§5.7 item 1): queues every currently-tracked file into `tierBQueue` before draining it,
    *  instead of just whatever a delta/full ingestion already queued -- the only way to force Tier

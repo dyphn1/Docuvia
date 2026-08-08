@@ -44,7 +44,7 @@ export class QueryWorkflow {
     } catch (err) {
       if (
         err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_OPEN_FAILED
+        err.code === ErrorCodes.DB_NOT_FOUND
       ) {
         await appendQueryLogLine(workspaceRoot, {
           event: QUERY_EVENTS.ERROR,
@@ -52,7 +52,7 @@ export class QueryWorkflow {
           message: QUERY_MESSAGES.DB_NOT_FOUND,
         });
         throw new DocuviaError(
-          ErrorCodes.DB_OPEN_FAILED,
+          ErrorCodes.DB_NOT_FOUND,
           QUERY_MESSAGES.DB_NOT_FOUND,
           err,
         );

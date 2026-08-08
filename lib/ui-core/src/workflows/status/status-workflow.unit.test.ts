@@ -134,8 +134,26 @@ describe("StatusWorkflow.execute()", () => {
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
     const dbOpenError = new DocuviaError(
+      "DB_NOT_FOUND",
+      "Local database not found at /x. Please run docuvia init.",
+    );
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockRejectedValue(dbOpenError),
+    );
+    docuviaFactory.lock();
+
+    await expect(
+      new StatusWorkflow("/workspace/demo", createMockLogger()).execute(),
+    ).rejects.toMatchObject({
+      code: "DB_NOT_FOUND",
+      message: expect.stringContaining("docuvia init"),
+    });
+  });
+
+  it("propagates a DB_OPEN_FAILED (present but unopenable db) with its real cause unmasked", async () => {
+    const dbOpenError = new DocuviaError(
       "DB_OPEN_FAILED",
-      "Failed to open database at /x: ENOENT",
+      "Failed to open database at /x: The module better_sqlite3.node was compiled against a different Node.js version using NODE_MODULE_VERSION 141. This version of Node.js requires NODE_MODULE_VERSION 137.",
     );
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
       vi.fn().mockRejectedValue(dbOpenError),
@@ -146,7 +164,7 @@ describe("StatusWorkflow.execute()", () => {
       new StatusWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toMatchObject({
       code: "DB_OPEN_FAILED",
-      message: expect.stringContaining("docuvia init"),
+      message: expect.stringContaining("compiled against a different Node.js version"),
     });
   });
 

@@ -14,6 +14,7 @@ export const ErrorCodes = {
 
   // Database / memory layer (lib/schema)
   DB_OPEN_FAILED: "DB_OPEN_FAILED",
+  DB_NOT_FOUND: "DB_NOT_FOUND",
   DB_MIGRATION_FAILED: "DB_MIGRATION_FAILED",
   DB_QUERY_FAILED: "DB_QUERY_FAILED",
   DB_LOCKED: "DB_LOCKED",

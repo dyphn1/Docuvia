@@ -39,14 +39,16 @@ export class StatusWorkflow {
         readonly: true,
       });
     } catch (err) {
-      // GraphStore.open() already throws DB_OPEN_FAILED on a missing file (reused as-is here) —
-      // rewrap only to surface the "run docuvia init" guidance old Docuvia's status command gave.
+      // GraphStore.open() throws DB_NOT_FOUND for a genuinely-missing file — rethrow as-is, with
+      // only the "run docuvia init" guidance swapped in (preserving the original cause). A
+      // `DB_OPEN_FAILED` is a present-but-unopenable database and must NOT be masked as "not
+      // found" — its message carries the real cause (native ABI mismatch, permissions, corruption).
       if (
         err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_OPEN_FAILED
+        err.code === ErrorCodes.DB_NOT_FOUND
       ) {
         const notFound = new DocuviaError(
-          ErrorCodes.DB_OPEN_FAILED,
+          ErrorCodes.DB_NOT_FOUND,
           STATUS_MESSAGES.DB_NOT_FOUND,
           err,
         );

@@ -646,7 +646,8 @@ tracks the separate, new crash it surfaced.
 
 > **Fixed 2026-08-06.** The user's chosen remedy was "raise tsserver's heap ceiling," but the
 > first implementation of that (a `NODE_OPTIONS=--max-old-space-size=4096` env override on the
-> spawn, `lib/core/src/lsp/lsp-binary-resolver.ts`) was live-verified insufficient: a follow-up run
+> spawn, `lib/core/src/lsp/lsp-binary-resolver-strategies.ts`'s `buildEnv` hook in the npx
+> fallback) was live-verified insufficient: a follow-up run
 > against the same vscode checkout reproduced the identical exit-134 crash, on a third different
 > file this time. Reading `typescript-language-server`'s own source explained why: it reads
 > `initializationOptions.maxTsServerMemory` directly off the `initialize` request and pushes that

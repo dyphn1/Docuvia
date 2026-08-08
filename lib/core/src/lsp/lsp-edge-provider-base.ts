@@ -18,7 +18,7 @@ import {
   UTF8_ENCODING,
 } from "@workspace/contracts";
 import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
-import type { ResolvedLspBinary } from "./lsp-binary-resolver.js";
+import type { ResolvedLspBinary } from "./lsp-binary-resolver-strategies.js";
 import { LspMethods, LspSymbolKinds, LSP_MESSAGES } from "./lsp-constants.js";
 import {
   buildUniqueNodeKey,
@@ -200,11 +200,12 @@ type RunOneSlotResult =
 
 /**
  * Minimal preflight outcome shape `BaseLspEdgeProvider` actually needs (`ready`/`reason`) --
- * each language's own preflight function (`lsp-preflight.ts` for TS, `python-lsp-preflight.ts`
- * for Python, ...) is free to return a richer, language-specific result object (e.g. TS's
- * `LspPreflightResult` with its own `nodeModulesPresent`/`tsconfigResolvable` fields) as long as
- * it's a structural superset of this -- keeps `LspLanguageConfig.checkPreflight`'s signature
- * language-agnostic instead of tied to TS's own marker-file vocabulary.
+ * each language's own preflight function (`typescript-lsp-preflight.ts` for TS,
+ * `python-lsp-preflight.ts` for Python, ...) is free to return a richer, language-specific result
+ * object (e.g. TS's `TypeScriptLspPreflightResult` with its own `nodeModulesPresent`/
+ * `tsconfigResolvable` fields) as long as it's a structural superset of this -- keeps
+ * `LspLanguageConfig.checkPreflight`'s signature language-agnostic instead of tied to TS's own
+ * marker-file vocabulary.
  */
 export interface LspPreflightOutcome {
   ready: boolean;
@@ -486,7 +487,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
 
     for (let i = 0; i < outcomes.length; i++) {
       const outcome = outcomes[i];
-      edges.push(...outcome.edges);
+      for (const edge of outcome.edges) edges.push(edge);
       for (const file of outcome.filesProcessed) filesProcessedSet.add(file);
       for (const failure of outcome.filesFailed)
         filesFailedByFile.set(failure.file, failure.reason);

@@ -2,9 +2,9 @@ import { describe, it, expect, afterEach, beforeEach } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { resolveLspBinary } from "./lsp-binary-resolver.js";
+import { resolveTypeScriptLspBinary } from "./typescript-lsp-binary-resolver.js";
 
-describe("resolveLspBinary()", () => {
+describe("resolveTypeScriptLspBinary()", () => {
   let workspaceRoot: string;
   let originalNodeOptions: string | undefined;
 
@@ -29,7 +29,7 @@ describe("resolveLspBinary()", () => {
   });
 
   it("prefers an explicit override over any other resolution", () => {
-    const resolved = resolveLspBinary(workspaceRoot, {
+    const resolved = resolveTypeScriptLspBinary(workspaceRoot, {
       binary: "/custom/path/to/server",
       args: ["--custom-flag"],
     });
@@ -41,7 +41,7 @@ describe("resolveLspBinary()", () => {
   });
 
   it("defaults an override's args to --stdio when none are given", () => {
-    const resolved = resolveLspBinary(workspaceRoot, {
+    const resolved = resolveTypeScriptLspBinary(workspaceRoot, {
       binary: "/custom/server",
     });
     expect(resolved.args).toEqual(["--stdio"]);
@@ -57,7 +57,7 @@ describe("resolveLspBinary()", () => {
         : "typescript-language-server";
     fs.writeFileSync(path.join(binDir, binName), "#!/bin/sh\n");
 
-    const resolved = resolveLspBinary(workspaceRoot);
+    const resolved = resolveTypeScriptLspBinary(workspaceRoot);
 
     expect(resolved.locallyResolved).toBe(true);
     expect(resolved.command).toBe(path.join(binDir, binName));
@@ -66,7 +66,7 @@ describe("resolveLspBinary()", () => {
   });
 
   it("falls back to npx --no-install when no local copy is resolvable", () => {
-    const resolved = resolveLspBinary(workspaceRoot);
+    const resolved = resolveTypeScriptLspBinary(workspaceRoot);
 
     expect(resolved.locallyResolved).toBe(false);
     expect(resolved.command).toBe("npx");
@@ -80,14 +80,14 @@ describe("resolveLspBinary()", () => {
 
   describe("heap size env override", () => {
     it("sets NODE_OPTIONS to --max-old-space-size=8192 when unset", () => {
-      const resolved = resolveLspBinary(workspaceRoot);
+      const resolved = resolveTypeScriptLspBinary(workspaceRoot);
       expect(resolved.env?.NODE_OPTIONS).toBe("--max-old-space-size=8192");
     });
 
     it("appends the flag rather than replacing an unrelated existing NODE_OPTIONS", () => {
       process.env.NODE_OPTIONS = "--stack-trace-limit=100";
 
-      const resolved = resolveLspBinary(workspaceRoot);
+      const resolved = resolveTypeScriptLspBinary(workspaceRoot);
 
       expect(resolved.env?.NODE_OPTIONS).toBe(
         "--stack-trace-limit=100 --max-old-space-size=8192",
@@ -97,7 +97,7 @@ describe("resolveLspBinary()", () => {
     it("leaves env undefined when NODE_OPTIONS already sets --max-old-space-size", () => {
       process.env.NODE_OPTIONS = "--max-old-space-size=8192";
 
-      const resolved = resolveLspBinary(workspaceRoot);
+      const resolved = resolveTypeScriptLspBinary(workspaceRoot);
 
       expect(resolved.env).toBeUndefined();
     });

@@ -5,7 +5,6 @@
 export const CppLspConstants = {
   BINARY_NAME: "clangd",
   DEFAULT_ARGS: [] as string[],
-  VERSION_FLAG: "--version",
 } as const;
 
 export const CPP_LSP_MESSAGES = {

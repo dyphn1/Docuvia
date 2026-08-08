@@ -168,13 +168,14 @@ describe("LspJsonRpcClient (real subprocess, Content-Length framing)", () => {
 });
 
 /**
- * Regression coverage for the Windows `node_modules/.bin` shim gap: `resolveLspBinary()` prefers
+ * Regression coverage for the Windows `node_modules/.bin` shim gap: `resolveNpmNpxBinary()` prefers
  * a `.cmd` shim on Windows (that's what `npm`/`pnpm` produce for a pure-JS bin like
- * `typescript-language-server` -- see `lsp-binary-resolver.ts`), and plain `node:child_process`
- * cannot spawn a `.cmd`/`.bat` file directly there (throws `EINVAL` synchronously). The other
- * tests in this file only ever spawn `process.execPath` (a real `.exe`), so they never exercised
- * this path. Mirrors the inline `process.platform === "win32"` branching convention used in
- * `lsp-binary-resolver.unit.test.ts` -- exercised, not skipped, on whichever OS actually runs it.
+ * `typescript-language-server` -- see `lsp-binary-resolver-strategies.ts`), and plain
+ * `node:child_process` cannot spawn a `.cmd`/`.bat` file directly there (throws `EINVAL`
+ * synchronously). The other tests in this file only ever spawn `process.execPath` (a real `.exe`),
+ * so they never exercised this path. Mirrors the inline `process.platform === "win32"` branching
+ * convention used in `lsp-binary-resolver-strategies.unit.test.ts` -- exercised, not skipped, on
+ * whichever OS actually runs it.
  */
 describe("LspJsonRpcClient (spawning through an npm/pnpm-style node_modules/.bin shim)", () => {
   let tmpDir: string;
@@ -216,7 +217,7 @@ describe("LspJsonRpcClient (spawning through an npm/pnpm-style node_modules/.bin
 
 /**
  * Regression coverage for the bare-`npx`-command Windows spawn gap (multi-language-lsp-support
- * plan, Slice 1): `resolveLspBinary()`/`resolveNpmNpxBinary()`'s `npx --no-install <package>`
+ * plan, Slice 1): `resolveNpmNpxBinary()`/`resolveNpmNpxBinary()`'s `npx --no-install <package>`
  * fallback spawns the literal bare command `"npx"` (no `.cmd` extension to trip the shim check
  * above), which plain `child_process.spawn()` cannot exec directly on Windows either -- discovered
  * via a real `pyright-langserver` spawn during this slice, confirmed to affect TypeScript's own
@@ -241,7 +242,7 @@ describe("LspJsonRpcClient (spawning the bare npx command)", () => {
       const client = new LspJsonRpcClient();
       await client.start({
         // The command string that actually matters is the bare "npx" name (matching what
-        // resolveLspBinary()/resolveNpmNpxBinary() literally pass), spawned with this fixture's
+        // resolveNpmNpxBinary()/resolveNpmNpxBinary() literally pass), spawned with this fixture's
         // dir prepended to PATH so it resolves to the fake wrapper above rather than any real npx.
         command: "npx",
         args: [],

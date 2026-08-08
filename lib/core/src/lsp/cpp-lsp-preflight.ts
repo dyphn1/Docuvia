@@ -1,14 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { CppLspConstants, CPP_LSP_MESSAGES } from "./cpp-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
-
-const execFileAsync = promisify(execFile);
-
-const PROBE_TIMEOUT_MS = 5000;
 
 export interface CppLspPreflightResult extends LspPreflightOutcome {
   markerFileResolvable: boolean;
@@ -37,20 +31,6 @@ function getClangdInstallDirs(): string[] {
     return ["/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin"];
   }
   return ["/usr/lib/llvm/bin", "/usr/local/bin"];
-}
-
-async function probeClangdPathResolvable(
-  command: string,
-  args: string[],
-): Promise<boolean> {
-  try {
-    await execFileAsync(command, [...args, CppLspConstants.VERSION_FLAG], {
-      timeout: PROBE_TIMEOUT_MS,
-    });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**

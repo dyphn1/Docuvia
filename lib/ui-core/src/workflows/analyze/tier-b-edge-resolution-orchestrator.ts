@@ -8,6 +8,7 @@ import {
   UTF8_ENCODING,
   type EdgeResolutionCallSite,
   type EdgeResolutionFileFailure,
+  type EdgeResolutionOutcome,
   type EdgeResolutionProviderConfig,
   type IGitProvider,
   type IGraphStore,
@@ -66,6 +67,21 @@ export interface ResolveEdgesForLanguageBucketsDeps {
    *  `buildCallsByFileForTypescript`'s own doc comment for why a plain sha256-of-disk comparison
    *  would silently report every clean, unmodified file "stale" and defeat the whole flip. */
   git: IGitProvider;
+}
+
+/** Merges one provider's outcome into the batch accumulators with bounded loops instead of
+ *  `push(...hugeArray)` spreads -- an uncapped `--lsp-timeout=0` full-repo batch can return
+ *  >~125k edges from a single bucket, and V8 throws `RangeError: Maximum call stack size
+ *  exceeded` when such an array is spread into a function call (uncapped batch regression).  */
+function mergeOutcomeInto(
+  outcome: EdgeResolutionOutcome,
+  edges: ResolvedCallEdge[],
+  filesProcessed: string[],
+  filesFailed: EdgeResolutionFileFailure[],
+): void {
+  for (const edge of outcome.edges) edges.push(edge);
+  for (const file of outcome.filesProcessed) filesProcessed.push(file);
+  for (const failure of outcome.filesFailed) filesFailed.push(failure);
 }
 
 /**
@@ -128,9 +144,7 @@ export async function resolveEdgesForLanguageBuckets(
       callsByFile,
     });
 
-    edges.push(...outcome.edges);
-    filesProcessed.push(...outcome.filesProcessed);
-    filesFailed.push(...outcome.filesFailed);
+    mergeOutcomeInto(outcome, edges, filesProcessed, filesFailed);
     if (outcome.unavailableReason) {
       degradedLanguages.push({
         languageId,

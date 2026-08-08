@@ -15,7 +15,7 @@ const execFileAsync = promisify(execFile);
 
 /** Short timeout for the live `npx --no-install ... --version` probe -- a cheap liveness check,
  *  not the batch itself, so it must fail fast rather than hang the gate. Mirrors
- *  `lsp-preflight.ts`'s `NPX_PROBE_TIMEOUT_MS` for TS. */
+ *  `typescript-lsp-preflight.ts`'s `NPX_PROBE_TIMEOUT_MS` for TS. */
 const NPX_PROBE_TIMEOUT_MS = 5000;
 
 export interface PythonLspPreflightResult extends LspPreflightOutcome {
@@ -40,7 +40,7 @@ function checkMarkerFileResolvable(workspaceRoot: string): boolean {
   );
 }
 
-/** Live probe for the `npx --no-install` fallback case (mirrors `lsp-preflight.ts`'s
+/** Live probe for the `npx --no-install` fallback case (mirrors `typescript-lsp-preflight.ts`'s
  *  `probeNpxResolvable`) -- probes the `pyright` package's own CLI (`--version`), not
  *  `pyright-langserver` directly: the langserver binary has no `--version` flag and would just
  *  sit waiting on stdio until this probe's timeout, misreporting a perfectly resolvable install
@@ -79,9 +79,10 @@ async function probePyrightNpxResolvable(
 
 /**
  * Python's pre-flight readiness gate (multi-language-lsp-support plan, Finding D), mirroring
- * `lsp-preflight.ts`'s `checkLspPreflight()` shape for TS: environment readiness (a Python
- * ecosystem marker file present, LSP binary resolvable). No `node_modules`-presence check here --
- * unlike TS/JS, a Python project has no npm-ecosystem marker of its own.
+ * `typescript-lsp-preflight.ts`'s `checkTypeScriptLspPreflight()` shape for TS: environment
+ * readiness (a Python ecosystem marker file present, LSP binary resolvable). No
+ * `node_modules`-presence check here -- unlike TS/JS, a Python project has no npm-ecosystem
+ * marker of its own.
  */
 export async function checkPythonLspPreflight(
   workspaceRoot: string,

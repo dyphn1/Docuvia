@@ -1,16 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { ConfigFilenames } from "../discovery/discovery-constants.js";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { GoLspConstants, GO_LSP_MESSAGES } from "./go-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
-
-const execFileAsync = promisify(execFile);
-
-const PROBE_TIMEOUT_MS = 5000;
 
 export interface GoLspPreflightResult extends LspPreflightOutcome {
   markerFileResolvable: boolean;
@@ -31,21 +25,6 @@ function getGoBinDirs(): string[] {
   if (process.env.GOPATH) dirs.push(path.join(process.env.GOPATH, "bin"));
   dirs.push(path.join(os.homedir(), "go", "bin"));
   return dirs;
-}
-
-/** Live probe to verify the gopls binary can actually execute -- runs `gopls version`. */
-async function probeGoplsPathResolvable(
-  command: string,
-  args: string[],
-): Promise<boolean> {
-  try {
-    await execFileAsync(command, [...args, GoLspConstants.VERSION_FLAG], {
-      timeout: PROBE_TIMEOUT_MS,
-    });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**

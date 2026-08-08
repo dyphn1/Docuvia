@@ -1,9 +1,9 @@
 ---
-id: lib/schema/src/sqlite/graph-store.ts#GraphStore.anonymous@L316
+id: lib/schema/src/sqlite/graph-store.ts#NOT_FOUND
 type: symbol
-name: anonymous
+name: NOT_FOUND
 filePath: lib/schema/src/sqlite/graph-store.ts
 ---
-# Symbol: anonymous
+# Symbol: NOT_FOUND
 
 File: `lib/schema/src/sqlite/graph-store.ts`

@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/commands/analyze.unit.test.ts#anonymous@L693
+id: artifacts/cli/test/unit/commands/analyze.unit.test.ts#anonymous@L83
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/commands/analyze.unit.test.ts

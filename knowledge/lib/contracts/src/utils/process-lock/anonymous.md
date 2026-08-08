@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/utils/process-lock.ts#anonymous@L123
+id: lib/contracts/src/utils/process-lock.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/contracts/src/utils/process-lock.ts

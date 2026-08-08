@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts#handler@L206
+id: lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts#handler@L265
 type: symbol
 name: handler
 filePath: lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts

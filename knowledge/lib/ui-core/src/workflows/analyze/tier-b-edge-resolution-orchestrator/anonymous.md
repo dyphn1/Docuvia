@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.ts#anonymous@L169
+id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.ts`
+.ts`

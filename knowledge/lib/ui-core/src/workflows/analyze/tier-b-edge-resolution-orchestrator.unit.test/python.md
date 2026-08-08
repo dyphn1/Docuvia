@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts#python@L250
+id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts#python
 type: symbol
 name: python
 filePath: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts

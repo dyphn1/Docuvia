@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts#getAllHashes
+id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts#resolveEdges
 type: symbol
-name: getAllHashes
+name: resolveEdges
 filePath: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts
 ---
-# Symbol: getAllHashes
+# Symbol: resolveEdges
 
 File: `lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts`

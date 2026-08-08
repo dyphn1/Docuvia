@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/snapshot/pack-current-graph.ts#anonymous@L85
+id: lib/ui-core/src/workflows/snapshot/pack-current-graph.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/snapshot/pack-current-graph.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/snapshot/pack-current-graph.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/snapshot/pack-current-graph.ts`
+ts`

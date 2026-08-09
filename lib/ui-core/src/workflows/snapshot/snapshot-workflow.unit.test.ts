@@ -172,8 +172,42 @@ describe("SnapshotWorkflow.execute()", () => {
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {
     const dbOpenError = new DocuviaError(
+      "DB_NOT_FOUND",
+      "Local database not found at /x. Please run docuvia init.",
+    );
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockRejectedValue(dbOpenError),
+    );
+    docuviaFactory.register(TOKENS.SnapshotRenderer, () => ({
+      render: vi.fn(),
+    }));
+    docuviaFactory.register(TOKENS.KnowledgeGitService, () => ({
+      ensureKnowledgeBranch: vi.fn(),
+      installPostCommitHook: vi.fn(),
+      installPrePushHook: vi.fn(),
+      removePostCommitHook: vi.fn(),
+      removePrePushHook: vi.fn(),
+      repairDuplicatePostCommitHook: vi.fn(),
+      deleteKnowledgeBranch: vi.fn(),
+      packSnapshotToKnowledgeBranch: vi.fn(),
+      syncKnowledgeBranch: vi.fn(),
+      resolveNewestSourceTrailerSha: vi.fn().mockResolvedValue(undefined),
+      runUnderKnowledgeLock: vi.fn().mockImplementation((_cwd, fn) => fn()),
+    }));
+    docuviaFactory.lock();
+
+    await expect(
+      new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute(),
+    ).rejects.toMatchObject({
+      code: "DB_NOT_FOUND",
+      message: expect.stringContaining("docuvia init"),
+    });
+  });
+
+  it("propagates a DB_OPEN_FAILED (present but unopenable db) with its real cause unmasked", async () => {
+    const dbOpenError = new DocuviaError(
       "DB_OPEN_FAILED",
-      "Failed to open database at /x: ENOENT",
+      "Failed to open database at /x: The module better_sqlite3.node was compiled against a different Node.js version using NODE_MODULE_VERSION 141.",
     );
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
       vi.fn().mockRejectedValue(dbOpenError),
@@ -200,7 +234,9 @@ describe("SnapshotWorkflow.execute()", () => {
       new SnapshotWorkflow("/workspace/demo", createMockLogger()).execute(),
     ).rejects.toMatchObject({
       code: "DB_OPEN_FAILED",
-      message: expect.stringContaining("docuvia init"),
+      message: expect.stringContaining(
+        "compiled against a different Node.js version",
+      ),
     });
   });
 

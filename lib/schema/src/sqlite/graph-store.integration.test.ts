@@ -1501,3 +1501,33 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(elapsedMs).toBeLessThan(10_000);
   });
 });
+
+describe("GraphStore.open DB classification", () => {
+  let tempDir: string;
+
+  beforeEach(() => {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-open-class-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it("readonly open on a genuinely-missing file throws DB_NOT_FOUND, not DB_OPEN_FAILED", async () => {
+    const missingDbPath = path.join(tempDir, ".docuvia", "local.db");
+    await expect(
+      GraphStore.open({ dbPath: missingDbPath, readonly: true }),
+    ).rejects.toMatchObject({
+      code: "DB_NOT_FOUND",
+      message: expect.stringContaining("docuvia init"),
+    });
+  });
+
+  it("readonly open on a present file still succeeds (no false DB_NOT_FOUND)", async () => {
+    const dbPath = path.join(tempDir, ".docuvia", "local.db");
+    const writer = await GraphStore.open({ dbPath });
+    await writer.close();
+    const reader = await GraphStore.open({ dbPath, readonly: true });
+    await reader.close();
+  });
+});

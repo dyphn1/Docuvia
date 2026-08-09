@@ -38,6 +38,8 @@ const GRAPH_STORE_ERROR_MESSAGES = {
   INIT_LOCK_TIMED_OUT: (lockPath: string) =>
     `Timed out waiting for the database init lock at ${lockPath} — another Docuvia process may be stuck`,
   OPEN_FAILED: (dbPath: string) => `Failed to open database at ${dbPath}`,
+  NOT_FOUND: (dbPath: string) =>
+    `Local database not found at ${dbPath}. Please run "docuvia init".`,
   MIGRATIONS_FAILED: "Failed to apply migrations",
   PRUNE_MISSING_FILES_FAILED: "Failed to prune missing files",
 } as const;
@@ -130,6 +132,18 @@ export class GraphStore implements IGraphStore {
     // comment), so serialize it with a cross-process lock. Readonly opens never touch the file
     // and don't need it. The lock file lives next to dbPath, so its directory must exist first.
     fs.mkdirSync(path.dirname(opts.dbPath), { recursive: true });
+
+    // Classify a genuinely-missing database as `DB_NOT_FOUND` — a distinct code from
+    // `DB_OPEN_FAILED`, which is reserved for a present-but-unopenable database (native ABI
+    // mismatch, permissions, corruption). Read workflows ("run docuvia init") only match on the
+    // former; masking the latter as "local database not found" hides the real cause (e.g.
+    // better-sqlite3's NODE_MODULE_VERSION drift) and sends users re-running `init` fruitlessly.
+    if (opts.readonly && !fs.existsSync(opts.dbPath)) {
+      throw new DocuviaError(
+        ErrorCodes.DB_NOT_FOUND,
+        GRAPH_STORE_ERROR_MESSAGES.NOT_FOUND(opts.dbPath),
+      );
+    }
 
     const lockPath = opts.readonly
       ? undefined

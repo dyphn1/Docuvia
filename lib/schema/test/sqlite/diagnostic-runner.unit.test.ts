@@ -21,6 +21,28 @@ describe("SqliteDiagnosticRunner", () => {
 
     expect(result["sqlite_connection"].status).toBe(DiagnosticStatus.FAIL);
     expect(result["sqlite_connection"].details).toContain("Cannot open");
+    // Without an ABI-marker, no dedicated abi_mismatch check is emitted.
+    expect(result["sqlite_abi_mismatch"]).toBeUndefined();
+  });
+
+  it("emits a dedicated sqlite_abi_mismatch FAIL when the native module has a Node ABI drift", async () => {
+    vi.mocked(DatabaseConstructor).mockImplementation(() => {
+      throw new Error(
+        "The module better_sqlite3.node was compiled against a different Node.js version using NODE_MODULE_VERSION 141. This version of Node.js requires NODE_MODULE_VERSION 137.",
+      );
+    });
+    const runner = new SqliteDiagnosticRunner();
+    const result = await runner.checkHealth("/test.db");
+
+    const abi = result["sqlite_abi_mismatch"];
+    expect(abi.status).toBe(DiagnosticStatus.FAIL);
+    expect(abi.message).toContain("NODE_MODULE_VERSION drift");
+    expect(abi.suggestion).toContain("rebuild better-sqlite3");
+    expect(abi.suggestion).toContain("SAME Node.js");
+    // The connection check inherits the ABI suggestion, not the permissions one.
+    expect(result["sqlite_connection"].suggestion).toContain(
+      "rebuild better-sqlite3",
+    );
   });
 
   it("returns PASS for good integrity and normal WAL", async () => {

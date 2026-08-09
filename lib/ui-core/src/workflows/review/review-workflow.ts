@@ -50,16 +50,13 @@ export class ReviewWorkflow {
         readonly: true,
       });
     } catch (err) {
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_OPEN_FAILED
-      ) {
+      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_NOT_FOUND) {
         await appendReviewLogLine(workspaceRoot, {
           event: REVIEW_EVENTS.ERROR,
           message: REVIEW_MESSAGES.DB_NOT_FOUND,
         });
         throw new DocuviaError(
-          ErrorCodes.DB_OPEN_FAILED,
+          ErrorCodes.DB_NOT_FOUND,
           REVIEW_MESSAGES.DB_NOT_FOUND,
           err,
         );

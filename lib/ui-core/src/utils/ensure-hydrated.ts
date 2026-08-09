@@ -14,8 +14,9 @@ const ENSURE_HYDRATED_REFUSED_MESSAGE =
  *
  * Best-effort: if the store can't even be opened (e.g. a permissions issue), this silently
  * returns rather than throwing — the caller's own subsequent `openStore()` call surfaces the
- * same failure as a clearer `DB_OPEN_FAILED` `DocuviaError` with its usual "run docuvia init"
- * messaging, so there's no value in this helper throwing its own, less-specific error first.
+ * same failure as a clearer `DocuviaError` (its usual "run docuvia init" guidance for a missing
+ * database, or the real cause — e.g. a native ABI mismatch — for a present-but-unopenable one)
+ * so there's no value in this helper throwing its own, less-specific error first.
  */
 export async function ensureHydrated(
   workspaceRoot: string,

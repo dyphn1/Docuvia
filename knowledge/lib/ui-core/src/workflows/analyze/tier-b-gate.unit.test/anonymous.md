@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts#anonymous@L83
+id: lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts#anonymous@L78
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/analyze/tier-b-gate.unit.test.ts`
+

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-json-rpc-client.ts#onError
+id: lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.onError
 type: symbol
 name: onError
 filePath: lib/core/src/lsp/lsp-json-rpc-client.ts

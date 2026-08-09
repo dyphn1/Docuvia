@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-json-rpc-client.ts#reject
+id: lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.reject
 type: symbol
 name: reject
 filePath: lib/core/src/lsp/lsp-json-rpc-client.ts

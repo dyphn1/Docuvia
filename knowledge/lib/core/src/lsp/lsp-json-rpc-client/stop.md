@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-json-rpc-client.ts#stop
+id: lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.stop
 type: symbol
 name: stop
 filePath: lib/core/src/lsp/lsp-json-rpc-client.ts

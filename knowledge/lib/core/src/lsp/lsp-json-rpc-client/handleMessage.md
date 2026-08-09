@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-json-rpc-client.ts#handleMessage
+id: lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.handleMessage
 type: symbol
 name: handleMessage
 filePath: lib/core/src/lsp/lsp-json-rpc-client.ts

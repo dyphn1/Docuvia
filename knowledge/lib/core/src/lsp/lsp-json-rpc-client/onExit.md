@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-json-rpc-client.ts#onExit
+id: lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.onExit
 type: symbol
 name: onExit
 filePath: lib/core/src/lsp/lsp-json-rpc-client.ts

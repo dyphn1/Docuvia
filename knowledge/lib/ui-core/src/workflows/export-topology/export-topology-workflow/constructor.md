@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/export-topology/export-topology-workflow.ts#constructor
+id: lib/ui-core/src/workflows/export-topology/export-topology-workflow.ts#ExportTopologyWorkflow.constructor
 type: symbol
 name: constructor
 filePath: lib/ui-core/src/workflows/export-topology/export-topology-workflow.ts

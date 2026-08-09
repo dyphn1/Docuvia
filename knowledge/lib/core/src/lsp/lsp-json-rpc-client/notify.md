@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-json-rpc-client.ts#notify
+id: lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.notify
 type: symbol
 name: notify
 filePath: lib/core/src/lsp/lsp-json-rpc-client.ts

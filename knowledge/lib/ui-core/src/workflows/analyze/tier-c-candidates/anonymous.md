@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/tier-c-candidates.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/analyze/tier-c-candidates.ts`
+ts`

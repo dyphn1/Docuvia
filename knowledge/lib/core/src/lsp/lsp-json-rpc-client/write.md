@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-json-rpc-client.ts#write
+id: lib/core/src/lsp/lsp-json-rpc-client.ts#LspJsonRpcClient.write
 type: symbol
 name: write
 filePath: lib/core/src/lsp/lsp-json-rpc-client.ts

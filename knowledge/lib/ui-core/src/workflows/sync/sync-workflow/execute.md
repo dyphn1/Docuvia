@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/sync/sync-workflow.ts#execute
+id: lib/ui-core/src/workflows/sync/sync-workflow.ts#SyncWorkflow.execute
 type: symbol
 name: execute
 filePath: lib/ui-core/src/workflows/sync/sync-workflow.ts

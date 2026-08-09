@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts#notify
+id: lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts#FakeLspClient.notify
 type: symbol
 name: notify
 filePath: lib/core/src/lsp/python-lsp-edge-provider.unit.test.ts

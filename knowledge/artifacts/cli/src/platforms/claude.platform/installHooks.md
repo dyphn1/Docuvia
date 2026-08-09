@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/claude.platform.ts#installHooks
+id: artifacts/cli/src/platforms/claude.platform.ts#ClaudePlatform.installHooks
 type: symbol
 name: installHooks
 filePath: artifacts/cli/src/platforms/claude.platform.ts

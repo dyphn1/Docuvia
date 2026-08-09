@@ -43,10 +43,7 @@ export class StatusWorkflow {
       // only the "run docuvia init" guidance swapped in (preserving the original cause). A
       // `DB_OPEN_FAILED` is a present-but-unopenable database and must NOT be masked as "not
       // found" — its message carries the real cause (native ABI mismatch, permissions, corruption).
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_NOT_FOUND
-      ) {
+      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_NOT_FOUND) {
         const notFound = new DocuviaError(
           ErrorCodes.DB_NOT_FOUND,
           STATUS_MESSAGES.DB_NOT_FOUND,

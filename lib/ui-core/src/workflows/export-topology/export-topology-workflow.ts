@@ -46,10 +46,7 @@ export class ExportTopologyWorkflow {
         readonly: true,
       });
     } catch (err) {
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_NOT_FOUND
-      ) {
+      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_NOT_FOUND) {
         await appendExportTopologyLogLine(workspaceRoot, {
           event: EXPORT_TOPOLOGY_EVENTS.ERROR,
           message: EXPORT_TOPOLOGY_MESSAGES.DB_NOT_FOUND,

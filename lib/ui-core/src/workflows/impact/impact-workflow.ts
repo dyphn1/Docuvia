@@ -43,10 +43,7 @@ export class ImpactWorkflow {
         readonly: true,
       });
     } catch (err) {
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_NOT_FOUND
-      ) {
+      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_NOT_FOUND) {
         await appendImpactLogLine(workspaceRoot, {
           event: IMPACT_EVENTS.ERROR,
           target,

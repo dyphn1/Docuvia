@@ -79,10 +79,7 @@ export class SyncWorkflow {
         readonly: true,
       });
     } catch (err) {
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_NOT_FOUND
-      ) {
+      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_NOT_FOUND) {
         await appendSyncLogLine(workspaceRoot, {
           event: SYNC_EVENTS.ERROR,
           projectId,

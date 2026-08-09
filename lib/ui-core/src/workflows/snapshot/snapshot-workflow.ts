@@ -43,10 +43,7 @@ export class SnapshotWorkflow {
         readonly: false,
       });
     } catch (err) {
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_NOT_FOUND
-      ) {
+      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_NOT_FOUND) {
         await appendSnapshotLogLine(this.workspaceRoot, {
           event: SNAPSHOT_EVENTS.ERROR,
           message: SNAPSHOT_MESSAGES.DB_NOT_FOUND,

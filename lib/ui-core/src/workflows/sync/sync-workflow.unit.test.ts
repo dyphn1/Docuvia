@@ -274,7 +274,9 @@ describe("SyncWorkflow.execute()", () => {
       ).execute({ projectId: "1" }),
     ).rejects.toMatchObject({
       code: "DB_OPEN_FAILED",
-      message: expect.stringContaining("compiled against a different Node.js version"),
+      message: expect.stringContaining(
+        "compiled against a different Node.js version",
+      ),
     });
   });
 

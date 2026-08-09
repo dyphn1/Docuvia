@@ -42,10 +42,7 @@ export class QueryWorkflow {
         readonly: true,
       });
     } catch (err) {
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_NOT_FOUND
-      ) {
+      if (err instanceof DocuviaError && err.code === ErrorCodes.DB_NOT_FOUND) {
         await appendQueryLogLine(workspaceRoot, {
           event: QUERY_EVENTS.ERROR,
           target,

@@ -228,6 +228,7 @@ function printTierBBatchResult(
         result.edgesApplied,
         result.filesFailed,
         result.filesFailedPermanent,
+        Boolean(result.zeroProgressWatchdogTripped),
       ),
     );
   }

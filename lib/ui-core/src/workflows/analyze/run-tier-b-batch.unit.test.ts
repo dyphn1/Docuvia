@@ -397,6 +397,184 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
+  it("trips the zero-progress watchdog on the Nth consecutive zero-progress batch: the still-retryable remainder is declared permanently-failed, dropped from the re-queue, and stamped (issue #22 split 2 -- the per-file retryable:false classification can't reach files whose only signal is a batch-level deadline cut, so the cross-batch counter is the safety net for them)", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store, fake } = makeStore([]);
+    // Two prior batches already drained an attemptable set with zero progress -- this run is the
+    // 3rd consecutive one (DEFAULT_TIER_B_ZERO_PROGRESS_MAX_BATCHES: 3).
+    store.meta.set(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES, "2");
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [
+            {
+              file: "a.ts",
+              reason: "exceeded its batch timeout",
+              retryable: true,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    // The watchdog escalated the still-retryable remainder to permanent: nothing is re-queued,
+    // the file is reported as permanently failed, and it is stamped Tier-B-tried.
+    expect(result.filesFailed).toBe(0);
+    expect(result.filesFailedPermanent).toBe(1);
+    expect(result.zeroProgressWatchdogTripped).toBe(true);
+    const pending = JSON.parse(
+      store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
+    );
+    expect(pending.remainingQueue).toEqual([]);
+    expect(fake.tierBProcessed).toEqual([
+      { projectId: 1, filePath: "a.ts", commitSha: HEAD_SHA },
+    ]);
+    // The streak is reset once the watchdog has fired.
+    expect(
+      store.meta.get(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES),
+    ).toBe("0");
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("accumulates the zero-progress streak across batches and does NOT trip before the Nth one -- the retryable failure stays re-queued (watchdog counts up, not over)", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store, fake } = makeStore([]);
+    store.meta.set(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES, "1");
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [
+            {
+              file: "a.ts",
+              reason: "exceeded its batch timeout",
+              retryable: true,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    // 1 prior streak + this zero-progress batch = 2 < 3: no watchdog, the file stays re-queued.
+    expect(result.zeroProgressWatchdogTripped).toBe(false);
+    expect(result.filesFailed).toBe(1);
+    expect(result.filesFailedPermanent).toBe(0);
+    const pending = JSON.parse(
+      store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
+    );
+    expect(pending.remainingQueue).toEqual([
+      { file: "a.ts", commitSha: HEAD_SHA },
+    ]);
+    expect(
+      store.meta.get(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES),
+    ).toBe("2");
+    // No stamping on a not-yet-triggered batch.
+    expect(fake.tierBProcessed).toEqual([]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("does not advance the streak when a zero-progress batch has nothing retryable left to escalate (every attempt already permanently failed -- nothing to re-attempt, so nothing for the watchdog to retire)", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store } = makeStore([]);
+    store.meta.set(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES, "2");
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [
+            { file: "a.ts", reason: "no package metadata", retryable: false },
+          ],
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    // No 0-progress batch with nothing to re-queue: the permanent failure retires the file
+    // directly, so the watchdog has nothing to escalate -- and must not fire just because the
+    // streak was at the threshold.
+    expect(result.zeroProgressWatchdogTripped).toBe(false);
+    expect(
+      store.meta.get(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES),
+    ).toBe("2");
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("resets the zero-progress streak whenever a batch actually makes progress", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store } = makeStore(["a.ts#foo"]);
+    store.meta.set(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES, "2");
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [],
+          filesProcessed: ["a.ts"],
+          filesFailed: [],
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(result.zeroProgressWatchdogTripped).toBe(false);
+    expect(
+      store.meta.get(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES),
+    ).toBe("0");
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
   it("keeps a retryable failure (retryable: true -- whole-batch timeout cut the file's turn short) in the remaining queue for the next batch", async () => {
     const workspaceRoot = await makeWorkspace();
     const { store } = makeStore([]);
@@ -429,6 +607,52 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
 
     expect(result.filesFailed).toBe(1);
     expect(result.filesFailedPermanent).toBe(0);
+    const pending = JSON.parse(
+      store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
+    );
+    expect(pending.remainingQueue).toEqual([
+      { file: "a.ts", commitSha: HEAD_SHA },
+    ]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("does not let a degraded batch (provider unavailable -- an environment problem, not a file one) count toward the zero-progress streak", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store } = makeStore([]);
+    // Two prior zero-progress batches queued the file. A degraded run between them must not
+    // silently erase that history (nor advance it -- the lack of progress is environmental).
+    store.meta.set(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES, "2");
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: false, reason: "binary not resolvable" }),
+        async () => ({
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [],
+          unavailableReason: "binary not resolvable",
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(result.degraded).toBe(true);
+    expect(result.zeroProgressWatchdogTripped).toBe(false);
+    // The streak is untouched by a degraded run -- the file is NOT escalated to permanent on a
+    // share of an environment outage.
+    expect(
+      store.meta.get(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES),
+    ).toBe("2");
     const pending = JSON.parse(
       store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
     );

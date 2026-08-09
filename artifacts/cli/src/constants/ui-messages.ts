@@ -147,6 +147,7 @@ export const UI_MESSAGES = {
     edgesApplied: number,
     filesFailed: number,
     filesFailedPermanent: number,
+    zeroProgressWatchdogTripped: boolean,
   ) =>
     `${filesProcessed} file(s) processed, ${edgesApplied} corrected edge(s) applied` +
     (filesFailed > 0
@@ -154,6 +155,9 @@ export const UI_MESSAGES = {
       : "") +
     (filesFailedPermanent > 0
       ? `, ${filesFailedPermanent} file(s) permanently failed (not re-queued)`
+      : "") +
+    (zeroProgressWatchdogTripped
+      ? ", zero-progress watchdog tripped: no next-batch re-queue remains"
       : "") +
     ".",
   ANALYZE_TIER_B_DEGRADED: (reason: string) =>

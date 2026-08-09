@@ -218,6 +218,16 @@ async function runTierBBatchCore(
     return true;
   });
 
+  const madeProgress = processedFiles.size > 0 || edgesApplied > 0;
+  const zeroProgressWatchdogTripped = applyZeroProgressWatchdog(
+    store,
+    toProcess,
+    outcome,
+    madeProgress,
+    failedEntries,
+    permanentFailed,
+  );
+
   return await finalizeBatch(deps, {
     headSha,
     commitCapExceeded,
@@ -229,8 +239,72 @@ async function runTierBBatchCore(
     permanentFailed,
     edgesApplied,
     edgesPruned,
+    zeroProgressWatchdogTripped,
     degradedReason: outcome.unavailableReason,
   });
+}
+
+/** Zero-progress watchdog (issue #22 split 2): counts *consecutive* batches that drained an
+ *  attemptable set with zero progress, and on the Nth one declares the still-retryable remainder
+ *  permanently-failed so it stops being re-attempted on every batch. This is the cross-batch
+ *  complement of the per-file `retryable: false` classification: a file whose only failure signal
+ *  is being cut short by the whole-batch deadline reports `retryable: true` (`lsp-edge-provider-base.ts`
+ *  labels those via `deadlineExceeded`), so no per-file flag can ever retire it -- but if that
+ *  file is the reason every batch trips the deadline with zero edges, the streak eventually
+ *  catches it. Excludes batches that made progress (resets the streak), batches that degraded
+ *  with `unavailableReason` (a provider that couldn't run at all is an environment problem, not
+ *  a zero-progress signal -- those keep the whole toProcess set queued as before), and batches
+ *  with no retryable remainder to escalate (nothing is being re-attempted, so there is nothing
+ *  for the watchdog to retire). Absent streak in meta reads as 0.
+ *
+ *  Returns `true` when this batch fired the watchdog (and mutated `failedEntries`/`permanentFailed`
+ *  to move the escalated entries), `false` otherwise.
+ */
+function applyZeroProgressWatchdog(
+  store: IGraphStore,
+  toProcess: TierBQueueEntry[],
+  outcome: MergedEdgeResolutionOutcome,
+  madeProgress: boolean,
+  failedEntries: TierBQueueEntry[],
+  permanentFailed: TierBQueueEntry[],
+): boolean {
+  const streakKey = GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES;
+  const currentRaw = store.meta.get(streakKey);
+  const current = currentRaw ? parseInt(currentRaw, 10) || 0 : 0;
+
+  // A batch with nothing attemptable carries no progress signal either way -- leave the streak
+  // untouched rather than pretending it proves anything about the files.
+  if (toProcess.length === 0) return false;
+
+  if (madeProgress) {
+    // Any real progress -- including a partial-timeout batch that completed some files before its
+    // deadline tripped -- breaks the streak.
+    store.meta.set(streakKey, "0");
+    return false;
+  }
+
+  // A fully-degraded batch also leaves the streak untouched: a provider that couldn't run at all
+  // produced no edges through no fault of the files, so it can't "prove" the files are stuck --
+  // those runs keep the whole toProcess set queued as before.
+  if (outcome.unavailableReason) return false;
+
+  // With zero files actually processed, no progress, and no retryable remainder to escalate, the
+  // batch produced no zero-progress signal either (e.g. every attempted file was already
+  // permanently-failed and retired this or an earlier batch) -- leave the streak as-is.
+  if (failedEntries.length === 0) return false;
+
+  const next = current + 1;
+  if (next < GitConstants.DEFAULT_TIER_B_ZERO_PROGRESS_MAX_BATCHES) {
+    store.meta.set(streakKey, String(next));
+    return false;
+  }
+
+  // Nth consecutive zero-progress batch -- the still-retryable remainder is declared
+  // permanently-failed: it drops out of the re-queued `failedEntries` and will be stamped.
+  permanentFailed.push(...failedEntries);
+  failedEntries.length = 0;
+  store.meta.set(streakKey, "0");
+  return true;
 }
 
 function emptyResult(
@@ -397,6 +471,7 @@ interface FinalizeArgs {
   permanentFailed: TierBQueueEntry[];
   edgesApplied: number;
   edgesPruned: number;
+  zeroProgressWatchdogTripped?: boolean;
   degradedReason?: string;
 }
 
@@ -456,6 +531,7 @@ async function finalizeBatch(
     edgesPruned: args.edgesPruned,
     degraded: Boolean(outcome.unavailableReason),
     degradedLanguages: outcome.degradedLanguages,
+    zeroProgressWatchdogTripped: args.zeroProgressWatchdogTripped,
     commitCapExceeded: args.commitCapExceeded,
   });
   logger.info(
@@ -483,6 +559,7 @@ async function finalizeBatch(
       outcome.degradedLanguages.length > 0
         ? outcome.degradedLanguages
         : undefined,
+    zeroProgressWatchdogTripped: args.zeroProgressWatchdogTripped,
     commitCapExceeded: args.commitCapExceeded,
   };
 }

@@ -108,6 +108,13 @@ export interface TierBBatchResult {
    *  repeat the same empty retry (2026-08 moby benchmark finding: an uncapped full-repo run
    *  re-processed hundreds of permanently-unloadable files on every batch, ~0 edges). */
   filesFailedPermanent: number;
+  /** `true` when the zero-progress watchdog fired this batch (issue #22 split 2): the batch was
+   *  the Nth consecutive one that drained an attemptable set with zero progress (0 files
+   *  processed AND 0 edges applied), so the still-retryable remainder (`failedEntries`) was
+   *  escalated to permanently-failed and dropped from the re-queue rather than being re-attempted
+   *  again. Only set (and only `true`) on the batch that actually trips it; absent on every other
+   *  batch. */
+  zeroProgressWatchdogTripped?: boolean;
   /** Cross-file `calls` edges newly written to `node_links` this batch (§8d). */
   edgesApplied: number;
   /** Dangling `node_links` rows removed by the incoming-edge repair hygiene pass (§8d). */

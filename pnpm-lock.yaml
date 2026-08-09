@@ -143,22 +143,25 @@ importers:
       "@workspace/contracts":
         specifier: workspace:^
         version: link:../contracts
+      js-yaml:
+        specifier: ^5.2.1
+        version: 5.2.1
+      smol-toml:
+        specifier: ^1.6.1
+        version: 1.7.0
+      web-tree-sitter:
+        specifier: ^0.25.9
+        version: 0.25.10
     devDependencies:
       "@types/js-yaml":
         specifier: ^4.0.9
         version: 4.0.9
       "@types/node":
-        specifier: ^22.0.0
-        version: 22.20.1
-      smol-toml:
-        specifier: ^1.6.1
-        version: 1.7.0
+        specifier: "catalog:"
+        version: 25.9.5
       typescript:
-        specifier: ^5.5.4
+        specifier: "catalog:"
         version: 5.9.3
-      web-tree-sitter:
-        specifier: ^0.25.9
-        version: 0.25.10
 
   lib/contracts:
     devDependencies:

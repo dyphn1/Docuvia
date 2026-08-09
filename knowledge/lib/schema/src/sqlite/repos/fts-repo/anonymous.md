@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/fts-repo.ts#anonymous@L113
+id: lib/schema/src/sqlite/repos/fts-repo.ts#anonymous@L112
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/repos/fts-repo.ts

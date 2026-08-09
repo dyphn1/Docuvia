@@ -25,6 +25,10 @@
 # Self-skips (emits a `skip` row) rather than failing when the CLI or the target repo's own
 # `node_modules` cannot resolve `typescript-language-server`; a non-`--reset` run works against
 # `<repoRoot>`'s current `.docuvia` state and never mutates it.
+#
+# Fail-closed rows: the harness refuses to report "all zeros" for a measurement that never
+# actually ran. A missing/unreadable graph DB, or a non-zero CLI exit during either phase, emits
+# `label|fail|<reason>|0|0|0|0` (and a diagnostic on stderr) instead of a misleading clean row.
 
 # Missing harness dependencies are fail-closed (they produce no measurements worth using).
 command -v sqlite3 >/dev/null 2>&1 || { echo "sqlite3 required" >&2; exit 2; }
@@ -47,6 +51,18 @@ for arg in "$@"; do
   esac
 done
 
+# --- fail-closed helper -------------------------------------------------------
+# `fail` is invoked when the attempt phase produced no trustworthy measurement. It prints a
+# single `fail` row with a machine-readable reason plus a human-readable stderr diagnostic, and
+# exits 0 because the harness's contract is "one row on stdout per invocation" regardless of
+# passage/failure (skip rows already work that way -- parsers key off the reason column).
+fail() {
+  local reason="$1" detail="$2"
+  if [[ -n "$detail" ]]; then echo "calibrate: $detail" >&2; fi
+  echo "${LABEL}|fail|${reason}|0|0|0|0"
+  exit 0
+}
+
 # --- Self-skip guard: the CLI + the target repo's LSP shim must both be usable. ------------
 if [[ ! -x "$DOCUVIA_BIN" ]]; then
   echo "${LABEL}|skip|cli-unresolved|0|0|0|0"; exit 0
@@ -62,13 +78,33 @@ if [[ "$RESET" -eq 1 && -f "$DB" ]]; then
   rm -f "$DB" "$DB-shm"
 fi
 
-sqlite_q() { sqlite3 "$DB" "$1" 2>/dev/null || echo 0; }
+sqlite_q() {
+  local result
+  result=$(sqlite3 "$DB" "$1" 2>&1) || {
+    fail "db-unreadable" "graph DB query failed ('${1}'): ${result}"
+  }
+  # A missing-but-empty DB file exists yet yields nothing for guards below
+  if [[ -z "$result" && -z "$(sqlite3 "$DB" '.tables' 2>/dev/null)" ]]; then
+    fail "db-empty" "graph DB '$DB' created by sqlite but contains no tables -- Tier A did not actually populate it"
+  fi
+  printf '%s' "$result"
+}
 
 start_ms=$(date +%s000)
 
 # Phase 1: Tier A ingestion (idempotent; fast no-op when HEAD has not moved). Ensures the
-# `ast_call_sites` seed table and the queue are populated for the LSP pass.
-( cd "$REPO" && "$DOCUVIA_BIN" analyze ) >/tmp/docuvia-calib-tierA.log 2>&1 || true
+# `ast_call_sites` seed table and the queue are populated for the LSP pass. An explicit
+# failure is surfaced, not swallowed (QA finding #8). This is also what (re)creates `$DB`
+# after a `--reset`.
+if ! ( cd "$REPO" && "$DOCUVIA_BIN" analyze ) >/tmp/docuvia-calib-tierA.log 2>&1; then
+  fail "tierA-failed" "Tier A analyze exited nonzero -- see /tmp/docuvia-calib-tierA.log"
+fi
+
+# A usable graph DB must exist before we measure: without one every metric below reads as a
+# silent 0 (QA finding #7). A `--reset` run removed it, so Tier A must have repopulated it.
+if [[ ! -f "$DB" ]]; then
+  fail "db-missing" "no graph DB at $DB after Tier A ingestion (failed to create/populate)"
+fi
 
 seed_count=$(sqlite_q "SELECT count(*) FROM ast_call_sites;")
 queue=$(sqlite_q "SELECT count(*) FROM project_files;")
@@ -76,11 +112,15 @@ queue=$(sqlite_q "SELECT count(*) FROM project_files;")
 # Phase 2: Tier B forward LSP batch, uncapped (an indefinitely-running batch is the only
 # apples-to-apples shape vs. the 120s-capped reverse baselines -- the doc's §3 twin-run logic).
 if [[ "$PROCESSES" != "1" ]]; then
-  ( cd "$REPO" && "$DOCUVIA_BIN" analyze --escalate-to-lsp --full --lsp-timeout=0 \
-      "--lsp-processes=${PROCESSES}" ) >/tmp/docuvia-calib-tierB.log 2>&1 || true
+  if ! ( cd "$REPO" && "$DOCUVIA_BIN" analyze --escalate-to-lsp --full --lsp-timeout=0 \
+      "--lsp-processes=${PROCESSES}" ) >/tmp/docuvia-calib-tierB.log 2>&1; then
+    fail "phaseB-failed" "Tier B analyze exited -- see /tmp/docuvia-calib-tierB.log"
+  fi
 else
-  ( cd "$REPO" && "$DOCUVIA_BIN" analyze --escalate-to-lsp --full --lsp-timeout=0 ) \
-      >/tmp/docuvia-calib-tierB.log 2>&1 || true
+  if ! ( cd "$REPO" && "$DOCUVIA_BIN" analyze --escalate-to-lsp --full --lsp-timeout=0 ) \
+      >/tmp/docuvia-calib-tierB.log 2>&1; then
+    fail "phaseB-failed" "Tier B analyze exited -- see /tmp/docuvia-calib-tierB.log"
+  fi
 fi
 
 files_processed=$(sqlite_q "SELECT count(*) FROM project_files WHERE last_tier_b_processed_at IS NOT NULL;")

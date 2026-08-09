@@ -187,6 +187,127 @@ describe("GoLspEdgeProvider.resolveEdges()", () => {
     expect(fake.stopped).toBe(true);
   });
 
+  it("maps a Go method's gopls '(Receiver).Method' documentSymbol name onto Tier A's qualified 'file#Receiver.Method' node_key (gopls does not nest receiver methods under the struct -- GRPH-006 -- so containment must be recovered from the name, not the symbol tree)", async () => {
+    const aUri = uriFor(workspaceRoot, "a.go");
+    const bUri = uriFor(workspaceRoot, "b.go");
+
+    // A receiver method as gopls v0.23.0 actually returns it: flat top-level entry, name
+    // "(A).Handle" (kind METHOD), never nested under the struct's symbol -- plus an unrelated
+    // struct kind 23 (Struct) at the same depth, which is NOT a call-site kind.
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "(A).Handle",
+              kind: LspSymbolKinds.METHOD,
+              range: range(2, 0, 2, 19),
+              selectionRange: range(2, 11, 2, 17),
+            },
+          ];
+        }
+        if (params.textDocument.uri === bUri) {
+          return [
+            {
+              name: "Bar",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(2, 0, 4, 1),
+              selectionRange: range(2, 5, 2, 8),
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (params.textDocument.uri === aUri) {
+          return [{ uri: bUri, range: range(3, 4, 3, 7) }];
+        }
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const fake = new FakeLspClient(handler);
+    const provider = new GoLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.go", "b.go"],
+    });
+
+    expect(outcome.filesFailed).toEqual([]);
+    expect(outcome.edges).toEqual([
+      {
+        sourceNodeKey: "b.go#Bar",
+        targetNodeKey: "a.go#A.Handle",
+        source: "lsp",
+      },
+    ]);
+  });
+
+  it("maps a pointer-receiver method's gopls '(*B).Visit' name onto Tier A's 'file#B.Visit' node_key (pointer stripped exactly as Tier A's firstTypeIdentifierText unwraps pointer_type)", async () => {
+    const aUri = uriFor(workspaceRoot, "a.go");
+    const bUri = uriFor(workspaceRoot, "b.go");
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "(*B).Visit",
+              kind: LspSymbolKinds.METHOD,
+              range: range(2, 0, 2, 18),
+              selectionRange: range(2, 12, 2, 17),
+            },
+          ];
+        }
+        if (params.textDocument.uri === bUri) {
+          return [
+            {
+              name: "Caller",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(2, 0, 4, 1),
+              selectionRange: range(2, 5, 2, 11),
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (params.textDocument.uri === aUri) {
+          return [{ uri: bUri, range: range(3, 4, 3, 9) }];
+        }
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const fake = new FakeLspClient(handler);
+    const provider = new GoLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.go", "b.go"],
+    });
+
+    expect(outcome.filesFailed).toEqual([]);
+    expect(outcome.edges).toEqual([
+      {
+        sourceNodeKey: "b.go#Caller",
+        targetNodeKey: "a.go#B.Visit",
+        source: "lsp",
+      },
+    ]);
+  });
+
   it("opens each file with the go languageId", async () => {
     const handler: RequestHandler = (method) => {
       if (method === LspMethods.DOCUMENT_SYMBOL) return [];

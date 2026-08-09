@@ -81,6 +81,20 @@ async function compileWorkerForDevMode(
   fs.renameSync(tmpPath, outPath);
 }
 
+/**
+ * True when `compileWorkerForDevMode`'s cache needs a (re)build: missing outright, or
+ * present but older than the `ast-worker.ts` it was compiled from -- nothing else
+ * invalidates that cache, so without this a stale cached .js keeps silently serving an
+ * old ast-worker.ts forever (e.g. missing fields on parse results, no error raised).
+ * Always false when `sourcePath` doesn't exist: dist/ never ships the sibling .ts, and
+ * its pre-built worker is authoritative there regardless of mtimes.
+ */
+function needsDevWorkerCompile(sourcePath: string, wPath: string): boolean {
+  if (!fs.existsSync(wPath)) return true;
+  if (!fs.existsSync(sourcePath)) return false;
+  return fs.statSync(sourcePath).mtimeMs > fs.statSync(wPath).mtimeMs;
+}
+
 export interface CacheMetrics {
   hits: number;
   misses: number;
@@ -315,9 +329,9 @@ export class AstWorkerPool implements IASTWorkerPool {
 
     // Determine if we are in a dist/ (pre-built) or dev/test (raw source) environment.
     this.wPath = path.resolve(__dirname, "./ast-worker.js");
+    const sourcePath = path.resolve(__dirname, "./ast-worker.ts");
 
-    if (!fs.existsSync(this.wPath)) {
-      const sourcePath = path.resolve(__dirname, "./ast-worker.ts");
+    if (needsDevWorkerCompile(sourcePath, this.wPath)) {
       await compileWorkerForDevMode(sourcePath, this.wPath);
     }
 

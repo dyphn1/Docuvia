@@ -97,9 +97,24 @@ export interface TierBBatchResult {
   /** Entries the LSP provider successfully resolved edges for (or attempted with zero edges
    *  found -- still a success). */
   filesProcessed: number;
-  /** Entries whose LSP resolution failed individually -- kept in the queue for the next batch
-   *  (§8g). Always 0 when `degraded` is true (nothing was attempted at all in that case). */
+  /** Entries whose LSP resolution failed individually but are *retryable* (whole-batch timeout
+   *  cut their turn short, or they were never reached before the deadline) -- kept in the queue
+   *  for the next batch (§8g). Always 0 when `degraded` is true (nothing was attempted at all in
+   *  that case). */
   filesFailed: number;
+  /** Entries whose LSP resolution failed *permanently* (`retryable: false`, e.g. "no package
+   *  metadata" -- a file the language server definitively cannot load) -- stamped as Tier-B-tried
+   *  and *dropped from the re-queued `failedEntries`*, since re-running them next batch can only
+   *  repeat the same empty retry (2026-08 moby benchmark finding: an uncapped full-repo run
+   *  re-processed hundreds of permanently-unloadable files on every batch, ~0 edges). */
+  filesFailedPermanent: number;
+  /** `true` when the zero-progress watchdog fired this batch (issue #22 split 2): the batch was
+   *  the Nth consecutive one that drained an attemptable set with zero progress (0 files
+   *  processed AND 0 edges applied), so the still-retryable remainder (`failedEntries`) was
+   *  escalated to permanently-failed and dropped from the re-queue rather than being re-attempted
+   *  again. Only set (and only `true`) on the batch that actually trips it; absent on every other
+   *  batch. */
+  zeroProgressWatchdogTripped?: boolean;
   /** Cross-file `calls` edges newly written to `node_links` this batch (§8d). */
   edgesApplied: number;
   /** Dangling `node_links` rows removed by the incoming-edge repair hygiene pass (§8d). */

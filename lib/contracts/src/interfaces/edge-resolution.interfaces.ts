@@ -45,6 +45,14 @@ export interface EdgeResolutionAvailability {
 export interface EdgeResolutionFileFailure {
   file: string;
   reason: string;
+  /** `false` marks a *permanent* per-file failure -- one the LSP server reported as definitively
+   *  unresolvable (e.g. "no package metadata", a file the language server can't load at all), so
+   *  re-queuing it on the next Tier B batch can only repeat the same empty retry. Absent/`true`
+   *  means retryable: the file's turn genuinely didn't complete (whole-batch timeout mid-file, or
+   *  never reached before the deadline), so it deserves another slot in the next batch. The Tier B
+   *  orchestrator drops `retryable: false` files from the re-queued `failedEntries` entirely
+   *  (they still get logged per-file and counted in the batch summary). */
+  retryable?: boolean;
 }
 
 /**

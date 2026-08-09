@@ -148,6 +148,31 @@ export const GitConstants = {
    */
   DEFAULT_TIER_B_COVERAGE_FAIL_THRESHOLD: 0.5,
 
+  /**
+   * `docuvia_meta` key holding the count of *consecutive* Tier B batches that drained an
+   * attemptable set and produced zero progress (0 files processed AND 0 edges applied) -- the
+   * zero-progress watchdog's cross-batch accumulator (2026-08 moby benchmark follow-up, issue #22
+   * split item 2 "batch-deadline safety net"). Written by `run-tier-b-batch` after every batch
+   * that had something to process: any progress resets it to `"0"`, another zero-progress batch
+   * increments it, and once it reaches `DEFAULT_TIER_B_ZERO_PROGRESS_MAX_BATCHES` the batch's
+   * still-retryable `failedEntries` are treated as permanently-failed and dropped from the
+   * re-queue -- the safety net for the "same files hit their per-file deadline on every batch,
+   * zero edges forever" case the per-file `retryable: false` classification can't reach (those
+   * files report `retryable: true` because the whole-batch deadline, not the file, cut them
+   * short). Absent -> treated as `0`.
+   */
+  META_KEY_TIER_B_ZERO_PROGRESS_BATCHES: "tierBZeroProgressBatches",
+  /**
+   * Default Tier B zero-progress watchdog threshold (see `META_KEY_TIER_B_ZERO_PROGRESS_BATCHES`
+   * above) -- consecutive zero-progress batches before the still-retryable remainder is declared
+   * permanently-failed and dropped from the re-queue. Mirrors Tier C's own poison-pill cap
+   * (`DEFAULT_TIER_C_MAX_ITEM_FAILURES: 3`) -- N matches the project's established "three
+   * consecutive tries then give up" convention for queue entries that never progress. Not
+   * config-tunable yet; a placeholder value like the commit-cap / coverage-threshold defaults --
+   * tune if real usage shows it's off.
+   */
+  DEFAULT_TIER_B_ZERO_PROGRESS_MAX_BATCHES: 3,
+
   PRE_PUSH_HOOK_NAME: "pre-push",
   /**
    * Fires the Tier B batch on push (phase1-decision-integration.md §8h, D7) — synchronous, with

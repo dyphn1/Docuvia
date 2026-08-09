@@ -64,8 +64,11 @@ export const ANALYZE_MESSAGES = {
   TIER_B_EMPTY_QUEUE: "Tier B queue is empty -- nothing to escalate.",
   TIER_B_DEGRADED: (reason: string) =>
     `LSP unavailable -- AST-level edges left untouched (${reason})`,
-  TIER_B_SUMMARY: (processed: number, edges: number) =>
-    `Tier B batch complete: ${processed} file(s) processed, ${edges} corrected edge(s) applied`,
+  TIER_B_SUMMARY: (processed: number, edges: number, permanentFailed: number) =>
+    `Tier B batch complete: ${processed} file(s) processed, ${edges} corrected edge(s) applied` +
+    (permanentFailed > 0
+      ? `, ${permanentFailed} file(s) permanently failed (dropped from the re-try queue)`
+      : ""),
   /** D6 (issue #11 plan A, Slice 3) -- the only way to tell "forward path engaged and matched
    *  reverse" apart from "callsByFile came back empty and the run silently measured
    *  reverse-vs-reverse" (false parity, see this event's own doc comment on `ANALYZE_EVENTS`).

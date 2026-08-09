@@ -160,6 +160,52 @@ describe("resolveEdgesForLanguageBuckets() -- N>1 dispatch/merge (multi-language
     ]);
     expect(result.unavailableReason).toBe("pyright binary not resolvable");
   });
+
+  it("merges a provider outcome whose edges array exceeds the call-stack spread limit without RangeError (uncapped --lsp-timeout=0 batch regression)", async () => {
+    // V8 throws `RangeError: Maximum call stack size exceeded` when a >~125k-element array is
+    // spread into a `push(...)` call -- an uncapped `--lsp-timeout=0` full-repo batch can resolve
+    // that many edges in one bucket, so the orchestrator must merge with a bounded loop, not a
+    // spread. This test feeds one such giant array through the real merge path and asserts the
+    // outcome comes back intact.
+    const files: TierBQueueEntry[] = [
+      { file: "a.ts", commitSha: "sha1" },
+      { file: "b.ts", commitSha: "sha1" },
+    ];
+    const hugeEdges: EdgeResolutionOutcome["edges"] = Array.from(
+      { length: 200_000 },
+      (_, i) => ({
+        sourceNodeKey: `a.ts#caller${i}`,
+        targetNodeKey: "b.ts#callee",
+        source: "lsp" as const,
+      }),
+    );
+    const tsResolveEdges = vi.fn().mockResolvedValue({
+      edges: hugeEdges,
+      filesProcessed: ["a.ts", "b.ts"],
+      filesFailed: [],
+    });
+    const tsProvider = makeProvider(
+      tsResolveEdges,
+      "typescript-language-server",
+    );
+
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () => tsProvider,
+    }));
+
+    const { store } = makeStore();
+    const git = makeGit();
+
+    const result = await resolveEdgesForLanguageBuckets(
+      { typescript: files },
+      { workspaceRoot, logger: createMockLogger(), store, git },
+    );
+
+    expect(result.edges).toHaveLength(200_000);
+    expect(result.edges[0]).toEqual(hugeEdges[0]);
+    expect(result.edges[199_999]).toEqual(hugeEdges[199_999]);
+    expect(result.filesProcessed).toEqual(["a.ts", "b.ts"]);
+  });
 });
 
 /**

@@ -5,7 +5,6 @@
 export const RubyLspConstants = {
   BINARY_NAME: "ruby-lsp",
   DEFAULT_ARGS: [] as string[],
-  VERSION_FLAG: "--version",
 } as const;
 
 export const RUBY_LSP_MESSAGES = {

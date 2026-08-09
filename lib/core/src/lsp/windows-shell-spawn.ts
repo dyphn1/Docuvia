@@ -5,10 +5,10 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 
 /** Extensions Windows can only execute through a shell (`cmd.exe`/PowerShell), never directly via
- *  `CreateProcess` -- exactly the extensions `resolveLspBinary()` tries first for a `node_modules/
- *  .bin` shim (`.cmd`, and `.bat`/`.ps1` for completeness). Anything else -- including a bare,
- *  unresolvable command name -- is spawned exactly as before, so the ordinary Windows `ENOENT`
- *  spawn-failure path (an immediate `error` event, no shell involved) is untouched. */
+ *  `CreateProcess` -- exactly the extensions the npm/npx binary resolver tries first for a
+ *  `node_modules/.bin` shim (`.cmd`, and `.bat`/`.ps1` for completeness). Anything else -- including
+ *  a bare, unresolvable command name -- is spawned exactly as before, so the ordinary Windows
+ *  `ENOENT` spawn-failure path (an immediate `error` event, no shell involved) is untouched. */
 const WINDOWS_SHELL_ONLY_EXTENSIONS = new Set([".cmd", ".bat", ".ps1"]);
 
 /** Bare command names this codebase spawns directly (never through a resolved `node_modules/.bin`
@@ -19,7 +19,7 @@ const WINDOWS_SHELL_ONLY_EXTENSIONS = new Set([".cmd", ".bat", ".ps1"]);
  *  these directly on Windows -- confirmed by direct testing during the multi-language-lsp-support
  *  plan's Slice 1 (Python): a real `npx --no-install --package pyright pyright-langserver --stdio`
  *  spawn failed with a bare `ENOENT` on Windows before the runtime client's fix. The preflight
- *  probe (`lsp-preflight.ts`'s `probeNpxResolvable`) hit the identical bug independently -- it
+ *  probe (`typescript-lsp-preflight.ts`'s `probeNpxResolvable`) hit the identical bug independently -- it
  *  called a bare `execFileAsync("npx", ...)` with no shell wrapper at all, so on Windows it always
  *  reported npx as unresolvable even when it genuinely wasn't (live-reproduced 2026-07-29: a
  *  manual `npx --no-install typescript-language-server --version` succeeded from the same cwd the
@@ -98,8 +98,9 @@ export function isWindowsShellOnlyBareCommand(command: string): boolean {
  * bootstrap-relative-to-cwd bug `resolveWindowsBareCommandPath` documents) and each token quoted
  * for `cmd.exe`. Callers pass the result as `spawn`/`execFile`'s `file` argument with `shell: true`
  * and no separate `args` (the whole command line is already joined) -- mirrors what
- * `LspJsonRpcClient.start()` already does, now shared with `lsp-preflight.ts`'s npx probe so the
- * two call sites can't drift apart on how they resolve the exact same Windows shim problem.
+ *  `LspJsonRpcClient.start()` already does, now shared with `typescript-lsp-preflight.ts`'s npx
+ *  probe so the two call sites can't drift apart on how they resolve the exact same Windows shim
+ *  problem.
  */
 export async function buildWindowsShellCommandLine(
   command: string,

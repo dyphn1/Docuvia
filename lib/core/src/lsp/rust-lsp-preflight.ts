@@ -1,16 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { ConfigFilenames } from "../discovery/discovery-constants.js";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { RustLspConstants, RUST_LSP_MESSAGES } from "./rust-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";
-
-const execFileAsync = promisify(execFile);
-
-const PROBE_TIMEOUT_MS = 5000;
 
 export interface RustLspPreflightResult extends LspPreflightOutcome {
   markerFileResolvable: boolean;
@@ -26,20 +20,6 @@ function getCargoBinDir(): string {
     process.env.CARGO_HOME ?? path.join(os.homedir(), ".cargo"),
     "bin",
   );
-}
-
-async function probeRustAnalyzerPathResolvable(
-  command: string,
-  args: string[],
-): Promise<boolean> {
-  try {
-    await execFileAsync(command, [...args, RustLspConstants.VERSION_FLAG], {
-      timeout: PROBE_TIMEOUT_MS,
-    });
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**

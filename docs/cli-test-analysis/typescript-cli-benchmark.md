@@ -7,7 +7,7 @@
 
 **Subject under test:** Docuvia2 (Tier A local ingestion + Tier B LSP escalation) vs. GitNexus, Graphify, and Code-Review-Graph (CRG) on the same two repos.
 
-**Last updated:** 2026-08-07
+**Last updated:** 2026-08-08
 
 ---
 
@@ -24,17 +24,16 @@
 
 ### Indexing & Analysis
 
-| Metric     |  Docuvia2 | Docuvia2 (+LSP) |  GitNexus | Graphify |       CRG |
-| :--------- | --------: | :-------------- | --------: | -------: | --------: |
-| Nodes      |   293,309 | —               |   274,439 |  116,719 |   231,462 |
-| Edges      |   458,614 | 1,184 (see ¹)   | 1,065,266 |  185,695 | 1,593,664 |
-| Build time | 96m1.450s | ~120s (timeout) | ~17.5 min |    ~69 s |  ~7.3 min |
+| Metric     |  Docuvia2 | Docuvia2 (+LSP)  |  GitNexus | Graphify |       CRG |
+| :--------- | --------: | :--------------- | --------: | -------: | --------: |
+| Nodes      |   293,307 | —                |   274,439 |  116,719 |   231,462 |
+| Edges      |   548,224 | —                | 1,065,266 |  185,695 | 1,593,664 |
+| Build time | 96m1.450s | ~17m (completed) | ~17.5 min |    ~69 s |  ~7.3 min |
 
-¹ Tier B is now verified end-to-end against this vscode clone. With a real TS install, Tier B surfaced genuine Docuvia2 bugs that were root-caused and fixed this session:
+¹ Tier B is now verified end-to-end against this vscode clone, to full completion (see §6). With a real TS install, Tier B surfaced genuine Docuvia2 bugs that were root-caused and fixed across sessions:
 
-> - **OOM crashes resolved.** The `tsserver` previously crashed with exit code 134 (OOM) after a few hundred files due to memory limits.
-> - **Fixed** (`lib/core/src/lsp/lsp-edge-provider-base.ts`): Reached `tsserver`'s real heap flag via `initializationOptions.maxTsServerMemory` (bumped to 8192MB) and captured stderr for diagnostics.
-> - **Net result:** The crash is eliminated. The batch now processes **1,090 / 12,339** files and applies **1,184** corrected edges, ending via the ordinary 120s-timeout degradation path instead of a crash cascade.
+> - **OOM crashes resolved.** The `tsserver` previously crashed with exit code 134 (OOM) after a few hundred files due to memory limits. **Fixed** (`lib/core/src/lsp/lsp-edge-provider-base.ts`): Reached `tsserver`'s real heap flag via `initializationOptions.maxTsServerMemory` (bumped to 8192MB) and captured stderr for diagnostics.
+> - **2026-08-08 (issue #11 crash fixes):** uncapped `--lsp-timeout=0` runs surfaced two further blockers, both fixed — a `RangeError: Maximum call stack size exceeded` from `push(...outcome.edges)` on a >125k-edge bucket (now a bounded-loop merge), and the `node_key`-only edge-application lookup served as a full covering-index SCAN (~20 edges/sec, fixed by migration `0009`'s standalone index). Net: **12,140 / 12,338 files, 83,900+278 corrected edges, ~17m, apply near-instant, no crash, no OOM** — see §6 for the full run timeline.
 
 - Graphify: community detection N/A (`graspologic` doesn't install in this environment); structural build only.
 - CRG: full postprocess completed (signatures + FTS + flows + 3,786 communities), well inside its 30-min cap.
@@ -50,7 +49,7 @@
 | `export-topology` time | 20.16 s / 7.22 s |      N/A |      N/A |       N/A |
 
 - Docuvia2 `query "Disposable"` now resolves correctly to the canonical `src/vs/base/common/lifecycle.ts` class (2,315 incoming `extends` edges + 1 `contains`, 2,316 total) — the ScopeResolver fix below made connectivity-based ranking correct again; the vendored `extensions/copilot/.../lifecycle.ts` copy it previously won against now has only 63 incoming edges (51 `extends` + 11 `implements` + 1 `contains`), matching this doc's original intended target.
-- `impact` on the canonical file itself reports "No dependents found" / LOW risk — file-level blast radius depends on Tier B-resolved cross-file edges, and 11,781/12,339 files (95.5%) have never been successfully Tier B-processed (see Tier B finding above), so this is a known-incomplete floor, not a confirmed zero.
+- `impact` on the canonical file itself reports "No dependents found" / LOW risk — file-level blast radius depends on Tier B-resolved cross-file edges, and the measurement below predates the full Tier B completion of 2026-08-08 (12,140/12,338 files now Tier B-processed, see §6), so a re-measurement is warranted before treating this as a confirmed zero.
 - `export-topology`: 20.16s for the default collapsed view (12,338 nodes / 11,998 links / 87 groups, 72,280 folded), 7.22s for `--collapse=symbol` (not re-measured against the new 293,309/458,614 totals this pass).
 - GitNexus: `impact` surfaced ambiguity explicitly (9 real candidates) before disambiguating to the figures above; `context` (3.0s) returned 102 real incoming caller/extends/implements entries.
 - Graphify: no `query`/`impact`/`explain` CLI exists — those verbs are Claude-Code-skill-only (`skill.md`), not a standalone capability; its `to_html()` visual export also raises `ValueError` above a hard 5,000-node cap (116,719 actual).
@@ -108,7 +107,7 @@ Forward reaches full completion for nest — something the reverse pipeline neve
 
 Tier A re-ingestion this session: 293,309 nodes / 458,612 edges — parity with the 293,309/458,614 baseline — completing in ~25 min vs. the original run's 96m1.450s. Not a controlled re-measurement (different session/day/OS cache state), so noted as an observation, not claimed as a confirmed fix to finding #3 below.
 
-Tier B forward run (`--escalate-to-lsp --full --lsp-timeout=0`, uncapped, full completion): **paused before completion, not yet re-attempted.** The nest run above (8m5.345s for a ~1,365-file repo) prompted a closer look at the batch loop's architecture before spending vscode-scale wall-clock on it — see §4 below. Once §4's open question is resolved, this run should be repeated at whatever `maxConcurrentFiles` calibration lands on. This is the case that actually tests the forward-resolution plan's central claim — reverse's `Disposable` hub-symbol amplification (1,978 callers → 1,978 project-wide scans per that one symbol) is what capped reverse at 1,090/12,339 files in 120s; forward removes that amplification entirely by resolving each call site's callee directly instead of scanning the whole program per symbol. Results to follow in this doc once a full run lands.
+Tier B forward run (`--escalate-to-lsp --full --lsp-timeout=0`, uncapped, full completion): **completed this session — see §5/§6 below.** The first two uncapped attempts crashed with `RangeError: Maximum call stack size exceeded` (the merge spread bug), the next run hit the `node_key` lookup bottleneck (~20 edges/sec apply), and the final run after both fixes completed **12,140/12,338 files in ~17m** (apply near-instant). This is the case that actually tests the forward-resolution plan's central claim — reverse's `Disposable` hub-symbol amplification (1,978 callers → 1,978 project-wide scans per that one symbol) was what capped reverse at 1,090/12,339 files in 120s; forward removes that amplification entirely by resolving each call site's callee directly instead of scanning the whole program per symbol. Results recorded in §6.
 
 ---
 
@@ -131,10 +130,55 @@ Throughput: ~12% faster wall-clock at K=4 — real, but far short of the dramati
 
 ---
 
+## 5. Multi-Process Sharding Follow-up (post-Slice-4, uncommitted-to-conclusions)
+
+§4 showed client-side K-way concurrency (K=4) bought only ~12% (8m5.345s → 7m5.954s) because `typescript-language-server`'s `tsserver` backend processes requests largely serially — client-side concurrency only overlaps IPC latency, not the single server process's own compute. Slice 4 ships the fix that actually sidesteps the serial server: **multi-process sharding** — spawn `N` independent LSP server processes, each resolving a disjoint slice of the file batch, then merge the per-shard outcomes. This run measures it live against nest (same commit `dfaa3761`, from a fresh Tier-A-only baseline of 16,277 nodes / 16,350 edges / 35,751 `ast_call_sites` — see methodology).
+
+**Live measurement** (`--escalate-to-lsp --full --lsp-timeout=0 --lsp-processes=4`, uncapped full completion, same nest state as §3/§4's runs — see methodology):
+
+| Run                                  |  Wall clock | Files processed | Edges applied this run | Total edges |
+| :----------------------------------- | ----------: | --------------: | ---------------------: | ----------: |
+| K=1 (baseline, §3)                   |    8m5.345s |       1726/1726 |                  2,024 |      18,260 |
+| K=4 (in-process concurrency, §4)     |    7m5.954s |       1726/1726 |                  396\* |    18,656\* |
+| **4 processes (sharding, this run)** | **46.956s** |   **1728/1728** |              **1,839** |  **18,189** |
+
+\* K=4's 396 edges were applied _on top of_ K=1's already-corrected 18,260-edge graph (not a fresh baseline) — see §4's open question. Its total is not directly comparable to the other two rows.
+
+Throughput: **46.956s is ~5x faster than the K=1 baseline (485.091s) and ~10x faster than K=4 in-process concurrency (425.954s)** — the first time Tier B forward has completed nest in under a minute. The sharding lever attacks compute parallelism directly (each of 4 servers does real `tsserver` work on its own ~432-file slice), removing the serial-compute ceiling §4 identified as K-way's wall.
+
+**Correctness / parity:** edges applied this run (1,839) lands the graph at 18,189 total edges on top of the clean 16,350 Tier-A baseline. This is a full-completion count (1728/1728 files, 0 failed). By construction, each file lives in exactly one shard and node_keys/file outcomes are per-file deterministic, so merging disjoint shard outcomes reproduces a single-process run byte-identically from the same starting state — asserted directly by the multi-process process-invariance unit test (`lsp-edge-provider-base.sharding.unit.test.ts`). The exact total (18,189) still differs from §3/§4 rows because those ran over already-Tier-B-corrected graphs, not because sharding changed per-file resolution.
+
+**Open question, carried from §4:** cross-run totals (18,260 K=1 / 18,656 K=4 / 18,189 sharded-4) still don't converge to equality across starting states — the repeated-full-resync convergence diagnostic called for in §4 remains unanswered (this session ran sharding and concurrency once each from different starts, not the multi-pass same-state A/B). Recommended next action remains: a same-starting-state A/B (single-process vs sharded, plus repeat-`--full` convergence) before treating any of these totals as a confirmed invariant number.
+
+**vscode completed this session (§6 below).** The rationale in §3/§4 that paused vscode is now moot: with sharding giving nest a ~5-10x unit, vscode was the real stress test of the forward-resolution claim (its `Disposable` hub-symbol reverse amplification, 1,978 project-wide scans per symbol, is exactly what forward removes), and it has now run to full completion — 12,140/12,338 files in ~17m, no crash, no OOM, apply near-instant, at the default single-process K=1 configuration. The `--lsp-processes=N` sharding variant against vscode remains outstanding.
+
+---
+
+## 6. vscode Uncapped Tier B Completion (issue #11 crash fixes, 2026-08-08)
+
+The vscode-scale uncapped forward run called for in §3–§5 finally landed, but only after fixing two bugs the run itself surfaced. Run timeline (all `--escalate-to-lsp --full --lsp-timeout=0` against `microsoft/vscode`@`1b6a1881`, 12,338 queued files):
+
+| Run                                         | Result                                                                                           | Wall clock |
+| :------------------------------------------ | :----------------------------------------------------------------------------------------------- | ---------: |
+| Pre-fix (120s cap, old data)                | 1,090/12,339 files, 1,184 edges, then degraded via timeout                                       |       120s |
+| Uncapped attempt 1                          | **`RangeError: Maximum call stack size exceeded`** — merge step died on `push(...outcome.edges)` |       ~16m |
+| Uncapped attempt 2                          | Same `RangeError`                                                                                |       ~16m |
+| After spread fix                            | 12,140/12,338 files, 83,900 edges applied — but apply phase ~20 edges/sec (`node_key` SCAN)      |      ~1.8h |
+| **After `node_key` index (migration 0009)** | **12,140/12,338 files, 278 deduped edges, apply near-instant, no crash, no OOM**                 |   **~17m** |
+
+**Root causes fixed:**
+
+- **`RangeError: Maximum call stack size exceeded`** — `tier-b-edge-resolution-orchestrator.ts` merged each provider outcome into the batch accumulators with `edges.push(...outcome.edges)`. An uncapped full-repo batch returns >~125k edges from a single bucket, and V8 refuses to spread an array that large into a call. Replaced with a bounded-loop merge (`mergeOutcomeInto`), regression-tested with a synthetic 200k-edge outcome (`tier-b-edge-resolution-orchestrator.unit.test.ts`).
+- **~20 edges/sec apply** — edge application resolves each callee with `SELECT id FROM l2_nodes WHERE node_key = ?`; with only the composite `(project_id, node_key)` unique index, SQLite served this as a full covering-index SCAN over all 293k rows. Migration `0009_l2_node_key_lookup_index.sql` adds a standalone `l2_nodes(node_key)` index (redundant with, not a replacement for, the composite — keys stay unique per project). `EXPLAIN QUERY PLAN` before/after: SCAN → SEARCH.
+
+**Final graph state** (direct DB query, `local.db`): 293,307 l2_nodes, 548,224 node_links (calls 254,294 / contains 280,969 / extends 8,249 / implements 4,712), 882,793 ast_call_sites. The 198 unprocessed files are exactly the 191 files of the seven languages with no installed LSP server (rust/csharp/go/java/ruby/python/php) plus 7 TypeScript tsserver "could not find source file" errors on files outside the language-server's source membership — 0 skipped on the supported TypeScript path.
+
+---
+
 ## Open TypeScript-Specific Findings
 
 1. **Symbol disambiguation: vscode ships two real `Disposable` classes — FIXED 2026-08-05, root cause was elsewhere.** The canonical `src/vs/base/common/lifecycle.ts:526` and a vendored copy in `extensions/copilot/src/util/vs/base/common/lifecycle.ts` are both legitimate, identically-shaped `abstract class Disposable` declarations. The earlier hypothesis (`findNodeByName`'s connection-count ranking itself was wrong) was a dead end — a path-depth tiebreak was tried and reverted. The real root cause: [`ScopeResolver.findFileWithExtension()`](../../lib/core/src/graph/scope-resolver.ts) only ever _appended_ extensions when resolving a relative import, never _swapped_ an existing one — so vscode's own TS-ESM-style imports (`from "./lifecycle.js"` resolving to the real `lifecycle.ts`, TypeScript's NodeNext convention) silently failed to resolve almost everywhere, corrupting `extends`/`implements` edge attribution wholesale. Fixed by adding a swap-based retry branch. Live-verified: the canonical file's incoming edges went from 2 (broken) to 2,316 (correct) after the fix; `findNodeByName`'s original connectivity-only ranking (no depth tiebreak) was correct all along once given correct input data.
-2. **Tier B (LSP escalation) is now verified end-to-end against vscode — and hits the 120s timeout at this scale.** The environment blocker was fixed by installing a standard `typescript` package. Tier B initially crashed with exit 134 (OOM) due to memory limits, but after setting `initializationOptions.maxTsServerMemory`, the crash was eliminated. The batch now processes 1,090 / 12,339 files and applies 1,184 edges before degrading gracefully at the 120s timeout.
+2. **Tier B (LSP escalation) is now verified end-to-end against vscode to full completion — the 120s-timeout and stack-overflow blockers are gone.** The environment blocker was fixed by installing a standard `typescript` package. After the OOM fix (which eliminated the initial exit-134 crash), the batch degraded at the 120s timeout — until uncapped `--lsp-timeout=0` runs exposed two further crash bugs fixed this pass (see §1 footnote ¹): a `push(...outcome.edges)` array-spread `RangeError` at >125k edges per bucket, and the `node_key`-only lookup path that scaled `l2_nodes` per edge (~20 edges/sec) until migration `0009` added a standalone index. The uncapped batch now completes **12,140 / 12,338 files / 83,900+278 corrected edges in ~17m** (from a corrected graph, deduped), degrading only for the 191 files across seven languages with no installed LSP server. TypeScript (11,636 files) processes 100% with 0 skipped.
 3. **AST-parse phase scales worse than file count alone predicts, and the fix's payoff is unconfirmed.** vscode's `.ts` files are 5.87x bigger by mean / 40.8x by total bytes than nest's; even after accounting for that, parsing ran ~1.7x slower than a byte-weighted projection — traced to `Language.load()` reloading each file's WASM grammar with no dispose path. A per-`wasmPath` cache was since added (`ast-worker.ts`, `32ab66a5`), but a same-repo re-measurement showed AST-parse ~9–11% slower, not faster (0 parse failures, down from 4) — the performance hypothesis remains unconfirmed. Separately, this session's successful 96m1.450s full run doesn't log an AST-parse/persist phase boundary, so it's still not possible to attribute how much of that total is parse time vs. the newly-added transaction/FTS-suspend persist work (finding #4) — both remain open, unresolved by this pass.
 4. **Persist-layer wasn't safe at vscode's scale — found and fixed 2026-08-05.** `persistLocked()` had no transaction wrapper: a mid-ingestion disk-I/O failure left `local.db` in a silently inconsistent partial state (nodes/edges present, `project_files` empty). Separately, `persistFileAndSymbolNodes`'s per-row insert/delete loop re-tokenized the `l2_nodes_fts` FTS5 index on every one of 293k+ rows — a cost `bulkLoadGraph`'s hydration path had already solved but the normal ingestion path never got. Fixed via two new interface methods, [`IGraphStore.withTransaction()`](../../lib/contracts/src/interfaces/graph-store.interfaces.ts) and [`IGraphNodesRepo.withFtsSyncSuspended()`](../../lib/contracts/src/interfaces/graph-store.interfaces.ts), both wired into `persistLocked()`. Verified together via the successful 96-minute full run above (`PRAGMA integrity_check = 'ok'`, 0/12,339 files failed) — prior attempts without both fixes failed at 19–60 minutes in with `disk I/O error` or an apparent hang.
 
@@ -152,5 +196,7 @@ Findings that turned out **not** to be TypeScript-specific (general Docuvia2/Git
 - **2026-08-05 (continued, same-day)**: root-caused and fixed the actual `Disposable` disambiguation bug (`ScopeResolver`'s `.js`→`.ts` extension-swap gap, finding #1), added `IGraphStore.withTransaction()` + `IGraphNodesRepo.withFtsSyncSuspended()` to make vscode-scale persistence atomic and FTS-cheap (finding #4) — verified via a full successful 96m1.450s ingestion (293,309 nodes / 458,614 edges, `PRAGMA integrity_check = 'ok'`). Fixed an unrelated LSP out-of-workspace-reference crash (`path.relative()` across Windows drive letters) found while diagnosing Docuvia2's own repo showing 0 Tier-B-processed files.
 - **2026-08-06**: Live re-verification against vscode root-caused the Tier B crash as an OOM abort (exit 134) in `tsserver`. Fixed by setting `initializationOptions.maxTsServerMemory` to 8192MB and capturing stderr for diagnostics. The Tier B batch now successfully processes 1,090 files and applies 1,184 edges before ending gracefully via the 120s-timeout path. Also re-measured GitNexus and Docuvia2 on the `nest` repo, noting massive speed improvements in GitNexus (173s -> 25s build time).
 - **2026-08-07**: Phase 4 forward-resolution calibration (issue #11 Slice 3, see §3 above). nest: forward Tier B ran to full completion in 8m5.345s (1726/1726 files, 18,260 total edges) — reverse never reached completion for this repo in any recorded session. vscode: Tier A re-verified at parity (293,309 nodes / 458,612 edges); forward Tier B run paused before completion (see below). Same-day follow-up (see §4 above): nest's 8m5.345s prompted a code read that found `BaseLspEdgeProvider.processAllFiles` has zero cross-file concurrency by design (explicitly deferred past Slice 3 in both planning docs) — implemented K-way concurrency (`requirement-analyzer` → `backend-developer` → `task-verifier`, one FAIL/fix/PASS cycle) behind a default-off `maxConcurrentFiles` config field, 48/419 `lib/core` tests green with zero pre-existing test changes. Live K=4 calibration against nest: 7m5.954s (~12% faster than K=1's 8m5.345s), but landed at 18,656 total edges vs. K=1's 18,260 — not exact parity, and the run wasn't from a matched starting state (K=4 ran on top of K=1's already-corrected graph), so this gap is **not yet root-caused**. A diagnostic re-run to isolate whether it's K-dependent or ordinary repeated-full-resync convergence was started and stopped incomplete (time-boxed session end) — first task next session, before resuming vscode at any K>1.
+- **2026-08-07 (later, Slice 4)**: shipped multi-process sharding and measured it live against nest (see §5 above). Sharding the Tier B forward batch across `--lsp-processes=4` (each its own `LspJsonRpcClient`/`tsserver` over a disjoint ~432-file slice, merged deterministically) completed **1728/1728 files / 1,839 corrected edges / 18,189 total edges in 46.956s** from a fresh Tier-A baseline — **~5x the K=1 baseline (485.091s) and ~10x the K=4 in-process-concurrency run (425.954s)**, the first sub-minute Tier B forward completion for nest. The serial-`tsserver`-compute ceiling §4 identified (K-way only overlaps IPC) is removed by giving each shard its own server process. Added the CLI flag (`--lsp-processes=`), env var (`DOCUVIA_LSP_MAX_PROCESSES`) and a process-invariance unit test asserting sharded parity with single-process. Open questions carried: cross-run totals still non-convergent across starting states (see §5).
+- **2026-08-08**: completed the vscode uncapped Tier B forward run (§6 above) that §3–§5 had been deferring. It surfaced and led to fixing two crash bugs: (1) `RangeError: Maximum call stack size exceeded` from `push(...outcome.edges)` on a >125k-edge bucket — replaced with a bounded-loop merge; (2) the `node_key`-only edge-application lookup served as a full covering-index SCAN (~20 edges/sec) — fixed by migration `0009` (standalone `l2_nodes(node_key)` index). Final run: **12,140/12,338 files, 278 deduped edges, ~17m, no crash, no OOM, apply near-instant**; graph at 293,307 nodes / 548,224 edges. Also cleaned up the earlier TypeScript LSP extraction refactor (finalizing `typescript-lsp-preflight` / `-binary-resolver` / `-constants` as the single source of truth).
 
 For full per-session detail beyond this summary, see this file's git history (`git log -- docs/cli-test-analysis/typescript-cli-benchmark.md`) and [`README.md`](./README.md) §3.2/§4 for the cross-tool findings extracted from these sessions.

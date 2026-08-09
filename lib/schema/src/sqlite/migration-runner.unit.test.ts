@@ -169,6 +169,7 @@ describe("applyMigrations", () => {
       "0006_tier_b_file_status.sql",
       "0007_fts_porter_stemming.sql",
       "0008_ast_call_sites.sql",
+      "0009_l2_node_key_lookup_index.sql",
     ]);
   });
 
@@ -194,6 +195,28 @@ describe("applyMigrations", () => {
     expect(rows.map((r) => r.name)).toEqual(["queryCommand"]);
   });
 
+  it("0009: adds a standalone node_key index so node_key-only lookups SEARCH instead of scanning the composite (project_id, node_key) index cover", () => {
+    applyMigrations(db, MIGRATIONS_DIR);
+
+    const index = db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'l2_nodes_node_key_idx'",
+      )
+      .get();
+    expect(index).toBeDefined();
+
+    const plan = db
+      .prepare(
+        "EXPLAIN QUERY PLAN SELECT id FROM l2_nodes WHERE node_key = 'src/a.ts'",
+      )
+      .all() as { detail: string }[];
+    // A node_key-only predicate must be served by the dedicated index, not as a
+    // covering scan over the composite (leading project_id) index.
+    expect(plan.map((r) => r.detail).join("|")).toContain(
+      "l2_nodes_node_key_idx",
+    );
+  });
+
   it("is a no-op on a second run: does not re-apply and does not error", () => {
     applyMigrations(db, MIGRATIONS_DIR);
     // A working table + row so a naive re-run (e.g. re-running CREATE TABLE
@@ -208,7 +231,7 @@ describe("applyMigrations", () => {
     const migrationRows = db
       .prepare("SELECT filename FROM schema_migrations")
       .all();
-    expect(migrationRows).toHaveLength(8);
+    expect(migrationRows).toHaveLength(9);
 
     const projectRows = db.prepare("SELECT * FROM projects").all();
     expect(projectRows).toHaveLength(1);

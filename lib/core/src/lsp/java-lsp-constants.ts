@@ -5,7 +5,6 @@
 export const JavaLspConstants = {
   BINARY_NAME: "jdtls",
   DEFAULT_ARGS: [] as string[],
-  VERSION_FLAG: "--version",
 } as const;
 
 export const JAVA_LSP_MESSAGES = {

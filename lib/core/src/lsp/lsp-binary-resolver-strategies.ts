@@ -3,21 +3,28 @@ import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { NODE_MODULES_DIR_NAME } from "../discovery/discovery-constants.js";
-import type { ResolvedLspBinary } from "./lsp-binary-resolver.js";
 
 const execFileAsync = promisify(execFile);
 
 /** Windows npm-generated shim extensions for a `node_modules/.bin` entry, tried in order; POSIX
- *  systems only ever produce the extension-less shell shim. Same list `lsp-binary-resolver.ts`
- *  uses for the TS/JS provider -- kept here too since this is the generalized version of that
- *  same resolution order. */
+ *  systems only ever produce the extension-less shell shim. */
 const WINDOWS_BIN_EXTENSIONS = [".cmd", ".CMD", ".exe", ""];
+
+export interface ResolvedLspBinary {
+  command: string;
+  args: string[];
+  /** `true` when resolved to a real file under `node_modules/.bin` (provably present, no probe
+   *  needed); `false` for the `npx --no-install` fallback, whose actual resolvability can only be
+   *  known by attempting it (§8c's gate probes it live in that case). */
+  locallyResolved: boolean;
+  env?: NodeJS.ProcessEnv;
+}
 
 /** Per-language config for the npm/npx binary-resolution strategy
  *  (multi-language-lsp-support plan, Finding C) -- the resolution order every npm-distributed LSP
- *  server this project supports shares (TypeScript today; Python/pyright and PHP/intelephense in
- *  later slices): an explicit override first, then `<workspaceRoot>/node_modules/.bin`, then
- *  `npx --no-install` as the last resort. Never falls back to a bundled copy -- there isn't one. */
+ *  server this project supports shares (TypeScript, Python/pyright, PHP/intelephense): an explicit
+ *  override first, then `<workspaceRoot>/node_modules/.bin`, then `npx --no-install` as the last
+ *  resort. Never falls back to a bundled copy -- there isn't one. */
 export interface NpmNpxStrategyConfig {
   /** The npm package name -- the `npx --package` arg, and (when `binaryName` is omitted) also the
    *  `node_modules/.bin` entry name / bare `npx` command arg. */
@@ -33,6 +40,22 @@ export interface NpmNpxStrategyConfig {
   binaryName?: string;
   /** Args passed to the resolved binary when no `override.args` is given (e.g. `["--stdio"]`). */
   defaultArgs: string[];
+  /** Optional spawned-process env override, applied regardless of which resolution branch wins
+   * (override / local `.bin` / npx fallback). Empty per-language vocab (kept unset for languages
+   * with nothing to configure); TS/JS uses it to keep raising tsserver's heap ceiling even on the
+   * resolved command's spawned env (roadmap item 28), without entangling that language-specific
+   * logic into this shared resolver. */
+  buildEnv?: () => NodeJS.ProcessEnv | undefined;
+}
+
+/** Attaches the strategy's spawned-process env override (when one is set) onto a resolved binary,
+ *  O(1) single branch each call -- kept out of `resolveNpmNpxBinary` itself to hold its
+ *  cyclomatic complexity under the lint budget. */
+function withEnv(
+  resolved: Omit<ResolvedLspBinary, "env">,
+  env: NodeJS.ProcessEnv | undefined,
+): ResolvedLspBinary {
+  return env ? { ...resolved, env } : resolved;
 }
 
 function resolveLocalBinaryPath(
@@ -56,32 +79,37 @@ function resolveLocalBinaryPath(
  * Generalized npm/npx binary-resolution strategy (multi-language-lsp-support plan, Finding C),
  * parameterized by `config.packageName`/`config.defaultArgs` rather than hardcoded to
  * `typescript-language-server` -- reusable as-is by every language whose LSP server is
- * npm-distributed. `lib/core/src/lsp/lsp-binary-resolver.ts`'s `resolveLspBinary()` remains the
- * TS/JS provider's own resolver for this slice (unchanged, still exercised by its existing tests);
- * this function is the shared strategy later npm/npx-distributed language slices (Python, PHP)
- * will call directly.
+ * npm-distributed (`typescript-`, `python-`, and `php-lsp-edge-provider.ts` all call it).
  */
 export function resolveNpmNpxBinary(
   workspaceRoot: string,
   config: NpmNpxStrategyConfig,
   override?: { binary?: string; args?: string[] },
 ): ResolvedLspBinary {
+  const env = config.buildEnv?.();
+
   if (override?.binary) {
-    return {
-      command: override.binary,
-      args: override.args ?? config.defaultArgs,
-      locallyResolved: true,
-    };
+    return withEnv(
+      {
+        command: override.binary,
+        args: override.args ?? config.defaultArgs,
+        locallyResolved: true,
+      },
+      env,
+    );
   }
 
   const binaryName = config.binaryName ?? config.packageName;
   const local = resolveLocalBinaryPath(workspaceRoot, binaryName);
   if (local) {
-    return {
-      command: local,
-      args: config.defaultArgs,
-      locallyResolved: true,
-    };
+    return withEnv(
+      {
+        command: local,
+        args: config.defaultArgs,
+        locallyResolved: true,
+      },
+      env,
+    );
   }
 
   const npxArgs =
@@ -95,11 +123,14 @@ export function resolveNpmNpxBinary(
           ...config.defaultArgs,
         ];
 
-  return {
-    command: "npx",
-    args: npxArgs,
-    locallyResolved: false,
-  };
+  return withEnv(
+    {
+      command: "npx",
+      args: npxArgs,
+      locallyResolved: false,
+    },
+    env,
+  );
 }
 
 /** Short timeout for the live `where`/`command -v` PATH probe -- a cheap liveness check, not the
@@ -108,7 +139,8 @@ const PATH_PROBE_TIMEOUT_MS = 5000;
 
 /** Per-language config for the PATH-native binary-resolution strategy
  *  (multi-language-lsp-support plan, Finding C) -- used by servers distributed as a standalone
- *  native binary rather than through npm (gopls, rust-analyzer, clangd in later slices). */
+ *  native binary rather than through npm (gopls, rust-analyzer, clangd, jdtls, csharp-ls,
+ *  ruby-lsp). */
 export interface PathNativeStrategyConfig {
   /** The binary name to probe on `PATH` (e.g. `"gopls"`, `"rust-analyzer"`, `"clangd"`). */
   binaryName: string;
@@ -177,8 +209,8 @@ function resolveExtraCandidateDir(
  * explicit override first, then a live `PATH` probe (`where`/`command -v`), then
  * `config.extraCandidateDirs` as a courtesy fallback for well-known per-language install
  * locations `PATH` may not include by default. Never falls back to a bundled copy -- there
- * isn't one. Not yet consumed by any provider (no language uses the PATH-native strategy until
- * Slices 2+ ship) -- same "shipped but not yet consumed" pattern as `resolveNpmNpxBinary`.
+ * isn't one. Consumed by every standalone-binary server (`go-`, `rust-`, `cpp-`, `java-`,
+ * `csharp-`, `ruby-lsp-edge-provider.ts`).
  */
 export async function resolvePathNativeBinary(
   config: PathNativeStrategyConfig,
@@ -247,9 +279,9 @@ export interface LocalManifestStrategyConfig {
  * (`config.manifestFilename`) run via `config.buildManifestCommand`, then a global binary name
  * on `PATH` as the last resort -- the closest analogue to the npm/npx strategy's
  * `node_modules/.bin`-then-npx shape, for toolchains whose local/global split works differently.
- * Never falls back to a bundled copy -- there isn't one. Not yet consumed by any provider (no
- * language uses this strategy until Slices 6+ ship) -- same "shipped but not yet consumed"
- * pattern as `resolveNpmNpxBinary`.
+ * Never falls back to a bundled copy -- there isn't one. Currently only `csharp-`/`ruby-
+ * lsp-edge-provider.ts` could use it (both instead resolve via `resolvePathNativeBinary`); it
+ * stays available for a future server that ships via its toolchain's own manifest.
  */
 export function resolveLocalManifestBinary(
   workspaceRoot: string,

@@ -25,6 +25,21 @@ export class AstProcessingService implements IAstProcessor {
     workspaceRoot: string,
     filesToParse: DiscoveredFile[],
   ): Promise<AstProcessResult> {
+    // Serialized through the pool's exclusive batch lock: concurrent processFiles calls on a
+    // shared pool (e.g. many docuvia processes analyzing one large project) queue instead of
+    // interleaving their initialize()/parse()/terminate() worker lifecycles -- overlapping
+    // batches were each spawning their own worker cohort and tearing each other down, the
+    // memory-amplification/teardown race behind the "many processes on a large project"
+    // crashes.
+    return this.workerPool.serializeBatch(() =>
+      this.runBatch(workspaceRoot, filesToParse),
+    );
+  }
+
+  private async runBatch(
+    workspaceRoot: string,
+    filesToParse: DiscoveredFile[],
+  ): Promise<AstProcessResult> {
     const pool = this.workerPool;
     const workerCount = Math.max(1, (os.cpus().length || 4) - 1);
     await pool.initialize(workerCount);

@@ -34,6 +34,9 @@ export const MemoryKeys = {
   LSP_ARGS_OVERRIDE: "lspArgsOverride",
   /** §8h "generous initial timeout" override, in milliseconds. */
   LSP_TIMEOUT_MS: "lspTimeoutMs",
+  /** Tier B multi-process sharding override — how many independent LSP server processes to
+   *  shard the Tier B batch across (see `EdgeResolutionProviderConfig.maxProcesses`). */
+  LSP_MAX_PROCESSES: "lspMaxProcesses",
   /** §8f commit-cap override (default 20, config-tunable). */
   TIER_B_COMMIT_CAP: "tierBCommitCap",
   /** §9f Tier C daily call-budget override. */

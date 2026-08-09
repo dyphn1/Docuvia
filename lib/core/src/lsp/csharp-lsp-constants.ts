@@ -5,7 +5,6 @@
 export const CsharpLspConstants = {
   BINARY_NAME: "csharp-ls",
   DEFAULT_ARGS: [] as string[],
-  VERSION_FLAG: "--version",
 } as const;
 
 export const CSHARP_LSP_MESSAGES = {

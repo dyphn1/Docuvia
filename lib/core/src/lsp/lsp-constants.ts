@@ -20,17 +20,6 @@ export const LspMethods = {
   DEFINITION: "textDocument/definition",
 } as const;
 
-/** `typescript-language-server` — the D1 Provider 1 binary (phase1-decision-integration.md §8b).
- *  Resolution order: an explicit override, then `<workspaceRoot>/node_modules/.bin`, then
- *  `npx --no-install` — never bundled with docuvia itself. */
-export const TsLspConstants = {
-  PACKAGE_NAME: "typescript-language-server",
-  NPX_COMMAND: "npx",
-  NPX_NO_INSTALL_FLAG: "--no-install",
-  STDIO_ARG: "--stdio",
-  VERSION_FLAG: "--version",
-} as const;
-
 /** LSP `SymbolKind` values this provider cares about (function/method/class/constructor) — the
  *  LSP spec's numeric enum, not something docuvia controls, hence not `as const`-typed like our
  *  own vocabularies; kept here so the containment/dispatch code never repeats the raw numbers. */
@@ -54,11 +43,6 @@ export const LSP_MESSAGES = {
     `Failed to spawn LSP server "${command}": ${message}`,
   initializeFailed: (message: string) =>
     `LSP server exited before completing its initialize handshake: ${message}`,
-  binaryUnresolvable:
-    "typescript-language-server is not resolvable (no local node_modules/.bin copy and `npx --no-install` cannot find it) -- install it as a project devDependency to enable LSP-precision cross-file edges",
-  nodeModulesMissing:
-    "node_modules is missing -- run the project's package manager install first",
-  tsconfigMissing: "no tsconfig.json/jsconfig.json found at the workspace root",
   batchTimedOut: (timeoutMs: number) =>
     `Tier B LSP batch exceeded its ${timeoutMs}ms timeout and was aborted`,
   resolutionFailedForFile: (file: string) =>
@@ -67,4 +51,13 @@ export const LSP_MESSAGES = {
     `Tier B forward resolution: first definition result for ${file} resolved outside the workspace; falling through to the next in-workspace result`,
   concurrencyClamped: (requested: number, effective: number) =>
     `Tier B LSP batch: maxConcurrentFiles=${requested} clamped to ${effective} (bounded by file count and maxOpenFiles)`,
+  processShardsClamped: (requested: number, effective: number) =>
+    `Tier B LSP batch: maxProcesses=${requested} clamped to ${effective} (bounded by file count)`,
+  processShardsMemoryClamped: (
+    requested: number,
+    effective: number,
+    budgetMb: number,
+    estimateMb: number,
+  ) =>
+    `Tier B LSP batch: maxProcesses=${requested} clamped to ${effective} by memory (${budgetMb}MiB budget / ${estimateMb}MiB per shard)`,
 } as const;

@@ -43,6 +43,9 @@ export interface AnalyzeCommandOptions {
   /** `--lsp-timeout=` -- takes precedence over `DOCUVIA_LSP_TIMEOUT_MS` (see
    *  `resolveTierBEnvConfig`). `0` means "never time out". */
   lspTimeoutMs?: number;
+  /** `--lsp-processes=` -- takes precedence over `DOCUVIA_LSP_MAX_PROCESSES`. Number of
+   *  independent LSP server processes to shard the Tier B batch across (default `1`). */
+  lspProcesses?: number;
   /** `--full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) -- pre-populates `tierBQueue` with
    *  every currently-tracked file before the batch drains it. Ignored when `escalateToLsp` is not
    *  also set. */
@@ -70,6 +73,7 @@ interface TierBEnvConfig {
   lspBinaryOverride: string | undefined;
   lspArgsOverride: string[] | undefined;
   lspTimeoutMs: number | undefined;
+  lspMaxProcesses: number | undefined;
   tierBCommitCap: number | undefined;
 }
 
@@ -104,10 +108,15 @@ function resolveTierCEnvConfig(): TierCEnvConfig {
  *  docs/gitbook/architecture/application-lifecycle-and-state.md) and injected via
  *  `docuviaMemory`. `cliLspTimeoutMs` (from `--lsp-timeout=`) takes precedence over
  *  `DOCUVIA_LSP_TIMEOUT_MS` when both are given -- an explicit flag on this invocation should win
- *  over an ambient env var. */
-function resolveTierBEnvConfig(cliLspTimeoutMs?: number): TierBEnvConfig {
+ *  over an ambient env var. Same precedence applies to `--lsp-processes=` /
+ *  `DOCUVIA_LSP_MAX_PROCESSES`. */
+function resolveTierBEnvConfig(
+  cliLspTimeoutMs?: number,
+  cliLspProcesses?: number,
+): TierBEnvConfig {
   const lspArgsRaw = process.env.DOCUVIA_LSP_ARGS;
   const timeoutRaw = process.env.DOCUVIA_LSP_TIMEOUT_MS;
+  const processesRaw = process.env.DOCUVIA_LSP_MAX_PROCESSES;
   const capRaw = process.env.DOCUVIA_TIER_B_COMMIT_CAP;
   return {
     lspBinaryOverride: process.env.DOCUVIA_LSP_BINARY,
@@ -116,6 +125,8 @@ function resolveTierBEnvConfig(cliLspTimeoutMs?: number): TierBEnvConfig {
       : undefined,
     lspTimeoutMs:
       cliLspTimeoutMs ?? (timeoutRaw ? Number(timeoutRaw) : undefined),
+    lspMaxProcesses:
+      cliLspProcesses ?? (processesRaw ? Number(processesRaw) : undefined),
     tierBCommitCap: capRaw ? Number(capRaw) : undefined,
   };
 }
@@ -305,6 +316,7 @@ function setupAnalyzeMemory(
   escalateToLsp: boolean,
   force?: boolean,
   lspTimeoutMs?: number,
+  lspProcesses?: number,
   full?: boolean,
 ): void {
   docuviaMemory.createScope(scopeId);
@@ -322,7 +334,7 @@ function setupAnalyzeMemory(
     if (full) {
       docuviaMemory.set(scopeId, MemoryKeys.TIER_B_FULL_RESYNC, true);
     }
-    setTierBEnvMemory(scopeId, lspTimeoutMs);
+    setTierBEnvMemory(scopeId, lspTimeoutMs, lspProcesses);
     setTierCMemory(scopeId);
   }
 }
@@ -374,8 +386,12 @@ function setTierCMemory(scopeId: string): void {
 
 /** Injects §8b/§8f's env-var/CLI-flag overrides into `scopeId` -- shared by `setupAnalyzeMemory`
  *  and the gate-check scope in `analyzeCommand`. */
-function setTierBEnvMemory(scopeId: string, cliLspTimeoutMs?: number): void {
-  const envConfig = resolveTierBEnvConfig(cliLspTimeoutMs);
+function setTierBEnvMemory(
+  scopeId: string,
+  cliLspTimeoutMs?: number,
+  cliLspProcesses?: number,
+): void {
+  const envConfig = resolveTierBEnvConfig(cliLspTimeoutMs, cliLspProcesses);
   if (envConfig.lspBinaryOverride !== undefined) {
     docuviaMemory.set(
       scopeId,
@@ -395,6 +411,13 @@ function setTierBEnvMemory(scopeId: string, cliLspTimeoutMs?: number): void {
       scopeId,
       MemoryKeys.LSP_TIMEOUT_MS,
       envConfig.lspTimeoutMs,
+    );
+  }
+  if (envConfig.lspMaxProcesses !== undefined) {
+    docuviaMemory.set(
+      scopeId,
+      MemoryKeys.LSP_MAX_PROCESSES,
+      envConfig.lspMaxProcesses,
     );
   }
   if (envConfig.tierBCommitCap !== undefined) {
@@ -540,6 +563,7 @@ export async function analyzeCommand(
     escalateToLsp,
     options.force,
     options.lspTimeoutMs,
+    options.lspProcesses,
     options.full,
   );
 

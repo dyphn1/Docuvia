@@ -5,7 +5,6 @@
 export const RustLspConstants = {
   BINARY_NAME: "rust-analyzer",
   DEFAULT_ARGS: [] as string[],
-  VERSION_FLAG: "--version",
 } as const;
 
 export const RUST_LSP_MESSAGES = {

@@ -1,11 +1,11 @@
 import type { ILogger } from "@workspace/contracts";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
+import { resolveTypeScriptLspBinary } from "./typescript-lsp-binary-resolver.js";
+import { checkTypeScriptLspPreflight } from "./typescript-lsp-preflight.js";
 import {
-  resolveLspBinary,
+  TsLspConstants,
   DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB,
-} from "./lsp-binary-resolver.js";
-import { checkLspPreflight } from "./lsp-preflight.js";
-import { TsLspConstants } from "./lsp-constants.js";
+} from "./typescript-lsp-constants.js";
 import {
   BaseLspEdgeProvider,
   type LspLanguageConfig,
@@ -30,8 +30,8 @@ const TYPESCRIPT_LANGUAGE_CONFIG: LspLanguageConfig = {
   name: TsLspConstants.PACKAGE_NAME,
   languageIdByExtension: LANGUAGE_ID_BY_EXTENSION,
   defaultLanguageId: DEFAULT_LANGUAGE_ID,
-  resolveBinary: resolveLspBinary,
-  checkPreflight: checkLspPreflight,
+  resolveBinary: resolveTypeScriptLspBinary,
+  checkPreflight: checkTypeScriptLspPreflight,
   supportsQualifiedContainment: true,
   // roadmap item 28: typescript-language-server reads this key directly off the initialize
   // request and forwards it as tsserver's own --max-old-space-size arg -- the mechanism that

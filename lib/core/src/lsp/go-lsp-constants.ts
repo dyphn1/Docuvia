@@ -5,7 +5,6 @@
 export const GoLspConstants = {
   BINARY_NAME: "gopls",
   DEFAULT_ARGS: [] as string[],
-  VERSION_FLAG: "version",
 } as const;
 
 export const GO_LSP_MESSAGES = {

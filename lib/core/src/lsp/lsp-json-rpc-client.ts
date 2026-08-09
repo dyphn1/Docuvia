@@ -60,7 +60,7 @@ export class LspJsonRpcClient {
   /** Spawns the server and resolves once the process has actually started (or rejects on a
    *  synchronous spawn failure, e.g. `ENOENT` for an unresolvable binary). */
   async start(options: LspJsonRpcClientOptions): Promise<void> {
-    // `resolveLspBinary()` prefers a Windows `.cmd` shim (that's how `npm`/`pnpm` install a
+    // `resolveNpmNpxBinary()` prefers a Windows `.cmd` shim (that's how `npm`/`pnpm` install a
     // pure-JS bin like `typescript-language-server` on Windows), and `node:child_process.spawn`
     // cannot exec a `.cmd`/`.bat`/`.ps1` file directly there -- it throws `EINVAL` synchronously.
     // We considered pulling in `cross-spawn` (the usual fix), but on Windows it unconditionally

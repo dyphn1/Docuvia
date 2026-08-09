@@ -6,10 +6,10 @@ import { checkPythonLspPreflight } from "./python-lsp-preflight.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 
 /**
- * Mirrors `lsp-preflight.unit.test.ts`'s shape for TS -- the `npx --no-install pyright --version`
- * probe path is real (no network dependency, `--no-install` refuses to hit the registry), so
- * these tests are slower than pure unit tests but not flaky when pyright isn't installed anywhere
- * docuvia bundles.
+ * Mirrors `typescript-lsp-preflight.unit.test.ts`'s shape for TS -- the
+ * `npx --no-install pyright --version` probe path is real (no network dependency,
+ * `--no-install` refuses to hit the registry), so these tests are slower than pure unit tests but
+ * not flaky when pyright isn't installed anywhere docuvia bundles.
  */
 describe("checkPythonLspPreflight()", () => {
   let workspaceRoot: string;

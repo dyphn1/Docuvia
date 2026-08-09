@@ -75,15 +75,20 @@ function buildLspProviderConfig(
     scopeId,
     MemoryKeys.LSP_TIMEOUT_MS,
   );
+  const maxProcesses = docuviaMemory.get<number>(
+    scopeId,
+    MemoryKeys.LSP_MAX_PROCESSES,
+  );
 
   if (
     binaryOverride === undefined &&
     argsOverride === undefined &&
-    timeoutMs === undefined
+    timeoutMs === undefined &&
+    maxProcesses === undefined
   ) {
     return undefined;
   }
-  return { binaryOverride, argsOverride, timeoutMs };
+  return { binaryOverride, argsOverride, timeoutMs, maxProcesses };
 }
 
 /**

@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import type {
@@ -17,7 +18,7 @@ import {
   UTF8_ENCODING,
 } from "@workspace/contracts";
 import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
-import type { ResolvedLspBinary } from "./lsp-binary-resolver.js";
+import type { ResolvedLspBinary } from "./lsp-binary-resolver-strategies.js";
 import { LspMethods, LspSymbolKinds, LSP_MESSAGES } from "./lsp-constants.js";
 import {
   buildUniqueNodeKey,
@@ -43,6 +44,19 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
  *  opened transitively as callers alive across more of the queue, cutting reopen/re-parse churn
  *  for the same re-tune-if-it's-off caveat as before. */
 const DEFAULT_MAX_OPEN_FILES = 200;
+
+/** Default `EdgeResolutionProviderConfig.processMemoryEstimateMb` -- a conservative estimate of one
+ *  shard process's steady-state memory (the LSP server binary + its language server child, e.g.
+ *  typescript-language-server forking tsserver). Used to bound effective shard count against the
+ *  batch's memory budget (see `maxProcessMemoryMb`). Untuned; a round number chosen so that a
+ *  default budget (below) still allows several shards even on a modest machine. */
+const DEFAULT_PROCESS_MEMORY_ESTIMATE_MB = 512;
+/** Default `EdgeResolutionProviderConfig.maxProcessMemoryMb` (in MiB): the portion of the current
+ *  machine's memory a whole batch's shards may occupy at once, when the caller sets no explicit
+ *  budget. Defaults to 25% of total system memory (rounded up to at least one shard's worth) so a
+ *  single batch can never consume the whole machine regardless of `maxProcesses`, even before
+ *  TypeScript's own `--max-old-space-size` heap cap is hit. */
+const DEFAULT_PROCESS_MEMORY_BUDGET_RATIO = 0.25;
 
 const CALL_SITE_KINDS: ReadonlySet<number> = new Set([
   LspSymbolKinds.FUNCTION,
@@ -186,11 +200,12 @@ type RunOneSlotResult =
 
 /**
  * Minimal preflight outcome shape `BaseLspEdgeProvider` actually needs (`ready`/`reason`) --
- * each language's own preflight function (`lsp-preflight.ts` for TS, `python-lsp-preflight.ts`
- * for Python, ...) is free to return a richer, language-specific result object (e.g. TS's
- * `LspPreflightResult` with its own `nodeModulesPresent`/`tsconfigResolvable` fields) as long as
- * it's a structural superset of this -- keeps `LspLanguageConfig.checkPreflight`'s signature
- * language-agnostic instead of tied to TS's own marker-file vocabulary.
+ * each language's own preflight function (`typescript-lsp-preflight.ts` for TS,
+ * `python-lsp-preflight.ts` for Python, ...) is free to return a richer, language-specific result
+ * object (e.g. TS's `TypeScriptLspPreflightResult` with its own `nodeModulesPresent`/
+ * `tsconfigResolvable` fields) as long as it's a structural superset of this -- keeps
+ * `LspLanguageConfig.checkPreflight`'s signature language-agnostic instead of tied to TS's own
+ * marker-file vocabulary.
  */
 export interface LspPreflightOutcome {
   ready: boolean;
@@ -298,6 +313,35 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     return this.config.maxConcurrentFiles ?? 1;
   }
 
+  /** See `EdgeResolutionProviderConfig.maxProcesses` (Tier B multi-process sharding plan). `1`
+   *  reproduces today's single-spawn-per-batch behavior exactly. */
+  private get maxProcesses(): number {
+    return this.config.maxProcesses ?? 1;
+  }
+
+  /** Per-shard steady-state memory estimate (MiB) used to bound `maxProcesses` against memory. */
+  private processMemoryEstimateMb(): number {
+    return (
+      this.config.processMemoryEstimateMb ?? DEFAULT_PROCESS_MEMORY_ESTIMATE_MB
+    );
+  }
+
+  /** The batch's total memory budget (MiB) for all shard processes at once. When the caller sets
+   *  an explicit `maxProcessMemoryMb`, it wins; otherwise the provider derives a bound from the
+   *  current machine's total memory (`DEFAULT_PROCESS_MEMORY_BUDGET_RATIO`) so an unscoped
+   *  `maxProcesses` can never consume the whole machine. */
+  private maxProcessMemoryMb(): number {
+    if (this.config.maxProcessMemoryMb !== undefined) {
+      return this.config.maxProcessMemoryMb;
+    }
+    return Math.max(
+      Math.round(
+        (os.totalmem() / 1024 / 1024) * DEFAULT_PROCESS_MEMORY_BUDGET_RATIO,
+      ),
+      this.processMemoryEstimateMb(),
+    );
+  }
+
   /** Clamps the configured file-concurrency to something the batch can safely run: never more
    *  than there are files to process, and never so high that K in-flight turns' own pinned files
    *  (D7) alone could approach `maxOpenFiles` and starve the LRU cache for every target open (D4).
@@ -310,6 +354,39 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     );
     if (clamped !== requested) {
       this.logger.debug(LSP_MESSAGES.concurrencyClamped(requested, clamped));
+    }
+    return clamped;
+  }
+
+  /** Clamps the configured process-shard count to what the batch can safely have at once: never
+   *  more than there are files to process, and never zero (an empty `files` batch short-circuits
+   *  before this is reached). `maxProcesses` is a *per-core/client* knob, so it is not bound by
+   *  `maxOpenFiles` the way `effectiveConcurrency` is -- but memory scales with process count
+   *  (each server holds its own process program), so the count is additionally bounded by the
+   *  batch's memory budget (`maxProcessMemoryMb / processMemoryEstimateMb`) -- the fix for the
+   *  multi-process-sharding memory crash. Logs once per batch when clamping actually changes the
+   *  requested value. */
+  private effectiveProcesses(fileCount: number): number {
+    const requested = this.maxProcesses;
+    const memoryBounded = Math.floor(
+      this.maxProcessMemoryMb() / this.processMemoryEstimateMb(),
+    );
+    const clamped = Math.max(1, Math.min(requested, fileCount, memoryBounded));
+    if (clamped !== requested) {
+      this.logger.debug(LSP_MESSAGES.processShardsClamped(requested, clamped));
+      if (
+        clamped < requested &&
+        memoryBounded < Math.min(requested, fileCount)
+      ) {
+        this.logger.debug(
+          LSP_MESSAGES.processShardsMemoryClamped(
+            requested,
+            clamped,
+            this.maxProcessMemoryMb(),
+            this.processMemoryEstimateMb(),
+          ),
+        );
+      }
     }
     return clamped;
   }
@@ -334,14 +411,134 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     }
 
     const timeoutMs = this.config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-    const client = this.createClient();
-    return this.runBatch(client, request, timeoutMs);
+    const processCount = this.effectiveProcesses(request.files.length);
+    if (processCount <= 1) {
+      const client = this.createClient();
+      return this.runBatch(client, request, timeoutMs);
+    }
+
+    // Tier B multi-process sharding plan: split the batch across `processCount` independent LSP
+    // server processes (each its own `LspJsonRpcClient`). Unlike `maxConcurrentFiles` (which
+    // only overlaps IPC round-trips over ONE server's serial compute -- the K=4 ~12% ceiling),
+    // sharding gives each server its own process/program so per-request *compute* actually
+    // parallelizes across cores. `edge set parity` is preserved by construction: each file is in
+    // exactly one shard, and node_keys/file outcomes are per-file deterministic, so merging the
+    // shards' outcomes (files-augmented merge) reproduces a single-process batch exactly.
+    const shards = this.partitionRequest(request, processCount);
+    const outcomes = await Promise.all(
+      shards.map((shard) => {
+        const client = this.createClient();
+        return this.runBatch(client, shard, timeoutMs);
+      }),
+    );
+    return this.mergeShardOutcomes(outcomes, request.files);
   }
   private languageIdFor(filePath: string): string {
     return (
       this.languageConfig.languageIdByExtension[path.extname(filePath)] ??
       this.languageConfig.defaultLanguageId
     );
+  }
+
+  /** Splits a request across `processCount` shards for the multi-process sharding driver — a
+   *  contiguous, round-robin-ish partition of `request.files`, with `callsByFile` (the AST
+   *  call-site seeds, forward path only) kept per-file so each shard only carries the seeds for
+   *  the files IT owns. Each file lands in exactly one shard; outer order is preserved per shard
+   *  (shard i = files[i], files[i+P], ...). */
+  private partitionRequest(
+    request: EdgeResolutionRequest,
+    processCount: number,
+  ): EdgeResolutionRequest[] {
+    const shards: EdgeResolutionRequest[] = Array.from(
+      { length: processCount },
+      () => ({
+        workspaceRoot: request.workspaceRoot,
+        files: [],
+        callsByFile: {},
+      }),
+    );
+    for (let i = 0; i < request.files.length; i++) {
+      const file = request.files[i];
+      const shard = shards[i % processCount];
+      shard.files.push(file);
+      const seeds = request.callsByFile?.[file];
+      if (seeds) shard.callsByFile![file] = seeds;
+    }
+    return shards;
+  }
+
+  /** Merges per-shard `EdgeResolutionOutcome`s back into one batch-level outcome for the
+   *  multi-process sharding driver. Edge sets are unioned across shards; `filesProcessed` /
+   *  `filesFailed` are re-ordered to the original `request.files` order (each file is owned by
+   *  exactly one shard, so a shard-completion-order union would otherwise be non-deterministic
+   *  across runs -- byte-identical output to a single-process batch is the keystone invariant).
+   *  `unavailableReason` is dropped unless EVERY shard failed to run, in which case the shards
+   *  are guaranteed to have the same root cause and the first is kept. A shard that resolved the
+   *  whole batch fine never contributes `unavailableReason`, so a single shard that hit a
+   *  per-shard timeout degrades only that shard's files via `filesFailed`, not the whole batch. */
+  private mergeShardOutcomes(
+    outcomes: EdgeResolutionOutcome[],
+    files: string[],
+  ): EdgeResolutionOutcome {
+    const edges: ResolvedCallEdge[] = [];
+    const filesProcessedSet = new Set<string>();
+    const filesFailedByFile = new Map<string, string>();
+    let unavailableReasons = 0;
+
+    for (let i = 0; i < outcomes.length; i++) {
+      const outcome = outcomes[i];
+      for (const edge of outcome.edges) edges.push(edge);
+      for (const file of outcome.filesProcessed) filesProcessedSet.add(file);
+      for (const failure of outcome.filesFailed)
+        filesFailedByFile.set(failure.file, failure.reason);
+      if (outcome.unavailableReason) unavailableReasons++;
+    }
+
+    edges.sort((a, b) =>
+      (a.sourceNodeKey + "->" + a.targetNodeKey).localeCompare(
+        b.sourceNodeKey + "->" + b.targetNodeKey,
+      ),
+    );
+
+    const { filesProcessed, filesFailed } = this.reorderFiles(
+      files,
+      filesProcessedSet,
+      filesFailedByFile,
+    );
+
+    const merged: EdgeResolutionOutcome = {
+      edges,
+      filesProcessed,
+      filesFailed,
+    };
+    if (unavailableReasons === outcomes.length && outcomes.length > 0)
+      merged.unavailableReason = outcomes.find(
+        (o) => o.unavailableReason,
+      )?.unavailableReason;
+    return merged;
+  }
+
+  /** Rolls per-shard `filesProcessed`/`filesFailed` back into the original `request.files` order
+   *  so sharding's completion order can't leak into the merged outcome (determinism / byte-parity
+   *  with single-process). A file is either processed, failed, or neither (an unreached file --
+   *  excluded from the merged outcome, matching `markUnreachedFilesFailed`'s caller-side restaging
+   *  semantics). */
+  private reorderFiles(
+    files: string[],
+    filesProcessedSet: Set<string>,
+    filesFailedByFile: Map<string, string>,
+  ): {
+    filesProcessed: string[];
+    filesFailed: EdgeResolutionOutcome["filesFailed"];
+  } {
+    const filesProcessed: string[] = [];
+    const filesFailed: EdgeResolutionOutcome["filesFailed"] = [];
+    for (const file of files) {
+      if (filesProcessedSet.has(file)) filesProcessed.push(file);
+      else if (filesFailedByFile.has(file))
+        filesFailed.push({ file, reason: filesFailedByFile.get(file)! });
+    }
+    return { filesProcessed, filesFailed };
   }
 
   private async runBatch(

@@ -146,11 +146,16 @@ export const UI_MESSAGES = {
     filesProcessed: number,
     edgesApplied: number,
     filesFailed: number,
+    filesFailedPermanent: number,
   ) =>
     `${filesProcessed} file(s) processed, ${edgesApplied} corrected edge(s) applied` +
     (filesFailed > 0
-      ? `, ${filesFailed} file(s) left queued for the next batch.`
-      : "."),
+      ? `, ${filesFailed} file(s) left queued for the next batch`
+      : "") +
+    (filesFailedPermanent > 0
+      ? `, ${filesFailedPermanent} file(s) permanently failed (not re-queued)`
+      : "") +
+    ".",
   ANALYZE_TIER_B_DEGRADED: (reason: string) =>
     `LSP unavailable -- AST-level edges left untouched (${reason})`,
   /** D2's mandatory pre-flight gate (phase1-decision-integration.md §8c). Shown only on an

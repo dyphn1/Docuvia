@@ -354,6 +354,92 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
+  it("drops a permanently-failed file (retryable: false) from the remaining queue but stamps it Tier-B-tried (2026-08 moby benchmark finding: an uncapped full-repo run re-processed permanently-unloadable files on every batch, ~0 edges)", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store, fake } = makeStore(["a.ts#foo"], []);
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [
+            { file: "a.ts", reason: "no package metadata", retryable: false },
+          ],
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    // The permanent failure is reported in the result/log, but excluded from the retried queue.
+    expect(result.filesFailed).toBe(0);
+    expect(result.filesFailedPermanent).toBe(1);
+    const pending = JSON.parse(
+      store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
+    );
+    expect(pending.remainingQueue).toEqual([]);
+    // ...and, like a successfully processed file, it gets stamped so `markTierBProcessed`-aware
+    // consumers (doctor's coverage counts) don't keep seeing it as "never attempted".
+    expect(fake.tierBProcessed).toEqual([
+      { projectId: 1, filePath: "a.ts", commitSha: HEAD_SHA },
+    ]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("keeps a retryable failure (retryable: true -- whole-batch timeout cut the file's turn short) in the remaining queue for the next batch", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const { store } = makeStore([]);
+    appendTierBQueueEntries(store, [{ file: "a.ts", commitSha: HEAD_SHA }]);
+
+    registerProvider(
+      makeProvider(
+        async () => ({ available: true }),
+        async () => ({
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [
+            {
+              file: "a.ts",
+              reason: "exceeded its batch timeout",
+              retryable: true,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    expect(result.filesFailed).toBe(1);
+    expect(result.filesFailedPermanent).toBe(0);
+    const pending = JSON.parse(
+      store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
+    );
+    expect(pending.remainingQueue).toEqual([
+      { file: "a.ts", commitSha: HEAD_SHA },
+    ]);
+
+    const fs = await import("node:fs");
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
   it("degrades honestly when the provider is unavailable: no edges applied, whole toProcess set stays queued", async () => {
     const workspaceRoot = await makeWorkspace();
     const { store, fake } = makeStore(["a.ts#foo"]);

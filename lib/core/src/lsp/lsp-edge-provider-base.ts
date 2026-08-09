@@ -503,7 +503,10 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
   ): EdgeResolutionOutcome {
     const edges: ResolvedCallEdge[] = [];
     const filesProcessedSet = new Set<string>();
-    const filesFailedByFile = new Map<string, string>();
+    const filesFailedByFile = new Map<
+      string,
+      EdgeResolutionOutcome["filesFailed"][number]
+    >();
     let unavailableReasons = 0;
 
     for (let i = 0; i < outcomes.length; i++) {
@@ -511,7 +514,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       for (const edge of outcome.edges) edges.push(edge);
       for (const file of outcome.filesProcessed) filesProcessedSet.add(file);
       for (const failure of outcome.filesFailed)
-        filesFailedByFile.set(failure.file, failure.reason);
+        filesFailedByFile.set(failure.file, failure);
       if (outcome.unavailableReason) unavailableReasons++;
     }
 
@@ -547,7 +550,10 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
   private reorderFiles(
     files: string[],
     filesProcessedSet: Set<string>,
-    filesFailedByFile: Map<string, string>,
+    filesFailedByFile: Map<
+      string,
+      EdgeResolutionOutcome["filesFailed"][number]
+    >,
   ): {
     filesProcessed: string[];
     filesFailed: EdgeResolutionOutcome["filesFailed"];
@@ -557,7 +563,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     for (const file of files) {
       if (filesProcessedSet.has(file)) filesProcessed.push(file);
       else if (filesFailedByFile.has(file))
-        filesFailed.push({ file, reason: filesFailedByFile.get(file)! });
+        filesFailed.push(filesFailedByFile.get(file)!);
     }
     return { filesProcessed, filesFailed };
   }
@@ -788,7 +794,11 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           edges.push(edge);
         }
       } else {
-        filesFailed.push({ file: files[i], reason: slot.reason });
+        filesFailed.push({
+          file: files[i],
+          reason: slot.reason,
+          retryable: slot.deadlineExceeded,
+        });
       }
     }
 
@@ -954,6 +964,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         filesFailed.push({
           file,
           reason: LSP_MESSAGES.batchTimedOut(timeoutMs),
+          retryable: true,
         });
       }
     }

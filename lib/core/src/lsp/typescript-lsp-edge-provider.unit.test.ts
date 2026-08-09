@@ -800,7 +800,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     });
 
     expect(outcome.filesFailed).toEqual([
-      { file: "a.ts", reason: "server choked on a.ts" },
+      { file: "a.ts", reason: "server choked on a.ts", retryable: false },
     ]);
     expect(outcome.filesProcessed).toEqual(["b.ts"]);
   });
@@ -863,6 +863,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       {
         file: "a.ts",
         reason: expect.stringMatching(/exceeded its 20ms timeout/),
+        retryable: true,
       },
     ]);
     expect(outcome.unavailableReason).toMatch(/exceeded its 20ms timeout/);
@@ -928,6 +929,7 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
       {
         file: "b.ts",
         reason: expect.stringMatching(/exceeded its 150ms timeout/),
+        retryable: true,
       },
     ]);
     expect(outcome.unavailableReason).toMatch(/exceeded its 150ms timeout/);

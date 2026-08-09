@@ -164,6 +164,7 @@ async function runTierBBatchCore(
         degradedLanguages: [],
       },
       failedEntries: [],
+      permanentFailed: [],
       edgesApplied: 0,
       edgesPruned: 0,
     });
@@ -177,6 +178,7 @@ async function runTierBBatchCore(
       level: JSONL_LOG_LEVEL_ERROR,
       file: failure.file,
       reason: failure.reason,
+      retryable: failure.retryable,
     });
   }
 
@@ -203,7 +205,18 @@ async function runTierBBatchCore(
     headSha,
   );
   const processedFiles = new Set(outcome.filesProcessed);
-  const failedEntries = toProcess.filter((e) => !processedFiles.has(e.file));
+  const retryableByFile = new Map(
+    outcome.filesFailed.map((f) => [f.file, f.retryable]),
+  );
+  const permanentFailed: TierBQueueEntry[] = [];
+  const failedEntries = toProcess.filter((e) => {
+    if (processedFiles.has(e.file)) return false;
+    if (retryableByFile.get(e.file) === false) {
+      permanentFailed.push(e);
+      return false;
+    }
+    return true;
+  });
 
   return await finalizeBatch(deps, {
     headSha,
@@ -213,6 +226,7 @@ async function runTierBBatchCore(
     skippedLanguage: skippedLanguage.length,
     outcome,
     failedEntries,
+    permanentFailed,
     edgesApplied,
     edgesPruned,
     degradedReason: outcome.unavailableReason,
@@ -231,6 +245,7 @@ function emptyResult(
     filesSkippedLanguage: 0,
     filesProcessed: 0,
     filesFailed: 0,
+    filesFailedPermanent: 0,
     edgesApplied: 0,
     edgesPruned: 0,
     degraded: false,
@@ -379,6 +394,7 @@ interface FinalizeArgs {
   skippedLanguage: number;
   outcome: MergedEdgeResolutionOutcome;
   failedEntries: TierBQueueEntry[];
+  permanentFailed: TierBQueueEntry[];
   edgesApplied: number;
   edgesPruned: number;
   degradedReason?: string;
@@ -391,7 +407,20 @@ async function finalizeBatch(
   args: FinalizeArgs,
 ): Promise<TierBOnlyResult> {
   const { workspaceRoot, logger, store, knowledgeGit } = deps;
-  const { headSha, outcome, failedEntries } = args;
+  const { headSha, outcome, failedEntries, permanentFailed } = args;
+
+  if (headSha && permanentFailed.length > 0) {
+    const project = store.projects.getFirst();
+    if (project) {
+      for (const entry of permanentFailed) {
+        store.files.markTierBProcessed({
+          projectId: project.id,
+          filePath: entry.file,
+          commitSha: headSha,
+        });
+      }
+    }
+  }
 
   if (headSha) {
     const pending: PendingTierBBatch = {
@@ -422,6 +451,7 @@ async function finalizeBatch(
     filesSkippedLanguage: args.skippedLanguage,
     filesProcessed,
     filesFailed: failedEntries.length,
+    filesFailedPermanent: permanentFailed.length,
     edgesApplied: args.edgesApplied,
     edgesPruned: args.edgesPruned,
     degraded: Boolean(outcome.unavailableReason),
@@ -429,7 +459,11 @@ async function finalizeBatch(
     commitCapExceeded: args.commitCapExceeded,
   });
   logger.info(
-    ANALYZE_MESSAGES.TIER_B_SUMMARY(filesProcessed, args.edgesApplied),
+    ANALYZE_MESSAGES.TIER_B_SUMMARY(
+      filesProcessed,
+      args.edgesApplied,
+      permanentFailed.length,
+    ),
   );
 
   return {
@@ -440,6 +474,7 @@ async function finalizeBatch(
     filesSkippedLanguage: args.skippedLanguage,
     filesProcessed,
     filesFailed: failedEntries.length,
+    filesFailedPermanent: permanentFailed.length,
     edgesApplied: args.edgesApplied,
     edgesPruned: args.edgesPruned,
     degraded: Boolean(outcome.unavailableReason),

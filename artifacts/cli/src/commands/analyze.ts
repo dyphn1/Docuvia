@@ -227,6 +227,7 @@ function printTierBBatchResult(
         result.filesProcessed,
         result.edgesApplied,
         result.filesFailed,
+        result.filesFailedPermanent,
       ),
     );
   }

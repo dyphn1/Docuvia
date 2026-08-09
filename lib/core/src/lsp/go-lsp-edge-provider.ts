@@ -2,7 +2,7 @@ import type { ILogger } from "@workspace/contracts";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { checkGoLspPreflight } from "./go-lsp-preflight.js";
-import { GoLspConstants } from "./go-lsp-constants.js";
+import { GoLspConstants, normalizeGoSymbolName } from "./go-lsp-constants.js";
 import {
   BaseLspEdgeProvider,
   type LspLanguageConfig,
@@ -30,13 +30,14 @@ const GO_LANGUAGE_CONFIG: LspLanguageConfig = {
   // GRPH-006 follow-up: Tier A now resolves Go containment (`ast-worker.ts`'s
   // `resolveGoReceiverContainerName` reads a method_declaration's own `receiver` field directly --
   // `type_declaration` never lexically encloses a `method_declaration`, so this isn't the
-  // ancestor-walk mechanism other languages use). This flag stays `false` regardless -- confirmed
-  // via a live `gopls` v0.23.0 probe on 2026-08-04 (see GRPH-006 ADR): `textDocument/documentSymbol`
-  // for a receiver method returns a flat top-level entry (e.g. name "(A).Handle"), never nested
-  // under its receiver struct's own symbol, and the struct itself reports LSP kind `Struct` (23),
-  // not `Class` (5) -- so even if it were nested, this codebase's ancestor-walk containment read
-  // (`symbol.kind === LspSymbolKinds.CLASS`) would not recognize it as a container boundary either.
+  // ancestor-walk mechanism other languages use). The flag stays `false`, but gopls bakes the
+  // receiver into the symbol *name* (`(A).Handle`, flat, never nested), so `normalizeSymbolName`
+  // recovers Tier A's `A.Handle` key shape from the name alone.
   supportsQualifiedContainment: false,
+  // GRPH-006 follow-up: gopls never nests a receiver method under its struct (`documentSymbol`
+  // flat entry named `(A).Handle`, struct kind `Struct`(23) not `Class`(5)), so the container
+  // can't come from the symbol tree the way TypeScript's does -- recover it from the name.
+  normalizeSymbolName: normalizeGoSymbolName,
   // issue #11 plan A: Go's own forward-resolution calibration slice hasn't run yet (Slice 4) --
   // stays on the reverse pipeline until it does (FWD-004/D2, single per-language safety gate).
   definitionResolution: "reverse",

@@ -97,6 +97,16 @@ function normalizeDocumentSymbols(
   );
 }
 
+/** Applies `LspLanguageConfig.normalizeSymbolName` (when configured) to a symbol name before it
+ *  feeds node_key construction. Extracted to a module-level helper (not a private method) so the
+ *  base class never needs an instance to apply a pure per-language rewriting rule. */
+function platformNormalizedKeyName(
+  name: string,
+  config: LspLanguageConfig,
+): string {
+  return config.normalizeSymbolName ? config.normalizeSymbolName(name) : name;
+}
+
 function containsPosition(range: LspRange, position: LspPosition): boolean {
   const afterStart =
     position.line > range.start.line ||
@@ -240,6 +250,17 @@ export interface LspLanguageConfig {
    *  Deliberately explicit, never inferred from the LSP server's own `documentSymbol` nesting,
    *  which is semantic and may disagree with Tier A's tree-sitter-ancestry rule per language. */
   supportsQualifiedContainment: boolean;
+  /** Per-language rewriting of an LSP `documentSymbol`'s `name` before it feeds node_key
+   *  construction (GRPH-006 Go follow-up). `supportsQualifiedContainment` gates whether the
+   *  symbol *tree*'s enclosing-class read folds into the key; some servers instead bake the
+   *  container into the symbol's *name* with no nesting to read (gopls returns a Go receiver
+   *  method as a flat top-level `(Receiver).Method` entry — no `children`, struct reported
+   *  as kind `Struct` (23), never `Class` (5)). This hook lets a language rewrite that name into
+   *  the exact shape `buildQualifiedBaseKey` produces for Tier A's
+   *  `(fn.name, fn.containerName) = (Method, Receiver)` — i.e. `Receiver.Method` — so Tier B keys
+   *  match the persisted keys (`file#Receiver.Method`) that `run-tier-b-batch`'s
+   *  `findNodeIdByNodeKey` matches against. Default: identity. */
+  normalizeSymbolName?: (name: string) => string;
   /** Sent verbatim as the `initialize` request's `initializationOptions` param (LSP spec: an
    *  opaque, server-defined bag -- most servers ignore fields they don't recognize, so this is
    *  safe to leave unset for any language with nothing to configure here). TS/JS uses this to set
@@ -996,7 +1017,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           fileState.used,
           buildQualifiedBaseKey(
             file,
-            symbol.name,
+            platformNormalizedKeyName(symbol.name, this.languageConfig),
             this.languageConfig.supportsQualifiedContainment
               ? enclosed
               : undefined,
@@ -1018,7 +1039,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       fileState.used,
       buildQualifiedBaseKey(
         file,
-        name,
+        platformNormalizedKeyName(name, this.languageConfig),
         this.languageConfig.supportsQualifiedContainment
           ? containerName
           : undefined,

@@ -90,7 +90,9 @@ sqlite_q() {
   printf '%s' "$result"
 }
 
-start_ms=$(date +%s000)
+# Use nanosecond precision for wall-clock measurement (milliseconds via %3N, or nanoseconds via %N)
+# date +%s%3N gives milliseconds since epoch (available on GNU date and BSD/macOS date)
+start_ms=$(date +%s%3N)
 
 # Phase 1: Tier A ingestion (idempotent; fast no-op when HEAD has not moved). Ensures the
 # `ast_call_sites` seed table and the queue are populated for the LSP pass. An explicit
@@ -126,7 +128,7 @@ fi
 files_processed=$(sqlite_q "SELECT count(*) FROM project_files WHERE last_tier_b_processed_at IS NOT NULL;")
 total_edges=$(sqlite_q "SELECT count(*) FROM node_links;")
 
-end_ms=$(date +%s000)
+end_ms=$(date +%s%3N)
 wall_ms=$((end_ms - start_ms))
 
 echo "${LABEL}|${queue}|${seed_count}|${files_processed}|${total_edges}|${wall_ms}"

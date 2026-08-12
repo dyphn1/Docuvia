@@ -44,7 +44,8 @@ export interface AnalyzeCommandOptions {
    *  `resolveTierBEnvConfig`). `0` means "never time out". */
   lspTimeoutMs?: number;
   /** `--lsp-processes=` -- takes precedence over `DOCUVIA_LSP_MAX_PROCESSES`. Number of
-   *  independent LSP server processes to shard the Tier B batch across (default `1`). */
+   *  independent LSP server processes to shard the Tier B batch across. Default: `1` (applied in
+   *  \`resolveTierBEnvConfig\`). */
   lspProcesses?: number;
   /** `--full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) -- pre-populates `tierBQueue` with
    *  every currently-tracked file before the batch drains it. Ignored when `escalateToLsp` is not
@@ -118,6 +119,15 @@ function resolveTierBEnvConfig(
   const timeoutRaw = process.env.DOCUVIA_LSP_TIMEOUT_MS;
   const processesRaw = process.env.DOCUVIA_LSP_MAX_PROCESSES;
   const capRaw = process.env.DOCUVIA_TIER_B_COMMIT_CAP;
+
+  /** Safely parse a positive integer from a string, returning undefined for invalid values. */
+  const parsePositiveInt = (raw: string | undefined): number | undefined => {
+    if (!raw) return undefined;
+    const n = Number(raw);
+    if (Number.isNaN(n) || n < 1 || !Number.isInteger(n)) return undefined;
+    return n;
+  };
+
   return {
     lspBinaryOverride: process.env.DOCUVIA_LSP_BINARY,
     lspArgsOverride: lspArgsRaw
@@ -125,8 +135,7 @@ function resolveTierBEnvConfig(
       : undefined,
     lspTimeoutMs:
       cliLspTimeoutMs ?? (timeoutRaw ? Number(timeoutRaw) : undefined),
-    lspMaxProcesses:
-      cliLspProcesses ?? (processesRaw ? Number(processesRaw) : undefined),
+    lspMaxProcesses: cliLspProcesses ?? parsePositiveInt(processesRaw) ?? 1,
     tierBCommitCap: capRaw ? Number(capRaw) : undefined,
   };
 }

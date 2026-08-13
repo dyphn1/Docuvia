@@ -664,6 +664,142 @@ describe("runTierBBatch() -- edge application, pending finalize staging (ยง8d, ย
     fs.rmSync(workspaceRoot, { recursive: true, force: true });
   });
 
+  it("issue #33: a stray secondary-language degradation (rust-family bucket healthy, one bundled .rb formula's ruby bucket degraded) does NOT degrade the whole run -- degraded: false with the stray shape surfaced", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "brew.rb"),
+      "class Brew < Formula\nend\n",
+    );
+    const { store } = makeStore([]);
+    appendTierBQueueEntries(store, [
+      { file: "a.ts", commitSha: HEAD_SHA },
+      { file: "brew.rb", commitSha: HEAD_SHA },
+    ]);
+
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () =>
+        makeProvider(
+          async () => ({ available: true }),
+          async () => ({
+            edges: [],
+            filesProcessed: ["a.ts"],
+            filesFailed: [],
+          }),
+        ),
+      ruby: () =>
+        makeProvider(
+          async () => ({ available: false, reason: "ruby-lsp not installed" }),
+          async () => ({
+            edges: [],
+            filesProcessed: [],
+            filesFailed: [],
+            unavailableReason: 'Failed to spawn LSP server "ruby-lsp"',
+          }),
+          "ruby-lsp",
+        ),
+    }));
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    // The 1-file healthy bucket made progress, so the run as a whole is NOT degraded (the ripgrep
+    // 100-file-healthy run mislabeled "degraded" over pkg/brew/ripgrep-bin.rb was the bug).
+    expect(result.degraded).toBe(false);
+    expect(result.degradedReason).toBeUndefined();
+    // ...but the stray bucket's degradation is still recorded for per-language diagnostics.
+    expect(result.degradedLanguages).toEqual([
+      { languageId: "ruby", reason: 'Failed to spawn LSP server "ruby-lsp"' },
+    ]);
+    expect(result.strayLanguageDegraded).toBe(true);
+    expect(result.fullyDegraded).toBe(false);
+    expect(result.filesProcessed).toBe(1);
+
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("issue #33: a stray-degraded bucket no longer suppresses the zero-progress watchdog for a healthy-but-zero-progress bucket, and the degraded bucket's files are never escalated onto the permanent queue", async () => {
+    const workspaceRoot = await makeWorkspace();
+    const fs = await import("node:fs");
+    const path = await import("node:path");
+    fs.writeFileSync(
+      path.join(workspaceRoot, "brew.rb"),
+      "class Brew < Formula\nend\n",
+    );
+    const { store, fake } = makeStore([]);
+    // Two prior zero-progress batches -- this is the Nth (DEFAULT_TIER_B_ZERO_PROGRESS_MAX_BATCHES: 3).
+    // The healthy typescript bucket is the zero-progress one; the degraded ruby bucket is unrelated.
+    store.meta.set(GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES, "2");
+    appendTierBQueueEntries(store, [
+      { file: "a.ts", commitSha: HEAD_SHA },
+      { file: "brew.rb", commitSha: HEAD_SHA },
+    ]);
+
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () =>
+        makeProvider(
+          async () => ({ available: true }),
+          async () => ({
+            edges: [],
+            filesProcessed: [],
+            filesFailed: [
+              {
+                file: "a.ts",
+                reason: "exceeded its batch timeout",
+                retryable: true,
+              },
+            ],
+          }),
+        ),
+      ruby: () =>
+        makeProvider(
+          async () => ({ available: false, reason: "ruby-lsp not installed" }),
+          async () => ({
+            edges: [],
+            filesProcessed: [],
+            filesFailed: [],
+            unavailableReason: 'Failed to spawn LSP server "ruby-lsp"',
+          }),
+          "ruby-lsp",
+        ),
+    }));
+
+    const result = await runTierBBatch({
+      workspaceRoot,
+      logger: createMockLogger(),
+      store,
+      git: makeGit(),
+      knowledgeGit: makeKnowledgeGit(),
+    });
+
+    // The healthy zero-progress bucket's file trips the watchdog despite the unrelated stray
+    // degradation (before issue #33 the aggregate unavailableReason blanket-skipped the streak).
+    expect(result.zeroProgressWatchdogTripped).toBe(true);
+    expect(result.strayLanguageDegraded).toBe(true);
+    // The healthy file is escalated to permanent-failed and stamped.
+    expect(result.filesFailedPermanent).toBe(1);
+    expect(fake.tierBProcessed).toEqual([
+      { projectId: 1, filePath: "a.ts", commitSha: HEAD_SHA },
+    ]);
+    // The degraded ruby bucket's file is NOT conflated into the zero-progress escalation -- it
+    // stays queued for when ruby-lsp is installed.
+    const pending = JSON.parse(
+      store.meta.get(GitConstants.META_KEY_TIER_B_BATCH_PENDING)!,
+    );
+    expect(pending.remainingQueue).toEqual([
+      { file: "brew.rb", commitSha: HEAD_SHA },
+    ]);
+    expect(result.filesFailed).toBe(1);
+
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
   it("degrades honestly when the provider is unavailable: no edges applied, whole toProcess set stays queued", async () => {
     const workspaceRoot = await makeWorkspace();
     const { store, fake } = makeStore(["a.ts#foo"]);

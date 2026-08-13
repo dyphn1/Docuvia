@@ -154,11 +154,136 @@ describe("resolveEdgesForLanguageBuckets() -- N>1 dispatch/merge (multi-language
     expect(result.filesFailed).toEqual([]);
 
     // Python's unavailability merges into degradedLanguages, keyed by its own language id, without
-    // touching TS's outcome.
+    // touching TS's outcome. TS ran fine (issue #33), so this is a *stray* degradation: the
+    // aggregate unavailableReason is deliberately absent (the run as a whole made progress) and
+    // the shape is flagged explicitly -- a 100-file-healthy run must not read "degraded" over one
+    // unrelated stray bucket.
     expect(result.degradedLanguages).toEqual([
       { languageId: "python", reason: "pyright binary not resolvable" },
     ]);
-    expect(result.unavailableReason).toBe("pyright binary not resolvable");
+    expect(result.unavailableReason).toBeUndefined();
+    expect(result.strayLanguageDegraded).toBe(true);
+    expect(result.fullyDegraded).toBe(false);
+  });
+
+  it("keeps aggregate unavailableReason byte-identical when every language bucket degraded (fullyDegraded) -- single degraded language stays verbatim", async () => {
+    const tsFiles: TierBQueueEntry[] = [
+      { file: "a.ts", commitSha: "sha1" },
+      { file: "b.ts", commitSha: "sha1" },
+    ];
+
+    const tsResolveEdges = vi.fn().mockResolvedValue({
+      edges: [],
+      filesProcessed: [],
+      filesFailed: [],
+      unavailableReason: "typescript-language-server not resolvable",
+    });
+    const tsProvider = makeProvider(
+      tsResolveEdges,
+      "typescript-language-server",
+    );
+
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () => tsProvider,
+    }));
+
+    const { store } = makeStore();
+    const git = makeGit();
+
+    const result = await resolveEdgesForLanguageBuckets(
+      { typescript: tsFiles },
+      { workspaceRoot, logger: createMockLogger(), store, git },
+    );
+
+    expect(result.degradedLanguages).toEqual([
+      {
+        languageId: "typescript",
+        reason: "typescript-language-server not resolvable",
+      },
+    ]);
+    // The sole degraded language keeps its own reason verbatim (Finding F) -- the aggregate shape
+    // a single-language slice has always seen, byte-identical to before issue #33.
+    expect(result.unavailableReason).toBe(
+      "typescript-language-server not resolvable",
+    );
+    expect(result.strayLanguageDegraded).toBe(false);
+    expect(result.fullyDegraded).toBe(true);
+  });
+
+  it("joins per-language reasons when every language bucket degraded (fullyDegraded, >1 language)", async () => {
+    const tsFiles: TierBQueueEntry[] = [{ file: "a.ts", commitSha: "sha1" }];
+    const pyFiles: TierBQueueEntry[] = [{ file: "c.py", commitSha: "sha1" }];
+
+    const degradedProvider = (name: string, reason: string) =>
+      makeProvider(
+        vi.fn().mockResolvedValue({
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [],
+          unavailableReason: reason,
+        }),
+        name,
+      );
+
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () =>
+        degradedProvider(
+          "typescript-language-server",
+          "typescript-language-server not resolvable",
+        ),
+      python: () =>
+        degradedProvider("pyright", "pyright binary not resolvable"),
+    }));
+
+    const { store } = makeStore();
+    const git = makeGit();
+
+    const result = await resolveEdgesForLanguageBuckets(
+      { typescript: tsFiles, python: pyFiles },
+      { workspaceRoot, logger: createMockLogger(), store, git },
+    );
+
+    expect(result.degradedLanguages).toEqual([
+      {
+        languageId: "typescript",
+        reason: "typescript-language-server not resolvable",
+      },
+      { languageId: "python", reason: "pyright binary not resolvable" },
+    ]);
+    expect(result.unavailableReason).toBe(
+      "typescript: typescript-language-server not resolvable; python: pyright binary not resolvable",
+    );
+    expect(result.strayLanguageDegraded).toBe(false);
+    expect(result.fullyDegraded).toBe(true);
+  });
+
+  it("reports neither flag on a fully healthy batch (no degraded buckets)", async () => {
+    const tsFiles: TierBQueueEntry[] = [{ file: "a.ts", commitSha: "sha1" }];
+
+    const tsResolveEdges = vi.fn().mockResolvedValue({
+      edges: [
+        { sourceNodeKey: "a.ts#x", targetNodeKey: "b.ts#y", source: "lsp" },
+      ],
+      filesProcessed: ["a.ts"],
+      filesFailed: [],
+    });
+    docuviaFactory.register(TOKENS.EdgeResolutionProviders, () => ({
+      typescript: () =>
+        makeProvider(tsResolveEdges, "typescript-language-server"),
+    }));
+
+    const { store } = makeStore();
+    const git = makeGit();
+
+    const result = await resolveEdgesForLanguageBuckets(
+      { typescript: tsFiles },
+      { workspaceRoot, logger: createMockLogger(), store, git },
+    );
+
+    expect(result.degradedLanguages).toEqual([]);
+    expect(result.unavailableReason).toBeUndefined();
+    expect(result.strayLanguageDegraded).toBe(false);
+    expect(result.fullyDegraded).toBe(false);
   });
 
   it("merges a provider outcome whose edges array exceeds the call-stack spread limit without RangeError (uncapped --lsp-timeout=0 batch regression)", async () => {

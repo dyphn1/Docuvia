@@ -1,4 +1,4 @@
-import { execFile } from "child_process";
+import { execFile, type ExecFileOptions } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
@@ -22,7 +22,35 @@ import { DOCUVIA_GIT_IDENTITY } from "./constants/git-identity.js";
 import { GIT_BRANCH_REF_PREFIX, GIT_HEAD_REF } from "./constants/git-refs.js";
 import { GIT_BIN } from "./constants/git-cli.js";
 
-const execFileAsync = promisify(execFile);
+const rawGitExecFileAsync = promisify(execFile);
+
+/** Git's human-readable diagnostics (stderr especially, e.g. `fatal: couldn't find remote ref
+ *  'docuvia-knowledge'`) are localized to the host's `LC_ALL`/`LANG`. Forcing a stable `C` locale
+ *  here makes every git shell-out emit byte-identical output on every machine. Without it,
+ *  `KnowledgeGitService.isRemoteRefMissingError`'s English substring match silently misses on
+ *  non-English hosts (reproduced on a zh_TW macOS, where git reports
+ *  `致命錯誤: 無法找到遠端引用` instead of `couldn't find remote ref`), and knowledge-branch
+ *  reconciliation misclassifies a merely-missing remote ref as a network failure. */
+const STABLE_GIT_LOCALE_ENV: Readonly<Record<string, string>> = {
+  LC_ALL: "C",
+  LANG: "C",
+  LC_MESSAGES: "C",
+};
+
+const execFileAsync = (
+  file: string,
+  args: readonly string[],
+  options: ExecFileOptions = {},
+): Promise<{ stdout: string; stderr: string }> =>
+  rawGitExecFileAsync(file, args, {
+    ...options,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...(options.env ?? {}),
+      ...STABLE_GIT_LOCALE_ENV,
+    },
+  });
 
 /** Git subcommand names (the first positional argv element after `git`) this provider shells
  *  out to. */

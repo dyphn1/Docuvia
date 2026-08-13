@@ -2,7 +2,7 @@ import type { ILogger } from "@workspace/contracts";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { resolveNpmNpxBinary } from "./lsp-binary-resolver-strategies.js";
 import { checkPythonLspPreflight } from "./python-lsp-preflight.js";
-import { PyLspConstants } from "./python-lsp-constants.js";
+import { PyLspConstants, PY_LSP_MESSAGES } from "./python-lsp-constants.js";
 import {
   BaseLspEdgeProvider,
   type LspLanguageConfig,
@@ -36,6 +36,9 @@ const PYTHON_LANGUAGE_CONFIG: LspLanguageConfig = {
   // issue #11 plan A: Python's own forward-resolution calibration slice hasn't run yet (Slice 4) --
   // stays on the reverse pipeline until it does (FWD-004/D2, single per-language safety gate).
   definitionResolution: "reverse",
+  // issue #32: npm/npx-fallback language -- when the spawned npx process exits before finishing
+  // initialize (package not cached), surface this friendly preflight reason instead of npm stderr.
+  unavailableReasonForUnresolvableBinary: PY_LSP_MESSAGES.binaryUnresolvable,
 };
 
 /**

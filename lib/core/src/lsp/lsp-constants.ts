@@ -29,6 +29,7 @@ export const LspSymbolKinds = {
   METHOD: 6,
   CONSTRUCTOR: 9,
   FUNCTION: 12,
+  OBJECT: 19,
 } as const;
 
 export const LSP_MESSAGES = {

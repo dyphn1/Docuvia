@@ -48,6 +48,13 @@ jobs:
       - name: Build (all packages)
         run: pnpm run build
 
+      - name: Install rust-analyzer (live LSP integration test)
+        # The ubuntu image ships rustup's rust-analyzer *proxy* in ~/.cargo/bin, so the provider's
+        # `command -v` preflight resolves it and the live test runs -- but the actual component
+        # isn't installed, and spawning the proxy fails with "Unknown binary 'rust-analyzer'". Add
+        # it so the real-server documentSymbol/references assertions actually exercise rust-analyzer.
+        run: rustup component add rust-analyzer
+
       - name: Run tests
         run: pnpm run test
 

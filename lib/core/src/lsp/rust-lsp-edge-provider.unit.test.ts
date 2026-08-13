@@ -199,7 +199,7 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
       expect(outcome.edges).toEqual([
         {
           sourceNodeKey: "b.rs#run",
-          targetNodeKey: "a.rs#hello",
+          targetNodeKey: "a.rs#Greeter.hello",
           source: "lsp",
         },
       ]);
@@ -208,26 +208,20 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
     }
   });
 
-  it("keeps flat file#name node_keys even when documentSymbol nests same-named methods under distinct classes (GRPH-006: supportsQualifiedContainment: false gates this, not the LSP tree shape)", async () => {
-    // Same two-same-named-methods-on-different-classes shape as TypescriptLspEdgeProvider's
-    // qualified-containment test. GRPH-006 follow-up: Tier A *does* now resolve Rust containment
-    // (`ast-worker.ts`'s `resolveRustImplContainerName` reads an impl block's own `type` field --
-    // `impl_item` is still deliberately excluded from `rustConfig.classes`, so this isn't the
-    // ancestor-walk mechanism other languages use). Rust's LspLanguageConfig still sets
-    // supportsQualifiedContainment: false regardless, because flipping it requires verifying
-    // rust-analyzer's real documentSymbol nesting shape (parent symbol kind/name for an impl-block
-    // method) against a live server -- not yet done, and not something to assume from the fake
-    // client here. Proves the capability flag -- not what the fake LSP server's own symbol tree
-    // happens to nest -- controls the outcome: both "handle" methods still collide on the bare
-    // "a.rs#handle" key and need buildUniqueNodeKey's ordinary line-suffix disambiguation.
+  it("emits structurally-distinct qualified node_keys for same-named methods under distinct impl blocks (GRPH-006: rust-analyzer nests methods under kind-Object(19) 'impl <Type>' parents; the ancestor walk must elevate Object-kind and strip the leading 'impl ' so 'a.rs#ClassA.handle' and 'a.rs#ClassB.handle' no longer collide on a flat key)", async () => {
+    // Mirrors rust-analyzer 1.97.1's real documentSymbol shape (verified against a live server,
+    // see docs/cli-test-analysis/rust-cli-benchmark.md §3): impl blocks come back as parent
+    // symbols of kind Object (19) named "impl <Type>"; the structs themselves report kind
+    // Struct (23) and never act as containment ancestors (impl is a sibling, not a child).
     const customWorkspace = makeWorkspace({
-      "a.rs": "struct ClassA;\nstruct ClassB;\n",
+      "a.rs":
+        "struct ClassA;\nimpl ClassA {\n    fn handle() {}\n}\nstruct ClassB;\nimpl ClassB {\n    fn handle() {}\n}\n",
       "b.rs": "fn caller() {}\n",
     });
     const aUri = uriFor(customWorkspace, "a.rs");
     const bUri = uriFor(customWorkspace, "b.rs");
-    const classAHandleSelection = range(1, 4, 1, 10);
-    const classBHandleSelection = range(4, 4, 4, 10);
+    const classAHandleSelection = range(2, 8, 2, 14);
+    const classBHandleSelection = range(6, 8, 6, 14);
 
     const handler: RequestHandler = (method, params) => {
       if (method === LspMethods.DOCUMENT_SYMBOL) {
@@ -235,28 +229,40 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
           return [
             {
               name: "ClassA",
-              kind: LspSymbolKinds.CLASS,
-              range: range(0, 0, 2, 1),
+              kind: 23,
+              range: range(0, 0, 0, 12),
               selectionRange: range(0, 6, 0, 12),
+            },
+            {
+              name: "impl ClassA",
+              kind: LspSymbolKinds.OBJECT,
+              range: range(1, 0, 3, 1),
+              selectionRange: range(1, 0, 1, 11),
               children: [
                 {
                   name: "handle",
                   kind: LspSymbolKinds.METHOD,
-                  range: range(1, 2, 1, 20),
+                  range: range(2, 4, 2, 20),
                   selectionRange: classAHandleSelection,
                 },
               ],
             },
             {
               name: "ClassB",
-              kind: LspSymbolKinds.CLASS,
-              range: range(3, 0, 5, 1),
-              selectionRange: range(3, 6, 3, 12),
+              kind: 23,
+              range: range(4, 0, 4, 12),
+              selectionRange: range(4, 6, 4, 12),
+            },
+            {
+              name: "impl ClassB",
+              kind: LspSymbolKinds.OBJECT,
+              range: range(5, 0, 7, 1),
+              selectionRange: range(5, 0, 5, 11),
               children: [
                 {
                   name: "handle",
                   kind: LspSymbolKinds.METHOD,
-                  range: range(4, 2, 4, 20),
+                  range: range(6, 4, 6, 20),
                   selectionRange: classBHandleSelection,
                 },
               ],
@@ -268,7 +274,7 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
             name: "caller",
             kind: LspSymbolKinds.FUNCTION,
             range: range(0, 0, 3, 1),
-            selectionRange: range(0, 9, 0, 15),
+            selectionRange: range(0, 3, 0, 9),
           },
         ];
       }
@@ -301,17 +307,120 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
         expect.arrayContaining([
           {
             sourceNodeKey: "b.rs#caller",
-            targetNodeKey: "a.rs#handle",
+            targetNodeKey: "a.rs#ClassA.handle",
             source: "lsp",
           },
           {
             sourceNodeKey: "b.rs#caller",
-            targetNodeKey: "a.rs#handle@L4",
+            targetNodeKey: "a.rs#ClassB.handle",
             source: "lsp",
           },
         ]),
       );
       expect(outcome.edges).toHaveLength(2);
+    } finally {
+      fs.rmSync(customWorkspace, { recursive: true, force: true });
+    }
+  });
+
+  it("maps an impl-block method onto Tier A's qualified 'file#Struct.method' node_key using rust-analyzer's real nesting shape (kind-Object(19) parent named 'impl <Type>'; associated fn kind 12 / method kind 6)", async () => {
+    // The exact shape verified live against rust-analyzer 1.97.1 on ripgrep's haystack.rs (issue
+    // #31, docs/cli-test-analysis/rust-cli-benchmark.md §3): an impl block is a parent symbol of
+    // kind Object(19) named "impl HaystackBuilder"; `new` (associated fn) is kind Function(12),
+    // `build` is kind Method(6), the struct is kind Struct(23). The containment ancestor walk must
+    // elevate Object-kind AND strip the "impl " prefix for the emitted key to match Tier A's
+    // `file#HaystackBuilder.build` (`resolveRustImplContainerName` qualifies by the bare struct
+    // name) -- previously `findNodeIdByNodeKey` dropped every such cross-file edge (0 corrected
+    // edges on both ripgrep and tauri).
+    const customWorkspace = makeWorkspace({
+      "a.rs":
+        "pub struct HaystackBuilder;\nimpl HaystackBuilder {\n    pub fn new() {}\n    pub fn build() {}\n}\n",
+      "b.rs": "fn run() {\n    HaystackBuilder::build();\n}\n",
+    });
+    const aUri = uriFor(customWorkspace, "a.rs");
+    const bUri = uriFor(customWorkspace, "b.rs");
+    const newSelectionRange = range(2, 15, 2, 18);
+    const buildSelectionRange = range(3, 15, 3, 20);
+    const runSelectionRange = range(0, 3, 0, 6);
+
+    const handler: RequestHandler = (method, params) => {
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) {
+        if (params.textDocument.uri === aUri) {
+          return [
+            {
+              name: "HaystackBuilder",
+              kind: 23,
+              range: range(0, 0, 0, 24),
+              selectionRange: range(0, 11, 0, 27),
+            },
+            {
+              name: "impl HaystackBuilder",
+              kind: LspSymbolKinds.OBJECT,
+              range: range(1, 0, 4, 1),
+              selectionRange: range(1, 0, 1, 19),
+              children: [
+                {
+                  name: "new",
+                  kind: LspSymbolKinds.FUNCTION,
+                  range: range(2, 4, 2, 20),
+                  selectionRange: newSelectionRange,
+                },
+                {
+                  name: "build",
+                  kind: LspSymbolKinds.METHOD,
+                  range: range(3, 4, 3, 22),
+                  selectionRange: buildSelectionRange,
+                },
+              ],
+            },
+          ];
+        }
+        if (params.textDocument.uri === bUri) {
+          return [
+            {
+              name: "run",
+              kind: LspSymbolKinds.FUNCTION,
+              range: range(0, 0, 2, 1),
+              selectionRange: runSelectionRange,
+            },
+          ];
+        }
+        return [];
+      }
+      if (method === LspMethods.REFERENCES) {
+        if (
+          params.textDocument.uri === aUri &&
+          params.position.line === buildSelectionRange.start.line &&
+          params.position.character === buildSelectionRange.start.character
+        ) {
+          return [{ uri: bUri, range: range(1, 4, 1, 9) }];
+        }
+        return [];
+      }
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+
+    const fake = new FakeLspClient(handler);
+    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    try {
+      const outcome = await provider.resolveEdges({
+        workspaceRoot: customWorkspace,
+        files: ["a.rs", "b.rs"],
+      });
+
+      expect(outcome.filesFailed).toEqual([]);
+      expect(outcome.edges).toEqual([
+        {
+          sourceNodeKey: "b.rs#run",
+          targetNodeKey: "a.rs#HaystackBuilder.build",
+          source: "lsp",
+        },
+      ]);
     } finally {
       fs.rmSync(customWorkspace, { recursive: true, force: true });
     }

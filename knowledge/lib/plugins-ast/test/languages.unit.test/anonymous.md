@@ -7,4 +7,3 @@ filePath: lib/plugins-ast/test/languages.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/plugins-ast/test/languages.unit.test.ts`
-ts`

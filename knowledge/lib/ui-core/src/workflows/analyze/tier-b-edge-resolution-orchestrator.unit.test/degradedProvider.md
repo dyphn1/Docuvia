@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts#python@L375
+id: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts#degradedProvider
 type: symbol
-name: python
+name: degradedProvider
 filePath: lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts
 ---
-# Symbol: python
+# Symbol: degradedProvider
 
 File: `lib/ui-core/src/workflows/analyze/tier-b-edge-resolution-orchestrator.unit.test.ts`

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts#anonymous@L77
+id: lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts#anonymous@L87
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/ruby-lsp-edge-provider.unit.test.ts

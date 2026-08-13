@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#anonymous@L989
+id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#ruby@L759
 type: symbol
-name: anonymous
+name: ruby
 filePath: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts
 ---
-# Symbol: anonymous
+# Symbol: ruby
 
 File: `lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts`

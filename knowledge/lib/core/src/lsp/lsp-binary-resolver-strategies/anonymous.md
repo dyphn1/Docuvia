@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/lsp-binary-resolver-strategies.ts#anonymous@L171
+id: lib/core/src/lsp/lsp-binary-resolver-strategies.ts#anonymous@L170
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/lsp-binary-resolver-strategies.ts

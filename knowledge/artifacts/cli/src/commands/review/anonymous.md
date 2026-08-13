@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/commands/review.ts#anonymous@L24
+id: artifacts/cli/src/commands/review.ts#anonymous
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/commands/review.ts
@@ -7,3 +7,4 @@ filePath: artifacts/cli/src/commands/review.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/src/commands/review.ts`
+ts`

@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts#anonymous@L96
+id: artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts#anonymous@L88
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/platforms/claude.platform.unit.test.ts

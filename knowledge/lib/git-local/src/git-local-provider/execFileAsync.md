@@ -1,10 +1,9 @@
 ---
-id: lib/git-local/src/git-local-provider.ts#GitLocalProvider.anonymous@L909
+id: lib/git-local/src/git-local-provider.ts#execFileAsync
 type: symbol
-name: anonymous
+name: execFileAsync
 filePath: lib/git-local/src/git-local-provider.ts
 ---
-# Symbol: anonymous
+# Symbol: execFileAsync
 
 File: `lib/git-local/src/git-local-provider.ts`
-

@@ -173,9 +173,30 @@ describe("dist/cli.js (compiled build, run via plain `node` — not tsx)", () =>
             : ((r.reason as { exitCode?: number }).exitCode ?? "unknown"),
         );
 
+        const failureDetails = results
+          .filter(
+            (r) =>
+              r.status === "rejected" ||
+              (r.status === "fulfilled" && r.value.exitCode !== 0),
+          )
+          .map((r) =>
+            r.status === "rejected"
+              ? {
+                  exitCode: (r.reason as { exitCode?: number }).exitCode,
+                  message: (r.reason as Error).message,
+                  stderr: (r.reason as { stderr?: string }).stderr,
+                  stdout: (r.reason as { stdout?: string }).stdout,
+                }
+              : {
+                  exitCode: r.value.exitCode,
+                  stderr: r.value.stderr,
+                  stdout: r.value.stdout,
+                },
+          );
+
         expect(
           exitCodes.every((code) => code === 0),
-          `round ${round}: expected every concurrent init run to exit 0, got: ${JSON.stringify(exitCodes)}`,
+          `round ${round}: expected every concurrent init run to exit 0, got: ${JSON.stringify(exitCodes)}. Failures: ${JSON.stringify(failureDetails, null, 2)}`,
         ).toBe(true);
 
         // The race must not have left the database unusable for a normal run to build on.

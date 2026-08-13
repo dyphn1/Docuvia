@@ -4,7 +4,15 @@ import path from "node:path";
 import DatabaseConstructor from "better-sqlite3";
 import type Database from "better-sqlite3";
 import type { GraphStoreOpenOptions, IGraphStore } from "@workspace/contracts";
-import { DocuviaError, ErrorCodes } from "@workspace/contracts";
+import {
+  DocuviaError,
+  ErrorCodes,
+  FS_FLAG_EXCLUSIVE_CREATE_WRITE,
+  ERRNO_EEXIST,
+  ERRNO_EPERM,
+  ERRNO_EACCES,
+  ERRNO_EBUSY,
+} from "@workspace/contracts";
 import { applyMigrations } from "./migration-runner.js";
 import { MIGRATIONS_DIR } from "./paths.js";
 import {
@@ -28,10 +36,6 @@ const INIT_LOCK_RETRY_INTERVAL_MS = 100;
 const INIT_LOCK_STALE_MS = 60_000;
 /** Suffix appended to `dbPath` for the cross-process init-bootstrap lock file (see `acquireInitLock`). */
 const INIT_LOCK_FILE_SUFFIX = ".init-lock" as const;
-/** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists — the basis of `acquireInitLock`'s exclusive-create lock (same shape as `lib/contracts`'s `process-lock.ts`). */
-const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
-/** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
-const ERRNO_EEXIST = "EEXIST" as const;
 
 const GRAPH_STORE_ERROR_MESSAGES = {
   INIT_LOCK_ACQUIRE_FAILED: "Failed to acquire database init lock",
@@ -66,7 +70,13 @@ async function acquireInitLock(dbPath: string): Promise<string> {
       await handle.close();
       return lockPath;
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== ERRNO_EEXIST) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (
+        code !== ERRNO_EEXIST &&
+        code !== ERRNO_EPERM &&
+        code !== ERRNO_EACCES &&
+        code !== ERRNO_EBUSY
+      ) {
         throw DocuviaError.wrap(
           ErrorCodes.DB_LOCKED,
           GRAPH_STORE_ERROR_MESSAGES.INIT_LOCK_ACQUIRE_FAILED,

@@ -1,12 +1,12 @@
 import fs from "node:fs/promises";
 import { UTF8_ENCODING } from "../constants/encoding.js";
-
-/** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists — the basis of this module's exclusive-create lock. */
-const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
-/** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
-const ERRNO_EEXIST = "EEXIST" as const;
-/** `NodeJS.ErrnoException.code` reported by `process.kill(pid, 0)` when `pid` exists but the current process lacks permission to signal it (still means "alive"). */
-const ERRNO_EPERM = "EPERM" as const;
+import {
+  FS_FLAG_EXCLUSIVE_CREATE_WRITE,
+  ERRNO_EEXIST,
+  ERRNO_EPERM,
+  ERRNO_EACCES,
+  ERRNO_EBUSY,
+} from "../constants/fs.js";
 
 const ProcessLockErrorMessages = {
   TIMED_OUT_WAITING: (lockPath: string) =>
@@ -104,7 +104,15 @@ export async function acquireProcessLock(
       await handle.close();
       break;
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== ERRNO_EEXIST) throw err;
+      const code = (err as NodeJS.ErrnoException).code;
+      if (
+        code !== ERRNO_EEXIST &&
+        code !== ERRNO_EPERM &&
+        code !== ERRNO_EACCES &&
+        code !== ERRNO_EBUSY
+      ) {
+        throw err;
+      }
 
       if (!notifiedWaiting) {
         notifiedWaiting = true;

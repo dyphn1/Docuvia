@@ -60,4 +60,3 @@ lib/core/src/**/*.js.*.tmp
 .cursor/harness-everything/
 .codex/harness-everything/
 .continue/harness-everything/
-.github/harness-everything/state/

@@ -8,6 +8,11 @@ import {
   ErrorCodes,
   GIT_DEFAULT_REMOTE_NAME,
   UTF8_ENCODING,
+  FS_FLAG_EXCLUSIVE_CREATE_WRITE,
+  ERRNO_EEXIST,
+  ERRNO_EPERM,
+  ERRNO_EACCES,
+  ERRNO_EBUSY,
   type ChangedFileEntry,
   type ChangedFileStatus,
   type DiffLineRange,
@@ -176,12 +181,6 @@ const KNOWLEDGE_LOCK_STALE_MS = 60_000;
  *  that takes); the caller (`KnowledgeGitService`, config-tunable via `docuviaMemory` /
  *  `DOCUVIA_PUSH_TIMEOUT_MS` — see `docuvia-api.ts`'s `syncKnowledge()`) opts back into a bound if
  *  it wants one. */
-
-/** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists —
- *  the basis of `acquireKnowledgeLock`'s exclusive-create lock. */
-const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
-/** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
-const ERRNO_EEXIST = "EEXIST" as const;
 
 const TYPE_OBJECT = "object";
 const ERR_PROP_CODE = "code";
@@ -1199,7 +1198,13 @@ export class GitLocalProvider implements IGitProvider {
         await handle.close();
         return;
       } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== ERRNO_EEXIST) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (
+          code !== ERRNO_EEXIST &&
+          code !== ERRNO_EPERM &&
+          code !== ERRNO_EACCES &&
+          code !== ERRNO_EBUSY
+        ) {
           throw DocuviaError.wrap(
             ErrorCodes.GIT_COMMAND_FAILED,
             GIT_PROVIDER_ERROR_MESSAGES.KNOWLEDGE_LOCK_ACQUIRE_FAILED,

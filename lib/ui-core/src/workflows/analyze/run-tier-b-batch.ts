@@ -162,6 +162,8 @@ async function runTierBBatchCore(
         filesProcessed: [],
         filesFailed: [],
         degradedLanguages: [],
+        fullyDegraded: false,
+        strayLanguageDegraded: false,
       },
       failedEntries: [],
       permanentFailed: [],
@@ -226,6 +228,11 @@ async function runTierBBatchCore(
     madeProgress,
     failedEntries,
     permanentFailed,
+    // Issue #33: files belonging to a degraded language's bucket carry an environmental signal
+    // (their provider never ran), not a stuck-files signal -- so even when a *healthy* bucket's
+    // zero progress trips the watchdog, the degraded bucket's files must neither advance the
+    // streak nor be escalated onto permanentFailed by it.
+    collectDegradedBucketFiles(buckets, outcome),
   );
 
   return await finalizeBatch(deps, {
@@ -251,11 +258,13 @@ async function runTierBBatchCore(
  *  is being cut short by the whole-batch deadline reports `retryable: true` (`lsp-edge-provider-base.ts`
  *  labels those via `deadlineExceeded`), so no per-file flag can ever retire it -- but if that
  *  file is the reason every batch trips the deadline with zero edges, the streak eventually
- *  catches it. Excludes batches that made progress (resets the streak), batches that degraded
- *  with `unavailableReason` (a provider that couldn't run at all is an environment problem, not
- *  a zero-progress signal -- those keep the whole toProcess set queued as before), and batches
- *  with no retryable remainder to escalate (nothing is being re-attempted, so there is nothing
- *  for the watchdog to retire). Absent streak in meta reads as 0.
+ *  catches it. Excludes batches that made progress (resets the streak), batches that fully
+ *  degraded with every language bucket unable to run (an environment problem, not a zero-progress
+ *  signal -- those keep the whole toProcess set queued as before; issue #33: a *partially*
+ *  degraded batch where a healthy bucket made zero progress still counts, since the degraded
+ *  bucket is unrelated to the zero-progress bucket), and batches with no non-degraded retryable
+ *  remainder to escalate (nothing is being re-attempted, so there is nothing for the watchdog to
+ *  retire). Absent streak in meta reads as 0.
  *
  *  Returns `true` when this batch fired the watchdog (and mutated `failedEntries`/`permanentFailed`
  *  to move the escalated entries), `false` otherwise.
@@ -267,6 +276,7 @@ function applyZeroProgressWatchdog(
   madeProgress: boolean,
   failedEntries: TierBQueueEntry[],
   permanentFailed: TierBQueueEntry[],
+  degradedBucketFiles: ReadonlySet<string>,
 ): boolean {
   const streakKey = GitConstants.META_KEY_TIER_B_ZERO_PROGRESS_BATCHES;
   const currentRaw = store.meta.get(streakKey);
@@ -283,15 +293,23 @@ function applyZeroProgressWatchdog(
     return false;
   }
 
-  // A fully-degraded batch also leaves the streak untouched: a provider that couldn't run at all
-  // produced no edges through no fault of the files, so it can't "prove" the files are stuck --
-  // those runs keep the whole toProcess set queued as before.
-  if (outcome.unavailableReason) return false;
+  // Issue #33: only a *fully-degraded* batch leaves the streak untouched -- every language
+  // bucket's provider couldn't run, an environment problem through no fault of the files, so it
+  // can't "prove" the files are stuck. A partially-degraded batch (one bucket degraded, another
+  // healthy but zero-progress) must still count: the degraded bucket is unrelated to the
+  // zero-progress bucket, so it cannot blanket-suppress the escalation (ripgrep benchmark finding
+  // -- the stray ruby-formula degradation was hiding the rust bucket's repeated zero progress).
+  if (outcome.fullyDegraded) return false;
 
-  // With zero files actually processed, no progress, and no retryable remainder to escalate, the
-  // batch produced no zero-progress signal either (e.g. every attempted file was already
-  // permanently-failed and retired this or an earlier batch) -- leave the streak as-is.
-  if (failedEntries.length === 0) return false;
+  // The zero-progress signal comes only from files attempted via a *healthy* provider. Files in
+  // degraded-language buckets carry an environmental signal instead, so they neither count toward
+  // the streak nor get escalated onto permanentFailed by it. With zero such files, the batch
+  // produced no zero-progress signal (e.g. every attempted file belongs to a degraded bucket) --
+  // leave the streak as-is.
+  const zeroProgressRemainder = failedEntries.filter(
+    (entry) => !degradedBucketFiles.has(entry.file),
+  );
+  if (zeroProgressRemainder.length === 0) return false;
 
   const next = current + 1;
   if (next < GitConstants.DEFAULT_TIER_B_ZERO_PROGRESS_MAX_BATCHES) {
@@ -299,12 +317,44 @@ function applyZeroProgressWatchdog(
     return false;
   }
 
-  // Nth consecutive zero-progress batch -- the still-retryable remainder is declared
-  // permanently-failed: it drops out of the re-queued `failedEntries` and will be stamped.
-  permanentFailed.push(...failedEntries);
-  failedEntries.length = 0;
+  // Nth consecutive zero-progress batch -- the still-retryable remainder from healthy buckets is
+  // declared permanently-failed: it drops out of the re-queued `failedEntries` and will be
+  // stamped. Degraded-bucket files never reach here (filtered above).
+  for (const entry of zeroProgressRemainder) {
+    permanentFailed.push(entry);
+    const index = failedEntries.indexOf(entry);
+    if (index >= 0) failedEntries.splice(index, 1);
+  }
   store.meta.set(streakKey, "0");
   return true;
+}
+
+/** Issue #33: the set of queued file paths that belong to a language bucket whose provider
+ *  degraded (`outcome.degradedLanguages`) this batch -- the files the zero-progress watchdog must
+ *  neither count nor escalate (an environmental signal, not a stuck-files signal). */
+function collectDegradedBucketFiles(
+  buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>>,
+  outcome: MergedEdgeResolutionOutcome,
+): Set<string> {
+  const files = new Set<string>();
+  if (outcome.degradedLanguages.length === 0) return files;
+  const degradedLanguageIds = new Set(
+    outcome.degradedLanguages.map((d) => d.languageId),
+  );
+  for (const [languageId, entries] of Object.entries(buckets) as [
+    TierBLanguageId,
+    TierBQueueEntry[] | undefined,
+  ][]) {
+    if (
+      !entries ||
+      entries.length === 0 ||
+      !degradedLanguageIds.has(languageId)
+    ) {
+      continue;
+    }
+    for (const entry of entries) files.add(entry.file);
+  }
+  return files;
 }
 
 function emptyResult(
@@ -531,6 +581,8 @@ async function finalizeBatch(
     edgesPruned: args.edgesPruned,
     degraded: Boolean(outcome.unavailableReason),
     degradedLanguages: outcome.degradedLanguages,
+    strayLanguageDegraded: outcome.strayLanguageDegraded,
+    fullyDegraded: outcome.fullyDegraded,
     zeroProgressWatchdogTripped: args.zeroProgressWatchdogTripped,
     commitCapExceeded: args.commitCapExceeded,
   });
@@ -559,6 +611,8 @@ async function finalizeBatch(
       outcome.degradedLanguages.length > 0
         ? outcome.degradedLanguages
         : undefined,
+    strayLanguageDegraded: outcome.strayLanguageDegraded,
+    fullyDegraded: outcome.fullyDegraded,
     zeroProgressWatchdogTripped: args.zeroProgressWatchdogTripped,
     commitCapExceeded: args.commitCapExceeded,
   };

@@ -4,7 +4,11 @@ import path from "node:path";
 import os from "node:os";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { checkRustLspPreflight } from "./rust-lsp-preflight.js";
-import { RustLspConstants } from "./rust-lsp-constants.js";
+import {
+  RustLspConstants,
+  normalizeRustSymbolName,
+} from "./rust-lsp-constants.js";
+import { LspSymbolKinds } from "./lsp-constants.js";
 import {
   BaseLspEdgeProvider,
   type LspLanguageConfig,
@@ -34,14 +38,21 @@ const RUST_LANGUAGE_CONFIG: LspLanguageConfig = {
       override,
     ),
   checkPreflight: checkRustLspPreflight,
-  // GRPH-006 follow-up: Tier A now resolves Rust containment (`ast-worker.ts`'s
-  // `resolveRustImplContainerName` reads an impl block's own `type` field directly -- `impl_item`
-  // is still deliberately excluded from `rustConfig.classes`, so this isn't the ancestor-walk
-  // mechanism other languages use). This flag stays `false` regardless: flipping it requires
-  // verifying rust-analyzer's real `documentSymbol` nesting shape (does it nest a method under a
-  // parent symbol whose kind/name actually match "the impl's target struct"?) against a live
-  // server, which this codebase has not done -- not a claim that Tier A can't do this anymore.
-  supportsQualifiedContainment: false,
+  // GRPH-006 (issue #31): Tier A persists Rust methods as `file#Struct.method`
+  // (`ast-worker.ts`'s `resolveRustImplContainerName` reads an impl block's own `type` field),
+  // so Tier B must emit the same qualified key or `findNodeIdByNodeKey` drops every cross-file
+  // rust method edge. Verified live against rust-analyzer 1.97.1: an impl block is a
+  // `documentSymbol` parent of kind `Object` (19) named `"impl HaystackBuilder"` -- so the
+  // containment ancestor walk must elevate Object-kind ancestors (via `containmentSymbolKinds`,
+  // not a global default -- other languages' semantic nesting may not be Tier A's rule), and the
+  // `impl ` name prefix must be stripped before it can match the bare struct name
+  // (`normalizeSymbolName`). Without all three together, the qualified key never forms.
+  supportsQualifiedContainment: true,
+  containmentSymbolKinds: new Set([
+    LspSymbolKinds.CLASS,
+    LspSymbolKinds.OBJECT,
+  ]),
+  normalizeSymbolName: normalizeRustSymbolName,
   // issue #11 plan A: Rust's own forward-resolution calibration slice hasn't run yet (Slice 4) --
   // stays on the reverse pipeline until it does (FWD-004/D2, single per-language safety gate).
   definitionResolution: "reverse",

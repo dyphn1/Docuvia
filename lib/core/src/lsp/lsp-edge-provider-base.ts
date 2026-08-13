@@ -65,6 +65,22 @@ const CALL_SITE_KINDS: ReadonlySet<number> = new Set([
   LspSymbolKinds.CLASS,
 ]);
 
+/** Default containment boundary for the GRPH-006 ancestor walk: `Class` (5) alone. Every language
+ *  that resolves containment via a lexically-enclosing class/struct reports it as kind `Class` —
+ *  rust-analyzer instead groups impl-block methods under an `Object` (19) parent named `impl
+ *  <Type>`, which its provider opts into explicitly via `LspLanguageConfig.containmentSymbolKinds`
+ *  (never inferred here — see that field's doc comment). */
+const DEFAULT_CONTAINMENT_SYMBOL_KINDS: ReadonlySet<number> = new Set([
+  LspSymbolKinds.CLASS,
+]);
+
+function isContainmentKind(
+  kind: number,
+  containmentKinds: ReadonlySet<number>,
+): boolean {
+  return containmentKinds.has(kind);
+}
+
 function toNodeKey(relativePath: string): string {
   return relativePath.split("\\").join("/");
 }
@@ -133,16 +149,22 @@ interface EnclosedSymbol {
 function findDeepestContainingSymbol(
   symbols: LspDocumentSymbol[],
   position: LspPosition,
+  containmentKinds: ReadonlySet<number>,
   enclosingClassName?: string,
 ): EnclosedSymbol | undefined {
   for (const symbol of symbols) {
     if (!containsPosition(symbol.range, position)) continue;
-    const childEnclosingClassName =
-      symbol.kind === LspSymbolKinds.CLASS ? symbol.name : enclosingClassName;
+    const childEnclosingClassName = isContainmentKind(
+      symbol.kind,
+      containmentKinds,
+    )
+      ? symbol.name
+      : enclosingClassName;
     const child = symbol.children
       ? findDeepestContainingSymbol(
           symbol.children,
           position,
+          containmentKinds,
           childEnclosingClassName,
         )
       : undefined;
@@ -153,6 +175,7 @@ function findDeepestContainingSymbol(
 
 function flattenCallSiteSymbols(
   symbols: LspDocumentSymbol[],
+  containmentKinds: ReadonlySet<number>,
   enclosingClassName?: string,
 ): EnclosedSymbol[] {
   const result: EnclosedSymbol[] = [];
@@ -160,10 +183,18 @@ function flattenCallSiteSymbols(
     if (CALL_SITE_KINDS.has(symbol.kind))
       result.push({ symbol, containerName: enclosingClassName });
     if (symbol.children) {
-      const childEnclosingClassName =
-        symbol.kind === LspSymbolKinds.CLASS ? symbol.name : enclosingClassName;
+      const childEnclosingClassName = isContainmentKind(
+        symbol.kind,
+        containmentKinds,
+      )
+        ? symbol.name
+        : enclosingClassName;
       result.push(
-        ...flattenCallSiteSymbols(symbol.children, childEnclosingClassName),
+        ...flattenCallSiteSymbols(
+          symbol.children,
+          containmentKinds,
+          childEnclosingClassName,
+        ),
       );
     }
   }
@@ -250,6 +281,16 @@ export interface LspLanguageConfig {
    *  Deliberately explicit, never inferred from the LSP server's own `documentSymbol` nesting,
    *  which is semantic and may disagree with Tier A's tree-sitter-ancestry rule per language. */
   supportsQualifiedContainment: boolean;
+  /** Per-language set of LSP `SymbolKind`s whose `documentSymbol` parent acts as a containment
+   *  boundary for its children (the GRPH-006 ancestor walk in `findDeepestContainingSymbol`/
+   *  `flattenCallSiteSymbols`). Defaults to `{Class (5)}` — every language that resolves
+   *  containment via a lexically-enclosing class/struct reports it as kind `Class`. Per-language
+   *  opt-in only: rust-analyzer groups impl-block methods under an `Object` (19) parent named
+   *  `impl <Type>` (kind reported as `Object`, not `Class`), so Rust opts that kind in explicitly.
+   *  Deliberately not a broadened default — the interface contract holds that containment is never
+   *  inferred from the server's own semantic nesting shape, and a wider default would silently
+   *  re-qualify keys for languages Tier A doesn't resolve that way. */
+  containmentSymbolKinds?: ReadonlySet<number>;
   /** Per-language rewriting of an LSP `documentSymbol`'s `name` before it feeds node_key
    *  construction (GRPH-006 Go follow-up). `supportsQualifiedContainment` gates whether the
    *  symbol *tree*'s enclosing-class read folds into the key; some servers instead bake the
@@ -259,7 +300,11 @@ export interface LspLanguageConfig {
    *  the exact shape `buildQualifiedBaseKey` produces for Tier A's
    *  `(fn.name, fn.containerName) = (Method, Receiver)` — i.e. `Receiver.Method` — so Tier B keys
    *  match the persisted keys (`file#Receiver.Method`) that `run-tier-b-batch`'s
-   *  `findNodeIdByNodeKey` matches against. Default: identity. */
+   *  `findNodeIdByNodeKey` matches against. The enclosing-container name read off a parent
+   *  symbol is itself a `documentSymbol` name (e.g. rust-analyzer's `impl HaystackBuilder`), so it
+   *  passes through this same hook before filling `buildQualifiedBaseKey`'s `containerName` slot
+   *  (see `qualifiedContainerName`) — Tier A's Rust container is the bare struct name, and the
+   *  `impl ` decoration must be stripped to match it. Default: identity. */
   normalizeSymbolName?: (name: string) => string;
   /** Sent verbatim as the `initialize` request's `initializationOptions` param (LSP spec: an
    *  opaque, server-defined bag -- most servers ignore fields they don't recognize, so this is
@@ -294,6 +339,9 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
   private readonly logger: ILogger;
   private readonly createClient: () => LspJsonRpcClient;
   private readonly languageConfig: LspLanguageConfig;
+  /** Per-language GRPH-006 containment boundary set — `LspLanguageConfig.containmentSymbolKinds`
+   *  when a language opts in, else `Class` only (see `DEFAULT_CONTAINMENT_SYMBOL_KINDS`). */
+  private readonly containmentKinds: ReadonlySet<number>;
 
   /** clientFactory is a test seam (defaults to a real LspJsonRpcClient per batch, per Section 8b's
    *  spawn-per-batch orchestration model) -- tests inject a fake client to exercise this class's
@@ -307,6 +355,8 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     this.name = languageConfig.name;
     this.logger = logger ?? createNoopLogger();
     this.createClient = clientFactory;
+    this.containmentKinds =
+      languageConfig.containmentSymbolKinds ?? DEFAULT_CONTAINMENT_SYMBOL_KINDS;
   }
 
   configure(config: EdgeResolutionProviderConfig): void {
@@ -1003,6 +1053,20 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
    *  key here, behind `this.languageConfig.supportsQualifiedContainment`, so a non-capable
    *  language's containment data -- if it ever leaked through -- can never produce a qualified key
    *  (locked decision: the gate must live here, not upstream). */
+  /** GRPH-006 (Rust): the enclosing-container name recovered from the symbol tree is itself a
+   *  `documentSymbol` name (e.g. rust-analyzer's `impl HaystackBuilder`), so it passes through the
+   *  same per-language rewrite as any other name before filling `buildQualifiedBaseKey`'s
+   *  `containerName` slot -- the hook's contract is "rewrites `documentSymbol` names before
+   *  node_key construction", and a container read is a `documentSymbol` name. Gated on
+   *  `supportsQualifiedContainment`, the same locked gate as the symbol-tree containment read
+   *  itself; unused for a non-capable language even though a name would exist. */
+  private qualifiedContainerName(containerName?: string): string | undefined {
+    if (!this.languageConfig.supportsQualifiedContainment || !containerName) {
+      return undefined;
+    }
+    return platformNormalizedKeyName(containerName, this.languageConfig);
+  }
+
   private resolveNodeKeyForFile(
     state: SharedBatchState,
     file: string,
@@ -1016,7 +1080,9 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       fileState = { used: new Set<string>([file]), resolved: new Map() };
       state.usedNodeKeysByFile.set(file, fileState);
 
-      const sorted = [...flattenCallSiteSymbols(fileSymbols)].sort(
+      const sorted = [
+        ...flattenCallSiteSymbols(fileSymbols, this.containmentKinds),
+      ].sort(
         (a, b) =>
           a.symbol.selectionRange.start.line -
           b.symbol.selectionRange.start.line,
@@ -1029,9 +1095,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
           buildQualifiedBaseKey(
             file,
             platformNormalizedKeyName(symbol.name, this.languageConfig),
-            this.languageConfig.supportsQualifiedContainment
-              ? enclosed
-              : undefined,
+            this.qualifiedContainerName(enclosed),
           ),
           symbol.selectionRange.start.line,
         );
@@ -1051,9 +1115,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       buildQualifiedBaseKey(
         file,
         platformNormalizedKeyName(name, this.languageConfig),
-        this.languageConfig.supportsQualifiedContainment
-          ? containerName
-          : undefined,
+        this.qualifiedContainerName(containerName),
       ),
       startLine,
     );
@@ -1110,7 +1172,10 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       relativePath,
       state,
     );
-    const callSiteSymbols = flattenCallSiteSymbols(callee.symbols);
+    const callSiteSymbols = flattenCallSiteSymbols(
+      callee.symbols,
+      this.containmentKinds,
+    );
 
     // Issue every symbol's `textDocument/references` in one burst before awaiting any of them
     // (issue #11 throughput fix). The client correlates requests by id and resolves each
@@ -1222,10 +1287,14 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       );
       if (targetNodeKey === undefined) continue;
 
-      const source = findDeepestContainingSymbol(caller.symbols, {
-        line: startLine,
-        character: startColumn,
-      });
+      const source = findDeepestContainingSymbol(
+        caller.symbols,
+        {
+          line: startLine,
+          character: startColumn,
+        },
+        this.containmentKinds,
+      );
       const sourceNodeKey =
         source && CALL_SITE_KINDS.has(source.symbol.kind)
           ? toNodeKey(
@@ -1325,6 +1394,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     const enclosing = findDeepestContainingSymbol(
       targetFile.symbols,
       location.range.start,
+      this.containmentKinds,
     );
     return enclosing && CALL_SITE_KINDS.has(enclosing.symbol.kind)
       ? toNodeKey(
@@ -1374,6 +1444,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     const enclosing = findDeepestContainingSymbol(
       caller.symbols,
       ref.range.start,
+      this.containmentKinds,
     );
     const sourceNodeKey =
       enclosing && CALL_SITE_KINDS.has(enclosing.symbol.kind)

@@ -3,7 +3,10 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { checkRustLspPreflight } from "./rust-lsp-preflight.js";
-import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
+import {
+  resolvePathNativeBinary,
+  probeBinaryVersionSpawnable,
+} from "./lsp-binary-resolver-strategies.js";
 
 vi.mock("./lsp-binary-resolver-strategies.js", async (importOriginal) => {
   const actual =
@@ -13,6 +16,7 @@ vi.mock("./lsp-binary-resolver-strategies.js", async (importOriginal) => {
   return {
     ...actual,
     resolvePathNativeBinary: vi.fn(actual.resolvePathNativeBinary),
+    probeBinaryVersionSpawnable: vi.fn(actual.probeBinaryVersionSpawnable),
   };
 });
 
@@ -24,6 +28,10 @@ describe("checkRustLspPreflight()", () => {
       path.join(os.tmpdir(), "docuvia-rustlsp-preflight-"),
     );
     vi.restoreAllMocks();
+    // Default the live spawn probe to "spawnable" so tests exercise the resolve path; the
+    // rustup-proxy case (locally resolved but not actually spawnable) is covered explicitly
+    // by the dedicated case below.
+    vi.mocked(probeBinaryVersionSpawnable).mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -55,9 +63,10 @@ describe("checkRustLspPreflight()", () => {
     expect(result.lspBinaryResolvable).toBe(false);
     expect(result.ready).toBe(false);
     expect(result.reason).toMatch(/rust-analyzer is not resolvable/);
+    expect(probeBinaryVersionSpawnable).not.toHaveBeenCalled();
   });
 
-  it("is ready when Cargo.toml is present and binary override resolves successfully", async () => {
+  it("is ready when Cargo.toml is present and the binary override resolves AND spawns (a real `--version` round-trip)", async () => {
     fs.writeFileSync(path.join(workspaceRoot, "Cargo.toml"), "[package]\n");
 
     const result = await checkRustLspPreflight(workspaceRoot, {
@@ -66,6 +75,36 @@ describe("checkRustLspPreflight()", () => {
 
     expect(result.markerFileResolvable).toBe(true);
     expect(result.lspBinaryResolvable).toBe(true);
+    expect(result.lspBinarySpawnable).toBe(true);
     expect(result.ready).toBe(true);
+    expect(probeBinaryVersionSpawnable).toHaveBeenCalledWith(
+      "/fake/path/to/rust-analyzer",
+      expect.any(Number),
+    );
+  });
+
+  it("reports not ready when the resolved rust-analyzer fails its live spawn probe -- the rustup-proxy-without-component case (resolvable on PATH, `Unknown binary` at spawn)", async () => {
+    fs.writeFileSync(path.join(workspaceRoot, "Cargo.toml"), "[package]\n");
+
+    // `command -v` finds rustup's rust-analyzer *proxy* in ~/.cargo/bin, so resolution
+    // succeeds -- but spawning it errors because the component isn't installed.
+    vi.mocked(resolvePathNativeBinary).mockResolvedValueOnce({
+      command: "/home/runner/.cargo/bin/rust-analyzer",
+      args: [],
+      locallyResolved: true,
+    });
+    vi.mocked(probeBinaryVersionSpawnable).mockResolvedValue(false);
+
+    const result = await checkRustLspPreflight(workspaceRoot);
+
+    expect(result.markerFileResolvable).toBe(true);
+    expect(result.lspBinaryResolvable).toBe(true);
+    expect(result.lspBinarySpawnable).toBe(false);
+    expect(result.ready).toBe(false);
+    expect(result.reason).toMatch(/cannot be spawned/);
+    expect(probeBinaryVersionSpawnable).toHaveBeenCalledWith(
+      "/home/runner/.cargo/bin/rust-analyzer",
+      expect.any(Number),
+    );
   });
 });

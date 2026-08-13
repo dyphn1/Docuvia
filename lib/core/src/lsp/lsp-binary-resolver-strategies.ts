@@ -137,6 +137,10 @@ export function resolveNpmNpxBinary(
  *  batch itself, so it must fail fast rather than hang resolution. */
 const PATH_PROBE_TIMEOUT_MS = 5000;
 
+/** Short timeout for the live `--version` spawn probe (see `probeBinaryVersionSpawnable`) -- same
+ *  fail-fast rationale as `PATH_PROBE_TIMEOUT_MS`: a gate check, never the batch. */
+const VERSION_PROBE_TIMEOUT_MS = 5000;
+
 /** Per-language config for the PATH-native binary-resolution strategy
  *  (multi-language-lsp-support plan, Finding C) -- used by servers distributed as a standalone
  *  native binary rather than through npm (gopls, rust-analyzer, clangd, jdtls, csharp-ls,
@@ -250,6 +254,27 @@ export async function resolvePathNativeBinary(
     args: config.defaultArgs,
     locallyResolved: false,
   };
+}
+
+/**
+ * Live spawn probe for the PATH-native strategy: runs `command --version` to prove the resolved
+ * *file* can actually be spawned. PATH resolution alone is not a truthful availability signal for
+ * rustup-managed binaries -- rustup's rust-analyzer *proxy* in `~/.cargo/bin` resolves cleanly but
+ * errors `Unknown binary 'rust-analyzer'` at spawn when the component isn't installed. Spawns the
+ * bare `--version` (never the server's `defaultArgs` -- a mode flag like `--stdio` is irrelevant
+ * to a probe and could confuse a server that treats it as a command tail). Rust's preflight opts
+ * in; other PATH-native languages keep their cheap resolution-only gate.
+ */
+export async function probeBinaryVersionSpawnable(
+  command: string,
+  timeoutMs: number = VERSION_PROBE_TIMEOUT_MS,
+): Promise<boolean> {
+  try {
+    await execFileAsync(command, ["--version"], { timeout: timeoutMs });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Per-language config for the local-manifest-then-global binary-resolution strategy

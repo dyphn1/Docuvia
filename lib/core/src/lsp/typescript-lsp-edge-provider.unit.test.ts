@@ -6,6 +6,7 @@ import os from "node:os";
 import fs from "node:fs";
 import { TypescriptLspEdgeProvider } from "./typescript-lsp-edge-provider.js";
 import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
+import { TS_LSP_MESSAGES } from "./typescript-lsp-constants.js";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 
@@ -820,6 +821,38 @@ describe("TypescriptLspEdgeProvider.resolveEdges()", () => {
     expect(outcome.edges).toEqual([]);
     expect(outcome.filesFailed).toEqual([]);
     expect(outcome.unavailableReason).toMatch(/Failed to spawn LSP server/);
+  });
+
+  it("surfaces the friendly unresolvable-binary reason (issue #32) when an npx-fallback process exits during initialize, without leaking raw npm stderr", async () => {
+    // No node_modules in the temp workspace, so resolveTypeScriptLspBinary returns the
+    // `npx --no-install` fallback (locallyResolved: false) and start() succeeds -- then the
+    // process "exits" before completing initialize, the exact shape a genuinely-unresolvable
+    // package produces (npm >= 9: `npm error npx canceled due to missing packages and no YES
+    // option: [...]`).
+    const fake = new FakeLspClient((method) => {
+      if (method === LspMethods.INITIALIZE) {
+        throw new Error(
+          `LSP server process exited (code=1) -- stderr: npm error npx canceled due to missing packages and no YES option: ["typescript-language-server@5.3.0"]`,
+        );
+      }
+      return null;
+    });
+    const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+
+    const outcome = await provider.resolveEdges({
+      workspaceRoot,
+      files: ["a.ts"],
+    });
+
+    expect(outcome.edges).toEqual([]);
+    expect(outcome.filesFailed).toEqual([]);
+    expect(outcome.unavailableReason).toBe(TS_LSP_MESSAGES.binaryUnresolvable);
+    expect(outcome.unavailableReason).not.toMatch(/npm error/);
+    expect(fake.notifications).toContainEqual(
+      expect.objectContaining({ method: LspMethods.EXIT }),
+    );
   });
 
   it("degrades honestly on a whole-batch timeout, stops the client, and reports the file that was in flight as failed", async () => {

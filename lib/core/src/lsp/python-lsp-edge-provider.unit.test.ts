@@ -6,6 +6,7 @@ import os from "node:os";
 import fs from "node:fs";
 import { PythonLspEdgeProvider } from "./python-lsp-edge-provider.js";
 import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
+import { PY_LSP_MESSAGES } from "./python-lsp-constants.js";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 
@@ -305,12 +306,17 @@ describe("PythonLspEdgeProvider.resolveEdges()", () => {
     // `resolveEdges()` entirely instead of returning a clean degraded outcome, violating
     // `IEdgeResolutionProvider.resolveEdges()`'s "never throws for an ordinary unavailable
     // outcome" contract. Not Python-specific -- any npx/npm-fallback language can hit this.
+    // Since issue #32, this npx-fallback initialize-exit shape also substitutes python's own
+    // friendly `binaryUnresolvable` wording instead of leaking the raw process error (which for
+    // npm >= 9 contains `npm error npx canceled due to missing packages...`).
     const client: LspJsonRpcClient = {
       start: vi.fn().mockResolvedValue(undefined),
       request: vi
         .fn()
         .mockRejectedValue(
-          new Error("LSP server process exited (code=1) before responding"),
+          new Error(
+            `LSP server process exited (code=1) -- stderr: npm error npx canceled due to missing packages and no YES option: ["pyright"]`,
+          ),
         ),
       notify: vi.fn(),
       stop: vi.fn().mockResolvedValue(undefined),
@@ -328,9 +334,8 @@ describe("PythonLspEdgeProvider.resolveEdges()", () => {
 
     expect(outcome.edges).toEqual([]);
     expect(outcome.filesFailed).toEqual([]);
-    expect(outcome.unavailableReason).toMatch(
-      /exited before completing its initialize handshake/,
-    );
+    expect(outcome.unavailableReason).toBe(PY_LSP_MESSAGES.binaryUnresolvable);
+    expect(outcome.unavailableReason).not.toMatch(/npm error/);
     expect(client.stop).toHaveBeenCalled();
   });
 });

@@ -323,6 +323,18 @@ export interface LspLanguageConfig {
    *  Finding A). Every provider must set this explicitly (no default) so a newly-added language
    *  can't silently inherit "forward" by omission. */
   definitionResolution: "forward" | "reverse";
+  /** Issue #32: the human-readable reason to surface as `unavailableReason` for npm/npx-fallback
+   *  languages (typescript-/python-/php-lsp, whose `resolveBinary` can return
+   *  `locallyResolved: false`) when the spawned `npx --no-install <pkg>` process exits before
+   *  completing its `initialize` handshake -- the exact shape a genuinely-unresolvable package
+   *  produces. Substitutes this string for the raw process error, which for npm ≥ 9 leaks `npm
+   *  error npx canceled due to missing packages...` onto the user's degraded reason; the raw
+   *  detail is kept in a debug log instead (see `runBatch`'s initialize catch). Deliberately NOT
+   *  set by standalone-binary languages (go/rust/cpp/java/...): their missing-binary shape lands
+   *  in the *spawn*-failure catch (spawn ENOENT) rather than here, where `locallyResolved: false`
+   *  + an initialize crash is more plausibly a corrupt install than an unresolvable binary, so
+   *  substituting the "not resolvable" wording would lie. */
+  unavailableReasonForUnresolvableBinary?: string;
 }
 
 /**
@@ -658,14 +670,30 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       // pre-existing gap, not Python-specific -- any npx/npm-fallback language can hit this).
       // Per `IEdgeResolutionProvider.resolveEdges()`'s own contract ("never throws for an
       // ordinary unavailable ... outcome"), this must degrade honestly, not propagate.
+      const message = err instanceof Error ? err.message : String(err);
       await this.shutdownSession(client);
+      // Issue #32: with `locallyResolved === false` (npx/npm fallback), this exit is almost
+      // always the package genuinely not being resolvable -- and the raw error leaks npm's
+      // `npm error npx canceled due to missing packages...` onto the user's failed language. When
+      // the language opts in via `unavailableReasonForUnresolvableBinary`, surface its own
+      // friendly preflight wording (the same `*.binaryUnresolvable` message `checkPreflight`
+      // already returns) instead; keep the raw detail in a debug log for diagnosability.
+      const unresolvableReason =
+        this.languageConfig.unavailableReasonForUnresolvableBinary;
+      if (!resolved.locallyResolved && unresolvableReason) {
+        this.logger.debug(LSP_MESSAGES.initializeFailed(message));
+        return {
+          edges: [],
+          filesProcessed: [],
+          filesFailed: [],
+          unavailableReason: unresolvableReason,
+        };
+      }
       return {
         edges: [],
         filesProcessed: [],
         filesFailed: [],
-        unavailableReason: LSP_MESSAGES.initializeFailed(
-          err instanceof Error ? err.message : String(err),
-        ),
+        unavailableReason: LSP_MESSAGES.initializeFailed(message),
       };
     }
 

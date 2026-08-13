@@ -1493,12 +1493,13 @@
 {"id":"lib/contracts/src/utils/process-lock.ts","type":"file","name":"lib/contracts/src/utils/process-lock.ts","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#acquireProcessLock","type":"symbol","name":"acquireProcessLock","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#anonymous","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.ts"}
-{"id":"lib/contracts/src/utils/process-lock.ts#anonymous@L131","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.ts"}
-{"id":"lib/contracts/src/utils/process-lock.ts#anonymous@L133","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.ts"}
-{"id":"lib/contracts/src/utils/process-lock.ts#anonymous@L143","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.ts"}
+{"id":"lib/contracts/src/utils/process-lock.ts#anonymous@L138","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.ts"}
+{"id":"lib/contracts/src/utils/process-lock.ts#anonymous@L140","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.ts"}
+{"id":"lib/contracts/src/utils/process-lock.ts#anonymous@L150","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#anonymous@L73","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#anonymous@L79","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#isProcessAlive","type":"symbol","name":"isProcessAlive","filePath":"lib/contracts/src/utils/process-lock.ts"}
+{"id":"lib/contracts/src/utils/process-lock.ts#isRetryableLockError","type":"symbol","name":"isRetryableLockError","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#ProcessLockHandle","type":"symbol","name":"ProcessLockHandle","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#ProcessLockOptions","type":"symbol","name":"ProcessLockOptions","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#readLockPid","type":"symbol","name":"readLockPid","filePath":"lib/contracts/src/utils/process-lock.ts"}
@@ -1506,6 +1507,7 @@
 {"id":"lib/contracts/src/utils/process-lock.ts#removeStaleLockIfAbandoned","type":"symbol","name":"removeStaleLockIfAbandoned","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#sleep","type":"symbol","name":"sleep","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.ts#TIMED_OUT_WAITING","type":"symbol","name":"TIMED_OUT_WAITING","filePath":"lib/contracts/src/utils/process-lock.ts"}
+{"id":"lib/contracts/src/utils/process-lock.ts#tryCreateLockFile","type":"symbol","name":"tryCreateLockFile","filePath":"lib/contracts/src/utils/process-lock.ts"}
 {"id":"lib/contracts/src/utils/process-lock.unit.test.ts","type":"file","name":"lib/contracts/src/utils/process-lock.unit.test.ts","filePath":"lib/contracts/src/utils/process-lock.unit.test.ts"}
 {"id":"lib/contracts/src/utils/process-lock.unit.test.ts#anonymous","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.unit.test.ts"}
 {"id":"lib/contracts/src/utils/process-lock.unit.test.ts#anonymous@L112","type":"symbol","name":"anonymous","filePath":"lib/contracts/src/utils/process-lock.unit.test.ts"}

@@ -81,6 +81,28 @@ async function removeStaleLockIfAbandoned(
   return true;
 }
 
+function isRetryableLockError(err: unknown): boolean {
+  const code = (err as NodeJS.ErrnoException).code;
+  return (
+    code === ERRNO_EEXIST ||
+    code === ERRNO_EPERM ||
+    code === ERRNO_EACCES ||
+    code === ERRNO_EBUSY
+  );
+}
+
+async function tryCreateLockFile(lockPath: string): Promise<boolean> {
+  try {
+    const handle = await fs.open(lockPath, FS_FLAG_EXCLUSIVE_CREATE_WRITE);
+    await handle.writeFile(String(process.pid));
+    await handle.close();
+    return true;
+  } catch (err) {
+    if (!isRetryableLockError(err)) throw err;
+    return false;
+  }
+}
+
 /**
  * Cross-process mutex backed by an exclusively-created (`wx`) lockfile containing the holder's
  * PID — the same shape as the ad hoc locks in `graph-store.ts`'s `acquireInitLock` and
@@ -98,35 +120,20 @@ export async function acquireProcessLock(
   let notifiedWaiting = false;
 
   for (;;) {
-    try {
-      const handle = await fs.open(lockPath, FS_FLAG_EXCLUSIVE_CREATE_WRITE);
-      await handle.writeFile(String(process.pid));
-      await handle.close();
-      break;
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (
-        code !== ERRNO_EEXIST &&
-        code !== ERRNO_EPERM &&
-        code !== ERRNO_EACCES &&
-        code !== ERRNO_EBUSY
-      ) {
-        throw err;
-      }
+    if (await tryCreateLockFile(lockPath)) break;
 
-      if (!notifiedWaiting) {
-        notifiedWaiting = true;
-        options.onWaiting?.();
-      }
-
-      if (await removeStaleLockIfAbandoned(lockPath, opts.staleAfterMs))
-        continue;
-
-      if (Date.now() > deadline) {
-        throw new Error(ProcessLockErrorMessages.TIMED_OUT_WAITING(lockPath));
-      }
-      await sleep(opts.retryIntervalMs);
+    if (!notifiedWaiting) {
+      notifiedWaiting = true;
+      options.onWaiting?.();
     }
+
+    if (await removeStaleLockIfAbandoned(lockPath, opts.staleAfterMs))
+      continue;
+
+    if (Date.now() > deadline) {
+      throw new Error(ProcessLockErrorMessages.TIMED_OUT_WAITING(lockPath));
+    }
+    await sleep(opts.retryIntervalMs);
   }
 
   const heartbeat = setInterval(() => {

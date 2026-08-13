@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/lsp/lsp-edge-provider-base.ts#BaseLspEdgeProvider.anonymous@L885
+id: lib/core/src/lsp/lsp-edge-provider-base.ts#isContainmentKind
 type: symbol
-name: anonymous
+name: isContainmentKind
 filePath: lib/core/src/lsp/lsp-edge-provider-base.ts
 ---
-# Symbol: anonymous
+# Symbol: isContainmentKind
 
 File: `lib/core/src/lsp/lsp-edge-provider-base.ts`

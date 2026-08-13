@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/commands/doctor-report.ts#anonymous
+id: artifacts/cli/src/commands/doctor-report.ts#anonymous@L133
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/commands/doctor-report.ts
@@ -7,4 +7,3 @@ filePath: artifacts/cli/src/commands/doctor-report.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/src/commands/doctor-report.ts`
-.ts`

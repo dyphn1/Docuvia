@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/cli.ts#anonymous@L384
+id: artifacts/cli/src/cli.ts#anonymous@L281
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/cli.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/init/init-workflow.ts#anonymous@L258
+id: lib/ui-core/src/workflows/init/init-workflow.ts#anonymous@L263
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/init/init-workflow.ts

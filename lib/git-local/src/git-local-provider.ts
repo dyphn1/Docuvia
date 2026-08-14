@@ -1,4 +1,4 @@
-import { execFile } from "child_process";
+import { execFile, type ExecFileOptions } from "child_process";
 import { promisify } from "util";
 import fs from "fs/promises";
 import path from "path";
@@ -8,6 +8,11 @@ import {
   ErrorCodes,
   GIT_DEFAULT_REMOTE_NAME,
   UTF8_ENCODING,
+  FS_FLAG_EXCLUSIVE_CREATE_WRITE,
+  ERRNO_EEXIST,
+  ERRNO_EPERM,
+  ERRNO_EACCES,
+  ERRNO_EBUSY,
   type ChangedFileEntry,
   type ChangedFileStatus,
   type DiffLineRange,
@@ -22,7 +27,35 @@ import { DOCUVIA_GIT_IDENTITY } from "./constants/git-identity.js";
 import { GIT_BRANCH_REF_PREFIX, GIT_HEAD_REF } from "./constants/git-refs.js";
 import { GIT_BIN } from "./constants/git-cli.js";
 
-const execFileAsync = promisify(execFile);
+const rawGitExecFileAsync = promisify(execFile);
+
+/** Git's human-readable diagnostics (stderr especially, e.g. `fatal: couldn't find remote ref
+ *  'docuvia-knowledge'`) are localized to the host's `LC_ALL`/`LANG`. Forcing a stable `C` locale
+ *  here makes every git shell-out emit byte-identical output on every machine. Without it,
+ *  `KnowledgeGitService.isRemoteRefMissingError`'s English substring match silently misses on
+ *  non-English hosts (reproduced on a zh_TW macOS, where git reports
+ *  `致命錯誤: 無法找到遠端引用` instead of `couldn't find remote ref`), and knowledge-branch
+ *  reconciliation misclassifies a merely-missing remote ref as a network failure. */
+const STABLE_GIT_LOCALE_ENV: Readonly<Record<string, string>> = {
+  LC_ALL: "C",
+  LANG: "C",
+  LC_MESSAGES: "C",
+};
+
+const execFileAsync = (
+  file: string,
+  args: readonly string[],
+  options: ExecFileOptions = {},
+): Promise<{ stdout: string; stderr: string }> =>
+  rawGitExecFileAsync(file, args, {
+    ...options,
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      ...(options.env ?? {}),
+      ...STABLE_GIT_LOCALE_ENV,
+    },
+  });
 
 /** Git subcommand names (the first positional argv element after `git`) this provider shells
  *  out to. */
@@ -148,12 +181,6 @@ const KNOWLEDGE_LOCK_STALE_MS = 60_000;
  *  that takes); the caller (`KnowledgeGitService`, config-tunable via `docuviaMemory` /
  *  `DOCUVIA_PUSH_TIMEOUT_MS` — see `docuvia-api.ts`'s `syncKnowledge()`) opts back into a bound if
  *  it wants one. */
-
-/** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists —
- *  the basis of `acquireKnowledgeLock`'s exclusive-create lock. */
-const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
-/** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
-const ERRNO_EEXIST = "EEXIST" as const;
 
 const TYPE_OBJECT = "object";
 const ERR_PROP_CODE = "code";
@@ -1171,7 +1198,13 @@ export class GitLocalProvider implements IGitProvider {
         await handle.close();
         return;
       } catch (err) {
-        if ((err as NodeJS.ErrnoException).code !== ERRNO_EEXIST) {
+        const code = (err as NodeJS.ErrnoException).code;
+        if (
+          code !== ERRNO_EEXIST &&
+          code !== ERRNO_EPERM &&
+          code !== ERRNO_EACCES &&
+          code !== ERRNO_EBUSY
+        ) {
           throw DocuviaError.wrap(
             ErrorCodes.GIT_COMMAND_FAILED,
             GIT_PROVIDER_ERROR_MESSAGES.KNOWLEDGE_LOCK_ACQUIRE_FAILED,

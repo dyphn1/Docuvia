@@ -12,6 +12,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   typecheck-and-test:
     name: Typecheck & Test
@@ -57,21 +61,17 @@ jobs:
   ocr-review:
     name: OpenCodeReview
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Checkout (full history for merge-base diff)
         uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          cache: "pnpm"
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
 
       - name: Install OpenCodeReview
         run: npm install -g @alibaba-group/open-code-review
@@ -91,5 +91,161 @@ jobs:
           ocr config set custom_providers.openrouter.api_key $OCR_CUSTOM_PROVIDERS_OPENROUTER_API_KEY
           ocr llm test  # 驗證連線
 
+      - name: Resolve review range
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --tags --force origin "${{ github.event.pull_request.base.ref }}"
+            FROM="origin/${{ github.event.pull_request.base.ref }}"
+            TO="${{ github.event.pull_request.head.sha }}"
+          else
+            FROM="${{ github.event.before }}"
+            if [ -z "$FROM" ] || [ "$FROM" = "0000000000000000000000000000000000000000" ]; then
+              # 分支建立的第一次 push：diff 基準改為 git 的 empty tree
+              FROM="4b825dc642cb6eb9a060e54bf8d69288fbee4904"
+            fi
+            TO="${{ github.sha }}"
+          fi
+          echo "FROM=$FROM" >> "$GITHUB_OUTPUT"
+          echo "TO=$TO" >> "$GITHUB_OUTPUT"
+          echo "Reviewing: $FROM -> $TO"
+
       - name: Run OCR Review
-        run: ocr review --format github # GitHub 格式會自動註釋 PR
+        id: review
+        env:
+          FROM: ${{ steps.range.outputs.FROM }}
+          TO: ${{ steps.range.outputs.TO }}
+        run: |
+          ocr review \
+            --from "$FROM" \
+            --to "$TO" \
+            --format json \
+            --audience agent \
+            > /tmp/ocr-result.json 2>/tmp/ocr-stderr.log
+          echo "=== OCR result ==="
+          cat /tmp/ocr-result.json
+          echo "=== OCR stderr ==="
+          cat /tmp/ocr-stderr.log
+
+      - name: Post review comments to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const resultPath = '/tmp/ocr-result.json';
+            const stderrPath = '/tmp/ocr-stderr.log';
+
+            let result;
+            try {
+              result = JSON.parse(fs.readFileSync(resultPath, 'utf8'));
+            } catch (e) {
+              const stderr = fs.readFileSync(stderrPath, 'utf8').trim();
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `⚠️ **OpenCodeReview** encountered an error:\n\`\`\`\n${(stderr || e.message).slice(0, 8000)}\n\`\`\``,
+              });
+              return;
+            }
+
+            const comments = result.comments || [];
+            const warnings = result.warnings || [];
+
+            if (comments.length === 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `✅ **OpenCodeReview**: ${result.message || 'No comments generated. Looks good to me.'}`,
+              });
+              return;
+            }
+
+            const prNumber = context.issue.number;
+            const commitSha = context.payload.pull_request.head.sha;
+
+            const reviewComments = [];
+            const commentsWithoutLine = [];
+
+            for (const comment of comments) {
+              let body = comment.content || '';
+              if (comment.suggestion_code && comment.existing_code) {
+                body += '\n\n**Suggestion:**\n```suggestion\n' + comment.suggestion_code + (comment.suggestion_code.endsWith('\n') ? '' : '\n') + '```';
+              }
+
+              const hasValidLine = (comment.start_line >= 1) || (comment.end_line >= 1);
+              if (!hasValidLine) {
+                commentsWithoutLine.push({ comment });
+                continue;
+              }
+
+              const rc = { path: comment.path, body, side: 'RIGHT' };
+              if (comment.start_line >= 1 && comment.end_line >= 1 && comment.start_line !== comment.end_line) {
+                rc.start_line = comment.start_line;
+                rc.line = comment.end_line;
+                rc.start_side = 'RIGHT';
+              } else if (comment.end_line >= 1) {
+                rc.line = comment.end_line;
+              } else {
+                rc.line = comment.start_line;
+              }
+              reviewComments.push(rc);
+            }
+
+            let summaryBody = `🔍 **OpenCodeReview** found **${comments.length}** issue(s) in this PR.`;
+            summaryBody += `\n- ${reviewComments.length} posted as inline comment(s)`;
+            summaryBody += `\n- ${commentsWithoutLine.length} included in this summary`;
+            if (warnings.length > 0) {
+              summaryBody += `\n\n⚠️ ${warnings.length} warning(s) occurred during review.`;
+            }
+
+            for (const { comment } of commentsWithoutLine) {
+              summaryBody += '\n\n---\n\n### 📄 `' + comment.path + '`';
+              if (comment.start_line && comment.end_line) summaryBody += ` (L${comment.start_line}-L${comment.end_line})`;
+              summaryBody += '\n\n' + (comment.content || '');
+              if (comment.suggestion_code && comment.existing_code) {
+                summaryBody += '\n\n💡 **Suggested Change**\n\n**Before:**\n```\n' + comment.existing_code + '\n```\n\n**After:**\n```\n' + comment.suggestion_code + '\n```';
+              }
+            }
+
+            try {
+              await github.rest.pulls.createReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber,
+                commit_id: commitSha,
+                body: summaryBody,
+                event: 'COMMENT',
+                comments: reviewComments,
+              });
+            } catch (e) {
+              let ok = 0;
+              const failed = [];
+              for (const rc of reviewComments) {
+                try {
+                  await github.rest.pulls.createReview({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNumber,
+                    commit_id: commitSha,
+                    body: '',
+                    event: 'COMMENT',
+                    comments: [rc],
+                  });
+                  ok++;
+                } catch (inner) {
+                  failed.push(`\`${rc.path}\`: ${inner.message}`);
+                }
+              }
+              let body = summaryBody + `\n\n---\n📊 Posted ${ok}/${reviewComments.length} inline comment(s).`;
+              if (failed.length) body += '\n\nFailed:\n' + failed.join('\n');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+            }

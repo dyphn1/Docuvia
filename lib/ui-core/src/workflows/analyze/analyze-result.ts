@@ -120,13 +120,28 @@ export interface TierBBatchResult {
   /** Dangling `node_links` rows removed by the incoming-edge repair hygiene pass (§8d). */
   edgesPruned: number;
   /** `true` when the provider could not run at all (binary unresolvable, spawn/timeout) --
-   *  AST-level edges were left untouched, per §8b's honest-degradation rule. */
+   *  AST-level edges were left untouched, per §8b's honest-degradation rule. Since issue #33 this
+   *  is scoped to the run as a whole: a *stray* secondary-language degradation (some other
+   *  language bucket ran fine) leaves it `false` and surfaces via `strayLanguageDegraded` +
+   *  `degradedLanguages` instead, so a primary-language-healthy run isn't reported degraded over
+   *  one unrelated file. */
   degraded: boolean;
   degradedReason?: string;
   /** Per-language fidelity behind `degraded`/`degradedReason` above (multi-language-lsp-support
    *  plan, Finding F) -- additive, only set when at least one queued language's provider could not
-   *  run at all this batch. Consumed by JSONL logging and `doctor`'s per-language diagnostic. */
+   *  run at all this batch. Consumed by JSONL logging and `doctor`'s per-language diagnostic.
+   *  Present even when `degraded` is `false` (issue #33): a stray secondary-bucket degradation
+   *  keeps the run healthy in aggregate but is still recorded here. */
   degradedLanguages?: { languageId: string; reason: string }[];
+  /** Issue #33: `true` when at least one language bucket degraded while another language bucket in
+   *  the same batch ran fine (e.g. ripgrep's single bundled `.rb` Homebrew formula degrading the
+   *  ruby bucket while the 100-file rust bucket processed normally). The run is reported
+   *  `degraded: false` in that shape -- the degradation is confined to an unrelated stray bucket. */
+  strayLanguageDegraded?: boolean;
+  /** Issue #33: `true` when every language bucket that had queued files degraded this batch -- the
+   *  genuinely-stuck whole-batch environment-outage shape, and the only degradation that exempts a
+   *  batch from the zero-progress watchdog streak. */
+  fullyDegraded?: boolean;
   /** `true` when `rev-list --count lastTierBBatchSha..HEAD >= cap` at batch time (§8f) --
    *  observability only in this slice; does not gate anything (see the implementer's report on
    *  the commit-hook-cannot-start-LSP tension). */

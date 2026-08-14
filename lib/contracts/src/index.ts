@@ -219,6 +219,14 @@ export {
 
 export { UTF8_ENCODING } from "./constants/encoding.js";
 export { GIT_DEFAULT_REMOTE_NAME } from "./constants/git-conventions.js";
+export {
+  FS_FLAG_EXCLUSIVE_CREATE_WRITE,
+  ERRNO_EEXIST,
+  ERRNO_EPERM,
+  ERRNO_EACCES,
+  ERRNO_EBUSY,
+  PLATFORM_WIN32,
+} from "./constants/fs.js";
 export { acquireProcessLock } from "./utils/process-lock.js";
 export type {
   ProcessLockOptions,

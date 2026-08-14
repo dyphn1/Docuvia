@@ -4,6 +4,7 @@ import { resolveTypeScriptLspBinary } from "./typescript-lsp-binary-resolver.js"
 import { checkTypeScriptLspPreflight } from "./typescript-lsp-preflight.js";
 import {
   TsLspConstants,
+  TS_LSP_MESSAGES,
   DEFAULT_TS_MAX_OLD_SPACE_SIZE_MB,
 } from "./typescript-lsp-constants.js";
 import {
@@ -44,6 +45,10 @@ const TYPESCRIPT_LANGUAGE_CONFIG: LspLanguageConfig = {
   // real-typescript-language-server parity test proves `textDocument/definition` resolves both
   // plain and member calls against this provider.
   definitionResolution: "forward",
+  // issue #32: npm/npx-fallback language -- when `npx --no-install typescript-language-server`
+  // spawns then exits before finishing initialize (package not cached), surface this friendly
+  // preflight reason instead of npm's raw stderr on the degraded language.
+  unavailableReasonForUnresolvableBinary: TS_LSP_MESSAGES.binaryUnresolvable,
 };
 
 /**

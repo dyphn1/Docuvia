@@ -46,6 +46,122 @@ commit-sha/diff-summary, so `export-topology`'s existing interactive HTML viewer
 2026-07-12, see [`cross-product-cli-benchmark.md`](cross-product-cli-benchmark.md) action item 5's
 correction) can render a richer topology without a second query round-trip.
 
+## Phase 4 — Agent Ergonomics & CLI Symmetry (2026-08-14 design session)
+
+Seven items below (29-35) came out of one design-discussion session focused on reducing
+agent-side friction when driving Docuvia: skill/MCP surface for read paths, output formats,
+init-time Tier B/C options, an agent-authored L3 write path, and a fine-grained hook-lifecycle
+command. Each item's direction is settled; several carry an explicit open sub-question that
+wasn't resolved in that session and needs its own follow-up before implementation starts. The
+related `init` → `install` naming rename is tracked separately as
+[IFCE-006](../adr/interface/IFCE-006-rename-init-to-install.md) (status: proposed), not as a
+roadmap item, per this project's convention of promoting a settled rename straight to ADR.
+
+### 29. MCP read-path tools (`query`/`impact`/`context`) — resume the already-planned rebuild
+
+Not new scope: [`artifacts/cli/src/mcp/tools/index.ts`](../../../artifacts/cli/src/mcp/tools/index.ts)'s
+own comment already names `context`/`impact`/`query`/`analyze`/`extract`/`clean`/`status`/
+`detectChanges`/`sync` as tools the pre-rewrite Docuvia had, with "register each new tool here as
+it's rebuilt" as the stated plan. Currently only `docuvia_init` is registered. Motivation from this
+session: the only way an agent currently calls Docuvia's read paths is
+[`.claude/hooks/docuvia-hook.js`](../../../.claude/hooks/docuvia-hook.js) shelling out to
+`npx --no-install docuvia query ...` on every `Grep`/`Glob`/`Bash`/`Read` call — a fresh CLI
+process spawn per call. MCP tools would replace that with a structured call against a persistent
+server. Scope: at minimum `query`/`impact`; `context` and the rest of the original list are
+candidates, not committed.
+
+### 30. `docuvia-*` skill set mirroring `gitnexus-*`, installed via `docuvia init`'s skill option
+
+Confirmed direction: task-routed skill files (in the shape of the user's existing
+`gitnexus-exploring`/`gitnexus-impact-analysis`/etc. skill set) for Docuvia, so an agent gets
+guided which command/format fits a given task instead of relying solely on the `AGENTS.md`/
+`CLAUDE.md` prose mandate. Installation: an opt-in skill-list option on `docuvia init`, symmetric
+removal via `docuvia uninstall` — not a fixed bundle baked into every `init` run, per the
+self-installable/uninstallable requirement raised alongside item 34 below. Precedent this repo
+already has for a project-local skill: [`.claude/skills/no-magic-strings/`](../../../.claude/skills/no-magic-strings).
+
+Found alongside this, not yet fixed: `.claude/hooks/docuvia-hook.js` builds its
+`npx --no-install docuvia query "${target}" --format=prompt` shell command via direct string
+interpolation of `target` (`execSync`) — a real shell-injection exposure, separate from the
+spawn-overhead concern above. Fix when this item's hook mechanism is next touched.
+
+### 31. `--format` gains `json`, extends beyond `query`
+
+Currently `--format` exists only on `query` (`QUERY_OUTPUT_FORMATS`: `human`/`prompt` —
+[`cli-flags.ts`](../../../artifacts/cli/src/constants/cli-flags.ts)); `impact`/`review` have no
+`--format` at all. Confirmed direction: add a `json` value to the shared enum, and extend
+`--format` support to `impact`/`review` reusing that same enum rather than each command inventing
+its own flag. Tied to item 29: MCP tools return structured data natively, so `--format=json`
+mainly serves the Bash-fallback path and non-MCP platforms; which format an agent should reach for
+in which situation is expected to live in item 30's skill files.
+
+### 32. `init` gains an opt-in Tier B/C escalation option — Tier C backfill strategy still unresolved
+
+`init` already queues every parsed file for Tier B ([`init.md`](../user-guide/cli/init.md) step
+3); Tier B/C's stage-then-finalize design already gives resumability. Confirmed direction: an
+opt-in flag on `init` (reusing `analyze`'s existing `--escalate-to-lsp` name rather than inventing
+a new one, per this project's own command-convergence test) to drain Tier B immediately at init
+time instead of waiting for the first push, with a loop-until-drained runner bounded by a
+wall-clock cap for large repos (a single 120s batch won't clear a vscode-scale queue).
+
+**Open, not resolved this session**: Tier C's queue is commit-driven (enqueue happens via the
+commit-semantic filter, this file's Tier C section item 4 above) — a fresh `init` has no commit
+history event to enqueue from, so there is currently no seed mechanism for an init-time Tier C
+option. Candidate approaches (recent-N-commits backfill vs. no-L3-coverage-first file selection)
+were named but not decided.
+
+### 33. Agent-authored L3 write path — new Tier C provenance, write surface confirmed
+
+Confirmed direction: let the agent that just made a code change write its own rationale directly
+into `l3_nodes` (`source='agent-authored'` provenance, alongside the existing `source='llm-inferred'`
+merge pattern Tier B's Provider 2 section above already defines) instead of relying only on Tier
+C's async LLM-inference-from-diff path. Because this path starts no LSP/LLM call — it is a pure
+data write of content the agent already has — it is cheap enough to fire at commit time without
+violating Tier A's "structurally forbidden from starting LSP/LLM work" rule (this file's Tier A
+section, item 4); the existing LLM-inferred Tier C stays as the heavier, push-time fallback for
+changes with no agent-recorded rationale.
+
+**Write surface confirmed (2026-08-14)**: converges into the existing `analyze <targetPath>`
+command (already documented as "focused LLM decision extraction ... persisted to `l3_nodes`" —
+this just adds who is allowed to author the content) rather than a new verb, per the project's
+command-convergence principle. Not yet implemented.
+
+### 34. `docuvia hooks list/enable/disable` — per-behavior hook lifecycle management
+
+Confirmed direction, in response to real usage feedback that pre-push-triggered Tier B/C work
+feels too slow/blocking for an agent's workflow: a new `docuvia hooks` subcommand managing at
+least three independently-toggleable hook behaviors — `context-injection` (item 29/30's
+PreToolUse-style context hook), `commit-l3-write` (item 33's new lightweight commit-time write),
+and `tier-b-c-prepush` (the existing pre-push Tier B/C batch, gaining a name and an explicit on/off
+switch it doesn't have today). `init`/`uninstall` keep owning "install/remove everything for
+platform X"; `docuvia hooks` owns fine-grained enablement after the fact.
+
+**Open, deliberately deferred (2026-08-14)**: whether `docuvia hooks` also manages skill-file
+installation (item 30) or whether that stays under a separate `init --skills=`/`uninstall --skills=`
+flag pair — skills are static file drops, not runtime hook registrations, so the two may not share
+a management surface. Explicitly held open rather than decided now: once
+[IFCE-006](../adr/interface/IFCE-006-rename-init-to-install.md)'s `init` → `install` rename ships,
+"install behavior" reads more naturally as the right home for file-drop-style installs (skills
+included), which should make this boundary easier to call — deciding it before the rename lands
+risks anchoring on `init`'s current, soon-to-change semantics.
+
+### 35. `init --platform=X` isn't actually scoped the way `uninstall --platform=X` is
+
+Verified in [`lib/ui-core/src/workflows/init/init-workflow.ts`](../../../lib/ui-core/src/workflows/init/init-workflow.ts):
+`execute()` always runs the full discovery → parse → persist sequence regardless of whether
+`.docuvia/`/`local.db` already exist — there is no branch that detects an already-initialized
+workspace and skips straight to installing just the requested platform's integration files.
+`uninstall --platform=X`, by contrast, is genuinely scoped (touches only that platform's files,
+leaves the DB and other platforms alone). Running `docuvia init --platform=cursor` a second time
+on an already-set-up repo currently re-does full ingestion as a side effect of what should be a
+light "add one more platform" operation.
+
+Confirmed as a real gap; fix direction (not yet fully speced): `init` should detect an existing
+graph and skip discovery/parse/persist, reducing a repeat `--platform=` call to the same weight as
+its `uninstall` counterpart. Related to, but independent of, the `init` → `install` rename
+([IFCE-006](../adr/interface/IFCE-006-rename-init-to-install.md)) — this is a behavior fix, that
+was a naming fix.
+
 ## Known open technical items (small, tracked, unowned)
 
 ### 8. Race C — `query` (foreground read) vs. `analyze` (background write)

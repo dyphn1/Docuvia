@@ -7,6 +7,11 @@ import {
   UTF8_ENCODING,
   DocuviaError,
   ErrorCodes,
+  FS_FLAG_EXCLUSIVE_CREATE_WRITE,
+  ERRNO_EEXIST,
+  ERRNO_EPERM,
+  ERRNO_EACCES,
+  ERRNO_EBUSY,
 } from "@workspace/contracts";
 
 export interface SyncStateFile {
@@ -27,10 +32,6 @@ const SYNC_STATE_LOCK_RETRY_INTERVAL_MS = 100;
 const SYNC_STATE_LOCK_STALE_MS = 60_000;
 /** Suffix appended to `statePath` for the cross-process sync-state lock file (see `acquireSyncStateLock`). */
 const SYNC_STATE_LOCK_FILE_SUFFIX = ".lock" as const;
-/** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists — the basis of `acquireSyncStateLock`'s exclusive-create lock (same shape as `lib/contracts`'s `process-lock.ts`). */
-const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
-/** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
-const ERRNO_EEXIST = "EEXIST" as const;
 
 const SYNC_STATE_LOCK_MESSAGES = {
   TIMED_OUT_WAITING: (lockPath: string) =>
@@ -55,7 +56,15 @@ async function acquireSyncStateLock(statePath: string): Promise<string> {
       await handle.close();
       return lockPath;
     } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== ERRNO_EEXIST) throw err;
+      const code = (err as NodeJS.ErrnoException).code;
+      if (
+        code !== ERRNO_EEXIST &&
+        code !== ERRNO_EPERM &&
+        code !== ERRNO_EACCES &&
+        code !== ERRNO_EBUSY
+      ) {
+        throw err;
+      }
 
       const stat = await fs.stat(lockPath).catch(() => undefined);
       if (stat && Date.now() - stat.mtimeMs > SYNC_STATE_LOCK_STALE_MS) {

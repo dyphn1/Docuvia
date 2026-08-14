@@ -1,12 +1,12 @@
 import fs from "node:fs/promises";
 import { UTF8_ENCODING } from "../constants/encoding.js";
-
-/** Node.js `fs.open` flag: fail (`EEXIST`) instead of overwriting if the path already exists — the basis of this module's exclusive-create lock. */
-const FS_FLAG_EXCLUSIVE_CREATE_WRITE = "wx" as const;
-/** `NodeJS.ErrnoException.code` reported by `fs.open(path, "wx")` when `path` already exists. */
-const ERRNO_EEXIST = "EEXIST" as const;
-/** `NodeJS.ErrnoException.code` reported by `process.kill(pid, 0)` when `pid` exists but the current process lacks permission to signal it (still means "alive"). */
-const ERRNO_EPERM = "EPERM" as const;
+import {
+  FS_FLAG_EXCLUSIVE_CREATE_WRITE,
+  ERRNO_EEXIST,
+  ERRNO_EPERM,
+  ERRNO_EACCES,
+  ERRNO_EBUSY,
+} from "../constants/fs.js";
 
 const ProcessLockErrorMessages = {
   TIMED_OUT_WAITING: (lockPath: string) =>
@@ -81,6 +81,28 @@ async function removeStaleLockIfAbandoned(
   return true;
 }
 
+function isRetryableLockError(err: unknown): boolean {
+  const code = (err as NodeJS.ErrnoException).code;
+  return (
+    code === ERRNO_EEXIST ||
+    code === ERRNO_EPERM ||
+    code === ERRNO_EACCES ||
+    code === ERRNO_EBUSY
+  );
+}
+
+async function tryCreateLockFile(lockPath: string): Promise<boolean> {
+  try {
+    const handle = await fs.open(lockPath, FS_FLAG_EXCLUSIVE_CREATE_WRITE);
+    await handle.writeFile(String(process.pid));
+    await handle.close();
+    return true;
+  } catch (err) {
+    if (!isRetryableLockError(err)) throw err;
+    return false;
+  }
+}
+
 /**
  * Cross-process mutex backed by an exclusively-created (`wx`) lockfile containing the holder's
  * PID — the same shape as the ad hoc locks in `graph-store.ts`'s `acquireInitLock` and
@@ -98,27 +120,20 @@ export async function acquireProcessLock(
   let notifiedWaiting = false;
 
   for (;;) {
-    try {
-      const handle = await fs.open(lockPath, FS_FLAG_EXCLUSIVE_CREATE_WRITE);
-      await handle.writeFile(String(process.pid));
-      await handle.close();
-      break;
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== ERRNO_EEXIST) throw err;
+    if (await tryCreateLockFile(lockPath)) break;
 
-      if (!notifiedWaiting) {
-        notifiedWaiting = true;
-        options.onWaiting?.();
-      }
-
-      if (await removeStaleLockIfAbandoned(lockPath, opts.staleAfterMs))
-        continue;
-
-      if (Date.now() > deadline) {
-        throw new Error(ProcessLockErrorMessages.TIMED_OUT_WAITING(lockPath));
-      }
-      await sleep(opts.retryIntervalMs);
+    if (!notifiedWaiting) {
+      notifiedWaiting = true;
+      options.onWaiting?.();
     }
+
+    if (await removeStaleLockIfAbandoned(lockPath, opts.staleAfterMs))
+      continue;
+
+    if (Date.now() > deadline) {
+      throw new Error(ProcessLockErrorMessages.TIMED_OUT_WAITING(lockPath));
+    }
+    await sleep(opts.retryIntervalMs);
   }
 
   const heartbeat = setInterval(() => {

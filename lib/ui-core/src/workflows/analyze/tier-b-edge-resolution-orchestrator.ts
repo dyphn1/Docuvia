@@ -46,11 +46,27 @@ export interface MergedEdgeResolutionOutcome {
   filesFailed: EdgeResolutionFileFailure[];
   /** Set when at least one queued language's provider could not run at all -- every degraded
    *  language's reason, joined into one human-readable string (Finding F: aggregate, for the
-   *  existing single-scalar `degradedReason` consumers). */
+   *  existing single-scalar `degradedReason` consumers). Since issue #33 this is only set when the
+   *  batch is genuinely degraded as a whole (every queued language's bucket degraded
+   *  -- `fullyDegraded`): a stray secondary-bucket degradation (another language bucket ran fine)
+   *  keeps the run healthy in aggregate and is surfaced via `degradedLanguages` +
+   *  `strayLanguageDegraded` instead. */
   unavailableReason?: string;
   /** Per-language fidelity behind `unavailableReason` above (Finding F) -- consumed by JSONL
    *  logging and `doctor`'s per-language diagnostic. Always present, empty when nothing degraded. */
   degradedLanguages: DegradedLanguage[];
+  /** Issue #33: true when every language bucket that had queued files this batch degraded (its
+   *  provider couldn't run at all / none registered). Distinguishes a genuinely-stuck whole-batch
+   *  environment outage from a stray secondary-bucket degradation -- only a fully-degraded batch
+   *  is exempt from the zero-progress watchdog streak (`run-tier-b-batch.ts`). */
+  fullyDegraded: boolean;
+  /** Issue #33: true when at least one language degraded while another language bucket in the same
+   *  batch ran fine (e.g. ripgrep's single bundled `.rb` Homebrew formula degrading the ruby
+   *  bucket while the 100-file rust bucket processed normally). The aggregate `unavailableReason`
+   *  is deliberately NOT set in this shape -- the run made meaningful progress, so reporting it
+   *  "degraded" because of one unrelated file is misleading (the degraded language is still
+   *  recorded in `degradedLanguages` for per-language diagnostics). */
+  strayLanguageDegraded: boolean;
 }
 
 export interface ResolveEdgesForLanguageBucketsDeps {
@@ -82,6 +98,53 @@ function mergeOutcomeInto(
   for (const edge of outcome.edges) edges.push(edge);
   for (const file of outcome.filesProcessed) filesProcessed.push(file);
   for (const failure of outcome.filesFailed) filesFailed.push(failure);
+}
+
+/** Issue #33: classify the batch's degradation shape and derive its aggregate `unavailableReason`.
+ *  A degradation is "stray" when some other language bucket in the same batch ran fine -- the run
+ *  as a whole made progress, so the aggregate `degraded`/`unavailableReason` must not claim the
+ *  whole run failed over an unrelated bucket (ripgrep: 1 bundled .rb formula degrading the ruby
+ *  bucket while 100 rust files processed normally). `fullyDegraded` is the complement -- every
+ *  attemptable bucket's provider couldn't run, which is what exempts a batch from the zero-progress
+ *  watchdog streak (`run-tier-b-batch.ts`).
+ */
+function classifyDegradation(
+  buckets: Partial<Record<TierBLanguageId, TierBQueueEntry[]>>,
+  degradedLanguages: DegradedLanguage[],
+): {
+  unavailableReason?: string;
+  fullyDegraded: boolean;
+  strayLanguageDegraded: boolean;
+} {
+  const degradedLanguageIds = new Set(
+    degradedLanguages.map((d) => d.languageId),
+  );
+  const attemptedLanguageIds = (
+    Object.keys(buckets) as TierBLanguageId[]
+  ).filter((languageId) => (buckets[languageId]?.length ?? 0) > 0);
+  const fullyDegraded =
+    attemptedLanguageIds.length > 0 &&
+    attemptedLanguageIds.every((languageId) =>
+      degradedLanguageIds.has(languageId),
+    );
+  const strayLanguageDegraded = degradedLanguages.length > 0 && !fullyDegraded;
+  if (strayLanguageDegraded || degradedLanguages.length === 0) {
+    return {
+      unavailableReason: undefined,
+      fullyDegraded,
+      strayLanguageDegraded,
+    };
+  }
+  // Finding F: exactly one degraded language keeps that provider's own reason string verbatim
+  // (byte-identical to the pre-registry single-provider outcome, since a single-language slice
+  // only ever has one bucket) -- only >1 degraded languages in the same batch get the
+  // "languageId: reason" join, since then a bare reason string would be ambiguous about which
+  // language it came from.
+  const unavailableReason =
+    degradedLanguages.length === 1
+      ? degradedLanguages[0].reason
+      : degradedLanguages.map((d) => `${d.languageId}: ${d.reason}`).join("; ");
+  return { unavailableReason, fullyDegraded, strayLanguageDegraded };
 }
 
 /**
@@ -153,24 +216,18 @@ export async function resolveEdgesForLanguageBuckets(
     }
   }
 
+  // Issue #33's aggregate shape: see `classifyDegradation`.
+  const { unavailableReason, fullyDegraded, strayLanguageDegraded } =
+    classifyDegradation(buckets, degradedLanguages);
+
   return {
     edges,
     filesProcessed,
     filesFailed,
-    // Finding F: exactly one degraded language keeps that provider's own reason string verbatim
-    // (byte-identical to the pre-registry single-provider outcome, since Slice 0 only ever has one
-    // language registered) -- only >1 degraded languages in the same batch get the
-    // "languageId: reason" join, since then a bare reason string would be ambiguous about which
-    // language it came from.
-    unavailableReason:
-      degradedLanguages.length === 1
-        ? degradedLanguages[0].reason
-        : degradedLanguages.length > 1
-          ? degradedLanguages
-              .map((d) => `${d.languageId}: ${d.reason}`)
-              .join("; ")
-          : undefined,
+    unavailableReason,
     degradedLanguages,
+    fullyDegraded,
+    strayLanguageDegraded,
   };
 }
 

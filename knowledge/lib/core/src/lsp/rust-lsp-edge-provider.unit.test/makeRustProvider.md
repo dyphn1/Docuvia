@@ -1,9 +1,9 @@
 ---
-id: lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts#handler@L479
+id: lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts#makeRustProvider
 type: symbol
-name: handler
+name: makeRustProvider
 filePath: lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts
 ---
-# Symbol: handler
+# Symbol: makeRustProvider
 
 File: `lib/core/src/lsp/rust-lsp-edge-provider.unit.test.ts`

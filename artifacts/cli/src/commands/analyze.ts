@@ -44,8 +44,9 @@ export interface AnalyzeCommandOptions {
    *  `resolveTierBEnvConfig`). `0` means "never time out". */
   lspTimeoutMs?: number;
   /** `--lsp-processes=` -- takes precedence over `DOCUVIA_LSP_MAX_PROCESSES`. Number of
-   *  independent LSP server processes to shard the Tier B batch across. Default: `1` (applied in
-   *  \`resolveTierBEnvConfig\`). */
+   *  independent LSP server processes to shard the Tier B batch across. Default: the provider
+   *  auto-derives a core-and-memory-bounded shard count (PRJ-004); pass an explicit `1` to force
+   *  a single server. */
   lspProcesses?: number;
   /** `--full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) -- pre-populates `tierBQueue` with
    *  every currently-tracked file before the batch drains it. Ignored when `escalateToLsp` is not
@@ -135,7 +136,7 @@ function resolveTierBEnvConfig(
       : undefined,
     lspTimeoutMs:
       cliLspTimeoutMs ?? (timeoutRaw ? Number(timeoutRaw) : undefined),
-    lspMaxProcesses: cliLspProcesses ?? parsePositiveInt(processesRaw) ?? 1,
+    lspMaxProcesses: cliLspProcesses ?? parsePositiveInt(processesRaw),
     tierBCommitCap: capRaw ? Number(capRaw) : undefined,
   };
 }

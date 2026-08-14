@@ -16,8 +16,11 @@ import {
   EdgeResolutionSources,
   createNoopLogger,
   UTF8_ENCODING,
+  TIER_B_LANGUAGE_IDS,
+  type TierBLanguageId,
 } from "@workspace/contracts";
 import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
+import { partitionTierBBucket } from "./tier-b-project-partitioner.js";
 import type { ResolvedLspBinary } from "./lsp-binary-resolver-strategies.js";
 import { LspMethods, LspSymbolKinds, LSP_MESSAGES } from "./lsp-constants.js";
 import {
@@ -263,6 +266,9 @@ export interface LspPreflightOutcome {
 export interface LspLanguageConfig {
   /** The provider's name field (e.g. typescript-language-server, pyright). */
   name: string;
+  /** The Tier B language bucket this provider serves (PRJ-001): feeds the project-aware
+   *  partitioner's per-language marker/dependency rules when a batch shards across processes. */
+  tierBLanguageId: TierBLanguageId;
   /** LSP textDocument/didOpen's languageId values, keyed by source extension. */
   languageIdByExtension: Record<string, string>;
   /** Used for any extension not present in languageIdByExtension (should not normally happen,
@@ -346,6 +352,14 @@ export interface LspLanguageConfig {
    *  + an initialize crash is more plausibly a corrupt install than an unresolvable binary, so
    *  substituting the "not resolvable" wording would lie. */
   unavailableReasonForUnresolvableBinary?: string;
+  /** [PRJ-004 follow-up] Per-language steady-state estimate (MiB) of ONE shard server process's
+   *  footprint, used to bound the shard count against the batch's memory budget (see
+   *  `processMemoryEstimateMb`). The generic 512MiB default is dangerously low for servers that
+   *  load a whole workspace regardless of cwd (measured live: a cold rust-analyzer on the tauri
+   *  workspace reaches ~4.3GB RSS after loading), which over-derived `maxProcesses` and thrashed
+   *  a 16GB machine at the default 8 shards. When the provider's own config sets
+   *  `processMemoryEstimateMb`, that value wins; otherwise this per-language estimate. */
+  processMemoryEstimateMb?: number;
 }
 
 /**
@@ -408,15 +422,23 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
   }
 
   /** See `EdgeResolutionProviderConfig.maxProcesses` (Tier B multi-process sharding plan). `1`
-   *  reproduces today's single-spawn-per-batch behavior exactly. */
+   *  reproduces today's single-spawn-per-batch behavior exactly; unset (default) now auto-derives
+   *  a core-and-memory-bounded shard count instead of hard `1` (PRJ-004) so a default run already
+   *  parallelizes without an explicit `--lsp-processes`. */
   private get maxProcesses(): number {
-    return this.config.maxProcesses ?? 1;
+    if (this.config.maxProcesses !== undefined) return this.config.maxProcesses;
+    const memoryBounded = Math.floor(
+      this.maxProcessMemoryMb() / this.processMemoryEstimateMb(),
+    );
+    return Math.max(1, Math.min(os.availableParallelism(), memoryBounded));
   }
 
   /** Per-shard steady-state memory estimate (MiB) used to bound `maxProcesses` against memory. */
   private processMemoryEstimateMb(): number {
     return (
-      this.config.processMemoryEstimateMb ?? DEFAULT_PROCESS_MEMORY_ESTIMATE_MB
+      this.config.processMemoryEstimateMb ??
+      this.languageConfig.processMemoryEstimateMb ??
+      DEFAULT_PROCESS_MEMORY_ESTIMATE_MB
     );
   }
 
@@ -453,24 +475,28 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
   }
 
   /** Clamps the configured process-shard count to what the batch can safely have at once: never
-   *  more than there are files to process, and never zero (an empty `files` batch short-circuits
-   *  before this is reached). `maxProcesses` is a *per-core/client* knob, so it is not bound by
-   *  `maxOpenFiles` the way `effectiveConcurrency` is -- but memory scales with process count
-   *  (each server holds its own process program), so the count is additionally bounded by the
-   *  batch's memory budget (`maxProcessMemoryMb / processMemoryEstimateMb`) -- the fix for the
-   *  multi-process-sharding memory crash. Logs once per batch when clamping actually changes the
-   *  requested value. */
+   *  more than there are files to process, never more than the machine's cores (PRJ-004: a
+   *  per-core knob, and never zero (an empty `files` batch short-circuits before this is reached).
+   *  `maxProcesses` is a *per-core/client* knob, so it is not bound by `maxOpenFiles` the way
+   *  `effectiveConcurrency` is -- but memory scales with process count (each server holds its own
+   *  process program), so the count is additionally bounded by the batch's memory budget
+   *  (`maxProcessMemoryMb / processMemoryEstimateMb`) -- the fix for the multi-process-sharding
+   *  memory crash. Logs once per batch when clamping actually changes the requested value. */
   private effectiveProcesses(fileCount: number): number {
     const requested = this.maxProcesses;
     const memoryBounded = Math.floor(
       this.maxProcessMemoryMb() / this.processMemoryEstimateMb(),
     );
-    const clamped = Math.max(1, Math.min(requested, fileCount, memoryBounded));
+    const cpuBounded = os.availableParallelism();
+    const clamped = Math.max(
+      1,
+      Math.min(requested, fileCount, cpuBounded, memoryBounded),
+    );
     if (clamped !== requested) {
       this.logger.debug(LSP_MESSAGES.processShardsClamped(requested, clamped));
       if (
         clamped < requested &&
-        memoryBounded < Math.min(requested, fileCount)
+        memoryBounded < Math.min(requested, fileCount, cpuBounded)
       ) {
         this.logger.debug(
           LSP_MESSAGES.processShardsMemoryClamped(
@@ -518,7 +544,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     // parallelizes across cores. `edge set parity` is preserved by construction: each file is in
     // exactly one shard, and node_keys/file outcomes are per-file deterministic, so merging the
     // shards' outcomes (files-augmented merge) reproduces a single-process batch exactly.
-    const shards = this.partitionRequest(request, processCount);
+    const shards = this.buildProjectShards(request, processCount);
     const outcomes = await Promise.all(
       shards.map((shard) => {
         const client = this.createClient();
@@ -534,30 +560,65 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     );
   }
 
-  /** Splits a request across `processCount` shards for the multi-process sharding driver — a
-   *  contiguous, round-robin-ish partition of `request.files`, with `callsByFile` (the AST
-   *  call-site seeds, forward path only) kept per-file so each shard only carries the seeds for
-   *  the files IT owns. Each file lands in exactly one shard; outer order is preserved per shard
-   *  (shard i = files[i], files[i+P], ...). */
-  private partitionRequest(
+  /** PRJ-001/002/003/006: splits a request into at most `processCount` project-aware shards --
+   *  replacing the round-robin partition (`i % processCount`) whose scattered slices forced every
+   *  shard server to load the whole workspace. Each file goes to its owning project's shard, that
+   *  shard's `workspaceRoot` is the project root (so the server loads only that project plus its
+   *  path deps), and projects are emitted dependency-first (leaves before dependents -- PRJ-003's
+   *  bottom-up order). When the bucket has more projects than `processCount`, the extra projects
+   *  (smallest first) coalesce into one shared "misc" shard at the workspace root (PRJ-006) so a
+   *  bunch of tiny projects don't each pay a full spawn + cold-start settle. A single-project
+   *  bucket always yields exactly one shard at that project's root, regardless of `processCount` --
+   *  a project's files are never split across servers. */
+  private buildProjectShards(
     request: EdgeResolutionRequest,
     processCount: number,
   ): EdgeResolutionRequest[] {
-    const shards: EdgeResolutionRequest[] = Array.from(
-      { length: processCount },
-      () => ({
+    const partition = partitionTierBBucket({
+      workspaceRoot: request.workspaceRoot,
+      languageId: this.languageConfig.tierBLanguageId,
+      files: request.files,
+    });
+    const groups = partition.groups;
+
+    const shardFor = (root: string, files: string[]): EdgeResolutionRequest => {
+      const callsByFile: EdgeResolutionRequest["callsByFile"] = {};
+      for (const file of files) {
+        const seeds = request.callsByFile?.[file];
+        if (seeds) callsByFile[file] = seeds;
+      }
+      // `serverRoot` = the project root (the server loads only this project); `workspaceRoot`
+      // stays the batch's original root so files remain workspace-relative end to end.
+      return {
         workspaceRoot: request.workspaceRoot,
-        files: [],
-        callsByFile: {},
-      }),
-    );
-    for (let i = 0; i < request.files.length; i++) {
-      const file = request.files[i];
-      const shard = shards[i % processCount];
-      shard.files.push(file);
-      const seeds = request.callsByFile?.[file];
-      if (seeds) shard.callsByFile![file] = seeds;
+        serverRoot: root,
+        files,
+        callsByFile,
+      };
+    };
+
+    if (groups.length <= processCount) {
+      return groups.map((group) => shardFor(group.root, group.files));
     }
+
+    // More projects than shards: keep the largest (processCount - 1) projects as their own
+    // shards, coalesce the smallest remainder into a misc shard at the workspace root. Deterministic:
+    // the merge choice sorts by (files ascending, root ascending), and the output keeps
+    // dependency order for the kept projects (mergeShardOutcomes re-orders by input files anyway).
+    const bySize = [...groups].sort(
+      (a, b) => a.files.length - b.files.length || a.root.localeCompare(b.root),
+    );
+    const largeCount = processCount - 1;
+    const large = new Set(bySize.slice(-largeCount).map((g) => g.root));
+    const kept: EdgeResolutionRequest[] = [];
+    const miscFiles: string[] = [];
+    for (const group of groups) {
+      if (large.has(group.root)) kept.push(shardFor(group.root, group.files));
+      else miscFiles.push(...group.files);
+    }
+    const shards = [...kept];
+    if (miscFiles.length > 0)
+      shards.push(shardFor(request.workspaceRoot, miscFiles));
     return shards;
   }
 
@@ -647,6 +708,12 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     timeoutMs: number,
   ): Promise<EdgeResolutionOutcome> {
     const { workspaceRoot, files, callsByFile } = request;
+    // PRJ-002: `serverRoot` is the directory the LSP server loads (its cwd/rootUri/workspace
+    // folder) -- a project root when the sharding driver scopes this shard to one project. Files
+    // are always read from `workspaceRoot` (they stay workspace-relative), so only the server's
+    // own context changes; the binary still resolves at the workspace root (node_modules are
+    // typically hoisted there), same as a whole-workspace batch.
+    const serverRoot = request.serverRoot ?? workspaceRoot;
     const resolved = await this.languageConfig.resolveBinary(workspaceRoot, {
       binary: this.config.binaryOverride,
       args: this.config.argsOverride,
@@ -656,7 +723,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       await client.start({
         command: resolved.command,
         args: resolved.args,
-        cwd: workspaceRoot,
+        cwd: serverRoot,
         env: resolved.env,
       });
     } catch (err) {
@@ -672,7 +739,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     }
 
     try {
-      await this.initializeSession(client, workspaceRoot);
+      await this.initializeSession(client, serverRoot);
     } catch (err) {
       // The process spawned (the try/catch above didn't fire) but exited/errored before
       // completing the `initialize` handshake -- e.g. `npx --no-install <pkg>` starting
@@ -712,8 +779,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     // upper bound on workspace-load time. A deadline of `Date.now() + 0` would immediately trip,
     // the opposite of what's wanted, so skip deadline-tracking entirely rather than special-casing
     // the value.
-    const deadlineAt = timeoutMs > 0 ? Date.now() + timeoutMs : undefined;
-
+    //
     // Cold-start settle (GRPH-006/rust-analyzer): a freshly-initialized LSP server answers
     // `textDocument/documentSymbol` immediately (syntactic) but can return empty
     // `textDocument/references`/`textDocument/definition` until its own async project/crate-graph
@@ -721,10 +787,24 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     // semantic requests, or the batch silently drops every cross-file edge (verified live on
     // ripgrep: 0 refs in 0 ms cold → 2 refs after ~8s). `config.coldStartSettleMs` (including an
     // explicit `0` to disable) wins over the language's per-server default.
-    await this.settleColdStart();
+    //
+    // PRJ-007 (project-aware sharding): the fixed settle alone is not enough once
+    // `buildProjectShards` runs servers in parallel -- several cold servers all load the same big
+    // workspace at once, and the first files process before any server's crate graph is ready
+    // (measured on tauri: a sharded run's whole 323-file rust bucket returned 0 references,
+    // everything was empty post-settle). So after the fixed settle, poll until a probe
+    // `references` call returns non-empty, so a shard never processes against a not-yet-loaded
+    // graph. Only engages for languages that opted into cold-start awareness
+    // (`coldStartSettleMs > 0` -- rust and TS; fast-loading servers like clangd skip the poll
+    // entirely). Capped so a genuinely broken server can't wedge the batch forever.
+    await this.waitForColdStart(client, workspaceRoot, files);
+
+    // PRJ-005: the deadline window opens *after* the settle, so warm-up never eats a shard's
+    // processing budget -- the whole-batch timeout measures file processing, not server startup.
+    const deadlineAt = timeoutMs > 0 ? Date.now() + timeoutMs : undefined;
 
     try {
-      return await this.processAllFiles(
+      const outcome = await this.processAllFiles(
         client,
         workspaceRoot,
         files,
@@ -732,6 +812,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
         deadlineAt,
         timeoutMs,
       );
+      return outcome;
     } finally {
       await this.shutdownSession(client);
     }
@@ -745,6 +826,104 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     if (coldStartSettleMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, coldStartSettleMs));
     }
+  }
+
+  /** PRJ-007: settle the configured cold-start period, then -- only for languages that opted
+   *  into cold-start awareness (`coldStartSettleMs > 0`) -- poll until the server's crate/project
+   *  graph is loaded enough to resolve real references. Bundled so `runBatch`'s complexity stays
+   *  within budget; the poll itself is bounded and optional per language. */
+  private async waitForColdStart(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    files: string[],
+  ): Promise<void> {
+    await this.settleColdStart();
+    const effectiveSettleMs =
+      this.config.coldStartSettleMs ??
+      this.languageConfig.coldStartSettleMs ??
+      0;
+    if (effectiveSettleMs > 0) {
+      await this.waitForServerReady(client, workspaceRoot, files);
+    }
+  }
+
+  /** PRJ-007: after the fixed settle, poll a probe `references` call until it returns non-empty
+   *  (the server's async crate/project graph is genuinely loaded) or the cap trips. Defaults:
+   *  poll every 5s, cap 120s -- a whole-batch timeout still governs overall progress once
+   *  processing starts, and a genuinely broken server fails the poll fast (request errors
+   *  propagate out of the probe, not hang the batch). */
+  private async waitForServerReady(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    files: string[],
+  ): Promise<void> {
+    const pollMs = this.config.coldStartPollMs ?? 5_000;
+    const maxWaitMs = this.config.coldStartMaxWaitMs ?? 120_000;
+    const started = Date.now();
+    for (;;) {
+      const ready = await this.probeServerReady(client, workspaceRoot, files);
+      if (ready) return;
+      const elapsed = Date.now() - started;
+      if (elapsed >= maxWaitMs) return;
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+    }
+  }
+
+  /** [PRJ-007] Readiness check: scan up to `probeLimit` batch files; for each symbol-bearing
+   *  file, burst `references` for every call-site symbol and return true on the FIRST file where
+   *  ANY symbol has a reference. Scanning past the first symbol-bearing file matters: that file's
+   *  symbols may legitimately have no callers (e.g. a bench binary's `main`), while a later file
+   *  is rich in internal call edges -- a readiness probe that stops at the first file would
+   *  burn the whole wait cap on a ready server (measured live).
+   *
+   *  When NO symbol-bearing file turns up inside the window, the answer depends on shard size:
+   *  a cold server returns EMPTY `documentSymbol` for everything (measured on tauri's misc rust
+   *  shard -- 222 files, zero symbols, <1s "processing", zero edges), so a shard larger than the
+   *  window is reported NOT ready and we keep polling until its symbols appear. Only a genuinely
+   *  tiny shard (every file inspected, no symbols -- e.g. a couple of template files) reports
+   *  ready so it doesn't stall the batch on the fixed settle alone. */
+  private async probeServerReady(
+    client: LspJsonRpcClient,
+    workspaceRoot: string,
+    files: string[],
+  ): Promise<boolean> {
+    const probeLimit = 12;
+    const state: SharedBatchState = {
+      openFileCache: new Map(),
+      inFlightOpens: new Map(),
+      pinnedPaths: new Set(),
+      usedNodeKeysByFile: new Map(),
+    };
+    let foundAny = false;
+    for (let i = 0; i < Math.min(files.length, probeLimit); i++) {
+      const handle = await this.openAndGetSymbols(
+        client,
+        workspaceRoot,
+        files[i],
+        state,
+      );
+      const symbols = flattenCallSiteSymbols(
+        handle.symbols,
+        this.containmentKinds,
+      );
+      if (symbols.length === 0) continue;
+      foundAny = true;
+      const results = await Promise.all(
+        symbols.map(({ symbol }) =>
+          client.request<{ uri: string }[]>(
+            LspMethods.REFERENCES,
+            {
+              textDocument: { uri: handle.uri },
+              position: symbol.selectionRange.start,
+              context: { includeDeclaration: false },
+            },
+            this.requestTimeoutMs,
+          ),
+        ),
+      );
+      if (results.some((r) => (r?.length ?? 0) > 0)) return true;
+    }
+    return foundAny ? false : files.length <= probeLimit;
   }
 
   private async initializeSession(

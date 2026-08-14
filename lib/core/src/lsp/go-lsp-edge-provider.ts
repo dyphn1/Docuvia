@@ -1,4 +1,5 @@
 import type { ILogger } from "@workspace/contracts";
+import { TIER_B_LANGUAGE_IDS } from "@workspace/contracts";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { resolvePathNativeBinary } from "./lsp-binary-resolver-strategies.js";
 import { checkGoLspPreflight } from "./go-lsp-preflight.js";
@@ -16,6 +17,7 @@ const LANGUAGE_ID_BY_EXTENSION: Record<string, string> = {
 
 const GO_LANGUAGE_CONFIG: LspLanguageConfig = {
   name: GoLspConstants.BINARY_NAME,
+  tierBLanguageId: TIER_B_LANGUAGE_IDS.GO,
   languageIdByExtension: LANGUAGE_ID_BY_EXTENSION,
   defaultLanguageId: DEFAULT_LANGUAGE_ID,
   resolveBinary: (workspaceRoot, override) =>

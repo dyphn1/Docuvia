@@ -1,4 +1,5 @@
 import type { ILogger } from "@workspace/contracts";
+import { TIER_B_LANGUAGE_IDS } from "@workspace/contracts";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { resolveTypeScriptLspBinary } from "./typescript-lsp-binary-resolver.js";
 import { checkTypeScriptLspPreflight } from "./typescript-lsp-preflight.js";
@@ -29,6 +30,7 @@ const LANGUAGE_ID_BY_EXTENSION: Record<string, string> = {
 
 const TYPESCRIPT_LANGUAGE_CONFIG: LspLanguageConfig = {
   name: TsLspConstants.PACKAGE_NAME,
+  tierBLanguageId: TIER_B_LANGUAGE_IDS.TYPESCRIPT,
   languageIdByExtension: LANGUAGE_ID_BY_EXTENSION,
   defaultLanguageId: DEFAULT_LANGUAGE_ID,
   resolveBinary: resolveTypeScriptLspBinary,

@@ -809,6 +809,27 @@ LSP session on a genuine process-death instead of cascading every remaining queu
 failure — stays parked; not chased since raising the real ceiling made the crash stop happening at
 this scale. Revisit only if a future, even-larger repo reproduces exit 134 again despite 8192MB.
 
+### 36. Project-aware + dependency-ordered Tier B sharding (issue #41)
+
+> **Shipped — 2026-08-15.** Full plan + implementation record + measured acceptance:
+> [`project-aware-tier-b-sharding-plan.md`](project-aware-tier-b-sharding-plan.md) (PRJ-001..007).
+> Closes the last of the Tier B throughput thread (items 27/28 fixed the single-server ceiling; this
+> item makes multi-process sharding actually engage by default).
+
+Replaced the round-robin partition (`i % processCount`) with project-aware, dependency-ordered shards:
+one server per owning project at the project root (PRJ-002), projects emitted bottom-up so callee nodes
+persist before caller edges apply (PRJ-003), parallelism capped by cores _and_ memory
+(`processMemoryEstimateMb`, PRJ-004), settle moved outside the deadline window (PRJ-005),
+sub-threshold projects coalesced into a "misc" shard (PRJ-006), and a readiness poll after the settle
+so a shard never processes against a not-yet-loaded graph (PRJ-007).
+
+**Measured on tauri (10 cores / 16 GB):** sharded ≈ 95-105 s vs single-process ≈ 113 s; edge set is a
+_superset_ (4778 ± 3 vs a bit-exact single-run 4662 — +119 project-internal TS edges the repo-root
+server missed, −2-3 `ContentModified` races that also occur pre-existing in single mode). Two findings
+worth preserving: rust-analyzer loads the whole Cargo workspace regardless of `cwd`/`rootUri`, so rust
+shards are memory-bound (2 shards / 16 GB, ~4.3 GB each); and the CLI previously hard-coded
+`--lsp-processes` to `1`, silently disabling §4 — that default is removed (unset auto-derives).
+
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 
 - **Self-built static scope-resolution pipeline** (bypass LSP with hand-guessed cross-file calls)

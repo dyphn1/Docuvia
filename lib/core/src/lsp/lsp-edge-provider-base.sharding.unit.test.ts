@@ -46,7 +46,9 @@ function asClient(fake: FakeLspClient): LspJsonRpcClient {
 function makeWorkspace(files: Record<string, string>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-lsp-shard-test-"));
   for (const [relPath, content] of Object.entries(files)) {
-    fs.writeFileSync(path.join(dir, relPath), content, "utf8");
+    const absolute = path.join(dir, relPath);
+    fs.mkdirSync(path.dirname(absolute), { recursive: true });
+    fs.writeFileSync(absolute, content, "utf8");
   }
   return dir;
 }
@@ -232,9 +234,126 @@ describe("BaseLspEdgeProvider multi-process sharding (Tier B multi-process shard
         expect(p4.outcome.filesFailed).toEqual(p1.outcome.filesFailed);
         expect(p4.outcome.edges).toEqual(sortEdges(p1.outcome.edges));
 
-        // Multi-process proof: sharding spawns one independent client per shard (one per
-        // server process), exactly maxProcesses of them -- vs the single client P=1 uses.
-        expect(p4.clients).toBe(4);
+        // Single-project bucket: even at maxProcesses: 4 the project-aware partition keeps every
+        // file in ONE shard (PRJ-002 -- a project's files are never split across servers, and this
+        // fixture is a single tsconfig/package.json project), so it spawns exactly one client.
+        expect(p4.clients).toBe(1);
+      } finally {
+        fs.rmSync(workspaceRoot, { recursive: true, force: true });
+      }
+    });
+
+    it("spawns one server per owning project, pointed at the project root (PRJ-001/002)", async () => {
+      const workspaceRoot = makeWorkspace({
+        "package.json": JSON.stringify({ workspaces: ["packages/*"] }),
+        "packages/a/package.json": JSON.stringify({ name: "a" }),
+        "packages/a/src/a.ts": "export function a() {}\n",
+        "packages/b/package.json": JSON.stringify({ name: "b" }),
+        "packages/b/src/b.ts": "export function b() {}\n",
+      });
+      try {
+        const handler: RequestHandler = (method) => {
+          if (method === LspMethods.INITIALIZE) return {};
+          if (method === LspMethods.DOCUMENT_SYMBOL) return [];
+          if (method === LspMethods.SHUTDOWN) return null;
+          return undefined;
+        };
+        // Capture each spawned client's `initialize` rootUri so the test can assert the shard
+        // server was pointed at its owning project, not the workspace root.
+        const roots: string[] = [];
+        const makeClient = (seq: number) =>
+          asClient(
+            new (class extends FakeLspClient {
+              async request<T>(method: string, params: any): Promise<T> {
+                if (method === LspMethods.INITIALIZE && params?.rootUri)
+                  roots.push(params.rootUri);
+                return handler(method, params) as T;
+              }
+            })(handler, seq),
+          );
+
+        let clientSeq = 0;
+        const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+          makeClient(clientSeq++),
+        );
+        provider.configure({ maxProcesses: 4 });
+
+        await provider.resolveEdges({
+          workspaceRoot,
+          files: ["packages/a/src/a.ts", "packages/b/src/b.ts"],
+        });
+
+        expect(roots).toHaveLength(2);
+        expect(roots).toEqual(
+          expect.arrayContaining([
+            uriFor(workspaceRoot, "packages/a"),
+            uriFor(workspaceRoot, "packages/b"),
+          ]),
+        );
+        expect(roots).not.toContain(uriFor(workspaceRoot, ""));
+      } finally {
+        fs.rmSync(workspaceRoot, { recursive: true, force: true });
+      }
+    });
+
+    it("coalesces extra projects into a misc shard at the workspace root (PRJ-006)", async () => {
+      const workspaceRoot = makeWorkspace({
+        "package.json": JSON.stringify({ workspaces: ["packages/*"] }),
+        "packages/a/package.json": JSON.stringify({ name: "a" }),
+        "packages/a/src/a.ts": "export function a() {}\n",
+        "packages/b/package.json": JSON.stringify({ name: "b" }),
+        "packages/b/src/b.ts": "export function b() {}\n",
+        "packages/c/package.json": JSON.stringify({ name: "c" }),
+        "packages/c/src/c.ts": "export function c() {}\n",
+        "packages/d/package.json": JSON.stringify({ name: "d" }),
+        "packages/d/src/d.ts": "export function d() {}\n",
+      });
+      try {
+        const handler: RequestHandler = (method) => {
+          if (method === LspMethods.INITIALIZE) return {};
+          if (method === LspMethods.DOCUMENT_SYMBOL) return [];
+          if (method === LspMethods.SHUTDOWN) return null;
+          return undefined;
+        };
+        const roots: string[] = [];
+        const makeClient = (seq: number) =>
+          asClient(
+            new (class extends FakeLspClient {
+              async request<T>(method: string, params: any): Promise<T> {
+                if (method === LspMethods.INITIALIZE && params?.rootUri)
+                  roots.push(params.rootUri);
+                return handler(method, params) as T;
+              }
+            })(handler, seq),
+          );
+
+        let clientSeq = 0;
+        const provider = new TypescriptLspEdgeProvider(createMockLogger(), () =>
+          makeClient(clientSeq++),
+        );
+        // 4 projects, budget for only 2 shards: the two largest projects keep their own servers,
+        // the two smallest coalesce into one misc shard at the workspace root.
+        provider.configure({ maxProcesses: 2 });
+
+        const outcome = await provider.resolveEdges({
+          workspaceRoot,
+          files: [
+            "packages/a/src/a.ts",
+            "packages/b/src/b.ts",
+            "packages/c/src/c.ts",
+            "packages/d/src/d.ts",
+          ],
+        });
+
+        expect(outcome.filesProcessed).toEqual([
+          "packages/a/src/a.ts",
+          "packages/b/src/b.ts",
+          "packages/c/src/c.ts",
+          "packages/d/src/d.ts",
+        ]);
+        // 2 shards total: one project server + one misc server at the workspace root.
+        expect(roots).toHaveLength(2);
+        expect(roots).toContain(uriFor(workspaceRoot, ""));
       } finally {
         fs.rmSync(workspaceRoot, { recursive: true, force: true });
       }

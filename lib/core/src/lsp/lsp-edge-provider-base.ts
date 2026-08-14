@@ -721,13 +721,7 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     // semantic requests, or the batch silently drops every cross-file edge (verified live on
     // ripgrep: 0 refs in 0 ms cold → 2 refs after ~8s). `config.coldStartSettleMs` (including an
     // explicit `0` to disable) wins over the language's per-server default.
-    const coldStartSettleMs =
-      this.config.coldStartSettleMs ??
-      this.languageConfig.coldStartSettleMs ??
-      0;
-    if (coldStartSettleMs > 0) {
-      await new Promise((resolve) => setTimeout(resolve, coldStartSettleMs));
-    }
+    await this.settleColdStart();
 
     try {
       return await this.processAllFiles(
@@ -740,6 +734,16 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       );
     } finally {
       await this.shutdownSession(client);
+    }
+  }
+
+  private async settleColdStart(): Promise<void> {
+    const coldStartSettleMs =
+      this.config.coldStartSettleMs ??
+      this.languageConfig.coldStartSettleMs ??
+      0;
+    if (coldStartSettleMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, coldStartSettleMs));
     }
   }
 

@@ -4,11 +4,11 @@
 # doctor). Let git rediscover the repo from cwd via core.hooksPath discovery.
 unset GIT_DIR GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_WORK_TREE GIT_QUARANTINE_PATH 2>/dev/null || true
 
+echo "Running lint and complexity budget checks (fail-fast)..."
+pnpm run lint
+
 echo "Running full typecheck..."
 pnpm run typecheck
-
-echo "Running lint and complexity budget checks..."
-pnpm run lint
 
 echo "Running full build..."
 pnpm run build

@@ -2,12 +2,25 @@
 
 > **Purpose:** This document defines the evaluation matrix, execution results, and metrics for Rust target repositories.
 
+**Test targets:**
+
+- `BurntSushi/ripgrep` — HEAD `e89fff8` (222 tracked files / 93 non-test `.rs`)
+- `tauri-apps/tauri` — HEAD `7cd71369c` (1,058 tracked files / 323 non-test `.rs`)
+
+**Subject under test:** Docuvia2 (Tier A local AST ingestion + Tier B LSP escalation via `rust-analyzer`) vs. GitNexus, Graphify, and Code-Review-Graph (CRG) on the same two repos.
+
+**Last updated:** 2026-08-13
+
 ---
 
-## 🔍 Target Projects
+## Methodology
 
-- **Project 1**: `BurntSushi/ripgrep`
-- **Project 2**: `tauri-apps/tauri`
+- Chosen symbol per repo: `Searcher` (`crates/searcher/src/searcher/mod.rs:597`) for ripgrep — a struct whose bare label collides with 15+ unrelated nodes across the tree (core/search, printer sinks, searcher internals, test helpers), a naming-collision stress test; `AppHandle` (`crates/tauri/src/app.rs:386`) for tauri — the app-handle type referenced across nearly every crate.
+- Tools were built from the primary dev checkouts (Docuvia2 `artifacts/cli`, GitNexus `gitnexus/dist`, `graphify` 0.8.42, CRG via `uv run`) rather than isolated per-tool worktrees — a **documented deviation** from the Go methodology, so per-tool source may be the current local checkout, not an independently-rebuilt identical snapshot.
+- Graphify's `extract <path>` command runs headless full extraction including the semantic-LLM step and hangs without a `GEMINI_API_KEY`/`GOOGLE_API_KEY`; the no-LLM path is `graphify update <path> --no-cluster`, which is what was benchmarked (AST-only graph.json).
+- CRG was benchmarked with `build --skip-flows` (signatures + bare CALLS + FTS, `postprocess=minimal`) — no embedding provider configured, so no embedding index.
+- Out of scope (per the Go template): LLM-gated features (Docuvia2 L3, `graphify label` community naming, GitNexus/CRG wiki gen) and Remote Sync & Git Integration (no credentials configured) — not tested for any tool, either repo.
+- Findings that are **not** Rust-specific (general GitNexus/Graphify/CRG behavior) mirror the Go pass and are tracked in [`README.md`](./README.md) §4.
 
 ---
 
@@ -15,32 +28,35 @@
 
 ### Category: Indexing & Analysis (Graph Building)
 
-| Feature / Metric           | Docuvia2  | GitNexus    | Graphify         | Code-Review-Graph (CRG) |
-| :------------------------- | :-------- | :---------- | :--------------- | :---------------------- |
-| **Full Graph Build**       | `analyze` | `analyze .` | `extract <path>` | `build --repo .`        |
-| **Verified Build Result**  |           |             |                  |                         |
-| **Verified Build Latency** |           |             |                  |                         |
-| **Incremental Update**     |           |             |                  |                         |
-| **Clear Local Index**      |           |             |                  |                         |
+| Feature / Metric           | Docuvia2                                                                  | Docuvia2 (+LSP)                                                     | GitNexus                                              | Graphify                                           | Code-Review-Graph (CRG)                    |
+| :------------------------- | :------------------------------------------------------------------------ | :------------------------------------------------------------------ | :---------------------------------------------------- | :------------------------------------------------- | :----------------------------------------- |
+| **Full Graph Build**       | `analyze`                                                                 | `analyze --escalate-to-lsp`                                         | `analyze .`                                           | `update . --no-cluster`                            | `build --repo . --skip-flows`              |
+| **Verified Build Result**  | 101/101 parsed; 3,255 L2 nodes / 3,767 edges (613 calls + 3,154 contains) | 100 processed; **1,612 corrected edges** (ruby degraded)            | 5,211 nodes / 16,726 edges / 201 clusters / 456 flows | 147 files; 4,285 nodes / 9,937 links               | 114 files; 3,329 nodes / 26,971 edges      |
+| **Verified Build Latency** | 0.75 s                                                                    | 12.07 s (incl. ~8 s cold-start settle)                              | 24.0 s self-reported (28.6 s wall)                    | 0.98 s                                             | 3.56 s                                     |
+| **Incremental Update**     | (not measured — fresh ingest)                                             | Tier B re-batch eligible (failed ruby file is retryable-classified) | `analyze` re-run is incremental                       | `update` re-scans changed files (AST cache reused) | `build` rebuilds; `update`/watch available |
+| **Clear Local Index**      | `docuvia clean`                                                           | —                                                                   | `gitnexus clean`                                      | delete `graphify-out/`                             | unregister + remove data dir               |
+
+- Docuvia2 parsed 101 files (100 `.rs` + the `.rb` Homebrew formula `pkg/brew/ripgrep-bin.rb`). Tier B queued 100 files into the rust bucket and 1 into the ruby bucket; the ruby bucket degraded (`ruby-lsp` not installed), the rust bucket processed all 100 with **1,612 corrected edges applied** (2,225 total calls after the LSP pass, up from 613 Tier A-only) — see [Open Rust-Specific Findings](#open-rust-specific-findings) #1 for the cold-start-settle root cause that previously zeroed this out.
+- GitNexus emitted `callable-value-flow: candidate set exceeded the cap (33 > 32); no partial CALLS emitted` warnings for rust — general behavior, see README §4.2.
 
 ### Category: Query, Visualization & Impact
 
-| Feature / Metric          | Docuvia2 | GitNexus | Graphify | Code-Review-Graph (CRG) |
-| :------------------------ | :------- | :------- | :------- | :---------------------- |
-| **Query Engine**          |          |          |          |                         |
-| **Impact / Blast Radius** |          |          |          |                         |
-| **Explain / Context**     |          |          |          |                         |
-| **Visual Export**         |          |          |          |                         |
-| **Docs / Wiki Gen**       |          |          |          |                         |
+| Feature / Metric          | Docuvia2                                                                                   | GitNexus                                                                        | Graphify                                                                          | Code-Review-Graph (CRG)                                                                                 |
+| :------------------------ | :----------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------ | :-------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------ |
+| **Query Engine**          | 0.14 s — exact `module` match for `Searcher`, no callers (`tier_b_status=unprocessed`)     | 0.32 s (wall 102.4 ms) — `Searcher` hits across modules                         | 0.14 s — matched 15+ same-named nodes (glue.rs test fns, `SearcherBuilder`, etc.) | 0.20 s — `callers_of Searcher` returned disambiguation hint + qualified caller (`StandardSink.replace`) |
+| **Impact / Blast Radius** | 0.16 s — 1 node (`mod.rs`), Risk **MEDIUM**                                                | 0.18 s — **ambiguous** (Struct@597: 3 impacted, Risk LOW; Impl@627: 0, UNKNOWN) | 0.11 s — `affected "Searcher"` failed: _No unique node match_ (15 candidates)     | 0.20 s — file-level `impact --files searcher/mod.rs`: 1,447 impacted, truncated                         |
+| **Explain / Context**     | `query --format=prompt` renders `<l2_module>` context                                      | `context`/`query --content` available                                           | `explain` available (mis-resolves bare labels)                                    | `query callers_of/callees_of` + qualified names                                                         |
+| **Visual Export**         | `export-topology`: 0.13 s — 101 nodes / **Links: 0** / 14 groups (613 folded within files) | N/A                                                                             | `tree`/`cluster-only --no-viz` available                                          | `visualize` (not run — needs postprocess)                                                               |
+| **Docs / Wiki Gen**       | Out of scope (LLM-gated)                                                                   | Out of scope (LLM-gated)                                                        | Out of scope (LLM-gated)                                                          | Out of scope (LLM-gated)                                                                                |
 
 ### Category: Remote Sync & Git Integration
 
-| Feature / Metric         | Docuvia2 | GitNexus | Graphify | Code-Review-Graph (CRG) |
-| :----------------------- | :------- | :------- | :------- | :---------------------- |
-| **Push Analysis to API** |          |          |          |                         |
-| **Commit Graph to Git**  |          |          |          |                         |
-| **Hydrate from Git**     |          |          |          |                         |
-| **Cross-Clone Sync**     |          |          |          |                         |
+| Feature / Metric         | Docuvia2                                                     | GitNexus                | Graphify       | Code-Review-Graph (CRG) |
+| :----------------------- | :----------------------------------------------------------- | :---------------------- | :------------- | :---------------------- |
+| **Push Analysis to API** | Out of scope (no creds)                                      | Out of scope (no token) | N/A            | N/A                     |
+| **Commit Graph to Git**  | `snapshot` → `docuvia-knowledge` branch (ran during analyze) | N/A                     | N/A            | N/A                     |
+| **Hydrate from Git**     | `hydrate`                                                    | N/A                     | `merge-graphs` | N/A                     |
+| **Cross-Clone Sync**     | `sync-knowledge` (no creds)                                  | `publish` (no token)    | N/A            | N/A                     |
 
 ---
 
@@ -48,50 +64,54 @@
 
 ### Category: Indexing & Analysis (Graph Building)
 
-| Feature / Metric           | Docuvia2  | GitNexus    | Graphify         | Code-Review-Graph (CRG) |
-| :------------------------- | :-------- | :---------- | :--------------- | :---------------------- |
-| **Full Graph Build**       | `analyze` | `analyze .` | `extract <path>` | `build --repo .`        |
-| **Verified Build Result**  |           |             |                  |                         |
-| **Verified Build Latency** |           |             |                  |                         |
-| **Incremental Update**     |           |             |                  |                         |
-| **Clear Local Index**      |           |             |                  |                         |
+| Feature / Metric           | Docuvia2                                                                                                | Docuvia2 (+LSP)                                      | GitNexus                                               | Graphify                        | Code-Review-Graph (CRG)                    |
+| :------------------------- | :------------------------------------------------------------------------------------------------------ | :--------------------------------------------------- | :----------------------------------------------------- | :------------------------------ | :----------------------------------------- |
+| **Full Graph Build**       | `analyze`                                                                                               | `analyze --escalate-to-lsp`                          | `analyze .`                                            | `update . --no-cluster`         | `build --repo . --skip-flows`              |
+| **Verified Build Result**  | 393/393 parsed; 6,027 L2 nodes / 7,342 edges (1,689 calls + 5,634 contains + 1 depends_on + 18 extends) | 392 processed / **1,406 corrected edges** / 1 failed | 11,746 nodes / 27,357 edges / 468 clusters / 582 flows | 16,389 nodes / 28,299 links     | 509 files; 6,430 nodes / 46,369 edges      |
+| **Verified Build Latency** | 1.50 s                                                                                                  | ~100 s (rust settle + TS warm-up; `--lsp-timeout=0`) | 19.5 s self-reported (20.95 s wall)                    | 7.49 s                          | 4.51 s                                     |
+| **Incremental Update**     | (not measured — fresh ingest)                                                                           | Tier B re-batch eligible for the 68 TS files         | `analyze` re-run is incremental                        | `update` re-scans changed files | `build` rebuilds; `update`/watch available |
+| **Clear Local Index**      | `docuvia clean`                                                                                         | —                                                    | `gitnexus clean`                                       | delete `graphify-out/`          | unregister + remove data dir               |
+
+- Docuvia2 parsed 393 files (325 `.rs` + 68 TypeScript — tauri ships crates/tauri, `crates/tauri-cli`, templates, and the frontend `packages/*`, so the tracked tree is a mix of Rust and TS). The TS bucket (57/68 forward-seeded; 11 TS files skipped, mostly `content modified` staleness) now runs for real — `typescript-language-server@5.3.0` + `typescript@5.9.3` installed into tauri's `node_modules` (the resolver's documented `<workspaceRoot>/node_modules/.bin` path; tauri had no `node_modules` before). Fresh run with `--lsp-timeout=0` (the whole-batch cap at the 120 s default aborts before a mixed rust+TS batch settles): 392 processed / **1,406 corrected edges applied** (3,095 calls after the LSP pass, up from 1,689 Tier A-only; TS bucket contributed ~600 of the corrected edges). One file (`crates/tauri-build/src/acl.rs`) permanently failed on `content modified` re-reads.
 
 ### Category: Query, Visualization & Impact
 
-| Feature / Metric          | Docuvia2 | GitNexus | Graphify | Code-Review-Graph (CRG) |
-| :------------------------ | :------- | :------- | :------- | :---------------------- |
-| **Query Engine**          |          |          |          |                         |
-| **Impact / Blast Radius** |          |          |          |                         |
-| **Explain / Context**     |          |          |          |                         |
-| **Visual Export**         |          |          |          |                         |
-| **Docs / Wiki Gen**       |          |          |          |                         |
+| Feature / Metric          | Docuvia2                                                                                | GitNexus                                                                        | Graphify                                                       | Code-Review-Graph (CRG)                                                   |
+| :------------------------ | :-------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------ | :------------------------------------------------------------- | :------------------------------------------------------------------------ |
+| **Query Engine**          | 0.15 s — exact `module` match for `AppHandle`, no callers (`tier_b_status=unprocessed`) | 0.28 s (wall 103.1 ms) — `AppHandle` + `app_handle`/`managed_app_handle` hits   | 0.25 s — matched `AppHandle`-adjacent nodes and edges          | 0.12 s — `callers_of AppHandle` returned callers with disambiguation hint |
+| **Impact / Blast Radius** | 0.15 s — 1 node (`app.rs`), Risk **MEDIUM**                                             | 0.19 s — **ambiguous** (Struct@386: 2 impacted, Risk LOW; Impl@400: 0, UNKNOWN) | 0.20 s — `affected "AppHandle"` failed: _No unique node match_ | 0.19 s — file-level `impact --files app.rs`: 2,562 impacted, truncated    |
+| **Explain / Context**     | `query --format=prompt` renders `<l2_module>` context                                   | `context`/`query --content` available                                           | `explain` available (mis-resolves bare labels)                 | `query callers_of/callees_of` + qualified names                           |
+| **Visual Export**         | `export-topology`: 0.14 s — 393 nodes / Links: 39 / 33 groups                           | N/A                                                                             | `tree`/`cluster-only --no-viz` available                       | `visualize` (not run — needs postprocess)                                 |
+| **Docs / Wiki Gen**       | Out of scope (LLM-gated)                                                                | Out of scope (LLM-gated)                                                        | Out of scope (LLM-gated)                                       | Out of scope (LLM-gated)                                                  |
 
 ### Category: Remote Sync & Git Integration
 
-| Feature / Metric         | Docuvia2 | GitNexus | Graphify | Code-Review-Graph (CRG) |
-| :----------------------- | :------- | :------- | :------- | :---------------------- |
-| **Push Analysis to API** |          |          |          |                         |
-| **Commit Graph to Git**  |          |          |          |                         |
-| **Hydrate from Git**     |          |          |          |                         |
-| **Cross-Clone Sync**     |          |          |          |                         |
+| Feature / Metric         | Docuvia2                                                     | GitNexus                | Graphify       | Code-Review-Graph (CRG) |
+| :----------------------- | :----------------------------------------------------------- | :---------------------- | :------------- | :---------------------- |
+| **Push Analysis to API** | Out of scope (no creds)                                      | Out of scope (no token) | N/A            | N/A                     |
+| **Commit Graph to Git**  | `snapshot` → `docuvia-knowledge` branch (ran during analyze) | N/A                     | N/A            | N/A                     |
+| **Hydrate from Git**     | `hydrate`                                                    | N/A                     | `merge-graphs` | N/A                     |
+| **Cross-Clone Sync**     | `sync-knowledge` (no creds)                                  | `publish` (no token)    | N/A            | N/A                     |
 
 ---
 
 ## 3. Observations & Findings
 
-- **Docuvia2 Performance**:
-- **Comparison & Regressions**:
-- **Pending Verification — GRPH-006 Tier B `supportsQualifiedContainment` (flagged 2026-07-30, not yet a benchmark run)**:
-  Tier A (`ast-worker.ts`) now resolves Rust containment (`impl Struct { fn method() {} }` →
-  `containerName` = `"Struct"`, read from the impl block's own `type` field — see
-  [GRPH-006](../gitbook/adr/graph/GRPH-006-qualified-symbol-table-node-key.md)). `RustLspEdgeProvider`
-  deliberately still sets `supportsQualifiedContainment: false`, because flipping it needs to know
-  rust-analyzer's real `textDocument/documentSymbol` nesting shape for an impl-block method (does
-  the parent symbol's kind/name actually match the impl's target struct?) against a _live_
-  rust-analyzer — not something that can be confirmed from source reading alone.
-  **Needs an actual test**: spawn a real `rust-analyzer` against a small fixture crate with two
-  same-named methods on different structs (mirroring `rust-lsp-edge-provider.unit.test.ts`'s
-  existing fake-client test), call `documentSymbol`, and confirm whether/how each method's parent
-  symbol carries the struct's identity before flipping the flag. Until then, Rust's Tier B path
-  stays on the pre-GRPH-006 flat/collision-disambiguated key scheme even though Tier A itself is
-  now qualified.
+- **Docuvia2 Performance**: Node/edge output stays competitive with AST-only peers (ripgrep 3,255 nodes / 3,767 edges in 0.75 s; tauri 6,027 / 7,342 in 1.50 s). The previous edge deficit vs. GitNexus (5,211/16,726) and CRG (3,329/26,971) was Tier B not landing call edges — now resolved (finding #1): with the cold-start settle + qualified keys + the TS server installed, the LSP pass adds 1,612 corrected edges to ripgrep (→2,225 calls) and 1,406 to tauri (→3,095 calls), closing the call-edge gap Tier A alone could not.
+- **Comparison & Regressions**: Graphify and GitNexus both fail bare-label `Searcher`/`AppHandle` disambiguation (`ambiguous` / `No unique node match`) — a repeat of the Go pass's README §4.3/§4.2 behavior, affecting rust identically. CRG resolves via qualified-name hints; Docuvia2 resolves `Searcher`/`AppHandle` exactly (module-level), though its `query`/`impact` edges are Tier-B-scoped thin.
+- **GRPH-006 Tier B `supportsQualifiedContainment` (RESOLVED 2026-08-13)**: answered with a live rust-analyzer (`rustc/rust-analyzer` 1.97.1) run against `crates/core/haystack.rs`:
+  - rust-analyzer's `textDocument/documentSymbol` returns the impl block as a **parent symbol with kind 19 (Object) and name `"impl HaystackBuilder"`** — the `impl ` prefix is part of the symbol `name`, and the kind is Object (19), **not** Class (5). Associated functions (`new`, kind 12 Function) and methods (`build`/`build_from_result`, kind 6 Method) nest under that `impl <Struct>` parent; `HaystackBuilder`/`Haystack` structs report kind 23 (Struct).
+  - Tier A (`persist-ast-graph`) persisted qualified keys — confirmed in the DB: `crates/core/haystack.rs#HaystackBuilder.new`, `#HaystackBuilder.build`, `#Haystack.path`, etc.
+  - The fix is **shipped** (commit `97c30d97`): `RustLspEdgeProvider` now sets `supportsQualifiedContainment: true` with `containmentSymbolKinds = {Class, Object}` and `normalizeSymbolName` (strips the leading `impl `), so Tier B emits Tier A's qualified `file#Struct.method` key and `findNodeIdByNodeKey` matches. Verified live by `rust-lsp-edge-provider.live.integration.test.ts` (qualified `src/lib.rs#Greeter.hello` edge). This alone was **not** sufficient to fix the benchmark's 0-corrected-edges, however — finding #1 shows why.
+- **Cold-start settle — the other half of the 0-corrected-edges bug (RESOLVED 2026-08-14)**: with qualified keys shipped, the real-repo LSP batch _still_ applied 0 corrected edges on both repos, and the batch finished in <1 s for ~100 rust files — far too fast for real rust-analyzer work. Root-caused live against ripgrep: rust-analyzer answers `textDocument/documentSymbol` (syntactic, single-file) immediately, but `textDocument/references`/`textDocument/definition` issued before its async crate-graph load finishes come back **empty even though the same request succeeds moments later** — measured `Searcher::new`: **0 references in 0 ms cold, then 2 references after an ~8 s settle**. The production batch path had **no settle** (the `live.integration.test.ts`'s settle was a test-only `SettlingLspClient` wrapper), so every cross-file rust edge silently dropped. Fix: `EdgeResolutionProviderConfig.coldStartSettleMs` / `LspLanguageConfig.coldStartSettleMs`, awaited once per spawned server after `initialize` and before the first semantic request (rust default `8_000`). Re-ran both targets fresh: ripgrep **1,612 corrected edges** (12.07 s incl. settle), tauri **1,406 corrected edges** (~100 s incl. settle; requires `--lsp-timeout=0` — the 120 s default batch cap aborts a mixed rust+TS batch mid-run, the 2 s default per-request timeout also aborts rust files as `content modified` once the settle + warm-up push past the cap) — both nonzero for the first time, tauri's TS bucket now contributing (server installed 2026-08-14, finding below).
+
+---
+
+## Session History
+
+- **2026-08-14 (tauri re-test with TypeScript LSP installed)**: installed `typescript-language-server@5.3.0` + `typescript@5.9.3` into tauri's `node_modules` (the resolver's documented `<workspaceRoot>/node_modules/.bin` path; tauri had no `node_modules` before — the earlier "not installed / npx has no `-y`" degradation was really "tauri has no local node_modules at all", so the npm/npx strategy's local branch found nothing and the `npx --no-install` fallback 404'd). TS bucket now forward-seeds 57/68 files (11 skipped, mostly `content modified` staleness on already-analyzed files). Found that the whole-batch timeout at its **120 s default aborts a mixed rust+TS batch mid-run** — rust's 8 s cold-start settle × many crate spawns plus TS warm-up exceeds it — so the escalation now needs `--lsp-timeout=0` for tauri. Fresh clean re-run: **392 processed / 1,406 corrected edges applied** / 1 permanently failed (`crates/tauri-build/src/acl.rs`, `content modified`); post-LSP graph 3,095 calls (+1,406, from 1,689 Tier A-only), 5,634 contains, 1 depends_on, 18 extends. The 11 unseeded TS files + the batch-timeout-at-default interaction are follow-ups, not blockers.
+- **2026-08-14 (LSP re-test after GRPH-006 + cold-start fix)**: re-ran Docuvia2's Tier B LSP escalation against both repos from fresh ingests with a rebuilt CLI. The GRPH-006 qualified-key fix (commit `97c30d97`) was already on the branch and verified by the live unit tests, yet a fresh ripgrep batch still reported **0 corrected edges in ~0.6 s** — root-caused live to a missing **cold-start settle**: rust-analyzer answers `documentSymbol` immediately but returns empty `references` until its async crate-graph load finishes (~8 s; `Searcher::new` = 0 refs cold → 2 refs after settle). Added `coldStartSettleMs` to `EdgeResolutionProviderConfig`/`LspLanguageConfig`, awaited once per spawned server after `initialize` (rust default 8 s), with unit tests proving the settle gates the first semantic request and a config `0` disables it; the live integration test now drives the real production path with no test-only settle wrapper. Re-ran both repos fresh: **ripgrep 100 processed / 1,612 corrected edges** (12.07 s), **tauri 325 processed / 801 corrected edges** (41.45 s) — both nonzero for the first time. Graph post-LSP: ripgrep 2,225 calls (+1,612), tauri 2,490 calls (+801). Typecheck/lint/all 28 LSP test files (164 tests) green.
+
+- **2026-08-13**: benchmarked `ripgrep` (fast pipeline validation) and `tauri` across all 4 tools from primary checkouts. Docuvia2 Tier A: ripgrep 3,255/3,767 @ 0.75 s, tauri 6,027/7,342 @ 1.50 s. Tier B ran against live `rust-analyzer` on both; **0 corrected edges on both repos**, two distinct degradation causes (`ruby-lsp` missing → ripgrep's `.rb` formula degraded; `typescript-language-server` missing → tauri's 68 TS files degraded) and the shared rust root cause (roll-up in §3). GRPH-006's pending live verification was completed: rust-analyzer nests methods under `impl <Struct>` kind-19 parents with an `impl ` name prefix — flipping `supportsQualifiedContainment` requires a kind-19 ancestor walk + `impl ` prefix strip, not just the flag. GitNexus: ripgrep 5,211/16,726 @ 24.0 s, tauri 11,746/27,357 @ 19.5 s. Graphify (`update --no-cluster`): ripgrep 4,285/9,937 @ 0.98 s, tauri 16,389/28,299 @ 7.49 s. CRG (`build --skip-flows`): ripgrep 3,329/26,971 @ 3.56 s, tauri 6,430/46,369 @ 4.51 s. Query/impact run per tool against each chosen symbol; Graphify `affected` and GitNexus `impact` both trip on bare-label ambiguity (README §4.3/§4.2 behavior repeated for rust).
+
+For full per-session detail, see this file's git history (`git log -- docs/cli-test-analysis/rust-cli-benchmark.md`) and [`README.md`](./README.md) §3.3/§4 for the cross-tool findings extracted from these sessions.

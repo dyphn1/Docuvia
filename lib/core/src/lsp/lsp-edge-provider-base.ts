@@ -323,6 +323,17 @@ export interface LspLanguageConfig {
    *  Finding A). Every provider must set this explicitly (no default) so a newly-added language
    *  can't silently inherit "forward" by omission. */
   definitionResolution: "forward" | "reverse";
+  /** Cold-start settle for this language's LSP server process, in milliseconds (0 = none): the
+   *  time to wait after the `initialize` handshake and before the first semantic request, so the
+   *  server's own async project/crate-graph load can finish. `textDocument/documentSymbol` is
+   *  syntactic and answers immediately, but `textDocument/references`/`textDocument/definition`
+   *  issued too early come back empty even though the same request succeeds moments later
+   *  (verified live: rust-analyzer 1.97.1 on ripgrep returned 0 references for `Searcher::new`
+   *  in 0 ms cold, then 2 after an ~8s settle; the typescript-language-server parity test
+   *  documents the same shape with a 3s settle). This is a per-language default -- a batch can
+   *  override it (including force-disable to 0) via `EdgeResolutionProviderConfig
+   *  .coldStartSettleMs`. A batch-scoped cost, paid once per spawned server, never per file. */
+  coldStartSettleMs?: number;
 }
 
 /**
@@ -674,6 +685,21 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
     // the opposite of what's wanted, so skip deadline-tracking entirely rather than special-casing
     // the value.
     const deadlineAt = timeoutMs > 0 ? Date.now() + timeoutMs : undefined;
+
+    // Cold-start settle (GRPH-006/rust-analyzer): a freshly-initialized LSP server answers
+    // `textDocument/documentSymbol` immediately (syntactic) but can return empty
+    // `textDocument/references`/`textDocument/definition` until its own async project/crate-graph
+    // load finishes. Wait the configured period once per spawned server, before the first file's
+    // semantic requests, or the batch silently drops every cross-file edge (verified live on
+    // ripgrep: 0 refs in 0 ms cold → 2 refs after ~8s). `config.coldStartSettleMs` (including an
+    // explicit `0` to disable) wins over the language's per-server default.
+    const coldStartSettleMs =
+      this.config.coldStartSettleMs ??
+      this.languageConfig.coldStartSettleMs ??
+      0;
+    if (coldStartSettleMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, coldStartSettleMs));
+    }
 
     try {
       return await this.processAllFiles(

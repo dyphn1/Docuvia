@@ -153,10 +153,22 @@ export interface EdgeResolutionProviderConfig {
    *  `floor(maxProcessesMemoryMb / processMemoryEstimateMb)`. */
   maxProcessMemoryMb?: number;
   /** Estimate of one shard process's steady-state memory footprint (MiB), used only to derive
-   *  `maxProcesses`'s memory upper bound (`floor(maxProcessMemoryMb / this)` when the caller
+   *  `maxProcesses`'s memory upper bound (`floor(maxProcessesMemoryMb / this)` when the caller
    *  sets a memory budget; otherwise a sane default). A pure throughput-guard heuristic, never a
    *  correctness input. */
   processMemoryEstimateMb?: number;
+  /** Cold-start settle for the LSP server process, in milliseconds (0 = none): after the
+   *  `initialize`/`initialized` handshake completes and *before* the first semantic request
+   *  (`textDocument/documentSymbol` is syntactic and answers correctly immediately, but
+   *  `textDocument/references`/`textDocument/definition` issued before the server's own async
+   *  project/crate-graph load finishes can come back empty even though the same request succeeds
+   *  moments later). Verified live against rust-analyzer 1.97.1 on ripgrep: `Searcher::new`
+   *  returned 0 references in 0 ms cold, then 2 references after an ~8s settle — the root cause
+   *  of Tier B's 0-corrected-edges on both ripgrep and tauri even after the GRPH-006 key fix.
+   *  A batch-scoped, per-spawned-server cost (paid once per shard), never per file. When set, this
+   *  value wins over the provider's per-language default (`LspLanguageConfig.coldStartSettleMs`);
+   *  callers set `0` to force-disable the wait. */
+  coldStartSettleMs?: number;
 }
 
 export interface IEdgeResolutionProvider {

@@ -56,6 +56,11 @@ const RUST_LANGUAGE_CONFIG: LspLanguageConfig = {
   // issue #11 plan A: Rust's own forward-resolution calibration slice hasn't run yet (Slice 4) --
   // stays on the reverse pipeline until it does (FWD-004/D2, single per-language safety gate).
   definitionResolution: "reverse",
+  // Cold-start settle for rust-analyzer (GRPH-006): it answers `documentSymbol` immediately but
+  // returns empty `references` until its async crate-graph load finishes (~8s live-verified on
+  // ripgrep). Without this wait, Tier B silently drops every cross-file rust edge (0 corrected
+  // edges on both ripgrep and tauri) -- the batch only produces edges once the server is warm.
+  coldStartSettleMs: 8_000,
 };
 
 /**

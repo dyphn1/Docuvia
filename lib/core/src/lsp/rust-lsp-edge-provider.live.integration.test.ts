@@ -5,10 +5,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import type { ResolvedCallEdge } from "@workspace/contracts";
 import { RustLspEdgeProvider } from "./rust-lsp-edge-provider.js";
-import {
-  LspJsonRpcClient,
-  type LspJsonRpcClientOptions,
-} from "./lsp-json-rpc-client.js";
+import { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { LspMethods, LspSymbolKinds } from "./lsp-constants.js";
 import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
 
@@ -29,40 +26,13 @@ import { rmSyncRetrying } from "./windows-rm-retry.test-support.js";
  * Guarded by `provider.checkAvailability()` -- self-skips (does not fail) if rust-analyzer can't
  * be resolved/spawned in this environment.
  *
- * `SettlingLspClient` wraps the real `LspJsonRpcClient` behind the provider's documented test
- * seam and adds the same cold-start settle the TS parity test needs: rust-analyzer's first
- * semantic request (`textDocument/references`) issued before its async project/crate-graph load
- * finishes can come back empty even though the same request succeeds moments later.
+ * The provider itself now owns the cold-start settle (`LspLanguageConfig.coldStartSettleMs`:
+ * rust-analyzer answers `documentSymbol` immediately but returns empty `references` until its
+ * async crate-graph load finishes -- without the settle, every cross-file edge silently drops, the
+ * 0-corrected-edges root cause on both ripgrep and tauri). So this test drives the *real*
+ * `LspJsonRpcClient` with no settle wrapper -- it exercises the exact production path, including
+ * the provider's own pre-semantic-request wait.
  */
-class SettlingLspClient {
-  private readonly real = new LspJsonRpcClient();
-  private settle: Promise<void> | undefined;
-
-  start(options: LspJsonRpcClientOptions): Promise<void> {
-    return this.real.start(options);
-  }
-
-  notify(method: string, params: unknown): void {
-    this.real.notify(method, params);
-  }
-
-  async request<T = unknown>(
-    method: string,
-    params: unknown,
-    timeoutMs: number,
-  ): Promise<T> {
-    if (method === LspMethods.REFERENCES || method === LspMethods.DEFINITION) {
-      this.settle ??= new Promise((resolve) => setTimeout(resolve, 8000));
-      await this.settle;
-    }
-    return this.real.request<T>(method, params, timeoutMs);
-  }
-
-  stop(): Promise<void> {
-    return this.real.stop();
-  }
-}
-
 const LIB_SRC = `pub struct Greeter;
 
 impl Greeter {
@@ -111,10 +81,7 @@ describe("RustLspEdgeProvider live rust-analyzer (issue #31: Object-kind impl co
     fs.writeFileSync(path.join(workspaceRoot, "src", "lib.rs"), LIB_SRC);
     fs.writeFileSync(path.join(workspaceRoot, "src", "main.rs"), MAIN_SRC);
 
-    provider = new RustLspEdgeProvider(
-      undefined,
-      () => new SettlingLspClient() as unknown as LspJsonRpcClient,
-    );
+    provider = new RustLspEdgeProvider(undefined);
     const availability = await provider.checkAvailability(workspaceRoot);
     available = availability.available;
     if (!available) {

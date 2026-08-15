@@ -97,6 +97,14 @@ in which situation is expected to live in item 30's skill files.
 
 ### 32. `init` gains an opt-in Tier B/C escalation option — resolved via the same agent-authored backfill mechanism as item 33
 
+> **Shipped — 2026-08-15 (via item 33's write path; no separate mechanism was built for this item
+> specifically).** As the "Resolved" paragraph below already concluded, `init` needed no bespoke
+> seed/backfill logic of its own — item 33's `analyze <targetPath> --agent-authored` write path
+> (now shipped, see item 33's own banner) supplies exactly the continuous backfill, starting from
+> the first post-`init` commit and onward, this item was asking for. The one gap it doesn't close —
+> pre-existing code no agent has ever touched — still falls through to Tier C's existing push-time
+> LLM-inference fallback, unchanged.
+
 `init` already queues every parsed file for Tier B ([`init.md`](../user-guide/cli/init.md) step
 3); Tier B/C's stage-then-finalize design already gives resumability. Confirmed direction: an
 opt-in flag on `init` (reusing `analyze`'s existing `--escalate-to-lsp` name rather than inventing
@@ -125,6 +133,33 @@ design.
 
 ### 33. Agent-authored L3 write path — new Tier C provenance, write surface confirmed
 
+> **Shipped — 2026-08-15.** `analyze <targetPath> --agent-authored` persists agent-supplied
+> decisions verbatim (no LLM call) with `source='agent-authored'` in `l3_nodes`, alongside the
+> pre-existing default `source='analyze'` — see `L3DecisionSources` in
+> [`graph-store.interfaces.ts`](../../../lib/contracts/src/interfaces/graph-store.interfaces.ts).
+> The payload (`{"decisions":[{"title","content","nodeType","confidence"}]}`) is read from stdin by
+> default or from `--decisions-file=<path>` — see
+> [`analyze.ts`](../../../artifacts/cli/src/commands/analyze.ts).
+>
+> **`commit-l3-write` (item 34) shipped as a stage-then-flush mechanism — correcting this item's
+> own original framing.** Earlier wording here (and the broader PostToolUse-hook framing this
+> roadmap floated) reads as if a per-edit `PostToolUse` hook might fire the write. That was
+> explicitly rejected by the human owner in a round-2 design decision the same day ("triggering
+> every time isn't good, not recommended" — too noisy) in favor of a plain git hook: one write per
+> commit covers a whole commit's rationale at once rather than a fragment per edit, and works for
+> every platform that runs `git commit`, not just the two with a hook-execution mechanism.
+> `analyze <file> --agent-authored --stage` appends to a local staging file,
+> `.docuvia/pending-l3-decisions.json` — no DB open, no LLM call — see
+> [`pending-l3-decisions-store.ts`](../../../lib/ui-core/src/workflows/analyze/pending-l3-decisions-store.ts).
+> A new post-commit hook step, `docuvia analyze --flush-staged-l3` (see
+> [`run-flush-staged-l3.ts`](../../../lib/ui-core/src/workflows/analyze/run-flush-staged-l3.ts) and
+> `POST_COMMIT_HOOK_CONTENT` in
+> [`git-constants.ts`](../../../lib/core/src/git/git-constants.ts)), then drains only the staged
+> entries whose file is in _that_ commit's changed-file list into `l3_nodes`, tagged with the real
+> commit sha — everything else stays staged for a later commit to pick up. The prose mandate
+> driving `--stage` (no technical trigger exists otherwise) lives in `AGENTS.md`/`CLAUDE.md`/
+> `.github/copilot-instructions.md`, next to each file's existing Docuvia-First read-path section.
+
 Confirmed direction: let the agent that just made a code change write its own rationale directly
 into `l3_nodes` (`source='agent-authored'` provenance, alongside the existing `source='llm-inferred'`
 merge pattern Tier B's Provider 2 section above already defines) instead of relying only on Tier
@@ -142,6 +177,19 @@ command-convergence principle. Not yet implemented.
 **Relationship to item 32**: this write path is what item 32's init-time and steady-state backfill both resolve to — not a separate mechanism. See item 32's update above.
 
 ### 34. `docuvia hooks list/enable/disable` — per-behavior hook lifecycle management
+
+> **Shipped — 2026-08-15.** `docuvia hooks list/enable/disable/check` ships — see
+> [`hooks.ts`](../../../artifacts/cli/src/commands/hooks.ts) and the full command reference,
+> [`hooks.md`](../user-guide/cli/hooks.md). Three toggleable behaviors — `context-injection`,
+> `commit-l3-write`, `tier-b-c-prepush` — all default-enabled, see `DEFAULT_HOOKS_CONFIG` in
+> [`hooks.interfaces.ts`](../../../lib/contracts/src/interfaces/hooks.interfaces.ts). Persistence is
+> a flat `.docuvia/hooks-config.json`, not a `docuvia_meta` row: the two raw, dependency-free
+> platform hook scripts can't open SQLite without spawning a second `npx` process per call, which
+> would be a real, continuous latency cost at `context-injection`'s per-tool-call frequency.
+> `check <name>` is the internal/scripted verb the
+> `tier-b-c-prepush` pre-push `&&` chain and the post-commit flush step use to gate themselves — see
+> [`hooks.md`](../user-guide/cli/hooks.md) for its exit-code contract. The "Open, deliberately
+> deferred" skill-file-installation question below is unaffected by this shipment and stays open.
 
 Confirmed direction, in response to real usage feedback that pre-push-triggered Tier B/C work
 feels too slow/blocking for an agent's workflow: a new `docuvia hooks` subcommand managing at

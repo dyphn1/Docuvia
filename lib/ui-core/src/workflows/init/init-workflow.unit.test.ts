@@ -549,4 +549,138 @@ describe("InitWorkflow.execute()", () => {
     expect(process.listenerCount("SIGTERM")).toBe(sigtermBefore);
     expect(process.listenerCount("SIGINT")).toBe(sigintBefore);
   });
+
+  /**
+   * Roadmap item 35 / issue #43: `init` used to always re-run the full discovery/parse/persist
+   * sequence even on an already-initialized workspace. These tests assert the short-circuit
+   * added to `execute()` (§0 in the class doc comment above). Per the leaf-dependency mocking
+   * approach this file already uses throughout (`callOrder` + individual `vi.fn()` spies
+   * registered via `docuviaFactory`, not module-level `vi.mock()` of the pure phase-composer
+   * functions in `run-discovery-pipeline.ts`/`run-parse-and-persist.ts`/
+   * `stamp-full-ingestion-for-tier-b.ts`/`pack-current-graph.ts`) -- each of those composer
+   * functions has no side effect of its own beyond calling into an already-mocked leaf
+   * dependency (`fileDiscovery.discoverFiles`, `astProcessor.processFiles`,
+   * `knowledgeGit.packSnapshotToKnowledgeBranch`, `store.meta.set`, etc.), so asserting those
+   * leaf mocks were never called is equivalent to — and more consistent with this file's
+   * existing style than — a separate module-level mock of the composer functions themselves.
+   */
+  describe("already initialized (roadmap item 35 / issue #43)", () => {
+    const existingProjectRow: ProjectRow = {
+      id: 1,
+      name: "existing-project",
+      repo_url: "file:///existing",
+      description: null,
+      status: "active",
+      vcs_type: "git",
+      svn_url: null,
+      last_git_ingested_at: null,
+      last_svn_revision: null,
+      last_ast_ingested_at: null,
+      owner_id: 1,
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    };
+
+    it("returns skippedExistingGraph:true and runs ensureGitBranchAndHooks but not discovery/parse/persist/pack when a project row and a populated L2 graph already exist", async () => {
+      (store.projects.getFirst as any).mockReturnValue(existingProjectRow);
+      (store.graph.count as any).mockReturnValue({ l2Nodes: 42, l3Nodes: 10 });
+
+      const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+        logger: createMockLogger(),
+      });
+      const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, {
+        logger: createMockLogger(),
+      });
+      const configScanner = docuviaFactory.resolve(TOKENS.ConfigScanner, {
+        logger: createMockLogger(),
+      });
+      const vcsScanner = docuviaFactory.resolve(TOKENS.VcsScanner, {
+        logger: createMockLogger(),
+      });
+      const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
+        logger: createMockLogger(),
+      });
+      const graphPersister = docuviaFactory.resolve(TOKENS.GraphPersister);
+      const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
+        logger: createMockLogger(),
+      });
+      const buildTempFileManager = docuviaFactory.resolve(
+        TOKENS.TempFileManager,
+      );
+      const tempFileManager = buildTempFileManager(tmpDir, createMockLogger());
+
+      const result = await new InitWorkflow(
+        tmpDir,
+        createMockLogger(),
+      ).execute();
+
+      // Result shape: the light-path builder, not the full-ingestion one.
+      expect(result).toEqual({
+        success: true,
+        partialFailure: false,
+        message: expect.stringContaining("already initialized"),
+        filesRequested: 0,
+        filesParsed: 0,
+        filesFailed: 0,
+        failures: [],
+        filesSkippedOversized: 0,
+        skippedExistingGraph: true,
+      });
+
+      // Still runs: branch/hook setup (cheap, idempotent -- see §2.3 of the plan this followed).
+      expect(callOrder).toEqual([
+        "ensureKnowledgeBranch",
+        "installPostCommitHook",
+      ]);
+      expect(knowledgeGit.installPrePushHook).toHaveBeenCalledTimes(1);
+
+      // Does NOT run: discovery, parse/persist, Tier B stamping, or the knowledge-branch pack.
+      expect(configScanner.scanConfigs).not.toHaveBeenCalled();
+      expect(vcsScanner.extractHotspotTags).not.toHaveBeenCalled();
+      expect(fileDiscovery.discoverFiles).not.toHaveBeenCalled();
+      expect(astProcessor.processFiles).not.toHaveBeenCalled();
+      expect(graphPersister.persist).not.toHaveBeenCalled();
+      expect(store.meta.set).not.toHaveBeenCalled();
+      expect(knowledgeGit.packSnapshotToKnowledgeBranch).not.toHaveBeenCalled();
+      expect(hydrationService.markSynced).not.toHaveBeenCalled();
+      // initTempLifecycle is skipped entirely on the light path (§2.3) -- no construct/initialize.
+      expect(tempFileManager.initialize).not.toHaveBeenCalled();
+
+      // The store is still closed via the outer `finally` on this early-return path.
+      expect(store.close).toHaveBeenCalledTimes(1);
+    });
+
+    it("does NOT take the light path when a project row exists but l2Nodes === 0 (matches dispatchAutoMode's !project || l2Nodes === 0 condition -- both must be satisfied to skip)", async () => {
+      (store.projects.getFirst as any).mockReturnValue(existingProjectRow);
+      (store.graph.count as any).mockReturnValue({ l2Nodes: 0, l3Nodes: 0 });
+
+      const fileDiscovery = docuviaFactory.resolve(TOKENS.FileDiscovery, {
+        logger: createMockLogger(),
+      });
+      const astProcessor = docuviaFactory.resolve(TOKENS.AstProcessor, {
+        logger: createMockLogger(),
+      });
+
+      const result = await new InitWorkflow(
+        tmpDir,
+        createMockLogger(),
+      ).execute();
+
+      expect(result.skippedExistingGraph).toBe(false);
+      expect(fileDiscovery.discoverFiles).toHaveBeenCalledTimes(1);
+      expect(astProcessor.processFiles).toHaveBeenCalledTimes(1);
+      expect(callOrder).toContain("discoverFiles");
+      expect(callOrder).toContain("processFiles");
+    });
+
+    it("does NOT take the light path on a genuinely-empty repo (no project row, l2Nodes === 0) -- the pre-existing empty-graph tests above must keep passing unchanged", async () => {
+      const result = await new InitWorkflow(
+        tmpDir,
+        createMockLogger(),
+      ).execute();
+
+      expect(result.skippedExistingGraph).toBe(false);
+      expect(result.success).toBe(true);
+    });
+  });
 });

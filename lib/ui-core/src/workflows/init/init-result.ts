@@ -10,6 +10,12 @@ export interface InitResult {
   filesFailed: number;
   failures: AstParseFailure[];
   filesSkippedOversized: number;
+  /** true when `execute()` took the light "already initialized" path (roadmap item 35 / issue
+   *  #43) -- discovery/parse/persist were skipped entirely because a populated graph already
+   *  existed. `filesRequested`/`filesParsed`/etc. are all 0 in this case, which is NOT the same
+   *  as "0 files found to parse" (a genuinely-empty repo) -- callers that care about the
+   *  distinction should check this flag, not infer it from the zeroed counts. */
+  skippedExistingGraph: boolean;
 }
 
 /** Success/partial-failure message selection: a parse failure takes precedence over an oversized-skip note, which in turn takes precedence over the plain success message. */
@@ -44,5 +50,23 @@ export function buildInitResult(input: {
     filesFailed,
     failures,
     filesSkippedOversized,
+    skippedExistingGraph: false,
+  };
+}
+
+/** Result for `execute()`'s light "already initialized" path (roadmap item 35 / issue #43) --
+ *  no discovery/parse/persist ran, so every file-count field is 0 (see `skippedExistingGraph`'s
+ *  own doc comment for why that's not the same as an empty-repo full ingestion). */
+export function buildSkippedInitResult(): InitResult {
+  return {
+    success: true,
+    partialFailure: false,
+    message: INIT_MESSAGES.ALREADY_INITIALIZED,
+    filesRequested: 0,
+    filesParsed: 0,
+    filesFailed: 0,
+    failures: [],
+    filesSkippedOversized: 0,
+    skippedExistingGraph: true,
   };
 }

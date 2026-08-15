@@ -14,7 +14,11 @@ import { runDiscoveryPipeline } from "./run-discovery-pipeline.js";
 import { runParseAndPersist } from "./run-parse-and-persist.js";
 import { stampFullIngestionForTierB } from "./stamp-full-ingestion-for-tier-b.js";
 import { initTempLifecycle } from "./init-temp-lifecycle.js";
-import { buildInitResult, type InitResult } from "./init-result.js";
+import {
+  buildInitResult,
+  buildSkippedInitResult,
+  type InitResult,
+} from "./init-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { packCurrentGraphOntoKnowledgeBranch } from "../snapshot/pack-current-graph.js";
 
@@ -31,6 +35,12 @@ const INIT_SHUTDOWN_SIGNALS = ["SIGTERM", "SIGINT"] as const;
  * (`open()` here, `close()` in `execute()`'s `finally`).
  *
  * `execute()` is a short, readable sequence calling the extracted phase functions in order:
+ *   0. Already-initialized detection (roadmap item 35 / issue #43): once `ensureGitBranchAndHooks`
+ *      has run, if `store.projects.getFirst()` returns a project row *and* `store.graph.count()`
+ *      reports `l2Nodes > 0`, this workspace already has a populated graph -- return
+ *      `buildSkippedInitResult()` immediately rather than re-running the expensive
+ *      discovery/parse/persist steps below. `docuvia analyze` (delta ingestion) is the intended
+ *      way to refresh an already-initialized workspace's graph, not a repeat `init`.
  *   1. `ensureGitBranchAndHooks` (branch -> post-commit hook)
  *   2. `seedProjectRow` (idempotency check + insert against `store.projects`)
  *   3. `runDiscoveryPipeline` (parallel config/vcs/file discovery + tag merge)
@@ -100,8 +110,34 @@ export class InitWorkflow {
     }
 
     try {
-      // 1. Hidden knowledge-graph branch + (non-fatal) post-commit hook.
+      // 0. Already-initialized detection (roadmap item 35 / issue #43) -- mirrors
+      // `analyze-workflow.ts`'s `dispatchAutoMode()` empty-graph check (`!project || l2Nodes ===
+      // 0`), inverted: a project row *and* a populated L2 graph mean this workspace already went
+      // through a real `init`, so re-running discovery/parse/persist here would be pure,
+      // expensive redundant work -- `analyze`'s own delta/no-op path is the correct place for
+      // "refresh an existing graph," not `init`. This check applies to every `docuvia init`
+      // invocation, not just `--platform=`-scoped ones (see init-workflow.unit.test.ts's
+      // "already initialized" describe block and the plan this fix followed, §6).
+      const existingProject = store.projects.getFirst();
+      const { l2Nodes: existingL2Nodes } = store.graph.count();
+      const alreadyInitialized =
+        existingProject !== undefined && existingL2Nodes > 0;
+
+      // 1. Hidden knowledge-graph branch + (non-fatal) post-commit/pre-push hooks -- runs on
+      // both paths; idempotent and cheap (no file discovery/parsing). Keeping this on the light
+      // path is deliberate: a repeat `init` call still benefits from any legacy-hook-upgrade
+      // logic (`installPostCommitHook`/`installPrePushHook` both no-op when already installed)
+      // without needing a separate `doctor --fix` run.
       await ensureGitBranchAndHooks(knowledgeGit, workspaceRoot, logger);
+
+      if (alreadyInitialized) {
+        logger.info(INIT_MESSAGES.ALREADY_INITIALIZED);
+        await appendInitLogLine(workspaceRoot, {
+          event: INIT_EVENTS.ALREADY_INITIALIZED,
+          workspaceRoot,
+        });
+        return buildSkippedInitResult();
+      }
 
       // 2. Idempotent project-row seed (schema readiness already guaranteed by openStore()).
       const project = await seedProjectRow(store.projects, git, workspaceRoot);

@@ -19,6 +19,14 @@ describe("Command: docuvia init", () => {
     });
   }, 30000);
 
+  /** Commits the fixture source file so a real HEAD sha exists -- both for deterministic file
+   *  discovery (nothing depends on the working tree being dirty either way here) and so
+   *  `stampFullIngestionForTierB` has a real commit to stamp against on the first `init`. */
+  async function commitFixture(): Promise<void> {
+    await sandbox.runGit(["add", "."]);
+    await sandbox.runGit(["commit", "-m", "seed fixture"]);
+  }
+
   afterEach(async () => {
     await sandbox.teardown();
   }, 30000);
@@ -127,5 +135,56 @@ describe("Command: docuvia init", () => {
     } finally {
       db.close();
     }
+  }, 35000);
+
+  // Roadmap item 35 / issue #43: `init` used to always re-run the full discovery/parse/persist
+  // sequence, even on an already-initialized workspace. Proves the fix via the graph's own row
+  // counts and the JSONL run log -- not just the CLI's exit message/exit code, which the
+  // sibling "should be idempotent" test above already covers and which would pass identically
+  // whether or not the bug were fixed (it doesn't assert anything about re-ingestion).
+  it("skips re-ingestion on a second `docuvia init` once a populated graph already exists", async () => {
+    await commitFixture();
+
+    const countL2Nodes = (): number => {
+      const dbPath = resolve(sandbox.dir, ".docuvia/local.db");
+      const db = new Database(dbPath, { readonly: true });
+      try {
+        const { count } = db
+          .prepare("SELECT COUNT(*) as count FROM l2_nodes")
+          .get() as { count: number };
+        return count;
+      } finally {
+        db.close();
+      }
+    };
+
+    // First run: real full ingestion -- the graph must actually be populated.
+    const firstResult = await sandbox.runCli(["init"]);
+    expect(firstResult.exitCode).toBe(0);
+    const l2NodesAfterFirst = countL2Nodes();
+    expect(l2NodesAfterFirst).toBeGreaterThan(0);
+
+    // Second run: the light "already initialized" path -- no re-parse, so the graph's row
+    // count must be exactly unchanged (not just "still greater than 0", which a silent
+    // re-parse producing the same count by coincidence would also satisfy).
+    const secondResult = await sandbox.runCli(["init"]);
+    expect(secondResult.exitCode).toBe(0);
+    expect(countL2Nodes()).toBe(l2NodesAfterFirst);
+
+    // Confirm via the JSONL run log, not the exit message: exactly one full-ingestion
+    // `init.summary` (from run #1) and exactly one `init.already_initialized` (from run #2).
+    const logPath = resolve(sandbox.dir, ".docuvia/logs/init.log");
+    const lines = readFileSync(logPath, "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+    const summaryCount = lines.filter(
+      (l: { event: string }) => l.event === "init.summary",
+    ).length;
+    const alreadyInitializedCount = lines.filter(
+      (l: { event: string }) => l.event === "init.already_initialized",
+    ).length;
+    expect(summaryCount).toBe(1);
+    expect(alreadyInitializedCount).toBe(1);
   }, 35000);
 });

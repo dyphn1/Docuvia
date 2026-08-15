@@ -12,6 +12,8 @@ export const INIT_MESSAGES = {
   SNAPSHOT_AFTER_INIT_FAILED:
     "Failed to pack the knowledge graph onto the knowledge branch (non-fatal -- the local graph is intact; run `docuvia snapshot` manually or push to retry)",
   SUCCESS: "Project initialized successfully",
+  ALREADY_INITIALIZED:
+    "Project already initialized — skipped re-ingestion; run `docuvia analyze` to pick up new changes, or delete .docuvia/ to force a full re-init",
   PARTIAL_SUCCESS: (failed: number, requested: number) =>
     `Project initialized — ${failed} of ${requested} files failed to parse (see .docuvia/logs/init.log)`,
   SUCCESS_WITH_SKIPPED_OVERSIZED: (skipped: number) =>
@@ -33,4 +35,5 @@ export const INIT_EVENTS = {
   PARSE_FAILURE: "init.parse_failure",
   FILE_SKIPPED_OVERSIZED: "init.file_skipped_oversized",
   SNAPSHOT_AFTER_INIT_FAILED: "init.snapshot_after_init_failed",
+  ALREADY_INITIALIZED: "init.already_initialized",
 } as const;

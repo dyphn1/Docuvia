@@ -196,6 +196,32 @@ describe("initCommand", () => {
     expect(spinnerSucceed).not.toHaveBeenCalled();
   });
 
+  // Roadmap item 35 / issue #43: the light "already initialized" path returns success:true,
+  // partialFailure:false with a distinct message -- `runDatabaseInit` needs no structural
+  // change for this (it already just prints `result.message`/branches on `partialFailure`),
+  // this locks that in as a regression guard.
+  it("calls spinner.succeed with the already-initialized message when InitWorkflow took the light skip path (skippedExistingGraph:true)", async () => {
+    mockInit.mockResolvedValue({
+      success: true,
+      partialFailure: false,
+      skippedExistingGraph: true,
+      filesRequested: 0,
+      filesParsed: 0,
+      filesFailed: 0,
+      failures: [],
+      filesSkippedOversized: 0,
+      message:
+        "Project already initialized — skipped re-ingestion; run `docuvia analyze` to pick up new changes, or delete .docuvia/ to force a full re-init",
+    } as any);
+
+    await initCommand();
+
+    expect(spinnerSucceed).toHaveBeenCalledWith(
+      expect.stringContaining("already initialized"),
+    );
+    expect(spinnerWarn).not.toHaveBeenCalled();
+  });
+
   it("calls spinner.fail and still deletes the memory scope when docuviaApi.init() throws", async () => {
     mockInit.mockRejectedValue(new Error("boom"));
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");

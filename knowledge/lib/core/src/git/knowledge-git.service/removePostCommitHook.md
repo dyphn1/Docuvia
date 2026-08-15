@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.removePostCommitHook
+id: lib/core/src/git/knowledge-git.service.ts#removePostCommitHook
 type: symbol
 name: removePostCommitHook
 filePath: lib/core/src/git/knowledge-git.service.ts

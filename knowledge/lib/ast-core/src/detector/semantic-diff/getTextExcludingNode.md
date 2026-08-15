@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.getTextExcludingNode
+id: lib/ast-core/src/detector/semantic-diff.ts#getTextExcludingNode
 type: symbol
 name: getTextExcludingNode
 filePath: lib/ast-core/src/detector/semantic-diff.ts

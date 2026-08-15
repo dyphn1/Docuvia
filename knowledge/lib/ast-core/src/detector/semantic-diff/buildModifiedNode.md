@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.buildModifiedNode
+id: lib/ast-core/src/detector/semantic-diff.ts#buildModifiedNode
 type: symbol
 name: buildModifiedNode
 filePath: lib/ast-core/src/detector/semantic-diff.ts

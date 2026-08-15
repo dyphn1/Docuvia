@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.ensureKnowledgeBranch
+id: lib/core/src/git/knowledge-git.service.ts#ensureKnowledgeBranch
 type: symbol
 name: ensureKnowledgeBranch
 filePath: lib/core/src/git/knowledge-git.service.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.deleteKnowledgeBranch
+id: lib/core/src/git/knowledge-git.service.ts#deleteKnowledgeBranch
 type: symbol
 name: deleteKnowledgeBranch
 filePath: lib/core/src/git/knowledge-git.service.ts

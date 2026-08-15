@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.runUnderKnowledgeLock
+id: lib/core/src/git/knowledge-git.service.ts#runUnderKnowledgeLock
 type: symbol
 name: runUnderKnowledgeLock
 filePath: lib/core/src/git/knowledge-git.service.ts

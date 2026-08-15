@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/l3-nodes-repo.ts#L3NodesRepo.getById
+id: lib/schema/src/sqlite/repos/l3-nodes-repo.ts#getById
 type: symbol
 name: getById
 filePath: lib/schema/src/sqlite/repos/l3-nodes-repo.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.packSnapshotToKnowledgeBranchLocked
+id: lib/core/src/git/knowledge-git.service.ts#packSnapshotToKnowledgeBranchLocked
 type: symbol
 name: packSnapshotToKnowledgeBranchLocked
 filePath: lib/core/src/git/knowledge-git.service.ts

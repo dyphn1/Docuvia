@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.isRemoteRefMissingError
+id: lib/core/src/git/knowledge-git.service.ts#isRemoteRefMissingError
 type: symbol
 name: isRemoteRefMissingError
 filePath: lib/core/src/git/knowledge-git.service.ts

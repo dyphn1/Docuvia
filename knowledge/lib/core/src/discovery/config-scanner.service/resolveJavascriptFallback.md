@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/config-scanner.service.ts#ConfigScannerService.resolveJavascriptFallback
+id: lib/core/src/discovery/config-scanner.service.ts#resolveJavascriptFallback
 type: symbol
 name: resolveJavascriptFallback
 filePath: lib/core/src/discovery/config-scanner.service.ts

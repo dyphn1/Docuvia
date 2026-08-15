@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-provider.ts#DefaultProvider.extractClasses
+id: lib/ast-core/src/language-provider.ts#extractClasses
 type: symbol
 name: extractClasses
 filePath: lib/ast-core/src/language-provider.ts

@@ -1,9 +1,0 @@
----
-id: artifacts/cli/test/unit/constants/docuvia-hook-js-gate.unit.test.ts
-type: file
-name: artifacts/cli/test/unit/constants/docuvia-hook-js-gate.unit.test.ts
-filePath: artifacts/cli/test/unit/constants/docuvia-hook-js-gate.unit.test.ts
----
-# File: artifacts/cli/test/unit/constants/docuvia-hook-js-gate.unit.test.ts
-
-Path: `artifacts/cli/test/unit/constants/docuvia-hook-js-gate.unit.test.ts`

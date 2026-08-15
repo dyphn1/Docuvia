@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.removeFileSync
+id: lib/core/src/temp-files/temp-file-manager.ts#removeFileSync
 type: symbol
 name: removeFileSync
 filePath: lib/core/src/temp-files/temp-file-manager.ts

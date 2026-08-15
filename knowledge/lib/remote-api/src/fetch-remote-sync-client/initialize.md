@@ -1,5 +1,5 @@
 ---
-id: lib/remote-api/src/fetch-remote-sync-client.ts#FetchRemoteSyncClient.initialize
+id: lib/remote-api/src/fetch-remote-sync-client.ts#initialize
 type: symbol
 name: initialize
 filePath: lib/remote-api/src/fetch-remote-sync-client.ts

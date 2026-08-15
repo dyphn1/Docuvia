@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.resolveBranchSyncOutcome
+id: lib/core/src/git/knowledge-git.service.ts#resolveBranchSyncOutcome
 type: symbol
 name: resolveBranchSyncOutcome
 filePath: lib/core/src/git/knowledge-git.service.ts

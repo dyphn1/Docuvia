@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/detector/semantic-diff-analyzer.service.ts#SemanticDiffAnalyzerService.getDetectorForFile
+id: lib/core/src/detector/semantic-diff-analyzer.service.ts#getDetectorForFile
 type: symbol
 name: getDetectorForFile
 filePath: lib/core/src/detector/semantic-diff-analyzer.service.ts

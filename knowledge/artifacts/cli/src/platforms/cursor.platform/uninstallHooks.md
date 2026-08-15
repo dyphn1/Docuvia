@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/cursor.platform.ts#CursorPlatform.uninstallHooks
+id: artifacts/cli/src/platforms/cursor.platform.ts#uninstallHooks
 type: symbol
 name: uninstallHooks
 filePath: artifacts/cli/src/platforms/cursor.platform.ts

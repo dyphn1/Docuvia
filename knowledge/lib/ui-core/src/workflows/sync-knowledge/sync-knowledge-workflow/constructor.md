@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts#SyncKnowledgeWorkflow.constructor
+id: lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts#constructor
 type: symbol
 name: constructor
 filePath: lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts

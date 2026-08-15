@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.resolveFastForwardOutcome
+id: lib/core/src/git/knowledge-git.service.ts#resolveFastForwardOutcome
 type: symbol
 name: resolveFastForwardOutcome
 filePath: lib/core/src/git/knowledge-git.service.ts

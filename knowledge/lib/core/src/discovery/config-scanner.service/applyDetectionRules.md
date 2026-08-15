@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/config-scanner.service.ts#ConfigScannerService.applyDetectionRules
+id: lib/core/src/discovery/config-scanner.service.ts#applyDetectionRules
 type: symbol
 name: applyDetectionRules
 filePath: lib/core/src/discovery/config-scanner.service.ts

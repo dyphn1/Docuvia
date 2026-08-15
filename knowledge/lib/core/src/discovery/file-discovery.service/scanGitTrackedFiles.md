@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/file-discovery.service.ts#FileDiscoveryService.scanGitTrackedFiles
+id: lib/core/src/discovery/file-discovery.service.ts#scanGitTrackedFiles
 type: symbol
 name: scanGitTrackedFiles
 filePath: lib/core/src/discovery/file-discovery.service.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.installPostCommitHook
+id: lib/core/src/git/knowledge-git.service.ts#installPostCommitHook
 type: symbol
 name: installPostCommitHook
 filePath: lib/core/src/git/knowledge-git.service.ts

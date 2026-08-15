@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.pushQuietly
+id: lib/core/src/git/knowledge-git.service.ts#pushQuietly
 type: symbol
 name: pushQuietly
 filePath: lib/core/src/git/knowledge-git.service.ts

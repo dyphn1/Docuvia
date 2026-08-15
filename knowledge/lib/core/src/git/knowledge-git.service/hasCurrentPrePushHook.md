@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.hasCurrentPrePushHook
+id: lib/core/src/git/knowledge-git.service.ts#hasCurrentPrePushHook
 type: symbol
 name: hasCurrentPrePushHook
 filePath: lib/core/src/git/knowledge-git.service.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.initialize
+id: lib/core/src/temp-files/temp-file-manager.ts#initialize
 type: symbol
 name: initialize
 filePath: lib/core/src/temp-files/temp-file-manager.ts

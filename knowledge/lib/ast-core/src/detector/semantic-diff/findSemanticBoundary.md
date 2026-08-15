@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.findSemanticBoundary
+id: lib/ast-core/src/detector/semantic-diff.ts#findSemanticBoundary
 type: symbol
 name: findSemanticBoundary
 filePath: lib/ast-core/src/detector/semantic-diff.ts

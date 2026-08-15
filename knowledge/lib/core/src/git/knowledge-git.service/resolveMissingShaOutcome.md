@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.resolveMissingShaOutcome
+id: lib/core/src/git/knowledge-git.service.ts#resolveMissingShaOutcome
 type: symbol
 name: resolveMissingShaOutcome
 filePath: lib/core/src/git/knowledge-git.service.ts

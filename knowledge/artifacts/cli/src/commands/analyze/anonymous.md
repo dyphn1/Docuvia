@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/commands/analyze.ts#anonymous@L743
+id: artifacts/cli/src/commands/analyze.ts#anonymous
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/commands/analyze.ts

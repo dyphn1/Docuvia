@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-logger-client.ts#IpcLoggerClient.anonymous
+id: lib/contracts/src/logging/ipc-logger-client.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/contracts/src/logging/ipc-logger-client.ts

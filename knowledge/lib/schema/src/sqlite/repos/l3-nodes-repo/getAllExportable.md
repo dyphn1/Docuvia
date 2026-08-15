@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/l3-nodes-repo.ts#L3NodesRepo.getAllExportable
+id: lib/schema/src/sqlite/repos/l3-nodes-repo.ts#getAllExportable
 type: symbol
 name: getAllExportable
 filePath: lib/schema/src/sqlite/repos/l3-nodes-repo.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.reconcile
+id: lib/core/src/git/knowledge-git.service.ts#reconcile
 type: symbol
 name: reconcile
 filePath: lib/core/src/git/knowledge-git.service.ts

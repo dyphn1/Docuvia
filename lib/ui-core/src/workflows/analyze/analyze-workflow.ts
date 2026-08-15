@@ -6,6 +6,7 @@ import {
   DocuviaError,
   ErrorCodes,
   ChatMessageRoles,
+  L3DecisionSources,
   type IGitProvider,
   type IGraphStore,
   type IKnowledgeGitService,
@@ -23,7 +24,6 @@ import {
   collectSourceFiles,
   type CollectedFile,
 } from "./decision-extraction.js";
-import { resolveAnchorL2NodeId, toNodeKey } from "./anchor-resolution.js";
 import {
   AnalyzeResultKind,
   type AnalyzeResult,
@@ -39,6 +39,8 @@ import {
   parseDecisionsFromLlmContent,
   stripMarkdownCodeFence,
 } from "./decision-parsing.js";
+import { persistDecisions } from "./persist-l3-decisions.js";
+import { runAgentAuthoredWrite } from "./run-agent-authored-write.js";
 
 // Re-exported for the existing `stripMarkdownCodeFence()` test suite in
 // `analyze-workflow.unit.test.ts` -- the implementation itself now lives in
@@ -57,6 +59,11 @@ export class AnalyzeWorkflow {
     private readonly logger: ILogger,
     private readonly options?: {
       targetPath?: string;
+      /** `analyze <targetPath> --agent-authored` (issue #42, roadmap items 32-34) -- when set,
+       *  `execute()` skips the LLM-extraction path entirely and persists these decisions
+       *  verbatim with `source: L3DecisionSources.AGENT_AUTHORED`. Checked *before* `targetPath`
+       *  in `execute()`'s dispatch, since both are set together for this mode. */
+      agentAuthoredDecisions?: ExtractedDecision[];
       llmBaseUrl?: string;
       llmApiKey?: string;
       llmModel?: string;
@@ -84,6 +91,17 @@ export class AnalyzeWorkflow {
   ) {}
 
   public async execute(): Promise<AnalyzeResult> {
+    // Checked before `targetPath` -- `--agent-authored` mode sets both together (see
+    // `agentAuthoredDecisions`'s doc comment above), and the agent-authored write path must win
+    // over the LLM-extraction path in that case.
+    if (this.options?.agentAuthoredDecisions) {
+      return runAgentAuthoredWrite({
+        workspaceRoot: this.workspaceRoot,
+        logger: this.logger,
+        targetPath: this.options.targetPath!,
+        decisions: this.options.agentAuthoredDecisions,
+      });
+    }
     if (this.options?.targetPath) {
       return this.executeDecisionExtraction(this.options.targetPath);
     }
@@ -505,126 +523,25 @@ export class AnalyzeWorkflow {
     };
   }
 
-  /**
-   * Writes `decisions` through to `l3_nodes` (phase1-decision-integration.md §3, PLAT-007 Tier C
-   * point 1). Resolves the `NOT NULL` `l2_node_id` anchor via `resolveAnchorL2NodeId`; when it
-   * can't be resolved (empty/not-yet-ingested graph), persists nothing and warns rather than
-   * inventing a synthetic L2 node — decisions are still returned to the caller either way, and
-   * this never throws (a missing local database is a legitimate, expected precondition here, not
-   * a failure of the extraction itself).
-   */
+  /** Thin call into the standalone `persistDecisions` (`persist-l3-decisions.ts`, shared with
+   *  the `--agent-authored` write path, issue #42) — passes `L3DecisionSources.ANALYZE`
+   *  explicitly for symmetry/readability; the repo-level default from `IL3NodesRepo.upsertDecision`
+   *  is the true backstop. See that module's doc comment for the full persist/anchor-resolution
+   *  contract. */
   private async persistDecisions(
     resolvedTargetPath: string,
     files: CollectedFile[],
     decisions: ExtractedDecision[],
   ): Promise<{ persisted: number; deduped: number }> {
-    if (decisions.length === 0) return { persisted: 0, deduped: 0 };
-
-    const { workspaceRoot } = this;
-
-    const store = await this.openStoreForPersist(workspaceRoot);
-    if (store === null) return { persisted: 0, deduped: 0 };
-
-    try {
-      const project = store.projects.getFirst();
-      if (!project) {
-        await this.warnNoGraphToAttach(workspaceRoot);
-        return { persisted: 0, deduped: 0 };
-      }
-
-      const anchorL2NodeId = resolveAnchorL2NodeId(
-        store,
-        workspaceRoot,
-        resolvedTargetPath,
-        files,
-      );
-      if (anchorL2NodeId === undefined) {
-        await this.warnNoGraphToAttach(workspaceRoot);
-        return { persisted: 0, deduped: 0 };
-      }
-
-      const counts = await this.upsertDecisions(
-        store,
-        project.id,
-        anchorL2NodeId,
-        files,
-        decisions,
-      );
-
-      await appendAnalyzeLogLine(workspaceRoot, {
-        event: ANALYZE_EVENTS.FOCUSED_PERSISTED,
-        persisted: counts.persisted,
-        deduped: counts.deduped,
-      });
-
-      return counts;
-    } finally {
-      await store.close();
-    }
-  }
-
-  /** Opens the store for the persist step; a missing/unopenable local database is the §3b
-   *  empty-graph precondition (warn + skip), not a failure of the extraction itself. */
-  private async openStoreForPersist(
-    workspaceRoot: string,
-  ): Promise<IGraphStore | null> {
-    const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
-    try {
-      return await openStore({
-        dbPath: resolveDbPath(workspaceRoot),
-        readonly: false,
-      });
-    } catch (err) {
-      if (
-        err instanceof DocuviaError &&
-        err.code === ErrorCodes.DB_OPEN_FAILED
-      ) {
-        await this.warnNoGraphToAttach(workspaceRoot);
-        return null;
-      }
-      throw err;
-    }
-  }
-
-  /** The §3c content-hash upsert loop — every decision lands as a new row or an occurrence bump. */
-  private async upsertDecisions(
-    store: IGraphStore,
-    projectId: number,
-    anchorL2NodeId: number,
-    files: CollectedFile[],
-    decisions: ExtractedDecision[],
-  ): Promise<{ persisted: number; deduped: number }> {
-    const { workspaceRoot, options } = this;
-    const git = docuviaFactory.resolve(TOKENS.GitProvider);
-    const commitSha = (await git.getHeadSha(workspaceRoot)) ?? null;
-    const sourceFiles = files.map((f) => toNodeKey(f.relativePath));
-
-    let persisted = 0;
-    let deduped = 0;
-    for (const decision of decisions) {
-      const result = store.l3.upsertDecision({
-        projectId,
-        l2NodeId: anchorL2NodeId,
-        title: decision.title,
-        content: decision.content,
-        nodeType: decision.nodeType,
-        confidence: decision.confidence,
-        commitSha,
-        extractionModel: options?.llmModel ?? null,
-        sourceFiles,
-      });
-      if (result.deduped) deduped++;
-      else persisted++;
-    }
-
-    return { persisted, deduped };
-  }
-
-  private async warnNoGraphToAttach(workspaceRoot: string): Promise<void> {
-    this.logger.warn(ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH);
-    await appendAnalyzeLogLine(workspaceRoot, {
-      event: ANALYZE_EVENTS.FOCUSED_PERSIST_SKIPPED,
-      message: ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH,
+    const { workspaceRoot, logger, options } = this;
+    return persistDecisions({
+      workspaceRoot,
+      logger,
+      resolvedTargetPath,
+      files,
+      decisions,
+      source: L3DecisionSources.ANALYZE,
+      extractionModel: options?.llmModel ?? null,
     });
   }
 }

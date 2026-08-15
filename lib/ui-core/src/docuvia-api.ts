@@ -18,7 +18,10 @@ import type { StatusResult } from "./workflows/status/status-result.js";
 import { SyncWorkflow } from "./workflows/sync/sync-workflow.js";
 import type { SyncResult } from "./workflows/sync/sync-result.js";
 import { AnalyzeWorkflow } from "./workflows/analyze/analyze-workflow.js";
-import type { AnalyzeResult } from "./workflows/analyze/analyze-result.js";
+import type {
+  AnalyzeResult,
+  ExtractedDecision,
+} from "./workflows/analyze/analyze-result.js";
 import { ReviewWorkflow } from "./workflows/review/review-workflow.js";
 import type { ReviewResult } from "./workflows/review/review-result.js";
 import { ImpactWorkflow } from "./workflows/impact/impact-workflow.js";
@@ -146,6 +149,20 @@ export const docuviaApi = {
       scopeId,
       MemoryKeys.TARGET_PATH,
     );
+    // `analyze <targetPath> --agent-authored` (issue #42): checked before the LLM-config branch
+    // below, which otherwise unconditionally `requireMemory`s LLM_BASE_URL/LLM_MODEL the moment
+    // `targetPath` is truthy -- agent-authored mode never sets those and must skip that
+    // requirement entirely.
+    const agentAuthoredDecisions = docuviaMemory.get<ExtractedDecision[]>(
+      scopeId,
+      MemoryKeys.AGENT_AUTHORED_DECISIONS,
+    );
+    if (targetPath && agentAuthoredDecisions) {
+      return new AnalyzeWorkflow(workspaceRoot, logger, {
+        targetPath,
+        agentAuthoredDecisions,
+      }).execute();
+    }
     if (targetPath) {
       const llmBaseUrl = requireMemory<string>(
         scopeId,

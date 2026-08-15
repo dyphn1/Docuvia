@@ -1397,6 +1397,7 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
         commitSha: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
         extractionModel: llmOptions.llmModel,
         sourceFiles: ["sample.ts"],
+        source: "analyze",
       });
       expect(result).toMatchObject({ persisted: 1, deduped: 0 });
       expect(store.close).toHaveBeenCalled();
@@ -1577,6 +1578,34 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
         expect.objectContaining({ l2NodeId: 99 }),
       );
       expect(result).toMatchObject({ persisted: 1, deduped: 0 });
+    });
+  });
+
+  it("dispatches to the agent-authored write path (not the LLM path) when agentAuthoredDecisions is set even though targetPath is also set (issue #42 -- the one dispatch-order regression that would silently break agent-authored mode)", async () => {
+    fs.writeFileSync(path.join(tmpDir, "sample.ts"), "export const x = 1;\n");
+    const llmClientBuilderProvider = vi.fn(() => () => ({}) as ILlmClient);
+    docuviaFactory.register(TOKENS.LlmClient, llmClientBuilderProvider);
+    docuviaFactory.lock();
+
+    const agentAuthoredDecisions = [
+      {
+        title: "Agent-authored decision",
+        nodeType: "decision" as const,
+        content: "Written verbatim, no LLM call.",
+        confidence: 0.9,
+      },
+    ];
+
+    const result = await new AnalyzeWorkflow(tmpDir, createMockLogger(), {
+      targetPath: "sample.ts",
+      agentAuthoredDecisions,
+    }).execute();
+
+    expect(llmClientBuilderProvider).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      kind: "decisionExtraction",
+      targetPath: "sample.ts",
+      decisions: agentAuthoredDecisions,
     });
   });
 });

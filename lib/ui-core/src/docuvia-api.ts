@@ -47,6 +47,11 @@ import { checkTierBGate } from "./workflows/analyze/tier-b-gate.js";
 import type { DoctorResult } from "./workflows/doctor/doctor-result.js";
 import { UninstallHooksWorkflow } from "./workflows/uninstall/uninstall-hooks-workflow.js";
 import { removeDocuviaDataDir } from "./workflows/uninstall/remove-docuvia-dir.js";
+import {
+  listHooks as listHooksWorkflow,
+  setHookEnabled as setHookEnabledWorkflow,
+} from "./workflows/hooks/hooks-workflow.js";
+import type { HookName, HooksConfig } from "@workspace/contracts";
 
 function requireMemory<T>(scopeId: string, key: MemoryKey): T {
   const value = docuviaMemory.get<T>(scopeId, key);
@@ -359,6 +364,27 @@ export const docuviaApi = {
       MemoryKeys.WORKSPACE_ROOT,
     );
     return removeDocuviaDataDir(workspaceRoot, logger);
+  },
+
+  /** `docuvia hooks list` (issue #42 §7.3) -- reads `.docuvia/hooks-config.json`, defaults-filled. */
+  async listHooks(scopeId: string, logger: ILogger): Promise<HooksConfig> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    return listHooksWorkflow(workspaceRoot, logger);
+  },
+
+  /** `docuvia hooks enable/disable <hookName>` (issue #42 §7.3) -- writes the toggle, returns the
+   *  full re-read config so the CLI can print a confirming summary. */
+  async setHookEnabled(scopeId: string, logger: ILogger): Promise<HooksConfig> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    const hookName = requireMemory<HookName>(scopeId, MemoryKeys.HOOK_NAME);
+    const enabled = requireMemory<boolean>(scopeId, MemoryKeys.HOOK_ENABLED);
+    return setHookEnabledWorkflow(workspaceRoot, hookName, enabled, logger);
   },
 
   /** D2's mandatory pre-flight gate for a manual/interactive `analyze --escalate-to-lsp`

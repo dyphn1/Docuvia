@@ -282,14 +282,16 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     });
   }
 
-  /** True once the hook carries the Tier B marker, the sync-knowledge marker, and the
-   *  `--fallback-ast` env-gate marker -- i.e. is fully up to date, not just "installed at some
-   *  prior version" (SKSCHED-003; the 2026-07 C#/TS benchmark environment-detection follow-up). */
+  /** True once the hook carries the Tier B marker, the sync-knowledge marker, the
+   *  `--fallback-ast` env-gate marker, and the `docuvia hooks check tier-b-c-prepush` gate marker
+   *  -- i.e. is fully up to date, not just "installed at some prior version" (SKSCHED-003; the
+   *  2026-07 C#/TS benchmark environment-detection follow-up; issue #42 §7.5's hooks-check gate). */
   private hasCurrentPrePushHook(hook: string | undefined): boolean {
     return (
       !!hook?.includes(GitConstants.PRE_PUSH_HOOK_MARKER) &&
       !!hook?.includes(GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER) &&
-      !!hook?.includes(GitConstants.PRE_PUSH_ENV_GATE_MARKER)
+      !!hook?.includes(GitConstants.PRE_PUSH_ENV_GATE_MARKER) &&
+      !!hook?.includes(GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER)
     );
   }
 
@@ -299,7 +301,10 @@ export class KnowledgeGitService implements IKnowledgeGitService {
    * `undefined` means "no Docuvia block at all yet" (fresh append, not an upgrade). Checked
    * oldest-tier-first: a hook missing the sync-knowledge marker predates that step entirely, so
    * it's matched against `LEGACY_PRE_PUSH_HOOK_CONTENT` regardless of whether it happens to also
-   * lack the env-gate marker (it always does, by construction).
+   * lack the env-gate/hooks-check markers (it always does, by construction); a hook missing the
+   * env-gate marker predates `--fallback-ast`, matched against `SYNC_KNOWLEDGE_PRE_PUSH_HOOK_CONTENT`
+   * regardless of the hooks-check marker (same reasoning); otherwise (env-gate present, hooks-check
+   * absent) it's issue #42's own pre-upgrade tier, matched against `ENV_GATE_PRE_PUSH_HOOK_CONTENT`.
    */
   private resolvePrePushUpgradeSource(
     hook: string | undefined,
@@ -308,7 +313,10 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     if (!hook.includes(GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER)) {
       return GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT;
     }
-    return GitConstants.SYNC_KNOWLEDGE_PRE_PUSH_HOOK_CONTENT;
+    if (!hook.includes(GitConstants.PRE_PUSH_ENV_GATE_MARKER)) {
+      return GitConstants.SYNC_KNOWLEDGE_PRE_PUSH_HOOK_CONTENT;
+    }
+    return GitConstants.ENV_GATE_PRE_PUSH_HOOK_CONTENT;
   }
 
   /**
@@ -395,6 +403,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
         let remainder = recheckHook;
         for (const content of [
           GitConstants.PRE_PUSH_HOOK_CONTENT,
+          GitConstants.ENV_GATE_PRE_PUSH_HOOK_CONTENT,
           GitConstants.SYNC_KNOWLEDGE_PRE_PUSH_HOOK_CONTENT,
           GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT,
         ]) {

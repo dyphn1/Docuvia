@@ -63,6 +63,14 @@ export const MemoryKeys = {
   /** The already-parsed `{title, content, nodeType, confidence}[]` payload for
    *  `--agent-authored` mode -- boundary-validated by the CLI layer (zod) before this is set. */
   AGENT_AUTHORED_DECISIONS: "agentAuthoredDecisions",
+  /** `docuvia hooks enable/disable <hookName>` -- the `HookName` being toggled. */
+  HOOK_NAME: "hookName",
+  /** `docuvia hooks enable/disable <hookName>` -- the boolean to persist for `HOOK_NAME`. */
+  HOOK_ENABLED: "hookEnabled",
+  /** `analyze --flush-staged-l3` (issue #42, Decision 2's two-stage stage-and-flush design §8.2)
+   *  -- when set, `docuviaApi.analyze()` dispatches `AnalyzeWorkflow`'s flush mode instead of any
+   *  of `targetPath`/`agentAuthoredDecisions`/`escalateToLsp` (none of which this mode sets). */
+  FLUSH_STAGED_L3: "flushStagedL3",
 } as const;
 
 export type MemoryKey = (typeof MemoryKeys)[keyof typeof MemoryKeys];

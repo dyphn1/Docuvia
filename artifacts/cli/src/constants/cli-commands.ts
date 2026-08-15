@@ -22,6 +22,7 @@ export const CLI_COMMANDS = {
   SYNC_KNOWLEDGE: "sync-knowledge",
   UNINSTALL: "uninstall",
   DOCTOR: "doctor",
+  HOOKS: "hooks",
 } as const;
 
 export type CliCommand = (typeof CLI_COMMANDS)[keyof typeof CLI_COMMANDS];
@@ -50,6 +51,8 @@ export const CLI_COMMAND_DESCRIPTIONS: Record<CliCommand, string> = {
     "Reconcile the hidden knowledge branch with the remote (fetch/merge/push)",
   [CLI_COMMANDS.UNINSTALL]: "Uninstall Docuvia2 integrations and local DB",
   [CLI_COMMANDS.DOCTOR]: "Run diagnostic checks on Docuvia2 setup",
+  [CLI_COMMANDS.HOOKS]:
+    "List/enable/disable Docuvia's automation hooks (context-injection, commit-l3-write, tier-b-c-prepush)",
 };
 
 /**
@@ -115,6 +118,9 @@ export const CLI_COMMAND_FLAGS: Record<CliCommand, string[]> = {
     CLI_FLAGS.SKIP_LLM,
     CLI_FLAGS.FIX,
   ],
+  // `list`/`enable`/`disable`/`check` and the hook name are positionals (mirrors how
+  // `impact`/`publish`/`review` already treat position(0) as their one argument) -- no flags.
+  [CLI_COMMANDS.HOOKS]: [],
 };
 
 export function getUsageText(): string {

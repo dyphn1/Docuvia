@@ -9,6 +9,16 @@ export {
   DOCUVIA_HOOK_JS_FILENAME,
   DOCUVIA_HOOK_CJS_FILENAME,
 } from "@workspace/core";
+// `context-injection`'s enforcement gate (issue #42 §7.5): this file is itself normal
+// TypeScript, so it can import the shared literal values and interpolate them into the
+// generated `.js` template text at compile time -- the *generated* raw hook script on disk just
+// contains the resolved strings, no runtime import (a standalone `.js` hook file has no
+// `@workspace/contracts` to import from).
+import {
+  HookNames,
+  HOOKS_CONFIG_FILE_NAME,
+  DOCUVIA_DIR_NAME,
+} from "@workspace/contracts";
 
 export const GITHUB_DIR = ".github";
 export const CLAUDE_DIR = ".claude";
@@ -88,11 +98,27 @@ function readInput() {
   }
 }
 
+// \`docuvia hooks disable ${HookNames.CONTEXT_INJECTION}\`'s enforcement (issue #42 §7.5) -- a
+// plain synchronous read, no subprocess: this hook fires on every Grep/Glob/Bash/Read, so a
+// second \`npx docuvia ...\` spawn per call would be a real, continuous latency cost, not a
+// one-off. Missing/unparseable config -> enabled (fail open, matches the always-on behavior this
+// toggle is retrofitted onto).
+function isEnabled() {
+  try {
+    const config = JSON.parse(
+      require('fs').readFileSync('${DOCUVIA_DIR_NAME}/${HOOKS_CONFIG_FILE_NAME}', 'utf-8'),
+    );
+    return config['${HookNames.CONTEXT_INJECTION}'] !== false;
+  } catch {
+    return true;
+  }
+}
+
 const input = readInput();
 // Use the query arguments as the target to retrieve context
 const target = input.args ? input.args.query || input.args.pattern : null;
 
-if (target) {
+if (target && isEnabled()) {
   try {
     // Call the local Docuvia CLI to retrieve exact L2/L3 structural context
     const context = execSync(\`npx --no-install docuvia query "\${target}" --format=prompt\`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'ignore'] });

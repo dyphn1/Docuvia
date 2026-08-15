@@ -57,6 +57,12 @@ export const MemoryKeys = {
   GIT_NETWORK_TIMEOUT_MS: "gitNetworkTimeoutMs",
   /** Manual force override. */
   FORCE: "force",
+  /** `analyze <targetPath> --agent-authored` -- when set, `docuviaApi.analyze()` skips the LLM
+   *  branch entirely and persists `AGENT_AUTHORED_DECISIONS` verbatim (issue #42). */
+  AGENT_AUTHORED: "agentAuthored",
+  /** The already-parsed `{title, content, nodeType, confidence}[]` payload for
+   *  `--agent-authored` mode -- boundary-validated by the CLI layer (zod) before this is set. */
+  AGENT_AUTHORED_DECISIONS: "agentAuthoredDecisions",
 } as const;
 
 export type MemoryKey = (typeof MemoryKeys)[keyof typeof MemoryKeys];

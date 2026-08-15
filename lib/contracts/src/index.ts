@@ -102,6 +102,7 @@ export type {
   ValidityStatus,
   AstCallSiteRow,
   ICallSitesRepo,
+  L3DecisionSource,
 } from "./interfaces/graph-store.interfaces.js";
 export {
   ProjectStatuses,
@@ -109,6 +110,7 @@ export {
   LinkTypes,
   L3NodeTypes,
   ValidityStatuses,
+  L3DecisionSources,
 } from "./interfaces/graph-store.interfaces.js";
 export type {
   HydrationResult,

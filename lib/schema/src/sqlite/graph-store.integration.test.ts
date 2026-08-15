@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { L3DecisionSources } from "@workspace/contracts";
 import { GraphStore } from "./graph-store.js";
 
 /** Test-only fixture helper: `l3_nodes` has no repo/insert method yet (deliberately out of scope
@@ -1058,6 +1059,106 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(JSON.parse(row!.source_commits)).toEqual(["commit-1", "commit-2"]);
     // Frozen at the first insert -- unaffected by the second call's occurrence-bump append.
     expect(JSON.parse(row!.initial_source_commits!)).toEqual(["commit-1"]);
+  });
+
+  it("l3 repo: upsertDecision({ source: AGENT_AUTHORED }) inserts a row with source = 'agent-authored'", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+
+    const result = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      title: "Agent-authored decision",
+      content: "Written verbatim by an AI coding agent, no LLM call.",
+      nodeType: "decision",
+      confidence: 0.9,
+      commitSha: "abc123",
+      extractionModel: null,
+      sourceFiles: ["src/a.ts"],
+      source: L3DecisionSources.AGENT_AUTHORED,
+    });
+
+    const row = store.l3.getById(result.id);
+    expect(row?.source).toBe("agent-authored");
+  });
+
+  it("l3 repo: upsertDecision() without a source still inserts source = 'analyze' (default regression guard)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+
+    const result = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      title: "Default-source decision",
+      content: "No source passed by the caller.",
+      nodeType: "decision",
+      confidence: 0.9,
+      commitSha: "abc123",
+      extractionModel: null,
+      sourceFiles: ["src/a.ts"],
+    });
+
+    const row = store.l3.getById(result.id);
+    expect(row?.source).toBe("analyze");
+  });
+
+  it("l3 repo: upsertDecision() dedup path keeps the first writer's source, even when a later call for the same content_hash passes a different source", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    const nodeId = store.graph.insertNode({
+      projectId: project.id,
+      name: "src/a.ts",
+      pathPatterns: ["src/a.ts"],
+      nodeKey: "src/a.ts",
+    });
+    const decision = {
+      title: "Uses async/await throughout",
+      content: "All I/O paths use async/await rather than raw promise chains.",
+      nodeType: "decision",
+      confidence: 0.9,
+      extractionModel: null,
+      sourceFiles: ["src/a.ts"],
+    };
+
+    const first = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      ...decision,
+      commitSha: "commit-1",
+      source: L3DecisionSources.ANALYZE,
+    });
+    const second = store.l3.upsertDecision({
+      projectId: project.id,
+      l2NodeId: nodeId,
+      ...decision,
+      commitSha: "commit-2",
+      source: L3DecisionSources.AGENT_AUTHORED,
+    });
+
+    expect(second.deduped).toBe(true);
+    expect(second.id).toBe(first.id);
+
+    const row = store.l3.getById(first.id);
+    expect(row?.occurrence_count).toBe(2);
+    expect(row?.source).toBe("analyze");
   });
 
   it("l3 repo: importCard() inserts a new row seeded from the card's fields, preserving createdAt and freezing both source_commits/initial_source_commits at the card's sourceCommits", () => {

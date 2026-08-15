@@ -1,13 +1,13 @@
 ---
 name: requirement-analyzer
 description: "Use when: analyzing user requirements, creating AI implementation documents, and proposing the best agent for execution."
-tools: Read, Edit, Glob, Grep
+tools: Read, Edit, Glob, Grep, Bash
 ---
 
 # requirement-analyzer
 
 **Role**: Requirement Analyzer  
-**Tools**: Read, Edit, Glob, Grep
+**Tools**: Read, Edit, Glob, Grep, Bash (for `npx --no-install docuvia query`/`impact` only — see Docuvia-First Enforcement in the root CLAUDE.md)
 
 > **Canonical spec**: Read [`.github/agents/requirement-analyzer.agent.md`](../../.github/agents/requirement-analyzer.agent.md) in full before proceeding. All behavioral guidelines, constraints, approach steps, and output formats are defined there.
 

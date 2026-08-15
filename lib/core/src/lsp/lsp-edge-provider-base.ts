@@ -894,36 +894,46 @@ export class BaseLspEdgeProvider implements IEdgeResolutionProvider {
       pinnedPaths: new Set(),
       usedNodeKeysByFile: new Map(),
     };
-    let foundAny = false;
-    for (let i = 0; i < Math.min(files.length, probeLimit); i++) {
-      const handle = await this.openAndGetSymbols(
-        client,
-        workspaceRoot,
-        files[i],
-        state,
-      );
-      const symbols = flattenCallSiteSymbols(
-        handle.symbols,
-        this.containmentKinds,
-      );
-      if (symbols.length === 0) continue;
-      foundAny = true;
-      const results = await Promise.all(
-        symbols.map(({ symbol }) =>
-          client.request<{ uri: string }[]>(
-            LspMethods.REFERENCES,
-            {
-              textDocument: { uri: handle.uri },
-              position: symbol.selectionRange.start,
-              context: { includeDeclaration: false },
-            },
-            this.requestTimeoutMs,
+    // This probe's `state` is throwaway -- discarded the moment this function returns. Every file
+    // it opens must get an explicit `didClose` before that happens, or the next poll (fresh
+    // `state`, same file paths) and the real batch's own `state` in `processAllFiles` both reopen
+    // the same URI without an intervening close -- an LSP protocol violation.
+    try {
+      let foundAny = false;
+      for (let i = 0; i < Math.min(files.length, probeLimit); i++) {
+        const handle = await this.openAndGetSymbols(
+          client,
+          workspaceRoot,
+          files[i],
+          state,
+        );
+        const symbols = flattenCallSiteSymbols(
+          handle.symbols,
+          this.containmentKinds,
+        );
+        if (symbols.length === 0) continue;
+        foundAny = true;
+        const results = await Promise.all(
+          symbols.map(({ symbol }) =>
+            client.request<{ uri: string }[]>(
+              LspMethods.REFERENCES,
+              {
+                textDocument: { uri: handle.uri },
+                position: symbol.selectionRange.start,
+                context: { includeDeclaration: false },
+              },
+              this.requestTimeoutMs,
+            ),
           ),
-        ),
-      );
-      if (results.some((r) => (r?.length ?? 0) > 0)) return true;
+        );
+        if (results.some((r) => (r?.length ?? 0) > 0)) return true;
+      }
+      return foundAny ? false : files.length <= probeLimit;
+    } finally {
+      for (const handle of [...state.openFileCache.values()]) {
+        this.closeOpenFile(client, handle, state.openFileCache);
+      }
     }
-    return foundAny ? false : files.length <= probeLimit;
   }
 
   private async initializeSession(

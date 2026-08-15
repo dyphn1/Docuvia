@@ -91,6 +91,23 @@ export const ANALYZE_MESSAGES = {
     `Tier C candidate permanently failed after ${failCount} attempt(s), evicted from queue (${kind}: ${target})`,
   TIER_C_SUMMARY: (processed: number, persisted: number) =>
     `Tier C drain complete: ${processed} candidate(s) processed, ${persisted} decision(s) persisted`,
+
+  /** `analyze --flush-staged-l3` (issue #42, Decision 2's two-stage stage-and-flush design §8.2). */
+  FLUSH_STAGED_L3_DISABLED:
+    "commit-l3-write is disabled -- skipping the staged-L3 flush",
+  FLUSH_STAGED_L3_EMPTY: "No staged L3 decisions to flush.",
+  FLUSH_STAGED_L3_SUMMARY: (flushed: number, stillPending: number) =>
+    `Flushed ${flushed} staged L3 decision(s)` +
+    (stillPending > 0
+      ? `, ${stillPending} left staged for a future commit.`
+      : "."),
+  /** A staged entry's `filePath` was deleted by the very commit that would have flushed it --
+   *  nothing left to resolve an anchor `l2NodeId` from. Dropped rather than retried forever
+   *  (a deleted file's node_key never resolves again). */
+  FLUSH_STAGED_L3_FILE_DELETED: (filePath: string) =>
+    `Staged L3 decision(s) for ${filePath} dropped -- the file was deleted by this commit`,
+  FLUSH_STAGED_L3_ERROR: (message: string) =>
+    `Flush of staged L3 decisions failed: ${message} -- the staging file was left untouched for the next flush to retry`,
 } as const;
 
 /** Structured-log event names appended to `analyze.log` by the `analyze` workflow. The old
@@ -161,6 +178,10 @@ export const ANALYZE_EVENTS = {
    *  been removed from the queue. */
   TIER_C_ITEM_EVICTED: "analyze.tierC.item_evicted",
   TIER_C_SUMMARY: "analyze.tierC.summary",
+
+  /** `analyze --flush-staged-l3` (issue #42 §8.2). */
+  FLUSH_STAGED_L3_DISABLED: "analyze.flushStagedL3.disabled",
+  FLUSH_STAGED_L3_SUMMARY: "analyze.flushStagedL3.summary",
 } as const;
 
 /**

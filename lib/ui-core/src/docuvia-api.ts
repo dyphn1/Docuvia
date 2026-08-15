@@ -52,6 +52,7 @@ import {
   setHookEnabled as setHookEnabledWorkflow,
 } from "./workflows/hooks/hooks-workflow.js";
 import type { HookName, HooksConfig } from "@workspace/contracts";
+import { stagePendingDecisions } from "./workflows/analyze/pending-l3-decisions-store.js";
 
 function requireMemory<T>(scopeId: string, key: MemoryKey): T {
   const value = docuviaMemory.get<T>(scopeId, key);
@@ -150,6 +151,18 @@ export const docuviaApi = {
       scopeId,
       MemoryKeys.WORKSPACE_ROOT,
     );
+    // `analyze --flush-staged-l3` (issue #42 §8.2): checked first -- sets neither `targetPath`
+    // nor `escalateToLsp`, so there's no ambiguity with the branches below.
+    const flushStagedL3 = docuviaMemory.get<boolean>(
+      scopeId,
+      MemoryKeys.FLUSH_STAGED_L3,
+    );
+    if (flushStagedL3) {
+      return new AnalyzeWorkflow(workspaceRoot, logger, {
+        flushStagedL3: true,
+      }).execute();
+    }
+
     const targetPath = docuviaMemory.get<string>(
       scopeId,
       MemoryKeys.TARGET_PATH,
@@ -235,6 +248,29 @@ export const docuviaApi = {
     }
 
     return new AnalyzeWorkflow(workspaceRoot, logger).execute();
+  },
+
+  /** `analyze <targetPath> --agent-authored --stage` (issue #42 §8.1) -- appends
+   *  `AGENT_AUTHORED_DECISIONS` into `.docuvia/pending-l3-decisions.json` instead of writing
+   *  straight to `l3_nodes`; fast, local, no DB open, no LLM call. A sibling entry point to
+   *  `analyze()`, not a mode of it -- staging never touches `AnalyzeWorkflow.execute()`'s
+   *  dispatch chain at all (mirrors `checkTierBGate`'s precedent of a small capability with its
+   *  own dedicated `docuviaApi` method rather than being folded into `analyze`'s memory-key
+   *  dispatch). */
+  async stageAgentAuthoredDecisions(
+    scopeId: string,
+    logger: ILogger,
+  ): Promise<{ staged: number }> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    const targetPath = requireMemory<string>(scopeId, MemoryKeys.TARGET_PATH);
+    const decisions = requireMemory<ExtractedDecision[]>(
+      scopeId,
+      MemoryKeys.AGENT_AUTHORED_DECISIONS,
+    );
+    return stagePendingDecisions(workspaceRoot, targetPath, decisions, logger);
   },
 
   async review(scopeId: string, logger: ILogger): Promise<ReviewResult> {

@@ -41,6 +41,7 @@ import {
 } from "./decision-parsing.js";
 import { persistDecisions } from "./persist-l3-decisions.js";
 import { runAgentAuthoredWrite } from "./run-agent-authored-write.js";
+import { runFlushStagedL3 } from "./run-flush-staged-l3.js";
 
 // Re-exported for the existing `stripMarkdownCodeFence()` test suite in
 // `analyze-workflow.unit.test.ts` -- the implementation itself now lives in
@@ -87,10 +88,24 @@ export class AnalyzeWorkflow {
       tierCWallClockMs?: number;
       tierCItemCap?: number;
       tierCLoadThreshold?: number;
+      /** `analyze --flush-staged-l3` (issue #42, Decision 2's two-stage stage-and-flush design
+       *  §8.2) -- the post-commit hook's drain of `.docuvia/pending-l3-decisions.json`. Sets none
+       *  of `targetPath`/`agentAuthoredDecisions`/`escalateToLsp`, so it's checked first in
+       *  `execute()`'s dispatch: the most specific/least ambiguous mode, no risk of colliding
+       *  with any of the others' own dispatch conditions. */
+      flushStagedL3?: boolean;
     },
   ) {}
 
   public async execute(): Promise<AnalyzeResult> {
+    // Checked first -- sets none of targetPath/agentAuthoredDecisions/escalateToLsp, so there's
+    // no ambiguity with the branches below (see the option's own doc comment above).
+    if (this.options?.flushStagedL3) {
+      return runFlushStagedL3({
+        workspaceRoot: this.workspaceRoot,
+        logger: this.logger,
+      });
+    }
     // Checked before `targetPath` -- `--agent-authored` mode sets both together (see
     // `agentAuthoredDecisions`'s doc comment above), and the agent-authored write path must win
     // over the LLM-extraction path in that case.

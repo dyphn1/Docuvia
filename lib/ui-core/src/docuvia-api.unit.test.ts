@@ -69,4 +69,17 @@ describe("docuviaApi.analyze() -- agent-authored pre-LLM-branch dispatch (issue 
     ).rejects.toThrow();
     expect(AnalyzeWorkflowMock).not.toHaveBeenCalled();
   });
+
+  it("constructs AnalyzeWorkflow with { flushStagedL3: true } and checks it before TARGET_PATH/AGENT_AUTHORED_DECISIONS/ESCALATE_TO_LSP (issue #42 §8.2)", async () => {
+    const { docuviaApi } = await import("./docuvia-api.js");
+    docuviaMemory.set(scopeId, MemoryKeys.FLUSH_STAGED_L3, true);
+
+    await docuviaApi.analyze(scopeId, createMockLogger());
+
+    expect(AnalyzeWorkflowMock).toHaveBeenCalledWith(
+      "/workspace",
+      expect.anything(),
+      { flushStagedL3: true },
+    );
+  });
 });

@@ -1608,6 +1608,46 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
       decisions: agentAuthoredDecisions,
     });
   });
+
+  it("dispatches to the flush-staged-l3 path first -- before agentAuthoredDecisions/targetPath/escalateToLsp -- when flushStagedL3 is set (issue #42 -- the dispatch-order regression that would silently break the post-commit flush)", async () => {
+    // commit-l3-write disabled -> runFlushStagedL3's own fast, no-docuviaFactory-touch no-op path
+    // -- isolates the dispatch decision under test the same way the agent-authored test above
+    // isolates its own dispatch decision (a full flush's heavier implementation is covered by
+    // run-flush-staged-l3.unit.test.ts). Deliberately registers nothing but TOKENS.LlmClient: if
+    // execute() ever dispatched to the wrong branch instead (targetPath/agentAuthoredDecisions or
+    // escalateToLsp, both set below purely to prove dispatch order -- never true together in a
+    // real invocation), that branch would try to resolve an unregistered token and throw loudly,
+    // rather than this test silently passing regardless of dispatch order.
+    const dir = path.join(tmpDir, ".docuvia");
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(
+      path.join(dir, "hooks-config.json"),
+      JSON.stringify({ "commit-l3-write": false }),
+    );
+    const llmClientBuilderProvider = vi.fn(() => () => ({}) as ILlmClient);
+    docuviaFactory.register(TOKENS.LlmClient, llmClientBuilderProvider);
+    docuviaFactory.lock();
+
+    const result = await new AnalyzeWorkflow(tmpDir, createMockLogger(), {
+      flushStagedL3: true,
+      targetPath: "sample.ts",
+      agentAuthoredDecisions: [
+        {
+          title: "Should never be reached",
+          nodeType: "decision" as const,
+          content: "content",
+          confidence: 0.5,
+        },
+      ],
+      escalateToLsp: true,
+    }).execute();
+
+    expect(llmClientBuilderProvider).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      kind: "flushStagedL3",
+      skippedDisabled: true,
+    });
+  });
 });
 
 describe("stripMarkdownCodeFence()", () => {

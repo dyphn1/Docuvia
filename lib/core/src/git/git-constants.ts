@@ -21,6 +21,13 @@ export const GitConstants = {
    * replaces in-place on an existing installation.
    */
   POST_COMMIT_HOOK_MARKER: "docuvia analyze",
+  /**
+   * `docuvia hooks disable commit-l3-write`'s enforcement (issue #42 §8.3) -- present only in
+   * the current `POST_COMMIT_HOOK_CONTENT`, absent from `PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT`/
+   * `LEGACY_POST_COMMIT_HOOK_CONTENT` -- the marker `installPostCommitHook` uses to tell a hook
+   * that already runs the `analyze --flush-staged-l3` step from one still missing it.
+   */
+  POST_COMMIT_FLUSH_L3_MARKER: "docuvia analyze --flush-staged-l3",
   /** Byte-identical header line shared by `POST_COMMIT_HOOK_CONTENT`/
    *  `LEGACY_POST_COMMIT_HOOK_CONTENT` — the anchor `doctor --fix`'s marker-bounded repair (§10d,
    *  decision 1f) uses to strip every Docuvia-authored block regardless of minor hand-edits that
@@ -32,8 +39,30 @@ export const GitConstants = {
    * `#!/bin/bash` shebang entirely, so any bash-specific syntax silently breaks (or behaves
    * differently) once a repo's `core.hooksPath` redirects Docuvia's hook there (found via
    * dogfooding, 2026-07-21). The portable form works identically under bash and POSIX `sh`.
+   *
+   * Second backgrounded line (issue #42 §8.3): flushes any staged agent-authored L3 decisions for
+   * this commit, self-gated internally on the `commit-l3-write` toggle (see
+   * `run-flush-staged-l3.ts`) -- no shell-level `docuvia hooks check` composition here, unlike
+   * `PRE_PUSH_HOOK_CONTENT`'s synchronous `&&` chain, since this line is itself backgrounded
+   * (`&`) and has no exit code for a `&&` composition to react to.
    */
   POST_COMMIT_HOOK_CONTENT:
+    `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n` +
+    `# Non-intrusively extracts AST deltas in the background\n` +
+    `if command -v npx > /dev/null 2>&1; then\n` +
+    `  # Fire and forget (do not block commit)\n` +
+    `  npx --no-install docuvia analyze > /dev/null 2>&1 &\n` +
+    `  # Flush any staged agent-authored L3 decisions for this commit (roadmap items 32-34, issue #42).\n` +
+    `  # Self-gated internally on the commit-l3-write toggle -- see run-flush-staged-l3.ts.\n` +
+    `  npx --no-install docuvia analyze --flush-staged-l3 > /dev/null 2>&1 &\n` +
+    `fi\n`,
+  /**
+   * The pre-issue-#42 hook's exact content (single `docuvia analyze &` line, before the
+   * `--flush-staged-l3` line was added), retained verbatim so `installPostCommitHook` can
+   * recognize a hook installed before that step was composed in and replace it in place -- same
+   * technique as the `LEGACY_POST_COMMIT_HOOK_CONTENT` upgrade below.
+   */
+  PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT:
     `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n` +
     `# Non-intrusively extracts AST deltas in the background\n` +
     `if command -v npx > /dev/null 2>&1; then\n` +
@@ -364,6 +393,8 @@ export const GitMessages = {
   INSTALLED_POST_COMMIT_HOOK: "Installed post-commit hook",
   UPGRADED_LEGACY_POST_COMMIT_HOOK:
     "Upgraded legacy post-commit hook (docuvia snapshot -> docuvia analyze)",
+  UPGRADED_POST_COMMIT_HOOK_FLUSH_L3:
+    "Upgraded post-commit hook (added flush-staged-l3 step, issue #42)",
   PRE_PUSH_HOOK_ALREADY_INSTALLED: "Pre-push hook already installed",
   CONCURRENT_PRE_PUSH_HOOK_INSTALL_SKIPPED:
     "Pre-push hook was installed by a concurrent process; skipping duplicate append",

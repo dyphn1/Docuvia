@@ -95,9 +95,13 @@ describe("Command: docuvia doctor --fix repairs a duplicate-block post-commit ho
     expect(repairedContent).not.toContain(
       GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
     );
+    // Exactly one canonical block present -- POST_COMMIT_HOOK_MARKER ("docuvia analyze") occurs
+    // twice within that one block since issue #42 (once on its own line, once as a substring of
+    // the "docuvia analyze --flush-staged-l3" line), so 2 total occurrences (not 1) confirms a
+    // single, non-duplicated block, not two.
     expect(
       repairedContent.split(GitConstants.POST_COMMIT_HOOK_MARKER).length - 1,
-    ).toBe(1);
+    ).toBe(2);
     expect((repairedContent.match(/^#!.*$/gm) ?? []).length).toBe(1);
     expect(repairedContent).toContain('echo "before"');
     expect(repairedContent).toContain('echo "after"');

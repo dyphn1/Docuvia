@@ -11,7 +11,11 @@ import { UI_MESSAGES } from "../../../src/constants/ui-messages.js";
 import { readStdin } from "../../../src/utils/read-stdin.js";
 
 vi.mock("@workspace/ui-core", () => ({
-  docuviaApi: { analyze: vi.fn(), checkTierBGate: vi.fn() },
+  docuviaApi: {
+    analyze: vi.fn(),
+    checkTierBGate: vi.fn(),
+    stageAgentAuthoredDecisions: vi.fn(),
+  },
 }));
 
 vi.mock("../../../src/utils/read-stdin.js", () => ({
@@ -52,6 +56,9 @@ vi.mock("../../../src/ui/wizard.js", () => ({
 }));
 
 const mockAnalyze = vi.mocked(docuviaApi.analyze);
+const mockStageAgentAuthoredDecisions = vi.mocked(
+  docuviaApi.stageAgentAuthoredDecisions,
+);
 const mockReadStdin = vi.mocked(readStdin);
 
 const ENV_KEYS = [
@@ -71,6 +78,7 @@ describe("analyzeCommand", () => {
       delete process.env[key];
     }
     mockAnalyze.mockReset();
+    mockStageAgentAuthoredDecisions.mockReset();
     mockReadStdin.mockReset();
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
@@ -938,6 +946,151 @@ describe("analyzeCommand", () => {
         [],
       );
       expect(process.exitCode).not.toBe(1);
+    });
+  });
+
+  describe("--agent-authored --stage (issue #42, Decision 2's two-stage stage-and-flush design §8.1)", () => {
+    it("calls docuviaApi.stageAgentAuthoredDecisions instead of docuviaApi.analyze, with the same memory setup", async () => {
+      mockReadStdin.mockResolvedValue(
+        JSON.stringify({
+          decisions: [
+            {
+              title: "Staged decision",
+              content: "content",
+              nodeType: "decision",
+              confidence: 0.7,
+            },
+          ],
+        }),
+      );
+      mockStageAgentAuthoredDecisions.mockResolvedValue({ staged: 1 });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand("src/foo.ts", "/workspace", {
+        agentAuthored: true,
+        stage: true,
+      });
+
+      expect(mockStageAgentAuthoredDecisions).toHaveBeenCalled();
+      expect(mockAnalyze).not.toHaveBeenCalled();
+      const scopeId = mockStageAgentAuthoredDecisions.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "targetPath", "src/foo.ts");
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "agentAuthoredDecisions", [
+        {
+          title: "Staged decision",
+          content: "content",
+          nodeType: "decision",
+          confidence: 0.7,
+        },
+      ]);
+      expect(ui.info).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_STAGE_SUMMARY(1),
+      );
+    });
+
+    it("still hard-fails on a missing target path, before ever reading stdin", async () => {
+      await analyzeCommand(undefined, "/workspace", {
+        agentAuthored: true,
+        stage: true,
+      });
+
+      expect(mockReadStdin).not.toHaveBeenCalled();
+      expect(mockStageAgentAuthoredDecisions).not.toHaveBeenCalled();
+      expect(ui.error).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_TARGET,
+      );
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("still hard-fails on a schema-violating payload, before ever calling stageAgentAuthoredDecisions", async () => {
+      mockReadStdin.mockResolvedValue(
+        JSON.stringify({
+          decisions: [{ title: "t", content: "c", nodeType: "bogus" }],
+        }),
+      );
+
+      await analyzeCommand("src/foo.ts", "/workspace", {
+        agentAuthored: true,
+        stage: true,
+      });
+
+      expect(mockStageAgentAuthoredDecisions).not.toHaveBeenCalled();
+      expect(process.exitCode).toBe(1);
+    });
+  });
+
+  describe("--flush-staged-l3 (issue #42 §8.2)", () => {
+    it("dispatches before --agent-authored/targetPath -- no targetPath required, and any given is ignored", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "flushStagedL3",
+        skippedDisabled: false,
+        flushed: 2,
+        deduped: 1,
+        stillPending: 0,
+        commitSha: "deadbeef",
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand(
+        "some/path/that/should/be/ignored.ts",
+        "/workspace",
+        {
+          flushStagedL3: true,
+        },
+      );
+
+      expect(mockAnalyze).toHaveBeenCalled();
+      expect(mockReadStdin).not.toHaveBeenCalled();
+      const scopeId = mockAnalyze.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "flushStagedL3", true);
+      expect(setSpy).not.toHaveBeenCalledWith(
+        scopeId,
+        "targetPath",
+        expect.anything(),
+      );
+      expect(spinnerSucceed).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_SUCCESS,
+      );
+      expect(ui.info).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_SUMMARY(2, 1, 0),
+      );
+    });
+
+    it("prints a distinct disabled-toggle summary (not a generic 0-flushed line) when commit-l3-write is off", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "flushStagedL3",
+        skippedDisabled: true,
+        flushed: 0,
+        deduped: 0,
+        stillPending: 0,
+        commitSha: null,
+      });
+
+      await analyzeCommand(undefined, "/workspace", { flushStagedL3: true });
+
+      expect(spinnerSucceed).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_DISABLED_SUCCESS,
+      );
+    });
+
+    it("wins over --agent-authored when both are somehow set (dispatch-order regression guard)", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "flushStagedL3",
+        skippedDisabled: false,
+        flushed: 0,
+        deduped: 0,
+        stillPending: 0,
+        commitSha: null,
+      });
+
+      await analyzeCommand("src/foo.ts", "/workspace", {
+        flushStagedL3: true,
+        agentAuthored: true,
+      });
+
+      expect(mockAnalyze).toHaveBeenCalled();
+      expect(mockReadStdin).not.toHaveBeenCalled();
+      expect(mockStageAgentAuthoredDecisions).not.toHaveBeenCalled();
     });
   });
 });

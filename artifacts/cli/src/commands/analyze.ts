@@ -29,6 +29,7 @@ const ANALYZE_RESULT_KIND = {
   AUTO_DELTA_NOOP: "autoDeltaNoop",
   DECISION_EXTRACTION: "decisionExtraction",
   TIER_B_BATCH: "tierBBatch",
+  FLUSH_STAGED_L3: "flushStagedL3",
 } as const;
 
 type AnalyzeResult = Awaited<ReturnType<typeof docuviaApi.analyze>>;
@@ -86,6 +87,14 @@ export interface AnalyzeCommandOptions {
   /** `--decisions-file=<path>` -- reads the `--agent-authored` payload from a file instead of
    *  stdin. Ignored when `agentAuthored` is not also set. */
   decisionsFile?: string;
+  /** `--stage` (issue #42, Decision 2's two-stage stage-and-flush design §8.1) -- appends the
+   *  payload into `.docuvia/pending-l3-decisions.json` instead of writing straight to
+   *  `l3_nodes`. Ignored when `agentAuthored` is not also set. */
+  stage?: boolean;
+  /** `--flush-staged-l3` (issue #42 §8.2) -- a fourth, mutually-exclusive `analyze` mode: no
+   *  `targetPath` required (and ignored if given -- this flag wins). Checked before every other
+   *  dispatch. */
+  flushStagedL3?: boolean;
 }
 
 interface AnalyzeLlmConfig {
@@ -342,6 +351,31 @@ function printTierCSummary(
   );
 }
 
+/** `analyze --flush-staged-l3`'s result (issue #42 §8.2) -- `skippedDisabled` (the
+ *  `commit-l3-write` toggle is off) prints a distinct, still-successful message rather than a
+ *  generic "0 flushed" summary, so a human/agent manually running this mode can tell "nothing
+ *  staged" apart from "disabled, never even looked." */
+function printFlushStagedL3Result(
+  result: Extract<
+    AnalyzeResult,
+    { kind: typeof ANALYZE_RESULT_KIND.FLUSH_STAGED_L3 }
+  >,
+  spinner: AnalyzeSpinner,
+): void {
+  if (result.skippedDisabled) {
+    spinner.succeed(UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_DISABLED_SUCCESS);
+    return;
+  }
+  spinner.succeed(UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_SUCCESS);
+  ui.info(
+    UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_SUMMARY(
+      result.flushed,
+      result.deduped,
+      result.stillPending,
+    ),
+  );
+}
+
 function printAnalyzeResult(
   result: AnalyzeResult,
   spinner: AnalyzeSpinner,
@@ -367,29 +401,39 @@ function printAnalyzeResult(
     case ANALYZE_RESULT_KIND.TIER_B_BATCH:
       printTierBBatchResult(result, spinner, fallbackAst);
       break;
+    case ANALYZE_RESULT_KIND.FLUSH_STAGED_L3:
+      printFlushStagedL3Result(result, spinner);
+      break;
   }
 }
 
 function startAnalyzeSpinner(
   targetPath: string | undefined,
   escalateToLsp: boolean,
+  stage = false,
 ): AnalyzeSpinner {
   ui.header(
-    targetPath
-      ? UI_MESSAGES.ANALYZE_FOCUSED_HEADER
-      : escalateToLsp
-        ? UI_MESSAGES.ANALYZE_TIER_B_HEADER
-        : UI_MESSAGES.ANALYZE_HEADER,
+    stage
+      ? UI_MESSAGES.ANALYZE_STAGE_HEADER
+      : targetPath
+        ? UI_MESSAGES.ANALYZE_FOCUSED_HEADER
+        : escalateToLsp
+          ? UI_MESSAGES.ANALYZE_TIER_B_HEADER
+          : UI_MESSAGES.ANALYZE_HEADER,
   );
   return ui
     .spinner(
-      targetPath
-        ? UI_MESSAGES.ANALYZE_FOCUSED_START +
+      stage
+        ? UI_MESSAGES.ANALYZE_STAGE_START +
             targetPath +
             OUTPUT_FORMAT_MARKERS.ELLIPSIS
-        : escalateToLsp
-          ? UI_MESSAGES.ANALYZE_TIER_B_START
-          : UI_MESSAGES.ANALYZE_START,
+        : targetPath
+          ? UI_MESSAGES.ANALYZE_FOCUSED_START +
+            targetPath +
+            OUTPUT_FORMAT_MARKERS.ELLIPSIS
+          : escalateToLsp
+            ? UI_MESSAGES.ANALYZE_TIER_B_START
+            : UI_MESSAGES.ANALYZE_START,
     )
     .start();
 }
@@ -596,6 +640,11 @@ async function confirmTierBGateOrAbort(
  * `MemoryKeys.AGENT_AUTHORED`/`MemoryKeys.AGENT_AUTHORED_DECISIONS` directly. Reuses
  * `printAnalyzeResult`/`handleAnalyzeError` unchanged -- agent-authored mode returns the exact
  * same `DECISION_EXTRACTION` result shape the LLM path does (§5.4's "free win").
+ *
+ * `options.stage` (issue #42, Decision 2's two-stage stage-and-flush design §8.1) branches to
+ * `docuviaApi.stageAgentAuthoredDecisions` instead of `docuviaApi.analyze` -- same memory setup,
+ * different API entry point, since staging never touches `l3_nodes`/`AnalyzeWorkflow.execute()`'s
+ * dispatch chain at all.
  */
 async function runAgentAuthoredAnalyze(
   targetPath: string,
@@ -620,7 +669,7 @@ async function runAgentAuthoredAnalyze(
     return;
   }
 
-  const spinner = startAnalyzeSpinner(targetPath, false);
+  const spinner = startAnalyzeSpinner(targetPath, false, options.stage);
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
   logger.onLog((event) => {
@@ -638,10 +687,50 @@ async function runAgentAuthoredAnalyze(
   );
 
   try {
+    if (options.stage) {
+      const staged = await docuviaApi.stageAgentAuthoredDecisions(
+        scopeId,
+        logger,
+      );
+      spinner.succeed(UI_MESSAGES.ANALYZE_STAGE_SUCCESS);
+      ui.info(UI_MESSAGES.ANALYZE_STAGE_SUMMARY(staged.staged));
+    } else {
+      const result = await docuviaApi.analyze(scopeId, logger);
+      printAnalyzeResult(result, spinner, false);
+    }
+  } catch (error: unknown) {
+    handleAnalyzeError(error, targetPath, false, spinner);
+  } finally {
+    docuviaMemory.deleteScope(scopeId);
+  }
+}
+
+/**
+ * `docuvia analyze --flush-staged-l3`'s own run (issue #42 §8.2) -- no `targetPath` required.
+ * Mirrors `runAgentAuthoredAnalyze`'s shape (bypasses `setupAnalyzeMemory()`, sets only what this
+ * mode needs) and reuses `printAnalyzeResult`/`handleAnalyzeError` unchanged, since
+ * `AnalyzeWorkflow.execute()`'s flush branch returns a real `AnalyzeResult` (the
+ * `FLUSH_STAGED_L3` kind, §5.4-style "free win" the same way agent-authored mode reuses
+ * `DECISION_EXTRACTION`).
+ */
+async function runFlushStagedL3Analyze(cwd: string): Promise<void> {
+  ui.header(UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_HEADER);
+  const spinner = ui.spinner(UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_START).start();
+  const scopeId = crypto.randomUUID();
+  const logger = createPinoBackedLogger();
+  logger.onLog((event) => {
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
+  });
+
+  docuviaMemory.createScope(scopeId);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.FLUSH_STAGED_L3, true);
+
+  try {
     const result = await docuviaApi.analyze(scopeId, logger);
     printAnalyzeResult(result, spinner, false);
   } catch (error: unknown) {
-    handleAnalyzeError(error, targetPath, false, spinner);
+    handleAnalyzeError(error, undefined, false, spinner);
   } finally {
     docuviaMemory.deleteScope(scopeId);
   }
@@ -674,8 +763,32 @@ async function dispatchAgentAuthored(
 }
 
 /**
- * Thin caller of `docuviaApi.analyze()` — four modes (mutually exclusive; `targetPath` wins if
- * somehow more than one of these are given):
+ * `analyzeCommand()`'s `--flush-staged-l3` dispatch (issue #42 §8.2) -- checked before every
+ * other mode (`--agent-authored`, then the standard auto/LLM/Tier-B dispatch): this flag wins
+ * outright and requires no `targetPath` (any positional given alongside it is ignored, mirroring
+ * `--decisions-file`'s "ignored, not an error" precedent for a combination that doesn't make
+ * sense). Checked ahead of `dispatchAgentAuthored` purely for symmetry -- the two flags are never
+ * combined in practice (`--flush-staged-l3` is the post-commit hook's own invocation, never
+ * paired with `--agent-authored`), so the relative order between them doesn't matter, but putting
+ * the mode with no external I/O prerequisites (no stdin/file read) first keeps this function's
+ * own reading order matching its most-specific-first rationale.
+ */
+async function dispatchFlushStagedL3(
+  cwd: string,
+  options: AnalyzeCommandOptions,
+): Promise<boolean> {
+  if (!options.flushStagedL3) return false;
+  await runFlushStagedL3Analyze(cwd);
+  return true;
+}
+
+/**
+ * Thin caller of `docuviaApi.analyze()` — five modes (mutually exclusive; `--flush-staged-l3`
+ * wins outright over everything else, then `targetPath` wins if somehow more than one of the
+ * remaining four are given):
+ * - `--flush-staged-l3` (issue #42 §8.2): the post-commit hook's drain of
+ *   `.docuvia/pending-l3-decisions.json` -- no `targetPath` required (any given is ignored). See
+ *   `runFlushStagedL3Analyze`. Checked first, ahead of every other dispatch.
  * - No `targetPath`, no `--escalate-to-lsp`: auto mode (PLAT-007 Tier A;
  *   phase1-decision-integration.md §6) — a sha fast-path no-op, full ingestion (empty graph), or
  *   delta ingestion (non-empty graph, `HEAD` moved), each reported with its own
@@ -683,6 +796,8 @@ async function dispatchAgentAuthored(
  * - `targetPath` + `--agent-authored`: a pure data write of an AI coding agent's own already-
  *   produced decisions (issue #42, roadmap items 32-34) — skips the LLM entirely; see
  *   `runAgentAuthoredAnalyze`. Checked before the plain `targetPath` (LLM) branch below.
+ *   `--agent-authored --stage` (issue #42 §8.1) is a variant of this same dispatch that appends
+ *   to the staging file instead of writing straight to `l3_nodes`.
  * - `targetPath` given (no `--agent-authored`): focused LLM decision extraction (mirrors old
  *   Docuvia's `runFocusedExtraction`/the old `extract` command). Requires
  *   `AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL` and a model
@@ -702,6 +817,7 @@ export async function analyzeCommand(
   cwd: string = process.cwd(),
   options: AnalyzeCommandOptions = {},
 ) {
+  if (await dispatchFlushStagedL3(cwd, options)) return;
   if (await dispatchAgentAuthored(targetPath, cwd, options)) return;
   await runStandardAnalyze(targetPath, cwd, options);
 }

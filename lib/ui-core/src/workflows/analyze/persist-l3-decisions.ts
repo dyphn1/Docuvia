@@ -36,6 +36,13 @@ export async function persistDecisions(deps: {
   /** `l3_nodes.source` to stamp on every newly-inserted row this call produces. */
   source: L3DecisionSource;
   extractionModel: string | null;
+  /** Explicit `commitSha` override -- when omitted (every caller before issue #42's flush step),
+   *  `upsertDecisions` resolves it itself via `git.getHeadSha()` (workspace HEAD at persist time),
+   *  unchanged from before. `run-flush-staged-l3.ts` is the one caller that must pass this
+   *  explicitly: it stamps the *exact* commit that triggered the flush (structurally the same
+   *  value as `HEAD` at that moment, but explicit here for clarity/testability rather than
+   *  implicit "whatever HEAD happens to be when the DB write executes"). */
+  commitSha?: string;
 }): Promise<{ persisted: number; deduped: number }> {
   const {
     workspaceRoot,
@@ -45,6 +52,7 @@ export async function persistDecisions(deps: {
     decisions,
     source,
     extractionModel,
+    commitSha,
   } = deps;
   if (decisions.length === 0) return { persisted: 0, deduped: 0 };
 
@@ -78,6 +86,7 @@ export async function persistDecisions(deps: {
       decisions,
       source,
       extractionModel,
+      commitSha,
     });
 
     await appendAnalyzeLogLine(workspaceRoot, {
@@ -123,6 +132,8 @@ async function upsertDecisions(deps: {
   decisions: ExtractedDecision[];
   source: L3DecisionSource;
   extractionModel: string | null;
+  /** See `persistDecisions`'s own doc comment on this field. */
+  commitSha?: string;
 }): Promise<{ persisted: number; deduped: number }> {
   const {
     workspaceRoot,
@@ -134,8 +145,12 @@ async function upsertDecisions(deps: {
     source,
     extractionModel,
   } = deps;
-  const git = docuviaFactory.resolve(TOKENS.GitProvider);
-  const commitSha = (await git.getHeadSha(workspaceRoot)) ?? null;
+  const resolvedCommitSha =
+    deps.commitSha ??
+    (await docuviaFactory
+      .resolve(TOKENS.GitProvider)
+      .getHeadSha(workspaceRoot)) ??
+    null;
   const sourceFiles = files.map((f) => toNodeKey(f.relativePath));
 
   let persisted = 0;
@@ -148,7 +163,7 @@ async function upsertDecisions(deps: {
       content: decision.content,
       nodeType: decision.nodeType,
       confidence: decision.confidence,
-      commitSha,
+      commitSha: resolvedCommitSha,
       extractionModel,
       sourceFiles,
       source,

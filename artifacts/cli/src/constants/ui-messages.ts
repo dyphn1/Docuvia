@@ -209,6 +209,32 @@ export const UI_MESSAGES = {
   ANALYZE_AGENT_AUTHORED_INVALID_SHAPE: (err: string) =>
     `--agent-authored payload does not match the expected shape: ${err}`,
 
+  // --stage (issue #42, Decision 2's two-stage stage-and-flush design §8.1) -- a variant of the
+  // --agent-authored dispatch above: appends to .docuvia/pending-l3-decisions.json instead of
+  // writing straight to l3_nodes.
+  ANALYZE_STAGE_HEADER: "Stage Decisions",
+  ANALYZE_STAGE_START: "Staging decisions from ",
+  ANALYZE_STAGE_SUCCESS: "Staged.",
+  ANALYZE_STAGE_SUMMARY: (staged: number) =>
+    `${staged} decision(s) staged -- flushed automatically on the next commit that touches this file.`,
+
+  // --flush-staged-l3 (issue #42 §8.2) -- the post-commit hook's drain of
+  // .docuvia/pending-l3-decisions.json.
+  ANALYZE_FLUSH_STAGED_L3_HEADER: "Flush Staged L3 Decisions",
+  ANALYZE_FLUSH_STAGED_L3_START: "Flushing staged L3 decisions...",
+  ANALYZE_FLUSH_STAGED_L3_SUCCESS: "Flush complete.",
+  ANALYZE_FLUSH_STAGED_L3_DISABLED_SUCCESS:
+    "commit-l3-write is disabled -- nothing flushed.",
+  ANALYZE_FLUSH_STAGED_L3_SUMMARY: (
+    flushed: number,
+    deduped: number,
+    stillPending: number,
+  ) =>
+    `${flushed} flushed, ${deduped} deduplicated` +
+    (stillPending > 0
+      ? `, ${stillPending} left staged for a future commit.`
+      : "."),
+
   // Review Command
   REVIEW_HEADER: "Review Changes",
   REVIEW_START: "Analyzing changes...",

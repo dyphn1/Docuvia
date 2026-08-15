@@ -140,14 +140,48 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     return { deleted: true };
   }
 
+  /** True once the hook carries both the Tier A marker and the `--flush-staged-l3` marker --
+   *  i.e. is fully up to date, not just "installed at some prior version" (issue #42 §8.3's
+   *  flush-step addition on top of Slice 2 dispatch 2b's `docuvia snapshot` -> `docuvia analyze`
+   *  flip). Mirrors `hasCurrentPrePushHook`'s shape. */
+  private hasCurrentPostCommitHook(hook: string | undefined): boolean {
+    return (
+      !!hook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER) &&
+      !!hook?.includes(GitConstants.POST_COMMIT_FLUSH_L3_MARKER)
+    );
+  }
+
+  /**
+   * Which frozen legacy-content constant `installPostCommitHook`'s exact-content-match upgrade
+   * should replace, given `hasCurrentPostCommitHook` already returned `false` for this hook --
+   * `undefined` means "no Docuvia block at all yet" (fresh append, not an upgrade). Mirrors
+   * `resolvePrePushUpgradeSource`'s shape/oldest-tier-first ordering: a hook missing the Tier A
+   * marker entirely predates the `docuvia snapshot` -> `docuvia analyze` flip (Slice 2 dispatch
+   * 2b), matched against `LEGACY_POST_COMMIT_HOOK_CONTENT` regardless of the flush-l3 marker (it
+   * always lacks that too, by construction). Otherwise (Tier A marker present, flush-l3 marker
+   * absent) it's issue #42's own pre-upgrade tier, matched against
+   * `PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT`.
+   */
+  private resolvePostCommitUpgradeSource(
+    hook: string | undefined,
+  ): string | undefined {
+    if (hook?.includes(GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER)) {
+      return GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT;
+    }
+    if (hook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER)) {
+      return GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT;
+    }
+    return undefined;
+  }
+
   /**
    * Installs the post-commit hook that fires `docuvia analyze` after every commit (PLAT-007
    * Tier A; flipped from `docuvia snapshot` in Slice 2 dispatch 2b —
-   * phase1-decision-integration.md §6c). A hook file still carrying the legacy `docuvia
-   * snapshot` block is upgraded in place: the old block's exact content is removed and the new
-   * block appended, preserving any non-Docuvia user content in the same file. Non-fatal by
-   * design: `.git/hooks` may not exist (e.g. a bare repo, or `.git` mounted read-only), and a
-   * broken hook shouldn't fail `init` itself.
+   * phase1-decision-integration.md §6c), followed by `docuvia analyze --flush-staged-l3` (issue
+   * #42 §8.3). A hook file still carrying an older tier's content is upgraded in place: the old
+   * block's exact content is removed and the new block appended, preserving any non-Docuvia user
+   * content in the same file. Non-fatal by design: `.git/hooks` may not exist (e.g. a bare repo,
+   * or `.git` mounted read-only), and a broken hook shouldn't fail `init` itself.
    */
   public async installPostCommitHook(
     cwd: string,
@@ -160,7 +194,7 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     }
 
     const existingHook = await this.git.readHookFile(cwd, hookName);
-    if (existingHook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER)) {
+    if (this.hasCurrentPostCommitHook(existingHook)) {
       this.logger.debug(GitMessages.POST_COMMIT_HOOK_ALREADY_INSTALLED);
       return { installed: false };
     }
@@ -170,27 +204,21 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     // race between processes, so it's re-checked here inside the lock (PLAT-006).
     return withKnowledgeBranchLock(this.git, cwd, async () => {
       const recheckHook = await this.git.readHookFile(cwd, hookName);
-      if (recheckHook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER)) {
+      if (this.hasCurrentPostCommitHook(recheckHook)) {
         this.logger.warn(GitMessages.CONCURRENT_HOOK_INSTALL_SKIPPED);
         return { installed: false };
       }
 
-      // Legacy upgrade (phase1-decision-integration.md §6c, Slice 2 dispatch 2b's hook flip): a
-      // pre-2b installation has the old `docuvia snapshot` marker but not the new `docuvia
-      // analyze` one. Replace the old Docuvia block in place — remove its exact content, then
-      // append the new block — rather than appending a second, duplicate Docuvia block alongside
-      // the old one. Re-checked inside the lock for the same TOCTOU reason as the marker check
-      // above (PLAT-006).
-      const hasLegacyHook = recheckHook?.includes(
-        GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
-      );
+      // Re-checked inside the lock for the same TOCTOU reason as the marker check above
+      // (PLAT-006). See `resolvePostCommitUpgradeSource`'s own doc comment for the upgrade-tier
+      // ordering.
+      const upgradeFrom = this.resolvePostCommitUpgradeSource(recheckHook);
 
       try {
-        if (hasLegacyHook) {
+        if (upgradeFrom) {
           const upgradedHook =
-            recheckHook!
-              .split(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT)
-              .join("") + GitConstants.POST_COMMIT_HOOK_CONTENT;
+            recheckHook!.split(upgradeFrom).join("") +
+            GitConstants.POST_COMMIT_HOOK_CONTENT;
           await this.git.writeHookFile(cwd, hookName, upgradedHook);
         } else {
           await this.git.appendHookFile(
@@ -209,9 +237,11 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       }
 
       this.logger.info(
-        hasLegacyHook
+        upgradeFrom === GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT
           ? GitMessages.UPGRADED_LEGACY_POST_COMMIT_HOOK
-          : GitMessages.INSTALLED_POST_COMMIT_HOOK,
+          : upgradeFrom === GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT
+            ? GitMessages.UPGRADED_POST_COMMIT_HOOK_FLUSH_L3
+            : GitMessages.INSTALLED_POST_COMMIT_HOOK,
       );
       return { installed: true };
     });
@@ -347,15 +377,14 @@ export class KnowledgeGitService implements IKnowledgeGitService {
 
       try {
         let remainder = recheckHook!;
-        if (remainder.includes(GitConstants.POST_COMMIT_HOOK_CONTENT)) {
-          remainder = remainder
-            .split(GitConstants.POST_COMMIT_HOOK_CONTENT)
-            .join("");
-        }
-        if (remainder.includes(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT)) {
-          remainder = remainder
-            .split(GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT)
-            .join("");
+        for (const content of [
+          GitConstants.POST_COMMIT_HOOK_CONTENT,
+          GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT,
+          GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT,
+        ]) {
+          if (remainder.includes(content)) {
+            remainder = remainder.split(content).join("");
+          }
         }
         await this.git.writeHookFile(cwd, hookName, remainder);
       } catch (err) {

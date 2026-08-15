@@ -36,8 +36,9 @@ export const CLI_FLAGS = {
    *  long a first response can take). */
   LSP_TIMEOUT: "--lsp-timeout=",
   /** `analyze --escalate-to-lsp`'s Tier B multi-process sharding override -- how many independent
-   *  LSP server processes to shard the Tier B batch across (`--lsp-processes=N`, default `1` =
-   *  single-process). The throughput lever that sidesteps a single server process's serial
+   *  LSP server processes to shard the Tier B batch across (`--lsp-processes=N`; default: the
+   *  provider auto-derives a core-and-memory-bounded count per PRJ-004, pass an explicit `1` for
+   *  a single server). The throughput lever that sidesteps a single server process's serial
    *  compute; memory scales linearly with the count. Takes precedence over the
    *  `DOCUVIA_LSP_MAX_PROCESSES` env var. */
   LSP_PROCESSES: "--lsp-processes=",

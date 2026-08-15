@@ -28,7 +28,9 @@ export async function rmSyncRetrying(
         const code = (err as NodeJS.ErrnoException).code;
         if (
           process.platform === PLATFORM_WIN32 &&
-          (code === ERRNO_EPERM || code === ERRNO_EACCES || code === ERRNO_EBUSY)
+          (code === ERRNO_EPERM ||
+            code === ERRNO_EACCES ||
+            code === ERRNO_EBUSY)
         ) {
           console.warn(
             `[rmSyncRetrying] Ignoring transient Windows temp dir cleanup error (${code}) for ${target}`,

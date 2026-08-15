@@ -1,4 +1,5 @@
 import type { ILogger } from "@workspace/contracts";
+import { TIER_B_LANGUAGE_IDS } from "@workspace/contracts";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import path from "node:path";
 import os from "node:os";
@@ -26,6 +27,7 @@ function getCargoBinDir(): string {
 
 const RUST_LANGUAGE_CONFIG: LspLanguageConfig = {
   name: RustLspConstants.BINARY_NAME,
+  tierBLanguageId: TIER_B_LANGUAGE_IDS.RUST,
   languageIdByExtension: LANGUAGE_ID_BY_EXTENSION,
   defaultLanguageId: DEFAULT_LANGUAGE_ID,
   resolveBinary: (workspaceRoot, override) =>
@@ -56,6 +58,18 @@ const RUST_LANGUAGE_CONFIG: LspLanguageConfig = {
   // issue #11 plan A: Rust's own forward-resolution calibration slice hasn't run yet (Slice 4) --
   // stays on the reverse pipeline until it does (FWD-004/D2, single per-language safety gate).
   definitionResolution: "reverse",
+  // Cold-start settle for rust-analyzer (GRPH-006): it answers `documentSymbol` immediately but
+  // returns empty `references` until its async crate-graph load finishes (~8s live-verified on
+  // ripgrep). Without this wait, Tier B silently drops every cross-file rust edge (0 corrected
+  // edges on both ripgrep and tauri) -- the batch only produces edges once the server is warm.
+  coldStartSettleMs: 8_000,
+  // [PRJ-004 follow-up] rust-analyzer ignores `cwd`/rootUri scoping and loads the WHOLE
+  // workspace from any member dir (cargo metadata returns every member) -- measured live on the
+  // tauri workspace: ~4.3GB RSS after load from both the workspace root and a crate-member cwd.
+  // So a per-shard estimate of 512MiB (the generic default) over-derived the shard count (8 on a
+  // 16GB box = ~34GB of loaded servers) and thrashed the machine. 2048MiB keeps the derived
+  // count safe for large workspaces while still allowing a few shards on small ones.
+  processMemoryEstimateMb: 2_048,
 };
 
 /**

@@ -40,6 +40,18 @@ function asClient(fake: FakeLspClient): LspJsonRpcClient {
   return fake as unknown as LspJsonRpcClient;
 }
 
+/** Unit tests fake the server, so the provider's real cold-start settle (rust-analyzer needs ~8s
+ *  to load its crate graph before `references` answers non-empty -- see `rust-lsp-edge-provider
+ *  .ts`'s `coldStartSettleMs`) must be disabled here, or every fake-client test would sleep 8s. */
+function makeRustProvider(
+  fake: FakeLspClient,
+  logger = createMockLogger(),
+): RustLspEdgeProvider {
+  const provider = new RustLspEdgeProvider(logger, () => asClient(fake));
+  provider.configure({ coldStartSettleMs: 0 });
+  return provider;
+}
+
 function makeWorkspace(files: Record<string, string>): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-rustlsp-test-"));
   for (const [relPath, content] of Object.entries(files)) {
@@ -109,9 +121,7 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
     const fake = new FakeLspClient(handler);
-    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
-      asClient(fake),
-    );
+    const provider = makeRustProvider(fake);
 
     await provider.resolveEdges({
       workspaceRoot,
@@ -184,9 +194,7 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
     };
 
     const fake = new FakeLspClient(handler);
-    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
-      asClient(fake),
-    );
+    const provider = makeRustProvider(fake);
 
     try {
       const outcome = await provider.resolveEdges({
@@ -293,9 +301,7 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
 
-    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
-      asClient(new FakeLspClient(handler)),
-    );
+    const provider = makeRustProvider(new FakeLspClient(handler));
 
     try {
       const outcome = await provider.resolveEdges({
@@ -403,9 +409,7 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
     };
 
     const fake = new FakeLspClient(handler);
-    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
-      asClient(fake),
-    );
+    const provider = makeRustProvider(fake);
 
     try {
       const outcome = await provider.resolveEdges({
@@ -432,9 +436,7 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
       return undefined;
     };
     const fake = new FakeLspClient(handler);
-    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
-      asClient(fake),
-    );
+    const provider = makeRustProvider(fake);
 
     await provider.resolveEdges({ workspaceRoot, files: ["main.rs"] });
 
@@ -442,5 +444,60 @@ describe("RustLspEdgeProvider.resolveEdges()", () => {
       (n) => n.method === LspMethods.DID_OPEN,
     );
     expect((didOpen?.params as any).textDocument.languageId).toBe("rust");
+  });
+
+  it("waits the configured cold-start settle before the first semantic request (rust-analyzer returns empty references until its async crate-graph load finishes -- the 0-corrected-edges root cause on ripgrep/tauri)", async () => {
+    const order: string[] = [];
+    const settleMs = 120;
+    const handler: RequestHandler = (method) => {
+      order.push(method);
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) return [];
+      if (method === LspMethods.REFERENCES) return [];
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+    const fake = new FakeLspClient(handler);
+    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+    provider.configure({ coldStartSettleMs: settleMs });
+
+    const t0 = Date.now();
+    await provider.resolveEdges({ workspaceRoot, files: ["main.rs"] });
+    const elapsed = Date.now() - t0;
+
+    // The cold-start settle is paid once per spawned server, before the first file's symbols.
+    expect(elapsed).toBeGreaterThanOrEqual(settleMs);
+    const initIdx = order.indexOf(LspMethods.INITIALIZE);
+    const symbolIdx = order.indexOf(LspMethods.DOCUMENT_SYMBOL);
+    expect(initIdx).toBeGreaterThanOrEqual(0);
+    expect(symbolIdx).toBeGreaterThan(initIdx);
+  });
+
+  it("applies the batch-provided coldStartSettleMs override (0 disables the language default)", async () => {
+    const order: string[] = [];
+    const handler: RequestHandler = (method) => {
+      order.push(method);
+      if (method === LspMethods.INITIALIZE) return {};
+      if (method === LspMethods.DOCUMENT_SYMBOL) return [];
+      if (method === LspMethods.REFERENCES) return [];
+      if (method === LspMethods.SHUTDOWN) return null;
+      return undefined;
+    };
+    const fake = new FakeLspClient(handler);
+    const provider = new RustLspEdgeProvider(createMockLogger(), () =>
+      asClient(fake),
+    );
+    // rust's language default is 8s; a caller forcing 0 must skip the wait entirely.
+    provider.configure({ coldStartSettleMs: 0 });
+
+    const t0 = Date.now();
+    await provider.resolveEdges({ workspaceRoot, files: ["main.rs"] });
+    const elapsed = Date.now() - t0;
+
+    // No settle wait: documentSymbol follows initialize immediately (well under the 8s default).
+    expect(elapsed).toBeLessThan(5000);
+    expect(order).toContain(LspMethods.DOCUMENT_SYMBOL);
   });
 });

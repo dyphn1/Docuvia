@@ -39,11 +39,11 @@ jobs:
       - name: Check formatting
         run: pnpm exec prettier --check .
 
+      - name: Lint (complexity budget) -- fail-fast before slower checks
+        run: pnpm run lint
+
       - name: Type check (all packages)
         run: pnpm run typecheck
-
-      - name: Lint (complexity budget)
-        run: pnpm run lint
 
       - name: Build (all packages)
         run: pnpm run build

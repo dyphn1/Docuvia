@@ -1,4 +1,5 @@
 import type { ILogger } from "@workspace/contracts";
+import { TIER_B_LANGUAGE_IDS } from "@workspace/contracts";
 import type { LspJsonRpcClient } from "./lsp-json-rpc-client.js";
 import { resolveNpmNpxBinary } from "./lsp-binary-resolver-strategies.js";
 import { checkPythonLspPreflight } from "./python-lsp-preflight.js";
@@ -19,6 +20,7 @@ const LANGUAGE_ID_BY_EXTENSION: Record<string, string> = {
 
 const PYTHON_LANGUAGE_CONFIG: LspLanguageConfig = {
   name: PyLspConstants.PACKAGE_NAME,
+  tierBLanguageId: TIER_B_LANGUAGE_IDS.PYTHON,
   languageIdByExtension: LANGUAGE_ID_BY_EXTENSION,
   defaultLanguageId: DEFAULT_LANGUAGE_ID,
   resolveBinary: (workspaceRoot, override) =>

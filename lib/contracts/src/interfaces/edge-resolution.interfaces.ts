@@ -88,16 +88,24 @@ export interface EdgeResolutionCallSite {
 export interface EdgeResolutionRequest {
   workspaceRoot: string;
   /** Workspace-relative paths, already language-dispatched (§8e) to this provider's supported
-   *  language(s) — the provider itself never re-checks language support. */
+   *  language(s) -- the provider itself never re-checks language support. */
   files: string[];
   /** Optional per-file Tier A AST call-site seeds that switch the provider onto the *forward*
    *  resolution path for the files they cover (FWD-01/002): each call site's callee is resolved
    *  directly with `textDocument/definition` instead of a project-wide reverse-`references` scan.
-   *  Files absent from this map — and files mapped to an empty array — keep the reverse path as
+   *  Files absent from this map -- and files mapped to an empty array -- keep the reverse path as
    *  today (FWD-01: reverse stays as the fallback). As of Slice 2 no orchestrator producer wires
    *  this in, so production behavior is unchanged; it is the unit-tested seam the Flip (Slice 3)
    *  feeds call sites through. */
   callsByFile?: Record<string, EdgeResolutionCallSite[]>;
+  /** PRJ-002: the directory the LSP server should be initialized against (its `cwd`, `rootUri`
+   *  and workspace folder). When set, it must be a project root (or the workspace root) -- the
+   *  sharding driver points each shard at its owning project's root so the server loads only that
+   *  project plus its path deps, instead of the whole workspace. `files` stay relative to
+   *  `workspaceRoot` regardless (they're always read from `workspaceRoot`); this field only
+   *  controls where the server is spawned and what it loads. Absent/unset means
+   *  `workspaceRoot` (today's whole-workspace behavior). */
+  serverRoot?: string;
 }
 
 /** Construction-time overrides (phase1-decision-integration.md §8b: "config-overridable; never
@@ -153,10 +161,31 @@ export interface EdgeResolutionProviderConfig {
    *  `floor(maxProcessesMemoryMb / processMemoryEstimateMb)`. */
   maxProcessMemoryMb?: number;
   /** Estimate of one shard process's steady-state memory footprint (MiB), used only to derive
-   *  `maxProcesses`'s memory upper bound (`floor(maxProcessMemoryMb / this)` when the caller
+   *  `maxProcesses`'s memory upper bound (`floor(maxProcessesMemoryMb / this)` when the caller
    *  sets a memory budget; otherwise a sane default). A pure throughput-guard heuristic, never a
    *  correctness input. */
   processMemoryEstimateMb?: number;
+  /** Cold-start settle for the LSP server process, in milliseconds (0 = none): after the
+   *  `initialize`/`initialized` handshake completes and *before* the first semantic request
+   *  (`textDocument/documentSymbol` is syntactic and answers correctly immediately, but
+   *  `textDocument/references`/`textDocument/definition` issued before the server's own async
+   *  project/crate-graph load finishes can come back empty even though the same request succeeds
+   *  moments later). Verified live against rust-analyzer 1.97.1 on ripgrep: `Searcher::new`
+   *  returned 0 references in 0 ms cold, then 2 references after an ~8s settle — the root cause
+   *  of Tier B's 0-corrected-edges on both ripgrep and tauri even after the GRPH-006 key fix.
+   *  A batch-scoped, per-spawned-server cost (paid once per shard), never per file. When set, this
+   *  value wins over the provider's per-language default (`LspLanguageConfig.coldStartSettleMs`);
+   *  callers set `0` to force-disable the wait. */
+  coldStartSettleMs?: number;
+  /** [PRJ-007] How often (ms) the provider re-probes server readiness after the fixed
+   *  `coldStartSettleMs` expires, when a sharded batch's LSP server has not yet reported a
+   *  non-empty `textDocument/references` (parallel cold servers load big workspaces slower than
+   *  the fixed settle alone can cover). Default 5000. */
+  coldStartPollMs?: number;
+  /** [PRJ-007] Hard cap (ms) on the total readiness-poll wait (fixed settle + polls). A broken
+   *  server that never returns references must not wedge the batch; once this trips the batch
+   *  proceeds (and will degrade honestly via its normal per-file paths). Default 120000. */
+  coldStartMaxWaitMs?: number;
 }
 
 export interface IEdgeResolutionProvider {

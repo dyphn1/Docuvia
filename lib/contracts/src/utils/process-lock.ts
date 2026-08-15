@@ -127,8 +127,7 @@ export async function acquireProcessLock(
       options.onWaiting?.();
     }
 
-    if (await removeStaleLockIfAbandoned(lockPath, opts.staleAfterMs))
-      continue;
+    if (await removeStaleLockIfAbandoned(lockPath, opts.staleAfterMs)) continue;
 
     if (Date.now() > deadline) {
       throw new Error(ProcessLockErrorMessages.TIMED_OUT_WAITING(lockPath));

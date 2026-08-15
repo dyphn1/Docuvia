@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/integration/commands/analyze-escalate-lsp-concurrency.test.ts#anonymous
+id: artifacts/cli/test/integration/commands/analyze-escalate-lsp-concurrency.test.ts#anonymous@L64
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/integration/commands/analyze-escalate-lsp-concurrency.test.ts
@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/integration/commands/analyze-escalate-lsp-concurren
 # Symbol: anonymous
 
 File: `artifacts/cli/test/integration/commands/analyze-escalate-lsp-concurrency.test.ts`
-ts`

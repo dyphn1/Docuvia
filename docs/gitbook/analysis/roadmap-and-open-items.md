@@ -95,7 +95,7 @@ its own flag. Tied to item 29: MCP tools return structured data natively, so `--
 mainly serves the Bash-fallback path and non-MCP platforms; which format an agent should reach for
 in which situation is expected to live in item 30's skill files.
 
-### 32. `init` gains an opt-in Tier B/C escalation option — Tier C backfill strategy still unresolved
+### 32. `init` gains an opt-in Tier B/C escalation option — resolved via the same agent-authored backfill mechanism as item 33
 
 `init` already queues every parsed file for Tier B ([`init.md`](../user-guide/cli/init.md) step
 3); Tier B/C's stage-then-finalize design already gives resumability. Confirmed direction: an
@@ -104,11 +104,24 @@ a new one, per this project's own command-convergence test) to drain Tier B imme
 time instead of waiting for the first push, with a loop-until-drained runner bounded by a
 wall-clock cap for large repos (a single 120s batch won't clear a vscode-scale queue).
 
-**Open, not resolved this session**: Tier C's queue is commit-driven (enqueue happens via the
-commit-semantic filter, this file's Tier C section item 4 above) — a fresh `init` has no commit
-history event to enqueue from, so there is currently no seed mechanism for an init-time Tier C
-option. Candidate approaches (recent-N-commits backfill vs. no-L3-coverage-first file selection)
-were named but not decided.
+**Resolved (2026-08-15), superseding the "candidate approaches" originally listed here**: the two
+heuristics first proposed — recent-N-commits backfill vs. no-L3-coverage-first file selection —
+were solving the wrong problem. They assumed Tier C needed to _pick_ which history to re-infer
+over. In practice, code written after `init` is almost always authored by an AI coding agent that
+has already read and analyzed the part it's changing before that change ever reaches commit — true
+both for the first commits right after a fresh `init` (no Tier C data yet) and for every ordinary
+commit afterward in steady-state development. Nothing needs re-inferring; the missing piece was
+always a **backfill path** for analysis the agent already produced, not a new analysis pass. That
+is exactly item 33's `source='agent-authored'` write path below — so 32 doesn't need its own seed
+mechanism. It needs item 33's write path to fire from the first post-`init` commit onward,
+continuously, not just once. This also matches Docuvia's core design principle of accumulating the
+graph incrementally over time rather than recomputing it in batches — the same rationale behind
+the Tier A/B/C split itself.
+
+The one case this doesn't cover: code that has _never_ been touched by an agent-authored commit
+(pre-existing code nobody has revisited since). That still has no recorded rationale and still
+falls to Tier C's existing heavier, push-time LLM-inference fallback — unchanged from today's
+design.
 
 ### 33. Agent-authored L3 write path — new Tier C provenance, write surface confirmed
 
@@ -126,6 +139,8 @@ command (already documented as "focused LLM decision extraction ... persisted to
 this just adds who is allowed to author the content) rather than a new verb, per the project's
 command-convergence principle. Not yet implemented.
 
+**Relationship to item 32**: this write path is what item 32's init-time and steady-state backfill both resolve to — not a separate mechanism. See item 32's update above.
+
 ### 34. `docuvia hooks list/enable/disable` — per-behavior hook lifecycle management
 
 Confirmed direction, in response to real usage feedback that pre-push-triggered Tier B/C work
@@ -135,6 +150,13 @@ PreToolUse-style context hook), `commit-l3-write` (item 33's new lightweight com
 and `tier-b-c-prepush` (the existing pre-push Tier B/C batch, gaining a name and an explicit on/off
 switch it doesn't have today). `init`/`uninstall` keep owning "install/remove everything for
 platform X"; `docuvia hooks` owns fine-grained enablement after the fact.
+
+**Relationship to items 32/33's backfill resolution**: `commit-l3-write` is the mechanism items 32
+and 33 resolve to — matching Docuvia's incremental-accumulation philosophy, it defaults to
+**enabled**, not merely available. It stays a toggle like every other hook in this list, not a
+forced-on behavior: once `docuvia hooks` ships (alongside IFCE-006's `install` rename), a user can
+run `docuvia hooks disable commit-l3-write` to opt out of the Tier C backfill entirely if they
+don't want it.
 
 **Open, deliberately deferred (2026-08-14)**: whether `docuvia hooks` also manages skill-file
 installation (item 30) or whether that stays under a separate `init --skills=`/`uninstall --skills=`
@@ -161,6 +183,10 @@ graph and skip discovery/parse/persist, reducing a repeat `--platform=` call to 
 its `uninstall` counterpart. Related to, but independent of, the `init` → `install` rename
 ([IFCE-006](../adr/interface/IFCE-006-rename-init-to-install.md)) — this is a behavior fix, that
 was a naming fix.
+
+**Sequencing (2026-08-15)**: fix this before IFCE-006's `init` → `install` rename ships. Landing
+the renamed `install` command while it still carries this scoping bug just moves the bug to a new
+name instead of fixing it — the behavior fix should land first, then the rename.
 
 ## Known open technical items (small, tracked, unowned)
 

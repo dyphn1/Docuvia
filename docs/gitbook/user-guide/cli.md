@@ -23,6 +23,7 @@ In Docuvia2, the CLI is built with a script-first philosophy. Commands execute n
 | **[`docuvia mcp`](cli/mcp.md)**                         | Start the local MCP stdio server for direct integration.                 |
 | **[`docuvia uninstall`](cli/uninstall.md)**             | Securely reverse `init` hooks and remove Docuvia artifacts.              |
 | **[`docuvia doctor`](cli/doctor.md)**                   | Diagnose Git sync issues, remote reachability, and SQLite health.        |
+| **[`docuvia hooks <subcommand>`](cli/hooks.md)**        | List/enable/disable/check Docuvia's toggleable automation hooks.         |
 
 > **Interactive Prompts (`--interactive`)**: All commands will fail-fast if required arguments are missing unless the `--interactive` flag is used, which provides a guided prompt experience.
 >

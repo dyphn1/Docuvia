@@ -38,3 +38,16 @@ export const TIER_C_LOCK_FILE_NAME = "tierC.lock";
 
 /** Filename (relative to `DOCUVIA_DIR_NAME/DOCUVIA_LOGS_DIR_NAME`) of the `sync` content-hash dedup cache. */
 export const SYNC_STATE_FILE_NAME = "sync-state.json";
+
+/** Filename (relative to `DOCUVIA_DIR_NAME`) of the `docuvia hooks list/enable/disable`
+ *  persistence file (issue #42, roadmap items 32-34 §7.1) -- a flat JSON `HooksConfig` map, read
+ *  by both the compiled CLI and the raw `.claude/hooks/docuvia-hook.js` script (plain
+ *  `fs.readFileSync` + `JSON.parse`, no subprocess). See `hooks.interfaces.ts`'s doc comment. */
+export const HOOKS_CONFIG_FILE_NAME = "hooks-config.json";
+
+/** Filename (relative to `DOCUVIA_DIR_NAME`) of `commit-l3-write`'s staging file (issue #42,
+ *  Decision 2's two-stage stage-and-flush design §8.1) -- `analyze <targetPath> --agent-authored
+ *  --stage` appends here instead of writing straight to `l3_nodes`; the post-commit hook's
+ *  `analyze --flush-staged-l3` step drains entries whose `filePath` is in the triggering commit's
+ *  changed-file list. */
+export const PENDING_L3_DECISIONS_FILE_NAME = "pending-l3-decisions.json";

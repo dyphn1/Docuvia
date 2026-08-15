@@ -102,6 +102,7 @@ export type {
   ValidityStatus,
   AstCallSiteRow,
   ICallSitesRepo,
+  L3DecisionSource,
 } from "./interfaces/graph-store.interfaces.js";
 export {
   ProjectStatuses,
@@ -109,6 +110,7 @@ export {
   LinkTypes,
   L3NodeTypes,
   ValidityStatuses,
+  L3DecisionSources,
 } from "./interfaces/graph-store.interfaces.js";
 export type {
   HydrationResult,
@@ -190,6 +192,11 @@ export type {
   SnapshotRenderResult,
   ISnapshotRenderer,
 } from "./interfaces/snapshot.interfaces.js";
+export type { HookName, HooksConfig } from "./interfaces/hooks.interfaces.js";
+export {
+  HookNames,
+  DEFAULT_HOOKS_CONFIG,
+} from "./interfaces/hooks.interfaces.js";
 
 export { createMockLogger, resetFactoryForTests } from "./testing/mocks.js";
 export type { MockLogger } from "./testing/mocks.js";
@@ -215,6 +222,8 @@ export {
   SYNC_STATE_FILE_NAME,
   INIT_COMMAND_LOCK_FILE_NAME,
   TIER_C_LOCK_FILE_NAME,
+  HOOKS_CONFIG_FILE_NAME,
+  PENDING_L3_DECISIONS_FILE_NAME,
 } from "./constants/paths.js";
 
 export { UTF8_ENCODING } from "./constants/encoding.js";

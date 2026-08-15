@@ -153,12 +153,12 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
     expect(git.appendHookFile).not.toHaveBeenCalled();
   });
 
-  it("is idempotent: does not duplicate the hook when the marker is already present", async () => {
+  it("is idempotent: does not duplicate the hook when the Tier A and flush-l3 markers are both already present", async () => {
     const git = makeMockGitProvider({
       readHookFile: vi
         .fn()
         .mockResolvedValue(
-          `#!/bin/bash\n${GitConstants.POST_COMMIT_HOOK_MARKER}\n`,
+          `#!/bin/bash\n${GitConstants.POST_COMMIT_FLUSH_L3_MARKER}\n`,
         ),
     });
     const service = new KnowledgeGitService(git);
@@ -189,7 +189,7 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(
-        `#!/bin/bash\n${GitConstants.POST_COMMIT_HOOK_MARKER}\n`,
+        `#!/bin/bash\n${GitConstants.POST_COMMIT_FLUSH_L3_MARKER}\n`,
       );
     const git = makeMockGitProvider({ readHookFile });
     const logger = createMockLogger();
@@ -312,6 +312,70 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
       expect(logger.events.some((e) => e.level === "warn")).toBe(true);
     });
   });
+
+  describe("flush-l3 hook upgrade (docuvia analyze --flush-staged-l3 step, issue #42 §8.3)", () => {
+    it("replaces the pre-flush-l3 block in place: old block gone, new block (with the flush step) present, non-Docuvia user content preserved, content-for-content not appended as a duplicate", async () => {
+      const existingHook =
+        `#!/bin/bash\necho "user pre-commit-style content"\n` +
+        GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT;
+      const git = makeMockGitProvider({
+        readHookFile: vi.fn().mockResolvedValue(existingHook),
+      });
+      const logger = createMockLogger();
+      const service = new KnowledgeGitService(git, logger);
+
+      const result = await service.installPostCommitHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.appendHookFile).not.toHaveBeenCalled();
+      expect(git.writeHookFile).toHaveBeenCalledTimes(1);
+      const [cwd, hookName, writtenContent] = (
+        git.writeHookFile as ReturnType<typeof vi.fn>
+      ).mock.calls[0];
+      expect(cwd).toBe("/workspace");
+      expect(hookName).toBe(GitConstants.POST_COMMIT_HOOK_NAME);
+
+      expect(writtenContent).not.toContain(
+        GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT,
+      );
+      expect(writtenContent).toContain(GitConstants.POST_COMMIT_HOOK_CONTENT);
+      expect(writtenContent).toContain(
+        GitConstants.POST_COMMIT_FLUSH_L3_MARKER,
+      );
+      expect(writtenContent).toContain('echo "user pre-commit-style content"');
+
+      expect(git.makeHookExecutable).toHaveBeenCalled();
+      expect(
+        logger.events.some(
+          (e) =>
+            e.level === "info" &&
+            /Upgraded post-commit hook \(added flush-staged-l3 step/.test(
+              e.message,
+            ),
+        ),
+      ).toBe(true);
+    });
+
+    it("upgrades a pre-flush-l3 hook with no other user content (old block was the entire file)", async () => {
+      const git = makeMockGitProvider({
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(
+            GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT,
+          ),
+      });
+      const service = new KnowledgeGitService(git);
+
+      const result = await service.installPostCommitHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.writeHookFile).toHaveBeenCalledWith(
+        "/workspace",
+        GitConstants.POST_COMMIT_HOOK_NAME,
+        GitConstants.POST_COMMIT_HOOK_CONTENT,
+      );
+    });
+  });
 });
 
 describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.md §8h)", () => {
@@ -345,12 +409,12 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
     expect(git.appendHookFile).not.toHaveBeenCalled();
   });
 
-  it("is idempotent: does not duplicate the hook when the Tier B, sync-knowledge, and env-gate markers are all already present", async () => {
+  it("is idempotent: does not duplicate the hook when the Tier B, sync-knowledge, env-gate, and hooks-check markers are all already present", async () => {
     const git = makeMockGitProvider({
       readHookFile: vi
         .fn()
         .mockResolvedValue(
-          `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER} ${GitConstants.PRE_PUSH_ENV_GATE_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n`,
+          `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER} ${GitConstants.PRE_PUSH_ENV_GATE_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n${GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER}\n`,
         ),
     });
     const service = new KnowledgeGitService(git);
@@ -380,7 +444,7 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(
-        `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER} ${GitConstants.PRE_PUSH_ENV_GATE_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n`,
+        `#!/bin/bash\n${GitConstants.PRE_PUSH_HOOK_MARKER} ${GitConstants.PRE_PUSH_ENV_GATE_MARKER}\n${GitConstants.PRE_PUSH_SYNC_KNOWLEDGE_MARKER}\n${GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER}\n`,
       );
     const git = makeMockGitProvider({ readHookFile });
     const logger = createMockLogger();
@@ -527,6 +591,66 @@ describe("KnowledgeGitService.installPrePushHook() (phase1-decision-integration.
       );
     });
   });
+
+  describe("hooks-check hook upgrade (docuvia hooks check tier-b-c-prepush gate, issue #42 §7.5)", () => {
+    it("replaces the env-gate-era block in place: old block gone, new block (with the hooks-check gate) present, non-Docuvia user content preserved", async () => {
+      const existingHook =
+        `#!/bin/bash\necho "user pre-push content"\n` +
+        GitConstants.ENV_GATE_PRE_PUSH_HOOK_CONTENT;
+      const git = makeMockGitProvider({
+        readHookFile: vi.fn().mockResolvedValue(existingHook),
+      });
+      const logger = createMockLogger();
+      const service = new KnowledgeGitService(git, logger);
+
+      const result = await service.installPrePushHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.appendHookFile).not.toHaveBeenCalled();
+      expect(git.writeHookFile).toHaveBeenCalledTimes(1);
+      const [cwd, hookName, writtenContent] = (
+        git.writeHookFile as ReturnType<typeof vi.fn>
+      ).mock.calls[0];
+      expect(cwd).toBe("/workspace");
+      expect(hookName).toBe(GitConstants.PRE_PUSH_HOOK_NAME);
+
+      expect(writtenContent).not.toContain(
+        GitConstants.ENV_GATE_PRE_PUSH_HOOK_CONTENT,
+      );
+      expect(writtenContent).toContain(GitConstants.PRE_PUSH_HOOK_CONTENT);
+      expect(writtenContent).toContain(
+        GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER,
+      );
+      expect(writtenContent).toContain('echo "user pre-push content"');
+
+      expect(git.makeHookExecutable).toHaveBeenCalled();
+      expect(
+        logger.events.some(
+          (e) =>
+            e.level === "info" &&
+            /Upgraded legacy pre-push hook/.test(e.message),
+        ),
+      ).toBe(true);
+    });
+
+    it("upgrades an env-gate-era hook with no other user content (old block was the entire file), content-for-content not appended as a duplicate block", async () => {
+      const git = makeMockGitProvider({
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(GitConstants.ENV_GATE_PRE_PUSH_HOOK_CONTENT),
+      });
+      const service = new KnowledgeGitService(git);
+
+      const result = await service.installPrePushHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.writeHookFile).toHaveBeenCalledWith(
+        "/workspace",
+        GitConstants.PRE_PUSH_HOOK_NAME,
+        GitConstants.PRE_PUSH_HOOK_CONTENT,
+      );
+    });
+  });
 });
 
 describe("KnowledgeGitService.removePostCommitHook() (phase1-decision-integration.md §10a)", () => {
@@ -571,6 +695,24 @@ describe("KnowledgeGitService.removePostCommitHook() (phase1-decision-integratio
       GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
     );
     expect(writtenContent).not.toContain(GitConstants.POST_COMMIT_HOOK_MARKER);
+  });
+
+  it("strips a pre-flush-l3-era (issue #42 §8.3) block and preserves unrelated user content", async () => {
+    const existingHook =
+      `#!/bin/bash\necho "user content"\n` +
+      GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT;
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(existingHook),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.removePostCommitHook("/workspace");
+
+    expect(result).toEqual({ removed: true });
+    const writtenContent = (git.writeHookFile as ReturnType<typeof vi.fn>).mock
+      .calls[0][2];
+    expect(writtenContent).not.toContain(GitConstants.POST_COMMIT_HOOK_MARKER);
+    expect(writtenContent).toContain('echo "user content"');
   });
 
   it("is a clean no-op when no Docuvia hook is present", async () => {
@@ -727,6 +869,24 @@ describe("KnowledgeGitService.removePrePushHook() (phase1-decision-integration.m
     expect(writtenContent).toContain('echo "user content"');
   });
 
+  it("strips an env-gate-era (pre hooks-check, issue #42 §7.5) pre-push block and preserves unrelated user content", async () => {
+    const existingHook =
+      `#!/bin/bash\necho "user content"\n` +
+      GitConstants.ENV_GATE_PRE_PUSH_HOOK_CONTENT;
+    const git = makeMockGitProvider({
+      readHookFile: vi.fn().mockResolvedValue(existingHook),
+    });
+    const service = new KnowledgeGitService(git);
+
+    const result = await service.removePrePushHook("/workspace");
+
+    expect(result).toEqual({ removed: true });
+    const writtenContent = (git.writeHookFile as ReturnType<typeof vi.fn>).mock
+      .calls[0][2];
+    expect(writtenContent).not.toContain(GitConstants.PRE_PUSH_HOOK_MARKER);
+    expect(writtenContent).toContain('echo "user content"');
+  });
+
   it("is a clean no-op when no Docuvia pre-push hook is present", async () => {
     const git = makeMockGitProvider({
       readHookFile: vi.fn().mockResolvedValue(undefined),
@@ -782,10 +942,13 @@ describe("KnowledgeGitService.repairDuplicatePostCommitHook() (phase1-decision-i
     expect(writtenContent).not.toContain(
       GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
     );
-    // Exactly one canonical block present.
+    // Exactly one canonical block present -- POST_COMMIT_HOOK_MARKER ("docuvia analyze") occurs
+    // twice within that one block since issue #42 (once on its own line, once as a substring of
+    // the "docuvia analyze --flush-staged-l3" line), so 2 total occurrences (not 1) confirms a
+    // single, non-duplicated block, not two.
     expect(
       writtenContent.split(GitConstants.POST_COMMIT_HOOK_MARKER).length - 1,
-    ).toBe(1);
+    ).toBe(2);
     // Unrelated user content survives, in order.
     expect(writtenContent).toContain('echo "before"');
     expect(writtenContent).toContain('echo "after"');

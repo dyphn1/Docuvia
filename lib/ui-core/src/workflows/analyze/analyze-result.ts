@@ -27,6 +27,11 @@ export const AnalyzeResultKind = {
    *  consumes the `tierBQueue` accumulated by prior Tier A (no-flag) runs, never re-runs Tier A
    *  itself. */
   TIER_B_BATCH: "tierBBatch",
+  /** `analyze --flush-staged-l3` (issue #42, Decision 2's two-stage stage-and-flush design §8.2)
+   *  -- the post-commit hook's drain of `.docuvia/pending-l3-decisions.json` entries whose
+   *  `filePath` is in the triggering commit's changed-file list. A fourth, mutually-exclusive
+   *  mode alongside auto/`targetPath`/`--escalate-to-lsp` -- no `targetPath`, no `--escalate-to-lsp`. */
+  FLUSH_STAGED_L3: "flushStagedL3",
 } as const;
 
 /**
@@ -178,4 +183,22 @@ export type AnalyzeResult =
        *  merged into it (occurrence bump) rather than inserted as a duplicate. */
       deduped: number;
     }
-  | TierBBatchResult;
+  | TierBBatchResult
+  | {
+      kind: typeof AnalyzeResultKind.FLUSH_STAGED_L3;
+      /** `true` when this run no-op'd because `commit-l3-write` is disabled (Part E's toggle) --
+       *  `flushed`/`deduped`/`stillPending` are all `0`/unchanged in that case; nothing was read
+       *  or written. */
+      skippedDisabled: boolean;
+      /** Count of staged decisions newly written to `l3_nodes` this run (a fresh content_hash). */
+      flushed: number;
+      /** Of the flushed decisions, how many matched an existing row by content_hash (occurrence
+       *  bump) rather than inserting a new one. */
+      deduped: number;
+      /** Count of staged decisions left untouched in the staging file -- their `filePath` wasn't
+       *  in this commit's changed-file list (staged mid-session, committed later or never). */
+      stillPending: number;
+      /** The commit sha this flush ran against (`HEAD` at the moment the post-commit hook fired),
+       *  or `null` on the (essentially unreachable, post-commit-only) unborn/headless-HEAD case. */
+      commitSha: string | null;
+    };

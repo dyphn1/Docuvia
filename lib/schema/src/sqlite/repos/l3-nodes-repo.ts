@@ -5,7 +5,9 @@ import {
   ErrorCodes,
   type IL3NodesRepo,
   type L3NodeRow,
+  type L3DecisionSource,
   ValidityStatuses,
+  L3DecisionSources,
 } from "@workspace/contracts";
 import { SchemaTables, SchemaColumns } from "../constants.js";
 
@@ -18,8 +20,6 @@ const L3_NODES_ERROR_MESSAGES = {
   IMPORT_CARD_FAILED: "Failed to import l3 card",
 } as const;
 
-/** `l3_nodes.source` value stamped by the `analyze <targetPath>` decision-extraction pipeline (see `IL3NodesRepo.upsertDecision`'s doc comment). */
-const L3_DECISION_SOURCE = "analyze" as const;
 /** `l3_nodes.source` value stamped by `IL3NodesRepo.importCard` (phase2-l3-distribution.md L3DIST-007) — distinguishes a row this developer authored locally from one absorbed from a teammate's card via `hydrate`/`sync-knowledge`. */
 const L3_IMPORT_SOURCE = "git-import" as const;
 
@@ -91,7 +91,10 @@ export class L3NodesRepo implements IL3NodesRepo {
     }
   }
 
-  /** See `IL3NodesRepo.upsertDecision`'s doc comment for the full dedup contract. */
+  /** See `IL3NodesRepo.upsertDecision`'s doc comment for the full dedup contract. `source`
+   *  defaults to `L3DecisionSources.ANALYZE` when omitted, and is only ever stamped on a fresh
+   *  insert — the dedup/occurrence-bump branch never touches an existing row's `source`, so the
+   *  first writer's `source` always wins. */
   upsertDecision(input: {
     projectId: number;
     l2NodeId: number;
@@ -102,6 +105,7 @@ export class L3NodesRepo implements IL3NodesRepo {
     commitSha: string | null;
     extractionModel: string | null;
     sourceFiles: string[];
+    source?: L3DecisionSource;
   }): { id: number; deduped: boolean } {
     try {
       const contentHash = computeContentHash(
@@ -153,7 +157,7 @@ export class L3NodesRepo implements IL3NodesRepo {
                (${SchemaColumns.L2_NODE_ID}, title, content, node_type, source_commits,
                 initial_source_commits, commit_hash, ai_generated, confidence, source,
                 ${SchemaColumns.CONTENT_HASH}, extraction_model, source_files)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, '${L3_DECISION_SOURCE}', ?, ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
           )
           .run(
             input.l2NodeId,
@@ -164,6 +168,7 @@ export class L3NodesRepo implements IL3NodesRepo {
             initialSourceCommits,
             input.commitSha,
             input.confidence,
+            input.source ?? L3DecisionSources.ANALYZE,
             contentHash,
             input.extractionModel,
             JSON.stringify(input.sourceFiles),

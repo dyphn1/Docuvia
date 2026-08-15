@@ -1,10 +1,14 @@
 import process from "process";
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import { z } from "zod";
 import {
   docuviaMemory,
   DocuviaError,
+  ErrorCodes,
   MemoryKeys,
   LogLevels,
+  UTF8_ENCODING,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
@@ -12,6 +16,7 @@ import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { OUTPUT_FORMAT_MARKERS } from "../constants/cli-output-markers.js";
+import { readStdin } from "../utils/read-stdin.js";
 
 /**
  * Mirrors `AnalyzeResultKind` from `lib/ui-core`'s `analyze-result.ts` — not re-exported
@@ -24,10 +29,33 @@ const ANALYZE_RESULT_KIND = {
   AUTO_DELTA_NOOP: "autoDeltaNoop",
   DECISION_EXTRACTION: "decisionExtraction",
   TIER_B_BATCH: "tierBBatch",
+  FLUSH_STAGED_L3: "flushStagedL3",
 } as const;
 
 type AnalyzeResult = Awaited<ReturnType<typeof docuviaApi.analyze>>;
 type AnalyzeSpinner = ReturnType<typeof ui.spinner>;
+
+/**
+ * `--agent-authored`'s payload shape (issue #42) — boundary validation (design-spirit.md #4
+ * precedent, mirrors `init.ts`'s `InitInputSchema`), local to this file rather than imported
+ * from `lib/ui-core` (same boundary-duplication convention `ANALYZE_RESULT_KIND` above already
+ * uses; `ExtractedDecision`/`DecisionNodeType` aren't meant to leak CLI-layer validation concerns
+ * into the Orchestration layer either). Deliberate deviation from `parseDecisionsFromLlmContent`'s
+ * LLM-path leniency (which coerces an invalid/missing `nodeType` to `context` rather than
+ * failing): an agent's own structured JSON payload is a caller that can simply fix its input, so
+ * this hard-fails on an invalid `nodeType`/out-of-range `confidence`/missing `title` instead of
+ * silently coercing it, which would hide a real bug in whatever produced the payload.
+ */
+const AgentAuthoredDecisionSchema = z.object({
+  title: z.string().min(1),
+  content: z.string(),
+  nodeType: z.enum(["change", "rule", "decision", "context"]),
+  confidence: z.number().min(0).max(1),
+});
+const AgentAuthoredPayloadSchema = z.object({
+  decisions: z.array(AgentAuthoredDecisionSchema),
+});
+type AgentAuthoredPayload = z.infer<typeof AgentAuthoredPayloadSchema>;
 
 export interface AnalyzeCommandOptions {
   /** `--escalate-to-lsp` (PLAT-007 Tier B; phase1-decision-integration.md §8). Ignored when
@@ -52,6 +80,21 @@ export interface AnalyzeCommandOptions {
    *  every currently-tracked file before the batch drains it. Ignored when `escalateToLsp` is not
    *  also set. */
   full?: boolean;
+  /** `--agent-authored` (issue #42, roadmap items 32-34) -- skips `resolveAnalyzeLlmConfig()`/the
+   *  LLM call entirely; the decisions JSON is read from stdin (default) or `--decisions-file` and
+   *  persisted verbatim with `source='agent-authored'`. Requires `targetPath`. */
+  agentAuthored?: boolean;
+  /** `--decisions-file=<path>` -- reads the `--agent-authored` payload from a file instead of
+   *  stdin. Ignored when `agentAuthored` is not also set. */
+  decisionsFile?: string;
+  /** `--stage` (issue #42, Decision 2's two-stage stage-and-flush design §8.1) -- appends the
+   *  payload into `.docuvia/pending-l3-decisions.json` instead of writing straight to
+   *  `l3_nodes`. Ignored when `agentAuthored` is not also set. */
+  stage?: boolean;
+  /** `--flush-staged-l3` (issue #42 §8.2) -- a fourth, mutually-exclusive `analyze` mode: no
+   *  `targetPath` required (and ignored if given -- this flag wins). Checked before every other
+   *  dispatch. */
+  flushStagedL3?: boolean;
 }
 
 interface AnalyzeLlmConfig {
@@ -69,6 +112,46 @@ function resolveAnalyzeLlmConfig(): AnalyzeLlmConfig | null {
 
   if (!llmBaseUrl || !llmModel) return null;
   return { llmBaseUrl, llmApiKey, llmModel };
+}
+
+/**
+ * Reads/parses/validates `--agent-authored`'s decisions payload -- stdin (default, mirrors
+ * `publish.ts`'s `resolveCommitSha()`'s `process.stdin.isTTY` gate: "is there piped data sitting
+ * on stdin," not a prompt-safety check) or `--decisions-file` when given. Returns `undefined`
+ * when neither source has data (a human ran the bare command at a real TTY, or a piped/file
+ * source was empty) -- the caller hard-fails on that case with a clear message, mirroring
+ * `publish.ts`'s `resolveProjectId()` pattern rather than `resolveCommitSha()`'s silent-skip
+ * pattern, since this payload is not optional the way a commit sha is. Throws `DocuviaError`
+ * (`INVALID_INPUT`) on malformed JSON or a schema-violating shape.
+ */
+async function resolveAgentAuthoredPayload(
+  decisionsFile: string | undefined,
+): Promise<AgentAuthoredPayload | undefined> {
+  const raw = decisionsFile
+    ? await fs.readFile(decisionsFile, UTF8_ENCODING)
+    : process.stdin.isTTY
+      ? undefined
+      : await readStdin();
+  if (!raw) return undefined;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new DocuviaError(
+      ErrorCodes.INVALID_INPUT,
+      UI_MESSAGES.ANALYZE_AGENT_AUTHORED_INVALID_JSON(String(err)),
+    );
+  }
+
+  const result = AgentAuthoredPayloadSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new DocuviaError(
+      ErrorCodes.INVALID_INPUT,
+      UI_MESSAGES.ANALYZE_AGENT_AUTHORED_INVALID_SHAPE(result.error.message),
+    );
+  }
+  return result.data;
 }
 
 interface TierBEnvConfig {
@@ -268,6 +351,31 @@ function printTierCSummary(
   );
 }
 
+/** `analyze --flush-staged-l3`'s result (issue #42 §8.2) -- `skippedDisabled` (the
+ *  `commit-l3-write` toggle is off) prints a distinct, still-successful message rather than a
+ *  generic "0 flushed" summary, so a human/agent manually running this mode can tell "nothing
+ *  staged" apart from "disabled, never even looked." */
+function printFlushStagedL3Result(
+  result: Extract<
+    AnalyzeResult,
+    { kind: typeof ANALYZE_RESULT_KIND.FLUSH_STAGED_L3 }
+  >,
+  spinner: AnalyzeSpinner,
+): void {
+  if (result.skippedDisabled) {
+    spinner.succeed(UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_DISABLED_SUCCESS);
+    return;
+  }
+  spinner.succeed(UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_SUCCESS);
+  ui.info(
+    UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_SUMMARY(
+      result.flushed,
+      result.deduped,
+      result.stillPending,
+    ),
+  );
+}
+
 function printAnalyzeResult(
   result: AnalyzeResult,
   spinner: AnalyzeSpinner,
@@ -293,29 +401,39 @@ function printAnalyzeResult(
     case ANALYZE_RESULT_KIND.TIER_B_BATCH:
       printTierBBatchResult(result, spinner, fallbackAst);
       break;
+    case ANALYZE_RESULT_KIND.FLUSH_STAGED_L3:
+      printFlushStagedL3Result(result, spinner);
+      break;
   }
 }
 
 function startAnalyzeSpinner(
   targetPath: string | undefined,
   escalateToLsp: boolean,
+  stage = false,
 ): AnalyzeSpinner {
   ui.header(
-    targetPath
-      ? UI_MESSAGES.ANALYZE_FOCUSED_HEADER
-      : escalateToLsp
-        ? UI_MESSAGES.ANALYZE_TIER_B_HEADER
-        : UI_MESSAGES.ANALYZE_HEADER,
+    stage
+      ? UI_MESSAGES.ANALYZE_STAGE_HEADER
+      : targetPath
+        ? UI_MESSAGES.ANALYZE_FOCUSED_HEADER
+        : escalateToLsp
+          ? UI_MESSAGES.ANALYZE_TIER_B_HEADER
+          : UI_MESSAGES.ANALYZE_HEADER,
   );
   return ui
     .spinner(
-      targetPath
-        ? UI_MESSAGES.ANALYZE_FOCUSED_START +
+      stage
+        ? UI_MESSAGES.ANALYZE_STAGE_START +
             targetPath +
             OUTPUT_FORMAT_MARKERS.ELLIPSIS
-        : escalateToLsp
-          ? UI_MESSAGES.ANALYZE_TIER_B_START
-          : UI_MESSAGES.ANALYZE_START,
+        : targetPath
+          ? UI_MESSAGES.ANALYZE_FOCUSED_START +
+            targetPath +
+            OUTPUT_FORMAT_MARKERS.ELLIPSIS
+          : escalateToLsp
+            ? UI_MESSAGES.ANALYZE_TIER_B_START
+            : UI_MESSAGES.ANALYZE_START,
     )
     .start();
 }
@@ -515,14 +633,173 @@ async function confirmTierBGateOrAbort(
 }
 
 /**
- * Thin caller of `docuviaApi.analyze()` — three modes (mutually exclusive; `targetPath` wins if
- * somehow both are given):
+ * `analyze <targetPath> --agent-authored`'s own run (issue #42) -- a pure data write, no LLM
+ * config/spinner-text-on-LLM-progress concerns. Bypasses `setupAnalyzeMemory()` entirely (a
+ * dedicated small setup block here, rather than growing that function's already-8-positional-
+ * argument signature with a 9th/10th case) and sets `MemoryKeys.TARGET_PATH`/
+ * `MemoryKeys.AGENT_AUTHORED`/`MemoryKeys.AGENT_AUTHORED_DECISIONS` directly. Reuses
+ * `printAnalyzeResult`/`handleAnalyzeError` unchanged -- agent-authored mode returns the exact
+ * same `DECISION_EXTRACTION` result shape the LLM path does (§5.4's "free win").
+ *
+ * `options.stage` (issue #42, Decision 2's two-stage stage-and-flush design §8.1) branches to
+ * `docuviaApi.stageAgentAuthoredDecisions` instead of `docuviaApi.analyze` -- same memory setup,
+ * different API entry point, since staging never touches `l3_nodes`/`AnalyzeWorkflow.execute()`'s
+ * dispatch chain at all.
+ */
+async function runAgentAuthoredAnalyze(
+  targetPath: string,
+  cwd: string,
+  options: AnalyzeCommandOptions,
+): Promise<void> {
+  let payload: AgentAuthoredPayload | undefined;
+  try {
+    payload = await resolveAgentAuthoredPayload(options.decisionsFile);
+  } catch (error: unknown) {
+    const message =
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
+    ui.error(message);
+    process.exitCode = 1;
+    return;
+  }
+  if (!payload) {
+    ui.error(UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_PAYLOAD);
+    process.exitCode = 1;
+    return;
+  }
+
+  const spinner = startAnalyzeSpinner(targetPath, false, options.stage);
+  const scopeId = crypto.randomUUID();
+  const logger = createPinoBackedLogger();
+  logger.onLog((event) => {
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
+  });
+
+  docuviaMemory.createScope(scopeId);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, targetPath);
+  docuviaMemory.set(scopeId, MemoryKeys.AGENT_AUTHORED, true);
+  docuviaMemory.set(
+    scopeId,
+    MemoryKeys.AGENT_AUTHORED_DECISIONS,
+    payload.decisions,
+  );
+
+  try {
+    if (options.stage) {
+      const staged = await docuviaApi.stageAgentAuthoredDecisions(
+        scopeId,
+        logger,
+      );
+      spinner.succeed(UI_MESSAGES.ANALYZE_STAGE_SUCCESS);
+      ui.info(UI_MESSAGES.ANALYZE_STAGE_SUMMARY(staged.staged));
+    } else {
+      const result = await docuviaApi.analyze(scopeId, logger);
+      printAnalyzeResult(result, spinner, false);
+    }
+  } catch (error: unknown) {
+    handleAnalyzeError(error, targetPath, false, spinner);
+  } finally {
+    docuviaMemory.deleteScope(scopeId);
+  }
+}
+
+/**
+ * `docuvia analyze --flush-staged-l3`'s own run (issue #42 §8.2) -- no `targetPath` required.
+ * Mirrors `runAgentAuthoredAnalyze`'s shape (bypasses `setupAnalyzeMemory()`, sets only what this
+ * mode needs) and reuses `printAnalyzeResult`/`handleAnalyzeError` unchanged, since
+ * `AnalyzeWorkflow.execute()`'s flush branch returns a real `AnalyzeResult` (the
+ * `FLUSH_STAGED_L3` kind, §5.4-style "free win" the same way agent-authored mode reuses
+ * `DECISION_EXTRACTION`).
+ */
+async function runFlushStagedL3Analyze(cwd: string): Promise<void> {
+  ui.header(UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_HEADER);
+  const spinner = ui.spinner(UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_START).start();
+  const scopeId = crypto.randomUUID();
+  const logger = createPinoBackedLogger();
+  logger.onLog((event) => {
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
+  });
+
+  docuviaMemory.createScope(scopeId);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.FLUSH_STAGED_L3, true);
+
+  try {
+    const result = await docuviaApi.analyze(scopeId, logger);
+    printAnalyzeResult(result, spinner, false);
+  } catch (error: unknown) {
+    handleAnalyzeError(error, undefined, false, spinner);
+  } finally {
+    docuviaMemory.deleteScope(scopeId);
+  }
+}
+
+/**
+ * `analyzeCommand()`'s `--agent-authored` dispatch, split out purely to keep that function's
+ * cyclomatic complexity under the project's ESLint budget (mirrors `dispatchEmptyGraph`'s/
+ * `buildTierBBatchDeps`'s precedent in `analyze-workflow.ts` for the same reason). Returns `true`
+ * when this dispatch handled the run (caller must return immediately, never falling through to
+ * the LLM-config branch below), `false` when `--agent-authored` was not requested at all.
+ */
+async function dispatchAgentAuthored(
+  targetPath: string | undefined,
+  cwd: string,
+  options: AnalyzeCommandOptions,
+): Promise<boolean> {
+  if (!options.agentAuthored) return false;
+
+  // Checked first, before any I/O: --agent-authored without a positional target path is a hard
+  // failure (mirrors impact.ts's missing-target guard), and a target path is required either way
+  // to resolve the L3 anchor.
+  if (!targetPath) {
+    ui.error(UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_TARGET);
+    process.exitCode = 1;
+    return true;
+  }
+  await runAgentAuthoredAnalyze(targetPath, cwd, options);
+  return true;
+}
+
+/**
+ * `analyzeCommand()`'s `--flush-staged-l3` dispatch (issue #42 §8.2) -- checked before every
+ * other mode (`--agent-authored`, then the standard auto/LLM/Tier-B dispatch): this flag wins
+ * outright and requires no `targetPath` (any positional given alongside it is ignored, mirroring
+ * `--decisions-file`'s "ignored, not an error" precedent for a combination that doesn't make
+ * sense). Checked ahead of `dispatchAgentAuthored` purely for symmetry -- the two flags are never
+ * combined in practice (`--flush-staged-l3` is the post-commit hook's own invocation, never
+ * paired with `--agent-authored`), so the relative order between them doesn't matter, but putting
+ * the mode with no external I/O prerequisites (no stdin/file read) first keeps this function's
+ * own reading order matching its most-specific-first rationale.
+ */
+async function dispatchFlushStagedL3(
+  cwd: string,
+  options: AnalyzeCommandOptions,
+): Promise<boolean> {
+  if (!options.flushStagedL3) return false;
+  await runFlushStagedL3Analyze(cwd);
+  return true;
+}
+
+/**
+ * Thin caller of `docuviaApi.analyze()` — five modes (mutually exclusive; `--flush-staged-l3`
+ * wins outright over everything else, then `targetPath` wins if somehow more than one of the
+ * remaining four are given):
+ * - `--flush-staged-l3` (issue #42 §8.2): the post-commit hook's drain of
+ *   `.docuvia/pending-l3-decisions.json` -- no `targetPath` required (any given is ignored). See
+ *   `runFlushStagedL3Analyze`. Checked first, ahead of every other dispatch.
  * - No `targetPath`, no `--escalate-to-lsp`: auto mode (PLAT-007 Tier A;
  *   phase1-decision-integration.md §6) — a sha fast-path no-op, full ingestion (empty graph), or
  *   delta ingestion (non-empty graph, `HEAD` moved), each reported with its own
  *   `result.kind`-specific summary below.
- * - `targetPath` given: focused LLM decision extraction (mirrors old Docuvia's
- *   `runFocusedExtraction`/the old `extract` command). Requires
+ * - `targetPath` + `--agent-authored`: a pure data write of an AI coding agent's own already-
+ *   produced decisions (issue #42, roadmap items 32-34) — skips the LLM entirely; see
+ *   `runAgentAuthoredAnalyze`. Checked before the plain `targetPath` (LLM) branch below.
+ *   `--agent-authored --stage` (issue #42 §8.1) is a variant of this same dispatch that appends
+ *   to the staging file instead of writing straight to `l3_nodes`.
+ * - `targetPath` given (no `--agent-authored`): focused LLM decision extraction (mirrors old
+ *   Docuvia's `runFocusedExtraction`/the old `extract` command). Requires
  *   `AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL` and a model
  *   (`AI_DOCUVIA_MODEL`/`AI_DOCUVIA_FAST_MODEL`) to be set; missing env vars are a hard failure
  *   (exit 1) rather than a silent skip — unlike `publish.ts`'s missing-env behavior — because a
@@ -540,6 +817,23 @@ export async function analyzeCommand(
   cwd: string = process.cwd(),
   options: AnalyzeCommandOptions = {},
 ) {
+  if (await dispatchFlushStagedL3(cwd, options)) return;
+  if (await dispatchAgentAuthored(targetPath, cwd, options)) return;
+  await runStandardAnalyze(targetPath, cwd, options);
+}
+
+/**
+ * The pre-existing auto/LLM-extraction/Tier-B-batch dispatch, unchanged in behavior -- split out
+ * of `analyzeCommand` purely to keep the `--agent-authored` dispatch (`dispatchAgentAuthored`)
+ * from pushing `analyzeCommand` itself over the project's ESLint cyclomatic-complexity budget
+ * (mirrors `dispatchEmptyGraph`'s/`buildTierBBatchDeps`'s precedent in `analyze-workflow.ts` for
+ * the same reason).
+ */
+async function runStandardAnalyze(
+  targetPath: string | undefined,
+  cwd: string,
+  options: AnalyzeCommandOptions,
+): Promise<void> {
   let llmConfig: AnalyzeLlmConfig | undefined;
   const escalateToLsp = !targetPath && Boolean(options.escalateToLsp);
 

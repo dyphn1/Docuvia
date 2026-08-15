@@ -18,7 +18,10 @@ import type { StatusResult } from "./workflows/status/status-result.js";
 import { SyncWorkflow } from "./workflows/sync/sync-workflow.js";
 import type { SyncResult } from "./workflows/sync/sync-result.js";
 import { AnalyzeWorkflow } from "./workflows/analyze/analyze-workflow.js";
-import type { AnalyzeResult } from "./workflows/analyze/analyze-result.js";
+import type {
+  AnalyzeResult,
+  ExtractedDecision,
+} from "./workflows/analyze/analyze-result.js";
 import { ReviewWorkflow } from "./workflows/review/review-workflow.js";
 import type { ReviewResult } from "./workflows/review/review-result.js";
 import { ImpactWorkflow } from "./workflows/impact/impact-workflow.js";
@@ -44,6 +47,12 @@ import { checkTierBGate } from "./workflows/analyze/tier-b-gate.js";
 import type { DoctorResult } from "./workflows/doctor/doctor-result.js";
 import { UninstallHooksWorkflow } from "./workflows/uninstall/uninstall-hooks-workflow.js";
 import { removeDocuviaDataDir } from "./workflows/uninstall/remove-docuvia-dir.js";
+import {
+  listHooks as listHooksWorkflow,
+  setHookEnabled as setHookEnabledWorkflow,
+} from "./workflows/hooks/hooks-workflow.js";
+import type { HookName, HooksConfig } from "@workspace/contracts";
+import { stagePendingDecisions } from "./workflows/analyze/pending-l3-decisions-store.js";
 
 function requireMemory<T>(scopeId: string, key: MemoryKey): T {
   const value = docuviaMemory.get<T>(scopeId, key);
@@ -142,10 +151,36 @@ export const docuviaApi = {
       scopeId,
       MemoryKeys.WORKSPACE_ROOT,
     );
+    // `analyze --flush-staged-l3` (issue #42 §8.2): checked first -- sets neither `targetPath`
+    // nor `escalateToLsp`, so there's no ambiguity with the branches below.
+    const flushStagedL3 = docuviaMemory.get<boolean>(
+      scopeId,
+      MemoryKeys.FLUSH_STAGED_L3,
+    );
+    if (flushStagedL3) {
+      return new AnalyzeWorkflow(workspaceRoot, logger, {
+        flushStagedL3: true,
+      }).execute();
+    }
+
     const targetPath = docuviaMemory.get<string>(
       scopeId,
       MemoryKeys.TARGET_PATH,
     );
+    // `analyze <targetPath> --agent-authored` (issue #42): checked before the LLM-config branch
+    // below, which otherwise unconditionally `requireMemory`s LLM_BASE_URL/LLM_MODEL the moment
+    // `targetPath` is truthy -- agent-authored mode never sets those and must skip that
+    // requirement entirely.
+    const agentAuthoredDecisions = docuviaMemory.get<ExtractedDecision[]>(
+      scopeId,
+      MemoryKeys.AGENT_AUTHORED_DECISIONS,
+    );
+    if (targetPath && agentAuthoredDecisions) {
+      return new AnalyzeWorkflow(workspaceRoot, logger, {
+        targetPath,
+        agentAuthoredDecisions,
+      }).execute();
+    }
     if (targetPath) {
       const llmBaseUrl = requireMemory<string>(
         scopeId,
@@ -213,6 +248,29 @@ export const docuviaApi = {
     }
 
     return new AnalyzeWorkflow(workspaceRoot, logger).execute();
+  },
+
+  /** `analyze <targetPath> --agent-authored --stage` (issue #42 §8.1) -- appends
+   *  `AGENT_AUTHORED_DECISIONS` into `.docuvia/pending-l3-decisions.json` instead of writing
+   *  straight to `l3_nodes`; fast, local, no DB open, no LLM call. A sibling entry point to
+   *  `analyze()`, not a mode of it -- staging never touches `AnalyzeWorkflow.execute()`'s
+   *  dispatch chain at all (mirrors `checkTierBGate`'s precedent of a small capability with its
+   *  own dedicated `docuviaApi` method rather than being folded into `analyze`'s memory-key
+   *  dispatch). */
+  async stageAgentAuthoredDecisions(
+    scopeId: string,
+    logger: ILogger,
+  ): Promise<{ staged: number }> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    const targetPath = requireMemory<string>(scopeId, MemoryKeys.TARGET_PATH);
+    const decisions = requireMemory<ExtractedDecision[]>(
+      scopeId,
+      MemoryKeys.AGENT_AUTHORED_DECISIONS,
+    );
+    return stagePendingDecisions(workspaceRoot, targetPath, decisions, logger);
   },
 
   async review(scopeId: string, logger: ILogger): Promise<ReviewResult> {
@@ -342,6 +400,27 @@ export const docuviaApi = {
       MemoryKeys.WORKSPACE_ROOT,
     );
     return removeDocuviaDataDir(workspaceRoot, logger);
+  },
+
+  /** `docuvia hooks list` (issue #42 §7.3) -- reads `.docuvia/hooks-config.json`, defaults-filled. */
+  async listHooks(scopeId: string, logger: ILogger): Promise<HooksConfig> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    return listHooksWorkflow(workspaceRoot, logger);
+  },
+
+  /** `docuvia hooks enable/disable <hookName>` (issue #42 §7.3) -- writes the toggle, returns the
+   *  full re-read config so the CLI can print a confirming summary. */
+  async setHookEnabled(scopeId: string, logger: ILogger): Promise<HooksConfig> {
+    const workspaceRoot = requireMemory<string>(
+      scopeId,
+      MemoryKeys.WORKSPACE_ROOT,
+    );
+    const hookName = requireMemory<HookName>(scopeId, MemoryKeys.HOOK_NAME);
+    const enabled = requireMemory<boolean>(scopeId, MemoryKeys.HOOK_ENABLED);
+    return setHookEnabledWorkflow(workspaceRoot, hookName, enabled, logger);
   },
 
   /** D2's mandatory pre-flight gate for a manual/interactive `analyze --escalate-to-lsp`

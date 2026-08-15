@@ -196,6 +196,45 @@ export const UI_MESSAGES = {
   ANALYZE_TIER_C_SKIPPED: (reason: string) =>
     `Tier C: drain skipped this run (${reason}).`,
 
+  // --agent-authored (issue #42, roadmap items 32-34): a pure data write of an AI coding agent's
+  // own already-produced decisions, no LLM call. Reuses ANALYZE_FOCUSED_* for the spinner
+  // header/start/success text and printFocusedResult() as-is -- the printed result shape is
+  // identical to the LLM path's (analyze-result.ts's DECISION_EXTRACTION kind).
+  ANALYZE_AGENT_AUTHORED_MISSING_TARGET:
+    "--agent-authored requires a target path, e.g. docuvia analyze <path> --agent-authored",
+  ANALYZE_AGENT_AUTHORED_MISSING_PAYLOAD:
+    "No decisions payload found -- pipe JSON via stdin or pass --decisions-file=<path>",
+  ANALYZE_AGENT_AUTHORED_INVALID_JSON: (err: string) =>
+    `--agent-authored payload is not valid JSON: ${err}`,
+  ANALYZE_AGENT_AUTHORED_INVALID_SHAPE: (err: string) =>
+    `--agent-authored payload does not match the expected shape: ${err}`,
+
+  // --stage (issue #42, Decision 2's two-stage stage-and-flush design §8.1) -- a variant of the
+  // --agent-authored dispatch above: appends to .docuvia/pending-l3-decisions.json instead of
+  // writing straight to l3_nodes.
+  ANALYZE_STAGE_HEADER: "Stage Decisions",
+  ANALYZE_STAGE_START: "Staging decisions from ",
+  ANALYZE_STAGE_SUCCESS: "Staged.",
+  ANALYZE_STAGE_SUMMARY: (staged: number) =>
+    `${staged} decision(s) staged -- flushed automatically on the next commit that touches this file.`,
+
+  // --flush-staged-l3 (issue #42 §8.2) -- the post-commit hook's drain of
+  // .docuvia/pending-l3-decisions.json.
+  ANALYZE_FLUSH_STAGED_L3_HEADER: "Flush Staged L3 Decisions",
+  ANALYZE_FLUSH_STAGED_L3_START: "Flushing staged L3 decisions...",
+  ANALYZE_FLUSH_STAGED_L3_SUCCESS: "Flush complete.",
+  ANALYZE_FLUSH_STAGED_L3_DISABLED_SUCCESS:
+    "commit-l3-write is disabled -- nothing flushed.",
+  ANALYZE_FLUSH_STAGED_L3_SUMMARY: (
+    flushed: number,
+    deduped: number,
+    stillPending: number,
+  ) =>
+    `${flushed} flushed, ${deduped} deduplicated` +
+    (stillPending > 0
+      ? `, ${stillPending} left staged for a future commit.`
+      : "."),
+
   // Review Command
   REVIEW_HEADER: "Review Changes",
   REVIEW_START: "Analyzing changes...",
@@ -393,4 +432,19 @@ export const UI_MESSAGES = {
   SYNC_KNOWLEDGE_MERGED:
     "Merged the diverged knowledge branch and pushed the result.",
   SYNC_KNOWLEDGE_FAIL: "Knowledge branch sync failed: ",
+
+  // Hooks Command (issue #42 §7.4) -- docuvia hooks list/enable/disable/check
+  HOOKS_HEADER: "Docuvia Hooks",
+  HOOKS_COL_NAME: "Hook",
+  HOOKS_COL_STATUS: "Status",
+  HOOKS_STATUS_ENABLED: "enabled",
+  HOOKS_STATUS_DISABLED: "disabled",
+  HOOKS_LIST_FAIL: "Failed to list hooks: ",
+  HOOKS_SET_FAIL: "Failed to update hook: ",
+  HOOKS_ENABLED: (hookName: string) => `Enabled hook: ${hookName}`,
+  HOOKS_DISABLED: (hookName: string) => `Disabled hook: ${hookName}`,
+  HOOKS_INVALID_NAME: (hookName: string | undefined, validNames: string[]) =>
+    `Unknown hook '${hookName ?? ""}' -- valid names: ${validNames.join(", ")}`,
+  HOOKS_UNKNOWN_SUBCOMMAND: (subcommand: string | undefined) =>
+    `Unknown 'docuvia hooks' subcommand '${subcommand ?? ""}' -- expected list, enable, disable, or check`,
 };

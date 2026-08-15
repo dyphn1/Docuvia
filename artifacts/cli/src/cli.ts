@@ -19,6 +19,7 @@ import { hydrateCommand } from "./commands/hydrate.js";
 import { syncKnowledgeCommand } from "./commands/sync-knowledge.js";
 import { uninstallCommand } from "./commands/uninstall.js";
 import { doctorCommand } from "./commands/doctor.js";
+import { hooksCommand } from "./commands/hooks.js";
 import { runMcpServer } from "./mcp/server.js";
 import type { TopologyCollapseMode } from "@workspace/contracts";
 
@@ -115,6 +116,10 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
   const lspProcessesRaw = ctx.parser.getFlagValue(CLI_FLAGS.LSP_PROCESSES);
   const lspProcesses =
     lspProcessesRaw !== undefined ? Number(lspProcessesRaw) : undefined;
+  const agentAuthored = ctx.parser.hasFlag(CLI_FLAGS.AGENT_AUTHORED);
+  const decisionsFile = ctx.parser.getFlagValue(CLI_FLAGS.DECISIONS_FILE);
+  const stage = ctx.parser.hasFlag(CLI_FLAGS.STAGE);
+  const flushStagedL3 = ctx.parser.hasFlag(CLI_FLAGS.FLUSH_STAGED_L3);
   await analyzeCommand(targetPath, ctx.workspaceRoot, {
     escalateToLsp,
     fallbackAst,
@@ -123,6 +128,10 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
     lspTimeoutMs,
     lspProcesses,
     full,
+    agentAuthored,
+    decisionsFile,
+    stage,
+    flushStagedL3,
   });
 }
 
@@ -217,6 +226,13 @@ async function handleSyncKnowledge(ctx: CommandContext): Promise<void> {
   await syncKnowledgeCommand(ctx.workspaceRoot);
 }
 
+async function handleHooks(ctx: CommandContext): Promise<void> {
+  ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.HOOKS]);
+  const subcommand = ctx.parser.getPositional(0);
+  const hookName = ctx.parser.getPositional(1);
+  await hooksCommand(subcommand, hookName, ctx.workspaceRoot);
+}
+
 /**
  * `init`/`mcp`/`clean`/`status`/`publish`/`analyze`/`review`/`impact`/`query`/`export-topology`/
  * `snapshot`/`hydrate`/`sync-knowledge` are wired so far. Structured so each later command is
@@ -242,6 +258,7 @@ const COMMAND_HANDLERS: Record<
   [CLI_COMMANDS.SYNC_KNOWLEDGE]: handleSyncKnowledge,
   [CLI_COMMANDS.UNINSTALL]: handleUninstall,
   [CLI_COMMANDS.DOCTOR]: handleDoctor,
+  [CLI_COMMANDS.HOOKS]: handleHooks,
 };
 
 /**

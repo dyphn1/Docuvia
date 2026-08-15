@@ -65,6 +65,26 @@ export const CLI_FLAGS = {
    *  only prompts when the caller explicitly passes this flag (and stdin is actually usable). */
   INTERACTIVE: "--interactive",
   INTERACTIVE_SHORT: "-i",
+  /** `analyze <targetPath> --agent-authored` (issue #42, roadmap items 32-34): skips
+   *  `resolveAnalyzeLlmConfig()`/the LLM call entirely -- the decisions JSON is read from stdin
+   *  (default) or --decisions-file and persisted verbatim with source='agent-authored'. */
+  AGENT_AUTHORED: "--agent-authored",
+  /** Reads the `--agent-authored` payload from a file instead of stdin -- for shells where piping
+   *  is awkward (e.g. Windows PowerShell). Ignored when `--agent-authored` is not also set. */
+  DECISIONS_FILE: "--decisions-file=",
+  /** `analyze <targetPath> --agent-authored --stage` (issue #42, Decision 2's two-stage stage-
+   *  and-flush design §8.1): instead of writing straight to `l3_nodes`, appends the payload's
+   *  decisions into `.docuvia/pending-l3-decisions.json` for the post-commit hook's
+   *  `--flush-staged-l3` step to drain later. Valid only combined with `--agent-authored`;
+   *  ignored otherwise (same "ignored, not an error" precedent as `--decisions-file` without
+   *  `--agent-authored`). */
+  STAGE: "--stage",
+  /** `docuvia analyze --flush-staged-l3` (issue #42 §8.2) -- a fourth, mutually-exclusive
+   *  `analyze` mode alongside auto/`targetPath`/`--escalate-to-lsp`: no `targetPath`, no
+   *  `--escalate-to-lsp`. Drains `.docuvia/pending-l3-decisions.json` entries whose `filePath` is
+   *  in the current (post-commit) HEAD's changed-file list. Self-gated internally on the
+   *  `commit-l3-write` toggle -- see `run-flush-staged-l3.ts`. */
+  FLUSH_STAGED_L3: "--flush-staged-l3",
 } as const;
 
 /** Values accepted by `--format=` (`query` command) — shared between `cli.ts`'s flag cast and `query.ts`'s runtime dispatch. */

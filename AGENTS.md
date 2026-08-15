@@ -113,6 +113,14 @@ npx --no-install docuvia impact <symbolOrFile>
 npx --no-install docuvia review <baseRef>
 ```
 
+**After making a code change that reflects a real architectural decision, rule, or notable rationale**, stage it so the graph picks it up without a separate write step:
+
+```bash
+npx --no-install docuvia analyze <file> --agent-authored --stage
+```
+
+Pipe a JSON payload on stdin (default) or pass `--decisions-file=<path>` instead — either way the shape is `{"decisions":[{"title":string,"content":string,"nodeType":"change"|"rule"|"decision"|"context","confidence":number}]}`. Put `--agent-authored`/`--stage` **after** the positional `<file>`, not before — a flag preceding the path silently swallows it as the flag's own value, so `<file>` never reaches the positional argument. Staged decisions flush into `l3_nodes` automatically the next time you commit a change touching that file; nothing else to run.
+
 Only fall back to `Grep`/`Glob`/`Read` when:
 
 - `query`/`impact` returns empty, or the target is flagged `tier_b_status="unprocessed"` — the graph hasn't seen it yet, which means _unknown_, not _zero_. Run `docuvia analyze --escalate-to-lsp --full` (or check `docuvia doctor`) before trusting an empty result.

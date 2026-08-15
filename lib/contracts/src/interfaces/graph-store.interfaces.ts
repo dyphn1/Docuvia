@@ -126,6 +126,20 @@ export const ValidityStatuses = {
 export type ValidityStatus =
   (typeof ValidityStatuses)[keyof typeof ValidityStatuses];
 
+/** `l3_nodes.source` values. `ANALYZE` = the existing LLM decision-extraction pipeline
+ *  (`analyze <targetPath>`, no --agent-authored). `AGENT_AUTHORED` = an AI coding agent's own
+ *  structured decision, written verbatim (no LLM call) via `analyze <targetPath> --agent-authored`
+ *  (roadmap items 32-34, issue #42). `IMPORT` mirrors L3NodesRepo's private `L3_IMPORT_SOURCE`
+ *  ('git-import') -- included here so every source value used in application code has one home;
+ *  `L3NodesRepo.importCard` continues to hardcode its own literal for now (out of scope -- see
+ *  the note below), but new code should reference this const, not a fresh string literal. */
+export const L3DecisionSources = {
+  ANALYZE: "analyze",
+  AGENT_AUTHORED: "agent-authored",
+} as const;
+export type L3DecisionSource =
+  (typeof L3DecisionSources)[keyof typeof L3DecisionSources];
+
 export interface L3NodeRow {
   id: number;
   l2_node_id: number;
@@ -375,14 +389,17 @@ export interface IL3NodesRepo {
   getByL2NodeId(l2NodeId: number): L3NodeRow[];
   /**
    * Content-hash upsert for `analyze <targetPath>`'s LLM decision-extraction pipeline
-   * (phase1-decision-integration.md §3c; PLAT-007 Tier C point 1). `content_hash` = sha256 over
+   * (phase1-decision-integration.md §3c; PLAT-007 Tier C point 1), also used by the
+   * `--agent-authored` write path (issue #42). `content_hash` = sha256 over
    * `nodeType + "\n" + title + "\n" + content`. When a row with the same `content_hash` already
    * exists for `projectId` (joined via `l2_nodes.project_id` — `l3_nodes` has no `project_id`
    * column of its own): bumps `occurrence_count`, refreshes `last_verified_at`, and appends
-   * `commitSha` to `source_commits` if not already present — no duplicate row is inserted.
-   * Otherwise inserts a new row with `commit_hash` = `commitSha`, `source_commits` =
-   * `[commitSha]`, `source` = `'analyze'`, `ai_generated` = 1, `validity_status` left at its
-   * column default (`'pending'`).
+   * `commitSha` to `source_commits` if not already present — no duplicate row is inserted, and
+   * `source` is left untouched (the first writer's `source` always wins, even across a later
+   * call with a different `source`). Otherwise inserts a new row with `commit_hash` =
+   * `commitSha`, `source_commits` = `[commitSha]`, `source` = `input.source ??
+   * L3DecisionSources.ANALYZE`, `ai_generated` = 1, `validity_status` left at its column default
+   * (`'pending'`).
    */
   upsertDecision(input: {
     projectId: number;
@@ -396,6 +413,11 @@ export interface IL3NodesRepo {
     extractionModel: string | null;
     /** Workspace-relative source file paths the decision was extracted from. */
     sourceFiles: string[];
+    /** `l3_nodes.source` to stamp on a fresh insert (ignored on the dedup/occurrence-bump path --
+     *  an existing row keeps its original `source`, never overwritten by a later call with a
+     *  different one). Defaults to `L3DecisionSources.ANALYZE` when omitted, preserving every
+     *  existing caller's behavior unchanged. */
+    source?: L3DecisionSource;
   }): { id: number; deduped: boolean };
   /**
    * L3DIST-007's git-to-local.db import half of the union (phase2-l3-distribution.md): upserts a

@@ -37,6 +37,7 @@
   - [mcp](user-guide/cli/mcp.md)
   - [uninstall](user-guide/cli/uninstall.md)
   - [doctor](user-guide/cli/doctor.md)
+  - [hooks](user-guide/cli/hooks.md)
 
 ## 📋 Architecture Decision Records
 

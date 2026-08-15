@@ -1,6 +1,5 @@
 import process from "process";
 import crypto from "node:crypto";
-import { createInterface } from "readline";
 import {
   docuviaMemory,
   DocuviaError,
@@ -13,17 +12,7 @@ import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { OUTPUT_FORMAT_MARKERS } from "../constants/cli-output-markers.js";
-
-function readStdin(): Promise<string> {
-  return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin });
-    let data = "";
-    rl.on("line", (line) => {
-      data += line + "\n";
-    });
-    rl.on("close", () => resolve(data.trim()));
-  });
-}
+import { readStdin } from "../utils/read-stdin.js";
 
 async function resolveProjectId(
   projectId: string | undefined,

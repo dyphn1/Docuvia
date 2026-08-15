@@ -124,14 +124,17 @@ stall the batch.
   real-world run silently used the single-process path and §4 never engaged. Removed — unset now
   auto-derives per PRJ-004.
 - **Edge-set parity:** single-process output is _bit-exact run-to-run_ (same 4662 edges / same SHA-256
-  hash twice). Sharded output (4778 ± 3) is a **superset**: +119 edges (mostly TS — per-project servers
-  resolve their project's internal references that the repo-root single server missed) minus 2-3 edges
-  lost to `ContentModified` (`-32801`) races when a server re-opens a file mid-flight — pre-existing
+  hash three times). Sharded output (4772 ± ~10) is a **superset**: +110 edges (mostly TS — per-project
+  servers resolve their project's internal references that the repo-root single server missed) minus 2-3
+  edges lost to `ContentModified` (`-32801`) races when a server re-opens a file mid-flight — pre-existing
   batch behavior (the single-process run loses a _different_ file, `tauri-build/src/acl.rs`,
   deterministically), not a sharding regression.
-- **Throughput:** sharded ≈ 95-105 s vs single ≈ 113 s (~16% faster) at the 2-rust-shard memory cap.
-  The misc shard (coalesced remainder, 222 files) is the bottleneck — rust parallelism is hard-capped by
-  RAM on this box; on larger machines the design scales (more rust shards → bigger win).
+- **Throughput (final re-measurement, 2026-08-15, saturated graph):** sharded **1:49 wall / 4772 provider
+  edges** vs `--lsp-processes=1` **1:59 wall / 4662 provider edges** (both applied 0 corrected edges —
+  idempotent dedup on an already-saturated graph). Across runs: sharded 95-109 s, single 113-119 s
+  (~8-16% faster). The misc shard (coalesced remainder, 222 files) is the bottleneck — rust parallelism
+  is hard-capped by RAM on this box; on larger machines the design scales (more rust shards → bigger
+  win).
 
 ---
 

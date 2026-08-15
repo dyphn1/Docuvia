@@ -81,5 +81,7 @@ describe `docuvia init` because that was its name when the event they describe h
 Exact file-by-file rename list and PR sequencing is implementation work, not part of this decision
 — to be tracked as its own item when implementation starts. Separately, `init`'s own idempotency gap
 (`init --platform=X` re-runs full ingestion instead of scoping down like `uninstall --platform=X`
-does) is a related but distinct bug, tracked as
-[roadmap item 35](../../analysis/roadmap-and-open-items.md), not part of this rename's scope.
+does) was a related but distinct bug, tracked as
+[roadmap item 35](../../analysis/roadmap-and-open-items.md) — **fixed 2026-08-15** (`InitWorkflow`
+now detects an already-populated graph and skips discovery/parse/persist/pack on repeat `init`
+calls); no longer blocks this rename from proceeding.

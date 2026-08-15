@@ -169,6 +169,22 @@ risks anchoring on `init`'s current, soon-to-change semantics.
 
 ### 35. `init --platform=X` isn't actually scoped the way `uninstall --platform=X` is
 
+> **Fixed 2026-08-15.** `InitWorkflow.execute()`
+> ([`init-workflow.ts`](../../../lib/ui-core/src/workflows/init/init-workflow.ts)) now detects an
+> already-populated graph — a project row plus `l2Nodes > 0`, the same test
+> `analyze-workflow.ts`'s `dispatchAutoMode()` already uses for its own empty-graph check, inverted
+> — right after opening the store, and returns immediately via a new `buildSkippedInitResult()`,
+> skipping discovery/parse/persist/pack entirely. Verified live: `docuvia init` run twice against a
+> real repo — first run did full ingestion in ~2s, second run took ~540ms and left `local.db` and
+> the knowledge-branch SHA completely unchanged. The fix applies to **any** repeat `docuvia init` on
+> an already-initialized workspace, not just `--platform=`-scoped calls — `InitWorkflow` never sees
+> that flag at all (`--platform=` only ever reaches `configureAgentIntegrations`, a separate,
+> already-correctly-scoped call in `init.ts`). `init --force` was deliberately **not** added — a
+> considered recommendation, not an oversight: `docuvia analyze` (incremental) and `docuvia clean` +
+> `docuvia init` (full wipe) already cover "I want a real refresh," and this project favors an
+> existing command over a new flag when the essence is the same. Full detail:
+> [`implement_init-platform-scoping-fix.md`](../../ai_plans/implement_init-platform-scoping-fix.md).
+
 Verified in [`lib/ui-core/src/workflows/init/init-workflow.ts`](../../../lib/ui-core/src/workflows/init/init-workflow.ts):
 `execute()` always runs the full discovery → parse → persist sequence regardless of whether
 `.docuvia/`/`local.db` already exist — there is no branch that detects an already-initialized

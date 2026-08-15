@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/tags-repo.ts#getAllTagLinks
+id: lib/schema/src/sqlite/repos/tags-repo.ts#TagsRepo.getAllTagLinks
 type: symbol
 name: getAllTagLinks
 filePath: lib/schema/src/sqlite/repos/tags-repo.ts

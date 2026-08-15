@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/file-discovery.service.ts#discoverViaGlobFallback
+id: lib/core/src/discovery/file-discovery.service.ts#FileDiscoveryService.discoverViaGlobFallback
 type: symbol
 name: discoverViaGlobFallback
 filePath: lib/core/src/discovery/file-discovery.service.ts

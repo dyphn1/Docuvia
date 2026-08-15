@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/temp-files/temp-file-manager.ts#getTempDirPath
+id: lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.getTempDirPath
 type: symbol
 name: getTempDirPath
 filePath: lib/core/src/temp-files/temp-file-manager.ts

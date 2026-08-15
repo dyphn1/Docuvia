@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/codex.platform.ts#uninstallHooks
+id: artifacts/cli/src/platforms/codex.platform.ts#CodexPlatform.uninstallHooks
 type: symbol
 name: uninstallHooks
 filePath: artifacts/cli/src/platforms/codex.platform.ts

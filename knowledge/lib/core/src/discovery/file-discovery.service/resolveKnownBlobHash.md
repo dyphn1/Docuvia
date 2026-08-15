@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/file-discovery.service.ts#resolveKnownBlobHash
+id: lib/core/src/discovery/file-discovery.service.ts#FileDiscoveryService.resolveKnownBlobHash
 type: symbol
 name: resolveKnownBlobHash
 filePath: lib/core/src/discovery/file-discovery.service.ts

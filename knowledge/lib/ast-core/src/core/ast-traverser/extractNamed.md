@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/core/ast-traverser.ts#extractNamed
+id: lib/ast-core/src/core/ast-traverser.ts#AstTraverser.extractNamed
 type: symbol
 name: extractNamed
 filePath: lib/ast-core/src/core/ast-traverser.ts

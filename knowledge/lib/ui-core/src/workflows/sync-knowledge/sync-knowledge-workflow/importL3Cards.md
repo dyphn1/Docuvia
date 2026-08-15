@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts#importL3Cards
+id: lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts#SyncKnowledgeWorkflow.importL3Cards
 type: symbol
 name: importL3Cards
 filePath: lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts

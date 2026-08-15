@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-provider.ts#extractFunctions
+id: lib/ast-core/src/language-provider.ts#DefaultProvider.extractFunctions
 type: symbol
 name: extractFunctions
 filePath: lib/ast-core/src/language-provider.ts

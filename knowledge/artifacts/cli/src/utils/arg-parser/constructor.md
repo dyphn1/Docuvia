@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/utils/arg-parser.ts#constructor
+id: artifacts/cli/src/utils/arg-parser.ts#ArgParser.constructor
 type: symbol
 name: constructor
 filePath: artifacts/cli/src/utils/arg-parser.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#syncKnowledgeBranch
+id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.syncKnowledgeBranch
 type: symbol
 name: syncKnowledgeBranch
 filePath: lib/core/src/git/knowledge-git.service.ts

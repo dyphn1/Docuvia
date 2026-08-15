@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/continue.platform.ts#uninstallHooks
+id: artifacts/cli/src/platforms/continue.platform.ts#ContinuePlatform.uninstallHooks
 type: symbol
 name: uninstallHooks
 filePath: artifacts/cli/src/platforms/continue.platform.ts

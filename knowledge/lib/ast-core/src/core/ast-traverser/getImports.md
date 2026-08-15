@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/core/ast-traverser.ts#getImports
+id: lib/ast-core/src/core/ast-traverser.ts#AstTraverser.getImports
 type: symbol
 name: getImports
 filePath: lib/ast-core/src/core/ast-traverser.ts

@@ -65,6 +65,13 @@ export const CLI_FLAGS = {
    *  only prompts when the caller explicitly passes this flag (and stdin is actually usable). */
   INTERACTIVE: "--interactive",
   INTERACTIVE_SHORT: "-i",
+  /** `analyze <targetPath> --agent-authored` (issue #42, roadmap items 32-34): skips
+   *  `resolveAnalyzeLlmConfig()`/the LLM call entirely -- the decisions JSON is read from stdin
+   *  (default) or --decisions-file and persisted verbatim with source='agent-authored'. */
+  AGENT_AUTHORED: "--agent-authored",
+  /** Reads the `--agent-authored` payload from a file instead of stdin -- for shells where piping
+   *  is awkward (e.g. Windows PowerShell). Ignored when `--agent-authored` is not also set. */
+  DECISIONS_FILE: "--decisions-file=",
 } as const;
 
 /** Values accepted by `--format=` (`query` command) — shared between `cli.ts`'s flag cast and `query.ts`'s runtime dispatch. */

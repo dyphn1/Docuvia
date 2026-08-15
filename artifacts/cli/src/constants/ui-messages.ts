@@ -196,6 +196,19 @@ export const UI_MESSAGES = {
   ANALYZE_TIER_C_SKIPPED: (reason: string) =>
     `Tier C: drain skipped this run (${reason}).`,
 
+  // --agent-authored (issue #42, roadmap items 32-34): a pure data write of an AI coding agent's
+  // own already-produced decisions, no LLM call. Reuses ANALYZE_FOCUSED_* for the spinner
+  // header/start/success text and printFocusedResult() as-is -- the printed result shape is
+  // identical to the LLM path's (analyze-result.ts's DECISION_EXTRACTION kind).
+  ANALYZE_AGENT_AUTHORED_MISSING_TARGET:
+    "--agent-authored requires a target path, e.g. docuvia analyze <path> --agent-authored",
+  ANALYZE_AGENT_AUTHORED_MISSING_PAYLOAD:
+    "No decisions payload found -- pipe JSON via stdin or pass --decisions-file=<path>",
+  ANALYZE_AGENT_AUTHORED_INVALID_JSON: (err: string) =>
+    `--agent-authored payload is not valid JSON: ${err}`,
+  ANALYZE_AGENT_AUTHORED_INVALID_SHAPE: (err: string) =>
+    `--agent-authored payload does not match the expected shape: ${err}`,
+
   // Review Command
   REVIEW_HEADER: "Review Changes",
   REVIEW_START: "Analyzing changes...",

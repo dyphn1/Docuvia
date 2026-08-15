@@ -115,6 +115,8 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
   const lspProcessesRaw = ctx.parser.getFlagValue(CLI_FLAGS.LSP_PROCESSES);
   const lspProcesses =
     lspProcessesRaw !== undefined ? Number(lspProcessesRaw) : undefined;
+  const agentAuthored = ctx.parser.hasFlag(CLI_FLAGS.AGENT_AUTHORED);
+  const decisionsFile = ctx.parser.getFlagValue(CLI_FLAGS.DECISIONS_FILE);
   await analyzeCommand(targetPath, ctx.workspaceRoot, {
     escalateToLsp,
     fallbackAst,
@@ -123,6 +125,8 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
     lspTimeoutMs,
     lspProcesses,
     full,
+    agentAuthored,
+    decisionsFile,
   });
 }
 

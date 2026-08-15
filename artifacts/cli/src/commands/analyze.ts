@@ -1,10 +1,14 @@
 import process from "process";
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import { z } from "zod";
 import {
   docuviaMemory,
   DocuviaError,
+  ErrorCodes,
   MemoryKeys,
   LogLevels,
+  UTF8_ENCODING,
 } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
 import "../registration.js";
@@ -12,6 +16,7 @@ import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { OUTPUT_FORMAT_MARKERS } from "../constants/cli-output-markers.js";
+import { readStdin } from "../utils/read-stdin.js";
 
 /**
  * Mirrors `AnalyzeResultKind` from `lib/ui-core`'s `analyze-result.ts` — not re-exported
@@ -28,6 +33,28 @@ const ANALYZE_RESULT_KIND = {
 
 type AnalyzeResult = Awaited<ReturnType<typeof docuviaApi.analyze>>;
 type AnalyzeSpinner = ReturnType<typeof ui.spinner>;
+
+/**
+ * `--agent-authored`'s payload shape (issue #42) — boundary validation (design-spirit.md #4
+ * precedent, mirrors `init.ts`'s `InitInputSchema`), local to this file rather than imported
+ * from `lib/ui-core` (same boundary-duplication convention `ANALYZE_RESULT_KIND` above already
+ * uses; `ExtractedDecision`/`DecisionNodeType` aren't meant to leak CLI-layer validation concerns
+ * into the Orchestration layer either). Deliberate deviation from `parseDecisionsFromLlmContent`'s
+ * LLM-path leniency (which coerces an invalid/missing `nodeType` to `context` rather than
+ * failing): an agent's own structured JSON payload is a caller that can simply fix its input, so
+ * this hard-fails on an invalid `nodeType`/out-of-range `confidence`/missing `title` instead of
+ * silently coercing it, which would hide a real bug in whatever produced the payload.
+ */
+const AgentAuthoredDecisionSchema = z.object({
+  title: z.string().min(1),
+  content: z.string(),
+  nodeType: z.enum(["change", "rule", "decision", "context"]),
+  confidence: z.number().min(0).max(1),
+});
+const AgentAuthoredPayloadSchema = z.object({
+  decisions: z.array(AgentAuthoredDecisionSchema),
+});
+type AgentAuthoredPayload = z.infer<typeof AgentAuthoredPayloadSchema>;
 
 export interface AnalyzeCommandOptions {
   /** `--escalate-to-lsp` (PLAT-007 Tier B; phase1-decision-integration.md §8). Ignored when
@@ -52,6 +79,13 @@ export interface AnalyzeCommandOptions {
    *  every currently-tracked file before the batch drains it. Ignored when `escalateToLsp` is not
    *  also set. */
   full?: boolean;
+  /** `--agent-authored` (issue #42, roadmap items 32-34) -- skips `resolveAnalyzeLlmConfig()`/the
+   *  LLM call entirely; the decisions JSON is read from stdin (default) or `--decisions-file` and
+   *  persisted verbatim with `source='agent-authored'`. Requires `targetPath`. */
+  agentAuthored?: boolean;
+  /** `--decisions-file=<path>` -- reads the `--agent-authored` payload from a file instead of
+   *  stdin. Ignored when `agentAuthored` is not also set. */
+  decisionsFile?: string;
 }
 
 interface AnalyzeLlmConfig {
@@ -69,6 +103,46 @@ function resolveAnalyzeLlmConfig(): AnalyzeLlmConfig | null {
 
   if (!llmBaseUrl || !llmModel) return null;
   return { llmBaseUrl, llmApiKey, llmModel };
+}
+
+/**
+ * Reads/parses/validates `--agent-authored`'s decisions payload -- stdin (default, mirrors
+ * `publish.ts`'s `resolveCommitSha()`'s `process.stdin.isTTY` gate: "is there piped data sitting
+ * on stdin," not a prompt-safety check) or `--decisions-file` when given. Returns `undefined`
+ * when neither source has data (a human ran the bare command at a real TTY, or a piped/file
+ * source was empty) -- the caller hard-fails on that case with a clear message, mirroring
+ * `publish.ts`'s `resolveProjectId()` pattern rather than `resolveCommitSha()`'s silent-skip
+ * pattern, since this payload is not optional the way a commit sha is. Throws `DocuviaError`
+ * (`INVALID_INPUT`) on malformed JSON or a schema-violating shape.
+ */
+async function resolveAgentAuthoredPayload(
+  decisionsFile: string | undefined,
+): Promise<AgentAuthoredPayload | undefined> {
+  const raw = decisionsFile
+    ? await fs.readFile(decisionsFile, UTF8_ENCODING)
+    : process.stdin.isTTY
+      ? undefined
+      : await readStdin();
+  if (!raw) return undefined;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new DocuviaError(
+      ErrorCodes.INVALID_INPUT,
+      UI_MESSAGES.ANALYZE_AGENT_AUTHORED_INVALID_JSON(String(err)),
+    );
+  }
+
+  const result = AgentAuthoredPayloadSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new DocuviaError(
+      ErrorCodes.INVALID_INPUT,
+      UI_MESSAGES.ANALYZE_AGENT_AUTHORED_INVALID_SHAPE(result.error.message),
+    );
+  }
+  return result.data;
 }
 
 interface TierBEnvConfig {
@@ -515,14 +589,76 @@ async function confirmTierBGateOrAbort(
 }
 
 /**
- * Thin caller of `docuviaApi.analyze()` — three modes (mutually exclusive; `targetPath` wins if
- * somehow both are given):
+ * `analyze <targetPath> --agent-authored`'s own run (issue #42) -- a pure data write, no LLM
+ * config/spinner-text-on-LLM-progress concerns. Bypasses `setupAnalyzeMemory()` entirely (a
+ * dedicated small setup block here, rather than growing that function's already-8-positional-
+ * argument signature with a 9th/10th case) and sets `MemoryKeys.TARGET_PATH`/
+ * `MemoryKeys.AGENT_AUTHORED`/`MemoryKeys.AGENT_AUTHORED_DECISIONS` directly. Reuses
+ * `printAnalyzeResult`/`handleAnalyzeError` unchanged -- agent-authored mode returns the exact
+ * same `DECISION_EXTRACTION` result shape the LLM path does (§5.4's "free win").
+ */
+async function runAgentAuthoredAnalyze(
+  targetPath: string,
+  cwd: string,
+  options: AnalyzeCommandOptions,
+): Promise<void> {
+  let payload: AgentAuthoredPayload | undefined;
+  try {
+    payload = await resolveAgentAuthoredPayload(options.decisionsFile);
+  } catch (error: unknown) {
+    const message =
+      error instanceof DocuviaError || error instanceof Error
+        ? error.message
+        : String(error);
+    ui.error(message);
+    process.exitCode = 1;
+    return;
+  }
+  if (!payload) {
+    ui.error(UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_PAYLOAD);
+    process.exitCode = 1;
+    return;
+  }
+
+  const spinner = startAnalyzeSpinner(targetPath, false);
+  const scopeId = crypto.randomUUID();
+  const logger = createPinoBackedLogger();
+  logger.onLog((event) => {
+    if (event.level === LogLevels.INFO) spinner.text = event.message;
+  });
+
+  docuviaMemory.createScope(scopeId);
+  docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
+  docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, targetPath);
+  docuviaMemory.set(scopeId, MemoryKeys.AGENT_AUTHORED, true);
+  docuviaMemory.set(
+    scopeId,
+    MemoryKeys.AGENT_AUTHORED_DECISIONS,
+    payload.decisions,
+  );
+
+  try {
+    const result = await docuviaApi.analyze(scopeId, logger);
+    printAnalyzeResult(result, spinner, false);
+  } catch (error: unknown) {
+    handleAnalyzeError(error, targetPath, false, spinner);
+  } finally {
+    docuviaMemory.deleteScope(scopeId);
+  }
+}
+
+/**
+ * Thin caller of `docuviaApi.analyze()` — four modes (mutually exclusive; `targetPath` wins if
+ * somehow more than one of these are given):
  * - No `targetPath`, no `--escalate-to-lsp`: auto mode (PLAT-007 Tier A;
  *   phase1-decision-integration.md §6) — a sha fast-path no-op, full ingestion (empty graph), or
  *   delta ingestion (non-empty graph, `HEAD` moved), each reported with its own
  *   `result.kind`-specific summary below.
- * - `targetPath` given: focused LLM decision extraction (mirrors old Docuvia's
- *   `runFocusedExtraction`/the old `extract` command). Requires
+ * - `targetPath` + `--agent-authored`: a pure data write of an AI coding agent's own already-
+ *   produced decisions (issue #42, roadmap items 32-34) — skips the LLM entirely; see
+ *   `runAgentAuthoredAnalyze`. Checked before the plain `targetPath` (LLM) branch below.
+ * - `targetPath` given (no `--agent-authored`): focused LLM decision extraction (mirrors old
+ *   Docuvia's `runFocusedExtraction`/the old `extract` command). Requires
  *   `AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL` and a model
  *   (`AI_DOCUVIA_MODEL`/`AI_DOCUVIA_FAST_MODEL`) to be set; missing env vars are a hard failure
  *   (exit 1) rather than a silent skip — unlike `publish.ts`'s missing-env behavior — because a
@@ -540,6 +676,19 @@ export async function analyzeCommand(
   cwd: string = process.cwd(),
   options: AnalyzeCommandOptions = {},
 ) {
+  // Checked first, before any I/O: --agent-authored without a positional target path is a hard
+  // failure (mirrors impact.ts's missing-target guard), and a target path is required either way
+  // to resolve the L3 anchor -- this must not fall through to the LLM-config branch below.
+  if (options.agentAuthored) {
+    if (!targetPath) {
+      ui.error(UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_TARGET);
+      process.exitCode = 1;
+      return;
+    }
+    await runAgentAuthoredAnalyze(targetPath, cwd, options);
+    return;
+  }
+
   let llmConfig: AnalyzeLlmConfig | undefined;
   const escalateToLsp = !targetPath && Boolean(options.escalateToLsp);
 

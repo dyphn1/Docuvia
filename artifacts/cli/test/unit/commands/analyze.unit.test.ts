@@ -1,13 +1,21 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import process from "process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { docuviaApi } from "@workspace/ui-core";
 import { docuviaMemory } from "@workspace/contracts";
 import { analyzeCommand } from "../../../src/commands/analyze.js";
 import { ui } from "../../../src/ui/wizard.js";
 import { UI_MESSAGES } from "../../../src/constants/ui-messages.js";
+import { readStdin } from "../../../src/utils/read-stdin.js";
 
 vi.mock("@workspace/ui-core", () => ({
   docuviaApi: { analyze: vi.fn(), checkTierBGate: vi.fn() },
+}));
+
+vi.mock("../../../src/utils/read-stdin.js", () => ({
+  readStdin: vi.fn(),
 }));
 
 const spinnerSucceed = vi.fn();
@@ -44,6 +52,7 @@ vi.mock("../../../src/ui/wizard.js", () => ({
 }));
 
 const mockAnalyze = vi.mocked(docuviaApi.analyze);
+const mockReadStdin = vi.mocked(readStdin);
 
 const ENV_KEYS = [
   "AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL",
@@ -62,6 +71,7 @@ describe("analyzeCommand", () => {
       delete process.env[key];
     }
     mockAnalyze.mockReset();
+    mockReadStdin.mockReset();
     spinnerSucceed.mockReset();
     spinnerFail.mockReset();
     lastSpinnerInstance = undefined;
@@ -718,6 +728,216 @@ describe("analyzeCommand", () => {
       expect(spinnerSucceed).toHaveBeenCalledWith(
         UI_MESSAGES.ANALYZE_FOCUSED_SUCCESS,
       );
+    });
+  });
+
+  describe("--agent-authored (issue #42, roadmap items 32-34)", () => {
+    it("hard-fails (exitCode=1) and never touches stdin/docuviaApi.analyze() when --agent-authored is passed without a target path", async () => {
+      await analyzeCommand(undefined, "/workspace", { agentAuthored: true });
+
+      expect(mockReadStdin).not.toHaveBeenCalled();
+      expect(mockAnalyze).not.toHaveBeenCalled();
+      expect(ui.error).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_TARGET,
+      );
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("reads a valid payload from stdin (default) and sets targetPath/AGENT_AUTHORED/AGENT_AUTHORED_DECISIONS into docuviaMemory, skipping the LLM env requirement entirely", async () => {
+      mockReadStdin.mockResolvedValue(
+        JSON.stringify({
+          decisions: [
+            {
+              title: "Agent-authored decision",
+              content: "Written verbatim, no LLM call.",
+              nodeType: "decision",
+              confidence: 0.9,
+            },
+          ],
+        }),
+      );
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [],
+        persisted: 1,
+        deduped: 0,
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand("src/foo.ts", "/workspace", {
+        agentAuthored: true,
+      });
+
+      expect(mockAnalyze).toHaveBeenCalled();
+      const scopeId = mockAnalyze.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "targetPath", "src/foo.ts");
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "agentAuthored", true);
+      expect(setSpy).toHaveBeenCalledWith(scopeId, "agentAuthoredDecisions", [
+        {
+          title: "Agent-authored decision",
+          content: "Written verbatim, no LLM call.",
+          nodeType: "decision",
+          confidence: 0.9,
+        },
+      ]);
+      expect(ui.error).not.toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_LLM_MISSING_ENV,
+      );
+    });
+
+    it("reads the payload from --decisions-file instead of stdin when decisionsFile is given", async () => {
+      const tmpDir = fs.mkdtempSync(
+        path.join(os.tmpdir(), "docuvia-analyze-decisions-file-test-"),
+      );
+      const decisionsFile = path.join(tmpDir, "decisions.json");
+      fs.writeFileSync(
+        decisionsFile,
+        JSON.stringify({
+          decisions: [
+            {
+              title: "From a file",
+              content: "content",
+              nodeType: "rule",
+              confidence: 0.5,
+            },
+          ],
+        }),
+      );
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [],
+        persisted: 1,
+        deduped: 0,
+      });
+
+      try {
+        await analyzeCommand("src/foo.ts", "/workspace", {
+          agentAuthored: true,
+          decisionsFile,
+        });
+      } finally {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      }
+
+      expect(mockReadStdin).not.toHaveBeenCalled();
+      expect(mockAnalyze).toHaveBeenCalled();
+    });
+
+    it("hard-fails with ANALYZE_AGENT_AUTHORED_MISSING_PAYLOAD (not a hang) when the caller is at a real TTY with no --decisions-file", async () => {
+      const originalIsTTY = process.stdin.isTTY;
+      Object.defineProperty(process.stdin, "isTTY", {
+        value: true,
+        configurable: true,
+      });
+
+      try {
+        await analyzeCommand("src/foo.ts", "/workspace", {
+          agentAuthored: true,
+        });
+      } finally {
+        Object.defineProperty(process.stdin, "isTTY", {
+          value: originalIsTTY,
+          configurable: true,
+        });
+      }
+
+      expect(mockReadStdin).not.toHaveBeenCalled();
+      expect(mockAnalyze).not.toHaveBeenCalled();
+      expect(ui.error).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_PAYLOAD,
+      );
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("hard-fails with ANALYZE_AGENT_AUTHORED_MISSING_PAYLOAD when stdin closes with no data", async () => {
+      mockReadStdin.mockResolvedValue("");
+
+      await analyzeCommand("src/foo.ts", "/workspace", {
+        agentAuthored: true,
+      });
+
+      expect(mockAnalyze).not.toHaveBeenCalled();
+      expect(ui.error).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_PAYLOAD,
+      );
+      expect(process.exitCode).toBe(1);
+    });
+
+    it("hard-fails with a clear message (not a silent coercion) on malformed JSON", async () => {
+      mockReadStdin.mockResolvedValue("{ not valid json");
+
+      await analyzeCommand("src/foo.ts", "/workspace", {
+        agentAuthored: true,
+      });
+
+      expect(mockAnalyze).not.toHaveBeenCalled();
+      expect(ui.error).toHaveBeenCalledWith(
+        expect.stringContaining("not valid JSON"),
+      );
+      expect(process.exitCode).toBe(1);
+    });
+
+    it.each([
+      [
+        "missing title",
+        { content: "c", nodeType: "decision", confidence: 0.5 },
+      ],
+      [
+        "invalid nodeType",
+        { title: "t", content: "c", nodeType: "bogus", confidence: 0.5 },
+      ],
+      [
+        "confidence above 1",
+        { title: "t", content: "c", nodeType: "decision", confidence: 1.5 },
+      ],
+      [
+        "confidence below 0",
+        { title: "t", content: "c", nodeType: "decision", confidence: -0.1 },
+      ],
+    ])(
+      "hard-fails with a clear message (not a silent coercion) on a schema-violating decision: %s",
+      async (_label, badDecision) => {
+        mockReadStdin.mockResolvedValue(
+          JSON.stringify({ decisions: [badDecision] }),
+        );
+
+        await analyzeCommand("src/foo.ts", "/workspace", {
+          agentAuthored: true,
+        });
+
+        expect(mockAnalyze).not.toHaveBeenCalled();
+        expect(ui.error).toHaveBeenCalledWith(
+          expect.stringContaining("does not match the expected shape"),
+        );
+        expect(process.exitCode).toBe(1);
+      },
+    );
+
+    it("a valid empty { decisions: [] } payload succeeds (0 persisted/0 deduped), not a validation failure", async () => {
+      mockReadStdin.mockResolvedValue(JSON.stringify({ decisions: [] }));
+      mockAnalyze.mockResolvedValue({
+        kind: "decisionExtraction",
+        targetPath: "src/foo.ts",
+        decisions: [],
+        persisted: 0,
+        deduped: 0,
+      });
+      const setSpy = vi.spyOn(docuviaMemory, "set");
+
+      await analyzeCommand("src/foo.ts", "/workspace", {
+        agentAuthored: true,
+      });
+
+      expect(mockAnalyze).toHaveBeenCalled();
+      const scopeId = mockAnalyze.mock.calls[0][0];
+      expect(setSpy).toHaveBeenCalledWith(
+        scopeId,
+        "agentAuthoredDecisions",
+        [],
+      );
+      expect(process.exitCode).not.toBe(1);
     });
   });
 });

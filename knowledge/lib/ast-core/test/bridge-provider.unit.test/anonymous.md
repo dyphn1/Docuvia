@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/test/bridge-provider.unit.test.ts#anonymous@L57
+id: lib/ast-core/test/bridge-provider.unit.test.ts#anonymous@L93
 type: symbol
 name: anonymous
 filePath: lib/ast-core/test/bridge-provider.unit.test.ts

@@ -648,6 +648,32 @@ async function runAgentAuthoredAnalyze(
 }
 
 /**
+ * `analyzeCommand()`'s `--agent-authored` dispatch, split out purely to keep that function's
+ * cyclomatic complexity under the project's ESLint budget (mirrors `dispatchEmptyGraph`'s/
+ * `buildTierBBatchDeps`'s precedent in `analyze-workflow.ts` for the same reason). Returns `true`
+ * when this dispatch handled the run (caller must return immediately, never falling through to
+ * the LLM-config branch below), `false` when `--agent-authored` was not requested at all.
+ */
+async function dispatchAgentAuthored(
+  targetPath: string | undefined,
+  cwd: string,
+  options: AnalyzeCommandOptions,
+): Promise<boolean> {
+  if (!options.agentAuthored) return false;
+
+  // Checked first, before any I/O: --agent-authored without a positional target path is a hard
+  // failure (mirrors impact.ts's missing-target guard), and a target path is required either way
+  // to resolve the L3 anchor.
+  if (!targetPath) {
+    ui.error(UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_TARGET);
+    process.exitCode = 1;
+    return true;
+  }
+  await runAgentAuthoredAnalyze(targetPath, cwd, options);
+  return true;
+}
+
+/**
  * Thin caller of `docuviaApi.analyze()` — four modes (mutually exclusive; `targetPath` wins if
  * somehow more than one of these are given):
  * - No `targetPath`, no `--escalate-to-lsp`: auto mode (PLAT-007 Tier A;
@@ -676,19 +702,22 @@ export async function analyzeCommand(
   cwd: string = process.cwd(),
   options: AnalyzeCommandOptions = {},
 ) {
-  // Checked first, before any I/O: --agent-authored without a positional target path is a hard
-  // failure (mirrors impact.ts's missing-target guard), and a target path is required either way
-  // to resolve the L3 anchor -- this must not fall through to the LLM-config branch below.
-  if (options.agentAuthored) {
-    if (!targetPath) {
-      ui.error(UI_MESSAGES.ANALYZE_AGENT_AUTHORED_MISSING_TARGET);
-      process.exitCode = 1;
-      return;
-    }
-    await runAgentAuthoredAnalyze(targetPath, cwd, options);
-    return;
-  }
+  if (await dispatchAgentAuthored(targetPath, cwd, options)) return;
+  await runStandardAnalyze(targetPath, cwd, options);
+}
 
+/**
+ * The pre-existing auto/LLM-extraction/Tier-B-batch dispatch, unchanged in behavior -- split out
+ * of `analyzeCommand` purely to keep the `--agent-authored` dispatch (`dispatchAgentAuthored`)
+ * from pushing `analyzeCommand` itself over the project's ESLint cyclomatic-complexity budget
+ * (mirrors `dispatchEmptyGraph`'s/`buildTierBBatchDeps`'s precedent in `analyze-workflow.ts` for
+ * the same reason).
+ */
+async function runStandardAnalyze(
+  targetPath: string | undefined,
+  cwd: string,
+  options: AnalyzeCommandOptions,
+): Promise<void> {
   let llmConfig: AnalyzeLlmConfig | undefined;
   const escalateToLsp = !targetPath && Boolean(options.escalateToLsp);
 

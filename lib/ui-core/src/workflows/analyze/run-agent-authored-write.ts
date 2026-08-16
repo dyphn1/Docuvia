@@ -85,6 +85,17 @@ export async function runAgentAuthoredWrite(deps: {
     });
   }
 
+  // Roadmap item 37: a single non-source file can never have an L2 node, so the anchor
+  // resolution would fail forever — fail fast with the reason instead of "succeeding" with
+  // {persisted: 0, deduped: 0} (the stage path refuses at `--stage` time; this is the direct
+  // `--agent-authored` path's symmetric guard).
+  if (files.length === 0 && !fs.statSync(resolvedPath).isDirectory()) {
+    throw new DocuviaError(
+      ErrorCodes.INVALID_INPUT,
+      ANALYZE_MESSAGES.AGENT_AUTHORED_ANCHOR_UNRESOLVABLE(targetPath),
+    );
+  }
+
   const { persisted, deduped } = await persistDecisions({
     workspaceRoot,
     logger,

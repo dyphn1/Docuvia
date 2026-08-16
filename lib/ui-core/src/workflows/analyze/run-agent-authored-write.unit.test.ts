@@ -171,6 +171,20 @@ describe("runAgentAuthoredWrite", () => {
     ).rejects.toThrow("Path does not exist: does/not/exist.ts");
   });
 
+  it("throws INVALID_INPUT for a single non-source file that can never anchor (roadmap item 37)", async () => {
+    fs.writeFileSync(path.join(tmpDir, "notes.md"), "# a note\n");
+    docuviaFactory.lock();
+
+    await expect(
+      runAgentAuthoredWrite({
+        workspaceRoot: tmpDir,
+        logger: createMockLogger(),
+        targetPath: "notes.md",
+        decisions: oneDecision,
+      }),
+    ).rejects.toThrow("cannot anchor a decision to notes.md");
+  });
+
   it("empty decisions array short-circuits before collectSourceFiles/store is ever opened", async () => {
     fs.writeFileSync(path.join(tmpDir, "sample.ts"), "export const x = 1;\n");
     const openStoreSpy = vi.fn();

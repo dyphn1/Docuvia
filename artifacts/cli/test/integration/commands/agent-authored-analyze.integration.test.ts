@@ -155,4 +155,45 @@ describe("analyze <targetPath> --agent-authored (issue #42): real end-to-end wri
     const dbPath = path.resolve(sandbox.dir, ".docuvia/local.db");
     expect(queryL3Rows(dbPath)).toEqual([]);
   }, 120000);
+
+  it("refuses to stage on a non-source file (cannot anchor, roadmap item 37): non-zero exit, clear error, nothing staged", async () => {
+    const sandbox = new TestSandbox();
+    await sandbox.setup({
+      initGit: true,
+      files: { ...FIXTURE_FILES, "README.md": "# fixture\n" },
+    });
+    tempDirs.push(sandbox.dir);
+    await sandbox.runGit(["add", "-A"]);
+    await sandbox.runGit(["commit", "-m", "initial"]);
+
+    const initResult = await sandbox.runCli(["init"], { reject: false });
+    expect(initResult.exitCode).toBe(0);
+
+    const payload = JSON.stringify({
+      decisions: [
+        {
+          title: "README decision",
+          content: "should never be staggable",
+          nodeType: "decision",
+          confidence: 0.9,
+        },
+      ],
+    });
+
+    const analyzeResult = await sandbox.runCli(
+      ["analyze", "README.md", "--agent-authored", "--stage"],
+      { reject: false, input: payload },
+    );
+
+    expect(analyzeResult.exitCode).not.toBe(0);
+    expect(analyzeResult.stderr + analyzeResult.stdout).toContain(
+      "cannot anchor a decision to README.md",
+    );
+    // Nothing was staged: the refusal happens before the staging file is ever touched.
+    expect(
+      fs.existsSync(
+        path.resolve(sandbox.dir, ".docuvia/pending-l3-decisions.json"),
+      ),
+    ).toBe(false);
+  }, 120000);
 });

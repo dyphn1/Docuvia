@@ -50,6 +50,12 @@ export const ANALYZE_MESSAGES = {
    */
   NO_GRAPH_TO_ATTACH:
     "run `docuvia init` first — decisions need a graph to attach to",
+  /** Roadmap item 37: a single non-source file can never have an L2 node (L2 file nodes only
+   *  exist for tree-sitter-parseable files), so a decision anchored to it could never be
+   *  persisted — the flush would silently retry it forever. Fail fast at `--agent-authored`
+   *  stage/write time instead, pointing the agent at a parseable source file. */
+  AGENT_AUTHORED_ANCHOR_UNRESOLVABLE: (targetPath: string) =>
+    `cannot anchor a decision to ${targetPath}: it is not a parseable source file, so it can never have an L2 node. Write the decision against a source file this change touched (e.g. a .ts/.py/.go file) instead`,
   PATH_NOT_FOUND: (targetPath: string) => `Path does not exist: ${targetPath}`,
   LLM_NON_JSON_OUTPUT: "LLM returned non-JSON output for decision extraction",
   FILE_READ_FAILED: "Failed to read file for decision extraction",

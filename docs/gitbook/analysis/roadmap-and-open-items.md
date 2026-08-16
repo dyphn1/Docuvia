@@ -962,6 +962,41 @@ shards are memory-bound (2 shards / 16 GB, ~4.3 GB each); and the CLI previously
 > `--flush-staged-l3` by hand before any `analyze`/`init` ever ran. The loud nudge + doctor
 > diagnostic cover that case.
 
+### 37. Agent-authored L3 decisions on non-source files can never be flushed — silently retried forever
+
+> **Fixed 2026-08-16.** `analyze <target> --agent-authored --stage` now validates the target
+> before appending: a nonexistent path fails with `PATH_NOT_FOUND` (matching the direct
+> `--agent-authored` path), and a single file with zero collectible source files fails with a
+> clear `INVALID_INPUT` error ("cannot anchor a decision to X: it is not a parseable source
+> file...") telling the agent to write against a parseable source file instead. The direct
+> `--agent-authored` path (`runAgentAuthoredWrite`) received the same guard. Full writeup +
+> correction: [issue #30 comments](https://github.com/dyphn1/Docuvia/issues/30).
+
+Found 2026-08-16 while verifying `--agent-authored --stage` / `--flush-staged-l3` end-to-end on
+issue #30's branch. `stagePendingDecisions` accepted any target path; the flush's anchor
+resolution (`resolveAnchorL2NodeId`) needs an L2 node whose `node_key` matches the target (or the
+first collected source file). L2 file nodes only exist for tree-sitter-parseable files, so a
+single genuinely non-source file (e.g. `README.md`, `.yml`, `.json`) has no node and is skipped
+by `collectSourceFiles` → `persistDecisions` returns `{persisted:0, deduped:0}` → the flush
+retries that entry forever, with the "0 flushed, N left staged" summary giving no hint the entry
+can never land. Two important nuances from the live repro:
+
+- **The empty-graph case is _not_ a dead-end.** The original repro staged on `eslint.config.mjs`
+  and reported "0 flushed, 1 left staged" — but `.mjs` _is_ a supported extension
+  (`JAVASCRIPT_EXTENSIONS = [".js", ".jsx", ".mjs", ".cjs"]`) and the file _does_ have an L2
+  node; the flush failed only because the local graph had 0 nodes (no `docuvia init` yet). That
+  is the legitimate, by-design transient: the entry stays staged and retries, with
+  `NO_GRAPH_TO_ATTACH` logging "run `docuvia init` first". Once `init` ran, it anchored fine.
+- The permanent dead-end is strictly the non-source-file case above. The stage-time refusal
+  fixes that without touching the (correct) transient retry semantics.
+
+Deliberate design choice: refusing at stage time rather than making non-source files anchorable
+(a synthetic project-level anchor, or parsing non-source files into the graph) — the latter is a
+much larger change with an open design question (where should a doc/config decision attach?) and
+no incremental payoff for the common source-file flow; revisit if agents routinely need to record
+decisions against docs/configs.
+>>>>>>> ed402f33 (fix(ui-core,cli): refuse agent-authored L3 decisions anchored to non-source files (roadmap #37))
+
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 
 - **Self-built static scope-resolution pipeline** (bypass LSP with hand-guessed cross-file calls)

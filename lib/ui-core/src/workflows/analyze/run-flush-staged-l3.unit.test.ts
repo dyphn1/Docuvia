@@ -183,6 +183,9 @@ describe("runFlushStagedL3", () => {
 
   it("disabled toggle: no-op, nothing read/written -- staging file untouched, git/store never touched", async () => {
     writeHooksConfig(tmpDir, false);
+    // Real file so stagePendingDecisions' roadmap-item-37 anchor-feasibility validation passes.
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "src", "a.ts"), "export const a = 1;\n");
     await stagePendingDecisions(
       tmpDir,
       "src/a.ts",

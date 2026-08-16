@@ -567,6 +567,205 @@ describe("DoctorWorkflow", () => {
     });
   });
 
+  describe("Post-Commit Ingestion Check (issue #58)", () => {
+    function registerPassingDbAndGitRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function registerGit(headSha: string | undefined) {
+      docuviaFactory.register(
+        TOKENS.GitProvider,
+        () => ({ getHeadSha: vi.fn().mockResolvedValue(headSha) }) as any,
+      );
+    }
+
+    function makeMockStore(meta: Record<string, string>) {
+      return {
+        projects: { getFirst: vi.fn().mockReturnValue({ id: 1 }) },
+        graph: {
+          count: vi.fn().mockReturnValue({ l2Nodes: 1, l3Nodes: 0 }),
+        },
+        meta: {
+          get: vi.fn((key: string) => meta[key]),
+          set: vi.fn(),
+        },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+    });
+
+    it("is skipped silently (no diagnostic key, no crash) when GitProvider isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({});
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+    });
+
+    it("is not evaluated at all when skipDb is set", async () => {
+      const store = makeMockStore({});
+      const openStore = vi.fn().mockResolvedValue(store);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStore);
+      registerGit("aaa111");
+
+      const wf = new DoctorWorkflow("/test", logger);
+      await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(openStore).not.toHaveBeenCalled();
+    });
+
+    it("reports PASS when lastIngestedSourceSha equals HEAD (graph fully up to date)", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        [GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA]: "aaa111aaa111",
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      registerGit("aaa111aaa111");
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["post_commit_ingestion"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message:
+          "Knowledge graph is up to date with HEAD (Tier C queue: 0 pending).",
+      });
+      expect(result.allPassed).toBe(true);
+      expect(store.close).toHaveBeenCalled();
+    });
+
+    it("reports PASS with a note when behind HEAD but analyze.log shows recent activity (in-flight post-commit run)", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        [GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA]: "bbb222bbb222",
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      registerGit("aaa111aaa111");
+      vi.mocked(fs.readFile).mockResolvedValue(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          event: "analyze.delta.summary",
+        }) + "\n",
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["post_commit_ingestion"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["post_commit_ingestion"].message).toContain(
+        "recently",
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports FAIL when behind HEAD and no analyze.log exists -- issue #58's exact repro (stale sha, no delta activity)", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        [GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA]: "bbb222bbb222",
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      registerGit("aaa111aaa111");
+      vi.mocked(fs.readFile).mockRejectedValue(new Error("ENOENT"));
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["post_commit_ingestion"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["post_commit_ingestion"].message).toContain(
+        "post-commit hook",
+      );
+      expect(result.diagnostics["post_commit_ingestion"].suggestion).toContain(
+        "docuvia analyze",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("reports FAIL when behind HEAD and analyze.log's newest activity is older than the grace window", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({
+        [GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA]: "bbb222bbb222",
+      });
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      registerGit("aaa111aaa111");
+      vi.mocked(fs.readFile).mockResolvedValue(
+        JSON.stringify({
+          ts: new Date(Date.now() - 3_600_000).toISOString(),
+          event: "analyze.delta.summary",
+        }) + "\n",
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["post_commit_ingestion"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("is skipped silently (no diagnostic key) when the db can't be opened -- already covered by db_found's own FAIL", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("not found"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockRejectedValue(new Error("ENOENT")),
+      );
+      registerGit("aaa111aaa111");
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+    });
+
+    it("is skipped silently on an unborn/headless HEAD (no commit to compare against)", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({});
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      registerGit(undefined);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["post_commit_ingestion"]).toBeUndefined();
+      expect(result.allPassed).toBe(true);
+    });
+  });
+
   describe("Agent Hooks Check (workflows/doctor-execution-flow.md Presentation-layer asymmetry cleanup)", () => {
     it("reports PASS for both platforms when both hook files exist", async () => {
       vi.mocked(fs.stat).mockResolvedValue({} as any);

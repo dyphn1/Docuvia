@@ -4,6 +4,7 @@ import {
   DOCUVIA_DIR_NAME,
   DOCUVIA_LOGS_DIR_NAME,
   LOCAL_DB_FILE_NAME,
+  ANALYZE_LOG_FILE_NAME,
   DocuviaError,
   ErrorCodes,
   UTF8_ENCODING,
@@ -29,6 +30,7 @@ import {
 } from "./doctor-messages.js";
 import { isTierBCommitCapExceeded } from "../analyze/tier-b-commit-cap.js";
 import { resolveQueuedLanguages } from "../analyze/tier-b-gate.js";
+import { readTierCQueue } from "../analyze/tier-c-queue.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { probeDocuviaResolvable } from "./git-hook-resolvability.js";
 import * as path from "path";
@@ -109,6 +111,13 @@ export class DoctorWorkflow {
       // Issue #57: the never-ingested state (`db_found` passes on the file's existence alone).
       await this.runOrSkip(skipDb, () =>
         this.runGraphEmptyDiagnostic(diagnostics),
+      ),
+      // Issue #58: the post-commit hook's backgrounded delta ingestion may never fire (its
+      // fire-and-forget process can die with the hook's shell, silently leaving the graph
+      // behind HEAD) -- needs both the db (lastIngestedSourceSha) and git (HEAD), so gated on
+      // either being skipped.
+      await this.runOrSkip(skipDb || skipGit, () =>
+        this.runPostCommitIngestionDiagnostic(diagnostics),
       ),
     ];
 
@@ -681,6 +690,109 @@ export class DoctorWorkflow {
     } finally {
       await store?.close();
     }
+  }
+
+  /**
+   * Issue #58: detects the dead post-commit-hook pipeline that `git_hook` structurally can't --
+   * a hook file can be perfectly installed and still never run (its backgrounded `&` process
+   * dies with the hook's shell, or `npx --no-install` fails before any JSONL is written), leaving
+   * `lastIngestedSourceSha` behind HEAD forever. PASS when the graph is fully up to date; PASS
+   * with a note when behind HEAD but an analyze run completed within
+   * `DEFAULT_POST_COMMIT_INGESTION_GRACE_MS` (likely still in flight); FAIL when behind HEAD with
+   * no recent activity -- issue #58's exact live repro. Also surfaces the Tier C queue size in
+   * every message so a permanently-empty queue is visible. A missing/unopenable db, an unborn
+   * HEAD, or a missing git provider degrades to silently skipped (already covered by
+   * `db_found`/`git_reachability`'s own FAIL), never a doctor crash.
+   */
+  private async runPostCommitIngestionDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) return true;
+    if (!docuviaFactory.has(TOKENS.GitProvider)) return true;
+
+    let store: IGraphStore | undefined;
+    try {
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+
+      const headSha = await git.getHeadSha(this.workspaceRoot);
+      if (!headSha) return true; // unborn/headless HEAD -- nothing to compare against
+
+      const lastIngestedSha = store.meta.get(
+        GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+      );
+      const tierCQueued = readTierCQueue(store).length;
+
+      if (lastIngestedSha === headSha) {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.POST_COMMIT_INGESTION] = {
+          status: DiagnosticStatus.PASS,
+          message: DOCTOR_MESSAGES.POST_COMMIT_INGESTION_OK(tierCQueued),
+        };
+        return true;
+      }
+
+      const recent = await this.hasRecentAnalyzeActivity();
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.POST_COMMIT_INGESTION] = recent
+        ? {
+            status: DiagnosticStatus.PASS,
+            message: DOCTOR_MESSAGES.POST_COMMIT_INGESTION_RECENT(
+              lastIngestedSha,
+              tierCQueued,
+            ),
+          }
+        : {
+            status: DiagnosticStatus.FAIL,
+            message: DOCTOR_MESSAGES.POST_COMMIT_INGESTION_STALE(tierCQueued),
+            suggestion: DOCTOR_MESSAGES.POST_COMMIT_INGESTION_STALE_SUGGESTION,
+          };
+      return recent;
+    } catch {
+      // db not found/unopenable (already covered by db_found's own FAIL) or a git-command
+      // failure -- degrades to silently skipped, never a doctor crash.
+      return true;
+    } finally {
+      await store?.close();
+    }
+  }
+
+  /** `true` when `.docuvia/logs/analyze.log`'s most recent JSONL entry's `ts` is within
+   *  `DEFAULT_POST_COMMIT_INGESTION_GRACE_MS` of now -- the "ingestion is (or just was) running"
+   *  signal distinguishing an in-flight post-commit run from a permanently-dead one. A missing
+   *  or unreadable log (no evidence the hook ever ran) is `false`. Malformed lines are ignored. */
+  private async hasRecentAnalyzeActivity(): Promise<boolean> {
+    const logPath = path.join(
+      this.workspaceRoot,
+      DOCUVIA_DIR_NAME,
+      DOCUVIA_LOGS_DIR_NAME,
+      ANALYZE_LOG_FILE_NAME,
+    );
+
+    let content: string;
+    try {
+      content = await fs.readFile(logPath, UTF8_ENCODING);
+    } catch {
+      return false;
+    }
+
+    const graceMs = GitConstants.DEFAULT_POST_COMMIT_INGESTION_GRACE_MS;
+    const now = Date.now();
+    const lines = content.split("\n").filter((l) => l.trim().length > 0);
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line);
+        if (typeof entry.ts === "string") {
+          const ts = Date.parse(entry.ts);
+          if (!Number.isNaN(ts) && now - ts <= graceMs) return true;
+        }
+      } catch {
+        // Ignore malformed lines
+      }
+    }
+    return false;
   }
 
   /** `!skipDb` branch of `execute` — checks the local db exists and (if so) delegates to the

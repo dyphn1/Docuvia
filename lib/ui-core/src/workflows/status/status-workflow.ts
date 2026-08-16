@@ -10,6 +10,8 @@ import { appendStatusLogLine } from "./status-log-writer.js";
 import type { StatusResult } from "./status-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { ensureHydrated } from "../../utils/ensure-hydrated.js";
+import { GitConstants } from "@workspace/core";
+import { readTierCQueue } from "../analyze/tier-c-queue.js";
 
 /**
  * The `status` workflow — opens `.docuvia/local.db` readonly and reports row counts for
@@ -67,6 +69,9 @@ export class StatusWorkflow {
         l3Nodes,
         tierBFilesProcessed: processedFiles,
         tierBFilesTotal: totalFiles,
+        // Issue #58: a permanently-empty Tier C queue is the exact "Tier C never backfills"
+        // symptom -- surface its size alongside the other graph metrics.
+        tierCQueued: readTierCQueue(store).length,
       };
       await appendStatusLogLine(workspaceRoot, {
         event: STATUS_EVENTS.SUMMARY,

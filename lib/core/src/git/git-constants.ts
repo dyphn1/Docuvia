@@ -28,6 +28,16 @@ export const GitConstants = {
    * that already runs the `analyze --flush-staged-l3` step from one still missing it.
    */
   POST_COMMIT_FLUSH_L3_MARKER: "docuvia analyze --flush-staged-l3",
+  /**
+   * Issue #58: the `nohup`-backgrounded form, present only in the current `POST_COMMIT_HOOK_CONTENT`,
+   * absent from `PRE_NOHUP_POST_COMMIT_HOOK_CONTENT`/`PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT`/
+   * `LEGACY_POST_COMMIT_HOOK_CONTENT` -- the marker `installPostCommitHook` uses to tell a hook
+   * that already backgrounds with `nohup` + a log-file redirect (survives the hook shell's exit;
+   * npx-resolution/startup failures visible in `.docuvia/logs/post-commit-hook.log`) from one
+   * still using the old fire-and-forget `> /dev/null 2>&1 &` form, whose backgrounded process
+   * could die with the hook's shell and silently skip delta ingestion (issue #58's root cause 1).
+   */
+  POST_COMMIT_NOHUP_MARKER: "nohup npx --no-install docuvia analyze",
   /** Byte-identical header line shared by `POST_COMMIT_HOOK_CONTENT`/
    *  `LEGACY_POST_COMMIT_HOOK_CONTENT` — the anchor `doctor --fix`'s marker-bounded repair (§10d,
    *  decision 1f) uses to strip every Docuvia-authored block regardless of minor hand-edits that
@@ -39,6 +49,15 @@ export const GitConstants = {
    * `#!/bin/bash` shebang entirely, so any bash-specific syntax silently breaks (or behaves
    * differently) once a repo's `core.hooksPath` redirects Docuvia's hook there (found via
    * dogfooding, 2026-07-21). The portable form works identically under bash and POSIX `sh`.
+   *
+   * Issue #58 (nohup + log-file redirect): both backgrounded lines now run under `nohup` (a
+   * POSIX external command -- unlike `disown`, which is a bash builtin husky's `sh -e` shim
+   * would break on, and `setsid`, which macOS doesn't ship) so the process survives the hook's
+   * own shell exiting, and their output lands in `.docuvia/logs/post-commit-hook.log` instead of
+   * `/dev/null` -- an `npx --no-install` resolution failure or a process that dies before it can
+   * write its own JSONL is now visible there (and via doctor's `post_commit_ingestion`
+   * diagnostic), where before it was swallowed entirely and `lastIngestedSourceSha` silently
+   * stopped advancing.
    *
    * Second backgrounded line (issue #42 §8.3): flushes any staged agent-authored L3 decisions for
    * this commit, self-gated internally on the `commit-l3-write` toggle (see
@@ -57,11 +76,13 @@ export const GitConstants = {
     `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n` +
     `# Non-intrusively extracts AST deltas in the background\n` +
     `if command -v npx > /dev/null 2>&1; then\n` +
-    `  # Fire and forget (do not block commit)\n` +
-    `  npx --no-install docuvia analyze > /dev/null 2>&1 &\n` +
+    `  mkdir -p .docuvia/logs\n` +
+    `  # Fire and forget (do not block commit) -- nohup keeps the process alive after this hook's\n` +
+    `  # shell exits; output goes to a log file (not /dev/null) so failures are visible (issue #58).\n` +
+    `  nohup npx --no-install docuvia analyze >> .docuvia/logs/post-commit-hook.log 2>&1 &\n` +
     `  # Flush any staged agent-authored L3 decisions for this commit (roadmap items 32-34, issue #42).\n` +
     `  # Self-gated internally on the commit-l3-write toggle -- see run-flush-staged-l3.ts.\n` +
-    `  npx --no-install docuvia analyze --flush-staged-l3 > /dev/null 2>&1 &\n` +
+    `  nohup npx --no-install docuvia analyze --flush-staged-l3 >> .docuvia/logs/post-commit-hook.log 2>&1 &\n` +
     `fi\n`,
   /**
    * The pre-issue-#42 hook's exact content (single `docuvia analyze &` line, before the
@@ -75,6 +96,23 @@ export const GitConstants = {
     `if command -v npx > /dev/null 2>&1; then\n` +
     `  # Fire and forget (do not block commit)\n` +
     `  npx --no-install docuvia analyze > /dev/null 2>&1 &\n` +
+    `fi\n`,
+  /**
+   * The pre-issue-#58 hook's exact content (the two-line `--flush-staged-l3` form, still using
+   * the bare fire-and-forget `> /dev/null 2>&1 &` backgrounding), retained verbatim so
+   * `installPostCommitHook` can recognize a hook installed before the `nohup` + log-redirect
+   * change (issue #58) and replace it in place -- same technique as the
+   * `PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT` upgrade below.
+   */
+  PRE_NOHUP_POST_COMMIT_HOOK_CONTENT:
+    `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n` +
+    `# Non-intrusively extracts AST deltas in the background\n` +
+    `if command -v npx > /dev/null 2>&1; then\n` +
+    `  # Fire and forget (do not block commit)\n` +
+    `  npx --no-install docuvia analyze > /dev/null 2>&1 &\n` +
+    `  # Flush any staged agent-authored L3 decisions for this commit (roadmap items 32-34, issue #42).\n` +
+    `  # Self-gated internally on the commit-l3-write toggle -- see run-flush-staged-l3.ts.\n` +
+    `  npx --no-install docuvia analyze --flush-staged-l3 > /dev/null 2>&1 &\n` +
     `fi\n`,
   /**
    * The pre-Slice-2b hook's marker/content, retained verbatim so `installPostCommitHook` can
@@ -208,6 +246,15 @@ export const GitConstants = {
    * tune if real usage shows it's off.
    */
   DEFAULT_TIER_B_ZERO_PROGRESS_MAX_BATCHES: 3,
+  /**
+   * Doctor's `post_commit_ingestion` grace window (issue #58), in milliseconds -- how recent an
+   * `analyze.log` event must be for a `lastIngestedSourceSha !== HEAD` mismatch to be treated as
+   * "ingestion in flight / just ran" (PASS-with-note) rather than "the post-commit hook never
+   * fires" (FAIL). Tier A delta ingestion is designed to be sub-second, so ten minutes is a
+   * deliberately generous bound against a just-committed-but-still-backgrounded run, not a
+   * correctness requirement.
+   */
+  DEFAULT_POST_COMMIT_INGESTION_GRACE_MS: 600_000,
 
   PRE_PUSH_HOOK_NAME: "pre-push",
   /**
@@ -402,6 +449,8 @@ export const GitMessages = {
     "Upgraded legacy post-commit hook (docuvia snapshot -> docuvia analyze)",
   UPGRADED_POST_COMMIT_HOOK_FLUSH_L3:
     "Upgraded post-commit hook (added flush-staged-l3 step, issue #42)",
+  UPGRADED_POST_COMMIT_HOOK_NOHUP:
+    "Upgraded post-commit hook (nohup + log redirect, issue #58)",
   PRE_PUSH_HOOK_ALREADY_INSTALLED: "Pre-push hook already installed",
   CONCURRENT_PRE_PUSH_HOOK_INSTALL_SKIPPED:
     "Pre-push hook was installed by a concurrent process; skipping duplicate append",

@@ -153,12 +153,12 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
     expect(git.appendHookFile).not.toHaveBeenCalled();
   });
 
-  it("is idempotent: does not duplicate the hook when the Tier A and flush-l3 markers are both already present", async () => {
+  it("is idempotent: does not duplicate the hook when the current content is already present", async () => {
     const git = makeMockGitProvider({
       readHookFile: vi
         .fn()
         .mockResolvedValue(
-          `#!/bin/bash\n${GitConstants.POST_COMMIT_FLUSH_L3_MARKER}\n`,
+          `#!/bin/bash\n${GitConstants.POST_COMMIT_HOOK_CONTENT}\n`,
         ),
     });
     const service = new KnowledgeGitService(git);
@@ -189,7 +189,7 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
       .fn()
       .mockResolvedValueOnce(undefined)
       .mockResolvedValueOnce(
-        `#!/bin/bash\n${GitConstants.POST_COMMIT_FLUSH_L3_MARKER}\n`,
+        `#!/bin/bash\n${GitConstants.POST_COMMIT_HOOK_CONTENT}\n`,
       );
     const git = makeMockGitProvider({ readHookFile });
     const logger = createMockLogger();
@@ -363,6 +363,66 @@ describe("KnowledgeGitService.installPostCommitHook()", () => {
           .mockResolvedValue(
             GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT,
           ),
+      });
+      const service = new KnowledgeGitService(git);
+
+      const result = await service.installPostCommitHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.writeHookFile).toHaveBeenCalledWith(
+        "/workspace",
+        GitConstants.POST_COMMIT_HOOK_NAME,
+        GitConstants.POST_COMMIT_HOOK_CONTENT,
+      );
+    });
+  });
+
+  describe("nohup hook upgrade (issue #58)", () => {
+    it("replaces the pre-nohup block in place: old block gone, new nohup block present, non-Docuvia user content preserved", async () => {
+      const existingHook =
+        `#!/bin/bash\necho "user pre-commit-style content"\n` +
+        GitConstants.PRE_NOHUP_POST_COMMIT_HOOK_CONTENT;
+      const git = makeMockGitProvider({
+        readHookFile: vi.fn().mockResolvedValue(existingHook),
+      });
+      const logger = createMockLogger();
+      const service = new KnowledgeGitService(git, logger);
+
+      const result = await service.installPostCommitHook("/workspace");
+
+      expect(result).toEqual({ installed: true });
+      expect(git.appendHookFile).not.toHaveBeenCalled();
+      expect(git.writeHookFile).toHaveBeenCalledTimes(1);
+      const [cwd, hookName, writtenContent] = (
+        git.writeHookFile as ReturnType<typeof vi.fn>
+      ).mock.calls[0];
+      expect(cwd).toBe("/workspace");
+      expect(hookName).toBe(GitConstants.POST_COMMIT_HOOK_NAME);
+
+      // Old block gone (its exact pre-nohup content is no longer present).
+      expect(writtenContent).not.toContain(
+        GitConstants.PRE_NOHUP_POST_COMMIT_HOOK_CONTENT,
+      );
+      // New block present.
+      expect(writtenContent).toContain(GitConstants.POST_COMMIT_HOOK_CONTENT);
+      // Non-Docuvia user content preserved.
+      expect(writtenContent).toContain('echo "user pre-commit-style content"');
+
+      expect(git.makeHookExecutable).toHaveBeenCalled();
+      expect(
+        logger.events.some(
+          (e) =>
+            e.level === "info" &&
+            /Upgraded post-commit hook \(nohup/.test(e.message),
+        ),
+      ).toBe(true);
+    });
+
+    it("upgrades a pre-nohup hook with no other user content (old block was the entire file)", async () => {
+      const git = makeMockGitProvider({
+        readHookFile: vi
+          .fn()
+          .mockResolvedValue(GitConstants.PRE_NOHUP_POST_COMMIT_HOOK_CONTENT),
       });
       const service = new KnowledgeGitService(git);
 

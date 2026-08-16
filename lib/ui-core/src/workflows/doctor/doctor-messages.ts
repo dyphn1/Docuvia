@@ -5,6 +5,10 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
   /** Issue #57: the never-ingested state `db_found` structurally can't see -- the local.db
    *  *file* exists but the graph inside it is empty (no project row, or 0 L2 nodes). */
   GRAPH_EMPTY: "graph_empty",
+  /** Issue #58: the post-commit hook's backgrounded delta ingestion may not be firing at all
+   *  (fire-and-forget `&` process dying with the hook's shell) -- HEAD vs
+   *  `lastIngestedSourceSha` plus recent-`analyze.log`-activity staleness check. */
+  POST_COMMIT_INGESTION: "post_commit_ingestion",
   GIT_REACHABILITY: "git_reachability",
   GIT_RUNNER: "git_runner",
   LOGS: "logs",
@@ -55,6 +59,27 @@ export const DOCTOR_MESSAGES = {
     "run `docuvia init` first — decisions need a graph to attach to",
   GRAPH_EMPTY_OK: (l2Nodes: number) =>
     `Knowledge graph populated (${l2Nodes} L2 node(s)).`,
+
+  /** Issue #58: graph fully up to date with HEAD -- the post-commit hook's last delta ingestion
+   *  landed. Carries the Tier C queue size so a permanently-empty queue is visible (roadmap
+   *  issue #58's "surface enqueue/drain counts" ask) rather than silent. */
+  POST_COMMIT_INGESTION_OK: (tierCQueued: number) =>
+    `Knowledge graph is up to date with HEAD (Tier C queue: ${tierCQueued} pending).`,
+  /** Issue #58: behind HEAD but an analyze run completed recently (within
+   *  `DEFAULT_POST_COMMIT_INGESTION_GRACE_MS`) -- the post-commit hook's backgrounded process is
+   *  likely still in flight; not yet a defect. */
+  POST_COMMIT_INGESTION_RECENT: (
+    lastIngestedSha: string | undefined,
+    tierCQueued: number,
+  ) =>
+    `Delta ingestion is behind HEAD (last ingested ${lastIngestedSha ? lastIngestedSha.slice(0, 7) : "never"}) but ran recently -- likely still in flight from the post-commit hook (Tier C queue: ${tierCQueued} pending).`,
+  /** Issue #58's live repro: HEAD advanced, `lastIngestedSourceSha` did not, and no analyze run
+   *  completed within the grace window -- the post-commit hook's fire-and-forget backgrounding
+   *  died (or never started). */
+  POST_COMMIT_INGESTION_STALE: (tierCQueued: number) =>
+    `The graph is behind HEAD and no analyze run has completed recently -- the post-commit hook's backgrounded ingestion may not be firing (Tier C queue: ${tierCQueued} pending).`,
+  POST_COMMIT_INGESTION_STALE_SUGGESTION:
+    "run `docuvia analyze` manually to ingest the pending commits, and check `.docuvia/logs/post-commit-hook.log` for hook failures",
   GIT_RUNNER_NOT_REGISTERED: "DiagnosticRunnerGit not registered",
   GIT_NETWORK_TIMEOUT_SUGGESTION:
     "The Git remote operation timed out (5000ms). Check your internet connection or DNS settings.",

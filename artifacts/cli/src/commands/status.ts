@@ -47,6 +47,7 @@ export async function statusCommand(cwd: string = process.cwd()) {
           UI_MESSAGES.STATUS_METRIC_TIER_B_COVERAGE,
           `${status.tierBFilesProcessed} / ${status.tierBFilesTotal} (${tierBCoveragePct}%)`,
         ],
+        [UI_MESSAGES.STATUS_METRIC_TIER_C_QUEUE, String(status.tierCQueued)],
       ],
     );
   } catch (error: unknown) {

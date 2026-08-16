@@ -140,14 +140,16 @@ export class KnowledgeGitService implements IKnowledgeGitService {
     return { deleted: true };
   }
 
-  /** True once the hook carries both the Tier A marker and the `--flush-staged-l3` marker --
-   *  i.e. is fully up to date, not just "installed at some prior version" (issue #42 §8.3's
-   *  flush-step addition on top of Slice 2 dispatch 2b's `docuvia snapshot` -> `docuvia analyze`
-   *  flip). Mirrors `hasCurrentPrePushHook`'s shape. */
+  /** True once the hook carries the Tier A, the `--flush-staged-l3`, and the issue-#58 `nohup`
+   *  markers -- i.e. is fully up to date, not just "installed at some prior version" (issue #42
+   *  §8.3's flush-step addition on top of Slice 2 dispatch 2b's `docuvia snapshot` -> `docuvia
+   *  analyze` flip, then issue #58's `nohup` + log-redirect backgrounding). Mirrors
+   *  `hasCurrentPrePushHook`'s shape. */
   private hasCurrentPostCommitHook(hook: string | undefined): boolean {
     return (
       !!hook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER) &&
-      !!hook?.includes(GitConstants.POST_COMMIT_FLUSH_L3_MARKER)
+      !!hook?.includes(GitConstants.POST_COMMIT_FLUSH_L3_MARKER) &&
+      !!hook?.includes(GitConstants.POST_COMMIT_NOHUP_MARKER)
     );
   }
 
@@ -158,9 +160,10 @@ export class KnowledgeGitService implements IKnowledgeGitService {
    * `resolvePrePushUpgradeSource`'s shape/oldest-tier-first ordering: a hook missing the Tier A
    * marker entirely predates the `docuvia snapshot` -> `docuvia analyze` flip (Slice 2 dispatch
    * 2b), matched against `LEGACY_POST_COMMIT_HOOK_CONTENT` regardless of the flush-l3 marker (it
-   * always lacks that too, by construction). Otherwise (Tier A marker present, flush-l3 marker
-   * absent) it's issue #42's own pre-upgrade tier, matched against
-   * `PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT`.
+   * always lacks that too, by construction). Otherwise (Tier A marker present) it's one of two
+   * pre-current tiers: flush-l3 marker absent -> issue #42's own pre-upgrade tier
+   * (`PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT`); flush-l3 present but nohup marker absent ->
+   * issue #58's pre-upgrade tier (`PRE_NOHUP_POST_COMMIT_HOOK_CONTENT`).
    */
   private resolvePostCommitUpgradeSource(
     hook: string | undefined,
@@ -169,7 +172,10 @@ export class KnowledgeGitService implements IKnowledgeGitService {
       return GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT;
     }
     if (hook?.includes(GitConstants.POST_COMMIT_HOOK_MARKER)) {
-      return GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT;
+      if (!hook.includes(GitConstants.POST_COMMIT_FLUSH_L3_MARKER)) {
+        return GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT;
+      }
+      return GitConstants.PRE_NOHUP_POST_COMMIT_HOOK_CONTENT;
     }
     return undefined;
   }
@@ -178,7 +184,9 @@ export class KnowledgeGitService implements IKnowledgeGitService {
    * Installs the post-commit hook that fires `docuvia analyze` after every commit (PLAT-007
    * Tier A; flipped from `docuvia snapshot` in Slice 2 dispatch 2b —
    * phase1-decision-integration.md §6c), followed by `docuvia analyze --flush-staged-l3` (issue
-   * #42 §8.3). A hook file still carrying an older tier's content is upgraded in place: the old
+   * #42 §8.3) — both backgrounded under `nohup` into `.docuvia/logs/post-commit-hook.log` since
+   * issue #58 so the process survives the hook's shell exit and startup failures stay visible. A
+   * hook file still carrying an older tier's content is upgraded in place: the old
    * block's exact content is removed and the new block appended, preserving any non-Docuvia user
    * content in the same file. Non-fatal by design: `.git/hooks` may not exist (e.g. a bare repo,
    * or `.git` mounted read-only), and a broken hook shouldn't fail `init` itself.
@@ -241,7 +249,9 @@ export class KnowledgeGitService implements IKnowledgeGitService {
           ? GitMessages.UPGRADED_LEGACY_POST_COMMIT_HOOK
           : upgradeFrom === GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT
             ? GitMessages.UPGRADED_POST_COMMIT_HOOK_FLUSH_L3
-            : GitMessages.INSTALLED_POST_COMMIT_HOOK,
+            : upgradeFrom === GitConstants.PRE_NOHUP_POST_COMMIT_HOOK_CONTENT
+              ? GitMessages.UPGRADED_POST_COMMIT_HOOK_NOHUP
+              : GitMessages.INSTALLED_POST_COMMIT_HOOK,
       );
       return { installed: true };
     });

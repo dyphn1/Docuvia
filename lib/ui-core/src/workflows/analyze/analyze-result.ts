@@ -201,4 +201,10 @@ export type AnalyzeResult =
       /** The commit sha this flush ran against (`HEAD` at the moment the post-commit hook fired),
        *  or `null` on the (essentially unreachable, post-commit-only) unborn/headless-HEAD case. */
       commitSha: string | null;
+      /** `true` when at least one file-group's persist hit the "no graph to attach yet" path (no
+       *  project row / no L2 anchor resolvable, issue #57) and its entries were left staged for a
+       *  future flush -- the CLI surfaces this as a loud "run `docuvia init`" nudge instead of an
+       *  unexplained `0 flushed, N left staged`. `false` on every zero-work path (disabled toggle,
+       *  nothing staged, nothing in this commit's diff). */
+      noGraphToAttach: boolean;
     };

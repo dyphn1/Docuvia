@@ -18,7 +18,10 @@ const CATEGORY_RULES: CategoryRule[] = [
   {
     category: UI_MESSAGES.DOCTOR_CATEGORY_DATABASE,
     test: (k) =>
-      k.startsWith("sqlite_") || k === "db_runner" || k === "db_found",
+      k.startsWith("sqlite_") ||
+      k === "db_runner" ||
+      k === "db_found" ||
+      k === "graph_empty",
   },
   {
     category: UI_MESSAGES.DOCTOR_CATEGORY_GIT_HOOKS,

@@ -2,6 +2,9 @@
 export const DOCTOR_DIAGNOSTIC_KEYS = {
   DB_RUNNER: "db_runner",
   DB_FOUND: "db_found",
+  /** Issue #57: the never-ingested state `db_found` structurally can't see -- the local.db
+   *  *file* exists but the graph inside it is empty (no project row, or 0 L2 nodes). */
+  GRAPH_EMPTY: "graph_empty",
   GIT_REACHABILITY: "git_reachability",
   GIT_RUNNER: "git_runner",
   LOGS: "logs",
@@ -43,6 +46,15 @@ export const DOCTOR_AGENT_PLATFORM_NAMES = {
 export const DOCTOR_MESSAGES = {
   DB_RUNNER_NOT_REGISTERED: "DiagnosticRunnerDb not registered",
   DB_NOT_FOUND_AT: (dbPath: string) => `Local database not found at ${dbPath}`,
+  /** Issue #57: `local.db` exists but nothing was ever ingested -- the exact precondition under
+   *  which `--agent-authored --stage` / `--flush-staged-l3` silently retry forever with no anchor
+   *  to attach decisions to (the only visible trace being a JSONL log line). */
+  GRAPH_EMPTY:
+    "The knowledge graph is empty (nothing ingested yet) -- staged decisions have no L2 anchor to attach to.",
+  GRAPH_EMPTY_SUGGESTION:
+    "run `docuvia init` first — decisions need a graph to attach to",
+  GRAPH_EMPTY_OK: (l2Nodes: number) =>
+    `Knowledge graph populated (${l2Nodes} L2 node(s)).`,
   GIT_RUNNER_NOT_REGISTERED: "DiagnosticRunnerGit not registered",
   GIT_NETWORK_TIMEOUT_SUGGESTION:
     "The Git remote operation timed out (5000ms). Check your internet connection or DNS settings.",

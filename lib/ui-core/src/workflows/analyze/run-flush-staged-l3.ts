@@ -39,6 +39,9 @@ function noopResult(
     deduped: 0,
     stillPending,
     commitSha,
+    // None of the zero-work paths ever attempted a persist, so none could have hit the
+    // no-graph-to-attach state (issue #57).
+    noGraphToAttach: false,
   };
 }
 
@@ -79,6 +82,10 @@ interface FlushGroupOutcome {
   deduped: number;
   dropped: PendingL3Decision[];
   retry: PendingL3Decision[];
+  /** `true` when this group's persist hit the no-graph-to-attach path (issue #57) -- the
+   *  entries were left staged (retry), and the CLI surfaces this as a loud "run `docuvia init`"
+   *  nudge instead of an unexplained "0 flushed". */
+  noGraphToAttach: boolean;
 }
 
 /**
@@ -105,7 +112,13 @@ async function flushFileGroup(
     logger.warn(ANALYZE_MESSAGES.FLUSH_STAGED_L3_FILE_DELETED(filePath), {
       droppedCount: entries.length,
     });
-    return { persisted: 0, deduped: 0, dropped: entries, retry: [] };
+    return {
+      persisted: 0,
+      deduped: 0,
+      dropped: entries,
+      retry: [],
+      noGraphToAttach: false,
+    };
   }
 
   const { files, droppedFiles } = collectSourceFiles(
@@ -137,7 +150,13 @@ async function flushFileGroup(
   // dequeued as if they'd landed (advisor-flagged trap -- {0,0} is a swallowed skip, not a
   // confirmed write).
   if (result.persisted + result.deduped === 0) {
-    return { persisted: 0, deduped: 0, dropped: [], retry: entries };
+    return {
+      persisted: 0,
+      deduped: 0,
+      dropped: [],
+      retry: entries,
+      noGraphToAttach: result.noGraphToAttach,
+    };
   }
 
   return {
@@ -145,6 +164,7 @@ async function flushFileGroup(
     deduped: result.deduped,
     dropped: [],
     retry: [],
+    noGraphToAttach: false,
   };
 }
 
@@ -222,6 +242,9 @@ export async function runFlushStagedL3(deps: {
   let flushed = 0;
   let deduped = 0;
   let droppedDeleted = 0;
+  // Issue #57: count (not boolean-accumulate) the no-graph-to-attach hits so the aggregation
+  // stays branch-free -- `a = a || b` counts against the ESLint complexity budget.
+  let noGraphToAttachHits = 0;
   const retryLater: PendingL3Decision[] = [];
 
   try {
@@ -236,6 +259,7 @@ export async function runFlushStagedL3(deps: {
       flushed += outcome.persisted;
       deduped += outcome.deduped;
       droppedDeleted += outcome.dropped.length;
+      noGraphToAttachHits += Number(outcome.noGraphToAttach);
       retryLater.push(...outcome.retry);
     }
   } catch (err) {
@@ -279,5 +303,6 @@ export async function runFlushStagedL3(deps: {
     deduped,
     stillPending: finalStillPending.length,
     commitSha: headSha,
+    noGraphToAttach: noGraphToAttachHits > 0,
   };
 }

@@ -106,6 +106,10 @@ export class DoctorWorkflow {
       await this.runOrSkip(skipDb, () =>
         this.runTierBCoverageDiagnostic(diagnostics),
       ),
+      // Issue #57: the never-ingested state (`db_found` passes on the file's existence alone).
+      await this.runOrSkip(skipDb, () =>
+        this.runGraphEmptyDiagnostic(diagnostics),
+      ),
     ];
 
     // §10c's doctor-half backup (T4) only needs the db as of §9m item 1 (the commit-cap's metric
@@ -572,6 +576,52 @@ export class DoctorWorkflow {
     } catch {
       // db not found/unopenable (already covered by db_found's own FAIL) -- degrades to silently
       // skipped, never a doctor crash.
+      return true;
+    } finally {
+      await store?.close();
+    }
+  }
+
+  /**
+   * Issue #57: detects the never-ingested graph that `db_found` structurally can't -- the
+   * `local.db` *file* exists but the graph inside it is empty (no project row, or 0 L2 nodes).
+   * That is exactly the precondition under which `--agent-authored --stage` / `--flush-staged-l3`
+   * silently retry forever with nothing to attach decisions to (the only visible trace being a
+   * JSONL log line), so this FAILs with a "run `docuvia init`" suggestion. A missing/unopenable
+   * db degrades to silently skipped -- already covered by `db_found`'s own FAIL, mirroring
+   * `runTierBCoverageDiagnostic`'s pattern. Never throws past this method.
+   */
+  private async runGraphEmptyDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) return true;
+
+    let store: IGraphStore | undefined;
+    try {
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+
+      const project = store.projects.getFirst();
+      const { l2Nodes } = store.graph.count();
+      const isEmpty = !project || l2Nodes === 0;
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.GRAPH_EMPTY] = isEmpty
+        ? {
+            status: DiagnosticStatus.FAIL,
+            message: DOCTOR_MESSAGES.GRAPH_EMPTY,
+            suggestion: DOCTOR_MESSAGES.GRAPH_EMPTY_SUGGESTION,
+          }
+        : {
+            status: DiagnosticStatus.PASS,
+            message: DOCTOR_MESSAGES.GRAPH_EMPTY_OK(l2Nodes),
+          };
+      return !isEmpty;
+    } catch {
+      // db not found/unopenable (already covered by db_found's own FAIL) -- silently skipped,
+      // never a doctor crash.
       return true;
     } finally {
       await store?.close();

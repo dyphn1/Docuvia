@@ -42,6 +42,7 @@ vi.mock("../../../src/ui/wizard.js", () => ({
     header: vi.fn(),
     info: vi.fn(),
     error: vi.fn(),
+    warn: vi.fn(),
     log: vi.fn(),
     spinner: vi.fn((text: string) => {
       lastSpinnerInstance = {
@@ -1071,6 +1072,43 @@ describe("analyzeCommand", () => {
       expect(spinnerSucceed).toHaveBeenCalledWith(
         UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_DISABLED_SUCCESS,
       );
+    });
+
+    it("prints the run-docuvia-init advice line when the flush hit the no-graph-to-attach path (issue #57) -- the reason must reach the console, not just the JSONL log", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "flushStagedL3",
+        skippedDisabled: false,
+        flushed: 0,
+        deduped: 0,
+        stillPending: 1,
+        commitSha: "deadbeef",
+        noGraphToAttach: true,
+      });
+
+      await analyzeCommand(undefined, "/workspace", { flushStagedL3: true });
+
+      expect(ui.info).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_SUMMARY(0, 0, 1),
+      );
+      expect(ui.warn).toHaveBeenCalledWith(
+        UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_NO_GRAPH_ADVICE,
+      );
+    });
+
+    it("does not print the no-graph advice when the flush landed (noGraphToAttach false)", async () => {
+      mockAnalyze.mockResolvedValue({
+        kind: "flushStagedL3",
+        skippedDisabled: false,
+        flushed: 2,
+        deduped: 0,
+        stillPending: 0,
+        commitSha: "deadbeef",
+        noGraphToAttach: false,
+      });
+
+      await analyzeCommand(undefined, "/workspace", { flushStagedL3: true });
+
+      expect(ui.warn).not.toHaveBeenCalled();
     });
 
     it("wins over --agent-authored when both are somehow set (dispatch-order regression guard)", async () => {

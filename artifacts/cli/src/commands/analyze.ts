@@ -374,6 +374,12 @@ function printFlushStagedL3Result(
       result.stillPending,
     ),
   );
+  // Issue #57: a flush that hit the no-graph-to-attach path must say so on the console, not just
+  // in the JSONL log -- otherwise a never-ingested graph looks like "pending forever" with no hint
+  // that `docuvia init` is the fix.
+  if (result.noGraphToAttach) {
+    ui.warn(UI_MESSAGES.ANALYZE_FLUSH_STAGED_L3_NO_GRAPH_ADVICE);
+  }
 }
 
 function printAnalyzeResult(

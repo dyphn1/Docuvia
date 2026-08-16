@@ -1,9 +1,0 @@
----
-id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.getSignature
-type: symbol
-name: getSignature
-filePath: lib/ast-core/src/detector/semantic-diff.ts
----
-# Symbol: getSignature
-
-File: `lib/ast-core/src/detector/semantic-diff.ts`

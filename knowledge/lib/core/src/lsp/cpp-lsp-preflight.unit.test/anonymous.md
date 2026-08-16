@@ -1,9 +1,0 @@
----
-id: lib/core/src/lsp/cpp-lsp-preflight.unit.test.ts#anonymous@L60
-type: symbol
-name: anonymous
-filePath: lib/core/src/lsp/cpp-lsp-preflight.unit.test.ts
----
-# Symbol: anonymous
-
-File: `lib/core/src/lsp/cpp-lsp-preflight.unit.test.ts`

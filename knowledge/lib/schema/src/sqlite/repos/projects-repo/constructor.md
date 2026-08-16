@@ -1,9 +1,0 @@
----
-id: lib/schema/src/sqlite/repos/projects-repo.ts#ProjectsRepo.constructor
-type: symbol
-name: constructor
-filePath: lib/schema/src/sqlite/repos/projects-repo.ts
----
-# Symbol: constructor
-
-File: `lib/schema/src/sqlite/repos/projects-repo.ts`

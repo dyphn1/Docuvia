@@ -80,10 +80,14 @@ removal via `docuvia uninstall` — not a fixed bundle baked into every `init` r
 self-installable/uninstallable requirement raised alongside item 34 below. Precedent this repo
 already has for a project-local skill: [`.claude/skills/no-magic-strings/`](../../../.claude/skills/no-magic-strings).
 
-Found alongside this, not yet fixed: `.claude/hooks/docuvia-hook.js` builds its
-`npx --no-install docuvia query "${target}" --format=prompt` shell command via direct string
-interpolation of `target` (`execSync`) — a real shell-injection exposure, separate from the
-spawn-overhead concern above. Fix when this item's hook mechanism is next touched.
+Found alongside this and fixed in 2026-08-16 (issue #51): `.claude/hooks/docuvia-hook.js` used to
+build its `npx --no-install docuvia query "${target}" --format=prompt` shell command via direct
+string interpolation of `target` (`execSync`) — a real shell-injection exposure, separate from the
+spawn-overhead concern above. It now passes `target` as a literal argv element through
+`execFileSync` (with a Windows `npx.cmd` name resolution), and a committed gate test
+(`artifacts/cli/test/unit/constants/docuvia-hook-js-injection-gate.unit.test.ts`) runs the real
+script against a shell-breakout payload and asserts the live `.claude/hooks/docuvia-hook.js` stays
+byte-identical to the `DOCUVIA_HOOK_JS` template.
 
 ### 31. `--format` gains `json`, extends beyond `query`
 

@@ -45,6 +45,13 @@ export const GitConstants = {
    * `run-flush-staged-l3.ts`) -- no shell-level `docuvia hooks check` composition here, unlike
    * `PRE_PUSH_HOOK_CONTENT`'s synchronous `&&` chain, since this line is itself backgrounded
    * (`&`) and has no exit code for a `&&` composition to react to.
+   *
+   * Two background `npx` processes now run per commit (auto `analyze` + `--flush-staged-l3`),
+   * both touching the local SQLite DB. That's an accepted, documented tradeoff (issue #53 finding
+   * 7): SQLite runs in WAL mode with `busy_timeout` 10000ms (`lib/schema`), so the two processes'
+   * write contention serializes rather than erroring, and the flush is a no-op fast path whenever
+   * nothing is staged. Keeping them as separate backgrounded lines (rather than one process doing
+   * both) preserves each line's simple fire-and-forget contract.
    */
   POST_COMMIT_HOOK_CONTENT:
     `#!/bin/bash\n# Docuvia Knowledge Graph Evolver Hook\n` +

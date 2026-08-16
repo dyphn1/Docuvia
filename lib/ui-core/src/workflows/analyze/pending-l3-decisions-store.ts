@@ -93,6 +93,13 @@ export async function readPendingDecisions(
  * --agent-authored --stage`'s write path (issue #42 §8.1). `mkdir(recursive: true)`s `.docuvia/`
  * first, same edge case as `writeHookEnabled` (`hooks-config-store.ts`): `docuvia analyze --stage`
  * may run before `docuvia init` ever has.
+ *
+ * Concurrency (issue #53 finding 6): the read-modify-write is single-writer in practice -- each
+ * `--stage` invocation is one short-lived CLI process, and the only other writer
+ * (`run-flush-staged-l3`'s `writePendingDecisions`) runs post-commit, after the editor's `--stage`
+ * has exited. Two *simultaneous* `--stage` processes (or a `--stage` racing a flush) could still
+ * lose one side's update; no lock is taken because a wait-on-file-style guard was judged overkill
+ * at this scale (documented rather than silently assumed).
  */
 export async function stagePendingDecisions(
   workspaceRoot: string,

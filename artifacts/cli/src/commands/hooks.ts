@@ -82,11 +82,26 @@ async function setHookEnabledSubcommand(
   docuviaMemory.set(scopeId, MemoryKeys.HOOK_ENABLED, enabled);
 
   try {
-    await docuviaApi.setHookEnabled(scopeId, logger);
+    const config = await docuviaApi.setHookEnabled(scopeId, logger);
     ui.success(
       enabled
         ? UI_MESSAGES.HOOKS_ENABLED(hookName)
         : UI_MESSAGES.HOOKS_DISABLED(hookName),
+    );
+    // setHookEnabled re-reads the full config after writing the toggle -- print the confirming
+    // summary it returns (every hook's state, not just the one that changed), which is exactly
+    // what hooks-workflow.ts's doc comment promises this caller will do with the return value.
+    ui.table(
+      [
+        { header: UI_MESSAGES.HOOKS_COL_NAME },
+        { header: UI_MESSAGES.HOOKS_COL_STATUS },
+      ],
+      Object.values(HookNames).map((name) => [
+        name,
+        config[name]
+          ? UI_MESSAGES.HOOKS_STATUS_ENABLED
+          : UI_MESSAGES.HOOKS_STATUS_DISABLED,
+      ]),
     );
   } catch (error: unknown) {
     const message =

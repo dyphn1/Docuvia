@@ -101,6 +101,9 @@ would silently never reach the command at all.
 
 Add `--stage` to append the payload to a local staging file instead of writing straight to
 `l3_nodes` — see Mode D below for why, and for how staged decisions eventually land in the graph.
+Like the direct (non-stage) `--agent-authored` path, `--stage` hard-fails with an
+`FS_READ_FAILED` error if `[path]` doesn't exist at input time — a typo'd or nonexistent target
+is caught immediately rather than silently leaving an entry pending forever.
 
 ## Mode C — `--escalate-to-lsp`: the Tier B batch
 
@@ -146,7 +149,9 @@ commit-l3-write`), this exits as a no-op immediately — nothing is read or writ
 4. Persists only the staged entries whose file is in _that commit's_ changed-file list, tagged with
    the real commit sha. Everything else — staged mid-session but not yet committed, or staged for a
    file this commit didn't touch — is left in the staging file untouched, for a later commit to
-   pick up.
+   pick up. (Matching assumes the command runs from the repo root — the post-commit hook always
+   does; a manual `--flush-staged-l3` from a subdirectory would match nothing, so run it from the
+   repo root.)
 5. A persist failure partway through leaves the _entire_ staging file unchanged (no partial drop)
    — the next flush retries from the same state rather than silently losing the remainder.
 

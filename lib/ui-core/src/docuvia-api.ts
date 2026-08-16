@@ -8,6 +8,8 @@ import {
   type EdgeResolutionProviderConfig,
   type EdgeResolutionAvailability,
 } from "@workspace/contracts";
+import fs from "fs";
+import path from "path";
 import { DOCUVIA_API_MESSAGES } from "./constants/docuvia-api-messages.js";
 import { InitWorkflow } from "./workflows/init/init-workflow.js";
 import type { InitResult } from "./workflows/init/init-result.js";
@@ -53,6 +55,7 @@ import {
 } from "./workflows/hooks/hooks-workflow.js";
 import type { HookName, HooksConfig } from "@workspace/contracts";
 import { stagePendingDecisions } from "./workflows/analyze/pending-l3-decisions-store.js";
+import { ANALYZE_MESSAGES } from "./workflows/analyze/analyze-messages.js";
 
 function requireMemory<T>(scopeId: string, key: MemoryKey): T {
   const value = docuviaMemory.get<T>(scopeId, key);
@@ -270,6 +273,18 @@ export const docuviaApi = {
       scopeId,
       MemoryKeys.AGENT_AUTHORED_DECISIONS,
     );
+    // Mirrors `run-agent-authored-write`'s own existence check (issue #53 finding 3) -- the
+    // non-stage path hard-fails with FS_READ_FAILED on a missing target, so staging one for a
+    // typo'd/nonexistent path must fail at input time too, rather than leaving an entry pending
+    // until flush (where it would be silently dropped). `existsSync` (not `stat`) matches the
+    // direct path's primitive and keeps this a cheap input-time guard.
+    const resolvedPath = path.resolve(workspaceRoot, targetPath);
+    if (!fs.existsSync(resolvedPath)) {
+      throw new DocuviaError(
+        ErrorCodes.FS_READ_FAILED,
+        ANALYZE_MESSAGES.PATH_NOT_FOUND(targetPath),
+      );
+    }
     return stagePendingDecisions(workspaceRoot, targetPath, decisions, logger);
   },
 

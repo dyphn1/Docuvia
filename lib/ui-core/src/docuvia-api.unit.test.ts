@@ -83,3 +83,39 @@ describe("docuviaApi.analyze() -- agent-authored pre-LLM-branch dispatch (issue 
     );
   });
 });
+
+describe("docuviaApi.stageAgentAuthoredDecisions() -- input-time target existence guard (issue #53 finding 3)", () => {
+  let scopeId: string;
+
+  beforeEach(() => {
+    scopeId = crypto.randomUUID();
+    docuviaMemory.createScope(scopeId);
+    docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, "/workspace");
+  });
+
+  afterEach(() => {
+    docuviaMemory.deleteScope(scopeId);
+  });
+
+  it("throws FS_READ_FAILED for a nonexistent target instead of leaving an entry pending", async () => {
+    const { docuviaApi } = await import("./docuvia-api.js");
+    const { ErrorCodes } = await import("@workspace/contracts");
+    docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, "does-not-exist.ts");
+    docuviaMemory.set(scopeId, MemoryKeys.AGENT_AUTHORED_DECISIONS, [
+      {
+        title: "x",
+        content: "y",
+        nodeType: "rule",
+        confidence: 0.5,
+      },
+    ]);
+
+    await expect(
+      docuviaApi.stageAgentAuthoredDecisions(scopeId, createMockLogger()),
+    ).rejects.toThrowError(
+      expect.objectContaining({
+        code: ErrorCodes.FS_READ_FAILED,
+      }),
+    );
+  });
+});

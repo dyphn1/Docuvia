@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/utils/read-stdin.ts#anonymous@L15
+id: artifacts/cli/src/utils/read-stdin.ts#anonymous@L12
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/utils/read-stdin.ts

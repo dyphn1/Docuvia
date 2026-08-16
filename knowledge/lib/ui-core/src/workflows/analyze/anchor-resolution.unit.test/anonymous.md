@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/anchor-resolution.unit.test.ts#anonymous@L38
+id: lib/ui-core/src/workflows/analyze/anchor-resolution.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/anchor-resolution.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/analyze/anchor-resolution.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/analyze/anchor-resolution.unit.test.ts`
+ts`

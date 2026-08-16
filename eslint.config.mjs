@@ -26,10 +26,34 @@ const LAYER_BOUNDARY_MESSAGE =
 
 /** Type B message (issue #30 follow-up): an implementation-layer import in the wrong direction. */
 const TYPE_B_DIRECTION_MESSAGE =
-  "implementation-layer direction violation (Type B): ast-core is a Technology Provider and " +
-  "plugins-ast is its plugin package — Domain Core (lib/core) may consume them, plugins may " +
-  "consume their host (ast-core), but neither may import lib/core, and ast-core may not import " +
-  "its own plugin package. Shared constants/types belong in @workspace/contracts.";
+  "implementation-layer direction violation (Type B): Technology Providers (lib/schema, " +
+  "lib/git-local, lib/ast-core, lib/llm-api, lib/remote-api) and plugin packages (lib/plugins-ast) " +
+  "may not import Domain Core (lib/core) or any sibling implementation package — only plugins " +
+  "consuming their host (ast-core) and Domain Core consuming Tech Providers are legal directions. " +
+  "Shared constants/types belong in @workspace/contracts.";
+
+/**
+ * Implementation packages a Technology Provider may never import (Type B, issue #30 follow-up):
+ * Domain Core (upward inversion) or any sibling implementation package (cross-import, AGENTS.md
+ * mandate 1). Only `@workspace/contracts` — plus, for plugin packages alone, their host
+ * `@workspace/ast-core` — is legal. Self-imports are included deliberately: a Tech Provider
+ * importing itself via its package name is also a smell worth failing on.
+ */
+const TECH_PROVIDER_FORBIDDEN = [
+  "@workspace/core",
+  "@workspace/ast-core",
+  "@workspace/plugins-ast",
+  "@workspace/schema",
+  "@workspace/git-local",
+  "@workspace/llm-api",
+  "@workspace/remote-api",
+];
+
+/** Plugin packages' forbidden list — identical to the Tech Providers' except their host
+ * `@workspace/ast-core` stays legal (plugin → host, PLAT-009). */
+const PLUGIN_PACKAGE_FORBIDDEN = TECH_PROVIDER_FORBIDDEN.filter(
+  (p) => p !== "@workspace/ast-core",
+);
 
 export default tseslint.config(
   {
@@ -83,23 +107,29 @@ export default tseslint.config(
     rules: { "no-restricted-imports": "off" },
   },
   // Type B (issue #30 follow-up): implementation-layer directionality, per Virtual Contracts §8
-  // rule 1 + AGENTS.md mandate 1. ast-core is a Technology Provider (docs/gitbook/architecture/
-  // virtual-contracts-architecture.md §2/§8; AGENTS.md table); plugins-ast is its per-language
-  // plugin package. Legal directions are left unlocked: core → ast-core/plugins-ast (Domain Core
-  // consumes Tech Providers) and plugins-ast → ast-core (plugin → host). Locked directions below
-  // are the ones that would invert or cycle the dependency graph:
-  //   - ast-core → @workspace/core        (Tech Provider importing Domain Core = upward inversion)
-  //   - ast-core → @workspace/plugins-ast (host importing its own plugin = cycle)
-  //   - plugins-ast → @workspace/core     (plugin package importing Domain Core = upward inversion)
+  // rule 1 + AGENTS.md mandate 1 + PLAT-009. ast-core is a Technology Provider (raw tree-sitter
+  // wrapper); plugins-ast is its per-language plugin package; schema/git-local/llm-api/remote-api
+  // are the remaining Technology Providers. Legal directions are left unlocked: core →
+  // ast-core/plugins-ast (Domain Core consumes Tech Providers) and plugins-ast → ast-core
+  // (plugin → host). Locked directions below are the ones that would invert or cycle the
+  // dependency graph — no Technology Provider may import lib/core (upward inversion), any
+  // Technology Provider may not import a sibling implementation package (cross-import), and
+  // ast-core may not import its own plugin package (host → plugin = cycle).
   {
-    files: ["lib/ast-core/**/*.ts"],
+    files: [
+      "lib/ast-core/**/*.ts",
+      "lib/schema/**/*.ts",
+      "lib/git-local/**/*.ts",
+      "lib/llm-api/**/*.ts",
+      "lib/remote-api/**/*.ts",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
         {
           patterns: [
             {
-              group: ["@workspace/core", "@workspace/plugins-ast"],
+              group: TECH_PROVIDER_FORBIDDEN,
               message: TYPE_B_DIRECTION_MESSAGE,
             },
           ],
@@ -115,7 +145,7 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ["@workspace/core"],
+              group: PLUGIN_PACKAGE_FORBIDDEN,
               message: TYPE_B_DIRECTION_MESSAGE,
             },
           ],

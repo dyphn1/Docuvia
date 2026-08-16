@@ -74,6 +74,16 @@ cross-imports:
 5. **`test/layer-boundary.test.ts` extended**: Type B fixture tests proving each
    forbidden edge is caught and each legal edge passes, plus the repo-scan regression
    guard now also covers `lib/ast-core` and `lib/plugins-ast`.
+6. **Follow-up (same session): Type B extended to the remaining Tech Providers.** The
+   same directionality lock now covers `lib/schema`, `lib/git-local`, `lib/llm-api`, and
+   `lib/remote-api` via a shared `TECH_PROVIDER_FORBIDDEN` list in `eslint.config.mjs`: no
+   Tech Provider may import `lib/core` (upward inversion) or any sibling implementation
+   package (cross-import, AGENTS.md mandate 1). `plugins-ast`'s forbidden list is the same
+   minus its host `@workspace/ast-core`. The repo-scan regression guard now covers every
+   implementation package (`lib/core` through `lib/remote-api`), and
+   `virtual-contracts-architecture.md` §2/§8 (plus the testing/logging architecture docs'
+   stale `lib/libgit2` lists) were updated to document the enforcement and the corrected
+   Tech Provider list.
 
 Rejected alternative: fully moving `AstProcessingService`/`AstWorkerPool` into ast-core
 so it self-registers `IAstProcessor` — this would create a dependency cycle

@@ -151,7 +151,7 @@ describe("layer-boundary eslint config", () => {
       "lib/plugins-ast/src/languages/typescript.ts",
     );
     expect(pluginHost).toHaveLength(0);
-    // Domain → Tech (unlocked direction; core lives outside the two Type B-restricted dirs)
+    // Domain → Tech (unlocked direction; core lives outside the Type B-restricted dirs)
     const domainTech = await layerViolations(
       `import { SemanticDiffDetector } from "@workspace/ast-core";\nimport { DEFAULT_REGISTRY } from "@workspace/plugins-ast";`,
       "lib/core/src/detector/semantic-diff-analyzer.service.ts",
@@ -159,13 +159,82 @@ describe("layer-boundary eslint config", () => {
     expect(domainTech).toHaveLength(0);
   });
 
+  it("forbids every remaining Tech Provider from importing lib/core (upward inversion)", async () => {
+    const techProviders = [
+      "lib/schema/src/sqlite/graph-store.ts",
+      "lib/git-local/src/git-local-provider.ts",
+      "lib/llm-api/src/fetch-llm-client.ts",
+      "lib/remote-api/src/fetch-remote-sync-client.ts",
+    ];
+    for (const filePath of techProviders) {
+      const violations = await layerViolations(
+        `import { someDomainHelper } from "@workspace/core";`,
+        filePath,
+      );
+      expect(violations, filePath).toHaveLength(1);
+      expect(violations[0]?.message).toMatch(
+        /implementation-layer direction violation/,
+      );
+    }
+  });
+
+  it("forbids Tech Providers from cross-importing each other (AGENTS.md mandate 1)", async () => {
+    const schema = await layerViolations(
+      `import { GitLocalProvider } from "@workspace/git-local";`,
+      "lib/schema/src/sqlite/graph-store.ts",
+    );
+    expect(schema).toHaveLength(1);
+    const gitLocal = await layerViolations(
+      `import { GraphStore } from "@workspace/schema";`,
+      "lib/git-local/src/git-local-provider.ts",
+    );
+    expect(gitLocal).toHaveLength(1);
+  });
+
+  it("forbids ast-core and plugins-ast from importing sibling Tech Providers", async () => {
+    const astCore = await layerViolations(
+      `import { GraphStore } from "@workspace/schema";`,
+      "lib/ast-core/src/parser-core.ts",
+    );
+    expect(astCore).toHaveLength(1);
+    // plugins-ast may only reach up to its host ast-core, not any other Tech Provider
+    const plugin = await layerViolations(
+      `import { GraphStore } from "@workspace/schema";`,
+      "lib/plugins-ast/src/index.ts",
+    );
+    expect(plugin).toHaveLength(1);
+  });
+
+  it("allows every Tech Provider to import @workspace/contracts", async () => {
+    const files = [
+      "lib/schema/src/sqlite/graph-store.ts",
+      "lib/git-local/src/git-local-provider.ts",
+      "lib/llm-api/src/fetch-llm-client.ts",
+      "lib/remote-api/src/fetch-remote-sync-client.ts",
+      "lib/ast-core/src/parser-core.ts",
+      "lib/plugins-ast/src/index.ts",
+    ];
+    for (const filePath of files) {
+      const violations = await layerViolations(
+        `import { TOKENS } from "@workspace/contracts";`,
+        filePath,
+      );
+      expect(violations, filePath).toHaveLength(0);
+    }
+  });
+
   it("has zero layer-boundary violations across the actual repo source (regression guard)", async () => {
     const eslint = makeEslint();
     const results = await eslint.lintFiles([
       "lib/ui-core/**/*.ts",
       "artifacts/cli/src/**/*.ts",
+      "lib/core/**/*.ts",
       "lib/ast-core/**/*.ts",
       "lib/plugins-ast/**/*.ts",
+      "lib/schema/**/*.ts",
+      "lib/git-local/**/*.ts",
+      "lib/llm-api/**/*.ts",
+      "lib/remote-api/**/*.ts",
     ]);
     const violations = results.flatMap((r) =>
       r.messages

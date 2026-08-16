@@ -74,7 +74,10 @@ sequenceDiagram
   - Uses the injected `logger` to record domain-specific operational details (e.g., "Calculated blast radius for 5 files", "Generated branch name").
   - It does not know if the log will be printed to a screen or thrown away. It just reports the domain facts.
 
-### 🚫 The Technology Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/plugins-ast`, `lib/llm-api`, `lib/remote-api`)
+### 🚫 The Technology Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/llm-api`, `lib/remote-api`)
+
+> `lib/plugins-ast` (per-language AST configs) is a plugin package rather than a standalone Tech
+> Provider, but it is equally a Silent Worker — it does not receive the `logger` either.
 
 - **Role**: Silent Workers.
 - **Responsibilities**:

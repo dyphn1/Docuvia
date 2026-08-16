@@ -62,7 +62,11 @@ The testing strategy is segregated into specific lanes based on the architectura
   - **NO I/O ALLOWED**: Tests in this layer must execute in milliseconds. They are absolutely forbidden from writing to disk, connecting to a real database, or calling external APIs.
   - **Dependency Injection**: Tests must register mock providers to the `docuviaFactory` before executing the `ui-core` logic, asserting that `ui-core` calls the expected methods with the correct mapping parameters.
 
-### 🟩 The Technology Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/plugins-ast`, `lib/llm-api`, `lib/remote-api`)
+### 🟩 The Technology Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/llm-api`, `lib/remote-api`)
+
+> `lib/plugins-ast` (per-language AST configs) is a plugin package rather than a standalone Tech
+> Provider, but its tests follow the same shape — isolated integration tests against the real
+> tree-sitter host ([PLAT-009](../adr/platform/PLAT-009-ast-core-technology-provider-type-b.md)).
 
 - **Test Type**: Isolated Integration Tests.
 - **Rules**:

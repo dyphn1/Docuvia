@@ -255,6 +255,9 @@ importers:
       "@workspace/ast-core":
         specifier: workspace:*
         version: link:../ast-core
+      "@workspace/contracts":
+        specifier: workspace:*
+        version: link:../contracts
       web-tree-sitter:
         specifier: ^0.25.9
         version: 0.25.10

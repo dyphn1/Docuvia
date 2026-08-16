@@ -1,11 +1,11 @@
 import path from "path";
-import { DEFAULT_REGISTRY } from "@workspace/ast-core";
+import { DEFAULT_REGISTRY, type LanguageConfig } from "@workspace/ast-core";
 import {
+  DOCUVIA_DIR_NAME,
+  NODE_MODULES_DIR_NAME,
   SUPPORTED_LANGUAGES,
-  type LanguageConfig,
   type SupportedLanguage,
-} from "@workspace/ast-core";
-import { DOCUVIA_DIR_NAME, NODE_MODULES_DIR_NAME } from "@workspace/contracts";
+} from "@workspace/contracts";
 
 const EXT_TO_LANGUAGE: Map<string, SupportedLanguage> = (() => {
   const map = new Map<string, SupportedLanguage>();

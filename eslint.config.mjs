@@ -24,6 +24,13 @@ const LAYER_BOUNDARY_MESSAGE =
   "(Virtual Contracts §8), and implementations are only reachable by token via docuviaFactory. " +
   "Move the value to @workspace/contracts, or resolve a token, instead of importing this package.";
 
+/** Type B message (issue #30 follow-up): an implementation-layer import in the wrong direction. */
+const TYPE_B_DIRECTION_MESSAGE =
+  "implementation-layer direction violation (Type B): ast-core is a Technology Provider and " +
+  "plugins-ast is its plugin package — Domain Core (lib/core) may consume them, plugins may " +
+  "consume their host (ast-core), but neither may import lib/core, and ast-core may not import " +
+  "its own plugin package. Shared constants/types belong in @workspace/contracts.";
+
 export default tseslint.config(
   {
     ignores: [
@@ -74,6 +81,47 @@ export default tseslint.config(
       "lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts",
     ],
     rules: { "no-restricted-imports": "off" },
+  },
+  // Type B (issue #30 follow-up): implementation-layer directionality, per Virtual Contracts §8
+  // rule 1 + AGENTS.md mandate 1. ast-core is a Technology Provider (docs/gitbook/architecture/
+  // virtual-contracts-architecture.md §2/§8; AGENTS.md table); plugins-ast is its per-language
+  // plugin package. Legal directions are left unlocked: core → ast-core/plugins-ast (Domain Core
+  // consumes Tech Providers) and plugins-ast → ast-core (plugin → host). Locked directions below
+  // are the ones that would invert or cycle the dependency graph:
+  //   - ast-core → @workspace/core        (Tech Provider importing Domain Core = upward inversion)
+  //   - ast-core → @workspace/plugins-ast (host importing its own plugin = cycle)
+  //   - plugins-ast → @workspace/core     (plugin package importing Domain Core = upward inversion)
+  {
+    files: ["lib/ast-core/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@workspace/core", "@workspace/plugins-ast"],
+              message: TYPE_B_DIRECTION_MESSAGE,
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["lib/plugins-ast/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@workspace/core"],
+              message: TYPE_B_DIRECTION_MESSAGE,
+            },
+          ],
+        },
+      ],
+    },
   },
   // Presentation layer (artifacts/cli/src): contracts + ui-core only, per Virtual Contracts §8
   // rules 1-2. (cli integration tests are excluded from this rule on purpose: they reach into

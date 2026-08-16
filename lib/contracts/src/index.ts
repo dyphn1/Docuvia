@@ -241,6 +241,8 @@ export {
   GIT_DEFAULT_REMOTE_NAME,
   GitConstants,
 } from "./constants/git-conventions.js";
+export { SUPPORTED_LANGUAGES } from "./constants/languages.js";
+export type { SupportedLanguage } from "./constants/languages.js";
 export { CURRENT_NODE_KEY_FORMAT_VERSION } from "./constants/node-keys.js";
 export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,

@@ -1,16 +1,9 @@
-export const SUPPORTED_LANGUAGES = {
-  TYPESCRIPT: "typescript",
-  JAVASCRIPT: "javascript",
-  PYTHON: "python",
-  RUST: "rust",
-  GO: "go",
-  JAVA: "java",
-  C: "c",
-  CPP: "cpp",
-  RUBY: "ruby",
-  PHP: "php",
-  CSHARP: "csharp",
-} as const;
-
-export type SupportedLanguage =
-  (typeof SUPPORTED_LANGUAGES)[keyof typeof SUPPORTED_LANGUAGES];
+/**
+ * Re-export shim (Virtual Contracts §8 — shared definitions must live in contracts): the
+ * single source of truth for `SUPPORTED_LANGUAGES` / `SupportedLanguage` moved to
+ * `@workspace/contracts` so `lib/core` / `lib/plugins-ast` can reference them without
+ * importing the tree-sitter tech-provider package. This file keeps ast-core's own public
+ * API unchanged (existing consumers can keep importing from `@workspace/ast-core`).
+ */
+export { SUPPORTED_LANGUAGES } from "@workspace/contracts";
+export type { SupportedLanguage } from "@workspace/contracts";

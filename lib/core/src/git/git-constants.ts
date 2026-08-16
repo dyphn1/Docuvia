@@ -1,5 +1,8 @@
 import { GitConstants } from "@workspace/contracts";
 
+/** Core-internal re-export so existing `./git-constants.js` importers keep working — the object
+ *  itself now lives in `@workspace/contracts` (Virtual Contracts §8: shared definitions must live
+ *  in contracts, since `lib/ui-core` and `artifacts/cli` need `GitConstants` too). */
 export { GitConstants };
 
 /** Log messages and human-readable report text shared across the `git/` domain services. */

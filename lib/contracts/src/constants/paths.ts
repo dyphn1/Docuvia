@@ -57,3 +57,11 @@ export const HOOKS_CONFIG_FILE_NAME = "hooks-config.json";
  *  `analyze --flush-staged-l3` step drains entries whose `filePath` is in the triggering commit's
  *  changed-file list. */
 export const PENDING_L3_DECISIONS_FILE_NAME = "pending-l3-decisions.json";
+
+/**
+ * Files at/above this size are skipped during discovery rather than fully read and handed to a
+ * parse worker (shared by `lib/core`'s `file-discovery.service.ts` and `lib/ui-core`'s delta
+ * ingestion oversize check). Matches GitNexus's documented oversized-file threshold, so
+ * file-count comparisons between the two tools are apples-to-apples.
+ */
+export const MAX_FILE_SIZE_BYTES = 512_000;

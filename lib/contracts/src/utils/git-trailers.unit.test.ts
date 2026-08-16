@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseSourceTrailer } from "./git-trailers.js";
-import { GitConstants } from "../constants/git-constants.js";
+import { GitConstants } from "../constants/git-conventions.js";
 
 describe("parseSourceTrailer()", () => {
   it("extracts the source sha from a Docuvia-Source trailer line", () => {
@@ -11,12 +11,17 @@ describe("parseSourceTrailer()", () => {
   });
 
   it("trims surrounding whitespace on the trailer value", () => {
-    const message = `${GitConstants.SOURCE_COMMIT_TRAILER_KEY}:   abcdef  `;
+    const message = `Some subject\n\n  ${GitConstants.SOURCE_COMMIT_TRAILER_KEY}:  abcdef  \nand a trailing line`;
     expect(parseSourceTrailer(message)).toBe("abcdef");
   });
 
   it("returns undefined when the trailer is absent", () => {
     expect(parseSourceTrailer("Snapshot [unknown]")).toBeUndefined();
+    expect(parseSourceTrailer("Docuvia-Other: abcdef\n")).toBeUndefined();
+  });
+
+  it("returns undefined for an empty message", () => {
+    expect(parseSourceTrailer("")).toBeUndefined();
   });
 
   it("ignores non-trailer lines", () => {

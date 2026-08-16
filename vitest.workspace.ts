@@ -1,3 +1,3 @@
 import { defineWorkspace } from "vitest/config";
 
-export default defineWorkspace(["artifacts/*", "lib/*"]);
+export default defineWorkspace(["artifacts/*", "lib/*", "test"]);

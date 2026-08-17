@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#removePrePushHook
+id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.removePrePushHook
 type: symbol
 name: removePrePushHook
 filePath: lib/core/src/git/knowledge-git.service.ts

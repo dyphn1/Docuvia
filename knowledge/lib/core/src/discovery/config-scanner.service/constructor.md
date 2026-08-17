@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/config-scanner.service.ts#constructor
+id: lib/core/src/discovery/config-scanner.service.ts#ConfigScannerService.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/discovery/config-scanner.service.ts

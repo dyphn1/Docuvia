@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#hasSourceCommitInHistory
+id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.hasSourceCommitInHistory
 type: symbol
 name: hasSourceCommitInHistory
 filePath: lib/core/src/git/knowledge-git.service.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/l3-nodes-repo.ts#anonymous@L201
+id: lib/schema/src/sqlite/repos/l3-nodes-repo.ts#L3NodesRepo.anonymous
 type: symbol
 name: anonymous
 filePath: lib/schema/src/sqlite/repos/l3-nodes-repo.ts
@@ -7,3 +7,4 @@ filePath: lib/schema/src/sqlite/repos/l3-nodes-repo.ts
 # Symbol: anonymous
 
 File: `lib/schema/src/sqlite/repos/l3-nodes-repo.ts`
+.ts`

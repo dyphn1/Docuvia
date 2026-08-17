@@ -7,4 +7,3 @@ filePath: lib/git-local/src/fast-import.ts
 # Symbol: anonymous
 
 File: `lib/git-local/src/fast-import.ts`
-.ts`

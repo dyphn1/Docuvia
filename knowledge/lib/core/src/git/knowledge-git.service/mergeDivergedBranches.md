@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#mergeDivergedBranches
+id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.mergeDivergedBranches
 type: symbol
 name: mergeDivergedBranches
 filePath: lib/core/src/git/knowledge-git.service.ts

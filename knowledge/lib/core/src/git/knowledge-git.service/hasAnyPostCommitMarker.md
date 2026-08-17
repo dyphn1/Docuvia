@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/git/knowledge-git.service.ts#hasAnyPostCommitMarker
+id: lib/core/src/git/knowledge-git.service.ts#KnowledgeGitService.hasAnyPostCommitMarker
 type: symbol
 name: hasAnyPostCommitMarker
 filePath: lib/core/src/git/knowledge-git.service.ts

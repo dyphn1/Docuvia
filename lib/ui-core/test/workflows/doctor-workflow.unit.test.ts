@@ -700,6 +700,34 @@ describe("DoctorWorkflow", () => {
       );
     });
 
+    it("reports FAIL for a current-shaped hook that predates the commit-l3-write flush step (issue #48)", async () => {
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockImplementation((_cwd: string, hookName: string) =>
+            Promise.resolve(
+              hookName === GitConstants.POST_COMMIT_HOOK_NAME
+                ? GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT
+                : undefined,
+            ),
+          ),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["git_hook"].status).toBe(DiagnosticStatus.FAIL);
+      expect(result.diagnostics["git_hook"].message).toContain(
+        "commit-l3-write flush step",
+      );
+      expect(result.diagnostics["git_hook"].suggestion).toContain(
+        "docuvia init",
+      );
+      expect(result.allPassed).toBe(false);
+      expect(probeDocuviaResolvable).not.toHaveBeenCalled();
+    });
+
     it("reports PASS for a healthy hook when docuvia resolves", async () => {
       const git = {
         readHookFile: vi
@@ -880,6 +908,35 @@ describe("DoctorWorkflow", () => {
       );
       expect(result.diagnostics["pre_push_hook"].message).toContain(
         "predates the `sync-knowledge` step",
+      );
+      expect(result.diagnostics["pre_push_hook"].suggestion).toContain(
+        "docuvia init",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("reports FAIL for a pre-push hook that predates the `hooks check` gate (issue #48)", async () => {
+      const git = {
+        readHookFile: vi
+          .fn()
+          .mockImplementation((_cwd: string, hookName: string) =>
+            Promise.resolve(
+              hookName === GitConstants.PRE_PUSH_HOOK_NAME
+                ? GitConstants.ENV_GATE_PRE_PUSH_HOOK_CONTENT
+                : undefined,
+            ),
+          ),
+      };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["pre_push_hook"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["pre_push_hook"].message).toContain(
+        "`hooks check`",
       );
       expect(result.diagnostics["pre_push_hook"].suggestion).toContain(
         "docuvia init",

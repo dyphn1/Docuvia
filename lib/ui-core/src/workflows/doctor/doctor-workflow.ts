@@ -167,8 +167,18 @@ export class DoctorWorkflow {
       const hasLegacy = !!hook?.includes(
         GitConstants.LEGACY_POST_COMMIT_HOOK_MARKER,
       );
+      // Issue #48: a hook that already runs `docuvia analyze` but predates the `--flush-staged-l3`
+      // step (#42's commit-l3-write) would silently never flush staged agent-authored L3 decisions.
+      const hasFlushMarker = !!hook?.includes(
+        GitConstants.POST_COMMIT_FLUSH_L3_MARKER,
+      );
 
-      let result = await this.classifyGitHookState(git, hasCurrent, hasLegacy);
+      let result = await this.classifyGitHookState(
+        git,
+        hasCurrent,
+        hasLegacy,
+        hasFlushMarker,
+      );
       if (fix && hasCurrent && hasLegacy) {
         result = await this.repairDuplicateGitHookIfRequested(result);
       }
@@ -187,6 +197,7 @@ export class DoctorWorkflow {
     git: IGitProvider,
     hasCurrent: boolean,
     hasLegacy: boolean,
+    hasFlushMarker: boolean,
   ): Promise<DiagnosticResult> {
     if (!hasCurrent && !hasLegacy) {
       return {
@@ -206,6 +217,15 @@ export class DoctorWorkflow {
         status: DiagnosticStatus.FAIL,
         message: DOCTOR_MESSAGES.GIT_HOOK_LEGACY_ONLY,
         suggestion: DOCTOR_MESSAGES.GIT_HOOK_LEGACY_ONLY_SUGGESTION,
+      };
+    }
+    // Issue #48: a current-shaped hook that still predates the commit-l3-write flush step is
+    // stale in a way `POST_COMMIT_HOOK_MARKER` alone can't see -- `doctor` must not report it OK.
+    if (!hasFlushMarker) {
+      return {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.GIT_HOOK_FLUSH_STALE,
+        suggestion: DOCTOR_MESSAGES.GIT_HOOK_FLUSH_STALE_SUGGESTION,
       };
     }
 
@@ -283,49 +303,84 @@ export class DoctorWorkflow {
       const hasEnvGate = !!hook?.includes(
         GitConstants.PRE_PUSH_ENV_GATE_MARKER,
       );
+      // Issue #48: a hook that already has the sync-knowledge + env-gate steps but predates the
+      // `hooks check` gate (#42's tier-b-c-prepush toggle) would run the whole Tier B/snapshot/
+      // sync-knowledge chain even when the user disabled it via `docuvia hooks disable`.
+      const hasHooksCheck = !!hook?.includes(
+        GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER,
+      );
 
-      let result: DiagnosticResult;
-      if (!hasCurrent) {
-        result = {
-          status: DiagnosticStatus.PASS,
-          message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_NOT_INSTALLED,
-        };
-      } else if (!hasSyncKnowledge) {
-        result = {
-          status: DiagnosticStatus.FAIL,
-          message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE,
-          suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
-        };
-      } else if (!hasEnvGate) {
-        result = {
-          status: DiagnosticStatus.FAIL,
-          message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_ENV_GATE_STALE,
-          suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
-        };
-      } else {
-        const resolvable = await probeDocuviaResolvable(this.workspaceRoot);
-        if (resolvable) {
-          const hooksDir = await git.resolveHooksDir(this.workspaceRoot);
-          result = {
-            status: DiagnosticStatus.PASS,
-            message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_OK(
-              path.join(hooksDir, GitConstants.PRE_PUSH_HOOK_NAME),
-            ),
-          };
-        } else {
-          result = {
-            status: DiagnosticStatus.FAIL,
-            message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_NOT_RESOLVABLE,
-            suggestion: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE_SUGGESTION,
-          };
-        }
-      }
+      const result = await this.classifyPrePushHookState(
+        git,
+        hasCurrent,
+        hasSyncKnowledge,
+        hasEnvGate,
+        hasHooksCheck,
+      );
 
       diagnostics[DOCTOR_DIAGNOSTIC_KEYS.PRE_PUSH_HOOK] = result;
       return result.status === DiagnosticStatus.PASS;
     } catch {
       return true;
     }
+  }
+
+  /** The marker-based branches of `runPrePushHookDiagnostic`, plus (only for the healthy-shaped
+   *  case) the live resolvability probe -- split out to keep `runPrePushHookDiagnostic` itself
+   *  under the ESLint complexity budget, mirroring `classifyGitHookState` for post-commit. */
+  private async classifyPrePushHookState(
+    git: IGitProvider,
+    hasCurrent: boolean,
+    hasSyncKnowledge: boolean,
+    hasEnvGate: boolean,
+    hasHooksCheck: boolean,
+  ): Promise<DiagnosticResult> {
+    if (!hasCurrent) {
+      return {
+        status: DiagnosticStatus.PASS,
+        message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_NOT_INSTALLED,
+      };
+    }
+    if (!hasSyncKnowledge) {
+      return {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE,
+        suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
+      };
+    }
+    if (!hasEnvGate) {
+      return {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_ENV_GATE_STALE,
+        suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
+      };
+    }
+    // Issue #48: a hook that already has the sync-knowledge + env-gate steps but predates the
+    // `hooks check` gate would run the chain even when `tier-b-c-prepush` is disabled.
+    if (!hasHooksCheck) {
+      return {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_HOOKS_CHECK_STALE,
+        suggestion: DOCTOR_MESSAGES.PRE_PUSH_HOOK_STALE_SUGGESTION,
+      };
+    }
+
+    const resolvable = await probeDocuviaResolvable(this.workspaceRoot);
+    if (!resolvable) {
+      return {
+        status: DiagnosticStatus.FAIL,
+        message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_NOT_RESOLVABLE,
+        suggestion: DOCTOR_MESSAGES.GIT_HOOK_NOT_RESOLVABLE_SUGGESTION,
+      };
+    }
+
+    const hooksDir = await git.resolveHooksDir(this.workspaceRoot);
+    return {
+      status: DiagnosticStatus.PASS,
+      message: DOCTOR_MESSAGES.PRE_PUSH_HOOK_OK(
+        path.join(hooksDir, GitConstants.PRE_PUSH_HOOK_NAME),
+      ),
+    };
   }
 
   /**

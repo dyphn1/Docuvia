@@ -17,6 +17,7 @@ import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { OUTPUT_FORMAT_MARKERS } from "../constants/cli-output-markers.js";
 import { readStdin } from "../utils/read-stdin.js";
+import { parseLspArgs } from "../utils/lsp-args.js";
 
 /**
  * Mirrors `AnalyzeResultKind` from `lib/ui-core`'s `analyze-result.ts` — not re-exported
@@ -214,9 +215,9 @@ function resolveTierBEnvConfig(
 
   return {
     lspBinaryOverride: process.env.DOCUVIA_LSP_BINARY,
-    lspArgsOverride: lspArgsRaw
-      ? lspArgsRaw.split(" ").filter(Boolean)
-      : undefined,
+    // Issue #74: the old `.split(" ")` handed quoted args to the LSP as literal `"bar`/`baz"`
+    // tokens; parseLspArgs accepts a JSON array form and otherwise splits POSIX-style.
+    lspArgsOverride: parseLspArgs(lspArgsRaw),
     lspTimeoutMs:
       cliLspTimeoutMs ?? (timeoutRaw ? Number(timeoutRaw) : undefined),
     lspMaxProcesses: cliLspProcesses ?? parsePositiveInt(processesRaw),

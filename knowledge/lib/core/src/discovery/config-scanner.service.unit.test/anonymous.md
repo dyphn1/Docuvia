@@ -7,3 +7,4 @@ filePath: lib/core/src/discovery/config-scanner.service.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/discovery/config-scanner.service.unit.test.ts`
+

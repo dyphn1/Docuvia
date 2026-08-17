@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 import process from "process";
 import crypto from "node:crypto";
@@ -69,15 +69,16 @@ export async function exportTopologyCommand(
     const graph = await docuviaApi.exportTopology(scopeId, logger);
 
     const outDir = options.out ?? path.join(cwd, DOCUVIA_DIR_NAME);
-    fs.mkdirSync(outDir, { recursive: true });
+    // Issue #71: async fs APIs — the sync variants block the event loop on every export.
+    await fs.mkdir(outDir, { recursive: true });
 
     const jsonPath = path.join(outDir, TOPOLOGY_JSON_FILENAME);
-    fs.writeFileSync(jsonPath, JSON.stringify(graph, null, 2));
+    await fs.writeFile(jsonPath, JSON.stringify(graph, null, 2));
 
     let htmlPath: string | undefined;
     if (!options.jsonOnly) {
       htmlPath = path.join(outDir, TOPOLOGY_HTML_FILENAME);
-      fs.writeFileSync(htmlPath, renderTopologyHtml(graph));
+      await fs.writeFile(htmlPath, renderTopologyHtml(graph));
     }
 
     spinner.succeed(UI_MESSAGES.EXPORT_SUCCESS + jsonPath);

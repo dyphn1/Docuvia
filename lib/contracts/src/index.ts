@@ -248,3 +248,10 @@ export type {
   DiagnosticStatusType,
 } from "./interfaces/diagnostic.interfaces.js";
 export type { IIntegrationManager } from "./interfaces/integration.interfaces.js";
+
+export {
+  CLAUDE_HOOKS_DIR,
+  CURSOR_HOOKS_DIR,
+  DOCUVIA_HOOK_JS_FILENAME,
+  DOCUVIA_HOOK_CJS_FILENAME,
+} from "./constants/hooks.js";

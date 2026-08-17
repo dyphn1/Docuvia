@@ -14,12 +14,12 @@ import {
   DiagnosticStatus,
 } from "@workspace/contracts";
 import {
-  GitConstants,
   CLAUDE_HOOKS_DIR,
   CURSOR_HOOKS_DIR,
   DOCUVIA_HOOK_JS_FILENAME,
   DOCUVIA_HOOK_CJS_FILENAME,
-} from "@workspace/core";
+} from "@workspace/contracts";
+import { GitConstants } from "@workspace/core";
 import type { DoctorResult } from "./doctor-result.js";
 import {
   DOCTOR_AGENT_PLATFORM_NAMES,

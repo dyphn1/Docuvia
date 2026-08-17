@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-provider.ts#classifyCall
+id: lib/ast-core/src/language-provider.ts#DefaultProvider.classifyCall
 type: symbol
 name: classifyCall
 filePath: lib/ast-core/src/language-provider.ts

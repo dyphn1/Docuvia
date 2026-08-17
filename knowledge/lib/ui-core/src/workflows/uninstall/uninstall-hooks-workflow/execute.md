@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts#execute
+id: lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts#UninstallHooksWorkflow.execute
 type: symbol
 name: execute
 filePath: lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/detector/semantic-diff-analyzer.service.ts#getRegistry
+id: lib/core/src/detector/semantic-diff-analyzer.service.ts#SemanticDiffAnalyzerService.getRegistry
 type: symbol
 name: getRegistry
 filePath: lib/core/src/detector/semantic-diff-analyzer.service.ts

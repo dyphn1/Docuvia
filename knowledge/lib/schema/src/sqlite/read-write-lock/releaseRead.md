@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/read-write-lock.ts#releaseRead
+id: lib/schema/src/sqlite/read-write-lock.ts#ReadWriteLock.releaseRead
 type: symbol
 name: releaseRead
 filePath: lib/schema/src/sqlite/read-write-lock.ts

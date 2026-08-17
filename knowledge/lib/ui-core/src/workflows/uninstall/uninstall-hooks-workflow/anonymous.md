@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts#anonymous@L32
+id: lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts#UninstallHooksWorkflow.anonymous@L35
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts

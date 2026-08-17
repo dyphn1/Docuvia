@@ -86,6 +86,12 @@ export const DOCTOR_MESSAGES = {
   GIT_HOOK_LEGACY_ONLY:
     "The post-commit hook is still running the legacy `docuvia snapshot` command, which no longer performs Tier A delta ingestion.",
   GIT_HOOK_LEGACY_ONLY_SUGGESTION: "re-run `docuvia init` to upgrade the hook",
+  /** Issue #48: a current-shaped (`docuvia analyze`) post-commit hook that predates the
+   *  `--flush-staged-l3` step (#42's commit-l3-write) would silently never flush staged
+   *  agent-authored L3 decisions -- a real staleness `POST_COMMIT_HOOK_MARKER` alone can't see. */
+  GIT_HOOK_FLUSH_STALE:
+    "The post-commit hook predates the commit-l3-write flush step -- staged agent-authored L3 decisions would never be flushed into the graph.",
+  GIT_HOOK_FLUSH_STALE_SUGGESTION: "re-run `docuvia init` to upgrade the hook",
   GIT_HOOK_NOT_RESOLVABLE:
     "The post-commit hook is installed but `docuvia` is not resolvable from this workspace (the `npx --no-install` invocation would silently no-op on every commit).",
   GIT_HOOK_NOT_RESOLVABLE_SUGGESTION:
@@ -107,6 +113,11 @@ export const DOCTOR_MESSAGES = {
    *  (and so skip `snapshot`/`sync-knowledge`) the moment the LSP environment isn't ready. */
   PRE_PUSH_HOOK_ENV_GATE_STALE:
     "The pre-push hook predates the --fallback-ast env-gate flag -- its Tier B step will fail (skipping snapshot/sync-knowledge for that push) whenever the LSP environment isn't ready.",
+  /** Issue #48: a pre-push hook that already has the sync-knowledge + env-gate steps but predates
+   *  the `hooks check` gate (#42's tier-b-c-prepush toggle) would run the whole chain even when
+   *  the user disabled it via `docuvia hooks disable tier-b-c-prepush`. */
+  PRE_PUSH_HOOK_HOOKS_CHECK_STALE:
+    "The pre-push hook predates the `hooks check` gate -- its Tier B/snapshot/sync-knowledge chain would run even when `tier-b-c-prepush` is disabled via `docuvia hooks disable`.",
   /** Includes the resolved hook file path — same reasoning as `GIT_HOOK_RESOLVABLE`. */
   PRE_PUSH_HOOK_OK: (hookPath: string) =>
     `Pre-push hook is installed and includes the sync-knowledge step (${hookPath}).`,

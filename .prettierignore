@@ -1,0 +1,6 @@
+# Generated artifact — must stay byte-identical to DOCUVIA_HOOK_JS in
+# artifacts/cli/src/constants/init-templates.ts, which is a single-quoted template-literal string
+# that prettier can't reformat (it leaves string contents alone). Running prettier on this file
+# would rewrite it to double quotes/multi-line and break the sync assertion in
+# artifacts/cli/test/unit/constants/docuvia-hook-js-injection-gate.unit.test.ts.
+.claude/hooks/docuvia-hook.js

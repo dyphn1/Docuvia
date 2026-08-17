@@ -242,5 +242,6 @@ describe("layer-boundary eslint config", () => {
         .map((m) => `${r.filePath}:${m.line}`),
     );
     expect(violations).toEqual([]);
-  });
+  }, // under CI CPU contention (cold cache, parallel workers) — generous budget here. // Linting 9 source globs through the real eslint config exceeds vitest's 5s default
+  60_000);
 });

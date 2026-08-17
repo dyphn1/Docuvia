@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/cursor.platform.ts#configureMcpServer
+id: artifacts/cli/src/platforms/cursor.platform.ts#CursorPlatform.configureMcpServer
 type: symbol
 name: configureMcpServer
 filePath: artifacts/cli/src/platforms/cursor.platform.ts

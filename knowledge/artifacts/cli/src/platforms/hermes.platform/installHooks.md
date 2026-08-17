@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/hermes.platform.ts#installHooks
+id: artifacts/cli/src/platforms/hermes.platform.ts#HermesPlatform.installHooks
 type: symbol
 name: installHooks
 filePath: artifacts/cli/src/platforms/hermes.platform.ts

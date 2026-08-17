@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/projects-repo.ts#getOrInsert
+id: lib/schema/src/sqlite/repos/projects-repo.ts#ProjectsRepo.getOrInsert
 type: symbol
 name: getOrInsert
 filePath: lib/schema/src/sqlite/repos/projects-repo.ts

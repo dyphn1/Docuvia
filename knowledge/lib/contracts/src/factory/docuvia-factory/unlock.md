@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/factory/docuvia-factory.ts#unlock
+id: lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.unlock
 type: symbol
 name: unlock
 filePath: lib/contracts/src/factory/docuvia-factory.ts

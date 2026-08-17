@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/copilot.platform.ts#installHooks
+id: artifacts/cli/src/platforms/copilot.platform.ts#CopilotPlatform.installHooks
 type: symbol
 name: installHooks
 filePath: artifacts/cli/src/platforms/copilot.platform.ts

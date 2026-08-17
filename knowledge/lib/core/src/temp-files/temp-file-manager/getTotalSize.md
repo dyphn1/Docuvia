@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/temp-files/temp-file-manager.ts#getTotalSize
+id: lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.getTotalSize
 type: symbol
 name: getTotalSize
 filePath: lib/core/src/temp-files/temp-file-manager.ts

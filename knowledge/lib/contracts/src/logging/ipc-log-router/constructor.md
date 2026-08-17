@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-log-router.ts#constructor
+id: lib/contracts/src/logging/ipc-log-router.ts#IpcLogRouter.constructor
 type: symbol
 name: constructor
 filePath: lib/contracts/src/logging/ipc-log-router.ts

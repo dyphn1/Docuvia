@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/detector/semantic-diff.ts#processChangedRange
+id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.processChangedRange
 type: symbol
 name: processChangedRange
 filePath: lib/ast-core/src/detector/semantic-diff.ts

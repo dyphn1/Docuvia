@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/temp-files/temp-file-manager.ts#constructor
+id: lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.constructor
 type: symbol
 name: constructor
 filePath: lib/core/src/temp-files/temp-file-manager.ts

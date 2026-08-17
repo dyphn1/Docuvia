@@ -1,11 +1,12 @@
 import * as path from "path";
 import * as fs from "fs";
 import type { ILogger } from "@workspace/contracts";
-import { createNoopLogger, UTF8_ENCODING } from "@workspace/contracts";
 import {
-  ConfigFilenames,
+  createNoopLogger,
+  UTF8_ENCODING,
   NODE_MODULES_DIR_NAME,
-} from "../discovery/discovery-constants.js";
+} from "@workspace/contracts";
+import { ConfigFilenames } from "../discovery/discovery-constants.js";
 
 /**
  * Cross-file call/implements/extends edge resolution — the logic `persist-ast-graph.ts` uses

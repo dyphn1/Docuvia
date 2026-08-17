@@ -2,10 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import {
-  ConfigFilenames,
-  NODE_MODULES_DIR_NAME,
-} from "../discovery/discovery-constants.js";
+import { ConfigFilenames } from "../discovery/discovery-constants.js";
+import { NODE_MODULES_DIR_NAME } from "@workspace/contracts";
 import { resolveTypeScriptLspBinary } from "./typescript-lsp-binary-resolver.js";
 import { TsLspConstants, TS_LSP_MESSAGES } from "./typescript-lsp-constants.js";
 import type { LspPreflightOutcome } from "./lsp-edge-provider-base.js";

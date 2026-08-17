@@ -2,14 +2,17 @@ import fg from "fast-glob";
 import path from "path";
 import fs from "fs/promises";
 import type { IConfigScanner, ILogger } from "@workspace/contracts";
-import { createNoopLogger, UTF8_ENCODING } from "@workspace/contracts";
 import {
+  createNoopLogger,
+  UTF8_ENCODING,
   ConfigTags,
   ProjectTypes,
   GENERAL_TAG,
+  ConfigDetectionTags,
+} from "@workspace/contracts";
+import {
   DISCOVERY_MESSAGES,
   COMMON_GLOB_IGNORE_PATTERNS,
-  ConfigDetectionTags,
   ConfigRuleIds,
   ConfigFilenames,
   ConfigFilePrefixes,

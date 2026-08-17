@@ -224,7 +224,15 @@ export {
   TIER_C_LOCK_FILE_NAME,
   HOOKS_CONFIG_FILE_NAME,
   PENDING_L3_DECISIONS_FILE_NAME,
+  NODE_MODULES_DIR_NAME,
 } from "./constants/paths.js";
+
+export {
+  ConfigTags,
+  ProjectTypes,
+  GENERAL_TAG,
+  ConfigDetectionTags,
+} from "./constants/discovery-tags.js";
 
 export { UTF8_ENCODING } from "./constants/encoding.js";
 export { GIT_DEFAULT_REMOTE_NAME } from "./constants/git-conventions.js";

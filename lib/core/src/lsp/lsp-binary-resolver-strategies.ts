@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { NODE_MODULES_DIR_NAME } from "../discovery/discovery-constants.js";
+import { NODE_MODULES_DIR_NAME } from "@workspace/contracts";
 
 const execFileAsync = promisify(execFile);
 

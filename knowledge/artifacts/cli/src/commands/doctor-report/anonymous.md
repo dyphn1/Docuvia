@@ -7,4 +7,3 @@ filePath: artifacts/cli/src/commands/doctor-report.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/src/commands/doctor-report.ts`
-.ts`

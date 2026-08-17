@@ -924,6 +924,33 @@ worth preserving: rust-analyzer loads the whole Cargo workspace regardless of `c
 shards are memory-bound (2 shards / 16 GB, ~4.3 GB each); and the CLI previously hard-coded
 `--lsp-processes` to `1`, silently disabling §4 — that default is removed (unset auto-derives).
 
+### 57. Empty (never-ingested) graph is invisible to `doctor` / the flush path — no diagnostic, no CLI advice, no auto-AST
+
+> **Fixed 2026-08-16.** The never-ingested state (`.docuvia/local.db` exists but the graph inside
+> it is empty — no project row, or 0 L2 nodes) is now detected in two places:
+>
+> - `doctor` gains a `graph_empty` diagnostic (`DOCTOR_DIAGNOSTIC_KEYS.GRAPH_EMPTY`): the
+>   local.db _file_ existing is `db_found`'s whole check, so it structurally can't see a graph
+>   with nothing in it — the new check opens the store read-only and FAILs with "run `docuvia init`
+>   first — decisions need a graph to attach to" when there's no project row or 0 L2 nodes, PASSes
+>   with the live L2 count otherwise. Gated behind `skipDb` like the other
+>   db-backed checks; a missing/unopenable db degrades to silently skipped (already covered by
+>   `db_found`'s own FAIL).
+> - `analyze --flush-staged-l3`'s result now carries `noGraphToAttach` (threaded through
+>   `persistDecisions`'s return), and the CLI prints a loud nudge when it's set — the actionable
+>   guidance previously existed only in the JSONL log, leaving a manual flush on an empty graph
+>   with an unexplained "0 flushed, N left staged" that was indistinguishable from "pending
+>   forever".
+>
+> **Deliberately NOT implemented: auto-triggering ingestion from the flush path.** The post-commit
+> hook's first line already runs `docuvia analyze` (auto mode), which performs a full ingestion
+> on an empty graph — so on the standard commit flow the graph self-heals before/alongside the
+> flush. Auto-ingesting inside the flush itself would duplicate that work (two concurrent full
+> ingests racing each other on the very state that's most fragile) inside a backgrounded,
+> fire-and-forget hook line, for the marginal benefit of the one edge case where a human runs
+> `--flush-staged-l3` by hand before any `analyze`/`init` ever ran. The loud nudge + doctor
+> diagnostic cover that case.
+
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 
 - **Self-built static scope-resolution pipeline** (bypass LSP with hand-guessed cross-file calls)

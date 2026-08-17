@@ -450,6 +450,123 @@ describe("DoctorWorkflow", () => {
     });
   });
 
+  describe("Graph Empty Check (issue #57)", () => {
+    function registerPassingDbAndGitRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function makeMockStore(
+      project: { id: number } | undefined,
+      l2Nodes: number,
+    ) {
+      return {
+        projects: { getFirst: vi.fn().mockReturnValue(project) },
+        graph: {
+          count: vi.fn().mockReturnValue({ l2Nodes, l3Nodes: 0 }),
+        },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["graph_empty"]).toBeUndefined();
+    });
+
+    it("is not evaluated at all when skipDb is set", async () => {
+      const store = makeMockStore({ id: 1 }, 100);
+      const openStore = vi.fn().mockResolvedValue(store);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStore);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(openStore).not.toHaveBeenCalled();
+    });
+
+    it("reports PASS when a project row exists and the graph has L2 nodes", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({ id: 1 }, 6280);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["graph_empty"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "Knowledge graph populated (6280 L2 node(s)).",
+      });
+      expect(result.allPassed).toBe(true);
+      expect(store.close).toHaveBeenCalled();
+    });
+
+    it("reports FAIL with the run-docuvia-init suggestion when a project row exists but 0 L2 nodes (issue #57's exact repro)", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore({ id: 1 }, 0);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["graph_empty"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["graph_empty"].suggestion).toBe(
+        DOCTOR_MESSAGES.GRAPH_EMPTY_SUGGESTION,
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("reports FAIL when no project row exists at all -- same never-ingested state, no anchor to attach decisions to", async () => {
+      registerPassingDbAndGitRunners();
+      const store = makeMockStore(undefined, 0);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["graph_empty"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["graph_empty"].message).toContain(
+        "graph is empty",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("is skipped silently (no diagnostic key) when the db can't be opened -- already covered by db_found's own FAIL", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("not found"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockRejectedValue(new Error("ENOENT")),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["graph_empty"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
+    });
+  });
+
   describe("Agent Hooks Check (workflows/doctor-execution-flow.md Presentation-layer asymmetry cleanup)", () => {
     it("reports PASS for both platforms when both hook files exist", async () => {
       vi.mocked(fs.stat).mockResolvedValue({} as any);

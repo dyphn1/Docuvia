@@ -430,11 +430,50 @@ describe("runFlushStagedL3", () => {
       logger: createMockLogger(),
     });
 
-    expect(result).toMatchObject({ flushed: 0, deduped: 0, stillPending: 1 });
+    // issue #57: the result must tell the CLI *why* nothing flushed -- the no-graph-to-attach
+    // state -- so it can print the "run docuvia init" nudge instead of an unexplained
+    // "0 flushed, 1 left staged".
+    expect(result).toMatchObject({
+      flushed: 0,
+      deduped: 0,
+      stillPending: 1,
+      noGraphToAttach: true,
+    });
     expect(store.l3.upsertDecision).not.toHaveBeenCalled();
 
     const stillStaged = await readPendingDecisions(tmpDir, createMockLogger());
     expect(stillStaged).toHaveLength(1);
     expect(stillStaged[0].filePath).toBe("src/a.ts");
+  });
+
+  it("reports noGraphToAttach: false when the flush fully lands (mixed staging test's healthy counterpart -- issue #57 doesn't false-positive on a populated graph)", async () => {
+    writeHooksConfig(tmpDir, true);
+    fs.mkdirSync(path.join(tmpDir, "src"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "src", "a.ts"), "export const a = 1;\n");
+    await stagePendingDecisions(
+      tmpDir,
+      "src/a.ts",
+      oneDecision,
+      createMockLogger(),
+    );
+
+    const store = makeMockStore();
+    registerPersistenceMocks(store, {
+      getHeadSha: vi.fn().mockResolvedValue(HEAD_SHA),
+      getFilesChangedByCommit: vi.fn().mockResolvedValue(["src/a.ts"]),
+    });
+    docuviaFactory.lock();
+
+    const result = await runFlushStagedL3({
+      workspaceRoot: tmpDir,
+      logger: createMockLogger(),
+    });
+
+    expect(result).toMatchObject({
+      flushed: 1,
+      deduped: 0,
+      stillPending: 0,
+      noGraphToAttach: false,
+    });
   });
 });

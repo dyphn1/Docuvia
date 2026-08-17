@@ -43,7 +43,15 @@ export async function persistDecisions(deps: {
    *  value as `HEAD` at that moment, but explicit here for clarity/testability rather than
    *  implicit "whatever HEAD happens to be when the DB write executes"). */
   commitSha?: string;
-}): Promise<{ persisted: number; deduped: number }> {
+}): Promise<{
+  persisted: number;
+  deduped: number;
+  /** `true` when this call hit the §3b no-graph-to-attach path (db missing, no project row, or
+   *  no L2 anchor resolvable) and persisted nothing -- the caller can distinguish "genuinely
+   *  written" from "swallowed skip" without re-deriving the graph state itself. The flush path
+   *  (`run-flush-staged-l3.ts`) surfaces this as a loud "run `docuvia init`" nudge (issue #57). */
+  noGraphToAttach: boolean;
+}> {
   const {
     workspaceRoot,
     logger,
@@ -54,16 +62,18 @@ export async function persistDecisions(deps: {
     extractionModel,
     commitSha,
   } = deps;
-  if (decisions.length === 0) return { persisted: 0, deduped: 0 };
+  if (decisions.length === 0)
+    return { persisted: 0, deduped: 0, noGraphToAttach: false };
 
   const store = await openStoreForPersist(workspaceRoot, logger);
-  if (store === null) return { persisted: 0, deduped: 0 };
+  if (store === null)
+    return { persisted: 0, deduped: 0, noGraphToAttach: true };
 
   try {
     const project = store.projects.getFirst();
     if (!project) {
       await warnNoGraphToAttach(workspaceRoot, logger);
-      return { persisted: 0, deduped: 0 };
+      return { persisted: 0, deduped: 0, noGraphToAttach: true };
     }
 
     const anchorL2NodeId = resolveAnchorL2NodeId(
@@ -74,7 +84,7 @@ export async function persistDecisions(deps: {
     );
     if (anchorL2NodeId === undefined) {
       await warnNoGraphToAttach(workspaceRoot, logger);
-      return { persisted: 0, deduped: 0 };
+      return { persisted: 0, deduped: 0, noGraphToAttach: true };
     }
 
     const counts = await upsertDecisions({
@@ -95,7 +105,7 @@ export async function persistDecisions(deps: {
       deduped: counts.deduped,
     });
 
-    return counts;
+    return { ...counts, noGraphToAttach: false };
   } finally {
     await store.close();
   }

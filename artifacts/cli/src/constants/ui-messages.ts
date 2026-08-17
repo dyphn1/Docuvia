@@ -234,6 +234,12 @@ export const UI_MESSAGES = {
     (stillPending > 0
       ? `, ${stillPending} left staged for a future commit.`
       : "."),
+  /** Issue #57: printed (as a warn) after the flush summary when at least one persist attempt hit
+   *  the no-graph-to-attach path -- the actionable guidance `ANALYZE_MESSAGES.NO_GRAPH_TO_ATTACH`
+   *  previously existed only in the JSONL log, leaving a manual `--flush-staged-l3` on a
+   *  never-ingested graph with an unexplained "0 flushed, N left staged". */
+  ANALYZE_FLUSH_STAGED_L3_NO_GRAPH_ADVICE:
+    "Some staged decisions could not be attached: the knowledge graph is empty (or hasn't ingested this file yet). Run `docuvia init` first -- decisions need a graph to attach to. They stay staged and retry on the next flush.",
 
   // Review Command
   REVIEW_HEADER: "Review Changes",

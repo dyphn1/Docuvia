@@ -5,8 +5,7 @@ import {
   type LanguageConfig,
   type SupportedLanguage,
 } from "@workspace/ast-core";
-import { DOCUVIA_DIR_NAME } from "@workspace/contracts";
-import { NODE_MODULES_DIR_NAME } from "../discovery/discovery-constants.js";
+import { DOCUVIA_DIR_NAME, NODE_MODULES_DIR_NAME } from "@workspace/contracts";
 
 const EXT_TO_LANGUAGE: Map<string, SupportedLanguage> = (() => {
   const map = new Map<string, SupportedLanguage>();

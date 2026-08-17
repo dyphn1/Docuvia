@@ -1,7 +1,11 @@
 import fs from "fs";
 import path from "path";
 import { isSupportedSourceFile } from "@workspace/core";
-import { DOCUVIA_DIR_NAME, UTF8_ENCODING } from "@workspace/contracts";
+import {
+  DOCUVIA_DIR_NAME,
+  UTF8_ENCODING,
+  NODE_MODULES_DIR_NAME,
+} from "@workspace/contracts";
 import type { ILogger } from "@workspace/contracts";
 import { ANALYZE_MESSAGES } from "./analyze-messages.js";
 
@@ -15,7 +19,6 @@ export interface CollectedFile {
   content: string;
 }
 
-const NODE_MODULES_DIR_NAME = "node_modules";
 const GIT_DIR_NAME = ".git";
 
 const EXCLUDED_DIR_NAMES = new Set([

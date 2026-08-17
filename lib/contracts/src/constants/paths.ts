@@ -25,6 +25,12 @@ export const SNAPSHOT_LOG_FILE_NAME = "snapshot.log";
 export const HYDRATE_LOG_FILE_NAME = "hydrate.log";
 export const SYNC_KNOWLEDGE_LOG_FILE_NAME = "sync-knowledge.log";
 
+/** Dependency-install directory name every scan in this package excludes, whether via a glob
+ *  ignore pattern (`COMMON_GLOB_IGNORE_PATTERNS`) or a plain substring check
+ *  (`FileDiscoveryService`) — moved here from `lib/core` (issue #93) so upper layers share it
+ *  without a `lib/core` dependency. */
+export const NODE_MODULES_DIR_NAME = "node_modules";
+
 /** Filename (relative to `DOCUVIA_DIR_NAME`) of the local SQLite database. */
 export const LOCAL_DB_FILE_NAME = "local.db";
 

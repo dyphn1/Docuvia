@@ -30,7 +30,7 @@ describe("splitShellWords()", () => {
     expect(splitShellWords("a\\ b c")).toEqual(["a b", "c"]);
   });
 
-  it("honors \\\" and \\\\ inside double quotes", () => {
+  it('honors \\" and \\\\ inside double quotes', () => {
     expect(splitShellWords('"say \\"hi\\"" "a\\\\b"')).toEqual([
       'say "hi"',
       "a\\b",
@@ -38,7 +38,7 @@ describe("splitShellWords()", () => {
   });
 
   it("mixes quote styles within one command line", () => {
-    expect(splitShellWords('--a "x y" --b \'z w\' --c v')).toEqual([
+    expect(splitShellWords("--a \"x y\" --b 'z w' --c v")).toEqual([
       "--a",
       "x y",
       "--b",

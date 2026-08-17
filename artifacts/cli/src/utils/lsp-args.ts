@@ -57,10 +57,7 @@ export function parseLspArgs(raw: string | undefined): string[] | undefined {
  * unambiguous) rather than rejected.
  */
 /** True when `ch` is a backslash escaping `"` or `\\` inside a double-quoted region (POSIX). */
-function isDoubleQuoteEscape(
-  ch: string,
-  next: string | undefined,
-): boolean {
+function isDoubleQuoteEscape(ch: string, next: string | undefined): boolean {
   return ch === "\\" && next !== undefined && (next === '"' || next === "\\");
 }
 

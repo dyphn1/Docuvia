@@ -106,8 +106,14 @@ in which situation is expected to live in item 30's skill files.
 > seed/backfill logic of its own — item 33's `analyze <targetPath> --agent-authored` write path
 > (now shipped, see item 33's own banner) supplies exactly the continuous backfill, starting from
 > the first post-`init` commit and onward, this item was asking for. The one gap it doesn't close —
-> pre-existing code no agent has ever touched — still falls through to Tier C's existing push-time
-> LLM-inference fallback, unchanged.
+> pre-existing code no agent has ever touched — has no LLM-inferred rationale and, per issue #58,
+> this is **by design, not a bug**: the previously-claimed "push-time LLM-inference fallback" for
+> that history does not exist (full ingestion enqueues no Tier C candidates, and the design intent
+> is that an agent's rationale is injected while it is writing the code, not re-inferred from a
+> diff later). What issue #58 did fix is the automatic trigger itself — the post-commit hook now
+> backgrounds with `nohup` + a log-file redirect so its delta ingestion and `--flush-staged-l3`
+> drain actually survive the hook shell's exit, with doctor's `post_commit_ingestion` check and
+> `status`'s Tier C queue metric making a dead pipeline visible (see issue #58).
 
 `init` already queues every parsed file for Tier B ([`init.md`](../user-guide/cli/init.md) step
 3); Tier B/C's stage-then-finalize design already gives resumability. Confirmed direction: an
@@ -131,9 +137,14 @@ graph incrementally over time rather than recomputing it in batches — the same
 the Tier A/B/C split itself.
 
 The one case this doesn't cover: code that has _never_ been touched by an agent-authored commit
-(pre-existing code nobody has revisited since). That still has no recorded rationale and still
-falls to Tier C's existing heavier, push-time LLM-inference fallback — unchanged from today's
-design.
+(pre-existing code nobody has revisited since). That has no recorded rationale — and **corrected
+2026-08-16 (issue #58)**: this paragraph's earlier claim that such code "falls to Tier C's
+heavier, push-time LLM-inference fallback" was wrong. Full ingestion (`init`/empty-graph `analyze`)
+enqueues zero Tier C candidates, so LLM-inferred Tier C only ever covers code touched by a
+post-`init` commit (via delta ingestion). That is consistent with the design intent above —
+rationale for pre-existing code is injected by the agent when it touches it, not re-inferred from
+a diff — and the issue's fix was to make the automatic trigger (post-commit hook) reliable and
+its failure visible, not to add a whole-history LLM re-inference pass.
 
 ### 33. Agent-authored L3 write path — new Tier C provenance, write surface confirmed
 

@@ -75,6 +75,9 @@ export const UI_MESSAGES = {
   STATUS_METRIC_L2_NODES: "L2 Nodes",
   STATUS_METRIC_L3_DECISIONS: "L3 Decisions",
   STATUS_METRIC_TIER_B_COVERAGE: "Tier B Coverage",
+  // Issue #58: pending Tier C (LLM-inferred L3) candidates -- surfaced so a permanently-empty
+  // queue is visible rather than silent.
+  STATUS_METRIC_TIER_C_QUEUE: "Tier C Queue",
 
   // Publish Command (IFCE-005: renamed from `sync`)
   PUBLISH_HEADER: "Publish to Docuvia",

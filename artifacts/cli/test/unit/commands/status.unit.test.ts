@@ -58,6 +58,7 @@ describe("statusCommand", () => {
       l3Nodes: 12,
       tierBFilesProcessed: 8,
       tierBFilesTotal: 10,
+      tierCQueued: 3,
     });
 
     await statusCommand();
@@ -71,6 +72,7 @@ describe("statusCommand", () => {
         ["L2 Nodes", "5"],
         ["L3 Decisions", "12"],
         ["Tier B Coverage", "8 / 10 (80.0%)"],
+        ["Tier C Queue", "3"],
       ]),
     );
   });

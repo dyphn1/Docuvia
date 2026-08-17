@@ -51,6 +51,12 @@ Auto mode picks one of three outcomes, in this order:
 
 Every run — no-op, full, or delta — writes a structured JSONL log to `.docuvia/logs/analyze.log`.
 
+When the post-commit hook triggers auto mode (the default way it runs), the hook backgrounds it
+with `nohup` and redirects its stdout/stderr to `.docuvia/logs/post-commit-hook.log` (issue #58) —
+the process survives the hook's shell exiting, and an `npx` resolution failure or startup crash
+that happens before any JSONL can be written is visible in that file and via `docuvia doctor`'s
+`post_commit_ingestion` check, instead of being silently swallowed.
+
 ## Mode B — Path given: focused LLM decision extraction
 
 Passing a file or directory switches to a focused pass: Docuvia reads the target's source,

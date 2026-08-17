@@ -13,6 +13,7 @@ import {
   type IGraphStore,
   type IHydrationService,
 } from "@workspace/contracts";
+import { GitConstants } from "@workspace/core";
 import { StatusWorkflow } from "./status-workflow.js";
 
 function makeMockHydrationService(
@@ -127,9 +128,45 @@ describe("StatusWorkflow.execute()", () => {
       l3Nodes: 9,
       tierBFilesProcessed: 8,
       tierBFilesTotal: 10,
+      tierCQueued: 0,
     });
     // Called twice: once by the ensureHydrated() staleness check, once by the workflow's own read.
     expect(store.close).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports the pending Tier C queue size so a permanently-empty queue is visible (issue #58)", async () => {
+    const store = makeMockStore({
+      meta: {
+        get: vi.fn((key: string) =>
+          key === GitConstants.META_KEY_TIER_C_QUEUE
+            ? JSON.stringify([
+                { kind: "commitMessage", target: "abc", commitSha: "abc" },
+                {
+                  kind: "contractSymbol",
+                  target: "src/a.ts#foo",
+                  commitSha: "abc",
+                  file: "src/a.ts",
+                },
+              ])
+            : undefined,
+        ),
+        set: vi.fn(),
+      },
+    });
+    docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+      vi.fn().mockResolvedValue(store),
+    );
+    docuviaFactory.register(TOKENS.HydrationService, () =>
+      makeMockHydrationService(),
+    );
+    docuviaFactory.lock();
+
+    const result = await new StatusWorkflow(
+      "/workspace/demo",
+      createMockLogger(),
+    ).execute();
+
+    expect(result.tierCQueued).toBe(2);
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {

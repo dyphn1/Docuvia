@@ -53,6 +53,19 @@ const UTC_TIMEZONE_OFFSET = "+0000" as const;
 const FAST_IMPORT_EXIT_ERROR_MESSAGE = (code: number, stderr: string): string =>
   `git fast-import exited with code ${code}${stderr ? ": " + stderr : ""}`;
 
+/** Default cap on how long a `git fast-import` child may run before it is killed (issue #100).
+ *  The stream is fully buffered before spawning, so a run that outlives this is *stalled* (stdin
+ *  deadlock, blocked disk I/O), not slow — without a timeout the child and its pipes would leak
+ *  forever. Generous so genuinely huge trees still import; only a permanently hung process hits it. */
+const FAST_IMPORT_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** POSIX signal sent to a `git fast-import` child that exceeded `FAST_IMPORT_TIMEOUT_MS`. */
+const FAST_IMPORT_KILL_SIGNAL = "SIGTERM" as const;
+
+/** `runFastImport`'s failure message when `git fast-import` is killed for exceeding its timeout. */
+const FAST_IMPORT_TIMEOUT_ERROR_MESSAGE = (timeoutMs: number): string =>
+  `git fast-import timed out after ${timeoutMs}ms and was terminated`;
+
 /**
  * Raw `git fast-import` mechanics — pure wire-format encoding and directory reading, no
  * Docuvia-specific semantics (see `GitLocalProvider.packDirectoryToBranch()`, the only caller).
@@ -153,6 +166,7 @@ export function buildFastImportData(
 export function runFastImport(
   cwd: string,
   fastImportData: string,
+  timeoutMs: number = FAST_IMPORT_TIMEOUT_MS,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(
@@ -167,12 +181,24 @@ export function runFastImport(
         ],
       },
     );
+    // Issue #100: a stalled fast-import (stdin deadlock, blocked disk I/O) must not leak the child
+    // and its pipes forever. Kill it once it outlives `timeoutMs`; the rejection below is the one
+    // callers see (the later "close" handler's own reject is a no-op on an already-rejected
+    // promise, and its resolve branch only fires on a clean code-0 exit, which a killed process
+    // never produces).
+    const timeout = setTimeout(() => {
+      child.kill(FAST_IMPORT_KILL_SIGNAL);
+      reject(new Error(FAST_IMPORT_TIMEOUT_ERROR_MESSAGE(timeoutMs)));
+    }, timeoutMs);
+    // Don't let the timer itself hold the event loop open once the child has exited.
+    timeout.unref();
     const stderrChunks: Buffer[] = [];
     child.stderr.on(CHILD_PROCESS_EVENT.DATA, (chunk: Buffer) =>
       stderrChunks.push(chunk),
     );
     (child as any).on(CHILD_PROCESS_EVENT.ERROR, reject);
     (child as any).on(CHILD_PROCESS_EVENT.CLOSE, (code: number) => {
+      clearTimeout(timeout);
       if (code === 0) return resolve();
       const stderr = Buffer.concat(stderrChunks).toString(UTF8_ENCODING).trim();
       reject(new Error(FAST_IMPORT_EXIT_ERROR_MESSAGE(code, stderr)));

@@ -995,7 +995,6 @@ Deliberate design choice: refusing at stage time rather than making non-source f
 much larger change with an open design question (where should a doc/config decision attach?) and
 no incremental payoff for the common source-file flow; revisit if agents routinely need to record
 decisions against docs/configs.
->>>>>>> ed402f33 (fix(ui-core,cli): refuse agent-authored L3 decisions anchored to non-source files (roadmap #37))
 
 ## Rejected / considered-and-closed (kept for context, do not re-litigate without new evidence)
 

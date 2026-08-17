@@ -223,6 +223,8 @@ describe("layer-boundary eslint config", () => {
     }
   });
 
+  // Linting 9 source globs through the real eslint config exceeds vitest's 5s default
+  // under CI CPU contention (cold cache, parallel workers) — generous budget here.
   it("has zero layer-boundary violations across the actual repo source (regression guard)", async () => {
     const eslint = makeEslint();
     const results = await eslint.lintFiles([
@@ -242,6 +244,5 @@ describe("layer-boundary eslint config", () => {
         .map((m) => `${r.filePath}:${m.line}`),
     );
     expect(violations).toEqual([]);
-  }, // under CI CPU contention (cold cache, parallel workers) — generous budget here. // Linting 9 source globs through the real eslint config exceeds vitest's 5s default
-  60_000);
+  }, 60_000);
 });

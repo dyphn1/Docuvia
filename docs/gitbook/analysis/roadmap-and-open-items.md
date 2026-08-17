@@ -927,9 +927,9 @@ shards are memory-bound (2 shards / 16 GB, ~4.3 GB each); and the CLI previously
 >
 > - `doctor` gains a `graph_empty` diagnostic (`DOCTOR_DIAGNOSTIC_KEYS.GRAPH_EMPTY`): the
 >   local.db _file_ existing is `db_found`'s whole check, so it structurally can't see a graph
->   with nothing in it — the new check opens the store read-only and FAILs with "run `docuvia
->   init` first — decisions need a graph to attach to" when there's no project row or 0 L2
->   nodes, PASSes with the live L2 count otherwise. Gated behind `skipDb` like the other
+>   with nothing in it — the new check opens the store read-only and FAILs with "run `docuvia init`
+>   first — decisions need a graph to attach to" when there's no project row or 0 L2 nodes, PASSes
+>   with the live L2 count otherwise. Gated behind `skipDb` like the other
 >   db-backed checks; a missing/unopenable db degrades to silently skipped (already covered by
 >   `db_found`'s own FAIL).
 > - `analyze --flush-staged-l3`'s result now carries `noGraphToAttach` (threaded through

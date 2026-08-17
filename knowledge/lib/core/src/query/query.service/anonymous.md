@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/query/query.service.ts#anonymous
+id: lib/core/src/query/query.service.ts#anonymous@L115
 type: symbol
 name: anonymous
 filePath: lib/core/src/query/query.service.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/query/query.service.ts
 # Symbol: anonymous
 
 File: `lib/core/src/query/query.service.ts`
-query.service.ts`

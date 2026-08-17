@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/config-scanner.service.ts#detect@L55
+id: lib/core/src/discovery/config-scanner.service.ts#detect@L202
 type: symbol
 name: detect
 filePath: lib/core/src/discovery/config-scanner.service.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/discovery/config-scanner.service.ts
 # Symbol: detect
 
 File: `lib/core/src/discovery/config-scanner.service.ts`
-

@@ -635,9 +635,9 @@ async function confirmTierBGateOrAbort(
 /**
  * `analyze <targetPath> --agent-authored`'s own run (issue #42) -- a pure data write, no LLM
  * config/spinner-text-on-LLM-progress concerns. Bypasses `setupAnalyzeMemory()` entirely (a
- * dedicated small setup block here, rather than growing that function's already-8-positional-
- * argument signature with a 9th/10th case) and sets `MemoryKeys.TARGET_PATH`/
- * `MemoryKeys.AGENT_AUTHORED`/`MemoryKeys.AGENT_AUTHORED_DECISIONS` directly. Reuses
+ *  dedicated small setup block here, rather than growing that function's already-8-positional-
+ *  argument signature with a 9th/10th case) and sets `MemoryKeys.TARGET_PATH`/
+ *  `MemoryKeys.AGENT_AUTHORED_DECISIONS` directly. Reuses
  * `printAnalyzeResult`/`handleAnalyzeError` unchanged -- agent-authored mode returns the exact
  * same `DECISION_EXTRACTION` result shape the LLM path does (§5.4's "free win").
  *
@@ -679,7 +679,6 @@ async function runAgentAuthoredAnalyze(
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
   docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, targetPath);
-  docuviaMemory.set(scopeId, MemoryKeys.AGENT_AUTHORED, true);
   docuviaMemory.set(
     scopeId,
     MemoryKeys.AGENT_AUTHORED_DECISIONS,

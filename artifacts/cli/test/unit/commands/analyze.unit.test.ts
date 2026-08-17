@@ -780,7 +780,6 @@ describe("analyzeCommand", () => {
       expect(mockAnalyze).toHaveBeenCalled();
       const scopeId = mockAnalyze.mock.calls[0][0];
       expect(setSpy).toHaveBeenCalledWith(scopeId, "targetPath", "src/foo.ts");
-      expect(setSpy).toHaveBeenCalledWith(scopeId, "agentAuthored", true);
       expect(setSpy).toHaveBeenCalledWith(scopeId, "agentAuthoredDecisions", [
         {
           title: "Agent-authored decision",

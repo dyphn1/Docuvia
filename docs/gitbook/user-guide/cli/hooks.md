@@ -13,8 +13,9 @@ docuvia hooks <subcommand> [hookName]
 ### Subcommands
 
 - `list`: Print every hook name and its current enabled/disabled status. Ignores `[hookName]`.
-- `enable <hookName>`: Turn a hook on.
-- `disable <hookName>`: Turn a hook off.
+- `enable <hookName>`: Turn a hook on, then print a confirming status table of every hook (the same
+  output `list` produces) — so the toggle's effect is visible in the same invocation.
+- `disable <hookName>`: Turn a hook off, then print the same confirming status table as `enable`.
 - `check <hookName>`: Exit `0` if the hook is enabled, `1` if it's disabled or `<hookName>` isn't a valid name. No stdout on the happy path — this is primarily for **internal/scripted use** (the `tier-b-c-prepush` pre-push hook's `&&` chain shells out to it, and the post-commit flush step performs the equivalent check internally), not typical interactive use. A human checking hook status wants `list`, not `check`. A read failure (missing `.docuvia/`, an unreadable config file) deliberately fails **open** — exit `0`, as if enabled — rather than `1`: this verb's whole job is gating an automatic trigger, and it must never itself be the reason a healthy pipeline stops running.
 
 ### Flags

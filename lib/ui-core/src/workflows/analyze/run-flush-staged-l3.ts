@@ -58,6 +58,23 @@ function groupByFilePath(
   return groups;
 }
 
+/** Partitions `pending` into entries whose `filePath` appears in `changedFiles` (`toFlush`) and
+ *  those that don't (`stillPending`) -- pulled out of `runFlushStagedL3` so that function stays
+ *  under the cyclomatic-complexity budget (mirrors the `dispatchAgentAuthored` split precedent in
+ *  the CLI's `analyze.ts`). */
+function partitionByDiffMatch(
+  pending: PendingL3Decision[],
+  changedFiles: Set<string>,
+): { toFlush: PendingL3Decision[]; stillPending: PendingL3Decision[] } {
+  const toFlush: PendingL3Decision[] = [];
+  const stillPending: PendingL3Decision[] = [];
+  for (const entry of pending) {
+    if (changedFiles.has(entry.filePath)) toFlush.push(entry);
+    else stillPending.push(entry);
+  }
+  return { toFlush, stillPending };
+}
+
 function toExtractedDecisions(
   entries: PendingL3Decision[],
 ): ExtractedDecision[] {
@@ -158,6 +175,18 @@ async function flushFileGroup(
  * Entries staged for a file *not* in this commit (staged mid-session but not yet committed, or
  * committed in a later commit) are left untouched in the staging file.
  *
+ * Matching invariant (issue #53 finding 4): staged `filePath`s are workspace-relative node_keys
+ * (`toNodeKey(path.relative(workspaceRoot, …))`, see `pending-l3-decisions-store.ts`), while
+ * `getFilesChangedByCommit` returns git-repo-relative paths — the two only line up when
+ * `workspaceRoot` is the git top-level, which holds for the post-commit hook (git always runs
+ * hooks at the worktree root) but NOT for a manual `--flush-staged-l3` invoked from a
+ * subdirectory. In that subdirectory case the whole `changedFiles`-membership test silently
+ * matches nothing and every entry stays pending until a future flush runs from the repo root.
+ * No runtime guard is raised for it (a commit that simply doesn't touch any staged file is the
+ * normal, silent same-result case, so a warning here would be noise on every unrelated commit);
+ * the assumption is documented here and in `docs/gitbook/user-guide/cli/analyze.md` Mode D
+ * instead.
+ *
  * Self-gates first, before any staging-file I/O: this runs backgrounded/fire-and-forget from
  * `POST_COMMIT_HOOK_CONTENT` (`... > /dev/null 2>&1 &`), so there is no exit code for anything to
  * react to the way Part E's synchronous pre-push `&&` chain does -- checking `commit-l3-write`
@@ -198,24 +227,23 @@ export async function runFlushStagedL3(deps: {
     await git.getFilesChangedByCommit(workspaceRoot, headSha),
   );
 
-  const toFlush: PendingL3Decision[] = [];
-  const stillPendingBase: PendingL3Decision[] = [];
-  for (const entry of pending) {
-    if (changedFiles.has(entry.filePath)) toFlush.push(entry);
-    else stillPendingBase.push(entry);
-  }
-
+  const { toFlush, stillPending } = partitionByDiffMatch(pending, changedFiles);
   if (toFlush.length === 0) {
     // Nothing staged matches this commit's diff -- leave the staging file completely untouched
     // (not even a no-op rewrite) so a mid-loop-failure-style test can assert byte-identical
-    // survival, not just equivalent content.
+    // survival, not just equivalent content. Note this is the *normal* path whenever a commit
+    // doesn't touch any staged file (entries for other files legitimately stay pending for a
+    // later commit), so it must stay silent -- the "workspaceRoot isn't the git top-level"
+    // subdirectory mismatch (see the module doc comment's matching invariant) is one possible
+    // cause among several and is documented there, not flagged here where it would be noise on
+    // every unrelated commit.
     await appendAnalyzeLogLine(workspaceRoot, {
       event: ANALYZE_EVENTS.FLUSH_STAGED_L3_SUMMARY,
       flushed: 0,
-      stillPending: stillPendingBase.length,
+      stillPending: stillPending.length,
       commitSha: headSha,
     });
-    return noopResult(false, stillPendingBase.length, headSha);
+    return noopResult(false, stillPending.length, headSha);
   }
 
   const groups = groupByFilePath(toFlush);
@@ -257,7 +285,7 @@ export async function runFlushStagedL3(deps: {
 
   // Only rewritten after every toFlush entry has been attempted and none threw -- see the
   // try/catch above for the failure path that skips this write entirely.
-  const finalStillPending = [...stillPendingBase, ...retryLater];
+  const finalStillPending = [...stillPending, ...retryLater];
   await writePendingDecisions(workspaceRoot, finalStillPending);
 
   logger.info(

@@ -5,6 +5,11 @@ import * as path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { GitLocalProvider } from "./git-local-provider.js";
+import {
+  buildFastImportData,
+  collectDirectoryFiles,
+  runFastImport,
+} from "./fast-import.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -454,6 +459,35 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
       // The branch must not have been created/updated by a failed import (fast-import is
       // all-or-nothing: no ref update ever happens for a commit that fails mid-stream).
       expect(await provider.branchExists(tmpDir, KNOWLEDGE_BRANCH)).toBe(false);
+    } finally {
+      fs.rmSync(sourceDir, { recursive: true, force: true });
+    }
+  });
+
+  it("runFastImport kills a git fast-import child that outlives its timeout instead of leaking it forever (issue #100)", async () => {
+    const sourceDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-git-local-fast-import-timeout-src-"),
+    );
+    try {
+      // Enough data that git cannot start, import, and update the ref within a 1ms budget (same
+      // tiny-timeout convention as pushRef's GIT_NETWORK_TIMEOUT test). A completed import would
+      // resolve instead — that would be a real regression of the leak guard, so this must reject.
+      for (let i = 0; i < 100; i++) {
+        fs.writeFileSync(
+          path.join(sourceDir, `file-${i}.md`),
+          `# file ${i}\n` + "content\n".repeat(500),
+        );
+      }
+      const fastImportData = buildFastImportData(
+        KNOWLEDGE_BRANCH,
+        await collectDirectoryFiles(sourceDir),
+        Math.floor(Date.now() / 1000),
+        "Snapshot [timeout]",
+      );
+
+      await expect(runFastImport(tmpDir, fastImportData, 1)).rejects.toThrow(
+        /timed out after 1ms/,
+      );
     } finally {
       fs.rmSync(sourceDir, { recursive: true, force: true });
     }

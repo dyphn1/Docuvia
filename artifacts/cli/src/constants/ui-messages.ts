@@ -209,6 +209,13 @@ export const UI_MESSAGES = {
   ANALYZE_AGENT_AUTHORED_INVALID_SHAPE: (err: string) =>
     `--agent-authored payload does not match the expected shape: ${err}`,
 
+  // Issue #74: DOCUVIA_LSP_ARGS config errors. A leading '[' opts into the JSON-array form, so a
+  // malformed JSON array there is a loud operator error, not something to silently re-parse.
+  ANALYZE_LSP_ARGS_INVALID_JSON: (err: string) =>
+    `DOCUVIA_LSP_ARGS starts with '[' but is not valid JSON -- use a JSON array of strings, or plain space-separated args: ${err}`,
+  ANALYZE_LSP_ARGS_INVALID_SHAPE:
+    "DOCUVIA_LSP_ARGS JSON array must contain only strings",
+
   // --stage (issue #42, Decision 2's two-stage stage-and-flush design §8.1) -- a variant of the
   // --agent-authored dispatch above: appends to .docuvia/pending-l3-decisions.json instead of
   // writing straight to l3_nodes.

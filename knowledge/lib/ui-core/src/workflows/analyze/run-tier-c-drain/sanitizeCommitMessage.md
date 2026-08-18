@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts#anonymous@L426
+id: lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts#sanitizeCommitMessage
 type: symbol
-name: anonymous
+name: sanitizeCommitMessage
 filePath: lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts
 ---
-# Symbol: anonymous
+# Symbol: sanitizeCommitMessage
 
 File: `lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts`

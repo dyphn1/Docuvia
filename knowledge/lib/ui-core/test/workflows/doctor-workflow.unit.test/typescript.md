@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#typescript@L1450
+id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#typescript@L1489
 type: symbol
 name: typescript
 filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts

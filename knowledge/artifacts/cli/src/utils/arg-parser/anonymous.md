@@ -7,3 +7,4 @@ filePath: artifacts/cli/src/utils/arg-parser.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/src/utils/arg-parser.ts`
+ts`

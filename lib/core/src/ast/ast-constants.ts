@@ -34,6 +34,8 @@ export const AstMessages = {
     "AST cache metrics and queue performance",
   TASK_TIMED_OUT_TERMINATING:
     "AST worker task timed out — terminating stuck worker",
+  WORKER_TERMINATE_FAILED:
+    "AST worker terminate() rejected — forced termination did not complete",
   QUERIED_VIA_LANGUAGE_PROVIDER:
     "Queried nodes using @workspace/ast-core LanguageProvider",
   ANONYMOUS_NAME: ANONYMOUS_SYMBOL_NAME,

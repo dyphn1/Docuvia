@@ -434,7 +434,16 @@ export class AstWorkerPool implements IASTWorkerPool {
         });
         // Deliberate termination; the worker's own "exit" handler rejects the pending task,
         // removes it from the pool, and respawns a replacement.
-        worker.terminate().catch(() => {});
+        worker.terminate().catch((err) => {
+          this.logger.warn(AstMessages.WORKER_TERMINATE_FAILED, {
+            taskId,
+            filePath: this.taskFilePaths.get(taskId),
+            error:
+              err instanceof Error
+                ? { message: err.message, name: err.name }
+                : err,
+          });
+        });
       }, this.taskTimeoutMs);
       this.taskTimeouts.set(taskId, timeout);
 

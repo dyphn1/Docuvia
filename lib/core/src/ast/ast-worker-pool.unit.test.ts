@@ -1,14 +1,20 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { Worker } from "worker_threads";
 import * as path from "path";
 import { fileURLToPath } from "url";
 import { createMockLogger } from "@workspace/contracts";
 import { AstWorkerPool, AstWorkerCrashError } from "./ast-worker-pool.js";
+import { AstMessages } from "./ast-constants.js";
 import { CRASH_SENTINEL_FILE_PATH } from "./ast-worker-pool.crash-fixture.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CRASH_FIXTURE_WORKER_PATH = path.resolve(
   __dirname,
   "./ast-worker-pool.crash-fixture.ts",
+);
+const HANG_FIXTURE_WORKER_PATH = path.resolve(
+  __dirname,
+  "./ast-worker-pool.hang-fixture.ts",
 );
 
 describe("AstWorkerPool CALL edge extraction", () => {
@@ -257,5 +263,45 @@ describe("AstWorkerPool CALL edge extraction", () => {
     expect(crashLogs).toHaveLength(0);
 
     pool = undefined; // already terminated, skip afterEach's second terminate()
+  }, 15000);
+
+  it("logs when worker.terminate() rejects during task-timeout teardown", async () => {
+    // Issue #116: the forced-termination catch used to be empty, silently hiding a
+    // failed resource release. A terminate() rejection is now observable via a warn log.
+    const logger = createMockLogger();
+    pool = new AstWorkerPool(logger, 100, undefined, HANG_FIXTURE_WORKER_PATH);
+    await pool.initialize(1);
+
+    // Make the forced terminate() reject — the hang fixture never responds, so the only
+    // way this task can settle is through the timeout->terminate path.
+    const terminateSpy = vi
+      .spyOn(Worker.prototype, "terminate")
+      .mockRejectedValue(new Error("forced termination failed"));
+
+    const parsePromise = pool.parse({
+      filePath: "hang.ts",
+      code: "",
+      language: "typescript",
+    });
+
+    // Wait for the timeout (100ms) + terminate rejection to be logged.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const terminateLogs = logger.events.filter(
+      (e) => e.message === AstMessages.WORKER_TERMINATE_FAILED,
+    );
+    expect(terminateLogs).toHaveLength(1);
+    expect(terminateLogs[0].level).toBe("warn");
+    expect(terminateLogs[0].context).toEqual(
+      expect.objectContaining({
+        filePath: "hang.ts",
+      }),
+    );
+
+    terminateSpy.mockRestore();
+    pool = undefined; // terminate() was mocked to reject; let afterEach skip the second call
+    // The parse promise never settles because the mock prevented the worker from exiting —
+    // attach a no-op catch to keep the rejected path from surfacing as unhandled.
+    parsePromise.catch(() => undefined);
   }, 15000);
 });

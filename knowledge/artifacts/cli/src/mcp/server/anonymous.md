@@ -7,4 +7,3 @@ filePath: artifacts/cli/src/mcp/server.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/src/mcp/server.ts`
-ts`

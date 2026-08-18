@@ -1,5 +1,5 @@
 import path from "path";
-import { DEFAULT_REGISTRY } from "@workspace/plugins-ast";
+import { DEFAULT_REGISTRY } from "@workspace/ast-core";
 import {
   SUPPORTED_LANGUAGES,
   type LanguageConfig,

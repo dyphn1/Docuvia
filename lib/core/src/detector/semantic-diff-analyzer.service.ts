@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { Parser, Language } from "web-tree-sitter";
 import { SemanticDiffDetector } from "@workspace/ast-core";
 import type { LanguageRegistry } from "@workspace/ast-core";
-import { loadDefaultRegistry } from "@workspace/plugins-ast";
+import { loadDefaultRegistry } from "@workspace/ast-core";
 import type {
   ILogger,
   ISemanticDiffAnalyzer,

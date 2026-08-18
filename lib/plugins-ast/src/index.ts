@@ -1,46 +1,13 @@
-export * from "./languages/index.js";
-
-import {
-  LanguageRegistry,
-  LanguageRegistryData,
-  SUPPORTED_LANGUAGES,
+/**
+ * Backward-compatible re-export shim (issue #117/#118): the per-language configs and the
+ * default registry now live in `@workspace/ast-core` — the package `lib/core` is allowed to
+ * depend on — because the AST worker thread (which can't resolve `docuviaFactory` tokens)
+ * constructs the registry via a static import. This package is retained so existing importers
+ * of `@workspace/plugins-ast` keep resolving; new code should import from `@workspace/ast-core`.
+ */
+export {
+  DEFAULT_REGISTRY,
+  loadDefaultRegistry,
+  loadDefaultRegistryFromString,
 } from "@workspace/ast-core";
-import { typescriptConfig } from "./languages/typescript.js";
-import { javascriptConfig } from "./languages/javascript.js";
-import { pythonConfig } from "./languages/python.js";
-import { rustConfig } from "./languages/rust.js";
-import { goConfig } from "./languages/go.js";
-import { javaConfig } from "./languages/java.js";
-import { cConfig } from "./languages/c.js";
-import { cppConfig } from "./languages/cpp.js";
-import { rubyConfig } from "./languages/ruby.js";
-import { phpConfig } from "./languages/php.js";
-import { csharpConfig } from "./languages/csharp.js";
-
-export const DEFAULT_REGISTRY: LanguageRegistryData = {
-  languages: {
-    [SUPPORTED_LANGUAGES.TYPESCRIPT]: typescriptConfig,
-    [SUPPORTED_LANGUAGES.JAVASCRIPT]: javascriptConfig,
-    [SUPPORTED_LANGUAGES.PYTHON]: pythonConfig,
-    [SUPPORTED_LANGUAGES.RUST]: rustConfig,
-    [SUPPORTED_LANGUAGES.GO]: goConfig,
-    [SUPPORTED_LANGUAGES.JAVA]: javaConfig,
-    [SUPPORTED_LANGUAGES.C]: cConfig,
-    [SUPPORTED_LANGUAGES.CPP]: cppConfig,
-    [SUPPORTED_LANGUAGES.RUBY]: rubyConfig,
-    [SUPPORTED_LANGUAGES.PHP]: phpConfig,
-    [SUPPORTED_LANGUAGES.CSHARP]: csharpConfig,
-  },
-};
-
-export async function loadDefaultRegistry(
-  projectRoot?: string,
-): Promise<LanguageRegistry> {
-  return LanguageRegistry.load(projectRoot, DEFAULT_REGISTRY);
-}
-
-export function loadDefaultRegistryFromString(
-  tomlContent?: string,
-): LanguageRegistry {
-  return LanguageRegistry.loadFromString(tomlContent, DEFAULT_REGISTRY);
-}
+export * from "./languages/index.js";

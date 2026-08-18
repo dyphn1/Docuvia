@@ -10,7 +10,7 @@ import {
   rustConfig,
   goConfig,
   cppConfig,
-} from "@workspace/plugins-ast";
+} from "@workspace/ast-core";
 import {
   resolveWasmPath,
   resolveCallableName,

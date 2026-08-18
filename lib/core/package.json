@@ -19,7 +19,6 @@
   "dependencies": {
     "@workspace/ast-core": "workspace:^",
     "@workspace/contracts": "workspace:^",
-    "@workspace/plugins-ast": "workspace:^",
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.5",
     "lru-cache": "^11.5.1",

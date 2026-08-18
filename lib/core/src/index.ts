@@ -37,8 +37,3 @@ export {
   computeL2GitPathsByNodeId,
 } from "./git/l3-card-renderer.js";
 export { importL3CardsFromKnowledgeBranch } from "./git/l3-import.service.js";
-// §5.3/§5.7 item 2's Tier B coverage hint (typescript-cli-benchmark.md): pure store-read helper
-// reused by both `QueryService.getContext()` (lib/core, relative import) and `ImpactWorkflow`
-// (lib/ui-core) -- same "narrow exception" precedent as `importL3CardsFromKnowledgeBranch` above
-// (takes `IGraphStore` as a param, never resolves it itself).
-export { resolveTierBCoverageHint } from "./graph/tier-b-coverage.js";

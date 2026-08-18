@@ -13,6 +13,7 @@ import {
   type IGraphStore,
   type IHydrationService,
   type IImpactService,
+  type ITierBCoverageHintProvider,
 } from "@workspace/contracts";
 import { ImpactWorkflow } from "./impact-workflow.js";
 
@@ -24,6 +25,15 @@ function makeMockHydrationService(
     isStale: vi.fn().mockResolvedValue(false),
     markSynced: vi.fn(),
     hydrate: vi.fn(),
+    ...overrides,
+  };
+}
+
+function makeMockTierBCoverageHintProvider(
+  overrides: Partial<ITierBCoverageHintProvider> = {},
+): ITierBCoverageHintProvider {
+  return {
+    resolve: vi.fn().mockReturnValue(undefined),
     ...overrides,
   };
 }
@@ -94,6 +104,9 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
 describe("ImpactWorkflow.execute()", () => {
   beforeEach(() => {
     resetFactoryForTests();
+    docuviaFactory.register(TOKENS.TierBCoverageHintProvider, () =>
+      makeMockTierBCoverageHintProvider(),
+    );
   });
 
   afterEach(() => {
@@ -192,6 +205,14 @@ describe("ImpactWorkflow.execute()", () => {
     docuviaFactory.register(TOKENS.HydrationService, () =>
       makeMockHydrationService(),
     );
+    const tierBCoverageHint = {
+      ownFileLastProcessedAt: "2026-01-01",
+      workspaceFilesProcessed: 3,
+      workspaceFilesTotal: 10,
+    };
+    docuviaFactory.register(TOKENS.TierBCoverageHintProvider, () =>
+      makeMockTierBCoverageHintProvider({ resolve: () => tierBCoverageHint }),
+    );
     docuviaFactory.lock();
 
     const result = await new ImpactWorkflow(
@@ -202,11 +223,7 @@ describe("ImpactWorkflow.execute()", () => {
     expect(result).toEqual({
       blastRadius: [],
       riskLevel: "LOW",
-      tierBCoverage: {
-        ownFileLastProcessedAt: "2026-01-01",
-        workspaceFilesProcessed: 3,
-        workspaceFilesTotal: 10,
-      },
+      tierBCoverage: tierBCoverageHint,
     });
   });
 

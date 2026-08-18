@@ -166,6 +166,7 @@ export type {
   QueryResultLayer,
   QueryMatchType,
   IQueryService,
+  ITierBCoverageHintProvider,
 } from "./interfaces/query.interfaces.js";
 export { QueryResultLayers } from "./interfaces/query.interfaces.js";
 export { TOPOLOGY_VERSION } from "./interfaces/topology.interfaces.js";

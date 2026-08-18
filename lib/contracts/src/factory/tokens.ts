@@ -16,6 +16,7 @@ import type { ITempFileManager } from "../interfaces/temp-file-manager.interface
 import type { IRemoteSyncClient } from "../interfaces/remote-sync.interfaces.js";
 import type { ILlmClient } from "../interfaces/llm-client.interfaces.js";
 import type { IQueryService } from "../interfaces/query.interfaces.js";
+import type { ITierBCoverageHintProvider } from "../interfaces/query.interfaces.js";
 import type { IImpactService } from "../interfaces/impact.interfaces.js";
 import type { IChangeDetectionService } from "../interfaces/change-detection.interfaces.js";
 import type { ITopologyBuilder } from "../interfaces/topology.interfaces.js";
@@ -90,6 +91,9 @@ export const TOKENS = {
    *  swappable tech. */
   LlmClient: createToken<() => ILlmClient>("LlmClient"),
   QueryService: createToken<IQueryService, LoggerParams>("IQueryService"),
+  TierBCoverageHintProvider: createToken<ITierBCoverageHintProvider>(
+    "ITierBCoverageHintProvider",
+  ),
   ImpactService: createToken<IImpactService, LoggerParams>("IImpactService"),
   ChangeDetectionService: createToken<IChangeDetectionService, LoggerParams>(
     "IChangeDetectionService",

@@ -45,6 +45,21 @@ export interface TierBCoverageHint {
   workspaceFilesTotal: number;
 }
 
+/**
+ * Computes the additive "not yet Tier B-processed" signal (`TierBCoverageHint`) for a
+ * query/impact result. DI-registered behind a token (implemented by `lib/core`'s
+ * `resolveTierBCoverageHint`) so the Orchestration layer resolves it from `docuviaFactory`
+ * instead of importing `@workspace/core` directly — same pattern as `IImpactService`.
+ */
+export interface ITierBCoverageHintProvider {
+  resolve(
+    store: IGraphStore,
+    ownFilePath: string | undefined,
+    incomingEmpty: boolean,
+    outgoingEmpty: boolean,
+  ): TierBCoverageHint | undefined;
+}
+
 export const QueryResultLayers = {
   L2: "l2",
   L3: "l3",

@@ -7,4 +7,3 @@ filePath: lib/core/src/ast/ast-processing.service.ts
 # Symbol: anonymous
 
 File: `lib/core/src/ast/ast-processing.service.ts`
-ts`

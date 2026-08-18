@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/commands/doctor-report.ts#test@L52
+id: artifacts/cli/src/commands/doctor-report.ts#test@L48
 type: symbol
 name: test
 filePath: artifacts/cli/src/commands/doctor-report.ts

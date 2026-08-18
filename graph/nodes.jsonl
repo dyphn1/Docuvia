@@ -255,7 +255,7 @@
 {"id":"artifacts/cli/src/mcp/tools/index.ts#anonymous","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/mcp/tools/index.ts"}
 {"id":"artifacts/cli/src/mcp/tools/init.ts","type":"file","name":"artifacts/cli/src/mcp/tools/init.ts","filePath":"artifacts/cli/src/mcp/tools/init.ts"}
 {"id":"artifacts/cli/src/mcp/tools/init.ts#anonymous","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/mcp/tools/init.ts"}
-{"id":"artifacts/cli/src/mcp/tools/init.ts#anonymous@L39","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/mcp/tools/init.ts"}
+{"id":"artifacts/cli/src/mcp/tools/init.ts#anonymous@L40","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/mcp/tools/init.ts"}
 {"id":"artifacts/cli/src/mcp/tools/messages.ts","type":"file","name":"artifacts/cli/src/mcp/tools/messages.ts","filePath":"artifacts/cli/src/mcp/tools/messages.ts"}
 {"id":"artifacts/cli/src/mcp/tools/types.ts","type":"file","name":"artifacts/cli/src/mcp/tools/types.ts","filePath":"artifacts/cli/src/mcp/tools/types.ts"}
 {"id":"artifacts/cli/src/mcp/tools/types.ts#McpTool","type":"symbol","name":"McpTool","filePath":"artifacts/cli/src/mcp/tools/types.ts"}
@@ -1158,6 +1158,8 @@
 {"id":"lib/ast-core/src/constants.ts#SupportedLanguage","type":"symbol","name":"SupportedLanguage","filePath":"lib/ast-core/src/constants.ts"}
 {"id":"lib/ast-core/src/constants/ast-event-constants.ts","type":"file","name":"lib/ast-core/src/constants/ast-event-constants.ts","filePath":"lib/ast-core/src/constants/ast-event-constants.ts"}
 {"id":"lib/ast-core/src/constants/ast-event-constants.ts#AstEventType","type":"symbol","name":"AstEventType","filePath":"lib/ast-core/src/constants/ast-event-constants.ts"}
+{"id":"lib/ast-core/src/constants/language-node-types.ts","type":"file","name":"lib/ast-core/src/constants/language-node-types.ts","filePath":"lib/ast-core/src/constants/language-node-types.ts"}
+{"id":"lib/ast-core/src/constants/query-capture-names.ts","type":"file","name":"lib/ast-core/src/constants/query-capture-names.ts","filePath":"lib/ast-core/src/constants/query-capture-names.ts"}
 {"id":"lib/ast-core/src/constants/tree-sitter-node-types.ts","type":"file","name":"lib/ast-core/src/constants/tree-sitter-node-types.ts","filePath":"lib/ast-core/src/constants/tree-sitter-node-types.ts"}
 {"id":"lib/ast-core/src/core/ast-traverser.ts","type":"file","name":"lib/ast-core/src/core/ast-traverser.ts","filePath":"lib/ast-core/src/core/ast-traverser.ts"}
 {"id":"lib/ast-core/src/core/ast-traverser.ts#AstTraverser","type":"symbol","name":"AstTraverser","filePath":"lib/ast-core/src/core/ast-traverser.ts"}
@@ -1277,6 +1279,9 @@
 {"id":"lib/ast-core/src/language-provider.ts#LanguageConfig","type":"symbol","name":"LanguageConfig","filePath":"lib/ast-core/src/language-provider.ts"}
 {"id":"lib/ast-core/src/language-provider.ts#LanguageProvider","type":"symbol","name":"LanguageProvider","filePath":"lib/ast-core/src/language-provider.ts"}
 {"id":"lib/ast-core/src/language-provider.ts#LanguageQueryConfig","type":"symbol","name":"LanguageQueryConfig","filePath":"lib/ast-core/src/language-provider.ts"}
+{"id":"lib/ast-core/src/language-registry-defaults.ts","type":"file","name":"lib/ast-core/src/language-registry-defaults.ts","filePath":"lib/ast-core/src/language-registry-defaults.ts"}
+{"id":"lib/ast-core/src/language-registry-defaults.ts#loadDefaultRegistry","type":"symbol","name":"loadDefaultRegistry","filePath":"lib/ast-core/src/language-registry-defaults.ts"}
+{"id":"lib/ast-core/src/language-registry-defaults.ts#loadDefaultRegistryFromString","type":"symbol","name":"loadDefaultRegistryFromString","filePath":"lib/ast-core/src/language-registry-defaults.ts"}
 {"id":"lib/ast-core/src/language-registry.ts","type":"file","name":"lib/ast-core/src/language-registry.ts","filePath":"lib/ast-core/src/language-registry.ts"}
 {"id":"lib/ast-core/src/language-registry.ts#LanguageRegistry","type":"symbol","name":"LanguageRegistry","filePath":"lib/ast-core/src/language-registry.ts"}
 {"id":"lib/ast-core/src/language-registry.ts#LanguageRegistry.buildCache","type":"symbol","name":"buildCache","filePath":"lib/ast-core/src/language-registry.ts"}
@@ -1293,6 +1298,18 @@
 {"id":"lib/ast-core/src/language-registry.unit.test.ts#anonymous@L16","type":"symbol","name":"anonymous","filePath":"lib/ast-core/src/language-registry.unit.test.ts"}
 {"id":"lib/ast-core/src/language-registry.unit.test.ts#anonymous@L21","type":"symbol","name":"anonymous","filePath":"lib/ast-core/src/language-registry.unit.test.ts"}
 {"id":"lib/ast-core/src/language-registry.unit.test.ts#anonymous@L27","type":"symbol","name":"anonymous","filePath":"lib/ast-core/src/language-registry.unit.test.ts"}
+{"id":"lib/ast-core/src/languages/c.ts","type":"file","name":"lib/ast-core/src/languages/c.ts","filePath":"lib/ast-core/src/languages/c.ts"}
+{"id":"lib/ast-core/src/languages/cpp.ts","type":"file","name":"lib/ast-core/src/languages/cpp.ts","filePath":"lib/ast-core/src/languages/cpp.ts"}
+{"id":"lib/ast-core/src/languages/csharp.ts","type":"file","name":"lib/ast-core/src/languages/csharp.ts","filePath":"lib/ast-core/src/languages/csharp.ts"}
+{"id":"lib/ast-core/src/languages/go.ts","type":"file","name":"lib/ast-core/src/languages/go.ts","filePath":"lib/ast-core/src/languages/go.ts"}
+{"id":"lib/ast-core/src/languages/index.ts","type":"file","name":"lib/ast-core/src/languages/index.ts","filePath":"lib/ast-core/src/languages/index.ts"}
+{"id":"lib/ast-core/src/languages/java.ts","type":"file","name":"lib/ast-core/src/languages/java.ts","filePath":"lib/ast-core/src/languages/java.ts"}
+{"id":"lib/ast-core/src/languages/javascript.ts","type":"file","name":"lib/ast-core/src/languages/javascript.ts","filePath":"lib/ast-core/src/languages/javascript.ts"}
+{"id":"lib/ast-core/src/languages/php.ts","type":"file","name":"lib/ast-core/src/languages/php.ts","filePath":"lib/ast-core/src/languages/php.ts"}
+{"id":"lib/ast-core/src/languages/python.ts","type":"file","name":"lib/ast-core/src/languages/python.ts","filePath":"lib/ast-core/src/languages/python.ts"}
+{"id":"lib/ast-core/src/languages/ruby.ts","type":"file","name":"lib/ast-core/src/languages/ruby.ts","filePath":"lib/ast-core/src/languages/ruby.ts"}
+{"id":"lib/ast-core/src/languages/rust.ts","type":"file","name":"lib/ast-core/src/languages/rust.ts","filePath":"lib/ast-core/src/languages/rust.ts"}
+{"id":"lib/ast-core/src/languages/typescript.ts","type":"file","name":"lib/ast-core/src/languages/typescript.ts","filePath":"lib/ast-core/src/languages/typescript.ts"}
 {"id":"lib/ast-core/src/parser-core.ts","type":"file","name":"lib/ast-core/src/parser-core.ts","filePath":"lib/ast-core/src/parser-core.ts"}
 {"id":"lib/ast-core/src/parser-core.ts#generateAst","type":"symbol","name":"generateAst","filePath":"lib/ast-core/src/parser-core.ts"}
 {"id":"lib/ast-core/src/parser-core.ts#initParser","type":"symbol","name":"initParser","filePath":"lib/ast-core/src/parser-core.ts"}
@@ -4019,8 +4036,6 @@
 {"id":"lib/plugins-ast/src/constants/query-capture-names.ts","type":"file","name":"lib/plugins-ast/src/constants/query-capture-names.ts","filePath":"lib/plugins-ast/src/constants/query-capture-names.ts"}
 {"id":"lib/plugins-ast/src/constants/tree-sitter-node-types.ts","type":"file","name":"lib/plugins-ast/src/constants/tree-sitter-node-types.ts","filePath":"lib/plugins-ast/src/constants/tree-sitter-node-types.ts"}
 {"id":"lib/plugins-ast/src/index.ts","type":"file","name":"lib/plugins-ast/src/index.ts","filePath":"lib/plugins-ast/src/index.ts"}
-{"id":"lib/plugins-ast/src/index.ts#loadDefaultRegistry","type":"symbol","name":"loadDefaultRegistry","filePath":"lib/plugins-ast/src/index.ts"}
-{"id":"lib/plugins-ast/src/index.ts#loadDefaultRegistryFromString","type":"symbol","name":"loadDefaultRegistryFromString","filePath":"lib/plugins-ast/src/index.ts"}
 {"id":"lib/plugins-ast/src/languages/c.ts","type":"file","name":"lib/plugins-ast/src/languages/c.ts","filePath":"lib/plugins-ast/src/languages/c.ts"}
 {"id":"lib/plugins-ast/src/languages/cpp.ts","type":"file","name":"lib/plugins-ast/src/languages/cpp.ts","filePath":"lib/plugins-ast/src/languages/cpp.ts"}
 {"id":"lib/plugins-ast/src/languages/csharp.ts","type":"file","name":"lib/plugins-ast/src/languages/csharp.ts","filePath":"lib/plugins-ast/src/languages/csharp.ts"}

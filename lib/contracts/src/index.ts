@@ -226,6 +226,7 @@ export {
   HOOKS_CONFIG_FILE_NAME,
   PENDING_L3_DECISIONS_FILE_NAME,
   NODE_MODULES_DIR_NAME,
+  MAX_FILE_SIZE_BYTES,
 } from "./constants/paths.js";
 
 export {
@@ -236,8 +237,13 @@ export {
 } from "./constants/discovery-tags.js";
 
 export { UTF8_ENCODING } from "./constants/encoding.js";
-export { GIT_DEFAULT_REMOTE_NAME } from "./constants/git-conventions.js";
-export { GitConstants } from "./constants/git-constants.js";
+export {
+  GIT_DEFAULT_REMOTE_NAME,
+  GitConstants,
+} from "./constants/git-conventions.js";
+export { SUPPORTED_LANGUAGES } from "./constants/languages.js";
+export type { SupportedLanguage } from "./constants/languages.js";
+export { CURRENT_NODE_KEY_FORMAT_VERSION } from "./constants/node-keys.js";
 export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,
   ERRNO_EEXIST,
@@ -248,6 +254,7 @@ export {
 } from "./constants/fs.js";
 export { acquireProcessLock } from "./utils/process-lock.js";
 export { parseSourceTrailer } from "./utils/git-trailers.js";
+export { resolveTierBCoverageHint } from "./utils/tier-b-coverage.js";
 export type {
   ProcessLockOptions,
   ProcessLockHandle,

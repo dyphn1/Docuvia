@@ -1,12 +1,17 @@
 import fs from "fs/promises";
+import { statSync } from "fs";
 import path from "path";
 import {
   DOCUVIA_DIR_NAME,
+  DocuviaError,
+  ErrorCodes,
   PENDING_L3_DECISIONS_FILE_NAME,
   UTF8_ENCODING,
   type ILogger,
 } from "@workspace/contracts";
 import { toNodeKey } from "./anchor-resolution.js";
+import { ANALYZE_MESSAGES } from "./analyze-messages.js";
+import { collectSourceFiles } from "./decision-extraction.js";
 import type { ExtractedDecision } from "./analyze-result.js";
 
 const PENDING_L3_DECISIONS_STORE_MESSAGES = {
@@ -107,9 +112,32 @@ export async function stagePendingDecisions(
   decisions: ExtractedDecision[],
   logger: ILogger,
 ): Promise<{ staged: number }> {
-  const filePath = toNodeKey(
-    path.relative(workspaceRoot, path.resolve(workspaceRoot, targetPath)),
-  );
+  const resolvedPath = path.resolve(workspaceRoot, targetPath);
+
+  // Roadmap item 37 — validate before appending, so an entry that could never flush is refused
+  // instead of silently staging a dead-end the flush would retry forever. L2 file nodes only
+  // exist for tree-sitter-parseable files, so a single non-source file (e.g. eslint.config.mjs,
+  // .md) can never be an anchor; a nonexistent path mirrors the direct `--agent-authored`
+  // path's PATH_NOT_FOUND behavior. Directory targets stay lenient (the walk may still collect
+  // source files to fall back on).
+  let isDirectory: boolean;
+  try {
+    isDirectory = statSync(resolvedPath).isDirectory();
+  } catch {
+    throw new DocuviaError(
+      ErrorCodes.FS_READ_FAILED,
+      ANALYZE_MESSAGES.PATH_NOT_FOUND(targetPath),
+    );
+  }
+  const { files } = collectSourceFiles(resolvedPath, workspaceRoot, logger);
+  if (!isDirectory && files.length === 0) {
+    throw new DocuviaError(
+      ErrorCodes.INVALID_INPUT,
+      ANALYZE_MESSAGES.AGENT_AUTHORED_ANCHOR_UNRESOLVABLE(targetPath),
+    );
+  }
+
+  const filePath = toNodeKey(path.relative(workspaceRoot, resolvedPath));
   const current = await readPendingDecisions(workspaceRoot, logger);
   const stagedAt = new Date().toISOString();
   const appended: PendingL3Decision[] = decisions.map((decision) => ({

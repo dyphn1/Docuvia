@@ -38,8 +38,6 @@ flowchart TD
         GIT_LOCAL("lib/git-local<br/>(Raw Git Ops)")
         SCHEMA("lib/schema<br/>(SQLite/ORM)")
         ASTCORE("lib/ast-core<br/>(Tree-Sitter)")
-        LLM_API("lib/llm-api<br/>(LLM Client)")
-        REMOTE_API("lib/remote-api<br/>(Remote Backend)")
     end
 
     %% Wiring
@@ -66,7 +64,7 @@ flowchart TD
     class UICORE orch;
     class FACTORY,INTERFACES,MEMORY contract;
     class CORE_GIT,CORE_AST domain;
-    class GIT_LOCAL,SCHEMA,ASTCORE,LLM_API,REMOTE_API tech;
+    class GIT_LOCAL,SCHEMA,ASTCORE tech;
 ```
 
 ---
@@ -83,11 +81,12 @@ The system is strictly divided into functional roles. Note the crucial distincti
   - `docuviaFactory`: The only globally permitted registration factory. Matches interfaces to concrete implementations.
   - `docuviaMemory`: A global static object used _exclusively_ to hold essential, process-lifetime state (e.g., current workspace paths or contextual locks). It is **not** a dump for runtime memory.
 
-### 🟩 The Technology Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/plugins-ast`, `lib/llm-api`, `lib/remote-api`)
+### 🟩 The Technology Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/llm-api`, `lib/remote-api`)
 
 - **Role**: The raw capability wrappers. They interact directly with third-party technologies or file systems.
 - **Rule**: If we decide to swap `git-local` for `isomorphic-git`, or `SQLite` for `MySQL`, these are the _only_ folders that change.
 - **Mandatory Mapping**: They must strictly conform to `lib/contracts`. If `lib/schema` queries a database, it must map the raw SQL row into a pure `lib/contracts` interface before returning it. The underlying schema must never leak.
+- **Plugin package**: `lib/plugins-ast` is not a standalone Tech Provider but a per-language **plugin package** — one `LanguageConfig` file per supported language, consuming `lib/ast-core`'s host types. `lib/ast-core` is the raw tree-sitter wrapper the plugins plug into; see [PLAT-009](../adr/platform/PLAT-009-ast-core-technology-provider-type-b.md).
 
 ### 🟦 The Domain Core Layer (`lib/core`)
 
@@ -144,8 +143,9 @@ By enforcing the "Virtual Contracts" architecture, we separate _Definitions (Con
 
 ## 8. Import Restrictions & Type Safety (Coupling Prevention)
 
-To prevent boundary erosion and long-term coupling, strict import rules apply between layers:
+To prevent boundary erosion and long-term coupling, strict import rules apply between layers. The rules below are **enforced mechanically, not by convention**: ESLint's `no-restricted-imports` in `eslint.config.mjs` (scoped per directory, `artifacts/cli` and `lib/*`), with a regression suite (`test/layer-boundary.test.ts`) that proves each edge against the real config and scans the actual repo source — any future forbidden import turns CI red (issue #30).
 
-1. **Tech Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/plugins-ast`, `lib/llm-api`, `lib/remote-api`)**: **Strictly Forbidden** for any upper layer (`ui-core`, `artifacts/*`) to import anything from these packages, **including `import type`**. Tech providers wrap volatile third-party dependencies; allowing type imports would leak those dependencies' shapes (e.g., ORM query objects or Tree-sitter AST nodes) into the orchestration logic, breaking the Virtual Contracts isolation.
-2. **Domain Core (`lib/core`)**: **Strictly Forbidden** for the Presentation Layer (`artifacts/*`, `mcp`) to import anything, **including `import type`**. The Orchestration Layer (`lib/ui-core`) **may** import from Domain Core — it uses `lib/core`'s pure business-logic helpers (e.g., `GitConstants`, `parseSourceTrailer`, `isSupportedSourceFile`) that carry no implementation-specific shapes. Domain Core itself may import from Tech Providers when it needs raw capabilities (e.g., `lib/core/ast` uses `lib/ast-core`'s tree-sitter bridge) — this is permitted because Domain Core maps Tech Provider outputs to `lib/contracts` interfaces before returning them upward.
+1. **Tech Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/llm-api`, `lib/remote-api`, and the per-language plugin package `lib/plugins-ast`)**: **Strictly Forbidden** for any upper layer (`ui-core`, `artifacts/*`) to import anything from these packages, **including `import type`** (Type A). Tech providers wrap volatile third-party dependencies; allowing type imports would leak those dependencies' shapes (e.g., ORM query objects or Tree-sitter AST nodes) into the orchestration logic, breaking the Virtual Contracts isolation.
+2. **Domain Core (`lib/core`)**: **Strictly Forbidden** for upper layers to import anything, **including `import type`** (Type A). While `core` contains pure business logic, allowing `import type` inevitably leads to high coupling and boundary erosion. The Orchestrator (`ui-core`) acts as the "purchaser" and `contracts` as the "bidding spec"; `core` simply fulfills the spec. A small allowlist of pure, side-effect-free helpers (`lib/core/src/index.ts`, e.g. `isSupportedSourceFile`) is exempted — they are not DI-registered behind a token and cannot move to contracts.
 3. **The Solution: Type-Safe Registry**: Instead of relaxing import rules to alleviate the "writing interfaces is tedious" complaint, the `docuviaFactory` and `tokens.ts` are designed as a **Type-Safe Registry (TokenMap)**. Developers declare the required interface in `contracts`, register it in the `TokenMap`, and `docuviaFactory.resolve('TokenName')` provides 100% compile-time type safety without manual generic annotations or cross-layer type imports. All shared definitions must live in `contracts`.
+4. **Implementation-layer directionality (Type B, [PLAT-009](../adr/platform/PLAT-009-ast-core-technology-provider-type-b.md))**: `ast-core` is the raw tree-sitter wrapper (a Technology Provider); `plugins-ast` is its per-language plugin package consuming ast-core's host types. Legal directions, left unlocked: `core → ast-core/plugins-ast` (Domain Core consumes Tech Providers) and `plugins-ast → ast-core` (plugin → host). Locked directions: any Technology Provider importing `lib/core` (upward inversion), any Technology Provider importing a sibling implementation package (cross-import, AGENTS.md mandate 1), and `ast-core → plugins-ast` (host importing its own plugin = cycle). Tech Providers may only import `@workspace/contracts` (plus third-party dependencies) — they never import `lib/core` or each other.

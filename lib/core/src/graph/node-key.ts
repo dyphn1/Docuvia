@@ -43,10 +43,10 @@ export function buildUniqueNodeKey(
   return `${lineKey}#${n}`;
 }
 
-/** Format-version stamp this codebase currently produces (GRPH-006) — read/written by the
- *  `analyze` ingestion guard (`node-key-format-guard.ts`) to detect a pre-qualified-key graph
- *  before an incremental delta re-parse would otherwise silently mix the two formats. */
-export const CURRENT_NODE_KEY_FORMAT_VERSION = "2";
+/** Core-internal shim — `CURRENT_NODE_KEY_FORMAT_VERSION` now lives in `@workspace/contracts`
+ *  (read/written by `lib/ui-core`'s `node-key-format-guard.ts`, Virtual Contracts §8). Kept as a
+ *  re-export so existing `./node-key.js` importers don't churn. */
+export { CURRENT_NODE_KEY_FORMAT_VERSION } from "@workspace/contracts";
 
 /**
  * Qualified base key (GRPH-006): `${file}#${containerName}.${name}` when the symbol has an

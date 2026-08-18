@@ -1,6 +1,10 @@
-/**
- * Files at/above this size are skipped during discovery rather than fully read and
- * handed to a parse worker. Matches GitNexus's documented oversized-file threshold,
- * so file-count comparisons between the two tools are apples-to-apples.
- */
-export const MAX_FILE_SIZE_BYTES = 512_000;
+/** Core-internal shim — these workspace-layout/path constants now live in `@workspace/contracts`
+ *  (shared with `lib/ui-core` and `artifacts/cli`, Virtual Contracts §8). Kept as a re-export so
+ *  existing `../constants/paths.js` importers (e.g. `file-discovery.service.ts`) don't churn. */
+export {
+  MAX_FILE_SIZE_BYTES,
+  CLAUDE_HOOKS_DIR,
+  CURSOR_HOOKS_DIR,
+  DOCUVIA_HOOK_JS_FILENAME,
+  DOCUVIA_HOOK_CJS_FILENAME,
+} from "@workspace/contracts";

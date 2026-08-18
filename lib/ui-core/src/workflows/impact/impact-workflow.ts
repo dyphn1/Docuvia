@@ -5,6 +5,7 @@ import {
   ErrorCodes,
   type ILogger,
 } from "@workspace/contracts";
+import { resolveTierBCoverageHint } from "@workspace/contracts";
 import { IMPACT_EVENTS, IMPACT_MESSAGES } from "./impact-messages.js";
 import { appendImpactLogLine } from "./impact-log-writer.js";
 import type { ImpactResult } from "./impact-result.js";

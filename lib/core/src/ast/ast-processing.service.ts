@@ -9,7 +9,7 @@ import type {
   ParsedAstFileResult,
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
-import { SUPPORTED_LANGUAGES } from "@workspace/ast-core";
+import { SUPPORTED_LANGUAGES } from "@workspace/contracts";
 import { detectLanguageForFile } from "../utils/language-detection.js";
 import { AstMessages } from "./ast-constants.js";
 

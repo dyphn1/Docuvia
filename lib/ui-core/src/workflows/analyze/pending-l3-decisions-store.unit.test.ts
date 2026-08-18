@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { createMockLogger } from "@workspace/contracts";
+import { createMockLogger, ErrorCodes } from "@workspace/contracts";
+import { ANALYZE_MESSAGES } from "./analyze-messages.js";
 import {
   readPendingDecisions,
   stagePendingDecisions,
@@ -18,6 +19,15 @@ const oneDecision: ExtractedDecision[] = [
     confidence: 0.9,
   },
 ];
+
+/** Writes a real parseable source file under `root` so `stagePendingDecisions`'s roadmap-item-37
+ *  anchor-feasibility validation (target must exist and, for single files, be a parseable source
+ *  file) passes. */
+function writeSourceFile(root: string, relPath: string): void {
+  const full = path.join(root, relPath);
+  fs.mkdirSync(path.dirname(full), { recursive: true });
+  fs.writeFileSync(full, "export const x = 1;\n");
+}
 
 describe("pending-l3-decisions-store", () => {
   let tmpDir: string;
@@ -71,6 +81,7 @@ describe("pending-l3-decisions-store", () => {
 
   describe("stagePendingDecisions()", () => {
     it("appends one PendingL3Decision per input decision, node_key-normalized filePath", async () => {
+      writeSourceFile(tmpDir, "src/sample.ts");
       const result = await stagePendingDecisions(
         tmpDir,
         "src/sample.ts",
@@ -92,6 +103,7 @@ describe("pending-l3-decisions-store", () => {
     });
 
     it("normalizes a Windows-style backslash path to forward-slash node_key form", async () => {
+      writeSourceFile(tmpDir, "src\\nested\\sample.ts");
       await stagePendingDecisions(
         tmpDir,
         "src\\nested\\sample.ts",
@@ -104,6 +116,8 @@ describe("pending-l3-decisions-store", () => {
     });
 
     it("accumulates across separate --stage calls without clobbering existing entries", async () => {
+      writeSourceFile(tmpDir, "src/a.ts");
+      writeSourceFile(tmpDir, "src/b.ts");
       await stagePendingDecisions(
         tmpDir,
         "src/a.ts",
@@ -123,6 +137,7 @@ describe("pending-l3-decisions-store", () => {
     });
 
     it("creates .docuvia/ when it doesn't exist yet", async () => {
+      writeSourceFile(tmpDir, "src/a.ts");
       await stagePendingDecisions(
         tmpDir,
         "src/a.ts",
@@ -138,6 +153,7 @@ describe("pending-l3-decisions-store", () => {
     });
 
     it("self-heals from a corrupt existing file: next stage call starts fresh, doesn't crash", async () => {
+      writeSourceFile(tmpDir, "src/a.ts");
       const dir = path.join(tmpDir, ".docuvia");
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(
@@ -158,6 +174,7 @@ describe("pending-l3-decisions-store", () => {
     });
 
     it("staging multiple decisions in one call appends one entry per decision", async () => {
+      writeSourceFile(tmpDir, "src/a.ts");
       const twoDecisions: ExtractedDecision[] = [
         oneDecision[0],
         { ...oneDecision[0], title: "Another decision" },
@@ -174,10 +191,48 @@ describe("pending-l3-decisions-store", () => {
       const stored = await readPendingDecisions(tmpDir, createMockLogger());
       expect(stored).toHaveLength(2);
     });
+
+    it("refuses to stage on a nonexistent path (PATH_NOT_FOUND, matching the direct path)", async () => {
+      await expect(
+        stagePendingDecisions(
+          tmpDir,
+          "missing.ts",
+          oneDecision,
+          createMockLogger(),
+        ),
+      ).rejects.toMatchObject({ code: ErrorCodes.FS_READ_FAILED });
+    });
+
+    it("refuses to stage on a single non-source file that can never be anchored", async () => {
+      fs.writeFileSync(path.join(tmpDir, "notes.md"), "# a note\n");
+      await expect(
+        stagePendingDecisions(
+          tmpDir,
+          "notes.md",
+          oneDecision,
+          createMockLogger(),
+        ),
+      ).rejects.toThrow(
+        ANALYZE_MESSAGES.AGENT_AUTHORED_ANCHOR_UNRESOLVABLE("notes.md"),
+      );
+    });
+
+    it("still stages on a directory target even with no source files inside (lenient by design)", async () => {
+      fs.mkdirSync(path.join(tmpDir, "docs"), { recursive: true });
+      fs.writeFileSync(path.join(tmpDir, "docs", "guide.md"), "# guide\n");
+      const result = await stagePendingDecisions(
+        tmpDir,
+        "docs",
+        oneDecision,
+        createMockLogger(),
+      );
+      expect(result).toEqual({ staged: 1 });
+    });
   });
 
   describe("writePendingDecisions()", () => {
     it("wholesale-rewrites the staging file to exactly the given array", async () => {
+      writeSourceFile(tmpDir, "src/a.ts");
       await stagePendingDecisions(
         tmpDir,
         "src/a.ts",

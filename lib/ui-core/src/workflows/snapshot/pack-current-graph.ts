@@ -9,6 +9,7 @@ import {
   type IKnowledgeGitService,
 } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
+// Narrow documented exception (lib/core/src/index.ts): L3 renderers, not movable to contracts.
 import { computeL2GitPathsByNodeId, renderL3Card } from "@workspace/core";
 import { SNAPSHOT_TEMP_DIR_PREFIX } from "./snapshot-messages.js";
 import type { SnapshotResult } from "./snapshot-result.js";

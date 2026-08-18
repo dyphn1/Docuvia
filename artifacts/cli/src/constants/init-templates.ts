@@ -1,27 +1,24 @@
-// Shared with lib/ui-core's DoctorWorkflow agent-hooks diagnostic -- defined in @workspace/contracts
-// (issue #69: the Presentation layer must not import @workspace/core for plain constants) so
-// neither side depends on the other; re-exported here so this file stays the single import path
+// Shared with lib/ui-core's DoctorWorkflow agent-hooks diagnostic -- defined in
+// @workspace/contracts so neither side depends on the other; re-exported here so this file
+// stays the single import path
 // every platform installer already uses. Also imported (not just re-exported) below so
 // CLAUDE_PROJECT_HOOKS_DIR can build off the same value instead of re-typing it.
+import { CLAUDE_HOOKS_DIR } from "@workspace/contracts";
+export {
+  CLAUDE_HOOKS_DIR,
+  CURSOR_HOOKS_DIR,
+  DOCUVIA_HOOK_JS_FILENAME,
+  DOCUVIA_HOOK_CJS_FILENAME,
+} from "@workspace/contracts";
 // `context-injection`'s enforcement gate (issue #42 §7.5): this file is itself normal
 // TypeScript, so it can import the shared literal values and interpolate them into the
 // generated `.js` template text at compile time -- the *generated* raw hook script on disk just
 // contains the resolved strings, no runtime import (a standalone `.js` hook file has no
 // `@workspace/contracts` to import from).
 import {
-  CLAUDE_HOOKS_DIR,
-  CURSOR_HOOKS_DIR,
-  DOCUVIA_HOOK_JS_FILENAME,
-  DOCUVIA_HOOK_CJS_FILENAME,
   HookNames,
   HOOKS_CONFIG_FILE_NAME,
   DOCUVIA_DIR_NAME,
-} from "@workspace/contracts";
-export {
-  CLAUDE_HOOKS_DIR,
-  CURSOR_HOOKS_DIR,
-  DOCUVIA_HOOK_JS_FILENAME,
-  DOCUVIA_HOOK_CJS_FILENAME,
 } from "@workspace/contracts";
 
 export const GITHUB_DIR = ".github";

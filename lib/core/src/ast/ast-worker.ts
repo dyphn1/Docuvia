@@ -4,17 +4,17 @@ import * as path from "path";
 import * as fs from "fs";
 import { createHash } from "crypto";
 import { resolveWasmPath } from "./resolve-wasm-path.js";
-import type {
-  SupportedLanguage,
-  LanguageProvider,
-  LanguageRegistry,
-} from "@workspace/ast-core";
+import type { LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
 import {
   parseImportDescriptors,
-  SUPPORTED_LANGUAGES,
+  loadDefaultRegistry,
 } from "@workspace/ast-core";
-import { loadDefaultRegistry } from "@workspace/ast-core";
-import { IpcLoggerClient, type AstExportKind } from "@workspace/contracts";
+import {
+  IpcLoggerClient,
+  SUPPORTED_LANGUAGES,
+  type AstExportKind,
+  type SupportedLanguage,
+} from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
 
 /**

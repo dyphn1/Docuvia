@@ -1,5 +1,7 @@
-import { CURRENT_NODE_KEY_FORMAT_VERSION } from "@workspace/core";
-import { GitConstants } from "@workspace/contracts";
+import {
+  CURRENT_NODE_KEY_FORMAT_VERSION,
+  GitConstants,
+} from "@workspace/contracts";
 import type { IGraphStore } from "@workspace/contracts";
 
 /** GRPH-006's migration guard: true when the graph's stamped `node_key` format version is

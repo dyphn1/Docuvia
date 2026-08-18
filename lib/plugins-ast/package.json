@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@workspace/ast-core": "workspace:*",
+    "@workspace/contracts": "workspace:*",
     "web-tree-sitter": "^0.25.9"
   },
   "devDependencies": {

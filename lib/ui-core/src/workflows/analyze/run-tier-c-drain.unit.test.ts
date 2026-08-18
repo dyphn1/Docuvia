@@ -118,6 +118,11 @@ function baseDeps(overrides: Partial<TierCDrainDeps> = {}): TierCDrainDeps {
     git: overrides.git ?? makeGit(),
     llmBaseUrl: "http://localhost:8317",
     llmModel: "test-model",
+    // Unit tests must not depend on real system load — parallel test execution (fileParallelism)
+    // can spike os.loadavg() above the default 0.8 threshold, causing non-system-load tests to
+    // honestly skip the drain. Setting Infinity makes the check a no-op; the dedicated
+    // "system-load-high" test below overrides this to 0.8 and mocks os.loadavg()/os.cpus().
+    loadThreshold: Infinity,
     ...overrides,
   };
 }

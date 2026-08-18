@@ -5,7 +5,6 @@ import {
   ErrorCodes,
   type ILogger,
 } from "@workspace/contracts";
-import { resolveTierBCoverageHint } from "@workspace/core";
 import { IMPACT_EVENTS, IMPACT_MESSAGES } from "./impact-messages.js";
 import { appendImpactLogLine } from "./impact-log-writer.js";
 import type { ImpactResult } from "./impact-result.js";
@@ -93,12 +92,9 @@ export class ImpactWorkflow {
       // `query.service.ts`'s own "re-resolve for metadata" precedent) since `IImpactService`
       // doesn't expose the resolved node's `filePath` today.
       const node = store.graph.findNodeByName(target);
-      const tierBCoverage = resolveTierBCoverageHint(
-        store,
-        node?.filePath,
-        blastRadius.length === 0,
-        false,
-      );
+      const tierBCoverage = docuviaFactory
+        .resolve(TOKENS.TierBCoverageHintProvider)
+        .resolve(store, node?.filePath, blastRadius.length === 0, false);
 
       return {
         blastRadius,

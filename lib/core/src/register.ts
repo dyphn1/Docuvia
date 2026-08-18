@@ -11,6 +11,7 @@ import { AstWorkerPool } from "./ast/ast-worker-pool.js";
 import { GraphPersisterService } from "./graph/persist-ast-graph.js";
 import { TempFileManager } from "./temp-files/temp-file-manager.js";
 import { QueryService } from "./query/query.service.js";
+import { resolveTierBCoverageHint } from "./graph/tier-b-coverage.js";
 import { ImpactService } from "./impact/impact.service.js";
 import { TopologyBuilderService } from "./topology/topology-builder.service.js";
 import { SemanticDiffAnalyzerService } from "./detector/semantic-diff-analyzer.service.js";
@@ -95,6 +96,10 @@ docuviaFactory.register(
   TOKENS.QueryService,
   (_f, params) => new QueryService(params?.logger),
 );
+
+docuviaFactory.register(TOKENS.TierBCoverageHintProvider, () => ({
+  resolve: resolveTierBCoverageHint,
+}));
 
 docuviaFactory.register(
   TOKENS.ImpactService,

@@ -160,6 +160,10 @@ export const DOCTOR_MESSAGES = {
     `Pre-push hook is installed and includes the sync-knowledge step (${hookPath}).`,
   PRE_PUSH_HOOK_NOT_RESOLVABLE:
     "The pre-push hook is installed but `docuvia` is not resolvable from this workspace (the `npx --no-install` invocation would silently no-op on every push -- Tier B and sync-knowledge never actually run).",
+  /** Issue #133: appended to a stale pre-push hook FAIL after `doctor --fix` upgraded the hook in
+   *  place -- same convention as `GIT_HOOK_REPAIRED_NOTE` (never silently claim fixed). */
+  PRE_PUSH_HOOK_REPAIRED_NOTE:
+    " Repaired via `doctor --fix` -- re-run `doctor` to confirm.",
 
   /** §10e bullet 3: Tier C CLIProxyAPI endpoint reachability pre-flight (T7). */
   LLM_NOT_CONFIGURED:

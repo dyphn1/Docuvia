@@ -55,9 +55,13 @@ export interface DoctorOptions {
    *  aren't testing LLM connectivity, mirroring `skipGit`/`skipLsp`'s existing precedent for
    *  sidestepping an orthogonal, environment-dependent check. */
   skipLlm?: boolean;
-  /** Opt-in repair of the legacy-hook duplicate-block case (§10d, T6) -- the only `doctor` flag
-   *  that mutates workspace files, and only for that one specific condition. Never mutates
-   *  anything when absent/false. */
+  /** Opt-in repair of stale Docuvia git hooks (§10d, T6; issue #133): the legacy-hook
+   *  duplicate-block case (`repairDuplicatePostCommitHook`) and every stale-tier case
+   *  `installPostCommitHook`/`installPrePushHook` already upgrade in place -- legacy-only and
+   *  pre-flush-l3 post-commit hooks, plus pre-push hooks missing the sync-knowledge /
+   *  --fallback-ast env-gate / hooks-check steps. The only `doctor` flag that mutates workspace
+   *  files, and only for those specific diagnosed conditions. Never mutates anything when
+   *  absent/false. */
   fix?: boolean;
   /** §10e bullet 3 (T7) -- the Tier C CLIProxyAPI endpoint's `baseUrl`/`apiKey`, read from
    *  `process.env` by the Presentation layer (`doctor.ts`) and threaded through here. Absence is
@@ -97,7 +101,7 @@ export class DoctorWorkflow {
         this.runGitHookDiagnostic(diagnostics, fix),
       ),
       await this.runOrSkip(skipGit, () =>
-        this.runPrePushHookDiagnostic(diagnostics),
+        this.runPrePushHookDiagnostic(diagnostics, fix),
       ),
       await this.runOrSkip(skipLlm, () =>
         this.runLlmReachabilityDiagnostic(diagnostics, llmBaseUrl, llmApiKey),
@@ -188,15 +192,65 @@ export class DoctorWorkflow {
         hasLegacy,
         hasFlushMarker,
       );
-      if (fix && hasCurrent && hasLegacy) {
-        result = await this.repairDuplicateGitHookIfRequested(result);
-      }
+      result = await this.repairGitHookIfRequested(
+        fix,
+        result,
+        hasCurrent,
+        hasLegacy,
+        hasFlushMarker,
+      );
 
       diagnostics[DOCTOR_DIAGNOSTIC_KEYS.GIT_HOOK] = result;
       return result.status === DiagnosticStatus.PASS;
     } catch {
       return true;
     }
+  }
+
+  /** Issue #133: dispatches `doctor --fix`'s post-commit repairs. The duplicate-block case keeps
+   *  its dedicated marker-bounded extraction (`repairDuplicatePostCommitHook`); every other
+   *  diagnosed FAIL that `installPostCommitHook` can upgrade in place (legacy-only, or
+   *  current-shaped but predating the commit-l3-write flush step) is delegated to it. A
+   *  healthy/absent hook, or a resolvability-only FAIL (all markers present, npx missing), is
+   *  never touched. Split out so `runGitHookDiagnostic`'s own complexity budget stays flat. */
+  private async repairGitHookIfRequested(
+    fix: boolean,
+    result: DiagnosticResult,
+    hasCurrent: boolean,
+    hasLegacy: boolean,
+    hasFlushMarker: boolean,
+  ): Promise<DiagnosticResult> {
+    if (!fix) return result;
+    if (hasCurrent && hasLegacy) {
+      return this.repairDuplicateGitHookIfRequested(result);
+    }
+    if (result.status === DiagnosticStatus.FAIL && !hasFlushMarker) {
+      return this.repairStaleGitHookIfRequested(result);
+    }
+    return result;
+  }
+
+  /** Issue #133: upgrades a stale-tier post-commit hook via `installPostCommitHook` (which
+   *  exact-content-matches the old tier and replaces it in place) and notes the repair, mirroring
+   *  `repairDuplicateGitHookIfRequested`'s never-silently-mutate / never-silently-claim-fixed
+   *  shape (§10d). */
+  private async repairStaleGitHookIfRequested(
+    result: DiagnosticResult,
+  ): Promise<DiagnosticResult> {
+    if (!docuviaFactory.has(TOKENS.KnowledgeGitService)) return result;
+
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger: this.logger,
+    });
+    const { installed } = await knowledgeGit.installPostCommitHook(
+      this.workspaceRoot,
+    );
+    if (!installed) return result;
+
+    return {
+      ...result,
+      message: result.message + DOCTOR_MESSAGES.GIT_HOOK_REPAIRED_NOTE,
+    };
   }
 
   /** The marker-based branches of `runGitHookDiagnostic`, plus (only for the healthy-shaped
@@ -286,8 +340,8 @@ export class DoctorWorkflow {
    * `sync-knowledge` step was composed into it (SKSCHED-001/003) -- distinct hook file, distinct
    * diagnostic key from `runGitHookDiagnostic`'s post-commit checks. No duplicate-block case here
    * (unlike post-commit's legacy upgrade): `installPrePushHook` upgrades a stale hook via an
-   * exact-content-match replace, not append, so re-running `docuvia init` is the fix -- no
-   * dedicated `--fix` repair method needed. A healthy-shaped hook still gets the same
+   * exact-content-match replace, not append, so `doctor --fix` dispatches to it directly (issue
+   * #133). A healthy-shaped hook still gets the same
    * `probeDocuviaResolvable` live check `runGitHookDiagnostic`'s post-commit case already runs --
    * found missing here via dogfooding this exact hook on Docuvia2 itself (2026-07-21): a pre-push
    * hook can be perfectly up to date and still silently no-op every push if `docuvia` itself isn't
@@ -296,6 +350,7 @@ export class DoctorWorkflow {
    */
   private async runPrePushHookDiagnostic(
     diagnostics: Record<string, DiagnosticResult>,
+    fix: boolean,
   ): Promise<boolean> {
     if (!docuviaFactory.has(TOKENS.GitProvider)) return true;
 
@@ -319,8 +374,16 @@ export class DoctorWorkflow {
         GitConstants.PRE_PUSH_HOOKS_CHECK_MARKER,
       );
 
-      const result = await this.classifyPrePushHookState(
+      let result = await this.classifyPrePushHookState(
         git,
+        hasCurrent,
+        hasSyncKnowledge,
+        hasEnvGate,
+        hasHooksCheck,
+      );
+      result = await this.repairPrePushHookIfRequested(
+        fix,
+        result,
         hasCurrent,
         hasSyncKnowledge,
         hasEnvGate,
@@ -332,6 +395,45 @@ export class DoctorWorkflow {
     } catch {
       return true;
     }
+  }
+
+  /** Issue #133: dispatches `doctor --fix`'s pre-push repair. A pre-push hook carrying the
+   *  current marker but missing any of the sync-knowledge / --fallback-ast env-gate / hooks-check
+   *  steps is stale and is upgraded in place via `installPrePushHook`. A healthy hook, an absent
+   *  hook, or a resolvability-only FAIL (all markers present) is never touched. */
+  private async repairPrePushHookIfRequested(
+    fix: boolean,
+    result: DiagnosticResult,
+    hasCurrent: boolean,
+    hasSyncKnowledge: boolean,
+    hasEnvGate: boolean,
+    hasHooksCheck: boolean,
+  ): Promise<DiagnosticResult> {
+    if (!fix || !hasCurrent) return result;
+    if (hasSyncKnowledge && hasEnvGate && hasHooksCheck) return result;
+    return this.repairStalePrePushHookIfRequested(result);
+  }
+
+  /** Issue #133: upgrades a stale pre-push hook via `installPrePushHook` (exact-content-match
+   *  replace) and notes the repair -- same never-silently-mutate / never-silently-claim-fixed
+   *  shape as the post-commit repairs (§10d). */
+  private async repairStalePrePushHookIfRequested(
+    result: DiagnosticResult,
+  ): Promise<DiagnosticResult> {
+    if (!docuviaFactory.has(TOKENS.KnowledgeGitService)) return result;
+
+    const knowledgeGit = docuviaFactory.resolve(TOKENS.KnowledgeGitService, {
+      logger: this.logger,
+    });
+    const { installed } = await knowledgeGit.installPrePushHook(
+      this.workspaceRoot,
+    );
+    if (!installed) return result;
+
+    return {
+      ...result,
+      message: result.message + DOCTOR_MESSAGES.PRE_PUSH_HOOK_REPAIRED_NOTE,
+    };
   }
 
   /** The marker-based branches of `runPrePushHookDiagnostic`, plus (only for the healthy-shaped

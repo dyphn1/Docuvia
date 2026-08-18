@@ -143,7 +143,7 @@ Shipped in one pass (2026-07-21):
   `SnapshotRendererService`'s file/symbol path algorithm).
 - `lib/core/src/git/l3-import.service.ts` — `importL3CardsFromKnowledgeBranch()`, the shared
   L3DIST-007 git→local.db routine used by both `hydrate` and `sync-knowledge`.
-- `lib/libgit2/src/libgit2-provider.ts` (+ `IGitProvider`) — new `listFilesAtRef()` via
+- `lib/git-local/src/libgit2-provider.ts` (+ `IGitProvider`) — new `listFilesAtRef()` via
   `git ls-tree --name-only <ref> -- <dir>/`.
 - `lib/schema/src/sqlite/repos/l3-nodes-repo.ts` — `upsertDecision()` now freezes
   `initial_source_commits` on insert only; new `importCard()` (dedup-by-content_hash).
@@ -160,7 +160,7 @@ Shipped in one pass (2026-07-21):
    `IHydrationService` mock literals across the codebase to grow a method they don't need.
 
 **Verification (independent re-check, not the implementer's self-report):** `pnpm run build` green;
-`lib/libgit2` 40/40, `lib/schema` 45/45, `lib/core` 212/212, `lib/ui-core` 277/277,
+`lib/git-local` 40/40, `lib/schema` 45/45, `lib/core` 212/212, `lib/ui-core` 277/277,
 `artifacts/cli` unit 113/113 + integration 23/23 (including both required real-git scenarios: a
 fresh single-developer round trip, and a two-diverged-branches Tree-Adoption merge with confirmed
 recovery of the losing side's card via its own next `sync-knowledge` + `snapshot`). ESLint clean.

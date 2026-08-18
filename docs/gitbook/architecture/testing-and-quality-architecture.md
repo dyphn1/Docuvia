@@ -62,7 +62,7 @@ The testing strategy is segregated into specific lanes based on the architectura
   - **NO I/O ALLOWED**: Tests in this layer must execute in milliseconds. They are absolutely forbidden from writing to disk, connecting to a real database, or calling external APIs.
   - **Dependency Injection**: Tests must register mock providers to the `docuviaFactory` before executing the `ui-core` logic, asserting that `ui-core` calls the expected methods with the correct mapping parameters.
 
-### 🟩 The Technology Providers (`lib/schema`, `lib/ast-core`, `lib/libgit2`)
+### 🟩 The Technology Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/plugins-ast`, `lib/llm-api`, `lib/remote-api`)
 
 - **Test Type**: Isolated Integration Tests.
 - **Rules**:

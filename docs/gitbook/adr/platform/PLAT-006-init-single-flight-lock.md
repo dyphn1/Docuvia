@@ -104,7 +104,7 @@ snapshot` processes could hit the same migration race with no `init` involved at
 future `init`-phase races, without bespoke per-site locks for each one.
 
 Follow-up (not yet scheduled): consolidate the near-duplicate lockfile logic across `acquireInitLock`
-(`lib/schema/src/sqlite/graph-store.ts`), `acquireKnowledgeLock` (`lib/libgit2/src/libgit2-provider.ts`),
+(`lib/schema/src/sqlite/graph-store.ts`), `acquireKnowledgeLock` (`lib/git-local/src/libgit2-provider.ts`),
 and the new command-level lock into one shared utility (wx-create, heartbeat, PID+mtime staleness,
 retry-on-`EPERM`/`EBUSY` for Windows AV/indexer interference). Also flagged, independent of this
 decision: `writeOrAppend()` catches _all_ read errors (not just `ENOENT`) and treats them as "file
@@ -192,7 +192,7 @@ the proposal specifically:
 >   (`tier-c-throttle.ts`'s `tryAcquireTierCLock()`, added in Slice 4 — see
 >   [PLAT-007's Tier C section](PLAT-007-tiered-background-knowledge-evolution.md#tier-c--async-queue-with-budget-llm-l3-extraction)),
 >   which explicitly reused "the PLAT-006 single-flight lock pattern." `acquireInitLock`
->   (`graph-store.ts`) and `acquireKnowledgeLock` (`libgit2-provider.ts`) remain separate,
+>   (`graph-store.ts`) and `acquireKnowledgeLock` (`lib/git-local/src/libgit2-provider.ts`) remain separate,
 >   non-consolidated implementations — so this follow-up is no longer accurately described as
 >   "not yet scheduled," but it isn't finished either.
 > - **Scope gap found and closed same day (2026-07-18)**: "one lockfile guards the entire `init`

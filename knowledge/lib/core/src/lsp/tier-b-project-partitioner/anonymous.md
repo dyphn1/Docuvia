@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/tier-b-project-partitioner.ts#anonymous@L404
+id: lib/core/src/lsp/tier-b-project-partitioner.ts#anonymous@L356
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/tier-b-project-partitioner.ts

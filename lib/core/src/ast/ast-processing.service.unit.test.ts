@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import type { DiscoveredFile } from "@workspace/contracts";
 import { AstProcessingService } from "./ast-processing.service.js";
 import { AstWorkerCrashError, type IASTWorkerPool } from "./ast-worker-pool.js";
@@ -27,7 +27,34 @@ function makeFakePool(
   };
 }
 
+/**
+ * Helper: create a mock parse that delays by `delayMs` using a pending promise
+ * resolved via fake timer. Call `vi.advanceTimersByTimeAsync(delayMs)` after
+ * starting the operation to unblock it.
+ */
+function delayedParse(
+  delayMs: number,
+  response: AstParseResponse = { taskId: "t", success: true, data: emptyData },
+) {
+  return async () => {
+    await new Promise<void>((resolve) => {
+      const id = setTimeout(resolve, delayMs);
+      // Prevent vitest from warning about unresolved fake timers in afterEach.
+      void id;
+    });
+    return response;
+  };
+}
+
 describe("AstProcessingService.processFiles()", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("returns all files under 'parsed' when every parse succeeds", async () => {
     const files = [makeFile("a.ts"), makeFile("b.ts"), makeFile("c.ts")];
     const pool = makeFakePool(async () => ({
@@ -136,17 +163,21 @@ describe("AstProcessingService.processFiles()", () => {
     // would then persist (and export) in a different order across runs purely due to this race.
     const resolveOrder = { "a.ts": 30, "b.ts": 15, "c.ts": 0 };
     const pool = makeFakePool(async (request) => {
-      await new Promise((resolve) =>
-        setTimeout(
-          resolve,
-          resolveOrder[request.filePath as keyof typeof resolveOrder],
-        ),
-      );
+      const delay =
+        resolveOrder[request.filePath as keyof typeof resolveOrder] ?? 0;
+      await new Promise<void>((resolve) => {
+        const id = setTimeout(resolve, delay);
+        void id;
+      });
       return { taskId: "t", success: true, data: emptyData };
     });
     const service = new AstProcessingService(pool);
 
-    const result = await service.processFiles("/workspace", files);
+    // Start the operation but don't await yet — we need to advance fake timers first.
+    const resultPromise = service.processFiles("/workspace", files);
+    // Advance past the longest delay (30ms) to resolve all pending timers.
+    await vi.advanceTimersByTimeAsync(50);
+    const result = await resultPromise;
 
     expect(result.parsed.map((r) => r.file)).toEqual(["a.ts", "b.ts", "c.ts"]);
   });
@@ -160,7 +191,10 @@ describe("AstProcessingService.processFiles()", () => {
     let active = 0;
     const pool = makeFakePool(async () => {
       active++;
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise<void>((resolve) => {
+        const id = setTimeout(resolve, 20);
+        void id;
+      });
       active--;
       return { taskId: "t", success: true, data: emptyData };
     });
@@ -178,14 +212,18 @@ describe("AstProcessingService.processFiles()", () => {
     const service = new AstProcessingService(pool);
     const files = [makeFile("a.ts"), makeFile("b.ts")];
 
-    const [r1, r2] = await Promise.all([
-      service.processFiles("/workspace", files),
-      service.processFiles("/workspace", files),
-    ]);
+    // Start both batches — don't await yet so fake timers can resolve them.
+    const p1 = service.processFiles("/workspace", files);
+    const p2 = service.processFiles("/workspace", files);
+
+    // Each batch's parse has a 20ms delay; they're serialized, so we need ≥40ms total.
+    await vi.advanceTimersByTimeAsync(50);
+
+    const [r1, r2] = await Promise.all([p1, p2]);
 
     expect(r1.parsed.length).toBe(2);
     expect(r2.parsed.length).toBe(2);
-  }, 15000);
+  });
 
   it("serializes concurrent processFiles batches across TWO service instances sharing one pool (the resolve-two-processors contract)", async () => {
     // register.ts resolves AstProcessor per workflow; each resolve returns a NEW
@@ -194,7 +232,10 @@ describe("AstProcessingService.processFiles()", () => {
     // cohort -- the tally that blows memory on "many processes on a large project". Two
     // distinct services over one shared pool must therefore still serialize their batches.
     const pool = makeFakePool(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      await new Promise<void>((resolve) => {
+        const id = setTimeout(resolve, 20);
+        void id;
+      });
       return { taskId: "t", success: true, data: emptyData };
     });
     let chain: Promise<void> = Promise.resolve();
@@ -210,14 +251,18 @@ describe("AstProcessingService.processFiles()", () => {
     const serviceB = new AstProcessingService(pool);
     const files = [makeFile("a.ts"), makeFile("b.ts")];
 
-    const [ra, rb] = await Promise.all([
-      serviceA.processFiles("/workspace", files),
-      serviceB.processFiles("/workspace", files),
-    ]);
+    // Start both batches — don't await yet so fake timers can resolve them.
+    const pa = serviceA.processFiles("/workspace", files);
+    const pb = serviceB.processFiles("/workspace", files);
+
+    // Each batch's parse has a 20ms delay; they're serialized, so we need ≥40ms total.
+    await vi.advanceTimersByTimeAsync(50);
+
+    const [ra, rb] = await Promise.all([pa, pb]);
 
     expect(ra.parsed.length).toBe(2);
     expect(rb.parsed.length).toBe(2);
-  }, 15000);
+  });
 
   it("attaches the detected language to each parsed result", async () => {
     const pool = makeFakePool(async () => ({

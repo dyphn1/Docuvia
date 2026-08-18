@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/commands/query.ts#anonymous
+id: artifacts/cli/src/commands/query.ts#anonymous@L333
 type: symbol
 name: anonymous
 filePath: artifacts/cli/src/commands/query.ts
@@ -7,4 +7,3 @@ filePath: artifacts/cli/src/commands/query.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/src/commands/query.ts`
-.ts`

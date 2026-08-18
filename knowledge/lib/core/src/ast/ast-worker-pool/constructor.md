@@ -7,3 +7,4 @@ filePath: lib/core/src/ast/ast-worker-pool.ts
 # Symbol: constructor
 
 File: `lib/core/src/ast/ast-worker-pool.ts`
+l.ts`

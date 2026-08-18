@@ -464,7 +464,6 @@ function setupAnalyzeMemory(
   if (targetPath && llmConfig) {
     docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, targetPath);
     docuviaMemory.set(scopeId, MemoryKeys.LLM_BASE_URL, llmConfig.llmBaseUrl);
-    docuviaMemory.set(scopeId, MemoryKeys.LLM_API_KEY, llmConfig.llmApiKey);
     docuviaMemory.set(scopeId, MemoryKeys.LLM_MODEL, llmConfig.llmModel);
   } else if (escalateToLsp) {
     docuviaMemory.set(scopeId, MemoryKeys.ESCALATE_TO_LSP, true);
@@ -472,18 +471,22 @@ function setupAnalyzeMemory(
       docuviaMemory.set(scopeId, MemoryKeys.TIER_B_FULL_RESYNC, true);
     }
     setTierBEnvMemory(scopeId, lspTimeoutMs, lspProcesses);
-    setTierCMemory(scopeId);
+    setTierCMemory(scopeId, llmConfig);
   }
 }
 
 /** Tier C's LLM config (§9, folded into the same `--escalate-to-lsp` run) plus its own env
  *  overrides (§9c/§9d/§9f) -- optional here, unlike `targetPath` mode's hard-fail-on-missing-env,
- *  since a missing/incomplete bridge config just means Tier C's drain skips honestly this run. */
-function setTierCMemory(scopeId: string): void {
-  const llmConfig = resolveAnalyzeLlmConfig();
+ *  since a missing/incomplete bridge config just means Tier C's drain skips honestly this run.
+ *  Receives the already-resolved `llmConfig` (issue #109): the API key is deliberately **not**
+ *  written to memory here -- only the non-secret `baseUrl`/`model` are -- the key travels
+ *  straight to `docuviaApi.analyze()`'s own parameter instead. */
+function setTierCMemory(
+  scopeId: string,
+  llmConfig: AnalyzeLlmConfig | undefined,
+): void {
   if (llmConfig) {
     docuviaMemory.set(scopeId, MemoryKeys.LLM_BASE_URL, llmConfig.llmBaseUrl);
-    docuviaMemory.set(scopeId, MemoryKeys.LLM_API_KEY, llmConfig.llmApiKey);
     docuviaMemory.set(scopeId, MemoryKeys.LLM_MODEL, llmConfig.llmModel);
   }
 
@@ -851,13 +854,20 @@ async function runStandardAnalyze(
       return;
     }
     llmConfig = resolved;
-  } else if (escalateToLsp && !options.fallbackAst) {
-    const proceed = await confirmTierBGateOrAbort(
-      cwd,
-      Boolean(options.isInteractive),
-      options.lspTimeoutMs,
-    );
-    if (!proceed) return;
+  } else if (escalateToLsp) {
+    // Tier C's bridge config is optional -- a missing/incomplete one just means the drain skips
+    // honestly this run. Resolved here (not inside `setTierCMemory`) so the API key can be
+    // threaded straight into `docuviaApi.analyze()`'s parameter instead of `docuviaMemory`
+    // (issue #109).
+    llmConfig = resolveAnalyzeLlmConfig() ?? undefined;
+    if (!options.fallbackAst) {
+      const proceed = await confirmTierBGateOrAbort(
+        cwd,
+        Boolean(options.isInteractive),
+        options.lspTimeoutMs,
+      );
+      if (!proceed) return;
+    }
   }
 
   const spinner = startAnalyzeSpinner(targetPath, escalateToLsp);
@@ -880,7 +890,11 @@ async function runStandardAnalyze(
   );
 
   try {
-    const result = await docuviaApi.analyze(scopeId, logger);
+    const result = await docuviaApi.analyze(
+      scopeId,
+      logger,
+      llmConfig?.llmApiKey,
+    );
     printAnalyzeResult(result, spinner, Boolean(options.fallbackAst));
   } catch (error: unknown) {
     handleAnalyzeError(error, targetPath, escalateToLsp, spinner);

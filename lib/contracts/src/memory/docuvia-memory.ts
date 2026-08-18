@@ -14,7 +14,6 @@ export const MemoryKeys = {
   TARGET_PATH: "targetPath",
   LLM_BASE_URL: "llmBaseUrl",
   LLM_MODEL: "llmModel",
-  LLM_API_KEY: "llmApiKey",
   BASE_REF: "baseRef",
   TARGET: "target",
   ESCALATE_TO_LSP: "escalateToLsp",

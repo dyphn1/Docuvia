@@ -149,7 +149,15 @@ export const docuviaApi = {
     });
   },
 
-  async analyze(scopeId: string, logger: ILogger): Promise<AnalyzeResult> {
+  /** `llmApiKey` is passed explicitly rather than via `docuviaMemory` (issue #109): the key is a
+   *  secret, so it never enters the shared UUID-scoped config store (where it would sit exposed to
+   *  memory dumps / accidental logging for the whole run). The Presentation layer reads it from the
+   *  environment and hands it straight across this call boundary. */
+  async analyze(
+    scopeId: string,
+    logger: ILogger,
+    llmApiKey?: string,
+  ): Promise<AnalyzeResult> {
     const workspaceRoot = requireMemory<string>(
       scopeId,
       MemoryKeys.WORKSPACE_ROOT,
@@ -190,10 +198,6 @@ export const docuviaApi = {
         MemoryKeys.LLM_BASE_URL,
       );
       const llmModel = requireMemory<string>(scopeId, MemoryKeys.LLM_MODEL);
-      const llmApiKey = docuviaMemory.get<string>(
-        scopeId,
-        MemoryKeys.LLM_API_KEY,
-      );
       return new AnalyzeWorkflow(workspaceRoot, logger, {
         targetPath,
         llmBaseUrl,
@@ -224,7 +228,7 @@ export const docuviaApi = {
         // drain skipped, LSP escalation still runs), per `run-tier-c-drain.ts`'s honest-
         // degradation contract.
         llmBaseUrl: docuviaMemory.get<string>(scopeId, MemoryKeys.LLM_BASE_URL),
-        llmApiKey: docuviaMemory.get<string>(scopeId, MemoryKeys.LLM_API_KEY),
+        llmApiKey,
         llmModel: docuviaMemory.get<string>(scopeId, MemoryKeys.LLM_MODEL),
         tierCDailyCallCap: docuviaMemory.get<number>(
           scopeId,

@@ -70,6 +70,31 @@ describe("docuviaApi.analyze() -- agent-authored pre-LLM-branch dispatch (issue 
     expect(AnalyzeWorkflowMock).not.toHaveBeenCalled();
   });
 
+  it("passes llmApiKey through as an explicit argument instead of reading it from docuviaMemory (issue #109)", async () => {
+    const { docuviaApi } = await import("./docuvia-api.js");
+    docuviaMemory.set(scopeId, MemoryKeys.TARGET_PATH, "sample.ts");
+    docuviaMemory.set(
+      scopeId,
+      MemoryKeys.LLM_BASE_URL,
+      "http://localhost:8317",
+    );
+    docuviaMemory.set(scopeId, MemoryKeys.LLM_MODEL, "big-model");
+
+    await docuviaApi.analyze(scopeId, createMockLogger(), "secret-key");
+
+    expect(AnalyzeWorkflowMock).toHaveBeenCalledWith(
+      "/workspace",
+      expect.anything(),
+      {
+        targetPath: "sample.ts",
+        llmBaseUrl: "http://localhost:8317",
+        llmApiKey: "secret-key",
+        llmModel: "big-model",
+      },
+    );
+    expect(docuviaMemory.get(scopeId, "llmApiKey" as never)).toBeUndefined();
+  });
+
   it("constructs AnalyzeWorkflow with { flushStagedL3: true } and checks it before TARGET_PATH/AGENT_AUTHORED_DECISIONS/ESCALATE_TO_LSP (issue #42 §8.2)", async () => {
     const { docuviaApi } = await import("./docuvia-api.js");
     docuviaMemory.set(scopeId, MemoryKeys.FLUSH_STAGED_L3, true);

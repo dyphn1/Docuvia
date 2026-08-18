@@ -2,7 +2,6 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { docuviaMemory, MemoryKeys } from "@workspace/contracts";
 import { docuviaApi } from "@workspace/ui-core";
-import "../../registration.js";
 import type { McpTool } from "./types.js";
 import { withErrorHandling } from "./wrapper.js";
 import { MCP_TOOL_MESSAGES } from "./messages.js";

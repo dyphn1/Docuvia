@@ -38,6 +38,8 @@ flowchart TD
         GIT_LOCAL("lib/git-local<br/>(Raw Git Ops)")
         SCHEMA("lib/schema<br/>(SQLite/ORM)")
         ASTCORE("lib/ast-core<br/>(Tree-Sitter)")
+        LLM_API("lib/llm-api<br/>(LLM Client)")
+        REMOTE_API("lib/remote-api<br/>(Remote Backend)")
     end
 
     %% Wiring
@@ -64,7 +66,7 @@ flowchart TD
     class UICORE orch;
     class FACTORY,INTERFACES,MEMORY contract;
     class CORE_GIT,CORE_AST domain;
-    class GIT_LOCAL,SCHEMA,ASTCORE tech;
+    class GIT_LOCAL,SCHEMA,ASTCORE,LLM_API,REMOTE_API tech;
 ```
 
 ---
@@ -81,7 +83,7 @@ The system is strictly divided into functional roles. Note the crucial distincti
   - `docuviaFactory`: The only globally permitted registration factory. Matches interfaces to concrete implementations.
   - `docuviaMemory`: A global static object used _exclusively_ to hold essential, process-lifetime state (e.g., current workspace paths or contextual locks). It is **not** a dump for runtime memory.
 
-### 🟩 The Technology Providers (`lib/schema`, `lib/ast-core`, `lib/git-local`)
+### 🟩 The Technology Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/plugins-ast`, `lib/llm-api`, `lib/remote-api`)
 
 - **Role**: The raw capability wrappers. They interact directly with third-party technologies or file systems.
 - **Rule**: If we decide to swap `git-local` for `isomorphic-git`, or `SQLite` for `MySQL`, these are the _only_ folders that change.
@@ -144,6 +146,6 @@ By enforcing the "Virtual Contracts" architecture, we separate _Definitions (Con
 
 To prevent boundary erosion and long-term coupling, strict import rules apply between layers:
 
-1. **Tech Providers (`lib/schema`, `lib/libgit2`, `lib/ast-core`)**: **Strictly Forbidden** for any upper layer (`ui-core`, `artifacts/*`) to import anything from these packages, **including `import type`**. Tech providers wrap volatile third-party dependencies; allowing type imports would leak those dependencies' shapes (e.g., ORM query objects or Tree-sitter AST nodes) into the orchestration logic, breaking the Virtual Contracts isolation.
-2. **Domain Core (`lib/core`)**: **Strictly Forbidden** for upper layers to import anything, **including `import type`**. While `core` contains pure business logic, allowing `import type` inevitably leads to high coupling and boundary erosion. The Orchestrator (`ui-core`) acts as the "purchaser" and `contracts` as the "bidding spec"; `core` simply fulfills the spec.
+1. **Tech Providers (`lib/schema`, `lib/git-local`, `lib/ast-core`, `lib/plugins-ast`, `lib/llm-api`, `lib/remote-api`)**: **Strictly Forbidden** for any upper layer (`ui-core`, `artifacts/*`) to import anything from these packages, **including `import type`**. Tech providers wrap volatile third-party dependencies; allowing type imports would leak those dependencies' shapes (e.g., ORM query objects or Tree-sitter AST nodes) into the orchestration logic, breaking the Virtual Contracts isolation.
+2. **Domain Core (`lib/core`)**: **Strictly Forbidden** for the Presentation Layer (`artifacts/*`, `mcp`) to import anything, **including `import type`**. The Orchestration Layer (`lib/ui-core`) **may** import from Domain Core — it uses `lib/core`'s pure business-logic helpers (e.g., `GitConstants`, `parseSourceTrailer`, `isSupportedSourceFile`) that carry no implementation-specific shapes. Domain Core itself may import from Tech Providers when it needs raw capabilities (e.g., `lib/core/ast` uses `lib/ast-core`'s tree-sitter bridge) — this is permitted because Domain Core maps Tech Provider outputs to `lib/contracts` interfaces before returning them upward.
 3. **The Solution: Type-Safe Registry**: Instead of relaxing import rules to alleviate the "writing interfaces is tedious" complaint, the `docuviaFactory` and `tokens.ts` are designed as a **Type-Safe Registry (TokenMap)**. Developers declare the required interface in `contracts`, register it in the `TokenMap`, and `docuviaFactory.resolve('TokenName')` provides 100% compile-time type safety without manual generic annotations or cross-layer type imports. All shared definitions must live in `contracts`.

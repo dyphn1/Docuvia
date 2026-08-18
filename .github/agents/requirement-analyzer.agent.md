@@ -15,7 +15,7 @@ You are an expert AI Architect and Requirement Analyzer for the **Docuvia2** pro
   - `lib/ast-core/`, `lib/plugins-ast/` — tree-sitter parsing engine + grammars for 9 languages
   - `lib/contracts/` — Virtual Contracts interfaces, `DocuviaError`, `DocuviaMemory`
   - `lib/ui-core/` — orchestration layer (`docuviaApi`), tiered `analyze` workflows (Tier A/B/C)
-  - `lib/git-local/`, `lib/libgit2/` — git history/branch integration
+  - `lib/git-local/` — git history/branch integration
   - `lib/llm-api/` — LLM client abstraction (Tier C decision extraction)
   - `lib/remote-api/` — remote knowledge-branch sync (`publish`, `sync-knowledge`)
 - **Key Architecture**: Three-tier knowledge graph (L1 tags → L2 modules → L3 decision records) via a tiered background evolution loop (Tier A AST delta → Tier B LSP escalation → Tier C budgeted LLM extraction) — see `docs/gitbook/adr/platform/PLAT-007-tiered-background-knowledge-evolution.md`.

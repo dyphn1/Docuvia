@@ -2,7 +2,6 @@ import process from "process";
 import crypto from "node:crypto";
 import {
   docuviaMemory,
-  DocuviaError,
   RiskLevels,
   type ChangeDetectionResult,
   MemoryKeys,
@@ -13,7 +12,13 @@ import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import {
+  CLI_OUTPUT_FORMATS,
+  type CliOutputFormat,
+} from "../constants/cli-flags.js";
 import { OUTPUT_FORMAT_MARKERS as FORMAT_MARKERS } from "../constants/cli-output-markers.js";
+import { wireSpinnerLogs } from "../utils/wire-spinner-logs.js";
+import { resolveErrorMessage } from "../utils/resolve-error-message.js";
 
 /** Surfaces each impacted node's L3 "why" data, if any — mirrors query.ts's L3 display convention. */
 function printWhy(affectedNodes: ChangeDetectionResult["affectedNodes"]): void {
@@ -50,18 +55,52 @@ function printWhy(affectedNodes: ChangeDetectionResult["affectedNodes"]): void {
   }
 }
 
-/** Thin caller of docuviaApi.review() - mirrors init.ts's Presentation-layer responsibilities. */
+/** Human-mode success rendering -- separated from `reviewCommand` to keep its cyclomatic
+ *  complexity under the project's ESLint budget (the risk level + analysis + "why" output has
+ *  enough branches of its own). */
+function printHumanResult(
+  result: ChangeDetectionResult,
+  baseRef: string | undefined,
+  spinner: ReturnType<typeof ui.spinner>,
+): void {
+  spinner.succeed(
+    UI_MESSAGES.REVIEW_SUCCESS +
+      (baseRef ? UI_MESSAGES.REVIEW_AGAINST + baseRef : ""),
+  );
+  ui.log("");
+  ui.log(UI_MESSAGES.REVIEW_FILES_CHANGED + result.filesChanged.length);
+
+  const riskLine = UI_MESSAGES.REVIEW_RISK_PREFIX + result.riskLevel;
+  if (result.riskLevel === RiskLevels.CRITICAL) {
+    ui.error(riskLine);
+  } else if (result.riskLevel === RiskLevels.HIGH) {
+    ui.warn(riskLine);
+  } else {
+    ui.log(riskLine);
+  }
+
+  ui.log("");
+  ui.log(result.analysis);
+  printWhy(result.affectedNodes);
+}
+
+/** Thin caller of docuviaApi.review() - mirrors init.ts's Presentation-layer responsibilities.
+ *  `--format=json` (roadmap item 31) emits the structured `ChangeDetectionResult` verbatim on
+ *  stdout with the banner/spinner suppressed -- a pipe/agent consuming `--format=json` must never
+ *  see them. */
 export async function reviewCommand(
   baseRef?: string,
+  options: { format?: CliOutputFormat } = {},
   cwd: string = process.cwd(),
 ) {
-  ui.header(UI_MESSAGES.REVIEW_HEADER);
-  const spinner = ui.spinner(UI_MESSAGES.REVIEW_START).start();
+  const isJsonFormat = options.format === CLI_OUTPUT_FORMATS.JSON;
+  if (!isJsonFormat) ui.header(UI_MESSAGES.REVIEW_HEADER);
+  const spinner = isJsonFormat
+    ? undefined
+    : ui.spinner(UI_MESSAGES.REVIEW_START).start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
-  logger.onLog((event) => {
-    if (event.level === LogLevels.INFO) spinner.text = event.message;
-  });
+  wireSpinnerLogs(logger, spinner);
 
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
@@ -69,31 +108,15 @@ export async function reviewCommand(
 
   try {
     const result = await docuviaApi.review(scopeId, logger);
-    spinner.succeed(
-      UI_MESSAGES.REVIEW_SUCCESS +
-        (baseRef ? UI_MESSAGES.REVIEW_AGAINST + baseRef : ""),
-    );
-    ui.log("");
-    ui.log(UI_MESSAGES.REVIEW_FILES_CHANGED + result.filesChanged.length);
-
-    const riskLine = UI_MESSAGES.REVIEW_RISK_PREFIX + result.riskLevel;
-    if (result.riskLevel === RiskLevels.CRITICAL) {
-      ui.error(riskLine);
-    } else if (result.riskLevel === RiskLevels.HIGH) {
-      ui.warn(riskLine);
+    if (spinner) {
+      printHumanResult(result, baseRef, spinner);
     } else {
-      ui.log(riskLine);
+      ui.log(JSON.stringify(result, null, 2));
     }
-
-    ui.log("");
-    ui.log(result.analysis);
-    printWhy(result.affectedNodes);
   } catch (error: unknown) {
-    const message =
-      error instanceof DocuviaError || error instanceof Error
-        ? error.message
-        : String(error);
-    spinner.fail(UI_MESSAGES.REVIEW_FAIL + message);
+    const message = resolveErrorMessage(error);
+    if (spinner) spinner.fail(UI_MESSAGES.REVIEW_FAIL + message);
+    else ui.error(UI_MESSAGES.REVIEW_FAIL + message);
     process.exitCode = 1;
   } finally {
     docuviaMemory.deleteScope(scopeId);

@@ -87,10 +87,16 @@ export const CLI_FLAGS = {
   FLUSH_STAGED_L3: "--flush-staged-l3",
 } as const;
 
-/** Values accepted by `--format=` (`query` command) — shared between `cli.ts`'s flag cast and `query.ts`'s runtime dispatch. */
-export const QUERY_OUTPUT_FORMATS = {
+/** Values accepted by `--format=` (shared by `query`/`impact`/`review`, roadmap item 31) —
+ *  single enum shared between `cli.ts`'s flag cast/validation and each command's runtime dispatch,
+ *  so no command invents its own `--format` vocabulary. `human` renders the interactive tables/
+ *  prose; `prompt` (query only) emits the `<docuvia_context>` XML block agents are primed on; `json`
+ *  emits the command's structured result verbatim (`JSON.stringify`) — mainly for the Bash-fallback/
+ *  non-MCP path, mirroring what MCP tools (#49) will return natively. */
+export const CLI_OUTPUT_FORMATS = {
   HUMAN: "human",
   PROMPT: "prompt",
+  JSON: "json",
 } as const;
-export type QueryOutputFormat =
-  (typeof QUERY_OUTPUT_FORMATS)[keyof typeof QUERY_OUTPUT_FORMATS];
+export type CliOutputFormat =
+  (typeof CLI_OUTPUT_FORMATS)[keyof typeof CLI_OUTPUT_FORMATS];

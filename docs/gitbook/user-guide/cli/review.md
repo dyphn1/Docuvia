@@ -18,7 +18,7 @@ docuvia review [baseRef]
 
 ### Flags
 
-_(This command does not accept any flags.)_
+- `--format=<human|json>`: Specify the output format. `human` (default) renders the risk level and analysis summary; `json` emits the structured `ChangeDetectionResult` verbatim (`baseRef`, `filesChanged`, `affectedNodes`, `riskLevel`, `analysis`) as pure JSON on stdout with the banner/spinner suppressed. An unknown value fails fast with a list of the available formats.
 
 ## Under the Hood
 

@@ -32,9 +32,10 @@ import {
   getUsageText,
   getCommandUsageText,
 } from "./constants/cli-commands.js";
-import { CLI_FLAGS, type QueryOutputFormat } from "./constants/cli-flags.js";
+import { CLI_FLAGS } from "./constants/cli-flags.js";
 import { UI_MESSAGES } from "./constants/ui-messages.js";
 import { ArgParser } from "./utils/arg-parser.js";
+import { resolveOutputFormat } from "./utils/resolve-output-format.js";
 
 dotenv.config({ quiet: true });
 
@@ -138,7 +139,8 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
 async function handleReview(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.REVIEW]);
   const baseRef = ctx.parser.getPositional(0);
-  await reviewCommand(baseRef, ctx.workspaceRoot);
+  const format = resolveOutputFormat(ctx.parser.getFlagValue(CLI_FLAGS.FORMAT));
+  await reviewCommand(baseRef, { format }, ctx.workspaceRoot);
 }
 
 async function handleImpact(ctx: CommandContext): Promise<void> {
@@ -149,14 +151,14 @@ async function handleImpact(ctx: CommandContext): Promise<void> {
     process.exitCode = 1;
     return;
   }
-  await impactCommand(target, ctx.workspaceRoot);
+  const format = resolveOutputFormat(ctx.parser.getFlagValue(CLI_FLAGS.FORMAT));
+  await impactCommand(target, { format }, ctx.workspaceRoot);
 }
 
 async function handleQuery(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.QUERY]);
   const target = ctx.parser.getPositional(0);
-  const format = ctx.parser.getFlagValue(CLI_FLAGS.FORMAT) as
-    QueryOutputFormat | undefined;
+  const format = resolveOutputFormat(ctx.parser.getFlagValue(CLI_FLAGS.FORMAT));
   const limitRaw = ctx.parser.getFlagValue(CLI_FLAGS.LIMIT);
   const limit = limitRaw ? Number(limitRaw) : undefined;
   await queryCommand(

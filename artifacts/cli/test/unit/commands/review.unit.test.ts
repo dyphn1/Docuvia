@@ -93,6 +93,33 @@ describe("reviewCommand", () => {
     );
   });
 
+  it("prints the structured result as JSON and skips the banner/spinner when format is 'json'", async () => {
+    const result = {
+      baseRef: "main",
+      filesChanged: [{ file: "src/a.ts", status: "modified" }],
+      affectedNodes: [],
+      riskLevel: "LOW",
+      analysis: "Base: main\nFiles changed: 1\nRisk level: LOW",
+    };
+    mockReview.mockResolvedValue(result);
+
+    await reviewCommand("main", { format: "json" });
+
+    expect(vi.mocked(ui.spinner)).not.toHaveBeenCalled();
+    expect(ui.header).not.toHaveBeenCalled();
+    expect(ui.log).toHaveBeenCalledWith(JSON.stringify(result, null, 2));
+  });
+
+  it("reports failures via stderr (ui.error) rather than stdout when --format=json", async () => {
+    mockReview.mockRejectedValue(new Error("boom"));
+
+    await reviewCommand("main", { format: "json" });
+
+    expect(ui.error).toHaveBeenCalledWith(expect.stringContaining("boom"));
+    expect(vi.mocked(ui.spinner)).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
   it("uses ui.error for a CRITICAL risk level and deletes the memory scope even on failure", async () => {
     mockReview.mockRejectedValue(
       new Error('Local database not found. Please run "docuvia init".'),

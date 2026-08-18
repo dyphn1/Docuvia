@@ -135,6 +135,47 @@ describe("impactCommand", () => {
     expect(spinnerWarn).toHaveBeenCalled();
   });
 
+  it("prints the structured result as JSON and skips the banner/spinner when format is 'json'", async () => {
+    const result = {
+      blastRadius: [{ name: "caller", type: "module" }],
+      riskLevel: "MEDIUM",
+      tierBCoverage: {
+        ownFileLastProcessedAt: null,
+        workspaceFilesProcessed: 3,
+        workspaceFilesTotal: 10,
+      },
+    };
+    mockImpact.mockResolvedValue(result);
+
+    await impactCommand("target", { format: "json" });
+
+    expect(vi.mocked(ui.spinner)).not.toHaveBeenCalled();
+    expect(ui.header).not.toHaveBeenCalled();
+    expect(ui.table).not.toHaveBeenCalled();
+    expect(ui.log).toHaveBeenCalledWith(JSON.stringify(result, null, 2));
+  });
+
+  it("emits a null JSON literal when --format=json and the target doesn't resolve (no banner/spinner noise)", async () => {
+    mockImpact.mockResolvedValue(null);
+
+    await impactCommand("nope", { format: "json" });
+
+    expect(vi.mocked(ui.spinner)).not.toHaveBeenCalled();
+    expect(ui.header).not.toHaveBeenCalled();
+    expect(ui.log).toHaveBeenCalledWith("null");
+    expect(spinnerWarn).not.toHaveBeenCalled();
+  });
+
+  it("reports failures via stderr (ui.error) rather than stdout when --format=json", async () => {
+    mockImpact.mockRejectedValue(new Error("boom"));
+
+    await impactCommand("target", { format: "json" });
+
+    expect(ui.error).toHaveBeenCalledWith(expect.stringContaining("boom"));
+    expect(vi.mocked(ui.spinner)).not.toHaveBeenCalled();
+    expect(process.exitCode).toBe(1);
+  });
+
   it("calls spinner.fail and deletes the memory scope when docuviaApi.impact() throws", async () => {
     mockImpact.mockRejectedValue(new Error("boom"));
     const deleteScopeSpy = vi.spyOn(docuviaMemory, "deleteScope");

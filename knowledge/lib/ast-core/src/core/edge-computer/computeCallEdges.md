@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/core/edge-computer.ts#EdgeComputer.computeCallEdges
+id: lib/ast-core/src/core/edge-computer.ts#computeCallEdges
 type: symbol
 name: computeCallEdges
 filePath: lib/ast-core/src/core/edge-computer.ts

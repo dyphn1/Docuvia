@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-provider.ts#DefaultProvider.constructor
+id: lib/ast-core/src/language-provider.ts#constructor
 type: symbol
 name: constructor
 filePath: lib/ast-core/src/language-provider.ts

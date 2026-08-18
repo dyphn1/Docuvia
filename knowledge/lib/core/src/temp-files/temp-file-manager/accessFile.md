@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.accessFile
+id: lib/core/src/temp-files/temp-file-manager.ts#accessFile
 type: symbol
 name: accessFile
 filePath: lib/core/src/temp-files/temp-file-manager.ts

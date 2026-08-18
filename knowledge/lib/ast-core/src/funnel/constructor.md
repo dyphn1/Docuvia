@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/funnel.ts#ParsingFunnel.constructor
+id: lib/ast-core/src/funnel.ts#constructor
 type: symbol
 name: constructor
 filePath: lib/ast-core/src/funnel.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/file-discovery.service.ts#FileDiscoveryService.categorizeFiles
+id: lib/core/src/discovery/file-discovery.service.ts#categorizeFiles
 type: symbol
 name: categorizeFiles
 filePath: lib/core/src/discovery/file-discovery.service.ts

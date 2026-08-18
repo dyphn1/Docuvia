@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.sizeCalculation
+id: lib/core/src/temp-files/temp-file-manager.ts#sizeCalculation
 type: symbol
 name: sizeCalculation
 filePath: lib/core/src/temp-files/temp-file-manager.ts

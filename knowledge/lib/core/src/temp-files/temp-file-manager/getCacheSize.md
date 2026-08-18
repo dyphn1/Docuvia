@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.getCacheSize
+id: lib/core/src/temp-files/temp-file-manager.ts#getCacheSize
 type: symbol
 name: getCacheSize
 filePath: lib/core/src/temp-files/temp-file-manager.ts

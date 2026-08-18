@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-provider.ts#DefaultProvider.extractNodes
+id: lib/ast-core/src/language-provider.ts#extractNodes
 type: symbol
 name: extractNodes
 filePath: lib/ast-core/src/language-provider.ts

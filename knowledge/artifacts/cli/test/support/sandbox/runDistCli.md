@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/sandbox.ts#TestSandbox.runDistCli
+id: artifacts/cli/test/support/sandbox.ts#runDistCli
 type: symbol
 name: runDistCli
 filePath: artifacts/cli/test/support/sandbox.ts

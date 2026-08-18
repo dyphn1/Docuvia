@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/logger.ts#Logger.emit
+id: lib/contracts/src/logging/logger.ts#emit
 type: symbol
 name: emit
 filePath: lib/contracts/src/logging/logger.ts

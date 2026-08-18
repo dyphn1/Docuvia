@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-logger-client.ts#IpcLoggerClient.error
+id: lib/contracts/src/logging/ipc-logger-client.ts#error
 type: symbol
 name: error
 filePath: lib/contracts/src/logging/ipc-logger-client.ts

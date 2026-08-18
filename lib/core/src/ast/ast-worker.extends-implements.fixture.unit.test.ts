@@ -10,7 +10,7 @@ import {
   cppConfig,
   phpConfig,
   rubyConfig,
-} from "@workspace/plugins-ast";
+} from "@workspace/ast-core";
 import { resolveWasmPath } from "./ast-worker.js";
 
 /**

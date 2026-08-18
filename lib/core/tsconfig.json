@@ -12,7 +12,6 @@
   "references": [
     { "path": "../ast-core" },
     { "path": "../contracts" },
-    { "path": "../plugins-ast" },
     { "path": "../schema" }
   ]
 }

@@ -2,10 +2,11 @@
  * Tree-sitter node `.type` discriminants used by this package's per-language
  * `LanguageConfig` definitions (`imports`/`classes`/`functions`/`calls`/etc.
  * arrays and their paired query patterns) — grammar-level values, not ours to
- * rename. Mirrors the convention in
- * `lib/ast-core/src/constants/tree-sitter-node-types.ts`, which is internal
- * to that package and not part of its public exports, so this package keeps
- * its own copy rather than importing across the package boundary.
+ * rename. Kept separate from `tree-sitter-node-types.ts` (`TreeSitterNodeTypes`,
+ * consumed by the cross-language traversal/edge-computation code) because the
+ * two sets cover different node kinds; both live in ast-core so the language
+ * configs and the registry they feed can be imported statically by consumers
+ * like the AST worker thread (issue #117/#118).
  */
 export const LanguageNodeTypes = {
   // Shared across languages

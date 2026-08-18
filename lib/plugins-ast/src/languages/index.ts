@@ -1,11 +1,13 @@
-export * from "./typescript.js";
-export * from "./javascript.js";
-export * from "./python.js";
-export * from "./rust.js";
-export * from "./go.js";
-export * from "./java.js";
-export * from "./c.js";
-export * from "./cpp.js";
-export * from "./ruby.js";
-export * from "./php.js";
-export * from "./csharp.js";
+export {
+  typescriptConfig,
+  javascriptConfig,
+  pythonConfig,
+  rustConfig,
+  goConfig,
+  javaConfig,
+  cConfig,
+  cppConfig,
+  rubyConfig,
+  phpConfig,
+  csharpConfig,
+} from "@workspace/ast-core";

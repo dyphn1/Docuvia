@@ -13,7 +13,7 @@ import {
   parseImportDescriptors,
   SUPPORTED_LANGUAGES,
 } from "@workspace/ast-core";
-import { loadDefaultRegistry } from "@workspace/plugins-ast";
+import { loadDefaultRegistry } from "@workspace/ast-core";
 import { IpcLoggerClient, type AstExportKind } from "@workspace/contracts";
 import { AstMessages, AstNodeTypes } from "./ast-constants.js";
 
@@ -264,7 +264,7 @@ function getCallTargetText(node: Node): string {
  *  Finding C): for a bare identifier call (`foo()`), `node` already *is* the identifier and its
  *  own `startPosition` is correct. But for a compound callee -- JS/TS `member_expression`
  *  (`service.doSomething()`), Go `selector_expression`, C++/Rust `field_expression` -- the
- *  `calls` tree-sitter query (see `lib/plugins-ast/src/languages/*.ts`) captures the *whole*
+ *  `calls` tree-sitter query (see `lib/ast-core/src/languages/*.ts`) captures the *whole*
  *  expression, whose own `startPosition` sits on the receiver (`service`), not the callee
  *  (`doSomething`). `textDocument/definition` must be issued at the callee's own position, or it
  *  resolves the receiver's declaration instead -- an invented edge (IMPT-002). Verified against

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DEFAULT_REGISTRY } from "@workspace/plugins-ast";
+import { DEFAULT_REGISTRY } from "@workspace/ast-core";
 import {
   detectLanguageForFile,
   isSupportedSourceFile,

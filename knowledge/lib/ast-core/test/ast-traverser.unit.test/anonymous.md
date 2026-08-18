@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/test/ast-traverser.unit.test.ts#anonymous@L28
+id: lib/ast-core/test/ast-traverser.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/ast-core/test/ast-traverser.unit.test.ts

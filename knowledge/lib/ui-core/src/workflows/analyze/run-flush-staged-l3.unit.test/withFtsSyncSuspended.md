@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-flush-staged-l3.unit.test.ts#withFtsSyncSuspended@L418
+id: lib/ui-core/src/workflows/analyze/run-flush-staged-l3.unit.test.ts#withFtsSyncSuspended@L421
 type: symbol
 name: withFtsSyncSuspended
 filePath: lib/ui-core/src/workflows/analyze/run-flush-staged-l3.unit.test.ts

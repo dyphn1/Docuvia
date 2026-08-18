@@ -1,9 +1,9 @@
 ---
-id: artifacts/cli/src/constants/cli-flags.ts#CliOutputFormat
+id: artifacts/cli/src/constants/cli-flags.ts#QueryOutputFormat
 type: symbol
-name: CliOutputFormat
+name: QueryOutputFormat
 filePath: artifacts/cli/src/constants/cli-flags.ts
 ---
-# Symbol: CliOutputFormat
+# Symbol: QueryOutputFormat
 
 File: `artifacts/cli/src/constants/cli-flags.ts`

@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts#anonymous@L401
+id: lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts#anonymous@L424
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts

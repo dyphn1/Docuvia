@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts#handler@L540
+id: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts#handler@L614
 type: symbol
 name: handler
 filePath: lib/core/src/lsp/typescript-lsp-edge-provider.unit.test.ts

@@ -297,6 +297,27 @@ describe("queryCommand", () => {
     );
   });
 
+  it("prints the structured result as JSON and skips the spinner when format is 'json'", async () => {
+    const result = {
+      l2: { name: "authService", matchType: "exact" },
+      l3: [{ title: "switched to JWT", content: "details" }],
+      context: {
+        incoming: [{ name: "caller", linkType: "calls" }],
+        outgoing: [],
+      },
+    };
+    mockQuery.mockResolvedValue(result);
+
+    await queryCommand("authService", { format: "json" });
+
+    expect(ui.log).toHaveBeenCalledWith(JSON.stringify(result, null, 2));
+    // Structured output must never carry banner/spinner/table decoration on stdout.
+    expect(spinnerSucceed).not.toHaveBeenCalled();
+    expect(ui.info).not.toHaveBeenCalled();
+    expect(ui.section).not.toHaveBeenCalled();
+    expect(ui.table).not.toHaveBeenCalled();
+  });
+
   it("calls spinner.fail when docuviaApi.query() throws", async () => {
     mockQuery.mockRejectedValue(new Error("boom"));
 

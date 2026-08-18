@@ -2,7 +2,6 @@ import process from "process";
 import crypto from "node:crypto";
 import {
   docuviaMemory,
-  DocuviaError,
   type LocalQueryResult,
   type GraphEdgeRef,
   type TierBCoverageHint,
@@ -16,10 +15,11 @@ import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
 import {
-  QUERY_OUTPUT_FORMATS,
-  type QueryOutputFormat,
+  CLI_OUTPUT_FORMATS,
+  type CliOutputFormat,
 } from "../constants/cli-flags.js";
 import { OUTPUT_FORMAT_MARKERS as FORMAT_MARKERS } from "../constants/cli-output-markers.js";
+import { resolveErrorMessage } from "../utils/resolve-error-message.js";
 
 const XML_TAGS = {
   CONTEXT_START: "<docuvia_context>",
@@ -315,11 +315,12 @@ function resolveQueryLimit(limit: number | undefined): number | undefined {
 }
 
 function startQuerySpinner(
-  isPromptFormat: boolean,
+  isStructuredFormat: boolean,
   queryTarget: string,
   logger: ReturnType<typeof createPinoBackedLogger>,
 ): ReturnType<typeof ui.spinner> | undefined {
-  if (isPromptFormat) return undefined;
+  // `prompt`/`json` write machine-readable stdout (XML/JSON) -- a spinner would corrupt the pipe.
+  if (isStructuredFormat) return undefined;
 
   const spinner = ui
     .spinner(
@@ -362,10 +363,7 @@ async function runQuery(
     }
     return result;
   } catch (error: unknown) {
-    const message =
-      error instanceof DocuviaError || error instanceof Error
-        ? error.message
-        : String(error);
+    const message = resolveErrorMessage(error);
     if (spinner) spinner.fail(UI_MESSAGES.QUERY_FAIL + message);
     else ui.error(UI_MESSAGES.QUERY_FAIL + message);
     process.exitCode = 1;
@@ -378,17 +376,19 @@ async function runQuery(
 /** Thin caller of docuviaApi.query() - mirrors init.ts's Presentation-layer responsibilities. */
 export async function queryCommand(
   target?: string,
-  options: { format?: QueryOutputFormat; limit?: number } = {},
+  options: { format?: CliOutputFormat; limit?: number } = {},
   cwd: string = process.cwd(),
   isInteractive: boolean = false,
 ) {
   const queryTarget = await resolveQueryTarget(target, isInteractive);
-  const isPromptFormat = options.format === QUERY_OUTPUT_FORMATS.PROMPT;
+  const isStructuredFormat =
+    options.format === CLI_OUTPUT_FORMATS.PROMPT ||
+    options.format === CLI_OUTPUT_FORMATS.JSON;
   const limit = resolveQueryLimit(options.limit);
 
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
-  const spinner = startQuerySpinner(isPromptFormat, queryTarget, logger);
+  const spinner = startQuerySpinner(isStructuredFormat, queryTarget, logger);
 
   const result = await runQuery(
     scopeId,
@@ -400,7 +400,9 @@ export async function queryCommand(
   );
   if (!result) return;
 
-  if (isPromptFormat) {
+  if (options.format === CLI_OUTPUT_FORMATS.JSON) {
+    ui.log(JSON.stringify(result, null, 2));
+  } else if (options.format === CLI_OUTPUT_FORMATS.PROMPT) {
     ui.log(formatPromptOutput(result));
   } else {
     printHumanResults(result);

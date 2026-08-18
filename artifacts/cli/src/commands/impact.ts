@@ -2,7 +2,6 @@ import process from "process";
 import crypto from "node:crypto";
 import {
   docuviaMemory,
-  DocuviaError,
   RiskLevels,
   type BlastRadiusEntry,
   type RiskLevel,
@@ -10,12 +9,18 @@ import {
   MemoryKeys,
   LogLevels,
 } from "@workspace/contracts";
-import { docuviaApi } from "@workspace/ui-core";
+import { docuviaApi, type ImpactResult } from "@workspace/ui-core";
 import "../registration.js";
 import { ui } from "../ui/wizard.js";
 import { createPinoBackedLogger } from "../logging/create-logger.js";
 import { UI_MESSAGES } from "../constants/ui-messages.js";
+import {
+  CLI_OUTPUT_FORMATS,
+  type CliOutputFormat,
+} from "../constants/cli-flags.js";
 import { OUTPUT_FORMAT_MARKERS as FORMAT_MARKERS } from "../constants/cli-output-markers.js";
+import { wireSpinnerLogs } from "../utils/wire-spinner-logs.js";
+import { resolveErrorMessage } from "../utils/resolve-error-message.js";
 
 /** Prints one blast-radius entry's L3 "why" data, labeled by name -- separated from the Name/Type
  *  table above it (`ui.table`), since decision content is prose-length and doesn't fit a cell. */
@@ -85,14 +90,54 @@ function printBlastRadius(
   ui.log(FORMAT_MARKERS.EMPTY);
 }
 
+/** Human-mode success rendering -- separated from `impactCommand` to keep its cyclomatic
+ *  complexity under the project's ESLint budget (the spinner/table/risk output has enough branches
+ *  of its own). */
+function printHumanResult(
+  result: ImpactResult,
+  target: string,
+  spinner: ReturnType<typeof ui.spinner>,
+): void {
+  spinner.succeed(
+    UI_MESSAGES.IMPACT_SUCCESS +
+      FORMAT_MARKERS.DOUBLE_QUOTE +
+      target +
+      FORMAT_MARKERS.DOUBLE_QUOTE,
+  );
+  ui.log("");
+  printBlastRadius(result.blastRadius, result.riskLevel, result.tierBCoverage);
+}
+
+/** Unresolved-target rendering, human vs `--format=json` -- `null` is a legal JSON literal so a
+ *  structured consumer can distinguish "not found" from a found-but-empty blast radius. */
+function printNotFound(
+  spinner: ReturnType<typeof ui.spinner> | undefined,
+  target: string,
+): void {
+  if (spinner) {
+    spinner.warn(
+      UI_MESSAGES.IMPACT_NOT_FOUND +
+        FORMAT_MARKERS.DOUBLE_QUOTE +
+        target +
+        FORMAT_MARKERS.DOUBLE_QUOTE,
+    );
+    return;
+  }
+  ui.log("null");
+}
+
 /**
  * Thin caller of docuviaApi.impact() - mirrors init.ts's Presentation-layer responsibilities.
+ * `--format=json` (roadmap item 31) emits the structured `ImpactResult` verbatim on stdout with the
+ * banner/spinner suppressed -- a pipe/agent consuming `--format=json` must never see them.
  */
 export async function impactCommand(
   target: string,
+  options: { format?: CliOutputFormat } = {},
   cwd: string = process.cwd(),
 ): Promise<void> {
-  ui.header(UI_MESSAGES.IMPACT_HEADER);
+  const isJsonFormat = options.format === CLI_OUTPUT_FORMATS.JSON;
+  if (!isJsonFormat) ui.header(UI_MESSAGES.IMPACT_HEADER);
 
   if (!target) {
     ui.error(UI_MESSAGES.IMPACT_MISSING_TARGET);
@@ -100,20 +145,20 @@ export async function impactCommand(
     return;
   }
 
-  const spinner = ui
-    .spinner(
-      UI_MESSAGES.IMPACT_START +
-        FORMAT_MARKERS.DOUBLE_QUOTE +
-        target +
-        FORMAT_MARKERS.DOUBLE_QUOTE +
-        FORMAT_MARKERS.ELLIPSIS,
-    )
-    .start();
+  const spinner = isJsonFormat
+    ? undefined
+    : ui
+        .spinner(
+          UI_MESSAGES.IMPACT_START +
+            FORMAT_MARKERS.DOUBLE_QUOTE +
+            target +
+            FORMAT_MARKERS.DOUBLE_QUOTE +
+            FORMAT_MARKERS.ELLIPSIS,
+        )
+        .start();
   const scopeId = crypto.randomUUID();
   const logger = createPinoBackedLogger();
-  logger.onLog((event) => {
-    if (event.level === LogLevels.INFO) spinner.text = event.message;
-  });
+  wireSpinnerLogs(logger, spinner);
 
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
@@ -123,33 +168,19 @@ export async function impactCommand(
     const result = await docuviaApi.impact(scopeId, logger);
 
     if (!result) {
-      spinner.warn(
-        UI_MESSAGES.IMPACT_NOT_FOUND +
-          FORMAT_MARKERS.DOUBLE_QUOTE +
-          target +
-          FORMAT_MARKERS.DOUBLE_QUOTE,
-      );
+      printNotFound(spinner, target);
       return;
     }
 
-    spinner.succeed(
-      UI_MESSAGES.IMPACT_SUCCESS +
-        FORMAT_MARKERS.DOUBLE_QUOTE +
-        target +
-        FORMAT_MARKERS.DOUBLE_QUOTE,
-    );
-    ui.log("");
-    printBlastRadius(
-      result.blastRadius,
-      result.riskLevel,
-      result.tierBCoverage,
-    );
+    if (spinner) {
+      printHumanResult(result, target, spinner);
+    } else {
+      ui.log(JSON.stringify(result, null, 2));
+    }
   } catch (error: unknown) {
-    const message =
-      error instanceof DocuviaError || error instanceof Error
-        ? error.message
-        : String(error);
-    spinner.fail(UI_MESSAGES.IMPACT_FAIL + message);
+    const message = resolveErrorMessage(error);
+    if (spinner) spinner.fail(UI_MESSAGES.IMPACT_FAIL + message);
+    else ui.error(UI_MESSAGES.IMPACT_FAIL + message);
     process.exitCode = 1;
   } finally {
     docuviaMemory.deleteScope(scopeId);

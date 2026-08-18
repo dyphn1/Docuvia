@@ -91,6 +91,15 @@ byte-identical to the `DOCUVIA_HOOK_JS` template.
 
 ### 31. `--format` gains `json`, extends beyond `query`
 
+> **Shipped — 2026-08-18 (issue #52).** `--format` is now shared across `query`/`impact`/`review`
+> via the single `CLI_OUTPUT_FORMATS` enum (`human`/`prompt`/`json`) in `cli-flags.ts`, with a
+> fail-fast value gate (`resolveOutputFormat`) so a typo'd value can never silently degrade to the
+> human renderer. `json` serializes each command's structured result verbatim to stdout
+> (`LocalQueryResult` / `ImpactResult` / `ChangeDetectionResult`) with the banner/spinner
+> suppressed; `impact` emits the JSON literal `null` (exit 0) when the target doesn't resolve. The
+> JSON shapes are deliberately the un-reshaped API result objects so they double as the contract
+> for item 29's MCP tools and item 30's skill files.
+
 Currently `--format` exists only on `query` (`QUERY_OUTPUT_FORMATS`: `human`/`prompt` —
 [`cli-flags.ts`](../../../artifacts/cli/src/constants/cli-flags.ts)); `impact`/`review` have no
 `--format` at all. Confirmed direction: add a `json` value to the shared enum, and extend

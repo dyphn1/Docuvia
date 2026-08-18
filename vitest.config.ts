@@ -2,7 +2,7 @@ import { defineConfig, coverageConfigDefaults } from "vitest/config";
 
 export default defineConfig({
   test: {
-    fileParallelism: false,
+    fileParallelism: true,
     coverage: {
       provider: "v8",
       clean: false,

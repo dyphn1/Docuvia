@@ -14,7 +14,9 @@ import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import {
   ANALYZE_EVENTS,
   ANALYZE_MESSAGES,
+  TIER_C_COMMIT_MESSAGE_MAX_LENGTH,
   TIER_C_COMMIT_MESSAGE_SYSTEM_PROMPT,
+  TIER_C_COMMIT_MESSAGE_USER_MESSAGE,
   TIER_C_CONTRACT_SYMBOL_SYSTEM_PROMPT,
   TIER_C_CONTRACT_SYMBOL_USER_MESSAGE,
 } from "./analyze-messages.js";
@@ -452,6 +454,20 @@ function errMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/** Basic sanitization of an attacker-controllable commit message before it reaches the Tier C
+ *  LLM (issue #111): strips control characters (ANSI/terminal escape sequences and friends, but
+ *  keeping `\n`/`\t`/`\r` for body formatting) and truncates to
+ *  `TIER_C_COMMIT_MESSAGE_MAX_LENGTH` so a single hostile message can't monopolize the prompt
+ *  window / Tier C budget. The prompt-side defense (system prompt + untrusted-data delimiter)
+ *  lives in `analyze-messages.ts`. */
+function sanitizeCommitMessage(message: string): string {
+  const stripped = message.replace(
+    /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,
+    "",
+  );
+  return stripped.slice(0, TIER_C_COMMIT_MESSAGE_MAX_LENGTH);
+}
+
 async function callTierCLlm(
   llmClient: ILlmClient,
   model: string,
@@ -555,7 +571,9 @@ async function processCommitMessageEntry(
       llmClient,
       llmModel!,
       TIER_C_COMMIT_MESSAGE_SYSTEM_PROMPT,
-      entry.message ?? "",
+      TIER_C_COMMIT_MESSAGE_USER_MESSAGE(
+        sanitizeCommitMessage(entry.message ?? ""),
+      ),
     );
   } catch (err) {
     return {

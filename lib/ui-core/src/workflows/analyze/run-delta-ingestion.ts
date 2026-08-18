@@ -14,11 +14,8 @@ import {
   type ISemanticDiffAnalyzer,
   type SemanticDiffModifiedNode,
 } from "@workspace/contracts";
-import {
-  GitConstants,
-  isDiscoverableSourceFile,
-  MAX_FILE_SIZE_BYTES,
-} from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
+import { isDiscoverableSourceFile, MAX_FILE_SIZE_BYTES } from "@workspace/core";
 import { runParseAndPersist } from "../init/run-parse-and-persist.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";

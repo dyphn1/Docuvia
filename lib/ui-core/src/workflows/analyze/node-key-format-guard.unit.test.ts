@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { IGraphStore } from "@workspace/contracts";
-import { CURRENT_NODE_KEY_FORMAT_VERSION, GitConstants } from "@workspace/core";
+import { CURRENT_NODE_KEY_FORMAT_VERSION } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { isNodeKeyFormatStale } from "./node-key-format-guard.js";
 
 function makeStore(stamped: string | undefined): IGraphStore {

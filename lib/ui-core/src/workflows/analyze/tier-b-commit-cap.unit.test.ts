@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { IGraphStore } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { isTierBCommitCapExceeded } from "./tier-b-commit-cap.js";
 
 function makeStore(changedBytes: string | undefined): IGraphStore {

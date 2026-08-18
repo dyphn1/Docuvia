@@ -9,7 +9,7 @@ import {
   type EdgeResolutionProviderConfig,
   type TierBLanguageId,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { ANALYZE_EVENTS, ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { AnalyzeResultKind, type TierBBatchResult } from "./analyze-result.js";

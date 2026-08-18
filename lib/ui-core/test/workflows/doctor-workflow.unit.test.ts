@@ -6,7 +6,7 @@ import {
   DiagnosticStatus,
   DocuviaError,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { probeDocuviaResolvable } from "../../src/workflows/doctor/git-hook-resolvability.js";

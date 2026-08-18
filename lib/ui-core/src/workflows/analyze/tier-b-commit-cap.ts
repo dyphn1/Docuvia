@@ -1,5 +1,5 @@
 import type { IGraphStore } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 
 /**
  * D5's commit-cap check, redefined by §9m item 1 (phase1-decision-integration.md) to a

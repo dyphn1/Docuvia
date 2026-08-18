@@ -7,7 +7,7 @@ import {
   TIER_C_LOCK_FILE_NAME,
   type ProcessLockHandle,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 
 /** How long a Tier C dispatch waits for a contended lock before giving up (§9k gating test 3: "a
  *  second concurrent dispatch attempt ... is rejected/deferred"). Short and non-blocking by

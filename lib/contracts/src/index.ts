@@ -236,6 +236,7 @@ export {
 
 export { UTF8_ENCODING } from "./constants/encoding.js";
 export { GIT_DEFAULT_REMOTE_NAME } from "./constants/git-conventions.js";
+export { GitConstants } from "./constants/git-constants.js";
 export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,
   ERRNO_EEXIST,
@@ -245,6 +246,7 @@ export {
   PLATFORM_WIN32,
 } from "./constants/fs.js";
 export { acquireProcessLock } from "./utils/process-lock.js";
+export { parseSourceTrailer } from "./utils/git-trailers.js";
 export type {
   ProcessLockOptions,
   ProcessLockHandle,

@@ -10,7 +10,7 @@ import { appendStatusLogLine } from "./status-log-writer.js";
 import type { StatusResult } from "./status-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { ensureHydrated } from "../../utils/ensure-hydrated.js";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { readTierCQueue } from "../analyze/tier-c-queue.js";
 
 /**

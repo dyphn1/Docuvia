@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { IGraphStore } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { appendTierBQueueEntries, readTierBQueue } from "./tier-b-queue.js";
 
 function makeMockStore(initialMeta: Record<string, string> = {}): IGraphStore {

@@ -1,4 +1,4 @@
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import type { IGraphStore } from "@workspace/contracts";
 
 export interface TierCBudget {

@@ -9,7 +9,7 @@ import {
   type ILogger,
   type ILlmClient,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import {
   ANALYZE_EVENTS,

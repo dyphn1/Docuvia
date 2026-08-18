@@ -20,7 +20,7 @@ import {
   DOCUVIA_HOOK_JS_FILENAME,
   DOCUVIA_HOOK_CJS_FILENAME,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import type { DoctorResult } from "./doctor-result.js";
 import {
   DOCTOR_AGENT_PLATFORM_NAMES,

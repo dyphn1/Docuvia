@@ -12,7 +12,7 @@ import {
   type IGraphStore,
   type IKnowledgeGitService,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { finalizePendingTierBBatch } from "./finalize-pending-tier-b-batch.js";
 
 function makeStore(meta: Record<string, string> = {}): {

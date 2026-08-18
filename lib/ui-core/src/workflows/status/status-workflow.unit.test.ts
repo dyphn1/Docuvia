@@ -13,7 +13,7 @@ import {
   type IGraphStore,
   type IHydrationService,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { StatusWorkflow } from "./status-workflow.js";
 
 function makeMockHydrationService(

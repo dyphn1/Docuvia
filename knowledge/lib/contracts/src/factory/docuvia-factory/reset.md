@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/factory/docuvia-factory.ts#reset
+id: lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.reset
 type: symbol
 name: reset
 filePath: lib/contracts/src/factory/docuvia-factory.ts

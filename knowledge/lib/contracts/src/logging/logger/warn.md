@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/logger.ts#warn
+id: lib/contracts/src/logging/logger.ts#Logger.warn
 type: symbol
 name: warn
 filePath: lib/contracts/src/logging/logger.ts

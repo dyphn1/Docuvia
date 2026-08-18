@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-logger-client.ts#onLog
+id: lib/contracts/src/logging/ipc-logger-client.ts#IpcLoggerClient.onLog
 type: symbol
 name: onLog
 filePath: lib/contracts/src/logging/ipc-logger-client.ts

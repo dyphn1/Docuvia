@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts#anonymous@L96
+id: lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts#anonymous@L68
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/rust-lsp-edge-provider.live.integration.test.ts

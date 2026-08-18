@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/copilot.platform.ts#uninstallHooks
+id: artifacts/cli/src/platforms/copilot.platform.ts#CopilotPlatform.uninstallHooks
 type: symbol
 name: uninstallHooks
 filePath: artifacts/cli/src/platforms/copilot.platform.ts

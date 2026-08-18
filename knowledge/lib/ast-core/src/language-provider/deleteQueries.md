@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-provider.ts#deleteQueries
+id: lib/ast-core/src/language-provider.ts#DefaultProvider.deleteQueries
 type: symbol
 name: deleteQueries
 filePath: lib/ast-core/src/language-provider.ts

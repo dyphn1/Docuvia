@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/constants/docuvia-hook-js-injection-gate.unit.test.ts#anonymous@L80
+id: artifacts/cli/test/unit/constants/docuvia-hook-js-injection-gate.unit.test.ts#anonymous@L66
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/constants/docuvia-hook-js-injection-gate.unit.test.ts

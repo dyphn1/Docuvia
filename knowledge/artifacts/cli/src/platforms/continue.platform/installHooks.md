@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/continue.platform.ts#installHooks
+id: artifacts/cli/src/platforms/continue.platform.ts#ContinuePlatform.installHooks
 type: symbol
 name: installHooks
 filePath: artifacts/cli/src/platforms/continue.platform.ts

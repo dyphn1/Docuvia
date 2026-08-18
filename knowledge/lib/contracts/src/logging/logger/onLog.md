@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/logger.ts#onLog
+id: lib/contracts/src/logging/logger.ts#Logger.onLog
 type: symbol
 name: onLog
 filePath: lib/contracts/src/logging/logger.ts

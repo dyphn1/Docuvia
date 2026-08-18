@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/errors/docuvia-error.ts#wrap
+id: lib/contracts/src/errors/docuvia-error.ts#DocuviaError.wrap
 type: symbol
 name: wrap
 filePath: lib/contracts/src/errors/docuvia-error.ts

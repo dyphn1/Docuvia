@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { resolve } from "path";
 import { mkdirSync, writeFileSync, readFileSync, chmodSync } from "fs";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { TestSandbox } from "../../support/sandbox.js";
 
 /**

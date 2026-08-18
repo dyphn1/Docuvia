@@ -11,7 +11,7 @@ import {
   type EdgeResolutionOutcome,
   type NodeLinkRow,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { runTierBBatch } from "./run-tier-b-batch.js";
 import { appendTierBQueueEntries } from "./tier-b-queue.js";
 

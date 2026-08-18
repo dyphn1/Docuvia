@@ -15,7 +15,7 @@ import {
 import { docuviaApi, resolveDbPath } from "@workspace/ui-core";
 import { GraphStore } from "@workspace/schema";
 import { GitLocalProvider } from "@workspace/git-local";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import "../../src/registration.js";
 
 const execFileAsync = promisify(execFile);

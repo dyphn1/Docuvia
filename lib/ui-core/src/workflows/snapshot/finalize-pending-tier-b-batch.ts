@@ -4,7 +4,7 @@ import {
   type IKnowledgeGitService,
   type ILogger,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { appendSnapshotLogLine } from "./snapshot-log-writer.js";
 import { SNAPSHOT_EVENTS } from "./snapshot-messages.js";

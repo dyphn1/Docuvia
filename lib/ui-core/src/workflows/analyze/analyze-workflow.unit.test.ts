@@ -16,7 +16,7 @@ import {
   type IKnowledgeGitService,
   type ILlmClient,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { AnalyzeWorkflow, stripMarkdownCodeFence } from "./analyze-workflow.js";
 import {
   ANALYZE_MESSAGES,

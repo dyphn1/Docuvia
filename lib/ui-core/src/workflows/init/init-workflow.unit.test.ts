@@ -21,7 +21,7 @@ import {
   type IVcsScanner,
   type ProjectRow,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { InitWorkflow, resolveDbPath } from "./init-workflow.js";
 import { readTierBQueue } from "../analyze/tier-b-queue.js";
 

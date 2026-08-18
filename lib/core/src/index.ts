@@ -20,8 +20,6 @@ export {
   isDiscoverableSourceFile,
 } from "./utils/language-detection.js";
 export { MAX_FILE_SIZE_BYTES } from "./constants/paths.js";
-export { GitConstants } from "./git/git-constants.js";
-export { parseSourceTrailer } from "./git/git-trailers.js";
 // GRPH-006's format-version stamp: pure, side-effect-free domain knowledge (same "narrow
 // exception" precedent as `isSupportedSourceFile` above) that `lib/ui-core`'s
 // `stamp-full-ingestion-for-tier-b.ts`/`node-key-format-guard.ts` need to read/write the

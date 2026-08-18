@@ -6,7 +6,7 @@ import {
   type ILogger,
   type IGraphStore,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { SNAPSHOT_EVENTS, SNAPSHOT_MESSAGES } from "./snapshot-messages.js";
 import { appendSnapshotLogLine } from "./snapshot-log-writer.js";
 import type { SnapshotResult } from "./snapshot-result.js";

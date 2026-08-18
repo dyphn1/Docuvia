@@ -19,7 +19,7 @@ import {
   type IVcsScanner,
   type ProjectRow,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { readTierBQueue } from "./tier-b-queue.js";
 

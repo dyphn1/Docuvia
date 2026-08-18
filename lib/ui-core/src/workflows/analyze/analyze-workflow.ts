@@ -13,7 +13,7 @@ import {
   type ILogger,
   type EdgeResolutionProviderConfig,
 } from "@workspace/contracts";
-import { GitConstants, parseSourceTrailer } from "@workspace/core";
+import { GitConstants, parseSourceTrailer } from "@workspace/contracts";
 import {
   ANALYZE_EVENTS,
   ANALYZE_MESSAGES,

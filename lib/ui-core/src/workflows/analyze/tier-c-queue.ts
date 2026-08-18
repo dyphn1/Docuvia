@@ -1,4 +1,4 @@
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import type { IGraphStore } from "@workspace/contracts";
 
 /** Tier C candidate kinds (phase1-decision-integration.md §9c/E2) -- the two extraction sources

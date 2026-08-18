@@ -8,11 +8,8 @@ import {
   type IGraphStore,
   type IKnowledgeGitService,
 } from "@workspace/contracts";
-import {
-  GitConstants,
-  computeL2GitPathsByNodeId,
-  renderL3Card,
-} from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
+import { computeL2GitPathsByNodeId, renderL3Card } from "@workspace/core";
 import { SNAPSHOT_TEMP_DIR_PREFIX } from "./snapshot-messages.js";
 import type { SnapshotResult } from "./snapshot-result.js";
 

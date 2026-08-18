@@ -1,5 +1,5 @@
 import { docuviaFactory, TOKENS, type ILogger } from "@workspace/contracts";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 
 /**
  * `uninstall`'s git-artifact-removal workflow (phase1-decision-integration.md §10a) — removes

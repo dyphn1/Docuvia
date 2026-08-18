@@ -3,7 +3,7 @@ import { TestSandbox } from "../../support/sandbox.js";
 import { resolve } from "path";
 import { execFileSync } from "child_process";
 import { existsSync, writeFileSync, readFileSync } from "fs";
-import { GitConstants } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 
 describe("Command: docuvia uninstall", () => {
   let sandbox: TestSandbox;

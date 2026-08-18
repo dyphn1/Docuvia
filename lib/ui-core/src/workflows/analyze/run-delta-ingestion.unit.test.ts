@@ -16,7 +16,8 @@ import {
   type IKnowledgeGitService,
   type ISemanticDiffAnalyzer,
 } from "@workspace/contracts";
-import { CURRENT_NODE_KEY_FORMAT_VERSION, GitConstants } from "@workspace/core";
+import { CURRENT_NODE_KEY_FORMAT_VERSION } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import { runDeltaIngestion } from "./run-delta-ingestion.js";
 import { runFullIngestion } from "./run-full-ingestion.js";
 import { readTierBQueue } from "./tier-b-queue.js";

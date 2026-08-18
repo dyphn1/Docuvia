@@ -1,4 +1,5 @@
-import { CURRENT_NODE_KEY_FORMAT_VERSION, GitConstants } from "@workspace/core";
+import { CURRENT_NODE_KEY_FORMAT_VERSION } from "@workspace/core";
+import { GitConstants } from "@workspace/contracts";
 import type {
   IGitProvider,
   IGraphStore,

@@ -6,13 +6,18 @@ import { createInterface } from "readline";
  * closes. Extracted from `publish.ts` (issue #42) -- shared with `analyze.ts`'s
  * `--agent-authored` mode, whose default input is a piped decisions JSON payload.
  */
-export function readStdin(): Promise<string> {
-  return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin });
-    let data = "";
-    rl.on("line", (line) => {
-      data += line + "\n";
-    });
-    rl.on("close", () => resolve(data.trim()));
-  });
+export async function readStdin(): Promise<string> {
+  const rl = createInterface({ input: process.stdin });
+  const lines: string[] = [];
+  try {
+    for await (const line of rl) {
+      lines.push(line);
+    }
+  } finally {
+    // Issue #72: explicitly release the interface (drops its stream listeners) instead of relying
+    // on the implicit close — a long-running process would otherwise leak the fd/listeners on
+    // repeated calls. Idempotent: a naturally-completed iteration already closed it.
+    rl.close();
+  }
+  return lines.join("\n").trim();
 }

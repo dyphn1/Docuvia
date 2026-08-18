@@ -5,7 +5,10 @@ import * as fs from "fs";
 import { createHash } from "crypto";
 import { resolveWasmPath } from "./resolve-wasm-path.js";
 import type { LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
-import { parseImportDescriptors, loadDefaultRegistry } from "@workspace/ast-core";
+import {
+  parseImportDescriptors,
+  loadDefaultRegistry,
+} from "@workspace/ast-core";
 import {
   IpcLoggerClient,
   SUPPORTED_LANGUAGES,

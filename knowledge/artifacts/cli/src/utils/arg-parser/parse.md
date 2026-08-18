@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/utils/arg-parser.ts#ArgParser.parse
+id: artifacts/cli/src/utils/arg-parser.ts#parse
 type: symbol
 name: parse
 filePath: artifacts/cli/src/utils/arg-parser.ts

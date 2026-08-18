@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/copilot.platform.ts#CopilotPlatform.instructionsPath
+id: artifacts/cli/src/platforms/copilot.platform.ts#instructionsPath
 type: symbol
 name: instructionsPath
 filePath: artifacts/cli/src/platforms/copilot.platform.ts

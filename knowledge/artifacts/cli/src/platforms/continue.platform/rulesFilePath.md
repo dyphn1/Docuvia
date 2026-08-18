@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/continue.platform.ts#ContinuePlatform.rulesFilePath
+id: artifacts/cli/src/platforms/continue.platform.ts#rulesFilePath
 type: symbol
 name: rulesFilePath
 filePath: artifacts/cli/src/platforms/continue.platform.ts

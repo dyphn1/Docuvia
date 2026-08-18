@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/logger.ts#Logger.debug
+id: lib/contracts/src/logging/logger.ts#debug
 type: symbol
 name: debug
 filePath: lib/contracts/src/logging/logger.ts

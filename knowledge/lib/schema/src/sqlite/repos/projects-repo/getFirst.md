@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/projects-repo.ts#ProjectsRepo.getFirst
+id: lib/schema/src/sqlite/repos/projects-repo.ts#getFirst
 type: symbol
 name: getFirst
 filePath: lib/schema/src/sqlite/repos/projects-repo.ts

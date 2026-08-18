@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/funnel.ts#ParsingFunnel.process
+id: lib/ast-core/src/funnel.ts#process
 type: symbol
 name: process
 filePath: lib/ast-core/src/funnel.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-log-router.ts#IpcLogRouter.handleMessage
+id: lib/contracts/src/logging/ipc-log-router.ts#handleMessage
 type: symbol
 name: handleMessage
 filePath: lib/contracts/src/logging/ipc-log-router.ts

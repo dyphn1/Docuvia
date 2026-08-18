@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/detector/semantic-diff.ts#SemanticDiffDetector.getNodeName
+id: lib/ast-core/src/detector/semantic-diff.ts#getNodeName
 type: symbol
 name: getNodeName
 filePath: lib/ast-core/src/detector/semantic-diff.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/funnel.ts#ParsingFunnel.resolveMappedExtension
+id: lib/ast-core/src/funnel.ts#resolveMappedExtension
 type: symbol
 name: resolveMappedExtension
 filePath: lib/ast-core/src/funnel.ts

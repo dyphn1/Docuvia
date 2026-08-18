@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/platforms/cursor.platform.ts#CursorPlatform.installHooks
+id: artifacts/cli/src/platforms/cursor.platform.ts#installHooks
 type: symbol
 name: installHooks
 filePath: artifacts/cli/src/platforms/cursor.platform.ts

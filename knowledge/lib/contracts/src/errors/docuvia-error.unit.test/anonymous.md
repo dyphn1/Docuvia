@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/errors/docuvia-error.unit.test.ts#anonymous@L37
+id: lib/contracts/src/errors/docuvia-error.unit.test.ts#anonymous@L20
 type: symbol
 name: anonymous
 filePath: lib/contracts/src/errors/docuvia-error.unit.test.ts

@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/commands/uninstall.unit.test.ts#anonymous@L90
+id: artifacts/cli/test/unit/commands/uninstall.unit.test.ts#anonymous@L198
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/commands/uninstall.unit.test.ts

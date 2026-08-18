@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/platforms/codex.platform.unit.test.ts#anonymous
+id: artifacts/cli/test/unit/platforms/codex.platform.unit.test.ts#anonymous@L17
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/platforms/codex.platform.unit.test.ts
@@ -7,4 +7,3 @@ filePath: artifacts/cli/test/unit/platforms/codex.platform.unit.test.ts
 # Symbol: anonymous
 
 File: `artifacts/cli/test/unit/platforms/codex.platform.unit.test.ts`
-ts`

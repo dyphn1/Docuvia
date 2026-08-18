@@ -270,7 +270,7 @@ describe("analyzeCommand", () => {
       );
     });
 
-    it("sets targetPath/llmBaseUrl/llmApiKey/llmModel into docuviaMemory and calls docuviaApi.analyze() when env vars are present", async () => {
+    it("sets targetPath/llmBaseUrl/llmModel into docuviaMemory, passes the API key straight to docuviaApi.analyze(), and never writes the key to memory (issue #109)", async () => {
       process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL =
         "http://localhost:8317";
       process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY = "secret-key";
@@ -294,8 +294,17 @@ describe("analyzeCommand", () => {
         "llmBaseUrl",
         "http://localhost:8317",
       );
-      expect(setSpy).toHaveBeenCalledWith(scopeId, "llmApiKey", "secret-key");
       expect(setSpy).toHaveBeenCalledWith(scopeId, "llmModel", "big-model");
+      expect(setSpy).not.toHaveBeenCalledWith(
+        scopeId,
+        "llmApiKey",
+        "secret-key",
+      );
+      expect(mockAnalyze).toHaveBeenCalledWith(
+        scopeId,
+        expect.anything(),
+        "secret-key",
+      );
     });
 
     it("prints 'title (nodeType, confidence: N)' plus content lines for each decision on success", async () => {

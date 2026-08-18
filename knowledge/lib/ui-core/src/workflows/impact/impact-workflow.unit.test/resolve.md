@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/impact/impact-workflow.unit.test.ts#anonymous@L299
+id: lib/ui-core/src/workflows/impact/impact-workflow.unit.test.ts#resolve
 type: symbol
-name: anonymous
+name: resolve
 filePath: lib/ui-core/src/workflows/impact/impact-workflow.unit.test.ts
 ---
-# Symbol: anonymous
+# Symbol: resolve
 
 File: `lib/ui-core/src/workflows/impact/impact-workflow.unit.test.ts`

@@ -73,10 +73,19 @@ describe("Command: docuvia doctor concurrent with docuvia hydrate (real filesyst
       // reachability probe -- a real network call that timed out when DOCTOR_RUNS processes fired
       // it simultaneously against this environment's real endpoint (dogfooding-findings-fixes.md
       // follow-up: live-reproduced, unrelated to the tier_b_coverage diagnostic added alongside
-      // it). `sqlite_integrity` (the check that matters here) still runs.
+      // it). The env scrub forces issue #135's `l2_semantic_coverage` to the structural-only
+      // PASS (Tier C "not configured"): this fixture never runs Tier C, so its AST-only graph is
+      // legitimately 0%-described, and the test must not depend on whatever LLM env vars the host
+      // happens to carry. `sqlite_integrity` (the check that matters here) still runs.
       ...Array.from({ length: DOCTOR_RUNS }, () =>
         sandbox.runCli(["doctor", "--skip-git", "--skip-lsp", "--skip-llm"], {
           reject: false,
+          env: {
+            AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL: "",
+            AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY: "",
+            AI_DOCUVIA_MODEL: "",
+            AI_DOCUVIA_FAST_MODEL: "",
+          },
         }),
       ),
       ...Array.from({ length: HYDRATE_RUNS }, () =>

@@ -281,3 +281,126 @@ jobs:
                 body,
               });
             }
+
+  graph-knowledge:
+    name: Knowledge Graph
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout (full history for base-ref diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (all packages)
+        run: pnpm run build
+
+      - name: Resolve base ref
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "BASE_REF=origin/${{ github.event.pull_request.base.ref }}" >> "$GITHUB_ENV"
+          else
+            echo "BASE_REF=origin/main" >> "$GITHUB_ENV"
+          fi
+
+      - name: Initialize the knowledge graph (full ingestion of HEAD)
+        # Freshness gate (issue #138): `init` stamps META_KEY_LAST_INGESTED_SOURCE_SHA to HEAD only
+        # after a successful full ingestion, so a graph that cannot ingest HEAD fails the job
+        # deterministically. `--platform=` skips the per-platform hook installers (not relevant to
+        # the graph, and they'd add CI fragility) while still building the DB + graph. Non-interactive
+        # by default (IFCE-004).
+        run: npx --no-install docuvia init --platform=
+
+      - name: Ingest the diff (AST-only, no LSP gate, no Tier C dependency)
+        # Freshness gate #2: the PR/push delta path. `--fallback-ast` skips the LSP-readiness gate so
+        # CI never hangs on a missing LSP server; a failed delta ingest (graph left stale vs HEAD)
+        # also fails the job.
+        run: npx --no-install docuvia analyze --fallback-ast
+
+      - name: Doctor report (non-blocking -- graph health, LLM/LSP skipped)
+        # post_commit_ingestion asserts HEAD vs the ingested sha. --skip-llm/--skip-lsp keep transient
+        # Tier C bridge failures and missing LSP servers from reddening the job -- the deterministic
+        # freshness hard-fail lives in the init/analyze steps above. Exit captured, not fatal.
+        id: doctor
+        run: |
+          npx --no-install docuvia doctor --skip-llm --skip-lsp \
+            > /tmp/doctor-report.log 2>&1 \
+            || echo "doctor_exit=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Review blast radius against base
+        # Non-blocking like the OCR review job (transient graph/git failures must not red the PR),
+        # but the JSON result is what the comment below surfaces.
+        id: review
+        run: |
+          npx --no-install docuvia review "$BASE_REF" --format=json \
+            > /tmp/graph-review.json 2>/tmp/graph-review.err \
+            || echo "review_exit=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Post knowledge-graph review to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          DOCTOR_EXIT: ${{ steps.doctor.outputs.doctor_exit }}
+          REVIEW_EXIT: ${{ steps.review.outputs.review_exit }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const reviewPath = '/tmp/graph-review.json';
+            const reviewErrPath = '/tmp/graph-review.err';
+            const reviewExit = process.env.REVIEW_EXIT || '0';
+            const doctorExit = process.env.DOCTOR_EXIT || '0';
+
+            if (!fs.existsSync(reviewPath)) {
+              const err = fs.existsSync(reviewErrPath)
+                ? fs.readFileSync(reviewErrPath, 'utf8').trim()
+                : '';
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: `⚠️ **Knowledge Graph** review could not complete (exit ${reviewExit}).\n\nThe graph itself was built and ingested by the earlier steps, so this is not a staleness failure.\n\n\`\`\`\n${(err || 'no stderr captured').slice(0, 4000)}\n\`\`\``,
+              });
+              return;
+            }
+
+            const result = JSON.parse(fs.readFileSync(reviewPath, 'utf8'));
+            const files = (result.filesChanged || [])
+              .map((f) => `- \`${f.file}\` (${f.status})`)
+              .join('\n') || '- (none)';
+            const impacted = (result.affectedNodes || [])
+              .flatMap((n) => (n.impactedBy || []).filter((e) => e && e.name).map((e) => `- \`${n.file}\` <- \`${e.name}\``))
+              .slice(0, 20)
+              .join('\n');
+            const analysis = (result.analysis || '').slice(0, 6000);
+            const doctorNote = doctorExit !== '0'
+              ? '\n\n> `doctor` reported a non-blocking graph-health finding (see the workflow log).'
+              : '';
+
+            const body =
+              `🗺️ **Knowledge Graph** review against \`${result.baseRef || 'base'}\`:\n` +
+              `- Risk level: **${result.riskLevel || 'unknown'}**\n` +
+              `- Files changed: ${(result.filesChanged || []).length}\n` +
+              `- Graph ingested at HEAD — the freshness gate passed (\`init\` + \`analyze --fallback-ast\` both exited 0).${doctorNote}\n\n` +
+              `### Changed files\n${files}\n\n` +
+              (impacted ? `### Impacted by\n${impacted}\n\n` : '') +
+              `### Analysis\n${analysis}`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });

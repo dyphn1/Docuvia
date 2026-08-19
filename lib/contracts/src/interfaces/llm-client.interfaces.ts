@@ -126,4 +126,17 @@ export interface ILlmClient {
    * takes no argument: `ILlmClient` is configured via `initialize()` before use, not per-call.
    */
   checkAvailability(): Promise<LlmClientAvailability>;
+  /**
+   * Issue #134: a reachability probe that exercises the *actual* Tier C bridge path `analyze`'s
+   * drain dials — a POST to `<baseUrl>/v1/chat/completions` with the same auth headers as
+   * `chatCompletion()` and a minimal `max_tokens: 1` body. `checkAvailability()`'s GET on the
+   * bare `baseUrl` can PASS while the completions route itself is broken (bridge proxy up, but
+   * `/v1/chat/completions` 404s or rejects the API key — issue #134's live repro: `doctor`
+   * reporting `llm_reachability ✓ PASS` while every Tier C drain item failed with
+   * `bridge-unreachable`), so `doctor` probes *this* instead of the liveness ping. Any 2xx is
+   * `available: true`; a non-2xx response (wrong route, bad auth) or a network-level failure is
+   * `available: false` with a reason. Never throws — a probe that itself fails is reported as
+   * `available: false`, mirroring `checkAvailability()`'s contract.
+   */
+  checkBridgeReachability(model: string): Promise<LlmClientAvailability>;
 }

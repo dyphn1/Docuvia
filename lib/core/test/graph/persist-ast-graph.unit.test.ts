@@ -16,6 +16,7 @@ describe("GraphPersisterService", () => {
       },
       graph: {
         deleteNodesForPath: vi.fn(),
+        getSemanticCoverage: vi.fn(),
         insertNode: vi.fn().mockReturnValue(1),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),

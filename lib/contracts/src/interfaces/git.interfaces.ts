@@ -25,6 +25,17 @@ export interface DiffLineRange {
   endRow: number;
 }
 
+/** One entry of `git worktree list --porcelain` — a live worktree of the repo this command is
+ *  run from. Used by `doctor`'s worktree-divergence diagnostic (issue #137): each worktree gets
+ *  its own `.docuvia/local.db`, and nothing reconciles them, so a decision staged in one worktree
+ *  may never reach the graph another worktree (or the main checkout) queries. */
+export interface WorktreeEntry {
+  /** Absolute path of the worktree's working tree. */
+  path: string;
+  /** Checked-out branch name (without the `refs/heads/` prefix), undefined for a detached HEAD. */
+  branch?: string;
+}
+
 export interface IGitProvider {
   isGitRepository(cwd: string): Promise<boolean>;
 
@@ -70,6 +81,13 @@ export interface IGitProvider {
     maxCommits?: number,
   ): Promise<string[]>;
   hasUncommittedChanges(cwd: string): Promise<boolean>;
+  /**
+   * Every live worktree of the repo `cwd` belongs to (`git worktree list --porcelain`), *including*
+   * the one `cwd` itself is — callers compare `path` to their own `workspaceRoot` to find siblings.
+   * `[]` on a non-repo or a git version without `worktree list`. Used by `doctor`'s
+   * worktree-divergence diagnostic (issue #137).
+   */
+  listWorktrees(cwd: string): Promise<WorktreeEntry[]>;
   /**
    * With no `toRef`: files changed relative to `baseRef`, diffed straight against the working
    * tree (not `<baseRef>...HEAD`) merged with untracked files — the original, commit-to-working-tree

@@ -360,6 +360,7 @@ export const UI_MESSAGES = {
   DOCTOR_CATEGORY_LLM: "LLM Integration",
   DOCTOR_CATEGORY_LSP: "LSP Providers",
   DOCTOR_CATEGORY_AGENT_HOOKS: "AI Agent Hooks",
+  DOCTOR_CATEGORY_AGENT_ADOPTION: "Docuvia-First Workflow",
   DOCTOR_CATEGORY_OTHER: "Other",
 
   // Query Command

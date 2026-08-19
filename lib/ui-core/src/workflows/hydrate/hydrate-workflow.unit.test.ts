@@ -37,6 +37,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     },
     graph: {
       deleteNodesForPath: vi.fn(),
+      getSemanticCoverage: vi.fn(),
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),

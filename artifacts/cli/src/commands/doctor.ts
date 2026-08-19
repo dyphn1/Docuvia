@@ -37,16 +37,19 @@ export interface DoctorOptions {
 }
 
 /** Reads the Tier C LLM env vars (§10e bullet 3, T7) -- mirrors `analyze.ts`'s
- *  `resolveAnalyzeLlmConfig`, Presentation-layer-only env read. Unlike `analyze <targetPath>`'s
- *  hard requirement, absence here is a normal, non-error `doctor` state -- both fields are simply
- *  `undefined`. */
+ *  `resolveAnalyzeLlmConfig` (Presentation-layer-only env read; the model is the extra field
+ *  issue #134's bridge probe needs, since a minimal completions body must name a model). Unlike
+ *  `analyze <targetPath>`'s hard requirement, absence here is a normal, non-error `doctor` state
+ *  -- all three fields are simply `undefined`. */
 function resolveDoctorLlmConfig(): {
   llmBaseUrl: string | undefined;
   llmApiKey: string | undefined;
+  llmModel: string | undefined;
 } {
   return {
     llmBaseUrl: process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL,
     llmApiKey: process.env.AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY,
+    llmModel: process.env.AI_DOCUVIA_MODEL || process.env.AI_DOCUVIA_FAST_MODEL,
   };
 }
 

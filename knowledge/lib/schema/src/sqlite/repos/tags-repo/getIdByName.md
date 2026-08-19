@@ -1,5 +1,5 @@
 ---
-id: lib/schema/src/sqlite/repos/tags-repo.ts#getIdByName
+id: lib/schema/src/sqlite/repos/tags-repo.ts#TagsRepo.getIdByName
 type: symbol
 name: getIdByName
 filePath: lib/schema/src/sqlite/repos/tags-repo.ts

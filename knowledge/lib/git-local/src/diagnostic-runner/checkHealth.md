@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/diagnostic-runner.ts#checkHealth
+id: lib/git-local/src/diagnostic-runner.ts#GitDiagnosticRunner.checkHealth
 type: symbol
 name: checkHealth
 filePath: lib/git-local/src/diagnostic-runner.ts

@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/file-discovery.service.ts#discoverFiles
+id: lib/core/src/discovery/file-discovery.service.ts#FileDiscoveryService.discoverFiles
 type: symbol
 name: discoverFiles
 filePath: lib/core/src/discovery/file-discovery.service.ts

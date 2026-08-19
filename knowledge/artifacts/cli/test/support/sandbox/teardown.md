@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/sandbox.ts#teardown
+id: artifacts/cli/test/support/sandbox.ts#TestSandbox.teardown
 type: symbol
 name: teardown
 filePath: artifacts/cli/test/support/sandbox.ts

@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/sandbox.ts#getDb
+id: artifacts/cli/test/support/sandbox.ts#TestSandbox.getDb
 type: symbol
 name: getDb
 filePath: artifacts/cli/test/support/sandbox.ts

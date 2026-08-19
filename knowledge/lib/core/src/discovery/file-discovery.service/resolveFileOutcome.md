@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/file-discovery.service.ts#resolveFileOutcome
+id: lib/core/src/discovery/file-discovery.service.ts#FileDiscoveryService.resolveFileOutcome
 type: symbol
 name: resolveFileOutcome
 filePath: lib/core/src/discovery/file-discovery.service.ts

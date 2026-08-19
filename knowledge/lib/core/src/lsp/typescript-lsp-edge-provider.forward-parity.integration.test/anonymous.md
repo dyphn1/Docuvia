@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts#anonymous@L274
+id: lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts#SettlingLspClient.anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integrati
 # Symbol: anonymous
 
 File: `lib/core/src/lsp/typescript-lsp-edge-provider.forward-parity.integration.test.ts`
-ion.test.ts`

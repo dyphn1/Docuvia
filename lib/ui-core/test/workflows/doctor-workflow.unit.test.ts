@@ -1060,6 +1060,146 @@ describe("DoctorWorkflow", () => {
           knowledgeGit.repairDuplicatePostCommitHook,
         ).not.toHaveBeenCalled();
       });
+
+      // Issue #133: a stale-tier post-commit hook (legacy-only, or current-shaped but predating
+      // the commit-l3-write flush step) is detected as FAIL but `doctor --fix` never repaired it --
+      // only the duplicate-block case did. `installPostCommitHook` already upgrades stale tiers in
+      // place, so `--fix` should dispatch to it and note the repair.
+      it("calls installPostCommitHook and notes the repair when fix is true and the hook is legacy-only", async () => {
+        const git = {
+          readHookFile: vi
+            .fn()
+            .mockImplementation((_cwd: string, hookName: string) =>
+              Promise.resolve(
+                hookName === GitConstants.POST_COMMIT_HOOK_NAME
+                  ? GitConstants.LEGACY_POST_COMMIT_HOOK_CONTENT
+                  : undefined,
+              ),
+            ),
+        };
+        const knowledgeGit = {
+          installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
+          repairDuplicatePostCommitHook: vi.fn(),
+        };
+        docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+        docuviaFactory.register(
+          TOKENS.KnowledgeGitService,
+          () => knowledgeGit as any,
+        );
+
+        const wf = new DoctorWorkflow("/test", logger);
+        const result = await wf.execute({
+          skipDb: true,
+          skipLogs: true,
+          fix: true,
+        });
+
+        expect(knowledgeGit.installPostCommitHook).toHaveBeenCalledWith(
+          "/test",
+        );
+        expect(result.diagnostics["git_hook"].message).toContain("Repaired");
+      });
+
+      it("calls installPostCommitHook and notes the repair when fix is true and the hook predates the commit-l3-write flush step (issue #48 stale)", async () => {
+        const git = {
+          readHookFile: vi
+            .fn()
+            .mockImplementation((_cwd: string, hookName: string) =>
+              Promise.resolve(
+                hookName === GitConstants.POST_COMMIT_HOOK_NAME
+                  ? GitConstants.PRE_FLUSH_L3_POST_COMMIT_HOOK_CONTENT
+                  : undefined,
+              ),
+            ),
+        };
+        const knowledgeGit = {
+          installPostCommitHook: vi.fn().mockResolvedValue({ installed: true }),
+        };
+        docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+        docuviaFactory.register(
+          TOKENS.KnowledgeGitService,
+          () => knowledgeGit as any,
+        );
+
+        const wf = new DoctorWorkflow("/test", logger);
+        const result = await wf.execute({
+          skipDb: true,
+          skipLogs: true,
+          fix: true,
+        });
+
+        expect(knowledgeGit.installPostCommitHook).toHaveBeenCalledWith(
+          "/test",
+        );
+        expect(result.diagnostics["git_hook"].message).toContain("Repaired");
+      });
+
+      it("never calls installPostCommitHook when fix is true but the FAIL is only a resolvability failure (all markers present, npx not resolvable)", async () => {
+        const git = {
+          readHookFile: vi
+            .fn()
+            .mockImplementation((_cwd: string, hookName: string) =>
+              Promise.resolve(
+                hookName === GitConstants.POST_COMMIT_HOOK_NAME
+                  ? GitConstants.POST_COMMIT_HOOK_CONTENT
+                  : undefined,
+              ),
+            ),
+        };
+        const knowledgeGit = { installPostCommitHook: vi.fn() };
+        docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+        docuviaFactory.register(
+          TOKENS.KnowledgeGitService,
+          () => knowledgeGit as any,
+        );
+        vi.mocked(probeDocuviaResolvable).mockResolvedValue(false);
+
+        const wf = new DoctorWorkflow("/test", logger);
+        const result = await wf.execute({
+          skipDb: true,
+          skipLogs: true,
+          fix: true,
+        });
+
+        expect(knowledgeGit.installPostCommitHook).not.toHaveBeenCalled();
+        expect(result.diagnostics["git_hook"].message).toContain(
+          "not resolvable",
+        );
+      });
+
+      it("never calls installPostCommitHook when fix is true and the hook is already current", async () => {
+        const git = {
+          readHookFile: vi
+            .fn()
+            .mockImplementation((_cwd: string, hookName: string) =>
+              Promise.resolve(
+                hookName === GitConstants.POST_COMMIT_HOOK_NAME
+                  ? GitConstants.POST_COMMIT_HOOK_CONTENT
+                  : undefined,
+              ),
+            ),
+          resolveHooksDir: vi.fn().mockResolvedValue("/test/.git/hooks"),
+        };
+        const knowledgeGit = { installPostCommitHook: vi.fn() };
+        docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+        docuviaFactory.register(
+          TOKENS.KnowledgeGitService,
+          () => knowledgeGit as any,
+        );
+        vi.mocked(probeDocuviaResolvable).mockResolvedValue(true);
+
+        const wf = new DoctorWorkflow("/test", logger);
+        const result = await wf.execute({
+          skipDb: true,
+          skipLogs: true,
+          fix: true,
+        });
+
+        expect(knowledgeGit.installPostCommitHook).not.toHaveBeenCalled();
+        expect(result.diagnostics["git_hook"].status).toBe(
+          DiagnosticStatus.PASS,
+        );
+      });
     });
   });
 
@@ -1240,6 +1380,79 @@ describe("DoctorWorkflow", () => {
       });
 
       expect(result.diagnostics["pre_push_hook"]).toBeUndefined();
+    });
+
+    describe("--fix (T6)", () => {
+      // Issue #133: a stale pre-push hook (missing the sync-knowledge / --fallback-ast env-gate /
+      // hooks-check step) is FAIL but `doctor --fix` never repaired it -- it only suggested
+      // re-running `docuvia init`. `installPrePushHook` already upgrades stale tiers in place, so
+      // `--fix` should dispatch to it and note the repair.
+      it("calls installPrePushHook and notes the repair when fix is true and the hook predates the sync-knowledge step", async () => {
+        const git = {
+          readHookFile: vi
+            .fn()
+            .mockImplementation((_cwd: string, hookName: string) =>
+              Promise.resolve(
+                hookName === GitConstants.PRE_PUSH_HOOK_NAME
+                  ? GitConstants.LEGACY_PRE_PUSH_HOOK_CONTENT
+                  : undefined,
+              ),
+            ),
+        };
+        const knowledgeGit = {
+          installPrePushHook: vi.fn().mockResolvedValue({ installed: true }),
+        };
+        docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+        docuviaFactory.register(
+          TOKENS.KnowledgeGitService,
+          () => knowledgeGit as any,
+        );
+
+        const wf = new DoctorWorkflow("/test", logger);
+        const result = await wf.execute({
+          skipDb: true,
+          skipLogs: true,
+          fix: true,
+        });
+
+        expect(knowledgeGit.installPrePushHook).toHaveBeenCalledWith("/test");
+        expect(result.diagnostics["pre_push_hook"].message).toContain(
+          "Repaired",
+        );
+      });
+
+      it("never calls installPrePushHook when fix is true but the FAIL is only a resolvability failure (all markers present, npx not resolvable)", async () => {
+        const git = {
+          readHookFile: vi
+            .fn()
+            .mockImplementation((_cwd: string, hookName: string) =>
+              Promise.resolve(
+                hookName === GitConstants.PRE_PUSH_HOOK_NAME
+                  ? GitConstants.PRE_PUSH_HOOK_CONTENT
+                  : undefined,
+              ),
+            ),
+        };
+        const knowledgeGit = { installPrePushHook: vi.fn() };
+        docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+        docuviaFactory.register(
+          TOKENS.KnowledgeGitService,
+          () => knowledgeGit as any,
+        );
+        vi.mocked(probeDocuviaResolvable).mockResolvedValue(false);
+
+        const wf = new DoctorWorkflow("/test", logger);
+        const result = await wf.execute({
+          skipDb: true,
+          skipLogs: true,
+          fix: true,
+        });
+
+        expect(knowledgeGit.installPrePushHook).not.toHaveBeenCalled();
+        expect(result.diagnostics["pre_push_hook"].message).toContain(
+          "not resolvable",
+        );
+      });
     });
   });
 

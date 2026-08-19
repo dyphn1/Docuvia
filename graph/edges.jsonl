@@ -5277,6 +5277,9 @@
 {"source":"lib/core/src/query/query.service.ts#QueryService.search","target":"lib/core/src/query/query.service.ts#rerankByKeywordCoverage","type":"calls"}
 {"source":"lib/core/src/query/query.service.ts#QueryService.search","target":"lib/core/src/query/query.service.ts#rerankByKeywordCoverage","type":"calls"}
 {"source":"lib/core/src/query/query.service.ts#QueryService.search","target":"lib/core/src/query/query.service.ts#resolveFtsCandidateLimit","type":"calls"}
+{"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
+{"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/core/src/query/query.service.ts#QueryService.query","type":"calls"}
+{"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/core/src/query/query.service.ts#QueryService.search","type":"calls"}
 {"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/core/src/query/query.service.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/core/src/query/query.service.unit.test.ts#anonymous@L129","type":"contains"}
 {"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/core/src/query/query.service.unit.test.ts#anonymous@L14","type":"contains"}
@@ -5308,7 +5311,10 @@
 {"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/core/src/query/query.service.unit.test.ts#anonymous@L93","type":"contains"}
 {"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/core/src/query/query.service.unit.test.ts#seedHubWithNeighbors","type":"calls"}
 {"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/core/src/query/query.service.unit.test.ts#seedHubWithNeighbors","type":"contains"}
+{"source":"lib/core/src/query/query.service.unit.test.ts","target":"lib/schema/src/sqlite/repos/graph-repo.ts#GraphNodesRepo.insertNode","type":"calls"}
 {"source":"lib/core/src/query/query.service.unit.test.ts#seedHubWithNeighbors","target":"lib/contracts/src/index.ts","type":"calls"}
+{"source":"lib/core/src/query/query.service.unit.test.ts#seedHubWithNeighbors","target":"lib/schema/src/sqlite/repos/graph-repo.ts#GraphNodesRepo.insertLink","type":"calls"}
+{"source":"lib/core/src/register.ts","target":"lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.register","type":"calls"}
 {"source":"lib/core/src/register.ts","target":"lib/core/src/register.ts#anonymous","type":"contains"}
 {"source":"lib/core/src/register.ts","target":"lib/core/src/register.ts#anonymous@L105","type":"contains"}
 {"source":"lib/core/src/register.ts","target":"lib/core/src/register.ts#anonymous@L110","type":"contains"}
@@ -5356,10 +5362,12 @@
 {"source":"lib/core/src/temp-files/temp-file-manager.ts","target":"lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.trackFile","type":"contains"}
 {"source":"lib/core/src/temp-files/temp-file-manager.ts#TempFileManager","target":"lib/contracts/src/index.ts","type":"implements"}
 {"source":"lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.constructor","target":"lib/contracts/src/index.ts","type":"calls"}
+{"source":"lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.constructor","target":"lib/contracts/src/logging/logger.ts#createNoopLogger","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.ts","target":"lib/core/src/constants/node-ids.ts#toL2NodeId","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.ts","target":"lib/core/src/constants/node-ids.ts#toL2NodeId","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.ts","target":"lib/core/src/constants/node-ids.ts#toL2NodeId","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.ts","target":"lib/core/src/constants/node-ids.ts#toL2NodeId","type":"calls"}
+{"source":"lib/core/src/topology/topology-builder.service.ts","target":"lib/core/src/constants/node-ids.ts#toL3NodeId","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.ts","target":"lib/core/src/topology/topology-builder.service.ts#anonymous","type":"contains"}
 {"source":"lib/core/src/topology/topology-builder.service.ts","target":"lib/core/src/topology/topology-builder.service.ts#anonymous@L247","type":"contains"}
 {"source":"lib/core/src/topology/topology-builder.service.ts","target":"lib/core/src/topology/topology-builder.service.ts#anonymous@L279","type":"contains"}
@@ -5409,6 +5417,7 @@
 {"source":"lib/core/src/topology/topology-builder.service.ts#TopologyBuilderService.build","target":"lib/core/src/topology/topology-builder.service.ts#buildTagsIndex","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.ts#TopologyBuilderService.build","target":"lib/core/src/topology/topology-builder.service.ts#computeDegrees","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.ts#TopologyBuilderService.build","target":"lib/core/src/topology/topology-builder.service.ts#shouldCollapse","type":"calls"}
+{"source":"lib/core/src/topology/topology-builder.service.unit.test.ts","target":"lib/core/src/topology/topology-builder.service.ts#TopologyBuilderService.build","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.unit.test.ts","target":"lib/core/src/topology/topology-builder.service.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/core/src/topology/topology-builder.service.unit.test.ts","target":"lib/core/src/topology/topology-builder.service.unit.test.ts#anonymous@L106","type":"contains"}
 {"source":"lib/core/src/topology/topology-builder.service.unit.test.ts","target":"lib/core/src/topology/topology-builder.service.unit.test.ts#anonymous@L111","type":"contains"}
@@ -5490,6 +5499,7 @@
 {"source":"lib/core/src/topology/topology-builder.service.unit.test.ts","target":"lib/core/src/topology/topology-builder.service.unit.test.ts#makeLink","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.unit.test.ts","target":"lib/core/src/topology/topology-builder.service.unit.test.ts#makeLink","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.unit.test.ts","target":"lib/core/src/topology/topology-builder.service.unit.test.ts#makeLink","type":"contains"}
+{"source":"lib/core/src/topology/topology-builder.service.unit.test.ts#buildSampleGraph","target":"lib/core/src/topology/topology-builder.service.ts#TopologyBuilderService.build","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.unit.test.ts#buildSampleGraph","target":"lib/core/src/topology/topology-builder.service.unit.test.ts#makeL2","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.unit.test.ts#buildSampleGraph","target":"lib/core/src/topology/topology-builder.service.unit.test.ts#makeL2","type":"calls"}
 {"source":"lib/core/src/topology/topology-builder.service.unit.test.ts#buildSampleGraph","target":"lib/core/src/topology/topology-builder.service.unit.test.ts#makeL3","type":"calls"}
@@ -5537,6 +5547,7 @@
 {"source":"lib/core/src/utils/language-detection.unit.test.ts","target":"lib/core/src/utils/language-detection.unit.test.ts#anonymous@L59","type":"contains"}
 {"source":"lib/core/src/utils/language-detection.unit.test.ts","target":"lib/core/src/utils/language-detection.unit.test.ts#anonymous@L63","type":"contains"}
 {"source":"lib/core/src/utils/language-detection.unit.test.ts","target":"lib/core/src/utils/language-detection.unit.test.ts#anonymous@L9","type":"contains"}
+{"source":"lib/core/test/graph/persist-ast-graph.unit.test.ts","target":"lib/core/src/graph/persist-ast-graph.ts#GraphPersisterService.persist","type":"calls"}
 {"source":"lib/core/test/graph/persist-ast-graph.unit.test.ts","target":"lib/core/test/graph/persist-ast-graph.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/core/test/graph/persist-ast-graph.unit.test.ts","target":"lib/core/test/graph/persist-ast-graph.unit.test.ts#anonymous@L10","type":"contains"}
 {"source":"lib/core/test/graph/persist-ast-graph.unit.test.ts","target":"lib/core/test/graph/persist-ast-graph.unit.test.ts#anonymous@L100","type":"contains"}
@@ -5546,6 +5557,7 @@
 {"source":"lib/core/test/graph/persist-ast-graph.unit.test.ts","target":"lib/core/test/graph/persist-ast-graph.unit.test.ts#anonymous@L44","type":"contains"}
 {"source":"lib/core/test/graph/persist-ast-graph.unit.test.ts","target":"lib/core/test/graph/persist-ast-graph.unit.test.ts#anonymous@L7","type":"contains"}
 {"source":"lib/core/test/graph/persist-ast-graph.unit.test.ts","target":"lib/core/test/graph/persist-ast-graph.unit.test.ts#anonymous@L9","type":"contains"}
+{"source":"lib/core/test/temp-files/temp-file-manager.unit.test.ts","target":"lib/core/src/temp-files/temp-file-manager.ts#TempFileManager.accessFile","type":"calls"}
 {"source":"lib/core/test/temp-files/temp-file-manager.unit.test.ts","target":"lib/core/test/temp-files/temp-file-manager.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/core/test/temp-files/temp-file-manager.unit.test.ts","target":"lib/core/test/temp-files/temp-file-manager.unit.test.ts#anonymous@L104","type":"contains"}
 {"source":"lib/core/test/temp-files/temp-file-manager.unit.test.ts","target":"lib/core/test/temp-files/temp-file-manager.unit.test.ts#anonymous@L121","type":"contains"}
@@ -9546,6 +9558,7 @@
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts#removeDocuviaDataDir","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
+{"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts#removeDocuviaDataDir","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.ts#removeDocuviaDataDir","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts#anonymous","type":"contains"}
@@ -9553,6 +9566,7 @@
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts#anonymous@L14","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts#anonymous@L18","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/remove-docuvia-dir.unit.test.ts#anonymous@L31","type":"contains"}
+{"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts","target":"lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.resolve","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts#UninstallHooksWorkflow","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts#UninstallHooksWorkflow.anonymous","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts#UninstallHooksWorkflow.anonymous@L35","type":"contains"}
@@ -9565,6 +9579,8 @@
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/contracts/src/index.ts","type":"calls"}
+{"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/contracts/src/testing/mocks.ts#createMockLogger","type":"calls"}
+{"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.ts#UninstallHooksWorkflow.execute","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts#anonymous@L101","type":"contains"}
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts#anonymous@L106","type":"contains"}
@@ -9588,6 +9604,7 @@
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts#makeMockKnowledgeGitService","type":"calls"}
 {"source":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/uninstall/uninstall-hooks-workflow.unit.test.ts#makeMockKnowledgeGitService","type":"contains"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/analyze/tier-b-queue.ts#appendTierBQueueEntries","type":"calls"}
+{"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts","target":"lib/ui-core/src/workflows/doctor/doctor-workflow.ts#DoctorWorkflow.execute","type":"calls"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#anonymous","type":"contains"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#anonymous@L1003","type":"contains"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#anonymous@L1006","type":"contains"}
@@ -9884,6 +9901,8 @@
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#typescript@L1664","type":"contains"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#typescript@L1705","type":"contains"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#typescript@L1744","type":"contains"}
+{"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerGit","target":"lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.register","type":"calls"}
+{"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners","target":"lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.register","type":"calls"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L2197","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#makeMockStore@L2218","type":"calls"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L2197","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#makeMockStore@L2218","type":"calls"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L2197","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#makeMockStore@L2218","type":"calls"}
@@ -9903,6 +9922,9 @@
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L2197","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerGit@L2207","type":"calls"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L2197","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerGit@L2207","type":"calls"}
 {"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L2197","target":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerGit@L2207","type":"calls"}
+{"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L365","target":"lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.register","type":"calls"}
+{"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L461","target":"lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.register","type":"calls"}
+{"source":"lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L578","target":"lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.register","type":"calls"}
 {"source":"test/layer-boundary.test.ts","target":"test/layer-boundary.test.ts#anonymous","type":"contains"}
 {"source":"test/layer-boundary.test.ts","target":"test/layer-boundary.test.ts#anonymous@L106","type":"contains"}
 {"source":"test/layer-boundary.test.ts","target":"test/layer-boundary.test.ts#anonymous@L116","type":"contains"}

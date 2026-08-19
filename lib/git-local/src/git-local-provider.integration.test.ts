@@ -244,6 +244,47 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     expect(await provider.getHeadSha(tmpDir)).toBe(headSha.trim());
   });
 
+  it("listWorktrees returns this workspace plus every sibling worktree with its branch (issue #137 -- the per-worktree divergence diagnostic's input)", async () => {
+    fs.writeFileSync(path.join(tmpDir, "tracked.ts"), "export const a = 1;\n");
+    await git(tmpDir, ["add", "tracked.ts"]);
+    await git(tmpDir, ["commit", "-m", "initial commit"]);
+    await git(tmpDir, [
+      "worktree",
+      "add",
+      "-b",
+      "feat/b",
+      path.join(tmpDir, "worktree-b"),
+    ]);
+
+    const worktrees = await provider.listWorktrees(tmpDir);
+
+    // porcelain emits realpaths (e.g. /private/var/... on macOS even when tmpDir is /var/...),
+    // and the main worktree's branch name depends on init.defaultBranch -- so assert the sibling
+    // entry exactly and only require the main entry to be present by realpath.
+    const mainEntry = worktrees.find((w) => w.path === fs.realpathSync(tmpDir));
+    expect(mainEntry).toBeDefined();
+    expect(
+      worktrees.find(
+        (w) => w.path === fs.realpathSync(path.join(tmpDir, "worktree-b")),
+      ),
+    ).toEqual({
+      path: fs.realpathSync(path.join(tmpDir, "worktree-b")),
+      branch: "feat/b",
+    });
+    expect(worktrees).toHaveLength(2);
+  });
+
+  it("listWorktrees degrades to an empty array when the directory isn't a git worktree at all (never throws)", async () => {
+    const notARepo = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-git-local-not-repo-"),
+    );
+    try {
+      expect(await provider.listWorktrees(notARepo)).toEqual([]);
+    } finally {
+      fs.rmSync(notARepo, { recursive: true, force: true });
+    }
+  });
+
   it("getBranchTipSha returns the branch's tip sha, and undefined when the branch doesn't exist yet", async () => {
     expect(
       await provider.getBranchTipSha(tmpDir, KNOWLEDGE_BRANCH),

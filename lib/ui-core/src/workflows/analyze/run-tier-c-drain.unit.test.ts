@@ -103,6 +103,7 @@ function makeLlmClient(
     })),
     streamChatCompletion: vi.fn(),
     checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+    checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
   };
 }
 
@@ -445,6 +446,7 @@ describe("runTierCDrain() -- persistence and honest degradation", () => {
         ),
       streamChatCompletion: vi.fn(),
       checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
     });
 
     const result = await runTierCDrain(baseDeps({ workspaceRoot, store, git }));
@@ -779,6 +781,7 @@ describe("runTierCDrain() -- poison-pill eviction of a permanently-failing head-
         }),
       streamChatCompletion: vi.fn(),
       checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
     });
 
     const runDeps = () =>

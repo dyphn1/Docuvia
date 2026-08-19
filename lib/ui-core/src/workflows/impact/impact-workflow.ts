@@ -3,6 +3,7 @@ import {
   TOKENS,
   DocuviaError,
   ErrorCodes,
+  UTF8_ENCODING,
   type ILogger,
 } from "@workspace/contracts";
 import { IMPACT_EVENTS, IMPACT_MESSAGES } from "./impact-messages.js";
@@ -10,6 +11,8 @@ import { appendImpactLogLine } from "./impact-log-writer.js";
 import type { ImpactResult } from "./impact-result.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { ensureHydrated } from "../../utils/ensure-hydrated.js";
+import * as path from "path";
+import * as fs from "fs/promises";
 
 /**
  * The `impact` workflow — 1-hop blast-radius lookup by target name (exact-then-LIKE), via the
@@ -96,13 +99,56 @@ export class ImpactWorkflow {
         .resolve(TOKENS.TierBCoverageHintProvider)
         .resolve(store, node?.filePath, blastRadius.length === 0, false);
 
+      // Issue #136: a factory/registry-mediated dependency (docuviaFactory.register/resolve,
+      // TOKENS.*) is invisible to the static edge graph -- an empty blast radius for such a
+      // symbol is "partial coverage", never a confident LOW. Emits the note so the CLI (and any
+      // `--format=json` consumer) can distinguish "confirmed no dependents" from "the graph can't
+      // see the dependents".
+      const coverageNote = await this.resolveCoverageNote(
+        node,
+        blastRadius.length,
+      );
+
       return {
         blastRadius,
         riskLevel,
+        ...(coverageNote ? { coverageNote } : {}),
         ...(tierBCoverage ? { tierBCoverage } : {}),
       };
     } finally {
       await store.close();
     }
+  }
+
+  /** Issue #136: the registry-mediated coverage note, or `undefined` when the blast radius is
+   *  non-empty (a confident answer needs no note) or the resolved node is missing/unreadable.
+   *  Extracted out of `execute()` to keep its cyclomatic complexity under the ESLint budget. */
+  private async resolveCoverageNote(
+    node: { filePath?: string } | undefined,
+    blastRadiusLength: number,
+  ): Promise<string | undefined> {
+    if (blastRadiusLength === 0 && node?.filePath) {
+      if (await this.fileUsesFactoryRegistry(node.filePath)) {
+        return IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE;
+      }
+    }
+    return undefined;
+  }
+
+  /** Issue #136: `true` when `filePath` (workspace-relative) contains the docuviaFactory registry
+   *  pattern (`docuviaFactory`, `TOKENS.`) -- a heuristic for "this symbol's dependents may be
+   *  registry-mediated and thus invisible to the static edge graph". An unreadable file (deleted
+   *  on disk, path mismatch) is `false`, never an error. */
+  private async fileUsesFactoryRegistry(filePath: string): Promise<boolean> {
+    let content: string;
+    try {
+      content = await fs.readFile(
+        path.join(this.workspaceRoot, filePath),
+        UTF8_ENCODING,
+      );
+    } catch {
+      return false;
+    }
+    return /docuviaFactory|TOKENS\./.test(content);
   }
 }

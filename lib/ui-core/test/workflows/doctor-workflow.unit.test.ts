@@ -6,12 +6,20 @@ import {
   DiagnosticStatus,
   DocuviaError,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/contracts";
+import {
+  GitConstants,
+  L3DecisionSources,
+  ANALYZE_LOG_FILE_NAME,
+  DOCUVIA_DIR_NAME,
+  DOCUVIA_LOGS_DIR_NAME,
+} from "@workspace/contracts";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { probeDocuviaResolvable } from "../../src/workflows/doctor/git-hook-resolvability.js";
 import { DOCTOR_MESSAGES } from "../../src/workflows/doctor/doctor-messages.js";
 import { appendTierBQueueEntries } from "../../src/workflows/analyze/tier-b-queue.js";
+import { TierCCandidateKinds } from "../../src/workflows/analyze/tier-c-queue.js";
+import { ANALYZE_EVENTS } from "../../src/workflows/analyze/analyze-messages.js";
 
 vi.mock("fs/promises");
 vi.mock("../../src/workflows/doctor/git-hook-resolvability.js", () => ({
@@ -46,7 +54,7 @@ describe("DoctorWorkflow", () => {
       llm_reachability: {
         status: DiagnosticStatus.PASS,
         message:
-          "Not configured -- Tier C is inactive (AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL not set).",
+          "Not configured -- Tier C is inactive (AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL or AI_DOCUVIA_MODEL not set).",
       },
       agent_hooks_claude: {
         status: DiagnosticStatus.PASS,
@@ -1259,12 +1267,43 @@ describe("DoctorWorkflow", () => {
       expect(result.allPassed).toBe(true);
     });
 
-    it("reports PASS 'reachable' when configured and checkAvailability resolves available:true", async () => {
+    it("reports PASS 'reachable' when configured and checkBridgeReachability resolves available:true (issue #134 -- probes the same /v1/chat/completions route Tier C's drain dials, not a bare-baseUrl GET)", async () => {
       const llmClient = {
         initialize: vi.fn(),
         chatCompletion: vi.fn(),
         streamChatCompletion: vi.fn(),
-        checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+        checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
+      };
+      docuviaFactory.register(TOKENS.LlmClient, () => () => llmClient as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipDb: true,
+        skipGit: true,
+        skipLogs: true,
+        llmBaseUrl: "http://127.0.0.1:8317",
+        llmModel: "gpt-4o-mini",
+      });
+
+      expect(llmClient.initialize).toHaveBeenCalledWith({
+        baseUrl: "http://127.0.0.1:8317",
+        apiKey: undefined,
+      });
+      expect(llmClient.checkBridgeReachability).toHaveBeenCalledWith(
+        "gpt-4o-mini",
+      );
+      expect(result.diagnostics["llm_reachability"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports PASS 'not configured' when a baseUrl is supplied but no model is (the bridge probe needs a model to dial the completions route)", async () => {
+      const llmClient = {
+        initialize: vi.fn(),
+        chatCompletion: vi.fn(),
+        streamChatCompletion: vi.fn(),
+        checkBridgeReachability: vi.fn(),
       };
       docuviaFactory.register(TOKENS.LlmClient, () => () => llmClient as any);
 
@@ -1276,22 +1315,20 @@ describe("DoctorWorkflow", () => {
         llmBaseUrl: "http://127.0.0.1:8317",
       });
 
-      expect(llmClient.initialize).toHaveBeenCalledWith({
-        baseUrl: "http://127.0.0.1:8317",
-        apiKey: undefined,
+      expect(llmClient.checkBridgeReachability).not.toHaveBeenCalled();
+      expect(result.diagnostics["llm_reachability"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: expect.stringContaining("Not configured"),
       });
-      expect(result.diagnostics["llm_reachability"].status).toBe(
-        DiagnosticStatus.PASS,
-      );
       expect(result.allPassed).toBe(true);
     });
 
-    it("reports FAIL when configured but unreachable -- the one real defect this check reports", async () => {
+    it("reports FAIL when configured but the bridge rejects the probe -- the one real defect this check reports (issue #134's live repro)", async () => {
       const llmClient = {
         initialize: vi.fn(),
         chatCompletion: vi.fn(),
         streamChatCompletion: vi.fn(),
-        checkAvailability: vi
+        checkBridgeReachability: vi
           .fn()
           .mockResolvedValue({ available: false, reason: "ECONNREFUSED" }),
       };
@@ -1303,6 +1340,7 @@ describe("DoctorWorkflow", () => {
         skipGit: true,
         skipLogs: true,
         llmBaseUrl: "http://127.0.0.1:8317",
+        llmModel: "gpt-4o-mini",
       });
 
       expect(result.diagnostics["llm_reachability"].status).toBe(
@@ -1311,15 +1349,18 @@ describe("DoctorWorkflow", () => {
       expect(result.diagnostics["llm_reachability"].message).toContain(
         "ECONNREFUSED",
       );
+      expect(result.diagnostics["llm_reachability"].suggestion).toBe(
+        DOCTOR_MESSAGES.LLM_UNREACHABLE_SUGGESTION,
+      );
       expect(result.allPassed).toBe(false);
     });
 
-    it("skips the check entirely (no diagnostic key, checkAvailability never called) when skipLlm is set -- escape hatch for callers spawning several doctor processes at once (e.g. SQLite concurrency tests), where simultaneous real network probes can time out under contention", async () => {
+    it("skips the check entirely (no diagnostic key, checkBridgeReachability never called) when skipLlm is set -- escape hatch for callers spawning several doctor processes at once (e.g. SQLite concurrency tests), where simultaneous real network probes can time out under contention", async () => {
       const llmClient = {
         initialize: vi.fn(),
         chatCompletion: vi.fn(),
         streamChatCompletion: vi.fn(),
-        checkAvailability: vi
+        checkBridgeReachability: vi
           .fn()
           .mockResolvedValue({ available: false, reason: "timeout" }),
       };
@@ -1332,10 +1373,11 @@ describe("DoctorWorkflow", () => {
         skipLogs: true,
         skipLlm: true,
         llmBaseUrl: "http://127.0.0.1:8317",
+        llmModel: "gpt-4o-mini",
       });
 
       expect(result.diagnostics["llm_reachability"]).toBeUndefined();
-      expect(llmClient.checkAvailability).not.toHaveBeenCalled();
+      expect(llmClient.checkBridgeReachability).not.toHaveBeenCalled();
       expect(result.allPassed).toBe(true);
     });
   });
@@ -1505,6 +1547,649 @@ describe("DoctorWorkflow", () => {
       expect(result.diagnostics["lsp_binary_typescript"]).toBeUndefined();
       expect(tsCheck).not.toHaveBeenCalled();
       expect(result.allPassed).toBe(true);
+    });
+  });
+
+  describe("Tier C Queue Check (issue #134 -- the stuck-queue half llm_reachability can't see)", () => {
+    function registerPassingDbRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function makeMockStore(queue: unknown[]) {
+      const metaMap = new Map<string, string>();
+      if (queue.length > 0) {
+        metaMap.set(GitConstants.META_KEY_TIER_C_QUEUE, JSON.stringify(queue));
+      }
+      return {
+        projects: { getFirst: vi.fn().mockReturnValue({ id: 1 }) },
+        graph: {
+          count: vi.fn().mockReturnValue({ l2Nodes: 1, l3Nodes: 0 }),
+          getSemanticCoverage: vi.fn().mockReturnValue({
+            totalNodes: 1,
+            describedNodes: 1,
+          }),
+        },
+        files: {
+          getTierBCoverage: vi.fn().mockReturnValue({
+            totalFiles: 1,
+            processedFiles: 1,
+          }),
+        },
+        l3: { getAllExportable: vi.fn().mockReturnValue([]) },
+        meta: {
+          get: vi.fn((key: string) => metaMap.get(key)),
+          set: vi.fn((key: string, value: string) => {
+            metaMap.set(key, value);
+          }),
+        },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    function registerStore(queue: unknown[]) {
+      const store = makeMockStore(queue);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      return store;
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(result.diagnostics["tier_c_queue"]).toBeUndefined();
+    });
+
+    it("is not evaluated at all when skipDb is set", async () => {
+      const openStore = vi.fn();
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStore);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      await wf.execute({ skipDb: true, skipGit: true, skipLogs: true });
+
+      expect(openStore).not.toHaveBeenCalled();
+    });
+
+    it("reports PASS when the queue is empty", async () => {
+      registerPassingDbRunners();
+      registerStore([]);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(result.diagnostics["tier_c_queue"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "Tier C queue: 0 pending, last drain processed 0 item(s).",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports FAIL (never drained) when the queue is non-empty but analyze.log has no tierC.summary -- a queue that has sat forever with zero evidence of a drain", async () => {
+      registerPassingDbRunners();
+      registerStore([
+        {
+          kind: TierCCandidateKinds.COMMIT_MESSAGE,
+          target: "sha1",
+          commitSha: "sha1",
+        },
+      ]);
+      vi.mocked(fs.readFile).mockRejectedValue(new Error("ENOENT"));
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(result.diagnostics["tier_c_queue"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["tier_c_queue"].message).toContain(
+        "no drain has ever completed",
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("reports FAIL (stuck) when the queue is non-empty and the last drain processed 0, surfacing the item_failed reason -- issue #134's exact `bridge-unreachable` repro", async () => {
+      registerPassingDbRunners();
+      registerStore([
+        {
+          kind: TierCCandidateKinds.COMMIT_MESSAGE,
+          target: "sha1",
+          commitSha: "sha1",
+        },
+      ]);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        JSON.stringify({
+          event: ANALYZE_EVENTS.TIER_C_ITEM_FAILED,
+          reason: "bridge-unreachable",
+        }) +
+          "\n" +
+          JSON.stringify({
+            event: ANALYZE_EVENTS.TIER_C_SUMMARY,
+            processed: 0,
+            persisted: 0,
+          }) +
+          "\n",
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(result.diagnostics["tier_c_queue"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["tier_c_queue"].message).toContain(
+        "bridge-unreachable",
+      );
+      expect(result.diagnostics["tier_c_queue"].message).toContain("1 pending");
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("reports PASS when the queue is non-empty and the last drain actually processed items", async () => {
+      registerPassingDbRunners();
+      registerStore([
+        {
+          kind: TierCCandidateKinds.COMMIT_MESSAGE,
+          target: "sha1",
+          commitSha: "sha1",
+        },
+      ]);
+      vi.mocked(fs.readFile).mockResolvedValue(
+        JSON.stringify({
+          event: ANALYZE_EVENTS.TIER_C_SUMMARY,
+          processed: 5,
+          persisted: 5,
+        }) + "\n",
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(result.diagnostics["tier_c_queue"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["tier_c_queue"].message).toContain("5 item(s)");
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is skipped silently (no diagnostic key) when the db can't be opened -- already covered by db_found's own FAIL", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("not found"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockRejectedValue(new Error("ENOENT")),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["tier_c_queue"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
+    });
+  });
+
+  describe("L2 Semantic Coverage Check (issue #135 -- the semantically-empty graph graph_empty can't see)", () => {
+    function registerPassingDbRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function makeMockStore(coverage: {
+      totalNodes: number;
+      describedNodes: number;
+    }) {
+      return {
+        projects: { getFirst: vi.fn().mockReturnValue({ id: 1 }) },
+        graph: {
+          count: vi.fn().mockReturnValue({ l2Nodes: 1, l3Nodes: 0 }),
+          getSemanticCoverage: vi.fn().mockReturnValue(coverage),
+        },
+        files: {
+          getTierBCoverage: vi.fn().mockReturnValue({
+            totalFiles: 1,
+            processedFiles: 1,
+          }),
+        },
+        l3: { getAllExportable: vi.fn().mockReturnValue([]) },
+        meta: {
+          get: vi.fn().mockReturnValue(undefined),
+          set: vi.fn(),
+        },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    function registerStore(coverage: {
+      totalNodes: number;
+      describedNodes: number;
+    }) {
+      const store = makeMockStore(coverage);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      return store;
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(result.diagnostics["l2_semantic_coverage"]).toBeUndefined();
+    });
+
+    it("is not evaluated at all when skipDb is set", async () => {
+      const openStore = vi.fn();
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStore);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      await wf.execute({ skipDb: true, skipGit: true, skipLogs: true });
+
+      expect(openStore).not.toHaveBeenCalled();
+    });
+
+    it("reports PASS with the coverage counts when coverage is at or above the threshold", async () => {
+      registerPassingDbRunners();
+      const store = registerStore({ totalNodes: 1000, describedNodes: 200 });
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(result.diagnostics["l2_semantic_coverage"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message: "L2 semantic coverage: 200/1000 node(s) carry a description.",
+      });
+      expect(result.allPassed).toBe(true);
+      expect(store.close).toHaveBeenCalled();
+    });
+
+    it("reports FAIL with an actionable suggestion when coverage is below the threshold AND Tier C is configured -- issue #135's 0/6285 live state", async () => {
+      registerPassingDbRunners();
+      registerStore({ totalNodes: 6285, describedNodes: 0 });
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({
+        skipGit: true,
+        skipLogs: true,
+        llmBaseUrl: "http://127.0.0.1:8317",
+      });
+
+      expect(result.diagnostics["l2_semantic_coverage"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["l2_semantic_coverage"].message).toContain(
+        "0/6285",
+      );
+      expect(result.diagnostics["l2_semantic_coverage"].suggestion).toBe(
+        DOCTOR_MESSAGES.L2_SEMANTIC_COVERAGE_LOW_SUGGESTION,
+      );
+      expect(result.allPassed).toBe(false);
+    });
+
+    it("reports a visible PASS for low coverage when Tier C is NOT configured -- structural-only is a legitimate state (descriptions can't be written without an LLM bridge), never a permanent red", async () => {
+      registerPassingDbRunners();
+      registerStore({ totalNodes: 6285, describedNodes: 0 });
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(result.diagnostics["l2_semantic_coverage"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message:
+          "L2 semantic coverage: 0/6285 node(s) carry a description (structural-only graph -- Tier C LLM enrichment is not configured, so descriptions cannot be written yet).",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports PASS for an empty graph (totalNodes 0 is treated as full coverage, not a semantic defect -- graph_empty owns the empty-graph verdict)", async () => {
+      registerPassingDbRunners();
+      registerStore({ totalNodes: 0, describedNodes: 0 });
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipGit: true, skipLogs: true });
+
+      expect(result.diagnostics["l2_semantic_coverage"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is skipped silently (no diagnostic key) when the db can't be opened -- already covered by db_found's own FAIL", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("not found"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockRejectedValue(new Error("ENOENT")),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["l2_semantic_coverage"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
+    });
+  });
+
+  describe("Worktree Divergence Check (issue #137 -- per-worktree knowledge-graph fragmentation)", () => {
+    function registerPassingGitRunners() {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("ENOENT"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function registerGit(worktrees: { path: string; branch?: string }[]) {
+      docuviaFactory.register(
+        TOKENS.GitProvider,
+        () => ({ listWorktrees: vi.fn().mockResolvedValue(worktrees) }) as any,
+      );
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GitProvider isn't registered", async () => {
+      registerPassingGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["worktree_divergence"]).toBeUndefined();
+    });
+
+    it("is not evaluated at all when skipGit is set", async () => {
+      const git = { listWorktrees: vi.fn() };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      await wf.execute({ skipDb: true, skipGit: true, skipLogs: true });
+
+      expect(git.listWorktrees).not.toHaveBeenCalled();
+    });
+
+    it("reports PASS when this workspace is the only worktree", async () => {
+      registerPassingGitRunners();
+      registerGit([{ path: "/test" }]);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["worktree_divergence"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message:
+          "1 worktree(s) total; no sibling worktree carries its own .docuvia graph.",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports PASS when a sibling worktree exists but carries no local.db -- one shared graph, the healthy state", async () => {
+      registerPassingGitRunners();
+      registerGit([{ path: "/test" }, { path: "/test/worktree-b" }]);
+      vi.mocked(fs.stat).mockImplementation((p) => {
+        const pStr = String(p);
+        if (pStr.includes(".docuvia") && pStr.includes("local.db")) {
+          return Promise.reject(new Error("ENOENT"));
+        }
+        return Promise.reject(new Error("ENOENT"));
+      });
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(fs.stat).toHaveBeenCalledWith(
+        path.join("/test/worktree-b", ".docuvia", "local.db"),
+      );
+      expect(result.diagnostics["worktree_divergence"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports FAIL listing the sibling paths when a sibling worktree carries its own local.db", async () => {
+      registerPassingGitRunners();
+      registerGit([
+        { path: "/test" },
+        { path: "/test/worktree-b", branch: "feat/b" },
+      ]);
+      vi.mocked(fs.stat).mockImplementation((p) => {
+        const pStr = String(p);
+        if (pStr.includes("worktree-b") && pStr.endsWith("local.db")) {
+          return Promise.resolve({} as any);
+        }
+        return Promise.reject(new Error("ENOENT"));
+      });
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(result.diagnostics["worktree_divergence"].status).toBe(
+        DiagnosticStatus.FAIL,
+      );
+      expect(result.diagnostics["worktree_divergence"].message).toContain(
+        "/test/worktree-b",
+      );
+      expect(result.diagnostics["worktree_divergence"].suggestion).toBe(
+        DOCTOR_MESSAGES.WORKTREE_DIVERGENCE_SUGGESTION,
+      );
+      expect(result.allPassed).toBe(false);
+    });
+  });
+
+  describe("Agent-Authored Adoption Check (issue #139 -- docuvia-first workflow adoption, always PASS/informational)", () => {
+    function registerPassingDbAndGitRunners() {
+      vi.mocked(fs.stat).mockResolvedValue({} as any);
+      docuviaFactory.register(TOKENS.DiagnosticRunnerDb, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+    }
+
+    function registerGit(headSha: string, changedFiles: { file: string }[]) {
+      docuviaFactory.register(
+        TOKENS.GitProvider,
+        () =>
+          ({
+            getHeadSha: vi.fn().mockResolvedValue(headSha),
+            getChangedFilesSince: vi.fn().mockResolvedValue(changedFiles),
+          }) as any,
+      );
+    }
+
+    function makeMockStore(
+      meta: Record<string, string>,
+      agentAuthoredL3: number,
+    ) {
+      return {
+        projects: { getFirst: vi.fn().mockReturnValue({ id: 1 }) },
+        graph: {
+          count: vi.fn().mockReturnValue({ l2Nodes: 1, l3Nodes: 0 }),
+          getSemanticCoverage: vi.fn().mockReturnValue({
+            totalNodes: 1,
+            describedNodes: 1,
+          }),
+        },
+        files: {
+          getTierBCoverage: vi.fn().mockReturnValue({
+            totalFiles: 1,
+            processedFiles: 1,
+          }),
+        },
+        l3: {
+          getAllExportable: vi.fn().mockReturnValue(
+            Array.from({ length: agentAuthoredL3 }, () => ({
+              source: L3DecisionSources.AGENT_AUTHORED,
+            })),
+          ),
+        },
+        meta: {
+          get: vi.fn((key: string) => meta[key]),
+          set: vi.fn(),
+        },
+        close: vi.fn().mockResolvedValue(undefined),
+      };
+    }
+
+    function registerStore(
+      meta: Record<string, string>,
+      agentAuthoredL3: number,
+    ) {
+      const store = makeMockStore(meta, agentAuthoredL3);
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      return store;
+    }
+
+    /** Routes analyze.log reads to a fresh tierC.summary line (so the in-flight post-commit check
+     *  and the tier_c_queue check stay PASS) and pending-l3-decisions.json reads to the given
+     *  decisions. Everything else (analyze.log absent) rejects. */
+    function mockFsReads(decisions: unknown[]) {
+      vi.mocked(fs.readFile).mockImplementation((p) => {
+        const pStr = String(p);
+        if (pStr.endsWith(ANALYZE_LOG_FILE_NAME)) {
+          return Promise.resolve(
+            JSON.stringify({
+              ts: new Date().toISOString(),
+              event: ANALYZE_EVENTS.TIER_C_SUMMARY,
+              processed: 3,
+              persisted: 3,
+            }) + "\n",
+          );
+        }
+        if (pStr.includes("pending-l3-decisions.json")) {
+          return Promise.resolve(JSON.stringify({ decisions }) + "\n");
+        }
+        return Promise.reject(new Error("ENOENT"));
+      });
+    }
+
+    it("is skipped silently (no diagnostic key, no crash) when GraphStoreOpener isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+    });
+
+    it("is skipped silently when GitProvider isn't registered", async () => {
+      registerPassingDbAndGitRunners();
+      registerStore({}, 0);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+    });
+
+    it("is not evaluated at all when skipDb or skipGit is set", async () => {
+      const openStore = vi.fn();
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () => openStore);
+      const git = { getHeadSha: vi.fn(), getChangedFilesSince: vi.fn() };
+      docuviaFactory.register(TOKENS.GitProvider, () => git as any);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      await wf.execute({ skipDb: true, skipLogs: true });
+
+      expect(openStore).not.toHaveBeenCalled();
+      expect(git.getChangedFilesSince).not.toHaveBeenCalled();
+    });
+
+    it("reports PASS (skipped) when nothing changed since the last ingestion -- no recently-changed files to evaluate", async () => {
+      registerPassingDbAndGitRunners();
+      const store = registerStore(
+        { [GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA]: "aaa111" },
+        0,
+      );
+      registerGit("aaa111", []);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["agent_authored_adoption"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message:
+          "No recently-changed files to evaluate for agent-authored staging.",
+      });
+      expect(result.allPassed).toBe(true);
+      expect(store.close).toHaveBeenCalled();
+    });
+
+    it("reports PASS with the adoption numbers when changed files carry staged decisions and agent-authored L3 rows exist in the graph", async () => {
+      registerPassingDbAndGitRunners();
+      registerStore(
+        { [GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA]: "aaa111" },
+        4,
+      );
+      registerGit("bbb222", [{ file: "src/a.ts" }]);
+      mockFsReads([
+        {
+          filePath: "src/a.ts",
+          title: "a decision",
+          content: "content",
+          nodeType: "decision",
+          confidence: 0.9,
+          stagedAt: "now",
+        },
+      ]);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["agent_authored_adoption"]).toEqual({
+        status: DiagnosticStatus.PASS,
+        message:
+          "Agent-authored decisions: 4 flushed in graph, 1 staged pending flush; 0 of 1 recently-changed file(s) carry no staged decision.",
+      });
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("reports PASS but makes a near-zero-adoption state visible -- changed files with no staged decisions and no agent-authored L3 rows ever", async () => {
+      registerPassingDbAndGitRunners();
+      registerStore(
+        { [GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA]: "aaa111" },
+        0,
+      );
+      registerGit("bbb222", [{ file: "src/a.ts" }, { file: "src/b.ts" }]);
+      mockFsReads([]);
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["agent_authored_adoption"].status).toBe(
+        DiagnosticStatus.PASS,
+      );
+      expect(result.diagnostics["agent_authored_adoption"].message).toContain(
+        "0 flushed in graph",
+      );
+      expect(result.diagnostics["agent_authored_adoption"].message).toContain(
+        "2 of 2 recently-changed file(s) carry no staged decision",
+      );
+      expect(result.allPassed).toBe(true);
+    });
+
+    it("is skipped silently (no diagnostic key) when the db can't be opened -- already covered by db_found's own FAIL", async () => {
+      vi.mocked(fs.stat).mockRejectedValue(new Error("not found"));
+      docuviaFactory.register(TOKENS.DiagnosticRunnerGit, () => ({
+        checkHealth: vi.fn().mockResolvedValue({}),
+      }));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockRejectedValue(new Error("ENOENT")),
+      );
+
+      const wf = new DoctorWorkflow("/test", logger);
+      const result = await wf.execute({ skipLogs: true });
+
+      expect(result.diagnostics["agent_authored_adoption"]).toBeUndefined();
+      expect(result.diagnostics["db_found"].status).toBe(DiagnosticStatus.FAIL);
     });
   });
 });

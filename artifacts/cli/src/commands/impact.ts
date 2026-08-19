@@ -47,11 +47,15 @@ function printBlastRadius(
   blastRadius: BlastRadiusEntry[],
   riskLevel: RiskLevel,
   tierBCoverage?: TierBCoverageHint,
+  coverageNote?: string,
 ): void {
   ui.header(UI_MESSAGES.IMPACT_BLAST_RADIUS_HEADER);
 
   if (blastRadius.length === 0) {
     ui.warn(UI_MESSAGES.IMPACT_NO_DEPENDENTS);
+    if (coverageNote) {
+      ui.warn(coverageNote);
+    }
     if (
       tierBCoverage &&
       tierBCoverage.workspaceFilesProcessed < tierBCoverage.workspaceFilesTotal
@@ -105,7 +109,12 @@ function printHumanResult(
       FORMAT_MARKERS.DOUBLE_QUOTE,
   );
   ui.log("");
-  printBlastRadius(result.blastRadius, result.riskLevel, result.tierBCoverage);
+  printBlastRadius(
+    result.blastRadius,
+    result.riskLevel,
+    result.tierBCoverage,
+    result.coverageNote,
+  );
 }
 
 /** Unresolved-target rendering, human vs `--format=json` -- `null` is a legal JSON literal so a

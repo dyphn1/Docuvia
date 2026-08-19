@@ -223,6 +223,17 @@ export const GitConstants = {
   DEFAULT_TIER_B_COVERAGE_FAIL_THRESHOLD: 0.5,
 
   /**
+   * Default L2 semantic-coverage fail threshold (issue #135) -- a fraction (not a percentage):
+   * `doctor`'s `l2_semantic_coverage` diagnostic FAILs when `describedNodes / totalNodes`
+   * (`IGraphNodesRepo.getSemanticCoverage()`) falls below this. Deliberately low (0.1): Tier C
+   * enrichment is expected to be sparse on a healthy graph (not every node needs a description),
+   * but 0/6285 (issue #135's live state) must read as FAIL -- that's "semantically dead", not
+   * "normal". Placeholder value, not derived from any prior measurement -- tune if real usage
+   * shows it's off.
+   */
+  DEFAULT_L2_SEMANTIC_COVERAGE_FAIL_THRESHOLD: 0.1,
+
+  /**
    * `docuvia_meta` key holding the count of *consecutive* Tier B batches that drained an
    * attemptable set and produced zero progress (0 files processed AND 0 edges applied) -- the
    * zero-progress watchdog's cross-batch accumulator (2026-08 moby benchmark follow-up, issue #22

@@ -314,6 +314,15 @@ export interface IGraphNodesRepo {
    * (IMPT-001's documented single-hop heuristic); `query`'s `getContext()` is the one place that
    * filters `contains` out, since a symbol's own containing file isn't a "caller".
    */
+  /**
+   * Issue #135: L2 semantic coverage — how many `l2_nodes` rows carry a non-empty `description`.
+   * One cheap aggregate (two `COUNT(*)`-shaped reads, no row materialization), safe to call on
+   * every `doctor` invocation even against a 100k+-node graph. Tier C (the LLM enrichment pass)
+   * is the writer of these descriptions; a graph where nothing is ever described is structurally
+   * correct but semantically empty — exactly the "query returns empty context" failure mode
+   * issue #135 documents.
+   */
+  getSemanticCoverage(): { totalNodes: number; describedNodes: number };
   getIncomingEdges(
     nodeId: number,
   ): Array<{ id: number; name: string; type: string }>;

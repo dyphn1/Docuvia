@@ -13,6 +13,7 @@ import { SchemaTables, SchemaColumns } from "../constants.js";
 
 const GRAPH_REPO_ERROR_MESSAGES = {
   COUNT_FAILED: "Failed to count l2/l3 nodes",
+  SEMANTIC_COVERAGE_FAILED: "Failed to compute L2 semantic coverage",
   FIND_NODES_FOR_CHANGED_FILES_FAILED: "Failed to find nodes for changed files",
   FIND_NODE_BY_NAME_FAILED: (target: string) =>
     `Failed to find node by name: ${target}`,
@@ -206,6 +207,28 @@ export class GraphNodesRepo implements IGraphNodesRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         GRAPH_REPO_ERROR_MESSAGES.COUNT_FAILED,
+        err,
+      );
+    }
+  }
+
+  /**
+   * Issue #135: L2 semantic coverage — `SUM(CASE WHEN description ...)` over `l2_nodes`, the
+   * same cheap-aggregate shape as `IProjectFilesRepo.getTierBCoverage` (no row materialization).
+   * `SUM` returns `NULL` (not `0`) over an empty table, so `describedNodes` falls back to `0`.
+   */
+  getSemanticCoverage(): { totalNodes: number; describedNodes: number } {
+    try {
+      const row = this.db
+        .prepare(
+          `SELECT COUNT(*) as total, SUM(CASE WHEN description IS NOT NULL AND description != '' THEN 1 ELSE 0 END) as described FROM ${SchemaTables.L2_NODES}`,
+        )
+        .get() as { total: number; described: number | null };
+      return { totalNodes: row.total, describedNodes: row.described ?? 0 };
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        GRAPH_REPO_ERROR_MESSAGES.SEMANTIC_COVERAGE_FAILED,
         err,
       );
     }

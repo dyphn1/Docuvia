@@ -307,6 +307,13 @@ jobs:
       - name: Build (all packages)
         run: pnpm run build
 
+      - name: Relink CLI bin (dist/cli.js only exists after the build above)
+        # `pnpm install --frozen-lockfile` above ran before `dist/cli.js` existed, so it silently
+        # skipped creating node_modules/.bin/docuvia (ENOENT on the bin target) -- the same stale-shim
+        # failure documented in this repo's own CLAUDE.md. Without this, every `npx --no-install
+        # docuvia` step below 404s against the public npm registry instead of running the local CLI.
+        run: pnpm install --force
+
       - name: Resolve base ref
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then

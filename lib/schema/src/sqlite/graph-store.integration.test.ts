@@ -267,6 +267,42 @@ describe("GraphStore (integration, real temp SQLite file)", () => {
     expect(store.graph.count()).toEqual({ l2Nodes: 1, l3Nodes: 1 });
   });
 
+  it("graph repo: getSemanticCoverage() counts l2_nodes carrying a non-empty description (issue #135 -- the semantically-empty-graph metric)", () => {
+    const project = store.projects.insert({
+      name: "demo",
+      repoUrl: "file:///demo",
+    });
+    expect(store.graph.getSemanticCoverage()).toEqual({
+      totalNodes: 0,
+      describedNodes: 0,
+    });
+
+    store.graph.insertNode({
+      projectId: project.id,
+      name: "src/described.ts",
+      pathPatterns: ["src/described.ts"],
+      description: "Has a description",
+    });
+    store.graph.insertNode({
+      projectId: project.id,
+      name: "src/blank.ts",
+      pathPatterns: ["src/blank.ts"],
+      description: "",
+    });
+    store.graph.insertNode({
+      projectId: project.id,
+      name: "src/none.ts",
+      pathPatterns: ["src/none.ts"],
+    });
+
+    // `blank.ts`'s empty-string description and `none.ts`'s absent description both count as
+    // undescribed -- exactly the 0/6285 live state issue #135 documents.
+    expect(store.graph.getSemanticCoverage()).toEqual({
+      totalNodes: 3,
+      describedNodes: 1,
+    });
+  });
+
   it("graph repo: findNodesForChangedFiles() returns l2_nodes intersecting the changed-file set, each paired with its l3_nodes", () => {
     const project = store.projects.insert({
       name: "demo",

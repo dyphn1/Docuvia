@@ -25,6 +25,7 @@ function makeMockGitProvider(
     getRemoteUrl: vi.fn().mockResolvedValue(undefined),
     getRecentChangedFilePaths: vi.fn().mockResolvedValue([]),
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
+    listWorktrees: vi.fn().mockResolvedValue([]),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getChangedLineRanges: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
@@ -71,6 +72,7 @@ function makeMockGraphStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     },
     graph: {
       deleteNodesForPath: vi.fn(),
+      getSemanticCoverage: vi.fn(),
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),
@@ -229,6 +231,7 @@ describe("HydrationService.hydrate()", () => {
     const store = makeMockGraphStore({
       graph: {
         deleteNodesForPath: vi.fn(),
+        getSemanticCoverage: vi.fn(),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -317,6 +320,7 @@ describe("HydrationService.hydrate()", () => {
     const store = makeMockGraphStore({
       graph: {
         deleteNodesForPath: vi.fn(),
+        getSemanticCoverage: vi.fn(),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -423,6 +427,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
     const store = makeMockGraphStore({
       graph: {
         deleteNodesForPath: vi.fn(),
+        getSemanticCoverage: vi.fn(),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -477,6 +482,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
     const store = makeMockGraphStore({
       graph: {
         deleteNodesForPath: vi.fn(),
+        getSemanticCoverage: vi.fn(),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -516,6 +522,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
     const store = makeMockGraphStore({
       graph: {
         deleteNodesForPath: vi.fn(),
+        getSemanticCoverage: vi.fn(),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),
@@ -568,6 +575,7 @@ describe("HydrationService.hydrate() — destructive-rebuild guard (2026-08 vsco
       },
       graph: {
         deleteNodesForPath: vi.fn(),
+        getSemanticCoverage: vi.fn(),
         insertNode: vi.fn(),
         insertLink: vi.fn(),
         findNodeIdByName: vi.fn(),

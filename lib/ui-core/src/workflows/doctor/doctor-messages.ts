@@ -34,6 +34,22 @@ export const DOCTOR_DIAGNOSTIC_KEYS = {
    *  `GIT_HOOK` above, which is the git post-commit hook, a different "hook" concept entirely. */
   AGENT_HOOKS_CLAUDE: "agent_hooks_claude",
   AGENT_HOOKS_CURSOR: "agent_hooks_cursor",
+  /** Issue #134: the permanently-stuck Tier C queue `llm_reachability`'s liveness ping can't see
+   *  -- non-empty queue + a last drain that processed nothing = the bridge path analyze dials is
+   *  dead, even when the bare-baseUrl GET succeeds. */
+  TIER_C_QUEUE: "tier_c_queue",
+  /** Issue #135: L2 semantic coverage -- % of `l2_nodes` rows carrying a non-empty `description`.
+   *  Tier C (the LLM enrichment pass) is the writer; 0/6285 is the "structurally correct but
+   *  semantically empty" state issue #135 documents, which `graph_empty` (count-only) can't see. */
+  L2_SEMANTIC_COVERAGE: "l2_semantic_coverage",
+  /** Issue #137: per-worktree knowledge-graph fragmentation -- this repo's dev flow is heavily
+   *  worktree-based, and each worktree gets its own `.docuvia/local.db` with no reconciliation
+   *  story, so a decision staged in one worktree may never reach the graph another queries. */
+  WORKTREE_DIVERGENCE: "worktree_divergence",
+  /** Issue #139: docuvia-first workflow adoption -- staged/agent-authored L3 decision counts, so
+   *  "4 agent-authored decisions ever, none this week" is visible instead of silent. Always PASS
+   *  (informational, soft enforcement), mirroring `TIER_B_COMMIT_CAP`'s precedent. */
+  AGENT_AUTHED_ADOPTION: "agent_authored_adoption",
 } as const;
 
 /** Extension used to identify per-command run-log files under `.docuvia/logs/`. */
@@ -165,14 +181,65 @@ export const DOCTOR_MESSAGES = {
   PRE_PUSH_HOOK_REPAIRED_NOTE:
     " Repaired via `doctor --fix` -- re-run `doctor` to confirm.",
 
-  /** §10e bullet 3: Tier C CLIProxyAPI endpoint reachability pre-flight (T7). */
+  /** §10e bullet 3: Tier C CLIProxyAPI endpoint reachability pre-flight (T7) -- now exercised via
+   *  `checkBridgeReachability()` (issue #134): a POST to the same `/v1/chat/completions` route
+   *  Tier C's drain dials, not a GET on the bare baseUrl. */
   LLM_NOT_CONFIGURED:
-    "Not configured -- Tier C is inactive (AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL not set).",
-  LLM_REACHABLE: "Tier C LLM endpoint is reachable.",
+    "Not configured -- Tier C is inactive (AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL or AI_DOCUVIA_MODEL not set).",
+  LLM_REACHABLE:
+    "Tier C LLM bridge is reachable and accepts the configured API key.",
   LLM_UNREACHABLE: (reason: string) =>
-    `Tier C LLM endpoint is configured but unreachable: ${reason}`,
+    `Tier C LLM bridge is configured but unreachable or rejecting requests: ${reason}`,
   LLM_UNREACHABLE_SUGGESTION:
-    "Check that the CLIProxyAPI bridge is running and AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL points at it.",
+    "Check that the CLIProxyAPI bridge is running, that its /v1/chat/completions route accepts the configured API key, and that AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL points at it.",
+
+  /** Issue #134: the permanently-stuck Tier C queue. `tier_c_queue` FAILs when the queue is
+   *  non-empty and the last completed drain processed nothing (or no drain ever completed) --
+   *  the exact `processed: 0` evidence issue #134 reproduces. */
+  TIER_C_QUEUE_OK: (queued: number, processed: number) =>
+    `Tier C queue: ${queued} pending, last drain processed ${processed} item(s).`,
+  TIER_C_QUEUE_STUCK: (queued: number, reason: string) =>
+    `Tier C queue is stuck (${queued} pending; last drain processed 0, reason: ${reason}) -- the LLM bridge path analyze dials is not working, so L2 descriptions/validated edges will never be backfilled.`,
+  TIER_C_QUEUE_STUCK_SUGGESTION:
+    "Check that the CLIProxyAPI bridge is running and its /v1/chat/completions route accepts the configured API key, then run `docuvia analyze --escalate-to-lsp` to retry the drain",
+  TIER_C_QUEUE_NEVER_DRAINED: (queued: number) =>
+    `Tier C queue has ${queued} pending item(s) but no drain has ever completed -- either never enqueued-to-drained or permanently stuck from the start.`,
+  TIER_C_QUEUE_NEVER_DRAINED_SUGGESTION:
+    "Run `docuvia analyze --escalate-to-lsp` once so the drain path actually executes, and check `.docuvia/logs/analyze.log` for tierC events",
+
+  /** Issue #135: L2 semantic coverage (see `L2_SEMANTIC_COVERAGE`'s key doc comment). */
+  L2_SEMANTIC_COVERAGE_OK: (described: number, total: number) =>
+    `L2 semantic coverage: ${described}/${total} node(s) carry a description.`,
+  L2_SEMANTIC_COVERAGE_LOW: (described: number, total: number, pct: number) =>
+    `Only ${pct.toFixed(1)}% of L2 nodes carry a description (${described}/${total}) -- the knowledge graph is structurally correct but semantically empty, so query/impact results surface little "why" content.`,
+  L2_SEMANTIC_COVERAGE_LOW_SUGGESTION:
+    "Run `docuvia analyze --escalate-to-lsp` (Tier C) so the LLM enrichment pass can backfill descriptions, or explicitly declare the graph structural-only",
+  /** The same low-coverage state when Tier C is *not* configured -- structural-only is a
+   *  legitimate, expected state (descriptions can't be written without an LLM bridge), so it's a
+   *  visible PASS, not a FAIL (mirrors `LLM_NOT_CONFIGURED`'s "Tier C is inactive" convention). */
+  L2_SEMANTIC_COVERAGE_STRUCTURAL_ONLY: (described: number, total: number) =>
+    `L2 semantic coverage: ${described}/${total} node(s) carry a description (structural-only graph -- Tier C LLM enrichment is not configured, so descriptions cannot be written yet).`,
+
+  /** Issue #137: per-worktree knowledge-graph fragmentation (see `WORKTREE_DIVERGENCE`'s key doc
+   *  comment). FAILs when any sibling worktree carries its own `.docuvia/local.db`. */
+  WORKTREE_DIVERGENCE_OK: (worktrees: number) =>
+    `${worktrees} worktree(s) total; no sibling worktree carries its own .docuvia graph.`,
+  WORKTREE_DIVERGENCE_FAIL: (count: number, paths: string[]) =>
+    `${count} sibling worktree(s) carry their own .docuvia/local.db -- ${paths.join(", ")}: per-worktree knowledge graphs that never reconcile (decisions staged in one worktree never reach the others).`,
+  WORKTREE_DIVERGENCE_SUGGESTION:
+    "Point all worktrees at one graph via a shared DOCUVIA_DB_PATH (or a symlinked .docuvia), or run `docuvia sync-knowledge` from a canonical worktree before pushing",
+
+  /** Issue #139: docuvia-first workflow adoption -- always PASS (informational/soft, mirroring
+   *  `TIER_B_COMMIT_CAP`), but the numbers make a near-zero-adoption state visible. */
+  AGENT_AUTHED_ADOPTION_OK: (
+    staged: number,
+    changedFiles: number,
+    filesWithoutDecision: number,
+    agentAuthoredL3: number,
+  ) =>
+    `Agent-authored decisions: ${agentAuthoredL3} flushed in graph, ${staged} staged pending flush; ${filesWithoutDecision} of ${changedFiles} recently-changed file(s) carry no staged decision.`,
+  AGENT_AUTHED_ADOPTION_SKIPPED:
+    "No recently-changed files to evaluate for agent-authored staging.",
 
   /** §10e bullet 4 / §7a-1: LSP binary presence, independent of Tier B having run (T8).
    *  `providerName` (multi-language-lsp-support plan, Finding A/G) is that language's provider's

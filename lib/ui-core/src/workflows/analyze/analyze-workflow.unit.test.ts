@@ -98,6 +98,7 @@ function makeMockGitProvider(
     getRemoteUrl: vi.fn().mockResolvedValue(undefined),
     getRecentChangedFilePaths: vi.fn().mockResolvedValue([]),
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
+    listWorktrees: vi.fn().mockResolvedValue([]),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getChangedLineRanges: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
@@ -149,6 +150,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     },
     graph: {
       deleteNodesForPath: vi.fn(),
+      getSemanticCoverage: vi.fn(),
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),
@@ -1013,6 +1015,7 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
       }),
       streamChatCompletion: vi.fn(),
       checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
     };
     docuviaFactory.register(TOKENS.LlmClient, () => () => mockLlmClient);
     docuviaFactory.lock();
@@ -1188,6 +1191,7 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
       }),
       streamChatCompletion: vi.fn(),
       checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
     };
     docuviaFactory.register(TOKENS.LlmClient, () => () => mockLlmClient);
   }
@@ -1228,6 +1232,7 @@ describe("AnalyzeWorkflow.execute() — decision extraction (targetPath set)", (
         ),
       streamChatCompletion: vi.fn(),
       checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
     };
     docuviaFactory.register(TOKENS.LlmClient, () => () => mockLlmClient);
     docuviaFactory.lock();

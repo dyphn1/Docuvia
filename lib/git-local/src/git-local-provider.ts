@@ -17,6 +17,7 @@ import {
   type ChangedFileStatus,
   type DiffLineRange,
   type IGitProvider,
+  type WorktreeEntry,
 } from "@workspace/contracts";
 import {
   buildFastImportData,
@@ -77,6 +78,7 @@ const GIT_SUBCOMMAND = {
   FETCH: "fetch",
   PUSH: "push",
   MERGE_BASE: "merge-base",
+  WORKTREE: "worktree",
 } as const;
 
 /** Git CLI flags/arguments (beyond the subcommand name itself) this provider shells out with. */
@@ -100,6 +102,10 @@ const GIT_ARG = {
   /** `--format=` with nothing after `=` — suppresses the commit line itself so `git log
    *  --name-only` output is purely the touched file paths. */
   EMPTY_FORMAT: "--format=",
+  /** `worktree list` is a positional subcommand (`git worktree list --porcelain`), unlike
+   *  `branch --list` which takes `--list` as a flag -- so it gets its own constant rather than
+   *  reusing `GIT_ARG.LIST` (which would silently produce the invalid `git worktree --list`). */
+  WORKTREE_LIST: "list",
   PORCELAIN: "--porcelain",
   NAME_STATUS: "--name-status",
   END_OF_OPTIONS: "--end-of-options",
@@ -133,6 +139,14 @@ const GIT_ARG = {
    *  `sync-knowledge` again, which pushes again, recursing until the knowledge lock
    *  (`KNOWLEDGE_LOCK_FILE_NAME`) deadlocks against itself. */
   NO_VERIFY: "--no-verify",
+} as const;
+
+/** Line prefixes in `git worktree list --porcelain` output that `listWorktrees` parses —
+ *  `worktree <path>` (always first in a record) and `branch refs/heads/<name>` (present only
+ *  when the worktree has a checked-out branch, not a detached HEAD). */
+const WORKTREE_PORCELAIN_PREFIX = {
+  PATH: "worktree ",
+  BRANCH: "branch ",
 } as const;
 
 /** Raw control-character separators `getCommitLog`'s `%x01`/`%x00` `--format` placeholders
@@ -931,6 +945,50 @@ export class GitLocalProvider implements IGitProvider {
       // to stamp", not a fatal error.
       return undefined;
     }
+  }
+
+  /**
+   * Issue #137: every live worktree of the repo `cwd` belongs to, including `cwd` itself —
+   * parses `git worktree list --porcelain`'s blank-line-delimited records. A detached-HEAD
+   * worktree has no `branch` line; a porcelain record always carries a `worktree <path>` line
+   * first. Degrades to `[]` on a non-repo / pre-worktree git (mirrors `getHeadSha`'s
+   * never-throws-for-environment posture) — but a git command that *ran* and failed is wrapped
+   * as `DocuviaError`, never silently swallowed.
+   */
+  public async listWorktrees(cwd: string): Promise<WorktreeEntry[]> {
+    let stdout: string;
+    try {
+      const result = await execFileAsync(
+        GIT_BIN,
+        [GIT_SUBCOMMAND.WORKTREE, GIT_ARG.WORKTREE_LIST, GIT_ARG.PORCELAIN],
+        { cwd },
+      );
+      stdout = result.stdout;
+    } catch {
+      return [];
+    }
+
+    const entries: WorktreeEntry[] = [];
+    for (const record of stdout.split("\n\n")) {
+      const lines = record.split("\n").filter((l) => l.trim().length > 0);
+      if (lines.length === 0) continue;
+      const pathLine = lines.find((l) =>
+        l.startsWith(WORKTREE_PORCELAIN_PREFIX.PATH),
+      );
+      if (!pathLine) continue;
+      const branchLine = lines.find((l) =>
+        l.startsWith(WORKTREE_PORCELAIN_PREFIX.BRANCH),
+      );
+      entries.push({
+        path: pathLine.slice(WORKTREE_PORCELAIN_PREFIX.PATH.length),
+        branch: branchLine
+          ? branchLine
+              .slice(WORKTREE_PORCELAIN_PREFIX.BRANCH.length)
+              .replace(GIT_BRANCH_REF_PREFIX, "")
+          : undefined,
+      });
+    }
+    return entries;
   }
 
   public async getBranchTipSha(

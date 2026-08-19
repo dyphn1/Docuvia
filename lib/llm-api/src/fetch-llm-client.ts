@@ -6,6 +6,7 @@ import {
   type ChatCompletionRequest,
   type ChatCompletionResult,
   type ChatMessage,
+  ChatMessageRoles,
   type ChatToolCall,
   type ILlmClient,
   type LlmClientAvailability,
@@ -252,6 +253,53 @@ export class FetchLlmClient implements ILlmClient {
       return {
         available: false,
         reason: LlmApiMessages.availabilityCheckFailedWithReason(message),
+      };
+    }
+  }
+
+  /**
+   * Issue #134: the faithful bridge probe — a real POST to the same `/v1/chat/completions` route
+   * with the same auth headers `chatCompletion()` (and so Tier C's drain) uses, but a
+   * `max_tokens: 1` body so it's a route/auth check, not a real extraction. `checkAvailability()`
+   *'s GET on the bare `baseUrl` can PASS while the completions route is broken (a proxy that
+   * answers on `/` but 404s or rejects the API key on `/v1/chat/completions`) — issue #134's live
+   * repro, where `doctor` reported `llm_reachability ✓ PASS` while every Tier C item failed with
+   * `bridge-unreachable`. Unlike `checkAvailability` (any HTTP response = available), a non-2xx
+   * response here is `available: false`: a rejected completions call is exactly the false-PASS
+   * case this probe exists to surface. Never throws.
+   */
+  public async checkBridgeReachability(
+    model: string,
+  ): Promise<LlmClientAvailability> {
+    try {
+      const config = this.getConfig();
+      const res = await fetch(this.buildCompletionsUrl(config.baseUrl), {
+        method: LlmApiHttp.METHOD_POST,
+        headers: this.buildHeaders(config),
+        body: JSON.stringify({
+          model,
+          messages: [{ role: ChatMessageRoles.USER, content: "ping" }],
+          max_tokens: 1,
+          stream: false,
+        }),
+        signal: AbortSignal.timeout(AVAILABILITY_PROBE_TIMEOUT_MS),
+      });
+      if (!res.ok) {
+        const message = await this.parseErrorBody(res);
+        return {
+          available: false,
+          reason: LlmApiMessages.bridgeProbeRejectedWithReason(
+            res.status,
+            message,
+          ),
+        };
+      }
+      return { available: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        available: false,
+        reason: LlmApiMessages.bridgeProbeFailedWithReason(message),
       };
     }
   }

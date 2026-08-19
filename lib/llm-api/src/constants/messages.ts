@@ -17,4 +17,14 @@ export const LlmApiMessages = {
   AVAILABILITY_CHECK_FAILED: "Reachability check failed",
   availabilityCheckFailedWithReason: (message: string) =>
     `Reachability check failed: ${message}`,
+  /** `checkBridgeReachability()`'s bridge probe (issue #134) -- a network-level failure,
+   *  reported without throwing, mirroring `availabilityCheckFailedWithReason`. */
+  BRIDGE_PROBE_FAILED: "Tier C bridge probe failed",
+  bridgeProbeFailedWithReason: (message: string) =>
+    `Tier C bridge probe failed: ${message}`,
+  /** `checkBridgeReachability()`'s non-2xx rejection (issue #134) -- the `/v1/chat/completions`
+   *  route answered but refused the request (wrong route path, rejected API key), which is
+   *  exactly the false-`checkAvailability`-PASS case this probe exists to surface. */
+  bridgeProbeRejectedWithReason: (status: number, message: string) =>
+    `Tier C bridge rejected the probe (HTTP ${status}): ${message}`,
 } as const;

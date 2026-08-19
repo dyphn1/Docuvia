@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import * as path from "path";
 
 vi.mock("../../utils/command-log-writer.js", () => ({
   appendCommandLogLine: vi.fn(async () => undefined),
 }));
+vi.mock("fs/promises");
+import * as fs from "fs/promises";
 import {
   docuviaFactory,
   TOKENS,
@@ -16,6 +19,7 @@ import {
   type ITierBCoverageHintProvider,
 } from "@workspace/contracts";
 import { ImpactWorkflow } from "./impact-workflow.js";
+import { IMPACT_MESSAGES } from "./impact-messages.js";
 
 function makeMockHydrationService(
   overrides: Partial<IHydrationService> = {},
@@ -61,6 +65,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     },
     graph: {
       deleteNodesForPath: vi.fn(),
+      getSemanticCoverage: vi.fn(),
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),
@@ -270,6 +275,150 @@ describe("ImpactWorkflow.execute()", () => {
 
     expect(result).toEqual({ blastRadius: [], riskLevel: "LOW" });
     expect(result && "tierBCoverage" in result).toBe(false);
+  });
+
+  describe("coverageNote (issue #136 -- registry-mediated dependents the static edge graph can't see)", () => {
+    function makeStoreWithTargetNode(
+      blastRadius: unknown[],
+      findNodeByNameValue:
+        | { id: number; name: string; type: string; filePath: string }
+        | undefined,
+    ) {
+      const store = makeMockStore({
+        graph: {
+          ...makeMockStore().graph,
+          findNodeByName: vi.fn().mockReturnValue(findNodeByNameValue),
+        },
+      });
+      const impactService: IImpactService = {
+        getBlastRadius: vi.fn().mockReturnValue(blastRadius),
+        computeRiskLevel: vi.fn().mockReturnValue("LOW"),
+      };
+      return { store, impactService };
+    }
+
+    it("attaches the note when the blast radius is empty and the resolved node's own file uses the docuviaFactory/TOKENS registry pattern -- issue #136's exact false-LOW repro", async () => {
+      const { store, impactService } = makeStoreWithTargetNode([], {
+        id: 1,
+        name: "someSymbol",
+        type: "module",
+        filePath: "lib/contracts/src/index.ts",
+      });
+      vi.mocked(fs.readFile).mockResolvedValue(
+        'import { docuviaFactory, TOKENS } from "@workspace/contracts";\ndocuviaFactory.register(TOKENS.SomeToken, () => impl);\n',
+      );
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+      docuviaFactory.register(TOKENS.HydrationService, () =>
+        makeMockHydrationService(),
+      );
+      docuviaFactory.lock();
+
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("someSymbol");
+
+      expect(fs.readFile).toHaveBeenCalledWith(
+        path.join("/workspace/demo", "lib/contracts/src/index.ts"),
+        expect.any(String),
+      );
+      expect(result).toEqual({
+        blastRadius: [],
+        riskLevel: "LOW",
+        coverageNote: IMPACT_MESSAGES.REGISTRY_MEDIATED_COVERAGE_NOTE,
+      });
+    });
+
+    it("omits the note when the blast radius is empty but the file has no registry pattern -- 'no dependents' is a confident LOW here", async () => {
+      const { store, impactService } = makeStoreWithTargetNode([], {
+        id: 1,
+        name: "plainSymbol",
+        type: "module",
+        filePath: "src/plain.ts",
+      });
+      vi.mocked(fs.readFile).mockResolvedValue(
+        "export function plainSymbol() { return 1; }\n",
+      );
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+      docuviaFactory.register(TOKENS.HydrationService, () =>
+        makeMockHydrationService(),
+      );
+      docuviaFactory.lock();
+
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("plainSymbol");
+
+      expect(result).toEqual({ blastRadius: [], riskLevel: "LOW" });
+      expect(result && "coverageNote" in result).toBe(false);
+    });
+
+    it("omits the note when the file can't be read (deleted on disk / path mismatch) -- an unreadable file is never an error, just no note", async () => {
+      const { store, impactService } = makeStoreWithTargetNode([], {
+        id: 1,
+        name: "ghostSymbol",
+        type: "module",
+        filePath: "src/ghost.ts",
+      });
+      vi.mocked(fs.readFile).mockRejectedValue(new Error("ENOENT"));
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+      docuviaFactory.register(TOKENS.HydrationService, () =>
+        makeMockHydrationService(),
+      );
+      docuviaFactory.lock();
+
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("ghostSymbol");
+
+      expect(result).toEqual({ blastRadius: [], riskLevel: "LOW" });
+      expect(result && "coverageNote" in result).toBe(false);
+    });
+
+    it("omits the note when the blast radius is non-empty even if the file uses the registry -- a real blast radius is a confident answer", async () => {
+      const { store, impactService } = makeStoreWithTargetNode(
+        [{ name: "dependent", type: "module" }],
+        {
+          id: 1,
+          name: "registeringSymbol",
+          type: "module",
+          filePath: "src/registry.ts",
+        },
+      );
+      vi.mocked(fs.readFile).mockResolvedValue(
+        "docuviaFactory.register(TOKENS.X, () => impl);\n",
+      );
+      docuviaFactory.register(TOKENS.GraphStoreOpener, () =>
+        vi.fn().mockResolvedValue(store),
+      );
+      docuviaFactory.register(TOKENS.ImpactService, () => impactService);
+      docuviaFactory.register(TOKENS.HydrationService, () =>
+        makeMockHydrationService(),
+      );
+      docuviaFactory.lock();
+
+      const result = await new ImpactWorkflow(
+        "/workspace/demo",
+        createMockLogger(),
+      ).execute("registeringSymbol");
+
+      expect(result).toEqual({
+        blastRadius: [{ name: "dependent", type: "module" }],
+        riskLevel: "LOW",
+      });
+      expect(result && "coverageNote" in result).toBe(false);
+    });
   });
 
   it('throws a DocuviaError with a "run docuvia init" message when the db is missing', async () => {

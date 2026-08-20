@@ -1,5 +1,5 @@
 ---
-id: lib/core/test/temp-files/temp-file-manager.unit.test.ts#anonymous@L104
+id: lib/core/test/temp-files/temp-file-manager.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/test/temp-files/temp-file-manager.unit.test.ts

@@ -4,6 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { createHash } from "crypto";
 import { resolveWasmPath } from "./resolve-wasm-path.js";
+import { LRUCache } from "lru-cache";
 import type { LanguageProvider, LanguageRegistry } from "@workspace/ast-core";
 import {
   parseImportDescriptors,
@@ -131,10 +132,12 @@ function getRegistry(): Promise<LanguageRegistry> {
 // Table/Memory), not a cheap call -- reloading the same grammar per file (the pre-existing
 // behavior) is pure waste once a worker has already loaded it once. Mirrors registryPromise's
 // own memoization shape immediately above. web-tree-sitter's Language class has no
-// delete()/dispose method (verified against the installed 0.25.10 type defs), so there is
-// nothing to release even if this cache were bounded -- see
-// docs/ai_plans/implement_wasm-language-load-cache.md §2.1 for the full check.
-const languageCache = new Map<string, Promise<Language>>();
+// delete()/dispose method (verified against the installed 0.25.10 type defs), so evicting
+// entries does not free WASM memory — the LRU bound here limits Map growth (issue #142),
+// not WASM heap. Cap at 50 entries (typical supported-language count is ~25).
+const languageCache = new LRUCache<string, Promise<Language>>({
+  max: 50,
+});
 
 function getLanguage(wasmPath: string): Promise<Language> {
   let cached = languageCache.get(wasmPath);

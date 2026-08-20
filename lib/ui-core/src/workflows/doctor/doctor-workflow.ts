@@ -8,6 +8,7 @@ import {
   DocuviaError,
   ErrorCodes,
   UTF8_ENCODING,
+  L3DecisionSources,
   type ILogger,
   type IGraphStore,
   type IGitProvider,
@@ -31,6 +32,8 @@ import {
 import { isTierBCommitCapExceeded } from "../analyze/tier-b-commit-cap.js";
 import { resolveQueuedLanguages } from "../analyze/tier-b-gate.js";
 import { readTierCQueue } from "../analyze/tier-c-queue.js";
+import { readPendingDecisions } from "../analyze/pending-l3-decisions-store.js";
+import { ANALYZE_EVENTS } from "../analyze/analyze-messages.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { probeDocuviaResolvable } from "./git-hook-resolvability.js";
 import * as path from "path";
@@ -69,6 +72,11 @@ export interface DoctorOptions {
    *  <targetPath>`'s hard requirement. */
   llmBaseUrl?: string;
   llmApiKey?: string;
+  /** Issue #134: the Tier C model id, read from `process.env` by the Presentation layer the same
+   *  way `analyze.ts`'s `resolveAnalyzeLlmConfig` does -- required by `checkBridgeReachability`
+   *  (the bridge probe needs a model in its minimal completions body). Absent when Tier C is
+   *  unconfigured; the `llm_reachability` check reports PASS ("not configured") either way. */
+  llmModel?: string;
 }
 
 export class DoctorWorkflow {
@@ -88,6 +96,7 @@ export class DoctorWorkflow {
       fix = false,
       llmBaseUrl,
       llmApiKey,
+      llmModel,
     } = options;
     const diagnostics: Record<string, DiagnosticResult> = {};
 
@@ -104,7 +113,12 @@ export class DoctorWorkflow {
         this.runPrePushHookDiagnostic(diagnostics, fix),
       ),
       await this.runOrSkip(skipLlm, () =>
-        this.runLlmReachabilityDiagnostic(diagnostics, llmBaseUrl, llmApiKey),
+        this.runLlmReachabilityDiagnostic(
+          diagnostics,
+          llmBaseUrl,
+          llmApiKey,
+          llmModel,
+        ),
       ),
       await this.runOrSkip(skipLsp, () =>
         this.runLspBinaryDiagnostic(diagnostics),
@@ -123,6 +137,15 @@ export class DoctorWorkflow {
       await this.runOrSkip(skipDb || skipGit, () =>
         this.runPostCommitIngestionDiagnostic(diagnostics),
       ),
+      // Issues #134/#135/#137/#139: the graph-health cohort -- pulled into a separate method so
+      // their `skipX || skipY` gates don't push `execute()`'s own cyclomatic complexity over the
+      // ESLint budget (same reason `runOrSkip` exists).
+      ...(await this.runGraphHealthDiagnostics(
+        diagnostics,
+        skipDb,
+        skipGit,
+        llmBaseUrl,
+      )),
     ];
 
     // §10c's doctor-half backup (T4) only needs the db as of §9m item 1 (the commit-cap's metric
@@ -154,6 +177,39 @@ export class DoctorWorkflow {
     if (skip) return true;
     const result = await run();
     return result === undefined ? true : Boolean(result);
+  }
+
+  /** The issues #134/#135/#137/#139 graph-health cohort, registered as one spread so `execute()`
+   *  stays under the complexity budget (the `skipDb || skipGit` gate here would otherwise count
+   *  against `execute()`'s own cyclomatic complexity). */
+  private async runGraphHealthDiagnostics(
+    diagnostics: Record<string, DiagnosticResult>,
+    skipDb: boolean,
+    skipGit: boolean,
+    llmBaseUrl: string | undefined,
+  ): Promise<boolean[]> {
+    return [
+      // Issue #134: the permanently-stuck Tier C queue (non-empty + a last drain that processed
+      // nothing) -- db-only, gated on skipDb.
+      await this.runOrSkip(skipDb, () =>
+        this.runTierCQueueDiagnostic(diagnostics),
+      ),
+      // Issue #135: L2 semantic coverage -- db-only, gated on skipDb. FAILs only when Tier C is
+      // configured (`llmBaseUrl`): an AST-only graph with no LLM enrichment is structural-only by
+      // design, and doctor must not permanently red a setup that can't write descriptions.
+      await this.runOrSkip(skipDb, () =>
+        this.runL2SemanticCoverageDiagnostic(diagnostics, llmBaseUrl),
+      ),
+      // Issue #137: per-worktree knowledge-graph fragmentation -- git-only, gated on skipGit.
+      await this.runOrSkip(skipGit, () =>
+        this.runWorktreeDivergenceDiagnostic(diagnostics),
+      ),
+      // Issue #139: docuvia-first workflow adoption -- needs both the db (agent-authored L3
+      // counts) and git (recently-changed files), gated on either being skipped.
+      await this.runOrSkip(skipDb || skipGit, () =>
+        this.runAgentAuthoredAdoptionDiagnostic(diagnostics),
+      ),
+    ];
   }
 
   /**
@@ -496,17 +552,17 @@ export class DoctorWorkflow {
 
   /**
    * §10e bullet 3 (T7): a real reachability pre-flight probe for the Tier C CLIProxyAPI endpoint,
-   * via `ILlmClient.checkAvailability()` (decision 1e: reachability, not correctness). No base
-   * URL supplied is a normal, non-error `doctor` state (decision 1c) -- `PASS`, "not configured."
-   * Configured-but-unreachable is the one real defect this check reports -- `FAIL`. Never throws
-   * past this method.
+   * via `ILlmClient.checkBridgeReachability()` (issue #134). No base URL (or no model) supplied is
+   * a normal, non-error `doctor` state (decision 1c) -- `PASS`, "not configured." Configured-but-
+   * unreachable is the one real defect this check reports -- `FAIL`. Never throws past this method.
    */
   private async runLlmReachabilityDiagnostic(
     diagnostics: Record<string, DiagnosticResult>,
     llmBaseUrl: string | undefined,
     llmApiKey: string | undefined,
+    llmModel: string | undefined,
   ): Promise<boolean> {
-    if (!llmBaseUrl) {
+    if (!llmBaseUrl || !llmModel) {
       diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LLM_REACHABILITY] = {
         status: DiagnosticStatus.PASS,
         message: DOCTOR_MESSAGES.LLM_NOT_CONFIGURED,
@@ -519,7 +575,7 @@ export class DoctorWorkflow {
       const buildLlmClient = docuviaFactory.resolve(TOKENS.LlmClient);
       const llmClient = buildLlmClient();
       llmClient.initialize({ baseUrl: llmBaseUrl, apiKey: llmApiKey });
-      const availability = await llmClient.checkAvailability();
+      const availability = await llmClient.checkBridgeReachability(llmModel);
 
       if (availability.available) {
         diagnostics[DOCTOR_DIAGNOSTIC_KEYS.LLM_REACHABILITY] = {
@@ -895,6 +951,302 @@ export class DoctorWorkflow {
       }
     }
     return false;
+  }
+
+  /**
+   * Issue #134: the permanently-stuck Tier C queue that `llm_reachability`'s liveness ping
+   *  structurally can't see -- `checkAvailability()`'s GET on the bare baseUrl can PASS while the
+   *  completions route `analyze`'s drain dials is dead, leaving a non-empty queue draining to
+   *  zero progress forever (issue #134's `processed: 0` evidence). FAILs when the queue is
+   *  non-empty AND the most recent `tierC.summary` in `analyze.log` shows zero processed (or no
+   *  summary ever exists -- never drained at all). A missing/unopenable db degrades to silently
+   *  skipped, never a doctor crash.
+   */
+  private async runTierCQueueDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) return true;
+
+    let store: IGraphStore | undefined;
+    try {
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+
+      const queued = readTierCQueue(store).length;
+      if (queued === 0) {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.TIER_C_QUEUE] = {
+          status: DiagnosticStatus.PASS,
+          message: DOCTOR_MESSAGES.TIER_C_QUEUE_OK(0, 0),
+        };
+        return true;
+      }
+
+      const lastDrain = await this.readLastTierCDrainOutcome();
+      if (!lastDrain) {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.TIER_C_QUEUE] = {
+          status: DiagnosticStatus.FAIL,
+          message: DOCTOR_MESSAGES.TIER_C_QUEUE_NEVER_DRAINED(queued),
+          suggestion: DOCTOR_MESSAGES.TIER_C_QUEUE_NEVER_DRAINED_SUGGESTION,
+        };
+        return false;
+      }
+      if (lastDrain.processed === 0) {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.TIER_C_QUEUE] = {
+          status: DiagnosticStatus.FAIL,
+          message: DOCTOR_MESSAGES.TIER_C_QUEUE_STUCK(
+            queued,
+            lastDrain.reason ?? "unknown",
+          ),
+          suggestion: DOCTOR_MESSAGES.TIER_C_QUEUE_STUCK_SUGGESTION,
+        };
+        return false;
+      }
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.TIER_C_QUEUE] = {
+        status: DiagnosticStatus.PASS,
+        message: DOCTOR_MESSAGES.TIER_C_QUEUE_OK(queued, lastDrain.processed),
+      };
+      return true;
+    } catch {
+      // db not found/unopenable (already covered by db_found's own FAIL) -- silently skipped,
+      // never a doctor crash.
+      return true;
+    } finally {
+      await store?.close();
+    }
+  }
+
+  /** The last completed Tier C drain's outcome, parsed from `.docuvia/logs/analyze.log`: the most
+   *  recent `tierC.summary` entry's `processed` count plus the last `tierC.item_failed` reason
+   *  seen (so a bridge-unreachable queue reads as such). `undefined` when no summary has ever been
+   *  written (never drained) or the log is missing/unreadable. Malformed lines are ignored. */
+  private async readLastTierCDrainOutcome(): Promise<
+    { processed: number; reason?: string } | undefined
+  > {
+    const logPath = path.join(
+      this.workspaceRoot,
+      DOCUVIA_DIR_NAME,
+      DOCUVIA_LOGS_DIR_NAME,
+      ANALYZE_LOG_FILE_NAME,
+    );
+
+    let content: string;
+    try {
+      content = await fs.readFile(logPath, UTF8_ENCODING);
+    } catch {
+      return undefined;
+    }
+
+    let lastSummary: { processed: number } | undefined;
+    let lastFailureReason: string | undefined;
+    for (const line of content.split("\n")) {
+      try {
+        const entry = JSON.parse(line);
+        if (entry.event === ANALYZE_EVENTS.TIER_C_SUMMARY) {
+          lastSummary = { processed: Number(entry.processed ?? 0) };
+        } else if (
+          entry.event === ANALYZE_EVENTS.TIER_C_ITEM_FAILED &&
+          typeof entry.reason === "string"
+        ) {
+          lastFailureReason = entry.reason;
+        }
+      } catch {
+        // Ignore malformed lines
+      }
+    }
+    if (!lastSummary) return undefined;
+    return { processed: lastSummary.processed, reason: lastFailureReason };
+  }
+
+  /**
+   * Issue #135: L2 semantic coverage (% of `l2_nodes` rows carrying a non-empty `description`) --
+   *  the gap `graph_empty` (count-only) can't see: a graph can be fully ingested yet semantically
+   *  empty (0/6285 in issue #135's live state), so `query` returns exact matches with zero
+   *  content. FAILs below `DEFAULT_L2_SEMANTIC_COVERAGE_FAIL_THRESHOLD` only when Tier C is
+   *  configured (`llmBaseUrl`) -- an AST-only graph with no LLM enrichment configured is
+   *  structural-only by design, reported as a visible PASS, not a defect. A missing/unopenable db
+   *  degrades to silently skipped, never a doctor crash.
+   */
+  private async runL2SemanticCoverageDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+    llmBaseUrl: string | undefined,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) return true;
+
+    let store: IGraphStore | undefined;
+    try {
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+
+      const { totalNodes, describedNodes } = store.graph.getSemanticCoverage();
+      const coverage = totalNodes > 0 ? describedNodes / totalNodes : 1;
+      const belowThreshold =
+        coverage < GitConstants.DEFAULT_L2_SEMANTIC_COVERAGE_FAIL_THRESHOLD;
+      // A structural-only graph (Tier C not configured -- empty-string env counts as not
+      // configured, same falsy test as the message branch above) is a legitimate state, not a
+      // defect -- FAIL only when the LLM enrichment pass is configured yet descriptions never
+      // materialized.
+      const tierCConfigured = Boolean(llmBaseUrl);
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.L2_SEMANTIC_COVERAGE] = belowThreshold
+        ? tierCConfigured
+          ? {
+              status: DiagnosticStatus.FAIL,
+              message: DOCTOR_MESSAGES.L2_SEMANTIC_COVERAGE_LOW(
+                describedNodes,
+                totalNodes,
+                coverage * 100,
+              ),
+              suggestion: DOCTOR_MESSAGES.L2_SEMANTIC_COVERAGE_LOW_SUGGESTION,
+            }
+          : {
+              status: DiagnosticStatus.PASS,
+              message: DOCTOR_MESSAGES.L2_SEMANTIC_COVERAGE_STRUCTURAL_ONLY(
+                describedNodes,
+                totalNodes,
+              ),
+            }
+        : {
+            status: DiagnosticStatus.PASS,
+            message: DOCTOR_MESSAGES.L2_SEMANTIC_COVERAGE_OK(
+              describedNodes,
+              totalNodes,
+            ),
+          };
+      return !(belowThreshold && tierCConfigured);
+    } catch {
+      // db not found/unopenable (already covered by db_found's own FAIL) -- silently skipped,
+      // never a doctor crash.
+      return true;
+    } finally {
+      await store?.close();
+    }
+  }
+
+  /**
+   * Issue #137: per-worktree knowledge-graph fragmentation -- this repo's dev flow is heavily
+   *  worktree-based, and every worktree gets its own `.docuvia/local.db` with no reconciliation
+   *  story. FAILs when a sibling worktree (a `git worktree list` entry whose path isn't this
+   *  workspace) carries its own `.docuvia/local.db`. A missing git provider, a non-repo, or any
+   *  git-command failure degrades to silently skipped, never a doctor crash.
+   */
+  private async runWorktreeDivergenceDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GitProvider)) return true;
+
+    try {
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const worktrees = await git.listWorktrees(this.workspaceRoot);
+      const thisRoot = path.resolve(this.workspaceRoot);
+
+      const divergent: string[] = [];
+      for (const worktree of worktrees) {
+        if (path.resolve(worktree.path) === thisRoot) continue;
+        const dbPath = path.join(
+          worktree.path,
+          DOCUVIA_DIR_NAME,
+          LOCAL_DB_FILE_NAME,
+        );
+        const stat = await fs.stat(dbPath).catch(() => null);
+        if (stat) divergent.push(worktree.path);
+      }
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.WORKTREE_DIVERGENCE] =
+        divergent.length > 0
+          ? {
+              status: DiagnosticStatus.FAIL,
+              message: DOCTOR_MESSAGES.WORKTREE_DIVERGENCE_FAIL(
+                divergent.length,
+                divergent,
+              ),
+              suggestion: DOCTOR_MESSAGES.WORKTREE_DIVERGENCE_SUGGESTION,
+            }
+          : {
+              status: DiagnosticStatus.PASS,
+              message: DOCTOR_MESSAGES.WORKTREE_DIVERGENCE_OK(worktrees.length),
+            };
+      return divergent.length === 0;
+    } catch {
+      return true;
+    }
+  }
+
+  /**
+   * Issue #139: docuvia-first workflow adoption -- always PASS (informational/soft, mirroring
+   *  `TIER_B_COMMIT_CAP`'s always-PASS precedent) but the message carries the numbers that make a
+   *  near-zero-adoption state visible: how many decisions are staged pending flush, how many
+   *  agent-authored L3 rows exist in the graph, and how many files changed since the last
+   *  ingestion carry no staged decision. Needs both the db (meta + L3 counts) and git
+   *  (recently-changed files), so it's gated on `skipDb || skipGit`. A missing/unopenable db or a
+   *  git-command failure degrades to silently skipped, never a doctor crash.
+   */
+  private async runAgentAuthoredAdoptionDiagnostic(
+    diagnostics: Record<string, DiagnosticResult>,
+  ): Promise<boolean> {
+    if (!docuviaFactory.has(TOKENS.GraphStoreOpener)) return true;
+    if (!docuviaFactory.has(TOKENS.GitProvider)) return true;
+
+    let store: IGraphStore | undefined;
+    try {
+      const git = docuviaFactory.resolve(TOKENS.GitProvider);
+      const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+      store = await openStore({
+        dbPath: resolveDbPath(this.workspaceRoot),
+        readonly: true,
+      });
+
+      const headSha = await git.getHeadSha(this.workspaceRoot);
+      const lastIngestedSha = store.meta.get(
+        GitConstants.META_KEY_LAST_INGESTED_SOURCE_SHA,
+      );
+      const changedFiles =
+        lastIngestedSha && lastIngestedSha !== headSha
+          ? await git.getChangedFilesSince(this.workspaceRoot, lastIngestedSha)
+          : [];
+
+      if (changedFiles.length === 0) {
+        diagnostics[DOCTOR_DIAGNOSTIC_KEYS.AGENT_AUTHED_ADOPTION] = {
+          status: DiagnosticStatus.PASS,
+          message: DOCTOR_MESSAGES.AGENT_AUTHED_ADOPTION_SKIPPED,
+        };
+        return true;
+      }
+
+      const pending = await readPendingDecisions(
+        this.workspaceRoot,
+        this.logger,
+      );
+      const stagedKeys = new Set(pending.map((d) => d.filePath));
+      const agentAuthoredL3 = store.l3
+        .getAllExportable()
+        .filter(
+          (row) => row.source === L3DecisionSources.AGENT_AUTHORED,
+        ).length;
+      const filesWithoutDecision = changedFiles.filter(
+        (c) => !stagedKeys.has(c.file),
+      ).length;
+
+      diagnostics[DOCTOR_DIAGNOSTIC_KEYS.AGENT_AUTHED_ADOPTION] = {
+        status: DiagnosticStatus.PASS,
+        message: DOCTOR_MESSAGES.AGENT_AUTHED_ADOPTION_OK(
+          pending.length,
+          changedFiles.length,
+          filesWithoutDecision,
+          agentAuthoredL3,
+        ),
+      };
+      return true;
+    } catch {
+      return true;
+    } finally {
+      await store?.close();
+    }
   }
 
   /** `!skipDb` branch of `execute` — checks the local db exists and (if so) delegates to the

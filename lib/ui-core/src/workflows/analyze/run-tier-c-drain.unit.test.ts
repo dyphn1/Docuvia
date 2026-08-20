@@ -100,6 +100,7 @@ function makeLlmClient(
     })),
     streamChatCompletion: vi.fn(),
     checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+    checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
   };
 }
 
@@ -380,6 +381,7 @@ describe("runTierCDrain() -- persistence and honest degradation", () => {
         ),
       streamChatCompletion: vi.fn(),
       checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
     });
 
     const result = await runTierCDrain(baseDeps({ workspaceRoot, store, git }));
@@ -714,6 +716,7 @@ describe("runTierCDrain() -- poison-pill eviction of a permanently-failing head-
         }),
       streamChatCompletion: vi.fn(),
       checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
     });
 
     const runDeps = () =>
@@ -825,6 +828,7 @@ describe("runTierCDrain() -- poison-pill eviction of a permanently-failing head-
         }),
       streamChatCompletion: vi.fn(),
       checkAvailability: vi.fn().mockResolvedValue({ available: true }),
+      checkBridgeReachability: vi.fn().mockResolvedValue({ available: true }),
     });
 
     const logger = createMockLogger();
@@ -847,7 +851,9 @@ describe("runTierCDrain() -- poison-pill eviction of a permanently-failing head-
     // Verify the eviction log message is NOT present (only 1 failure, not 3)
     expect(
       logger.events.some((e) =>
-        e.message.includes(ANALYZE_MESSAGES.TIER_C_ITEM_EVICTED(entryA.kind, entryA.target, 1)),
+        e.message.includes(
+          ANALYZE_MESSAGES.TIER_C_ITEM_EVICTED(entryA.kind, entryA.target, 1),
+        ),
       ),
     ).toBe(false);
   });

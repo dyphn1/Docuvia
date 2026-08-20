@@ -35,10 +35,14 @@ vi.mock("@workspace/ui-core", () => ({
 
 const ENV_BASE_URL = "AI_DOCUVIA_INTEGRATIONS_OPENAI_BASE_URL";
 const ENV_API_KEY = "AI_DOCUVIA_INTEGRATIONS_OPENAI_API_KEY";
+const ENV_MODEL = "AI_DOCUVIA_MODEL";
+const ENV_FAST_MODEL = "AI_DOCUVIA_FAST_MODEL";
 
 describe("doctorCommand", () => {
   let originalBaseUrl: string | undefined;
   let originalApiKey: string | undefined;
+  let originalModel: string | undefined;
+  let originalFastModel: string | undefined;
 
   beforeEach(() => {
     process.exitCode = undefined;
@@ -51,8 +55,12 @@ describe("doctorCommand", () => {
     // unrelated tests' exact-object assertions).
     originalBaseUrl = process.env[ENV_BASE_URL];
     originalApiKey = process.env[ENV_API_KEY];
+    originalModel = process.env[ENV_MODEL];
+    originalFastModel = process.env[ENV_FAST_MODEL];
     delete process.env[ENV_BASE_URL];
     delete process.env[ENV_API_KEY];
+    delete process.env[ENV_MODEL];
+    delete process.env[ENV_FAST_MODEL];
   });
 
   afterEach(() => {
@@ -61,6 +69,10 @@ describe("doctorCommand", () => {
     else process.env[ENV_BASE_URL] = originalBaseUrl;
     if (originalApiKey === undefined) delete process.env[ENV_API_KEY];
     else process.env[ENV_API_KEY] = originalApiKey;
+    if (originalModel === undefined) delete process.env[ENV_MODEL];
+    else process.env[ENV_MODEL] = originalModel;
+    if (originalFastModel === undefined) delete process.env[ENV_FAST_MODEL];
+    else process.env[ENV_FAST_MODEL] = originalFastModel;
   });
 
   it("should run diagnostics and succeed when all checks pass", async () => {
@@ -157,6 +169,9 @@ describe("doctorCommand", () => {
         skipLsp: false,
         skipLlm: false,
         fix: false,
+        llmBaseUrl: undefined,
+        llmApiKey: undefined,
+        llmModel: undefined,
       },
     );
     // doctor.ts itself never touches fs.stat anymore -- that's DoctorWorkflow's job now, and it's
@@ -186,6 +201,9 @@ describe("doctorCommand", () => {
         skipLsp: false,
         skipLlm: false,
         fix: true,
+        llmBaseUrl: undefined,
+        llmApiKey: undefined,
+        llmModel: undefined,
       },
     );
   });
@@ -209,14 +227,18 @@ describe("doctorCommand", () => {
         skipLsp: false,
         skipLlm: false,
         fix: false,
+        llmBaseUrl: undefined,
+        llmApiKey: undefined,
+        llmModel: undefined,
       },
     );
   });
 
   describe("Tier C LLM env-var read-through (§10e bullet 3, T7)", () => {
-    it("passes llmBaseUrl/llmApiKey through from process.env when set", async () => {
+    it("passes llmBaseUrl/llmApiKey/llmModel through from process.env when set", async () => {
       process.env[ENV_BASE_URL] = "http://127.0.0.1:8317";
       process.env[ENV_API_KEY] = "secret-key";
+      process.env[ENV_MODEL] = "gpt-4o-mini";
       vi.mocked(docuviaApi.doctor).mockResolvedValue({
         allPassed: true,
         diagnostics: {},
@@ -230,13 +252,34 @@ describe("doctorCommand", () => {
         expect.objectContaining({
           llmBaseUrl: "http://127.0.0.1:8317",
           llmApiKey: "secret-key",
+          llmModel: "gpt-4o-mini",
         }),
       );
     });
 
-    it("passes llmBaseUrl/llmApiKey through as undefined when the env vars aren't set", async () => {
+    it("falls back to AI_DOCUVIA_FAST_MODEL for llmModel when AI_DOCUVIA_MODEL is unset (issue #134)", async () => {
+      process.env[ENV_FAST_MODEL] = "gpt-4o-mini-fast";
+      vi.mocked(docuviaApi.doctor).mockResolvedValue({
+        allPassed: true,
+        diagnostics: {},
+      });
+
+      await doctorCommand(process.cwd());
+
+      expect(docuviaApi.doctor).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.anything(),
+        expect.objectContaining({
+          llmModel: "gpt-4o-mini-fast",
+        }),
+      );
+    });
+
+    it("passes llmBaseUrl/llmApiKey/llmModel through as undefined when the env vars aren't set", async () => {
       delete process.env[ENV_BASE_URL];
       delete process.env[ENV_API_KEY];
+      delete process.env[ENV_MODEL];
+      delete process.env[ENV_FAST_MODEL];
       vi.mocked(docuviaApi.doctor).mockResolvedValue({
         allPassed: true,
         diagnostics: {},
@@ -250,6 +293,7 @@ describe("doctorCommand", () => {
         expect.objectContaining({
           llmBaseUrl: undefined,
           llmApiKey: undefined,
+          llmModel: undefined,
         }),
       );
     });

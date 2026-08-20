@@ -31,6 +31,7 @@ function makeMockStore(): IGraphStore {
     },
     graph: {
       deleteNodesForPath: vi.fn().mockReturnValue([]),
+      getSemanticCoverage: vi.fn(),
       insertNode: vi.fn().mockReturnValue(1),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),

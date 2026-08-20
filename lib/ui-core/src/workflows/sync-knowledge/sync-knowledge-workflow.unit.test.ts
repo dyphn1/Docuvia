@@ -37,6 +37,7 @@ function makeMockGitProvider(
     getRemoteUrl: vi.fn().mockResolvedValue(undefined),
     getRecentChangedFilePaths: vi.fn().mockResolvedValue([]),
     hasUncommittedChanges: vi.fn().mockResolvedValue(false),
+    listWorktrees: vi.fn().mockResolvedValue([]),
     getChangedFilesSince: vi.fn().mockResolvedValue([]),
     getChangedLineRanges: vi.fn().mockResolvedValue([]),
     getFilesChangedByCommit: vi.fn().mockResolvedValue([]),
@@ -83,6 +84,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     },
     graph: {
       deleteNodesForPath: vi.fn(),
+      getSemanticCoverage: vi.fn(),
       insertNode: vi.fn(),
       insertLink: vi.fn(),
       findNodeIdByName: vi.fn(),

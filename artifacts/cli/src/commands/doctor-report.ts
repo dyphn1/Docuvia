@@ -21,7 +21,10 @@ const CATEGORY_RULES: CategoryRule[] = [
       k.startsWith("sqlite_") ||
       k === "db_runner" ||
       k === "db_found" ||
-      k === "graph_empty",
+      k === "graph_empty" ||
+      // Issue #135: L2 semantic coverage is a graph-content property, rendered with the rest of
+      // the database/knowledge-graph diagnostics.
+      k === "l2_semantic_coverage",
   },
   {
     category: UI_MESSAGES.DOCTOR_CATEGORY_GIT_HOOKS,
@@ -29,7 +32,11 @@ const CATEGORY_RULES: CategoryRule[] = [
   },
   {
     category: UI_MESSAGES.DOCTOR_CATEGORY_GIT,
-    test: (k) => k.startsWith("git_"),
+    test: (k) =>
+      k.startsWith("git_") ||
+      // Issue #137: per-worktree fragmentation is a repo-structure property, grouped with the
+      // other git diagnostics.
+      k === "worktree_divergence",
   },
   { category: UI_MESSAGES.DOCTOR_CATEGORY_LOGS, test: (k) => k === "logs" },
   {
@@ -42,7 +49,11 @@ const CATEGORY_RULES: CategoryRule[] = [
   },
   {
     category: UI_MESSAGES.DOCTOR_CATEGORY_LLM,
-    test: (k) => k === "llm_reachability",
+    test: (k) =>
+      k === "llm_reachability" ||
+      // Issue #134: the permanently-stuck Tier C queue is an LLM-bridge symptom, grouped with
+      // the reachability check that (on its own) misses it.
+      k === "tier_c_queue",
   },
   {
     category: UI_MESSAGES.DOCTOR_CATEGORY_LSP,
@@ -51,6 +62,11 @@ const CATEGORY_RULES: CategoryRule[] = [
   {
     category: UI_MESSAGES.DOCTOR_CATEGORY_AGENT_HOOKS,
     test: (k) => k.startsWith("agent_hooks_"),
+  },
+  {
+    category: UI_MESSAGES.DOCTOR_CATEGORY_AGENT_ADOPTION,
+    // Issue #139: docuvia-first workflow adoption -- a soft, informational diagnostic.
+    test: (k) => k === "agent_authored_adoption",
   },
 ];
 
@@ -66,6 +82,7 @@ export const DOCTOR_CATEGORY_ORDER: readonly string[] = [
   UI_MESSAGES.DOCTOR_CATEGORY_LLM,
   UI_MESSAGES.DOCTOR_CATEGORY_LSP,
   UI_MESSAGES.DOCTOR_CATEGORY_AGENT_HOOKS,
+  UI_MESSAGES.DOCTOR_CATEGORY_AGENT_ADOPTION,
   UI_MESSAGES.DOCTOR_CATEGORY_OTHER,
 ];
 

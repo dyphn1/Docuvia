@@ -60,6 +60,79 @@ describe("FetchLlmClient.checkAvailability() (phase1-decision-integration.md §1
   });
 });
 
+describe("FetchLlmClient.checkBridgeReachability() (issue #134 -- Tier C bridge probe)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("reports available:true when the completions route answers 2xx, sending the ping payload", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = new FetchLlmClient();
+    client.initialize({
+      baseUrl: "http://127.0.0.1:9",
+      apiKey: "key-1",
+    });
+
+    const result = await client.checkBridgeReachability("gpt-4o-mini");
+
+    expect(result).toEqual({ available: true });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://127.0.0.1:9/v1/chat/completions");
+    expect(init.method).toBe("POST");
+    const body = JSON.parse(init.body);
+    expect(body.model).toBe("gpt-4o-mini");
+    expect(body.messages).toEqual([{ role: "user", content: "ping" }]);
+    expect(body.max_tokens).toBe(1);
+    expect(body.stream).toBe(false);
+  });
+
+  it("reports available:false with the rejection reason on a non-2xx completions answer -- the false-PASS case checkAvailability() misses", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "invalid api key" }), {
+          status: 401,
+          statusText: "Unauthorized",
+        }),
+      ),
+    );
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: "http://127.0.0.1:9" });
+
+    const result = await client.checkBridgeReachability("gpt-4o-mini");
+
+    expect(result.available).toBe(false);
+    expect(result.reason).toContain("HTTP 401");
+    expect(result.reason).toContain("invalid api key");
+  });
+
+  it("reports available:false with the failed reason on a network-level failure -- never throws", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("fetch failed: ECONNREFUSED")),
+    );
+    const client = new FetchLlmClient();
+    client.initialize({ baseUrl: "http://127.0.0.1:9" });
+
+    const result = await client.checkBridgeReachability("gpt-4o-mini");
+
+    expect(result.available).toBe(false);
+    expect(result.reason).toContain("ECONNREFUSED");
+  });
+
+  it("reports available:false without throwing when called before initialize()", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    const client = new FetchLlmClient();
+
+    const result = await client.checkBridgeReachability("gpt-4o-mini");
+
+    expect(result.available).toBe(false);
+  });
+});
+
 describe("FetchLlmClient completions URL normalization (phase 1b -- no doubled /v1)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();

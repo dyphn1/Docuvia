@@ -1,6 +1,6 @@
 import type { L2NodeRow, L3NodeRow, NodeLinkRow } from "@workspace/contracts";
 import { LinkTypes } from "@workspace/contracts";
-import { GitConstants } from "./git-constants.js";
+import { GitConstants } from "@workspace/contracts";
 
 /** Extension applied to every rendered L2 markdown file (mirrors `snapshot-renderer.service.ts`'s own constant of the same purpose). */
 const MARKDOWN_FILE_EXTENSION = ".md";

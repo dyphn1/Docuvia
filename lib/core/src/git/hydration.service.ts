@@ -7,7 +7,8 @@ import type {
   ILogger,
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
-import { GitConstants, GitMessages } from "./git-constants.js";
+import { GitConstants } from "@workspace/contracts";
+import { GitMessages } from "./git-constants.js";
 import { parseSourceTrailer } from "./git-trailers.js";
 import { importL3CardsFromKnowledgeBranch } from "./l3-import.service.js";
 

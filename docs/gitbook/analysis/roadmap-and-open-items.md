@@ -664,21 +664,21 @@ inside individual `query` responses with zero incoming edges. Full detail:
 status`'s `L3 Decisions` moved from 0 (this repo's entire history) to a real positive count for the
 > first time, confirmed via `.docuvia/logs/analyze.log`'s `analyze.tierC.item_success` events, across
 > multiple real `docuvia analyze --escalate-to-lsp` runs.
+>
+> **Shipped — 2026-08-20, issue #145, two additional fixes.** (3) `handleTierCItemOutcome` now
+> always returns `false` (continue) instead of `return outcome.reason ===
+TierCFailReasons.BRIDGE_UNREACHABLE` — a bridge-unreachable failure no longer stops the entire
+> drain loop, so subsequent items are processed in the same run. The poison-pill eviction mechanism
+> still applies per item. (4) New `--tier-c-all` CLI flag (`docuvia analyze --escalate-to-lsp
+--tier-c-all`) removes the wall-clock (12s) and item-count (20) caps, draining every queued
+> Tier C item in one run until budget exhaustion or queue exhaustion. Wired through the full stack:
+> `cli-flags.ts` → `cli.ts` → `analyze.ts` → `docuvia-api.ts` → `analyze-workflow.ts` →
+> `run-tier-b-batch.ts` → `run-tier-c-drain.ts`.
 
-Root-caused via `.docuvia/logs/analyze.log`, not yet fixed: Tier C's queue holds 673 real candidates
-(growing from 662 the previous day), but every `analyze --escalate-to-lsp` run attempts the queue in
-a fixed order and the same two items are always first — one fails `no-anchor` (target
-`a489345b87c15611bfbe8062d0f74d35b6dc6753`, its changed files have no matching L2 node), the other
-fails `bridge-unreachable` (target `240f96ee1648e2b81033951f149b77920faaf5ce`) — reproduced
-identically across two `analyze` runs 18 hours apart, so deterministic, not a transient outage. In
-[`run-tier-c-drain.ts`](../../../lib/ui-core/src/workflows/analyze/run-tier-c-drain.ts), a
-`bridge-unreachable` outcome makes `handleTierCItemOutcome` stop the whole drain loop (`return
-outcome.reason === TierCFailReasons.BRIDGE_UNREACHABLE`), and `removeTierCQueueEntries` (dequeue)
-only ever runs on the `outcome.success` branch — a failed item is never removed from the queue. The
-combination is a permanent head-of-line block: the loop stops at 2/20 items attempted, the failing
-item is never dequeued, so it re-fails identically and blocks the same way on every future run, and
-the other 671+ queued candidates behind it can never be reached regardless of queue growth or run
-count — fully explaining `docuvia status`'s 0 L3 decisions despite a reachable, correctly-configured
+All head-of-line-blocking scenarios are now resolved: the loop continues past failures (fix 3),
+permanently-failing items are evicted after 3 consecutive failures (fix 1), and `--tier-c-all`
+allows draining large queues in a single run (fix 4). The `no-anchor` item that was always first
+will eventually be evicted by the poison-pill mechanism once its failCount reaches 3.
 LLM endpoint. Full detail: `docs/cli-test-analysis/docuvia-self-verification-2026-08-05.md`.
 
 ### 25. Follow-up from item 22: `query`'s actual keyword/FTS matching quality is still unimproved

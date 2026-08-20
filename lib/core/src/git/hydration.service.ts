@@ -8,7 +8,7 @@ import type {
 } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
 import { GitConstants, GitMessages } from "./git-constants.js";
-import { parseSourceTrailer } from "./git-trailers.js";
+import { parseSourceTrailer } from "@workspace/contracts";
 import { importL3CardsFromKnowledgeBranch } from "./l3-import.service.js";
 
 /** Knowledge branch is a dedicated orphan branch of small, purpose-built commits — this comfortably bounds it without truncating any real history. */

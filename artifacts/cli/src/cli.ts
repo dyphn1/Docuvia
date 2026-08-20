@@ -121,6 +121,7 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
   const decisionsFile = ctx.parser.getFlagValue(CLI_FLAGS.DECISIONS_FILE);
   const stage = ctx.parser.hasFlag(CLI_FLAGS.STAGE);
   const flushStagedL3 = ctx.parser.hasFlag(CLI_FLAGS.FLUSH_STAGED_L3);
+  const tierCAll = ctx.parser.hasFlag(CLI_FLAGS.TIER_C_ALL);
   await analyzeCommand(targetPath, ctx.workspaceRoot, {
     escalateToLsp,
     fallbackAst,
@@ -133,6 +134,7 @@ async function handleAnalyze(ctx: CommandContext): Promise<void> {
     decisionsFile,
     stage,
     flushStagedL3,
+    tierCAll,
   });
 }
 

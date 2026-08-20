@@ -858,3 +858,144 @@ describe("runTierCDrain() -- poison-pill eviction of a permanently-failing head-
     ).toBe(false);
   });
 });
+
+describe("runTierCDrain() -- drainAll (issue #145: --tier-c-all)", () => {
+  let workspaceRoot: string;
+
+  beforeEach(() => {
+    resetFactoryForTests();
+    workspaceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-tierc-drain-test-"),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it("drains all items when drainAll is true, ignoring wallClockMs and itemCap", async () => {
+    const { store } = makeStore(["src/a.ts", "src/b.ts", "src/c.ts"]);
+    appendTierCQueueEntries(store, [
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha-a",
+        commitSha: "sha-a",
+        message: "feat: first substantive change",
+      },
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha-b",
+        commitSha: "sha-b",
+        message: "feat: second substantive change",
+      },
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha-c",
+        commitSha: "sha-c",
+        message: "feat: third substantive change",
+      },
+    ]);
+    const git = makeGit({
+      getFilesChangedByCommit: vi
+        .fn()
+        .mockImplementation(async (_root: string, sha: string) => {
+          const map: Record<string, string[]> = {
+            "sha-a": ["src/a.ts"],
+            "sha-b": ["src/b.ts"],
+            "sha-c": ["src/c.ts"],
+          };
+          return map[sha] ?? [];
+        }),
+    });
+    registerLlmClient(
+      makeLlmClient(
+        JSON.stringify([
+          {
+            title: "Decision",
+            nodeType: "decision",
+            content: "Because reasons.",
+            confidence: 0.8,
+          },
+        ]),
+      ),
+    );
+
+    // itemCap=1 and wallClockMs=1 -- these would normally stop after 1 item / 1ms,
+    // but drainAll overrides both to Infinity.
+    const result = await runTierCDrain(
+      baseDeps({
+        workspaceRoot,
+        store,
+        git,
+        itemCap: 1,
+        wallClockMs: 1,
+        drainAll: true,
+      }),
+    );
+
+    expect(result.tierCSkipped).toBe(false);
+    expect(result.tierCProcessed).toBe(3);
+    expect(result.tierCPersisted).toBe(3);
+    expect(readTierCQueue(store)).toEqual([]);
+  });
+
+  it("still respects budget exhaustion even with drainAll", async () => {
+    const { store } = makeStore(["src/a.ts", "src/b.ts"]);
+    appendTierCQueueEntries(store, [
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha-a",
+        commitSha: "sha-a",
+        message: "feat: first substantive change",
+      },
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha-b",
+        commitSha: "sha-b",
+        message: "feat: second substantive change",
+      },
+    ]);
+    const git = makeGit({
+      getFilesChangedByCommit: vi
+        .fn()
+        .mockImplementation(async (_root: string, sha: string) =>
+          sha === "sha-a" ? ["src/a.ts"] : ["src/b.ts"],
+        ),
+    });
+    registerLlmClient(
+      makeLlmClient(
+        JSON.stringify([
+          {
+            title: "Decision",
+            nodeType: "decision",
+            content: "Because reasons.",
+            confidence: 0.8,
+          },
+        ]),
+      ),
+    );
+
+    // dailyCallCap=1 -- item A exhausts the budget, so item B must be left queued
+    // even though drainAll removes wall-clock and item caps.
+    const result = await runTierCDrain(
+      baseDeps({
+        workspaceRoot,
+        store,
+        git,
+        dailyCallCap: 1,
+        drainAll: true,
+      }),
+    );
+
+    expect(result.tierCSkipped).toBe(false);
+    expect(result.tierCProcessed).toBe(1);
+    expect(readTierCQueue(store)).toEqual([
+      {
+        kind: TierCCandidateKinds.COMMIT_MESSAGE,
+        target: "sha-b",
+        commitSha: "sha-b",
+        message: "feat: second substantive change",
+      },
+    ]);
+  });
+});

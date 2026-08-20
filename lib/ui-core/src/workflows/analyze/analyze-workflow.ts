@@ -88,6 +88,8 @@ export class AnalyzeWorkflow {
       tierCWallClockMs?: number;
       tierCItemCap?: number;
       tierCLoadThreshold?: number;
+      /** `--tier-c-all` (issue #145): drains every queued Tier C item in one run. */
+      tierCDrainAll?: boolean;
       /** `analyze --flush-staged-l3` (issue #42, Decision 2's two-stage stage-and-flush design
        *  §8.2) -- the post-commit hook's drain of `.docuvia/pending-l3-decisions.json`. Sets none
        *  of `targetPath`/`agentAuthoredDecisions`/`escalateToLsp`, so it's checked first in
@@ -623,6 +625,7 @@ function buildTierCOnlyDeps(
   | "tierCWallClockMs"
   | "tierCItemCap"
   | "tierCLoadThreshold"
+  | "tierCDrainAll"
 > {
   return {
     tierCDailyCallCap: options?.tierCDailyCallCap,
@@ -630,6 +633,7 @@ function buildTierCOnlyDeps(
     tierCWallClockMs: options?.tierCWallClockMs,
     tierCItemCap: options?.tierCItemCap,
     tierCLoadThreshold: options?.tierCLoadThreshold,
+    tierCDrainAll: options?.tierCDrainAll,
   };
 }
 

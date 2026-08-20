@@ -78,6 +78,10 @@ export interface TierCDrainDeps {
   itemFailureCap?: number;
   loadThreshold?: number;
   force?: boolean;
+  /** `--tier-c-all` (issue #145): when true, drains every queued item in one run --
+   *  removes the wall-clock and item-count caps entirely. Budget exhaustion and
+   *  per-item failures (poison-pill eviction) still apply. */
+  drainAll?: boolean;
 }
 
 export interface TierCDrainSummary {
@@ -290,6 +294,24 @@ function failOutcome(reason: string): TierCItemOutcome {
   };
 }
 
+/** Resolves the wall-clock and item-count caps for the drain loop, honoring `drainAll`
+ *  (issue #145): when true, both caps become +Infinity so the loop drains every item. */
+function resolveDrainCaps(deps: TierCDrainDeps): {
+  wallClockMs: number;
+  itemCap: number;
+} {
+  if (deps.drainAll) {
+    return {
+      wallClockMs: Number.POSITIVE_INFINITY,
+      itemCap: Number.POSITIVE_INFINITY,
+    };
+  }
+  return {
+    wallClockMs: deps.wallClockMs ?? GitConstants.DEFAULT_TIER_C_WALL_CLOCK_MS,
+    itemCap: deps.itemCap ?? GitConstants.DEFAULT_TIER_C_ITEM_CAP,
+  };
+}
+
 /** The item-by-item drain loop: wall-clock cap and item cap (whichever binds first, section 9d),
  *  a budget re-check before every item (mid-run exhaustion stops the loop with a JSONL line,
  *  section 9k gating test 2), and one dequeue-on-success per item (crash-safety: a killed process
@@ -303,9 +325,7 @@ async function drainQueue(
   dailyTokenCap: number,
 ): Promise<TierCDrainSummary> {
   const { store, workspaceRoot, logger } = deps;
-  const wallClockMs =
-    deps.wallClockMs ?? GitConstants.DEFAULT_TIER_C_WALL_CLOCK_MS;
-  const itemCap = deps.itemCap ?? GitConstants.DEFAULT_TIER_C_ITEM_CAP;
+  const { wallClockMs, itemCap } = resolveDrainCaps(deps);
   const deadline = Date.now() + wallClockMs;
 
   const buildLlmClient = docuviaFactory.resolve(TOKENS.LlmClient);

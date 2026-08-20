@@ -267,4 +267,22 @@ export class HydrationService implements IHydrationService {
       store.meta.set(GitConstants.META_KEY_KNOWLEDGE_TIP_SHA, resolved);
     });
   }
+
+  /** Delegates to the shared `importL3CardsFromKnowledgeBranch` — the store write-lock is
+   *  acquired internally; the knowledge-branch lock is the caller's responsibility. */
+  public async importL3Cards(
+    cwd: string,
+    knowledgeSha: string,
+    store: IGraphStore,
+  ): Promise<{ cardsFound: number; imported: number }> {
+    return store.withWriteLock(() =>
+      importL3CardsFromKnowledgeBranch(
+        this.git,
+        cwd,
+        knowledgeSha,
+        store,
+        this.logger,
+      ),
+    );
+  }
 }

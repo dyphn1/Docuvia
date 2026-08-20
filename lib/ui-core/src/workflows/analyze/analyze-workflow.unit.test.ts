@@ -205,6 +205,7 @@ function makeMockHydrationService(
       edgesLoaded: 0,
       edgesDropped: 0,
     }),
+    importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     isStale: vi.fn().mockResolvedValue(false),
     markSynced: vi.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -543,6 +544,7 @@ describe("AnalyzeWorkflow.execute() — auto mode (no targetPath)", () => {
         edgesLoaded: 4,
         edgesDropped: 0,
       }),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     });
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();

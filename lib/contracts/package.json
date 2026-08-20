@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./src/index.ts"
+    },
+    "./testing": {
+      "types": "./dist/testing/mocks-test.d.ts",
+      "default": "./src/testing/mocks-test.ts"
     }
   },
   "main": "./src/index.ts",

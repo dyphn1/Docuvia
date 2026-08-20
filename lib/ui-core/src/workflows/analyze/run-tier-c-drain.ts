@@ -440,7 +440,10 @@ async function handleTierCItemOutcome(
     });
   }
 
-  return outcome.reason === TierCFailReasons.BRIDGE_UNREACHABLE;
+  // FIX (issue #145): Skip to next item instead of stopping the entire drain loop.
+  // The poison-pill mechanism (eviction after N failures) still applies per item,
+  // but a single bridge-unreachable failure no longer blocks all subsequent items.
+  return false;
 }
 
 function isBridgeUnreachable(err: unknown): boolean {

@@ -1,17 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
-
-const CPP_EXTENSIONS = [
-  ".cpp",
-  ".cxx",
-  ".cc",
-  ".hpp",
-  ".hxx",
-  ".hh",
-  ".cu",
-  ".cuh",
-];
+import { CPP_EXTENSIONS } from "@workspace/contracts";
 const CPP_WASM_FILE = "tree-sitter-cpp.wasm";
 
 export const cppConfig: LanguageConfig = {

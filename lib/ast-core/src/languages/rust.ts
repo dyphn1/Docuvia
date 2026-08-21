@@ -1,8 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
-
-const RUST_EXTENSIONS = [".rs"];
+import { RUST_EXTENSIONS } from "@workspace/contracts";
 const RUST_WASM_FILE = "tree-sitter-rust.wasm";
 
 export const rustConfig: LanguageConfig = {

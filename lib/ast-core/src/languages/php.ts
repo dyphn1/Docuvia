@@ -1,8 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
-
-const PHP_EXTENSIONS = [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"];
+import { PHP_EXTENSIONS } from "@workspace/contracts";
 const PHP_WASM_FILE = "tree-sitter-php.wasm";
 
 export const phpConfig: LanguageConfig = {

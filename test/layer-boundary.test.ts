@@ -90,7 +90,6 @@ describe("layer-boundary eslint config", () => {
 
   it("allows allowlisted ui-core files to keep importing @workspace/core (documented narrow exceptions)", async () => {
     const allowlisted = [
-      "lib/ui-core/src/workflows/analyze/decision-extraction.ts",
       "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
       "lib/ui-core/src/workflows/snapshot/pack-current-graph.ts",
     ];

@@ -1,8 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
-
-const CSHARP_EXTENSIONS = [".cs"];
+import { CSHARP_EXTENSIONS } from "@workspace/contracts";
 const CSHARP_WASM_FILE = "tree-sitter-c_sharp.wasm";
 
 export const csharpConfig: LanguageConfig = {

@@ -1,8 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
-
-const JAVASCRIPT_EXTENSIONS = [".js", ".jsx", ".mjs", ".cjs"];
+import { JAVASCRIPT_EXTENSIONS } from "@workspace/contracts";
 const JAVASCRIPT_WASM_FILE = "tree-sitter-javascript.wasm";
 
 export const javascriptConfig: LanguageConfig = {

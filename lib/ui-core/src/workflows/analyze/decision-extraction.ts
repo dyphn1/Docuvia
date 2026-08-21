@@ -1,10 +1,10 @@
 import fs from "fs";
 import path from "path";
-import { isSupportedSourceFile } from "@workspace/core";
 import {
   DOCUVIA_DIR_NAME,
   UTF8_ENCODING,
   NODE_MODULES_DIR_NAME,
+  isSupportedSourceFile,
 } from "@workspace/contracts";
 import type { ILogger } from "@workspace/contracts";
 import { ANALYZE_MESSAGES } from "./analyze-messages.js";

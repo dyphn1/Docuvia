@@ -1,8 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
-
-const GO_EXTENSIONS = [".go"];
+import { GO_EXTENSIONS } from "@workspace/contracts";
 const GO_WASM_FILE = "tree-sitter-go.wasm";
 
 export const goConfig: LanguageConfig = {

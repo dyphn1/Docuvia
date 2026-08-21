@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/src/utils/arg-parser.ts#ArgParser.checkUnknownFlags
+id: artifacts/cli/src/utils/arg-parser.ts#checkUnknownFlags
 type: symbol
 name: checkUnknownFlags
 filePath: artifacts/cli/src/utils/arg-parser.ts

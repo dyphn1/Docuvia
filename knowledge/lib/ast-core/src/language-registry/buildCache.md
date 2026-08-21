@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-registry.ts#LanguageRegistry.buildCache
+id: lib/ast-core/src/language-registry.ts#buildCache
 type: symbol
 name: buildCache
 filePath: lib/ast-core/src/language-registry.ts

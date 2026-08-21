@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/file-discovery.service.ts#FileDiscoveryService.resolveCandidateFiles
+id: lib/core/src/discovery/file-discovery.service.ts#resolveCandidateFiles
 type: symbol
 name: resolveCandidateFiles
 filePath: lib/core/src/discovery/file-discovery.service.ts

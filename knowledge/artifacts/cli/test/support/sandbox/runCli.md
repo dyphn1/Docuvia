@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/support/sandbox.ts#TestSandbox.runCli
+id: artifacts/cli/test/support/sandbox.ts#runCli
 type: symbol
 name: runCli
 filePath: artifacts/cli/test/support/sandbox.ts

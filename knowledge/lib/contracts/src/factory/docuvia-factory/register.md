@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.register
+id: lib/contracts/src/factory/docuvia-factory.ts#register
 type: symbol
 name: register
 filePath: lib/contracts/src/factory/docuvia-factory.ts

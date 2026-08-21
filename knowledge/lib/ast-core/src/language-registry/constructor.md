@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-registry.ts#LanguageRegistry.constructor
+id: lib/ast-core/src/language-registry.ts#constructor
 type: symbol
 name: constructor
 filePath: lib/ast-core/src/language-registry.ts

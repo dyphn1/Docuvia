@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/discovery/file-discovery.service.ts#FileDiscoveryService.buildExistingHashesMap
+id: lib/core/src/discovery/file-discovery.service.ts#buildExistingHashesMap
 type: symbol
 name: buildExistingHashesMap
 filePath: lib/core/src/discovery/file-discovery.service.ts

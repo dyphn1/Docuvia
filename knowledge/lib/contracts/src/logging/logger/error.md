@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/logger.ts#Logger.error
+id: lib/contracts/src/logging/logger.ts#error
 type: symbol
 name: error
 filePath: lib/contracts/src/logging/logger.ts

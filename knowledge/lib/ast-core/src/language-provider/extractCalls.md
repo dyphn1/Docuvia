@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-provider.ts#DefaultProvider.extractCalls
+id: lib/ast-core/src/language-provider.ts#extractCalls
 type: symbol
 name: extractCalls
 filePath: lib/ast-core/src/language-provider.ts

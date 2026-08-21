@@ -1,5 +1,5 @@
 ---
-id: lib/remote-api/src/fetch-remote-sync-client.ts#FetchRemoteSyncClient.pushSyncEvents
+id: lib/remote-api/src/fetch-remote-sync-client.ts#pushSyncEvents
 type: symbol
 name: pushSyncEvents
 filePath: lib/remote-api/src/fetch-remote-sync-client.ts

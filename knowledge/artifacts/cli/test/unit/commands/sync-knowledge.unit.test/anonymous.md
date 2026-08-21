@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/commands/sync-knowledge.unit.test.ts#anonymous@L97
+id: artifacts/cli/test/unit/commands/sync-knowledge.unit.test.ts#anonymous@L44
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/commands/sync-knowledge.unit.test.ts

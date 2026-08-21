@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/commands/snapshot.unit.test.ts#anonymous@L42
+id: artifacts/cli/test/unit/commands/snapshot.unit.test.ts#anonymous@L72
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/commands/snapshot.unit.test.ts

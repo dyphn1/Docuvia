@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-b-queue.unit.test.ts#makeMockStore
+id: lib/ui-core/src/workflows/analyze/tier-b-queue.unit.test.ts#makeBQueueStore
 type: symbol
-name: makeMockStore
+name: makeBQueueStore
 filePath: lib/ui-core/src/workflows/analyze/tier-b-queue.unit.test.ts
 ---
-# Symbol: makeMockStore
+# Symbol: makeBQueueStore
 
 File: `lib/ui-core/src/workflows/analyze/tier-b-queue.unit.test.ts`

@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/tier-c-budget.unit.test.ts#makeMockStore
+id: lib/ui-core/src/workflows/analyze/tier-c-budget.unit.test.ts#makeBudgetStore
 type: symbol
-name: makeMockStore
+name: makeBudgetStore
 filePath: lib/ui-core/src/workflows/analyze/tier-c-budget.unit.test.ts
 ---
-# Symbol: makeMockStore
+# Symbol: makeBudgetStore
 
 File: `lib/ui-core/src/workflows/analyze/tier-c-budget.unit.test.ts`

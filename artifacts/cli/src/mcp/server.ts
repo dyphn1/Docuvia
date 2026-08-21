@@ -6,6 +6,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import "../registration.js";
 import { allTools, toolDefinitions } from "./tools/index.js";
+import { createPinoBackedLogger } from "../logging/create-logger.js";
 import {
   MCP_SERVER_NAME,
   MCP_SERVER_VERSION,
@@ -45,5 +46,6 @@ export async function runMcpServer() {
 
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(MCP_SERVER_READY_MESSAGE);
+  const logger = createPinoBackedLogger();
+  logger.info(MCP_SERVER_READY_MESSAGE);
 }

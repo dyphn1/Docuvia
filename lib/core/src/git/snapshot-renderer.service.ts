@@ -13,7 +13,8 @@ import {
   ErrorCodes,
   TopologyNodeKinds,
 } from "@workspace/contracts";
-import { GitConstants, GitMessages } from "./git-constants.js";
+import { GitConstants } from "@workspace/contracts";
+import { GitMessages } from "./git-constants.js";
 import { toL2NodeId } from "../constants/node-ids.js";
 
 // Bounded concurrency for the per-symbol/per-file markdown write loop below, mirroring old

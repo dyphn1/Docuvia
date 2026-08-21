@@ -64,4 +64,16 @@ export interface IHydrationService {
     store: IGraphStore,
     branchName?: string,
   ): Promise<void>;
+  /**
+   * L3DIST-007: reads `knowledge/_l3/` off `knowledgeSha` and upserts newly-discovered cards
+   * into local `l3_nodes` — the git → local.db half of the union. Shared by
+   * `HydrationService.hydrate()` and `sync-knowledge` (phase2-l3-distribution.md §3 wiring).
+   * The caller is responsible for the knowledge-branch lock (`runUnderKnowledgeLock`); this
+   * method only acquires the store's own write lock internally.
+   */
+  importL3Cards(
+    cwd: string,
+    knowledgeSha: string,
+    store: IGraphStore,
+  ): Promise<{ cardsFound: number; imported: number }>;
 }

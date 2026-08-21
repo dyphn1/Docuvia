@@ -1,7 +1,8 @@
 import path from "node:path";
 import type { IGitProvider, IGraphStore, ILogger } from "@workspace/contracts";
 import { createNoopLogger } from "@workspace/contracts";
-import { GitConstants, GitMessages } from "./git-constants.js";
+import { GitConstants } from "@workspace/contracts";
+import { GitMessages } from "./git-constants.js";
 import { computeL2GitPathsByNodeKey, parseL3Card } from "./l3-card-renderer.js";
 
 interface RenderedNodeJson {

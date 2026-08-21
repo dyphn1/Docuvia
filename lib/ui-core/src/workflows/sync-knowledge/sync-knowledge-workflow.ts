@@ -1,11 +1,11 @@
 import {
   docuviaFactory,
   TOKENS,
+  type IHydrationService,
   type IKnowledgeGitService,
   type ILogger,
   type KnowledgeBranchSyncResult,
 } from "@workspace/contracts";
-import { importL3CardsFromKnowledgeBranch } from "@workspace/core";
 import {
   SYNC_KNOWLEDGE_EVENTS,
   SYNC_KNOWLEDGE_MESSAGES,
@@ -25,7 +25,7 @@ import { resolveDbPath } from "../../utils/resolve-db-path.js";
  * `no-remote` result), so wiring it into a scheduled task or CI step is a reasonable follow-up.
  *
  * phase2-l3-distribution.md §3 wiring: once reconciliation resolves a branch tip, this also runs
- * the same L3-import routine `hydrate` uses (`importL3CardsFromKnowledgeBranch`, shared code, not
+ * the same L3-import routine `hydrate` uses (`IHydrationService.importL3Cards`, shared code, not
  * duplicated) so a developer who just fast-forwarded/merged the knowledge branch immediately
  * absorbs any teammate's cards that survived Tree-Adoption, without waiting for a separate
  * explicit `hydrate`. This is the one case where `sync-knowledge` does open `local.db` — guarded
@@ -76,7 +76,9 @@ export class SyncKnowledgeWorkflow {
     knowledgeSha: string,
   ): Promise<void> {
     const { workspaceRoot, logger } = this;
-    const gitProvider = docuviaFactory.resolve(TOKENS.GitProvider);
+    const hydrationService = docuviaFactory.resolve(TOKENS.HydrationService, {
+      logger,
+    });
     const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
     const store = await openStore({
       dbPath: resolveDbPath(workspaceRoot),
@@ -84,15 +86,7 @@ export class SyncKnowledgeWorkflow {
     });
     try {
       await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, () =>
-        store.withWriteLock(() =>
-          importL3CardsFromKnowledgeBranch(
-            gitProvider,
-            workspaceRoot,
-            knowledgeSha,
-            store,
-            logger,
-          ),
-        ),
+        hydrationService.importL3Cards(workspaceRoot, knowledgeSha, store),
       );
     } finally {
       await store.close();

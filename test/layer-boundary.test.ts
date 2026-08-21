@@ -93,7 +93,6 @@ describe("layer-boundary eslint config", () => {
       "lib/ui-core/src/workflows/analyze/decision-extraction.ts",
       "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
       "lib/ui-core/src/workflows/snapshot/pack-current-graph.ts",
-      "lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts",
     ];
     for (const filePath of allowlisted) {
       const violations = await layerViolations(

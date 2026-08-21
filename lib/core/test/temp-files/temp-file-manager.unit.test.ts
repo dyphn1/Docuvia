@@ -17,6 +17,8 @@ describe("TempFileManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default realpath mock: return the path as-is (no symlinks)
+    vi.mocked(fs.realpath).mockImplementation(async (p) => String(p));
     manager = new TempFileManager("/workspace", logger, 1024, 1000, 500);
   });
 

@@ -25,6 +25,7 @@ export const ErrorCodes = {
 
   // File discovery / scanning (lib/core/discovery)
   FS_READ_FAILED: "FS_READ_FAILED",
+  FS_PATH_TRAVERSAL: "FS_PATH_TRAVERSAL",
 
   // Virtual layer (lib/contracts) itself
   FACTORY_TOKEN_NOT_REGISTERED: "FACTORY_TOKEN_NOT_REGISTERED",

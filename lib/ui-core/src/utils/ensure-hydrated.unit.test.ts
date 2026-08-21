@@ -100,6 +100,7 @@ describe("ensureHydrated()", () => {
         edgesLoaded: 0,
         edgesDropped: 0,
       }),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
@@ -123,6 +124,7 @@ describe("ensureHydrated()", () => {
       isStale: vi.fn().mockResolvedValue(false),
       markSynced: vi.fn(),
       hydrate: vi.fn(),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
@@ -151,6 +153,7 @@ describe("ensureHydrated()", () => {
         edgesLoaded: 0,
         edgesDropped: 0,
       }),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
@@ -179,6 +182,7 @@ describe("ensureHydrated()", () => {
       isStale: vi.fn(),
       markSynced: vi.fn(),
       hydrate: vi.fn(),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();

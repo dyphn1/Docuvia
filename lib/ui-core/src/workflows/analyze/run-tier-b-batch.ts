@@ -68,6 +68,8 @@ export interface TierBBatchDeps {
   tierCItemCap?: number;
   tierCLoadThreshold?: number;
   force?: boolean;
+  /** `--tier-c-all` (issue #145): drains every queued Tier C item in one run. */
+  tierCDrainAll?: boolean;
   /** `analyze --escalate-to-lsp --full` (typescript-cli-benchmark.md §5.3/§5.7 item 1) --
    *  pre-populates `tierBQueue` with every currently-tracked file before the batch drains it. */
   full?: boolean;
@@ -98,6 +100,7 @@ export async function runTierBBatch(
     itemCap: deps.tierCItemCap,
     loadThreshold: deps.tierCLoadThreshold,
     force: deps.force,
+    drainAll: deps.tierCDrainAll,
   });
   return { ...tierBResult, ...tierC };
 }

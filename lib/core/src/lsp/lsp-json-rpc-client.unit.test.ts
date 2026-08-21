@@ -117,6 +117,50 @@ describe("LspJsonRpcClient (real subprocess, Content-Length framing)", () => {
     ).rejects.toThrow();
   });
 
+  it("defaults to a minimal allowlist env, not full process.env inheritance (issue #165)", async () => {
+    const marker = `DOCUVA_TEST_SECRET_${Date.now()}`;
+    process.env[marker] = "leak-if-inherited";
+    const client = new LspJsonRpcClient();
+    await client.start({
+      command: process.execPath,
+      args: [FIXTURE_PATH],
+      cwd: __dirname,
+      // PATH must still reach node so the fixture can spawn at all.
+      env: { PATH: process.env.PATH ?? "" },
+    });
+    try {
+      const childEnv = (await client.request("getEnv", {}, 5000)) as Record<
+        string,
+        string
+      >;
+      expect(childEnv[marker]).toBeUndefined();
+      expect(childEnv.PATH).toBeDefined();
+    } finally {
+      delete process.env[marker];
+      await client.stop();
+    }
+  });
+
+  it("passes an explicit env through untouched (opt back into inheritance)", async () => {
+    const marker = `DOCUVA_TEST_MARKER_${Date.now()}`;
+    const client = new LspJsonRpcClient();
+    await client.start({
+      command: process.execPath,
+      args: [FIXTURE_PATH],
+      cwd: __dirname,
+      env: { PATH: process.env.PATH ?? "", [marker]: "explicit" },
+    });
+    try {
+      const childEnv = (await client.request("getEnv", {}, 5000)) as Record<
+        string,
+        string
+      >;
+      expect(childEnv[marker]).toBe("explicit");
+    } finally {
+      await client.stop();
+    }
+  });
+
   it("sends notifications without expecting a response (does not throw, does not hang)", async () => {
     const client = new LspJsonRpcClient();
     await client.start({

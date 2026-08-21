@@ -1,5 +1,5 @@
 ---
-id: lib/ast-core/src/language-registry.ts#getConfig
+id: lib/ast-core/src/language-registry.ts#LanguageRegistry.getConfig
 type: symbol
 name: getConfig
 filePath: lib/ast-core/src/language-registry.ts

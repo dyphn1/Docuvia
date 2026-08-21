@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/logging/ipc-logger-client.ts#warn
+id: lib/contracts/src/logging/ipc-logger-client.ts#IpcLoggerClient.warn
 type: symbol
 name: warn
 filePath: lib/contracts/src/logging/ipc-logger-client.ts

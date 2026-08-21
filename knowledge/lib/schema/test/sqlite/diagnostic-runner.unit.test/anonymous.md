@@ -7,3 +7,4 @@ filePath: lib/schema/test/sqlite/diagnostic-runner.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/schema/test/sqlite/diagnostic-runner.unit.test.ts`
+ts`

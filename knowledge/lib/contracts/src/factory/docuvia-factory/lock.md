@@ -1,5 +1,5 @@
 ---
-id: lib/contracts/src/factory/docuvia-factory.ts#lock
+id: lib/contracts/src/factory/docuvia-factory.ts#DocuviaFactory.lock
 type: symbol
 name: lock
 filePath: lib/contracts/src/factory/docuvia-factory.ts

@@ -149,3 +149,101 @@ describe("collectSourceFiles()", () => {
     ).toBe(true);
   });
 });
+
+describe("collectSourceFiles() boundary validation (issue #162)", () => {
+  let tmpDir: string;
+  let outsideDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "docuvia-boundary-test-"));
+    outsideDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "docuvia-boundary-outside-"),
+    );
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    fs.rmSync(outsideDir, { recursive: true, force: true });
+    vi.restoreAllMocks();
+  });
+
+  it("rejects a symlinked file inside the tree that resolves outside workspaceRoot", () => {
+    // Create a source file in outsideDir
+    const secretFile = path.join(outsideDir, "secret.ts");
+    fs.writeFileSync(secretFile, "export const secret = 1;\n");
+
+    // Create a symlink inside tmpDir pointing to the outside file
+    const symlinkFile = path.join(tmpDir, "escape-file.ts");
+    fs.symlinkSync(secretFile, symlinkFile);
+
+    const logger = createMockLogger();
+    const { files } = collectSourceFiles(tmpDir, tmpDir, logger);
+
+    // The symlinked file should be filtered out by the per-file boundary check
+    expect(files).toHaveLength(0);
+  });
+
+  it("collects normal (non-symlinked) files within workspaceRoot", () => {
+    fs.writeFileSync(
+      path.join(tmpDir, "normal.ts"),
+      "export const normal = 1;\n",
+    );
+
+    const { files, droppedFiles } = collectSourceFiles(
+      tmpDir,
+      tmpDir,
+      createMockLogger(),
+    );
+
+    expect(files).toHaveLength(1);
+    expect(files[0].relativePath).toBe("normal.ts");
+    expect(droppedFiles).toEqual([]);
+  });
+
+  it("collects symlinks that resolve within workspaceRoot", () => {
+    // Create a real file inside tmpDir
+    const realFile = path.join(tmpDir, "real.ts");
+    fs.writeFileSync(realFile, "export const real = 1;\n");
+
+    // Create a symlink inside tmpDir pointing to the real file
+    const symlinkFile = path.join(tmpDir, "link.ts");
+    fs.symlinkSync(realFile, symlinkFile);
+
+    const { files } = collectSourceFiles(tmpDir, tmpDir, createMockLogger());
+
+    // Should collect both the real file and the symlink
+    expect(files.length).toBeGreaterThanOrEqual(1);
+    const paths = files.map((f) => f.relativePath);
+    expect(paths).toContain("real.ts");
+  });
+
+  it("returns empty files when resolvedPath resolves outside workspaceRoot", () => {
+    // Create a file in outsideDir
+    fs.writeFileSync(
+      path.join(outsideDir, "secret.ts"),
+      "export const secret = 1;\n",
+    );
+
+    const logger = createMockLogger();
+    const { files } = collectSourceFiles(outsideDir, tmpDir, logger);
+
+    expect(files).toHaveLength(0);
+  });
+
+  it("returns empty when resolvedPath is a symlink pointing outside workspaceRoot", () => {
+    // Create a file in outsideDir
+    fs.writeFileSync(
+      path.join(outsideDir, "secret.ts"),
+      "export const secret = 1;\n",
+    );
+
+    // Create a symlink inside tmpDir that points to outsideDir
+    const symlinkPath = path.join(tmpDir, "escape-symlink");
+    fs.symlinkSync(outsideDir, symlinkPath);
+
+    const logger = createMockLogger();
+    const { files } = collectSourceFiles(symlinkPath, tmpDir, logger);
+
+    expect(files).toHaveLength(0);
+  });
+});

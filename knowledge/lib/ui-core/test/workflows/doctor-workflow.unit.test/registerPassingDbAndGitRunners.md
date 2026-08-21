@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L578
+id: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts#registerPassingDbAndGitRunners@L1984
 type: symbol
 name: registerPassingDbAndGitRunners
 filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts
@@ -7,4 +7,3 @@ filePath: lib/ui-core/test/workflows/doctor-workflow.unit.test.ts
 # Symbol: registerPassingDbAndGitRunners
 
 File: `lib/ui-core/test/workflows/doctor-workflow.unit.test.ts`
-

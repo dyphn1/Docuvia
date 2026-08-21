@@ -32,6 +32,17 @@ const HTTP_METHODS = [
   "head",
 ] as const;
 
+/** Type-safe representation of an OpenAPI Path Item object (issue #143). */
+interface PathItemObject {
+  [method: string]: Record<string, unknown> | undefined;
+}
+
+/** Minimal shape of a parsed OpenAPI/Swagger spec (issue #143). */
+interface OpenApiSpecObject {
+  paths?: Record<string, PathItemObject | undefined>;
+  [key: string]: unknown;
+}
+
 /** Signature key prefixes checked when sniffing a file for an OpenAPI/Swagger spec. */
 const OPENAPI_SIGNATURE_PREFIXES = [
   "openapi:",
@@ -153,7 +164,7 @@ function buildEndpointEvent(
 
 /** Emits one event per HTTP-method operation across every path in the spec. */
 function buildEndpointEvents(
-  spec: any,
+  spec: OpenApiSpecObject,
   contractName: string,
   isOpenApi3: boolean,
   filePath: string,
@@ -165,7 +176,7 @@ function buildEndpointEvents(
     if (!pathItem || typeof pathItem !== "object") continue;
 
     for (const method of HTTP_METHODS) {
-      const operation = (pathItem as any)[method];
+      const operation = pathItem[method as string];
       if (!operation || typeof operation !== "object") continue;
 
       events.push(

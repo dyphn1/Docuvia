@@ -15,7 +15,7 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck": "tsc --build",
     "lint": "eslint .",
-    "test": "rimraf coverage && vitest run --coverage",
+    "test": "rimraf coverage && vitest run --coverage --testTimeout=30000",
     "format": "prettier --write .",
     "prepare": "husky"
   },

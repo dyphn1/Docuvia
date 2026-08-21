@@ -72,6 +72,13 @@ candidates, not committed.
 
 ### 30. `docuvia-*` skill set mirroring `gitnexus-*`, installed via `docuvia init`'s skill option
 
+> **Shipped — 2026-08-21 (PR #176).** Four task-routed skill files shipped: `docuvia-exploring`,
+> `docuvia-impact-analysis`, `docuvia-knowledge-graph`, `docuvia-agent-authored`. Installed via
+> `docuvia init --skills` (opt-in), removed via `docuvia uninstall --skills` (symmetric). Templates
+> in `artifacts/cli/src/constants/skill-templates.ts`, installer/uninstaller in
+> `artifacts/cli/src/skills/install-skills.ts`. See [IFCE-007](../adr/interface/IFCE-007-docuvia-skill-set.md)
+> for the full design decision.
+
 Confirmed direction: task-routed skill files (in the shape of the user's existing
 `gitnexus-exploring`/`gitnexus-impact-analysis`/etc. skill set) for Docuvia, so an agent gets
 guided which command/format fits a given task instead of relying solely on the `AGENTS.md`/
@@ -98,7 +105,7 @@ byte-identical to the `DOCUVIA_HOOK_JS` template.
 > (`LocalQueryResult` / `ImpactResult` / `ChangeDetectionResult`) with the banner/spinner
 > suppressed; `impact` emits the JSON literal `null` (exit 0) when the target doesn't resolve. The
 > JSON shapes are deliberately the un-reshaped API result objects so they double as the contract
-> for item 29's MCP tools and item 30's skill files.
+> for item 29's MCP tools and item 30's skill files (now shipped, see IFCE-007).
 
 Currently `--format` exists only on `query` (`QUERY_OUTPUT_FORMATS`: `human`/`prompt` —
 [`cli-flags.ts`](../../../artifacts/cli/src/constants/cli-flags.ts)); `impact`/`review` have no
@@ -106,7 +113,7 @@ Currently `--format` exists only on `query` (`QUERY_OUTPUT_FORMATS`: `human`/`pr
 `--format` support to `impact`/`review` reusing that same enum rather than each command inventing
 its own flag. Tied to item 29: MCP tools return structured data natively, so `--format=json`
 mainly serves the Bash-fallback path and non-MCP platforms; which format an agent should reach for
-in which situation is expected to live in item 30's skill files.
+in which situation is expected to live in item 30's skill files (now shipped, see IFCE-007).
 
 ### 32. `init` gains an opt-in Tier B/C escalation option — resolved via the same agent-authored backfill mechanism as item 33
 
@@ -230,14 +237,12 @@ forced-on behavior: once `docuvia hooks` ships (alongside IFCE-006's `install` r
 run `docuvia hooks disable commit-l3-write` to opt out of the Tier C backfill entirely if they
 don't want it.
 
-**Open, deliberately deferred (2026-08-14)**: whether `docuvia hooks` also manages skill-file
-installation (item 30) or whether that stays under a separate `init --skills=`/`uninstall --skills=`
-flag pair — skills are static file drops, not runtime hook registrations, so the two may not share
-a management surface. Explicitly held open rather than decided now: once
-[IFCE-006](../adr/interface/IFCE-006-rename-init-to-install.md)'s `init` → `install` rename ships,
-"install behavior" reads more naturally as the right home for file-drop-style installs (skills
-included), which should make this boundary easier to call — deciding it before the rename lands
-risks anchoring on `init`'s current, soon-to-change semantics.
+**Resolved (2026-08-21, PR #176)**: skill files live under `init --skills`/`uninstall --skills`
+(see [IFCE-007](../adr/interface/IFCE-007-docuvia-skill-set.md)), not under `docuvia hooks` —
+skills are static file drops, not runtime hook registrations, so they don't share a management
+surface with the hook lifecycle commands. This was the originally-intended separation; the
+"deliberately deferred" note was waiting for IFCE-006's `init` → `install` rename to land before
+deciding, but the implementation confirmed the separation is correct as-is.
 
 ### 35. `init --platform=X` isn't actually scoped the way `uninstall --platform=X` is
 

@@ -101,8 +101,6 @@ export default tseslint.config(
       "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
       // renderL3Card / computeL2GitPathsByNodeId (L3 renderers)
       "lib/ui-core/src/workflows/snapshot/pack-current-graph.ts",
-      // importL3CardsFromKnowledgeBranch (git -> store IO)
-      "lib/ui-core/src/workflows/sync-knowledge/sync-knowledge-workflow.ts",
     ],
     rules: { "no-restricted-imports": "off" },
   },

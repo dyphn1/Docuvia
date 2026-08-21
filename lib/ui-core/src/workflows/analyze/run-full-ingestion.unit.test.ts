@@ -235,6 +235,7 @@ describe("runFullIngestion()", () => {
         callOrder.push("markSynced");
       }),
       hydrate: vi.fn(),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     };
     const knowledgeGit: IKnowledgeGitService = {
       ensureKnowledgeBranch: vi.fn(),

@@ -11,6 +11,7 @@ import {
   type GraphStoreOpenOptions,
   type IGitProvider,
   type IGraphStore,
+  type IHydrationService,
   type IKnowledgeGitService,
 } from "@workspace/contracts";
 import { SyncKnowledgeWorkflow } from "./sync-knowledge-workflow.js";
@@ -164,6 +165,14 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
         .fn<[GraphStoreOpenOptions], Promise<IGraphStore>>()
         .mockResolvedValue(store),
     );
+    const hydrationService: IHydrationService = {
+      resolveHydrationCommit: vi.fn(),
+      hydrate: vi.fn(),
+      isStale: vi.fn(),
+      markSynced: vi.fn(),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
+    };
+    docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
 
     const result = await new SyncKnowledgeWorkflow(
@@ -181,10 +190,13 @@ describe("SyncKnowledgeWorkflow.execute()", () => {
       "/workspace/demo",
       expect.any(Function),
     );
-    expect(gitProvider.listFilesAtRef).toHaveBeenCalledWith(
+    // The L3-import step delegates to IHydrationService.importL3Cards (resolved via factory),
+    // which internally opens the store, acquires the write lock, and delegates to
+    // importL3CardsFromKnowledgeBranch.
+    expect(hydrationService.importL3Cards).toHaveBeenCalledWith(
       "/workspace/demo",
       "merge-sha",
-      "knowledge/_l3",
+      store,
     );
     expect(store.close).toHaveBeenCalledTimes(1);
   });

@@ -106,6 +106,7 @@ describe("HydrateWorkflow.execute()", () => {
       isStale: vi.fn(),
       markSynced: vi.fn(),
       hydrate: vi.fn().mockResolvedValue(hydrationResult),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
@@ -143,6 +144,7 @@ describe("HydrateWorkflow.execute()", () => {
         edgesLoaded: 0,
         edgesDropped: 0,
       }),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();
@@ -166,6 +168,7 @@ describe("HydrateWorkflow.execute()", () => {
       isStale: vi.fn(),
       markSynced: vi.fn(),
       hydrate: vi.fn().mockRejectedValue(new Error("git command failed")),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
     docuviaFactory.lock();

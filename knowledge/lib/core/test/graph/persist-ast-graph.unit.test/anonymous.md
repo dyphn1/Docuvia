@@ -1,5 +1,5 @@
 ---
-id: lib/core/test/graph/persist-ast-graph.unit.test.ts#anonymous@L100
+id: lib/core/test/graph/persist-ast-graph.unit.test.ts#anonymous
 type: symbol
 name: anonymous
 filePath: lib/core/test/graph/persist-ast-graph.unit.test.ts

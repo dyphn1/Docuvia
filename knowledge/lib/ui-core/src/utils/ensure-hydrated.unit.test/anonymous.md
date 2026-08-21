@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/utils/ensure-hydrated.unit.test.ts#anonymous@L81
+id: lib/ui-core/src/utils/ensure-hydrated.unit.test.ts#anonymous@L87
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/utils/ensure-hydrated.unit.test.ts

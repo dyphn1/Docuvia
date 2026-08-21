@@ -7,3 +7,4 @@ filePath: lib/contracts/src/logging/ipc-log-router.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/contracts/src/logging/ipc-log-router.unit.test.ts`
+

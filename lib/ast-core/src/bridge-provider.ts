@@ -10,7 +10,7 @@
  * language ecosystems.
  */
 
-import { AstEvent } from "./sink.js";
+import { AstEvent, type AstEndpointEvent } from "./sink.js";
 import { AstEventType } from "./constants/ast-event-constants.js";
 
 export const SpecFormat = {
@@ -226,7 +226,9 @@ export async function parseOpenApiSpec(
     events,
     contractName,
     endpointCount: events.filter(
-      (e) => e.type === AstEventType.API_CONTRACT && e.method,
+      (e): e is AstEndpointEvent =>
+        e.type === AstEventType.API_CONTRACT &&
+        (e as AstEndpointEvent).method !== undefined,
     ).length,
   };
 }

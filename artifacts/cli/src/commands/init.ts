@@ -15,6 +15,7 @@ import { UI_MESSAGES } from "../constants/ui-messages.js";
 import { CLI_ERROR_MESSAGES } from "../constants/cli-errors.js";
 import { selectPlatforms } from "../utils/platform-selection.js";
 import { withInitCommandLock } from "../utils/init-command-lock.js";
+import { installSkills } from "../skills/install-skills.js";
 
 /** Boundary validation (design-spirit.md #4) — the first thing that touches CLI-supplied input. */
 const InitInputSchema = z.object({
@@ -90,6 +91,7 @@ export async function initCommand(
   cwd: string = process.cwd(),
   platformFilter?: string,
   isInteractive: boolean = false,
+  installSkillFiles: boolean = false,
 ) {
   const input = InitInputSchema.parse({
     cwd,
@@ -139,5 +141,29 @@ export async function initCommand(
   if (hooksError !== undefined) {
     ui.error(UI_MESSAGES.INIT_HOOKS_FAIL + hooksError);
     process.exit(1);
+  }
+
+  if (installSkillFiles) {
+    handleSkillInstallation(cwd);
+  }
+}
+
+function handleSkillInstallation(cwd: string): void {
+  try {
+    const result = installSkills(cwd);
+    if (result.installed.length > 0) {
+      ui.success(
+        `Installed ${result.installed.length} skill(s): ${result.installed.join(", ")}`,
+      );
+    }
+    if (result.skipped.length > 0) {
+      ui.info(
+        `Skipped ${result.skipped.length} existing skill(s): ${result.skipped.join(", ")}`,
+      );
+    }
+  } catch (error) {
+    ui.warn(
+      `Skill installation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }

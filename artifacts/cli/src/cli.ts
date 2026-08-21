@@ -73,7 +73,13 @@ interface CommandContext {
 async function handleInit(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.INIT]);
   const platform = ctx.parser.getFlagValue(CLI_FLAGS.PLATFORM);
-  await initCommand(ctx.workspaceRoot, platform, ctx.isInteractive);
+  const installSkillsFlag = ctx.parser.hasFlag(CLI_FLAGS.SKILLS);
+  await initCommand(
+    ctx.workspaceRoot,
+    platform,
+    ctx.isInteractive,
+    installSkillsFlag,
+  );
 }
 
 async function handleMcp(ctx: CommandContext): Promise<void> {
@@ -197,11 +203,13 @@ async function handleUninstall(ctx: CommandContext): Promise<void> {
   ctx.parser.checkUnknownFlags(CLI_COMMAND_FLAGS[CLI_COMMANDS.UNINSTALL]);
   const platform = ctx.parser.getFlagValue(CLI_FLAGS.PLATFORM);
   const keepDb = ctx.parser.hasFlag(CLI_FLAGS.KEEP_DB);
+  const removeSkillsFlag = ctx.parser.hasFlag(CLI_FLAGS.SKILLS);
   await uninstallCommand(
     ctx.workspaceRoot,
     platform,
     keepDb,
     ctx.isInteractive,
+    removeSkillsFlag,
   );
 }
 

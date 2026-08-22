@@ -116,6 +116,7 @@ function baseDeps(overrides: Partial<TierCDrainDeps> = {}): TierCDrainDeps {
     git: overrides.git ?? makeGit(),
     llmBaseUrl: "http://localhost:8317",
     llmModel: "test-model",
+    loadThreshold: Number.POSITIVE_INFINITY,
     ...overrides,
   };
 }

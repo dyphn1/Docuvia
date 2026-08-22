@@ -267,17 +267,35 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     //  - path separators may mix / and \ depending on the git binary build
     // The main worktree's branch name depends on init.defaultBranch -- so assert the sibling
     // entry exactly and only require the main entry to be present by normalized path.
-    // Normalize paths through fs.realpathSync (resolves macOS /private/var symlinks, Windows
-    // 8.3 short names) then lowercase + forward-slash (Windows drive-letter casing, mixed
-    // separators from different git binary builds). Falls back to path.resolve when
-    // realpathSync fails (e.g. a Windows junction that resolves to a different root than
-    // git's own path reporting).
-    const normalize = (p: string) => {
+    // Normalize paths for cross-platform comparison. On macOS, git reports realpaths
+    // (/private/var/...) while os.tmpdir() returns the symlink (/var/...), so we need
+    // fs.realpathSync to resolve both. On Windows CI, fs.realpathSync can resolve 8.3
+    // short names inconsistently between git's reported path and Node's tmpDir (different
+    // junction-point roots), so we fall back to path.resolve for BOTH sides.
+    let usedRealpath = true;
+    const tryRealpath = (p: string): string | undefined => {
       try {
-        return fs.realpathSync(p).replace(/\\/g, "/").toLowerCase();
+        return fs.realpathSync(p);
       } catch {
-        return path.resolve(p).replace(/\\/g, "/").toLowerCase();
+        return undefined;
       }
+    };
+    // Probe whether realpathSync resolves both sides to the same root;
+    // if not, fall back to path.resolve for consistency.
+    const probeGit = tryRealpath(worktrees[0]?.path ?? tmpDir);
+    const probeTmp = tryRealpath(tmpDir);
+    if (
+      probeGit === undefined ||
+      probeTmp === undefined ||
+      !probeGit.startsWith(probeTmp.split(path.sep).slice(0, -1).join(path.sep))
+    ) {
+      usedRealpath = false;
+    }
+    const normalize = (p: string) => {
+      const raw = usedRealpath
+        ? (tryRealpath(p) ?? path.resolve(p))
+        : path.resolve(p);
+      return raw.replace(/\\/g, "/").toLowerCase();
     };
     const normalized = worktrees.map((w) => ({
       ...w,

@@ -26,7 +26,14 @@ export const CPP_EXTENSIONS = [
   ".cuh",
 ];
 export const RUBY_EXTENSIONS = [".rb", ".rake", ".gemspec"];
-export const PHP_EXTENSIONS = [".php", ".phtml", ".php3", ".php4", ".php5", ".phps"];
+export const PHP_EXTENSIONS = [
+  ".php",
+  ".phtml",
+  ".php3",
+  ".php4",
+  ".php5",
+  ".phps",
+];
 export const CSHARP_EXTENSIONS = [".cs"];
 
 /**

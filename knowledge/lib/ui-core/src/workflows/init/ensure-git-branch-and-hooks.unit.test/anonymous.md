@@ -7,4 +7,3 @@ filePath: lib/ui-core/src/workflows/init/ensure-git-branch-and-hooks.unit.test.t
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/init/ensure-git-branch-and-hooks.unit.test.ts`
-ts`

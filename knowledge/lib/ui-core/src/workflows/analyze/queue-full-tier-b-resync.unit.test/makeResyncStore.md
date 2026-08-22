@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/queue-full-tier-b-resync.unit.test.ts#makeMockGitProvider
+id: lib/ui-core/src/workflows/analyze/queue-full-tier-b-resync.unit.test.ts#makeResyncStore
 type: symbol
-name: makeMockGitProvider
+name: makeResyncStore
 filePath: lib/ui-core/src/workflows/analyze/queue-full-tier-b-resync.unit.test.ts
 ---
-# Symbol: makeMockGitProvider
+# Symbol: makeResyncStore
 
 File: `lib/ui-core/src/workflows/analyze/queue-full-tier-b-resync.unit.test.ts`

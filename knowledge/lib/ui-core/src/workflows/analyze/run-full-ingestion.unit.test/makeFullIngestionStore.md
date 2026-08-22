@@ -1,9 +1,9 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-full-ingestion.unit.test.ts#withTransaction
+id: lib/ui-core/src/workflows/analyze/run-full-ingestion.unit.test.ts#makeFullIngestionStore
 type: symbol
-name: withTransaction
+name: makeFullIngestionStore
 filePath: lib/ui-core/src/workflows/analyze/run-full-ingestion.unit.test.ts
 ---
-# Symbol: withTransaction
+# Symbol: makeFullIngestionStore
 
 File: `lib/ui-core/src/workflows/analyze/run-full-ingestion.unit.test.ts`

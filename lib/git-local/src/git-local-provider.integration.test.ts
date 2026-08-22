@@ -267,8 +267,18 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     //  - path separators may mix / and \ depending on the git binary build
     // The main worktree's branch name depends on init.defaultBranch -- so assert the sibling
     // entry exactly and only require the main entry to be present by normalized path.
-    const normalize = (p: string) =>
-      fs.realpathSync(p).replace(/\\/g, "/").toLowerCase();
+    // Normalize paths through fs.realpathSync (resolves macOS /private/var symlinks, Windows
+    // 8.3 short names) then lowercase + forward-slash (Windows drive-letter casing, mixed
+    // separators from different git binary builds). Falls back to path.resolve when
+    // realpathSync fails (e.g. a Windows junction that resolves to a different root than
+    // git's own path reporting).
+    const normalize = (p: string) => {
+      try {
+        return fs.realpathSync(p).replace(/\\/g, "/").toLowerCase();
+      } catch {
+        return path.resolve(p).replace(/\\/g, "/").toLowerCase();
+      }
+    };
     const normalized = worktrees.map((w) => ({
       ...w,
       path: normalize(w.path),

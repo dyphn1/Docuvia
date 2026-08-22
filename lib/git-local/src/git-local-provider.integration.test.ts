@@ -270,32 +270,18 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     // Normalize paths for cross-platform comparison. On macOS, git reports realpaths
     // (/private/var/...) while os.tmpdir() returns the symlink (/var/...), so we need
     // fs.realpathSync to resolve both. On Windows CI, fs.realpathSync can resolve 8.3
-    // short names inconsistently between git's reported path and Node's tmpDir (different
-    // junction-point roots), so we fall back to path.resolve for BOTH sides.
-    let usedRealpath = true;
-    const tryRealpath = (p: string): string | undefined => {
-      try {
-        return fs.realpathSync(p);
-      } catch {
-        return undefined;
-      }
-    };
-    // Probe whether realpathSync resolves both sides to the same root;
-    // if not, fall back to path.resolve for consistency.
-    const probeGit = tryRealpath(worktrees[0]?.path ?? tmpDir);
-    const probeTmp = tryRealpath(tmpDir);
-    if (
-      probeGit === undefined ||
-      probeTmp === undefined ||
-      !probeGit.startsWith(probeTmp.split(path.sep).slice(0, -1).join(path.sep))
-    ) {
-      usedRealpath = false;
-    }
+    // short names inconsistently when paths use forward slashes (from git porcelain)
+    // vs backslashes (from Node's os.tmpdir). Fix: normalize to native separators
+    // BEFORE calling fs.realpathSync so both sides see the same path form.
     const normalize = (p: string) => {
-      const raw = usedRealpath
-        ? (tryRealpath(p) ?? path.resolve(p))
-        : path.resolve(p);
-      return raw.replace(/\\/g, "/").toLowerCase();
+      // Convert forward slashes to native separators first so fs.realpathSync
+      // doesn't fail on Windows where forward-slash paths can't be resolved.
+      const nativePath = p.replace(/\//g, path.sep);
+      try {
+        return fs.realpathSync(nativePath).replace(/\\/g, "/").toLowerCase();
+      } catch {
+        return path.resolve(nativePath).replace(/\\/g, "/").toLowerCase();
+      }
     };
     const normalized = worktrees.map((w) => ({
       ...w,

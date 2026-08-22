@@ -43,6 +43,54 @@ function walkDirectory(dir: string): string[] {
   return results;
 }
 
+/** True when `resolved` is the workspace root itself or a path inside it. */
+function isInsideRoot(resolved: string, realWorkspaceRoot: string): boolean {
+  return (
+    resolved.startsWith(realWorkspaceRoot + path.sep) ||
+    resolved === realWorkspaceRoot
+  );
+}
+
+/**
+ * Resolves `filePath`'s symlink target, returning `null` (after warning) when resolution
+ * fails. Used for per-file boundary validation (issue #162): a symlinked file inside the
+ * tree may resolve to a target outside workspaceRoot.
+ */
+function resolveRealPathOrWarn(
+  filePath: string,
+  logger: ILogger,
+): string | null {
+  try {
+    return fs.realpathSync(filePath);
+  } catch {
+    logger.warn(ANALYZE_MESSAGES.FILE_READ_FAILED, {
+      filePath,
+      error: "Failed to resolve symlinks for file path",
+    });
+    return null;
+  }
+}
+
+/**
+ * Reads `filePath` as UTF-8, returning `null` (after warning) when the read throws
+ * (e.g. `EACCES`) — such a file is skipped from both `files` and `droppedFiles`
+ * since it was never a cap-drop.
+ */
+function readFileContentOrWarn(
+  filePath: string,
+  logger: ILogger,
+): string | null {
+  try {
+    return fs.readFileSync(filePath, UTF8_ENCODING);
+  } catch (err) {
+    logger.warn(ANALYZE_MESSAGES.FILE_READ_FAILED, {
+      filePath,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return null;
+  }
+}
+
 /**
  * Walks `resolvedPath` (a single file or a directory) collecting only `isSupportedSourceFile()`
  * matches, capped at `MAX_ANALYZE_FILES` files / `MAX_ANALYZE_BYTES` cumulative bytes, whichever
@@ -63,10 +111,7 @@ export function collectSourceFiles(
   // pointing outside workspaceRoot is caught, not silently followed.
   const realWorkspaceRoot = fs.realpathSync(workspaceRoot);
   const realResolvedPath = fs.realpathSync(resolvedPath);
-  if (
-    !realResolvedPath.startsWith(realWorkspaceRoot + path.sep) &&
-    realResolvedPath !== realWorkspaceRoot
-  ) {
+  if (!isInsideRoot(realResolvedPath, realWorkspaceRoot)) {
     logger.warn(ANALYZE_MESSAGES.FILE_READ_FAILED, {
       filePath: resolvedPath,
       error: `Resolved path ${realResolvedPath} is outside workspace root ${realWorkspaceRoot}`,
@@ -88,19 +133,9 @@ export function collectSourceFiles(
 
     // Per-file boundary validation (issue #162): symlinked files inside
     // the tree may resolve to a target outside workspaceRoot.
-    let realFilePath: string;
-    try {
-      realFilePath = fs.realpathSync(filePath);
-    } catch {
-      logger.warn(ANALYZE_MESSAGES.FILE_READ_FAILED, {
-        filePath,
-        error: "Failed to resolve symlinks for file path",
-      });
-      continue;
-    }
-    if (!realFilePath.startsWith(realWorkspaceRoot + path.sep)) {
-      continue;
-    }
+    const realFilePath = resolveRealPathOrWarn(filePath, logger);
+    if (realFilePath === null) continue;
+    if (!isInsideRoot(realFilePath, realWorkspaceRoot)) continue;
 
     const relativePath = path.relative(workspaceRoot, filePath);
 
@@ -109,16 +144,8 @@ export function collectSourceFiles(
       continue;
     }
 
-    let content: string;
-    try {
-      content = fs.readFileSync(filePath, UTF8_ENCODING);
-    } catch (err) {
-      logger.warn(ANALYZE_MESSAGES.FILE_READ_FAILED, {
-        filePath,
-        error: err instanceof Error ? err.message : String(err),
-      });
-      continue;
-    }
+    const content = readFileContentOrWarn(filePath, logger);
+    if (content === null) continue;
 
     if (totalBytes + content.length > MAX_ANALYZE_BYTES) {
       droppedFiles.push(relativePath);

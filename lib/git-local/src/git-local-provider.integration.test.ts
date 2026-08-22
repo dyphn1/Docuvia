@@ -259,26 +259,28 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
     const worktrees = await provider.listWorktrees(tmpDir);
 
     // porcelain emits realpaths (e.g. /private/var/... on macOS even when tmpDir is /var/...)
-    // using git's always-forward-slash convention even on Windows, so normalize through
-    // fs.realpathSync() (not path.resolve()) before comparing -- realpathSync resolves both
-    // forward/backward slashes AND OS-level path aliases (8.3 short names on Windows,
-    // /private/var symlinks on macOS) that path.resolve() leaves untouched. The main worktree's
-    // branch name depends on init.defaultBranch -- so assert the sibling entry exactly and only
-    // require the main entry to be present by realpath.
+    // using git's always-forward-slash convention even on Windows. We normalize both sides
+    // through fs.realpathSync() (resolves 8.3 short names, /private/var symlinks, etc.) and
+    // then to lowercase + forward-slash for Windows where:
+    //  - drive-letter casing can differ (D: vs d:)
+    //  - git may report UNC or different-case paths vs what the OS returns
+    //  - path separators may mix / and \ depending on the git binary build
+    // The main worktree's branch name depends on init.defaultBranch -- so assert the sibling
+    // entry exactly and only require the main entry to be present by normalized path.
+    const normalize = (p: string) =>
+      fs.realpathSync(p).replace(/\\/g, "/").toLowerCase();
     const normalized = worktrees.map((w) => ({
       ...w,
-      path: fs.realpathSync(w.path),
+      path: normalize(w.path),
     }));
-    const mainEntry = normalized.find(
-      (w) => w.path === fs.realpathSync(tmpDir),
-    );
+    const mainEntry = normalized.find((w) => w.path === normalize(tmpDir));
     expect(mainEntry).toBeDefined();
     expect(
       normalized.find(
-        (w) => w.path === fs.realpathSync(path.join(tmpDir, "worktree-b")),
+        (w) => w.path === normalize(path.join(tmpDir, "worktree-b")),
       ),
     ).toEqual({
-      path: fs.realpathSync(path.join(tmpDir, "worktree-b")),
+      path: normalize(path.join(tmpDir, "worktree-b")),
       branch: "feat/b",
     });
     expect(worktrees).toHaveLength(2);

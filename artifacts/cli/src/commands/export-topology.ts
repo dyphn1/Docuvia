@@ -36,7 +36,10 @@ export interface ExportTopologyOptions {
  * workspace root.  Throws FS_PATH_TRAVERSAL if the resolved path escapes the workspace.
  * Issue #179.
  */
-function resolveOutDir(out: string | undefined, workspaceRoot: string): string {
+export function resolveOutDir(
+  out: string | undefined,
+  workspaceRoot: string,
+): string {
   const outDir = out
     ? path.resolve(workspaceRoot, out)
     : path.join(workspaceRoot, DOCUVIA_DIR_NAME);
@@ -87,9 +90,12 @@ export async function exportTopologyCommand(
   if (options.collapse)
     docuviaMemory.set(scopeId, MemoryKeys.COLLAPSE, options.collapse);
 
+  let outDir: string;
+  let graph: TopologyGraph;
   try {
-    const graph = await docuviaApi.exportTopology(scopeId, logger);
-    const outDir = resolveOutDir(options.out, path.resolve(cwd));
+    // Validate --out before doing any work so an escaping path fails fast (issue #179 review).
+    outDir = resolveOutDir(options.out, path.resolve(cwd));
+    graph = await docuviaApi.exportTopology(scopeId, logger);
 
     // Issue #71: async fs APIs — the sync variants block the event loop on every export.
     await fs.mkdir(outDir, { recursive: true });

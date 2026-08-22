@@ -260,13 +260,14 @@ describe("GitLocalProvider (integration, real git shell-outs)", () => {
 
     // porcelain emits realpaths (e.g. /private/var/... on macOS even when tmpDir is /var/...)
     // using git's always-forward-slash convention even on Windows, so normalize through
-    // path.resolve() before comparing against fs.realpathSync()'s native-separator output --
-    // the same normalization runWorktreeDivergenceDiagnostic itself applies. The main worktree's
+    // fs.realpathSync() (not path.resolve()) before comparing -- realpathSync resolves both
+    // forward/backward slashes AND OS-level path aliases (8.3 short names on Windows,
+    // /private/var symlinks on macOS) that path.resolve() leaves untouched. The main worktree's
     // branch name depends on init.defaultBranch -- so assert the sibling entry exactly and only
     // require the main entry to be present by realpath.
     const normalized = worktrees.map((w) => ({
       ...w,
-      path: path.resolve(w.path),
+      path: fs.realpathSync(w.path),
     }));
     const mainEntry = normalized.find(
       (w) => w.path === fs.realpathSync(tmpDir),

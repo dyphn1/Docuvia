@@ -64,7 +64,10 @@ class SettlingLspClient {
       // One shared settle wait per session (not per request) -- every semantic request after the
       // first waits on the same already-resolved promise, so this only costs real wall-clock time
       // once per spawned `typescript-language-server` process.
-      this.settle ??= new Promise((resolve) => setTimeout(resolve, 3000));
+      // Windows CI runners are ~2× slower at LSP server cold-start, so extend the settle
+      // proportionally to avoid premature client shutdown (observed on windows-latest in #175).
+      const settleMs = process.platform === "win32" ? 6_000 : 3_000;
+      this.settle ??= new Promise((resolve) => setTimeout(resolve, settleMs));
       await this.settle;
     }
     return this.real.request<T>(method, params, timeoutMs);

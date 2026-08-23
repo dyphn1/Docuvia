@@ -1,0 +1,39 @@
+name: Debug NPM Token
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  whoami:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          registry-url: "https://registry.npmjs.org/"
+
+      - name: Test token identity (whoami)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "Token length: ${#NODE_AUTH_TOKEN}"
+          if [[ "$NODE_AUTH_TOKEN" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+            echo "Charset OK (no whitespace/special chars)"
+          else
+            echo "WARNING: token contains unexpected characters"
+          fi
+          npm whoami
+
+      - name: Test token via curl
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          CODE=$(curl -s -o /tmp/whoami.json -w "%{http_code}" \
+            -H "Authorization: Bearer $NODE_AUTH_TOKEN" \
+            https://registry.npmjs.org/-/whoami)
+          echo "HTTP $CODE"
+          cat /tmp/whoami.json

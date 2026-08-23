@@ -216,3 +216,23 @@ export interface IGitProvider {
   /** Releases the lock acquired by `acquireKnowledgeLock` (best-effort — a missing lock file is not an error). */
   releaseKnowledgeLock(cwd: string): Promise<void>;
 }
+
+/**
+ * Per-line commit ownership over one file's current contents (`git blame --porcelain`, issue
+ * #68's authority mechanism). Composed as its own small interface rather than a member of
+ * `IGitProvider` because it has exactly one consumer today (the L3 validity pass) and the blame
+ * capability is conceptually an analysis read, not a repository-mutation primitive. Implemented
+ * by `GitLocalProvider`; consumers take this narrow type so tests can stub just the blame read.
+ */
+export interface ILineBlameProvider {
+  /**
+   * Maps each final (working-tree/HEAD) 1-indexed line number of `filePath` to the full sha of
+   * the commit that last touched that line, or `undefined`. Boundary commits (blame's `^`
+   * prefix) are reported as their real shas. A missing file or unavailable git yields an empty
+   * map — "unknown ownership", never a fatal error.
+   */
+  getBlameLineOwners(
+    cwd: string,
+    filePath: string,
+  ): Promise<Map<number, string>>;
+}

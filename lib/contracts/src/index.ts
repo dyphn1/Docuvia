@@ -30,6 +30,7 @@ export type {
   ChangedFileStatus,
   DiffLineRange,
   IGitProvider,
+  ILineBlameProvider,
   WorktreeEntry,
 } from "./interfaces/git.interfaces.js";
 export { ChangedFileStatuses } from "./interfaces/git.interfaces.js";

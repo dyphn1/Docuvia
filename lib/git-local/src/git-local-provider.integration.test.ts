@@ -1127,6 +1127,54 @@ describe("GitLocalProvider — getChangedFilesSince two-ref mode (Slice 2a delta
   });
 });
 
+describe("GitLocalProvider — getBlameLineOwners (issue #68's per-line ownership read)", () => {
+  let tmpDir: string;
+  let provider: GitLocalProvider;
+  let firstSha: string;
+
+  function lines(n: number): string {
+    return Array.from({ length: n }, (_, i) => `l${i + 1}`).join("\n") + "\n";
+  }
+
+  async function commitAll(message: string): Promise<string> {
+    await git(tmpDir, ["add", "-A"]);
+    await git(tmpDir, ["commit", "-m", message]);
+    const { stdout } = await git(tmpDir, ["rev-parse", "HEAD"]);
+    return stdout.trim();
+  }
+
+  beforeEach(async () => {
+    const repo = await createTempGitRepo("docuvia-git-local-blame-test-");
+    tmpDir = repo.dir;
+    provider = repo.provider;
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), lines(10));
+    firstSha = await commitAll("first");
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("maps every final line to the sha of the commit that last touched it", async () => {
+    const content = lines(10).split("\n");
+    content[4] = "l5-rewritten"; // line 5 rewritten by a second commit
+    fs.writeFileSync(path.join(tmpDir, "f.ts"), content.join("\n"));
+    const secondSha = await commitAll("second");
+
+    const owners = await provider.getBlameLineOwners(tmpDir, "f.ts");
+
+    expect(owners.size).toBe(10);
+    expect(owners.get(1)).toBe(firstSha);
+    expect(owners.get(5)).toBe(secondSha);
+    expect(owners.get(6)).toBe(firstSha);
+  });
+
+  it("returns an empty map for a nonexistent file (unknown ownership, not a throw)", async () => {
+    const owners = await provider.getBlameLineOwners(tmpDir, "nope.ts");
+    expect(owners.size).toBe(0);
+  });
+});
+
 describe("GitLocalProvider — getChangedLineRanges hunk-header parsing (Slice 2a delta ingestion, phase1-decision-integration.md §6d ruling 2)", () => {
   let tmpDir: string;
   let provider: GitLocalProvider;

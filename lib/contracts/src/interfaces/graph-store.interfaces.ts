@@ -481,6 +481,13 @@ export interface IL3NodesRepo {
     sourceFiles: string[];
     createdAt: string;
   }): { id: number; imported: boolean };
+  /**
+   * Flips one row's `validity_status` (issue #68's validity pass): `pending -> active` when the
+   * row's region anchors still blame back to one of its own source commits, and
+   * `* -> 'garbage'` ("dead/superseded") when blame shows the writing commit no longer owns the
+   * lines it describes. A no-op when the row already carries `status`.
+   */
+  updateValidityStatus(id: number, status: ValidityStatus): void;
 }
 
 export interface IFtsRepo {

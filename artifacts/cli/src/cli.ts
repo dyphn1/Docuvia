@@ -2,7 +2,6 @@
 import * as dotenv from "dotenv";
 import process from "process";
 import pc from "picocolors";
-import { createRequire } from "node:module";
 
 import "./registration.js";
 import { initCommand } from "./commands/init.js";
@@ -36,20 +35,16 @@ import { CLI_FLAGS } from "./constants/cli-flags.js";
 import { UI_MESSAGES } from "./constants/ui-messages.js";
 import { ArgParser } from "./utils/arg-parser.js";
 import { resolveOutputFormat } from "./utils/resolve-output-format.js";
+import { getPackageVersion } from "./utils/package-version.js";
 
 dotenv.config({ quiet: true });
-
-// Resolved via `require()` (not a static `import ... from "../package.json"`) so esbuild
-// inlines the parsed JSON at build time without needing `resolveJsonModule` in tsconfig.
-const require = createRequire(import.meta.url);
-const packageJson = require("../package.json") as { version: string };
 
 function printUsage() {
   ui.error(getUsageText());
 }
 
 function getVersion(): string {
-  return packageJson.version;
+  return getPackageVersion();
 }
 
 function isHelpArg(arg: string | undefined): boolean {

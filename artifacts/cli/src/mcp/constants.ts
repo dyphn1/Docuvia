@@ -1,5 +1,8 @@
+import { getPackageVersion } from "../utils/package-version.js";
+
 export const MCP_SERVER_NAME = "docuvia-local-mcp";
-export const MCP_SERVER_VERSION = "0.1.0";
+/** Mirrors the CLI's `--version` source so the MCP handshake always reports the shipped version. */
+export const MCP_SERVER_VERSION = getPackageVersion();
 
 /** Sent during the MCP initialize handshake (issue #190) — the agent-invocation-rate lever:
  *  clients surface these instructions to the model, so this is where the Docuvia-First workflow

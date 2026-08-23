@@ -4,7 +4,7 @@
     {
       "label": "Build CLI",
       "type": "shell",
-      "command": "pnpm --filter @workspace/cli run build",
+      "command": "pnpm --filter docuvia run build",
       "group": {
         "kind": "build",
         "isDefault": true
@@ -31,28 +31,28 @@
     {
       "label": "Register CLI to Local (npm link)",
       "type": "shell",
-      "command": "pnpm --filter @workspace/cli run build && cd artifacts/cli && npm link",
+      "command": "pnpm --filter docuvia run build && cd artifacts/cli && npm link",
       "problemMatcher": [],
       "group": "none"
     },
     {
       "label": "Unregister CLI from Local (npm unlink)",
       "type": "shell",
-      "command": "cd artifacts/cli && npm unlink --global @workspace/cli",
+      "command": "cd artifacts/cli && npm unlink --global docuvia",
       "problemMatcher": [],
       "group": "none"
     },
     {
       "label": "Register CLI to Local (pnpm link)",
       "type": "shell",
-      "command": "pnpm --filter @workspace/cli run build && cd artifacts/cli && pnpm add --global .",
+      "command": "pnpm --filter docuvia run build && cd artifacts/cli && pnpm add --global .",
       "problemMatcher": [],
       "group": "none"
     },
     {
       "label": "Unregister CLI from Local (pnpm unlink)",
       "type": "shell",
-      "command": "pnpm remove --global @workspace/cli",
+      "command": "pnpm remove --global docuvia",
       "problemMatcher": [],
       "group": "none"
     }

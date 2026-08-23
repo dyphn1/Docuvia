@@ -10,6 +10,7 @@ import { createPinoBackedLogger } from "../logging/create-logger.js";
 import {
   MCP_SERVER_NAME,
   MCP_SERVER_VERSION,
+  MCP_SERVER_INSTRUCTIONS,
   MCP_SERVER_READY_MESSAGE,
   MCP_TOOL_NOT_FOUND_MESSAGE,
 } from "./constants.js";
@@ -24,6 +25,7 @@ export async function runMcpServer() {
       capabilities: {
         tools: {},
       },
+      instructions: MCP_SERVER_INSTRUCTIONS,
     },
   );
 

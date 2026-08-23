@@ -1,5 +1,5 @@
 ---
-id: artifacts/cli/test/unit/platforms/copilot.platform.unit.test.ts#anonymous@L32
+id: artifacts/cli/test/unit/platforms/copilot.platform.unit.test.ts#anonymous@L17
 type: symbol
 name: anonymous
 filePath: artifacts/cli/test/unit/platforms/copilot.platform.unit.test.ts

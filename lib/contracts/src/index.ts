@@ -164,6 +164,7 @@ export type {
   TierBCoverageHint,
   LocalSearchResult,
   LocalQueryResult,
+  LocalQueryResultL3Entry,
   QueryResultLayer,
   QueryMatchType,
   IQueryService,

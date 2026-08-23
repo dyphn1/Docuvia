@@ -48,9 +48,32 @@ function printHumanL2Header(result: LocalQueryResult): void {
   }
 }
 
+/** Builds the human-readable provenance suffix for one L3 entry — the mirror of
+ *  `formatPromptOutput`'s `<l3_decision>` provenance attributes (issue #68). Only fields the
+ *  entry actually carries are listed; an empty result means no suffix is printed. */
+function resolveHumanL3ProvenanceParts(
+  l3: LocalQueryResult["l3"][number],
+): string[] {
+  const parts: string[] = [];
+  if (l3.source) parts.push(`source=${l3.source}`);
+  if (l3.commitHash)
+    parts.push(
+      `commit=${l3.commitHash.slice(0, FORMAT_MARKERS.SHORT_SHA_LENGTH)}`,
+    );
+  if (l3.validityStatus) parts.push(`validity=${l3.validityStatus}`);
+  return parts;
+}
+
 function printHumanL3Entries(l3s: LocalQueryResult["l3"]): void {
   for (const l3 of l3s) {
-    ui.success(UI_MESSAGES.QUERY_L3_PREFIX + l3.title);
+    const provenanceParts = resolveHumanL3ProvenanceParts(l3);
+    ui.success(
+      UI_MESSAGES.QUERY_L3_PREFIX +
+        l3.title +
+        (provenanceParts.length > 0
+          ? UI_MESSAGES.QUERY_L3_PROVENANCE(provenanceParts)
+          : ""),
+    );
     if (l3.content) {
       ui.log(
         FORMAT_MARKERS.INDENT_TWO +

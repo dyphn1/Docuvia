@@ -375,6 +375,11 @@ export const UI_MESSAGES = {
   QUERY_L2_PREFIX: "Module: ",
   QUERY_NO_L2: "No matching module found.",
   QUERY_L3_PREFIX: "Decision: ",
+  /** Human-readable mirror of the prompt-format `<l3_decision>` provenance attributes
+   *  (issue #68, provenance axis) — tells a human reading the default output who authored a
+   *  decision and whether it is still considered valid. Rendered only when the entry carries
+   *  provenance; omitted entirely otherwise. */
+  QUERY_L3_PROVENANCE: (parts: string[]) => ` (${parts.join(", ")})`,
   QUERY_UNKNOWN_STATUS: "unknown",
   QUERY_INCOMING_HEADER: "Incoming (callers/dependents)",
   QUERY_OUTGOING_HEADER: "Outgoing (dependencies)",

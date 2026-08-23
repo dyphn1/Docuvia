@@ -1,8 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
-
-const TYPESCRIPT_EXTENSIONS = [".ts", ".tsx", ".mts", ".cts"];
+import { TYPESCRIPT_EXTENSIONS } from "@workspace/contracts";
 const TYPESCRIPT_WASM_FILE = "tree-sitter-typescript.wasm";
 
 export const typescriptConfig: LanguageConfig = {

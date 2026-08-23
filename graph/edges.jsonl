@@ -3,8 +3,8 @@
 {"source":".claude/hooks/docuvia-hook.js","target":".claude/hooks/docuvia-hook.js#readInput","type":"calls"}
 {"source":".claude/hooks/docuvia-hook.js","target":".claude/hooks/docuvia-hook.js#readInput","type":"contains"}
 {"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#anonymous","type":"contains"}
-{"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#anonymous@L310","type":"contains"}
-{"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#anonymous@L413","type":"contains"}
+{"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#anonymous@L305","type":"contains"}
+{"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#anonymous@L408","type":"contains"}
 {"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#CommandContext","type":"contains"}
 {"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#computeInteractivity","type":"contains"}
 {"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#getVersion","type":"contains"}
@@ -34,6 +34,7 @@
 {"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#resolveCommand","type":"contains"}
 {"source":"artifacts/cli/src/cli.ts","target":"artifacts/cli/src/cli.ts#runCommand","type":"contains"}
 {"source":"artifacts/cli/src/cli.ts#computeInteractivity","target":"artifacts/cli/src/cli.ts#isInteractiveArg","type":"calls"}
+{"source":"artifacts/cli/src/cli.ts#getVersion","target":"artifacts/cli/src/utils/package-version.ts#getPackageVersion","type":"calls"}
 {"source":"artifacts/cli/src/cli.ts#handleAnalyze","target":"artifacts/cli/src/commands/analyze.ts#analyzeCommand","type":"calls"}
 {"source":"artifacts/cli/src/cli.ts#handleClean","target":"artifacts/cli/src/commands/clean.ts#cleanCommand","type":"calls"}
 {"source":"artifacts/cli/src/cli.ts#handleDoctor","target":"artifacts/cli/src/commands/doctor.ts#doctorCommand","type":"calls"}
@@ -395,7 +396,7 @@
 {"source":"artifacts/cli/src/logging/create-logger.ts","target":"artifacts/cli/src/logging/create-logger.ts#createPinoBackedLogger","type":"contains"}
 {"source":"artifacts/cli/src/logging/create-logger.ts#createPinoBackedLogger","target":"artifacts/cli/src/logging/create-logger.ts#buildTransport","type":"calls"}
 {"source":"artifacts/cli/src/mcp/constants.ts","target":"artifacts/cli/src/mcp/constants.ts#MCP_TOOL_NOT_FOUND_MESSAGE","type":"contains"}
-{"source":"artifacts/cli/src/mcp/server.ts","target":"artifacts/cli/src/mcp/constants.ts#MCP_TOOL_NOT_FOUND_MESSAGE","type":"calls"}
+{"source":"artifacts/cli/src/mcp/constants.ts","target":"artifacts/cli/src/utils/package-version.ts#getPackageVersion","type":"calls"}
 {"source":"artifacts/cli/src/mcp/server.ts","target":"artifacts/cli/src/mcp/server.ts#anonymous","type":"contains"}
 {"source":"artifacts/cli/src/mcp/server.ts","target":"artifacts/cli/src/mcp/server.ts#anonymous@L37","type":"contains"}
 {"source":"artifacts/cli/src/mcp/server.ts","target":"artifacts/cli/src/mcp/server.ts#runMcpServer","type":"contains"}
@@ -637,6 +638,7 @@
 {"source":"artifacts/cli/src/utils/lsp-args.unit.test.ts","target":"artifacts/cli/src/utils/lsp-args.unit.test.ts#anonymous@L75","type":"contains"}
 {"source":"artifacts/cli/src/utils/lsp-args.unit.test.ts","target":"artifacts/cli/src/utils/lsp-args.unit.test.ts#anonymous@L79","type":"contains"}
 {"source":"artifacts/cli/src/utils/lsp-args.unit.test.ts","target":"artifacts/cli/src/utils/lsp-args.unit.test.ts#anonymous@L89","type":"contains"}
+{"source":"artifacts/cli/src/utils/package-version.ts","target":"artifacts/cli/src/utils/package-version.ts#getPackageVersion","type":"contains"}
 {"source":"artifacts/cli/src/utils/platform-selection.ts","target":"artifacts/cli/src/utils/platform-selection.ts#anonymous","type":"contains"}
 {"source":"artifacts/cli/src/utils/platform-selection.ts","target":"artifacts/cli/src/utils/platform-selection.ts#anonymous@L45","type":"contains"}
 {"source":"artifacts/cli/src/utils/platform-selection.ts","target":"artifacts/cli/src/utils/platform-selection.ts#anonymous@L47","type":"contains"}
@@ -1621,6 +1623,12 @@
 {"source":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts","target":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts#anonymous@L42","type":"contains"}
 {"source":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts","target":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts#anonymous@L45","type":"contains"}
 {"source":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts","target":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts#anonymous@L47","type":"contains"}
+{"source":"artifacts/cli/test/unit/utils/package-version.unit.test.ts","target":"artifacts/cli/src/utils/package-version.ts#getPackageVersion","type":"calls"}
+{"source":"artifacts/cli/test/unit/utils/package-version.unit.test.ts","target":"artifacts/cli/src/utils/package-version.ts#getPackageVersion","type":"calls"}
+{"source":"artifacts/cli/test/unit/utils/package-version.unit.test.ts","target":"artifacts/cli/src/utils/package-version.ts#getPackageVersion","type":"calls"}
+{"source":"artifacts/cli/test/unit/utils/package-version.unit.test.ts","target":"artifacts/cli/test/unit/utils/package-version.unit.test.ts#anonymous","type":"contains"}
+{"source":"artifacts/cli/test/unit/utils/package-version.unit.test.ts","target":"artifacts/cli/test/unit/utils/package-version.unit.test.ts#anonymous@L10","type":"contains"}
+{"source":"artifacts/cli/test/unit/utils/package-version.unit.test.ts","target":"artifacts/cli/test/unit/utils/package-version.unit.test.ts#anonymous@L4","type":"contains"}
 {"source":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts","target":"artifacts/cli/src/utils/read-stdin.ts#readStdin","type":"calls"}
 {"source":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts","target":"artifacts/cli/src/utils/read-stdin.ts#readStdin","type":"calls"}
 {"source":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts","target":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts#anonymous","type":"contains"}

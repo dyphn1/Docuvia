@@ -3,8 +3,8 @@
 {"id":".claude/hooks/docuvia-hook.js#readInput","type":"symbol","name":"readInput","filePath":".claude/hooks/docuvia-hook.js"}
 {"id":"artifacts/cli/src/cli.ts","type":"file","name":"artifacts/cli/src/cli.ts","filePath":"artifacts/cli/src/cli.ts"}
 {"id":"artifacts/cli/src/cli.ts#anonymous","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/cli.ts"}
-{"id":"artifacts/cli/src/cli.ts#anonymous@L310","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/cli.ts"}
-{"id":"artifacts/cli/src/cli.ts#anonymous@L413","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/cli.ts"}
+{"id":"artifacts/cli/src/cli.ts#anonymous@L305","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/cli.ts"}
+{"id":"artifacts/cli/src/cli.ts#anonymous@L408","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/cli.ts"}
 {"id":"artifacts/cli/src/cli.ts#CommandContext","type":"symbol","name":"CommandContext","filePath":"artifacts/cli/src/cli.ts"}
 {"id":"artifacts/cli/src/cli.ts#computeInteractivity","type":"symbol","name":"computeInteractivity","filePath":"artifacts/cli/src/cli.ts"}
 {"id":"artifacts/cli/src/cli.ts#getVersion","type":"symbol","name":"getVersion","filePath":"artifacts/cli/src/cli.ts"}
@@ -439,6 +439,8 @@
 {"id":"artifacts/cli/src/utils/lsp-args.unit.test.ts#anonymous@L75","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/utils/lsp-args.unit.test.ts"}
 {"id":"artifacts/cli/src/utils/lsp-args.unit.test.ts#anonymous@L79","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/utils/lsp-args.unit.test.ts"}
 {"id":"artifacts/cli/src/utils/lsp-args.unit.test.ts#anonymous@L89","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/utils/lsp-args.unit.test.ts"}
+{"id":"artifacts/cli/src/utils/package-version.ts","type":"file","name":"artifacts/cli/src/utils/package-version.ts","filePath":"artifacts/cli/src/utils/package-version.ts"}
+{"id":"artifacts/cli/src/utils/package-version.ts#getPackageVersion","type":"symbol","name":"getPackageVersion","filePath":"artifacts/cli/src/utils/package-version.ts"}
 {"id":"artifacts/cli/src/utils/platform-selection.ts","type":"file","name":"artifacts/cli/src/utils/platform-selection.ts","filePath":"artifacts/cli/src/utils/platform-selection.ts"}
 {"id":"artifacts/cli/src/utils/platform-selection.ts#anonymous","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/utils/platform-selection.ts"}
 {"id":"artifacts/cli/src/utils/platform-selection.ts#anonymous@L45","type":"symbol","name":"anonymous","filePath":"artifacts/cli/src/utils/platform-selection.ts"}
@@ -1250,6 +1252,10 @@
 {"id":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts#anonymous@L42","type":"symbol","name":"anonymous","filePath":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts"}
 {"id":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts#anonymous@L45","type":"symbol","name":"anonymous","filePath":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts"}
 {"id":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts#anonymous@L47","type":"symbol","name":"anonymous","filePath":"artifacts/cli/test/unit/utils/arg-parser.unit.test.ts"}
+{"id":"artifacts/cli/test/unit/utils/package-version.unit.test.ts","type":"file","name":"artifacts/cli/test/unit/utils/package-version.unit.test.ts","filePath":"artifacts/cli/test/unit/utils/package-version.unit.test.ts"}
+{"id":"artifacts/cli/test/unit/utils/package-version.unit.test.ts#anonymous","type":"symbol","name":"anonymous","filePath":"artifacts/cli/test/unit/utils/package-version.unit.test.ts"}
+{"id":"artifacts/cli/test/unit/utils/package-version.unit.test.ts#anonymous@L10","type":"symbol","name":"anonymous","filePath":"artifacts/cli/test/unit/utils/package-version.unit.test.ts"}
+{"id":"artifacts/cli/test/unit/utils/package-version.unit.test.ts#anonymous@L4","type":"symbol","name":"anonymous","filePath":"artifacts/cli/test/unit/utils/package-version.unit.test.ts"}
 {"id":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts","type":"file","name":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts","filePath":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts"}
 {"id":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts#anonymous","type":"symbol","name":"anonymous","filePath":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts"}
 {"id":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts#anonymous@L11","type":"symbol","name":"anonymous","filePath":"artifacts/cli/test/unit/utils/read-stdin.unit.test.ts"}

@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#ruby
+id: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts#ruby@L759
 type: symbol
 name: ruby
 filePath: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts
@@ -7,4 +7,3 @@ filePath: lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts
 # Symbol: ruby
 
 File: `lib/ui-core/src/workflows/analyze/run-tier-b-batch.unit.test.ts`
-.ts`

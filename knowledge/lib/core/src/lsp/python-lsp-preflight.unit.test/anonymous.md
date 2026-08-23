@@ -1,5 +1,5 @@
 ---
-id: lib/core/src/lsp/python-lsp-preflight.unit.test.ts#anonymous
+id: lib/core/src/lsp/python-lsp-preflight.unit.test.ts#anonymous@L66
 type: symbol
 name: anonymous
 filePath: lib/core/src/lsp/python-lsp-preflight.unit.test.ts
@@ -7,4 +7,3 @@ filePath: lib/core/src/lsp/python-lsp-preflight.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/core/src/lsp/python-lsp-preflight.unit.test.ts`
-ts`

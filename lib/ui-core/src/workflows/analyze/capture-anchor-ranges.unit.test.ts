@@ -68,14 +68,14 @@ describe("captureAnchorRanges()", () => {
     expect(anchors).toEqual([{ path: "src/a.ts", startRow: 0, endRow: 3 }]);
   });
 
-  it("normalizes backslash paths to node_key form before asking git", async () => {
+  it("passes node_key paths through byte-identically -- the caller owns normalization, so anchor path == diff pathspec == source_files entry", async () => {
     const git = makeGit({ "src/win.ts": [{ startRow: 1, endRow: 2 }] });
 
     await captureAnchorRanges({
       git,
       workspaceRoot: "/ws",
       commitSha: SHA,
-      sourceFiles: ["src\\win.ts"],
+      sourceFiles: ["src/win.ts"],
     });
 
     expect(git.getChangedLineRanges).toHaveBeenCalledWith(

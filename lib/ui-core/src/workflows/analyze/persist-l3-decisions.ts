@@ -47,20 +47,18 @@ export async function persistDecisions(deps: {
    *  implicit "whatever HEAD happens to be when the DB write executes"). */
   commitSha?: string;
   /**
-   * When `true`, runs the deterministic writer-side contradiction check (issue #68) against the
-   * decisions already anchored to the same `l2_node_id` before writing, warning via the
-   * injected logger when a staged decision re-states an existing titled claim with divergent
-   * content. Warn-only -- never blocks or alters the write. Off by default: only the flush
-   * path (`run-flush-staged-l3.ts`) opts in today.
+   * Issue #68's flush-path writer-side enhancements, grouped as one explicit opt-in object
+   * rather than loose booleans: both need this function's internal state (the resolved anchor,
+   * the opened store, the triggering commit sha), and both exist for exactly one caller today
+   * (`run-flush-staged-l3.ts`). Omitted = plain persist, byte-identical inputs/behavior for
+   * every other caller.
    */
-  warnOnAnchorContradictions?: boolean;
-  /**
-   * When `true`, captures the writing commit's diff hunks as region anchors (issue #68) and
-   * stamps them on every freshly-inserted row this call produces. Off by default: only the
-   * flush path (`run-flush-staged-l3.ts`) opts in today, keeping the analyze pipeline's
-   * per-call git subprocess cost unchanged.
-   */
-  captureAnchorRanges?: boolean;
+  writerEnhancements?: {
+    /** Deterministic contradiction warning against live same-anchor decisions before writing. Warn-only, never blocks. */
+    warnOnAnchorContradictions: boolean;
+    /** Capture the writing commit's diff hunks as region anchors, stamped on freshly-inserted rows. */
+    captureAnchorRanges: boolean;
+  };
 }): Promise<{
   persisted: number;
   deduped: number;
@@ -105,11 +103,9 @@ export async function persistDecisions(deps: {
       return { persisted: 0, deduped: 0, noGraphToAttach: true };
     }
 
-    if (deps.warnOnAnchorContradictions) {
-      // Strictly advisory -- a repo returning nothing here degrades to "no contradictions
-      // found", never aborting the write it precedes.
+    if (deps.writerEnhancements?.warnOnAnchorContradictions) {
       warnAnchorContradictions(
-        store.l3.getByL2NodeId(anchorL2NodeId) ?? [],
+        store.l3.getByL2NodeId(anchorL2NodeId),
         decisions,
         logger,
       );
@@ -125,7 +121,8 @@ export async function persistDecisions(deps: {
       source,
       extractionModel,
       commitSha,
-      captureAnchorRanges: deps.captureAnchorRanges,
+      captureAnchorRanges:
+        deps.writerEnhancements?.captureAnchorRanges === true,
     });
 
     await appendAnalyzeLogLine(workspaceRoot, {
@@ -200,7 +197,7 @@ async function upsertDecisions(deps: {
   /** See `persistDecisions`'s doc comment on this field. */
   commitSha?: string;
   /** See `persistDecisions`'s doc comment on this field. */
-  captureAnchorRanges?: boolean;
+  captureAnchorRanges: boolean;
 }): Promise<{ persisted: number; deduped: number }> {
   const {
     workspaceRoot,

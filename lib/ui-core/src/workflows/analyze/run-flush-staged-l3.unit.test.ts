@@ -112,7 +112,10 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
     l3: {
       getById: vi.fn(),
       getAllExportable: vi.fn(),
-      getByL2NodeId: vi.fn(),
+      // Contract: getByL2NodeId always returns an array (possibly empty) -- the default
+      // reflects that instead of undefined, so code relying on the contract fails loudly
+      // rather than being defensively papered over.
+      getByL2NodeId: vi.fn().mockReturnValue([]),
       upsertDecision: vi.fn().mockReturnValue({ id: 1, deduped: false }),
       importCard: vi.fn(),
     },

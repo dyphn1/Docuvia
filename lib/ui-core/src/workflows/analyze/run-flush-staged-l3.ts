@@ -159,15 +159,16 @@ async function flushFileGroup(
     source: L3DecisionSources.AGENT_AUTHORED,
     extractionModel: null,
     commitSha,
-    // Issue #68's writer-side check: warn (never block) when a staged decision re-states an
-    // existing same-anchor claim with divergent content. The flush is the last moment the
-    // writing agent's rationale lands, so the contradiction must be logged where
-    // POST_COMMIT_HOOK_CONTENT's redirect captures it (.docuvia/logs/post-commit-hook.log).
-    warnOnAnchorContradictions: true,
-    // Issue #68: capture this commit's diff hunks as region anchors on the freshly-inserted
-    // rows, so the future blame-based validity pass judges line ownership against a real
-    // region instead of file-level blame.
-    captureAnchorRanges: true,
+    // Issue #68's writer-side enhancements, opted in as one group: warn (never block) when a
+    // staged decision re-states an existing same-anchor claim with divergent content, and
+    // capture this commit's diff hunks as region anchors on freshly-inserted rows so the
+    // future blame-based validity pass judges line ownership against a real region. The flush
+    // is backgrounded by POST_COMMIT_HOOK_CONTENT, so the warning lands in
+    // .docuvia/logs/post-commit-hook.log.
+    writerEnhancements: {
+      warnOnAnchorContradictions: true,
+      captureAnchorRanges: true,
+    },
   });
 
   // persistDecisions never throws for "no graph to attach yet" (DB missing, no project row, or

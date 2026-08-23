@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { IGraphStore } from "@workspace/contracts";
 import { GitConstants } from "@workspace/contracts";
+import { makeMockStore } from "@workspace/contracts/testing";
 import {
   appendTierCQueueEntries,
   readTierCQueue,
@@ -9,40 +10,40 @@ import {
   TierCCandidateKinds,
 } from "./tier-c-queue.js";
 
-function makeMockStore(initialMeta: Record<string, string> = {}): IGraphStore {
+function makeTierCStore(initialMeta: Record<string, string> = {}): IGraphStore {
   const meta = { ...initialMeta };
-  return {
+  return makeMockStore({
     meta: {
       get: vi.fn((key: string) => meta[key]),
       set: vi.fn((key: string, value: string) => {
         meta[key] = value;
       }),
     },
-  } as unknown as IGraphStore;
+  });
 }
 
 describe("readTierCQueue()", () => {
   it("returns [] when the meta key is absent", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     expect(readTierCQueue(store)).toEqual([]);
   });
 
   it("returns [] and does not throw on corrupt JSON", () => {
-    const store = makeMockStore({
+    const store = makeTierCStore({
       [GitConstants.META_KEY_TIER_C_QUEUE]: "not json",
     });
     expect(readTierCQueue(store)).toEqual([]);
   });
 
   it("returns [] when the stored value is valid JSON but not an array", () => {
-    const store = makeMockStore({
+    const store = makeTierCStore({
       [GitConstants.META_KEY_TIER_C_QUEUE]: JSON.stringify({ target: "a" }),
     });
     expect(readTierCQueue(store)).toEqual([]);
   });
 
   it("filters out malformed entries (missing target/commitSha or unknown kind)", () => {
-    const store = makeMockStore({
+    const store = makeTierCStore({
       [GitConstants.META_KEY_TIER_C_QUEUE]: JSON.stringify([
         { kind: "commitMessage", target: "sha1", commitSha: "sha1" },
         { kind: "bogusKind", target: "sha2", commitSha: "sha2" },
@@ -58,13 +59,13 @@ describe("readTierCQueue()", () => {
 
 describe("appendTierCQueueEntries()", () => {
   it("is a no-op for an empty entries array", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     appendTierCQueueEntries(store, []);
     expect(store.meta.set).not.toHaveBeenCalled();
   });
 
   it("writes new entries when the queue is empty", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     appendTierCQueueEntries(store, [
       {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
@@ -84,7 +85,7 @@ describe("appendTierCQueueEntries()", () => {
   });
 
   it("dedupes by target: a second append for the same target replaces the entry", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     appendTierCQueueEntries(store, [
       {
         kind: TierCCandidateKinds.CONTRACT_SYMBOL,
@@ -112,7 +113,7 @@ describe("appendTierCQueueEntries()", () => {
   });
 
   it("accumulates distinct targets across multiple appends", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     appendTierCQueueEntries(store, [
       {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
@@ -134,13 +135,13 @@ describe("appendTierCQueueEntries()", () => {
 
 describe("removeTierCQueueEntries()", () => {
   it("is a no-op for an empty targets array", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     removeTierCQueueEntries(store, []);
     expect(store.meta.set).not.toHaveBeenCalled();
   });
 
   it("removes only the matching target, leaving the rest queued", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     appendTierCQueueEntries(store, [
       {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
@@ -166,7 +167,7 @@ describe("removeTierCQueueEntries()", () => {
 
 describe("recordTierCQueueFailure()", () => {
   it("increments failCount without eviction below the cap, leaving the entry queued", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     appendTierCQueueEntries(store, [
       {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
@@ -189,7 +190,7 @@ describe("recordTierCQueueFailure()", () => {
   });
 
   it("evicts the entry once failCount reaches maxFailures", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     appendTierCQueueEntries(store, [
       {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,
@@ -218,7 +219,7 @@ describe("recordTierCQueueFailure()", () => {
   });
 
   it("is a no-op on an unknown target", () => {
-    const store = makeMockStore();
+    const store = makeTierCStore();
     appendTierCQueueEntries(store, [
       {
         kind: TierCCandidateKinds.COMMIT_MESSAGE,

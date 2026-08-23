@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { IGitProvider, IGraphStore } from "@workspace/contracts";
 import { HydrationService } from "./hydration.service.js";
-import { GitConstants } from "./git-constants.js";
+import { GitConstants } from "@workspace/contracts";
 
 function makeMockGitProvider(
   overrides: Partial<IGitProvider> = {},

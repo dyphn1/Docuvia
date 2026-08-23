@@ -7,6 +7,8 @@ import {
   createNoopLogger,
   UTF8_ENCODING,
   DOCUVIA_DIR_NAME,
+  DocuviaError,
+  ErrorCodes,
 } from "@workspace/contracts";
 
 const TEMP_SUBDIR_NAME = "tmp";
@@ -56,7 +58,10 @@ export class TempFileManager implements ITempFileManager {
     ttlMs: number = 4 * 60 * 60 * 1000, // 4 hours default
     _cleanupIntervalMs: number = 30 * 60 * 1000, // 30 minutes default
   ) {
-    this.tempDir = path.join(workspaceRoot, DOCUVIA_DIR_NAME, TEMP_SUBDIR_NAME);
+    // Normalize to absolute path — removes ".." segments and leading "~"
+    // (issue #141: path traversal defence).
+    const resolvedRoot = path.resolve(workspaceRoot);
+    this.tempDir = path.join(resolvedRoot, DOCUVIA_DIR_NAME, TEMP_SUBDIR_NAME);
     this.ttlMs = ttlMs;
     this.lruCache = new LRUCache<string, FileEntry>({
       max: 10000, // Max number of tracked files
@@ -70,6 +75,23 @@ export class TempFileManager implements ITempFileManager {
   async initialize(): Promise<void> {
     try {
       await fs.mkdir(this.tempDir, { recursive: true });
+
+      // Resolve symlinks and verify the real path is still under the
+      // expected workspace root (issue #141: symlink-based traversal).
+      // Both paths go through fs.realpath so macOS /var → /private/var
+      // is handled correctly.
+      const workspaceRoot = path.dirname(path.dirname(this.tempDir));
+      const [realWorkspaceRoot, realTempDir] = await Promise.all([
+        fs.realpath(workspaceRoot),
+        fs.realpath(this.tempDir),
+      ]);
+      if (!realTempDir.startsWith(realWorkspaceRoot + path.sep)) {
+        throw new DocuviaError(
+          ErrorCodes.FS_PATH_TRAVERSAL,
+          `Resolved temp directory "${realTempDir}" escapes workspace root "${realWorkspaceRoot}" — possible path traversal via symlink`,
+        );
+      }
+
       this.logger.info(TempFileMessages.INITIALIZED, {
         tempDir: this.tempDir,
       });
@@ -77,6 +99,7 @@ export class TempFileManager implements ITempFileManager {
       // Start periodic cleanup
       this.startCleanupSchedule(30 * 60 * 1000); // 30 minutes
     } catch (err) {
+      if (err instanceof DocuviaError) throw err;
       this.logger.error(TempFileMessages.INIT_FAILED, {
         error: err instanceof Error ? err.message : String(err),
       });

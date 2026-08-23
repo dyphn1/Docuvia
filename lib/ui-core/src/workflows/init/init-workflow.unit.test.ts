@@ -295,6 +295,7 @@ describe("InitWorkflow.execute()", () => {
         callOrder.push("markSynced");
       }),
       hydrate: vi.fn(),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     };
     docuviaFactory.register(TOKENS.HydrationService, () => hydrationService);
 
@@ -358,6 +359,7 @@ describe("InitWorkflow.execute()", () => {
       isStale: vi.fn(),
       markSynced: vi.fn().mockResolvedValue(undefined),
       hydrate: vi.fn(),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     }));
     docuviaFactory.lock();
 
@@ -529,6 +531,7 @@ describe("InitWorkflow.execute()", () => {
       isStale: vi.fn(),
       markSynced: vi.fn().mockResolvedValue(undefined),
       hydrate: vi.fn(),
+      importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
     }));
     docuviaFactory.lock();
 

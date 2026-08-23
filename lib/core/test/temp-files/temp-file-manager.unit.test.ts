@@ -17,6 +17,8 @@ describe("TempFileManager", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default realpath mock: return the path as-is (no symlinks)
+    vi.mocked(fs.realpath).mockImplementation(async (p) => String(p));
     manager = new TempFileManager("/workspace", logger, 1024, 1000, 500);
   });
 
@@ -28,7 +30,7 @@ describe("TempFileManager", () => {
     vi.mocked(fs.mkdir).mockResolvedValue(undefined);
     await manager.initialize();
     expect(fs.mkdir).toHaveBeenCalledWith(
-      path.join("/workspace", ".docuvia", "tmp"),
+      path.join(path.resolve("/workspace"), ".docuvia", "tmp"),
       { recursive: true },
     );
     expect(logger.info).toHaveBeenCalledWith(
@@ -121,7 +123,7 @@ describe("TempFileManager", () => {
 
   it("getTempDirPath returns correct path", () => {
     expect(manager.getTempDirPath()).toBe(
-      path.join("/workspace", ".docuvia", "tmp"),
+      path.join(path.resolve("/workspace"), ".docuvia", "tmp"),
     );
   });
 

@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import type { IGitProvider } from "@workspace/contracts";
 import { createMockLogger } from "@workspace/contracts";
 import { KnowledgeGitService } from "./knowledge-git.service.js";
-import { GitConstants } from "./git-constants.js";
+import { GitConstants } from "@workspace/contracts";
 
 function makeMockGitProvider(
   overrides: Partial<IGitProvider> = {},

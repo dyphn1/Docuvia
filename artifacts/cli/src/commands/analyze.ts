@@ -96,6 +96,8 @@ export interface AnalyzeCommandOptions {
    *  `targetPath` required (and ignored if given -- this flag wins). Checked before every other
    *  dispatch. */
   flushStagedL3?: boolean;
+  /** `--tier-c-all` (issue #145): drains every queued Tier C item in one run. */
+  tierCAll?: boolean;
 }
 
 interface AnalyzeLlmConfig {
@@ -455,6 +457,7 @@ function setupAnalyzeMemory(
   lspTimeoutMs?: number,
   lspProcesses?: number,
   full?: boolean,
+  tierCAll?: boolean,
 ): void {
   docuviaMemory.createScope(scopeId);
   docuviaMemory.set(scopeId, MemoryKeys.WORKSPACE_ROOT, cwd);
@@ -469,6 +472,9 @@ function setupAnalyzeMemory(
     docuviaMemory.set(scopeId, MemoryKeys.ESCALATE_TO_LSP, true);
     if (full) {
       docuviaMemory.set(scopeId, MemoryKeys.TIER_B_FULL_RESYNC, true);
+    }
+    if (tierCAll) {
+      docuviaMemory.set(scopeId, "tierCDrainAll" as any, true);
     }
     setTierBEnvMemory(scopeId, lspTimeoutMs, lspProcesses);
     setTierCMemory(scopeId, llmConfig);
@@ -887,6 +893,7 @@ async function runStandardAnalyze(
     options.lspTimeoutMs,
     options.lspProcesses,
     options.full,
+    options.tierCAll,
   );
 
   try {

@@ -85,6 +85,10 @@ export const CLI_FLAGS = {
    *  in the current (post-commit) HEAD's changed-file list. Self-gated internally on the
    *  `commit-l3-write` toggle -- see `run-flush-staged-l3.ts`. */
   FLUSH_STAGED_L3: "--flush-staged-l3",
+  /** `analyze --escalate-to-lsp --tier-c-all` (issue #145): drains every queued Tier C
+   *  item in one run, removing the wall-clock and item-count caps. Budget exhaustion and
+   *  per-item poison-pill eviction still apply. */
+  TIER_C_ALL: "--tier-c-all",
 } as const;
 
 /** Values accepted by `--format=` (shared by `query`/`impact`/`review`, roadmap item 31) —

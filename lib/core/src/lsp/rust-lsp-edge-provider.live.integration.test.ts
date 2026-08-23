@@ -179,12 +179,28 @@ describe("RustLspEdgeProvider live rust-analyzer (issue #31: Object-kind impl co
         `[rust-lsp-edge-provider.live.integration.test] skipped (${skipReason})`,
       );
       return;
+    } // Retry up to 3 times -- rust-analyzer's file watcher can race with the
+    // previous test's shutdown, causing transient "content modified" errors.
+    let outcome;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        outcome = await provider.resolveEdges({
+          workspaceRoot,
+          files: ["src/lib.rs", "src/main.rs"],
+        });
+        break;
+      } catch (err: unknown) {
+        lastError = err;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.includes("content modified") && attempt < 2) {
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
+        throw err;
+      }
     }
-
-    const outcome = await provider.resolveEdges({
-      workspaceRoot,
-      files: ["src/lib.rs", "src/main.rs"],
-    });
+    if (!outcome) throw lastError;
 
     expect(outcome.filesFailed).toEqual([]);
 

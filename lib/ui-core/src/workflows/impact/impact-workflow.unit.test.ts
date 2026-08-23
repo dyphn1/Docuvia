@@ -29,6 +29,8 @@ function makeMockHydrationService(
     isStale: vi.fn().mockResolvedValue(false),
     markSynced: vi.fn(),
     hydrate: vi.fn(),
+    importL3Cards: vi.fn().mockResolvedValue({ cardsFound: 0, imported: 0 }),
+
     ...overrides,
   };
 }

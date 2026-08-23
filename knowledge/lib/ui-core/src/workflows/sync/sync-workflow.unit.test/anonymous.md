@@ -1,5 +1,5 @@
 ---
-id: lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts#anonymous@L491#2
+id: lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts#anonymous@L491
 type: symbol
 name: anonymous
 filePath: lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts
@@ -7,3 +7,4 @@ filePath: lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts
 # Symbol: anonymous
 
 File: `lib/ui-core/src/workflows/sync/sync-workflow.unit.test.ts`
+`

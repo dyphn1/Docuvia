@@ -66,6 +66,39 @@ function pairKeys(edges: ResolvedCallEdge[]): Set<string> {
   return new Set(edges.map((e) => `${e.sourceNodeKey}->${e.targetNodeKey}`));
 }
 
+interface LiveDocumentSymbol {
+  name: string;
+  kind: number;
+  children?: { name: string; kind: number }[];
+}
+
+/** Polls `textDocument/documentSymbol` until rust-analyzer's async crate-graph load finishes and
+ *  an impl-block parent symbol is visible (issue #187): a fixed sleep races cold CI runners --
+ *  rust-analyzer answers `null` until the workspace loads, which is how the previous 5s wait
+ *  produced intermittent "Cannot read properties of null (reading 'find')" failures. */
+async function pollImplSymbols(
+  client: LspJsonRpcClient,
+  libUri: string,
+  budgetMs = 30_000,
+): Promise<LiveDocumentSymbol[] | null> {
+  const deadline = Date.now() + budgetMs;
+  let symbols: LiveDocumentSymbol[] | null = null;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    symbols = await client.request<LiveDocumentSymbol[]>(
+      LspMethods.DOCUMENT_SYMBOL,
+      { textDocument: { uri: libUri } },
+      30_000,
+    );
+    const implVisible =
+      symbols?.some(
+        (s) => s.kind === LspSymbolKinds.OBJECT && s.name.startsWith("impl "),
+      ) ?? false;
+    if (symbols != null && implVisible) break;
+  }
+  return symbols;
+}
+
 describe("RustLspEdgeProvider live rust-analyzer (issue #31: Object-kind impl containment + qualified node_key)", () => {
   let workspaceRoot: string;
   let provider: RustLspEdgeProvider;
@@ -138,16 +171,16 @@ describe("RustLspEdgeProvider live rust-analyzer (issue #31: Object-kind impl co
           text: LIB_SRC,
         },
       });
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      const symbols = await client.request<
-        {
-          name: string;
-          kind: number;
-          children?: { name: string; kind: number }[];
-        }[]
-      >(LspMethods.DOCUMENT_SYMBOL, { textDocument: { uri: libUri } }, 30_000);
+      // Poll instead of a fixed sleep -- see pollImplSymbols (issue #187).
+      const symbols = await pollImplSymbols(client, libUri);
 
-      const implParent = symbols.find(
+      // A null here after the poll budget means rust-analyzer never finished loading the
+      // workspace -- a real environment failure, not a shape assertion, so fail with context.
+      expect(
+        symbols,
+        "rust-analyzer never returned a non-null documentSymbol within the 30s poll budget",
+      ).not.toBeNull();
+      const implParent = symbols!.find(
         (s) =>
           s.kind === LspSymbolKinds.OBJECT &&
           s.name.startsWith("impl ") &&

@@ -11,9 +11,8 @@ import {
   createNoopLogger,
   KnowledgeBranchSyncStatuses,
 } from "@workspace/contracts";
-import { GitConstants } from "@workspace/contracts";
+import { GitConstants, parseSourceTrailer } from "@workspace/contracts";
 import { GitMessages } from "./git-constants.js";
-import { parseSourceTrailer } from "./git-trailers.js";
 import { withKnowledgeBranchLock } from "./knowledge-branch-lock.js";
 
 /** Knowledge branch is a dedicated orphan branch of small, purpose-built commits — this comfortably bounds `resolveNewestSourceTrailerSha`'s log scan without truncating any real history (mirrors `HydrationService`'s identical scan-depth choice). */

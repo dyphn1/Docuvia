@@ -7,55 +7,32 @@ import { withErrorHandling } from "./wrapper.js";
 import { MCP_TOOL_MESSAGES } from "./messages.js";
 import { MCP_CONTENT_TYPE_TEXT } from "../constants.js";
 import { createPinoBackedLogger } from "../../logging/create-logger.js";
+import { formatPromptOutput } from "../../prompt-format/query-prompt-formatter.js";
 
-/**
- * #49 MCP read-path tool: `query`
- *
- * Replaces `.claude/hooks/docuvia-hook.js`'s `execFileSync`-per-call pattern with a
- * structured MCP call against the persistent server. Reuses `docuviaApi.query()` — zero
- * duplicate implementation.
- *
- * Returns the `LocalQueryResult` shape (JSON-serialized) so the agent gets structured data
- * instead of `--format=prompt` prose.
- */
 const QueryToolInputSchema = z
   .object({
-    target: z
-      .string()
-      .min(1, "target is required")
-      .describe(
-        "Concept, file path, or symbol to search for in the knowledge graph",
-      ),
-    limit: z
-      .number()
-      .int()
-      .positive()
-      .optional()
-      .describe("Maximum number of results to return"),
+    target: z.string().min(1),
+    limit: z.number().int().positive().optional(),
   })
   .strict();
 
 const DOCUVIA_QUERY_TOOL_NAME = "docuvia_query";
-const DOCUVIA_QUERY_TOOL_DESCRIPTION =
-  "Query the local Docuvia knowledge graph for concepts, files, or symbols. " +
-  "Returns structured results including match type, node details, and relevance scores.";
-const JSON_SCHEMA_TYPE_OBJECT = "object";
 
 export const queryTool: McpTool = {
   definition: {
     name: DOCUVIA_QUERY_TOOL_NAME,
-    description: DOCUVIA_QUERY_TOOL_DESCRIPTION,
+    description: MCP_TOOL_MESSAGES.QUERY_TOOL_DESCRIPTION,
     inputSchema: {
-      type: JSON_SCHEMA_TYPE_OBJECT,
+      type: "object",
       properties: {
         target: {
           type: "string",
           description:
-            "Concept, file path, or symbol to search for in the knowledge graph",
+            "Symbol name, file path, or concept phrase to search for.",
         },
         limit: {
           type: "number",
-          description: "Maximum number of results to return",
+          description: "Maximum number of L3 decisions to return.",
         },
       },
       required: ["target"],
@@ -77,9 +54,10 @@ export const queryTool: McpTool = {
       const result = await docuviaApi.query(scopeId, logger);
       return {
         content: [
+          { type: MCP_CONTENT_TYPE_TEXT, text: formatPromptOutput(result) },
           {
             type: MCP_CONTENT_TYPE_TEXT,
-            text: JSON.stringify(result),
+            text: MCP_TOOL_MESSAGES.QUERY_NEXT_STEP_HINT,
           },
         ],
       };

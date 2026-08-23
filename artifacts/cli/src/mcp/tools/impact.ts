@@ -8,48 +8,32 @@ import { MCP_TOOL_MESSAGES } from "./messages.js";
 import { MCP_CONTENT_TYPE_TEXT } from "../constants.js";
 import { createPinoBackedLogger } from "../../logging/create-logger.js";
 
-/**
- * #49 MCP read-path tool: `impact`
- *
- * Blast-radius analysis via MCP — replaces hook-based CLI spawns. Reuses
- * `docuviaApi.impact()` — zero duplicate implementation.
- *
- * Returns `ImpactResult` (JSON-serialized) with blast radius entries, risk level, and
- * optional coverage hints. Emits `null` when the target doesn't resolve.
- */
 const ImpactToolInputSchema = z
   .object({
-    target: z
-      .string()
-      .min(1, "target is required")
-      .describe("File path, symbol, or concept to analyze blast radius for"),
+    target: z.string().min(1),
   })
   .strict();
 
 const DOCUVIA_IMPACT_TOOL_NAME = "docuvia_impact";
-const DOCUVIA_IMPACT_TOOL_DESCRIPTION =
-  "Analyze the blast radius of changing a file, symbol, or concept. " +
-  "Returns which other parts of the codebase would be affected, with a risk level assessment.";
-const JSON_SCHEMA_TYPE_OBJECT = "object";
 
 export const impactTool: McpTool = {
   definition: {
     name: DOCUVIA_IMPACT_TOOL_NAME,
-    description: DOCUVIA_IMPACT_TOOL_DESCRIPTION,
+    description: MCP_TOOL_MESSAGES.IMPACT_TOOL_DESCRIPTION,
     inputSchema: {
-      type: JSON_SCHEMA_TYPE_OBJECT,
+      type: "object",
       properties: {
         target: {
           type: "string",
           description:
-            "File path, symbol, or concept to analyze blast radius for",
+            "Symbol name or file path whose dependents (blast radius) should be computed.",
         },
       },
       required: ["target"],
     },
   },
   handler: withErrorHandling(
-    MCP_TOOL_MESSAGES.ERROR_IMPACT_ANALYSIS,
+    MCP_TOOL_MESSAGES.ERROR_ANALYZING_IMPACT,
     async (args) => {
       const input = ImpactToolInputSchema.parse(args ?? {});
 
@@ -60,15 +44,40 @@ export const impactTool: McpTool = {
       docuviaMemory.set(scopeId, MemoryKeys.TARGET, input.target);
 
       try {
+        // `null` is a legal outcome (unresolved target), not a failure — the CLI's
+        // `--format=json` emits the literal `null` for the same distinction. Never map it to
+        // isError; instead steer the agent toward resolving the target first.
         const result = await docuviaApi.impact(scopeId, logger);
-        return {
-          content: [
-            {
-              type: MCP_CONTENT_TYPE_TEXT,
-              text: result === null ? "null" : JSON.stringify(result),
-            },
-          ],
-        };
+        if (!result) {
+          return {
+            content: [
+              { type: MCP_CONTENT_TYPE_TEXT, text: "null" },
+              {
+                type: MCP_CONTENT_TYPE_TEXT,
+                text: MCP_TOOL_MESSAGES.IMPACT_NOT_FOUND_HINT,
+              },
+            ],
+          };
+        }
+
+        const hints: { type: string; text: string }[] = [
+          {
+            type: MCP_CONTENT_TYPE_TEXT,
+            text: JSON.stringify(result, null, 2),
+          },
+        ];
+        if (
+          result.blastRadius.length === 0 &&
+          result.tierBCoverage &&
+          result.tierBCoverage.workspaceFilesProcessed <
+            result.tierBCoverage.workspaceFilesTotal
+        ) {
+          hints.push({
+            type: MCP_CONTENT_TYPE_TEXT,
+            text: MCP_TOOL_MESSAGES.IMPACT_EMPTY_HINT,
+          });
+        }
+        return { content: hints };
       } finally {
         docuviaMemory.deleteScope(scopeId);
       }

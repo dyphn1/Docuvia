@@ -406,26 +406,50 @@ jobs:
             }
 
             const result = JSON.parse(fs.readFileSync(reviewPath, 'utf8'));
-            const files = (result.filesChanged || [])
+            // Human-first rendering (issue #200): build the comment from the structured fields
+            // (riskLevel/filesChanged/affectedNodes), never from the `analysis` prose string —
+            // that string is the agent-facing summary and duplicates everything above it.
+            const RISK_EMOJI = { LOW: '🟢', MEDIUM: '🟡', HIGH: '🟠', CRITICAL: '🔴' };
+            const risk = result.riskLevel || 'UNKNOWN';
+            const emoji = RISK_EMOJI[risk] || '⚪️';
+            const fileCount = (result.filesChanged || []).length;
+
+            const changedFiles = (result.filesChanged || [])
               .map((f) => `- \`${f.file}\` (${f.status})`)
               .join('\n') || '- (none)';
-            const impacted = (result.affectedNodes || [])
-              .flatMap((n) => (n.impactedBy || []).filter((e) => e && e.name).map((e) => `- \`${n.file}\` <- \`${e.name}\``))
-              .slice(0, 20)
-              .join('\n');
-            const analysis = (result.analysis || '').slice(0, 6000);
+            const MAX_VISIBLE_FILES = 10;
+            const visibleFiles = fileCount > MAX_VISIBLE_FILES
+              ? `<details><summary>📦 ${fileCount} changed files</summary>\n\n${changedFiles}\n\n</details>`
+              : `### Changed files\n${changedFiles}`;
+
+            // One row per affected graph node's file, ranked by how many dependents it has.
+            const rankedNodes = [...(result.affectedNodes || [])]
+              .filter((n) => n && n.file)
+              .sort((a, b) => (b.impactedBy || []).length - (a.impactedBy || []).length);
+            const impactRows = rankedNodes
+              .slice(0, 10)
+              .map((n) => {
+                const deps = (n.impactedBy || [])
+                  .slice(0, 4)
+                  .map((e) => `\`${e.name}\``)
+                  .join(', ');
+                return `| \`${n.file}\` | ${(n.impactedBy || []).length} | ${deps}${(n.impactedBy || []).length > 4 ? ', …' : ''} |`;
+              });
+            const hiddenImpacted = rankedNodes.length - Math.min(rankedNodes.length, 10);
+            const impactSection = rankedNodes.length === 0
+              ? '**No local graph impact detected** for the changed files.'
+              : `### Graph impact\n\n| Affected file | Dependents | Top dependents |\n|---|---|---|\n${impactRows.join('\n')}` +
+                (hiddenImpacted > 0 ? `\n\n<details><summary>… ${hiddenImpacted} more affected file(s)</summary>\n\n${rankedNodes.slice(10).map((n) => `- \`${n.file}\` (${(n.impactedBy || []).length} dependent(s))`).join('\n')}\n\n</details>` : '');
+            const doctorLogUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             const doctorNote = doctorExit !== '0'
-              ? '\n\n> `doctor` reported a non-blocking graph-health finding (see the workflow log).'
+              ? `\n\n> ℹ️ \`doctor\` reported non-blocking graph-health findings ([job log](${doctorLogUrl})).`
               : '';
 
             const body =
-              `🗺️ **Knowledge Graph** review against \`${result.baseRef || 'base'}\`:\n` +
-              `- Risk level: **${result.riskLevel || 'unknown'}**\n` +
-              `- Files changed: ${(result.filesChanged || []).length}\n` +
-              `- Graph ingested at HEAD — the freshness gate passed (\`init\` + \`analyze --fallback-ast\` both exited 0).${doctorNote}\n\n` +
-              `### Changed files\n${files}\n\n` +
-              (impacted ? `### Impacted by\n${impacted}\n\n` : '') +
-              `### Analysis\n${analysis}`;
+              `## 🗺️ Knowledge Graph review\n\n` +
+              `**Verdict:** ${emoji} **${risk}** · ${fileCount} file(s) vs \`${result.baseRef || 'base'}\` · graph fresh at HEAD ✅${doctorNote}\n\n` +
+              `${impactSection}\n\n` +
+              `${visibleFiles}`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,

@@ -89,6 +89,7 @@ export const CLI_FLAGS = {
    *  item in one run, removing the wall-clock and item-count caps. Budget exhaustion and
    *  per-item poison-pill eviction still apply. */
   TIER_C_ALL: "--tier-c-all",
+  SKILLS: "--skills",
 } as const;
 
 /** Values accepted by `--format=` (shared by `query`/`impact`/`review`, roadmap item 31) —

@@ -56,4 +56,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # setup-node's registry-url generates a temp .npmrc (via NPM_CONFIG_USERCONFIG)
+          # that references ${NODE_AUTH_TOKEN}; without this the spawned npm resolves an
+          # empty token and fails with 401 even though NPM_TOKEN is set.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm exec semantic-release

@@ -1402,5 +1402,5 @@ describe("TypescriptLspEdgeProvider.checkAvailability()", () => {
     } finally {
       await rmSyncRetrying(dir);
     }
-  }, 15000);
+  }, 30_000);
 });

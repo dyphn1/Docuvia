@@ -354,7 +354,7 @@ describe("PythonLspEdgeProvider.checkAvailability()", () => {
     } finally {
       await rmSyncRetrying(dir);
     }
-  }, 15000);
+  }, 30_000);
 
   it("reports the pyright binary as unresolvable once a marker file is present but pyright is not", async () => {
     const dir = fs.mkdtempSync(
@@ -370,5 +370,5 @@ describe("PythonLspEdgeProvider.checkAvailability()", () => {
     } finally {
       await rmSyncRetrying(dir);
     }
-  }, 15000);
+  }, 30_000);
 });

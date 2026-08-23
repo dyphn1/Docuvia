@@ -16,6 +16,7 @@ import {
   WINDSURF_RULES_FILENAME,
   LLMS_TXT_FILENAME,
 } from "../constants/init-templates.js";
+import { uninstallSkills } from "../skills/install-skills.js";
 import "../registration.js";
 
 /** PLAT-008: the retired "Markdown Agents" catch-all used to write the same instructions block
@@ -187,6 +188,57 @@ async function cleanupUninstallDatabase(
   }
 }
 
+function handleSkillRemoval(workspaceRoot: string): void {
+  try {
+    const removed = uninstallSkills(workspaceRoot);
+    if (removed.length > 0) {
+      ui.success(`Removed ${removed.length} skill(s): ${removed.join(", ")}`);
+    } else {
+      ui.info("No Docuvia skill files found to remove.");
+    }
+  } catch (error) {
+    ui.warn(
+      `Skill removal failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+async function runCleanupSteps(
+  selectedPlatforms: Awaited<ReturnType<typeof selectPlatforms>>,
+  workspaceRoot: string,
+  keepDb: boolean,
+  logger: UninstallLogger,
+): Promise<string[]> {
+  const failures = await uninstallPlatformHooks(
+    selectedPlatforms,
+    workspaceRoot,
+    logger,
+  );
+
+  await cleanupLegacyMarkdownAgentBlocks(workspaceRoot);
+
+  const gitHooksFailure = await removeGitHooksStep(
+    workspaceRoot,
+    keepDb,
+    logger,
+  );
+  if (gitHooksFailure) failures.push(gitHooksFailure);
+
+  const dbFailure = await cleanupUninstallDatabase(
+    workspaceRoot,
+    keepDb,
+    logger,
+  );
+  if (dbFailure) failures.push(dbFailure);
+
+  // Runs last: wholesale-removes whatever is left under .docuvia/ (logs, lockfiles, export
+  // artifacts) once the DB itself has already been dealt with above.
+  const dirFailure = await removeDocuviaDirStep(workspaceRoot, keepDb, logger);
+  if (dirFailure) failures.push(dirFailure);
+
+  return failures;
+}
+
 function reportUninstallOutcome(failures: string[]): void {
   if (failures.length > 0) {
     ui.warn(UI_MESSAGES.UNINSTALL_PARTIAL + failures.join(", "));
@@ -201,6 +253,7 @@ export async function uninstallCommand(
   platformFilter?: string,
   keepDb: boolean = false,
   isInteractive: boolean = false,
+  removeSkillFiles: boolean = false,
 ): Promise<void> {
   if (!workspaceRoot) {
     ui.error(UI_MESSAGES.UNINSTALL_INVALID_WORKSPACE_ROOT);
@@ -220,36 +273,16 @@ export async function uninstallCommand(
       isInteractive,
     );
 
-    const failures = await uninstallPlatformHooks(
+    const failures = await runCleanupSteps(
       selectedPlatforms,
       workspaceRoot,
-      logger,
-    );
-
-    await cleanupLegacyMarkdownAgentBlocks(workspaceRoot);
-
-    const gitHooksFailure = await removeGitHooksStep(
-      workspaceRoot,
       keepDb,
       logger,
     );
-    if (gitHooksFailure) failures.push(gitHooksFailure);
 
-    const dbFailure = await cleanupUninstallDatabase(
-      workspaceRoot,
-      keepDb,
-      logger,
-    );
-    if (dbFailure) failures.push(dbFailure);
-
-    // Runs last: wholesale-removes whatever's left under .docuvia/ (logs, lockfiles, export
-    // artifacts) once the DB itself has already been dealt with above.
-    const dirFailure = await removeDocuviaDirStep(
-      workspaceRoot,
-      keepDb,
-      logger,
-    );
-    if (dirFailure) failures.push(dirFailure);
+    if (removeSkillFiles) {
+      handleSkillRemoval(workspaceRoot);
+    }
 
     reportUninstallOutcome(failures);
   } catch (e: unknown) {

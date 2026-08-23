@@ -95,8 +95,6 @@ export default tseslint.config(
   // the language registry or to git/store IO). Keep this list as small as possible.
   {
     files: [
-      // isSupportedSourceFile (language registry)
-      "lib/ui-core/src/workflows/analyze/decision-extraction.ts",
       // isDiscoverableSourceFile (language registry)
       "lib/ui-core/src/workflows/analyze/run-delta-ingestion.ts",
       // renderL3Card / computeL2GitPathsByNodeId (L3 renderers)

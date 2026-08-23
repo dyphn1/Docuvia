@@ -1,8 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
-
-const C_EXTENSIONS = [".c", ".h"];
+import { C_EXTENSIONS } from "@workspace/contracts";
 const C_WASM_FILE = "tree-sitter-c.wasm";
 
 export const cConfig: LanguageConfig = {

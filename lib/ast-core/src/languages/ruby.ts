@@ -1,8 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
-
-const RUBY_EXTENSIONS = [".rb", ".rake", ".gemspec"];
+import { RUBY_EXTENSIONS } from "@workspace/contracts";
 const RUBY_WASM_FILE = "tree-sitter-ruby.wasm";
 
 export const rubyConfig: LanguageConfig = {

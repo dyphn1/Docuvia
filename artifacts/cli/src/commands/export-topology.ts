@@ -6,6 +6,7 @@ import {
   docuviaMemory,
   DocuviaError,
   DOCUVIA_DIR_NAME,
+  ErrorCodes,
   type TopologyCollapseMode,
   type TopologyGraph,
   MemoryKeys,
@@ -28,6 +29,30 @@ export interface ExportTopologyOptions {
   /** Write topology.json only, skip the HTML viewer */
   jsonOnly?: boolean;
   collapse?: TopologyCollapseMode;
+}
+
+/**
+ * Resolves the output directory from user-supplied --out, falling back to .docuvia under the
+ * workspace root.  Throws FS_PATH_TRAVERSAL if the resolved path escapes the workspace.
+ * Issue #179.
+ */
+export function resolveOutDir(
+  out: string | undefined,
+  workspaceRoot: string,
+): string {
+  const outDir = out
+    ? path.resolve(workspaceRoot, out)
+    : path.join(workspaceRoot, DOCUVIA_DIR_NAME);
+  if (
+    !outDir.startsWith(workspaceRoot + path.sep) &&
+    outDir !== workspaceRoot
+  ) {
+    throw new DocuviaError(
+      ErrorCodes.FS_PATH_TRAVERSAL,
+      `Resolved output directory "${outDir}" escapes workspace root "${workspaceRoot}" — possible path traversal via --out`,
+    );
+  }
+  return outDir;
 }
 
 /** Prints the export's stats/paths as separate lines instead of one run-on sentence -- mirrors
@@ -65,10 +90,13 @@ export async function exportTopologyCommand(
   if (options.collapse)
     docuviaMemory.set(scopeId, MemoryKeys.COLLAPSE, options.collapse);
 
+  let outDir: string;
+  let graph: TopologyGraph;
   try {
-    const graph = await docuviaApi.exportTopology(scopeId, logger);
+    // Validate --out before doing any work so an escaping path fails fast (issue #179 review).
+    outDir = resolveOutDir(options.out, path.resolve(cwd));
+    graph = await docuviaApi.exportTopology(scopeId, logger);
 
-    const outDir = options.out ?? path.join(cwd, DOCUVIA_DIR_NAME);
     // Issue #71: async fs APIs — the sync variants block the event loop on every export.
     await fs.mkdir(outDir, { recursive: true });
 

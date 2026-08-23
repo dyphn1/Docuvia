@@ -2,11 +2,14 @@
  * Trimmed to the messages the registered tools actually use (per the migration plan's step 9).
  * Old Docuvia's file also carried messages for `context`/`analyze`/`extract`/`clean`/`sync`
  * tools that don't exist in this milestone. Port the rest in alongside each tool as it's rebuilt.
+ * Each tool's `withErrorHandling` wrapper prefixes the tool-specific string before `e.message`,
+ * so the MCP consumer gets a diagnosable payload without a stack trace.
  */
 export const MCP_TOOL_MESSAGES = {
   ERROR_INITIALIZING: "Error initializing Docuvia",
   ERROR_QUERYING: "Error querying Docuvia knowledge graph",
   ERROR_ANALYZING_IMPACT: "Error analyzing impact",
+  ERROR_APPLYING_DECISION: "Error applying decision",
   ERROR_GETTING_STATUS: "Error getting Docuvia status",
   ERROR_DETECTING_CHANGES: "Error detecting changes",
 

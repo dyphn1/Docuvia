@@ -19,8 +19,20 @@ permissions:
 
 jobs:
   typecheck-and-test:
-    name: Typecheck & Test
-    runs-on: ubuntu-latest
+    # Docuvia carries ~16 `process.platform === "win32"` branches across lib/ and artifacts/
+    # (LSP binary resolution, npx .cmd shim spawning, APPDATA vs HOME config dirs, git-hook
+    # resolvability). Until this matrix existed those were only ever exercised by unit tests that
+    # *stub* `process.platform`, never on a real Windows host -- which is how issue #141's fix
+    # shipped green with two assertions that fail on Windows (`path.join("/workspace", ...)` vs
+    # `path.resolve("/workspace")` -> `D:\workspace`). Run the platform-sensitive half of the gate
+    # on both OSes so that class of bug fails in CI instead of on a developer's machine.
+    name: Typecheck & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One OS failing must not cancel the other -- the whole point is seeing both results.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,10 +49,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Formatting and lint results are byte-identical across OSes (`.gitattributes` pins
+      # `eol=lf`, prettier pins `endOfLine: "lf"`), so run them once rather than burning a second
+      # runner's minutes on the same answer.
       - name: Check formatting
+        if: runner.os == 'Linux'
         run: pnpm exec prettier --check .
 
       - name: Lint (complexity budget) -- fail-fast before slower checks
+        if: runner.os == 'Linux'
         run: pnpm run lint
 
       - name: Type check (all packages)
@@ -50,6 +67,11 @@ jobs:
         run: pnpm run build
 
       - name: Install rust-analyzer (live LSP integration test)
+        # Linux only for now: the live rust test is guarded by `provider.checkAvailability()` and
+        # self-skips (does not fail) when rust-analyzer is absent, so the Windows leg simply skips
+        # it rather than needing its own rustup setup. Covering that test on Windows too is a
+        # possible follow-up, not a prerequisite for the rest of the suite running there.
+        if: runner.os == 'Linux'
         # The ubuntu image ships rustup's rust-analyzer *proxy* in ~/.cargo/bin, so the provider's
         # `command -v` preflight resolves it and the live test runs -- but the actual component
         # isn't installed, and spawning the proxy fails with "Unknown binary 'rust-analyzer'". Add

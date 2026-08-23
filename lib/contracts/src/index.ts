@@ -244,6 +244,23 @@ export {
 } from "./constants/git-conventions.js";
 export { SUPPORTED_LANGUAGES } from "./constants/languages.js";
 export type { SupportedLanguage } from "./constants/languages.js";
+export {
+  TYPESCRIPT_EXTENSIONS,
+  JAVASCRIPT_EXTENSIONS,
+  PYTHON_EXTENSIONS,
+  RUST_EXTENSIONS,
+  GO_EXTENSIONS,
+  JAVA_EXTENSIONS,
+  C_EXTENSIONS,
+  CPP_EXTENSIONS,
+  RUBY_EXTENSIONS,
+  PHP_EXTENSIONS,
+  CSHARP_EXTENSIONS,
+  RUBY_EXTENSIONLESS_BASENAMES,
+  isSupportedSourceFile,
+  detectLanguageForFile,
+  getSupportedGlobExtensions,
+} from "./constants/source-files.js";
 export { CURRENT_NODE_KEY_FORMAT_VERSION } from "./constants/node-keys.js";
 export {
   FS_FLAG_EXCLUSIVE_CREATE_WRITE,

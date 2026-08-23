@@ -6,10 +6,12 @@ import {
   type IGraphStore,
   type ILogger,
   type L3DecisionSource,
+  type L3NodeRow,
 } from "@workspace/contracts";
 import { ANALYZE_EVENTS } from "./analyze-messages.js";
 import { ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
+import { findAnchorContradictions } from "./check-l3-contradictions.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { resolveAnchorL2NodeId, toNodeKey } from "./anchor-resolution.js";
 import type { CollectedFile } from "./decision-extraction.js";
@@ -43,6 +45,14 @@ export async function persistDecisions(deps: {
    *  value as `HEAD` at that moment, but explicit here for clarity/testability rather than
    *  implicit "whatever HEAD happens to be when the DB write executes"). */
   commitSha?: string;
+  /**
+   * When `true`, runs the deterministic writer-side contradiction check (issue #68) against the
+   * decisions already anchored to the same `l2_node_id` before writing, warning via the
+   * injected logger when a staged decision re-states an existing titled claim with divergent
+   * content. Warn-only -- never blocks or alters the write. Off by default: only the flush
+   * path (`run-flush-staged-l3.ts`) opts in today.
+   */
+  warnOnAnchorContradictions?: boolean;
 }): Promise<{
   persisted: number;
   deduped: number;
@@ -87,6 +97,16 @@ export async function persistDecisions(deps: {
       return { persisted: 0, deduped: 0, noGraphToAttach: true };
     }
 
+    if (deps.warnOnAnchorContradictions) {
+      // Strictly advisory -- a repo returning nothing here degrades to "no contradictions
+      // found", never aborting the write it precedes.
+      warnAnchorContradictions(
+        store.l3.getByL2NodeId(anchorL2NodeId) ?? [],
+        decisions,
+        logger,
+      );
+    }
+
     const counts = await upsertDecisions({
       workspaceRoot,
       store,
@@ -108,6 +128,32 @@ export async function persistDecisions(deps: {
     return { ...counts, noGraphToAttach: false };
   } finally {
     await store.close();
+  }
+}
+
+/** The issue #68 writer-side check: log a warning per deterministic contradiction between the
+ *  incoming decisions and live rows on the same anchor. A separate function purely to keep
+ *  `persistDecisions` under its complexity budget. */
+function warnAnchorContradictions(
+  existingRows: L3NodeRow[],
+  decisions: ExtractedDecision[],
+  logger: ILogger,
+): void {
+  for (const hit of findAnchorContradictions(existingRows, decisions)) {
+    logger.warn(
+      ANALYZE_MESSAGES.L3_ANCHOR_CONTRADICTION(
+        hit.stagedTitle,
+        hit.existingSource,
+        hit.existingCommitHash,
+      ),
+      {
+        stagedTitle: hit.stagedTitle,
+        existingId: hit.existingId,
+        existingTitle: hit.existingTitle,
+        existingSource: hit.existingSource,
+        existingCommitHash: hit.existingCommitHash,
+      },
+    );
   }
 }
 
@@ -142,7 +188,7 @@ async function upsertDecisions(deps: {
   decisions: ExtractedDecision[];
   source: L3DecisionSource;
   extractionModel: string | null;
-  /** See `persistDecisions`'s own doc comment on this field. */
+  /** See `persistDecisions`'s doc comment on this field. */
   commitSha?: string;
 }): Promise<{ persisted: number; deduped: number }> {
   const {

@@ -7,3 +7,5 @@ filePath: lib/ast-core/src/ast-core.test.js
 # Symbol: anonymous
 
 File: `lib/ast-core/src/ast-core.test.js`
+s`
+

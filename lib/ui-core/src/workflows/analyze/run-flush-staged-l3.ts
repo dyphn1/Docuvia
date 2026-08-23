@@ -164,6 +164,10 @@ async function flushFileGroup(
     // writing agent's rationale lands, so the contradiction must be logged where
     // POST_COMMIT_HOOK_CONTENT's redirect captures it (.docuvia/logs/post-commit-hook.log).
     warnOnAnchorContradictions: true,
+    // Issue #68: capture this commit's diff hunks as region anchors on the freshly-inserted
+    // rows, so the future blame-based validity pass judges line ownership against a real
+    // region instead of file-level blame.
+    captureAnchorRanges: true,
   });
 
   // persistDecisions never throws for "no graph to attach yet" (DB missing, no project row, or

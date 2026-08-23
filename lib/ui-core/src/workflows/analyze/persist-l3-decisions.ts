@@ -12,6 +12,7 @@ import { ANALYZE_EVENTS } from "./analyze-messages.js";
 import { ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
 import { findAnchorContradictions } from "./check-l3-contradictions.js";
+import { captureAnchorRanges } from "./capture-anchor-ranges.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { resolveAnchorL2NodeId, toNodeKey } from "./anchor-resolution.js";
 import type { CollectedFile } from "./decision-extraction.js";
@@ -53,6 +54,13 @@ export async function persistDecisions(deps: {
    * path (`run-flush-staged-l3.ts`) opts in today.
    */
   warnOnAnchorContradictions?: boolean;
+  /**
+   * When `true`, captures the writing commit's diff hunks as region anchors (issue #68) and
+   * stamps them on every freshly-inserted row this call produces. Off by default: only the
+   * flush path (`run-flush-staged-l3.ts`) opts in today, keeping the analyze pipeline's
+   * per-call git subprocess cost unchanged.
+   */
+  captureAnchorRanges?: boolean;
 }): Promise<{
   persisted: number;
   deduped: number;
@@ -117,6 +125,7 @@ export async function persistDecisions(deps: {
       source,
       extractionModel,
       commitSha,
+      captureAnchorRanges: deps.captureAnchorRanges,
     });
 
     await appendAnalyzeLogLine(workspaceRoot, {
@@ -190,6 +199,8 @@ async function upsertDecisions(deps: {
   extractionModel: string | null;
   /** See `persistDecisions`'s doc comment on this field. */
   commitSha?: string;
+  /** See `persistDecisions`'s doc comment on this field. */
+  captureAnchorRanges?: boolean;
 }): Promise<{ persisted: number; deduped: number }> {
   const {
     workspaceRoot,
@@ -209,6 +220,18 @@ async function upsertDecisions(deps: {
     null;
   const sourceFiles = files.map((f) => toNodeKey(f.relativePath));
 
+  // Issue #68: capture the writing commit's diff hunks as region anchors, once per call (the
+  // ranges describe the commit's change, identical for every decision in this group). Null on
+  // a null sha or capture failure -- stored as "unknown region", never fabricated.
+  const anchorRanges = deps.captureAnchorRanges
+    ? await captureAnchorRanges({
+        git: docuviaFactory.resolve(TOKENS.GitProvider),
+        workspaceRoot,
+        commitSha: resolvedCommitSha,
+        sourceFiles,
+      })
+    : null;
+
   let persisted = 0;
   let deduped = 0;
   for (const decision of decisions) {
@@ -223,6 +246,9 @@ async function upsertDecisions(deps: {
       extractionModel,
       sourceFiles,
       source,
+      // Omitted entirely when capture is off, so callers not opting in keep byte-identical
+      // upsert inputs (and the column stays NULL = "unknown region").
+      ...(deps.captureAnchorRanges ? { anchorRanges } : {}),
     });
     if (result.deduped) deduped++;
     else persisted++;

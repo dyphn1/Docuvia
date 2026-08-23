@@ -26,6 +26,7 @@ function makeRow(overrides: Partial<L3NodeRow> = {}): L3NodeRow {
     extraction_model: null,
     source_files: null,
     initial_source_commits: null,
+    anchor_ranges: null,
     ...overrides,
   };
 }

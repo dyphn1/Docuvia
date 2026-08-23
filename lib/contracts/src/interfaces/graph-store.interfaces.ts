@@ -173,6 +173,27 @@ export interface L3NodeRow {
    * existed; callers fall back to `source_commits` in that case.
    */
   initial_source_commits: string | null;
+  /**
+   * JSON array of `L3AnchorRange` ({path, startRow, endRow}) — the writing commit's diff hunks
+   * over the decision's source files, captured at write time (issue #68). Gives the future
+   * blame-based validity pass a region to judge ownership against instead of degenerating to
+   * file-level blame. NULL on rows written before this column existed or by write paths that
+   * don't capture anchors; consumers treat NULL as "unknown region" (file-level fallback),
+   * never as an empty confirmed range.
+   */
+  anchor_ranges: string | null;
+}
+
+/**
+ * One line-range region anchor for an L3 decision (issue #68): a hunk the writing commit
+ * introduced in one of the decision's source files. Rows are 0-indexed inclusive, matching
+ * `DiffLineRange`'s tree-sitter convention.
+ */
+export interface L3AnchorRange {
+  /** Workspace-relative file path (node_key form, forward slashes). */
+  path: string;
+  startRow: number;
+  endRow: number;
 }
 
 /**
@@ -427,6 +448,12 @@ export interface IL3NodesRepo {
      *  different one). Defaults to `L3DecisionSources.ANALYZE` when omitted, preserving every
      *  existing caller's behavior unchanged. */
     source?: L3DecisionSource;
+    /**
+     * Region anchors captured at write time (issue #68) — stamped on a fresh insert only; the
+     * dedup/occurrence-bump path leaves the existing row's `anchor_ranges` untouched, same
+     * first-writer-wins rule as `source`. Omitted/null stores NULL ("unknown region").
+     */
+    anchorRanges?: L3AnchorRange[] | null;
   }): { id: number; deduped: boolean };
   /**
    * L3DIST-007's git-to-local.db import half of the union (phase2-l3-distribution.md): upserts a

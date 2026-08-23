@@ -527,6 +527,7 @@ describe("runFlushStagedL3", () => {
         extraction_model: null,
         source_files: null,
         initial_source_commits: null,
+        anchor_ranges: null,
       },
     ]);
     registerPersistenceMocks(store, {

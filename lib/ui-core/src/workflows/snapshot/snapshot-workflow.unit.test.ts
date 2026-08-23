@@ -320,6 +320,7 @@ describe("SnapshotWorkflow.execute()", () => {
       extraction_model: "gpt-4o-mini",
       source_files: JSON.stringify(["src/a.ts"]),
       initial_source_commits: JSON.stringify(["commit-1"]),
+      anchor_ranges: null,
     };
 
     const store = makeMockStore({

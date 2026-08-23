@@ -86,6 +86,7 @@ export type {
   NodeLinkRow,
   L2NodeL1TagRow,
   L3NodeRow,
+  L3AnchorRange,
   L2NodeWithL3Children,
   IProjectsRepo,
   IProjectFilesRepo,

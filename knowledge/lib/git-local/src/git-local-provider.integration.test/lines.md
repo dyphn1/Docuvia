@@ -1,5 +1,5 @@
 ---
-id: lib/git-local/src/git-local-provider.integration.test.ts#lines
+id: lib/git-local/src/git-local-provider.integration.test.ts#lines@L1182
 type: symbol
 name: lines
 filePath: lib/git-local/src/git-local-provider.integration.test.ts

@@ -16,6 +16,14 @@ export const XML_TAGS = {
   L2_START_SUFFIX: '">',
   L2_END: "  </l2_module>",
   L3_START_PREFIX: '    <l3_decision title="',
+  /** Provenance attribute separators for `<l3_decision>` (issue #68, provenance axis) — each
+   *  attribute is rendered only when the entry actually carries the field, so legacy
+   *  `{title, content}` fixtures and vanished-row fallbacks keep the old bare-tag shape. */
+  L3_SOURCE_MID: '" source="',
+  L3_CONFIDENCE_MID: '" confidence="',
+  L3_COMMIT_MID: '" commit="',
+  L3_CREATED_AT_MID: '" created_at="',
+  L3_VALIDITY_MID: '" validity="',
   L3_START_SUFFIX: '">',
   L3_CONTENT_PREFIX: "      ",
   L3_END: "    </l3_decision>",
@@ -38,6 +46,20 @@ export const XML_TAGS = {
   UNPROCESSED_SUFFIX: '" />',
 } as const;
 
+/** Builds `<l3_decision ...>`'s opening tag, appending provenance attributes (source /
+ *  confidence / commit / created_at / validity) only when the entry carries them — a missing
+ *  field means "unknown", never a fabricated default (issue #68, provenance axis). */
+function buildL3OpenTag(l3: LocalQueryResult["l3"][number]): string {
+  let tag = XML_TAGS.L3_START_PREFIX + l3.title;
+  if (l3.source) tag += XML_TAGS.L3_SOURCE_MID + l3.source;
+  if (l3.confidence !== undefined && l3.confidence !== null)
+    tag += XML_TAGS.L3_CONFIDENCE_MID + String(l3.confidence);
+  if (l3.commitHash) tag += XML_TAGS.L3_COMMIT_MID + l3.commitHash;
+  if (l3.createdAt) tag += XML_TAGS.L3_CREATED_AT_MID + l3.createdAt;
+  if (l3.validityStatus) tag += XML_TAGS.L3_VALIDITY_MID + l3.validityStatus;
+  return tag + XML_TAGS.L3_START_SUFFIX;
+}
+
 function buildPromptL2Lines(result: LocalQueryResult): string[] {
   const lines: string[] = [];
   if (result.l2) {
@@ -49,7 +71,7 @@ function buildPromptL2Lines(result: LocalQueryResult): string[] {
     lines.push(openTag + XML_TAGS.L2_START_SUFFIX);
   }
   for (const l3 of result.l3) {
-    lines.push(XML_TAGS.L3_START_PREFIX + l3.title + XML_TAGS.L3_START_SUFFIX);
+    lines.push(buildL3OpenTag(l3));
     lines.push(
       XML_TAGS.L3_CONTENT_PREFIX + (l3.content || FORMAT_MARKERS.EMPTY),
     );

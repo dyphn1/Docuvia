@@ -11,6 +11,7 @@ import {
   SYNC_KNOWLEDGE_MESSAGES,
 } from "./sync-knowledge-messages.js";
 import { appendSyncKnowledgeLogLine } from "./sync-knowledge-log-writer.js";
+import { runL3ValidityPass } from "./judge-l3-validity.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 
 /**
@@ -62,6 +63,22 @@ export class SyncKnowledgeWorkflow {
       await this.importL3Cards(knowledgeGit, result.branchTipSha);
     }
 
+    // Issue #68's authority judgment: HEAD is the merge result by the time reconciliation
+    // finishes, so this is the merge-on-origin observation point the issue asks for. Best
+    // effort -- a validity-pass failure must not fail the sync itself (the sync already
+    // succeeded; judgment re-runs with the same cursor next time).
+    try {
+      await this.runValidityPass();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.warn(SYNC_KNOWLEDGE_MESSAGES.VALIDITY_PASS_FAILED(message));
+      await appendSyncKnowledgeLogLine(workspaceRoot, {
+        event: SYNC_KNOWLEDGE_EVENTS.VALIDITY_PASS,
+        status: "error",
+        error: message,
+      });
+    }
+
     await appendSyncKnowledgeLogLine(workspaceRoot, {
       event: SYNC_KNOWLEDGE_EVENTS.SUMMARY,
       status: result.status,
@@ -88,6 +105,47 @@ export class SyncKnowledgeWorkflow {
       await knowledgeGit.runUnderKnowledgeLock(workspaceRoot, () =>
         hydrationService.importL3Cards(workspaceRoot, knowledgeSha, store),
       );
+    } finally {
+      await store.close();
+    }
+  }
+
+  /** Issue #68's blame-based validity judgment over `local.db`, against the current HEAD tree.
+   *  Opens its own store (same pattern as `importL3Cards`) -- it writes `validity_status` and
+   *  the judged-sha cursor, so it must not share a store instance with the import's
+   *  knowledge-locked scope. */
+  private async runValidityPass(): Promise<void> {
+    const { workspaceRoot, logger } = this;
+    const openStore = docuviaFactory.resolve(TOKENS.GraphStoreOpener);
+    const store = await openStore({
+      dbPath: resolveDbPath(workspaceRoot),
+      readonly: false,
+    });
+    try {
+      const result = await runL3ValidityPass({
+        workspaceRoot,
+        logger,
+        store,
+        git: docuviaFactory.resolve(TOKENS.GitProvider),
+        blame: docuviaFactory.resolve(TOKENS.LineBlameProvider),
+      });
+      if (result.baseline) {
+        logger.info(SYNC_KNOWLEDGE_MESSAGES.VALIDITY_PASS_BASELINE);
+      } else {
+        logger.info(
+          SYNC_KNOWLEDGE_MESSAGES.VALIDITY_PASS_SUMMARY(
+            result.activated,
+            result.superseded,
+          ),
+        );
+      }
+      await appendSyncKnowledgeLogLine(workspaceRoot, {
+        event: SYNC_KNOWLEDGE_EVENTS.VALIDITY_PASS,
+        status: "ok",
+        activated: result.activated,
+        superseded: result.superseded,
+        baseline: result.baseline,
+      });
     } finally {
       await store.close();
     }

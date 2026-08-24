@@ -7,9 +7,11 @@ import {
   HASH_ALGO_SHA256,
   type IL3NodesRepo,
   type L3NodeRow,
+  type L3AnchorRange,
   type L3DecisionSource,
   ValidityStatuses,
   L3DecisionSources,
+  type ValidityStatus,
 } from "@workspace/contracts";
 import { SchemaTables, SchemaColumns } from "../constants.js";
 
@@ -20,6 +22,8 @@ const L3_NODES_ERROR_MESSAGES = {
     `Failed to get l3 nodes for l2_node_id ${l2NodeId}`,
   UPSERT_DECISION_FAILED: "Failed to upsert l3 decision",
   IMPORT_CARD_FAILED: "Failed to import l3 card",
+  UPDATE_VALIDITY_STATUS_FAILED: (id: number) =>
+    `Failed to update validity status for l3 node ${id}`,
 } as const;
 
 /** `l3_nodes.source` value stamped by `IL3NodesRepo.importCard` (phase2-l3-distribution.md L3DIST-007) — distinguishes a row this developer authored locally from one absorbed from a teammate's card via `hydrate`/`sync-knowledge`. */
@@ -108,6 +112,8 @@ export class L3NodesRepo implements IL3NodesRepo {
     extractionModel: string | null;
     sourceFiles: string[];
     source?: L3DecisionSource;
+    /** Region anchors captured at write time (issue #68) — fresh-insert only; see the interface's doc comment. */
+    anchorRanges?: L3AnchorRange[] | null;
   }): { id: number; deduped: boolean } {
     try {
       const contentHash = computeContentHash(
@@ -153,13 +159,17 @@ export class L3NodesRepo implements IL3NodesRepo {
         const initialSourceCommits = JSON.stringify(
           input.commitSha ? [input.commitSha] : [],
         );
+        const anchorRangesJson =
+          input.anchorRanges && input.anchorRanges.length > 0
+            ? JSON.stringify(input.anchorRanges)
+            : null;
         const result = this.db
           .prepare(
             `INSERT INTO ${SchemaTables.L3_NODES}
                (${SchemaColumns.L2_NODE_ID}, title, content, node_type, source_commits,
                 initial_source_commits, commit_hash, ai_generated, confidence, source,
-                ${SchemaColumns.CONTENT_HASH}, extraction_model, source_files)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+                ${SchemaColumns.CONTENT_HASH}, extraction_model, source_files, anchor_ranges)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
           )
           .run(
             input.l2NodeId,
@@ -174,6 +184,7 @@ export class L3NodesRepo implements IL3NodesRepo {
             contentHash,
             input.extractionModel,
             JSON.stringify(input.sourceFiles),
+            anchorRangesJson,
           );
         this.db
           .prepare(
@@ -262,6 +273,23 @@ export class L3NodesRepo implements IL3NodesRepo {
       throw DocuviaError.wrap(
         ErrorCodes.DB_QUERY_FAILED,
         L3_NODES_ERROR_MESSAGES.IMPORT_CARD_FAILED,
+        err,
+      );
+    }
+  }
+
+  /** See `IL3NodesRepo.updateValidityStatus`'s doc comment. */
+  updateValidityStatus(id: number, status: ValidityStatus): void {
+    try {
+      this.db
+        .prepare(
+          `UPDATE ${SchemaTables.L3_NODES} SET validity_status = ? WHERE id = ? AND validity_status != ?`,
+        )
+        .run(status, id, status);
+    } catch (err) {
+      throw DocuviaError.wrap(
+        ErrorCodes.DB_QUERY_FAILED,
+        L3_NODES_ERROR_MESSAGES.UPDATE_VALIDITY_STATUS_FAILED(id),
         err,
       );
     }

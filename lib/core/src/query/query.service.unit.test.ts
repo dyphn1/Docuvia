@@ -208,6 +208,41 @@ describe("QueryService", () => {
       });
     });
 
+    it("attaches l3 write-path provenance from the underlying l3_nodes row (issue #68)", () => {
+      const anchorId = store.graph.insertNode({
+        projectId,
+        name: "src/auth.ts",
+        pathPatterns: ["src/auth.ts"],
+      });
+      store.l3.upsertDecision({
+        projectId,
+        l2NodeId: anchorId,
+        title: "switched to JWT",
+        content: "stateless auth across services",
+        nodeType: "decision",
+        confidence: 0.9,
+        commitSha: "abc1234",
+        extractionModel: null,
+        sourceFiles: ["src/auth.ts"],
+        source: "agent-authored",
+      });
+
+      const result = queryService.query(store, "JWT");
+
+      expect(result.l3).toHaveLength(1);
+      expect(result.l3[0]).toMatchObject({
+        title: "switched to JWT",
+        content: "stateless auth across services",
+        id: expect.any(Number),
+        nodeType: "decision",
+        source: "agent-authored",
+        confidence: 0.9,
+        commitHash: "abc1234",
+        validityStatus: "pending",
+        createdAt: expect.any(String),
+      });
+    });
+
     it("falls back to context: null instead of throwing when getContext() fails", () => {
       const targetId = store.graph.insertNode({
         projectId,

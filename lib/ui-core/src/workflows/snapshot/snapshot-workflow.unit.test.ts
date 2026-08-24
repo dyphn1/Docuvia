@@ -66,6 +66,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
+      updateValidityStatus: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },
@@ -320,6 +321,7 @@ describe("SnapshotWorkflow.execute()", () => {
       extraction_model: "gpt-4o-mini",
       source_files: JSON.stringify(["src/a.ts"]),
       initial_source_commits: JSON.stringify(["commit-1"]),
+      anchor_ranges: null,
     };
 
     const store = makeMockStore({
@@ -349,6 +351,7 @@ describe("SnapshotWorkflow.execute()", () => {
         getByL2NodeId: vi.fn(),
         upsertDecision: vi.fn(),
         importCard: vi.fn(),
+        updateValidityStatus: vi.fn(),
       },
     });
     docuviaFactory.register(TOKENS.GraphStoreOpener, () =>

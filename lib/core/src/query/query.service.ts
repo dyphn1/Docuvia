@@ -4,6 +4,7 @@ import type {
   ILogger,
   IQueryService,
   LocalQueryResult,
+  LocalQueryResultL3Entry,
   LocalSearchResult,
 } from "@workspace/contracts";
 import {
@@ -317,8 +318,35 @@ export class QueryService implements IQueryService {
             matchType: l2Result.matchType,
           }
         : null,
-      l3: l3Results.map((r) => ({ title: r.title, content: r.content })),
+      l3: l3Results.map((r) => this.toL3Entry(store, r)),
       context,
+    };
+  }
+
+  /**
+   * Attaches write-path provenance (issue #68's provenance axis) to an L3 search hit by
+   * re-reading its `l3_nodes` row. The search path itself only carries `{title, content}` —
+   * without this step, `<l3_decision>` output can't tell an agent-authored self-report from
+   * a git-imported fact, and stale/superseded decisions are indistinguishable from live ones.
+   * Falls back to provenance-free `{title, content}` when the row has vanished mid-query
+   * (concurrent prune) so a read never throws.
+   */
+  private toL3Entry(
+    store: IGraphStore,
+    result: LocalSearchResult,
+  ): LocalQueryResultL3Entry {
+    const row = store.l3.getById(result.id);
+    if (!row) return { title: result.title, content: result.content };
+    return {
+      title: result.title,
+      content: result.content,
+      id: row.id,
+      nodeType: row.node_type,
+      source: row.source,
+      confidence: row.confidence,
+      commitHash: row.commit_hash,
+      validityStatus: row.validity_status,
+      createdAt: row.created_at,
     };
   }
 }

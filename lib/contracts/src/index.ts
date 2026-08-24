@@ -30,6 +30,7 @@ export type {
   ChangedFileStatus,
   DiffLineRange,
   IGitProvider,
+  ILineBlameProvider,
   WorktreeEntry,
 } from "./interfaces/git.interfaces.js";
 export { ChangedFileStatuses } from "./interfaces/git.interfaces.js";
@@ -86,6 +87,7 @@ export type {
   NodeLinkRow,
   L2NodeL1TagRow,
   L3NodeRow,
+  L3AnchorRange,
   L2NodeWithL3Children,
   IProjectsRepo,
   IProjectFilesRepo,
@@ -164,6 +166,7 @@ export type {
   TierBCoverageHint,
   LocalSearchResult,
   LocalQueryResult,
+  LocalQueryResultL3Entry,
   QueryResultLayer,
   QueryMatchType,
   IQueryService,

@@ -56,6 +56,52 @@ describe("formatPromptOutput()", () => {
     expect(output).toContain('<callee name="callee" relation="calls" />');
   });
 
+  it("renders provenance attributes on l3_decision when the entry carries them (issue #68)", () => {
+    const output = formatPromptOutput({
+      l2: null,
+      l3: [
+        {
+          title: "switched to JWT",
+          content: "details",
+          id: 7,
+          source: "agent-authored",
+          confidence: 0.9,
+          commitHash: "abc1234def5678",
+          createdAt: "2026-08-23 12:00:00",
+          validityStatus: "active",
+        },
+      ],
+      context: null,
+    });
+
+    expect(output).toContain(
+      '<l3_decision title="switched to JWT" source="agent-authored" confidence="0.9" commit="abc1234def5678" created_at="2026-08-23 12:00:00" validity="active">',
+    );
+  });
+
+  it("omits provenance attributes that are absent/null instead of fabricating defaults (issue #68)", () => {
+    const output = formatPromptOutput({
+      l2: null,
+      l3: [
+        {
+          title: "switched to JWT",
+          content: "details",
+          id: 7,
+          confidence: null,
+          commitHash: null,
+        },
+      ],
+      context: null,
+    });
+
+    expect(output).toContain('<l3_decision title="switched to JWT">');
+    expect(output).not.toContain('source="');
+    expect(output).not.toContain('confidence="');
+    expect(output).not.toContain('commit="');
+    expect(output).not.toContain('created_at="');
+    expect(output).not.toContain('validity="');
+  });
+
   it("includes the resolved file path on the l2_module tag when available", () => {
     const output = formatPromptOutput({
       l2: {
@@ -207,6 +253,30 @@ describe("queryCommand", () => {
       );
     },
   );
+
+  it("shows a provenance suffix on the Decision line when the entry carries it (issue #68)", async () => {
+    mockQuery.mockResolvedValue({
+      l2: { name: "authService", matchType: "exact" },
+      l3: [
+        {
+          title: "switched to JWT",
+          content: null,
+          source: "agent-authored",
+          commitHash: "abc1234def5678",
+          validityStatus: "pending",
+        },
+      ],
+      context: null,
+    });
+
+    await queryCommand("authService");
+
+    expect(ui.success).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "Decision: switched to JWT (source=agent-authored, commit=abc1234, validity=pending)",
+      ),
+    );
+  });
 
   it("renders incoming/outgoing edges as Name/Relation tables under a section label", async () => {
     mockQuery.mockResolvedValue({

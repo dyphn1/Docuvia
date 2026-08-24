@@ -6,10 +6,13 @@ import {
   type IGraphStore,
   type ILogger,
   type L3DecisionSource,
+  type L3NodeRow,
 } from "@workspace/contracts";
 import { ANALYZE_EVENTS } from "./analyze-messages.js";
 import { ANALYZE_MESSAGES } from "./analyze-messages.js";
 import { appendAnalyzeLogLine } from "./analyze-log-writer.js";
+import { findAnchorContradictions } from "./check-l3-contradictions.js";
+import { captureAnchorRanges } from "./capture-anchor-ranges.js";
 import { resolveDbPath } from "../../utils/resolve-db-path.js";
 import { resolveAnchorL2NodeId, toNodeKey } from "./anchor-resolution.js";
 import type { CollectedFile } from "./decision-extraction.js";
@@ -43,6 +46,19 @@ export async function persistDecisions(deps: {
    *  value as `HEAD` at that moment, but explicit here for clarity/testability rather than
    *  implicit "whatever HEAD happens to be when the DB write executes"). */
   commitSha?: string;
+  /**
+   * Issue #68's flush-path writer-side enhancements, grouped as one explicit opt-in object
+   * rather than loose booleans: both need this function's internal state (the resolved anchor,
+   * the opened store, the triggering commit sha), and both exist for exactly one caller today
+   * (`run-flush-staged-l3.ts`). Omitted = plain persist, byte-identical inputs/behavior for
+   * every other caller.
+   */
+  writerEnhancements?: {
+    /** Deterministic contradiction warning against live same-anchor decisions before writing. Warn-only, never blocks. */
+    warnOnAnchorContradictions: boolean;
+    /** Capture the writing commit's diff hunks as region anchors, stamped on freshly-inserted rows. */
+    captureAnchorRanges: boolean;
+  };
 }): Promise<{
   persisted: number;
   deduped: number;
@@ -87,6 +103,14 @@ export async function persistDecisions(deps: {
       return { persisted: 0, deduped: 0, noGraphToAttach: true };
     }
 
+    if (deps.writerEnhancements?.warnOnAnchorContradictions) {
+      warnAnchorContradictions(
+        store.l3.getByL2NodeId(anchorL2NodeId),
+        decisions,
+        logger,
+      );
+    }
+
     const counts = await upsertDecisions({
       workspaceRoot,
       store,
@@ -97,6 +121,8 @@ export async function persistDecisions(deps: {
       source,
       extractionModel,
       commitSha,
+      captureAnchorRanges:
+        deps.writerEnhancements?.captureAnchorRanges === true,
     });
 
     await appendAnalyzeLogLine(workspaceRoot, {
@@ -108,6 +134,32 @@ export async function persistDecisions(deps: {
     return { ...counts, noGraphToAttach: false };
   } finally {
     await store.close();
+  }
+}
+
+/** The issue #68 writer-side check: log a warning per deterministic contradiction between the
+ *  incoming decisions and live rows on the same anchor. A separate function purely to keep
+ *  `persistDecisions` under its complexity budget. */
+function warnAnchorContradictions(
+  existingRows: L3NodeRow[],
+  decisions: ExtractedDecision[],
+  logger: ILogger,
+): void {
+  for (const hit of findAnchorContradictions(existingRows, decisions)) {
+    logger.warn(
+      ANALYZE_MESSAGES.L3_ANCHOR_CONTRADICTION(
+        hit.stagedTitle,
+        hit.existingSource,
+        hit.existingCommitHash,
+      ),
+      {
+        stagedTitle: hit.stagedTitle,
+        existingId: hit.existingId,
+        existingTitle: hit.existingTitle,
+        existingSource: hit.existingSource,
+        existingCommitHash: hit.existingCommitHash,
+      },
+    );
   }
 }
 
@@ -142,8 +194,10 @@ async function upsertDecisions(deps: {
   decisions: ExtractedDecision[];
   source: L3DecisionSource;
   extractionModel: string | null;
-  /** See `persistDecisions`'s own doc comment on this field. */
+  /** See `persistDecisions`'s doc comment on this field. */
   commitSha?: string;
+  /** See `persistDecisions`'s doc comment on this field. */
+  captureAnchorRanges: boolean;
 }): Promise<{ persisted: number; deduped: number }> {
   const {
     workspaceRoot,
@@ -163,6 +217,18 @@ async function upsertDecisions(deps: {
     null;
   const sourceFiles = files.map((f) => toNodeKey(f.relativePath));
 
+  // Issue #68: capture the writing commit's diff hunks as region anchors, once per call (the
+  // ranges describe the commit's change, identical for every decision in this group). Null on
+  // a null sha or capture failure -- stored as "unknown region", never fabricated.
+  const anchorRanges = deps.captureAnchorRanges
+    ? await captureAnchorRanges({
+        git: docuviaFactory.resolve(TOKENS.GitProvider),
+        workspaceRoot,
+        commitSha: resolvedCommitSha,
+        sourceFiles,
+      })
+    : null;
+
   let persisted = 0;
   let deduped = 0;
   for (const decision of decisions) {
@@ -177,6 +243,9 @@ async function upsertDecisions(deps: {
       extractionModel,
       sourceFiles,
       source,
+      // Omitted entirely when capture is off, so callers not opting in keep byte-identical
+      // upsert inputs (and the column stays NULL = "unknown region").
+      ...(deps.captureAnchorRanges ? { anchorRanges } : {}),
     });
     if (result.deduped) deduped++;
     else persisted++;

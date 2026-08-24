@@ -1,11 +1,11 @@
 ---
 id: GRPH-002
 title: Two-Phase Knowledge Validity
-status: proposed
+status: superseded
 date: 2026-07-03
 domains: [graph]
 supersedes: [legacy/ADR-011]
-superseded_by: []
+superseded_by: [GRPH-007]
 ---
 
 # Two-Phase Knowledge Validity

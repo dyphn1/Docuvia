@@ -107,6 +107,7 @@ function makeL3(overrides: Partial<L3NodeRow> = {}): L3NodeRow {
     extraction_model: null,
     source_files: null,
     initial_source_commits: null,
+    anchor_ranges: null,
     ...overrides,
   };
 }
@@ -158,6 +159,7 @@ function makeMockStore(overrides: Partial<IGraphStore> = {}): IGraphStore {
       getByL2NodeId: vi.fn(),
       upsertDecision: vi.fn(),
       importCard: vi.fn(),
+      updateValidityStatus: vi.fn(),
     },
     fts: { searchL2Nodes: vi.fn(), searchL3Nodes: vi.fn() },
     meta: { get: vi.fn(), set: vi.fn() },

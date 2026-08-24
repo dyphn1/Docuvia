@@ -114,6 +114,18 @@ export const ANALYZE_MESSAGES = {
     `Staged L3 decision(s) for ${filePath} dropped -- the file was deleted by this commit`,
   FLUSH_STAGED_L3_ERROR: (message: string) =>
     `Flush of staged L3 decisions failed: ${message} -- the staging file was left untouched for the next flush to retry`,
+  /** Issue #68's writer-side contradiction check: a staged decision re-states a titled claim
+   *  already anchored to the same l2_node_id with divergent content. Warn-only (the write
+   *  proceeds; upsertDecision's content-hash union is untouched) -- the point is to reach the
+   *  writing agent while the disagreement is still cheap to fix. */
+  L3_ANCHOR_CONTRADICTION: (
+    stagedTitle: string,
+    existingSource: string,
+    existingCommitHash: string | null,
+  ) =>
+    `Staged decision "${stagedTitle}" conflicts with an existing ${existingSource} decision on the same anchor` +
+    (existingCommitHash ? ` (written at commit ${existingCommitHash})` : "") +
+    ` with divergent content -- verify which rationale is correct before building on either`,
 } as const;
 
 /** Structured-log event names appended to `analyze.log` by the `analyze` workflow. The old

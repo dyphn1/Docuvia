@@ -112,6 +112,99 @@ describe("parseImportDescriptors", () => {
     ]);
   });
 
+  it("TS barrel re-export: export { helper } from './deep/util' yields an import descriptor for the re-exported name (issue #192 gap 2)", () => {
+    const spec: FakeSpec = {
+      type: "export_statement",
+      fields: { source: { type: "string", text: '"../deep/util"' } },
+      descendants: {
+        export_clause: [
+          {
+            type: "export_clause",
+            descendants: {
+              export_specifier: [
+                {
+                  type: "export_specifier",
+                  fields: {
+                    name: {
+                      type: "identifier",
+                      text: "evalChainHelper",
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    const result = parseImportDescriptors([makeNode(spec)]);
+    expect(result).toEqual([
+      {
+        localName: "evalChainHelper",
+        originalName: "evalChainHelper",
+        modulePath: "../deep/util",
+        viaReexport: true,
+      },
+    ]);
+  });
+
+  it("TS barrel re-export with alias: export { A as B } from './x' maps the outward-facing alias B to the original name A", () => {
+    const spec: FakeSpec = {
+      type: "export_statement",
+      fields: { source: { type: "string", text: "'./x'" } },
+      descendants: {
+        export_clause: [
+          {
+            type: "export_clause",
+            descendants: {
+              export_specifier: [
+                {
+                  type: "export_specifier",
+                  fields: {
+                    name: { type: "identifier", text: "A" },
+                    alias: { type: "identifier", text: "B" },
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    const result = parseImportDescriptors([makeNode(spec)]);
+    expect(result).toEqual([
+      {
+        localName: "B",
+        originalName: "A",
+        modulePath: "./x",
+        viaReexport: true,
+      },
+    ]);
+  });
+
+  it("TS plain local export (no source clause) produces no descriptor -- only re-exports are dependency edges", () => {
+    const spec: FakeSpec = {
+      type: "export_statement",
+      descendants: {
+        export_clause: [
+          {
+            type: "export_clause",
+            descendants: {
+              export_specifier: [
+                {
+                  type: "export_specifier",
+                  fields: { name: { type: "identifier", text: "localThing" } },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    };
+    const result = parseImportDescriptors([makeNode(spec)]);
+    expect(result).toEqual([]);
+  });
+
   it("TS default import: import Foo from 'bar'", () => {
     const spec: FakeSpec = {
       type: "import_statement",

@@ -1,6 +1,7 @@
 import type { LanguageConfig } from "../language-provider.js";
 import { QueryCaptureName } from "../constants/query-capture-names.js";
 import { LanguageNodeTypes } from "../constants/language-node-types.js";
+import { TreeSitterNodeTypes } from "../constants/tree-sitter-node-types.js";
 import { JAVASCRIPT_EXTENSIONS } from "@workspace/contracts";
 const JAVASCRIPT_WASM_FILE = "tree-sitter-javascript.wasm";
 
@@ -28,7 +29,9 @@ export const javascriptConfig: LanguageConfig = {
     // is equivalent to the old per-type descendantsOfType fallback while running one native query
     // pass instead of 6 JS-side tree walks.
     functions: `(${LanguageNodeTypes.FUNCTION_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.METHOD_DEFINITION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.ARROW_FUNCTION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.FUNCTION_EXPRESSION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.GENERATOR_FUNCTION_DECLARATION}) @${QueryCaptureName.FUNCTION} (${LanguageNodeTypes.GENERATOR_FUNCTION}) @${QueryCaptureName.FUNCTION}`,
-    imports: `(${LanguageNodeTypes.IMPORT_STATEMENT}) @${QueryCaptureName.IMPORT}`,
+    imports: `(${LanguageNodeTypes.IMPORT_STATEMENT}) @${QueryCaptureName.IMPORT} (${TreeSitterNodeTypes.EXPORT_STATEMENT} source: (string)) @${QueryCaptureName.IMPORT}`,
+    // Same reasoning as typescript.ts's variables query (issue #192 gap 1).
+    variables: `(export_statement declaration: (lexical_declaration (variable_declarator name: (${LanguageNodeTypes.IDENTIFIER})) @${QueryCaptureName.VARIABLE}))`,
     calls: `(${LanguageNodeTypes.CALL_EXPRESSION} function: [(${LanguageNodeTypes.IDENTIFIER}) (${LanguageNodeTypes.MEMBER_EXPRESSION})] @${QueryCaptureName.CALL})`,
     extends: `(${LanguageNodeTypes.CLASS_HERITAGE} "extends" (_) @${QueryCaptureName.EXTENDS})`,
   },

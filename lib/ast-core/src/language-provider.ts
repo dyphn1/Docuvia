@@ -6,6 +6,7 @@ import { AstEventType } from "./constants/ast-event-constants.js";
 const QueryCaptureName = {
   IMPLEMENTS: "implements",
   EXTENDS: "extends",
+  VARIABLE: "variable",
 } as const;
 
 export interface LanguageProvider {
@@ -18,6 +19,9 @@ export interface LanguageProvider {
   wasm_file: string;
   extractClasses: (rootNode: Node) => Node[];
   extractFunctions: (rootNode: Node) => Node[];
+  /** Exported variable declarators (`export const X = ...`) — TS/JS only today, undefined for
+   *  languages without a `variables` query (issue #192 gap 1). */
+  extractVariables?: (rootNode: Node) => Node[];
   extractImports: (rootNode: Node) => Node[];
   extractCalls: (rootNode: Node) => Node[];
   extractImplements?: (rootNode: Node) => Node[];
@@ -32,6 +36,9 @@ export interface LanguageQueryConfig {
   // functions with no queryable "name" field) need the fuller descendantsOfType fallback
   // instead of a query that would only capture a subset — see typescript.ts/javascript.ts.
   functions?: string;
+  // Optional: exported variable declarators (issue #192 gap 1). Omitted for languages that
+  // don't index variables at all — extractVariables then always returns [].
+  variables?: string;
   imports: string;
   calls: string;
   implements?: string;
@@ -59,6 +66,7 @@ export interface LanguageConfig {
 type CompiledQueries = {
   classes?: Query;
   functions?: Query;
+  variables?: Query;
   imports?: Query;
   calls?: Query;
   implements?: Query;
@@ -102,6 +110,7 @@ export class DefaultProvider implements LanguageProvider {
     this.compiledQueries = {
       classes: this.compileQuery(language, q.classes),
       functions: this.compileQuery(language, q.functions),
+      variables: this.compileQuery(language, q.variables),
       imports: this.compileQuery(language, q.imports),
       calls: this.compileQuery(language, q.calls),
       implements: this.compileQuery(language, q.implements),
@@ -125,6 +134,7 @@ export class DefaultProvider implements LanguageProvider {
     if (!this.compiledQueries) return;
     this.compiledQueries.classes?.delete();
     this.compiledQueries.functions?.delete();
+    this.compiledQueries.variables?.delete();
     this.compiledQueries.imports?.delete();
     this.compiledQueries.calls?.delete();
     this.compiledQueries.implements?.delete();
@@ -163,6 +173,18 @@ export class DefaultProvider implements LanguageProvider {
       this.compiledQueries?.functions,
       [AstEventType.FUNCTION],
       this.config.functions,
+    );
+  }
+
+  extractVariables(rootNode: Node): Node[] {
+    return this.extractNodes(
+      rootNode,
+      this.compiledQueries?.variables,
+      [QueryCaptureName.VARIABLE],
+      // No descendantsOfType fallback: a fallback over whole lexical_declaration node types
+      // would index every local `const` temp, not just the exported API surface the query
+      // targets. No query (unsupported language) simply means no variables.
+      [],
     );
   }
 

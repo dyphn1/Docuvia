@@ -93,6 +93,15 @@ export interface AstParseResponse {
       methods: string[];
       contentHash?: string;
     }>;
+    /** Exported variable declarators (`export const X = ...`) — TS/JS only today (issue #192
+     *  gap 1). Function-valued initializers (arrow functions / function expressions) are
+     *  excluded: they are already indexed as functions via `functions`. */
+    variables?: Array<{
+      name: string;
+      startLine: number;
+      endLine: number;
+      contentHash?: string;
+    }>;
     calls: Array<{
       sourceFunction: string;
       targetFunction: string;
@@ -394,6 +403,38 @@ function collectClassNodes(
   return classNodes;
 }
 
+/**
+ * Extracts exported variable declarators via the provider and appends their summaries to
+ * `variables` (issue #192 gap 1: `export const X = ...` must be an indexable symbol so
+ * `impact <X>` resolves instead of "No matching node"). The query only matches exported
+ * `lexical_declaration` declarators with plain identifier names; this collector additionally
+ * skips function-valued initializers (arrow_function/function_expression) since those are
+ * already indexed as functions by the `functions` query + resolveCallableName path.
+ */
+const FUNCTION_VALUE_NODE_TYPES = new Set<string>([
+  "arrow_function",
+  "function_expression",
+]);
+
+function collectVariableNodes(
+  tree: Tree,
+  provider: LanguageProvider,
+  variables: NonNullable<AstExtractionResult["variables"]>,
+): Node[] {
+  const variableNodes = provider.extractVariables?.(tree.rootNode) ?? [];
+  for (const node of variableNodes) {
+    const value = node.childForFieldName("value");
+    if (value && FUNCTION_VALUE_NODE_TYPES.has(value.type)) continue;
+    variables.push({
+      name: getNodeName(node),
+      startLine: node.startPosition.row,
+      endLine: node.endPosition.row,
+      contentHash: symbolContentHash(node),
+    });
+  }
+  return variableNodes;
+}
+
 /** Extracts function/method declaration nodes via the provider and appends their summaries to `functions`. Returns the raw nodes so callers can derive id sets for edge extraction.
  *
  *  `classNodes` (GRPH-006) lets each function's enclosing class/struct be resolved via the same
@@ -619,6 +660,7 @@ function extractAstData(
   const exports: AstExtractionResult["exports"] = [];
   const functions: AstExtractionResult["functions"] = [];
   const classes: AstExtractionResult["classes"] = [];
+  const variables: NonNullable<AstExtractionResult["variables"]> = [];
   const calls: AstExtractionResult["calls"] = [];
   const implementsList: NonNullable<AstExtractionResult["implements"]> = [];
   const extendsList: NonNullable<AstExtractionResult["extends"]> = [];
@@ -638,6 +680,8 @@ function extractAstData(
 
       const importNodes = provider.extractImports(tree.rootNode);
       imports.push(...parseImportDescriptors(importNodes));
+
+      collectVariableNodes(tree, provider, variables);
 
       collectCallEdges(tree, provider, functionNodes, calls);
       collectImplementsEdges(tree, provider, classNodes, implementsList);
@@ -659,6 +703,7 @@ function extractAstData(
     exports,
     functions,
     classes,
+    variables,
     calls,
     implements: implementsList,
     extends: extendsList,

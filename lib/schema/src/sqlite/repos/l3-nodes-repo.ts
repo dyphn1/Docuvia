@@ -2,7 +2,9 @@ import crypto from "node:crypto";
 import type Database from "better-sqlite3";
 import {
   DocuviaError,
+  ENCODING_HEX,
   ErrorCodes,
+  HASH_ALGO_SHA256,
   type IL3NodesRepo,
   type L3NodeRow,
   type L3DecisionSource,
@@ -30,9 +32,9 @@ function computeContentHash(
   content: string,
 ): string {
   return crypto
-    .createHash("sha256")
+    .createHash(HASH_ALGO_SHA256)
     .update(`${nodeType}\n${title}\n${content}`)
-    .digest("hex");
+    .digest(ENCODING_HEX);
 }
 
 /**

@@ -237,7 +237,13 @@ export {
   ConfigDetectionTags,
 } from "./constants/discovery-tags.js";
 
-export { UTF8_ENCODING } from "./constants/encoding.js";
+export {
+  UTF8_ENCODING,
+  ENCODING_HEX,
+  ENCODING_BASE64,
+  HASH_ALGO_SHA256,
+  HASH_ALGO_MD5,
+} from "./constants/encoding.js";
 export {
   GIT_DEFAULT_REMOTE_NAME,
   GitConstants,

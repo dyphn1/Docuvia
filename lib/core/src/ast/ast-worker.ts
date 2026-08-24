@@ -10,6 +10,8 @@ import {
   loadDefaultRegistry,
 } from "@workspace/ast-core";
 import {
+  ENCODING_HEX,
+  HASH_ALGO_SHA256,
   IpcLoggerClient,
   SUPPORTED_LANGUAGES,
   type AstExportKind,
@@ -22,14 +24,15 @@ import { AstMessages, AstNodeTypes } from "./ast-constants.js";
  * (`node.text`), independent of the containing file's blob hash. Lets a single-symbol edit
  * produce a one-line JSONL diff for that symbol without touching its untouched siblings' hashes.
  *
- * Inlines the "sha256"/"hex" literals `../constants/encoding.js` also exports rather than
- * importing them: this file is the one place in the codebase that must run standalone inside a
- * `worker_threads` Worker, and a relative `.js`-to-`.ts` sibling import needs a resolve hook that
- * tsx registers on the main thread but does not propagate into workers — a Node/tsx limitation,
- * not a bundling one (dist/ sidesteps it by shipping a fully-compiled worker instead).
+ * The algorithm/digest constants come from `@workspace/contracts` (issue #211) so the worker's
+ * hashes can never drift from the main thread's (`ast-worker-pool.ts`, `file-discovery.service.ts`)
+ * or `lib/schema`'s. Package-name imports resolve through node_modules and work fine inside a
+ * `worker_threads` Worker (as the existing contracts/ast-core imports above prove) — only bare
+ * relative `.js`-to-`.ts` sibling imports needed a tsx resolve hook that doesn't propagate into
+ * workers, and even that limitation is moot in dist/ where a fully-compiled worker ships.
  */
 function symbolContentHash(node: Node): string {
-  return createHash("sha256").update(node.text).digest("hex");
+  return createHash(HASH_ALGO_SHA256).update(node.text).digest(ENCODING_HEX);
 }
 
 /**

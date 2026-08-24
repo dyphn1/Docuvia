@@ -1,4 +1,3 @@
-import { ENCODING_HEX, HASH_ALGO_SHA256 } from "../constants/encoding.js";
 import { Worker } from "worker_threads";
 import * as path from "path";
 import * as fs from "fs";
@@ -6,7 +5,12 @@ import { fileURLToPath } from "url";
 import crypto from "node:crypto";
 import type { AstParseRequest, AstParseResponse } from "./ast-worker.js";
 import type { ILogger, IIpcLogMessage } from "@workspace/contracts";
-import { createNoopLogger, IpcLogRouter } from "@workspace/contracts";
+import {
+  createNoopLogger,
+  ENCODING_HEX,
+  HASH_ALGO_SHA256,
+  IpcLogRouter,
+} from "@workspace/contracts";
 import { AST_WORKER_CRASH_ERROR_NAME, AstMessages } from "./ast-constants.js";
 
 const __filename = fileURLToPath(import.meta.url);

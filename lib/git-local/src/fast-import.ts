@@ -49,9 +49,26 @@ const FAST_IMPORT_DATA_MODE_INLINE = "inline" as const;
  *  never reflects local git config, so there is no real timezone to report. */
 const UTC_TIMEZONE_OFFSET = "+0000" as const;
 
-/** `runFastImport`'s failure message when the spawned `git fast-import` process exits non-zero. */
-const FAST_IMPORT_EXIT_ERROR_MESSAGE = (code: number, stderr: string): string =>
-  `git fast-import exited with code ${code}${stderr ? ": " + stderr : ""}`;
+/** Prefix marking the `child.stdin` write-failure cause inside a fast-import failure message. */
+const FAST_IMPORT_STDIN_ERROR_PREFIX = "stdin write failed: " as const;
+
+/** `runFastImport`'s failure message when the spawned `git fast-import` process exits non-zero.
+ *  Git's own stderr wins when present; a recorded `child.stdin` write error (issue #186) is
+ *  appended — or used as the fallback when stderr is empty — so callers see the real cause
+ *  (EPIPE / `write EOF`) instead of just a bare exit code. Exported for unit testing. */
+export const FAST_IMPORT_EXIT_ERROR_MESSAGE = (
+  code: number,
+  stderr: string,
+  stdinError?: Error,
+): string => {
+  const details = [
+    stderr,
+    stdinError ? `${FAST_IMPORT_STDIN_ERROR_PREFIX}${stdinError.message}` : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+  return `git fast-import exited with code ${code}${details ? ": " + details : ""}`;
+};
 
 /** Default cap on how long a `git fast-import` child may run before it is killed (issue #100).
  *  The stream is fully buffered before spawning, so a run that outlives this is *stalled* (stdin
@@ -159,9 +176,9 @@ export function buildFastImportData(
  * surfaced, go-cli-benchmark.md §1.1), the still-writing `.end()` call fails with `write EOF`
  * (Windows) / `EPIPE` (POSIX) on `child.stdin` -- a *distinct* `EventEmitter` from `child` itself.
  * An unhandled `"error"` event throws and crashes the whole process (this is what actually
- * happened: a hard, stack-trace crash, not a caught rejection) — swallowed here because the
- * `"close"` handler below already turns the same failure into a proper rejection carrying git's
- * real stderr message, which is the one callers should see.
+ * happened: a hard, stack-trace crash, not a caught rejection) — the listener records the error
+ * instead of discarding it (issue #186), and the `"close"` handler below turns it into a proper
+ * rejection carrying git's stderr and/or the recorded stdin cause, which is what callers see.
  */
 export function runFastImport(
   cwd: string,
@@ -193,6 +210,7 @@ export function runFastImport(
     // Don't let the timer itself hold the event loop open once the child has exited.
     timeout.unref();
     const stderrChunks: Buffer[] = [];
+    let stdinWriteError: Error | undefined;
     child.stderr.on(CHILD_PROCESS_EVENT.DATA, (chunk: Buffer) =>
       stderrChunks.push(chunk),
     );
@@ -201,11 +219,19 @@ export function runFastImport(
       clearTimeout(timeout);
       if (code === 0) return resolve();
       const stderr = Buffer.concat(stderrChunks).toString(UTF8_ENCODING).trim();
-      reject(new Error(FAST_IMPORT_EXIT_ERROR_MESSAGE(code, stderr)));
+      reject(
+        new Error(
+          FAST_IMPORT_EXIT_ERROR_MESSAGE(code, stderr, stdinWriteError),
+        ),
+      );
     });
-    // Best-effort: the real failure reason surfaces through "close" above. Without this listener,
-    // a write failure here is an unhandled error event -- and Node throws those, uncaught.
-    child.stdin.on(CHILD_PROCESS_EVENT.ERROR, () => {});
+    child.stdin.on(CHILD_PROCESS_EVENT.ERROR, (err: Error) => {
+      // Issue #186: record -- don't discard -- stdin write failures (EPIPE / "write EOF"). The
+      // listener must stay registered either way: without it Node turns an 'error' event into an
+      // unhandled, process-crashing exception. The recorded cause surfaces through the "close"
+      // rejection above whenever git exits non-zero without explaining itself on stderr.
+      stdinWriteError = err;
+    });
     child.stdin.end(fastImportData, UTF8_ENCODING);
   });
 }

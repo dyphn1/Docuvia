@@ -28,6 +28,7 @@ function makeL3(overrides: Partial<L3NodeRow> = {}): L3NodeRow {
     extraction_model: "gpt-4o-mini",
     source_files: JSON.stringify(["src/a.ts"]),
     initial_source_commits: JSON.stringify(["commit-1"]),
+    anchor_ranges: null,
     ...overrides,
   };
 }
